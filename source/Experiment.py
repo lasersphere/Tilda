@@ -6,7 +6,6 @@ Created on 23.03.2014
 
 import time
 
-
 def getAccVolt(time):
     return 30000
 

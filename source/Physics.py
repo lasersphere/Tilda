@@ -8,8 +8,8 @@ import math
 
 # _d marks uncertainty
 c = 299792458;    #speed of light
-u_kg = 1.660538921e-27;    #atomic mass unit
-u_kg_d = 7.3e-35;    #delta u
+u = 1.660538921e-27;    #atomic mass unit
+u_d = 7.3e-35;    #delta u
 pi = 3.14159265;
 me = 9.10938291e-31;    #electron mass
 me_d = 4e-38;
@@ -19,52 +19,49 @@ qe = 1.602176565e-19;    #electron charge
 qe_d = 3.5e-27;
 
 
-'''returns the relativistic velocity of a body of mass m and kinetic energy e'''
 def relVelocity(e, m):
-    mc = m*c*c
-    return c * math.sqrt(1 - pow(mc / (e + mc), 2))
+    '''Return the relativistic velocity of a body with kinetic energy e/J and mass m/kg'''
+    mcs = m*c*c
+    return c * math.sqrt(1 - pow(mcs / (e + mcs), 2))
 
-'''returns the doppler shifted frequency of a frame moving with velocity v'''
 def relDoppler(laserFreq, v):
+    '''Return the doppler shifted frequency of a frame moving with velocity v'''
     return laserFreq * math.sqrt((c + v) / (c - v))
 
 def clasEnergy():
     pass
 
 
-'''
-Returns the tuple of total angular momentum F andhyperfine coefficients for A and B-factor
-for a given quantum state
-'''    
-def hypCoeff(I, J, F):
+def HFCoeff(I, J, F):    
+    '''Return the tuple of hyperfine coefficients for A and B-factor for a given quantum state'''
     C = (F*(F+1) - I*(I+1) - J*(J+1))
     coA = 0.5 * C
     
     #catch case of low spins
     if I < 0.9 or J < 0.9:
-        coB = 0
+        coB = 0.0
     else:
         coB = (0.75 * C*(C+1) - J*(J+1)*I*(I+1)) / (2*I*(2*I-1)*J*(2*J-1))
                                                  
     return (coA, coB)
 
-'''
-calculate all allowed hyperfine transitions and their hyperfine coefficients. Returns (Fu, Fl, coAu, coBu, coAl, coBl)
-''' 
-def calcHFTrans(I, Ju, Jl):
-    return [(Fu, Fl) + hypCoeff(I, Ju, Fu) + hypCoeff(I, Jl, Fl)
-                        for Fu in range(abs(I - Ju), (I + Ju))
-                        for Fl in range(abs(I - Jl), (I + Jl)) if abs(Fl - Fu) == 1 or (Fl - Fu == 0 and Fl != 0 and Fu != 0)]
+def HFTrans(I, Ju, Jl):
+    '''Calculate all allowed hyperfine transitions and their hyperfine coefficients. Returns (Fu, Fl, coAu, coBu, coAl, coBl)''' 
+    return [(Fu, Fl) + HFCoeff(I, Ju, Fu) + HFCoeff(I, Jl, Fl)
+                        for Fu in range(abs(I - Ju), (I + Ju + 1))
+                        for Fl in range(abs(I - Jl), (I + Jl + 1)) if abs(Fl - Fu) == 1 or (Fl - Fu == 0 and Fl != 0 and Fu != 0)]
 
-'''
-calculate line positions from (Au, Bu, Al, Bl) and list of transitions (see calcHFTrans)
-'''
-def calcHFLinePos(Au, Bu, Al, Bl, transitions):
+def HFLineSplit(Au, Bu, Al, Bl, transitions):
+    '''Calculate line splittings from (Au, Bu, Al, Bl) and list of transitions (see calcHFTrans)'''
     return [Au * coAu + Bu * coBu - Al * coAl - Bl * coBl
                     for (coAu, coBu, coAl, coBl) in transitions[2:]]
 
-'''6-J symbol used for Racah coefficients'''
+def HFInt(I, Ju, Jl, transitions):
+    '''Calculate relative line intensities'''
+    return [(2*Fu+1)*(2*Fl+1)*(sixJ(Jl, Fl, I, Fu, Ju, 1)**2) for Fu, Fl in transitions]
+
 def sixJ(j1, j2, j3, J1, J2, J3):
+    '''6-J symbol used for Racah coefficients'''
     ret = 0
     for i in range(max(max(j1+j2+j3,j1+J2+J3),max(J1+j2+J3,J1+J2+j3)),
                    min(min(j1+j2+J1+J2,j2+j3+J2+J3),j3+j1+J3+J1) + 1):
@@ -78,9 +75,9 @@ def sixJ(j1, j2, j3, J1, J2, J3):
             /math.factorial(j3+j1+J3+J1-i) )
         
     return math.sqrt(deltaJ(j1,j2,j3)*deltaJ(j1,J2,J3)*deltaJ(J1,j2,J3)*deltaJ(J1,J2,j3))*ret
-
-'''3-J symbol used for Racah coefficients'''        
+        
 def threeJ(j1, m1, j2, m2, j3, m3):
+    '''3-J symbol used for Racah coefficients'''
     ret=0;
     for i in range(max(max(0.,j2-j3-m1), m2+j1-j3),
                     min(min(j1+j2-j3,j1-m1),j2+m2) + 1):
@@ -91,6 +88,6 @@ def threeJ(j1, m1, j2, m2, j3, m3):
     return (pow(-1.,j1-j2-m3) * math.sqrt(deltaJ(j1,j2,j3) * math.factorial(j1+m1) * math.factorial(j1-m1)
         *math.factorial(j2+m2)*math.factorial(j2-m2)*math.factorial(j3+m3)*math.factorial(j3-m3))*ret)
     
-'''delta-symbol used for Racah coefficients'''    
-def deltaJ(j1, j2, j3):
+def deltaJ(j1, j2, j3):    
+    '''Delta-symbol used for Racah coefficients'''
     return math.factorial(j1+j2-j3)*math.factorial(j1-j2+j3)*math.factorial(-j1+j2+j3)/math.factorial(j1+j2+j3+1)

@@ -14,7 +14,7 @@ class Isotope(object):
         Constructor
         '''
         #Fixed system properties
-        self.name = "Test"
+        self.name = "Scratch"
         self.mass = 1      #in u
         self.mass_d  =0.01   #error of mass in u
         self.I = 2.5         #nuclear Spin

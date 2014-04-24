@@ -7,5 +7,4 @@ Created on 31.03.2014
 
 import Physics
 
-print(min(1, 2, key = lambda x: abs(x)))
-
+print(Physics.HFTrans(0, 1, 2))

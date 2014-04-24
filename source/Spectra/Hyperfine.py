@@ -20,8 +20,8 @@ class Hyperfine(object):
         self.iso = iso
         self.shape = shape
         
-        self.transitions = Physics.calcHFTrans(self.iso.I, self.iso.Ju, self.iso.Jl)
-        self.linePos = self.calcHFLinePos(self.Au, self.Bu, self.Al, self.Bl, self.transitions)
+        self.transitions = Physics.HFTrans(self.iso.I, self.iso.Ju, self.iso.Jl)
+        self.linePos = Physics.HFLinePos(self.Au, self.Bu, self.Al, self.Bl, self.transitions)
         
     
     def initPars(self):
