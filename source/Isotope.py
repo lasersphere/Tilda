@@ -16,7 +16,7 @@ class Isotope(object):
         #Fixed system properties
         self.name = "Scratch"
         self.mass = 1      #in u
-        self.mass_d  =0.01   #error of mass in u
+        self.mass_d = 0.01   #error of mass in u
         self.I = 2.5         #nuclear Spin
         self.Jl = 0.5        #angular momentum of lower state
         self.Ju = 1.5        #angular momentum of upper state
@@ -27,11 +27,13 @@ class Isotope(object):
         #Fit parameters
         self.shift = 123     #expected shift (relative to atomFreq)
         self.Al = 1000        #expected A-factor of lower state
-        self.Au = 800        #expected A-factor of upper state
+        self.Ar = 0.02        #expected A-factor of upper state
         self.Bl = 0        #expected B-factor of lower state
-        self.Bu = 197        #expected B-factor of upper state
-        self.lorWidth = 20   #expected lorentzian width
-        self.gauWidth = 30   #expected gaussian width
+        self.Br = 197        #expected B-factor of upper state
+        self.lorGam = 20   #expected lorentzian width
+        self.fixLor = True
+        self.gauSig = 30   #expected gaussian width
+        self.fixGauss = True
         self.intScale = 40   #expected overall intensity
         
         #Fitting conditions

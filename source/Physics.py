@@ -5,6 +5,8 @@ Created on 23.03.2014
 '''
 
 import math
+import numpy as np
+from scipy import special
 
 # _d marks uncertainty
 c = 299792458;    #speed of light
@@ -32,62 +34,63 @@ def clasEnergy():
     pass
 
 
+def voigt(x, sig, gam):
+    '''Voigt profile, unnormalized'''
+    return special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).real / (sig * math.sqrt(2 * math.pi))
+
 def HFCoeff(I, J, F):    
     '''Return the tuple of hyperfine coefficients for A and B-factor for a given quantum state'''
-    C = (F*(F+1) - I*(I+1) - J*(J+1))
+    C = 0 if I == 0 else (F*(F+1) - I*(I+1) - J*(J+1))
     coA = 0.5 * C
     
     #catch case of low spins
-    if I < 0.9 or J < 0.9:
-        coB = 0.0
-    else:
-        coB = (0.75 * C*(C+1) - J*(J+1)*I*(I+1)) / (2*I*(2*I-1)*J*(2*J-1))
+    coB = 0 if I < 0.9 or J < 0.9 else (0.75 * C*(C+1) - J*(J+1)*I*(I+1)) / (2*I*(2*I-1)*J*(2*J-1))
                                                  
     return (coA, coB)
 
-def HFTrans(I, Ju, Jl):
-    '''Calculate all allowed hyperfine transitions and their hyperfine coefficients. Returns (Fu, Fl, coAu, coBu, coAl, coBl)''' 
-    return [(Fu, Fl) + HFCoeff(I, Ju, Fu) + HFCoeff(I, Jl, Fl)
-                        for Fu in range(abs(I - Ju), (I + Ju + 1))
-                        for Fl in range(abs(I - Jl), (I + Jl + 1)) if abs(Fl - Fu) == 1 or (Fl - Fu == 0 and Fl != 0 and Fu != 0)]
+def HFTrans(I, Jl, Ju):
+    '''Calculate all allowed hyperfine transitions and their hyperfine coefficients. Returns (Fl, Fu, coAl, coBl, coAu, coBu)''' 
+    return [(Fl, Fu) + HFCoeff(I, Ju, Fl) + HFCoeff(I, Jl, Fu)
+                        for Fl in np.arange(abs(I - Jl), (I + Jl + 0.5))
+                        for Fu in np.arange(abs(I - Ju), (I + Ju + 0.5)) if abs(Fl - Fu) == 1 or (Fl - Fu == 0 and Fl != 0 and Fu != 0)]
 
-def HFLineSplit(Au, Bu, Al, Bl, transitions):
+def HFLineSplit(Al, Bl, Au, Bu, transitions):
     '''Calculate line splittings from (Au, Bu, Al, Bl) and list of transitions (see calcHFTrans)'''
     return [Au * coAu + Bu * coBu - Al * coAl - Bl * coBl
-                    for (coAu, coBu, coAl, coBl) in transitions[2:]]
+                    for x, y, coAl, coBl, coAu, coBu in transitions]
 
-def HFInt(I, Ju, Jl, transitions):
+def HFInt(I, Jl, Ju, transitions):
     '''Calculate relative line intensities'''
-    return [(2*Fu+1)*(2*Fl+1)*(sixJ(Jl, Fl, I, Fu, Ju, 1)**2) for Fu, Fl in transitions]
+    return [(2*Fu+1)*(2*Fl+1)*(sixJ(Jl, Fl, I, Fu, Ju, 1)**2) for Fl, Fu, *r in transitions]
 
 def sixJ(j1, j2, j3, J1, J2, J3):
     '''6-J symbol used for Racah coefficients'''
     ret = 0
-    for i in range(max(max(j1+j2+j3,j1+J2+J3),max(J1+j2+J3,J1+J2+j3)),
-                   min(min(j1+j2+J1+J2,j2+j3+J2+J3),j3+j1+J3+J1) + 1):
+    for i in range(int(round(max(max(j1+j2+j3,j1+J2+J3),max(J1+j2+J3,J1+J2+j3)))),
+                   int(round(min(min(j1+j2+J1+J2,j2+j3+J2+J3),j3+j1+J3+J1) + 1))):
         ret= (ret + pow(-1,i) * math.factorial(i+1.)
-            /math.factorial(i-j1-j2-j3)
-            /math.factorial(i-j1-J2-J3)
-            /math.factorial(i-J1-j2-J3)
-            /math.factorial(i-J1-J2-j3)
-            /math.factorial(j1+j2+J1+J2-i)
-            /math.factorial(j2+j3+J2+J3-i)
-            /math.factorial(j3+j1+J3+J1-i) )
+            /math.factorial(round(i-j1-j2-j3))
+            /math.factorial(round(i-j1-J2-J3))
+            /math.factorial(round(i-J1-j2-J3))
+            /math.factorial(round(i-J1-J2-j3))
+            /math.factorial(round(j1+j2+J1+J2-i))
+            /math.factorial(round(j2+j3+J2+J3-i))
+            /math.factorial(round(j3+j1+J3+J1-i)) )
         
     return math.sqrt(deltaJ(j1,j2,j3)*deltaJ(j1,J2,J3)*deltaJ(J1,j2,J3)*deltaJ(J1,J2,j3))*ret
         
 def threeJ(j1, m1, j2, m2, j3, m3):
     '''3-J symbol used for Racah coefficients'''
     ret=0;
-    for i in range(max(max(0.,j2-j3-m1), m2+j1-j3),
-                    min(min(j1+j2-j3,j1-m1),j2+m2) + 1):
+    for i in range(round(max(max(0.,j2-j3-m1), m2+j1-j3)),
+                    round(min(min(j1+j2-j3,j1-m1),j2+m2) + 1)):
 
-        ret = (ret+pow(-1.,i)/math.factorial(i) / math.factorial(j3-j2+i+m1) / math.factorial(j3-j1+i-m2)
-            /math.factorial(j1+j2-j3-i) / math.factorial(j1-i-m1) / math.factorial(j2-i+m2) )
+        ret = (ret+pow(-1.,i)/math.factorial(i) / math.factorial(round(j3-j2+i+m1)) / math.factorial(round(j3-j1+i-m2))
+            /math.factorial(round(j1+j2-j3-i)) / math.factorial(round(j1-i-m1)) / math.factorial(round(j2-i+m2)) )
     
-    return (pow(-1.,j1-j2-m3) * math.sqrt(deltaJ(j1,j2,j3) * math.factorial(j1+m1) * math.factorial(j1-m1)
-        *math.factorial(j2+m2)*math.factorial(j2-m2)*math.factorial(j3+m3)*math.factorial(j3-m3))*ret)
+    return (pow(-1.,round(j1-j2-m3)) * math.sqrt(deltaJ(round(j1,j2,j3)) * math.factorial(round(j1+m1)) * math.factorial(round(j1-m1))
+        *math.factorial(round(j2+m2))*math.factorial(round(j2-m2))*math.factorial(round(j3+m3))*math.factorial(round(j3-m3)))*ret)
     
 def deltaJ(j1, j2, j3):    
     '''Delta-symbol used for Racah coefficients'''
-    return math.factorial(j1+j2-j3)*math.factorial(j1-j2+j3)*math.factorial(-j1+j2+j3)/math.factorial(j1+j2+j3+1)
+    return math.factorial(round(j1+j2-j3))*math.factorial(round(j1-j2+j3))*math.factorial(round(-j1+j2+j3))/math.factorial(round(j1+j2+j3+1))

@@ -10,7 +10,13 @@ from Spectra.Voigt import Voigt
 class Test(unittest.TestCase):
 
     def setUp(self):
-        self.line = Voigt()
+        class Expando(object): pass 
+        self.iso = Expando()
+        self.iso.gauWidth = 50
+        self.iso.fixGauss = True
+        self.iso.lorWidth = 10
+        self.iso.fixLor = True
+        self.line = Voigt(self.iso)
 
     def test_evaluateSide(self):
         self.assertAlmostEqual(self.line.evaluate([300], [50, 10]), 3.877908752409212e-5, 7)
