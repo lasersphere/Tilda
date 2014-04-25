@@ -10,22 +10,16 @@ from Spectra.Voigt import Voigt
 class Test(unittest.TestCase):
 
     def setUp(self):
-        class Expando(object): pass 
-        self.iso = Expando()
-        self.iso.gauWidth = 50
-        self.iso.fixGauss = True
-        self.iso.lorWidth = 10
-        self.iso.fixLor = True
-        self.line = Voigt(self.iso)
+        self.line = Voigt()
 
     def test_evaluateSide(self):
-        self.assertAlmostEqual(self.line.evaluate([300], [50, 10]), 3.877908752409212e-5, 7)
+        self.assertAlmostEqual(self.line.evaluate([300], [50, 10]), 0.0056614479422570484, 6)
 
     def test_evaluateFlank(self):
-        self.assertAlmostEqual(self.line.evaluate([70], [50, 10]), 3.030238066368942e-3, 7)
+        self.assertAlmostEqual(self.line.evaluate([70], [50, 10]), 0.4423914063149442, 6)
         
     def test_evaluateCentre(self):
-        self.assertAlmostEqual(self.line.evaluate([0], [50, 10]), 6.849676605633871e-3, 7)
+        self.assertAlmostEqual(self.line.evaluate([0], [50, 10]), 1, 6)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

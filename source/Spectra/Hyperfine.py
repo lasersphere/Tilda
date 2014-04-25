@@ -45,7 +45,7 @@ class Hyperfine(object):
             self.lineSplit = Physics.HFLineSplit(self.Al, self.Bl, self.Al * self.Ar, self.Bl * self.Br, self.trans)
             
         rx = x[0] - p[self.pCenter]
-        return sum(p[self.pInt + i] * self.shape.evaluate(rx, p) for i in range(len(self.trans)))
+        return sum(p[self.pInt + i] * self.shape.evaluate(rx - self.lineSplit[i], p) for i in range(len(self.trans)))
   
     def getPars(self, pos = 0):
         self.pCenter = pos

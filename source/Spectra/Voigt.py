@@ -18,17 +18,16 @@ class Voigt(object):
         self.iso = iso
         self.nPar = 2
         
-        if iso is not None:
-            self.sig = iso.gauWidth
-            self.fSig = iso.fixGauss
-            self.gam = iso.lorWidth
-            self.fGam = iso.fixLor
-            self.renorm(self.initPars())
+        self.pSig = 0
+        self.sig = 10
+        self.pGam = 1
+        self.gam = 10
+        self.renorm([10, 10])
         
     def evaluate(self, x, p):
         if self.sig != p[self.pSig] or self.gam != p[self.pGam]:
             self.renorm(p)
-        return self.norm * Physics.voigt(0, p[self.pSig], p[self.pGam])
+        return Physics.voigt(x[0], p[self.pSig], p[self.pGam]) / self.norm
     
     def leftEdge(self):
         return -5 * (self.sig + self.gam)
@@ -46,7 +45,7 @@ class Voigt(object):
         return ['sigma', 'gamma']
     
     def getFixed(self):
-        return [self.fSig, self.fGam]
+        return [self.iso.fixGau, self.iso.fixLor]
     
     def renorm(self, p):
         self.norm = Physics.voigt(0, p[self.pSig], p[self.pGam])
