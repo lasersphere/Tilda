@@ -11,7 +11,7 @@ class Voigt(object):
     Implementation of a voigt profile object using the Faddeeva function
     '''
 
-    def __init__(self, iso = None):
+    def __init__(self, iso):
         '''
         Constructor
         '''
@@ -19,14 +19,17 @@ class Voigt(object):
         self.nPar = 2
         
         self.pSig = 0
-        self.sig = 10
         self.pGam = 1
-        self.gam = 10
-        self.renorm([10, 10])
+        self.sig = iso.shape['gau']
+        self.gam = iso.shape['lor']
+        self.norm = Physics.voigt(0, self.sig, self.gam)
         
     def evaluate(self, x, p):
         if self.sig != p[self.pSig] or self.gam != p[self.pGam]:
-            self.renorm(p)
+            self.sig = p[self.pSig]
+            self.gam = p[self.pGam]
+            self.norm = Physics.voigt(0, self.sig, self.gam)
+            
         return Physics.voigt(x[0], p[self.pSig], p[self.pGam]) / self.norm
     
     def leftEdge(self):
@@ -39,13 +42,11 @@ class Voigt(object):
         self.pSig = pos
         self.pGam = pos + 1
         
-        return [self.iso.gauSig, self.iso.lorGam]
+        return [self.iso.shape['gau'], self.iso.shape['lor']]
     
     def getParNames(self):
         return ['sigma', 'gamma']
     
     def getFixed(self):
-        return [self.iso.fixGau, self.iso.fixLor]
-    
-    def renorm(self, p):
-        self.norm = Physics.voigt(0, p[self.pSig], p[self.pGam])
+        return [self.iso.fixShape['gau'], self.iso.fixShape['lor']]
+        

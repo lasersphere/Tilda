@@ -14,17 +14,20 @@ class Test_Physics(unittest.TestCase):
         self.assertAlmostEqual(Physics.relVelocity(1e-13, 1.5e-27), 1.15405860588344e07, 1)
 
     def test_relDoppler(self):
-        self.assertTrue(True)
+        pass
         
-    def test_hypCoeff(self):
-        pass
-    
-    def test_calcHFTransNonzeroI(self):
-        pass
-    
+    def test_hypCoeffZero(self):
+        self.assertEqual(Physics.HFCoeff(0, 0.5, 0.5), (0, 0))
+        
+    def test_hypCoeffNonZero(self):
+        self.assertEqual(Physics.HFCoeff(1, 1.5, 2.5), (1.5, 0.25))
+
     def test_calcHFTransZeroI(self):
-        pass
+        self.assertEqual(Physics.HFTrans(0, 0.5, 1.5), [(0.5, 1.5, 0.0, 0.0, 0.0, 0.0)])
     
+#    def test_calcHFTransNonzeroI(self):
+#        self.assertEqual(Physics.HFTrans(0, 0.5, 1.5), (0.5, 1.5, 0, 0, 0, 0))
+        
     def test_calcHFLinePos(self):
         pass
     

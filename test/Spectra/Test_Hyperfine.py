@@ -5,29 +5,34 @@ Created on 23.04.2014
 '''
 import unittest
 
-from Spectra.Voigt import Voigt
+import numpy as np
 
-class Test_Voigt(unittest.TestCase):
+from Spectra.Voigt import Voigt
+from Spectra.Hyperfine import Hyperfine
+
+class Test_Hyperfine(unittest.TestCase):
 
     def setUp(self):
         class Expando(object): pass
         self.iso = Expando()
         self.iso.shape = {'gau': 50, 'lor': 10}
         self.iso.fixShape = {'gau': False, 'lor': False}
-        
-        self.line = Voigt(self.iso)
+        self.iso.intScale = 1
+        self.iso.shift = 99
+        self.iso.Al = 100
+        self.iso.Bl = 101
+        self.iso.Ar = 102
+        self.iso.Br = 103
 
-    def test_evaluateSide(self):
-        self.assertAlmostEqual(self.line.evaluate([300], [50, 10]), 0.0056614479422570484, 6)
+        self.iso.I = 0
+        self.iso.Jl = 0.5
+        self.iso.Ju = 1.5
+        
+        self.shape = Voigt(self.iso)
+        self.line = Hyperfine(self.iso, self.shape)
 
-    def test_evaluateFlank(self):
-        self.assertAlmostEqual(self.line.evaluate([70], [50, 10]), 0.4423914063149442, 6)
-        
-    def test_evaluateCentre(self):
-        self.assertAlmostEqual(self.line.evaluate([0], [50, 10]), 1, 6)
-        
     def test_getPars(self):
-        self.assertEqual(self.line.getPars(), [50, 10])
+        np.testing.assert_almost_equal(self.line.getPars(), [99, 100, 101, 102, 103, 1], 3)
         
     def test_nPar(self):
         self.assertEqual(self.line.nPar, len(self.line.getPars()))

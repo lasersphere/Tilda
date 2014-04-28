@@ -40,11 +40,11 @@ def voigt(x, sig, gam):
 
 def HFCoeff(I, J, F):    
     '''Return the tuple of hyperfine coefficients for A and B-factor for a given quantum state'''
-    C = 0 if I == 0 else (F*(F+1) - I*(I+1) - J*(J+1))
+    C = 0.0 if I == 0 else (F*(F+1) - I*(I+1) - J*(J+1))
     coA = 0.5 * C
     
     #catch case of low spins
-    coB = 0 if I < 0.9 or J < 0.9 else (0.75 * C*(C+1) - J*(J+1)*I*(I+1)) / (2*I*(2*I-1)*J*(2*J-1))
+    coB = 0.0 if I < 0.9 or J < 0.9 else (0.75 * C*(C+1) - J*(J+1)*I*(I+1)) / (2*I*(2*I-1)*J*(2*J-1))
                                                  
     return (coA, coB)
 
