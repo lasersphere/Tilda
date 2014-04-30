@@ -50,7 +50,7 @@ def HFCoeff(I, J, F):
 
 def HFTrans(I, Jl, Ju):
     '''Calculate all allowed hyperfine transitions and their hyperfine coefficients. Returns (Fl, Fu, coAl, coBl, coAu, coBu)''' 
-    return [(Fl, Fu) + HFCoeff(I, Ju, Fl) + HFCoeff(I, Jl, Fu)
+    return [(Fl, Fu) + HFCoeff(I, Jl, Fl) + HFCoeff(I, Ju, Fu)
                         for Fl in np.arange(abs(I - Jl), (I + Jl + 0.5))
                         for Fu in np.arange(abs(I - Ju), (I + Ju + 0.5)) if abs(Fl - Fu) == 1 or (Fl - Fu == 0 and Fl != 0 and Fu != 0)]
 

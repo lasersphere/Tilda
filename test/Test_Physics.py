@@ -25,11 +25,14 @@ class Test_Physics(unittest.TestCase):
     def test_calcHFTransZeroI(self):
         self.assertEqual(Physics.HFTrans(0, 0.5, 1.5), [(0.5, 1.5, 0.0, 0.0, 0.0, 0.0)])
     
-#    def test_calcHFTransNonzeroI(self):
-#        self.assertEqual(Physics.HFTrans(0, 0.5, 1.5), (0.5, 1.5, 0, 0, 0, 0))
+    def test_calcHFTransNonzeroI(self):
+        self.assertEqual(Physics.HFTrans(0.5, 0.5, 1.5), [(0., 1., -0.75, 0.0, -1.25, 0.0), (1., 1., 0.25, 0.0, -1.25, 0.0), (1., 2., 0.25, 0.0, 0.75, 0.0)])
         
-    def test_calcHFLinePos(self):
-        pass
+    def test_calcHFLineSplit(self):
+        self.assertEqual(Physics.HFLineSplit(1, 2, 3, 4, [(0.5, 1.5, 0.0, 0.0, 0.0, 0.0)]), [0.])
+        
+    def test_calcHFLineSplit2(self):
+        self.assertEqual(Physics.HFLineSplit(1, 2, 3, 4, [(0., 1., -2.25, 0.0, 0.25, 0.0)]), [3.])
     
     
     

@@ -25,9 +25,9 @@ class FullSpec(object):
         self.hyper = []
         self.hN = ['G', 'I', 'I2', 'I3']
         while miso != None:
-            self.hyper.append(Hyperfine(iso, shape))
+            self.hyper.append(Hyperfine(iso, self.shape))
             miso = iso.m
-            
+
         self.nPar = 1 + self.shape.nPar + sum(hf.nPar for hf in self.hyper)
         
     def evaluate(self, x, p):
@@ -40,7 +40,7 @@ class FullSpec(object):
         pos += 1
         
         ret += self.shape.getPars(pos)
-        pos = self.shape.nPar
+        pos += self.shape.nPar
 
         for hf in self.hyper:
             ret += hf.getPars(pos)

@@ -9,33 +9,33 @@ import numpy as np
 
 from Spectra.Voigt import Voigt
 from Spectra.Hyperfine import Hyperfine
+from DBIsotope import DBIsotope
 
 class Test_Hyperfine(unittest.TestCase):
 
     def setUp(self):
-        class Expando(object): pass
-        self.iso = Expando()
-        self.iso.shape = {'gau': 50, 'lor': 10}
-        self.iso.fixShape = {'gau': False, 'lor': False}
-        self.iso.intScale = 1
-        self.iso.shift = 99
-        self.iso.Al = 100
-        self.iso.Bl = 101
-        self.iso.Ar = 102
-        self.iso.Br = 103
 
-        self.iso.I = 0
-        self.iso.Jl = 0.5
-        self.iso.Ju = 1.5
-        
+        self.iso = DBIsotope("1_Mi-D0", "../iso.sqlite")
+        self.iso2 = DBIsotope("3_Mi-D0", "../iso.sqlite")
+
         self.shape = Voigt(self.iso)
-        self.line = Hyperfine(self.iso, self.shape)
+        
 
     def test_getPars(self):
-        np.testing.assert_almost_equal(self.line.getPars(), [99, 100, 101, 102, 103, 1], 3)
+        line = Hyperfine(self.iso, self.shape)
+        np.testing.assert_almost_equal(line.getPars(), [3, 101, 20, 102, 30, 999], 3)
         
     def test_nPar(self):
-        self.assertEqual(self.line.nPar, len(self.line.getPars()))
+        line = Hyperfine(self.iso, self.shape)
+        self.assertEqual(line.nPar, len(line.getPars()))
+        
+    def test_leftEdge(self):
+        line = Hyperfine(self.iso, self.shape)
+        self.assertEqual(line.leftEdge(), -300)
+        self.assertEqual(line.rightEdge(), 300)
+        
+    def test_NonZeroI(self):
+        pass
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

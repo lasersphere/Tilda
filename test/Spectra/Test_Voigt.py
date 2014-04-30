@@ -31,6 +31,10 @@ class Test_Voigt(unittest.TestCase):
         
     def test_nPar(self):
         self.assertEqual(self.line.nPar, len(self.line.getPars()))
+        
+    def test_edges(self):
+        self.assertEqual(self.line.leftEdge(), -300)
+        self.assertEqual(self.line.rightEdge(), 300)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
