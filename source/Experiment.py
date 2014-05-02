@@ -4,22 +4,26 @@ Created on 23.03.2014
 @author: hammen
 '''
 
-import time
+#import time
 
-def getAccVolt(time):
-    return 30000
+def getAccVolt(time = 0):
+    return 10000.
 
-def getLaserFreq(time):
-    pass
+def getLaserFreq(time = 0):
+    """Return the laser frequency in MHz"""
+    return 763358778.6
 
-def dirColTrue(time):
+def dirColTrue(time = 0):
     return True
 
-def getVoltDivRatio(time):
-    return 1
+def getVoltDivRatio(time = 0):
+    return 1000.
 
-def getLineMult(time):
-    return 1
+def lineToScan(lineV):
+    return lineV * getLineMult() + getLineOffset()
 
-def getLineOffset(time):
-    return 0
+def getLineMult(time = 0):
+    return 50.
+
+def getLineOffset(time = 0):
+    return 0.

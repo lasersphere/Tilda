@@ -8,7 +8,7 @@ import Physics
 
 class Hyperfine(object):
     '''
-    classdocs
+    This class 
     '''
 
     def __init__(self, iso, shape):
@@ -53,10 +53,20 @@ class Hyperfine(object):
             self.lineSplit = Physics.HFLineSplit(self.Al, self.Bl, self.Au, self.Bu, self.trans)
             
         intens = self.buildInt(p)    
-        rx = x[0] - p[self.pCenter]
+        rx = x - p[self.pCenter]
         
-        return sum(i * self.shape.evaluate([rx - j], p) for i, j in zip(intens, self.lineSplit))
-  
+        return sum(i * self.shape.evaluate(rx - j, p) for i, j in zip(intens, self.lineSplit))
+        
+
+    def evaluateE(self, e, freq, col, p):
+        '''Return the intensity of the hyperfine structure for ions with energy e/eV'''
+        v = Physics.relVelocity(Physics.qe * e, self.iso.mass * Physics.u)
+        v = -v if col else v
+        
+        f = Physics.relDoppler(freq, v)
+        
+        return self.evaluate(f, p)
+    
   
     def getPars(self, pos = 0):
         self.pCenter = pos
@@ -82,7 +92,7 @@ class Hyperfine(object):
     
     
     def getFixed(self):
-        """This is indeed some work!"""
+        """Return the fix status for fitting of parameters"""
         ret = 4*[True]
         if self.iso.I > 0.1 and self.iso.Jl > 0.1:
             ret[0] = False
@@ -99,6 +109,7 @@ class Hyperfine(object):
     
     
     def buildInt(self, p):
+        '''If relative intensities are fixed, calculate absolute intensities. Else return relevant parameters directly'''
         ret = len(self.trans) * [0]        
 
         for i in range(len(self.trans)):

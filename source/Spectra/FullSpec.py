@@ -33,6 +33,11 @@ class FullSpec(object):
     def evaluate(self, x, p):
         '''Return the value of the hyperfine structure at point x, recalculate line positions if necessary'''            
         return p[self.pOff] + sum(hf.evaluate(x, p) for hf in self.hyper)
+    
+    
+    def evaluateE(self, e, freq, col, p):
+        return p[self.pOff] + sum(hf.evaluateE(e, freq, col, p) for hf in self.hyper)
+    
   
     def getPars(self, pos = 0):
         self.pOff = pos

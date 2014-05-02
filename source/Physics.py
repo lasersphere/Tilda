@@ -24,7 +24,7 @@ qe_d = 3.5e-27;
 def relVelocity(e, m):
     '''Return the relativistic velocity of a body with kinetic energy e/J and mass m/kg'''
     mcs = m*c*c
-    return c * math.sqrt(1 - pow(mcs / (e + mcs), 2))
+    return c * math.sqrt(1 - (mcs / (e + mcs)**2))
 
 def relDoppler(laserFreq, v):
     '''Return the doppler shifted frequency of a frame moving with velocity v'''

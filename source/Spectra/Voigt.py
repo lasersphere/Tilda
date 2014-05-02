@@ -30,7 +30,7 @@ class Voigt(object):
             self.gam = p[self.pGam]
             self.norm = Physics.voigt(0, self.sig, self.gam)
             
-        return Physics.voigt(x[0], p[self.pSig], p[self.pGam]) / self.norm
+        return Physics.voigt(x, p[self.pSig], p[self.pGam]) / self.norm
     
     def leftEdge(self):
         return -5 * (self.sig + self.gam)

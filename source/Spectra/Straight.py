@@ -17,7 +17,7 @@ class Straight(object):
         
     
     def evaluate(self, x, p):
-        return p[self.pb] + x[0]*p[self.pm]
+        return p[self.pb] + x*p[self.pm]
     
     def leftEdge(self):
         return -0.1
