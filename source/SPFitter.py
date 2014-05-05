@@ -14,18 +14,21 @@ class SPFitter(object):
     '''This class encapsulates the scipi.optimize.curve_fit routine for Pollifit'''
 
 
-    def __init__(self, spec, data):
+    def __init__(self, spec, file, track):
         '''Initialize and prepare'''
         self.spec = spec
-        self.data = data
+        self.data = file.getSingleSpec(*track)
         
-        self.accVolt = Exp.getAccVolt(self.data.time)
-        self.laser = Exp.getLaserFreq(self.data.time)
-        self.col = Exp.dirColTrue(self.data.time) 
+        self.accVolt = Exp.getAccVolt(file.time)
+        self.laser = Exp.getLaserFreq(file.time)
+        self.col = Exp.dirColTrue(file.time) 
         
         self.par = spec.getPars()
+        print(self.par)
         self.fix = spec.getFixed()
+        print(self.fix)
         self.npar = spec.getParNames()
+        print(self.npar)
         
         self.oldp = None
         self.pcov = None
@@ -37,7 +40,7 @@ class SPFitter(object):
         truncp = [p for p, f in zip(self.par, self.fix) if f == False]
         
         popt, self.pcov = curve_fit(self.evaluate, self.data[0], self.data[1], truncp, self.data[2])        
-        self.untrunc(popt)        
+        self.untrunc(popt)
         self.rchi = self.calcRchi()
        
         
@@ -84,10 +87,10 @@ class SPFitter(object):
                 j += 1
     
     
-    def evaluate(self, x, p):
+    def evaluate(self, x, *p):
         '''This functions masks the fixed parameters and adds Experimental values'''
         e = self.accVolt - x
-        self.untrunc(p)
+        self.untrunc([i for i in p])
         
         if p != self.oldp:
             self.spec.recalc(self.par)

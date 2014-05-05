@@ -7,11 +7,11 @@ Created on 23.03.2014
 #import time
 
 def getAccVolt(time = 0):
-    return 10000.
+    return 29956.21
 
 def getLaserFreq(time = 0):
     """Return the laser frequency in MHz"""
-    return 763358778.6
+    return 1398640292.89
 
 def dirColTrue(time = 0):
     return True
