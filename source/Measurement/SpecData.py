@@ -22,6 +22,9 @@ class SpecData(object):
         #self.x = np.array()
         #self.cts = np.array()
         #self.err = np.array()
+        self.accVolt = None
+        self.laser = None
+        self.col = None
         
         
     def getSingleSpec(self, scaler, track):

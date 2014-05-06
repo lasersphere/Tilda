@@ -42,21 +42,12 @@ class Hyperfine(object):
         
         
     def evaluate(self, x, p):
-        '''Return the value of the hyperfine structure at point x, recalculate line positions if necessary'''
-        if(self.Al != p[self.pAl] or self.Bl != p[self.pBl] or self.Au != p[self.pAu] or self.Bu != p[self.pBu]):
-            self.Al = p[self.pAl]
-            self.Bl = p[self.pBl]
-            #Use upper factors as ratio if fixed, else directly
-            self.Au = p[self.pAu] * p[self.pAl] if self.fixA else p[self.pAu]
-            self.Bu = p[self.pBu] * p[self.pBl] if self.fixB else p[self.pBu]
-
-            self.lineSplit = Physics.HFLineSplit(self.Al, self.Bl, self.Au, self.Bu, self.trans)
+        '''Return the value of the hyperfine structure at point x'''    
             
-        intens = self.buildInt(p)    
         rx = x - p[self.pCenter]
         
-        return sum(i * self.shape.evaluate(rx - j, p) for i, j in zip(intens, self.lineSplit))
-        
+        return sum(i * self.shape.evaluate(rx - j, p) for i, j in zip(self.intens, self.lineSplit))
+            
 
     def evaluateE(self, e, freq, col, p):
         '''Return the intensity of the hyperfine structure for ions with energy e/eV'''
@@ -66,6 +57,17 @@ class Hyperfine(object):
         f = Physics.relDoppler(freq, v)
         
         return self.evaluate(f, p)
+    
+    
+    def recalc(self, p):
+            self.Al = p[self.pAl]
+            self.Bl = p[self.pBl]
+            #Use upper factors as ratio if fixed, else directly
+            self.Au = p[self.pAu] * p[self.pAl] if self.fixA else p[self.pAu]
+            self.Bu = p[self.pBu] * p[self.pBl] if self.fixB else p[self.pBu]
+
+            self.lineSplit = Physics.HFLineSplit(self.Al, self.Bl, self.Au, self.Bu, self.trans)
+            self.intens = self.buildInt(p)
     
   
     def getPars(self, pos = 0):

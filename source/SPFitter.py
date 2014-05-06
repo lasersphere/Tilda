@@ -7,28 +7,20 @@ Created on 02.05.2014
 import numpy as np
 from scipy.optimize import curve_fit
 
-import Physics
-import Experiment as Exp
-
 class SPFitter(object):
     '''This class encapsulates the scipi.optimize.curve_fit routine for Pollifit'''
 
 
-    def __init__(self, spec, file, track):
+    def __init__(self, spec, meas, st):
         '''Initialize and prepare'''
+        print('Initializing fit of S:', st[0], ', T:', st[1])
         self.spec = spec
-        self.data = file.getSingleSpec(*track)
-        
-        self.accVolt = Exp.getAccVolt(file.time)
-        self.laser = Exp.getLaserFreq(file.time)
-        self.col = Exp.dirColTrue(file.time) 
+        self.meas = meas
+        self.data = meas.getSingleSpec(*st)
         
         self.par = spec.getPars()
-        print(self.par)
         self.fix = spec.getFixed()
-        print(self.fix)
         self.npar = spec.getParNames()
-        print(self.npar)
         
         self.oldp = None
         self.pcov = None
@@ -37,11 +29,12 @@ class SPFitter(object):
         
     def fit(self):
         '''Fit the free parameters of spec to data'''
+        print("Starting fit")
         truncp = [p for p, f in zip(self.par, self.fix) if f == False]
         
-        popt, self.pcov = curve_fit(self.evaluate, self.data[0], self.data[1], truncp, self.data[2])        
+        popt, self.pcov = curve_fit(self.evaluateE, self.data[0], self.data[1], truncp) #, self.data[2])
         self.untrunc(popt)
-        self.rchi = self.calcRchi()
+        #self.rchi = self.calcRchi()
        
         
     def calcRchi(self):
@@ -86,16 +79,27 @@ class SPFitter(object):
                 self.par[i] = p[j]
                 j += 1
     
-    
     def evaluate(self, x, *p):
         '''This functions masks the fixed parameters and adds Experimental values'''
-        e = self.accVolt - x
-        self.untrunc([i for i in p])
-        
         if p != self.oldp:
+            self.untrunc([i for i in p])
             self.spec.recalc(self.par)
+            self.oldp = p
         
-        self.spec.evaluateE(e, self.laser, self.col, self.par)
+        return [self.spec.evaluate(sx, self.par) for sx in x]
+
+
+    
+    def evaluateE(self, x, *p):
+        '''This functions masks the fixed parameters and adds Experimental values'''
+        e = self.meas.accVolt - x
+
+        if p != self.oldp:
+            self.untrunc([i for i in p])
+            self.spec.recalc(self.par)
+            self.oldp = p
+        
+        return [self.spec.evaluateE(se, self.meas.laser, self.meas.col, self.par) for se in e]
         
 
         

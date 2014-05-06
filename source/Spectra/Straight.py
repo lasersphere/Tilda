@@ -6,7 +6,7 @@ Created on 23.03.2014
 
 class Straight(object):
     '''
-    classdocs
+    A straight as lineshape object
     '''
 
     def __init__(self):
@@ -19,12 +19,26 @@ class Straight(object):
     def evaluate(self, x, p):
         return p[self.pb] + x*p[self.pm]
     
+    
     def leftEdge(self):
         return -0.1
+    
     
     def rightEdge(self):
         return 0.1
     
-    def initPars(self):
+    
+    def getPars(self):
+        return [0, 1]
+    
+    
+    def getParNames(self):
+        return ['b', 'm']
+    
+    
+    def getFixed(self):
+        return [False, False]
+    
+    def recalc(self, p):
         pass
                         

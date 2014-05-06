@@ -24,19 +24,21 @@ class Voigt(object):
         self.gam = iso.shape['lor']
         self.norm = Physics.voigt(0, self.sig, self.gam)
         
-    def evaluate(self, x, p):
-        if self.sig != p[self.pSig] or self.gam != p[self.pGam]:
-            self.sig = p[self.pSig]
-            self.gam = p[self.pGam]
-            self.norm = Physics.voigt(0, self.sig, self.gam)
-            
+    def evaluate(self, x, p):    
         return Physics.voigt(x, p[self.pSig], p[self.pGam]) / self.norm
+    
+    
+    def recalc(self, p):
+            self.norm = Physics.voigt(0, self.sig, self.gam)
+    
     
     def leftEdge(self):
         return -5 * (self.sig + self.gam)
     
+    
     def rightEdge(self):
         return 5 * (self.sig + self.gam)
+    
     
     def getPars(self, pos = 0):
         self.pSig = pos
@@ -44,8 +46,10 @@ class Voigt(object):
         
         return [self.iso.shape['gau'], self.iso.shape['lor']]
     
+    
     def getParNames(self):
         return ['sigma', 'gamma']
+    
     
     def getFixed(self):
         return [self.iso.fixShape['gau'], self.iso.fixShape['lor']]

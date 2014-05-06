@@ -7,39 +7,23 @@ import unittest
 
 import numpy as np
 
-from Spectra.Voigt import Voigt
 from Spectra.FullSpec import FullSpec
+from DBIsotope import DBIsotope
 
 class Test_FullSpec(unittest.TestCase):
 
     def setUp(self):
-        class Expando(object): pass
-        self.iso = Expando()
-        self.iso.shape = {'gau': 50, 'lor': 10}
-        self.iso.fixShape = {'gau': True, 'lor': False}
-        self.iso.intScale = 1
-        self.iso.shift = 99
-        self.iso.Al = 100
-        self.iso.Bl = 101
-        self.iso.Ar = 102
-        self.iso.Br = 103
-        self.iso.m = None
-
-        self.iso.I = 0
-        self.iso.Jl = 0.5
-        self.iso.Ju = 1.5
-        
-        self.shape = Voigt
-        self.line = FullSpec(self.iso, self.shape)
+        self.iso = DBIsotope('1_Mi-D0', '../iso.sqlite')
+        self.line = FullSpec(self.iso)
 
     def test_getPars(self):
-        np.testing.assert_almost_equal(self.line.getPars(), [0, 50, 10, 99, 100, 101, 102, 103, 1], 3)
+        np.testing.assert_almost_equal(self.line.getPars(), [0, 50, 10, 3, 101, 20, 102, 30, 999], 3)
         
     def test_getParNames(self):
-        self.assertEqual(self.line.getParNames(), ['offset', 'sigma', 'gamma', 'Gcenter', 'GAl', 'GBl', 'GAr', 'GBr', 'GInt0'])
+        self.assertEqual(self.line.getParNames(), ['offset', 'sigma', 'gamma', 'Gcenter', 'GAl', 'GBl', 'GAu', 'GBu', 'GInt0'])
 
     def test_getFixed(self):
-        self.assertEqual(self.line.getFixed(), [False, True] + 7*[False])
+        self.assertEqual(self.line.getFixed(), [False, True, True, False, True, True, True, True, False])
         
     def test_nPar(self):
         self.assertEqual(self.line.nPar, len(self.line.getPars()))

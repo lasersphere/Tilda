@@ -10,7 +10,7 @@ from DBIsotope import DBIsotope
 class Test(unittest.TestCase):
     def test_frequency(self):
         iso = DBIsotope("1_Mi-D0", "iso.sqlite")
-        self.assertEqual(iso.freq, 1000)
+        self.assertEqual(iso.freq, 1397586895.16)
         
     def test_J(self):
         iso = DBIsotope("1_Mi-D0", "iso.sqlite")
@@ -32,7 +32,7 @@ class Test(unittest.TestCase):
         
     def test_relInt(self):
         iso = DBIsotope("3_Mi-D0", "iso.sqlite")
-        self.assertEqual(iso.relInt, [1, 0.5])
+        self.assertEqual(iso.relInt, [1, 0.5, 0.25])
 
 
 if __name__ == "__main__":
