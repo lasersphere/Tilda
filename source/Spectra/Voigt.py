@@ -9,12 +9,14 @@ import Physics
 class Voigt(object):
     '''
     Implementation of a voigt profile object using the Faddeeva function
+    
+    The peak height is normalized to one
+    Sigma is the standard deviation of the gaussian
+    Gamma is the half width half maximum
     '''
 
     def __init__(self, iso):
-        '''
-        Constructor
-        '''
+        '''Initialize'''
         self.iso = iso
         self.nPar = 2
         
@@ -23,24 +25,32 @@ class Voigt(object):
         self.sig = iso.shape['gau']
         self.gam = iso.shape['lor']
         self.norm = Physics.voigt(0, self.sig, self.gam)
-        
-    def evaluate(self, x, p):    
+    
+    
+    def evaluate(self, x, p):
+        '''Return the value of the hyperfine structure at point x / MHz'''
         return Physics.voigt(x, p[self.pSig], p[self.pGam]) / self.norm
     
     
     def recalc(self, p):
-            self.norm = Physics.voigt(0, self.sig, self.gam)
+        '''Recalculate the norm factor'''
+        self.sig = p[self.pSig]
+        self.gam = p[self.pGam]
+        self.norm = Physics.voigt(0, self.sig, self.gam)
     
     
     def leftEdge(self):
+        '''Return the left edge of the spectrum in Mhz'''
         return -5 * (self.sig + self.gam)
     
     
     def rightEdge(self):
+        '''Return the right edge of the spectrum in MHz'''
         return 5 * (self.sig + self.gam)
     
     
     def getPars(self, pos = 0):
+        '''Return list of initial parameters and initialize positions'''
         self.pSig = pos
         self.pGam = pos + 1
         
@@ -48,9 +58,11 @@ class Voigt(object):
     
     
     def getParNames(self):
+        '''Return list of the parameter names'''
         return ['sigma', 'gamma']
     
     
     def getFixed(self):
+        '''Return list of parmeters with their fixed-status'''
         return [self.iso.fixShape['gau'], self.iso.fixShape['lor']]
         

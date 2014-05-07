@@ -8,19 +8,18 @@ import sqlite3
 
 class DBIsotope(object):
     '''
-    classdocs
+    A sqlite database driven version fo the isotope object
     '''
 
 
     def __init__(self, name, file):
-        '''
-        Constructor
-        '''
+        '''Load relevant values of isotope name from database file'''
         print("Loading isotope", name)
-        sqlite3.register_converter("BOOL", lambda v: bool(int(v)))
+        #sqlite3.register_converter("BOOL", lambda v: bool(int(v)))
         
         con = sqlite3.connect(file)
         cur = con.cursor()
+        
         n = name.split('_')
         cur.execute("SELECT * FROM Lines WHERE Line =?", (n[1],))
         data = cur.fetchall()[0]
@@ -61,6 +60,7 @@ class DBIsotope(object):
         con.close()
         
 def createDB():
+    '''Create a sqlite database with the appropriate structure and two example entries'''
     con = sqlite3.connect("iso.sqlite")
     cur = con.cursor()
     cur.execute('CREATE TABLE "Lines" ("Line" TEXT PRIMARY KEY  NOT NULL , "Reference" TEXT, "Frequency" FLOAT, "Jl" FLOAT, "Ju" FLOAT, "shape" TEXT, "fixShape" TEXT)')

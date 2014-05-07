@@ -9,7 +9,7 @@ import numpy as np
 
 class MPLPlotter(object):
     '''
-    classdocs
+    Maybe something like a pyplot wrapper. Deprecated
     '''
 
 

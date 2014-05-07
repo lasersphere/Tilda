@@ -25,7 +25,10 @@ class SimpleImporter(SpecData):
         super(SimpleImporter, self).__init__()
         
         self.path = path
-        
+        self.accVolt = Exp.getAccVolt(self.time)
+        self.laserFreq = Exp.getLaserFreq(self.time)
+        self.col = Exp.dirColTrue(self.time) 
+
         l = self.dimension(path)
         self.nrScalers = l[1] - 1
         self.nrTracks = 1
@@ -37,17 +40,12 @@ class SimpleImporter(SpecData):
         with open(path) as f:
             read = csv.reader(f, delimiter = '\t')
             for i, row in enumerate(read):
-                self.x[0][i] = float(row[0])
+                self.x[0][i] = self.accVolt - float(row[0])
                 for j, counts in enumerate(row[1:]):
                     self.cts[j][0][i] = float(counts)
                     self.err[j][0][i] = max(np.sqrt(float(counts)), 1)
                     
-                
-        self.accVolt = Exp.getAccVolt(self.time)
-        self.laser = Exp.getLaserFreq(self.time)
-        self.col = Exp.dirColTrue(self.time) 
-            
-            
+      
     def dimension(self, path):
         '''returns the nr of lines and columns of the file'''
         lines = 1

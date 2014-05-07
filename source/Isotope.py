@@ -6,7 +6,7 @@ Created on 30.03.2014
 
 class Isotope(object):
     '''
-    classdocs
+    A simple isotope, currently unused and deprecated
     '''
 
     def __init__(self):

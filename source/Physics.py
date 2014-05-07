@@ -2,6 +2,8 @@
 Created on 23.03.2014
 
 @author: hammen
+
+A collection of physical constants and formulas
 '''
 
 import math
@@ -31,12 +33,13 @@ def relDoppler(laserFreq, v):
     '''Return the doppler shifted frequency of a frame moving with velocity v'''
     return laserFreq * math.sqrt((c + v) / (c - v))
 
-def clasEnergy():
-    pass
-
+def invRelDoppler(laserFreq, dopplerFreq):
+    '''Return the velocity, under which laserFreq is seen as dopplerFreq'''
+    rs = (laserFreq/dopplerFreq)**2
+    return c*(rs - 1)/(rs + 1)
 
 def voigt(x, sig, gam):
-    '''Voigt profile, unnormalized'''
+    '''Voigt profile, unnormalized, using the Faddeeva function'''
     return special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).real / (sig * math.sqrt(2 * math.pi))
 
 def HFCoeff(I, J, F):    

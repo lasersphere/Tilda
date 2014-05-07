@@ -8,7 +8,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 
 class SPFitter(object):
-    '''This class encapsulates the scipi.optimize.curve_fit routine for Pollifit'''
+    '''This class encapsulates the scipi.optimize.curve_fit routine'''
 
 
     def __init__(self, spec, meas, st):
@@ -28,22 +28,34 @@ class SPFitter(object):
         
         
     def fit(self):
-        '''Fit the free parameters of spec to data'''
-        print("Starting fit")
-        truncp = [p for p, f in zip(self.par, self.fix) if f == False]
+        '''
+        Fit the free parameters of spec to data
         
-        popt, self.pcov = curve_fit(self.evaluateE, self.data[0], self.data[1], truncp) #, self.data[2])
+        Calls evaluateE of spec
+        As curve_fit can't fix parameters, they are manually truncated and reinjected
+        As curve_fit expects variances as weights, standard deviations are squared
+        '''
+        print("Starting fit")
+        
+        truncp = [p for p, f in zip(self.par, self.fix) if f == False]
+        popt, self.pcov = curve_fit(self.evaluateE, self.data[0], self.data[1], truncp, self.data[2]**2)
         self.untrunc(popt)
+        
+        print("Optimized parameters:")
+        for n, x in zip(self.npar, self.par):
+            print(n, '\t', x)
+        
+        
         #self.rchi = self.calcRchi()
        
         
     def calcRchi(self):
-        '''calculate the reduced chi square'''
+        '''Calculate the reduced chi square'''
         return sum(x**2 for x in self.calcRes()) / self.calcNdef
     
     
     def calcNdef(self):
-        '''calculate number of degrees of freedom'''
+        '''Calculate number of degrees of freedom'''
         return (len(self.data[0] - sum(self.fix)))
     
     
@@ -60,6 +72,7 @@ class SPFitter(object):
     
     
     def calcErr(self):
+        '''Extract the errors from the covariance matrix'''
         err = []
         j = 0
         for f in self.fix:
@@ -80,7 +93,12 @@ class SPFitter(object):
                 j += 1
     
     def evaluate(self, x, *p):
-        '''This functions masks the fixed parameters and adds Experimental values'''
+        '''
+        Encapsulate evaluate of spec
+        
+        Call recalc on parameter change
+        Unpack the array of x-values curve_fit tends to call and return the list of results
+        '''
         if p != self.oldp:
             self.untrunc([i for i in p])
             self.spec.recalc(self.par)
@@ -91,15 +109,13 @@ class SPFitter(object):
 
     
     def evaluateE(self, x, *p):
-        '''This functions masks the fixed parameters and adds Experimental values'''
-        e = self.meas.accVolt - x
-
+        '''Encapsulate evaluateE of spec'''
         if p != self.oldp:
             self.untrunc([i for i in p])
             self.spec.recalc(self.par)
             self.oldp = p
         
-        return [self.spec.evaluateE(se, self.meas.laser, self.meas.col, self.par) for se in e]
+        return [self.spec.evaluateE(sx, self.meas.laserFreq, self.meas.col, self.par) for sx in x]
         
 
         
