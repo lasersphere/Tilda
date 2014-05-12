@@ -4,6 +4,8 @@ Created on 25.04.2014
 @author: hammen
 '''
 
+import Physics
+
 import sqlite3
 
 class DBIsotope(object):
@@ -31,12 +33,13 @@ class DBIsotope(object):
         self.Ju = data[4]
         self.shape = eval(data[5])
         self.fixShape = eval(data[6])
+        elmass = data[7] * Physics.me_u
         
         n = name.split('-')
         cur.execute("SELECT * FROM Isotopes WHERE Isotope =?", (n[0],))
         data = cur.fetchall()[0]
         
-        self.mass = data[1]
+        self.mass = data[1] - elmass
         self.mass_d = data[2]
         self.I = data[3]
         self.center = data[4]

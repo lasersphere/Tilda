@@ -27,12 +27,13 @@ class FullSpec(object):
         self.shape = shape(iso)
         
         self.pOff = 0
-        miso = iso
         self.hN = ['G', 'I', 'I2', 'I3']    #This is somewhat crude but well enough for now. Some iso.short scheme maybe?
+        
+        miso = iso
         self.hyper = []
         while miso != None:
-            self.hyper.append(Hyperfine(iso, self.shape))
-            miso = iso.m
+            self.hyper.append(Hyperfine(miso, self.shape))
+            miso = miso.m
 
         self.nPar = 1 + self.shape.nPar + sum(hf.nPar for hf in self.hyper)
         
