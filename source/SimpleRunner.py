@@ -1,10 +1,9 @@
 '''
-Created on 31.03.2014
+Created on 12.05.2014
 
-@author: hammen
+@author: hammen, gorges
 '''
 
-import os
 
 from Measurement.SimpleImporter import SimpleImporter
 from matplotlib import pyplot as plt
@@ -34,7 +33,7 @@ plotdat = spec.toPlotE(file.laserFreq, True, fit.par)
 #plt.plot(*plotdat)
 
 plt.figure()
-plt.errorbar(data[0], data[1], yerr = data[2], fmt = 'k^')
+plt.errorbar(data[0], data[1], yerr = data[2], fmt = 'k.')
 plt.plot(plotdat[0], plotdat[1], 'r-')
 
 #plt.plot(data[0], data[1], 'kp', data[0], func, 'r-')
