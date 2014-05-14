@@ -6,6 +6,7 @@ Created on 12.05.2014
 
 
 from Measurement.SimpleImporter import SimpleImporter
+from Measurement.KepcoImporterTLD import KepcoImporterTLD
 from matplotlib import pyplot as plt
 
 from DBIsotope import DBIsotope
@@ -15,15 +16,14 @@ from Spectra.Straight import Straight
 
 import numpy as np
 
-path = "../test/cd_c_137data.txt"
-file = SimpleImporter(path)
-file.type = '114_Mi-D0'
+path = "Z:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/Daten/KepcoScan_PCI.txt"
+file = KepcoImporterTLD(path)
+file.type = 'Kepco'
 if file.type == 'Kepco':
     spec = Straight()
 else:
     iso = DBIsotope(file.type, '../test/iso.sqlite')
     spec = FullSpec(iso)
-#spec = Straight()
  
 fit = SPFitter(spec, file, (0, -1))
  

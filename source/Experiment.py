@@ -20,7 +20,7 @@ def dirColTrue(time = 0):
 
 def getVoltDivRatio(time = 0):
     '''Return the voltage divider ratio'''
-    return 1000.
+    return 999.985
 
 def lineToScan(lineV):
     '''Convert line voltage to scan voltage'''
@@ -28,8 +28,8 @@ def lineToScan(lineV):
 
 def getLineMult(time = 0):
     '''Kepco-Factor, should only be called by lineToScan'''
-    return 50.
+    return 50.038915763
 
 def getLineOffset(time = 0):
-    '''Kepco-Offset, should only be calles by lineToScan'''
-    return 0.
+    '''Kepco-Offset, should only be called by lineToScan'''
+    return 0.0142577160157

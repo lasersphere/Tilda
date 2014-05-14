@@ -44,7 +44,7 @@ class KepcoImporterTLD(SpecData):
             for i, row in enumerate(read):
                 self.x[0][i] = float(row[0])
                 for j, scanVolt in enumerate(row[1:]):
-                    self.cts[j][0][i] = float(scanVolt) - self.offset
+                    self.cts[j][0][i] = (float(scanVolt) - self.offset)*Exp.getVoltDivRatio()
                     self.err[j][0][i] = 10**-4
  
         
