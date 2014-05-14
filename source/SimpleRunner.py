@@ -16,7 +16,7 @@ from Spectra.Straight import Straight
 
 import numpy as np
 
-path = "Z:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/Daten/KepcoScan_PCI.txt"
+path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/Daten/KepcoScan_PCI.txt"
 file = KepcoImporterTLD(path)
 file.type = 'Kepco'
 if file.type == 'Kepco':
@@ -37,14 +37,14 @@ plotdat = spec.toPlotE(file.laserFreq, True, fit.par)
 fig = plt.figure(1, (8, 8))
 fig.patch.set_facecolor('white')
 
-plt.axes([0.1, 0.35, 0.8, 0.6])
-plt.plot(plotdat[0], plotdat[1], 'r-')
+ax1 = plt.axes([0.1, 0.35, 0.8, 0.6])
 plt.errorbar(data[0], data[1], yerr = data[2], fmt = 'k.')
-plt.gca().get_xaxis().get_major_formatter().set_useOffset(False)
+plt.plot(plotdat[0], plotdat[1], 'r-')
+ax1.get_xaxis().get_major_formatter().set_useOffset(False)
 
-plt.axes([0.1, 0.05, 0.8, 0.25])
+ax2 = plt.axes([0.1, 0.05, 0.8, 0.25])
 plt.errorbar(data[0], fit.calcRes(), yerr = data[2], fmt = 'k.')
-plt.gca().get_xaxis().get_major_formatter().set_useOffset(False)
+ax2.get_xaxis().get_major_formatter().set_useOffset(False)
  
 plt.show()
 
