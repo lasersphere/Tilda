@@ -41,8 +41,8 @@ def insertFiles(path, rec, cur, end):
     for _f in f:
         if os.path.splitext(_f)[1] in end:
             print("Adding", os.path.join(p, _f))
-            cur.execute('''INSERT INTO Files VALUES (?, ?, ?, ?)''', _f, (os.path.join(p, _f), None, None))
+            cur.execute('''INSERT INTO Files VALUES (?, ?, ?, ?)''', (_f, os.path.join(p, _f), None, None))
 
 if __name__ == '__main__':
     path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/Daten/"
-    crawl(path)
+    crawl(path, False)
