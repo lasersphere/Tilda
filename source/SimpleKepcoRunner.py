@@ -5,24 +5,19 @@ Created on 12.05.2014
 '''
 
 
-from Measurement.SimpleImporter import SimpleImporter
+from Measurement.KepcoImporterTLD import KepcoImporterTLD
 from matplotlib import pyplot as plt
 
 from DBIsotope import DBIsotope
 from SPFitter import SPFitter
 from Spectra.FullSpec import FullSpec
-from Spectra.Straight import Straight
 
 import numpy as np
 
 path = "../test/cd_c_137data.txt"
-file = SimpleImporter(path)
-file.type = '114_Mi-D0'
-if file.type == 'Kepco':
-    spec = Straight()
-else:
-    iso = DBIsotope(file.type, '../test/iso.sqlite')
-    spec = FullSpec(iso)
+file = KepcoImporterTLD(path)
+iso = DBIsotope('114_Mi-D0', '../test/iso.sqlite')
+spec = FullSpec(iso)
 #spec = Straight()
  
 fit = SPFitter(spec, file, (0, -1))
