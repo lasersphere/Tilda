@@ -21,6 +21,7 @@ class SPFitter(object):
         self.par = spec.getPars()
         self.fix = spec.getFixed()
         self.npar = spec.getParNames()
+        self.pard = None #Will contain the parameter errors after fitting
         
         self.oldp = None
         self.pcov = None
@@ -33,37 +34,41 @@ class SPFitter(object):
         
         Calls evaluateE of spec
         As curve_fit can't fix parameters, they are manually truncated and reinjected
-        As curve_fit expects variances as weights, standard deviations are squared
+        Curve_fit expects standard deviations as weights
         '''
         print("Starting fit")
         
         truncp = [p for p, f in zip(self.par, self.fix) if f == False]
-        popt, self.pcov = curve_fit(self.evaluateE, self.data[0], self.data[1], truncp, self.data[2]**2)
+        popt, self.pcov = curve_fit(self.evaluateE, self.data[0], self.data[1], truncp, self.data[2], True)
         self.untrunc(popt)
         
-        print("Optimized parameters:")
-        for n, x in zip(self.npar, self.par):
-            print(n, '\t', x)
+        self.rchi = self.calcRchi()
         
+        print('Done:')
+        print('rChi^2' + '\t' + str(self.rchi))
         
-        #self.rchi = self.calcRchi()
-       
+        err = iter([np.sqrt(self.pcov[j][j]) for j in range(self.pcov.shape[0])])
+        self.pard = [0 if f else next(err) for f in self.fix]
+
+        for n, x, e in zip(self.npar, self.par, self.pard):
+            print(str(n) + '\t' +  str(x) + '\t' + '+-' + '\t' + str(e))
+   
         
     def calcRchi(self):
         '''Calculate the reduced chi square'''
-        return sum(x**2 for x in self.calcRes()) / self.calcNdef
+        return sum(x**2/e**2 for x, e in zip(self.calcRes(), self.data[2])) / self.calcNdef()
     
     
     def calcNdef(self):
         '''Calculate number of degrees of freedom'''
-        return (len(self.data[0] - sum(self.fix)))
+        return (len(self.data[0]) - (len(self.fix) - sum(self.fix)))
     
     
     def calcRes(self):
         '''Calculate the residuals of the current parameter set'''
         res = np.zeros(len(self.data[0]))
         
-        valgen = (self.spec.evaluateE(e, self.laser, self.col, self.par) for e in self.data[0])
+        valgen = (self.spec.evaluateE(e, self.meas.laserFreq, self.meas.col, self.par) for e in self.data[0])
         
         for i, (dat, val) in enumerate(zip(self.data[1], valgen)):
             res[i] = (dat - val)
@@ -86,11 +91,10 @@ class SPFitter(object):
     
     def untrunc(self, p):
         '''Copy the free parameters to their places in the full parameter set'''
-        j = 0
+        ip = iter(p)
         for i, f in enumerate(self.fix):
             if not f:
-                self.par[i] = p[j]
-                j += 1
+                self.par[i] = next(ip)
     
     def evaluate(self, x, *p):
         '''
