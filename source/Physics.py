@@ -29,6 +29,15 @@ def relVelocity(e, m):
     
     return c * math.sqrt(1 - (mcs / (e + mcs))**2)
 
+def wavenumber(frequency):
+    '''Returns the wavenumber/1/cm at a given frequency/MHz'''
+    return 10**4* frequency / c
+
+def freqFromWavenumber(wavenumber):
+    '''Returns the frequency/MHz at a given wavenumber/1/cm'''
+    return wavenumber * c / 10**4
+
+
 def relDoppler(laserFreq, v):
     '''Return the doppler shifted frequency of a frame moving with velocity v'''
     return laserFreq * math.sqrt((c + v) / (c - v))

@@ -22,6 +22,7 @@ class Hyperfine(object):
         self.fixA = iso.fixArat
         self.fixB = iso.fixBrat
         self.fixInt = iso.fixInt
+        self.center = iso.center
         
         self.trans = Physics.HFTrans(self.iso.I, self.iso.Ju, self.iso.Jl)
         
@@ -62,6 +63,8 @@ class Hyperfine(object):
         Au = p[self.pAu] * p[self.pAl] if self.fixA else p[self.pAu]
         Bu = p[self.pBu] * p[self.pBl] if self.fixB else p[self.pBu]
 
+
+        self.center = p[self.pCenter]
         self.lineSplit = Physics.HFLineSplit(p[self.pAl], p[self.pBl], Au, Bu, self.trans)
         self.intens = self.buildInt(p)
     
@@ -133,7 +136,7 @@ class Hyperfine(object):
     
     def leftEdgeE(self, freq):
         '''Return the left edge of the spectrum in eV'''
-        l = min(self.lineSplit) + self.shape.leftEdge() + self.iso.freq
+        l = self.center + min(self.lineSplit) + self.shape.leftEdge() + self.iso.freq
         v = Physics.invRelDoppler(freq, l)
 
         return (self.iso.mass * Physics.u * v**2)/2 / Physics.qe
@@ -141,7 +144,7 @@ class Hyperfine(object):
     
     def rightEdgeE(self, freq):
         '''Return the right edge of the spectrum in eV'''
-        r = max(self.lineSplit) + self.shape.rightEdge() + self.iso.freq
+        r = self.center + max(self.lineSplit) + self.shape.rightEdge() + self.iso.freq
         v = Physics.invRelDoppler(freq, r)
 
         return (self.iso.mass * Physics.u * v**2)/2 / Physics.qe
