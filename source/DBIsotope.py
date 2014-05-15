@@ -14,19 +14,22 @@ class DBIsotope(object):
     '''
 
 
-    def __init__(self, name, file):
+    def __init__(self, iso, line, file):
         '''Load relevant values of isotope name from database file'''
-        print("Loading isotope", name)
+        print("Loading isotope", iso, line)
         #sqlite3.register_converter("BOOL", lambda v: bool(int(v)))
         
         con = sqlite3.connect(file)
         cur = con.cursor()
         
-        n = name.split('_')
-        cur.execute("SELECT * FROM Lines WHERE Line =?", (n[1],))
-        data = cur.fetchall()[0]
+        cur.execute("SELECT * FROM Lines WHERE Line =?", (line,))
+        try:
+            data = cur.fetchall()[0]
+        except:
+            raise Exception("No such line: " + line)
         
-        self.name = name
+        self.name = iso
+        self.line = line
         self.ref = data[1]
         self.freq = data[2]
         self.Jl = data[3]
@@ -35,9 +38,11 @@ class DBIsotope(object):
         self.fixShape = eval(data[6])
         elmass = data[7] * Physics.me_u
         
-        n = name.split('-')
-        cur.execute("SELECT * FROM Isotopes WHERE Isotope =?", (n[0],))
-        data = cur.fetchall()[0]
+        cur.execute("SELECT * FROM Isotopes WHERE Isotope =?", (iso,))
+        try:
+            data = cur.fetchall()[0]
+        except:
+            raise Exception("No such isotope: " + iso)
         
         self.mass = data[1] - elmass
         self.mass_d = data[2]
@@ -57,7 +62,7 @@ class DBIsotope(object):
         if data[14] == None:
             self.m = None
         else:
-            self.m = DBIsotope(data[14] + "-" + n[1], file)
+            self.m = DBIsotope(data[14], line, file)
 
         cur.close()
         con.close()

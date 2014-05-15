@@ -18,6 +18,7 @@ class SpecData(object):
         self.nrTracks = 1
         self.nrScalers = 1
         self.type = None
+        self.line = None
         self.path = None
         #self.x = np.array()
         #self.cts = np.array()

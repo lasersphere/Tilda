@@ -39,7 +39,7 @@ class SPFitter(object):
         print("Starting fit")
         
         truncp = [p for p, f in zip(self.par, self.fix) if f == False]
-        popt, self.pcov = curve_fit(self.evaluateE, self.data[0], self.data[1], truncp, self.data[2], True)
+        popt, self.pcov = curve_fit(self.evaluateE, self.data[0], self.data[1], truncp, self.data[2], False)
         self.untrunc(popt)
         
         self.rchi = self.calcRchi()
