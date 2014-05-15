@@ -7,6 +7,7 @@ Created on 12.05.2014
 
 from Measurement.SimpleImporter import SimpleImporter
 from Measurement.KepcoImporterTLD import KepcoImporterTLD
+from Measurement.TLDImporter import TLDImporter
 from matplotlib import pyplot as plt
 
 from DBIsotope import DBIsotope
@@ -16,13 +17,18 @@ from Spectra.Straight import Straight
 
 import numpy as np
 
-path = "Z:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/Daten/KepcoScan_PCI.txt"
-file = KepcoImporterTLD(path)
-file.type = 'Kepco'
+path = "Z:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/Daten/Ca_004.tld"
+file = TLDImporter(path)
+file.type = '40_Ca-D1'
+
+#path = "Z:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/Daten/KepcoScan_PCI.txt"
+#file = KepcoImporterTLD(path)
+#file.type = 'Kepco'
 if file.type == 'Kepco':
     spec = Straight()
 else:
-    iso = DBIsotope(file.type, '../test/iso.sqlite')
+    #iso = DBIsotope(file.type, '../test/iso.sqlite')
+    iso = DBIsotope(file.type, './calciumD1.sqlite')
     spec = FullSpec(iso)
  
 fit = SPFitter(spec, file, (0, -1))
@@ -33,7 +39,7 @@ data = file.getSingleSpec(0, -1)
 #func = [spec.evaluateE(x, file.laserFreq, file.col, fit.par) for x in data[0]]
  
 #plotdat = spec.toPlotE(file.laserFreq, file.col, fit.par, 100)
-plotdat = spec.toPlotE(file.laserFreq, True, fit.par)
+plotdat = spec.toPlotE(file.laserFreq, file.col, fit.par)
  
  
 #plt.plot(*plotdat)
@@ -41,7 +47,7 @@ plotdat = spec.toPlotE(file.laserFreq, True, fit.par)
 plt.figure()
 plt.errorbar(data[0], data[1], yerr = data[2], fmt = 'k.')
 plt.plot(plotdat[0], plotdat[1], 'r-')
- 
+#print('x: ' + str(data[0]) + '\n y:' + str(data[1]))
 #plt.plot(data[0], data[1], 'kp', data[0], func, 'r-')
 plt.show()
 

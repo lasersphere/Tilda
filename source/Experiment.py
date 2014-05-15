@@ -5,18 +5,24 @@ Created on 23.03.2014
 '''
 
 #import time
+import Physics
 
 def getAccVolt(time = 0):
     '''Return the ion source voltage in V'''
-    return 29956.21
+#    return 29956.21
+    return 9995.5
 
 def getLaserFreq(time = 0):
     """Return the laser frequency in MHz"""
-    return 1398640292.89
+#    return 1398640292.89
+    return Physics.freqFromWavenumber(12586.3*2)
+    
 
 def dirColTrue(time = 0):
     '''Return True for collinear, False for anticollinear laser configuration'''
-    return True
+#    return True
+    return False
+
 
 def getVoltDivRatio(time = 0):
     '''Return the voltage divider ratio'''
