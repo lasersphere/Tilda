@@ -7,13 +7,13 @@ Created on 14.05.2014
 import sqlite3
 import os
 
-def crawl(path, add = True, rec = False):
+def crawl(path, add = True, rec = True, db = 'AnaDB.sqlite'):
     '''Crawl the path and add all measurement files to the database, recursively if requested'''
+    
     print("Crawling", path)
-    print(os.getcwd())
     end = ['.tld', '.mcp', '.txt']
     
-    con = sqlite3.connect('AnaDB.sqlite')
+    con = sqlite3.connect(os.path.join(path, db))
     cur = con.cursor()
 
     #Clear table
@@ -23,13 +23,16 @@ def crawl(path, add = True, rec = False):
     #Create table if new file or cleared
     cur.execute('''CREATE TABLE IF NOT EXISTS Files (
     File TEXT, FilePath TEXT, date TEXT, type TEXT)''')
+
+    oldPath = os.getcwd()
+    os.chdir(path)
+    insertFiles('.', rec, cur, end)
+    os.chdir(oldPath)
     
-    
-    insertFiles(path, rec, cur, end)
     con.commit()
-    
     con.close()
     print("Done")
+    
     
 def insertFiles(path, rec, cur, end):
     (p, d, f) = next(os.walk(path))
@@ -44,5 +47,5 @@ def insertFiles(path, rec, cur, end):
             cur.execute('''INSERT INTO Files VALUES (?, ?, ?, ?)''', (_f, os.path.join(p, _f), None, None))
 
 if __name__ == '__main__':
-    path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/Daten/"
+    path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/"
     crawl(path, False)
