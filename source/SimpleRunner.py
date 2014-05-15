@@ -17,12 +17,14 @@ from Spectra.Straight import Straight
 import numpy as np
 
 path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/Daten/KepcoScan_PCI.txt"
+line = 'Ca-D1'
+
 file = KepcoImporterTLD(path)
 file.type = 'Kepco'
 if file.type == 'Kepco':
     spec = Straight()
 else:
-    iso = DBIsotope(file.type, '../test/iso.sqlite')
+    iso = DBIsotope(file.type, line, '../test/iso.sqlite')
     spec = FullSpec(iso)
  
 fit = SPFitter(spec, file, (0, -1))

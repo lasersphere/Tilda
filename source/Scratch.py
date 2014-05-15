@@ -14,9 +14,8 @@ from Spectra.FullSpec import FullSpec
 
 path = "../test/cd_c_137data.txt"
 file = SimpleImporter(path)
-iso = DBIsotope('114_Mi-D0', '../test/iso.sqlite')
+iso = DBIsotope('114_Mi', 'Mi-D0',  '../test/iso.sqlite')
 spec = FullSpec(iso)
-#spec = Straight()
 
 fit = SPFitter(spec, file, (0, -1))
 
