@@ -38,14 +38,20 @@ class FullSpec(object):
         self.nPar = 1 + self.shape.nPar + sum(hf.nPar for hf in self.hyper)
         
         
-    def evaluate(self, x, p):
-        '''Return the value of the hyperfine structure at point x / MHz'''            
-        return p[self.pOff] + sum(hf.evaluate(x, p) for hf in self.hyper)
+    def evaluate(self, x, p, ih = -1):
+        '''Return the value of the hyperfine structure at point x / MHz'''
+        if ih == -1:        
+            return p[self.pOff] + sum(hf.evaluate(x, p) for hf in self.hyper)
+        else:
+            return p[self.pOff] + self.hyper[ih].evaluate(x, p)
     
     
-    def evaluateE(self, e, freq, col, p):
+    def evaluateE(self, e, freq, col, p, ih = -1):
         '''Return the value of the hyperfine structure at point e / eV'''
-        return p[self.pOff] + sum(hf.evaluateE(e, freq, col, p) for hf in self.hyper)
+        if ih == -1:
+            return p[self.pOff] + sum(hf.evaluateE(e, freq, col, p) for hf in self.hyper)
+        else:
+            return p[self.pOff] + self.hyper[ih].evaluateE(e, freq, col, p)
 
 
     def recalc(self, p):
@@ -80,6 +86,19 @@ class FullSpec(object):
     def getFixed(self):
         '''Return list of parmeters with their fixed-status'''
         return [False] + self.shape.getFixed() + list(chain(*[hf.getFixed() for hf in self.hyper]))
+    
+    
+    def parAssign(self, ih):
+        '''Return an array which is True for all parameters belonging to the spectrum with index ih'''
+        ret = [True] + self.shape.nPar * [True]
+        
+        for i, hf in enumerate(self.hyper):
+            if i == ih:
+                ret.append(hf.nPar * [True])
+            else:
+                ret.append(hf.nPar * [False])
+                
+        return ret
         
         
     def leftEdge(self):
