@@ -23,7 +23,10 @@ class DBIsotope(object):
         cur = con.cursor()
         
         cur.execute("SELECT * FROM Lines WHERE Line =?", (line,))
-        data = cur.fetchall()[0]
+        try:
+            data = cur.fetchall()[0]
+        except:
+            raise Exception("No such line: " + line)
         
         self.name = iso
         self.line = line
@@ -36,7 +39,10 @@ class DBIsotope(object):
         elmass = data[7] * Physics.me_u
         
         cur.execute("SELECT * FROM Isotopes WHERE Isotope =?", (iso,))
-        data = cur.fetchall()[0]
+        try:
+            data = cur.fetchall()[0]
+        except:
+            raise Exception("No such isotope: " + iso)
         
         self.mass = data[1] - elmass
         self.mass_d = data[2]
