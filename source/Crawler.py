@@ -22,7 +22,7 @@ def crawl(path, add = True, rec = True, db = 'AnaDB.sqlite'):
     
     #Create table if new file or cleared
     cur.execute('''CREATE TABLE IF NOT EXISTS Files (
-    File TEXT, FilePath TEXT, date TEXT, type TEXT)''')
+    File TEXT, FilePath TEXT, date DATE, type TEXT, line TEXT)''')
 
     oldPath = os.getcwd()
     os.chdir(path)
@@ -44,7 +44,7 @@ def insertFiles(path, rec, cur, end):
     for _f in f:
         if os.path.splitext(_f)[1] in end:
             print("Adding", os.path.join(p, _f))
-            cur.execute('''INSERT INTO Files VALUES (?, ?, ?, ?)''', (_f, os.path.join(p, _f), None, None))
+            cur.execute('''INSERT INTO Files (File, FilePath, date, type, line) VALUES (?, ?, ?, ?, ?)''', (_f, os.path.join(p, _f), None, None, None))
 
 if __name__ == '__main__':
     path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/"
