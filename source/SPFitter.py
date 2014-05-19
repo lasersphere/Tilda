@@ -111,7 +111,7 @@ class SPFitter(object):
         
 
     def result(self):
-        '''Return a list of result-tuples (name, pardict, fix)'''
+        '''Return a list of result-tuples (name, pardict)'''
         ret =  []
         for p in self.spec.parAssign():
             name = p[0]
@@ -119,7 +119,7 @@ class SPFitter(object):
             par = [x for x, f in zip(self.par, p[1]) if f == True]
             err = [x for x, f in zip(self.err, p[1]) if f == True]
             fix = [x for x, f in zip(self.fix, p[1]) if f == True]
-            pardict = dict(zip(npar, zip(par, err)))
+            pardict = dict(zip(npar, zip(par, err, fix)))
             ret.append((name, pardict, fix))
             
         return ret

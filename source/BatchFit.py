@@ -38,11 +38,12 @@ def batchFit(fileList, st, db, run = 'Run0'):
 
     for file in fileList:
         try:
-            singleFit(file, st, var, cur)
+            singleFit(file, st, run, var, cur)
         except:
             print("Error working on file", file, ":", sys.exc_info()[1])
             traceback.print_tb(sys.exc_info()[2])
             
+    con.commit()
     con.close()
     
     print("BatchFit finished")
@@ -74,8 +75,9 @@ def singleFit(file, st, run, var, cur):
     result = fit.result()
     
     for r in result:
-        cur.execute('''INSERT OR REPLACE INTO Results (File, Iso, Run, Scaler, Track, rChi, pars, fix) 
-        VALUES (?, ?, ?, ?, ?, ?)''', (file, r[0], run, st[0], st[1], fit.rchi, r[1], r[2]))
+        cur.execute('''INSERT OR REPLACE INTO Results (File, Iso, Run, Scaler, Track, rChi, pars) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)''', (file, r[0], run, st[0], st[1], fit.rchi, repr(r[1])))
+        
     
     print("Finished fitting", file)
 
@@ -92,7 +94,7 @@ def createTables(cur):
     if len(cur.fetchall()) == 0:
         cur.execute('''INSERT INTO Runs VALUES ("Run0", "", "")''')
 
-    cur.execute('''CREATE TABLE IF NOT EXISTS Results
+    cur.execute('''CREATE TABLE IF NOT EXISTS Results (
     File TEXT NOT NULL,
     Iso TEXT NOT NULL,
     Run TEXT NOT NULL,
@@ -100,11 +102,9 @@ def createTables(cur):
     Track INT NOT NULL,
     rChi REAL,
     pars TEXT,
-    fix TEXT
-    PRIMARY KEY (File, Iso, Run)
-    ''')
+    PRIMARY KEY (File, Iso, Run, Scaler, Track)
+    )''')
     
-    cur.execute('''CREATE UNIQUE INDEX result ON Results(File, Run)''')
 
 
 if __name__ == '__main__':
