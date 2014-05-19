@@ -81,6 +81,11 @@ class FullSpec(object):
         '''Return list of the parameter names'''
         return (['offset'] + self.shape.getParNames()
                 + list(chain(*([self.hN[i] + el for el in hf.getParNames()] for i, hf in enumerate(self.hyper)))))
+        
+        
+    def getBlankNames(self):
+        '''Return list of blank names without hf-shortname'''
+        return (['offset'] + self.shape.getParNames() + list(chain(*[hf.getParNames() for hf in self.hyper])))
     
     
     def getFixed(self):
@@ -88,19 +93,34 @@ class FullSpec(object):
         return [False] + self.shape.getFixed() + list(chain(*[hf.getFixed() for hf in self.hyper]))
     
     
-    def parAssign(self, ih):
-        '''Return an array which is True for all parameters belonging to the spectrum with index ih'''
-        ret = [True] + self.shape.nPar * [True]
-        
-        for i, hf in enumerate(self.hyper):
-            if i == ih:
-                ret.append(hf.nPar * [True])
-            else:
-                ret.append(hf.nPar * [False])
-                
+    def parAssign(self):
+        '''Return [(hf.name, parAssign)], where parAssign is a boolean list indicating relevant parameters'''
+        ret = []
+        i = 1 + self.shape.nPar
+        a = [False] * self.nPar
+        a[0:3] = [True] * 3
+        for hf in self.hyper:
+            assi = list(a)
+            assi[i:(i+hf.nPar)] = [True] * hf.nPar
+            i += hf.nPar
+            
+            ret.append((hf.iso.name, assi))
+            
         return ret
-        
-        
+    
+    def toPlot(self, p, prec = 10000):
+        '''Return ([x/Mhz], [y]) values with prec number of points'''
+        self.recalc(p)
+        return ([x for x in np.linspace(self.leftEdge(), self.rightEdge(), prec)],
+                [self.evaluate(x, p) for x in np.linspace(self.leftEdge(), self.rightEdge(), prec)])
+      
+    def toPlotE(self, freq, col, p, prec = 10000):
+        '''Return ([x/eV], [y]) values with prec number of points'''
+        self.recalc(p)
+        return ([x for x in np.linspace(self.leftEdgeE(freq), self.rightEdgeE(freq), prec)],
+                [self.evaluateE(x, freq, col, p) for x in np.linspace(self.leftEdgeE(freq), self.rightEdgeE(freq), prec)])
+    
+           
     def leftEdge(self):
         '''Return the left edge of the spectrum in Mhz'''
         return min(hf.leftEdge() for hf in self.hyper)
@@ -119,13 +139,3 @@ class FullSpec(object):
     def rightEdgeE(self, freq):
         '''Return the right edge of the spectrum in eV'''
         return max(hf.rightEdgeE(freq) for hf in self.hyper)
-    
-    def toPlot(self, p, prec = 10000):
-        '''Return ([x/Mhz], [y]) values with prec number of points'''
-        self.recalc(p)
-        return ([x for x in np.linspace(self.leftEdge(), self.rightEdge(), prec)], [self.evaluate(x, p) for x in np.linspace(self.leftEdge(), self.rightEdge(), prec)])
-      
-    def toPlotE(self, freq, col, p, prec = 10000):
-        '''Return ([x/eV], [y]) values with prec number of points'''
-        self.recalc(p)
-        return ([x for x in np.linspace(self.leftEdgeE(freq), self.rightEdgeE(freq), prec)], [self.evaluateE(x, freq, col, p) for x in np.linspace(self.leftEdgeE(freq), self.rightEdgeE(freq), prec)])

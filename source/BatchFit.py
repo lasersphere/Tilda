@@ -67,12 +67,15 @@ def singleFit(file, st, run, var, cur):
     fit = SPFitter(spec, meas, st)
     fit.fit()
     
-    plot.plotFit(fit)
-    
     fig = os.path.splitext(path)[0] + '.pdf'
+    plot.plotFit(fit)
     plot.save(fig)
     
-#    '''INSERT OR REPLACE INTO Results (File, Run, Scaler, Track, rChi, pars, fix) VALUES (?, ?, ?, ?, ?)''', (file, run, st[0], st[1], fit.rchi, buildPars(fit), buildFix(fit))
+    result = fit.result()
+    
+    for r in result:
+        cur.execute('''INSERT OR REPLACE INTO Results (File, Iso, Run, Scaler, Track, rChi, pars, fix) 
+        VALUES (?, ?, ?, ?, ?, ?)''', (file, r[0], run, st[0], st[1], fit.rchi, r[1], r[2]))
     
     print("Finished fitting", file)
 
@@ -91,13 +94,14 @@ def createTables(cur):
 
     cur.execute('''CREATE TABLE IF NOT EXISTS Results
     File TEXT NOT NULL,
+    Iso TEXT NOT NULL,
     Run TEXT NOT NULL,
     Scaler INT NOT NULL,
     Track INT NOT NULL,
     rChi REAL,
     pars TEXT,
     fix TEXT
-    PRIMARY KEY (File, Run)
+    PRIMARY KEY (File, Iso, Run)
     ''')
     
     cur.execute('''CREATE UNIQUE INDEX result ON Results(File, Run)''')

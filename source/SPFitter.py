@@ -47,8 +47,9 @@ class SPFitter(object):
         print('Done:')
         print('rChi^2' + '\t' + str(self.rchi))
         
-        err = iter([np.sqrt(self.pcov[j][j]) for j in range(self.pcov.shape[0])])
-        self.pard = [0 if f else next(err) for f in self.fix]
+        self.err = [np.sqrt(self.pcov[j][j]) for j in range(self.pcov.shape[0])]
+        errit = iter(self.err)
+        self.pard = [0 if f else next(errit) for f in self.fix]
 
         for n, x, e in zip(self.npar, self.par, self.pard):
             print(str(n) + '\t' +  str(x) + '\t' + '+-' + '\t' + str(e))
@@ -74,20 +75,7 @@ class SPFitter(object):
             res[i] = (dat - val)
         
         return res
-    
-    
-    def calcErr(self):
-        '''Extract the errors from the covariance matrix'''
-        err = []
-        j = 0
-        for f in self.fix:
-            if not f:
-                err.append(self.pcov[j][j]**2)
-                j += 1
-            else:
-                err.append(0)
-                
-        return err
+
     
     def untrunc(self, p):
         '''Copy the free parameters to their places in the full parameter set'''
@@ -122,5 +110,19 @@ class SPFitter(object):
         return [self.spec.evaluateE(sx, self.meas.laserFreq, self.meas.col, self.par) for sx in x]
         
 
+    def result(self):
+        '''Return a list of result-tuples (name, pardict, fix)'''
+        ret =  []
+        for p in self.spec.parAssign():
+            name = p[0]
+            npar = [x for x, f in zip(self.spec.getBlankNames(), p[1]) if f == True]
+            par = [x for x, f in zip(self.par, p[1]) if f == True]
+            err = [x for x, f in zip(self.err, p[1]) if f == True]
+            fix = [x for x, f in zip(self.fix, p[1]) if f == True]
+            pardict = dict(zip(npar, zip(par, err)))
+            ret.append((name, pardict, fix))
+            
+        return ret
+            
         
         

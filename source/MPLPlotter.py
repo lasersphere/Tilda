@@ -13,7 +13,7 @@ def printSpec(self, spec, par):
     y = np.fromiter((spec.evaluate([m], par) for m in x), np.float32)
 
     plt.plot(x, y)
-    plt.ylabel('Counts / a.u.')
+    plt.ylabel('Intensity / a.u.')
     plt.xlabel('Frequency / MHz')
         
     plt.draw()
@@ -36,6 +36,8 @@ def plotFit(fit):
     ax2 = plt.axes([0.1, 0.05, 0.8, 0.25])
     plt.errorbar(data[0], fit.calcRes(), yerr = data[2], fmt = 'k.')
     ax2.get_xaxis().get_major_formatter().set_useOffset(False)
+    plt.ylabel('Intensity / a.u.')
+    plt.xlabel('Ion kinetic energy / eV')
     
     
 def show():

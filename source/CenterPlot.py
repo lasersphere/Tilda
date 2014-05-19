@@ -10,11 +10,10 @@ from DBIsotope import DBIsotope
 import Physics
 
 
-def centerPlot(isoL, line, db):
+def centerPlot(isoL, line, db, width = 1e6):
     
     isos = [DBIsotope(iso, line, db) for iso in isoL]
     
-    width = 1e6
     res = 100
     fx = np.linspace(isos[0].freq - width, isos[0].freq + width, res)
     wnx = Physics.wavenumber(fx)
