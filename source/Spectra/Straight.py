@@ -47,6 +47,12 @@ class Straight(object):
     def recalc(self, p):
         pass
     
+    def parAssign(self):
+        return [('Kepco', [True, True])]
+    
+    def getBlankNames(self):
+        return ['b', 'm']
+    
     def toPlotE(self, freq, col, p, prec = 10000):
         '''Return ([x/V], [y/V]) values with prec number of points'''
         self.recalc(p)

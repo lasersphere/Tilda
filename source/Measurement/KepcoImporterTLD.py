@@ -44,8 +44,8 @@ class KepcoImporterTLD(SpecData):
             for i, row in enumerate(read):
                 self.x[0][i] = float(row[0])
                 for j, scanVolt in enumerate(row[1:]):
-                    self.cts[j][0][i] = (float(scanVolt) - self.offset)*Exp.getVoltDivRatio()
-                    self.err[j][0][i] = 10**-4
+                    self.cts[0][j][i] = (float(scanVolt) - self.offset)*Exp.getVoltDivRatio()
+                    self.err[0][j][i] = 10**-4
  
         
     def dimension(self, path):
