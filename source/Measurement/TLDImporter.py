@@ -30,7 +30,7 @@ class TLDImporter(SpecData):
         self.col = Exp.dirColTrue(self.time) 
         self.laserFreq = Exp.getLaserFreq()
         self.type = 'Ca'
-         
+
         l = self.dimension(path)
         self.nrScalers = l[1] - 1
         self.nrTracks = 1
