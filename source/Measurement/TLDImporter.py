@@ -35,9 +35,9 @@ class TLDImporter(SpecData):
         self.nrScalers = l[1] - 1
         self.nrTracks = 1
         
-        self.x = np.zeros((self.nrTracks, l[0]))
-        self.cts = np.zeros((self.nrScalers, self.nrTracks, l[0]))
-        self.err = np.zeros((self.nrScalers, self.nrTracks, l[0]))
+        self.x = [np.zeros(l[0])] * self.nrTracks
+        self.cts = [np.zeros((self.nrScalers, l[0]))] * self.nrTracks
+        self.err = [np.zeros((self.nrScalers, l[0]))] * self.nrTracks
         
         with open(path) as f:
             [self.date, self.time] = f.readline().split('\t')
@@ -55,8 +55,8 @@ class TLDImporter(SpecData):
                 scanvolt = Exp.lineToScan(float(row[0].replace(',', '.'))/50) + self.offset
                 self.x[0][i] = Exp.getAccVolt() - scanvolt
                 for j, counts in enumerate(row[1:]):
-                    self.cts[j][0][i] = float(counts.replace(',', '.'))
-                    self.err[j][0][i] = max(np.sqrt(float(counts.replace(',', '.'))), 1)
+                    self.cts[0][j][i] = float(counts.replace(',', '.'))
+                    self.err[0][j][i] = max(np.sqrt(float(counts.replace(',', '.'))), 1)
  
         
     def dimension(self, path):
