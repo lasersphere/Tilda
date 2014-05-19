@@ -22,7 +22,7 @@ def printSpec(self, spec, par):
 def plotFit(fit):
     
     data = fit.meas.getSingleSpec(0, -1)
-    plotdat = fit.spec.toPlotE(fit.meas.laserFreq, True, fit.par)
+    plotdat = fit.spec.toPlotE(fit.meas.laserFreq, fit.meas.col, fit.par)
 
 
     fig = plt.figure(1, (8, 8))
