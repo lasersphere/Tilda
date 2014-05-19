@@ -21,6 +21,7 @@ import MPLPlotter as plot
 
 
 def batchFit(fileList, st, db, run = 'Run0'):
+    '''Fit scaler/track st of fileList and write results to db'''
     print("BatchFit started")
     print("Opening DB:", db)
     
@@ -50,6 +51,7 @@ def batchFit(fileList, st, db, run = 'Run0'):
     
         
 def singleFit(file, st, run, var, cur):
+    print('-----------------------------------')
     print("Fitting", file)
     cur.execute('''SELECT FilePath FROM Files WHERE File = ?''', (file,))
     
@@ -68,6 +70,7 @@ def singleFit(file, st, run, var, cur):
     fit = SPFitter(spec, meas, st)
     fit.fit()
     
+    #Create and save graph
     fig = os.path.splitext(path)[0] + '.pdf'
     plot.plotFit(fit)
     plot.save(fig)
@@ -75,6 +78,7 @@ def singleFit(file, st, run, var, cur):
     result = fit.result()
     
     for r in result:
+        #Only one unique result, according to PRIMARY KEY, thanks to INSERT OR REPLACE
         cur.execute('''INSERT OR REPLACE INTO Results (File, Iso, Run, Scaler, Track, rChi, pars) 
         VALUES (?, ?, ?, ?, ?, ?, ?)''', (file, r[0], run, st[0], st[1], fit.rchi, repr(r[1])))
         
@@ -83,6 +87,7 @@ def singleFit(file, st, run, var, cur):
 
 
 def createTables(cur):
+    '''Create necessary tables if they do not exist'''
     cur.execute('''CREATE TABLE IF NOT EXISTS Runs (
     Run TEXT PRIMARY KEY NOT NULL,
     LineVar TEXT,
@@ -94,6 +99,7 @@ def createTables(cur):
     if len(cur.fetchall()) == 0:
         cur.execute('''INSERT INTO Runs VALUES ("Run0", "", "")''')
 
+    #Primary Key is necessary for unique results, allowing INSERT OR REPLACE
     cur.execute('''CREATE TABLE IF NOT EXISTS Results (
     File TEXT NOT NULL,
     Iso TEXT NOT NULL,
