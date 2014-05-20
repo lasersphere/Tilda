@@ -24,7 +24,7 @@ class SpecData(object):
         self.nrTracks = 1
         self.nrScalers = 1
         self.accVolt = None
-        self.laser = None
+        self.laserFreq = None
         self.col = None
         
         #Data is organized as list of tracks containing arrays with information

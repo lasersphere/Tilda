@@ -5,11 +5,11 @@ Created on 30.04.2014
 '''
 
 import csv
+import sqlite3
 
 import numpy as np
 
 from Measurement.SpecData import SpecData
-import Experiment as Exp
 
 class KepcoImporterTLD(SpecData):
     '''
@@ -19,16 +19,25 @@ class KepcoImporterTLD(SpecData):
     The first column of the file is interpreted as DAQ-voltage, the second as scanning voltage
     '''
 
-    def __init__(self, path):
+    def __init__(self, path, db):
         '''Read the file'''
         
         print("KepcoImporterTLD is reading file", path)
         super(KepcoImporterTLD, self).__init__()
         
         self.path = path
-        self.laserFreq = Exp.getLaserFreq(self.time)
-        self.col = Exp.dirColTrue(self.time) 
         self.type = 'Kepco'
+        con = sqlite3.connect(db)
+        cur = con.cursor()
+        
+        self.path = path
+        cur.execute('''SELECT voltDivRatio WHERE path = ?''', (path,))
+        data = cur.fetchall()
+        if len(data) == 1:
+            (self.voltDivRatio) = data[0]
+        else:
+            raise Exception('KepcoImporterTLD: No DB-entry found!')
+        
          
         l = self.dimension(path)
         self.nrScalers = l[1] - 1
@@ -44,7 +53,7 @@ class KepcoImporterTLD(SpecData):
             for i, row in enumerate(read):
                 self.x[0][i] = float(row[0])
                 for j, scanVolt in enumerate(row[1:]):
-                    self.cts[0][j][i] = (float(scanVolt) - self.offset)*Exp.getVoltDivRatio()
+                    self.cts[0][j][i] = (float(scanVolt) - self.offset)*self.voltDivRatio
                     self.err[0][j][i] = 10**-4
  
         

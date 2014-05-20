@@ -21,6 +21,7 @@ import numpy as np
 path = "Z:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/Daten/Ca_004.tld"
 file = TLDImporter(path)
 file.type = '40_Ca'
+file.line = 'Ca-D1'
 
 #path = "Z:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/Daten/KepcoScan_PCI.txt"
 #file = KepcoImporterTLD(path)
@@ -29,7 +30,7 @@ if file.type == 'Kepco':
     spec = Straight()
 else:
     #iso = DBIsotope(file.type, file.line,  '../test/iso.sqlite')
-    iso = DBIsotope(file.type, file.line, './calciumD1.sqlite')
+    iso = DBIsotope(file.type, file.line, 'Z:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/calciumD1.sqlite')
     spec = FullSpec(iso)
  
 fit = SPFitter(spec, file, (0, -1))

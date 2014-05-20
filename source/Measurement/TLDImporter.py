@@ -5,12 +5,12 @@ Created on 30.04.2014
 '''
 
 import csv
-import Physics
+import sqlite3
 
 import numpy as np
 
 from Measurement.SpecData import SpecData
-import Experiment as Exp
+import Physics
 
 class TLDImporter(SpecData):
     '''
@@ -20,16 +20,21 @@ class TLDImporter(SpecData):
     The header has 10 lines
     '''
 
-    def __init__(self, path):
+    def __init__(self, path, db):
         '''Read the file'''
         
         print("TLDImporter is reading file", path)
         super(TLDImporter, self).__init__()
+        con = sqlite3.connect(db)
+        cur = con.cursor()
         
         self.path = path
-        self.col = Exp.dirColTrue(self.time) 
-        self.laserFreq = Exp.getLaserFreq()
-        self.type = 'Ca'
+        cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset WHERE path = ?''', (path,))
+        data = cur.fetchall()
+        if len(data) == 1:
+            (self.accVolt, self.laserFreq, self.colDirTrue, self.line, self.type, self.voltDivRatio, self.lineMult, self.lineOffset, self.offset) = data[0]
+        else:
+            raise Exception('TLDImporter: No DB-entry found!')
 
         l = self.dimension(path)
         self.nrScalers = l[1] - 1
@@ -41,7 +46,7 @@ class TLDImporter(SpecData):
         
         with open(path) as f:
             [self.date, self.time] = f.readline().split('\t')
-            self.offset = self.getFloat(f)
+            self.offset = self.offset*self.voltDivRatio/1000
             f.readline()
             self.stepSize = self.getFloat(f)
             f.readline()
@@ -52,8 +57,8 @@ class TLDImporter(SpecData):
             self.columnnames = f.readline().split('\t')
             read = csv.reader(f, delimiter = '\t')
             for i, row in enumerate(read):
-                scanvolt = Exp.lineToScan(float(row[0].replace(',', '.'))/50) + self.offset
-                self.x[0][i] = Exp.getAccVolt() - scanvolt
+                scanvolt = self.lineMult * (float(row[0].replace(',', '.'))/50) + self.lineOffset + self.offset
+                self.x[0][i] = self.accVolt - scanvolt
                 for j, counts in enumerate(row[1:]):
                     self.cts[0][j][i] = float(counts.replace(',', '.'))
                     self.err[0][j][i] = max(np.sqrt(float(counts.replace(',', '.'))), 1)
