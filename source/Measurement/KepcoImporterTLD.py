@@ -31,10 +31,10 @@ class KepcoImporterTLD(SpecData):
         cur = con.cursor()
         
         self.path = path
-        cur.execute('''SELECT voltDivRatio FROM Files WHERE filePath = ?''', (path,))
+        cur.execute('''SELECT voltDivRatio, offset FROM Files WHERE filePath = ?''', (path,))
         data = cur.fetchall()
         if len(data) == 1:
-            (self.voltDivRatio) = data[0]
+            (self.voltDivRatio, self.offset) = data[0]
         else:
             raise Exception('KepcoImporterTLD: No DB-entry found!')
         
@@ -48,7 +48,7 @@ class KepcoImporterTLD(SpecData):
         self.err = [np.zeros((self.nrScalers, l[0]))]
         
         with open(path) as f:
-            self.offset = float(f.readline().split('\t')[1])
+            f.readline()
             read = csv.reader(f, delimiter = '\t')
             for i, row in enumerate(read):
                 self.x[0][i] = float(row[0])
