@@ -30,7 +30,7 @@ class TLDImporter(SpecData):
         cur = con.cursor()
         
         self.path = path
-        cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset WHERE path = ?''', (path,))
+        cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset FROM Files WHERE path = ?''', (path,))
         data = cur.fetchall()
         if len(data) == 1:
             (self.accVolt, self.laserFreq, self.colDirTrue, self.line, self.type, self.voltDivRatio, self.lineMult, self.lineOffset, self.offset) = data[0]
