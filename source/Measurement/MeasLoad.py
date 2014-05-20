@@ -7,6 +7,7 @@ Created on 15.05.2014
 import os
 
 from Measurement.KepcoImporterTLD import KepcoImporterTLD
+from Measurement.TLDImporter import TLDImporter
 from Measurement.SimpleImporter import SimpleImporter
 
 
@@ -16,7 +17,8 @@ def load(file):
     if e == '.txt':
         return KepcoImporterTLD(file)
     elif e == '.tld':
-        pass
+        return TLDImporter(file)
         
     else:
-        raise Exception("MeasLoad: Unknown file ending " + e + " in " + file)
+        print("Measload: Unknown file ending ", file)
+        return None
