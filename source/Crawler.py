@@ -13,7 +13,7 @@ import Measurement.MeasLoad as Meas
 
 def crawl(db, add = True, crawl = '.', rec = True):
     '''Crawl the path and add all measurement files to the database, recursively if requested'''
-    end = ['.tld', '.mcp', '.txt']  
+    end = ['.tld', '.mcp', '.txt']
     
     print("Crawling", path)
     projectPath, dbname = os.path.split(db)
@@ -100,5 +100,5 @@ def loadCrawl(db):
     
 if __name__ == '__main__':
     path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/AnaDB.sqlite"
-    crawl(path, False)
-    #loadCrawl(path)
+    #crawl(path, False)
+    loadCrawl(path)

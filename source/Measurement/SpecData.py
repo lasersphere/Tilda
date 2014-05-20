@@ -27,6 +27,10 @@ class SpecData(object):
         self.laserFreq = None
         self.col = None
         
+        self.offset = None
+        self.lineMult = None
+        self.lineOffset = None
+        
         #Data is organized as list of tracks containing arrays with information
         #self.x = [np.array((steps,))]
         #self.cts = [np.array((scaler, steps))]
