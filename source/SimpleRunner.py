@@ -20,7 +20,7 @@ import numpy as np
 
 
 path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/Daten/Ca_004.tld"
-file = Meas.load(path)
+file = Meas.load(path, 'AnaDB.sqlite')
 file.type = '40_Ca'
 file.line = 'Ca-D1'
 

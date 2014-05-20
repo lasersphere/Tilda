@@ -23,7 +23,7 @@ import MPLPlotter as plot
 def batchFit(fileList, st, projectPath, anadb, isodb, run = 'Run0'):
     '''Fit scaler/track st of fileList and write results to db'''
     print("BatchFit started")
-    print("Opening DB:", db)
+    print("Opening DB:", anadb)
     
     oldPath = os.getcwd()
     os.chdir(projectPath)
@@ -120,6 +120,5 @@ def createTables(cur):
 
 if __name__ == '__main__':
     path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/"
-    db = 'AnaDB.sqlite'
-    
+
     batchFit(['KepcoScan_PCI.txt'], (0, -1), path, 'anaDB.sqlite', 'calciumD1.sqlite')
