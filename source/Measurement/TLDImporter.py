@@ -6,6 +6,7 @@ Created on 30.04.2014
 
 import csv
 import sqlite3
+from datetime import datetime
 
 import numpy as np
 
@@ -45,7 +46,7 @@ class TLDImporter(SpecData):
         self.err = [np.zeros((self.nrScalers, l[0]))] * self.nrTracks
         
         with open(path) as f:
-            [self.date, self.time] = f.readline().split('\t')
+            self.date = datetime.strptime(f.readline(), '%d.%m.%Y\t%H:%M')
             self.offset = self.offset*self.voltDivRatio/1000
             f.readline()
             self.stepSize = self.getFloat(f)
