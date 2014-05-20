@@ -30,7 +30,7 @@ class TLDImporter(SpecData):
         cur = con.cursor()
         
         self.path = path
-        cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset FROM Files WHERE path = ?''', (path,))
+        cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset FROM Files WHERE filePath = ?''', (path,))
         data = cur.fetchall()
         if len(data) == 1:
             (self.accVolt, self.laserFreq, self.colDirTrue, self.line, self.type, self.voltDivRatio, self.lineMult, self.lineOffset, self.offset) = data[0]
@@ -46,7 +46,9 @@ class TLDImporter(SpecData):
         self.err = [np.zeros((self.nrScalers, l[0]))]
         
         with open(path) as f:
-            self.date = datetime.strptime(f.readline(), '%d.%m.%Y\t%H:%M')
+            fmt = '%d.%m.%Y\t%H:%M\n'
+            self.date = datetime.strptime(f.readline(), fmt )
+            f.readline()
             self.offset = self.offset*self.voltDivRatio/1000
             f.readline()
             self.stepSize = self.getFloat(f)
