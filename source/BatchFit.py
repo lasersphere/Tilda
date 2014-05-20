@@ -79,6 +79,7 @@ def singleFit(file, st, anadb, isodb, run, var, cur):
     fig = os.path.splitext(path)[0] + '.pdf'
     plot.plotFit(fit)
     plot.save(fig)
+    plot.clear()
     
     result = fit.result()
     

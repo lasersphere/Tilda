@@ -45,3 +45,6 @@ def show():
     
 def save(file):
     plt.savefig(file)
+    
+def clear():
+    plt.clf()
