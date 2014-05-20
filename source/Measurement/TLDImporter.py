@@ -7,6 +7,7 @@ Created on 30.04.2014
 import csv
 import sqlite3
 from datetime import datetime
+import os
 
 import numpy as np
 
@@ -30,7 +31,7 @@ class TLDImporter(SpecData):
         cur = con.cursor()
         
         self.path = path
-        cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset FROM Files WHERE filePath = ?''', (path,))
+        cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset FROM Files WHERE file = ?''', (os.path.basename(path),))
         data = cur.fetchall()
         if len(data) == 1:
             (self.accVolt, self.laserFreq, self.colDirTrue, self.line, self.type, self.voltDivRatio, self.lineMult, self.lineOffset, self.offset) = data[0]
