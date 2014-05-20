@@ -31,7 +31,7 @@ class KepcoImporterTLD(SpecData):
         cur = con.cursor()
         
         self.path = path
-        cur.execute('''SELECT voltDivRatio WHERE path = ?''', (path,))
+        cur.execute('''SELECT voltDivRatio FROM Files WHERE filePath = ?''', (path,))
         data = cur.fetchall()
         if len(data) == 1:
             (self.voltDivRatio) = data[0]
@@ -53,7 +53,7 @@ class KepcoImporterTLD(SpecData):
             for i, row in enumerate(read):
                 self.x[0][i] = float(row[0])
                 for j, scanVolt in enumerate(row[1:]):
-                    self.cts[0][j][i] = (float(scanVolt) - self.offset)*self.voltDivRatio
+                    self.cts[0][j][i] = (float(scanVolt) - self.offset) * self.voltDivRatio
                     self.err[0][j][i] = 10**-4
  
         

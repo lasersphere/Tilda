@@ -86,7 +86,7 @@ def loadCrawl(db):
             cur.execute('''UPDATE Files SET
             date = ?, type = ?, line = ?, offset = ?, accVolt = ?, laserFreq = ?, colDirTrue = ?, voltDivRatio = ?, lineMult = ?, lineOffset = ?
             WHERE filePath = ?''',
-            (spec.date, spec.type, spec.line, spec.offset, spec.accVolt, spec.laserFreq, spec.colDirTrue, spec.voltDivRatio, spec.lineMult, spec.lineOffset))
+            (spec.date, spec.type, spec.line, spec.offset, spec.accVolt, spec.laserFreq, spec.colDirTrue, spec.voltDivRatio, spec.lineMult, spec.lineOffset, file))
         except:
             errcount += 1
             print("Error working on file", file, ":", sys.exc_info()[1])

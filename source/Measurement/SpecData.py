@@ -30,6 +30,7 @@ class SpecData(object):
         self.offset = None
         self.lineMult = None
         self.lineOffset = None
+        self.voltDivRatio = None
         
         #Data is organized as list of tracks containing arrays with information
         #self.x = [np.array((steps,))]
