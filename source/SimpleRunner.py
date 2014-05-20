@@ -19,10 +19,9 @@ from Spectra.Straight import Straight
 import numpy as np
 
 
-path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/Daten/Ca_004.tld"
-file = Meas.load(path, 'AnaDB.sqlite')
-file.type = '40_Ca'
-file.line = 'Ca-D1'
+path = 'V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/Daten/Ca_004.tld'
+db = 'V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/AnaDB.sqlite'
+file = Meas.load(path, db)
 
 #path = "Z:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/Daten/KepcoScan_PCI.txt"
 #file = KepcoImporterTLD(path)
