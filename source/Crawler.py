@@ -6,6 +6,10 @@ Created on 14.05.2014
 
 import sqlite3
 import os
+import sys
+import traceback
+
+import Measurement.MeasLoad as Meas
 
 def crawl(path, add = True, rec = True, db = 'AnaDB.sqlite'):
     '''Crawl the path and add all measurement files to the database, recursively if requested'''
@@ -22,11 +26,18 @@ def crawl(path, add = True, rec = True, db = 'AnaDB.sqlite'):
     
     #Create table if new file or cleared
     cur.execute('''CREATE TABLE IF NOT EXISTS Files (
-    File TEXT,
-    FilePath TEXT,
+    file TEXT,
+    filePath TEXT,
     date DATE,
     type TEXT,
-    line TEXT
+    line TEXT,
+    offset REAL,
+    accVolt REAL,
+    laserFreq REAL,
+    colDirTrue BOOL,
+    voltDivRatio REAL,
+    lineMult REAL,
+    lineOffset REAL
     )''')
 
     oldPath = os.getcwd()
@@ -49,15 +60,32 @@ def insertFiles(path, rec, cur, end):
     for _f in f:
         if os.path.splitext(_f)[1] in end:
             print("Adding", os.path.join(p, _f))
-            cur.execute('''INSERT INTO Files (File, FilePath) VALUES (?, ?)''', (_f, os.path.join(p, _f)))
+            cur.execute('''INSERT INTO Files (file, filePath) VALUES (?, ?)''', (_f, os.path.join(p, _f)))
             
             
 def loadCrawl(db = 'AnaDB.sqlite'):
     ''''''
+    con = sqlite3.connect(os.path.join(path, db))
+    cur = con.cursor()
     
+    cur.execute('''SELECT filePath FROM Files''')
+    files = cur.fetchall()
     
-    
+    for file in files:
+        try:
+            spec = Meas.load(file)
+            cur.execute('''UPDATE Files SET
+            date = ?, type = ?, line = ?, offset = ?, accVolt = ?, laserFreq = ?, colDirTrue = ?, voltDivRatio = ?, lineMult = ?, lineOffset = ?
+            WHERE filePath = ?''',
+            (spec.date, spec.type, spec.line, spec.offset, spec.accVolt, spec.laserFreq, spec.colDirTrue, spec.voltDivRatio, spec.lineMult, spec.lineOffset))
+        except:
+            print("Error working on file", file, ":", sys.exc_info()[1])
+            traceback.print_tb(sys.exc_info()[2])
+        
+    con.commit()
+    con.close()
     
 if __name__ == '__main__':
     path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/"
-    crawl(path, False)
+    #crawl(path, False)
+    loadCrawl(os.path.join(path, 'AnaDB.sqlite'))
