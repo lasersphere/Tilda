@@ -11,13 +11,17 @@ import traceback
 
 import Measurement.MeasLoad as Meas
 
-def crawl(path, add = True, rec = True, db = 'AnaDB.sqlite'):
+def crawl(db, add = True, crawl = '.', rec = True):
     '''Crawl the path and add all measurement files to the database, recursively if requested'''
+    end = ['.tld', '.mcp', '.txt']  
     
     print("Crawling", path)
-    end = ['.tld', '.mcp', '.txt']
+    projectPath, dbname = os.path.split(db)
     
-    con = sqlite3.connect(os.path.join(path, db))
+    oldPath = os.getcwd()
+    os.chdir(projectPath)
+
+    con = sqlite3.connect(dbname)
     cur = con.cursor()
 
     #Clear table
@@ -39,10 +43,9 @@ def crawl(path, add = True, rec = True, db = 'AnaDB.sqlite'):
     lineMult REAL,
     lineOffset REAL
     )''')
+    
 
-    oldPath = os.getcwd()
-    os.chdir(path)
-    insertFiles('.', rec, cur, end)
+    insertFiles(crawl, rec, cur, end)
     os.chdir(oldPath)
     
     con.commit()
@@ -63,19 +66,18 @@ def insertFiles(path, rec, cur, end):
             cur.execute('''INSERT INTO Files (file, filePath) VALUES (?, ?)''', (_f, os.path.join(p, _f)))
             
             
-def loadCrawl(db = 'AnaDB.sqlite'):
-    ''''''
+def loadCrawl(db):
+    '''Crawl the Files table, load the files and write data to DB'''
     print("crawling db", db)
-    con = sqlite3.connect(os.path.join(path, db))
+    
+    projectPath, dbname = os.path.split(db)
+    oldPath = os.getcwd()
+    os.chdir(projectPath)
+    con = sqlite3.connect(dbname)
     cur = con.cursor()
     
     cur.execute('''SELECT filePath FROM Files''')
     files = cur.fetchall()
-    
-    
-    oldPath = os.getcwd()
-    print("Working directory is", os.path.dirname(path))
-    os.chdir(os.path.dirname(path))
     
     errcount = 0
     for (file,) in files:
@@ -97,6 +99,6 @@ def loadCrawl(db = 'AnaDB.sqlite'):
     print("loadCrawl done,", errcount, "errors occured")
     
 if __name__ == '__main__':
-    path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/"
-    #crawl(path, False)
-    loadCrawl(os.path.join(path, 'AnaDB.sqlite'))
+    path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/AnaDB.sqlite"
+    crawl(path, False)
+    #loadCrawl(path)
