@@ -50,6 +50,7 @@ Created on 12.05.2014
 '''
 import os
 
+import Measurement.MeasLoad as Meas
 from Measurement.SimpleImporter import SimpleImporter
 from Measurement.KepcoImporterTLD import KepcoImporterTLD
 from Measurement.TLDImporter import TLDImporter
@@ -64,7 +65,7 @@ import numpy as np
 
 
 path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/Daten/Ca_004.tld"
-file = TLDImporter(path)
+file = Meas.load(path)
 file.type = '40_Ca'
 file.line = 'Ca-D1'
 
