@@ -20,12 +20,15 @@ from SPFitter import SPFitter
 import MPLPlotter as plot
 
 
-def batchFit(fileList, st, db, run = 'Run0'):
+def batchFit(fileList, st, projectPath, anadb, isodb, run = 'Run0'):
     '''Fit scaler/track st of fileList and write results to db'''
     print("BatchFit started")
     print("Opening DB:", db)
     
-    con = sqlite3.connect(db)
+    oldPath = os.getcwd()
+    os.chdir(projectPath)
+    
+    con = sqlite3.connect(anadb)
     cur = con.cursor()
     createTables(cur)
     con.commit()
@@ -35,24 +38,24 @@ def batchFit(fileList, st, db, run = 'Run0'):
     
     print("Go for", run, "with IsoVar = \"" + var[0] + "\" and LineVar = \"" + var[1] + "\"")
     
-    os.chdir(os.path.dirname(db))
     errcount = 0
     
     for file in fileList:
         try:
-            singleFit(file, st, run, var, cur)
+            singleFit(file, st, anadb, isodb, run, var, cur)
         except:
             errcount += 1
             print("Error working on file", file, ":", sys.exc_info()[1])
             traceback.print_tb(sys.exc_info()[2])
             
+    os.chdir(oldPath)
     con.commit()
     con.close()
     
     print("BatchFit finished,", errcount, "errors occured")
     
         
-def singleFit(file, st, run, var, cur):
+def singleFit(file, st, anadb, isodb, run, var, cur):
     print('-----------------------------------')
     print("Fitting", file)
     cur.execute('''SELECT FilePath FROM Files WHERE File = ?''', (file,))
@@ -62,11 +65,11 @@ def singleFit(file, st, run, var, cur):
     except:
         raise Exception(str(file) + " not found in DB")
 
-    meas = MeasLoad.load(path)
+    meas = MeasLoad.load(path, anadb)
     if meas.type == 'Kepco':
         spec = Straight()
     else:
-        iso = DBIsotope(meas.type + var[0], meas.line + var[1], '../test/iso.sqlite')
+        iso = DBIsotope(meas.type + var[0], meas.line + var[1], isodb)
         spec = FullSpec(iso)
 
     fit = SPFitter(spec, meas, st)
@@ -119,4 +122,4 @@ if __name__ == '__main__':
     path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/"
     db = 'AnaDB.sqlite'
     
-    batchFit(['KepcoScan_PCI.txt'], (0, -1), os.path.join(path, db))
+    batchFit(['KepcoScan_PCI.txt'], (0, -1), path, 'anaDB.sqlite', 'calciumD1.sqlite')
