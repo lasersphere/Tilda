@@ -12,11 +12,14 @@ import Physics
 
 
 if __name__ == '__main__':
-    niso = '48_Ca-D1'
-    ndb = 'calciumD1.sqlite'
-    iso = DBIsotope(niso, ndb)
+    niso = '40_Ca'
+    nline = "Ca-D1"
+    ndb = 'V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/calciumD1.sqlite'
+    iso = DBIsotope(niso, nline, ndb)
     
     spec =  FullSpec(iso)
+    
+    print(spec.getPars())
     
     data = spec.toPlotE(Physics.freqFromWavenumber(12586.300*2), False, spec.getPars())
     

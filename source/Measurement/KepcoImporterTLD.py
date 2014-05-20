@@ -43,9 +43,9 @@ class KepcoImporterTLD(SpecData):
         self.nrScalers = l[1] - 1
         self.nrTracks = 1
         
-        self.x = np.zeros((self.nrTracks, l[0]))
-        self.cts = np.zeros((self.nrScalers, self.nrTracks, l[0]))
-        self.err = np.zeros((self.nrScalers, self.nrTracks, l[0]))
+        self.x = [np.zeros(l[0])]
+        self.cts = [np.zeros((self.nrScalers, l[0]))]
+        self.err = [np.zeros((self.nrScalers, l[0]))]
         
         with open(path) as f:
             self.offset = float(f.readline().split('\t')[1])
