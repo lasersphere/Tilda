@@ -36,18 +36,20 @@ def batchFit(fileList, st, db, run = 'Run0'):
     print("Go for", run, "with IsoVar = \"" + var[0] + "\" and LineVar = \"" + var[1] + "\"")
     
     os.chdir(os.path.dirname(db))
-
+    errcount = 0
+    
     for file in fileList:
         try:
             singleFit(file, st, run, var, cur)
         except:
+            errcount += 1
             print("Error working on file", file, ":", sys.exc_info()[1])
             traceback.print_tb(sys.exc_info()[2])
             
     con.commit()
     con.close()
     
-    print("BatchFit finished")
+    print("BatchFit finished,", errcount, "errors occured")
     
         
 def singleFit(file, st, run, var, cur):

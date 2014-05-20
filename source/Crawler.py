@@ -65,25 +65,36 @@ def insertFiles(path, rec, cur, end):
             
 def loadCrawl(db = 'AnaDB.sqlite'):
     ''''''
+    print("crawling db", db)
     con = sqlite3.connect(os.path.join(path, db))
     cur = con.cursor()
     
     cur.execute('''SELECT filePath FROM Files''')
     files = cur.fetchall()
     
-    for file in files:
+    
+    oldPath = os.getcwd()
+    print("Working directory is", os.path.dirname(path))
+    os.chdir(os.path.dirname(path))
+    
+    errcount = 0
+    for (file,) in files:
         try:
-            spec = Meas.load(file)
+            spec = Meas.load(file, db)
             cur.execute('''UPDATE Files SET
             date = ?, type = ?, line = ?, offset = ?, accVolt = ?, laserFreq = ?, colDirTrue = ?, voltDivRatio = ?, lineMult = ?, lineOffset = ?
             WHERE filePath = ?''',
             (spec.date, spec.type, spec.line, spec.offset, spec.accVolt, spec.laserFreq, spec.colDirTrue, spec.voltDivRatio, spec.lineMult, spec.lineOffset))
         except:
+            errcount += 1
             print("Error working on file", file, ":", sys.exc_info()[1])
             traceback.print_tb(sys.exc_info()[2])
         
+    os.chdir(oldPath)
+    
     con.commit()
     con.close()
+    print("loadCrawl done,", errcount, "errors occured")
     
 if __name__ == '__main__':
     path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/"

@@ -11,13 +11,13 @@ from Measurement.TLDImporter import TLDImporter
 from Measurement.SimpleImporter import SimpleImporter
 
 
-def load(file):
+def load(file, db):
     e = os.path.splitext(file)[1]
     
     if e == '.txt':
-        return KepcoImporterTLD(file)
+        return KepcoImporterTLD(file, db)
     elif e == '.tld':
-        return TLDImporter(file)
+        return TLDImporter(file, db)
         
     else:
         print("Measload: Unknown file ending ", file)
