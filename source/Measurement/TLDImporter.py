@@ -49,7 +49,6 @@ class TLDImporter(SpecData):
             fmt = '%d.%m.%Y\t%H:%M\n'
             self.date = datetime.strptime(f.readline(), fmt )
             f.readline()
-            self.offset = self.offset*self.voltDivRatio/1000
             f.readline()
             self.stepSize = self.getFloat(f)
             f.readline()
