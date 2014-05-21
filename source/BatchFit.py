@@ -76,7 +76,7 @@ def singleFit(file, st, anadb, isodb, run, var, cur):
     fit.fit()
     
     #Create and save graph
-    fig = os.path.splitext(path)[0] + '.pdf'
+    fig = os.path.splitext(path)[0] + run + 'S' + st[0] + 'T' + st[1] + '.pdf'
     plot.plotFit(fit, st)
     plot.save(fig)
     plot.clear()

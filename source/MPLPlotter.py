@@ -19,9 +19,9 @@ def printSpec(self, spec, par):
     plt.draw()
     
     
-def plotFit(fit, st):
+def plotFit(fit):
     
-    data = fit.meas.getSingleSpec(*st)
+    data = fit.meas.getSingleSpec(*fit.st)
     plotdat = fit.spec.toPlotE(fit.meas.laserFreq, fit.meas.col, fit.par)
 
 

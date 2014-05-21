@@ -16,6 +16,7 @@ class SPFitter(object):
         print('Initializing fit of S:', st[0], ', T:', st[1])
         self.spec = spec
         self.meas = meas
+        self.st = st
         self.data = meas.getSingleSpec(*st)
         
         self.par = spec.getPars()
