@@ -20,20 +20,18 @@ from SPFitter import SPFitter
 import MPLPlotter as plot
 
 
-def batchFit(fileList, st, projectPath, anadb, isodb, run = 'Run0'):
+def batchFit(fileList, st, projectPath, db, run = 'Run0'):
     '''Fit scaler/track st of fileList and write results to db'''
     print("BatchFit started")
-    print("Opening DB:", anadb)
+    print("Opening DB:", db)
     
     oldPath = os.getcwd()
     os.chdir(projectPath)
     
-    con = sqlite3.connect(anadb)
+    con = sqlite3.connect(db)
     cur = con.cursor()
-    createTables(cur)
-    con.commit()
     
-    cur.execute('''SELECT IsoVar, LineVar FROM Runs WHERE Run = ?''', (run,))
+    cur.execute('''SELECT isoVar, lineVar FROM Runs WHERE run = ?''', (run,))
     var = cur.fetchall()[0]
     
     print("Go for", run, "with IsoVar = \"" + var[0] + "\" and LineVar = \"" + var[1] + "\"")
@@ -42,7 +40,7 @@ def batchFit(fileList, st, projectPath, anadb, isodb, run = 'Run0'):
     
     for file in fileList:
         try:
-            singleFit(file, st, anadb, isodb, run, var, cur)
+            singleFit(file, st, db, run, var, cur)
         except:
             errcount += 1
             print("Error working on file", file, ":", sys.exc_info()[1])
@@ -55,21 +53,21 @@ def batchFit(fileList, st, projectPath, anadb, isodb, run = 'Run0'):
     print("BatchFit finished,", errcount, "errors occured")
     
         
-def singleFit(file, st, anadb, isodb, run, var, cur):
+def singleFit(file, st, db, run, var, cur):
     print('-----------------------------------')
     print("Fitting", file)
-    cur.execute('''SELECT FilePath FROM Files WHERE File = ?''', (file,))
+    cur.execute('''SELECT filePath FROM Files WHERE file = ?''', (file,))
     
     try:
         path = cur.fetchall()[0][0]
     except:
         raise Exception(str(file) + " not found in DB")
 
-    meas = MeasLoad.load(path, anadb)
+    meas = MeasLoad.load(path, db)
     if meas.type == 'Kepco':
         spec = Straight()
     else:
-        iso = DBIsotope(meas.type, meas.line, isodb, var[0], var[1])
+        iso = DBIsotope(meas.type, meas.line, db, var[0], var[1])
         spec = FullSpec(iso)
 
     fit = SPFitter(spec, meas, st)
@@ -85,41 +83,8 @@ def singleFit(file, st, anadb, isodb, run, var, cur):
     
     for r in result:
         #Only one unique result, according to PRIMARY KEY, thanks to INSERT OR REPLACE
-        cur.execute('''INSERT OR REPLACE INTO Results (File, Iso, Run, Scaler, Track, rChi, pars) 
+        cur.execute('''INSERT OR REPLACE INTO Results (file, iso, run, scaler, track, rChi, pars) 
         VALUES (?, ?, ?, ?, ?, ?, ?)''', (file, r[0], run, st[0], st[1], fit.rchi, repr(r[1])))
         
     
     print("Finished fitting", file)
-
-
-def createTables(cur):
-    '''Create necessary tables if they do not exist'''
-    cur.execute('''CREATE TABLE IF NOT EXISTS Runs (
-    Run TEXT PRIMARY KEY NOT NULL,
-    LineVar TEXT,
-    IsoVar TEXT
-    )''')
-    
-    #insert Run0 as default if not available
-    cur.execute('''SELECT Run FROM Runs WHERE Run = "Run0"''')
-    if len(cur.fetchall()) == 0:
-        cur.execute('''INSERT INTO Runs VALUES ("Run0", "", "")''')
-
-    #Primary Key is necessary for unique results, allowing INSERT OR REPLACE
-    cur.execute('''CREATE TABLE IF NOT EXISTS Results (
-    File TEXT NOT NULL,
-    Iso TEXT NOT NULL,
-    Run TEXT NOT NULL,
-    Scaler INT NOT NULL,
-    Track INT NOT NULL,
-    rChi REAL,
-    pars TEXT,
-    PRIMARY KEY (File, Iso, Run, Scaler, Track)
-    )''')
-    
-
-
-if __name__ == '__main__':
-    path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/"
-
-    batchFit(['KepcoScan_PCI.txt'], (0, -1), path, 'anaDB.sqlite', 'calciumD1.sqlite')

@@ -14,7 +14,7 @@ def extract(iso, run, st, par, db, fileList = ''):
     con = sqlite3.connect(db)
     cur = con.cursor()
     
-    cur.execute('''SELECT File, pars FROM Results WHERE Iso = ? AND Run = ? AND Scaler = ? AND Track = ?''', (iso, run, st[0], st[1]))
+    cur.execute('''SELECT file, pars FROM Results WHERE iso = ? AND run = ? AND scaler = ? AND track = ?''', (iso, run, st[0], st[1]))
     fits = cur.fetchall()
     
     if fileList:
@@ -39,23 +39,4 @@ def weightedAverage(vals, errs):
 
 def compress():
     pass
-    
-def createTable(db):
-    con = sqlite3.connect(db)
-    cur = con.cursor()
-    
-    cur.execute('''CREATE TABLE IF NOT EXISTS Results (
-    Iso TEXT NOT NULL,
-    Par TEXT NOT NULL,
-    Run TEXT NOT NULL,
-    Scaler INT NOT NULL,
-    Track INT NOT NULL,
-    rChi REAL,
-    pars TEXT,
-    PRIMARY KEY (File, Iso, Run, Scaler, Track)
-    )''')
-    
-    
-    con.commit()
-    con.close()
     

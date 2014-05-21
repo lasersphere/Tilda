@@ -11,7 +11,7 @@ import traceback
 
 import Measurement.MeasLoad as Meas
 
-def crawl(db, add = True, crawl = '.', rec = True):
+def crawl(db, crawl = '.', rec = True):
     '''Crawl the path and add all measurement files to the database, recursively if requested'''
     end = ['.tld', '.mcp', '.txt']
     
@@ -23,27 +23,6 @@ def crawl(db, add = True, crawl = '.', rec = True):
 
     con = sqlite3.connect(dbname)
     cur = con.cursor()
-
-    #Clear table
-    if not add:
-        cur.execute('''DROP TABLE IF EXISTS Files''')
-    
-    #Create table if new file or cleared
-    cur.execute('''CREATE TABLE IF NOT EXISTS Files (
-    file TEXT,
-    filePath TEXT,
-    date DATE,
-    type TEXT,
-    line TEXT,
-    offset REAL,
-    accVolt REAL,
-    laserFreq REAL,
-    colDirTrue BOOL,
-    voltDivRatio REAL,
-    lineMult REAL,
-    lineOffset REAL
-    )''')
-    
 
     insertFiles(crawl, rec, cur, end)
     os.chdir(oldPath)
@@ -100,5 +79,5 @@ def loadCrawl(db):
     
 if __name__ == '__main__':
     path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/AnaDB.sqlite"
-    #crawl(path, False)
+    #crawl(path)
     loadCrawl(path)

@@ -21,7 +21,7 @@ class DBIsotope(object):
         con = sqlite3.connect(file)
         cur = con.cursor()
         
-        cur.execute("SELECT * FROM Lines WHERE Line =?", (line,))
+        cur.execute("SELECT * FROM Lines WHERE line =?", (line,))
         try:
             data = cur.fetchall()[0]
         except:
@@ -68,43 +68,4 @@ class DBIsotope(object):
         cur.close()
         con.close()
         
-def createDB():
-    '''Create a sqlite database with the appropriate structure and two example entries'''
-    con = sqlite3.connect("iso.sqlite")
-    cur = con.cursor()
-    cur.execute('''CREATE TABLE Lines (
-    Line TEXT PRIMARY KEY  NOT NULL ,
-    Reference TEXT,
-    Frequency FLOAT,
-    Jl FLOAT,
-    Ju FLOAT,
-    shape TEXT,
-    fixShape TEXT,
-    Charge INT
-    )''')
-    
-    cur.execute('''CREATE TABLE Isotopes (
-    Isotope TEXT PRIMARY KEY  NOT NULL,
-    mass FLOAT NOT NULL,
-    mass_d FLOAT NOT NULL,
-    I FLOAT,
-    center FLOAT,
-    Al FLOAT,
-    Bl FLOAT DEFAULT (null),
-    Au FLOAT,
-    Bu FLOAT,
-    fixedArat BOOL,
-    fixedBrat BOOL,
-    intScale DOUBLE,
-    fixedInt BOOL,
-    relInt TEXT,
-    m TEXT
-    )''')
-    
-    #Test data
-    #cur.execute('INSERT INTO Lines VALUES ("Mi-D0","1_Mi","1000","0","1","{\'gau\': 50, \'lor\': 10}","{\'name\': \'Voigt\', \'gau\': True, \'lor\': True}", 1);')
-    #cur.execute('INSERT INTO Isotopes VALUES ("1_Mi","1001","0.1","5","3","101","20","102","30",0,0,999,0,null,null);')
-    
-    con.commit()
-    con.close()
     
