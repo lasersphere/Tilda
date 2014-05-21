@@ -69,7 +69,7 @@ def singleFit(file, st, anadb, isodb, run, var, cur):
     if meas.type == 'Kepco':
         spec = Straight()
     else:
-        iso = DBIsotope(meas.type + var[0], meas.line + var[1], isodb)
+        iso = DBIsotope(meas.type, meas.line, isodb, var[0], var[1])
         spec = FullSpec(iso)
 
     fit = SPFitter(spec, meas, st)
