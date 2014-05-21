@@ -13,9 +13,9 @@ class DBIsotope(object):
     A sqlite database driven version fo the isotope object
     '''
 
-    def __init__(self, iso, line, file):
+    def __init__(self, iso, line, file, isovar = '', linevar = ''):
         '''Load relevant values of isotope name from database file'''
-        print("Loading", line, "line of", iso)
+        print("Loading", line + linevar, "line of", iso + isovar)
         #sqlite3.register_converter("BOOL", lambda v: bool(int(v)))
         
         con = sqlite3.connect(file)
@@ -28,7 +28,9 @@ class DBIsotope(object):
             raise Exception("No such line: " + line)
         
         self.name = iso
+        self.isovar = isovar
         self.line = line
+        self.linevar = linevar
         self.ref = data[1]
         self.freq = data[2]
         self.Jl = data[3]

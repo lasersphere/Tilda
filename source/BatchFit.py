@@ -69,15 +69,15 @@ def singleFit(file, st, anadb, isodb, run, var, cur):
     if meas.type == 'Kepco':
         spec = Straight()
     else:
-        iso = DBIsotope(meas.type + var[0], meas.line + var[1], isodb)
+        iso = DBIsotope(meas.type, meas.line, isodb, var[0], var[1])
         spec = FullSpec(iso)
 
     fit = SPFitter(spec, meas, st)
     fit.fit()
     
     #Create and save graph
-    fig = os.path.splitext(path)[0] + '.pdf'
-    plot.plotFit(fit, st)
+    fig = os.path.splitext(path)[0] + run + 'S' + str(st[0]) + 'T' + str(st[1]) + '.pdf'
+    plot.plotFit(fit)
     plot.save(fig)
     plot.clear()
     

@@ -16,6 +16,7 @@ class SPFitter(object):
         print('Initializing fit of S:', st[0], ', T:', st[1])
         self.spec = spec
         self.meas = meas
+        self.st = st
         self.data = meas.getSingleSpec(*st)
         
         self.par = spec.getPars()
@@ -115,7 +116,7 @@ class SPFitter(object):
         ret =  []
         for p in self.spec.parAssign():
             name = p[0]
-            npar = [x for x, f in zip(self.spec.getBlankNames(), p[1]) if f == True]
+            npar = [x for x, f in zip(self.npar, p[1]) if f == True]
             par = [x for x, f in zip(self.par, p[1]) if f == True]
             err = [x for x, f in zip(self.err, p[1]) if f == True]
             fix = [x for x, f in zip(self.fix, p[1]) if f == True]
