@@ -27,7 +27,6 @@ class FullSpec(object):
         self.shape = shape(iso)
         
         self.pOff = 0
-        self.hN = ['G', 'I', 'I2', 'I3']    #This is somewhat crude but well enough for now. Some iso.short scheme maybe?
         
         miso = iso
         self.hyper = []
@@ -79,13 +78,7 @@ class FullSpec(object):
     
     def getParNames(self):
         '''Return list of the parameter names'''
-        return (['offset'] + self.shape.getParNames()
-                + list(chain(*([self.hN[i] + el for el in hf.getParNames()] for i, hf in enumerate(self.hyper)))))
-        
-        
-    def getBlankNames(self):
-        '''Return list of blank names without hf-shortname'''
-        return (['offset'] + self.shape.getParNames() + list(chain(*[hf.getParNames() for hf in self.hyper])))
+        return (['offset'] + self.shape.getParNames() + list(chain(*([hf.getParNames() for hf in self.hyper]))))
     
     
     def getFixed(self):
