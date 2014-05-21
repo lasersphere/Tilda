@@ -35,7 +35,7 @@ else:
  
 fit = SPFitter(spec, file, (0, -1))
  
-fit.fit()
+#fit.fit()
  
 plot.plotFit(fit)
 plot.show()
