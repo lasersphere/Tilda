@@ -9,7 +9,7 @@ import csv
 import numpy as np
 
 from Measurement.SpecData import SpecData
-import Experiment as Exp
+
 
 class SimpleImporter(SpecData):
     '''
@@ -18,16 +18,16 @@ class SimpleImporter(SpecData):
     The first column of the file is interpreted as scanning voltage, all following as scalers
     '''
 
-    def __init__(self, path):
+    def __init__(self, path, accVolt, laserFreq, colDirTrue):
         '''Read the file'''
         
         print("SimpleImporter is reading file", path)
         super(SimpleImporter, self).__init__()
         
-        self.path = path
-        self.accVolt = Exp.getAccVolt(self.time)
-        self.laserFreq = Exp.getLaserFreq(self.time)
-        self.col = Exp.dirColTrue(self.time) 
+        self.path = path 
+        self.accVolt = accVolt
+        self.laserFreq = laserFreq
+        self.colDirTrue = colDirTrue 
 
         l = self.dimension(path)
         self.nrScalers = l[1] - 1
