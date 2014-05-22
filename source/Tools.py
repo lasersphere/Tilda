@@ -7,7 +7,7 @@ Created on 21.05.2014
 import sqlite3
 
 def createDB(path):
-    '''Initialize a new database. Be careful when using with existing DBs'''
+    '''Initialize a new database. Does not alter existing tables.'''
     con = sqlite3.connect(path)
     con.execute('''PRAGMA foreign_keys''')
     cur = con.cursor()
@@ -92,12 +92,13 @@ def createDB(path):
     run TEXT NOT NULL,
     scaler INT NOT NULL,
     track INT NOT NULL,
+    final BOOL DEFAULT 0,
     rChi FLOAT,
     val FLOAT,
     statErr FLOAT,
-    statErrForm TEXT,
+    statErrForm TEXT DEFAULT err,
     systErr FLOAT,
-    systErrForm TEXT,
+    systErrForm TEXT DEFAULT 0,
     PRIMARY KEY (iso, parname, run, scaler, track)
     FOREIGN KEY (run) REFERENCES Runs (run)
     )''')

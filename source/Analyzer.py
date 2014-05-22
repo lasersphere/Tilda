@@ -9,7 +9,7 @@ import sqlite3
 import numpy as np
 
     
-def extract(iso, run, st, par, db, fileList = ''):
+def extract(iso, par, run, st, db, fileList = ''):
     ''''''
     con = sqlite3.connect(db)
     cur = con.cursor()
@@ -34,10 +34,66 @@ def weightedAverage(vals, errs):
     weights = 1 / np.square(errs)
     average = sum(vals * weights) / sum(weights)
     errorprop = 1 / sum(weights)
-    rChi = 1 / (len(vals) - 1) * sum(np.square(vals - average) * weights)
+    if(len(vals) == 1):
+        rChi = 0
+    else:
+        rChi = 1 / (len(vals) - 1) * sum(np.square(vals - average) * weights)
     
     return (average, errorprop, rChi)
 
-def compress():
-    pass
+
+def combineRes(iso, par, run, st, db):
+    if par == 'shift':
+        combineShift(iso, run, st, db)
+        return
     
+    print('Open DB', db)
+    
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    
+    cur.execute('''SELECT (config, statErrForm, systErrForm) FROM Combined WHERE iso = ? AND par = ? AND run = ? AND scaler = ? AND track = ?''', (iso, par, run, st[0], st[1]))
+    (config, statErrForm, systErrForm) = cur.fetchall()[0]
+    
+    print('Combining', iso, par)
+    files, vals, errs = extract(iso, par, run, st, db, config)
+    
+    val, err, rChi = weightedAverage(vals, errs)
+    statErr = eval(statErrForm)
+    systErr = eval(systErrForm)
+    
+    print('Combined to', iso, par, '=')
+    print(str(val) + '(' + str(statErr) + ')[' + str(systErr) + ']')
+    
+    cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
+        WHERE iso = ? AND par = ? AND run = ? AND scaler = ? AND track = ?''', (val, statErr, systErr, rChi, iso, par, run, st[0], st[1]))
+
+    con.commit()
+    con.close()
+    
+
+def combineShift(iso, run, st, db):
+    print('Open DB', db)
+    
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    
+    cur.execute('''SELECT (config, statErrForm, systErrForm) FROM Combined WHERE iso = ? AND par = ? AND run = ? AND scaler = ? AND track = ?''', (iso, par, run, st[0], st[1]))
+    (config, statErrForm, systErrForm) = cur.fetchall()[0]
+    
+    print('Combining', iso, par)
+    
+    #each block is used to measure the isotope shift once
+    for block in config:
+        pass
+    
+
+    
+    
+def applyChi(err, *rChi):
+    '''Increases error by sqrt(rChi^2) if necessary. Works for several rChi as well'''
+    return err * np.max(1, np.max(np.sqrt(rChi)))
+
+def gaussProp(*args):
+    '''Calculate sqrt of squared sum of args, as in gaussian error propagation'''
+    return np.sqrt(sum(x**2 for x in args))
