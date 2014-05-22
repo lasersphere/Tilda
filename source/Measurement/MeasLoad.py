@@ -18,7 +18,9 @@ def load(file, db):
         return KepcoImporterTLD(file, db)
     elif e == '.tld':
         return TLDImporter(file, db)
-        
     else:
-        print("Measload: Unknown file ending ", file)
         return None
+    
+    
+def check(end):
+    return end in ['.txt', '.tld']

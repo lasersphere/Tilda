@@ -66,3 +66,8 @@ class KepcoImporterTLD(SpecData):
                 lines += 1        
         return (lines, cols)
     
+    def export(self, db):
+        con = sqlite3.connect(dbname)
+        con.execute('''UPDATE Files SET date = ? WHERE filePath = ?''', (self.date, file))        
+        con.close()
+    

@@ -78,6 +78,12 @@ class TLDImporter(SpecData):
             cols = len(f.readline().split('\t'))        
         return (lines, cols)
     
+    
+    def export(self, db):
+        con = sqlite3.connect(dbname)
+        con.execute('''UPDATE Files SET date = ? WHERE filePath = ?''', (self.date, file))        
+        con.close()
+    
     def getFloat(self, f):
         return float(f.readline().split('\t')[1])
     

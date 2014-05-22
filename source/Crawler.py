@@ -76,8 +76,3 @@ def loadCrawl(db):
     con.commit()
     con.close()
     print("loadCrawl done,", errcount, "errors occured")
-    
-if __name__ == '__main__':
-    path = "V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/AnaDB.sqlite"
-    #crawl(path)
-    loadCrawl(path)

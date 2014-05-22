@@ -5,16 +5,67 @@ Created on 21.05.2014
 '''
 
 import sqlite3
+import os
+import sys
+import traceback
 
-def createDB(path):
-    '''Initialize a new database. Does not alter existing tables.'''
-    con = sqlite3.connect(path)
-    con.execute('''PRAGMA foreign_keys''')
+import Measurement.MeasLoad as Meas
+
+def crawl(db, crawl = '.', rec = True):
+    '''Crawl the path and add all measurement files to the database, recursively if requested'''
+    
+    print("Crawling", path)
+    projectPath, dbname = os.path.split(db)
+    oldPath = os.getcwd()
+    
+    os.chdir(projectPath)
+    insertFolder(crawl, rec, dbname)
+    os.chdir(oldPath)
+    
+    print("Done")
+    
+
+def insertFolder(path, rec, db):
+    (p, d, f) = next(os.walk(path))
+        
+    if rec:
+        for _d in d:
+            insertFiles(os.path.join(p, _d), rec, db)
+    
+    for _f in f:
+        insertFile(_f, db)
+        
+def insertFile(f, db):
+    con = sqlite3.connect(dbname)
     cur = con.cursor()
     
+    cur.execute('''SELECT (1) FROM Files WHERE file = ?''', (os.path.basename(f),))
+    if len(cur.fetchall()) != 0:
+        print('Skipped', f, ': already in db.')
+        return
+    
+    if not MeasLoad.check(os.path.splitext(f)[1]):
+        print('Skipped', f, ': not importable.')
+        return
+    
+    try:
+        con.execute('''INSERT INTO Files (file, filePath) VALUES (?, ?)'''(os.path.basename(f), f))
+        spec = Meas.load(file, db)
+        spec.export(db)  
+    except:
+        errcount += 1
+        print("Error working on file", file, ":", sys.exc_info()[1])
+        traceback.print_tb(sys.exc_info()[2])
+        
+    con.close() 
+
+
+def createDB(db):
+    '''Initialize a new database. Does not alter existing tables.'''
+    con = sqlite3.connect(db)
     
     #Isotopes
-    cur.execute('''CREATE TABLE IF NOT EXISTS Isotopes (
+    con.execute('''CREATE TABLE IF NOT EXISTS Isotopes (
     iso TEXT PRIMARY KEY  NOT NULL,
     mass FLOAT,
     mass_d FLOAT,
@@ -33,7 +84,7 @@ def createDB(path):
     )''')
     
     #Lines
-    cur.execute('''CREATE TABLE IF NOT EXISTS Lines (
+    con.execute('''CREATE TABLE IF NOT EXISTS Lines (
     line TEXT PRIMARY KEY  NOT NULL ,
     reference TEXT,
     frequency FLOAT,
@@ -46,7 +97,7 @@ def createDB(path):
     )''')
     
     #Files
-    cur.execute('''CREATE TABLE IF NOT EXISTS Files (
+    con.execute('''CREATE TABLE IF NOT EXISTS Files (
     file TEXT PRIMARY KEY ONT NULL,
     filePath TEXT UNIQUE NOT NULL,
     date DATE,
@@ -64,14 +115,14 @@ def createDB(path):
     )''')
     
     #Runs
-    cur.execute('''CREATE TABLE IF NOT EXISTS Runs (
+    con.execute('''CREATE TABLE IF NOT EXISTS Runs (
     run TEXT PRIMARY KEY NOT NULL,
     lineVar TEXT DEFAULT "",
     isoVar TEXT DEFAULT ""
     )''')
     
     #Fit results
-    cur.execute('''CREATE TABLE IF NOT EXISTS FitRes (
+    con.execute('''CREATE TABLE IF NOT EXISTS FitRes (
     file TEXT NOT NULL,
     iso TEXT NOT NULL,
     run TEXT NOT NULL,
@@ -84,8 +135,8 @@ def createDB(path):
     FOREIGN KEY (run) REFERENCES Runs (run)
     )''')
     
-    #combined results (averaged from fit)
-    cur.execute('''CREATE TABLE IF NOT EXISTS Combined (
+    #Combined results (averaged from fit)
+    con.execute('''CREATE TABLE IF NOT EXISTS Combined (
     iso TEXT NOT NULL,
     parname TEXT,
     config TEXT DEFAULT "",
@@ -102,6 +153,5 @@ def createDB(path):
     PRIMARY KEY (iso, parname, run, scaler, track)
     FOREIGN KEY (run) REFERENCES Runs (run)
     )''')
-    
-    con.commit()
+
     con.close()
