@@ -47,8 +47,8 @@ def createDB(path):
     
     #Files
     cur.execute('''CREATE TABLE IF NOT EXISTS Files (
-    file TEXT PRIMARY KEY,
-    filePath TEXT UNIQUE,
+    file TEXT PRIMARY KEY ONT NULL,
+    filePath TEXT UNIQUE NOT NULL,
     date DATE,
     type TEXT,
     line TEXT,
@@ -79,7 +79,7 @@ def createDB(path):
     track INT NOT NULL,
     rChi FLOAT,
     pars TEXT,
-    PRIMARY KEY (File, Iso, Run, Scaler, Track),
+    PRIMARY KEY (file, iso, run, scaler, track),
     FOREIGN KEY (file) REFERENCES Files (file),
     FOREIGN KEY (run) REFERENCES Runs (run)
     )''')
@@ -87,15 +87,18 @@ def createDB(path):
     #combined results (averaged from fit)
     cur.execute('''CREATE TABLE IF NOT EXISTS Combined (
     iso TEXT NOT NULL,
-    name TEXT,
+    parname TEXT,
+    config TEXT DEFAULT "",
     run TEXT NOT NULL,
     scaler INT NOT NULL,
     track INT NOT NULL,
     rChi FLOAT,
-    par FLOAT,
-    err FLOAT,
-    usederr TEXT,
-    PRIMARY KEY (iso, name)
+    val FLOAT,
+    statErr FLOAT,
+    statErrForm TEXT,
+    systErr FLOAT,
+    systErrForm TEXT,
+    PRIMARY KEY (iso, parname, run, scaler, track)
     FOREIGN KEY (run) REFERENCES Runs (run)
     )''')
     

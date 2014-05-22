@@ -21,7 +21,8 @@ class DBIsotope(object):
         con = sqlite3.connect(file)
         cur = con.cursor()
         
-        cur.execute("SELECT * FROM Lines WHERE line =?", (line,))
+        cur.execute('''SELECT (reference, frequency, Jl, Ju, shape, fixShape, charge)
+            FROM Lines WHERE line =?''', (line,))
         try:
             data = cur.fetchall()[0]
         except:
@@ -39,7 +40,8 @@ class DBIsotope(object):
         self.fixShape = eval(data[6])
         elmass = data[7] * Physics.me_u
         
-        cur.execute("SELECT * FROM Isotopes WHERE Isotope =?", (iso,))
+        cur.execute('''SELECT (iso, mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, fixedBrat, intScale, fixedInt, relInt, m)
+            FROM Isotopes WHERE Isotope =?''', (iso,))
         try:
             data = cur.fetchall()[0]
         except:

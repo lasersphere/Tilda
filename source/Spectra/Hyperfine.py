@@ -25,9 +25,7 @@ class Hyperfine(object):
         self.center = iso.center
         
         self.trans = Physics.HFTrans(self.iso.I, self.iso.Ju, self.iso.Jl)
-        
-        Au = iso.Au * iso.Al if self.fixA else iso.Au
-        Bu = iso.Bu * iso.Bl if self.fixB else iso.Bu
+
         self.lineSplit = Physics.HFLineSplit(iso.Al, iso.Bl, Au, Bu, self.trans)
         
         self.nPar = 5 + len(self.trans)
@@ -62,7 +60,6 @@ class Hyperfine(object):
         #Use upper factors as ratio if fixed, else directly
         Au = p[self.pAu] * p[self.pAl] if self.fixA else p[self.pAu]
         Bu = p[self.pBu] * p[self.pBl] if self.fixB else p[self.pBu]
-
 
         self.center = p[self.pCenter]
         self.lineSplit = Physics.HFLineSplit(p[self.pAl], p[self.pBl], Au, Bu, self.trans)

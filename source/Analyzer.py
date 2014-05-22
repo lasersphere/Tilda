@@ -20,12 +20,13 @@ def extract(iso, run, st, par, db, fileList = ''):
     if fileList:
         fits = [f for f in fits if f[0] in fileList]
         
-    fits = [eval(f[1]) for f in fits]
-    vals = [f[par][0] for f in fits]
-    errs = [f[par][1] for f in fits]
+    fitres = [eval(f[1]) for f in fits]
+    files = [f[0] for f in fits]
+    vals = [f[par][0] for f in fitres]
+    errs = [f[par][1] for f in fitres]
     
     con.close()
-    return (vals, errs)
+    return (files, vals, errs)
     
     
 def weightedAverage(vals, errs):
