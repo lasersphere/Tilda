@@ -51,7 +51,7 @@ def centerPlot(isoL, line, db, width = 1e6):
     
     plt.xlabel("Laser wavenumber / cm^-1")
     plt.ylabel("Ion energy on resonance / eV")
-    plt.axvline(Physics.wavenumber(isos[0].freq), 0, 20000)
+    plt.axvline(Physics.wavenumber(isos[0].freq), 0, 20000, color = 'k')
     plt.gca().get_xaxis().get_major_formatter().set_useOffset(False)
     plt.show()
     
