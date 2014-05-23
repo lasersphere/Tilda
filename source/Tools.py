@@ -9,7 +9,52 @@ import os
 import sys
 import traceback
 
+import numpy as np
+
 import Measurement.MeasLoad as Meas
+from DBIsotope import DBIsotope
+from Spectra.FullSpec import FullSpec
+import Physics
+import MPLPlotter as plot
+import matplotlib.pyplot as plt
+
+def isoPlot(iso, line, db, isovar = '', linevar = ''):
+    iso = DBIsotope(iso, line, db)
+    
+    spec =  FullSpec(iso)
+    
+    print(spec.getPars())
+    
+    plot.printSpec(spec, spec.getPars())
+    plot.show()
+
+
+def centerPlot(isoL, line, db, width = 1e6):
+    
+    isos = [DBIsotope(iso, line, db) for iso in isoL]
+    
+    res = 100
+    fx = np.linspace(isos[0].freq - width, isos[0].freq + width, res)
+    wnx = Physics.wavenumber(fx)
+    
+    y = np.zeros((len(isos), len(fx)))
+    for i, iso in enumerate(isos):
+        for j, x in enumerate(fx):
+            v = Physics.invRelDoppler(x, iso.freq + iso.center)
+            y[i][j] = (iso.mass * Physics.u * v**2)/2 / Physics.qe
+    
+    fig = plt.figure(1, (8, 8))
+    fig.patch.set_facecolor('white')
+    
+    for i in y:
+        plt.plot(wnx, i, '-')
+    
+    plt.xlabel("Laser wavenumber / cm^-1")
+    plt.ylabel("Ion energy on resonance / eV")
+    plt.axvline(Physics.wavenumber(isos[0].freq), 0, 20000)
+    plt.gca().get_xaxis().get_major_formatter().set_useOffset(False)
+    plt.show()
+    
 
 def crawl(db, crawl = '.', rec = True):
     '''Crawl the path and add all measurement files to the database, recursively if requested'''
@@ -18,23 +63,23 @@ def crawl(db, crawl = '.', rec = True):
     oldPath = os.getcwd()
     
     os.chdir(projectPath)
-    insertFolder(crawl, rec, dbname)
+    _insertFolder(crawl, rec, dbname)
     os.chdir(oldPath)
     
     print("Done")
     
 
-def insertFolder(path, rec, db):
+def _insertFolder(path, rec, db):
     (p, d, f) = next(os.walk(path))
         
     if rec:
         for _d in d:
-            insertFolder(os.path.join(p, _d), rec, db)
+            _insertFolder(os.path.join(p, _d), rec, db)
     
     for _f in f:
-        insertFile(os.path.join(p, _f), db)
+        _insertFile(os.path.join(p, _f), db)
         
-def insertFile(f, db):
+def _insertFile(f, db):
     con = sqlite3.connect(db)
     cur = con.cursor()
     

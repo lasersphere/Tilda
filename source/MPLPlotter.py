@@ -9,18 +9,16 @@ import numpy as np
     
     
 def printSpec(self, spec, par):
-    x = np.linspace(spec.leftEdge(), spec.rightEdge(), 10000)
+    x = np.linspace(spec.leftEdge(par), spec.rightEdge(par), 10000)
     y = np.fromiter((spec.evaluate([m], par) for m in x), np.float32)
 
-    plt.plot(x, y)
+    ax = plt.plot(x, y)
+    ax.get_xaxis().get_major_formatter().set_useOffset(False)
     plt.ylabel('Intensity / a.u.')
     plt.xlabel('Frequency / MHz')
-        
-    plt.draw()
     
     
-def plotFit(fit):
-    
+def plotFit(fit):    
     data = fit.meas.getArithSpec(*fit.st)
     plotdat = fit.spec.toPlotE(fit.meas.laserFreq, fit.meas.col, fit.par)
 
