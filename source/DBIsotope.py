@@ -21,8 +21,8 @@ class DBIsotope(object):
         con = sqlite3.connect(file)
         cur = con.cursor()
         
-        cur.execute('''SELECT (reference, frequency, Jl, Ju, shape, fixShape, charge)
-            FROM Lines WHERE line =?''', (line,))
+        cur.execute('''SELECT reference, frequency, Jl, Ju, shape, fixShape, charge
+            FROM Lines WHERE line = ?''', (line,))
         try:
             data = cur.fetchall()[0]
         except:
@@ -32,40 +32,40 @@ class DBIsotope(object):
         self.isovar = isovar
         self.line = line
         self.linevar = linevar
-        self.ref = data[1]
-        self.freq = data[2]
-        self.Jl = data[3]
-        self.Ju = data[4]
-        self.shape = eval(data[5])
-        self.fixShape = eval(data[6])
-        elmass = data[7] * Physics.me_u
+        self.ref = data[0]
+        self.freq = data[1]
+        self.Jl = data[2]
+        self.Ju = data[3]
+        self.shape = eval(data[4])
+        self.fixShape = eval(data[5])
+        elmass = data[6] * Physics.me_u
         
-        cur.execute('''SELECT (iso, mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, fixedBrat, intScale, fixedInt, relInt, m)
-            FROM Isotopes WHERE Isotope =?''', (iso,))
+        cur.execute('''SELECT mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, fixedBrat, intScale, fixedInt, relInt, m
+            FROM Isotopes WHERE iso = ?''', (iso,))
         try:
             data = cur.fetchall()[0]
         except:
             raise Exception("No such isotope: " + iso)
         
-        self.mass = data[1] - elmass
-        self.mass_d = data[2]
-        self.I = data[3]
-        self.center = data[4]
-        self.Al = data[5]
-        self.Bl = data [6]
-        self.Au = data[7]
-        self.Bu = data[8]
-        self.fixArat = data[9]
-        self.fixBrat = data[10]
-        self.intScale = data[11]
-        self.fixInt = data[12]
-        if data[13] is not None:
-            self.relInt = eval(data[13])
+        self.mass = data[0] - elmass
+        self.mass_d = data[1]
+        self.I = data[2]
+        self.center = data[3]
+        self.Al = data[4]
+        self.Bl = data [5]
+        self.Au = data[6]
+        self.Bu = data[7]
+        self.fixArat = data[8]
+        self.fixBrat = data[9]
+        self.intScale = data[10]
+        self.fixInt = data[11]
+        if data[12] is not None:
+            self.relInt = eval(data[12])
         
-        if data[14] == None:
+        if data[13] == None:
             self.m = None
         else:
-            self.m = DBIsotope(data[14], line, file)
+            self.m = DBIsotope(data[13], line, file)
 
         cur.close()
         con.close()

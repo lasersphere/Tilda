@@ -20,15 +20,16 @@ from SPFitter import SPFitter
 import MPLPlotter as plot
 
 
-def batchFit(fileList, st, projectPath, db, run = 'Run0'):
+def batchFit(fileList, st, db, run = 'Run0'):
     '''Fit scaler/track st of fileList and write results to db'''
     print("BatchFit started")
     print("Opening DB:", db)
     
     oldPath = os.getcwd()
+    projectPath, dbname = os.path.split(db)
     os.chdir(projectPath)
     
-    con = sqlite3.connect(db)
+    con = sqlite3.connect(dbname)
     cur = con.cursor()
     
     cur.execute('''SELECT isoVar, lineVar FROM Runs WHERE run = ?''', (run,))
@@ -40,7 +41,7 @@ def batchFit(fileList, st, projectPath, db, run = 'Run0'):
     
     for file in fileList:
         try:
-            singleFit(file, st, db, run, var, cur)
+            singleFit(file, st, dbname, run, var, cur)
         except:
             errcount += 1
             print("Error working on file", file, ":", sys.exc_info()[1])
@@ -74,7 +75,7 @@ def singleFit(file, st, db, run, var, cur):
     fit.fit()
     
     #Create and save graph
-    fig = os.path.splitext(path)[0] + run + 'S' + str(st[0]) + 'T' + str(st[1]) + '.jpg'
+    fig = os.path.splitext(path)[0] + run + 'S' + str(st[0]) + 'T' + str(st[1]) + '.png'
     plot.plotFit(fit)
     plot.save(fig)
     plot.clear()
@@ -83,7 +84,7 @@ def singleFit(file, st, db, run, var, cur):
     
     for r in result:
         #Only one unique result, according to PRIMARY KEY, thanks to INSERT OR REPLACE
-        cur.execute('''INSERT OR REPLACE INTO Results (file, iso, run, sctr, rChi, pars) 
+        cur.execute('''INSERT OR REPLACE INTO FitRes (file, iso, run, sctr, rChi, pars) 
         VALUES (?, ?, ?, ?, ?, ?)''', (file, r[0], run, repr(st), fit.rchi, repr(r[1])))
         
     

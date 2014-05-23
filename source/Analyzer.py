@@ -5,6 +5,7 @@ Created on 21.05.2014
 '''
 
 import sqlite3
+import ast
 
 import numpy as np
 
@@ -14,7 +15,7 @@ def extract(iso, par, run, st, db, fileList = ''):
     con = sqlite3.connect(db)
     cur = con.cursor()
     
-    cur.execute('''SELECT file, pars FROM Results WHERE iso = ? AND run = ? AND sctr = ?''', (iso, run, repr(st)))
+    cur.execute('''SELECT file, pars FROM FitRes WHERE iso = ? AND run = ? AND sctr = ?''', (iso, run, repr(st)))
     fits = cur.fetchall()
     
     if fileList:
@@ -52,21 +53,27 @@ def combineRes(iso, par, run, st, db):
     con = sqlite3.connect(db)
     cur = con.cursor()
     
-    cur.execute('''SELECT (config, statErrForm, systErrForm) FROM Combined WHERE iso = ? AND par = ? AND run = ? AND sctr = ?''', (iso, par, run, repr(st)))
+    cur.execute('''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ? AND sctr = ?''', (iso, par, run, repr(st)))
     (config, statErrForm, systErrForm) = cur.fetchall()[0]
+    config = ast.literal_eval(config)
     
     print('Combining', iso, par)
     files, vals, errs = extract(iso, par, run, st, db, config)
+    
+    for f, v, e in zip(files, vals, errs):
+        print(f, '\t', v, '\t', e)
     
     val, err, rChi = weightedAverage(vals, errs)
     statErr = eval(statErrForm)
     systErr = eval(systErrForm)
     
+    print('Statistical error formula:', statErrForm)
+    print('Systematic error formula:', systErrForm)
     print('Combined to', iso, par, '=')
     print(str(val) + '(' + str(statErr) + ')[' + str(systErr) + ']')
     
     cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
-        WHERE iso = ? AND par = ? AND run = ? AND scaltr = ?''', (val, statErr, systErr, rChi, iso, par, run, st))
+        WHERE iso = ? AND parname = ? AND run = ? AND sctr = ?''', (val, statErr, systErr, rChi, iso, par, run, repr(st)))
 
     con.commit()
     con.close()
@@ -78,7 +85,7 @@ def combineShift(iso, run, st, db):
     con = sqlite3.connect(db)
     cur = con.cursor()
     
-    cur.execute('''SELECT (config, statErrForm, systErrForm) FROM Combined WHERE iso = ? AND par = ? AND run = ? AND sctr = ?''', (iso, 'shift', run, repr(st)))
+    cur.execute('''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND par = ? AND run = ? AND sctr = ?''', (iso, 'shift', run, repr(st)))
     (config, statErrForm, systErrForm) = cur.fetchall()[0]
     
     print('Combining', iso, 'shift')

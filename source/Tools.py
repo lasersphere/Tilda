@@ -121,6 +121,8 @@ def createDB(db):
     isoVar TEXT DEFAULT ""
     )''')
     
+    con.execute('''INSERT INTO Runs VALUES run = "Run0", lineVar = "", isoVar = ""''')
+    
     #Fit results
     con.execute('''CREATE TABLE IF NOT EXISTS FitRes (
     file TEXT NOT NULL,
