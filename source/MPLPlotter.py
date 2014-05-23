@@ -21,7 +21,7 @@ def printSpec(self, spec, par):
     
 def plotFit(fit):
     
-    data = fit.meas.getSingleSpec(*fit.st)
+    data = fit.meas.getArithSpec(*fit.st)
     plotdat = fit.spec.toPlotE(fit.meas.laserFreq, fit.meas.col, fit.par)
 
 

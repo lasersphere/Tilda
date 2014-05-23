@@ -14,7 +14,7 @@ def extract(iso, par, run, st, db, fileList = ''):
     con = sqlite3.connect(db)
     cur = con.cursor()
     
-    cur.execute('''SELECT file, pars FROM Results WHERE iso = ? AND run = ? AND scaler = ? AND track = ?''', (iso, run, st[0], st[1]))
+    cur.execute('''SELECT file, pars FROM Results WHERE iso = ? AND run = ? AND sctr = ?''', (iso, run, repr(st)))
     fits = cur.fetchall()
     
     if fileList:
@@ -52,7 +52,7 @@ def combineRes(iso, par, run, st, db):
     con = sqlite3.connect(db)
     cur = con.cursor()
     
-    cur.execute('''SELECT (config, statErrForm, systErrForm) FROM Combined WHERE iso = ? AND par = ? AND run = ? AND scaler = ? AND track = ?''', (iso, par, run, st[0], st[1]))
+    cur.execute('''SELECT (config, statErrForm, systErrForm) FROM Combined WHERE iso = ? AND par = ? AND run = ? AND sctr = ?''', (iso, par, run, repr(st)))
     (config, statErrForm, systErrForm) = cur.fetchall()[0]
     
     print('Combining', iso, par)
@@ -66,7 +66,7 @@ def combineRes(iso, par, run, st, db):
     print(str(val) + '(' + str(statErr) + ')[' + str(systErr) + ']')
     
     cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
-        WHERE iso = ? AND par = ? AND run = ? AND scaler = ? AND track = ?''', (val, statErr, systErr, rChi, iso, par, run, st[0], st[1]))
+        WHERE iso = ? AND par = ? AND run = ? AND scaltr = ?''', (val, statErr, systErr, rChi, iso, par, run, st))
 
     con.commit()
     con.close()
@@ -78,10 +78,10 @@ def combineShift(iso, run, st, db):
     con = sqlite3.connect(db)
     cur = con.cursor()
     
-    cur.execute('''SELECT (config, statErrForm, systErrForm) FROM Combined WHERE iso = ? AND par = ? AND run = ? AND scaler = ? AND track = ?''', (iso, par, run, st[0], st[1]))
+    cur.execute('''SELECT (config, statErrForm, systErrForm) FROM Combined WHERE iso = ? AND par = ? AND run = ? AND sctr = ?''', (iso, 'shift', run, repr(st)))
     (config, statErrForm, systErrForm) = cur.fetchall()[0]
     
-    print('Combining', iso, par)
+    print('Combining', iso, 'shift')
     
     #each block is used to measure the isotope shift once
     for block in config:

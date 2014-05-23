@@ -83,8 +83,8 @@ def singleFit(file, st, db, run, var, cur):
     
     for r in result:
         #Only one unique result, according to PRIMARY KEY, thanks to INSERT OR REPLACE
-        cur.execute('''INSERT OR REPLACE INTO Results (file, iso, run, scaler, track, rChi, pars) 
-        VALUES (?, ?, ?, ?, ?, ?, ?)''', (file, r[0], run, st[0], st[1], fit.rchi, repr(r[1])))
+        cur.execute('''INSERT OR REPLACE INTO Results (file, iso, run, sctr, rChi, pars) 
+        VALUES (?, ?, ?, ?, ?, ?)''', (file, r[0], run, repr(st), fit.rchi, repr(r[1])))
         
     
     print("Finished fitting", file)

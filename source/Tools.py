@@ -13,9 +13,8 @@ import Measurement.MeasLoad as Meas
 
 def crawl(db, crawl = '.', rec = True):
     '''Crawl the path and add all measurement files to the database, recursively if requested'''
-    
-    print("Crawling", path)
     projectPath, dbname = os.path.split(db)
+    print("Crawling", projectPath)
     oldPath = os.getcwd()
     
     os.chdir(projectPath)
@@ -30,13 +29,13 @@ def insertFolder(path, rec, db):
         
     if rec:
         for _d in d:
-            insertFiles(os.path.join(p, _d), rec, db)
+            insertFolder(os.path.join(p, _d), rec, db)
     
     for _f in f:
         insertFile(_f, db)
         
 def insertFile(f, db):
-    con = sqlite3.connect(dbname)
+    con = sqlite3.connect(db)
     cur = con.cursor()
     
     cur.execute('''SELECT (1) FROM Files WHERE file = ?''', (os.path.basename(f),))
@@ -44,17 +43,16 @@ def insertFile(f, db):
         print('Skipped', f, ': already in db.')
         return
     
-    if not MeasLoad.check(os.path.splitext(f)[1]):
+    if not Meas.check(os.path.splitext(f)[1]):
         print('Skipped', f, ': not importable.')
         return
     
     try:
         con.execute('''INSERT INTO Files (file, filePath) VALUES (?, ?)'''(os.path.basename(f), f))
-        spec = Meas.load(file, db)
+        spec = Meas.load(f, db)
         spec.export(db)  
     except:
-        errcount += 1
-        print("Error working on file", file, ":", sys.exc_info()[1])
+        print("Error working on file", f, ":", sys.exc_info()[1])
         traceback.print_tb(sys.exc_info()[2])
         
     con.close() 
@@ -126,11 +124,10 @@ def createDB(db):
     file TEXT NOT NULL,
     iso TEXT NOT NULL,
     run TEXT NOT NULL,
-    scaler INT NOT NULL,
-    track INT NOT NULL,
+    sctr TEXT NOT NULL,
     rChi FLOAT,
     pars TEXT,
-    PRIMARY KEY (file, iso, run, scaler, track),
+    PRIMARY KEY (file, iso, run, sctr),
     FOREIGN KEY (file) REFERENCES Files (file),
     FOREIGN KEY (run) REFERENCES Runs (run)
     )''')
@@ -141,8 +138,7 @@ def createDB(db):
     parname TEXT,
     config TEXT DEFAULT "",
     run TEXT NOT NULL,
-    scaler INT NOT NULL,
-    track INT NOT NULL,
+    sctr TEXT,
     final BOOL DEFAULT 0,
     rChi FLOAT,
     val FLOAT,
@@ -150,7 +146,7 @@ def createDB(db):
     statErrForm TEXT DEFAULT err,
     systErr FLOAT,
     systErrForm TEXT DEFAULT 0,
-    PRIMARY KEY (iso, parname, run, scaler, track)
+    PRIMARY KEY (iso, parname, run, sctr)
     FOREIGN KEY (run) REFERENCES Runs (run)
     )''')
 
