@@ -4,7 +4,6 @@ Created on 05.05.2014
 @author: hammen
 '''
 import unittest
-import Experiment
 
 import numpy as np
 

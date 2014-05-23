@@ -7,7 +7,6 @@ import os
 import sqlite3
 import math
 
-from Measurement.SimpleImporter import SimpleImporter
 import MPLPlotter as plot
 
 from DBIsotope import DBIsotope
@@ -19,13 +18,13 @@ import BatchFit
 
 path = 'V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/'
 files = ["Ca_000.tld","Ca_001.tld","Ca_002.tld","Ca_004.tld","Ca_005.tld","Ca_006.tld","Ca_007.tld","Ca_010.tld","Ca_011.tld","Ca_012.tld","Ca_013.tld"]#,"Ca_015.tld","Ca_020.tld","Ca_021.tld"]
-BatchFit.batchFit(files, (1,-1), path, 'AnaDB.sqlite', 'calciumD1.sqlite', 'Run0')
+BatchFit.batchFit(files, (1,-1), path, 'AnaDB.sqlite', 'calciumD1.sqlite', 'Run1')
 
 
 con = sqlite3.connect(os.path.join(path, 'AnaDB.sqlite'))
 cur = con.cursor()
 
-cur.execute('''SELECT pars FROM Results WHERE Iso = ? AND Run = "Run0"''', ('40_Ca',))
+cur.execute('''SELECT pars FROM Results WHERE Iso = ? AND Run = "Run1"''', ('40_Ca',))
 print('40_Ca')
 data = cur.fetchall()
 center40 = [eval(i[0])['center'][0] for i in data]
@@ -35,7 +34,7 @@ print('center:',center40, meanC40)
 # print('sigma:',sigma, math.fsum(sigma)/len(sigma))
 # gamma = [eval(i[0])['gamma'][0] for i in data]
 #print('gamma:', gamma, math.fsum(gamma)/len(gamma))
-cur.execute('''SELECT pars FROM Results WHERE Iso = ? AND Run = "Run0"''', ('42_Ca',))
+cur.execute('''SELECT pars FROM Results WHERE Iso = ? AND Run = "Run1"''', ('42_Ca',))
 print('42_Ca')
 data = cur.fetchall()
 center42 = [eval(i[0])['center'][0] for i in data]
@@ -45,7 +44,7 @@ print('center:',center42, meanC42)
 # print('sigma:',sigma)
 # gamma = [eval(i[0])['gamma'][0] for i in data]
 # print('gamma:', gamma)
-cur.execute('''SELECT pars FROM Results WHERE Iso = ? AND Run = "Run0"''', ('44_Ca',))
+cur.execute('''SELECT pars FROM Results WHERE Iso = ? AND Run = "Run1"''', ('44_Ca',))
 print('44_Ca')
 data = cur.fetchall()
 center44 = [eval(i[0])['center'][0] for i in data]
@@ -55,7 +54,7 @@ print('center:',center44, meanC44)
 # print('sigma:',sigma)
 # gamma = [eval(i[0])['gamma'][0] for i in data]
 # print('gamma:', gamma)
-cur.execute('''SELECT pars FROM Results WHERE Iso = ? AND Run = "Run0"''', ('48_Ca',))
+cur.execute('''SELECT pars FROM Results WHERE Iso = ? AND Run = "Run1"''', ('48_Ca',))
 print('48_Ca')
 data = cur.fetchall()
 center48 = [eval(i[0])['center'][0] for i in data]
