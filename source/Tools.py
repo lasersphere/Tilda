@@ -25,7 +25,7 @@ def isoPlot(iso, line, db, isovar = '', linevar = ''):
     
     print(spec.getPars())
     
-    plot.printSpec(spec, spec.getPars())
+    plot.plot(spec.toPlot(spec.getPars()))
     plot.show()
 
 

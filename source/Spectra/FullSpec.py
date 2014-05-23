@@ -104,31 +104,31 @@ class FullSpec(object):
     def toPlot(self, p, prec = 10000):
         '''Return ([x/Mhz], [y]) values with prec number of points'''
         self.recalc(p)
-        return ([x for x in np.linspace(self.leftEdge(), self.rightEdge(), prec)],
-                [self.evaluate(x, p) for x in np.linspace(self.leftEdge(), self.rightEdge(), prec)])
+        return ([x for x in np.linspace(self.leftEdge(p), self.rightEdge(p), prec)],
+                [self.evaluate(x, p) for x in np.linspace(self.leftEdge(p), self.rightEdge(p), prec)])
       
     def toPlotE(self, freq, col, p, prec = 10000):
         '''Return ([x/eV], [y]) values with prec number of points'''
         self.recalc(p)
-        return ([x for x in np.linspace(self.leftEdgeE(freq), self.rightEdgeE(freq), prec)],
-                [self.evaluateE(x, freq, col, p) for x in np.linspace(self.leftEdgeE(freq), self.rightEdgeE(freq), prec)])
+        return ([x for x in np.linspace(self.leftEdgeE(freq, p), self.rightEdgeE(freq, p), prec)],
+                [self.evaluateE(x, freq, col, p) for x in np.linspace(self.leftEdgeE(freq, p), self.rightEdgeE(freq, p), prec)])
     
            
-    def leftEdge(self):
+    def leftEdge(self, p):
         '''Return the left edge of the spectrum in Mhz'''
-        return min(hf.leftEdge() for hf in self.hyper)
+        return min(hf.leftEdge(p) for hf in self.hyper)
     
     
-    def rightEdge(self):
+    def rightEdge(self, p):
         '''Return the right edge of the spectrum in MHz'''
-        return max(hf.rightEdge() for hf in self.hyper)
+        return max(hf.rightEdge(p) for hf in self.hyper)
     
     
-    def leftEdgeE(self, freq):
+    def leftEdgeE(self, freq, p):
         '''Return the left edge of the spectrum in eV'''
-        return min(hf.leftEdgeE(freq) for hf in self.hyper)
+        return min(hf.leftEdgeE(freq, p) for hf in self.hyper)
     
     
-    def rightEdgeE(self, freq):
+    def rightEdgeE(self, freq, p):
         '''Return the right edge of the spectrum in eV'''
-        return max(hf.rightEdgeE(freq) for hf in self.hyper)
+        return max(hf.rightEdgeE(freq, p) for hf in self.hyper)

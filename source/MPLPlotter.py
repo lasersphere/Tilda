@@ -8,12 +8,10 @@ import matplotlib.pyplot as plt
 import numpy as np
     
     
-def printSpec(self, spec, par):
-    x = np.linspace(spec.leftEdge(par), spec.rightEdge(par), 10000)
-    y = np.fromiter((spec.evaluate([m], par) for m in x), np.float32)
-
-    ax = plt.plot(x, y)
-    ax.get_xaxis().get_major_formatter().set_useOffset(False)
+def plot(*args):
+    for a in args:
+        plt.plot(a[0], a[1])
+    plt.gca().get_xaxis().get_major_formatter().set_useOffset(False)
     plt.ylabel('Intensity / a.u.')
     plt.xlabel('Frequency / MHz')
     

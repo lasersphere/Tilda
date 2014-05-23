@@ -63,7 +63,6 @@ class Hyperfine(object):
         Au = p[self.pAu] * p[self.pAl] if self.fixA else p[self.pAu]
         Bu = p[self.pBu] * p[self.pBl] if self.fixB else p[self.pBu]
 
-        self.center = p[self.pCenter]
         self.lineSplit = Physics.HFLineSplit(p[self.pAl], p[self.pBl], Au, Bu, self.trans)
         self.intens = self.buildInt(p)
     
@@ -123,27 +122,31 @@ class Hyperfine(object):
         return ret
     
     
-    def leftEdge(self):
+    def leftEdge(self, p):
         '''Return the left edge of the spectrum in Mhz'''
-        return min(self.lineSplit) + self.shape.leftEdge()
+        self.recalc(p)
+        return p[self.pCenter] + min(self.lineSplit) + self.shape.leftEdge(p)
     
     
-    def rightEdge(self):
+    def rightEdge(self, p):
         '''Return the right edge of the spectrum in MHz'''
-        return max(self.lineSplit) + self.shape.rightEdge()
+        self.recalc(p)
+        return p[self.pCenter] + max(self.lineSplit) + self.shape.rightEdge(p)
     
     
-    def leftEdgeE(self, freq):
+    def leftEdgeE(self, freq, p):
         '''Return the left edge of the spectrum in eV'''
-        l = self.center + min(self.lineSplit) + self.shape.leftEdge() + self.iso.freq
+        self.recalc(p)
+        l = p[self.pCenter] + min(self.lineSplit) + self.shape.leftEdge(p) + self.iso.freq
         v = Physics.invRelDoppler(freq, l)
 
         return (self.iso.mass * Physics.u * v**2)/2 / Physics.qe
     
     
-    def rightEdgeE(self, freq):
+    def rightEdgeE(self, freq, p):
         '''Return the right edge of the spectrum in eV'''
-        r = self.center + max(self.lineSplit) + self.shape.rightEdge() + self.iso.freq
+        self.recalc(p)
+        r = p[self.pCenter] + max(self.lineSplit) + self.shape.rightEdge(p) + self.iso.freq
         v = Physics.invRelDoppler(freq, r)
 
         return (self.iso.mass * Physics.u * v**2)/2 / Physics.qe

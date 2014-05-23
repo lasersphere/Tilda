@@ -32,19 +32,17 @@ class Voigt(object):
     
     def recalc(self, p):
         '''Recalculate the norm factor'''
-        self.sig = p[self.pSig]
-        self.gam = p[self.pGam]
-        self.norm = Physics.voigt(0, self.sig, self.gam)
+        self.norm = Physics.voigt(0, p[self.pSig], p[self.pGam])
     
     
-    def leftEdge(self):
+    def leftEdge(self, p):
         '''Return the left edge of the spectrum in Mhz'''
-        return -5 * (self.sig + self.gam)
+        return -5 * (p[self.pSig] + p[self.pGam])
     
     
-    def rightEdge(self):
+    def rightEdge(self, p):
         '''Return the right edge of the spectrum in MHz'''
-        return 5 * (self.sig + self.gam)
+        return 5 * (p[self.pSig] + p[self.pGam])
     
     
     def getPars(self, pos = 0):
