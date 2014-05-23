@@ -12,7 +12,6 @@ import os
 import numpy as np
 
 from Measurement.SpecData import SpecData
-import Physics
 
 class TLDImporter(SpecData):
     '''
@@ -22,23 +21,17 @@ class TLDImporter(SpecData):
     The header has 10 lines
     '''
 
-    def __init__(self, path, db):
+    def __init__(self, path):
         '''Read the file'''
         
         print("TLDImporter is reading file", path)
         super(TLDImporter, self).__init__()
-        con = sqlite3.connect(db)
-        cur = con.cursor()
-        
-        self.path = path
-        cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset FROM Files WHERE file = ?''', (os.path.basename(path),))
-        data = cur.fetchall()
-        if len(data) == 1:
-            (self.accVolt, self.laserFreq, self.colDirTrue, self.line, self.type, self.voltDivRatio, self.lineMult, self.lineOffset, self.offset) = data[0]
-        else:
-            raise Exception('TLDImporter: No DB-entry found!')
 
-        l = self.dimension(path)
+        
+        self.file = os.path.basename(path)
+
+
+        l = self._dimension(path)
         self.nrScalers = l[1] - 1
         self.nrTracks = 1
         
@@ -60,14 +53,36 @@ class TLDImporter(SpecData):
             self.columnnames = f.readline().split('\t')
             read = csv.reader(f, delimiter = '\t')
             for i, row in enumerate(read):
-                scanvolt = self.lineMult * (float(row[0].replace(',', '.'))/50) + self.lineOffset + self.offset
-                self.x[0][i] = self.accVolt - scanvolt
+                self.x[0][i] = float(row[0].replace(',', '.'))/50
                 for j, counts in enumerate(row[1:]):
                     self.cts[0][j][i] = float(counts.replace(',', '.'))
                     self.err[0][j][i] = max(np.sqrt(float(counts.replace(',', '.'))), 1)
  
+ 
+    def preProc(self, db):
+        con = sqlite3.connect(db)
+        cur = con.cursor()
+        cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset FROM Files WHERE file = ?''', (self.file,))
+        data = cur.fetchall()
+        if len(data) == 1:
+            (self.accVolt, self.laserFreq, self.colDirTrue, self.line, self.type, self.voltDivRatio, self.lineMult, self.lineOffset, self.offset) = data[0]
+        else:
+            raise Exception('TLDImporter: No DB-entry found!')
+                
+        for i in range(len(self.x[0])):
+            scanvolt = self.lineMult * (self.x[0][i]) + self.lineOffset + self.offset
+            self.x[0][i] = self.accVolt - scanvolt
         
-    def dimension(self, path):
+        con.close()
+ 
+    
+    def export(self, db):
+        con = sqlite3.connect(db)
+        con.execute('''UPDATE Files SET date = ? WHERE file = ?''', (self.date, self.file))        
+        con.close()
+    
+    
+    def _dimension(self, path):
         '''returns the nr of lines and columns of the file'''
         with open(path) as f:
             for i in range(0,4):
@@ -79,10 +94,7 @@ class TLDImporter(SpecData):
         return (lines, cols)
     
     
-    def export(self, db):
-        con = sqlite3.connect(dbname)
-        con.execute('''UPDATE Files SET date = ? WHERE filePath = ?''', (self.date, file))        
-        con.close()
+
     
     def getFloat(self, f):
         return float(f.readline().split('\t')[1])

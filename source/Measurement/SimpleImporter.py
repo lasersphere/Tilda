@@ -44,7 +44,9 @@ class SimpleImporter(SpecData):
                 for j, counts in enumerate(row[1:]):
                     self.cts[0][j][i] = float(counts)
                     self.err[0][j][i] = max(np.sqrt(float(counts)), 1)
-                    
+    
+    def preProc(self, db):
+        pass   
       
     def dimension(self, path):
         '''returns the nr of lines and columns of the file'''

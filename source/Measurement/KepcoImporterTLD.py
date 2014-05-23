@@ -6,6 +6,7 @@ Created on 30.04.2014
 
 import csv
 import sqlite3
+import os
 
 import numpy as np
 
@@ -19,7 +20,7 @@ class KepcoImporterTLD(SpecData):
     The first column of the file is interpreted as DAQ-voltage, the second as scanning voltage
     '''
 
-    def __init__(self, path, db):
+    def __init__(self, path):
         '''Read the file'''
         
         print("KepcoImporterTLD is reading file", path)
@@ -27,17 +28,8 @@ class KepcoImporterTLD(SpecData):
         
         self.path = path
         self.type = 'Kepco'
-        con = sqlite3.connect(db)
-        cur = con.cursor()
         
-        self.path = path
-        cur.execute('''SELECT voltDivRatio, offset FROM Files WHERE filePath = ?''', (path,))
-        data = cur.fetchall()
-        if len(data) == 1:
-            (self.voltDivRatio, self.offset) = data[0]
-        else:
-            raise Exception('KepcoImporterTLD: No DB-entry found!')
-        
+        self.file = os.path.basename(path)
          
         l = self.dimension(path)
         self.nrScalers = l[1] - 1
@@ -53,9 +45,26 @@ class KepcoImporterTLD(SpecData):
             for i, row in enumerate(read):
                 self.x[0][i] = float(row[0])
                 for j, scanVolt in enumerate(row[1:]):
-                    self.cts[0][j][i] = (float(scanVolt) - self.offset) * self.voltDivRatio
-                    self.err[0][j][i] = 10**-4
+                    self.cts[0][j][i] = float(scanVolt)
+                    self.err[0][j][i] = self.cts[0][j][i] * 10**-4
  
+    def preProc(self, db):
+        con = sqlite3.connect(db)
+        cur = con.cursor()
+        cur.execute('''SELECT voltDivRatio, offset FROM Files WHERE file = ?''', (self.file,))
+        data = cur.fetchall()
+        if len(data) == 1:
+            (self.voltDivRatio, self.offset) = data[0]
+        else:
+            raise Exception('KepcoImporterTLD: No DB-entry found!')
+                
+        for i in range(len(self.cts[0])):
+            for j in range(len(self.cts[0][0])):
+                self.cts[0][i][j] = (self.cts[0][i][j] - self.offset) * self.voltDivRatio
+                self.err[0][i][j] = self.cts[0][i][j] * 10**-4
+        
+        con.close() 
+        
         
     def dimension(self, path):
         '''returns the nr of lines and columns of the file'''
@@ -67,7 +76,7 @@ class KepcoImporterTLD(SpecData):
         return (lines, cols)
     
     def export(self, db):
-        con = sqlite3.connect(dbname)
-        con.execute('''UPDATE Files SET date = ? WHERE filePath = ?''', (self.date, file))        
+        con = sqlite3.connect(db)
+        con.execute('''UPDATE Files SET date = ? WHERE filePath = ?''', (self.date, self.file))        
         con.close()
     
