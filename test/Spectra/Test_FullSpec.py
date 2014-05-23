@@ -13,17 +13,18 @@ from DBIsotope import DBIsotope
 class Test_FullSpec(unittest.TestCase):
 
     def setUp(self):
-        self.iso = DBIsotope('1_Mi-D0', '../iso.sqlite')
+        self.iso = DBIsotope('40_Ca', 'Ca-D1', "../Project/AnaDB.sqlite")
         self.line = FullSpec(self.iso)
 
     def test_getPars(self):
-        np.testing.assert_almost_equal(self.line.getPars(), [0, 50, 10, 3, 101, 20, 102, 30, 999], 3)
+        np.testing.assert_almost_equal(self.line.getPars(), [0., 30., 20., 1., 2., 3., 4., 5.,
+        1000], 3)
         
     def test_getParNames(self):
-        self.assertEqual(self.line.getParNames(), ['offset', 'sigma', 'gamma', 'Gcenter', 'GAl', 'GBl', 'GAu', 'GBu', 'GInt0'])
+        self.assertEqual(self.line.getParNames(), ['offset', 'sigma', 'gamma', 'center', 'Al', 'Bl', 'Au', 'Bu', 'Int0'])
 
     def test_getFixed(self):
-        self.assertEqual(self.line.getFixed(), [False, True, True, False, True, True, True, True, False])
+        self.assertEqual(self.line.getFixed(), [False, False, False, False, True, True, True, True, False])
         
     def test_nPar(self):
         self.assertEqual(self.line.nPar, len(self.line.getPars()))

@@ -15,15 +15,15 @@ class Test_Hyperfine(unittest.TestCase):
 
     def setUp(self):
 
-        self.iso = DBIsotope("1_Mi-D0", "../iso.sqlite")
-        self.iso2 = DBIsotope("3_Mi-D0", "../iso.sqlite")
+        self.iso = DBIsotope('40_Ca', 'Ca-D1', "../Project/AnaDB.sqlite")
+        self.iso2 = DBIsotope('42_Ca', 'Ca-D1', "../Project/AnaDB.sqlite")
 
         self.shape = Voigt(self.iso)
         
 
     def test_getPars(self):
         line = Hyperfine(self.iso, self.shape)
-        np.testing.assert_almost_equal(line.getPars(), [3, 101, 20, 102, 30, 999], 3)
+        np.testing.assert_almost_equal(line.getPars(), [1., 2., 3., 4., 5., 1000.], 3)
         
     def test_nPar(self):
         line = Hyperfine(self.iso, self.shape)
@@ -31,8 +31,8 @@ class Test_Hyperfine(unittest.TestCase):
         
     def test_leftEdge(self):
         line = Hyperfine(self.iso, self.shape)
-        self.assertEqual(line.leftEdge(), -300)
-        self.assertEqual(line.rightEdge(), 300)
+        self.assertEqual(line.leftEdge(), -250)
+        self.assertEqual(line.rightEdge(), 250)
         
     def test_NonZeroI(self):
         pass

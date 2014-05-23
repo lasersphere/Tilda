@@ -18,13 +18,13 @@ class Test_Voigt(unittest.TestCase):
         self.line = Voigt(self.iso)
 
     def test_evaluateSide(self):
-        self.assertAlmostEqual(self.line.evaluate([300], [50, 10]), 0.0056614479422570484, 6)
+        self.assertAlmostEqual(self.line.evaluate(300, [50, 10]), 0.0056614479422570484, 6)
 
     def test_evaluateFlank(self):
-        self.assertAlmostEqual(self.line.evaluate([70], [50, 10]), 0.4423914063149442, 6)
+        self.assertAlmostEqual(self.line.evaluate(70, [50, 10]), 0.4423914063149442, 6)
         
     def test_evaluateCentre(self):
-        self.assertAlmostEqual(self.line.evaluate([0], [50, 10]), 1, 6)
+        self.assertAlmostEqual(self.line.evaluate(0, [50, 10]), 1, 6)
         
     def test_getPars(self):
         self.assertEqual(self.line.getPars(), [50, 10])

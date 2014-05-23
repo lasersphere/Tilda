@@ -22,9 +22,7 @@ class Voigt(object):
         
         self.pSig = 0
         self.pGam = 1
-        self.sig = iso.shape['gau']
-        self.gam = iso.shape['lor']
-        self.norm = Physics.voigt(0, self.sig, self.gam)
+        self.recalc([iso.shape['gau'], iso.shape['lor']])
     
     
     def evaluate(self, x, p):
