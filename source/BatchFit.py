@@ -74,7 +74,7 @@ def singleFit(file, st, db, run, var, cur):
     fit.fit()
     
     #Create and save graph
-    fig = os.path.splitext(path)[0] + run + 'S' + str(st[0]) + 'T' + str(st[1]) + '.pdf'
+    fig = os.path.splitext(path)[0] + run + 'S' + str(st[0]) + 'T' + str(st[1]) + '.jpg'
     plot.plotFit(fit)
     plot.save(fig)
     plot.clear()
