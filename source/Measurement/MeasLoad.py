@@ -11,18 +11,18 @@ from Measurement.TLDImporter import TLDImporter
 #from Measurement.SimpleImporter import SimpleImporter
 
 
-def load(file, db, preProc = True):
+def load(file, db, raw = False):
     e = os.path.splitext(file)[1]
     
     if e == '.txt':
         f = KepcoImporterTLD(file)
-        if preProc:
+        if not raw:
             f.preProc(db)
         return f
     
     elif e == '.tld':
         f = TLDImporter(file)
-        if preProc:
+        if not raw:
             f.preProc(db)
         return f
     

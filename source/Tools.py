@@ -32,7 +32,7 @@ def insertFolder(path, rec, db):
             insertFolder(os.path.join(p, _d), rec, db)
     
     for _f in f:
-        insertFile(_f, db)
+        insertFile(os.path.join(p, _f), db)
         
 def insertFile(f, db):
     con = sqlite3.connect(db)
@@ -48,8 +48,9 @@ def insertFile(f, db):
         return
     
     try:
-        con.execute('''INSERT INTO Files (file, filePath) VALUES (?, ?)'''(os.path.basename(f), f))
-        spec = Meas.load(f, db)
+        cur.execute('''INSERT INTO Files (file, filePath) VALUES (?, ?)''', (os.path.basename(f), f))
+        con.commit()
+        spec = Meas.load(f, db, True)
         spec.export(db)  
     except:
         print("Error working on file", f, ":", sys.exc_info()[1])
@@ -60,6 +61,7 @@ def insertFile(f, db):
 
 def createDB(db):
     '''Initialize a new database. Does not alter existing tables.'''
+    print('Initializing db', db)
     con = sqlite3.connect(db)
     
     #Isotopes
@@ -96,7 +98,7 @@ def createDB(db):
     
     #Files
     con.execute('''CREATE TABLE IF NOT EXISTS Files (
-    file TEXT PRIMARY KEY ONT NULL,
+    file TEXT PRIMARY KEY NOT NULL,
     filePath TEXT UNIQUE NOT NULL,
     date DATE,
     type TEXT,

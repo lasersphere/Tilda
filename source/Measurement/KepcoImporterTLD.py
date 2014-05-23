@@ -47,8 +47,10 @@ class KepcoImporterTLD(SpecData):
                 for j, scanVolt in enumerate(row[1:]):
                     self.cts[0][j][i] = float(scanVolt)
                     self.err[0][j][i] = self.cts[0][j][i] * 10**-4
- 
+
+
     def preProc(self, db):
+        print('Kepco importer is using db', db)
         con = sqlite3.connect(db)
         cur = con.cursor()
         cur.execute('''SELECT voltDivRatio, offset FROM Files WHERE file = ?''', (self.file,))
@@ -76,6 +78,7 @@ class KepcoImporterTLD(SpecData):
         return (lines, cols)
     
     def export(self, db):
+        return
         con = sqlite3.connect(db)
         con.execute('''UPDATE Files SET date = ? WHERE filePath = ?''', (self.date, self.file))        
         con.close()

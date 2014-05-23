@@ -60,6 +60,7 @@ class TLDImporter(SpecData):
  
  
     def preProc(self, db):
+        print('Kepco importer is using db', db)
         con = sqlite3.connect(db)
         cur = con.cursor()
         cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset FROM Files WHERE file = ?''', (self.file,))
@@ -78,7 +79,8 @@ class TLDImporter(SpecData):
     
     def export(self, db):
         con = sqlite3.connect(db)
-        con.execute('''UPDATE Files SET date = ? WHERE file = ?''', (self.date, self.file))        
+        with con:
+            con.execute('''UPDATE Files SET date = ? WHERE file = ?''', (self.date, self.file))     
         con.close()
     
     
@@ -92,10 +94,8 @@ class TLDImporter(SpecData):
                 f.readline()
             cols = len(f.readline().split('\t'))        
         return (lines, cols)
-    
-    
 
-    
+
     def getFloat(self, f):
         return float(f.readline().split('\t')[1])
     
