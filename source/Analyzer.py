@@ -10,7 +10,7 @@ import ast
 import numpy as np
 
     
-def extract(iso, par, run, st, db, fileList = ''):
+def extract(iso, par, run, st, db, fileList = []):
     ''''''
     con = sqlite3.connect(db)
     cur = con.cursor()

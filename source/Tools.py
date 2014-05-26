@@ -166,7 +166,7 @@ def createDB(db):
     isoVar TEXT DEFAULT ""
     )''')
     
-    con.execute('''INSERT INTO Runs VALUES ("Run0", "", "")''')
+    con.execute('''INSERT OR IGNORE INTO Runs VALUES ("Run0", "", "")''')
     
     #Fit results
     con.execute('''CREATE TABLE IF NOT EXISTS FitRes (
@@ -185,9 +185,9 @@ def createDB(db):
     con.execute('''CREATE TABLE IF NOT EXISTS Combined (
     iso TEXT NOT NULL,
     parname TEXT,
-    config TEXT DEFAULT "",
-    run TEXT NOT NULL,
+    run TEXT,
     sctr TEXT,
+    config TEXT DEFAULT "[]",
     final BOOL DEFAULT 0,
     rChi FLOAT,
     val FLOAT,
