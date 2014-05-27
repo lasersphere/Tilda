@@ -2,6 +2,11 @@
 Created on 27.05.2014
 
 @author: hammen
+
+InteractiveFit is an interactive fitting wrapper that can be used to easily determine starting parameters.
+Import the module in IPython and load() a file. The spectrum as well as the datapoints will be plotted.
+printPars() is used to plot starting values, setPar() to change them, fit() to try and fit, reset() to
+revert to the values before the last fit try.
 '''
 import sqlite3
 import ast
@@ -21,6 +26,7 @@ def load(file, db, run):
     global fitter
     global oldpar
     plot.ion()
+    plot.clear()
     con = sqlite3.connect(db)
     cur = con.cursor()
     
@@ -49,7 +55,7 @@ def load(file, db, run):
     plot.show()
     
     
-def printParams():
+def printPars():
     print('Current parameters:')
     for n, p, f in zip(fitter.npar, fitter.par, fitter.fix):
         print(n + '\t' + str(p) + '\t' + str(f))

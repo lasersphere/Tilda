@@ -58,6 +58,7 @@ def batchFit(fileList, db, run = 'Run0'):
     
         
 def singleFit(file, st, db, run, var, cur):
+    '''Fit st of file, using run. Save result to db and picture of spectrum to folder'''
     print('-----------------------------------')
     print("Fitting", file)
     cur.execute('''SELECT filePath FROM Files WHERE file = ?''', (file,))
