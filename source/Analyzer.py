@@ -43,11 +43,7 @@ def weightedAverage(vals, errs):
     return (average, errorprop, rChi)
 
 
-def combineRes(iso, par, run, st, db):
-    if par == 'shift':
-        combineShift(iso, run, st, db)
-        return
-    
+def combineRes(iso, par, run, st, db):    
     print('Open DB', db)
     
     con = sqlite3.connect(db)
@@ -80,6 +76,7 @@ def combineRes(iso, par, run, st, db):
     
 
 def combineShift(iso, run, st, db):
+    '''[(['dataREF1.*','dataREF2',...],['dataINTERESTING1.*','dataINT2.*',...],['dataREF4.*',...]), ([...],[...],[...]), ...]'''
     print('Open DB', db)
     
     con = sqlite3.connect(db)
@@ -90,12 +87,34 @@ def combineShift(iso, run, st, db):
     
     print('Combining', iso, 'shift')
     
+    cur.execute('''SELECT Lines.reference, lines.refRun FROM Runs JOIN Lines ON Runs.lineVar = Lines.line WHERE Runs.run = ?''', (run,))
+    ref, refRun = cur.fetchall()[0]
     #each block is used to measure the isotope shift once
     for block in config:
-        pass
-    
-
-    
+        preVals, preErrs = extract(ref,'center',refRun,db,block[0])
+        preVal, preErr, preRChi = weightedAverage(preVals, preErrs)
+        preErr = applyChi(preErr, preRChi)
+        
+        intVals, intErrs = extract(iso,'center',run,db,block[1])
+        
+        postVals, postErrs = extract(ref,'center',refRun,db,block[2])
+        postVal, postErr, postRChi = weightedAverage(postVals, postErrs)
+        postErr = applyChi(postErr, postRChi)
+        refMean = (preVal + postVal)/2
+        if np.absolute(preVal-postVal) < np.max(preErr,postErr):
+            errMean = np.sqrt(preErr**2+ postErr**2)
+        else:
+            errMean = np.absolute(preVal-postVal)
+        
+        shifts = intVals - refMean
+        shiftErrors = np.sqrt(np.square(intErrs)+np.square(errMean))
+        shiftMean = 0
+        for i in shifts:
+            shiftMean += i
+        shiftMean = shiftMean/len(shifts)
+        return (shifts, shiftErrors, shiftMean)
+        
+        
     
 def applyChi(err, *rChi):
     '''Increases error by sqrt(rChi^2) if necessary. Works for several rChi as well'''
