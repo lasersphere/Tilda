@@ -132,6 +132,7 @@ def createDB(db):
     con.execute('''CREATE TABLE IF NOT EXISTS Lines (
     lineVar TEXT PRIMARY KEY  NOT NULL ,
     reference TEXT,
+    refRun TEXT,
     frequency FLOAT,
     Jl FLOAT,
     Ju FLOAT,
@@ -139,6 +140,7 @@ def createDB(db):
     fixShape TEXT,
     charge INT,
     FOREIGN KEY (reference) REFERENCES Isotopes (iso)
+    FOREIGN KEY (refRun) REFERENCES Runs (run)
     )''')
     
     #Files
