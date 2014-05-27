@@ -13,25 +13,24 @@ class DBIsotope(object):
     A sqlite database driven version fo the isotope object
     '''
 
-    def __init__(self, iso, line, file, isovar = '', linevar = ''):
+    def __init__(self, db, iso, isovar = '', lineVar = ''):
         '''Load relevant values of isotope name from database file'''
-        print("Loading", line + linevar, "line of", iso + isovar)
+        print("Loading", lineVar, "line of", iso + isovar)
         #sqlite3.register_converter("BOOL", lambda v: bool(int(v)))
         
-        con = sqlite3.connect(file)
+        con = sqlite3.connect(db)
         cur = con.cursor()
         
         cur.execute('''SELECT reference, frequency, Jl, Ju, shape, fixShape, charge
-            FROM Lines WHERE line = ?''', (line,))
+            FROM Lines WHERE lineVar = ?''', (lineVar,))
         try:
             data = cur.fetchall()[0]
         except:
-            raise Exception("No such line: " + line)
+            raise Exception("No such line: " + lineVar)
         
         self.name = iso
         self.isovar = isovar
-        self.line = line
-        self.linevar = linevar
+        self.lineVar = lineVar
         self.ref = data[0]
         self.freq = data[1]
         self.Jl = data[2]
@@ -65,7 +64,7 @@ class DBIsotope(object):
         if data[13] == None:
             self.m = None
         else:
-            self.m = DBIsotope(data[13], line, file)
+            self.m = DBIsotope(db, data[13], lineVar)
 
         cur.close()
         con.close()

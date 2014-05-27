@@ -19,7 +19,7 @@ import MPLPlotter as plot
 import matplotlib.pyplot as plt
 
 def isoPlot(iso, line, db, isovar = '', linevar = ''):
-    iso = DBIsotope(iso, line, db)
+    iso = DBIsotope(db, iso, isovar, linevar)
     
     spec =  FullSpec(iso)
     
@@ -130,8 +130,9 @@ def createDB(db):
     
     #Lines
     con.execute('''CREATE TABLE IF NOT EXISTS Lines (
-    line TEXT PRIMARY KEY  NOT NULL ,
+    lineVar TEXT PRIMARY KEY  NOT NULL ,
     reference TEXT,
+    refRun TEXT,
     frequency FLOAT,
     Jl FLOAT,
     Ju FLOAT,
@@ -139,6 +140,7 @@ def createDB(db):
     fixShape TEXT,
     charge INT,
     FOREIGN KEY (reference) REFERENCES Isotopes (iso)
+    FOREIGN KEY (refRun) REFERENCES Runs (run)
     )''')
     
     #Files
@@ -163,20 +165,21 @@ def createDB(db):
     con.execute('''CREATE TABLE IF NOT EXISTS Runs (
     run TEXT PRIMARY KEY NOT NULL,
     lineVar TEXT DEFAULT "",
-    isoVar TEXT DEFAULT ""
+    isoVar TEXT DEFAULT "",
+    scaler TEXT,
+    track TEXT
     )''')
     
-    con.execute('''INSERT INTO Runs VALUES ("Run0", "", "")''')
+    con.execute('''INSERT OR IGNORE INTO Runs VALUES ("Run0", "", "", "[0]", "-1")''')
     
     #Fit results
     con.execute('''CREATE TABLE IF NOT EXISTS FitRes (
     file TEXT NOT NULL,
     iso TEXT NOT NULL,
     run TEXT NOT NULL,
-    sctr TEXT NOT NULL,
     rChi FLOAT,
     pars TEXT,
-    PRIMARY KEY (file, iso, run, sctr),
+    PRIMARY KEY (file, iso, run),
     FOREIGN KEY (file) REFERENCES Files (file),
     FOREIGN KEY (run) REFERENCES Runs (run)
     )''')
@@ -185,9 +188,8 @@ def createDB(db):
     con.execute('''CREATE TABLE IF NOT EXISTS Combined (
     iso TEXT NOT NULL,
     parname TEXT,
-    config TEXT DEFAULT "",
-    run TEXT NOT NULL,
-    sctr TEXT,
+    run TEXT,
+    config TEXT DEFAULT "[]",
     final BOOL DEFAULT 0,
     rChi FLOAT,
     val FLOAT,
@@ -195,7 +197,7 @@ def createDB(db):
     statErrForm TEXT DEFAULT err,
     systErr FLOAT,
     systErrForm TEXT DEFAULT 0,
-    PRIMARY KEY (iso, parname, run, sctr)
+    PRIMARY KEY (iso, parname, run)
     FOREIGN KEY (run) REFERENCES Runs (run)
     )''')
 

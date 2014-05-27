@@ -30,7 +30,7 @@ if file.type == 'Kepco':
     spec = Straight()
 else:
     #iso = DBIsotope(file.type, file.line,  '../test/iso.sqlite')
-    iso = DBIsotope(file.type, file.line, os.path.join(os.path.dirname(path), '../calciumD1.sqlite'))
+    iso = DBIsotope(os.path.join(os.path.dirname(path), '../calciumD1.sqlite'), file.type)
     spec = FullSpec(iso)
  
 fit = SPFitter(spec, file, (0, -1))
