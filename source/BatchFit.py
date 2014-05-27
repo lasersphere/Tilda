@@ -8,6 +8,7 @@ import sqlite3
 import os
 import sys
 import traceback
+import ast
 
 from Measurement import MeasLoad
 
@@ -20,8 +21,8 @@ from SPFitter import SPFitter
 import MPLPlotter as plot
 
 
-def batchFit(fileList, st, db, run = 'Run0'):
-    '''Fit scaler/track st of fileList and write results to db'''
+def batchFit(fileList, db, run = 'Run0'):
+    '''Fit fileList with run and write results to db'''
     print("BatchFit started")
     print("Opening DB:", db)
     
@@ -32,8 +33,10 @@ def batchFit(fileList, st, db, run = 'Run0'):
     con = sqlite3.connect(dbname)
     cur = con.cursor()
     
-    cur.execute('''SELECT isoVar, lineVar FROM Runs WHERE run = ?''', (run,))
+    cur.execute('''SELECT isoVar, lineVar, scaler, track FROM Runs WHERE run = ?''', (run,))
     var = cur.fetchall()[0]
+    st = (ast.literal_eval(var[2]), ast.literal_eval(var[3]))
+    
     
     print("Go for", run, "with IsoVar = \"" + var[0] + "\" and LineVar = \"" + var[1] + "\"")
     
@@ -68,14 +71,14 @@ def singleFit(file, st, db, run, var, cur):
     if meas.type == 'Kepco':
         spec = Straight()
     else:
-        iso = DBIsotope(meas.type, meas.line, db, var[0], var[1])
+        iso = DBIsotope(db, meas.type, var[0], var[1])
         spec = FullSpec(iso)
 
     fit = SPFitter(spec, meas, st)
     fit.fit()
     
     #Create and save graph
-    fig = os.path.splitext(path)[0] + run + 'S' + str(st[0]) + 'T' + str(st[1]) + '.png'
+    fig = os.path.splitext(path)[0] + run + '.png'
     plot.plotFit(fit)
     plot.save(fig)
     plot.clear()
@@ -84,8 +87,8 @@ def singleFit(file, st, db, run, var, cur):
     
     for r in result:
         #Only one unique result, according to PRIMARY KEY, thanks to INSERT OR REPLACE
-        cur.execute('''INSERT OR REPLACE INTO FitRes (file, iso, run, sctr, rChi, pars) 
-        VALUES (?, ?, ?, ?, ?, ?)''', (file, r[0], run, repr(st), fit.rchi, repr(r[1])))
+        cur.execute('''INSERT OR REPLACE INTO FitRes (file, iso, run, rChi, pars) 
+        VALUES (?, ?, ?, ?, ?)''', (file, r[0], run, fit.rchi, repr(r[1])))
         
     
     print("Finished fitting", file)

@@ -12,10 +12,10 @@ files = ["Ca_000.tld","Ca_001.tld","Ca_002.tld","Ca_003.tld","Ca_004.tld","Ca_00
 
 #Tools.createDB(path)
 
-#BatchFit.batchFit(files, ([0], -1), path)
+#BatchFit.batchFit(files, path)
 
-Analyzer.combineRes('40_Ca', 'sigma', 'Run0', ([0], -1), path)
+#Analyzer.combineRes('40_Ca', 'sigma', 'Run0', path)
 
-#Tools.isoPlot('40_Ca', 'Ca-D1', path)
+Tools.isoPlot('40_Ca', 'Ca-D1', path)
 
 #Tools.centerPlot(['40_Ca', '42_Ca', '44_Ca', '48_Ca'], 'Ca-D1', path)

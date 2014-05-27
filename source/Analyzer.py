@@ -10,12 +10,13 @@ import ast
 import numpy as np
 
     
-def extract(iso, par, run, st, db, fileList = []):
+def extract(iso, par, run, db, fileList = []):
     ''''''
+    print('Extracting', iso, par, )
     con = sqlite3.connect(db)
     cur = con.cursor()
     
-    cur.execute('''SELECT file, pars FROM FitRes WHERE iso = ? AND run = ? AND sctr = ?''', (iso, run, repr(st)))
+    cur.execute('''SELECT file, pars FROM FitRes WHERE iso = ? AND run = ?''', (iso, run))
     fits = cur.fetchall()
     
     if fileList:
@@ -26,8 +27,15 @@ def extract(iso, par, run, st, db, fileList = []):
     vals = [f[par][0] for f in fitres]
     errs = [f[par][1] for f in fitres]
     
+    for f, v, e in zip(files, vals, errs):
+        print(f, '\t', v, '\t', e)
+    
+    for f in fileList:
+        if f not in files:
+            print('Warning:', f, 'not found!')
+    
     con.close()
-    return (files, vals, errs)
+    return (vals, errs)
     
     
 def weightedAverage(vals, errs):
@@ -43,7 +51,7 @@ def weightedAverage(vals, errs):
     return (average, errorprop, rChi)
 
 
-def combineRes(iso, par, run, st, db):
+def combineRes(iso, par, run, db, config = []):
     if par == 'shift':
         combineShift(iso, run, st, db)
         return
@@ -53,15 +61,15 @@ def combineRes(iso, par, run, st, db):
     con = sqlite3.connect(db)
     cur = con.cursor()
     
-    cur.execute('''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ? AND sctr = ?''', (iso, par, run, repr(st)))
+    cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', (iso, par, run))
+    con.commit()
+    
+    cur.execute('''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ?''', (iso, par, run))
     (config, statErrForm, systErrForm) = cur.fetchall()[0]
     config = ast.literal_eval(config)
     
     print('Combining', iso, par)
-    files, vals, errs = extract(iso, par, run, st, db, config)
-    
-    for f, v, e in zip(files, vals, errs):
-        print(f, '\t', v, '\t', e)
+    vals, errs = extract(iso, par, run, db, config)
     
     val, err, rChi = weightedAverage(vals, errs)
     statErr = eval(statErrForm)
@@ -73,7 +81,7 @@ def combineRes(iso, par, run, st, db):
     print(str(val) + '(' + str(statErr) + ')[' + str(systErr) + ']')
     
     cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
-        WHERE iso = ? AND parname = ? AND run = ? AND sctr = ?''', (val, statErr, systErr, rChi, iso, par, run, repr(st)))
+        WHERE iso = ? AND parname = ? AND run = ?''', (val, statErr, systErr, rChi, iso, par, run))
 
     con.commit()
     con.close()
