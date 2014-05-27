@@ -14,6 +14,7 @@ from SPFitter import SPFitter
 from Spectra.FullSpec import FullSpec
 from datetime import datetime
 import BatchFit
+import Analyzer
 
 
 # path = 'V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/'
@@ -72,6 +73,9 @@ import BatchFit
 # print(theo)
 # print('Isotopieverschiebung\nAbweichungen zur Theorie: C40-42:', meanC40-meanC42 + theo[1][0], 'MHz\n')
 # print('Abweichungen zur Theorie: C40-44:', meanC40-meanC44 + theo[2][0], 'MHz\n')
-# print('Abweichungen zur Theorie: C40-48:', meanC40-meanC48 + theo[3][0], 'MHz\n')
-block = [(['Ca_006.tld','Ca_007.tld'],['ca02','caa03','asdwe'],['ca_009']), (['a'],[],[])]
-print(block[1][0])
+# print('Abweichungen zur Theorie: C40-48:', meanC40-meanC48 + theo[3][0], 'MHz\n'
+# a = [5]
+# a += [7]
+# a = a+ 3
+# print(a)
+print(Analyzer.combineShift('44_Ca', 'Run0', 'V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/SuperAnaDB.sqlite'))

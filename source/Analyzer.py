@@ -1,7 +1,7 @@
 '''
 Created on 21.05.2014
 
-@author: hammen
+@author: hammen, gorges
 '''
 
 import sqlite3
@@ -83,21 +83,24 @@ def combineRes(iso, par, run, db, config = []):
     con.close()
     
 
-def combineShift(iso, run, st, db):
-    '''[(['dataREF1.*','dataREF2',...],['dataINTERESTING1.*','dataINT2.*',...],['dataREF4.*',...]), ([...],[...],[...]), ...]'''
+def combineShift(iso, run, db):
+    '''takes an Isotope a run and a database and gives the isotopeshift to the reference!'''
+    '''[(['dataREF1.*','dataREF2.*',...],['dataINTERESTING1.*','dataINT2.*',...],['dataREF4.*',...]), ([...],[...],[...]), ...]'''
     print('Open DB', db)
     
     con = sqlite3.connect(db)
     cur = con.cursor()
     
-    cur.execute('''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND par = ? AND run = ? AND sctr = ?''', (iso, 'shift', run, repr(st)))
+    cur.execute('''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ?''', (iso, 'shift', run))
     (config, statErrForm, systErrForm) = cur.fetchall()[0]
-    
+    config = ast.literal_eval(config)
     print('Combining', iso, 'shift')
     
-    cur.execute('''SELECT Lines.reference, lines.refRun FROM Runs JOIN Lines ON Runs.lineVar = Lines.line WHERE Runs.run = ?''', (run,))
+    cur.execute('''SELECT Lines.reference, lines.refRun FROM Runs JOIN Lines ON Runs.lineVar = Lines.lineVar WHERE Runs.run = ?''', (run,))
     ref, refRun = cur.fetchall()[0]
     #each block is used to measure the isotope shift once
+    shifts = []
+    shiftErrors = []
     for block in config:
         preVals, preErrs = extract(ref,'center',refRun,db,block[0])
         preVal, preErr, preRChi = weightedAverage(preVals, preErrs)
@@ -113,20 +116,20 @@ def combineShift(iso, run, st, db):
             errMean = np.sqrt(preErr**2+ postErr**2)
         else:
             errMean = np.absolute(preVal-postVal)
-        
-        shifts = intVals - refMean
-        shiftErrors = np.sqrt(np.square(intErrs)+np.square(errMean))
-        shiftMean = 0
-        for i in shifts:
-            shiftMean += i
-        shiftMean = shiftMean/len(shifts)
-        return (shifts, shiftErrors, shiftMean)
+        shifts.extend([x - refMean for x in intVals])
+        shiftErrors.extend(np.sqrt(np.square(intErrs)+np.square(errMean)))
+    add = 0
+    for i in shifts:
+        add += i
+    shiftMean = add/len(shifts)
+    #print('shifts:', shifts, 'shiftErrors: ',shiftErrors, 'shiftMean: ',shiftMean)
+    return (shifts, shiftErrors, shiftMean)
         
         
     
-def applyChi(err, *rChi):
+def applyChi(err, rChi):
     '''Increases error by sqrt(rChi^2) if necessary. Works for several rChi as well'''
-    return err * np.max(1, np.max(np.sqrt(rChi)))
+    return err * np.max([1, np.sqrt(rChi)])
 
 def gaussProp(*args):
     '''Calculate sqrt of squared sum of args, as in gaussian error propagation'''
