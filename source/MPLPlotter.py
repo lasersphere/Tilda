@@ -39,6 +39,9 @@ def plotFit(fit):
 def show():
     plt.show()
     
+def ion():
+    plt.ion()
+    
 def save(file):
     plt.savefig(file)
     
