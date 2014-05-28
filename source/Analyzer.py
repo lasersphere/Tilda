@@ -2,6 +2,8 @@
 Created on 21.05.2014
 
 @author: hammen, gorges
+
+The Analyzer can extract() parameters from fit results, combineRes() to get weighted averages and combineShift() to calculate isotope shifts.
 '''
 
 import sqlite3
@@ -11,7 +13,7 @@ import numpy as np
 
     
 def extract(iso, par, run, db, fileList = []):
-    ''''''
+    '''Return a list of values of par of iso, filtered by files in fileList'''
     print('Extracting', iso, par, )
     con = sqlite3.connect(db)
     cur = con.cursor()
@@ -51,7 +53,8 @@ def weightedAverage(vals, errs):
     return (average, errorprop, rChi)
 
 
-def combineRes(iso, par, run, db, config = []):
+def combineRes(iso, par, run, db,):
+    '''Calculate weighted average of par using the configuration specified in the db'''
     print('Open DB', db)
     
     con = sqlite3.connect(db)

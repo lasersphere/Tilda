@@ -20,6 +20,7 @@ class SPFitter(object):
         self.data = meas.getArithSpec(*st)
         
         self.par = spec.getPars()
+        self.oldpar = list(self.par)
         self.fix = spec.getFixed()
         self.npar = spec.getParNames()
         self.pard = None #Will contain the parameter errors after fitting
@@ -38,6 +39,7 @@ class SPFitter(object):
         Curve_fit expects standard deviations as weights
         '''
         print("Starting fit")
+        self.oldpar = list(self.par)
         
         truncp = [p for p, f in zip(self.par, self.fix) if f == False]
         popt, self.pcov = curve_fit(self.evaluateE, self.data[0], self.data[1], truncp, self.data[2], False)
@@ -125,5 +127,16 @@ class SPFitter(object):
             
         return ret
             
+    def reset(self):
+        '''Reset parameters to the values before optimization'''
+        self.par = list(self.oldpar)
         
+    
+    def setPar(self, name, par):
+        '''Set parameter with name to value par'''
+        i = self.npar.index(name)
+        if i:
+            self.par[i] = par
+        else:    
+            print('No parameter with name', name)
         
