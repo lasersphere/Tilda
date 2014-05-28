@@ -23,7 +23,7 @@ import Physics
 import MPLPlotter as plot
 import matplotlib.pyplot as plt
 
-def isoPlot(iso, line, db, isovar = '', linevar = ''):
+def isoPlot(db, iso, isovar = '', linevar = ''):
     '''plot isotope iso'''
     iso = DBIsotope(db, iso, isovar, linevar)
     
@@ -35,9 +35,9 @@ def isoPlot(iso, line, db, isovar = '', linevar = ''):
     plot.show()
 
 
-def centerPlot(isoL, line, db, width = 1e6):
+def centerPlot(db, isoL, linevar = '', width = 1e6):
     '''Plot kinetic energy / eV, under which isotopes in isoL are on resonace depending on laser frequency up to width MHz away'''
-    isos = [DBIsotope(iso, line, db) for iso in isoL]
+    isos = [DBIsotope(db, iso, '', linevar) for iso in isoL]
     
     res = 100
     fx = np.linspace(isos[0].freq - width, isos[0].freq + width, res)
