@@ -50,8 +50,8 @@ class SPFitter(object):
         print('Done:')
         print('rChi^2' + '\t' + str(self.rchi))
         
-        self.err = [np.sqrt(self.pcov[j][j]) for j in range(self.pcov.shape[0])]
-        errit = iter(self.err)
+        err = [np.sqrt(self.pcov[j][j]) for j in range(self.pcov.shape[0])]
+        errit = iter(err)
         self.pard = [0 if f else next(errit) for f in self.fix]
 
         for n, x, e in zip(self.npar, self.par, self.pard):
@@ -86,6 +86,8 @@ class SPFitter(object):
         for i, f in enumerate(self.fix):
             if not f:
                 self.par[i] = next(ip)
+                
+        return 
     
     def evaluate(self, x, *p):
         '''
@@ -120,7 +122,7 @@ class SPFitter(object):
             name = p[0]
             npar = [x for x, f in zip(self.npar, p[1]) if f == True]
             par = [x for x, f in zip(self.par, p[1]) if f == True]
-            err = [x for x, f in zip(self.err, p[1]) if f == True]
+            err = [x for x, f in zip(self.pard, p[1]) if f == True]
             fix = [x for x, f in zip(self.fix, p[1]) if f == True]
             pardict = dict(zip(npar, zip(par, err, fix)))
             ret.append((name, pardict, fix))
