@@ -1,7 +1,7 @@
 '''
 Created on 31.03.2014
 
-@author: hammen
+@author: gorges
 '''
 import os
 import sqlite3
@@ -74,8 +74,5 @@ import Analyzer
 # print('Isotopieverschiebung\nAbweichungen zur Theorie: C40-42:', meanC40-meanC42 + theo[1][0], 'MHz\n')
 # print('Abweichungen zur Theorie: C40-44:', meanC40-meanC44 + theo[2][0], 'MHz\n')
 # print('Abweichungen zur Theorie: C40-48:', meanC40-meanC48 + theo[3][0], 'MHz\n'
-# a = [5]
-# a += [7]
-# a = a+ 3
-# print(a)
+
 print(Analyzer.combineShift('44_Ca', 'Run0', 'V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Christian/Calcium Isotopieverschiebung/397nm_14_05_13/SuperAnaDB.sqlite'))
