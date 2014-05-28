@@ -85,7 +85,6 @@ def combineRes(iso, par, run, db, config = []):
 
 def combineShift(iso, run, db):
     '''takes an Isotope a run and a database and gives the isotopeshift to the reference!'''
-    '''[(['dataREF1.*','dataREF2.*',...],['dataINTERESTING1.*','dataINT2.*',...],['dataREF4.*',...]), ([...],[...],[...]), ...]'''
     print('Open DB', db)
     
     con = sqlite3.connect(db)
@@ -93,6 +92,7 @@ def combineShift(iso, run, db):
     
     cur.execute('''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ?''', (iso, 'shift', run))
     (config, statErrForm, systErrForm) = cur.fetchall()[0]
+    '''config needs to have this shape: [(['dataREF1.*','dataREF2.*',...],['dataINTERESTING1.*','dataINT2.*',...],['dataREF4.*',...]), ([...],[...],[...]), ...]'''
     config = ast.literal_eval(config)
     print('Combining', iso, 'shift')
     
@@ -122,7 +122,13 @@ def combineShift(iso, run, db):
     for i in shifts:
         add += i
     shiftMean = add/len(shifts)
+    statErr = 0
+    systErr = 0
+    rChi = 0
     #print('shifts:', shifts, 'shiftErrors: ',shiftErrors, 'shiftMean: ',shiftMean)
+    cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
+        WHERE iso = ? AND parname = ? AND run = ?''', (shiftMean, statErr, systErr, rChi, iso, 'shift', run))
+    con.commit()
     return (shifts, shiftErrors, shiftMean)
         
         
