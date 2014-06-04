@@ -40,7 +40,8 @@ class KepcoImporterTLD(SpecData):
         self.err = [np.zeros((self.nrScalers, l[0]))]
         
         with open(path) as f:
-            f.readline()
+            for i in range(9):
+                f.readline()
             read = csv.reader(f, delimiter = '\t')
             for i, row in enumerate(read):
                 self.x[0][i] = float(row[0])
@@ -70,8 +71,11 @@ class KepcoImporterTLD(SpecData):
         
     def dimension(self, path):
         '''returns the nr of lines and columns of the file'''
-        lines = 0
+        
+        lines = 1
         with open(path) as f:
+            for i in range(9):
+                f.readline()
             cols = len(f.readline().split('\t'))
             for line in f:
                 lines += 1        
