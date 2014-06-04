@@ -53,7 +53,19 @@ def weightedAverage(vals, errs):
     return (average, errorprop, rChi)
 
 
-def combineRes(iso, par, run, db,):
+def average(vals, errs):
+    average = sum(vals) / len(vals)
+    errorprop = np.sqrt(sum(np.square(errs))) / len(vals)
+        
+    if len(vals) == 1:
+        rChi = 0
+    else:
+        rChi = 1 / (len(vals) - 1) * sum(np.square((vals - average * errs)))
+        
+    return (average, errorprop, rChi)
+
+
+def combineRes(iso, par, run, db, weighted = True):
     '''Calculate weighted average of par using the configuration specified in the db'''
     print('Open DB', db)
     
@@ -70,7 +82,10 @@ def combineRes(iso, par, run, db,):
     print('Combining', iso, par)
     vals, errs = extract(iso, par, run, db, config)
     
-    val, err, rChi = weightedAverage(vals, errs)
+    if weighted:
+        val, err, rChi = weightedAverage(vals, errs)
+    else:
+        val, err, rChi = average(vals, errs)
     statErr = eval(statErrForm)
     systErr = eval(systErrForm)
     
