@@ -60,7 +60,7 @@ def average(vals, errs):
     if len(vals) == 1:
         rChi = 0
     else:
-        rChi = 1 / (len(vals) - 1) * sum(np.square((vals - average * errs)))
+        rChi = 1 / (len(vals) - 1) * sum(np.square(vals - average) * np.square(errs))
         
     return (average, errorprop, rChi)
 
