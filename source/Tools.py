@@ -110,6 +110,17 @@ def _insertFile(f, db):
     con.close() 
 
 
+def fileList(db, type):
+    '''Return a list of files with type'''
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    
+    cur.execute('''SELECT file FROM FitRes WHERE iso = ?''', (type,))
+    files = cur.fetchall()
+    
+    return [f[0] for f in files]
+
+
 def createDB(db):
     '''Initialize a new database. Does not alter existing tables.'''
     print('Initializing db', db)
