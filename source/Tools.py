@@ -115,7 +115,7 @@ def fileList(db, type):
     con = sqlite3.connect(db)
     cur = con.cursor()
     
-    cur.execute('''SELECT file FROM FitRes WHERE iso = ?''', (type,))
+    cur.execute('''SELECT file FROM Files WHERE type = ?''', (type,))
     files = cur.fetchall()
     
     return [f[0] for f in files]

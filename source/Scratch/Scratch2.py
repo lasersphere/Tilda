@@ -21,4 +21,4 @@ Analyzer.combineRes('40_Ca', 'center', 'Run1', path)
 
 #Tools.centerPlot(path, ['40_Ca', '42_Ca', '44_Ca', '48_Ca'])
 
-#Tools.centerPlot(path2, ['40_Ca', '42_Ca', '44_Ca', '48_Ca'])
+Tools.centerPlot(path2, ['40_Ca', '42_Ca', '44_Ca', '48_Ca'])
