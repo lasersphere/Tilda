@@ -134,11 +134,12 @@ class SPFitter(object):
         self.par = list(self.oldpar)
         
     
-    def setPar(self, name, par):
+    def setPar(self, i, par):
         '''Set parameter with name to value par'''
-        i = self.npar.index(name)
-        if i:
-            self.par[i] = par
-        else:    
-            print('No parameter with name', name)
+        self.par[i] = par
+
+            
+    def setFix(self, i, val):
+        self.fix[i] = val
+
         
