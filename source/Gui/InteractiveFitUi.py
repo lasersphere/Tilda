@@ -16,7 +16,6 @@ from Gui.Ui_InteractiveFit import Ui_InteractiveFit
 class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
 
 
-
     def __init__(self):
         super(InteractiveFitUi, self).__init__()
         self.setupUi(self)

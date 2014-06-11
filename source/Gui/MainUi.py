@@ -23,6 +23,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         
         self.crawler.conSig(self.dbSig)
         self.intfit.conSig(self.dbSig)
+        self.averager.conSig(self.dbSig)
         self.bOpenDb.clicked.connect(self.openDb)
         
         self.show()

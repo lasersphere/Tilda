@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'Ui_Main.ui'
 #
-# Created: Tue Jun 10 16:33:32 2014
+# Created: Wed Jun 11 17:50:09 2014
 #      by: PyQt5 UI code generator 5.2.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -12,7 +12,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(714, 547)
+        MainWindow.resize(714, 543)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
@@ -53,7 +53,7 @@ class Ui_MainWindow(object):
         self.batchfit = QtWidgets.QWidget()
         self.batchfit.setObjectName("batchfit")
         self.tabWidget.addTab(self.batchfit, "")
-        self.averager = QtWidgets.QWidget()
+        self.averager = AveragerUi()
         self.averager.setObjectName("averager")
         self.tabWidget.addTab(self.averager, "")
         self.shift = QtWidgets.QWidget()
@@ -74,7 +74,7 @@ class Ui_MainWindow(object):
         MainWindow.setMenuBar(self.menubar)
 
         self.retranslateUi(MainWindow)
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(3)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -92,3 +92,4 @@ class Ui_MainWindow(object):
 
 from Gui.CrawlerUi import CrawlerUi
 from Gui.InteractiveFitUi import InteractiveFitUi
+from Gui.AveragerUi import AveragerUi
