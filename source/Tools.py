@@ -123,7 +123,7 @@ def fileList(db, type):
 
 def createDB(db):
     '''Initialize a new database. Does not alter existing tables.'''
-    print('Initializing db', db)
+    print('Initializing database:', db)
     con = sqlite3.connect(db)
     
     #Isotopes

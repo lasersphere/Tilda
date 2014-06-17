@@ -35,7 +35,12 @@ def plotFit(fit):
     plt.ylabel('Intensity / a.u.')
     plt.xlabel('Ion kinetic energy / eV')
     
+
+def plotAverage(lin, lout, aver, err):
     
+    
+
+
 def show():
     plt.show()
     
