@@ -46,8 +46,8 @@ class TLDImporter(SpecData):
             f.readline()
             self.stepSize = self.getFloat(f)
             f.readline()
-            self.nrLoops =  self.getFloat(f)
-            self.dwell = self.getFloat(f)
+            self.nrLoops =  [self.getFloat(f)-1]
+            self.dwell = self.getFloat(f)*10**-6
             f.readline()
             f.readline()
             self.columnnames = f.readline().split('\t')

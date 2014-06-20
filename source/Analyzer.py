@@ -11,6 +11,8 @@ import ast
 
 import numpy as np
 
+import Physics
+
     
 def extract(iso, par, run, db, fileList = []):
     '''Return a list of values of par of iso, filtered by files in fileList'''
@@ -115,8 +117,8 @@ def combineShift(iso, run, db):
     config = ast.literal_eval(config)
     print('Combining', iso, 'shift')
     
-    cur.execute('''SELECT Lines.reference, lines.refRun FROM Runs JOIN Lines ON Runs.lineVar = Lines.lineVar WHERE Runs.run = ?''', (run,))
-    ref, refRun = cur.fetchall()[0]
+    cur.execute('''SELECT Lines.reference, lines.refRun, lines.frequency FROM Runs JOIN Lines ON Runs.lineVar = Lines.lineVar WHERE Runs.run = ?''', (run,))
+    (ref, refRun, nu0) = cur.fetchall()[0]
     #each block is used to measure the isotope shift once
     shifts = []
     shiftErrors = []
@@ -137,17 +139,27 @@ def combineShift(iso, run, db):
             errMean = np.absolute(preVal-postVal)
         shifts.extend([x - refMean for x in intVals])
         shiftErrors.extend(np.sqrt(np.square(intErrs)+np.square(errMean)))
-    add = 0
-    for i in shifts:
-        add += i
-    shiftMean = add/len(shifts)
-    statErr = 0
-    systErr = 0
-    rChi = 0
-    #print('shifts:', shifts, 'shiftErrors: ',shiftErrors, 'shiftMean: ',shiftMean)
+    shiftMean, statErr, rChi = weightedAverage(shifts, shiftErrors)
+    
+    cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (iso,))
+    (mass, mass_d) = cur.fetchall()[0]
+    cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (ref,))
+    (massRef, massRef_d) = cur.fetchall()[0]
+    deltaM = mass - massRef
+    cur.execute('''SELECT offset, laserFreq FROM Files WHERE type = ?''', (iso,))
+    (deltaU, nuL) = cur.fetchall()[0]
+    volt = Physics.shiftFreqToVoltage(mass, nu0, shiftMean, nuL)
+    deltaU = np.absolute(deltaU)
+    volt_d = 2
+    deltaU_d = 10**-4*deltaU
+    #print('Fehlerbeitraege:',(deltaU/volt+deltaM/mass)*(volt_d/volt),deltaU_d/volt,mass_d/mass)
+    systErr = nu0*np.sqrt(Physics.qe*volt/(2*mass*Physics.u*Physics.c**2))*(0.5*(deltaU/volt+deltaM/mass)*(volt_d/volt)+deltaU_d/volt+mass_d/mass) 
     cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
         WHERE iso = ? AND parname = ? AND run = ?''', (shiftMean, statErr, systErr, rChi, iso, 'shift', run))
     con.commit()
+    print('shifts:', shifts)
+    print('shiftErrors:', shiftErrors)
+    print('Mean of shifts:', shiftMean)
     return (shifts, shiftErrors, shiftMean)
         
         
