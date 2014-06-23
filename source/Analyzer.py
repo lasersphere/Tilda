@@ -126,6 +126,7 @@ def combineShift(iso, run, db):
         preVals, preErrs = extract(ref,'center',refRun,db,block[0])
         preVal, preErr, preRChi = weightedAverage(preVals, preErrs)
         preErr = applyChi(preErr, preRChi)
+        preErr = np.absolute(preErr)
         
         intVals, intErrs = extract(iso,'center',run,db,block[1])
         
@@ -133,7 +134,9 @@ def combineShift(iso, run, db):
         postVal, postErr, postRChi = weightedAverage(postVals, postErrs)
         postErr = applyChi(postErr, postRChi)
         refMean = (preVal + postVal)/2
-        if np.absolute(preVal-postVal) < np.max(preErr,postErr):
+        postErr = np.absolute(postErr)
+        print(postErr,preErr, postErr-preErr)
+        if np.absolute(preVal-postVal) < np.max([preErr,postErr]):
             errMean = np.sqrt(preErr**2+ postErr**2)
         else:
             errMean = np.absolute(preVal-postVal)

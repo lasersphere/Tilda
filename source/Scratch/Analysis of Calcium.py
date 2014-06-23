@@ -34,21 +34,21 @@ db = os.path.join(path, 'CaD2.sqlite')
 #Analyzer.combineRes('Kepco', 'b', 'Run0', db, False)
 
 '''Fitting the files with Voigt-Fits!'''
-run = 'Run0'
-BatchFit.batchFit(Tools.fileList(db,'40_Ca'), db,run)
-BatchFit.batchFit(Tools.fileList(db,'42_Ca'), db,run)
-BatchFit.batchFit(Tools.fileList(db,'44_Ca'), db,run)
-BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
+run = 'Run1'
+# BatchFit.batchFit(Tools.fileList(db,'40_Ca'), db,run)
+# BatchFit.batchFit(Tools.fileList(db,'42_Ca'), db,run)
+# BatchFit.batchFit(Tools.fileList(db,'44_Ca'), db,run)
+# BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
 
 '''Mean of center, sigma and gamma for 40_Ca'''
-#Analyzer.combineRes('40_Ca', 'gamma',run, db)
-Analyzer.combineRes('40_Ca', 'sigma',run, db)
-# Analyzer.combineRes('42_Ca', 'sigma',run, db)
-# Analyzer.combineRes('44_Ca', 'sigma',run, db)
-# Analyzer.combineRes('48_Ca', 'sigma',run, db)
+Analyzer.combineRes('40_Ca', 'gamma',run, db)
+Analyzer.combineRes('40_Ca', 'gamma',run, db)
+Analyzer.combineRes('42_Ca', 'gamma',run, db)
+Analyzer.combineRes('44_Ca', 'gamma',run, db)
+Analyzer.combineRes('48_Ca', 'gamma',run, db)
 Analyzer.combineRes('40_Ca', 'center',run, db)
 
 '''Calculate the isotope shift to 40_Ca'''
-# Analyzer.combineShift('42_Ca', run, db)
-# Analyzer.combineShift('44_Ca', run, db)
-# Analyzer.combineShift('48_Ca', run, db)
+Analyzer.combineShift('42_Ca', run, db)
+Analyzer.combineShift('44_Ca', run, db)
+Analyzer.combineShift('48_Ca', run, db)

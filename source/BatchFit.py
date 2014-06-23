@@ -74,7 +74,7 @@ def singleFit(file, st, db, run, var, cur):
     else:
         iso = DBIsotope(db, meas.type, var[0], var[1])
         spec = FullSpec(iso)
-        #meas.deadtimeCorrect(st[0][0],st[1])
+        meas.deadtimeCorrect(st[0][0],st[1])
 
     fit = SPFitter(spec, meas, st)
     fit.fit()
