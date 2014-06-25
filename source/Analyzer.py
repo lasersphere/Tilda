@@ -8,6 +8,7 @@ The Analyzer can extract() parameters from fit results, combineRes() to get weig
 
 import sqlite3
 import ast
+import functools
 
 import numpy as np
 
@@ -117,8 +118,8 @@ def combineShift(iso, run, db):
     config = ast.literal_eval(config)
     print('Combining', iso, 'shift')
     
-    cur.execute('''SELECT Lines.reference, lines.refRun, lines.frequency FROM Runs JOIN Lines ON Runs.lineVar = Lines.lineVar WHERE Runs.run = ?''', (run,))
-    (ref, refRun, nu0) = cur.fetchall()[0]
+    cur.execute('''SELECT Lines.reference, lines.refRun FROM Runs JOIN Lines ON Runs.lineVar = Lines.lineVar WHERE Runs.run = ?''', (run,))
+    (ref, refRun) = cur.fetchall()[0]
     #each block is used to measure the isotope shift once
     shifts = []
     shiftErrors = []
@@ -142,28 +143,20 @@ def combineShift(iso, run, db):
             errMean = np.absolute(preVal-postVal)
         shifts.extend([x - refMean for x in intVals])
         shiftErrors.extend(np.sqrt(np.square(intErrs)+np.square(errMean)))
-    shiftMean, statErr, rChi = weightedAverage(shifts, shiftErrors)
+    val, err, rChi = weightedAverage(shifts, shiftErrors)   
     
-    cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (iso,))
-    (mass, mass_d) = cur.fetchall()[0]
-    cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (ref,))
-    (massRef, massRef_d) = cur.fetchall()[0]
-    deltaM = mass - massRef
-    cur.execute('''SELECT offset, laserFreq FROM Files WHERE type = ?''', (iso,))
-    (deltaU, nuL) = cur.fetchall()[0]
-    volt = Physics.shiftFreqToVoltage(mass, nu0, shiftMean, nuL)
-    deltaU = np.absolute(deltaU)
-    volt_d = 2
-    deltaU_d = 10**-4*deltaU
-    #print('Fehlerbeitraege:',(deltaU/volt+deltaM/mass)*(volt_d/volt),deltaU_d/volt,mass_d/mass)
-    systErr = nu0*np.sqrt(Physics.qe*volt/(2*mass*Physics.u*Physics.c**2))*(0.5*(deltaU/volt+deltaM/mass)*(volt_d/volt)+deltaU_d/volt+mass_d/mass) 
+    systE = functools.partial(shiftErr, iso, run, db, val)
+    
+    statErr = eval(statErrForm)
+    systErr = eval(systErrForm)
+    
     cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
-        WHERE iso = ? AND parname = ? AND run = ?''', (shiftMean, statErr, systErr, rChi, iso, 'shift', run))
+        WHERE iso = ? AND parname = ? AND run = ?''', (val, statErr, systErr, rChi, iso, 'shift', run))
     con.commit()
     print('shifts:', shifts)
     print('shiftErrors:', shiftErrors)
-    print('Mean of shifts:', shiftMean)
-    return (shifts, shiftErrors, shiftMean)
+    print('Mean of shifts:', val)
+    return (shifts, shiftErrors, val)
         
         
     
@@ -174,3 +167,21 @@ def applyChi(err, rChi):
 def gaussProp(*args):
     '''Calculate sqrt of squared sum of args, as in gaussian error propagation'''
     return np.sqrt(sum(x**2 for x in args))
+
+
+def shiftErr(iso, run, db, val, volt_d, deltaU_d):
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    cur.execute('''SELECT Lines.reference, lines.refRun, lines.frequency FROM Runs JOIN Lines ON Runs.lineVar = Lines.lineVar WHERE Runs.run = ?''', (run,))
+    (ref, refRun, nu0) = cur.fetchall()[0]
+    cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (iso,))
+    (mass, mass_d) = cur.fetchall()[0]
+    cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (ref,))
+    (massRef, massRef_d) = cur.fetchall()[0]
+    deltaM = mass - massRef
+    cur.execute('''SELECT offset, laserFreq FROM Files WHERE type = ?''', (iso,))
+    (deltaU, nuL) = cur.fetchall()[0]    
+    volt = Physics.shiftFreqToVoltage(mass, nu0, val, nuL)
+    deltaU = np.absolute(deltaU)
+    print('Fehlerbeitraege:',(deltaU/volt+deltaM/mass)*(volt_d/volt),deltaU_d/volt,mass_d/mass)
+    return nuL*np.sqrt(Physics.qe*volt/(2*mass*Physics.u*Physics.c**2))*(0.5*(deltaU/volt+deltaM/mass)*(volt_d/volt)+deltaU*deltaU_d/volt+mass_d/mass) 
