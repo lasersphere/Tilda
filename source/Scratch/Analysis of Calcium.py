@@ -65,7 +65,7 @@ cur.execute('''SELECT laserFreq FROM Files WHERE type="40_Ca"''')
 v = Physics.invRelDoppler(laserFreq, dopplerFreq)
 for i in [0,1,3,5,10]:
     x = np.arctan(i/1500)
-    print('difference between Ions and Laser of', i, 'mm, results in an angle of:', x*2*np.pi,'deg')
+    print('change of ionbeam in 1500mm:', i, 'mm. This results in an angle of', x*1000,'mrad between laser and ions')
     freqWithoutAngle = Physics.relDoppler(laserFreq, v)
     freqWithAngle = Physics.relDoppler(laserFreq, v*np.cos(x))
     dif = freqWithoutAngle - freqWithAngle
