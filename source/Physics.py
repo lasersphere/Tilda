@@ -44,7 +44,8 @@ def relDoppler(laserFreq, v):
 
 def invRelDoppler(laserFreq, dopplerFreq):
     '''Return the velocity, under which laserFreq is seen as dopplerFreq'''
-    rs = (laserFreq/dopplerFreq)**2
+    #rs = (laserFreq/dopplerFreq)**2 '''not right!?'''
+    rs = (dopplerFreq/laserFreq)**2
     return c*(rs - 1)/(rs + 1)
 
 def voigt(x, sig, gam):
