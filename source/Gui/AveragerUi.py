@@ -6,11 +6,13 @@ Created on 06.06.2014
 
 import sqlite3
 import ast
+import itertools
 
 from PyQt5 import QtWidgets, QtCore
 
 from Gui.Ui_Averager import Ui_Averager
 import Analyzer
+import MPLPlotter as plot
 
 class AveragerUi(QtWidgets.QWidget, Ui_Averager):
 
@@ -66,23 +68,31 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
         con = sqlite3.connect(self.dbpath)
         cur = con.cursor()
         
-        cur.execute('''SELECT file, pars FROM FitRes WHERE iso = ? AND run = ?''', (self.isoSelect.currentText(), self.runSelect.currentText()))
-        e = cur.fetchall()
-        files = [f[0] for f in e]
+        iso = self.isoSelect.currentText()
+        run = self.runSelect.currentText()
+        par = self.parameter.currentText()
+        
+        self.files = Analyzer.getFiles(iso, run, self.dbpath)
+        self.vals, self.errs = Analyzer.extract(iso, par, run, self.dbpath)
 
-        cur.execute('''SELECT config FROM Combined WHERE iso = ? AND parname = ? AND run = ?''', (self.isoSelect.currentText(), self.parameter.currentText(), self.runSelect.currentText()))
+        cur.execute('''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ?''', (iso, par, run))
         r = cur.fetchall()
         con.close()
-        
-        select = [True] * len(files)
+
+        select = [True] * len(self.files)
+        self.statErrForm = 0
+        self.systErrForm = 0
         
         if len(r) > 0:
-            for i, f in enumerate(files):
-                if f not in select:
+            self.statErrForm = r[0][1]
+            self.systErrForm = r[0][2]
+            cfg = ast.literal_eval(r[0][0])
+            for i, f in enumerate(self.files):
+                if f not in cfg:
                     select[i] = False
                     
         self.fileList.blockSignals(True)
-        for f, s in zip(files, select):
+        for f, s in zip(self.files, select):
             w = QtWidgets.QListWidgetItem(f)
             w.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
             if s:
@@ -97,18 +107,16 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
 
 
     def recalc(self):
-        files = []
         select = []
         for i in range(self.fileList.count()):
-            files.append(self.fileList.item(i).text())
             select.append(self.fileList.item(i).checkState() == QtCore.Qt.Checked)
         
-        lin = [f for f, s in zip(files, select) if s == True]
-        lout = [f for f, s in zip(files, select) if s == False]
-        
-        val, errorprop, rChi = Analyzer.weightedAverage(*Analyzer.extract(self.isoSelect.currentText(), self.parameter.currentText(), self.runSelect.currentText(), self.dbpath, lin))
+        val, err, rChi = Analyzer.weightedAverage(itertools.compress(self.vals, select), itertools.compress(self.errs, select))
+
         self.result.setText(str(val))
         self.rChi.setText(str(rChi))
+        
+        plot.plotAverage(self.vals, self.errs, val, self.statErr)
         
     
     def dbChange(self, dbpath):

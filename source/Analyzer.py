@@ -11,6 +11,16 @@ import ast
 
 import numpy as np
 
+
+
+def getFiles(iso, run, db):
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    cur.execute('''SELECT file, pars FROM FitRes WHERE iso = ? AND run = ?''', (iso, run))
+    e = cur.fetchall()
+    con.close()
+    
+    return [f[0] for f in e]
     
 def extract(iso, par, run, db, fileList = []):
     '''Return a list of values of par of iso, filtered by files in fileList'''
