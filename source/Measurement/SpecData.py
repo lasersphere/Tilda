@@ -26,6 +26,7 @@ class SpecData(object):
         self.accVolt = None
         self.laserFreq = None
         self.col = None
+        self.dwell = 0
         
         self.offset = None
         self.lineMult = None
@@ -79,5 +80,12 @@ class SpecData(object):
         '''Multiply counts and error of a specific scaler by mult, according to error propagation'''
         self.cts[scaler] *= mult
         self.err[scaler] *= mult
+        
+        
+    
+    def deadtimeCorrect(self, scaler, track):
+        for i, cts in enumerate(self.cts[track][scaler]):
+            self.cts[track][scaler][i] = (cts*(self.nrLoops[track]*self.dwell))/(1-(cts*(self.nrLoops[track]*self.dwell))*1.65e-8)/((self.nrLoops[track]*self.dwell))
+        
     
     

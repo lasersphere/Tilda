@@ -44,7 +44,8 @@ def relDoppler(laserFreq, v):
 
 def invRelDoppler(laserFreq, dopplerFreq):
     '''Return the velocity, under which laserFreq is seen as dopplerFreq'''
-    rs = (laserFreq/dopplerFreq)**2
+    #rs = (laserFreq/dopplerFreq)**2 '''not right!?'''
+    rs = (dopplerFreq/laserFreq)**2
     return c*(rs - 1)/(rs + 1)
 
 def voigt(x, sig, gam):
@@ -107,3 +108,7 @@ def threeJ(j1, m1, j2, m2, j3, m3):
 def deltaJ(j1, j2, j3):    
     '''Delta-symbol used for Racah coefficients'''
     return math.factorial(round(j1+j2-j3))*math.factorial(round(j1-j2+j3))*math.factorial(round(-j1+j2+j3))/math.factorial(round(j1+j2+j3+1))
+
+def shiftFreqToVoltage(m,nuOff,deltaNu,nuL):
+    '''Returns the Voltage for a given frequency shift. ([m]=u, All frequencies need to be given in the same unit!)'''
+    return m*u*c**2/(2*qe)*((nuOff+deltaNu)/nuL)**2

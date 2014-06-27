@@ -8,8 +8,11 @@ The Analyzer can extract() parameters from fit results, combineRes() to get weig
 
 import sqlite3
 import ast
+import functools
 
 import numpy as np
+
+import Physics
 
 
 
@@ -126,7 +129,7 @@ def combineShift(iso, run, db):
     print('Combining', iso, 'shift')
     
     cur.execute('''SELECT Lines.reference, lines.refRun FROM Runs JOIN Lines ON Runs.lineVar = Lines.lineVar WHERE Runs.run = ?''', (run,))
-    ref, refRun = cur.fetchall()[0]
+    (ref, refRun) = cur.fetchall()[0]
     #each block is used to measure the isotope shift once
     shifts = []
     shiftErrors = []
@@ -134,6 +137,7 @@ def combineShift(iso, run, db):
         preVals, preErrs = extract(ref,'center',refRun,db,block[0])
         preVal, preErr, preRChi = weightedAverage(preVals, preErrs)
         preErr = applyChi(preErr, preRChi)
+        preErr = np.absolute(preErr)
         
         intVals, intErrs = extract(iso,'center',run,db,block[1])
         
@@ -141,24 +145,28 @@ def combineShift(iso, run, db):
         postVal, postErr, postRChi = weightedAverage(postVals, postErrs)
         postErr = applyChi(postErr, postRChi)
         refMean = (preVal + postVal)/2
-        if np.absolute(preVal-postVal) < np.max(preErr,postErr):
+        postErr = np.absolute(postErr)
+        print(postErr,preErr, postErr-preErr)
+        if np.absolute(preVal-postVal) < np.max([preErr,postErr]):
             errMean = np.sqrt(preErr**2+ postErr**2)
         else:
             errMean = np.absolute(preVal-postVal)
         shifts.extend([x - refMean for x in intVals])
         shiftErrors.extend(np.sqrt(np.square(intErrs)+np.square(errMean)))
-    add = 0
-    for i in shifts:
-        add += i
-    shiftMean = add/len(shifts)
-    statErr = 0
-    systErr = 0
-    rChi = 0
-    #print('shifts:', shifts, 'shiftErrors: ',shiftErrors, 'shiftMean: ',shiftMean)
+    val, err, rChi = weightedAverage(shifts, shiftErrors)   
+    
+    systE = functools.partial(shiftErr, iso, run, db, val)
+    
+    statErr = eval(statErrForm)
+    systErr = eval(systErrForm)
+    
     cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
-        WHERE iso = ? AND parname = ? AND run = ?''', (shiftMean, statErr, systErr, rChi, iso, 'shift', run))
+        WHERE iso = ? AND parname = ? AND run = ?''', (val, statErr, systErr, rChi, iso, 'shift', run))
     con.commit()
-    return (shifts, shiftErrors, shiftMean)
+    print('shifts:', shifts)
+    print('shiftErrors:', shiftErrors)
+    print('Mean of shifts:', val)
+    return (shifts, shiftErrors, val)
         
         
     
@@ -169,3 +177,21 @@ def applyChi(err, rChi):
 def gaussProp(*args):
     '''Calculate sqrt of squared sum of args, as in gaussian error propagation'''
     return np.sqrt(sum(x**2 for x in args))
+
+
+def shiftErr(iso, run, db, val, volt_d, deltaU_d):
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    cur.execute('''SELECT Lines.reference, lines.refRun, lines.frequency FROM Runs JOIN Lines ON Runs.lineVar = Lines.lineVar WHERE Runs.run = ?''', (run,))
+    (ref, refRun, nu0) = cur.fetchall()[0]
+    cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (iso,))
+    (mass, mass_d) = cur.fetchall()[0]
+    cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (ref,))
+    (massRef, massRef_d) = cur.fetchall()[0]
+    deltaM = mass - massRef
+    cur.execute('''SELECT offset, laserFreq FROM Files WHERE type = ?''', (iso,))
+    (deltaU, nuL) = cur.fetchall()[0]    
+    volt = Physics.shiftFreqToVoltage(mass, nu0, val, nuL)
+    deltaU = np.absolute(deltaU)
+    print('Fehlerbeitraege:',(deltaU/volt+deltaM/mass)*(volt_d/volt),deltaU_d/volt,mass_d/mass)
+    return nuL*np.sqrt(Physics.qe*volt/(2*mass*Physics.u*Physics.c**2))*(0.5*(deltaU/volt+deltaM/mass)*(volt_d/volt)+deltaU*deltaU_d/volt+mass_d/mass) 

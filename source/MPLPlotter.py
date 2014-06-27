@@ -39,7 +39,6 @@ def plotFit(fit):
 def plotAverage(lin, lout, aver, err):
     lin = [f for f, s in zip(files, select) if s == True]
     lout = [f for f, s in zip(files, select) if s == False]
-    
 
 
 def show():
