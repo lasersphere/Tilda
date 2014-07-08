@@ -112,3 +112,7 @@ def deltaJ(j1, j2, j3):
 def shiftFreqToVoltage(m,nuOff,deltaNu,nuL):
     '''Returns the Voltage for a given frequency shift. ([m]=u, All frequencies need to be given in the same unit!)'''
     return m*u*c**2/(2*qe)*((nuOff+deltaNu)/nuL)**2
+
+def dopplerAngle(nu, v, angle):
+    '''Returns the frequency at a given angle (in rad) and velocity'''
+    return nu*np.sqrt(1-v**2/c**2)/(1-v/c*np.cos(angle))
