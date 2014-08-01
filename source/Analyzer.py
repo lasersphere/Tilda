@@ -73,9 +73,11 @@ def average(vals, errs):
     if len(vals) == 1:
         rChi = 0
     else:
-        rChi = 0
-        #rChi = 1 / (len(vals) - 1) * sum(np.square(vals - average) * np.square(errs))
-        
+        #rChi = 0
+        chiSum = 0
+        for i in range(0,len(vals),1): 
+            chiSum += np.square(vals[i] - average) * np.square(errs[i])
+        rChi = 1 / (len(vals) - 1) * chiSum        
     return (average, errorprop, rChi)
 
 
@@ -179,19 +181,22 @@ def gaussProp(*args):
     return np.sqrt(sum(x**2 for x in args))
 
 
-def shiftErr(iso, run, db, val, volt_d, deltaU_d):
+def shiftErr(iso, run, db, val, accVolt_d, offset_d):
     con = sqlite3.connect(db)
     cur = con.cursor()
-    cur.execute('''SELECT Lines.reference, lines.refRun, lines.frequency FROM Runs JOIN Lines ON Runs.lineVar = Lines.lineVar WHERE Runs.run = ?''', (run,))
-    (ref, refRun, nu0) = cur.fetchall()[0]
+    cur.execute('''SELECT Lines.reference, lines.frequency FROM Runs JOIN Lines ON Runs.lineVar = Lines.lineVar WHERE Runs.run = ?''', (run,))
+    (ref, nu0) = cur.fetchall()[0]
     cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (iso,))
     (mass, mass_d) = cur.fetchall()[0]
     cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (ref,))
     (massRef, massRef_d) = cur.fetchall()[0]
     deltaM = mass - massRef
-    cur.execute('''SELECT offset, laserFreq FROM Files WHERE type = ?''', (iso,))
-    (deltaU, nuL) = cur.fetchall()[0]    
-    volt = Physics.shiftFreqToVoltage(mass, nu0, val, nuL)
-    deltaU = np.absolute(deltaU)
-    print('Fehlerbeitraege:',(deltaU/volt+deltaM/mass)*(volt_d/volt),deltaU_d/volt,mass_d/mass)
-    return nuL*np.sqrt(Physics.qe*volt/(2*mass*Physics.u*Physics.c**2))*(0.5*(deltaU/volt+deltaM/mass)*(volt_d/volt)+deltaU*deltaU_d/volt+mass_d/mass) 
+    cur.execute('''SELECT offset, accVolt FROM Files WHERE type = ?''', (iso,))
+    (offset, accVolt) = cur.fetchall()[0]
+    cur.execute('''SELECT offset FROM Files WHERE type = ?''', (ref,))
+    (refOffset,) = cur.fetchall()[0]    
+    accVolt = np.absolute(refOffset)+accVolt
+    offset = np.absolute(refOffset-offset)
+    fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
+    print('systematic error inputs caused by error of...\n...acc Voltage:',fac*(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d/accVolt)),'MHz  ...offset Voltage',fac*offset*offset_d/accVolt,'MHz  ...masses:',fac*(mass_d/mass+massRef_d/massRef),'MHz')
+    return fac*(0.5*(offset/accVolt+deltaM/mass)*accVolt_d/accVolt+offset*offset_d/accVolt+mass_d/mass+massRef_d/massRef) 
