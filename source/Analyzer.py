@@ -165,6 +165,7 @@ def combineShift(iso, run, db):
     cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
         WHERE iso = ? AND parname = ? AND run = ?''', (val, statErr, systErr, rChi, iso, 'shift', run))
     con.commit()
+    con.close()
     print('shifts:', shifts)
     print('shiftErrors:', shiftErrors)
     print('Mean of shifts:', val)
@@ -196,7 +197,22 @@ def shiftErr(iso, run, db, val, accVolt_d, offset_d):
     cur.execute('''SELECT offset FROM Files WHERE type = ?''', (ref,))
     (refOffset,) = cur.fetchall()[0]    
     accVolt = np.absolute(refOffset)+accVolt
-    offset = np.absolute(refOffset-offset)
+   
+    cur.execute('''SELECT line FROM Files WHERE type = ?''', (ref,))
+    (line,) = cur.fetchall()[0]
+    
+    if line == 'D1':
+        if iso == '40_Ca':
+            offset = 500
+        elif iso == '44_Ca':
+            offset = np.absolute(refOffset-offset)
+        else:
+            offset = np.absolute(refOffset-offset) + 700
+    else:
+        offset = np.absolute(refOffset-offset)
+        if iso == '48_Ca':
+            offset = offset -200
+    print('offsetvoltage:', offset)
     fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
     print('systematic error inputs caused by error of...\n...acc Voltage:',fac*(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d/accVolt)),'MHz  ...offset Voltage',fac*offset*offset_d/accVolt,'MHz  ...masses:',fac*(mass_d/mass+massRef_d/massRef),'MHz')
     return fac*(0.5*(offset/accVolt+deltaM/mass)*accVolt_d/accVolt+offset*offset_d/accVolt+mass_d/mass+massRef_d/massRef) 
