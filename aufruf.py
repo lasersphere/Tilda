@@ -8,6 +8,7 @@ import ctypes
 dll = ctypes.CDLL('D:\Workspace\Eclipse\Tilda\TildaTarget\Debug\libTildaTarget.dll')
 
 print(dll.mult(7,2))
+print(dll.add(1,3))
 # test2 = (ctypes.c_int*3)()
 # print(ctypes.byref(test2))
 # dll.blub(ctypes.byref(test2))
