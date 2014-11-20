@@ -9,5 +9,6 @@
 #define MYMATH_H_
 
 int mult(int a, int b);
+int add(int a, int b);
 
 #endif /* MYMATH_H_ */
