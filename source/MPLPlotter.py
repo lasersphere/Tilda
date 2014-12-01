@@ -12,8 +12,8 @@ def plot(*args):
     for a in args:
         plt.plot(a[0], a[1])
     plt.gca().get_xaxis().get_major_formatter().set_useOffset(False)
-    plt.ylabel('Intensity / a.u.')
-    plt.xlabel('Frequency / MHz')
+    plt.ylabel('Intensity [cts]')
+    plt.xlabel('Frequency [MHz]')
     
     
 def plotFit(fit):    

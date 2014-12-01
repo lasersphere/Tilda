@@ -42,7 +42,6 @@ def centerPlot(db, isoL, linevar = '', width = 1e6):
     res = 100
     fx = np.linspace(isos[0].freq - width, isos[0].freq + width, res)
     wnx = Physics.wavenumber(fx)
-    
     y = np.zeros((len(isos), len(fx)))
     for i, iso in enumerate(isos):
         for j, x in enumerate(fx):

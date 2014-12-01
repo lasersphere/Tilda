@@ -24,7 +24,7 @@ class Hyperfine(object):
         self.fixInt = iso.fixInt
         self.center = iso.center
         
-        self.trans = Physics.HFTrans(self.iso.I, self.iso.Ju, self.iso.Jl)
+        self.trans = Physics.HFTrans(self.iso.I, self.iso.Jl, self.iso.Ju)
         
         Au = iso.Au * iso.Al if self.fixA else iso.Au
         Bu = iso.Bu * iso.Bl if self.fixB else iso.Bu
@@ -82,7 +82,7 @@ class Hyperfine(object):
             ret = [i / self.iso.relInt[0] for i in self.iso.relInt]
             ret[0] *= self.iso.intScale
         else:
-            ret = [self.iso.intScale * x for x in Physics.HFInt(self.iso.I, self.iso.Ju, self.iso.Jl, self.trans)]
+            ret = [self.iso.intScale * x for x in Physics.HFInt(self.iso.I, self.iso.Jl, self.iso.Ju, self.trans)]
         return ([self.iso.center, self.iso.Al, self.iso.Bl, self.iso.Au, self.iso.Bu]
                 + ret)
     

@@ -54,6 +54,7 @@ def voigt(x, sig, gam):
 
 def HFCoeff(I, J, F):    
     '''Return the tuple of hyperfine coefficients for A and B-factor for a given quantum state'''
+    #print('Return the tuple of hyperfine coefficients for A and B-factor for I = ', I, ' J = ', J, ' F = ', F)
     C = 0.0 if I == 0 else (F*(F+1) - I*(I+1) - J*(J+1))
     coA = 0.5 * C
     
@@ -64,6 +65,7 @@ def HFCoeff(I, J, F):
 
 def HFTrans(I, Jl, Ju):
     '''Calculate all allowed hyperfine transitions and their hyperfine coefficients. Returns (Fl, Fu, coAl, coBl, coAu, coBu)''' 
+    #print('calculating the hyperfine transitions and hyperfine coeffients')
     return [(Fl, Fu) + HFCoeff(I, Jl, Fl) + HFCoeff(I, Ju, Fu)
                         for Fl in np.arange(abs(I - Jl), (I + Jl + 0.5))
                         for Fu in np.arange(abs(I - Ju), (I + Ju + 0.5)) if abs(Fl - Fu) == 1 or (Fl - Fu == 0 and Fl != 0 and Fu != 0)]
@@ -75,10 +77,12 @@ def HFLineSplit(Al, Bl, Au, Bu, transitions):
 
 def HFInt(I, Jl, Ju, transitions):
     '''Calculate relative line intensities'''
+    #print('Calculate relative line intensities for I, Jl, Ju, transitions ',I, Jl, Ju, transitions)
     return [(2*Fu+1)*(2*Fl+1)*(sixJ(Jl, Fl, I, Fu, Ju, 1)**2) for Fl, Fu, *r in transitions]
 
 def sixJ(j1, j2, j3, J1, J2, J3):
     '''6-J symbol used for Racah coefficients'''
+    #print('6-J symbol used for Racah coefficients, j1, j2, j3, J1, J2, J3: ', j1, j2, j3, J1, J2, J3)
     ret = 0
     for i in range(int(round(max(max(j1+j2+j3,j1+J2+J3),max(J1+j2+J3,J1+J2+j3)))),
                    int(round(min(min(j1+j2+J1+J2,j2+j3+J2+J3),j3+j1+J3+J1) + 1))):
@@ -95,6 +99,7 @@ def sixJ(j1, j2, j3, J1, J2, J3):
         
 def threeJ(j1, m1, j2, m2, j3, m3):
     '''3-J symbol used for Racah coefficients'''
+    #print('3-J symbol used for Racah coefficients')
     ret=0;
     for i in range(round(max(max(0.,j2-j3-m1), m2+j1-j3)),
                     round(min(min(j1+j2-j3,j1-m1),j2+m2) + 1)):
@@ -107,6 +112,7 @@ def threeJ(j1, m1, j2, m2, j3, m3):
     
 def deltaJ(j1, j2, j3):    
     '''Delta-symbol used for Racah coefficients'''
+    #print('Delta-symbol used for Racah coefficients, j1, j2, j3: ', j1, j2, j3)
     return math.factorial(round(j1+j2-j3))*math.factorial(round(j1-j2+j3))*math.factorial(round(-j1+j2+j3))/math.factorial(round(j1+j2+j3+1))
 
 def shiftFreqToVoltage(m,nuOff,deltaNu,nuL):
