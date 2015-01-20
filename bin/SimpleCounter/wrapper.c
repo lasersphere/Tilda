@@ -70,7 +70,7 @@ NiFpga_Status _stop(NiFpga_Session session)
 {
 	NiFpga_MergeStatus(&status, NiFpga_WriteBool(session,
 			NiFpga_SPMain_ControlBool_stop,
-		0));
+		1));
 	return status;
 }
 
