@@ -1,0 +1,14 @@
+﻿// NI_FPGA_PPG
+//
+// 
+// Pattern definition: 
+//-------------------------------------------------------------------------- 
+//     		time [ns]	!state digital outputs (hexadezimal)
+//
+//$wait		!0x1		!0x0
+$time		0,9		!0xFFFFFFFF00000000
+//$time		800		!0x0
+$jump		0		x5			
+//$time		1000		!0xFFFFFFFF00000000
+//$time		2000		!0x0
+$stop				!0x0
