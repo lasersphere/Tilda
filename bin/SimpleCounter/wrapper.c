@@ -2,7 +2,7 @@
  * wrapper.c
  *
  *  Created on: 20.01.2015
- *      Author: kaufmann
+ *      Author: skaufmann
  */
 
 #include <stdio.h>
