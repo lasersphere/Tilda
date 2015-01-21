@@ -6,6 +6,8 @@ Created on 08.08.2014
 import ctypes
 import time
 
+import source.Base.Formating as form
+
 dll = ctypes.CDLL('D:\Workspace\Eclipse\Tilda\TildaTarget\SimpleCounter\SimpleCounter.dll')
 
 
@@ -32,15 +34,14 @@ start = time.clock()
 # Numbers for pmts greater 7 dont make any sense, not working. 
 
 pDmaCts = ctypes.cast((ctypes.c_ulong * 1)(), ctypes.POINTER(ctypes.c_ulong))
-print(pDmaCts)
-print(pDmaCts[0])
-dll.readDMA(session, nOfEle, pDmaCts)
-print(list(format(pDmaCts[i], '032b')[4:8] for i in range(nOfEle)))
-print(list(format(pDmaCts[i], '032b')[8:] for i in range(nOfEle)))
 
 dll.readDMA(session, nOfEle, pDmaCts)
-print(list(format(pDmaCts[i], '032b')[4:8] for i in range(32)))
-print(list(format(pDmaCts[i], '032b')[9:] for i in range(32)))
+print(form.headunfold(pDmaCts[16]))
+
+
+dll.readDMA(session, nOfEle, pDmaCts)
+# print([form.headunfold(pDmaCts[i]) for i in range(nOfEle)])
+
 
 
 # time.sleep(0.045)
