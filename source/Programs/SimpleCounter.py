@@ -4,11 +4,6 @@ Created on 21.01.2015
 @author: skaufmann
 '''
 
-'''
-Created on 08.08.2014
-
-@author: simkaufm
-'''
 import ctypes
 import time
 

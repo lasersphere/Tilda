@@ -1,7 +1,7 @@
 '''
 Created on 08.08.2014
 
-@author: simkaufm
+@author: skaufmann
 '''
 import ctypes
 import time
