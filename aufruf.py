@@ -23,14 +23,28 @@ nOfEle = dll.DMAnOfEle(session)
 print('Number of Elements in the Queue: ' + str(nOfEle))
 
 # Problem, da groesse vom Array festgelegt werden muss!?
+#  Auszulesende Anzahl muss aber so oder so jedes mal festgelegt werden
 
 dmaCts = (ctypes.c_int * nOfEle)()
 print(dmaCts)
 print(ctypes.byref(dmaCts))
-
-
+ 
+ 
 print(dll.readDMA(session, nOfEle, ctypes.byref(dmaCts)))
-print(dmaCts)
+print(list(format(dmaCts[i], '032b')[4:8] for i in range(nOfEle-1)))
+print(list(format(dmaCts[i], '032b')[9:] for i in range(nOfEle-1)))
+
+# trying it with pointer now
+# Also Working!
+
+# pDmaCts = ctypes.cast((ctypes.c_int * 1)(), ctypes.POINTER(ctypes.c_ulong))
+# print(pDmaCts)
+# print(pDmaCts[0])
+# dll.readDMA(session, nOfEle, pDmaCts)
+# print(list(format(pDmaCts[i], '032b')[4:8] for i in range(nOfEle-1)))
+# print(list(format(pDmaCts[i], '032b')[9:] for i in range(nOfEle-1)))
+
+
 # time.sleep(0.045)
 # status = dll._stop(session)
 # print('Loop stopped, Status is:' + str(status))
