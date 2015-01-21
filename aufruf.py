@@ -29,29 +29,30 @@ print(dmaCts)
 print(ctypes.byref(dmaCts))
 
 
-dll.readDMA(session, nOfEle, ctypes.byref(dmaCts))
-time.sleep(0.045)
-status = dll._stop(session)
-print('Loop stopped, Status is:' + str(status))
-nOfEle = dll.DMAnOfEle(session)
-print('Number of Elements still in the Queue: ' + str(nOfEle))
-
+print(dll.readDMA(session, nOfEle, ctypes.byref(dmaCts)))
+print(dmaCts)
+# time.sleep(0.045)
+# status = dll._stop(session)
+# print('Loop stopped, Status is:' + str(status))
+# nOfEle = dll.DMAnOfEle(session)
+# print('Number of Elements still in the Queue: ' + str(nOfEle))
+# 
+# # dll.readDMA(session, nOfEle, ctypes.byref(dmaCts))
+# print('here we go')
+# print(dmaCts)
+# print(dmaCts[0], '{0:032b}'.format(dmaCts[0]))
+# print(dmaCts[1], '{0:032b}'.format(dmaCts[1]))
+# print(dmaCts[2], '{0:032b}'.format(dmaCts[2]))
+# print(dmaCts[15], '{0:032b}'.format(dmaCts[15]))
+# 
 # dll.readDMA(session, nOfEle, ctypes.byref(dmaCts))
-print('here we go')
-print(dmaCts)
-print(dmaCts[0], '{0:032b}'.format(dmaCts[0]))
-print(dmaCts[1], '{0:032b}'.format(dmaCts[1]))
-print(dmaCts[2], '{0:032b}'.format(dmaCts[2]))
-print(dmaCts[15], '{0:032b}'.format(dmaCts[15]))
-
-dll.readDMA(session, nOfEle, ctypes.byref(dmaCts))
-
-print('here we go again')
-print(dmaCts)
-print(dmaCts[0], '{0:032b}'.format(dmaCts[0]))
-print(dmaCts[1], '{0:032b}'.format(dmaCts[1]))
-print(dmaCts[2], '{0:032b}'.format(dmaCts[2]))
-print(dmaCts[15], '{0:032b}'.format(dmaCts[15]))
+# 
+# print('here we go again')
+# print(dmaCts)
+# print(dmaCts[0], '{0:032b}'.format(dmaCts[0]))
+# print(dmaCts[1], '{0:032b}'.format(dmaCts[1]))
+# print(dmaCts[2], '{0:032b}'.format(dmaCts[2]))
+# print(dmaCts[15], '{0:032b}'.format(dmaCts[15]))
 
 
 # while True:
