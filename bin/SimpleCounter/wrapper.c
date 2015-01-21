@@ -58,12 +58,12 @@ size_t DMAnOfEle(NiFpga_Session session)
 
 
 
-uint32_t* readDMA(NiFpga_Session session, size_t nOfEle, uint32_t *vals)
+NiFpga_Status readDMA(NiFpga_Session session, size_t nOfEle, uint32_t *vals)
 {
 	NiFpga_MergeStatus(&status, NiFpga_ReadFifoU32(session,
 		NiFpga_SPMain_TargetToHostFifoU32_SimpleCounterDMA,
 		vals, nOfEle, 10, NULL));
-	return vals;
+	return status;
 }
 
 NiFpga_Status _stop(NiFpga_Session session)
