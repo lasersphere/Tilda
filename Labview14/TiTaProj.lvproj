@@ -1056,13 +1056,6 @@
 					<Item Name="Error Cluster From Error Code.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/error.llb/Error Cluster From Error Code.vi"/>
 					<Item Name="lvSimController.dll" Type="Document" URL="/&lt;vilib&gt;/rvi/Simulation/lvSimController.dll"/>
 				</Item>
-				<Item Name="NI-FPGA_PPG_Driver.lvlib" Type="Library" URL="../PPG/host/instrumentDriver/NI-FPGA_PPG_Driver.lvlib"/>
-				<Item Name="TiTaProj_COF_PPG_80MHz.lvbitx" Type="Document" URL="../FPGA Bitfiles/TiTaProj_COF_PPG_80MHz.lvbitx"/>
-				<Item Name="NiFpgaLv.dll" Type="Document" URL="NiFpgaLv.dll">
-					<Property Name="NI.PreserveRelativePath" Type="Bool">true</Property>
-				</Item>
-				<Item Name="TiTaProj_COF_PPG_d3vptxinz-s.lvbitx" Type="Document" URL="../FPGA Bitfiles/TiTaProj_COF_PPG_d3vptxinz-s.lvbitx"/>
-				<Item Name="FPGA_target_read_memory.vi" Type="VI" URL="../PPG/target/FPGA_target_read_memory.vi"/>
 			</Item>
 			<Item Name="Build Specifications" Type="Build">
 				<Item Name="PPG" Type="{F4C5E96F-7410-48A5-BB87-3559BC9B167F}">
