@@ -54,6 +54,7 @@
 		</Item>
 		<Item Name="HostScratch" Type="Folder">
 			<Item Name="counterOrVolt.vi" Type="VI" URL="../HostScratch/counterOrVolt.vi"/>
+			<Item Name="cutHeader.vi" Type="VI" URL="../HostScratch/cutHeader.vi"/>
 			<Item Name="dataUnwrapperToplevel.vi" Type="VI" URL="../HostScratch/dataUnwrapperToplevel.vi"/>
 			<Item Name="sortItIntoArray.vi" Type="VI" URL="../HostScratch/sortItIntoArray.vi"/>
 			<Item Name="whichPmt.vi" Type="VI" URL="../HostScratch/whichPmt.vi"/>
@@ -3929,8 +3930,8 @@ changed MCS error behaviour so it is not stuck in "error" state</Property>
 					<Property Name="Comp.Xilinx.UseRecommended" Type="Bool">true</Property>
 					<Property Name="DefaultBuildSpec" Type="Bool">true</Property>
 					<Property Name="DestinationDirectory" Type="Path">FPGA Bitfiles</Property>
-					<Property Name="NI.LV.FPGA.LastCompiledBitfilePath" Type="Path">/D/Workspace/Eclipse/Tilda/TildaTarget/Labview14/FPGA Bitfiles/TiTaProj_DAF_sequencerCWTopLevel_101.lvbitx</Property>
-					<Property Name="NI.LV.FPGA.LastCompiledBitfilePathRelativeToProject" Type="Path">FPGA Bitfiles/TiTaProj_DAF_sequencerCWTopLevel_101.lvbitx</Property>
+					<Property Name="NI.LV.FPGA.LastCompiledBitfilePath" Type="Path">/D/Workspace/Eclipse/Tilda/TildaTarget/Labview14/FPGA Bitfiles/TiTaProj_DAF_sequencerCWTopLevel_102.lvbitx</Property>
+					<Property Name="NI.LV.FPGA.LastCompiledBitfilePathRelativeToProject" Type="Path">FPGA Bitfiles/TiTaProj_DAF_sequencerCWTopLevel_102.lvbitx</Property>
 					<Property Name="ProjectPath" Type="Path">/D/Workspace/Eclipse/Tilda/TildaTarget/Labview14/TiTaProj.lvproj</Property>
 					<Property Name="RelativePath" Type="Bool">true</Property>
 					<Property Name="RunWhenLoaded" Type="Bool">false</Property>
@@ -4035,7 +4036,7 @@ changed MCS error behaviour so it is not stuck in "error" state</Property>
 			<Item Name="TiTaProj_DAF_103.lvbitx" Type="Document" URL="../FPGA Bitfiles/TiTaProj_DAF_103.lvbitx"/>
 			<Item Name="TiTaProj_DAF_AD5781_5rm7blMdV6M.lvbitx" Type="Document" URL="../FPGA Bitfiles/TiTaProj_DAF_AD5781_5rm7blMdV6M.lvbitx"/>
 			<Item Name="TiTaProj_DAF_kepcoScanStandAlone.lvbitx" Type="Document" URL="../FPGA Bitfiles/TiTaProj_DAF_kepcoScanStandAlone.lvbitx"/>
-			<Item Name="TiTaProj_DAF_sequencerCWTopLevel_101.lvbitx" Type="Document" URL="../FPGA Bitfiles/TiTaProj_DAF_sequencerCWTopLevel_101.lvbitx"/>
+			<Item Name="TiTaProj_DAF_sequencerCWTopLevel_102.lvbitx" Type="Document" URL="../FPGA Bitfiles/TiTaProj_DAF_sequencerCWTopLevel_102.lvbitx"/>
 		</Item>
 		<Item Name="Build Specifications" Type="Build"/>
 	</Item>
