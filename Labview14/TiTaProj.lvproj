@@ -3370,7 +3370,6 @@
 				<Item Name="vi.lib" Type="Folder">
 					<Item Name="lvSimController.dll" Type="Document" URL="/&lt;vilib&gt;/rvi/Simulation/lvSimController.dll"/>
 				</Item>
-				<Item Name="sequencerReadTracks.vi" Type="VI" URL="../Sequencer/sequencerReadTracks.vi"/>
 			</Item>
 			<Item Name="Build Specifications" Type="Build">
 				<Item Name="AD5781" Type="{F4C5E96F-7410-48A5-BB87-3559BC9B167F}">
