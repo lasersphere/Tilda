@@ -56,7 +56,10 @@
 			<Item Name="counterOrVolt.vi" Type="VI" URL="../HostScratch/counterOrVolt.vi"/>
 			<Item Name="cutHeader.vi" Type="VI" URL="../HostScratch/cutHeader.vi"/>
 			<Item Name="dataUnwrapperToplevel.vi" Type="VI" URL="../HostScratch/dataUnwrapperToplevel.vi"/>
+			<Item Name="dataUnwrapperTRSToplevel.vi" Type="VI" URL="../HostScratch/dataUnwrapperTRSToplevel.vi"/>
 			<Item Name="sortItIntoArray.vi" Type="VI" URL="../HostScratch/sortItIntoArray.vi"/>
+			<Item Name="TRScheckHeader.vi" Type="VI" URL="../HostScratch/TRScheckHeader.vi"/>
+			<Item Name="TRStimestampCheck.vi" Type="VI" URL="../HostScratch/TRStimestampCheck.vi"/>
 			<Item Name="whichPmt.vi" Type="VI" URL="../HostScratch/whichPmt.vi"/>
 		</Item>
 		<Item Name="COF" Type="FPGA Target">
