@@ -1,36 +1,36 @@
-'''
+"""
 Created on 16.03.2015
 
 @author: dropy
-'''
+"""
 from copy import copy, deepcopy
 
 
 class Node(object):
-    '''
+    """
     A Node performing transformations on items in the Pipeline defined in the processData function
-    '''
+    """
 
 
     def __init__(self):
-        '''
+        """
         Create basic attributes and bind node to Pipeline
-        '''
+        """
         self.active = True
         self.id = None
         self.Pipeline = None
         self.next = []
 
     def processData(self, data, pipeData):
-        '''
+        """
         The action of the node
-        '''
+        """
         return data
         
     def processItem(self, item):
-        '''
+        """
         rewrapping processData to hide the internals of the transport mechanism
-        '''
+        """
         newjobs = []
         if item.type == "start":
             self.id = item.data['id']
@@ -68,28 +68,28 @@ class Node(object):
     
     
     def clear(self):
-        '''
+        """
         Clear the internal memory. Does nothing for generic node, overwrite!
-        '''
+        """
         pass
     
     def activate(self):
-        '''
+        """
         activate the node
-        '''
+        """
         self.active = True
         
         
     def deactivate(self):
-        '''
+        """
         deactivate the Node
-        '''
+        """
         self.active = False
     
     def attach(self, _next):
-        '''
+        """
         attach _next as follower to this node
-        '''
+        """
         self.next.append(_next)
         return _next
     

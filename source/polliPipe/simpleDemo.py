@@ -1,8 +1,8 @@
-'''
+"""
 Created on 29.03.2015
 
 @author: dropy
-'''
+"""
 
 from polliPipe.pipeline import Pipeline
 from polliPipe.node import Node

@@ -1,21 +1,21 @@
-'''
+"""
 Created on 22.03.2015
 
 @author: dropy
-'''
+"""
 
 from polliPipe.node import Node
 
 
 class NAccumulate(Node):
-    '''
+    """
     classdocs
-    '''
+    """
 
     def __init__(self):
-        '''
+        """
         Constructor
-        '''
+        """
         super(NAccumulate, self).__init__()
         self.type = "Accumulate"
 
@@ -24,9 +24,9 @@ class NAccumulate(Node):
         
         
     def processData(self, data, pipeData):
-        '''
-        Add data and 
-        '''
+        """
+        Add data and
+        """
         self.buf += data
         return self.buf
     
@@ -35,15 +35,15 @@ class NAccumulate(Node):
 
 
 class NPrint(Node):
-    '''
+    """
     classdocs
-    '''
+    """
 
 
     def __init__(self):
-        '''
+        """
         Constructor
-        '''
+        """
         super(NPrint, self).__init__()
         self.type="Output_Print"
 
@@ -51,8 +51,8 @@ class NPrint(Node):
         
         
     def processData(self, data, pipeData):
-        '''
-        Add data and 
-        '''
+        """
+        Add data and
+        """
         print("PrintNode " + str(self.id) + " item content: "+ str(data))
         return None
