@@ -19,7 +19,7 @@
  *
  *    static const char* const Bitfile = "C:\\" NiFpga_CS_Bitfile;
  */
-#define NiFpga_CS_Bitfile "NiFpga_CS.lvbitx"
+#define NiFpga_CS_Bitfile "D:\\Workspace\\Eclipse\\Tilda\\TildaTarget\\bin\\ContinousSequencer\\NiFpga_CS.lvbitx"
 
 /**
  * The signature of the FPGA bitfile.

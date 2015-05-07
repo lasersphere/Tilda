@@ -19,7 +19,7 @@
  *
  *    static const char* const Bitfile = "C:\\" NiFpga_TRS_Bitfile;
  */
-#define NiFpga_TRS_Bitfile "NiFpga_TRS.lvbitx"
+#define NiFpga_TRS_Bitfile "D:\\Workspace\\Eclipse\\Tilda\\TildaTarget\\bin\\TimeResolvedSequencer\\NiFpga_TRS.lvbitx"
 
 /**
  * The signature of the FPGA bitfile.
