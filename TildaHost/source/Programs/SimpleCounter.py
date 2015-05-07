@@ -1,8 +1,8 @@
-'''
+"""
 Created on 21.01.2015
 
 @author: skaufmann
-'''
+"""
 
 import ctypes
 import time
