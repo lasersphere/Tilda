@@ -1,12 +1,13 @@
-'''
-Created on 08.08.2014
+"""
+Created on 21.01.2015
 
 @author: skaufmann
-'''
+"""
+
 import ctypes
 import time
 
-import Scratch.Formating as form
+import Scratch.Formating
 
 
 dll = ctypes.CDLL('D:\Workspace\Eclipse\Tilda\TildaTarget\SimpleCounter\SimpleCounter.dll')
@@ -18,10 +19,10 @@ print('aktuelle Session: ' + str(session))
  
 status = dll._runFPGA(session)
 print('running FPGA, Status is:' + str(status))
-time.sleep(0.045)
+time.sleep(0.1)
 nOfEle = dll.DMAnOfEle(session)
 print('Number of Elements in the Queue: ' + str(nOfEle))
-time.sleep(0.045)
+time.sleep(0.1)
 status = dll._stop(session)
 print('Loop stopped, Status is:' + str(status))
 print('Number of Elements still in the Queue: ' + str( dll.DMAnOfEle(session)))
@@ -37,11 +38,11 @@ dmaCtsFull = []
 dmaCts = (ctypes.c_ulong * nOfEle)()
   
 dll.readDMA(session, nOfEle, ctypes.byref(dmaCts))
-dmaCtsFull = dmaCtsFull + [form.headunfold(dmaCts[i]) for i in range(nOfEle)]
+dmaCtsFull = dmaCtsFull + [source.Scratch.Formating.headunfold(dmaCts[i]) for i in range(nOfEle)]
 print(dmaCtsFull)
 
 dll.readDMA(session, nOfEle, ctypes.byref(dmaCts))
-dmaCtsFull = dmaCtsFull + [form.headunfold(dmaCts[i]) for i in range(nOfEle)]
+dmaCtsFull = dmaCtsFull + [source.Scratch.Formating.headunfold(dmaCts[i]) for i in range(nOfEle)]
 print(dmaCtsFull)
 
 status = dll._fpgaexit(session)

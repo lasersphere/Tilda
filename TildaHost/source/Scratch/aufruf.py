@@ -1,13 +1,12 @@
-"""
-Created on 21.01.2015
+'''
+Created on 08.08.2014
 
 @author: skaufmann
-"""
-
+'''
 import ctypes
 import time
 
-import Scratch.Formating as form
+import source.Scratch.Formating as form
 
 
 dll = ctypes.CDLL('D:\Workspace\Eclipse\Tilda\TildaTarget\SimpleCounter\SimpleCounter.dll')
@@ -19,10 +18,10 @@ print('aktuelle Session: ' + str(session))
  
 status = dll._runFPGA(session)
 print('running FPGA, Status is:' + str(status))
-time.sleep(0.1)
+time.sleep(0.045)
 nOfEle = dll.DMAnOfEle(session)
 print('Number of Elements in the Queue: ' + str(nOfEle))
-time.sleep(0.1)
+time.sleep(0.045)
 status = dll._stop(session)
 print('Loop stopped, Status is:' + str(status))
 print('Number of Elements still in the Queue: ' + str( dll.DMAnOfEle(session)))

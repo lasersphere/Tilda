@@ -6,7 +6,7 @@ Created on 08.08.2014
 import ctypes
 import time
 
-import Scratch.Formating as form
+import source.Scratch.Formating as form
 
 
 dll = ctypes.CDLL('D:\Workspace\Eclipse\Tilda\TildaTarget\SimpleCounter\SimpleCounter.dll')
