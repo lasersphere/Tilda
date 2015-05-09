@@ -33,7 +33,8 @@ first using TRWwrapper.c commands
 '''
 now just using the standard NiFpga.c/.h Commands!
 '''
-
+NiFpga_TRS_IndicatorU16_seqState = {'ref': 0x8146, 'val': ctypes.c_uint()}
+NiFpga_TRS_ControlU16_cmdByHost= {'ref': 0x8142, 'val': ctypes.c_uint()}
 status = dll.NiFpga_Initialize()
 print(status) 
 dllPath = ctypes.create_string_buffer(b'D:\\Workspace\\Eclipse\\Tilda\\TildaTarget\\bin\\TimeResolvedSequencer\\NiFpga_TRS.lvbitx')
@@ -44,5 +45,16 @@ print(session)
 status = dll.NiFpga_Open(dllPath, dllSign, resource, 1, ctypes.byref(session))
 print(status)
 print(session)
-status = dll.NiFpga_Run(ctypes.byref(session), 0)
+status = dll.NiFpga_Run(session, 0)
 print(status)
+status = dll.NiFpga_ReadU16(session, NiFpga_TRS_IndicatorU16_seqState['ref'], ctypes.byref(NiFpga_TRS_IndicatorU16_seqState['val']))
+print(status)
+print('seqState:' + str(NiFpga_TRS_IndicatorU16_seqState['val']))
+status = dll.NiFpga_WriteU16(session, NiFpga_TRS_ControlU16_cmdByHost['ref'], 4)
+print(status)
+status = dll.NiFpga_ReadU16(session, NiFpga_TRS_IndicatorU16_seqState['ref'], ctypes.byref(NiFpga_TRS_IndicatorU16_seqState['val']))
+print(status)
+print(NiFpga_TRS_IndicatorU16_seqState['val'])
+status = dll.NiFpga_ReadU16(session, NiFpga_TRS_IndicatorU16_seqState['ref'], ctypes.byref(NiFpga_TRS_IndicatorU16_seqState['val']))
+print(status)
+print(NiFpga_TRS_IndicatorU16_seqState['val'])
