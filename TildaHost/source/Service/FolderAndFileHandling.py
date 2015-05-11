@@ -9,16 +9,9 @@ import os
 
 
 
-class GeneralPurpose(object):
+class FolderAndFileHandling(object):
     def __init__(self):
         pass
-
-    def ResolveBitfileLocation(self, folder, dllName):
-        path = os.path.join(self.FindTildaFolder(os.getcwd()), 'TildaTarget\\bin\\' ,folder, dllName)
-        if not os.path.isfile(path):
-            path = 'file not found'
-        return path
-
 
     def FindTildaFolder(self, path):
         if 'Tilda' in os.path.split(path)[0]:
