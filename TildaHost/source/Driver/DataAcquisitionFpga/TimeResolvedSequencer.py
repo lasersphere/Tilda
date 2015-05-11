@@ -62,7 +62,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         super(TimeResolvedSequencer, self).__init__(self.trsBitfilePath, self.trsBitfileSignature, self.trsFpgaRessource)
 
     def getMCSState(self):
-        self.ReadWrite(MCSstate['ref'], ctypes.byref(MCSstate['val']),MCSstate['ctr'])
+        self.ReadWrite(MCSstate['ref'], MCSstate['val'], MCSstate['ctr'])
         return MCSstate['val']
 
     def cmdByHost(self, cmd):
@@ -70,15 +70,19 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         return self.status
 
     def getSeqState(self):
-        self.ReadWrite(seqState['ref'],ctypes.byref(seqState['val']),seqState['ctr'])
+        self.ReadWrite(seqState['ref'], seqState['val'], seqState['ctr'])
         return seqState['val']
 
 
 # instanciate that bitch:
+print(0x8146)
 blub2 = TimeResolvedSequencer()
+print(blub2.__init__())
+time.sleep(0.01)
 print(blub2.getSeqState())
 print(blub2.status)
-print(blub2.cmdByHost(4))
+time.sleep(0.1)
+print(blub2.cmdByHost(5))
 print(blub2.getSeqState())
-time.sleep(0.01)
+time.sleep(0.1)
 print(blub2.getSeqState())
