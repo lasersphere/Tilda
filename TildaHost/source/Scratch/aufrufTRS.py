@@ -11,9 +11,10 @@ Created on 08.08.2014
 @author: skaufmann
 '''
 import ctypes
+import time
 
 
-dll = ctypes.CDLL('D:\Workspace\Eclipse\Tilda\TildaHost\\binary\TRS.dll')
+dll = ctypes.CDLL('D:\Workspace\Eclipse\Tilda\TildaHost\\binary\\NiFpgaUniversalInterfaceDll.dll')
 
 '''
 first using TRWwrapper.c commands
@@ -45,16 +46,18 @@ print(session)
 status = dll.NiFpga_Open(dllPath, dllSign, resource, 1, ctypes.byref(session))
 print(status)
 print(session)
+status = dll.NiFpga_Reset(session)
+print('status after Reset: ' + str(status))
 status = dll.NiFpga_Run(session, 0)
 print(status)
+time.sleep(0.001)
 status = dll.NiFpga_ReadU16(session, NiFpga_TRS_IndicatorU16_seqState['ref'], ctypes.byref(NiFpga_TRS_IndicatorU16_seqState['val']))
 print(status)
 print('seqState:' + str(NiFpga_TRS_IndicatorU16_seqState['val']))
-status = dll.NiFpga_WriteU16(session, NiFpga_TRS_ControlU16_cmdByHost['ref'], 4)
+status = dll.NiFpga_WriteU16(session, NiFpga_TRS_ControlU16_cmdByHost['ref'], 1)
 print(status)
+time.sleep(0.001)
 status = dll.NiFpga_ReadU16(session, NiFpga_TRS_IndicatorU16_seqState['ref'], ctypes.byref(NiFpga_TRS_IndicatorU16_seqState['val']))
 print(status)
-print(NiFpga_TRS_IndicatorU16_seqState['val'])
-status = dll.NiFpga_ReadU16(session, NiFpga_TRS_IndicatorU16_seqState['ref'], ctypes.byref(NiFpga_TRS_IndicatorU16_seqState['val']))
-print(status)
-print(NiFpga_TRS_IndicatorU16_seqState['val'])
+print('seqState after setting it to 4:' + str(NiFpga_TRS_IndicatorU16_seqState['val']))
+
