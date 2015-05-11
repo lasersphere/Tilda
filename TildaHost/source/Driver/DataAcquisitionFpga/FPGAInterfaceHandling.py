@@ -13,28 +13,30 @@ Module to Wrap all the Handling of universal FPGA interactions, like Start, run 
 import ctypes
 
 class FPGAInterfaceHandling():
-
     def __init__(self, bitfilePath, bitfileSignature, resource, reset=True, run=True):
         self.dmaReadTimeout = 1 #timeout to read from Dma Queue in ms
         self.NiFpgaUniversalInterfaceDll = ctypes.CDLL('D:\\Workspace\\Eclipse\\Tilda\\TildaHost\\binary\\NiFpgaUniversalInterfaceDll.dll')
         self.session = ctypes.c_ulong()
-        self.status = ctypes.c_uint()
+        self.statusSuccess = 0
+        self.status = 0
         self.InitFpga(bitfilePath, bitfileSignature, resource, reset, run)
 
     def InitFpga(self, bitfilePath, bitfileSignature, resource, reset=True, run=True):
         """
-        Initialize the FPGA with all necessary functions to start an FPGA Session
+        Initialize the FPGA with all necessary functions to start an FPGA Session.
+        These are: NiFpga_Initialize, NiFpga_Open.
+        Optional: NiFpga_Reset, NiFpga_Run
         :param bitfilePath: String Path to the Bitfile
         :param bitfileSignature: String Signature generated when running C Api
         :param resource: Ni-Resource, e.g. Rio0
         :param reset: Bool, if True, Reset the Vi, default is True
         :param run: Bool, if True, Run the FPGA, default is True
-        :return:(status, session)
+        :return: session if no error, else status
         """
 
-        bitfilePath = ctypes.create_string_buffer(str(bitfilePath,bytes))
-        bitfileSignature = ctypes.create_string_buffer(str(bitfileSignature,bytes))
-        resource = ctypes.create_string_buffer(str(resource,bytes))
+        bitfilePath = ctypes.create_string_buffer(bitfilePath.encode('utf-8'))
+        bitfileSignature = ctypes.create_string_buffer(bitfileSignature.encode('utf-8'))
+        resource = ctypes.create_string_buffer(resource.encode('utf-8'))
         self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_Initialize())
         self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_Open(
             bitfilePath, bitfileSignature, resource, 1, ctypes.byref(self.session)
@@ -43,7 +45,9 @@ class FPGAInterfaceHandling():
             self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_Reset(self.session))
         if run:
             self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_Run(self.session, 0))
-        return (self.status, self.session)
+        if self.status < self.statusSuccess:
+            return self.status
+        return self.session
 
     def DeInitFpga(self):
         """
@@ -65,9 +69,8 @@ class FPGAInterfaceHandling():
         :param newstatus: new status value that may be set
         :return: the resulting status
         """
-        statusSuccess = 0
-        if (self.status >= statusSuccess and (self.status == statusSuccess or newstatus < statusSuccess)):
-            self.status = newstatus
+        if self.status >= self.statusSuccess and (self.status == self.statusSuccess or int(newstatus) < self.statusSuccess):
+            self.status = int(newstatus)
         return self.status
 
     def ReadWrite(self, ref, val, write=False):
@@ -81,6 +84,7 @@ class FPGAInterfaceHandling():
         Important: type(val) determines which w/r is used be carefull here!
         :param write: Boolean to decide if to write or to read, default is False
         :return: val, either the given value when reading or the new value from the indicator.
+        Or Status if Error
         """
         if write:
             if type(val) == ctypes.c_ubyte:
@@ -112,6 +116,8 @@ class FPGAInterfaceHandling():
                 self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadI32(self.session, ref, ctypes.byref(val)))
             elif type(val) == ctypes.c_bool:
                 self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadBool(self.session, ref, ctypes.byref(val)))
+        elif self.status < self.statusSuccess:
+            return self.status
         return val
 
     def ReadU32Fifo(self, fifoRef, data, nOfEle= -1):
@@ -160,6 +166,8 @@ class FPGAInterfaceHandling():
             self.session, fifoRef, elementsDummy, nOfReqEle,
             self.dmaReadTimeout, ctypes.byref(elementsAcquired), ctypes.byref(elementsRemainingDummy)
         ))
+        if self.status < self.statusSuccess:
+            return self.status
         return elementsAcquired
 
     def ClearU32FifoHostBuffer(self, fifoRef, nOfEle=-1):
