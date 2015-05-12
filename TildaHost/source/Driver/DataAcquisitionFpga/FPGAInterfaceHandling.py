@@ -73,19 +73,19 @@ class FPGAInterfaceHandling():
             self.status = int(newstatus)
         return self.status
 
-    def ReadWrite(self, ref, val, write=False):
+    def ReadWrite(self, controlOrIndicatorDictionary):
         """
         Function to encapsule the reading and writing of Controls or Indicators in the Fpga Interface.
         The type of val determines which function must be called.
-        :param ref: Reference number to the Indicator/Control, is found in the generated c file from
-         C Api generator typically in Hexadecimal
-        :param val: ctypes instance of a Value which should be written to the Control or
-        to which the read Value from the Indicator is written.
-        Important: type(val) determines which w/r is used be carefull here!
-        :param write: Boolean to decide if to write or to read, default is False
-        :return: val, either the given value when reading or the new value from the indicator.
-        Or Status if Error
+        :param controlOrIndicatorDictionary: dictionary containing: 'ref' the C Api reference number
+         of the indicator/control (usually hex number), 'val' the ctypes instance of the Control/Indicator
+         and 'ctr' which is True for Controls and False for Indicators 
+        :return: val, which is the value passed to the control or the value gained from an indicator
+        
         """
+        ref = controlOrIndicatorDictionary['ref']
+        val = controlOrIndicatorDictionary['val']
+        write = controlOrIndicatorDictionary['ctr']
         if write:
             if type(val) == ctypes.c_ubyte:
                 self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_WriteU8(self.session, ref, val))
@@ -116,8 +116,6 @@ class FPGAInterfaceHandling():
                 self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadI32(self.session, ref, ctypes.byref(val)))
             elif type(val) == ctypes.c_bool:
                 self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadBool(self.session, ref, ctypes.byref(val)))
-        elif self.status < self.statusSuccess:
-            return self.status
         return val
 
     def ReadU32Fifo(self, fifoRef, data, nOfEle= -1):
