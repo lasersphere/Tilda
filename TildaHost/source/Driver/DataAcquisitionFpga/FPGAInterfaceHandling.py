@@ -14,12 +14,22 @@ import ctypes
 
 class FPGAInterfaceHandling():
     def __init__(self, bitfilePath, bitfileSignature, resource, reset=True, run=True):
+        """
+        Initiates the Fpga
+        :param bitfilePath: String, to the Bitfile created by Labview and C Api generator
+        :param bitfileSignature: String, Signature of the Bitfile found in the corresponding header file
+        :param resource: String, location of the fpga, like Rio0, Rio1, etc.
+        :param reset: Boolean, to chose if you want to reset the fpga on startup, default is True
+        :param run: Boolean, to chose if you want to run the fpga on startup, default is True
+        :return: session
+        """
         self.dmaReadTimeout = 1 #timeout to read from Dma Queue in ms
         self.NiFpgaUniversalInterfaceDll = ctypes.CDLL('D:\\Workspace\\Eclipse\\Tilda\\TildaHost\\binary\\NiFpgaUniversalInterfaceDll.dll')
         self.session = ctypes.c_ulong()
         self.statusSuccess = 0
         self.status = 0
         self.InitFpga(bitfilePath, bitfileSignature, resource, reset, run)
+        return self.session
 
     def InitFpga(self, bitfilePath, bitfileSignature, resource, reset=True, run=True):
         """
