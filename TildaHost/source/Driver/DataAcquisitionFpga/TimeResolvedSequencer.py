@@ -27,6 +27,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         self.TrsCfg = TrsCfg.TRSConfig()
         self.fpgaInterfaceInstance = super(TimeResolvedSequencer, self).__init__(self.TrsCfg.bitfilePath, self.TrsCfg.bitfileSignature, self.TrsCfg.fpgaResource)
 
+    '''read Indicators:'''
     def getMCSState(self):
         """
         get the state of the MultiChannelScaler
@@ -69,6 +70,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         self.ReadWrite(self.TrsCfg.DACQuWriteTimeout)
         return self.TrsCfg.DACQuWriteTimeout['val'].value
 
+    '''set Controls'''
     def setCmdByHost(self, cmd):
         """
         send a command representing a desired state of the sequencer to the Ui of the Fpga
@@ -118,44 +120,133 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
             else:
                 return self.changeSeqState(cmd, tries+1, requestedState)
 
-    def setMCSValues(self, selectTrigger, delay, nOfBins, nOfBunches):
+    def setMCSValues(self, mCSPars):
         """
-        tbw
-        :param selectTrigger:
-        :param delay:
-        :param nOfBins:
-        :param nOfBunches:
-        :return: bool, True is successful
+        Writes all values needed for the Multi Channel Scaler state machine to the fpga ui
+        :param mCSPars: dictionary, containing all necessary items for MCS. These are:
+        MCSSelectTrigger: byte, Enum to select the active Trigger
+        delayticks: ulong, Ticks to delay after triggered
+        nOfBins: ulong, number of 10 ns bins that will be acquired per Trigger event
+        nOfBunches: long, number of bunches that will be acquired per voltage Step
+        :return: True if self.status == self.statusSuccess, else False
         """
-        pass
+        self.TrsCfg.MCSSelectTrigger['val'].value.update(mCSPars['MCSSelectTrigger'])
+        self.TrsCfg.delayticks['val'].value.update(mCSPars['delayticks'])
+        self.TrsCfg.nOfBins['val'].value.update(mCSPars['nOfBins'])
+        self.TrsCfg.nOfBunches['val'].value.update(mCSPars['nOfBunches'])
+        self.ReadWrite(self.TrsCfg.MCSSelectTrigger)
+        self.ReadWrite(self.TrsCfg.delayticks)
+        self.ReadWrite(self.TrsCfg.nOfBins)
+        self.ReadWrite(self.TrsCfg.nOfBunches)
+        if self.status == self.statusSuccess:
+            return True
+        else:
+            return False
 
-    def setmeasVoltValues(self, pulselength, timeout):
+    def setmeasVoltValues(self, measVoltPars):
         """
-        tbw
-        :param pulselength:
-        :param timeout:
-        :return: bool, True is successful
+        Writes all values needed for the Voltage Measurement state machine to the fpga ui
+        :param measVoltPars: dictionary, containing all necessary infos for Voltage measurement. These are:
+        measVoltPulseLength25ns: long, Pulselength of the Trigger Pulse on PXI_Trig4 and CH
+        measVoltTimeout10ns: long, timeout until which a response from the DMM must occur.
+        :return: True if self.status == self.statusSuccess, else False
         """
-        pass
+        self.TrsCfg.measVoltPulseLength25ns['val'].value.update(measVoltPars['measVoltPulseLength25ns'])
+        self.TrsCfg.measVoltTimeout10ns['val'].value.update(measVoltPars['measVoltTimeout10ns'])
+        self.ReadWrite(self.TrsCfg.measVoltPulseLength25ns)
+        self.ReadWrite(self.TrsCfg.measVoltTimeout10ns)
+        if self.status == self.statusSuccess:
+            return True
+        else:
+            return False
 
-    def setTrackValues(self, voltOrScaler, stepSize, startVoltage, nOfSteps, nOfScans,
-                       invertScan, whichHeinzinger, waitForKepco, waitAfterReset):
+    def setTrackValues(self, trackPars):
         """
-        tbw
-        :param voltOrScaler:
-        :param stepSize:
-        :param startVoltage:
-        :param nOfSteps:
-        :param nOfScans:
-        :param invertScan:
-        :param whichHeinzinger:
-        :param waitForKepco:
-        :param waitAfterReset:
-        :return: bool, True is successful
+        Writes all values needed for the Sequencer state machine to the fpga ui
+        :param trackPars: dictionary, containing all necessary infos for measuring one track. These are:
+        VoltOrScaler: bool, determine if the track is a KepcoScan or normal Scaler Scan
+        stepSize: ulong, Stepsize for 18Bit-DAC Steps actually shifted by 2 so its 20 Bit Number
+        start: ulong, Start Voltage for 18Bit-DAC actually shifted by 2 so its 20 Bit Number
+        nOfSteps: long, Number Of Steps for one Track (=Scanregion)
+        nOfScans: long, Number of Loops over this Track
+        invertScan: bool, if True invert Scandirection on every 2nd Scan
+        heinzingerControl: ubyte, Enum to determine which heinzinger will be active
+        waitForKepco25nsTicks: uint, time interval after the voltage has been set and the unit waits
+         before the scalers are activated. Unit is 25ns
+        waitAfterReset25nsTicks: uint, time interval after the voltage has been reseted and the unit waits
+         before the scalers are activated. Unit is 25ns
+        :return: True if self.status == self.statusSuccess, else False
         """
-        pass
+        self.TrsCfg.VoltOrScaler['val'].value.update(trackPars['VoltOrScaler'])
+        self.TrsCfg.stepSize['val'].value.update(trackPars['stepSize'])
+        self.TrsCfg.start['val'].value.update(trackPars['start'])
+        self.TrsCfg.nOfSteps['val'].value.update(trackPars['nOfSteps'])
+        self.TrsCfg.nOfScans['val'].value.update(trackPars['nOfScans'])
+        self.TrsCfg.invertScan['val'].value.update(trackPars['invertScan'])
+        self.TrsCfg.heinzingerControl['val'].value.update(trackPars['heinzingerControl'])
+        self.TrsCfg.waitForKepco25nsTicks['val'].value.update(trackPars['waitForKepco25nsTicks'])
+        self.TrsCfg.waitAfterReset25nsTicks['val'].value.update(trackPars['waitAfterReset25nsTicks'])
+        self.ReadWrite(self.TrsCfg.VoltOrScaler)
+        self.ReadWrite(self.TrsCfg.stepSize)
+        self.ReadWrite(self.TrsCfg.start)
+        self.ReadWrite(self.TrsCfg.nOfSteps)
+        self.ReadWrite(self.TrsCfg.nOfScans)
+        self.ReadWrite(self.TrsCfg.invertScan)
+        self.ReadWrite(self.TrsCfg.heinzingerControl)
+        self.ReadWrite(self.TrsCfg.waitForKepco25nsTicks)
+        self.ReadWrite(self.TrsCfg.waitAfterReset25nsTicks)
+        if self.status == self.statusSuccess:
+            return True
+        else:
+            return False
 
-    def startScan(self, scanPars):
+    def abort(self):
+        """
+        abort the running execution immediatly
+        :return: True if succes
+        """
+        self.TrsCfg.abort['val'].value.update(True)
+        self.ReadWrite(self.TrsCfg.abort)
+
+    '''perform measurements:'''
+    def measureOffset(self):
+        """
+        If this is called, the Host should already have set the chosen Heinzinger to the desired Voltage via SCPI.
+        What the Fpga doeas than to measure the Offset is:
+         set DAC to 0V
+         set HeinzingerSwitchBox to the desired Heinzinger.
+         send a pulse to the DMM
+         wait until timeout/feedback from DMM
+         done
+        Note: not included in V1 !
+        :return: True if success
+        """
+        return True
+
+    def measureTrack(self):
+        """
+        measure one Track with all Parameters already set before.
+
+        :return: True if success
+        """
+        timeBetweenStateChecks = 0.01
+        if self.setCmdByHost(self.TrsCfg.seqState['measureTrack']):
+            while self.getSeqState() == self.TrsCfg.seqState['measureTrack']:
+                time.sleep(timeBetweenStateChecks)
+        if self.getSeqState() == self.TrsCfg.seqState['measComplete']:
+            return True
+        else:
+            return False
+
+    def getData(self):
+        """
+        function to continously get Data from host sided Buffer
+        :return:
+        """
+
+
+
+    def startTrack(self, scanPars):
         """
         tbw
         :param scanPars: dictionary, containing all parameters needed for a scan.
@@ -163,9 +254,16 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         """
         if self.changeSeqState(1):
             '''must change state to idle in order to transfer ui-values to global vars on the fpga'''
-            self.setMCSValues(scanPars['selectTrigger'], scanPars['delay'], scanPars['nOfBins'], scanPars['nofBunches'])
-            self.setmeasVoltValues(scanPars['measVoltPulseLength25ns'], scanPars['measVoltTimeout10ns'])
-            self.setTrackValues('keep working here')
+            self.setMCSValues(scanPars)
+            self.setmeasVoltValues(scanPars)
+            self.setTrackValues(scanPars)
+            if scanPars['measureOffset']:
+                '''change state to measure the Offset before scanning the track'''
+                while not self.measureOffset(scanPars):
+                    pass
+            self.measureTrack()
+
+
         else:
             print('could not change into idle state, Maybe abort running tasks? Otherwise reset Bitfile.')
             return False
