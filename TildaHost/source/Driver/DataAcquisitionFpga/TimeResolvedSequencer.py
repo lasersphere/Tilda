@@ -27,16 +27,6 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         self.TrsCfg = TrsCfg.TRSConfig()
         self.fpgaInterfaceInstance = super(TimeResolvedSequencer, self).__init__(self.TrsCfg.bitfilePath, self.TrsCfg.bitfileSignature, self.TrsCfg.fpgaResource)
 
-    def checkFpgaStatus(self):
-        """
-        can be used if you only want to execute something when status is ok.
-        :return: bool, True if everything is fine or warning
-        """
-        if self.status >= self.statusSuccess:
-            return True
-        elif self.status < self.statusSuccess:
-            return False
-
     '''read Indicators:'''
     def getMCSState(self):
         """
@@ -191,7 +181,6 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         else:
             return False
 
-
     def halt(self, val):
         """
         halts the Mesaruement after one loop is finished
@@ -217,17 +206,21 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
 
     def measureTrack(self):
         """
-        measure one Track with all Parameters already set before.
-
+        measure one Track with all Parameters already passed to the fpga before.
         :return: True if success
         """
         timeBetweenStateChecks = 0.01
-        self.setCmdByHost(self.TrsCfg.seqState['measureTrack'])
-        if self.checkFpgaStatus():
-            while self.getSeqState() == self.TrsCfg.seqState['measureTrack']:
-                time.sleep(timeBetweenStateChecks)
-        if self.getSeqState() == self.TrsCfg.seqState['measComplete']:
-            return True
+        if self.getSeqState() in [self.TrsCfg.seqState['idle'], self.TrsCfg.seqState['measComplete'],
+                                  self.TrsCfg.seqState['error']]:
+            self.setCmdByHost(self.TrsCfg.seqState['measureTrack'])
+            if self.checkFpgaStatus():
+                while self.getSeqState() == self.TrsCfg.seqState['measureTrack']:
+                    self.getData()
+                    time.sleep(timeBetweenStateChecks)
+            if self.getSeqState() == self.TrsCfg.seqState['measComplete']:
+                return self.checkFpgaStatus()
+            else:
+                return False
         else:
             return False
 

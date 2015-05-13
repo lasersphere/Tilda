@@ -48,6 +48,8 @@ class TRSConfig():
         stepSize = {'ref': 0x8170, 'val': ctypes.c_long(), 'ctr': True}
         delayticks = {'ref': 0x812C, 'val': ctypes.c_ulong(), 'ctr': True}
         nOfBins = {'ref': 0x8128, 'val': ctypes.c_ulong(), 'ctr': True}
+        '''TargetToHostFifos:'''
+        transferToHost = {'ref': 0, 'val': ctypes.c_ulong(), 'ctr': False}
         
         
         """

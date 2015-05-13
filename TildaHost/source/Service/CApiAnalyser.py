@@ -60,10 +60,14 @@ class CApiAnalyser():
             print('fpgaResource = ' + '\'' + fpgaresource + '\'')
             indicators = [s for s in inhalt if "Indicator" in s]
             controls = [s for s in inhalt if "Control" in s]
+            thfifos = [s for s in inhalt if "TargetToHostFifo" in s]
             print('\'\'\'Indicators:\'\'\'')
             self.analyser(indicators, False)
             print('\'\'\'Controls:\'\'\'')
             self.analyser(controls, True)
+            print('\'\'\'TargetToHostFifos:\'\'\'')
+            self.analyser(thfifos, False)
+
 
 
 headerpath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\TimeResolvedSequencer\\NiFpga_TRS.h'

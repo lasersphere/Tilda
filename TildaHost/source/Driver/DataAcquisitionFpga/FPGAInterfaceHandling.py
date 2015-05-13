@@ -88,6 +88,20 @@ class FPGAInterfaceHandling():
             self.status = int(newstatus)
         return self.status
 
+    def checkFpgaStatus(self):
+        """
+        can be used if you only want to execute something when status is ok.
+        :return: bool, True if everything is fine or warning
+        """
+        if self.status == self.statusSuccess:
+            return True
+        elif self.status < self.statusSuccess:
+            return False
+        elif self.status > self.statusSuccess:
+            print('There is a WarningCode ' + str(self.status) +
+                  ' on Session ' + str(self.session.value) + ' .')
+            return True
+
     def ReadWrite(self, controlOrIndicatorDictionary, valInput = None):
         """
         Function to encapsule the reading and writing of Controls or Indicators in the Fpga Interface.
