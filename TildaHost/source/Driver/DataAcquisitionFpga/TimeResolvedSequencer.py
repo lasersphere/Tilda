@@ -41,16 +41,14 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         get the state of the Sequencer
         :return:int, state of Sequencer
         """
-        self.ReadWrite(self.TrsCfg.seqState)
-        return self.TrsCfg.seqState['val'].value
+        return self.ReadWrite(self.TrsCfg.seqState).value
 
     def getmeasVoltState(self):
         """
         gets the state of Voltage measurement Statemachine
         :return:int, state of Voltage measurement Statemachine
         """
-        self.ReadWrite(self.TrsCfg.measVoltState)
-        return self.TrsCfg.measVoltState['val'].value
+        return self.ReadWrite(self.TrsCfg.measVoltState)
 
     def getErrorCount(self):
         """
@@ -77,8 +75,8 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         :param cmd: int, desired sequencer State
         :return: bool, True if returned cmd equals the requested one and there is  no Error and
         """
-        self.TrsCfg.cmdByHost['val'].value = cmd
-        self.ReadWrite(self.TrsCfg.cmdByHost)
+        # self.TrsCfg.cmdByHost['val'].value = cmd
+        self.ReadWrite(self.TrsCfg.cmdByHost, cmd)
         if self.TrsCfg.cmdByHost['val'].value == cmd and self.status == self.statusSuccess:
             return True
         else:
@@ -243,6 +241,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         function to continously get Data from host sided Buffer
         :return:
         """
+        pass
 
 
 
@@ -275,10 +274,11 @@ blub2 = TimeResolvedSequencer()
 print('init: ' + str(blub2.__init__()))
 print(blub2.getSeqState())
 time.sleep(0.1)
+print(blub2.setCmdByHost(5))
 print(blub2.getSeqState())
-print(blub2.changeSeqState(3))
-print(blub2.changeSeqState(4))
-print(blub2.getSeqState())
+# print(blub2.changeSeqState(3))
+# print(blub2.changeSeqState(4))
+# print(blub2.getSeqState())
 
 
 

@@ -21,7 +21,7 @@ class FPGAInterfaceHandling():
         :param resource: String, location of the fpga, like Rio0, Rio1, etc.
         :param reset: Boolean, to chose if you want to reset the fpga on startup, default is True
         :param run: Boolean, to chose if you want to run the fpga on startup, default is True
-        :return: session
+        :return: None
         """
         self.dmaReadTimeout = 1 #timeout to read from Dma Queue in ms
         self.NiFpgaUniversalInterfaceDll = ctypes.CDLL('D:\\Workspace\\Eclipse\\Tilda\\TildaHost\\binary\\NiFpgaUniversalInterfaceDll.dll')
@@ -29,7 +29,6 @@ class FPGAInterfaceHandling():
         self.statusSuccess = 0
         self.status = 0
         self.InitFpga(bitfilePath, bitfileSignature, resource, reset, run)
-        return self.session
 
     def InitFpga(self, bitfilePath, bitfileSignature, resource, reset=True, run=True):
         """
@@ -39,9 +38,9 @@ class FPGAInterfaceHandling():
         :param bitfilePath: String Path to the Bitfile
         :param bitfileSignature: String Signature generated when running C Api
         :param resource: Ni-Resource, e.g. Rio0
-        :param reset: Bool, if True, Reset the Vi, default is True
-        :param run: Bool, if True, Run the FPGA, default is True
-        :return: session if no error, else status
+        :param reset: bool, if True, Reset the Vi, default is True
+        :param run: bool, if True, Run the FPGA, default is True
+        :return: int,  session which is the number of the session
         """
 
         bitfilePath = ctypes.create_string_buffer(bitfilePath.encode('utf-8'))
@@ -56,7 +55,10 @@ class FPGAInterfaceHandling():
         if run:
             self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_Run(self.session, 0))
         if self.status < self.statusSuccess:
-            return self.status
+            print('Initialization of Fpga on ' + str(resource.value) + ' failed, status is: ' + str(self.status))
+        else:
+            print('Fpga Initialised on ' + str(resource.value) + '. The Session is ' + str(self.session)
+                  + '. Status is: ' + str(self.status) + '.')
         return self.session
 
     def DeInitFpga(self):
@@ -83,7 +85,7 @@ class FPGAInterfaceHandling():
             self.status = int(newstatus)
         return self.status
 
-    def ReadWrite(self, controlOrIndicatorDictionary):
+    def ReadWrite(self, controlOrIndicatorDictionary, valInput = None):
         """
         Function to encapsule the reading and writing of Controls or Indicators in the Fpga Interface.
         The type of val determines which function must be called.
@@ -94,7 +96,11 @@ class FPGAInterfaceHandling():
         
         """
         ref = controlOrIndicatorDictionary['ref']
-        val = controlOrIndicatorDictionary['val']
+        if valInput == None:
+            val = controlOrIndicatorDictionary['val']
+        if valInput != None:
+            controlOrIndicatorDictionary['val'].value = valInput
+            val = controlOrIndicatorDictionary['val']
         write = controlOrIndicatorDictionary['ctr']
         if write:
             if type(val) == ctypes.c_ubyte:
