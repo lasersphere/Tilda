@@ -11,6 +11,8 @@ Module to Wrap all the Handling of universal FPGA interactions, like Start, run 
 
 """
 import ctypes
+import sys
+import os
 
 class FPGAInterfaceHandling():
     def __init__(self, bitfilePath, bitfileSignature, resource, reset=True, run=True):
@@ -55,7 +57,8 @@ class FPGAInterfaceHandling():
         if run:
             self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_Run(self.session, 0))
         if self.status < self.statusSuccess:
-            print('Initialization of Fpga on ' + str(resource.value) + ' failed, status is: ' + str(self.status))
+            sys.exit('Initialization of the Bitfile' +str(os.path.split(bitfilePath.value)[1]) +
+                     ' on Fpga with ' + str(resource.value) + ' failed, status is: ' + str(self.status))
         else:
             print('Fpga Initialised on ' + str(resource.value) + '. The Session is ' + str(self.session)
                   + '. Status is: ' + str(self.status) + '.')
@@ -99,6 +102,7 @@ class FPGAInterfaceHandling():
         if valInput == None:
             val = controlOrIndicatorDictionary['val']
         if valInput != None:
+            '''use the dictionary to determine the type of the variable'''
             controlOrIndicatorDictionary['val'].value = valInput
             val = controlOrIndicatorDictionary['val']
         write = controlOrIndicatorDictionary['ctr']
