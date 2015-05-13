@@ -24,6 +24,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         initiates the FPGA, resetted and running.
         :return: None
         """
+        self.fullRawData = []
         self.TrsCfg = TrsCfg.TRSConfig()
         self.fpgaInterfaceInstance = super(TimeResolvedSequencer, self).__init__(self.TrsCfg.bitfilePath, self.TrsCfg.bitfileSignature, self.TrsCfg.fpgaResource)
 
@@ -226,10 +227,17 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
 
     def getData(self):
         """
-        function to continously get Data from host sided Buffer
+        read Data from host sided Buffer to an Array
         :return:
         """
-        pass
+        result = self.ReadU32Fifo(self.TrsCfg.transferToHost['ref'])
+
+        self.fullRawData.append(result['newData'])
+
+
+
+
+
 
 
 

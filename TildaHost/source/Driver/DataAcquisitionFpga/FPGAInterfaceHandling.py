@@ -14,6 +14,7 @@ import ctypes
 import sys
 import os
 
+
 class FPGAInterfaceHandling():
     def __init__(self, bitfilePath, bitfileSignature, resource, reset=True, run=True):
         """
@@ -25,8 +26,9 @@ class FPGAInterfaceHandling():
         :param run: Boolean, to chose if you want to run the fpga on startup, default is True
         :return: None
         """
-        self.dmaReadTimeout = 1 #timeout to read from Dma Queue in ms
-        self.NiFpgaUniversalInterfaceDll = ctypes.CDLL('D:\\Workspace\\Eclipse\\Tilda\\TildaHost\\binary\\NiFpgaUniversalInterfaceDll.dll')
+        self.dmaReadTimeout = 1  # timeout to read from Dma Queue in ms
+        self.NiFpgaUniversalInterfaceDll = ctypes.CDLL(
+            'D:\\Workspace\\Eclipse\\Tilda\\TildaHost\\binary\\NiFpgaUniversalInterfaceDll.dll')
         self.session = ctypes.c_ulong()
         self.statusSuccess = 0
         self.status = 0
@@ -57,7 +59,7 @@ class FPGAInterfaceHandling():
         if run:
             self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_Run(self.session, 0))
         if self.status < self.statusSuccess:
-            sys.exit('Initialization of the Bitfile' +str(os.path.split(bitfilePath.value)[1]) +
+            sys.exit('Initialization of the Bitfile' + str(os.path.split(bitfilePath.value)[1]) +
                      ' on Fpga with ' + str(resource.value) + ' failed, status is: ' + str(self.status))
         else:
             print('Fpga Initialised on ' + str(resource.value) + '. The Session is ' + str(self.session)
@@ -84,7 +86,8 @@ class FPGAInterfaceHandling():
         :param newstatus: new status value that may be set
         :return: the resulting status
         """
-        if self.status >= self.statusSuccess and (self.status == self.statusSuccess or int(newstatus) < self.statusSuccess):
+        if self.status >= self.statusSuccess and (
+                        self.status == self.statusSuccess or int(newstatus) < self.statusSuccess):
             self.status = int(newstatus)
         return self.status
 
@@ -102,7 +105,7 @@ class FPGAInterfaceHandling():
                   ' on Session ' + str(self.session.value) + ' .')
             return True
 
-    def ReadWrite(self, controlOrIndicatorDictionary, valInput = None):
+    def ReadWrite(self, controlOrIndicatorDictionary, valInput=None):
         """
         Function to encapsule the reading and writing of Controls or Indicators in the Fpga Interface.
         The type of val determines which function must be called.
@@ -137,22 +140,29 @@ class FPGAInterfaceHandling():
                 self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_WriteBool(self.session, ref, val))
         elif not write:
             if type(val) == ctypes.c_ubyte:
-                self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadU8(self.session, ref, ctypes.byref(val)))
+                self.StatusHandling(
+                    self.NiFpgaUniversalInterfaceDll.NiFpga_ReadU8(self.session, ref, ctypes.byref(val)))
             elif type(val) == ctypes.c_byte:
-                self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadI8(self.session, ref, ctypes.byref(val)))
+                self.StatusHandling(
+                    self.NiFpgaUniversalInterfaceDll.NiFpga_ReadI8(self.session, ref, ctypes.byref(val)))
             elif type(val) == ctypes.c_ushort:
-                self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadU16(self.session, ref, ctypes.byref(val)))
+                self.StatusHandling(
+                    self.NiFpgaUniversalInterfaceDll.NiFpga_ReadU16(self.session, ref, ctypes.byref(val)))
             elif type(val) == ctypes.c_short:
-                self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadI16(self.session, ref, ctypes.byref(val)))
+                self.StatusHandling(
+                    self.NiFpgaUniversalInterfaceDll.NiFpga_ReadI16(self.session, ref, ctypes.byref(val)))
             elif type(val) == ctypes.c_ulong:
-                self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadU32(self.session, ref, ctypes.byref(val)))
+                self.StatusHandling(
+                    self.NiFpgaUniversalInterfaceDll.NiFpga_ReadU32(self.session, ref, ctypes.byref(val)))
             elif type(val) == ctypes.c_long:
-                self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadI32(self.session, ref, ctypes.byref(val)))
+                self.StatusHandling(
+                    self.NiFpgaUniversalInterfaceDll.NiFpga_ReadI32(self.session, ref, ctypes.byref(val)))
             elif type(val) == ctypes.c_bool:
-                self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadBool(self.session, ref, ctypes.byref(val)))
+                self.StatusHandling(
+                    self.NiFpgaUniversalInterfaceDll.NiFpga_ReadBool(self.session, ref, ctypes.byref(val)))
         return val
 
-    def ReadU32Fifo(self, fifoRef, data, nOfEle= -1):
+    def ReadU32Fifo(self, fifoRef, nOfEle=-1):
         """
         Reading the Host Buffer which is connected to a Target-to-Host Fifo on the FPGA
         Will read all elements inside the Buffer if nOfEle < 0, default.
@@ -160,24 +170,28 @@ class FPGAInterfaceHandling():
         Will read no Data, but how many Elements are inside the Queue if nOfEle = 0.
 
         :param fifoRef: Reference number of the Target-to-Host Fifo as found in hex in the C-Api generated file.
-        :param data: ctypes.c_ulong instance, Data from Host will be written in there.
         :param nOfEle: ctypes.c_long instance,
         If nOfEle < 0, everything will be read.
         If nOfEle = 0, no Data will be read.
         If nOfEle > 0, desired number of element will be read or timeout.
-        :return:nOfEle = number of Read Elements, data = First Element in data, use data[i] to get the i-th element.
-        elemRemainInFifo = number of Elements still in FifoBuffer
+        :return:nOfEle = number of Read Elements, newDataArray = Python Array containing all data that was read
+               elemRemainInFifo = number of Elements still in FifoBuffer
         """
         elemRemainInFifo = ctypes.c_long()
+        dummydata = (ctypes.c_ulong * 1)()
         if nOfEle < 0:
+            # check how many Elements are in Fifo
             self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadFifoU32(
-                self.session, fifoRef, ctypes.byref(data), 0, self.dmaReadTimeout, ctypes.byref(elemRemainInFifo)
+                self.session, fifoRef, ctypes.byref(dummydata), 0, self.dmaReadTimeout, ctypes.byref(elemRemainInFifo)
             ))
-            elemRemainInFifo = nOfEle
+            elemRemainInFifo.value = nOfEle
+        newDataCType = (ctypes.c_ulong * nOfEle)()
         self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadFifoU32(
-            self.session, fifoRef, ctypes.byref(data), nOfEle, self.dmaReadTimeout, ctypes.byref(elemRemainInFifo)
+            self.session, fifoRef, ctypes.byref(newDataCType), nOfEle, self.dmaReadTimeout,
+            ctypes.byref(elemRemainInFifo)
         ))
-        return {'nOfEle':nOfEle,'data':data, 'elemRemainInFifo':elemRemainInFifo}
+        newDataArray = [newDataCType[i].value for i in range(nOfEle)]
+        return {'nOfEle': nOfEle, 'newData': newDataArray, 'elemRemainInFifo': elemRemainInFifo}
 
 
     def ConfigureU32FifoHostBuffer(self, fifoRef, nOfReqEle):
@@ -217,9 +231,9 @@ class FPGAInterfaceHandling():
         :return: status
         """
         if nOfEle < 0:
-            self.ClearU32FifoHostBuffer(fifoRef, self.ReadU32Fifo(fifoRef, ctypes.c_ulong(), nOfEle)['elemRemainInFifo'])
+            self.ClearU32FifoHostBuffer(fifoRef, self.ReadU32Fifo(fifoRef, nOfEle)['elemRemainInFifo'])
         self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReleaseFifoElements(
-         self.session, fifoRef, nOfEle
+            self.session, fifoRef, nOfEle
         ))
         return self.status
 
