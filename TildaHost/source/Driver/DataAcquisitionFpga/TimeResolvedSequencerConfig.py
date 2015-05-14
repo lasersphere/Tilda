@@ -56,4 +56,8 @@ class TRSConfig():
         Hand filled Values, for example certain values for enums:
         """
         seqState.update({'init': 0, 'idle': 1, 'measureOffset': 2, 'measureTrack': 3, 'measComplete': 4, 'error': 5})
-        
+        transferToHost.update({'nOfReqEle': 100000})
+
+        dummyScanParameters = {
+
+        }

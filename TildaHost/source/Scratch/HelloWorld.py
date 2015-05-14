@@ -14,8 +14,6 @@ def func(dict):
     
 func(DACQuWriteTimeout)
 
-print([i for i in range(1)])
 
-print((ctypes.c_ulong * 1)()[0])
-print(ctypes.c_long())
-print(int(0).value < 1)
+print(len((ctypes.c_ulong * 0)()))
+print(len([]))

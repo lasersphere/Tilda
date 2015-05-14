@@ -34,6 +34,7 @@ class FPGAInterfaceHandling():
         self.status = 0
         self.InitFpga(bitfilePath, bitfileSignature, resource, reset, run)
 
+    '''Initializing/Deinitilaizing'''
     def InitFpga(self, bitfilePath, bitfileSignature, resource, reset=True, run=True):
         """
         Initialize the FPGA with all necessary functions to start an FPGA Session.
@@ -75,7 +76,7 @@ class FPGAInterfaceHandling():
         self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_Finalize())
         return self.status
 
-
+    '''FPGA Status Handling'''
     def StatusHandling(self, newstatus):
         """
          Conditionally sets the status to a new value. The previous status is
@@ -99,12 +100,14 @@ class FPGAInterfaceHandling():
         if self.status == self.statusSuccess:
             return True
         elif self.status < self.statusSuccess:
+            print('Fpga Status Yields Error, Code is: ' + str(self.status))
             return False
         elif self.status > self.statusSuccess:
             print('There is a WarningCode ' + str(self.status) +
                   ' on Session ' + str(self.session.value) + ' .')
             return True
 
+    '''Indicator/Control Operations:'''
     def ReadWrite(self, controlOrIndicatorDictionary, valInput=None):
         """
         Function to encapsule the reading and writing of Controls or Indicators in the Fpga Interface.
@@ -169,31 +172,27 @@ class FPGAInterfaceHandling():
         Will read desired number of elements from Fifo, if nOfEle > 0 or timeout if to less data is in buffer.
         Will read no Data, but how many Elements are inside the Queue if nOfEle = 0.
 
-        :param fifoRef: Reference number of the Target-to-Host Fifo as found in hex in the C-Api generated file.
-        :param nOfEle: ctypes.c_long instance,
+        :param fifoRef: int, Reference number of the Target-to-Host Fifo as found in hex in the C-Api generated file.
+        :param nOfEle: int,
         If nOfEle < 0, everything will be read.
-        If nOfEle = 0, no Data will be read.
+        If nOfEle = 0, no Data will be read. Use to get how many elements are in fifo
         If nOfEle > 0, desired number of element will be read or timeout.
-        :return:nOfEle = number of Read Elements, newDataArray = Python Array containing all data that was read
-               elemRemainInFifo = number of Elements still in FifoBuffer
+        :return: nOfEle = int, number of Read Elements, newDataArray = Python Array containing all data that was read
+               elemRemainInFifo = int, number of Elements still in FifoBuffer
         """
         elemRemainInFifo = ctypes.c_long()
-        dummydata = (ctypes.c_ulong * 1)()
         if nOfEle < 0:
-            # check how many Elements are in Fifo
-            self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadFifoU32(
-                self.session, fifoRef, ctypes.byref(dummydata), 0, self.dmaReadTimeout, ctypes.byref(elemRemainInFifo)
-            ))
-            elemRemainInFifo.value = nOfEle
-        newDataCType = (ctypes.c_ulong * nOfEle)()
+            # check how many Elements are in Fifo and than read all of them
+            return self.ReadU32Fifo(fifoRef, self.ReadU32Fifo(fifoRef, 0)['elemRemainInFifo'])
+        newDataCType = (ctypes.c_ulong * (nOfEle + 1))() #+1 to not get an empty array
         self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadFifoU32(
             self.session, fifoRef, ctypes.byref(newDataCType), nOfEle, self.dmaReadTimeout,
             ctypes.byref(elemRemainInFifo)
         ))
         newDataArray = [newDataCType[i].value for i in range(nOfEle)]
-        return {'nOfEle': nOfEle, 'newData': newDataArray, 'elemRemainInFifo': elemRemainInFifo}
+        return {'nOfEle': nOfEle, 'newData': newDataArray, 'elemRemainInFifo': elemRemainInFifo.value}
 
-
+    '''FIFO / DMA Queue Operations '''
     def ConfigureU32FifoHostBuffer(self, fifoRef, nOfReqEle):
         """
         Function to configure the Size of the Host sided Buffer.
@@ -202,8 +201,8 @@ class FPGAInterfaceHandling():
         NI recommends that you increase this buffer to a size multiple of 4,096 elements
         if you run into overflow or underflow errors.
         :param fifoRef: Reference number of the Target-to-Host Fifo as found in hex in the C-Api generated file.
-        :param nOfReqEle: ctypes.c_long instance of the number of requested elements.
-        :return:elementsAcquired
+        :param nOfReqEle: int, number of requested elements.
+        :return:int, number of elements that have ben acquired
         """
         elementsDummy = ctypes.byref(ctypes.c_ulong())
         elementsAcquired = ctypes.c_size_t()
@@ -212,9 +211,7 @@ class FPGAInterfaceHandling():
             self.session, fifoRef, elementsDummy, nOfReqEle,
             self.dmaReadTimeout, ctypes.byref(elementsAcquired), ctypes.byref(elementsRemainingDummy)
         ))
-        if self.status < self.statusSuccess:
-            return self.status
-        return elementsAcquired
+        return elementsAcquired.value
 
     def ClearU32FifoHostBuffer(self, fifoRef, nOfEle=-1):
         """
@@ -228,14 +225,16 @@ class FPGAInterfaceHandling():
         :param nOfEle: ctypes.c_long instance,
         If nOfEle < 0, everything will be released.
         If nOfEle >= 0, desired number of element will be released.
-        :return: status
+        :return:bool, True if Status ok
         """
         if nOfEle < 0:
-            self.ClearU32FifoHostBuffer(fifoRef, self.ReadU32Fifo(fifoRef, nOfEle)['elemRemainInFifo'])
-        self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReleaseFifoElements(
-            self.session, fifoRef, nOfEle
-        ))
-        return self.status
+            #check for number of elements in fifo and than release all of them.
+            return self.ClearU32FifoHostBuffer(fifoRef, self.ReadU32Fifo(fifoRef, 0)['elemRemainInFifo'])
+        if nOfEle > 0:
+            self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReleaseFifoElements(
+                self.session, fifoRef, nOfEle
+            ))
+        return self.checkFpgaStatus()
 
 
 
