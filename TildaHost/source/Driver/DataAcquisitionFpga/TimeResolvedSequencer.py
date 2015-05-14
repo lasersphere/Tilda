@@ -26,6 +26,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         self.fpgaInterfaceInstance = super(TimeResolvedSequencer, self).__init__(self.TrsCfg.bitfilePath,
                                                                                  self.TrsCfg.bitfileSignature,
                                                                                  self.TrsCfg.fpgaResource)
+        self.confHostBufferSize()
 
     '''DMA Queue host sided Buffer Operations:'''
     def confHostBufferSize(self, nOfreqEle=-1):
@@ -34,6 +35,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
          to the desired size as determined in the ...Config.py
         :param nOfreqEle: int, defines how many Elements should be capable in the Host sided Buffer.
         if nOfreqEle <= 0 the value from the Config.py will be taken.
+        default is -1
         :return: True, if Status is no Error
         """
         if nOfreqEle <= 0:
