@@ -267,7 +267,9 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         """
         read Data from host sided Buffer called 'transferToHost' to an Array.
         Can later be fed into a pipeline system.
-        :return: python integer array with new data.
+        :return: dictionary,
+        nOfEle = int, number of Read Elements, newDataArray = integer Python Array containing all data that was read
+               elemRemainInFifo = int, number of Elements still in FifoBuffer
         """
         result = self.ReadU32Fifo(self.TrsCfg.transferToHost['ref'])
         return result
@@ -277,21 +279,21 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         pass
 
 
-
-# instanciate that bitch:
-blub2 = TimeResolvedSequencer()
-
-print('status of Fpga is: ' + str(blub2.status))
-print('seq State: ' + str(blub2.getSeqState()))
-print('configure Hist sided Buffer: ' + str(blub2.confHostBufferSize()))
-time.sleep(0.1)
-
-print('start Track: ' + str(blub2.measureTrack(blub2.TrsCfg.dummyScanParameters)))
-print('seq State: ' + str(blub2.getSeqState()))
-print('seq State: ' + str(blub2.getSeqState()))
-print(blub2.getData())
-print(blub2.getData())
-print(blub2.getData())
+#
+# # instanciate that bitch:
+# blub2 = TimeResolvedSequencer()
+#
+# print('status of Fpga is: ' + str(blub2.status))
+# print('seq State: ' + str(blub2.getSeqState()))
+# print('configure Hist sided Buffer: ' + str(blub2.confHostBufferSize()))
+# time.sleep(0.1)
+#
+# print('start Track: ' + str(blub2.measureTrack(blub2.TrsCfg.dummyScanParameters)))
+# print('seq State: ' + str(blub2.getSeqState()))
+# print('seq State: ' + str(blub2.getSeqState()))
+# print(blub2.getData())
+# print(blub2.getData())
+# print(blub2.getData())
 
 
 

@@ -62,6 +62,6 @@ class TRSConfig():
         dummyScanParameters = {'MCSSelectTrigger': 0, 'delayticks': 100, 'nOfBins': 1000, 'nOfBunches': 1,
                                'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100,
                                'VoltOrScaler': False, 'stepSize': int('00000010000000000000', 2),
-                               'start': int('00000000000000000000', 2), 'nOfSteps': 20,
+                               'start': int('00000000001000000000', 2), 'nOfSteps': 20,
                                'nOfScans': 5, 'invertScan': False, 'heinzingerControl': 1, 'waitForKepco25nsTicks': 40,
                                'waitAfterReset25nsTicks': 4000}
