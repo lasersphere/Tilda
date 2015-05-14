@@ -7,8 +7,6 @@ Created on 21.01.2015
 import ctypes
 import time
 
-import Scratch.Formating
-
 
 dll = ctypes.CDLL('D:\Workspace\Eclipse\Tilda\TildaTarget\SimpleCounter\SimpleCounter.dll')
 
@@ -38,11 +36,11 @@ dmaCtsFull = []
 dmaCts = (ctypes.c_ulong * nOfEle)()
   
 dll.readDMA(session, nOfEle, ctypes.byref(dmaCts))
-dmaCtsFull = dmaCtsFull + [source.Scratch.Formating.headunfold(dmaCts[i]) for i in range(nOfEle)]
+dmaCtsFull = dmaCtsFull + [source.Scratch.Formating.binaryDataToInt(dmaCts[i]) for i in range(nOfEle)]
 print(dmaCtsFull)
 
 dll.readDMA(session, nOfEle, ctypes.byref(dmaCts))
-dmaCtsFull = dmaCtsFull + [source.Scratch.Formating.headunfold(dmaCts[i]) for i in range(nOfEle)]
+dmaCtsFull = dmaCtsFull + [source.Scratch.Formating.binaryDataToInt(dmaCts[i]) for i in range(nOfEle)]
 print(dmaCtsFull)
 
 status = dll._fpgaexit(session)

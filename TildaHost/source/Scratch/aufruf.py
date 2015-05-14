@@ -37,11 +37,11 @@ dmaCtsFull = []
 dmaCts = (ctypes.c_ulong * nOfEle)()
   
 dll.readDMA(session, nOfEle, ctypes.byref(dmaCts))
-dmaCtsFull = dmaCtsFull + [form.headunfold(dmaCts[i]) for i in range(nOfEle)]
+dmaCtsFull = dmaCtsFull + [form.binaryDataToInt(dmaCts[i]) for i in range(nOfEle)]
 print(dmaCtsFull)
 
 dll.readDMA(session, nOfEle, ctypes.byref(dmaCts))
-dmaCtsFull = dmaCtsFull + [form.headunfold(dmaCts[i]) for i in range(nOfEle)]
+dmaCtsFull = dmaCtsFull + [form.binaryDataToInt(dmaCts[i]) for i in range(nOfEle)]
 print(dmaCtsFull)
 
 status = dll._fpgaexit(session)

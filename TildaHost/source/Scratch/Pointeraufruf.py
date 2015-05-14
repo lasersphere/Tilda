@@ -37,11 +37,11 @@ start = time.clock()
 pDmaCts = ctypes.cast((ctypes.c_ulong * 1)(), ctypes.POINTER(ctypes.c_ulong))
 
 dll.readDMA(session, nOfEle, pDmaCts)
-print(form.headunfold(pDmaCts[16]))
+print(form.binaryDataToInt(pDmaCts[16]))
 
 
 dll.readDMA(session, nOfEle, pDmaCts)
-# print([form.headunfold(pDmaCts[i]) for i in range(nOfEle)])
+# print([form.binaryDataToInt(pDmaCts[i]) for i in range(nOfEle)])
 
 
 
