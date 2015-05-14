@@ -58,6 +58,10 @@ class TRSConfig():
         seqState.update({'init': 0, 'idle': 1, 'measureOffset': 2, 'measureTrack': 3, 'measComplete': 4, 'error': 5})
         transferToHost.update({'nOfReqEle': 100000})
 
-        dummyScanParameters = {
 
-        }
+        dummyScanParameters = {'MCSSelectTrigger': 0, 'delayticks': 100, 'nOfBins': 1000, 'nOfBunches': 1,
+                               'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100,
+                               'VoltOrScaler': False, 'stepSize': int('00000010000000000000', 2),
+                               'start': int('00000000000000000000', 2), 'nOfSteps': 20,
+                               'nOfScans': 5, 'invertScan': False, 'heinzingerControl': 1, 'waitForKepco25nsTicks': 40,
+                               'waitAfterReset25nsTicks': 4000}

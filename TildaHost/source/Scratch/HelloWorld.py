@@ -16,4 +16,5 @@ func(DACQuWriteTimeout)
 
 
 print(len((ctypes.c_ulong * 0)()))
-print(len([]))
+print(int('00000010000000000000', 2))
+print(int('00000000000001000000', 2))

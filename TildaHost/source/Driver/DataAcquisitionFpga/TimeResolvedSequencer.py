@@ -278,8 +278,19 @@ print('init: ' + str(blub2.__init__()))
 print('status of Fpga is: ' + str(blub2.status))
 print(blub2.getSeqState())
 time.sleep(0.1)
-print(blub2.setCmdByHost(5))
+
+print(blub2.measureTrack(blub2.TrsCfg.dummyScanParameters))
 print(blub2.getSeqState())
+print(blub2.getSeqState())
+print(blub2.getData())
+print(blub2.getData())
+print(blub2.getData())
+
+
+
+
+# print(blub2.setCmdByHost(5))
+# print(blub2.getSeqState())
 # print(blub2.changeSeqState(3))
 # print(blub2.changeSeqState(4))
 # print(blub2.getSeqState())
