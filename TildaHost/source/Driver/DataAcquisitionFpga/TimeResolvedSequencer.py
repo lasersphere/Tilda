@@ -28,19 +28,22 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
                                                                                  self.TrsCfg.fpgaResource)
 
     '''DMA Queue host sided Buffer Operations:'''
-    def confHostBufferSize(self):
+    def confHostBufferSize(self, nOfreqEle=-1):
         """
         Set the size of the host sided Buffer of "transferToHost" Fifo
          to the desired size as determined in the ...Config.py
-        :param nOfReqEle:
+        :param nOfreqEle: int, defines how many Elements should be capable in the Host sided Buffer.
+        if nOfreqEle <= 0 the value from the Config.py will be taken.
         :return: True, if Status is no Error
         """
-        nOfAcqEle = self.ConfigureU32FifoHostBuffer(self.TrsCfg.transferToHost['ref'], self.TrsCfg.transferToHost['nOfReqEle'])
-        print('Number of acquired Elements: ' + str(nOfAcqEle))
-        if self.checkFpgaStatus():
-            print('Host Sided Buffer has been set to: ' + str(nOfAcqEle) + ' number of 32-Bit Elements')
-            return True
-        return False
+        if nOfreqEle <= 0:
+            self.ConfigureU32FifoHostBuffer(self.TrsCfg.transferToHost['ref'], self.TrsCfg.transferToHost['nOfReqEle'])
+            print('Size of Host Sided Buffer has been set to: ' + str(self.TrsCfg.transferToHost['nOfReqEle'])
+                  + ' numbers of 32-Bit Elements')
+        elif nOfreqEle > 0:
+            self.ConfigureU32FifoHostBuffer(self.TrsCfg.transferToHost['ref'], nOfreqEle)
+            print('Size of Host Sided Buffer has been set to: ' + str(nOfreqEle) + ' numbers of 32-Bit Elements')
+        return self.checkFpgaStatus()
 
     def clearHostBuffer(self, nOfEle=-1):
         """
