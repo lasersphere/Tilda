@@ -36,6 +36,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         :return: True, if Status is no Error
         """
         nOfAcqEle = self.ConfigureU32FifoHostBuffer(self.TrsCfg.transferToHost['ref'], self.TrsCfg.transferToHost['nOfReqEle'])
+        print('Number of acquired Elements: ' + str(nOfAcqEle))
         if self.checkFpgaStatus():
             print('Host Sided Buffer has been set to: ' + str(nOfAcqEle) + ' number of 32-Bit Elements')
             return True
@@ -264,7 +265,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         :return: python integer array with new data.
         """
         result = self.ReadU32Fifo(self.TrsCfg.transferToHost['ref'])
-        return result['newData']
+        return result
 
     '''closing and resetting'''
     def resetFpga(self):
@@ -274,14 +275,15 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
 
 # instanciate that bitch:
 blub2 = TimeResolvedSequencer()
-print('init: ' + str(blub2.__init__()))
+
 print('status of Fpga is: ' + str(blub2.status))
-print(blub2.getSeqState())
+print('seq State: ' + str(blub2.getSeqState()))
+print('configure Hist sided Buffer: ' + str(blub2.confHostBufferSize()))
 time.sleep(0.1)
 
-print(blub2.measureTrack(blub2.TrsCfg.dummyScanParameters))
-print(blub2.getSeqState())
-print(blub2.getSeqState())
+print('start Track: ' + str(blub2.measureTrack(blub2.TrsCfg.dummyScanParameters)))
+print('seq State: ' + str(blub2.getSeqState()))
+print('seq State: ' + str(blub2.getSeqState()))
 print(blub2.getData())
 print(blub2.getData())
 print(blub2.getData())

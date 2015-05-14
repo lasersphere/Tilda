@@ -184,12 +184,12 @@ class FPGAInterfaceHandling():
         if nOfEle < 0:
             # check how many Elements are in Fifo and than read all of them
             return self.ReadU32Fifo(fifoRef, self.ReadU32Fifo(fifoRef, 0)['elemRemainInFifo'])
-        newDataCType = (ctypes.c_ulong * (nOfEle + 1))() #+1 to not get an empty array
+        newDataCType = (ctypes.c_ulong * nOfEle)()
         self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadFifoU32(
             self.session, fifoRef, ctypes.byref(newDataCType), nOfEle, self.dmaReadTimeout,
             ctypes.byref(elemRemainInFifo)
         ))
-        newDataArray = [newDataCType[i].value for i in range(nOfEle)]
+        newDataArray = [newDataCType[i] for i in range(nOfEle)]
         return {'nOfEle': nOfEle, 'newData': newDataArray, 'elemRemainInFifo': elemRemainInFifo.value}
 
     '''FIFO / DMA Queue Operations '''
