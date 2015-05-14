@@ -266,6 +266,9 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         result = self.ReadU32Fifo(self.TrsCfg.transferToHost['ref'])
         return result['newData']
 
+    '''closing and resetting'''
+    def resetFpga(self):
+        pass
 
 
 
