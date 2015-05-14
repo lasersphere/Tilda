@@ -202,16 +202,10 @@ class FPGAInterfaceHandling():
         if you run into overflow or underflow errors.
         :param fifoRef: Reference number of the Target-to-Host Fifo as found in hex in the C-Api generated file.
         :param nOfReqEle: int, number of requested elements.
-        :return:int, number of elements that have ben acquired
+        :return:bool, True if Status is ok
         """
-        elementsDummy = ctypes.byref(ctypes.c_ulong())
-        elementsAcquired = ctypes.c_size_t()
-        elementsRemainingDummy = ctypes.c_size_t()
-        self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_AcquireFifoReadElementsU32(
-            self.session, fifoRef, elementsDummy, nOfReqEle,
-            self.dmaReadTimeout, ctypes.byref(elementsAcquired), ctypes.byref(elementsRemainingDummy)
-        ))
-        return elementsAcquired.value
+        self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ConfigureFifo(self.session, fifoRef, nOfReqEle))
+        return self.checkFpgaStatus()
 
     def ClearU32FifoHostBuffer(self, fifoRef, nOfEle=-1):
         """
@@ -235,10 +229,3 @@ class FPGAInterfaceHandling():
                 self.session, fifoRef, nOfEle
             ))
         return self.checkFpgaStatus()
-
-
-
-
-
-
-
