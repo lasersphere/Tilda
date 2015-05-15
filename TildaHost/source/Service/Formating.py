@@ -18,12 +18,12 @@ class Formatter():
         tuple[2] = int, 23 Bit timestamp for mcs Data or 23 Bit other Information program relevant.
         """
         headerlength = 8
-        headerindex = (int32bData & (2 ** 23)) > 0
+        headerindex = (int32bData & (2 ** 23)) == 0
         value = int32bData & ((2 ** 23) - 1)
         header = int32bData >> (32 - headerlength)
         if headerindex:
             #mcs data
-            timestamp = value
+            timestamp = value * 10
             activepmts = [i for i in range(headerlength) if (header & (2 ** i)) > 0]
             return (headerindex, activepmts, timestamp)
         else:

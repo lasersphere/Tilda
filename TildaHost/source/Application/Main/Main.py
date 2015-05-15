@@ -27,7 +27,7 @@ class Main():
                 newData = [self.form.integerSplitHeaderInfo(result['newData'][i]) for i in range(len(result['newData']))]
                 print(newData)
                 self.fullData.append(newData)
-                time.sleep(0.2)
+                time.sleep(0.4)
         print(self.fullData)
 
 
@@ -35,5 +35,5 @@ class Main():
 maininst = Main()
 print(maininst.measureOneTrack(maininst.trs.TrsCfg.dummyScanParameters))
 
-print(format(814743552, '032b'))
+# print(format(814743552, '032b'))
 # print(len(bin(814743552)[2:]))
