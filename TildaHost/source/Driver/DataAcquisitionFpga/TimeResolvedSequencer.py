@@ -280,7 +280,6 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
 
 
 #
-# # instanciate that bitch:
 # blub2 = TimeResolvedSequencer()
 #
 # print('status of Fpga is: ' + str(blub2.status))

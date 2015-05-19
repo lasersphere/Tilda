@@ -63,5 +63,7 @@ class TRSConfig():
                                'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100,
                                'VoltOrScaler': False, 'stepSize': int('00000010000000000000', 2),
                                'start': int('00000000001000000000', 2), 'nOfSteps': 20,
-                               'nOfScans': 5, 'invertScan': False, 'heinzingerControl': 1, 'heinzingerOffsetVolt':1000, 'waitForKepco25nsTicks': 40,
+                               'nOfScans': 5, 'invertScan': False,
+                               'measureOffset': False, 'heinzingerControl': 1, 'heinzingerOffsetVolt':1000,
+                               'waitForKepco25nsTicks': 40,
                                'waitAfterReset25nsTicks': 4000}

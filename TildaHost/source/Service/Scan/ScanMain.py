@@ -22,10 +22,14 @@ class ScanMain():
 
     def startMeasurement(self, scanpars):
         self.setHeinzinger(scanpars)
+        if scanpars['measureOffset']:
+            self.measureOffset(scanpars)
         self.measureOneTrack(scanpars)
 
 
+
     def measureOneTrack(self, scanpars):
+        #dont like this. its just forwarding isnt it?
         self.trs.measureTrack(scanpars)
 
     def setHeinzinger(self, scanpars):
