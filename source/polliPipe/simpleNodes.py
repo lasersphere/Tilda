@@ -20,9 +20,7 @@ class NAccumulate(Node):
         self.type = "Accumulate"
 
         self.buf = 0
-        
-        
-        
+
     def processData(self, data, pipeData):
         """
         Add data and
@@ -30,6 +28,31 @@ class NAccumulate(Node):
         self.buf += data
         return self.buf
     
+    def clear(self):
+        self.buf = 0
+
+
+class NSubtract(Node):
+    """
+    classdocs
+    """
+
+    def __init__(self):
+        """
+        Constructor
+        """
+        super(NAccumulate, self).__init__()
+        self.type = "Accumulate"
+
+        self.buf = 0
+
+    def processData(self, data, pipeData):
+        """
+        Add data and
+        """
+        self.buf -= data
+        return self.buf
+
     def clear(self):
         self.buf = 0
 
