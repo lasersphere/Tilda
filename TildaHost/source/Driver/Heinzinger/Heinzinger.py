@@ -14,7 +14,7 @@ import Driver.Heinzinger.HeinzingerCfg as hzCfg
 
 
 class Heinzinger():
-    def __init__(self):
+    def __init__(self, com):
         self.errorcount = 0
         self.outp = False
         self.setCur = 0
@@ -22,7 +22,7 @@ class Heinzinger():
         self.setVolt = 0
         self.sleepAfterSend = 0.05
         self.hzIdn = ''
-        self.ser = serial.Serial(port = hzCfg.comport, baudrate = 9600, timeout = 0.1, parity='N', stopbits = 1, bytesize = 8, xonxoff = 1)
+        self.ser = serial.Serial(port = com -1, baudrate = 9600, timeout = 0.1, parity='N', stopbits = 1, bytesize = 8, xonxoff = 1)
         try:
             self.serWrite('*IDN?')
             self.hzIdn = str(self.ser.readline())
