@@ -34,6 +34,7 @@ class FPGAInterfaceHandling():
         self.status = 0
         self.InitFpga(bitfilePath, bitfileSignature, resource, reset, run)
 
+
     '''Initializing/Deinitilaizing'''
     def InitFpga(self, bitfilePath, bitfileSignature, resource, reset=True, run=True):
         """
