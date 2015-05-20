@@ -22,7 +22,7 @@ class FpgaTest():
         self.form = Formatter()
         start = Node()
         walk = start.attach(NrawFormatToReadable())
-        walk = walk.attch(NPrint())
+        walk = walk.attach(NPrint())
 
         self.pipe = Pipeline(start)
         self.pipe.start()
@@ -38,7 +38,7 @@ class FpgaTest():
                 newdata = np.ctypeslib.as_array(result['newData'])
                 self.pipe.feed(newdata)
                 time.sleep(0.05)
-        print(self.fullData)
+
 
 
 

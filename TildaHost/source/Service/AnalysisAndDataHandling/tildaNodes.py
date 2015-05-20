@@ -20,8 +20,9 @@ class NrawFormatToReadable(Node):
         """
         super(NrawFormatToReadable, self).__init__()
         self.type = "rawFormatToReadable"
+        self.form = Formatter()
 
-        self.buf = np.zeros(500, dtype=np.uint32)
+        self.buf = [0]*500
 
     def processData(self, data, pipeData):
         """
@@ -30,9 +31,10 @@ class NrawFormatToReadable(Node):
         """
         if len(data) > 500:
             self.buf = np.resize(self.buf, len(data))
-        for i in data:
-            self.buf[i] = Formatter.integerSplitHeaderInfo(data[i])
+        for i in range(len(data)):
+            # print('working on: ' + str(data[i]))
+            self.buf[i] = self.form.integerSplitHeaderInfo(data[i])
         return self.buf
 
     def clear(self):
-        self.buf.fill(0)
+        self.buf = [0]*500
