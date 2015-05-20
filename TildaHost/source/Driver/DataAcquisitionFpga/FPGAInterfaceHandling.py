@@ -166,6 +166,7 @@ class FPGAInterfaceHandling():
                     self.NiFpgaUniversalInterfaceDll.NiFpga_ReadBool(self.session, ref, ctypes.byref(val)))
         return val
 
+    '''FIFO / DMA Queue Operations '''
     def ReadU32Fifo(self, fifoRef, nOfEle=-1):
         """
         Reading the Host Buffer which is connected to a Target-to-Host Fifo on the FPGA
@@ -192,7 +193,6 @@ class FPGAInterfaceHandling():
         ))
         return {'nOfEle': nOfEle, 'newData': newDataCType, 'elemRemainInFifo': elemRemainInFifo.value}
 
-    '''FIFO / DMA Queue Operations '''
     def ConfigureU32FifoHostBuffer(self, fifoRef, nOfReqEle):
         """
         Function to configure the Size of the Host sided Buffer.
