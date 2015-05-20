@@ -2444,12 +2444,6 @@ NiFpga_Status NiFpga_ReleaseFifoElements(NiFpga_Session session,
 NiFpga_Status NiFpga_GetPeerToPeerFifoEndpoint(NiFpga_Session session,
                                                uint32_t       fifo,
                                                uint32_t*      endpoint);
-/*
- * Custom Functions:
- */
-
-void freeMemory (uint32_t* ptr);
-
 
 #if NiFpga_Cpp
 }

@@ -2081,10 +2081,3 @@ NiFpga_Status NiFpga_Finalize(void)
    else
       return NiFpga_Status_ResourceNotInitialized;
 }
-
-
-void freeMemory (uint32_t* ptr)
-{
-	free(ptr);
-}
-
