@@ -20,11 +20,16 @@ import numpy as np
 # print(int('00000010000000000000', 2))
 # print(int('00000000000001000000', 2))
 
-nOfBins = 100
-nOfSteps = 20
-testmatrix = np.zeros((nOfBins, nOfSteps, 8), dtype=np.int)
-print(testmatrix)
-print(type(testmatrix[0, 0, 0]))
+# nOfBins = 100
+# nOfSteps = 20
+# testmatrix = np.zeros((nOfBins, nOfSteps, 8), dtype=np.int)
+# print(testmatrix)
+# print(type(testmatrix[0, 0, 0]))
+
+buf = np.array([1,2,3], dtype=np.uint32)
+print(buf)
+buf.fill(0)
+print(buf)
 
 
 #old main stuff:

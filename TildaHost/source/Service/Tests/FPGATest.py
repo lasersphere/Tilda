@@ -7,7 +7,10 @@ Created on '07.05.2015'
 """
 from Driver.DataAcquisitionFpga.TimeResolvedSequencer import TimeResolvedSequencer
 from Service.Formating import Formatter
-import polliPipe
+from polliPipe.node import Node
+from polliPipe.pipeline import Pipeline
+from Service.AnalysisAndDataHandling.tildaNodes import NrawFormatToReadable
+from polliPipe.simpleNodes import NPrint
 
 import time
 import numpy as np
@@ -17,7 +20,12 @@ class FpgaTest():
     def __init__(self):
         self.trs = TimeResolvedSequencer()
         self.form = Formatter()
-        self.fullData = []
+        start = Node()
+        walk = start.attach(NrawFormatToReadable())
+        walk = walk.attch(NPrint())
+
+        self.pipe = Pipeline(start)
+        self.pipe.start()
 
 
     def measureOneTrack(self, scanpars):
@@ -28,8 +36,7 @@ class FpgaTest():
                 break
             else:
                 newdata = np.ctypeslib.as_array(result['newData'])
-                # print(data)
-                self.fullData.append(newdata)
+                self.pipe.feed(newdata)
                 time.sleep(0.05)
         print(self.fullData)
 
