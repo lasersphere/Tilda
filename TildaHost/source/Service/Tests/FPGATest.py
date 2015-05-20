@@ -31,8 +31,6 @@ class FpgaTest():
                 newData = [self.form.integerSplitHeaderInfo(np.ctypeslib.as_array(result['newData'])[i]) for i in range(len(result['newData']))]
                 print('just the data: ' + str(data))
                 print('pointer on data: ' + str(ctypes.byref(data)))
-                # print('casted: ' + str(ctypes.cast(data, ctypes.c_char_p)))
-                self.trs.freeMemory(ctypes.pointer(data))
                 time.sleep(0.4)
         # print(self.fullData)
 
