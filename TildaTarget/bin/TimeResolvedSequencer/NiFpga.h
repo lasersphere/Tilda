@@ -2446,9 +2446,9 @@ NiFpga_Status NiFpga_GetPeerToPeerFifoEndpoint(NiFpga_Session session,
                                                uint32_t*      endpoint);
 /*
  * Function to free the Memory allocated at the pointers position:
- *
+ */
 void freeMemory (size_t *ptr);
-*/
+
 #if NiFpga_Cpp
 }
 #endif

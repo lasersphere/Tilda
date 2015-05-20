@@ -2082,9 +2082,9 @@ NiFpga_Status NiFpga_Finalize(void)
       return NiFpga_Status_ResourceNotInitialized;
 }
 
-/*
+
 void freeMemory (size_t *ptr)
 {
 	free(ptr);
 }
-*/
+
