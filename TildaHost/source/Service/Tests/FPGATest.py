@@ -9,6 +9,7 @@ from Driver.DataAcquisitionFpga.TimeResolvedSequencer import TimeResolvedSequenc
 from Service.Formating import Formatter
 import time
 import numpy as np
+import ctypes
 
 class FpgaTest():
     def __init__(self):
@@ -24,14 +25,16 @@ class FpgaTest():
             if result['nOfEle'] == 0:
                 break
             else:
+                data = result['newData']
                 print(result)
                 print('type of numpyArray: ' + str(type(np.ctypeslib.as_array(result['newData']))))
                 newData = [self.form.integerSplitHeaderInfo(np.ctypeslib.as_array(result['newData'])[i]) for i in range(len(result['newData']))]
-                print((result['newData']))
-                self.fullData.append(result['newData'])
-                print(self.trs.freeMemory(result['newData']))
+                print('just the data: ' + str(data))
+                print('pointer on data: ' + str(ctypes.byref(data)))
+                print('casted: ' + str(ctypes.cast(data, ctypes.c_char_p)))
+                # self.trs.freeMemory(ctypes.byref(data))
                 time.sleep(0.4)
-        print(self.fullData)
+        # print(self.fullData)
 
 
 
