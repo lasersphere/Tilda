@@ -167,7 +167,7 @@ class FPGAInterfaceHandling():
         return val
 
     '''FIFO / DMA Queue Operations '''
-    def ReadU32Fifo(self, fifoRef, nOfEle=-1):
+    def ReadU32Fifo(self, fifoRef, data=(ctypes.c_ulong * 1)(), nOfEle=-1):
         """
         Reading the Host Buffer which is connected to a Target-to-Host Fifo on the FPGA
         Will read all elements inside the Buffer if nOfEle < 0, default.
@@ -175,6 +175,7 @@ class FPGAInterfaceHandling():
         Will read no Data, but how many Elements are inside the Queue if nOfEle = 0.
 
         :param fifoRef: int, Reference number of the Target-to-Host Fifo as found in hex in the C-Api generated file.
+        :param data: ctypes_culong_array, instance in which the data should be written.
         :param nOfEle: int,
         If nOfEle < 0, everything will be read.
         If nOfEle = 0, no Data will be read. Use to get how many elements are in fifo
@@ -186,7 +187,7 @@ class FPGAInterfaceHandling():
         if nOfEle < 0:
             # check how many Elements are in Fifo and than read all of them
             return self.ReadU32Fifo(fifoRef, self.ReadU32Fifo(fifoRef, 0)['elemRemainInFifo'])
-        newDataCType = (ctypes.c_ulong * nOfEle)()
+        newDataCType = self.customresize(data, nOfEle)
         self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadFifoU32(
             self.session, fifoRef, ctypes.byref(newDataCType), nOfEle, self.dmaReadTimeout,
             ctypes.byref(elemRemainInFifo)
@@ -229,3 +230,8 @@ class FPGAInterfaceHandling():
                 self.session, fifoRef, nOfEle
             ))
         return self.checkFpgaStatus()
+
+    '''Ctypes operations'''
+    def customresize(self, array, new_size):
+        ctypes.resize(array, ctypes.sizeof(array._type_)*new_size)
+        return (array._type_*new_size).from_address(ctypes.addressof(array))

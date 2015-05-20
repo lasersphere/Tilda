@@ -11,10 +11,11 @@ Module in  charge for loading and accessing the TimeResolvedSequencer
 Access Via the NiFpgaUniversalInterfaceDll.dll
 """
 
+import time
+import ctypes
+
 from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 import Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig as TrsCfg
-import time
-
 
 class TimeResolvedSequencer(FPGAInterfaceHandling):
     def __init__(self):
@@ -22,6 +23,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         initiates the FPGA, resetted and running.
         :return: None
         """
+        self.newData = (ctypes.c_ulong * 1)()
         self.TrsCfg = TrsCfg.TRSConfig()
         self.fpgaInterfaceInstance = super(TimeResolvedSequencer, self).__init__(self.TrsCfg.bitfilePath,
                                                                                  self.TrsCfg.bitfileSignature,
@@ -271,7 +273,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         nOfEle = int, number of Read Elements, newDataArray = integer Python Array containing all data that was read
                elemRemainInFifo = int, number of Elements still in FifoBuffer
         """
-        result = self.ReadU32Fifo(self.TrsCfg.transferToHost['ref'])
+        result = self.ReadU32Fifo(self.TrsCfg.transferToHost['ref'], self.newData)
         return result
 
     '''closing and resetting'''
