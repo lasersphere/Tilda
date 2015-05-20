@@ -28,7 +28,6 @@ class FpgaTest():
                 data = result['newData']
                 print(result)
                 print('type of numpyArray: ' + str(type(np.ctypeslib.as_array(result['newData']))))
-                newData = [self.form.integerSplitHeaderInfo(np.ctypeslib.as_array(result['newData'])[i]) for i in range(len(result['newData']))]
                 print('just the data: ' + str(data))
                 print('pointer on data: ' + str(ctypes.byref(data)))
                 time.sleep(0.4)
