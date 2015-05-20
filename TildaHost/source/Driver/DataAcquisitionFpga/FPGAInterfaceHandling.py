@@ -28,7 +28,7 @@ class FPGAInterfaceHandling():
         """
         self.dmaReadTimeout = 1  # timeout to read from Dma Queue in ms
         self.NiFpgaUniversalInterfaceDll = ctypes.CDLL(
-            'D:\\Workspace\\Eclipse\\Tilda\\TildaHost\\binary\\NiFpgaUniversalInterfaceDll.dll')
+            'D:\\Workspace\\PyCharm\\Tilda\\TildaHost\\binary\\NiFpgaUniversalInterfaceDll.dll')
         self.session = ctypes.c_ulong()
         self.statusSuccess = 0
         self.status = 0
