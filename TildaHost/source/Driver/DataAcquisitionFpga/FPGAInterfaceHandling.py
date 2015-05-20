@@ -177,7 +177,7 @@ class FPGAInterfaceHandling():
         If nOfEle < 0, everything will be read.
         If nOfEle = 0, no Data will be read. Use to get how many elements are in fifo
         If nOfEle > 0, desired number of element will be read or timeout.
-        :return: nOfEle = int, number of Read Elements, newDataArray = integer Python Array containing all data that was read
+        :return: nOfEle = int, number of Read Elements, newData = integer Python Array containing all data that was read
                elemRemainInFifo = int, number of Elements still in FifoBuffer
         """
         elemRemainInFifo = ctypes.c_long()
@@ -189,8 +189,7 @@ class FPGAInterfaceHandling():
             self.session, fifoRef, ctypes.byref(newDataCType), nOfEle, self.dmaReadTimeout,
             ctypes.byref(elemRemainInFifo)
         ))
-        newDataArray = [newDataCType[i] for i in range(nOfEle)]
-        return {'nOfEle': nOfEle, 'newData': newDataArray, 'elemRemainInFifo': elemRemainInFifo.value}
+        return {'nOfEle': nOfEle, 'newData': newDataCType, 'elemRemainInFifo': elemRemainInFifo.value}
 
     '''FIFO / DMA Queue Operations '''
     def ConfigureU32FifoHostBuffer(self, fifoRef, nOfReqEle):

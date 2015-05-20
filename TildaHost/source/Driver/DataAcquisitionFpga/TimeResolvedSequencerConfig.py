@@ -59,7 +59,7 @@ class TRSConfig():
         transferToHost.update({'nOfReqEle': 100000})
 
 
-        dummyScanParameters = {'MCSSelectTrigger': 0, 'delayticks': 100, 'nOfBins': 10000, 'nOfBunches': 1,
+        dummyScanParameters = {'MCSSelectTrigger': 0, 'delayticks': 0, 'nOfBins': 10000, 'nOfBunches': 1,
                                'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100,
                                'VoltOrScaler': False, 'stepSize': int('00000010000000000000', 2),
                                'start': int('00000000001000000000', 2), 'nOfSteps': 20,
