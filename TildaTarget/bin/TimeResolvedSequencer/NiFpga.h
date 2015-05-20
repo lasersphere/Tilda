@@ -2448,7 +2448,7 @@ NiFpga_Status NiFpga_GetPeerToPeerFifoEndpoint(NiFpga_Session session,
  * Custom Functions:
  */
 
-void freeMemory (size_t *ptr);
+void freeMemory (char *ptr);
 
 
 #if NiFpga_Cpp

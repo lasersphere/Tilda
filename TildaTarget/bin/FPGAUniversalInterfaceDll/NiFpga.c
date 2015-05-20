@@ -2083,7 +2083,7 @@ NiFpga_Status NiFpga_Finalize(void)
 }
 
 
-void freeMemory (size_t *ptr)
+void freeMemory (char *ptr)
 {
 	free(ptr);
 }
