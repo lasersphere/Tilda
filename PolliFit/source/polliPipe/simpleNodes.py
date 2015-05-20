@@ -41,8 +41,8 @@ class NSubtract(Node):
         """
         Constructor
         """
-        super(NAccumulate, self).__init__()
-        self.type = "Accumulate"
+        super(NSubtract, self).__init__()
+        self.type = "Subtract"
 
         self.buf = 0
 
