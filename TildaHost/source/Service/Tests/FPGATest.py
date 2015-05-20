@@ -27,8 +27,9 @@ class FpgaTest():
                 print(result)
                 print('type of numpyArray: ' + str(type(np.ctypeslib.as_array(result['newData']))))
                 newData = [self.form.integerSplitHeaderInfo(np.ctypeslib.as_array(result['newData'])[i]) for i in range(len(result['newData']))]
-                # print(newData)
+                print((result['newData']))
                 self.fullData.append(result['newData'])
+                print(self.trs.freeMemory(result['newData']))
                 time.sleep(0.4)
         print(self.fullData)
 

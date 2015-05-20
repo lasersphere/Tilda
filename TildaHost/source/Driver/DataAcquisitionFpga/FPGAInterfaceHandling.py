@@ -228,3 +228,6 @@ class FPGAInterfaceHandling():
                 self.session, fifoRef, nOfEle
             ))
         return self.checkFpgaStatus()
+
+    def freeMemory(self, ptr):
+        self.NiFpgaUniversalInterfaceDll.freeMemory(ptr)
