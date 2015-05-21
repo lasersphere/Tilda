@@ -13,8 +13,7 @@ from Service.AnalysisAndDataHandling.tildaNodes import NrawFormatToReadable
 from polliPipe.simpleNodes import NPrint
 
 import time
-import numpy as np
-import pickle
+# import pickle
 
 class FpgaTest():
     def __init__(self):
@@ -41,7 +40,8 @@ class FpgaTest():
                 self.finalData.append(newdata)
                 # print(self.finalData)
                 time.sleep(0.05)
-        print(self.finalData)
+        # print(self.finalData)
+        # use pickle to save these dummy data!
         # pickle.dump(self.finalData, open(self.outfile, 'wb'))
 
 
