@@ -23,7 +23,7 @@ class Formatter():
         header = int32bData >> (32 - headerlength)
         if headerindex:
             #mcs data
-            timestamp = value * 10
+            timestamp = value
             activepmts = [i for i in range(headerlength) if (header & (2 ** i)) > 0]
             return (headerindex, activepmts, timestamp)
         else:
