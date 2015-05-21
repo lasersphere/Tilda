@@ -14,9 +14,9 @@ from polliPipe.node import Node
 
 def tildapipe():
     start = Node()
-    print(start.id)
+
     walk = start.attach(TN.NrawFormatToReadable())
     walk = walk.attach(SN.NPrint())
-    print(walk.id)
+
     return start
 

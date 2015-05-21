@@ -15,9 +15,10 @@ file = 'D:\\Workspace\\PyCharm\\Tilda\\TildaHost\\source\\Scratch\\exampleTRSRaw
 trsExampleData = pickle.load(open(file, 'rb'))[1:]
 # print(trsExampleData)
 pipe = Pipeline(tildapipe())
+pipe.start()
 print(tildapipe().id)
-print(pipe)
-for i in range(10):
-    pipe.feed(i)
+print(len(trsExampleData))
+for i,j in enumerate(trsExampleData):
+    pipe.feed(j)
 
 
