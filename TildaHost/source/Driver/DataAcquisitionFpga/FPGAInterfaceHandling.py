@@ -180,7 +180,7 @@ class FPGAInterfaceHandling():
         If nOfEle < 0, everything will be read.
         If nOfEle = 0, no Data will be read. Use to get how many elements are in fifo
         If nOfEle > 0, desired number of element will be read or timeout.
-        :return: nOfEle = int, number of Read Elements, newData = integer Python Array containing all data that was read
+        :return: nOfEle = int, number of Read Elements, newData = c_ulong_array containing all data that was read
                elemRemainInFifo = int, number of Elements still in FifoBuffer
         """
         elemRemainInFifo = ctypes.c_long()

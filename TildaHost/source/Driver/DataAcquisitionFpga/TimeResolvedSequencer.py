@@ -12,7 +12,7 @@ Access Via the NiFpgaUniversalInterfaceDll.dll
 """
 
 import time
-import ctypes
+import numpy as np
 
 from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 import Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig as TrsCfg
@@ -269,10 +269,11 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         read Data from host sided Buffer called 'transferToHost' to an Array.
         Can later be fed into a pipeline system.
         :return: dictionary,
-        nOfEle = int, number of Read Elements, newDataArray = integer Python Array containing all data that was read
+        nOfEle = int, number of Read Elements, newDataArray = numpy Array containing all data that was read
                elemRemainInFifo = int, number of Elements still in FifoBuffer
         """
         result = self.ReadU32Fifo(self.TrsCfg.transferToHost['ref'])
+        result.update(newData=np.ctypeslib.as_array(result['newData']))
         return result
 
     '''closing and resetting'''

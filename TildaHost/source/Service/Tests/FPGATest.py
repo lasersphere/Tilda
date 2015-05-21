@@ -37,11 +37,11 @@ class FpgaTest():
             if result['nOfEle'] == 0:
                 break
             else:
-                newdata = np.ctypeslib.as_array(result['newData'])
+                newdata = result['newData']
                 self.finalData.append(newdata)
                 # print(self.finalData)
                 time.sleep(0.05)
-        # print(self.finalData)
+        print(self.finalData)
         # pickle.dump(self.finalData, open(self.outfile, 'wb'))
 
 
