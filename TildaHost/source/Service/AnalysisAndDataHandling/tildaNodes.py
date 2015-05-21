@@ -29,8 +29,9 @@ class NrawFormatToReadable(Node):
         convert rawData to a readable form
         can data be a list??
         """
-        if len(data) > 500:
-            self.buf = np.resize(self.buf, len(data))
+        # if len(data) > 5:
+        #     self.processData(data[:499])
+        #     self.processData(data[500:])
         for i in range(len(data)):
             # print('working on: ' + str(data[i]))
             self.buf[i] = self.form.integerSplitHeaderInfo(data[i])
