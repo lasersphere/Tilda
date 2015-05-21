@@ -14,15 +14,17 @@ from polliPipe.simpleNodes import NPrint
 
 import time
 import numpy as np
-
+import pickle
 
 class FpgaTest():
     def __init__(self):
+        self.outfile = 'D:\\Workspace\\PyCharm\\Tilda\\TildaHost\\source\\Scratch\\exampleTRSRawData.py'
         self.trs = TimeResolvedSequencer()
         self.form = Formatter()
         start = Node()
-        walk = start.attach(NrawFormatToReadable())
-        walk = walk.attach(NPrint())
+        walk = start.attach(NPrint())
+        # walk = walk.attach(NPrint())
+        self.finalData = [0]
 
         self.pipe = Pipeline(start)
         self.pipe.start()
@@ -36,9 +38,11 @@ class FpgaTest():
                 break
             else:
                 newdata = np.ctypeslib.as_array(result['newData'])
-                self.pipe.feed(newdata)
+                self.finalData.append(newdata)
+                # print(self.finalData)
                 time.sleep(0.05)
-
+        # print(self.finalData)
+        # pickle.dump(self.finalData, open(self.outfile, 'wb'))
 
 
 

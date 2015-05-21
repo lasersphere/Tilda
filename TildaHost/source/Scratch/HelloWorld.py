@@ -5,6 +5,7 @@ Created on 20.11.2014
 '''
 # import ctypes
 import numpy as np
+import pickle
 # print('Hello World!')
 #
 # DACQuWriteTimeout = {'ref': 0x8116, 'val': ctypes.c_bool(), 'ctr': False}
@@ -26,11 +27,14 @@ import numpy as np
 # print(testmatrix)
 # print(type(testmatrix[0, 0, 0]))
 
-buf = np.array([1,2,3], dtype=np.uint32)
-print(buf)
-buf.fill(0)
-print(buf)
+# buf = np.array([1,2,3], dtype=np.uint32)
+# print(buf)
+# buf.fill(0)
+# print(buf)
 
+file = 'D:\\Workspace\\PyCharm\\Tilda\\TildaHost\\source\\Scratch\\exampleTRSRawData.py'
+data = pickle.load(open(file, 'rb'))
+print(data)
 
 #old main stuff:
 #
