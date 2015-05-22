@@ -9,16 +9,16 @@ import numpy as np
 class Formatter():
     def split32bData(self, int32bData):
         """
-        seperate header, headerindex and payload from each other
+        seperate header, headerIndex and payload from each other
         :param int32bData:
-        :return: tuple, (firstheader, secondheader, headerindex, payload)
+        :return: tuple, (firstHeader, secondHeader, headerIndex, payload)
         """
-        headerlength = 8
-        firstheader = int32bData >> (32 - int(headerlength/2))
-        secondheader = int32bData >> (32 - headerlength) & ((2 ** 4) - 1)
-        headerindex = (int32bData >> (32 - headerlength - 1)) & 1
+        headerLength = 8
+        firstHeader = int32bData >> (32 - int(headerLength/2))
+        secondHeader = int32bData >> (32 - headerLength) & ((2 ** 4) - 1)
+        headerIndex = (int32bData >> (32 - headerLength - 1)) & 1
         payload = int32bData & ((2 ** 23) - 1)
-        return (firstheader, secondheader, headerindex, payload)
+        return (firstHeader, secondHeader, headerIndex, payload)
 
     def integerSplitHeaderInfo(self, int32bData):
         """
@@ -30,19 +30,19 @@ class Formatter():
                     tuple, int, first part of header and second part of header
         tuple[2] = int, 23 Bit timestamp for mcs Data or 23 Bit other Information program relevant.
         """
-        headerlength = 8
-        headerindex = (int32bData & (2 ** 23)) == 0
+        headerLength = 8
+        headerIndex = (int32bData & (2 ** 23)) != 0
         value = int32bData & ((2 ** 23) - 1)
-        header = int32bData >> (32 - headerlength)
-        if headerindex:
+        header = int32bData >> (32 - headerLength)
+        if not headerIndex:
             #mcs data
             timestamp = value
-            activepmts = [i for i in range(headerlength) if (header & (2 ** i)) > 0]
-            return (headerindex, activepmts, timestamp)
+            activepmts = [i for i in range(headerLength) if (header & (2 ** i)) > 0]
+            return (headerIndex, activepmts, timestamp)
         else:
-            progheader = header >> int(headerlength/2)
-            secondheader = header & ((2 ** 4) - 1)
-            return (headerindex, (progheader, secondheader), value)
+            firstHeader = header >> int(headerLength/2)
+            secondHeader = header & ((2 ** 4) - 1)
+            return (headerIndex, (firstHeader, secondHeader), value)
 
 
 # string = b'10011101100010000000000010000000'

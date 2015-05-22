@@ -44,11 +44,12 @@ class NSplit32bData(Node):
         self.type = "Split32bData"
         self.form = Formatter()
 
-        self.buf = np.zeros((1,), dtype=[('firstheader', 'u1'), ('secondheader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
+        self.buf = np.zeros((1,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
 
     def processData(self, data, pipeData):
         """
-        convert rawData to a readable form
+        convert rawData to list of tuples of the 4 informations:
+        [(firstHeader, secondHeader, headerIndex, payload)]
         """
         self.buf = np.resize(self.buf, (len(data),))
         for i,j in enumerate(data):
@@ -57,7 +58,7 @@ class NSplit32bData(Node):
         return self.buf
 
     def clear(self):
-        self.buf = np.zeros((1,), dtype=[('firstheader', 'u1'), ('secondheader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
+        self.buf = np.zeros((1,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
 
 
 class NSumBunches(Node):
