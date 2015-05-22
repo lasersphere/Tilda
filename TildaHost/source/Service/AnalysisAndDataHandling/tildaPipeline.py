@@ -15,6 +15,8 @@ from polliPipe.pipeline import Pipeline
 def tildapipe():
     start = Node()
 
+    branch = start.attach(TN.NSplit32bData())
+    branch = branch.attach(SN.NPrint())
     walk = start.attach(TN.NrawFormatToReadable())
     walk = walk.attach(SN.NPrint())
 

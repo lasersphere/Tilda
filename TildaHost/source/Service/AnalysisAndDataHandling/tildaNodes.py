@@ -35,6 +35,30 @@ class NrawFormatToReadable(Node):
     def clear(self):
         self.buf = []
 
+class NSplit32bData(Node):
+    def __init__(self):
+        """
+        Constructor
+        """
+        super(NSplit32bData, self).__init__()
+        self.type = "Split32bData"
+        self.form = Formatter()
+
+        self.buf = np.zeros((1,), dtype=[('firstheader', 'u1'), ('secondheader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
+
+    def processData(self, data, pipeData):
+        """
+        convert rawData to a readable form
+        """
+        self.buf = np.resize(self.buf, (len(data),))
+        for i,j in enumerate(data):
+            result =  self.form.split32bData(j)
+            self.buf[i] = result
+        return self.buf
+
+    def clear(self):
+        self.buf = np.zeros((1,), dtype=[('firstheader', 'u1'), ('secondheader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
+
 
 class NSumBunches(Node):
     def __init__(self):

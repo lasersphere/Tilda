@@ -27,7 +27,7 @@ timeArray = np.zeros(exampleCfg.dummyScanParameters['nOfBins'], dtype=np.uint32)
 scalerArray = np.zeros((exampleCfg.dummyScanParameters['nOfSteps'], exampleCfg.dummyScanParameters['nOfBins'], 8), dtype=np.uint32)
 pipe.pipeData.update(voltArray=voltArray, timeArray=timeArray, scalerArray=scalerArray)
 # print(len(trsExampleData))
-# for i,j in enumerate(trsExampleData):
-#     pipe.feed(j)
+for i,j in enumerate(trsExampleData):
+    pipe.feed(j)
 
 

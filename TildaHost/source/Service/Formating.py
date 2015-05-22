@@ -4,9 +4,22 @@ Created on 21.01.2015
 @author: skaufmann
 '''
 
-import timeit
+import numpy as np
 
 class Formatter():
+    def split32bData(self, int32bData):
+        """
+        seperate header, headerindex and payload from each other
+        :param int32bData:
+        :return: tuple, (firstheader, secondheader, headerindex, payload)
+        """
+        headerlength = 8
+        firstheader = int32bData >> (32 - int(headerlength/2))
+        secondheader = int32bData >> (32 - headerlength) & ((2 ** 4) - 1)
+        headerindex = (int32bData >> (32 - headerlength - 1)) & 1
+        payload = int32bData & ((2 ** 23) - 1)
+        return (firstheader, secondheader, headerindex, payload)
+
     def integerSplitHeaderInfo(self, int32bData):
         """
         Turns 32-Bit incoming Data from the Target to Host fifo from the Fpga into integers.
@@ -36,5 +49,7 @@ class Formatter():
 # exampleData = int(string, 2)
 # print(len(bin(exampleData)[2:]))
 # print(Formatter().integerSplitHeaderInfo(exampleData))
-# # print(timeit.timeit(lambda: Formatter().binaryDataToInt(exampleData), number=1000000))
+# print(Formatter().split32bData(exampleData)['payload'])
+
+# print(timeit.timeit(lambda: Formatter().binaryDataToInt(exampleData), number=1000000))
 # print(timeit.timeit(lambda: Formatter().integerSplitHeaderInfo(exampleData), number=1000000))
