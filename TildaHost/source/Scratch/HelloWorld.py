@@ -6,7 +6,7 @@ Created on 20.11.2014
 # import ctypes
 import numpy as np
 import pickle
-# print('Hello World!')
+print('Hello Vera!')
 #
 # DACQuWriteTimeout = {'ref': 0x8116, 'val': ctypes.c_bool(), 'ctr': False}
 #
@@ -73,24 +73,24 @@ print(format(48, '08b'))
 # # print(len(bin(814743552)[2:]))
 
 
-class NSplit32bData(Node):
-    def __init__(self):
-        """
-        Constructor
-        """
-        super(NSplit32bData, self).__init__()
-        self.type = "Split32bData"
-        self.form = Formatter()
-
-        self.buf = np.zeros(0, dtype=[('header', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
-
-    def processData(self, data, pipeData):
-        """
-        convert rawData to a readable form
-        """
-        for i,j in enumerate(data):
-            self.buf = np.insert(self.buf, 0, self.form.split32bData(j))
-        return self.buf
-
-    def clear(self):
-        self.buf = []
+# class NSplit32bData(Node):
+#     def __init__(self):
+#         """
+#         Constructor
+#         """
+#         super(NSplit32bData, self).__init__()
+#         self.type = "Split32bData"
+#         self.form = Formatter()
+#
+#         self.buf = np.zeros(0, dtype=[('header', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
+#
+#     def processData(self, data, pipeData):
+#         """
+#         convert rawData to a readable form
+#         """
+#         for i,j in enumerate(data):
+#             self.buf = np.insert(self.buf, 0, self.form.split32bData(j))
+#         return self.buf
+#
+#     def clear(self):
+#         self.buf = []

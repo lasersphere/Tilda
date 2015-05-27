@@ -23,10 +23,12 @@ pipe.start()
 pipe.pipeData.update(exampleCfg.dummyScanParameters)
 pipe.pipeData.update(curVoltInd=0)
 voltArray = np.zeros(exampleCfg.dummyScanParameters['nOfSteps'], dtype=np.uint32)
-timeArray = np.zeros(exampleCfg.dummyScanParameters['nOfBins'], dtype=np.uint32)
+timeArray = np.arange(exampleCfg.dummyScanParameters['delayticks']*10,
+                      (exampleCfg.dummyScanParameters['delayticks']*10 + exampleCfg.dummyScanParameters['nOfBins']*10),
+                      10, dtype=np.uint32)
 scalerArray = np.zeros((exampleCfg.dummyScanParameters['nOfSteps'], exampleCfg.dummyScanParameters['nOfBins'], 8), dtype=np.uint32)
 pipe.pipeData.update(voltArray=voltArray, timeArray=timeArray, scalerArray=scalerArray)
-# print(len(trsExampleData))
+# print(len(scalerArray[0]))
 for i,j in enumerate(trsExampleData):
     pipe.feed(j)
 

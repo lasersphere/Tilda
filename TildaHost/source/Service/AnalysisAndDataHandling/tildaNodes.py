@@ -10,30 +10,8 @@ import numpy as np
 
 
 from polliPipe.node import Node
-from Service.Formating import Formatter
+from Service.Formating import split32bData
 
-
-
-class NrawFormatToReadable(Node):
-    def __init__(self):
-        """
-        Constructor
-        """
-        super(NrawFormatToReadable, self).__init__()
-        self.type = "rawFormatToReadable"
-        self.form = Formatter()
-
-        self.buf = []
-
-    def processData(self, data, pipeData):
-        """
-        convert rawData to a readable form
-        """
-        self.buf = [self.form.integerSplitHeaderInfo(j) for i,j in enumerate(data)]
-        return self.buf
-
-    def clear(self):
-        self.buf = []
 
 class NSplit32bData(Node):
     def __init__(self):
@@ -42,7 +20,6 @@ class NSplit32bData(Node):
         """
         super(NSplit32bData, self).__init__()
         self.type = "Split32bData"
-        self.form = Formatter()
 
         self.buf = np.zeros((1,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
 
@@ -53,13 +30,12 @@ class NSplit32bData(Node):
         """
         self.buf = np.resize(self.buf, (len(data),))
         for i,j in enumerate(data):
-            result =  self.form.split32bData(j)
+            result = split32bData(j)
             self.buf[i] = result
         return self.buf
 
     def clear(self):
         self.buf = np.zeros((1,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
-
 
 class NSumBunches(Node):
     def __init__(self):
@@ -69,14 +45,16 @@ class NSumBunches(Node):
         super(NSumBunches, self).__init__()
         self.type = "SumBunches"
 
-        self.buf = []
+        self.buf = np.zeros((1,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
 
     def processData(self, data, pipeData):
         """
         sum up all events for each scaler and check for new voltage
         """
-        pipeData['curVoltInd']
-        return self.buf
+        self.buf = data
+        curVoltInd = pipeData['curVoltInd']
+        print('current Volt index is: ' + str(curVoltInd))
+
 
     def clear(self):
-        self.buf = []
+        self.buf = np.zeros((1,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
