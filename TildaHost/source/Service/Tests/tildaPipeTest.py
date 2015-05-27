@@ -31,5 +31,7 @@ pipe.pipeData.update(voltArray=voltArray, timeArray=timeArray, scalerArray=scale
 # print(len(scalerArray[0]))
 for i,j in enumerate(trsExampleData):
     pipe.feed(j)
+for i,j in enumerate(np.argwhere(pipe.pipeData['scalerArray'])):
+    print(pipe.pipeData['scalerArray'][j[0]][j[1]], j)
 
 

@@ -69,7 +69,7 @@ class NSumBunches(Node):
                 MCS Data
                 """
                 pipeData.update(scalerArray=form.mcsSum(j, pipeData['curVoltInd'], pipeData['scalerArray']))
-                print(np.max(pipeData['scalerArray']))
+
 
     def clear(self):
         self.buf = np.zeros((1,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
