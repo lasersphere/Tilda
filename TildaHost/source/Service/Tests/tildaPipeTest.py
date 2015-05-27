@@ -27,9 +27,7 @@ def findsource(path=os.path.dirname(os.path.abspath(__file__))):
 
 
 path = 'TildaHost\\source\\Scratch\\exampleTRSRawData.py'
-print(findsource())
 file = os.path.join(findsource(), path)
-print(file)
 trsExampleData = pickle.load(open(file, 'rb'))[1:]
 # print(trsExampleData)
 exampleCfg = TRSConfig()
@@ -48,5 +46,6 @@ for i,j in enumerate(trsExampleData):
     pipe.feed(j)
 for i,j in enumerate(np.argwhere(pipe.pipeData['scalerArray'])):
     print(pipe.pipeData['scalerArray'][j[0]][j[1]], j)
-
-
+print(np.argwhere((pipe.pipeData['scalerArray'][:][:][0])))
+#for i,j in enumerate(np.argwhere(pipe.pipeData['scalerArray'][:][:][0])):
+#    print(pipe.pipeData['scalerArray'][j[0]][j[1]], j)
