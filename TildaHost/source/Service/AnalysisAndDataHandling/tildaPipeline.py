@@ -16,7 +16,7 @@ def tildapipe():
     start = Node()
 
     walk = start.attach(TN.NSplit32bData())
-    walk = walk.attach(SN.NPrint())
+    walk = walk.attach(TN.NSumBunches())
 
     pipe = Pipeline(start)
     return pipe
