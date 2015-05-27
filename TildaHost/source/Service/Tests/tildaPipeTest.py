@@ -7,14 +7,29 @@ Created on '20.05.2015'
 """
 
 import numpy as np
+import os.path
 
 import pickle
 from Service.AnalysisAndDataHandling.tildaPipeline import tildapipe
 from Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig import TRSConfig
 
 
+def findsource(path=os.path.dirname(os.path.abspath(__file__))):
+    for a,b,c in os.walk(path):
+        split = os.path.split(a)
+        if split[1] == 'Tilda':
+            return a
+        elif split[1] == '':
+            return path
+        else:
+            return findsource(split[0])
 
-file = 'D:\\Workspace\\PyCharm\\Tilda\\TildaHost\\source\\Scratch\\exampleTRSRawData.py'
+
+
+path = 'TildaHost\\source\\Scratch\\exampleTRSRawData.py'
+print(findsource())
+file = os.path.join(findsource(), path)
+print(file)
 trsExampleData = pickle.load(open(file, 'rb'))[1:]
 # print(trsExampleData)
 exampleCfg = TRSConfig()
