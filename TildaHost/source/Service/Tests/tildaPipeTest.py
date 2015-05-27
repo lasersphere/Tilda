@@ -12,22 +12,12 @@ import os.path
 import pickle
 from Service.AnalysisAndDataHandling.tildaPipeline import tildapipe
 from Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig import TRSConfig
+import Service.FolderAndFileHandling as filehand
 
 
-def findsource(path=os.path.dirname(os.path.abspath(__file__))):
-    for a,b,c in os.walk(path):
-        split = os.path.split(a)
-        if split[1] == 'Tilda':
-            return a
-        elif split[1] == '':
-            return path
-        else:
-            return findsource(split[0])
-
-
-
+findit = filehand.FindTildaFolder()
 path = 'TildaHost\\source\\Scratch\\exampleTRSRawData.py'
-file = os.path.join(findsource(), path)
+file = os.path.join(findit, path)
 trsExampleData = pickle.load(open(file, 'rb'))[1:]
 # print(trsExampleData)
 exampleCfg = TRSConfig()
@@ -44,8 +34,8 @@ pipe.pipeData.update(voltArray=voltArray, timeArray=timeArray, scalerArray=scale
 # print(len(scalerArray[0]))
 for i,j in enumerate(trsExampleData):
     pipe.feed(j)
-for i,j in enumerate(np.argwhere(pipe.pipeData['scalerArray'])):
-    print(pipe.pipeData['scalerArray'][j[0]][j[1]], j)
-print(np.argwhere((pipe.pipeData['scalerArray'][:][:][0])))
+#for i,j in enumerate(np.argwhere(pipe.pipeData['scalerArray'])):
+#    print(pipe.pipeData['scalerArray'][j[0]][j[1]], j)
+print((pipe.pipeData['scalerArray'][0:][0:]))
 #for i,j in enumerate(np.argwhere(pipe.pipeData['scalerArray'][:][:][0])):
 #    print(pipe.pipeData['scalerArray'][j[0]][j[1]], j)
