@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourceManagerImpl" format="xml" hash="3540033489">
+    <data-source source="LOCAL" name="AnaDB" uuid="76f89012-fb77-4979-b471-0f6c06eb907f">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:D:\Workspace\PyCharm\Tilda\PolliFit\test\Project\AnaDB.sqlite</jdbc-url>
+      <libraries />
+    </data-source>
+  </component>
+</project>

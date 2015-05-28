@@ -23,19 +23,21 @@ trsExampleData = pickle.load(open(file, 'rb'))[1:]
 exampleCfg = TRSConfig()
 pipe = tildapipe()
 pipe.start()
-pipe.pipeData.update(exampleCfg.dummyScanParameters)
+pipe.pipeData.update(exampleCfg.dummyScanParameters) #load all scanparameters into pipeline
 pipe.pipeData.update(curVoltInd=0)
 voltArray = np.zeros(exampleCfg.dummyScanParameters['nOfSteps'], dtype=np.uint32)
 timeArray = np.arange(exampleCfg.dummyScanParameters['delayticks']*10,
                       (exampleCfg.dummyScanParameters['delayticks']*10 + exampleCfg.dummyScanParameters['nOfBins']*10),
                       10, dtype=np.uint32)
 scalerArray = np.zeros((exampleCfg.dummyScanParameters['nOfSteps'], exampleCfg.dummyScanParameters['nOfBins'], 8), dtype=np.uint32)
-pipe.pipeData.update(voltArray=voltArray, timeArray=timeArray, scalerArray=scalerArray)
+pipe.pipeData.update(voltArray=voltArray, timeArray=timeArray, scalerArray=scalerArray, nOfTotalSteps=0)
 # print(len(scalerArray[0]))
 for i,j in enumerate(trsExampleData):
     pipe.feed(j)
-#for i,j in enumerate(np.argwhere(pipe.pipeData['scalerArray'])):
+# for i,j in enumerate(np.argwhere(pipe.pipeData['scalerArray'])):
 #    print(pipe.pipeData['scalerArray'][j[0]][j[1]], j)
-print((pipe.pipeData['scalerArray'][0:][0:]))
+# print((pipe.pipeData['scalerArray'][0:][0:]))
 #for i,j in enumerate(np.argwhere(pipe.pipeData['scalerArray'][:][:][0])):
 #    print(pipe.pipeData['scalerArray'][j[0]][j[1]], j)
+print(pipe.pipeData['nOfTotalSteps'])
+print(pipe.pipeData['voltArray'])

@@ -38,7 +38,10 @@ class NSplit32bData(Node):
 class NSumBunches(Node):
     def __init__(self):
         """
-        Constructor
+        sort all incoming events into scalerArray and voltArray.
+        All Scaler events will be summed up seperatly for each scaler.
+        Will work for all incoming data. Host has to choose the shape of ScalerArray when selecting
+        timeresolved/not timeresolved.
         """
         super(NSumBunches, self).__init__()
         self.type = "SumBunches"
@@ -46,15 +49,9 @@ class NSumBunches(Node):
         self.buf = np.zeros((1,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
 
     def processData(self, data, pipeData):
-        """
-        sum up all events for each scaler and check for new voltage
-        """
         self.buf = data
         for i,j in enumerate(self.buf):
-            if j['headerIndex'] == 1:
-                """
-                not MCS data
-                """
+            if j['headerIndex'] == 1: #not MCS/TRS data
                 if j['firstHeader'] == progConfigs['errorHandler']:
                     print('fpga sends error code: ' + str(j['payload']))
                 elif j['firstHeader'] == progConfigs['simpleCounter']:
@@ -62,14 +59,27 @@ class NSumBunches(Node):
                 elif j['firstHeader'] == progConfigs['continuousSequencer']:
                     pass
                 elif j['firstHeader'] == progConfigs['dac']:
+                    pipeData['nOfTotalSteps'] += 1
                     index, voltArray = form.findVoltage(j['payload'], pipeData['voltArray'])
                     pipeData.update(curVoltInd=index, voltArray=voltArray)
-            elif j['headerIndex'] == 0:
-                """
-                MCS Data
-                """
+            elif j['headerIndex'] == 0: #MCS/TRS Data
                 pipeData.update(scalerArray=form.mcsSum(j, pipeData['curVoltInd'], pipeData['scalerArray']))
-
 
     def clear(self):
         self.buf = np.zeros((1,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
+
+class NSaveSum(Node):
+    def __init__(self):
+        """
+        save the summed up data
+        """
+        super(NSaveSum, self).__init__()
+        self.type = "SaveSum"
+
+        self.buf = []
+
+    def processData(self, data, pipeData):
+        pass #dont know yet when this can be called...
+
+    def clear(self):
+        self.buf = []
