@@ -7,7 +7,7 @@ Created on '11.05.2015'
 """
 """
 Module to convert the C Api Output to Python input
-Just Run this on your header File created by the NI C Api generator and copy the Console Output to your Python File
+Just Run cApiFileHandler on your header File created by the NI C Api generator and copy the Console Output to your Python File
 """
 import re
 

@@ -53,7 +53,13 @@ def mcsSum(element, actVoltInd, sumArray):
             sumArray[actVoltInd, timestamp, i] += 1 #timestamp equals index in timeArray
     return sumArray
 
-def xmlFormat(isotopeData):
+def xmlFormatBody(isotopeData):
+    """
+    Builds the lxml Element structure for the saving structure
+    :param isotopeData: dict, containing: version, type, datetime, isotope, nOfTracks,
+    colDirTrue, accVolt, laserFreq
+    :return: lxml.etree.Element
+    """
     root = ET.Element('TrigaLaserData')
 
     header = ET.SubElement(root, 'header')
@@ -82,17 +88,25 @@ def xmlFormat(isotopeData):
     laserFreq = ET.SubElement(header, 'laserFreq')
     laserFreq.text = isotopeData['laserFreq']
 
-
     tracks = ET.SubElement(root, 'tracks')
 
-    track0 = ET.SubElement(tracks, 'track0')
+    for i in range(int(isotopeData['nOfTracks'])):
+        ET.SubElement(tracks, 'track' + str(i))
+        ET.SubElement(tracks[i], 'voltArray')
+        ET.SubElement(tracks[i], 'timeArray')
+        ET.SubElement(tracks[i], 'scalerArray')
+    return root
 
-    leftLine0 = ET.SubElement(track0, 'leftLine')
-    leftLine0.text = '-200'
 
-    data0 = ET.SubElement(track0, 'data')
-    data0.text = repr(isotopeData['scalerArray'])
-
-
-    tree = ET.ElementTree(root)
-    tree.write(isotopeData['saveToFile'], pretty_print = True)
+def xmlAddDataToTrack(rootEle, nOfTrack, dataType, newData):
+    """
+    replaces Data ind rootEle with newData of type dataType
+    :param rootEle: lxml.etree.Element, root of the xml tree
+    :param nOfTrack: int, which Track should be written to
+    :param dataType: str, valid: 'voltArray', 'timeArray', 'scalerArray'
+    :param newData: np.array, newData that will replace all before.
+    :return: None,
+    """
+    track = rootEle.find('tracks').getchildren()[nOfTrack]
+    print(track)
+    track.find(dataType).text = repr(newData)
