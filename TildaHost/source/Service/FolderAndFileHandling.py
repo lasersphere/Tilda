@@ -21,12 +21,12 @@ def FindTildaFolder(path=os.path.dirname(os.path.abspath(__file__))):
         path = 'could not find Tilda folder'
     return path
 
-def saveXml(rootEle, filename):
+def saveXml(rootEle, filename, pretty=True):
     """
     Convert a Root lxml Element into an ElementTree and save it to file
     """
     tree = ET.ElementTree(rootEle)
-    tree.write(filename, pretty_print = True)
+    tree.write(filename, pretty_print = pretty)
 
 def loadXml(filename):
     """

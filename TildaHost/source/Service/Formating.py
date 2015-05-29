@@ -53,50 +53,28 @@ def mcsSum(element, actVoltInd, sumArray):
             sumArray[actVoltInd, timestamp, i] += 1 #timestamp equals index in timeArray
     return sumArray
 
-def xmlCreatBlankIsotope(isotopeData):
+def xmlCreateIsotope(isotopeDict):
     """
     Builds the lxml Element Body for one isotope.
     Constant information for all isotopes is included in header.
     All Tracks are included in tracks.
-    :param isotopeData: dict, containing: version, type, datetime, isotope, nOfTracks,
+    :param isotopeDict: dict, containing: version, type, datetime, isotope, nOfTracks,
     colDirTrue, accVolt, laserFreq
     :return: lxml.etree.Element
     """
     root = ET.Element('TrigaLaserData')
 
     header = ET.SubElement(root, 'header')
-
-    version = ET.SubElement(header, 'version')
-    version.text = isotopeData['version']
-
-    typ = ET.SubElement(header, 'type')
-    typ.text = isotopeData['type']
-
-    datetime = ET.SubElement(header, 'datetime')
-    datetime.text = str(dt.now())
-
-    iso = ET.SubElement(header, 'isotope')
-    iso.text = isotopeData['isotope']
-
-    nrTracks = ET.SubElement(header, 'nrTracks')
-    nrTracks.text = isotopeData['nOfTracks']
-
-    direc = ET.SubElement(header, 'colDirTrue')
-    direc.text = isotopeData['colDirTrue']
-
-    accVolt = ET.SubElement(header, 'accVolt')
-    accVolt.text = isotopeData['accVolt']
-
-    laserFreq = ET.SubElement(header, 'laserFreq')
-    laserFreq.text = isotopeData['laserFreq']
+    xmlCreateBlankHeader(header)
+    xmlAddDataToHeader(header, isotopeDict)
 
     tracks = ET.SubElement(root, 'tracks')
 
-    for i in range(int(isotopeData['nOfTracks'])):
+    for i in range(int(isotopeDict['nOfTracks'])):
         xmlAddBlankTrack(tracks, i)
     return root
 
-def xmlFillIsotopeData(rootEle, dataType, newData):
+def xmlFillIsotopeHeader(rootEle, dataType, newData):
     """
     writes newData to dataType in the header of a rootEle.
     """
@@ -117,6 +95,30 @@ def xmlAddBlankTrack(parent, tracknumber):
     ET.SubElement(parent[tracknumber], 'voltArray')
     ET.SubElement(parent[tracknumber], 'timeArray')
     ET.SubElement(parent[tracknumber], 'scalerArray')
+
+def xmlCreateBlankHeader(header):
+    """
+    creates a blank header file for one Isotope
+    """
+    ET.SubElement(header, 'version')
+    ET.SubElement(header, 'type')
+    ET.SubElement(header, 'datetime')
+    ET.SubElement(header, 'isotope')
+    ET.SubElement(header, 'nOfTracks')
+    ET.SubElement(header, 'colDirTrue')
+    ET.SubElement(header, 'accVolt')
+    ET.SubElement(header, 'laserFreq')
+
+def xmlAddDataToHeader(header, isotopedict):
+    """
+    write the complete isotopedict to the header of the xml structure
+    """
+    header.find('datetime').text = str(dt.now())
+    for key, val in isotopedict.items():
+        try:
+            header.find(key).text = val
+        except:
+            pass
 
 
 def xmlAddDataToTrack(rootEle, nOfTrack, dataType, newData):
