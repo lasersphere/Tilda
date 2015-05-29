@@ -91,22 +91,33 @@ def xmlFormatBody(isotopeData):
     tracks = ET.SubElement(root, 'tracks')
 
     for i in range(int(isotopeData['nOfTracks'])):
-        ET.SubElement(tracks, 'track' + str(i))
-        ET.SubElement(tracks[i], 'voltArray')
-        ET.SubElement(tracks[i], 'timeArray')
-        ET.SubElement(tracks[i], 'scalerArray')
+        addBlankTrack(tracks, i)
     return root
+
+def addBlankTrack(parent, tracknumber):
+        ET.SubElement(parent, 'track' + str(tracknumber))
+        ET.SubElement(parent[tracknumber], 'voltArray')
+        ET.SubElement(parent[tracknumber], 'timeArray')
+        ET.SubElement(parent[tracknumber], 'scalerArray')
 
 
 def xmlAddDataToTrack(rootEle, nOfTrack, dataType, newData):
     """
-    replaces Data ind rootEle with newData of type dataType
+    replaces Data in nOfTrack from rootEle with newData of type dataType.
+
     :param rootEle: lxml.etree.Element, root of the xml tree
     :param nOfTrack: int, which Track should be written to
     :param dataType: str, valid: 'voltArray', 'timeArray', 'scalerArray'
     :param newData: np.array, newData that will replace all before.
     :return: None,
     """
-    track = rootEle.find('tracks').getchildren()[nOfTrack]
-    print(track)
-    track.find(dataType).text = repr(newData)
+    tracks = rootEle.find('tracks')
+    try:
+        track = tracks.getchildren()[nOfTrack]
+        track.find(dataType).text = repr(newData)
+    except IndexError:
+        #add track at next possible position.
+        nOfTrack = len(tracks.getchildren())
+        addBlankTrack(tracks, nOfTrack)
+        track = tracks.getchildren()[nOfTrack]
+        track.find(dataType).text = repr(newData)
