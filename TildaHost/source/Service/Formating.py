@@ -53,9 +53,11 @@ def mcsSum(element, actVoltInd, sumArray):
             sumArray[actVoltInd, timestamp, i] += 1 #timestamp equals index in timeArray
     return sumArray
 
-def xmlFormatBody(isotopeData):
+def xmlCreatBlankIsotope(isotopeData):
     """
-    Builds the lxml Element structure for the saving structure
+    Builds the lxml Element Body for one isotope.
+    Constant information for all isotopes is included in header.
+    All Tracks are included in tracks.
     :param isotopeData: dict, containing: version, type, datetime, isotope, nOfTracks,
     colDirTrue, accVolt, laserFreq
     :return: lxml.etree.Element
@@ -91,20 +93,35 @@ def xmlFormatBody(isotopeData):
     tracks = ET.SubElement(root, 'tracks')
 
     for i in range(int(isotopeData['nOfTracks'])):
-        addBlankTrack(tracks, i)
+        xmlAddBlankTrack(tracks, i)
     return root
 
-def addBlankTrack(parent, tracknumber):
-        ET.SubElement(parent, 'track' + str(tracknumber))
-        ET.SubElement(parent[tracknumber], 'voltArray')
-        ET.SubElement(parent[tracknumber], 'timeArray')
-        ET.SubElement(parent[tracknumber], 'scalerArray')
+def xmlFillIsotopeData(rootEle, dataType, newData):
+    """
+    writes newData to dataType in the header of a rootEle.
+    """
+    head = rootEle.find('header')
+    head.find(dataType).text = newData
+
+
+def xmlAddBlankTrack(parent, tracknumber):
+    """
+    Adds a track to a parent
+    """
+    ET.SubElement(parent, 'track' + str(tracknumber))
+    ET.SubElement(parent[tracknumber], 'setOffset')
+    ET.SubElement(parent[tracknumber], 'measuredOffset')
+    ET.SubElement(parent[tracknumber], 'dwellTime')
+    ET.SubElement(parent[tracknumber], 'nOfmeasuredSteps')
+    ET.SubElement(parent[tracknumber], 'nOfcompletededLoops')
+    ET.SubElement(parent[tracknumber], 'voltArray')
+    ET.SubElement(parent[tracknumber], 'timeArray')
+    ET.SubElement(parent[tracknumber], 'scalerArray')
 
 
 def xmlAddDataToTrack(rootEle, nOfTrack, dataType, newData):
     """
     replaces Data in nOfTrack from rootEle with newData of type dataType.
-
     :param rootEle: lxml.etree.Element, root of the xml tree
     :param nOfTrack: int, which Track should be written to
     :param dataType: str, valid: 'voltArray', 'timeArray', 'scalerArray'
@@ -113,11 +130,12 @@ def xmlAddDataToTrack(rootEle, nOfTrack, dataType, newData):
     """
     tracks = rootEle.find('tracks')
     try:
+        #check if track is already created
         track = tracks.getchildren()[nOfTrack]
         track.find(dataType).text = repr(newData)
     except IndexError:
         #add track at next possible position.
         nOfTrack = len(tracks.getchildren())
-        addBlankTrack(tracks, nOfTrack)
+        xmlAddDataToTrack(tracks, nOfTrack)
         track = tracks.getchildren()[nOfTrack]
         track.find(dataType).text = repr(newData)
