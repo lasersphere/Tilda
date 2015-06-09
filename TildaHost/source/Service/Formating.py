@@ -29,7 +29,7 @@ def findVoltage(voltage, voltArray):
     :return: (int, np.array), index and VoltageArray
     """
     '''payload is 23-Bits, Bits 2 to 20 is the DAC register'''
-    voltage = (voltage >> 2) & ((2 ** 18) - 1)
+    voltage = (voltage >> 2) & ((2 ** 18) - 1) #shift by 2 and delete higher parts of payload
     index = np.where(voltArray == voltage)
     if len(index[0]) == 0:
         #voltage not yet in array, put it at next empty position
@@ -38,10 +38,9 @@ def findVoltage(voltage, voltArray):
         #voltage already in list, take the found index
         index = index[0][0]
     np.put(voltArray, index, voltage)
-    print('yep its a voltage: ' + str(index))
     return (index, voltArray)
 
-def mcsSum(element, actVoltInd, sumArray):
+def trsSum(element, actVoltInd, sumArray):
     """
     Add new Scaler event on previous acquired ones. Treat each scaler seperatly.
     :return: np.array, sum

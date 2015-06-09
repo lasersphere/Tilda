@@ -11,62 +11,65 @@ import numpy as np
 
 from polliPipe.node import Node
 import Service.Formating as form
-from Service.ProgramConfigs import programs as progConfigs
+
 
 
 class NSplit32bData(Node):
     def __init__(self):
         """
-        convert rawData to list of tuples of the 4 informations:
-        [(firstHeader, secondHeader, headerIndex, payload)]
+        convert rawData to list of tuples, see output
+        input: list of rawData
+        output: [(firstHeader, secondHeader, headerIndex, payload)]
         """
         super(NSplit32bData, self).__init__()
         self.type = "Split32bData"
 
-        self.buf = np.zeros((1,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
 
     def processData(self, data, pipeData):
-        self.buf = np.resize(self.buf, (len(data),))
+        buf = np.zeros((len(data),), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
         for i,j in enumerate(data):
             result = form.split32bData(j)
-            self.buf[i] = result
-        return self.buf
+            buf[i] = result
+        return buf
 
-    def clear(self):
-        self.buf = np.zeros((1,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
-
-class NSumBunches(Node):
-    def __init__(self):
+class NSumBunchesTRS(Node):
+    def __init__(self, pipeData):
         """
         sort all incoming events into scalerArray and voltArray.
         All Scaler events will be summed up seperatly for each scaler.
-        Will work for all incoming data. Host has to choose the shape of ScalerArray when selecting
-        timeresolved/not timeresolved.
-        """
-        super(NSumBunches, self).__init__()
-        self.type = "SumBunches"
+        Is specially build for the TRS data.
 
-        self.buf = np.zeros((1,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
+        Input: List of tuples: [(firstHeader, secondHeader, headerIndex, payload)]
+        output: tuple of npArrays, (voltArray, timeArray, scalerArray)
+        """
+        super(NSumBunchesTRS, self).__init__()
+        self.type = "SumBunchesTRS"
+
+        self.curVoltIndex = 0
+        self.voltArray = np.zeros(pipeData['nOfSteps'], dtype=np.uint32)
+        self.timeArray = np.arange(pipeData['delayticks']*10,
+                      (pipeData['delayticks']*10 + pipeData['nOfBins']*10),
+                      10, dtype=np.uint32)
+        self.scalerArray = np.zeros((pipeData['nOfSteps'], pipeData['nOfBins'], 8), dtype=np.uint32)
 
     def processData(self, data, pipeData):
-        self.buf = data
-        for i,j in enumerate(self.buf):
+        for i,j in enumerate(data):
             if j['headerIndex'] == 1: #not MCS/TRS data
-                if j['firstHeader'] == progConfigs['errorHandler']:
+                if j['firstHeader'] == pipeData['progConfigs']['errorHandler']: #error send from fpga
                     print('fpga sends error code: ' + str(j['payload']))
-                elif j['firstHeader'] == progConfigs['simpleCounter']:
-                    pass
-                elif j['firstHeader'] == progConfigs['continuousSequencer']:
-                    pass
-                elif j['firstHeader'] == progConfigs['dac']:
+                elif j['firstHeader'] == pipeData['progConfigs']['dac']: #its a voltag step than
                     pipeData['nOfTotalSteps'] += 1
-                    index, voltArray = form.findVoltage(j['payload'], pipeData['voltArray'])
-                    pipeData.update(curVoltInd=index, voltArray=voltArray)
+                    self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)
             elif j['headerIndex'] == 0: #MCS/TRS Data
-                pipeData.update(scalerArray=form.mcsSum(j, pipeData['curVoltInd'], pipeData['scalerArray']))
+                self.scalerArray = form.trsSum(j, self.curVoltIndex, self.scalerArray)
+        return (self.voltArray, self.timeArray, self.scalerArray)
+
 
     def clear(self):
-        self.buf = np.zeros((1,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'), ('headerIndex', 'u1'), ('payload', 'u4')])
+        self.curVoltIndex = 0
+        self.voltArray = np.zeros(1, dtype=np.uint32)
+        self.timeArray = np.arange(0, 1, 1, dtype=np.uint32)
+        self.scalerArray = np.zeros((1, 1, 8), dtype=np.uint32)
 
 class NSaveSum(Node):
     def __init__(self):
