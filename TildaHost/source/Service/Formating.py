@@ -8,7 +8,6 @@ from datetime import datetime as dt
 import lxml.etree as ET
 import numpy as np
 
-counter = 0
 
 def split32bData(int32bData):
     """
@@ -125,7 +124,8 @@ def xmlAddDataToTrack(rootEle, nOfTrack, dataType, newData):
     replaces Data in nOfTrack from rootEle with newData of type dataType.
     :param rootEle: lxml.etree.Element, root of the xml tree
     :param nOfTrack: int, which Track should be written to
-    :param dataType: str, valid: 'voltArray', 'timeArray', 'scalerArray'
+    :param dataType: str, valid: 'setOffset, 'measuredOffset', 'dwellTime', 'nOfmeasuredSteps',
+     'nOfclompetedLoops', 'voltArray', 'timeArray', 'scalerArray'
     :param newData: np.array, newData that will replace all before.
     :return: None,
     """
@@ -140,3 +140,35 @@ def xmlAddDataToTrack(rootEle, nOfTrack, dataType, newData):
         xmlAddDataToTrack(tracks, nOfTrack)
         track = tracks.getchildren()[nOfTrack]
         track.find(dataType).text = repr(newData)
+
+def xmlGetDataFromTrack(rootEle, nOfTrack, dataType):
+    """
+
+    :param rootEle:  lxml.etree.Element, root of the xml tree
+    :param nOfTrack: int, which Track should be written to
+    :param dataType: str, valid: 'setOffset, 'measuredOffset', 'dwellTime', 'nOfmeasuredSteps',
+     'nOfclompetedLoops', 'voltArray', 'timeArray', 'scalerArray'
+    :param returnType: int or tuple of int, shape of the numpy array, 0 if output in textfrom is desired
+    :return: Text
+    """
+    try:
+        actTrack = rootEle.find('tracks').find('track' + str(nOfTrack))
+        dataText = actTrack.find(str(dataType)).text
+        return dataText
+    except:
+        print('error while searching ' +str(dataType) +  ' in track' + str(nOfTrack) + ' in ' + str(rootEle))
+
+
+def numpyArrayFromString(string, shape):
+    """
+    converts a text array saved in an lxml.etree.Element
+    using the function xmlAddDataToTrack back into a numpy array
+    :param string: str, array
+    :param shape: int, or tuple of int, the shape of the output array
+    :return: numpy array containing the desired values
+    """
+    string = string.replace('\\n', '').replace('[', '').replace(']', '').replace('  ', ' ')
+    result = np.fromstring(string[1:-1], dtype=np.uint32, sep=' ')
+    result = result.reshape(shape)
+    return result
+

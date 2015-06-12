@@ -28,7 +28,29 @@ exampleTimeArray = np.random.randint(0, 10, size=2000)
 #form.xmlAddDataToTrack(bodyRoot, 0, 'timeArray', np.array_str(exampleTimeArray))
 #handl.saveXml(bodyRoot, 'DummyData.xml')
 
-loadedText = handl.loadXml('DummyData.xml').find('tracks').find('track0').find('scalerArray').text
-loadedText = loadedText.replace('\\n','')
+#loadedText = handl.loadXml('DummyData.xml').find('tracks').find('track0').find('voltArray').text
+#loadedText = loadedText.replace('\\n','').replace('[', '').replace(']', '')
+#print(loadedText[2:-2])
+#nump = np.fromstring(loadedText[2:-2], dtype=exampleVoltArray.dtype, sep=' ')
+#print(nump, type(nump))
 #loadedTextnp = np.fromstring(loadedText)
-print(loadedText)
+#print(loadedTextnp)
+
+#track0 =  handl.loadXml('DummyData.xml').find('tracks').find('track0')
+#voltText = track0.find('voltArray').text
+#scalerText = track0.find('scalerArray').text
+
+#scalerText = scalerText.replace('\\n', '').replace('[', '').replace(']', '').replace('  ', ' ')
+
+#scalerText = np.fromstring(scalerText[1:-1], dtype=exampleScalerArray.dtype, sep=' ').reshape(exampleScalerArray.shape)
+#print('done', type(exampleScalerArray.shape))
+
+
+#print(type(form.numpyArrayFromString(scalerText, exampleScalerArray.shape)))
+
+
+rootele = handl.loadXml('DummyData.xml')
+text = form.xmlGetDataFromTrack(rootele, 0, 'scalerArray')
+nump = form.numpyArrayFromString(text, exampleScalerArray.shape)
+
+print(nump)
