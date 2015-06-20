@@ -32,6 +32,14 @@ class NSplit32bData(Node):
             buf[i] = result
         return buf
 
+    def saveData(self, incomingData, pipeData):
+        """
+        if saving is requested, return 1
+        """
+        print('Yep, passing on data here in node number: ' + str(self.id))
+        return 1
+
+
 class NSumBunchesTRS(Node):
     def __init__(self, pipeData):
         """
@@ -88,7 +96,7 @@ class NSaveSum(Node):
         self.rootLxml = form.xmlCreateIsotope(pipeData)
 
     def saveData(self, incomingData, pipeData):
-        pass
+        print('I am Node: ' + str(self.id) + 'and would be saving now:\n ' + str(incomingData))
 
     def clear(self):
         pass

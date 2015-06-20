@@ -23,11 +23,15 @@ def TrsPipe(initialTrackPars):
 
     walk = start.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NSumBunchesTRS(pipe.pipeData))
-    walk = walk.attach(SN.NPrint())
+    # walk = walk.attach(SN.NPrint())
 
     return pipe
 
 def initPipeData(initialTrackPars):
+    """
+    initialize the pipeData used for the analysis Pipeline
+    :return: dict, {'isotopeData', 'progConfigs', 'activeTrackPar', 'pipeInternals'}
+    """
     pipeData = {'isotopeData': draftPars.draftIsotopePars,
                      'progConfigs': progConfigs.programs,
                      'activeTrackPar': draftPars.draftTrackPars,
