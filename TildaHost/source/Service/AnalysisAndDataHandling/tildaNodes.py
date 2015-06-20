@@ -11,6 +11,7 @@ import numpy as np
 
 from polliPipe.node import Node
 import Service.Formating as form
+import Service.FolderAndFileHandling as filhandl
 
 
 
@@ -32,12 +33,44 @@ class NSplit32bData(Node):
             buf[i] = result
         return buf
 
+
+class NAccumulateRawData(Node):
+    def __init__(self):
+        """
+        Node to store incoming Raw Data in one Array.
+        input: list of rawData
+        output: list of rawData
+        """
+        super(NAccumulateRawData, self).__init__()
+        self.type = "AccumulateRawData"
+
+        self.buf = np.zeros(0, dtype=np.uint32)
+
+    def processData(self, data, pipeData):
+        self.buf = np.append(self.buf, data)
+        return data
+
     def saveData(self, incomingData, pipeData):
+        dataToSave = self.buf
+        self.clear()
+        return dataToSave
+
+    def clear(self):
+        self.buf = np.zeros(0, dtype=np.uint32)
+
+class NSaveRawData(Node):
+    def __init__(self):
         """
-        if saving is requested, return 1
+        Node to save Raw Data using pickle
+        input: list of rawData
+        output: list of rawData
         """
-        print('Yep, passing on data here in node number: ' + str(self.id))
-        return 1
+        super(NSaveRawData, self).__init__()
+        self.type = "SaveRawData"
+
+    def saveData(self, incomingData, pipeData):
+        filhandl.savePickle(incomingData, pipeData)
+        return None
 
 
 class NSumBunchesTRS(Node):
@@ -76,7 +109,6 @@ class NSumBunchesTRS(Node):
         """
         if saving is requested, return the needed Arrays
         """
-        print('Yep, passing on data here in node number: ' + str(self.id))
         return (self.voltArray, self.timeArray, self.scalerArray)
 
     def clear(self):

@@ -7,6 +7,7 @@ Created on '07.05.2015'
 """
 import lxml.etree as ET
 import os
+import pickle
 
 def FindTildaFolder(path=os.path.dirname(os.path.abspath(__file__))):
     """
@@ -36,3 +37,15 @@ def loadXml(filename):
     tree = ET.parse(filename)
     elem = tree.getroot()
     return elem
+
+def savePickle(data, pipeDataDict):
+    """
+    saves data using the pickle module
+    :param data:
+    :param pipeDataDict:
+    :return:
+    """
+    path = pipeDataDict['pipeInternals']['filePath']
+    path = os.path.join(path, 'TestData')
+    print('saving: ' + str(data) + ' , to: ' + str(path))
+    # pickle.dump(data, pipeDataDict['pipeInternals']['filePath'])

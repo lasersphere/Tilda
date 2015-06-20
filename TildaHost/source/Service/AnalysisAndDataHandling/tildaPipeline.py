@@ -11,6 +11,7 @@ import polliPipe.simpleNodes as SN
 from polliPipe.node import Node
 import Service.ProgramConfigs as progConfigs
 import Service.draftScanParameters as draftPars
+import Service.FolderAndFileHandling as FaFH
 
 from polliPipe.pipeline import Pipeline
 
@@ -21,7 +22,9 @@ def TrsPipe(initialTrackPars):
 
     pipe.pipeData = initPipeData(initialTrackPars)
 
-    walk = start.attach(TN.NSplit32bData())
+    walk = start.attach(TN.NAccumulateRawData())
+    walk = walk.attach(TN.NSaveRawData())
+    walk = walk.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NSumBunchesTRS(pipe.pipeData))
     # walk = walk.attach(SN.NPrint())
 
@@ -40,4 +43,5 @@ def initPipeData(initialTrackPars):
     pipeData['pipeInternals']['curVoltInd'] = 0
     pipeData['pipeInternals']['nOfTotalSteps'] = 0
     pipeData['pipeInternals']['activeTrackNumber'] = 0
+    pipeData['pipeInternals']['filePath'] = FaFH.FindTildaFolder()
     return pipeData

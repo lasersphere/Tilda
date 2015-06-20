@@ -36,4 +36,4 @@ pipe.save()
 # print((pipe.pipeData['scalerArray'][0:][0:]))
 #for i,j in enumerate(np.argwhere(pipe.pipeData['scalerArray'][:][:][0])):
 #    print(pipe.pipeData['scalerArray'][j[0]][j[1]], j)
-print(pipe.pipeData['pipeInternals']['nOfTotalSteps'])
+# print(pipe.pipeData['pipeInternals']['nOfTotalSteps'])

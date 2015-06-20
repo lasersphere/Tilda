@@ -21,4 +21,5 @@ draftPipeInternals = {
     'curVoltInd': 0,
     'nOfTotalSteps': 0,
     'activeTrackNumber': 0,
+    'filePath': 'None'
 }
