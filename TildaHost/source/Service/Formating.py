@@ -72,14 +72,6 @@ def xmlCreateIsotope(isotopeDict):
         xmlAddBlankTrack(tracks, i)
     return root
 
-def xmlFillIsotopeHeader(rootEle, dataType, newData):
-    """
-    writes newData to dataType in the header of a rootEle.
-    """
-    head = rootEle.find('header')
-    head.find(dataType).text = newData
-
-
 def xmlAddBlankTrack(parent, tracknumber):
     """
     Adds a track to a parent
@@ -118,6 +110,14 @@ def xmlAddDataToHeader(header, isotopedict):
         except:
             pass
 
+def xmlFillIsotopeHeader(rootEle, dataType, newData):
+    """
+    writes newData to dataType in the header of a rootEle. Is used in xmlAddDataToHeader.
+    dataType valid entries: 'version', 'type', 'datetime', 'isotope', 'nOfTracks', 'colDirTrue',
+     'accVolt', 'laserFreq'
+    """
+    head = rootEle.find('header')
+    head.find(dataType).text = newData
 
 def xmlAddDataToTrack(rootEle, nOfTrack, dataType, newData):
     """

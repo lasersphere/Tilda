@@ -10,18 +10,16 @@ import Service.AnalysisAndDataHandling.tildaNodes as TN
 import polliPipe.simpleNodes as SN
 from polliPipe.node import Node
 import Service.ProgramConfigs as progConfigs
+import Service.draftScanParameters as draftPars
 
 from polliPipe.pipeline import Pipeline
 
-def TrsPipe(scanPars):
+def TrsPipe(initialTrackPars):
     start = Node()
 
     pipe = Pipeline(start)
 
-    pipe.pipeData.update(scanPars)
-    pipe.pipeData.update(curVoltInd=0)
-    pipe.pipeData.update(nOfTotalSteps=0)
-    pipe.pipeData.update(progConfigs=progConfigs.programs)
+    pipe.pipeData = initPipeData(initialTrackPars)
 
     walk = start.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NSumBunchesTRS(pipe.pipeData))
@@ -29,3 +27,13 @@ def TrsPipe(scanPars):
 
     return pipe
 
+def initPipeData(initialTrackPars):
+    pipeData = {'isotopeData': draftPars.draftIsotopePars,
+                     'progConfigs': progConfigs.programs,
+                     'activeTrackPar': draftPars.draftTrackPars,
+                     'pipeInternals': draftPars.draftPipeInternals}
+    pipeData.update(activeTrackPar=initialTrackPars)
+    pipeData['pipeInternals']['curVoltInd'] = 0
+    pipeData['pipeInternals']['nOfTotalSteps'] = 0
+    pipeData['pipeInternals']['activeTrackNumber'] = 0
+    return pipeData

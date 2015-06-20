@@ -15,22 +15,24 @@ from Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig import TRSConfig
 import Service.FolderAndFileHandling as filehand
 
 
-path = 'TildaHost\\source\\Scratch\\exampleTRSRawData.py'
-file = os.path.join(filehand.FindTildaFolder(), path)
-trsExampleData = pickle.load(open(file, 'rb'))[1:]
+# path = 'TildaHost\\source\\Scratch\\exampleTRSRawData.py'
+# file = os.path.join(filehand.FindTildaFolder(), path)
+# trsExampleData = pickle.load(open(file, 'rb'))[1:]
 # print(trsExampleData)
 exampleCfg = TRSConfig()
 pipe = TrsPipe(exampleCfg.dummyScanParameters)
-pipe.start()
-
-
-for i,j in enumerate(trsExampleData):
-    pipe.feed(j)
-
-#print(scalerArray)
-# for i,j in enumerate(np.argwhere(pipe.pipeData['scalerArray'])):
-#    print(pipe.pipeData['scalerArray'][j[0]][j[1]], j)
-# print((pipe.pipeData['scalerArray'][0:][0:]))
-#for i,j in enumerate(np.argwhere(pipe.pipeData['scalerArray'][:][:][0])):
-#    print(pipe.pipeData['scalerArray'][j[0]][j[1]], j)
-print(pipe.pipeData['nOfTotalSteps'])
+print(pipe.pipeData)
+print(pipe.pipeData['pipeInternals'])
+# pipe.start()
+#
+#
+# for i,j in enumerate(trsExampleData):
+#     pipe.feed(j)
+#
+# #print(scalerArray)
+# # for i,j in enumerate(np.argwhere(pipe.pipeData['scalerArray'])):
+# #    print(pipe.pipeData['scalerArray'][j[0]][j[1]], j)
+# # print((pipe.pipeData['scalerArray'][0:][0:]))
+# #for i,j in enumerate(np.argwhere(pipe.pipeData['scalerArray'][:][:][0])):
+# #    print(pipe.pipeData['scalerArray'][j[0]][j[1]], j)
+# print(pipe.pipeData['nOfTotalSteps'])

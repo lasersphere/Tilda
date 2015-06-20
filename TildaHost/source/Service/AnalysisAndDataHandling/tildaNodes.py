@@ -46,11 +46,11 @@ class NSumBunchesTRS(Node):
         self.type = "SumBunchesTRS"
 
         self.curVoltIndex = 0
-        self.voltArray = np.zeros(pipeData['nOfSteps'], dtype=np.uint32)
-        self.timeArray = np.arange(pipeData['delayticks']*10,
-                      (pipeData['delayticks']*10 + pipeData['nOfBins']*10),
+        self.voltArray = np.zeros(pipeData['activeTrackPar']['nOfSteps'], dtype=np.uint32)
+        self.timeArray = np.arange(pipeData['activeTrackPar']['delayticks']*10,
+                      (pipeData['activeTrackPar']['delayticks']*10 + pipeData['activeTrackPar']['nOfBins']*10),
                       10, dtype=np.uint32)
-        self.scalerArray = np.zeros((pipeData['nOfSteps'], pipeData['nOfBins'], 8), dtype=np.uint32)
+        self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'], pipeData['activeTrackPar']['nOfBins'], 8), dtype=np.uint32)
 
     def processData(self, data, pipeData):
         for i,j in enumerate(data):
@@ -58,12 +58,18 @@ class NSumBunchesTRS(Node):
                 if j['firstHeader'] == pipeData['progConfigs']['errorHandler']: #error send from fpga
                     print('fpga sends error code: ' + str(j['payload']))
                 elif j['firstHeader'] == pipeData['progConfigs']['dac']: #its a voltag step than
-                    pipeData['nOfTotalSteps'] += 1
+                    pipeData['pipeInternals']['nOfTotalSteps'] += 1
                     self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)
             elif j['headerIndex'] == 0: #MCS/TRS Data
                 self.scalerArray = form.trsSum(j, self.curVoltIndex, self.scalerArray)
         return (self.voltArray, self.timeArray, self.scalerArray)
 
+    def saveData(self, incomingData, pipeData):
+        """
+        if saving is requested, return the needed Arrays
+        """
+        print('Yep, passing on data here in node number: ' + str(self.id))
+        return (self.voltArray, self.timeArray, self.scalerArray)
 
     def clear(self):
         self.curVoltIndex = 0
@@ -72,17 +78,17 @@ class NSumBunchesTRS(Node):
         self.scalerArray = np.zeros((1, 1, 8), dtype=np.uint32)
 
 class NSaveSum(Node):
-    def __init__(self):
+    def __init__(self, pipeData):
         """
         save the summed up data
         """
         super(NSaveSum, self).__init__()
         self.type = "SaveSum"
 
-        self.buf = []
+        self.rootLxml = form.xmlCreateIsotope(pipeData)
 
-    def processData(self, data, pipeData):
-        pass #dont know yet when this can be called...
+    def saveData(self, incomingData, pipeData):
+        pass
 
     def clear(self):
-        self.buf = []
+        pass
