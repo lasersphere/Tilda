@@ -26,7 +26,13 @@ class Node(object):
         The action of the node
         """
         return data
-        
+
+    def saveData(self, incomingData, pipeData):
+        """
+        Action of node when saving
+        """
+        return incomingData
+
     def processItem(self, item):
         """
         rewrapping processData to hide the internals of the transport mechanism
@@ -42,10 +48,15 @@ class Node(object):
         elif item.type == "clear":
             self.clear()
             newjobs = self.createJobs(item, False)
+        elif item.type == "save":
+            transportData = self.saveData(item.data, self.Pipeline.pipeData)
+            if transportData is not None:
+                item.data = transportData
+                newjobs = self.createJobs(item)
         elif item.type == "data":
             newData = self.processData(item.data, self.Pipeline.pipeData)
             if newData is not None:
-                item.data=newData
+                item.data = newData
                 newjobs = self.createJobs(item)
         
         return newjobs

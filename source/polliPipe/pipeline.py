@@ -39,6 +39,13 @@ class Pipeline(object):
         self.nextItemId += 1
         self.processItem(stopper)
 
+    def save(self):
+        """
+        tell saving nodes inside pipeline to save data
+        """
+        saver = Item(self.nextItemId, "save")
+        self.nextItemId += 1
+        self.processItem(saver)
 
     def feed(self, data):
         """
@@ -48,7 +55,6 @@ class Pipeline(object):
         self.nextItemId += 1
         item.data = data
         self.processItem(item)
-
 
     def clear(self):
         """
