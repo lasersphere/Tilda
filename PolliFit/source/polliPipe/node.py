@@ -50,9 +50,8 @@ class Node(object):
             newjobs = self.createJobs(item, False)
         elif item.type == "save":
             transportData = self.saveData(item.data, self.Pipeline.pipeData)
-            if transportData is not None:
-                item.data = transportData
-                newjobs = self.createJobs(item)
+            item.data = transportData
+            newjobs = self.createJobs(item)
         elif item.type == "data":
             newData = self.processData(item.data, self.Pipeline.pipeData)
             if newData is not None:
