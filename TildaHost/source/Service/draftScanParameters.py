@@ -24,3 +24,7 @@ draftPipeInternals = {
     'activeTrackNumber': 0,
     'filePath': 'D:\\Workspace\\Testdata'
 }
+
+draftScanDict = {'isotopeData': draftIsotopePars,
+                 'activeTrackPar': draftTrackPars,
+                 'pipeInternals': draftPipeInternals}

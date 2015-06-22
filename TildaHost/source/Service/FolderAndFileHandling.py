@@ -9,6 +9,7 @@ import lxml.etree as ET
 import os
 import pickle
 import time
+import Service.Formating as form
 
 def findTildaFolder(path=os.path.dirname(os.path.abspath(__file__))):
     """
@@ -40,12 +41,17 @@ def nameFile(path, subdir, fileName, prefix='', suffix='.tld'):
         i += 1
     return filepath + '_' + str(i) + suffix
 
+def createXmlFileOneIsotope(scanDict):
+    isodict = scanDict['isotopeData']
+    path = isodict['pathFile']
+    form.xmlCreateIsotope()
+
 def saveXml(rootEle, filename, pretty=True):
     """
-    Convert a Root lxml Element into an ElementTree and save it to file
+    Convert a Root lxml Element into an ElementTree and save it to a file
     """
     tree = ET.ElementTree(rootEle)
-    tree.write(filename, pretty_print = pretty)
+    tree.write(filename, pretty_print=pretty)
 
 def loadXml(filename):
     """
@@ -66,7 +72,7 @@ def savePickle(data, pipeDataDict):
                     '_track' + str(pipeDataDict['pipeInternals']['activeTrackNumber']),
                     pipeDataDict['isotopeData']['type'],
                     '.raw')
-    print('saving: ' + str(data) + ' , to: ' + str(path))
+    # print('saving: ' + str(data) + ' , to: ' + str(path))
     file = open(path, 'wb')
     pickle.dump(data, file)
     file.close()

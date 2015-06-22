@@ -12,6 +12,7 @@ import numpy as np
 from polliPipe.node import Node
 import Service.Formating as form
 import Service.FolderAndFileHandling as filhandl
+import Service.ProgramConfigs as progConfigsDict
 
 
 
@@ -96,9 +97,9 @@ class NSumBunchesTRS(Node):
     def processData(self, data, pipeData):
         for i,j in enumerate(data):
             if j['headerIndex'] == 1: #not MCS/TRS data
-                if j['firstHeader'] == pipeData['progConfigs']['errorHandler']: #error send from fpga
+                if j['firstHeader'] == progConfigsDict.programs['errorHandler']: #error send from fpga
                     print('fpga sends error code: ' + str(j['payload']))
-                elif j['firstHeader'] == pipeData['progConfigs']['dac']: #its a voltag step than
+                elif j['firstHeader'] == progConfigsDict.programs['dac']: #its a voltag step than
                     pipeData['pipeInternals']['nOfTotalSteps'] += 1
                     self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)
             elif j['headerIndex'] == 0: #MCS/TRS Data
@@ -131,6 +132,7 @@ class NSaveSum(Node):
 
     def saveData(self, incomingData, pipeData):
         rootLxml = form.xmlCreateIsotope(pipeData['isotopeData'])
+
         pass
 
     def clear(self, pipeData):
