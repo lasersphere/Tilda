@@ -26,7 +26,7 @@ def TrsPipe(initialTrackPars):
     walk = walk.attach(TN.NSaveRawData())
     walk = walk.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NSumBunchesTRS(pipe.pipeData))
-    # walk = walk.attach(SN.NPrint())
+    walk = walk.attach(SN.NPrint())
 
     return pipe
 

@@ -91,7 +91,7 @@ class NSumBunchesTRS(Node):
         self.timeArray = np.arange(pipeData['activeTrackPar']['delayticks']*10,
                       (pipeData['activeTrackPar']['delayticks']*10 + pipeData['activeTrackPar']['nOfBins']*10),
                       10, dtype=np.uint32)
-        self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'], pipeData['activeTrackPar']['nOfBins'], 8), dtype=np.uint32)
+        self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'], pipeData['activeTrackPar']['nOfBins'], len(pipeData['activeTrackPar']['activePmtList'])), dtype=np.uint32)
 
     def processData(self, data, pipeData):
         for i,j in enumerate(data):
@@ -102,7 +102,7 @@ class NSumBunchesTRS(Node):
                     pipeData['pipeInternals']['nOfTotalSteps'] += 1
                     self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)
             elif j['headerIndex'] == 0: #MCS/TRS Data
-                self.scalerArray = form.trsSum(j, self.curVoltIndex, self.scalerArray)
+                self.scalerArray = form.trsSum(j, self.curVoltIndex, self.scalerArray, pipeData['activeTrackPar']['activePmtList'])
         return (self.voltArray, self.timeArray, self.scalerArray)
 
     def saveData(self, incomingData, pipeData):

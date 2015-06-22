@@ -13,9 +13,10 @@ draftTrackPars = {'MCSSelectTrigger': 0, 'delayticks': 0, 'nOfBins': 10000, 'nOf
                                'VoltOrScaler': False, 'stepSize': int('00000010000000000000', 2),
                                'start': int('00000000001000000000', 2), 'nOfSteps': 20,
                                'nOfScans': 5, 'invertScan': False,
-                               'measureOffset': False, 'heinzingerControl': 1, 'heinzingerOffsetVolt':1000,
+                               'measureOffset': False, 'heinzingerControl': 1, 'heinzingerOffsetVolt': 1000,
                                'waitForKepco25nsTicks': 40,
-                               'waitAfterReset25nsTicks': 4000}
+                               'waitAfterReset25nsTicks': 4000,
+                               'activePmtList': [0, 2, 4]}
 
 draftPipeInternals = {
     'curVoltInd': 0,

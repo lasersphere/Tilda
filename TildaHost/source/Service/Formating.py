@@ -39,16 +39,16 @@ def findVoltage(voltage, voltArray):
     np.put(voltArray, index, voltage)
     return (index, voltArray)
 
-def trsSum(element, actVoltInd, sumArray):
+def trsSum(element, actVoltInd, sumArray, activePmtList=range(8)):
     """
     Add new Scaler event on previous acquired ones. Treat each scaler seperatly.
     :return: np.array, sum
     """
     timestamp = element['payload']
-    activePmts = (element['firstHeader'] << 4) + element['secondHeader'] #glue header back together
-    for i in range(8):
-        if activePmts & (2 ** i):
-            sumArray[actVoltInd, timestamp, i] += 1 #timestamp equals index in timeArray
+    pmtsWithEvent = (element['firstHeader'] << 4) + element['secondHeader'] #glue header back together
+    for ind, val in enumerate(activePmtList):
+        if pmtsWithEvent & (2 ** val):
+            sumArray[actVoltInd, timestamp, ind] += 1 #timestamp equals index in timeArray
     return sumArray
 
 def xmlCreateIsotope(isotopeDict):
@@ -80,6 +80,7 @@ def xmlAddBlankTrack(parent, tracknumber):
     ET.SubElement(parent[tracknumber], 'setOffset')
     ET.SubElement(parent[tracknumber], 'measuredOffset')
     ET.SubElement(parent[tracknumber], 'dwellTime')
+    ET.SubElement(parent[tracknumber], 'activePmtList')
     ET.SubElement(parent[tracknumber], 'nOfmeasuredSteps')
     ET.SubElement(parent[tracknumber], 'nOfcompletededLoops')
     ET.SubElement(parent[tracknumber], 'voltArray')
