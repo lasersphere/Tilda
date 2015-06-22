@@ -52,10 +52,10 @@ class NAccumulateRawData(Node):
 
     def saveData(self, incomingData, pipeData):
         dataToSave = self.buf
-        self.clear()
+        self.clear(pipeData) #force clear() because data is stored on disc now
         return dataToSave
 
-    def clear(self):
+    def clear(self, pipeData):
         self.buf = np.zeros(0, dtype=np.uint32)
 
 class NSaveRawData(Node):
@@ -111,24 +111,27 @@ class NSumBunchesTRS(Node):
         """
         return (self.voltArray, self.timeArray, self.scalerArray)
 
-    def clear(self):
+    def clear(self, pipeData):
         self.curVoltIndex = 0
-        self.voltArray = np.zeros(1, dtype=np.uint32)
-        self.timeArray = np.arange(0, 1, 1, dtype=np.uint32)
-        self.scalerArray = np.zeros((1, 1, 8), dtype=np.uint32)
+        self.voltArray = np.zeros(pipeData['activeTrackPar']['nOfSteps'], dtype=np.uint32)
+        self.timeArray = np.arange(pipeData['activeTrackPar']['delayticks']*10,
+                      (pipeData['activeTrackPar']['delayticks']*10 + pipeData['activeTrackPar']['nOfBins']*10),
+                      10, dtype=np.uint32)
+        self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'], pipeData['activeTrackPar']['nOfBins'], len(pipeData['activeTrackPar']['activePmtList'])), dtype=np.uint32)
 
 class NSaveSum(Node):
     def __init__(self, pipeData):
         """
         save the summed up data
+        incoming must always be a tuple of form:
+        (self.voltArray, self.timeArray, self.scalerArray)
         """
         super(NSaveSum, self).__init__()
         self.type = "SaveSum"
 
-        self.rootLxml = form.xmlCreateIsotope(pipeData)
-
     def saveData(self, incomingData, pipeData):
-        print('I am Node: ' + str(self.id) + 'and would be saving now:\n ' + str(incomingData))
+        rootLxml = form.xmlCreateIsotope(pipeData['isotopeData'])
+        pass
 
-    def clear(self):
+    def clear(self, pipeData):
         pass
