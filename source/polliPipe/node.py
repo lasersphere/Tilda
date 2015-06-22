@@ -46,7 +46,7 @@ class Node(object):
         elif item.type == "stop":
             newjobs = self.createJobs(item, False)
         elif item.type == "clear":
-            self.clear()
+            self.clear(self.Pipeline.pipeData)
             newjobs = self.createJobs(item, False)
         elif item.type == "save":
             transportData = self.saveData(item.data, self.Pipeline.pipeData)
@@ -77,7 +77,7 @@ class Node(object):
         return result
     
     
-    def clear(self):
+    def clear(self, pipeData):
         """
         Clear the internal memory. Does nothing for generic node, overwrite!
         """
@@ -102,6 +102,3 @@ class Node(object):
         """
         self.next.append(_next)
         return _next
-    
-    
-        

@@ -39,7 +39,7 @@ class Pipeline(object):
         self.nextItemId += 1
         self.processItem(stopper)
 
-    def save(self, data=1):
+    def save(self, data=None):
         """
         tell saving nodes inside pipeline to save data
         """
