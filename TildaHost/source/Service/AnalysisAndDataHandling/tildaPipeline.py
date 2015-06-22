@@ -26,7 +26,7 @@ def TrsPipe(initialTrackPars):
     walk = walk.attach(TN.NSaveRawData())
     walk = walk.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NSumBunchesTRS(pipe.pipeData))
-    walk = walk.attach(SN.NPrint())
+    # walk = walk.attach(SN.NPrint())
 
     return pipe
 
@@ -43,5 +43,4 @@ def initPipeData(initialTrackPars):
     pipeData['pipeInternals']['curVoltInd'] = 0
     pipeData['pipeInternals']['nOfTotalSteps'] = 0
     pipeData['pipeInternals']['activeTrackNumber'] = 0
-    pipeData['pipeInternals']['filePath'] = FaFH.FindTildaFolder()
     return pipeData

@@ -24,7 +24,7 @@ isotopeData = {'version': '0.1', 'type': 'trs', 'isotope': 'simontium_27',
 np.set_printoptions(threshold=np.nan)
 
 path = 'TildaHost\\source\\Scratch\\exampleTRSRawData.py'
-file = os.path.join(filehand.FindTildaFolder(), path)
+file = os.path.join(filehand.findTildaFolder(), path)
 trsExampleData = pickle.load(open(file, 'rb'))[1:]
 print(trsExampleData)
 
