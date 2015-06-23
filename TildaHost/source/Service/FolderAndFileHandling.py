@@ -42,16 +42,35 @@ def nameFile(path, subdir, fileName, prefix='', suffix='.tld'):
     return filepath + '_' + str(i) + suffix
 
 def createXmlFileOneIsotope(scanDict):
+    """
+    creates an .xml file for one Isotope. Using the Filestructure as stated in OneNote.
+    :param scanDict: {'isotopeData', 'activeTrackPar', 'pipeInternals'}
+    :return:str, filename
+    """
     isodict = scanDict['isotopeData']
-    path = isodict['pathFile']
-    form.xmlCreateIsotope()
+    root = form.xmlCreateIsotope(isodict)
+    filename = nameFileXml(scanDict)
+    saveXml(root, filename, False)
+    return filename
 
-def saveXml(rootEle, filename, pretty=True):
+def nameFileXml(scanDict):
+    """
+    finds a filename for the xml file
+    :param scanDict: {'isotopeData', 'activeTrackPar', 'pipeInternals'}
+    :return:str, filename
+    """
+    path = scanDict['pipeInternals']['filePath']
+    nIso = scanDict['isotopeData']['isotope']
+    filename = nameFile(path, 'sums', nIso, 'trs_sum', '.xml')
+    return filename
+
+
+def saveXml(rootEle, path, pretty=True):
     """
     Convert a Root lxml Element into an ElementTree and save it to a file
     """
     tree = ET.ElementTree(rootEle)
-    tree.write(filename, pretty_print=pretty)
+    tree.write(path, pretty_print=pretty)
 
 def loadXml(filename):
     """
