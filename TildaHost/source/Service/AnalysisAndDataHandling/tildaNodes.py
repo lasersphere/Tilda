@@ -131,7 +131,10 @@ class NSaveSum(Node):
         self.type = "SaveSum"
 
     def saveData(self, incomingData, pipeData):
-        rootLxml = form.xmlCreateIsotope(pipeData['isotopeData'])
+        pipeInternals = pipeData['pipeInternals']
+        file = pipeInternals['activeXmlFilePath']
+        rootEle = filhandl.loadXml(file)
+        form.xmlWriteToTrack(rootEle, pipeInternals['activeTrackNumber'], 'scalerArray')
 
         pass
 

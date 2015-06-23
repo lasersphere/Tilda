@@ -9,6 +9,7 @@ import pickle
 import Service.FolderAndFileHandling as fileh
 import os
 import Service.draftScanParameters as draftScan
+import Service.Formating as form
 
 path = 'D:\\Workspace\\Testdata'
 # print(path)
@@ -26,6 +27,7 @@ file = 'D:\Workspace\Testdata\\raw\\20150622_185322_trs_simontium_27_track0_0.ra
 # print(fileh.createXmlFileOneIsotope(draftScan.draftScanDict))
 
 ele = fileh.loadXml('D:\Workspace\Testdata\sums\\20150623_114059_trs_sum_simontium_27.xml')
-dick = dict(ele.attrib)
-print(ele[0])
-# print(sorted(dick.items()))
+
+
+dicti = draftScan.draftTrackPars
+form.xmlAddCompleteTrack(ele, dicti, 1)

@@ -56,15 +56,13 @@ def xmlCreateIsotope(isotopeDict):
     Builds the lxml Element Body for one isotope.
     Constant information for all isotopes is included in header.
     All Tracks are included in tracks.
-    :param isotopeDict: dict, containing: version, type, datetime, isotope, nOfTracks,
-    colDirTrue, accVolt, laserFreq
+    :param isotopeDict: dict, containing: see OneNote
     :return: lxml.etree.Element
     """
     root = ET.Element('TrigaLaserData')
 
     header = ET.SubElement(root, 'header')
-    xmlCreateBlankHeader(header)
-    xmlAddDataToHeader(header, isotopeDict)
+    xmlWriteIsoDictToHeader(header, isotopeDict)
 
     tracks = ET.SubElement(root, 'tracks')
 
@@ -72,35 +70,8 @@ def xmlCreateIsotope(isotopeDict):
         xmlAddBlankTrack(tracks, i)
     return root
 
-def xmlAddBlankTrack(parent, tracknumber):
-    """
-    Adds a track to a parent
-    """
-    ET.SubElement(parent, 'track' + str(tracknumber))
-    ET.SubElement(parent[tracknumber], 'setOffset')
-    ET.SubElement(parent[tracknumber], 'measuredOffset')
-    ET.SubElement(parent[tracknumber], 'dwellTime')
-    ET.SubElement(parent[tracknumber], 'activePmtList')
-    ET.SubElement(parent[tracknumber], 'nOfmeasuredSteps')
-    ET.SubElement(parent[tracknumber], 'nOfcompletededLoops')
-    ET.SubElement(parent[tracknumber], 'voltArray')
-    ET.SubElement(parent[tracknumber], 'timeArray')
-    ET.SubElement(parent[tracknumber], 'scalerArray')
 
-def xmlCreateBlankHeader(header):
-    """
-    creates a blank header file for one Isotope
-    """
-    ET.SubElement(header, 'version')
-    ET.SubElement(header, 'type')
-    ET.SubElement(header, 'datetime')
-    ET.SubElement(header, 'isotope')
-    ET.SubElement(header, 'nOfTracks')
-    ET.SubElement(header, 'colDirTrue')
-    ET.SubElement(header, 'accVolt')
-    ET.SubElement(header, 'laserFreq')
-
-def xmlAddDataToHeader(header, isotopedict):
+def xmlWriteIsoDictToHeader(header, isotopedict):
     """
     write the complete isotopedict to the header of the xml structure
     """
@@ -108,39 +79,49 @@ def xmlAddDataToHeader(header, isotopedict):
     for key, val in isotopedict.items():
         try:
             header.find(key).text = val
-        except:
-            pass
+        except KeyError:
+            ET.SubElement(header, key, val)
 
-def xmlFillIsotopeHeader(rootEle, dataType, newData):
+def xmlAddBlankTrack(parent, tracknumber):
     """
-    writes newData to dataType in the header of a rootEle. Is used in xmlAddDataToHeader.
-    dataType valid entries: 'version', 'type', 'datetime', 'isotope', 'nOfTracks', 'colDirTrue',
-     'accVolt', 'laserFreq'
+    Adds a track to a parent
     """
-    head = rootEle.find('header')
-    head.find(dataType).text = newData
+    ET.SubElement(parent, 'track' + str(tracknumber))
+    ET.SubElement(parent[tracknumber], 'header')
+    ET.SubElement(parent[tracknumber], 'data')
 
-def xmlAddDataToTrack(rootEle, nOfTrack, dataType, newData):
+def xmlWriteToTrack(rootEle, nOfTrack, dataType, newData, headOrDatStr='header',):
     """
     replaces Data in nOfTrack from rootEle with newData of type dataType.
     :param rootEle: lxml.etree.Element, root of the xml tree
     :param nOfTrack: int, which Track should be written to
-    :param dataType: str, valid: 'setOffset, 'measuredOffset', 'dwellTime', 'nOfmeasuredSteps',
-     'nOfclompetedLoops', 'voltArray', 'timeArray', 'scalerArray'
+    :param dataType: str,
     :param newData: np.array, newData that will replace all before.
-    :return: None,
     """
     tracks = rootEle.find('tracks')
-    try:
-        #check if track is already created
+    try: #check if track and dataType is already created
         track = tracks.getchildren()[nOfTrack]
-        track.find(dataType).text = repr(newData)
-    except IndexError:
-        #add track at next possible position.
-        nOfTrack = len(tracks.getchildren())
-        xmlAddDataToTrack(tracks, nOfTrack)
-        track = tracks.getchildren()[nOfTrack]
-        track.find(dataType).text = repr(newData)
+        headOrData = track.find(headOrDatStr)
+        headOrData.find(dataType).text = repr(newData)
+    except IndexError:  #track not found, at next possible position.
+        xmlAddBlankTrack(tracks, nOfTrack)
+        xmlWriteToTrack(rootEle, nOfTrack, dataType, newData)
+    except KeyError: #Element not found, create
+        ET.SubElement(headOrData, dataType, newData)
+
+
+def xmlAddCompleteTrack(rootEle, scanDict, data):
+    # data must be tuple of form: (self.voltArray, self.timeArray, self.scalerArray)
+    pipeInternalsDict = scanDict['pipeInternals']
+    nOfTrack = pipeInternalsDict['activeTrackNumber']
+    trackDict = scanDict['activeTrackPar']
+    for key, val in trackDict.items(): #write header
+        xmlWriteToTrack(rootEle, nOfTrack, key, val)
+    dataFormat = ('voltArray', 'timeArray', 'scalerArray')
+    for i in dataFormat:
+        xmlWriteToTrack(rootEle, nOfTrack, dataFormat[i], data[i], 'data')
+
+
 
 def xmlGetDataFromTrack(rootEle, nOfTrack, dataType):
     """
@@ -163,7 +144,7 @@ def xmlGetDataFromTrack(rootEle, nOfTrack, dataType):
 def numpyArrayFromString(string, shape):
     """
     converts a text array saved in an lxml.etree.Element
-    using the function xmlAddDataToTrack back into a numpy array
+    using the function xmlWriteToTrack back into a numpy array
     :param string: str, array
     :param shape: int, or tuple of int, the shape of the output array
     :return: numpy array containing the desired values
