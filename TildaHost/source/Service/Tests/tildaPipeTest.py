@@ -28,8 +28,8 @@ pipe.start()
 
 for i,j in enumerate(trsExampleData):
     pipe.feed(j)
-    pipe.save()
-# pipe.save()
+    # pipe.save()
+pipe.save()
 
 #print(scalerArray)
 # for i,j in enumerate(np.argwhere(pipe.pipeData['scalerArray'])):

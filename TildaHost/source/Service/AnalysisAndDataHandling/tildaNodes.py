@@ -34,7 +34,6 @@ class NSplit32bData(Node):
             buf[i] = result
         return buf
 
-
 class NAccumulateRawData(Node):
     def __init__(self):
         """
@@ -72,7 +71,6 @@ class NSaveRawData(Node):
     def saveData(self, incomingData, pipeData):
         filhandl.savePickle(incomingData, pipeData)
         return None
-
 
 class NSumBunchesTRS(Node):
     def __init__(self, pipeData):
@@ -121,7 +119,7 @@ class NSumBunchesTRS(Node):
         self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'], pipeData['activeTrackPar']['nOfBins'], len(pipeData['activeTrackPar']['activePmtList'])), dtype=np.uint32)
 
 class NSaveSum(Node):
-    def __init__(self, pipeData):
+    def __init__(self):
         """
         save the summed up data
         incoming must always be a tuple of form:
@@ -134,9 +132,9 @@ class NSaveSum(Node):
         pipeInternals = pipeData['pipeInternals']
         file = pipeInternals['activeXmlFilePath']
         rootEle = filhandl.loadXml(file)
-        form.xmlWriteToTrack(rootEle, pipeInternals['activeTrackNumber'], 'scalerArray')
-
-        pass
+        form.xmlAddCompleteTrack(rootEle, pipeData, incomingData)
+        filhandl.saveXml(rootEle, file, False)
+        return None
 
     def clear(self, pipeData):
         pass

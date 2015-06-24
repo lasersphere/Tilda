@@ -10,6 +10,7 @@ import os
 import pickle
 import time
 import Service.Formating as form
+import numpy as np
 
 def findTildaFolder(path=os.path.dirname(os.path.abspath(__file__))):
     """
@@ -50,6 +51,7 @@ def createXmlFileOneIsotope(scanDict):
     isodict = scanDict['isotopeData']
     root = form.xmlCreateIsotope(isodict)
     filename = nameFileXml(scanDict)
+    print('creating .xml File: ' + filename)
     saveXml(root, filename, False)
     return filename
 
@@ -68,6 +70,7 @@ def saveXml(rootEle, path, pretty=True):
     """
     Convert a Root lxml Element into an ElementTree and save it to a file
     """
+    np.set_printoptions(threshold=np.nan)
     tree = ET.ElementTree(rootEle)
     tree.write(path, pretty_print=pretty)
 

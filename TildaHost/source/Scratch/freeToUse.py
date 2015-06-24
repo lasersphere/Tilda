@@ -32,3 +32,5 @@ import Service.Formating as form
 # dicti = draftScan.draftTrackPars
 # form.xmlAddCompleteTrack(ele, dicti, 1)
 
+print(512 >> 2)
+print(8192 >> 2)

@@ -29,7 +29,7 @@ def TrsPipe(initialTrackPars):
     # walk = walk.attach(TN.NSaveRawData())
     walk = walk.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NSumBunchesTRS(pipe.pipeData))
-    walk = walk.attach(TN.NSaveSum(pipe.pipeData))
+    walk = walk.attach(TN.NSaveSum())
     # walk = walk.attach(SN.NPrint())
 
     return pipe
@@ -43,4 +43,5 @@ def initPipeData(initialTrackPars):
     pipeData.update(activeTrackPar=initialTrackPars, nOfCompletedSteps=0)
     pipeData['pipeInternals']['curVoltInd'] = 0
     pipeData['pipeInternals']['activeTrackNumber'] = 0
+    pipeData['pipeInternals']['activeXmlFilePath'] = FaFH.createXmlFileOneIsotope(pipeData)
     return pipeData

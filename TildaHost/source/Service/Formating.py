@@ -7,6 +7,7 @@ Created on 21.01.2015
 from datetime import datetime as dt
 import lxml.etree as ET
 import numpy as np
+import Service.dataFormat as dataForm
 
 
 def split32bData(int32bData):
@@ -87,7 +88,6 @@ def xmlCreateIsotope(isotopeDict):
     xmlFindOrCreateSubElement(root, 'tracks')
     return root
 
-
 def xmlWriteIsoDictToHeader(rootEle, isotopedict):
     """
     write the complete isotopedict and the datetime to the header of the xml structure
@@ -125,9 +125,9 @@ def xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackdict):
     xmlWriteDict(headerEle, trackdict)
     return rootEle
 
-
-def xmlAddCompleteTrack(rootEle, scanDict, data, dataFormat=('voltArray', 'timeArray', 'scalerArray')):
-    # data must be tuple of form: (self.voltArray, self.timeArray, self.scalerArray)
+def xmlAddCompleteTrack(rootEle, scanDict, data):
+    datatype = scanDict['isotopeData']['type']
+    dataFormat = dataForm.dataformat[str(datatype)]
     pipeInternalsDict = scanDict['pipeInternals']
     nOfTrack = pipeInternalsDict['activeTrackNumber']
     trackDict = scanDict['activeTrackPar']
@@ -135,8 +135,6 @@ def xmlAddCompleteTrack(rootEle, scanDict, data, dataFormat=('voltArray', 'timeA
     for i, j in enumerate(dataFormat):
         xmlWriteToTrack(rootEle, nOfTrack, j, data[i], 'data')
     return rootEle
-
-
 
 def xmlGetDataFromTrack(rootEle, nOfTrack, dataType):
     """
@@ -149,7 +147,7 @@ def xmlGetDataFromTrack(rootEle, nOfTrack, dataType):
     :return: Text
     """
     try:
-        actTrack = rootEle.find('tracks').find('track' + str(nOfTrack))
+        actTrack = rootEle.find('tracks').find('track' + str(nOfTrack)).find('data')
         dataText = actTrack.find(str(dataType)).text
         return dataText
     except:
@@ -173,6 +171,4 @@ def numpyArrayFromString(string, shape):
     result = np.fromstring(string[1:-1], dtype=np.uint32, sep=' ')
     result = result.reshape(shape)
     return result
-
-
 
