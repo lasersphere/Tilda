@@ -16,28 +16,34 @@ import random
 import Service.Formating as form
 import Service.FolderAndFileHandling as handl
 import lxml.etree as ET
+import Service.draftScanParameters as draftDicts
 
-isotopeData = {'version': '0.1', 'type': 'trs', 'isotope': 'simontium_27',
-               'nOfTracks': '1', 'colDirTrue': 'False', 'accVolt': '999.8',
-               'laserFreq': '12568.73'}
+isotopeData = draftDicts.draftIsotopePars
 
 np.set_printoptions(threshold=np.nan)
 
-path = 'TildaHost\\source\\Scratch\\exampleTRSRawData.py'
-file = os.path.join(filehand.findTildaFolder(), path)
-trsExampleData = pickle.load(open(file, 'rb'))[1:]
-print(trsExampleData)
+# path = 'TildaHost\\source\\Scratch\\exampleTRSRawData.py'
+# file = os.path.join(filehand.findTildaFolder(), path)
+# trsExampleData = pickle.load(open(file, 'rb'))[1:]
+# print(trsExampleData)
 
-# bodyRoot = form.xmlCreateIsotope(isotopeData)
-# exampleVoltArray = np.random.randint(10, size=20)
-# exampleScalerArray = np.random.randint(100, size=(20, 2000, 8))
-# exampleTimeArray = np.random.randint(0, 10, size=2000)
+bodyRoot = form.xmlCreateIsotope(isotopeData)
+exampleVoltArray = np.random.randint(10, size=20)
+exampleScalerArray = np.random.randint(100, size=(20, 2000, 8))
+exampleTimeArray = np.random.randint(0, 10, size=2000)
+dicti = draftDicts.draftScanDict
+data = (np.random.randint(10, size=20), np.random.randint(0, 10, size=20), np.random.randint(100, size=(20, 20, 3)))
+form.xmlAddCompleteTrack(bodyRoot, dicti, data)
 #
-# form.xmlWriteToTrack(bodyRoot, 0, 'scalerArray', np.array_str(exampleScalerArray))
-# form.xmlWriteToTrack(bodyRoot, 0, 'voltArray', np.array_str(exampleVoltArray))
-# form.xmlWriteToTrack(bodyRoot, 0, 'timeArray', np.array_str(exampleTimeArray))
+# dict['pipeInternals'].update(activeTrackNumber=1)
+# form.xmlAddCompleteTrack(bodyRoot, dict, data)
+# # print(ET.tostring(bodyRoot, pretty_print=True))
 # handl.saveXml(bodyRoot, 'DummyData2.xml')
 
+newdict = filehand.scanDictionaryFromXmlFile('DummyData2.xml', 0, dicti)
+print(newdict)
+
+#
 #loadedText = handl.loadXml('DummyData.xml').find('tracks').find('track0').find('voltArray').text
 #loadedText = loadedText.replace('\\n','').replace('[', '').replace(']', '')
 #print(loadedText[2:-2])

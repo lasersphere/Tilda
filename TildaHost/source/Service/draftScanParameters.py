@@ -12,7 +12,7 @@ draftTrackPars = {'MCSSelectTrigger': 0, 'delayticks': 0, 'nOfBins': 10000, 'nOf
                                'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100,
                                'VoltOrScaler': False, 'stepSize': int('00000010000000000000', 2),
                                'start': int('00000000001000000000', 2), 'nOfSteps': 20,
-                               'nOfScans': 5, 'invertScan': False,
+                               'nOfScans': 5, 'nOfCompletedSteps': 0, 'invertScan': False,
                                'measureOffset': False, 'heinzingerControl': 1, 'heinzingerOffsetVolt': 1000,
                                'waitForKepco25nsTicks': 40,
                                'waitAfterReset25nsTicks': 4000,
@@ -20,7 +20,6 @@ draftTrackPars = {'MCSSelectTrigger': 0, 'delayticks': 0, 'nOfBins': 10000, 'nOf
 
 draftPipeInternals = {
     'curVoltInd': 0,
-    'nOfTotalSteps': 0,
     'activeTrackNumber': 0,
     'filePath': 'D:\\Workspace\\Testdata',
     'activeXmlFilePath': None

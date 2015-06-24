@@ -64,7 +64,6 @@ def nameFileXml(scanDict):
     filename = nameFile(path, 'sums', nIso, 'trs_sum', '.xml')
     return filename
 
-
 def saveXml(rootEle, path, pretty=True):
     """
     Convert a Root lxml Element into an ElementTree and save it to a file
@@ -80,6 +79,20 @@ def loadXml(filename):
     tree = ET.parse(filename)
     elem = tree.getroot()
     return elem
+
+def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict):
+    """
+    creates a Scandictionary with the fom as stated in draftScanParameters
+    values are gained from the loaded xmlFile
+    :return: dict, Scandictionary gained from the xml file.
+    """
+    xmlEtree = loadXml(xmlFileName)
+    trackdict = form.xmlGetDictFromEle(xmlEtree)[1]['tracks']['track' + str(nOfTrack)]['header']
+    isotopedict = form.xmlGetDictFromEle(xmlEtree)[1]['header']
+    oldDict['isotopeData'] = isotopedict
+    oldDict['activeTrackPar'] = trackdict
+    oldDict['pipeInternals'].update(curVoltInd=0, activeTrackNumber=0, activeXmlFilePath=xmlFileName)
+    return oldDict
 
 def savePickle(data, pipeDataDict):
     """
