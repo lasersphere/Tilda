@@ -100,7 +100,7 @@ class NSumBunchesTRS(Node):
                 if j['firstHeader'] == progConfigsDict.programs['errorHandler']: #error send from fpga
                     print('fpga sends error code: ' + str(j['payload']))
                 elif j['firstHeader'] == progConfigsDict.programs['dac']: #its a voltag step than
-                    pipeData['pipeInternals']['nOfTotalSteps'] += 1
+                    pipeData['activeTrackPar']['nOfCompletedSteps'] += 1
                     self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)
             elif j['headerIndex'] == 0: #MCS/TRS Data
                 self.scalerArray = form.trsSum(j, self.curVoltIndex, self.scalerArray, pipeData['activeTrackPar']['activePmtList'])

@@ -40,8 +40,7 @@ def initPipeData(initialTrackPars):
     :return: dict, {'isotopeData', 'progConfigs', 'activeTrackPar', 'pipeInternals'}
     """
     pipeData = draftPars.draftScanDict
-    pipeData.update(activeTrackPar=initialTrackPars)
+    pipeData.update(activeTrackPar=initialTrackPars, nOfCompletedSteps=0)
     pipeData['pipeInternals']['curVoltInd'] = 0
-    pipeData['pipeInternals']['nOfTotalSteps'] = 0
     pipeData['pipeInternals']['activeTrackNumber'] = 0
     return pipeData
