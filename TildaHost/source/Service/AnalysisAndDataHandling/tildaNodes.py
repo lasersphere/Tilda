@@ -13,6 +13,7 @@ from polliPipe.node import Node
 import Service.Formating as form
 import Service.FolderAndFileHandling as filhandl
 import Service.ProgramConfigs as progConfigsDict
+import Service.AnalysisAndDataHandling.trsDataAnalysis as trsAna
 
 
 
@@ -34,43 +35,28 @@ class NSplit32bData(Node):
             buf[i] = result
         return buf
 
-class NAccumulateRawData(Node):
-    def __init__(self):
-        """
-        Node to store incoming Raw Data in one Array.
-        input: list of rawData
-        output: list of rawData
-        """
-        super(NAccumulateRawData, self).__init__()
-        self.type = "AccumulateRawData"
-
-        self.buf = np.zeros(0, dtype=np.uint32)
-
-    def processData(self, data, pipeData):
-        self.buf = np.append(self.buf, data)
-        return data
-
-    def saveData(self, incomingData, pipeData):
-        dataToSave = self.buf
-        self.clear(pipeData) #force clear() because data is stored on disc now
-        return dataToSave
-
-    def clear(self, pipeData):
-        self.buf = np.zeros(0, dtype=np.uint32)
-
 class NSaveRawData(Node):
     def __init__(self):
         """
-        Node to save Raw Data using pickle
+        Node to store incoming Raw Data in a Binary File.
         input: list of rawData
         output: list of rawData
         """
         super(NSaveRawData, self).__init__()
-        self.type = "SaveRawData"
+        self.type = "AccumulateRawData"
 
-    def saveData(self, incomingData, pipeData):
-        filhandl.savePickle(incomingData, pipeData)
-        return None
+        self.buf = np.zeros(0, dtype=np.uint32)
+        self.maxArraySize = 10000
+
+    def processData(self, data, pipeData):
+        self.buf = np.append(self.buf, data)
+        if self.buf.size > self.maxArrayLen:
+            filhandl.savePickle(self.buf, pipeData)
+            self.clear(pipeData)
+        return data
+
+    def clear(self, pipeData):
+        self.buf = np.zeros(0, dtype=np.uint32)
 
 class NSumBunchesTRS(Node):
     def __init__(self, pipeData):
@@ -102,13 +88,10 @@ class NSumBunchesTRS(Node):
                     self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)
             elif j['headerIndex'] == 0: #MCS/TRS Data
                 self.scalerArray = form.trsSum(j, self.curVoltIndex, self.scalerArray, pipeData['activeTrackPar']['activePmtList'])
-        return (self.voltArray, self.timeArray, self.scalerArray)
-
-    def saveData(self, incomingData, pipeData):
-        """
-        if saving is requested, return the needed Arrays
-        """
-        return (self.voltArray, self.timeArray, self.scalerArray)
+        if trsAna.checkIfScanComplete(pipeData):
+            return (self.voltArray, self.timeArray, self.scalerArray)
+        else:
+            return None
 
     def clear(self, pipeData):
         self.curVoltIndex = 0
@@ -124,17 +107,18 @@ class NSaveSum(Node):
         save the summed up data
         incoming must always be a tuple of form:
         (self.voltArray, self.timeArray, self.scalerArray)
+        Note: will always save when data is passed to it. So only send complete structures.
         """
         super(NSaveSum, self).__init__()
         self.type = "SaveSum"
 
-    def saveData(self, incomingData, pipeData):
+    def processData(self, data, pipeData):
         pipeInternals = pipeData['pipeInternals']
         file = pipeInternals['activeXmlFilePath']
         rootEle = filhandl.loadXml(file)
-        form.xmlAddCompleteTrack(rootEle, pipeData, incomingData)
+        form.xmlAddCompleteTrack(rootEle, pipeData, data)
         filhandl.saveXml(rootEle, file, False)
-        return None
+        return data
 
     def clear(self, pipeData):
         pass

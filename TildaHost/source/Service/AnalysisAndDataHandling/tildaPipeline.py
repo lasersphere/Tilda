@@ -25,11 +25,11 @@ def TrsPipe(initialTrackPars):
 
     pipe.pipeData = initPipeData(initialTrackPars)
 
-    walk = start.attach(TN.NAccumulateRawData())
+    walk = start.attach(TN.NSaveRawData())
     # walk = walk.attach(TN.NSaveRawData())
     walk = walk.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NSumBunchesTRS(pipe.pipeData))
-    walk = walk.attach(TN.NSaveSum())
+    # walk = walk.attach(TN.NSaveSum())
     # walk = walk.attach(SN.NPrint())
 
     return pipe
