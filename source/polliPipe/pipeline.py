@@ -39,15 +39,6 @@ class Pipeline(object):
         self.nextItemId += 1
         self.processItem(stopper)
 
-    def save(self, data=None):
-        """
-        tell saving nodes inside pipeline to save data
-        """
-        saver = Item(self.nextItemId, "save")
-        self.nextItemId += 1
-        saver.data = data
-        self.processItem(saver)
-
     def feed(self, data):
         """
         Have inp processed b the Pipeline
