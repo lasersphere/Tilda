@@ -23,13 +23,21 @@ class Heinzinger():
         self.sleepAfterSend = 0.05
         self.hzIdn = ''
         self.ser = serial.Serial(port = com -1, baudrate = 9600, timeout = 0.1, parity='N', stopbits = 1, bytesize = 8, xonxoff = 1)
+        while self.ser.readline() != b'':
+            pass
         try:
+            self.reset()
             self.serWrite('*IDN?')
             self.hzIdn = str(self.ser.readline())
+            print(self.hzIdn)
             self.setOutput(True)
             self.setCurrent(hzCfg.currentWhenTurnedOn)
         except OSError:
             self.errorcount = self.errorcount + 1
+            print('error occured, errorcount is: ' + str(self.errorcount))
+
+    def reset(self):
+        self.serWrite('*RST')
 
     def deinit(self):
         """
@@ -52,13 +60,16 @@ class Heinzinger():
             self.setVolt = round(float(volt), 3)
         self.serWrite('SOUR:VOLT ' + str(self.setVolt))
         return self.setVolt
+    def getProgrammedVolt(self):
+        return self.serWrite('VOLT?', True)
 
     def getVoltage(self):
         """
         gets the Voltage which the Heinzinger measures.
         :return: float, the measured Voltage which Heinzinger thinks it has.
         """
-        return round(float(self.serWrite('MEASure:VOLTage?', True)), 3)
+        volt = round(float(self.serWrite('MEASure:VOLTage?', True)), 3)
+        return volt
 
     def setCurrent(self, curr):
         """
@@ -103,6 +114,10 @@ class Heinzinger():
             time.sleep(self.sleepAfterSend)
             if readback:
                 ret = self.ser.readline()
+                readbackTimeout = 0
+                while ret == b'' and readbackTimeout < 50:
+                    ret = self.ser.readline()
+                    readbackTimeout += 1
                 return ret
             else:
                 return str.encode(cmdstr +'\r\n')
