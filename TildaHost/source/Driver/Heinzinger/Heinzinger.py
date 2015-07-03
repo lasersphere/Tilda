@@ -60,6 +60,7 @@ class Heinzinger():
             self.setVolt = round(float(volt), 3)
         self.serWrite('SOUR:VOLT ' + str(self.setVolt))
         return self.setVolt
+
     def getProgrammedVolt(self):
         return self.serWrite('VOLT?', True)
 

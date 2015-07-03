@@ -8,12 +8,18 @@ Created on '30.06.2015'
 
 import Driver.Heinzinger.Heinzinger as hz
 import Driver.Heinzinger.HeinzingerCfg as hzCfg
+import Scratch.freeToUse as ft
 
-heinz = hz.Heinzinger(hzCfg.comportHeinzinger0)
-print(heinz.setVoltage(100), 'setVolt')
-print(heinz.getProgrammedVolt(), 'prgoVOlt')
-print(heinz.getVoltage(), 'measVolt ')
+# hz0 = hz.Heinzinger(hzCfg.comportHeinzinger0)
+# hz1 = hz.Heinzinger(hzCfg.comportHeinzinger1)
+bla = ft.printer()
 
-print(heinz.getCurrent())
-print(heinz.setVoltage(0))
-print(heinz.getVoltage())
+print('type in q to quit')
+eingabe = ''
+while eingabe != 'q':
+    eingabe = input('Enter Commandstring: ')
+    try:
+        print(eval(eingabe))
+    except:
+        print('Command ' + eingabe + ' not accepted')
+print(eingabe)

@@ -5,11 +5,11 @@ Created on '22.06.2015'
 @author:'simkaufm'
 
 """
-import pickle
-import Service.FolderAndFileHandling as fileh
-import os
-import Service.draftScanParameters as draftScan
-import Service.Formating as form
+# import pickle
+# import Service.FolderAndFileHandling as fileh
+# import os
+# import Service.draftScanParameters as draftScan
+# import Service.Formating as form
 
 # path = 'D:\\Workspace\\Testdata'
 # # print(path)
@@ -32,5 +32,12 @@ import Service.Formating as form
 # dicti = draftScan.draftTrackPars
 # form.xmlAddCompleteTrack(ele, dicti, 1)
 
-print(512 >> 2)
-print(8192 >> 2)
+# print(512 >> 2)
+# print(8192 >> 2)
+
+class printer():
+    def __init__(self):
+        print('hi There')
+
+    def druck(self):
+        return 'Hello World!'
