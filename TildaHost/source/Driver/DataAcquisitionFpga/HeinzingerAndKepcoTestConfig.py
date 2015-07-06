@@ -5,7 +5,7 @@ import ctypes
 '''Bitfile Signature:'''
 bitfileSignature = '65983986BDA85857BB806DE8DBC8A8B6'
 '''Bitfile Path:'''
-bitfilePath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\TimeResolvedSequencer\\NiFpga_HeinzingerAndKepcoTest.lvbitx'
+bitfilePath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\HeinzingerAndKepcoTest\\NiFpga_HeinzingerAndKepcoTest.lvbitx'
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''

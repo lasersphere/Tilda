@@ -10,7 +10,7 @@ class HsbAndDac(FPGAInterfaceHandling):
         self.setDacReg = 0
         self.actDacReg = 0
         self.dacState = -1
-        self.fpgaInst = super(HsbAndDac, self).__init__(hat.bitfilePath, hat.bitfileSignature,
+        super(HsbAndDac, self).__init__(hat.bitfilePath, hat.bitfileSignature,
                                                         hat.fpgaResource)
 
 # '''read indicators'''
@@ -26,12 +26,15 @@ class HsbAndDac(FPGAInterfaceHandling):
     def setHsb(self, deviceStr):
         """
         function to control which Heinzinger/Kepco is set by the Heinzinger Switch Box (HSB)
-        :param deviceStr: str, naming the desired device
+        :param deviceStr: str, naming the desired device as stated in HeinzingerAndKepcoTestConfig.py
         :return: fpga state
         """
-        deviceNumber = hat.hsbDict.get(deviceStr)
+        try:
+            deviceNumber = int(deviceStr)
+        except:
+            deviceNumber = hat.hsbDict(deviceStr)
         if deviceNumber != None:
-            self.fpgaInst.ReadWrite(hat.heinzingerControl, deviceNumber)
+            self.ReadWrite(hat.heinzingerControl, deviceNumber)
         return self.checkFpgaStatus()
 
     def setDacState(self, stateStr):
@@ -40,9 +43,12 @@ class HsbAndDac(FPGAInterfaceHandling):
         :param stateStr: str, naming the desired state
         :return: fpga state
         """
-        stateNumber = hat.dacStatesDict.get(stateStr)
+        try:
+            stateNumber = int(stateStr)
+        except:
+            stateNumber = hat.dacStatesDict.get(stateStr)
         if stateNumber != None:
-            self.fpgaInst.ReadWrite(hat.DacStateCmdByHost, stateNumber)
+            self.ReadWrite(hat.DacStateCmdByHost, stateNumber)
         return self.checkFpgaStatus()
 
     def setDacRegister(self, regVal):

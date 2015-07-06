@@ -24,9 +24,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         :return: None
         """
         self.TrsCfg = TrsCfg.TRSConfig()
-        self.fpgaInterfaceInstance = super(TimeResolvedSequencer, self).__init__(self.TrsCfg.bitfilePath,
-                                                                                 self.TrsCfg.bitfileSignature,
-                                                                                 self.TrsCfg.fpgaResource)
+        super(TimeResolvedSequencer, self).__init__(self.TrsCfg.bitfilePath, self.TrsCfg.bitfileSignature, self.TrsCfg.fpgaResource)
         self.confHostBufferSize()
 
     '''DMA Queue host sided Buffer Operations:'''
