@@ -17,7 +17,7 @@ class TRSConfig():
         '''Bitfile Signature:'''
         bitfileSignature = 'BF31570369009FA00617B7055FD697C8'
         '''Bitfile Path:'''
-        bitfilePath = 'D:/Workspace/Eclipse/Tilda/TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS.lvbitx'
+        bitfilePath = 'D:/Workspace/PyCharm/Tilda/TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS.lvbitx'
         '''FPGA Resource:'''
         fpgaResource = 'Rio1'
         '''Indicators:'''
