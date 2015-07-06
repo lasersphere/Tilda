@@ -10,6 +10,35 @@ import numpy as np
 import Service.dataFormat as dataForm
 
 
+def get24BitInputForVoltage(voltage, addRegAddress=True, vRefN=-10, vRefP=10):
+    """
+    function to return an 24-Bit Integer by putting in a voltage +\-10V in DBL
+    :param voltage: dbl, desired Voltage
+    :param vRefN/vRefP: dbl, value for the neg./pos. reference Voltage for the DAC
+    :return: int, 24-Bit Code.
+    """
+    b18 = (voltage - vRefN) * ((2 ** 18) - 1)/(vRefP-vRefN)# from the manual
+    b24 = (int(b18) << 2)
+    if addRegAddress:
+        #adds the address of the DAC register to the bits
+        b24 = b24 + int(2 ** 20)
+    return b24
+
+def getVoltageFrom24Bit(voltage24Bit, removeAddress=True, vRefN=-10, vRefP=10):
+    """
+    function to get the output voltage of the DAC by the corresponding 24-Bit register input
+    :param voltage24Bit: int, 24 bit, register entry of the DAC
+    :param removeAddress: bool, to determine if the integer has still the registry adress attached
+    :param vRefN/P: dbl, +/- 10 V for the reference Voltage of the DAC
+    :return: dbl, Voltage that will be applied.
+    """
+    if removeAddress:
+        v20Bit = voltage24Bit - (2 ** 20)
+    v18Bit = v20Bit >> 2
+    voltfloat = (vRefP - vRefN) * v18Bit / ((2 ** 18) - 1) + vRefN
+    voltfloat = round(voltfloat, 6)
+    return voltfloat
+
 def split32bData(int32bData):
     """
     seperate header, headerIndex and payload from each other

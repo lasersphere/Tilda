@@ -9,14 +9,18 @@ class HsbAndDac(FPGAInterfaceHandling):
     def __init__(self):
         self.setDacReg = 0
         self.actDacReg = 0
+        self.dacState = -1
         self.fpgaInst = super(HsbAndDac, self).__init__(hat.bitfilePath, hat.bitfileSignature,
                                                         hat.fpgaResource)
 
 # '''read indicators'''
     def readDacState(self):
-        return self.ReadWrite(hat.DacState).value
+        self.dacState = self.ReadWrite(hat.DacState).value
+        return self.dacState
+
     def readActDacReg(self):
-        return self.ReadWrite(hat.actDACRegister).value
+        self.actDacReg = self.ReadWrite(hat.actDACRegister).value
+        return self.actDacReg
 
 # '''write controls'''
     def setHsb(self, deviceStr):
