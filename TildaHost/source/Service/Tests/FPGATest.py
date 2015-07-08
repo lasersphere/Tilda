@@ -11,6 +11,7 @@ from polliPipe.node import Node
 from polliPipe.pipeline import Pipeline
 from Service.AnalysisAndDataHandling.tildaNodes import NrawFormatToReadable
 from polliPipe.simpleNodes import NPrint
+import Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig as TrsCfg
 
 import time
 # import pickle
@@ -31,7 +32,7 @@ class FpgaTest():
 
     def measureOneTrack(self, scanpars):
         self.trs.measureTrack(scanpars)
-        while self.trs.getSeqState() == self.trs.TrsCfg.seqState['measureTrack']:
+        while self.trs.getSeqState(TrsCfg) == TrsCfg.seqState['measureTrack']:
             result = self.trs.getData()
             if result['nOfEle'] == 0:
                 break
@@ -47,6 +48,6 @@ class FpgaTest():
 
 
 maininst = FpgaTest()
-print(maininst.measureOneTrack(maininst.trs.TrsCfg.dummyScanParameters))
+print(maininst.measureOneTrack(TrsCfg.dummyScanParameters))
 
 
