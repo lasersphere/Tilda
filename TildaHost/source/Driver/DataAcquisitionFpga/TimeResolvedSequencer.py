@@ -78,7 +78,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         :param scanpars: dictionary, containing all scanparameters
         :return: bool, True if successful
         """
-        if self.changeSeqState(TrsCfg, TrsCfg.seqState['idle']):
+        if self.changeSeqState(TrsCfg, TrsCfg.seqStateDict['idle']):
             if (self.setMCSParameters(scanpars) and self.setmeasVoltParameters(TrsCfg, scanpars) and
                     self.setTrackParameters(TrsCfg, scanpars)):
                 return self.checkFpgaStatus()

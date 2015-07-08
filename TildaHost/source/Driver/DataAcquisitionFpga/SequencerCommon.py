@@ -109,7 +109,7 @@ class Sequencer(FPGAInterfaceHandling):
         elif curState in [config.seqStateDict['measureOffset'], config.seqStateDict['measureTrack'],
                           config.seqStateDict['init']]:
             '''cannot change state while measuring or initializing, try again'''
-            return self.changeSeqState(cmd, tries + 1, requestedState)
+            return self.changeSeqState(config, cmd, tries + 1, requestedState)
         elif curState in [config.seqStateDict['idle'], config.seqStateDict['measComplete'],
                           config.seqStateDict['error']]:
             '''send command to change state'''
@@ -128,12 +128,12 @@ class Sequencer(FPGAInterfaceHandling):
         i = 0
         imax = 500
         self.ReadWrite(config.abort, True)
-        while self.getSeqState() != config.seqStateDict['error'].value and i <= imax:
+        while self.getSeqState(config) != config.seqStateDict['error'].value and i <= imax:
             time.sleep(0.001)
             i += 1
         self.ReadWrite(config.abort, False)
-        if self.getSeqState() == config.seqStateDict['error'].value:
-            return self.getSeqState()
+        if self.getSeqState(config) == config.seqStateDict['error'].value:
+            return self.getSeqState(config)
         else:
             return False
 
