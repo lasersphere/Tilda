@@ -23,8 +23,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         initiates the FPGA, resetted and running.
         :return: None
         """
-        self.TrsCfg = TrsCfg.TRSConfig()
-        super(TimeResolvedSequencer, self).__init__(self.TrsCfg.bitfilePath, self.TrsCfg.bitfileSignature, self.TrsCfg.fpgaResource)
+        super(TimeResolvedSequencer, self).__init__(TrsCfg.bitfilePath, TrsCfg.bitfileSignature, TrsCfg.fpgaResource)
         self.confHostBufferSize()
 
     '''DMA Queue host sided Buffer Operations:'''
@@ -38,11 +37,11 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         :return: True, if Status is no Error
         """
         if nOfreqEle <= 0:
-            self.ConfigureU32FifoHostBuffer(self.TrsCfg.transferToHost['ref'], self.TrsCfg.transferToHost['nOfReqEle'])
-            print('Size of Host Sided Buffer has been set to: ' + str(self.TrsCfg.transferToHost['nOfReqEle'])
+            self.ConfigureU32FifoHostBuffer(TrsCfg.transferToHost['ref'], TrsCfg.transferToHostReqEle)
+            print('Size of Host Sided Buffer has been set to: ' + str(TrsCfg.transferToHostReqEle)
                   + ' numbers of 32-Bit Elements')
         elif nOfreqEle > 0:
-            self.ConfigureU32FifoHostBuffer(self.TrsCfg.transferToHost['ref'], nOfreqEle)
+            self.ConfigureU32FifoHostBuffer(TrsCfg.transferToHost['ref'], nOfreqEle)
             print('Size of Host Sided Buffer has been set to: ' + str(nOfreqEle) + ' numbers of 32-Bit Elements')
         return self.checkFpgaStatus()
 
@@ -53,7 +52,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         :param nOfEle: int, Number Of Elements that will be released from the Fifo.
         :return: bool, True if Status ok
         """
-        return self.ClearU32FifoHostBuffer(self.TrsCfg.transferToHost['ref'], nOfEle)
+        return self.ClearU32FifoHostBuffer(TrsCfg.transferToHost['ref'], nOfEle)
 
     '''read Indicators:'''
 
@@ -62,21 +61,21 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         get the state of the MultiChannelScaler
         :return:int, state of MultiChannelScaler
         """
-        return self.ReadWrite(self.TrsCfg.MCSstate).value
+        return self.ReadWrite(TrsCfg.MCSstate).value
 
     def getSeqState(self):
         """
         get the state of the Sequencer
         :return:int, state of Sequencer
         """
-        return self.ReadWrite(self.TrsCfg.seqState).value
+        return self.ReadWrite(TrsCfg.seqState).value
 
     def getmeasVoltState(self):
         """
         gets the state of Voltage measurement Statemachine
         :return:int, state of Voltage measurement Statemachine
         """
-        return self.ReadWrite(self.TrsCfg.measVoltState).value
+        return self.ReadWrite(TrsCfg.measVoltState).value
 
     def getErrorCount(self):
         """
@@ -84,7 +83,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         for example each time abort is pressed, ErrorCount is raised by 1
         :return:int, MCSerrorcount
         """
-        return self.ReadWrite(self.TrsCfg.MCSerrorcount).value
+        return self.ReadWrite(TrsCfg.MCSerrorcount).value
 
     def getDACQuWriteTimeout(self):
         """
@@ -92,7 +91,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         writing to the Target-to-Host Fifo
         :return: bool, True if timedout
         """
-        return self.ReadWrite(self.TrsCfg.DACQuWriteTimeout).value
+        return self.ReadWrite(TrsCfg.DACQuWriteTimeout).value
 
     '''set Controls'''
 
@@ -102,7 +101,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         :param cmd: int, desired sequencer State
         :return: int, cmd
         """
-        return self.ReadWrite(self.TrsCfg.cmdByHost, cmd).value
+        return self.ReadWrite(TrsCfg.cmdByHost, cmd).value
 
     def changeSeqState(self, cmd, tries=-1, requestedState=-1):
         """
@@ -124,12 +123,12 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
             print('could not Change to State ' + str(cmd) + ' within ' + str(maxTries)
                   + ' tries, Current State is: ' + str(curState))
             return False
-        elif curState in [self.TrsCfg.seqState['measureOffset'], self.TrsCfg.seqState['measureTrack'],
-                          self.TrsCfg.seqState['init']]:
+        elif curState in [TrsCfg.seqStateDict['measureOffset'], TrsCfg.seqStateDict['measureTrack'],
+                          TrsCfg.seqStateDict['init']]:
             '''cannot change state while measuring or initializing, try again'''
             return self.changeSeqState(cmd, tries + 1, requestedState)
-        elif curState in [self.TrsCfg.seqState['idle'], self.TrsCfg.seqState['measComplete'],
-                          self.TrsCfg.seqState['error']]:
+        elif curState in [TrsCfg.seqStateDict['idle'], TrsCfg.seqStateDict['measComplete'],
+                          TrsCfg.seqStateDict['error']]:
             '''send command to change state'''
             if requestedState < 0:
                 '''only request to change state once'''
@@ -148,10 +147,10 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         nOfBunches: long, number of bunches that will be acquired per voltage Step
         :return: True if self.status == self.statusSuccess, else False
         """
-        self.ReadWrite(self.TrsCfg.MCSSelectTrigger, mCSPars['MCSSelectTrigger'])
-        self.ReadWrite(self.TrsCfg.delayticks, mCSPars['delayticks'])
-        self.ReadWrite(self.TrsCfg.nOfBins, mCSPars['nOfBins'])
-        self.ReadWrite(self.TrsCfg.nOfBunches, mCSPars['nOfBunches'])
+        self.ReadWrite(TrsCfg.MCSSelectTrigger, mCSPars['MCSSelectTrigger'])
+        self.ReadWrite(TrsCfg.delayticks, mCSPars['delayticks'])
+        self.ReadWrite(TrsCfg.nOfBins, mCSPars['nOfBins'])
+        self.ReadWrite(TrsCfg.nOfBunches, mCSPars['nOfBunches'])
         return self.checkFpgaStatus()
 
     def setmeasVoltParameters(self, measVoltPars):
@@ -162,8 +161,8 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         measVoltTimeout10ns: long, timeout until which a response from the DMM must occur.
         :return: True if self.status == self.statusSuccess, else False
         """
-        self.ReadWrite(self.TrsCfg.measVoltPulseLength25ns, measVoltPars['measVoltPulseLength25ns'])
-        self.ReadWrite(self.TrsCfg.measVoltTimeout10ns, measVoltPars['measVoltTimeout10ns'])
+        self.ReadWrite(TrsCfg.measVoltPulseLength25ns, measVoltPars['measVoltPulseLength25ns'])
+        self.ReadWrite(TrsCfg.measVoltTimeout10ns, measVoltPars['measVoltTimeout10ns'])
         return self.checkFpgaStatus()
 
     def setTrackParameters(self, trackPars):
@@ -183,15 +182,15 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
          before the scalers are activated. Unit is 25ns
         :return: True if self.status == self.statusSuccess, else False
         """
-        self.ReadWrite(self.TrsCfg.VoltOrScaler, trackPars['VoltOrScaler'])
-        self.ReadWrite(self.TrsCfg.stepSize, trackPars['stepSize'])
-        self.ReadWrite(self.TrsCfg.start, trackPars['start'])
-        self.ReadWrite(self.TrsCfg.nOfSteps, trackPars['nOfSteps'])
-        self.ReadWrite(self.TrsCfg.nOfScans, trackPars['nOfScans'])
-        self.ReadWrite(self.TrsCfg.invertScan, trackPars['invertScan'])
-        self.ReadWrite(self.TrsCfg.heinzingerControl, trackPars['heinzingerControl'])
-        self.ReadWrite(self.TrsCfg.waitForKepco25nsTicks, trackPars['waitForKepco25nsTicks'])
-        self.ReadWrite(self.TrsCfg.waitAfterReset25nsTicks, trackPars['waitAfterReset25nsTicks'])
+        self.ReadWrite(TrsCfg.VoltOrScaler, trackPars['VoltOrScaler'])
+        self.ReadWrite(TrsCfg.stepSize, trackPars['stepSize'])
+        self.ReadWrite(TrsCfg.start, trackPars['start'])
+        self.ReadWrite(TrsCfg.nOfSteps, trackPars['nOfSteps'])
+        self.ReadWrite(TrsCfg.nOfScans, trackPars['nOfScans'])
+        self.ReadWrite(TrsCfg.invertScan, trackPars['invertScan'])
+        self.ReadWrite(TrsCfg.heinzingerControl, trackPars['heinzingerControl'])
+        self.ReadWrite(TrsCfg.waitForKepco25nsTicks, trackPars['waitForKepco25nsTicks'])
+        self.ReadWrite(TrsCfg.waitAfterReset25nsTicks, trackPars['waitAfterReset25nsTicks'])
         return self.checkFpgaStatus()
 
     def setAllScanParameters(self, scanpars):
@@ -201,7 +200,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         :param scanpars: dictionary, containing all scanparameters
         :return: bool, True if successful
         """
-        if self.changeSeqState(self.TrsCfg.seqState['idle']):
+        if self.changeSeqState(TrsCfg.seqState['idle']):
             if (self.setMCSParameters(scanpars) and self.setmeasVoltParameters(scanpars) and
                     self.setTrackParameters(scanpars)):
                 return self.checkFpgaStatus()
@@ -214,12 +213,12 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         """
         i = 0
         imax = 500
-        self.ReadWrite(self.TrsCfg.abort, True)
-        while self.getSeqState() != self.TrsCfg.seqState['error'].value and i <= imax:
+        self.ReadWrite(TrsCfg.abort, True)
+        while self.getSeqState() != TrsCfg.seqStateDict['error'].value and i <= imax:
             time.sleep(0.001)
             i += 1
-        self.ReadWrite(self.TrsCfg.abort, False)
-        if self.getSeqState() == self.TrsCfg.seqState['error'].value:
+        self.ReadWrite(TrsCfg.abort, False)
+        if self.getSeqState() == TrsCfg.seqStateDict['error'].value:
             return self.getSeqState()
         else:
             return False
@@ -229,7 +228,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         halts the Mesaruement after one loop is finished
         :return: True if success
         """
-        self.ReadWrite(self.TrsCfg.halt, val)
+        self.ReadWrite(TrsCfg.halt, val)
         return self.checkFpgaStatus()
 
     '''perform measurements:'''
@@ -248,7 +247,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         :return:bool, True if successfully changed State
         """
         if self.setAllScanParameters(scanpars):
-            return self.changeSeqState(self.TrsCfg.seqState['measureOffset'])
+            return self.changeSeqState(TrsCfg.seqStateDict['measureOffset'])
 
     def measureTrack(self, scanpars):
         """
@@ -259,7 +258,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         :return:bool, True if successfully changed State
         """
         if self.setAllScanParameters(scanpars):
-            return self.changeSeqState(self.TrsCfg.seqState['measureTrack'])
+            return self.changeSeqState(TrsCfg.seqStateDict['measureTrack'])
 
     '''getting the data'''
     def getData(self):
@@ -270,7 +269,7 @@ class TimeResolvedSequencer(FPGAInterfaceHandling):
         nOfEle = int, number of Read Elements, newDataArray = numpy Array containing all data that was read
                elemRemainInFifo = int, number of Elements still in FifoBuffer
         """
-        result = self.ReadU32Fifo(self.TrsCfg.transferToHost['ref'])
+        result = self.ReadU32Fifo(TrsCfg.transferToHost['ref'])
         result.update(newData=np.ctypeslib.as_array(result['newData']))
         return result
 
