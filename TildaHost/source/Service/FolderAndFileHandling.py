@@ -111,6 +111,7 @@ def savePickle(data, pipeDataDict):
     file = open(path, 'wb')
     pickle.dump(data, file)
     file.close()
+    return path
 
 def loadPickle(file):
     """

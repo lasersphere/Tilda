@@ -46,12 +46,12 @@ class NSaveRawData(Node):
         self.type = "AccumulateRawData"
 
         self.buf = np.zeros(0, dtype=np.uint32)
-        self.maxArraySize = 10000
+        self.maxArraySize = 10
 
     def processData(self, data, pipeData):
         self.buf = np.append(self.buf, data)
-        if self.buf.size > self.maxArrayLen:
-            filhandl.savePickle(self.buf, pipeData)
+        if self.buf.size > self.maxArraySize:
+            print('saving to: ', filhandl.savePickle(self.buf, pipeData))
             self.clear(pipeData)
         return data
 

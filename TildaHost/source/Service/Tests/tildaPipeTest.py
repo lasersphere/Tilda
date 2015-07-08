@@ -11,16 +11,16 @@ import os.path
 
 import pickle
 from Service.AnalysisAndDataHandling.tildaPipeline import TrsPipe
-from Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig import TRSConfig
+import Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig as TRSConfig
 import Service.FolderAndFileHandling as filehand
 import Service.draftScanParameters as draftScan
 
 
 path = 'TildaHost\\source\\Scratch\\exampleTRSRawData.py'
 file = os.path.join(filehand.findTildaFolder(), path)
-trsExampleData = pickle.load(open(file, 'rb'))[1:]
+# trsExampleData = pickle.load(open(file, 'rb'))[1:]
 # print(trsExampleData)
-exampleCfg = TRSConfig()
+exampleCfg = TRSConfig
 pipe = TrsPipe(draftScan.draftTrackPars)
 
 pipe.start()
