@@ -17,7 +17,8 @@ from polliPipe.pipeline import Pipeline
 
 def TrsPipe(initialTrackPars):
     """
-    Pipeline for the dataflow and analysis of one Isotope. Mutliple Tracks are supported.
+    Pipeline for the dataflow and analysis of one Isotope using the time resolved sequencer.
+    Mutliple Tracks are supported.
     """
     start = Node()
 
@@ -31,6 +32,25 @@ def TrsPipe(initialTrackPars):
     # walk = walk.attach(TN.NSumBunchesTRS(pipe.pipeData))
     # walk = walk.attach(TN.NSaveSum())
     walk = walk.attach(SN.NPrint())
+
+    return pipe
+
+def CsPipe(initialTrackPars):
+    """
+    Pipeline for the dataflow and analysis of one Isotope using the continous sequencer.
+    Mutliple Tracks are supported.
+    """
+    start = Node()
+
+    pipe = Pipeline(start)
+
+    pipe.pipeData = initPipeData(initialTrackPars)
+
+    walk = start.attach(TN.NSaveRawData())
+    walk = walk.attach(TN.NSplit32bData())
+    walk = walk.attach(TN.NAcquireOneLoopCS(pipe.pipeData))
+    walk = walk.attach(TN.NSumCS(pipe.pipeData))
+    walk = walk.attach(TN.NSaveSumCS())
 
     return pipe
 

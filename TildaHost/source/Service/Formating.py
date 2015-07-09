@@ -155,6 +155,9 @@ def xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackdict):
     return rootEle
 
 def xmlAddCompleteTrack(rootEle, scanDict, data):
+    """
+    Add a complete Track to an lxml root element
+    """
     datatype = scanDict['isotopeData']['type']
     dataFormat = dataForm.dataformat[str(datatype)]
     pipeInternalsDict = scanDict['pipeInternals']
@@ -167,7 +170,7 @@ def xmlAddCompleteTrack(rootEle, scanDict, data):
 
 def xmlGetDataFromTrack(rootEle, nOfTrack, dataType):
     """
-
+    Get Data From Track
     :param rootEle:  lxml.etree.Element, root of the xml tree
     :param nOfTrack: int, which Track should be written to
     :param dataType: str, valid: 'setOffset, 'measuredOffset', 'dwellTime', 'nOfmeasuredSteps',

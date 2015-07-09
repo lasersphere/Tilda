@@ -9,7 +9,7 @@ from functools import wraps
 from threading import Thread, Event, Lock
 from datetime import datetime
 import logging, time
-
+import numpy as np
 import threading
 import time
 import datetime
@@ -65,23 +65,29 @@ import Service.Formating as form
 #     print(lala)
 #     threading.Timer(1.0, hello).start()
 # hello()
+#
+# _timer = Event()
+# interval = 1
+# _timer.set()
+#
+#
+#
+# def periodic():
+#     te = input('hier tippen: ')
+#     print(te)
+#
+# def run():
+#     while interval > 0:
+#         periodic()
+#         if _timer.wait(interval):
+#             _timer.clear()
+#
+#
+# _thread = Thread(target= run)
+# _thread.start()
 
-_timer = Event()
-interval = 1
-_timer.set()
 
-
-
-def periodic():
-    te = input('hier tippen: ')
-    print(te)
-
-def run():
-    while interval > 0:
-        periodic()
-        if _timer.wait(interval):
-            _timer.clear()
-
-
-_thread = Thread(target= run)
-_thread.start()
+x1 = np.arange(9.0).reshape((3, 3))
+x2 = np.arange(3.0)
+print(x1, x2)
+print(np.add(x1, x2))

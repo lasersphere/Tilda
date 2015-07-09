@@ -50,7 +50,6 @@ class FpgaTest():
         # pickle.dump(self.finalData, open(self.outfile, 'wb'))
 
 
-
 maininst = FpgaTest()
 print(maininst.measureOneTrack(TrsCfg.dummyScanParameters))
 
