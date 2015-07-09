@@ -8,11 +8,12 @@ Created on '09.07.2015'
 
 from Driver.DataAcquisitionFpga.ContinousSequencer import ContinousSequencer
 from Service.draftScanParameters import draftScanDict
+import Service.AnalysisAndDataHandling.tildaPipeline as TildaPipe
 import Driver.DataAcquisitionFpga.ContinousSequencerConfig as CsCfg
 import time
 
 measState = CsCfg.seqStateDict['measureTrack']
-pipe = 'blub'
+pipe = TildaPipe.CsPipe(draftScanDict)
 
 def ms2ticks(val):
     """
