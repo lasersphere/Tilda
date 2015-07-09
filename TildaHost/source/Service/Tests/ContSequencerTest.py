@@ -13,13 +13,11 @@ import Driver.DataAcquisitionFpga.ContinousSequencerConfig as CsCfg
 import time
 
 measState = CsCfg.seqStateDict['measureTrack']
-pipe = TildaPipe.CsPipe(draftScanDict)
+scanPars = draftScanDict
+scanPars['activeTrackPar']['dwellTime'] = 2000000
+pipe = TildaPipe.CsPipe(scanPars)
+cs = ContinousSequencer()
 
-def ms2ticks(val):
-    """
-    1 tick is 10 ns
-    """
-    return val*100000
 
 def meaureOneTrack(scanparsDict):
     state = None
@@ -44,11 +42,4 @@ def meaureOneTrack(scanparsDict):
             timeout += 1
 
 
-cs = ContinousSequencer()
-draftScanDict['activeTrackPar']['dwellTime'] = ms2ticks(20)
-
-
-
-
-
-
+meaureOneTrack(draftScanDict)
