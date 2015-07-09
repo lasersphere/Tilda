@@ -31,7 +31,7 @@ class FpgaTest():
         timeout = 0
         while state == self.measState:
             state = self.trs.getSeqState(TrsCfg)
-            result = self.trs.getData()
+            result = self.trs.getData(TrsCfg)
             if result['nOfEle'] == 0:
                 if state == self.measState and timeout < 100:
                     time.sleep(0.05)

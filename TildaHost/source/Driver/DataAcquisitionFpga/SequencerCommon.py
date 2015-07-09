@@ -8,6 +8,7 @@ Created on '08.07.2015'
 from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 
 import time
+import numpy as np
 
 class Sequencer(FPGAInterfaceHandling):
 
@@ -144,3 +145,16 @@ class Sequencer(FPGAInterfaceHandling):
         """
         self.ReadWrite(config.halt, val)
         return self.checkFpgaStatus()
+
+    '''getting the data'''
+    def getData(self, config):
+        """
+        read Data from host sided Buffer called 'transferToHost' to an Array.
+        Can later be fed into a pipeline system.
+        :return: dictionary,
+        nOfEle = int, number of Read Elements, newDataArray = numpy Array containing all data that was read
+               elemRemainInFifo = int, number of Elements still in FifoBuffer
+        """
+        result = self.ReadU32Fifo(config.transferToHost['ref'])
+        result.update(newData=np.ctypeslib.as_array(result['newData']))
+        return result

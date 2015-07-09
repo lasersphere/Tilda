@@ -113,18 +113,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         if self.setAllScanParameters(scanpars):
             return self.changeSeqState(TrsCfg, TrsCfg.seqStateDict['measureTrack'])
 
-    '''getting the data'''
-    def getData(self):
-        """
-        read Data from host sided Buffer called 'transferToHost' to an Array.
-        Can later be fed into a pipeline system.
-        :return: dictionary,
-        nOfEle = int, number of Read Elements, newDataArray = numpy Array containing all data that was read
-               elemRemainInFifo = int, number of Elements still in FifoBuffer
-        """
-        result = self.ReadU32Fifo(TrsCfg.transferToHost['ref'])
-        result.update(newData=np.ctypeslib.as_array(result['newData']))
-        return result
+
 #
 # blub2 = TimeResolvedSequencer()
 #

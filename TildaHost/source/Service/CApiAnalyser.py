@@ -55,7 +55,7 @@ class CApiAnalyser():
             print('\'\'\'Bitfile Signature:\'\'\'')
             print('bitfileSignature = ' + '\'' + signature + '\'')
             print('\'\'\'Bitfile Path:\'\'\'')
-            print('bitfilePath = ' + '\'' + bitfilepath + '\'')
+            print(str('bitfilePath = ' + '\'' + bitfilepath + '\'').replace('\\', '\\\\'))
             print('\'\'\'FPGA Resource:\'\'\'')
             print('fpgaResource = ' + '\'' + fpgaresource + '\'')
             indicators = [s for s in inhalt if "Indicator" in s]
@@ -70,8 +70,8 @@ class CApiAnalyser():
 
 
 
-headerpath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\HeinzingerAndKepcoTest\\NiFpga_HeinzingerAndKepcoTest.h'
-bitfilepath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\TimeResolvedSequencer\\NiFpga_HeinzingerAndKepcoTest.lvbitx'
+headerpath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\ContinousSequencer\\NiFpga_ContSeqV103.h'
+bitfilepath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\ContinousSequencer\\NiFpga_ContSeqV103.lvbitx'
 fpgaresource = 'Rio1'
 outputplease = CApiAnalyser()
 outputplease.cApiFileHandler(headerpath, bitfilepath, fpgaresource)
