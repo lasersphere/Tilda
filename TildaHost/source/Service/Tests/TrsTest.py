@@ -11,16 +11,20 @@ from Service.AnalysisAndDataHandling.tildaPipeline import TrsPipe
 import Service.draftScanParameters as draftScan
 
 import time
+import logging
+import sys
 # import pickle
+
+logging.basicConfig(level=getattr(logging, 'DEBUG'), format='%(message)s', stream= sys.stdout)
 
 class FpgaTest():
     measState = TrsCfg.seqStateDict['measureTrack']
 
     def __init__(self):
-        self.outfile = 'D:\\Workspace\\PyCharm\\Tilda\\TildaHost\\source\\Scratch\\exampleTRSRawData.py'
+        # self.outfile = 'D:\\Workspace\\PyCharm\\Tilda\\TildaHost\\source\\Scratch\\exampleTRSRawData.py'
         self.trs = TimeResolvedSequencer()
         self.finalData = []
-        self.pipe = TrsPipe(draftScan.draftTrackPars)
+        self.pipe = TrsPipe(draftScan.draftScanDict)
 
         self.pipe.start()
 
@@ -40,6 +44,7 @@ class FpgaTest():
                     break
             else:
                 newdata = result['newData']
+                logging.debug('newData is: ' + str(newdata))
                 self.pipe.feed(newdata)
                 # print(self.finalData)
                 time.sleep(0.05)

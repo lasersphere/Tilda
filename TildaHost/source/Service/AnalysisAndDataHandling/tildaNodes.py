@@ -6,15 +6,15 @@ Created on '20.05.2015'
 
 """
 
-import numpy as np
-
-
 from polliPipe.node import Node
 import Service.Formating as form
 import Service.FolderAndFileHandling as filhandl
 import Service.ProgramConfigs as progConfigsDict
 import Service.AnalysisAndDataHandling.trsDataAnalysis as trsAna
 import Service.AnalysisAndDataHandling.csDataAnalysis as csAna
+
+import numpy as np
+import logging
 
 
 
@@ -30,6 +30,7 @@ class NSplit32bData(Node):
 
 
     def processData(self, data, pipeData):
+        logging.debug('Node Name: ' + self.type + ' ... processing now')
         buf = np.zeros((len(data),), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
                                             ('headerIndex', 'u1'), ('payload', 'u4')])
         for i,j in enumerate(data):
@@ -53,6 +54,7 @@ class NSaveRawData(Node):
         self.maxArraySize = 10
 
     def processData(self, data, pipeData):
+        logging.debug('Node Name: ' + self.type + ' ... processing now')
         self.buf = np.append(self.buf, data)
         if self.buf.size > self.maxArraySize:
             print('saving to: ', filhandl.savePickle(self.buf, pipeData))
@@ -87,6 +89,7 @@ class NSumBunchesTRS(Node):
                                     dtype=np.uint32)
 
     def processData(self, data, pipeData):
+        logging.debug('Node Name: ' + self.type + ' ... processing now')
         for i, j in enumerate(data):
             if j['headerIndex'] == 1:  # not MCS/TRS data
                 if j['firstHeader'] == progConfigsDict.programs['errorHandler']:  # error send from fpga
@@ -126,6 +129,7 @@ class NSaveTrsSum(Node):
         self.type = "SaveTrsSum"
 
     def processData(self, data, pipeData):
+        logging.debug('Node Name: ' + self.type + ' ... processing now')
         pipeInternals = pipeData['pipeInternals']
         file = pipeInternals['activeXmlFilePath']
         rootEle = filhandl.loadXml(file)
@@ -154,6 +158,7 @@ class NAcquireOneLoopCS(Node):
         self.totalnOfScalerEvents = 0
 
     def processData(self, data, pipeData):
+        logging.debug('Node Name: ' + self.type + ' ... processing now')
         for i, j in enumerate(data):
             if j['firstHeader'] == progConfigsDict.programs['errorHandler']:  # error send from fpga
                 print('fpga sends error code: ' + str(j['payload']))
@@ -198,6 +203,7 @@ class NSumCS(Node):
                                     dtype=np.uint32)
 
     def processData(self, data, pipeData):
+        logging.debug('Node Name: ' + self.type + ' ... processing now')
         self.scalerArray = np.add(self.scalerArray, data[1])
         if csAna.checkIfTrackComplete(pipeData):
             return self.scalerArray
@@ -218,6 +224,7 @@ class NSaveSumCS(Node):
         super(NSaveSumCS, self).__init__()
 
     def processData(self, data, pipeData):
+        logging.debug('Node Name: ' + self.type + ' ... processing now')
         pipeInternals = pipeData['pipeInternals']
         file = pipeInternals['activeXmlFilePath']
         rootEle = filhandl.loadXml(file)

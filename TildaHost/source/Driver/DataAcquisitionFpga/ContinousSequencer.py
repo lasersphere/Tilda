@@ -53,7 +53,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         """
         set the dwell time for the continous sequencer.
         """
-        self.ReadWrite(CsCfg.dwellTime, scanParsDict['dwellTime'])
+        self.ReadWrite(CsCfg.dwellTime, scanParsDict['activeTrackPar']['dwellTime'])
         return self.checkFpgaStatus()
 
     def setAllContSeqPars(self, scanpars):
@@ -63,8 +63,9 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         :return: bool, if success
         """
         if self.changeSeqState(CsCfg, CsCfg.seqStateDict['idle']):
-            if (self.setDwellTime(scanpars) and self.setmeasVoltParameters(CsCfg, scanpars) and
-                    self.setTrackParameters(CsCfg, scanpars)):
+            if (self.setDwellTime(scanpars) and
+                    self.setmeasVoltParameters(CsCfg, scanpars['activeTrackPar']) and
+                    self.setTrackParameters(CsCfg, scanpars['activeTrackPar'])):
                 return self.checkFpgaStatus()
         return False
 

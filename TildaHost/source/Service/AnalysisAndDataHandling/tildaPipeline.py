@@ -15,7 +15,7 @@ import Service.FolderAndFileHandling as FaFH
 
 from polliPipe.pipeline import Pipeline
 
-def TrsPipe(initialTrackPars):
+def TrsPipe(initialScanPars):
     """
     Pipeline for the dataflow and analysis of one Isotope using the time resolved sequencer.
     Mutliple Tracks are supported.
@@ -24,7 +24,7 @@ def TrsPipe(initialTrackPars):
 
     pipe = Pipeline(start)
 
-    pipe.pipeData = initPipeData(initialTrackPars)
+    pipe.pipeData = initPipeData(initialScanPars)
 
     walk = start.attach(TN.NSaveRawData())
     # walk = walk.attach(TN.NSaveRawData())
@@ -35,7 +35,7 @@ def TrsPipe(initialTrackPars):
 
     return pipe
 
-def CsPipe(initialTrackPars):
+def CsPipe(initialScanPars):
     """
     Pipeline for the dataflow and analysis of one Isotope using the continous sequencer.
     Mutliple Tracks are supported.
@@ -44,23 +44,24 @@ def CsPipe(initialTrackPars):
 
     pipe = Pipeline(start)
 
-    pipe.pipeData = initPipeData(initialTrackPars)
+    pipe.pipeData = initPipeData(initialScanPars)
 
     walk = start.attach(TN.NSaveRawData())
-    walk = walk.attach(TN.NSplit32bData())
-    walk = walk.attach(TN.NAcquireOneLoopCS(pipe.pipeData))
-    walk = walk.attach(TN.NSumCS(pipe.pipeData))
-    walk = walk.attach(TN.NSaveSumCS())
+    # walk = walk.attach(TN.NSplit32bData())
+    # walk = walk.attach(TN.NAcquireOneLoopCS(pipe.pipeData))
+    # walk = walk.attach(TN.NSumCS(pipe.pipeData))
+    # walk = walk.attach(TN.NSaveSumCS())
 
     return pipe
 
-def initPipeData(initialTrackPars):
+def initPipeData(initialScanPars):
     """
     initialize the pipeData used for the analysis Pipeline
     :return: dict, {'isotopeData', 'progConfigs', 'activeTrackPar', 'pipeInternals'}
     """
-    pipeData = draftPars.draftScanDict
-    pipeData.update(activeTrackPar=initialTrackPars, nOfCompletedSteps=0)
+    pipeData = initialScanPars
+
+    pipeData['activeTrackPar']['nOfCompletedSteps'] = 0
     pipeData['pipeInternals']['curVoltInd'] = 0
     pipeData['pipeInternals']['activeTrackNumber'] = 0
     pipeData['pipeInternals']['activeXmlFilePath'] = FaFH.createXmlFileOneIsotope(pipeData)

@@ -4,8 +4,8 @@ Created on 20.06.2015
 @author: skaufmann
 '''
 
-draftIsotopePars = {'version': '0.1', 'type': 'trs', 'isotope': 'simontium_27',
-               'nOfTracks': '1', 'colDirTrue': 'False', 'accVolt': '999.8',
+draftIsotopePars = {'version': '0.1', 'type': 'cs', 'isotope': 'simontium_27',
+               'nOfTracks': '1', 'colDirTrue': 'False', 'accVolt': '9999.8',
                'laserFreq': '12568.73'}
 
 draftTrackPars = {'MCSSelectTrigger': 0, 'delayticks': 0, 'nOfBins': 10000, 'nOfBunches': 1,
