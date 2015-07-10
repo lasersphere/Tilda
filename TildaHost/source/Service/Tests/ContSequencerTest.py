@@ -12,10 +12,17 @@ import Service.AnalysisAndDataHandling.tildaPipeline as TildaPipe
 import Driver.DataAcquisitionFpga.ContinousSequencerConfig as CsCfg
 import time
 
+import logging
+import sys
+
+logging.basicConfig(level=getattr(logging, 'INFO'), format='%(message)s', stream= sys.stdout)
+
+
 measState = CsCfg.seqStateDict['measureTrack']
 scanPars = draftScanDict
 scanPars['activeTrackPar']['dwellTime'] = 2000000
 pipe = TildaPipe.CsPipe(scanPars)
+pipe.start()
 cs = ContinousSequencer()
 
 

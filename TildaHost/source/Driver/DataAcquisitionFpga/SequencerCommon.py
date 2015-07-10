@@ -7,6 +7,7 @@ Created on '08.07.2015'
 """
 from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 
+import ctypes
 import time
 import numpy as np
 

@@ -57,11 +57,13 @@ class NSaveRawData(Node):
         logging.debug('Node Name: ' + self.type + ' ... processing now')
         self.buf = np.append(self.buf, data)
         if self.buf.size > self.maxArraySize:
-            print('saving to: ', filhandl.savePickle(self.buf, pipeData))
             self.clear(pipeData)
         return data
 
     def clear(self, pipeData):
+        if np.count_nonzero(self.buf) > 0:
+            savedto = filhandl.savePickle(self.buf, pipeData)
+            logging.info('saving raw data to: ' + str(savedto))
         self.buf = np.zeros(0, dtype=np.uint32)
 
 
