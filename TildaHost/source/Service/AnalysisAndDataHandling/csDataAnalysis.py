@@ -6,12 +6,15 @@ Created on '09.07.2015'
 
 """
 
-def checkIfScanComplete(pipeData):
+def checkIfScanComplete(pipeData, totalnOfScalerEvents):
     """
     Check if all Steps for this scan have been completed
     :return: bool, True if one Scan over all steps is completed, transfer Data to next node.
     """
-    return pipeData['activeTrackPar']['nOfCompletedSteps'] % pipeData['activeTrackPar']['nOfSteps'] == 0
+    stepComplete = totalnOfScalerEvents % 8 == 0
+    complete = pipeData['activeTrackPar']['nOfCompletedSteps'] % pipeData['activeTrackPar']['nOfSteps'] == 0
+    notzero = pipeData['activeTrackPar']['nOfCompletedSteps'] != 0
+    return stepComplete and complete and notzero
 
 def checkIfTrackComplete(pipeData):
     """

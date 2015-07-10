@@ -33,7 +33,6 @@ class Node(object):
         rewrapping processData to hide the internals of the transport mechanism
         """
         newjobs = []
-        logging.debug('the processes item is:' + str(item.type))
         if item.type == "start":
             self.id = item.data['id']
             self.Pipeline = item.data['pipe']

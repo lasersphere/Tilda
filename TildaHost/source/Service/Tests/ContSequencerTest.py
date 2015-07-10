@@ -15,7 +15,7 @@ import time
 import logging
 import sys
 
-logging.basicConfig(level=getattr(logging, 'INFO'), format='%(message)s', stream= sys.stdout)
+logging.basicConfig(level=getattr(logging, 'DEBUG'), format='%(message)s', stream= sys.stdout)
 
 
 measState = CsCfg.seqStateDict['measureTrack']
@@ -36,7 +36,7 @@ def meaureOneTrack(scanparsDict):
         state = cs.getSeqState(CsCfg)
         result = cs.getData(CsCfg)
         if result['nOfEle'] == 0:
-            if state == measState and timeout < 100:
+            if state == measState and timeout < 500:
                 time.sleep(0.05)
                 timeout += 1
             else:
@@ -46,7 +46,9 @@ def meaureOneTrack(scanparsDict):
             pipe.feed(newdata)
             # print(self.finalData)
             time.sleep(0.05)
-            timeout += 1
+            # timeout += 1
+    logging.info('state is: ' + str(state) + ' timeout is: ' + str(timeout)
+                 + ' Completed Steps: ' + str(pipe.pipeData['activeTrackPar']['nOfCompletedSteps']))
     pipe.clear(pipe.pipeData)
 
 
