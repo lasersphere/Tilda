@@ -13,6 +13,8 @@ Module to Wrap all the Handling of universal FPGA interactions, like Start, run 
 import ctypes
 import sys
 import os
+import numpy as np
+import logging
 
 
 class FPGAInterfaceHandling():
@@ -29,6 +31,10 @@ class FPGAInterfaceHandling():
         self.dmaReadTimeout = 1  # timeout to read from Dma Queue in ms
         self.NiFpgaUniversalInterfaceDll = ctypes.CDLL(
             'D:\\Workspace\\PyCharm\\Tilda\\TildaHost\\binary\\NiFpgaUniversalInterfaceDll.dll')
+        self.NiFpgaUniversalInterfaceDll.NiFpga_ReadFifoU32.argtypes = [
+            ctypes.c_ulong, ctypes.c_ulong, np.ctypeslib.ndpointer(np.uint32, flags="C_CONTIGUOUS"),
+            ctypes.c_ulong, ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong)
+        ]
         self.session = ctypes.c_ulong()
         self.statusSuccess = 0
         self.status = 0
@@ -180,20 +186,21 @@ class FPGAInterfaceHandling():
         If nOfEle < 0, everything will be read.
         If nOfEle = 0, no Data will be read. Use to get how many elements are in fifo
         If nOfEle > 0, desired number of element will be read or timeout.
-        :return: nOfEle = int, number of Read Elements, newData = c_ulong_array containing all data that was read
+        :return: nOfEle = int, number of Read Elements, newData = numpy.ndarray containing all data that was read
                elemRemainInFifo = int, number of Elements still in FifoBuffer
         """
-        elemRemainInFifo = ctypes.c_long()
+        elemRemainInFifo = ctypes.c_ulong()
         if nOfEle < 0:
             # check how many Elements are in Fifo and than read all of them
             return self.ReadU32Fifo(fifoRef, self.ReadU32Fifo(fifoRef, 0)['elemRemainInFifo'])
-        #creating a new ctypes instance is fine, python will handle the memory
-        newDataCType = (ctypes.c_ulong * nOfEle)()
+        # creating a new ctypes instance is fine, python will handle the memory
+        newDataCType = np.zeros(nOfEle, dtype=np.uint32)
         self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReadFifoU32(
-            self.session, fifoRef, ctypes.byref(newDataCType), nOfEle, self.dmaReadTimeout,
+            self.session, fifoRef, newDataCType, ctypes.c_ulong(nOfEle), self.dmaReadTimeout,
             ctypes.byref(elemRemainInFifo)
         ))
-        return {'nOfEle': nOfEle, 'newData': newDataCType, 'elemRemainInFifo': elemRemainInFifo.value}
+        ret = {'nOfEle': nOfEle, 'newData': newDataCType, 'elemRemainInFifo': elemRemainInFifo.value}
+        return ret
 
     def ConfigureU32FifoHostBuffer(self, fifoRef, nOfReqEle):
         """

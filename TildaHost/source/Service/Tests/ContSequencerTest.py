@@ -15,7 +15,7 @@ import time
 import logging
 import sys
 
-logging.basicConfig(level=getattr(logging, 'INFO'), format='%(message)s', stream= sys.stdout)
+logging.basicConfig(level=getattr(logging, 'DEBUG'), format='%(message)s', stream= sys.stdout)
 
 
 measState = CsCfg.seqStateDict['measureTrack']

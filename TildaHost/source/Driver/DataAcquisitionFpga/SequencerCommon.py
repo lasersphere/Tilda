@@ -7,9 +7,11 @@ Created on '08.07.2015'
 """
 from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 
-import ctypes
+import warnings
 import time
 import numpy as np
+import logging
+
 
 class Sequencer(FPGAInterfaceHandling):
 
@@ -157,5 +159,5 @@ class Sequencer(FPGAInterfaceHandling):
                elemRemainInFifo = int, number of Elements still in FifoBuffer
         """
         result = self.ReadU32Fifo(config.transferToHost['ref'])
-        result.update(newData=np.ctypeslib.as_array(result['newData']))
+        result.update(newData=result['newData'])
         return result

@@ -10,6 +10,8 @@ from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
 from Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
 import Driver.DataAcquisitionFpga.ContinousSequencerConfig as CsCfg
 
+import logging
+
 
 class ContinousSequencer(Sequencer, MeasureVolt):
     def __init__(self):
@@ -97,3 +99,5 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         """
         if self.setAllContSeqPars(scanpars):
             return self.changeSeqState(CsCfg, CsCfg.seqStateDict['measureTrack'])
+        else:
+            logging.debug('values could not be set')
