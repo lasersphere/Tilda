@@ -63,7 +63,8 @@ def nameFileXml(scanDict):
     """
     path = scanDict['pipeInternals']['filePath']
     nIso = scanDict['isotopeData']['isotope']
-    filename = nameFile(path, 'sums', nIso, 'trs_sum', '.xml')
+    type = scanDict['isotopeData']['type']
+    filename = nameFile(path, 'sums', nIso, str(type + '_sum'), '.xml')
     return filename
 
 def saveXml(rootEle, path, pretty=True):
