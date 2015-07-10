@@ -51,7 +51,7 @@ class NSaveRawData(Node):
         self.type = "SaveRawData"
 
         self.buf = np.zeros(0, dtype=np.uint32)
-        self.maxArraySize = 10
+        self.maxArraySize = 1000
 
     def processData(self, data, pipeData):
         logging.debug('Node Name: ' + self.type + ' ... processing now')
@@ -138,9 +138,6 @@ class NSaveTrsSum(Node):
         form.xmlAddCompleteTrack(rootEle, pipeData, data)
         filhandl.saveXml(rootEle, file, False)
         return data
-
-    def clear(self, pipeData):
-        pass
 
 
 class NAcquireOneLoopCS(Node):
