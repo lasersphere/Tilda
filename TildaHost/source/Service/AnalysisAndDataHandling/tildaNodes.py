@@ -201,7 +201,9 @@ class NAcquireOneScanCS(Node):
 class NSumCS(Node):
     def __init__(self, pipeData):
         """
-        function to sum up all incoming
+        function to sum up all incoming complete Scans
+        input: complete Scans
+        output: complete Sum, when Track is finished
         """
         super(NSumCS, self).__init__()
         self.type = 'SumCS'
@@ -227,7 +229,9 @@ class NSumCS(Node):
 class NSaveSumCS(Node):
     def __init__(self):
         """
-        function to save all incoming CS-Data
+        function to save all incoming CS-Sum-Data
+        input: complete Sum of one track
+        output: same as input
         """
         super(NSaveSumCS, self).__init__()
         self.type = 'SaveSumCS'
