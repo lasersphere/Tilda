@@ -155,6 +155,7 @@ class NAcquireOneScanCS(Node):
         self.curVoltIndex = 0
         self.totalnOfScalerEvents = 0
 
+
     def processData(self, data, pipeData):
         self.bufIncoming = np.append(self.bufIncoming, data, axis=0)
         for i, j in enumerate(copy.copy(self.bufIncoming)):
@@ -178,7 +179,9 @@ class NAcquireOneScanCS(Node):
                     ret = self.scalerArray
                     logging.debug('Voltindex: ' + str(self.curVoltIndex) +
                                    'completede steps:  ' + str(pipeData['activeTrackPar']['nOfCompletedSteps']))
-                    self.clear(pipeData)
+                    self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
+                                     len(pipeData['activeTrackPar']['activePmtList'])),
+                                    dtype=np.uint32)
                     return ret
         return None
 
@@ -187,8 +190,12 @@ class NAcquireOneScanCS(Node):
         self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
                                      len(pipeData['activeTrackPar']['activePmtList'])),
                                     dtype=np.uint32)
-        # self.curVoltIndex = 0
-        self.totalnOfScalerEvents = pipeData['activeTrackPar']['nOfCompletedSteps'] * 8
+        self.curVoltIndex = 0
+        self.totalnOfScalerEvents = 0
+        if np.count_nonzero(self.bufIncoming) > 0:
+            logging.warning('Scan not finished, while clearing. Data left: ' + str(self.bufIncoming))
+        self.bufIncoming = np.zeros((0,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
+                                            ('headerIndex', 'u1'), ('payload', 'u4')])
 
 
 class NSumCS(Node):
