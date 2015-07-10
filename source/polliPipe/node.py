@@ -5,6 +5,7 @@ Created on 16.03.2015
 """
 from copy import copy, deepcopy
 
+import logging
 
 class Node(object):
     """
@@ -32,6 +33,7 @@ class Node(object):
         rewrapping processData to hide the internals of the transport mechanism
         """
         newjobs = []
+        logging.debug('the processes item is:' + str(item.type))
         if item.type == "start":
             self.id = item.data['id']
             self.Pipeline = item.data['pipe']
