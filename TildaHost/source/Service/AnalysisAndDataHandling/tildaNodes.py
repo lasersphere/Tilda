@@ -170,7 +170,7 @@ class NAcquireOneLoopCS(Node):
                 try:  # will fail if pmt value is not set active in the activePmtList
                     pmtIndex = pipeData['activeTrackPar']['activePmtList'].index(j['secondHeader'])
                     self.scalerArray[self.curVoltIndex, pmtIndex] += j['payload']
-                except IndexError:
+                except ValueError:
                     pass
         if csAna.checkIfScanComplete(pipeData):
             # one Scan over all steps is completed, transfer Data to next node.
@@ -221,13 +221,15 @@ class NSaveSumCS(Node):
         function to save all incoming CS-Data
         """
         super(NSaveSumCS, self).__init__()
+        self.type = 'SaveSumCS'
 
     def processData(self, data, pipeData):
         logging.debug('Node Name: ' + self.type + ' ... processing now')
         pipeInternals = pipeData['pipeInternals']
         file = pipeInternals['activeXmlFilePath']
         rootEle = filhandl.loadXml(file)
+        logging.info('saving data: ' + str(data))
         form.xmlAddCompleteTrack(rootEle, pipeData, data)
         filhandl.saveXml(rootEle, file, False)
-        print('saving Continous Sequencer Sum to: ', file)
+        logging.info('saving Continous Sequencer Sum to: ' + str(file))
         return data

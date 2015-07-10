@@ -81,7 +81,7 @@ def trsSum(element, actVoltInd, sumArray, activePmtList=range(8)):
             sumArray[actVoltInd, timestamp, ind] += 1 #timestamp equals index in timeArray
     return sumArray
 
-def xmlFindOrCreateSubElement(parentEle, tagString, value=None):
+def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
     """
     finds or creates a Subelement with the tag tagString and text=value to the parent Element.
     :return: returns the SubElement
@@ -90,7 +90,7 @@ def xmlFindOrCreateSubElement(parentEle, tagString, value=None):
     if subEle == None:
         ET.SubElement(parentEle, tagString)
         return xmlFindOrCreateSubElement(parentEle, tagString, value)
-    if value != None:
+    if value != '':
         subEle.text = str(value)
     return subEle
 
@@ -159,13 +159,11 @@ def xmlAddCompleteTrack(rootEle, scanDict, data):
     Add a complete Track to an lxml root element
     """
     datatype = scanDict['isotopeData']['type']
-    dataFormat = dataForm.dataformat[str(datatype)]
     pipeInternalsDict = scanDict['pipeInternals']
     nOfTrack = pipeInternalsDict['activeTrackNumber']
     trackDict = scanDict['activeTrackPar']
     xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackDict)
-    for i, j in enumerate(dataFormat):
-        xmlWriteToTrack(rootEle, nOfTrack, j, data[i], 'data')
+    xmlWriteToTrack(rootEle, nOfTrack, 'scalerArray', data, 'data')
     return rootEle
 
 def xmlGetDataFromTrack(rootEle, nOfTrack, dataType):

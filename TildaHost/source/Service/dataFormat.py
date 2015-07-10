@@ -10,4 +10,7 @@ Created on '24.06.2015'
 Stylesheet for the used Dataformats send through the pipeline
 """
 
-dataformat = {'trs': ('voltArray', 'timeArray', 'scalerArray')}
+dataformat = {
+    'trs': ('voltArray', 'timeArray', 'scalerArray'),
+    'cs': {'voltArray'}
+}
