@@ -16,8 +16,6 @@ filesrun0 = [file for file in os.listdir(prun0) if file.endswith('.raw')]
 xmlFile = os.path.join(prun0, [file for file in os.listdir(prun0) if file.endswith('.xml')][0])
 scandict = FileHandle.scanDictionaryFromXmlFile(xmlFile, 0, {})
 
-for key, val in scandict.items():
-    scandict[str(key)] = Form.convertStrValuesInDictToFloat(scandict[str(key)])
 print(scandict)
 
 # for file in filesrun0:

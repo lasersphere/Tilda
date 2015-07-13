@@ -100,6 +100,8 @@ def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict):
     oldDict['pipeInternals']['curVoltInd'] = 0
     oldDict['pipeInternals']['activeTrackNumber'] = nOfTrack
     oldDict['pipeInternals']['activeXmlFilePath'] = xmlFileName
+    for key, val in oldDict.items():
+        oldDict[str(key)] = form.convertStrValuesInDict(oldDict[str(key)])
     return oldDict
 
 def savePickle(data, pipeDataDict):

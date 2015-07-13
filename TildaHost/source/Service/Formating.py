@@ -203,23 +203,21 @@ def numpyArrayFromString(string, shape):
     result = result.reshape(shape)
     return result
 
-def convertStrValuesInDictToFloat(dicti):
+def convertStrValuesInDict(dicti):
     """
-    function to convert the values of a dictionary to float, if it is possible
+    function to convert the values of a dictionary to int, float or list, if it is possible
     """
     dictiCopy = copy.copy(dicti)
     for key, val in dictiCopy.items():
         try:
             dicti[str(key)] = int(val)
-        except:
-            print('could not convert to int: ', key, val)
+        except (TypeError, ValueError):
             try:
                 dicti[str(key)] = float(val)
-            except:
-                print('could not convert to float: ', key, val)
+            except (TypeError, ValueError):
                 try:
                     if val[0] == '[':
-                        dicti[str(key)] = map(int, val.split(","))
+                        dicti[str(key)] = list(map(int, val[1:-1].split(',')))
                 except:
-                    print('could not convert to list: ', key, val)
+                    pass
     return dicti
