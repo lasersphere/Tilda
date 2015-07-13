@@ -11,6 +11,7 @@ import pickle
 import time
 import Service.Formating as form
 import numpy as np
+import logging
 
 def findTildaFolder(path=os.path.dirname(os.path.abspath(__file__))):
     """
@@ -96,7 +97,7 @@ def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict):
     oldDict['isotopeData'] = isotopedict
     oldDict['activeTrackPar'] = trackdict
     oldDict['pipeInternals'] = {}
-    oldDict['pipeInternals']['filePath'] = os.path.split(xmlFileName)[0]
+    oldDict['pipeInternals']['filePath'] = os.path.split(os.path.split(xmlFileName)[0])[0]
     oldDict['pipeInternals']['curVoltInd'] = 0
     oldDict['pipeInternals']['activeTrackNumber'] = nOfTrack
     oldDict['pipeInternals']['activeXmlFilePath'] = xmlFileName
@@ -128,3 +129,16 @@ def loadPickle(file):
     data = pickle.load(stream)
     stream.close()
     return data
+
+def saveRawData(data, pipeData, nOfSaves):
+    """
+    function to save the raw data using pickle.
+    """
+    if np.count_nonzero(data) > 0:
+        if nOfSaves:
+            savedto = savePickle((data, pipeData), pipeData)
+        else:
+            savedto = savePickle(data, pipeData)
+        nOfSaves += 1
+        logging.info('saving raw data to: ' + str(savedto))
+    return nOfSaves

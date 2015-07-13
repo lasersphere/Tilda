@@ -35,7 +35,7 @@ def TrsPipe(initialScanPars):
 
     return pipe
 
-def CsPipe(initialScanPars):
+def CsPipe(initialScanPars=None):
     """
     Pipeline for the dataflow and analysis of one Isotope using the continous sequencer.
     Mutliple Tracks are supported.
@@ -44,13 +44,15 @@ def CsPipe(initialScanPars):
 
     pipe = Pipeline(start)
 
-    pipe.pipeData = initPipeData(initialScanPars)
+    # pipe.pipeData = initPipeData(initialScanPars)
 
-    walk = start.attach(TN.NSaveRawData())
-    walk = walk.attach(TN.NSplit32bData())
-    walk = walk.attach(TN.NAcquireOneScanCS(pipe.pipeData))
-    walk = walk.attach(TN.NSumCS(pipe.pipeData))
-    walk = walk.attach(TN.NSaveSumCS())
+    # walk = start.attach(TN.NSaveRawData())
+    walk = start.attach(TN.NFilterDataForPipeData())
+    walk = walk.attach(SN.NPrint())
+    # walk = walk.attach(TN.NSplit32bData())
+    # walk = walk.attach(TN.NAcquireOneScanCS(pipe.pipeData))
+    # walk = walk.attach(TN.NSumCS(pipe.pipeData))
+    # walk = walk.attach(TN.NSaveSumCS())
 
     return pipe
 

@@ -5,8 +5,10 @@ import Service.FolderAndFileHandling as FileHandle
 import Service.AnalysisAndDataHandling.tildaPipeline as TildaPipe
 import Service.Formating as Form
 
+import logging
+import os, sys
 
-import os
+logging.basicConfig(level=getattr(logging, 'DEBUG'), format='%(message)s', stream= sys.stdout)
 
 # TildaPipe.CsPipe()
 
@@ -16,7 +18,22 @@ filesrun0 = [file for file in os.listdir(prun0) if file.endswith('.raw')]
 xmlFile = os.path.join(prun0, [file for file in os.listdir(prun0) if file.endswith('.xml')][0])
 scandict = FileHandle.scanDictionaryFromXmlFile(xmlFile, 0, {})
 
-print(scandict)
+scandict['pipeInternals']['filePath'] = os.path.split(scandict['pipeInternals']['filePath'])[0]
+scandict['activeTrackPar']['nOfCompletedSteps'] = 0
+#
+cspipe = TildaPipe.CsPipe()
+cspipe.start()
+print(cspipe.pipeData)
+
+cspipe.feed(scandict)
+print(cspipe.pipeData)
 
 # for file in filesrun0:
-#     print(FileHandle.loadPickle(os.path.join(prun0, file)))
+#     cspipe.feed(FileHandle.loadPickle(os.path.join(prun0, file)))
+# cspipe.clear(cspipe.pipeData)
+
+# prun4 = os.path.join(path, 'run4')
+# filesrun4 = [file for file in os.listdir(prun4) if file.endswith('.raw')]
+# for file in filesrun4:
+#     cspipe.feed(FileHandle.loadPickle(os.path.join(prun4, file)))
+# print(cspipe.pipeData)
