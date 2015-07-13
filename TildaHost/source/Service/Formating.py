@@ -7,6 +7,7 @@ Created on 21.01.2015
 from datetime import datetime as dt
 import lxml.etree as ET
 import numpy as np
+import copy
 import Service.dataFormat as dataForm
 
 
@@ -202,3 +203,23 @@ def numpyArrayFromString(string, shape):
     result = result.reshape(shape)
     return result
 
+def convertStrValuesInDictToFloat(dicti):
+    """
+    function to convert the values of a dictionary to float, if it is possible
+    """
+    dictiCopy = copy.copy(dicti)
+    for key, val in dictiCopy.items():
+        try:
+            dicti[str(key)] = int(val)
+        except:
+            print('could not convert to int: ', key, val)
+            try:
+                dicti[str(key)] = float(val)
+            except:
+                print('could not convert to float: ', key, val)
+                try:
+                    if val[0] == '[':
+                        dicti[str(key)] = map(int, val.split(","))
+                except:
+                    print('could not convert to list: ', key, val)
+    return dicti

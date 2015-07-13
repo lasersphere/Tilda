@@ -95,7 +95,11 @@ def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict):
     isotopedict = form.xmlGetDictFromEle(xmlEtree)[1]['header']
     oldDict['isotopeData'] = isotopedict
     oldDict['activeTrackPar'] = trackdict
-    oldDict['pipeInternals'].update(curVoltInd=0, activeTrackNumber=0, activeXmlFilePath=xmlFileName)
+    oldDict['pipeInternals'] = {}
+    oldDict['pipeInternals']['filePath'] = os.path.split(xmlFileName)[0]
+    oldDict['pipeInternals']['curVoltInd'] = 0
+    oldDict['pipeInternals']['activeTrackNumber'] = nOfTrack
+    oldDict['pipeInternals']['activeXmlFilePath'] = xmlFileName
     return oldDict
 
 def savePickle(data, pipeDataDict):
