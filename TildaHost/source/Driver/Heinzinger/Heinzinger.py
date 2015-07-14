@@ -24,7 +24,9 @@ class Heinzinger():
         self.sleepAfterSend = 0.05
         self.hzIdn = ''
         self.ser = serial.Serial(port=com - 1, baudrate=9600, timeout=0.1,
-                                 parity='N', stopbits=1, bytesize=8, xonxoff=1)
+                                 parity='N', stopbits=1, bytesize=8, xonxoff=False,
+                                 rtscts=True)
+        self.ser.open()
 
         try:
             self.reset()
