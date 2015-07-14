@@ -24,9 +24,8 @@ class Heinzinger():
         self.sleepAfterSend = 0.05
         self.hzIdn = ''
         self.ser = serial.Serial(port=com - 1, baudrate=9600, timeout=0.1,
-                                 parity='N', stopbits=1, bytesize=8, xonxoff=False,
-                                 rtscts=True)
-        self.ser.open()
+                                 parity='N', stopbits=1, bytesize=8, xonxoff=True,
+                                 rtscts=False)
 
         try:
             self.reset()
@@ -116,7 +115,7 @@ class Heinzinger():
         """
         #lock the thread, so that only one method accesses the serial write command at a time
         try:
-            self.ser.write(str.encode(cmdstr +'\r\n'))
+            self.ser.write(str.encode(cmdstr + '\r\n'))
             time.sleep(self.sleepAfterSend)
             if readback:
                 ret = self.ser.readline()
@@ -127,7 +126,7 @@ class Heinzinger():
                     time.sleep(self.sleepAfterSend)
                     readbackTimeout += 1
                 if ret == b'':
-                    logging.debug('Readback timedout')
+                    logging.debug('Readback timedout after ... tries: ' + str(readbackTimeout))
                     return None
                 else:
                     return ret

@@ -98,5 +98,13 @@ while eingabe != 'q':
             print(eval(neueeingabe))
         except:
             print('Command ' + neueeingabe + ' not accepted')
+try:
+    hz0.deinit()
+except:
+    pass
+try:
+    hz1.deinit()
+except:
+    pass
 print(fpga.DeInitFpga())
 print(eingabe)
