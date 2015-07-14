@@ -23,9 +23,9 @@ class Heinzinger():
         self.setVolt = 0
         self.sleepAfterSend = 0.05
         self.hzIdn = ''
-        self.ser = serial.Serial(port = com -1, baudrate = 9600, timeout = 0.1, parity='N', stopbits = 1, bytesize = 8, xonxoff = 1)
-        while self.ser.readline() != b'':
-            pass
+        self.ser = serial.Serial(port=com - 1, baudrate=9600, timeout=0.1,
+                                 parity='N', stopbits=1, bytesize=8, xonxoff=1)
+
         try:
             self.reset()
             self.hzIdn = str(self.serWrite('*IDN?', True))
@@ -118,9 +118,11 @@ class Heinzinger():
             time.sleep(self.sleepAfterSend)
             if readback:
                 ret = self.ser.readline()
+                time.sleep(self.sleepAfterSend)
                 readbackTimeout = 0
                 while ret == b'' and readbackTimeout < 50:
                     ret = self.ser.readline()
+                    time.sleep(self.sleepAfterSend)
                     readbackTimeout += 1
                 if ret == b'':
                     logging.debug('Readback timedout')
