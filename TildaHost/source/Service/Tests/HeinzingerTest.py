@@ -16,18 +16,28 @@ import Driver.DataAcquisitionFpga.HeinzingerAndKepcoTestConfig as hatCfg
 import Driver.DataAcquisitionFpga.HeinzingerAndKepcoTest as fpgaDAC
 import Service.Formating as form
 import time
+import logging
+import sys
+
+logging.basicConfig(level=getattr(logging, 'DEBUG'), format='%(message)s', stream=sys.stdout)
 
 
-# hz0 = hz.Heinzinger(hzCfg.comportHeinzinger0) #start Heinzinger 0
-# hz1 = hz.Heinzinger(hzCfg.comportHeinzinger1) #start Heinzinger 1
+hz0 = hz.Heinzinger(hzCfg.comportHeinzinger0) #start Heinzinger 0
+hz1 = hz.Heinzinger(hzCfg.comportHeinzinger1) #start Heinzinger 1
 fpga = fpgaDAC.HsbAndDac()
 
 
 
 def readHeinzinger():
     retDict = {'hz0': 0, 'hz1': 0}
-    hz0Volt = hz0.getVoltage()
-    hz1Volt = hz1.getVoltage()
+    try:
+        hz0Volt = hz0.getVoltage()
+    except:
+        hz0Volt = None
+    try:
+        hz1Volt = hz1.getVoltage()
+    except:
+        hz1Volt = None
     retDict.update(hz0=hz0Volt, hz1=hz1Volt)
     return retDict
 
@@ -70,12 +80,12 @@ while eingabe != 'q':
     elif eingabe == 'hv':
         hznumber = input('enter Heinzinger Number: ')
         volt = input('please enter desired voltage: ')
-        if hznumber == 0:
-            hz0.setVoltage(volt)
-        elif hznumber == 1:
-            hz1.setVoltage(volt)
+        if int(hznumber) == 0:
+            hz0.setVoltage(float(volt))
+        elif int(hznumber) == 1:
+            hz1.setVoltage(float(volt))
     elif eingabe == 'hout':
-        anaus = input('Output an oder Aus? 0/1:' )
+        anaus = int(input('Output an oder Aus? 0/1:' ))
         hz0.setOutput(bool(anaus))
         hz1.setOutput(bool(anaus))
     elif eingabe == 'hsb':

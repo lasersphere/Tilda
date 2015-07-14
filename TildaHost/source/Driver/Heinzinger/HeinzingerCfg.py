@@ -10,6 +10,6 @@ currentWhenTurnedOn = 6
 maxVolt = 10000
 
 
-comportHeinzinger0 = 1
-comportHeinzinger1 = 2
-comportHeinzinger2 = 3
+comportHeinzinger0 = 4  # determined on PXI crate (14.07.2015)
+comportHeinzinger1 = 6  # determined on PXI crate (14.07.2015)
+comportHeinzinger2 = 6  # not yet installed

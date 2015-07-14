@@ -8,6 +8,7 @@ Created on '19.05.2015'
 
 import serial
 import time
+import logging
 
 
 import Driver.Heinzinger.HeinzingerCfg as hzCfg
@@ -27,9 +28,8 @@ class Heinzinger():
             pass
         try:
             self.reset()
-            self.serWrite('*IDN?')
-            self.hzIdn = str(self.ser.readline())
-            print(self.hzIdn)
+            self.hzIdn = str(self.serWrite('*IDN?', True))
+            logging.info(self.hzIdn + 'initialized on Com: ' + str(com))
             self.setOutput(True)
             self.setCurrent(hzCfg.currentWhenTurnedOn)
         except OSError:
@@ -56,6 +56,7 @@ class Heinzinger():
         :param volt: float, 3 Digits of precision
         :return: float, the voltage that has ben sent via serial
         """
+        print('setting Volt: ' + str(volt))
         if volt <= self.maxVolt:
             self.setVolt = round(float(volt), 3)
         self.serWrite('SOUR:VOLT ' + str(self.setVolt))
@@ -69,7 +70,9 @@ class Heinzinger():
         gets the Voltage which the Heinzinger measures.
         :return: float, the measured Voltage which Heinzinger thinks it has.
         """
-        volt = round(float(self.serWrite('MEASure:VOLTage?', True)), 3)
+        readback = self.serWrite('MEASure:VOLTage?', True)
+        logging.debug('readback of Voltage is: ' + str(readback))
+        volt = round(float(readback), 3)
         return volt
 
     def setCurrent(self, curr):
@@ -119,7 +122,11 @@ class Heinzinger():
                 while ret == b'' and readbackTimeout < 50:
                     ret = self.ser.readline()
                     readbackTimeout += 1
-                return ret
+                if ret == b'':
+                    logging.debug('Readback timedout')
+                    return None
+                else:
+                    return ret
             else:
                 return str.encode(cmdstr +'\r\n')
         except:
