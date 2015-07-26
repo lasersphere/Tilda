@@ -22,23 +22,23 @@ import sys
 logging.basicConfig(level=getattr(logging, 'DEBUG'), format='%(message)s', stream=sys.stdout)
 
 
-hz0 = hz.Heinzinger(hzCfg.comportHeinzinger0) #start Heinzinger 0
-hz1 = hz.Heinzinger(hzCfg.comportHeinzinger1) #start Heinzinger 1
+hz1 = hz.Heinzinger(hzCfg.comportHeinzinger0) #start Heinzinger 1
+hz2 = hz.Heinzinger(hzCfg.comportHeinzinger1) #start Heinzinger 2
 fpga = fpgaDAC.HsbAndDac()
 
 
 
 def readHeinzinger():
-    retDict = {'hz0': 0, 'hz1': 0}
-    try:
-        hz0Volt = hz0.getVoltage()
-    except:
-        hz0Volt = None
+    retDict = {'hz1': 0, 'hz2': 0}
     try:
         hz1Volt = hz1.getVoltage()
     except:
         hz1Volt = None
-    retDict.update(hz0=hz0Volt, hz1=hz1Volt)
+    try:
+        hz2Volt = hz2.getVoltage()
+    except:
+        hz2Volt = None
+    retDict.update(hz1=hz1Volt, hz2=hz2Volt)
     return retDict
 
 def readFpga():
@@ -78,33 +78,48 @@ while eingabe != 'q':
         sta = setDacVolt(float(volt))
         print('voltage set, voltage is: ' + str(sta) + ' DAC reg or ' + str(form.getVoltageFrom24Bit(sta)) + ' Volt')
     elif eingabe == 'hv':
-        hznumber = input('enter Heinzinger Number: ')
-        volt = input('please enter desired voltage: ')
-        if int(hznumber) == 0:
-            hz0.setVoltage(float(volt))
-        elif int(hznumber) == 1:
-            hz1.setVoltage(float(volt))
+        hznumber = input('enter Heinzinger Number (1 or 2): ')
+        try:
+            hznumber = int(hznumber)
+            if hznumber in [1, 2]:
+                volt = input('please enter desired voltage: ')
+                try:
+                    volt = float(volt)
+                    if 0.0 <= volt <= 10000.0:
+                        if int(hznumber) == 1:
+                            hz1.setVoltage(float(volt))
+                        elif int(hznumber) == 2:
+                            hz2.setVoltage(float(volt))
+                    else:
+                        print(str(volt), ' is out of range')
+                except Exception as ex:
+                    print(str(ex))
+        except Exception as excep:
+            print(str(excep))
     elif eingabe == 'hout':
-        anaus = int(input('Output an oder Aus? 0/1:' ))
-        hz0.setOutput(bool(anaus))
-        hz1.setOutput(bool(anaus))
+        try:
+            anaus = int(input('Output an oder Aus? 0/1:' ))
+            hz1.setOutput(bool(anaus))
+            hz2.setOutput(bool(anaus))
+        except Exception as excep:
+            print(str(excep))
     elif eingabe == 'hsb':
-        hsbdevice = input('please enter name of desired output(Kepco, Heinzinger0, Heinzinger1, Heinzinger2) or number: ')
+        hsbdevice = input('please enter name of desired output(Kepco, Heinzinger1, Heinzinger2, Heinzinger3) or number in list: ')
         fpga.setHsb(hsbdevice)
     elif eingabe == 'cli':
         print('Command ' + eingabe + ' ...  entering CLI mode:')
+        neueeingabe = ''
         try:
             neueeingabe = input('Enter Command (CLI-Mode): ')
             print(eval(neueeingabe))
         except:
             print('Command ' + neueeingabe + ' not accepted')
 try:
-    hz0.deinit()
-except:
-    pass
-try:
     hz1.deinit()
-except:
-    pass
+except Exception as e:
+    logging.debug(str(e))
+try:
+    hz2.deinit()
+except Exception as e:
+    logging.debug(str(e))
 print(fpga.DeInitFpga())
-print(eingabe)

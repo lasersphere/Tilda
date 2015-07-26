@@ -33,6 +33,7 @@ class Heinzinger():
             logging.info(self.hzIdn + 'initialized on Com: ' + str(com))
             self.setAverage(1)
             self.setOutput(True)
+            self.setVoltage(0)
             self.setCurrent(hzCfg.currentWhenTurnedOn)
         except OSError:
             self.errorcount = self.errorcount + 1

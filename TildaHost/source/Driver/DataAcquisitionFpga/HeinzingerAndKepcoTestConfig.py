@@ -19,5 +19,5 @@ setDACRegister = {'ref': 0x810C, 'val': ctypes.c_ulong(), 'ctr': True}
 
 
 '''Zustandsnummerierung Labview'''
-hsbDict = {'Kepco': 0, 'Heinzinger0': 1, 'Heinzinger1': 2, 'Heinzinger2': 3}
+hsbDict = {'Kepco': 0, 'Heinzinger1': 1, 'Heinzinger2': 2, 'Heinzinger3': 3}
 dacStatesDict = {'init': 0, 'idle': 1, 'setVolt': 2, 'error': 3}

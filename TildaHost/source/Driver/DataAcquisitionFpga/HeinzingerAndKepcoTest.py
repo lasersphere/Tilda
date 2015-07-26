@@ -3,6 +3,7 @@ __author__ = 'noertert'
 
 from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 import Driver.DataAcquisitionFpga.HeinzingerAndKepcoTestConfig as hat
+import logging
 
 class HsbAndDac(FPGAInterfaceHandling):
 
@@ -29,10 +30,14 @@ class HsbAndDac(FPGAInterfaceHandling):
         :param deviceStr: str, naming the desired device as stated in HeinzingerAndKepcoTestConfig.py
         :return: fpga state
         """
+        deviceNumber = None
         try:
             deviceNumber = int(deviceStr)
         except:
-            deviceNumber = hat.hsbDict(deviceStr)
+            try:
+                deviceNumber = hat.hsbDict(deviceStr)
+            except KeyError:
+                logging.debug('key: ' + deviceStr + ' not found.')
         if deviceNumber != None:
             self.ReadWrite(hat.heinzingerControl, deviceNumber)
         return self.checkFpgaStatus()
