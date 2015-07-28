@@ -4,29 +4,55 @@ Created on '09.07.2015'
 
 @author:'simkaufm'
 
+Module for testing the Continous Sequencer.
+
 """
 
 from Driver.DataAcquisitionFpga.ContinousSequencer import ContinousSequencer
 from Service.draftScanParameters import draftScanDict
 import Service.AnalysisAndDataHandling.tildaPipeline as TildaPipe
 import Driver.DataAcquisitionFpga.ContinousSequencerConfig as CsCfg
-import time
+import Service.Formating as form
+import Driver.Heinzinger.Heinzinger as hz
 
+
+import time
 import logging
 import sys
 
-logging.basicConfig(level=getattr(logging, 'DEBUG'), format='%(message)s', stream= sys.stdout)
+logging.basicConfig(level=getattr(logging, 'DEBUG'), format='%(message)s', stream=sys.stdout)
 
 
+"""
+get the pipeline ready and type your scanparameters in here:
+"""
 measState = CsCfg.seqStateDict['measureTrack']
 scanPars = draftScanDict
+scanPars['pipeInternals']['filePath'] = 'D:\\CalciumOfflineTests_150728'
 scanPars['activeTrackPar']['dwellTime'] = 2000000
+scanPars['activeTrackPar']['stepSize'] = form.get24BitInputForVoltage(1, False)
+scanPars['activeTrackPar']['start'] = form.get24BitInputForVoltage(-5, False)
+scanPars['activeTrackPar']['heinzingerOffsetVolt'] = 1000
+scanPars['activeTrackPar']['nOfSteps'] = 20
+scanPars['activeTrackPar']['nOfScans'] = 5
 pipe = TildaPipe.CsPipe(scanPars)
-pipe.start()
-cs = ContinousSequencer()
+pipe.start()  #start the pipeLine
 
+"""
+start devices and measurement here:
+"""
+cs = ContinousSequencer()  # start the FPGA
+
+hz2 = hz.Heinzinger(hz.hzCfg.comportHeinzinger2)  # start the Offset Heinzinger. Only Hz2 available right now.
+
+hz2.setVoltage(scanPars['activeTrackPar']['heinzingerOffsetVolt'])
+logging.info('Heinzinger 2 is set to: ' + str(hz2.getVoltage()) + 'V')
 
 def meaureOneTrack(scanparsDict):
+    """
+    function for the measurement of one complete track. will block the whole python execution while running.
+    purpose is only for prototype testing.
+    """
     state = None
     result = {'nOfEle': None}
     timeout = 0
@@ -51,5 +77,5 @@ def meaureOneTrack(scanparsDict):
                  + ' Completed Steps: ' + str(pipe.pipeData['activeTrackPar']['nOfCompletedSteps']))
     pipe.clear(pipe.pipeData)
 
-
+logging.info('starting measurement...')
 meaureOneTrack(draftScanDict)

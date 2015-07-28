@@ -51,18 +51,17 @@ class NSaveRawData(Node):
         self.type = "SaveRawData"
 
         self.buf = np.zeros(0, dtype=np.uint32)
-        self.maxArraySize = 1000
+        self.maxArraySize = 5000
         self.nOfSaves = 0
 
     def processData(self, data, pipeData):
         self.buf = np.append(self.buf, data)
-        if self.buf.size > self.maxArraySize:
+        if self.buf.size > self.maxArraySize:  # when buffer is full, store the data to disc
             self.nOfSaves = filhandl.saveRawData(self.buf, pipeData, self.nOfSaves)
         return data
 
     def clear(self, pipeData):
-        self.nOfSaves = 0
-        filhandl.saveRawData(self.buf, pipeData, self.nOfSaves)
+        filhandl.saveRawData(self.buf, pipeData, 0)  # also save the pipeData when clearing
         self.nOfSaves = 0
         self.buf = np.zeros(0, dtype=np.uint32)
 
@@ -70,7 +69,9 @@ class NFilterDataForPipeData(Node):
     def __init__(self):
         """
         if a dictionary is feeded to this node, the PipeData gets updated by this one.
-        Also tuples containing pipeData dicts will update the pipeData.
+
+        input: list of rawdata or pipedata dictionaries
+        output: passes everything except dictionaries
         """
         self.pipe = super(NFilterDataForPipeData, self).__init__()
         self.type = "FilterPipeData"
@@ -79,16 +80,6 @@ class NFilterDataForPipeData(Node):
         if type(data) == dict:
             pipeData.update(data)
             data = None
-        if type(data) == tuple:
-            # when saving raw data, the pipeData is stored as tuple with raw data in the other part
-            # of the tuple
-            if type(data[0]) == dict:
-                pipeData.update(data[0])
-                data = data[1]
-            elif type(data[1]) == dict:
-                pipeData.update(data[1])
-                data = data[0]
-            logging.debug('updating pipeData to: ' + str(pipeData))
         return data
 
 class NSumBunchesTRS(Node):

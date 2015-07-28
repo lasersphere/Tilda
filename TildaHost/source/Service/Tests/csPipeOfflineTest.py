@@ -1,14 +1,18 @@
 __author__ = 'Simon-K'
 
+"""
+Module for working with .raw data and testing the Pipeline.
+"""
 
 import Service.FolderAndFileHandling as FileHandle
 import Service.AnalysisAndDataHandling.tildaPipeline as TildaPipe
 import Service.Formating as Form
 
 import logging
-import os, sys
+import os
+import sys
 
-logging.basicConfig(level=getattr(logging, 'DEBUG'), format='%(message)s', stream= sys.stdout)
+logging.basicConfig(level=getattr(logging, 'DEBUG'), format='%(message)s', stream=sys.stdout)
 
 # TildaPipe.CsPipe()
 

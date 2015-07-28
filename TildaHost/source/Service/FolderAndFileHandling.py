@@ -105,7 +105,7 @@ def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict):
         oldDict[str(key)] = form.convertStrValuesInDict(oldDict[str(key)])
     return oldDict
 
-def savePickle(data, pipeDataDict):
+def savePickle(data, pipeDataDict, ending='.raw'):
     """
     saves data using the pickle module
     """
@@ -114,7 +114,7 @@ def savePickle(data, pipeDataDict):
                     pipeDataDict['isotopeData']['isotope'] +
                     '_track' + str(pipeDataDict['pipeInternals']['activeTrackNumber']),
                     pipeDataDict['isotopeData']['type'],
-                    '.raw')
+                    ending)
     # print('saving: ' + str(data) + ' , to: ' + str(path))
     file = open(path, 'wb')
     pickle.dump(data, file)
@@ -133,10 +133,12 @@ def loadPickle(file):
 def saveRawData(data, pipeData, nOfSaves):
     """
     function to save the raw data using pickle.
+    :return nOfSaves
     """
     if np.count_nonzero(data) > 0:
-        if nOfSaves:
-            savedto = savePickle((data, pipeData), pipeData)
+        if nOfSaves == 0:
+            savedto = savePickle(pipeData, pipeData, '.pipedat')
+            savedto = savePickle(data, pipeData)
         else:
             savedto = savePickle(data, pipeData)
         nOfSaves += 1
