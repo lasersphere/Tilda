@@ -28,13 +28,14 @@ get the pipeline ready and type your scanparameters in here:
 """
 measState = CsCfg.seqStateDict['measureTrack']
 scanPars = draftScanDict
+scanPars['isotopeData']['isotope'] = 'Ca_40'
 scanPars['pipeInternals']['filePath'] = 'D:\\CalciumOfflineTests_150728'
 scanPars['activeTrackPar']['dwellTime'] = 2000000
-scanPars['activeTrackPar']['stepSize'] = form.get24BitInputForVoltage(0.01, False, True)
-scanPars['activeTrackPar']['start'] = form.get24BitInputForVoltage(-0.4, False)
+scanPars['activeTrackPar']['stepSize'] = form.get24BitInputForVoltage(0.005, False, True)
+scanPars['activeTrackPar']['start'] = form.get24BitInputForVoltage(-0.25, False)
 scanPars['activeTrackPar']['heinzingerOffsetVolt'] = 500
-scanPars['activeTrackPar']['nOfSteps'] = 61
-scanPars['activeTrackPar']['nOfScans'] = 5
+scanPars['activeTrackPar']['nOfSteps'] = 45
+scanPars['activeTrackPar']['nOfScans'] = 50
 pipe = TildaPipe.CsPipe(scanPars)
 pipe.start()  #start the pipeLine
 
