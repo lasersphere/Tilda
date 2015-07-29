@@ -11,7 +11,7 @@ import copy
 import Service.dataFormat as dataForm
 
 
-def get24BitInputForVoltage(voltage, addRegAddress=True, vRefN=-10, vRefP=10):
+def get24BitInputForVoltage(voltage, addRegAddress=True, looseSign=False, vRefN=-10, vRefP=10):
     """
     function to return an 24-Bit Integer by putting in a voltage +\-10V in DBL
     :param voltage: dbl, desired Voltage
@@ -23,6 +23,8 @@ def get24BitInputForVoltage(voltage, addRegAddress=True, vRefN=-10, vRefP=10):
     if addRegAddress:
         #adds the address of the DAC register to the bits
         b24 = b24 + int(2 ** 20)
+    if looseSign:
+        b24 = b24 - int(2 ** 19)
     return b24
 
 def getVoltageFrom24Bit(voltage24Bit, removeAddress=True, vRefN=-10, vRefP=10):
@@ -33,6 +35,7 @@ def getVoltageFrom24Bit(voltage24Bit, removeAddress=True, vRefN=-10, vRefP=10):
     :param vRefN/P: dbl, +/- 10 V for the reference Voltage of the DAC
     :return: dbl, Voltage that will be applied.
     """
+    v20Bit = voltage24Bit
     if removeAddress:
         v20Bit = voltage24Bit - (2 ** 20)
     v18Bit = v20Bit >> 2

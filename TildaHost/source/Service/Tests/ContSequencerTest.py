@@ -30,10 +30,10 @@ measState = CsCfg.seqStateDict['measureTrack']
 scanPars = draftScanDict
 scanPars['pipeInternals']['filePath'] = 'D:\\CalciumOfflineTests_150728'
 scanPars['activeTrackPar']['dwellTime'] = 2000000
-scanPars['activeTrackPar']['stepSize'] = form.get24BitInputForVoltage(1, False)
-scanPars['activeTrackPar']['start'] = form.get24BitInputForVoltage(-5, False)
-scanPars['activeTrackPar']['heinzingerOffsetVolt'] = 1000
-scanPars['activeTrackPar']['nOfSteps'] = 20
+scanPars['activeTrackPar']['stepSize'] = form.get24BitInputForVoltage(0.01, False, True)
+scanPars['activeTrackPar']['start'] = form.get24BitInputForVoltage(-0.4, False)
+scanPars['activeTrackPar']['heinzingerOffsetVolt'] = 500
+scanPars['activeTrackPar']['nOfSteps'] = 61
 scanPars['activeTrackPar']['nOfScans'] = 5
 pipe = TildaPipe.CsPipe(scanPars)
 pipe.start()  #start the pipeLine

@@ -182,6 +182,7 @@ class NAcquireOneScanCS(Node):
                 self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
             elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltage step than
                 self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)
+                logging.debug('new Voltageindex: ' + str(self.curVoltIndex) + ' ... with voltage: ' +  str(form.getVoltageFrom24Bit(j['payload'])))
                 self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
             elif j['firstHeader'] == progConfigsDict.programs['continuousSequencer']:
                 self.totalnOfScalerEvents += 1
