@@ -44,15 +44,16 @@ def CsPipe(initialScanPars=None):
 
     pipe = Pipeline(start)
 
-    # pipe.pipeData = initPipeData(initialScanPars)
+    pipe.pipeData = initPipeData(initialScanPars)
 
-    # walk = start.attach(TN.NSaveRawData())
-    walk = start.attach(TN.NFilterDataForPipeData())
-    walk = walk.attach(SN.NPrint())
-    # walk = walk.attach(TN.NSplit32bData())
-    # walk = walk.attach(TN.NAcquireOneScanCS(pipe.pipeData))
-    # walk = walk.attach(TN.NSumCS(pipe.pipeData))
-    # walk = walk.attach(TN.NSaveSumCS())
+    # walk = start.attach(TN.NFilterDataForPipeData())
+    walk = start.attach(TN.NSaveRawData())
+    # walk = walk.attach(SN.NPrint())
+    walk = walk.attach(TN.NSplit32bData())
+    walk = walk.attach(TN.NAcquireOneScanCS(pipe.pipeData))
+    # walk = walk.attach(SN.NPrint())
+    walk = walk.attach(TN.NSumCS(pipe.pipeData))
+    walk = walk.attach(TN.NSaveSumCS())
 
     return pipe
 

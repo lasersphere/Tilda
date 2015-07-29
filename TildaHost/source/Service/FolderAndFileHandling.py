@@ -138,6 +138,7 @@ def saveRawData(data, pipeData, nOfSaves):
     if np.count_nonzero(data) > 0:
         if nOfSaves == 0:
             savedto = savePickle(pipeData, pipeData, '.pipedat')
+            logging.info('saving raw data to: ' + str(savedto))
             savedto = savePickle(data, pipeData)
         else:
             savedto = savePickle(data, pipeData)

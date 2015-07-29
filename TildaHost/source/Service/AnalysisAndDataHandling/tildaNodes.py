@@ -173,6 +173,7 @@ class NAcquireOneScanCS(Node):
 
 
     def processData(self, data, pipeData):
+        ret = None
         self.bufIncoming = np.append(self.bufIncoming, data, axis=0)
         for i, j in enumerate(copy.copy(self.bufIncoming)):
             if j['firstHeader'] == progConfigsDict.programs['errorHandler']:  # error send from fpga
@@ -191,15 +192,16 @@ class NAcquireOneScanCS(Node):
                     pass
                 self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
                 if csAna.checkIfScanComplete(pipeData, self.totalnOfScalerEvents):
-                    # one Scan over all steps is completed, transfer Data to next node and clear local buffer.
-                    ret = self.scalerArray
+                    # one Scan over all steps is completed, add Data to return array and clear local buffer.
+                    if ret == None:
+                        ret = []
+                    ret.append(self.scalerArray)
                     logging.debug('Voltindex: ' + str(self.curVoltIndex) +
                                    'completede steps:  ' + str(pipeData['activeTrackPar']['nOfCompletedSteps']))
                     self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
                                      len(pipeData['activeTrackPar']['activePmtList'])),
                                     dtype=np.uint32)
-                    return ret
-        return None
+        return ret
 
     def clear(self, pipeData):
         self.voltArray = np.zeros(pipeData['activeTrackPar']['nOfSteps'], dtype=np.uint32)
@@ -223,14 +225,14 @@ class NSumCS(Node):
         """
         super(NSumCS, self).__init__()
         self.type = 'SumCS'
-
         self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
                                      len(pipeData['activeTrackPar']['activePmtList'])),
                                     dtype=np.uint32)
 
     def processData(self, data, pipeData):
-        self.scalerArray = np.add(self.scalerArray, data)
-        logging.debug('sum is: ' + str(self.scalerArray[0:2]) + str(self.scalerArray[-2:]))
+        for i, j in enumerate(data):
+            self.scalerArray = np.add(self.scalerArray, j)
+            logging.debug('sum is: ' + str(self.scalerArray[0:2]) + str(self.scalerArray[-2:]))
         if csAna.checkIfTrackComplete(pipeData):
             return self.scalerArray
         else:
