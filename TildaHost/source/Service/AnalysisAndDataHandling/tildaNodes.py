@@ -58,6 +58,7 @@ class NSaveRawData(Node):
         self.buf = np.append(self.buf, data)
         if self.buf.size > self.maxArraySize:  # when buffer is full, store the data to disc
             self.nOfSaves = filhandl.saveRawData(self.buf, pipeData, self.nOfSaves)
+            self.buf = np.zeros(0, dtype=np.uint32)
         return data
 
     def clear(self, pipeData):
