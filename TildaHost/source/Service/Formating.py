@@ -60,7 +60,12 @@ def getVoltageFrom24Bit(voltage24Bit, removeAddress=True, vRefN=-10, vRefP=10):
     :return: dbl, Voltage that will be applied.
     """
     v18Bit = get18BitFrom24BitDacReg(voltage24Bit, removeAddress)
-    voltfloat = (vRefP - vRefN) * v18Bit / ((2 ** 18) - 1) + vRefN
+    voltfloat = getVoltageFrom18Bit(v18Bit, vRefN, vRefP)
+    return voltfloat
+
+def getVoltageFrom18Bit(voltage18Bit, vRefN=-10, vRefP=10):
+    """function from the manula of the AD5781"""
+    voltfloat = (vRefP - vRefN) * voltage18Bit / ((2 ** 18) - 1) + vRefN
     voltfloat = round(voltfloat, 6)
     return voltfloat
 
@@ -199,6 +204,8 @@ def xmlAddCompleteTrack(rootEle, scanDict, data):
     pipeInternalsDict = scanDict['pipeInternals']
     nOfTrack = pipeInternalsDict['activeTrackNumber']
     trackDict = scanDict['activeTrackPar']
+    trackDict.update(dacStartVoltage=getVoltageFrom18Bit(trackDict['dacStartRegister18Bit']))
+    trackDict.update(dacStepsizeVoltage=getVoltageFrom18Bit(trackDict['dacStepSize18Bit'] + int(2 ** 17)))
     xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackDict)
     xmlWriteToTrack(rootEle, nOfTrack, 'scalerArray', data, 'data')
     return rootEle
