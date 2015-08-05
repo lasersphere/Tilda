@@ -86,22 +86,29 @@ import Service.Formating as form
 # _thread = Thread(target= run)
 # _thread.start()
 
-step = form.get24BitInputForVoltage(-0.05, False, True)
-step2 = form.get24BitInputForVoltage(0.05, False, True)
-start = form.get24BitInputForVoltage(0.4, False)
+# step = form.get24BitInputForVoltage(-0.05, False, True)
+# step2 = form.get24BitInputForVoltage(0.05, False, True)
+# start = form.get24BitInputForVoltage(0.4, False)
+#
+# print('{0:024b}'.format(step), step, form.getVoltageFrom24Bit(step, False))
+# print('{0:024b}'.format(start), start, form.getVoltageFrom24Bit(start, False))
+# print('{0:024b}'.format(start + step), start + step, form.getVoltageFrom24Bit(start + step, False))
+# print(-0.4 + 0.01)
+#
+# print('{0:024b}'.format(step2), step2, form.getVoltageFrom24Bit(step2, False))
+# print('{0:024b}'.format(start), start, form.getVoltageFrom24Bit(start, False))
+# print('{0:024b}'.format(start + step2), start + step2, form.getVoltageFrom24Bit(start + step2, False))
+#
+#
+# print(form.getVoltageFrom24Bit(2097151))
+# print(form.getVoltageFrom24Bit(form.get24BitInputForVoltage(0.01, False)))
 
-print('{0:024b}'.format(step), step, form.getVoltageFrom24Bit(step, False))
-print('{0:024b}'.format(start), start, form.getVoltageFrom24Bit(start, False))
-print('{0:024b}'.format(start + step), start + step, form.getVoltageFrom24Bit(start + step, False))
-print(-0.4 + 0.01)
-
-print('{0:024b}'.format(step2), step2, form.getVoltageFrom24Bit(step2, False))
-print('{0:024b}'.format(start), start, form.getVoltageFrom24Bit(start, False))
-print('{0:024b}'.format(start + step2), start + step2, form.getVoltageFrom24Bit(start + step2, False))
-
-
-print(form.getVoltageFrom24Bit(2097151))
-print(form.getVoltageFrom24Bit(form.get24BitInputForVoltage(0.01, False)))
+volt = form.get18BitInputForVoltage(0.02)
+volt20 = volt << 2
+step = form.get18BitStepSize(0.02)
+print(volt, '{0:018b}'.format(volt))
+print(volt20, '{0:020b}'.format(volt20), form.getVoltageFrom24Bit(volt20, False))
+print(step, '{0:018b}'.format(step))
 
 # x1 = np.arange(9.0).reshape((3, 3))
 # x2 = np.arange(3.0)

@@ -10,6 +10,28 @@ import numpy as np
 import copy
 import Service.dataFormat as dataForm
 
+def get18BitInputForVoltage(voltage, vRefN=-10, vRefP=10):
+    """
+    function to return an 18-Bit Integer by putting in a voltage +\-10V in DBL
+    as described in the manual of the AD5781
+    :param voltage: dbl, desired Voltage
+    :param vRefN/vRefP: dbl, value for the neg./pos. reference Voltage for the DAC
+    :return: int, 18-Bit Code.
+    """
+    b18 = (voltage - vRefN) * ((2 ** 18) - 1)/(vRefP-vRefN)  # from the manual
+    b18 = int(b18)
+    return b18
+
+def get18BitStepSize(stepVolt, vRefN=-10, vRefP=10):
+    """
+    function to get the StepSize in integer form derived from a double Voltage
+    :param stepVolt: dbl, desired StepSize Voltage
+    :param vRefN/vRefP: dbl, value for the neg./pos. reference Voltage for the DAC
+    :return: int, 18-Bit Code
+    """
+    b18 = get18BitInputForVoltage(stepVolt, vRefN, vRefP) - int(2 ** 17)  # must loose the 1 in the beginning.
+    return b18
+
 
 def get24BitInputForVoltage(voltage, addRegAddress=True, looseSign=False, vRefN=-10, vRefP=10):
     """
@@ -18,7 +40,7 @@ def get24BitInputForVoltage(voltage, addRegAddress=True, looseSign=False, vRefN=
     :param vRefN/vRefP: dbl, value for the neg./pos. reference Voltage for the DAC
     :return: int, 24-Bit Code.
     """
-    b18 = (voltage - vRefN) * ((2 ** 18) - 1)/(vRefP-vRefN)# from the manual
+    b18 = get18BitInputForVoltage(voltage, vRefN, vRefP)
     b24 = (int(b18) << 2)
     if addRegAddress:
         #adds the address of the DAC register to the bits
@@ -35,13 +57,23 @@ def getVoltageFrom24Bit(voltage24Bit, removeAddress=True, vRefN=-10, vRefP=10):
     :param vRefN/P: dbl, +/- 10 V for the reference Voltage of the DAC
     :return: dbl, Voltage that will be applied.
     """
+    v18Bit = get18BitFrom24BitDacReg(voltage24Bit, removeAddress)
+    voltfloat = (vRefP - vRefN) * v18Bit / ((2 ** 18) - 1) + vRefN
+    voltfloat = round(voltfloat, 6)
+    return voltfloat
+
+def get18BitFrom24BitDacReg(voltage24Bit, removeAddress=True):
+    """
+    function to convert a 24Bit DAC Reg to 18Bit
+    :param voltage24Bit: int, 24 Bit DAC Reg entry
+    :param removeAddress: bool, True if the Registry Address is still included
+    :return: int, 18Bit DAC Reg value
+    """
     v20Bit = voltage24Bit
     if removeAddress:
         v20Bit = voltage24Bit - (2 ** 20)
     v18Bit = v20Bit >> 2
-    voltfloat = (vRefP - vRefN) * v18Bit / ((2 ** 18) - 1) + vRefN
-    voltfloat = round(voltfloat, 6)
-    return voltfloat
+    return v18Bit
 
 def split32bData(int32bData):
     """
