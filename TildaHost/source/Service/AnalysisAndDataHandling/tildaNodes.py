@@ -52,9 +52,11 @@ class NSaveRawData(Node):
 
         self.buf = np.zeros(0, dtype=np.uint32)
         self.maxArraySize = 5000
-        self.nOfSaves = 0
+        self.nOfSaves = -1
 
     def processData(self, data, pipeData):
+        if self.nOfSaves < 0:  # save pipedata, first time something is feeded to the pipelins
+                self.nOfSaves = filhandl.savePipeData(pipeData, self.nOfSaves)
         self.buf = np.append(self.buf, data)
         if self.buf.size > self.maxArraySize:  # when buffer is full, store the data to disc
             self.nOfSaves = filhandl.saveRawData(self.buf, pipeData, self.nOfSaves)
@@ -62,8 +64,9 @@ class NSaveRawData(Node):
         return data
 
     def clear(self, pipeData):
-        filhandl.saveRawData(self.buf, pipeData, 0)  # also save the pipeData when clearing
-        self.nOfSaves = 0
+        filhandl.saveRawData(self.buf, pipeData, 0)
+        filhandl.savePipeData(pipeData, 0)  # also save the pipeData when clearing
+        self.nOfSaves = -1
         self.buf = np.zeros(0, dtype=np.uint32)
 
 class NFilterDataForPipeData(Node):

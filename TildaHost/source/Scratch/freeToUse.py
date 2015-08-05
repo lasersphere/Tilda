@@ -109,8 +109,10 @@ import Service.Formating as form
 # print(volt, '{0:018b}'.format(volt))
 # print(volt20, '{0:020b}'.format(volt20), form.getVoltageFrom24Bit(volt20, False))
 # print(step, '{0:018b}'.format(step))
-print(np.full(10, (2 ** 30), dtype=np.uint32))
+# print(np.full(10, (2 ** 30), dtype=np.uint32))
 # x1 = np.arange(9.0).reshape((3, 3))
 # x2 = np.arange(3.0)
 # print(x1, x2)
 # print(np.add(x1, x2))
+
+print(str('{0:03d}'.format(0)))

@@ -28,20 +28,21 @@ def findTildaFolder(path=os.path.dirname(os.path.abspath(__file__))):
 
 def nameFile(path, subdir, fileName, prefix='', suffix='.tld'):
     """
-    find an unused valid filename. Add Timestamp in front.
+    find an unused valid filename.
     :return: str, path/subdir/timestamp_prefix_fileName + suffix
     """
     storagePath = os.path.join(path, subdir)
     if not os.path.exists(storagePath):
         os.makedirs(storagePath)
-    filepath = os.path.join(storagePath, time.strftime("%Y%m%d_%H%M%S") + '_' +
-                            prefix + '_' + fileName)
+    filepath = os.path.join(storagePath, prefix + '_' + fileName)
     i = 0
-    if not os.path.isfile(filepath + suffix):
-        return filepath + suffix
-    while os.path.isfile(filepath +  '_' + str(i) + suffix):
+    file = filepath + '_' + str('{0:03d}'.format(i)) + suffix
+    if not os.path.isfile(file):
+        return filepath + '_' + str('{0:03d}'.format(i)) + suffix
+    while os.path.isfile(file):
         i += 1
-    return filepath + '_' + str(i) + suffix
+        file = filepath + '_' + str('{0:03d}'.format(i)) + suffix
+    return file
 
 def createXmlFileOneIsotope(scanDict):
     """
@@ -136,12 +137,13 @@ def saveRawData(data, pipeData, nOfSaves):
     :return nOfSaves
     """
     if np.count_nonzero(data) > 0:
-        if nOfSaves == 0:
-            savedto = savePickle(pipeData, pipeData, '.pipedat')
-            logging.info('saving raw data to: ' + str(savedto))
-            savedto = savePickle(data, pipeData)
-        else:
-            savedto = savePickle(data, pipeData)
+        savedto = savePickle(data, pipeData)
         nOfSaves += 1
         logging.info('saving raw data to: ' + str(savedto))
+    return nOfSaves
+
+def savePipeData(pipeData, nOfSaves):
+    savedto = savePickle(pipeData, pipeData, '.pipedat')
+    logging.info('saving pipe data to: ' + str(savedto))
+    nOfSaves += 1
     return nOfSaves
