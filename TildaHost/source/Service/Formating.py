@@ -160,7 +160,7 @@ def xmlWriteIsoDictToHeader(rootEle, isotopedict):
     """
     head = xmlFindOrCreateSubElement(rootEle, 'header')
     time = str(dt.now().strftime("%Y-%m-%d %H:%M:%S"))
-    isotopedict.update(datetime=time)
+    isotopedict.update(isotopeStartTime=time)
     xmlWriteDict(head, isotopedict)
     return rootEle
 
@@ -257,3 +257,18 @@ def convertStrValuesInDict(dicti):
                 except:
                     pass
     return dicti
+
+
+def addWorkingTimeToTrackDict(trackDict):
+    """adds the timestamp to the working time of the track"""
+    time = str(dt.now().strftime("%Y-%m-%d %H:%M:%S"))
+    if 'workingTime' in trackDict:
+        if trackDict['workingTime'] == None:
+            worktime = []
+        else:
+            worktime = trackDict['workingTime']
+    else:
+        worktime = []
+    worktime.append(time)
+    trackDict.update(workingTime=worktime)
+    return trackDict

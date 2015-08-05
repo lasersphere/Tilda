@@ -56,7 +56,8 @@ class NSaveRawData(Node):
 
     def processData(self, data, pipeData):
         if self.nOfSaves < 0:  # save pipedata, first time something is feeded to the pipelins
-                self.nOfSaves = filhandl.savePipeData(pipeData, self.nOfSaves)
+            self.nOfSaves = filhandl.savePipeData(pipeData, self.nOfSaves)
+            pipeData['activeTrackPar'] = form.addWorkingTimeToTrackDict(pipeData['activeTrackPar'])
         self.buf = np.append(self.buf, data)
         if self.buf.size > self.maxArraySize:  # when buffer is full, store the data to disc
             self.nOfSaves = filhandl.saveRawData(self.buf, pipeData, self.nOfSaves)
@@ -260,6 +261,7 @@ class NSaveSumCS(Node):
         self.type = 'SaveSumCS'
 
     def processData(self, data, pipeData):
+        pipeData['activeTrackPar'] = form.addWorkingTimeToTrackDict(pipeData['activeTrackPar'])
         pipeInternals = pipeData['pipeInternals']
         file = pipeInternals['activeXmlFilePath']
         rootEle = filhandl.loadXml(file)

@@ -11,7 +11,7 @@ import Service.Formating as form
 
 
 draftIsotopePars = {'version': '1.04', 'type': 'cs', 'isotope': 'calcium_40',
-               'nOfTracks': '1', 'colDirTrue': 'False', 'accVolt': '9999.8',
+               'nOfTracks': '1', 'accVolt': '9999.8',
                'laserFreq': '12568.766'}
 
 draftTrackPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100,
@@ -23,7 +23,8 @@ draftTrackPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100,
                    'measureOffset': False, 'postAccOffsetVoltControl': 2, 'heinzingerOffsetVolt': 1000,
                    'waitForKepco25nsTicks': 40,
                    'waitAfterReset25nsTicks': 4000,
-                   'activePmtList': [0, 1]
+                   'activePmtList': [0, 1],
+                   'colDirTrue': 'False'
                    }
 
 draftPipeInternals = {

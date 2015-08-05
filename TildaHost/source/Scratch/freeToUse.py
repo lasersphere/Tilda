@@ -115,4 +115,8 @@ import Service.Formating as form
 # print(x1, x2)
 # print(np.add(x1, x2))
 
-print(str('{0:03d}'.format(0)))
+# print(str('{0:03d}'.format(0)))
+
+list = []
+list.append(0)
+print(list)
