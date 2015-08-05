@@ -14,8 +14,7 @@ draftIsotopePars = {'version': '1.04', 'type': 'cs', 'isotope': 'calcium_40',
                'nOfTracks': '1', 'accVolt': '9999.8',
                'laserFreq': '12568.766'}
 
-draftTrackPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100,
-                   'dacStepSize18Bit': form.get24BitInputForVoltage(1, False),
+draftTrackPars = {'dacStepSize18Bit': form.get24BitInputForVoltage(1, False),
                    'dacStartRegister18Bit': form.get24BitInputForVoltage(-5, False),
                    'nOfSteps': 20,
                    'nOfScans': 30, 'nOfCompletedSteps': 0, 'invertScan': False,
@@ -26,6 +25,8 @@ draftTrackPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100,
                    'colDirTrue': 'False'
                    }
 
+draftMeasureVoltPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100}
+
 draftPipeInternals = {
     'curVoltInd': 0,
     'activeTrackNumber': 0,
@@ -35,7 +36,8 @@ draftPipeInternals = {
 
 draftScanDict = {'isotopeData': draftIsotopePars,
                  'activeTrackPar': draftTrackPars,
-                 'pipeInternals': draftPipeInternals}
+                 'pipeInternals': draftPipeInternals,
+                 'measureVoltPars': draftMeasureVoltPars}
 
 # for the time resolved sequencer us this:
 # draftTrackPars = {'MCSSelectTrigger': 0, 'delayticks': 0, 'nOfBins': 10000, 'nOfBunches': 1,

@@ -66,7 +66,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         """
         if self.changeSeqState(CsCfg, CsCfg.seqStateDict['idle']):
             if (self.setDwellTime(scanpars) and
-                    self.setmeasVoltParameters(CsCfg, scanpars['activeTrackPar']) and
+                    self.setmeasVoltParameters(CsCfg, scanpars['measureVoltPars']) and
                     self.setTrackParameters(CsCfg, scanpars['activeTrackPar']) and
                 self.selectKepcoOrScalerScan(CsCfg, scanpars['isotopeData']['type'])):
                 return self.checkFpgaStatus()
