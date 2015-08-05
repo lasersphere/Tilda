@@ -98,7 +98,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         :return:bool, True if successfully changed State
         """
         if self.setAllContSeqPars(scanpars):
-            time.sleep(2)  # to be sure the hsb is set
+            # time.sleep(2)  # to be sure the hsb is set
             return self.changeSeqState(CsCfg, CsCfg.seqStateDict['measureTrack'])
         else:
             logging.debug('values could not be set')

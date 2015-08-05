@@ -52,8 +52,11 @@ class Sequencer(FPGAInterfaceHandling):
         """
         return self.ReadWrite(config.seqState).value
 
-    def getHeinzControlState(self, trackPars):
-        self.ReadWrite(trackPars['postAccOffsetVoltControl'])
+    def getHeinzControlState(self, config):
+        """read the state of the post Acceleration Control Box"""
+        ret = self.ReadWrite(config.postAccOffsetVoltState).value
+        logging.debug('HSB-State is: ' + str(ret))
+        return ret
 
     '''writing'''
     def setTrackParameters(self, config, trackPars):
@@ -74,18 +77,35 @@ class Sequencer(FPGAInterfaceHandling):
         :return: True if self.status == self.statusSuccess, else False
         """
         self.ReadWrite(config.VoltOrScaler, trackPars['VoltOrScaler'])
-        self.ReadWrite(config.stepSize, trackPars['dacStepSize18Bit'])
-        self.ReadWrite(config.start, trackPars['dacStartRegister18Bit'])
+        self.ReadWrite(config.dacStepSize18Bit, trackPars['dacStepSize18Bit'])
+        self.ReadWrite(config.dacStartRegister18Bit, trackPars['dacStartRegister18Bit'])
         self.ReadWrite(config.nOfSteps, trackPars['nOfSteps'])
         self.ReadWrite(config.nOfScans, trackPars['nOfScans'])
         self.ReadWrite(config.invertScan, trackPars['invertScan'])
-        self.ReadWrite(config.heinzingerControl, trackPars['postAccOffsetVoltControl'])
         self.ReadWrite(config.waitForKepco25nsTicks, trackPars['waitForKepco25nsTicks'])
         self.ReadWrite(config.waitAfterReset25nsTicks, trackPars['waitAfterReset25nsTicks'])
+        self.setPostAccelerationControlState(config, trackPars['postAccOffsetVoltControl'], True)
         return self.checkFpgaStatus()
 
-    def setAccelerationControl(self, heinzCtrl):
-        pass
+    def setPostAccelerationControlState(self, config, desiredState, blocking=True):
+        """
+        will set the PostAccelerationControl State, so one can chose which PowerSupply will be used.
+        :return: int, the current State of the Control Box
+        """
+        currentState = self.getHeinzControlState(config)
+        if currentState != desiredState:
+            self.ReadWrite(config.postAccOffsetVoltControl, desiredState)
+            timeout = 0
+            while blocking and timeout < 30:
+                currentState = self.getHeinzControlState(config)
+                logging.debug('HSB-State is: ' + str(currentState))
+                if currentState == desiredState:
+                    return currentState
+                else:
+                    time.sleep(0.2)
+                    timeout += 1
+        else:
+            return currentState
 
     def setCmdByHost(self, config, cmd):
         """

@@ -178,7 +178,7 @@ class NAcquireOneScanCS(Node):
         self.bufIncoming = np.append(self.bufIncoming, data, axis=0)
         for i, j in enumerate(copy.copy(self.bufIncoming)):
             if j['firstHeader'] == progConfigsDict.programs['errorHandler']:  # error send from fpga
-                print('fpga sends error code: ' + str(j['payload']))
+                print('fpga sends error code: ' + str(j['payload']) + 'or in binary: ' + str('{0:032b}'.format(j['payload'])))
                 self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
             elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltage step than
                 self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)

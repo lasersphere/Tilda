@@ -45,6 +45,6 @@ transferToHost = {'ref': 0, 'val': ctypes.c_ulong(), 'ctr': False}
 '''hand filled values:'''
 SPstateDict = {'idle': 0, 'scanning': 1, 'done': 2, 'error': 3}
 seqStateDict = {'init': 0, 'idle': 1, 'measureOffset': 2, 'measureTrack': 3, 'measComplete': 4, 'error': 5}
-postAccOffsetVoltState = {'Kepco': 0, 'Heinzinger1': 1, 'Heinzinger2': 2, 'Heinzinger3': 3, 'loading': 4}
+postAccOffsetVoltStateDict = {'Kepco': 0, 'Heinzinger1': 1, 'Heinzinger2': 2, 'Heinzinger3': 3, 'loading': 4}
 
 transferToHostReqEle = 100000
