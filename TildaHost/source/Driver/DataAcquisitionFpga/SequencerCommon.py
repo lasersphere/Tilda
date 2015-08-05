@@ -76,7 +76,7 @@ class Sequencer(FPGAInterfaceHandling):
          before the scalers are activated. Unit is 25ns
         :return: True if self.status == self.statusSuccess, else False
         """
-        self.ReadWrite(config.VoltOrScaler, trackPars['VoltOrScaler'])
+
         self.ReadWrite(config.dacStepSize18Bit, trackPars['dacStepSize18Bit'])
         self.ReadWrite(config.dacStartRegister18Bit, trackPars['dacStartRegister18Bit'])
         self.ReadWrite(config.nOfSteps, trackPars['nOfSteps'])
@@ -85,6 +85,13 @@ class Sequencer(FPGAInterfaceHandling):
         self.ReadWrite(config.waitForKepco25nsTicks, trackPars['waitForKepco25nsTicks'])
         self.ReadWrite(config.waitAfterReset25nsTicks, trackPars['waitAfterReset25nsTicks'])
         self.setPostAccelerationControlState(config, trackPars['postAccOffsetVoltControl'], True)
+        return self.checkFpgaStatus()
+
+    def selectKepcoOrScalerScan(self, config, typestr):
+        if typestr == 'kepco':
+            self.ReadWrite(config.VoltOrScaler, True)
+        else:
+            self.ReadWrite(config.VoltOrScaler, False)
         return self.checkFpgaStatus()
 
     def setPostAccelerationControlState(self, config, desiredState, blocking=True):

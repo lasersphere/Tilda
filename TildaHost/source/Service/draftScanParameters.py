@@ -15,7 +15,6 @@ draftIsotopePars = {'version': '1.04', 'type': 'cs', 'isotope': 'calcium_40',
                'laserFreq': '12568.766'}
 
 draftTrackPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100,
-                   'VoltOrScaler': False,
                    'dacStepSize18Bit': form.get24BitInputForVoltage(1, False),
                    'dacStartRegister18Bit': form.get24BitInputForVoltage(-5, False),
                    'nOfSteps': 20,

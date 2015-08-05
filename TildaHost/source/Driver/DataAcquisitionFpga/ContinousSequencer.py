@@ -67,7 +67,8 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         if self.changeSeqState(CsCfg, CsCfg.seqStateDict['idle']):
             if (self.setDwellTime(scanpars) and
                     self.setmeasVoltParameters(CsCfg, scanpars['activeTrackPar']) and
-                    self.setTrackParameters(CsCfg, scanpars['activeTrackPar'])):
+                    self.setTrackParameters(CsCfg, scanpars['activeTrackPar']) and
+                self.selectKepcoOrScalerScan(CsCfg, scanpars['isotopeData']['type'])):
                 return self.checkFpgaStatus()
         return False
 
@@ -98,7 +99,6 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         :return:bool, True if successfully changed State
         """
         if self.setAllContSeqPars(scanpars):
-            # time.sleep(2)  # to be sure the hsb is set
             return self.changeSeqState(CsCfg, CsCfg.seqStateDict['measureTrack'])
         else:
             logging.debug('values could not be set')
