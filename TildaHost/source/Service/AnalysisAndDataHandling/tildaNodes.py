@@ -165,7 +165,7 @@ class NAcquireOneScanCS(Node):
         self.type = 'AcquireOneLoopCS'
         self.bufIncoming = np.zeros((0,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
                                             ('headerIndex', 'u1'), ('payload', 'u4')])
-        self.voltArray = np.zeros(pipeData['activeTrackPar']['nOfSteps'], dtype=np.uint32)
+        self.voltArray = np.full(pipeData['activeTrackPar']['nOfSteps'], (2 ** 30), dtype=np.uint32)
         self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
                                      len(pipeData['activeTrackPar']['activePmtList'])),
                                     dtype=np.uint32)
@@ -182,7 +182,7 @@ class NAcquireOneScanCS(Node):
                 self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
             elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltage step than
                 self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)
-                logging.debug('new Voltageindex: ' + str(self.curVoltIndex) + ' ... with voltage: ' +  str(form.getVoltageFrom24Bit(j['payload'])))
+                logging.debug('new Voltageindex: ' + str(self.curVoltIndex) + ' ... with voltage: ' + str(form.getVoltageFrom24Bit(j['payload'])))
                 self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
             elif j['firstHeader'] == progConfigsDict.programs['continuousSequencer']:
                 self.totalnOfScalerEvents += 1
@@ -206,7 +206,7 @@ class NAcquireOneScanCS(Node):
         return ret
 
     def clear(self, pipeData):
-        self.voltArray = np.zeros(pipeData['activeTrackPar']['nOfSteps'], dtype=np.uint32)
+        self.voltArray = np.full(pipeData['activeTrackPar']['nOfSteps'], (2 ** 30), dtype=np.uint32)
         self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
                                      len(pipeData['activeTrackPar']['activePmtList'])),
                                     dtype=np.uint32)

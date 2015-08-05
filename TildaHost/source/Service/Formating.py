@@ -5,9 +5,11 @@ Created on 21.01.2015
 '''
 
 from datetime import datetime as dt
+# from __builtin__ import str
 import lxml.etree as ET
 import numpy as np
 import copy
+import logging
 import Service.dataFormat as dataForm
 
 def get18BitInputForVoltage(voltage, vRefN=-10, vRefP=10):
@@ -69,10 +71,9 @@ def get18BitFrom24BitDacReg(voltage24Bit, removeAddress=True):
     :param removeAddress: bool, True if the Registry Address is still included
     :return: int, 18Bit DAC Reg value
     """
-    v20Bit = voltage24Bit
     if removeAddress:
-        v20Bit = voltage24Bit - (2 ** 20)
-    v18Bit = v20Bit >> 2
+        voltage24Bit = voltage24Bit - (2 ** 20)
+    v18Bit = (voltage24Bit >> 2) & ((2 ** 18) - 1)
     return v18Bit
 
 def split32bData(int32bData):
@@ -94,16 +95,16 @@ def findVoltage(voltage, voltArray):
     :return: (int, np.array), index and VoltageArray
     """
     '''payload is 23-Bits, Bits 2 to 20 is the DAC register'''
-    voltage = (voltage >> 2) & ((2 ** 18) - 1) #shift by 2 and delete higher parts of payload
+    voltage = get18BitFrom24BitDacReg(voltage, True) #shift by 2 and delete higher parts of payload
     index = np.where(voltArray == voltage)
     if len(index[0]) == 0:
         #voltage not yet in array, put it at next empty position
-        index = np.where(voltArray == 0)[0][0]
+        index = np.where(voltArray == (2 ** 30))[0][0]
     else:
         #voltage already in list, take the found index
         index = index[0][0]
     np.put(voltArray, index, voltage)
-    return (index, voltArray)
+    return index, voltArray
 
 def trsSum(element, actVoltInd, sumArray, activePmtList=range(8)):
     """

@@ -102,14 +102,14 @@ import Service.Formating as form
 #
 # print(form.getVoltageFrom24Bit(2097151))
 # print(form.getVoltageFrom24Bit(form.get24BitInputForVoltage(0.01, False)))
-
-volt = form.get18BitInputForVoltage(0.02)
-volt20 = volt << 2
-step = form.get18BitStepSize(0.02)
-print(volt, '{0:018b}'.format(volt))
-print(volt20, '{0:020b}'.format(volt20), form.getVoltageFrom24Bit(volt20, False))
-print(step, '{0:018b}'.format(step))
-
+#
+# volt = form.get18BitInputForVoltage(0.02)
+# volt20 = volt << 2
+# step = form.get18BitStepSize(0.02)
+# print(volt, '{0:018b}'.format(volt))
+# print(volt20, '{0:020b}'.format(volt20), form.getVoltageFrom24Bit(volt20, False))
+# print(step, '{0:018b}'.format(step))
+print(np.full(10, (2 ** 30), dtype=np.uint32))
 # x1 = np.arange(9.0).reshape((3, 3))
 # x2 = np.arange(3.0)
 # print(x1, x2)
