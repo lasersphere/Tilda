@@ -30,22 +30,22 @@ measState = CsCfg.seqStateDict['measureTrack']
 scanPars = draftScanDict
 scanPars['isotopeData']['isotope'] = 'Ca_44_to_Ca_40'
 scanPars['pipeInternals']['filePath'] = 'D:\\CalciumOfflineTests_150728'
-scanPars['activeTrackPar']['dwellTime'] = 2000000
-scanPars['activeTrackPar']['stepSize'] = form.get18BitStepSize(0.02)
-scanPars['activeTrackPar']['start'] = form.get18BitInputForVoltage(-10)
+scanPars['activeTrackPar']['dwellTime10ns'] = 2000000
+scanPars['activeTrackPar']['dacStepSize18Bit'] = form.get18BitStepSize(0.02)
+scanPars['activeTrackPar']['dacStartRegister18Bit'] = form.get18BitInputForVoltage(-10)
 scanPars['activeTrackPar']['heinzingerOffsetVolt'] = 500
-scanPars['activeTrackPar']['heinzingerControl'] = 0  # for using the Kepco only
+scanPars['activeTrackPar']['postAccOffsetVoltControl'] = 0  # for using the Kepco only
 scanPars['activeTrackPar']['nOfSteps'] = 1000
 scanPars['activeTrackPar']['nOfScans'] = 50
 pipe = TildaPipe.CsPipe(scanPars)
-pipe.start()  #start the pipeLine
+pipe.start()  #dacStartRegister18Bit the pipeLine
 
 """
-start devices and measurement here:
+dacStartRegister18Bit devices and measurement here:
 """
-cs = ContinousSequencer()  # start the FPGA
+cs = ContinousSequencer()  # dacStartRegister18Bit the FPGA
 
-hz2 = hz.Heinzinger(hz.hzCfg.comportHeinzinger2)  # start the Offset Heinzinger. Only Hz2 available right now.
+hz2 = hz.Heinzinger(hz.hzCfg.comportHeinzinger2)  # dacStartRegister18Bit the Offset Heinzinger. Only Hz2 available right now.
 
 hz2.setVoltage(scanPars['activeTrackPar']['heinzingerOffsetVolt'])
 logging.info('Heinzinger 2 is set to: ' + str(hz2.getVoltage()) + 'V')

@@ -207,7 +207,7 @@ def xmlGetDataFromTrack(rootEle, nOfTrack, dataType):
     Get Data From Track
     :param rootEle:  lxml.etree.Element, root of the xml tree
     :param nOfTrack: int, which Track should be written to
-    :param dataType: str, valid: 'setOffset, 'measuredOffset', 'dwellTime', 'nOfmeasuredSteps',
+    :param dataType: str, valid: 'setOffset, 'measuredOffset', 'dwellTime10ns', 'nOfmeasuredSteps',
      'nOfclompetedLoops', 'voltArray', 'timeArray', 'scalerArray'
     :param returnType: int or tuple of int, shape of the numpy array, 0 if output in textfrom is desired
     :return: Text

@@ -46,7 +46,7 @@ def CsPipe(initialScanPars=None):
 
     pipe.pipeData = initPipeData(initialScanPars)
 
-    # walk = start.attach(TN.NFilterDataForPipeData())
+    # walk = dacStartRegister18Bit.attach(TN.NFilterDataForPipeData())
     walk = start.attach(TN.NSaveRawData())
     # walk = walk.attach(SN.NPrint())
     walk = walk.attach(TN.NSplit32bData())

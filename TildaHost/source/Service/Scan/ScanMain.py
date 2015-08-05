@@ -38,7 +38,7 @@ class ScanMain():
         :param scanpars: dcitionary, containing all scanparameters
         :return: bool, True if success, False if fail within maxTries.
         """
-        activeHeinzinger = getattr(self, 'heinz' + str(scanpars['heinzingerControl']))
+        activeHeinzinger = getattr(self, 'heinz' + str(scanpars['postAccOffsetVoltControl']))
         setVolt = scanpars['heinzingerOffsetVolt']
         if setVolt*0.9 < activeHeinzinger.getVoltage() < setVolt*1.1:
             #Voltage already set, not needed to change it

@@ -122,7 +122,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
 # print('configure Hist sided Buffer: ' + str(blub2.confHostBufferSize()))
 # time.sleep(0.1)
 #
-# print('start Track: ' + str(blub2.measureTrack(blub2.TrsCfg.dummyScanParameters)))
+# print('dacStartRegister18Bit Track: ' + str(blub2.measureTrack(blub2.TrsCfg.dummyScanParameters)))
 # print('seq State: ' + str(blub2.getSeqState()))
 # print('seq State: ' + str(blub2.getSeqState()))
 # print(blub2.getData())

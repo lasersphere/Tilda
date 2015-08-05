@@ -44,7 +44,7 @@ class FPGAInterfaceHandling():
     '''Initializing/Deinitilaizing'''
     def InitFpga(self, bitfilePath, bitfileSignature, resource, reset=True, run=True):
         """
-        Initialize the FPGA with all necessary functions to start an FPGA Session.
+        Initialize the FPGA with all necessary functions to dacStartRegister18Bit an FPGA Session.
         These are: NiFpga_Initialize, NiFpga_Open.
         Optional: NiFpga_Reset, NiFpga_Run
         :param bitfilePath: String Path to the Bitfile

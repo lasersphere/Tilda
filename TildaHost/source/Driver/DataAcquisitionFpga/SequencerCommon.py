@@ -52,6 +52,8 @@ class Sequencer(FPGAInterfaceHandling):
         """
         return self.ReadWrite(config.seqState).value
 
+    def getHeinzControlState(self, trackPars):
+        self.ReadWrite(trackPars['postAccOffsetVoltControl'])
 
     '''writing'''
     def setTrackParameters(self, config, trackPars):
@@ -59,12 +61,12 @@ class Sequencer(FPGAInterfaceHandling):
         Writes all values needed for the Sequencer state machine to the fpga ui
         :param trackPars: dictionary, containing all necessary infos for measuring one track. These are:
         VoltOrScaler: bool, determine if the track is a KepcoScan or normal Scaler Scan
-        stepSize: ulong, Stepsize for 18Bit-DAC Steps actually shifted by 2 so its 20 Bit Number
-        start: ulong, Start Voltage for 18Bit-DAC actually shifted by 2 so its 20 Bit Number
+        dacStepSize18Bit: ulong, Stepsize for 18Bit-DAC Steps actually shifted by 2 so its 20 Bit Number
+        dacStartRegister18Bit: ulong, Start Voltage for 18Bit-DAC actually shifted by 2 so its 20 Bit Number
         nOfSteps: long, Number Of Steps for one Track (=Scanregion)
         nOfScans: long, Number of Loops over this Track
         invertScan: bool, if True invert Scandirection on every 2nd Scan
-        heinzingerControl: ubyte, Enum to determine which heinzinger will be active
+        postAccOffsetVoltControl: ubyte, Enum to determine which heinzinger will be active
         waitForKepco25nsTicks: uint, time interval after the voltage has been set and the unit waits
          before the scalers are activated. Unit is 25ns
         waitAfterReset25nsTicks: uint, time interval after the voltage has been reseted and the unit waits
@@ -72,15 +74,18 @@ class Sequencer(FPGAInterfaceHandling):
         :return: True if self.status == self.statusSuccess, else False
         """
         self.ReadWrite(config.VoltOrScaler, trackPars['VoltOrScaler'])
-        self.ReadWrite(config.stepSize, trackPars['stepSize'])
-        self.ReadWrite(config.start, trackPars['start'])
+        self.ReadWrite(config.stepSize, trackPars['dacStepSize18Bit'])
+        self.ReadWrite(config.start, trackPars['dacStartRegister18Bit'])
         self.ReadWrite(config.nOfSteps, trackPars['nOfSteps'])
         self.ReadWrite(config.nOfScans, trackPars['nOfScans'])
         self.ReadWrite(config.invertScan, trackPars['invertScan'])
-        self.ReadWrite(config.heinzingerControl, trackPars['heinzingerControl'])
+        self.ReadWrite(config.heinzingerControl, trackPars['postAccOffsetVoltControl'])
         self.ReadWrite(config.waitForKepco25nsTicks, trackPars['waitForKepco25nsTicks'])
         self.ReadWrite(config.waitAfterReset25nsTicks, trackPars['waitAfterReset25nsTicks'])
         return self.checkFpgaStatus()
+
+    def setAccelerationControl(self, heinzCtrl):
+        pass
 
     def setCmdByHost(self, config, cmd):
         """
