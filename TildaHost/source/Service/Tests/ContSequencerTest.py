@@ -20,7 +20,7 @@ import time
 import logging
 import sys
 
-logging.basicConfig(level=getattr(logging, 'DEBUG'), format='%(message)s', stream=sys.stdout)
+logging.basicConfig(level=getattr(logging, 'INFO'), format='%(message)s', stream=sys.stdout)
 
 
 """
@@ -29,14 +29,14 @@ get the pipeline ready and type your scanparameters in here:
 measState = CsCfg.seqStateDict['measureTrack']
 scanPars = draftScanDict
 scanPars['isotopeData']['isotope'] = 'Nothing'
-scanPars['pipeInternals']['filePath'] = 'D:\\CalciumOfflineTests_150805'
+scanPars['pipeInternals']['filePath'] = 'D:\\PulserOfflineTests_150806'
 scanPars['activeTrackPar']['dwellTime10ns'] = 2000000
 scanPars['activeTrackPar']['dacStepSize18Bit'] = form.get18BitStepSize(0.02)
 scanPars['activeTrackPar']['dacStartRegister18Bit'] = form.get18BitInputForVoltage(-10)
 scanPars['activeTrackPar']['heinzingerOffsetVolt'] = 500
 scanPars['activeTrackPar']['postAccOffsetVoltControl'] = 2
-scanPars['activeTrackPar']['nOfSteps'] = 10
-scanPars['activeTrackPar']['nOfScans'] = 20
+scanPars['activeTrackPar']['nOfSteps'] = 100
+scanPars['activeTrackPar']['nOfScans'] = 400
 pipe = TildaPipe.CsPipe(scanPars)
 pipe.start()  #dacStartRegister18Bit the pipeLine
 
