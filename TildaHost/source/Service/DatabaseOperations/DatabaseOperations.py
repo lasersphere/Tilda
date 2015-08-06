@@ -10,26 +10,28 @@ import Tools as pollitools
 import Service.draftScanParameters as drftScPars
 
 import sqlite3
+import ast
 
 def createTildaDB(db):
     """
     will create an sqlite db suited for Tilda.
-    Will delete all files in Files if db already exists
+    Existing tables should be ok.
     :param db: str, path to database
     """
     pollitools.createDB(db)
-    formEmptyDBtoTildaDB(db)
+    formPolliFitDBtoTildaDB(db)
 
-def formEmptyDBtoTildaDB(db):
+def formPolliFitDBtoTildaDB(db):
     """
-    will drop the Files Tbale in db and create a new one suited for Tilda.
+    will try to convert the Pollifit Database to the Tilda Standard.
+    Some information might get lost in the Table Files.
     :param db: str, path to database
     """
     con = sqlite3.connect(db)
 
-    con.execute('''DROP TABLE Files''')
-    con.execute('''CREATE TABLE IF NOT EXISTS Files (
-    file TEXT PRIMARY KEY NOT NULL,
+    con.executescript('''
+    ALter TABLE Files RENAME TO Files_orig;
+    CREATE TABLE Files ( file TEXT PRIMARY KEY NOT NULL,
     filePath TEXT UNIQUE NOT NULL,
     date DATE,
     isotope TEXT,
@@ -43,25 +45,35 @@ def formEmptyDBtoTildaDB(db):
     trackPars TEXT,
     FOREIGN KEY (type) REFERENCES Isotopes (iso),
     FOREIGN KEY (line) REFERENCES Lines (line)
-    )
+    );
+    INSERT INTO Files(file, filePath, date, isotope, line, accVolt, laserFreq, voltDivRatio, lineMult, lineOffset)
+    SELECT file, filePath, date, type, line, accVolt, laserFreq, voltDivRatio, lineMult, lineOffset FROM Files_orig;
+    DROP TABLE Files_orig
     ''')
 
     con.close()
 
 def addTrackDictToDb(db, file, nOfTrack, trackDict):
+    """
+    Add a Dictionary containing all infos of a Track to the existing(or not) Trackdictionary
+    in the column trackPars of the chosen file
+    """
     con = sqlite3.connect(db)
     cur = con.cursor()
     cur.execute(''' SELECT trackPars FROM Files Where file = ?''', (file,))
-    trackPars = None
+    trackPars = cur.fetchone()[0]
     if trackPars == None:
         trackPars = {}
         trackPars['track' + str(nOfTrack)] = trackDict
-        cur.execute('''UPDATE Files SET trackPars = ? WHERE file = ?''', (str(trackPars), file))
-        con.commit()
     else:
         print('gibbet schon')
+        trackPars = ast.literal_eval(trackPars)
+        trackPars['track' + str(nOfTrack)] = trackDict
+    cur.execute('''UPDATE Files SET trackPars = ? WHERE file = ?''', (str(trackPars), file))
+    con.commit()
     con.close()
 
 bdpath = 'D:\\Testi.sqlite'
 createTildaDB(bdpath)
+addTrackDictToDb(bdpath, 'blub.txt', 0, drftScPars.draftTrackPars)
 addTrackDictToDb(bdpath, 'blub.txt', 0, drftScPars.draftTrackPars)
