@@ -11,6 +11,7 @@ import Service.draftScanParameters as drftScPars
 
 import sqlite3
 import ast
+import os
 
 def createTildaDB(db):
     """
@@ -18,8 +19,9 @@ def createTildaDB(db):
     Existing tables should be ok.
     :param db: str, path to database
     """
-    pollitools.createDB(db)
-    formPolliFitDBtoTildaDB(db)
+    if not os.path.isfile(db):
+        pollitools.createDB(db)
+        formPolliFitDBtoTildaDB(db)
 
 def formPolliFitDBtoTildaDB(db):
     """
@@ -56,7 +58,7 @@ def formPolliFitDBtoTildaDB(db):
 def addTrackDictToDb(db, file, nOfTrack, trackDict):
     """
     Add a Dictionary containing all infos of a Track to the existing(or not) Trackdictionary
-    in the column trackPars of the chosen file
+    in the column trackPars of the chosen file. This overwrites the selected Track.
     """
     con = sqlite3.connect(db)
     cur = con.cursor()
@@ -66,7 +68,6 @@ def addTrackDictToDb(db, file, nOfTrack, trackDict):
         trackPars = {}
         trackPars['track' + str(nOfTrack)] = trackDict
     else:
-        print('gibbet schon')
         trackPars = ast.literal_eval(trackPars)
         trackPars['track' + str(nOfTrack)] = trackDict
     cur.execute('''UPDATE Files SET trackPars = ? WHERE file = ?''', (str(trackPars), file))
@@ -76,4 +77,4 @@ def addTrackDictToDb(db, file, nOfTrack, trackDict):
 bdpath = 'D:\\Testi.sqlite'
 createTildaDB(bdpath)
 addTrackDictToDb(bdpath, 'blub.txt', 0, drftScPars.draftTrackPars)
-addTrackDictToDb(bdpath, 'blub.txt', 0, drftScPars.draftTrackPars)
+addTrackDictToDb(bdpath, 'blub.txt', 1, drftScPars.draftTrackPars)
