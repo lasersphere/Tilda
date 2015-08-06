@@ -7,6 +7,7 @@ Created on '06.08.2015'
 """
 
 import Tools as pollitools
+import Service.draftScanParameters as drftScPars
 
 import sqlite3
 
@@ -46,3 +47,21 @@ def formEmptyDBtoTildaDB(db):
     ''')
 
     con.close()
+
+def addTrackDictToDb(db, file, nOfTrack, trackDict):
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    cur.execute(''' SELECT trackPars FROM Files Where file = ?''', (file,))
+    trackPars = None
+    if trackPars == None:
+        trackPars = {}
+        trackPars['track' + str(nOfTrack)] = trackDict
+        cur.execute('''UPDATE Files SET trackPars = ? WHERE file = ?''', (str(trackPars), file))
+        con.commit()
+    else:
+        print('gibbet schon')
+    con.close()
+
+bdpath = 'D:\\Testi.sqlite'
+createTildaDB(bdpath)
+addTrackDictToDb(bdpath, 'blub.txt', 0, drftScPars.draftTrackPars)
