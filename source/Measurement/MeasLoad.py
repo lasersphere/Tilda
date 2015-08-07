@@ -25,10 +25,12 @@ def load(file, db, raw = False):
         if not raw:
             f.preProc(db)
         return f
-    
+
+    elif e == '.xml':
+        return None
     else:
         return None
 
     
 def check(end):
-    return end in ['.txt', '.tld']
+    return end in ['.txt', '.tld', '.xml']
