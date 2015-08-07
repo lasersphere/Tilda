@@ -95,10 +95,11 @@ def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict=None):
     if oldDict == None:
         oldDict = {}
     xmlEtree = loadXml(xmlFileName)
-    trackdict = form.xmlGetDictFromEle(xmlEtree)[1]['tracks']['track' + str(nOfTrack)]['header']
+    trackdict = getAllTracksOfXmlFileInOneDict(xmlFileName)
     isotopedict = form.xmlGetDictFromEle(xmlEtree)[1]['header']
     oldDict['isotopeData'] = isotopedict
-    oldDict['activeTrackPar'] = trackdict
+    oldDict['trackPars'] = trackdict
+    oldDict['activeTrackPar'] = trackdict['track' + str(nOfTrack)]
     oldDict['pipeInternals'] = {}
     oldDict['pipeInternals']['filePath'] = os.path.split(os.path.split(xmlFileName)[0])[0]
     oldDict['pipeInternals']['curVoltInd'] = 0
@@ -106,7 +107,7 @@ def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict=None):
     oldDict['pipeInternals']['activeXmlFilePath'] = xmlFileName
     for key, val in oldDict.items():
         oldDict[str(key)] = form.convertStrValuesInDict(oldDict[str(key)])
-    return oldDict
+    return oldDict, xmlEtree
 
 def getAllTracksOfXmlFileInOneDict(xmlFile):
     xmlEtree = loadXml(xmlFile)

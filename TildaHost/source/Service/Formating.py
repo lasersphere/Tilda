@@ -226,6 +226,7 @@ def xmlGetDataFromTrack(rootEle, nOfTrack, dataType):
         return dataText
     except:
         print('error while searching ' +str(dataType) +  ' in track' + str(nOfTrack) + ' in ' + str(rootEle))
+        return None
 
 def xmlGetDictFromEle(element):
     """
@@ -242,7 +243,7 @@ def numpyArrayFromString(string, shape):
     :return: numpy array containing the desired values
     """
     string = string.replace('\\n', '').replace('[', '').replace(']', '').replace('  ', ' ')
-    result = np.fromstring(string[1:-1], dtype=np.uint32, sep=' ')
+    result = np.fromstring(string, dtype=np.uint32, sep=' ')
     result = result.reshape(shape)
     return result
 

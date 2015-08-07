@@ -10,6 +10,7 @@ import csv
 import sqlite3
 from datetime import datetime
 import os
+import ast
 
 import numpy as np
 
@@ -33,45 +34,55 @@ class XMLImporter(SpecData):
 
         self.file = os.path.basename(path)
 
-        scandict = tildaFileHandl.scanDictionaryFromXmlFile(self.file, 0)
+        scandict, lxmlEtree = tildaFileHandl.scanDictionaryFromXmlFile(self.file, 0)
         self.nrTracks = scandict['isotopeData']['nOfTracks']
+        trackdict = scandict['trackPars']
 
-        l = self._dimension(path)
-        self.nrScalers = l[1] - 1
-        self.nrTracks = 1
+        self.laserFreq = scandict['isotopeData']['laserFreq']
 
-        self.x = [np.zeros(l[0])]
-        self.cts = [np.zeros((self.nrScalers, l[0]))]
-        self.err = [np.zeros((self.nrScalers, l[0]))]
 
-        with open(path) as f:
-            fmt = '%d.%m.%Y\t%H:%M\n'
-            self.date = datetime.strptime(f.readline(), fmt )
-            f.readline()
-            f.readline()
-            self.stepSize = self.getFloat(f)
-            f.readline()
-            self.nrLoops =  [self.getFloat(f)-1]
-            self.dwell = self.getFloat(f)*10**-6
-            f.readline()
-            f.readline()
-            self.columnnames = f.readline().split('\t')
-            read = csv.reader(f, delimiter = '\t')
-            for i, row in enumerate(read):
-                self.x[0][i] = float(row[0].replace(',', '.'))/50
-                for j, counts in enumerate(row[1:]):
-                    self.cts[0][j][i] = float(counts.replace(',', '.'))
-                    self.err[0][j][i] = max(np.sqrt(float(counts.replace(',', '.'))), 1)
+        self.accVolt = []
+        self.nrScalers = []
+        self.x = []
+        self.cts = []
+        self.err = []
+        self.stepSize = []
+        self.col = []
+        self.dwell = []
 
+        for key, val in sorted(trackdict.items()):
+            nOfactTrack = int(key[5:])
+            nOfsteps = val['nOfSteps']
+            nOfScalers = len(ast.literal_eval(val['activePmtList']))
+            dacStart18Bit = val['dacStartRegister18Bit']
+            dacStepSize18Bit = val['dacStepSize18Bit']
+            dacStop18Bit = dacStart18Bit + (dacStepSize18Bit * nOfsteps)
+            xAxis = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit)
+            ctsstr = tildaForm.xmlGetDataFromTrack(lxmlEtree, nOfactTrack, 'scalerArray')
+            cts = tildaForm.numpyArrayFromString(ctsstr, (nOfsteps, nOfScalers))
+            self.nrScalers.append(nOfScalers)
+            self.x.append(xAxis)
+            self.cts.append(cts)
+            self.err.append(np.sqrt(cts))
+            self.stepSize.append(dacStepSize18Bit)
+            self.accVolt.append(val['postAccOffsetVolt'])
+            self.col.append(val['colDirTrue'])
+            self.dwell.append(val['dwellTime10ns'])
+
+
+
+        self.date = scandict['isotopeData']['isotopeStartTime']
 
     def preProc(self, db):
-        print('Kepco importer is using db', db)
+        print('XML importer is using db: ', db)
         con = sqlite3.connect(db)
         cur = con.cursor()
-        cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset FROM Files WHERE file = ?''', (self.file,))
+        cur.execute('''SELECT accVolt, laserFreq, line, type, voltDivRatio,
+          lineMult, lineOffset, offset FROM Files WHERE file = ?''', (self.file,))
         data = cur.fetchall()
         if len(data) == 1:
-            (self.accVolt, self.laserFreq, self.colDirTrue, self.line, self.type, self.voltDivRatio, self.lineMult, self.lineOffset, self.offset) = data[0]
+            (self.accVolt, self.laserFreq, self.line, self.type, self.voltDivRatio,
+             self.lineMult, self.lineOffset, self.offset) = data[0]
         else:
             raise Exception('TLDImporter: No DB-entry found!')
 
@@ -88,18 +99,7 @@ class XMLImporter(SpecData):
             con.execute('''UPDATE Files SET date = ? WHERE file = ?''', (self.date, self.file))
         con.close()
 
-
-    def _dimension(self, path):
-        '''returns the nr of lines and columns of the file'''
-        with open(path) as f:
-            for i in range(0,4):
-                f.readline()
-            lines = int(self.getFloat(f))
-            for i in range(0,4):
-                f.readline()
-            cols = len(f.readline().split('\t'))
-        return (lines, cols)
-
-
-    def getFloat(self, f):
-        return float(f.readline().split('\t')[1])
+    def evalErr(self, cts, f):
+        cts = cts.reshape(-1)
+        for i, v in enumerate(cts):
+            cts[i] = f(v)

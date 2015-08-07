@@ -18,11 +18,12 @@ draftTrackPars = {'dacStepSize18Bit': form.get24BitInputForVoltage(1, False),
                    'dacStartRegister18Bit': form.get24BitInputForVoltage(-5, False),
                    'nOfSteps': 20,
                    'nOfScans': 30, 'nOfCompletedSteps': 0, 'invertScan': False,
-                   'postAccOffsetVoltControl': 2, 'heinzingerOffsetVolt': 1000,
+                   'postAccOffsetVoltControl': 2, 'postAccOffsetVolt': 1000,
                    'waitForKepco25nsTicks': 40,
                    'waitAfterReset25nsTicks': 4000,
                    'activePmtList': [0, 1],
-                   'colDirTrue': 'False'
+                   'colDirTrue': 'False',
+                   'dwellTime10ns': 2000000
                    }
 
 draftMeasureVoltPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100}
@@ -45,7 +46,7 @@ draftScanDict = {'isotopeData': draftIsotopePars,
 #                                'VoltOrScaler': False, 'dacStepSize18Bit': int('00000010000000000000', 2),
 #                                'dacStartRegister18Bit': int('00000000001000000000', 2), 'nOfSteps': 20,
 #                                'nOfScans': 30, 'nOfCompletedSteps': 0, 'invertScan': False,
-#                                'measureOffset': False, 'postAccOffsetVoltControl': 1, 'heinzingerOffsetVolt': 1000,
+#                                'measureOffset': False, 'postAccOffsetVoltControl': 1, 'postAccOffsetVolt': 1000,
 #                                'waitForKepco25nsTicks': 40,
 #                                'waitAfterReset25nsTicks': 4000,
 #                                'activePmtList': [0, 2, 4]
