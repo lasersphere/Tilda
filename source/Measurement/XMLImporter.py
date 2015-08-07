@@ -32,16 +32,19 @@ class XMLImporter(SpecData):
         print("XMLImporter is reading file", path)
         super(XMLImporter, self).__init__()
 
-        self.file = os.path.basename(path)
+        self.file = path
 
         scandict, lxmlEtree = tildaFileHandl.scanDictionaryFromXmlFile(self.file, 0)
         self.nrTracks = scandict['isotopeData']['nOfTracks']
         trackdict = scandict['trackPars']
 
         self.laserFreq = scandict['isotopeData']['laserFreq']
-
+        self.date = scandict['isotopeData']['isotopeStartTime']
+        self.type = scandict['isotopeData']['type']
+        self.isotope = scandict['isotopeData']['isotope']
 
         self.accVolt = []
+        self.offset = []
         self.nrScalers = []
         self.x = []
         self.cts = []
@@ -49,6 +52,7 @@ class XMLImporter(SpecData):
         self.stepSize = []
         self.col = []
         self.dwell = []
+
 
         for key, val in sorted(trackdict.items()):
             nOfactTrack = int(key[5:])
@@ -68,27 +72,25 @@ class XMLImporter(SpecData):
             self.accVolt.append(val['postAccOffsetVolt'])
             self.col.append(val['colDirTrue'])
             self.dwell.append(val['dwellTime10ns'])
-
-
-
-        self.date = scandict['isotopeData']['isotopeStartTime']
+            self.offset.append(val['postAccOffsetVolt'])
 
     def preProc(self, db):
         print('XML importer is using db: ', db)
         con = sqlite3.connect(db)
         cur = con.cursor()
         cur.execute('''SELECT accVolt, laserFreq, line, type, voltDivRatio,
-          lineMult, lineOffset, offset FROM Files WHERE file = ?''', (self.file,))
+          lineMult, lineOffset FROM Files WHERE file = ?''', (os.path.split(self.file)[1],))
         data = cur.fetchall()
+        print(data)
         if len(data) == 1:
             (self.accVolt, self.laserFreq, self.line, self.type, self.voltDivRatio,
-             self.lineMult, self.lineOffset, self.offset) = data[0]
+             self.lineMult, self.lineOffset) = data[0]
         else:
             raise Exception('TLDImporter: No DB-entry found!')
-
-        for i in range(len(self.x[0])):
-            scanvolt = self.lineMult * (self.x[0][i]) + self.lineOffset + self.offset
-            self.x[0][i] = self.accVolt - scanvolt
+        #
+        # for i in range(len(self.x[0])):
+        #     scanvolt = self.lineMult * (self.x[0][i]) + self.lineOffset + self.offset
+        #     self.x[0][i] = self.accVolt - scanvolt
 
         con.close()
 
