@@ -8,6 +8,7 @@ import os
 
 from Measurement.KepcoImporterTLD import KepcoImporterTLD
 from Measurement.TLDImporter import TLDImporter
+from Measurement.XMLImporter import XMLImporter
 #from Measurement.SimpleImporter import SimpleImporter
 
 
@@ -27,7 +28,10 @@ def load(file, db, raw = False):
         return f
 
     elif e == '.xml':
-        return None
+        f = XMLImporter(file)
+        if not raw:
+            f.preProc(db)
+        return f
     else:
         return None
 
