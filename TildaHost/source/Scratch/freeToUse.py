@@ -37,8 +37,8 @@ import Service.Formating as form
 # ele = fileh.loadXml('D:\Wordkspace\Testdata\sums\\20150623_114059_trs_sum_simontium_27.xml')
 #
 #
-# dicti = draftScan.draftTrackPars
-# form.xmlAddCompleteTrack(ele, dicti, 1)
+# scandict = draftScan.draftTrackPars
+# form.xmlAddCompleteTrack(ele, scandict, 1)
 
 # print(512 >> 2)
 # print(8192 >> 2)

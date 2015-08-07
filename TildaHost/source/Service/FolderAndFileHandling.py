@@ -86,12 +86,14 @@ def loadXml(filename):
     elem = tree.getroot()
     return elem
 
-def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict):
+def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict=None):
     """
-    creates a Scandictionary with the fom as stated in draftScanParameters
+    creates a Scandictionary with the form as stated in draftScanParameters
     values are gained from the loaded xmlFile
     :return: dict, Scandictionary gained from the xml file.
     """
+    if oldDict == None:
+        oldDict = {}
     xmlEtree = loadXml(xmlFileName)
     trackdict = form.xmlGetDictFromEle(xmlEtree)[1]['tracks']['track' + str(nOfTrack)]['header']
     isotopedict = form.xmlGetDictFromEle(xmlEtree)[1]['header']
@@ -105,6 +107,16 @@ def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict):
     for key, val in oldDict.items():
         oldDict[str(key)] = form.convertStrValuesInDict(oldDict[str(key)])
     return oldDict
+
+def getAllTracksOfXmlFileInOneDict(xmlFile):
+    xmlEtree = loadXml(xmlFile)
+    trackd = {}
+    tracks = form.xmlFindOrCreateSubElement(xmlEtree, 'tracks')
+    for t in tracks:
+        trackd[str(t.tag)] = (form.xmlGetDictFromEle(xmlEtree)[1]['tracks'][str(t.tag)]['header'])
+    for key, val in trackd.items():
+        trackd[key] = form.convertStrValuesInDict(trackd[key])
+    return trackd
 
 def savePickle(data, pipeDataDict, ending='.raw'):
     """

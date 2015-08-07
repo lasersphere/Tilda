@@ -259,10 +259,16 @@ def convertStrValuesInDict(dicti):
                 dicti[str(key)] = float(val)
             except (TypeError, ValueError):
                 try:
-                    if val[0] == '[':
-                        dicti[str(key)] = list(map(int, val[1:-1].split(',')))
-                except:
-                    pass
+                       if dicti[str(key)] == 'True':
+                           dicti[str(key)] = True
+                       elif dicti[str(key)] == 'False':
+                           dicti[str(key)] = False
+                except (TypeError, ValueError):
+                    try:
+                        if val[0] == '[':
+                            dicti[str(key)] = list(map(int, val[1:-1].split(',')))
+                    except:
+                        pass
     return dicti
 
 

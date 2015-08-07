@@ -76,5 +76,6 @@ def addTrackDictToDb(db, file, nOfTrack, trackDict):
 
 bdpath = 'D:\\Testi.sqlite'
 createTildaDB(bdpath)
-addTrackDictToDb(bdpath, 'blub.txt', 0, drftScPars.draftTrackPars)
-addTrackDictToDb(bdpath, 'blub.txt', 1, drftScPars.draftTrackPars)
+pollitools._insertFile('D:\\blub.xml', bdpath)
+addTrackDictToDb(bdpath, 'blub.xml', 0, drftScPars.draftTrackPars)
+addTrackDictToDb(bdpath, 'blub.xml', 1, drftScPars.draftTrackPars)

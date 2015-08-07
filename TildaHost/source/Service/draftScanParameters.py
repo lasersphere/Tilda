@@ -10,7 +10,7 @@ Module containing the ScanParameters dictionaries as needed for Scanning with th
 import Service.Formating as form
 
 
-draftIsotopePars = {'version': '1.04', 'type': 'cs', 'isotope': 'calcium_40',
+draftIsotopePars = {'version': '1.06', 'type': 'cs', 'isotope': 'calcium_40',
                'nOfTracks': '1', 'accVolt': '9999.8',
                'laserFreq': '12568.766'}
 
@@ -30,7 +30,7 @@ draftMeasureVoltPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 1
 draftPipeInternals = {
     'curVoltInd': 0,
     'activeTrackNumber': 0,
-    'filePath': 'D:\\CalciumOfflineTests_150728',
+    'filePath': 'D:\\XMLTests_150807',
     'activeXmlFilePath': None
 }
 
