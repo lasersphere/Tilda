@@ -74,8 +74,12 @@ def addTrackDictToDb(db, file, nOfTrack, trackDict):
     con.commit()
     con.close()
 
-bdpath = 'D:\\Testi.sqlite'
-createTildaDB(bdpath)
-pollitools._insertFile('D:\\blub.xml', bdpath)
-addTrackDictToDb(bdpath, 'blub.xml', 0, drftScPars.draftTrackPars)
-addTrackDictToDb(bdpath, 'blub.xml', 1, drftScPars.draftTrackPars)
+bdpath = 'D:\\Workspace\\PyCharm\\Tilda\\PolliFit\\test\\Project\\tildaDB.sqlite'
+projectpath = os.path.split(bdpath)[0]
+# createTildaDB(bdpath)
+# pollitools._insertFile('Data/testTilda.xml', bdpath)
+addTrackDictToDb(bdpath, 'testTilda.xml', 0, drftScPars.draftTrackPars)
+addTrackDictToDb(bdpath, 'testTilda.xml', 1, drftScPars.draftTrackPars)
+addTrackDictToDb(bdpath, 'testTilda.xml', 3, drftScPars.draftTrackPars)
+pollitools.crawl(bdpath, 'Data')
+

@@ -1,39 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="DataSourceManagerImpl" format="xml" hash="2460193948">
-    <data-source source="LOCAL" name="AnaDB" uuid="76f89012-fb77-4979-b471-0f6c06eb907f">
+  <component name="DataSourceManagerImpl" format="xml" hash="3704792038">
+    <data-source source="LOCAL" name="tildaDB" uuid="72766633-3329-47d7-803f-977cadb98303">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:D:\Workspace\PyCharm\Tilda\PolliFit\test\Project\AnaDB.sqlite</jdbc-url>
-      <libraries />
-    </data-source>
-    <data-source source="LOCAL" name="Testdb" uuid="f711ab9e-0a0a-4c63-b2f8-081386f9f558">
-      <driver-ref>sqlite.xerial</driver-ref>
-      <synchronize>true</synchronize>
-      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:D:\Testdb.sqlite</jdbc-url>
-      <libraries />
-    </data-source>
-    <data-source source="LOCAL" name="Testi" uuid="e06f4e23-3224-4260-8afb-4a680cdcb281">
-      <driver-ref>sqlite.xerial</driver-ref>
-      <synchronize>true</synchronize>
-      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:D:\Testi.sqlite</jdbc-url>
-      <libraries>
-        <library>
-          <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/xerial-sqlite-license.txt</url>
-        </library>
-        <library>
-          <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/sqlite-jdbc-3.8.9.jar</url>
-        </library>
-      </libraries>
-    </data-source>
-    <data-source source="LOCAL" name="AnaDB [2]" uuid="a6afae3c-c31c-48e0-9b03-f3f2f4267963">
-      <driver-ref>sqlite.xerial</driver-ref>
-      <synchronize>true</synchronize>
-      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:D:\Workspace\PyCharm\Tilda\PolliFit\test\Project\AnaDB.sqlite</jdbc-url>
+      <jdbc-url>jdbc:sqlite:D:\Workspace\PyCharm\Tilda\PolliFit\test\Project\tildaDB.sqlite</jdbc-url>
       <libraries>
         <library>
           <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/xerial-sqlite-license.txt</url>

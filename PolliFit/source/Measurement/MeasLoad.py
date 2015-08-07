@@ -28,7 +28,9 @@ def load(file, db, raw = False):
         return f
 
     elif e == '.xml':
-        f = XMLImporter(file)
+        file = file.replace('\\', '/')
+        absfile = (os.path.join(os.getcwd(), file))
+        f = XMLImporter(absfile)
         if not raw:
             f.preProc(db)
         return f
