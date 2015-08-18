@@ -57,7 +57,7 @@ class XMLImporter(SpecData):
         for key, val in sorted(trackdict.items()):
             nOfactTrack = int(key[5:])
             nOfsteps = val['nOfSteps']
-            nOfScalers = len(ast.literal_eval(val['activePmtList']))
+            nOfScalers = len(val['activePmtList'])
             dacStart18Bit = val['dacStartRegister18Bit']
             dacStepSize18Bit = val['dacStepSize18Bit']
             dacStop18Bit = dacStart18Bit + (dacStepSize18Bit * nOfsteps)
