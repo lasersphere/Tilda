@@ -24,33 +24,27 @@ rawfiles = [[os.path.join(pathOfRun, file) for file in os.listdir(pathOfRun) if 
 xmlFiles = [[os.path.join(pathOfRun, file) for file in os.listdir(pathOfRun) if file.endswith('.xml')]
          for pathOfRun in runList]
 scandicts = [FileHandle.scanDictionaryFromXmlFile(xmlFile[0], 0, {}) for xmlFile in xmlFiles]
-# v104scandict = scandicts[0][0]
-# v106scandict = Form.convertScanDictV104toV106(v104scandict, Drafts.draftScanDict)
-scandicts[0][0]['isotopeData']['colDirTrue'] = 'True'
+# # v104scandict = scandicts[0][0]
+# # v106scandict = Form.convertScanDictV104toV106(v104scandict, Drafts.draftScanDict)
+# scandicts[0][0]['isotopeData']['colDirTrue'] = 'True'
 scandicts = [Form.convertScanDictV104toV106(scandicts[i][0], Drafts.draftScanDict) for i, j in enumerate(scandicts)]
-print(scandicts[0]['activeTrackPar']['colDirTrue'], 'after loading')
 
-runNumber = 0
+runNumber = 1
 activeScandict = scandicts[runNumber]
 activeScandict.pop('trackPars')  # drop the dictionary which contains all tracks, beacue the pipeline only needs teh active one
 activeScandict['pipeInternals']['filePath'] = 'C:\\TildaOfflinePipeTests'
 activeScandict['activeTrackPar']['nOfCompletedSteps'] = 0
-print(activeScandict['activeTrackPar']['invertScan'], 'before loading to pipe')
 # print(activeScandict['pipeInternals']['filePath'])
 # #
 cspipe = TildaPipe.CsPipe(activeScandict)
 cspipe.start()
-print(cspipe.pipeData['activeTrackPar'])
-print(type(cspipe.pipeData['activeTrackPar']['dwellTime10ns']), 'type of dwellTime10ns')
-print(type(cspipe.pipeData['activeTrackPar']['invertScan']), 'type of invertScan', cspipe.pipeData['activeTrackPar']['invertScan'])
-print(type(cspipe.pipeData['activeTrackPar']['colDirTrue']), 'type of colDirTrue', cspipe.pipeData['activeTrackPar']['colDirTrue'])
-# # #
+# #
 #
-# for file in rawfiles[runNumber]:
-#     print(type(FileHandle.loadPickle(file)), ' type loaded file:', os.path.split(file)[1])
-#     cspipe.feed(FileHandle.loadPickle(file))
+for file in rawfiles[runNumber]:
+    # print(type(FileHandle.loadPickle(file)), ' type loaded file:', os.path.split(file)[1])
+    cspipe.feed(FileHandle.loadPickle(file))
 # cspipe.feed(0)
-# cspipe.clear(cspipe.pipeData)
+cspipe.clear(cspipe.pipeData)
 #
 # # prun4 = os.path.join(path, 'run4')
 # # filesrun4 = [file for file in os.listdir(prun4) if file.endswith('.raw')]

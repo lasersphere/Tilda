@@ -52,9 +52,9 @@ def CsPipe(initialScanPars=None):
     walk = walk.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NAcquireOneScanCS(pipe.pipeData))
     # walk = walk.attach(SN.NPrint())
-    # walk = walk.attach(TN.NSumCS(pipe.pipeData))
+    walk = walk.attach(TN.NSumCS(pipe.pipeData))
     # walk = walk.attach(SN.NPrint())
-    # walk = walk.attach(TN.NSaveSumCS())
+    walk = walk.attach(TN.NSaveSumCS())
     # walk = walk.attach(SN.NPrint())
 
     return pipe
