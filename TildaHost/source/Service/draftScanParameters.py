@@ -23,7 +23,8 @@ draftTrackPars = {'dacStepSize18Bit': form.get24BitInputForVoltage(1, False),
                    'waitAfterReset25nsTicks': 4000,
                    'activePmtList': [0, 1],
                    'colDirTrue': 'False',
-                   'dwellTime10ns': 2000000
+                   'dwellTime10ns': 2000000,
+                  'workingTime': None
                    }
 
 draftMeasureVoltPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100}
@@ -38,7 +39,8 @@ draftPipeInternals = {
 draftScanDict = {'isotopeData': draftIsotopePars,
                  'activeTrackPar': draftTrackPars,
                  'pipeInternals': draftPipeInternals,
-                 'measureVoltPars': draftMeasureVoltPars}
+                 'measureVoltPars': draftMeasureVoltPars
+                 }
 
 # for the time resolved sequencer us this:
 # draftTrackPars = {'MCSSelectTrigger': 0, 'delayticks': 0, 'nOfBins': 10000, 'nOfBunches': 1,

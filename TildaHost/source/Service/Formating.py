@@ -10,7 +10,7 @@ import lxml.etree as ET
 import numpy as np
 import copy
 import logging
-import Service.dataFormat as dataForm
+import ast
 
 def get18BitInputForVoltage(voltage, vRefN=-10, vRefP=10):
     """
@@ -259,19 +259,16 @@ def convertStrValuesInDict(dicti):
             try:
                 dicti[str(key)] = float(val)
             except (TypeError, ValueError):
-                try:
-                       if dicti[str(key)] == 'True':
-                           dicti[str(key)] = True
-                       elif dicti[str(key)] == 'False':
-                           dicti[str(key)] = False
-                except (TypeError, ValueError):
                     try:
                         if val[0] == '[':
                             dicti[str(key)] = list(map(int, val[1:-1].split(',')))
                     except:
                         pass
+                    if dicti[str(key)] == 'True':
+                        dicti[str(key)] = True
+                    elif dicti[str(key)] == 'False':
+                        dicti[str(key)] = False
     return dicti
-
 
 def addWorkingTimeToTrackDict(trackDict):
     """adds the timestamp to the working time of the track"""
@@ -286,3 +283,25 @@ def addWorkingTimeToTrackDict(trackDict):
     worktime.append(time)
     trackDict.update(workingTime=worktime)
     return trackDict
+
+def convertScanDictV104toV106(scandict, draftScanDict):
+    """converts a scandictionary created in Version 1.04 to the new format as it should be in v1.06"""
+    trackdft = draftScanDict['activeTrackPar']
+    track = scandict['activeTrackPar']
+    trackrenamelist = [('start', 'dacStartRegister18Bit'),
+                       ('stepSize', 'dacStepSize18Bit'),
+                       ('heinzingerOffsetVolt', 'postAccOffsetVolt'),
+                       ('heinzingerControl', 'postAccOffsetVoltControl'),
+                       ('dwellTime', 'dwellTime10ns')]
+    track['workingTime'] = ['unknown']
+    track['colDirTrue'] = scandict['isotopeData']['colDirTrue']
+    scandict['isotopeData']['isotopeStartTime'] = scandict['isotopeData']['datetime']
+    scandict['measureVoltPars'] = {k: v for (k, v) in track.items() if k in ['measVoltTimeout10ns', 'measVoltPulseLength25ns']}
+
+    scandict['isotopeData'].pop('colDirTrue')
+    scandict['isotopeData'].pop('datetime')
+    [track.pop(k) for k in ['measVoltTimeout10ns', 'measVoltPulseLength25ns', 'VoltOrScaler', 'measureOffset']]
+    for oldkey, newkey in trackrenamelist:
+        track[newkey] = track.pop(oldkey)
+    scandict['isotopeData']['version'] = 1.06
+    return scandict

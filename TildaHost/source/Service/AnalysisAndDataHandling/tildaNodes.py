@@ -18,7 +18,6 @@ import logging
 import copy
 
 
-
 class NSplit32bData(Node):
     def __init__(self):
         """
@@ -29,11 +28,10 @@ class NSplit32bData(Node):
         super(NSplit32bData, self).__init__()
         self.type = "Split32bData"
 
-
     def processData(self, data, pipeData):
         buf = np.zeros((len(data),), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
                                             ('headerIndex', 'u1'), ('payload', 'u4')])
-        for i,j in enumerate(data):
+        for i, j in enumerate(data):
             result = form.split32bData(j)
             buf[i] = result
         return buf
@@ -70,6 +68,7 @@ class NSaveRawData(Node):
         self.nOfSaves = -1
         self.buf = np.zeros(0, dtype=np.uint32)
 
+
 class NFilterDataForPipeData(Node):
     def __init__(self):
         """
@@ -87,6 +86,7 @@ class NFilterDataForPipeData(Node):
             data = None
         return data
 
+
 class NSumBunchesTRS(Node):
     def __init__(self, pipeData):
         """
@@ -102,9 +102,10 @@ class NSumBunchesTRS(Node):
 
         self.curVoltIndex = 0
         self.voltArray = np.zeros(pipeData['activeTrackPar']['nOfSteps'], dtype=np.uint32)
-        self.timeArray = np.arange(pipeData['activeTrackPar']['delayticks']*10,
-                      (pipeData['activeTrackPar']['delayticks']*10 + pipeData['activeTrackPar']['nOfBins']*10), 10,
-                      dtype=np.uint32)
+        self.timeArray = np.arange(pipeData['activeTrackPar']['delayticks'] * 10,
+                                   (pipeData['activeTrackPar']['delayticks'] * 10 + pipeData['activeTrackPar'][
+                                       'nOfBins'] * 10), 10,
+                                   dtype=np.uint32)
         self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
                                      pipeData['activeTrackPar']['nOfBins'],
                                      len(pipeData['activeTrackPar']['activePmtList'])),
@@ -118,7 +119,7 @@ class NSumBunchesTRS(Node):
                 elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltag step than
                     pipeData['activeTrackPar']['nOfCompletedSteps'] += 1
                     self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)
-            elif j['headerIndex'] == 0:   # MCS/TRS Data
+            elif j['headerIndex'] == 0:  # MCS/TRS Data
                 self.scalerArray = form.trsSum(j, self.curVoltIndex, self.scalerArray,
                                                pipeData['activeTrackPar']['activePmtList'])
         if trsAna.checkIfScanComplete(pipeData):
@@ -129,9 +130,10 @@ class NSumBunchesTRS(Node):
     def clear(self, pipeData):
         self.curVoltIndex = 0
         self.voltArray = np.zeros(pipeData['activeTrackPar']['nOfSteps'], dtype=np.uint32)
-        self.timeArray = np.arange(pipeData['activeTrackPar']['delayticks']*10,
-                      (pipeData['activeTrackPar']['delayticks']*10 + pipeData['activeTrackPar']['nOfBins']*10),
-                      10, dtype=np.uint32)
+        self.timeArray = np.arange(pipeData['activeTrackPar']['delayticks'] * 10,
+                                   (pipeData['activeTrackPar']['delayticks'] * 10 + pipeData['activeTrackPar'][
+                                       'nOfBins'] * 10),
+                                   10, dtype=np.uint32)
         self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
                                      pipeData['activeTrackPar']['nOfBins'],
                                      len(pipeData['activeTrackPar']['activePmtList'])),
@@ -168,7 +170,7 @@ class NAcquireOneScanCS(Node):
         super(NAcquireOneScanCS, self).__init__()
         self.type = 'AcquireOneLoopCS'
         self.bufIncoming = np.zeros((0,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
-                                            ('headerIndex', 'u1'), ('payload', 'u4')])
+                                                 ('headerIndex', 'u1'), ('payload', 'u4')])
         self.voltArray = np.full(pipeData['activeTrackPar']['nOfSteps'], (2 ** 30), dtype=np.uint32)
         self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
                                      len(pipeData['activeTrackPar']['activePmtList'])),
@@ -176,17 +178,18 @@ class NAcquireOneScanCS(Node):
         self.curVoltIndex = 0
         self.totalnOfScalerEvents = 0
 
-
     def processData(self, data, pipeData):
         ret = None
         self.bufIncoming = np.append(self.bufIncoming, data, axis=0)
         for i, j in enumerate(copy.copy(self.bufIncoming)):
             if j['firstHeader'] == progConfigsDict.programs['errorHandler']:  # error send from fpga
-                print('fpga sends error code: ' + str(j['payload']) + 'or in binary: ' + str('{0:032b}'.format(j['payload'])))
+                print('fpga sends error code: ' + str(j['payload']) + 'or in binary: ' + str(
+                    '{0:032b}'.format(j['payload'])))
                 self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
             elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltage step than
                 self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)
-                logging.debug('new Voltageindex: ' + str(self.curVoltIndex) + ' ... with voltage: ' + str(form.getVoltageFrom24Bit(j['payload'])))
+                logging.debug('new Voltageindex: ' + str(self.curVoltIndex) + ' ... with voltage: ' + str(
+                    form.getVoltageFrom24Bit(j['payload'])))
                 self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
             elif j['firstHeader'] == progConfigsDict.programs['continuousSequencer']:
                 self.totalnOfScalerEvents += 1
@@ -203,10 +206,10 @@ class NAcquireOneScanCS(Node):
                         ret = []
                     ret.append(self.scalerArray)
                     logging.debug('Voltindex: ' + str(self.curVoltIndex) +
-                                   'completede steps:  ' + str(pipeData['activeTrackPar']['nOfCompletedSteps']))
+                                  'completede steps:  ' + str(pipeData['activeTrackPar']['nOfCompletedSteps']))
                     self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
-                                     len(pipeData['activeTrackPar']['activePmtList'])),
-                                    dtype=np.uint32)
+                                                 len(pipeData['activeTrackPar']['activePmtList'])),
+                                                dtype=np.uint32)
         return ret
 
     def clear(self, pipeData):
@@ -219,7 +222,7 @@ class NAcquireOneScanCS(Node):
         if np.count_nonzero(self.bufIncoming) > 0:
             logging.warning('Scan not finished, while clearing. Data left: ' + str(self.bufIncoming))
         self.bufIncoming = np.zeros((0,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
-                                            ('headerIndex', 'u1'), ('payload', 'u4')])
+                                                 ('headerIndex', 'u1'), ('payload', 'u4')])
 
 
 class NSumCS(Node):

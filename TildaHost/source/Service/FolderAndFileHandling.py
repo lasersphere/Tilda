@@ -90,7 +90,7 @@ def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict=None):
     """
     creates a Scandictionary with the form as stated in draftScanParameters
     values are gained from the loaded xmlFile
-    :return: dict, Scandictionary gained from the xml file.
+    :return: dict, xmlEtree, Scandictionary gained from the xml file, and xmlEtree element.
     """
     if oldDict == None:
         oldDict = {}
@@ -106,7 +106,7 @@ def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict=None):
     oldDict['pipeInternals']['activeTrackNumber'] = nOfTrack
     oldDict['pipeInternals']['activeXmlFilePath'] = xmlFileName
     for key, val in oldDict.items():
-        oldDict[str(key)] = form.convertStrValuesInDict(oldDict[str(key)])
+        oldDict[key] = form.convertStrValuesInDict(oldDict[key])
     return oldDict, xmlEtree
 
 def getAllTracksOfXmlFileInOneDict(xmlFile):
