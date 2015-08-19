@@ -12,7 +12,9 @@ import Service.FolderAndFileHandling as filhandl
 import Service.ProgramConfigs as progConfigsDict
 import Service.AnalysisAndDataHandling.trsDataAnalysis as trsAna
 import Service.AnalysisAndDataHandling.csDataAnalysis as csAna
+import MPLPlotter
 
+import matplotlib.pyplot as mpl
 import numpy as np
 import logging
 import copy
@@ -186,12 +188,15 @@ class NAcquireOneScanCS(Node):
                 print('fpga sends error code: ' + str(j['payload']) + 'or in binary: ' + str(
                     '{0:032b}'.format(j['payload'])))
                 self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
-            elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltage step than
+
+            elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltage step
                 self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)
                 logging.debug('new Voltageindex: ' + str(self.curVoltIndex) + ' ... with voltage: ' + str(
                     form.getVoltageFrom24Bit(j['payload'])))
                 self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
+
             elif j['firstHeader'] == progConfigsDict.programs['continuousSequencer']:
+                '''scaler entry '''
                 self.totalnOfScalerEvents += 1
                 pipeData['activeTrackPar']['nOfCompletedSteps'] = self.totalnOfScalerEvents // 8  # floored Quotient
                 try:  # sort values in array, will fail if pmt value is not set active in the activePmtList
@@ -202,7 +207,7 @@ class NAcquireOneScanCS(Node):
                 self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
                 if csAna.checkIfScanComplete(pipeData, self.totalnOfScalerEvents):
                     # one Scan over all steps is completed, add Data to return array and clear local buffer.
-                    if ret == None:
+                    if ret is None:
                         ret = []
                     ret.append(self.scalerArray)
                     logging.debug('Voltindex: ' + str(self.curVoltIndex) +
@@ -230,7 +235,7 @@ class NSumCS(Node):
         """
         function to sum up all incoming complete Scans
         input: complete Scans
-        output: complete Sum, when Track is finished
+        output: scalerArray containing the sum of each scaler, voltage
         """
         super(NSumCS, self).__init__()
         self.type = 'SumCS'
@@ -242,15 +247,51 @@ class NSumCS(Node):
         for i, j in enumerate(data):
             self.scalerArray = np.add(self.scalerArray, j)
             logging.debug('sum is: ' + str(self.scalerArray[0:2]) + str(self.scalerArray[-2:]))
-        if csAna.checkIfTrackComplete(pipeData):
-            return self.scalerArray
-        else:
-            return None
+        return self.scalerArray
 
     def clear(self, pipeData):
         self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
                                      len(pipeData['activeTrackPar']['activePmtList'])),
                                     dtype=np.uint32)
+
+class NCheckIfTrackComplete(Node):
+    def __init__(self):
+        """
+        this will only pass scalerArrays to the next node, if the track is complete.
+        """
+        super(NCheckIfTrackComplete, self).__init__()
+        self.type = 'CheckIfTrackComplete'
+
+    def processData(self, data, pipeData):
+        ret = None
+        if csAna.checkIfTrackComplete(pipeData):
+            ret = data
+        return ret
+
+
+class NPlotSum(Node):
+    def __init__(self, pipeData):
+        """
+        function to plot the sum of all incoming complete Scans
+        input: sum
+        output: complete Sum, when Track is finished
+        """
+        super(NPlotSum, self).__init__()
+        self.type = 'PlotSum'
+        trackd = pipeData['activeTrackPar']
+        dacStart18Bit = trackd['dacStartRegister18Bit']
+        dacStepSize18Bit = trackd['dacStepSize18Bit']
+        nOfsteps = trackd['nOfSteps']
+        dacStop18Bit = dacStart18Bit + (dacStepSize18Bit * nOfsteps)
+        self.x = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit)
+
+    def processData(self, data, pipeData):
+        MPLPlotter.plot((self.x, data))
+        MPLPlotter.show()
+        return data
+
+    def clear(self, pipeData):
+        MPLPlotter.show()
 
 
 class NSaveSumCS(Node):

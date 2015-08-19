@@ -86,13 +86,13 @@ def addTrackDictToDb(db, scandict):
     con.commit()
     con.close()
 
-bdpath = 'D:\\Workspace\\PyCharm\\Tilda\\PolliFit\\test\\Project\\tildaDB.sqlite'
-projectpath = os.path.split(bdpath)[0]
-# createTildaDB(bdpath)
-# # pollitools._insertFile('Data/testTilda.xml', bdpath)
-addTrackDictToDb(bdpath, drftScPars.draftScanDict)
-drftScPars.draftScanDict['pipeInternals']['activeTrackNumber'] = 1
-addTrackDictToDb(bdpath, drftScPars.draftScanDict)
-# addTrackDictToDb(bdpath, 'testTilda.xml', 3, drftScPars.draftTrackPars)
-# pollitools.crawl(bdpath, 'Data')
+# bdpath = 'D:\\Workspace\\PyCharm\\Tilda\\PolliFit\\test\\Project\\tildaDB.sqlite'
+# projectpath = os.path.split(bdpath)[0]
+# # createTildaDB(bdpath)
+# # # pollitools._insertFile('Data/testTilda.xml', bdpath)
+# addTrackDictToDb(bdpath, drftScPars.draftScanDict)
+# drftScPars.draftScanDict['pipeInternals']['activeTrackNumber'] = 1
+# addTrackDictToDb(bdpath, drftScPars.draftScanDict)
+# # addTrackDictToDb(bdpath, 'testTilda.xml', 3, drftScPars.draftTrackPars)
+# # pollitools.crawl(bdpath, 'Data')
 

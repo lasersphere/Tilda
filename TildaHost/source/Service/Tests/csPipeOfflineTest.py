@@ -16,8 +16,9 @@ import sys
 
 logging.basicConfig(level=getattr(logging, 'INFO'), format='%(message)s', stream=sys.stdout)
 
-# path = 'R:\\Projekte\\TRIGA\\Measurements and Analysis_Simon\\TildaTestData\\sortedForOfflineTests'
-path = 'C:\\Workspace\\TildaTestData\\TILDATest_15_07_29\\CalciumOfflineTests_150728\\sortedByRuns'
+path = 'R:\\Projekte\\TRIGA\\Measurements and Analysis_Simon\\TILDATest_15_07_29\\CalciumOfflineTests_150728\\sortedByRuns'
+
+# path = 'C:\\Workspace\\TildaTestData\\TILDATest_15_07_29\\CalciumOfflineTests_150728\\sortedByRuns'
 runList = [x[0] for x in os.walk(path)][1:]
 rawfiles = [[os.path.join(pathOfRun, file) for file in os.listdir(pathOfRun) if file.endswith('.raw')]
          for pathOfRun in runList]
@@ -27,14 +28,15 @@ scandicts = [FileHandle.scanDictionaryFromXmlFile(xmlFile[0], 0, {}) for xmlFile
 # # v104scandict = scandicts[0][0]
 # # v106scandict = Form.convertScanDictV104toV106(v104scandict, Drafts.draftScanDict)
 # scandicts[0][0]['isotopeData']['colDirTrue'] = 'True'
+'''the scans has been collected with the sequencer of version 1.04, renaming etc. requires translation: '''
 scandicts = [Form.convertScanDictV104toV106(scandicts[i][0], Drafts.draftScanDict) for i, j in enumerate(scandicts)]
 
 runNumber = 1
 activeScandict = scandicts[runNumber]
 activeScandict.pop('trackPars')  # drop the dictionary which contains all tracks, beacue the pipeline only needs teh active one
-activeScandict['pipeInternals']['filePath'] = 'C:\\TildaOfflinePipeTests'
+activeScandict['pipeInternals']['filePath'] = 'D:\\TildaOfflinePipeTests'
 activeScandict['activeTrackPar']['nOfCompletedSteps'] = 0
-# print(activeScandict['pipeInternals']['filePath'])
+# print(activeScandict['activeTrackPar'])
 # #
 cspipe = TildaPipe.CsPipe(activeScandict)
 cspipe.start()
@@ -43,13 +45,5 @@ cspipe.start()
 for file in rawfiles[runNumber]:
     # print(type(FileHandle.loadPickle(file)), ' type loaded file:', os.path.split(file)[1])
     cspipe.feed(FileHandle.loadPickle(file))
-# cspipe.feed(0)
+# # cspipe.feed(0)
 cspipe.clear(cspipe.pipeData)
-#
-# # prun4 = os.path.join(path, 'run4')
-# # filesrun4 = [file for file in os.listdir(prun4) if file.endswith('.raw')]
-# # for file in filesrun4:
-# #     cspipe.feed(FileHandle.loadPickle(os.path.join(prun4, file)))
-# # print(cspipe.pipeData)
-#
-#
