@@ -16,12 +16,10 @@ import os
 def createTildaDB(db):
     """
     will create an sqlite db suited for Tilda.
-    Existing tables should be ok.
     :param db: str, path to database
     """
-    if not os.path.isfile(db):
-        pollitools.createDB(db)
-        formPolliFitDBtoTildaDB(db)
+    pollitools.createDB(db)
+    formPolliFitDBtoTildaDB(db)
 
 def formPolliFitDBtoTildaDB(db):
     """
@@ -31,55 +29,70 @@ def formPolliFitDBtoTildaDB(db):
     """
     con = sqlite3.connect(db)
 
-    con.executescript('''
-    ALter TABLE Files RENAME TO Files_orig;
-    CREATE TABLE Files ( file TEXT PRIMARY KEY NOT NULL,
-    filePath TEXT UNIQUE NOT NULL,
-    date DATE,
-    isotope TEXT,
+    con.execute('''CREATE TABLE IF NOT EXISTS ScanPars (
+    iso TEXT,
     type TEXT,
-    line TEXT,
-    accVolt FLOAT,
-    laserFreq FLOAT,
-    voltDivRatio FLOAT,
-    lineMult FLOAT,
-    lineOffset FLOAT,
-    trackPars TEXT,
-    FOREIGN KEY (type) REFERENCES Isotopes (iso),
-    FOREIGN KEY (line) REFERENCES Lines (line)
-    );
-    INSERT INTO Files(file, filePath, date, isotope, line, accVolt, laserFreq, voltDivRatio, lineMult, lineOffset)
-    SELECT file, filePath, date, type, line, accVolt, laserFreq, voltDivRatio, lineMult, lineOffset FROM Files_orig;
-    DROP TABLE Files_orig
-    ''')
+    track INT,
+    dacStartRegister18Bit INT,
+    dacStepSize18Bit INT,
+    nOfSteps INT,
+    postAccOffsetVoltControl INT,
+    postAccOffsetVolt INT,
+    nOfScans INT,
+    dwellTime10ns INT,
+    activePmtList TEXT,
+    colDirTrue INT
+    )''')
 
     con.close()
 
-def addTrackDictToDb(db, file, nOfTrack, trackDict):
+def addTrackDictToDb(db, scandict):
     """
     Add a Dictionary containing all infos of a Track to the existing(or not) Trackdictionary
     in the column trackPars of the chosen file. This overwrites the selected Track.
     """
+    isod = scandict['isotopeData']
+    trackd = scandict['activeTrackPar']
+    piped = scandict['pipeInternals']
+    iso = isod['isotope']
+    nOfTrack = piped['activeTrackNumber']
+    sctype = isod['type']
     con = sqlite3.connect(db)
     cur = con.cursor()
-    cur.execute(''' SELECT trackPars FROM Files Where file = ?''', (file,))
-    trackPars = cur.fetchone()[0]
-    if trackPars == None:
-        trackPars = {}
-        trackPars['track' + str(nOfTrack)] = trackDict
-    else:
-        trackPars = ast.literal_eval(trackPars)
-        trackPars['track' + str(nOfTrack)] = trackDict
-    cur.execute('''UPDATE Files SET trackPars = ? WHERE file = ?''', (str(trackPars), file))
+    cur.execute(''' SELECT iso FROM ScanPars Where iso = ? AND track = ?''', (iso, nOfTrack,))
+    if cur.fetchone() is None:
+        cur.execute('''INSERT INTO ScanPars (iso, type, track) VALUES (?, ?, ?)''', (iso, sctype, nOfTrack))
+    cur.execute('''UPDATE ScanPars
+            SET dacStartRegister18Bit = ?,
+            dacStepSize18Bit = ?,
+            nOfSteps = ?,
+            postAccOffsetVoltControl = ?,
+            postAccOffsetVolt = ?,
+            nOfScans = ?,
+            dwellTime10ns = ?,
+            activePmtList = ?,
+            colDirTrue = ?
+             Where iso = ? AND track = ?''',
+                (trackd['dacStartRegister18Bit'],
+                 trackd['dacStepSize18Bit'],
+                 trackd['nOfSteps'],
+                 trackd['postAccOffsetVoltControl'],
+                 trackd['postAccOffsetVolt'],
+                 trackd['nOfScans'],
+                 trackd['dwellTime10ns'],
+                 str(trackd['activePmtList']),
+                 trackd['colDirTrue'],
+                 iso, nOfTrack))
     con.commit()
     con.close()
 
 bdpath = 'D:\\Workspace\\PyCharm\\Tilda\\PolliFit\\test\\Project\\tildaDB.sqlite'
 projectpath = os.path.split(bdpath)[0]
 # createTildaDB(bdpath)
-# pollitools._insertFile('Data/testTilda.xml', bdpath)
-addTrackDictToDb(bdpath, 'testTilda.xml', 0, drftScPars.draftTrackPars)
-addTrackDictToDb(bdpath, 'testTilda.xml', 1, drftScPars.draftTrackPars)
-addTrackDictToDb(bdpath, 'testTilda.xml', 3, drftScPars.draftTrackPars)
-pollitools.crawl(bdpath, 'Data')
+# # pollitools._insertFile('Data/testTilda.xml', bdpath)
+addTrackDictToDb(bdpath, drftScPars.draftScanDict)
+drftScPars.draftScanDict['pipeInternals']['activeTrackNumber'] = 1
+addTrackDictToDb(bdpath, drftScPars.draftScanDict)
+# addTrackDictToDb(bdpath, 'testTilda.xml', 3, drftScPars.draftTrackPars)
+# pollitools.crawl(bdpath, 'Data')
 
