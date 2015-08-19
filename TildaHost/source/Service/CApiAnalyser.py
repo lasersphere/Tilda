@@ -70,8 +70,8 @@ class CApiAnalyser():
 
 
 
-headerpath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\ContinousSequencer\\NiFpga_ContSeqV106.h'
-bitfilepath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\ContinousSequencer\\NiFpga_ContSeqV106.lvbitx'
+headerpath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\HeinzingerAndKepcoTest\\NiFpga_HeinzingerAndKepcoTest_v102.h'
+bitfilepath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\HeinzingerAndKepcoTest\\NiFpga_HeinzingerAndKepcoTest_v102.lvbitx'
 fpgaresource = 'Rio1'
 outputplease = CApiAnalyser()
 outputplease.cApiFileHandler(headerpath, bitfilepath, fpgaresource)

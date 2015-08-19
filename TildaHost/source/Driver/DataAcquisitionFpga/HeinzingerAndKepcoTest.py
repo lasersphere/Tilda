@@ -4,6 +4,7 @@ __author__ = 'noertert'
 from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 import Driver.DataAcquisitionFpga.HeinzingerAndKepcoTestConfig as hat
 import logging
+import time
 
 class HsbAndDac(FPGAInterfaceHandling):
 
@@ -39,7 +40,12 @@ class HsbAndDac(FPGAInterfaceHandling):
             except KeyError:
                 logging.debug('key: ' + deviceStr + ' not found.')
         if deviceNumber != None:
-            self.ReadWrite(hat.heinzingerControl, deviceNumber)
+            self.ReadWrite(hat.postAccOffsetVoltControl, deviceNumber)
+        read = self.ReadWrite(hat.postAccOffsetVoltState).value
+        while deviceNumber != read:
+            read = self.ReadWrite(hat.postAccOffsetVoltState).value
+            print(read)
+            time.sleep(0.25)
         return self.checkFpgaStatus()
 
     def setDacState(self, stateStr):

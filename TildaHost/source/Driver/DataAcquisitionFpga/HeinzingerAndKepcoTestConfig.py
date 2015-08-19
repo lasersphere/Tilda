@@ -3,17 +3,18 @@ __author__ = 'noertert'
 import ctypes
 
 '''Bitfile Signature:'''
-bitfileSignature = '2702394610028D5D0D33227747280129'
+bitfileSignature = '07925F2E9ECF4BF922BD7AEDD0A076D3'
 '''Bitfile Path:'''
-bitfilePath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\HeinzingerAndKepcoTest\\NiFpga_HeinzingerAndKepcoTest_v101.lvbitx'
+bitfilePath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\HeinzingerAndKepcoTest\\NiFpga_HeinzingerAndKepcoTest_v102.lvbitx'
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''
-DacState = {'ref': 0x8112, 'val': ctypes.c_uint(), 'ctr': False}
-actDACRegister = {'ref': 0x8114, 'val': ctypes.c_ulong(), 'ctr': False}
+postAccOffsetVoltState = {'ref': 0x8112, 'val': ctypes.c_ubyte(), 'ctr': False}
+DacState = {'ref': 0x811A, 'val': ctypes.c_uint(), 'ctr': False}
+actDACRegister = {'ref': 0x811C, 'val': ctypes.c_ulong(), 'ctr': False}
 '''Controls:'''
-heinzingerControl = {'ref': 0x811E, 'val': ctypes.c_ubyte(), 'ctr': True}
-DacStateCmdByHost = {'ref': 0x811A, 'val': ctypes.c_uint(), 'ctr': True}
+postAccOffsetVoltControl = {'ref': 0x8116, 'val': ctypes.c_ubyte(), 'ctr': True}
+DacStateCmdByHost = {'ref': 0x8122, 'val': ctypes.c_uint(), 'ctr': True}
 setDACRegister = {'ref': 0x810C, 'val': ctypes.c_ulong(), 'ctr': True}
 
 '''Zustandsnummerierung Labview'''
