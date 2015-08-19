@@ -286,12 +286,16 @@ class NPlotSum(Node):
         self.x = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit)
 
     def processData(self, data, pipeData):
+        logging.info('plotting...')
         MPLPlotter.plot((self.x, data))
-        MPLPlotter.show()
+        file = pipeData['pipeInternals']['activeXmlFilePath'][:-4] + '.png'
+        logging.info('saving plot to' + file)
+        MPLPlotter.save(file)
+        # MPLPlotter.show()
         return data
 
     def clear(self, pipeData):
-        MPLPlotter.show()
+        MPLPlotter.clear()
 
 
 class NSaveSumCS(Node):

@@ -31,19 +31,17 @@ scandicts = [FileHandle.scanDictionaryFromXmlFile(xmlFile[0], 0, {}) for xmlFile
 '''the scans has been collected with the sequencer of version 1.04, renaming etc. requires translation: '''
 scandicts = [Form.convertScanDictV104toV106(scandicts[i][0], Drafts.draftScanDict) for i, j in enumerate(scandicts)]
 
-runNumber = 1
-activeScandict = scandicts[runNumber]
-activeScandict.pop('trackPars')  # drop the dictionary which contains all tracks, beacue the pipeline only needs teh active one
-activeScandict['pipeInternals']['filePath'] = 'D:\\TildaOfflinePipeTests'
-activeScandict['activeTrackPar']['nOfCompletedSteps'] = 0
-# print(activeScandict['activeTrackPar'])
-# #
-cspipe = TildaPipe.CsPipe(activeScandict)
-cspipe.start()
-# #
-#
-for file in rawfiles[runNumber]:
-    # print(type(FileHandle.loadPickle(file)), ' type loaded file:', os.path.split(file)[1])
-    cspipe.feed(FileHandle.loadPickle(file))
-# # cspipe.feed(0)
-cspipe.clear(cspipe.pipeData)
+for i, j in enumerate(scandicts):
+    runNumber = i
+    activeScandict = scandicts[runNumber]
+    activeScandict.pop('trackPars')  # drop the dictionary which contains all tracks, beacue the pipeline only needs teh active one
+    activeScandict['pipeInternals']['filePath'] = 'D:\\TildaOfflinePipeTests'
+    activeScandict['activeTrackPar']['nOfCompletedSteps'] = 0
+
+    cspipe = TildaPipe.CsPipe(activeScandict)
+    cspipe.start()
+
+    for file in rawfiles[runNumber]:
+        # print(type(FileHandle.loadPickle(file)), ' type loaded file:', os.path.split(file)[1])
+        cspipe.feed(FileHandle.loadPickle(file))
+    cspipe.clear(cspipe.pipeData)
