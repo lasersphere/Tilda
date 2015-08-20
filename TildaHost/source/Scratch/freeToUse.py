@@ -20,6 +20,9 @@ import datetime
 import Service.Formating as form
 import ast
 
+import pyqtgraph.examples as pgex
+
+pgex.run()
 # path = 'D:\\Workspace\\Testdata'
 # # print(path)
 # file = 'D:\Workspace\Testdata\\raw\\20150622_185322_trs_simontium_27_track0_0.raw'
@@ -117,8 +120,3 @@ import ast
 # print(np.add(x1, x2))
 
 # print(str('{0:03d}'.format(0)))
-
-dictstr = str({'measureVoltPars': {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100}, 'pipeInternals': {'activeXmlFilePath': 'C:\\TildaOfflinePipeTests\\sums\\cs_sum_Ca_40_018.xml', 'filePath': 'C:\\TildaOfflinePipeTests', 'activeTrackNumber': 0, 'curVoltInd': 0}, 'activeTrackPar': {'nOfSteps': 61, 'activePmtList': '[0, 1]', 'postAccOffsetVolt': 500, 'invertScan': 0, 'colDirTrue': False, 'waitForKepco25nsTicks': 40, 'waitAfterReset25nsTicks': 4000, 'nOfCompletedSteps': 0, 'postAccOffsetVoltControl': 2, 'dacStepSize18Bit': 520, 'dwellTime10ns': 2000000, 'nOfScans': 50, 'workingTime': ['unknown'], 'dacStartRegister18Bit': 503312}, 'isotopeData': {'laserFreq': 12568.766, 'isotope': 'Ca_40', 'isotopeStartTime': '2015-08-18 14:51:02', 'type': 'cs', 'nOfTracks': 1, 'version': 1.06, 'accVolt': 9999.8}})
-print(type(dictstr))
-convdictstr = ast.literal_eval(dictstr)
-print(type(convdictstr['activeTrackPar']['activePmtList']), convdictstr['activeTrackPar']['activePmtList'])
