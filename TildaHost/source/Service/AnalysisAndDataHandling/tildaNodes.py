@@ -12,9 +12,10 @@ import Service.FolderAndFileHandling as filhandl
 import Service.ProgramConfigs as progConfigsDict
 import Service.AnalysisAndDataHandling.trsDataAnalysis as trsAna
 import Service.AnalysisAndDataHandling.csDataAnalysis as csAna
-import MPLPlotter
+import PyQtGraphPlotter
+# import MPLPlotter
 
-import matplotlib.pyplot as mpl
+# import matplotlib.pyplot as mpl
 import numpy as np
 import logging
 import copy
@@ -269,33 +270,33 @@ class NCheckIfTrackComplete(Node):
         return ret
 
 
-class NPlotSum(Node):
-    def __init__(self, pipeData):
-        """
-        function to plot the sum of all incoming complete Scans
-        input: sum
-        output: complete Sum, when Track is finished
-        """
-        super(NPlotSum, self).__init__()
-        self.type = 'PlotSum'
-        trackd = pipeData['activeTrackPar']
-        dacStart18Bit = trackd['dacStartRegister18Bit']
-        dacStepSize18Bit = trackd['dacStepSize18Bit']
-        nOfsteps = trackd['nOfSteps']
-        dacStop18Bit = dacStart18Bit + (dacStepSize18Bit * nOfsteps)
-        self.x = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit)
-
-    def processData(self, data, pipeData):
-        logging.info('plotting...')
-        MPLPlotter.plot((self.x, data))
-        file = pipeData['pipeInternals']['activeXmlFilePath'][:-4] + '.png'
-        logging.info('saving plot to' + file)
-        MPLPlotter.save(file)
-        # MPLPlotter.show()
-        return data
-
-    def clear(self, pipeData):
-        MPLPlotter.clear()
+# class NPlotSum(Node):
+#     def __init__(self, pipeData):
+#         """
+#         function to plot the sum of all incoming complete Scans
+#         input: sum
+#         output: complete Sum, when Track is finished
+#         """
+#         super(NPlotSum, self).__init__()
+#         self.type = 'PlotSum'
+#         trackd = pipeData['activeTrackPar']
+#         dacStart18Bit = trackd['dacStartRegister18Bit']
+#         dacStepSize18Bit = trackd['dacStepSize18Bit']
+#         nOfsteps = trackd['nOfSteps']
+#         dacStop18Bit = dacStart18Bit + (dacStepSize18Bit * nOfsteps)
+#         self.x = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit)
+#
+#     def processData(self, data, pipeData):
+#         logging.info('plotting...')
+#         MPLPlotter.plot((self.x, data))
+#         file = pipeData['pipeInternals']['activeXmlFilePath'][:-4] + '.png'
+#         logging.info('saving plot to' + file)
+#         MPLPlotter.save(file)
+#         # MPLPlotter.show()
+#         return data
+#
+#     def clear(self, pipeData):
+#         MPLPlotter.clear()
 
 
 class NSaveSumCS(Node):
@@ -318,3 +319,27 @@ class NSaveSumCS(Node):
         filhandl.saveXml(rootEle, file, False)
         logging.info('saving Continous Sequencer Sum to: ' + str(file))
         return data
+
+
+class NLivePlot(Node):
+    def __init__(self, pipeData, pltTitle):
+        """
+        function to plot the sum of all incoming complete Scans
+        input: sum
+        output: complete Sum, when Track is finished
+        """
+        super(NLivePlot, self).__init__()
+        self.type = 'LivePlot'
+        trackd = pipeData['activeTrackPar']
+        self.x = form.createXAxisFromTrackDict(trackd)
+        win = pipeData['pipeInternals']['activeGraphicsWindow']
+        self.pl = PyQtGraphPlotter.addPlot(win, pltTitle)
+
+
+    def processData(self, data, pipeData):
+        logging.info('plotting...')
+        PyQtGraphPlotter.plot(self.pl, (self.x, data))
+        return data
+
+    def clear(self, pipeData):
+        pass

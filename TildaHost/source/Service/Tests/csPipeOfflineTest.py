@@ -31,14 +31,14 @@ scandicts = [FileHandle.scanDictionaryFromXmlFile(xmlFile[0], 0, {}) for xmlFile
 '''the scans has been collected with the sequencer of version 1.04, renaming etc. requires translation: '''
 scandicts = [Form.convertScanDictV104toV106(scandicts[i][0], Drafts.draftScanDict) for i, j in enumerate(scandicts)]
 
-for i, j in enumerate(scandicts):
+for i, k in enumerate(scandicts):
     runNumber = i
     activeScandict = scandicts[runNumber]
     activeScandict.pop('trackPars')  # drop the dictionary which contains all tracks, beacue the pipeline only needs teh active one
     activeScandict['pipeInternals']['filePath'] = 'D:\\TildaOfflinePipeTests'
     activeScandict['activeTrackPar']['nOfCompletedSteps'] = 0
 
-    cspipe = TildaPipe.CsPipe(activeScandict)
+    cspipe, proc, rpg, win = TildaPipe.CsPipe(activeScandict)
     cspipe.start()
 
     for file in rawfiles[runNumber]:

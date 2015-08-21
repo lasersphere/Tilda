@@ -28,5 +28,10 @@ for i in range(0, 100):
         # data.extend(dat, _callSync='off')
         # curve.setData(y=data, _callSync='off')
         # curve2.setData(g=data, _callSync='off')
+    elif i == 49:
+        p3 = win.addPlot()
+        dat = np.random.random(10)
+        p1.plot(dat+5, pen=(255,255,0), name="Red curve")
+
     time.sleep(0.02)
 input('anything for exiting...')

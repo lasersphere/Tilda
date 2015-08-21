@@ -33,7 +33,8 @@ draftPipeInternals = {
     'curVoltInd': 0,
     'activeTrackNumber': 0,
     'filePath': 'D:\\XMLTests_150807',
-    'activeXmlFilePath': None
+    'activeXmlFilePath': None,
+    'activeGraphicsWindow': None
 }
 
 draftScanDict = {'isotopeData': draftIsotopePars,

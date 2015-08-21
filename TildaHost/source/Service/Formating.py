@@ -12,6 +12,7 @@ import copy
 import logging
 import ast
 
+
 def get18BitInputForVoltage(voltage, vRefN=-10, vRefP=10):
     """
     function to return an 18-Bit Integer by putting in a voltage +\-10V in DBL
@@ -23,6 +24,7 @@ def get18BitInputForVoltage(voltage, vRefN=-10, vRefP=10):
     b18 = (voltage - vRefN) * ((2 ** 18) - 1)/(vRefP-vRefN)  # from the manual
     b18 = int(b18)
     return b18
+
 
 def get18BitStepSize(stepVolt, vRefN=-10, vRefP=10):
     """
@@ -63,11 +65,13 @@ def getVoltageFrom24Bit(voltage24Bit, removeAddress=True, vRefN=-10, vRefP=10):
     voltfloat = getVoltageFrom18Bit(v18Bit, vRefN, vRefP)
     return voltfloat
 
+
 def getVoltageFrom18Bit(voltage18Bit, vRefN=-10, vRefP=10):
     """function from the manula of the AD5781"""
     voltfloat = (vRefP - vRefN) * voltage18Bit / ((2 ** 18) - 1) + vRefN
     voltfloat = round(voltfloat, 6)
     return voltfloat
+
 
 def get18BitFrom24BitDacReg(voltage24Bit, removeAddress=True):
     """
@@ -81,6 +85,7 @@ def get18BitFrom24BitDacReg(voltage24Bit, removeAddress=True):
     v18Bit = (voltage24Bit >> 2) & ((2 ** 18) - 1)
     return v18Bit
 
+
 def split32bData(int32bData):
     """
     seperate header, headerIndex and payload from each other
@@ -93,6 +98,7 @@ def split32bData(int32bData):
     headerIndex = (int32bData >> (32 - headerLength - 1)) & 1
     payload = int32bData & ((2 ** 23) - 1)
     return (firstHeader, secondHeader, headerIndex, payload)
+
 
 def findVoltage(voltage, voltArray):
     """
@@ -111,6 +117,7 @@ def findVoltage(voltage, voltArray):
     np.put(voltArray, index, voltage)
     return index, voltArray
 
+
 def trsSum(element, actVoltInd, sumArray, activePmtList=range(8)):
     """
     Add new Scaler event on previous acquired ones. Treat each scaler seperatly.
@@ -122,6 +129,7 @@ def trsSum(element, actVoltInd, sumArray, activePmtList=range(8)):
         if pmtsWithEvent & (2 ** val):
             sumArray[actVoltInd, timestamp, ind] += 1 #timestamp equals index in timeArray
     return sumArray
+
 
 def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
     """
@@ -136,6 +144,7 @@ def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
         subEle.text = str(value)
     return subEle
 
+
 def xmlWriteDict(parentEle, dictionary):
     """
     finds or creates a Subelement with the tag tagString and text=value to the
@@ -145,6 +154,7 @@ def xmlWriteDict(parentEle, dictionary):
     for key, val in sorted(dictionary.items(), key=str):
         xmlFindOrCreateSubElement(parentEle, key, val)
     return parentEle
+
 
 def xmlCreateIsotope(isotopeDict):
     """
@@ -159,6 +169,7 @@ def xmlCreateIsotope(isotopeDict):
     xmlFindOrCreateSubElement(root, 'tracks')
     return root
 
+
 def xmlWriteIsoDictToHeader(rootEle, isotopedict):
     """
     write the complete isotopedict and the datetime to the header of the xml structure
@@ -169,6 +180,7 @@ def xmlWriteIsoDictToHeader(rootEle, isotopedict):
     xmlWriteDict(head, isotopedict)
     return rootEle
 
+
 def xmlFindTrackInTracks(rootEle, nOfTrack):
     """
     Finds or Creates the Track with number nOfTrack -> track SubElement
@@ -176,6 +188,7 @@ def xmlFindTrackInTracks(rootEle, nOfTrack):
     tracks = xmlFindOrCreateSubElement(rootEle, 'tracks')
     track = xmlFindOrCreateSubElement(tracks, 'track' + str(nOfTrack))
     return track
+
 
 def xmlWriteToTrack(rootEle, nOfTrack, dataType, newData, headOrDatStr='header',):
     """
@@ -186,6 +199,7 @@ def xmlWriteToTrack(rootEle, nOfTrack, dataType, newData, headOrDatStr='header',
     workOn = xmlFindOrCreateSubElement(track, headOrDatStr)
     return xmlFindOrCreateSubElement(workOn, dataType, newData)
 
+
 def xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackdict):
     """
     write the whole trackdict to the header of the specified Track
@@ -195,6 +209,7 @@ def xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackdict):
     headerEle = xmlFindOrCreateSubElement(track, 'header')
     xmlWriteDict(headerEle, trackdict)
     return rootEle
+
 
 def xmlAddCompleteTrack(rootEle, scanDict, data):
     """
@@ -209,6 +224,7 @@ def xmlAddCompleteTrack(rootEle, scanDict, data):
     xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackDict)
     xmlWriteToTrack(rootEle, nOfTrack, 'scalerArray', data, 'data')
     return rootEle
+
 
 def xmlGetDataFromTrack(rootEle, nOfTrack, dataType):
     """
@@ -228,11 +244,13 @@ def xmlGetDataFromTrack(rootEle, nOfTrack, dataType):
         print('error while searching ' +str(dataType) +  ' in track' + str(nOfTrack) + ' in ' + str(rootEle))
         return None
 
+
 def xmlGetDictFromEle(element):
     """
     Converts an lxml Element into a python dictionary
     """
     return element.tag, dict(map(xmlGetDictFromEle, element)) or element.text
+
 
 def numpyArrayFromString(string, shape):
     """
@@ -246,6 +264,7 @@ def numpyArrayFromString(string, shape):
     result = np.fromstring(string, dtype=np.uint32, sep=' ')
     result = result.reshape(shape)
     return result
+
 
 def convertStrValuesInDict(dicti):
     """
@@ -270,6 +289,7 @@ def convertStrValuesInDict(dicti):
                         dicti[str(key)] = False
     return dicti
 
+
 def addWorkingTimeToTrackDict(trackDict):
     """adds the timestamp to the working time of the track"""
     time = str(dt.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -283,6 +303,7 @@ def addWorkingTimeToTrackDict(trackDict):
     worktime.append(time)
     trackDict.update(workingTime=worktime)
     return trackDict
+
 
 def convertScanDictV104toV106(scandict, draftScanDict):
     """converts a scandictionary created in Version 1.04 to the new format as it should be in v1.06"""
@@ -305,3 +326,16 @@ def convertScanDictV104toV106(scandict, draftScanDict):
         track[newkey] = track.pop(oldkey)
     scandict['isotopeData']['version'] = 1.06
     return scandict
+
+
+def createXAxisFromTrackDict(trackd):
+    """
+    uses a track dictionary to create the x axis, starting with dacStartRegister18Bit,
+    length is nOfSteps and stepsize is dacStepSize18Bit
+    """
+    dacStart18Bit = trackd['dacStartRegister18Bit']
+    dacStepSize18Bit = trackd['dacStepSize18Bit']
+    nOfsteps = trackd['nOfSteps']
+    dacStop18Bit = dacStart18Bit + (dacStepSize18Bit * nOfsteps)
+    x = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit)
+    return x

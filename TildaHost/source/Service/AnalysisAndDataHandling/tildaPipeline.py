@@ -12,6 +12,7 @@ from polliPipe.node import Node
 import Service.ProgramConfigs as progConfigs
 import Service.draftScanParameters as draftPars
 import Service.FolderAndFileHandling as FaFH
+import PyQtGraphPlotter
 
 from polliPipe.pipeline import Pipeline
 
@@ -45,20 +46,23 @@ def CsPipe(initialScanPars=None):
     pipe = Pipeline(start)
 
     pipe.pipeData = initPipeData(initialScanPars)
+    proc, rpg, win = PyQtGraphPlotter.init()
+    pipe.pipeData['pipeInternals']['activeGraphicsWindow'] = win
 
-    # walk = dacStartRegister18Bit.attach(TN.NFilterDataForPipeData())
     walk = start.attach(TN.NSaveRawData())
     # walk = start.attach(SN.NPrint())
     walk = walk.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NAcquireOneScanCS(pipe.pipeData))
     # walk = walk.attach(SN.NPrint())
     walk = walk.attach(TN.NSumCS(pipe.pipeData))
+    # walk = walk.attach(TN.NLivePlot(pipe.pipeData, 'Sum'))
     walk = walk.attach(TN.NCheckIfTrackComplete())
     walk = walk.attach(TN.NSaveSumCS())
-    walk = walk.attach(TN.NPlotSum(pipe.pipeData))
+    # walk = walk.attach(TN.NPlotSum(pipe.pipeData))
     # walk = walk.attach(SN.NPrint())
 
-    return pipe
+    # input('kill or not press anything')
+    return pipe, proc, rpg, win
 
 def initPipeData(initialScanPars):
     """
