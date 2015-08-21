@@ -41,11 +41,14 @@ def processPlotter():
     proc = mp.QtProcess()
     rpg = proc._import('pyqtgraph')
     print(rpg)
-    plotwin = rpg.plot()
-    curve = plotwin.plot(pen='y')
-    # create an empty list in the remote process
+    win = rpg.GraphicsWindow()
+    p1 = win.addPlot()
+    win.nextRow()
+    p2 = win.addPlot()
     data = proc.transfer([])
-    return proc, curve, data
+    data2 = proc.transfer([])
+    return rpg, win, p1, p2, data, data2
+
 
 # outer_pro = processPlotter()
 # processPlotter()
