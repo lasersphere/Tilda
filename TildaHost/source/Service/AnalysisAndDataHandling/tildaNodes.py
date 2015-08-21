@@ -338,7 +338,7 @@ class NLivePlot(Node):
 
     def processData(self, data, pipeData):
         logging.info('plotting...')
-        PyQtGraphPlotter.plot(self.pl, (self.x, data), clear=False)
+        PyQtGraphPlotter.plot(self.pl, (self.x, data), clear=True)
         return data
 
     def clear(self, pipeData):
