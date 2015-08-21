@@ -8,10 +8,12 @@ import Service.FolderAndFileHandling as FileHandle
 import Service.AnalysisAndDataHandling.tildaPipeline as TildaPipe
 import Service.Formating as Form
 import Service.draftScanParameters as Drafts
+import PyQtGraphPlotter
 
 import logging
 import os
 import sys
+import time
 
 
 logging.basicConfig(level=getattr(logging, 'INFO'), format='%(message)s', stream=sys.stdout)
@@ -31,6 +33,9 @@ scandicts = [FileHandle.scanDictionaryFromXmlFile(xmlFile[0], 0, {}) for xmlFile
 '''the scans has been collected with the sequencer of version 1.04, renaming etc. requires translation: '''
 scandicts = [Form.convertScanDictV104toV106(scandicts[i][0], Drafts.draftScanDict) for i, j in enumerate(scandicts)]
 
+scandicts = scandicts[:1]
+# print(len(scandicts))
+
 for i, k in enumerate(scandicts):
     runNumber = i
     activeScandict = scandicts[runNumber]
@@ -38,10 +43,15 @@ for i, k in enumerate(scandicts):
     activeScandict['pipeInternals']['filePath'] = 'D:\\TildaOfflinePipeTests'
     activeScandict['activeTrackPar']['nOfCompletedSteps'] = 0
 
-    cspipe, proc, rpg, win = TildaPipe.CsPipe(activeScandict)
+    proc, rpg, win = PyQtGraphPlotter.init()
+    activeScandict['pipeInternals']['activeGraphicsWindow'] = win
+    cspipe, copy = TildaPipe.CsPipe(activeScandict)
     cspipe.start()
 
     for file in rawfiles[runNumber]:
         # print(type(FileHandle.loadPickle(file)), ' type loaded file:', os.path.split(file)[1])
         cspipe.feed(FileHandle.loadPickle(file))
+        # time.sleep(0.5)
     cspipe.clear(cspipe.pipeData)
+
+input('press anything to exit ')
