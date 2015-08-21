@@ -31,18 +31,9 @@ def addPlot(win, title):
     win.nextRow()
     return plt
 
-def plot(plRef, *args):
+def plot(plRef, *args, **kwargs):
+    if kwargs['clear']:
+        plRef.clear()
     for a in args:
-        plRef.plot(a[0], a[1])
-
-
-# def processPlotter():
-#
-#     print(rpg)
-#     win = rpg.GraphicsWindow()
-#     p1 = win.addPlot()
-#     win.nextRow()
-#     p2 = win.addPlot()
-#     data = proc.transfer([])
-#     data2 = proc.transfer([])
-#     return rpg, win, p1, p2, data, data2
+        for i, j in enumerate(a[1][0]):
+            plRef.plot(a[0], a[1][:, i], pen=(i, len(a[1][0])))
