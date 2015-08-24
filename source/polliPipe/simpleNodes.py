@@ -78,4 +78,4 @@ class NPrint(Node):
         Add data and
         """
         print("PrintNode " + str(self.id) + " item content: "+ str(data))
-        return None
+        return data
