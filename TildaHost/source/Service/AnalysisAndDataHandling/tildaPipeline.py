@@ -61,9 +61,8 @@ def CsPipe(initialScanPars=None):
     # walk = start.attach(SN.NPrint())
     walk = start.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NSortRawDatatoArray(pipe.pipeData))
-    # branch = walk.attach(SN.NPrint())
-    branch = walk.attach(TN.NAccumulateSingleScan(pipe.pipeData))
-    branch = branch.attach(TN.NLivePlot(pipe.pipeData, 'SingleScan'))
+
+    # branch not supported currently
 
     # # walk = walk.attach(SN.NPrint())
     walk = walk.attach(TN.NSumCS(pipe.pipeData))
