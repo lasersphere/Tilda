@@ -382,7 +382,7 @@ class NSaveSumCS(Node):
 
 
 class NLivePlot(Node):
-    def __init__(self, pipeData, winRef, pltTitle):
+    def __init__(self, pipeData, pltTitle):
         """
         function to plot a sorted scaler Array
         input: sorted scaler Array
@@ -392,7 +392,7 @@ class NLivePlot(Node):
         self.type = 'LivePlot'
         trackd = pipeData['activeTrackPar']
         self.x = form.createXAxisFromTrackDict(trackd)
-        # win = pipeData['pipeInternals']['activeGraphicsWindow']
+        winRef = pipeData['pipeInternals']['activeGraphicsWindow']
         self.pl = PyQtGraphPlotter.addPlot(winRef, pltTitle)
 
     def processData(self, data, pipeData):
@@ -401,7 +401,10 @@ class NLivePlot(Node):
         return data
 
     def clear(self, pipeData):
-        pass
+        trackd = pipeData['activeTrackPar']
+        self.x = form.createXAxisFromTrackDict(trackd)
+        winRef = pipeData['pipeInternals']['activeGraphicsWindow']
+        self.pl = PyQtGraphPlotter.addPlot(winRef)
 
 
 class NAccumulateSingleScan(Node):
@@ -429,3 +432,19 @@ class NAccumulateSingleScan(Node):
 
     def clear(self, pipeData):
         self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
+
+
+class NArithmetricScaler(Node):
+    def __init__(self, scalers):
+        super(NArithmetricScaler, self).__init__()
+        self.type = 'ArithmetricScaler'
+        self.scaler = scalers
+
+    def processData(self, data, pipeData):
+        nOfScalers = len(pipeData['activeTrackPar']['activePmtList'])
+        nOfSteps = pipeData['activeTrackPar']['nOfSteps']
+        scalerArray = np.zeros((1, nOfSteps))
+
+        for s in self.scaler:
+            scalerArray += np.copysign(1, s) * data
+

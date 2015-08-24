@@ -55,7 +55,7 @@ def CsPipe(initialScanPars=None):
     # singlproc, singlrpg, singlwin = PyQtGraphPlotter.init()
     # plots.append(singlwin)  # necessary to prevent garbage collection from clean-up
 
-    # pipe.pipeData['pipeInternals']['activeGraphicsWindow'] = sumwin
+    pipe.pipeData['pipeInternals']['activeGraphicsWindow'] = sumwin
 
     # walk = start.attach(TN.NSaveRawData())
     # walk = start.attach(SN.NPrint())
@@ -63,11 +63,11 @@ def CsPipe(initialScanPars=None):
     walk = walk.attach(TN.NSortRawDatatoArray(pipe.pipeData))
     # branch = walk.attach(SN.NPrint())
     branch = walk.attach(TN.NAccumulateSingleScan(pipe.pipeData))
-    branch = branch.attach(TN.NLivePlot(pipe.pipeData, sumwin, 'SingleScan'))
+    branch = branch.attach(TN.NLivePlot(pipe.pipeData, 'SingleScan'))
 
     # # walk = walk.attach(SN.NPrint())
     walk = walk.attach(TN.NSumCS(pipe.pipeData))
-    walk = walk.attach(TN.NLivePlot(pipe.pipeData, sumwin, 'Sum'))
+    walk = walk.attach(TN.NLivePlot(pipe.pipeData, 'Sum'))
     # walk = walk.attach(TN.NCheckIfTrackComplete())
     # # # walk = walk.attach(TN.NSaveSumCS())
     # walk = walk.attach(TN.NLivePlot(pipe.pipeData, sumwin, 'finalSum'))
