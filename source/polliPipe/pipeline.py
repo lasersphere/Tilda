@@ -26,7 +26,7 @@ class Pipeline(object):
         """
         prepare the Pipeline for work
         """
-        starter = Item(self.nextItemId, "dacStartRegister18Bit")
+        starter = Item(self.nextItemId, "start")
         starter.data = {'id': 0, 'pipe': self}
         self.nextItemId += 1
         self.processItem(starter)
