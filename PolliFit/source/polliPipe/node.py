@@ -33,7 +33,7 @@ class Node(object):
         rewrapping processData to hide the internals of the transport mechanism
         """
         newjobs = []
-        if item.type == "dacStartRegister18Bit":
+        if item.type == "start":
             self.id = item.data['id']
             self.Pipeline = item.data['pipe']
             item.data['id'] += 1

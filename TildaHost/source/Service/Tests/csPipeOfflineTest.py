@@ -54,4 +54,5 @@ for i, k in enumerate(scandicts):
         time.sleep(0.5)
     cspipe.clear(cspipe.pipeData)
 
-input('press anything to exit ')
+# input('press anything to exit ')
+time.sleep(1)
