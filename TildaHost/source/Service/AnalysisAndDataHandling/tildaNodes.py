@@ -240,8 +240,6 @@ class NSortRawDatatoArray(Node):
         """
         super(NSortRawDatatoArray, self).__init__()
         self.type = 'NSortRawDatatoArray'
-        self.bufIncoming = np.zeros((0,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
-                                                 ('headerIndex', 'u1'), ('payload', 'u4')])
         self.voltArray = np.full(pipeData['activeTrackPar']['nOfSteps'], (2 ** 30), dtype=np.uint32)
         self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
         self.curVoltIndex = 0
@@ -250,18 +248,15 @@ class NSortRawDatatoArray(Node):
     def processData(self, data, pipeData):
         ret = None
         scan_complete = False
-        self.bufIncoming = np.append(self.bufIncoming, data, axis=0)
-        for i, j in enumerate(copy.copy(self.bufIncoming)):
+        for i, j in enumerate(data):
             if j['firstHeader'] == progConfigsDict.programs['errorHandler']:  # error send from fpga
                 logging.error('fpga sends error code: ' + str(j['payload']) + 'or in binary: ' + str(
                     '{0:032b}'.format(j['payload'])))
-                self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
 
             elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltage step
                 self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)
                 logging.debug('new Voltageindex: ' + str(self.curVoltIndex) + ' ... with voltage: ' + str(
                     form.getVoltageFrom24Bit(j['payload'])))
-                self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
 
             elif j['firstHeader'] == progConfigsDict.programs['continuousSequencer']:
                 '''scaler entry '''
@@ -272,7 +267,6 @@ class NSortRawDatatoArray(Node):
                     self.scalerArray[self.curVoltIndex, pmtIndex] += j['payload']
                 except ValueError:
                     pass
-                self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
                 if csAna.checkIfScanComplete(pipeData, self.totalnOfScalerEvents):
                     # one Scan over all steps is completed, add Data to return array and clear local buffer.
                     scan_complete = True
@@ -294,13 +288,8 @@ class NSortRawDatatoArray(Node):
         self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
         self.curVoltIndex = 0
         self.totalnOfScalerEvents = 0
-        if np.count_nonzero(self.bufIncoming) > 0:
-            logging.warning('Scan not finished, while clearing. Data left: ' + str(self.bufIncoming))
-        self.bufIncoming = np.zeros((0,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
-                                                 ('headerIndex', 'u1'), ('payload', 'u4')])
 
 
-# dont like that there will be arrays with leading zero's
 # create a node which accumulates those half done arrays and passes them to the plotting
 # be careful though not to add up scalers twice.
 # create arithmetric scaler Node
@@ -413,3 +402,30 @@ class NLivePlot(Node):
 
     def clear(self, pipeData):
         pass
+
+
+class NAccumulateSingleScan(Node):
+    def __init__(self, pipeData):
+        """
+
+        input: list of tuples [(scalerArray, scan_complete)... ], missing values are 0
+        output: scalerArray, missing values are 0
+        """
+        super(NAccumulateSingleScan, self).__init__()
+        self.type = 'AccumulateSingleScan'
+
+        self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
+
+    def processData(self, data, pipeData):
+        ret = None
+        for i, j in enumerate(data):
+            if not j[1]:  # work on incomplete Scan
+                self.scalerArray = np.add(self.scalerArray, j[0])
+                ret = self.scalerArray
+            elif j[1]:
+                ret = np.add(self.scalerArray, j[0])
+                self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
+        return ret
+
+    def clear(self, pipeData):
+        self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)

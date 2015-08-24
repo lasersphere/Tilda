@@ -57,17 +57,19 @@ def CsPipe(initialScanPars=None):
     # walk = start.attach(SN.NPrint())
     walk = start.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NSortRawDatatoArray(pipe.pipeData))
-    # walk = walk.attach(TN.NLivePlot(pipe.pipeData, 'SingleScan'))
-    walk = walk.attach(SN.NPrint())
-    # walk = walk.attach(TN.NSumCS(pipe.pipeData))
-    # walk = walk.attach(TN.NLivePlot(pipe.pipeData, 'Sum'))
-    # plots.append(walk)  # necessary to prevent garbage collection from clean-up
+    # branch = walk.attach(TN.NAccumulateSingleScan(pipe.pipeData))
+    # branch = branch.attach(TN.NLivePlot(pipe.pipeData, 'SingleScan'))
+    # plots.append(branch)  # necessary to prevent garbage collection from clean-up
+    # walk = walk.attach(SN.NPrint())
+    walk = walk.attach(TN.NSumCS(pipe.pipeData))
+    walk = walk.attach(TN.NLivePlot(pipe.pipeData, 'Sum'))
+    plots.append(walk)  # necessary to prevent garbage collection from clean-up
     # walk = walk.attach(TN.NCheckIfTrackComplete())
     # # walk = walk.attach(TN.NSaveSumCS())
     # walk = walk.attach(TN.NLivePlot(pipe.pipeData, 'finalSum'))
     # # walk = walk.attach(TN.NPlotSum(pipe.pipeData))
-    # # walk = walk.attach(SN.NPrint())
-
+    # walk = walk.attach(SN.NPrint())
+    #
     return pipe, plots
 
 def initPipeData(initialScanPars):
