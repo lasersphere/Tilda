@@ -404,9 +404,9 @@ class NSaveSumCS(Node):
 class NLivePlot(Node):
     def __init__(self, pipeData, pltTitle):
         """
-        function to plot the sum of all incoming complete Scans
-        input: sum
-        output: complete Sum, when Track is finished
+        function to plot a sorted scaler Array
+        input: sorted scaler Array
+        output: same as input
         """
         super(NLivePlot, self).__init__()
         self.type = 'LivePlot'

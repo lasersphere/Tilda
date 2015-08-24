@@ -8,7 +8,7 @@ import Service.FolderAndFileHandling as FileHandle
 import Service.AnalysisAndDataHandling.tildaPipeline as TildaPipe
 import Service.Formating as Form
 import Service.draftScanParameters as Drafts
-import PyQtGraphPlotter
+
 
 import logging
 import os
@@ -18,10 +18,11 @@ import time
 
 logging.basicConfig(level=getattr(logging, 'INFO'), format='%(message)s', stream=sys.stdout)
 
-# path = 'R:\\Projekte\\TRIGA\\Measurements and Analysis_Simon\\TILDATest_15_07_29\\CalciumOfflineTests_150728\\sortedByRuns'
+path = 'R:\\Projekte\\TRIGA\\Measurements and Analysis_Simon\\TILDATest_15_07_29\\CalciumOfflineTests_150728\\sortedByRuns'
+workdir = 'D:\\TildaOfflinePipeTests'
 
-path = 'C:\\Workspace\\TildaTestData\\TILDATest_15_07_29\\CalciumOfflineTests_150728\\sortedByRuns'
-workdir = 'C:\\TildaOfflinePipeTests'
+# path = 'C:\\Workspace\\TildaTestData\\TILDATest_15_07_29\\CalciumOfflineTests_150728\\sortedByRuns'
+# workdir = 'C:\\TildaOfflinePipeTests'
 runList = [x[0] for x in os.walk(path)][1:]
 rawfiles = [[os.path.join(pathOfRun, file) for file in os.listdir(pathOfRun) if file.endswith('.raw')]
          for pathOfRun in runList]
@@ -44,9 +45,7 @@ for i, k in enumerate(scandicts):
     activeScandict['pipeInternals']['filePath'] = workdir
     activeScandict['activeTrackPar']['nOfCompletedSteps'] = 0
 
-    proc, rpg, win = PyQtGraphPlotter.init()
-    activeScandict['pipeInternals']['activeGraphicsWindow'] = win
-    cspipe, copy = TildaPipe.CsPipe(activeScandict)
+    cspipe, plots = TildaPipe.CsPipe(activeScandict)
     cspipe.start()
 
     for file in rawfiles[runNumber]:
