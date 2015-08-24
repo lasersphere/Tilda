@@ -18,7 +18,7 @@ import PyQtGraphPlotter
 # import matplotlib.pyplot as mpl
 import numpy as np
 import logging
-import copy
+from copy import copy, deepcopy
 
 
 class NSplit32bData(Node):
@@ -382,7 +382,7 @@ class NSaveSumCS(Node):
 
 
 class NLivePlot(Node):
-    def __init__(self, pipeData, pltTitle):
+    def __init__(self, pipeData, winRef, pltTitle):
         """
         function to plot a sorted scaler Array
         input: sorted scaler Array
@@ -392,12 +392,12 @@ class NLivePlot(Node):
         self.type = 'LivePlot'
         trackd = pipeData['activeTrackPar']
         self.x = form.createXAxisFromTrackDict(trackd)
-        win = pipeData['pipeInternals']['activeGraphicsWindow']
-        self.pl = PyQtGraphPlotter.addPlot(win, pltTitle)
+        # win = pipeData['pipeInternals']['activeGraphicsWindow']
+        self.pl = PyQtGraphPlotter.addPlot(winRef, pltTitle)
 
     def processData(self, data, pipeData):
         logging.info('plotting...')
-        PyQtGraphPlotter.plot(self.pl, (self.x, data), clear=True)
+        PyQtGraphPlotter.plot(self.pl, (self.x, copy(data)), clear=True)
         return data
 
     def clear(self, pipeData):

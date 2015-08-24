@@ -51,8 +51,8 @@ for i, k in enumerate(scandicts):
     for file in rawfiles[runNumber]:
         # print(type(FileHandle.loadPickle(file)), ' type loaded file:', os.path.split(file)[1])
         cspipe.feed(FileHandle.loadPickle(file))
-        time.sleep(0.5)
-    cspipe.clear(cspipe.pipeData)
+        time.sleep(0.05)
+    # cspipe.clear(cspipe.pipeData)
 
 # input('press anything to exit ')
 time.sleep(1)
