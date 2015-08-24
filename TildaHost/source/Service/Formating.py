@@ -13,6 +13,9 @@ import logging
 import ast
 
 
+import Service.draftScanParameters as Drafts
+
+
 def get18BitInputForVoltage(voltage, vRefN=-10, vRefP=10):
     """
     function to return an 18-Bit Integer by putting in a voltage +\-10V in DBL
@@ -52,6 +55,7 @@ def get24BitInputForVoltage(voltage, addRegAddress=True, looseSign=False, vRefN=
     if looseSign:
         b24 = b24 - int(2 ** 19)
     return b24
+
 
 def getVoltageFrom24Bit(voltage24Bit, removeAddress=True, vRefN=-10, vRefP=10):
     """
@@ -339,3 +343,15 @@ def createXAxisFromTrackDict(trackd):
     dacStop18Bit = dacStart18Bit + (dacStepSize18Bit * nOfsteps)
     x = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit)
     return x
+
+
+def createDefaultScalerArrayFromScanDict(scand, dft_val=0):
+    """
+    create empty ScalerArray, size is determined by the activeTrackPar in the scan dictionary
+    """
+    trackd = scand['activeTrackPar']
+    nOfSteps = trackd['nOfSteps']
+    nofScaler = len(trackd['activePmtList'])
+    arr = np.full((nOfSteps, nofScaler), dft_val, dtype=np.uint32)
+    return arr
+

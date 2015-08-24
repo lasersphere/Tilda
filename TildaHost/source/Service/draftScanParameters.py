@@ -7,15 +7,15 @@ Created on 20.06.2015
 Module containing the ScanParameters dictionaries as needed for Scanning with the standard Sequencers
 """
 
-import Service.Formating as form
+# import Service.Formating as form
 
 
 draftIsotopePars = {'version': '1.06', 'type': 'cs', 'isotope': 'calcium_40',
                'nOfTracks': '1', 'accVolt': '9999.8',
                'laserFreq': '12568.766'}
 
-draftTrackPars = {'dacStepSize18Bit': form.get24BitInputForVoltage(1, False),
-                   'dacStartRegister18Bit': form.get24BitInputForVoltage(-5, False),
+draftTrackPars = {'dacStepSize18Bit': 10,  # form.get24BitInputForVoltage(1, False),
+                   'dacStartRegister18Bit': 10,  # form.get24BitInputForVoltage(-5, False),
                    'nOfSteps': 20,
                    'nOfScans': 30, 'nOfCompletedSteps': 0, 'invertScan': False,
                    'postAccOffsetVoltControl': 2, 'postAccOffsetVolt': 1000,

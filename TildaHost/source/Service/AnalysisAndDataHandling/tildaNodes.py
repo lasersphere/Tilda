@@ -236,21 +236,20 @@ class NSortRawDatatoArray(Node):
         """
         Node for sorting the splitted raw data into an scaler Array. MIssing Values will be set to 0.
         input: split raw data
-        output: list of scalerArrays, missing values are 0
+        output: list of tuples [(scalerArray, scan_complete)... ], missing values are 0
         """
         super(NSortRawDatatoArray, self).__init__()
         self.type = 'NSortRawDatatoArray'
         self.bufIncoming = np.zeros((0,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
                                                  ('headerIndex', 'u1'), ('payload', 'u4')])
         self.voltArray = np.full(pipeData['activeTrackPar']['nOfSteps'], (2 ** 30), dtype=np.uint32)
-        self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
-                                     len(pipeData['activeTrackPar']['activePmtList'])),
-                                    dtype=np.uint32)
+        self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
         self.curVoltIndex = 0
         self.totalnOfScalerEvents = 0
 
     def processData(self, data, pipeData):
         ret = None
+        scan_complete = False
         self.bufIncoming = np.append(self.bufIncoming, data, axis=0)
         for i, j in enumerate(copy.copy(self.bufIncoming)):
             if j['firstHeader'] == progConfigsDict.programs['errorHandler']:  # error send from fpga
@@ -276,27 +275,23 @@ class NSortRawDatatoArray(Node):
                 self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
                 if csAna.checkIfScanComplete(pipeData, self.totalnOfScalerEvents):
                     # one Scan over all steps is completed, add Data to return array and clear local buffer.
+                    scan_complete = True
                     if ret is None:
                         ret = []
-                    ret.append(self.scalerArray)
+                    ret.append((self.scalerArray, scan_complete))
                     logging.debug('Voltindex: ' + str(self.curVoltIndex) +
                                   'completede steps:  ' + str(pipeData['activeTrackPar']['nOfCompletedSteps']))
-                    self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
-                                                 len(pipeData['activeTrackPar']['activePmtList'])),
-                                                dtype=np.uint32)
+                    self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
+                    scan_complete = False
         if ret is None:
             ret = []
-        ret.append(self.scalerArray)
-        self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
-                                                 len(pipeData['activeTrackPar']['activePmtList'])),
-                                                dtype=np.uint32)
+        ret.append((self.scalerArray, scan_complete))
+        self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
         return ret
 
     def clear(self, pipeData):
         self.voltArray = np.full(pipeData['activeTrackPar']['nOfSteps'], (2 ** 30), dtype=np.uint32)
-        self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
-                                     len(pipeData['activeTrackPar']['activePmtList'])),
-                                    dtype=np.uint32)
+        self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
         self.curVoltIndex = 0
         self.totalnOfScalerEvents = 0
         if np.count_nonzero(self.bufIncoming) > 0:
@@ -320,20 +315,16 @@ class NSumCS(Node):
         """
         super(NSumCS, self).__init__()
         self.type = 'SumCS'
-        self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
-                                     len(pipeData['activeTrackPar']['activePmtList'])),
-                                    dtype=np.uint32)
+        self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
 
     def processData(self, data, pipeData):
         for i, j in enumerate(data):  # data can be a list of completed scans
-            self.scalerArray = np.add(self.scalerArray, j)
+            self.scalerArray = np.add(self.scalerArray, j[0])
             logging.debug('sum is: ' + str(self.scalerArray[0:2]) + str(self.scalerArray[-2:]))
         return self.scalerArray
 
     def clear(self, pipeData):
-        self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
-                                     len(pipeData['activeTrackPar']['activePmtList'])),
-                                    dtype=np.uint32)
+        self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
 
 class NCheckIfTrackComplete(Node):
     def __init__(self):

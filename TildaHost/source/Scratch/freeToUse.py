@@ -5,8 +5,10 @@ Created on '22.06.2015'
 @author:'simkaufm'
 
 """
-import pyqtgraph.examples as ex
+import numpy as np
+import Service.Formating as form
+import Service.draftScanParameters as dft
 
-ex.run()
-
-
+arr = form.createDefaultScalerArrayFromScanDict(dft.draftScanDict)
+print(arr)
+print(np.in1d(arr, (2 ** 30)))
