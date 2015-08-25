@@ -5,7 +5,6 @@ Created on 16.03.2015
 """
 from copy import copy, deepcopy
 
-import logging
 
 class Node(object):
     """
