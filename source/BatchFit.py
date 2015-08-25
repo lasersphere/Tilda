@@ -36,8 +36,7 @@ def batchFit(fileList, db, run = 'Run0'):
     cur.execute('''SELECT isoVar, lineVar, scaler, track FROM Runs WHERE run = ?''', (run,))
     var = cur.fetchall()[0]
     st = (ast.literal_eval(var[2]), ast.literal_eval(var[3]))
-    
-    
+
     print("Go for", run, "with IsoVar = \"" + var[0] + "\" and LineVar = \"" + var[1] + "\"")
     
     errcount = 0
@@ -74,7 +73,7 @@ def singleFit(file, st, db, run, var, cur):
     else:
         iso = DBIsotope(db, meas.type, var[0], var[1])
         spec = FullSpec(iso)
-        meas.deadtimeCorrect(st[0][0],st[1])
+        #meas.deadtimeCorrect(st[0][0],st[1])
 
     fit = SPFitter(spec, meas, st)
     fit.fit()

@@ -60,7 +60,7 @@ class TLDImporter(SpecData):
  
  
     def preProc(self, db):
-        print('Kepco importer is using db', db)
+        print('TLDImporter is using db', db)
         con = sqlite3.connect(db)
         cur = con.cursor()
         cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset FROM Files WHERE file = ?''', (self.file,))
