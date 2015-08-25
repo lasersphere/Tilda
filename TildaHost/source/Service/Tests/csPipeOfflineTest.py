@@ -15,6 +15,8 @@ import os
 import sys
 import time
 
+import sys
+# sys.ps1 = 'Necessary for matplotlib 1.4.0 to work the way it used to'
 
 logging.basicConfig(level=getattr(logging, 'INFO'), format='%(message)s', stream=sys.stdout)
 
@@ -45,14 +47,14 @@ for i, k in enumerate(scandicts):
     activeScandict['pipeInternals']['filePath'] = workdir
     activeScandict['activeTrackPar']['nOfCompletedSteps'] = 0
 
-    cspipe, plots = TildaPipe.CsPipe(activeScandict)
+    cspipe = TildaPipe.CsPipe(activeScandict)
     cspipe.start()
 
     for file in rawfiles[runNumber]:
         # print(type(FileHandle.loadPickle(file)), ' type loaded file:', os.path.split(file)[1])
         cspipe.feed(FileHandle.loadPickle(file))
         time.sleep(0.05)
-    # cspipe.clear(cspipe.pipeData)
+    cspipe.clear(cspipe.pipeData)
 
 # input('press anything to exit ')
 time.sleep(1)

@@ -12,7 +12,7 @@ from polliPipe.node import Node
 import Service.ProgramConfigs as progConfigs
 import Service.draftScanParameters as draftPars
 import Service.FolderAndFileHandling as FaFH
-import PyQtGraphPlotter
+# import PyQtGraphPlotter
 
 
 from polliPipe.pipeline import Pipeline
@@ -48,15 +48,6 @@ def CsPipe(initialScanPars=None):
 
     pipe.pipeData = initPipeData(initialScanPars)
 
-    plots = []
-
-    sumproc, sumrpg, sumwin = PyQtGraphPlotter.init()
-    plots.append(sumwin)  # necessary to prevent garbage collection from clean-up
-    # singlproc, singlrpg, singlwin = PyQtGraphPlotter.init()
-    # plots.append(singlwin)  # necessary to prevent garbage collection from clean-up
-
-    pipe.pipeData['pipeInternals']['activeGraphicsWindow'] = sumwin
-
     # walk = start.attach(TN.NSaveRawData())
     walk = start.attach(TN.NSplit32bData())
     # walk = walk.attach(SN.NPrint())
@@ -68,15 +59,15 @@ def CsPipe(initialScanPars=None):
     # branch not supported currently
 
     walk = walk.attach(TN.NSumCS(pipe.pipeData))
-    # walk = walk.attach(SN.NPrint())
-    walk = walk.attach(TN.NLivePlot(pipe.pipeData, 'Sum'))
+    walk = walk.attach(TN.NMPlLivePlot(pipe.pipeData))
+    walk = walk.attach(SN.NPrint())
     walk = walk.attach(TN.NCheckIfTrackComplete())
     # # # walk = walk.attach(TN.NSaveSumCS())
-    walk = walk.attach(TN.NLivePlot(pipe.pipeData, 'finalSum'))
+    # walk = walk.attach(TN.NPlotSum(pipe.pipeData))
     # # walk = walk.attach(TN.NPlotSum(pipe.pipeData))
     # walk = walk.attach(SN.NPrint())
     #
-    return pipe, plots
+    return pipe
 
 def initPipeData(initialScanPars):
     """

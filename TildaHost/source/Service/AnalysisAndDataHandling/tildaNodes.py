@@ -12,13 +12,16 @@ import Service.FolderAndFileHandling as filhandl
 import Service.ProgramConfigs as progConfigsDict
 import Service.AnalysisAndDataHandling.trsDataAnalysis as trsAna
 import Service.AnalysisAndDataHandling.csDataAnalysis as csAna
-import PyQtGraphPlotter
-# import MPLPlotter
+# import PyQtGraphPlotter
+import MPLPlotter
 
-# import matplotlib.pyplot as mpl
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import numpy as np
 import logging
 from copy import copy, deepcopy
+
+
 
 
 class NSplit32bData(Node):
@@ -330,34 +333,62 @@ class NCheckIfTrackComplete(Node):
         return ret
 
 
-# class NPlotSum(Node):
-#     def __init__(self, pipeData):
-#         """
-#         function to plot the sum of all incoming complete Scans
-#         input: sum
-#         output: complete Sum, when Track is finished
-#         """
-#         super(NPlotSum, self).__init__()
-#         self.type = 'PlotSum'
-#         trackd = pipeData['activeTrackPar']
-#         dacStart18Bit = trackd['dacStartRegister18Bit']
-#         dacStepSize18Bit = trackd['dacStepSize18Bit']
-#         nOfsteps = trackd['nOfSteps']
-#         dacStop18Bit = dacStart18Bit + (dacStepSize18Bit * nOfsteps)
-#         self.x = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit)
-#
-#     def processData(self, data, pipeData):
-#         logging.info('plotting...')
-#         MPLPlotter.plot((self.x, data))
-#         file = pipeData['pipeInternals']['activeXmlFilePath'][:-4] + '.png'
-#         logging.info('saving plot to' + file)
-#         MPLPlotter.save(file)
-#         # MPLPlotter.show()
-#         return data
-#
-#     def clear(self, pipeData):
-#         MPLPlotter.clear()
+class NPlotSum(Node):
+    def __init__(self, pipeData):
+        """
+        function to plot the sum of all incoming complete Scans
+        input: sum
+        output: complete Sum, when Track is finished
+        """
+        super(NPlotSum, self).__init__()
+        self.type = 'PlotSum'
+        trackd = pipeData['activeTrackPar']
+        dacStart18Bit = trackd['dacStartRegister18Bit']
+        dacStepSize18Bit = trackd['dacStepSize18Bit']
+        nOfsteps = trackd['nOfSteps']
+        dacStop18Bit = dacStart18Bit + (dacStepSize18Bit * nOfsteps)
+        self.x = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit)
 
+    def processData(self, data, pipeData):
+        logging.info('plotting...')
+        MPLPlotter.plot((self.x, data))
+        file = pipeData['pipeInternals']['activeXmlFilePath'][:-4] + '.png'
+        logging.info('saving plot to' + file)
+        MPLPlotter.save(file)
+        MPLPlotter.show()
+        return data
+
+    def clear(self, pipeData):
+        MPLPlotter.clear()
+
+class NMPlLivePlot(Node):
+    def __init__(self, pipeData):
+
+        super(NMPlLivePlot, self).__init__()
+        self.type = 'MPlLivePlot'
+
+        plt.ion()
+        self.fig = plt.figure()
+        self.ax1 = self.fig.add_subplot(1, 1, 1)
+        trackd = pipeData['activeTrackPar']
+        self.x = form.createXAxisFromTrackDict(trackd)
+        self.y = form.createDefaultScalerArrayFromScanDict(pipeData)
+        # ani = animation.FuncAnimation(self.fig, self.animate, interval=50)
+        # plt.show()
+        # plt.plot(self.x, self.y)
+
+    def animate(self):
+        self.ax1.clear()
+        self.ax1.plot(self.x, self.y)
+        plt.pause(0.01)
+
+    def processData(self, data, pipeData):
+        self.y = data
+        self.animate()
+        return data
+
+    def clear(self, pipeData):
+        plt.show(block=True)
 
 class NSaveSumCS(Node):
     def __init__(self):
@@ -381,30 +412,30 @@ class NSaveSumCS(Node):
         return data
 
 
-class NLivePlot(Node):
-    def __init__(self, pipeData, pltTitle):
-        """
-        function to plot a sorted scaler Array
-        input: sorted scaler Array
-        output: same as input
-        """
-        super(NLivePlot, self).__init__()
-        self.type = 'LivePlot'
-        trackd = pipeData['activeTrackPar']
-        self.x = form.createXAxisFromTrackDict(trackd)
-        winRef = pipeData['pipeInternals']['activeGraphicsWindow']
-        self.pl = PyQtGraphPlotter.addPlot(winRef, pltTitle)
-
-    def processData(self, data, pipeData):
-        logging.info('plotting...')
-        PyQtGraphPlotter.plot(self.pl, (self.x, data), clear=True)
-        return data
-
-    def clear(self, pipeData):
-        trackd = pipeData['activeTrackPar']
-        self.x = form.createXAxisFromTrackDict(trackd)
-        winRef = pipeData['pipeInternals']['activeGraphicsWindow']
-        self.pl = PyQtGraphPlotter.addPlot(winRef)
+# class NLivePlot(Node):
+#     def __init__(self, pipeData, pltTitle):
+#         """
+#         function to plot a sorted scaler Array
+#         input: sorted scaler Array
+#         output: same as input
+#         """
+#         super(NLivePlot, self).__init__()
+#         self.type = 'LivePlot'
+#         trackd = pipeData['activeTrackPar']
+#         self.x = form.createXAxisFromTrackDict(trackd)
+#         winRef = pipeData['pipeInternals']['activeGraphicsWindow']
+#         self.pl = PyQtGraphPlotter.addPlot(winRef, pltTitle)
+#
+#     def processData(self, data, pipeData):
+#         logging.info('plotting...')
+#         PyQtGraphPlotter.plot(self.pl, (self.x, data), clear=True)
+#         return data
+#
+#     def clear(self, pipeData):
+#         trackd = pipeData['activeTrackPar']
+#         self.x = form.createXAxisFromTrackDict(trackd)
+#         winRef = pipeData['pipeInternals']['activeGraphicsWindow']
+#         self.pl = PyQtGraphPlotter.addPlot(winRef)
 
 
 class NAccumulateSingleScan(Node):
