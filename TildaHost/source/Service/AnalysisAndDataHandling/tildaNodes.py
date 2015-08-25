@@ -184,7 +184,7 @@ class NAcquireOneScanCS(Node):
     def processData(self, data, pipeData):
         ret = None
         self.bufIncoming = np.append(self.bufIncoming, data, axis=0)
-        for i, j in enumerate(copy.copy(self.bufIncoming)):
+        for i, j in enumerate(copy(self.bufIncoming)):
             if j['firstHeader'] == progConfigsDict.programs['errorHandler']:  # error send from fpga
                 logging.error('fpga sends error code: ' + str(j['payload']) + 'or in binary: ' + str(
                     '{0:032b}'.format(j['payload'])))
@@ -308,7 +308,7 @@ class NSumCS(Node):
 
     def processData(self, data, pipeData):
         for i, j in enumerate(data):  # data can be a list of completed scans
-            self.scalerArray = np.add(self.scalerArray, j[0])
+            self.scalerArray = np.add(self.scalerArray, j)
             logging.debug('sum is: ' + str(self.scalerArray[0:2]) + str(self.scalerArray[-2:]))
         return self.scalerArray
 
@@ -397,7 +397,7 @@ class NLivePlot(Node):
 
     def processData(self, data, pipeData):
         logging.info('plotting...')
-        PyQtGraphPlotter.plot(self.pl, (self.x, copy(data)), clear=True)
+        PyQtGraphPlotter.plot(self.pl, (self.x, data), clear=True)
         return data
 
     def clear(self, pipeData):
@@ -410,7 +410,6 @@ class NLivePlot(Node):
 class NAccumulateSingleScan(Node):
     def __init__(self, pipeData):
         """
-
         input: list of tuples [(scalerArray, scan_complete)... ], missing values are 0
         output: scalerArray, missing values are 0
         """

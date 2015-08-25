@@ -58,18 +58,21 @@ def CsPipe(initialScanPars=None):
     pipe.pipeData['pipeInternals']['activeGraphicsWindow'] = sumwin
 
     # walk = start.attach(TN.NSaveRawData())
-    # walk = start.attach(SN.NPrint())
     walk = start.attach(TN.NSplit32bData())
-    walk = walk.attach(TN.NSortRawDatatoArray(pipe.pipeData))
+    # walk = walk.attach(SN.NPrint())
+    walk = walk.attach(TN.NAcquireOneScanCS(pipe.pipeData))
+    # walk = walk.attach(SN.NPrint())
+    # walk = walk.attach(SN.NPrint())
+
 
     # branch not supported currently
 
-    # # walk = walk.attach(SN.NPrint())
     walk = walk.attach(TN.NSumCS(pipe.pipeData))
+    # walk = walk.attach(SN.NPrint())
     walk = walk.attach(TN.NLivePlot(pipe.pipeData, 'Sum'))
-    # walk = walk.attach(TN.NCheckIfTrackComplete())
+    walk = walk.attach(TN.NCheckIfTrackComplete())
     # # # walk = walk.attach(TN.NSaveSumCS())
-    # walk = walk.attach(TN.NLivePlot(pipe.pipeData, sumwin, 'finalSum'))
+    walk = walk.attach(TN.NLivePlot(pipe.pipeData, 'finalSum'))
     # # walk = walk.attach(TN.NPlotSum(pipe.pipeData))
     # walk = walk.attach(SN.NPrint())
     #
