@@ -13,7 +13,7 @@ import Service.ProgramConfigs as progConfigs
 import Service.draftScanParameters as draftPars
 import Service.FolderAndFileHandling as FaFH
 # import PyQtGraphPlotter
-
+import matplotlib.pyplot as plt
 
 from polliPipe.pipeline import Pipeline
 
@@ -46,6 +46,9 @@ def CsPipe(initialScanPars=None):
 
     pipe = Pipeline(start)
 
+    plt.ion()
+
+    fig, (ax1, ax2, ax3) = plt.subplots(3, sharex=True)
     pipe.pipeData = initPipeData(initialScanPars)
 
     # walk = start.attach(TN.NSaveRawData())
@@ -54,15 +57,18 @@ def CsPipe(initialScanPars=None):
     walk = walk.attach(TN.NAcquireOneScanCS(pipe.pipeData))
     # walk = walk.attach(SN.NPrint())
     # walk = walk.attach(SN.NPrint())
-
+    # branch = walk.attach(SN.NPrint())
+    # branch = walk.attach(TN.NSumCS(pipe.pipeData))
+    # branch = branch.attach(TN.NMPlLivePlot(pipe.pipeData, ax1))
 
     # branch not supported currently
 
     walk = walk.attach(TN.NSumCS(pipe.pipeData))
-    walk = walk.attach(TN.NMPlLivePlot(pipe.pipeData))
-    walk = walk.attach(SN.NPrint())
+    walk = walk.attach(TN.NMPlLivePlot(pipe.pipeData, ax2))
+    # walk = walk.attach(SN.NPrint())
     walk = walk.attach(TN.NCheckIfTrackComplete())
-    # # # walk = walk.attach(TN.NSaveSumCS())
+    walk = walk.attach(TN.NMPlLivePlot(pipe.pipeData, ax3))
+# # # walk = walk.attach(TN.NSaveSumCS())
     # walk = walk.attach(TN.NPlotSum(pipe.pipeData))
     # # walk = walk.attach(TN.NPlotSum(pipe.pipeData))
     # walk = walk.attach(SN.NPrint())
