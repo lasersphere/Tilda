@@ -362,12 +362,14 @@ class NPlotSum(Node):
         MPLPlotter.clear()
 
 class NMPlLivePlot(Node):
-    def __init__(self, pipeData, sub):
+    def __init__(self, pipeData, sub, title):
 
         super(NMPlLivePlot, self).__init__()
         self.type = 'MPlLivePlot'
 
         self.ax1 = sub
+        self.title = title
+        self.ax1.set_title(self.title, y=1.08)
         trackd = pipeData['activeTrackPar']
         self.x = form.createXAxisFromTrackDict(trackd)
         self.y = form.createDefaultScalerArrayFromScanDict(pipeData)
@@ -378,6 +380,8 @@ class NMPlLivePlot(Node):
     def animate(self):
         self.ax1.clear()
         self.ax1.plot(self.x, self.y)
+        self.ax1.set_title(self.title, y=1.08)
+
 
 
     def processData(self, data, pipeData):

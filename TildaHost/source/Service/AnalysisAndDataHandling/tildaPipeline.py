@@ -64,10 +64,10 @@ def CsPipe(initialScanPars=None):
     # branch not supported currently
 
     walk = walk.attach(TN.NSumCS(pipe.pipeData))
-    walk = walk.attach(TN.NMPlLivePlot(pipe.pipeData, ax2))
+    walk = walk.attach(TN.NMPlLivePlot(pipe.pipeData, ax2, 'live sum'))
     # walk = walk.attach(SN.NPrint())
     walk = walk.attach(TN.NCheckIfTrackComplete())
-    walk = walk.attach(TN.NMPlLivePlot(pipe.pipeData, ax3))
+    walk = walk.attach(TN.NMPlLivePlot(pipe.pipeData, ax3, 'final sum'))
 # # # walk = walk.attach(TN.NSaveSumCS())
     # walk = walk.attach(TN.NPlotSum(pipe.pipeData))
     # # walk = walk.attach(TN.NPlotSum(pipe.pipeData))

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="DataSourceManagerImpl" format="xml" hash="923066276">
+  <component name="DataSourceManagerImpl" format="xml" hash="2370621996">
     <data-source source="LOCAL" name="tildaDB" uuid="72766633-3329-47d7-803f-977cadb98303">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
