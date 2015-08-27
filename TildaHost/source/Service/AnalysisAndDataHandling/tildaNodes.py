@@ -55,7 +55,7 @@ class NSaveRawData(Node):
         self.type = "SaveRawData"
 
         self.buf = np.zeros(0, dtype=np.uint32)
-        self.maxArraySize = 5000
+        self.maxArraySize = 500
         self.nOfSaves = -1
 
     def processData(self, data, pipeData):

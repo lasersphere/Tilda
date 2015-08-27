@@ -45,7 +45,7 @@ def CsPipe(initialScanPars=None):
 
     pipe = Pipeline(start)
 
-    plt.ion()
+    # plt.ion()
 
     fig, axes = plt.subplots(6, sharex=True)
 
