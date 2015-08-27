@@ -30,14 +30,10 @@ class MCPImporter(SpecData):
         self.nrTracks = 0
         self.nrSteps = 0
         self.offset = 0
-        self.lineMult = 50
-        self.lineOffset = 0
-        self.voltDivRatio = 1000
-        self.accVolt = 30000
 
-        self.x = [[]]
-        self.cts = []
-        self.err = []
+        self.xTemp = [[]]
+        self.ctsTemp = []
+        self.errTemp = []
         
         with open(path) as f:
             self.mcpVersion = f.readline()
@@ -86,20 +82,21 @@ class MCPImporter(SpecData):
             offsets[-1] = str(offsets[-1])[:-2]
             for i in range(4, len(offsets)):
                 self.offset = self.offset + float(offsets[i])
-            self.offset = self.offset/len(offsets)
-
+            self.offset = self.offset/(len(offsets)-4)
             self.nrLoops = len(offsets)
             f.readline()
             line = str(f.readline())
             while line != ',["PM_SpectrumObj"]\n':
                 line = str(f.readline())
             self.counting(f)
+            line = f.readline()
             while line == ',["PM_SpectrumObj"]\n':
-                f.readline()
                 self.counting(f)
                 line = str(f.readline())
             for i in range(0, self.nrSteps):
-                self.x[0].append(float(limits[0]) + i * (float(limits[1]) - float(limits[0])) / self.nrSteps)
+                self.xTemp[0].append(float(limits[0]) + i * (float(limits[1]) - float(limits[0])) / self.nrSteps)
+            self.cts = np.array([self.ctsTemp])
+            self.err = np.array([self.errTemp])
 
     def preProc(self, db):
         print('MCPimporter is using db', db)
@@ -113,12 +110,14 @@ class MCPImporter(SpecData):
             raise Exception('MCPImporter: No DB-entry found!')
 
 
-        for i in range(len(self.x[0])):
-            print(self.lineMult)
-            scanvolt = self.lineMult * (self.x[0][i]) + self.lineOffset + self.offset
-            self.x[0][i] = self.accVolt - scanvolt
+        for i in range(len(self.xTemp[0])):
+            scanvolt = self.lineMult * self.xTemp[0][i] + self.lineOffset + self.offset * self.voltDivRatio
+            self.xTemp[0][i] = self.accVolt - scanvolt
         con.close()
- 
+        self.x = np.array(self.xTemp)
+        self.cts = np.array([self.ctsTemp])
+        self.err = np.array([self.errTemp])
+
     
     def export(self, db):
         con = sqlite3.connect(db)
@@ -127,7 +126,8 @@ class MCPImporter(SpecData):
         con.close()
     
     def counting(self, f):
-        scalerNo = f.readline().split(',')[1]
+        scaler = str(f.readline())
+        scalerNo = scaler.split(',')[1]
         self.nrScalers +=1
         ctscopy = []
         cts = []
@@ -149,6 +149,6 @@ class MCPImporter(SpecData):
                 else:
                     cts.append(float(ctscopy[i]))
                 err.append(np.sqrt(float(cts[-1])))
-        self.cts.append(cts)
-        self.err.append(err)
+        self.ctsTemp.append(cts)
+        self.errTemp.append(err)
         return scalerNo

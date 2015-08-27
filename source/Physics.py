@@ -37,6 +37,9 @@ def freqFromWavenumber(wavenumber):
     '''Returns the frequency/MHz at a given wavenumber/1/cm'''
     return wavenumber * c / 10**4
 
+def diffDoppler(nu_0, volt, m):
+    '''retruns the differential doppler Factor [MHZ/V]'''
+    return nu_0*qe/np.sqrt(2*qe*volt*m*u*c**2)
 
 def relDoppler(laserFreq, v):
     '''Return the doppler shifted frequency of a frame moving with velocity v'''
