@@ -46,8 +46,12 @@ class Node(object):
             newData = self.processData(item.data, self.Pipeline.pipeData)
             if newData is not None:
                 item.data = newData
-                # newjobs = self.createJobs(item, False)  # like this, pyqtgraph allows branching in pipeline
-                newjobs = self.createJobs(item)  # original line, but pyqtgraph does not like this.
+                try:
+                    newjobs = self.createJobs(item)  # original line, but branching plots does not like this.
+                except NotImplementedError:
+                    print('NotImplementedError occured, using shallow copy')
+                    newjobs = self.createJobs(item, False)  # like this, branching plot allows branching in pipeline
+
 
         return newjobs
         

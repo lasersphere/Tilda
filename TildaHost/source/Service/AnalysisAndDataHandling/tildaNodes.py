@@ -16,7 +16,7 @@ import Service.AnalysisAndDataHandling.csDataAnalysis as csAna
 import MPLPlotter
 
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+import matplotlib.transforms as mpltrans
 import numpy as np
 import logging
 from copy import copy, deepcopy
@@ -171,7 +171,7 @@ class NAcquireOneScanCS(Node):
         """
         sum up all scaler events for the incoming data
         input: splitted rawData
-        output: complete Loop of CS-Data, tuple of (voltArray, scalerArray)
+        output: list of completed scalerArrays
         """
         super(NAcquireOneScanCS, self).__init__()
         self.type = 'AcquireOneLoopCS'
@@ -239,7 +239,7 @@ class NSortRawDatatoArray(Node):
         """
         Node for sorting the splitted raw data into an scaler Array. MIssing Values will be set to 0.
         input: split raw data
-        output: list of tuples [(scalerArray, scan_complete)... ], missing values are 0
+        output: list of tuples [(scalerArray, scan_complete_flag)... ], missing values are 0
         """
         super(NSortRawDatatoArray, self).__init__()
         self.type = 'NSortRawDatatoArray'
@@ -282,7 +282,8 @@ class NSortRawDatatoArray(Node):
                     scan_complete = False
         if ret is None:
             ret = []
-        ret.append((self.scalerArray, scan_complete))
+        if np.count_nonzero(self.scalerArray):
+            ret.append((self.scalerArray, scan_complete))
         self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
         return ret
 
@@ -317,6 +318,17 @@ class NSumCS(Node):
 
     def clear(self, pipeData):
         self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
+
+
+class NRemoveTrackCompleteFlag(Node):
+    def __init__(self):
+        super(NRemoveTrackCompleteFlag, self).__init__()
+        self.type = 'NRemoveTrackCompleteFlag'
+
+    def processData(self, data, pipeData):
+        data = [d for d, f in data]
+        return data
+
 
 class NCheckIfTrackComplete(Node):
     def __init__(self):
@@ -361,6 +373,7 @@ class NPlotSum(Node):
     def clear(self, pipeData):
         MPLPlotter.clear()
 
+
 class NMPlLivePlot(Node):
     def __init__(self, pipeData, sub, title):
 
@@ -369,29 +382,26 @@ class NMPlLivePlot(Node):
 
         self.ax1 = sub
         self.title = title
-        self.ax1.set_title(self.title, y=1.08)
+        self.ax1.set_ylabel(self.title)
         trackd = pipeData['activeTrackPar']
         self.x = form.createXAxisFromTrackDict(trackd)
         self.y = form.createDefaultScalerArrayFromScanDict(pipeData)
-        # ani = animation.FuncAnimation(self.fig, self.animate, interval=50)
-        # plt.show()
-        # plt.plot(self.x, self.y)
+        # self.y = []
 
     def animate(self):
         self.ax1.clear()
         self.ax1.plot(self.x, self.y)
-        self.ax1.set_title(self.title, y=1.08)
-
-
+        self.ax1.set_ylabel(self.title)
+        plt.pause(0.01)
 
     def processData(self, data, pipeData):
         self.y = data
         self.animate()
-        plt.pause(0.01)
         return data
 
     def clear(self, pipeData):
         plt.show(block=True)
+
 
 class NSaveSumCS(Node):
     def __init__(self):
@@ -468,16 +478,19 @@ class NAccumulateSingleScan(Node):
 
 
 class NArithmetricScaler(Node):
+    # update this when data is transformed to SpecData
     def __init__(self, scalers):
         super(NArithmetricScaler, self).__init__()
         self.type = 'ArithmetricScaler'
         self.scaler = scalers
 
     def processData(self, data, pipeData):
-        nOfScalers = len(pipeData['activeTrackPar']['activePmtList'])
         nOfSteps = pipeData['activeTrackPar']['nOfSteps']
-        scalerArray = np.zeros((1, nOfSteps))
+        scalerArray = np.zeros((nOfSteps))
 
         for s in self.scaler:
-            scalerArray += np.copysign(1, s) * data
+            c = copy(data[:, s])
+            scalerArray += np.copysign(1, s) * c
+
+        return scalerArray
 

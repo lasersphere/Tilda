@@ -40,7 +40,6 @@ def TrsPipe(initialScanPars):
 def CsPipe(initialScanPars=None):
     """
     Pipeline for the dataflow and analysis of one Isotope using the continous sequencer.
-    Mutliple Tracks are supported.
     """
     start = Node()
 
@@ -48,31 +47,35 @@ def CsPipe(initialScanPars=None):
 
     plt.ion()
 
-    fig, (ax1, ax2, ax3) = plt.subplots(3, sharex=True)
+    fig, axes = plt.subplots(6, sharex=True)
+
     pipe.pipeData = initPipeData(initialScanPars)
 
     # walk = start.attach(TN.NSaveRawData())
     walk = start.attach(TN.NSplit32bData())
-    # walk = walk.attach(SN.NPrint())
-    walk = walk.attach(TN.NAcquireOneScanCS(pipe.pipeData))
-    # walk = walk.attach(SN.NPrint())
-    # walk = walk.attach(SN.NPrint())
-    # branch = walk.attach(SN.NPrint())
-    # branch = walk.attach(TN.NSumCS(pipe.pipeData))
-    # branch = branch.attach(TN.NMPlLivePlot(pipe.pipeData, ax1))
+    walk = walk.attach(TN.NSortRawDatatoArray(pipe.pipeData))
 
-    # branch not supported currently
+    branch = walk.attach(TN.NAccumulateSingleScan(pipe.pipeData))
+    branch1 = branch.attach(TN.NArithmetricScaler([0]))
+    branch1 = branch1.attach(TN.NMPlLivePlot(pipe.pipeData, axes[0], 'single Scan scaler 0'))
 
+    branch2 = branch.attach(TN.NArithmetricScaler([1]))
+    branch2 = branch2.attach(TN.NMPlLivePlot(pipe.pipeData, axes[1], 'single Scan scaler 1'))
+
+    branch3 = branch.attach(TN.NArithmetricScaler([0, 1]))
+    branch3 = branch3.attach(TN.NMPlLivePlot(pipe.pipeData, axes[2], 'single Scan scaler 0+1'))
+
+    walk = walk.attach(TN.NRemoveTrackCompleteFlag())
     walk = walk.attach(TN.NSumCS(pipe.pipeData))
-    walk = walk.attach(TN.NMPlLivePlot(pipe.pipeData, ax2, 'live sum'))
-    # walk = walk.attach(SN.NPrint())
+
+    walk = walk.attach(TN.NMPlLivePlot(pipe.pipeData, axes[3], 'live sum'))
+
+    branch4 = walk.attach(TN.NArithmetricScaler([0, 1]))
+    branch4 = branch4.attach(TN.NMPlLivePlot(pipe.pipeData, axes[4], 'sum scaler 0+1'))
+
     walk = walk.attach(TN.NCheckIfTrackComplete())
-    walk = walk.attach(TN.NMPlLivePlot(pipe.pipeData, ax3, 'final sum'))
-# # # walk = walk.attach(TN.NSaveSumCS())
-    # walk = walk.attach(TN.NPlotSum(pipe.pipeData))
-    # # walk = walk.attach(TN.NPlotSum(pipe.pipeData))
-    # walk = walk.attach(SN.NPrint())
-    #
+    walk = walk.attach(TN.NMPlLivePlot(pipe.pipeData, axes[5], 'final sum'))
+    # walk = walk.attach(TN.NSaveSumCS())
     return pipe
 
 def initPipeData(initialScanPars):

@@ -10,6 +10,8 @@ import Service.Formating as Form
 import Service.draftScanParameters as Drafts
 
 
+import matplotlib.pyplot as plt
+import matplotlib.transforms as mpltrans
 import logging
 import os
 import sys
@@ -20,11 +22,11 @@ import sys
 
 logging.basicConfig(level=getattr(logging, 'INFO'), format='%(message)s', stream=sys.stdout)
 
-# path = 'R:\\Projekte\\TRIGA\\Measurements and Analysis_Simon\\TILDATest_15_07_29\\CalciumOfflineTests_150728\\sortedByRuns'
-# workdir = 'D:\\TildaOfflinePipeTests'
+path = 'R:\\Projekte\\TRIGA\\Measurements and Analysis_Simon\\TILDATest_15_07_29\\CalciumOfflineTests_150728\\sortedByRuns'
+workdir = 'D:\\TildaOfflinePipeTests'
 
-path = 'C:\\Workspace\\TildaTestData\\TILDATest_15_07_29\\CalciumOfflineTests_150728\\sortedByRuns'
-workdir = 'C:\\TildaOfflinePipeTests'
+# path = 'C:\\Workspace\\TildaTestData\\TILDATest_15_07_29\\CalciumOfflineTests_150728\\sortedByRuns'
+# workdir = 'C:\\TildaOfflinePipeTests'
 runList = [x[0] for x in os.walk(path)][1:]
 rawfiles = [[os.path.join(pathOfRun, file) for file in os.listdir(pathOfRun) if file.endswith('.raw')]
          for pathOfRun in runList]
@@ -39,6 +41,8 @@ scandicts = [Form.convertScanDictV104toV106(scandicts[i][0], Drafts.draftScanDic
 
 scandicts = scandicts[:1]
 # print(len(scandicts))
+
+# print(FileHandle.loadPickle(rawfiles[0][-1]))
 
 for i, k in enumerate(scandicts):
     runNumber = i
@@ -55,6 +59,3 @@ for i, k in enumerate(scandicts):
         cspipe.feed(FileHandle.loadPickle(file))
         time.sleep(0.05)
     cspipe.clear(cspipe.pipeData)
-
-# input('press anything to exit ')
-time.sleep(1)
