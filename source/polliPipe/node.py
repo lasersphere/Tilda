@@ -33,6 +33,7 @@ class Node(object):
         """
         newjobs = []
         if item.type == "start":
+            self.start()
             self.id = item.data['id']
             self.Pipeline = item.data['pipe']
             item.data['id'] += 1
@@ -76,7 +77,13 @@ class Node(object):
         Clear the internal memory. Does nothing for generic node, overwrite!
         """
         pass
-    
+
+    def start(self):
+        """
+        setup the memories in the nodes. Does nothing for generic node, overwrite!
+        """
+        pass
+
     def activate(self):
         """
         activate the node
