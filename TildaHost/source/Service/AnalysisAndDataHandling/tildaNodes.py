@@ -180,17 +180,14 @@ class NAcquireOneScanCS(Node):
         self.curVoltIndex = 0
         self.totalnOfScalerEvents = 0
 
-    def initArrays(self, scand):
-        if self.voltArray is None:
-            self.voltArray = form.createXAxisFromTrackDict(scand)
-        elif self.scalerArray is None:
-            self.scalerArray = form.createDefaultScalerArrayFromScanDict(scand)
-        elif self.bufIncoming is None:
-            self.bufIncoming = np.zeros((0,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
+    def start(self):
+        scand = self.Pipeline.pipeData
+        self.voltArray = form.createXAxisFromTrackDict(scand)
+        self.scalerArray = form.createDefaultScalerArrayFromScanDict(scand)
+        self.bufIncoming = np.zeros((0,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
                                                      ('headerIndex', 'u1'), ('payload', 'u4')])
 
     def processData(self, data, pipeData):
-        self.initArrays(pipeData)
         ret = None
         self.bufIncoming = np.append(self.bufIncoming, data, axis=0)
         for i, j in enumerate(copy(self.bufIncoming)):
@@ -255,14 +252,12 @@ class NSortRawDatatoArray(Node):
         self.curVoltIndex = 0
         self.totalnOfScalerEvents = 0
 
-    def initArrays(self, scand):
-        if self.voltArray is None:
-            self.voltArray = form.createDefaultVoltArrayFromScanDict(scand)
-        if self.scalerArray is None:
-            self.scalerArray = form.createDefaultScalerArrayFromScanDict(scand)
+    def start(self):
+        scand = self.Pipeline.pipeData
+        self.voltArray = form.createDefaultVoltArrayFromScanDict(scand)
+        self.scalerArray = form.createDefaultScalerArrayFromScanDict(scand)
 
     def processData(self, data, pipeData):
-        self.initArrays(pipeData)
         ret = None
         scan_complete = False
         for i, j in enumerate(data):
@@ -308,11 +303,6 @@ class NSortRawDatatoArray(Node):
         self.totalnOfScalerEvents = 0
 
 
-# create a node which accumulates those half done arrays and passes them to the plotting
-# be careful though not to add up scalers twice.
-# create arithmetric scaler Node
-
-
 class NSumCS(Node):
     def __init__(self):
         """
@@ -324,9 +314,10 @@ class NSumCS(Node):
         self.type = 'SumCS'
         self.scalerArray = None
 
+    def start(self):
+        self.scalerArray = form.createDefaultScalerArrayFromScanDict(self.Pipeline.pipeData)
+
     def processData(self, data, pipeData):
-        if self.scalerArray is None:
-            self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
         for i, j in enumerate(data):  # data can be a list of completed scans
             self.scalerArray = np.add(self.scalerArray, j)
             logging.debug('sum is: ' + str(self.scalerArray[0:2]) + str(self.scalerArray[-2:]))
@@ -372,9 +363,10 @@ class NPlotSum(Node):
         self.type = 'PlotSum'
         self.x = None
 
+    def start(self):
+        self.x = form.createXAxisFromTrackDict(self.Pipeline.pipeData['activeTrackPar'])
+
     def processData(self, data, pipeData):
-        if self.x is None:
-            self.x = form.createXAxisFromTrackDict(pipeData['activeTrackPar'])
         logging.info('plotting...')
         MPLPlotter.plot((self.x, data))
         file = pipeData['pipeInternals']['activeXmlFilePath'][:-4] + '.png'
@@ -388,28 +380,29 @@ class NPlotSum(Node):
 
 
 class NMPlLivePlot(Node):
-    def __init__(self, sub, title):
+    def __init__(self, ax, title):
         """
         Node for plotting live Data using matplotlib.pyplot
         """
         super(NMPlLivePlot, self).__init__()
         self.type = 'MPlLivePlot'
 
-        self.ax1 = sub  # here lies the problem why deepcopy is failing
+        self.ax = ax  # here lies the problem why deepcopy is failing
         self.title = title
-        self.ax1.set_ylabel(self.title)
+        self.ax.set_ylabel(self.title)
         self.x = None
         self.y = None
 
+    def start(self):
+        self.x = form.createXAxisFromTrackDict(self.Pipeline.pipeData['activeTrackPar'])
+
     def animate(self, x, y):
-        self.ax1.clear()
-        self.ax1.plot(x, y)
-        self.ax1.set_ylabel(self.title)
+        self.ax.clear()
+        self.ax.plot(x, y)
+        self.ax.set_ylabel(self.title)
         plt.pause(0.0001)
 
     def processData(self, data, pipeData):
-        if self.x is None:
-            self.x = form.createXAxisFromTrackDict(pipeData['activeTrackPar'])
         self.y = deepcopy(data)
         self.animate(self.x, self.y)
         return data
@@ -477,9 +470,10 @@ class NAccumulateSingleScan(Node):
 
         self.scalerArray = None
 
+    def start(self):
+        self.scalerArray = form.createDefaultScalerArrayFromScanDict(self.Pipeline.pipeData)
+
     def processData(self, data, pipeData):
-        if self.scalerArray is None:
-            self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
         ret = None
         for i, j in enumerate(data):
             if not j[1]:  # work on incomplete Scan
