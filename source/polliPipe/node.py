@@ -33,10 +33,10 @@ class Node(object):
         """
         newjobs = []
         if item.type == "start":
-            self.start()
             self.id = item.data['id']
             self.Pipeline = item.data['pipe']
             item.data['id'] += 1
+            self.start()
             newjobs = self.createJobs(item, False)
         elif item.type == "stop":
             newjobs = self.createJobs(item, False)
