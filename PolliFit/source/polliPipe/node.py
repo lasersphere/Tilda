@@ -40,7 +40,7 @@ class Node(object):
         elif item.type == "stop":
             newjobs = self.createJobs(item, False)
         elif item.type == "clear":
-            self.clear(self.Pipeline.pipeData)
+            self.clear()
             newjobs = self.createJobs(item, False)
         elif item.type == "data":
             newData = self.processData(item.data, self.Pipeline.pipeData)
@@ -52,11 +52,10 @@ class Node(object):
                     print('NotImplementedError occured, using shallow copy')
                     newjobs = self.createJobs(item, False)  # like this, branching plot allows branching in pipeline
 
-
         return newjobs
         
     
-    def createJobs(self, item, docopy = True, inactive = False):
+    def createJobs(self, item, docopy=True, inactive=False):
         item.previous = self
         result = []
         for i, n in enumerate(self.next):
@@ -72,7 +71,7 @@ class Node(object):
         return result
     
     
-    def clear(self, pipeData):
+    def clear(self):
         """
         Clear the internal memory. Does nothing for generic node, overwrite!
         """

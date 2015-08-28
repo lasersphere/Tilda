@@ -31,27 +31,29 @@ def TestPipe():
 
     pipe = TP.Pipeline(start)
     pipe.pipeData = scnd
-
+    # print(pipe.pipeData)
+    # pipe.start()
+    # print(pipe.pipeData)
     fig, axes = plt.subplots(3, sharex=True)
 
     walk = start.attach(TP.TN.NSplit32bData())
-    walk = walk.attach(TP.TN.NSortRawDatatoArray(pipe.pipeData))
+    walk = walk.attach(TP.TN.NSortRawDatatoArray())
 
     # branching works for now by using shallow copy, if the NotImplementedError occures
     # this is realized by a try loop in processItem in node.py
     # if this is removed and deepcopy is used, the pipeline will fail
-    branch = walk.attach(TP.TN.NAccumulateSingleScan(pipe.pipeData))
+    branch = walk.attach(TP.TN.NAccumulateSingleScan())
 
     branch1 = branch.attach(TP.TN.NArithmetricScaler([0]))
-    branch1 = branch1.attach(TP.TN.NMPlLivePlot(pipe.pipeData, axes[0], 'single Scan scaler 0'))
+    branch1 = branch1.attach(TP.TN.NMPlLivePlot(axes[0], 'single Scan scaler 0'))
 
     branch2 = branch.attach(TP.TN.NArithmetricScaler([1]))
-    branch2 = branch2.attach(TP.TN.NMPlLivePlot(pipe.pipeData, axes[1], 'single Scan scaler 1'))
+    branch2 = branch2.attach(TP.TN.NMPlLivePlot(axes[1], 'single Scan scaler 1'))
 
     walk = walk.attach(TP.TN.NRemoveTrackCompleteFlag())
-    walk = walk.attach(TP.TN.NSumCS(pipe.pipeData))
+    walk = walk.attach(TP.TN.NSumCS())
 
-    walk = walk.attach(TP.TN.NMPlLivePlot(pipe.pipeData, axes[2], 'live sum'))
+    walk = walk.attach(TP.TN.NMPlLivePlot(axes[2], 'live sum'))
 
     return pipe
 
@@ -61,3 +63,5 @@ pipe.start()
 
 for f in rawfiles:
     pipe.feed(fileHandl.loadPickle(f))
+
+pipe.clear()

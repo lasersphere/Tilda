@@ -22,8 +22,6 @@ import logging
 from copy import copy, deepcopy
 
 
-
-
 class NSplit32bData(Node):
     def __init__(self):
         """
@@ -59,7 +57,7 @@ class NSaveRawData(Node):
         self.nOfSaves = -1
 
     def processData(self, data, pipeData):
-        if self.nOfSaves < 0:  # save pipedata, first time something is feeded to the pipelins
+        if self.nOfSaves < 0:  # save pipedata, first time something is fed to the pipelins
             self.nOfSaves = filhandl.savePipeData(pipeData, self.nOfSaves)
             pipeData['activeTrackPar'] = form.addWorkingTimeToTrackDict(pipeData['activeTrackPar'])
         self.buf = np.append(self.buf, data)
@@ -68,9 +66,9 @@ class NSaveRawData(Node):
             self.buf = np.zeros(0, dtype=np.uint32)
         return data
 
-    def clear(self, pipeData):
-        filhandl.saveRawData(self.buf, pipeData, 0)
-        filhandl.savePipeData(pipeData, 0)  # also save the pipeData when clearing
+    def clear(self):
+        filhandl.saveRawData(self.buf, self.Pipeline.pipeData, 0)
+        filhandl.savePipeData(self.Pipeline.pipeData, 0)  # also save the pipeData when clearing
         self.nOfSaves = -1
         self.buf = np.zeros(0, dtype=np.uint32)
 
@@ -133,7 +131,8 @@ class NSumBunchesTRS(Node):
         else:
             return None
 
-    def clear(self, pipeData):
+    def clear(self):
+        pipeData = self.Pipeline.pipeData
         self.curVoltIndex = 0
         self.voltArray = np.zeros(pipeData['activeTrackPar']['nOfSteps'], dtype=np.uint32)
         self.timeArray = np.arange(pipeData['activeTrackPar']['delayticks'] * 10,
@@ -167,7 +166,7 @@ class NSaveTrsSum(Node):
 
 
 class NAcquireOneScanCS(Node):
-    def __init__(self, pipeData):
+    def __init__(self):
         """
         sum up all scaler events for the incoming data
         input: splitted rawData
@@ -175,16 +174,23 @@ class NAcquireOneScanCS(Node):
         """
         super(NAcquireOneScanCS, self).__init__()
         self.type = 'AcquireOneLoopCS'
-        self.bufIncoming = np.zeros((0,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
-                                                 ('headerIndex', 'u1'), ('payload', 'u4')])
-        self.voltArray = np.full(pipeData['activeTrackPar']['nOfSteps'], (2 ** 30), dtype=np.uint32)
-        self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
-                                     len(pipeData['activeTrackPar']['activePmtList'])),
-                                    dtype=np.uint32)
+        self.bufIncoming = None
+        self.voltArray = None
+        self.scalerArray = None
         self.curVoltIndex = 0
         self.totalnOfScalerEvents = 0
 
+    def initArrays(self, scand):
+        if self.voltArray is None:
+            self.voltArray = form.createXAxisFromTrackDict(scand)
+        elif self.scalerArray is None:
+            self.scalerArray = form.createDefaultScalerArrayFromScanDict(scand)
+        elif self.bufIncoming is None:
+            self.bufIncoming = np.zeros((0,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
+                                                     ('headerIndex', 'u1'), ('payload', 'u4')])
+
     def processData(self, data, pipeData):
+        self.initArrays(pipeData)
         ret = None
         self.bufIncoming = np.append(self.bufIncoming, data, axis=0)
         for i, j in enumerate(copy(self.bufIncoming)):
@@ -221,7 +227,8 @@ class NAcquireOneScanCS(Node):
                                                 dtype=np.uint32)
         return ret
 
-    def clear(self, pipeData):
+    def clear(self):
+        pipeData = self.Pipeline.pipeData
         self.voltArray = np.full(pipeData['activeTrackPar']['nOfSteps'], (2 ** 30), dtype=np.uint32)
         self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
                                      len(pipeData['activeTrackPar']['activePmtList'])),
@@ -235,7 +242,7 @@ class NAcquireOneScanCS(Node):
 
 
 class NSortRawDatatoArray(Node):
-    def __init__(self, pipeData):
+    def __init__(self):
         """
         Node for sorting the splitted raw data into an scaler Array. MIssing Values will be set to 0.
         input: split raw data
@@ -243,12 +250,19 @@ class NSortRawDatatoArray(Node):
         """
         super(NSortRawDatatoArray, self).__init__()
         self.type = 'NSortRawDatatoArray'
-        self.voltArray = np.full(pipeData['activeTrackPar']['nOfSteps'], (2 ** 30), dtype=np.uint32)
-        self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
+        self.voltArray = None
+        self.scalerArray = None
         self.curVoltIndex = 0
         self.totalnOfScalerEvents = 0
 
+    def initArrays(self, scand):
+        if self.voltArray is None:
+            self.voltArray = form.createDefaultVoltArrayFromScanDict(scand)
+        if self.scalerArray is None:
+            self.scalerArray = form.createDefaultScalerArrayFromScanDict(scand)
+
     def processData(self, data, pipeData):
+        self.initArrays(pipeData)
         ret = None
         scan_complete = False
         for i, j in enumerate(data):
@@ -287,9 +301,9 @@ class NSortRawDatatoArray(Node):
         self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
         return ret
 
-    def clear(self, pipeData):
-        self.voltArray = np.full(pipeData['activeTrackPar']['nOfSteps'], (2 ** 30), dtype=np.uint32)
-        self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
+    def clear(self):
+        self.voltArray = None
+        self.scalerArray = None
         self.curVoltIndex = 0
         self.totalnOfScalerEvents = 0
 
@@ -300,7 +314,7 @@ class NSortRawDatatoArray(Node):
 
 
 class NSumCS(Node):
-    def __init__(self, pipeData):
+    def __init__(self):
         """
         function to sum up all incoming complete Scans
         input: complete Scans
@@ -308,16 +322,18 @@ class NSumCS(Node):
         """
         super(NSumCS, self).__init__()
         self.type = 'SumCS'
-        self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
+        self.scalerArray = None
 
     def processData(self, data, pipeData):
+        if self.scalerArray is None:
+            self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
         for i, j in enumerate(data):  # data can be a list of completed scans
             self.scalerArray = np.add(self.scalerArray, j)
             logging.debug('sum is: ' + str(self.scalerArray[0:2]) + str(self.scalerArray[-2:]))
         return self.scalerArray
 
-    def clear(self, pipeData):
-        self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
+    def clear(self):
+        self.scalerArray = form.createDefaultScalerArrayFromScanDict(self.Pipeline.pipeData)
 
 
 class NRemoveTrackCompleteFlag(Node):
@@ -346,7 +362,7 @@ class NCheckIfTrackComplete(Node):
 
 
 class NPlotSum(Node):
-    def __init__(self, pipeData):
+    def __init__(self):
         """
         function to plot the sum of all incoming complete Scans
         input: sum
@@ -354,14 +370,11 @@ class NPlotSum(Node):
         """
         super(NPlotSum, self).__init__()
         self.type = 'PlotSum'
-        trackd = pipeData['activeTrackPar']
-        dacStart18Bit = trackd['dacStartRegister18Bit']
-        dacStepSize18Bit = trackd['dacStepSize18Bit']
-        nOfsteps = trackd['nOfSteps']
-        dacStop18Bit = dacStart18Bit + (dacStepSize18Bit * nOfsteps)
-        self.x = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit)
+        self.x = None
 
     def processData(self, data, pipeData):
+        if self.x is None:
+            self.x = form.createXAxisFromTrackDict(pipeData['activeTrackPar'])
         logging.info('plotting...')
         MPLPlotter.plot((self.x, data))
         file = pipeData['pipeInternals']['activeXmlFilePath'][:-4] + '.png'
@@ -370,36 +383,38 @@ class NPlotSum(Node):
         MPLPlotter.show()
         return data
 
-    def clear(self, pipeData):
+    def clear(self):
         MPLPlotter.clear()
 
 
 class NMPlLivePlot(Node):
-    def __init__(self, pipeData, sub, title):
-
+    def __init__(self, sub, title):
+        """
+        Node for plotting live Data using matplotlib.pyplot
+        """
         super(NMPlLivePlot, self).__init__()
         self.type = 'MPlLivePlot'
 
-        self.ax1 = sub
+        self.ax1 = sub  # here lies the problem why deepcopy is failing
         self.title = title
         self.ax1.set_ylabel(self.title)
-        trackd = pipeData['activeTrackPar']
-        self.x = form.createXAxisFromTrackDict(trackd)
-        self.y = form.createDefaultScalerArrayFromScanDict(pipeData)
-        # self.y = []
+        self.x = None
+        self.y = None
 
-    def animate(self):
+    def animate(self, x, y):
         self.ax1.clear()
-        self.ax1.plot(self.x, self.y)
+        self.ax1.plot(x, y)
         self.ax1.set_ylabel(self.title)
-        plt.pause(0.01)
+        plt.pause(0.0001)
 
     def processData(self, data, pipeData):
-        self.y = data
-        self.animate()
+        if self.x is None:
+            self.x = form.createXAxisFromTrackDict(pipeData['activeTrackPar'])
+        self.y = deepcopy(data)
+        self.animate(self.x, self.y)
         return data
 
-    def clear(self, pipeData):
+    def clear(self):
         plt.show(block=True)
 
 
@@ -426,7 +441,7 @@ class NSaveSumCS(Node):
 
 
 # class NLivePlot(Node):
-#     def __init__(self, pipeData, pltTitle):
+# def __init__(self, pipeData, pltTitle):
 #         """
 #         function to plot a sorted scaler Array
 #         input: sorted scaler Array
@@ -452,7 +467,7 @@ class NSaveSumCS(Node):
 
 
 class NAccumulateSingleScan(Node):
-    def __init__(self, pipeData):
+    def __init__(self):
         """
         input: list of tuples [(scalerArray, scan_complete)... ], missing values are 0
         output: scalerArray, missing values are 0
@@ -460,9 +475,11 @@ class NAccumulateSingleScan(Node):
         super(NAccumulateSingleScan, self).__init__()
         self.type = 'AccumulateSingleScan'
 
-        self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
+        self.scalerArray = None
 
     def processData(self, data, pipeData):
+        if self.scalerArray is None:
+            self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
         ret = None
         for i, j in enumerate(data):
             if not j[1]:  # work on incomplete Scan
@@ -473,8 +490,8 @@ class NAccumulateSingleScan(Node):
                 self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
         return ret
 
-    def clear(self, pipeData):
-        self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
+    def clear(self):
+        self.scalerArray = form.createDefaultScalerArrayFromScanDict(self.Pipeline.pipeData)
 
 
 class NArithmetricScaler(Node):

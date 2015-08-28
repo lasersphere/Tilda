@@ -355,3 +355,13 @@ def createDefaultScalerArrayFromScanDict(scand, dft_val=0):
     arr = np.full((nOfSteps, nofScaler), dft_val, dtype=np.uint32)
     return arr
 
+def createDefaultVoltArrayFromScanDict(scand, dft_val=(2 ** 30)):
+    """
+    create Default Voltage array, with default values in dft_val
+    (2 ** 30) is chosen, because this is an default value which is not reachable by the DAC
+    """
+    trackd = scand['activeTrackPar']
+    nOfSteps = trackd['nOfSteps']
+    arr = np.full((nOfSteps,), dft_val, dtype=np.uint32)
+
+    return arr
