@@ -6,24 +6,43 @@ Created on '27.08.2015'
 
 
 This module was created to test the Pipeline towards branching with plots.
-Currently there is a problem with the references to the figure
+
+To get this going, please set the TildaHost/source folder AND the PolliFit/source folders as Sources Root directory
 """
 
 import Service.AnalysisAndDataHandling.tildaPipeline as TP
-import Service.FolderAndFileHandling as fileHandl
 import matplotlib.pyplot as plt
 
-import os
+# example scan dictionary:
+scnd = {
+    'measureVoltPars': {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100},
+        'isotopeData': {'accVolt': 9999.8, 'type': 'cs', 'isotopeStartTime': '2015-08-27 14:45:18',
+                        'version': 1.06, 'nOfTracks': 1, 'isotope': 'Ca_40', 'laserFreq': 12568.766},
+        'pipeInternals': {'curVoltInd': 0, 'activeXmlFilePath': None, 'activeTrackNumber': 0,
+                          'filePath': None},
+        'activeTrackPar': {'dacStartRegister18Bit': 503312, 'invertScan': 0, 'waitForKepco25nsTicks': 40,
+                           'nOfSteps': 61, 'waitAfterReset25nsTicks': 4000, 'dacStepSize18Bit': 520,
+                           'activePmtList': [0, 1], 'nOfCompletedSteps': 0, 'postAccOffsetVolt': 500,
+                           'dwellTime10ns': 2000000, 'nOfScans': 50, 'colDirTrue': False,
+                           'workingTime': ['unknown'], 'postAccOffsetVoltControl': 2}
+        }
 
-# set paths for test data
-rawfiles = [os.path.join('exampleData\\raw', file) for file in os.listdir('exampleData\\raw') if file.endswith('.raw')]
-file = 'exampleData\\sums\\cs_sum_Ca_40_000.xml'
-workdir = 'C:\\TestData'
-# configure scan dictionary
-scnd = fileHandl.loadPickle('exampleData\\raw\\cs_Ca_40_track0_000.pipedat')
-scnd['pipeInternals']['activeXmlFilePath'] = None
-scnd['pipeInternals']['filePath'] = workdir
-
+exampleData = [815246864]
+longer_example_data = [815246864, 545260388, 562037180, 578813952, 595591168, 612368384, 629145600,
+645922816, 662700032, 815247384, 545260300, 562037175, 578813952, 595591168, 
+612368384, 629145600, 645922816, 662700032, 815247904, 545260350, 562037218, 
+578813952, 595591168, 612368384, 629145600, 645922816, 662700032, 815248424, 
+545260351, 562037221, 578813952, 595591168, 612368384, 629145600, 645922816, 
+662700032, 815248944, 545260353, 562037197, 578813952, 595591168, 612368384, 
+629145600, 645922816, 662700032, 815249464, 545260377, 562037213, 578813952, 
+595591168, 612368384, 629145600, 645922816, 662700032, 815249984, 545260388, 
+562037191, 578813952, 595591168, 612368384, 629145600, 645922816, 662700032, 
+815250504, 545260358, 562037208, 578813952, 595591168, 612368384, 629145600, 
+645922816, 662700032, 815251024, 545260379, 562037207, 578813952, 595591168, 
+612368384, 629145600, 645922816, 662700032, 815251544, 545260401, 562037176, 
+578813952, 595591168, 612368384, 629145600, 645922816, 662700032, 815252064, 
+545260421, 562037201, 578813952, 595591168, 612368384, 629145600, 645922816, 
+662700032, 815252584]
 
 def TestPipe():
 
@@ -31,10 +50,7 @@ def TestPipe():
 
     pipe = TP.Pipeline(start)
     pipe.pipeData = scnd
-    # print(pipe.pipeData)
-    # pipe.start()
-    # print(pipe.pipeData)
-    fig, axes = plt.subplots(3, sharex=True)
+    fig, axes = plt.subplots(2, sharex=True)
 
     walk = start.attach(TP.TN.NSplit32bData())
     walk = walk.attach(TP.TN.NSortRawDatatoArray())
@@ -44,21 +60,22 @@ def TestPipe():
     # if this is removed and deepcopy is used, the pipeline will fail
     branch = walk.attach(TP.TN.NAccumulateSingleScan())
 
-    branch1 = branch.attach(TP.TN.NArithmetricScaler([0]))
-    branch1 = branch1.attach(TP.TN.NMPlLivePlot(axes[0], 'single Scan scaler 0'))
+    # this part is not even necessary to cause the NotImplementedError with deepcopy()
+    # branch1 = branch.attach(TP.TN.NArithmetricScaler([0]))
+    # branch1 = branch1.attach(TP.TN.NMPlLivePlot(axes[0], 'single Scan scaler 0'))
 
     walk = walk.attach(TP.TN.NRemoveTrackCompleteFlag())
     walk = walk.attach(TP.TN.NSumCS())
 
-    walk = walk.attach(TP.TN.NMPlLivePlot(axes[2], 'live sum'))
+    walk = walk.attach(TP.TN.NMPlLivePlot(axes[1], 'live sum'))
 
     return pipe
 
 
 pipe = TestPipe()
 pipe.start()
+import numpy
+numpy.set_printoptions(threshold=numpy.nan)
 
-for f in rawfiles:
-    pipe.feed(fileHandl.loadPickle(f))
-
+pipe.feed(exampleData)
 pipe.clear()
