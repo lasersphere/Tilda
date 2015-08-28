@@ -47,9 +47,6 @@ def TestPipe():
     branch1 = branch.attach(TP.TN.NArithmetricScaler([0]))
     branch1 = branch1.attach(TP.TN.NMPlLivePlot(axes[0], 'single Scan scaler 0'))
 
-    branch2 = branch.attach(TP.TN.NArithmetricScaler([1]))
-    branch2 = branch2.attach(TP.TN.NMPlLivePlot(axes[1], 'single Scan scaler 1'))
-
     walk = walk.attach(TP.TN.NRemoveTrackCompleteFlag())
     walk = walk.attach(TP.TN.NSumCS())
 
