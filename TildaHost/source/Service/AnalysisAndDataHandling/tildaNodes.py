@@ -401,6 +401,7 @@ class NMPlLivePlot(Node):
         self.ax.plot(x, y)
         self.ax.set_ylabel(self.title)
         plt.pause(0.0001)
+        # pass
 
     def processData(self, data, pipeData):
         self.y = deepcopy(data)

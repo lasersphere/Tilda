@@ -48,12 +48,12 @@ class Node(object):
             newData = self.processData(item.data, self.Pipeline.pipeData)
             if newData is not None:
                 item.data = newData
-                # newjobs = self.createJobs(item)  # original line, but branching plots does not like this.
-                try:
-                    newjobs = self.createJobs(item)  # original line, but branching plots does not like this.
-                except NotImplementedError:
-                    logging.debug('NotImplementedError occured, using shallow copy in node.py')
-                    newjobs = self.createJobs(item, False)  # like this, branching plot allows branching in pipeline
+                newjobs = self.createJobs(item)  # original line, but branching plots does not like this.
+                # try:
+                #     newjobs = self.createJobs(item)  # original line, but branching plots does not like this.
+                # except NotImplementedError:
+                #     logging.debug('NotImplementedError occured, using shallow copy in node.py')
+                #     newjobs = self.createJobs(item, False)  # like this, branching plot allows branching in pipeline
 
         return newjobs
         
