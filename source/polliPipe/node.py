@@ -59,7 +59,7 @@ class Node(object):
         
     
     def createJobs(self, item, docopy=True, inactive=False):
-        item.previous = self
+        #item.previous = self
         result = []
         for i, n in enumerate(self.next):
             #Process if node is active or inactive nodes are requested as well
