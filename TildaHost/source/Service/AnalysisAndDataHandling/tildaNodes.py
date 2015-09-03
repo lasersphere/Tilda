@@ -12,12 +12,11 @@ import Service.FolderAndFileHandling as filhandl
 import Service.ProgramConfigs as progConfigsDict
 import Service.AnalysisAndDataHandling.trsDataAnalysis as trsAna
 import Service.AnalysisAndDataHandling.csDataAnalysis as csAna
-# import PyQtGraphPlotter
 import MPLPlotter
 
 import matplotlib.pyplot as plt
-import matplotlib.transforms as mpltrans
 import numpy as np
+import time
 import logging
 from copy import copy, deepcopy
 
@@ -198,8 +197,8 @@ class NAcquireOneScanCS(Node):
 
             elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltage step
                 self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)
-                logging.debug('new Voltageindex: ' + str(self.curVoltIndex) + ' ... with voltage: ' + str(
-                    form.getVoltageFrom24Bit(j['payload'])))
+                # logging.debug('new Voltageindex: ' + str(self.curVoltIndex) + ' ... with voltage: ' + str(
+                #     form.getVoltageFrom24Bit(j['payload'])))
                 self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
 
             elif j['firstHeader'] == progConfigsDict.programs['continuousSequencer']:
@@ -267,8 +266,8 @@ class NSortRawDatatoArray(Node):
 
             elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltage step
                 self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)
-                logging.debug('new Voltageindex: ' + str(self.curVoltIndex) + ' ... with voltage: ' + str(
-                    form.getVoltageFrom24Bit(j['payload'])))
+                # logging.debug('new Voltageindex: ' + str(self.curVoltIndex) + ' ... with voltage: ' + str(
+                #     form.getVoltageFrom24Bit(j['payload'])))
 
             elif j['firstHeader'] == progConfigsDict.programs['continuousSequencer']:
                 '''scaler entry '''
@@ -387,7 +386,7 @@ class NMPlLivePlot(Node):
         super(NMPlLivePlot, self).__init__()
         self.type = 'MPlLivePlot'
 
-        self.ax = ax  # here lies the problem why deepcopy is failing
+        self.ax = ax
         self.title = title
         self.ax.set_ylabel(self.title)
         self.x = None
@@ -404,8 +403,11 @@ class NMPlLivePlot(Node):
         # pass
 
     def processData(self, data, pipeData):
+        logging.debug('plotting...')
+        t = time.time()
         self.y = deepcopy(data)
         self.animate(self.x, self.y)
+        logging.debug('plotting time (ms):' + str(round((time.time()-t) * 1000, 0)))
         return data
 
     def clear(self):

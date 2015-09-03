@@ -20,13 +20,13 @@ import time
 import sys
 # sys.ps1 = 'Necessary for matplotlib 1.4.0 to work the way it used to'
 
-logging.basicConfig(level=getattr(logging, 'INFO'), format='%(message)s', stream=sys.stdout)
+logging.basicConfig(level=getattr(logging, 'DEBUG'), format='%(message)s', stream=sys.stdout)
+#
+# path = 'R:\\Projekte\\TRIGA\\Measurements and Analysis_Simon\\TILDATest_15_07_29\\CalciumOfflineTests_150728\\sortedByRuns'
+# workdir = 'D:\\TildaOfflinePipeTests'
 
-path = 'R:\\Projekte\\TRIGA\\Measurements and Analysis_Simon\\TILDATest_15_07_29\\CalciumOfflineTests_150728\\sortedByRuns'
-workdir = 'D:\\TildaOfflinePipeTests'
-
-# path = 'C:\\Workspace\\TildaTestData\\TILDATest_15_07_29\\CalciumOfflineTests_150728\\sortedByRuns'
-# workdir = 'C:\\TildaOfflinePipeTests'
+path = 'C:\\Workspace\\TildaTestData\\TILDATest_15_07_29\\CalciumOfflineTests_150728\\sortedByRuns'
+workdir = 'C:\\TildaOfflinePipeTests'
 runList = [x[0] for x in os.walk(path)][1:]
 rawfiles = [[os.path.join(pathOfRun, file) for file in os.listdir(pathOfRun) if file.endswith('.raw')]
          for pathOfRun in runList]
@@ -58,4 +58,4 @@ for i, k in enumerate(scandicts):
         # print(type(FileHandle.loadPickle(file)), ' type loaded file:', os.path.split(file)[1])
         cspipe.feed(FileHandle.loadPickle(file))
         time.sleep(0.05)
-    cspipe.clear(cspipe.pipeData)
+    cspipe.clear()
