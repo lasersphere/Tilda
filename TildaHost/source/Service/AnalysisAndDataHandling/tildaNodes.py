@@ -12,7 +12,7 @@ import Service.FolderAndFileHandling as filhandl
 import Service.ProgramConfigs as progConfigsDict
 import Service.AnalysisAndDataHandling.trsDataAnalysis as trsAna
 import Service.AnalysisAndDataHandling.csDataAnalysis as csAna
-import MPLPlotter
+# import MPLPlotter
 
 import matplotlib.pyplot as plt
 import numpy as np
