@@ -24,8 +24,8 @@ db = 'V:/Projekte/COLLAPS/ROC/CaD2.sqlite'
 '''Crawling'''
 # Tools.crawl(db)
 #print(Physics.freqFromWavenumber(12722.2986*2))
-spectrum = imp.MCPImporter('V:/Projekte/COLLAPS/ROC/ROCData/Run27_testRun_opticalpumping_Ca48.mcp')
-spectrum.preProc(db)
+# spectrum = imp.MCPImporter('V:/Projekte/COLLAPS/ROC/ROCData/Run05_opticalpumping_Ca40.mcp')
+# spectrum.preProc(db)
 # for i in spectrum.x[0]:
 #     print(i)
 # print('cts:')
@@ -45,8 +45,8 @@ spectrum.preProc(db)
 run = 'Run0'
 
 interactive = IF.InteractiveFit('Run27_testRun_opticalpumping_Ca48.mcp', db, run)
-BatchFit.batchFit(Tools.fileList(db,'40_Ca'), db,run)
-BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
+#BatchFit.batchFit(Tools.fileList(db,'40_Ca'), db,run)
+# BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
 #         BatchFit.batchFit(Tools.fileList(db,'44_Ca'), db,run)
 #         BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
 #                      
