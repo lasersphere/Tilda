@@ -45,8 +45,6 @@ def CsPipe(initialScanPars=None):
 
     pipe = Pipeline(start)
 
-    # plt.ion()
-
     fig, axes = plt.subplots(6, sharex=True)
 
     pipe.pipeData = initPipeData(initialScanPars)
@@ -57,13 +55,13 @@ def CsPipe(initialScanPars=None):
 
     branch = walk.attach(TN.NAccumulateSingleScan())
     branch1 = branch.attach(TN.NArithmetricScaler([0]))
-    branch1 = branch1.attach(TN.NMPlLivePlot(axes[0], 'single Scan scaler 0'))
+    branch1 = branch1.attach(TN.NMPlLivePlot(axes[0], 'scaler 0'))
 
     branch2 = branch.attach(TN.NArithmetricScaler([1]))
-    branch2 = branch2.attach(TN.NMPlLivePlot(axes[1], 'single Scan scaler 1'))
+    branch2 = branch2.attach(TN.NMPlLivePlot(axes[1], 'scaler 1'))
 
     branch3 = branch.attach(TN.NArithmetricScaler([0, 1]))
-    branch3 = branch3.attach(TN.NMPlLivePlot(axes[2], 'single Scan scaler 0+1'))
+    branch3 = branch3.attach(TN.NMPlLivePlot(axes[2], 'scaler 0+1'))
 
     walk = walk.attach(TN.NRemoveTrackCompleteFlag())
     walk = walk.attach(TN.NSumCS())
@@ -71,7 +69,7 @@ def CsPipe(initialScanPars=None):
     walk = walk.attach(TN.NMPlLivePlot(axes[3], 'live sum'))
 
     branch4 = walk.attach(TN.NArithmetricScaler([0, 1]))
-    branch4 = branch4.attach(TN.NMPlLivePlot(axes[4], 'sum scaler 0+1'))
+    branch4 = branch4.attach(TN.NMPlLivePlot(axes[4], 'scaler 0+1'))
 
     walk = walk.attach(TN.NCheckIfTrackComplete())
     walk = walk.attach(TN.NMPlLivePlot(axes[5], 'final sum'))

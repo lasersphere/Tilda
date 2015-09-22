@@ -12,9 +12,8 @@ import Service.FolderAndFileHandling as filhandl
 import Service.ProgramConfigs as progConfigsDict
 import Service.AnalysisAndDataHandling.trsDataAnalysis as trsAna
 import Service.AnalysisAndDataHandling.csDataAnalysis as csAna
-# import MPLPlotter
+import MPLPlotter
 
-import matplotlib.pyplot as plt
 import numpy as np
 import time
 import logging
@@ -396,11 +395,12 @@ class NMPlLivePlot(Node):
         self.x = form.createXAxisFromTrackDict(self.Pipeline.pipeData['activeTrackPar'])
 
     def animate(self, x, y):
-        self.ax.clear()
-        self.ax.plot(x, y)
-        self.ax.set_ylabel(self.title)
-        plt.pause(0.0001)
-        # pass
+        # self.ax.clear()
+        # self.ax.plot(x, y)
+        # self.ax.set_ylabel(self.title)
+        # plt.pause(0.0001)
+        MPLPlotter.plt_axes(self.ax, x, y, self.title)
+        MPLPlotter.pause(0.0001)
 
     def processData(self, data, pipeData):
         logging.debug('plotting...')
@@ -411,7 +411,8 @@ class NMPlLivePlot(Node):
         return data
 
     def clear(self):
-        plt.show(block=True)
+        MPLPlotter.show(block=True)
+        # plt.show(block=True)
 
 
 class NSaveSumCS(Node):
