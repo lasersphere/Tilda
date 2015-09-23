@@ -7,19 +7,22 @@ Created on '23.09.2015'
 """
 
 from PyQt5 import QtWidgets
+from PyQt5 import QtCore
+
 
 from Interface.VersionUi.Ui_Version import Ui_Version
 import Application.Config as tildaCfg
 
 
-class VersionUi(QtWidgets.QMainWindow, Ui_Version):
+class VersionUi(QtWidgets.QDialog, Ui_Version):
     def __init__(self):
-        super(VersionUi, self).__init__()
+        QtWidgets.QDialog.__init__(self)
 
-        self.ui = Ui_Version()
-        self.ui.setupUi(self)
+        self.setupUi(self)
+        # self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
-        self.ui.labelDate.setText(tildaCfg.versiondate)
-        self.ui.labelVersion.setText(tildaCfg.version)
+        self.labelDate.setText(tildaCfg.versiondate)
+        self.labelVersion.setText(tildaCfg.version)
 
-        self.show()
+        # self.exec_()
+        # self.show()
