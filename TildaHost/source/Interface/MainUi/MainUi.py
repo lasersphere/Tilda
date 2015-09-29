@@ -10,6 +10,7 @@ from PyQt5 import QtWidgets
 
 from Interface.MainUi.Ui_Main import Ui_TildaMainWindow
 from Interface.VersionUi.VersionUi import VersionUi
+from Interface.TrackParUi.TrackUi import TrackUi
 
 class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def __init__(self):
@@ -24,7 +25,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
 
     def open_track_win(self):
-        print('Hello World')
+        TrackUi()
 
     def open_version_win(self):
         VersionUi()
