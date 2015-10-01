@@ -16,8 +16,9 @@ import threading
 import time
 
 class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
-    def __init__(self):
+    def __init__(self, main):
         super(MainUi, self).__init__()
+        self.main = main
 
         self.setupUi(self)
 
@@ -28,8 +29,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
 
     def open_track_win(self):
-        self.trackWin = TrackUi()
-        print(self.trackWin.buffer_pars, type(self.trackWin))
+        self.trackWin = TrackUi(self.main, 0)
 
     def open_version_win(self):
         VersionUi()
@@ -41,6 +41,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def timout(self):
         t = 0
         while t < 100:
-            print('sleeping...', t)
+            print('sleeping...', t, 'scan pars:  ', self.main.scanpars)
             t += 1
             time.sleep(0.1)
