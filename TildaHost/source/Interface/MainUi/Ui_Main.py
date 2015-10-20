@@ -2,8 +2,7 @@
 
 # Form implementation generated from reading ui file 'Ui_Main.ui'
 #
-# Created: Tue Sep 22 19:11:26 2015
-#      by: PyQt5 UI code generator 5.3.1
+# Created by: PyQt5 UI code generator 5.5
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -13,6 +12,9 @@ class Ui_TildaMainWindow(object):
     def setupUi(self, TildaMainWindow):
         TildaMainWindow.setObjectName("TildaMainWindow")
         TildaMainWindow.resize(800, 600)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap("../../../Tilda256.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        TildaMainWindow.setWindowIcon(icon)
         self.centralwidget = QtWidgets.QWidget(TildaMainWindow)
         self.centralwidget.setObjectName("centralwidget")
         TildaMainWindow.setCentralWidget(self.centralwidget)
@@ -26,15 +28,17 @@ class Ui_TildaMainWindow(object):
         self.menuHelp = QtWidgets.QMenu(self.menubar)
         self.menuHelp.setObjectName("menuHelp")
         TildaMainWindow.setMenuBar(self.menubar)
-        self.statusbar = QtWidgets.QStatusBar(TildaMainWindow)
-        self.statusbar.setObjectName("statusbar")
-        TildaMainWindow.setStatusBar(self.statusbar)
         self.actionTracks = QtWidgets.QAction(TildaMainWindow)
         self.actionTracks.setObjectName("actionTracks")
         self.actionScan_Control = QtWidgets.QAction(TildaMainWindow)
         self.actionScan_Control.setObjectName("actionScan_Control")
         self.actionVersion = QtWidgets.QAction(TildaMainWindow)
         self.actionVersion.setObjectName("actionVersion")
+        self.actionHardware_setup = QtWidgets.QAction(TildaMainWindow)
+        self.actionHardware_setup.setObjectName("actionHardware_setup")
+        self.actionWorking_directory = QtWidgets.QAction(TildaMainWindow)
+        self.actionWorking_directory.setObjectName("actionWorking_directory")
+        self.menuTilda_MainWindow.addAction(self.actionWorking_directory)
         self.menuView.addAction(self.actionTracks)
         self.menuView.addAction(self.actionScan_Control)
         self.menuHelp.addAction(self.actionVersion)
@@ -54,4 +58,6 @@ class Ui_TildaMainWindow(object):
         self.actionTracks.setText(_translate("TildaMainWindow", "Tracks"))
         self.actionScan_Control.setText(_translate("TildaMainWindow", "Scan Control"))
         self.actionVersion.setText(_translate("TildaMainWindow", "Version"))
+        self.actionHardware_setup.setText(_translate("TildaMainWindow", "hardware setup"))
+        self.actionWorking_directory.setText(_translate("TildaMainWindow", "working directory"))
 

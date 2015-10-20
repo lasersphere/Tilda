@@ -38,7 +38,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.lineEdit_activePmtList.textChanged.connect(self.active_pmt_list_set)
         self.checkBox_colDirTrue.clicked.connect(self.col_dir_true_set)
 
-        self.pushButton_advancedSettings.clicked.connect(self.adv_set)
+        # self.pushButton_advancedSettings.clicked.connect(self.adv_set)
         self.pushButton_cancel.clicked.connect(self.cancel)
         self.pushButton_confirm.clicked.connect(self.confirm)
 

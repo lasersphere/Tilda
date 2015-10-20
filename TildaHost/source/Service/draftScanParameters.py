@@ -34,7 +34,6 @@ draftPipeInternals = {
     'activeTrackNumber': 0,
     'filePath': 'D:\\XMLTests_150807',
     'activeXmlFilePath': None,
-    'activeGraphicsWindow': None
 }
 
 draftScanDict = {'isotopeData': draftIsotopePars,

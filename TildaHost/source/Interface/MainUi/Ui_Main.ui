@@ -13,6 +13,10 @@
   <property name="windowTitle">
    <string>Tilda</string>
   </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>../../../Tilda256.ico</normaloff>../../../Tilda256.ico</iconset>
+  </property>
   <widget class="QWidget" name="centralwidget"/>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -27,6 +31,7 @@
     <property name="title">
      <string>File</string>
     </property>
+    <addaction name="actionWorking_directory"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -45,7 +50,6 @@
    <addaction name="menuView"/>
    <addaction name="menuHelp"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
   <action name="actionTracks">
    <property name="text">
     <string>Tracks</string>
@@ -59,6 +63,16 @@
   <action name="actionVersion">
    <property name="text">
     <string>Version</string>
+   </property>
+  </action>
+  <action name="actionHardware_setup">
+   <property name="text">
+    <string>hardware setup</string>
+   </property>
+  </action>
+  <action name="actionWorking_directory">
+   <property name="text">
+    <string>working directory</string>
    </property>
   </action>
  </widget>
