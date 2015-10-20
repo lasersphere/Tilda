@@ -22,11 +22,14 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
         self.setupUi(self)
 
+        self.actionWorking_directory.triggered.connect(self.choose_working_dir)
         self.actionTracks.triggered.connect(self.open_track_win)
         self.actionVersion.triggered.connect(self.open_version_win)
         self.actionScan_Control.triggered.connect(self.open_scan_ctrl_win)
         self.show()
 
+    def choose_working_dir(self):
+        print(self.main.scanpars)
 
     def open_track_win(self):
         self.trackWin = TrackUi(self.main, 0)

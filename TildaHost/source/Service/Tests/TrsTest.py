@@ -5,14 +5,15 @@ Created on '07.05.2015'
 @author:'simkaufm'
 
 """
-from Driver.DataAcquisitionFpga.TimeResolvedSequencer import TimeResolvedSequencer
-import Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig as TrsCfg
-from Service.AnalysisAndDataHandling.tildaPipeline import TrsPipe
-import Service.draftScanParameters as draftScan
-
 import time
 import logging
 import sys
+
+from Driver.DataAcquisitionFpga.TimeResolvedSequencer import TimeResolvedSequencer
+import Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig as TrsCfg
+from Service.AnalysisAndDataHandling.tildaPipeline import TrsPipe
+import Service.Scan.draftScanParameters as draftScan
+
 # import pickle
 
 logging.basicConfig(level=getattr(logging, 'DEBUG'), format='%(message)s', stream= sys.stdout)

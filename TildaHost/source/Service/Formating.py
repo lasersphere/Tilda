@@ -9,11 +9,6 @@ from datetime import datetime as dt
 import lxml.etree as ET
 import numpy as np
 import copy
-import logging
-import ast
-
-
-import Service.draftScanParameters as Drafts
 
 
 def get18BitInputForVoltage(voltage, vRefN=-10, vRefP=10):

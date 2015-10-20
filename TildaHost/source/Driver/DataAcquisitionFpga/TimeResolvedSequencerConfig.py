@@ -7,7 +7,8 @@ Created on '12.05.2015'
 """
 
 import ctypes
-import Service.draftScanParameters as draftPars
+
+import Service.Scan.draftScanParameters as draftPars
 
 
 """

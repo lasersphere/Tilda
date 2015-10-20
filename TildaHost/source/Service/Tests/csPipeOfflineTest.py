@@ -4,20 +4,16 @@ __author__ = 'Simon-K'
 Module for working with .raw data and testing the Pipeline.
 """
 
+import logging
+import os
+import time
+import sys
+
 import Service.FolderAndFileHandling as FileHandle
 import Service.AnalysisAndDataHandling.tildaPipeline as TildaPipe
 import Service.Formating as Form
-import Service.draftScanParameters as Drafts
+import Service.Scan.draftScanParameters as Drafts
 
-
-import matplotlib.pyplot as plt
-import matplotlib.transforms as mpltrans
-import logging
-import os
-import sys
-import time
-
-import sys
 # sys.ps1 = 'Necessary for matplotlib 1.4.0 to work the way it used to'
 
 logging.basicConfig(level=getattr(logging, 'DEBUG'), format='%(message)s', stream=sys.stdout)

@@ -6,11 +6,6 @@ Created on '28.05.2015'
 
 """
 
-import numpy as np
-
-import Service.Formating as form
-import Service.FolderAndFileHandling as handl
-import Service.draftScanParameters as draftDicts
 import Measurement.XMLImporter as pollixmlimp
 
 

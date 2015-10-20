@@ -8,17 +8,16 @@ Module for testing the Continous Sequencer.
 
 """
 
-from Driver.DataAcquisitionFpga.ContinousSequencer import ContinousSequencer
-from Service.draftScanParameters import draftScanDict
-import Service.AnalysisAndDataHandling.tildaPipeline as TildaPipe
-import Driver.DataAcquisitionFpga.ContinousSequencerConfig as CsCfg
-import Service.Formating as form
-import Driver.Heinzinger.Heinzinger as hz
-
-
 import time
 import logging
 import sys
+
+from Driver.DataAcquisitionFpga.ContinousSequencer import ContinousSequencer
+from Service.Scan.draftScanParameters import draftScanDict
+import Service.AnalysisAndDataHandling.tildaPipeline as TildaPipe
+import Driver.DataAcquisitionFpga.ContinousSequencerConfig as CsCfg
+import Service.Formating as form
+
 
 logging.basicConfig(level=getattr(logging, 'INFO'), format='%(message)s', stream=sys.stdout)
 

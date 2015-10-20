@@ -9,8 +9,6 @@ Created on '20.05.2015'
 import Service.AnalysisAndDataHandling.tildaNodes as TN
 import polliPipe.simpleNodes as SN
 from polliPipe.node import Node
-import Service.ProgramConfigs as progConfigs
-import Service.draftScanParameters as draftPars
 import Service.FolderAndFileHandling as FaFH
 # import PyQtGraphPlotter
 import matplotlib.pyplot as plt

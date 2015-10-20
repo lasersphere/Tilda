@@ -6,8 +6,10 @@ Created on '22.06.2015'
 
 """
 import numpy as np
+
 import Service.Formating as form
-import Service.draftScanParameters as dft
+import Service.Scan.draftScanParameters as dft
+
 
 arr = form.createDefaultScalerArrayFromScanDict(dft.draftScanDict)
 print(arr)

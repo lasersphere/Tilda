@@ -6,14 +6,12 @@ Created on '20.05.2015'
 
 """
 
-import numpy as np
 import os.path
 
-import pickle
 from Service.AnalysisAndDataHandling.tildaPipeline import TrsPipe
 import Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig as TRSConfig
 import Service.FolderAndFileHandling as filehand
-import Service.draftScanParameters as draftScan
+import Service.Scan.draftScanParameters as draftScan
 
 
 path = 'TildaHost\\source\\Scratch\\exampleTRSRawData.py'

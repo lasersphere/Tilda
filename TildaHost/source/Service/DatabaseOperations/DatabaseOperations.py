@@ -6,12 +6,10 @@ Created on '06.08.2015'
 
 """
 
-import Tools as pollitools
-import Service.draftScanParameters as drftScPars
-
 import sqlite3
-import ast
-import os
+
+import Tools as pollitools
+
 
 def createTildaDB(db):
     """
