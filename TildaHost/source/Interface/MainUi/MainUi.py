@@ -14,6 +14,7 @@ from Interface.TrackParUi.TrackUi import TrackUi
 
 import threading
 import time
+import logging
 
 class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def __init__(self, main):
@@ -29,7 +30,10 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.show()
 
     def choose_working_dir(self):
-        print(self.main.scanpars)
+        workdir = QtWidgets.QFileDialog.getExistingDirectory(self)
+        for scd in self.main.scanpars:
+            scd['pipeInternals']['workingDirectory'] = workdir
+        logging.debug('working directory has been set to: ' + str(workdir) + '\n \n ' + str(self.main.scanpars))
 
     def open_track_win(self):
         self.trackWin = TrackUi(self.main, 0)

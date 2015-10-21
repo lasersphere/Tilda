@@ -63,7 +63,7 @@ def nameFileXml(scanDict):
     :param scanDict: {'isotopeData', 'activeTrackPar', 'pipeInternals'}
     :return:str, filename
     """
-    path = scanDict['pipeInternals']['filePath']
+    path = scanDict['pipeInternals']['workingDirectory']
     nIso = scanDict['isotopeData']['isotope']
     type = scanDict['isotopeData']['type']
     filename = nameFile(path, 'sums', nIso, str(type + '_sum'), '.xml')
@@ -101,7 +101,7 @@ def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict=None):
     oldDict['trackPars'] = trackdict
     oldDict['activeTrackPar'] = trackdict['track' + str(nOfTrack)]
     oldDict['pipeInternals'] = {}
-    oldDict['pipeInternals']['filePath'] = os.path.split(os.path.split(xmlFileName)[0])[0]
+    oldDict['pipeInternals']['workingDirectory'] = os.path.split(os.path.split(xmlFileName)[0])[0]
     oldDict['pipeInternals']['curVoltInd'] = 0
     oldDict['pipeInternals']['activeTrackNumber'] = nOfTrack
     oldDict['pipeInternals']['activeXmlFilePath'] = xmlFileName
@@ -123,7 +123,7 @@ def savePickle(data, pipeDataDict, ending='.raw'):
     """
     saves data using the pickle module
     """
-    path = pipeDataDict['pipeInternals']['filePath']
+    path = pipeDataDict['pipeInternals']['workingDirectory']
     path = nameFile(path, 'raw',
                     pipeDataDict['isotopeData']['isotope'] +
                     '_track' + str(pipeDataDict['pipeInternals']['activeTrackNumber']),

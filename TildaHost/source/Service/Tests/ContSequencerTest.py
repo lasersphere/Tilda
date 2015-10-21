@@ -28,7 +28,7 @@ get the pipeline ready and type your scanparameters in here:
 measState = CsCfg.seqStateDict['measureTrack']
 scanPars = draftScanDict
 scanPars['isotopeData']['isotope'] = 'Nothing'
-scanPars['pipeInternals']['filePath'] = 'D:\\PulserOfflineTests_150806'
+scanPars['pipeInternals']['workingDirectory'] = 'D:\\PulserOfflineTests_150806'
 scanPars['activeTrackPar']['dwellTime10ns'] = 2000000
 scanPars['activeTrackPar']['dacStepSize18Bit'] = form.get18BitStepSize(0.02)
 scanPars['activeTrackPar']['dacStartRegister18Bit'] = form.get18BitInputForVoltage(-10)

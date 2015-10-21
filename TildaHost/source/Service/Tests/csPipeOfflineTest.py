@@ -44,7 +44,7 @@ for i, k in enumerate(scandicts):
     runNumber = i
     activeScandict = scandicts[runNumber]
     activeScandict.pop('trackPars')  # drop the dictionary which contains all tracks, beacue the pipeline only needs teh active one
-    activeScandict['pipeInternals']['filePath'] = workdir
+    activeScandict['pipeInternals']['workingDirectory'] = workdir
     activeScandict['activeTrackPar']['nOfCompletedSteps'] = 0
 
     cspipe = TildaPipe.CsPipe(activeScandict)

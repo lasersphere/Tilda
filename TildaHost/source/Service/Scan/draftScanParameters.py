@@ -15,7 +15,7 @@ isotopeData_list = ['version', 'type', 'isotope', 'nOfTracks', 'accVolt', 'laser
 
 """ the pipeInternals dictionary is used by the pipeline and is in first place only valid for one track.
 It contains the following keys: """
-pipeInternals_list = ['curVoltInd', 'activeTrackNumber', 'filePath', 'activeXmlFilePath']
+pipeInternals_list = ['curVoltInd', 'activeTrackNumber', 'workingDirectory', 'activeXmlFilePath']
 
 """ the measureVoltPars dictionary is used to define the pulse length to start the voltage measurement
  and the timeout of the voltage measurement. It contains the following keys: """
@@ -58,7 +58,7 @@ draftMeasureVoltPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 1
 draftPipeInternals = {
     'curVoltInd': 0,
     'activeTrackNumber': 0,
-    'filePath': None,
+    'workingDirectory': None,
     'activeXmlFilePath': None
 }
 
