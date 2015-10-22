@@ -7,15 +7,18 @@ Created on '29.09.2015'
 """
 from PyQt5 import QtWidgets, QtCore
 import ast
+import sys
 
 from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
+import Service.Scan.draftScanParameters as Dft
 import Service.Formating as form
 
 class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
-    def __init__(self, main, track_number):
+    def __init__(self, main, track_number, default_track_dict):
         super(TrackUi, self).__init__()
 
-        self.buffer_pars = {}
+        self.default_track_dict = default_track_dict
+        self.buffer_pars = default_track_dict
 
         self.main = main
         self.track_number = track_number
@@ -32,7 +35,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.spinBox_nOfScans.valueChanged.connect(self.n_of_scans_set)
         self.checkBox_invertScan.clicked.connect(self.invert_scan_set)
 
-        self.spinBox_postAccOffsetVoltControl.valueChanged.connect(self.post_acc_offset_volt_control_set)
+        self.comboBox_postAccOffsetVoltControl.currentTextChanged.connect(self.post_acc_offset_volt_control_set)
         self.doubleSpinBox_postAccOffsetVolt.valueChanged.connect(self.post_acc_offset_volt)
 
         self.lineEdit_activePmtList.textChanged.connect(self.active_pmt_list_set)
@@ -41,6 +44,14 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         # self.pushButton_advancedSettings.clicked.connect(self.adv_set)
         self.pushButton_cancel.clicked.connect(self.cancel)
         self.pushButton_confirm.clicked.connect(self.confirm)
+        self.pushButtonResetToDefault.clicked.connect(self.reset_to_default)
+        self.pushButton_postAccOffsetVolt.clicked.connect(self.set_voltage)
+        self.set_labels_by_dict(self.default_track_dict)
+
+
+    def set_labels_by_dict(self, track_dict):
+        # self.dwelltime_set(track_dict['dwellTime10ns'] * (10 ** -5))
+        pass
 
     def dwelltime_set(self, val):
         self.buffer_pars['dwellTime10ns'] = val * (10 ** 5)  #convert to units of 10ns
@@ -116,13 +127,26 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def adv_set(self):
         pass
 
+    def set_voltage(self):
+        pass
+
     def cancel(self):
         self.destroy()
 
     def confirm(self):
-        try:
-            self.main.scanpars[self.track_number] = self.buffer_pars
-        except IndexError:
-            self.main.scanpars.append(self.buffer_pars)
+        print(self.buffer_pars)
+        # try:
+        #     self.main.scanpars[self.track_number] = self.buffer_pars
+        # except IndexError:
+        #     self.main.scanpars.append(self.buffer_pars)
         self.destroy()
-        # pass
+        pass
+
+    def reset_to_default(self):
+        pass
+
+
+# if __name__ == "__main__":
+#     app = QtWidgets.QApplication(sys.argv)
+#     ui = TrackUi(None, 0, Dft.draftTrackPars)
+#     app.exec_()

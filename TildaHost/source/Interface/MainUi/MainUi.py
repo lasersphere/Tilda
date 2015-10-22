@@ -38,7 +38,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         logging.debug('working directory has been set to: ' + str(workdir) + '\n \n ' + str(self.main.scanpars))
 
     def open_track_win(self):
-        self.trackWin = TrackUi(self.main, 0)
+        self.trackWin = TrackUi(self.main, 0, self.main.scanpars[0]['activeTrackPar'])
 
     def open_version_win(self):
         VersionUi()
