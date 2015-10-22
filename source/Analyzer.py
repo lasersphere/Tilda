@@ -115,6 +115,7 @@ def combineRes(iso, par, run, db, weighted = True):
 
     con.commit()
     con.close()
+    return (val, statErr, systErr)
     
 
 def combineShift(iso, run, db):

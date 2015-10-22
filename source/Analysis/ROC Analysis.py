@@ -19,10 +19,10 @@ import Measurement.MCPImporter as imp
 import Measurement.TLDImporter as tldI
 import InteractiveFit as IF
 
-db = 'V:/Projekte/COLLAPS/ROC/CaD2.sqlite'
+db = 'V:/Projekte/COLLAPS/ROC/optical/CaD2_optical.sqlite'
 
 '''Crawling'''
-# Tools.crawl(db)
+#Tools.crawl(db)
 #print(Physics.freqFromWavenumber(12722.2986*2))
 # spectrum = imp.MCPImporter('V:/Projekte/COLLAPS/ROC/ROCData/Run05_opticalpumping_Ca40.mcp')
 # spectrum.preProc(db)
@@ -33,34 +33,42 @@ db = 'V:/Projekte/COLLAPS/ROC/CaD2.sqlite'
 #     print(i)
 
 
-# spectrum = tldI.TLDImporter('E:/Doktorarbeit/Calcium/2/DataD2/Ca_056.tld')
-#plot.plot([spectrum.x[0], spectrum.cts[0][0]])
-#plot.show()
+# spectrum = imp.MCPImporter('V:/Projekte/COLLAPS/ROC/optical/Data/Run6_opticalDetection_Ca48.mcp')
+# plot.plot([spectrum.x[0], spectrum.cts[0][0]])
+# plot.show()
 '''Fitting the Kepco-Scans!'''
 # BatchFit.batchFit(Tools.fileList(db,'Kepco'), db, 'Run0')
 # Analyzer.combineRes('Kepco', 'm', 'Run0', db, False)
 # Analyzer.combineRes('Kepco', 'b', 'Run0', db, False)
 
 '''Fitting the spectra with Voigt-Fits!'''
-run = 'Run0'
+shift40 = []
+shift42 = []
+shift44 = []
 
-interactive = IF.InteractiveFit('Run27_testRun_opticalpumping_Ca48.mcp', db, run)
-#BatchFit.batchFit(Tools.fileList(db,'40_Ca'), db,run)
-# BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
-#         BatchFit.batchFit(Tools.fileList(db,'44_Ca'), db,run)
-#         BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
-#                      
-# #         '''Mean of center, sigma and gamma for 40_Ca'''
-# #         Analyzer.combineRes('40_Ca', 'gamma',run, db)
-# #         Analyzer.combineRes('40_Ca', 'sigma',run, db)
-# #         Analyzer.combineRes('42_Ca', 'sigma',run, db)
-# #         Analyzer.combineRes('44_Ca', 'sigma',run, db)
-# #         Analyzer.combineRes('48_Ca', 'sigma',run, db)
-#         Analyzer.combineRes('40_Ca', 'center',run, db)
-#                
-'''Calculate the isotope shift to 40_Ca'''
-# Analyzer.combineShift('42_Ca', run, db)
-# Analyzer.combineShift('44_Ca', run, db)
-# Analyzer.combineShift('48_Ca', run, db)
+for i in range(0,6):
+    run = str('Run' + str(i))
+    # BatchFit.batchFit(Tools.fileList(db,'40_Ca'), db,run)
+    # BatchFit.batchFit(Tools.fileList(db,'42_Ca'), db,run)
+    # BatchFit.batchFit(Tools.fileList(db,'44_Ca'), db,run)
+    # BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
 
-# Tools.isoPlot(db, '43_Ca')
+    '''Mean of center, sigma and gamma for 40_Ca'''
+# Analyzer.combineRes('40_Ca', 'gamma',run, db)
+# Analyzer.combineRes('40_Ca', 'sigma',run, db)
+# Analyzer.combineRes('42_Ca', 'sigma',run, db)
+# Analyzer.combineRes('44_Ca', 'sigma',run, db)
+# Analyzer.combineRes('48_Ca', 'sigma',run, db)
+    Analyzer.combineRes('40_Ca', 'center',run, db)
+    Analyzer.combineRes('42_Ca', 'center',run, db)
+    Analyzer.combineRes('44_Ca', 'center',run, db)
+    Analyzer.combineRes('48_Ca', 'center',run, db)
+
+    '''Calculate the isotope shift to 48_Ca'''
+    shift40.append(Analyzer.combineShift('40_Ca', run, db)[2])
+    shift42.append(Analyzer.combineShift('42_Ca', run, db)[2])
+    shift44.append(Analyzer.combineShift('44_Ca', run, db)[2])
+
+print(str(shift40).replace('.',','))
+print(str(shift42).replace('.',','))
+print(str(shift44).replace('.',','))

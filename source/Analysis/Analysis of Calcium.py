@@ -19,21 +19,21 @@ import Analyzer
 import Tools
 import Physics
 
-db = 'E:/Doktorarbeit/Calcium/2/CaD2.sqlite'
+db = 'V:/Projekte/COLLAPS/ROC/CaD2.sqlite'
 
 '''Plotting the Isotopes'''
-# isoL = []
-# for i in range(40,53,1):
+isoL = []
+# for i in range(54,52,-1):
 #     iso = str(str(i) + '_Ca')
 #     isoL.append(iso)
 # Tools.isoPlot(db, '51_Ca')
-# Tools.centerPlot(db, isoL, width = 1.5e6)
-
-
+Tools.centerPlot(db, ['48_Ca'])
+#print(Physics.wavenumber(762809833.7407918))
+print(Physics.freqFromWavenumber(30))
 '''Crawling'''
-#Tools.crawl(db, 'DataKepco')
-#Tools.crawl(db, 'DataD1')
-Tools.crawl(db, 'DataD2')
+# #Tools.crawl(db, 'DataKepco')
+# Tools.crawl(db, 'DataD1')
+# Tools.crawl(db, 'DataD2')
 
 '''Fitting the Kepco-Scans!'''
 # BatchFit.batchFit(Tools.fileList(db,'Kepco'), db, 'Run0')

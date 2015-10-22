@@ -4,7 +4,7 @@ Created on 24.08.2015
 @author: chgorges
 '''
 
-import csv
+import csv, ast
 import sqlite3
 from datetime import datetime
 import os
@@ -19,7 +19,8 @@ class MCPImporter(SpecData):
     '''
 
     def __init__(self, path):
-        '''Read the file'''
+        '''Read the file
+        '''
         
         print("MCPImporter is reading file", path)
         super(MCPImporter, self).__init__()
@@ -93,10 +94,14 @@ class MCPImporter(SpecData):
             while line == ',["PM_SpectrumObj"]\n':
                 self.counting(f)
                 line = str(f.readline())
+            self.x = [np.zeros(self.nrSteps)]
             for i in range(0, self.nrSteps):
-                self.xTemp[0].append(float(limits[0]) + i * (float(limits[1]) - float(limits[0])) / self.nrSteps)
-            self.cts = np.array([self.ctsTemp])
-            self.err = np.array([self.errTemp])
+                self.x[0][i] = float(limits[0]) + i * (float(limits[1]) - float(limits[0])) / self.nrSteps
+            self.cts = [np.array(self.ctsTemp)]
+            self.err = [np.array(self.errTemp)]
+
+            # print(self.x)
+            # print(self.cts)
 
     def preProc(self, db):
         print('MCPimporter is using db', db)
@@ -105,19 +110,18 @@ class MCPImporter(SpecData):
         cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset FROM Files WHERE file = ?''', (self.file,))
         data = cur.fetchall()
         if len(data) == 1:
-            (self.accVolt, self.laserFreq, self.colDirTrue, self.line, self.type, self.voltDivRatio, self.lineMult, self.lineOffset, self.offset) = data[0]
+            (self.accVolt, self.laserFreq, self.col, self.line, self.type, self.voltDivRatio, self.lineMult, self.lineOffset, self.offset) = data[0]
+            self.col = ast.literal_eval(self.col)
         else:
             raise Exception('MCPImporter: No DB-entry found!')
 
 
-        for i in range(len(self.xTemp[0])):
-            scanvolt = self.lineMult * self.xTemp[0][i] + self.lineOffset + self.offset * self.voltDivRatio
-            self.xTemp[0][i] = self.accVolt - scanvolt
+        for i in range(len(self.x[0])):
+            scanvolt = self.lineMult * self.x[0][i] + self.lineOffset + self.offset * self.voltDivRatio
+            self.x[0][i] = self.accVolt - scanvolt
         con.close()
-        self.x = np.array(self.xTemp)
-        self.cts = np.array([self.ctsTemp])
-        self.err = np.array([self.errTemp])
-
+        self.cts = [np.array(self.ctsTemp)]
+        self.err = [np.array(self.errTemp)]
     
     def export(self, db):
         con = sqlite3.connect(db)

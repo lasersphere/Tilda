@@ -25,7 +25,7 @@ class SpecData(object):
         self.nrScalers = 1
         self.accVolt = None
         self.laserFreq = None
-        self.col = None
+        self.col = False
         self.dwell = 0
         
         self.offset = None

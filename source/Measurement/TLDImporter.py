@@ -4,7 +4,7 @@ Created on 30.04.2014
 @author: hammen
 '''
 
-import csv
+import csv, ast
 import sqlite3
 from datetime import datetime
 import os
@@ -38,7 +38,6 @@ class TLDImporter(SpecData):
         self.x = [np.zeros(l[0])]
         self.cts = [np.zeros((self.nrScalers, l[0]))]
         self.err = [np.zeros((self.nrScalers, l[0]))]
-        
         with open(path) as f:
             fmt = '%d.%m.%Y\t%H:%M\n'
             self.date = datetime.strptime(f.readline(), fmt )
@@ -66,7 +65,8 @@ class TLDImporter(SpecData):
         cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset FROM Files WHERE file = ?''', (self.file,))
         data = cur.fetchall()
         if len(data) == 1:
-            (self.accVolt, self.laserFreq, self.colDirTrue, self.line, self.type, self.voltDivRatio, self.lineMult, self.lineOffset, self.offset) = data[0]
+            (self.accVolt, self.laserFreq, self.col, self.line, self.type, self.voltDivRatio, self.lineMult, self.lineOffset, self.offset) = data[0]
+            self.col = ast.literal_eval(self.col)
         else:
             raise Exception('TLDImporter: No DB-entry found!')
                 
