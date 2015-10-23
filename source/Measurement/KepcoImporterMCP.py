@@ -84,7 +84,7 @@ class KepcoImporterMCP(SpecData):
             while line != ',["KepcoEichungVoltageObj"]\n':
                 line = f.readline()
             self.counting(f)
-            self.nrSteps = len(self.ctsTemp[0])
+            self.nrSteps = len(self.ctsTemp[1])
             self.x = [np.zeros(self.nrSteps)]
             for i in range(0, self.nrSteps):
                 self.x[0][i] = float(float(limits[0]) + i * (float(limits[1]) - float(limits[0])) / self.nrSteps)
@@ -108,9 +108,10 @@ class KepcoImporterMCP(SpecData):
             (self.voltDivRatio, self.offset) = data[0]
         else:
             raise Exception('KepcoImporterMCP: No DB-entry found!')
-                
+        print('nrSteps: ' + str(self.nrSteps))
+        print('self.cts[0][1]: ' + str(len(self.cts[0][1])))
         for i in range(len(self.cts[0])):
-            for j in range(len(self.cts[0][0])):
+            for j in range(len(self.cts[0][i])):
                 self.cts[0][i][j] = (self.cts[0][i][j] - self.offset) * self.voltDivRatio
                 self.err[0][i][j] = self.cts[0][i][j] * 10**-4
         con.close()

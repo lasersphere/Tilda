@@ -26,9 +26,9 @@ db = 'V:/Projekte/COLLAPS/ROC/optical/CaD2_optical.sqlite'
 #print(Physics.freqFromWavenumber(12722.2986*2))
 
 '''Fitting the Kepco-Scans!'''
-BatchFit.batchFit(Tools.fileList(db,'Kepco'), db, 'Run0')
-# Analyzer.combineRes('Kepco', 'm', 'Run0', db, False)
-# Analyzer.combineRes('Kepco', 'b', 'Run0', db, False)
+# BatchFit.batchFit(Tools.fileList(db,'Kepco'), db, 'Run2')
+# Analyzer.combineRes('Kepco', 'm', 'Run2', db, False)
+# Analyzer.combineRes('Kepco', 'b', 'Run2', db, False)
 
 '''Fitting the spectra with Voigt-Fits!'''
 # shift40 = []
