@@ -69,6 +69,7 @@ def singleFit(file, st, db, run, var, cur):
 
     meas = MeasLoad.load(path, db)
     if meas.type == 'Kepco':
+        print('Fitting Straight!')
         spec = Straight()
     else:
         iso = DBIsotope(db, meas.type, var[0], var[1])

@@ -1,41 +1,42 @@
 '''
-Created on 24.08.2015
+Created on 30.04.2014
 
-@author: chgorges
+@author: hammen
 '''
 
-import csv, ast
-import sqlite3
+import csv
 from datetime import datetime
+import sqlite3
 import os
 
 import numpy as np
 
 from Measurement.SpecData import SpecData
 
-class MCPImporter(SpecData):
+class KepcoImporterMCP(SpecData):
     '''
-    This object reads a file with tab separated values into the ScanData structure
+    This object reads a MCP-file into the KepcoData structure
     '''
 
     def __init__(self, path):
-        '''Read the file
-        '''
+        '''Read the file'''
         
-        print("MCPImporter is reading file", path)
-        super(MCPImporter, self).__init__()
-
+        print("KepcoImporterMCP is reading file", path)
+        super(KepcoImporterMCP, self).__init__()
+        
+        self.path = path
+        self.type = 'Kepco'
+        
         self.file = os.path.basename(path)
-
+        self.nrScalers = 2
+        self.nrTracks = 1
         self.nrScalers = 0
-        self.nrTracks = 0
-        self.nrSteps = 0
         self.offset = 0
 
         self.xTemp = [[]]
         self.ctsTemp = []
         self.errTemp = []
-        
+
         with open(path) as f:
             self.mcpVersion = f.readline()
             f.readline() #strange number
@@ -76,83 +77,79 @@ class MCPImporter(SpecData):
             limits = str(f.readline()).split(',')
             limits.pop(0)
             line = f.readline()
-            while line != ',["SiclReaderObj"]\n' and line != ',["TriggerObj"]\n':
+            while line != ',["SiclStepObj"]\n':
                 line = f.readline()
-            offsets = str(f.readline()).split(',')
-            offsets[4] = str(offsets[4])[1:]
-            offsets[-1] = str(offsets[-1])[:-2]
-            for i in range(4, len(offsets)):
-                self.offset = self.offset + float(offsets[i])
-            self.offset = self.offset/(len(offsets)-4)
-            self.nrLoops = len(offsets)
-            f.readline()
-            line = str(f.readline())
-            while line != ',["PM_SpectrumObj"]\n':
-                line = str(f.readline())
             self.counting(f)
             line = f.readline()
-            while line == ',["PM_SpectrumObj"]\n':
-                self.counting(f)
-                line = str(f.readline())
+            while line != ',["KepcoEichungVoltageObj"]\n':
+                line = f.readline()
+            self.counting(f)
+            self.nrSteps = len(self.ctsTemp[0])
             self.x = [np.zeros(self.nrSteps)]
             for i in range(0, self.nrSteps):
-                self.x[0][i] = float(limits[0]) + i * (float(limits[1]) - float(limits[0])) / self.nrSteps
+                self.x[0][i] = float(float(limits[0]) + i * (float(limits[1]) - float(limits[0])) / self.nrSteps)
+            k = 0
+            while k < self.nrScalers:
+                for i, j in enumerate(self.ctsTemp[k].copy()):
+                    self.ctsTemp[k][i] = float(j)
+                    self.errTemp[k][i] = float(j)/10**4
+                k +=1
+            self.offset = self.ctsTemp[0][int(round(self.nrSteps/2, 0))]
             self.cts = [np.array(self.ctsTemp)]
             self.err = [np.array(self.errTemp)]
 
-            # print(self.x)
-            # print(self.cts)
-
     def preProc(self, db):
-        print('MCPimporter is using db', db)
+        print('Kepco importer is using db', db)
         con = sqlite3.connect(db)
         cur = con.cursor()
-        cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset FROM Files WHERE file = ?''', (self.file,))
+        cur.execute('''SELECT voltDivRatio, offset FROM Files WHERE file = ?''', (self.file,))
         data = cur.fetchall()
         if len(data) == 1:
-            (self.accVolt, self.laserFreq, self.col, self.line, self.type, self.voltDivRatio, self.lineMult, self.lineOffset, self.offset) = data[0]
-            self.col = ast.literal_eval(self.col)
+            (self.voltDivRatio, self.offset) = data[0]
         else:
-            raise Exception('MCPImporter: No DB-entry found!')
-
-
-        for i in range(len(self.x[0])):
-            scanvolt = self.lineMult * self.x[0][i] + self.lineOffset + self.offset * self.voltDivRatio
-            self.x[0][i] = self.accVolt - scanvolt
+            raise Exception('KepcoImporterMCP: No DB-entry found!')
+                
+        for i in range(len(self.cts[0])):
+            for j in range(len(self.cts[0][0])):
+                self.cts[0][i][j] = (self.cts[0][i][j] - self.offset) * self.voltDivRatio
+                self.err[0][i][j] = self.cts[0][i][j] * 10**-4
         con.close()
-        self.cts = [np.array(self.ctsTemp)]
-        self.err = [np.array(self.errTemp)]
     
     def export(self, db):
         con = sqlite3.connect(db)
         with con:
-            con.execute('''UPDATE Files SET date = ?, offset = ?, accVolt = ?, voltDivRatio = ?, lineMult = ?, lineOffset = ?  WHERE file = ?''', (self.date, self.offset, self.accVolt, self.voltDivRatio, self.lineMult, self.lineOffset, self.file))
+            con.execute('''UPDATE Files SET date = ?, offset = ?, type = ? WHERE file = ?''', (self.date, self.offset, self.type, self.file))
         con.close()
-    
+
     def counting(self, f):
-        scaler = str(f.readline())
-        scalerNo = scaler.split(',')[1]
+        firstLine = str(f.readline()).split(',')
+        scalerNo = self.nrScalers
         self.nrScalers +=1
         ctscopy = []
         cts = []
         err = []
+        i = 1
+        while firstLine[i][0] != '<':
+            i += 1
+        cts.extend([float(firstLine[i][1:]),float(firstLine[i+1]),float(firstLine[i+2]),float(firstLine[i+3]),float(firstLine[i+4])])
+        err.extend([float(firstLine[i][1:])/10**4,float(firstLine[i+1])/10**4,float(firstLine[i+2])/10**4,float(firstLine[i+3])/10**4,float(firstLine[i+4])/10**4])
         noEnd = True
         while noEnd:
             line = f.readline()
             ctscopy.extend(line.split(','))
             if str(line)[-2] == '>':
                 noEnd = False
-        ctscopy[0] = ctscopy[0][1:]
         for i in range(0, len(ctscopy)):
-            if ctscopy[i] != '\n' and ctscopy[i] != '>>\n' and ctscopy[i] != ' ':
+            if ctscopy[i] != '\n' and ctscopy[i] != '>\n' and ctscopy[i] != ' ':
                 if str(ctscopy[i])[-1] == '\n':
                     if str(ctscopy[i])[-2] == '>':
-                        cts.append(float(str(ctscopy[i])[:-3]))
+                        pass
                     else:
                         cts.append(float(str(ctscopy[i])[:-1]))
+                        err.append(((float(cts[-1])*10**-4)))
                 else:
                     cts.append(float(ctscopy[i]))
-                err.append(np.sqrt(float(cts[-1])))
+                    err.append(((float(cts[-1])*10**-4)))
         self.ctsTemp.append(cts)
         self.errTemp.append(err)
         return scalerNo
