@@ -64,7 +64,7 @@ class XMLImporter(SpecData):
             dacStop18Bit = dacStart18Bit + (dacStepSize18Bit * nOfsteps)
             xAxis = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit)
             ctsstr = xmlGetDataFromTrack(lxmlEtree, nOfactTrack, 'scalerArray')
-            cts = tildaForm.numpyArrayFromString(ctsstr, (nOfsteps, nOfScalers))
+            cts = tildaForm.numpy_array_from_string(ctsstr, (nOfsteps, nOfScalers))
             self.nrScalers.append(nOfScalers)
             self.x.append(xAxis)
             self.cts.append(cts)
