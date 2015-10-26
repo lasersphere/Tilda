@@ -25,17 +25,28 @@ def get_18bit_from_voltage(voltage, dac_gauge_pars=None, ref_volt_neg=-10, ref_v
     return b18
 
 
-def get_18bit_stepsize(step_voltage, dac_gauge_pars=None, ref_volt_neg=-10, ref_volt_pos=10):
+def get_18bit_stepsize(step_voltage, dac_gauge_pars=None):
     """
-    function to get the StepSize in integer form derived from a double Voltage
-    :param step_voltage: dbl, desired StepSize Voltage
-    :param ref_volt_neg/ref_volt_pos: dbl, value for the neg./pos. reference Voltage for the DAC
-    :return: int, 18-Bit Code
+    function to get the StepSize in dac register integer form derived from a double Voltage
+    :return ~ step_voltage/lsb
     """
-    b18 = get_18bit_from_voltage(step_voltage, dac_gauge_pars, ref_volt_neg, ref_volt_pos) - int(2 ** 17)
-    # must loose the 1 in the beginning.
-    # b18 += 1  # needed?
+    lsb = 20 / ((2 ** 18) - 1)  # least significant bit in +/-10V 18Bit DAC
+    if dac_gauge_pars is not None:
+        lsb = dac_gauge_pars[1]  # lsb = slope from DAC-Scan
+    b18 = int(round(step_voltage/lsb))
     return b18
+
+
+def get_stepsize_in_volt_from_18bit(volt_18b, dac_gauge_pars=None):
+    """
+    function to calculate the stepsize by a given 18bit dac register difference.
+    :return ~ volt_18b * lsb
+    """
+    lsb = 20 / ((2 ** 18) - 1)  # least significant bit in +/-10V 18Bit DAC
+    if dac_gauge_pars is not None:
+        lsb = dac_gauge_pars[1]  # lsb = slope from DAC-Scan
+    volt = round(volt_18b * lsb, 6)
+    return volt
 
 
 def get_24bit_input_from_voltage(voltage, dac_gauge_pars=None, add_reg_add=True, loose_sign=False, ref_volt_neg=-10, ref_volt_pos=10):
