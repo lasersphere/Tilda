@@ -19,10 +19,10 @@ import Measurement.MCPImporter as imp
 import Measurement.TLDImporter as tldI
 import InteractiveFit as IF
 
-db = 'V:/Projekte/COLLAPS/ROC/optical/CaD2_optical.sqlite'
+db = 'V:/Projekte/COLLAPS/ROC/ROC_October/CaD2.sqlite'
 
 '''Crawling'''
-#Tools.crawl(db)
+Tools.crawl(db)
 #print(Physics.freqFromWavenumber(12722.2986*2))
 
 '''Fitting the Kepco-Scans!'''
@@ -36,18 +36,18 @@ db = 'V:/Projekte/COLLAPS/ROC/optical/CaD2_optical.sqlite'
 # shift44 = []
 #
 # for i in range(0,6):
-    # run = str('Run' + str(i))
-    # BatchFit.batchFit(Tools.fileList(db,'40_Ca'), db,run)
-    # BatchFit.batchFit(Tools.fileList(db,'42_Ca'), db,run)
-    # BatchFit.batchFit(Tools.fileList(db,'44_Ca'), db,run)
-    # BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
-
-#    '''Mean of center, sigma and gamma for 40_Ca'''
-# Analyzer.combineRes('40_Ca', 'gamma',run, db)
-# Analyzer.combineRes('40_Ca', 'sigma',run, db)
-# Analyzer.combineRes('42_Ca', 'sigma',run, db)
-# Analyzer.combineRes('44_Ca', 'sigma',run, db)
-# Analyzer.combineRes('48_Ca', 'sigma',run, db)
+#     run = str('Run' + str(i))
+#     BatchFit.batchFit(Tools.fileList(db,'40_Ca'), db,run)
+#     BatchFit.batchFit(Tools.fileList(db,'42_Ca'), db,run)
+#     BatchFit.batchFit(Tools.fileList(db,'44_Ca'), db,run)
+#     BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
+#
+#     '''Mean of center, sigma and gamma for 40_Ca'''
+# # Analyzer.combineRes('40_Ca', 'gamma',run, db)
+# # Analyzer.combineRes('40_Ca', 'sigma',run, db)
+# # Analyzer.combineRes('42_Ca', 'sigma',run, db)
+# # Analyzer.combineRes('44_Ca', 'sigma',run, db)
+# # Analyzer.combineRes('48_Ca', 'sigma',run, db)
 #     Analyzer.combineRes('40_Ca', 'center',run, db)
 #     Analyzer.combineRes('42_Ca', 'center',run, db)
 #     Analyzer.combineRes('44_Ca', 'center',run, db)
