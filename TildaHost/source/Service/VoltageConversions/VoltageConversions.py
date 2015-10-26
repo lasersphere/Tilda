@@ -8,40 +8,44 @@ Created on '26.10.2015'
 import numpy as np
 
 
-def get_18bit_from_voltage(voltage, ref_volt_neg=-10, ref_volt_pos=10):
+def get_18bit_from_voltage(voltage, dac_gauge_pars=None, ref_volt_neg=-10, ref_volt_pos=10):
     """
     function to return an 18-Bit Integer by putting in a voltage +\-10V in DBL
-    as described in the manual of the AD5781
     :param voltage: dbl, desired Voltage
     :param ref_volt_neg/ref_volt_pos: dbl, value for the neg./pos. reference Voltage for the DAC
     :return: int, 18-Bit Code.
     """
-    b18 = (voltage - ref_volt_neg) * ((2 ** 18) - 1) / (ref_volt_pos - ref_volt_neg)  # from the manual
-    b18 = int(b18)
+    if dac_gauge_pars is None:
+        #  function as described in the AD5781 Manual
+        b18 = (voltage - ref_volt_neg) * ((2 ** 18) - 1) / (ref_volt_pos - ref_volt_neg)  # from the manual
+        b18 = int(round(b18))
+    else:
+        # linear function (V = slope * D + offset) with offset and slope from measurement
+        b18 = int(round(((voltage - dac_gauge_pars[0])/dac_gauge_pars[1])))
     return b18
 
 
-def get_18bit_stepsize(step_voltage, ref_volt_neg=-10, ref_volt_pos=10):
+def get_18bit_stepsize(step_voltage, dac_gauge_pars=None, ref_volt_neg=-10, ref_volt_pos=10):
     """
     function to get the StepSize in integer form derived from a double Voltage
     :param step_voltage: dbl, desired StepSize Voltage
     :param ref_volt_neg/ref_volt_pos: dbl, value for the neg./pos. reference Voltage for the DAC
     :return: int, 18-Bit Code
     """
-    b18 = get_18bit_from_voltage(step_voltage, ref_volt_neg, ref_volt_pos) - int(2 ** 17)
+    b18 = get_18bit_from_voltage(step_voltage, dac_gauge_pars, ref_volt_neg, ref_volt_pos) - int(2 ** 17)
     # must loose the 1 in the beginning.
     # b18 += 1  # needed?
     return b18
 
 
-def get_24bit_input_from_voltage(voltage, add_reg_add=True, loose_sign=False, ref_volt_neg=-10, ref_volt_pos=10):
+def get_24bit_input_from_voltage(voltage, dac_gauge_pars=None, add_reg_add=True, loose_sign=False, ref_volt_neg=-10, ref_volt_pos=10):
     """
     function to return an 24-Bit Integer by putting in a voltage +\-10V in DBL
     :param voltage: dbl, desired Voltage
     :param ref_volt_neg/ref_volt_pos: dbl, value for the neg./pos. reference Voltage for the DAC
     :return: int, 24-Bit Code.
     """
-    b18 = get_18bit_from_voltage(voltage, ref_volt_neg, ref_volt_pos)
+    b18 = get_18bit_from_voltage(voltage, dac_gauge_pars, ref_volt_neg, ref_volt_pos)
     b24 = (int(b18) << 2)
     if add_reg_add:
         # adds the address of the DAC register to the bits
@@ -51,7 +55,20 @@ def get_24bit_input_from_voltage(voltage, add_reg_add=True, loose_sign=False, re
     return b24
 
 
-def get_voltage_from_24bit(voltage_24bit, remove_add=True, ref_volt_neg=-10, ref_volt_pos=10):
+def get_voltage_from_18bit(voltage_18bit, dac_gauge_pars=None, ref_volt_neg=-10, ref_volt_pos=10):
+    """function from the manual of the AD5781"""
+    if dac_gauge_pars is None:
+        # function as described in the AD5781 Manual
+        voltfloat = (ref_volt_pos - ref_volt_neg) * voltage_18bit / ((2 ** 18) - 1) + ref_volt_neg
+        voltfloat = round(voltfloat, 6)
+    else:
+        # linear function (V = slope * D + offset) with offset and slope from measurement
+        voltfloat = voltage_18bit * dac_gauge_pars[1] + dac_gauge_pars[0]
+        voltfloat = round(voltfloat, 6)
+    return voltfloat
+
+
+def get_voltage_from_24bit(voltage_24bit, dac_gauge_pars=None, remove_add=True, ref_volt_neg=-10, ref_volt_pos=10):
     """
     function to get the output voltage of the DAC by the corresponding 24-Bit register input
     :param voltage_24bit: int, 24 bit, register entry of the DAC
@@ -60,14 +77,7 @@ def get_voltage_from_24bit(voltage_24bit, remove_add=True, ref_volt_neg=-10, ref
     :return: dbl, Voltage that will be applied.
     """
     v18bit = get_18bit_from_24bit_dac_reg(voltage_24bit, remove_add)
-    voltfloat = get_voltage_from_18bit(v18bit, ref_volt_neg, ref_volt_pos)
-    return voltfloat
-
-
-def get_voltage_from_18bit(voltage_18bit, ref_volt_neg=-10, ref_volt_pos=10):
-    """function from the manual of the AD5781"""
-    voltfloat = (ref_volt_pos - ref_volt_neg) * voltage_18bit / ((2 ** 18) - 1) + ref_volt_neg
-    voltfloat = round(voltfloat, 6)
+    voltfloat = get_voltage_from_18bit(v18bit, dac_gauge_pars, ref_volt_neg, ref_volt_pos)
     return voltfloat
 
 
