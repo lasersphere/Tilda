@@ -36,7 +36,7 @@ class NSplit32bData(Node):
         buf = np.zeros((len(data),), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
                                             ('headerIndex', 'u1'), ('payload', 'u4')])
         for i, j in enumerate(data):
-            result = form.split32bData(j)
+            result = form.split_32b_data(j)
             buf[i] = result
         return buf
 
@@ -59,7 +59,7 @@ class NSaveRawData(Node):
     def processData(self, data, pipeData):
         if self.nOfSaves < 0:  # save pipedata, first time something is fed to the pipelins
             self.nOfSaves = filhandl.savePipeData(pipeData, self.nOfSaves)
-            pipeData['activeTrackPar'] = form.addWorkingTimeToTrackDict(pipeData['activeTrackPar'])
+            pipeData['activeTrackPar'] = form.add_working_time_to_track_dict(pipeData['activeTrackPar'])
         self.buf = np.append(self.buf, data)
         if self.buf.size > self.maxArraySize:  # when buffer is full, store the data to disc
             self.nOfSaves = filhandl.saveRawData(self.buf, pipeData, self.nOfSaves)
@@ -124,7 +124,7 @@ class NSumBunchesTRS(Node):
                     pipeData['activeTrackPar']['nOfCompletedSteps'] += 1
                     self.curVoltIndex, self.voltArray = find_volt_in_array(j['payload'], self.voltArray)
             elif j['headerIndex'] == 0:  # MCS/TRS Data
-                self.scalerArray = form.trsSum(j, self.curVoltIndex, self.scalerArray,
+                self.scalerArray = form.trs_sum(j, self.curVoltIndex, self.scalerArray,
                                                pipeData['activeTrackPar']['activePmtList'])
         if trsAna.checkIfScanComplete(pipeData):
             return (self.voltArray, self.timeArray, self.scalerArray)
@@ -182,8 +182,8 @@ class NAcquireOneScanCS(Node):
 
     def start(self):
         scand = self.Pipeline.pipeData
-        self.voltArray = form.createXAxisFromTrackDict(scand)
-        self.scalerArray = form.createDefaultScalerArrayFromScanDict(scand)
+        self.voltArray = form.create_x_axis_from_track_dict(scand)
+        self.scalerArray = form.create_default_scaler_array_from_scandict(scand)
         self.bufIncoming = np.zeros((0,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
                                                      ('headerIndex', 'u1'), ('payload', 'u4')])
 
@@ -254,8 +254,8 @@ class NSortRawDatatoArray(Node):
 
     def start(self):
         scand = self.Pipeline.pipeData
-        self.voltArray = form.createDefaultVoltArrayFromScanDict(scand)
-        self.scalerArray = form.createDefaultScalerArrayFromScanDict(scand)
+        self.voltArray = form.create_default_volt_array_from_scandict(scand)
+        self.scalerArray = form.create_default_scaler_array_from_scandict(scand)
 
     def processData(self, data, pipeData):
         ret = None
@@ -287,13 +287,13 @@ class NSortRawDatatoArray(Node):
                     ret.append((self.scalerArray, scan_complete))
                     logging.debug('Voltindex: ' + str(self.curVoltIndex) +
                                   'completede steps:  ' + str(pipeData['activeTrackPar']['nOfCompletedSteps']))
-                    self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
+                    self.scalerArray = form.create_default_scaler_array_from_scandict(pipeData)
                     scan_complete = False
         if ret is None:
             ret = []
         if np.count_nonzero(self.scalerArray):
             ret.append((self.scalerArray, scan_complete))
-        self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
+        self.scalerArray = form.create_default_scaler_array_from_scandict(pipeData)
         return ret
 
     def clear(self):
@@ -315,7 +315,7 @@ class NSumCS(Node):
         self.scalerArray = None
 
     def start(self):
-        self.scalerArray = form.createDefaultScalerArrayFromScanDict(self.Pipeline.pipeData)
+        self.scalerArray = form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
 
     def processData(self, data, pipeData):
         for i, j in enumerate(data):  # data can be a list of completed scans
@@ -324,7 +324,7 @@ class NSumCS(Node):
         return self.scalerArray
 
     def clear(self):
-        self.scalerArray = form.createDefaultScalerArrayFromScanDict(self.Pipeline.pipeData)
+        self.scalerArray = form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
 
 
 class NRemoveTrackCompleteFlag(Node):
@@ -364,7 +364,7 @@ class NPlotSum(Node):
         self.x = None
 
     def start(self):
-        self.x = form.createXAxisFromTrackDict(self.Pipeline.pipeData['activeTrackPar'])
+        self.x = form.create_x_axis_from_track_dict(self.Pipeline.pipeData['activeTrackPar'])
 
     def processData(self, data, pipeData):
         logging.info('plotting...')
@@ -394,7 +394,7 @@ class NMPlLivePlot(Node):
         self.y = None
 
     def start(self):
-        self.x = form.createXAxisFromTrackDict(self.Pipeline.pipeData['activeTrackPar'])
+        self.x = form.create_x_axis_from_track_dict(self.Pipeline.pipeData['activeTrackPar'])
 
     def animate(self, x, y):
         # self.ax.clear()
@@ -428,7 +428,7 @@ class NSaveSumCS(Node):
         self.type = 'SaveSumCS'
 
     def processData(self, data, pipeData):
-        pipeData['activeTrackPar'] = form.addWorkingTimeToTrackDict(pipeData['activeTrackPar'])
+        pipeData['activeTrackPar'] = form.add_working_time_to_track_dict(pipeData['activeTrackPar'])
         pipeInternals = pipeData['pipeInternals']
         file = pipeInternals['activeXmlFilePath']
         rootEle = filhandl.loadXml(file)
@@ -449,7 +449,7 @@ class NSaveSumCS(Node):
 #         super(NLivePlot, self).__init__()
 #         self.type = 'LivePlot'
 #         trackd = pipeData['activeTrackPar']
-#         self.x = form.createXAxisFromTrackDict(trackd)
+#         self.x = form.create_x_axis_from_track_dict(trackd)
 #         winRef = pipeData['pipeInternals']['activeGraphicsWindow']
 #         self.pl = PyQtGraphPlotter.addPlot(winRef, pltTitle)
 #
@@ -460,7 +460,7 @@ class NSaveSumCS(Node):
 #
 #     def clear(self, pipeData):
 #         trackd = pipeData['activeTrackPar']
-#         self.x = form.createXAxisFromTrackDict(trackd)
+#         self.x = form.create_x_axis_from_track_dict(trackd)
 #         winRef = pipeData['pipeInternals']['activeGraphicsWindow']
 #         self.pl = PyQtGraphPlotter.addPlot(winRef)
 
@@ -477,7 +477,7 @@ class NAccumulateSingleScan(Node):
         self.scalerArray = None
 
     def start(self):
-        self.scalerArray = form.createDefaultScalerArrayFromScanDict(self.Pipeline.pipeData)
+        self.scalerArray = form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
 
     def processData(self, data, pipeData):
         ret = None
@@ -487,11 +487,11 @@ class NAccumulateSingleScan(Node):
                 ret = self.scalerArray
             elif j[1]:
                 ret = np.add(self.scalerArray, j[0])
-                self.scalerArray = form.createDefaultScalerArrayFromScanDict(pipeData)
+                self.scalerArray = form.create_default_scaler_array_from_scandict(pipeData)
         return ret
 
     def clear(self):
-        self.scalerArray = form.createDefaultScalerArrayFromScanDict(self.Pipeline.pipeData)
+        self.scalerArray = form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
 
 
 class NArithmetricScaler(Node):

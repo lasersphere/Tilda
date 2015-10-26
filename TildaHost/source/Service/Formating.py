@@ -6,38 +6,37 @@ Created on 21.01.2015
 
 from datetime import datetime as dt
 import numpy as np
-import copy
 import ast
 
 
-def split32bData(int32bData):
+def split_32b_data(int32b_data):
     """
-    seperate header, headerIndex and payload from each other
-    :param int32bData:
-    :return: tuple, (firstHeader, secondHeader, headerIndex, payload)
+    seperate header, header_index and payload from each other
+    :param int32b_data:
+    :return: tuple, (first_header, second_header, header_index, payload)
     """
-    headerLength = 8
-    firstHeader = int32bData >> (32 - int(headerLength/2))
-    secondHeader = int32bData >> (32 - headerLength) & ((2 ** 4) - 1)
-    headerIndex = (int32bData >> (32 - headerLength - 1)) & 1
-    payload = int32bData & ((2 ** 23) - 1)
-    return (firstHeader, secondHeader, headerIndex, payload)
+    header_length = 8
+    first_header = int32b_data >> (32 - int(header_length/2))
+    second_header = int32b_data >> (32 - header_length) & ((2 ** 4) - 1)
+    header_index = (int32b_data >> (32 - header_length - 1)) & 1
+    payload = int32b_data & ((2 ** 23) - 1)
+    return first_header, second_header, header_index, payload
 
 
-def trsSum(element, actVoltInd, sumArray, activePmtList=range(8)):
+def trs_sum(element, act_volt_ind, sum_array, active_pmt_list=range(8)):
     """
     Add new Scaler event on previous acquired ones. Treat each scaler seperatly.
     :return: np.array, sum
     """
     timestamp = element['payload']
-    pmtsWithEvent = (element['firstHeader'] << 4) + element['secondHeader'] #glue header back together
-    for ind, val in enumerate(activePmtList):
-        if pmtsWithEvent & (2 ** val):
-            sumArray[actVoltInd, timestamp, ind] += 1 #timestamp equals index in timeArray
-    return sumArray
+    pmts_with_event = (element['firstHeader'] << 4) + element['secondHeader']  # glue header back together
+    for ind, val in enumerate(active_pmt_list):
+        if pmts_with_event & (2 ** val):
+            sum_array[act_volt_ind, timestamp, ind] += 1  # timestamp equals index in timeArray
+    return sum_array
 
 
-def numpyArrayFromString(string, shape):
+def numpy_array_from_string(string, shape):
     """
     converts a text array saved in an lxml.etree.Element
     using the function xmlWriteToTrack back into a numpy array
@@ -60,27 +59,27 @@ def eval_str_vals_in_dict(dicti):
     return dicti
 
 
-def addWorkingTimeToTrackDict(trackDict):
+def add_working_time_to_track_dict(trackdict):
     """adds the timestamp to the working time of the track"""
     time = str(dt.now().strftime("%Y-%m-%d %H:%M:%S"))
-    if 'workingTime' in trackDict:
-        if trackDict['workingTime'] == None:
+    if 'workingTime' in trackdict:
+        if trackdict['workingTime'] is None:
             worktime = []
         else:
-            worktime = trackDict['workingTime']
+            worktime = trackdict['workingTime']
     else:
         worktime = []
     worktime.append(time)
-    trackDict.update(workingTime=worktime)
-    return trackDict
+    trackdict.update(workingTime=worktime)
+    return trackdict
 
 
-def convertScanDictV104toV106(scandict, draftScanDict):
+def convert_scandict_v104_to_v106(scandict):
     """
     converts a scandictionary created in Version 1.04 to the new format as it should be in v1.06
     was needed for working with the collected .raw data from 29.07.2015.
     """
-    trackdft = draftScanDict['activeTrackPar']
+    # trackdft = draft_scan_dict['activeTrackPar']
     track = scandict['activeTrackPar']
     trackrenamelist = [('start', 'dacStartRegister18Bit'),
                        ('stepSize', 'dacStepSize18Bit'),
@@ -90,7 +89,8 @@ def convertScanDictV104toV106(scandict, draftScanDict):
     track['workingTime'] = ['unknown']
     track['colDirTrue'] = scandict['isotopeData']['colDirTrue']
     scandict['isotopeData']['isotopeStartTime'] = scandict['isotopeData']['datetime']
-    scandict['measureVoltPars'] = {k: v for (k, v) in track.items() if k in ['measVoltTimeout10ns', 'measVoltPulseLength25ns']}
+    scandict['measureVoltPars'] = \
+        {k: v for (k, v) in track.items() if k in ['measVoltTimeout10ns', 'measVoltPulseLength25ns']}
 
     scandict['isotopeData'].pop('colDirTrue')
     scandict['isotopeData'].pop('datetime')
@@ -101,36 +101,36 @@ def convertScanDictV104toV106(scandict, draftScanDict):
     return scandict
 
 
-def createXAxisFromTrackDict(trackd):
+def create_x_axis_from_track_dict(trackd):
     """
     uses a track dictionary to create the x axis, starting with dacStartRegister18Bit,
     length is nOfSteps and stepsize is dacStepSize18Bit
     """
-    dacStart18Bit = trackd['dacStartRegister18Bit']
-    dacStepSize18Bit = trackd['dacStepSize18Bit']
-    nOfsteps = trackd['nOfSteps']
-    dacStop18Bit = dacStart18Bit + (dacStepSize18Bit * nOfsteps)
-    x = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit)
+    dac_start_18bit = trackd['dacStartRegister18Bit']
+    dac_stepsize_18bit = trackd['dacStepSize18Bit']
+    n_of_steps = trackd['nOfSteps']
+    dac_stop_18bit = dac_start_18bit + (dac_stepsize_18bit * n_of_steps)
+    x = np.arange(dac_start_18bit, dac_stop_18bit, dac_stepsize_18bit)
     return x
 
 
-def createDefaultScalerArrayFromScanDict(scand, dft_val=0):
+def create_default_scaler_array_from_scandict(scand, dft_val=0):
     """
     create empty ScalerArray, size is determined by the activeTrackPar in the scan dictionary
     """
     trackd = scand['activeTrackPar']
-    nOfSteps = trackd['nOfSteps']
-    nofScaler = len(trackd['activePmtList'])
-    arr = np.full((nOfSteps, nofScaler), dft_val, dtype=np.uint32)
+    n_of_steps = trackd['nOfSteps']
+    n_of_scaler = len(trackd['activePmtList'])
+    arr = np.full((n_of_steps, n_of_scaler), dft_val, dtype=np.uint32)
     return arr
 
-def createDefaultVoltArrayFromScanDict(scand, dft_val=(2 ** 30)):
+
+def create_default_volt_array_from_scandict(scand, dft_val=(2 ** 30)):
     """
     create Default Voltage array, with default values in dft_val
     (2 ** 30) is chosen, because this is an default value which is not reachable by the DAC
     """
     trackd = scand['activeTrackPar']
-    nOfSteps = trackd['nOfSteps']
-    arr = np.full((nOfSteps,), dft_val, dtype=np.uint32)
-
+    n_of_steps = trackd['nOfSteps']
+    arr = np.full((n_of_steps,), dft_val, dtype=np.uint32)
     return arr

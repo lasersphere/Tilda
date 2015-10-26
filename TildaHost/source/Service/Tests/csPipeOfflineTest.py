@@ -30,10 +30,10 @@ xmlFiles = [[os.path.join(pathOfRun, file) for file in os.listdir(pathOfRun) if 
          for pathOfRun in runList]
 scandicts = [FileHandle.scanDictionaryFromXmlFile(xmlFile[0], 0, {}) for xmlFile in xmlFiles]
 # # v104scandict = scandicts[0][0]
-# # v106scandict = Form.convertScanDictV104toV106(v104scandict, Drafts.draftScanDict)
+# # v106scandict = Form.convert_scandict_v104_to_v106(v104scandict, Drafts.draftScanDict)
 # scandicts[0][0]['isotopeData']['colDirTrue'] = 'True'
 '''the scans has been collected with the sequencer of version 1.04, renaming etc. requires translation: '''
-scandicts = [Form.convertScanDictV104toV106(scandicts[i][0], Drafts.draftScanDict) for i, j in enumerate(scandicts)]
+scandicts = [Form.convert_scandict_v104_to_v106(scandicts[i][0]) for i, j in enumerate(scandicts)]
 
 scandicts = scandicts[:1]
 # print(len(scandicts))

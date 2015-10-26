@@ -89,7 +89,7 @@ print(format(48, '08b'))
 #         convert rawData to a readable form
 #         """
 #         for i,j in enumerate(data):
-#             self.buf = np.insert(self.buf, 0, self.form.split32bData(j))
+#             self.buf = np.insert(self.buf, 0, self.form.split_32b_data(j))
 #         return self.buf
 #
 #     def clear(self):
