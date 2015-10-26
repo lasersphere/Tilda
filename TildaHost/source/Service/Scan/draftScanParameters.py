@@ -40,15 +40,15 @@ draftIsotopePars = {
 }
 
 draftTrackPars = {
-    'dacStepSize18Bit': 10003,  # form.get_24bit_input_from_voltage(1, False),
-    'dacStartRegister18Bit': 10,  # form.get_24bit_input_from_voltage(-5, False),
-    'nOfSteps': 20,
+    'dacStepSize18Bit': 10,  # form.get_24bit_input_from_voltage(1, False),
+    'dacStartRegister18Bit': 0,  # form.get_24bit_input_from_voltage(-5, False),
+    'nOfSteps': 16,
     'nOfScans': 30, 'nOfCompletedSteps': 0, 'invertScan': False,
     'postAccOffsetVoltControl': 2, 'postAccOffsetVolt': 1000,
     'waitForKepco25nsTicks': 40,
     'waitAfterReset25nsTicks': 4000,
     'activePmtList': [0, 1],
-    'colDirTrue': 'False',
+    'colDirTrue': False,
     'dwellTime10ns': 2000000,
     'workingTime': None
 }

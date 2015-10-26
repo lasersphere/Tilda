@@ -54,14 +54,14 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.dac_start_v_set(get_voltage_from_18bit(track_dict['dacStartRegister18Bit']))
         self.dac_stop_v_set(get_voltage_from_18bit(
             track_dict['dacStartRegister18Bit'] + track_dict['dacStepSize18Bit'] * track_dict['nOfSteps']))
-        self.dac_step_size_set(get_voltage_from_18bit(track_dict['dacStepSize18Bit']) - get_voltage_from_18bit(0))
         self.n_of_steps_set(track_dict['nOfSteps'])
+        self.dac_step_size_set(get_voltage_from_18bit(track_dict['dacStepSize18Bit']) - get_voltage_from_18bit(0))
         self.n_of_scans_set(track_dict['nOfScans'])
         self.invert_scan_set(track_dict['invertScan'])
-        # self.post_acc_offset_volt_control_set(track_dict['postAccOffsetVoltControl'])
+        self.post_acc_offset_volt_control_set(track_dict['postAccOffsetVoltControl'])
         self.post_acc_offset_volt(track_dict['postAccOffsetVolt'])
-        # self.active_pmt_list_set(track_dict['activePmtList'])
-        # self.col_dir_true_set(track_dict['colDirTrue'])
+        self.active_pmt_list_set(track_dict['activePmtList'])
+        self.col_dir_true_set(track_dict['colDirTrue'])
 
     def dwelltime_set(self, val):
         self.buffer_pars['dwellTime10ns'] = val * (10 ** 5)  # convert to units of 10ns
@@ -100,7 +100,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.buffer_pars['dacStepSize18Bit'] = bit
 
     def n_of_steps_set(self, val):
-        self.label_nOfSteps_set.setText(str(val))
+        self.label_nOfSteps_set.setText(str(round(val)))
         self.buffer_pars['nOfSteps'] = val
 
     def n_of_scans_set(self, val):
@@ -122,12 +122,13 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.buffer_pars['postAccOffsetVolt'] = val
         # pass
 
-    def active_pmt_list_set(self, val):
-        strlist = str('[' + val + ']')
-        try:
-            lis = ast.literal_eval(strlist)
-        except:
-            lis = []
+    def active_pmt_list_set(self, lis):
+        if type(lis) == str:
+            strlist = str('[' + lis + ']')
+            try:
+                lis = ast.literal_eval(strlist)
+            except:
+                lis = []
         self.label_activePmtList_set.setText(str(lis))
         self.buffer_pars['activePmtList'] = lis
         # pass
