@@ -107,7 +107,7 @@ def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict=None):
     oldDict['pipeInternals']['activeTrackNumber'] = nOfTrack
     oldDict['pipeInternals']['activeXmlFilePath'] = xmlFileName
     for key, val in oldDict.items():
-        oldDict[key] = form.convertStrValuesInDict(oldDict[key])
+        oldDict[key] = form.eval_str_vals_in_dict(oldDict[key])
     return oldDict, xmlEtree
 
 def getAllTracksOfXmlFileInOneDict(xmlFile):
@@ -117,7 +117,7 @@ def getAllTracksOfXmlFileInOneDict(xmlFile):
     for t in tracks:
         trackd[str(t.tag)] = (xmlGetDictFromEle(xmlEtree)[1]['tracks'][str(t.tag)]['header'])
     for key, val in trackd.items():
-        trackd[key] = form.convertStrValuesInDict(trackd[key])
+        trackd[key] = form.eval_str_vals_in_dict(trackd[key])
     return trackd
 
 def savePickle(data, pipeDataDict, ending='.raw'):

@@ -1,88 +1,13 @@
-'''
+"""
 Created on 21.01.2015
 
 @author: skaufmann
-'''
+"""
 
 from datetime import datetime as dt
-# from __builtin__ import str
 import numpy as np
 import copy
-
-
-def get18BitInputForVoltage(voltage, vRefN=-10, vRefP=10):
-    """
-    function to return an 18-Bit Integer by putting in a voltage +\-10V in DBL
-    as described in the manual of the AD5781
-    :param voltage: dbl, desired Voltage
-    :param vRefN/vRefP: dbl, value for the neg./pos. reference Voltage for the DAC
-    :return: int, 18-Bit Code.
-    """
-    b18 = (voltage - vRefN) * ((2 ** 18) - 1)/(vRefP-vRefN)  # from the manual
-    b18 = int(b18)
-    return b18
-
-
-def get18BitStepSize(stepVolt, vRefN=-10, vRefP=10):
-    """
-    function to get the StepSize in integer form derived from a double Voltage
-    :param stepVolt: dbl, desired StepSize Voltage
-    :param vRefN/vRefP: dbl, value for the neg./pos. reference Voltage for the DAC
-    :return: int, 18-Bit Code
-    """
-    b18 = get18BitInputForVoltage(stepVolt, vRefN, vRefP) - int(2 ** 17)  # must loose the 1 in the beginning.
-    # b18 += 1  # needed?
-    return b18
-
-
-def get24BitInputForVoltage(voltage, addRegAddress=True, looseSign=False, vRefN=-10, vRefP=10):
-    """
-    function to return an 24-Bit Integer by putting in a voltage +\-10V in DBL
-    :param voltage: dbl, desired Voltage
-    :param vRefN/vRefP: dbl, value for the neg./pos. reference Voltage for the DAC
-    :return: int, 24-Bit Code.
-    """
-    b18 = get18BitInputForVoltage(voltage, vRefN, vRefP)
-    b24 = (int(b18) << 2)
-    if addRegAddress:
-        #adds the address of the DAC register to the bits
-        b24 = b24 + int(2 ** 20)
-    if looseSign:
-        b24 = b24 - int(2 ** 19)
-    return b24
-
-
-def getVoltageFrom24Bit(voltage24Bit, removeAddress=True, vRefN=-10, vRefP=10):
-    """
-    function to get the output voltage of the DAC by the corresponding 24-Bit register input
-    :param voltage24Bit: int, 24 bit, register entry of the DAC
-    :param removeAddress: bool, to determine if the integer has still the registry adress attached
-    :param vRefN/P: dbl, +/- 10 V for the reference Voltage of the DAC
-    :return: dbl, Voltage that will be applied.
-    """
-    v18Bit = get18BitFrom24BitDacReg(voltage24Bit, removeAddress)
-    voltfloat = getVoltageFrom18Bit(v18Bit, vRefN, vRefP)
-    return voltfloat
-
-
-def getVoltageFrom18Bit(voltage18Bit, vRefN=-10, vRefP=10):
-    """function from the manual of the AD5781"""
-    voltfloat = (vRefP - vRefN) * voltage18Bit / ((2 ** 18) - 1) + vRefN
-    voltfloat = round(voltfloat, 6)
-    return voltfloat
-
-
-def get18BitFrom24BitDacReg(voltage24Bit, removeAddress=True):
-    """
-    function to convert a 24Bit DAC Reg to 18Bit
-    :param voltage24Bit: int, 24 Bit DAC Reg entry
-    :param removeAddress: bool, True if the Registry Address is still included
-    :return: int, 18Bit DAC Reg value
-    """
-    if removeAddress:
-        voltage24Bit = voltage24Bit - (2 ** 20)
-    v18Bit = (voltage24Bit >> 2) & ((2 ** 18) - 1)
-    return v18Bit
+import ast
 
 
 def split32bData(int32bData):
@@ -97,24 +22,6 @@ def split32bData(int32bData):
     headerIndex = (int32bData >> (32 - headerLength - 1)) & 1
     payload = int32bData & ((2 ** 23) - 1)
     return (firstHeader, secondHeader, headerIndex, payload)
-
-
-def findVoltage(voltage, voltArray):
-    """
-    find the index of voltage in voltArray. If not existant, create.
-    :return: (int, np.array), index and VoltageArray
-    """
-    '''payload is 23-Bits, Bits 2 to 20 is the DAC register'''
-    voltage = get18BitFrom24BitDacReg(voltage, True) #shift by 2 and delete higher parts of payload
-    index = np.where(voltArray == voltage)
-    if len(index[0]) == 0:
-        #voltage not yet in array, put it at next empty position
-        index = np.where(voltArray == (2 ** 30))[0][0]
-    else:
-        #voltage already in list, take the found index
-        index = index[0][0]
-    np.put(voltArray, index, voltage)
-    return index, voltArray
 
 
 def trsSum(element, actVoltInd, sumArray, activePmtList=range(8)):
@@ -144,27 +51,12 @@ def numpyArrayFromString(string, shape):
     return result
 
 
-def convertStrValuesInDict(dicti):
+def eval_str_vals_in_dict(dicti):
     """
     function to convert the values of a dictionary to int, float or list, if it is possible
     """
-    dictiCopy = copy.copy(dicti)
-    for key, val in dictiCopy.items():
-        try:
-            dicti[str(key)] = int(val)
-        except (TypeError, ValueError):
-            try:
-                dicti[str(key)] = float(val)
-            except (TypeError, ValueError):
-                    try:
-                        if val[0] == '[':
-                            dicti[str(key)] = list(map(int, val[1:-1].split(',')))
-                    except:
-                        pass
-                    if dicti[str(key)] == 'True':
-                        dicti[str(key)] = True
-                    elif dicti[str(key)] == 'False':
-                        dicti[str(key)] = False
+    for key, val in dicti.items():
+        dicti[key] = ast.literal_eval(val)
     return dicti
 
 
@@ -184,7 +76,10 @@ def addWorkingTimeToTrackDict(trackDict):
 
 
 def convertScanDictV104toV106(scandict, draftScanDict):
-    """converts a scandictionary created in Version 1.04 to the new format as it should be in v1.06"""
+    """
+    converts a scandictionary created in Version 1.04 to the new format as it should be in v1.06
+    was needed for working with the collected .raw data from 29.07.2015.
+    """
     trackdft = draftScanDict['activeTrackPar']
     track = scandict['activeTrackPar']
     trackrenamelist = [('start', 'dacStartRegister18Bit'),

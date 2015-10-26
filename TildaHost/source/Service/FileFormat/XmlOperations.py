@@ -7,7 +7,7 @@ Created on '26.10.2015'
 """
 from datetime import datetime as dt
 from lxml import etree as ET
-from Service.Formating import getVoltageFrom18Bit
+from Service.VoltageConversions.VoltageConversions import get_voltage_from_18bit
 
 
 def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
@@ -98,8 +98,8 @@ def xmlAddCompleteTrack(rootEle, scanDict, data):
     pipeInternalsDict = scanDict['pipeInternals']
     nOfTrack = pipeInternalsDict['activeTrackNumber']
     trackDict = scanDict['activeTrackPar']
-    trackDict.update(dacStartVoltage=getVoltageFrom18Bit(trackDict['dacStartRegister18Bit']))
-    trackDict.update(dacStepsizeVoltage=getVoltageFrom18Bit(trackDict['dacStepSize18Bit'] + int(2 ** 17)))
+    trackDict.update(dacStartVoltage=get_voltage_from_18bit(trackDict['dacStartRegister18Bit']))
+    trackDict.update(dacStepsizeVoltage=get_voltage_from_18bit(trackDict['dacStepSize18Bit'] + int(2 ** 17)))
     xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackDict)
     xmlWriteToTrack(rootEle, nOfTrack, 'scalerArray', data, 'data')
     return rootEle

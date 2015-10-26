@@ -6,6 +6,7 @@ Created on '20.05.2015'
 
 """
 from Service.FileFormat.XmlOperations import xmlAddCompleteTrack
+from Service.VoltageConversions.VoltageConversions import find_volt_in_array
 
 from polliPipe.node import Node
 import Service.Formating as form
@@ -121,7 +122,7 @@ class NSumBunchesTRS(Node):
                     print('fpga sends error code: ' + str(j['payload']))
                 elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltag step than
                     pipeData['activeTrackPar']['nOfCompletedSteps'] += 1
-                    self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)
+                    self.curVoltIndex, self.voltArray = find_volt_in_array(j['payload'], self.voltArray)
             elif j['headerIndex'] == 0:  # MCS/TRS Data
                 self.scalerArray = form.trsSum(j, self.curVoltIndex, self.scalerArray,
                                                pipeData['activeTrackPar']['activePmtList'])
@@ -196,9 +197,9 @@ class NAcquireOneScanCS(Node):
                 self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
 
             elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltage step
-                self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)
+                self.curVoltIndex, self.voltArray = find_volt_in_array(j['payload'], self.voltArray)
                 # logging.debug('new Voltageindex: ' + str(self.curVoltIndex) + ' ... with voltage: ' + str(
-                #     form.getVoltageFrom24Bit(j['payload'])))
+                #     form.get_voltage_from_24bit(j['payload'])))
                 self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
 
             elif j['firstHeader'] == progConfigsDict.programs['continuousSequencer']:
@@ -265,9 +266,9 @@ class NSortRawDatatoArray(Node):
                     '{0:032b}'.format(j['payload'])))
 
             elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltage step
-                self.curVoltIndex, self.voltArray = form.findVoltage(j['payload'], self.voltArray)
+                self.curVoltIndex, self.voltArray = find_volt_in_array(j['payload'], self.voltArray)
                 # logging.debug('new Voltageindex: ' + str(self.curVoltIndex) + ' ... with voltage: ' + str(
-                #     form.getVoltageFrom24Bit(j['payload'])))
+                #     form.get_voltage_from_24bit(j['payload'])))
 
             elif j['firstHeader'] == progConfigsDict.programs['continuousSequencer']:
                 '''scaler entry '''

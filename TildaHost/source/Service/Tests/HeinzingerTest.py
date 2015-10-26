@@ -5,6 +5,7 @@ Created on '30.06.2015'
 @author:'simkaufm'
 
 """
+from Service.VoltageConversions.VoltageConversions import get_24bit_input_from_voltage, get_voltage_from_24bit
 
 """
 module for testing Heinzinger Switch Box and the DAC/Kepco
@@ -45,7 +46,7 @@ def readFpga():
     actDaqReg = fpga.readActDacReg()
     retDict = {'DacState': fpga.readDacState(),
                'actDacReg': actDaqReg,
-               'actVolt': form.getVoltageFrom24Bit(actDaqReg),
+               'actVolt': get_voltage_from_24bit(actDaqReg),
                'fpgaState': fpga.checkFpgaStatus()}
     return retDict
 
@@ -55,7 +56,7 @@ def setDacVolt(volt):
         volt = -10
     elif volt > 10:
         volt = 10
-    regVal = form.get24BitInputForVoltage(volt)
+    regVal = get_24bit_input_from_voltage(volt)
     fpga.setDacRegister(regVal)
     fpga.setDacState('setVolt')
     while fpga.readDacState() != hatCfg.dacStatesDict.get('idle') and timeout < 100:
@@ -76,7 +77,7 @@ while eingabe != 'q':
     elif eingabe == 'fv':
         volt = input('please enter desired voltage: ')
         sta = setDacVolt(float(volt))
-        print('voltage set, voltage is: ' + str(sta) + ' DAC reg or ' + str(form.getVoltageFrom24Bit(sta)) + ' Volt')
+        print('voltage set, voltage is: ' + str(sta) + ' DAC reg or ' + str(get_voltage_from_24bit(sta)) + ' Volt')
     elif eingabe == 'hv':
         hznumber = input('enter Heinzinger Number (1 or 2): ')
         try:

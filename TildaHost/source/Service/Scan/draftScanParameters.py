@@ -40,8 +40,8 @@ draftIsotopePars = {
 }
 
 draftTrackPars = {
-    'dacStepSize18Bit': 10,  # form.get24BitInputForVoltage(1, False),
-    'dacStartRegister18Bit': 10,  # form.get24BitInputForVoltage(-5, False),
+    'dacStepSize18Bit': 10,  # form.get_24bit_input_from_voltage(1, False),
+    'dacStartRegister18Bit': 10,  # form.get_24bit_input_from_voltage(-5, False),
     'nOfSteps': 20,
     'nOfScans': 30, 'nOfCompletedSteps': 0, 'invertScan': False,
     'postAccOffsetVoltControl': 2, 'postAccOffsetVolt': 1000,
