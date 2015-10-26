@@ -9,6 +9,7 @@ import lxml.etree as ET
 import os
 import pickle
 import time
+from Service.FileFormat.XmlOperations import xmlFindOrCreateSubElement, xmlCreateIsotope, xmlGetDictFromEle
 import Service.Formating as form
 import numpy as np
 import logging
@@ -51,7 +52,7 @@ def createXmlFileOneIsotope(scanDict):
     :return:str, filename
     """
     isodict = scanDict['isotopeData']
-    root = form.xmlCreateIsotope(isodict)
+    root = xmlCreateIsotope(isodict)
     filename = nameFileXml(scanDict)
     print('creating .xml File: ' + filename)
     saveXml(root, filename, False)
@@ -96,7 +97,7 @@ def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict=None):
         oldDict = {}
     xmlEtree = loadXml(xmlFileName)
     trackdict = getAllTracksOfXmlFileInOneDict(xmlFileName)
-    isotopedict = form.xmlGetDictFromEle(xmlEtree)[1]['header']
+    isotopedict = xmlGetDictFromEle(xmlEtree)[1]['header']
     oldDict['isotopeData'] = isotopedict
     oldDict['trackPars'] = trackdict
     oldDict['activeTrackPar'] = trackdict['track' + str(nOfTrack)]
@@ -112,9 +113,9 @@ def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict=None):
 def getAllTracksOfXmlFileInOneDict(xmlFile):
     xmlEtree = loadXml(xmlFile)
     trackd = {}
-    tracks = form.xmlFindOrCreateSubElement(xmlEtree, 'tracks')
+    tracks = xmlFindOrCreateSubElement(xmlEtree, 'tracks')
     for t in tracks:
-        trackd[str(t.tag)] = (form.xmlGetDictFromEle(xmlEtree)[1]['tracks'][str(t.tag)]['header'])
+        trackd[str(t.tag)] = (xmlGetDictFromEle(xmlEtree)[1]['tracks'][str(t.tag)]['header'])
     for key, val in trackd.items():
         trackd[key] = form.convertStrValuesInDict(trackd[key])
     return trackd

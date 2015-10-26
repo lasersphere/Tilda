@@ -13,6 +13,7 @@ from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
 import Service.Scan.draftScanParameters as Dft
 import Service.Formating as form
 
+
 class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def __init__(self, main, track_number, default_track_dict):
         super(TrackUi, self).__init__()
@@ -41,34 +42,44 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.lineEdit_activePmtList.textChanged.connect(self.active_pmt_list_set)
         self.checkBox_colDirTrue.clicked.connect(self.col_dir_true_set)
 
-        # self.pushButton_advancedSettings.clicked.connect(self.adv_set)
         self.pushButton_cancel.clicked.connect(self.cancel)
         self.pushButton_confirm.clicked.connect(self.confirm)
         self.pushButtonResetToDefault.clicked.connect(self.reset_to_default)
         self.pushButton_postAccOffsetVolt.clicked.connect(self.set_voltage)
         self.set_labels_by_dict(self.default_track_dict)
 
-
     def set_labels_by_dict(self, track_dict):
-        # self.dwelltime_set(track_dict['dwellTime10ns'] * (10 ** -5))
-        pass
+        self.dwelltime_set(track_dict['dwellTime10ns'] * (10 ** -5))
+        self.dac_start_v_set(form.getVoltageFrom18Bit(track_dict['dacStartRegister18Bit']))
+        self.dac_stop_v_set(form.getVoltageFrom18Bit(
+            track_dict['dacStartRegister18Bit'] + track_dict['dacStepSize18Bit'] * track_dict['nOfSteps']))
+        self.dac_step_size_set(form.getVoltageFrom18Bit(track_dict['dacStepSize18Bit']) - form.getVoltageFrom18Bit(0))
+        self.n_of_steps_set(track_dict['nOfSteps'])
+        self.n_of_scans_set(track_dict['nOfScans'])
+        self.invert_scan_set(track_dict['invertScan'])
+        # self.post_acc_offset_volt_control_set(track_dict['postAccOffsetVoltControl'])
+        self.post_acc_offset_volt(track_dict['postAccOffsetVolt'])
+        # self.active_pmt_list_set(track_dict['activePmtList'])
+        # self.col_dir_true_set(track_dict['colDirTrue'])
 
     def dwelltime_set(self, val):
-        self.buffer_pars['dwellTime10ns'] = val * (10 ** 5)  #convert to units of 10ns
+        self.buffer_pars['dwellTime10ns'] = val * (10 ** 5)  # convert to units of 10ns
         self.label_dwellTime_ms_2.setText(str(val))
 
     def dac_start_v_set(self, val):
         bit = form.get18BitInputForVoltage(val)
         setval = form.getVoltageFrom18Bit(bit)
         self.buffer_pars['dacStartRegister18Bit'] = bit
-        self.label_dacStartV_set.setText(str(setval) + ' | ' + str(format(bit, '018b')))
-        self.label_kepco_start.setText(str(setval * 50))
+        self.label_dacStartV_set.setText(str(setval) + ' | ' + str(format(bit, '018b'))
+                                         + ' | ' + str(bit))
+        self.label_kepco_start.setText(str(round(setval * 50, 2)))
 
     def dac_stop_v_set(self, val):
         bit = form.get18BitInputForVoltage(val)
         setval = form.getVoltageFrom18Bit(bit)
-        self.label_dacStartV_set.setText(str(setval) + ' | ' + str(format(bit, '018b')))
-        self.label_kepco_start.setText(str(setval * 50))
+        self.label_dacStopV_set.setText(str(setval) + ' | ' + str(format(bit, '018b'))
+                                         + ' | ' + str(bit))
+        self.label_kepco_stop.setText(str(round(setval * 50, 2)))
         try:
             if self.buffer_pars['dacStepSize18Bit'] and self.buffer_pars['dacStartRegister18Bit']:
                 startv = self.buffer_pars['dacStartRegister18Bit']
@@ -82,8 +93,9 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def dac_step_size_set(self, val):
         bit = form.get18BitStepSize(val)
         setval = form.getVoltageFrom18Bit(bit) + 10
-        self.label_dacStepSizeV_set.setText(str(setval) + ' | ' + str(format(bit, '018b')))
-        self.label_kepco_start.setText(str(setval * 50))
+        self.label_dacStepSizeV_set.setText(str(setval) + ' | ' + str(format(bit, '018b'))
+                                            + ' | ' + str(bit))
+        self.label_kepco_step.setText(str(round(setval * 50, 2)))
         self.buffer_pars['dacStepSize18Bit'] = bit
 
     def n_of_steps_set(self, val):
@@ -124,9 +136,6 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.buffer_pars['colDirTrue'] = bool
         # pass
 
-    def adv_set(self):
-        pass
-
     def set_voltage(self):
         pass
 
@@ -136,9 +145,9 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def confirm(self):
         print(self.buffer_pars)
         # try:
-        #     self.main.scanpars[self.track_number] = self.buffer_pars
+        # self.main.scanpars[self.track_number] = self.buffer_pars
         # except IndexError:
-        #     self.main.scanpars.append(self.buffer_pars)
+        # self.main.scanpars.append(self.buffer_pars)
         self.destroy()
         pass
 
@@ -146,7 +155,9 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         pass
 
 
-# if __name__ == "__main__":
-#     app = QtWidgets.QApplication(sys.argv)
-#     ui = TrackUi(None, 0, Dft.draftTrackPars)
-#     app.exec_()
+if __name__ == "__main__":
+    app = QtWidgets.QApplication(sys.argv)
+    dicti = Dft.draftTrackPars
+    dicti['dwellTime10ns'] = 2000000
+    ui = TrackUi(None, 0, dicti)
+    app.exec_()

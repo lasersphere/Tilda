@@ -5,6 +5,7 @@ Created on '20.05.2015'
 @author:'simkaufm'
 
 """
+from Service.FileFormat.XmlOperations import xmlAddCompleteTrack
 
 from polliPipe.node import Node
 import Service.Formating as form
@@ -158,7 +159,7 @@ class NSaveTrsSum(Node):
         pipeInternals = pipeData['pipeInternals']
         file = pipeInternals['activeXmlFilePath']
         rootEle = filhandl.loadXml(file)
-        form.xmlAddCompleteTrack(rootEle, pipeData, data)
+        xmlAddCompleteTrack(rootEle, pipeData, data)
         filhandl.saveXml(rootEle, file, False)
         return data
 
@@ -431,7 +432,7 @@ class NSaveSumCS(Node):
         file = pipeInternals['activeXmlFilePath']
         rootEle = filhandl.loadXml(file)
         logging.info('saving data: ' + str(data))
-        form.xmlAddCompleteTrack(rootEle, pipeData, data)
+        xmlAddCompleteTrack(rootEle, pipeData, data)
         filhandl.saveXml(rootEle, file, False)
         logging.info('saving Continous Sequencer Sum to: ' + str(file))
         return data
