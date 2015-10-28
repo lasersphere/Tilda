@@ -20,4 +20,5 @@ def init_empty_scan_dict():
     for key, val in scand.items():
         scand[key] = dict.fromkeys(getattr(DftSc, key + '_list'))
     scand['isotopeData']['version'] = Cfg.version
+    scand['activeTrackPar']['dwellTime10ns'] = DftSc.draftTrackPars['dwellTime10ns']
     return scand

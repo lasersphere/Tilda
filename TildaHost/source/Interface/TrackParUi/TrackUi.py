@@ -7,11 +7,10 @@ Created on '29.09.2015'
 """
 from PyQt5 import QtWidgets, QtCore
 import ast
-import sys
+import logging
 from copy import deepcopy
 
 from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
-import Service.Scan.draftScanParameters as Dft
 import Service.Formating as form
 import Service.VoltageConversions.VoltageConversions as VCon
 
@@ -22,7 +21,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
         self.default_track_dict = deepcopy(default_track_dict)
         self.buffer_pars = default_track_dict
-        self.buffer_pars['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()
+        self.buffer_pars['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()  # is needed to be able to fix stop
         self.default_track_dict['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()
 
         self.main = main
@@ -64,33 +63,27 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
         self.set_labels_by_dict(self.buffer_pars)
 
-    def wait_after_reset_mu_sec_set(self, time_mu_s):
-        time_25ns = int(round(time_mu_s / 25 * (10 ** 3)))
-        self.buffer_pars['waitAfterReset25nsTicks'] = time_25ns
-        setval = time_25ns * 25 * (10 ** -3)
-        self.label_waitAfterReset_muS_set.setText(str(round(setval, 3)))
-
-    def wait_for_kepco_mu_sec(self, time_mu_s):
-        time_25ns = int(round(time_mu_s / 25 * (10 ** 3)))
-        self.buffer_pars['waitForKepco25nsTicks'] = time_25ns
-        setval = time_25ns * 25 * (10 ** -3)
-        self.label_waitForKepco_muS_set.setText(str(round(setval, 3)))
+    """functions:"""
 
     def set_labels_by_dict(self, track_dict):
         # function to set all labels by setting the values to the corresponding spinboxes etc.
-        self.doubleSpinBox_dwellTime_ms.setValue(track_dict['dwellTime10ns'] * (10 ** -5))
-        self.doubleSpinBox_dacStartV.setValue(VCon.get_voltage_from_18bit(track_dict['dacStartRegister18Bit']))
-        self.doubleSpinBox_dacStopV.setValue(VCon.get_voltage_from_18bit(track_dict['dacStopRegister18Bit']))
-        self.spinBox_nOfSteps.setValue(track_dict['nOfSteps'])
-        self.doubleSpinBox_dacStepSizeV.setValue(VCon.get_stepsize_in_volt_from_18bit(track_dict['dacStepSize18Bit']))
-        self.spinBox_nOfScans.setValue(track_dict['nOfScans'])
-        self.checkBox_invertScan.setChecked(track_dict['invertScan'])
-        self.comboBox_postAccOffsetVoltControl.setCurrentIndex(int(track_dict['postAccOffsetVoltControl']))
-        self.doubleSpinBox_postAccOffsetVolt.setValue(track_dict['postAccOffsetVolt'])
-        self.lineEdit_activePmtList.setText(str(track_dict['activePmtList']))
-        self.checkBox_colDirTrue.setChecked(track_dict['colDirTrue'])
-        self.doubleSpinBox_waitAfterReset_muS.setValue(track_dict['waitAfterReset25nsTicks'] * 25 * (10 ** -3))
-        self.doubleSpinBox_waitForKepco_muS.setValue(track_dict['waitForKepco25nsTicks'] * 25 * (10 ** -3))
+        try:
+            self.doubleSpinBox_dwellTime_ms.setValue(track_dict['dwellTime10ns'] * (10 ** -5))
+            self.doubleSpinBox_dacStartV.setValue(VCon.get_voltage_from_18bit(track_dict['dacStartRegister18Bit']))
+            self.doubleSpinBox_dacStopV.setValue(VCon.get_voltage_from_18bit(track_dict['dacStopRegister18Bit']))
+            self.spinBox_nOfSteps.setValue(track_dict['nOfSteps'])
+            self.doubleSpinBox_dacStepSizeV.setValue(
+                VCon.get_stepsize_in_volt_from_18bit(track_dict['dacStepSize18Bit']))
+            self.spinBox_nOfScans.setValue(track_dict['nOfScans'])
+            self.checkBox_invertScan.setChecked(track_dict['invertScan'])
+            self.comboBox_postAccOffsetVoltControl.setCurrentIndex(int(track_dict['postAccOffsetVoltControl']))
+            self.doubleSpinBox_postAccOffsetVolt.setValue(track_dict['postAccOffsetVolt'])
+            self.lineEdit_activePmtList.setText(str(track_dict['activePmtList'])[1:-1])
+            self.checkBox_colDirTrue.setChecked(track_dict['colDirTrue'])
+            self.doubleSpinBox_waitAfterReset_muS.setValue(track_dict['waitAfterReset25nsTicks'] * 25 * (10 ** -3))
+            self.doubleSpinBox_waitForKepco_muS.setValue(track_dict['waitForKepco25nsTicks'] * 25 * (10 ** -3))
+        except Exception as e:
+            logging.error('error while loading default dictionary: ' + str(e))
 
     def dwelltime_set(self, val):
         self.buffer_pars['dwellTime10ns'] = val * (10 ** 5)  # convert to units of 10ns
@@ -118,26 +111,38 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
     def recalc_step_stop(self):
         # start and stop should be more or less constant therefore in most cases the stepsize must be adjusted.
-        # after adjusting the stop voltage is fine tuned to the next possible value.
-        self.display_step_size(self.calc_step_size())
-        self.display_stop(self.calc_dac_stop_18bit())
+        # after adjusting the step size, the stop voltage is fine tuned to the next possible value.
+        try:
+            self.display_step_size(self.calc_step_size())
+            self.display_stop(self.calc_dac_stop_18bit())
+        except Exception as e:
+            logging.error('the following eroor occured while calculating the number of steps:'
+                          + str(e))
 
     def recalc_n_of_steps_stop(self):
-        self.display_n_of_steps(self.calc_n_of_steps())
-        self.display_stop(self.calc_dac_stop_18bit())
+        try:
+            self.display_n_of_steps(self.calc_n_of_steps())
+            self.display_stop(self.calc_dac_stop_18bit())
+        except Exception as e:
+            logging.error('the following eroor occured while calculating the number of steps:'
+                          + str(e))
 
     def calc_dac_stop_18bit(self):
-        start = self.buffer_pars['dacStartRegister18Bit']
-        step = self.buffer_pars['dacStepSize18Bit']
-        steps = self.buffer_pars['nOfSteps']
-        stop = start + step * steps
+        try:
+            start = self.buffer_pars['dacStartRegister18Bit']
+            step = self.buffer_pars['dacStepSize18Bit']
+            steps = self.buffer_pars['nOfSteps']
+            stop = start + step * steps
+        except Exception as e:
+            logging.error('following error occured while calculating the stop voltage:' + str(e))
+            stop = 0
         return stop
 
     def calc_step_size(self):
         start = self.buffer_pars['dacStartRegister18Bit']
         stop = self.buffer_pars['dacStopRegister18Bit']
         steps = self.buffer_pars['nOfSteps']
-        dis = abs(stop - start)
+        dis = stop - start
         try:
             stepsize_18bit = int(round(dis / steps))
         except ZeroDivisionError:
@@ -153,7 +158,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             n_of_steps = int(round(dis / step))
         except ZeroDivisionError:
             n_of_steps = 0
-        return n_of_steps
+        return abs(n_of_steps)  # sign should always be in the stepsize
 
     def dac_step_size_set(self, step_volt):
         step_18bit = VCon.get_18bit_stepsize(step_volt)
@@ -198,6 +203,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def active_pmt_list_set(self, lis):
         if type(lis) == str:
             try:
+                lis = str('[' + lis + ']')
                 lis = ast.literal_eval(lis)
             except:
                 lis = []
@@ -215,8 +221,20 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.buffer_pars['colDirTrue'] = boolstate
         # pass
 
+    def wait_after_reset_mu_sec_set(self, time_mu_s):
+        time_25ns = int(round(time_mu_s / 25 * (10 ** 3)))
+        self.buffer_pars['waitAfterReset25nsTicks'] = time_25ns
+        setval = time_25ns * 25 * (10 ** -3)
+        self.label_waitAfterReset_muS_set.setText(str(round(setval, 3)))
+
+    def wait_for_kepco_mu_sec(self, time_mu_s):
+        time_25ns = int(round(time_mu_s / 25 * (10 ** 3)))
+        self.buffer_pars['waitForKepco25nsTicks'] = time_25ns
+        setval = time_25ns * 25 * (10 ** -3)
+        self.label_waitForKepco_muS_set.setText(str(round(setval, 3)))
+
     def set_voltage(self):
-        pass
+        logging.info('Setting the voltage is not included yet')
 
     def cancel(self):
         self.destroy()
@@ -233,13 +251,10 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def reset_to_default(self):
         self.set_labels_by_dict(self.default_track_dict)
 
-    def nothing(self):
-        pass
-
-
-if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
-    dicti = Dft.draftTrackPars
-    dicti['dwellTime10ns'] = 2000000
-    ui = TrackUi(None, 0, dicti)
-    app.exec_()
+        # if __name__ == "__main__":
+        # app = QtWidgets.QApplication(sys.argv)
+        #     dicti = Dft.draftTrackPars
+        #     dicti['dwellTime10ns'] = 2000000
+        #     print(dicti)
+        #     ui = TrackUi(None, 0, dicti)
+        #     app.exec_()

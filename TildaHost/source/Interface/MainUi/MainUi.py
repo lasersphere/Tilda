@@ -11,7 +11,9 @@ from PyQt5 import QtWidgets
 from Interface.MainUi.Ui_Main import Ui_TildaMainWindow
 from Interface.VersionUi.VersionUi import VersionUi
 from Interface.TrackParUi.TrackUi import TrackUi
+import Service.Scan.draftScanParameters as Dft
 
+from copy import deepcopy
 import threading
 import time
 import logging
@@ -38,6 +40,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         logging.debug('working directory has been set to: ' + str(workdir) + '\n \n ' + str(self.main.scanpars))
 
     def open_track_win(self):
+        print(self.main.scanpars[0]['activeTrackPar'])
+        # track = deepcopy(Dft.draftTrackPars)
         self.trackWin = TrackUi(self.main, 0, self.main.scanpars[0]['activeTrackPar'])
 
     def open_version_win(self):
