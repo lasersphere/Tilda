@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>412</width>
+    <width>428</width>
     <height>527</height>
    </rect>
   </property>
@@ -131,7 +131,7 @@
            <property name="currentIndex">
             <number>0</number>
            </property>
-           <widget class="QWidget" name="seqComSet" native="true">
+           <widget class="QWidget" name="seqComSet">
             <attribute name="title">
              <string>common Sequencer Settings</string>
             </attribute>
@@ -254,6 +254,9 @@ power supply voltage [V]</string>
                <property name="keyboardTracking">
                 <bool>false</bool>
                </property>
+               <property name="maximum">
+                <number>100000</number>
+               </property>
               </widget>
              </item>
              <item row="5" column="2">
@@ -363,6 +366,9 @@ power supply</string>
                </property>
                <property name="keyboardTracking">
                 <bool>false</bool>
+               </property>
+               <property name="maximum">
+                <number>100000</number>
                </property>
               </widget>
              </item>

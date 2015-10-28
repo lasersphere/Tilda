@@ -6,7 +6,7 @@ Created on '26.10.2015'
 
 
 Config File for the storage of the slope and the offset
- fitted from measurement of the DAC-Register of teh AD5781 vs. Voltage readback with Agilent 3401A.
+ fitted from measurement of the DAC-Register of the AD5781 vs. Voltage read back with Agilent 3401A.
 
   V ^
     |        .

@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindowTrackPars(object):
     def setupUi(self, MainWindowTrackPars):
         MainWindowTrackPars.setObjectName("MainWindowTrackPars")
-        MainWindowTrackPars.resize(412, 527)
+        MainWindowTrackPars.resize(428, 527)
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap("track_icon.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         MainWindowTrackPars.setWindowIcon(icon)
@@ -143,6 +143,7 @@ class Ui_MainWindowTrackPars(object):
         self.spinBox_nOfScans.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.spinBox_nOfScans.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
         self.spinBox_nOfScans.setKeyboardTracking(False)
+        self.spinBox_nOfScans.setMaximum(100000)
         self.spinBox_nOfScans.setObjectName("spinBox_nOfScans")
         self.gridLayout_4.addWidget(self.spinBox_nOfScans, 5, 1, 1, 1)
         self.label_nOfScans_set = QtWidgets.QLabel(self.seqComSet)
@@ -196,6 +197,7 @@ class Ui_MainWindowTrackPars(object):
         self.spinBox_nOfSteps.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.spinBox_nOfSteps.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
         self.spinBox_nOfSteps.setKeyboardTracking(False)
+        self.spinBox_nOfSteps.setMaximum(100000)
         self.spinBox_nOfSteps.setObjectName("spinBox_nOfSteps")
         self.gridLayout_4.addWidget(self.spinBox_nOfSteps, 4, 1, 1, 1)
         self.label_dacStepSizeV_set = QtWidgets.QLabel(self.seqComSet)

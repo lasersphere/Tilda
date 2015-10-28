@@ -12,7 +12,7 @@ import sys
 from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
 import Service.Scan.draftScanParameters as Dft
 import Service.Formating as form
-from Service.VoltageConversions.VoltageConversions import get_18bit_from_voltage, get_18bit_stepsize, get_voltage_from_18bit
+import Service.VoltageConversions.VoltageConversions as VCon
 
 
 class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
@@ -21,6 +21,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
         self.default_track_dict = default_track_dict
         self.buffer_pars = default_track_dict
+        self.buffer_pars['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()
 
         self.main = main
         self.track_number = track_number
@@ -47,15 +48,15 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.pushButton_confirm.clicked.connect(self.confirm)
         self.pushButtonResetToDefault.clicked.connect(self.reset_to_default)
         self.pushButton_postAccOffsetVolt.clicked.connect(self.set_voltage)
+
         self.set_labels_by_dict(self.default_track_dict)
 
     def set_labels_by_dict(self, track_dict):
         self.dwelltime_set(track_dict['dwellTime10ns'] * (10 ** -5))
-        self.dac_start_v_set(get_voltage_from_18bit(track_dict['dacStartRegister18Bit']))
-        self.dac_stop_v_set(get_voltage_from_18bit(
-            track_dict['dacStartRegister18Bit'] + track_dict['dacStepSize18Bit'] * track_dict['nOfSteps']))
-        self.n_of_steps_set(track_dict['nOfSteps'])
-        self.dac_step_size_set(get_voltage_from_18bit(track_dict['dacStepSize18Bit']) - get_voltage_from_18bit(0))
+        self.dac_start_v_set(VCon.get_voltage_from_18bit(track_dict['dacStartRegister18Bit']))
+        self.display_stop(self.buffer_pars['dacStopRegister18Bit'])
+        self.display_n_of_steps(track_dict['nOfSteps'])
+        self.display_step_size(track_dict['dacStepSize18Bit'])
         self.n_of_scans_set(track_dict['nOfScans'])
         self.invert_scan_set(track_dict['invertScan'])
         self.post_acc_offset_volt_control_set(track_dict['postAccOffsetVoltControl'])
@@ -67,41 +68,84 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.buffer_pars['dwellTime10ns'] = val * (10 ** 5)  # convert to units of 10ns
         self.label_dwellTime_ms_2.setText(str(val))
 
-    def dac_start_v_set(self, val):
-        bit = get_18bit_from_voltage(val)
-        setval = get_voltage_from_18bit(bit)
-        self.buffer_pars['dacStartRegister18Bit'] = bit
-        self.label_dacStartV_set.setText(str(setval) + ' | ' + str(format(bit, '018b'))
-                                         + ' | ' + str(bit))
-        self.label_kepco_start.setText(str(round(setval * 50, 2)))
+    def dac_start_v_set(self, start_volt):
+        start_18bit = VCon.get_18bit_from_voltage(start_volt)
+        self.buffer_pars['dacStartRegister18Bit'] = start_18bit
+        self.label_dacStartV_set.setText(str(start_volt) + ' | ' + str(format(start_18bit, '018b'))
+                                         + ' | ' + str(start_18bit))
+        self.label_kepco_start.setText(str(round(start_volt * 50, 2)))
+        self.recalc_step_stop()
 
-    def dac_stop_v_set(self, val):
-        bit = get_18bit_from_voltage(val)
-        setval = get_voltage_from_18bit(bit)
-        self.label_dacStopV_set.setText(str(setval) + ' | ' + str(format(bit, '018b'))
-                                         + ' | ' + str(bit))
+    def dac_stop_v_set(self, stop_volt):
+        self.buffer_pars['dacStopRegister18Bit'] = VCon.get_18bit_from_voltage(stop_volt)
+        self.recalc_step_stop()
+
+    def display_stop(self, stop_18bit):
+        self.buffer_pars['dacStopRegister18Bit'] = stop_18bit
+        setval = VCon.get_voltage_from_18bit(stop_18bit)
+        self.label_dacStopV_set.setText(str(setval) + ' | ' + str(format(stop_18bit, '018b'))
+                                        + ' | ' + str(stop_18bit))
         self.label_kepco_stop.setText(str(round(setval * 50, 2)))
+
+    def recalc_step_stop(self):
+        # start and stop should be more or less constant therefore in most cases the stepsize must be adjusted.
+        # after adjusting the stop voltage is fine tuned to the next possible value.
+        self.display_step_size(self.calc_step_size())
+        self.display_stop(self.calc_dac_stop_18bit())
+
+    def recalc_n_of_steps_stop(self):
+        self.display_n_of_steps(self.calc_n_of_steps())
+        self.display_stop(self.calc_dac_stop_18bit())
+
+    def calc_dac_stop_18bit(self):
+        start = self.buffer_pars['dacStartRegister18Bit']
+        step = self.buffer_pars['dacStepSize18Bit']
+        steps = self.buffer_pars['nOfSteps']
+        stop = start + step * steps
+        return stop
+
+    def calc_step_size(self):
+        start = self.buffer_pars['dacStartRegister18Bit']
+        stop = self.buffer_pars['dacStopRegister18Bit']
+        steps = self.buffer_pars['nOfSteps']
+        dis = abs(stop - start)
         try:
-            if self.buffer_pars['dacStepSize18Bit'] and self.buffer_pars['dacStartRegister18Bit']:
-                startv = self.buffer_pars['dacStartRegister18Bit']
-                div = abs(val - get_voltage_from_18bit(startv))
-                stepsize = get_voltage_from_18bit(self.buffer_pars['dacStepSize18Bit']) + 10
-                nofsteps = div / stepsize
-                self.n_of_steps_set(nofsteps)
-        except KeyError:
-            pass
+            stepsize_18bit = int(round(dis / steps))
+        except ZeroDivisionError:
+            stepsize_18bit = 0
+        return stepsize_18bit
 
-    def dac_step_size_set(self, val):
-        bit = get_18bit_stepsize(val)
-        setval = get_voltage_from_18bit(bit) + 10
-        self.label_dacStepSizeV_set.setText(str(setval) + ' | ' + str(format(bit, '018b'))
-                                            + ' | ' + str(bit))
-        self.label_kepco_step.setText(str(round(setval * 50, 2)))
-        self.buffer_pars['dacStepSize18Bit'] = bit
+    def calc_n_of_steps(self):
+        start = self.buffer_pars['dacStartRegister18Bit']
+        stop = self.buffer_pars['dacStopRegister18Bit']
+        step = self.buffer_pars['dacStepSize18Bit']
+        dis = abs(stop - start)
+        try:
+            n_of_steps = int(round(dis / step))
+        except ZeroDivisionError:
+            n_of_steps = 0
+        return n_of_steps
 
-    def n_of_steps_set(self, val):
-        self.label_nOfSteps_set.setText(str(round(val)))
-        self.buffer_pars['nOfSteps'] = val
+    def dac_step_size_set(self, step_volt):
+        step_18bit = VCon.get_18bit_stepsize(step_volt)
+        self.display_step_size(step_18bit)
+        self.recalc_n_of_steps_stop()
+
+    def display_step_size(self, step_18bit):
+        self.buffer_pars['dacStepSize18Bit'] = step_18bit
+        step_volt = VCon.get_stepsize_in_volt_from_18bit(step_18bit)
+        self.label_dacStepSizeV_set.setText(str(step_volt) + ' | ' + str(format(step_18bit, '018b'))
+                                            + ' | ' + str(step_18bit))
+        self.label_kepco_step.setText(str(round(step_volt * 50, 2)))
+
+    def n_of_steps_set(self, steps):
+        self.display_n_of_steps(steps)
+        self.recalc_step_stop()
+
+    def display_n_of_steps(self, steps):
+        steps = int(round(steps))
+        self.label_nOfSteps_set.setText(str(steps))
+        self.buffer_pars['nOfSteps'] = steps
 
     def n_of_scans_set(self, val):
         self.label_nOfScans_set.setText(str(val))
