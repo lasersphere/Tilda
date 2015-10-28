@@ -37,20 +37,22 @@ def get_18bit_stepsize(step_voltage, dac_gauge_pars=AD5781Fit.dac_gauge_vals):
     if dac_gauge_pars is not None:
         lsb = dac_gauge_pars[1]  # lsb = slope from DAC-Scan
     b18 = int(round(step_voltage/lsb))
-    b18 = max(0, b18)
+    b18 = max(-((2 ** 18) - 1), b18)
     b18 = min(b18, (2 ** 18) - 1)
     return b18
 
 
-def get_stepsize_in_volt_from_18bit(volt_18b, dac_gauge_pars=AD5781Fit.dac_gauge_vals):
+def get_stepsize_in_volt_from_18bit(voltage_18bit, dac_gauge_pars=AD5781Fit.dac_gauge_vals):
     """
     function to calculate the stepsize by a given 18bit dac register difference.
-    :return ~ volt_18b * lsb
+    :return ~ voltage_18b * lsb
     """
+    voltage_18bit = max(-((2 ** 18) - 1), voltage_18bit)
+    voltage_18bit = min(voltage_18bit, (2 ** 18) - 1)
     lsb = 20 / ((2 ** 18) - 1)  # least significant bit in +/-10V 18Bit DAC
     if dac_gauge_pars is not None:
         lsb = dac_gauge_pars[1]  # lsb = slope from DAC-Scan
-    volt = round(volt_18b * lsb, 6)
+    volt = round(voltage_18bit * lsb, 6)
     return volt
 
 
@@ -74,6 +76,8 @@ def get_24bit_input_from_voltage(voltage, dac_gauge_pars=AD5781Fit.dac_gauge_val
 
 def get_voltage_from_18bit(voltage_18bit, dac_gauge_pars=AD5781Fit.dac_gauge_vals, ref_volt_neg=-10, ref_volt_pos=10):
     """function from the manual of the AD5781"""
+    voltage_18bit = max(0, voltage_18bit)
+    voltage_18bit = min(voltage_18bit, (2 ** 18) - 1)
     if dac_gauge_pars is None:
         # function as described in the AD5781 Manual
         voltfloat = (ref_volt_pos - ref_volt_neg) * voltage_18bit / ((2 ** 18) - 1) + ref_volt_neg
