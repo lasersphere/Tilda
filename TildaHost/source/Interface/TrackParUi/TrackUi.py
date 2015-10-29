@@ -5,13 +5,12 @@ Created on '29.09.2015'
 @author:'simkaufm'
 
 """
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets
 import ast
 import logging
 from copy import deepcopy
 
 from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
-import Service.Formating as form
 import Service.VoltageConversions.VoltageConversions as VCon
 
 
@@ -41,14 +40,14 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.spinBox_nOfScans.valueChanged.connect(self.n_of_scans_set)
         self.checkBox_invertScan.stateChanged.connect(self.invert_scan_set)
 
-        """post accerleration controls:"""
+        """post acceleration controls:"""
         self.comboBox_postAccOffsetVoltControl.currentTextChanged.connect(self.post_acc_offset_volt_control_set)
         self.doubleSpinBox_postAccOffsetVolt.valueChanged.connect(self.post_acc_offset_volt)
 
         """Scaler selection:"""
         self.lineEdit_activePmtList.textChanged.connect(self.active_pmt_list_set)
 
-        """colinear/anticolinear"""
+        """collinear/anticollinear"""
         self.checkBox_colDirTrue.stateChanged.connect(self.col_dir_true_set)
 
         """Buttons:"""
@@ -240,11 +239,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.destroy()
 
     def confirm(self):
-        print(self.buffer_pars)
-        # try:
-        # self.main.scanpars[self.track_number] = self.buffer_pars
-        # except IndexError:
-        # self.main.scanpars.append(self.buffer_pars)
+        # hier noch sinnvoll die daten weitergeben an die jeweilige main?
         self.destroy()
         pass
 

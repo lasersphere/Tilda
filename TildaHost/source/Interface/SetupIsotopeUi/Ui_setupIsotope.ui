@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>272</width>
-    <height>115</height>
+    <width>381</width>
+    <height>146</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,22 +16,25 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <layout class="QGridLayout" name="gridLayout">
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_2">
-       <property name="text">
-        <string>Sequencer:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_isotope">
-       <property name="text">
-        <string>Isotope:</string>
-       </property>
-      </widget>
-     </item>
      <item row="1" column="1">
-      <widget class="QComboBox" name="comboBox_sequencer">
+      <widget class="QPushButton" name="pushButton_add_new_to_db">
+       <property name="text">
+        <string>add new isotope:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QComboBox" name="comboBox_isotope"/>
+     </item>
+     <item row="2" column="2">
+      <widget class="QPushButton" name="pushButton_init_sequencer">
+       <property name="text">
+        <string>initialize sequencer</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QComboBox" name="comboBox_sequencer_select">
        <item>
         <property name="text">
          <string>continous</string>
@@ -49,20 +52,55 @@
        </item>
       </widget>
      </item>
-     <item row="1" column="2">
-      <widget class="QPushButton" name="pushButton">
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_2">
        <property name="text">
-        <string>initialize sequencer</string>
+        <string>Sequencer:</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="1">
-      <widget class="QComboBox" name="comboBox"/>
-     </item>
-     <item row="0" column="2">
-      <widget class="QPushButton" name="pushButton_2">
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_isotope">
        <property name="text">
-        <string>add  new to db</string>
+        <string>Isotope:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="2">
+      <widget class="QLabel" name="label_sequencer_state">
+       <property name="text">
+        <string>None</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>status of sequencer:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QLineEdit" name="lineEdit_new_isotope"/>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLabel" name="label_seq_running_type">
+       <property name="text">
+        <string>None</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QPushButton" name="pushButton_ok">
+       <property name="text">
+        <string>Ok</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="2">
+      <widget class="QPushButton" name="pushButton_cancel">
+       <property name="text">
+        <string>Cancel</string>
        </property>
       </widget>
      </item>
@@ -70,6 +108,13 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>comboBox_isotope</tabstop>
+  <tabstop>pushButton_add_new_to_db</tabstop>
+  <tabstop>lineEdit_new_isotope</tabstop>
+  <tabstop>comboBox_sequencer_select</tabstop>
+  <tabstop>pushButton_init_sequencer</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

@@ -12,6 +12,7 @@ from Interface.MainUi.Ui_Main import Ui_TildaMainWindow
 from Interface.VersionUi.VersionUi import VersionUi
 from Interface.TrackParUi.TrackUi import TrackUi
 from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
+from Interface.ScanControlUi.ScanControlUi import ScanControlUi
 import Service.Scan.draftScanParameters as Dft
 
 from copy import deepcopy
@@ -40,25 +41,19 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         workdir = QtWidgets.QFileDialog.getExistingDirectory(self, 'choose working directory', os.path.expanduser('~'))
         self.main.w_global_scanpars('workingDirectory', workdir)
         self.label_workdir_set.setText(str(workdir))
+
         logging.debug('working directory has been set to: ' + str(workdir))
 
     def open_track_win(self):
-        print(self.main.scanpars[0]['activeTrackPar'])
-        self.trackWin = TrackUi(self.main, 0, self.main.scanpars[0]['activeTrackPar'])
+        # print(self.main.scanpars[0]['activeTrackPar'])
+        # self.trackWin = TrackUi(self.main, 0, self.main.scanpars[0]['activeTrackPar'])
+        pass
 
     def open_version_win(self):
         VersionUi()
 
     def open_scan_ctrl_win(self):
-        self.thr = threading.Thread(target=self.timout)
-        self.thr.start()
+        self.scanwin = ScanControlUi(self.main)
 
     def open_volt_meas_win(self):
         self.voltwin = VoltMeasConfUi(self.main, Dft.draftMeasureVoltPars)
-
-    def timout(self):
-        t = 0
-        while t < 100:
-            print('sleeping...', t, 'scan pars:  ', self.main.scanpars)
-            t += 1
-            time.sleep(0.1)
