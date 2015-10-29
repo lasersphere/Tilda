@@ -83,7 +83,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             self.doubleSpinBox_waitAfterReset_muS.setValue(track_dict['waitAfterReset25nsTicks'] * 25 * (10 ** -3))
             self.doubleSpinBox_waitForKepco_muS.setValue(track_dict['waitForKepco25nsTicks'] * 25 * (10 ** -3))
         except Exception as e:
-            logging.error('error while loading default dictionary: ' + str(e))
+            logging.error('error while loading default track dictionary: ' + str(e))
 
     def dwelltime_set(self, val):
         self.buffer_pars['dwellTime10ns'] = val * (10 ** 5)  # convert to units of 10ns

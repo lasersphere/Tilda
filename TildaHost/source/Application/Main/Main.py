@@ -15,6 +15,7 @@ import Service.Scan.ScanDictionaryOperations as ScanDicOp
 
 class Main():
     def __init__(self):
+        self.global_scanpars = {}  # dict for all scanparameters which are globally available for all other scandicts
         self.scanpars = []  # list of scanparameter dictionaries, like in Service.draftScanParameters.py in
                             #  the beginning only one item should be in the list.
 
@@ -27,3 +28,6 @@ class Main():
         ui = MainUi(self)
         app.exec_()
         return ui
+
+    def w_global_scanpars(self, key, val):
+        self.global_scanpars[key] = val
