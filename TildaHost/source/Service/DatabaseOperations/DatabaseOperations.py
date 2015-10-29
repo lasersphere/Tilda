@@ -9,7 +9,7 @@ Created on '06.08.2015'
 import sqlite3
 
 import Tools as pollitools
-
+import Service.VoltageConversions.VoltageConversions as VCon
 
 def createTildaDB(db):
     """
@@ -28,18 +28,19 @@ def formPolliFitDBtoTildaDB(db):
     con = sqlite3.connect(db)
 
     con.execute('''CREATE TABLE IF NOT EXISTS ScanPars (
-    iso TEXT,
-    type TEXT,
+    iso TEXT PRIMARY KEY NOT NULL,
+    type TEXT NOT NULL,
     track INT,
-    dacStartRegister18Bit INT,
-    dacStepSize18Bit INT,
+    dacStartVolt FLOAT,
+    dacStopVolt FLOAT,
+    dacStepSizeVolt FLOAT,
     nOfSteps INT,
+    nOfScans INT,
     postAccOffsetVoltControl INT,
     postAccOffsetVolt INT,
-    nOfScans INT,
-    dwellTime10ns INT,
     activePmtList TEXT,
-    colDirTrue INT
+    colDirTrue INT,
+    sequencerDict TEXT
     )''')
 
     con.close()
@@ -61,28 +62,33 @@ def addTrackDictToDb(db, scandict):
     if cur.fetchone() is None:
         cur.execute('''INSERT INTO ScanPars (iso, type, track) VALUES (?, ?, ?)''', (iso, sctype, nOfTrack))
     cur.execute('''UPDATE ScanPars
-            SET dacStartRegister18Bit = ?,
-            dacStepSize18Bit = ?,
+            SET dacStartVolt = ?,
+            dacStopVolt = ?,
+            dacStepSizeVolt = ?,
             nOfSteps = ?,
+            nOfScans = ?,
             postAccOffsetVoltControl = ?,
             postAccOffsetVolt = ?,
-            nOfScans = ?,
-            dwellTime10ns = ?,
             activePmtList = ?,
             colDirTrue = ?
+            sequencerDict = ?
              Where iso = ? AND track = ?''',
-                (trackd['dacStartRegister18Bit'],
-                 trackd['dacStepSize18Bit'],
+                (VCon.get_voltage_from_18bit(trackd['dacStartRegister18Bit']),
+                 VCon.get_voltage_from_18bit(
+                     trackd['dacStartRegister18Bit'] + trackd['dacStepSize18Bit'] * trackd['nOfSteps']),
+                 VCon.get_stepsize_in_volt_from_18bit(trackd['dacStepSize18Bit']),
                  trackd['nOfSteps'],
+                 trackd['nOfScans'],
                  trackd['postAccOffsetVoltControl'],
                  trackd['postAccOffsetVolt'],
-                 trackd['nOfScans'],
-                 trackd['dwellTime10ns'],
                  str(trackd['activePmtList']),
                  trackd['colDirTrue'],
+                 trackd['dwellTime10ns'],
                  iso, nOfTrack))
     con.commit()
     con.close()
+
+
 
 # bdpath = 'D:\\Workspace\\PyCharm\\Tilda\\PolliFit\\test\\Project\\tildaDB.sqlite'
 # projectpath = os.path.split(bdpath)[0]

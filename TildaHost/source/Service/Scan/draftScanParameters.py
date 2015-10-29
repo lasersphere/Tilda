@@ -6,6 +6,8 @@ Created on 20.06.2015
 
 Module containing the ScanParameters dictionaries as needed for Scanning with the standard Sequencers
 """
+""" List of currently supported sequencer types """
+sequencer_types_list = ['cs', 'trs']
 
 """ outer most dictionary contains the following keys: """
 scanDict_list = ['isotopeData', 'activeTrackPar', 'pipeInternals', 'measureVoltPars']
@@ -28,9 +30,11 @@ activeTrackPar_list = ['dacStepSize18Bit', 'dacStartRegister18Bit', 'nOfSteps', 
                        'invertScan', 'postAccOffsetVoltControl', 'postAccOffsetVolt', 'waitForKepco25nsTicks',
                        'waitAfterReset25nsTicks', 'activePmtList', 'colDirTrue', 'workingTime']
 
-contSeq_list = ['dwellTime10ns']
+"""  each sequencer needs its own parameters and therefore, the keys are listed below
+naming convention is type_list.  """
+cs_list = ['dwellTime10ns']
 
-timeResSeq_list = ['MCSSelectTrigger', 'delayticks', 'nOfBins', 'nOfBunches']
+trs_list = ['MCSSelectTrigger', 'delayticks', 'nOfBins', 'nOfBunches']
 
 """ below are some example values which can be used for scanning: """
 draftIsotopePars = {
