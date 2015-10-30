@@ -37,7 +37,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
 
     def setup_iso(self):
         logging.debug('setting up isotope')
-        self.iso = SetupIsotopeUi()
+        self.iso = SetupIsotopeUi(self.main)
 
 
     def save_to_db(self):
