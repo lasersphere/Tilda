@@ -17,12 +17,11 @@ def createTildaDB(db):
     :param db: str, path to database
     """
     pollitools.createDB(db)
-    formPolliFitDBtoTildaDB(db)
+    form_pollifit_db_to_tilda_db(db)
 
-def formPolliFitDBtoTildaDB(db):
+def form_pollifit_db_to_tilda_db(db):
     """
-    will try to convert the Pollifit Database to the Tilda Standard.
-    Some information might get lost in the Table Files.
+    will convert a PolliFit Database to the Tilda Standard.
     :param db: str, path to database
     """
     con = sqlite3.connect(db)
@@ -34,18 +33,21 @@ def formPolliFitDBtoTildaDB(db):
     dacStartVolt FLOAT,
     dacStopVolt FLOAT,
     dacStepSizeVolt FLOAT,
+    invertScan TEXT,
     nOfSteps INT,
     nOfScans INT,
     postAccOffsetVoltControl INT,
     postAccOffsetVolt INT,
     activePmtList TEXT,
-    colDirTrue INT,
-    sequencerDict TEXT
+    colDirTrue TEXT,
+    sequencerDict TEXT,
+    waitForKepco25nsTicks INT,
+    waitAfterReset25nsTicks INT
     )''')
 
     con.close()
 
-def addTrackDictToDb(db, scandict):
+def add_track_dict_to_db(db, scandict):
     """
     Add a Dictionary containing all infos of a Track to the existing(or not) Trackdictionary
     in the column trackPars of the chosen file. This overwrites the selected Track.
@@ -58,32 +60,38 @@ def addTrackDictToDb(db, scandict):
     sctype = isod['type']
     con = sqlite3.connect(db)
     cur = con.cursor()
-    cur.execute(''' SELECT iso FROM ScanPars Where iso = ? AND track = ?''', (iso, nOfTrack,))
+    cur.execute(''' SELECT iso FROM ScanPars Where iso = ? AND type = ? AND track = ?''', (iso, sctype, nOfTrack,))
     if cur.fetchone() is None:
         cur.execute('''INSERT INTO ScanPars (iso, type, track) VALUES (?, ?, ?)''', (iso, sctype, nOfTrack))
     cur.execute('''UPDATE ScanPars
             SET dacStartVolt = ?,
             dacStopVolt = ?,
             dacStepSizeVolt = ?,
+            invertScan = ? ,
             nOfSteps = ?,
             nOfScans = ?,
             postAccOffsetVoltControl = ?,
             postAccOffsetVolt = ?,
             activePmtList = ?,
-            colDirTrue = ?
-            sequencerDict = ?
+            colDirTrue = ?,
+            sequencerDict = ?,
+            waitForKepco25nsTicks = ?,
+            waitAfterReset25nsTicks = ?
              Where iso = ? AND track = ?''',
                 (VCon.get_voltage_from_18bit(trackd['dacStartRegister18Bit']),
                  VCon.get_voltage_from_18bit(
                      trackd['dacStartRegister18Bit'] + trackd['dacStepSize18Bit'] * trackd['nOfSteps']),
                  VCon.get_stepsize_in_volt_from_18bit(trackd['dacStepSize18Bit']),
+                 str(trackd['invertScan']),
                  trackd['nOfSteps'],
                  trackd['nOfScans'],
                  trackd['postAccOffsetVoltControl'],
                  trackd['postAccOffsetVolt'],
                  str(trackd['activePmtList']),
-                 trackd['colDirTrue'],
+                 str(trackd['colDirTrue']),
                  trackd['dwellTime10ns'],
+                 trackd['waitForKepco25nsTicks'],
+                 trackd['waitAfterReset25nsTicks'],
                  iso, nOfTrack))
     con.commit()
     con.close()
@@ -94,9 +102,9 @@ def addTrackDictToDb(db, scandict):
 # projectpath = os.path.split(bdpath)[0]
 # # createTildaDB(bdpath)
 # # # pollitools._insertFile('Data/testTilda.xml', bdpath)
-# addTrackDictToDb(bdpath, drftScPars.draftScanDict)
+# add_track_dict_to_db(bdpath, drftScPars.draftScanDict)
 # drftScPars.draftScanDict['pipeInternals']['activeTrackNumber'] = 1
-# addTrackDictToDb(bdpath, drftScPars.draftScanDict)
-# # addTrackDictToDb(bdpath, 'testTilda.xml', 3, drftScPars.draftTrackPars)
+# add_track_dict_to_db(bdpath, drftScPars.draftScanDict)
+# # add_track_dict_to_db(bdpath, 'testTilda.xml', 3, drftScPars.draftTrackPars)
 # # pollitools.crawl(bdpath, 'Data')
 

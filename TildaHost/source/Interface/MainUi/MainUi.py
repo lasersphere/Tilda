@@ -13,6 +13,7 @@ from Interface.VersionUi.VersionUi import VersionUi
 from Interface.TrackParUi.TrackUi import TrackUi
 from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
+import Service.DatabaseOperations.DatabaseOperations as DbOp
 import Service.Scan.draftScanParameters as Dft
 
 from copy import deepcopy
@@ -39,9 +40,12 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def choose_working_dir(self):
         """ will open a modal file dialog and set all workingdirectories of the pipeline to the chosen folder """
         workdir = QtWidgets.QFileDialog.getExistingDirectory(self, 'choose working directory', os.path.expanduser('~'))
+
+        # alles ab hier in main() verschieben!
         self.main.w_global_scanpars('workingDirectory', workdir)
         self.label_workdir_set.setText(str(workdir))
-
+        db_location = workdir + '/' + os.path.split(workdir)[1] + '.sqlite'
+        DbOp.createTildaDB(db_location)
         logging.debug('working directory has been set to: ' + str(workdir))
 
     def open_track_win(self):
