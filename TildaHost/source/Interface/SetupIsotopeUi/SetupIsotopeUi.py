@@ -21,7 +21,7 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         self.iso = None
         self.sequencer = None
         self.main = main
-        self.db = main.global_scanpars.get('db_loc')
+        self.db = main.database
 
         """Buttons"""
         self.pushButton_add_new_to_db.clicked.connect(self.add_new_iso_to_db)
@@ -37,17 +37,14 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
 
         self.show()
 
-    def load_existing_isotopes_from_db(self, database):
-        pass
-
     def init_seq(self):
         logging.debug('initializing sequencer...')
 
     def add_new_iso_to_db(self):
+        """connect to the db and add a new isotope if this has not yet been added"""
         iso = self.lineEdit_new_isotope.text()
         already_exist = [self.comboBox_isotope.itemText(i)
                          for i in range(self.comboBox_isotope.count())]
-        print(already_exist)
         if iso in already_exist and len(iso):
             logging.info('isotope ' + iso + ' already created, will not be added')
             return None
@@ -57,7 +54,7 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         scand['isotopeData']['type'] = type
         scand['pipeInternals']['activeTrackNumber'] = 0
         DbOp.add_track_dict_to_db(self.db, scand)
-        logging.debug('added ' + iso + ' ('  + type +  ') to database')
+        logging.debug('added ' + iso + ' (' + type + ') to database')
         self.update_isos()
 
     def iso_select(self, iso_str):
@@ -68,6 +65,8 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         self.update_isos()
 
     def update_isos(self):
+        """ update the items in the isotope combobox by connecting to the sqlite db
+         and check for isotopes for this sequencer type """
         self.comboBox_isotope.clear()
         sequencer = self.comboBox_sequencer_select.currentText()
         isos = DbOp.check_for_existing_isos(self.db, sequencer)

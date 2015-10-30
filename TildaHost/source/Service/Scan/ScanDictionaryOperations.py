@@ -20,7 +20,8 @@ def init_empty_scan_dict(type_str=None):
     for key, val in scand.items():
         scand[key] = dict.fromkeys(getattr(DftSc, key + '_list'))
     scand['isotopeData']['version'] = Cfg.version
-    scand['activeTrackPar'] = merge_dicts(scand['activeTrackPar'], init_seq_specific_dict(type_str))
+    scand['activeTrackPar'] = merge_dicts(scand['activeTrackPar'],
+                                          init_seq_specific_dict(type_str))
     return scand
 
 

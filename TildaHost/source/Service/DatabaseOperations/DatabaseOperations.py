@@ -7,8 +7,9 @@ Created on '06.08.2015'
 """
 
 import sqlite3
+import ast
 
-import Tools as pollitools
+import Tools as PolliTools
 import Service.VoltageConversions.VoltageConversions as VCon
 import Service.Scan.ScanDictionaryOperations as SdOp
 
@@ -18,7 +19,7 @@ def createTildaDB(db):
     will create an sqlite db suited for Tilda.
     :param db: str, path to database
     """
-    pollitools.createDB(db)
+    PolliTools.createDB(db)
     form_pollifit_db_to_tilda_db(db)
 
 
@@ -65,12 +66,12 @@ def add_track_dict_to_db(db, scandict, overwrite=True):
     sctype = isod['type']
     try:
         stop_volt = VCon.get_voltage_from_18bit(
-                        trackd['dacStartRegister18Bit'] + trackd['dacStepSize18Bit'] * trackd['nOfSteps'])
+            trackd['dacStartRegister18Bit'] + trackd['dacStepSize18Bit'] * trackd['nOfSteps'])
     except TypeError:
         stop_volt = None
     con = sqlite3.connect(db)
     cur = con.cursor()
-    cur.execute(''' SELECT iso FROM ScanPars Where iso = ? AND type = ? AND track = ?''', (iso, sctype, nOfTrack,))
+    cur.execute(''' SELECT iso FROM ScanPars WHERE iso = ? AND type = ? AND track = ?''', (iso, sctype, nOfTrack,))
     if cur.fetchone() is None:
         cur.execute('''INSERT INTO ScanPars (iso, type, track) VALUES (?, ?, ?)''', (iso, sctype, nOfTrack,))
     if overwrite:
@@ -88,7 +89,7 @@ def add_track_dict_to_db(db, scandict, overwrite=True):
                 sequencerDict = ?,
                 waitForKepco25nsTicks = ?,
                 waitAfterReset25nsTicks = ?
-                 Where iso = ? AND type = ? AND track = ?''',
+                 WHERE iso = ? AND type = ? AND track = ?''',
                     (
                         VCon.get_voltage_from_18bit(trackd['dacStartRegister18Bit']),
                         stop_volt,
@@ -110,9 +111,11 @@ def add_track_dict_to_db(db, scandict, overwrite=True):
 
 
 def check_for_existing_isos(db, sctype):
+    """ given a path to a database and a sequencer type this will
+    return a list of strings with all isotopes in the db for this sequencer type """
     con = sqlite3.connect(db)
     cur = con.cursor()
-    cur.execute(' SELECT iso FROM ScanPars Where type = ?', (sctype,))
+    cur.execute(' SELECT iso FROM ScanPars WHERE type = ?', (sctype,))
     isos = cur.fetchall()
     if len(isos):
         isos = [iso[0] for iso in isos]
@@ -121,20 +124,57 @@ def check_for_existing_isos(db, sctype):
     con.close()
     return isos
 
+
+def extract_track_dict_from_db(db, iso, sctype, tracknum):
+    scand = SdOp.init_empty_scan_dict(sctype)
+    scand['isotopeData']['isotope'] = iso
+    scand['isotopeData']['type'] = sctype
+    scand['track' + str(tracknum)] = scand['activeTrackPar']
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    cur.execute(
+        '''
+        SELECT     dacStartVolt, dacStepSizeVolt, invertScan,
+         nOfSteps, nOfScans, postAccOffsetVoltControl,
+          postAccOffsetVolt, activePmtList, colDirTrue,
+           sequencerDict, waitForKepco25nsTicks, waitAfterReset25nsTicks
+        FROM ScanPars WHERE iso = ? AND type = ? AND track = ?
+        ''', (iso, sctype, tracknum,)
+    )
+    data = cur.fetchone()
+    if data:
+        print(data)
+
+
+def db_track_out_to_scandict(data, track_dict):
+    dict_keys_list = ['dacStartRegister18Bit', 'dacStepSize18Bit', 'invertScan',
+                      'nOfSteps', 'nOfScans', 'postAccOffsetVoltControl',
+                      'postAccOffsetVolt', 'activePmtList', 'colDirTrue',
+                      'sequencerDict', 'waitForKepco25nsTicks', 'waitAfterReset25nsTicks']
+    conversion_list = [VCon.get_voltage_from_18bit, VCon.get_voltage_from_18bit, VCon.get_stepsize_in_volt_from_18bit,
+                       None, None, None,
+                       ast.literal_eval, ast.literal_eval, ast.literal_eval,
+                       None, None]
+    for i in data:
+        track_dict[dict_keys_list[i]] = getattr(data[i])
+        # figure out how to use getattr here and use it!!!
+
+
 # bdpath = 'D:\\Workspace\\PyCharm\\Tilda\\PolliFit\\test\\Project\\tildaDB.sqlite'
 # projectpath = os.path.split(bdpath)[0]
 # # createTildaDB(bdpath)
-# # # pollitools._insertFile('Data/testTilda.xml', bdpath)
+# # # PolliTools._insertFile('Data/testTilda.xml', bdpath)
 # add_track_dict_to_db(bdpath, drftScPars.draftScanDict)
 # drftScPars.draftScanDict['pipeInternals']['activeTrackNumber'] = 1
 # add_track_dict_to_db(bdpath, drftScPars.draftScanDict)
 # # add_track_dict_to_db(bdpath, 'testTilda.xml', 3, drftScPars.draftTrackPars)
-# # pollitools.crawl(bdpath, 'Data')
+# # PolliTools.crawl(bdpath, 'Data')
 
-# db = 'D:\\blub\\blub.sqlite'
-# # createTildaDB(db)
+db = 'D:\\blub\\blub.sqlite'
+# createTildaDB(db)
 # scand = SdOp.init_empty_scan_dict()
 # scand['isotopeData']['isotope'] = '40Ca'
 # scand['isotopeData']['type'] = 'cs'
 # scand['pipeInternals']['activeTrackNumber'] = 0
 # add_track_dict_to_db(db, scand)
+extract_track_dict_from_db(db, '40Ca', 'cs', 0)
