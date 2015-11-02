@@ -12,6 +12,7 @@ import ast
 import Tools as PolliTools
 import Service.VoltageConversions.VoltageConversions as VCon
 import Service.Scan.ScanDictionaryOperations as SdOp
+import Service.Scan.draftScanParameters as Dft
 
 
 def createTildaDB(db):
@@ -34,6 +35,8 @@ def form_pollifit_db_to_tilda_db(db):
     iso TEXT NOT NULL,
     type TEXT NOT NULL,
     track INT,
+    accVolt FLOAT,
+    laserFreq FLOAT,
     dacStartVolt FLOAT,
     dacStopVolt FLOAT,
     dacStepSizeVolt FLOAT,
@@ -41,12 +44,13 @@ def form_pollifit_db_to_tilda_db(db):
     nOfSteps INT,
     nOfScans INT,
     postAccOffsetVoltControl INT,
-    postAccOffsetVolt INT,
+    postAccOffsetVolt FLOAT,
     activePmtList TEXT,
     colDirTrue TEXT,
     sequencerDict TEXT,
     waitForKepco25nsTicks INT,
     waitAfterReset25nsTicks INT,
+    measureVoltPars Text,
     UNIQUE (iso, type, track)
     )''')
 
@@ -88,7 +92,10 @@ def add_track_dict_to_db(db, scandict, overwrite=True):
                 colDirTrue = ?,
                 sequencerDict = ?,
                 waitForKepco25nsTicks = ?,
-                waitAfterReset25nsTicks = ?
+                waitAfterReset25nsTicks = ?,
+                measureVoltPars = ?,
+                accVolt = ?,
+                laserFreq = ?
                  WHERE iso = ? AND type = ? AND track = ?''',
                     (
                         VCon.get_voltage_from_18bit(trackd['dacStartRegister18Bit']),
@@ -104,6 +111,9 @@ def add_track_dict_to_db(db, scandict, overwrite=True):
                         str(SdOp.sequencer_dict_from_track_dict(trackd, sctype)),
                         trackd['waitForKepco25nsTicks'],
                         trackd['waitAfterReset25nsTicks'],
+                        str(scandict['measureVoltPars']),
+                        str(isod['accVolt']),
+                        isod['laserFreq'],
                         iso, sctype, nOfTrack)
                     )
         con.commit()
@@ -125,56 +135,68 @@ def check_for_existing_isos(db, sctype):
     return isos
 
 
-def extract_track_dict_from_db(db, iso, sctype, tracknum):
+def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
+    """ for a given database, isotope, scan type and tracknumber, this will return a complete scandictionary """
     scand = SdOp.init_empty_scan_dict(sctype)
     scand['isotopeData']['isotope'] = iso
     scand['isotopeData']['type'] = sctype
-    scand['track' + str(tracknum)] = scand['activeTrackPar']
-    con = sqlite3.connect(db)
+    scand['track' + str(tracknum)] = scand.pop('activeTrackPar')
+    con = sqlite3.connect(database_path_str)
     cur = con.cursor()
     cur.execute(
         '''
         SELECT     dacStartVolt, dacStepSizeVolt, invertScan,
          nOfSteps, nOfScans, postAccOffsetVoltControl,
           postAccOffsetVolt, activePmtList, colDirTrue,
-           sequencerDict, waitForKepco25nsTicks, waitAfterReset25nsTicks
+           sequencerDict, waitForKepco25nsTicks, waitAfterReset25nsTicks,
+           measureVoltPars, accVolt, laserFreq
         FROM ScanPars WHERE iso = ? AND type = ? AND track = ?
         ''', (iso, sctype, tracknum,)
     )
     data = cur.fetchone()
-    if data:
-        print(data)
+    data = list(data)
+    scand['isotopeData']['laserFreq'] = data.pop(-1)
+    scand['isotopeData']['accVolt'] = data.pop(-1)
+    scand['measureVoltPars'] = SdOp.merge_dicts(scand['measureVoltPars'], ast.literal_eval(data.pop(-1)))
+    scand['track' + str(tracknum)] = db_track_values_to_trackdict(data, scand['track' + str(tracknum)])
+    con.close()
+
+    return scand
 
 
-def db_track_out_to_scandict(data, track_dict):
+def db_track_values_to_trackdict(data, track_dict):
+    """ given a data list containing (dacStartVolt, dacStepSizeVolt, invertScan,
+         nOfSteps, nOfScans, postAccOffsetVoltControl,
+          postAccOffsetVolt, activePmtList, colDirTrue,
+           sequencerDict, waitForKepco25nsTicks, waitAfterReset25nsTicks,
+            measureVoltPars, accVolt, laserFreq) from the database, this
+            converts all values to a useable track dictionary."""
     dict_keys_list = ['dacStartRegister18Bit', 'dacStepSize18Bit', 'invertScan',
                       'nOfSteps', 'nOfScans', 'postAccOffsetVoltControl',
                       'postAccOffsetVolt', 'activePmtList', 'colDirTrue',
                       'sequencerDict', 'waitForKepco25nsTicks', 'waitAfterReset25nsTicks']
-    conversion_list = [VCon.get_voltage_from_18bit, VCon.get_voltage_from_18bit, VCon.get_stepsize_in_volt_from_18bit,
-                       None, None, None,
-                       ast.literal_eval, ast.literal_eval, ast.literal_eval,
-                       None, None]
-    for i in data:
-        track_dict[dict_keys_list[i]] = getattr(data[i])
-        # figure out how to use getattr here and use it!!!
+    conversion_list = ['VCon.get_18bit_from_voltage(%s)', 'VCon.get_18bit_stepsize(%s)', '%s',
+                       '%s', '%s', '%s',
+                       '%s', '%s', '%s',
+                       '%s', '%s', '%s']
+    # step 1: get rid of unwanted strings in data:
+    data = list(ast.literal_eval(j) if isinstance(j, str) else j for i, j in enumerate(data))
+    # step 2: convert all values according to the conversion list
+    data = [eval(conversion_list[i] % j) for i, j in enumerate(data)]
+    # step 3: create dictionary from keys as in dict_keys_list, with values from data
+    newdict = {j: data[i] for i, j in enumerate(dict_keys_list)}
+    # step 4: pop the sequencer dict and merge it with the track_dict
+    track_dict = SdOp.merge_dicts(track_dict, newdict.pop('sequencerDict'))
+    # step 5: merge with remaining
+    track_dict = SdOp.merge_dicts(track_dict, newdict)
+    return track_dict
 
 
-# bdpath = 'D:\\Workspace\\PyCharm\\Tilda\\PolliFit\\test\\Project\\tildaDB.sqlite'
-# projectpath = os.path.split(bdpath)[0]
-# # createTildaDB(bdpath)
-# # # PolliTools._insertFile('Data/testTilda.xml', bdpath)
-# add_track_dict_to_db(bdpath, drftScPars.draftScanDict)
-# drftScPars.draftScanDict['pipeInternals']['activeTrackNumber'] = 1
-# add_track_dict_to_db(bdpath, drftScPars.draftScanDict)
-# # add_track_dict_to_db(bdpath, 'testTilda.xml', 3, drftScPars.draftTrackPars)
-# # PolliTools.crawl(bdpath, 'Data')
-
-db = 'D:\\blub\\blub.sqlite'
-# createTildaDB(db)
-# scand = SdOp.init_empty_scan_dict()
-# scand['isotopeData']['isotope'] = '40Ca'
-# scand['isotopeData']['type'] = 'cs'
-# scand['pipeInternals']['activeTrackNumber'] = 0
-# add_track_dict_to_db(db, scand)
-extract_track_dict_from_db(db, '40Ca', 'cs', 0)
+# db = 'D:\\blub\\blub.sqlite'
+# # createTildaDB(db)
+# # scand = SdOp.init_empty_scan_dict()
+# # scand['isotopeData']['isotope'] = '40Ca'
+# # scand['isotopeData']['type'] = 'cs'
+# # scand['pipeInternals']['activeTrackNumber'] = 0
+# # add_track_dict_to_db(db, Dft.draftScanDict)
+# print(extract_track_dict_from_db(db, '44Ca', 'cs', 0))

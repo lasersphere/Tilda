@@ -16,6 +16,8 @@ def get_18bit_from_voltage(voltage, dac_gauge_pars=AD5781Fit.dac_gauge_vals, ref
     :param ref_volt_neg/ref_volt_pos: dbl, value for the neg./pos. reference Voltage for the DAC
     :return: int, 18-Bit Code.
     """
+    if voltage is None:
+        return None
     if dac_gauge_pars is None:
         #  function as described in the AD5781 Manual
         b18 = (voltage - ref_volt_neg) * ((2 ** 18) - 1) / (ref_volt_pos - ref_volt_neg)  # from the manual
@@ -33,6 +35,8 @@ def get_18bit_stepsize(step_voltage, dac_gauge_pars=AD5781Fit.dac_gauge_vals):
     function to get the StepSize in dac register integer form derived from a double Voltage
     :return ~ step_voltage/lsb
     """
+    if step_voltage is None:
+        return None
     lsb = 20 / ((2 ** 18) - 1)  # least significant bit in +/-10V 18Bit DAC
     if dac_gauge_pars is not None:
         lsb = dac_gauge_pars[1]  # lsb = slope from DAC-Scan

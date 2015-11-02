@@ -38,7 +38,7 @@ trs_list = ['MCSSelectTrigger', 'delayticks', 'nOfBins', 'nOfBunches']
 
 """ below are some example values which can be used for scanning: """
 draftIsotopePars = {
-    'version': '1.06', 'type': 'cs', 'isotope': '40Ca',
+    'version': '1.06', 'type': 'cs', 'isotope': '44Ca',
     'nOfTracks': '1', 'accVolt': '9999.8',
     'laserFreq': '12568.766'
 }
