@@ -8,6 +8,7 @@ Created on '06.08.2015'
 
 import sqlite3
 import ast
+import logging
 
 import Tools as PolliTools
 import Service.VoltageConversions.VoltageConversions as VCon
@@ -57,7 +58,7 @@ def form_pollifit_db_to_tilda_db(db):
     con.close()
 
 
-def add_track_dict_to_db(db, scandict, overwrite=True):
+def add_scan_dict_to_db(db, scandict, overwrite=True):
     """
     Add a Dictionary containing all infos of a Track to the existing(or not) Trackdictionary
     in the column trackPars of the chosen file. This overwrites the selected Track.
@@ -135,6 +136,17 @@ def check_for_existing_isos(db, sctype):
     return isos
 
 
+def add_new_iso(db, iso, sctype):
+    """ write an empty isotope dictionary of a given scantype to the database """
+    if iso in check_for_existing_isos(db, sctype):
+        logging.info('isotope ' + iso + ' (' + sctype + ')' + ' already created, will not be added')
+        return None
+    scand = SdOp.init_empty_scan_dict()
+    scand['isotopeData']['isotope'] = iso
+    scand['isotopeData']['type'] = sctype
+    scand['pipeInternals']['activeTrackNumber'] = 0
+    add_scan_dict_to_db(db, scand)
+
 def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
     """ for a given database, isotope, scan type and tracknumber, this will return a complete scandictionary """
     scand = SdOp.init_empty_scan_dict(sctype)
@@ -153,8 +165,7 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
         FROM ScanPars WHERE iso = ? AND type = ? AND track = ?
         ''', (iso, sctype, tracknum,)
     )
-    data = cur.fetchone()
-    data = list(data)
+    data = list(cur.fetchone())
     scand['isotopeData']['laserFreq'] = data.pop(-1)
     scand['isotopeData']['accVolt'] = data.pop(-1)
     scand['measureVoltPars'] = SdOp.merge_dicts(scand['measureVoltPars'], ast.literal_eval(data.pop(-1)))
@@ -192,11 +203,35 @@ def db_track_values_to_trackdict(data, track_dict):
     return track_dict
 
 
+def get_number_of_tracks_in_db(db, iso, sctype):
+    """ retrun the number of tracks for the given isotope and sctype """
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    cur.execute('''
+        SELECT track FROM ScanPars WHERE iso = ? AND type = ?
+        ''', (iso, sctype,))
+    data = cur.fetchall()
+    return len(data)
+
+
+def extract_all_tracks_from_db(db, iso, sctype):
+    """ will return one scandict which contains all tracks for the given isotope.
+     naming is 'track0':{ ... } , 'track1':{ ... } etc.
+     general infos like measureVoltPars will be merged, latter (higher tracknum) will overwrite """
+    n_o_tracks = get_number_of_tracks_in_db(db, iso, sctype)
+    scand = {}
+    for i in range(n_o_tracks):
+        scand = SdOp.merge_dicts(scand, extract_track_dict_from_db(db, iso, sctype, i))
+    scand['isotopeData']['nOfTracks'] = n_o_tracks
+    return scand
+
+
 # db = 'D:\\blub\\blub.sqlite'
-# # createTildaDB(db)
-# # scand = SdOp.init_empty_scan_dict()
-# # scand['isotopeData']['isotope'] = '40Ca'
-# # scand['isotopeData']['type'] = 'cs'
-# # scand['pipeInternals']['activeTrackNumber'] = 0
-# # add_track_dict_to_db(db, Dft.draftScanDict)
-# print(extract_track_dict_from_db(db, '44Ca', 'cs', 0))
+# # # createTildaDB(db)
+# # # scand = SdOp.init_empty_scan_dict()
+# # # scand['isotopeData']['isotope'] = '40Ca'
+# # # scand['isotopeData']['type'] = 'cs'
+# # # scand['pipeInternals']['activeTrackNumber'] = 0
+# # # add_scan_dict_to_db(db, Dft.draftScanDict)
+# # print(extract_track_dict_from_db(db, '44Ca', 'cs', 0))
+# print(extract_all_tracks_from_db(db, '40Ca', 'cs'))

@@ -22,6 +22,7 @@ class Main():
                             #  the beginning only one item should be in the list.
         self.database = None  # path of the sqlite3 database
         self.working_directory = None
+        self.measure_voltage_pars = {}  # dict containing all parameters for the voltage measurement.
 
         self.scanpars.append(ScanDicOp.init_empty_scan_dict())
 

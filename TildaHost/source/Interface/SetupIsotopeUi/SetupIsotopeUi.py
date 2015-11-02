@@ -14,14 +14,16 @@ import Service.DatabaseOperations.DatabaseOperations as DbOp
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as Dft
 
+
 class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
-    def __init__(self, main):
+    def __init__(self, main, scan_ctrl):
         super(SetupIsotopeUi, self).__init__()
         self.setupUi(self)
         self.iso = None
         self.sequencer = None
         self.main = main
         self.db = main.database
+        self.scan_ctrl = scan_ctrl
 
         """Buttons"""
         self.pushButton_add_new_to_db.clicked.connect(self.add_new_iso_to_db)
@@ -35,26 +37,17 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
 
         self.comboBox_sequencer_select.addItems(Dft.sequencer_types_list)
 
-        self.show()
+        self.exec()
 
     def init_seq(self):
         logging.debug('initializing sequencer...')
 
     def add_new_iso_to_db(self):
-        """connect to the db and add a new isotope if this has not yet been added"""
+        """ connect to the db and add a new isotope if this has not yet been added """
         iso = self.lineEdit_new_isotope.text()
-        already_exist = [self.comboBox_isotope.itemText(i)
-                         for i in range(self.comboBox_isotope.count())]
-        if iso in already_exist and len(iso):
-            logging.info('isotope ' + iso + ' already created, will not be added')
-            return None
-        scand = SdOp.init_empty_scan_dict()
-        scand['isotopeData']['isotope'] = iso
-        type = self.comboBox_sequencer_select.currentText()
-        scand['isotopeData']['type'] = type
-        scand['pipeInternals']['activeTrackNumber'] = 0
-        DbOp.add_track_dict_to_db(self.db, scand)
-        logging.debug('added ' + iso + ' (' + type + ') to database')
+        sctype = self.comboBox_sequencer_select.currentText()
+        DbOp.add_new_iso(self.db, iso, sctype)
+        logging.debug('added ' + iso + ' (' + sctype + ') to database')
         self.update_isos()
 
     def iso_select(self, iso_str):
@@ -74,8 +67,10 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         return isos
 
     def ok(self):
-        # pass new set variables here
-        self.destroy()
+        self.scan_ctrl.buffer_scan_dict = DbOp.extract_all_tracks_from_db(self.db,
+                                                                          self.comboBox_isotope.currentText(),
+                                                                          self.comboBox_sequencer_select.currentText())
+        self.close()
 
     def cancel(self):
-        self.destroy()
+        self.close()

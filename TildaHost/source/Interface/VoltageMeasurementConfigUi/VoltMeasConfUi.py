@@ -36,12 +36,12 @@ class VoltMeasConfUi(QtWidgets.QMainWindow, Ui_VoltMeasConfMainWin):
 
     def pulse_length(self, pulse_len_mu_s):
         pulse_len_25ns = int(round(pulse_len_mu_s / 25 * 1000))
-        self.main.w_global_scanpars('measVoltPulseLength25ns', pulse_len_25ns)
+        self.main.measure_voltage_pars['measVoltPulseLength25ns'] = pulse_len_25ns
         pulse_len_mu_s = pulse_len_25ns * 25 / 1000
         self.label_measVoltPulseLength_mu_s_set.setText('{0:0.3f}'.format(pulse_len_mu_s))
 
     def timeout(self, timeout_mu_s):
         timeout_10ns = int(round(timeout_mu_s * 100))
-        self.main.w_global_scanpars('measVoltTimeout10ns', timeout_10ns)
+        self.main.measure_voltage_pars['measVoltTimeout10ns'] = timeout_10ns
         timeout_mu_s = timeout_10ns / 100
         self.label_measVoltTimeout_mu_s_set.setText('{0:0.3f}'.format(timeout_mu_s))

@@ -12,10 +12,11 @@ from copy import deepcopy
 
 from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
 import Service.VoltageConversions.VoltageConversions as VCon
+import Service.Scan.ScanDictionaryOperations as SdOp
 
 
 class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
-    def __init__(self, main, track_number, default_track_dict):
+    def __init__(self, scan_ctrl_win, track_number, default_track_dict):
         super(TrackUi, self).__init__()
 
         self.default_track_dict = deepcopy(default_track_dict)
@@ -23,7 +24,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.buffer_pars['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()  # is needed to be able to fix stop
         self.default_track_dict['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()
 
-        self.main = main
+        self.scan_ctrl_win = scan_ctrl_win
         self.track_number = track_number
 
         self.setupUi(self)
@@ -236,20 +237,12 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         logging.info('Setting the voltage is not included yet')
 
     def cancel(self):
-        self.destroy()
+        self.close()
 
     def confirm(self):
-        # hier noch sinnvoll die daten weitergeben an die jeweilige main?
-        self.destroy()
-        pass
+        SdOp.merge_dicts(self.scan_ctrl_win.buffer_scan_dict['track' + str(self.track_number)],
+                         self.buffer_pars)
+        self.close()
 
     def reset_to_default(self):
         self.set_labels_by_dict(self.default_track_dict)
-
-        # if __name__ == "__main__":
-        # app = QtWidgets.QApplication(sys.argv)
-        #     dicti = Dft.draftTrackPars
-        #     dicti['dwellTime10ns'] = 2000000
-        #     print(dicti)
-        #     ui = TrackUi(None, 0, dicti)
-        #     app.exec_()
