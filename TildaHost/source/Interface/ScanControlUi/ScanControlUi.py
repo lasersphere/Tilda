@@ -9,6 +9,8 @@ Created on '29.10.2015'
 from Interface.ScanControlUi.Ui_ScanControl import Ui_MainWindowScanControl
 from Interface.TrackParUi.TrackUi import TrackUi
 from Interface.SetupIsotopeUi.SetupIsotopeUi import SetupIsotopeUi
+import Service.DatabaseOperations.DatabaseOperations as DbOp
+import Service.Scan.ScanDictionaryOperations as SdOp
 
 from PyQt5 import QtWidgets
 
@@ -37,10 +39,18 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         logging.debug('starting measurement')
 
     def add_track(self):
-        # self.track_win = TrackUi(self.main, )
         logging.debug('adding track')
+        sctype = self.buffer_scan_dict['isotopeData']['type']
+        newtracknumber = DbOp.get_number_of_tracks_in_db(self.main.database,
+                                                         self.buffer_scan_dict['isotopeData']['isotope'],
+                                                         sctype)
+        self.buffer_scan_dict['track' + str(newtracknumber)] = SdOp.init_empty_scan_dict(sctype)['activeTrackPar']
+        DbOp.add_scan_dict_to_db(self.main.database,
+                                 self.buffer_scan_dict, newtracknumber,
+                                 track_key='track' + str(newtracknumber))
+        self.update_track_list()
 
-    def work_on_existing_track(self, val):
+    def work_on_existing_track(self):
         track_name = self.listWidget.currentItem().text()
         track_number = int(track_name[-1])
         logging.debug('working on track' + str(track_number))
@@ -58,7 +68,6 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         logging.debug('setting up isotope')
         SetupIsotopeUi(self.main, self)
         self.update_track_list()
-
 
     def save_to_db(self):
         logging.debug('saving settings to database')

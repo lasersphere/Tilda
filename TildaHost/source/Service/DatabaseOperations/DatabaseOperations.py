@@ -58,16 +58,14 @@ def form_pollifit_db_to_tilda_db(db):
     con.close()
 
 
-def add_scan_dict_to_db(db, scandict, overwrite=True):
+def add_scan_dict_to_db(db, scandict, n_of_track, track_key='activeTrackPar', overwrite=True):
     """
-    Add a Dictionary containing all infos of a Track to the existing(or not) Trackdictionary
-    in the column trackPars of the chosen file. This overwrites the selected Track.
+    Write the contents of scandict to the database in the table ScanPars.
+    if (iso, type, n_of_track) not yet in database, they will be created.
     """
     isod = scandict['isotopeData']
-    trackd = scandict['activeTrackPar']
-    piped = scandict['pipeInternals']
+    trackd = scandict[track_key]
     iso = isod['isotope']
-    nOfTrack = piped['activeTrackNumber']
     sctype = isod['type']
     try:
         stop_volt = VCon.get_voltage_from_18bit(
@@ -76,9 +74,9 @@ def add_scan_dict_to_db(db, scandict, overwrite=True):
         stop_volt = None
     con = sqlite3.connect(db)
     cur = con.cursor()
-    cur.execute(''' SELECT iso FROM ScanPars WHERE iso = ? AND type = ? AND track = ?''', (iso, sctype, nOfTrack,))
+    cur.execute(''' SELECT iso FROM ScanPars WHERE iso = ? AND type = ? AND track = ?''', (iso, sctype, n_of_track,))
     if cur.fetchone() is None:
-        cur.execute('''INSERT INTO ScanPars (iso, type, track) VALUES (?, ?, ?)''', (iso, sctype, nOfTrack,))
+        cur.execute('''INSERT INTO ScanPars (iso, type, track) VALUES (?, ?, ?)''', (iso, sctype, n_of_track,))
     if overwrite:
         cur.execute('''UPDATE ScanPars
                 SET dacStartVolt = ?,
@@ -115,7 +113,7 @@ def add_scan_dict_to_db(db, scandict, overwrite=True):
                         str(scandict['measureVoltPars']),
                         str(isod['accVolt']),
                         isod['laserFreq'],
-                        iso, sctype, nOfTrack)
+                        iso, sctype, n_of_track)
                     )
         con.commit()
     con.close()

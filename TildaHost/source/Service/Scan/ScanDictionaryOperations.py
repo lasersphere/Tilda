@@ -26,8 +26,8 @@ def init_empty_scan_dict(type_str=None):
 
 
 def init_seq_specific_dict(type_str):
-    """ by a given sequencer type, return a sequencer specific dict
-     containing all required values for this sequencer. """
+    """ by a given sequencer type, return a sequencer specific dictionary
+     containing all required values for this sequencer. such as 'dwellTime10ns' etc. """
     if type_str in DftSc.sequencer_types_list:
         seq_dict = dict.fromkeys(getattr(DftSc, type_str + '_list'))
     else:
@@ -37,7 +37,7 @@ def init_seq_specific_dict(type_str):
 
 def sequencer_dict_from_track_dict(track_dict, type_str):
     """ return a dictionary which contains all the values inside a track dictionary
-     specific for this sequencer type """
+     specific for this sequencer type such as 'dwellTime10ns' etc. """
     new_dict = {key: track_dict.get(key) for key in init_seq_specific_dict(type_str)}
     return new_dict
 
