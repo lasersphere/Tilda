@@ -14,6 +14,7 @@ from copy import copy
 def init_empty_scan_dict(type_str=None):
     """
     returns an empty scan dictionary in the form as defined in Service.Scan.draftScanParameters.
+    All values will be set to None, except the Version information.
     Only the version information is already filled in from Application.Config.
     """
     scand = dict.fromkeys(DftSc.scanDict_list)
@@ -47,3 +48,15 @@ def merge_dicts(d1, d2):
     new = d1.copy()
     new.update(d2)
     return new
+
+
+def get_number_of_tracks_in_scan_dict(scan_dict):
+    """
+    count the number of tracks in the given dictionary.
+    search indicator is 'track' in keys.
+    """
+    n_of_tracks = 0
+    for key, val in scan_dict.items():
+        if 'track' in str(key):
+            n_of_tracks += 1
+    return n_of_tracks

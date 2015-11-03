@@ -61,9 +61,12 @@ def form_pollifit_db_to_tilda_db(db):
 def add_scan_dict_to_db(db, scandict, n_of_track, track_key='activeTrackPar', overwrite=True):
     """
     Write the contents of scandict to the database in the table ScanPars.
+    Only the selected track parameters will be written to the db.
     if (iso, type, n_of_track) not yet in database, they will be created.
     """
     isod = scandict['isotopeData']
+    if scandict.get(track_key) is None:
+        scandict[track_key] = SdOp.init_empty_scan_dict()['activeTrackPar']
     trackd = scandict[track_key]
     iso = isod['isotope']
     sctype = isod['type']
@@ -124,7 +127,7 @@ def check_for_existing_isos(db, sctype):
     return a list of strings with all isotopes in the db for this sequencer type """
     con = sqlite3.connect(db)
     cur = con.cursor()
-    cur.execute(' SELECT iso FROM ScanPars WHERE type = ?', (sctype,))
+    cur.execute(' SELECT iso FROM ScanPars WHERE type = ? AND track = 0', (sctype,))
     isos = cur.fetchall()
     if len(isos):
         isos = [iso[0] for iso in isos]
@@ -143,7 +146,7 @@ def add_new_iso(db, iso, sctype):
     scand['isotopeData']['isotope'] = iso
     scand['isotopeData']['type'] = sctype
     scand['pipeInternals']['activeTrackNumber'] = 0
-    add_scan_dict_to_db(db, scand)
+    add_scan_dict_to_db(db, scand, 0, track_key='track0')
 
 def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
     """ for a given database, isotope, scan type and tracknumber, this will return a complete scandictionary """

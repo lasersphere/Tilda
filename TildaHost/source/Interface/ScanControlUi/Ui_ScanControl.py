@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindowScanControl(object):
     def setupUi(self, MainWindowScanControl):
         MainWindowScanControl.setObjectName("MainWindowScanControl")
-        MainWindowScanControl.resize(340, 472)
+        MainWindowScanControl.resize(419, 472)
         MainWindowScanControl.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self.centralwidget = QtWidgets.QWidget(MainWindowScanControl)
         self.centralwidget.setObjectName("centralwidget")
@@ -35,11 +35,15 @@ class Ui_MainWindowScanControl(object):
         self.actionAdd_Track.setObjectName("actionAdd_Track")
         self.actionSave_settings_to_database = QtWidgets.QAction(MainWindowScanControl)
         self.actionSave_settings_to_database.setObjectName("actionSave_settings_to_database")
+        self.action_remove_track = QtWidgets.QAction(MainWindowScanControl)
+        self.action_remove_track.setObjectName("action_remove_track")
         self.toolBar.addAction(self.actionGo)
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.actionSetup_Isotope)
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.actionAdd_Track)
+        self.toolBar.addSeparator()
+        self.toolBar.addAction(self.action_remove_track)
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.actionSave_settings_to_database)
 
@@ -53,9 +57,10 @@ class Ui_MainWindowScanControl(object):
         self.actionGo.setText(_translate("MainWindowScanControl", "Go"))
         self.actionGo.setToolTip(_translate("MainWindowScanControl", "Starts the measurement, Ctrl+G"))
         self.actionGo.setShortcut(_translate("MainWindowScanControl", "Ctrl+G"))
-        self.actionSetup_Isotope.setText(_translate("MainWindowScanControl", "Setup Isotope"))
+        self.actionSetup_Isotope.setText(_translate("MainWindowScanControl", "setup Isotope"))
         self.actionSetup_Isotope.setShortcut(_translate("MainWindowScanControl", "Ctrl+I"))
-        self.actionAdd_Track.setText(_translate("MainWindowScanControl", "Add Track"))
+        self.actionAdd_Track.setText(_translate("MainWindowScanControl", "add track"))
         self.actionSave_settings_to_database.setText(_translate("MainWindowScanControl", "save settings to database"))
         self.actionSave_settings_to_database.setShortcut(_translate("MainWindowScanControl", "Ctrl+S"))
+        self.action_remove_track.setText(_translate("MainWindowScanControl", "remove track"))
 

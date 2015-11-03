@@ -16,14 +16,21 @@ import Service.Scan.draftScanParameters as Dft
 
 
 class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
-    def __init__(self, main, scan_ctrl):
+    def __init__(self, main, default_scan_dict):
+        """
+        Dialog which will set the
+        :param main:
+        :param scan_ctrl:
+        :return:
+        """
         super(SetupIsotopeUi, self).__init__()
         self.setupUi(self)
         self.iso = None
         self.sequencer = None
         self.main = main
         self.db = main.database
-        self.scan_ctrl = scan_ctrl
+        self.default_scan_dict = default_scan_dict
+        self.new_scan_dict = {}
 
         """Buttons"""
         self.pushButton_add_new_to_db.clicked.connect(self.add_new_iso_to_db)
@@ -67,10 +74,12 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         return isos
 
     def ok(self):
-        self.scan_ctrl.buffer_scan_dict = DbOp.extract_all_tracks_from_db(self.db,
-                                                                          self.comboBox_isotope.currentText(),
-                                                                          self.comboBox_sequencer_select.currentText())
+        self.new_scan_dict = SdOp.merge_dicts(
+            self.default_scan_dict, DbOp.extract_all_tracks_from_db(
+                self.db, self.comboBox_isotope.currentText(),
+                self.comboBox_sequencer_select.currentText()))
         self.close()
 
     def cancel(self):
+        self.new_scan_dict = self.default_scan_dict
         self.close()
