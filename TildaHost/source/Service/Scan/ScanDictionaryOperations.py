@@ -56,7 +56,18 @@ def get_number_of_tracks_in_scan_dict(scan_dict):
     search indicator is 'track' in keys.
     """
     n_of_tracks = 0
+    list_of_track_nums = []
     for key, val in scan_dict.items():
         if 'track' in str(key):
             n_of_tracks += 1
-    return n_of_tracks
+            list_of_track_nums.append(int(key[5:]))
+    return n_of_tracks, list_of_track_nums
+
+def get_available_tracknum(scan_dict):
+    """
+    will return a tracknumber for the next available track.
+    """
+    n_of_tracks, list_of_track_nums = get_number_of_tracks_in_scan_dict(scan_dict)
+    for new_track_num in range(n_of_tracks + 1):
+        if new_track_num not in list_of_track_nums:
+            return new_track_num, list_of_track_nums

@@ -21,6 +21,8 @@ from copy import deepcopy
 
 class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
     def __init__(self, main):
+        """ Non-Modal Main window to control the Scan.
+         All Isotope/track/sequencer settings are entered here. """
         super(ScanControlUi, self).__init__()
         self.setupUi(self)
 
@@ -44,26 +46,28 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
 
     def add_track(self):
         """
-        add a track either from loading of the database or by copying the last one in the Gui.
+        add a track either from loading of the database or by copying the last one in the Gui,
+        depending on if there is still a track available in the db.
         Will not write to the database!
         """
         logging.debug('adding track')
         sctype = self.buffer_scan_dict['isotopeData']['type']
         iso = self.buffer_scan_dict['isotopeData']['isotope']
-        tracks_in_db = DbOp.get_number_of_tracks_in_db(self.main.database, iso, sctype)
-        tracks_in_gui = SdOp.get_number_of_tracks_in_scan_dict(self.buffer_scan_dict)
-        print('noftracks', tracks_in_db, tracks_in_gui)
-        if tracks_in_gui < tracks_in_db:
-            logging.debug('databse adding track' + str(tracks_in_gui))
-            self.buffer_scan_dict['track' + str(tracks_in_gui)] = DbOp.extract_track_dict_from_db(
-                self.main.database, iso, sctype, tracks_in_gui)
+        next_track_num, track_num_list = SdOp.get_available_tracknum(self.buffer_scan_dict)
+        scand_from_db = DbOp.extract_track_dict_from_db(self.main.database, iso, sctype, next_track_num)
+        if scand_from_db is not None:
+            logging.debug('adding track' + str(next_track_num) + ' from database')
+            self.buffer_scan_dict['track' + str(next_track_num)] = scand_from_db
         else:
-            logging.debug('Gui adding track' + str(tracks_in_gui))
-            self.buffer_scan_dict['track' + str(tracks_in_gui)] = deepcopy(
-                self.buffer_scan_dict['track' + str(tracks_in_gui - 1)])
+            track_to_copy_from = 'track' + str(max(track_num_list))
+            logging.debug('adding track' + str(next_track_num) + ' copying values from: ' + track_to_copy_from)
+            self.buffer_scan_dict['track' + str(next_track_num)] = deepcopy(self.buffer_scan_dict[track_to_copy_from])
         self.update_track_list()
 
     def remove_selected_track(self):
+        """
+        will remove the currently sleectes
+        """
         self.buffer_scan_dict.pop(self.listWidget.currentItem().text())
         self.update_track_list()
 

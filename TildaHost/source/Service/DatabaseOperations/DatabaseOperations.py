@@ -139,6 +139,8 @@ def check_for_existing_isos(db, sctype):
 
 def add_new_iso(db, iso, sctype):
     """ write an empty isotope dictionary of a given scantype to the database """
+    if iso is '':
+        return None
     if iso in check_for_existing_isos(db, sctype):
         logging.info('isotope ' + iso + ' (' + sctype + ')' + ' already created, will not be added')
         return None
@@ -147,6 +149,8 @@ def add_new_iso(db, iso, sctype):
     scand['isotopeData']['type'] = sctype
     scand['pipeInternals']['activeTrackNumber'] = 0
     add_scan_dict_to_db(db, scand, 0, track_key='track0')
+    logging.debug('added ' + iso + ' (' + sctype + ') to database')
+
 
 def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
     """ for a given database, isotope, scan type and tracknumber, this will return a complete scandictionary """
@@ -166,7 +170,10 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
         FROM ScanPars WHERE iso = ? AND type = ? AND track = ?
         ''', (iso, sctype, tracknum,)
     )
-    data = list(cur.fetchone())
+    data = cur.fetchone()
+    if data is None:
+        return None
+    data = list(data)
     scand['isotopeData']['laserFreq'] = data.pop(-1)
     scand['isotopeData']['accVolt'] = data.pop(-1)
     scand['measureVoltPars'] = SdOp.merge_dicts(scand['measureVoltPars'], ast.literal_eval(data.pop(-1)))
@@ -205,7 +212,7 @@ def db_track_values_to_trackdict(data, track_dict):
 
 
 def get_number_of_tracks_in_db(db, iso, sctype):
-    """ retrun the number of tracks for the given isotope and sctype """
+    """ return the number of tracks for the given isotope and sctype """
     con = sqlite3.connect(db)
     cur = con.cursor()
     cur.execute('''

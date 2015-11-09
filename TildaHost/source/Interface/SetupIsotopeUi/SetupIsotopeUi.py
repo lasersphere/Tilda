@@ -18,10 +18,8 @@ import Service.Scan.draftScanParameters as Dft
 class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
     def __init__(self, main, default_scan_dict):
         """
-        Dialog which will set the
-        :param main:
-        :param scan_ctrl:
-        :return:
+        Modal Dialog which will connect to the database and read the stored parameters.
+        by clicking ok, the data will be stored in self.new_scan_dict.
         """
         super(SetupIsotopeUi, self).__init__()
         self.setupUi(self)
@@ -47,6 +45,7 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         self.exec()
 
     def init_seq(self):
+        """ this starts the sequencer, if it has not been satrted yet """
         logging.debug('initializing sequencer...')
 
     def add_new_iso_to_db(self):
@@ -54,13 +53,16 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         iso = self.lineEdit_new_isotope.text()
         sctype = self.comboBox_sequencer_select.currentText()
         DbOp.add_new_iso(self.db, iso, sctype)
-        logging.debug('added ' + iso + ' (' + sctype + ') to database')
         self.update_isos()
 
     def iso_select(self, iso_str):
+        """ is called when something changed in the comboBox for the isotope
+        iso_str is always the string in the comboBox. """
         logging.debug('selected isotope: ' + iso_str)
 
     def sequencer_select(self, seq_str):
+        """ is called when something changed in the comboBox for the sequencer
+        seq_str is always the string in the comboBox. """
         logging.debug('selected sequencer: ' + seq_str)
         self.update_isos()
 
@@ -74,6 +76,8 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         return isos
 
     def ok(self):
+        """ by a given track in the database, this will read all scan values and
+         then merge them with the default dictionary """
         self.new_scan_dict = SdOp.merge_dicts(
             self.default_scan_dict, DbOp.extract_all_tracks_from_db(
                 self.db, self.comboBox_isotope.currentText(),
@@ -81,5 +85,6 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         self.close()
 
     def cancel(self):
+        """ by clicking cancel, the new_scan_dict will be set to the default scan dict """
         self.new_scan_dict = self.default_scan_dict
         self.close()

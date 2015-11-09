@@ -27,7 +27,8 @@ class Main():
         self.scanpars.append(ScanDicOp.init_empty_scan_dict())
 
         # remove this later:
-        self.work_dir_changed('D:\\blub')
+        # self.work_dir_changed('D:\\blub')
+        self.work_dir_changed('C:\\temp')
 
         self.mainUi = self.start_gui()
 
