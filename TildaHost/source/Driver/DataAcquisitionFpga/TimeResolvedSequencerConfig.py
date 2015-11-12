@@ -61,3 +61,5 @@ seqStateDict = {'init': 0, 'idle': 1, 'measureOffset': 2, 'measureTrack': 3, 'me
 transferToHostReqEle = 100000
 
 dummyScanParameters = draftPars.draftTrackPars
+
+seq_type = 'trs'

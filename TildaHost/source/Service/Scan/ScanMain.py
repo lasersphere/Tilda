@@ -8,25 +8,35 @@ Created on '19.05.2015'
 
 import time
 
-from Driver.DataAcquisitionFpga.TimeResolvedSequencer import TimeResolvedSequencer
+from Driver.DataAcquisitionFpga.TimeResolvedSequencer import TimeResolvedSequencer as trs
+from Driver.DataAcquisitionFpga.ContinousSequencer import ContinousSequencer as cs
 from Driver.Heinzinger.Heinzinger import Heinzinger
 import Driver.Heinzinger.HeinzingerCfg as hzCfg
 
+
 class ScanMain():
     def __init__(self):
-        self.trs = TimeResolvedSequencer()
+        self.sequencer = None
+        self.scan_state = 'initialized'
+
         # self.heinz0 = Heinzinger(hzCfg.comportHeinzinger0)
         # self.heinz1 = Heinzinger(hzCfg.comportHeinzinger1)
         # self.heinz2 = Heinzinger(hzCfg.comportHeinzinger2)
 
 
-    def startMeasurement(self, scanpars):
-        self.setHeinzinger(scanpars)
-        if scanpars['measureOffset']:
-            self.measureOffset(scanpars)
-        self.measureOneTrack(scanpars)
+    def start_measurement(self, scan_dict):
+        self.prepare_measurement(scan_dict)
+        self.scan_state = 'measuring'
+        # self.setHeinzinger(scanpars)
+        # if scanpars['measureOffset']:
+        #     self.measureOffset(scanpars)
+        # self.measureOneTrack(scanpars)
 
-
+    def prepare_measurement(self, scan_dict):
+        self.scan_state = 'setting up measurement'
+        if self.sequencer is None:
+            # dynamically load the chosen fpga here. if not loaded anyhow yet.
+            pass
 
     def measureOneTrack(self, scanpars):
         #dont like this. its just forwarding isnt it?

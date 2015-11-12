@@ -1,0 +1,18 @@
+import os
+
+dir = 'E:\\temp\\'
+
+filenames = os.listdir(dir)
+
+
+
+string = 'conda install --use-local '
+
+for file in filenames:
+    if file.endswith('.tar.bz2'):
+        string = string + dir + file + '\t'
+
+# print(string)
+# userinp = input('the following will be executed: \n' + string + '\n \n press y to proceed, n to exit:')
+# if userinp == 'y':
+#     os.system(string)

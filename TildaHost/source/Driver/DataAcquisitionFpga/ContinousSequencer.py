@@ -20,6 +20,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         """
         super(Sequencer, self).__init__(CsCfg.bitfilePath, CsCfg.bitfileSignature, CsCfg.fpgaResource)
         self.confHostBufferSize(CsCfg)
+        self.type = CsCfg.seq_type
 
     '''read Indicators'''
 

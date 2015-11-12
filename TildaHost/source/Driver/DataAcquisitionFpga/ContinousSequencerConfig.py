@@ -48,3 +48,5 @@ seqStateDict = {'init': 0, 'idle': 1, 'measureOffset': 2, 'measureTrack': 3, 'me
 postAccOffsetVoltStateDict = {'Kepco': 0, 'Heinzinger1': 1, 'Heinzinger2': 2, 'Heinzinger3': 3, 'loading': 4}
 
 transferToHostReqEle = 100000
+
+seq_type = 'cs'

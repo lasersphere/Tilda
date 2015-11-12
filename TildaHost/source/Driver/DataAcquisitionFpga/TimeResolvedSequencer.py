@@ -29,6 +29,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
 
         super(Sequencer, self).__init__(TrsCfg.bitfilePath, TrsCfg.bitfileSignature, TrsCfg.fpgaResource)
         self.confHostBufferSize(TrsCfg)
+        self.type = TrsCfg.seq_type
 
     '''read Indicators:'''
     def getMCSState(self):
