@@ -41,7 +41,6 @@ for i in range(0,6):
     BatchFit.batchFit(Tools.fileList(db,'42_Ca'), db,run)
     BatchFit.batchFit(Tools.fileList(db,'44_Ca'), db,run)
     BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
-
     '''Mean of center, sigma and gamma for 40_Ca'''
 # Analyzer.combineRes('40_Ca', 'gamma',run, db)
 # Analyzer.combineRes('40_Ca', 'sigma',run, db)
@@ -52,6 +51,7 @@ for i in range(0,6):
     Analyzer.combineRes('42_Ca', 'center',run, db)
     Analyzer.combineRes('44_Ca', 'center',run, db)
     Analyzer.combineRes('48_Ca', 'center',run, db)
+
 
     '''Calculate the isotope shift to 48_Ca'''
     shift40.append(Analyzer.combineShift('40_Ca', run, db)[2])

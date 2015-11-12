@@ -82,7 +82,9 @@ def average(vals, errs):
 
 
 def combineRes(iso, par, run, db, weighted = True):
-    '''Calculate weighted average of par using the configuration specified in the db'''
+    '''Calculate weighted average of par using the configuration specified in the db
+    :rtype : object
+    '''
     print('Open DB', db)
     
     con = sqlite3.connect(db)
@@ -192,11 +194,13 @@ def shiftErr(iso, run, db, val, accVolt_d, offset_d):
     (mass, mass_d) = cur.fetchall()[0]
     cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (ref,))
     (massRef, massRef_d) = cur.fetchall()[0]
-    deltaM = mass - massRef
+    deltaM = np.absolute(mass - massRef)
     cur.execute('''SELECT offset, accVolt FROM Files WHERE type = ?''', (iso,))
     (offset, accVolt) = cur.fetchall()[0]
+    offset = offset*1000
     cur.execute('''SELECT offset FROM Files WHERE type = ?''', (ref,))
     (refOffset,) = cur.fetchall()[0]    
+    refOffset = refOffset*1000
     accVolt = np.absolute(refOffset)+accVolt
    
     cur.execute('''SELECT line FROM Files WHERE type = ?''', (ref,))
@@ -211,9 +215,7 @@ def shiftErr(iso, run, db, val, accVolt_d, offset_d):
             offset = np.absolute(refOffset-offset) + 700
     else:
         offset = np.absolute(refOffset-offset)
-        if iso == '48_Ca':
-            offset = offset -200
     print('offsetvoltage:', offset)
     fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
     print('systematic error inputs caused by error of...\n...acc Voltage:',fac*(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d/accVolt)),'MHz  ...offset Voltage',fac*offset*offset_d/accVolt,'MHz  ...masses:',fac*(mass_d/mass+massRef_d/massRef),'MHz')
-    return fac*(0.5*(offset/accVolt+deltaM/mass)*accVolt_d/accVolt+offset*offset_d/accVolt+mass_d/mass+massRef_d/massRef) 
+    return fac*(np.absolute(0.5*(offset/accVolt+deltaM/mass)*accVolt_d/accVolt)+np.absolute(offset*offset_d/accVolt)+np.absolute(mass_d/mass+massRef_d/massRef))

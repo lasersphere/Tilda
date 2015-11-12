@@ -99,7 +99,6 @@ class MCPImporter(SpecData):
                 self.x[0][i] = float(limits[0]) + i * (float(limits[1]) - float(limits[0])) / self.nrSteps
             self.cts = [np.array(self.ctsTemp)]
             self.err = [np.array(self.errTemp)]
-
             # print(self.x)
             # print(self.cts)
 
@@ -152,7 +151,7 @@ class MCPImporter(SpecData):
                         cts.append(float(str(ctscopy[i])[:-1]))
                 else:
                     cts.append(float(ctscopy[i]))
-                err.append(np.sqrt(float(cts[-1])))
+                err.append(np.sqrt(np.abs(float(cts[-1]))))
         self.ctsTemp.append(cts)
         self.errTemp.append(err)
         return scalerNo
