@@ -15,6 +15,20 @@ import matplotlib.pyplot as plt
 
 from polliPipe.pipeline import Pipeline
 
+
+def find_pipe_by_seq_type(scan_dict):
+    seq_type = scan_dict['isotopeData']['type']
+    if seq_type == 'cs':
+        return CsPipe(scan_dict)
+    elif seq_type == 'trs':
+        return TrsPipe(scan_dict)
+    elif seq_type == 'kepco':
+        return kepco_scan_pipe(scan_dict)
+    else:
+        return None
+
+
+
 def TrsPipe(initialScanPars):
     """
     Pipeline for the dataflow and analysis of one Isotope using the time resolved sequencer.
@@ -74,6 +88,20 @@ def CsPipe(initialScanPars=None):
     # walk = walk.attach(TN.NSaveSumCS())
     return pipe
 
+def kepco_scan_pipe(initial_scan_pars):
+    """
+    pipeline for the measurement and analysis of a kepco scan
+    :param initial_scan_pars: full sacn dictionary which will be used as starting point for this pipeline
+    """
+    start = Node()
+
+    pipe = Pipeline(start)
+
+    walk = start.attach(TN.NSaveRawData())
+    walk = walk.attach(SN.NPrint())
+    # more has to be included...
+    return pipe
+
 def initPipeData(initialScanPars):
     """
     initialize the pipeData used for the analysis Pipeline
@@ -81,8 +109,6 @@ def initPipeData(initialScanPars):
     """
     pipeData = initialScanPars
 
-    pipeData['activeTrackPar']['nOfCompletedSteps'] = 0
     pipeData['pipeInternals']['curVoltInd'] = 0
-    pipeData['pipeInternals']['activeTrackNumber'] = 0
     pipeData['pipeInternals']['activeXmlFilePath'] = FaFH.createXmlFileOneIsotope(pipeData)
     return pipeData

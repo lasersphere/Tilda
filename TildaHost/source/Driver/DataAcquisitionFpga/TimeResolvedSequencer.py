@@ -4,15 +4,11 @@ Created on '07.05.2015'
 
 @author:'simkaufm'
 
-"""
 
-"""
 Module in  charge for loading and accessing the TimeResolvedSequencer
 Access Via the NiFpgaUniversalInterfaceDll.dll
 """
 
-import time
-import numpy as np
 
 from Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
 from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer

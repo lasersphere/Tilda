@@ -21,6 +21,7 @@ class Heinzinger():
         self.setCur = 0
         self.maxVolt = hzCfg.maxVolt
         self.setVolt = 0
+        self.time_of_last_volt_set = None
         self.sleepAfterSend = 0.05
         self.hzIdn = ''
         self.ser = serial.Serial(port=com - 1, baudrate=9600, timeout=0.1,
@@ -63,10 +64,11 @@ class Heinzinger():
         :param volt: float, 3 Digits of precision
         :return: float, the voltage that has ben sent via serial
         """
-        print('setting Volt: ' + str(volt))
+        print('Heinzinger setting Volt: ' + str(volt))
         if volt <= self.maxVolt:
             self.setVolt = round(float(volt), 3)
         self.serWrite('SOUR:VOLT ' + str(self.setVolt))
+        self.time_of_last_volt_set = time.strftime('%d/%m/%y %H:%M:%S')
         return self.setVolt
 
     def setCurrent(self, curr):

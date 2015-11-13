@@ -23,8 +23,8 @@ import sys
 logging.basicConfig(level=getattr(logging, 'DEBUG'), format='%(message)s', stream=sys.stdout)
 
 
-hz1 = hz.Heinzinger(hzCfg.comportHeinzinger0) #dacStartRegister18Bit Heinzinger 1
-hz2 = hz.Heinzinger(hzCfg.comportHeinzinger1) #dacStartRegister18Bit Heinzinger 2
+hz1 = hz.Heinzinger(hzCfg.comportHeinzinger1) #dacStartRegister18Bit Heinzinger 1
+hz2 = hz.Heinzinger(hzCfg.comportHeinzinger2) #dacStartRegister18Bit Heinzinger 2
 fpga = fpgaDAC.HsbAndDac()
 
 
