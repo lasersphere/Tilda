@@ -28,27 +28,19 @@ class ScanMain:
         # self.heinz3 = Heinzinger(hzCfg.comportHeinzinger2)
 
     def start_measurement(self, scan_dict):
-        self.prepare_measurement(scan_dict)
+        self.prep_seq(scan_dict['isotopeData']['type'])
+        self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict)
         self.scan_state = 'measuring'
         track_list = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)[1]
         for track_num in track_list:
             # measure all tracks in order of their tracknumber.
             scan_dict['activeTrackPar'] = scan_dict['track' + track_num]
-            scan_dict['pipeInternals']['curVoltInd'] = 0
-            scan_dict['pipeInternals']['activeTrackNumber'] = track_num
-            # set up pipeline
+            self.set_heinzinger(scan_dict['activeTrackPar'])
+            # figure out how to restart the pipeline with the new parameters here
             self.measure_one_track(scan_dict)
 
-    def prepare_measurement(self, scan_dict):
-        """
-        this prepares the measurement, by laoding the desired bitfile to the fpga and
-        setting the desired Heinzinger to the desired voltage
-        :param scan_dict: dictionary, containing all scanparameters
-        """
-        self.scan_state = 'setting up measurement'
-
-        # init sequencer
-        seq_type = scan_dict['isotopeData']['type']
+    def prep_seq(self, seq_type):
+        self.scan_state = 'starting up sequencer of type: ' + seq_type
         if self.sequencer is None:
             logging.debug('loading sequencer of type: ' + seq_type)
             self.sequencer = FindSeq.ret_seq_instance_of_type(seq_type)
@@ -61,26 +53,20 @@ class ScanMain:
             elif self.sequencer.type != seq_type:
                 self.sequencer = FindSeq.ret_seq_instance_of_type('cs')
 
-        # set the heinzinger voltage in the corresponding heinzinger, if not already done.
-        self.set_heinzinger(scan_dict)
-
-        # setup the pipeline in the analysis module
-        self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict)
-
-
     def measure_one_track(self, scan_dict):
         self.sequencer.measureTrack(scan_dict)  # this will also set the post acceleration control
 
-    def set_heinzinger(self, scan_dict):
+    def set_heinzinger(self, track_dict):
         """
         function to set the desired Heinzinger to the Voltage that is needed.
-        :param scan_dict: dictionary, containing all scanparameters
+        :param track_dict: dictionary, containing all scanparameters
         :return: bool, True if success, False if fail within maxTries.
         """
-        active_heinzinger = getattr(self, 'heinz' + str(scan_dict['postAccOffsetVoltControl']))
-        setVolt = scan_dict['postAccOffsetVolt']
+        self.scan_state = 'setting Heinzinger'
+        active_heinzinger = getattr(self, 'heinz' + str(track_dict['postAccOffsetVoltControl']))
+        setVolt = track_dict['postAccOffsetVolt']
         if setVolt != active_heinzinger.getProgrammedVolt():
-            # Voltage not yet applied
+            # desired Voltage not yet applied
             active_heinzinger.setVoltage(setVolt)
         # compare Voltage with desired Voltage.
         tries = 0
@@ -94,7 +80,7 @@ class ScanMain:
                 logging.warning('Heinzinger readback is not within 10% of desired voltage,\n Readback is: ' +
                                 str(readback))
                 return readback
-        logging.info('Heinzinger' + str(scan_dict['postAccOffsetVoltControl']) +
+        logging.info('Heinzinger' + str(track_dict['postAccOffsetVoltControl']) +
                      'readback is: ' + str(readback) + ' V\n' +
                      'last set at: ' + active_heinzinger.time_of_last_volt_set)
         return readback
