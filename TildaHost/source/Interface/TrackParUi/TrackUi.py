@@ -32,6 +32,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.track_number = track_number
 
         self.setupUi(self)
+        self.setWindowTitle(self.scan_ctrl_win.win_title + ' - track' + str(track_number))
         self.show()
 
         """Sequencer Settings:"""
@@ -278,3 +279,9 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def reset_to_default(self):
         """ will reset all spinboxes to the default value which was passed in the beginning. """
         self.set_labels_by_dict(self.default_track_dict)
+
+    def closeEvent(self, event):
+        """
+        will remove the given track window from the dictionary in scan_ctrl_win
+        """
+        self.scan_ctrl_win.track_win_closed(self.track_number)

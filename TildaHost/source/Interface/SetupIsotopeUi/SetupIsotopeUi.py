@@ -45,7 +45,7 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         self.exec()
 
     def init_seq(self):
-        """ this starts the sequencer, if it has not been satrted yet """
+        """ this starts the sequencer, if it has not been started yet """
         logging.debug('initializing sequencer...')
 
     def add_new_iso_to_db(self):

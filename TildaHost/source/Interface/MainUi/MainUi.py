@@ -12,7 +12,6 @@ from Interface.MainUi.Ui_Main import Ui_TildaMainWindow
 from Interface.VersionUi.VersionUi import VersionUi
 from Interface.TrackParUi.TrackUi import TrackUi
 from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
-from Interface.ScanControlUi.ScanControlUi import ScanControlUi
 import Service.Scan.draftScanParameters as Dft
 
 from copy import deepcopy
@@ -52,7 +51,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         VersionUi()
 
     def open_scan_ctrl_win(self):
-        self.scanwin = ScanControlUi(self.main)
+        self.main.open_scan_control_win()
 
     def open_volt_meas_win(self):
         self.voltwin = VoltMeasConfUi(self.main, Dft.draftMeasureVoltPars)

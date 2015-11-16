@@ -15,11 +15,10 @@ class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
     non modal scan progress window, which will be showing the progress of the scan and
     give the user the ability to abort or to halt the scan.
     """
-    def __init__(self, scan_dict):
+    def __init__(self):
         super(ScanProgressUi, self).__init__()
         self.setupUi(self)
 
-        self.scan_dict = scan_dict
         self.n_o_total_tracks = 0
         self.n_o_compl_tracks = 0
         self.n_o_total_scans_in_track = 0
@@ -79,15 +78,15 @@ class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
         self.label_act_completed_steps.setText(str(n_o_compl_steps))
         self.update_track_progbar()
 
-import sys
-
-if __name__ == '__main__':
-        app = QtWidgets.QApplication(sys.argv)
-        ui = ScanProgressUi()
-        ui.set_n_of_compl_tracks(1)
-        ui.set_n_of_total_tracks(5)
-        ui.set_n_of_compl_scans(1)
-        ui.set_n_of_total_scans(10)
-        ui.set_n_of_compl_steps_in_track(50)
-        ui.set_n_of_total_steps_in_track(100)
-        app.exec_()
+# import sys
+#
+# if __name__ == '__main__':
+#         app = QtWidgets.QApplication(sys.argv)
+#         ui = ScanProgressUi()
+#         ui.set_n_of_compl_tracks(1)
+#         ui.set_n_of_total_tracks(5)
+#         ui.set_n_of_compl_scans(1)
+#         ui.set_n_of_total_scans(10)
+#         ui.set_n_of_compl_steps_in_track(50)
+#         ui.set_n_of_total_steps_in_track(100)
+#         app.exec_()

@@ -16,7 +16,7 @@ from PyQt5 import QtWidgets
 
 import logging
 import sys
-from copy import deepcopy
+from copy import deepcopy, copy
 
 
 class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
@@ -26,8 +26,10 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         super(ScanControlUi, self).__init__()
         self.setupUi(self)
 
+        self.scanning = False
         self.buffer_scan_dict = {}
-        self.track_win = None
+        self.track_wins_dict = {}
+        self.win_title = None
 
         self.actionGo.triggered.connect(self.go)
         self.actionSetup_Isotope.triggered.connect(self.setup_iso)
@@ -43,6 +45,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
     def go(self):
         # pss on the buffered scandict and let it run.
         logging.debug('starting measurement')
+        self.scanning = not self.scanning
 
     def add_track(self):
         """
@@ -68,8 +71,11 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         """
         will remove the currently sleectes
         """
-        self.buffer_scan_dict.pop(self.listWidget.currentItem().text())
-        self.update_track_list()
+        try:
+            self.buffer_scan_dict.pop(self.listWidget.currentItem().text())
+            self.update_track_list()
+        except Exception as e:
+            logging.error('Error occurred while removing track from list: ' + str(e))
 
     def work_on_existing_track(self):
         """
@@ -77,9 +83,12 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         into self.buffer_scan_dict of ScanControlUi if ok is pressed.
         """
         track_name = self.listWidget.currentItem().text()
-        track_number = int(track_name[-1])
+        track_number = int(track_name[5:])
         logging.debug('working on track' + str(track_number))
-        self.track_win = TrackUi(self, track_number, self.buffer_scan_dict[track_name])
+        self.track_wins_dict[str(track_number)] = TrackUi(self, track_number, self.buffer_scan_dict[track_name])
+
+    def track_win_closed(self, tracknum_int):
+        self.track_wins_dict.pop(str(tracknum_int))
 
     def update_track_list(self):
         if self.buffer_scan_dict:
@@ -96,6 +105,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         except KeyError:
             win_title = 'please setup Isotope'
         self.setWindowTitle(win_title)
+        self.win_title = win_title
 
     def setup_iso(self):
         logging.debug('setting up isotope')
@@ -110,9 +120,24 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         for i in range(SdOp.get_number_of_tracks_in_scan_dict(self.buffer_scan_dict)):
             DbOp.add_scan_dict_to_db(self.main.database, self.buffer_scan_dict, i, track_key='track' + str(i))
 
+    def close_track_wins(self):
+        new_dict = copy(self.track_wins_dict)
+        for key, val in new_dict.items():
+            val.close()
+
+    def closeEvent(self, event):
+        if self.scanning:
+            logging.info('will not exit, because a scan is ongoing.')
+            event.ignore()
+        else:
+            event.accept()
+            print(self.track_wins_dict)
+            self.close_track_wins()
+            self.main.scan_control_win_closed(self)
+            print(self.track_wins_dict)
 
 
-if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
-    blub = ScanControlUi(None)
-    app.exec_()
+# if __name__ == "__main__":
+#     app = QtWidgets.QApplication(sys.argv)
+#     blub = ScanControlUi(None)
+#     app.exec_()

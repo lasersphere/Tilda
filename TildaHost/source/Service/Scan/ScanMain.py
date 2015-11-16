@@ -23,21 +23,22 @@ class ScanMain:
         self.pipeline = None
         self.scan_state = 'initialized'
 
-        self.heinz1 = Heinzinger(hzCfg.comportHeinzinger1)
-        self.heinz2 = Heinzinger(hzCfg.comportHeinzinger2)
+        # self.heinz1 = Heinzinger(hzCfg.comportHeinzinger1)
+        # self.heinz2 = Heinzinger(hzCfg.comportHeinzinger2)
         # self.heinz3 = Heinzinger(hzCfg.comportHeinzinger2)
 
-    def start_measurement(self, scan_dict):
+    def start_measurement(self, scan_dict, track_num):
+        """
+        will start the measurement for one track.
+        """
         self.prep_seq(scan_dict['isotopeData']['type'])
         self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict)
+        # self.pipeline.pipeData = {}
         self.scan_state = 'measuring'
-        track_list = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)[1]
-        for track_num in track_list:
-            # measure all tracks in order of their tracknumber.
-            scan_dict['activeTrackPar'] = scan_dict['track' + track_num]
-            self.set_heinzinger(scan_dict['activeTrackPar'])
-            # figure out how to restart the pipeline with the new parameters here
-            self.measure_one_track(scan_dict)
+        scan_dict['activeTrackPar'] = scan_dict['track' + track_num]
+        self.set_heinzinger(scan_dict['activeTrackPar'])
+        # figure out how to restart the pipeline with the new parameters here
+        self.sequencer.measureTrack(scan_dict)
 
     def prep_seq(self, seq_type):
         self.scan_state = 'starting up sequencer of type: ' + seq_type
@@ -52,9 +53,6 @@ class ScanMain:
                     self.sequencer = FindSeq.ret_seq_instance_of_type('cs')
             elif self.sequencer.type != seq_type:
                 self.sequencer = FindSeq.ret_seq_instance_of_type('cs')
-
-    def measure_one_track(self, scan_dict):
-        self.sequencer.measureTrack(scan_dict)  # this will also set the post acceleration control
 
     def set_heinzinger(self, track_dict):
         """
