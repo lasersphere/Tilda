@@ -15,8 +15,9 @@ import Driver.Heinzinger.HeinzingerCfg as hzCfg
 
 
 class Heinzinger():
-    def __init__(self, com):
+    def __init__(self, com, name='Heinzinger'):
         self.errorcount = 0
+        self.name = name
         self.outp = False
         self.setCur = 0
         self.maxVolt = hzCfg.maxVolt
@@ -108,7 +109,8 @@ class Heinzinger():
         get the programmed Voltage.
         Each measurement should need something like 320 ms.
         """
-        return self.serWrite('VOLT?', True, 350)
+        self.setVolt = round(float(self.serWrite('VOLT?', True, 350)), 3)
+        return self.setVolt
 
     def getVoltage(self):
         """
@@ -126,6 +128,18 @@ class Heinzinger():
         :return: float
         """
         return round(float(self.serWrite('MEASure:CURRent?', True)), 3)
+
+    def get_status(self):
+        """
+        returns a dict containing the status of the power supply,
+        keys are: name, programmedVoltage, voltageSetTime, readBackVolt
+        """
+        status = {}
+        status['name'] = self.name
+        status['programmedVoltage'] = self.setVolt
+        status['voltageSetTime'] = self.time_of_last_volt_set
+        status['readBackVolt'] = self.getVoltage()
+        return status
 
     '''serial interface'''
     def serWrite(self, cmdstr, readback=False, sleepAfterSend=None):

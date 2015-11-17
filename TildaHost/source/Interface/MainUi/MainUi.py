@@ -41,9 +41,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.main.work_dir_changed(workdir)
 
     def open_track_win(self):
-        # will be moved in near future to scan ctrl win
-        # print(self.main.scanpars[0]['activeTrackPar'])
-        # self.trackWin = TrackUi(self.main, 0, self.main.scanpars[0]['activeTrackPar'])
         pass
 
     def open_version_win(self):

@@ -41,6 +41,9 @@ class Ui_Dialog(object):
         self.pushButton_ok = QtWidgets.QPushButton(Dialog)
         self.pushButton_ok.setObjectName("pushButton_ok")
         self.gridLayout.addWidget(self.pushButton_ok, 4, 0, 1, 1)
+        self.pushButton_refresh = QtWidgets.QPushButton(Dialog)
+        self.pushButton_refresh.setObjectName("pushButton_refresh")
+        self.gridLayout.addWidget(self.pushButton_refresh, 4, 1, 1, 1)
 
         self.retranslateUi(Dialog)
         QtCore.QMetaObject.connectSlotsByName(Dialog)
@@ -57,4 +60,5 @@ class Ui_Dialog(object):
         self.label_4.setText(_translate("Dialog", "new voltage set:"))
         self.label_voltReadBack.setText(_translate("Dialog", "0"))
         self.pushButton_ok.setText(_translate("Dialog", "ok"))
+        self.pushButton_refresh.setText(_translate("Dialog", "refresh"))
 

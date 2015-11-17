@@ -11,6 +11,7 @@ import logging
 from copy import deepcopy
 
 from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
+from Interface.SetVoltageUi.SetVoltageUi import SetVoltageUi
 import Service.VoltageConversions.VoltageConversions as VCon
 import Service.Scan.ScanDictionaryOperations as SdOp
 
@@ -261,9 +262,12 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.label_waitForKepco_muS_set.setText(str(round(setval, 3)))
 
     def set_voltage(self):
-        """ this will connect to the corresping Heninzger and set the voltage.
+        """ this will connect to the corresponding Heinzinger and set the voltage.
          this helps the user to enter the voltage a while before the scan."""
-        logging.info('Setting the voltage is not included yet')
+        power_supply = self.comboBox_postAccOffsetVoltControl.currentText()
+        volt = self.buffer_pars['postAccOffsetVolt']
+        self.scan_ctrl_win.main.set_power_supply_voltage(power_supply, volt)
+        SetVoltageUi(power_supply, volt, self.scan_ctrl_win.main)
 
     def cancel(self):
         """ closes the window without further actions """

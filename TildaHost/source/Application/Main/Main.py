@@ -16,7 +16,6 @@ from Interface.MainUi.MainUi import MainUi
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
 from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
 
-
 from Service.Scan.ScanMain import ScanMain
 
 import Service.Scan.ScanDictionaryOperations as SdOp
@@ -31,7 +30,10 @@ class Main:
                             #  the beginning only one item should be in the list.
         self.database = None  # path of the sqlite3 database
         self.working_directory = None
-        self.measure_voltage_pars = Dft.draftMeasureVoltPars  # dict containing all parameters for the voltage measurement.
+        self.measure_voltage_pars = Dft.draftMeasureVoltPars  # dict containing all parameters
+        #  for the voltage measurement.
+
+        self.scan_main = ScanMain()
 
         # remove this later:
         self.work_dir_changed('E:\\blub')
@@ -60,7 +62,21 @@ class Main:
         tr = threading.Thread(target=scan.print_timeout, args=[100])
         tr.start()
 
-    """ openining and closing of GUI's """
+    def set_power_supply_voltage(self, power_supply, volt):
+        """
+        will set the Output voltage of the desired
+        power supply as stated in the track dictionary
+        """
+        self.scan_main.set_post_accel_pwr_supply(power_supply, volt)
+
+    def power_supply_status_request(self, power_supply):
+        """
+        returns a dict containing the status of the power supply,
+        keys are: name, programmedVoltage, voltageSetTime, readBackVolt
+        """
+        return self.scan_main.get_status_of_pwr_supply(power_supply)
+
+    """ opening and closing of GUI's """
     def start_gui(self):
         """
         starts the gui for the main window.

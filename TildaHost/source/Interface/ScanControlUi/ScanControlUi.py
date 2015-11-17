@@ -70,7 +70,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
 
     def remove_selected_track(self):
         """
-        will remove the currently sleectes
+        will remove the currently selected
         """
         try:
             self.buffer_scan_dict.pop(self.listWidget.currentItem().text())

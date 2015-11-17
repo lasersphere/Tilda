@@ -13,8 +13,8 @@ import Driver.DataAcquisitionFpga.FindSequencerByType as FindSeq
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as DftScan
 import Service.AnalysisAndDataHandling.tildaPipeline as Tpipe
-from Driver.Heinzinger.Heinzinger import Heinzinger
 import Driver.Heinzinger.HeinzingerCfg as hzCfg
+import Driver.PostAcceleration.PostAccelerationMain as PostAcc
 
 
 class ScanMain:
@@ -23,9 +23,7 @@ class ScanMain:
         self.pipeline = None
         self.scan_state = 'initialized'
 
-        # self.heinz1 = Heinzinger(hzCfg.comportHeinzinger1)
-        # self.heinz2 = Heinzinger(hzCfg.comportHeinzinger2)
-        # self.heinz3 = Heinzinger(hzCfg.comportHeinzinger2)
+        self.post_accel_pwr_supplies = PostAcc.PostAccelerationMain()
 
     def start_measurement(self, scan_dict, track_num):
         """
@@ -54,35 +52,20 @@ class ScanMain:
             elif self.sequencer.type != seq_type:
                 self.sequencer = FindSeq.ret_seq_instance_of_type('cs')
 
-    def set_heinzinger(self, track_dict):
+    def set_post_accel_pwr_supply(self, power_supply, volt):
         """
         function to set the desired Heinzinger to the Voltage that is needed.
-        :param track_dict: dictionary, containing all scanparameters
-        :return: bool, True if success, False if fail within maxTries.
         """
-        self.scan_state = 'setting Heinzinger'
-        active_heinzinger = getattr(self, 'heinz' + str(track_dict['postAccOffsetVoltControl']))
-        setVolt = track_dict['postAccOffsetVolt']
-        if setVolt != active_heinzinger.getProgrammedVolt():
-            # desired Voltage not yet applied
-            active_heinzinger.setVoltage(setVolt)
-        # compare Voltage with desired Voltage.
-        tries = 0
-        maxTries = 10
-        readback = active_heinzinger.getVoltage()
-        while not setVolt * 0.95 < readback < setVolt * 1.05:
-            time.sleep(0.1)
-            tries += 1
-            readback = active_heinzinger.getVoltage()
-            if tries > maxTries:
-                logging.warning('Heinzinger readback is not within 10% of desired voltage,\n Readback is: ' +
-                                str(readback))
-                return readback
-        logging.info('Heinzinger' + str(track_dict['postAccOffsetVoltControl']) +
-                     'readback is: ' + str(readback) + ' V\n' +
-                     'last set at: ' + active_heinzinger.time_of_last_volt_set)
+        self.scan_state = 'set offset volt'
+        readback = self.post_accel_pwr_supplies.set_voltage(power_supply, volt)
         return readback
 
+    def get_status_of_pwr_supply(self, power_supply):
+        """
+        returns a dict containing the status of the power supply,
+        keys are: name, programmedVoltage, voltageSetTime, readBackVolt
+        """
+        return self.post_accel_pwr_supplies.status_of_power_supply(power_supply)
 
     def measureOffset(self, scanpars):
         """
