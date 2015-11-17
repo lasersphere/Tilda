@@ -217,7 +217,9 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
     def post_acc_offset_volt_control_set(self, val):
         """ write to the working dictionars and set the label """
-        self.label_postAccOffsetVoltControl_set.setText(str(val))
+        if val != 'Kepco':
+            val = str(self.scan_ctrl_win.main.power_supply_status_request(val))
+        self.label_postAccOffsetVoltControl_set.setText(val)
         self.buffer_pars['postAccOffsetVoltControl'] = self.comboBox_postAccOffsetVoltControl.currentIndex()
 
     def post_acc_offset_volt(self, val):
@@ -265,9 +267,11 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """ this will connect to the corresponding Heinzinger and set the voltage.
          this helps the user to enter the voltage a while before the scan."""
         power_supply = self.comboBox_postAccOffsetVoltControl.currentText()
-        volt = self.buffer_pars['postAccOffsetVolt']
-        self.scan_ctrl_win.main.set_power_supply_voltage(power_supply, volt)
-        SetVoltageUi(power_supply, volt, self.scan_ctrl_win.main)
+        if power_supply != 'Kepco':
+            volt = self.buffer_pars['postAccOffsetVolt']
+            self.scan_ctrl_win.main.set_power_supply_voltage(power_supply, volt)
+            setvoltui = SetVoltageUi(power_supply, volt, self.scan_ctrl_win.main)
+            self.label_postAccOffsetVoltControl_set.setText(setvoltui.readback)
 
     def cancel(self):
         """ closes the window without further actions """

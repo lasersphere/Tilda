@@ -3,7 +3,7 @@ Created on
 
 @author: simkaufm
 
-Module Description: Simple User Interface to set a voltage and read it back
+Module Description: Simple User Interface to display a set voltage and read it back
 """
 
 from PyQt5 import QtWidgets
@@ -17,6 +17,7 @@ class SetVoltageUi(QtWidgets.QDialog, Ui_Dialog):
         print(power_supply, type(power_supply), new_voltage, main)
         self.power_supply = power_supply
         self.main = main
+        self.readback = None
 
         self.setupUi(self)
 
@@ -35,7 +36,8 @@ class SetVoltageUi(QtWidgets.QDialog, Ui_Dialog):
             power_status_dict = {}
         self.label_lastSetVolt.setText(str(power_status_dict.get('programmedVoltage')))
         self.label_lastVoltageSetAt.setText(power_status_dict.get('voltageSetTime'))
-        self.label_voltReadBack.setText(str(power_status_dict.get('readBack')))
+        self.readback = str(power_status_dict.get('readBack'))
+        self.label_voltReadBack.setText(self.readback)
 
     def ok(self):
         self.close()

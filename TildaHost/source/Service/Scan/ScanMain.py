@@ -22,15 +22,31 @@ class ScanMain:
         self.sequencer = None
         self.pipeline = None
         self.scan_state = 'initialized'
+        self.post_accel_pwr_supplies = None
+        self.abort_scan = False
+        self.halt_scan = False
 
+        # power supplies can be initialized when starting up.
+        self.connect_post_accel_pwr_supplies()
+
+    def connect_post_accel_pwr_supplies(self):
+        """
+        restarts and connects to the power devices
+        """
         self.post_accel_pwr_supplies = PostAcc.PostAccelerationMain()
+
+    def scan_one_isotope(self, scan_dict):
+        """
+        function to handle the scanning of one isotope, must be interruptable by halt/abort
+        """
+        n_of_tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
+        self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict)
 
     def start_measurement(self, scan_dict, track_num):
         """
         will start the measurement for one track.
         """
         self.prep_seq(scan_dict['isotopeData']['type'])
-        self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict)
         # self.pipeline.pipeData = {}
         self.scan_state = 'measuring'
         scan_dict['activeTrackPar'] = scan_dict['track' + track_num]

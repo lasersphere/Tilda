@@ -34,6 +34,7 @@ class Main:
         #  for the voltage measurement.
 
         self.scan_main = ScanMain()
+        self.iso_scan_thread = None
 
         # remove this later:
         self.work_dir_changed('E:\\blub')
@@ -51,16 +52,15 @@ class Main:
         logging.debug('working directory has been set to: ' + str(workdir_str))
         return workdir_str
 
-    def start_scan(self, scan_dict):
+    def start_scan(self, one_scan_dict):
         """
         setup all devices, including the FPGAs
         start the Pipeline
         read data from FPGA and feed it every "period" seconds to the pipeline.
         The Pipeline will take care of plotting and displaying.
         """
-        scan = ScanMain()
-        tr = threading.Thread(target=scan.print_timeout, args=[100])
-        tr.start()
+        self.iso_scan_thread = threading.Thread(target=self.scan_main.scan_one_isotope, args=one_scan_dict)
+        # self.scan_main.scan_one_isotope(one_scan_dict)
 
     def set_power_supply_voltage(self, power_supply, volt):
         """
