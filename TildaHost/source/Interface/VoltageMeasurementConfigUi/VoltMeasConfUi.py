@@ -45,3 +45,6 @@ class VoltMeasConfUi(QtWidgets.QMainWindow, Ui_VoltMeasConfMainWin):
         self.main.measure_voltage_pars['measVoltTimeout10ns'] = timeout_10ns
         timeout_mu_s = timeout_10ns / 100
         self.label_measVoltTimeout_mu_s_set.setText('{0:0.3f}'.format(timeout_mu_s))
+
+    def closeEvent(self, *args, **kwargs):
+        self.main.close_volt_meas_win()

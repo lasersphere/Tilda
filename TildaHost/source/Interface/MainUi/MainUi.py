@@ -11,8 +11,6 @@ Created on '07.05.2015'
 from Interface.MainUi.Ui_Main import Ui_TildaMainWindow
 from Interface.VersionUi.VersionUi import VersionUi
 from Interface.TrackParUi.TrackUi import TrackUi
-from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
-import Service.Scan.draftScanParameters as Dft
 
 from copy import deepcopy
 import threading
@@ -20,6 +18,7 @@ import time
 import logging
 import os
 from PyQt5 import QtWidgets
+
 
 class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def __init__(self, main):
@@ -54,4 +53,4 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.main.open_scan_control_win()
 
     def open_volt_meas_win(self):
-        self.voltwin = VoltMeasConfUi(self.main, Dft.draftMeasureVoltPars)
+        self.main.open_volt_meas_win()

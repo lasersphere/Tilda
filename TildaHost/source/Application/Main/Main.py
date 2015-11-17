@@ -14,35 +14,30 @@ import threading
 
 from Interface.MainUi.MainUi import MainUi
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
+from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
+
 
 from Service.Scan.ScanMain import ScanMain
 
 import Service.Scan.ScanDictionaryOperations as SdOp
+import Service.Scan.draftScanParameters as Dft
 import Service.DatabaseOperations.DatabaseOperations as DbOp
 
 
-class Main():
+
+class Main:
     def __init__(self):
         self.scanpars = []  # list of scanparameter dictionaries, like in Service.draftScanParameters.py in
                             #  the beginning only one item should be in the list.
         self.database = None  # path of the sqlite3 database
         self.working_directory = None
-        self.measure_voltage_pars = {}  # dict containing all parameters for the voltage measurement.
+        self.measure_voltage_pars = Dft.draftMeasureVoltPars  # dict containing all parameters for the voltage measurement.
 
         # remove this later:
         self.work_dir_changed('E:\\blub')
         # self.work_dir_changed('C:\\temp')
 
         self.mainUi = self.start_gui()
-
-    def start_gui(self):
-        """
-        starts the gui for the main window.
-        """
-        app = QtWidgets.QApplication(sys.argv)
-        ui = MainUi(self)
-        app.exec_()
-        return ui
 
     def work_dir_changed(self, workdir_str):
         """
@@ -65,10 +60,24 @@ class Main():
         tr = threading.Thread(target=scan.print_timeout, args=[100])
         tr.start()
 
+    """ openining and closing of GUI's """
+    def start_gui(self):
+        """
+        starts the gui for the main window.
+        """
+        app = QtWidgets.QApplication(sys.argv)
+        ui = MainUi(self)
+        app.exec_()
+        return ui
+
     def open_scan_control_win(self):
         self.scanpars.append(ScanControlUi(self))
-        print(self.scanpars)
 
     def scan_control_win_closed(self, win_ref):
         self.scanpars.remove(win_ref)
-        print(self.scanpars)
+
+    def open_volt_meas_win(self):
+        self.measure_voltage_pars['actWin'] = VoltMeasConfUi(self, self.measure_voltage_pars)
+
+    def close_volt_meas_win(self):
+        self.measure_voltage_pars.pop('actWin')
