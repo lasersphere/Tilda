@@ -15,7 +15,6 @@ import Service.Scan.ScanDictionaryOperations as SdOp
 from PyQt5 import QtWidgets
 
 import logging
-import sys
 from copy import deepcopy, copy
 
 

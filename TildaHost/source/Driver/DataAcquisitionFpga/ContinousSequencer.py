@@ -13,11 +13,13 @@ import Driver.DataAcquisitionFpga.ContinousSequencerConfig as CsCfg
 import logging
 import time
 
+
 class ContinousSequencer(Sequencer, MeasureVolt):
     def __init__(self):
         """
         Initiates a fpga object using the init in FPGAInterfaceHandling
         """
+        self.config = CsCfg
         super(Sequencer, self).__init__(CsCfg.bitfilePath, CsCfg.bitfileSignature, CsCfg.fpgaResource)
         self.confHostBufferSize(CsCfg)
         self.type = CsCfg.seq_type

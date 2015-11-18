@@ -23,7 +23,6 @@ import Service.Scan.draftScanParameters as Dft
 import Service.DatabaseOperations.DatabaseOperations as DbOp
 
 
-
 class Main:
     def __init__(self):
         self.scanpars = []  # list of scanparameter dictionaries, like in Service.draftScanParameters.py in

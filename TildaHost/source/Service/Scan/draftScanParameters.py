@@ -7,36 +7,44 @@ Created on 20.06.2015
 Module containing the ScanParameters dictionaries as needed for Scanning with the standard Sequencers
 """
 """ List of currently supported sequencer types """
+
 sequencer_types_list = ['cs', 'trs']
 
 """ outer most dictionary contains the following keys: """
+
 scanDict_list = ['isotopeData', 'activeTrackPar', 'pipeInternals', 'measureVoltPars']
 
 """ the isotopeData dictionary is used for the whole isotope and contains the following keys: """
+
 isotopeData_list = ['version', 'type', 'isotope', 'nOfTracks', 'accVolt', 'laserFreq']
 
 """ the pipeInternals dictionary is used by the pipeline and is in first place only valid for one track.
 It contains the following keys: """
+
 pipeInternals_list = ['curVoltInd', 'activeTrackNumber', 'workingDirectory', 'activeXmlFilePath']
 
 """ the measureVoltPars dictionary is used to define the pulse length to start the voltage measurement
  and the timeout of the voltage measurement. It contains the following keys: """
+
 measureVoltPars_list = ['measVoltPulseLength25ns', 'measVoltTimeout10ns']
 
 """ the activeTrackPar dictionary is only used by one track but therefore beholds
 the most information for the sequencer. It contains the following keys and
 MUST be appended with the keys from the corresponding sequencer (see below): """
+
 activeTrackPar_list = ['dacStepSize18Bit', 'dacStartRegister18Bit', 'nOfSteps', 'nOfScans', 'nOfCompletedSteps',
                        'invertScan', 'postAccOffsetVoltControl', 'postAccOffsetVolt', 'waitForKepco25nsTicks',
                        'waitAfterReset25nsTicks', 'activePmtList', 'colDirTrue', 'workingTime']
 
 """  each sequencer needs its own parameters and therefore, the keys are listed below
 naming convention is type_list.  """
+
 cs_list = ['dwellTime10ns']
 
 trs_list = ['MCSSelectTrigger', 'delayticks', 'nOfBins', 'nOfBunches']
 
 """ below are some example values which can be used for scanning: """
+
 draftIsotopePars = {
     'version': '1.06', 'type': 'cs', 'isotope': '44Ca',
     'nOfTracks': '1', 'accVolt': '9999.8',

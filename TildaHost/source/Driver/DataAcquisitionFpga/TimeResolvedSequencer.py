@@ -23,9 +23,10 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         :return: None
         """
 
-        super(Sequencer, self).__init__(TrsCfg.bitfilePath, TrsCfg.bitfileSignature, TrsCfg.fpgaResource)
-        self.confHostBufferSize(TrsCfg)
-        self.type = TrsCfg.seq_type
+        self.config = TrsCfg
+        super(Sequencer, self).__init__(self.config.bitfilePath, self.config.bitfileSignature, self.config.fpgaResource)
+        self.confHostBufferSize(self.config)
+        self.type = self.config.seq_type
 
     '''read Indicators:'''
     def getMCSState(self):
@@ -33,7 +34,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         get the state of the MultiChannelScaler
         :return:int, state of MultiChannelScaler
         """
-        return self.ReadWrite(TrsCfg.MCSstate).value
+        return self.ReadWrite(self.config.MCSstate).value
 
     def getDACQuWriteTimeout(self):
         """
@@ -41,7 +42,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         writing to the Target-to-Host Fifo
         :return: bool, True if timedout
         """
-        return self.ReadWrite(TrsCfg.DACQuWriteTimeout).value
+        return self.ReadWrite(self.config.DACQuWriteTimeout).value
 
     def getErrorCount(self):
         """
@@ -49,7 +50,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         for example each time abort is pressed, ErrorCount is raised by 1
         :return:int, MCSerrorcount
         """
-        return self.ReadWrite(TrsCfg.MCSerrorcount).value
+        return self.ReadWrite(self.config.MCSerrorcount).value
 
     '''set Controls'''
     def setMCSParameters(self, mCSPars):
@@ -62,10 +63,10 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         nOfBunches: long, number of bunches that will be acquired per voltage Step
         :return: True if self.status == self.statusSuccess, else False
         """
-        self.ReadWrite(TrsCfg.MCSSelectTrigger, mCSPars['MCSSelectTrigger'])
-        self.ReadWrite(TrsCfg.delayticks, mCSPars['delayticks'])
-        self.ReadWrite(TrsCfg.nOfBins, mCSPars['nOfBins'])
-        self.ReadWrite(TrsCfg.nOfBunches, mCSPars['nOfBunches'])
+        self.ReadWrite(self.config.MCSSelectTrigger, mCSPars['MCSSelectTrigger'])
+        self.ReadWrite(self.config.delayticks, mCSPars['delayticks'])
+        self.ReadWrite(self.config.nOfBins, mCSPars['nOfBins'])
+        self.ReadWrite(self.config.nOfBunches, mCSPars['nOfBunches'])
         return self.checkFpgaStatus()
 
     def setAllScanParameters(self, scanpars):
@@ -75,9 +76,9 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         :param scanpars: dictionary, containing all scanparameters
         :return: bool, True if successful
         """
-        if self.changeSeqState(TrsCfg, TrsCfg.seqStateDict['idle']):
-            if (self.setMCSParameters(scanpars) and self.setmeasVoltParameters(TrsCfg, scanpars) and
-                    self.setTrackParameters(TrsCfg, scanpars)):
+        if self.changeSeqState(self.config, self.config.seqStateDict['idle']):
+            if (self.setMCSParameters(scanpars) and self.setmeasVoltParameters(self.config, scanpars) and
+                    self.setTrackParameters(self.config, scanpars)):
                 return self.checkFpgaStatus()
         return False
 
@@ -97,7 +98,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         :return:bool, True if successfully changed State
         """
         if self.setAllScanParameters(scanpars):
-            return self.changeSeqState(TrsCfg, TrsCfg.seqStateDict['measureOffset'])
+            return self.changeSeqState(self.config, self.config.seqStateDict['measureOffset'])
 
     def measureTrack(self, scanpars):
         """
@@ -108,7 +109,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         :return:bool, True if successfully changed State
         """
         if self.setAllScanParameters(scanpars):
-            return self.changeSeqState(TrsCfg, TrsCfg.seqStateDict['measureTrack'])
+            return self.changeSeqState(self.config, self.config.seqStateDict['measureTrack'])
 
 
 #
@@ -119,7 +120,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
 # print('configure Hist sided Buffer: ' + str(blub2.confHostBufferSize()))
 # time.sleep(0.1)
 #
-# print('dacStartRegister18Bit Track: ' + str(blub2.measureTrack(blub2.TrsCfg.dummyScanParameters)))
+# print('dacStartRegister18Bit Track: ' + str(blub2.measureTrack(blub2.self.config.dummyScanParameters)))
 # print('seq State: ' + str(blub2.getSeqState()))
 # print('seq State: ' + str(blub2.getSeqState()))
 # print(blub2.getData())
