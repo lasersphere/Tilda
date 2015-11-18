@@ -56,7 +56,7 @@ class PostAccelerationMain:
             tries = 0
             maxTries = 10
             readback = power_sup.getVoltage()
-            while not voltage * 0.95 < readback < voltage * 1.05:
+            while not voltage * 0.95 < readback < voltage * 1.05 or (voltage < 0.1 and readback < 1):
                 time.sleep(0.1)
                 tries += 1
                 readback = power_sup.getVoltage()

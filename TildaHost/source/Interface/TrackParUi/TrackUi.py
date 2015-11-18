@@ -218,7 +218,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def post_acc_offset_volt_control_set(self, val):
         """ write to the working dictionars and set the label """
         if val != 'Kepco':
-            val = str(self.scan_ctrl_win.main.power_supply_status_request(val['readBackVolt']))
+            val = str(self.scan_ctrl_win.main.power_supply_status_request(val).get('readBackVolt'))
         self.label_postAccOffsetVoltControl_set.setText(val)
         self.buffer_pars['postAccOffsetVoltControl'] = self.comboBox_postAccOffsetVoltControl.currentIndex()
 

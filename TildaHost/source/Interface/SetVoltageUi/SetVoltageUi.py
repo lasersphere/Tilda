@@ -14,7 +14,6 @@ from Interface.SetVoltageUi.Ui_SetVoltage import Ui_Dialog
 class SetVoltageUi(QtWidgets.QDialog, Ui_Dialog):
     def __init__(self, power_supply, new_voltage, main):
         QtWidgets.QDialog.__init__(self)
-        print(power_supply, type(power_supply), new_voltage, main)
         self.power_supply = power_supply
         self.main = main
         self.readback = None

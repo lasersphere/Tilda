@@ -36,8 +36,9 @@ class Main:
         self.iso_scan_thread = None
 
         # remove this later:
-        self.work_dir_changed('E:\\blub')
+        # self.work_dir_changed('E:\\blub')
         # self.work_dir_changed('C:\\temp')
+        self.work_dir_changed('D:\\lala')
 
         self.mainUi = self.start_gui()
 
