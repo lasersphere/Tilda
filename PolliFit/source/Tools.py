@@ -19,7 +19,7 @@ import numpy as np
 import Measurement.MeasLoad as Meas
 from DBIsotope import DBIsotope
 from Spectra.FullSpec import FullSpec
-import Physics
+import Physics as Physics
 import MPLPlotter as plot
 import matplotlib.pyplot as plt
 
@@ -105,7 +105,6 @@ def _insertFile(f, db):
     except:
         print("Error working on file", f, ":", sys.exc_info()[1])
         traceback.print_tb(sys.exc_info()[2])
-        
     con.close() 
 
 

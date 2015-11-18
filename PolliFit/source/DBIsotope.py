@@ -15,6 +15,8 @@ class DBIsotope(object):
 
     def __init__(self, db, iso, isovar = '', lineVar = ''):
         '''Load relevant values of isotope name from database file'''
+        print('iso: ' + str(iso))
+        print('isovar: ' + str(isovar))
         print("Loading", lineVar, "line of", iso + isovar)
         #sqlite3.register_converter("BOOL", lambda v: bool(int(v)))
         

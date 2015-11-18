@@ -69,3 +69,4 @@ def plt_axes(axes, x, y, title):
     axes.clear()
     axes.plot(x, y)
     axes.set_ylabel(title)
+
