@@ -36,7 +36,7 @@ class SetVoltageUi(QtWidgets.QDialog, Ui_Dialog):
             power_status_dict = {}
         self.label_lastSetVolt.setText(str(power_status_dict.get('programmedVoltage')))
         self.label_lastVoltageSetAt.setText(power_status_dict.get('voltageSetTime'))
-        self.readback = str(power_status_dict.get('readBack'))
+        self.readback = str(power_status_dict.get('readBackVolt'))
         self.label_voltReadBack.setText(self.readback)
 
     def ok(self):
