@@ -25,7 +25,7 @@ class SpecData(object):
         self.nrScalers = 1
         self.accVolt = None
         self.laserFreq = None
-        self.col = None
+        self.col = False
         self.dwell = 0
         
         self.offset = None
@@ -54,10 +54,13 @@ class SpecData(object):
         flate = np.zeros((l,))
         
         for s in scaler:
-            flatx, c, e = self.getSingleSpec(abs(s), track)
-            flatc = flatc + np.copysign(1, s) * c
-            flate = flate + np.square(e)
-            
+            if self.nrScalers >= np.abs(s):
+                flatx, c, e = self.getSingleSpec(abs(s), track)
+                for i, j in enumerate(flatc):
+                    flatc[i] = j + np.copysign(1, s) * c[i]
+                    flate[i] = flate[i] + np.square(e[i])
+            else:
+                pass
         flate = np.sqrt(flate)
         
         return (flatx, flatc, flate)

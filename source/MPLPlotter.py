@@ -41,8 +41,8 @@ def plotAverage(lin, lout, aver, err):
     lout = [f for f, s in zip(files, select) if s == False]
 
 
-def show():
-    plt.show()
+def show(block=True):
+    plt.show(block=block)
     
 def ion():
     plt.ion()
@@ -52,3 +52,6 @@ def save(file):
     
 def clear():
     plt.clf()
+
+def draw():
+    plt.draw()

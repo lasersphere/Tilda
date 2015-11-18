@@ -5,6 +5,7 @@ Created on 16.03.2015
 """
 from copy import copy, deepcopy
 
+import logging
 
 class Node(object):
     """
@@ -26,7 +27,7 @@ class Node(object):
         The action of the node
         """
         return data
-        
+
     def processItem(self, item):
         """
         rewrapping processData to hide the internals of the transport mechanism
@@ -40,12 +41,12 @@ class Node(object):
         elif item.type == "stop":
             newjobs = self.createJobs(item, False)
         elif item.type == "clear":
-            self.clear()
+            self.clear(self.Pipeline.pipeData)
             newjobs = self.createJobs(item, False)
         elif item.type == "data":
             newData = self.processData(item.data, self.Pipeline.pipeData)
             if newData is not None:
-                item.data=newData
+                item.data = newData
                 newjobs = self.createJobs(item)
         
         return newjobs
@@ -67,7 +68,7 @@ class Node(object):
         return result
     
     
-    def clear(self):
+    def clear(self, pipeData):
         """
         Clear the internal memory. Does nothing for generic node, overwrite!
         """
@@ -92,6 +93,3 @@ class Node(object):
         """
         self.next.append(_next)
         return _next
-    
-    
-        

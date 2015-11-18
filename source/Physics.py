@@ -37,6 +37,9 @@ def freqFromWavenumber(wavenumber):
     '''Returns the frequency/MHz at a given wavenumber/1/cm'''
     return wavenumber * c / 10**4
 
+def diffDoppler(nu_0, volt, m):
+    '''retruns the differential doppler Factor [MHZ/V]'''
+    return nu_0*qe/np.sqrt(2*qe*volt*m*u*c**2)
 
 def relDoppler(laserFreq, v):
     '''Return the doppler shifted frequency of a frame moving with velocity v'''
@@ -122,3 +125,80 @@ def shiftFreqToVoltage(m,nuOff,deltaNu,nuL):
 def dopplerAngle(nu, v, angle):
     '''Returns the frequency at a given angle (in rad) and velocity'''
     return nu*np.sqrt(1-v**2/c**2)/(1-v/c*np.cos(angle))
+
+def getLineStrength(k_s, eps_L, F_i , F_apos , F_f, J, Japos, I):
+    '''Returns f(\vec(kappa_s), \vec(epsilon_L), F_i, F') '''
+    Fi = F_i 
+    Fapos = F_apos
+    epsL = eps_L
+    ks = k_s
+    epsS = ks
+    Ff = F_f
+    Cs = 0
+    while Ff > 0:
+        mf = Ff
+        while mf >= -Ff:
+            mi = Fi
+            while mi >=-Fi:
+                Cs = Cs + np.abs(C_if(Fapos, Fi, mi, Ff, mf, epsS, epsL, J, Japos, I))**2
+                mi = mi-1
+            mf = mf -1
+        Ff = Ff -1
+    return 3/(2*g_T(F_i)) * Cs
+
+'''helpfunctions'''
+def g_T(F_i):
+    gT = 0
+    while F_i > 0:
+        gT = gT + 2*F_i + 1
+        F_i = F_i - 1
+    print('gT: ' + str(gT))
+    return gT
+
+def C_if(Fapos, Fi, Ff, epsS, epsL, J, Japos, I):
+    mapos = -Fapos
+    c = 0
+    while mapos <= Fapos:
+        mi = -Fi
+        while mi <= Fi:
+            mf = -Ff
+            while mf <= Ff:
+                c = c + A(epsS, Fapos, mapos, Ff, mf, J, Japos, I) * A(epsL, Fapos, mapos, Fi, mi, J, Japos, I)  
+                mf +=1
+            mi += 1
+        mapos += 1
+    #print('Calculating C_i->f, result: ' + str(c))
+    return c
+
+def A(eps, Fapos, mapos, F, m, J, Japos, I):
+    A = 0
+    c = 0
+    q = int(mapos - m)
+    A = np.sqrt(2*Japos+1)/np.sqrt(2*Fapos+1)* CGK(F, m, 1, q, Fapos, mapos) * sqrtF(F, Fapos, J, Japos, I)
+    if A != 0 and q in [1,2,3]:
+        c = eps[q-1] * A
+        # print('calculating A, result: '  + str(c))
+    return c
+
+def CGK(j1, m1, j2, m2, J, M):
+    '''returns Clebsch Gordan Coefficient for <j1 m1 ; j2 m2 | J M>'''
+    if M != m1+m2 or j1+j2 < J or j1 - j2 > J or j2 - j1 > J:
+        return 0
+    n = 0
+    sumn = 0
+    while (j1 + j2 - J - n) >= 0 and (j1 - m1 - n) >=0 and (j2+m2-n)>=0 and J - j2 + m1 + n >=0 and J - j1 - m2 + n >=0:
+        sumn = sumn + ((-1)**n * np.sqrt(math.factorial(j1 + m2) * math.factorial(j1 - m1) * math.factorial(j2 + m2) * math.factorial(j2 - m2) * math.factorial(J + M) * math.factorial(J - M)) /
+                         ( math.factorial(n) * math.factorial(j1 + j2 - J - n) * math.factorial(j1 - m1 - n) * math.factorial(j2 + m2 - n) * math.factorial(J - j2 + m1 + n) * math.factorial(J - j1 - m2 + n) ) )
+        n += 1
+    #print(str(j1 + j2 - J) + '  ' +  str(j1 + j2 - J) + '  ' +  str(j1 - j2 + J) + '  ' +  str(J + j2 - j1) + '  ' +  str(j1 + j2 + J + 1))
+    c = np.sqrt((2 * J + 1) * math.factorial(j1 + j2 - J) * math.factorial(j1 - j2 + J) * math.factorial(J + j2 - j1) / math.factorial(j1 + j2 + J + 1)) * sumn 
+    #print('Calculating CGK for' + str(j1) + ',' + str(m1) + ','  + str(j2) + ',' + str(m2) + ',' + str(J) + ',' + str(M) +', result: ' + str(c))
+    return c
+
+def sqrtF(F, Fapos, Japos, J, I):
+    p = (F + I + 1 + Japos)
+    #print('SqrtF of: ' +str(F) + str(Fapos) + str(Japos) + str(J) + str(I))
+    c = (-1)**p * np.sqrt(2 * F + 1) * np.sqrt(2*Fapos + 1) * sixJ(Japos, J, 1, F, Fapos, I)
+#     if c != 0:
+#         print('Calculating sqrtF, result: ' + str(c) )
+    return c

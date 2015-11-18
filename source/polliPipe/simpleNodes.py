@@ -28,7 +28,7 @@ class NAccumulate(Node):
         self.buf += data
         return self.buf
     
-    def clear(self):
+    def clear(self, pipeData):
         self.buf = 0
 
 
@@ -41,8 +41,8 @@ class NSubtract(Node):
         """
         Constructor
         """
-        super(NAccumulate, self).__init__()
-        self.type = "Accumulate"
+        super(NSubtract, self).__init__()
+        self.type = "Subtract"
 
         self.buf = 0
 
@@ -53,7 +53,7 @@ class NSubtract(Node):
         self.buf -= data
         return self.buf
 
-    def clear(self):
+    def clear(self, pipeData):
         self.buf = 0
 
 
@@ -78,4 +78,4 @@ class NPrint(Node):
         Add data and
         """
         print("PrintNode " + str(self.id) + " item content: "+ str(data))
-        return None
+        return data

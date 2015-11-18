@@ -39,7 +39,6 @@ class Pipeline(object):
         self.nextItemId += 1
         self.processItem(stopper)
 
-
     def feed(self, data):
         """
         Have inp processed b the Pipeline
@@ -49,13 +48,13 @@ class Pipeline(object):
         item.data = data
         self.processItem(item)
 
-
-    def clear(self):
+    def clear(self, pipeData):
         """
         Iterate over nodes and tell them to flush, e.g. clear their internal memory
         """
         item = Item(self.nextItemId, "clear")
         self.nextItemId += 1
+        item.data = pipeData
         self.processItem(item)
 
     def processItem(self, item):

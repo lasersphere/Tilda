@@ -19,10 +19,10 @@ if __name__ == '__main__':
     pipe = Pipeline(start)
     pipe.start()
     
-    for i in range(100):
-       pipe.feed(i)
+    # for i in range(100):
+    #    pipe.feed(i)
         
     # pipe.clear()
-    
-    for i in range(10):
+
+    for i in range(1000):
         pipe.feed(i)
