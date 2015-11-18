@@ -44,8 +44,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
     def go(self):
         # pss on the buffered scandict and let it run.
         logging.debug('starting measurement')
-        # self.main.start_scan(self.buffer_scan_dict)
-        print(self.buffer_scan_dict)
+        self.main.start_scan(self.buffer_scan_dict)
+        # print(self.buffer_scan_dict)
 
     def add_track(self):
         """

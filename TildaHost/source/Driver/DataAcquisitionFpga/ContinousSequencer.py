@@ -20,9 +20,9 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         Initiates a fpga object using the init in FPGAInterfaceHandling
         """
         self.config = CsCfg
-        super(Sequencer, self).__init__(CsCfg.bitfilePath, CsCfg.bitfileSignature, CsCfg.fpgaResource)
-        self.confHostBufferSize(CsCfg)
-        self.type = CsCfg.seq_type
+        super(Sequencer, self).__init__(self.config.bitfilePath, self.config.bitfileSignature, self.config.fpgaResource)
+        self.confHostBufferSize(self.config.transferToHostReqEle)
+        self.type = self.config.seq_type
 
     '''read Indicators'''
 
@@ -32,52 +32,54 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         writing to the Target-to-Host Fifo
         :return: bool, True if timedout
         """
-        return self.ReadWrite(CsCfg.DACQuWriteTimeout).value
+        return self.ReadWrite(self.config.DACQuWriteTimeout).value
 
     def getSPCtrQuWriteTimeout(self):
         """
         :return: bool, timeout indicator of the Simple Counter trying to write to the DMAQueue
         """
-        return self.ReadWrite(CsCfg.SPCtrQuWriteTimeout).value
+        return self.ReadWrite(self.config.SPCtrQuWriteTimeout).value
 
     def getSPerrorCount(self):
         """
         :return: int, the errorCount of the simpleCounter module on the fpga
         """
-        return self.ReadWrite(CsCfg.SPerrorCount).value
+        return self.ReadWrite(self.config.SPerrorCount).value
 
     def getSPState(self):
         """
         :return:int, state of SimpleCounter Module
         """
-        return self.ReadWrite(CsCfg.SPstate).value
+        return self.ReadWrite(self.config.SPstate).value
 
     '''set Controls'''
 
-    def setDwellTime(self, scanParsDict):
+    def setDwellTime(self, scanParsDict, track_num):
         """
         set the dwell time for the continous sequencer.
         """
-        self.ReadWrite(CsCfg.dwellTime10ns, scanParsDict['activeTrackPar']['dwellTime10ns'])
+        track_name = 'track' + str(track_num)
+        self.ReadWrite(self.config.dwellTime10ns, int(scanParsDict[track_name]['dwellTime10ns']))
         return self.checkFpgaStatus()
 
-    def setAllContSeqPars(self, scanpars):
+    def setAllContSeqPars(self, scanpars, track_num):
         """
         Set all Scanparameters, needed for the continousSequencer
         :param scanpars: dict, containing all scanparameters
         :return: bool, if success
         """
-        if self.changeSeqState(CsCfg, CsCfg.seqStateDict['idle']):
-            if (self.setDwellTime(scanpars) and
-                    self.setmeasVoltParameters(CsCfg, scanpars['measureVoltPars']) and
-                    self.setTrackParameters(CsCfg, scanpars['activeTrackPar']) and
-                    self.selectKepcoOrScalerScan(CsCfg, scanpars['isotopeData']['type'])):
+        track_name = 'track' + str(track_num)
+        if self.changeSeqState(self.config.seqStateDict['idle']):
+            if (self.setDwellTime(scanpars, track_num) and
+                    self.setmeasVoltParameters(scanpars['measureVoltPars']) and
+                    self.setTrackParameters(scanpars[track_name]) and
+                    self.selectKepcoOrScalerScan(scanpars['isotopeData']['type'])):
                 return self.checkFpgaStatus()
         return False
 
     '''perform measurements:'''
 
-    def measureOffset(self, scanpars):
+    def measureOffset(self, scanpars, track_num):
         """
         set all scanparameters at the fpga and go into the measure Offset state.
         What the Fpga does then to measure the Offset is:
@@ -90,10 +92,10 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         Note: not included in Version 1 !
         :return:bool, True if successfully changed State
         """
-        if self.setAllContSeqPars(scanpars):
-            return self.changeSeqState(CsCfg, CsCfg.seqStateDict['measureOffset'])
+        if self.setAllContSeqPars(scanpars, track_num):
+            return self.changeSeqState(self.config.seqStateDict['measureOffset'])
 
-    def measureTrack(self, scanpars):
+    def measureTrack(self, scanpars, track_num):
         """
         set all scanparameters at the fpga and go into the measure Track state.
         Fpga will then measure one track independently from host and will finish either in
@@ -101,7 +103,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         In parallel, host has to read the data from the host sided buffer in parallel.
         :return:bool, True if successfully changed State
         """
-        if self.setAllContSeqPars(scanpars):
-            return self.changeSeqState(CsCfg, CsCfg.seqStateDict['measureTrack'])
+        if self.setAllContSeqPars(scanpars, track_num):
+            return self.changeSeqState(self.config.seqStateDict['measureTrack'])
         else:
             logging.debug('values could not be set')

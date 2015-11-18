@@ -69,20 +69,20 @@ class ScanMain:
     def prep_track_in_pipe(self, track_name):
         pass  # still has to be included
 
-    def start_measurement(self, scan_dict, track_name):
+    def start_measurement(self, scan_dict, track_num):
         """
         will start the measurement for one track.
         After starting the measurement, the FPGA runs on its own.
         """
         self.scan_state = 'measuring'
-        track_dict = scan_dict.get(track_name)
+        track_dict = scan_dict.get('track' + str(track_num))
         if track_dict.get('postAccOffsetVoltControl', False):
             # will not be set for Kepco
             power_supply = 'Heinzinger' + str(track_dict.get('postAccOffsetVoltControl'))
             volt = track_dict.get('postAccOffsetVoltControl', 0)
             self.set_post_accel_pwr_supply(power_supply, volt)
         # figure out how to restart the pipeline with the new parameters here
-        start_ok = self.sequencer.measureTrack(scan_dict)
+        start_ok = self.sequencer.measureTrack(scan_dict, track_num)
         return start_ok
 
     def read_data(self):

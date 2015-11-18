@@ -99,12 +99,12 @@ class Sequencer(FPGAInterfaceHandling):
         will set the PostAccelerationControl State, so one can chose which PowerSupply will be used.
         :return: int, the current State of the Control Box
         """
-        currentState = self.getHeinzControlState(config)
+        currentState = self.getHeinzControlState()
         if currentState != desiredState:
             self.ReadWrite(self.config.postAccOffsetVoltControl, desiredState)
             timeout = 0
             while blocking and timeout < 30:
-                currentState = self.getHeinzControlState(config)
+                currentState = self.getHeinzControlState()
                 logging.debug('HSB-State is: ' + str(currentState))
                 if currentState == desiredState:
                     return currentState
@@ -135,7 +135,7 @@ class Sequencer(FPGAInterfaceHandling):
         waitForNextTry = 0.001
         if tries > 0:
             time.sleep(waitForNextTry)
-        curState = self.getSeqState(config)
+        curState = self.getSeqState()
         if curState == cmd:
             return self.checkFpgaStatus()
         elif tries == maxTries:
@@ -164,12 +164,12 @@ class Sequencer(FPGAInterfaceHandling):
         i = 0
         imax = 500
         self.ReadWrite(self.config.abort, True)
-        while self.getSeqState(config) != self.config.seqStateDict['error'].value and i <= imax:
+        while self.getSeqState() != self.config.seqStateDict['error'].value and i <= imax:
             time.sleep(0.001)
             i += 1
         self.ReadWrite(self.config.abort, False)
-        if self.getSeqState(config) == self.config.seqStateDict['error'].value:
-            return self.getSeqState(config)
+        if self.getSeqState() == self.config.seqStateDict['error'].value:
+            return self.getSeqState()
         else:
             return False
 
