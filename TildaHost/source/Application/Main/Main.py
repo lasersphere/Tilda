@@ -58,8 +58,12 @@ class Main:
         read data from FPGA and feed it every "period" seconds to the pipeline.
         The Pipeline will take care of plotting and displaying.
         """
-        self.iso_scan_thread = threading.Thread(target=self.scan_main.scan_one_isotope, args=one_scan_dict)
-        # self.scan_main.scan_one_isotope(one_scan_dict)
+        one_scan_dict['measureVoltPars'] = SdOp.merge_dicts(one_scan_dict['measureVoltPars'],
+                                                            self.measure_voltage_pars)
+        one_scan_dict['pipeInternals']['workingDirectory'] = self.working_directory
+        logging.debug('will scan: ' + str(sorted(one_scan_dict)))
+        self.iso_scan_thread = threading.Thread(target=self.scan_main.scan_one_isotope, args=(one_scan_dict,))
+        self.iso_scan_thread.start()
 
     def set_power_supply_voltage(self, power_supply, volt):
         """
