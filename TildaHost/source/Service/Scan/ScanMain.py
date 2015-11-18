@@ -43,6 +43,7 @@ class ScanMain:
                      'of type: ' + scan_dict['isotopeData']['type'])
         n_of_tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
         self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict)
+        self.pipeline.start()
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
         for track_name in track_list:
             self.prep_track_in_pipe(track_name)
@@ -67,6 +68,8 @@ class ScanMain:
                 self.sequencer = FindSeq.ret_seq_instance_of_type('cs')
 
     def prep_track_in_pipe(self, track_name):
+        logging.debug('pipeline infos: ' +str(self.pipeline) +
+                      ' \n type: ' + str(type(self.pipeline)))
         pass  # still has to be included
 
     def start_measurement(self, scan_dict, track_num):
