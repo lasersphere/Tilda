@@ -44,8 +44,9 @@ class ScanMain:
         n_of_tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
         self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict)
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
-        for tr in track_list:
-            if self.start_measurement(scan_dict, tr):
+        for track_name in track_list:
+            self.prep_track_in_pipe(track_name)
+            if self.start_measurement(scan_dict, track_name):
                 self.read_data()
 
     def prep_seq(self, seq_type):
@@ -65,6 +66,9 @@ class ScanMain:
             elif self.sequencer.type != seq_type:
                 self.sequencer = FindSeq.ret_seq_instance_of_type('cs')
 
+    def prep_track_in_pipe(self, track_name):
+        pass  # still has to be included
+
     def start_measurement(self, scan_dict, track_name):
         """
         will start the measurement for one track.
@@ -82,9 +86,29 @@ class ScanMain:
         return start_ok
 
     def read_data(self):
+        """
+        read the data coming from the fpga.
+        This will block until no data is coming from the fpga anymore.
+        The data will be directly fed to the pipeline.
+        """
+        result = {}
         meas_state = self.sequencer.config.seqStateDict['measureTrack']
-        self.sequencer.getData(self.sequencer.config)
-
+        seq_state = self.sequencer.getSeqState()
+        timed_out_count = 0
+        max_time_out = 500
+        sleep_time = 0.05
+        while seq_state == meas_state or result.get('nOfEle') > 0:
+            seq_state = self.sequencer.getSeqState()
+            result = self.sequencer.getData()
+            if result.get('nOfEle') == 0:
+                if seq_state == meas_state and timed_out_count < max_time_out:
+                    time.sleep(sleep_time)
+                    timed_out_count += 1
+                else:
+                    break
+            else:
+                self.pipeline.feed(result['newData'])
+                time.sleep(sleep_time)
 
     def set_post_accel_pwr_supply(self, power_supply, volt):
         """
