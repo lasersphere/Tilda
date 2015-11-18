@@ -44,7 +44,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
     def go(self):
         # pss on the buffered scandict and let it run.
         logging.debug('starting measurement')
-        self.main.start_scan(self.buffer_scan_dict)
+        # self.main.start_scan(self.buffer_scan_dict)
+        print(self.buffer_scan_dict)
 
     def add_track(self):
         """
@@ -116,7 +117,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
 
     def save_to_db(self):
         logging.debug('saving settings to database')
-        for i in range(SdOp.get_number_of_tracks_in_scan_dict(self.buffer_scan_dict)):
+        trk_num, trk_lis = SdOp.get_number_of_tracks_in_scan_dict(self.buffer_scan_dict)
+        for i in range(trk_num):
             DbOp.add_scan_dict_to_db(self.main.database, self.buffer_scan_dict, i, track_key='track' + str(i))
 
     def close_track_wins(self):

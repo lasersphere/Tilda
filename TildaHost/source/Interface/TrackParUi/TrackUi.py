@@ -280,8 +280,9 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def confirm(self):
         """ closes the window and merges the buffer_scan_dict
         of the scan control window with the working dictionary """
-        SdOp.merge_dicts(self.scan_ctrl_win.buffer_scan_dict['track' + str(self.track_number)],
-                         self.buffer_pars)
+        self.scan_ctrl_win.buffer_scan_dict['track' + str(self.track_number)] = \
+            SdOp.merge_dicts(self.scan_ctrl_win.buffer_scan_dict['track' + str(self.track_number)],
+                             self.buffer_pars)
         self.close()
 
     def reset_to_default(self):
