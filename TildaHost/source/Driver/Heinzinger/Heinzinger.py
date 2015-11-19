@@ -9,7 +9,7 @@ Created on '19.05.2015'
 import serial
 import time
 import logging
-
+from copy import deepcopy
 
 import Driver.Heinzinger.HeinzingerCfg as hzCfg
 
@@ -134,7 +134,7 @@ class Heinzinger():
     def get_status(self):
         """
         returns a dict containing the status of the power supply,
-        keys are: name, programmedVoltage, voltageSetTime, readBackVolt, output
+        keys are: name, programmedVoltage, voltageSetTime, readBackVolt, output, com
         """
         status = {}
         status['name'] = self.name
@@ -142,6 +142,7 @@ class Heinzinger():
         status['voltageSetTime'] = self.time_of_last_volt_set
         status['readBackVolt'] = self.getVoltage()
         status['output'] = self.outp
+        status['com'] = self.ser.getPort()
         return status
 
     '''serial interface'''

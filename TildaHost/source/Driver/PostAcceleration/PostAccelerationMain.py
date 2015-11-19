@@ -31,7 +31,7 @@ class PostAccelerationMain:
                 try:
                     dev = Heinzinger(com, name)
                     if dev.idn != str(None):
-                        self.active_power_supplies[name] = Heinzinger(com, name)
+                        self.active_power_supplies[name] = dev
                 except Exception as e:
                     logging.error('While initialising ' + name + ' on com port ' +
                                   str(com) + ' the following error occured: ' + str(e))
@@ -77,3 +77,11 @@ class PostAccelerationMain:
         else:
             logging.debug(power_supply + ' is not active. Voltage can not be set.')
             return None
+
+    def set_output(self, power_supply, outp_bool):
+        """
+        will set the output according to outp_bool
+        """
+        power_sup = self.active_power_supplies.get(power_supply, False)
+        if power_sup:
+            power_sup.setOutput(outp_bool)

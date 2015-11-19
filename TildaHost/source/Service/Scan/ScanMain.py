@@ -120,6 +120,12 @@ class ScanMain:
         readback = self.post_acc_main.set_voltage(power_supply, volt)
         return readback
 
+    def set_post_accel_pwr_spply_output(self, power_supply, outp_bool):
+        """
+        will set the output according to outp_bool
+        """
+        self.post_acc_main.set_output(power_supply, outp_bool)
+
     def get_status_of_pwr_supply(self, power_supply):
         """
         returns a dict containing the status of the power supply,
