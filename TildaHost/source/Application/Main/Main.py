@@ -13,6 +13,7 @@ import threading
 
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
 from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
+from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
 
 from Service.Scan.ScanMain import ScanMain
 
@@ -27,6 +28,7 @@ class Main:
                             #  the beginning only one item should be in the list.
         self.database = None  # path of the sqlite3 database
         self.working_directory = None
+        self.post_acc_win = None
         self.measure_voltage_pars = Dft.draftMeasureVoltPars  # dict containing all parameters
         #  for the voltage measurement.
 
@@ -77,8 +79,6 @@ class Main:
         return self.scan_main.get_status_of_pwr_supply(power_supply)
 
     """ opening and closing of GUI's """
-
-
     def open_scan_control_win(self):
         self.scanpars.append(ScanControlUi(self))
 
@@ -90,3 +90,9 @@ class Main:
 
     def close_volt_meas_win(self):
         self.measure_voltage_pars.pop('actWin')
+
+    def open_post_acc_win(self):
+        self.post_acc_win = PostAccControlUi(self)
+
+    def closed_post_acc_win(self):
+        self.post_acc_win = None

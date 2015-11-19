@@ -16,6 +16,9 @@ import Driver.Heinzinger.HeinzingerCfg as HzCfg
 
 class PostAccelerationMain:
     def __init__(self):
+        self.active_power_supplies = {}
+
+    def power_supply_init(self):
         """
         trying to initialize all Powersupplies
         """
@@ -33,11 +36,12 @@ class PostAccelerationMain:
                     logging.error('While initialising ' + name + ' on com port ' +
                                   str(com) + ' the following error occured: ' + str(e))
         logging.debug('active postAcceleration power supplies: ' + str(self.active_power_supplies))
+        return self.active_power_supplies
 
     def status_of_power_supply(self, power_supply):
         """
         returns a dict containing the status of the power supply,
-        keys are: name, programmedVoltage, voltageSetTime, readBackVolt
+        keys are: name, programmedVoltage, voltageSetTime, readBackVolt, output
         """
         power_sup = self.active_power_supplies.get(power_supply, False)
         if power_sup:

@@ -67,8 +67,9 @@
     <property name="title">
      <string>Tools</string>
     </property>
-    <addaction name="actionTracks"/>
     <addaction name="actionScan_Control"/>
+    <addaction name="actionPost_acceleration_power_supply_control"/>
+    <addaction name="actionSimple_Counter"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -115,6 +116,16 @@
   <action name="actionVoltage_Measurement">
    <property name="text">
     <string>Voltage Measurement</string>
+   </property>
+  </action>
+  <action name="actionPost_acceleration_power_supply_control">
+   <property name="text">
+    <string>Post acceleration power supply control</string>
+   </property>
+  </action>
+  <action name="actionSimple_Counter">
+   <property name="text">
+    <string>Simple Counter</string>
    </property>
   </action>
  </widget>

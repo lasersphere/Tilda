@@ -28,10 +28,10 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.setupUi(self)
 
         self.actionWorking_directory.triggered.connect(self.choose_working_dir)
-        self.actionTracks.triggered.connect(self.open_track_win)
         self.actionVersion.triggered.connect(self.open_version_win)
         self.actionScan_Control.triggered.connect(self.open_scan_ctrl_win)
         self.actionVoltage_Measurement.triggered.connect(self.open_volt_meas_win)
+        self.actionPost_acceleration_power_supply_control.triggered.connect(self.open_post_acc_win)
         self.show()
 
     def choose_working_dir(self):
@@ -39,9 +39,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         workdir = QtWidgets.QFileDialog.getExistingDirectory(self, 'choose working directory', os.path.expanduser('~'))
         self.label_workdir_set.setText(str(workdir))
         self.main.work_dir_changed(workdir)
-
-    def open_track_win(self):
-        pass
 
     def open_version_win(self):
         VersionUi()
@@ -51,3 +48,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def open_volt_meas_win(self):
         self.main.open_volt_meas_win()
+
+    def open_post_acc_win(self):
+        self.main.open_post_acc_win()

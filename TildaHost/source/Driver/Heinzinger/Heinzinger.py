@@ -134,13 +134,14 @@ class Heinzinger():
     def get_status(self):
         """
         returns a dict containing the status of the power supply,
-        keys are: name, programmedVoltage, voltageSetTime, readBackVolt
+        keys are: name, programmedVoltage, voltageSetTime, readBackVolt, output
         """
         status = {}
         status['name'] = self.name
         status['programmedVoltage'] = self.setVolt
         status['voltageSetTime'] = self.time_of_last_volt_set
         status['readBackVolt'] = self.getVoltage()
+        status['output'] = self.outp
         return status
 
     '''serial interface'''
