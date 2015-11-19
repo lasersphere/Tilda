@@ -24,6 +24,7 @@ class Heinzinger():
         self.setVolt = 0
         self.time_of_last_volt_set = None
         self.sleepAfterSend = 0.05
+        logging.info('connecting to ' + self.name + ' on com port: ' + str(com))
         self.hzIdn = ''
         self.ser = serial.Serial(port=com - 1, baudrate=9600, timeout=0.1,
                                  parity='N', stopbits=1, bytesize=8, xonxoff=True,
@@ -32,14 +33,17 @@ class Heinzinger():
         try:
             self.reset()
             self.hzIdn = str(self.serWrite('*IDN?', True))
+            if self.hzIdn is str(None):
+                logging.info('init of ' + self.name + 'failed, on Com: ' + str(com))
+                raise OSError
             logging.info(self.hzIdn + 'initialized on Com: ' + str(com))
             self.setAverage(1)
             self.setOutput(True)
             self.setVoltage(0)
             self.setCurrent(hzCfg.currentWhenTurnedOn)
         except OSError:
-            self.errorcount = self.errorcount + 1
-            print('error occured, errorcount is: ' + str(self.errorcount))
+            self.errorcount += 1
+            print('error occurred, error count is: ' + str(self.errorcount))
 
     def reset(self):
         """
