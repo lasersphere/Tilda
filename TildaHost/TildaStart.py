@@ -25,8 +25,23 @@ def main():
     logging.info('Log level set to ' + args.log_level)
 
     # starting the main loop
-    Main()
+    main = Main()
 
+    start_gui(main)
+
+
+def start_gui(main):
+    """
+    starts the gui for the main window.
+    :parameter: main, instacne of the Tilda Main() module
+    """
+    from Interface.MainUi.MainUi import MainUi
+    from PyQt5 import QtWidgets
+
+    app = QtWidgets.QApplication(sys.argv)
+    ui = MainUi(main)
+    app.exec_()
+    return ui
 
 
 if __name__ == "__main__":

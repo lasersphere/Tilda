@@ -6,13 +6,11 @@ Created on '30.09.2015'
 
 """
 
-from PyQt5 import QtWidgets
 import sys
 import logging
 import os
 import threading
 
-from Interface.MainUi.MainUi import MainUi
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
 from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
 
@@ -36,11 +34,9 @@ class Main:
         self.iso_scan_thread = None
 
         # remove this later:
-        # self.work_dir_changed('E:\\blub')
+        self.work_dir_changed('E:\\blub')
         # self.work_dir_changed('C:\\temp')
-        self.work_dir_changed('D:\\lala')
-
-        self.mainUi = self.start_gui()
+        # self.work_dir_changed('D:\\lala')
 
     def work_dir_changed(self, workdir_str):
         """
@@ -81,14 +77,7 @@ class Main:
         return self.scan_main.get_status_of_pwr_supply(power_supply)
 
     """ opening and closing of GUI's """
-    def start_gui(self):
-        """
-        starts the gui for the main window.
-        """
-        app = QtWidgets.QApplication(sys.argv)
-        ui = MainUi(self)
-        app.exec_()
-        return ui
+
 
     def open_scan_control_win(self):
         self.scanpars.append(ScanControlUi(self))
