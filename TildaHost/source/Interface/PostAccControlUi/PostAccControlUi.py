@@ -20,7 +20,7 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         self.scan_main = main.scan_main
         self.post_acc_main = main.scan_main.post_acc_main
 
-        self.update_power_sups()
+        self.update_power_sups_gui()
         # self.label_name1
         # self.label_con1
         # self.doubleSpinBox_set_volt1
