@@ -26,7 +26,9 @@ class PostAccelerationMain:
             if com > 0:
                 name = 'Heinzinger' + str(i)
                 try:
-                    self.active_power_supplies[name] = Heinzinger(com, name)
+                    dev = Heinzinger(com, name)
+                    if dev.idn != str(None):
+                        self.active_power_supplies[name] = Heinzinger(com, name)
                 except Exception as e:
                     logging.error('While initialising ' + name + ' on com port ' +
                                   str(com) + ' the following error occured: ' + str(e))
