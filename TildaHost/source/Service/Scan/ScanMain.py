@@ -45,9 +45,9 @@ class ScanMain:
         self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict)
         self.pipeline.start()
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
-        for track_name in track_list:
-            self.prep_track_in_pipe(track_name)
-            if self.start_measurement(scan_dict, track_name):
+        for track_num in track_list:
+            self.prep_track_in_pipe(track_num, track_list)
+            if self.start_measurement(scan_dict, track_num):
                 self.read_data()
         logging.info('Measurement completed of isotope: ' + scan_dict['isotopeData']['isotope'] +
                      'of type: ' + scan_dict['isotopeData']['type'])
@@ -69,10 +69,11 @@ class ScanMain:
             elif self.sequencer.type != seq_type:
                 self.sequencer = FindSeq.ret_seq_instance_of_type('cs')
 
-    def prep_track_in_pipe(self, track_name):
-        logging.debug('pipeline infos: ' +str(self.pipeline) +
-                      ' \n type: ' + str(type(self.pipeline)))
-        pass  # still has to be included
+    def prep_track_in_pipe(self, track_num, track_list):
+        track_index = track_list.index(track_num)  # maybe track1 is scanned while track 0 is missing.
+        track_name = 'track' + str(track_num)
+        self.pipeline.pipeData['pipeInternals']['activeTrackNumber'] = (track_index, track_name)
+
 
     def start_measurement(self, scan_dict, track_num):
         """

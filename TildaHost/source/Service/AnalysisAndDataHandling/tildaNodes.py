@@ -7,6 +7,7 @@ Created on '20.05.2015'
 """
 from Service.FileFormat.XmlOperations import xmlAddCompleteTrack
 from Service.VoltageConversions.VoltageConversions import find_volt_in_array
+import Service.Scan.ScanDictionaryOperations as SdOp
 
 from polliPipe.node import Node
 import Service.Formating as form
@@ -53,7 +54,7 @@ class NSaveRawData(Node):
         self.type = "SaveRawData"
 
         self.buf = np.zeros(0, dtype=np.uint32)
-        self.maxArraySize = 500
+        self.maxArraySize = 5000
         self.nOfSaves = -1
 
     def processData(self, data, pipeData):
@@ -72,27 +73,8 @@ class NSaveRawData(Node):
         self.nOfSaves = -1
         self.buf = np.zeros(0, dtype=np.uint32)
 
-
-class NFilterDataForPipeData(Node):
-    def __init__(self):
-        """
-        if a dictionary is feeded to this node, the PipeData gets updated by this one.
-
-        input: list of rawdata or pipedata dictionaries
-        output: passes everything except dictionaries
-        """
-        self.pipe = super(NFilterDataForPipeData, self).__init__()
-        self.type = "FilterPipeData"
-
-    def processData(self, data, pipeData):
-        if type(data) == dict:
-            pipeData.update(data)
-            data = None
-        return data
-
-
 class NSumBunchesTRS(Node):
-    def __init__(self, pipeData):
+    def __init__(self):
         """
         sort all incoming events into scalerArray and voltArray.
         All Scaler events will be summed up seperatly for each scaler.
@@ -105,6 +87,9 @@ class NSumBunchesTRS(Node):
         self.type = "SumBunchesTRS"
 
         self.curVoltIndex = 0
+
+    def start(self):
+        pipeData = self.pipeData
         self.voltArray = np.zeros(pipeData['activeTrackPar']['nOfSteps'], dtype=np.uint32)
         self.timeArray = np.arange(pipeData['activeTrackPar']['delayticks'] * 10,
                                    (pipeData['activeTrackPar']['delayticks'] * 10 + pipeData['activeTrackPar'][
@@ -168,6 +153,7 @@ class NSaveTrsSum(Node):
 class NAcquireOneScanCS(Node):
     def __init__(self):
         """
+        not up to date anymore. not sure if it is used though.
         sum up all scaler events for the incoming data
         input: splitted rawData
         output: list of completed scalerArrays
@@ -179,6 +165,7 @@ class NAcquireOneScanCS(Node):
         self.scalerArray = None
         self.curVoltIndex = 0
         self.totalnOfScalerEvents = 0
+        logging.error('watch out, ' + self.type + ' might be outdated')
 
     def start(self):
         scand = self.Pipeline.pipeData
@@ -241,7 +228,7 @@ class NAcquireOneScanCS(Node):
 class NSortRawDatatoArray(Node):
     def __init__(self):
         """
-        Node for sorting the splitted raw data into an scaler Array. MIssing Values will be set to 0.
+        Node for sorting the splitted raw data into an scaler Array. Missing Values will be set to 0.
         input: split raw data
         output: list of tuples [(scalerArray, scan_complete_flag)... ], missing values are 0
         """
@@ -250,14 +237,18 @@ class NSortRawDatatoArray(Node):
         self.voltArray = None
         self.scalerArray = None
         self.curVoltIndex = 0
-        self.totalnOfScalerEvents = 0
+        self.totalnOfScalerEvents = []
 
     def start(self):
         scand = self.Pipeline.pipeData
+        tracks, tracks_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
+        self.totalnOfScalerEvents = np.full((tracks,), 0)
         self.voltArray = form.create_default_volt_array_from_scandict(scand)
         self.scalerArray = form.create_default_scaler_array_from_scandict(scand)
 
+
     def processData(self, data, pipeData):
+        track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         ret = None
         scan_complete = False
         for i, j in enumerate(data):
@@ -266,20 +257,15 @@ class NSortRawDatatoArray(Node):
                     '{0:032b}'.format(j['payload'])))
 
             elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltage step
-                self.curVoltIndex, self.voltArray = find_volt_in_array(j['payload'], self.voltArray)
-                # logging.debug('new Voltageindex: ' + str(self.curVoltIndex) + ' ... with voltage: ' + str(
-                #     form.get_voltage_from_24bit(j['payload'])))
+                self.curVoltIndex, self.voltArray = find_volt_in_array(j['payload'], self.voltArray, track_ind)
 
             elif j['firstHeader'] == progConfigsDict.programs['continuousSequencer']:
                 '''scaler entry '''
-                self.totalnOfScalerEvents += 1
-                pipeData['activeTrackPar']['nOfCompletedSteps'] = self.totalnOfScalerEvents // 8  # floored Quotient
-                try:  # sort values in array, will fail if pmt value is not set active in the activePmtList
-                    pmtIndex = pipeData['activeTrackPar']['activePmtList'].index(j['secondHeader'])
-                    self.scalerArray[self.curVoltIndex, pmtIndex] += j['payload']
-                except ValueError:
-                    pass
-                if csAna.checkIfScanComplete(pipeData, self.totalnOfScalerEvents):
+                self.totalnOfScalerEvents[track_ind] += 1
+                pipeData[track_name]['nOfCompletedSteps'] = self.totalnOfScalerEvents[track_ind] // 8  # floored Quotient
+                pmt_index = pipeData[track_name]['activePmtList'].index(j['secondHeader'])
+                self.scalerArray[track_ind, pmt_index, self.curVoltIndex] += j['payload']  # PolliFit conform
+                if csAna.checkIfScanComplete(pipeData, self.totalnOfScalerEvents, track_name):
                     # one Scan over all steps is completed, add Data to return array and clear local buffer.
                     scan_complete = True
                     if ret is None:
@@ -300,7 +286,7 @@ class NSortRawDatatoArray(Node):
         self.voltArray = None
         self.scalerArray = None
         self.curVoltIndex = 0
-        self.totalnOfScalerEvents = 0
+        self.totalnOfScalerEvents = []
 
 
 class NSumCS(Node):
@@ -437,32 +423,6 @@ class NSaveSumCS(Node):
         filhandl.saveXml(rootEle, file, False)
         logging.info('saving Continous Sequencer Sum to: ' + str(file))
         return data
-
-
-# class NLivePlot(Node):
-# def __init__(self, pipeData, pltTitle):
-#         """
-#         function to plot a sorted scaler Array
-#         input: sorted scaler Array
-#         output: same as input
-#         """
-#         super(NLivePlot, self).__init__()
-#         self.type = 'LivePlot'
-#         trackd = pipeData['activeTrackPar']
-#         self.x = form.create_x_axis_from_track_dict(trackd)
-#         winRef = pipeData['pipeInternals']['activeGraphicsWindow']
-#         self.pl = PyQtGraphPlotter.addPlot(winRef, pltTitle)
-#
-#     def processData(self, data, pipeData):
-#         logging.info('plotting...')
-#         PyQtGraphPlotter.plot(self.pl, (self.x, data), clear=True)
-#         return data
-#
-#     def clear(self, pipeData):
-#         trackd = pipeData['activeTrackPar']
-#         self.x = form.create_x_axis_from_track_dict(trackd)
-#         winRef = pipeData['pipeInternals']['activeGraphicsWindow']
-#         self.pl = PyQtGraphPlotter.addPlot(winRef)
 
 
 class NAccumulateSingleScan(Node):

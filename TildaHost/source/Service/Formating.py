@@ -8,6 +8,7 @@ from datetime import datetime as dt
 import numpy as np
 import ast
 
+import Service.Scan.ScanDictionaryOperations as SdOp
 
 def split_32b_data(int32b_data):
     """
@@ -118,10 +119,13 @@ def create_default_scaler_array_from_scandict(scand, dft_val=0):
     """
     create empty ScalerArray, size is determined by the activeTrackPar in the scan dictionary
     """
-    trackd = scand['activeTrackPar']
-    n_of_steps = trackd['nOfSteps']
-    n_of_scaler = len(trackd['activePmtList'])
-    arr = np.full((n_of_steps, n_of_scaler), dft_val, dtype=np.uint32)
+    arr = []
+    tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
+    for tr in track_num_list:
+        trackd = scand['track' + str(tr)]
+        n_of_steps = trackd['nOfSteps']
+        n_of_scaler = len(trackd['activePmtList'])
+        arr.append(np.full((n_of_scaler, n_of_steps), dft_val, dtype=np.uint32))
     return arr
 
 
@@ -130,7 +134,10 @@ def create_default_volt_array_from_scandict(scand, dft_val=(2 ** 30)):
     create Default Voltage array, with default values in dft_val
     (2 ** 30) is chosen, because this is an default value which is not reachable by the DAC
     """
-    trackd = scand['activeTrackPar']
-    n_of_steps = trackd['nOfSteps']
-    arr = np.full((n_of_steps,), dft_val, dtype=np.uint32)
+    arr = []
+    tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
+    for tr in track_num_list:
+        trackd = scand['track' + str(tr)]
+        n_of_steps = trackd['nOfSteps']
+        arr.append(np.full((n_of_steps,), dft_val, dtype=np.uint32))
     return arr

@@ -124,7 +124,7 @@ def get_18bit_from_24bit_dac_reg(voltage_24bit, remove_address=True):
     return v18bit
 
 
-def find_volt_in_array(voltage, volt_array):
+def find_volt_in_array(voltage, volt_array, track_ind):
     """
     find the index of voltage in volt_array. If not existant, create.
     empty entries in volt_array must be (2 ** 30)
@@ -132,12 +132,12 @@ def find_volt_in_array(voltage, volt_array):
     """
     '''payload is 23-Bits, Bits 2 to 20 is the DAC register'''
     voltage = get_18bit_from_24bit_dac_reg(voltage, True)  # shift by 2 and delete higher parts of payload
-    index = np.where(volt_array == voltage)
+    index = np.where(volt_array[track_ind] == voltage)
     if len(index[0]) == 0:
         # voltage not yet in array, put it at next empty position
-        index = np.where(volt_array == (2 ** 30))[0][0]
+        index = np.where(volt_array[track_ind] == (2 ** 30))[0][0]
     else:
         # voltage already in list, take the found index
         index = index[0][0]
-    np.put(volt_array, index, voltage)
+    np.put(volt_array[track_ind], index, voltage)
     return index, volt_array
