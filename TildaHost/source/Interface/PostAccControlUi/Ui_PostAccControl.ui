@@ -260,7 +260,7 @@
        </size>
       </property>
       <property name="text">
-       <string>set</string>
+       <string>set1</string>
       </property>
      </widget>
     </item>
@@ -294,7 +294,7 @@
        </size>
       </property>
       <property name="text">
-       <string>set</string>
+       <string>set2</string>
       </property>
      </widget>
     </item>
@@ -328,7 +328,7 @@
        </size>
       </property>
       <property name="text">
-       <string>set</string>
+       <string>set3</string>
       </property>
      </widget>
     </item>

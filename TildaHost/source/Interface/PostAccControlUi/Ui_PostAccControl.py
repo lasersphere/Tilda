@@ -188,8 +188,8 @@ class Ui_MainWindow_PostAcc(object):
         self.pushButton_on_off2.setText(_translate("MainWindow_PostAcc", "on/off"))
         self.pushButton_on_off3.setText(_translate("MainWindow_PostAcc", "on/off"))
         self.pushButton_all_on_off.setText(_translate("MainWindow_PostAcc", "all output off"))
-        self.pushButton_set_volt1.setText(_translate("MainWindow_PostAcc", "set"))
-        self.pushButton_set_volt2.setText(_translate("MainWindow_PostAcc", "set"))
-        self.pushButton_set_volt3.setText(_translate("MainWindow_PostAcc", "set"))
+        self.pushButton_set_volt1.setText(_translate("MainWindow_PostAcc", "set1"))
+        self.pushButton_set_volt2.setText(_translate("MainWindow_PostAcc", "set2"))
+        self.pushButton_set_volt3.setText(_translate("MainWindow_PostAcc", "set3"))
         self.pushButton_refresh.setText(_translate("MainWindow_PostAcc", "refresh"))
 
