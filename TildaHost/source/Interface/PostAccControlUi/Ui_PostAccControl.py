@@ -150,6 +150,17 @@ class Ui_MainWindow_PostAcc(object):
 
         self.retranslateUi(MainWindow_PostAcc)
         QtCore.QMetaObject.connectSlotsByName(MainWindow_PostAcc)
+        MainWindow_PostAcc.setTabOrder(self.doubleSpinBox_set_volt1, self.pushButton_set_volt1)
+        MainWindow_PostAcc.setTabOrder(self.pushButton_set_volt1, self.pushButton_on_off1)
+        MainWindow_PostAcc.setTabOrder(self.pushButton_on_off1, self.doubleSpinBox_set_volt2)
+        MainWindow_PostAcc.setTabOrder(self.doubleSpinBox_set_volt2, self.pushButton_set_volt2)
+        MainWindow_PostAcc.setTabOrder(self.pushButton_set_volt2, self.pushButton_on_off2)
+        MainWindow_PostAcc.setTabOrder(self.pushButton_on_off2, self.doubleSpinBox_set_volt3)
+        MainWindow_PostAcc.setTabOrder(self.doubleSpinBox_set_volt3, self.pushButton_set_volt3)
+        MainWindow_PostAcc.setTabOrder(self.pushButton_set_volt3, self.pushButton_on_off3)
+        MainWindow_PostAcc.setTabOrder(self.pushButton_on_off3, self.pushButton_init_all)
+        MainWindow_PostAcc.setTabOrder(self.pushButton_init_all, self.pushButton_refresh)
+        MainWindow_PostAcc.setTabOrder(self.pushButton_refresh, self.pushButton_all_on_off)
 
     def retranslateUi(self, MainWindow_PostAcc):
         _translate = QtCore.QCoreApplication.translate
@@ -176,7 +187,7 @@ class Ui_MainWindow_PostAcc(object):
         self.label_volt_read3.setText(_translate("MainWindow_PostAcc", "None"))
         self.pushButton_on_off2.setText(_translate("MainWindow_PostAcc", "on/off"))
         self.pushButton_on_off3.setText(_translate("MainWindow_PostAcc", "on/off"))
-        self.pushButton_all_on_off.setText(_translate("MainWindow_PostAcc", "all output off/on"))
+        self.pushButton_all_on_off.setText(_translate("MainWindow_PostAcc", "all output off"))
         self.pushButton_set_volt1.setText(_translate("MainWindow_PostAcc", "set"))
         self.pushButton_set_volt2.setText(_translate("MainWindow_PostAcc", "set"))
         self.pushButton_set_volt3.setText(_translate("MainWindow_PostAcc", "set"))

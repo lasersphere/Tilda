@@ -226,7 +226,7 @@
     <item row="4" column="6">
      <widget class="QPushButton" name="pushButton_all_on_off">
       <property name="text">
-       <string>all output off/on</string>
+       <string>all output off</string>
       </property>
      </widget>
     </item>
@@ -342,6 +342,20 @@
    </layout>
   </widget>
  </widget>
+ <tabstops>
+  <tabstop>doubleSpinBox_set_volt1</tabstop>
+  <tabstop>pushButton_set_volt1</tabstop>
+  <tabstop>pushButton_on_off1</tabstop>
+  <tabstop>doubleSpinBox_set_volt2</tabstop>
+  <tabstop>pushButton_set_volt2</tabstop>
+  <tabstop>pushButton_on_off2</tabstop>
+  <tabstop>doubleSpinBox_set_volt3</tabstop>
+  <tabstop>pushButton_set_volt3</tabstop>
+  <tabstop>pushButton_on_off3</tabstop>
+  <tabstop>pushButton_init_all</tabstop>
+  <tabstop>pushButton_refresh</tabstop>
+  <tabstop>pushButton_all_on_off</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>
