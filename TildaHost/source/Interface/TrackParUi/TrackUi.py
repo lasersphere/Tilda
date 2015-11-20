@@ -67,38 +67,47 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.doubleSpinBox_waitAfterReset_muS.valueChanged.connect(self.wait_after_reset_mu_sec_set)
         self.doubleSpinBox_waitForKepco_muS.valueChanged.connect(self.wait_for_kepco_mu_sec)
 
+        print(str(self.buffer_pars))
         self.set_labels_by_dict(self.buffer_pars)
 
     """functions:"""
-
     def set_labels_by_dict(self, track_dict):
         """" the values in the track_dict will be written to the corresponding spinboxes,
-         which will call the connected functions should not break, when one value is set inproperly """
-        for cmd in self.comand_list():
+         which will call the connected functions """
+        func_list = [
+            (self.doubleSpinBox_dwellTime_ms.setValue,
+             self.check_for_none(track_dict.get('dwellTime10ns'), 0) * (10 ** -5)),
+            (self.doubleSpinBox_dacStartV.setValue,
+             VCon.get_voltage_from_18bit(self.check_for_none(track_dict.get('dacStartRegister18Bit'), 0))),
+            (self.doubleSpinBox_dacStopV.setValue,
+             VCon.get_voltage_from_18bit(self.check_for_none(track_dict.get('dacStopRegister18Bit'), 2 ** 18))),
+            (self.spinBox_nOfSteps.setValue, self.check_for_none(track_dict.get('nOfSteps'), 0)),
+            (self.doubleSpinBox_dacStepSizeV.setValue,
+             VCon.get_stepsize_in_volt_from_18bit(self.check_for_none(track_dict.get('dacStepSize18Bit'), 0))),
+            (self.spinBox_nOfScans.setValue, self.check_for_none(track_dict.get('nOfScans'), 0)),
+            (self.checkBox_invertScan.setChecked, self.check_for_none(track_dict.get('invertScan'), False)),
+            (self.comboBox_postAccOffsetVoltControl.setCurrentIndex,
+             int(self.check_for_none(track_dict.get('postAccOffsetVoltControl'), 0))),
+            (
+            self.doubleSpinBox_postAccOffsetVolt.setValue, self.check_for_none(track_dict.get('postAccOffsetVolt'), 0)),
+            (self.lineEdit_activePmtList.setText, str(self.check_for_none(track_dict.get('activePmtList'), [0]))[1:-1]),
+            (self.checkBox_colDirTrue.setChecked, self.check_for_none(track_dict.get('colDirTrue'), False)),
+            (self.doubleSpinBox_waitAfterReset_muS.setValue,
+             self.check_for_none(track_dict.get('waitAfterReset25nsTicks'), 0) * 25 * (10 ** -3)),
+            (self.doubleSpinBox_waitForKepco_muS.setValue,
+             self.check_for_none(track_dict.get('waitForKepco25nsTicks'), 0) * 25 * (10 ** -3))
+        ]
+        for func in func_list:
             try:
-                eval(cmd)
+                func[0](func[1])
             except Exception as e:
                 logging.error('error while loading default track dictionary: ' + str(e))
 
-    def comand_list(self):
-        cmd_lis = [
-            'self.doubleSpinBox_dwellTime_ms.setValue(track_dict[\'dwellTime10ns\'] * (10 ** -5))',
-            'self.doubleSpinBox_dacStartV.setValue(VCon.get_voltage_from_18bit(track_dict[\'dacStartRegister18Bit\']))',
-            'self.doubleSpinBox_dacStopV.setValue(VCon.get_voltage_from_18bit(track_dict[\'dacStopRegister18Bit\']))',
-            'self.spinBox_nOfSteps.setValue(track_dict[\'nOfSteps\'])',
-            'self.doubleSpinBox_dacStepSizeV.setValue' +
-            '(VCon.get_stepsize_in_volt_from_18bit(track_dict[\'dacStepSize18Bit\']))',
-            'self.spinBox_nOfScans.setValue(track_dict[\'nOfScans\'])',
-            'self.checkBox_invertScan.setChecked(track_dict[\'invertScan\'])',
-            'self.comboBox_postAccOffsetVoltControl.setCurrentIndex(int(track_dict[\'postAccOffsetVoltControl\']))',
-            'self.doubleSpinBox_postAccOffsetVolt.setValue(track_dict[\'postAccOffsetVolt\'])',
-            'self.lineEdit_activePmtList.setText(str(track_dict[\'activePmtList\'])[1:-1])',
-            'self.checkBox_colDirTrue.setChecked(track_dict[\'colDirTrue\'])',
-            'self.doubleSpinBox_waitAfterReset_muS.setValue(track_dict[\'waitAfterReset25nsTicks\'] * 25 * (10 ** -3))',
-            'self.doubleSpinBox_waitForKepco_muS.setValue(track_dict[\'waitForKepco25nsTicks\'] * 25 * (10 ** -3))'
-        ]
-        return cmd_lis
-    
+    def check_for_none(self, check, replace):
+        if check is None:
+            check = replace
+        return check
+
     def dwelltime_set(self, val):
         """ this will write the doublespinbox value to the working dict and set the label """
         self.buffer_pars['dwellTime10ns'] = val * (10 ** 5)  # convert to units of 10ns
@@ -135,7 +144,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             self.display_step_size(self.calc_step_size())
             self.display_stop(self.calc_dac_stop_18bit())
         except Exception as e:
-            logging.error('the following eroor occured while calculating the number of steps:'
+            logging.error('the following error occurred while calculating the number of steps:'
                           + str(e))
 
     def recalc_n_of_steps_stop(self):
@@ -146,7 +155,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             self.display_n_of_steps(self.calc_n_of_steps())
             self.display_stop(self.calc_dac_stop_18bit())
         except Exception as e:
-            logging.error('the following eroor occured while calculating the number of steps:'
+            logging.error('the following error occurred while calculating the number of steps:'
                           + str(e))
 
     def calc_dac_stop_18bit(self):
@@ -157,31 +166,37 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             steps = self.buffer_pars['nOfSteps']
             stop = start + step * steps
         except Exception as e:
-            logging.error('following error occured while calculating the stop voltage:' + str(e))
+            logging.error('following error occurred while calculating the stop voltage:' + str(e))
             stop = 0
         return stop
 
     def calc_step_size(self):
         """ calculates the stepsize: (stop - start) / nOfSteps  """
-        start = self.buffer_pars['dacStartRegister18Bit']
-        stop = self.buffer_pars['dacStopRegister18Bit']
-        steps = self.buffer_pars['nOfSteps']
-        dis = stop - start
         try:
+            start = self.buffer_pars['dacStartRegister18Bit']
+            stop = self.buffer_pars['dacStopRegister18Bit']
+            steps = self.buffer_pars['nOfSteps']
+            dis = stop - start
             stepsize_18bit = int(round(dis / steps))
         except ZeroDivisionError:
+            stepsize_18bit = 0
+        except Exception as e:
+            logging.error('following error occurred while calculating the stepsize:' + str(e))
             stepsize_18bit = 0
         return stepsize_18bit
 
     def calc_n_of_steps(self):
         """ calculates the number of steps: abs((stop - start) / stepSize) """
-        start = self.buffer_pars['dacStartRegister18Bit']
-        stop = self.buffer_pars['dacStopRegister18Bit']
-        step = self.buffer_pars['dacStepSize18Bit']
-        dis = abs(stop - start)
         try:
+            start = self.buffer_pars['dacStartRegister18Bit']
+            stop = self.buffer_pars['dacStopRegister18Bit']
+            step = self.buffer_pars['dacStepSize18Bit']
+            dis = abs(stop - start)
             n_of_steps = int(round(dis / step))
         except ZeroDivisionError:
+            n_of_steps = 0
+        except Exception as e:
+            logging.error('following error occurred while calculating the number of steps:' + str(e))
             n_of_steps = 0
         return abs(n_of_steps)  # sign should always be in the stepsize
 
