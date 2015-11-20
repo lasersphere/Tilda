@@ -263,8 +263,12 @@ class NSortRawDatatoArray(Node):
                 '''scaler entry '''
                 self.totalnOfScalerEvents[track_ind] += 1
                 pipeData[track_name]['nOfCompletedSteps'] = self.totalnOfScalerEvents[track_ind] // 8  # floored Quotient
-                pmt_index = pipeData[track_name]['activePmtList'].index(j['secondHeader'])
-                self.scalerArray[track_ind, pmt_index, self.curVoltIndex] += j['payload']  # PolliFit conform
+                print('secondHeader is: ', j['secondHeader'], j, str(j))
+                try:  # only add to scalerArray, when pmt is in activePmtList
+                    pmt_index = pipeData[track_name]['activePmtList'].index(j['secondHeader'])
+                    self.scalerArray[track_ind, pmt_index, self.curVoltIndex] += j['payload']  # PolliFit conform
+                except ValueError:
+                    pass
                 if csAna.checkIfScanComplete(pipeData, self.totalnOfScalerEvents, track_name):
                     # one Scan over all steps is completed, add Data to return array and clear local buffer.
                     scan_complete = True
