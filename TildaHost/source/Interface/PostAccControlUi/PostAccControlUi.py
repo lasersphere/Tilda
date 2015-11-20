@@ -31,7 +31,7 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         for i in range(1, 4):
             try:
                 name = self.resol_power_sup(i)
-                getattr(self, 'pushButton_set_volt' + str(i)).clicked.connect(getattr(self, 'set_volt' + str(i)))
+                getattr(self, 'pushButton_set_volt' + str(i)).clicked.connect(self.volt_set)
                 getattr(self, 'pushButton_on_off' + str(i)).clicked.connect(getattr(self, 'set_outp' + str(i)))
             except Exception as e:
                 logging.error('while connecting the buttons for ' + name + ' the following exception occurred: ' +
@@ -63,21 +63,24 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         name = getattr(self, 'label_name' + str(number)).text()
         return name
 
-    def volt_set(self, name):
+    def volt_set(self):
+        sender = self.sender().text()
+        print(sender)
+        name = self.resol_power_sup(int(sender[-1:]))
         if name is not None:
             voltage = getattr(self, 'doubleSpinBox_set_volt' + name[-1:]).value()
             if name is not None:
                 self.scan_main.set_post_accel_pwr_supply(name, voltage)
                 self.update_power_sups_gui()
 
-    def set_volt1(self):
-        self.volt_set(self.resol_power_sup(1))
-
-    def set_volt2(self):
-        self.volt_set(self.resol_power_sup(2))
-
-    def set_volt3(self):
-        self.volt_set(self.resol_power_sup(3))
+    # def set_volt1(self):
+    #     self.volt_set(self.resol_power_sup(1))
+    #
+    # def set_volt2(self):
+    #     self.volt_set(self.resol_power_sup(2))
+    #
+    # def set_volt3(self):
+    #     self.volt_set(self.resol_power_sup(3))
 
     def set_outp(self, name, outp=None):
         if name is not None:
