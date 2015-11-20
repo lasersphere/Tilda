@@ -65,10 +65,11 @@ def CsPipe(initialScanPars=None):
     # walk = start.attach(TN.NSaveRawData())
     walk = start.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NSortRawDatatoArray())
-    walk = walk.attach(SN.NPrint())
 
     #
-    # branch = walk.attach(TN.NAccumulateSingleScan())
+    walk = walk.attach(TN.NAccumulateSingleScan())
+    walk = walk.attach(SN.NPrint())
+
     # branch1 = branch.attach(TN.NArithmetricScaler([0]))
     # branch1 = branch1.attach(TN.NMPlLivePlot(axes[0], 'scaler 0'))
     #

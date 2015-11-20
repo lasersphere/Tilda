@@ -443,13 +443,15 @@ class NAccumulateSingleScan(Node):
         self.scalerArray = form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
 
     def processData(self, data, pipeData):
+        track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         ret = None
         for i, j in enumerate(data):
             if not j[1]:  # work on incomplete Scan
-                self.scalerArray = np.add(self.scalerArray, j[0])
-                ret = self.scalerArray
-            elif j[1]:
-                ret = np.add(self.scalerArray, j[0])
+                self.scalerArray[track_ind] = np.add(self.scalerArray[track_ind], j[0][track_ind])
+                ret = self.scalerArray  # return last incoming incomplete scan
+            elif j[1]:  # work with complete scan
+                ret = np.add(self.scalerArray[track_ind], j[0][track_ind])
+                # return complete scan and reset scalerarray
                 self.scalerArray = form.create_default_scaler_array_from_scandict(pipeData)
         return ret
 
