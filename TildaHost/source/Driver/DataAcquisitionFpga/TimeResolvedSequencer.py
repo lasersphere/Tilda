@@ -71,7 +71,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
 
     def setAllScanParameters(self, scanpars):
         """
-        Use the dictionary format of scanpars, to set all parameters at once.
+        Use the dictionary format of act_scan_wins, to set all parameters at once.
          Therefore Sequencer must be in idle state
         :param scanpars: dictionary, containing all scanparameters
         :return: bool, True if successful

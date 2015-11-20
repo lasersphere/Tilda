@@ -50,8 +50,8 @@ print(format(48, '08b'))
 #         self.form = Formatter()
 #         self.fullData = []
 #
-#     def measureOneTrack(self, scanpars):
-#         self.trs.measureTrack(scanpars)
+# def measureOneTrack(self, act_scan_wins):
+#         self.trs.measureTrack(act_scan_wins)
 #         while self.trs.getSeqState() == self.trs.TrsCfg.seqState['measureTrack']:
 #             result = self.trs.getData()
 #             if result['nOfEle'] == 0:

@@ -50,3 +50,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def open_post_acc_win(self):
         self.main.open_post_acc_win()
+
+    def closeEvent(self, *args, **kwargs):
+        self.main.close_main_win()

@@ -131,6 +131,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
             logging.info('will not exit, because a scan is ongoing.')
             event.ignore()
         else:
+            logging.info('closing scan win' + str(self.win_title))
             event.accept()
             print(self.track_wins_dict)
             self.close_track_wins()

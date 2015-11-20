@@ -25,8 +25,7 @@ import Service.DatabaseOperations.DatabaseOperations as DbOp
 
 class Main:
     def __init__(self):
-        self.scanpars = []  # list of scanparameter dictionaries, like in Service.draftScanParameters.py in
-        # the beginning only one item should be in the list.
+        self.act_scan_wins = []  # list of active scan windows
         self.database = None  # path of the sqlite3 database
         self.working_directory = None
         self.post_acc_win = None
@@ -89,10 +88,10 @@ class Main:
     def open_scan_control_win(self):
         if self.working_directory is None:
             self.open_work_dir_win()
-        self.scanpars.append(ScanControlUi(self))
+        self.act_scan_wins.append(ScanControlUi(self))
 
     def scan_control_win_closed(self, win_ref):
-        self.scanpars.remove(win_ref)
+        self.act_scan_wins.remove(win_ref)
 
     def open_volt_meas_win(self):
         self.measure_voltage_pars['actWin'] = VoltMeasConfUi(self, self.measure_voltage_pars)
@@ -105,3 +104,16 @@ class Main:
 
     def closed_post_acc_win(self):
         self.post_acc_win = None
+
+    def close_main_win(self):
+        for win in self.act_scan_wins:
+            win.close()
+        try:
+            self.post_acc_win.close()
+        except Exception as e:
+            logging.error(str(e))
+        try:
+            self.measure_voltage_pars['actWin'].close()
+        except Exception as e:
+            logging.error(str(e))
+
