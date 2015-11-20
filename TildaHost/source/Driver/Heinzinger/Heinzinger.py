@@ -16,6 +16,7 @@ import Driver.Heinzinger.HeinzingerCfg as hzCfg
 
 class Heinzinger():
     def __init__(self, com, name='Heinzinger'):
+        self.max_readback_time = 1  # time in seconds
         self.errorcount = 0
         self.name = name
         self.outp = False
@@ -163,10 +164,10 @@ class Heinzinger():
                 ret = self.ser.readline()
                 time.sleep(sleepAfterSend)
                 readbackTimeout = 0
-                while ret == b'' and readbackTimeout < 50:
+                while ret == b'' and readbackTimeout < self.max_readback_time:
                     ret = self.ser.readline()
                     time.sleep(sleepAfterSend)
-                    readbackTimeout += 1
+                    readbackTimeout += sleepAfterSend
                 if ret == b'':
                     logging.debug('Readback timedout after ... tries: ' + str(readbackTimeout))
                     return None

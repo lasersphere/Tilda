@@ -39,9 +39,9 @@ class ScanMain:
         logging.info('preparing isotope: ' + scan_dict['isotopeData']['isotope'] +
                      ' of type: ' + scan_dict['isotopeData']['type'])
         n_of_tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
-        if self.post_acc_main.active_power_supplies == {}:
-            self.init_post_accel_pwr_supplies()
         logging.info('active power supplies: ' + str(self.post_acc_main.active_power_supplies))
+        if self.post_acc_main.active_power_supplies == {}:  # initialize power sups here if necessary
+            self.init_post_accel_pwr_supplies()
         self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict)
         self.pipeline.start()
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
