@@ -73,25 +73,32 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
     def set_labels_by_dict(self, track_dict):
         """" the values in the track_dict will be written to the corresponding spinboxes,
-         which will call the connected functions """
-        try:
-            self.doubleSpinBox_dwellTime_ms.setValue(track_dict['dwellTime10ns'] * (10 ** -5))
-            self.doubleSpinBox_dacStartV.setValue(VCon.get_voltage_from_18bit(track_dict['dacStartRegister18Bit']))
-            self.doubleSpinBox_dacStopV.setValue(VCon.get_voltage_from_18bit(track_dict['dacStopRegister18Bit']))
-            self.spinBox_nOfSteps.setValue(track_dict['nOfSteps'])
-            self.doubleSpinBox_dacStepSizeV.setValue(
-                VCon.get_stepsize_in_volt_from_18bit(track_dict['dacStepSize18Bit']))
-            self.spinBox_nOfScans.setValue(track_dict['nOfScans'])
-            self.checkBox_invertScan.setChecked(track_dict['invertScan'])
-            self.comboBox_postAccOffsetVoltControl.setCurrentIndex(int(track_dict['postAccOffsetVoltControl']))
-            self.doubleSpinBox_postAccOffsetVolt.setValue(track_dict['postAccOffsetVolt'])
-            self.lineEdit_activePmtList.setText(str(track_dict['activePmtList'])[1:-1])
-            self.checkBox_colDirTrue.setChecked(track_dict['colDirTrue'])
-            self.doubleSpinBox_waitAfterReset_muS.setValue(track_dict['waitAfterReset25nsTicks'] * 25 * (10 ** -3))
-            self.doubleSpinBox_waitForKepco_muS.setValue(track_dict['waitForKepco25nsTicks'] * 25 * (10 ** -3))
-        except Exception as e:
-            logging.error('error while loading default track dictionary: ' + str(e))
+         which will call the connected functions should not break, when one value is set inproperly """
+        for cmd in self.comand_list():
+            try:
+                eval(cmd)
+            except Exception as e:
+                logging.error('error while loading default track dictionary: ' + str(e))
 
+    def comand_list(self):
+        cmd_lis = [
+            'self.doubleSpinBox_dwellTime_ms.setValue(track_dict[\'dwellTime10ns\'] * (10 ** -5))',
+            'self.doubleSpinBox_dacStartV.setValue(VCon.get_voltage_from_18bit(track_dict[\'dacStartRegister18Bit\']))',
+            'self.doubleSpinBox_dacStopV.setValue(VCon.get_voltage_from_18bit(track_dict[\'dacStopRegister18Bit\']))',
+            'self.spinBox_nOfSteps.setValue(track_dict[\'nOfSteps\'])',
+            'self.doubleSpinBox_dacStepSizeV.setValue' +
+            '(VCon.get_stepsize_in_volt_from_18bit(track_dict[\'dacStepSize18Bit\']))',
+            'self.spinBox_nOfScans.setValue(track_dict[\'nOfScans\'])',
+            'self.checkBox_invertScan.setChecked(track_dict[\'invertScan\'])',
+            'self.comboBox_postAccOffsetVoltControl.setCurrentIndex(int(track_dict[\'postAccOffsetVoltControl\']))',
+            'self.doubleSpinBox_postAccOffsetVolt.setValue(track_dict[\'postAccOffsetVolt\'])',
+            'self.lineEdit_activePmtList.setText(str(track_dict[\'activePmtList\'])[1:-1])',
+            'self.checkBox_colDirTrue.setChecked(track_dict[\'colDirTrue\'])',
+            'self.doubleSpinBox_waitAfterReset_muS.setValue(track_dict[\'waitAfterReset25nsTicks\'] * 25 * (10 ** -3))',
+            'self.doubleSpinBox_waitForKepco_muS.setValue(track_dict[\'waitForKepco25nsTicks\'] * 25 * (10 ** -3))'
+        ]
+        return cmd_lis
+    
     def dwelltime_set(self, val):
         """ this will write the doublespinbox value to the working dict and set the label """
         self.buffer_pars['dwellTime10ns'] = val * (10 ** 5)  # convert to units of 10ns
