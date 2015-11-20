@@ -36,9 +36,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def choose_working_dir(self):
         """ will open a modal file dialog and set all workingdirectories of the pipeline to the chosen folder """
-        workdir = QtWidgets.QFileDialog.getExistingDirectory(self, 'choose working directory', os.path.expanduser('~'))
+        workdir = self.main.open_work_dir_win()
         self.label_workdir_set.setText(str(workdir))
-        self.main.work_dir_changed(workdir)
 
     def open_version_win(self):
         VersionUi()

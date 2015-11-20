@@ -6,6 +6,7 @@ Created on '30.09.2015'
 
 """
 
+from PyQt5 import QtWidgets
 import sys
 import logging
 import os
@@ -25,12 +26,12 @@ import Service.DatabaseOperations.DatabaseOperations as DbOp
 class Main:
     def __init__(self):
         self.scanpars = []  # list of scanparameter dictionaries, like in Service.draftScanParameters.py in
-                            #  the beginning only one item should be in the list.
+        # the beginning only one item should be in the list.
         self.database = None  # path of the sqlite3 database
         self.working_directory = None
         self.post_acc_win = None
         self.measure_voltage_pars = Dft.draftMeasureVoltPars  # dict containing all parameters
-        #  for the voltage measurement.
+        # for the voltage measurement.
 
         self.scan_main = ScanMain()
         self.iso_scan_thread = None
@@ -66,7 +67,7 @@ class Main:
 
     def set_power_supply_voltage(self, power_supply, volt):
         """
-        will set the Output voltage of the desired
+        will set the Output voltage of the desiredself
         power supply as stated in the track dictionary
         """
         self.scan_main.set_post_accel_pwr_supply(power_supply, volt)
@@ -79,7 +80,15 @@ class Main:
         return self.scan_main.get_status_of_pwr_supply(power_supply)
 
     """ opening and closing of GUI's """
+
+    def open_work_dir_win(self):
+        self.work_dir_changed(QtWidgets.QFileDialog.getExistingDirectory(QtWidgets.QFileDialog(),
+            'choose working directory', os.path.expanduser('~')))
+        return self.working_directory
+
     def open_scan_control_win(self):
+        if self.working_directory is None:
+            self.open_work_dir_win()
         self.scanpars.append(ScanControlUi(self))
 
     def scan_control_win_closed(self, win_ref):

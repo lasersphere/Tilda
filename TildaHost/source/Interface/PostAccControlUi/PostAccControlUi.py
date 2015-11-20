@@ -3,12 +3,11 @@ Created on
 
 @author: simkaufm
 
-Module Description:
+Module Description: Gui for a simple control of up to 3 post acceleration devices.
 """
 
 from PyQt5 import QtWidgets
 import logging
-from copy import copy
 from Interface.PostAccControlUi.Ui_PostAccControl import Ui_MainWindow_PostAcc
 
 
@@ -22,13 +21,6 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         self.post_acc_main = main.scan_main.post_acc_main
 
         self.update_power_sups_gui()
-        # self.connect_buttons()
-        # self.label_name1.setText('Test')
-        # self.label_con1.text()
-        # self.doubleSpinBox_set_volt1.value()
-        # self.label_last_set1
-        # self.label_volt_read1
-        # self.pushButton_on_off1
         self.pushButton_init_all.clicked.connect(self.init_pow_sups)
         self.pushButton_refresh.clicked.connect(self.update_power_sups_gui)
         self.pushButton_all_on_off.clicked.connect(self.all_off)
@@ -65,6 +57,9 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         self.button_color('pushButton_on_off' + num_str, status_dict.get('output'))
 
     def resol_power_sup(self, number):
+        """
+        by giving a number between 1 and 3, the function returns the label, where the power supplies name is displayed.
+        """
         name = getattr(self, 'label_name' + str(number)).text()
         return name
 
@@ -110,14 +105,24 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
                 name = self.resol_power_sup(i)
                 self.set_outp(name, outp=False)
             except Exception as e:
-                logging.error('While setting all outputs off the following error occurred: \n\n ' +
+                logging.error('While turning all outputs off, the following error occurred: \n\n ' +
                               str(e) + '\n \n')
 
     def button_color(self, butn, on_off):
+        """
+        this will change the background color of the output switch for each device.
+        Green - On
+        Red - Off
+        readback of the output is not supported in Heiniznger Powersupplies,
+        so this depends on the init of the device and storage of the output variable
+        """
         if on_off:
             getattr(self, butn).setStyleSheet("background-color: green")
         else:
             getattr(self, butn).setStyleSheet("background-color: red")
 
     def closeEvent(self, *args, **kwargs):
+        """
+        unsubscribe in the corresponding main
+        """
         self.main.closed_post_acc_win()
