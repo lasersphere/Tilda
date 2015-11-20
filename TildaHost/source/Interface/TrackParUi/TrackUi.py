@@ -88,9 +88,10 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             (self.checkBox_invertScan.setChecked, self.check_for_none(track_dict.get('invertScan'), False)),
             (self.comboBox_postAccOffsetVoltControl.setCurrentIndex,
              int(self.check_for_none(track_dict.get('postAccOffsetVoltControl'), 0))),
-            (
-            self.doubleSpinBox_postAccOffsetVolt.setValue, self.check_for_none(track_dict.get('postAccOffsetVolt'), 0)),
-            (self.lineEdit_activePmtList.setText, str(self.check_for_none(track_dict.get('activePmtList'), [0]))[1:-1]),
+            (self.doubleSpinBox_postAccOffsetVolt.setValue,
+             self.check_for_none(track_dict.get('postAccOffsetVolt'), 0)),
+            (self.lineEdit_activePmtList.setText,
+             str(self.check_for_none(track_dict.get('activePmtList'), [0]))[1:-1]),
             (self.checkBox_colDirTrue.setChecked, self.check_for_none(track_dict.get('colDirTrue'), False)),
             (self.doubleSpinBox_waitAfterReset_muS.setValue,
              self.check_for_none(track_dict.get('waitAfterReset25nsTicks'), 0) * 25 * (10 ** -3)),
