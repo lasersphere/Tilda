@@ -400,13 +400,19 @@ class NMPlLivePlot(Node):
         # self.ax.set_ylabel(self.title)
         # plt.pause(0.0001)
         MPLPlotter.plt_axes(self.ax, x, y, self.title)
+        # time.sleep(0.2)
         MPLPlotter.pause(0.0001)
 
     def processData(self, data, pipeData):
         logging.debug('plotting...')
         t = time.time()
-        # self.y = deepcopy(data)
-        self.animate(data[0], data[1][0])
+        x = np.array(data[0])
+        y = data[1][0]
+        self.animate(x,y)
+        logging.debug('plot data is, x: ' + str(x) + '\t' + str(type(x))
+                      + '\t' + str(len(x)) + '\n' +
+                      'y-data is: ' + str(y) + '\t' + str(type(y))
+                      + '\t' + str(len(y)) + '\n')
         logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
         return data
 

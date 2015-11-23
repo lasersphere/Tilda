@@ -74,7 +74,6 @@ class ScanMain:
         track_name = 'track' + str(track_num)
         self.pipeline.pipeData['pipeInternals']['activeTrackNumber'] = (track_index, track_name)
 
-
     def start_measurement(self, scan_dict, track_num):
         """
         will start the measurement for one track.

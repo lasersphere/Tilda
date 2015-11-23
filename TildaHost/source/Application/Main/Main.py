@@ -38,12 +38,17 @@ class Main:
         # remove this later:
         # self.work_dir_changed('E:\\blub')
         # self.work_dir_changed('C:\\temp')
-        # self.work_dir_changed('D:\\lala')
+        try:
+            self.work_dir_changed('E:\\lala')
+        except Exception as e:
+            logging.error('while loading default location of db this happened:' + str(e))
 
     def work_dir_changed(self, workdir_str):
         """
         Sets the working directory in which the main sqlite database is stored.
         """
+        if workdir_str == '':  # answer of dialog when cancel is pressed
+            return None
         self.working_directory = workdir_str
         self.database = workdir_str + '/' + os.path.split(workdir_str)[1] + '.sqlite'
         DbOp.createTildaDB(self.database)
