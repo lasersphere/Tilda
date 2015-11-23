@@ -144,9 +144,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         trackd = scanpars[track_name]
         x_axis = Form.create_x_axis_from_scand_dict(scanpars)[track_num]
         num_of_steps = trackd['nOfSteps'] * trackd['nOfScans']
-        cts = np.random.random_integers(0, 10000, (num_of_steps * 8))
         x_axis = [Form.add_header_to23_bit(x << 2, 3, 0, 1) for x in x_axis]
-        cts = [Form.add_header_to23_bit(ct, 2, np.random.randint(0, 8), 1) for ct in cts]
         complete_lis = []
         scans = 0
         while scans < trackd['nOfScans']:
@@ -157,8 +155,9 @@ class ContinousSequencer(Sequencer, MeasureVolt):
                 j += 1
                 i = 0
                 while i < 8:
+                    # append 8 pmt count events
                     i += 1
-                    complete_lis.append(cts.pop(0))
+                    Form.add_header_to23_bit(np.random.randint(0, 10000), 2, i, 1)
         self.random_data = complete_lis
 
     def getSeqState(self):
