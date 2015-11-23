@@ -74,6 +74,7 @@ class NSaveRawData(Node):
         self.nOfSaves = -1
         self.buf = np.zeros(0, dtype=np.uint32)
 
+
 class NSumBunchesTRS(Node):
     def __init__(self):
         """
@@ -111,7 +112,7 @@ class NSumBunchesTRS(Node):
                     self.curVoltIndex, self.voltArray = find_volt_in_array(j['payload'], self.voltArray)
             elif j['headerIndex'] == 0:  # MCS/TRS Data
                 self.scalerArray = form.trs_sum(j, self.curVoltIndex, self.scalerArray,
-                                               pipeData['activeTrackPar']['activePmtList'])
+                                                pipeData['activeTrackPar']['activePmtList'])
         if trsAna.checkIfScanComplete(pipeData):
             return (self.voltArray, self.timeArray, self.scalerArray)
         else:
@@ -173,7 +174,7 @@ class NAcquireOneScanCS(Node):
         self.voltArray = form.create_x_axis_from_track_dict(scand)
         self.scalerArray = form.create_default_scaler_array_from_scandict(scand)
         self.bufIncoming = np.zeros((0,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
-                                                     ('headerIndex', 'u1'), ('payload', 'u4')])
+                                                 ('headerIndex', 'u1'), ('payload', 'u4')])
 
     def processData(self, data, pipeData):
         ret = None
@@ -187,7 +188,7 @@ class NAcquireOneScanCS(Node):
             elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltage step
                 self.curVoltIndex, self.voltArray = find_volt_in_array(j['payload'], self.voltArray)
                 # logging.debug('new Voltageindex: ' + str(self.curVoltIndex) + ' ... with voltage: ' + str(
-                #     form.get_voltage_from_24bit(j['payload'])))
+                # form.get_voltage_from_24bit(j['payload'])))
                 self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
 
             elif j['firstHeader'] == progConfigsDict.programs['continuousSequencer']:
@@ -263,7 +264,8 @@ class NSortRawDatatoArray(Node):
             elif j['firstHeader'] == progConfigsDict.programs['continuousSequencer']:
                 '''scaler entry '''
                 self.totalnOfScalerEvents[track_ind] += 1
-                pipeData[track_name]['nOfCompletedSteps'] = self.totalnOfScalerEvents[track_ind] // 8  # floored Quotient
+                pipeData[track_name]['nOfCompletedSteps'] = self.totalnOfScalerEvents[
+                                                                track_ind] // 8  # floored Quotient
                 try:  # only add to scalerArray, when pmt is in activePmtList
                     pmt_index = pipeData[track_name]['activePmtList'].index(j['secondHeader'])
                     self.scalerArray[track_ind][pmt_index][self.curVoltIndex] += j['payload']  # PolliFit conform
@@ -373,6 +375,8 @@ class NMPlLivePlot(Node):
     def __init__(self, ax, title):
         """
         Node for plotting live Data using matplotlib.pyplot
+        input: ??
+        output: input
         """
         super(NMPlLivePlot, self).__init__()
         self.type = 'MPlLivePlot'
@@ -384,7 +388,10 @@ class NMPlLivePlot(Node):
         self.y = None
 
     def start(self):
-        self.x = form.create_x_axis_from_track_dict(self.Pipeline.pipeData['activeTrackPar'])
+        # l = form.create_x_axis_from_scand_dict(self.Pipeline.pipeData)
+        # self.x = [item for sublist in l for item in sublist]
+        MPLPlotter.ion()
+        pass
 
     def animate(self, x, y):
         # self.ax.clear()
@@ -397,14 +404,15 @@ class NMPlLivePlot(Node):
     def processData(self, data, pipeData):
         logging.debug('plotting...')
         t = time.time()
-        self.y = deepcopy(data)
-        self.animate(self.x, self.y)
-        logging.debug('plotting time (ms):' + str(round((time.time()-t) * 1000, 0)))
+        # self.y = deepcopy(data)
+        self.animate(data[0], data[1][0])
+        logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
         return data
 
     def clear(self):
-        MPLPlotter.show(block=True)
+        # MPLPlotter.show(block=True)  # this only work if pipeline thread is main thread. :(
         # plt.show(block=True)
+        pass
 
 
 class NSaveSumCS(Node):
@@ -451,7 +459,8 @@ class NAccumulateSingleScan(Node):
                 self.scalerArray[track_ind] = np.add(self.scalerArray[track_ind], j[0][track_ind])
                 ret = self.scalerArray  # return last incoming incomplete scan
             elif j[1]:  # work with complete scan
-                ret = np.add(self.scalerArray[track_ind], j[0][track_ind])
+                self.scalerArray[track_ind] = np.add(self.scalerArray[track_ind], j[0][track_ind])
+                ret = self.scalerArray
                 # return complete scan and reset scalerarray
                 self.scalerArray = form.create_default_scaler_array_from_scandict(pipeData)
         return ret
@@ -461,28 +470,28 @@ class NAccumulateSingleScan(Node):
 
 
 class NArithmetricScaler(Node):
-    # update this when data is transformed to SpecData
     def __init__(self, scalers):
+        """
+        will return a single spectrum of the given scalers
+        a tuple with (volt, cts, err) of the specified scaler and track. -1 for all tracks
+        input: SpecData
+        ouptut: tuple, (volt, cts, err)
+        """
         super(NArithmetricScaler, self).__init__()
         self.type = 'ArithmetricScaler'
-        self.scaler = scalers
+        self.scalers = scalers
 
     def processData(self, data, pipeData):
-        nOfSteps = pipeData['activeTrackPar']['nOfSteps']
-        scalerArray = np.zeros((nOfSteps))
-
-        for s in self.scaler:
-            c = copy(data[:, s])
-            scalerArray += np.copysign(1, s) * c
-
-        return scalerArray
+        return data.getSingleSpec(self.scalers, -1)
 
 
 class NSingleArrayToSpecData(Node):
     def __init__(self):
         """
         when started, will init a SpecData object of given size.
-        Will sort an incoming array to the specdata
+        Overwrites SpecData.cts and passes the SpecData object to the next node.
+        input: scalerArray, containing all tracks
+        output: SpecData
         """
         super(NSingleArrayToSpecData, self).__init__()
         self.type = 'SingleArrayToSpecData'
@@ -492,8 +501,21 @@ class NSingleArrayToSpecData(Node):
         self.spec_data = SpecData()
         self.spec_data.path = self.Pipeline.pipeData['pipeInternals']['activeXmlFilePath']
         self.spec_data.type = self.Pipeline.pipeData['isotopeData']['type']
-        self.spec_data.time = self.Pipeline.pipeData['isotopeData']['type']
-
+        tracks, tr_num_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
+        self.spec_data.nrLoops = [self.Pipeline.pipeData['track' + str(tr_num)]['nOfScans']
+                                  for tr_num in tr_num_list]
+        self.spec_data.nrTracks = tracks
+        self.spec_data.nrScalers = [len(self.Pipeline.pipeData['track' + str(tr_num)]['activePmtList'])
+                                    for tr_num in tr_num_list]
+        self.spec_data.accVolt = [self.Pipeline.pipeData['track' + str(tr_num)]['postAccOffsetVolt']
+                                  for tr_num in tr_num_list]
+        self.spec_data.laserFreq = self.Pipeline.pipeData['isotopeData']['laserFreq']
+        self.spec_data.col = [self.Pipeline.pipeData['track' + str(tr_num)]['colDirTrue']
+                              for tr_num in tr_num_list]
+        self.spec_data.x = form.create_x_axis_from_scand_dict(self.Pipeline.pipeData)
+        self.spec_data.cts = form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
+        self.spec_data.err = form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
 
     def processData(self, data, pipeData):
-        return self.spec_data.path
+        self.spec_data.cts = data
+        return self.spec_data

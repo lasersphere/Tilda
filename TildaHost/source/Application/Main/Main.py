@@ -107,7 +107,10 @@ class Main:
 
     def close_main_win(self):
         for win in self.act_scan_wins:
-            win.close()
+            try:
+                win.close()
+            except Exception as e:
+                logging.error(str(e))
         try:
             self.post_acc_win.close()
         except Exception as e:

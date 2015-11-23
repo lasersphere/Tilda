@@ -102,17 +102,22 @@ def convert_scandict_v104_to_v106(scandict):
     return scandict
 
 
-def create_x_axis_from_track_dict(trackd):
+def create_x_axis_from_scand_dict(scand):
     """
     uses a track dictionary to create the x axis, starting with dacStartRegister18Bit,
     length is nOfSteps and stepsize is dacStepSize18Bit
     """
-    dac_start_18bit = trackd['dacStartRegister18Bit']
-    dac_stepsize_18bit = trackd['dacStepSize18Bit']
-    n_of_steps = trackd['nOfSteps']
-    dac_stop_18bit = dac_start_18bit + (dac_stepsize_18bit * n_of_steps)
-    x = np.arange(dac_start_18bit, dac_stop_18bit, dac_stepsize_18bit)
-    return x
+    arr = []
+    tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
+    for tr in track_num_list:
+        trackd = scand['track' + str(tr)]
+        dac_start_18bit = trackd['dacStartRegister18Bit']
+        dac_stepsize_18bit = trackd['dacStepSize18Bit']
+        n_of_steps = trackd['nOfSteps']
+        dac_stop_18bit = dac_start_18bit + (dac_stepsize_18bit * n_of_steps)
+        x = np.arange(dac_start_18bit, dac_stop_18bit, dac_stepsize_18bit)
+        arr.append(x)
+    return arr
 
 
 def create_default_scaler_array_from_scandict(scand, dft_val=0):
