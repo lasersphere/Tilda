@@ -18,7 +18,7 @@ import logging
 
 
 class FPGAInterfaceHandling():
-    def __init__(self, bitfilePath, bitfileSignature, resource, reset=True, run=True):
+    def __init__(self, bitfilePath, bitfileSignature, resource, reset=True, run=True, dummy=False):
         """
         Initiates the Fpga
         :param bitfilePath: String, to the Bitfile created by Labview and C Api generator
@@ -28,17 +28,18 @@ class FPGAInterfaceHandling():
         :param run: Boolean, to chose if you want to run the fpga on startup, default is True
         :return: None
         """
-        self.dmaReadTimeout = 1  # timeout to read from Dma Queue in ms
-        self.NiFpgaUniversalInterfaceDll = ctypes.CDLL(
-            'D:\\Workspace\\PyCharm\\Tilda\\TildaHost\\binary\\NiFpgaUniversalInterfaceDll.dll')
-        self.NiFpgaUniversalInterfaceDll.NiFpga_ReadFifoU32.argtypes = [
-            ctypes.c_ulong, ctypes.c_ulong, np.ctypeslib.ndpointer(np.uint32, flags="C_CONTIGUOUS"),
-            ctypes.c_ulong, ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong)
-        ]
-        self.session = ctypes.c_ulong()
-        self.statusSuccess = 0
-        self.status = 0
-        self.InitFpga(bitfilePath, bitfileSignature, resource, reset, run)
+        if not dummy:
+            self.dmaReadTimeout = 1  # timeout to read from Dma Queue in ms
+            self.NiFpgaUniversalInterfaceDll = ctypes.CDLL(
+                'D:\\Workspace\\PyCharm\\Tilda\\TildaHost\\binary\\NiFpgaUniversalInterfaceDll.dll')
+            self.NiFpgaUniversalInterfaceDll.NiFpga_ReadFifoU32.argtypes = [
+                ctypes.c_ulong, ctypes.c_ulong, np.ctypeslib.ndpointer(np.uint32, flags="C_CONTIGUOUS"),
+                ctypes.c_ulong, ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong)
+            ]
+            self.session = ctypes.c_ulong()
+            self.statusSuccess = 0
+            self.status = 0
+            self.InitFpga(bitfilePath, bitfileSignature, resource, reset, run)
 
 
     '''Initializing/Deinitilaizing'''

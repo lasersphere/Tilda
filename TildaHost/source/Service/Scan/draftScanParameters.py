@@ -8,7 +8,7 @@ Module containing the ScanParameters dictionaries as needed for Scanning with th
 """
 """ List of currently supported sequencer types """
 
-sequencer_types_list = ['cs', 'trs']
+sequencer_types_list = ['cs', 'trs', 'csdummy']
 
 """ outer most dictionary contains the following keys: """
 
@@ -42,6 +42,8 @@ naming convention is type_list.  """
 cs_list = ['dwellTime10ns']
 
 trs_list = ['MCSSelectTrigger', 'delayticks', 'nOfBins', 'nOfBunches']
+
+csdummy_list = ['dwellTime10ns']
 
 """ below are some example values which can be used for scanning: """
 

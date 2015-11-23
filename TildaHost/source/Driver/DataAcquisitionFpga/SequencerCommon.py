@@ -188,7 +188,7 @@ class Sequencer(FPGAInterfaceHandling):
         read Data from host sided Buffer called 'transferToHost' to an Array.
         Can later be fed into a pipeline system.
         :return: dictionary,
-        nOfEle = int, number of Read Elements, newDataArray = numpy Array containing all data that was read
+        nOfEle = int, number of Read Elements, newData = numpy Array containing all data that was read
                elemRemainInFifo = int, number of Elements still in FifoBuffer
         """
         result = self.ReadU32Fifo(self.config.transferToHost['ref'])

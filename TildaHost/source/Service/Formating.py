@@ -146,3 +146,15 @@ def create_default_volt_array_from_scandict(scand, dft_val=(2 ** 30)):
         n_of_steps = trackd['nOfSteps']
         arr.append(np.full((n_of_steps,), dft_val, dtype=np.uint32))
     return arr
+
+
+def add_header_to23_bit(bit23, firstheader, secondheader, indexheader):
+    """
+    enter a 32 bit header and the other header without their shift.
+    So for firstheader = 3 (0011) only enter 3.
+    """
+    sh_firstheader = firstheader << 28
+    sh_secondheader = secondheader << 24
+    sh_indexheader = indexheader << 23
+    result = sh_firstheader + sh_secondheader + sh_indexheader + bit23
+    return result

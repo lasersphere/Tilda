@@ -18,7 +18,7 @@ from polliPipe.pipeline import Pipeline
 
 def find_pipe_by_seq_type(scan_dict):
     seq_type = scan_dict['isotopeData']['type']
-    if seq_type == 'cs':
+    if seq_type == 'cs' or 'csdummy':
         return CsPipe(scan_dict)
     elif seq_type == 'trs':
         return TrsPipe(scan_dict)
@@ -62,18 +62,19 @@ def CsPipe(initialScanPars=None):
     pipe.pipeData = initPipeData(initialScanPars)
 
     # walk = start.attach(SN.NPrint())
-    walk = start.attach(TN.NSaveRawData())
+    # walk = start.attach(TN.NSaveRawData())
     walk = start.attach(TN.NSplit32bData())
+    # walk = walk.attach(SN.NPrint())
     walk = walk.attach(TN.NSortRawDatatoArray())
+    # walk = walk.attach(SN.NPrint())
 
     #
     branch = walk.attach(TN.NAccumulateSingleScan())
-    # walk = walk.attach(SN.NPrint())
-
-    # branch1 = branch.attach(SN.NPrint())
-    branch1 = branch.attach(TN.NSingleArrayToSpecData())
-    branch1 = branch1.attach(TN.NArithmetricScaler([0, 1]))
-    branch1 = branch1.attach(SN.NPrint())
+    #
+    branch1 = branch.attach(SN.NPrint())
+    # branch1 = branch.attach(TN.NSingleArrayToSpecData())
+    # branch1 = branch1.attach(TN.NArithmetricScaler([0, 1]))
+    # branch1 = branch1.attach(SN.NPrint())
     # branch1 = branch1.attach(TN.NMPlLivePlot(axes[0], 'scaler 0'))
     #
     # branch2 = branch.attach(TN.NArithmetricScaler([1]))
