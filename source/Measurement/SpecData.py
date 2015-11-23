@@ -42,7 +42,9 @@ class SpecData(object):
     def getSingleSpec(self, scaler, track):
         '''Return a tuple with (volt, cts, err) of the specified scaler and track. -1 for all tracks'''        
         if track == -1:
-            return ( [i for i in it.chain(*self.x)], [i for i in it.chain(*(t[scaler] for t in self.cts))], [i for i in it.chain(*(t[scaler] for t in self.err))] )
+            return ( [i for i in it.chain(*self.x)],
+                     [i for i in it.chain(*(t[scaler] for t in self.cts))],
+                     [i for i in it.chain(*(t[scaler] for t in self.err))] )
         else:
             return (self.x[track], self.cts[track][scaler], self.err[track][scaler])
     
@@ -84,7 +86,7 @@ class SpecData(object):
         self.cts[scaler] *= mult
         self.err[scaler] *= mult
         
-        
+
     
     def deadtimeCorrect(self, scaler, track):
         for i, cts in enumerate(self.cts[track][scaler]):
