@@ -8,6 +8,7 @@ Created on '20.05.2015'
 from Service.FileFormat.XmlOperations import xmlAddCompleteTrack
 from Service.VoltageConversions.VoltageConversions import find_volt_in_array
 import Service.Scan.ScanDictionaryOperations as SdOp
+from Measurement.SpecData import SpecData
 
 from polliPipe.node import Node
 import Service.Formating as form
@@ -476,3 +477,23 @@ class NArithmetricScaler(Node):
 
         return scalerArray
 
+
+class NSingleArrayToSpecData(Node):
+    def __init__(self):
+        """
+        when started, will init a SpecData object of given size.
+        Will sort an incoming array to the specdata
+        """
+        super(NSingleArrayToSpecData, self).__init__()
+        self.type = 'SingleArrayToSpecData'
+        self.spec_data = None
+
+    def start(self):
+        self.spec_data = SpecData()
+        self.spec_data.path = self.Pipeline.pipeData['pipeInternals']['activeXmlFilePath']
+        self.spec_data.type = self.Pipeline.pipeData['isotopeData']['type']
+        self.spec_data.time = self.Pipeline.pipeData['isotopeData']['type']
+
+
+    def processData(self, data, pipeData):
+        return self.spec_data.path
