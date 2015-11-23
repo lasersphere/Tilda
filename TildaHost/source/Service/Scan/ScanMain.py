@@ -73,6 +73,7 @@ class ScanMain:
         track_index = track_list.index(track_num)  # maybe track1 is scanned while track 0 is missing.
         track_name = 'track' + str(track_num)
         self.pipeline.pipeData['pipeInternals']['activeTrackNumber'] = (track_index, track_name)
+        self.pipeline.start()
 
     def start_measurement(self, scan_dict, track_num):
         """

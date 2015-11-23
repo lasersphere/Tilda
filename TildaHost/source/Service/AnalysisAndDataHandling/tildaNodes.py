@@ -272,7 +272,7 @@ class NSortRawDatatoArray(Node):
                     self.scalerArray[track_ind][pmt_index][self.curVoltIndex] += j['payload']  # PolliFit conform
                 except ValueError:
                     pass
-                if csAna.checkIfScanComplete(pipeData, self.totalnOfScalerEvents, track_name):
+                if csAna.checkIfScanComplete(pipeData, self.totalnOfScalerEvents[track_ind], track_name):
                     # one Scan over all steps is completed, add Data to return array and clear local buffer.
                     scan_complete = True
                     if ret is None:

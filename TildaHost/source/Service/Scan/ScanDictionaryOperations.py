@@ -88,4 +88,3 @@ def get_total_num_of_steps(scan_dict):
         total = steps * scans
         result.append(total)
     return result
-

@@ -65,6 +65,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
             track_to_copy_from = 'track' + str(max(track_num_list))
             logging.debug('adding track' + str(next_track_num) + ' copying values from: ' + track_to_copy_from)
             self.buffer_scan_dict['track' + str(next_track_num)] = deepcopy(self.buffer_scan_dict[track_to_copy_from])
+        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(self.buffer_scan_dict)
+        self.buffer_scan_dict['isotopeData']['nOfTracks'] = tracks
         self.update_track_list()
 
     def remove_selected_track(self):
