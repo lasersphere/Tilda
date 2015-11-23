@@ -417,9 +417,7 @@ class NMPlLivePlot(Node):
         return data
 
     def clear(self):
-        # MPLPlotter.show(block=True)  # this only work if pipeline thread is main thread. :(
-        # plt.show(block=True)
-        pass
+        MPLPlotter.show(block=True)  # this only work if pipeline thread is main thread. :(
 
 
 class NSaveSumCS(Node):

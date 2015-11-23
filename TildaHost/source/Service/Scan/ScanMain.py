@@ -51,6 +51,8 @@ class ScanMain:
                 self.read_data()
         logging.info('Measurement completed of isotope: ' + scan_dict['isotopeData']['isotope'] +
                      'of type: ' + scan_dict['isotopeData']['type'])
+        self.pipeline.clear()
+
 
     def prep_seq(self, seq_type):
         """
@@ -73,7 +75,7 @@ class ScanMain:
         track_index = track_list.index(track_num)  # maybe track1 is scanned while track 0 is missing.
         track_name = 'track' + str(track_num)
         self.pipeline.pipeData['pipeInternals']['activeTrackNumber'] = (track_index, track_name)
-        self.pipeline.start()
+        # self.pipeline.start()
 
     def start_measurement(self, scan_dict, track_num):
         """
@@ -117,7 +119,7 @@ class ScanMain:
             else:
                 self.pipeline.feed(result['newData'])
                 time.sleep(sleep_time)
-        self.pipeline.clear()
+        # self.pipeline.clear()
 
     def set_post_accel_pwr_supply(self, power_supply, volt):
         """

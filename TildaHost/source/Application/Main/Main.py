@@ -10,8 +10,9 @@ from PyQt5 import QtWidgets
 import sys
 import logging
 import os
-import threading
+# import threading
 import time
+import multiprocessing
 
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
 from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
@@ -34,7 +35,7 @@ class Main:
         # for the voltage measurement.
 
         self.scan_main = ScanMain()
-        self.iso_scan_thread = None
+        self.iso_scan_process = None
 
         # remove this later:
         # self.work_dir_changed('E:\\blub')
@@ -67,8 +68,8 @@ class Main:
                                                             self.measure_voltage_pars)
         one_scan_dict['pipeInternals']['workingDirectory'] = self.working_directory
         logging.debug('will scan: ' + str(sorted(one_scan_dict)))
-        self.iso_scan_thread = threading.Thread(target=self.scan_main.scan_one_isotope, args=(one_scan_dict,))
-        self.iso_scan_thread.start()
+        self.iso_scan_process = multiprocessing.Process(target=self.scan_main.scan_one_isotope, args=(one_scan_dict,))
+        self.iso_scan_process.start()
 
     def set_power_supply_voltage(self, power_supply, volt):
         """
