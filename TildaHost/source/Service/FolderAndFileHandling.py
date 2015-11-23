@@ -127,7 +127,7 @@ def savePickle(data, pipeDataDict, ending='.raw'):
     path = pipeDataDict['pipeInternals']['workingDirectory']
     path = nameFile(path, 'raw',
                     pipeDataDict['isotopeData']['isotope'] +
-                    '_track' + str(pipeDataDict['pipeInternals']['activeTrackNumber']),
+                    '_track' + str(pipeDataDict['pipeInternals']['activeTrackNumber'][0]),
                     pipeDataDict['isotopeData']['type'],
                     ending)
     # print('saving: ' + str(data) + ' , to: ' + str(path))

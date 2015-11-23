@@ -107,16 +107,19 @@ class Main:
 
     def close_main_win(self):
         for win in self.act_scan_wins:
+            logging.debug('will close: ' + str(win))
             try:
                 win.close()
             except Exception as e:
                 logging.error(str(e))
         try:
-            self.post_acc_win.close()
+            if self.post_acc_win is not None:
+                self.post_acc_win.close()
         except Exception as e:
-            logging.error(str(e))
+            logging.error('error while closing post acceleration win:' + str(e))
         try:
-            self.measure_voltage_pars['actWin'].close()
+            if self.measure_voltage_pars.get('actWin') is not None:
+                self.measure_voltage_pars['actWin'].close()
         except Exception as e:
-            logging.error(str(e))
+            logging.error('error while closing voltage measurement win:' + str(e))
 

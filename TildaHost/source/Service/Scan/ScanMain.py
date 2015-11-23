@@ -117,6 +117,7 @@ class ScanMain:
             else:
                 self.pipeline.feed(result['newData'])
                 time.sleep(sleep_time)
+        self.pipeline.clear()
 
     def set_post_accel_pwr_supply(self, power_supply, volt):
         """

@@ -59,9 +59,10 @@ class NSaveRawData(Node):
         self.nOfSaves = -1
 
     def processData(self, data, pipeData):
+        track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         if self.nOfSaves < 0:  # save pipedata, first time something is fed to the pipelins
             self.nOfSaves = filhandl.savePipeData(pipeData, self.nOfSaves)
-            pipeData['activeTrackPar'] = form.add_working_time_to_track_dict(pipeData['activeTrackPar'])
+            pipeData[track_name] = form.add_working_time_to_track_dict(pipeData[track_name])
         self.buf = np.append(self.buf, data)
         if self.buf.size > self.maxArraySize:  # when buffer is full, store the data to disc
             self.nOfSaves = filhandl.saveRawData(self.buf, pipeData, self.nOfSaves)
@@ -171,7 +172,7 @@ class NAcquireOneScanCS(Node):
 
     def start(self):
         scand = self.Pipeline.pipeData
-        self.voltArray = form.create_x_axis_from_track_dict(scand)
+        self.voltArray = form.create_x_axis_from_scand_dict(scand)
         self.scalerArray = form.create_default_scaler_array_from_scandict(scand)
         self.bufIncoming = np.zeros((0,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
                                                  ('headerIndex', 'u1'), ('payload', 'u4')])
