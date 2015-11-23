@@ -156,8 +156,8 @@ class ContinousSequencer(Sequencer, MeasureVolt):
                 i = 0
                 while i < 8:
                     # append 8 pmt count events
+                    complete_lis.append(Form.add_header_to23_bit(np.random.randint(0, 10000), 2, i, 1))
                     i += 1
-                    Form.add_header_to23_bit(np.random.randint(0, 10000), 2, i, 1)
         self.random_data = complete_lis
 
     def getSeqState(self):
