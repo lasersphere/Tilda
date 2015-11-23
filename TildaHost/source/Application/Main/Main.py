@@ -129,4 +129,9 @@ class Main:
                 self.measure_voltage_pars['actWin'].close()
         except Exception as e:
             logging.error('error while closing voltage measurement win:' + str(e))
+        try:
+            self.iso_scan_process.join()
+        except Exception as e:
+            logging.error('error while closing pipe process:' + str(e))
+
 

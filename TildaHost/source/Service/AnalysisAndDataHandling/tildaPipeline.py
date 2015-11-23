@@ -66,34 +66,40 @@ def CsPipe(initialScanPars=None):
     walk = start.attach(TN.NSplit32bData())
     # walk = walk.attach(SN.NPrint())
     walk = walk.attach(TN.NSortRawDatatoArray())
-    # walk = walk.attach(SN.NPrint())
 
-    #
     branch = walk.attach(TN.NAccumulateSingleScan())
+    branch = branch.attach(TN.NSingleArrayToSpecData())
     #
     # branch1 = branch.attach(SN.NPrint())
-    branch1 = branch.attach(TN.NSingleArrayToSpecData())
-    branch1 = branch1.attach(TN.NSingleSpecFromSpecData([0]))
+    branch1 = branch.attach(TN.NSingleSpecFromSpecData([0]))
     # branch1 = branch1.attach(SN.NPrint())
     branch1 = branch1.attach(TN.NMPlLivePlot(axes[0], 'scaler 0'))
     #
-    # branch2 = branch.attach(TN.NArithmetricScaler([1]))
-    # branch2 = branch2.attach(TN.NMPlLivePlot(axes[1], 'scaler 1'))
+    branch2 = branch.attach(TN.NSingleSpecFromSpecData([1]))
+    branch2 = branch2.attach(TN.NMPlLivePlot(axes[1], 'scaler 1'))
     #
-    # branch3 = branch.attach(TN.NArithmetricScaler([0, 1]))
-    # branch3 = branch3.attach(TN.NMPlLivePlot(axes[2], 'scaler 0+1'))
+    branch3 = branch.attach(TN.NSingleSpecFromSpecData([0, 1]))
+    branch3 = branch3.attach(TN.NMPlLivePlot(axes[2], 'scaler 0+1'))
     #
-    # walk = walk.attach(TN.NRemoveTrackCompleteFlag())
-    # walk = walk.attach(TN.NSumCS())
+    walk = walk.attach(TN.NRemoveTrackCompleteFlag())
+    walk = walk.attach(TN.NSumCS())
+    # walk = walk.attach(SN.NPrint())
+
     #
-    # walk = walk.attach(TN.NMPlLivePlot(axes[3], 'live sum'))
+    sum = walk.attach(TN.NSingleArrayToSpecData())
+    sum0 = sum.attach(TN.NSingleSpecFromSpecData([0]))
+    sum0 = sum0.attach(TN.NMPlLivePlot(axes[3], 'live sum'))
     #
-    # branch4 = walk.attach(TN.NArithmetricScaler([0, 1]))
-    # branch4 = branch4.attach(TN.NMPlLivePlot(axes[4], 'scaler 0+1'))
+    sum01 = sum.attach(TN.NSingleSpecFromSpecData([0, 1]))
+    # sum01 = sum01.attach(SN.NPrint())
+    sum01 = sum01.attach(TN.NMPlLivePlot(axes[4], 'scaler 0+1'))
     #
-    # walk = walk.attach(TN.NCheckIfTrackComplete())
-    # walk = walk.attach(TN.NMPlLivePlot(axes[5], 'final sum'))
-    # walk = walk.attach(TN.NSaveSumCS())
+    walk = walk.attach(TN.NCheckIfTrackComplete())
+    finalsum = walk.attach(TN.NSingleArrayToSpecData())
+    finalsum = finalsum.attach(TN.NMultiSpecFromSpecData([[0], [1]]))
+    finalsum = finalsum.attach(SN.NPrint())
+    finalsum = finalsum.attach(TN.NMPlLivePlot(axes[5], 'final sum'))
+    walk = walk.attach(TN.NSaveSumCS())
     return pipe
 
 def kepco_scan_pipe(initial_scan_pars):

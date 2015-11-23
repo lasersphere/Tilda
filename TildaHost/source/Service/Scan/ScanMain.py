@@ -45,7 +45,7 @@ class ScanMain:
         self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict)
         self.pipeline.start()
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
-        for track_num in track_list:
+        for track_num in sorted(track_list):
             self.prep_track_in_pipe(track_num, track_list)
             if self.start_measurement(scan_dict, track_num):
                 self.read_data()

@@ -231,7 +231,8 @@ class NAcquireOneScanCS(Node):
 class NSortRawDatatoArray(Node):
     def __init__(self):
         """
-        Node for sorting the splitted raw data into an scaler Array. Missing Values will be set to 0.
+        Node for sorting the splitted raw data into an scaler Array containing all tracks.
+        Missing Values will be set to 0. No Value will be emitted twice.
         input: split raw data
         output: list of tuples [(scalerArray, scan_complete_flag)... ], missing values are 0
         """
@@ -340,7 +341,8 @@ class NCheckIfTrackComplete(Node):
 
     def processData(self, data, pipeData):
         ret = None
-        if csAna.checkIfTrackComplete(pipeData):
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        if csAna.checkIfTrackComplete(pipeData, track_name):
             ret = data
         return ret
 
@@ -409,10 +411,6 @@ class NMPlLivePlot(Node):
         x = data[0]
         y = data[1]
         self.animate(x, y)
-        logging.debug('plot data is, x: ' + str(x) + '\t' + str(type(x))
-                      + '\t' + str(len(x)) + '\n' +
-                      'y-data is: ' + str(y) + '\t' + str(type(y))
-                      + '\t' + str(len(y)) + '\n')
         logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
         return data
 
@@ -431,12 +429,13 @@ class NSaveSumCS(Node):
         self.type = 'SaveSumCS'
 
     def processData(self, data, pipeData):
-        pipeData['activeTrackPar'] = form.add_working_time_to_track_dict(pipeData['activeTrackPar'])
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        pipeData[track_name] = form.add_working_time_to_track_dict(pipeData[track_name])
         pipeInternals = pipeData['pipeInternals']
         file = pipeInternals['activeXmlFilePath']
         rootEle = filhandl.loadXml(file)
         logging.info('saving data: ' + str(data))
-        xmlAddCompleteTrack(rootEle, pipeData, data)
+        xmlAddCompleteTrack(rootEle, pipeData, data, track_name)
         filhandl.saveXml(rootEle, file, False)
         logging.info('saving Continous Sequencer Sum to: ' + str(file))
         return data
@@ -487,7 +486,29 @@ class NSingleSpecFromSpecData(Node):
         self.scalers = scalers
 
     def processData(self, spec_data_instance, pipeData):
-        return spec_data_instance.getArithSpec(self.scalers, -1)
+        x, y, err = spec_data_instance.getArithSpec(self.scalers, -1)
+        return np.array(x), y
+
+
+class NMultiSpecFromSpecData(Node):
+    def __init__(self, scalers):
+        """
+        will return a single spectrum of the given scalers
+        a tuple with (volt, cts, err) of the specified scaler and track. -1 for all tracks
+        input: SpecData
+        ouptut: tuple, (volt, cts, err)
+        """
+        super(NMultiSpecFromSpecData, self).__init__()
+        self.type = 'MultiSpecFromSpecData'
+        self.scalers = scalers
+
+    def processData(self, spec_data_instance, pipeData):
+        ret = []
+        for sc in self.scalers:
+            x, y, err = spec_data_instance.getArithSpec(sc, -1)
+            ret.append(x)
+            ret.append(y)
+        return ret
 
 
 class NSingleArrayToSpecData(Node):

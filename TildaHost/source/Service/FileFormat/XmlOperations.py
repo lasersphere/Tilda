@@ -90,14 +90,14 @@ def xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackdict):
     return rootEle
 
 
-def xmlAddCompleteTrack(rootEle, scanDict, data):
+def xmlAddCompleteTrack(rootEle, scanDict, data, track_name):
     """
     Add a complete Track to an lxml root element
     """
     datatype = scanDict['isotopeData']['type']
     pipeInternalsDict = scanDict['pipeInternals']
-    nOfTrack = pipeInternalsDict['activeTrackNumber']
-    trackDict = scanDict['activeTrackPar']
+    nOfTrack = int(track_name[5:])
+    trackDict = scanDict[track_name]
     trackDict.update(dacStartVoltage=get_voltage_from_18bit(trackDict['dacStartRegister18Bit']))
     trackDict.update(dacStepsizeVoltage=get_voltage_from_18bit(trackDict['dacStepSize18Bit'] + int(2 ** 17)))
     xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackDict)
