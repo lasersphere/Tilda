@@ -406,9 +406,9 @@ class NMPlLivePlot(Node):
     def processData(self, data, pipeData):
         logging.debug('plotting...')
         t = time.time()
-        x = np.array(data[0])
-        y = data[1][0]
-        self.animate(x,y)
+        x = data[0]
+        y = data[1]
+        self.animate(x, y)
         logging.debug('plot data is, x: ' + str(x) + '\t' + str(type(x))
                       + '\t' + str(len(x)) + '\n' +
                       'y-data is: ' + str(y) + '\t' + str(type(y))
@@ -476,7 +476,7 @@ class NAccumulateSingleScan(Node):
         self.scalerArray = form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
 
 
-class NArithmetricScaler(Node):
+class NSingleSpecFromSpecData(Node):
     def __init__(self, scalers):
         """
         will return a single spectrum of the given scalers
@@ -484,12 +484,12 @@ class NArithmetricScaler(Node):
         input: SpecData
         ouptut: tuple, (volt, cts, err)
         """
-        super(NArithmetricScaler, self).__init__()
-        self.type = 'ArithmetricScaler'
+        super(NSingleSpecFromSpecData, self).__init__()
+        self.type = 'SingleSpecFromSpecData'
         self.scalers = scalers
 
-    def processData(self, data, pipeData):
-        return data.getSingleSpec(self.scalers, -1)
+    def processData(self, spec_data_instance, pipeData):
+        return spec_data_instance.getArithSpec(self.scalers, -1)
 
 
 class NSingleArrayToSpecData(Node):
@@ -512,8 +512,6 @@ class NSingleArrayToSpecData(Node):
         self.spec_data.nrLoops = [self.Pipeline.pipeData['track' + str(tr_num)]['nOfScans']
                                   for tr_num in tr_num_list]
         self.spec_data.nrTracks = tracks
-        self.spec_data.nrScalers = [len(self.Pipeline.pipeData['track' + str(tr_num)]['activePmtList'])
-                                    for tr_num in tr_num_list]
         self.spec_data.accVolt = [self.Pipeline.pipeData['track' + str(tr_num)]['postAccOffsetVolt']
                                   for tr_num in tr_num_list]
         self.spec_data.laserFreq = self.Pipeline.pipeData['isotopeData']['laserFreq']
@@ -524,6 +522,8 @@ class NSingleArrayToSpecData(Node):
         self.spec_data.err = form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
 
     def processData(self, data, pipeData):
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        self.spec_data.nrScalers = len(self.Pipeline.pipeData[track_name]['activePmtList'])
         self.spec_data.cts = data
         return self.spec_data
 
