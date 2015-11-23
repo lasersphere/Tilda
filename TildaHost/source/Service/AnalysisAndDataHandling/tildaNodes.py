@@ -526,3 +526,20 @@ class NSingleArrayToSpecData(Node):
     def processData(self, data, pipeData):
         self.spec_data.cts = data
         return self.spec_data
+
+
+class NScanProgWinUpdate(Node):
+    def __init__(self, scan_prog_win):
+        """
+        update the scanprogess window by looking into the pipeData
+        """
+        super(NScanProgWinUpdate, self).__init__()
+        self.type = 'ScanProgWinUpdate'
+        self.scp_win = scan_prog_win
+
+    def start(self):
+        self.update(self.Pipeline.pipeData)
+
+    def update(self, scand):
+        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
+        self.scp_win.set_n_of_total_tracks(tracks)

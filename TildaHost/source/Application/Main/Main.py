@@ -11,6 +11,7 @@ import sys
 import logging
 import os
 import threading
+import time
 
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
 from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
