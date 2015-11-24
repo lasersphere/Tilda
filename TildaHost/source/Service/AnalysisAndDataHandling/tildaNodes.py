@@ -383,7 +383,7 @@ class NPlotSum(Node):
 
 
 class NMPlLivePlot(Node):
-    def __init__(self, ax, title):
+    def __init__(self, ax, title, plt_styles_list):
         """
         Node for plotting live Data using matplotlib.pyplot
         input: list, [(x1, y1), (x2, y2),... ] x and y are numpy arrays
@@ -394,6 +394,7 @@ class NMPlLivePlot(Node):
 
         self.ax = ax
         self.title = title
+        self.plotStyles = plt_styles_list
         self.ax.set_ylabel(self.title)
         self.x = None
         self.y = None
@@ -416,9 +417,12 @@ class NMPlLivePlot(Node):
         logging.debug('plotting...')
         t = time.time()
         plot_list = []  # [(x1, y1), (x2, y2), ....]
+        i = 0
         for dat in data:
             plot_list.append(dat[0])
             plot_list.append(dat[1])
+            plot_list.append(self.plotStyles[i])
+            i += 1
         self.animate(plot_list)
         logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
         return data
