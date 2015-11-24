@@ -38,21 +38,20 @@ class ScanMain:
         """
         logging.info('preparing isotope: ' + scan_dict['isotopeData']['isotope'] +
                      ' of type: ' + scan_dict['isotopeData']['type'])
-        n_of_tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
+        n_of_tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
         logging.info('active power supplies: ' + str(self.post_acc_main.active_power_supplies))
         if self.post_acc_main.active_power_supplies == {}:  # initialize power sups here if necessary
             self.init_post_accel_pwr_supplies()
         self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict)
         self.pipeline.start()
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
-        for track_num in sorted(track_list):
-            self.prep_track_in_pipe(track_num, track_list)
+        for track_index, track_num in enumerate(track_num_list):
+            self.prep_track_in_pipe(track_num, track_index)
             if self.start_measurement(scan_dict, track_num):
                 self.read_data()
         logging.info('Measurement completed of isotope: ' + scan_dict['isotopeData']['isotope'] +
                      'of type: ' + scan_dict['isotopeData']['type'])
         self.pipeline.stop()  # halt the pipeline, which will cause the mpl-win to stay open
-
 
     def prep_seq(self, seq_type):
         """
@@ -71,8 +70,7 @@ class ScanMain:
             elif self.sequencer.type != seq_type:
                 self.sequencer = FindSeq.ret_seq_instance_of_type('cs')
 
-    def prep_track_in_pipe(self, track_num, track_list):
-        track_index = track_list.index(track_num)  # maybe track1 is scanned while track 0 is missing.
+    def prep_track_in_pipe(self, track_num, track_index):
         track_name = 'track' + str(track_num)
         self.pipeline.pipeData['pipeInternals']['activeTrackNumber'] = (track_index, track_name)
         # self.pipeline.start()

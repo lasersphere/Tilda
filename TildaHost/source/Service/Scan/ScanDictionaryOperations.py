@@ -54,7 +54,7 @@ def get_number_of_tracks_in_scan_dict(scan_dict):
     """
     count the number of tracks in the given dictionary.
     search indicator is 'track' in keys.
-    :return: (n_of_tracks, list_of_track_nums)
+    :return: (n_of_tracks, sorted(list_of_track_nums))
     """
     n_of_tracks = 0
     list_of_track_nums = []
@@ -62,7 +62,7 @@ def get_number_of_tracks_in_scan_dict(scan_dict):
         if 'track' in str(key):
             n_of_tracks += 1
             list_of_track_nums.append(int(key[5:]))
-    return n_of_tracks, list_of_track_nums
+    return n_of_tracks, sorted(list_of_track_nums)
 
 
 def get_available_tracknum(scan_dict):
