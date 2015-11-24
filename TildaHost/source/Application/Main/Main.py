@@ -50,11 +50,16 @@ class Main:
         """
         if workdir_str == '':  # answer of dialog when cancel is pressed
             return None
-        self.working_directory = workdir_str
-        self.database = workdir_str + '/' + os.path.split(workdir_str)[1] + '.sqlite'
-        DbOp.createTildaDB(self.database)
-        logging.debug('working directory has been set to: ' + str(workdir_str))
-        return workdir_str
+        try:
+            self.working_directory = workdir_str
+            self.database = workdir_str + '/' + os.path.split(workdir_str)[1] + '.sqlite'
+            DbOp.createTildaDB(self.database)
+            logging.debug('working directory has been set to: ' + str(workdir_str))
+            return workdir_str
+        except Exception as e:
+            logging.error('while loading db from: ' + workdir_str + ' this happened:' + str(e))
+            self.database = None
+            self.working_directory = None
 
     def start_scan(self, one_scan_dict):
         """
