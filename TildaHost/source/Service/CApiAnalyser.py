@@ -69,9 +69,8 @@ class CApiAnalyser():
             self.analyser(thfifos, False)
 
 
-
-headerpath = 'E:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\SimpleCounter\\NiFpga_SimpleCounterV100.h'
-bitfilepath = 'E:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\SimpleCounter\\NiFpga_SimpleCounterV100.lvbitx'
+headerpath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\SimpleCounter\\NiFpga_SimpleCounterV101.h'
+bitfilepath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\SimpleCounter\\NiFpga_SimpleCounterV101.lvbitx'
 fpgaresource = 'Rio1'
 outputplease = CApiAnalyser()
 outputplease.cApiFileHandler(headerpath, bitfilepath, fpgaresource)

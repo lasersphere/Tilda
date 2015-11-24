@@ -10,9 +10,9 @@ import ctypes
 
 
 '''Bitfile Signature:'''
-bitfileSignature = '1927BCDAF87BC3C5B46E16D2F712C497'
+bitfileSignature = '13086A04A757C99580EBDCDE4BA18ABF'
 '''Bitfile Path:'''
-bitfilePath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\SimpleCounter\\NiFpga_SimpleCounterV100.lvbitx'
+bitfilePath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\SimpleCounter\\NiFpga_SimpleCounterV101.lvbitx'
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''
