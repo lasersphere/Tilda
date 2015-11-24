@@ -57,14 +57,15 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         sctype = self.buffer_scan_dict['isotopeData']['type']
         iso = self.buffer_scan_dict['isotopeData']['isotope']
         next_track_num, track_num_list = SdOp.get_available_tracknum(self.buffer_scan_dict)
+        track_name = 'track' + str(next_track_num)
         scand_from_db = DbOp.extract_track_dict_from_db(self.main.database, iso, sctype, next_track_num)
         if scand_from_db is not None:
             logging.debug('adding track' + str(next_track_num) + ' from database')
-            self.buffer_scan_dict['track' + str(next_track_num)] = scand_from_db
+            self.buffer_scan_dict[track_name] = scand_from_db[track_name]
         else:
             track_to_copy_from = 'track' + str(max(track_num_list))
             logging.debug('adding track' + str(next_track_num) + ' copying values from: ' + track_to_copy_from)
-            self.buffer_scan_dict['track' + str(next_track_num)] = deepcopy(self.buffer_scan_dict[track_to_copy_from])
+            self.buffer_scan_dict[track_name] = deepcopy(self.buffer_scan_dict[track_to_copy_from])
         tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(self.buffer_scan_dict)
         self.buffer_scan_dict['isotopeData']['nOfTracks'] = tracks
         self.update_track_list()
