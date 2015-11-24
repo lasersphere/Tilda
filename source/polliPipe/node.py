@@ -41,6 +41,7 @@ class Node(object):
             self.start()
             newjobs = self.createJobs(item, False)
         elif item.type == "stop":
+            self.stop()
             newjobs = self.createJobs(item, False)
         elif item.type == "clear":
             self.clear()
@@ -77,6 +78,12 @@ class Node(object):
     def start(self):
         """
         setup the memories in the nodes. Does nothing for generic node, overwrite!
+        """
+        pass
+
+    def stop(self):
+        """
+        halt the pipeline
         """
         pass
 
