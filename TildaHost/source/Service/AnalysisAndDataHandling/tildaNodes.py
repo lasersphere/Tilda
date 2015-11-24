@@ -414,19 +414,27 @@ class NMPlLivePlot(Node):
         logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
         return data
 
-    def clear(self):
+    def stop(self):
         MPLPlotter.show(block=True)  # this only work if pipeline thread is main thread. :(
 
 
 class NSaveSumCS(Node):
     def __init__(self):
         """
-        function to save all incoming CS-Sum-Data
-        input: complete Sum of one track
+        function to save all incoming CS-Sum-Data.
+        will also add working time to each track on start() and on processData(...).
+        input: complete, scalerArray containing all tracks.
         output: same as input
         """
         super(NSaveSumCS, self).__init__()
         self.type = 'SaveSumCS'
+
+    def start(self):
+        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
+        for tr in track_num_list:
+            track_name = 'track' + str(tr)
+            self.Pipeline.pipeData[track_name] = form.add_working_time_to_track_dict(
+                self.Pipeline.pipeData[track_name])
 
     def processData(self, data, pipeData):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
@@ -435,7 +443,7 @@ class NSaveSumCS(Node):
         file = pipeInternals['activeXmlFilePath']
         rootEle = filhandl.loadXml(file)
         logging.info('saving data: ' + str(data))
-        xmlAddCompleteTrack(rootEle, pipeData, data, track_name)
+        xmlAddCompleteTrack(rootEle, pipeData, data[track_ind], track_name)
         filhandl.saveXml(rootEle, file, False)
         logging.info('saving Continous Sequencer Sum to: ' + str(file))
         return data
