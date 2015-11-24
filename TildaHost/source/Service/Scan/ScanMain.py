@@ -52,6 +52,7 @@ class ScanMain:
         logging.info('Measurement completed of isotope: ' + scan_dict['isotopeData']['isotope'] +
                      'of type: ' + scan_dict['isotopeData']['type'])
         self.pipeline.stop()  # halt the pipeline, which will cause the mpl-win to stay open
+        self.pipeline.clear()
 
     def prep_seq(self, seq_type):
         """
