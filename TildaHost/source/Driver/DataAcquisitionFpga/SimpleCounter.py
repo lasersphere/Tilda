@@ -28,6 +28,11 @@ class SimpleCounter(FPGAInterfaceHandling):
         return self.checkFpgaStatus()
 
     def read_data_from_fifo(self):
+        """
+        :return: {nOfEle,  newData, elemRemainInFifo}
+        nOfEle = int, number of Read Elements, newData = numpy.ndarray containing all data that was read
+               elemRemainInFifo = int, number of Elements still in FifoBuffer
+       """
         read_dict = self.ReadU32Fifo(ScCfg.transferToHost['ref'])
         return read_dict
 

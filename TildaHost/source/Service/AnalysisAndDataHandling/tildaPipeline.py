@@ -120,3 +120,16 @@ def initPipeData(initialScanPars):
     pipeData['pipeInternals']['curVoltInd'] = 0
     pipeData['pipeInternals']['activeXmlFilePath'] = FaFH.createXmlFileOneIsotope(pipeData)
     return pipeData
+
+
+def simple_counter_pipe():
+    start = Node()
+
+    pipe = Pipeline(start)
+
+    walk = start.attach(TN.NSplit32bData())
+    walk = walk.attach(TN.NSortByPmt(5))
+    walk = walk.attach(SN.NPrint())
+
+    return pipe
+

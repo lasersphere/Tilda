@@ -587,3 +587,30 @@ class NScanProgWinUpdate(Node):
     def update(self, scand):
         tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
         self.scp_win.set_n_of_total_tracks(tracks)
+
+
+class NSortByPmt(Node):
+    """
+    Noed for the Simple Counter which will store a limited amount of datapoints per pmt.
+    input: splitted raw data
+    output: [pmt0, pmt1, ... pmt(7)] with len(pmt0-7) = datapoints
+    """
+
+    def __init__(self, datapoints):
+        super(NSortByPmt, self).__init__()
+        self.type = 'NSortByPmt'
+        self.datapoints = datapoints
+
+    def start(self):
+        self.act_pmt_list = self.Pipeline.pipeData.get('activePmtList')
+        self.buffer = np.zeros((len(self.act_pmt_list), self.datapoints,))
+
+    def clear(self):
+        self.act_pmt_list = self.Pipeline.pipeData.get('activePmtList')
+        self.buffer = np.zeros((len(self.act_pmt_list), self.datapoints,))
+
+    def processData(self, data, pipeData):
+        for ind, val in enumerate(data):
+            if val['secondHeader'] in self.act_pmt_list:
+                pmt_ind = self.act_pmt_list.index(val['secondHeader'])
+                np.put(self.buffer, )
