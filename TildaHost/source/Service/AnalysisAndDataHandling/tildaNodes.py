@@ -232,7 +232,8 @@ class NSortRawDatatoArray(Node):
     def __init__(self):
         """
         Node for sorting the splitted raw data into an scaler Array containing all tracks.
-        Missing Values will be set to 0. No Value will be emitted twice.
+        Missing Values will be set to 0.
+        No Value will be emitted twice.
         input: split raw data
         output: list of tuples [(scalerArray, scan_complete_flag)... ], missing values are 0
         """
@@ -300,8 +301,9 @@ class NSortRawDatatoArray(Node):
 class NSumCS(Node):
     def __init__(self):
         """
-        function to sum up all incoming complete Scans
-        input: complete Scans
+        function to sum up all scalerArrays.
+        Since no value is emitted twice, arrays can be directly added
+        input: list of scalerArrays, complete or uncomplete
         output: scalerArray containing the sum of each scaler, voltage
         """
         super(NSumCS, self).__init__()
@@ -323,6 +325,12 @@ class NSumCS(Node):
 
 class NRemoveTrackCompleteFlag(Node):
     def __init__(self):
+        """
+        removes the scan_complete_flag from the incoming tuple.
+        input: list of tuples [(scalerArray, scan_complete_flag)... ], missing values are 0
+        output: list of scalerArrays, complete or uncomplete
+        """
+
         super(NRemoveTrackCompleteFlag, self).__init__()
         self.type = 'NRemoveTrackCompleteFlag'
 
@@ -394,7 +402,6 @@ class NMPlLivePlot(Node):
         # l = form.create_x_axis_from_scand_dict(self.Pipeline.pipeData)
         # self.x = [item for sublist in l for item in sublist]
         MPLPlotter.ion()
-        pass
 
     def animate(self, x, y):
         # self.ax.clear()
@@ -452,6 +459,7 @@ class NSaveSumCS(Node):
 class NAccumulateSingleScan(Node):
     def __init__(self):
         """
+        accumulates a singel scan. This is mostly used for plotting the current scan.
         input: list of tuples [(scalerArray, scan_complete)... ], missing values are 0
         output: scalerArray, missing values are 0
         """
