@@ -65,8 +65,8 @@ def pause(time):
     plt.pause(time)
 
 
-def plt_axes(axes, x, y, title):
+def plt_axes(axes, title, plotlist):
     axes.clear()
-    axes.plot(x, y)
+    axes.plot(*plotlist)
     axes.set_ylabel(title)
 
