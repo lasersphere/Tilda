@@ -14,6 +14,7 @@ import Service.VoltageConversions.VoltageConversions as VCon
 
 import time
 
+
 class SimpleCounter(FPGAInterfaceHandling, ScCfg):
     def __init__(self):
         bit_path = ScCfg.bitfilePath
