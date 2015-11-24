@@ -386,7 +386,7 @@ class NMPlLivePlot(Node):
     def __init__(self, ax, title):
         """
         Node for plotting live Data using matplotlib.pyplot
-        input: ??
+        input: list, [(x1, y1), (x2, y2),... ] x and y are numpy arrays
         output: input
         """
         super(NMPlLivePlot, self).__init__()
@@ -403,21 +403,23 @@ class NMPlLivePlot(Node):
         # self.x = [item for sublist in l for item in sublist]
         MPLPlotter.ion()
 
-    def animate(self, x, y):
+    def animate(self, plotlist):
         # self.ax.clear()
         # self.ax.plot(x, y)
         # self.ax.set_ylabel(self.title)
         # plt.pause(0.0001)
-        MPLPlotter.plt_axes(self.ax, x, y, self.title)
+        MPLPlotter.plt_axes(self.ax, self.title, plotlist)
         # time.sleep(0.2)
         MPLPlotter.pause(0.0001)
 
     def processData(self, data, pipeData):
         logging.debug('plotting...')
         t = time.time()
-        x = data[0]
-        y = data[1]
-        self.animate(x, y)
+        plot_list = []  # [(x1, y1), (x2, y2), ....]
+        for dat in data:
+            plot_list.append(dat[0])
+            plot_list.append(dat[1])
+        self.animate(plot_list)
         logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
         return data
 
@@ -502,17 +504,21 @@ class NSingleSpecFromSpecData(Node):
         self.scalers = scalers
 
     def processData(self, spec_data_instance, pipeData):
+        ret = []
         x, y, err = spec_data_instance.getArithSpec(self.scalers, -1)
-        return np.array(x), y
+        ret.append((np.array(x), y))
+        return ret
 
 
 class NMultiSpecFromSpecData(Node):
     def __init__(self, scalers):
         """
         will return a single spectrum of the given scalers
-        a tuple with (volt, cts, err) of the specified scaler and track. -1 for all tracks
+        of the specified scaler and track. -1 for all tracks.
+        scalers should be list of lists -> [[0, 1], [0]].
+        each element as syntax as in getArithSpec in specData
         input: SpecData
-        ouptut: tuple, (volt, cts, err)
+        ouptut: list, [(x1, y1), (x2, y2),... ]
         """
         super(NMultiSpecFromSpecData, self).__init__()
         self.type = 'MultiSpecFromSpecData'
@@ -522,8 +528,7 @@ class NMultiSpecFromSpecData(Node):
         ret = []
         for sc in self.scalers:
             x, y, err = spec_data_instance.getArithSpec(sc, -1)
-            ret.append(x)
-            ret.append(y)
+            ret.append((np.array(x), y))
         return ret
 
 

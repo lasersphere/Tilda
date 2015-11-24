@@ -87,7 +87,7 @@ def CsPipe(initialScanPars=None):
 
     #
     sum = walk.attach(TN.NSingleArrayToSpecData())
-    sum0 = sum.attach(TN.NSingleSpecFromSpecData([0]))
+    sum0 = sum.attach(TN.NMultiSpecFromSpecData([[0], [1]]))
     sum0 = sum0.attach(TN.NMPlLivePlot(axes[3], 'live sum'))
     #
     sum01 = sum.attach(TN.NSingleSpecFromSpecData([0, 1]))
