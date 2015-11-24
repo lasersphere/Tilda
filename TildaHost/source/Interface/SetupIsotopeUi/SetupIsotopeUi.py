@@ -13,7 +13,6 @@ from Interface.SetupIsotopeUi.Ui_setupIsotope import Ui_SetupIsotope
 import Service.DatabaseOperations.DatabaseOperations as DbOp
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as Dft
-import Application.Config as Cfg
 
 
 class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
@@ -83,9 +82,6 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
             self.default_scan_dict, DbOp.extract_all_tracks_from_db(
                 self.db, self.comboBox_isotope.currentText(),
                 self.comboBox_sequencer_select.currentText()))
-        tracks, tr_num_lis = SdOp.get_number_of_tracks_in_scan_dict(self.new_scan_dict)
-        self.new_scan_dict['isotopeData']['nOfTracks'] = tracks
-        self.new_scan_dict['isotopeData']['version'] = Cfg.version
         self.close()
 
     def cancel(self):

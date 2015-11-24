@@ -108,7 +108,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         :return:bool, True if successfully changed State
         """
         self.status = CsCfg.seqStateDict['measureTrack']
-        logging.debug('measureing track: ' + str(track_num) +
+        print('measureing track: ' + str(track_num) +
                       '\nscanparameter are:' + str(scanpars))
         self.random_data_builder(scanpars, track_num)
         return True

@@ -10,8 +10,6 @@ from PyQt5 import QtWidgets
 import sys
 import logging
 import os
-# import threading
-import time
 import multiprocessing
 
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
@@ -23,6 +21,7 @@ from Service.Scan.ScanMain import ScanMain
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as Dft
 import Service.DatabaseOperations.DatabaseOperations as DbOp
+import Application.Config as Cfg
 
 
 class Main:
@@ -59,17 +58,25 @@ class Main:
 
     def start_scan(self, one_scan_dict):
         """
-        setup all devices, including the FPGAs
-        start the Pipeline
-        read data from FPGA and feed it every "period" seconds to the pipeline.
-        The Pipeline will take care of plotting and displaying.
+        merge the given scan dict with measureVoltPars, workingDirectory, nOfTracks and version
+        start new process and:
+            setup all devices, including the FPGAs
+            start the Pipeline
+            read data from FPGA and feed it every "period" seconds to the pipeline.
+            The Pipeline will take care of plotting and displaying.
         """
         one_scan_dict['measureVoltPars'] = SdOp.merge_dicts(one_scan_dict['measureVoltPars'],
                                                             self.measure_voltage_pars)
         one_scan_dict['pipeInternals']['workingDirectory'] = self.working_directory
+        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(one_scan_dict)
+        one_scan_dict['isotopeData']['nOfTracks'] = tracks
+        one_scan_dict['isotopeData']['version'] = Cfg.version
         logging.debug('will scan: ' + str(sorted(one_scan_dict)))
-        self.iso_scan_process = multiprocessing.Process(target=self.scan_main.scan_one_isotope, args=(one_scan_dict,))
+        self.iso_scan_process = multiprocessing.Process(
+            target=self.scan_main.scan_one_isotope, args=(one_scan_dict,))
         self.iso_scan_process.start()
+        # multiprocessing is used instead of threading due to QT,
+        # because the plot window could not be held open in another Thread than the main thread
 
     def set_power_supply_voltage(self, power_supply, volt):
         """
