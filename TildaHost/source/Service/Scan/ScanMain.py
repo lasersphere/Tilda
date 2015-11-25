@@ -40,8 +40,6 @@ class ScanMain:
                      ' of type: ' + scan_dict['isotopeData']['type'])
         n_of_tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
         logging.info('active power supplies: ' + str(self.post_acc_main.active_power_supplies))
-        if self.post_acc_main.active_power_supplies == {}:  # initialize power sups here if necessary
-            self.init_post_accel_pwr_supplies()
         self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict)
         self.pipeline.start()
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
@@ -85,11 +83,6 @@ class ScanMain:
         track_dict = scan_dict.get('track' + str(track_num))
         logging.debug('starting measurement with track_dict: ' +
                       str(sorted(track_dict)))
-        if track_dict.get('postAccOffsetVoltControl', False):
-            # set post acceleration power supply, will not be set for Kepco
-            power_supply = 'Heinzinger' + str(track_dict.get('postAccOffsetVoltControl'))
-            volt = track_dict.get('postAccOffsetVolt', 0)
-            self.set_post_accel_pwr_supply(power_supply, volt)
         # figure out how to restart the pipeline with the new parameters here
         start_ok = self.sequencer.measureTrack(scan_dict, track_num)
         return start_ok

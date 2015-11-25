@@ -81,6 +81,9 @@ class Main:
         one_scan_dict['isotopeData']['nOfTracks'] = tracks
         one_scan_dict['isotopeData']['version'] = Cfg.version
         logging.debug('will scan: ' + str(sorted(one_scan_dict)))
+        if self.scan_main.post_acc_main.active_power_supplies == {}:
+            logging.error('could not start measurement, because power supplies are not initialized')
+            return None
         self.iso_scan_process = multiprocessing.Process(
             target=self.scan_main.scan_one_isotope, args=(one_scan_dict,))
         self.iso_scan_process.start()
