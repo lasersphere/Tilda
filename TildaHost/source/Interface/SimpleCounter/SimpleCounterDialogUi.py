@@ -7,9 +7,12 @@ Created on '25.11.2015'
 Description: Dialog to control the Simple Counter while this is running.
 """
 
-import PyQt5.QtWidgets as Qt5
+from PyQt5 import QtWidgets
+from Interface.SimpleCounter.Ui_Simp_Count_Dial import Ui_Dialog_simpleCounterControl
 
+class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
+    def __init__(self):
+        super(SimpleCounterDialogUi, self).__init__()
 
-def open_dial():
-    dial = Qt5.QDialog()
-    dial.exec_()
+        self.setupUi(self)
+        self.exec_()
