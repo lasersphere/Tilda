@@ -35,7 +35,6 @@ class Main:
         # for the voltage measurement.
         self.simple_counter_proc = None
         self.cmd_queue = None
-        self.simple_counter_settings = {'activePmtList': None, 'plotPoints': None}
 
         self.scan_main = ScanMain()
         self.iso_scan_process = None
@@ -91,19 +90,26 @@ class Main:
         self.close_simple_counter_proc()
         self.open_simp_count_dial()
         self.cmd_queue = multiprocessing.JoinableQueue()
-        self.simple_counter_proc = SimpleCounterControl(self.simple_counter_settings, self.cmd_queue)
+        self.simple_counter_proc = SimpleCounterControl([0, 1], 600, self.cmd_queue)
+        try:
+            self.simple_counter_proc.start()
+        except Exception as e:
+            print('while starting the process, this happened:', str(e))
+        # self.simple_counter_proc.run()
+        print('hello back again')
         # self.open_simple_counter_stop_win()
-        input('press anything to abort scan')
+        input('press anything to abort the simple counter')
         self.stop_simple_counter()
 
     def stop_simple_counter(self):
-        self.cmd_queue.put('stop')
+        self.cmd_queue.put(False)
         self.close_simple_counter_proc()
 
     def close_simple_counter_proc(self):
         if self.simple_counter_proc is not None:
             try:
                 self.simple_counter_proc.join()
+                logging.info('simple counter process successfully joined')
             except Exception as e:
                 logging.error('error while closing simple counter process:' + str(e))
             finally:
@@ -152,8 +158,8 @@ class Main:
 
     def open_simp_count_dial(self):
         # open window here in the future, that configures the pipeline.
-        self.simple_counter_settings = {'activePmtList': [0, 1],
-                                 'plotPoints': 600}
+        # self.simple_counter_settings = '{str(activePmtList): [0, 1], str(plotPoints): 600}'
+        pass
     # def open_simple_counter_stop_win(self):
 
 
