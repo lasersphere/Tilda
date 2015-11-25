@@ -643,7 +643,7 @@ class NAddxAxis(Node):
     Node for the Simple Counter which add an x-axis to the moving average,
     to make it plotable with NMPlLivePlot
     jnput: [avg_pmt0, avg_pmt1, ... , avg_pmt7], avg_pmt(0-7) = float
-    output: [
+    output: [(x0, y0), (x0, y0), ...] len(x0) = len(y0) = plotPoints, y0[i] = avg_pmt0
     """
 
     def __init__(self):

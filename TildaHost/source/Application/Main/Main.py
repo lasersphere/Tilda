@@ -15,7 +15,7 @@ import multiprocessing
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
 from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
 from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
-import Interface.SimpleCounter.SimpleCounterDialogUi as ScDial
+from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 
 from Service.Scan.ScanMain import ScanMain
 from Service.SimpleCounter.SimpleCounter import SimpleCounterControl
@@ -156,13 +156,11 @@ class Main:
         self.post_acc_win = None
 
     def open_simple_counter_stop_win(self):
-        ScDial.open_dial()
+        SimpleCounterDialogUi()
 
     def open_simp_count_dial(self):
-        # open window here in the future, that configures the pipeline.
-        # self.simple_counter_settings = '{str(activePmtList): [0, 1], str(plotPoints): 600}'
+        # open window here in the future, that returns the active pmt list and the plotpoints
         return [0, 1], 600
-    # def open_simple_counter_stop_win(self):
 
 
     def close_main_win(self):

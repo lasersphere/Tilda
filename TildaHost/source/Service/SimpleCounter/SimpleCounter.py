@@ -40,7 +40,6 @@ class SimpleCounterControl(multiprocessing.Process):
                 next_task = self.cmd_queue.get(block=False)
                 print(proc_name, ' Exiting')
                 self.sc.DeInitFpga()
-                self.sc_pipe.stop()
                 break  # break if something was send through the cmd_queue
             except queue.Empty:  # i want an empty queue
                 data = self.sc.read_data_from_fifo()
