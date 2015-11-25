@@ -15,13 +15,17 @@ import queue
 
 
 class SimpleCounterControl(SimpleCounter, multiprocessing.Process):
-    def __init__(self, active_pmt_list, plotpoints, cmd_queue):
+    def __init__(self, pipedat, cmd_queue):
+        """
+        module for reading from the simple counter.
+        breaks as soon as something is send trhough the pipeline.
+        :parameter: pipedat = {'activePmtList': active_pmt_list, 'plotPoints': plotpoints}
+        """
         SimpleCounter.__init__(self)
         multiprocessing.Process.__init__(self)
         self.sc_pipe = None
         self.cmd_queue = cmd_queue
-        self.pipe_dat = {'activePmtList': active_pmt_list,
-                                 'plotPoints': plotpoints}
+        self.pipe_dat = pipedat
         self.start()
         # must start reading immediately because otherwise fpga overfills buffer
 
@@ -34,6 +38,7 @@ class SimpleCounterControl(SimpleCounter, multiprocessing.Process):
             try:
                 next_task = self.cmd_queue.get(block=False)
                 print(proc_name, ' Exiting')
+                self.DeInitFpga()
                 break  # break if something was send through the cmd_queue
             except queue.Empty:  # i want an empty queue
                 data = self.read_data_from_fifo()

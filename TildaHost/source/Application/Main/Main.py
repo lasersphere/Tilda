@@ -17,6 +17,7 @@ from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
 from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
 
 from Service.Scan.ScanMain import ScanMain
+from Service.SimpleCounter.SimpleCounter import SimpleCounterControl
 
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as Dft
@@ -32,6 +33,9 @@ class Main:
         self.post_acc_win = None
         self.measure_voltage_pars = Dft.draftMeasureVoltPars  # dict containing all parameters
         # for the voltage measurement.
+        self.simple_counter_proc = None
+        self.cmd_queue = None
+        self.simple_counter_settings = {'activePmtList': None, 'plotPoints': None}
 
         self.scan_main = ScanMain()
         self.iso_scan_process = None
@@ -83,6 +87,28 @@ class Main:
         # multiprocessing is used instead of threading due to QT,
         # because the plot window could not be held open in another Thread than the main thread
 
+    def start_simple_counter(self):
+        self.close_simple_counter_proc()
+        self.open_simp_count_dial()
+        self.cmd_queue = multiprocessing.JoinableQueue()
+        self.simple_counter_proc = SimpleCounterControl(self.simple_counter_settings, self.cmd_queue)
+        # self.open_simple_counter_stop_win()
+        input('press anything to abort scan')
+        self.stop_simple_counter()
+
+    def stop_simple_counter(self):
+        self.cmd_queue.put('stop')
+        self.close_simple_counter_proc()
+
+    def close_simple_counter_proc(self):
+        if self.simple_counter_proc is not None:
+            try:
+                self.simple_counter_proc.join()
+            except Exception as e:
+                logging.error('error while closing simple counter process:' + str(e))
+            finally:
+                self.simple_counter_proc = None
+
     def set_power_supply_voltage(self, power_supply, volt):
         """
         will set the Output voltage of the desiredself
@@ -123,6 +149,13 @@ class Main:
 
     def closed_post_acc_win(self):
         self.post_acc_win = None
+
+    def open_simp_count_dial(self):
+        # open window here in the future, that configures the pipeline.
+        self.simple_counter_settings = {'activePmtList': [0, 1],
+                                 'plotPoints': 600}
+    # def open_simple_counter_stop_win(self):
+
 
     def close_main_win(self):
         for win in self.act_scan_wins:

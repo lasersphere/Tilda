@@ -32,6 +32,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionScan_Control.triggered.connect(self.open_scan_ctrl_win)
         self.actionVoltage_Measurement.triggered.connect(self.open_volt_meas_win)
         self.actionPost_acceleration_power_supply_control.triggered.connect(self.open_post_acc_win)
+        self.actionSimple_Counter.triggered.connect(self.simple_counter)
         self.show()
 
     def choose_working_dir(self):
@@ -50,6 +51,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def open_post_acc_win(self):
         self.main.open_post_acc_win()
+
+    def simple_counter(self):
+        self.main.start_simple_counter()
 
     def closeEvent(self, *args, **kwargs):
         self.main.close_main_win()
