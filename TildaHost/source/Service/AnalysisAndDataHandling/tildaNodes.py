@@ -591,7 +591,9 @@ class NScanProgWinUpdate(Node):
 
 class NSortByPmt(Node):
     """
-    Noed for the Simple Counter which will store a limited amount of datapoints per pmt.
+    Node for the Simple Counter which will store a limited amount of datapoints per pmt.
+    if more datapoints are fed to the pipeline,
+    than defined in init, first incoming will be ignored.
     input: splitted raw data
     output: [pmt0, pmt1, ... pmt(7)] with len(pmt0-7) = datapoints
     """
@@ -600,6 +602,8 @@ class NSortByPmt(Node):
         super(NSortByPmt, self).__init__()
         self.type = 'NSortByPmt'
         self.datapoints = datapoints
+        self.buffer = None
+        self.act_pmt_list = None
 
     def start(self):
         self.act_pmt_list = self.Pipeline.pipeData.get('activePmtList')
@@ -613,4 +617,67 @@ class NSortByPmt(Node):
         for ind, val in enumerate(data):
             if val['secondHeader'] in self.act_pmt_list:
                 pmt_ind = self.act_pmt_list.index(val['secondHeader'])
-                np.put(self.buffer, )
+                self.buffer[pmt_ind] = np.roll(self.buffer[pmt_ind], 1)
+                self.buffer[pmt_ind][0] = val['payload']
+        return self.buffer
+
+
+class NMovingAverage(Node):
+    """
+    Node for the Simple Counter which does the moving average of all given data points
+    input: [pmt0, pmt1, ... pmt(7)] with len(pmt0-7) = datapoints
+    output: [avg_pmt0, avg_pmt1, ... , avg_pmt7], avg_pmt(0-7) = float
+    """
+
+    def __init__(self):
+        super(NMovingAverage, self).__init__()
+        self.type = 'MovingAverage'
+
+    def processData(self, data, pipeData):
+        avg = [np.sum(pmt) for pmt in data]
+        return avg
+
+
+class NAddxAxis(Node):
+    """
+    Node for the Simple Counter which add an x-axis to the moving average,
+    to make it plotable with NMPlLivePlot
+    jnput: [avg_pmt0, avg_pmt1, ... , avg_pmt7], avg_pmt(0-7) = float
+    output: [
+    """
+
+    def __init__(self):
+        super(NAddxAxis, self).__init__()
+        self.type = 'AddxAxis'
+        self.buffer = None
+
+    def start(self):
+        plotpoints = self.Pipeline.pipeData.get('plotPoints')
+        n_of_pmt = len(self.Pipeline.pipeData.get('activePmtList'))
+        self.buffer = np.zeros((n_of_pmt, 2, plotpoints,))
+        self.buffer[:, 0] = np.arange(0, plotpoints)
+
+    def processData(self, data, pipeData):
+        for pmt_ind, avg_pmt in enumerate(data):
+            self.buffer[pmt_ind][1] = np.roll(self.buffer[pmt_ind][1], -1)
+            self.buffer[pmt_ind][1][-1] = avg_pmt
+        return self.buffer
+
+
+class NOnlyOnePmt(Node):
+    """
+    Node to reduce the incoming data to just one pmt.
+
+    """
+
+    def __init__(self, pmt_num):
+        super(NOnlyOnePmt, self).__init__()
+        self.type = 'OnlyOnePmt'
+        self.sel_pmt = pmt_num
+        self.pmt_ind = None
+
+    def start(self):
+        self.pmt_ind = self.Pipeline.pipeData.get('activePmtList').index(self.sel_pmt)
+
+    def processData(self, data, pipeData):
+        return [data[self.pmt_ind]]

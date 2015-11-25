@@ -15,7 +15,7 @@ sc = SimpleCounter()
 time.sleep(1)
 
 sc_pipe = ScPipe()
-sc_pipe.pipeData = {'activePmtList': [0, 1]}
+sc_pipe.pipeData = {'activePmtList': [0, 1], 'plotPoints': 60}
 sc_pipe.start()
 
 while True:

@@ -125,11 +125,25 @@ def initPipeData(initialScanPars):
 def simple_counter_pipe():
     start = Node()
 
+    fig, axes = plt.subplots(2, sharex=True)
+
+    plotpoints = 600
+    sample_rate = 1 / 0.02  # values per second
     pipe = Pipeline(start)
 
     walk = start.attach(TN.NSplit32bData())
-    walk = walk.attach(TN.NSortByPmt(5))
-    walk = walk.attach(SN.NPrint())
+    walk = walk.attach(TN.NSortByPmt(sample_rate))
+    walk = walk.attach(TN.NMovingAverage())
+    # walk = walk.attach(SN.NPrint())
+
+    walk = walk.attach(TN.NAddxAxis())
+    pmt0 = walk.attach(TN.NOnlyOnePmt(0))
+    pmt0 = pmt0.attach(TN.NMPlLivePlot(axes[0], 'mov. avg', ['b-']))
+
+    pmt1 = walk.attach(TN.NOnlyOnePmt(1))
+    pmt1 = pmt1.attach(TN.NMPlLivePlot(axes[1], 'mov. avg', ['b-']))
+
+    # walk = walk.attach(SN.NPrint())
 
     return pipe
 
