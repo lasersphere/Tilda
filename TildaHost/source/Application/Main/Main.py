@@ -15,6 +15,7 @@ import multiprocessing
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
 from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
 from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
+import Interface.SimpleCounter.SimpleCounterDialogUi as ScDial
 
 from Service.Scan.ScanMain import ScanMain
 from Service.SimpleCounter.SimpleCounter import SimpleCounterControl
@@ -90,15 +91,13 @@ class Main:
         self.close_simple_counter_proc()
         self.open_simp_count_dial()
         self.cmd_queue = multiprocessing.JoinableQueue()
-        self.simple_counter_proc = SimpleCounterControl([0, 1], 600, self.cmd_queue)
+        act_pmt_list, datapoints = self.open_simp_count_dial()
+        self.simple_counter_proc = SimpleCounterControl(act_pmt_list, datapoints, self.cmd_queue)
         try:
             self.simple_counter_proc.start()
         except Exception as e:
             print('while starting the process, this happened:', str(e))
-        # self.simple_counter_proc.run()
-        print('hello back again')
-        # self.open_simple_counter_stop_win()
-        input('press anything to abort the simple counter')
+        self.open_simple_counter_stop_win()
         self.stop_simple_counter()
 
     def stop_simple_counter(self):
@@ -156,10 +155,13 @@ class Main:
     def closed_post_acc_win(self):
         self.post_acc_win = None
 
+    def open_simple_counter_stop_win(self):
+        ScDial.open_dial()
+
     def open_simp_count_dial(self):
         # open window here in the future, that configures the pipeline.
         # self.simple_counter_settings = '{str(activePmtList): [0, 1], str(plotPoints): 600}'
-        pass
+        return [0, 1], 600
     # def open_simple_counter_stop_win(self):
 
 
