@@ -9,5 +9,5 @@ Created on '23.09.2015'
 File for global Configs of Tilda
 """
 
-version = '1.06'
-versiondate = '23.09.2015'
+version = '1.07'
+versiondate = '25.11.2015'
