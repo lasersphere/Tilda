@@ -44,7 +44,7 @@ class Main:
         # self.work_dir_changed('E:\\blub')
         # self.work_dir_changed('C:\\temp')
         try:
-            self.work_dir_changed('E:\\lala')
+            self.work_dir_changed('D:/CalciumOfflineTest_151126')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
 
@@ -81,12 +81,13 @@ class Main:
         one_scan_dict['isotopeData']['nOfTracks'] = tracks
         one_scan_dict['isotopeData']['version'] = Cfg.version
         logging.debug('will scan: ' + str(sorted(one_scan_dict)))
-        if self.scan_main.post_acc_main.active_power_supplies == {}:
-            logging.error('could not start measurement, because power supplies are not initialized')
-            return None
-        self.iso_scan_process = multiprocessing.Process(
-            target=self.scan_main.scan_one_isotope, args=(one_scan_dict,))
-        self.iso_scan_process.start()
+        # if self.scan_main.post_acc_main.active_power_supplies == {}:
+        #   logging.error('could not start measurement, because power supplies are not initialized')
+        #return None
+        # self.iso_scan_process = multiprocessing.Process(
+        #     target=self.scan_main.scan_one_isotope, args=(one_scan_dict,))
+        # self.iso_scan_process.start()
+        self.scan_main.scan_one_isotope(one_scan_dict)
         # multiprocessing is used instead of threading due to QT,
         # because the plot window could not be held open in another Thread than the main thread
 
