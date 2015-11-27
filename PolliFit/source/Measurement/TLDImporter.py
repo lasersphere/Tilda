@@ -66,7 +66,7 @@ class TLDImporter(SpecData):
         data = cur.fetchall()
         if len(data) == 1:
             (self.accVolt, self.laserFreq, self.col, self.line, self.type, self.voltDivRatio, self.lineMult, self.lineOffset, self.offset) = data[0]
-            self.col = ast.literal_eval(self.col)
+            # self.col = ast.literal_eval(self.col)
         else:
             raise Exception('TLDImporter: No DB-entry found!')
                 

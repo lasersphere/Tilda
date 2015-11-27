@@ -100,7 +100,6 @@ def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict=None):
     isotopedict = xmlGetDictFromEle(xmlEtree)[1]['header']
     oldDict['isotopeData'] = isotopedict
     oldDict['trackPars'] = trackdict
-    oldDict['activeTrackPar'] = trackdict['track' + str(nOfTrack)]
     oldDict['pipeInternals'] = {}
     oldDict['pipeInternals']['workingDirectory'] = os.path.split(os.path.split(xmlFileName)[0])[0]
     oldDict['pipeInternals']['curVoltInd'] = 0

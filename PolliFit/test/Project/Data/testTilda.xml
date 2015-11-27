@@ -1,58 +1,28 @@
-<TrigaLaserData><header><accVolt>9999.8</accVolt><isotope>calcium_40</isotope><isotopeStartTime>2015-08-07 16:05:50</isotopeStartTime><laserFreq>12568.766</laserFreq><nOfTracks>3</nOfTracks><type>cs</type><version>1.06</version></header><tracks><track0><header><activePmtList>[0, 1]</activePmtList><colDirTrue>False</colDirTrue><dacStartRegister18Bit>262140</dacStartRegister18Bit><dacStartVoltage>9.999771</dacStartVoltage><dacStepSize18Bit>576712</dacStepSize18Bit><dacStepsizeVoltage>43.99984</dacStepsizeVoltage><dwellTime10ns>2000000</dwellTime10ns><invertScan>False</invertScan><nOfCompletedSteps>0</nOfCompletedSteps><nOfScans>30</nOfScans><nOfSteps>20</nOfSteps><postAccOffsetVolt>1000</postAccOffsetVolt><postAccOffsetVoltControl>2</postAccOffsetVoltControl><waitAfterReset25nsTicks>4000</waitAfterReset25nsTicks><waitForKepco25nsTicks>40</waitForKepco25nsTicks></header><data><scalerArray>[[91 24]
- [ 3 51]
- [26 60]
- [56 64]
- [81 98]
- [10 42]
- [22 50]
- [46 10]
- [99 71]
- [23 72]
- [11  3]
- [63 91]
- [82 25]
- [78 80]
- [20 44]
- [ 0 53]
- [57 16]
- [94 45]
- [69 34]
- [85 48]]</scalerArray></data></track0><track1><header><activePmtList>[0, 1]</activePmtList><colDirTrue>False</colDirTrue><dacStartRegister18Bit>262140</dacStartRegister18Bit><dacStartVoltage>9.999771</dacStartVoltage><dacStepSize18Bit>576712</dacStepSize18Bit><dacStepsizeVoltage>43.99984</dacStepsizeVoltage><dwellTime10ns>2000000</dwellTime10ns><invertScan>False</invertScan><nOfCompletedSteps>0</nOfCompletedSteps><nOfScans>30</nOfScans><nOfSteps>20</nOfSteps><postAccOffsetVolt>1000</postAccOffsetVolt><postAccOffsetVoltControl>2</postAccOffsetVoltControl><waitAfterReset25nsTicks>4000</waitAfterReset25nsTicks><waitForKepco25nsTicks>40</waitForKepco25nsTicks></header><data><scalerArray>[[80 60]
- [61  3]
- [83 55]
- [76 22]
- [ 5 94]
- [98 20]
- [91 98]
- [43 25]
- [23 61]
- [31 97]
- [29 16]
- [66 46]
- [38 39]
- [60 55]
- [99 47]
- [49 52]
- [79 68]
- [61 87]
- [56 54]
- [63 86]]</scalerArray></data></track1><track2><header><activePmtList>[0, 1]</activePmtList><colDirTrue>False</colDirTrue><dacStartRegister18Bit>262140</dacStartRegister18Bit><dacStartVoltage>9.999771</dacStartVoltage><dacStepSize18Bit>576712</dacStepSize18Bit><dacStepsizeVoltage>43.99984</dacStepsizeVoltage><dwellTime10ns>2000000</dwellTime10ns><invertScan>False</invertScan><nOfCompletedSteps>0</nOfCompletedSteps><nOfScans>30</nOfScans><nOfSteps>20</nOfSteps><postAccOffsetVolt>1000</postAccOffsetVolt><postAccOffsetVoltControl>2</postAccOffsetVoltControl><waitAfterReset25nsTicks>4000</waitAfterReset25nsTicks><waitForKepco25nsTicks>40</waitForKepco25nsTicks></header><data><scalerArray>[[ 8 83]
- [33 58]
- [47 19]
- [97 14]
- [65 91]
- [58  4]
- [45 22]
- [38 80]
- [84 14]
- [44 21]
- [84 15]
- [15 94]
- [27 33]
- [28 43]
- [ 1 20]
- [49 17]
- [73 54]
- [64 17]
- [93 96]
- [23  5]]</scalerArray></data></track2></tracks></TrigaLaserData>
+<TrigaLaserData><header><accVolt>10000.0</accVolt><isotope>40Ca</isotope><isotopeStartTime>2015-11-26 13:43:46</isotopeStartTime><laserFreq>12586.766</laserFreq><nOfTracks>3</nOfTracks><type>cs</type><version>1.07</version></header><tracks><track0><header><activePmtList>[0, 1]</activePmtList><colDirTrue>False</colDirTrue><dacStartRegister18Bit>104824</dacStartRegister18Bit><dacStartVoltage>-2.000005</dacStartVoltage><dacStepSize18Bit>79</dacStepSize18Bit><dacStepsizeVoltage>0.00752</dacStepsizeVoltage><dwellTime10ns>2000000.0</dwellTime10ns><invertScan>False</invertScan><nOfCompletedSteps>2500.0</nOfCompletedSteps><nOfScans>50</nOfScans><nOfSteps>50</nOfSteps><postAccOffsetVolt>600.0</postAccOffsetVolt><postAccOffsetVoltControl>2</postAccOffsetVoltControl><waitAfterReset25nsTicks>20000</waitAfterReset25nsTicks><waitForKepco25nsTicks>4000</waitForKepco25nsTicks><workingTime>['2015-11-26 13:43:46', '2015-11-26 13:43:49', '2015-11-26 13:44:40']</workingTime></header><data><scalerArray>[[27836 28011 27526 27971 27997 27909 27825 27874 27922 28281 28575 28728
+  29049 29841 30796 32228 34023 36066 37568 39238 39492 38548 37329 35402
+  33044 31646 30157 29395 29030 28736 28472 28219 28243 28028 27961 28191
+  28215 27924 28153 27922 27716 27850 27518 27872 27722 27554 27922 27952
+  27889 27731]
+ [19183 19405 19355 19610 19799 19746 19894 20776 21165 21634 22733 24062
+  25798 29266 33959 40288 49136 58330 65026 70510 71001 66523 61156 52548
+  43873 36774 31193 27702 25299 23567 22469 21800 21099 20436 20255 19461
+  19376 19638 19481 19119 19173 19119 19166 19139 18738 18734 18663 19054
+  18593 18574]]</scalerArray></data></track0><track1><header><activePmtList>[0, 1]</activePmtList><colDirTrue>False</colDirTrue><dacStartRegister18Bit>104824</dacStartRegister18Bit><dacStartVoltage>-2.000005</dacStartVoltage><dacStepSize18Bit>79</dacStepSize18Bit><dacStepsizeVoltage>0.00752</dacStepsizeVoltage><dwellTime10ns>2000000.0</dwellTime10ns><invertScan>True</invertScan><nOfCompletedSteps>2500.0</nOfCompletedSteps><nOfScans>50</nOfScans><nOfSteps>50</nOfSteps><postAccOffsetVolt>600.0</postAccOffsetVolt><postAccOffsetVoltControl>2</postAccOffsetVoltControl><waitAfterReset25nsTicks>20000</waitAfterReset25nsTicks><waitForKepco25nsTicks>4000</waitForKepco25nsTicks><workingTime>['2015-11-26 13:43:46', '2015-11-26 13:45:32']</workingTime></header><data><scalerArray>[[27593 27794 27704 27731 27772 27646 27839 28193 28020 28431 28338 28429
+  28526 29007 29727 30972 32399 34353 35764 36349 37190 36428 35297 33988
+  32329 31059 29856 29332 28702 28536 28462 28554 28168 28136 27971 28213
+  27991 28120 27854 28093 27707 28008 27835 27782 27970 27794 28005 27810
+  27998 27623]
+ [18936 19041 18981 19404 19236 19662 19825 20047 20436 21273 21738 22615
+  23851 26907 30624 36025 42927 49839 56243 60491 61081 58086 53086 45742
+  38914 32944 29063 25769 24230 22535 21542 21172 20692 20227 20167 19546
+  19477 19253 19341 18952 19089 18798 18974 18677 18610 18724 18700 18430
+  18595 18494]]</scalerArray></data></track1><track2><header><activePmtList>[0, 1]</activePmtList><colDirTrue>False</colDirTrue><dacStartRegister18Bit>108774</dacStartRegister18Bit><dacStartVoltage>-1.698804</dacStartVoltage><dacStepSize18Bit>-79</dacStepSize18Bit><dacStepsizeVoltage>-0.004528</dacStepsizeVoltage><dwellTime10ns>2000000.0</dwellTime10ns><invertScan>False</invertScan><nOfCompletedSteps>2500.0</nOfCompletedSteps><nOfScans>50</nOfScans><nOfSteps>50</nOfSteps><postAccOffsetVolt>600.0</postAccOffsetVolt><postAccOffsetVoltControl>2</postAccOffsetVoltControl><waitAfterReset25nsTicks>20000</waitAfterReset25nsTicks><waitForKepco25nsTicks>4000</waitForKepco25nsTicks><workingTime>['2015-11-26 13:43:46', '2015-11-26 13:46:24']</workingTime></header><data><scalerArray>[[27370 27492 27642 27553 27719 27609 27549 27560 27807 27465 27835 27698
+  27545 27260 27518 27593 27587 27769 28359 27905 27924 28247 28918 28968
+  30121 31426 32624 34580 36011 37131 37871 37431 36009 34186 32779 30806
+  29856 29093 28842 28168 28310 27686 27800 27917 27484 27590 27448 27567
+  27756 27484]
+ [18306 18734 18188 18562 18418 18399 18648 18831 18878 18556 18884 19066
+  18927 19489 19338 19486 19618 20174 20882 21060 21852 23009 24454 26841
+  30164 34760 41459 48897 56165 61005 63672 61893 56609 49348 41656 35370
+  29909 26032 24027 22441 21859 20806 20400 20065 19617 19317 19300 19051
+  19001 19131]]</scalerArray></data></track2></tracks></TrigaLaserData>
