@@ -27,9 +27,9 @@ isoL = []
 #     iso = str(str(i) + '_Ca')
 #     isoL.append(iso)
 # Tools.isoPlot(db, '51_Ca')
-Tools.centerPlot(db, ['48_Ca'])
+#Tools.centerPlot(db, ['48_Ca'])
 #print(Physics.wavenumber(762809833.7407918))
-print(Physics.freqFromWavenumber(30))
+#print(Physics.freqFromWavenumber(30))
 '''Crawling'''
 # #Tools.crawl(db, 'DataKepco')
 # Tools.crawl(db, 'DataD1')

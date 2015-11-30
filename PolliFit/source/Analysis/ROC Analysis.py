@@ -31,10 +31,7 @@ db = 'V:/Projekte/COLLAPS/ROC/ROC_October/CaD2.sqlite'
 # Analyzer.combineRes('Kepco', 'b', 'Run2', db, False)
 
 '''Fitting the spectra with Voigt-Fits!'''
-shift40 = []
-shift42 = []
-shift44 = []
-# for i in range(1,2):
+# for i in range(1,3):
     # run = str('Run' + str(i))
     # BatchFit.batchFit(Tools.fileList(db,'40_Ca'), db,run)
     # BatchFit.batchFit(Tools.fileList(db,'42_Ca'), db,run)
@@ -57,17 +54,12 @@ shift44 = []
     # shift42.append(Analyzer.combineShift('42_Ca', run, db)[2])
     # shift44.append(Analyzer.combineShift('44_Ca', run, db)[2])
 
-# for i in range(2, 9):
+
+# for i in range(11,16):
 #     run = str('Run' + str(i))
-#     #BatchFit.batchFit(Tools.fileList(db,'52_Ca'), db,run)
-#     Analyzer.combineRes('52_Ca', 'center',run, db)
-for i in range(12,14):
-    run = str('Run' + str(i))
-    # BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
-    # BatchFit.batchFit(Tools.fileList(db,'52_Ca'), db,run)
-    Analyzer.combineRes('48_Ca', 'sigma',run, db)
-    Analyzer.combineRes('52_Ca','sigma', run, db)
-    Analyzer.combineRes('48_Ca', 'center', run, db)
-    Analyzer.combineRes('52_Ca', 'center', run, db)
-    Analyzer.combineShift('52_Ca', run, db)
-#BatchFit.batchFit(['Run130_ROC_Ca52_ROCSignal.mcp'],db,'Run12')
+#     print(run)
+#     BatchFit.batchFit(Tools.fileList(db,'52_Ca'), db,run)
+#     Analyzer.combineRes('52_Ca','sigma', run, db)
+#     Analyzer.combineRes('52_Ca', 'center', run, db)
+#     Analyzer.combineShift('52_Ca', run, db)
+BatchFit.batchFit(['Run97_ROC_Ca48.mcp'],db,'Run2')
