@@ -56,7 +56,10 @@ def eval_str_vals_in_dict(dicti):
     function to convert the values of a dictionary to int, float or list, if it is possible
     """
     for key, val in dicti.items():
-        dicti[key] = ast.literal_eval(val)
+        try:
+            dicti[key] = ast.literal_eval(val)
+        except Exception as e:
+            print(e, val, type(val))
     return dicti
 
 

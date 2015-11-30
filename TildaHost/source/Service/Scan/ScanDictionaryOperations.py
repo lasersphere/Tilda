@@ -11,7 +11,7 @@ import Application.Config as Cfg
 from copy import copy
 
 
-def init_empty_scan_dict(type_str=None):
+def init_empty_scan_dict(type_str=None, version=None):
     """
     returns an empty scan dictionary in the form as defined in Service.Scan.draftScanParameters.
     All values will be set to None, except the Version information.
@@ -20,7 +20,8 @@ def init_empty_scan_dict(type_str=None):
     scand = dict.fromkeys(DftSc.scanDict_list)
     for key, val in scand.items():
         scand[key] = dict.fromkeys(getattr(DftSc, key + '_list'))
-    scand['isotopeData']['version'] = Cfg.version
+    if version is None:
+        scand['isotopeData']['version'] = Cfg.version
     scand['activeTrackPar'] = merge_dicts(scand['activeTrackPar'],
                                           init_seq_specific_dict(type_str))
     return scand
@@ -63,6 +64,15 @@ def get_number_of_tracks_in_scan_dict(scan_dict):
             n_of_tracks += 1
             list_of_track_nums.append(int(key[5:]))
     return n_of_tracks, sorted(list_of_track_nums)
+
+
+def get_track_names(scan_dict):
+    """
+    create a list of all track names in the scan dictionary, sorted by its tracknumber
+    :return: ['track0', 'track1', ...]
+    """
+    n, track_num_list = get_number_of_tracks_in_scan_dict(scan_dict)
+    return ['track' + str(tr) for tr in track_num_list]
 
 
 def get_available_tracknum(scan_dict):

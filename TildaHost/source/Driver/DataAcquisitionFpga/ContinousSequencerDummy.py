@@ -138,7 +138,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
 
     def data_builder(self, scanpars, track_num):
         """
-        build data for one track. Countervalue = (Num_pmt + 1) * (num_of_step + 1)
+        build data for one track. Countervalue = Num_pmt + (num_of_step + 1)
         """
         track_ind, track_name = scanpars['pipeInternals']['activeTrackNumber']
         trackd = scanpars[track_name]
@@ -156,7 +156,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
                 i = 0
                 while i < 8:
                     # append 8 pmt count events
-                    complete_lis.append(Form.add_header_to23_bit((i + 1) * j, 2, i, 1))
+                    complete_lis.append(Form.add_header_to23_bit(i + j, 2, i, 1))
                     i += 1
         self.random_data = complete_lis
 

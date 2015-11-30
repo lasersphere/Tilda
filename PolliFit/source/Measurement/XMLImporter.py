@@ -15,10 +15,11 @@ import ast
 import numpy as np
 
 from Measurement.SpecData import SpecData
-
+# iports from Tilda which will cause problems:
 from Service.FileFormat.XmlOperations import xmlGetDataFromTrack
 import Service.FolderAndFileHandling as tildaFileHandl
 import Service.Formating as tildaForm
+import Service.Scan.ScanDictionaryOperations as SdOp
 
 class XMLImporter(SpecData):
     '''
@@ -36,9 +37,8 @@ class XMLImporter(SpecData):
 
         self.file = path
 
-        scandict, lxmlEtree = tildaFileHandl.scanDictionaryFromXmlFile(self.file, 0)
+        scandict, lxmlEtree = tildaFileHandl.scanDictionaryFromXmlFile(self.file)
         self.nrTracks = scandict['isotopeData']['nOfTracks']
-        trackdict = scandict['trackPars']
 
         self.laserFreq = scandict['isotopeData']['laserFreq']
         self.date = scandict['isotopeData']['isotopeStartTime']
@@ -55,29 +55,29 @@ class XMLImporter(SpecData):
         self.col = []
         self.dwell = []
 
-
-        for key, val in sorted(trackdict.items()):
-            nOfactTrack = int(key[5:])
-            nOfsteps = val['nOfSteps']
-            nOfScalers = len(val['activePmtList'])
-            dacStart18Bit = val['dacStartRegister18Bit']
-            dacStepSize18Bit = val['dacStepSize18Bit']
+        for tr in SdOp.get_track_names(scandict):
+            track_dict = scandict[tr]
+            nOfactTrack = int(tr[5:])
+            nOfsteps = track_dict['nOfSteps']
+            nOfScalers = len(track_dict['activePmtList'])
+            dacStart18Bit = track_dict['dacStartRegister18Bit']
+            dacStepSize18Bit = track_dict['dacStepSize18Bit']
             dacStop18Bit = dacStart18Bit + (dacStepSize18Bit * nOfsteps)
             xAxis = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit)
             ctsstr = xmlGetDataFromTrack(lxmlEtree, nOfactTrack, 'scalerArray')
-            cts = tildaForm.numpy_array_from_string(ctsstr, (nOfsteps, nOfScalers))
+            cts = tildaForm.numpy_array_from_string(ctsstr, (nOfScalers, nOfsteps))
+            self.accVolt.append(track_dict['postAccOffsetVolt'])
+            self.offset.append(track_dict['postAccOffsetVolt'])
             self.nrScalers.append(nOfScalers)
             self.x.append(xAxis)
             self.cts.append(cts)
             self.err.append(np.sqrt(cts))
             self.stepSize.append(dacStepSize18Bit)
-            self.accVolt.append(val['postAccOffsetVolt'])
-            self.col.append(val['colDirTrue'])
-            self.dwell.append(val['dwellTime10ns'])
-            self.offset.append(val['postAccOffsetVolt'])
+            self.col.append(track_dict['colDirTrue'])
+            self.dwell.append(track_dict['dwellTime10ns'])
 
     def preProc(self, db):
-        print('XML importer is using db: ', db)
+        print('XMLImporter is using db: ', db)
         con = sqlite3.connect(db)
         cur = con.cursor()
         cur.execute('''SELECT accVolt, laserFreq, line, type, voltDivRatio,
@@ -89,7 +89,7 @@ class XMLImporter(SpecData):
              self.lineMult, self.lineOffset) = data[0]
             self.col = bool(self.col)
         else:
-            raise Exception('TLDImporter: No DB-entry found!')
+            raise Exception('XMLImporter: No DB-entry found!')
         #
         # for i in range(len(self.x[0])):
         #     scanvolt = self.lineMult * (self.x[0][i]) + self.lineOffset + self.offset

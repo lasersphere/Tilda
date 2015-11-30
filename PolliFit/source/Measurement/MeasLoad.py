@@ -9,7 +9,7 @@ import os
 from Measurement.KepcoImporterTLD import KepcoImporterTLD
 from Measurement.TLDImporter import TLDImporter
 
-# from Measurement.XMLImporter import XMLImporter
+from Measurement.XMLImporter import XMLImporter
 
 from Measurement.MCPImporter import MCPImporter
 from Measurement.KepcoImporterMCP import KepcoImporterMCP
@@ -44,13 +44,13 @@ def load(file, db, raw = False):
             f.preProc(db)
         return f
 
-    # elif e == '.xml':
-    #     file = file.replace('\\', '/')
-    #     absfile = (os.path.join(os.getcwd(), file))
-    #     f = XMLImporter(absfile)
-    #     if not raw:
-    #         f.preProc(db)
-    #     return f
+    elif e == '.xml':
+        file = file.replace('\\', '/')
+        absfile = (os.path.join(os.getcwd(), file))
+        f = XMLImporter(absfile)
+        if not raw:
+            f.preProc(db)
+        return f
     else:
         return None
 

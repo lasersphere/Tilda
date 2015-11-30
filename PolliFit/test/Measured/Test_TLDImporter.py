@@ -23,7 +23,7 @@ class Test_TLDImporter(unittest.TestCase):
         f = TLDImporter('../Project/Data/testTLD.tld')
         f.preProc('../Project/AnaDB.sqlite')
         # np.testing.assert_array_equal(f.x, [[20-(2.0/50*2+0.5+10),20-(3.0/50*2+0.5+10), 20-(5.0/50*2+0.5+10), 20-(7.0/50*2+0.5+10), 20-(8.0/50*2+0.5+10)]])
-        #np.testing.assert_array_equal(f.getSingleSpec(0, -1)[0],[20-(2.0/50*2+0.5+10),20-(3.0/50*2+0.5+10), 20-(5.0/50*2+0.5+10), 20-(7.0/50*2+0.5+10), 20-(8.0/50*2+0.5+10)])
+        # np.testing.assert_array_equal(f.getSingleSpec(0, -1)[0],[20-(2.0/50*2+0.5+10),20-(3.0/50*2+0.5+10), 20-(5.0/50*2+0.5+10), 20-(7.0/50*2+0.5+10), 20-(8.0/50*2+0.5+10)])
 
     def test_y(self):
         f = TLDImporter('../Project/Data/testTLD.tld')

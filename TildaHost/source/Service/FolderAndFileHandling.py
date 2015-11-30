@@ -9,8 +9,10 @@ import lxml.etree as ET
 import os
 import pickle
 import time
+import ast
 from Service.FileFormat.XmlOperations import xmlFindOrCreateSubElement, xmlCreateIsotope, xmlGetDictFromEle
 import Service.Formating as form
+import Service.Scan.ScanDictionaryOperations as SdOp
 import numpy as np
 import logging
 
@@ -87,27 +89,28 @@ def loadXml(filename):
     elem = tree.getroot()
     return elem
 
-def scanDictionaryFromXmlFile(xmlFileName, nOfTrack, oldDict=None):
+def scanDictionaryFromXmlFile(xmlFileName, scan_dict=None):
     """
     creates a Scandictionary with the form as stated in draftScanParameters
     values are gained from the loaded xmlFile
     :return: dict, xmlEtree, Scandictionary gained from the xml file, and xmlEtree element.
     """
-    if oldDict == None:
-        oldDict = {}
+    if scan_dict == None:
+        scan_dict = SdOp.init_empty_scan_dict()
     xmlEtree = loadXml(xmlFileName)
     trackdict = getAllTracksOfXmlFileInOneDict(xmlFileName)
+    scan_dict = SdOp.merge_dicts(scan_dict, trackdict)
     isotopedict = xmlGetDictFromEle(xmlEtree)[1]['header']
-    oldDict['isotopeData'] = isotopedict
-    oldDict['trackPars'] = trackdict
-    oldDict['pipeInternals'] = {}
-    oldDict['pipeInternals']['workingDirectory'] = os.path.split(os.path.split(xmlFileName)[0])[0]
-    oldDict['pipeInternals']['curVoltInd'] = 0
-    oldDict['pipeInternals']['activeTrackNumber'] = nOfTrack
-    oldDict['pipeInternals']['activeXmlFilePath'] = xmlFileName
-    for key, val in oldDict.items():
-        oldDict[key] = form.eval_str_vals_in_dict(oldDict[key])
-    return oldDict, xmlEtree
+    for key, val in isotopedict.items():
+        if key in ['accVolt', 'laserFreq', 'nOfTracks']:
+            isotopedict[key] = ast.literal_eval(val)
+    scan_dict['isotopeData'] = isotopedict
+    scan_dict['pipeInternals'] = {}
+    scan_dict['pipeInternals']['workingDirectory'] = os.path.split(os.path.split(xmlFileName)[0])[0]
+    scan_dict['pipeInternals']['curVoltInd'] = 0
+    scan_dict['pipeInternals']['activeTrackNumber'] = 'None'
+    scan_dict['pipeInternals']['activeXmlFilePath'] = xmlFileName
+    return scan_dict, xmlEtree
 
 def getAllTracksOfXmlFileInOneDict(xmlFile):
     xmlEtree = loadXml(xmlFile)
