@@ -110,7 +110,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         self.status = CsCfg.seqStateDict['measureTrack']
         print('measureing track: ' + str(track_num) +
                       '\nscanparameter are:' + str(scanpars))
-        self.random_data_builder(scanpars, track_num)
+        self.data_builder(scanpars, track_num)
         return True
 
     ''' overwriting interface functions here '''
@@ -136,9 +136,9 @@ class ContinousSequencer(Sequencer, MeasureVolt):
             self.status = CsCfg.seqStateDict['measComplete']
         return result
 
-    def random_data_builder(self, scanpars, track_num):
+    def data_builder(self, scanpars, track_num):
         """
-        build random data for one track
+        build data for one track. Countervalue = (Num_pmt + 1) * (num_of_step + 1)
         """
         track_ind, track_name = scanpars['pipeInternals']['activeTrackNumber']
         trackd = scanpars[track_name]
@@ -156,7 +156,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
                 i = 0
                 while i < 8:
                     # append 8 pmt count events
-                    complete_lis.append(Form.add_header_to23_bit(np.random.randint(0, 10000), 2, i, 1))
+                    complete_lis.append(Form.add_header_to23_bit((i + 1) * j, 2, i, 1))
                     i += 1
         self.random_data = complete_lis
 

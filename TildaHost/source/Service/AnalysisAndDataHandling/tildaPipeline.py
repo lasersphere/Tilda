@@ -67,6 +67,7 @@ def CsPipe(initialScanPars=None):
     walk = walk.attach(TN.NSortRawDatatoArray())
 
     branch = walk.attach(TN.NAccumulateSingleScan())
+    branch = branch.attach(SN.NPrint())
     branch = branch.attach(TN.NSingleArrayToSpecData())
 
     branch1 = branch.attach(TN.NSingleSpecFromSpecData([0]))
