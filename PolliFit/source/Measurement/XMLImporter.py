@@ -87,6 +87,7 @@ class XMLImporter(SpecData):
         if len(data) == 1:
             (self.accVolt, self.laserFreq, self.line, self.type, self.voltDivRatio,
              self.lineMult, self.lineOffset) = data[0]
+            self.col = bool(self.col)
         else:
             raise Exception('TLDImporter: No DB-entry found!')
         #
