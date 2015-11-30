@@ -49,15 +49,20 @@ class SpecData(object):
             return (self.x[track], self.cts[track][scaler], self.err[track][scaler])
     
     
-    def getArithSpec(self, scaler, track):
+    def getArithSpec(self, scaler, track_index):
         '''Same as getSingleSpec, but scaler is of type [+i, -j, +k], resulting in s[i]-s[j]+s[k]'''
-        l = self.getNrSteps(track)
+        l = self.getNrSteps(track_index)
         flatc = np.zeros((l,))
         flate = np.zeros((l,))
-        
+
+        if isinstance(self.nrScalers, list):
+            nrScalers = self.nrScalers[track_index]
+        else:
+            nrScalers = self.nrScalers
+
         for s in scaler:
             if self.nrScalers >= np.abs(s):
-                flatx, c, e = self.getSingleSpec(abs(s), track)
+                flatx, c, e = self.getSingleSpec(abs(s), track_index)
                 for i, j in enumerate(flatc):
                     flatc[i] = j + np.copysign(1, s) * c[i]
                     flate[i] = flate[i] + np.square(e[i])
