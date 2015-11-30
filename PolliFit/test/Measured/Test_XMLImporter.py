@@ -11,7 +11,9 @@ import unittest
 import numpy as np
 
 from Measurement.XMLImporter import XMLImporter
-
+import MPLPlotter as mplplot
+from SPFitter import SPFitter
+from Spectra.Straight import Straight
 
 class Test_XMLImporter(unittest.TestCase):
 
@@ -41,6 +43,21 @@ class Test_XMLImporter(unittest.TestCase):
         err = np.sqrt([np.arange(1, 9, 1), np.arange(2, 10, 1), np.arange(3, 11, 1)])
         np.testing.assert_array_equal(f.err, [err])
         np.testing.assert_array_equal(f.getSingleSpec(0, -1)[2], err[0])
+
+    # def test_fit(self):
+    #     f = XMLImporter('../Project/Data/testTilda.xml')
+    #     f.preProc('../Project/tildaDB.sqlite')
+    #     spec = Straight()
+    #     fit = SPFitter(spec, f, ([0], 0))
+    #     fit.fit()
+    #     mplplot.plotFit(fit)
+    #     mplplot.show(True)
+    #
+    # def test_plot(self):
+    #     f = XMLImporter('../Project/Data/testTilda.xml')
+    #     f.preProc('../Project/tildaDB.sqlite')
+    #     mplplot.plot(f.getSingleSpec(0, -1))
+    #     mplplot.show(True)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
