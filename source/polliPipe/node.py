@@ -4,6 +4,7 @@ Created on 16.03.2015
 @author: dropy
 """
 from copy import copy, deepcopy
+import logging
 
 import logging
 
@@ -37,6 +38,7 @@ class Node(object):
             self.id = item.data['id']
             self.Pipeline = item.data['pipe']
             item.data['id'] += 1
+            self.start()
             newjobs = self.createJobs(item, False)
         elif item.type == "stop":
             newjobs = self.createJobs(item, False)
@@ -52,8 +54,8 @@ class Node(object):
         return newjobs
         
     
-    def createJobs(self, item, docopy = True, inactive = False):
-        item.previous = self
+    def createJobs(self, item, docopy=True, inactive=False):
+        item.previousId = self.id
         result = []
         for i, n in enumerate(self.next):
             #Process if node is active or inactive nodes are requested as well
@@ -73,7 +75,13 @@ class Node(object):
         Clear the internal memory. Does nothing for generic node, overwrite!
         """
         pass
-    
+
+    def start(self):
+        """
+        setup the memories in the nodes. Does nothing for generic node, overwrite!
+        """
+        pass
+
     def activate(self):
         """
         activate the node

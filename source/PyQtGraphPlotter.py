@@ -27,7 +27,7 @@ def init():
     win = rpg.GraphicsWindow()
     return proc, rpg, win
 
-def addPlot(win, title):
+def addPlot(win, title=''):
     pltRef = win.addPlot(title=title)
     win.nextRow()
     return pltRef

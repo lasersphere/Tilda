@@ -154,7 +154,7 @@ def createDB(db):
     shape TEXT,
     fixShape TEXT,
     charge INT,
-    FOREIGN KEY (reference) REFERENCES Isotopes (iso)
+    FOREIGN KEY (reference) REFERENCES Isotopes (iso),
     FOREIGN KEY (refRun) REFERENCES Runs (run)
     )''')
     
@@ -212,7 +212,7 @@ def createDB(db):
     statErrForm TEXT DEFAULT err,
     systErr FLOAT,
     systErrForm TEXT DEFAULT 0,
-    PRIMARY KEY (iso, parname, run)
+    PRIMARY KEY (iso, parname, run),
     FOREIGN KEY (run) REFERENCES Runs (run)
     )''')
 

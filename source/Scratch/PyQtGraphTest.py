@@ -6,9 +6,11 @@ Created on '20.08.2015'
 
 """
 
-import PyQtGraphPlotter as pyGpl
 import numpy as np
-import Service.draftScanParameters as dftSc
+
+import PyQtGraphPlotter as pyGpl
+import Service.Scan.draftScanParameters as dftSc
+
 
 pmtList = dftSc.draftScanDict['activeTrackPar']['activePmtList']
 proc, rpg, win = pyGpl.init()

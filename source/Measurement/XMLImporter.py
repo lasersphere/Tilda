@@ -15,6 +15,8 @@ import ast
 import numpy as np
 
 from Measurement.SpecData import SpecData
+
+from Service.FileFormat.XmlOperations import xmlGetDataFromTrack
 import Service.FolderAndFileHandling as tildaFileHandl
 import Service.Formating as tildaForm
 
@@ -62,8 +64,8 @@ class XMLImporter(SpecData):
             dacStepSize18Bit = val['dacStepSize18Bit']
             dacStop18Bit = dacStart18Bit + (dacStepSize18Bit * nOfsteps)
             xAxis = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit)
-            ctsstr = tildaForm.xmlGetDataFromTrack(lxmlEtree, nOfactTrack, 'scalerArray')
-            cts = tildaForm.numpyArrayFromString(ctsstr, (nOfsteps, nOfScalers))
+            ctsstr = xmlGetDataFromTrack(lxmlEtree, nOfactTrack, 'scalerArray')
+            cts = tildaForm.numpy_array_from_string(ctsstr, (nOfsteps, nOfScalers))
             self.nrScalers.append(nOfScalers)
             self.x.append(xAxis)
             self.cts.append(cts)

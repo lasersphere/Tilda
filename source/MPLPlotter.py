@@ -43,15 +43,30 @@ def plotAverage(lin, lout, aver, err):
 
 def show(block=True):
     plt.show(block=block)
-    
+
+
 def ion():
     plt.ion()
-    
+
+
 def save(file):
     plt.savefig(file)
-    
+
+
 def clear():
     plt.clf()
 
+
 def draw():
     plt.draw()
+
+
+def pause(time):
+    plt.pause(time)
+
+
+def plt_axes(axes, x, y, title):
+    axes.clear()
+    axes.plot(x, y)
+    axes.set_ylabel(title)
+

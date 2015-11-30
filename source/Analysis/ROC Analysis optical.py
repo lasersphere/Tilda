@@ -35,29 +35,30 @@ shift40 = []
 shift42 = []
 shift44 = []
 
-for i in range(0,6):
+for i in range(1,5):
     run = str('Run' + str(i))
-    BatchFit.batchFit(Tools.fileList(db,'40_Ca'), db,run)
-    BatchFit.batchFit(Tools.fileList(db,'42_Ca'), db,run)
-    BatchFit.batchFit(Tools.fileList(db,'44_Ca'), db,run)
-    BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
+#     BatchFit.batchFit(Tools.fileList(db,'40_Ca'), db,run)
+#     BatchFit.batchFit(Tools.fileList(db,'42_Ca'), db,run)
+#     BatchFit.batchFit(Tools.fileList(db,'44_Ca'), db,run)
+#     BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
     '''Mean of center, sigma and gamma for 40_Ca'''
 # Analyzer.combineRes('40_Ca', 'gamma',run, db)
-# Analyzer.combineRes('40_Ca', 'sigma',run, db)
-# Analyzer.combineRes('42_Ca', 'sigma',run, db)
-# Analyzer.combineRes('44_Ca', 'sigma',run, db)
-# Analyzer.combineRes('48_Ca', 'sigma',run, db)
-    Analyzer.combineRes('40_Ca', 'center',run, db)
-    Analyzer.combineRes('42_Ca', 'center',run, db)
-    Analyzer.combineRes('44_Ca', 'center',run, db)
+#     Analyzer.combineRes('40_Ca', 'sigma',run, db)
+#     Analyzer.combineRes('42_Ca', 'sigma',run, db)
+#     Analyzer.combineRes('44_Ca', 'sigma',run, db)
+#     Analyzer.combineRes('48_Ca', 'sigma',run, db)
+#    Analyzer.combineRes('40_Ca', 'center',run, db)
+#    Analyzer.combineRes('42_Ca', 'center',run, db)
+#    Analyzer.combineRes('44_Ca', 'center',run, db)
     Analyzer.combineRes('48_Ca', 'center',run, db)
+    print(run)
+    BatchFit.batchFit(['Run49_opticalDetection_Ca48.mcp'], db,run)
 
+    # '''Calculate the isotope shift to 48_Ca'''
+    # shift40.append(Analyzer.combineShift('40_Ca', run, db)[2])
+    # shift42.append(Analyzer.combineShift('42_Ca', run, db)[2])
+    # shift44.append(Analyzer.combineShift('44_Ca', run, db)[2])
 
-    '''Calculate the isotope shift to 48_Ca'''
-    shift40.append(Analyzer.combineShift('40_Ca', run, db)[2])
-    shift42.append(Analyzer.combineShift('42_Ca', run, db)[2])
-    shift44.append(Analyzer.combineShift('44_Ca', run, db)[2])
-
-print(str(shift40).replace('.',','))
-print(str(shift42).replace('.',','))
-print(str(shift44).replace('.',','))
+# print(str(shift40).replace('.',','))
+# print(str(shift42).replace('.',','))
+# print(str(shift44).replace('.',','))

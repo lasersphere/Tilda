@@ -33,10 +33,8 @@ def extract(iso, par, run, db, fileList = []):
     
     cur.execute('''SELECT file, pars FROM FitRes WHERE iso = ? AND run = ?''', (iso, run))
     fits = cur.fetchall()
-    
     if fileList:
         fits = [f for f in fits if f[0] in fileList]
-        
     fitres = [eval(f[1]) for f in fits]
     files = [f[0] for f in fits]
     vals = [f[par][0] for f in fitres]
@@ -48,7 +46,8 @@ def extract(iso, par, run, db, fileList = []):
     for f in fileList:
         if f not in files:
             print('Warning:', f, 'not found!')
-    
+    # for i in dates:
+    #     print(i[0], '\t', i[1])
     con.close()
     return (vals, errs)
     
@@ -139,20 +138,32 @@ def combineShift(iso, run, db):
     shifts = []
     shiftErrors = []
     for block in config:
-        preVals, preErrs = extract(ref,'center',refRun,db,block[0])
-        preVal, preErr, preRChi = weightedAverage(preVals, preErrs)
-        preErr = applyChi(preErr, preRChi)
-        preErr = np.absolute(preErr)
-        
+        if block[0]:
+            preVals, preErrs = extract(ref,'center',refRun,db,block[0])
+            preVal, preErr, preRChi = weightedAverage(preVals, preErrs)
+            preErr = applyChi(preErr, preRChi)
+            preErr = np.absolute(preErr)
+        else:
+            preVal = 0
+            preErr = 0
+
         intVals, intErrs = extract(iso,'center',run,db,block[1])
-        
-        postVals, postErrs = extract(ref,'center',refRun,db,block[2])
-        postVal, postErr, postRChi = weightedAverage(postVals, postErrs)
-        postErr = applyChi(postErr, postRChi)
-        refMean = (preVal + postVal)/2
-        postErr = np.absolute(postErr)
-        print(postErr,preErr, postErr-preErr)
-        if np.absolute(preVal-postVal) < np.max([preErr,postErr]):
+
+        if block[2]:
+            postVals, postErrs = extract(ref,'center',refRun,db,block[2])
+            postVal, postErr, postRChi = weightedAverage(postVals, postErrs)
+            postErr = np.absolute(applyChi(postErr, postRChi))
+        else:
+            postVal = 0
+            postErr = 0
+        if preVal == 0:
+            refMean = postVal
+        elif postVal == 0:
+            refMean = preVal
+        else:
+            refMean = (preVal + postVal)/2
+
+        if preVal == 0 or postVal == 0 or np.absolute(preVal-postVal) < np.max([preErr,postErr]):
             errMean = np.sqrt(preErr**2+ postErr**2)
         else:
             errMean = np.absolute(preVal-postVal)
