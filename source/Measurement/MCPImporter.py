@@ -110,7 +110,7 @@ class MCPImporter(SpecData):
         data = cur.fetchall()
         if len(data) == 1:
             (self.accVolt, self.laserFreq, self.col, self.line, self.type, self.voltDivRatio, self.lineMult, self.lineOffset, self.offset) = data[0]
-            self.col = ast.literal_eval(self.col)
+            self.col = bool(self.col)
         else:
             raise Exception('MCPImporter: No DB-entry found!')
 
