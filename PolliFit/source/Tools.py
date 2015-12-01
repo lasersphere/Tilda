@@ -8,20 +8,21 @@ right structure, isoPlot() to plot the spectrum of an isotope and centerplot() t
 voltages depending on laser frequencies.
 
 '''
-
-import sqlite3
 import os
+import sqlite3
 import sys
 import traceback
 
+import matplotlib.pyplot as plt
 import numpy as np
 
+import MPLPlotter as plot
 import Measurement.MeasLoad as Meas
+import Physics as Physics
 from DBIsotope import DBIsotope
 from Spectra.FullSpec import FullSpec
-import Physics as Physics
-import MPLPlotter as plot
-import matplotlib.pyplot as plt
+from TildaTools import get_track_names
+
 
 def isoPlot(db, iso, isovar = '', linevar = ''):
     '''plot isotope iso'''

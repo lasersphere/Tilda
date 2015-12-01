@@ -4,11 +4,13 @@ Created on 21.01.2015
 @author: skaufmann
 """
 
-from datetime import datetime as dt
-import numpy as np
 import ast
+from datetime import datetime as dt
+
+import numpy as np
 
 import Service.Scan.ScanDictionaryOperations as SdOp
+
 
 def split_32b_data(int32b_data):
     """
@@ -35,20 +37,6 @@ def trs_sum(element, act_volt_ind, sum_array, active_pmt_list=range(8)):
         if pmts_with_event & (2 ** val):
             sum_array[act_volt_ind, timestamp, ind] += 1  # timestamp equals index in timeArray
     return sum_array
-
-
-def numpy_array_from_string(string, shape):
-    """
-    converts a text array saved in an lxml.etree.Element
-    using the function xmlWriteToTrack back into a numpy array
-    :param string: str, array
-    :param shape: int, or tuple of int, the shape of the output array
-    :return: numpy array containing the desired values
-    """
-    string = string.replace('\\n', '').replace('[', '').replace(']', '').replace('  ', ' ')
-    result = np.fromstring(string, dtype=np.uint32, sep=' ')
-    result = result.reshape(shape)
-    return result
 
 
 def eval_str_vals_in_dict(dicti):

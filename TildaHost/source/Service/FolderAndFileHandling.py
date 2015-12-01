@@ -5,16 +5,15 @@ Created on '07.05.2015'
 @author:'simkaufm'
 
 """
-import lxml.etree as ET
+import logging
 import os
 import pickle
-import time
-import ast
-from Service.FileFormat.XmlOperations import xmlFindOrCreateSubElement, xmlCreateIsotope, xmlGetDictFromEle
-import Service.Formating as form
-import Service.Scan.ScanDictionaryOperations as SdOp
+
 import numpy as np
-import logging
+
+from Service.FileFormat.XmlOperations import xmlCreateIsotope
+from TildaTools import save_xml
+
 
 def findTildaFolder(path=os.path.dirname(os.path.abspath(__file__))):
     """
@@ -28,6 +27,7 @@ def findTildaFolder(path=os.path.dirname(os.path.abspath(__file__))):
     else:
         path = 'could not find Tilda folder'
     return path
+
 
 def nameFile(path, subdir, fileName, prefix='', suffix='.tld'):
     """
@@ -47,6 +47,7 @@ def nameFile(path, subdir, fileName, prefix='', suffix='.tld'):
         file = filepath + '_' + str('{0:03d}'.format(i)) + suffix
     return file
 
+
 def createXmlFileOneIsotope(scanDict):
     """
     creates an .xml file for one Isotope. Using the Filestructure as stated in OneNote.
@@ -57,8 +58,9 @@ def createXmlFileOneIsotope(scanDict):
     root = xmlCreateIsotope(isodict)
     filename = nameFileXml(scanDict)
     print('creating .xml File: ' + filename)
-    saveXml(root, filename, False)
+    save_xml(root, filename, False)
     return filename
+
 
 def nameFileXml(scanDict):
     """
@@ -72,55 +74,6 @@ def nameFileXml(scanDict):
     filename = nameFile(path, 'sums', nIso, str(type + '_sum'), '.xml')
     return filename
 
-def saveXml(rootEle, path, pretty=True):
-    """
-    Convert a Root lxml Element into an ElementTree and save it to a file
-    """
-    np.set_printoptions(threshold=np.nan)
-    tree = ET.ElementTree(rootEle)
-    tree.write(path, pretty_print=pretty)
-
-def loadXml(filename):
-    """
-    loads an .xml file and returns it as an lxml.etree.Element
-    :return:lxml.etree.Element, Element of loaded File
-    """
-    tree = ET.parse(filename)
-    elem = tree.getroot()
-    return elem
-
-def scanDictionaryFromXmlFile(xmlFileName, scan_dict=None):
-    """
-    creates a Scandictionary with the form as stated in draftScanParameters
-    values are gained from the loaded xmlFile
-    :return: dict, xmlEtree, Scandictionary gained from the xml file, and xmlEtree element.
-    """
-    if scan_dict == None:
-        scan_dict = SdOp.init_empty_scan_dict()
-    xmlEtree = loadXml(xmlFileName)
-    trackdict = getAllTracksOfXmlFileInOneDict(xmlFileName)
-    scan_dict = SdOp.merge_dicts(scan_dict, trackdict)
-    isotopedict = xmlGetDictFromEle(xmlEtree)[1]['header']
-    for key, val in isotopedict.items():
-        if key in ['accVolt', 'laserFreq', 'nOfTracks']:
-            isotopedict[key] = ast.literal_eval(val)
-    scan_dict['isotopeData'] = isotopedict
-    scan_dict['pipeInternals'] = {}
-    scan_dict['pipeInternals']['workingDirectory'] = os.path.split(os.path.split(xmlFileName)[0])[0]
-    scan_dict['pipeInternals']['curVoltInd'] = 0
-    scan_dict['pipeInternals']['activeTrackNumber'] = 'None'
-    scan_dict['pipeInternals']['activeXmlFilePath'] = xmlFileName
-    return scan_dict, xmlEtree
-
-def getAllTracksOfXmlFileInOneDict(xmlFile):
-    xmlEtree = loadXml(xmlFile)
-    trackd = {}
-    tracks = xmlFindOrCreateSubElement(xmlEtree, 'tracks')
-    for t in tracks:
-        trackd[str(t.tag)] = (xmlGetDictFromEle(xmlEtree)[1]['tracks'][str(t.tag)]['header'])
-    for key, val in trackd.items():
-        trackd[key] = form.eval_str_vals_in_dict(trackd[key])
-    return trackd
 
 def savePickle(data, pipeDataDict, ending='.raw'):
     """
@@ -138,6 +91,7 @@ def savePickle(data, pipeDataDict, ending='.raw'):
     file.close()
     return path
 
+
 def loadPickle(file):
     """
     loads the content of a binary file using the pickle module.
@@ -146,6 +100,7 @@ def loadPickle(file):
     data = pickle.load(stream)
     stream.close()
     return data
+
 
 def saveRawData(data, pipeData, nOfSaves):
     """
@@ -157,6 +112,7 @@ def saveRawData(data, pipeData, nOfSaves):
         nOfSaves += 1
         logging.info('saving raw data to: ' + str(savedto))
     return nOfSaves
+
 
 def savePipeData(pipeData, nOfSaves):
     savedto = savePickle(pipeData, pipeData, '.pipedat')

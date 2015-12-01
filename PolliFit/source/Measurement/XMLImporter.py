@@ -14,12 +14,9 @@ import ast
 
 import numpy as np
 
+import TildaTools
 from Measurement.SpecData import SpecData
-# iports from Tilda which will cause problems:
-from Service.FileFormat.XmlOperations import xmlGetDataFromTrack
-import Service.FolderAndFileHandling as tildaFileHandl
-import Service.Formating as tildaForm
-import Service.Scan.ScanDictionaryOperations as SdOp
+
 
 class XMLImporter(SpecData):
     '''
@@ -37,7 +34,7 @@ class XMLImporter(SpecData):
 
         self.file = path
 
-        scandict, lxmlEtree = tildaFileHandl.scanDictionaryFromXmlFile(self.file)
+        scandict, lxmlEtree = TildaTools.scan_dict_from_xml_file(self.file)
         self.nrTracks = scandict['isotopeData']['nOfTracks']
 
         self.laserFreq = scandict['isotopeData']['laserFreq']
@@ -55,7 +52,7 @@ class XMLImporter(SpecData):
         self.col = []
         self.dwell = []
 
-        for tr in SdOp.get_track_names(scandict):
+        for tr in TildaTools.get_track_names(scandict):
             track_dict = scandict[tr]
             nOfactTrack = int(tr[5:])
             nOfsteps = track_dict['nOfSteps']
@@ -64,8 +61,8 @@ class XMLImporter(SpecData):
             dacStepSize18Bit = track_dict['dacStepSize18Bit']
             dacStop18Bit = dacStart18Bit + (dacStepSize18Bit * nOfsteps)
             xAxis = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit)
-            ctsstr = xmlGetDataFromTrack(lxmlEtree, nOfactTrack, 'scalerArray')
-            cts = tildaForm.numpy_array_from_string(ctsstr, (nOfScalers, nOfsteps))
+            ctsstr = TildaTools.xml_get_data_from_track(lxmlEtree, nOfactTrack, 'scalerArray')
+            cts = TildaTools.numpy_array_from_string(ctsstr, (nOfScalers, nOfsteps))
             self.accVolt.append(track_dict['postAccOffsetVolt'])
             self.offset.append(track_dict['postAccOffsetVolt'])
             self.nrScalers.append(nOfScalers)

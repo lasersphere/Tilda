@@ -6,7 +6,9 @@ Created on '26.10.2015'
 
 """
 from datetime import datetime as dt
+
 from lxml import etree as ET
+
 from Service.VoltageConversions.VoltageConversions import get_voltage_from_18bit
 
 
@@ -103,29 +105,3 @@ def xmlAddCompleteTrack(rootEle, scanDict, data, track_name):
     xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackDict)
     xmlWriteToTrack(rootEle, nOfTrack, 'scalerArray', data, 'data')
     return rootEle
-
-
-def xmlGetDataFromTrack(rootEle, nOfTrack, dataType):
-    """
-    Get Data From Track
-    :param rootEle:  lxml.etree.Element, root of the xml tree
-    :param nOfTrack: int, which Track should be written to
-    :param dataType: str, valid: 'setOffset, 'measuredOffset', 'dwellTime10ns', 'nOfmeasuredSteps',
-     'nOfclompetedLoops', 'voltArray', 'timeArray', 'scalerArray'
-    :param returnType: int or tuple of int, shape of the numpy array, 0 if output in textfrom is desired
-    :return: Text
-    """
-    try:
-        actTrack = rootEle.find('tracks').find('track' + str(nOfTrack)).find('data')
-        dataText = actTrack.find(str(dataType)).text
-        return dataText
-    except:
-        print('error while searching ' +str(dataType) +  ' in track' + str(nOfTrack) + ' in ' + str(rootEle))
-        return None
-
-
-def xmlGetDictFromEle(element):
-    """
-    Converts an lxml Element into a python dictionary
-    """
-    return element.tag, dict(map(xmlGetDictFromEle, element)) or element.text

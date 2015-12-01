@@ -1,3 +1,6 @@
+import TildaTools
+import Tools
+
 __author__ = 'Simon-K'
 
 """
@@ -28,7 +31,7 @@ rawfiles = [[os.path.join(pathOfRun, file) for file in os.listdir(pathOfRun) if 
          for pathOfRun in runList]
 xmlFiles = [[os.path.join(pathOfRun, file) for file in os.listdir(pathOfRun) if file.endswith('.xml')]
          for pathOfRun in runList]
-scandicts = [FileHandle.scanDictionaryFromXmlFile(xmlFile[0], 0, {}) for xmlFile in xmlFiles]
+scandicts = [TildaTools.scan_dict_from_xml_file(xmlFile[0], 0, {}) for xmlFile in xmlFiles]
 # # v104scandict = scandicts[0][0]
 # # v106scandict = Form.convert_scandict_v104_to_v106(v104scandict, Drafts.draftScanDict)
 # scandicts[0][0]['isotopeData']['colDirTrue'] = 'True'
