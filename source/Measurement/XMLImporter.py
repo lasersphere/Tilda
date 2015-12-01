@@ -89,7 +89,6 @@ class XMLImporter(SpecData):
         for j in range(len(self.x)):
             for i in range(len(self.x[j])):
                 scanvolt = self.lineMult * float(self.x[j][i]) + self.lineOffset + self.offset
-                print(scanvolt)
                 self.x[j][i] = float(float(self.accVolt) - scanvolt)
         con.close()
 
