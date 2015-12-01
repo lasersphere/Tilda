@@ -6,9 +6,8 @@ Created on '20.10.2015'
 
 """
 
-import Service.Scan.draftScanParameters as DftSc
 import Application.Config as Cfg
-from copy import copy
+import Service.Scan.draftScanParameters as DftSc
 
 
 def init_empty_scan_dict(type_str=None, version=None):
@@ -64,15 +63,6 @@ def get_number_of_tracks_in_scan_dict(scan_dict):
             n_of_tracks += 1
             list_of_track_nums.append(int(key[5:]))
     return n_of_tracks, sorted(list_of_track_nums)
-
-
-def get_track_names(scan_dict):
-    """
-    create a list of all track names in the scan dictionary, sorted by its tracknumber
-    :return: ['track0', 'track1', ...]
-    """
-    n, track_num_list = get_number_of_tracks_in_scan_dict(scan_dict)
-    return ['track' + str(tr) for tr in track_num_list]
 
 
 def get_available_tracknum(scan_dict):

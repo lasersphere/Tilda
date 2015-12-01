@@ -5,6 +5,7 @@ Created on '20.05.2015'
 @author:'simkaufm'
 
 """
+import TildaTools
 from Service.FileFormat.XmlOperations import xmlAddCompleteTrack
 from Service.VoltageConversions.VoltageConversions import find_volt_in_array
 import Service.Scan.ScanDictionaryOperations as SdOp
@@ -147,9 +148,9 @@ class NSaveTrsSum(Node):
     def processData(self, data, pipeData):
         pipeInternals = pipeData['pipeInternals']
         file = pipeInternals['activeXmlFilePath']
-        rootEle = filhandl.loadXml(file)
+        rootEle = TildaTools.load_xml(file)
         xmlAddCompleteTrack(rootEle, pipeData, data)
-        filhandl.saveXml(rootEle, file, False)
+        TildaTools.save_xml(rootEle, file, False)
         return data
 
 
@@ -454,10 +455,10 @@ class NSaveSumCS(Node):
         pipeData[track_name] = form.add_working_time_to_track_dict(pipeData[track_name])
         pipeInternals = pipeData['pipeInternals']
         file = pipeInternals['activeXmlFilePath']
-        rootEle = filhandl.loadXml(file)
+        rootEle = TildaTools.load_xml(file)
         logging.info('saving data: ' + str(data))
         xmlAddCompleteTrack(rootEle, pipeData, data[track_ind], track_name)
-        filhandl.saveXml(rootEle, file, False)
+        TildaTools.save_xml(rootEle, file, False)
         logging.info('saving Continous Sequencer Sum to: ' + str(file))
         return data
 
