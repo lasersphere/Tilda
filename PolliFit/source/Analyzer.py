@@ -39,17 +39,22 @@ def extract(iso, par, run, db, fileList = []):
     files = [f[0] for f in fits]
     vals = [f[par][0] for f in fitres]
     errs = [f[par][1] for f in fitres]
-    
+    date_list = []
+
     for f, v, e in zip(files, vals, errs):
-        print(f, '\t', v, '\t', e)
-    
+        cur.execute('''SELECT date FROM Files WHERE file = ?''', (f,))
+        date = cur.fetchall()[0][0]
+        if date is not None:
+            date_list.append(date)
+        print(date, '\t', f, '\t', v, '\t', e)
+
     for f in fileList:
         if f not in files:
             print('Warning:', f, 'not found!')
     # for i in dates:
     #     print(i[0], '\t', i[1])
     con.close()
-    return (vals, errs)
+    return (vals, errs, date_list)
     
     
 def weightedAverage(vals, errs):
@@ -97,7 +102,7 @@ def combineRes(iso, par, run, db, weighted = True):
     config = ast.literal_eval(config)
     
     print('Combining', iso, par)
-    vals, errs = extract(iso, par, run, db, config)
+    vals, errs, date = extract(iso, par, run, db, config)
     
     if weighted:
         val, err, rChi = weightedAverage(vals, errs)
