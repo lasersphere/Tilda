@@ -17,6 +17,9 @@ whis for sure will influence the results.
 
 import Tools
 
+from InteractiveFit import InteractiveFit
+import BatchFit
+
 
 """
 databases:
@@ -26,5 +29,13 @@ db = 'R:\Projekte\TRIGA\Measurements and Analysis_Simon' + \
      '\Tilda Offline Tests 15_11\BothDaysCombined\BothDaysCombined.sqlite'
 
 '''crawl'''
-Tools.crawl(db)
+# Tools.crawl(db)
+
+fit = InteractiveFit('cs_sum_40Ca_006.xml', db, 'Run1')
+fit.fit()
+# run = 'Run0'
+# files = Tools.fileList(db, '40Ca')
+# files = [file for file in files if '26th' in file]
+# # print(files, len(files))
+# BatchFit.batchFit(files[:10], db, run)
 

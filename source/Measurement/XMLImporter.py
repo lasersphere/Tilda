@@ -11,6 +11,7 @@ import sqlite3
 from datetime import datetime
 import os
 import ast
+import Physics
 
 import numpy as np
 
@@ -37,10 +38,9 @@ class XMLImporter(SpecData):
         scandict, lxmlEtree = TildaTools.scan_dict_from_xml_file(path)
         self.nrTracks = scandict['isotopeData']['nOfTracks']
 
-        self.laserFreq = scandict['isotopeData']['laserFreq']
+        self.laserFreq = Physics.freqFromWavenumber(2 * scandict['isotopeData']['laserFreq'])
         self.date = scandict['isotopeData']['isotopeStartTime']
-        self.type = scandict['isotopeData']['type']
-        self.isotope = scandict['isotopeData']['isotope']
+        self.type = scandict['isotopeData']['isotope']
 
         self.offset = 0  # should also be a list for mutliple tracks
         self.nrScalers = []
@@ -59,7 +59,7 @@ class XMLImporter(SpecData):
             dacStart18Bit = track_dict['dacStartRegister18Bit']
             dacStepSize18Bit = track_dict['dacStepSize18Bit']
             dacStop18Bit = dacStart18Bit + (dacStepSize18Bit * nOfsteps)
-            xAxis = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit)
+            xAxis = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit, dtype=np.float)
             ctsstr = TildaTools.xml_get_data_from_track(lxmlEtree, nOfactTrack, 'scalerArray')
             cts = TildaTools.numpy_array_from_string(ctsstr, (nOfScalers, nOfsteps))
             self.offset = track_dict['postAccOffsetVolt']
@@ -75,21 +75,22 @@ class XMLImporter(SpecData):
         print('XMLImporter is using db: ', db)
         con = sqlite3.connect(db)
         cur = con.cursor()
-        cur.execute('''SELECT accVolt, laserFreq, line, type, voltDivRatio,
-          lineMult, lineOffset FROM Files WHERE file = ?''', (self.file,))
+        cur.execute('''SELECT type, line, offset, accVolt, laserFreq,
+                        colDirTrue, voltDivRatio, lineMult, lineOffset
+                        FROM Files WHERE file = ?''', (self.file,))
         data = cur.fetchall()
-        print(data)
         if len(data) == 1:
-            (self.accVolt, self.laserFreq, self.line, self.type, self.voltDivRatio,
-             self.lineMult, self.lineOffset) = data[0]
+            (self.type, self.line, self.offset, self.accVolt, self.laserFreq,
+             self.col, self.voltDivRatio, self.lineMult, self.lineOffset) = data[0]
             self.col = bool(self.col)
         else:
             raise Exception('XMLImporter: No DB-entry found!')
-        #
-        # for i in range(len(self.x[0])):
-        #     scanvolt = self.lineMult * (self.x[0][i]) + self.lineOffset + self.offset
-        #     self.x[0][i] = self.accVolt - scanvolt
 
+        for j in range(len(self.x)):
+            for i in range(len(self.x[j])):
+                scanvolt = self.lineMult * float(self.x[j][i]) + self.lineOffset + self.offset
+                print(scanvolt)
+                self.x[j][i] = float(float(self.accVolt) - scanvolt)
         con.close()
 
     def export(self, db):
