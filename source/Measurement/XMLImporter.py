@@ -32,9 +32,9 @@ class XMLImporter(SpecData):
         print("XMLImporter is reading file", path)
         super(XMLImporter, self).__init__()
 
-        self.file = path
+        self.file = os.path.basename(path)
 
-        scandict, lxmlEtree = TildaTools.scan_dict_from_xml_file(self.file)
+        scandict, lxmlEtree = TildaTools.scan_dict_from_xml_file(path)
         self.nrTracks = scandict['isotopeData']['nOfTracks']
 
         self.laserFreq = scandict['isotopeData']['laserFreq']
@@ -42,14 +42,13 @@ class XMLImporter(SpecData):
         self.type = scandict['isotopeData']['type']
         self.isotope = scandict['isotopeData']['isotope']
 
-        self.accVolt = []
-        self.offset = []
+        self.offset = 0  # should also be a list for mutliple tracks
         self.nrScalers = []
         self.x = []
         self.cts = []
         self.err = []
         self.stepSize = []
-        self.col = []
+        self.col = False  # should also be a list for multiple tracks
         self.dwell = []
 
         for tr in TildaTools.get_track_names(scandict):
@@ -63,14 +62,13 @@ class XMLImporter(SpecData):
             xAxis = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit)
             ctsstr = TildaTools.xml_get_data_from_track(lxmlEtree, nOfactTrack, 'scalerArray')
             cts = TildaTools.numpy_array_from_string(ctsstr, (nOfScalers, nOfsteps))
-            self.accVolt.append(track_dict['postAccOffsetVolt'])
-            self.offset.append(track_dict['postAccOffsetVolt'])
+            self.offset = track_dict['postAccOffsetVolt']
             self.nrScalers.append(nOfScalers)
             self.x.append(xAxis)
             self.cts.append(cts)
             self.err.append(np.sqrt(cts))
             self.stepSize.append(dacStepSize18Bit)
-            self.col.append(track_dict['colDirTrue'])
+            self.col = track_dict['colDirTrue']
             self.dwell.append(track_dict['dwellTime10ns'])
 
     def preProc(self, db):
@@ -78,7 +76,7 @@ class XMLImporter(SpecData):
         con = sqlite3.connect(db)
         cur = con.cursor()
         cur.execute('''SELECT accVolt, laserFreq, line, type, voltDivRatio,
-          lineMult, lineOffset FROM Files WHERE file = ?''', (os.path.split(self.file)[1],))
+          lineMult, lineOffset FROM Files WHERE file = ?''', (self.file,))
         data = cur.fetchall()
         print(data)
         if len(data) == 1:
@@ -94,12 +92,19 @@ class XMLImporter(SpecData):
 
         con.close()
 
-
     def export(self, db):
-        con = sqlite3.connect(db)
-        with con:
-            con.execute('''UPDATE Files SET date = ? WHERE file = ?''', (self.date, self.file))
-        con.close()
+        try:
+            con = sqlite3.connect(db)
+            with con:
+                con.execute('''UPDATE Files SET date = ?, type = ?, offset = ?,
+                                laserFreq = ?, colDirTrue = ?
+                                 WHERE file = ?''',
+                            (self.date, self.type, self.offset,
+                             self.laserFreq, self.col,
+                             self.file))
+            con.close()
+        except Exception as e:
+            print(e)
 
     def evalErr(self, cts, f):
         cts = cts.reshape(-1)
