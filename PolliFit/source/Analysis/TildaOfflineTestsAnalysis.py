@@ -45,5 +45,7 @@ dirty_files = ['cs_sum_40Ca_000.xml', 'cs_sum_40Ca_001.xml', '26th_cs_sum_40Ca_0
 files = [file for file in files if file not in dirty_files]
 #BatchFit.batchFit(files, db, run)
 
-Analyzer.combineRes('40Ca', 'center', run, db, show_plot=True)
+Analyzer.combineRes('40Ca', 'center', run, db, show_plot=False)
+Analyzer.combineRes('40Ca', 'sigma', run, db, show_plot=False)
+Analyzer.combineRes('40Ca', 'Int0', run, db, show_plot=False)
 # plot.plotAverage('40Ca', 'center', run, db)

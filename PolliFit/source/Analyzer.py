@@ -127,6 +127,7 @@ def combineRes(iso, par, run, db, weighted = True, print_extracted=True, show_pl
 
     con.commit()
     con.close()
+    plt.clear()
     plt.plotAverage(date, vals, errs, avg, statErr, systErr)
     avg_fig_name = os.path.join(os.path.split(db)[0], iso + '_' + run + '_' + par + '.png')
     print('saving average plot to: ', avg_fig_name)
