@@ -11,6 +11,7 @@ import sys
 import logging
 import os
 import multiprocessing
+import time
 
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
 from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
@@ -36,6 +37,7 @@ class Main:
         # for the voltage measurement.
         self.simple_counter_proc = None
         self.cmd_queue = None
+        self.seconds = 0
 
         self.scan_main = ScanMain()
         self.iso_scan_process = None
@@ -88,6 +90,7 @@ class Main:
         #     target=self.scan_main.scan_one_isotope, args=(one_scan_dict,))
         # self.iso_scan_process.start()
         self.scan_main.scan_one_isotope(one_scan_dict)
+        print('hello world')
         # multiprocessing is used instead of threading due to QT,
         # because the plot window could not be held open in another Thread than the main thread
 
@@ -131,6 +134,11 @@ class Main:
         keys are: name, programmedVoltage, voltageSetTime, readBackVolt
         """
         return self.scan_main.get_status_of_pwr_supply(power_supply)
+
+    def cyclic(self):
+        # self.seconds += 1
+        # print(time.strftime("%H:%M:%S", time.gmtime(self.seconds)))
+        pass
 
     """ opening and closing of GUI's """
 

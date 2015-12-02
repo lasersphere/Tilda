@@ -10,6 +10,9 @@ import argparse
 import sys
 
 from Application.Main.Main import Main
+import Application.Config as Cfg
+
+_cyclic_interval_ms = 2000
 
 def main():
     """
@@ -24,25 +27,30 @@ def main():
     logging.basicConfig(level=getattr(logging, args.log_level), format='%(message)s', stream=sys.stdout)
     logging.info('Log level set to ' + args.log_level)
 
-    # starting the main loop
-    main = Main()
+    # starting the main loop and storing the instance in Cfg.main_instance
+    Cfg._main_instance = Main()
 
-    start_gui(main)
+    start_gui()
 
 
-def start_gui(main):
+def start_gui():
     """
     starts the gui for the main window.
     :parameter: main, instacne of the Tilda Main() module
     """
     from Interface.MainUi.MainUi import MainUi
     from PyQt5 import QtWidgets
+    from PyQt5.QtCore import QTimer, Qt
 
     app = QtWidgets.QApplication(sys.argv)
-    ui = MainUi(main)
+    ui = MainUi()
+    timer = QTimer()
+    timer.setTimerType(Qt.PreciseTimer)
+    timer.setInterval(_cyclic_interval_ms)
+    timer.timeout.connect(Cfg._main_instance.cyclic)
+    timer.start()
     app.exec_()
     return ui
-
 
 if __name__ == "__main__":
     main()
