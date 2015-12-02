@@ -52,6 +52,7 @@ class InteractiveFit(object):
         self.fitter = SPFitter(spec, meas, st)
         plot.plotFit(self.fitter)
         plot.show(True)
+        self.printPars()
         
         
     def printPars(self):
