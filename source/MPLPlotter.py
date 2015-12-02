@@ -4,10 +4,15 @@ Created on 29.04.2014
 @author: hammen
 '''
 
+from matplotlib.dates import DateFormatter
+import datetime
 import matplotlib.pyplot as plt
 import numpy as np
-    
-    
+import os
+
+import Analyzer
+
+
 def plot(*args):
     for a in args:
         plt.plot(a[0], a[1])
@@ -36,9 +41,24 @@ def plotFit(fit):
     plt.xlabel('Ion kinetic energy / eV')
     
 
-def plotAverage(lin, lout, aver, err):
-    lin = [f for f, s in zip(files, select) if s == True]
-    lout = [f for f, s in zip(files, select) if s == False]
+def plotAverage(date, cts, errs, avg, stat_err, syst_err):
+    # avg, stat_err, sys_err = Analyzer.combineRes(iso, par, run, db, print_extracted=False)
+    # val, errs, date = Analyzer.extract(iso, par, run, db, prin=False)
+    date = [datetime.datetime.strptime(d, '%Y-%m-%d %H:%M:%S') for d in date]
+    plt.subplots_adjust(bottom=0.2)
+    plt.xticks(rotation=25)
+    ax = plt.gca()
+    xfmt = DateFormatter('%Y-%m-%d %H:%M:%S')
+    ax.xaxis.set_major_formatter(xfmt)
+    plt.errorbar(date, cts, yerr=errs, fmt='k.')
+    err_p = avg+abs(stat_err)+abs(syst_err)
+    err_m = avg-abs(stat_err)-abs(syst_err)
+    err_p_l = np.full((2,), err_p)
+    err_m_l = np.full((2,), err_m)
+    x = (sorted(date)[0], sorted(date)[-1])
+    y = (avg, avg)
+    plt.plot(x, y, 'r')
+    plt.fill_between(x, err_p_l, err_m_l, alpha=0.5)
 
 
 def show(block=True):
