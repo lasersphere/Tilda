@@ -128,13 +128,17 @@ def combineRes(iso, par, run, db, weighted = True, print_extracted=True, show_pl
     con.commit()
     con.close()
     plt.clear()
-    plt.plotAverage(date, vals, errs, avg, statErr, systErr)
-    avg_fig_name = os.path.join(os.path.split(db)[0], iso + '_' + run + '_' + par + '.png')
+    plotdata = (date, vals, errs, avg, statErr, systErr, ('k.', 'r'))
+    plt.plotAverage(*plotdata)
+    combined_plots_dir = os.path.join(os.path.split(db)[0], 'combined_plots')
+    if not os.path.exists(combined_plots_dir):
+        os.makedirs(combined_plots_dir)
+    avg_fig_name = os.path.join(combined_plots_dir, iso + '_' + run + '_' + par + '.png')
     print('saving average plot to: ', avg_fig_name)
     plt.save(avg_fig_name)
     if show_plot:
         plt.show(True)
-    return (avg, statErr, systErr)
+    return (avg, statErr, systErr, plotdata)
     
 
 def combineShift(iso, run, db):
