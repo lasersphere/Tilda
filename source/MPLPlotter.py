@@ -41,7 +41,7 @@ def plotFit(fit):
     plt.xlabel('Ion kinetic energy / eV')
     
 
-def plotAverage(date, cts, errs, avg, stat_err, syst_err):
+def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r')):
     # avg, stat_err, sys_err = Analyzer.combineRes(iso, par, run, db, print_extracted=False)
     # val, errs, date = Analyzer.extract(iso, par, run, db, prin=False)
     date = [datetime.datetime.strptime(d, '%Y-%m-%d %H:%M:%S') for d in date]
@@ -50,14 +50,14 @@ def plotAverage(date, cts, errs, avg, stat_err, syst_err):
     ax = plt.gca()
     xfmt = DateFormatter('%Y-%m-%d %H:%M:%S')
     ax.xaxis.set_major_formatter(xfmt)
-    plt.errorbar(date, cts, yerr=errs, fmt='k.')
+    plt.errorbar(date, cts, yerr=errs, fmt=forms[0])
     err_p = avg+abs(stat_err)+abs(syst_err)
     err_m = avg-abs(stat_err)-abs(syst_err)
     err_p_l = np.full((2,), err_p)
     err_m_l = np.full((2,), err_m)
     x = (sorted(date)[0], sorted(date)[-1])
     y = (avg, avg)
-    plt.plot(x, y, 'r')
+    plt.plot(x, y, forms[1])
     plt.fill_between(x, err_p_l, err_m_l, alpha=0.5)
 
 
@@ -70,7 +70,7 @@ def ion():
 
 
 def save(file):
-    plt.savefig(file)
+    plt.savefig(file, dpi=100)
 
 
 def clear():
@@ -90,3 +90,10 @@ def plt_axes(axes, title, plotlist):
     axes.plot(*plotlist)
     axes.set_ylabel(title)
 
+
+def get_current_axes():
+    return plt.gca()
+
+
+def get_current_figure():
+    return plt.gcf()
