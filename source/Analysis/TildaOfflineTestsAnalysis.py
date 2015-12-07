@@ -24,7 +24,7 @@ import Analyzer
 import MPLPlotter as plot
 import matplotlib.patches as mpatches
 import pickle
-from copy import deepcopy
+from copy import deepcopy, copy
 from matplotlib.dates import DateFormatter
 import datetime
 import Measurement.XMLImporter as Xml
@@ -81,39 +81,78 @@ pick_file = os.path.join(combine_plots_dir, 'plot_data.dat')
 #         pl[run]['center'] = plotdatac
 #         pl[run]['sigma'] = plotdatas
 #         pl[run]['Int0'] = plotdatai
-# pickle.dump(pl, open(pick_file, "wb"))
+# pickle.dump(pl, open(pick_file, "wb"))  # saving the plot data in order nto to connect to the db everytime
 
 """ plotting of combined tracks. """
 pl = pickle.load(open(pick_file, "rb"))
 
-for par in ['center', 'sigma', 'Int0']:
-    for s in range(0, 2):
+# for par in ['center', 'sigma', 'Int0']:
+#     for s in range(0, 2):
+#         plot.clear()
+#         s0t0_l = list(pl['s' + str(s) + 't0'][par])[:-1]
+#         s0t0_l.append(('k.', 'k'))
+#         s0t1_l = list(pl['s' + str(s) + 't1'][par])[:-1]
+#         s0t1_l.append(('bo', 'b'))
+#         s0t2_l = list(pl['s' + str(s) + 't2'][par])[:-1]
+#         s0t2_l.append(('r+', 'r'))
+#         plot.plotAverage(*s0t0_l)
+#         plot.plotAverage(*s0t1_l)
+#         plot.plotAverage(*s0t2_l)
+#         ax = plot.get_current_axes()
+#         fig = plot.get_current_figure()
+#         fig.set_size_inches(10, 8, forward=True)
+#
+#         black_patch = mpatches.Patch(color='black', label='-2V to -1.7V')
+#         blue_patch = mpatches.Patch(color='blue', label='inverting')
+#         red_patch = mpatches.Patch(color='red', label='-1.7V to -2V')
+#         plot.get_current_axes().legend(handles=[black_patch, blue_patch, red_patch],
+#                                        bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+#                                        ncol=3, mode="expand", borderaxespad=0.)
+#         plot.get_current_axes().text(0.95, 0.01, 's' + str(s) + '_t0_to_t3_' + par,
+#                                      verticalalignment='bottom', horizontalalignment='right',
+#                                      transform=ax.transAxes,
+#                                      color='green', fontsize=20)
+#         plot.save(os.path.join(combine_plots_dir,
+#                                's' + str(s) + '_t0_to_t3_' + par + '.png'))
+#
+#         # plot.show(True)
 
-        plot.clear()
-        s0t0_l = list(pl['s' + str(s) + 't0'][par])[:-1]
-        s0t0_l.append(('k.', 'k'))
-        s0t1_l = list(pl['s' + str(s) + 't1'][par])[:-1]
-        s0t1_l.append(('bo', 'b'))
-        s0t2_l = list(pl['s' + str(s) + 't2'][par])[:-1]
-        s0t2_l.append(('r+', 'r'))
-        plot.plotAverage(*s0t0_l)
-        plot.plotAverage(*s0t1_l)
-        plot.plotAverage(*s0t2_l)
-        ax = plot.get_current_axes()
-        fig = plot.get_current_figure()
-        fig.set_size_inches(10, 8, forward=True)
 
-        black_patch = mpatches.Patch(color='black', label='-2V to -1.7V')
-        blue_patch = mpatches.Patch(color='blue', label='inverting')
-        red_patch = mpatches.Patch(color='red', label='-1.7V to -2V')
-        plot.get_current_axes().legend(handles=[black_patch, blue_patch, red_patch],
-                                       bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
-                                       ncol=3, mode="expand", borderaxespad=0.)
-        plot.get_current_axes().text(0.95, 0.01, 's' + str(s) + '_t0_to_t3_' + par,
-        verticalalignment='bottom', horizontalalignment='right',
-        transform=ax.transAxes,
-        color='green', fontsize=20)
-        plot.save(os.path.join(combine_plots_dir,
-                               's' + str(s) + '_t0_to_t3_' + par + '.png'))
+''' NOW IT IS REFERENCED ON ONE TRACK AND THE OTHERS ARE PLOTTED AS A DIFFERENCE TO IT. '''
+ref = 's1t0'
+dif_to = ['s1t1', 's1t2']
+plot_styles = [['k.', 'k'], ['r+', 'r']]
+for i_p, par in enumerate(['center', 'sigma', 'Int0']):
+    to_plot = []
+    plot.clear()
+    pl_name = 'ref_' + ref + '_par_' + par
+    for i_r, r in enumerate(dif_to):
+        plt_list = list(pl[ref][par])
+        # difference diff = a - b
+        plt_list[1] = np.asarray(pl[ref][par][1]) - np.asarray(pl[r][par][1])
+        # uncertainty of difference, by gaussian errorprop d_diff = sqrt( (d_a) ** 2 + (d_b) ** 2 )
+        plt_list[2] = np.sqrt(np.square(np.asarray(pl[ref][par][2])) + np.square(np.asarray(pl[r][par][2])))
+        avg, err, r_chi_sq = Analyzer.weightedAverage(plt_list[1], plt_list[2])
+        plt_list[3] = avg
+        plt_list[4] = Analyzer.applyChi(err, r_chi_sq)  # don't want to connect to db here
+        plt_list[5] = 0  # don't want to connect to db here
+        plt_list[6] = plot_styles[i_r]
+        to_plot.append(deepcopy(plt_list))
 
-        # plot.show(True)
+    for p in to_plot:
+        plot.plotAverage(*p)
+    ax = plot.get_current_axes()
+    fig = plot.get_current_figure()
+    fig.set_size_inches(10, 8, forward=True)
+    black_patch = mpatches.Patch(color='black', label=ref + ' - ' + dif_to[0])
+    red_patch = mpatches.Patch(color='red', label=ref + ' - ' + dif_to[1])
+    ax.legend(handles=[black_patch, red_patch],
+              bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+              ncol=2, mode="expand", borderaxespad=0.)
+    ax.text(0.95, 0.01, pl_name,
+            verticalalignment='bottom', horizontalalignment='right',
+            transform=ax.transAxes,
+            color='green', fontsize=20)
+    plot.save(os.path.join(combine_plots_dir,
+                           pl_name + '.png'))
+    # plot.show(True)
