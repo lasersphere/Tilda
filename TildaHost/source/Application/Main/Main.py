@@ -13,10 +13,7 @@ import os
 import multiprocessing
 import time
 
-from Interface.ScanControlUi.ScanControlUi import ScanControlUi
-from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
-from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
-from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
+
 
 from Service.Scan.ScanMain import ScanMain
 from Service.SimpleCounter.SimpleCounter import SimpleCounterControl
@@ -29,13 +26,12 @@ import Application.Config as Cfg
 
 class Main:
     def __init__(self):
-        self.act_scan_wins = []  # list of active scan windows
+        self.m_state = 'init'
         self.database = None  # path of the sqlite3 database
         self.working_directory = None
-        self.post_acc_win = None
         self.measure_voltage_pars = Dft.draftMeasureVoltPars  # dict containing all parameters
         # for the voltage measurement.
-        self.simple_counter_proc = None
+        self.simple_counter_inst = None
         self.cmd_queue = None
         self.seconds = 0
 
@@ -49,6 +45,7 @@ class Main:
             self.work_dir_changed('D:/CalciumOfflineTest_151126')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
+        self.set_state('idle')
 
     def work_dir_changed(self, workdir_str):
         """
@@ -83,43 +80,19 @@ class Main:
         one_scan_dict['isotopeData']['nOfTracks'] = tracks
         one_scan_dict['isotopeData']['version'] = Cfg.version
         logging.debug('will scan: ' + str(sorted(one_scan_dict)))
-        # if self.scan_main.post_acc_main.active_power_supplies == {}:
-        #   logging.error('could not start measurement, because power supplies are not initialized')
-        #return None
-        # self.iso_scan_process = multiprocessing.Process(
-        #     target=self.scan_main.scan_one_isotope, args=(one_scan_dict,))
-        # self.iso_scan_process.start()
-        self.scan_main.scan_one_isotope(one_scan_dict)
-        print('hello world')
-        # multiprocessing is used instead of threading due to QT,
-        # because the plot window could not be held open in another Thread than the main thread
+        self.scan_main.scan_one_isotope(one_scan_dict)  # change this to non blocking!
 
-    def start_simple_counter(self):
-        self.close_simple_counter_proc()
-        self.open_simp_count_dial()
-        self.cmd_queue = multiprocessing.JoinableQueue()
-        act_pmt_list, datapoints = self.open_simp_count_dial()
-        self.simple_counter_proc = SimpleCounterControl(act_pmt_list, datapoints, self.cmd_queue)
+    def start_simple_counter(self, act_pmt_list, datapoints):
+        self.simple_counter_inst = SimpleCounterControl(act_pmt_list, datapoints)
+        self.set_state('simple counter running')
         try:
-            self.simple_counter_proc.start()
+            self.simple_counter_inst.run()
         except Exception as e:
             print('while starting the process, this happened:', str(e))
-        self.open_simple_counter_stop_win()
-        self.stop_simple_counter()
 
     def stop_simple_counter(self):
-        self.cmd_queue.put(False)
-        self.close_simple_counter_proc()
 
-    def close_simple_counter_proc(self):
-        if self.simple_counter_proc is not None:
-            try:
-                self.simple_counter_proc.join()
-                logging.info('simple counter process successfully joined')
-            except Exception as e:
-                logging.error('error while closing simple counter process:' + str(e))
-            finally:
-                self.simple_counter_proc = None
+        self.set_state('idle')
 
     def set_power_supply_voltage(self, power_supply, volt):
         """
@@ -135,66 +108,21 @@ class Main:
         """
         return self.scan_main.get_status_of_pwr_supply(power_supply)
 
+    def set_state(self, req_state):
+        """
+        this will set the state of the main to req_state
+        :return: str, state of main
+        """
+        self.m_state = req_state
+        return self.m_state
+
     def cyclic(self):
+        """
+        cyclic function called regularly by the QtTimer initiated in TildaStart.py
+        This will control the main
+        """
         # self.seconds += 1
         # print(time.strftime("%H:%M:%S", time.gmtime(self.seconds)))
+        if self.m_state == 'simple counter running':
+            self.simple_counter_inst.read_data()
         pass
-
-    """ opening and closing of GUI's """
-
-    def open_work_dir_win(self):
-        self.work_dir_changed(QtWidgets.QFileDialog.getExistingDirectory(QtWidgets.QFileDialog(),
-            'choose working directory', os.path.expanduser('~')))
-        return self.working_directory
-
-    def open_scan_control_win(self):
-        if self.working_directory is None:
-            self.open_work_dir_win()
-        self.act_scan_wins.append(ScanControlUi(self))
-
-    def scan_control_win_closed(self, win_ref):
-        self.act_scan_wins.remove(win_ref)
-
-    def open_volt_meas_win(self):
-        self.measure_voltage_pars['actWin'] = VoltMeasConfUi(self, self.measure_voltage_pars)
-
-    def close_volt_meas_win(self):
-        self.measure_voltage_pars.pop('actWin')
-
-    def open_post_acc_win(self):
-        self.post_acc_win = PostAccControlUi(self)
-
-    def closed_post_acc_win(self):
-        self.post_acc_win = None
-
-    def open_simple_counter_stop_win(self):
-        SimpleCounterDialogUi()
-
-    def open_simp_count_dial(self):
-        # open window here in the future, that returns the active pmt list and the plotpoints
-        return [0, 1], 600
-
-
-    def close_main_win(self):
-        for win in self.act_scan_wins:
-            logging.debug('will close: ' + str(win))
-            try:
-                win.close()
-            except Exception as e:
-                logging.error(str(e))
-        try:
-            if self.post_acc_win is not None:
-                self.post_acc_win.close()
-        except Exception as e:
-            logging.error('error while closing post acceleration win:' + str(e))
-        try:
-            if self.measure_voltage_pars.get('actWin') is not None:
-                self.measure_voltage_pars['actWin'].close()
-        except Exception as e:
-            logging.error('error while closing voltage measurement win:' + str(e))
-        try:
-            self.iso_scan_process.join()
-        except Exception as e:
-            logging.error('error while closing pipe process:' + str(e))
-
-

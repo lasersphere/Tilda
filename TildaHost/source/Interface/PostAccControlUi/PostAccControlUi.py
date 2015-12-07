@@ -8,17 +8,20 @@ Module Description: Gui for a simple control of up to 3 post acceleration device
 
 from PyQt5 import QtWidgets
 import logging
+
+
 from Interface.PostAccControlUi.Ui_PostAccControl import Ui_MainWindow_PostAcc
+import Application.Config as Cfg
 
 
 class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
     def __init__(self, main):
         super(PostAccControlUi, self).__init__()
-        self.main = main
         self.setupUi(self)
 
-        self.scan_main = main.scan_main
-        self.post_acc_main = main.scan_main.post_acc_main
+        self.main_ui = main
+        self.scan_main = Cfg._main_instance.scan_main
+        self.post_acc_main = Cfg._main_instance.scan_main.post_acc_main
 
         self.update_power_sups_gui()
         self.pushButton_init_all.clicked.connect(self.init_pow_sups)
@@ -128,4 +131,4 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         """
         unsubscribe in the corresponding main
         """
-        self.main.closed_post_acc_win()
+        self.main_ui.close_post_acc_win()
