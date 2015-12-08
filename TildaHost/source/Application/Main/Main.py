@@ -42,7 +42,7 @@ class Main:
         # self.work_dir_changed('E:\\blub')
         # self.work_dir_changed('C:\\temp')
         try:
-            self.work_dir_changed('D:/CalciumOfflineTest_151126')
+            self.work_dir_changed('E:/lala')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state('idle')
@@ -68,14 +68,18 @@ class Main:
         """
         * merge the given scan dict with measureVoltPars, workingDirectory, nOfTracks and version
         """
-        one_scan_dict['measureVoltPars'] = SdOp.merge_dicts(one_scan_dict['measureVoltPars'],
-                                                            self.measure_voltage_pars)
-        one_scan_dict['pipeInternals']['workingDirectory'] = self.working_directory
-        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(one_scan_dict)
-        one_scan_dict['isotopeData']['nOfTracks'] = tracks
-        one_scan_dict['isotopeData']['version'] = Cfg.version
-        logging.debug('will scan: ' + str(sorted(one_scan_dict)))
-        self.scan_main.scan_one_isotope(one_scan_dict)  # change this to non blocking!
+        if self.m_state == 'idle':
+            self.set_state('preparing_scan')
+            one_scan_dict['measureVoltPars'] = SdOp.merge_dicts(one_scan_dict['measureVoltPars'],
+                                                                self.measure_voltage_pars)
+            one_scan_dict['pipeInternals']['workingDirectory'] = self.working_directory
+            tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(one_scan_dict)
+            one_scan_dict['isotopeData']['nOfTracks'] = tracks
+            one_scan_dict['isotopeData']['version'] = Cfg.version
+            logging.debug('will scan: ' + str(sorted(one_scan_dict)))
+            self.scan_main.scan_one_isotope(one_scan_dict)  # change this to non blocking!
+        else:
+            logging.warning('could not start scan because state of main is ' + self.m_state)
 
     def start_simple_counter(self, act_pmt_list, datapoints):
         self.simple_counter_inst = SimpleCounterControl(act_pmt_list, datapoints)

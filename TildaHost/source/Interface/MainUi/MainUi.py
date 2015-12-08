@@ -43,11 +43,23 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         cyclic function for the Gui
         """
         self.update_status()
+        self.update_scan_wins()
 
     def update_status(self):
+        """
+        keep it short, will be called in cyclic()
+        """
         self.label_workdir_set.setText(str(Cfg._main_instance.working_directory))
         self.label_main_status.setText(Cfg._main_instance.m_state)
         self.label_database.setText(Cfg._main_instance.database)
+
+    def update_scan_wins(self):
+        """
+        keep it short, will be called in cyclic()
+        """
+        for w in self.act_scan_wins:
+            w.enable_go(Cfg._main_instance.m_state == 'idle')
+            # disable go if not in idle state
 
     def choose_working_dir(self):
         """ will open a modal file dialog and set all workingdirectories of the pipeline to the chosen folder """
@@ -62,7 +74,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def open_scan_ctrl_win(self):
         if Cfg._main_instance.working_directory is None:
             self.choose_working_dir()
-        self.act_scan_wins.append(ScanControlUi())
+        self.act_scan_wins.append(ScanControlUi(self))
 
     def scan_control_win_closed(self, win_ref):
         self.act_scan_wins.remove(win_ref)

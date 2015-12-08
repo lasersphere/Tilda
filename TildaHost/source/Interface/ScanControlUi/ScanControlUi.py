@@ -20,13 +20,12 @@ from copy import deepcopy, copy
 
 
 class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
-    def __init__(self):
+    def __init__(self, main_gui):
         """ Non-Modal Main window to control the Scan.
          All Isotope/track/sequencer settings are entered here. """
         super(ScanControlUi, self).__init__()
         self.setupUi(self)
 
-        self.scanning = False
         self.buffer_scan_dict = {}
         self.track_wins_dict = {}
         self.win_title = None
@@ -38,15 +37,16 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.action_remove_track.triggered.connect(self.remove_selected_track)
         self.listWidget.doubleClicked.connect(self.work_on_existing_track)
 
+        self.main_gui = main_gui
+
         self.show()
 
-        self.main = Cfg._main_instance
+    def enable_go(self, bool):
+        self.actionGo.setEnabled(bool)
 
     def go(self):
         # pss on the buffered scandict and let it run.
-        logging.debug('starting measurement')
-        self.main.start_scan(self.buffer_scan_dict)
-        # print(self.buffer_scan_dict)
+        Cfg._main_instance.start_scan(self.buffer_scan_dict)
 
     def add_track(self):
         """
@@ -59,7 +59,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         iso = self.buffer_scan_dict['isotopeData']['isotope']
         next_track_num, track_num_list = SdOp.get_available_tracknum(self.buffer_scan_dict)
         track_name = 'track' + str(next_track_num)
-        scand_from_db = DbOp.extract_track_dict_from_db(self.main.database, iso, sctype, next_track_num)
+        scand_from_db = DbOp.extract_track_dict_from_db(Cfg._main_instance.database, iso, sctype, next_track_num)
         if scand_from_db is not None:
             logging.debug('adding track' + str(next_track_num) + ' from database')
             self.buffer_scan_dict[track_name] = scand_from_db[track_name]
@@ -125,25 +125,23 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         for i in trk_lis:
             logging.debug('saving track ' + str(i) + ' dict is: ' +
                           str(self.buffer_scan_dict['track' + str(i)]))
-            DbOp.add_scan_dict_to_db(self.main.database, self.buffer_scan_dict, i, track_key='track' + str(i))
+            DbOp.add_scan_dict_to_db(Cfg._main_instance.database, self.buffer_scan_dict, i, track_key='track' + str(i))
 
     def close_track_wins(self):
+        """
+        when closing, close all track windows
+        """
         new_dict = copy(self.track_wins_dict)
         for key, val in new_dict.items():
             val.close()
 
     def closeEvent(self, event):
-        if self.scanning:
-            logging.info('will not exit, because a scan is ongoing.')
-            event.ignore()
-        else:
-            logging.info('closing scan win' + str(self.win_title))
-            event.accept()
-            print(self.track_wins_dict)
-            self.close_track_wins()
-            self.main.scan_control_win_closed(self)
-            print(self.track_wins_dict)
-
+        """
+        unsubscribe from parent gui when closed
+        """
+        logging.info('closing scan win ' + str(self.win_title))
+        self.close_track_wins()
+        self.main_gui.scan_control_win_closed(self)
 
 # if __name__ == "__main__":
 #     app = QtWidgets.QApplication(sys.argv)
