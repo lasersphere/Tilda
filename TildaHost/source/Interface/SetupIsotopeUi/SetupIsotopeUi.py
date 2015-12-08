@@ -13,10 +13,11 @@ from Interface.SetupIsotopeUi.Ui_setupIsotope import Ui_SetupIsotope
 import Service.DatabaseOperations.DatabaseOperations as DbOp
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as Dft
+import Application.Config as Cfg
 
 
 class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
-    def __init__(self, main, default_scan_dict):
+    def __init__(self, default_scan_dict):
         """
         Modal Dialog which will connect to the database and read the stored parameters.
         by clicking ok, the data will be stored in self.new_scan_dict.
@@ -25,8 +26,8 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         self.setupUi(self)
         self.iso = None
         self.sequencer = None
-        self.main = main
-        self.db = main.database
+        self.main = Cfg._main_instance
+        self.db = self.main.database
         self.default_scan_dict = default_scan_dict
         self.new_scan_dict = {}
 

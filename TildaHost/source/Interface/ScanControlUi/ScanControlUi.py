@@ -11,6 +11,7 @@ from Interface.TrackParUi.TrackUi import TrackUi
 from Interface.SetupIsotopeUi.SetupIsotopeUi import SetupIsotopeUi
 import Service.DatabaseOperations.DatabaseOperations as DbOp
 import Service.Scan.ScanDictionaryOperations as SdOp
+import Application.Config as Cfg
 
 from PyQt5 import QtWidgets
 
@@ -19,7 +20,7 @@ from copy import deepcopy, copy
 
 
 class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
-    def __init__(self, main):
+    def __init__(self):
         """ Non-Modal Main window to control the Scan.
          All Isotope/track/sequencer settings are entered here. """
         super(ScanControlUi, self).__init__()
@@ -39,7 +40,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
 
         self.show()
 
-        self.main = main
+        self.main = Cfg._main_instance
 
     def go(self):
         # pss on the buffered scandict and let it run.
@@ -112,7 +113,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
 
     def setup_iso(self):
         logging.debug('setting up isotope')
-        iso_win = SetupIsotopeUi(self.main, {})
+        iso_win = SetupIsotopeUi({})
         self.buffer_scan_dict = deepcopy(iso_win.new_scan_dict)
         print(self.buffer_scan_dict)
         self.update_track_list()

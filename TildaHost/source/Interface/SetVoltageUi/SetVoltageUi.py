@@ -9,13 +9,14 @@ Module Description: Simple User Interface to display a set voltage and read it b
 from PyQt5 import QtWidgets
 
 from Interface.SetVoltageUi.Ui_SetVoltage import Ui_Dialog
+import Application.Config as Cfg
 
 
 class SetVoltageUi(QtWidgets.QDialog, Ui_Dialog):
-    def __init__(self, power_supply, new_voltage, main):
+    def __init__(self, power_supply, new_voltage):
         QtWidgets.QDialog.__init__(self)
         self.power_supply = power_supply
-        self.main = main
+        self.main = Cfg._main_instance
         self.readback = None
 
         self.setupUi(self)

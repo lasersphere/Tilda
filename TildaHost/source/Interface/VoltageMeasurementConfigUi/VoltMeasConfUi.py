@@ -7,16 +7,20 @@ Created on '29.10.2015'
 """
 
 from Interface.VoltageMeasurementConfigUi.Ui_VoltMeasConf import Ui_VoltMeasConfMainWin
+import Application.Config as Cfg
+
+
 from PyQt5 import QtWidgets
 from copy import deepcopy
 import logging
 
+
 class VoltMeasConfUi(QtWidgets.QMainWindow, Ui_VoltMeasConfMainWin):
-    def __init__(self, main, default_dict):
+    def __init__(self, default_dict):
         super(VoltMeasConfUi, self).__init__()
         self.setupUi(self)
 
-        self.main = main
+        self.main = Cfg._main_instance
 
         self.doubleSpinBox_measVoltPulseLength_mu_s.valueChanged.connect(self.pulse_length)
         self.doubleSpinBox_measVoltTimeout_mu_s_set.valueChanged.connect(self.timeout)

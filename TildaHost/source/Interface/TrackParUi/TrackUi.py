@@ -295,7 +295,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         if power_supply != 'Kepco':
             volt = self.buffer_pars['postAccOffsetVolt']
             self.scan_ctrl_win.main.set_power_supply_voltage(power_supply, volt)
-            setvoltui = SetVoltageUi(power_supply, volt, self.scan_ctrl_win.main)
+            setvoltui = SetVoltageUi(power_supply, volt)
             self.label_postAccOffsetVoltControl_set.setText(setvoltui.readback)
 
     def cancel(self):

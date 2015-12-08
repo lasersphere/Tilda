@@ -10,16 +10,12 @@ Created on '07.05.2015'
 from Interface.MainUi.Ui_Main import Ui_TildaMainWindow
 from Interface.VersionUi.VersionUi import VersionUi
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
-from Interface.TrackParUi.TrackUi import TrackUi
 from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
 from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
 from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 
 import Application.Config as Cfg
 
-from copy import deepcopy
-import threading
-import time
 import logging
 import os
 from PyQt5 import QtWidgets
@@ -50,6 +46,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def update_status(self):
         self.label_workdir_set.setText(str(Cfg._main_instance.working_directory))
+        self.label_main_status.setText(Cfg._main_instance.m_state)
+        self.label_database.setText(Cfg._main_instance.database)
 
     def choose_working_dir(self):
         """ will open a modal file dialog and set all workingdirectories of the pipeline to the chosen folder """
@@ -62,15 +60,15 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         VersionUi()
 
     def open_scan_ctrl_win(self):
-        if Cfg._main_instance is None:
+        if Cfg._main_instance.working_directory is None:
             self.choose_working_dir()
-        self.act_scan_wins.append(ScanControlUi(self))
+        self.act_scan_wins.append(ScanControlUi())
 
     def scan_control_win_closed(self, win_ref):
         self.act_scan_wins.remove(win_ref)
 
     def open_volt_meas_win(self):
-        self.measure_voltage_win = VoltMeasConfUi(self, self.measure_voltage_pars)
+        self.measure_voltage_win = VoltMeasConfUi(self.measure_voltage_pars)
 
     def close_volt_meas_win(self):
         self.measure_voltage_win = None
@@ -89,6 +87,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def open_simp_count_dial(self):
         # open window here in the future, that returns the active pmt list and the plotpoints
         # needed before the pipeline is started
+        # could also be realized by altering the simple counter dialog win
         return [0, 1], 600
 
     def closeEvent(self, *args, **kwargs):
