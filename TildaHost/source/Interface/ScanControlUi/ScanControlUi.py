@@ -12,9 +12,7 @@ from Interface.SetupIsotopeUi.SetupIsotopeUi import SetupIsotopeUi
 import Service.DatabaseOperations.DatabaseOperations as DbOp
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Application.Config as Cfg
-
 from PyQt5 import QtWidgets
-
 import logging
 from copy import deepcopy, copy
 
@@ -26,9 +24,9 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         super(ScanControlUi, self).__init__()
         self.setupUi(self)
 
-        self.buffer_scan_dict = {}
-        self.track_wins_dict = {}
+        self.active_iso = None
         self.win_title = None
+        self.track_wins_dict = {}
 
         self.actionGo.triggered.connect(self.go)
         self.actionSetup_Isotope.triggered.connect(self.setup_iso)
@@ -42,11 +40,16 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.show()
 
     def enable_go(self, bool):
+        """
+        wrapper for enabling the Go button, True-> enabled
+        """
         self.actionGo.setEnabled(bool)
 
     def go(self):
-        # pss on the buffered scandict and let it run.
-        Cfg._main_instance.start_scan(self.buffer_scan_dict)
+        """
+        will set the state in the main to go
+        """
+        Cfg._main_instance.start_scan(self.active_iso)
 
     def add_track(self):
         """
@@ -54,21 +57,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         depending on if there is still a track available in the db.
         Will not write to the database!
         """
-        logging.debug('adding track')
-        sctype = self.buffer_scan_dict['isotopeData']['type']
-        iso = self.buffer_scan_dict['isotopeData']['isotope']
-        next_track_num, track_num_list = SdOp.get_available_tracknum(self.buffer_scan_dict)
-        track_name = 'track' + str(next_track_num)
-        scand_from_db = DbOp.extract_track_dict_from_db(Cfg._main_instance.database, iso, sctype, next_track_num)
-        if scand_from_db is not None:
-            logging.debug('adding track' + str(next_track_num) + ' from database')
-            self.buffer_scan_dict[track_name] = scand_from_db[track_name]
-        else:
-            track_to_copy_from = 'track' + str(max(track_num_list))
-            logging.debug('adding track' + str(next_track_num) + ' copying values from: ' + track_to_copy_from)
-            self.buffer_scan_dict[track_name] = deepcopy(self.buffer_scan_dict[track_to_copy_from])
-        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(self.buffer_scan_dict)
-        self.buffer_scan_dict['isotopeData']['nOfTracks'] = tracks
+        Cfg._main_instance.add_next_track_to_iso_in_scan_pars(self.active_iso)
         self.update_track_list()
 
     def remove_selected_track(self):
@@ -76,7 +65,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         will remove the currently selected
         """
         try:
-            self.buffer_scan_dict.pop(self.listWidget.currentItem().text())
+            Cfg._main_instance.remove_track_from_scan_pars(self.active_iso,
+                                                           self.listWidget.currentItem().text())
             self.update_track_list()
         except Exception as e:
             logging.error('Error occurred while removing track from list: ' + str(e))
@@ -89,43 +79,49 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         track_name = self.listWidget.currentItem().text()
         track_number = int(track_name[5:])
         logging.debug('working on track' + str(track_number))
-        self.track_wins_dict[str(track_number)] = TrackUi(self, track_number, self.buffer_scan_dict[track_name])
+        try:
+            self.track_wins_dict[str(track_number)] = TrackUi(self, track_number, self.active_iso)
+        except Exception as e:
+            print(e)
 
     def track_win_closed(self, tracknum_int):
         self.track_wins_dict.pop(str(tracknum_int))
 
     def update_track_list(self):
-        if self.buffer_scan_dict:
+        """
+        updates the track list in the gui
+        """
+        if self.active_iso:
             self.listWidget.clear()
-            newitems = sorted([key for key, val in self.buffer_scan_dict.items() if key[:-1] == 'track'])
-            print(newitems)
+            scan_d = Cfg._main_instance.scan_pars.get(self.active_iso)
+            newitems = sorted([key for key, val in scan_d.items() if key[:-1] == 'track'])
             self.listWidget.addItems(newitems)
 
     def update_win_title(self):
-        try:
-            iso = str(self.buffer_scan_dict['isotopeData']['isotope'])
-            sctype = str(self.buffer_scan_dict['isotopeData']['type'])
-            win_title = iso + ' - ' + sctype
-        except KeyError:
-            win_title = 'please setup Isotope'
+        """
+        updates the window title with the active isotope name as in self.active_iso
+        """
+        win_title = 'please setup Isotope'
+        if self.active_iso is not None:
+            win_title = self.active_iso
         self.setWindowTitle(win_title)
         self.win_title = win_title
 
     def setup_iso(self):
+        """
+        opens a dialog for chosing the isotope.
+        """
         logging.debug('setting up isotope')
-        iso_win = SetupIsotopeUi({})
-        self.buffer_scan_dict = deepcopy(iso_win.new_scan_dict)
-        print(self.buffer_scan_dict)
+        SetupIsotopeUi(self)
         self.update_track_list()
         self.update_win_title()
 
     def save_to_db(self):
+        """
+        save all settings of the given isotope to the database.
+        """
         logging.debug('saving settings to database')
-        trk_num, trk_lis = SdOp.get_number_of_tracks_in_scan_dict(self.buffer_scan_dict)
-        for i in trk_lis:
-            logging.debug('saving track ' + str(i) + ' dict is: ' +
-                          str(self.buffer_scan_dict['track' + str(i)]))
-            DbOp.add_scan_dict_to_db(Cfg._main_instance.database, self.buffer_scan_dict, i, track_key='track' + str(i))
+        Cfg._main_instance.save_scan_par_to_db(self.active_iso)
 
     def close_track_wins(self):
         """
@@ -142,8 +138,3 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         logging.info('closing scan win ' + str(self.win_title))
         self.close_track_wins()
         self.main_gui.scan_control_win_closed(self)
-
-# if __name__ == "__main__":
-#     app = QtWidgets.QApplication(sys.argv)
-#     blub = ScanControlUi(None)
-#     app.exec_()

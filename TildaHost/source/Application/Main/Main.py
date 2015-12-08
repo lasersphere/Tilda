@@ -12,6 +12,7 @@ import logging
 import os
 import multiprocessing
 import time
+from copy import deepcopy
 
 
 
@@ -34,13 +35,11 @@ class Main:
         self.simple_counter_inst = None
         self.cmd_queue = None
         self.seconds = 0
+        self.scan_pars = {}  # {iso0: scan_dict, iso1: scan_dict} -> iso is unique
 
         self.scan_main = ScanMain()
         self.iso_scan_process = None
 
-        # remove this later:
-        # self.work_dir_changed('E:\\blub')
-        # self.work_dir_changed('C:\\temp')
         try:
             self.work_dir_changed('E:/lala')
         except Exception as e:
@@ -126,11 +125,73 @@ class Main:
         cyclic function called regularly by the QtTimer initiated in TildaStart.py
         This will control the main
         """
-        # self.seconds += 1
-        # print(time.strftime("%H:%M:%S", time.gmtime(self.seconds)))
         if self.m_state == 'simple_counter_running':
             logging.debug('reading simple counter data')
             self.simple_counter_inst.read_data()
         if self.m_state == 'stop_simple_counter':
             self.stop_simple_counter()
         pass
+
+    def get_available_isos_from_db(self, seq_type):
+        """
+        connects to the database defined by self.database
+        :return: list, name of all available isotopes
+        """
+        isos = DbOp.check_for_existing_isos(self.database, seq_type)
+        return isos
+
+    def add_new_iso_to_db(self, iso, seq_type):
+        """
+        add a new isotope of type seq, to the database
+        """
+        DbOp.add_new_iso(self.database, iso, seq_type)
+
+    def add_iso_to_scan_pars(self, iso, seq_type):
+        """
+        connect to the database and add all tracks with given isotope and sequencer type
+        to self.scan_pars.
+        :return: str, key of new isotope.
+        """
+        scand = DbOp.extract_all_tracks_from_db(self.database, iso, seq_type)
+        key = iso + '_' + seq_type
+        self.scan_pars[key] = scand
+        return key
+
+    def remove_track_from_scan_pars(self, iso, track):
+        """
+        remove a track from the given isotope dictionary.
+        """
+        self.scan_pars.get(iso).pop(track)
+
+    def save_scan_par_to_db(self, iso):
+        """
+        will save all information in the scan_pars dict for the given isootpe to the database.
+        """
+        scan_d = self.scan_pars[iso]
+        trk_num, trk_lis = SdOp.get_number_of_tracks_in_scan_dict(scan_d)
+        for i in trk_lis:
+            logging.debug('saving track ' + str(i) + ' dict is: ' +
+                          str(scan_d['track' + str(i)]))
+            DbOp.add_scan_dict_to_db(self.database, scan_d, i, track_key='track' + str(i))
+
+    def add_next_track_to_iso_in_scan_pars(self, iso):
+        """
+        this will look for iso in self.scan_pars and add a new track with lowest possible number.
+        If there is a track with this number available in the database, load from there.
+        Otherwise copy from another track.
+        """
+        logging.debug('adding track')
+        scan_d = self.scan_pars.get(iso)
+        seq_type = scan_d.get('isotopeData').get('type')
+        next_track_num, track_num_list = SdOp.get_available_tracknum(scan_d)
+        track_name = 'track' + str(next_track_num)
+        scand_from_db = DbOp.extract_track_dict_from_db(self.database, iso, seq_type, next_track_num)
+        if scand_from_db is not None:
+            logging.debug('adding track' + str(next_track_num) + ' from database')
+            scan_d[track_name] = scand_from_db[track_name]
+        else:
+            track_to_copy_from = 'track' + str(max(track_num_list))
+            logging.debug('adding track' + str(next_track_num) + ' copying values from: ' + track_to_copy_from)
+            scan_d[track_name] = deepcopy(scan_d[track_to_copy_from])
+        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scan_d)
+        scan_d['isotopeData']['nOfTracks'] = tracks

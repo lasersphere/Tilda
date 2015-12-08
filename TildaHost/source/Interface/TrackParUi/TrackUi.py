@@ -14,18 +14,20 @@ from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
 from Interface.SetVoltageUi.SetVoltageUi import SetVoltageUi
 import Service.VoltageConversions.VoltageConversions as VCon
 import Service.Scan.ScanDictionaryOperations as SdOp
+import Application.Config as Cfg
 
 
 class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
-    def __init__(self, scan_ctrl_win, track_number, default_track_dict):
+    def __init__(self, scan_ctrl_win, track_number, active_iso_name):
         """ Non.modal Main window to determine the scanparameters for a single track of a given isotope.
          scan_ctrl_win is needed for writing the track dictionary to a given scan dictionary.
          track_number is the number of the track which will be worked on.
          default_track_dict is the default dictionary which will be deepcopied and then worked on."""
         super(TrackUi, self).__init__()
 
-        self.default_track_dict = deepcopy(default_track_dict)
-        self.buffer_pars = deepcopy(default_track_dict)
+        track_name = 'track' + str(track_number)
+        self.default_track_dict = deepcopy(Cfg._main_instance.scan_pars.get(active_iso_name).get(track_name))
+        self.buffer_pars = deepcopy(Cfg._main_instance.scan_pars.get(active_iso_name).get(track_name))
         self.buffer_pars['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()  # is needed to be able to fix stop
         self.default_track_dict['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()
 
@@ -33,8 +35,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.track_number = track_number
 
         self.setupUi(self)
-        self.setWindowTitle(self.scan_ctrl_win.win_title + ' - track' + str(track_number))
-        self.show()
+        self.setWindowTitle(self.scan_ctrl_win.win_title + '_track' + str(track_number))
 
         """Sequencer Settings:"""
         self.doubleSpinBox_dwellTime_ms.valueChanged.connect(self.dwelltime_set)
@@ -67,8 +68,9 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.doubleSpinBox_waitAfterReset_muS.valueChanged.connect(self.wait_after_reset_mu_sec_set)
         self.doubleSpinBox_waitForKepco_muS.valueChanged.connect(self.wait_for_kepco_mu_sec)
 
-        print(str(self.buffer_pars))
+        # print(str(self.buffer_pars))
         self.set_labels_by_dict(self.buffer_pars)
+        self.show()
 
     """functions:"""
     def set_labels_by_dict(self, track_dict):
