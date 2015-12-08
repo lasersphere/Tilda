@@ -25,7 +25,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
                                         self.config.fpgaResource, dummy=True)
         self.type = 'csdummy'
         self.scanpars = None
-        self.random_data = []
+        self.artificial_build_data = []
         self.status = CsCfg.seqStateDict['init']
 
     '''read Indicators'''
@@ -123,22 +123,23 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         :return:
         """
         result = {'nOfEle': 0, 'newData': None, 'elemRemainInFifo': 0}
-        result['elemRemainInFifo'] = len(self.random_data)
+        result['elemRemainInFifo'] = len(self.artificial_build_data)
         datapoints = 0
         if result['elemRemainInFifo'] > 0:
             datapoints = min(10, result['elemRemainInFifo'])
-            result['newData'] = np.array(self.random_data[0:datapoints])
+            result['newData'] = np.array(self.artificial_build_data[0:datapoints])
             result['nOfEle'] = datapoints
-            result['elemRemainInFifo'] = len(self.random_data) - datapoints
-        self.random_data = [i for j, i in enumerate(self.random_data)
-                            if j not in range(datapoints)]
+            result['elemRemainInFifo'] = len(self.artificial_build_data) - datapoints
+        self.artificial_build_data = [i for j, i in enumerate(self.artificial_build_data)
+                                      if j not in range(datapoints)]
         if result['elemRemainInFifo'] == 0:
             self.status = CsCfg.seqStateDict['measComplete']
         return result
 
     def data_builder(self, scanpars, track_num):
         """
-        build data for one track. Countervalue = Num_pmt + (num_of_step + 1)
+        build data for one track and stroe it in self.artificial_build_data:
+        Countervalue = Num_pmt + (num_of_step + 1)
         """
         track_ind, track_name = scanpars['pipeInternals']['activeTrackNumber']
         trackd = scanpars[track_name]
@@ -158,7 +159,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
                     # append 8 pmt count events
                     complete_lis.append(Form.add_header_to23_bit(i + j, 2, i, 1))
                     i += 1
-        self.random_data = complete_lis
+        self.artificial_build_data = complete_lis
 
     def getSeqState(self):
         return self.status

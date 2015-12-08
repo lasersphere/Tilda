@@ -66,12 +66,7 @@ class Main:
 
     def start_scan(self, one_scan_dict):
         """
-        merge the given scan dict with measureVoltPars, workingDirectory, nOfTracks and version
-        start new process and:
-            setup all devices, including the FPGAs
-            start the Pipeline
-            read data from FPGA and feed it every "period" seconds to the pipeline.
-            The Pipeline will take care of plotting and displaying.
+        * merge the given scan dict with measureVoltPars, workingDirectory, nOfTracks and version
         """
         one_scan_dict['measureVoltPars'] = SdOp.merge_dicts(one_scan_dict['measureVoltPars'],
                                                             self.measure_voltage_pars)
@@ -88,10 +83,11 @@ class Main:
         try:
             self.simple_counter_inst.run()
         except Exception as e:
-            print('while starting the process, this happened:', str(e))
+            print('while starting the simple counter, this happened:', str(e))
 
     def stop_simple_counter(self):
-
+        fpga_status = self.simple_counter_inst.stop()
+        logging.debug('fpga status after deinit is: ' + str(fpga_status))
         self.set_state('idle')
 
     def set_power_supply_voltage(self, power_supply, volt):

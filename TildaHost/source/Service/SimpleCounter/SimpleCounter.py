@@ -7,6 +7,7 @@ Module Description: Modukle for running and controling the SimpleCounter Bitfile
 """
 
 from Driver.DataAcquisitionFpga.SimpleCounter import SimpleCounter
+from Driver.DataAcquisitionFpga.SimpleCounterDummy import SimpleCounterDummy
 import Service.AnalysisAndDataHandling.tildaPipeline as Tp
 
 
@@ -28,6 +29,12 @@ class SimpleCounterControl:
         start the simple counter bitfile on the fpga
         """
         self.sc = SimpleCounter()
+
+    def run_dummy(self):
+        """
+        dummy simple counter
+        """
+        self.sc = SimpleCounterDummy()
 
     def read_data(self):
         """
