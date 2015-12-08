@@ -8,6 +8,7 @@ Created on '07.05.2015'
 import logging
 import argparse
 import sys
+import functools
 
 from Application.Main.Main import Main
 import Application.Config as Cfg
@@ -47,10 +48,20 @@ def start_gui():
     timer = QTimer()
     timer.setTimerType(Qt.PreciseTimer)
     timer.setInterval(_cyclic_interval_ms)
-    timer.timeout.connect(Cfg._main_instance.cyclic)
+    timer_call_back = functools.partial(cyclic, ui=ui)
+    timer.timeout.connect(timer_call_back)
     timer.start()
     app.exec_()
     return ui
+
+
+def cyclic(ui):
+    """
+    periodic execution of these functions, when timer timesout, after _cyclic_interval_ms
+    -> all calls should be brief, otherwise Gui is blocked
+    """
+    Cfg._main_instance.cyclic()
+    ui.gui_cyclic()
 
 if __name__ == "__main__":
     main()

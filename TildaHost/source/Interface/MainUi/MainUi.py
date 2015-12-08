@@ -42,6 +42,15 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionSimple_Counter.triggered.connect(self.simple_counter)
         self.show()
 
+    def gui_cyclic(self):
+        """
+        cyclic function for the Gui
+        """
+        self.update_status()
+
+    def update_status(self):
+        self.label_workdir_set.setText(str(Cfg._main_instance.working_directory))
+
     def choose_working_dir(self):
         """ will open a modal file dialog and set all workingdirectories of the pipeline to the chosen folder """
         workdir = QtWidgets.QFileDialog.getExistingDirectory(QtWidgets.QFileDialog(),
@@ -75,12 +84,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def simple_counter(self):
         act_pmt_list, datapoints = self.open_simp_count_dial()
         Cfg._main_instance.start_simple_counter(act_pmt_list, datapoints)
-        print('opening simple counter dialog')
-        SimpleCounterDialogUi()
-        print('simple counter dialog closed')
+        SimpleCounterDialogUi()  # blocking!
 
     def open_simp_count_dial(self):
         # open window here in the future, that returns the active pmt list and the plotpoints
+        # needed before the pipeline is started
         return [0, 1], 600
 
     def closeEvent(self, *args, **kwargs):
@@ -96,7 +104,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         except Exception as e:
             logging.error('error while closing post acceleration win:' + str(e))
         try:
-            if self.measure_voltage_pars.get('actWin') is not None:
-                self.measure_voltage_pars['actWin'].close()
+            if self.measure_voltage_win is not None:
+                self.measure_voltage_win.close()
         except Exception as e:
             logging.error('error while closing voltage measurement win:' + str(e))
