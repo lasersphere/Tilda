@@ -48,4 +48,11 @@ class SimpleCounterControl:
         deinitialize the fpga
         :return: status of fpga
         """
-        return self.sc.DeInitFpga()
+        print('stopping now')
+        self.sc_pipe.stop()
+        print('pipe is stopped')
+        fpga_status = True
+        if self.sc.type == 'sc':
+            fpga_status = self.sc.DeInitFpga()
+        self.sc = None
+        return fpga_status

@@ -13,7 +13,7 @@ import numpy as np
 
 class SimpleCounterDummy:
     def __init__(self):
-        pass
+        self.type = 'scdummy'
 
     def conf_host_buf(self, num_of_request_ele):
         return True

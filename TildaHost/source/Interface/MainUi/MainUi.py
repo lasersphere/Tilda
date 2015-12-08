@@ -75,7 +75,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def simple_counter(self):
         act_pmt_list, datapoints = self.open_simp_count_dial()
         Cfg._main_instance.start_simple_counter(act_pmt_list, datapoints)
+        print('opening simple counter dialog')
         SimpleCounterDialogUi()
+        print('simple counter dialog closed')
 
     def open_simp_count_dial(self):
         # open window here in the future, that returns the active pmt list and the plotpoints

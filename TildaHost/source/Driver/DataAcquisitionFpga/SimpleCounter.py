@@ -17,6 +17,7 @@ import time
 
 class SimpleCounter(FPGAInterfaceHandling):
     def __init__(self):
+        self.type = 'sc'
         bit_path = ScCfg.bitfilePath
         bit_sig = ScCfg.bitfileSignature
         res = ScCfg.fpgaResource

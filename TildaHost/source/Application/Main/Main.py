@@ -83,12 +83,13 @@ class Main:
             self.simple_counter_inst.run()
         except Exception as e:
             print('while starting the simple counter bitfile, this happened: ', str(e))
-            print('starting dummy Sequencer now.')
+            print('don\'t worry, starting dummy Sequencer now.')
             self.simple_counter_inst.run_dummy()
         finally:
-            self.set_state('simple counter running')
+            self.set_state('simple_counter_running')
 
     def stop_simple_counter(self):
+        self.set_state('busy')
         fpga_status = self.simple_counter_inst.stop()
         logging.debug('fpga status after deinit is: ' + str(fpga_status))
         self.set_state('idle')
@@ -113,6 +114,7 @@ class Main:
         :return: str, state of main
         """
         self.m_state = req_state
+        logging.debug('changed state to %s', self.m_state)
         return self.m_state
 
     def cyclic(self):
@@ -122,7 +124,9 @@ class Main:
         """
         # self.seconds += 1
         # print(time.strftime("%H:%M:%S", time.gmtime(self.seconds)))
-        if self.m_state == 'simple counter running':
+        if self.m_state == 'simple_counter_running':
             logging.debug('reading simple counter data')
             self.simple_counter_inst.read_data()
+        if self.m_state == 'stop_simple_counter':
+            self.stop_simple_counter()
         pass
