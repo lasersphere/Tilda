@@ -79,11 +79,14 @@ class Main:
 
     def start_simple_counter(self, act_pmt_list, datapoints):
         self.simple_counter_inst = SimpleCounterControl(act_pmt_list, datapoints)
-        self.set_state('simple counter running')
         try:
             self.simple_counter_inst.run()
         except Exception as e:
-            print('while starting the simple counter, this happened:', str(e))
+            print('while starting the simple counter bitfile, this happened: ', str(e))
+            print('starting dummy Sequencer now.')
+            self.simple_counter_inst.run_dummy()
+        finally:
+            self.set_state('simple counter running')
 
     def stop_simple_counter(self):
         fpga_status = self.simple_counter_inst.stop()
@@ -120,5 +123,6 @@ class Main:
         # self.seconds += 1
         # print(time.strftime("%H:%M:%S", time.gmtime(self.seconds)))
         if self.m_state == 'simple counter running':
+            logging.debug('reading simple counter data')
             self.simple_counter_inst.read_data()
         pass

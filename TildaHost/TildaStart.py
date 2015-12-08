@@ -12,7 +12,7 @@ import sys
 from Application.Main.Main import Main
 import Application.Config as Cfg
 
-_cyclic_interval_ms = 2000
+_cyclic_interval_ms = 50
 
 def main():
     """

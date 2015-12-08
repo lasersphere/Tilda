@@ -128,7 +128,6 @@ def simple_counter_pipe():
 
     fig, axes = plt.subplots(2, sharex=True)
 
-    plotpoints = 600
     sample_rate = 1 / 0.02  # values per second
     pipe = Pipeline(start)
 

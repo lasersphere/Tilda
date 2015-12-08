@@ -28,8 +28,8 @@ class SimpleCounterDummy:
         elemRemainInFifo = int, number of Elements still in FifoBuffer
         """
         read_dict = dict.fromkeys(['nOfEle', 'newData', 'elemRemainInFifo'])
-        n_ele = 100
-        read_dict['nOfEle'] = n_ele
+        n_ele = 10
+        read_dict['nOfEle'] = n_ele * 8
         read_dict['newData'] = self.dummy_data(n_ele)
         read_dict['elemRemainInFifo'] = 0
         return read_dict
@@ -48,7 +48,7 @@ class SimpleCounterDummy:
     def dummy_data(self, num_of_vals):
         """
         builds dummy data with form:
-        pmt_num + 0, pmt_num + 1,... pmt_num + num_of_Vals
+        pmt_num + 1
         and sorts it into array like it would come from fpga so:
         (
         (32-bit pmt0), (32-bit pmt1), ..., (32-bit pmt7),
@@ -60,6 +60,11 @@ class SimpleCounterDummy:
         """
         data = np.zeros((8, num_of_vals), dtype=np.int32)
         for pmt_num in range(0, 8):
-            start_val = Form.add_header_to23_bit(pmt_num, 1, pmt_num, 1)
-            data[pmt_num] = np.arange(start_val, num_of_vals + start_val, 1)
-        return data
+            val = Form.add_header_to23_bit(pmt_num + 1, 1, pmt_num, 1)
+            data[pmt_num] = np.full((num_of_vals,), val)
+        return data.flatten('F')
+
+
+# scd = SimpleCounterDummy()
+# d = scd.dummy_data(100)
+# print(d.flatten('F'))
