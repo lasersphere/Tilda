@@ -28,13 +28,12 @@ import Application.Config as Cfg
 
 class Main:
     def __init__(self):
-        self.m_state = 'init'
+        self.m_state = ('init', None)  # tuple (str, val)
         self.database = None  # path of the sqlite3 database
         self.working_directory = None
         self.measure_voltage_pars = Dft.draftMeasureVoltPars  # dict containing all parameters
-        self.requested_power_supply = None
-        self.requested_voltage = None
         self.requested_power_supply_status = None
+        self.active_power_supplies = {}
         # for the voltage measurement.
         self.simple_counter_inst = None
         self.cmd_queue = None
@@ -56,34 +55,40 @@ class Main:
         cyclic function called regularly by the QtTimer initiated in TildaStart.py
         This will control the main
         """
-        if self.m_state == 'simple_counter_running':
+        if self.m_state[0] == 'simple_counter_running':
             logging.debug('reading simple counter data')
             self.simple_counter_inst.read_data()
-        if self.m_state == 'stop_simple_counter':
+        if self.m_state[0] == 'stop_simple_counter':
             self.stop_simple_counter()
-        elif self.m_state == 'setting_power_supply':
-            self.set_power_supply_voltage_call()
-        elif self.m_state == 'reading_power_supply':
-            self.power_supply_status_call()
+        elif self.m_state[0] == 'setting_power_supply':
+            self._set_power_supply_voltage(*self.m_state[1])
+        elif self.m_state[0] == 'reading_power_supply':
+            self._power_supply_status(self.m_state[1])
+        elif self.m_state[0] == 'init_power_supplies':
+            self._init_power_sups()
+        elif self.m_state[0] == 'set_output_power_sup':
+            self._set_power_sup_outp(*self.m_state[1])
         pass
 
     """ main functions """
-    def set_state(self, req_state, only_if_idle=False):
+    def set_state(self, req_state, val=None, only_if_idle=False):
         """
         this will set the state of the main to req_state
-        :return: str, state of main
+        :return: bool, True if success
         """
         if only_if_idle:
-            if self.m_state == 'idle':
-                self.m_state = req_state
+            if self.m_state[0] == 'idle':
+                self.m_state = req_state, val
                 logging.debug('changed state to %s', self.m_state)
+                return True
             else:
                 logging.error('main is not in idle state, could not change state to: %s,\n current state is: %s',
                               req_state, self.m_state)
+                return False
         else:
-            self.m_state = req_state
+            self.m_state = req_state, val
             logging.debug('changed state to %s', self.m_state)
-        return self.m_state
+            return True
 
     """ operations on self.scn_pars dictionary """
     def remove_track_from_scan_pars(self, iso, track):
@@ -169,42 +174,63 @@ class Main:
         self.set_state('idle')
 
     """ postaccleration power supply functions """
-    def request_voltage_set(self, power_supply, volt):
+    def init_power_sups(self):
+        """
+        only changes state, when in idle
+        """
+        self.active_power_supplies = {}
+        self.set_state('init_power_supplies', only_if_idle=True)
+
+    def _init_power_sups(self):
+        """
+        initializes all power supplies and stores it in self.active_power_supplies
+        """
+        self.active_power_supplies = self.scan_main.init_post_accel_pwr_supplies()
+        self.set_state('idle')
+
+    def set_power_supply_voltage(self, power_supply, volt):
         """
         this will request a change in the state in order to set the requested voltage.
         power_supply -> self.requested_power_supply
         volt -> self.requested_voltage
         """
-        self.requested_power_supply = power_supply
-        self.requested_voltage = volt
-        self.set_state('setting_power_supply', True)
+        self.set_state('setting_power_supply', (power_supply, volt), True)
 
-    def set_power_supply_voltage_call(self):
+    def _set_power_supply_voltage(self, name, volt):
         """
         this will actually call to the power supply
         will set the Output voltage of the desired power supply,
         as stated in self.requested_power_supply to the requested voltage
         """
-        self.scan_main.set_post_accel_pwr_supply(self.requested_power_supply, self.requested_voltage)
-        self.requested_power_supply = None
-        self.requested_voltage = None
+        self.scan_main.set_post_accel_pwr_supply(name, volt)
         self.set_state('idle')
 
-    def power_supply_status_request(self, power_supply):
+    def set_power_sup_outp(self, name, outp):
+        """
+        change state
+        """
+        self.set_state('set_output_power_sup', (name, outp), True)
+
+    def _set_power_sup_outp(self, name, outp):
+        """
+        set the output
+        """
+        self.scan_main.set_post_accel_pwr_spply_output(name, outp)
+        self.set_state('idle')
+
+    def power_supply_status(self, power_supply):
         """
         returns a dict containing the status of the power supply,
         keys are: name, programmedVoltage, voltageSetTime, readBackVolt
         """
-        self.requested_power_supply = power_supply
-        self.requested_power_supply_status = None
-        self.set_state('reading_power_supply', True)
+        self.set_state('reading_power_supply', power_supply, True)
 
-    def power_supply_status_call(self):
+    def _power_supply_status(self, name):
         """
         connects to the requested power supply and writes the status of the given power supply into
         self.requested_power_supply_status
         """
-        self.requested_power_supply_status = self.scan_main.get_status_of_pwr_supply(self.requested_power_supply)
+        self.requested_power_supply_status = self.scan_main.get_status_of_pwr_supply(name)
         self.set_state('idle')
 
     """ database functions """

@@ -280,7 +280,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def post_acc_offset_volt_control_set(self, val):
         """ write to the working dictionary and set the label """
         if val != 'Kepco':
-            status = Cfg._main_instance.power_supply_status_request(val)
+            status = Cfg._main_instance.power_supply_status(val)
             if status is not None:
                 val = str(status.get('readBackVolt'))
         self.label_postAccOffsetVoltControl_set.setText(val)
@@ -297,7 +297,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         power_supply = self.comboBox_postAccOffsetVoltControl.currentText()
         if power_supply != 'Kepco':
             volt = self.buffer_pars['postAccOffsetVolt']
-            Cfg._main_instance.request_voltage_set(power_supply, volt)
+            Cfg._main_instance.set_power_supply_voltage(power_supply, volt)
             setvoltui = SetVoltageUi(power_supply, volt)
             self.label_postAccOffsetVoltControl_set.setText(setvoltui.readback)
 

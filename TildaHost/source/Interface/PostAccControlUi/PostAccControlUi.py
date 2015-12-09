@@ -8,6 +8,7 @@ Module Description: Gui for a simple control of up to 3 post acceleration device
 
 from PyQt5 import QtWidgets
 import logging
+import time
 
 
 from Interface.PostAccControlUi.Ui_PostAccControl import Ui_MainWindow_PostAcc
@@ -20,8 +21,8 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         self.setupUi(self)
 
         self.main_ui = main_ui
-        self.scan_main = Cfg._main_instance.scan_main
-        self.post_acc_main = Cfg._main_instance.scan_main.post_acc_main
+        self.scan_main = None
+        self.post_acc_main = None
 
         self.update_power_sups_gui()
         self.pushButton_init_all.clicked.connect(self.init_pow_sups)
@@ -41,15 +42,33 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
                               ' \n\n' + str(e))
 
     def init_pow_sups(self):
-        self.scan_main.init_post_accel_pwr_supplies()
+        Cfg._main_instance.init_power_sups()
         self.update_power_sups_gui()
         self.connect_buttons()
 
     def update_power_sups_gui(self):
-        act_dict = self.post_acc_main.active_power_supplies
+        """
+        update the gui by reading
+        """
+        act_dict = Cfg._main_instance.active_power_supplies
         for name, instance in act_dict.items():
-            status_dict = self.scan_main.get_status_of_pwr_supply(name)
-            self.update_single_power_sup(status_dict, name[-1:])
+            status_dict = self.get_status_of_power_sup(name)
+            self.update_single_power_sup(status_dict, status_dict.get('name')[-1:])
+
+    def get_status_of_power_sup(self, name):
+        """
+        request a status dict from the main, block until it is there or timeout after 500 ms.
+        """
+        Cfg._main_instance.power_supply_status(name)
+        tries = 0
+        while Cfg._main_instance.requested_power_supply_status is None and tries < 100:
+            time.sleep(0.005)
+            tries += 1
+        if Cfg._main_instance.requested_power_supply_status is not None:
+            status_dict = Cfg._main_instance.requested_power_supply_status
+            return status_dict
+        else:
+            return None
 
     def update_single_power_sup(self, status_dict, num_str):
         getattr(self, 'label_name' + num_str).setText(status_dict.get('name'))
@@ -73,19 +92,19 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         if name is not None:
             voltage = getattr(self, 'doubleSpinBox_set_volt' + name[-1:]).value()
             if name is not None:
-                Cfg._main_instance.request_voltage_set(name, voltage)
+                Cfg._main_instance.set_power_supply_voltage(name, voltage)
                 self.update_power_sups_gui()
 
     def set_outp(self, name, outp=None):
         if name is not None:
-            status_dict = self.scan_main.get_status_of_pwr_supply(name)
+            status_dict = self.get_status_of_power_sup(name)
             cur_outp = status_dict.get('output', False)
             if outp is None:
                 new_outp = not cur_outp  # if not specified, just toggle the output status
             else:
                 new_outp = outp
-            self.scan_main.set_post_accel_pwr_spply_output(name, new_outp)
-            self.update_power_sups_gui()
+            Cfg._main_instance.set_power_sup_outp(name, new_outp)
+            self.update_single_power_sup(self.get_status_of_power_sup(name), name[-1:])
 
     def set_outp1(self):
         self.set_outp(self.resol_power_sup(1))

@@ -32,7 +32,7 @@ class SetVoltageUi(QtWidgets.QDialog, Ui_Dialog):
         self.exec_()
 
     def request_power_supply_status(self):
-        Cfg._main_instance.power_supply_status_request(self.power_supply)
+        Cfg._main_instance.power_supply_status(self.power_supply)
         tries = 0
         while self.write_labels() and tries < 100:
             tries += 1
