@@ -141,3 +141,38 @@ def find_volt_in_array(voltage, volt_array, track_ind):
         index = index[0][0]
     np.put(volt_array[track_ind], index, voltage)
     return index, volt_array
+
+
+def calc_dac_stop_18bit(start, step, num_of_steps):
+    """
+    calculate the stop voltage by:
+    stop = start + step * num_of_steps
+    :return stop_18bit
+    """
+    stop = start + step * num_of_steps
+    return stop
+
+
+def calc_step_size(start, stop, steps):
+    """
+    calculates the stepsize: (stop - start) / nOfSteps
+    :return stepsize_18bit
+    """
+    try:
+        dis = stop - start
+        stepsize_18bit = int(round(dis / steps))
+    except ZeroDivisionError:
+        stepsize_18bit = 0
+    return stepsize_18bit
+
+
+def calc_n_of_steps(start, stop, step_size):
+    """
+    calculates the number of steps: abs((stop - start) / stepSize)
+    """
+    try:
+        dis = abs(stop - start)
+        n_of_steps = int(round(dis / step_size))
+    except ZeroDivisionError:
+        n_of_steps = 0
+    return n_of_steps

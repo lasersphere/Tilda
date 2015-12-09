@@ -11,7 +11,7 @@ import sys
 import logging
 import os
 import multiprocessing
-import time
+import re
 from copy import deepcopy
 
 
@@ -20,6 +20,7 @@ from Service.Scan.ScanMain import ScanMain
 from Service.SimpleCounter.SimpleCounter import SimpleCounterControl
 
 import Service.Scan.ScanDictionaryOperations as SdOp
+import Service.VoltageConversions.VoltageConversions as VCon
 import Service.Scan.draftScanParameters as Dft
 import Service.DatabaseOperations.DatabaseOperations as DbOp
 import Application.Config as Cfg
@@ -31,6 +32,9 @@ class Main:
         self.database = None  # path of the sqlite3 database
         self.working_directory = None
         self.measure_voltage_pars = Dft.draftMeasureVoltPars  # dict containing all parameters
+        self.requested_power_supply = None
+        self.requested_voltage = None
+        self.requested_power_supply_status = None
         # for the voltage measurement.
         self.simple_counter_inst = None
         self.cmd_queue = None
@@ -46,6 +50,72 @@ class Main:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state('idle')
 
+    """ cyclic function """
+    def cyclic(self):
+        """
+        cyclic function called regularly by the QtTimer initiated in TildaStart.py
+        This will control the main
+        """
+        if self.m_state == 'simple_counter_running':
+            logging.debug('reading simple counter data')
+            self.simple_counter_inst.read_data()
+        if self.m_state == 'stop_simple_counter':
+            self.stop_simple_counter()
+        elif self.m_state == 'setting_power_supply':
+            self.set_power_supply_voltage_call()
+        elif self.m_state == 'reading_power_supply':
+            self.power_supply_status_call()
+        pass
+
+    """ main functions """
+    def set_state(self, req_state, only_if_idle=False):
+        """
+        this will set the state of the main to req_state
+        :return: str, state of main
+        """
+        if only_if_idle:
+            if self.m_state == 'idle':
+                self.m_state = req_state
+                logging.debug('changed state to %s', self.m_state)
+            else:
+                logging.error('main is not in idle state, could not change state to: %s,\n current state is: %s',
+                              req_state, self.m_state)
+        else:
+            self.m_state = req_state
+            logging.debug('changed state to %s', self.m_state)
+        return self.m_state
+
+    """ operations on self.scn_pars dictionary """
+    def remove_track_from_scan_pars(self, iso, track):
+        """
+        remove a track from the given isotope dictionary.
+        """
+        self.scan_pars.get(iso).pop(track)
+
+    def add_next_track_to_iso_in_scan_pars(self, iso):
+        """
+        this will look for iso in self.scan_pars and add a new track with lowest possible number.
+        If there is a track with this number available in the database, load from there.
+        Otherwise copy from another track.
+        """
+        logging.debug('adding track')
+        scan_d = self.scan_pars.get(iso)  # link to the isotope
+        iso = scan_d.get('isotopeData').get('isotope')
+        seq_type = scan_d.get('isotopeData').get('type')
+        next_track_num, track_num_list = SdOp.get_available_tracknum(scan_d)
+        track_name = 'track' + str(next_track_num)
+        scand_from_db = DbOp.extract_track_dict_from_db(self.database, iso, seq_type, next_track_num)
+        if scand_from_db is not None:
+            logging.debug('adding track' + str(next_track_num) + ' from database')
+            scan_d[track_name] = scand_from_db[track_name]
+        else:
+            track_to_copy_from = 'track' + str(max(track_num_list))
+            logging.debug('adding track' + str(next_track_num) + ' copying values from: ' + track_to_copy_from)
+            scan_d[track_name] = deepcopy(scan_d[track_to_copy_from])
+        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scan_d)
+        scan_d['isotopeData']['nOfTracks'] = tracks
+
+    """ file operations """
     def work_dir_changed(self, workdir_str):
         """
         Sets the working directory in which the main sqlite database is stored.
@@ -63,6 +133,7 @@ class Main:
             self.database = None
             self.working_directory = None
 
+    """ scanning """
     def start_scan(self, one_scan_dict):
         """
         * merge the given scan dict with measureVoltPars, workingDirectory, nOfTracks and version
@@ -79,7 +150,7 @@ class Main:
             self.scan_main.scan_one_isotope(one_scan_dict)  # change this to non blocking!
         else:
             logging.warning('could not start scan because state of main is ' + self.m_state)
-
+    """ simple counter """
     def start_simple_counter(self, act_pmt_list, datapoints):
         self.simple_counter_inst = SimpleCounterControl(act_pmt_list, datapoints)
         try:
@@ -97,41 +168,46 @@ class Main:
         logging.debug('fpga status after deinit is: ' + str(fpga_status))
         self.set_state('idle')
 
-    def set_power_supply_voltage(self, power_supply, volt):
+    """ postaccleration power supply functions """
+    def request_voltage_set(self, power_supply, volt):
         """
-        will set the Output voltage of the desiredself
-        power supply as stated in the track dictionary
+        this will request a change in the state in order to set the requested voltage.
+        power_supply -> self.requested_power_supply
+        volt -> self.requested_voltage
         """
-        self.scan_main.set_post_accel_pwr_supply(power_supply, volt)
+        self.requested_power_supply = power_supply
+        self.requested_voltage = volt
+        self.set_state('setting_power_supply', True)
+
+    def set_power_supply_voltage_call(self):
+        """
+        this will actually call to the power supply
+        will set the Output voltage of the desired power supply,
+        as stated in self.requested_power_supply to the requested voltage
+        """
+        self.scan_main.set_post_accel_pwr_supply(self.requested_power_supply, self.requested_voltage)
+        self.requested_power_supply = None
+        self.requested_voltage = None
+        self.set_state('idle')
 
     def power_supply_status_request(self, power_supply):
         """
         returns a dict containing the status of the power supply,
         keys are: name, programmedVoltage, voltageSetTime, readBackVolt
         """
-        return self.scan_main.get_status_of_pwr_supply(power_supply)
+        self.requested_power_supply = power_supply
+        self.requested_power_supply_status = None
+        self.set_state('reading_power_supply', True)
 
-    def set_state(self, req_state):
+    def power_supply_status_call(self):
         """
-        this will set the state of the main to req_state
-        :return: str, state of main
+        connects to the requested power supply and writes the status of the given power supply into
+        self.requested_power_supply_status
         """
-        self.m_state = req_state
-        logging.debug('changed state to %s', self.m_state)
-        return self.m_state
+        self.requested_power_supply_status = self.scan_main.get_status_of_pwr_supply(self.requested_power_supply)
+        self.set_state('idle')
 
-    def cyclic(self):
-        """
-        cyclic function called regularly by the QtTimer initiated in TildaStart.py
-        This will control the main
-        """
-        if self.m_state == 'simple_counter_running':
-            logging.debug('reading simple counter data')
-            self.simple_counter_inst.read_data()
-        if self.m_state == 'stop_simple_counter':
-            self.stop_simple_counter()
-        pass
-
+    """ database functions """
     def get_available_isos_from_db(self, seq_type):
         """
         connects to the database defined by self.database
@@ -157,15 +233,9 @@ class Main:
         self.scan_pars[key] = scand
         return key
 
-    def remove_track_from_scan_pars(self, iso, track):
-        """
-        remove a track from the given isotope dictionary.
-        """
-        self.scan_pars.get(iso).pop(track)
-
     def save_scan_par_to_db(self, iso):
         """
-        will save all information in the scan_pars dict for the given isootpe to the database.
+        will save all information in the scan_pars dict for the given isotope to the database.
         """
         scan_d = self.scan_pars[iso]
         trk_num, trk_lis = SdOp.get_number_of_tracks_in_scan_dict(scan_d)
@@ -173,25 +243,3 @@ class Main:
             logging.debug('saving track ' + str(i) + ' dict is: ' +
                           str(scan_d['track' + str(i)]))
             DbOp.add_scan_dict_to_db(self.database, scan_d, i, track_key='track' + str(i))
-
-    def add_next_track_to_iso_in_scan_pars(self, iso):
-        """
-        this will look for iso in self.scan_pars and add a new track with lowest possible number.
-        If there is a track with this number available in the database, load from there.
-        Otherwise copy from another track.
-        """
-        logging.debug('adding track')
-        scan_d = self.scan_pars.get(iso)
-        seq_type = scan_d.get('isotopeData').get('type')
-        next_track_num, track_num_list = SdOp.get_available_tracknum(scan_d)
-        track_name = 'track' + str(next_track_num)
-        scand_from_db = DbOp.extract_track_dict_from_db(self.database, iso, seq_type, next_track_num)
-        if scand_from_db is not None:
-            logging.debug('adding track' + str(next_track_num) + ' from database')
-            scan_d[track_name] = scand_from_db[track_name]
-        else:
-            track_to_copy_from = 'track' + str(max(track_num_list))
-            logging.debug('adding track' + str(next_track_num) + ' copying values from: ' + track_to_copy_from)
-            scan_d[track_name] = deepcopy(scan_d[track_to_copy_from])
-        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scan_d)
-        scan_d['isotopeData']['nOfTracks'] = tracks

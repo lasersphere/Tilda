@@ -68,6 +68,7 @@ def get_number_of_tracks_in_scan_dict(scan_dict):
 def get_available_tracknum(scan_dict):
     """
     will return a tracknumber for the next available track.
+    :return: tuple, new_track_num, list_of_track_nums
     """
     n_of_tracks, list_of_track_nums = get_number_of_tracks_in_scan_dict(scan_dict)
     for new_track_num in range(n_of_tracks + 1):

@@ -15,11 +15,11 @@ import Application.Config as Cfg
 
 
 class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
-    def __init__(self, main):
+    def __init__(self, main_ui):
         super(PostAccControlUi, self).__init__()
         self.setupUi(self)
 
-        self.main_ui = main
+        self.main_ui = main_ui
         self.scan_main = Cfg._main_instance.scan_main
         self.post_acc_main = Cfg._main_instance.scan_main.post_acc_main
 
@@ -61,29 +61,20 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
 
     def resol_power_sup(self, number):
         """
-        by giving a number between 1 and 3, the function returns the label, where the power supplies name is displayed.
+        by giving a number between 1 and 3, the function returns the text of the label,
+        where the power supplies name is displayed.
         """
         name = getattr(self, 'label_name' + str(number)).text()
         return name
 
     def volt_set(self):
         sender = self.sender().text()
-        print(sender)
         name = self.resol_power_sup(int(sender[-1:]))
         if name is not None:
             voltage = getattr(self, 'doubleSpinBox_set_volt' + name[-1:]).value()
             if name is not None:
-                self.scan_main.set_post_accel_pwr_supply(name, voltage)
+                Cfg._main_instance.request_voltage_set(name, voltage)
                 self.update_power_sups_gui()
-
-    # def set_volt1(self):
-    #     self.volt_set(self.resol_power_sup(1))
-    #
-    # def set_volt2(self):
-    #     self.volt_set(self.resol_power_sup(2))
-    #
-    # def set_volt3(self):
-    #     self.volt_set(self.resol_power_sup(3))
 
     def set_outp(self, name, outp=None):
         if name is not None:

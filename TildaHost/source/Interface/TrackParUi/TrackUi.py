@@ -19,23 +19,25 @@ import Application.Config as Cfg
 
 class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def __init__(self, scan_ctrl_win, track_number, active_iso_name):
-        """ Non.modal Main window to determine the scanparameters for a single track of a given isotope.
-         scan_ctrl_win is needed for writing the track dictionary to a given scan dictionary.
-         track_number is the number of the track which will be worked on.
-         default_track_dict is the default dictionary which will be deepcopied and then worked on."""
+        """
+        Non.modal Main window to determine the scanparameters for a single track of a given isotope.
+        scan_ctrl_win is needed for writing the track dictionary to a given scan dictionary.
+        track_number is the number of the track which will be worked on.
+        default_track_dict is the default dictionary which will be deepcopied and then worked on.
+        """
         super(TrackUi, self).__init__()
 
-        track_name = 'track' + str(track_number)
-        self.default_track_dict = deepcopy(Cfg._main_instance.scan_pars.get(active_iso_name).get(track_name))
-        self.buffer_pars = deepcopy(Cfg._main_instance.scan_pars.get(active_iso_name).get(track_name))
-        self.buffer_pars['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()  # is needed to be able to fix stop
-        self.default_track_dict['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()
-
+        self.track_name = 'track' + str(track_number)
         self.scan_ctrl_win = scan_ctrl_win
+        self.active_iso = scan_ctrl_win.active_iso
         self.track_number = track_number
 
+        self.buffer_pars = deepcopy(Cfg._main_instance.scan_pars.get(active_iso_name).get(self.track_name))
+        self.buffer_pars['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()  # is needed to be able to fix stop
+
         self.setupUi(self)
-        self.setWindowTitle(self.scan_ctrl_win.win_title + '_track' + str(track_number))
+
+        self.setWindowTitle(self.scan_ctrl_win.win_title + '_' + self.track_name)
 
         """Sequencer Settings:"""
         self.doubleSpinBox_dwellTime_ms.valueChanged.connect(self.dwelltime_set)
@@ -68,14 +70,16 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.doubleSpinBox_waitAfterReset_muS.valueChanged.connect(self.wait_after_reset_mu_sec_set)
         self.doubleSpinBox_waitForKepco_muS.valueChanged.connect(self.wait_for_kepco_mu_sec)
 
-        # print(str(self.buffer_pars))
         self.set_labels_by_dict(self.buffer_pars)
         self.show()
 
     """functions:"""
     def set_labels_by_dict(self, track_dict):
         """" the values in the track_dict will be written to the corresponding spinboxes,
-         which will call the connected functions """
+         which will call the connected functions.
+          Each function is tried separately in order to give the next one a chance of execution,
+           when default val is messed up.
+        """
         func_list = [
             (self.doubleSpinBox_dwellTime_ms.setValue,
              self.check_for_none(track_dict.get('dwellTime10ns'), 0) * (10 ** -5)),
@@ -111,6 +115,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             check = replace
         return check
 
+    """ from lineedit/spinbox to set value """
     def dwelltime_set(self, val):
         """ this will write the doublespinbox value to the working dict and set the label """
         self.buffer_pars['dwellTime10ns'] = val * (10 ** 5)  # convert to units of 10ns
@@ -164,10 +169,10 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def calc_dac_stop_18bit(self):
         """ calculates the dac stop voltage in 18bit: stop = start + step * steps """
         try:
-            start = self.buffer_pars['dacStartRegister18Bit']
-            step = self.buffer_pars['dacStepSize18Bit']
-            steps = self.buffer_pars['nOfSteps']
-            stop = start + step * steps
+            start = self.check_for_none(self.buffer_pars['dacStartRegister18Bit'], 0)
+            step = self.check_for_none(self.buffer_pars['dacStepSize18Bit'], 1)
+            steps = self.check_for_none(self.buffer_pars['nOfSteps'], 1)
+            stop = VCon.calc_dac_stop_18bit(start, step, steps)
         except Exception as e:
             logging.error('following error occurred while calculating the stop voltage:' + str(e))
             stop = 0
@@ -176,13 +181,10 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def calc_step_size(self):
         """ calculates the stepsize: (stop - start) / nOfSteps  """
         try:
-            start = self.buffer_pars['dacStartRegister18Bit']
-            stop = self.buffer_pars['dacStopRegister18Bit']
-            steps = self.buffer_pars['nOfSteps']
-            dis = stop - start
-            stepsize_18bit = int(round(dis / steps))
-        except ZeroDivisionError:
-            stepsize_18bit = 0
+            start = self.check_for_none(self.buffer_pars['dacStartRegister18Bit'], 0)
+            stop = self.check_for_none(self.buffer_pars['dacStopRegister18Bit'], 1)
+            steps = self.check_for_none(self.buffer_pars['nOfSteps'], 1)
+            stepsize_18bit = VCon.calc_step_size(start, stop, steps)
         except Exception as e:
             logging.error('following error occurred while calculating the stepsize:' + str(e))
             stepsize_18bit = 0
@@ -194,14 +196,11 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             start = self.buffer_pars['dacStartRegister18Bit']
             stop = self.buffer_pars['dacStopRegister18Bit']
             step = self.buffer_pars['dacStepSize18Bit']
-            dis = abs(stop - start)
-            n_of_steps = int(round(dis / step))
-        except ZeroDivisionError:
-            n_of_steps = 0
+            n_of_steps = VCon.calc_n_of_steps(start, stop, step)
         except Exception as e:
             logging.error('following error occurred while calculating the number of steps:' + str(e))
             n_of_steps = 0
-        return abs(n_of_steps)  # sign should always be in the stepsize
+        return n_of_steps  # sign should always be in the stepsize
 
     def dac_step_size_set(self, step_volt):
         """ if the stepsize is set, adjust the number of steps to keep start and stop constant"""
@@ -235,38 +234,25 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.buffer_pars['nOfScans'] = val
 
     def invert_scan_set(self, state):
-        """ wirte to the working dictionars and set the label """
+        """ wirte to the working dictionary and set the label """
         boolstate = state == 2
         self.label_invertScan_set.setText(str(boolstate))
         self.buffer_pars['invertScan'] = boolstate
 
-    def post_acc_offset_volt_control_set(self, val):
-        """ write to the working dictionars and set the label """
-        if val != 'Kepco':
-            status = self.scan_ctrl_win.main.power_supply_status_request(val)
-            if status is not None:
-                val = str(status.get('readBackVolt'))
-        self.label_postAccOffsetVoltControl_set.setText(val)
-        self.buffer_pars['postAccOffsetVoltControl'] = self.comboBox_postAccOffsetVoltControl.currentIndex()
-
-    def post_acc_offset_volt(self, val):
-        """ write to the working dictionars and set the label """
-        self.label_postAccOffsetVolt_set.setText(str(val))
-        self.buffer_pars['postAccOffsetVolt'] = val
-
     def active_pmt_list_set(self, lis):
-        """ write to the working dictionars and set the label """
+        """ write to the working dictionary and set the label """
         if type(lis) == str:
             try:
                 lis = str('[' + lis + ']')
                 lis = ast.literal_eval(lis)
-            except:
+            except Exception as e:
+                logging.debug('while converting the pmt list, this occurred: ' + str(e))
                 lis = []
         self.label_activePmtList_set.setText(str(lis))
         self.buffer_pars['activePmtList'] = lis
 
     def col_dir_true_set(self, state):
-        """ write to the working dictionars and set the label """
+        """ write to the working dictionary and set the label """
         boolstate = state == 2
         if boolstate:
             display = 'colinear'
@@ -277,18 +263,33 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         # pass
 
     def wait_after_reset_mu_sec_set(self, time_mu_s):
-        """ write to the working dictionars and set the label """
+        """ write to the working dictionary and set the label """
         time_25ns = int(round(time_mu_s / 25 * (10 ** 3)))
         self.buffer_pars['waitAfterReset25nsTicks'] = time_25ns
         setval = time_25ns * 25 * (10 ** -3)
         self.label_waitAfterReset_muS_set.setText(str(round(setval, 3)))
 
     def wait_for_kepco_mu_sec(self, time_mu_s):
-        """ write to the working dictionars and set the label """
+        """ write to the working dictionary and set the label """
         time_25ns = int(round(time_mu_s / 25 * (10 ** 3)))
         self.buffer_pars['waitForKepco25nsTicks'] = time_25ns
         setval = time_25ns * 25 * (10 ** -3)
         self.label_waitForKepco_muS_set.setText(str(round(setval, 3)))
+
+    """ set voltages """
+    def post_acc_offset_volt_control_set(self, val):
+        """ write to the working dictionary and set the label """
+        if val != 'Kepco':
+            status = Cfg._main_instance.power_supply_status_request(val)
+            if status is not None:
+                val = str(status.get('readBackVolt'))
+        self.label_postAccOffsetVoltControl_set.setText(val)
+        self.buffer_pars['postAccOffsetVoltControl'] = self.comboBox_postAccOffsetVoltControl.currentIndex()
+
+    def post_acc_offset_volt(self, val):
+        """ write to the working dictionary and set the label """
+        self.label_postAccOffsetVolt_set.setText(str(val))
+        self.buffer_pars['postAccOffsetVolt'] = val
 
     def set_voltage(self):
         """ this will connect to the corresponding Heinzinger and set the voltage.
@@ -296,7 +297,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         power_supply = self.comboBox_postAccOffsetVoltControl.currentText()
         if power_supply != 'Kepco':
             volt = self.buffer_pars['postAccOffsetVolt']
-            self.scan_ctrl_win.main.set_power_supply_voltage(power_supply, volt)
+            Cfg._main_instance.request_voltage_set(power_supply, volt)
             setvoltui = SetVoltageUi(power_supply, volt)
             self.label_postAccOffsetVoltControl_set.setText(setvoltui.readback)
 
@@ -305,16 +306,15 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.close()
 
     def confirm(self):
-        """ closes the window and merges the buffer_scan_dict
-        of the scan control window with the working dictionary """
-        self.scan_ctrl_win.buffer_scan_dict['track' + str(self.track_number)] = \
-            SdOp.merge_dicts(self.scan_ctrl_win.buffer_scan_dict['track' + str(self.track_number)],
-                             self.buffer_pars)
+        """ closes the window and overwrites the corresponding track in the main """
+        Cfg._main_instance.scan_pars[self.active_iso][self.track_name] = deepcopy(self.buffer_pars)
         self.close()
 
     def reset_to_default(self):
-        """ will reset all spinboxes to the default value which was passed in the beginning. """
-        self.set_labels_by_dict(self.default_track_dict)
+        """ will reset all spinboxes to the default value which is stored in teh main. """
+        default_d = deepcopy(Cfg._main_instance.scan_pars[self.active_iso][self.track_name])
+        default_d['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()
+        self.set_labels_by_dict(default_d)
 
     def closeEvent(self, event):
         """

@@ -26,7 +26,6 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         self.iso = None
         self.sequencer = None
         self.main = Cfg._main_instance
-        self.db = self.main.database
         self.scan_ctrl_win = scan_ctrl_win
         self.new_scan_dict = {}
 
@@ -51,8 +50,8 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
     def add_new_iso_to_db(self):
         """ connect to the db and add a new isotope if this has not yet been added """
         iso = self.lineEdit_new_isotope.text()
-        sctype = self.comboBox_sequencer_select.currentText()
-        Cfg._main_instance.add_new_iso_to_db(self.db, iso, sctype)
+        seq_type = self.comboBox_sequencer_select.currentText()
+        Cfg._main_instance.add_new_iso_to_db(iso, seq_type)
         self.update_isos()
 
     def iso_select(self, iso_str):

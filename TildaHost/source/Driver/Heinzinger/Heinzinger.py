@@ -141,7 +141,7 @@ class Heinzinger():
         status['name'] = self.name
         status['programmedVoltage'] = self.setVolt
         status['voltageSetTime'] = self.time_of_last_volt_set
-        status['readBackVolt'] = self.getVoltage()
+        status['readBackVolt'] = self.getVoltage()  # takes roughly 320 ms
         status['output'] = self.outp
         status['com'] = self.ser.getPort()
         return status

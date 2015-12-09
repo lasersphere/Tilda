@@ -94,7 +94,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         if self.active_iso:
             self.listWidget.clear()
             scan_d = Cfg._main_instance.scan_pars.get(self.active_iso)
-            newitems = sorted([key for key, val in scan_d.items() if key[:-1] == 'track'])
+            t, track_num_lis = SdOp.get_number_of_tracks_in_scan_dict(scan_d)
+            newitems = ['track' + str(tr) for tr in track_num_lis]
             self.listWidget.addItems(newitems)
 
     def update_win_title(self):
