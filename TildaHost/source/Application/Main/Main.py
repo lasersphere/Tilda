@@ -154,7 +154,7 @@ class Main:
             logging.debug('will scan: ' + str(sorted(one_scan_dict)))
             self.scan_main.scan_one_isotope(one_scan_dict)  # change this to non blocking!
         else:
-            logging.warning('could not start scan because state of main is ' + self.m_state)
+            logging.warning('could not start scan because state of main is ' + self.m_state[0])
     """ simple counter """
     def start_simple_counter(self, act_pmt_list, datapoints):
         self.simple_counter_inst = SimpleCounterControl(act_pmt_list, datapoints)

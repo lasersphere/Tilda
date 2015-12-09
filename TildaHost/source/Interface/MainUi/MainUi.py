@@ -44,13 +44,21 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         """
         self.update_status()
         self.update_scan_wins()
+        self.update_post_acc_win()
+
+    def update_post_acc_win(self):
+        """
+        keep it short, will be called in cyclic()
+        """
+        if self.post_acc_win is not None:
+            self.post_acc_win.post_acc_cyclic()
 
     def update_status(self):
         """
         keep it short, will be called in cyclic()
         """
         self.label_workdir_set.setText(str(Cfg._main_instance.working_directory))
-        self.label_main_status.setText(Cfg._main_instance.m_state)
+        self.label_main_status.setText(Cfg._main_instance.m_state[0])
         self.label_database.setText(Cfg._main_instance.database)
 
     def update_scan_wins(self):

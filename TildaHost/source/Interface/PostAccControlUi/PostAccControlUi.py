@@ -31,6 +31,9 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
 
         self.show()
 
+    def post_acc_cyclic(self):
+        pass
+
     def connect_buttons(self):
         for i in range(1, 4):
             try:
