@@ -27,7 +27,7 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         self.scan_main = None
         self.post_acc_main = None
 
-        self.update_power_sups_gui()
+        # self.update_power_sups_gui()
         self.pushButton_init_all.clicked.connect(self.init_pow_sups)
         self.pushButton_refresh.clicked.connect(self.update_power_sups_gui)
         self.pushButton_all_on_off.clicked.connect(self.all_off)

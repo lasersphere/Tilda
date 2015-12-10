@@ -51,7 +51,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         """
         self.label_workdir_set.setText(str(Cfg._main_instance.working_directory))
         self.label_main_status.setText(Cfg._main_instance.m_state[0])
-        self.label_database.setText(str(Cfg._main_instance.active_power_supplies))
+        self.label_database.setText(Cfg._main_instance.database)
 
     def update_scan_wins(self):
         """
