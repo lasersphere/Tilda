@@ -17,7 +17,7 @@ import Driver.Heinzinger.HeinzingerCfg as HzCfg
 class PostAccelerationMain:
     def __init__(self):
         self.active_power_supplies = {}  # {dev-name: instance}
-        self.power_sup_status = []  # list of dicts, {name, programmedVoltage, voltageSetTime, readBackVolt, output}
+        self.power_sup_status = {}  # {name: {name, programmedVoltage, voltageSetTime, readBackVolt, output}, ...}
 
     def power_supply_init(self):
         """
@@ -46,11 +46,13 @@ class PostAccelerationMain:
         power_supply == 'all' will return status of all active power supplies
         also stores values to self.power_sup_status
         """
-        ret = []
-        sel_pwr_sup = [selected for selected in self.active_power_supplies
-                       if selected == power_supply or power_supply == 'all']
+        ret = {}
+        sel_pwr_sup = [val for key, val in sorted(self.active_power_supplies.items())
+                       if key == power_supply or power_supply == 'all']
         for pwr_sup in sel_pwr_sup:
-            ret.append(pwr_sup.get_status())
+            stat = pwr_sup.get_status()
+            name = stat['name']
+            ret[name] = stat
         self.power_sup_status = ret
         return ret
 
@@ -86,7 +88,9 @@ class PostAccelerationMain:
     def set_output(self, power_supply, outp_bool):
         """
         will set the output according to outp_bool
+        power_supply -> 'all'
         """
-        power_sup = self.active_power_supplies.get(power_supply, False)
-        if power_sup:
-            power_sup.setOutput(outp_bool)
+        sel_pwr_sup = [instance for name, instance in self.active_power_supplies.items()
+                       if name == power_supply or power_supply == 'all']
+        for pwr_sup in sel_pwr_sup:
+            pwr_sup.setOutput(outp_bool)

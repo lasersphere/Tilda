@@ -16,8 +16,7 @@ import Application.Config as Cfg
 
 
 class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
-
-    post_acc_signal = QtCore.pyqtSignal([dict])
+    pacc_call_back_signal = QtCore.pyqtSignal(dict)
 
     def __init__(self, main_ui):
         super(PostAccControlUi, self).__init__()
@@ -26,56 +25,68 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         self.main_ui = main_ui
         self.scan_main = None
         self.post_acc_main = None
+        self.last_status = {}
 
-        # self.update_power_sups_gui()
         self.pushButton_init_all.clicked.connect(self.init_pow_sups)
-        self.pushButton_refresh.clicked.connect(self.update_power_sups_gui)
+        self.pushButton_refresh.clicked.connect(self.get_status_of_power_sup)
         self.pushButton_all_on_off.clicked.connect(self.all_off)
 
-        self.post_acc_signal.connect(self.rcvd_new_status_dict)
+        self.pacc_call_back_signal.connect(self.rcvd_new_status_dict)
 
         self.show()
 
-    def post_acc_cyclic(self):
-        pass
-
     def connect_buttons(self):
+        """
+        will connect the set and the on_off Pushbuttons with the corresponding functions.
+        """
         for i in range(1, 4):
             try:
                 name = self.resol_power_sup(i)
-                getattr(self, 'pushButton_set_volt' + str(i)).clicked.connect(self.volt_set)
-                getattr(self, 'pushButton_on_off' + str(i)).clicked.connect(getattr(self, 'set_outp' + str(i)))
+                if name != 'None':
+                    getattr(self, 'pushButton_set_volt' + str(i)).clicked.connect(self.volt_set)
+                    getattr(self, 'pushButton_on_off' + str(i)).clicked.connect(getattr(self, 'set_outp' + str(i)))
             except Exception as e:
                 logging.error('while connecting the buttons for ' + name + ' the following exception occurred: ' +
                               ' \n\n' + str(e))
 
     def init_pow_sups(self):
-        Cfg._main_instance.init_power_sups()
+        """
+        updates the gui and calls the main to initialize all power supplies.
+        """
+        reset_labels = {}
+        for i in range(1, 4):
+            self.update_single_power_sup(reset_labels, str(i))
+        Cfg._main_instance.init_power_sups(self.pacc_call_back_signal)
 
     def rcvd_new_status_dict(self, status_dict_list):
-        print(status_dict_list)
-
-    def update_power_sups_gui(self):
         """
-        update the gui by reading
+        this is called, whenever the call_back_signal is triggered.
+        callback_signal should hold a list of status dictionaries.
         """
-        act_dict = Cfg._main_instance.active_power_supplies
-        for name, instance in act_dict.items():
-            self.update_single_power_sup(status_dict, status_dict.get('name')[-1:])
+        for key, status_dict in status_dict_list.items():
+            name = status_dict['name']
+            self.update_single_power_sup(status_dict, name[-1:])
+            self.last_status[name] = status_dict
+        self.connect_buttons()
 
-    def get_status_of_power_sup(self, name):
+    def get_status_of_power_sup(self, button_val, name='all'):
         """
         request a status dict from the main.
         """
-        Cfg._main_instance.power_supply_status(name)
+        Cfg._main_instance.power_supply_status(name, self.pacc_call_back_signal)
 
     def update_single_power_sup(self, status_dict, num_str):
-        getattr(self, 'label_name' + num_str).setText(status_dict.get('name'))
-        getattr(self, 'label_con' + num_str).setText(str(status_dict.get('com') + 1))
-        getattr(self, 'label_last_set' + num_str).setText(status_dict.get('voltageSetTime'))
-        getattr(self, 'label_volt_read' + num_str).setText(str(status_dict.get('readBackVolt')))
-        getattr(self, 'label_volt_read' + num_str).setText(str(status_dict.get('readBackVolt')))
-        self.button_color('pushButton_on_off' + num_str, status_dict.get('output'))
+        """
+        updates the Gui-labels for a single power supply.
+        status_dict: dict containing all status infos.
+        num_str: number of the device '1', '2', '3' possible
+        """
+        getattr(self, 'label_name' + num_str).setText(status_dict.get('name', 'None'))
+        getattr(self, 'label_con' + num_str).setText(str(status_dict.get('com', -2) + 1))
+        getattr(self, 'label_last_set' + num_str).setText(status_dict.get('voltageSetTime', 'None'))
+        getattr(self, 'label_volt_read' + num_str).setText(str(status_dict.get('readBackVolt', 'None')))
+        getattr(self, 'label_volt_read' + num_str).setText(str(status_dict.get('readBackVolt', 'None')))
+        self.button_color('pushButton_on_off' + num_str, status_dict.get('output', None))
 
     def resol_power_sup(self, number):
         """
@@ -91,19 +102,18 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         if name is not None:
             voltage = getattr(self, 'doubleSpinBox_set_volt' + name[-1:]).value()
             if name is not None:
-                Cfg._main_instance.set_power_supply_voltage(name, voltage)
-                self.update_power_sups_gui()
+                Cfg._main_instance.set_power_supply_voltage(name, voltage, self.pacc_call_back_signal)
 
     def set_outp(self, name, outp=None):
         if name is not None:
-            status_dict = self.get_status_of_power_sup(name)
-            cur_outp = status_dict.get('output', False)
-            if outp is None:
-                new_outp = not cur_outp  # if not specified, just toggle the output status
-            else:
-                new_outp = outp
-            Cfg._main_instance.set_power_sup_outp(name, new_outp)
-            self.update_single_power_sup(self.get_status_of_power_sup(name), name[-1:])
+            status_dict = self.last_status.get(name)
+            if status_dict is not None:
+                cur_outp = status_dict.get('output', False)
+                if outp is None:
+                    new_outp = not cur_outp  # if not specified, just toggle the output status
+                else:
+                    new_outp = outp
+                Cfg._main_instance.set_power_sup_outp(name, new_outp, self.pacc_call_back_signal)
 
     def set_outp1(self):
         self.set_outp(self.resol_power_sup(1))
@@ -115,13 +125,7 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         self.set_outp(self.resol_power_sup(3))
 
     def all_off(self):
-        for i in range(1, 3):
-            try:
-                name = self.resol_power_sup(i)
-                self.set_outp(name, outp=False)
-            except Exception as e:
-                logging.error('While turning all outputs off, the following error occurred: \n\n ' +
-                              str(e) + '\n \n')
+        Cfg._main_instance.set_power_sup_outp('all', False, self.pacc_call_back_signal)
 
     def button_color(self, butn, on_off):
         """
@@ -131,10 +135,13 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         readback of the output is not supported in Heiniznger Powersupplies,
         so this depends on the init of the device and storage of the output variable
         """
-        if on_off:
-            getattr(self, butn).setStyleSheet("background-color: green")
+        if on_off is not None:
+            if on_off:
+                getattr(self, butn).setStyleSheet("background-color: green")
+            else:
+                getattr(self, butn).setStyleSheet("background-color: red")
         else:
-            getattr(self, butn).setStyleSheet("background-color: red")
+            getattr(self, butn).setStyleSheet("background-color: light gray")
 
     def closeEvent(self, *args, **kwargs):
         """

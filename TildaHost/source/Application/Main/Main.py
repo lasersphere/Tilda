@@ -38,8 +38,6 @@ class Main:
         self.seconds = 0
         self.scan_pars = {}  # {iso0: scan_dict, iso1: scan_dict} -> iso is unique
 
-        self.post_acc_update_signal = None
-
         self.scan_main = ScanMain()
         self.iso_scan_process = None
 
@@ -63,9 +61,9 @@ class Main:
         elif self.m_state[0] == 'setting_power_supply':
             self._set_power_supply_voltage(*self.m_state[1])
         elif self.m_state[0] == 'reading_power_supply':
-            self._power_supply_status(self.m_state[1])
+            self._power_supply_status(*self.m_state[1])
         elif self.m_state[0] == 'init_power_supplies':
-            self._init_power_sups()
+            self._init_power_sups(self.m_state[1])
         elif self.m_state[0] == 'set_output_power_sup':
             self._set_power_sup_outp(*self.m_state[1])
         pass
@@ -174,64 +172,66 @@ class Main:
         self.set_state('idle')
 
     """ postaccleration power supply functions """
-    def init_power_sups(self, signal):
+
+    def init_power_sups(self, call_back_signal=None):
         """
+        initializes all power supplies and reads the status afterwards.
         only changes state, when in idle
         """
-        self.post_acc_update_signal = signal
-        self.set_state('init_power_supplies', only_if_idle=True)
+        self.set_state('init_power_supplies', call_back_signal, only_if_idle=True)
 
-    def _init_power_sups(self):
+    def _init_power_sups(self, call_back_signal=None):
         """
-        initializes all power supplies and stores it in self.active_power_supplies
+        initializes all power supplies and reads the status afterwards.
         """
         self.scan_main.init_post_accel_pwr_supplies()
-        self.set_state('reading_power_supply', 'all')
+        self.set_state('reading_power_supply', ('all', call_back_signal))
 
-    def set_power_supply_voltage(self, power_supply, volt):
+    def set_power_supply_voltage(self, power_supply, volt, call_back_signal=None):
         """
         this will request a change in the state in order to set the requested voltage.
         power_supply -> self.requested_power_supply
         volt -> self.requested_voltage
         """
-        self.set_state('setting_power_supply', (power_supply, volt), True)
+        self.set_state('setting_power_supply', (power_supply, volt, call_back_signal), True)
 
-    def _set_power_supply_voltage(self, name, volt):
+    def _set_power_supply_voltage(self, name, volt, call_back_signal=None):
         """
         this will actually call to the power supply
         will set the Output voltage of the desired power supply,
         as stated in self.requested_power_supply to the requested voltage
         """
         self.scan_main.set_post_accel_pwr_supply(name, volt)
-        self.set_state('reading_power_supply', name)
+        self.set_state('reading_power_supply', (name, call_back_signal))
 
-    def set_power_sup_outp(self, name, outp):
+    def set_power_sup_outp(self, name, outp, call_back_signal=None):
         """
         change state
         """
-        self.set_state('set_output_power_sup', (name, outp), True)
+        self.set_state('set_output_power_sup', (name, outp, call_back_signal), True)
 
-    def _set_power_sup_outp(self, name, outp):
+    def _set_power_sup_outp(self, name, outp, call_back_signal=None):
         """
         set the output
         """
         self.scan_main.set_post_accel_pwr_spply_output(name, outp)
-        self.set_state('idle')
+        self.set_state('reading_power_supply', (name, call_back_signal))
 
-    def power_supply_status(self, power_supply):
+    def power_supply_status(self, power_supply, call_back_sig):
         """
         returns a dict containing the status of the power supply,
         keys are: name, programmedVoltage, voltageSetTime, readBackVolt
         """
-        self.set_state('reading_power_supply', power_supply, True)
+        self.set_state('reading_power_supply', (power_supply, call_back_sig), True)
 
-    def _power_supply_status(self, name):
+    def _power_supply_status(self, name, call_back_sig=None):
         """
         connects to the requested power supply and writes the status of the given power supply into
         self.requested_power_supply_status
         """
         stat = self.scan_main.get_status_of_pwr_supply(name)
-        self.post_acc_update_signal.emit(stat)
+        if call_back_sig is not None:
+            call_back_sig.emit(stat)
         self.set_state('idle')
 
     """ database functions """
