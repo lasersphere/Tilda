@@ -12,7 +12,7 @@ import logging
 import os
 import multiprocessing
 import re
-from copy import deepcopy
+from copy import deepcopy, copy
 
 
 

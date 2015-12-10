@@ -6,7 +6,7 @@ Created on
 Module Description: Gui for a simple control of up to 3 post acceleration devices.
 """
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtCore
 import logging
 import time
 
@@ -16,6 +16,9 @@ import Application.Config as Cfg
 
 
 class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
+
+    post_acc_signal = QtCore.pyqtSignal(dict)
+
     def __init__(self, main_ui):
         super(PostAccControlUi, self).__init__()
         self.setupUi(self)
@@ -28,6 +31,8 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         self.pushButton_init_all.clicked.connect(self.init_pow_sups)
         self.pushButton_refresh.clicked.connect(self.update_power_sups_gui)
         self.pushButton_all_on_off.clicked.connect(self.all_off)
+
+        self.post_acc_signal.connect(self.rcvd_new_status_dict)
 
         self.show()
 
@@ -46,8 +51,9 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
 
     def init_pow_sups(self):
         Cfg._main_instance.init_power_sups()
-        self.update_power_sups_gui()
-        self.connect_buttons()
+
+    def rcvd_new_status_dict(self, status_dict):
+        pass
 
     def update_power_sups_gui(self):
         """
