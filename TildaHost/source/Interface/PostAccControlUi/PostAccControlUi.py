@@ -17,7 +17,7 @@ import Application.Config as Cfg
 
 class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
 
-    post_acc_signal = QtCore.pyqtSignal(dict)
+    post_acc_signal = QtCore.pyqtSignal([dict])
 
     def __init__(self, main_ui):
         super(PostAccControlUi, self).__init__()
@@ -52,8 +52,8 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
     def init_pow_sups(self):
         Cfg._main_instance.init_power_sups()
 
-    def rcvd_new_status_dict(self, status_dict):
-        pass
+    def rcvd_new_status_dict(self, status_dict_list):
+        print(status_dict_list)
 
     def update_power_sups_gui(self):
         """
@@ -61,23 +61,13 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         """
         act_dict = Cfg._main_instance.active_power_supplies
         for name, instance in act_dict.items():
-            status_dict = self.get_status_of_power_sup(name)
             self.update_single_power_sup(status_dict, status_dict.get('name')[-1:])
 
     def get_status_of_power_sup(self, name):
         """
-        request a status dict from the main, block until it is there or timeout after 500 ms.
+        request a status dict from the main.
         """
         Cfg._main_instance.power_supply_status(name)
-        tries = 0
-        while Cfg._main_instance.requested_power_supply_status is None and tries < 100:
-            time.sleep(0.005)
-            tries += 1
-        if Cfg._main_instance.requested_power_supply_status is not None:
-            status_dict = Cfg._main_instance.requested_power_supply_status
-            return status_dict
-        else:
-            return None
 
     def update_single_power_sup(self, status_dict, num_str):
         getattr(self, 'label_name' + num_str).setText(status_dict.get('name'))

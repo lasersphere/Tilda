@@ -32,13 +32,13 @@ class Main:
         self.database = None  # path of the sqlite3 database
         self.working_directory = None
         self.measure_voltage_pars = Dft.draftMeasureVoltPars  # dict containing all parameters
-        self.requested_power_supply_status = None
-        self.active_power_supplies = {}
         # for the voltage measurement.
         self.simple_counter_inst = None
         self.cmd_queue = None
         self.seconds = 0
         self.scan_pars = {}  # {iso0: scan_dict, iso1: scan_dict} -> iso is unique
+
+        self.post_acc_update_signal = None
 
         self.scan_main = ScanMain()
         self.iso_scan_process = None
@@ -174,19 +174,19 @@ class Main:
         self.set_state('idle')
 
     """ postaccleration power supply functions """
-    def init_power_sups(self):
+    def init_power_sups(self, signal):
         """
         only changes state, when in idle
         """
-        self.active_power_supplies = {}
+        self.post_acc_update_signal = signal
         self.set_state('init_power_supplies', only_if_idle=True)
 
     def _init_power_sups(self):
         """
         initializes all power supplies and stores it in self.active_power_supplies
         """
-        self.active_power_supplies = self.scan_main.init_post_accel_pwr_supplies()
-        self.set_state('idle')
+        self.scan_main.init_post_accel_pwr_supplies()
+        self.set_state('reading_power_supply', 'all')
 
     def set_power_supply_voltage(self, power_supply, volt):
         """
@@ -203,7 +203,7 @@ class Main:
         as stated in self.requested_power_supply to the requested voltage
         """
         self.scan_main.set_post_accel_pwr_supply(name, volt)
-        self.set_state('idle')
+        self.set_state('reading_power_supply', name)
 
     def set_power_sup_outp(self, name, outp):
         """
@@ -230,7 +230,8 @@ class Main:
         connects to the requested power supply and writes the status of the given power supply into
         self.requested_power_supply_status
         """
-        self.requested_power_supply_status = self.scan_main.get_status_of_pwr_supply(name)
+        stat = self.scan_main.get_status_of_pwr_supply(name)
+        self.post_acc_update_signal.emit(stat)
         self.set_state('idle')
 
     """ database functions """

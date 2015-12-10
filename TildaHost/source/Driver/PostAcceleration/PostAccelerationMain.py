@@ -16,7 +16,8 @@ import Driver.Heinzinger.HeinzingerCfg as HzCfg
 
 class PostAccelerationMain:
     def __init__(self):
-        self.active_power_supplies = {}
+        self.active_power_supplies = {}  # {dev-name: instance}
+        self.power_sup_status = []  # list of dicts, {name, programmedVoltage, voltageSetTime, readBackVolt, output}
 
     def power_supply_init(self):
         """
@@ -40,14 +41,18 @@ class PostAccelerationMain:
 
     def status_of_power_supply(self, power_supply):
         """
-        returns a dict containing the status of the power supply,
+        returns a list of dicts containing the status of the power supply,
         keys are: name, programmedVoltage, voltageSetTime, readBackVolt, output
+        power_supply == 'all' will return status of all active power supplies
+        also stores values to self.power_sup_status
         """
-        power_sup = self.active_power_supplies.get(power_supply, False)
-        if power_sup:
-            return power_sup.get_status()
-        else:
-            return None
+        ret = []
+        sel_pwr_sup = [selected for selected in self.active_power_supplies
+                       if selected == power_supply or power_supply == 'all']
+        for pwr_sup in sel_pwr_sup:
+            ret.append(pwr_sup.get_status())
+        self.power_sup_status = ret
+        return ret
 
     def set_voltage(self, power_supply, voltage):
         """

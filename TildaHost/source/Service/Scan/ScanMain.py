@@ -126,12 +126,18 @@ class ScanMain:
         """
         self.post_acc_main.set_output(power_supply, outp_bool)
 
-    def get_status_of_pwr_supply(self, power_supply):
+    def get_status_of_pwr_supply(self, power_supply, read_from_dev=True):
         """
-        returns a dict containing the status of the power supply,
+        returns a list of dicts containing the status of the power supply,
         keys are: name, programmedVoltage, voltageSetTime, readBackVolt, output
+        power_supply == 'all' will return status of all active power supplies
+        if read_from_dev is False: only return the last stored status.
         """
-        return self.post_acc_main.status_of_power_supply(power_supply)
+        if read_from_dev:
+            ret = self.post_acc_main.status_of_power_supply(power_supply)
+        else:
+            ret = self.post_acc_main.power_sup_status
+        return ret
 
     def measureOffset(self, scanpars):
         """
