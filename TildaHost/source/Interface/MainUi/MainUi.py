@@ -58,7 +58,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         keep it short, will be called in cyclic()
         """
         for w in self.act_scan_wins:
-            w.enable_go(Cfg._main_instance.m_state == 'idle')
+            w.enable_go(Cfg._main_instance.m_state[0] == 'idle')
             # disable go if not in idle state
 
     def choose_working_dir(self):

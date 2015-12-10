@@ -141,16 +141,16 @@ class Main:
         """
         * merge the given scan dict with measureVoltPars, workingDirectory, nOfTracks and version
         """
-        if self.m_state == 'idle':
+        if self.m_state[0] == 'idle':
             self.set_state('preparing_scan')
-            one_scan_dict['measureVoltPars'] = SdOp.merge_dicts(one_scan_dict['measureVoltPars'],
-                                                                self.measure_voltage_pars)
-            one_scan_dict['pipeInternals']['workingDirectory'] = self.working_directory
-            tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(one_scan_dict)
-            one_scan_dict['isotopeData']['nOfTracks'] = tracks
-            one_scan_dict['isotopeData']['version'] = Cfg.version
-            logging.debug('will scan: ' + str(sorted(one_scan_dict)))
-            self.scan_main.scan_one_isotope(one_scan_dict)  # change this to non blocking!
+            # one_scan_dict['measureVoltPars'] = SdOp.merge_dicts(one_scan_dict['measureVoltPars'],
+            #                                                     self.measure_voltage_pars)
+            # one_scan_dict['pipeInternals']['workingDirectory'] = self.working_directory
+            # tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(one_scan_dict)
+            # one_scan_dict['isotopeData']['nOfTracks'] = tracks
+            # one_scan_dict['isotopeData']['version'] = Cfg.version
+            # logging.debug('will scan: ' + str(sorted(one_scan_dict)))
+            # self.scan_main.scan_one_isotope(one_scan_dict)  # change this to non blocking!
         else:
             logging.warning('could not start scan because state of main is ' + self.m_state[0])
     """ simple counter """
