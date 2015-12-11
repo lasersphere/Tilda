@@ -6,6 +6,7 @@ Created on '29.09.2015'
 
 """
 from PyQt5 import QtWidgets
+from PyQt5 import QtCore
 import ast
 import logging
 from copy import deepcopy
@@ -18,6 +19,8 @@ import Application.Config as Cfg
 
 
 class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
+    track_ui_call_back_signal = QtCore.pyqtSignal(dict)
+
     def __init__(self, scan_ctrl_win, track_number, active_iso_name):
         """
         Non.modal Main window to determine the scanparameters for a single track of a given isotope.
@@ -34,6 +37,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
         self.buffer_pars = deepcopy(Cfg._main_instance.scan_pars.get(active_iso_name).get(self.track_name))
         self.buffer_pars['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()  # is needed to be able to fix stop
+
+        self.track_ui_call_back_signal.connect(self.refresh_pow_sup_readback)
 
         self.setupUi(self)
 
@@ -280,11 +285,19 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def post_acc_offset_volt_control_set(self, val):
         """ write to the working dictionary and set the label """
         if val != 'Kepco':
-            status = Cfg._main_instance.power_supply_status(val)
-            if status is not None:
-                val = str(status.get('readBackVolt'))
+            Cfg._main_instance.power_supply_status(val, self.track_ui_call_back_signal)
         self.label_postAccOffsetVoltControl_set.setText(val)
         self.buffer_pars['postAccOffsetVoltControl'] = self.comboBox_postAccOffsetVoltControl.currentIndex()
+
+    def refresh_pow_sup_readback(self, stat_dict):
+        """
+        refresh the readback voltage whenever the signal is triggered.
+        """
+        name = self.comboBox_postAccOffsetVoltControl.currentText()
+        try:
+            self.label_postAccOffsetVoltControl_set.setText(str(stat_dict.get(name).get('readBackVolt')))
+        except Exception as e:
+            logging.error('while reading the status, this happened: ' + str(e))
 
     def post_acc_offset_volt(self, val):
         """ write to the working dictionary and set the label """
@@ -297,8 +310,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         power_supply = self.comboBox_postAccOffsetVoltControl.currentText()
         if power_supply != 'Kepco':
             volt = self.buffer_pars['postAccOffsetVolt']
-            Cfg._main_instance.set_power_supply_voltage(power_supply, volt)
-            setvoltui = SetVoltageUi(power_supply, volt)
+            Cfg._main_instance.set_power_supply_voltage(power_supply, volt, self.track_ui_call_back_signal)
+            setvoltui = SetVoltageUi(power_supply, volt, self.track_ui_call_back_signal)
             self.label_postAccOffsetVoltControl_set.setText(setvoltui.readback)
 
     def cancel(self):

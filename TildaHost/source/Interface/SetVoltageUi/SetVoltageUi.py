@@ -14,10 +14,11 @@ import Application.Config as Cfg
 
 
 class SetVoltageUi(QtWidgets.QDialog, Ui_Dialog):
-    def __init__(self, power_supply, new_voltage):
+    def __init__(self, power_supply, new_voltage, call_back_sig):
         QtWidgets.QDialog.__init__(self)
         self.power_supply = power_supply
-        self.readback = None
+        self.call_back_sig = call_back_sig
+        self.call_back_sig.connect(self.write_labels)
 
         self.setupUi(self)
 
@@ -32,22 +33,13 @@ class SetVoltageUi(QtWidgets.QDialog, Ui_Dialog):
         self.exec_()
 
     def request_power_supply_status(self):
-        Cfg._main_instance.power_supply_status(self.power_supply)
-        tries = 0
-        while self.write_labels() and tries < 100:
-            tries += 1
-            time.sleep(0.005)
+        Cfg._main_instance.power_supply_status(self.power_supply, self.call_back_sig)
 
-    def write_labels(self):
-        power_status_dict = Cfg._main_instance.requested_power_supply_status
-        if Cfg._main_instance.requested_power_supply_status is not None:
-            self.label_lastSetVolt.setText(str(power_status_dict.get('programmedVoltage')))
-            self.label_lastVoltageSetAt.setText(power_status_dict.get('voltageSetTime'))
-            self.readback = str(power_status_dict.get('readBackVolt'))
-            self.label_voltReadBack.setText(self.readback)
-            Cfg._main_instance.requested_power_supply_status = None
-            return False
-        return True
+    def write_labels(self, power_status_dict):
+        single_pwr_sup_dict = power_status_dict.get(self.power_supply)
+        self.label_lastSetVolt.setText(str(single_pwr_sup_dict.get('programmedVoltage', 0)))
+        self.label_lastVoltageSetAt.setText(single_pwr_sup_dict.get('voltageSetTime', 'None'))
+        self.label_voltReadBack.setText(str(single_pwr_sup_dict.get('readBackVolt', 'None')))
 
     def ok(self):
         self.close()
