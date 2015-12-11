@@ -28,8 +28,6 @@ class SetVoltageUi(QtWidgets.QDialog, Ui_Dialog):
         self.pushButton_ok.clicked.connect(self.ok)
         self.pushButton_refresh.clicked.connect(self.request_power_supply_status)
 
-        self.request_power_supply_status()
-
         self.exec_()
 
     def request_power_supply_status(self):
@@ -37,9 +35,11 @@ class SetVoltageUi(QtWidgets.QDialog, Ui_Dialog):
 
     def write_labels(self, power_status_dict):
         single_pwr_sup_dict = power_status_dict.get(self.power_supply)
-        self.label_lastSetVolt.setText(str(single_pwr_sup_dict.get('programmedVoltage', 0)))
-        self.label_lastVoltageSetAt.setText(single_pwr_sup_dict.get('voltageSetTime', 'None'))
-        self.label_voltReadBack.setText(str(single_pwr_sup_dict.get('readBackVolt', 'None')))
+        if single_pwr_sup_dict is not None:
+            self.label_lastSetVolt.setText(str(single_pwr_sup_dict.get('programmedVoltage', 0)))
+            self.label_lastVoltageSetAt.setText(single_pwr_sup_dict.get('voltageSetTime', 'None'))
+            self.label_voltReadBack.setText(str(single_pwr_sup_dict.get('readBackVolt', 'None')))
 
     def ok(self):
+        # self.call_back_sig.disconnect()
         self.close()

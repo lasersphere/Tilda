@@ -39,6 +39,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.buffer_pars['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()  # is needed to be able to fix stop
 
         self.track_ui_call_back_signal.connect(self.refresh_pow_sup_readback)
+        self.set_volt_win = None
 
         self.setupUi(self)
 
@@ -311,8 +312,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         if power_supply != 'Kepco':
             volt = self.buffer_pars['postAccOffsetVolt']
             Cfg._main_instance.set_power_supply_voltage(power_supply, volt, self.track_ui_call_back_signal)
-            setvoltui = SetVoltageUi(power_supply, volt, self.track_ui_call_back_signal)
-            self.label_postAccOffsetVoltControl_set.setText(setvoltui.readback)
+            self.set_volt_win = SetVoltageUi(power_supply, volt, self.track_ui_call_back_signal)
 
     def cancel(self):
         """ closes the window without further actions """
