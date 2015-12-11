@@ -14,7 +14,6 @@ from copy import deepcopy
 from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
 from Interface.SetVoltageUi.SetVoltageUi import SetVoltageUi
 import Service.VoltageConversions.VoltageConversions as VCon
-import Service.Scan.ScanDictionaryOperations as SdOp
 import Application.Config as Cfg
 
 
@@ -82,9 +81,9 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     """functions:"""
     def set_labels_by_dict(self, track_dict):
         """" the values in the track_dict will be written to the corresponding spinboxes,
-         which will call the connected functions.
-          Each function is tried separately in order to give the next one a chance of execution,
-           when default val is messed up.
+        which will call the connected functions.
+        Each function is tried separately in order to give the next one a chance of execution,
+        when default val is messed up.
         """
         func_list = [
             (self.doubleSpinBox_dwellTime_ms.setValue,
@@ -266,7 +265,6 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             display = 'anti colinear'
         self.label_colDirTrue_set.setText(display)
         self.buffer_pars['colDirTrue'] = boolstate
-        # pass
 
     def wait_after_reset_mu_sec_set(self, time_mu_s):
         """ write to the working dictionary and set the label """

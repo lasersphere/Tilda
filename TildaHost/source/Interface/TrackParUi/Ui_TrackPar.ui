@@ -68,7 +68,7 @@
            <item row="1" column="2">
             <widget class="QLabel" name="label_dwellTime_ms_2">
              <property name="text">
-              <string>0</string>
+              <string>None</string>
              </property>
             </widget>
            </item>
@@ -185,7 +185,7 @@
              <item row="1" column="2">
               <widget class="QLabel" name="label_dacStartV_set">
                <property name="text">
-                <string>0</string>
+                <string>None</string>
                </property>
               </widget>
              </item>
@@ -239,7 +239,7 @@ power supply voltage [V]</string>
              <item row="9" column="2">
               <widget class="QLabel" name="label_postAccOffsetVolt_set">
                <property name="text">
-                <string>0</string>
+                <string>None</string>
                </property>
               </widget>
              </item>
@@ -255,14 +255,14 @@ power supply voltage [V]</string>
                 <bool>false</bool>
                </property>
                <property name="maximum">
-                <number>100000</number>
+                <number>10000000</number>
                </property>
               </widget>
              </item>
              <item row="5" column="2">
               <widget class="QLabel" name="label_nOfScans_set">
                <property name="text">
-                <string>0</string>
+                <string>None</string>
                </property>
               </widget>
              </item>
@@ -283,7 +283,7 @@ power supply voltage [V]</string>
              <item row="11" column="2">
               <widget class="QLabel" name="label_colDirTrue_set">
                <property name="text">
-                <string>anti collinear</string>
+                <string>None</string>
                </property>
               </widget>
              </item>
@@ -331,7 +331,7 @@ power supply</string>
              <item row="2" column="2">
               <widget class="QLabel" name="label_dacStopV_set">
                <property name="text">
-                <string>0</string>
+                <string>None</string>
                </property>
               </widget>
              </item>
@@ -352,7 +352,7 @@ power supply</string>
              <item row="4" column="2">
               <widget class="QLabel" name="label_nOfSteps_set">
                <property name="text">
-                <string>0</string>
+                <string>None</string>
                </property>
               </widget>
              </item>
@@ -368,14 +368,14 @@ power supply</string>
                 <bool>false</bool>
                </property>
                <property name="maximum">
-                <number>100000</number>
+                <number>100000000</number>
                </property>
               </widget>
              </item>
              <item row="3" column="2">
               <widget class="QLabel" name="label_dacStepSizeV_set">
                <property name="text">
-                <string>0</string>
+                <string>None</string>
                </property>
               </widget>
              </item>
@@ -389,7 +389,7 @@ power supply</string>
              <item row="10" column="2">
               <widget class="QLabel" name="label_activePmtList_set">
                <property name="text">
-                <string>[]</string>
+                <string>None</string>
                </property>
               </widget>
              </item>
@@ -421,7 +421,7 @@ power supply</string>
              <item row="6" column="2">
               <widget class="QLabel" name="label_invertScan_set">
                <property name="text">
-                <string>False</string>
+                <string>None</string>
                </property>
               </widget>
              </item>
@@ -466,7 +466,7 @@ power supply</string>
              <item row="1" column="3">
               <widget class="QLabel" name="label_kepco_start">
                <property name="text">
-                <string>0</string>
+                <string>None</string>
                </property>
               </widget>
              </item>
@@ -486,14 +486,14 @@ power supply</string>
              <item row="2" column="3">
               <widget class="QLabel" name="label_kepco_stop">
                <property name="text">
-                <string>0</string>
+                <string>None</string>
                </property>
               </widget>
              </item>
              <item row="3" column="3">
               <widget class="QLabel" name="label_kepco_step">
                <property name="text">
-                <string>0</string>
+                <string>None</string>
                </property>
               </widget>
              </item>
@@ -594,7 +594,7 @@ Voltage:</string>
              <item row="1" column="2">
               <widget class="QLabel" name="label_waitForKepco_muS_set">
                <property name="text">
-                <string>0</string>
+                <string>None</string>
                </property>
               </widget>
              </item>
@@ -679,7 +679,7 @@ Voltage:</string>
              <item row="2" column="2">
               <widget class="QLabel" name="label_waitAfterReset_muS_set">
                <property name="text">
-                <string>0</string>
+                <string>None</string>
                </property>
               </widget>
              </item>

@@ -149,7 +149,7 @@ def calc_dac_stop_18bit(start, step, num_of_steps):
     stop = start + step * num_of_steps
     :return stop_18bit
     """
-    stop = start + step * num_of_steps
+    stop = start + step * (num_of_steps - 1)
     return stop
 
 
@@ -160,7 +160,7 @@ def calc_step_size(start, stop, steps):
     """
     try:
         dis = stop - start
-        stepsize_18bit = int(round(dis / steps))
+        stepsize_18bit = int(round(dis / (steps - 1)))
     except ZeroDivisionError:
         stepsize_18bit = 0
     return stepsize_18bit
@@ -171,8 +171,8 @@ def calc_n_of_steps(start, stop, step_size):
     calculates the number of steps: abs((stop - start) / stepSize)
     """
     try:
-        dis = abs(stop - start)
-        n_of_steps = int(round(dis / step_size))
+        dis = abs(stop - start) + abs(step_size)
+        n_of_steps = int(round(dis / abs(step_size)))
     except ZeroDivisionError:
         n_of_steps = 0
     return n_of_steps
