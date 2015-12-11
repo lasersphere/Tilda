@@ -38,11 +38,14 @@ class Main:
         self.seconds = 0
         self.scan_pars = {}  # {iso0: scan_dict, iso1: scan_dict} -> iso is unique
 
+        # pyqtSignal for sending the status to the gui, if there is one connected:
+        self.main_ui_status_call_back_signal = None
+
         self.scan_main = ScanMain()
         self.iso_scan_process = None
 
         try:
-            self.work_dir_changed('D:/lala')
+            self.work_dir_changed('E:/lala')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state('idle')
@@ -77,6 +80,7 @@ class Main:
         if only_if_idle:
             if self.m_state[0] == 'idle':
                 self.m_state = req_state, val
+                self.send_state()
                 logging.debug('changed state to %s', self.m_state)
                 return True
             else:
@@ -85,8 +89,24 @@ class Main:
                 return False
         else:
             self.m_state = req_state, val
+            self.send_state()
             logging.debug('changed state to %s', self.m_state)
             return True
+
+    def send_state(self):
+        """
+        if a gui is subscribed via a call back signal in self.main_ui_status_call_back_signal.
+        This function will emit a status dictionary containing the following keys:
+        status_dict keys: ['workdir', 'status', 'database']
+        """
+        if self.main_ui_status_call_back_signal is not None:
+            stat_dict = {
+                'workdir': self.working_directory,
+                'status': self.m_state[0],
+                'database': self.database
+            }
+            self.main_ui_status_call_back_signal.emit(stat_dict)
+
 
     """ operations on self.scn_pars dictionary """
     def remove_track_from_scan_pars(self, iso, track):

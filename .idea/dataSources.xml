@@ -20,35 +20,30 @@
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:C:\Workspace\PyCharm\Tilda\PolliFit\test\Project\AnaDB.sqlite</jdbc-url>
-      <libraries />
     </data-source>
     <data-source source="LOCAL" name="blub.sqlite" uuid="aa37fc5a-e67c-4581-ae97-4949afd82cd6">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:E:/blub/blub.sqlite</jdbc-url>
-      <libraries />
     </data-source>
     <data-source source="LOCAL" name="Sqlite (Xerial) - tildaDB.sqlite" uuid="038c5188-08fc-47a4-9815-7a7df530ca7f">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/PolliFit/test/Project/tildaDB.sqlite</jdbc-url>
-      <libraries />
     </data-source>
     <data-source source="LOCAL" name="Sqlite (Xerial) - AnaDB.sqlite" uuid="6083bed6-4eb9-4145-98cc-75f61409a5ce">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/PolliFit/test/Project/AnaDB.sqlite</jdbc-url>
-      <libraries />
     </data-source>
     <data-source source="LOCAL" name="TildaOfflineAnalysis" uuid="ce7481b1-06f6-4adc-901f-23480342c491">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:R:/Projekte/TRIGA/Measurements and Analysis_Simon/Tilda Offline Tests 15_11/BothDaysCombined/BothDaysCombined.sqlite</jdbc-url>
-      <libraries />
     </data-source>
   </component>
 </project>

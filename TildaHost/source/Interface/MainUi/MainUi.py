@@ -19,9 +19,12 @@ import Application.Config as Cfg
 import logging
 import os
 from PyQt5 import QtWidgets
+from PyQt5 import QtCore
 
 
 class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
+    main_ui_status_call_back_signal = QtCore.pyqtSignal(dict)
+
     def __init__(self):
         super(MainUi, self).__init__()
         self.setupUi(self)
@@ -36,30 +39,35 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionVoltage_Measurement.triggered.connect(self.open_volt_meas_win)
         self.actionPost_acceleration_power_supply_control.triggered.connect(self.open_post_acc_win)
         self.actionSimple_Counter.triggered.connect(self.simple_counter)
+
+        self.subscribe_to_main()
         self.show()
 
-    def gui_cyclic(self):
+    def subscribe_to_main(self):
         """
-        cyclic function for the Gui
+        pass the call back signal to the main and connect to self.update_status
         """
-        self.update_status()
-        self.update_scan_wins()
+        Cfg._main_instance.main_ui_status_call_back_signal = self.main_ui_status_call_back_signal
+        self.main_ui_status_call_back_signal.connect(self.update_status)
+        Cfg._main_instance.send_state()
 
-    def update_status(self):
-        """
-        keep it short, will be called in cyclic()
-        """
-        self.label_workdir_set.setText(str(Cfg._main_instance.working_directory))
-        self.label_main_status.setText(Cfg._main_instance.m_state[0])
-        self.label_database.setText(Cfg._main_instance.database)
 
-    def update_scan_wins(self):
+    def unsubscribe_from_main(self):
         """
-        keep it short, will be called in cyclic()
+        unsubscribe from main and disconnect signals
         """
+        Cfg._main_instance.main_ui_status_call_back_signal = None
+        self.main_ui_status_call_back_signal.disconnect()
+
+    def update_status(self, status_dict):
+        """
+        status_dict keys: ['workdir', 'status', 'database']
+        """
+        self.label_workdir_set.setText(str(status_dict.get('workdir', '')))
+        self.label_main_status.setText(str(status_dict.get('status', '')))
+        self.label_database.setText(str(status_dict.get('database', '')))
         for w in self.act_scan_wins:
-            w.enable_go(Cfg._main_instance.m_state[0] == 'idle')
-            # disable go if not in idle state
+            w.enable_go(status_dict.get('status', '') == 'idle')
 
     def choose_working_dir(self):
         """ will open a modal file dialog and set all workingdirectories of the pipeline to the chosen folder """

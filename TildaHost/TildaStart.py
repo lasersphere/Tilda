@@ -61,7 +61,6 @@ def cyclic(ui):
     -> all calls should be brief, otherwise Gui is blocked
     """
     Cfg._main_instance.cyclic()
-    ui.gui_cyclic()
 
 if __name__ == "__main__":
     main()
