@@ -12,6 +12,7 @@ import Application.Config as Cfg
 
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
+import time
 
 
 class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
@@ -21,6 +22,8 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
     def __init__(self, act_pmts, datapoints):
         super(SimpleCounterRunningUi, self).__init__()
         self.setupUi(self)
+
+        self.first_call = True
 
         self.act_pmts = act_pmts
         self.datapoints = datapoints
@@ -39,6 +42,9 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
         self.show()
 
     def rcv(self, scaler_liste):
+        if self.first_call:
+            self.refresh_post_acc_state()
+        self.first_call = False
         for i, j in enumerate(scaler_liste):
             if i < len(self.names):
                 getattr(self, self.names[i]).display(j)

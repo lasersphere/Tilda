@@ -415,7 +415,7 @@ class NMPlLivePlot(Node):
         MPLPlotter.pause(0.0001)
 
     def processData(self, data, pipeData):
-        logging.debug('plotting...')
+        # logging.debug('plotting...')
         t = time.time()
         plot_list = []  # [(x1, y1), (x2, y2), ....]
         i = 0
@@ -425,7 +425,7 @@ class NMPlLivePlot(Node):
             plot_list.append(self.plotStyles[i])
             i += 1
         self.animate(plot_list)
-        logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
+        # logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
         return data
 
     def stop(self):
