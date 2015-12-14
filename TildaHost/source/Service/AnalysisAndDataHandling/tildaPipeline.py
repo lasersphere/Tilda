@@ -123,7 +123,7 @@ def initPipeData(initialScanPars):
     return pipeData
 
 
-def simple_counter_pipe():
+def simple_counter_pipe(qt_sig):
     start = Node()
 
     fig, axes = plt.subplots(2, sharex=True)
@@ -134,6 +134,7 @@ def simple_counter_pipe():
     walk = start.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NSortByPmt(sample_rate))
     walk = walk.attach(TN.NMovingAverage())
+    walk = walk.attach(TN.NSendViaQtSignal(qt_sig))
     # walk = walk.attach(SN.NPrint())
 
     walk = walk.attach(TN.NAddxAxis())

@@ -57,7 +57,6 @@ class Main:
         This will control the main
         """
         if self.m_state[0] == 'simple_counter_running':
-            logging.debug('reading simple counter data')
             self.simple_counter_inst.read_data()
         if self.m_state[0] == 'stop_simple_counter':
             self.stop_simple_counter()
