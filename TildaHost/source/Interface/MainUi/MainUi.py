@@ -13,6 +13,7 @@ from Interface.ScanControlUi.ScanControlUi import ScanControlUi
 from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
 from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
 from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
+from Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
 
 import Application.Config as Cfg
 
@@ -100,15 +101,10 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.post_acc_win = None
 
     def simple_counter(self):
-        act_pmt_list, datapoints = self.open_simp_count_dial()
-        Cfg._main_instance.start_simple_counter(act_pmt_list, datapoints)
-        SimpleCounterDialogUi()  # blocking!
-
-    def open_simp_count_dial(self):
-        # open window here in the future, that returns the active pmt list and the plotpoints
-        # needed before the pipeline is started
-        # could also be realized by altering the simple counter dialog win
-        return [0, 1], 600
+        sc_dial = SimpleCounterDialogUi()  # blocking!
+        if sc_dial.start:
+            self.simple_counter_gui = SimpleCounterRunningUi(sc_dial.act_pmts, sc_dial.datapoints)
+            # Cfg._main_instance.start_simple_counter(sc_dial.act_pmts, sc_dial.datapoints)
 
     def closeEvent(self, *args, **kwargs):
         for win in self.act_scan_wins:

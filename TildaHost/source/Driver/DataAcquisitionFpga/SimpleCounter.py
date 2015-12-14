@@ -57,6 +57,10 @@ class SimpleCounter(FPGAInterfaceHandling):
             self.ReadWrite(ScCfg.postAccOffsetVoltControl, state_num)
 
     def get_post_acc_control(self):
+        """
+        reads the state off the postacceleration control
+        :return: post_acc_state, post_acc_name
+        """
         post_acc_state = self.ReadWrite(ScCfg.postAccOffsetVoltState)
         post_acc_name = ''
         for key, val in ScCfg.postAccOffsetVoltStateDict.items():

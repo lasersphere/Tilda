@@ -12,7 +12,7 @@ import Service.AnalysisAndDataHandling.tildaPipeline as Tp
 
 
 class SimpleCounterControl:
-    def __init__(self, act_pmt_list, datapoints):
+    def __init__(self, act_pmt_list, datapoints, callback_sig):
         """
         module for reading from the simple counter.
         """
@@ -48,11 +48,25 @@ class SimpleCounterControl:
         deinitialize the fpga
         :return: status of fpga
         """
-        print('stopping now')
         self.sc_pipe.stop()
-        print('pipe is stopped')
         fpga_status = True
         if self.sc.type == 'sc':
             fpga_status = self.sc.DeInitFpga()
         self.sc = None
         return fpga_status
+
+    def set_post_acc_control(self, state_name):
+        self.sc.set_post_acc_control(state_name)
+
+    def get_post_acc_control(self):
+        """
+        :return: post_acc_state, post_acc_name
+        """
+        return self.sc.get_post_acc_control()
+
+    def set_dac_volt(self, volt_dbl):
+        """
+        sets the voltage to the dac, input is double/float
+        :return: status of fpga
+        """
+        return self.sc.set_dac_voltage(volt_dbl)

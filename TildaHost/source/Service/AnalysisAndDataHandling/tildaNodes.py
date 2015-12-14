@@ -639,6 +639,24 @@ class NMovingAverage(Node):
         return avg
 
 
+class NSendViaQtSignal(Node):
+    """
+    Node for sending the incoming data via a Qtsignal coming from above
+    input: anything that suits qt_signal
+    output: same as input
+    """
+
+    def __init__(self, qt_signal):
+        super(NSendViaQtSignal, self).__init__()
+        self.type = 'SendViaQtSignal'
+
+        self.qt_signal = qt_signal
+
+    def processData(self, data, pipeData):
+        self.qt_signal.emit(data)
+        return data
+
+
 class NAddxAxis(Node):
     """
     Node for the Simple Counter which add an x-axis to the moving average,

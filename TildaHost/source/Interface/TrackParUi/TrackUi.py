@@ -186,9 +186,9 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def calc_step_size(self):
         """ calculates the stepsize: (stop - start) / nOfSteps  """
         try:
-            start = self.check_for_none(self.buffer_pars['dacStartRegister18Bit'], 0)
-            stop = self.check_for_none(self.buffer_pars['dacStopRegister18Bit'], 1)
-            steps = self.check_for_none(self.buffer_pars['nOfSteps'], 1)
+            start = self.check_for_none(self.buffer_pars.get('dacStartRegister18Bit'), 0)
+            stop = self.check_for_none(self.buffer_pars.get('dacStopRegister18Bit'), 1)
+            steps = self.check_for_none(self.buffer_pars.get('nOfSteps'), 1)
             stepsize_18bit = VCon.calc_step_size(start, stop, steps)
         except Exception as e:
             logging.error('following error occurred while calculating the stepsize:' + str(e))
@@ -198,9 +198,9 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def calc_n_of_steps(self):
         """ calculates the number of steps: abs((stop - start) / stepSize) """
         try:
-            start = self.buffer_pars['dacStartRegister18Bit']
-            stop = self.buffer_pars['dacStopRegister18Bit']
-            step = self.buffer_pars['dacStepSize18Bit']
+            start = self.check_for_none(self.buffer_pars.get('dacStartRegister18Bit'), 0)
+            stop = self.check_for_none(self.buffer_pars.get('dacStopRegister18Bit'), 1)
+            step = self.check_for_none(self.buffer_pars.get('dacStepSize18Bit'), 1)
             n_of_steps = VCon.calc_n_of_steps(start, stop, step)
         except Exception as e:
             logging.error('following error occurred while calculating the number of steps:' + str(e))

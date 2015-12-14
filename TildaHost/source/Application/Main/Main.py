@@ -69,6 +69,8 @@ class Main:
             self._init_power_sups(self.m_state[1])
         elif self.m_state[0] == 'set_output_power_sup':
             self._set_power_sup_outp(*self.m_state[1])
+        elif self.m_state[0] == 'starting_simple_counter':
+            self._start_simple_counter(*self.m_state[1])
         pass
 
     """ main functions """
@@ -174,8 +176,11 @@ class Main:
         else:
             logging.warning('could not start scan because state of main is ' + self.m_state[0])
     """ simple counter """
-    def start_simple_counter(self, act_pmt_list, datapoints):
-        self.simple_counter_inst = SimpleCounterControl(act_pmt_list, datapoints)
+    def start_simple_counter(self, act_pmt_list, datapoints, callback_sig):
+        self.set_state('starting_simple_counter', (act_pmt_list, datapoints, callback_sig), only_if_idle=True)
+
+    def _start_simple_counter(self, act_pmt_list, datapoints, callback_sig):
+        self.simple_counter_inst = SimpleCounterControl(act_pmt_list, datapoints, callback_sig)
         try:
             self.simple_counter_inst.run()
         except Exception as e:
@@ -185,8 +190,26 @@ class Main:
         finally:
             self.set_state('simple_counter_running')
 
+    def simple_counter_post_acc(self, state_name):
+        """
+        sets the post acceleration control to the given state.
+        beware of the switching time in seconds.
+        """
+        self.simple_counter_inst.set_post_acc_control(state_name)
+
+    def get_simple_counter_post_acc(self):
+        """
+        :return: post_acc_state, post_acc_name
+        """
+        return self.simple_counter_inst.get_post_acc_control()
+
+    def simple_counter_set_dac_volt(self, volt_dbl):
+        """
+        set the dac voltage
+        """
+        self.simple_counter_inst.set_dac_volt(volt_dbl)
+
     def stop_simple_counter(self):
-        self.set_state('busy')
         fpga_status = self.simple_counter_inst.stop()
         logging.debug('fpga status after deinit is: ' + str(fpga_status))
         self.set_state('idle')
