@@ -13,12 +13,8 @@ import os
 import multiprocessing
 import re
 from copy import deepcopy, copy
-
-
-
 from Service.Scan.ScanMain import ScanMain
 from Service.SimpleCounter.SimpleCounter import SimpleCounterControl
-
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.VoltageConversions.VoltageConversions as VCon
 import Service.Scan.draftScanParameters as Dft
@@ -28,14 +24,16 @@ import Application.Config as Cfg
 
 class Main:
     def __init__(self):
-        self.m_state = ('init', None)  # tuple (str, val)
+        self.m_state = ('init', None)  # tuple (str, val), each state can be entered with a value
         self.database = None  # path of the sqlite3 database
-        self.working_directory = None
-        self.measure_voltage_pars = Dft.draftMeasureVoltPars  # dict containing all parameters
-        # for the voltage measurement.
+        self.working_directory = None  # path of the working directory, containig the database etc.
+        self.measure_voltage_pars = Dft.draftMeasureVoltPars
+        # dict containing all parameters for the voltage measurement.
+        # default is: draftMeasureVoltPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100}
+        self.laserfreq = 0  # laser frequency in cm-1
+        self.acc_voltage = 0  # acceleration voltage of the source in volts
         self.simple_counter_inst = None
         self.cmd_queue = None
-        self.seconds = 0
         self.scan_pars = {}  # {iso0: scan_dict, iso1: scan_dict} -> iso is unique
 
         # pyqtSignal for sending the status to the gui, if there is one connected:
@@ -51,6 +49,7 @@ class Main:
         self.set_state('idle')
 
     """ cyclic function """
+
     def cyclic(self):
         """
         cyclic function called regularly by the QtTimer initiated in TildaStart.py
@@ -58,7 +57,7 @@ class Main:
         """
         if self.m_state[0] == 'simple_counter_running':
             self.simple_counter_inst.read_data()
-        if self.m_state[0] == 'stop_simple_counter':
+        elif self.m_state[0] == 'stop_simple_counter':
             self.stop_simple_counter()
         elif self.m_state[0] == 'setting_power_supply':
             self._set_power_supply_voltage(*self.m_state[1])
@@ -73,6 +72,7 @@ class Main:
         pass
 
     """ main functions """
+
     def set_state(self, req_state, val=None, only_if_idle=False):
         """
         this will set the state of the main to req_state
@@ -98,18 +98,20 @@ class Main:
         """
         if a gui is subscribed via a call back signal in self.main_ui_status_call_back_signal.
         This function will emit a status dictionary containing the following keys:
-        status_dict keys: ['workdir', 'status', 'database']
+        status_dict keys: ['workdir', 'status', 'database', 'laserfreq', 'accvolt']
         """
         if self.main_ui_status_call_back_signal is not None:
             stat_dict = {
                 'workdir': self.working_directory,
                 'status': self.m_state[0],
-                'database': self.database
+                'database': self.database,
+                'laserfreq': self.laserfreq,
+                'accvolt': self.acc_voltage
             }
             self.main_ui_status_call_back_signal.emit(stat_dict)
 
+    """ operations on self.scan_pars dictionary """
 
-    """ operations on self.scn_pars dictionary """
     def remove_track_from_scan_pars(self, iso, track):
         """
         remove a track from the given isotope dictionary.
@@ -139,7 +141,24 @@ class Main:
         tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scan_d)
         scan_d['isotopeData']['nOfTracks'] = tracks
 
+    def laser_freq_changed(self, laser_freq):
+        """
+        store the laser frequency in self.laserfreq and send the new status dict to subscribed GUIs.
+        :param laser_freq: dbl, in cm-1
+        """
+        self.laserfreq = laser_freq
+        self.send_state()
+
+    def acc_volt_changed(self, acc_volt):
+        """
+        store the acceleration voltage in self.acc_voltage and send the new status dict to subscribed GUIs.
+        :param acc_volt: dbl, in units of volt
+        """
+        self.acc_voltage = acc_volt
+        self.send_state()
+
     """ file operations """
+
     def work_dir_changed(self, workdir_str):
         """
         Sets the working directory in which the main sqlite database is stored.
@@ -158,23 +177,28 @@ class Main:
             self.working_directory = None
 
     """ scanning """
-    def start_scan(self, one_scan_dict):
+
+    def start_scan(self, iso_name):
         """
-        * merge the given scan dict with measureVoltPars, workingDirectory, nOfTracks and version
+        the given isotope scan dictionary will be completed with global informations, which are valid for all isotopes,
+        such as:
+        workingDirectory, version, measureVoltPars, laserFreq
+
         """
         if self.m_state[0] == 'idle':
             self.set_state('preparing_scan')
-            # one_scan_dict['measureVoltPars'] = SdOp.merge_dicts(one_scan_dict['measureVoltPars'],
-            #                                                     self.measure_voltage_pars)
-            # one_scan_dict['pipeInternals']['workingDirectory'] = self.working_directory
-            # tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(one_scan_dict)
-            # one_scan_dict['isotopeData']['nOfTracks'] = tracks
-            # one_scan_dict['isotopeData']['version'] = Cfg.version
-            # logging.debug('will scan: ' + str(sorted(one_scan_dict)))
-            # self.scan_main.scan_one_isotope(one_scan_dict)  # change this to non blocking!
+            self.scan_pars[iso_name]['measureVoltPars'] = self.measure_voltage_pars
+            self.scan_pars[iso_name]['pipeInternals']['workingDirectory'] = self.working_directory
+            tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
+            self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
+            logging.debug('will scan: ' + str(sorted(self.scan_pars[iso_name])))
+
+            self.scan_main.scan_one_isotope(self.scan_pars[iso_name])  # change this to non blocking!
         else:
             logging.warning('could not start scan because state of main is ' + self.m_state[0])
+
     """ simple counter """
+
     def start_simple_counter(self, act_pmt_list, datapoints, callback_sig):
         self.set_state('starting_simple_counter', (act_pmt_list, datapoints, callback_sig), only_if_idle=True)
 
@@ -184,7 +208,7 @@ class Main:
             self.simple_counter_inst.run()
         except Exception as e:
             print('while starting the simple counter bitfile, this happened: ', str(e))
-            print('don\'t worry, starting dummy Sequencer now.')
+            print('don\'t worry, starting DUMMY Simple Counter now.')
             self.simple_counter_inst.run_dummy()
         finally:
             self.set_state('simple_counter_running')
@@ -277,6 +301,7 @@ class Main:
         self.set_state('idle')
 
     """ database functions """
+
     def get_available_isos_from_db(self, seq_type):
         """
         connects to the database defined by self.database

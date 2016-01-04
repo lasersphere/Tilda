@@ -24,9 +24,9 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         super(ScanControlUi, self).__init__()
         self.setupUi(self)
 
-        self.active_iso = None
+        self.active_iso = None  # str, key for the self.scan_pars dict in Main
         self.win_title = None
-        self.track_wins_dict = {}
+        self.track_wins_dict = {}  # dict containing all open track windows
 
         self.actionGo.triggered.connect(self.go)
         self.actionSetup_Isotope.triggered.connect(self.setup_iso)
@@ -42,6 +42,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
     def enable_go(self, bool):
         """
         wrapper for enabling the Go button, True-> enabled
+        will be disabled via callback signal in MainUi when status in Main is not idle
         """
         self.actionGo.setEnabled(bool)
 
@@ -110,7 +111,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
 
     def setup_iso(self):
         """
-        opens a dialog for chosing the isotope.
+        opens a dialog for choosing the isotope.
         """
         logging.debug('setting up isotope')
         SetupIsotopeUi(self)
