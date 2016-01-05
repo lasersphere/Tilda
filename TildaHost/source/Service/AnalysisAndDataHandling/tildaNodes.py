@@ -639,7 +639,7 @@ class NMovingAverage(Node):
         return avg
 
 
-class NSendViaQtSignal(Node):
+class NSendnOfCompletedStepsViaQtSignal(Node):
     """
     Node for sending the incoming data via a Qtsignal coming from above
     input: anything that suits qt_signal
@@ -647,13 +647,14 @@ class NSendViaQtSignal(Node):
     """
 
     def __init__(self, qt_signal):
-        super(NSendViaQtSignal, self).__init__()
-        self.type = 'SendViaQtSignal'
+        super(NSendnOfCompletedStepsViaQtSignal, self).__init__()
+        self.type = 'SendnOfCompletedStepsViaQtSignal'
 
         self.qt_signal = qt_signal
 
     def processData(self, data, pipeData):
-        self.qt_signal.emit(data)
+        track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
+        self.qt_signal.emit(pipeData[track_name]['nOfCompletedSteps'])
         return data
 
 

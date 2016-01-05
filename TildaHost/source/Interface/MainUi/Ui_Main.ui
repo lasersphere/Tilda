@@ -22,7 +22,7 @@
     <item row="0" column="0">
      <widget class="QLabel" name="label_workdir">
       <property name="text">
-       <string>Working directory:</string>
+       <string>Working directory*:</string>
       </property>
      </widget>
     </item>
@@ -77,14 +77,21 @@
     <item row="3" column="0">
      <widget class="QLabel" name="label_3">
       <property name="text">
-       <string>laser frequency [cm-1]:</string>
+       <string>laser frequency [cm-1]*:</string>
       </property>
      </widget>
     </item>
     <item row="4" column="0">
      <widget class="QLabel" name="label_4">
       <property name="text">
-       <string>acceleration voltage [V]:</string>
+       <string>acceleration voltage [V]*:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="1">
+     <widget class="QLabel" name="label_laser_freq_set">
+      <property name="text">
+       <string>TextLabel</string>
       </property>
      </widget>
     </item>
@@ -95,10 +102,10 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="1">
-     <widget class="QLabel" name="label_laser_freq_set">
+    <item row="6" column="0">
+     <widget class="QLabel" name="label_5">
       <property name="text">
-       <string>TextLabel</string>
+       <string>*double click on value to change</string>
       </property>
      </widget>
     </item>

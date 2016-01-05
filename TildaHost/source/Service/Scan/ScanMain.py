@@ -21,7 +21,6 @@ class ScanMain:
     def __init__(self):
         self.sequencer = None
         self.pipeline = None
-        self.scan_state = 'initialized'
         self.post_acc_main = PostAcc.PostAccelerationMain()
         self.abort_scan = False
         self.halt_scan = False
@@ -32,53 +31,57 @@ class ScanMain:
         """
         return self.post_acc_main.power_supply_init()
 
-    def scan_one_isotope(self, scan_dict):
+    def prepare_scan(self, scan_dict, callback_sig=None):
         """
-        function to handle the scanning of one isotope, must be interruptable by halt/abort
+        function to prepare for the scan of one isotope.
+        This sets up the pipeline and loads the bitfile on the fpga of the given type.
         """
         logging.info('preparing isotope: ' + scan_dict['isotopeData']['isotope'] +
                      ' of type: ' + scan_dict['isotopeData']['type'])
-        n_of_tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
-        self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict)
+        self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
         self.pipeline.start()
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
-        for track_index, track_num in enumerate(track_num_list):
-            self.prep_track_in_pipe(track_num, track_index)
-            if self.start_measurement(scan_dict, track_num):
-                self.read_data()
-        logging.info('Measurement completed of isotope: ' + scan_dict['isotopeData']['isotope'] +
-                     'of type: ' + scan_dict['isotopeData']['type'])
-        self.pipeline.stop()  # halt the pipeline, which will cause the mpl-win to stay open
-        self.pipeline.clear()
+        #
+        #
+        # that's it
+        # for track_index, track_num in enumerate(track_num_list):
+        #     self.prep_track_in_pipe(track_num, track_index)
+        #     if self.start_measurement(scan_dict, track_num):
+        #         self.read_data()  # this call blocks.
+        # logging.info('Measurement completed of isotope: ' + scan_dict['isotopeData']['isotope'] +
+        #              'of type: ' + scan_dict['isotopeData']['type'])
+        # # this must be moved to scan complete state or something.
+        # self.pipeline.stop()  # halt the pipeline, which will cause the mpl-win to stay open
+        # self.pipeline.clear()
 
     def prep_seq(self, seq_type):
         """
-        prepare the sequencer before scanning -> load the correct bitfile to the fpga, etc..
+        prepare the sequencer before scanning -> load the correct bitfile to the fpga.
         """
-        self.scan_state = 'starting up sequencer of type: ' + seq_type
-        if self.sequencer is None:
+        if self.sequencer is None:  # no sequencer loaded yet, must load
             logging.debug('loading sequencer of type: ' + seq_type)
             self.sequencer = FindSeq.ret_seq_instance_of_type(seq_type)
         else:
             if seq_type == 'kepco':
-                logging.debug('loading sequencer of type: ' + seq_type)
                 if self.sequencer.type not in DftScan.sequencer_types_list:
                     logging.debug('loading cs in order to perform kepco scan')
                     self.sequencer = FindSeq.ret_seq_instance_of_type('cs')
-            elif self.sequencer.type != seq_type:
+            elif self.sequencer.type != seq_type:  # check if current sequencer type is already the right one
+                logging.debug('loading sequencer of type: ' + seq_type)
                 self.sequencer = FindSeq.ret_seq_instance_of_type('cs')
 
     def prep_track_in_pipe(self, track_num, track_index):
+        """
+        prepare the pipeline for the next track
+        """
         track_name = 'track' + str(track_num)
         self.pipeline.pipeData['pipeInternals']['activeTrackNumber'] = (track_index, track_name)
-        # self.pipeline.start()
 
     def start_measurement(self, scan_dict, track_num):
         """
         will start the measurement for one track.
         After starting the measurement, the FPGA runs on its own.
         """
-        self.scan_state = 'measuring'
         track_dict = scan_dict.get('track' + str(track_num))
         logging.debug('starting measurement with track_dict: ' +
                       str(sorted(track_dict)))
@@ -89,15 +92,11 @@ class ScanMain:
     def read_data(self):
         """
         read the data coming from the fpga.
-        This will block until no data is coming from the fpga anymore.
         The data will be directly fed to the pipeline.
         """
         result = {}
         meas_state = self.sequencer.config.seqStateDict['measureTrack']
         seq_state = self.sequencer.getSeqState()
-        timed_out_count = 0
-        max_time_out = 500
-        sleep_time = 0.05
         while seq_state == meas_state or result.get('nOfEle') > 0:
             seq_state = self.sequencer.getSeqState()
             result = self.sequencer.getData()
@@ -116,7 +115,6 @@ class ScanMain:
         """
         function to set the desired Heinzinger to the Voltage that is needed.
         """
-        self.scan_state = 'set offset volt'
         readback = self.post_acc_main.set_voltage(power_supply, volt)
         return readback
 

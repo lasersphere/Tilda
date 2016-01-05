@@ -92,7 +92,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         workdir = QtWidgets.QFileDialog.getExistingDirectory(QtWidgets.QFileDialog(),
             'choose working directory', os.path.expanduser('~'))
         Cfg._main_instance.work_dir_changed(workdir)
-        self.label_workdir_set.setText(str(workdir))
 
     def open_version_win(self):
         VersionUi()

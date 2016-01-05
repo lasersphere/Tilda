@@ -16,20 +16,19 @@ import matplotlib.pyplot as plt
 from polliPipe.pipeline import Pipeline
 
 
-def find_pipe_by_seq_type(scan_dict):
+def find_pipe_by_seq_type(scan_dict, callback_sig):
     seq_type = scan_dict['isotopeData']['type']
     if seq_type == 'cs' or 'csdummy':
-        return CsPipe(scan_dict)
+        return CsPipe(scan_dict, callback_sig)
     elif seq_type == 'trs':
-        return TrsPipe(scan_dict)
+        return TrsPipe(scan_dict, callback_sig)
     elif seq_type == 'kepco':
-        return kepco_scan_pipe(scan_dict)
+        return kepco_scan_pipe(scan_dict, callback_sig)
     else:
         return None
 
 
-
-def TrsPipe(initialScanPars):
+def TrsPipe(initialScanPars, callback_sig=None):
     """
     Pipeline for the dataflow and analysis of one Isotope using the time resolved sequencer.
     Mutliple Tracks are supported.
@@ -49,7 +48,8 @@ def TrsPipe(initialScanPars):
 
     return pipe
 
-def CsPipe(initialScanPars=None):
+
+def CsPipe(initialScanPars=None, callback_sig=None):
     """
     Pipeline for the dataflow and analysis of one Isotope using the continous sequencer.
     """
@@ -97,7 +97,8 @@ def CsPipe(initialScanPars=None):
     walk = walk.attach(TN.NSaveSumCS())
     return pipe
 
-def kepco_scan_pipe(initial_scan_pars):
+
+def kepco_scan_pipe(initial_scan_pars, callback_sig=None):
     """
     pipeline for the measurement and analysis of a kepco scan
     :param initial_scan_pars: full sacn dictionary which will be used as starting point for this pipeline
@@ -110,6 +111,7 @@ def kepco_scan_pipe(initial_scan_pars):
     walk = walk.attach(SN.NPrint())
     # more has to be included...
     return pipe
+
 
 def initPipeData(initialScanPars):
     """

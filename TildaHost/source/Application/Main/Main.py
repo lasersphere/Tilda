@@ -6,23 +6,24 @@ Created on '30.09.2015'
 
 """
 
-from PyQt5 import QtWidgets
-import sys
 import logging
 import os
-import multiprocessing
-import re
-from copy import deepcopy, copy
+from copy import deepcopy
+from PyQt5 import QtCore
+
+
 from Service.Scan.ScanMain import ScanMain
 from Service.SimpleCounter.SimpleCounter import SimpleCounterControl
 import Service.Scan.ScanDictionaryOperations as SdOp
-import Service.VoltageConversions.VoltageConversions as VCon
 import Service.Scan.draftScanParameters as Dft
 import Service.DatabaseOperations.DatabaseOperations as DbOp
 import Application.Config as Cfg
 
 
 class Main:
+    # this will equal the number of completed steps in the active track:
+    scan_prog_call_back_sig = QtCore.pyqtSignal(int)
+
     def __init__(self):
         self.m_state = ('init', None)  # tuple (str, val), each state can be entered with a value
         self.database = None  # path of the sqlite3 database
@@ -34,13 +35,15 @@ class Main:
         self.acc_voltage = 0  # acceleration voltage of the source in volts
         self.simple_counter_inst = None
         self.cmd_queue = None
-        self.scan_pars = {}  # {iso0: scan_dict, iso1: scan_dict} -> iso is unique
+
 
         # pyqtSignal for sending the status to the gui, if there is one connected:
         self.main_ui_status_call_back_signal = None
 
         self.scan_main = ScanMain()
         self.iso_scan_process = None
+        self.scan_pars = {}  # {iso0: scan_dict, iso1: scan_dict} -> iso is unique
+        self.scan_progress = {}  # {activeIso: str, activeTrackNum: int, completedTracks: list, nOfCompletedSteps: int}
 
         try:
             self.work_dir_changed('E:/lala')
@@ -69,7 +72,8 @@ class Main:
             self._set_power_sup_outp(*self.m_state[1])
         elif self.m_state[0] == 'starting_simple_counter':
             self._start_simple_counter(*self.m_state[1])
-        pass
+        elif self.m_state[0] == 'load_track':
+            self._load_track()
 
     """ main functions """
 
@@ -175,6 +179,8 @@ class Main:
             logging.error('while loading db from: ' + workdir_str + ' this happened:' + str(e))
             self.database = None
             self.working_directory = None
+        finally:
+            self.send_state()
 
     """ scanning """
 
@@ -183,19 +189,49 @@ class Main:
         the given isotope scan dictionary will be completed with global informations, which are valid for all isotopes,
         such as:
         workingDirectory, version, measureVoltPars, laserFreq
-
+        then the bitfile is loaded to the fpga and the first track is started for scanning.
+        the state will therefor be changed to scanning
         """
         if self.m_state[0] == 'idle':
             self.set_state('preparing_scan')
+            n_of_tracks, list_of_track_nums = SdOp.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
+            self.scan_progress['activeIso'] = iso_name
+            self.scan_progress['completedTracks'] = []
             self.scan_pars[iso_name]['measureVoltPars'] = self.measure_voltage_pars
             self.scan_pars[iso_name]['pipeInternals']['workingDirectory'] = self.working_directory
-            tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
             self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
+            self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
             logging.debug('will scan: ' + str(sorted(self.scan_pars[iso_name])))
 
-            self.scan_main.scan_one_isotope(self.scan_pars[iso_name])  # change this to non blocking!
+            self.scan_prog_call_back_sig.connect(self.update_scan_progress)
+            self.scan_main.prepare_scan(self.scan_pars[iso_name], self.scan_prog_call_back_sig)  # change this to non blocking!
+            self.set_state('load_track')
         else:
             logging.warning('could not start scan because state of main is ' + self.m_state[0])
+
+    def update_scan_progress(self, number_of_completed_steps):
+        """
+        will be updated from the pipeline via Qt callback signal.
+        """
+        self.scan_progress['nOfCompletedSteps'] = number_of_completed_steps
+
+    def _load_track(self):
+        """
+        this will prepare the pipeline for the next track
+        and then start the fpga with this track.
+        """
+        iso_name = self.scan_progress['activeIso']
+        n_of_tracks, list_of_track_nums = SdOp.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
+        active_track_num = min(set(list_of_track_nums) - set(self.scan_progress['completedTracks']))
+        self.scan_progress['activeTrackNum'] = active_track_num
+        track_index = list_of_track_nums.index(active_track_num)
+        self.scan_main.prep_track_in_pipe(active_track_num, track_index)
+        if self.scan_main.start_measurement(self.scan_pars[iso_name], active_track_num):
+            self.set_state('scanning')
+        else:
+            logging.error('could not start scanning')
+            self.set_state('error')
+
 
     """ simple counter """
 
