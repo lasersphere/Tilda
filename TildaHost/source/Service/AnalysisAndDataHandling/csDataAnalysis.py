@@ -6,6 +6,7 @@ Created on '09.07.2015'
 
 """
 
+
 def checkIfScanComplete(pipeData, totalnOfScalerEvents, track_name):
     """
     Check if all Steps for this scan have been completed
@@ -15,6 +16,7 @@ def checkIfScanComplete(pipeData, totalnOfScalerEvents, track_name):
     complete = pipeData[track_name]['nOfCompletedSteps'] % pipeData[track_name]['nOfSteps'] == 0
     notzero = pipeData[track_name]['nOfCompletedSteps'] != 0
     return stepComplete and complete and notzero
+
 
 def checkIfTrackComplete(pipeData, track_name):
     """

@@ -105,7 +105,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.act_scan_wins.remove(win_ref)
 
     def open_volt_meas_win(self):
-        self.measure_voltage_win = VoltMeasConfUi(self.measure_voltage_pars)
+        self.measure_voltage_win = VoltMeasConfUi(Cfg._main_instance.measure_voltage_pars, self)
 
     def close_volt_meas_win(self):
         self.measure_voltage_win = None

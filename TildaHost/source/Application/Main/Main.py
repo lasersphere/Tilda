@@ -20,11 +20,12 @@ import Service.DatabaseOperations.DatabaseOperations as DbOp
 import Application.Config as Cfg
 
 
-class Main:
+class Main(QtCore.QObject):
     # this will equal the number of completed steps in the active track:
     scan_prog_call_back_sig = QtCore.pyqtSignal(int)
 
     def __init__(self):
+        super(Main, self).__init__()
         self.m_state = ('init', None)  # tuple (str, val), each state can be entered with a value
         self.database = None  # path of the sqlite3 database
         self.working_directory = None  # path of the working directory, containig the database etc.
@@ -39,11 +40,14 @@ class Main:
 
         # pyqtSignal for sending the status to the gui, if there is one connected:
         self.main_ui_status_call_back_signal = None
+        self.scan_prog_call_back_sig.connect(self.update_scan_progress)
 
         self.scan_main = ScanMain()
         self.iso_scan_process = None
         self.scan_pars = {}  # {iso0: scan_dict, iso1: scan_dict} -> iso is unique
         self.scan_progress = {}  # {activeIso: str, activeTrackNum: int, completedTracks: list, nOfCompletedSteps: int}
+        self.abort_scan = False
+        self.halt_scan = False
 
         try:
             self.work_dir_changed('E:/lala')
@@ -74,6 +78,8 @@ class Main:
             self._start_simple_counter(*self.m_state[1])
         elif self.m_state[0] == 'load_track':
             self._load_track()
+        elif self.m_state[0] == 'scanning':
+            self._scanning()
 
     """ main functions """
 
@@ -192,45 +198,75 @@ class Main:
         then the bitfile is loaded to the fpga and the first track is started for scanning.
         the state will therefor be changed to scanning
         """
-        if self.m_state[0] == 'idle':
-            self.set_state('preparing_scan')
-            n_of_tracks, list_of_track_nums = SdOp.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
-            self.scan_progress['activeIso'] = iso_name
-            self.scan_progress['completedTracks'] = []
-            self.scan_pars[iso_name]['measureVoltPars'] = self.measure_voltage_pars
-            self.scan_pars[iso_name]['pipeInternals']['workingDirectory'] = self.working_directory
-            self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
-            self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
-            logging.debug('will scan: ' + str(sorted(self.scan_pars[iso_name])))
+        try:
+            if self.m_state[0] == 'idle':
+                self.set_state('preparing_scan')
+                self.scan_progress['activeIso'] = iso_name
+                self.scan_progress['completedTracks'] = []
+                self.scan_pars[iso_name]['measureVoltPars'] = self.measure_voltage_pars
+                self.scan_pars[iso_name]['pipeInternals']['workingDirectory'] = self.working_directory
+                self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
+                self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
+                logging.debug('will scan: ' + iso_name + str(sorted(self.scan_pars[iso_name])))
+                self.scan_main.prepare_scan(self.scan_pars[iso_name], self.scan_prog_call_back_sig)  # change this to non blocking!
+                self.set_state('load_track')
+            else:
+                logging.warning('could not start scan because state of main is ' + self.m_state[0])
+        except Exception as e:
+            print('error: ', e)
 
-            self.scan_prog_call_back_sig.connect(self.update_scan_progress)
-            self.scan_main.prepare_scan(self.scan_pars[iso_name], self.scan_prog_call_back_sig)  # change this to non blocking!
-            self.set_state('load_track')
-        else:
-            logging.warning('could not start scan because state of main is ' + self.m_state[0])
-
-    def update_scan_progress(self, number_of_completed_steps):
+    def update_scan_progress(self, number_of_completed_steps=None):
         """
         will be updated from the pipeline via Qt callback signal.
         """
-        self.scan_progress['nOfCompletedSteps'] = number_of_completed_steps
+        if number_of_completed_steps is not None:
+            self.scan_progress['nOfCompletedSteps'] = number_of_completed_steps
+        print('scan progress is: \t', self.scan_progress)
 
     def _load_track(self):
         """
+        called via state 'load_track'
         this will prepare the pipeline for the next track
         and then start the fpga with this track.
+        will switch state to 'scanning' or 'error'
         """
         iso_name = self.scan_progress['activeIso']
         n_of_tracks, list_of_track_nums = SdOp.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
-        active_track_num = min(set(list_of_track_nums) - set(self.scan_progress['completedTracks']))
-        self.scan_progress['activeTrackNum'] = active_track_num
-        track_index = list_of_track_nums.index(active_track_num)
-        self.scan_main.prep_track_in_pipe(active_track_num, track_index)
-        if self.scan_main.start_measurement(self.scan_pars[iso_name], active_track_num):
-            self.set_state('scanning')
-        else:
-            logging.error('could not start scanning')
-            self.set_state('error')
+        try:
+            active_track_num = min(set(list_of_track_nums) - set(self.scan_progress['completedTracks']))
+            self.scan_progress['activeTrackNum'] = active_track_num
+            track_index = list_of_track_nums.index(active_track_num)
+            self.scan_main.prep_track_in_pipe(active_track_num, track_index)
+            if self.scan_main.start_measurement(self.scan_pars[iso_name], active_track_num):
+                self.set_state('scanning')
+            else:
+                logging.error('could not start scan on fpga')
+                self.set_state('error')
+        except ValueError:  # all tracks for this isotope are completed.
+            # min(... ) will yield a value error when list of track_nums = self.scan_progress['completedTracks']
+            self.scan_main.stop_measurement()
+            self.set_state('idle')
+
+    def _scanning(self):
+        """
+        will be called when in state 'scanning'
+        will always feed data to the pipeline in scan_main.
+        will change to 'load_track', when no data is available anymore
+        AND the state is not measuring state anymore.
+        """
+        if not self.scan_main.read_data():
+            if not self.scan_main.check_scanning():
+                self.scan_progress['completedTracks'].append(self.scan_progress['activeTrackNum'])
+                self.update_scan_progress()
+                if self.halt_scan:
+                    self.set_state('idle')
+                    self.scan_main.stop_measurement()
+                else:
+                    self.set_state('load_track')
+        elif self.abort_scan:  # abort the scan and return to idle state
+            self.scan_main.abort_scan()
+            self.scan_main.stop_measurement()
+            self.set_state('idle')
 
 
     """ simple counter """

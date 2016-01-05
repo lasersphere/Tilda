@@ -16,11 +16,12 @@ import logging
 
 
 class VoltMeasConfUi(QtWidgets.QMainWindow, Ui_VoltMeasConfMainWin):
-    def __init__(self, default_dict):
+    def __init__(self, default_dict, main_gui):
         super(VoltMeasConfUi, self).__init__()
         self.setupUi(self)
 
         self.main = Cfg._main_instance
+        self.main_gui = main_gui
 
         self.doubleSpinBox_measVoltPulseLength_mu_s.valueChanged.connect(self.pulse_length)
         self.doubleSpinBox_measVoltTimeout_mu_s_set.valueChanged.connect(self.timeout)
@@ -51,4 +52,4 @@ class VoltMeasConfUi(QtWidgets.QMainWindow, Ui_VoltMeasConfMainWin):
         self.label_measVoltTimeout_mu_s_set.setText('{0:0.3f}'.format(timeout_mu_s))
 
     def closeEvent(self, *args, **kwargs):
-        self.main.close_volt_meas_win()
+        self.main_gui.close_volt_meas_win()

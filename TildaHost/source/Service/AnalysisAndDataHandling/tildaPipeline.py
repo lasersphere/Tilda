@@ -63,9 +63,12 @@ def CsPipe(initialScanPars=None, callback_sig=None):
 
     walk = start.attach(TN.NSaveRawData())
     walk = start.attach(TN.NSplit32bData())
-
+    #
+    walk = walk.attach(SN.NPrint())
     walk = walk.attach(TN.NSortRawDatatoArray())
+    walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
 
+    #
     branch = walk.attach(TN.NAccumulateSingleScan())
     branch = branch.attach(SN.NPrint())
     branch = branch.attach(TN.NSingleArrayToSpecData())

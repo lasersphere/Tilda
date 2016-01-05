@@ -22,8 +22,6 @@ class ScanMain:
         self.sequencer = None
         self.pipeline = None
         self.post_acc_main = PostAcc.PostAccelerationMain()
-        self.abort_scan = False
-        self.halt_scan = False
 
     def init_post_accel_pwr_supplies(self):
         """
@@ -41,18 +39,6 @@ class ScanMain:
         self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
         self.pipeline.start()
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
-        #
-        #
-        # that's it
-        # for track_index, track_num in enumerate(track_num_list):
-        #     self.prep_track_in_pipe(track_num, track_index)
-        #     if self.start_measurement(scan_dict, track_num):
-        #         self.read_data()  # this call blocks.
-        # logging.info('Measurement completed of isotope: ' + scan_dict['isotopeData']['isotope'] +
-        #              'of type: ' + scan_dict['isotopeData']['type'])
-        # # this must be moved to scan complete state or something.
-        # self.pipeline.stop()  # halt the pipeline, which will cause the mpl-win to stay open
-        # self.pipeline.clear()
 
     def prep_seq(self, seq_type):
         """
@@ -73,8 +59,10 @@ class ScanMain:
     def prep_track_in_pipe(self, track_num, track_index):
         """
         prepare the pipeline for the next track
+        reset 'nOfCompletedSteps' to 0.
         """
         track_name = 'track' + str(track_num)
+        self.pipeline.pipeData[track_name]['nOfCompletedSteps'] = 0
         self.pipeline.pipeData['pipeInternals']['activeTrackNumber'] = (track_index, track_name)
 
     def start_measurement(self, scan_dict, track_num):
@@ -85,7 +73,7 @@ class ScanMain:
         track_dict = scan_dict.get('track' + str(track_num))
         logging.debug('starting measurement with track_dict: ' +
                       str(sorted(track_dict)))
-        # figure out how to restart the pipeline with the new parameters here
+        # figure out how to restart the pipeline with the new parameters here, already done?
         start_ok = self.sequencer.measureTrack(scan_dict, track_num)
         return start_ok
 
@@ -93,23 +81,44 @@ class ScanMain:
         """
         read the data coming from the fpga.
         The data will be directly fed to the pipeline.
+        :return: bool, True if nOfEle > 0 that were read
         """
         result = {}
+        result = self.sequencer.getData()
+        if result.get('nOfEle', -1) > 0:
+            self.pipeline.feed(result['newData'])
+            return True
+        else:
+            return False
+
+    def check_scanning(self):
+        """
+        check if the sequencer is still in the 'measureTrack' state
+        :return: bool, True if still scanning
+        """
         meas_state = self.sequencer.config.seqStateDict['measureTrack']
         seq_state = self.sequencer.getSeqState()
-        while seq_state == meas_state or result.get('nOfEle') > 0:
-            seq_state = self.sequencer.getSeqState()
-            result = self.sequencer.getData()
-            if result.get('nOfEle') == 0:
-                if seq_state == meas_state and timed_out_count < max_time_out:
-                    time.sleep(sleep_time)
-                    timed_out_count += 1
-                else:
-                    break
-            else:
-                self.pipeline.feed(result['newData'])
-                time.sleep(sleep_time)
-        # self.pipeline.clear()
+        return meas_state == seq_state
+
+    def stop_measurement(self):
+        """
+        stops all modules which are relevant for scanning.
+        pipeline etc.
+        """
+        self.pipeline.stop()  # halt the pipeline, which will cause the mpl-win to stay open
+        self.pipeline.clear()
+
+    def halt_scan(self):
+        """
+        halts the scan after the currently running track is completed
+        """
+        self.sequencer.halt()
+
+    def abort_scan(self):
+        """
+        aborts the scan directly
+        """
+        self.sequencer.abort()
 
     def set_post_accel_pwr_supply(self, power_supply, volt):
         """
