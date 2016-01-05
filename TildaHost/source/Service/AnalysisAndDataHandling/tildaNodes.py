@@ -282,14 +282,17 @@ class NSortRawDatatoArray(Node):
                     ret.append((self.scalerArray, scan_complete))
                     logging.debug('Voltindex: ' + str(self.curVoltIndex) +
                                   'completede steps:  ' + str(pipeData[track_name]['nOfCompletedSteps']))
-                    self.scalerArray = form.create_default_scaler_array_from_scandict(pipeData)
+                    self.scalerArray = form.create_default_scaler_array_from_scandict(pipeData)  # deletes all entries
                     scan_complete = False
-        if ret is None:
-            ret = []
-        if np.count_nonzero(self.scalerArray):
-            ret.append((self.scalerArray, scan_complete))
-        self.scalerArray = form.create_default_scaler_array_from_scandict(pipeData)
-        return ret
+        try:
+            if ret is None:
+                ret = []
+            if np.count_nonzero(self.scalerArray[track_ind]):
+                ret.append((self.scalerArray, scan_complete))
+            self.scalerArray = form.create_default_scaler_array_from_scandict(pipeData)  # deletes all entries
+            return ret
+        except Exception as e:
+            print('exception: \t ', e)
 
     def clear(self):
         self.voltArray = None
@@ -314,11 +317,14 @@ class NSumCS(Node):
         self.scalerArray = form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
 
     def processData(self, data, pipeData):
-        for i, j in enumerate(data):  # data can be a list of completed scans
-            self.scalerArray = np.add(self.scalerArray, j)
-            logging.debug('sum is: ' + str(self.scalerArray[0:2]) + str(self.scalerArray[-2:]))
-        return self.scalerArray
-
+        track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
+        try:
+            for i, j in enumerate(data):
+                self.scalerArray[track_ind] = np.add(self.scalerArray[track_ind], j[track_ind])
+                logging.debug('sum is: ' + str(self.scalerArray[0:2]) + str(self.scalerArray[-2:]))
+            return self.scalerArray
+        except Exception as e:
+            print('exception: ', e)
     def clear(self):
         self.scalerArray = form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
 
@@ -353,33 +359,6 @@ class NCheckIfTrackComplete(Node):
         if csAna.checkIfTrackComplete(pipeData, track_name):
             ret = data
         return ret
-
-
-class NPlotSum(Node):
-    def __init__(self):
-        """
-        function to plot the sum of all incoming complete Scans
-        input: sum
-        output: complete Sum, when Track is finished
-        """
-        super(NPlotSum, self).__init__()
-        self.type = 'PlotSum'
-        self.x = None
-
-    def start(self):
-        self.x = form.create_x_axis_from_track_dict(self.Pipeline.pipeData['activeTrackPar'])
-
-    def processData(self, data, pipeData):
-        logging.info('plotting...')
-        MPLPlotter.plot((self.x, data))
-        file = pipeData['pipeInternals']['activeXmlFilePath'][:-4] + '.png'
-        logging.info('saving plot to' + file)
-        MPLPlotter.save(file)
-        MPLPlotter.show()
-        return data
-
-    def clear(self):
-        MPLPlotter.clear()
 
 
 class NMPlLivePlot(Node):
@@ -654,6 +633,24 @@ class NSendnOfCompletedStepsViaQtSignal(Node):
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         self.qt_signal.emit(pipeData[track_name]['nOfCompletedSteps'])
+        return data
+
+
+class NSendDataViaQtSignal(Node):
+    """
+    Node for sending the incoming data via a Qtsignal coming from above
+    input: anything that suits qt_signal
+    output: same as input
+    """
+
+    def __init__(self, qt_signal):
+        super(NSendDataViaQtSignal, self).__init__()
+        self.type = 'SendViaQtSignal'
+
+        self.qt_signal = qt_signal
+
+    def processData(self, data, pipeData):
+        self.qt_signal.emit(data)
         return data
 
 

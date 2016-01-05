@@ -64,7 +64,6 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     walk = start.attach(TN.NSaveRawData())
     walk = start.attach(TN.NSplit32bData())
     #
-    walk = walk.attach(SN.NPrint())
     walk = walk.attach(TN.NSortRawDatatoArray())
     walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
 
@@ -85,11 +84,11 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     walk = walk.attach(TN.NRemoveTrackCompleteFlag())
     walk = walk.attach(TN.NSumCS())
 
-    sum = walk.attach(TN.NSingleArrayToSpecData())
-    sum0 = sum.attach(TN.NMultiSpecFromSpecData([[0], [1]]))
+    summe = walk.attach(TN.NSingleArrayToSpecData())
+    sum0 = summe.attach(TN.NMultiSpecFromSpecData([[0], [1]]))
     sum0 = sum0.attach(TN.NMPlLivePlot(axes[3], 'live sum', ['b-', 'g-']))
 
-    sum01 = sum.attach(TN.NSingleSpecFromSpecData([0, 1]))
+    sum01 = summe.attach(TN.NSingleSpecFromSpecData([0, 1]))
     sum01 = sum01.attach(TN.NMPlLivePlot(axes[4], 'scaler 0+1', ['r-']))
 
     walk = walk.attach(TN.NCheckIfTrackComplete())
@@ -98,6 +97,7 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     finalsum = finalsum.attach(TN.NMPlLivePlot(axes[5], 'final sum', ['b-', 'g-']))
 
     walk = walk.attach(TN.NSaveSumCS())
+    walk = walk.attach(SN.NPrint())
     return pipe
 
 
@@ -139,7 +139,7 @@ def simple_counter_pipe(qt_sig):
     walk = start.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NSortByPmt(sample_rate))
     walk = walk.attach(TN.NMovingAverage())
-    walk = walk.attach(TN.NSendViaQtSignal(qt_sig))
+    walk = walk.attach(TN.NSendDataViaQtSignal(qt_sig))
     # walk = walk.attach(SN.NPrint())
 
     walk = walk.attach(TN.NAddxAxis())
