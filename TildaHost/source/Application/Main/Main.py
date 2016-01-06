@@ -256,12 +256,13 @@ class Main(QtCore.QObject):
         """
         if not self.scan_main.read_data():
             if not self.scan_main.check_scanning():
+                # also comparing received steps with total steps would be acceptable, maybe change in future
                 self.scan_progress['completedTracks'].append(self.scan_progress['activeTrackNum'])
                 self.update_scan_progress()
                 if self.halt_scan:
                     self.set_state('idle')
                     self.scan_main.stop_measurement()
-                else:
+                else:  # normal exit after completion of each track
                     self.set_state('load_track')
         elif self.abort_scan:  # abort the scan and return to idle state
             self.scan_main.abort_scan()

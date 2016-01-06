@@ -13,6 +13,7 @@ import Driver.DataAcquisitionFpga.FindSequencerByType as FindSeq
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as DftScan
 import Service.AnalysisAndDataHandling.tildaPipeline as Tpipe
+import Service.Formating as Form
 import Driver.Heinzinger.HeinzingerCfg as hzCfg
 import Driver.PostAcceleration.PostAccelerationMain as PostAcc
 
@@ -37,7 +38,6 @@ class ScanMain:
         logging.info('preparing isotope: ' + scan_dict['isotopeData']['isotope'] +
                      ' of type: ' + scan_dict['isotopeData']['type'])
         self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
-        self.pipeline.start()
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
 
     def prep_seq(self, seq_type):
@@ -63,7 +63,11 @@ class ScanMain:
         """
         track_name = 'track' + str(track_num)
         self.pipeline.pipeData[track_name]['nOfCompletedSteps'] = 0
+        # self.pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
+        #     self.pipeline.pipeData[track_name], True)
         self.pipeline.pipeData['pipeInternals']['activeTrackNumber'] = (track_index, track_name)
+        self.pipeline.start()
+
 
     def start_measurement(self, scan_dict, track_num):
         """

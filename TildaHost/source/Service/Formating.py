@@ -51,10 +51,14 @@ def eval_str_vals_in_dict(dicti):
     return dicti
 
 
-def add_working_time_to_track_dict(trackdict):
-    """adds the timestamp to the working time of the track"""
+def add_working_time_to_track_dict(trackdict, reset=False):
+    """
+    adds the timestamp to the working time of the track.
+    :param reset: bool, True if 'workingTime' should be cleared
+    :return: trackdict
+    """
     time = str(dt.now().strftime("%Y-%m-%d %H:%M:%S"))
-    if 'workingTime' in trackdict:
+    if 'workingTime' in trackdict and not reset:
         if trackdict['workingTime'] is None:
             worktime = []
         else:

@@ -12,17 +12,16 @@ import Service.Scan.ScanDictionaryOperations as SdOp
 from Measurement.SpecData import SpecData
 
 from polliPipe.node import Node
-import Service.Formating as form
-import Service.FolderAndFileHandling as filhandl
-import Service.ProgramConfigs as progConfigsDict
-import Service.AnalysisAndDataHandling.trsDataAnalysis as trsAna
-import Service.AnalysisAndDataHandling.csDataAnalysis as csAna
+import Service.Formating as Form
+import Service.FolderAndFileHandling as Filehandle
+import Service.ProgramConfigs as ProgConfigsDict
+import Service.AnalysisAndDataHandling.trsDataAnalysis as TrsAna
+import Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
 import MPLPlotter
 
 import numpy as np
 import time
 import logging
-from copy import copy, deepcopy
 
 
 class NSplit32bData(Node):
@@ -39,7 +38,7 @@ class NSplit32bData(Node):
         buf = np.zeros((len(data),), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
                                             ('headerIndex', 'u1'), ('payload', 'u4')])
         for i, j in enumerate(data):
-            result = form.split_32b_data(j)
+            result = Form.split_32b_data(j)
             buf[i] = result
         return buf
 
@@ -54,32 +53,41 @@ class NSaveRawData(Node):
         """
         super(NSaveRawData, self).__init__()
         self.type = "SaveRawData"
-
-        self.buf = np.zeros(0, dtype=np.uint32)
         self.maxArraySize = 5000
-        self.nOfSaves = -1
+
+        self.buf = None
+        self.nOfSaves = None
+
+    def start(self):
+        if self.buf is None:
+            self.buf = np.zeros(0, dtype=np.uint32)
+        if self.nOfSaves is None:
+            self.nOfSaves = -1
 
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         if self.nOfSaves < 0:  # save pipedata, first time something is fed to the pipelins
-            self.nOfSaves = filhandl.savePipeData(pipeData, self.nOfSaves)
-            pipeData[track_name] = form.add_working_time_to_track_dict(pipeData[track_name])
+            self.nOfSaves = Filehandle.savePipeData(pipeData, self.nOfSaves)
         self.buf = np.append(self.buf, data)
         if self.buf.size > self.maxArraySize:  # when buffer is full, store the data to disc
-            self.nOfSaves = filhandl.saveRawData(self.buf, pipeData, self.nOfSaves)
+            self.nOfSaves = Filehandle.saveRawData(self.buf, pipeData, self.nOfSaves)
             self.buf = np.zeros(0, dtype=np.uint32)
         return data
 
     def clear(self):
-        filhandl.saveRawData(self.buf, self.Pipeline.pipeData, 0)
-        filhandl.savePipeData(self.Pipeline.pipeData, 0)  # also save the pipeData when clearing
-        self.nOfSaves = -1
-        self.buf = np.zeros(0, dtype=np.uint32)
+        Filehandle.saveRawData(self.buf, self.Pipeline.pipeData, 0)
+        Filehandle.savePipeData(self.Pipeline.pipeData, 0)  # also save the pipeData when clearing
+        self.nOfSaves = None
+        self.buf = None
 
 
 class NSumBunchesTRS(Node):
     def __init__(self):
         """
+
+        Not up to date anymore need remodeling when working with TRS!!
+
+
         sort all incoming events into scalerArray and voltArray.
         All Scaler events will be summed up seperatly for each scaler.
         Is specially build for the TRS data.
@@ -107,15 +115,15 @@ class NSumBunchesTRS(Node):
     def processData(self, data, pipeData):
         for i, j in enumerate(data):
             if j['headerIndex'] == 1:  # not MCS/TRS data
-                if j['firstHeader'] == progConfigsDict.programs['errorHandler']:  # error send from fpga
+                if j['firstHeader'] == ProgConfigsDict.programs['errorHandler']:  # error send from fpga
                     print('fpga sends error code: ' + str(j['payload']))
-                elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltag step than
+                elif j['firstHeader'] == ProgConfigsDict.programs['dac']:  # its a voltag step than
                     pipeData['activeTrackPar']['nOfCompletedSteps'] += 1
                     self.curVoltIndex, self.voltArray = find_volt_in_array(j['payload'], self.voltArray)
             elif j['headerIndex'] == 0:  # MCS/TRS Data
-                self.scalerArray = form.trs_sum(j, self.curVoltIndex, self.scalerArray,
+                self.scalerArray = Form.trs_sum(j, self.curVoltIndex, self.scalerArray,
                                                 pipeData['activeTrackPar']['activePmtList'])
-        if trsAna.checkIfScanComplete(pipeData):
+        if TrsAna.checkIfScanComplete(pipeData):
             return (self.voltArray, self.timeArray, self.scalerArray)
         else:
             return None
@@ -154,81 +162,6 @@ class NSaveTrsSum(Node):
         return data
 
 
-class NAcquireOneScanCS(Node):
-    def __init__(self):
-        """
-        not up to date anymore. not sure if it is used though.
-        sum up all scaler events for the incoming data
-        input: splitted rawData
-        output: list of completed scalerArrays
-        """
-        super(NAcquireOneScanCS, self).__init__()
-        self.type = 'AcquireOneLoopCS'
-        self.bufIncoming = None
-        self.voltArray = None
-        self.scalerArray = None
-        self.curVoltIndex = 0
-        self.totalnOfScalerEvents = 0
-        logging.error('watch out, ' + self.type + ' might be outdated')
-
-    def start(self):
-        scand = self.Pipeline.pipeData
-        self.voltArray = form.create_x_axis_from_scand_dict(scand)
-        self.scalerArray = form.create_default_scaler_array_from_scandict(scand)
-        self.bufIncoming = np.zeros((0,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
-                                                 ('headerIndex', 'u1'), ('payload', 'u4')])
-
-    def processData(self, data, pipeData):
-        ret = None
-        self.bufIncoming = np.append(self.bufIncoming, data, axis=0)
-        for i, j in enumerate(copy(self.bufIncoming)):
-            if j['firstHeader'] == progConfigsDict.programs['errorHandler']:  # error send from fpga
-                logging.error('fpga sends error code: ' + str(j['payload']) + 'or in binary: ' + str(
-                    '{0:032b}'.format(j['payload'])))
-                self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
-
-            elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltage step
-                self.curVoltIndex, self.voltArray = find_volt_in_array(j['payload'], self.voltArray)
-                # logging.debug('new Voltageindex: ' + str(self.curVoltIndex) + ' ... with voltage: ' + str(
-                # form.get_voltage_from_24bit(j['payload'])))
-                self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
-
-            elif j['firstHeader'] == progConfigsDict.programs['continuousSequencer']:
-                '''scaler entry '''
-                self.totalnOfScalerEvents += 1
-                pipeData['activeTrackPar']['nOfCompletedSteps'] = self.totalnOfScalerEvents // 8  # floored Quotient
-                try:  # sort values in array, will fail if pmt value is not set active in the activePmtList
-                    pmtIndex = pipeData['activeTrackPar']['activePmtList'].index(j['secondHeader'])
-                    self.scalerArray[self.curVoltIndex, pmtIndex] += j['payload']
-                except ValueError:
-                    pass
-                self.bufIncoming = np.delete(self.bufIncoming, 0, 0)
-                if csAna.checkIfScanComplete(pipeData, self.totalnOfScalerEvents):
-                    # one Scan over all steps is completed, add Data to return array and clear local buffer.
-                    if ret is None:
-                        ret = []
-                    ret.append(self.scalerArray)
-                    logging.debug('Voltindex: ' + str(self.curVoltIndex) +
-                                  'completede steps:  ' + str(pipeData['activeTrackPar']['nOfCompletedSteps']))
-                    self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
-                                                 len(pipeData['activeTrackPar']['activePmtList'])),
-                                                dtype=np.uint32)
-        return ret
-
-    def clear(self):
-        pipeData = self.Pipeline.pipeData
-        self.voltArray = np.full(pipeData['activeTrackPar']['nOfSteps'], (2 ** 30), dtype=np.uint32)
-        self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
-                                     len(pipeData['activeTrackPar']['activePmtList'])),
-                                    dtype=np.uint32)
-        self.curVoltIndex = 0
-        self.totalnOfScalerEvents = 0
-        if np.count_nonzero(self.bufIncoming) > 0:
-            logging.warning('Scan not finished, while clearing. Data left: ' + str(self.bufIncoming))
-        self.bufIncoming = np.zeros((0,), dtype=[('firstHeader', 'u1'), ('secondHeader', 'u1'),
-                                                 ('headerIndex', 'u1'), ('payload', 'u4')])
-
-
 class NSortRawDatatoArray(Node):
     def __init__(self):
         """
@@ -242,29 +175,35 @@ class NSortRawDatatoArray(Node):
         self.type = 'NSortRawDatatoArray'
         self.voltArray = None
         self.scalerArray = None
-        self.curVoltIndex = 0
-        self.totalnOfScalerEvents = []
+        self.curVoltIndex = None
+        self.totalnOfScalerEvents = None
 
     def start(self):
         scand = self.Pipeline.pipeData
         tracks, tracks_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
-        self.totalnOfScalerEvents = np.full((tracks,), 0)
-        self.voltArray = form.create_default_volt_array_from_scandict(scand)
-        self.scalerArray = form.create_default_scaler_array_from_scandict(scand)
+
+        if self.voltArray is None:
+            self.voltArray = Form.create_default_volt_array_from_scandict(scand)
+        if self.scalerArray is None:
+            self.scalerArray = Form.create_default_scaler_array_from_scandict(scand)
+        if self.curVoltIndex is None:
+            self.curVoltIndex = 0
+        if self.totalnOfScalerEvents is None:
+            self.totalnOfScalerEvents = np.full((tracks,), 0)
 
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         ret = None
         scan_complete = False
         for i, j in enumerate(data):
-            if j['firstHeader'] == progConfigsDict.programs['errorHandler']:  # error send from fpga
+            if j['firstHeader'] == ProgConfigsDict.programs['errorHandler']:  # error send from fpga
                 logging.error('fpga sends error code: ' + str(j['payload']) + 'or in binary: ' + str(
                     '{0:032b}'.format(j['payload'])))
 
-            elif j['firstHeader'] == progConfigsDict.programs['dac']:  # its a voltage step
+            elif j['firstHeader'] == ProgConfigsDict.programs['dac']:  # its a voltage step
                 self.curVoltIndex, self.voltArray = find_volt_in_array(j['payload'], self.voltArray, track_ind)
 
-            elif j['firstHeader'] == progConfigsDict.programs['continuousSequencer']:
+            elif j['firstHeader'] == ProgConfigsDict.programs['continuousSequencer']:
                 '''scaler entry '''
                 self.totalnOfScalerEvents[track_ind] += 1
                 pipeData[track_name]['nOfCompletedSteps'] = self.totalnOfScalerEvents[
@@ -274,7 +213,7 @@ class NSortRawDatatoArray(Node):
                     self.scalerArray[track_ind][pmt_index][self.curVoltIndex] += j['payload']
                 except ValueError:
                     pass
-                if csAna.checkIfScanComplete(pipeData, self.totalnOfScalerEvents[track_ind], track_name):
+                if CsAna.checkIfScanComplete(pipeData, self.totalnOfScalerEvents[track_ind], track_name):
                     # one Scan over all steps is completed, add Data to return array and clear local buffer.
                     scan_complete = True
                     if ret is None:
@@ -282,14 +221,14 @@ class NSortRawDatatoArray(Node):
                     ret.append((self.scalerArray, scan_complete))
                     logging.debug('Voltindex: ' + str(self.curVoltIndex) +
                                   'completede steps:  ' + str(pipeData[track_name]['nOfCompletedSteps']))
-                    self.scalerArray = form.create_default_scaler_array_from_scandict(pipeData)  # deletes all entries
+                    self.scalerArray = Form.create_default_scaler_array_from_scandict(pipeData)  # deletes all entries
                     scan_complete = False
         try:
             if ret is None:
                 ret = []
             if np.count_nonzero(self.scalerArray[track_ind]):
                 ret.append((self.scalerArray, scan_complete))
-            self.scalerArray = form.create_default_scaler_array_from_scandict(pipeData)  # deletes all entries
+            self.scalerArray = Form.create_default_scaler_array_from_scandict(pipeData)  # deletes all entries
             return ret
         except Exception as e:
             print('exception: \t ', e)
@@ -297,8 +236,8 @@ class NSortRawDatatoArray(Node):
     def clear(self):
         self.voltArray = None
         self.scalerArray = None
-        self.curVoltIndex = 0
-        self.totalnOfScalerEvents = []
+        self.curVoltIndex = None
+        self.totalnOfScalerEvents = None
 
 
 class NSumCS(Node):
@@ -314,7 +253,8 @@ class NSumCS(Node):
         self.scalerArray = None
 
     def start(self):
-        self.scalerArray = form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
+        if self.scalerArray is None:
+            self.scalerArray = Form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
 
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
@@ -325,8 +265,9 @@ class NSumCS(Node):
             return self.scalerArray
         except Exception as e:
             print('exception: ', e)
+
     def clear(self):
-        self.scalerArray = form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
+        self.scalerArray = None
 
 
 class NRemoveTrackCompleteFlag(Node):
@@ -356,7 +297,7 @@ class NCheckIfTrackComplete(Node):
     def processData(self, data, pipeData):
         ret = None
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        if csAna.checkIfTrackComplete(pipeData, track_name):
+        if CsAna.checkIfTrackComplete(pipeData, track_name):
             ret = data
         return ret
 
@@ -379,17 +320,10 @@ class NMPlLivePlot(Node):
         self.y = None
 
     def start(self):
-        # l = form.create_x_axis_from_scand_dict(self.Pipeline.pipeData)
-        # self.x = [item for sublist in l for item in sublist]
         MPLPlotter.ion()
 
     def animate(self, plotlist):
-        # self.ax.clear()
-        # self.ax.plot(x, y)
-        # self.ax.set_ylabel(self.title)
-        # plt.pause(0.0001)
         MPLPlotter.plt_axes(self.ax, self.title, plotlist)
-        # time.sleep(0.2)
         MPLPlotter.pause(0.0001)
 
     def processData(self, data, pipeData):
@@ -406,31 +340,19 @@ class NMPlLivePlot(Node):
         # logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
         return data
 
-    def stop(self):
-        MPLPlotter.show(block=True)  # this only work if pipeline thread is main thread. :(
-
 
 class NSaveSumCS(Node):
     def __init__(self):
         """
         function to save all incoming CS-Sum-Data.
-        will also add working time to each track on start() and on processData(...).
         input: complete, scalerArray containing all tracks.
         output: same as input
         """
         super(NSaveSumCS, self).__init__()
         self.type = 'SaveSumCS'
 
-    def start(self):
-        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
-        for tr in track_num_list:
-            track_name = 'track' + str(tr)
-            self.Pipeline.pipeData[track_name] = form.add_working_time_to_track_dict(
-                self.Pipeline.pipeData[track_name])
-
     def processData(self, data, pipeData):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        pipeData[track_name] = form.add_working_time_to_track_dict(pipeData[track_name])
         pipeInternals = pipeData['pipeInternals']
         file = pipeInternals['activeXmlFilePath']
         rootEle = TildaTools.load_xml(file)
@@ -454,7 +376,8 @@ class NAccumulateSingleScan(Node):
         self.scalerArray = None
 
     def start(self):
-        self.scalerArray = form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
+        if self.scalerArray is None:
+            self.scalerArray = Form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
 
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
@@ -467,11 +390,11 @@ class NAccumulateSingleScan(Node):
                 self.scalerArray[track_ind] = np.add(self.scalerArray[track_ind], j[0][track_ind])
                 ret = self.scalerArray
                 # return complete scan and reset scalerarray
-                self.scalerArray = form.create_default_scaler_array_from_scandict(pipeData)
+                self.scalerArray = Form.create_default_scaler_array_from_scandict(pipeData)
         return ret
 
     def clear(self):
-        self.scalerArray = form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
+        self.scalerArray = None
 
 
 class NSingleSpecFromSpecData(Node):
@@ -540,9 +463,9 @@ class NSingleArrayToSpecData(Node):
         self.spec_data.laserFreq = self.Pipeline.pipeData['isotopeData']['laserFreq']
         self.spec_data.col = [self.Pipeline.pipeData['track' + str(tr_num)]['colDirTrue']
                               for tr_num in tr_num_list]
-        self.spec_data.x = form.create_x_axis_from_scand_dict(self.Pipeline.pipeData)
-        self.spec_data.cts = form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
-        self.spec_data.err = form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
+        self.spec_data.x = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData)
+        self.spec_data.cts = Form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
+        self.spec_data.err = Form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
 
     def processData(self, data, pipeData):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
@@ -550,23 +473,8 @@ class NSingleArrayToSpecData(Node):
         self.spec_data.cts = data
         return self.spec_data
 
-
-class NScanProgWinUpdate(Node):
-    def __init__(self, scan_prog_win):
-        """
-        update the scanprogess window by looking into the pipeData
-        """
-        super(NScanProgWinUpdate, self).__init__()
-        self.type = 'ScanProgWinUpdate'
-        self.scp_win = scan_prog_win
-
-    def start(self):
-        self.update(self.Pipeline.pipeData)
-
-    def update(self, scand):
-        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
-        self.scp_win.set_n_of_total_tracks(tracks)
-
+    def clear(self):
+        self.spec_data = None
 
 class NSortByPmt(Node):
     """
@@ -585,12 +493,14 @@ class NSortByPmt(Node):
         self.act_pmt_list = None
 
     def start(self):
-        self.act_pmt_list = self.Pipeline.pipeData.get('activePmtList')
-        self.buffer = np.zeros((len(self.act_pmt_list), self.datapoints,))
+        if self.act_pmt_list is None:
+            self.act_pmt_list = self.Pipeline.pipeData.get('activePmtList')
+        if self.buffer is None:
+            self.buffer = np.zeros((len(self.act_pmt_list), self.datapoints,))
 
     def clear(self):
-        self.act_pmt_list = self.Pipeline.pipeData.get('activePmtList')
-        self.buffer = np.zeros((len(self.act_pmt_list), self.datapoints,))
+        self.act_pmt_list = None
+        self.buffer = None
 
     def processData(self, data, pipeData):
         for ind, val in enumerate(data):
@@ -697,3 +607,27 @@ class NOnlyOnePmt(Node):
 
     def processData(self, data, pipeData):
         return [data[self.pmt_ind]]
+
+
+class NAddWorkingTime(Node):
+    """
+    Node to add the Workingtime each time data is processed.
+    It also adds the workingtime when start() is called.
+    :param reset: bool, set True if you want to reset the workingtime when start() is called.
+    """
+
+    def __init__(self, reset=True):
+        super(NAddWorkingTime, self).__init__()
+        self.type = 'AddWorkingTime'
+        self.reset = reset
+
+    def start(self):
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
+            self.Pipeline.pipeData[track_name], self.reset)
+
+    def processData(self, data, pipeData):
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
+            self.Pipeline.pipeData[track_name])
+        return data

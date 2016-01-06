@@ -69,7 +69,7 @@ def CsPipe(initialScanPars=None, callback_sig=None):
 
     #
     branch = walk.attach(TN.NAccumulateSingleScan())
-    branch = branch.attach(SN.NPrint())
+    # branch = branch.attach(SN.NPrint())
     branch = branch.attach(TN.NSingleArrayToSpecData())
 
     branch1 = branch.attach(TN.NSingleSpecFromSpecData([0]))
@@ -96,8 +96,9 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     finalsum = finalsum.attach(TN.NMultiSpecFromSpecData([[0], [1]]))
     finalsum = finalsum.attach(TN.NMPlLivePlot(axes[5], 'final sum', ['b-', 'g-']))
 
+    walk = walk.attach(TN.NAddWorkingTime(True))
     walk = walk.attach(TN.NSaveSumCS())
-    walk = walk.attach(SN.NPrint())
+    # walk = walk.attach(SN.NPrint())
     return pipe
 
 
