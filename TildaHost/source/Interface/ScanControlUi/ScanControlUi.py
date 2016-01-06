@@ -113,6 +113,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         """
         opens a dialog for choosing the isotope.
         """
+        if self.active_iso:
+            Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
         logging.debug('setting up isotope')
         SetupIsotopeUi(self)
         self.update_track_list()
@@ -137,6 +139,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         """
         unsubscribe from parent gui when closed
         """
+        if self.active_iso:
+            Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
         logging.info('closing scan win ' + str(self.win_title))
         self.close_track_wins()
         self.main_gui.scan_control_win_closed(self)

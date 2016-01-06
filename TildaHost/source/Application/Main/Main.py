@@ -404,7 +404,15 @@ class Main(QtCore.QObject):
         scand = DbOp.extract_all_tracks_from_db(self.database, iso, seq_type)
         key = iso + '_' + seq_type
         self.scan_pars[key] = scand
+        logging.debug('scan_pars are: ' + str(self.scan_pars))
         return key
+
+    def remove_iso_from_scan_pars(self, iso_seqtype):
+        """
+        this will remove the dictionary named 'iso_seqtype' from self.scan_pars
+        """
+        self.scan_pars.pop(iso_seqtype)
+        logging.debug('scan_pars are: ' + str(self.scan_pars))
 
     def save_scan_par_to_db(self, iso):
         """
