@@ -18,6 +18,7 @@ import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as Dft
 import Service.DatabaseOperations.DatabaseOperations as DbOp
 import Application.Config as Cfg
+from Application.Main.MainState import MainState
 
 
 class Main(QtCore.QObject):
@@ -26,7 +27,7 @@ class Main(QtCore.QObject):
 
     def __init__(self):
         super(Main, self).__init__()
-        self.m_state = ('init', None)  # tuple (str, val), each state can be entered with a value
+        self.m_state = MainState.init
         self.database = None  # path of the sqlite3 database
         self.working_directory = None  # path of the working directory, containig the database etc.
         self.measure_voltage_pars = Dft.draftMeasureVoltPars
@@ -53,7 +54,7 @@ class Main(QtCore.QObject):
             self.work_dir_changed('E:/lala')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
-        self.set_state('idle')
+        self.set_state(MainState.idle)
 
     """ cyclic function """
 
@@ -62,23 +63,28 @@ class Main(QtCore.QObject):
         cyclic function called regularly by the QtTimer initiated in TildaStart.py
         This will control the main
         """
-        if self.m_state[0] == 'simple_counter_running':
-            self.simple_counter_inst.read_data()
-        elif self.m_state[0] == 'stop_simple_counter':
-            self.stop_simple_counter()
-        elif self.m_state[0] == 'setting_power_supply':
-            self._set_power_supply_voltage(*self.m_state[1])
-        elif self.m_state[0] == 'reading_power_supply':
-            self._power_supply_status(*self.m_state[1])
-        elif self.m_state[0] == 'init_power_supplies':
-            self._init_power_sups(self.m_state[1])
-        elif self.m_state[0] == 'set_output_power_sup':
-            self._set_power_sup_outp(*self.m_state[1])
-        elif self.m_state[0] == 'starting_simple_counter':
+        if self.m_state[0] is MainState.idle:
+            return True
+
+        elif self.m_state[0] is MainState.starting_simple_counter:
             self._start_simple_counter(*self.m_state[1])
-        elif self.m_state[0] == 'load_track':
+        elif self.m_state[0] is MainState.simple_counter_running:
+            self.simple_counter_inst.read_data()
+        elif self.m_state[0] is MainState.stop_simple_counter:
+            self.stop_simple_counter()
+
+        elif self.m_state[0] is MainState.init_power_supplies:
+            self._init_power_sups(self.m_state[1])
+        elif self.m_state[0] is MainState.setting_power_supply:
+            self._set_power_supply_voltage(*self.m_state[1])
+        elif self.m_state[0] is MainState.reading_power_supply:
+            self._power_supply_status(*self.m_state[1])
+        elif self.m_state[0] is MainState.set_output_power_sup:
+            self._set_power_sup_outp(*self.m_state[1])
+
+        elif self.m_state[0] is MainState.load_track:
             self._load_track()
-        elif self.m_state[0] == 'scanning':
+        elif self.m_state[0] is MainState.scanning:
             self._scanning()
 
     """ main functions """
@@ -89,19 +95,19 @@ class Main(QtCore.QObject):
         :return: bool, True if success
         """
         if only_if_idle:
-            if self.m_state[0] == 'idle':
-                self.m_state = req_state, val
+            if self.m_state[0] is MainState.idle:
+                self.m_state = req_state, val  # does this work??
                 self.send_state()
-                logging.debug('changed state to %s', self.m_state)
+                logging.debug('changed state to %s', str(self.m_state[0].name))
                 return True
             else:
                 logging.error('main is not in idle state, could not change state to: %s,\n current state is: %s',
-                              req_state, self.m_state)
+                              req_state, str(self.m_state[0].name))
                 return False
         else:
             self.m_state = req_state, val
             self.send_state()
-            logging.debug('changed state to %s', self.m_state)
+            logging.debug('changed state to %s', str(self.m_state[0].name))
             return True
 
     def send_state(self):
@@ -113,7 +119,7 @@ class Main(QtCore.QObject):
         if self.main_ui_status_call_back_signal is not None:
             stat_dict = {
                 'workdir': self.working_directory,
-                'status': self.m_state[0],
+                'status': str(self.m_state[0].name),
                 'database': self.database,
                 'laserfreq': self.laserfreq,
                 'accvolt': self.acc_voltage
@@ -199,8 +205,8 @@ class Main(QtCore.QObject):
         the state will therefor be changed to scanning
         """
         try:
-            if self.m_state[0] == 'idle':
-                self.set_state('preparing_scan')
+            if self.m_state[0] is MainState.idle:
+                self.set_state(MainState.preparing_scan)
                 self.scan_progress['activeIso'] = iso_name
                 self.scan_progress['completedTracks'] = []
                 self.scan_pars[iso_name]['measureVoltPars'] = self.measure_voltage_pars
@@ -209,9 +215,9 @@ class Main(QtCore.QObject):
                 self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
                 logging.debug('will scan: ' + iso_name + str(sorted(self.scan_pars[iso_name])))
                 self.scan_main.prepare_scan(self.scan_pars[iso_name], self.scan_prog_call_back_sig)  # change this to non blocking!
-                self.set_state('load_track')
+                self.set_state(MainState.load_track)
             else:
-                logging.warning('could not start scan because state of main is ' + self.m_state[0])
+                logging.warning('could not start scan because state of main is ' + str(self.m_state[0].name))
         except Exception as e:
             print('error: ', e)
 
@@ -238,14 +244,14 @@ class Main(QtCore.QObject):
             track_index = list_of_track_nums.index(active_track_num)
             self.scan_main.prep_track_in_pipe(active_track_num, track_index)
             if self.scan_main.start_measurement(self.scan_pars[iso_name], active_track_num):
-                self.set_state('scanning')
+                self.set_state(MainState.scanning)
             else:
                 logging.error('could not start scan on fpga')
-                self.set_state('error')
+                self.set_state(MainState.error)
         except ValueError:  # all tracks for this isotope are completed.
             # min(... ) will yield a value error when list of track_nums = self.scan_progress['completedTracks']
             self.scan_main.stop_measurement()
-            self.set_state('idle')
+            self.set_state(MainState.idle)
 
     def _scanning(self):
         """
@@ -260,20 +266,20 @@ class Main(QtCore.QObject):
                 self.scan_progress['completedTracks'].append(self.scan_progress['activeTrackNum'])
                 self.update_scan_progress()
                 if self.halt_scan:
-                    self.set_state('idle')
+                    self.set_state(MainState.idle)
                     self.scan_main.stop_measurement()
                 else:  # normal exit after completion of each track
-                    self.set_state('load_track')
+                    self.set_state(MainState.load_track)
         elif self.abort_scan:  # abort the scan and return to idle state
             self.scan_main.abort_scan()
             self.scan_main.stop_measurement()
-            self.set_state('idle')
+            self.set_state(MainState.idle)
 
 
     """ simple counter """
 
     def start_simple_counter(self, act_pmt_list, datapoints, callback_sig):
-        self.set_state('starting_simple_counter', (act_pmt_list, datapoints, callback_sig), only_if_idle=True)
+        self.set_state(MainState.starting_simple_counter, (act_pmt_list, datapoints, callback_sig), only_if_idle=True)
 
     def _start_simple_counter(self, act_pmt_list, datapoints, callback_sig):
         self.simple_counter_inst = SimpleCounterControl(act_pmt_list, datapoints, callback_sig)
@@ -284,7 +290,7 @@ class Main(QtCore.QObject):
             print('don\'t worry, starting DUMMY Simple Counter now.')
             self.simple_counter_inst.run_dummy()
         finally:
-            self.set_state('simple_counter_running')
+            self.set_state(MainState.simple_counter_running)
 
     def simple_counter_post_acc(self, state_name):
         """
@@ -308,7 +314,7 @@ class Main(QtCore.QObject):
     def stop_simple_counter(self):
         fpga_status = self.simple_counter_inst.stop()
         logging.debug('fpga status after deinit is: ' + str(fpga_status))
-        self.set_state('idle')
+        self.set_state(MainState.idle)
 
     """ postaccleration power supply functions """
 
@@ -317,14 +323,14 @@ class Main(QtCore.QObject):
         initializes all power supplies and reads the status afterwards.
         only changes state, when in idle
         """
-        self.set_state('init_power_supplies', call_back_signal, only_if_idle=True)
+        self.set_state(MainState.init_power_supplies, call_back_signal, only_if_idle=True)
 
     def _init_power_sups(self, call_back_signal=None):
         """
         initializes all power supplies and reads the status afterwards.
         """
         self.scan_main.init_post_accel_pwr_supplies()
-        self.set_state('reading_power_supply', ('all', call_back_signal))
+        self.set_state(MainState.reading_power_supply, ('all', call_back_signal))
 
     def set_power_supply_voltage(self, power_supply, volt, call_back_signal=None):
         """
@@ -332,7 +338,7 @@ class Main(QtCore.QObject):
         power_supply -> self.requested_power_supply
         volt -> self.requested_voltage
         """
-        self.set_state('setting_power_supply', (power_supply, volt, call_back_signal), True)
+        self.set_state(MainState.setting_power_supply, (power_supply, volt, call_back_signal), True)
 
     def _set_power_supply_voltage(self, name, volt, call_back_signal=None):
         """
@@ -341,27 +347,27 @@ class Main(QtCore.QObject):
         as stated in self.requested_power_supply to the requested voltage
         """
         self.scan_main.set_post_accel_pwr_supply(name, volt)
-        self.set_state('reading_power_supply', (name, call_back_signal))
+        self.set_state(MainState.reading_power_supply, (name, call_back_signal))
 
     def set_power_sup_outp(self, name, outp, call_back_signal=None):
         """
         change state
         """
-        self.set_state('set_output_power_sup', (name, outp, call_back_signal), True)
+        self.set_state(MainState.set_output_power_sup, (name, outp, call_back_signal), True)
 
     def _set_power_sup_outp(self, name, outp, call_back_signal=None):
         """
         set the output
         """
         self.scan_main.set_post_accel_pwr_spply_output(name, outp)
-        self.set_state('reading_power_supply', (name, call_back_signal))
+        self.set_state(MainState.reading_power_supply, (name, call_back_signal))
 
     def power_supply_status(self, power_supply, call_back_sig):
         """
         returns a dict containing the status of the power supply,
         keys are: name, programmedVoltage, voltageSetTime, readBackVolt
         """
-        self.set_state('reading_power_supply', (power_supply, call_back_sig), True)
+        self.set_state(MainState.reading_power_supply, (power_supply, call_back_sig), True)
 
     def _power_supply_status(self, name, call_back_sig=None):
         """
@@ -371,7 +377,7 @@ class Main(QtCore.QObject):
         stat = self.scan_main.get_status_of_pwr_supply(name)
         if call_back_sig is not None:
             call_back_sig.emit(stat)
-        self.set_state('idle')
+        self.set_state(MainState.idle)
 
     """ database functions """
 
