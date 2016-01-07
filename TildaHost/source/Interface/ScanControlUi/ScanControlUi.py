@@ -12,9 +12,10 @@ from Interface.SetupIsotopeUi.SetupIsotopeUi import SetupIsotopeUi
 import Service.DatabaseOperations.DatabaseOperations as DbOp
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Application.Config as Cfg
+
 from PyQt5 import QtWidgets
 import logging
-from copy import deepcopy, copy
+from copy import copy
 
 
 class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
@@ -50,7 +51,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         """
         will set the state in the main to go
         """
-        Cfg._main_instance.start_scan(self.active_iso)
+        if Cfg._main_instance.start_scan(self.active_iso):
+            self.main_gui.open_scan_progress_win()
 
     def add_track(self):
         """

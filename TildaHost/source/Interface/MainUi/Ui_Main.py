@@ -13,7 +13,7 @@ class Ui_TildaMainWindow(object):
         TildaMainWindow.setObjectName("TildaMainWindow")
         TildaMainWindow.resize(492, 247)
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("../../../Tilda256.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap("../Tilda256.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         TildaMainWindow.setWindowIcon(icon)
         self.centralwidget = QtWidgets.QWidget(TildaMainWindow)
         self.centralwidget.setObjectName("centralwidget")

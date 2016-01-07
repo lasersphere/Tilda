@@ -5,88 +5,57 @@ Created on
 
 Module Description:
 """
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtCore
 
 from Interface.ScanProgressUi.Ui_ScanProgress import Ui_ScanProgress
+import Application.Config as Cfg
 
 
 class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
-    """
-    non modal scan progress window, which will be showing the progress of the scan and
-    give the user the ability to abort or to halt the scan.
-    """
+    scan_prog_callback_sig = QtCore.pyqtSignal(dict)
+
     def __init__(self):
+        """
+        non modal scan progress window, which will be showing the progress of the scan and
+        give the user the ability to abort or to halt the scan.
+        """
         super(ScanProgressUi, self).__init__()
         self.setupUi(self)
 
-        self.n_o_total_tracks = 0
-        self.n_o_compl_tracks = 0
-        self.n_o_total_scans_in_track = 0
-        self.n_o_compl_scans_in_track = 0
-        self.n_o_total_steps_in_track = 0
-        self.n_o_compl_steps_in_track = 0
+
+        Cfg._main_instance.subscribe_to_scan_prog(self.scan_prog_callback_sig)
+        self.scan_prog_callback_sig.connect(self.update_progress)
+
+        self.progressBar_track.setMaximum(100)
+        self.progressBar_overall.setMaximum(100)
 
         """ connect buttons etc. """
         self.pushButton_abort.clicked.connect(self.abort)
-        self.pushButton_halt.clicked.connect(self.halt)
+        self.checkBox.clicked.connect(self.halt)
 
         self.show()
 
     def abort(self):
-        pass
+        Cfg._main_instance.abort_scan = True
 
     def halt(self):
-        pass
+        Cfg._main_instance.halt_scan = self.checkBox.isChecked()
 
-    def update_progressbar(self, bar, mini, maxi):
-        if maxi != 0:
-            percent = int(round(mini / maxi * 100))
-            bar.setValue(percent)
-
-    def update_track_progbar(self):
-        mini = self.n_o_compl_steps_in_track * self.n_o_compl_scans_in_track
-        maxi = self.n_o_total_steps_in_track * self.n_o_total_scans_in_track
-        self.update_progressbar(self.progressBar_track, mini, maxi)
-
-    def set_n_of_total_tracks(self, n_o_tracks):
-        self.n_o_total_tracks = n_o_tracks
-        self.label_total_track_num.setText(str(n_o_tracks))
-        self.update_progressbar(self.progressBar_overall, self.n_o_compl_tracks, self.n_o_total_tracks)
-
-    def set_n_of_compl_tracks(self, n_o_com_tracks):
-        self.n_o_compl_tracks = n_o_com_tracks
-        self.label_act_track_num.setText(str(n_o_com_tracks))
-        self.update_progressbar(self.progressBar_overall, self.n_o_compl_tracks, self.n_o_total_tracks)
-
-    def set_n_of_total_scans(self, n_o_total_scans):
-        self.n_o_total_scans_in_track = n_o_total_scans
-        self.label_max_scan_number.setText(str(n_o_total_scans))
-        self.update_track_progbar()
-
-    def set_n_of_compl_scans(self, n_o_compl_scans):
-        self.n_o_compl_scans_in_track = n_o_compl_scans
-        self.label_act_scan_number.setText(str(n_o_compl_scans))
-        self.update_track_progbar()
-
-    def set_n_of_total_steps_in_track(self, n_o_total_steps):
-        self.n_o_total_steps_in_track = n_o_total_steps
-        self.label_max_completed_steps.setText(str(n_o_total_steps))
-        self.update_track_progbar()
-
-    def set_n_of_compl_steps_in_track(self, n_o_compl_steps):
-        self.n_o_compl_steps_in_track = n_o_compl_steps
-        self.label_act_completed_steps.setText(str(n_o_compl_steps))
-        self.update_track_progbar()
-
-# import sys
-#
-# if __name__ == '__main__':
-#         app = QtWidgets.QApplication(sys.argv)
-#         ui = ScanProgressUi()
-#         ui.set_n_of_compl_tracks(1)
-#         ui.set_n_of_total_tracks(5)
-#         ui.set_n_of_compl_scans(1)
-#         ui.set_n_of_total_scans(10)
-#         ui.set_n_of_compl_steps_in_track(50)
-#         ui.set_n_of_total_steps_in_track(100)
-#         app.exec_()
+    def update_progress(self, progress_dict):
+        """
+        the dict contains the following keys:
+        {'activeIso': str, 'overallProgr': float, 'timeleft': str, 'activeTrack': int, 'totalTracks': int,
+        'trackProgr': float, 'activeScan': int, 'totalScans': int, 'activeStep': int, 'totalSteps': int,
+        'trackName': str]
+        """
+        self.setWindowTitle(progress_dict['activeIso'])  #
+        self.progressBar_overall.setValue(int(progress_dict['overallProgr']))
+        self.label_timeleft_set.setText(progress_dict['timeleft'])
+        self.label_act_track_num.setText(str(progress_dict['activeTrack']))
+        self.label_total_track_num.setText(str(progress_dict['totalTracks']))  #
+        self.progressBar_track.setValue(int(progress_dict['trackProgr']))
+        self.label_act_scan_number.setText(str(progress_dict['activeScan']))
+        self.label_max_scan_number.setText(str(progress_dict['totalScans']))  #
+        self.label_act_completed_steps.setText(str(progress_dict['activeStep']))
+        self.label_max_completed_steps.setText(str(progress_dict['totalSteps']))  #
+        self.groupBox.setTitle(str(progress_dict['trackName']))

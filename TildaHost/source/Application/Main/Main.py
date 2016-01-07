@@ -10,7 +10,7 @@ import logging
 import os
 from copy import deepcopy
 from PyQt5 import QtCore
-
+from datetime import datetime
 
 from Service.Scan.ScanMain import ScanMain
 from Service.SimpleCounter.SimpleCounter import SimpleCounterControl
@@ -23,7 +23,7 @@ from Application.Main.MainState import MainState
 
 class Main(QtCore.QObject):
     # this will equal the number of completed steps in the active track:
-    scan_prog_call_back_sig = QtCore.pyqtSignal(int)
+    scan_prog_call_back_sig_pipeline = QtCore.pyqtSignal(int)
 
     def __init__(self):
         super(Main, self).__init__()
@@ -38,15 +38,17 @@ class Main(QtCore.QObject):
         self.simple_counter_inst = None
         self.cmd_queue = None
 
-
         # pyqtSignal for sending the status to the gui, if there is one connected:
         self.main_ui_status_call_back_signal = None
-        self.scan_prog_call_back_sig.connect(self.update_scan_progress)
+        # pyqtSignal for sending the scan progress to the gui while scanning.
+        self.scan_prog_call_back_sig_gui = None
+        self.scan_prog_call_back_sig_pipeline.connect(self.update_scan_progress)
 
         self.scan_main = ScanMain()
         self.iso_scan_process = None
         self.scan_pars = {}  # {iso0: scan_dict, iso1: scan_dict} -> iso is unique
         self.scan_progress = {}  # {activeIso: str, activeTrackNum: int, completedTracks: list, nOfCompletedSteps: int}
+        self.scan_start_time = None
         self.abort_scan = False
         self.halt_scan = False
 
@@ -217,10 +219,14 @@ class Main(QtCore.QObject):
         workingDirectory, version, measureVoltPars, laserFreq
         then the bitfile is loaded to the fpga and the first track is started for scanning.
         the state will therefor be changed to scanning
+        :return: bool, True if scan started
         """
         try:
             if self.m_state[0] is MainState.idle:
                 self.set_state(MainState.preparing_scan)
+                self.abort_scan = False
+                self.halt_scan = False
+                self.scan_start_time = datetime.now()
                 self.scan_progress['activeIso'] = iso_name
                 self.scan_progress['completedTracks'] = []
                 self.scan_pars[iso_name]['measureVoltPars'] = self.measure_voltage_pars
@@ -228,20 +234,40 @@ class Main(QtCore.QObject):
                 self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
                 self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
                 logging.debug('will scan: ' + iso_name + str(sorted(self.scan_pars[iso_name])))
-                self.scan_main.prepare_scan(self.scan_pars[iso_name], self.scan_prog_call_back_sig)  # change this to non blocking!
+                self.scan_main.prepare_scan(self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline)
                 self.set_state(MainState.load_track)
+                return True
             else:
                 logging.warning('could not start scan because state of main is ' + str(self.m_state[0].name))
+                return False
         except Exception as e:
             print('error: ', e)
+            return False
 
     def update_scan_progress(self, number_of_completed_steps=None):
         """
         will be updated from the pipeline via Qt callback signal.
+        number_of_completed_steps is just for the current track.
         """
         if number_of_completed_steps is not None:
             self.scan_progress['nOfCompletedSteps'] = number_of_completed_steps
-        print('scan progress is: \t', self.scan_progress)
+        progress_dict = self.scan_main.calc_scan_progress(self.scan_progress,
+                                                          self.scan_pars[self.scan_progress['activeIso']],
+                                                          self.scan_start_time)
+        if progress_dict is not None:
+            self.scan_prog_call_back_sig_gui.emit(progress_dict)
+
+    def subscribe_to_scan_prog(self, callback_signal):
+        """
+        the scanProgressUi can subscribe via this function
+        """
+        self.scan_prog_call_back_sig_gui = callback_signal
+
+    def unsubscribe_from_scan_prog(self):
+        """
+        sets self.scan_prog_call_back_sig_gui = None
+        """
+        self.scan_prog_call_back_sig_gui = None
 
     def _load_track(self):
         """

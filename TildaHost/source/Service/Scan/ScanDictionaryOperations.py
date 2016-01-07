@@ -76,16 +76,18 @@ def get_available_tracknum(scan_dict):
             return new_track_num, list_of_track_nums
 
 
-def get_total_num_of_steps(scan_dict):
+def get_num_of_steps_in_scan(scan_dict):
     """
     go through all tracks and get the number of steps.
-    :return: list, each element is number of steps in this track
+    :return: list, each element is a tuple (scans, steps, scans * steps) in this track
     """
     result = []
+    all_steps = 0
     n_of_tracks, list_of_track_nums = get_number_of_tracks_in_scan_dict(scan_dict)
     for t in list_of_track_nums:
-        steps = scan_dict[t]['nOfSteps']
-        scans = scan_dict[t]['nOfScans']
-        total = steps * scans
+        steps = scan_dict['track' + str(t)]['nOfSteps']
+        scans = scan_dict['track' + str(t)]['nOfScans']
+        total = (scans, steps, steps * scans)
+        all_steps += total[2]
         result.append(total)
-    return result
+    return result, all_steps

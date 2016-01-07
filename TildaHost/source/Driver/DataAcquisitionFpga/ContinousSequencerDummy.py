@@ -164,3 +164,9 @@ class ContinousSequencer(Sequencer, MeasureVolt):
     def getSeqState(self):
         return self.status
 
+    def abort(self):
+        self.artificial_build_data = []
+        return True
+
+    def halt(self, val):
+        return True

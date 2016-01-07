@@ -10,6 +10,7 @@ Created on '07.05.2015'
 from Interface.MainUi.Ui_Main import Ui_TildaMainWindow
 from Interface.VersionUi.VersionUi import VersionUi
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
+from Interface.ScanProgressUi.ScanProgressUi import ScanProgressUi
 from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
 from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
 from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
@@ -33,13 +34,14 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.act_scan_wins = []  # list of active scan windows
         self.post_acc_win = None  # only one active post acceleration window
         self.measure_voltage_win = None
+        self.scan_progress_win = None
 
         self.actionWorking_directory.triggered.connect(self.choose_working_dir)
         self.actionVersion.triggered.connect(self.open_version_win)
         self.actionScan_Control.triggered.connect(self.open_scan_ctrl_win)
         self.actionVoltage_Measurement.triggered.connect(self.open_volt_meas_win)
         self.actionPost_acceleration_power_supply_control.triggered.connect(self.open_post_acc_win)
-        self.actionSimple_Counter.triggered.connect(self.simple_counter)
+        self.actionSimple_Counter.triggered.connect(self.open_simple_counter_win)
         self.actionSet_Laser_Frequency.triggered.connect(self.set_laser_freq)
         self.actionSet_acceleration_voltage.triggered.connect(self.set_acc_volt)
 
@@ -104,6 +106,16 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def scan_control_win_closed(self, win_ref):
         self.act_scan_wins.remove(win_ref)
 
+    def open_scan_progress_win(self):
+        try:
+            self.scan_progress_win = ScanProgressUi()
+        except Exception as e:
+            print('erroror:', e)
+        # pass
+
+    def close_scan_progress_win(self):
+        self.scan_progress_win = None
+
     def open_volt_meas_win(self):
         self.measure_voltage_win = VoltMeasConfUi(Cfg._main_instance.measure_voltage_pars, self)
 
@@ -116,7 +128,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def close_post_acc_win(self):
         self.post_acc_win = None
 
-    def simple_counter(self):
+    def open_simple_counter_win(self):
         sc_dial = SimpleCounterDialogUi()  # blocking!
         if sc_dial.start:
             self.simple_counter_gui = SimpleCounterRunningUi(sc_dial.act_pmts, sc_dial.datapoints)
