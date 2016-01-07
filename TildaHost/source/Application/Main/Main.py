@@ -110,6 +110,20 @@ class Main(QtCore.QObject):
             logging.debug('changed state to %s', str(self.m_state[0].name))
             return True
 
+    def gui_status_subscribe(self, callback_signal_from_gui):
+        """
+        a gui can connect to to the stat_dict of the main via a callback_signal.
+        this is stored in self.main_ui_status_call_back_signal and if it is not none,
+        the status is emitted as soon as self.send_state() is called.
+        """
+        self.main_ui_status_call_back_signal = callback_signal_from_gui
+
+    def gui_status_unsubscribe(self):
+        """
+        unsubscribes a gui by setting self.main_ui_status_call_back_signal = None
+        """
+        self.main_ui_status_call_back_signal = None
+
     def send_state(self):
         """
         if a gui is subscribed via a call back signal in self.main_ui_status_call_back_signal.
@@ -266,9 +280,11 @@ class Main(QtCore.QObject):
                 self.scan_progress['completedTracks'].append(self.scan_progress['activeTrackNum'])
                 self.update_scan_progress()
                 if self.halt_scan:
-                    self.set_state(MainState.idle)
                     self.scan_main.stop_measurement()
+                    self.set_state(MainState.idle)
                 else:  # normal exit after completion of each track
+                    self.scan_main.stop_measurement(False)
+                    # stop pipeline before starting with next track again, do not clear.
                     self.set_state(MainState.load_track)
         elif self.abort_scan:  # abort the scan and return to idle state
             self.scan_main.abort_scan()

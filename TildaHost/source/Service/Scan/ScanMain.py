@@ -63,11 +63,8 @@ class ScanMain:
         """
         track_name = 'track' + str(track_num)
         self.pipeline.pipeData[track_name]['nOfCompletedSteps'] = 0
-        # self.pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
-        #     self.pipeline.pipeData[track_name], True)
         self.pipeline.pipeData['pipeInternals']['activeTrackNumber'] = (track_index, track_name)
         self.pipeline.start()
-
 
     def start_measurement(self, scan_dict, track_num):
         """
@@ -77,7 +74,6 @@ class ScanMain:
         track_dict = scan_dict.get('track' + str(track_num))
         logging.debug('starting measurement with track_dict: ' +
                       str(sorted(track_dict)))
-        # figure out how to restart the pipeline with the new parameters here, already done?
         start_ok = self.sequencer.measureTrack(scan_dict, track_num)
         return start_ok
 
@@ -104,13 +100,14 @@ class ScanMain:
         seq_state = self.sequencer.getSeqState()
         return meas_state == seq_state
 
-    def stop_measurement(self):
+    def stop_measurement(self, clear=True):
         """
         stops all modules which are relevant for scanning.
         pipeline etc.
         """
-        self.pipeline.stop()  # halt the pipeline, which will cause the mpl-win to stay open
-        self.pipeline.clear()
+        self.pipeline.stop()
+        if clear:
+            self.pipeline.clear()
 
     def halt_scan(self):
         """

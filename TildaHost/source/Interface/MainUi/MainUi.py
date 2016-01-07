@@ -64,7 +64,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         """
         pass the call back signal to the main and connect to self.update_status
         """
-        Cfg._main_instance.main_ui_status_call_back_signal = self.main_ui_status_call_back_signal
+        Cfg._main_instance.gui_status_subscribe(self.main_ui_status_call_back_signal)
         self.main_ui_status_call_back_signal.connect(self.update_status)
         Cfg._main_instance.send_state()
 
@@ -72,7 +72,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         """
         unsubscribe from main and disconnect signals
         """
-        Cfg._main_instance.main_ui_status_call_back_signal = None
+        Cfg._main_instance.gui_status_unsubscribe()
         self.main_ui_status_call_back_signal.disconnect()
 
     def update_status(self, status_dict):
