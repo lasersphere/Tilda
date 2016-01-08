@@ -304,7 +304,6 @@ class Main(QtCore.QObject):
             if not self.scan_main.check_scanning():
                 # also comparing received steps with total steps would be acceptable, maybe change in future
                 self.scan_progress['completedTracks'].append(self.scan_progress['activeTrackNum'])
-                self.update_scan_progress()
                 if self.halt_scan:
                     self.scan_main.stop_measurement()
                     self.set_state(MainState.idle)

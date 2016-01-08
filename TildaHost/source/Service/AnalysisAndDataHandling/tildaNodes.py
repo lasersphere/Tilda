@@ -208,6 +208,7 @@ class NSortRawDatatoArray(Node):
                 self.totalnOfScalerEvents[track_ind] += 1
                 pipeData[track_name]['nOfCompletedSteps'] = self.totalnOfScalerEvents[
                                                                 track_ind] // 8  # floored Quotient
+                logging.debug('total completed steps: ' + str(pipeData[track_name]['nOfCompletedSteps']))
                 try:  # only add to scalerArray, when pmt is in activePmtList.
                     pmt_index = pipeData[track_name]['activePmtList'].index(j['secondHeader'])
                     self.scalerArray[track_ind][pmt_index][self.curVoltIndex] += j['payload']

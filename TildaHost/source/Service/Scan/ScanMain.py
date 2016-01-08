@@ -8,7 +8,6 @@ Created on '19.05.2015'
 
 import logging
 from datetime import datetime
-
 import Driver.DataAcquisitionFpga.FindSequencerByType as FindSeq
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as DftScan
@@ -174,18 +173,34 @@ class ScanMain:
             steps_in_compl_tracks = sum(total_steps_list[ind][2] for ind, track_n in enumerate(compl_tracks))
             return_dict['activeIso'] = iso_name
             return_dict['overallProgr'] = float(steps_in_compl_tracks + compl_steps) / total_steps * 100
-            return_dict['timeleft'] = str((datetime.now() - start_time)/(steps_in_compl_tracks + compl_steps) *\
-                                      (total_steps - (steps_in_compl_tracks + compl_steps))).split('.')[0]
+            # timeleft droht gefahr durch 0 zu teilen
+            return_dict['timeleft'] = str(self.calc_timeleft(start_time, (steps_in_compl_tracks + compl_steps),
+                                                             (total_steps - (steps_in_compl_tracks + compl_steps)))
+                                          ).split('.')[0]
             return_dict['activeTrack'] = track_ind + 1
             return_dict['totalTracks'] = len(list_of_track_nums)
             return_dict['trackProgr'] = float(compl_steps) / total_steps_list[track_ind][2] * 100
-            return_dict['activeScan'] = int(compl_steps / total_steps_list[track_ind][1]) +\
+            return_dict['activeScan'] = int(compl_steps / total_steps_list[track_ind][1]) + \
                                         (compl_steps % total_steps_list[track_ind][1] > 0)
             return_dict['totalScans'] = total_steps_list[track_ind][0]
-            return_dict['activeStep'] = compl_steps % total_steps_list[track_ind][1] + 1
+            return_dict['activeStep'] = compl_steps - (return_dict['activeScan'] - 1) * total_steps_list[track_ind][1]
             return_dict['totalSteps'] = total_steps_list[track_ind][1]
             return_dict['trackName'] = track_name
             return return_dict
         except Exception as e:
             print('while calculating the scan progress, this happened: ' + str(e))
             return None
+
+    def calc_timeleft(self, start_time, already_compl_steps, steps_still_to_complete):
+        """
+        calculate the time that is left until the whole scan is completed.
+        Therfore measure the expired time since scan start and compare it with remaining steps.
+        :return: int, time that is left
+        """
+        now_time = datetime.now()
+        dt = now_time - start_time
+        if steps_still_to_complete and already_compl_steps:
+            timeleft = dt / already_compl_steps * steps_still_to_complete
+        else:
+            timeleft = 0
+        return timeleft
