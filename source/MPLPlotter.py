@@ -85,10 +85,9 @@ def pause(time):
     plt.pause(time)
 
 
-def plt_axes(axes, title, plotlist):
-    axes.clear()
+def plt_axes(axes, plotlist):
+    # axes.clear()   # really really time consuming!!
     axes.plot(*plotlist)
-    axes.set_ylabel(title)
 
 
 def get_current_axes():
