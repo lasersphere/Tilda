@@ -308,7 +308,7 @@ class NCheckIfTrackComplete(Node):
 
 
 class NMPlLivePlot(Node):
-    def __init__(self, ax, title, plt_styles_list):
+    def __init__(self, ax, title, line_color_list):
         """
         Node for plotting live Data using matplotlib.pyplot
         input: list, [(x1, y1), (x2, y2),... ] x and y are numpy arrays
@@ -319,9 +319,9 @@ class NMPlLivePlot(Node):
 
         self.ax = ax
         self.title = title
-        self.plotStyles = plt_styles_list
+        self.line_colors = line_color_list
         self.ax.set_ylabel(self.title)
-        self.lines = None
+        self.lines = [None for i in self.line_colors]
         self.x = None
         self.y = None
 
@@ -329,21 +329,22 @@ class NMPlLivePlot(Node):
         MPLPlotter.ion()
         MPLPlotter.show()
 
-    def animate(self, plotlist):
-        MPLPlotter.plt_axes(self.ax, plotlist)
-        # MPLPlotter.pause(0.0001)
+    def clear(self):
+        self.lines = [None for i in self.line_colors]
+        self.x = None
+        self.y = None
 
     def processData(self, data, pipeData):
         t = time.time()
-        plot_list = []  # [(x1, y1), (x2, y2), ....]
         for i, dat in enumerate(data):
-            # if self.lines[i] is None:
-            #     Line2D(linestyle=style)
-            #     self.lines.append(self.ax.add_line())
-            plot_list.append(dat[0])  # x-data
-            plot_list.append(dat[1])  # y-data
-            plot_list.append(self.plotStyles[i])
-        self.animate(plot_list)
+            if self.lines[i] is None:
+                self.lines[i] = self.ax.add_line(Line2D(dat[0], dat[1], color=self.line_colors[i]))
+                self.ax.set_xlim(min(dat[0]), max(dat[0]))
+                self.ax.autoscale(enable=True, axis='y', tight=False)
+                return data
+            self.lines[i].set_ydata(dat[1])  # only necessary to reset y-data
+            self.ax.relim()
+            self.ax.autoscale_view(tight=False)
         logging.debug('plot calculating time (ms):' + str(round((time.time() - t) * 1000, 0)))
         return data
 
@@ -364,55 +365,6 @@ class NMPlDrawPlot(Node):
         MPLPlotter.draw()
         logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
         return data
-
-    # def stop(self):
-    #     t = time.time()
-    #     MPLPlotter.draw()
-    #     logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
-
-
-class NPlotUpdater(Node, animation.TimedAnimation):
-    def __init__(self, fig, ax, title, plt_styles_list):
-        Node.__init__(self)
-        self.type = 'PlotUpdater'
-        self.fig = fig
-        self.ax = ax
-        self.title = title
-        self.plotStyles = plt_styles_list
-        self.ax.set_ylabel(self.title)
-        self.x = np.arange(0, 15)
-        self.y = np.arange(0, 15)
-        self.line = None
-        self.ani = None
-        self.line = Line2D(self.x, self.y, color=self.plotStyles[0])
-        self.ax.add_line(self.line)
-        animation.TimedAnimation.__init__(self, fig, interval=50, blit=True)
-
-    def start(self):
-        print(self.type, ' is starting')
-        self.y = Form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)[0][0]
-        self.x = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData)[0]
-        plt.show(block=False)
-
-    def processData(self, data, pipeData):
-        # logging.debug('plotting...')
-        # t = time.time()
-        print(self.type, ' is processing Data', data)
-        self.x = data[0][0]
-        self.y = data[0][1]
-        return data
-
-    def _draw_frame(self, framedata):
-        print('_draw_frame', framedata)
-        self.line.set_data(self.x, self.y)
-
-    def new_frame_seq(self):
-        print('new_frame_seq')
-        return iter(range(len(self.x)))
-
-    def _init_draw(self):
-        print('initial_draw')
-        self.line.set_data([], [])
 
 
 class NSaveSumCS(Node):

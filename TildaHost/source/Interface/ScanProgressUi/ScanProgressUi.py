@@ -14,14 +14,14 @@ import Application.Config as Cfg
 class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
     scan_prog_callback_sig = QtCore.pyqtSignal(dict)
 
-    def __init__(self):
+    def __init__(self, main_gui):
         """
         non modal scan progress window, which will be showing the progress of the scan and
         give the user the ability to abort or to halt the scan.
         """
         super(ScanProgressUi, self).__init__()
         self.setupUi(self)
-
+        self.main_gui = main_gui
 
         Cfg._main_instance.subscribe_to_scan_prog(self.scan_prog_callback_sig)
         self.scan_prog_callback_sig.connect(self.update_progress)
@@ -59,3 +59,6 @@ class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
         self.label_act_completed_steps.setText(str(progress_dict['activeStep']))
         self.label_max_completed_steps.setText(str(progress_dict['totalSteps']))  #
         self.groupBox.setTitle(str(progress_dict['trackName']))
+
+    def closeEvent(self, *args, **kwargs):
+        self.main_gui.close_post_acc_win()

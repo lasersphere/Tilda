@@ -77,26 +77,26 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     branch1 = branch1.attach(TN.NMPlLivePlot(axes[0], 'scaler 0', ['blue']))
 
     branch2 = branch.attach(TN.NSingleSpecFromSpecData([1]))
-    branch2 = branch2.attach(TN.NMPlLivePlot(axes[1], 'scaler 1', ['g-']))
+    branch2 = branch2.attach(TN.NMPlLivePlot(axes[1], 'scaler 1', ['green']))
 
     branch3 = branch.attach(TN.NSingleSpecFromSpecData([0, 1]))
-    branch3 = branch3.attach(TN.NMPlLivePlot(axes[2], 'scaler 0+1', ['r-']))
+    branch3 = branch3.attach(TN.NMPlLivePlot(axes[2], 'scaler 0+1', ['red']))
 
     walk = walk.attach(TN.NRemoveTrackCompleteFlag())
     walk = walk.attach(TN.NSumCS())
 
     summe = walk.attach(TN.NSingleArrayToSpecData())
     sum0 = summe.attach(TN.NMultiSpecFromSpecData([[0], [1]]))
-    sum0 = sum0.attach(TN.NMPlLivePlot(axes[3], 'live sum', ['b-', 'g-']))
+    sum0 = sum0.attach(TN.NMPlLivePlot(axes[3], 'live sum', ['blue', 'green']))
 
     sum01 = summe.attach(TN.NSingleSpecFromSpecData([0, 1]))
-    sum01 = sum01.attach(TN.NMPlLivePlot(axes[4], 'scaler 0+1', ['r-']))
+    sum01 = sum01.attach(TN.NMPlLivePlot(axes[4], 'scaler 0+1', ['red']))
     sum01 = sum01.attach(TN.NMPlDrawPlot())
 
     walk = walk.attach(TN.NCheckIfTrackComplete())
     finalsum = walk.attach(TN.NSingleArrayToSpecData())
     finalsum = finalsum.attach(TN.NMultiSpecFromSpecData([[0], [1]]))
-    finalsum = finalsum.attach(TN.NMPlLivePlot(axes[5], 'final sum', ['b-', 'g-']))
+    finalsum = finalsum.attach(TN.NMPlLivePlot(axes[5], 'final sum', ['blue', 'green']))
     finalsum = finalsum.attach(TN.NMPlDrawPlot())
 
     walk = walk.attach(TN.NAddWorkingTime(True))

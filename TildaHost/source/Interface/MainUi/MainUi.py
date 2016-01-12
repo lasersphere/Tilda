@@ -108,7 +108,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def open_scan_progress_win(self):
         try:
-            self.scan_progress_win = ScanProgressUi()
+            self.scan_progress_win = ScanProgressUi(self)
         except Exception as e:
             print('erroror:', e)
         # pass
@@ -166,3 +166,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 self.measure_voltage_win.close()
         except Exception as e:
             logging.error('error while closing voltage measurement win:' + str(e))
+        try:
+            if self.scan_progress_win is not None:
+                self.scan_progress_win.close()
+        except Exception as e:
+            logging.error('error while closing scan progress win:' + str(e))
