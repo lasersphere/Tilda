@@ -212,7 +212,7 @@ class NSortRawDatatoArray(Node):
                 self.totalnOfScalerEvents[track_ind] += 1
                 pipeData[track_name]['nOfCompletedSteps'] = self.totalnOfScalerEvents[
                                                                 track_ind] // 8  # floored Quotient
-                logging.debug('total completed steps: ' + str(pipeData[track_name]['nOfCompletedSteps']))
+                # logging.debug('total completed steps: ' + str(pipeData[track_name]['nOfCompletedSteps']))
                 try:  # only add to scalerArray, when pmt is in activePmtList.
                     pmt_index = pipeData[track_name]['activePmtList'].index(j['secondHeader'])
                     self.scalerArray[track_ind][pmt_index][self.curVoltIndex] += j['payload']
@@ -266,7 +266,7 @@ class NSumCS(Node):
         try:
             for i, j in enumerate(data):
                 self.scalerArray[track_ind] = np.add(self.scalerArray[track_ind], j[track_ind])
-                logging.debug('sum is: ' + str(self.scalerArray[0:2]) + str(self.scalerArray[-2:]))
+                # logging.debug('sum is: ' + str(self.scalerArray[0:2]) + str(self.scalerArray[-2:]))
             return self.scalerArray
         except Exception as e:
             print('exception: ', e)
@@ -321,29 +321,54 @@ class NMPlLivePlot(Node):
         self.title = title
         self.plotStyles = plt_styles_list
         self.ax.set_ylabel(self.title)
+        self.lines = None
         self.x = None
         self.y = None
 
     def start(self):
         MPLPlotter.ion()
+        MPLPlotter.show()
 
     def animate(self, plotlist):
-        MPLPlotter.plt_axes(self.ax, self.title, plotlist)
-        MPLPlotter.pause(0.0001)
+        MPLPlotter.plt_axes(self.ax, plotlist)
+        # MPLPlotter.pause(0.0001)
 
     def processData(self, data, pipeData):
-        # logging.debug('plotting...')
         t = time.time()
         plot_list = []  # [(x1, y1), (x2, y2), ....]
-        i = 0
-        for dat in data:
-            plot_list.append(dat[0])
-            plot_list.append(dat[1])
+        for i, dat in enumerate(data):
+            # if self.lines[i] is None:
+            #     Line2D(linestyle=style)
+            #     self.lines.append(self.ax.add_line())
+            plot_list.append(dat[0])  # x-data
+            plot_list.append(dat[1])  # y-data
             plot_list.append(self.plotStyles[i])
-            i += 1
         self.animate(plot_list)
-        # logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
+        logging.debug('plot calculating time (ms):' + str(round((time.time() - t) * 1000, 0)))
         return data
+
+
+class NMPlDrawPlot(Node):
+    def __init__(self):
+        """
+        Node for updating the live plot, each time when data is passed through it
+        and when stop() is called
+        input: anything
+        output: input
+        """
+        super(NMPlDrawPlot, self).__init__()
+        self.type = 'MPlDrawPlot'
+
+    def processData(self, data, pipeData):
+        t = time.time()
+        MPLPlotter.draw()
+        logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
+        return data
+
+    # def stop(self):
+    #     t = time.time()
+    #     MPLPlotter.draw()
+    #     logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
 
 
 class NPlotUpdater(Node, animation.TimedAnimation):
