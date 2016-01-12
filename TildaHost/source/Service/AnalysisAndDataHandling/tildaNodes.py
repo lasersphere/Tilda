@@ -503,8 +503,10 @@ class NSingleArrayToSpecData(Node):
 class NSortByPmt(Node):
     """
     Node for the Simple Counter which will store a limited amount of datapoints per pmt.
-    if more datapoints are fed to the pipeline,
+    if more datapoints are fed to the pipeline at once,
     than defined in init, first incoming will be ignored.
+    self.buffer = [[pmt0ct599, pmt0ct598, ..., pmt0ct0], ... [pmt7ct599,...]]
+    newest values are inserted at lowest index.
     input: splitted raw data
     output: [pmt0, pmt1, ... pmt(7)] with len(pmt0-7) = datapoints
     """
@@ -593,7 +595,7 @@ class NAddxAxis(Node):
     Node for the Simple Counter which add an x-axis to the moving average,
     to make it plotable with NMPlLivePlot
     jnput: [avg_pmt0, avg_pmt1, ... , avg_pmt7], avg_pmt(0-7) = float
-    output: [(x0, y0), (x0, y0), ...] len(x0) = len(y0) = plotPoints, y0[i] = avg_pmt0
+    output: [(x0, y0), (x1, y1), ...] len(x0) = len(y0) = plotPoints, y0[i] = avg_pmt0
     """
 
     def __init__(self):
@@ -609,8 +611,8 @@ class NAddxAxis(Node):
 
     def processData(self, data, pipeData):
         for pmt_ind, avg_pmt in enumerate(data):
-            self.buffer[pmt_ind][1] = np.roll(self.buffer[pmt_ind][1], -1)
-            self.buffer[pmt_ind][1][-1] = avg_pmt
+            self.buffer[pmt_ind][1] = np.roll(self.buffer[pmt_ind][1], 1)
+            self.buffer[pmt_ind][1][0] = avg_pmt
         return self.buffer
 
 

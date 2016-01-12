@@ -19,9 +19,11 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
     simple_counter_call_back_signal = QtCore.pyqtSignal(list)
 
 
-    def __init__(self, act_pmts, datapoints):
+    def __init__(self, main_gui, act_pmts, datapoints):
         super(SimpleCounterRunningUi, self).__init__()
         self.setupUi(self)
+
+        self.main_gui = main_gui
 
         self.first_call = True
 
@@ -54,6 +56,7 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
 
     def closeEvent(self, *args, **kwargs):
         Cfg._main_instance.stop_simple_counter()
+        self.main_gui.close_simple_counter_win
 
     def set_post_acc_ctrl(self, state_name):
         Cfg._main_instance.simple_counter_post_acc(state_name)

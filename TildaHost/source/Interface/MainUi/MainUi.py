@@ -35,6 +35,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.post_acc_win = None  # only one active post acceleration window
         self.measure_voltage_win = None
         self.scan_progress_win = None
+        self.simple_counter_gui = None
 
         self.actionWorking_directory.triggered.connect(self.choose_working_dir)
         self.actionVersion.triggered.connect(self.open_version_win)
@@ -131,8 +132,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def open_simple_counter_win(self):
         sc_dial = SimpleCounterDialogUi()  # blocking!
         if sc_dial.start:
-            self.simple_counter_gui = SimpleCounterRunningUi(sc_dial.act_pmts, sc_dial.datapoints)
+            self.simple_counter_gui = SimpleCounterRunningUi(self, sc_dial.act_pmts, sc_dial.datapoints)
             # Cfg._main_instance.start_simple_counter(sc_dial.act_pmts, sc_dial.datapoints)
+
+    def close_simple_counter_win(self):
+        self.simple_counter_gui = None
 
     def set_laser_freq(self):
         laser_freq, ok = QtWidgets.QInputDialog.getDouble(self, 'Laser', 'laser frequency [cm-1]',
@@ -171,3 +175,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 self.scan_progress_win.close()
         except Exception as e:
             logging.error('error while closing scan progress win:' + str(e))
+        try:
+            if self.simple_counter_gui is not None:
+                self.simple_counter_gui.close()
+        except Exception as e:
+            logging.error('error while closing simple counter win:' + str(e))

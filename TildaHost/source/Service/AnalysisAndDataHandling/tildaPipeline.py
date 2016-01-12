@@ -136,7 +136,7 @@ def simple_counter_pipe(qt_sig):
 
     fig, axes = plt.subplots(2, sharex=True)
 
-    sample_rate = 1 / 0.02  # values per second
+    sample_rate = 1 / 0.02  # values per second, fpga samples at 20ms currently
     pipe = Pipeline(start)
 
     walk = start.attach(TN.NSplit32bData())
@@ -147,10 +147,11 @@ def simple_counter_pipe(qt_sig):
 
     walk = walk.attach(TN.NAddxAxis())
     pmt0 = walk.attach(TN.NOnlyOnePmt(0))
-    pmt0 = pmt0.attach(TN.NMPlLivePlot(axes[0], 'mov. avg', ['b-']))
+    pmt0 = pmt0.attach(TN.NMPlLivePlot(axes[0], 'mov. avg', ['blue']))
 
     pmt1 = walk.attach(TN.NOnlyOnePmt(1))
-    pmt1 = pmt1.attach(TN.NMPlLivePlot(axes[1], 'mov. avg', ['b-']))
+    pmt1 = pmt1.attach(TN.NMPlLivePlot(axes[1], 'mov. avg', ['green']))
+    pmt1 = pmt1.attach(TN.NMPlDrawPlot())
 
     # walk = walk.attach(SN.NPrint())
 
