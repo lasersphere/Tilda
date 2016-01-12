@@ -335,17 +335,14 @@ class NMPlLivePlot(Node):
         self.y = None
 
     def processData(self, data, pipeData):
-        t = time.time()
         for i, dat in enumerate(data):
             if self.lines[i] is None:
                 self.lines[i] = self.ax.add_line(Line2D(dat[0], dat[1], color=self.line_colors[i]))
                 self.ax.set_xlim(min(dat[0]), max(dat[0]))
                 self.ax.autoscale(enable=True, axis='y', tight=False)
-                return data
             self.lines[i].set_ydata(dat[1])  # only necessary to reset y-data
             self.ax.relim()
             self.ax.autoscale_view(tight=False)
-        logging.debug('plot calculating time (ms):' + str(round((time.time() - t) * 1000, 0)))
         return data
 
 
@@ -361,9 +358,9 @@ class NMPlDrawPlot(Node):
         self.type = 'MPlDrawPlot'
 
     def processData(self, data, pipeData):
-        t = time.time()
+        # t = time.time()
         MPLPlotter.draw()
-        logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
+        # logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
         return data
 
 
