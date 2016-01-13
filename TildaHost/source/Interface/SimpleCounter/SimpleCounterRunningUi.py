@@ -56,7 +56,7 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
 
     def closeEvent(self, *args, **kwargs):
         Cfg._main_instance.stop_simple_counter()
-        self.main_gui.close_simple_counter_win
+        self.main_gui.close_simple_counter_win()
 
     def set_post_acc_ctrl(self, state_name):
         Cfg._main_instance.simple_counter_post_acc(state_name)

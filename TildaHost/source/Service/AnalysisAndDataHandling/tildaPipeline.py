@@ -58,7 +58,7 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     pipe = Pipeline(start)
 
     fig, axes = plt.subplots(6, sharex=True)
-
+    fig.canvas.set_window_title(initialScanPars.get('isotopeData', {'isotope': ''}).get('isotope'))
     pipe.pipeData = initPipeData(initialScanPars)
 
     walk = start.attach(TN.NSaveRawData())
@@ -135,6 +135,7 @@ def simple_counter_pipe(qt_sig):
     start = Node()
 
     fig, axes = plt.subplots(2, sharex=True)
+    fig.canvas.set_window_title('Simple Counter')
 
     sample_rate = 1 / 0.02  # values per second, fpga samples at 20ms currently
     pipe = Pipeline(start)
