@@ -5,12 +5,11 @@ Created on 29.04.2014
 '''
 
 from matplotlib.dates import DateFormatter
+from matplotlib.lines import Line2D
+
 import datetime
 import matplotlib.pyplot as plt
 import numpy as np
-import os
-
-import Analyzer
 
 
 def plot(*args):
@@ -88,6 +87,10 @@ def pause(time):
 def plt_axes(axes, plotlist):
     # axes.clear()   # really really time consuming!!
     axes.plot(*plotlist)
+
+
+def line2d(x_data, y_data, line_color):
+    return Line2D(x_data, y_data, color=line_color)
 
 
 def get_current_axes():

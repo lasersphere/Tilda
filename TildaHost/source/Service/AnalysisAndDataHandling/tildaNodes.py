@@ -20,12 +20,7 @@ import Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
 import MPLPlotter
 
 import numpy as np
-import time
 import logging
-
-import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
-import matplotlib.animation as animation
 
 
 class NSplit32bData(Node):
@@ -337,7 +332,7 @@ class NMPlLivePlot(Node):
     def processData(self, data, pipeData):
         for i, dat in enumerate(data):
             if self.lines[i] is None:
-                self.lines[i] = self.ax.add_line(Line2D(dat[0], dat[1], color=self.line_colors[i]))
+                self.lines[i] = self.ax.add_line(MPLPlotter.line2d(dat[0], dat[1], self.line_colors[i]))
                 self.ax.set_xlim(min(dat[0]), max(dat[0]))
                 self.ax.autoscale(enable=True, axis='y', tight=False)
             self.lines[i].set_ydata(dat[1])  # only necessary to reset y-data

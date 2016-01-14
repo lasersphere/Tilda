@@ -13,6 +13,6 @@ for file in filenames:
         string = string + dir + file + '\t'
 
 # print(string)
-# userinp = input('the following will be executed: \n' + string + '\n \n press y to proceed, n to exit:')
-# if userinp == 'y':
-#     os.system(string)
+userinp = input('the following will be executed: \n' + string + '\n \n press y to proceed, n to exit:')
+if userinp == 'y':
+    os.system(string)
