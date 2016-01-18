@@ -15,6 +15,7 @@ import logging
 import time
 import numpy as np
 
+
 class ContinousSequencer(Sequencer, MeasureVolt):
     def __init__(self):
         """

@@ -7,6 +7,7 @@ Created on '12.05.2015'
 """
 
 import ctypes
+import enum
 
 import Service.Scan.draftScanParameters as draftPars
 
@@ -17,9 +18,9 @@ Using CApiAnalyser.py yields:
 """
 
 '''Bitfile Signature:'''
-bitfileSignature = '2E3F41A18FBF95CB3ED45C7056FD5C87'
+bitfileSignature = 'F20BD1B0DAC34D01DB29C415C1C25648'
 '''Bitfile Path:'''
-bitfilePath = 'E:/Workspace/PyCharm/Tilda/TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_104.lvbitx'
+bitfilePath = 'D:/Workspace/PyCharm/Tilda/TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_104.lvbitx'
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''
@@ -50,7 +51,7 @@ measVoltTimeout10ns = {'ref': 0x8154, 'val': ctypes.c_long(), 'ctr': True}
 nOfBunches = {'ref': 0x812C, 'val': ctypes.c_long(), 'ctr': True}
 nOfScans = {'ref': 0x816C, 'val': ctypes.c_long(), 'ctr': True}
 nOfSteps = {'ref': 0x8170, 'val': ctypes.c_long(), 'ctr': True}
-ticks = {'ref': 0x8134, 'val': ctypes.c_ulong(), 'ctr': True}
+trig_delay_10ns = {'ref': 0x8134, 'val': ctypes.c_ulong(), 'ctr': True}
 nOfBins = {'ref': 0x8130, 'val': ctypes.c_ulong(), 'ctr': True}
 '''TargetToHostFifos:'''
 transferToHost = {'ref': 0, 'val': ctypes.c_ulong(), 'ctr': False}
@@ -65,3 +66,4 @@ transferToHostReqEle = 100000
 dummyScanParameters = draftPars.draftTrackPars
 
 seq_type = 'trs'
+

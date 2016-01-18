@@ -25,7 +25,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
 
         self.config = TrsCfg
         super(Sequencer, self).__init__(self.config.bitfilePath, self.config.bitfileSignature, self.config.fpgaResource)
-        self.confHostBufferSize(self.config)
+        self.confHostBufferSize(self.config.transferToHostReqEle)
         self.type = self.config.seq_type
 
     '''read Indicators:'''
@@ -53,32 +53,34 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         return self.ReadWrite(self.config.MCSerrorcount).value
 
     '''set Controls'''
-    def setMCSParameters(self, mCSPars):
+    def setMCSParameters(self, scanpars, track_name):
         """
         Writes all values needed for the Multi Channel Scaler state machine to the fpga ui
-        :param mCSPars: dictionary, containing all necessary items for MCS. These are:
+        :param scanpars: dictionary, containing all necessary items for MCS. These are:
         MCSSelectTrigger: byte, Enum to select the active Trigger
         delayticks: ulong, Ticks to delay after triggered
         nOfBins: ulong, number of 10 ns bins that will be acquired per Trigger event
         nOfBunches: long, number of bunches that will be acquired per voltage Step
         :return: True if self.status == self.statusSuccess, else False
         """
-        self.ReadWrite(self.config.MCSSelectTrigger, mCSPars['MCSSelectTrigger'])
-        self.ReadWrite(self.config.delayticks, mCSPars['delayticks'])
-        self.ReadWrite(self.config.nOfBins, mCSPars['nOfBins'])
-        self.ReadWrite(self.config.nOfBunches, mCSPars['nOfBunches'])
+        self.ReadWrite(self.config.selectTrigger, scanpars[track_name]['MCSSelectTrigger'])
+        self.ReadWrite(self.config.trig_delay_10ns, scanpars[track_name]['delayticks'])
+        self.ReadWrite(self.config.nOfBins, scanpars[track_name]['nOfBins'])
+        self.ReadWrite(self.config.nOfBunches, scanpars[track_name]['nOfBunches'])
         return self.checkFpgaStatus()
 
-    def setAllScanParameters(self, scanpars):
+    def setAllScanParameters(self, scanpars, track_num):
         """
         Use the dictionary format of act_scan_wins, to set all parameters at once.
          Therefore Sequencer must be in idle state
         :param scanpars: dictionary, containing all scanparameters
         :return: bool, True if successful
         """
-        if self.changeSeqState(self.config, self.config.seqStateDict['idle']):
-            if (self.setMCSParameters(scanpars) and self.setmeasVoltParameters(self.config, scanpars) and
-                    self.setTrackParameters(self.config, scanpars)):
+        track_name = 'track' + str(track_num)
+        if self.changeSeqState(self.config.seqStateDict['idle']):
+            if (self.setMCSParameters(scanpars, track_name) and
+                    self.setmeasVoltParameters(scanpars['measureVoltPars']) and
+                    self.setTrackParameters(scanpars)):
                 return self.checkFpgaStatus()
         return False
 

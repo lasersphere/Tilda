@@ -6,9 +6,9 @@ Created on '08.07.2015'
 
 """
 from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
-import warnings
+from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
+
 import time
-import numpy as np
 import logging
 
 
@@ -178,8 +178,23 @@ class Sequencer(FPGAInterfaceHandling):
         halts the Mesaruement after one loop is finished
         :return: True if success
         """
-        self.ReadWrite(self.self.config.halt, val)
+        self.ReadWrite(self.config.halt, val)
         return self.checkFpgaStatus()
+
+    def set_trigger(self, trigger_type, trigger_dict=None):
+        """
+        sets all parameters related to the trigger.
+        :param trigger_type: enum, defined in TriggerTypes.py
+        :param trigger_dict: dict, containing all values needed for this type of trigger
+        :return: True if success
+        """
+        self.ReadWrite(self.config.triggerTypes, trigger_type.value)
+        if trigger_type is TiTs.no_trigger:
+            return self.checkFpgaStatus()
+        elif trigger_type is TiTs.single_hit_delay:
+            self.ReadWrite(self.config.selectTrigger, trigger_dict.get('trigger', 0))
+            self.ReadWrite(self.config.trig_delay_10ns, trigger_dict.get('trigDelay10ns', 0))
+            return self.checkFpgaStatus()
 
     '''getting the data'''
 
