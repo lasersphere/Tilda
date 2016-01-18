@@ -10,6 +10,7 @@ Module to convert the C Api Output to Python input
 Just Run cApiFileHandler on your header File created by the NI C Api generator and copy the Console Output to your Python File
 """
 import re
+import os
 from PyQt5 import QtWidgets
 
 
@@ -73,9 +74,14 @@ bitfilepath = None
 fpgaresource = None
 ok = False
 app = QtWidgets.QApplication([])
-headerpath, ka = QtWidgets.QFileDialog.getOpenFileName(filter='*.h', caption='choose header file', directory='../../../TildaTarget/bin/')
+headerpath, ka = QtWidgets.QFileDialog.getOpenFileName(filter='*.h',
+                                                       caption='choose header file',
+                                                       directory='../../../TildaTarget/bin/')
 if headerpath:
-    bitfilepath, ka = QtWidgets.QFileDialog.getOpenFileName(filter='*.lvbitx', caption='choose header file', directory='../../../TildaTarget/bin/')
+    startpath = os.path.split(headerpath)[0]
+    bitfilepath, ka = QtWidgets.QFileDialog.getOpenFileName(filter='*.lvbitx',
+                                                            caption='choose header file',
+                                                            directory=startpath)
 # # headerpath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\SimpleCounter\\NiFpga_SimpleCounterV101.h'
 # bitfilepath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\SimpleCounter\\NiFpga_SimpleCounterV101.lvbitx'
 if bitfilepath:
@@ -83,6 +89,6 @@ if bitfilepath:
 if ok:
     print('converting: ', headerpath)
     print('bitfile: ', bitfilepath)
-    print('fpga resource: ', bitfilepath)
+    print('fpga resource: ', fpgaresource)
     outputplease = CApiAnalyser()
     outputplease.cApiFileHandler(headerpath, bitfilepath, fpgaresource)
