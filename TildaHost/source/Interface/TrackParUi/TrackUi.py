@@ -13,6 +13,8 @@ from copy import deepcopy
 
 from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
 from Interface.SetVoltageUi.SetVoltageUi import SetVoltageUi
+from Interface.SequencerWidgets.ContSequencerWidgUi import ContSeqWidg
+import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.VoltageConversions.VoltageConversions as VCon
 import Application.Config as Cfg
 
@@ -22,7 +24,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
     def __init__(self, scan_ctrl_win, track_number, active_iso_name):
         """
-        Non.modal Main window to determine the scanparameters for a single track of a given isotope.
+        Non modal Main window to determine the scanparameters for a single track of a given isotope.
         scan_ctrl_win is needed for writing the track dictionary to a given scan dictionary.
         track_number is the number of the track which will be worked on.
         default_track_dict is the default dictionary which will be deepcopied and then worked on.
@@ -42,10 +44,11 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
         self.setupUi(self)
 
-        self.setWindowTitle(self.scan_ctrl_win.win_title + '_' + self.track_name)
+        self.sequencer_widget = ContSeqWidg(self.buffer_pars)
 
-        """Sequencer Settings:"""
-        self.doubleSpinBox_dwellTime_ms.valueChanged.connect(self.dwelltime_set)
+        self.verticalLayout.replaceWidget(self.specificSequencerSettings, self.sequencer_widget)
+
+        self.setWindowTitle(self.scan_ctrl_win.win_title + '_' + self.track_name)
 
         """DAC Settings"""
         self.doubleSpinBox_dacStartV.valueChanged.connect(self.dac_start_v_set)
@@ -86,8 +89,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         when default val is messed up.
         """
         func_list = [
-            (self.doubleSpinBox_dwellTime_ms.setValue,
-             self.check_for_none(track_dict.get('dwellTime10ns'), 0) * (10 ** -5)),
+            # (self.doubleSpinBox_dwellTime_ms.setValue,
+            #  self.check_for_none(track_dict.get('dwellTime10ns'), 0) * (10 ** -5)),
             (self.doubleSpinBox_dacStartV.setValue,
              VCon.get_voltage_from_18bit(self.check_for_none(track_dict.get('dacStartRegister18Bit'), 0))),
             (self.doubleSpinBox_dacStopV.setValue,
@@ -121,11 +124,6 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         return check
 
     """ from lineedit/spinbox to set value """
-    def dwelltime_set(self, val):
-        """ this will write the doublespinbox value to the working dict and set the label """
-        self.buffer_pars['dwellTime10ns'] = val * (10 ** 5)  # convert to units of 10ns
-        self.label_dwellTime_ms_2.setText(str(val))
-
     def dac_start_v_set(self, start_volt):
         """ this will write the doublespinbox value to the working dict and set the label
         it will also call recalc_step_stop to adjust the stepsize and then fine tune the stop value """
@@ -318,6 +316,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
     def confirm(self):
         """ closes the window and overwrites the corresponding track in the main """
+        self.buffer_pars = SdOp.merge_dicts(self.buffer_pars, self.sequencer_widget.get_seq_pars())
         Cfg._main_instance.scan_pars[self.active_iso][self.track_name] = deepcopy(self.buffer_pars)
         self.close()
 
