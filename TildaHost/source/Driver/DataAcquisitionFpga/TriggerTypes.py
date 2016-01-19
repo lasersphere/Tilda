@@ -5,7 +5,7 @@ Created on
 
 Module Description: Module for storage of the trigger type enum
 Names and values must be unique.
-Values must represent the state unmber in labview.
+Values must represent the state number in labview.
 https://docs.python.org/3/library/enum.html
 """
 
