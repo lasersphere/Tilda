@@ -13,7 +13,7 @@ from copy import deepcopy
 
 from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
 from Interface.SetVoltageUi.SetVoltageUi import SetVoltageUi
-from Interface.SequencerWidgets.ContSequencerWidgUi import ContSeqWidg
+import Interface.SequencerWidgets.FindDesiredSeqWidg as FindDesiredSeqWidg
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.VoltageConversions.VoltageConversions as VCon
 import Application.Config as Cfg
@@ -34,6 +34,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.track_name = 'track' + str(track_number)
         self.scan_ctrl_win = scan_ctrl_win
         self.active_iso = scan_ctrl_win.active_iso
+        seq_type = self.active_iso.split('_', 1)[1]
         self.track_number = track_number
 
         self.buffer_pars = deepcopy(Cfg._main_instance.scan_pars.get(active_iso_name).get(self.track_name))
@@ -44,7 +45,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
         self.setupUi(self)
 
-        self.sequencer_widget = ContSeqWidg(self.buffer_pars)
+        self.sequencer_widget = FindDesiredSeqWidg.find_sequencer_widget(seq_type, self.buffer_pars)
 
         self.verticalLayout.replaceWidget(self.specificSequencerSettings, self.sequencer_widget)
 

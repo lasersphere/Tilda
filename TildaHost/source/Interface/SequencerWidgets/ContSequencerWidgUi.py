@@ -6,33 +6,19 @@ Created on
 Module Description:
 """
 
-from Interface.SequencerWidgets.BaseSequencerWidgUi import BaseSequencerWidgUi
+from Interface.SequencerWidgets.BaseSequencerWidg import BaseSequencerWidgUi
 from Interface.SequencerWidgets.Ui_ContSeqWidg import Ui_ContSeqWidg
-import Service.Scan.draftScanParameters as DftSc
-
-from PyQt5 import QtWidgets
 
 
-class ContSeqWidg(QtWidgets.QFrame, Ui_ContSeqWidg):
-
-    def __init__(self, track_par):
-        QtWidgets.QFrame.__init__(self)
-        self.type = None
-        self.set_type()
-        self.key_list = getattr(DftSc, self.type + '_list')
-        self.setupUi(self)
-
-        self.buffer_pars = {key: val for key, val in track_par.items() if key in self.key_list}
-        self.connect_labels()
-        self.set_vals_by_dict()
-
-    def get_seq_pars(self):
-        return self.buffer_pars
+class ContSeqWidg(BaseSequencerWidgUi, Ui_ContSeqWidg):
+    def __init__(self, track_dict):
+        BaseSequencerWidgUi.__init__(self, track_dict)
 
     def set_type(self):
         self.type = 'cs'
 
     def connect_labels(self):
+        self.setupUi(self)
         self.doubleSpinBox_dwellTime_ms.valueChanged.connect(self.dwelltime_set)
 
     def set_vals_by_dict(self):
