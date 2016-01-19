@@ -17,6 +17,8 @@ import Interface.SequencerWidgets.FindDesiredSeqWidg as FindDesiredSeqWidg
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.VoltageConversions.VoltageConversions as VCon
 import Application.Config as Cfg
+from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
+import Interface.TriggerWidgets.FindDesiredTriggerWidg as FindDesiredTriggerWidg
 
 
 class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
@@ -45,11 +47,20 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
         self.setupUi(self)
 
-        self.sequencer_widget = FindDesiredSeqWidg.find_sequencer_widget(seq_type, self.buffer_pars)
+        self.setWindowTitle(self.scan_ctrl_win.win_title + '_' + self.track_name)
 
+        """ sequencer specific """
+        self.sequencer_widget = FindDesiredSeqWidg.find_sequencer_widget(seq_type, self.buffer_pars)
         self.verticalLayout.replaceWidget(self.specificSequencerSettings, self.sequencer_widget)
 
-        self.setWindowTitle(self.scan_ctrl_win.win_title + '_' + self.track_name)
+        """ Trigger related """
+        self.trigger_widget = None
+        self.update_trigger_combob()
+        trig_str = self.comboBox_triggerSelect.currentText()
+        trig_type = getattr(TiTs, trig_str)
+        self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(trig_type, {})
+        self.trigger_vert_layout.replaceWidget(self.widget_trigger_place_holder, self.trigger_widget)
+        self.comboBox_triggerSelect.currentTextChanged.connect(self.trigger_select)
 
         """DAC Settings"""
         self.doubleSpinBox_dacStartV.valueChanged.connect(self.dac_start_v_set)
@@ -123,6 +134,16 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         if check is None:
             check = replace
         return check
+
+    def update_trigger_combob(self):
+        self.comboBox_triggerSelect.addItems([tr.name for tr in TiTs])
+
+    def trigger_select(self, trig_str):
+        trig_type = getattr(TiTs, trig_str)
+        self.trigger_vert_layout.removeWidget(self.trigger_widget)
+        self.trigger_widget.setParent(None)
+        self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(trig_type, {})
+        self.trigger_vert_layout.addWidget(self.trigger_widget)
 
     """ from lineedit/spinbox to set value """
     def dac_start_v_set(self, start_volt):

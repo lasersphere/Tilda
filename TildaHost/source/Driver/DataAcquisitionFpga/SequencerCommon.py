@@ -192,7 +192,7 @@ class Sequencer(FPGAInterfaceHandling):
         if trigger_type is TiTs.no_trigger:
             return self.checkFpgaStatus()
         elif trigger_type is TiTs.single_hit_delay:
-            self.ReadWrite(self.config.selectTrigger, trigger_dict.get('trigger', 0))
+            self.ReadWrite(self.config.selectTrigger, trigger_dict.get('trigInputChan', 0))
             self.ReadWrite(self.config.trig_delay_10ns, trigger_dict.get('trigDelay10ns', 0))
             return self.checkFpgaStatus()
 
