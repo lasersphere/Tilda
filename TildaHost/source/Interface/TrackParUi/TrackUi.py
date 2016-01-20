@@ -10,6 +10,7 @@ from PyQt5 import QtCore
 import ast
 import logging
 from copy import deepcopy
+import time
 
 from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
 from Interface.SetVoltageUi.SetVoltageUi import SetVoltageUi
@@ -54,6 +55,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.verticalLayout.replaceWidget(self.specificSequencerSettings, self.sequencer_widget)
 
         """ Trigger related """
+        self.checkBox.setDisabled(True)
+        self.checkBox.setToolTip('not yet included')
         self.trigger_widget = None
         self.update_trigger_combob()
         trig_str = self.comboBox_triggerSelect.currentText()
@@ -131,19 +134,41 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
                 logging.error('error while loading default track dictionary: ' + str(e))
 
     def check_for_none(self, check, replace):
+        """
+        checks if param "check" is None and replaces it if it is None
+        """
         if check is None:
             check = replace
         return check
 
     def update_trigger_combob(self):
+        """
+        updates the trigger combo box by looking up the members of the enum
+        """
         self.comboBox_triggerSelect.addItems([tr.name for tr in TiTs])
 
     def trigger_select(self, trig_str):
+        """
+        finds the deisred trigger widget and sets it into self.trigger_widget
+        """
         trig_type = getattr(TiTs, trig_str)
         self.trigger_vert_layout.removeWidget(self.trigger_widget)
         self.trigger_widget.setParent(None)
-        self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(trig_type, {})
+        self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(trig_type, None)
         self.trigger_vert_layout.addWidget(self.trigger_widget)
+
+    # def trig_for_all_tracks(self, checked):
+    #     if checked:
+    #         trig_dict = self.trigger_widget.get_trig_pars()
+    #         self.scan_ctrl_win.update_trigger_track_wins(trig_dict, self)
+    #
+    # def trigger_external_update(self, trigger_dict):
+    #     self.checkBox.setChecked(True)
+    #     self.comboBox_triggerSelect.setCurrentText(trigger_dict['type'].name)
+    #     # print(trigger_dict)
+    #     # time.sleep(0.05)
+    #     self.trigger_widget.set_vals_by_dict(trigger_dict)
+    #     self.trigger_widget.setDisabled(True)
 
     """ from lineedit/spinbox to set value """
     def dac_start_v_set(self, start_volt):
@@ -339,6 +364,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def confirm(self):
         """ closes the window and overwrites the corresponding track in the main """
         self.buffer_pars = SdOp.merge_dicts(self.buffer_pars, self.sequencer_widget.get_seq_pars())
+        self.buffer_pars['trigger'] = self.trigger_widget.get_trig_pars()
         Cfg._main_instance.scan_pars[self.active_iso][self.track_name] = deepcopy(self.buffer_pars)
         self.close()
 

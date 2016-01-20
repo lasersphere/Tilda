@@ -165,6 +165,7 @@ class Main(QtCore.QObject):
         scand_from_db = DbOp.extract_track_dict_from_db(self.database, iso, seq_type, next_track_num)
         if scand_from_db is not None:
             logging.debug('adding track' + str(next_track_num) + ' from database')
+            logging.debug('scan dict is: ' + str(scand_from_db))
             scan_d[track_name] = scand_from_db[track_name]
         else:
             track_to_copy_from = 'track' + str(max(track_num_list))

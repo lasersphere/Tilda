@@ -26,7 +26,7 @@ class SingelHitDelay(BaseSequencerWidgUi, Ui_single_hit_delay_widg):
         self.doubleSpinBox_trigDelay_mus.valueChanged.connect(self.trig_delay_set)
 
     def set_vals_by_dict(self):
-        if self.buffer_pars.get('trigInputChan', False):
+        if self.buffer_pars.get('trigInputChan', -1) >= 0:
             if self.buffer_pars.get('trigInputChan') is not None:
                 trig_ind = self.buffer_pars.get('trigInputChan')
                 self.comboBox_trigInputChan.setCurrentIndex(trig_ind)

@@ -9,12 +9,12 @@ Created on '06.08.2015'
 import sqlite3
 import ast
 import logging
+from copy import copy
 
 import Tools as PolliTools
 import Service.VoltageConversions.VoltageConversions as VCon
 import Service.Scan.ScanDictionaryOperations as SdOp
-import Service.Scan.draftScanParameters as Dft
-
+from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
 
 def createTildaDB(db):
     """
@@ -49,6 +49,7 @@ def form_pollifit_db_to_tilda_db(db):
     activePmtList TEXT,
     colDirTrue TEXT,
     sequencerDict TEXT,
+    triggerDict TEXT,
     waitForKepco25nsTicks INT,
     waitAfterReset25nsTicks INT,
     measureVoltPars Text,
@@ -68,6 +69,9 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='activeTrackPar', ov
     if scandict.get(track_key) is None:
         scandict[track_key] = SdOp.init_empty_scan_dict()['activeTrackPar']
     trackd = scandict[track_key]
+    trigger_dict = trackd.get('trigger', {})
+    trig_name = trigger_dict.get('type').name
+    trigger_dict['type'] = trig_name
     iso = isod['isotope']
     sctype = isod['type']
     try:
@@ -93,6 +97,7 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='activeTrackPar', ov
                 activePmtList = ?,
                 colDirTrue = ?,
                 sequencerDict = ?,
+                triggerDict = ?,
                 waitForKepco25nsTicks = ?,
                 waitAfterReset25nsTicks = ?,
                 measureVoltPars = ?,
@@ -111,6 +116,7 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='activeTrackPar', ov
                         str(trackd['activePmtList']),
                         str(trackd['colDirTrue']),
                         str(SdOp.sequencer_dict_from_track_dict(trackd, sctype)),
+                        str(trigger_dict),
                         trackd['waitForKepco25nsTicks'],
                         trackd['waitAfterReset25nsTicks'],
                         str(scandict['measureVoltPars']),
@@ -166,6 +172,7 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
          nOfSteps, nOfScans, postAccOffsetVoltControl,
           postAccOffsetVolt, activePmtList, colDirTrue,
            sequencerDict, waitForKepco25nsTicks, waitAfterReset25nsTicks,
+           triggerDict,
            measureVoltPars, accVolt, laserFreq
         FROM ScanPars WHERE iso = ? AND type = ? AND track = ?
         ''', (iso, sctype, tracknum,)
@@ -177,6 +184,8 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
     scand['isotopeData']['laserFreq'] = data.pop(-1)
     scand['isotopeData']['accVolt'] = data.pop(-1)
     scand['measureVoltPars'] = SdOp.merge_dicts(scand['measureVoltPars'], ast.literal_eval(data.pop(-1)))
+    scand['track' + str(tracknum)]['trigger'] = ast.literal_eval(data.pop(-1))
+    scand['track' + str(tracknum)]['trigger']['type'] = getattr(TiTs, scand['track' + str(tracknum)]['trigger']['type'])
     scand['track' + str(tracknum)] = db_track_values_to_trackdict(data, scand['track' + str(tracknum)])
     con.close()
 

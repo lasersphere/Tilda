@@ -15,11 +15,15 @@ class BaseSequencerWidgUi(QtWidgets.QFrame):
         self.type = None
         self.set_type()
 
+        if trigger_dict is None:
+            trigger_dict = {}
+
         self.buffer_pars = trigger_dict
         self.connect_labels()
         self.set_vals_by_dict()
 
     def get_trig_pars(self):
+        self.buffer_pars['type'] = self.type
         return self.buffer_pars
 
     """ generic functions to overwrite: """
