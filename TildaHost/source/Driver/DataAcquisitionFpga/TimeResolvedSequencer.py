@@ -8,11 +8,9 @@ Created on '07.05.2015'
 Module in  charge for loading and accessing the TimeResolvedSequencer
 Access Via the NiFpgaUniversalInterfaceDll.dll
 """
-
-
+import logging
 from Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
 from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
-
 import Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig as TrsCfg
 
 
@@ -29,6 +27,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         self.type = self.config.seq_type
 
     '''read Indicators:'''
+
     def getMCSState(self):
         """
         get the state of the MultiChannelScaler
@@ -53,18 +52,15 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         return self.ReadWrite(self.config.MCSerrorcount).value
 
     '''set Controls'''
+
     def setMCSParameters(self, scanpars, track_name):
         """
         Writes all values needed for the Multi Channel Scaler state machine to the fpga ui
         :param scanpars: dictionary, containing all necessary items for MCS. These are:
-        MCSSelectTrigger: byte, Enum to select the active Trigger
-        delayticks: ulong, Ticks to delay after triggered
         nOfBins: ulong, number of 10 ns bins that will be acquired per Trigger event
         nOfBunches: long, number of bunches that will be acquired per voltage Step
         :return: True if self.status == self.statusSuccess, else False
         """
-        self.ReadWrite(self.config.selectTrigger, scanpars[track_name]['MCSSelectTrigger'])
-        self.ReadWrite(self.config.trig_delay_10ns, scanpars[track_name]['delayticks'])
         self.ReadWrite(self.config.nOfBins, scanpars[track_name]['nOfBins'])
         self.ReadWrite(self.config.nOfBunches, scanpars[track_name]['nOfBunches'])
         return self.checkFpgaStatus()
@@ -80,13 +76,15 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         if self.changeSeqState(self.config.seqStateDict['idle']):
             if (self.setMCSParameters(scanpars, track_name) and
                     self.setmeasVoltParameters(scanpars['measureVoltPars']) and
-                    self.setTrackParameters(scanpars)):
+                    self.setTrackParameters(scanpars) and
+                    self.set_trigger(scanpars[track_name].get('trigger', {})) and
+                    self.selectKepcoOrScalerScan(scanpars['isotopeData']['type'])):
                 return self.checkFpgaStatus()
         return False
 
     '''perform measurements:'''
 
-    def measureOffset(self, scanpars):
+    def measureOffset(self, scanpars, track_num):
         """
         set all scanparameters at the fpga and go into the measure Offset state.
         What the Fpga does then to measure the Offset is:
@@ -99,10 +97,10 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         Note: not included in Version 1 !
         :return:bool, True if successfully changed State
         """
-        if self.setAllScanParameters(scanpars):
+        if self.setAllScanParameters(scanpars, track_num):
             return self.changeSeqState(self.config, self.config.seqStateDict['measureOffset'])
 
-    def measureTrack(self, scanpars):
+    def measureTrack(self, scanpars, track_num):
         """
         set all scanparameters at the fpga and go into the measure Track state.
         Fpga will then measure one track independently from host and will finish either in
@@ -110,9 +108,10 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         In parallel, host has to read the data from the host sided buffer in parallel.
         :return:bool, True if successfully changed State
         """
-        if self.setAllScanParameters(scanpars):
-            return self.changeSeqState(self.config, self.config.seqStateDict['measureTrack'])
-
+        if self.setAllScanParameters(scanpars, track_num):
+            return self.changeSeqState(self.config.seqStateDict['measureTrack'])
+        else:
+            logging.debug('values could not be set')
 
 #
 # blub2 = TimeResolvedSequencer()

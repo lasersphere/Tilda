@@ -181,13 +181,14 @@ class Sequencer(FPGAInterfaceHandling):
         self.ReadWrite(self.config.halt, val)
         return self.checkFpgaStatus()
 
-    def set_trigger(self, trigger_type, trigger_dict=None):
+    def set_trigger(self, trigger_dict=None):
         """
         sets all parameters related to the trigger.
         :param trigger_type: enum, defined in TriggerTypes.py
         :param trigger_dict: dict, containing all values needed for this type of trigger
         :return: True if success
         """
+        trigger_type = trigger_dict.get('type', TiTs.no_trigger)
         self.ReadWrite(self.config.triggerTypes, trigger_type.value)
         if trigger_type is TiTs.no_trigger:
             return self.checkFpgaStatus()

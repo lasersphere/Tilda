@@ -80,7 +80,6 @@ class ScanMain:
         The data will be directly fed to the pipeline.
         :return: bool, True if nOfEle > 0 that were read
         """
-        result = {}
         result = self.sequencer.getData()
         if result.get('nOfEle', -1) > 0:
             self.pipeline.feed(result['newData'])

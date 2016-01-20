@@ -38,13 +38,14 @@ def TrsPipe(initialScanPars, callback_sig=None):
     pipe = Pipeline(start)
 
     pipe.pipeData = initPipeData(initialScanPars)
+    walk = start.attach(SN.NPrint())
 
-    walk = start.attach(TN.NSaveRawData())
-    walk = walk.attach(TN.NSaveRawData())
+    # walk = start.attach(TN.NSaveRawData())
+    # walk = walk.attach(TN.NSaveRawData())
     # walk = walk.attach(TN.NSplit32bData())
     # walk = walk.attach(TN.NSumBunchesTRS(pipe.pipeData))
     # walk = walk.attach(TN.NSaveSum())
-    walk = walk.attach(SN.NPrint())
+    # walk = walk.attach(SN.NPrint())
 
     return pipe
 
