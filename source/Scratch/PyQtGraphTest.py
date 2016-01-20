@@ -12,13 +12,13 @@ import PyQtGraphPlotter as pyGpl
 import Service.Scan.draftScanParameters as dftSc
 
 
-pmtList = dftSc.draftScanDict['activeTrackPar']['activePmtList']
+pmtList = dftSc.draftScanDict['track0']['activePmtList']
 proc, rpg, win = pyGpl.init()
 dftSc.draftScanDict['pipeInternals']['activeGraphicsWindow'] = win
 
-plots = [pyGpl.addPlot(dftSc.draftScanDict['pipeInternals']['activeGraphicsWindow'], 'Pmt' + str(n)) for n in dftSc.draftScanDict['activeTrackPar']['activePmtList']]
+plots = [pyGpl.addPlot(dftSc.draftScanDict['pipeInternals']['activeGraphicsWindow'], 'Pmt' + str(n)) for n in dftSc.draftScanDict['track0']['activePmtList']]
 
-trackd = dftSc.draftScanDict['activeTrackPar']
+trackd = dftSc.draftScanDict['track0']
 dacStart18Bit = trackd['dacStartRegister18Bit']
 dacStepSize18Bit = trackd['dacStepSize18Bit']
 nOfsteps = trackd['nOfSteps']
