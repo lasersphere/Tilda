@@ -122,7 +122,7 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None):
 def initPipeData(initialScanPars):
     """
     initialize the pipeData used for the analysis Pipeline
-    :return: dict, {'isotopeData', 'progConfigs', 'activeTrackPar', 'pipeInternals'}
+    :return: dict, {'isotopeData', 'progConfigs', 'track0', 'pipeInternals'}
     """
     pipeData = initialScanPars
 

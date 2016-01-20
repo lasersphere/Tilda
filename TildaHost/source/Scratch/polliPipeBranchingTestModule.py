@@ -21,7 +21,7 @@ scnd = {
                         'version': 1.06, 'nOfTracks': 1, 'isotope': 'Ca_40', 'laserFreq': 12568.766},
         'pipeInternals': {'curVoltInd': 0, 'activeXmlFilePath': None, 'activeTrackNumber': 0,
                           'workingDirectory': None},
-        'activeTrackPar': {'dacStartRegister18Bit': 503312, 'invertScan': 0, 'waitForKepco25nsTicks': 40,
+        'track0': {'dacStartRegister18Bit': 503312, 'invertScan': 0, 'waitForKepco25nsTicks': 40,
                            'nOfSteps': 61, 'waitAfterReset25nsTicks': 4000, 'dacStepSize18Bit': 520,
                            'activePmtList': [0, 1], 'nOfCompletedSteps': 0, 'postAccOffsetVolt': 500,
                            'dwellTime10ns': 2000000, 'nOfScans': 50, 'colDirTrue': False,
@@ -30,7 +30,7 @@ scnd = {
 
 
 
-exampleData = np.random.random((scnd['activeTrackPar']['nOfSteps'], len(scnd['activeTrackPar']['activePmtList'])))
+exampleData = np.random.random((scnd['track0']['nOfSteps'], len(scnd['track0']['activePmtList'])))
 
 def TestPipe():
 

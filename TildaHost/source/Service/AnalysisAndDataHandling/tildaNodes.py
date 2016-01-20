@@ -101,14 +101,14 @@ class NSumBunchesTRS(Node):
 
     def start(self):
         pipeData = self.pipeData
-        self.voltArray = np.zeros(pipeData['activeTrackPar']['nOfSteps'], dtype=np.uint32)
-        self.timeArray = np.arange(pipeData['activeTrackPar']['delayticks'] * 10,
-                                   (pipeData['activeTrackPar']['delayticks'] * 10 + pipeData['activeTrackPar'][
+        self.voltArray = np.zeros(pipeData['track0']['nOfSteps'], dtype=np.uint32)
+        self.timeArray = np.arange(pipeData['track0']['delayticks'] * 10,
+                                   (pipeData['track0']['delayticks'] * 10 + pipeData['track0'][
                                        'nOfBins'] * 10), 10,
                                    dtype=np.uint32)
-        self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
-                                     pipeData['activeTrackPar']['nOfBins'],
-                                     len(pipeData['activeTrackPar']['activePmtList'])),
+        self.scalerArray = np.zeros((pipeData['track0']['nOfSteps'],
+                                     pipeData['track0']['nOfBins'],
+                                     len(pipeData['track0']['activePmtList'])),
                                     dtype=np.uint32)
 
     def processData(self, data, pipeData):
@@ -117,11 +117,11 @@ class NSumBunchesTRS(Node):
                 if j['firstHeader'] == ProgConfigsDict.programs['errorHandler']:  # error send from fpga
                     print('fpga sends error code: ' + str(j['payload']))
                 elif j['firstHeader'] == ProgConfigsDict.programs['dac']:  # its a voltag step than
-                    pipeData['activeTrackPar']['nOfCompletedSteps'] += 1
+                    pipeData['track0']['nOfCompletedSteps'] += 1
                     self.curVoltIndex, self.voltArray = find_volt_in_array(j['payload'], self.voltArray)
             elif j['headerIndex'] == 0:  # MCS/TRS Data
                 self.scalerArray = Form.trs_sum(j, self.curVoltIndex, self.scalerArray,
-                                                pipeData['activeTrackPar']['activePmtList'])
+                                                pipeData['track0']['activePmtList'])
         if TrsAna.checkIfScanComplete(pipeData):
             return (self.voltArray, self.timeArray, self.scalerArray)
         else:
@@ -130,14 +130,14 @@ class NSumBunchesTRS(Node):
     def clear(self):
         pipeData = self.Pipeline.pipeData
         self.curVoltIndex = 0
-        self.voltArray = np.zeros(pipeData['activeTrackPar']['nOfSteps'], dtype=np.uint32)
-        self.timeArray = np.arange(pipeData['activeTrackPar']['delayticks'] * 10,
-                                   (pipeData['activeTrackPar']['delayticks'] * 10 + pipeData['activeTrackPar'][
+        self.voltArray = np.zeros(pipeData['track0']['nOfSteps'], dtype=np.uint32)
+        self.timeArray = np.arange(pipeData['track0']['delayticks'] * 10,
+                                   (pipeData['track0']['delayticks'] * 10 + pipeData['track0'][
                                        'nOfBins'] * 10),
                                    10, dtype=np.uint32)
-        self.scalerArray = np.zeros((pipeData['activeTrackPar']['nOfSteps'],
-                                     pipeData['activeTrackPar']['nOfBins'],
-                                     len(pipeData['activeTrackPar']['activePmtList'])),
+        self.scalerArray = np.zeros((pipeData['track0']['nOfSteps'],
+                                     pipeData['track0']['nOfBins'],
+                                     len(pipeData['track0']['activePmtList'])),
                                     dtype=np.uint32)
 
 

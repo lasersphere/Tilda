@@ -59,9 +59,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.checkBox.setToolTip('not yet included')
         self.trigger_widget = None
         self.update_trigger_combob()
-        trig_str = self.comboBox_triggerSelect.currentText()
-        trig_type = getattr(TiTs, trig_str)
-        self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(trig_type, {})
+        self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {}))
         self.trigger_vert_layout.replaceWidget(self.widget_trigger_place_holder, self.trigger_widget)
         self.comboBox_triggerSelect.currentTextChanged.connect(self.trigger_select)
 
@@ -141,20 +139,22 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             check = replace
         return check
 
-    def update_trigger_combob(self):
+    def update_trigger_combob(self, default_trig=TiTs.no_trigger):
         """
         updates the trigger combo box by looking up the members of the enum
         """
         self.comboBox_triggerSelect.addItems([tr.name for tr in TiTs])
+        self.comboBox_triggerSelect.setCurrentIndex(self.buffer_pars.get(
+            'trigger', {'type': default_trig}).get('type', default_trig.value).value)
 
     def trigger_select(self, trig_str):
         """
         finds the deisred trigger widget and sets it into self.trigger_widget
         """
-        trig_type = getattr(TiTs, trig_str)
+        self.buffer_pars.get('trigger', {})['type'] = getattr(TiTs, trig_str)
         self.trigger_vert_layout.removeWidget(self.trigger_widget)
         self.trigger_widget.setParent(None)
-        self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(trig_type, None)
+        self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {}))
         self.trigger_vert_layout.addWidget(self.trigger_widget)
 
     # def trig_for_all_tracks(self, checked):

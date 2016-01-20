@@ -59,7 +59,7 @@ def form_pollifit_db_to_tilda_db(db):
     con.close()
 
 
-def add_scan_dict_to_db(db, scandict, n_of_track, track_key='activeTrackPar', overwrite=True):
+def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=True):
     """
     Write the contents of scandict to the database in the table ScanPars.
     Only the selected track parameters will be written to the db.
@@ -67,11 +67,11 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='activeTrackPar', ov
     """
     isod = scandict['isotopeData']
     if scandict.get(track_key) is None:
-        scandict[track_key] = SdOp.init_empty_scan_dict()['activeTrackPar']
+        scandict[track_key] = SdOp.init_empty_scan_dict()['track0']
     trackd = scandict[track_key]
     trigger_dict = trackd.get('trigger', {})
     trig_name = trigger_dict.get('type').name
-    trigger_dict['type'] = trig_name
+    trigger_dict['type'] = trig_name  # string is better for sql sto
     iso = isod['isotope']
     sctype = isod['type']
     try:
@@ -163,7 +163,7 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
     scand = SdOp.init_empty_scan_dict(sctype)
     scand['isotopeData']['isotope'] = iso
     scand['isotopeData']['type'] = sctype
-    scand['track' + str(tracknum)] = scand.pop('activeTrackPar')
+    scand['track' + str(tracknum)] = scand.pop('track0')
     con = sqlite3.connect(database_path_str)
     cur = con.cursor()
     cur.execute(

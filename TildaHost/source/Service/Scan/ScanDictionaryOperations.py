@@ -8,6 +8,8 @@ Created on '20.10.2015'
 
 import Application.Config as Cfg
 import Service.Scan.draftScanParameters as DftSc
+from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
+
 
 
 def init_empty_scan_dict(type_str=None, version=None):
@@ -21,8 +23,9 @@ def init_empty_scan_dict(type_str=None, version=None):
         scand[key] = dict.fromkeys(getattr(DftSc, key + '_list'))
     if version is None:
         scand['isotopeData']['version'] = Cfg.version
-    scand['activeTrackPar'] = merge_dicts(scand['activeTrackPar'],
+    scand['track0'] = merge_dicts(scand['track0'],
                                           init_seq_specific_dict(type_str))
+    scand['track0']['trigger'] = {'type': TiTs.no_trigger}
     return scand
 
 

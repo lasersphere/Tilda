@@ -75,8 +75,8 @@ def convert_scandict_v104_to_v106(scandict):
     converts a scandictionary created in Version 1.04 to the new format as it should be in v1.06
     was needed for working with the collected .raw data from 29.07.2015.
     """
-    # trackdft = draft_scan_dict['activeTrackPar']
-    track = scandict['activeTrackPar']
+    # trackdft = draft_scan_dict['track0']
+    track = scandict['track0']
     trackrenamelist = [('start', 'dacStartRegister18Bit'),
                        ('stepSize', 'dacStepSize18Bit'),
                        ('heinzingerOffsetVolt', 'postAccOffsetVolt'),
@@ -117,7 +117,7 @@ def create_x_axis_from_scand_dict(scand):
 
 def create_default_scaler_array_from_scandict(scand, dft_val=0):
     """
-    create empty ScalerArray, size is determined by the activeTrackPar in the scan dictionary
+    create empty ScalerArray, size is determined by the track0 in the scan dictionary
     """
     arr = []
     tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)

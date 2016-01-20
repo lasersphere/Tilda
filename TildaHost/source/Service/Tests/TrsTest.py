@@ -50,7 +50,7 @@ class FpgaTest():
                 # print(self.finalData)
                 time.sleep(0.05)
                 timeout += 1
-        print('total steps are: ', self.pipe.pipeData['activeTrackPar']['nOfCompletedSteps'])
+        print('total steps are: ', self.pipe.pipeData['track0']['nOfCompletedSteps'])
         # print(self.finalData, 'final Data')
         # use pickle to save these dummy data!
         # pickle.dump(self.finalData, open(self.outfile, 'wb'))

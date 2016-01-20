@@ -30,13 +30,13 @@ measState = CsCfg.seqStateDict['measureTrack']
 scanPars = draftScanDict
 scanPars['isotopeData']['isotope'] = 'Nothing'
 scanPars['pipeInternals']['workingDirectory'] = 'D:\\PulserOfflineTests_150806'
-scanPars['activeTrackPar']['dwellTime10ns'] = 2000000
-scanPars['activeTrackPar']['dacStepSize18Bit'] = get_18bit_stepsize(0.02)
-scanPars['activeTrackPar']['dacStartRegister18Bit'] = get_18bit_from_voltage(-10)
-scanPars['activeTrackPar']['postAccOffsetVolt'] = 500
-scanPars['activeTrackPar']['postAccOffsetVoltControl'] = 2
-scanPars['activeTrackPar']['nOfSteps'] = 100
-scanPars['activeTrackPar']['nOfScans'] = 400
+scanPars['track0']['dwellTime10ns'] = 2000000
+scanPars['track0']['dacStepSize18Bit'] = get_18bit_stepsize(0.02)
+scanPars['track0']['dacStartRegister18Bit'] = get_18bit_from_voltage(-10)
+scanPars['track0']['postAccOffsetVolt'] = 500
+scanPars['track0']['postAccOffsetVoltControl'] = 2
+scanPars['track0']['nOfSteps'] = 100
+scanPars['track0']['nOfScans'] = 400
 pipe = TildaPipe.CsPipe(scanPars)
 pipe.start()  #dacStartRegister18Bit the pipeLine
 
@@ -47,7 +47,7 @@ cs = ContinousSequencer()  # dacStartRegister18Bit the FPGA
 
 # hz2 = hz.Heinzinger(hz.hzCfg.comportHeinzinger2)  # dacStartRegister18Bit the Offset Heinzinger. Only Hz2 available right now.
 #
-# hz2.setVoltage(scanPars['activeTrackPar']['postAccOffsetVolt'])
+# hz2.setVoltage(scanPars['track0']['postAccOffsetVolt'])
 # logging.info('Heinzinger 2 is set to: ' + str(hz2.getVoltage()) + 'V')
 
 def meaureOneTrack(scanparsDict):
@@ -76,7 +76,7 @@ def meaureOneTrack(scanparsDict):
             time.sleep(0.05)
             # timeout += 1
     logging.info('state is: ' + str(state) + ' timeout is: ' + str(timeout)
-                 + ' Completed Steps: ' + str(pipe.pipeData['activeTrackPar']['nOfCompletedSteps']))
+                 + ' Completed Steps: ' + str(pipe.pipeData['track0']['nOfCompletedSteps']))
     pipe.clear(pipe.pipeData)
 
 logging.info('starting measurement...')

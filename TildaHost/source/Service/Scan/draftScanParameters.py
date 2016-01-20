@@ -12,7 +12,7 @@ sequencer_types_list = ['cs', 'trs', 'csdummy']
 
 """ outer most dictionary contains the following keys: """
 
-scanDict_list = ['isotopeData', 'activeTrackPar', 'pipeInternals', 'measureVoltPars']
+scanDict_list = ['isotopeData', 'track0', 'pipeInternals', 'measureVoltPars']
 
 """ the isotopeData dictionary is used for the whole isotope and contains the following keys: """
 
@@ -28,13 +28,13 @@ pipeInternals_list = ['curVoltInd', 'activeTrackNumber', 'workingDirectory', 'ac
 
 measureVoltPars_list = ['measVoltPulseLength25ns', 'measVoltTimeout10ns']
 
-""" the activeTrackPar dictionary is only used by one track but therefore beholds
+""" the track0 dictionary is only used by one track but therefore beholds
 the most information for the sequencer. It contains the following keys and
 MUST be appended with the keys from the corresponding sequencer (see below): """
 
-activeTrackPar_list = ['dacStepSize18Bit', 'dacStartRegister18Bit', 'nOfSteps', 'nOfScans', 'nOfCompletedSteps',
+track0_list = ['dacStepSize18Bit', 'dacStartRegister18Bit', 'nOfSteps', 'nOfScans', 'nOfCompletedSteps',
                        'invertScan', 'postAccOffsetVoltControl', 'postAccOffsetVolt', 'waitForKepco25nsTicks',
-                       'waitAfterReset25nsTicks', 'activePmtList', 'colDirTrue', 'workingTime']
+                       'waitAfterReset25nsTicks', 'activePmtList', 'colDirTrue', 'workingTime', 'trigger']
 
 """  each sequencer needs its own parameters and therefore, the keys are listed below
 naming convention is type_list.  """
@@ -77,7 +77,7 @@ draftPipeInternals = {
 }
 
 draftScanDict = {'isotopeData': draftIsotopePars,
-                 'activeTrackPar': draftTrackPars,
+                 'track0': draftTrackPars,
                  'pipeInternals': draftPipeInternals,
                  'measureVoltPars': draftMeasureVoltPars
                  }

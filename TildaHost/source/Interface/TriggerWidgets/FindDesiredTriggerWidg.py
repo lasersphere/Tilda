@@ -13,7 +13,9 @@ from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
 import logging
 
 
-def find_trigger_widget(trig_type, trigger_dict):
+def find_trigger_widget(trigger_dict):
+    trig_type = trigger_dict.get('type', TiTs.no_trigger)
+    logging.debug('trigger_dict is: ' + str(trigger_dict))
     if trig_type is TiTs.no_trigger:
         logging.debug('loading ' + str(trig_type.name))
         return NoTriggerWidg(trigger_dict)

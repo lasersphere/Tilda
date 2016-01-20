@@ -51,7 +51,7 @@ def nameFile(path, subdir, fileName, prefix='', suffix='.tld'):
 def createXmlFileOneIsotope(scanDict):
     """
     creates an .xml file for one Isotope. Using the Filestructure as stated in OneNote.
-    :param scanDict: {'isotopeData', 'activeTrackPar', 'pipeInternals'}
+    :param scanDict: {'isotopeData', 'track0', 'pipeInternals'}
     :return:str, filename
     """
     isodict = scanDict['isotopeData']
@@ -65,7 +65,7 @@ def createXmlFileOneIsotope(scanDict):
 def nameFileXml(scanDict):
     """
     finds a filename for the xml file
-    :param scanDict: {'isotopeData', 'activeTrackPar', 'pipeInternals'}
+    :param scanDict: {'isotopeData', 'track0', 'pipeInternals'}
     :return:str, filename
     """
     path = scanDict['pipeInternals']['workingDirectory']
