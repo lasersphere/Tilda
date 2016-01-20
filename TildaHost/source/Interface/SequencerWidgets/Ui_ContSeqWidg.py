@@ -8,11 +8,11 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-
 class Ui_ContSeqWidg(object):
     def setupUi(self, ContSeqWidg):
         ContSeqWidg.setObjectName("ContSeqWidg")
         ContSeqWidg.resize(302, 78)
+        ContSeqWidg.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.verticalLayout = QtWidgets.QVBoxLayout(ContSeqWidg)
         self.verticalLayout.setObjectName("verticalLayout")
         self.label_sequencerName = QtWidgets.QLabel(ContSeqWidg)

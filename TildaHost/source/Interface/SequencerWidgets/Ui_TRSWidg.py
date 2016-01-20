@@ -12,6 +12,7 @@ class Ui_TRSWidg(object):
     def setupUi(self, TRSWidg):
         TRSWidg.setObjectName("TRSWidg")
         TRSWidg.resize(346, 119)
+        TRSWidg.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.verticalLayout = QtWidgets.QVBoxLayout(TRSWidg)
         self.verticalLayout.setObjectName("verticalLayout")
         self.label_sequencerName = QtWidgets.QLabel(TRSWidg)

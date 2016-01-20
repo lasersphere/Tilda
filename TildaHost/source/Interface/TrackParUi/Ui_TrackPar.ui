@@ -18,6 +18,9 @@
     <normaloff>track_icon.ico</normaloff>track_icon.ico</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
+   <property name="locale">
+    <locale language="English" country="UnitedStates"/>
+   </property>
    <layout class="QGridLayout" name="gridLayout_2">
     <item row="0" column="0">
      <layout class="QVBoxLayout" name="verticalLayout">
@@ -110,6 +113,9 @@
         <layout class="QVBoxLayout" name="verticalLayout_4">
          <item>
           <widget class="QTabWidget" name="tabwidget">
+           <property name="locale">
+            <locale language="English" country="UnitedStates"/>
+           </property>
            <property name="currentIndex">
             <number>0</number>
            </property>
@@ -125,6 +131,9 @@
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
+               </property>
+               <property name="locale">
+                <locale language="English" country="UnitedStates"/>
                </property>
                <property name="text">
                 <string/>
@@ -143,6 +152,9 @@
              </item>
              <item row="9" column="1">
               <widget class="QDoubleSpinBox" name="doubleSpinBox_postAccOffsetVolt">
+               <property name="locale">
+                <locale language="English" country="UnitedStates"/>
+               </property>
                <property name="alignment">
                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                </property>
@@ -173,6 +185,9 @@
              </item>
              <item row="1" column="1">
               <widget class="QDoubleSpinBox" name="doubleSpinBox_dacStartV">
+               <property name="locale">
+                <locale language="English" country="UnitedStates"/>
+               </property>
                <property name="alignment">
                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                </property>
@@ -227,6 +242,9 @@ power supply voltage [V]</string>
              </item>
              <item row="5" column="1">
               <widget class="QSpinBox" name="spinBox_nOfScans">
+               <property name="locale">
+                <locale language="English" country="UnitedStates"/>
+               </property>
                <property name="alignment">
                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                </property>
@@ -340,6 +358,9 @@ power supply</string>
              </item>
              <item row="4" column="1">
               <widget class="QSpinBox" name="spinBox_nOfSteps">
+               <property name="locale">
+                <locale language="English" country="UnitedStates"/>
+               </property>
                <property name="alignment">
                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                </property>
@@ -377,6 +398,9 @@ power supply</string>
              </item>
              <item row="2" column="1">
               <widget class="QDoubleSpinBox" name="doubleSpinBox_dacStopV">
+               <property name="locale">
+                <locale language="English" country="UnitedStates"/>
+               </property>
                <property name="alignment">
                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                </property>
@@ -409,6 +433,9 @@ power supply</string>
              </item>
              <item row="3" column="1">
               <widget class="QDoubleSpinBox" name="doubleSpinBox_dacStepSizeV">
+               <property name="locale">
+                <locale language="English" country="UnitedStates"/>
+               </property>
                <property name="alignment">
                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                </property>

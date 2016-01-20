@@ -11,7 +11,6 @@ from Interface.SequencerWidgets.TRSWidgUi import TRSWidg
 
 
 def find_sequencer_widget(seq_type, track_dict):
-    print(seq_type)
     if seq_type == 'cs' or seq_type == 'csdummy':
         return ContSeqWidg(track_dict)
     elif seq_type == 'trs':
