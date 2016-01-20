@@ -53,7 +53,7 @@ class Main(QtCore.QObject):
         self.halt_scan = False
 
         try:
-            self.work_dir_changed('D:/lala')
+            self.work_dir_changed('E:/lala')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state(MainState.idle)

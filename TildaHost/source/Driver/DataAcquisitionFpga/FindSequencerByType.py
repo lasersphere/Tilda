@@ -19,5 +19,8 @@ def ret_seq_instance_of_type(seq_type):
     elif seq_type == 'csdummy':
         from Driver.DataAcquisitionFpga.ContinousSequencerDummy import ContinousSequencer as CsDummy
         return CsDummy()
+    elif seq_type == 'trsdummy':
+        from Driver.DataAcquisitionFpga.TimeResolvedSequencerDummy import TimeResolvedSequencer as TrsDummy
+        return TrsDummy()
     else:
         return None

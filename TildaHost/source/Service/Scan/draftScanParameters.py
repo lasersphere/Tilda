@@ -8,7 +8,7 @@ Module containing the ScanParameters dictionaries as needed for Scanning with th
 """
 """ List of currently supported sequencer types """
 
-sequencer_types_list = ['cs', 'trs', 'csdummy']
+sequencer_types_list = ['cs', 'trs', 'csdummy', 'trsdummy']
 
 """ outer most dictionary contains the following keys: """
 
@@ -41,9 +41,11 @@ naming convention is type_list.  """
 
 cs_list = ['dwellTime10ns']
 
-trs_list = ['MCSSelectTrigger', 'delayticks', 'nOfBins', 'nOfBunches']
+trs_list = ['nOfBins', 'nOfBunches']
 
 csdummy_list = ['dwellTime10ns']
+
+trsdummy_list = ['nOfBins', 'nOfBunches']
 
 """ below are some example values which can be used for scanning: """
 
@@ -56,22 +58,24 @@ draftIsotopePars = {
 draftTrackPars = {
     'dacStepSize18Bit': 1,  # form.get_24bit_input_from_voltage(1, False),
     'dacStartRegister18Bit': 0,  # form.get_24bit_input_from_voltage(-5, False),
-    'nOfSteps': 20,
-    'nOfScans': 30, 'nOfCompletedSteps': 0, 'invertScan': False,
+    'nOfSteps': 10,
+    'nOfScans': 2, 'nOfCompletedSteps': 0, 'invertScan': False,
     'postAccOffsetVoltControl': 2, 'postAccOffsetVolt': 1000,
     'waitForKepco25nsTicks': 40,
     'waitAfterReset25nsTicks': 4000,
     'activePmtList': [0, 1],
     'colDirTrue': False,
     'dwellTime10ns': 2000000,
-    'workingTime': None
+    'workingTime': None,
+    'nOfBins': 1000,
+    'nOfBunches': 1,
 }
 
 draftMeasureVoltPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100}
 
 draftPipeInternals = {
     'curVoltInd': 0,
-    'activeTrackNumber': 0,
+    'activeTrackNumber': (0, 'track0'),
     'workingDirectory': None,
     'activeXmlFilePath': None
 }

@@ -19,13 +19,12 @@ import numpy as np
 class ContinousSequencer(Sequencer, MeasureVolt):
     def __init__(self):
         """
-        Initiates a fpga object using the init in FPGAInterfaceHandling
+        Dummy Continous Sequencer
         """
         self.config = CsCfg
         super(Sequencer, self).__init__(self.config.bitfilePath, self.config.bitfileSignature,
                                         self.config.fpgaResource, dummy=True)
         self.type = 'csdummy'
-        self.scanpars = None
         self.artificial_build_data = []
         self.status = CsCfg.seqStateDict['init']
 
@@ -33,54 +32,48 @@ class ContinousSequencer(Sequencer, MeasureVolt):
 
     def getDACQuWriteTimeout(self):
         """
-        function to check the DACQuWriteTimeout indicator which indicates if the DAC has timed out while
-        writing to the Target-to-Host Fifo
+        always False in dummy Mode
         :return: bool, True if timedout
         """
-        return self.ReadWrite(self.config.DACQuWriteTimeout).value
+        return False
 
     def getSPCtrQuWriteTimeout(self):
         """
+        always False in dummy Mode
         :return: bool, timeout indicator of the Simple Counter trying to write to the DMAQueue
         """
-        return self.ReadWrite(self.config.SPCtrQuWriteTimeout).value
+        return False
 
     def getSPerrorCount(self):
         """
+        always 0 in dummy mode
         :return: int, the errorCount of the simpleCounter module on the fpga
         """
-        return self.ReadWrite(self.config.SPerrorCount).value
+        return 0
 
     def getSPState(self):
         """
+        always 0 in dummy mode
         :return:int, state of SimpleCounter Module
         """
-        return self.ReadWrite(self.config.SPstate).value
+        return 0
 
     '''set Controls'''
 
     def setDwellTime(self, scanParsDict, track_num):
         """
-        set the dwell time for the continous sequencer.
+        always True in dummy Mode
         """
-        track_name = 'track' + str(track_num)
-        self.ReadWrite(self.config.dwellTime10ns, int(scanParsDict[track_name]['dwellTime10ns']))
-        return self.checkFpgaStatus()
+        return True
 
     def setAllContSeqPars(self, scanpars, track_num):
         """
         Set all Scanparameters, needed for the continousSequencer
         :param scanpars: dict, containing all scanparameters
         :return: bool, if success
+        always True in dummy Mode
         """
-        track_name = 'track' + str(track_num)
-        if self.changeSeqState(self.config.seqStateDict['idle']):
-            if (self.setDwellTime(scanpars, track_num) and
-                    self.setmeasVoltParameters(scanpars['measureVoltPars']) and
-                    self.setTrackParameters(scanpars[track_name]) and
-                    self.selectKepcoOrScalerScan(scanpars['isotopeData']['type'])):
-                return self.checkFpgaStatus()
-        return False
+        return True
 
     '''perform measurements:'''
 
@@ -97,8 +90,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         Note: not included in Version 1 !
         :return:bool, True if successfully changed State
         """
-        if self.setAllContSeqPars(scanpars, track_num):
-            return self.changeSeqState(self.config.seqStateDict['measureOffset'])
+        return True
 
     def measureTrack(self, scanpars, track_num):
         """
@@ -113,29 +105,6 @@ class ContinousSequencer(Sequencer, MeasureVolt):
                       '\nscanparameter are:' + str(scanpars))
         self.data_builder(scanpars, track_num)
         return True
-
-    ''' overwriting interface functions here '''
-
-    def getData(self):
-        """
-        nOfEle = int, number of Read Elements,
-        newDataArray = numpy Array containing all data that was read
-        elemRemainInFifo = int, number of Elements still in FifoBuffer
-        :return:
-        """
-        result = {'nOfEle': 0, 'newData': None, 'elemRemainInFifo': 0}
-        result['elemRemainInFifo'] = len(self.artificial_build_data)
-        datapoints = 0
-        if result['elemRemainInFifo'] > 0:
-            datapoints = min(10, result['elemRemainInFifo'])
-            result['newData'] = np.array(self.artificial_build_data[0:datapoints])
-            result['nOfEle'] = datapoints
-            result['elemRemainInFifo'] = len(self.artificial_build_data) - datapoints
-        self.artificial_build_data = [i for j, i in enumerate(self.artificial_build_data)
-                                      if j not in range(datapoints)]
-        if result['elemRemainInFifo'] == 0:
-            self.status = CsCfg.seqStateDict['measComplete']
-        return result
 
     def data_builder(self, scanpars, track_num):
         """
@@ -161,6 +130,30 @@ class ContinousSequencer(Sequencer, MeasureVolt):
                     complete_lis.append(Form.add_header_to23_bit(i + j, 2, i, 1))
                     i += 1
         self.artificial_build_data = complete_lis
+
+    ''' overwriting interface functions here '''
+
+    def getData(self):
+        """
+        nOfEle = int, number of Read Elements,
+        newDataArray = numpy Array containing all data that was read
+        elemRemainInFifo = int, number of Elements still in FifoBuffer
+        :return:
+        """
+        result = {'nOfEle': 0, 'newData': None, 'elemRemainInFifo': 0}
+        result['elemRemainInFifo'] = len(self.artificial_build_data)
+        max_read_data = 10
+        datapoints = 0
+        if result['elemRemainInFifo'] > 0:
+            datapoints = min(max_read_data, result['elemRemainInFifo'])
+            result['newData'] = np.array(self.artificial_build_data[0:datapoints])
+            result['nOfEle'] = datapoints
+            result['elemRemainInFifo'] = len(self.artificial_build_data) - datapoints
+        self.artificial_build_data = [i for j, i in enumerate(self.artificial_build_data)
+                                      if j not in range(datapoints)]
+        if result['elemRemainInFifo'] == 0:
+            self.status = CsCfg.seqStateDict['measComplete']
+        return result
 
     def getSeqState(self):
         return self.status

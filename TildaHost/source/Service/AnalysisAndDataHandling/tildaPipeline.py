@@ -23,7 +23,7 @@ def find_pipe_by_seq_type(scan_dict, callback_sig):
     if seq_type == 'cs' or seq_type == 'csdummy':
         logging.debug('starting pipeline of type: cs')
         return CsPipe(scan_dict, callback_sig)
-    elif seq_type == 'trs':
+    elif seq_type == 'trs' or seq_type == 'trsdummy':
         logging.debug('starting pipeline of type: trs')
         return TrsPipe(scan_dict, callback_sig)
     elif seq_type == 'kepco':
