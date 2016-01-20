@@ -6,29 +6,34 @@ Created on '20.05.2015'
 
 """
 
+import matplotlib.pyplot as plt
+import logging
+
 import Service.AnalysisAndDataHandling.tildaNodes as TN
 import polliPipe.simpleNodes as SN
 from polliPipe.node import Node
 import Service.FolderAndFileHandling as FaFH
 # import PyQtGraphPlotter
-import matplotlib.pyplot as plt
 
 from polliPipe.pipeline import Pipeline
 
 
 def find_pipe_by_seq_type(scan_dict, callback_sig):
     seq_type = scan_dict['isotopeData']['type']
-    if seq_type == 'cs' or 'csdummy':
+    if seq_type == 'cs' or seq_type == 'csdummy':
+        logging.debug('starting pipeline of type: cs')
         return CsPipe(scan_dict, callback_sig)
     elif seq_type == 'trs':
+        logging.debug('starting pipeline of type: trs')
         return TrsPipe(scan_dict, callback_sig)
     elif seq_type == 'kepco':
+        logging.debug('starting pipeline of type: kepco')
         return kepco_scan_pipe(scan_dict, callback_sig)
     else:
         return None
 
 
-def TrsPipe(initialScanPars, callback_sig=None):
+def TrsPipe(initialScanPars=None, callback_sig=None):
     """
     Pipeline for the dataflow and analysis of one Isotope using the time resolved sequencer.
     Mutliple Tracks are supported.
@@ -39,7 +44,6 @@ def TrsPipe(initialScanPars, callback_sig=None):
 
     pipe.pipeData = initPipeData(initialScanPars)
     walk = start.attach(SN.NPrint())
-
     # walk = start.attach(TN.NSaveRawData())
     # walk = walk.attach(TN.NSaveRawData())
     # walk = walk.attach(TN.NSplit32bData())

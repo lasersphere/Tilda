@@ -32,6 +32,7 @@ class ScanMain:
         function to prepare for the scan of one isotope.
         This sets up the pipeline and loads the bitfile on the fpga of the given type.
         """
+        self.pipeline = None
         logging.info('preparing isotope: ' + scan_dict['isotopeData']['isotope'] +
                      ' of type: ' + scan_dict['isotopeData']['type'])
         self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)

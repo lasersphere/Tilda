@@ -76,7 +76,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         if self.changeSeqState(self.config.seqStateDict['idle']):
             if (self.setMCSParameters(scanpars, track_name) and
                     self.setmeasVoltParameters(scanpars['measureVoltPars']) and
-                    self.setTrackParameters(scanpars) and
+                    self.setTrackParameters(scanpars[track_name]) and
                     self.set_trigger(scanpars[track_name].get('trigger', {})) and
                     self.selectKepcoOrScalerScan(scanpars['isotopeData']['type'])):
                 return self.checkFpgaStatus()

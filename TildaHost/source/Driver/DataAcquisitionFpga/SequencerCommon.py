@@ -88,6 +88,7 @@ class Sequencer(FPGAInterfaceHandling):
         return self.checkFpgaStatus()
 
     def selectKepcoOrScalerScan(self, typestr):
+        logging.debug('type of scan: ' + typestr)
         if typestr == 'kepco':
             self.ReadWrite(self.config.VoltOrScaler, True)
         else:
@@ -105,7 +106,7 @@ class Sequencer(FPGAInterfaceHandling):
             timeout = 0
             while blocking and timeout < 30:
                 currentState = self.getHeinzControlState()
-                logging.debug('HSB-State is: ' + str(currentState))
+                print('currentState:', currentState, '\tdesiredState: ', desiredState)
                 if currentState == desiredState:
                     return currentState
                 else:
@@ -189,12 +190,14 @@ class Sequencer(FPGAInterfaceHandling):
         :return: True if success
         """
         trigger_type = trigger_dict.get('type', TiTs.no_trigger)
+        logging.debug('setting trigger type to: ' + str(trigger_type) + ' value: ' + str(trigger_type.value))
+        logging.debug('trigger dict is: ' + str(trigger_dict))
         self.ReadWrite(self.config.triggerTypes, trigger_type.value)
         if trigger_type is TiTs.no_trigger:
             return self.checkFpgaStatus()
         elif trigger_type is TiTs.single_hit_delay:
             self.ReadWrite(self.config.selectTrigger, trigger_dict.get('trigInputChan', 0))
-            self.ReadWrite(self.config.trig_delay_10ns, trigger_dict.get('trigDelay10ns', 0))
+            self.ReadWrite(self.config.trigDelay10ns, int(trigger_dict.get('trigDelay10ns', 0)))
             return self.checkFpgaStatus()
 
     '''getting the data'''

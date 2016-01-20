@@ -51,7 +51,7 @@ measVoltTimeout10ns = {'ref': 0x8154, 'val': ctypes.c_long(), 'ctr': True}
 nOfBunches = {'ref': 0x812C, 'val': ctypes.c_long(), 'ctr': True}
 nOfScans = {'ref': 0x816C, 'val': ctypes.c_long(), 'ctr': True}
 nOfSteps = {'ref': 0x8170, 'val': ctypes.c_long(), 'ctr': True}
-trig_delay_10ns = {'ref': 0x8134, 'val': ctypes.c_ulong(), 'ctr': True}
+trigDelay10ns = {'ref': 0x8134, 'val': ctypes.c_ulong(), 'ctr': True}
 nOfBins = {'ref': 0x8130, 'val': ctypes.c_ulong(), 'ctr': True}
 '''TargetToHostFifos:'''
 transferToHost = {'ref': 0, 'val': ctypes.c_ulong(), 'ctr': False}

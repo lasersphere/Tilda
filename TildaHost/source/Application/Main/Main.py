@@ -53,7 +53,7 @@ class Main(QtCore.QObject):
         self.halt_scan = False
 
         try:
-            self.work_dir_changed('E:/lala')
+            self.work_dir_changed('D:/lala')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state(MainState.idle)
@@ -460,7 +460,8 @@ class Main(QtCore.QObject):
         """
         will save all information in the scan_pars dict for the given isotope to the database.
         """
-        scan_d = self.scan_pars[iso]
+        scan_d = deepcopy(self.scan_pars[iso])
+        # add_scan_dict_to_db will perform some changes on scan_d, therefore copy necessary
         trk_num, trk_lis = SdOp.get_number_of_tracks_in_scan_dict(scan_d)
         for i in trk_lis:
             logging.debug('saving track ' + str(i) + ' dict is: ' +

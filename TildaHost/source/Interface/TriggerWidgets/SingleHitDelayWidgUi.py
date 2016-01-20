@@ -41,7 +41,7 @@ class SingelHitDelay(BaseSequencerWidgUi, Ui_single_hit_delay_widg):
         self.label_trigInputChan_set.setText(trig_name + '  ## ' + str(ind))
 
     def trig_delay_set(self, val):
-        self.buffer_pars['trigDelay10ns'] = val * (10 ** 2)
+        self.buffer_pars['trigDelay10ns'] = int(val * (10 ** 2))
         self.label_trigDelay_mus_set.setText(str(val))
 
 
