@@ -396,6 +396,8 @@ class NCSSortRawDatatoArray(Node):
         self.scalerArray = None
         self.curVoltIndex = None
         self.totalnOfScalerEvents = None
+        self.comp_list = [2 ** i for i in range(0, 8)]
+        # could be shrinked to active pmts only to speed things up
 
     def start(self):
         scand = self.Pipeline.pipeData
@@ -415,7 +417,13 @@ class NCSSortRawDatatoArray(Node):
         ret = None
         scan_complete = False
         for i, j in enumerate(data):
-            if j['firstHeader'] == ProgConfigsDict.programs['errorHandler']:  # error send from fpga
+            if j['headerIndex'] == 0:  # its a event from the time resovled sequencer
+                header = j['firstheader'] << 4 + j['secondheader']
+                for pmt_ind, pow2 in enumerate(self.comp_list):
+                    if header & pow2:  # bitwise and to determine if this pmt got a count
+                        self.scalerArray[track_ind][self.curVoltIndex][pmt_ind][j['payload']] += 1
+                # timestamp equals index in time array of the given scaler
+            elif j['firstHeader'] == ProgConfigsDict.programs['errorHandler']:  # error send from fpga
                 logging.error('fpga sends error code: ' + str(j['payload']) + 'or in binary: ' + str(
                     '{0:032b}'.format(j['payload'])))
 
@@ -635,7 +643,6 @@ class NTRSSaveSum(Node):
         xmlAddCompleteTrack(rootEle, pipeData, data)
         TildaTools.save_xml(rootEle, file, False)
         return data
-
 
 
 """ QT Signal Nodes """

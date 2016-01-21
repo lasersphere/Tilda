@@ -125,7 +125,11 @@ def create_default_scaler_array_from_scandict(scand, dft_val=0):
         trackd = scand['track' + str(tr)]
         n_of_steps = trackd['nOfSteps']
         n_of_scaler = len(trackd['activePmtList'])
-        arr.append(np.full((n_of_scaler, n_of_steps), dft_val, dtype=np.uint32))
+        n_of_bins = trackd.get('nOfBins', False)
+        if n_of_bins:
+            arr.append(np.full((n_of_scaler, n_of_steps, n_of_bins), dft_val, dtype=np.uint32))
+        else:
+            arr.append(np.full((n_of_scaler, n_of_steps), dft_val, dtype=np.uint32))
     return arr
 
 

@@ -14,66 +14,45 @@ Created on '21.08.2015'
 @author:'simkaufm'
 
 """
-
-# -*- coding: utf-8 -*-
 """
-This example demonstrates the use of RemoteGraphicsView to improve performance in
-applications with heavy load. It works by starting a second process to handle
-all graphics rendering, thus freeing up the main process to do its work.
+This example shows how to connect events in one window, for example, a mouse
+press, to another figure window.
 
-In this example, the update() function is very expensive and is called frequently.
-After update() generates a new set of data, it can either plot directly to a local
-plot (bottom) or remotely via a RemoteGraphicsView (top), allowing speed comparison
-between the two cases. IF you have a multi-core CPU, it should be obvious that the
-remote case is much faster.
+If you click on a point in the first window, the z and y limits of the
+second will be adjusted so that the center of the zoom in the second
+window will be the x,y coordinates of the clicked point.
+
+Note the diameter of the circles in the scatter are defined in
+points**2, so their size is independent of the zoom
 """
+from matplotlib.pyplot import figure, show
+import numpy
+figsrc = figure()
+figzoom = figure()
 
-# import initExample ## Add path to library (just for examples; you do not need this)
-from pyqtgraph.Qt import QtGui, QtCore
-import pyqtgraph as pg
-import pyqtgraph.multiprocess as mp
-
-
-def processPlotter():
-    app = pg.mkQApp()
-
-    # Create remote process with a plot window
-    proc = mp.QtProcess()
-    rpg = proc._import('pyqtgraph')
-    print(rpg)
-    win = rpg.GraphicsWindow()
-    p1 = win.addPlot()
-    win.nextRow()
-    p2 = win.addPlot()
-    data = proc.transfer([])
-    data2 = proc.transfer([])
-    return rpg, win, p1, p2, data, data2
+axsrc = figsrc.add_subplot(111, xlim=(0, 1), ylim=(0, 1), autoscale_on=False)
+axzoom = figzoom.add_subplot(111, xlim=(0.45, 0.55), ylim=(0.4, .6),
+                             autoscale_on=False)
+axsrc.set_title('Click to zoom')
+axzoom.set_title('zoom window')
+x, y, s, c = numpy.random.rand(4, 200)
+s *= 200
 
 
-# outer_pro = processPlotter()
-# processPlotter()
-# Send new data to the remote process and plot it
-# We use the special argument _callSync='off' because we do
-# # not want to wait for a return value.
-# data.extend([1,5,2,4,3], _callSync='off')
-# curve.setData(y=data, _callSync='off')
-#
-# # win = rpg.GraphicsWindow()
-# # p1 = win.addPlot()
-# # p2 = win.addPlot()
-#
-# input('press Enter...')
-#
-#
-# data.extend([7,8,9,10,20], _callSync='off')
-# curve.setData(y=data, _callSync='off')
-#
-# input('press Enter...')
-## Start Qt event loop unless running in interactive mode or using pyside.
-# if __name__ == '__main__':
-#     import sys
-#     if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-#         QtGui.QApplication.instance().exec_()
-#         print('hello')
-#         proc.close()
+axsrc.scatter(x, y, s, c)
+axzoom.scatter(x, y, s, c)
 
+
+def onpress(event):
+    print('button pressed', event)
+    if event.button != 1:
+        return
+    if event.inaxes is None:
+        return
+    x, y = event.xdata, event.ydata
+    axzoom.set_xlim(x - 0.1, x + 0.1)
+    axzoom.set_ylim(y - 0.1, y + 0.1)
+    figzoom.canvas.draw()
+
+figsrc.canvas.mpl_connect('button_press_event', onpress)
+show()
