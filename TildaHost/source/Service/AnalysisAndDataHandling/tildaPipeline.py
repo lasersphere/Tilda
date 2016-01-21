@@ -43,13 +43,11 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
     pipe = Pipeline(start)
 
     pipe.pipeData = initPipeData(initialScanPars)
-    walk = start.attach(SN.NPrint())
+    # walk = start.attach(SN.NPrint())
     # walk = start.attach(TN.NSaveRawData())
-    # walk = walk.attach(TN.NSaveRawData())
+    walk = start.attach(TN.NSplit32bData())
     # walk = walk.attach(TN.NSplit32bData())
-    # walk = walk.attach(TN.NSumBunchesTRS(pipe.pipeData))
-    # walk = walk.attach(TN.NSaveSum())
-    # walk = walk.attach(SN.NPrint())
+    walk = walk.attach(SN.NPrint())
 
     return pipe
 
@@ -69,7 +67,7 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     walk = start.attach(TN.NSaveRawData())
     walk = start.attach(TN.NSplit32bData())
     #
-    walk = walk.attach(TN.NSortRawDatatoArray())
+    walk = walk.attach(TN.NCSSortRawDatatoArray())
     walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
 
     #
@@ -88,7 +86,7 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     branch3 = branch3.attach(TN.NMPlLivePlot(axes[2], 'scaler 0+1', ['red']))
 
     walk = walk.attach(TN.NRemoveTrackCompleteFlag())
-    walk = walk.attach(TN.NSumCS())
+    walk = walk.attach(TN.NCSSum())
 
     summe = walk.attach(TN.NSingleArrayToSpecData())
     sum0 = summe.attach(TN.NMultiSpecFromSpecData([[0], [1]]))
@@ -105,7 +103,7 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     finalsum = finalsum.attach(TN.NMPlDrawPlot())
 
     walk = walk.attach(TN.NAddWorkingTime(True))
-    walk = walk.attach(TN.NSaveSumCS())
+    walk = walk.attach(TN.NSaveIncomDataForActiveTrack())
     return pipe
 
 
@@ -146,12 +144,12 @@ def simple_counter_pipe(qt_sig):
     pipe = Pipeline(start)
 
     walk = start.attach(TN.NSplit32bData())
-    walk = walk.attach(TN.NSortByPmt(sample_rate))
-    walk = walk.attach(TN.NMovingAverage())
+    walk = walk.attach(TN.NSPSortByPmt(sample_rate))
+    walk = walk.attach(TN.NSumListsInData())
     walk = walk.attach(TN.NSendDataViaQtSignal(qt_sig))
     # walk = walk.attach(SN.NPrint())
 
-    walk = walk.attach(TN.NAddxAxis())
+    walk = walk.attach(TN.NSPAddxAxis())
     pmt0 = walk.attach(TN.NOnlyOnePmt(0))
     pmt0 = pmt0.attach(TN.NMPlLivePlot(axes[0], 'mov. avg', ['blue']))
 
