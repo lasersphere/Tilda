@@ -128,7 +128,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
                 bunch = 0
                 while bunch < trackd['nOfBunches']:
                     bunch += 1
-                    time = 0
+                    time = 0  # scans - 1
                     while time < trackd['nOfBins']:
                         scaler03 = max(min(int((time / trackd['nOfBins']) * (2 ** 4)), (2 ** 4) - 1), 1)
                         scaler47 = max(min(int((time / trackd['nOfBins']) * (2 ** 4)), (2 ** 4) - 1), 1)

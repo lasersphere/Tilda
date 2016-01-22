@@ -63,7 +63,7 @@ draftTrackPars = {
     'postAccOffsetVoltControl': 2, 'postAccOffsetVolt': 1000,
     'waitForKepco25nsTicks': 40,
     'waitAfterReset25nsTicks': 4000,
-    'activePmtList': [0, 1, 2],
+    'activePmtList': [0, 1],
     'colDirTrue': False,
     'dwellTime10ns': 2000000,
     'workingTime': None,

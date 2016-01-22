@@ -17,6 +17,7 @@ import Service.FolderAndFileHandling as Filehandle
 import Service.ProgramConfigs as ProgConfigsDict
 import Service.AnalysisAndDataHandling.trsDataAnalysis as TrsAna
 import Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
+from Service.AnalysisAndDataHandling.InfoHandler import InfoHandler as InfHandl
 import MPLPlotter
 
 import numpy as np
@@ -193,7 +194,7 @@ class NSaveIncomDataForActiveTrack(Node):
         logging.info('saving data: ' + str(data))
         xmlAddCompleteTrack(rootEle, pipeData, data[track_ind], track_name)
         TildaTools.save_xml(rootEle, file, False)
-        logging.info('saving Continous Sequencer Sum to: ' + str(file))
+        logging.info('saving sum to: ' + str(file))
         return data
 
 
@@ -293,6 +294,62 @@ class NMPlDrawPlot(Node):
         MPLPlotter.draw()
         # logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
         return data
+
+
+class NMPLImagePLot(Node):
+    def __init__(self, fig, axes, pmt_num):
+        """
+        plotting node for plotting the image data of one track and one pmt
+        """
+        super(NMPLImagePLot, self).__init__()
+        self.type = 'MPLImagePLot'
+        self.imax = axes
+        self.fig = fig
+        self.selected_pmt = pmt_num
+        self.selected_pmt_ind = None
+        self.image = None
+        self.colorbar = None
+        # self.tproj_ax = axes[1]
+        # self.vproj_ax = axes[2]
+
+    def start(self):
+        # draw initial frame for each new start
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        self.selected_pmt_ind = self.Pipeline.pipeData[track_name]['activePmtList'].index(self.selected_pmt)
+        steps = self.Pipeline.pipeData[track_name]['nOfSteps']
+        bins = self.Pipeline.pipeData[track_name]['nOfBins']
+        x = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData)[track_ind]
+        xmin = np.amin(x)  # might be converted to voltage later on
+        xmax = np.amax(x)
+        ymin = -5
+        # -5 due to resolution of 10ns so events with timestamp e.g. 10 (= 100ns) will be plotted @ 95 to 105 ns
+        ymax = bins * 10 - 5
+        extent = [xmin, xmax, ymin, ymax]
+        x = np.zeros((steps, bins), dtype=np.uint32)
+        self.imax.set_ylabel('time [ns]')
+        self.imax.set_xlabel('DAC voltage [V]')
+        MPLPlotter.ion()
+        MPLPlotter.show()
+        if self.image is None:
+                asp = xmax / ymax
+                self.image, self.colorbar = MPLPlotter.image_plot(self.fig, self.imax, np.transpose(x), extent, asp)
+                MPLPlotter.draw()
+
+    def processData(self, data, pipeData):
+        track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
+        try:
+            # pass
+            # print('nonzero element: ', np.nonzero(data[track_ind][self.selected_pmt_ind]))
+            self.image.set_data(np.transpose(data[track_ind][self.selected_pmt_ind]))
+            self.colorbar.set_clim(0, np.amax(data[track_ind][self.selected_pmt_ind]))
+            self.colorbar.update_normal(self.image)
+        except Exception as e:
+            print('while updateing plot, this happened: ', e)
+        return data
+
+    def clear(self):
+        self.image = None
+        self.colorbar = None
 
 
 """ specdata format compatible Nodes: """
@@ -396,7 +453,8 @@ class NCSSortRawDatatoArray(Node):
         self.scalerArray = None
         self.curVoltIndex = None
         self.totalnOfScalerEvents = None
-        self.comp_list = [2 ** i for i in range(0, 8)]
+        self.comp_list = None
+        self.info_handl = InfHandl()
         # could be shrinked to active pmts only to speed things up
 
     def start(self):
@@ -411,18 +469,38 @@ class NCSSortRawDatatoArray(Node):
             self.curVoltIndex = 0
         if self.totalnOfScalerEvents is None:
             self.totalnOfScalerEvents = np.full((tracks,), 0)
+        self.info_handl.setup()
+        if self.comp_list is None:
+            track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+            self.comp_list = [2 ** j for i, j in enumerate(self.Pipeline.pipeData[track_name]['activePmtList'])]
 
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         ret = None
         scan_complete = False
         for i, j in enumerate(data):
-            if j['headerIndex'] == 0:  # its a event from the time resovled sequencer
-                header = j['firstheader'] << 4 + j['secondheader']
+            if j['headerIndex'] == 0:  # its an event from the time resolved sequencer
+                header = (j['firstHeader'] << 4) + j['secondHeader']
                 for pmt_ind, pow2 in enumerate(self.comp_list):
                     if header & pow2:  # bitwise and to determine if this pmt got a count
-                        self.scalerArray[track_ind][self.curVoltIndex][pmt_ind][j['payload']] += 1
+                        try:
+                            self.scalerArray[track_ind][pmt_ind][self.curVoltIndex][j['payload']] += 1
+                        except Exception as e:
+                            print('excepti : ', e)
+                        # print('scaler event: ', track_ind, self.curVoltIndex, pmt_ind, j['payload'])
                 # timestamp equals index in time array of the given scaler
+            elif j['firstHeader'] == ProgConfigsDict.programs['infoHandler']:
+                self.info_handl.info_handle(pipeData, j['payload'])
+                scan_complete = pipeData[track_name]['nOfCompletedSteps'] == pipeData[track_name]['nOfSteps']
+                if scan_complete:
+                    if ret is None:
+                            ret = []
+                    ret.append((self.scalerArray, scan_complete))
+                    logging.debug('Voltindex: ' + str(self.curVoltIndex) +
+                                  'completede steps:  ' + str(pipeData[track_name]['nOfCompletedSteps']))
+                    self.scalerArray = Form.create_default_scaler_array_from_scandict(pipeData)  # deletes all entries
+                    scan_complete = False
+
             elif j['firstHeader'] == ProgConfigsDict.programs['errorHandler']:  # error send from fpga
                 logging.error('fpga sends error code: ' + str(j['payload']) + 'or in binary: ' + str(
                     '{0:032b}'.format(j['payload'])))
@@ -466,6 +544,8 @@ class NCSSortRawDatatoArray(Node):
         self.scalerArray = None
         self.curVoltIndex = None
         self.totalnOfScalerEvents = None
+        self.comp_list = None
+        self.info_handl.clear()
 
 
 class NCSSum(Node):
@@ -489,7 +569,8 @@ class NCSSum(Node):
         try:
             for i, j in enumerate(data):
                 self.scalerArray[track_ind] = np.add(self.scalerArray[track_ind], j[track_ind])
-                # logging.debug('sum is: ' + str(self.scalerArray[0:2]) + str(self.scalerArray[-2:]))
+                # logging.debug('max pmt val is:' + str(np.amax(self.scalerArray[track_ind][0])))
+                # logging.debug('sum is: ' + str(self.scalerArray[0][0:2]) + str(self.scalerArray[0][-2:]))
             return self.scalerArray
         except Exception as e:
             print('exception: ', e)

@@ -16,4 +16,5 @@ programs = {
     'simpleCounter': 1,
     'continuousSequencer': 2,
     'dac': 3,
+    'infoHandler': 4
     }
