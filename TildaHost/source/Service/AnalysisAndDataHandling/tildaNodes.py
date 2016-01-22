@@ -303,14 +303,14 @@ class NMPLImagePLot(Node):
         """
         super(NMPLImagePLot, self).__init__()
         self.type = 'MPLImagePLot'
-        self.imax = axes
+        self.imax = axes[0][0]
         self.fig = fig
         self.selected_pmt = pmt_num
         self.selected_pmt_ind = None
         self.image = None
         self.colorbar = None
-        # self.tproj_ax = axes[1]
-        # self.vproj_ax = axes[2]
+        self.tproj_ax = axes[0][1]
+        self.vproj_ax = axes[1][0]
 
     def start(self):
         # draw initial frame for each new start
@@ -318,12 +318,15 @@ class NMPLImagePLot(Node):
         self.selected_pmt_ind = self.Pipeline.pipeData[track_name]['activePmtList'].index(self.selected_pmt)
         steps = self.Pipeline.pipeData[track_name]['nOfSteps']
         bins = self.Pipeline.pipeData[track_name]['nOfBins']
-        x = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData)[track_ind]
-        xmin = np.amin(x)  # might be converted to voltage later on
-        xmax = np.amax(x)
+        v_axis = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData)[track_ind]
+        xmin = np.amin(v_axis)  # might be converted to voltage later on
+        xmax = np.amax(v_axis)
         ymin = -5
         # -5 due to resolution of 10ns so events with timestamp e.g. 10 (= 100ns) will be plotted @ 95 to 105 ns
         ymax = bins * 10 - 5
+        t_axis = np.arange(0, bins * 10, 10)
+        t_cts = np.zeros(t_axis.shape)
+        v_cts = np.zeros(v_axis.shape)
         extent = [xmin, xmax, ymin, ymax]
         x = np.zeros((steps, bins), dtype=np.uint32)
         self.imax.set_ylabel('time [ns]')
@@ -333,6 +336,15 @@ class NMPLImagePLot(Node):
         if self.image is None:
                 asp = xmax / ymax
                 self.image, self.colorbar = MPLPlotter.image_plot(self.fig, self.imax, np.transpose(x), extent, asp)
+                self.imax.xaxis.set_ticks_position('top')
+                self.imax.xaxis.set_label_position('top')
+                self.tproj_ax.add_line(MPLPlotter.line2d(t_cts, t_axis, 'r'))
+                self.tproj_ax.set_ylim(min(t_axis), max(t_axis))
+                self.tproj_ax.yaxis.set_ticks_position('right')
+                self.tproj_ax.autoscale(enable=True, axis='x', tight=False)
+                self.vproj_ax.add_line(MPLPlotter.line2d(v_axis, v_cts, 'r'))
+                self.vproj_ax.set_xlim(min(v_axis), max(v_axis))
+                self.vproj_ax.autoscale(enable=True, axis='y', tight=False)
                 MPLPlotter.draw()
 
     def processData(self, data, pipeData):
