@@ -99,13 +99,13 @@ def get_current_figure():
     return plt.gcf()
 
 
-def image_plot(fig, axes, image_date, extent, aspect='equal'):
+def image_plot(fig, axes, cbax, image_date, extent, aspect='equal'):
     img = axes.imshow(image_date, extent=extent, origin='lower',
                       aspect=aspect, interpolation='none')
     # cb = fig.colorbar(img, orientation='horizontal')
 
-    cbar_ax = fig.add_axes([0.75, 0.1, 0.05, 0.35])
-    cb = fig.colorbar(img, cax=cbar_ax)
+    # cbar_ax = fig.add_axes([0.75, 0.1, 0.05, 0.35])
+    cb = fig.colorbar(img, cax=cbax)
     # cb = None
     draw()
     return img, cb
