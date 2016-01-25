@@ -47,8 +47,8 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
     axes = [[0, 0], [0]]
 
     axes[0][0] = fig.add_subplot(2, 2, 1)
-    axes[0][1] = fig.add_subplot(2, 2, 2)
-    axes[1][0] = fig.add_subplot(2, 2, 3)
+    axes[0][1] = fig.add_subplot(2, 2, 2, sharey=axes[0][0])
+    axes[1][0] = fig.add_subplot(2, 2, 3, sharex=axes[0][0])
     # fig, axes = plt.subplots(nrows=2, ncols=2)
 
     pipe.pipeData = initPipeData(initialScanPars)
