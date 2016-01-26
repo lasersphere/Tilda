@@ -379,12 +379,10 @@ class NMPLImagePLot(Node):
             track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
             v_mi = min(range(len(self.v_array)), key=lambda i: abs(float(self.v_array[i]) - gates_val_list[0]))
             v_ma = min(range(len(self.v_array)), key=lambda i: abs(float(self.v_array[i]) - gates_val_list[1]))
-            v_min = min(v_mi, v_ma)
-            v_max = max(v_mi, v_ma)
+            v_min, v_max = sorted((v_mi, v_ma))
             t_mi = min(range(len(self.t_array)), key=lambda i: abs(float(self.t_array[i]) - gates_val_list[2]))
             t_ma = min(range(len(self.t_array)), key=lambda i: abs(float(self.t_array[i]) - gates_val_list[3]))
-            t_min = min(t_mi, t_ma)
-            t_max = max(t_mi, t_ma)
+            t_min, t_max = sorted((t_mi, t_ma))
             gates_ind = [t_min, t_max, v_min, v_max]  # indices in data array
             gates_val_list = [self.v_array[v_min], self.v_array[v_max], self.t_array[t_min], self.t_array[t_max]]
             self.gates_list = [gates_val_list, gates_ind]
@@ -401,15 +399,12 @@ class NMPLImagePLot(Node):
             self.gate_anno.set_x(self.im_ax.xaxis.get_view_interval()[0])
             ymin, ymax = self.im_ax.yaxis.get_view_interval()
             self.gate_anno.set_y(ymax - (ymax - ymin) / 6)
-            self.tproj_ax.legend()
-            self.vproj_ax.legend()
             return self.gates_list
         except Exception as e:
             print('while updating the indice this happened: ', e)
 
     def start(self):
         try:
-            # draw initial frame for each new start() call
             track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
             iso = self.Pipeline.pipeData['isotopeData']['isotope']
             type = self.Pipeline.pipeData['isotopeData']['type']
@@ -417,8 +412,9 @@ class NMPLImagePLot(Node):
             self.selected_pmt_ind = self.Pipeline.pipeData[track_name]['activePmtList'].index(self.selected_pmt)
             steps = self.Pipeline.pipeData[track_name]['nOfSteps']
             bins = self.Pipeline.pipeData[track_name]['nOfBins']
-            v_axis = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData)[track_ind]
+            v_axis = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=True)[track_ind]
             self.v_array = v_axis
+            print('voltage axis is: ', self.v_array, self.v_array.shape)
             xmin = np.amin(v_axis)  # might be converted to voltage later on
             xmax = np.amax(v_axis)
             ymin = -5  # time start always with 0 for now. Delay to trigger must be kept in mind by user.
@@ -432,40 +428,40 @@ class NMPLImagePLot(Node):
             x = np.zeros((steps, bins), dtype=np.uint32)
             MPLPlotter.ion()
             MPLPlotter.show()
-            if self.image is None:
-                self.aspect_img = 'auto'
-                self.image, self.colorbar = MPLPlotter.image_plot(self.fig, self.im_ax, self.cb_ax, np.transpose(x),
-                                                                  extent, self.aspect_img)
-                self.im_ax.xaxis.set_ticks_position('top')
-                self.im_ax.xaxis.set_label_position('top')
+            # if self.image is None:
+            self.aspect_img = 'auto'
+            self.image, self.colorbar = MPLPlotter.image_plot(self.fig, self.im_ax, self.cb_ax, np.transpose(x),
+                                                              extent, self.aspect_img)
+            self.im_ax.xaxis.set_ticks_position('top')
+            self.im_ax.xaxis.set_label_position('top')
 
-                self.vproj_line = self.vproj_ax.add_line(MPLPlotter.line2d(v_axis, v_cts, 'r'))
-                self.vproj_ax.set_xlim(min(v_axis), max(v_axis))
-                self.vproj_ax.autoscale(enable=True, axis='y', tight=True)
+            self.vproj_line = self.vproj_ax.add_line(MPLPlotter.line2d(v_axis, v_cts, 'r'))
+            self.vproj_ax.set_xlim(min(v_axis), max(v_axis))
+            self.vproj_ax.autoscale(enable=True, axis='y', tight=True)
 
-                self.tproj_line = self.tproj_ax.add_line(MPLPlotter.line2d(t_cts, t_axis, 'r'))
-                self.tproj_ax.set_ylim(min(t_axis), max(t_axis))
-                self.tproj_ax.autoscale(enable=True, axis='x', tight=True)
+            self.tproj_line = self.tproj_ax.add_line(MPLPlotter.line2d(t_cts, t_axis, 'r'))
+            self.tproj_ax.set_ylim(min(t_axis), max(t_axis))
+            self.tproj_ax.autoscale(enable=True, axis='x', tight=True)
 
-                self.patch = self.im_ax.add_patch(patches.Rectangle((max(v_axis) / 2, max(t_axis) / 2),
-                                                                    max(v_axis) / 2, max(t_axis) / 2,
-                                                                    fill=False, ec='white'))
-                if self.Pipeline.pipeData[track_name].get('softwGates', None) is None:
-                    gate_val_list = self.image.get_extent()  # initial values, full frame
-                else:  # read gates from input
-                    gate_val_list = self.Pipeline.pipeData[track_name].get('softwGates', None)[0]
-                self.update_gate_ind(gate_val_list)
-                print('initial values for gate are: ', self.gates_list)
-                print('vmin/max, tmin/tmax: ', xmin, xmax, ymin, ymax)
-                print('elements v / t: ', len(self.v_array), len(self.t_array))
+            self.patch = self.im_ax.add_patch(patches.Rectangle((max(v_axis) / 2, max(t_axis) / 2),
+                                                                max(v_axis) / 2, max(t_axis) / 2,
+                                                                fill=False, ec='white'))
+            if self.Pipeline.pipeData[track_name].get('softwGates', None) is None:
+                gate_val_list = self.image.get_extent()  # initial values, full frame
+            else:  # read gates from input
+                gate_val_list = self.Pipeline.pipeData[track_name].get('softwGates', None)[0]
+            self.update_gate_ind(gate_val_list)
+            print('initial values for gate are: ', self.gates_list)
+            print('vmin/max, tmin/tmax: ', xmin, xmax, ymin, ymax)
+            print('elements v / t: ', len(self.v_array), len(self.t_array))
 
-                self.rect_selector = RectangleSelector(self.im_ax, self.rect_select_gates, drawtype='box',
-                                                       useblit=True, button=[1, 3],
-                                                       minspanx=abs(self.v_array[0] - self.v_array[1]),
-                                                       minspany=abs(self.t_array[0] - self.t_array[1]),
-                                                       spancoords='data')
+            self.rect_selector = RectangleSelector(self.im_ax, self.rect_select_gates, drawtype='box',
+                                                   useblit=True, button=[1, 3],
+                                                   minspanx=abs(self.v_array[0] - self.v_array[1]),
+                                                   minspany=abs(self.t_array[0] - self.t_array[1]),
+                                                   spancoords='data')
 
-                MPLPlotter.draw()
+            MPLPlotter.draw()
             self.im_ax.set_ylabel('time [ns]')
             self.im_ax.set_xlabel('DAC voltage [V]')
             self.tproj_ax.set_xlabel('cts')
@@ -480,7 +476,6 @@ class NMPLImagePLot(Node):
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         try:
-            print('processing data, ', pipeData[track_name]['nOfCompletedSteps'])
             self.buffer_data = data[track_ind][self.selected_pmt_ind]
             self.image.set_data(np.transpose(self.buffer_data))
             self.colorbar.set_clim(0, np.amax(self.buffer_data))
@@ -495,6 +490,7 @@ class NMPLImagePLot(Node):
         # self.selected_pmt_ind = None
         # self.image = None
         # self.colorbar = None
+        # MPLPlotter.clear()
         # self.tproj_line = None
         # self.vproj_line = None
         # self.patch = None

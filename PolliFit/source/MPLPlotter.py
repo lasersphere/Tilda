@@ -109,3 +109,5 @@ def image_plot(fig, axes, cbax, image_date, extent, aspect='equal'):
     # cb = None
     draw()
     return img, cb
+
+def configure_image_plot(fig, axes, pipeData, pmt_num, track_num):

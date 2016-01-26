@@ -10,6 +10,7 @@ from datetime import datetime as dt
 import numpy as np
 
 import Service.Scan.ScanDictionaryOperations as SdOp
+import Service.VoltageConversions.VoltageConversions as VCon
 
 
 def split_32b_data(int32b_data):
@@ -97,7 +98,7 @@ def convert_scandict_v104_to_v106(scandict):
     return scandict
 
 
-def create_x_axis_from_scand_dict(scand):
+def create_x_axis_from_scand_dict(scand, as_voltage=False):
     """
     uses a track dictionary to create the x axis, starting with dacStartRegister18Bit,
     length is nOfSteps and stepsize is dacStepSize18Bit
@@ -111,6 +112,9 @@ def create_x_axis_from_scand_dict(scand):
         n_of_steps = trackd['nOfSteps']
         dac_stop_18bit = dac_start_18bit + (dac_stepsize_18bit * n_of_steps)
         x = np.arange(dac_start_18bit, dac_stop_18bit, dac_stepsize_18bit)
+        if as_voltage:
+            f = np.vectorize(VCon.get_voltage_from_18bit)
+            x = f(x)
         arr.append(x)
     return arr
 
