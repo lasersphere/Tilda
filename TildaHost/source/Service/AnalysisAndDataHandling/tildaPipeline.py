@@ -5,7 +5,7 @@ Created on '20.05.2015'
 @author:'simkaufm'
 
 """
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 import matplotlib.pyplot as plt
 import logging
 
@@ -42,16 +42,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
 
     pipe = Pipeline(start)
 
-    fig = plt.figure()
 
-    axes = [[0, 0, 0], [0, 0]]
-
-    axes[0][0] = fig.add_subplot(111)
-    # axes[0][0].set_aspect(1.)
-    divider = make_axes_locatable(axes[0][0])
-    axes[0][1] = divider.append_axes("right", size="5%", pad=0.05)
-    axes[0][2] = divider.append_axes("right", 2, pad=0.35, sharey=axes[0][0])
-    axes[1][0] = divider.append_axes("bottom", 2, pad=0.1, sharex=axes[0][0])
     # axes[1][1] = fig.add_axes([0, 0, 0.5, 0.5])
     # axes[1][1].annotate('Hello', xy=(0,0))
     # plt.text(1.7, 0, 'hello')
@@ -67,7 +58,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
     walk = walk.attach(TN.NRemoveTrackCompleteFlag())
     walk = walk.attach(TN.NCSSum())
 
-    pl_branch = walk.attach(TN.NMPLImagePLot(fig, axes, 0))
+    pl_branch = walk.attach(TN.NMPLImagePLot(0))
     pl_branch = pl_branch.attach(TN.NMPlDrawPlot())
 
     walk = walk.attach(TN.NCheckIfTrackComplete())

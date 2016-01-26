@@ -6,6 +6,10 @@ Created on 29.04.2014
 
 from matplotlib.dates import DateFormatter
 from matplotlib.lines import Line2D
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib import patches as patches
+from matplotlib.widgets import RectangleSelector
+
 import datetime
 import matplotlib.pyplot as plt
 import numpy as np
@@ -99,15 +103,90 @@ def get_current_figure():
     return plt.gcf()
 
 
+def setup_image_figure():
+    fig = plt.figure()
+    axes = [[0, 0, 0], [0, 0]]
+
+    axes[0][0] = fig.add_subplot(111)
+    divider = make_axes_locatable(axes[0][0])
+    axes[0][1] = divider.append_axes("right", size="5%", pad=0.05)
+    axes[0][2] = divider.append_axes("right", 2, pad=0.35, sharey=axes[0][0])
+    axes[1][0] = divider.append_axes("bottom", 2, pad=0.1, sharex=axes[0][0])
+
+    return fig, axes
+
+
 def image_plot(fig, axes, cbax, image_date, extent, aspect='equal'):
     img = axes.imshow(image_date, extent=extent, origin='lower',
                       aspect=aspect, interpolation='none')
-    # cb = fig.colorbar(img, orientation='horizontal')
-
-    # cbar_ax = fig.add_axes([0.75, 0.1, 0.05, 0.35])
+    axes.set_ylabel('time [ns]')
+    axes.set_xlabel('DAC voltage [V]')
     cb = fig.colorbar(img, cax=cbax)
     # cb = None
     draw()
     return img, cb
 
-def configure_image_plot(fig, axes, pipeData, pmt_num, track_num):
+
+def configure_image_plot(fig, axes, pipeData, volt_array_tr, time_array_tr, pmt_num, track_name):
+    im_ax = axes[0][0]
+    cb_ax = axes[0][1]
+    iso = pipeData['isotopeData']['isotope']
+    type = pipeData['isotopeData']['type']
+    fig.canvas.set_window_title('%s_%s_%s_pmt%s' % (iso, type, track_name, str(pmt_num)))
+    steps = pipeData[track_name]['nOfSteps']
+    bins = pipeData[track_name]['nOfBins']
+    v_min = volt_array_tr[0]
+    v_max = volt_array_tr[-1]
+    t_min = time_array_tr[0] - 5
+    t_max = time_array_tr[-1] - 5
+    # -5 due to resolution of 10ns so events with timestamp e.g. 10 (= 100ns) will be plotted @ 95 to 105 ns
+
+    extent = [v_min, v_max, t_min, t_max]
+    initial_2d_arr = np.zeros((steps, bins), dtype=np.uint32)
+    image, colorbar = image_plot(fig, im_ax, cb_ax, np.transpose(initial_2d_arr), extent, 'auto')
+    im_ax.xaxis.set_ticks_position('top')
+    im_ax.xaxis.set_label_position('top')
+    return image, colorbar
+
+
+def setup_projection(axes, volt_array_tr, time_array_tr):
+    tproj_ax = axes[0][2]
+    vproj_ax = axes[1][0]
+    t_cts = np.zeros(time_array_tr.shape)
+    v_cts = np.zeros(volt_array_tr.shape)
+    v_min = min(volt_array_tr)
+    v_max = max(volt_array_tr)
+    vproj_line = vproj_ax.add_line(line2d(volt_array_tr, v_cts, 'r'))
+    vproj_ax.set_xlim(v_min, v_max)
+    vproj_ax.autoscale(enable=True, axis='y', tight=True)
+
+    t_min = min(time_array_tr)
+    t_max = max(time_array_tr)
+    tproj_line = tproj_ax.add_line(line2d(t_cts, time_array_tr, 'r'))
+    tproj_ax.set_ylim(t_min, t_max)
+    tproj_ax.autoscale(enable=True, axis='x', tight=True)
+    tproj_ax.set_xlabel('cts')
+    tproj_ax.yaxis.set_ticks_position('right')
+    vproj_ax.set_ylabel('cts')
+    vproj_ax.set_xlabel('DAC voltage [V]')
+    return vproj_line, tproj_line
+
+
+def add_patch(axes, extent):
+    """
+    adds a patch to given axes
+    extent = [x, y, width, height]
+    :return: patch
+    """
+    patch = axes.add_patch(patches.Rectangle((extent[0], extent[1]), extent[2], extent[3],
+                                              fill=False, ec='white'))
+    return patch
+
+
+def add_rect_select(axes, con_func, minspanx, minspany):
+    rect_selector = RectangleSelector(axes, con_func, drawtype='box',
+                                      useblit=True, button=[1, 3],
+                                      minspanx=minspanx,
+                                      minspany=minspany,
+                                      spancoords='data')
+    return rect_selector

@@ -41,11 +41,11 @@ naming convention is type_list.  """
 
 cs_list = ['dwellTime10ns']
 
-trs_list = ['nOfBins', 'nOfBunches']
+trs_list = ['nOfBins', 'nOfBunches', 'softwGates']
 
-csdummy_list = ['dwellTime10ns']
+csdummy_list = cs_list
 
-trsdummy_list = ['nOfBins', 'nOfBunches']
+trsdummy_list = trs_list
 
 """ below are some example values which can be used for scanning: """
 

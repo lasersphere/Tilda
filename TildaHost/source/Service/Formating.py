@@ -119,6 +119,27 @@ def create_x_axis_from_scand_dict(scand, as_voltage=False):
     return arr
 
 
+def create_time_axis_from_scan_dict(scand, binwidth_ns=10, delay_ns=0):
+    """
+    will create an time axis for each track in scand.
+    Delay can be set to reasonable value, default is 0.
+    """
+    arr = []
+    tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
+    for tr in track_num_list:
+        trackd = scand['track' + str(tr)]
+        bins = trackd['nOfBins']
+        if delay_ns == 'auto':
+            try:
+                delay_ns = trackd['trigger']['trigDelay10ns'] * 10
+            except Exception as e:
+                print('while creating a time axis, thie exception occured: ', e)
+                delay_ns = 0
+        x = np.arange(delay_ns, bins * binwidth_ns + delay_ns, binwidth_ns)
+        arr.append(x)
+    return arr
+
+
 def create_default_scaler_array_from_scandict(scand, dft_val=0):
     """
     create empty ScalerArray, size is determined by the track0 in the scan dictionary
@@ -161,3 +182,12 @@ def add_header_to23_bit(bit23, firstheader, secondheader, indexheader):
     sh_indexheader = indexheader << 23
     result = sh_firstheader + sh_secondheader + sh_indexheader + bit23
     return result
+
+
+def find_closest_value_in_arr(arr, search_val):
+    """
+    goes through an array and finds the nearest value to search_val
+    :return: ind, found_val, abs(found_val - search_val)
+    """
+    ind, found_val = min(enumerate(arr), key=lambda i: abs(float(i[1]) - search_val))
+    return ind, found_val, abs(found_val - search_val)

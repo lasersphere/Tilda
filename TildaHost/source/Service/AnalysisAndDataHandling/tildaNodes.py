@@ -18,8 +18,6 @@ import Service.AnalysisAndDataHandling.trsDataAnalysis as TrsAna
 import Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
 from Service.AnalysisAndDataHandling.InfoHandler import InfoHandler as InfHandl
 import MPLPlotter
-from matplotlib import patches as patches
-from matplotlib.widgets import RectangleSelector
 import numpy as np
 import logging
 
@@ -297,32 +295,34 @@ class NMPlDrawPlot(Node):
 
 
 class NMPLImagePLot(Node):
-    def __init__(self, fig, axes, pmt_num):
+    def __init__(self, pmt_num):
         """
         plotting node, for plotting the image data of one track and one pmt
         also the projections inside teh gates are displayed.
         """
         super(NMPLImagePLot, self).__init__()
         self.type = 'MPLImagePLot'
-        self.im_ax = axes[0][0]
-        self.tproj_ax = axes[0][2]
-        self.vproj_ax = axes[1][0]
-        self.cb_ax = axes[0][1]
-        self.fig = fig
+        self.fig, self.axes = MPLPlotter.setup_image_figure()
+        self.im_ax = self.axes[0][0]
+        self.tproj_ax = self.axes[0][2]
+        self.vproj_ax = self.axes[1][0]
+        self.cb_ax = self.axes[0][1]
         self.selected_pmt = pmt_num
-        self.selected_pmt_ind = None
-        self.image = None
-        self.colorbar = None
-        self.tproj_line = None
-        self.vproj_line = None
-        self.patch = None
-        self.t_array = None
-        self.v_array = None
-        self.rect_selector = None
-        self.gates_list = None  # [[vals],[ind]]
-        self.buffer_data = None
-        self.aspect_img = None
+        # self.selected_pmt_ind = None
+        # self.image = None
+        # self.colorbar = None
+        # self.tproj_line = None
+        # self.vproj_line = None
+        # self.patch = None
+        # self.t_array = None
+        # self.v_array = None
+        # self.rect_selector = None
+        # self.gates_list = None  # [[[vals_pmt0],[ind_pmt0]], ...]
+        # self.buffer_data = None
+        self.aspect_img = 'auto'
         self.gate_anno = None
+        # self.volt_array = None
+        # self.time_array = None
 
     def rect_select_gates(self, eclick, erelease):
         """
@@ -347,20 +347,22 @@ class NMPLImagePLot(Node):
         """
         try:
             data = self.buffer_data
-            gates_list = self.gates_list[0]
-            gates_ind = self.gates_list[1]
-            self.patch.set_xy((gates_list[0], gates_list[2]))
-            self.patch.set_width((gates_list[1] - gates_list[0]))
-            self.patch.set_height((gates_list[3] - gates_list[2]))
+            g_list = self.gates_list[self.selected_pmt_ind][0]
+            g_ind = self.gates_list[self.selected_pmt_ind][1]
+            self.patch.set_xy((g_list[0], g_list[2]))
+            self.patch.set_width((g_list[1] - g_list[0]))
+            self.patch.set_height((g_list[3] - g_list[2]))
             self.tproj_line.set_xdata(
-                np.sum(data[gates_ind[2]:gates_ind[3] + 1, :], axis=0))
+                np.sum(data[g_ind [0]:g_ind [1] + 1, :], axis=0))
             self.vproj_line.set_ydata(
-                np.sum(data[:, gates_ind[0]:gates_ind[1] + 1], axis=1))
+                np.sum(data[:, g_ind [2]:g_ind [3] + 1], axis=1))
             # +1 due to syntax of slicing!
             self.tproj_ax.relim()
-            self.tproj_ax.autoscale(enable=True, axis='x', tight=True)
+            self.tproj_ax.set_xmargin(0.05)
+            self.tproj_ax.autoscale(enable=True, axis='x', tight=False)
             self.vproj_ax.relim()
-            self.vproj_ax.autoscale(enable=True, axis='y', tight=True)
+            self.vproj_ax.set_ymargin(0.05)
+            self.vproj_ax.autoscale(enable=True, axis='y', tight=False)
             if draw:
                 MPLPlotter.draw()
         except Exception as e:
@@ -377,25 +379,26 @@ class NMPLImagePLot(Node):
         """
         try:
             track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-            v_mi = min(range(len(self.v_array)), key=lambda i: abs(float(self.v_array[i]) - gates_val_list[0]))
-            v_ma = min(range(len(self.v_array)), key=lambda i: abs(float(self.v_array[i]) - gates_val_list[1]))
-            v_min, v_max = sorted((v_mi, v_ma))
-            t_mi = min(range(len(self.t_array)), key=lambda i: abs(float(self.t_array[i]) - gates_val_list[2]))
-            t_ma = min(range(len(self.t_array)), key=lambda i: abs(float(self.t_array[i]) - gates_val_list[3]))
-            t_min, t_max = sorted((t_mi, t_ma))
-            gates_ind = [t_min, t_max, v_min, v_max]  # indices in data array
-            gates_val_list = [self.v_array[v_min], self.v_array[v_max], self.t_array[t_min], self.t_array[t_max]]
-            self.gates_list = [gates_val_list, gates_ind]
-            self.Pipeline.pipeData[track_name]['softwGates'] = self.gates_list
+            v_min, v_max = sorted((gates_val_list[0], gates_val_list[1]))
+            v_min_ind, v_min, vdif = Form.find_closest_value_in_arr(self.volt_array, v_min)
+            v_max_ind, v_max, vdif  = Form.find_closest_value_in_arr(self.volt_array, v_max)
+            
+            t_min, t_max = sorted((gates_val_list[2], gates_val_list[3]))
+            t_min_ind, t_min, tdif = Form.find_closest_value_in_arr(self.time_array, t_min)
+            t_max_ind, t_max, tdif = Form.find_closest_value_in_arr(self.time_array, t_max)
+            gates_ind = [v_min_ind, v_max_ind, t_min_ind, t_max_ind]  # indices in data array
+            gates_val_list = [v_min, v_max, t_min, t_max]
+            self.gates_list[self.selected_pmt_ind] = [gates_val_list, gates_ind]
+            self.Pipeline.pipeData[track_name]['softwGates'][self.selected_pmt_ind] = gates_val_list
             if self.gate_anno is None:
                 self.gate_anno = self.im_ax.annotate('%s - %s V \n%s - %s ns'
-                                                     % (self.v_array[v_min], self.v_array[v_max],
-                                                        self.t_array[t_min], self.t_array[t_max]),
+                                                     % (self.volt_array[v_min_ind], self.volt_array[v_max_ind],
+                                                        self.time_array[t_min_ind], self.time_array[t_max_ind]),
                                                      xy=(self.im_ax.get_xlim()[0], self.im_ax.get_ylim()[1]/2),
                                                      xycoords='data', annotation_clip=False, color='white')
             self.gate_anno.set_text('%s - %s V \n%s - %s ns'
-                                                     % (self.v_array[v_min], self.v_array[v_max],
-                                                        self.t_array[t_min], self.t_array[t_max]))
+                                                     % (self.volt_array[v_min_ind], self.volt_array[v_max_ind],
+                                                        self.time_array[t_min_ind], self.time_array[t_max_ind]))
             self.gate_anno.set_x(self.im_ax.xaxis.get_view_interval()[0])
             ymin, ymax = self.im_ax.yaxis.get_view_interval()
             self.gate_anno.set_y(ymax - (ymax - ymin) / 6)
@@ -406,70 +409,33 @@ class NMPLImagePLot(Node):
     def start(self):
         try:
             track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-            iso = self.Pipeline.pipeData['isotopeData']['isotope']
-            type = self.Pipeline.pipeData['isotopeData']['type']
-            self.fig.canvas.set_window_title('%s_%s_%s_pmt%s' % (iso, type, track_name, str(self.selected_pmt)))
+            self.gates_list = [[None]] * len(self.Pipeline.pipeData[track_name]['activePmtList'])
             self.selected_pmt_ind = self.Pipeline.pipeData[track_name]['activePmtList'].index(self.selected_pmt)
-            steps = self.Pipeline.pipeData[track_name]['nOfSteps']
-            bins = self.Pipeline.pipeData[track_name]['nOfBins']
-            v_axis = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=True)[track_ind]
-            self.v_array = v_axis
-            print('voltage axis is: ', self.v_array, self.v_array.shape)
-            xmin = np.amin(v_axis)  # might be converted to voltage later on
-            xmax = np.amax(v_axis)
-            ymin = -5  # time start always with 0 for now. Delay to trigger must be kept in mind by user.
-            # -5 due to resolution of 10ns so events with timestamp e.g. 10 (= 100ns) will be plotted @ 95 to 105 ns
-            ymax = bins * 10 - 5
-            t_axis = np.arange(0, bins * 10, 10)
-            self.t_array = t_axis
-            t_cts = np.zeros(t_axis.shape)
-            v_cts = np.zeros(v_axis.shape)
-            extent = [xmin, xmax, ymin, ymax]
-            x = np.zeros((steps, bins), dtype=np.uint32)
+            self.volt_array = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=True)[track_ind]
+            v_shape = self.volt_array.shape
+            self.time_array = Form.create_time_axis_from_scan_dict(self.Pipeline.pipeData)[track_ind]
+            t_shape = self.time_array.shape
             MPLPlotter.ion()
             MPLPlotter.show()
-            # if self.image is None:
-            self.aspect_img = 'auto'
-            self.image, self.colorbar = MPLPlotter.image_plot(self.fig, self.im_ax, self.cb_ax, np.transpose(x),
-                                                              extent, self.aspect_img)
-            self.im_ax.xaxis.set_ticks_position('top')
-            self.im_ax.xaxis.set_label_position('top')
-
-            self.vproj_line = self.vproj_ax.add_line(MPLPlotter.line2d(v_axis, v_cts, 'r'))
-            self.vproj_ax.set_xlim(min(v_axis), max(v_axis))
-            self.vproj_ax.autoscale(enable=True, axis='y', tight=True)
-
-            self.tproj_line = self.tproj_ax.add_line(MPLPlotter.line2d(t_cts, t_axis, 'r'))
-            self.tproj_ax.set_ylim(min(t_axis), max(t_axis))
-            self.tproj_ax.autoscale(enable=True, axis='x', tight=True)
-
-            self.patch = self.im_ax.add_patch(patches.Rectangle((max(v_axis) / 2, max(t_axis) / 2),
-                                                                max(v_axis) / 2, max(t_axis) / 2,
-                                                                fill=False, ec='white'))
+            self.image, self.colorbar = MPLPlotter.configure_image_plot(
+                self.fig, self.axes, self.Pipeline.pipeData, self.volt_array,
+                self.time_array, self.selected_pmt, track_name)
+            self.vproj_line, self.tproj_line = MPLPlotter.setup_projection(
+                self.axes, self.volt_array, self.time_array)
+            patch_ext = [self.volt_array[0], self.time_array[0],
+                         abs(self.volt_array[v_shape[0] / 2]), abs(self.time_array[t_shape[0] / 2])]
+            self.patch = MPLPlotter.add_patch(self.im_ax, patch_ext)
+            MPLPlotter.add_rect_select(self.im_ax, self.rect_select_gates,
+                                       self.volt_array[1] - self.volt_array[0],
+                                       self.time_array[1] - self.time_array[0])
             if self.Pipeline.pipeData[track_name].get('softwGates', None) is None:
                 gate_val_list = self.image.get_extent()  # initial values, full frame
+                self.Pipeline.pipeData[track_name]['softwGates'] =\
+                    [[None]] * len(self.Pipeline.pipeData[track_name]['activePmtList'])
             else:  # read gates from input
-                gate_val_list = self.Pipeline.pipeData[track_name].get('softwGates', None)[0]
+                gate_val_list = self.Pipeline.pipeData[track_name].get('softwGates', None)[self.selected_pmt_ind]
             self.update_gate_ind(gate_val_list)
-            print('initial values for gate are: ', self.gates_list)
-            print('vmin/max, tmin/tmax: ', xmin, xmax, ymin, ymax)
-            print('elements v / t: ', len(self.v_array), len(self.t_array))
-
-            self.rect_selector = RectangleSelector(self.im_ax, self.rect_select_gates, drawtype='box',
-                                                   useblit=True, button=[1, 3],
-                                                   minspanx=abs(self.v_array[0] - self.v_array[1]),
-                                                   minspany=abs(self.t_array[0] - self.t_array[1]),
-                                                   spancoords='data')
-
             MPLPlotter.draw()
-            self.im_ax.set_ylabel('time [ns]')
-            self.im_ax.set_xlabel('DAC voltage [V]')
-            self.tproj_ax.set_xlabel('cts')
-            # self.tproj_ax.set_title('time projection')
-            self.tproj_ax.yaxis.set_ticks_position('right')
-            self.vproj_ax.set_ylabel('cts')
-            self.vproj_ax.set_xlabel('DAC voltage [V]')
-            # self.vproj_ax.set_title('voltage projection')
         except Exception as e:
             print('while starting this occured: ', e)
 
@@ -482,6 +448,7 @@ class NMPLImagePLot(Node):
             self.colorbar.update_normal(self.image)
             self.gate_data_and_plot()
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
+            pass
         except Exception as e:
             print('while updateing plot, this happened: ', e)
         return data
