@@ -353,9 +353,9 @@ class NMPLImagePLot(Node):
             self.patch.set_width((g_list[1] - g_list[0]))
             self.patch.set_height((g_list[3] - g_list[2]))
             self.tproj_line.set_xdata(
-                np.sum(data[g_ind [0]:g_ind [1] + 1, :], axis=0))
+                np.sum(data[g_ind[0]:g_ind[1] + 1, :], axis=0))
             self.vproj_line.set_ydata(
-                np.sum(data[:, g_ind [2]:g_ind [3] + 1], axis=1))
+                np.sum(data[:, g_ind[2]:g_ind[3] + 1], axis=1))
             # +1 due to syntax of slicing!
             self.tproj_ax.relim()
             self.tproj_ax.set_xmargin(0.05)
@@ -408,6 +408,10 @@ class NMPLImagePLot(Node):
 
     def start(self):
         try:
+            for ax in [val for sublist in self.axes for val in sublist]:
+                if ax:  # be sure ax is not 0
+                    MPLPlotter.clear_ax(ax)
+            self.gate_anno = None
             track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
             self.gates_list = [[None]] * len(self.Pipeline.pipeData[track_name]['activePmtList'])
             self.selected_pmt_ind = self.Pipeline.pipeData[track_name]['activePmtList'].index(self.selected_pmt)
@@ -429,12 +433,14 @@ class NMPLImagePLot(Node):
                                        self.volt_array[1] - self.volt_array[0],
                                        self.time_array[1] - self.time_array[0])
             if self.Pipeline.pipeData[track_name].get('softwGates', None) is None:
-                gate_val_list = self.image.get_extent()  # initial values, full frame
+                gate_val_list = [np.amin(self.volt_array), np.amax(self.volt_array),
+                                 np.amin(self.time_array), np.amax(self.time_array)]  # initial values, full frame
                 self.Pipeline.pipeData[track_name]['softwGates'] =\
                     [[None]] * len(self.Pipeline.pipeData[track_name]['activePmtList'])
             else:  # read gates from input
                 gate_val_list = self.Pipeline.pipeData[track_name].get('softwGates', None)[self.selected_pmt_ind]
             self.update_gate_ind(gate_val_list)
+
             MPLPlotter.draw()
         except Exception as e:
             print('while starting this occured: ', e)
