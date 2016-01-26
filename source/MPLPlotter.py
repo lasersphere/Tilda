@@ -78,6 +78,10 @@ def clear():
     plt.clf()
 
 
+def clear_ax(axes):
+    axes.cla()
+
+
 def draw():
     plt.draw()
 
