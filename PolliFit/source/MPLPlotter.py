@@ -7,8 +7,10 @@ Created on 29.04.2014
 from matplotlib.dates import DateFormatter
 from matplotlib.lines import Line2D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from mpl_toolkits.axes_grid1.axes_divider import AxesDivider
 from matplotlib import patches as patches
 from matplotlib.widgets import RectangleSelector
+from matplotlib.widgets import RadioButtons
 
 import datetime
 import matplotlib.pyplot as plt
@@ -109,13 +111,15 @@ def get_current_figure():
 
 def setup_image_figure():
     fig = plt.figure()
-    axes = [[0, 0, 0], [0, 0]]
+    axes = [[0, 0, 0], [0, 0, 0]]
 
     axes[0][0] = fig.add_subplot(111)
     divider = make_axes_locatable(axes[0][0])
     axes[0][1] = divider.append_axes("right", size="5%", pad=0.05)
     axes[0][2] = divider.append_axes("right", 2, pad=0.35, sharey=axes[0][0])
     axes[1][0] = divider.append_axes("bottom", 2, pad=0.1, sharex=axes[0][0])
+    axes[1][1] = plt.axes([0.6, 0.2, 0.15, 0.15], axisbg='white')
+    axes[1][2] = plt.axes([0.8, 0.2, 0.15, 0.15], axisbg='white')
 
     return fig, axes
 
@@ -194,3 +198,9 @@ def add_rect_select(axes, con_func, minspanx, minspany):
                                       minspany=minspany,
                                       spancoords='data')
     return rect_selector
+
+
+def add_radio_buttons(axes, labels, active, con_func):
+    radio_but = RadioButtons(axes, labels, active=active)
+    radio_con = radio_but.on_clicked(con_func)
+    return radio_but, radio_con

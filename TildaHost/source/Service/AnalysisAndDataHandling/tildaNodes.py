@@ -304,25 +304,30 @@ class NMPLImagePLot(Node):
         self.type = 'MPLImagePLot'
         self.fig, self.axes = MPLPlotter.setup_image_figure()
         self.im_ax = self.axes[0][0]
+        self.cb_ax = self.axes[0][1]
         self.tproj_ax = self.axes[0][2]
         self.vproj_ax = self.axes[1][0]
-        self.cb_ax = self.axes[0][1]
+        self.pmt_radio_ax = self.axes[1][1]
+        self.tr_radio_ax = self.axes[1][2]
         self.selected_pmt = pmt_num
-        # self.selected_pmt_ind = None
-        # self.image = None
-        # self.colorbar = None
-        # self.tproj_line = None
-        # self.vproj_line = None
-        # self.patch = None
-        # self.t_array = None
-        # self.v_array = None
-        # self.rect_selector = None
-        # self.gates_list = None  # [[[vals_pmt0],[ind_pmt0]], ...]
-        # self.buffer_data = None
+        self.selected_pmt_ind = None
+        self.image = None
+        self.colorbar = None
+        self.tproj_line = None
+        self.vproj_line = None
+        self.patch = None
+        self.gates_list = None  # [[[vals_pmt0],[ind_pmt0]], ...]
+        self.buffer_data = None
+        self.full_data = None
         self.aspect_img = 'auto'
         self.gate_anno = None
-        # self.volt_array = None
-        # self.time_array = None
+        self.volt_array = None
+        self.time_array = None
+        self.radio_buttons_pmt = None
+        self.radio_con = None
+        self.radio_buttons_tr = None
+        MPLPlotter.ion()
+        MPLPlotter.show()
 
     def rect_select_gates(self, eclick, erelease):
         """
@@ -343,7 +348,7 @@ class NMPLImagePLot(Node):
     def gate_data_and_plot(self, draw=False):
         """
         uses the currently stored gates (self.gates_list) to gate the stored data in
-         self.buffer_data and plots the result.
+        self.buffer_data and plots the result.
         """
         try:
             data = self.buffer_data
@@ -378,10 +383,9 @@ class NMPLImagePLot(Node):
         :return:self.gates_list, [[v_min, v_max, t_min, t_max], [v_min_ind, v_max_ind, t_min_ind, t_max_ind]]
         """
         try:
-            track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
             v_min, v_max = sorted((gates_val_list[0], gates_val_list[1]))
             v_min_ind, v_min, vdif = Form.find_closest_value_in_arr(self.volt_array, v_min)
-            v_max_ind, v_max, vdif  = Form.find_closest_value_in_arr(self.volt_array, v_max)
+            v_max_ind, v_max, vdif = Form.find_closest_value_in_arr(self.volt_array, v_max)
             
             t_min, t_max = sorted((gates_val_list[2], gates_val_list[3]))
             t_min_ind, t_min, tdif = Form.find_closest_value_in_arr(self.time_array, t_min)
@@ -389,7 +393,7 @@ class NMPLImagePLot(Node):
             gates_ind = [v_min_ind, v_max_ind, t_min_ind, t_max_ind]  # indices in data array
             gates_val_list = [v_min, v_max, t_min, t_max]
             self.gates_list[self.selected_pmt_ind] = [gates_val_list, gates_ind]
-            self.Pipeline.pipeData[track_name]['softwGates'][self.selected_pmt_ind] = gates_val_list
+            self.Pipeline.pipeData[self.selected_track[1]]['softwGates'][self.selected_pmt_ind] = gates_val_list
             if self.gate_anno is None:
                 self.gate_anno = self.im_ax.annotate('%s - %s V \n%s - %s ns'
                                                      % (self.volt_array[v_min_ind], self.volt_array[v_max_ind],
@@ -406,21 +410,17 @@ class NMPLImagePLot(Node):
         except Exception as e:
             print('while updating the indice this happened: ', e)
 
-    def start(self):
+    def setup_track(self, track_ind, track_name):
         try:
-            for ax in [val for sublist in self.axes for val in sublist]:
-                if ax:  # be sure ax is not 0
+            for ax in [val for sublist in self.axes for val in sublist][:-2]:
+                if ax:  # be sure ax is not 0, don't clear radiobuttons
                     MPLPlotter.clear_ax(ax)
             self.gate_anno = None
-            track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
             self.gates_list = [[None]] * len(self.Pipeline.pipeData[track_name]['activePmtList'])
-            self.selected_pmt_ind = self.Pipeline.pipeData[track_name]['activePmtList'].index(self.selected_pmt)
             self.volt_array = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=True)[track_ind]
             v_shape = self.volt_array.shape
             self.time_array = Form.create_time_axis_from_scan_dict(self.Pipeline.pipeData)[track_ind]
             t_shape = self.time_array.shape
-            MPLPlotter.ion()
-            MPLPlotter.show()
             self.image, self.colorbar = MPLPlotter.configure_image_plot(
                 self.fig, self.axes, self.Pipeline.pipeData, self.volt_array,
                 self.time_array, self.selected_pmt, track_name)
@@ -445,9 +445,53 @@ class NMPLImagePLot(Node):
         except Exception as e:
             print('while starting this occured: ', e)
 
+    def pmt_radio_buttons(self, label):
+        self.selected_pmt = int(label[3:])
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        self.selected_pmt_ind = self.Pipeline.pipeData[track_name]['activePmtList'].index(self.selected_pmt)
+        print('selected pmt index is: ', int(label[3:]))
+        self.setup_track(track_ind, track_name)
+        self.buffer_data = self.full_data[track_ind][self.selected_pmt_ind]
+        self.image.set_data(np.transpose(self.buffer_data))
+        self.colorbar.set_clim(0, np.amax(self.buffer_data))
+        self.colorbar.update_normal(self.image)
+        self.gate_data_and_plot()
+        self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
+        MPLPlotter.draw()
+
+    def tr_radio_buttons(self, label):
+        tr, tr_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
+        self.selected_track = (tr_list.index(int(label[5:])), label)
+        self.setup_track(*self.selected_track)
+        print('selected track index is: ', int(label[5:]))
+        self.buffer_data = self.full_data[self.selected_track[0]][self.selected_pmt_ind]
+        self.image.set_data(np.transpose(self.buffer_data))
+        self.colorbar.set_clim(0, np.amax(self.buffer_data))
+        self.colorbar.update_normal(self.image)
+        self.gate_data_and_plot()
+        self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
+        MPLPlotter.draw()
+
+    def start(self):
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        self.selected_track = (track_ind, track_name)
+        self.selected_pmt_ind = self.Pipeline.pipeData[self.selected_track[1]]['activePmtList'].index(self.selected_pmt)
+        self.setup_track(*self.selected_track)
+        if self.radio_buttons_pmt is None:
+            labels = ['pmt%s' %pmt for pmt in self.Pipeline.pipeData[self.selected_track[1]]['activePmtList']]
+            self.radio_buttons_pmt, self.radio_con = MPLPlotter.add_radio_buttons(
+                        self.pmt_radio_ax, labels, self.selected_pmt_ind, self.pmt_radio_buttons)
+        if self.radio_buttons_tr is None:
+            tr, tr_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
+            label_tr = ['track%s' % tr_num for tr_num in tr_list]
+            self.radio_buttons_tr, con = MPLPlotter.add_radio_buttons(
+                self.tr_radio_ax, label_tr, self.selected_track[0], self.tr_radio_buttons
+            )
+
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         try:
+            self.full_data = data
             self.buffer_data = data[track_ind][self.selected_pmt_ind]
             self.image.set_data(np.transpose(self.buffer_data))
             self.colorbar.set_clim(0, np.amax(self.buffer_data))
@@ -460,18 +504,7 @@ class NMPLImagePLot(Node):
         return data
 
     def clear(self):
-        # self.selected_pmt_ind = None
-        # self.image = None
-        # self.colorbar = None
-        # MPLPlotter.clear()
-        # self.tproj_line = None
-        # self.vproj_line = None
-        # self.patch = None
-        # self.t_array = None
-        # self.v_array = None
-        # self.rect_selector = None
-        # self.gates_list = None  # [[vals],[ind]]
-        # self.buffer_data = None
+        # i dont want to clear this window after completion of scan
         pass
 
 
