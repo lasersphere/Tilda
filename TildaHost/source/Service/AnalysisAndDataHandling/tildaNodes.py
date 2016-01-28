@@ -536,7 +536,7 @@ class NSingleArrayToSpecData(Node):
         self.spec_data.laserFreq = self.Pipeline.pipeData['isotopeData']['laserFreq']
         self.spec_data.col = [self.Pipeline.pipeData['track' + str(tr_num)]['colDirTrue']
                               for tr_num in tr_num_list]
-        self.spec_data.x = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData)
+        self.spec_data.x = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=True)
         self.spec_data.cts = Form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
         self.spec_data.err = Form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
 
@@ -656,6 +656,7 @@ class NCSSortRawDatatoArray(Node):
                                   'completede steps:  ' + str(pipeData[track_name]['nOfCompletedSteps']))
                     self.scalerArray = Form.create_default_scaler_array_from_scandict(pipeData)  # deletes all entries
                     scan_complete = False
+                pass
 
             elif j['firstHeader'] == ProgConfigsDict.programs['errorHandler']:  # error send from fpga
                 logging.error('fpga sends error code: ' + str(j['payload']) + 'or in binary: ' + str(
@@ -667,8 +668,8 @@ class NCSSortRawDatatoArray(Node):
             elif j['firstHeader'] == ProgConfigsDict.programs['continuousSequencer']:
                 '''scaler entry '''
                 self.totalnOfScalerEvents[track_ind] += 1
-                pipeData[track_name]['nOfCompletedSteps'] = self.totalnOfScalerEvents[
-                                                                track_ind] // 8  # floored Quotient
+                # pipeData[track_name]['nOfCompletedSteps'] = self.totalnOfScalerEvents[
+                # track_ind] // 8  # floored Quotient
                 # logging.debug('total completed steps: ' + str(pipeData[track_name]['nOfCompletedSteps']))
                 try:  # only add to scalerArray, when pmt is in activePmtList.
                     pmt_index = pipeData[track_name]['activePmtList'].index(j['secondHeader'])
