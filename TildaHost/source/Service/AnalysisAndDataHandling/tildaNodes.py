@@ -801,67 +801,6 @@ class NSPAddxAxis(Node):
 """ time resolved Sequencer Nodes """
 
 
-class NTRSSumBunches(Node):
-    def __init__(self):
-        """
-
-        Not up to date anymore need remodeling when working with TRS!!
-
-
-        sort all incoming events into scalerArray and voltArray.
-        All Scaler events will be summed up seperatly for each scaler.
-        Is specially build for the TRS data.
-
-        Input: List of tuples: [(firstHeader, secondHeader, headerIndex, payload)]
-        output: tuple of npArrays, (voltArray, timeArray, scalerArray)
-        """
-        super(NTRSSumBunches, self).__init__()
-        self.type = "TRSSumBunches"
-
-        self.curVoltIndex = 0
-
-    def start(self):
-        pipeData = self.pipeData
-        self.voltArray = np.zeros(pipeData['track0']['nOfSteps'], dtype=np.uint32)
-        self.timeArray = np.arange(pipeData['track0']['delayticks'] * 10,
-                                   (pipeData['track0']['delayticks'] * 10 + pipeData['track0'][
-                                       'nOfBins'] * 10), 10,
-                                   dtype=np.uint32)
-        self.scalerArray = np.zeros((pipeData['track0']['nOfSteps'],
-                                     pipeData['track0']['nOfBins'],
-                                     len(pipeData['track0']['activePmtList'])),
-                                    dtype=np.uint32)
-
-    def processData(self, data, pipeData):
-        for i, j in enumerate(data):
-            if j['headerIndex'] == 1:  # not MCS/TRS data
-                if j['firstHeader'] == ProgConfigsDict.programs['errorHandler']:  # error send from fpga
-                    print('fpga sends error code: ' + str(j['payload']))
-                elif j['firstHeader'] == ProgConfigsDict.programs['dac']:  # its a voltag step than
-                    pipeData['track0']['nOfCompletedSteps'] += 1
-                    self.curVoltIndex, self.voltArray = find_volt_in_array(j['payload'], self.voltArray)
-            elif j['headerIndex'] == 0:  # MCS/TRS Data
-                self.scalerArray = Form.trs_sum(j, self.curVoltIndex, self.scalerArray,
-                                                pipeData['track0']['activePmtList'])
-        if TrsAna.checkIfScanComplete(pipeData):
-            return (self.voltArray, self.timeArray, self.scalerArray)
-        else:
-            return None
-
-    def clear(self):
-        pipeData = self.Pipeline.pipeData
-        self.curVoltIndex = 0
-        self.voltArray = np.zeros(pipeData['track0']['nOfSteps'], dtype=np.uint32)
-        self.timeArray = np.arange(pipeData['track0']['delayticks'] * 10,
-                                   (pipeData['track0']['delayticks'] * 10 + pipeData['track0'][
-                                       'nOfBins'] * 10),
-                                   10, dtype=np.uint32)
-        self.scalerArray = np.zeros((pipeData['track0']['nOfSteps'],
-                                     pipeData['track0']['nOfBins'],
-                                     len(pipeData['track0']['activePmtList'])),
-                                    dtype=np.uint32)
-
-
 class NTRSSaveSum(Node):
     def __init__(self):
         """

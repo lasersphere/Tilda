@@ -42,12 +42,6 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
 
     pipe = Pipeline(start)
 
-
-    # axes[1][1] = fig.add_axes([0, 0, 0.5, 0.5])
-    # axes[1][1].annotate('Hello', xy=(0,0))
-    # plt.text(1.7, 0, 'hello')
-    # fig, axes = plt.subplots(nrows=2, ncols=2)
-
     pipe.pipeData = initPipeData(initialScanPars)
     # walk = start.attach(SN.NPrint())
     # walk = start.attach(TN.NSaveRawData())
@@ -58,15 +52,15 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
     walk = walk.attach(TN.NRemoveTrackCompleteFlag())
     walk = walk.attach(TN.NCSSum())
 
-    pl_branch = walk.attach(TN.NMPLImagePLot(0))
-    pl_branch = pl_branch.attach(TN.NMPlDrawPlot())
+    pl_branch_2d = walk.attach(TN.NMPLImagePLot(0))
+    pl_branch_2d = pl_branch_2d.attach(TN.NMPlDrawPlot())
 
     walk = walk.attach(TN.NCheckIfTrackComplete())
 
     # pl_branch = walk.attach(TN.NMPLImagePLot())
 
-    # walk = walk.attach(TN.NAddWorkingTime(True))
-    # walk = walk.attach(TN.NSaveIncomDataForActiveTrack())
+    walk = walk.attach(TN.NAddWorkingTime(True))
+    walk = walk.attach(TN.NSaveIncomDataForActiveTrack())
     # walk = walk.attach(SN.NPrint())
 
     return pipe
