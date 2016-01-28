@@ -10,7 +10,7 @@ import ctypes
 '''Bitfile Signature:'''
 bitfileSignature = '52CC5E3A5AA826A7532D2637CD2DACFA'
 '''Bitfile Path:'''
-bitfilePath = 'E:/Workspace/PyCharm/Tilda/TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV107.lvbitx'
+bitfilePath = 'D:/Workspace/PyCharm/Tilda/TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV107.lvbitx'
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''
