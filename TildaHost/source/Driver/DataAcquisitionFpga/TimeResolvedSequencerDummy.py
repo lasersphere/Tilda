@@ -16,7 +16,6 @@ import Service.Formating as Form
 import Service.Scan.draftScanParameters as DftSc
 
 
-
 class TimeResolvedSequencer(Sequencer, MeasureVolt):
     def __init__(self):
         """

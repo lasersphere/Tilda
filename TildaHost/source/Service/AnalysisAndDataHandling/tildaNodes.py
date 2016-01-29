@@ -14,7 +14,6 @@ from polliPipe.node import Node
 import Service.Formating as Form
 import Service.FolderAndFileHandling as Filehandle
 import Service.ProgramConfigs as ProgConfigsDict
-import Service.AnalysisAndDataHandling.trsDataAnalysis as TrsAna
 import Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
 from Service.AnalysisAndDataHandling.InfoHandler import InfoHandler as InfHandl
 import MPLPlotter
@@ -113,6 +112,9 @@ class NCheckIfTrackComplete(Node):
     def __init__(self):
         """
         this will only pass scalerArrays to the next node, if the track is complete.
+        Therefore the track is checked for 'nOfCompletedSteps'
+        input: anything
+        output same as input, if track complete
         """
         super(NCheckIfTrackComplete, self).__init__()
         self.type = 'CheckIfTrackComplete'
@@ -122,6 +124,30 @@ class NCheckIfTrackComplete(Node):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
         if CsAna.checkIfTrackComplete(pipeData, track_name):
             ret = data
+        return ret
+
+
+class NCheckIfMeasurementComplete(Node):
+    def __init__(self):
+        """
+        this will only pass the incoming data to the next node,
+        if the measurement is complete.
+        Therefore all tracks are checked for 'nOfCompletedSteps'
+        input: anything
+        output same as input, if measurement complete
+        """
+        super(NCheckIfMeasurementComplete, self).__init__()
+        self.type = 'NCheckIfMeasurementComplete'
+
+    def processData(self, data, pipeData):
+        ret = None
+        tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
+        for track_ind, tr_num in enumerate(track_list):
+            track_name = 'track%s' % tr_num
+            if CsAna.checkIfTrackComplete(pipeData, track_name):
+                ret = data
+            else:
+                return None
         return ret
 
 
@@ -177,7 +203,7 @@ class NAddWorkingTime(Node):
 class NSaveIncomDataForActiveTrack(Node):
     def __init__(self):
         """
-        function to save all incoming CS-Sum-Data.
+        Node to save the data of the active track, when data is passed to it.
         input: complete, scalerArray containing all tracks.
         output: same as input
         """
@@ -193,6 +219,28 @@ class NSaveIncomDataForActiveTrack(Node):
         xmlAddCompleteTrack(rootEle, pipeData, data[track_ind], track_name)
         TildaTools.save_xml(rootEle, file, False)
         logging.info('saving sum to: ' + str(file))
+        return data
+
+
+class NSaveAllTracks(Node):
+    def __init__(self):
+        """
+        Node to save everything in data for all tracks.
+        input: complete, scalerArray containing all tracks.
+        output: same as input
+        """
+        super(NSaveAllTracks, self).__init__()
+        self.type = 'SaveAllTracks'
+
+    def processData(self, data, pipeData):
+        pipeInternals = pipeData['pipeInternals']
+        file = pipeInternals['activeXmlFilePath']
+        rootEle = TildaTools.load_xml(file)
+        tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
+        for track_ind, tr_num in enumerate(track_list):
+            track_name = 'track%s' % tr_num
+            xmlAddCompleteTrack(rootEle, pipeData, data[track_ind], track_name)
+        TildaTools.save_xml(rootEle, file, False)
         return data
 
 
@@ -326,6 +374,7 @@ class NMPLImagePLot(Node):
         self.radio_buttons_pmt = None
         self.radio_con = None
         self.radio_buttons_tr = None
+        self.selected_track = None
         MPLPlotter.ion()
         MPLPlotter.show()
 
@@ -711,7 +760,7 @@ class NCSSum(Node):
         function to sum up all scalerArrays.
         Since no value is emitted twice, arrays can be directly added
         input: list of scalerArrays, complete or uncomplete
-        output: scalerArray containing the sum of each scaler, voltage
+        output: scalerArray containing the sum of each scaler, for all tracks
         """
         super(NCSSum, self).__init__()
         self.type = 'CSSum'
@@ -802,24 +851,29 @@ class NSPAddxAxis(Node):
 """ time resolved Sequencer Nodes """
 
 
-class NTRSSaveSum(Node):
+class NTRSProjectize(Node):
+    """
+    Node for projectize incoming 2d Data on the voltage and time axis.
+    jnput:
+    output:
+    """
+
     def __init__(self):
-        """
-        save the summed up data
-        incoming must always be a tuple of form:
-        (self.voltArray, self.timeArray, self.scalerArray)
-        Note: will always save when data is passed to it. So only send complete structures.
-        """
-        super(NTRSSaveSum, self).__init__()
-        self.type = "NTRSSaveSum"
+        super(NTRSProjectize, self).__init__()
+        self.type = 'TRSProjectize'
 
     def processData(self, data, pipeData):
-        pipeInternals = pipeData['pipeInternals']
-        file = pipeInternals['activeXmlFilePath']
-        rootEle = TildaTools.load_xml(file)
-        xmlAddCompleteTrack(rootEle, pipeData, data)
-        TildaTools.save_xml(rootEle, file, False)
-        return data
+        tracks, tr_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
+        gatevals = []
+        for tr_ind, tr_num in enumerate(tr_list):
+            tr_name = 'track%s' % tr_num
+            try:
+                gatevals.append([pipeData[tr_name]['softwGates']])
+                gatevals.append(gateindices)
+            except Exception as e:
+                gatevals.append(Ä'tbd')
+        # t_proj_xdata = np.sum(data[g_ind[0]:g_ind[1] + 1, :], axis=0)
+        # v_proj_ydata = np.sum(data[:, g_ind[2]:g_ind[3] + 1], axis=1)
 
 
 """ QT Signal Nodes """

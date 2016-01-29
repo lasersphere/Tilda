@@ -9,6 +9,7 @@ import ast
 import os
 
 import numpy as np
+import logging
 from lxml import etree as ET
 
 
@@ -68,6 +69,7 @@ def save_xml(root_Ele, path, pretty=True):
     """
     Convert a Root lxml Element into an ElementTree and save it to a file
     """
+    logging.debug('saving .xml file: %s' % path)
     np.set_printoptions(threshold=np.nan)
     tree = ET.ElementTree(root_Ele)
     tree.write(path, pretty_print=pretty)

@@ -60,7 +60,10 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
     # pl_branch = walk.attach(TN.NMPLImagePLot())
 
     walk = walk.attach(TN.NAddWorkingTime(True))
-    walk = walk.attach(TN.NSaveIncomDataForActiveTrack())
+    walk = walk.attach(TN.NCheckIfMeasurementComplete())
+    walk = walk.attach(TN.NSaveAllTracks())
+    walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
+    # walk = walk.attach(TN.NSaveIncomDataForActiveTrack())
     # walk = walk.attach(SN.NPrint())
 
     return pipe
@@ -117,7 +120,11 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     finalsum = finalsum.attach(TN.NMPlDrawPlot())
 
     walk = walk.attach(TN.NAddWorkingTime(True))
-    walk = walk.attach(TN.NSaveIncomDataForActiveTrack())
+    # walk = walk.attach(TN.NSaveIncomDataForActiveTrack())
+    walk = walk.attach(TN.NCheckIfMeasurementComplete())
+    walk = walk.attach(TN.NSaveAllTracks())
+    walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
+
     return pipe
 
 

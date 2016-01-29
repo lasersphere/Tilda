@@ -257,7 +257,8 @@ class Main(QtCore.QObject):
                                                           self.scan_pars[self.scan_progress['activeIso']],
                                                           self.scan_start_time)
         if progress_dict is not None:
-            self.scan_prog_call_back_sig_gui.emit(progress_dict)
+            if self.scan_prog_call_back_sig_gui is not None:
+                self.scan_prog_call_back_sig_gui.emit(progress_dict)
 
     def subscribe_to_scan_prog(self, callback_signal):
         """
