@@ -854,26 +854,57 @@ class NSPAddxAxis(Node):
 class NTRSProjectize(Node):
     """
     Node for projectize incoming 2d Data on the voltage and time axis.
-    jnput:
-    output:
+    jnput: "2d" data as cmmin from NSum for Trs
+    output: [[v_proj_tr0_pmt0, t_proj_tr0_pmt0], ... ]
     """
 
     def __init__(self):
         super(NTRSProjectize, self).__init__()
         self.type = 'TRSProjectize'
+        self.volt_array = None
+        self.time_array = None
+
+    def start(self):
+        self.volt_array = Form.create_x_axis_from_scand_dict(
+            self.Pipeline.pipeData, as_voltage=True)
+        self.time_array = Form.create_time_axis_from_scan_dict(
+            self.Pipeline.pipeData)
 
     def processData(self, data, pipeData):
         tracks, tr_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
-        gatevals = []
+        ret = []
         for tr_ind, tr_num in enumerate(tr_list):
             tr_name = 'track%s' % tr_num
+            gates_tr = []
             try:
-                gatevals.append([pipeData[tr_name]['softwGates']])
-                gatevals.append(gateindices)
-            except Exception as e:
-                gatevals.append(Ä'tbd')
-        # t_proj_xdata = np.sum(data[g_ind[0]:g_ind[1] + 1, :], axis=0)
-        # v_proj_ydata = np.sum(data[:, g_ind[2]:g_ind[3] + 1], axis=1)
+                gates_val_lists = pipeData[tr_name]['softwGates']  # list of list for each pmt.
+                for gates_val_list in gates_val_lists:
+                    v_min, v_max = sorted((gates_val_list[0], gates_val_list[1]))
+                    v_min_ind, v_min, vdif = Form.find_closest_value_in_arr(self.volt_array[tr_ind], v_min)
+                    v_max_ind, v_max, vdif = Form.find_closest_value_in_arr(self.volt_array[tr_ind], v_max)
+
+                    t_min, t_max = sorted((gates_val_list[2], gates_val_list[3]))
+                    t_min_ind, t_min, tdif = Form.find_closest_value_in_arr(self.time_array[tr_ind], t_min)
+                    t_max_ind, t_max, tdif = Form.find_closest_value_in_arr(self.time_array[tr_ind], t_max)
+                    gates_tr.append([v_min_ind, v_max_ind, t_min_ind, t_max_ind])  # indices in data array
+            except Exception as e:  # if gates_tr are messud up, use full scan range as gates_tr:
+                logging.debug('loading gates did not work, gates were: %s \n\n Exception: %s '
+                              % (gates_val_lists, e))
+                v_min = round(self.volt_array[tr_ind][0], 5)
+                v_max = round(self.volt_array[tr_ind][-1], 5)
+                t_min = self.time_array[tr_ind][0]
+                t_max = self.time_array[tr_ind][-1]
+                gates_val_list = [v_min, v_max, t_min, t_max]
+                pipeData[tr_name]['softwGates'] = [gates_val_list for pmt in pipeData[tr_name]['activePmtList']]
+                gates_pmt = [0, len(self.volt_array[tr_ind]) - 1, 0, len(self.time_array[tr_ind]) - 1]
+                for pmt in pipeData[tr_name]['activePmtList']:
+                    gates_tr.append(gates_pmt)
+            finally:
+                for pmt_ind, pmt_gate in enumerate(gates_tr):
+                    t_proj_xdata = np.sum(data[tr_ind][pmt_ind][pmt_gate[0]:pmt_gate[1] + 1, :], axis=0)
+                    v_proj_ydata = np.sum(data[tr_ind][pmt_ind][:, pmt_gate[2]:pmt_gate[3] + 1], axis=1)
+                    ret.append([v_proj_ydata, t_proj_xdata])
+        return ret
 
 
 """ QT Signal Nodes """

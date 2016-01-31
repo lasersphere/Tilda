@@ -63,8 +63,10 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
     walk = walk.attach(TN.NCheckIfMeasurementComplete())
     walk = walk.attach(TN.NSaveAllTracks())
     walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
+    walk = walk.attach(TN.NTRSProjectize())
+
     # walk = walk.attach(TN.NSaveIncomDataForActiveTrack())
-    # walk = walk.attach(SN.NPrint())
+    walk = walk.attach(SN.NPrint())
 
     return pipe
 
