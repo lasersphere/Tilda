@@ -244,6 +244,29 @@ class NSaveAllTracks(Node):
         return data
 
 
+class NSaveProjection(Node):
+    """
+    Node for saving the incoming projectin data.
+    input: [[[v_proj_tr0_pmt0, v_proj_tr0_pmt1, ... ], [t_proj_tr0_pmt0, t_proj_tr0_pmt1, ... ]], ...]
+    output: [[[v_proj_tr0_pmt0, v_proj_tr0_pmt1, ... ], [t_proj_tr0_pmt0, t_proj_tr0_pmt1, ... ]], ...]
+    """
+    def __init__(self):
+        super(NSaveProjection, self).__init__()
+        self.type = 'SaveProjection'
+
+    def processData(self, data, pipeData):
+        pipeInternals = pipeData['pipeInternals']
+        file = pipeInternals['activeXmlProjFilePath']
+        rootEle = TildaTools.load_xml(file)
+        tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
+        for track_ind, tr_num in enumerate(track_list):
+            track_name = 'track%s' % tr_num
+            xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][0], track_name, datatype='voltage_projection')
+            xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][1], track_name, datatype='time_projection')
+        TildaTools.save_xml(rootEle, file, False)
+        return data
+
+
 class NSaveRawData(Node):
     def __init__(self):
         """
@@ -357,6 +380,7 @@ class NMPLImagePLot(Node):
         self.vproj_ax = self.axes[1][0]
         self.pmt_radio_ax = self.axes[1][1]
         self.tr_radio_ax = self.axes[1][2]
+        self.save_bt_ax = self.axes[1][3]
         self.selected_pmt = pmt_num
         self.selected_pmt_ind = None
         self.image = None
@@ -375,6 +399,7 @@ class NMPLImagePLot(Node):
         self.radio_con = None
         self.radio_buttons_tr = None
         self.selected_track = None
+        self.save_button = None
         MPLPlotter.ion()
         MPLPlotter.show()
 
@@ -461,8 +486,8 @@ class NMPLImagePLot(Node):
 
     def setup_track(self, track_ind, track_name):
         try:
-            for ax in [val for sublist in self.axes for val in sublist][:-2]:
-                if ax:  # be sure ax is not 0, don't clear radiobuttons
+            for ax in [val for sublist in self.axes for val in sublist][:-3]:
+                if ax:  # be sure ax is not 0, don't clear radio buttons and buttons
                     MPLPlotter.clear_ax(ax)
             self.gate_anno = None
             self.gates_list = [[None]] * len(self.Pipeline.pipeData[track_name]['activePmtList'])
@@ -521,6 +546,21 @@ class NMPLImagePLot(Node):
         self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
         MPLPlotter.draw()
 
+    def save_proj(self, bool):
+        pipeData = self.Pipeline.pipeData
+        time_arr = Form.create_time_axis_from_scan_dict(self.Pipeline.pipeData)
+        v_arr = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=True)
+        data = Form.gate_all_data(pipeData, self.full_data, time_arr, v_arr)
+        pipeInternals = pipeData['pipeInternals']
+        file = pipeInternals['activeXmlProjFilePath']
+        rootEle = TildaTools.load_xml(file)
+        tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
+        for track_ind, tr_num in enumerate(track_list):
+            track_name = 'track%s' % tr_num
+            xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][0], track_name, datatype='voltage_projection')
+            xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][1], track_name, datatype='time_projection')
+        TildaTools.save_xml(rootEle, file, False)
+
     def start(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
         self.selected_track = (track_ind, track_name)
@@ -536,6 +576,9 @@ class NMPLImagePLot(Node):
             self.radio_buttons_tr, con = MPLPlotter.add_radio_buttons(
                 self.tr_radio_ax, label_tr, self.selected_track[0], self.tr_radio_buttons
             )
+        # self.radio_buttons_tr.set_active(self.selected_track[0])  # not avialable until mpl 1.5.0
+        if self.save_button is None:
+            self.save_button, button_con = MPLPlotter.add_button(self.save_bt_ax, 'save_proj', self.save_proj)
 
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
@@ -855,7 +898,7 @@ class NTRSProjectize(Node):
     """
     Node for projectize incoming 2d Data on the voltage and time axis.
     jnput: "2d" data as cmmin from NSum for Trs
-    output: [[v_proj_tr0_pmt0, t_proj_tr0_pmt0], ... ]
+    output: [[[v_proj_tr0_pmt0, v_proj_tr0_pmt1, ... ], [t_proj_tr0_pmt0, t_proj_tr0_pmt1, ... ]], ...]
     """
 
     def __init__(self):
@@ -871,40 +914,7 @@ class NTRSProjectize(Node):
             self.Pipeline.pipeData)
 
     def processData(self, data, pipeData):
-        tracks, tr_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
-        ret = []
-        for tr_ind, tr_num in enumerate(tr_list):
-            tr_name = 'track%s' % tr_num
-            gates_tr = []
-            try:
-                gates_val_lists = pipeData[tr_name]['softwGates']  # list of list for each pmt.
-                for gates_val_list in gates_val_lists:
-                    v_min, v_max = sorted((gates_val_list[0], gates_val_list[1]))
-                    v_min_ind, v_min, vdif = Form.find_closest_value_in_arr(self.volt_array[tr_ind], v_min)
-                    v_max_ind, v_max, vdif = Form.find_closest_value_in_arr(self.volt_array[tr_ind], v_max)
-
-                    t_min, t_max = sorted((gates_val_list[2], gates_val_list[3]))
-                    t_min_ind, t_min, tdif = Form.find_closest_value_in_arr(self.time_array[tr_ind], t_min)
-                    t_max_ind, t_max, tdif = Form.find_closest_value_in_arr(self.time_array[tr_ind], t_max)
-                    gates_tr.append([v_min_ind, v_max_ind, t_min_ind, t_max_ind])  # indices in data array
-            except Exception as e:  # if gates_tr are messud up, use full scan range as gates_tr:
-                logging.debug('loading gates did not work, gates were: %s \n\n Exception: %s '
-                              % (gates_val_lists, e))
-                v_min = round(self.volt_array[tr_ind][0], 5)
-                v_max = round(self.volt_array[tr_ind][-1], 5)
-                t_min = self.time_array[tr_ind][0]
-                t_max = self.time_array[tr_ind][-1]
-                gates_val_list = [v_min, v_max, t_min, t_max]
-                pipeData[tr_name]['softwGates'] = [gates_val_list for pmt in pipeData[tr_name]['activePmtList']]
-                gates_pmt = [0, len(self.volt_array[tr_ind]) - 1, 0, len(self.time_array[tr_ind]) - 1]
-                for pmt in pipeData[tr_name]['activePmtList']:
-                    gates_tr.append(gates_pmt)
-            finally:
-                for pmt_ind, pmt_gate in enumerate(gates_tr):
-                    t_proj_xdata = np.sum(data[tr_ind][pmt_ind][pmt_gate[0]:pmt_gate[1] + 1, :], axis=0)
-                    v_proj_ydata = np.sum(data[tr_ind][pmt_ind][:, pmt_gate[2]:pmt_gate[3] + 1], axis=1)
-                    ret.append([v_proj_ydata, t_proj_xdata])
-        return ret
+        return Form.gate_all_data(pipeData, data, self.time_array, self.volt_array)
 
 
 """ QT Signal Nodes """

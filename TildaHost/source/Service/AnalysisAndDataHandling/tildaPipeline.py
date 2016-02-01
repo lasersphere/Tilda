@@ -65,8 +65,8 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
     walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
     walk = walk.attach(TN.NTRSProjectize())
 
-    # walk = walk.attach(TN.NSaveIncomDataForActiveTrack())
-    walk = walk.attach(SN.NPrint())
+    walk = walk.attach(TN.NSaveProjection())
+    # walk = walk.attach(SN.NPrint())
 
     return pipe
 
@@ -153,7 +153,11 @@ def initPipeData(initialScanPars):
     pipeData = initialScanPars
 
     pipeData['pipeInternals']['curVoltInd'] = 0
-    pipeData['pipeInternals']['activeXmlFilePath'] = FaFH.createXmlFileOneIsotope(pipeData)
+    xml_file_name = FaFH.createXmlFileOneIsotope(pipeData)
+    pipeData['pipeInternals']['activeXmlFilePath'] = xml_file_name
+    if pipeData['isotopeData']['type'] in ['trs', 'trsdummy']:
+        pipeData['pipeInternals']['activeXmlProjFilePath'] = FaFH.createXmlFileOneIsotope(
+            pipeData, 'trs_proj', xml_file_name.replace('.xml', '_proj.xml'))
     return pipeData
 
 

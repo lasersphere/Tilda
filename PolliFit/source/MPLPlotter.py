@@ -11,6 +11,7 @@ from mpl_toolkits.axes_grid1.axes_divider import AxesDivider
 from matplotlib import patches as patches
 from matplotlib.widgets import RectangleSelector
 from matplotlib.widgets import RadioButtons
+from matplotlib.widgets import Button
 
 import datetime
 import matplotlib.pyplot as plt
@@ -111,7 +112,7 @@ def get_current_figure():
 
 def setup_image_figure():
     fig = plt.figure()
-    axes = [[0, 0, 0], [0, 0, 0]]
+    axes = [[0, 0, 0], [0, 0, 0, 0]]
 
     axes[0][0] = fig.add_subplot(111)
     divider = make_axes_locatable(axes[0][0])
@@ -120,6 +121,7 @@ def setup_image_figure():
     axes[1][0] = divider.append_axes("bottom", 2, pad=0.1, sharex=axes[0][0])
     axes[1][1] = plt.axes([0.6, 0.2, 0.15, 0.15], axisbg='white')
     axes[1][2] = plt.axes([0.8, 0.2, 0.15, 0.15], axisbg='white')
+    axes[1][3] = plt.axes([0.75, 0.1, 0.15, 0.05], axisbg='white')
 
     return fig, axes
 
@@ -204,3 +206,9 @@ def add_radio_buttons(axes, labels, active, con_func):
     radio_but = RadioButtons(axes, labels, active=active)
     radio_con = radio_but.on_clicked(con_func)
     return radio_but, radio_con
+
+
+def add_button(axes, label, con_func):
+    button = Button(axes, label)
+    button_con = button.on_clicked(con_func)
+    return button, button_con

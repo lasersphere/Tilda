@@ -8,6 +8,7 @@ Created on '07.05.2015'
 import logging
 import os
 import pickle
+from copy import deepcopy
 
 import numpy as np
 
@@ -48,30 +49,34 @@ def nameFile(path, subdir, fileName, prefix='', suffix='.tld'):
     return file
 
 
-def createXmlFileOneIsotope(scanDict):
+def createXmlFileOneIsotope(scanDict, seq_type=None, filename=None):
     """
     creates an .xml file for one Isotope. Using the Filestructure as stated in OneNote.
     :param scanDict: {'isotopeData', 'track0', 'pipeInternals'}
     :return:str, filename
     """
-    isodict = scanDict['isotopeData']
+    isodict = deepcopy(scanDict['isotopeData'])
+    if seq_type is not None:
+        isodict['type'] = seq_type
     root = xmlCreateIsotope(isodict)
-    filename = nameFileXml(scanDict)
+    if filename is None:
+        path = scanDict['pipeInternals']['workingDirectory']
+        filename = nameFileXml(isodict, path)
     print('creating .xml File: ' + filename)
     save_xml(root, filename, False)
     return filename
 
 
-def nameFileXml(scanDict):
+def nameFileXml(isodict, path):
     """
-    finds a filename for the xml file
+    finds a filename for the xml file in subdirectory 'sums'
     :param scanDict: {'isotopeData', 'track0', 'pipeInternals'}
     :return:str, filename
     """
-    path = scanDict['pipeInternals']['workingDirectory']
-    nIso = scanDict['isotopeData']['isotope']
-    type = scanDict['isotopeData']['type']
-    filename = nameFile(path, 'sums', nIso, str(type + '_sum'), '.xml')
+    # path = scanDict['pipeInternals']['workingDirectory']
+    nIso = isodict['isotope']
+    seq_type = isodict['type']
+    filename = nameFile(path, 'sums', nIso, seq_type, '.xml')
     return filename
 
 
