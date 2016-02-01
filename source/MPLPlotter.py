@@ -148,7 +148,7 @@ def configure_image_plot(fig, axes, pipeData, volt_array_tr, time_array_tr, pmt_
     v_min = volt_array_tr[0]
     v_max = volt_array_tr[-1]
     t_min = time_array_tr[0] - 5
-    t_max = time_array_tr[-1] - 5
+    t_max = time_array_tr[-1] + 5
     # -5 due to resolution of 10ns so events with timestamp e.g. 10 (= 100ns) will be plotted @ 95 to 105 ns
 
     extent = [v_min, v_max, t_min, t_max]
