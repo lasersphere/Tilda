@@ -98,8 +98,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         """
         updates the track list in the gui
         """
+        self.listWidget.clear()
         if self.active_iso:
-            self.listWidget.clear()
             scan_d = Cfg._main_instance.scan_pars.get(self.active_iso)
             t, track_num_lis = SdOp.get_number_of_tracks_in_scan_dict(scan_d)
             newitems = ['track' + str(tr) for tr in track_num_lis]
@@ -124,11 +124,9 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
             Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
         logging.debug('setting up isotope')
         SetupIsotopeUi(self)
-        if self.active_iso:
-            self.update_track_list()
-            self.update_win_title()
-            Cfg._main_instance.send_state()  # request state from main for enabling go
-
+        self.update_track_list()
+        self.update_win_title()
+        Cfg._main_instance.send_state()  # request state from main for enabling go
 
     def save_to_db(self):
         """

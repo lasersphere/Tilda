@@ -81,6 +81,8 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         if iso_text:
             self.scan_ctrl_win.active_iso = Cfg._main_instance.add_iso_to_scan_pars(iso_text,
                                                     self.comboBox_sequencer_select.currentText())
+        else:
+            self.scan_ctrl_win.active_iso = None
         self.close()
 
     def cancel(self):
