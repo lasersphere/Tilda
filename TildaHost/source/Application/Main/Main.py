@@ -316,6 +316,7 @@ class Main(QtCore.QObject):
                     # stop pipeline before starting with next track again, do not clear.
                     self.set_state(MainState.load_track)
         elif self.abort_scan:  # abort the scan and return to idle state
+            print('abort was pressed ', self.abort_scan)
             self.scan_main.abort_scan()
             self.scan_main.stop_measurement()
             self.set_state(MainState.idle)

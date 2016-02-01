@@ -124,9 +124,10 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
             Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
         logging.debug('setting up isotope')
         SetupIsotopeUi(self)
-        self.update_track_list()
-        self.update_win_title()
-        Cfg._main_instance.send_state()  # request state from main for enabling go
+        if self.active_iso:
+            self.update_track_list()
+            self.update_win_title()
+            Cfg._main_instance.send_state()  # request state from main for enabling go
 
 
     def save_to_db(self):

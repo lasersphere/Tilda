@@ -29,6 +29,9 @@ class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
         self.progressBar_track.setMaximum(100)
         self.progressBar_overall.setMaximum(100)
 
+        self.progressBar_overall.setValue(0)
+        self.progressBar_track.setValue(0)
+
         """ connect buttons etc. """
         self.pushButton_abort.clicked.connect(self.abort)
         self.checkBox.clicked.connect(self.halt)
