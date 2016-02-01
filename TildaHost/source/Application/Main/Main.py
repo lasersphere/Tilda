@@ -53,8 +53,9 @@ class Main(QtCore.QObject):
         self.halt_scan = False
 
         try:
-            self.work_dir_changed('E:/lala')
-            # self.work_dir_changed('C:/temp108')
+            # pass
+            # self.work_dir_changed('E:/lala')
+            self.work_dir_changed('C:/temp108')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state(MainState.idle)
@@ -204,13 +205,13 @@ class Main(QtCore.QObject):
             self.database = workdir_str + '/' + os.path.split(workdir_str)[1] + '.sqlite'
             DbOp.createTildaDB(self.database)
             logging.debug('working directory has been set to: ' + str(workdir_str))
-            return workdir_str
         except Exception as e:
             logging.error('while loading db from: ' + workdir_str + ' this happened:' + str(e))
             self.database = None
             self.working_directory = None
         finally:
             self.send_state()
+            return self.working_directory
 
     """ scanning """
 

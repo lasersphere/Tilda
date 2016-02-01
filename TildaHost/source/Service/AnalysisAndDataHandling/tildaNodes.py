@@ -570,13 +570,14 @@ class NMPLImagePLot(Node):
             labels = ['pmt%s' %pmt for pmt in self.Pipeline.pipeData[self.selected_track[1]]['activePmtList']]
             self.radio_buttons_pmt, self.radio_con = MPLPlotter.add_radio_buttons(
                         self.pmt_radio_ax, labels, self.selected_pmt_ind, self.pmt_radio_buttons)
+        # self.radio_buttons_pmt.set_active(self.selected_pmt_ind)  # not available before mpl 1.5.0
         if self.radio_buttons_tr is None:
             tr, tr_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
             label_tr = ['track%s' % tr_num for tr_num in tr_list]
             self.radio_buttons_tr, con = MPLPlotter.add_radio_buttons(
                 self.tr_radio_ax, label_tr, self.selected_track[0], self.tr_radio_buttons
             )
-        # self.radio_buttons_tr.set_active(self.selected_track[0])  # not avialable until mpl 1.5.0
+        # self.radio_buttons_tr.set_active(self.selected_track[0])  # not available before mpl 1.5.0
         if self.save_button is None:
             self.save_button, button_con = MPLPlotter.add_button(self.save_bt_ax, 'save_proj', self.save_proj)
 

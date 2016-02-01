@@ -80,6 +80,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def update_status(self, status_dict):
         """
+        will be called when the Main changes its status
         status_dict keys: ['workdir', 'status', 'database', 'laserfreq', 'accvolt']
         """
         self.label_workdir_set.setText(str(status_dict.get('workdir', '')))
@@ -94,14 +95,15 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         """ will open a modal file dialog and set all workingdirectories of the pipeline to the chosen folder """
         workdir = QtWidgets.QFileDialog.getExistingDirectory(QtWidgets.QFileDialog(),
             'choose working directory', os.path.expanduser('~'))
-        Cfg._main_instance.work_dir_changed(workdir)
+        return Cfg._main_instance.work_dir_changed(workdir)
 
     def open_version_win(self):
         VersionUi()
 
     def open_scan_ctrl_win(self):
         if Cfg._main_instance.working_directory is None:
-            self.choose_working_dir()
+            if self.choose_working_dir() is None:
+                return None
         self.act_scan_wins.append(ScanControlUi(self))
 
     def scan_control_win_closed(self, win_ref):

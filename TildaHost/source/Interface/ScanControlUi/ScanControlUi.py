@@ -37,6 +37,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.listWidget.doubleClicked.connect(self.work_on_existing_track)
 
         self.main_gui = main_gui
+        self.update_win_title()
+        self.enable_go(False)
 
         self.show()
 
@@ -45,7 +47,9 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         wrapper for enabling the Go button, True-> enabled
         will be disabled via callback signal in MainUi when status in Main is not idle
         """
-        self.actionGo.setEnabled(bool)
+        enable = bool and self.active_iso is not None
+        print('enabling Go? , ', enable, self.active_iso, bool)
+        self.actionGo.setEnabled(enable)
 
     def go(self):
         """
@@ -113,7 +117,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
 
     def setup_iso(self):
         """
-        opens a dialog for choosing the isotope.
+        opens a dialog for choosing the isotope. This Dialog is non Modal.
+        -> Blocks other executions
         """
         if self.active_iso:
             Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
@@ -121,6 +126,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         SetupIsotopeUi(self)
         self.update_track_list()
         self.update_win_title()
+        Cfg._main_instance.send_state()  # request state from main for enabling go
+
 
     def save_to_db(self):
         """
