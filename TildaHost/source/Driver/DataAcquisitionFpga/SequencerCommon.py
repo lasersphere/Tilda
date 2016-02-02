@@ -179,6 +179,7 @@ class Sequencer(FPGAInterfaceHandling):
         halts the Mesaruement after one loop is finished
         :return: True if success
         """
+        print('setting halt to: ', val)
         self.ReadWrite(self.config.halt, val)
         return self.checkFpgaStatus()
 

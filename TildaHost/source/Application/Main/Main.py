@@ -48,6 +48,7 @@ class Main(QtCore.QObject):
         self.iso_scan_process = None
         self.scan_pars = {}  # {iso0: scan_dict, iso1: scan_dict} -> iso is unique
         self.scan_progress = {}  # {activeIso: str, activeTrackNum: int, completedTracks: list, nOfCompletedSteps: int}
+        # nOfCompletedSteps is only for the active track!
         self.scan_start_time = None
         self.abort_scan = False
         self.halt_scan = False
@@ -247,6 +248,15 @@ class Main(QtCore.QObject):
             print('error: ', e)
             return False
 
+    def halt_scan_func(self, halt_bool):
+        """
+        this will set the halt boolean on the fpga True/False.
+        This will cause the FPGA to stop after completion of the next Scan if True.
+        The FPGA therefore will end up in 'error' state.
+        """
+        self.halt_scan = halt_bool
+        self.scan_main.halt_scan(self.halt_scan)
+
     def update_scan_progress(self, number_of_completed_steps=None):
         """
         will be updated from the pipeline via Qt callback signal.
@@ -309,17 +319,22 @@ class Main(QtCore.QObject):
             self.scan_main.abort_scan()
             self.scan_main.stop_measurement()
             self.set_state(MainState.idle)
-        elif not self.scan_main.read_data():
-            if not self.scan_main.check_scanning():
-                # also comparing received steps with total steps would be acceptable, maybe change in future
-                self.scan_progress['completedTracks'].append(self.scan_progress['activeTrackNum'])
-                if self.halt_scan:
-                    self.scan_main.stop_measurement()
+        elif not self.scan_main.read_data():  # read_data() yields False if no Elements can be read from fpga
+            if not self.scan_main.check_scanning():  # check if fpga is still in scanning state
+                if self.halt_scan:  # scan was halted
+                    self.scan_main.stop_measurement()  # stop pipeline and clear
+                    self.halt_scan_func(False)  # set halt variabel to false afterwards
                     self.set_state(MainState.idle)
                 else:  # normal exit after completion of each track
+                    self.scan_progress['completedTracks'].append(self.scan_progress['activeTrackNum'])
                     self.scan_main.stop_measurement(False)
                     # stop pipeline before starting with next track again, do not clear.
-                    self.set_state(MainState.load_track)
+                    tracks, tr_l = SdOp.get_number_of_tracks_in_scan_dict(
+                        self.scan_pars[self.scan_progress['activeIso']])
+                    if len(self.scan_progress['completedTracks']) == tracks:
+                        self.set_state(MainState.idle)
+                    else:
+                        self.set_state(MainState.load_track)
 
     """ simple counter """
 

@@ -110,11 +110,11 @@ class ScanMain:
         if clear:
             self.pipeline.clear()
 
-    def halt_scan(self):
+    def halt_scan(self, b_val):
         """
         halts the scan after the currently running track is completed
         """
-        self.sequencer.halt()
+        self.sequencer.halt(b_val)
 
     def abort_scan(self):
         """

@@ -8,9 +8,9 @@ Created on '09.07.2015'
 import ctypes
 
 '''Bitfile Signature:'''
-bitfileSignature = '52CC5E3A5AA826A7532D2637CD2DACFA'
+bitfileSignature = '59D10AD8995EF1076D75C53D3E54E379'
 '''Bitfile Path:'''
-bitfilePath = 'D:/Workspace/PyCharm/Tilda/TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV107.lvbitx'
+bitfilePath = 'D:/Workspace/PyCharm/Tilda/TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV108.lvbitx'
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''

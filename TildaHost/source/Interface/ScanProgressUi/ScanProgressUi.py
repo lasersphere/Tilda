@@ -42,7 +42,7 @@ class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
         Cfg._main_instance.abort_scan = True
 
     def halt(self):
-        Cfg._main_instance.halt_scan = self.checkBox.isChecked()
+        Cfg._main_instance.halt_scan_func(self.checkBox.isChecked())
 
     def update_progress(self, progress_dict):
         """

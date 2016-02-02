@@ -122,6 +122,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         """
         if self.active_iso:
             Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
+            self.active_iso = None
         logging.debug('setting up isotope')
         SetupIsotopeUi(self)
         self.update_track_list()
