@@ -24,7 +24,7 @@
 /**
  * The signature of the FPGA bitfile.
  */
-static const char* const NiFpga_ContSeqV108_Signature = "59D10AD8995EF1076D75C53D3E54E379";
+static const char* const NiFpga_ContSeqV108_Signature = "A64A5E0868B927F19C10CEADDB10D9F1";
 
 typedef enum
 {
@@ -81,8 +81,8 @@ typedef enum
 
 typedef enum
 {
-   NiFpga_ContSeqV108_ControlU32_delay_10ns_ticks = 0x8110,
    NiFpga_ContSeqV108_ControlU32_dwellTime10ns = 0x812C,
+   NiFpga_ContSeqV108_ControlU32_trigDelay10ns = 0x8110,
 } NiFpga_ContSeqV108_ControlU32;
 
 typedef enum

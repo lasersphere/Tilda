@@ -8,7 +8,7 @@ Created on '09.07.2015'
 import ctypes
 
 '''Bitfile Signature:'''
-bitfileSignature = '59D10AD8995EF1076D75C53D3E54E379'
+bitfileSignature = 'A64A5E0868B927F19C10CEADDB10D9F1'
 '''Bitfile Path:'''
 bitfilePath = 'D:/Workspace/PyCharm/Tilda/TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV108.lvbitx'
 '''FPGA Resource:'''
@@ -40,8 +40,8 @@ measVoltPulseLength25ns = {'ref': 0x8150, 'val': ctypes.c_long(), 'ctr': True}
 measVoltTimeout10ns = {'ref': 0x8154, 'val': ctypes.c_long(), 'ctr': True}
 nOfScans = {'ref': 0x8140, 'val': ctypes.c_long(), 'ctr': True}
 nOfSteps = {'ref': 0x813C, 'val': ctypes.c_long(), 'ctr': True}
-trigDelay10ns = {'ref': 0x8110, 'val': ctypes.c_ulong(), 'ctr': True}
 dwellTime10ns = {'ref': 0x812C, 'val': ctypes.c_ulong(), 'ctr': True}
+trigDelay10ns = {'ref': 0x8110, 'val': ctypes.c_ulong(), 'ctr': True}
 '''TargetToHostFifos:'''
 transferToHost = {'ref': 0, 'val': ctypes.c_ulong(), 'ctr': False}
 
