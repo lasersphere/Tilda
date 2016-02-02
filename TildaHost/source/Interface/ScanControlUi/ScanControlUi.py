@@ -27,7 +27,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
 
         self.active_iso = None  # str, key for the self.scan_pars dict in Main
         self.win_title = None
-        self.track_wins_dict = {}  # dict containing all open track windows
+        self.track_wins_dict = {}  # dict containing all open track windows, key is track_num
 
         self.actionGo.triggered.connect(self.go)
         self.actionSetup_Isotope.triggered.connect(self.setup_iso)

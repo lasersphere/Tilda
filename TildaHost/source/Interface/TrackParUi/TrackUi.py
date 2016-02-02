@@ -37,7 +37,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.track_name = 'track' + str(track_number)
         self.scan_ctrl_win = scan_ctrl_win
         self.active_iso = scan_ctrl_win.active_iso
-        seq_type = self.active_iso.split('_', 1)[1]
+        seq_type = self.active_iso.split('_')[-1]
         self.track_number = track_number
 
         self.buffer_pars = deepcopy(Cfg._main_instance.scan_pars.get(active_iso_name).get(self.track_name))
@@ -113,6 +113,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
              VCon.get_stepsize_in_volt_from_18bit(self.check_for_none(track_dict.get('dacStepSize18Bit'), 0))),
             (self.spinBox_nOfScans.setValue, self.check_for_none(track_dict.get('nOfScans'), 0)),
             (self.checkBox_invertScan.setChecked, self.check_for_none(track_dict.get('invertScan'), False)),
+            (self.invert_scan_set, self.check_for_none(track_dict.get('invertScan'), False)),
             (self.comboBox_postAccOffsetVoltControl.setCurrentIndex,
              int(self.check_for_none(track_dict.get('postAccOffsetVoltControl'), 0))),
             (self.doubleSpinBox_postAccOffsetVolt.setValue,
@@ -120,6 +121,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             (self.lineEdit_activePmtList.setText,
              str(self.check_for_none(track_dict.get('activePmtList'), [0]))[1:-1]),
             (self.checkBox_colDirTrue.setChecked, self.check_for_none(track_dict.get('colDirTrue'), False)),
+            (self.col_dir_true_set, self.check_for_none(track_dict.get('colDirTrue'), False)),
             (self.doubleSpinBox_waitAfterReset_muS.setValue,
              self.check_for_none(track_dict.get('waitAfterReset25nsTicks'), 0) * 25 * (10 ** -3)),
             (self.doubleSpinBox_waitForKepco_muS.setValue,
@@ -284,8 +286,11 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.buffer_pars['nOfScans'] = val
 
     def invert_scan_set(self, state):
-        """ wirte to the working dictionary and set the label """
-        boolstate = state == 2
+        """ write to the working dictionary and set the label """
+        if state:
+            boolstate = True
+        else:
+            boolstate = False
         self.label_invertScan_set.setText(str(boolstate))
         self.buffer_pars['invertScan'] = boolstate
 
@@ -303,11 +308,12 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
     def col_dir_true_set(self, state):
         """ write to the working dictionary and set the label """
-        boolstate = state == 2
-        if boolstate:
+        if state:
             display = 'colinear'
+            boolstate = True
         else:
             display = 'anti colinear'
+            boolstate = False
         self.label_colDirTrue_set.setText(display)
         self.buffer_pars['colDirTrue'] = boolstate
 

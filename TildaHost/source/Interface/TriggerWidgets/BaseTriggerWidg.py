@@ -20,7 +20,7 @@ class BaseSequencerWidgUi(QtWidgets.QFrame):
 
         self.buffer_pars = trigger_dict
         self.connect_labels()
-        self.set_vals_by_dict()
+        # self.set_vals_by_dict()  # should be called in the widgets themself
 
     def get_trig_pars(self):
         self.buffer_pars['type'] = self.type
