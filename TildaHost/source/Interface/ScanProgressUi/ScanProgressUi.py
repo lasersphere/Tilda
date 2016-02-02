@@ -64,4 +64,5 @@ class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
         self.groupBox.setTitle(str(progress_dict['trackName']))
 
     def closeEvent(self, *args, **kwargs):
+        self.abort()
         self.main_gui.close_post_acc_win()

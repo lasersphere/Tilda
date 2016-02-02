@@ -165,11 +165,11 @@ class Sequencer(FPGAInterfaceHandling):
         i = 0
         imax = 500
         self.ReadWrite(self.config.abort, True)
-        while self.getSeqState() != self.config.seqStateDict['error'].value and i <= imax:
+        while self.getSeqState() != self.config.seqStateDict['error'] and i <= imax:
             time.sleep(0.001)
             i += 1
         self.ReadWrite(self.config.abort, False)
-        if self.getSeqState() == self.config.seqStateDict['error'].value:
+        if self.getSeqState() == self.config.seqStateDict['error']:
             return self.getSeqState()
         else:
             return False
