@@ -317,7 +317,7 @@ class Main(QtCore.QObject):
         if self.abort_scan:  # abort the scan and return to idle state
             print('abort was pressed ', self.abort_scan)
             self.scan_main.abort_scan()
-            self.scan_main.stop_measurement()
+            self.scan_main.stop_measurement()  # stop pipeline and clear
             self.set_state(MainState.idle)
         elif not self.scan_main.read_data():  # read_data() yields False if no Elements can be read from fpga
             if not self.scan_main.check_scanning():  # check if fpga is still in scanning state

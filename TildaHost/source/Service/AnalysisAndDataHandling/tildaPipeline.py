@@ -61,10 +61,10 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
 
     walk = walk.attach(TN.NAddWorkingTime(True))
     walk = walk.attach(TN.NCheckIfMeasurementComplete())
-    walk = walk.attach(TN.NSaveAllTracks())
     walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
-    walk = walk.attach(TN.NTRSProjectize())
+    walk = walk.attach(TN.NSaveAllTracks())
 
+    walk = walk.attach(TN.NTRSProjectize())
     walk = walk.attach(TN.NSaveProjection())
     # walk = walk.attach(SN.NPrint())
 
@@ -116,16 +116,17 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     sum01 = sum01.attach(TN.NMPlDrawPlot())
 
     walk = walk.attach(TN.NCheckIfTrackComplete())
+    walk = walk.attach(TN.NAddWorkingTime(True))
+
     finalsum = walk.attach(TN.NSingleArrayToSpecData())
     finalsum = finalsum.attach(TN.NMultiSpecFromSpecData([[0], [1]]))
     finalsum = finalsum.attach(TN.NMPlLivePlot(axes[5], 'final sum', ['blue', 'green']))
     finalsum = finalsum.attach(TN.NMPlDrawPlot())
 
-    walk = walk.attach(TN.NAddWorkingTime(True))
     # walk = walk.attach(TN.NSaveIncomDataForActiveTrack())
     walk = walk.attach(TN.NCheckIfMeasurementComplete())
-    walk = walk.attach(TN.NSaveAllTracks())
     walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
+    walk = walk.attach(TN.NSaveAllTracks())
 
     return pipe
 

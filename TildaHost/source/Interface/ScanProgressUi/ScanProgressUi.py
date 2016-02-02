@@ -65,4 +65,5 @@ class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
 
     def closeEvent(self, *args, **kwargs):
         self.abort()
-        self.main_gui.close_post_acc_win()
+        Cfg._main_instance.unsubscribe_from_scan_prog()
+        self.main_gui.close_scan_progress_win()
