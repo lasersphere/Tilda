@@ -304,7 +304,12 @@ class Main(QtCore.QObject):
         will change to 'load_track', when no data is available anymore
         AND the state is not measuring state anymore.
         """
-        if not self.scan_main.read_data():
+        if self.abort_scan:  # abort the scan and return to idle state
+            print('abort was pressed ', self.abort_scan)
+            self.scan_main.abort_scan()
+            self.scan_main.stop_measurement()
+            self.set_state(MainState.idle)
+        elif not self.scan_main.read_data():
             if not self.scan_main.check_scanning():
                 # also comparing received steps with total steps would be acceptable, maybe change in future
                 self.scan_progress['completedTracks'].append(self.scan_progress['activeTrackNum'])
@@ -315,12 +320,6 @@ class Main(QtCore.QObject):
                     self.scan_main.stop_measurement(False)
                     # stop pipeline before starting with next track again, do not clear.
                     self.set_state(MainState.load_track)
-        elif self.abort_scan:  # abort the scan and return to idle state
-            print('abort was pressed ', self.abort_scan)
-            self.scan_main.abort_scan()
-            self.scan_main.stop_measurement()
-            self.set_state(MainState.idle)
-
 
     """ simple counter """
 
