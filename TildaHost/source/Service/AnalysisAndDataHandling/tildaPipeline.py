@@ -55,15 +55,12 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
     pl_branch_2d = walk.attach(TN.NMPLImagePLot(0))
     pl_branch_2d = pl_branch_2d.attach(TN.NMPlDrawPlot())
 
-    walk = walk.attach(TN.NCheckIfTrackComplete())
+    compl_tr_br = walk.attach(TN.NCheckIfTrackComplete())
+    compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
 
-    # pl_branch = walk.attach(TN.NMPLImagePLot())
-
-    walk = walk.attach(TN.NAddWorkingTime(True))
-    walk = walk.attach(TN.NCheckIfMeasurementComplete())
-    walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
+    # meas_compl_br = walk.attach(TN.NCheckIfMeasurementComplete())
     walk = walk.attach(TN.NSaveAllTracks())
-
+    #
     walk = walk.attach(TN.NTRSProjectize())
     walk = walk.attach(TN.NSaveProjection())
     # walk = walk.attach(SN.NPrint())
@@ -115,8 +112,8 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     sum01 = sum01.attach(TN.NMPlLivePlot(axes[4], 'scaler 0+1', ['red']))
     sum01 = sum01.attach(TN.NMPlDrawPlot())
 
-    walk = walk.attach(TN.NCheckIfTrackComplete())
-    walk = walk.attach(TN.NAddWorkingTime(True))
+    compl_tr_br = walk.attach(TN.NCheckIfTrackComplete())
+    compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
 
     finalsum = walk.attach(TN.NSingleArrayToSpecData())
     finalsum = finalsum.attach(TN.NMultiSpecFromSpecData([[0], [1]]))
@@ -124,8 +121,8 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     finalsum = finalsum.attach(TN.NMPlDrawPlot())
 
     # walk = walk.attach(TN.NSaveIncomDataForActiveTrack())
-    walk = walk.attach(TN.NCheckIfMeasurementComplete())
-    walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
+    # walk = walk.attach(TN.NCheckIfMeasurementComplete())
+    # walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
     walk = walk.attach(TN.NSaveAllTracks())
 
     return pipe

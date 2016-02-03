@@ -106,6 +106,7 @@ class ScanMain:
         stops all modules which are relevant for scanning.
         pipeline etc.
         """
+        print('stopping measurement, clear is: ', clear)
         self.pipeline.stop()
         if clear:
             self.pipeline.clear()

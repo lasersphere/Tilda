@@ -327,11 +327,12 @@ class Main(QtCore.QObject):
                     self.set_state(MainState.idle)
                 else:  # normal exit after completion of each track
                     self.scan_progress['completedTracks'].append(self.scan_progress['activeTrackNum'])
-                    self.scan_main.stop_measurement(False)
+                    # self.scan_main.stop_measurement(False)
                     # stop pipeline before starting with next track again, do not clear.
                     tracks, tr_l = SdOp.get_number_of_tracks_in_scan_dict(
                         self.scan_pars[self.scan_progress['activeIso']])
                     if len(self.scan_progress['completedTracks']) == tracks:
+                        self.scan_main.stop_measurement()
                         self.set_state(MainState.idle)
                     else:
                         self.set_state(MainState.load_track)

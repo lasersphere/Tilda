@@ -226,35 +226,50 @@ class NSaveAllTracks(Node):
     def __init__(self):
         """
         Node to save everything in data for all tracks.
+        will save on clear() call!
         input: complete, scalerArray containing all tracks.
         output: same as input
         """
         super(NSaveAllTracks, self).__init__()
         self.type = 'SaveAllTracks'
+        self.storage = None
 
     def processData(self, data, pipeData):
+        self.storage = data
+        return data
+
+    def clear(self):
+        pipeData = self.Pipeline.pipeData
         pipeInternals = pipeData['pipeInternals']
         file = pipeInternals['activeXmlFilePath']
         rootEle = TildaTools.load_xml(file)
         tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
         for track_ind, tr_num in enumerate(track_list):
             track_name = 'track%s' % tr_num
-            xmlAddCompleteTrack(rootEle, pipeData, data[track_ind], track_name)
+            xmlAddCompleteTrack(rootEle, pipeData, self.storage[track_ind], track_name)
         TildaTools.save_xml(rootEle, file, False)
-        return data
+        self.storage = None
 
 
 class NSaveProjection(Node):
     """
     Node for saving the incoming projectin data.
+    saves on clear call.
     input: [[[v_proj_tr0_pmt0, v_proj_tr0_pmt1, ... ], [t_proj_tr0_pmt0, t_proj_tr0_pmt1, ... ]], ...]
     output: [[[v_proj_tr0_pmt0, v_proj_tr0_pmt1, ... ], [t_proj_tr0_pmt0, t_proj_tr0_pmt1, ... ]], ...]
     """
     def __init__(self):
         super(NSaveProjection, self).__init__()
         self.type = 'SaveProjection'
+        self.storage = None
 
     def processData(self, data, pipeData):
+        self.storage = data
+        return data
+
+    def clear(self):
+        data = self.storage
+        pipeData = self.Pipeline.pipeData
         pipeInternals = pipeData['pipeInternals']
         file = pipeInternals['activeXmlProjFilePath']
         rootEle = TildaTools.load_xml(file)
@@ -264,7 +279,6 @@ class NSaveProjection(Node):
             xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][0], track_name, datatype='voltage_projection')
             xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][1], track_name, datatype='time_projection')
         TildaTools.save_xml(rootEle, file, False)
-        return data
 
 
 class NSaveRawData(Node):
@@ -547,6 +561,7 @@ class NMPLImagePLot(Node):
         MPLPlotter.draw()
 
     def save_proj(self, bool):
+        """ saves projection of all tracks """
         pipeData = self.Pipeline.pipeData
         time_arr = Form.create_time_axis_from_scan_dict(self.Pipeline.pipeData)
         v_arr = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=True)
