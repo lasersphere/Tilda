@@ -143,19 +143,20 @@ def check_for_existing_isos(db, sctype):
     return isos
 
 
-def add_new_iso(db, iso, sctype):
+def add_new_iso(db, iso, seq_type):
     """ write an empty isotope dictionary of a given scantype to the database """
     if iso is '':
         return None
-    if iso in check_for_existing_isos(db, sctype):
-        logging.info('isotope ' + iso + ' (' + sctype + ')' + ' already created, will not be added')
+    if iso in check_for_existing_isos(db, seq_type):
+        logging.info('isotope ' + iso + ' (' + seq_type + ')' + ' already created, will not be added')
         return None
-    scand = SdOp.init_empty_scan_dict()
+    scand = SdOp.init_empty_scan_dict(type_str=seq_type, load_default_vals=True)
     scand['isotopeData']['isotope'] = iso
-    scand['isotopeData']['type'] = sctype
+    scand['isotopeData']['type'] = seq_type
     scand['pipeInternals']['activeTrackNumber'] = 0
     add_scan_dict_to_db(db, scand, 0, track_key='track0')
-    logging.debug('added ' + iso + ' (' + sctype + ') to database')
+    logging.debug('added ' + iso + ' (' + seq_type + ') to database')
+    return iso
 
 
 def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):

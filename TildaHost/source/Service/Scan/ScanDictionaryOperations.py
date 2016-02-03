@@ -11,8 +11,7 @@ import Service.Scan.draftScanParameters as DftSc
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
 
 
-
-def init_empty_scan_dict(type_str=None, version=None):
+def init_empty_scan_dict(type_str=None, version=None, load_default_vals=False):
     """
     returns an empty scan dictionary in the form as defined in Service.Scan.draftScanParameters.
     All values will be set to None, except the Version information.
@@ -21,11 +20,17 @@ def init_empty_scan_dict(type_str=None, version=None):
     scand = dict.fromkeys(DftSc.scanDict_list)
     for key, val in scand.items():
         scand[key] = dict.fromkeys(getattr(DftSc, key + '_list'))
-    if version is None:
-        scand['isotopeData']['version'] = Cfg.version
-    scand['track0'] = merge_dicts(scand['track0'],
-                                          init_seq_specific_dict(type_str))
+    scand['track0'] = merge_dicts(scand['track0'], init_seq_specific_dict(type_str))
+    if load_default_vals:
+        for key, val in scand['track0'].items():
+            scand['track0'][key] = DftSc.draftTrackPars.get(key)
+        for key, val in scand['isotopeData'].items():
+            scand['isotopeData'][key] = DftSc.draftIsotopePars.get(key)
+        for key, val in scand['measureVoltPars'].items():
+            scand['measureVoltPars'][key] = DftSc.draftMeasureVoltPars.get(key)
+    scand['isotopeData']['version'] = Cfg.version
     scand['track0']['trigger'] = {'type': TiTs.no_trigger}
+    scand['track0']['nOfCompletedSteps'] = 0
     return scand
 
 

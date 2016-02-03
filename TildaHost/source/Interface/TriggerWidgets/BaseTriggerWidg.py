@@ -9,7 +9,7 @@ Module Description: Base Trigger widget containing all generic functions
 from PyQt5 import QtWidgets
 
 
-class BaseSequencerWidgUi(QtWidgets.QFrame):
+class BaseTriggerWidgUi(QtWidgets.QFrame):
     def __init__(self, trigger_dict):
         QtWidgets.QFrame.__init__(self)
         self.type = None

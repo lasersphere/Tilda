@@ -453,7 +453,7 @@ class Main(QtCore.QObject):
         """
         add a new isotope of type seq, to the database
         """
-        DbOp.add_new_iso(self.database, iso, seq_type)
+        return DbOp.add_new_iso(self.database, iso, seq_type)
 
     def add_iso_to_scan_pars(self, iso, seq_type):
         """

@@ -13,7 +13,6 @@ from Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
 from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
 import Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig as TrsCfg
 import Service.Formating as Form
-import Service.Scan.draftScanParameters as DftSc
 
 
 class TimeResolvedSequencer(Sequencer, MeasureVolt):

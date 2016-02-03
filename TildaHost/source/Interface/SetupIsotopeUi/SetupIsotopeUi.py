@@ -51,8 +51,8 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         """ connect to the db and add a new isotope if this has not yet been added """
         iso = self.lineEdit_new_isotope.text()
         seq_type = self.comboBox_sequencer_select.currentText()
-        Cfg._main_instance.add_new_iso_to_db(iso, seq_type)
-        self.update_isos()
+        iso = Cfg._main_instance.add_new_iso_to_db(iso, seq_type)
+        self.update_isos(iso)
 
     def iso_select(self, iso_str):
         """ is called when something changed in the comboBox for the isotope
@@ -65,13 +65,20 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         logging.debug('selected sequencer: ' + seq_str)
         self.update_isos()
 
-    def update_isos(self):
+    def update_isos(self, set_string=None):
         """ update the items in the isotope combobox by connecting to the sqlite db
          and check for isotopes for this sequencer type """
         self.comboBox_isotope.clear()
         sequencer = self.comboBox_sequencer_select.currentText()
         isos = Cfg._main_instance.get_available_isos_from_db(sequencer)
         self.comboBox_isotope.addItems(isos)
+        index = 0
+        if set_string is not None:
+            try:
+                index = isos.index(set_string)
+            except Exception:
+                pass
+        self.comboBox_isotope.setCurrentIndex(index)
         return isos
 
     def ok(self):

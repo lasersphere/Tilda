@@ -6,14 +6,14 @@ Created on
 Module Description:
 """
 
-from Interface.TriggerWidgets.BaseTriggerWidg import BaseSequencerWidgUi
+from Interface.TriggerWidgets.BaseTriggerWidg import BaseTriggerWidgUi
 from Interface.TriggerWidgets.Ui_SingleHitDelay import Ui_single_hit_delay_widg
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
 
 
-class SingelHitDelay(BaseSequencerWidgUi, Ui_single_hit_delay_widg):
+class SingelHitDelay(BaseTriggerWidgUi, Ui_single_hit_delay_widg):
     def __init__(self, trigger_dict):
-        BaseSequencerWidgUi.__init__(self, trigger_dict)
+        BaseTriggerWidgUi.__init__(self, trigger_dict)
         self.comboBox_trigInputChan.blockSignals(True)
         self.trig_chan_list = ['Ext%s' % ch for ch in range(0, 8)] + ['Int%s' % ch for ch in range(0, 8)]
         self.comboBox_trigInputChan.addItems(self.trig_chan_list)

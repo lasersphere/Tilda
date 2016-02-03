@@ -72,7 +72,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.checkBox_invertScan.stateChanged.connect(self.invert_scan_set)
 
         """post acceleration controls:"""
-        self.comboBox_postAccOffsetVoltControl.currentTextChanged.connect(self.post_acc_offset_volt_control_set)
+        self.comboBox_postAccOffsetVoltControl.currentIndexChanged.connect(self.post_acc_offset_volt_control_set)
         self.doubleSpinBox_postAccOffsetVolt.valueChanged.connect(self.post_acc_offset_volt)
 
         """Scaler selection:"""
@@ -332,12 +332,13 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.label_waitForKepco_muS_set.setText(str(round(setval, 3)))
 
     """ set voltages """
-    def post_acc_offset_volt_control_set(self, val):
+    def post_acc_offset_volt_control_set(self, index):
         """ write to the working dictionary and set the label """
+        val = self.comboBox_postAccOffsetVoltControl.currentText()
         if val != 'Kepco':
             Cfg._main_instance.power_supply_status(val, self.track_ui_call_back_signal)
         self.label_postAccOffsetVoltControl_set.setText(val)
-        self.buffer_pars['postAccOffsetVoltControl'] = self.comboBox_postAccOffsetVoltControl.currentIndex()
+        self.buffer_pars['postAccOffsetVoltControl'] = index
 
     def refresh_pow_sup_readback(self, stat_dict):
         """

@@ -51,9 +51,10 @@ def centerPlot(db, isoL, linevar = '', width = 1e6):
     fig = plt.figure(1, (8, 8))
     fig.patch.set_facecolor('white')
     
-    for i in y:
-        plt.plot(wnx, i, '-')
-    
+    for i, val in enumerate(y):
+        plt.plot(wnx, val, '-', label=isoL[i])
+
+    plt.legend()
     plt.xlabel("Laser wavenumber / cm^-1")
     plt.ylabel("Ion energy on resonance / eV")
     plt.axvline(Physics.wavenumber(isos[0].freq), 0, 20000, color = 'k')

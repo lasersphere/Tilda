@@ -6,14 +6,14 @@ Created on
 Module Description:
 """
 
-from Interface.TriggerWidgets.BaseTriggerWidg import BaseSequencerWidgUi
+from Interface.TriggerWidgets.BaseTriggerWidg import BaseTriggerWidgUi
 from Interface.TriggerWidgets.Ui_NoTrigger import Ui_no_trigger_widg
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
 
 
-class NoTriggerWidg(BaseSequencerWidgUi, Ui_no_trigger_widg):
+class NoTriggerWidg(BaseTriggerWidgUi, Ui_no_trigger_widg):
     def __init__(self, trigger_dict):
-        BaseSequencerWidgUi.__init__(self, trigger_dict)
+        BaseTriggerWidgUi.__init__(self, trigger_dict)
         self.setupUi(self)
         self.buffer_pars = {}
 
