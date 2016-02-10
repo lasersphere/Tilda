@@ -55,8 +55,8 @@ class Main(QtCore.QObject):
 
         try:
             # pass
-            self.work_dir_changed('E:/lala')
-            # self.work_dir_changed('C:/temp108')
+            # self.work_dir_changed('E:/lala')
+            self.work_dir_changed('C:/temp108')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state(MainState.idle)
@@ -76,7 +76,7 @@ class Main(QtCore.QObject):
         elif self.m_state[0] is MainState.simple_counter_running:
             self.simple_counter_inst.read_data()
         elif self.m_state[0] is MainState.stop_simple_counter:
-            self.stop_simple_counter()
+            self._stop_simple_counter()
 
         elif self.m_state[0] is MainState.init_power_supplies:
             self._init_power_sups(self.m_state[1])
@@ -373,7 +373,11 @@ class Main(QtCore.QObject):
         self.simple_counter_inst.set_dac_volt(volt_dbl)
 
     def stop_simple_counter(self):
+        self.set_state(MainState.stop_simple_counter)
+
+    def _stop_simple_counter(self):
         fpga_status = self.simple_counter_inst.stop()
+        self.simple_counter_inst = None
         logging.debug('fpga status after deinit is: ' + str(fpga_status))
         self.set_state(MainState.idle)
 

@@ -172,6 +172,7 @@ def simple_counter_pipe(qt_sig):
     walk = walk.attach(TN.NSPSortByPmt(sample_rate))
     walk = walk.attach(TN.NSumListsInData())
     walk = walk.attach(TN.NSendDataViaQtSignal(qt_sig))
+    walk = walk.attach(TN.NMPLCloseFigOnClear(fig))
     # walk = walk.attach(SN.NPrint())
 
     walk = walk.attach(TN.NSPAddxAxis())

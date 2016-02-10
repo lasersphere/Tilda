@@ -616,6 +616,18 @@ class NMPLImagePLot(Node):
         pass
 
 
+class NMPLCloseFigOnClear(Node):
+    def __init__(self, fig_ref):
+        super(NMPLCloseFigOnClear, self).__init__()
+        self.fig_ref = fig_ref
+
+    def processData(self, data, pipeData):
+        return data
+
+    def clear(self):
+        MPLPlotter.close_fig(self.fig_ref)
+        self.fig_ref = None
+
 """ specdata format compatible Nodes: """
 
 

@@ -93,6 +93,10 @@ def pause(time):
     plt.pause(time)
 
 
+def close_fig(fig):
+    plt.close(fig)
+
+
 def plt_axes(axes, plotlist):
     # axes.clear()   # really really time consuming!!
     axes.plot(*plotlist)
