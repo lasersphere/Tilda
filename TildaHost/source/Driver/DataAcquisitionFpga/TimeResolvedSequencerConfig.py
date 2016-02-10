@@ -61,7 +61,7 @@ transferToHost = {'ref': 0, 'val': ctypes.c_ulong(), 'ctr': False}
 Hand filled Values, for example certain values for enums:
 """
 seqStateDict = {'init': 0, 'idle': 1, 'measureOffset': 2, 'measureTrack': 3, 'measComplete': 4, 'error': 5}
-transferToHostReqEle = 100000
+transferToHostReqEle = 10000000
 
 dummyScanParameters = draftPars.draftTrackPars
 

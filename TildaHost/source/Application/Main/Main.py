@@ -56,7 +56,8 @@ class Main(QtCore.QObject):
         try:
             # pass
             # self.work_dir_changed('E:/lala')
-            self.work_dir_changed('C:/temp108')
+            # self.work_dir_changed('C:/temp108')
+            self.work_dir_changed('D:\Debugging_160129')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state(MainState.idle)
@@ -74,7 +75,7 @@ class Main(QtCore.QObject):
         elif self.m_state[0] is MainState.starting_simple_counter:
             self._start_simple_counter(*self.m_state[1])
         elif self.m_state[0] is MainState.simple_counter_running:
-            self.simple_counter_inst.read_data()
+            self._read_data_simple_counter()
         elif self.m_state[0] is MainState.stop_simple_counter:
             self._stop_simple_counter()
 
@@ -343,6 +344,8 @@ class Main(QtCore.QObject):
         self.set_state(MainState.starting_simple_counter, (act_pmt_list, datapoints, callback_sig), only_if_idle=True)
 
     def _start_simple_counter(self, act_pmt_list, datapoints, callback_sig):
+        if self.scan_main.sequencer is not None:
+            self.scan_main.deinit_fpga()
         self.simple_counter_inst = SimpleCounterControl(act_pmt_list, datapoints, callback_sig)
         try:
             self.simple_counter_inst.run()
@@ -352,6 +355,9 @@ class Main(QtCore.QObject):
             self.simple_counter_inst.run_dummy()
         finally:
             self.set_state(MainState.simple_counter_running)
+
+    def _read_data_simple_counter(self):
+        self.simple_counter_inst.read_data()
 
     def simple_counter_post_acc(self, state_name):
         """
