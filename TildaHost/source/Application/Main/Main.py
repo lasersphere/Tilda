@@ -95,6 +95,15 @@ class Main(QtCore.QObject):
 
     """ main functions """
 
+    def close_main(self):
+        """
+        will deinitialize all active power supplies,
+        set 0V on the DAC and turn off all fpga outputs
+        will be called after completion of main() in TildaStart
+        """
+        logging.debug('closing main now')
+        self.scan_main.close_scan_main()
+
     def set_state(self, req_state, val=None, only_if_idle=False):
         """
         this will set the state of the main to req_state

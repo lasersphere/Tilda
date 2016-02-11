@@ -39,6 +39,14 @@ class PostAccelerationMain:
         logging.debug('active postAcceleration power supplies: ' + str(self.active_power_supplies))
         return self.active_power_supplies
 
+    def power_supply_deinit(self):
+        """
+        deinitialize all active power supplies
+        """
+        for pwr_name, power_sup_inst in self.active_power_supplies.items():
+            power_sup_inst.deinit()
+        self.active_power_supplies = {}
+
     def status_of_power_supply(self, power_supply):
         """
         returns a list of dicts containing the status of the power supply,

@@ -64,3 +64,4 @@ def cyclic(ui):
 
 if __name__ == "__main__":
     main()
+    Cfg._main_instance.close_main()

@@ -21,11 +21,25 @@ class ScanMain:
         self.pipeline = None
         self.post_acc_main = PostAcc.PostAccelerationMain()
 
+    def close_scan_main(self):
+        """
+        will deinitialize all active power supplies,
+        set 0V on the DAC and turn off all fpga outputs
+        """
+        self.deinit_post_accel_pwr_supplies()
+        self.deinit_fpga()
+
     def init_post_accel_pwr_supplies(self):
         """
         restarts and connects to the power devices
         """
         return self.post_acc_main.power_supply_init()
+
+    def deinit_post_accel_pwr_supplies(self):
+        """
+        deinitialize all active power supplies
+        """
+        self.post_acc_main.power_supply_deinit()
 
     def prepare_scan(self, scan_dict, callback_sig=None):
         """
@@ -57,8 +71,12 @@ class ScanMain:
                 self.sequencer = FindSeq.ret_seq_instance_of_type(seq_type)
 
     def deinit_fpga(self):
-        self.sequencer.DeInitFpga()
-        self.sequencer = None
+        """
+        deinitilaizes the fpga
+        """
+        if self.sequencer is not None:
+            self.sequencer.DeInitFpga()
+            self.sequencer = None
 
     def prep_track_in_pipe(self, track_num, track_index):
         """

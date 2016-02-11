@@ -38,7 +38,7 @@ class Heinzinger():
                 print(self.idn + 'initialized on Com: ' + str(com))
                 self.setAverage(1)
                 self.setOutput(True)
-                self.setVoltage(0)
+                # self.setVoltage(0)   # not absolutely necessary
                 self.setCurrent(hzCfg.currentWhenTurnedOn)
         except OSError:
             self.errorcount += 1
@@ -56,9 +56,10 @@ class Heinzinger():
         :return: int, Errorcount which is the number of Errors that occured during operation.
         The Errorcount is raised when serial connection fails.
         """
+        self.setVoltage(0)
         self.setOutput(False)
         self.ser.close()
-        print(str(self.errorcount) +' Errors occured')
+        logging.debug(str(self.errorcount) + ' Errors occured')
         return self.errorcount
 
     '''set Values'''
