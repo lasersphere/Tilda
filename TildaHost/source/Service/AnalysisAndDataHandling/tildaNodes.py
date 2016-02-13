@@ -397,6 +397,7 @@ class NMPLImagePLot(Node):
         self.save_bt_ax = self.axes[1][3]
         self.selected_pmt = pmt_num
         self.selected_pmt_ind = None
+        self.combined_bins = 4
         self.image = None
         self.colorbar = None
         self.tproj_line = None
@@ -600,7 +601,7 @@ class NMPLImagePLot(Node):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         try:
             self.full_data = data
-            self.buffer_data = data[track_ind][self.selected_pmt_ind]
+            self.buffer_data = Form.time_rebin_all_data(data, self.combined_bins)[track_ind][self.selected_pmt_ind]
             self.image.set_data(np.transpose(self.buffer_data))
             self.colorbar.set_clim(0, np.amax(self.buffer_data))
             self.colorbar.update_normal(self.image)

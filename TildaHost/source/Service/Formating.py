@@ -6,9 +6,11 @@ Created on 21.01.2015
 
 import ast
 from datetime import datetime as dt
+from copy import deepcopy
 
 import numpy as np
 
+import Service.Scan.draftScanParameters as DftScpars
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.VoltageConversions.VoltageConversions as VCon
 
@@ -239,3 +241,45 @@ def gate_all_data(pipeData, data, time_array, volt_array):
                 t_proj_tr[pmt_ind] = t_proj_xdata
             ret.append([v_proj_tr, t_proj_tr])
     return ret
+
+
+def time_rebin_all_data_slow(full_data, bins_to_combine):
+    """
+    similiar to time_rebin_all_data, but much slower.
+    Maybe delete this function later.
+    """
+    newdata = []
+    for tr_ind, tr_data in enumerate(full_data):
+        shape = tr_data.shape
+        new_shape = (shape[0], shape[1], shape[2] // bins_to_combine)
+        newdata.append(np.zeros(new_shape, dtype=np.uint32))
+        for pmt_ind, pmt_data in enumerate(tr_data):
+            for volt_ind, volt_time_arr in enumerate(pmt_data):
+                for time_ind, cts_at_time in enumerate(volt_time_arr):
+                    new_ind = time_ind // bins_to_combine
+                    if new_ind < new_shape[-1]:
+                        newdata[tr_ind][pmt_ind][volt_ind][new_ind] += cts_at_time
+    return newdata
+
+
+def time_rebin_all_data(full_data, bins_to_combine):
+    """
+    use this function to perform a rebinning on the time axis.
+    This means, alle bins within "bins_to_combine" will be summed up.
+    length of the output array for each voltage step will be:
+        original length // bins_to_combine
+    therefore some values in the end migth be dropped.
+    e.g. 10 // 3 = 3 -> last bin is ignored.
+    :param full_data: full time resolved scaler array, with all tracks
+    :param bins_to_combine: int, number of 10 ns bins that will be combined
+    :return: rebinned full_data
+    """
+    newdata = []
+    for tr_ind, tr_data in enumerate(full_data):
+        bin_ind = np.arange(0, tr_data.shape[-1] // bins_to_combine * bins_to_combine, bins_to_combine)
+        new_tr_data = deepcopy(tr_data)
+        for reps in range(bins_to_combine -1):
+            new_tr_data += np.roll(tr_data, -(reps + 1), axis=2)
+        newdata.append(new_tr_data[:, :, bin_ind])
+    return newdata
+
