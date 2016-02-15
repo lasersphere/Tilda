@@ -395,9 +395,10 @@ class NMPLImagePLot(Node):
         self.pmt_radio_ax = self.axes[1][1]
         self.tr_radio_ax = self.axes[1][2]
         self.save_bt_ax = self.axes[1][3]
+        self.slider_ax = self.axes[2][0]
         self.selected_pmt = pmt_num
         self.selected_pmt_ind = None
-        self.combined_bins = 4
+        self.combined_bins = 1
         self.image = None
         self.colorbar = None
         self.tproj_line = None
@@ -415,6 +416,7 @@ class NMPLImagePLot(Node):
         self.radio_buttons_tr = None
         self.selected_track = None
         self.save_button = None
+        self.slider = None
         MPLPlotter.ion()
         MPLPlotter.show()
 
@@ -446,6 +448,7 @@ class NMPLImagePLot(Node):
             self.patch.set_xy((g_list[0], g_list[2]))
             self.patch.set_width((g_list[1] - g_list[0]))
             self.patch.set_height((g_list[3] - g_list[2]))
+            t_sum = np.sum(data[g_ind[0]:g_ind[1] + 1, :], axis=0)
             self.tproj_line.set_xdata(
                 np.sum(data[g_ind[0]:g_ind[1] + 1, :], axis=0))
             self.vproj_line.set_ydata(
@@ -501,14 +504,15 @@ class NMPLImagePLot(Node):
 
     def setup_track(self, track_ind, track_name):
         try:
-            for ax in [val for sublist in self.axes for val in sublist][:-3]:
-                if ax:  # be sure ax is not 0, don't clear radio buttons and buttons
+            for ax in [val for sublist in self.axes for val in sublist][:-4]:
+                if ax:  # be sure ax is not 0, don't clear radio buttons, buttons and slider
                     MPLPlotter.clear_ax(ax)
             self.gate_anno = None
             self.gates_list = [[None]] * len(self.Pipeline.pipeData[track_name]['activePmtList'])
             self.volt_array = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=True)[track_ind]
             v_shape = self.volt_array.shape
-            self.time_array = Form.create_time_axis_from_scan_dict(self.Pipeline.pipeData)[track_ind]
+            self.time_array = Form.create_time_axis_from_scan_dict(
+                self.Pipeline.pipeData, self.combined_bins * 10)[track_ind]
             t_shape = self.time_array.shape
             self.image, self.colorbar = MPLPlotter.configure_image_plot(
                 self.fig, self.axes, self.Pipeline.pipeData, self.volt_array,
@@ -540,7 +544,8 @@ class NMPLImagePLot(Node):
         self.selected_pmt_ind = self.Pipeline.pipeData[track_name]['activePmtList'].index(self.selected_pmt)
         print('selected pmt index is: ', int(label[3:]))
         self.setup_track(track_ind, track_name)
-        self.buffer_data = self.full_data[track_ind][self.selected_pmt_ind]
+        self.buffer_data = Form.time_rebin_all_data(
+            self.full_data, self.combined_bins)[track_ind][self.selected_pmt_ind]
         self.image.set_data(np.transpose(self.buffer_data))
         self.colorbar.set_clim(0, np.amax(self.buffer_data))
         self.colorbar.update_normal(self.image)
@@ -553,7 +558,8 @@ class NMPLImagePLot(Node):
         self.selected_track = (tr_list.index(int(label[5:])), label)
         self.setup_track(*self.selected_track)
         print('selected track index is: ', int(label[5:]))
-        self.buffer_data = self.full_data[self.selected_track[0]][self.selected_pmt_ind]
+        self.buffer_data = Form.time_rebin_all_data(
+            self.full_data, self.combined_bins)[self.selected_track[0]][self.selected_pmt_ind]
         self.image.set_data(np.transpose(self.buffer_data))
         self.colorbar.set_clim(0, np.amax(self.buffer_data))
         self.colorbar.update_normal(self.image)
@@ -564,9 +570,10 @@ class NMPLImagePLot(Node):
     def save_proj(self, bool):
         """ saves projection of all tracks """
         pipeData = self.Pipeline.pipeData
-        time_arr = Form.create_time_axis_from_scan_dict(self.Pipeline.pipeData)
+        time_arr = Form.create_time_axis_from_scan_dict(self.Pipeline.pipeData, self.combined_bins * 10)
         v_arr = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=True)
-        data = Form.gate_all_data(pipeData, self.full_data, time_arr, v_arr)
+        rebinned_data = Form.time_rebin_all_data(self.full_data, self.combined_bins)
+        data = Form.gate_all_data(pipeData, rebinned_data, time_arr, v_arr)
         pipeInternals = pipeData['pipeInternals']
         file = pipeInternals['activeXmlProjFilePath']
         rootEle = TildaTools.load_xml(file)
@@ -576,6 +583,22 @@ class NMPLImagePLot(Node):
             xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][0], track_name, datatype='voltage_projection')
             xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][1], track_name, datatype='time_projection')
         TildaTools.save_xml(rootEle, file, False)
+
+    def rebin_changed(self, bins_10ns):
+        bins_rounded = bins_10ns // 10 * 10
+        self.combined_bins = int(bins_rounded / 10)
+        self.slider.valtext.set_text('{}'.format(bins_rounded))
+        self.buffer_data = Form.time_rebin_all_data(
+            self.full_data, self.combined_bins)[self.selected_track[0]][self.selected_pmt_ind]
+        self.Pipeline.pipeData[self.selected_track[1]]['nOfBinsRebin'] = self.buffer_data.shape[-1]
+        print('bins are: ', self.Pipeline.pipeData[self.selected_track[1]]['nOfBinsRebin'])
+        self.setup_track(*self.selected_track)
+        self.image.set_data(np.transpose(self.buffer_data))
+        self.colorbar.set_clim(0, np.amax(self.buffer_data))
+        self.colorbar.update_normal(self.image)
+        self.gate_data_and_plot()
+        self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
+        MPLPlotter.draw()
 
     def start(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
@@ -596,6 +619,9 @@ class NMPLImagePLot(Node):
         # self.radio_buttons_tr.set_active(self.selected_track[0])  # not available before mpl 1.5.0
         if self.save_button is None:
             self.save_button, button_con = MPLPlotter.add_button(self.save_bt_ax, 'save_proj', self.save_proj)
+        if self.slider is None:
+            self.slider, slider_con = MPLPlotter.add_slider(self.slider_ax, 'rebinning', 10, 100,
+                                                            self.rebin_changed, valfmt=u'%3d', valinit=10)
 
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']

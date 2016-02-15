@@ -133,7 +133,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
                         scaler03 = 2 ** 5 - 1  # easier for debugging
                         scaler47 = 2 ** 5 - 1  # easier for debugging
                         complete_lis.append(Form.add_header_to23_bit(time, scaler03, scaler47, 0))
-                        time += 10
+                        time += 10  # gives event pattern in 10 ns steps
                         if time >= trackd['nOfBins']:
                             # step complete, will be send after each bunch!
                             complete_lis.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))

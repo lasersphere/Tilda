@@ -12,6 +12,7 @@ from matplotlib import patches as patches
 from matplotlib.widgets import RectangleSelector
 from matplotlib.widgets import RadioButtons
 from matplotlib.widgets import Button
+from matplotlib.widgets import Slider
 
 import datetime
 import matplotlib.pyplot as plt
@@ -103,7 +104,7 @@ def plt_axes(axes, plotlist):
 
 
 def line2d(x_data, y_data, line_color):
-    return Line2D(x_data, y_data, color=line_color)
+    return Line2D(x_data, y_data, color=line_color, drawstyle='steps-mid')
 
 
 def get_current_axes():
@@ -116,7 +117,7 @@ def get_current_figure():
 
 def setup_image_figure():
     fig = plt.figure()
-    axes = [[0, 0, 0], [0, 0, 0, 0]]
+    axes = [[0, 0, 0], [0, 0, 0, 0], [0]]
 
     axes[0][0] = fig.add_subplot(111)
     divider = make_axes_locatable(axes[0][0])
@@ -125,7 +126,8 @@ def setup_image_figure():
     axes[1][0] = divider.append_axes("bottom", 2, pad=0.1, sharex=axes[0][0])
     axes[1][1] = plt.axes([0.6, 0.2, 0.15, 0.15], axisbg='white')
     axes[1][2] = plt.axes([0.8, 0.2, 0.15, 0.15], axisbg='white')
-    axes[1][3] = plt.axes([0.75, 0.1, 0.15, 0.05], axisbg='white')
+    axes[1][3] = plt.axes([0.75, 0.12, 0.15, 0.05], axisbg='white')
+    axes[2][0] = plt.axes([0.75, 0.05, 0.15, 0.05], axisbg='white')  # slider
 
     return fig, axes
 
@@ -151,8 +153,8 @@ def configure_image_plot(fig, axes, pipeData, volt_array_tr, time_array_tr, pmt_
     bins = pipeData[track_name]['nOfBins']
     v_min = volt_array_tr[0]
     v_max = volt_array_tr[-1]
-    t_min = time_array_tr[0] - 5
-    t_max = time_array_tr[-1] + 5
+    t_min = time_array_tr[0] - abs(time_array_tr[1] - time_array_tr[0]) / 2
+    t_max = time_array_tr[-1] + abs(time_array_tr[1] - time_array_tr[0]) / 2
     # -5 due to resolution of 10ns so events with timestamp e.g. 10 (= 100ns) will be plotted @ 95 to 105 ns
 
     extent = [v_min, v_max, t_min, t_max]
@@ -177,6 +179,7 @@ def setup_projection(axes, volt_array_tr, time_array_tr):
     t_min = min(time_array_tr)
     t_max = max(time_array_tr)
     tproj_line = tproj_ax.add_line(line2d(t_cts, time_array_tr, 'r'))
+    tproj_line.set_drawstyle('default')
     tproj_ax.set_ylim(t_min, t_max)
     tproj_ax.autoscale(enable=True, axis='x', tight=True)
     tproj_ax.set_xlabel('cts')
@@ -216,3 +219,13 @@ def add_button(axes, label, con_func):
     button = Button(axes, label)
     button_con = button.on_clicked(con_func)
     return button, button_con
+
+
+def add_slider(axes, label, valmin, valmax, confunc, valinit=0.5,
+               valfmt=u'%1.2f', closedmin=True, closedmax=True,
+               slidermin=None, slidermax=None, dragging=True, **kwargs):
+    slider = Slider(axes, label, valmin, valmax, valinit=valinit,
+                    valfmt=valfmt, closedmin=closedmin, closedmax=closedmax,
+                    slidermin=slidermin, slidermax=slidermax, dragging=dragging, **kwargs)
+    slider_con = slider.on_changed(confunc)
+    return slider, slider_con

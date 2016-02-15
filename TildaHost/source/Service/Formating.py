@@ -131,11 +131,13 @@ def create_time_axis_from_scan_dict(scand, binwidth_ns=10, delay_ns=0):
     for tr in track_num_list:
         trackd = scand['track' + str(tr)]
         bins = trackd['nOfBins']
+        if trackd.get('nOfBinsRebin'):
+            bins = trackd.get('nOfBinsRebin')
         if delay_ns == 'auto':
             try:
                 delay_ns = trackd['trigger']['trigDelay10ns'] * 10
             except Exception as e:
-                print('while creating a time axis, thie exception occured: ', e)
+                print('while creating a time axis, this exception occured: ', e)
                 delay_ns = 0
         x = np.arange(delay_ns, bins * binwidth_ns + delay_ns, binwidth_ns)
         arr.append(x)
@@ -278,7 +280,7 @@ def time_rebin_all_data(full_data, bins_to_combine):
     for tr_ind, tr_data in enumerate(full_data):
         bin_ind = np.arange(0, tr_data.shape[-1] // bins_to_combine * bins_to_combine, bins_to_combine)
         new_tr_data = deepcopy(tr_data)
-        for reps in range(bins_to_combine -1):
+        for reps in range(bins_to_combine - 1):
             new_tr_data += np.roll(tr_data, -(reps + 1), axis=2)
         newdata.append(new_tr_data[:, :, bin_ind])
     return newdata
