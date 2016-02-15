@@ -143,14 +143,12 @@ def image_plot(fig, axes, cbax, image_date, extent, aspect='equal'):
     return img, cb
 
 
-def configure_image_plot(fig, axes, pipeData, volt_array_tr, time_array_tr, pmt_num, track_name):
-    im_ax = axes[0][0]
-    cb_ax = axes[0][1]
+def configure_image_plot(fig, im_ax, cb_ax, pipeData, volt_array_tr, time_array_tr, pmt_num, track_name):
     iso = pipeData['isotopeData']['isotope']
     type = pipeData['isotopeData']['type']
     fig.canvas.set_window_title('%s_%s_%s_pmt%s' % (iso, type, track_name, str(pmt_num)))
-    steps = pipeData[track_name]['nOfSteps']
-    bins = pipeData[track_name]['nOfBins']
+    steps = volt_array_tr.shape[0]
+    bins = time_array_tr.shape[0]
     v_min = volt_array_tr[0]
     v_max = volt_array_tr[-1]
     t_min = time_array_tr[0] - abs(time_array_tr[1] - time_array_tr[0]) / 2
