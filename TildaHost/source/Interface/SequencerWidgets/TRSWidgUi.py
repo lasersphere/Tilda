@@ -23,12 +23,22 @@ class TRSWidg(BaseSequencerWidgUi, Ui_TRSWidg):
     def connect_labels(self):
         self.setupUi(self)
         self.spinBox_nOfBins.valueChanged.connect(self.n_of_bins_set)
+        self.spinBox_softBinWidth.valueChanged.connect(self.software_bin_width_set)
         self.spinBox_nOfBunches.valueChanged.connect(self.n_of_bunches_set)
         self.lineEdit.textChanged.connect(self.softw_gates_set)
 
     def n_of_bins_set(self, val):
         self.buffer_pars['nOfBins'] = val
-        self.label_nOfBins_set.setText(str(val))
+        time_in_mus = val / 100
+        self.label_nOfBins_set.setText(str(val) + '| %.2f µs' % time_in_mus)
+
+    def software_bin_width_set(self, val):
+        val = val // 10 * 10
+        self.blockSignals(True)
+        self.spinBox_softBinWidth.setValue(val)
+        self.buffer_pars['softBinWidth_ns'] = val
+        self.label_softBinWidth_set.setText(str(val))
+        self.blockSignals(False)
 
     def n_of_bunches_set(self, val):
         self.buffer_pars['nOfBunches'] = val
@@ -50,12 +60,18 @@ class TRSWidg(BaseSequencerWidgUi, Ui_TRSWidg):
         if self.buffer_pars.get('nOfBins', False):
             if self.buffer_pars.get('nOfBins') is not None:
                 self.spinBox_nOfBins.setValue(self.buffer_pars.get('nOfBins'))
+                self.spinBox_nOfBins.valueChanged.emit(self.buffer_pars.get('nOfBins'))
+        if self.buffer_pars.get('softBinWidth_ns', False):
+            if self.buffer_pars.get('softBinWidth_ns') is not None:
+                self.spinBox_softBinWidth.valueChanged.emit(self.buffer_pars.get('softBinWidth_ns'))
         if self.buffer_pars.get('nOfBunches', False):
             if self.buffer_pars.get('nOfBunches') is not None:
                 self.spinBox_nOfBunches.setValue(self.buffer_pars.get('nOfBunches'))
+                self.spinBox_nOfBunches.valueChanged.emit(self.buffer_pars.get('nOfBunches'))
         if self.buffer_pars.get('softwGates', False):
             if self.buffer_pars.get('softwGates') is not None:
                 self.lineEdit.setText(str(self.buffer_pars.get('softwGates')))
+                self.lineEdit.textChanged.emit(str(self.buffer_pars.get('softwGates')))
         else:
             lis = [[None]] * len(self.buffer_pars.get('activePmtList', []))
             self.lineEdit.setText(str(lis))

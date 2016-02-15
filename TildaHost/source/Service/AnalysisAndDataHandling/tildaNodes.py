@@ -398,7 +398,6 @@ class NMPLImagePLot(Node):
         self.slider_ax = self.axes[2][0]
         self.selected_pmt = pmt_num
         self.selected_pmt_ind = None
-        self.combined_bins = 1
         self.image = None
         self.colorbar = None
         self.tproj_line = None
@@ -448,7 +447,8 @@ class NMPLImagePLot(Node):
             self.patch.set_xy((g_list[0], g_list[2]))
             self.patch.set_width((g_list[1] - g_list[0]))
             self.patch.set_height((g_list[3] - g_list[2]))
-            t_sum = np.sum(data[g_ind[0]:g_ind[1] + 1, :], axis=0)
+            sum_l = len(np.sum(data[g_ind[0]:g_ind[1] + 1, :], axis=0))
+            data_l = len(self.tproj_line.get_ydata())
             self.tproj_line.set_xdata(
                 np.sum(data[g_ind[0]:g_ind[1] + 1, :], axis=0))
             self.vproj_line.set_ydata(
@@ -464,6 +464,7 @@ class NMPLImagePLot(Node):
                 MPLPlotter.draw()
         except Exception as e:
             print('while plotting projection this happened: ', e)
+            print('t_proj lenghts are: ', sum_l, data_l)
 
     def update_gate_ind(self, gates_val_list):
         """
@@ -511,17 +512,21 @@ class NMPLImagePLot(Node):
             self.gates_list = [[None]] * len(self.Pipeline.pipeData[track_name]['activePmtList'])
             self.volt_array = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=True)[track_ind]
             v_shape = self.volt_array.shape
-            self.time_array = Form.create_time_axis_from_scan_dict(
-                self.Pipeline.pipeData, self.combined_bins * 10)[track_ind]
+            self.time_array = Form.create_time_axis_from_scan_dict(self.Pipeline.pipeData, rebinning=True)[track_ind]
             t_shape = self.time_array.shape
+
+            print('setting up new plot with time shape: ', t_shape)
             self.image, self.colorbar = MPLPlotter.configure_image_plot(
-                self.fig, self.axes, self.Pipeline.pipeData, self.volt_array,
+                self.fig, self.im_ax, self.cb_ax, self.Pipeline.pipeData, self.volt_array,
                 self.time_array, self.selected_pmt, track_name)
+
             self.vproj_line, self.tproj_line = MPLPlotter.setup_projection(
                 self.axes, self.volt_array, self.time_array)
+
             patch_ext = [self.volt_array[0], self.time_array[0],
                          abs(self.volt_array[v_shape[0] / 2]), abs(self.time_array[t_shape[0] / 2])]
             self.patch = MPLPlotter.add_patch(self.im_ax, patch_ext)
+
             MPLPlotter.add_rect_select(self.im_ax, self.rect_select_gates,
                                        self.volt_array[1] - self.volt_array[0],
                                        self.time_array[1] - self.time_array[0])
@@ -533,6 +538,8 @@ class NMPLImagePLot(Node):
             else:  # read gates from input
                 gate_val_list = self.Pipeline.pipeData[track_name].get('softwGates', None)[self.selected_pmt_ind]
             self.update_gate_ind(gate_val_list)
+            bin_width = self.Pipeline.pipeData[self.selected_track[1]].get('softBinWidth_ns', 10)
+            self.slider.valtext.set_text('{}'.format(bin_width))
 
             MPLPlotter.draw()
         except Exception as e:
@@ -540,12 +547,11 @@ class NMPLImagePLot(Node):
 
     def pmt_radio_buttons(self, label):
         self.selected_pmt = int(label[3:])
-        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        self.selected_pmt_ind = self.Pipeline.pipeData[track_name]['activePmtList'].index(self.selected_pmt)
+        self.selected_pmt_ind = self.Pipeline.pipeData[self.selected_track[1]]['activePmtList'].index(self.selected_pmt)
         print('selected pmt index is: ', int(label[3:]))
-        self.setup_track(track_ind, track_name)
         self.buffer_data = Form.time_rebin_all_data(
-            self.full_data, self.combined_bins)[track_ind][self.selected_pmt_ind]
+            self.full_data, self.Pipeline.pipeData)[self.selected_track[0]][self.selected_pmt_ind]
+        self.setup_track(*self.selected_track)
         self.image.set_data(np.transpose(self.buffer_data))
         self.colorbar.set_clim(0, np.amax(self.buffer_data))
         self.colorbar.update_normal(self.image)
@@ -556,10 +562,10 @@ class NMPLImagePLot(Node):
     def tr_radio_buttons(self, label):
         tr, tr_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
         self.selected_track = (tr_list.index(int(label[5:])), label)
-        self.setup_track(*self.selected_track)
         print('selected track index is: ', int(label[5:]))
         self.buffer_data = Form.time_rebin_all_data(
-            self.full_data, self.combined_bins)[self.selected_track[0]][self.selected_pmt_ind]
+            self.full_data, self.Pipeline.pipeData)[self.selected_track[0]][self.selected_pmt_ind]
+        self.setup_track(*self.selected_track)
         self.image.set_data(np.transpose(self.buffer_data))
         self.colorbar.set_clim(0, np.amax(self.buffer_data))
         self.colorbar.update_normal(self.image)
@@ -570,9 +576,9 @@ class NMPLImagePLot(Node):
     def save_proj(self, bool):
         """ saves projection of all tracks """
         pipeData = self.Pipeline.pipeData
-        time_arr = Form.create_time_axis_from_scan_dict(self.Pipeline.pipeData, self.combined_bins * 10)
+        time_arr = Form.create_time_axis_from_scan_dict(self.Pipeline.pipeData, rebinning=True)
         v_arr = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=True)
-        rebinned_data = Form.time_rebin_all_data(self.full_data, self.combined_bins)
+        rebinned_data = Form.time_rebin_all_data(self.full_data, self.Pipeline.pipeData)
         data = Form.gate_all_data(pipeData, rebinned_data, time_arr, v_arr)
         pipeInternals = pipeData['pipeInternals']
         file = pipeInternals['activeXmlProjFilePath']
@@ -585,13 +591,11 @@ class NMPLImagePLot(Node):
         TildaTools.save_xml(rootEle, file, False)
 
     def rebin_changed(self, bins_10ns):
-        bins_rounded = bins_10ns // 10 * 10
-        self.combined_bins = int(bins_rounded / 10)
-        self.slider.valtext.set_text('{}'.format(bins_rounded))
+        bins_10ns_rounded = bins_10ns // 10 * 10
+        self.Pipeline.pipeData[self.selected_track[1]]['softBinWidth_ns'] = bins_10ns_rounded
+        self.slider.valtext.set_text('{}'.format(bins_10ns_rounded))
         self.buffer_data = Form.time_rebin_all_data(
-            self.full_data, self.combined_bins)[self.selected_track[0]][self.selected_pmt_ind]
-        self.Pipeline.pipeData[self.selected_track[1]]['nOfBinsRebin'] = self.buffer_data.shape[-1]
-        print('bins are: ', self.Pipeline.pipeData[self.selected_track[1]]['nOfBinsRebin'])
+            self.full_data, self.Pipeline.pipeData)[self.selected_track[0]][self.selected_pmt_ind]
         self.setup_track(*self.selected_track)
         self.image.set_data(np.transpose(self.buffer_data))
         self.colorbar.set_clim(0, np.amax(self.buffer_data))
@@ -603,10 +607,11 @@ class NMPLImagePLot(Node):
     def start(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
         self.selected_track = (track_ind, track_name)
+        bin_width = self.Pipeline.pipeData[self.selected_track[1]]['softBinWidth_ns']
         self.selected_pmt_ind = self.Pipeline.pipeData[self.selected_track[1]]['activePmtList'].index(self.selected_pmt)
         self.setup_track(*self.selected_track)
         if self.radio_buttons_pmt is None:
-            labels = ['pmt%s' %pmt for pmt in self.Pipeline.pipeData[self.selected_track[1]]['activePmtList']]
+            labels = ['pmt%s' % pmt for pmt in self.Pipeline.pipeData[self.selected_track[1]]['activePmtList']]
             self.radio_buttons_pmt, self.radio_con = MPLPlotter.add_radio_buttons(
                         self.pmt_radio_ax, labels, self.selected_pmt_ind, self.pmt_radio_buttons)
         # self.radio_buttons_pmt.set_active(self.selected_pmt_ind)  # not available before mpl 1.5.0
@@ -622,12 +627,13 @@ class NMPLImagePLot(Node):
         if self.slider is None:
             self.slider, slider_con = MPLPlotter.add_slider(self.slider_ax, 'rebinning', 10, 100,
                                                             self.rebin_changed, valfmt=u'%3d', valinit=10)
+        self.slider.valtext.set_text('{}'.format(bin_width))
 
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         try:
             self.full_data = data
-            self.buffer_data = Form.time_rebin_all_data(data, self.combined_bins)[track_ind][self.selected_pmt_ind]
+            self.buffer_data = Form.time_rebin_all_data(data, self.Pipeline.pipeData)[track_ind][self.selected_pmt_ind]
             self.image.set_data(np.transpose(self.buffer_data))
             self.colorbar.set_clim(0, np.amax(self.buffer_data))
             self.colorbar.update_normal(self.image)
@@ -952,7 +958,7 @@ class NSPAddxAxis(Node):
 class NTRSProjectize(Node):
     """
     Node for projectize incoming 2d Data on the voltage and time axis.
-    jnput: "2d" data as cmmin from NSum for Trs
+    jnput: "2d" data as comming from NSum for Trs
     output: [[[v_proj_tr0_pmt0, v_proj_tr0_pmt1, ... ], [t_proj_tr0_pmt0, t_proj_tr0_pmt1, ... ]], ...]
     """
 
@@ -971,6 +977,21 @@ class NTRSProjectize(Node):
     def processData(self, data, pipeData):
         return Form.gate_all_data(pipeData, data, self.time_array, self.volt_array)
 
+
+class NTRSRebinAllData(Node):
+    """
+    This Node will rebin the incoming data which means that the timing resolution is reduced by
+    combining time bins within a given time window. The time window is set via the 'softBinWidth_ns'
+    item in each track dictionary.
+    jnput: "2d" data as comming from NSum for Trs.
+    output: "2d" data similiar to input but time axis is reduced.
+    """
+    def __init__(self):
+        super(NTRSRebinAllData, self).__init__()
+        self.type = 'TRSRebinAllData'
+
+    def processData(self, data, pipeData):
+        return Form.time_rebin_all_data(data, pipeData)
 
 """ QT Signal Nodes """
 

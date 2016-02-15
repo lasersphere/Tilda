@@ -41,7 +41,7 @@ naming convention is type_list.  """
 
 cs_list = ['dwellTime10ns']
 
-trs_list = ['nOfBins', 'nOfBunches', 'softwGates']
+trs_list = ['nOfBins', 'nOfBunches', 'softwGates', 'softBinWidth_ns']
 
 csdummy_list = cs_list
 
@@ -68,6 +68,7 @@ draftTrackPars = {
     'dwellTime10ns': 2000000,
     'workingTime': None,
     'nOfBins': 1000,
+    'softBinWidth_ns': 100,
     'nOfBunches': 1,
     'softwGates': [[-10, 10, 0, 10000], [-10, 10, 0, 10000]],
     'trigger': {'type': 'no_trigger'}

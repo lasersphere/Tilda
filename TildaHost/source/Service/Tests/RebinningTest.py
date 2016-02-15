@@ -11,7 +11,7 @@ sc_arr1 = [np.mgrid[0:100, 0:100]]
 sc_arr = create_default_scaler_array_from_scandict(scanpars, 1)
 # print(sc_arr1[0])
 bins = 9
-time_axis = Form.create_time_axis_from_scan_dict(scanpars, bins * 10)
+time_axis = Form.create_time_axis_from_scan_dict(scanpars, rebinning=False)
 
 
 # def wrapper(func, *args, **kwargs):
@@ -25,7 +25,7 @@ time_axis = Form.create_time_axis_from_scan_dict(scanpars, bins * 10)
 # print(timeit.timeit(wrapped1, number=100))
 # print(timeit.timeit(wrapped2, number=100))
 
-rebin = time_rebin_all_data(sc_arr, bins)
+rebin = time_rebin_all_data(sc_arr, scanpars)
 print(len(rebin[0][0][1]))
 print(time_axis[0])
 # rebin2 = time_rebin_all_data_slow(sc_arr, bins)

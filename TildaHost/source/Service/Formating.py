@@ -121,9 +121,12 @@ def create_x_axis_from_scand_dict(scand, as_voltage=False):
     return arr
 
 
-def create_time_axis_from_scan_dict(scand, binwidth_ns=10, delay_ns=0):
+def create_time_axis_from_scan_dict(scand, rebinning=False, binwidth_ns=10, delay_ns=0):
     """
     will create an time axis for each track in scand.
+    if rebinning is True, time axis will be shortened according to the binwidth.
+    The bin width can be entered explicit in function call, or will be taken from
+    the 'softBinWidth_ns' entry in each track.
     Delay can be set to reasonable value, default is 0.
     """
     arr = []
@@ -131,8 +134,12 @@ def create_time_axis_from_scan_dict(scand, binwidth_ns=10, delay_ns=0):
     for tr in track_num_list:
         trackd = scand['track' + str(tr)]
         bins = trackd['nOfBins']
-        if trackd.get('nOfBinsRebin'):
-            bins = trackd.get('nOfBinsRebin')
+        # if binwidth_ns is None:
+        #     binwidth_ns = 10
+        if rebinning:
+            if trackd.get('softBinWidth_ns'):
+                binwidth_ns = trackd.get('softBinWidth_ns')
+                bins = bins // (binwidth_ns / 10)
         if delay_ns == 'auto':
             try:
                 delay_ns = trackd['trigger']['trigDelay10ns'] * 10
@@ -264,7 +271,7 @@ def time_rebin_all_data_slow(full_data, bins_to_combine):
     return newdata
 
 
-def time_rebin_all_data(full_data, bins_to_combine):
+def time_rebin_all_data(full_data, scan_dict):
     """
     use this function to perform a rebinning on the time axis.
     This means, alle bins within "bins_to_combine" will be summed up.
@@ -277,7 +284,10 @@ def time_rebin_all_data(full_data, bins_to_combine):
     :return: rebinned full_data
     """
     newdata = []
+    tracks, tr_list = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
     for tr_ind, tr_data in enumerate(full_data):
+        bin_width_10ns = scan_dict['track' + str(tr_list[tr_ind])]['softBinWidth_ns']
+        bins_to_combine = int(bin_width_10ns / 10)
         bin_ind = np.arange(0, tr_data.shape[-1] // bins_to_combine * bins_to_combine, bins_to_combine)
         new_tr_data = deepcopy(tr_data)
         for reps in range(bins_to_combine - 1):
