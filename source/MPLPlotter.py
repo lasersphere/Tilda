@@ -13,6 +13,7 @@ from matplotlib.widgets import RectangleSelector
 from matplotlib.widgets import RadioButtons
 from matplotlib.widgets import Button
 from matplotlib.widgets import Slider
+from matplotlib.ticker import ScalarFormatter
 
 import datetime
 import matplotlib.pyplot as plt
@@ -94,8 +95,11 @@ def pause(time):
     plt.pause(time)
 
 
-def close_fig(fig):
-    plt.close(fig)
+def close_fig(fig=None):
+    if fig is None:
+        fig = plt.gcf()
+    if fig is not None:
+        plt.close(fig)
 
 
 def plt_axes(axes, plotlist):
@@ -181,6 +185,8 @@ def setup_projection(axes, volt_array_tr, time_array_tr):
     tproj_ax.set_ylim(t_min, t_max)
     tproj_ax.autoscale(enable=True, axis='x', tight=True)
     tproj_ax.set_xlabel('cts')
+    tproj_ax.xaxis.set_label_position('top')
+    tproj_ax.xaxis.set_ticks_position('top')
     tproj_ax.yaxis.set_ticks_position('right')
     vproj_ax.set_ylabel('cts')
     vproj_ax.set_xlabel('DAC voltage [V]')
