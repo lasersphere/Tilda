@@ -661,6 +661,17 @@ class NMPLCloseFigOnClear(Node):
         MPLPlotter.close_fig(self.fig_ref)
         self.fig_ref = None
 
+
+class NMPLCloseFigOnInit(Node):
+    def __init__(self):
+        super(NMPLCloseFigOnInit, self).__init__()
+        self.type = 'MPLCloseFigOnInit'
+        MPLPlotter.close_fig()
+
+    def processData(self, data, pipeData):
+        return data
+
+
 """ specdata format compatible Nodes: """
 
 

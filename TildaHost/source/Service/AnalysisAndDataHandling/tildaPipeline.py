@@ -51,6 +51,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
     walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
     walk = walk.attach(TN.NRemoveTrackCompleteFlag())
     walk = walk.attach(TN.NCSSum())
+    walk = walk.attach(TN.NMPLCloseFigOnInit())
 
     pl_branch_2d = walk.attach(TN.NMPLImagePLot(0))
     pl_branch_2d = pl_branch_2d.attach(TN.NMPlDrawPlot())

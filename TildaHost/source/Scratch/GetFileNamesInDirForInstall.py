@@ -1,6 +1,6 @@
 import os
 
-dir = 'E:\\temp\\'
+dir = 'D:\Temp\Python_install\\'
 
 filenames = os.listdir(dir)
 
