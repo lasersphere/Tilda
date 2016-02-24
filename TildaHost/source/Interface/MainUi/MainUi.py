@@ -15,6 +15,7 @@ from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
 from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
 from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 from Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
+import MPLPlotter as MPlPlotter
 
 import Application.Config as Cfg
 
@@ -182,3 +183,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 self.simple_counter_gui.close()
         except Exception as e:
             logging.error('error while closing simple counter win:' + str(e))
+        try:
+            MPlPlotter.close_fig()
+        except Exception as e:
+            logging.error('error while closing the plot window, exception is: ' + str(e))

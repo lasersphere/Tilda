@@ -515,7 +515,6 @@ class NMPLImagePLot(Node):
             self.time_array = Form.create_time_axis_from_scan_dict(self.Pipeline.pipeData, rebinning=True)[track_ind]
             t_shape = self.time_array.shape
 
-            print('setting up new plot with time shape: ', t_shape)
             self.image, self.colorbar = MPLPlotter.configure_image_plot(
                 self.fig, self.im_ax, self.cb_ax, self.Pipeline.pipeData, self.volt_array,
                 self.time_array, self.selected_pmt, track_name)

@@ -56,8 +56,8 @@ class Main(QtCore.QObject):
         try:
             # pass
             # self.work_dir_changed('E:/lala')
-            # self.work_dir_changed('C:/temp108')
-            self.work_dir_changed('D:\Debugging_160129')
+            self.work_dir_changed('C:/temp108')
+            # self.work_dir_changed('D:\Debugging_160129')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state(MainState.idle)

@@ -18,6 +18,7 @@ from matplotlib.ticker import ScalarFormatter
 import datetime
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
 
 def plot(*args):
@@ -148,9 +149,8 @@ def image_plot(fig, axes, cbax, image_date, extent, aspect='equal'):
 
 
 def configure_image_plot(fig, im_ax, cb_ax, pipeData, volt_array_tr, time_array_tr, pmt_num, track_name):
-    iso = pipeData['isotopeData']['isotope']
-    type = pipeData['isotopeData']['type']
-    fig.canvas.set_window_title('%s_%s_%s_pmt%s' % (iso, type, track_name, str(pmt_num)))
+    filename = os.path.split(pipeData['pipeInternals']['activeXmlFilePath'])[1]
+    fig.canvas.set_window_title('plot %s track: %s pmt: %s' % (filename, track_name, str(pmt_num)))
     steps = volt_array_tr.shape[0]
     bins = time_array_tr.shape[0]
     v_min = volt_array_tr[0]

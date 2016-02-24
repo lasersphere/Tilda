@@ -76,7 +76,7 @@ def nameFileXml(isodict, path):
     # path = scanDict['pipeInternals']['workingDirectory']
     nIso = isodict['isotope']
     seq_type = isodict['type']
-    filename = nameFile(path, 'sums', nIso, seq_type, '.xml')
+    filename = nameFile(path, 'sums', seq_type, nIso, '.xml')
     return filename
 
 

@@ -8,6 +8,7 @@ Created on '20.05.2015'
 
 import matplotlib.pyplot as plt
 import logging
+import os
 
 import Service.AnalysisAndDataHandling.tildaNodes as TN
 import polliPipe.simpleNodes as SN
@@ -39,6 +40,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
     Mutliple Tracks are supported.
     """
     start = Node()
+    maintenance = start.attach(TN.NMPLCloseFigOnInit())
 
     pipe = Pipeline(start)
 
@@ -51,9 +53,8 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
     walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
     walk = walk.attach(TN.NRemoveTrackCompleteFlag())
     walk = walk.attach(TN.NCSSum())
-    walk = walk.attach(TN.NMPLCloseFigOnInit())
 
-    pl_branch_2d = walk.attach(TN.NMPLImagePLot(0))
+    pl_branch_2d = walk.attach(TN.NMPLImagePLot(1))
     pl_branch_2d = pl_branch_2d.attach(TN.NMPlDrawPlot())
 
     compl_tr_br = walk.attach(TN.NCheckIfTrackComplete())
@@ -76,10 +77,14 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     start = Node()
 
     pipe = Pipeline(start)
+    maintenance = start.attach(TN.NMPLCloseFigOnInit())
 
-    fig, axes = plt.subplots(6, sharex=True)
-    fig.canvas.set_window_title(initialScanPars.get('isotopeData', {'isotope': ''}).get('isotope'))
+    fig, axes = plt.subplots(5, sharex=True)
     pipe.pipeData = initPipeData(initialScanPars)
+
+    filen = os.path.split(pipe.pipeData['pipeInternals']['activeXmlFilePath'])[1]
+    window_title = 'plot ' + filen
+    fig.canvas.set_window_title(window_title)
 
     walk = start.attach(TN.NSaveRawData())
     walk = start.attach(TN.NSplit32bData())
@@ -115,11 +120,6 @@ def CsPipe(initialScanPars=None, callback_sig=None):
 
     compl_tr_br = walk.attach(TN.NCheckIfTrackComplete())
     compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
-
-    finalsum = walk.attach(TN.NSingleArrayToSpecData())
-    finalsum = finalsum.attach(TN.NMultiSpecFromSpecData([[0], [1]]))
-    finalsum = finalsum.attach(TN.NMPlLivePlot(axes[5], 'final sum', ['blue', 'green']))
-    finalsum = finalsum.attach(TN.NMPlDrawPlot())
 
     # walk = walk.attach(TN.NSaveIncomDataForActiveTrack())
     # walk = walk.attach(TN.NCheckIfMeasurementComplete())

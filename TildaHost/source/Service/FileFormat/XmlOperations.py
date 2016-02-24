@@ -10,6 +10,7 @@ from datetime import datetime as dt
 from lxml import etree as ET
 
 from Service.VoltageConversions.VoltageConversions import get_voltage_from_18bit
+import Service.VoltageConversions.VoltageConversions as VCon
 
 
 def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
@@ -102,6 +103,10 @@ def xmlAddCompleteTrack(rootEle, scanDict, data, track_name, datatype='scalerArr
     trackDict = scanDict[track_name]
     trackDict.update(dacStartVoltage=get_voltage_from_18bit(trackDict['dacStartRegister18Bit']))
     trackDict.update(dacStepsizeVoltage=get_voltage_from_18bit(trackDict['dacStepSize18Bit'] + int(2 ** 17)))
+    trackDict.update(dacStopVoltage=get_voltage_from_18bit(
+        VCon.calc_dac_stop_18bit(trackDict['dacStartRegister18Bit'],
+                                 trackDict['dacStepSize18Bit'],
+                                 trackDict['nOfSteps'])))
     xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackDict)
     xmlWriteToTrack(rootEle, nOfTrack, datatype, data, 'data')
     return rootEle

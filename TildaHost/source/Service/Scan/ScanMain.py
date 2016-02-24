@@ -182,11 +182,14 @@ class ScanMain:
         """
         calculates the scan progress by comparing the given dictionaries.
         progress_dict must contain: {activeIso: str, activeTrackNum: int, completedTracks: list, nOfCompletedSteps: int}
+        scan_dict_contains scan values only for active scan
+        return_dict contains: ['activeIso', 'overallProgr', 'timeleft', 'activeTrack', 'totalTracks',
+        'trackProgr', 'activeScan', 'totalScans', 'activeStep', 'totalSteps', 'trackName']
         """
         try:
             return_dict = dict.fromkeys(['activeIso', 'overallProgr', 'timeleft', 'activeTrack', 'totalTracks',
                                          'trackProgr', 'activeScan', 'totalScans', 'activeStep',
-                                         'totalSteps', 'trackName'])
+                                         'totalSteps', 'trackName', 'activeFile'])
             iso_name = progress_dict['activeIso']
             track_num = progress_dict['activeTrackNum']
             track_name = 'track' + str(track_num)
@@ -211,6 +214,7 @@ class ScanMain:
             return_dict['activeStep'] = compl_steps - (return_dict['activeScan'] - 1) * total_steps_list[track_ind][1]
             return_dict['totalSteps'] = total_steps_list[track_ind][1]
             return_dict['trackName'] = track_name
+            return_dict['activeFile'] = scan_dict['pipeInternals']['activeXmlFilePath']
             return return_dict
         except Exception as e:
             print('while calculating the scan progress, this happened: ' + str(e))

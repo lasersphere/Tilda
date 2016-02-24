@@ -6,6 +6,7 @@ Created on
 Module Description:
 """
 from PyQt5 import QtWidgets, QtCore
+import os
 
 from Interface.ScanProgressUi.Ui_ScanProgress import Ui_ScanProgress
 import Application.Config as Cfg
@@ -51,7 +52,7 @@ class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
         'trackProgr': float, 'activeScan': int, 'totalScans': int, 'activeStep': int, 'totalSteps': int,
         'trackName': str]
         """
-        self.setWindowTitle(progress_dict['activeIso'])  #
+        self.setWindowTitle('progress ' + os.path.split(progress_dict['activeFile'])[1])  #
         self.progressBar_overall.setValue(int(progress_dict['overallProgr']))
         self.label_timeleft_set.setText(progress_dict['timeleft'])
         self.label_act_track_num.setText(str(progress_dict['activeTrack']))
