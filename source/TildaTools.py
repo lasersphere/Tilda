@@ -51,7 +51,12 @@ def eval_str_vals_in_dict(dicti):
         try:
             dicti[key] = ast.literal_eval(val)
         except Exception as e:
-            print(e, val, type(val))
+            if key == 'trigger':
+                val = val.replace("<TriggerTypes.", "\'")
+                val = val.replace(">", "\'")
+                dicti[key] = ast.literal_eval(val)
+            else:
+                print(e, val, type(val))
     return dicti
 
 
@@ -60,7 +65,8 @@ def load_xml(filename):
     loads an .xml file and returns it as an lxml.etree.Element
     :return:lxml.etree.Element, Element of loaded File
     """
-    tree = ET.parse(filename)
+    parser = ET.XMLParser(huge_tree=True)
+    tree = ET.parse(filename, parser)
     elem = tree.getroot()
     return elem
 
@@ -96,7 +102,8 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
         trackd[key] = eval_str_vals_in_dict(trackd[key])
     return trackd
 
-def xml_get_data_from_track(root_ele, n_of_track, data_type):
+
+def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape):
     """
     Get Data From Track
     :param root_ele:  lxml.etree.Element, root of the xml tree
@@ -109,7 +116,8 @@ def xml_get_data_from_track(root_ele, n_of_track, data_type):
     try:
         actTrack = root_ele.find('tracks').find('track' + str(n_of_track)).find('data')
         dataText = actTrack.find(str(data_type)).text
-        return dataText
+        data_numpy = numpy_array_from_string(dataText, data_shape)
+        return data_numpy
     except:
         print('error while searching ' + str(data_type) + ' in track' + str(n_of_track) + ' in ' + str(root_ele))
         return None
@@ -137,3 +145,4 @@ def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
     scan_dict['pipeInternals']['activeTrackNumber'] = 'None'
     scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
     return scan_dict, xml_etree
+

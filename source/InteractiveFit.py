@@ -23,7 +23,7 @@ from SPFitter import SPFitter
 
 class InteractiveFit(object):
     
-    def __init__(self, file, db, run):
+    def __init__(self, file, db, run, block=True):
         plot.ion()
         plot.clear()
         con = sqlite3.connect(db)
@@ -51,7 +51,7 @@ class InteractiveFit(object):
             
         self.fitter = SPFitter(spec, meas, st)
         plot.plotFit(self.fitter)
-        plot.show(True)
+        plot.show(block)
         self.printPars()
         
         
