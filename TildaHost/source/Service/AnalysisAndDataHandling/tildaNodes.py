@@ -271,7 +271,7 @@ class NSaveProjection(Node):
         data = self.storage
         pipeData = self.Pipeline.pipeData
         pipeInternals = pipeData['pipeInternals']
-        file = pipeInternals['activeXmlProjFilePath']
+        file = pipeInternals['activeXmlFilePath']
         rootEle = TildaTools.load_xml(file)
         tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
         for track_ind, tr_num in enumerate(track_list):
@@ -580,7 +580,7 @@ class NMPLImagePLot(Node):
         rebinned_data = Form.time_rebin_all_data(self.full_data, self.Pipeline.pipeData)
         data = Form.gate_all_data(pipeData, rebinned_data, time_arr, v_arr)
         pipeInternals = pipeData['pipeInternals']
-        file = pipeInternals['activeXmlProjFilePath']
+        file = pipeInternals['activeXmlFilePath']
         rootEle = TildaTools.load_xml(file)
         tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
         for track_ind, tr_num in enumerate(track_list):

@@ -154,9 +154,11 @@ def initPipeData(initialScanPars):
     pipeData['pipeInternals']['curVoltInd'] = 0
     xml_file_name = FaFH.createXmlFileOneIsotope(pipeData)
     pipeData['pipeInternals']['activeXmlFilePath'] = xml_file_name
-    if pipeData['isotopeData']['type'] in ['trs', 'trsdummy']:
-        pipeData['pipeInternals']['activeXmlProjFilePath'] = FaFH.createXmlFileOneIsotope(
-            pipeData, 'trs_proj', xml_file_name.replace('.xml', '_proj.xml'))
+    # in the past an extra projection file was created. but for now,
+    #  the projection should stay within the .xml file for this scan.
+    # if pipeData['isotopeData']['type'] in ['trs', 'trsdummy']:
+    #     pipeData['pipeInternals']['activeXmlProjFilePath'] = FaFH.createXmlFileOneIsotope(
+    #         pipeData, 'trs_proj', xml_file_name.replace('.xml', '_proj.xml'))
     return pipeData
 
 

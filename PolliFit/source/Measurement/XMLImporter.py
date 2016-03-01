@@ -10,7 +10,7 @@ import csv
 import sqlite3
 from datetime import datetime
 import os
-import ast
+import Service.Formating as Form
 import Physics
 
 import numpy as np
@@ -41,35 +41,68 @@ class XMLImporter(SpecData):
         self.laserFreq = Physics.freqFromWavenumber(2 * scandict['isotopeData']['laserFreq'])
         self.date = scandict['isotopeData']['isotopeStartTime']
         self.type = scandict['isotopeData']['isotope']
+        self.seq_type = scandict['isotopeData']['type']
+
+        self.accVolt = scandict['isotopeData']['accVolt']
 
         self.offset = 0  # should also be a list for mutliple tracks
         self.nrScalers = []
-        self.x = []
-        self.cts = []
-        self.err = []
+        self.x = Form.create_x_axis_from_scand_dict(scandict, as_voltage=True)  # x axis, voltage
+        self.cts = []  # countervalues
+        self.err = []  # error to the countervalues
         self.stepSize = []
         self.col = False  # should also be a list for multiple tracks
         self.dwell = []
+        if self.seq_type == 'trs':
+            self.t = Form.create_time_axis_from_scan_dict(scandict)  # time axis, 10ns resolution
+            self.t_proj = []
+            self.time_res = []
 
-        for tr in TildaTools.get_track_names(scandict):
-            track_dict = scandict[tr]
-            nOfactTrack = int(tr[5:])
+
+
+
+        for tr_ind, tr_name in enumerate(TildaTools.get_track_names(scandict)):
+            track_dict = scandict[tr_name]
+            nOfactTrack = int(tr_name[5:])
             nOfsteps = track_dict['nOfSteps']
+            nOfBins = track_dict.get('nOfBins')
             nOfScalers = len(track_dict['activePmtList'])
-            dacStart18Bit = track_dict['dacStartRegister18Bit']
             dacStepSize18Bit = track_dict['dacStepSize18Bit']
-            dacStop18Bit = dacStart18Bit + (dacStepSize18Bit * nOfsteps)
-            xAxis = np.arange(dacStart18Bit, dacStop18Bit, dacStepSize18Bit, dtype=np.float)
-            ctsstr = TildaTools.xml_get_data_from_track(lxmlEtree, nOfactTrack, 'scalerArray')
-            cts = TildaTools.numpy_array_from_string(ctsstr, (nOfScalers, nOfsteps))
-            self.offset = track_dict['postAccOffsetVolt']
+
             self.nrScalers.append(nOfScalers)
-            self.x.append(xAxis)
-            self.cts.append(cts)
-            self.err.append(np.sqrt(cts))
             self.stepSize.append(dacStepSize18Bit)
             self.col = track_dict['colDirTrue']
-            self.dwell.append(track_dict['dwellTime10ns'])
+            self.offset = track_dict['postAccOffsetVolt']
+            if track_dict.get('postAccOffsetVoltControl') == 0:
+                self.offset = 0
+
+            if self.seq_type == 'trs':
+                cts_shape = (nOfScalers, nOfsteps, nOfBins)
+                v_proj = TildaTools.xml_get_data_from_track(
+                    lxmlEtree, nOfactTrack, 'voltage_projection', (nOfScalers, nOfsteps))
+                t_proj = TildaTools.xml_get_data_from_track(
+                    lxmlEtree, nOfactTrack, 'time_projection', (nOfsteps, nOfBins))
+                scaler_array = TildaTools.xml_get_data_from_track(
+                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape)
+                self.time_res.append(scaler_array)
+                if v_proj or t_proj is None:
+                    v_proj, t_proj = Form.gate_one_track(
+                        tr_ind, nOfactTrack, scandict, self.time_res, self.t, self.x, [])[0]
+                self.cts.append(v_proj)
+                self.err.append(np.sqrt(v_proj))
+                self.t_proj.append(t_proj)
+                self.time_res.append(scaler_array)
+                gates = track_dict['softwGates']
+                dwell = [g[3] - g[2] for g in gates]
+                self.dwell.append(dwell)
+
+            elif self.seq_type == 'cs':
+                cts_shape = (nOfScalers, nOfsteps)
+                scaler_array = TildaTools.xml_get_data_from_track(
+                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape)
+                self.cts.append(scaler_array)
+                self.err.append(np.sqrt(scaler_array))
+                self.dwell.append(track_dict.get('dwellTime10ns'))
 
     def preProc(self, db):
         print('XMLImporter is using db: ', db)
@@ -97,10 +130,10 @@ class XMLImporter(SpecData):
             con = sqlite3.connect(db)
             with con:
                 con.execute('''UPDATE Files SET date = ?, type = ?, offset = ?,
-                                laserFreq = ?, colDirTrue = ?
+                                laserFreq = ?, colDirTrue = ?, accVolt = ?
                                  WHERE file = ?''',
                             (self.date, self.type, self.offset,
-                             self.laserFreq, self.col,
+                             self.laserFreq, self.col, self.accVolt,
                              self.file))
             con.close()
         except Exception as e:

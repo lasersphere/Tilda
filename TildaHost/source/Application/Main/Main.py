@@ -247,6 +247,7 @@ class Main(QtCore.QObject):
                 self.scan_pars[iso_name]['pipeInternals']['workingDirectory'] = self.working_directory
                 self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
                 self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
+                self.scan_pars[iso_name]['isotopeData']['accVolt'] = self.acc_voltage
                 logging.debug('will scan: ' + iso_name + str(sorted(self.scan_pars[iso_name])))
                 self.scan_main.prepare_scan(self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline)
                 self.set_state(MainState.load_track)

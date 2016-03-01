@@ -216,41 +216,45 @@ def gate_all_data(pipeData, data, time_array, volt_array):
     tracks, tr_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
     ret = []
     for tr_ind, tr_num in enumerate(tr_list):
-        tr_name = 'track%s' % tr_num
-        gates_tr = []
-        pmts = len(pipeData[tr_name]['activePmtList'])
-        t_proj_tr = np.zeros((pmts, len(time_array[tr_ind])), dtype=np.uint32)
-        v_proj_tr = np.zeros((pmts, len(volt_array[tr_ind])), dtype=np.uint32)
-        try:
-            gates_val_lists = pipeData[tr_name]['softwGates']  # list of list for each pmt.
-            for gates_val_list in gates_val_lists:
-                v_min, v_max = sorted((gates_val_list[0], gates_val_list[1]))
-                v_min_ind, v_min, vdif = find_closest_value_in_arr(volt_array[tr_ind], v_min)
-                v_max_ind, v_max, vdif = find_closest_value_in_arr(volt_array[tr_ind], v_max)
-
-                t_min, t_max = sorted((gates_val_list[2], gates_val_list[3]))
-                t_min_ind, t_min, tdif = find_closest_value_in_arr(time_array[tr_ind], t_min)
-                t_max_ind, t_max, tdif = find_closest_value_in_arr(time_array[tr_ind], t_max)
-                gates_tr.append([v_min_ind, v_max_ind, t_min_ind, t_max_ind])  # indices in data array
-        except Exception as e:  # if gates_tr are messud up, use full scan range as gates_tr:
-            v_min = round(volt_array[tr_ind][0], 5)
-            v_max = round(volt_array[tr_ind][-1], 5)
-            t_min = time_array[tr_ind][0]
-            t_max = time_array[tr_ind][-1]
-            gates_val_list = [v_min, v_max, t_min, t_max]
-            pipeData[tr_name]['softwGates'] = [gates_val_list for pmt in pipeData[tr_name]['activePmtList']]
-            gates_pmt = [0, len(volt_array[tr_ind]) - 1, 0, len(time_array[tr_ind]) - 1]
-            for pmt in pipeData[tr_name]['activePmtList']:
-                gates_tr.append(gates_pmt)
-        finally:
-            for pmt_ind, pmt_gate in enumerate(gates_tr):
-                t_proj_xdata = np.sum(data[tr_ind][pmt_ind][pmt_gate[0]:pmt_gate[1] + 1, :], axis=0)
-                v_proj_ydata = np.sum(data[tr_ind][pmt_ind][:, pmt_gate[2]:pmt_gate[3] + 1], axis=1)
-                v_proj_tr[pmt_ind] = v_proj_ydata
-                t_proj_tr[pmt_ind] = t_proj_xdata
-            ret.append([v_proj_tr, t_proj_tr])
+        ret = gate_one_track(tr_ind, tr_num, pipeData, data, time_array, volt_array, ret)
     return ret
 
+
+def gate_one_track(tr_ind, tr_num, pipeData, data, time_array, volt_array, ret):
+    tr_name = 'track%s' % tr_num
+    gates_tr = []
+    pmts = len(pipeData[tr_name]['activePmtList'])
+    t_proj_tr = np.zeros((pmts, len(time_array[tr_ind])), dtype=np.uint32)
+    v_proj_tr = np.zeros((pmts, len(volt_array[tr_ind])), dtype=np.uint32)
+    try:
+        gates_val_lists = pipeData[tr_name]['softwGates']  # list of list for each pmt.
+        for gates_val_list in gates_val_lists:
+            v_min, v_max = sorted((gates_val_list[0], gates_val_list[1]))
+            v_min_ind, v_min, vdif = find_closest_value_in_arr(volt_array[tr_ind], v_min)
+            v_max_ind, v_max, vdif = find_closest_value_in_arr(volt_array[tr_ind], v_max)
+
+            t_min, t_max = sorted((gates_val_list[2], gates_val_list[3]))
+            t_min_ind, t_min, tdif = find_closest_value_in_arr(time_array[tr_ind], t_min)
+            t_max_ind, t_max, tdif = find_closest_value_in_arr(time_array[tr_ind], t_max)
+            gates_tr.append([v_min_ind, v_max_ind, t_min_ind, t_max_ind])  # indices in data array
+    except Exception as e:  # if gates_tr are messud up, use full scan range as gates_tr:
+        v_min = round(volt_array[tr_ind][0], 5)
+        v_max = round(volt_array[tr_ind][-1], 5)
+        t_min = time_array[tr_ind][0]
+        t_max = time_array[tr_ind][-1]
+        gates_val_list = [v_min, v_max, t_min, t_max]
+        pipeData[tr_name]['softwGates'] = [gates_val_list for pmt in pipeData[tr_name]['activePmtList']]
+        gates_pmt = [0, len(volt_array[tr_ind]) - 1, 0, len(time_array[tr_ind]) - 1]
+        for pmt in pipeData[tr_name]['activePmtList']:
+            gates_tr.append(gates_pmt)
+    finally:
+        for pmt_ind, pmt_gate in enumerate(gates_tr):
+            t_proj_xdata = np.sum(data[tr_ind][pmt_ind][pmt_gate[0]:pmt_gate[1] + 1, :], axis=0)
+            v_proj_ydata = np.sum(data[tr_ind][pmt_ind][:, pmt_gate[2]:pmt_gate[3] + 1], axis=1)
+            v_proj_tr[pmt_ind] = v_proj_ydata
+            t_proj_tr[pmt_ind] = t_proj_xdata
+        ret.append([v_proj_tr, t_proj_tr])
+    return ret
 
 def time_rebin_all_data_slow(full_data, bins_to_combine):
     """
@@ -286,12 +290,16 @@ def time_rebin_all_data(full_data, scan_dict):
     newdata = []
     tracks, tr_list = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
     for tr_ind, tr_data in enumerate(full_data):
-        bin_width_10ns = scan_dict['track' + str(tr_list[tr_ind])]['softBinWidth_ns']
-        bins_to_combine = int(bin_width_10ns / 10)
-        bin_ind = np.arange(0, tr_data.shape[-1] // bins_to_combine * bins_to_combine, bins_to_combine)
-        new_tr_data = deepcopy(tr_data)
-        for reps in range(bins_to_combine - 1):
-            new_tr_data += np.roll(tr_data, -(reps + 1), axis=2)
-        newdata.append(new_tr_data[:, :, bin_ind])
+        newdata = rebin_single_track(tr_ind, tr_data, tr_list, newdata, scan_dict)
     return newdata
 
+
+def rebin_single_track(tr_ind, tr_data, tr_list, return_data, scan_dict):
+    bin_width_10ns = scan_dict['track' + str(tr_list[tr_ind])]['softBinWidth_ns']
+    bins_to_combine = int(bin_width_10ns / 10)
+    bin_ind = np.arange(0, tr_data.shape[-1] // bins_to_combine * bins_to_combine, bins_to_combine)
+    new_tr_data = deepcopy(tr_data)
+    for reps in range(bins_to_combine - 1):
+        new_tr_data += np.roll(tr_data, -(reps + 1), axis=2)
+    return_data.append(new_tr_data[:, :, bin_ind])
+    return return_data
