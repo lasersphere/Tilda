@@ -85,7 +85,7 @@ class XMLImporter(SpecData):
                 scaler_array = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'scalerArray', cts_shape)
                 self.time_res.append(scaler_array)
-                if v_proj or t_proj is None:
+                if v_proj is None or t_proj is None:
                     v_proj, t_proj = Form.gate_one_track(
                         tr_ind, nOfactTrack, scandict, self.time_res, self.t, self.x, [])[0]
                 self.cts.append(v_proj)
