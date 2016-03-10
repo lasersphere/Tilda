@@ -4,6 +4,7 @@ Created on
 @author: simkaufm
 
 Module Description:  on the 03.03.2016, the Kepco settlement time meas. was repeated and bunching was performed
+bunches were not analysed because the extraction time is to short.
 
 
 """
