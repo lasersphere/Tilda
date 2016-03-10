@@ -3,7 +3,8 @@ Created on
 
 @author: simkaufm
 
-Module Description:  on the 03.03.2016, the Kepco settlement time meas. was repeated and bunching was performed
+Module Description:  On 04.03.2016 40Ca cw beam from online ion source without gas jet was taken
+ and spectroscopy on bunched and on continous beam was performed.
 
 
 """
@@ -55,12 +56,14 @@ runs = ['sc0', 'sc1', 'sc0+sc1']
 ''' fitting all files for the kepco settle time related stuff: '''
 
 #
-files = ['40_Ca_cs_010.xml', '40_Ca_trs_029.xml',  '40_Ca_trs_032.xml', '40_Ca_trs_033.xml', '40_Ca_trs_034.xml',
+files = ['40_Ca_trs_029.xml',  '40_Ca_trs_032.xml', '40_Ca_trs_033.xml', '40_Ca_trs_034.xml',
          '40_Ca_trs_035.xml',   '40_Ca_trs_036.xml',   '40_Ca_trs_038.xml',  '40_Ca_trs_040.xml',  '40_Ca_trs_041.xml',
          '40_Ca_trs_042.xml', '40_Ca_trs_043.xml',  '40_Ca_trs_044.xml',  '40_Ca_trs_045.xml', '40_Ca_trs_046.xml',
          '40_Ca_trs_047.xml',  '40_Ca_trs_048.xml',  '40_Ca_trs_052.xml',  '40_Ca_trs_053.xml',  '40_Ca_trs_054.xml',
          '40_Ca_trs_055.xml', '40_Ca_trs_057.xml',  '40_Ca_trs_058.xml', '40_Ca_trs_072.xml'
          ]
+
+print('number of files that will be fitted: ', len(files))
 # files = ['cs_40_Ca_broad_003.xml',
 #          'trs_40_Ca_001.xml', 'trs_40_Ca_002.xml', 'trs_40_Ca_003.xml'
 #          ]
