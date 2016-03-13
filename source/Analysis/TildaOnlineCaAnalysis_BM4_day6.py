@@ -10,6 +10,7 @@ Module Description:  On 04.03.2016 40Ca cw beam from online ion source without g
 """
 
 import Tools
+import Physics
 import numpy as np
 import os
 from InteractiveFit import InteractiveFit
@@ -44,7 +45,6 @@ runs = ['sc0', 'sc1', 'sc0+sc1']
 
 '''crawl'''
 # Tools.crawl(db)
-
 # trs_test_file = os.path.join(work_dir, 'sums\\40_Ca_trs_002.xml')
 # # print(trs_test_file)
 # f = XMLImporter(trs_test_file)
@@ -62,7 +62,7 @@ files = ['40_Ca_trs_029.xml',  '40_Ca_trs_032.xml', '40_Ca_trs_033.xml', '40_Ca_
          '40_Ca_trs_047.xml',  '40_Ca_trs_048.xml',  '40_Ca_trs_052.xml',  '40_Ca_trs_053.xml',  '40_Ca_trs_054.xml',
          '40_Ca_trs_055.xml', '40_Ca_trs_057.xml',  '40_Ca_trs_058.xml', '40_Ca_trs_072.xml'
          ]
-
+files = files[1:]
 print('number of files that will be fitted: ', len(files))
 # files = ['cs_40_Ca_broad_003.xml',
 #          'trs_40_Ca_001.xml', 'trs_40_Ca_002.xml', 'trs_40_Ca_003.xml'
@@ -72,11 +72,11 @@ print('number of files that will be fitted: ', len(files))
 # fit.fit()
 
 ''' batch fitting '''
-
+# runs = [runs[0]]
 for run in runs:
     BatchFit.batchFit(files, db, run)
 
-
+# Analyzer.combineRes(isos[0], 'offset', runs[0], db, print_extracted=True)
 
 ''' Average '''
 
@@ -132,7 +132,7 @@ for par in pars: # , 'sigma', 'Int0']:
                                      color='green', fontsize=20)
         plot.save(os.path.join(combine_plots_dir,
                                iso + '_' + par + '.png'))
-#
+
         # plot.show(True)
 #
 

@@ -90,6 +90,7 @@ class XMLImporter(SpecData):
                         tr_ind, nOfactTrack, scandict, self.time_res, self.t, self.x, [])[0]
                 self.cts.append(v_proj)
                 self.err.append(np.sqrt(v_proj))
+                self.err[-1][self.err[-1] < 1] = 1  # remove 0's in the error
                 self.t_proj.append(t_proj)
                 self.time_res.append(scaler_array)
                 gates = track_dict['softwGates']
