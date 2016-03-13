@@ -64,14 +64,16 @@ files = ['40_Ca_cs_012.xml', '40_Ca_cs_013.xml', '40_Ca_cs_014.xml', '40_Ca_cs_0
 # files = ['cs_40_Ca_broad_003.xml',
 #          'trs_40_Ca_001.xml', 'trs_40_Ca_002.xml', 'trs_40_Ca_003.xml'
 #          ]
-# files = [files[-1]]
-# fit = InteractiveFit(files[0], db, 'sc1', block=True)
+# files = files[-2:]  # -300 center 4000 IntScale
+files = files[3:5]  # -800 center 4000 IntScale
+# fit = InteractiveFit(files[-1], db, 'sc0', block=True)
 # fit.fit()
-
+#
+# raise Exception
 ''' batch fitting '''
 
-for run in runs:
-    BatchFit.batchFit(files, db, run)
+# for run in runs:
+#     BatchFit.batchFit(files, db, run)
 
 
 
