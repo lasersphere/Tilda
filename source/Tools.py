@@ -109,6 +109,21 @@ def _insertFile(f, db):
     con.close() 
 
 
+def _insertIso(db, iso, mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat,
+               fixedBrat, intScale, fixedInt):
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+
+    cur.execute(
+        ''' INSERT INTO Isotopes (iso, mass, mass_d, I, center,
+    Al, Bl, Au, Bu, fixedArat,
+    fixedBrat, intScale, fixedInt, relInt, m) VALUES (?, ?, ?, ?, ?,  ?, ?, ?, ?, ?,  ?, ?, ?, NULL, NULL)''',
+        (iso, mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, fixedBrat, intScale, fixedInt)
+    )
+    con.commit()
+    con.close()
+
+
 def fileList(db, type):
     '''Return a list of files with type'''
     con = sqlite3.connect(db)
