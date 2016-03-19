@@ -40,6 +40,7 @@ class DBIsotope(object):
         self.shape = eval(data[4])
         self.fixShape = eval(data[5])
         elmass = data[6] * Physics.me_u
+        print('loaded :', self.name)
         
         cur.execute('''SELECT mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, fixedBrat, intScale, fixedInt, relInt, m
             FROM Isotopes WHERE iso = ?''', (iso,))
