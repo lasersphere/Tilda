@@ -29,6 +29,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     main_ui_status_call_back_signal = QtCore.pyqtSignal(dict)
 
     def __init__(self):
+        QtCore.QLocale().setDefault(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         super(MainUi, self).__init__()
         self.setupUi(self)
 
@@ -142,15 +143,14 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.simple_counter_gui = None
 
     def set_laser_freq(self):
-        laser_freq, ok = QtWidgets.QInputDialog.getDouble(self, 'Laser', 'laser frequency [cm-1]',
+        laser_freq, ok = QtWidgets.QInputDialog.getDouble(self, 'Laser', 'laser wavenumber [cm-1]',
                                                           0, 0, 9999999,
                                                           5)
         if ok:
             Cfg._main_instance.laser_freq_changed(laser_freq)
 
     def set_acc_volt(self):
-        acc_volt, ok = QtWidgets.QInputDialog.getDouble(self, 'Acceleration Voltage',
-                                                          'acceleration voltage [V]',
+        acc_volt, ok = QtWidgets.QInputDialog.getDouble(self, 'Acceleration Voltage', 'acceleration voltage [V]',
                                                           0, 0, 9999999,
                                                           2)
         if ok:
