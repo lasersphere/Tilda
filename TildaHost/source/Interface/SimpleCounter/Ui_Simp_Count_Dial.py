@@ -12,6 +12,7 @@ class Ui_Dialog_simpleCounterControl(object):
     def setupUi(self, Dialog_simpleCounterControl):
         Dialog_simpleCounterControl.setObjectName("Dialog_simpleCounterControl")
         Dialog_simpleCounterControl.resize(234, 114)
+        Dialog_simpleCounterControl.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.verticalLayout = QtWidgets.QVBoxLayout(Dialog_simpleCounterControl)
         self.verticalLayout.setObjectName("verticalLayout")
         self.label_5 = QtWidgets.QLabel(Dialog_simpleCounterControl)

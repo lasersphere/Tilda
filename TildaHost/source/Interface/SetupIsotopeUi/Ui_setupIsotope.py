@@ -12,6 +12,7 @@ class Ui_SetupIsotope(object):
     def setupUi(self, SetupIsotope):
         SetupIsotope.setObjectName("SetupIsotope")
         SetupIsotope.resize(381, 146)
+        SetupIsotope.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.verticalLayout = QtWidgets.QVBoxLayout(SetupIsotope)
         self.verticalLayout.setObjectName("verticalLayout")
         self.gridLayout = QtWidgets.QGridLayout()

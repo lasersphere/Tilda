@@ -12,6 +12,7 @@ class Ui_MainWindow_PostAcc(object):
     def setupUi(self, MainWindow_PostAcc):
         MainWindow_PostAcc.setObjectName("MainWindow_PostAcc")
         MainWindow_PostAcc.resize(570, 147)
+        MainWindow_PostAcc.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.centralwidget = QtWidgets.QWidget(MainWindow_PostAcc)
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)

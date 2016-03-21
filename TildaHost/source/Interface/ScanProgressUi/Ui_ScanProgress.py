@@ -12,6 +12,7 @@ class Ui_ScanProgress(object):
     def setupUi(self, ScanProgress):
         ScanProgress.setObjectName("ScanProgress")
         ScanProgress.resize(194, 293)
+        ScanProgress.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.centralwidget = QtWidgets.QWidget(ScanProgress)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)

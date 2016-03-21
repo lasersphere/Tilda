@@ -15,6 +15,7 @@ class Ui_MainWindowTrackPars(object):
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap("track_icon.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         MainWindowTrackPars.setWindowIcon(icon)
+        MainWindowTrackPars.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.centralwidget = QtWidgets.QWidget(MainWindowTrackPars)
         self.centralwidget.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.centralwidget.setObjectName("centralwidget")

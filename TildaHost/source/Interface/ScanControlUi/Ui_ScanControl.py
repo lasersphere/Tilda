@@ -12,6 +12,7 @@ class Ui_MainWindowScanControl(object):
     def setupUi(self, MainWindowScanControl):
         MainWindowScanControl.setObjectName("MainWindowScanControl")
         MainWindowScanControl.resize(419, 472)
+        MainWindowScanControl.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         MainWindowScanControl.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self.centralwidget = QtWidgets.QWidget(MainWindowScanControl)
         self.centralwidget.setObjectName("centralwidget")

@@ -17,6 +17,9 @@
    <iconset>
     <normaloff>track_icon.ico</normaloff>track_icon.ico</iconset>
   </property>
+  <property name="locale">
+   <locale language="English" country="UnitedStates"/>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <property name="locale">
     <locale language="English" country="UnitedStates"/>

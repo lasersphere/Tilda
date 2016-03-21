@@ -12,6 +12,7 @@ class Ui_VoltMeasConfMainWin(object):
     def setupUi(self, VoltMeasConfMainWin):
         VoltMeasConfMainWin.setObjectName("VoltMeasConfMainWin")
         VoltMeasConfMainWin.resize(410, 70)
+        VoltMeasConfMainWin.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.centralwidget = QtWidgets.QWidget(VoltMeasConfMainWin)
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)

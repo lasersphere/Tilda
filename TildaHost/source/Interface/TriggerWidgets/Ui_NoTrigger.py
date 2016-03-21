@@ -12,6 +12,7 @@ class Ui_no_trigger_widg(object):
     def setupUi(self, no_trigger_widg):
         no_trigger_widg.setObjectName("no_trigger_widg")
         no_trigger_widg.resize(199, 45)
+        no_trigger_widg.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
 
         self.retranslateUi(no_trigger_widg)
         QtCore.QMetaObject.connectSlotsByName(no_trigger_widg)

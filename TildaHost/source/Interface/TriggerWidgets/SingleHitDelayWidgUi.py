@@ -29,14 +29,12 @@ class SingelHitDelay(BaseTriggerWidgUi, Ui_single_hit_delay_widg):
         self.doubleSpinBox_trigDelay_mus.valueChanged.connect(self.trig_delay_set)
 
     def set_vals_by_dict(self):
-        if self.buffer_pars.get('trigInputChan', -1) >= 0:
-            trig_ind = self.buffer_pars.get('trigInputChan')
-            self.comboBox_trigInputChan.setCurrentIndex(trig_ind)
-            self.trig_input(trig_ind)
-        if self.buffer_pars.get('trigDelay10ns', -1) >= 0:
-            delay = self.buffer_pars.get('trigDelay10ns')
-            self.doubleSpinBox_trigDelay_mus.setValue(delay * (10 ** -2))
-            self.trig_delay_set(delay * (10 ** -2))
+        trig_ind = self.buffer_pars.get('trigInputChan', 0)
+        self.comboBox_trigInputChan.setCurrentIndex(trig_ind)
+        self.trig_input(trig_ind)
+        delay = self.buffer_pars.get('trigDelay10ns', 0)
+        self.doubleSpinBox_trigDelay_mus.setValue(delay * (10 ** -2))
+        self.trig_delay_set(delay * (10 ** -2))
 
     def trig_input(self, ind):
         trig_name = self.comboBox_trigInputChan.currentText()

@@ -2,8 +2,7 @@
 
 # Form implementation generated from reading ui file 'Ui_Version.ui'
 #
-# Created: Wed Sep 23 15:11:59 2015
-#      by: PyQt5 UI code generator 5.3.1
+# Created by: PyQt5 UI code generator 5.5
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -13,6 +12,7 @@ class Ui_Version(object):
     def setupUi(self, Version):
         Version.setObjectName("Version")
         Version.resize(188, 81)
+        Version.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.gridLayout_2 = QtWidgets.QGridLayout(Version)
         self.gridLayout_2.setObjectName("gridLayout_2")
         self.gridLayout = QtWidgets.QGridLayout()

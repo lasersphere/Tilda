@@ -13,6 +13,9 @@
   <property name="windowTitle">
    <string>Post acceleration power supplies</string>
   </property>
+  <property name="locale">
+   <locale language="English" country="UnitedStates"/>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="5">

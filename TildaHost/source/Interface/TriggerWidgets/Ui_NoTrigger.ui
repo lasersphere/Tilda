@@ -13,6 +13,9 @@
   <property name="windowTitle">
    <string>no_trigger_widg</string>
   </property>
+  <property name="locale">
+   <locale language="English" country="UnitedStates"/>
+  </property>
  </widget>
  <resources/>
  <connections/>
