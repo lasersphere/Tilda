@@ -83,13 +83,15 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def update_status(self, status_dict):
         """
         will be called when the Main changes its status
-        status_dict keys: ['workdir', 'status', 'database', 'laserfreq', 'accvolt']
+        status_dict keys: ['workdir', 'status', 'database', 'laserfreq', 'accvolt', 'sequencer_status', 'fpga_status']
         """
         self.label_workdir_set.setText(str(status_dict.get('workdir', '')))
         self.label_main_status.setText(str(status_dict.get('status', '')))
         self.label_database.setText(str(status_dict.get('database', '')))
         self.label_laser_freq_set.setText(str(status_dict.get('laserfreq', '')))
         self.label_acc_volt_set.setText(str(status_dict.get('accvolt', '')))
+        self.label_fpga_state_set.setText(str(status_dict.get('fpga_status', '')))
+        self.label_sequencer_status_set.setText(str(status_dict.get('sequencer_status', '')))
         for w in self.act_scan_wins:
             w.enable_go(status_dict.get('status', '') == 'idle')
 

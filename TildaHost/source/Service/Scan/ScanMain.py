@@ -112,6 +112,27 @@ class ScanMain:
         else:
             return False
 
+    def read_sequencer_status(self):
+        if self.sequencer is not None:
+            state = self.sequencer.getSeqState()
+            for n_state, int_state in self.sequencer.config.seqStateDict.items():
+                if int_state == state:
+                    state = n_state
+            timeout = 'fine'
+            if self.sequencer.getDACQuWriteTimeout():
+                timeout = 'timedout'
+            return {'type': self.sequencer.type, 'state': state, 'DMA Queue status': timeout}
+        else:
+            return None
+
+    def read_fpga_status(self):
+        if self.sequencer is not None:
+            session = self.sequencer.session.value
+            status = self.sequencer.status
+            return {'session': session, 'status': status}
+        else:
+            return None
+
     def check_scanning(self):
         """
         check if the sequencer is still in the 'measureTrack' state
@@ -139,7 +160,7 @@ class ScanMain:
 
     def abort_scan(self):
         """
-        aborts the scan directly
+        aborts the scan directly, will block until scan is aborted on the fpga.
         """
         self.sequencer.abort()
 

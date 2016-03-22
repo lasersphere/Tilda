@@ -46,7 +46,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         """
         return self.ReadWrite(self.config.SPerrorCount).value
 
-    def getSPState(self):
+    def get_state(self):
         """
         :return:int, state of SimpleCounter Module
         """

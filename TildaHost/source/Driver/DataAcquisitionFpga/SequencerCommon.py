@@ -138,6 +138,7 @@ class Sequencer(FPGAInterfaceHandling):
             time.sleep(waitForNextTry)
         curState = self.getSeqState()
         if curState == cmd:
+            logging.debug('fpga states successfully changed to: ' + str(curState))
             return self.checkFpgaStatus()
         elif tries == maxTries:
             print('could not Change to State ' + str(cmd) + ' within ' + str(maxTries)
@@ -159,8 +160,8 @@ class Sequencer(FPGAInterfaceHandling):
 
     def abort(self):
         """
-        abort the running execution immediatly
-        :return: True if succes
+        abort the running execution immediately, will block until state is 'error' or timedout.
+        :return: True if success
         """
         i = 0
         imax = 500

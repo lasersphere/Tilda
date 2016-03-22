@@ -3,7 +3,7 @@ Created on
 
 @author: simkaufm
 
-Module Description: Modukle for running and controling the SimpleCounter Bitfile on the FPGA
+Module Description: Module for running and controling the SimpleCounter Bitfile on the FPGA
 """
 
 from Driver.DataAcquisitionFpga.SimpleCounter import SimpleCounter

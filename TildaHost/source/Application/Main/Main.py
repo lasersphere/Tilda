@@ -52,12 +52,14 @@ class Main(QtCore.QObject):
         self.scan_start_time = None
         self.abort_scan = False
         self.halt_scan = False
+        self.sequencer_status = None
+        self.fpga_status = None
 
         try:
             # pass
             # self.work_dir_changed('E:/lala')
-            self.work_dir_changed('C:/temp108')
-            # self.work_dir_changed('D:\Debugging_160129')
+            # self.work_dir_changed('C:/temp108')
+            self.work_dir_changed('D:\CalciumOnline_160303')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state(MainState.idle)
@@ -70,6 +72,7 @@ class Main(QtCore.QObject):
         This will control the main
         """
         if self.m_state[0] is MainState.idle:
+            self.get_fpga_and_seq_state()
             return True
 
         elif self.m_state[0] is MainState.starting_simple_counter:
@@ -90,8 +93,11 @@ class Main(QtCore.QObject):
 
         elif self.m_state[0] is MainState.load_track:
             self._load_track()
+            self.get_fpga_and_seq_state()
         elif self.m_state[0] is MainState.scanning:
             self._scanning()
+            self.get_fpga_and_seq_state()
+
 
     """ main functions """
 
@@ -143,7 +149,7 @@ class Main(QtCore.QObject):
         """
         if a gui is subscribed via a call back signal in self.main_ui_status_call_back_signal.
         This function will emit a status dictionary containing the following keys:
-        status_dict keys: ['workdir', 'status', 'database', 'laserfreq', 'accvolt']
+        status_dict keys: ['workdir', 'status', 'database', 'laserfreq', 'accvolt', 'sequencer_status', 'fpga_status']
         """
         if self.main_ui_status_call_back_signal is not None:
             stat_dict = {
@@ -151,9 +157,27 @@ class Main(QtCore.QObject):
                 'status': str(self.m_state[0].name),
                 'database': self.database,
                 'laserfreq': self.laserfreq,
-                'accvolt': self.acc_voltage
+                'accvolt': self.acc_voltage,
+                'sequencer_status': self.sequencer_status,
+                'fpga_status': self.fpga_status
             }
             self.main_ui_status_call_back_signal.emit(stat_dict)
+
+    def get_sequencer_state(self):
+        sequencer_state = self.scan_main.read_sequencer_status()
+        if sequencer_state != self.sequencer_status:
+            self.sequencer_status = sequencer_state
+            self.send_state()
+
+    def get_fpga_state(self):
+        fpga_state = self.scan_main.read_fpga_status()
+        if fpga_state != self.fpga_status:
+            self.fpga_status = fpga_state
+            self.send_state()
+
+    def get_fpga_and_seq_state(self):
+        self.get_fpga_state()
+        self.get_sequencer_state()
 
     """ operations on self.scan_pars dictionary """
 
