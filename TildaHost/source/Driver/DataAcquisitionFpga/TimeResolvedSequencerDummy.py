@@ -7,6 +7,7 @@ Module Description: Dummy module for the time resolved sequencer, when there is 
 """
 
 import numpy as np
+import ctypes
 
 
 from Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
@@ -28,6 +29,8 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         self.type = 'trsdummy'
         self.artificial_build_data = []
         self.status = TrsCfg.seqStateDict['init']
+        self.session = ctypes.c_ulong(0)
+        self.status = 0
 
     '''read Indicators:'''
 

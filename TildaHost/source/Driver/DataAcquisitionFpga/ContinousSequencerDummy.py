@@ -14,6 +14,7 @@ import Service.Formating as Form
 import logging
 import time
 import numpy as np
+import ctypes
 
 
 class ContinousSequencer(Sequencer, MeasureVolt):
@@ -27,6 +28,8 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         self.type = 'csdummy'
         self.artificial_build_data = []
         self.status = CsCfg.seqStateDict['init']
+        self.session = ctypes.c_ulong(0)
+        self.status = 0
 
     '''read Indicators'''
 
