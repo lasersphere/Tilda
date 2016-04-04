@@ -118,8 +118,9 @@ def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape):
         dataText = actTrack.find(str(data_type)).text
         data_numpy = numpy_array_from_string(dataText, data_shape)
         return data_numpy
-    except:
+    except Exception as e:
         print('error while searching ' + str(data_type) + ' in track' + str(n_of_track) + ' in ' + str(root_ele))
+        print('error is: ', e)
         return None
 
 

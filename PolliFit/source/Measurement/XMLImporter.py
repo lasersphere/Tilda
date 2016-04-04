@@ -81,7 +81,7 @@ class XMLImporter(SpecData):
                 v_proj = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'voltage_projection', (nOfScalers, nOfsteps))
                 t_proj = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'time_projection', (nOfsteps, nOfBins))
+                    lxmlEtree, nOfactTrack, 'time_projection', (nOfScalers, nOfBins))
                 scaler_array = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'scalerArray', cts_shape)
                 self.time_res.append(scaler_array)
