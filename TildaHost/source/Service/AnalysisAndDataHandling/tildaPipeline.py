@@ -179,13 +179,13 @@ def simple_counter_pipe(qt_sig, act_pmt_list):
     # walk = walk.attach(SN.NPrint())
 
     walk = walk.attach(TN.NSPAddxAxis())
+    pmt_dict = {}
     for pmt_ind, pmt_num in enumerate(act_pmt_list):
-        exec('pmt' + str(pmt_num) + '= walk.attach(TN.NOnlyOnePmt(pmt_num))')
-        exec('pmt' + str(pmt_num) +
-             '=' + 'pmt' + str(pmt_num) +
-             '.attach(TN.NMPlLivePlot(axes[pmt_ind], \'mov. avg. Ch %s\' % pmt_num, [\'blue\']))')
+        pmt_dict['pmt' + str(pmt_num)] = walk.attach(TN.NOnlyOnePmt(pmt_num))
+        pmt_dict['pmt' + str(pmt_num)] = pmt_dict['pmt' + str(pmt_num)].attach(
+            TN.NMPlLivePlot(axes[pmt_ind], 'mov. avg. Ch %s' % pmt_num, ['blue']))
 
-    exec('draw = pmt' + str(act_pmt_list[-1]) + '.attach(TN.NMPlDrawPlot())')
+    draw = pmt_dict['pmt' + str(act_pmt_list[-1])].attach(TN.NMPlDrawPlot())
 
     return pipe
 
