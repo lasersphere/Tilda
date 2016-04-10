@@ -17,7 +17,7 @@ class SimpleCounterControl:
         module for reading from the simple counter.
         """
         self.sc_pipe = None
-        self.sc_pipe = Tp.simple_counter_pipe(callback_sig)
+        self.sc_pipe = Tp.simple_counter_pipe(callback_sig, act_pmt_list)
         self.sc_pipe.pipeData = {'activePmtList': act_pmt_list,
                                  'plotPoints': datapoints}
         self.sc_pipe.start()

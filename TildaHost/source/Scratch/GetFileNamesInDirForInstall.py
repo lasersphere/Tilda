@@ -6,7 +6,7 @@ filenames = os.listdir(dir)
 
 
 
-string = 'conda install --use-local '
+string = 'conda install --use-local --offline '
 
 for file in filenames:
     if file.endswith('.tar.bz2'):

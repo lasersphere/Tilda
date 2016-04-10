@@ -162,10 +162,10 @@ def initPipeData(initialScanPars):
     return pipeData
 
 
-def simple_counter_pipe(qt_sig):
+def simple_counter_pipe(qt_sig, act_pmt_list):
     start = Node()
 
-    fig, axes = plt.subplots(2, sharex=True)
+    fig, axes = plt.subplots(len(act_pmt_list), sharex=True)
     fig.canvas.set_window_title('Simple Counter')
 
     sample_rate = 1 / 0.02  # values per second, fpga samples at 20ms currently
@@ -179,14 +179,13 @@ def simple_counter_pipe(qt_sig):
     # walk = walk.attach(SN.NPrint())
 
     walk = walk.attach(TN.NSPAddxAxis())
-    pmt0 = walk.attach(TN.NOnlyOnePmt(0))
-    pmt0 = pmt0.attach(TN.NMPlLivePlot(axes[0], 'mov. avg', ['blue']))
+    for pmt_ind, pmt_num in enumerate(act_pmt_list):
+        exec('pmt' + str(pmt_num) + '= walk.attach(TN.NOnlyOnePmt(pmt_num))')
+        exec('pmt' + str(pmt_num) +
+             '=' + 'pmt' + str(pmt_num) +
+             '.attach(TN.NMPlLivePlot(axes[pmt_ind], \'mov. avg. Ch %s\' % pmt_num, [\'blue\']))')
 
-    pmt1 = walk.attach(TN.NOnlyOnePmt(1))
-    pmt1 = pmt1.attach(TN.NMPlLivePlot(axes[1], 'mov. avg', ['green']))
-    pmt1 = pmt1.attach(TN.NMPlDrawPlot())
-
-    # walk = walk.attach(SN.NPrint())
+    exec('draw = pmt' + str(act_pmt_list[-1]) + '.attach(TN.NMPlDrawPlot())')
 
     return pipe
 
