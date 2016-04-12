@@ -28,3 +28,9 @@ class MainState(Enum):
     preparing_scan = 11
     load_track = 12
     scanning = 13
+    saving = 14
+
+    preparing_tilda_passiv = 15
+    tilda_passiv_running = 16
+    closing_tilda_passiv = 17
+

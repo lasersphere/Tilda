@@ -8,8 +8,11 @@ Created on '30.09.2015'
 
 import logging
 import os
+import sys
 from copy import deepcopy
 from PyQt5 import QtCore
+from PyQt5.QtGui import QCursor
+from PyQt5.QtWidgets import QApplication
 from datetime import datetime
 
 from Service.Scan.ScanMain import ScanMain
@@ -97,6 +100,8 @@ class Main(QtCore.QObject):
         elif self.m_state[0] is MainState.scanning:
             self._scanning()
             self.get_fpga_and_seq_state()
+        elif self.m_state[0] is MainState.saving:
+            self._stop_sequencer_and_save()
 
 
     """ main functions """
@@ -352,14 +357,12 @@ class Main(QtCore.QObject):
         if self.abort_scan:  # abort the scan and return to idle state
             print('abort was pressed ', self.abort_scan)
             self.scan_main.abort_scan()
-            self.scan_main.stop_measurement()  # stop pipeline and clear
-            self.set_state(MainState.idle)
+            self.set_state(MainState.saving)
         elif not self.scan_main.read_data():  # read_data() yields False if no Elements can be read from fpga
             if not self.scan_main.check_scanning():  # check if fpga is still in scanning state
                 if self.halt_scan:  # scan was halted
-                    self.scan_main.stop_measurement()  # stop pipeline and clear
                     self.halt_scan_func(False)  # set halt variabel to false afterwards
-                    self.set_state(MainState.idle)
+                    self.set_state(MainState.saving)
                 else:  # normal exit after completion of each track
                     self.scan_progress['completedTracks'].append(self.scan_progress['activeTrackNum'])
                     # self.scan_main.stop_measurement(False)
@@ -367,11 +370,19 @@ class Main(QtCore.QObject):
                     tracks, tr_l = SdOp.get_number_of_tracks_in_scan_dict(
                         self.scan_pars[self.scan_progress['activeIso']])
                     if len(self.scan_progress['completedTracks']) == tracks:
-                        self.scan_main.stop_measurement()
-                        self.set_state(MainState.idle)
+                        self.set_state(MainState.saving)
                     else:
                         self.set_state(MainState.load_track)
 
+    def _stop_sequencer_and_save(self):
+        """
+        will be called in state 'saving'
+        """
+        logging.info('saving...')
+        QApplication.setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))
+        self.scan_main.stop_measurement()  # stop pipeline and clear
+        QApplication.restoreOverrideCursor()
+        self.set_state(MainState.idle)
     """ simple counter """
 
     def start_simple_counter(self, act_pmt_list, datapoints, callback_sig):
