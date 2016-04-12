@@ -1,0 +1,31 @@
+"""
+Created on 12.04.2016
+
+@author: simkaufm
+
+Module Description: automatically created with the CApiAnalyser
+"""
+
+import ctypes
+
+'''Bitfile Signature:'''
+bitfileSignature = '3484C4D672E45F0D11A710760B0AB3E8'
+'''Bitfile Path:'''
+bitfilePath = 'D:/Workspace/PyCharm/Tilda/TildaTarget/bin/TildaPassive/NiFpga_TildaPassiveMain.lvbitx'
+'''FPGA Resource:'''
+fpgaResource = 'Rio1'
+'''Indicators:'''
+TildaPassiveStateInd = {'ref': 0x8112, 'val': ctypes.c_uint(), 'ctr': False}
+'''Controls:'''
+TildaPassiveStateCtrl = {'ref': 0x810E, 'val': ctypes.c_uint(), 'ctr': True}
+delay_10ns_ticks = {'ref': 0x8114, 'val': ctypes.c_ulong(), 'ctr': True}
+nOfBins = {'ref': 0x8118, 'val': ctypes.c_ulong(), 'ctr': True}
+'''TargetToHostFifos:'''
+transferToHost = {'ref': 0, 'val': ctypes.c_ulong(), 'ctr': False}
+
+''' hand filled values '''
+transferToHostReqEle = 10000000
+
+tilda_passive_states = {'idle': 0, 'scanning': 1, 'error': 2}
+default_nOfBins = 2000  # in units of 10ns -> 20 mus dwell
+default_delay = 6000  # in units of 10ns -> 60 mus delay
