@@ -24,7 +24,8 @@ class TildaPassiveControl:
         """
         self.tp_pipe = Tp.tilda_passive_pipe(raw_callback)
         self.tp_pipe.start()
-        self.tp_inst = None
+        self.tp_inst = None  # instance of the loaded bitfile
+        self.run()
 
     def stop(self):
         """
@@ -54,7 +55,7 @@ class TildaPassiveControl:
         tries = 0
         max_tries = 10
         while tries < max_tries:
-            status_num_answ = self.tp_inst.read_tilda_passive_status()
+            status_num_answ = self.read_tipa_status()
             if status_num_answ == status_num:
                 return True
             else:
@@ -68,7 +69,7 @@ class TildaPassiveControl:
         and the delay to the falling edge of DIO24 on controller 1.
         :return True if success
         """
-        state = self.tp_inst.read_tilda_passive_status()
+        state = self.read_tipa_status()
         if state == TpCfg.tilda_passive_states.get('idle'):
             bins_succes = self.tp_inst.set_bin_num(n_of_bins)
             delay_success = self.tp_inst.set_delay(delay_10ns)
@@ -84,3 +85,15 @@ class TildaPassiveControl:
         data = self.tp_inst.read_data_from_fifo()
         if data['nOfEle'] != 0:
             self.tp_pipe.feed(data['newData'])
+            return True
+        else:
+            return False
+
+    def read_tipa_status(self):
+        """
+        function for reading the status.
+        tilda_passive_states = {'idle': 0, 'scanning': 1, 'error': 2}
+        :return number of the current state.
+        """
+        return self.tp_inst.read_tilda_passive_status()
+
