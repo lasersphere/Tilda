@@ -91,9 +91,7 @@ def savePickle(data, pipeDataDict, ending='.raw'):
                     pipeDataDict['isotopeData']['type'],
                     ending)
     # print('saving: ' + str(data) + ' , to: ' + str(path))
-    file = open(path, 'wb')
-    pickle.dump(data, file)
-    file.close()
+    save_pickle_simple(path, data)
     return path
 
 
@@ -105,6 +103,16 @@ def loadPickle(file):
     data = pickle.load(stream)
     stream.close()
     return data
+
+
+def save_pickle_simple(path, data):
+    """
+    simple function to write some pickleable data to a path
+    """
+    file = open(path, 'wb')
+    pickle.dump(data, file)
+    file.close()
+    return path
 
 
 def saveRawData(data, pipeData, nOfSaves):

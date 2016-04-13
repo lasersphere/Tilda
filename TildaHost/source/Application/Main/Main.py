@@ -17,6 +17,7 @@ from datetime import datetime
 
 from Service.Scan.ScanMain import ScanMain
 from Service.SimpleCounter.SimpleCounter import SimpleCounterControl
+from Service.TildaPassive.TildaPassiveControl import TildaPassiveControl
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as Dft
 import Service.DatabaseOperations.DatabaseOperations as DbOp
@@ -57,6 +58,8 @@ class Main(QtCore.QObject):
         self.halt_scan = False
         self.sequencer_status = None
         self.fpga_status = None
+
+        self.tilda_passive_inst = None
 
         try:
             # pass
@@ -103,6 +106,12 @@ class Main(QtCore.QObject):
         elif self.m_state[0] is MainState.saving:
             self._stop_sequencer_and_save()
 
+        elif self.m_state[0] is MainState.preparing_tilda_passiv:
+            self._prepare_tilda_passive(*self.m_state[1])
+        elif self.m_state[0] is MainState.tilda_passiv_running:
+            self._tilda_passive_running()
+        elif self.m_state[0] is MainState.closing_tilda_passiv:
+            self._close_tilda_passive()
 
     """ main functions """
 
@@ -253,7 +262,7 @@ class Main(QtCore.QObject):
             self.send_state()
             return self.working_directory
 
-    """ scanning """
+    """ sequencer operations """
 
     def start_scan(self, iso_name):
         """
@@ -379,10 +388,11 @@ class Main(QtCore.QObject):
         will be called in state 'saving'
         """
         logging.info('saving...')
-        QApplication.setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))
+        QApplication.setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))  # ignore warning
         self.scan_main.stop_measurement()  # stop pipeline and clear
-        QApplication.restoreOverrideCursor()
+        QApplication.restoreOverrideCursor()  # ignore warning
         self.set_state(MainState.idle)
+
     """ simple counter """
 
     def start_simple_counter(self, act_pmt_list, datapoints, callback_sig):
@@ -541,3 +551,28 @@ class Main(QtCore.QObject):
             logging.debug('saving track ' + str(i) + ' dict is: ' +
                           str(scan_d['track' + str(i)]))
             DbOp.add_scan_dict_to_db(self.database, scan_d, i, track_key='track' + str(i))
+
+    """ Tilda passive operations """
+
+    def start_tilda_passive(self, n_of_bins, delay_10ns, raw_callback):
+        self.set_state(MainState.preparing_tilda_passiv, (n_of_bins, delay_10ns, raw_callback))
+
+    def stop_tilda_passive(self):
+        self.set_state(MainState.closing_tilda_passiv)
+
+    def _prepare_tilda_passive(self, n_of_bins, delay_10ns, raw_callback):
+        self.tilda_passive_inst = TildaPassiveControl(raw_callback)
+        self.tilda_passive_inst.run()
+        self.tilda_passive_inst.set_values(n_of_bins, delay_10ns)
+        if self.tilda_passive_inst.start_scanning():
+            self.set_state(MainState.tilda_passiv_running)
+        else:
+            self.set_state(MainState.closing_tilda_passiv)
+
+    def _tilda_passive_running(self):
+        self.tilda_passive_inst.read_data()
+
+    def _close_tilda_passive(self):
+        self.tilda_passive_inst.stop()
+        self.tilda_passive_inst = None
+        self.set_state(MainState.idle)

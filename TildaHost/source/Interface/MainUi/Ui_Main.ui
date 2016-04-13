@@ -166,6 +166,7 @@
     <addaction name="actionSimple_Counter"/>
     <addaction name="actionSet_Laser_Frequency"/>
     <addaction name="actionSet_acceleration_voltage"/>
+    <addaction name="actionTilda_Passive"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -232,6 +233,11 @@
   <action name="actionSet_acceleration_voltage">
    <property name="text">
     <string>set acceleration voltage</string>
+   </property>
+  </action>
+  <action name="actionTilda_Passive">
+   <property name="text">
+    <string>Tilda Passive</string>
    </property>
   </action>
  </widget>

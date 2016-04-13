@@ -18,11 +18,11 @@ import logging
 
 
 class TildaPassiveControl:
-    def __init__(self):
+    def __init__(self, raw_callback):
         """
         Module for operating the passive mode of Tilda
         """
-        self.tp_pipe = Tp.tilda_passive_pipe()
+        self.tp_pipe = Tp.tilda_passive_pipe(raw_callback)
         self.tp_pipe.start()
         self.tp_inst = None
 
@@ -31,6 +31,7 @@ class TildaPassiveControl:
         clear the pipeline and save all nodes by that.
         deinitialize the fpga
         """
+        self.tp_pipe.stop()
         self.tp_pipe.clear()
         if self.tp_inst.type == 'tipa':
             self.tp_inst.DeInitFpga()
@@ -75,3 +76,11 @@ class TildaPassiveControl:
         else:
             logging.debug('could not set values, because state is not idle but: %s' % state)
             return False
+
+    def read_data(self):
+        """
+        function to read the data from the fpga and feed it directly into the pipeline
+        """
+        data = self.tp_inst.read_data_from_fifo()
+        if data['nOfEle'] != 0:
+            self.tp_pipe.feed(data['newData'])

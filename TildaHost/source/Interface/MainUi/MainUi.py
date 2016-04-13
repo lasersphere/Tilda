@@ -15,6 +15,7 @@ from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
 from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
 from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 from Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
+from Interface.TildaPassiveUi.TildaPassiveUi import TildaPassiveUi
 import MPLPlotter as MPlPlotter
 
 import Application.Config as Cfg
@@ -38,6 +39,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.measure_voltage_win = None
         self.scan_progress_win = None
         self.simple_counter_gui = None
+        self.tilda_passive_gui = None
 
         self.actionWorking_directory.triggered.connect(self.choose_working_dir)
         self.actionVersion.triggered.connect(self.open_version_win)
@@ -47,6 +49,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionSimple_Counter.triggered.connect(self.open_simple_counter_win)
         self.actionSet_Laser_Frequency.triggered.connect(self.set_laser_freq)
         self.actionSet_acceleration_voltage.triggered.connect(self.set_acc_volt)
+        self.actionTilda_Passive.triggered.connect(self.start_tilda_passive_gui)
 
         """ connect double clicks on labels:"""
         self.label_workdir_set.mouseDoubleClickEvent = self.workdir_dbl_click
@@ -157,6 +160,13 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                                                           2)
         if ok:
             Cfg._main_instance.acc_volt_changed(acc_volt)
+
+    def start_tilda_passive_gui(self):
+        if self.tilda_passive_gui is None:
+            self.tilda_passive_gui = TildaPassiveUi(self)
+
+    def close_tilda_passive(self):
+        self.tilda_passive_gui = None
 
     def closeEvent(self, *args, **kwargs):
         for win in self.act_scan_wins:

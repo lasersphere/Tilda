@@ -49,7 +49,7 @@ class TildaPassive(FPGAInterfaceHandling):
         tilda_passive_states = {'idle': 0, 'scanning': 1, 'error': 2}
         :return number of the current state.
         """
-        status_num = self.ReadWrite(TpCfg.TildaPassiveStateInd)
+        status_num = self.ReadWrite(TpCfg.TildaPassiveStateInd).value
         return status_num
 
     def set_tilda_passive_status(self, status_num):

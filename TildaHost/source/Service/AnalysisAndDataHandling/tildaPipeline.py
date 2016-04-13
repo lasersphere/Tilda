@@ -190,11 +190,12 @@ def simple_counter_pipe(qt_sig, act_pmt_list):
     return pipe
 
 
-def tilda_passive_pipe():
+def tilda_passive_pipe(raw_callback):
     start = Node()
 
     pipe = Pipeline(start)
 
-    walk = start.attach(SN.NPrint())
+    # walk = start.attach(SN.NPrint())
+    walk = start.attach(TN.NSendDataViaQtSignal(raw_callback))
 
     return pipe
