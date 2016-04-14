@@ -123,8 +123,11 @@ class TildaPassiveUi(QtWidgets.QMainWindow, Ui_TildaPassiveMainWindow):
                                                self.tipa_steps_scans_callback)
 
     def stop_scan(self):
-        Cfg._main_instance.stop_tilda_passive(True)
+        xml_path = Cfg._main_instance.scan_pars.get('Ni_tipa').get('pipeInternals').get('activeXmlFilePath')
+        self.label_last_saved.setText(xml_path)
+        self.label_last_saved.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+        Cfg._main_instance.stop_tilda_passive()
 
     def closeEvent(self, *args, **kwargs):
-        self.stop_scan()
+        Cfg._main_instance.stop_tilda_passive(True)
         self.main_ui.close_tilda_passive()

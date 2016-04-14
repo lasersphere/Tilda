@@ -34,5 +34,10 @@ class InfoHandler:
             if self.completed_bunches_in_step == bun or bun < 0:
                 self.completed_bunches_in_step = 0
                 comp_steps = pipe_data[track_name]['nOfCompletedSteps'] + 1
+                steps = pipe_data[track_name]['nOfSteps']
+                volt_index = comp_steps % steps
                 pipe_data[track_name]['nOfCompletedSteps'] = comp_steps
-
+                return volt_index
+        elif payload == 2:  # means scan complete
+            volt_index = 0
+            return volt_index

@@ -599,6 +599,7 @@ class Main(QtCore.QObject):
 
     def _close_tilda_passive(self, silent):
         if self.tilda_passive_inst is not None:
+            print('closing silently: ', silent)
             if not silent:
                 self.send_tipa_status(-1)
                 self.tipa_status_callback_sig = None

@@ -106,20 +106,23 @@ def create_x_axis_from_scand_dict(scand, as_voltage=False):
     uses a track dictionary to create the x axis, starting with dacStartRegister18Bit,
     length is nOfSteps and stepsize is dacStepSize18Bit
     """
-    arr = []
-    tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
-    for tr in track_num_list:
-        trackd = scand['track' + str(tr)]
-        dac_start_18bit = trackd['dacStartRegister18Bit']
-        dac_stepsize_18bit = trackd['dacStepSize18Bit']
-        n_of_steps = trackd['nOfSteps']
-        dac_stop_18bit = dac_start_18bit + (dac_stepsize_18bit * n_of_steps)
-        x = np.arange(dac_start_18bit, dac_stop_18bit, dac_stepsize_18bit)
-        if as_voltage:
-            f = np.vectorize(VCon.get_voltage_from_18bit)
-            x = f(x)
-        arr.append(x)
-    return arr
+    try:
+        arr = []
+        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
+        for tr in track_num_list:
+            trackd = scand['track' + str(tr)]
+            dac_start_18bit = trackd['dacStartRegister18Bit']
+            dac_stepsize_18bit = trackd['dacStepSize18Bit']
+            n_of_steps = trackd['nOfSteps']
+            dac_stop_18bit = dac_start_18bit + (dac_stepsize_18bit * n_of_steps)
+            x = np.arange(dac_start_18bit, dac_stop_18bit, dac_stepsize_18bit)
+            if as_voltage:
+                f = np.vectorize(VCon.get_voltage_from_18bit)
+                x = f(x)
+            arr.append(x)
+        return arr
+    except Exception as e:
+        logging.error('Exception while creating the x axis from scandict: ' + str(e))
 
 
 def create_time_axis_from_scan_dict(scand, rebinning=False, binwidth_ns=10, delay_ns=0):
@@ -130,26 +133,29 @@ def create_time_axis_from_scan_dict(scand, rebinning=False, binwidth_ns=10, dela
     the 'softBinWidth_ns' entry in each track.
     Delay can be set to reasonable value, default is 0.
     """
-    arr = []
-    tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
-    for tr in track_num_list:
-        trackd = scand['track' + str(tr)]
-        bins = trackd['nOfBins']
-        # if binwidth_ns is None:
-        #     binwidth_ns = 10
-        if rebinning:
-            if trackd.get('softBinWidth_ns'):
-                binwidth_ns = trackd.get('softBinWidth_ns')
-                bins = bins // (binwidth_ns / 10)
-        if delay_ns == 'auto':
-            try:
-                delay_ns = trackd['trigger']['trigDelay10ns'] * 10
-            except Exception as e:
-                print('while creating a time axis, this exception occured: ', e)
-                delay_ns = 0
-        x = np.arange(delay_ns, bins * binwidth_ns + delay_ns, binwidth_ns)
-        arr.append(x)
-    return arr
+    try:
+        arr = []
+        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
+        for tr in track_num_list:
+            trackd = scand['track' + str(tr)]
+            bins = trackd['nOfBins']
+            # if binwidth_ns is None:
+            #     binwidth_ns = 10
+            if rebinning:
+                if trackd.get('softBinWidth_ns'):
+                    binwidth_ns = trackd.get('softBinWidth_ns')
+                    bins = bins // (binwidth_ns / 10)
+            if delay_ns == 'auto':
+                try:
+                    delay_ns = trackd['trigger']['trigDelay10ns'] * 10
+                except Exception as e:
+                    print('while creating a time axis, this exception occured: ', e)
+                    delay_ns = 0
+            x = np.arange(delay_ns, bins * binwidth_ns + delay_ns, binwidth_ns)
+            arr.append(x)
+        return arr
+    except Exception as e:
+        logging.error('Exception while creating the time axis: ' + str(e))
 
 
 def create_default_scaler_array_from_scandict(scand, dft_val=0):

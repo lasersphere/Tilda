@@ -379,7 +379,7 @@ class NMPlDrawPlot(Node):
 
 
 class NMPLImagePLot(Node):
-    def __init__(self, pmt_num):
+    def __init__(self, pmt_num, as_voltage=True):
         """
         plotting node, for plotting the image data of one track and one pmt
         also the projections inside teh gates are displayed.
@@ -408,6 +408,7 @@ class NMPLImagePLot(Node):
         self.aspect_img = 'auto'
         self.gate_anno = None
         self.volt_array = None
+        self.as_voltage = as_voltage
         self.time_array = None
         self.radio_buttons_pmt = None
         self.radio_con = None
@@ -509,7 +510,7 @@ class NMPLImagePLot(Node):
                     MPLPlotter.clear_ax(ax)
             self.gate_anno = None
             self.gates_list = [[None]] * len(self.Pipeline.pipeData[track_name]['activePmtList'])
-            self.volt_array = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=True)[track_ind]
+            self.volt_array = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=self.as_voltage)[track_ind]
             v_shape = self.volt_array.shape
             self.time_array = Form.create_time_axis_from_scan_dict(self.Pipeline.pipeData, rebinning=True)[track_ind]
             t_shape = self.time_array.shape
@@ -808,7 +809,7 @@ class NCSSortRawDatatoArray(Node):
                             # print('scaler event: ', track_ind, self.curVoltIndex, pmt_ind, j['payload'])
                             # timestamp equals index in time array of the given scaler
             elif j['firstHeader'] == ProgConfigsDict.programs['infoHandler']:
-                self.info_handl.info_handle(pipeData, j['payload'])
+                self.curVoltIndex = self.info_handl.info_handle(pipeData, j['payload'])
                 scan_complete = pipeData[track_name]['nOfCompletedSteps'] == pipeData[track_name]['nOfSteps']
                 if scan_complete:
                     if ret is None:
@@ -971,15 +972,16 @@ class NTRSProjectize(Node):
     output: [[[v_proj_tr0_pmt0, v_proj_tr0_pmt1, ... ], [t_proj_tr0_pmt0, t_proj_tr0_pmt1, ... ]], ...]
     """
 
-    def __init__(self):
+    def __init__(self, as_voltage=True):
         super(NTRSProjectize, self).__init__()
         self.type = 'TRSProjectize'
         self.volt_array = None
         self.time_array = None
+        self.as_voltage = as_voltage
 
     def start(self):
         self.volt_array = Form.create_x_axis_from_scand_dict(
-            self.Pipeline.pipeData, as_voltage=True)
+            self.Pipeline.pipeData, as_voltage=self.as_voltage)
         self.time_array = Form.create_time_axis_from_scan_dict(
             self.Pipeline.pipeData)
 
