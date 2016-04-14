@@ -1047,8 +1047,8 @@ class NSendnOfCompletedStepsAndScansViaQtSignal(Node):
         return data
 
     def clear(self):
-        self.qt_signal.emit({'nOfCompletedSteps': 0, 'nOfStartedScans': 0})
-
+        # self.qt_signal.emit({'nOfCompletedSteps': 0, 'nOfStartedScans': 0})
+        pass
 
 class NSendDataViaQtSignal(Node):
     """

@@ -114,7 +114,7 @@ class Main(QtCore.QObject):
         elif self.m_state[0] is MainState.tilda_passiv_running:
             self._tilda_passive_running()
         elif self.m_state[0] is MainState.closing_tilda_passiv:
-            self._close_tilda_passive()
+            self._close_tilda_passive(self.m_state[1])
 
     """ main functions """
 
@@ -572,8 +572,8 @@ class Main(QtCore.QObject):
         self.set_state(MainState.preparing_tilda_passiv, (raw_callback, steps_scans_callback))
         self.tipa_status_callback_sig = status_callback
 
-    def stop_tilda_passive(self):
-        self.set_state(MainState.closing_tilda_passiv)
+    def stop_tilda_passive(self, silent=False):
+        self.set_state(MainState.closing_tilda_passiv, silent)
 
     def _prepare_tilda_passive(self, raw_callback, steps_scans_callback):
         iso_name = 'Ni_tipa'
@@ -597,12 +597,13 @@ class Main(QtCore.QObject):
             else:
                 self.send_tipa_status()
 
-    def _close_tilda_passive(self):
+    def _close_tilda_passive(self, silent):
         if self.tilda_passive_inst is not None:
+            if not silent:
+                self.send_tipa_status(-1)
+                self.tipa_status_callback_sig = None
             self.tilda_passive_inst.stop()
             self.tilda_passive_inst = None
-            self.send_tipa_status(-1)
-            self.tipa_status_callback_sig = None
         self.set_state(MainState.idle)
 
     def send_tipa_status(self, maybe_new_status=None):

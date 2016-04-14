@@ -57,25 +57,35 @@ class TildaPassiveUi(QtWidgets.QMainWindow, Ui_TildaPassiveMainWindow):
         if status_num == -1:  # not initialized
             self.pushButton_stop.setDisabled(True)
             self.pushButton_start.setEnabled(True)
+            self.doubleSpinBox_delay.setDisabled(False)
+            self.doubleSpinBox_num_of_bins.setDisabled(False)
             self.label_status.setStyleSheet("QLabel {background-color : light gray; color : black;}")
             self.label_status.setText('not initialized, click Start')
         elif status_num == 0:  # idle = init
             self.pushButton_start.setDisabled(True)
             self.label_status.setStyleSheet("QLabel {background-color : light green; color : black;}")
             self.label_status.setText('idle')
+            self.doubleSpinBox_delay.setDisabled(True)
+            self.doubleSpinBox_num_of_bins.setDisabled(True)
         elif status_num == 1:  # scanning
             self.pushButton_start.setDisabled(True)
             self.pushButton_stop.setEnabled(True)
+            self.doubleSpinBox_delay.setDisabled(True)
+            self.doubleSpinBox_num_of_bins.setDisabled(True)
             self.label_status.setStyleSheet("QLabel {background-color : green; color : black;}")
             self.label_status.setText('scanning')
         elif status_num == 2:  # error
             self.pushButton_stop.setDisabled(True)
             self.pushButton_start.setEnabled(True)
+            self.doubleSpinBox_delay.setDisabled(False)
+            self.doubleSpinBox_num_of_bins.setDisabled(False)
             self.label_status.setStyleSheet("QLabel {background-color : red; color : white;}")
             self.label_status.setText('error, please restart')
         elif status_num == 3:  # mcp inactive?
             self.pushButton_start.setDisabled(True)
             self.pushButton_stop.setEnabled(True)
+            self.doubleSpinBox_delay.setDisabled(True)
+            self.doubleSpinBox_num_of_bins.setDisabled(True)
             self.label_status.setStyleSheet("QLabel {background-color : yellow; color : black;}")
             self.label_status.setText('scanning\n but no events since 5s\n MCP running? save?')
 
@@ -113,7 +123,7 @@ class TildaPassiveUi(QtWidgets.QMainWindow, Ui_TildaPassiveMainWindow):
                                                self.tipa_steps_scans_callback)
 
     def stop_scan(self):
-        Cfg._main_instance.stop_tilda_passive()
+        Cfg._main_instance.stop_tilda_passive(True)
 
     def closeEvent(self, *args, **kwargs):
         self.stop_scan()
