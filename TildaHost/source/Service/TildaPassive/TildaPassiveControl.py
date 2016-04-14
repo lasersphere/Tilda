@@ -26,12 +26,12 @@ class TildaPassiveControl:
         self.tp_inst = None  # instance of the loaded bitfile
         self.scan_pars = None
 
-    def setup_tipa_ctrl(self, scan_pars, raw_callback):
+    def setup_tipa_ctrl(self, scan_pars, raw_callback, steps_scans_callback):
         """
         setup the pipeline and run the Bitfile.
         """
         self.scan_pars = scan_pars
-        self.tp_pipe = Tp.tilda_passive_pipe(self.scan_pars, raw_callback)
+        self.tp_pipe = Tp.tilda_passive_pipe(self.scan_pars, raw_callback, steps_scans_callback)
         self.tp_pipe.start()
         self.run()
 

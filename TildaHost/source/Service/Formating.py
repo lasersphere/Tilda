@@ -7,6 +7,7 @@ Created on 21.01.2015
 import ast
 from datetime import datetime as dt
 from copy import deepcopy
+import logging
 
 import numpy as np
 
@@ -155,18 +156,23 @@ def create_default_scaler_array_from_scandict(scand, dft_val=0):
     """
     create empty ScalerArray, size is determined by the track0 in the scan dictionary
     """
-    arr = []
-    tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
-    for tr in track_num_list:
-        trackd = scand['track' + str(tr)]
-        n_of_steps = trackd['nOfSteps']
-        n_of_scaler = len(trackd['activePmtList'])
-        n_of_bins = trackd.get('nOfBins', False)
-        if n_of_bins:
-            arr.append(np.full((n_of_scaler, n_of_steps, n_of_bins), dft_val, dtype=np.uint32))
-        else:
-            arr.append(np.full((n_of_scaler, n_of_steps), dft_val, dtype=np.uint32))
-    return arr
+    try:
+        arr = []
+        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
+        for tr in track_num_list:
+            trackd = scand['track' + str(tr)]
+            n_of_steps = trackd['nOfSteps']
+            n_of_scaler = len(trackd['activePmtList'])
+            n_of_bins = trackd.get('nOfBins', False)
+            if n_of_bins:
+                arr.append(np.full((n_of_scaler, n_of_steps, n_of_bins), dft_val, dtype=np.uint32))
+            else:
+                arr.append(np.full((n_of_scaler, n_of_steps), dft_val, dtype=np.uint32))
+        return arr
+    except Exception as e:
+        logging.error('Exception while creating default scaler array,'
+                      '\n should be ignored in tilda passive.\n' + str(e))
+        return None
 
 
 def create_default_volt_array_from_scandict(scand, dft_val=(2 ** 30)):
@@ -174,13 +180,18 @@ def create_default_volt_array_from_scandict(scand, dft_val=(2 ** 30)):
     create Default Voltage array, with default values in dft_val
     (2 ** 30) is chosen, because this is an default value which is not reachable by the DAC
     """
-    arr = []
-    tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
-    for tr in track_num_list:
-        trackd = scand['track' + str(tr)]
-        n_of_steps = trackd['nOfSteps']
-        arr.append(np.full((n_of_steps,), dft_val, dtype=np.uint32))
-    return arr
+    try:
+        arr = []
+        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
+        for tr in track_num_list:
+            trackd = scand['track' + str(tr)]
+            n_of_steps = trackd['nOfSteps']
+            arr.append(np.full((n_of_steps,), dft_val, dtype=np.uint32))
+        return arr
+    except Exception as e:
+        logging.error('Exception while creating default volt array,'
+                      '\n should be ignored in tilda passive.\n' + str(e))
+        return None
 
 
 def add_header_to23_bit(bit23, firstheader, secondheader, indexheader):

@@ -1007,8 +1007,8 @@ class NTRSRebinAllData(Node):
 
 class NSendnOfCompletedStepsViaQtSignal(Node):
     """
-    Node for sending the incoming data via a Qtsignal coming from above
-    input: anything that suits qt_signal
+    Node for sending the number of completed Steps in the pipedata via a qt signal
+    input: anything
     output: same as input
     """
 
@@ -1022,6 +1022,32 @@ class NSendnOfCompletedStepsViaQtSignal(Node):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         self.qt_signal.emit(pipeData[track_name]['nOfCompletedSteps'])
         return data
+
+
+class NSendnOfCompletedStepsAndScansViaQtSignal(Node):
+    """
+    Node for sending the number of completed Steps in the pipedata and
+    the number of started scans via a qt signal
+    input: anything
+    output: same as input
+    """
+
+    def __init__(self, steps_scans_callback):
+        super(NSendnOfCompletedStepsAndScansViaQtSignal, self).__init__()
+        self.type = 'SendnOfCompletedStepsViaQtSignal'
+
+        self.qt_signal = steps_scans_callback
+
+    def processData(self, data, pipeData):
+        track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
+        compl_steps = pipeData[track_name]['nOfCompletedSteps']
+        steps = pipeData[track_name]['nOfSteps']
+        scans = compl_steps // steps
+        self.qt_signal.emit({'nOfCompletedSteps': compl_steps, 'nOfStartedScans': scans})
+        return data
+
+    def clear(self):
+        self.qt_signal.emit({'nOfCompletedSteps': 0, 'nOfStartedScans': 0})
 
 
 class NSendDataViaQtSignal(Node):
@@ -1040,3 +1066,61 @@ class NSendDataViaQtSignal(Node):
     def processData(self, data, pipeData):
         self.qt_signal.emit(data)
         return data
+
+
+""" Tilda passvie Nodes """
+
+
+class NTiPaAccRawUntil2ndScan(Node):
+    """
+    Node for accumulating raw data until a second scan is fired.
+    When the second scan is registered,
+    Tilda knows how many steps are performed within each MCP Scan.
+    Then the buffer is forwarded to the next nodes and the pipeData is updated.
+    input: 32-Bit rawdata
+    output: 32-Bit rawdata
+    """
+
+    def __init__(self, steps_scans_callback):
+        super(NTiPaAccRawUntil2ndScan, self).__init__()
+        self.type = 'TiPaAccRawUntil2ndScan'
+        self.buffer = np.zeros(0, dtype=np.uint32)
+        self.acquired_2nd_scan = False
+        self.n_of_started_scans = 0
+        self.n_of_compl_steps = 0
+        self.steps_scans_callback = steps_scans_callback
+
+    def processData(self, data, pipeData):
+        if self.acquired_2nd_scan:
+            return data
+        else:
+            bad_ind = []
+            for ind, elem in enumerate(data):
+                if elem == int('01000000100000000000000000000001', 2):  # this means a step was completed by MCP
+                    if self.n_of_started_scans:
+                        self.n_of_compl_steps += 1
+                        self.emit_steps_scan_callback()
+                elif elem == int('01000000100000000000000000000010', 2):  # this means a scan was started by MCP
+                    if self.n_of_started_scans == 0:
+                        if ind:
+                            print('buffer is: ', self.buffer, 'elem is: ', elem, 'data is: ', data)
+                            print('deleting incomplete scans until: ', ind)
+                            self.buffer = np.delete(self.buffer, np.s_[0:ind], 0)
+                    self.n_of_started_scans += 1
+                    self.emit_steps_scan_callback()
+                    if self.n_of_started_scans == 2:
+                        self.acquired_2nd_scan = True
+                        pipeData['track0']['nOfSteps'] = \
+                            self.n_of_compl_steps // (self.n_of_started_scans - 1)
+                        self.Pipeline.start()
+                        self.Pipeline.feed(self.buffer)
+                else:
+                    pass
+            self.buffer = np.append(self.buffer, data)
+            return None
+
+    def emit_steps_scan_callback(self):
+        """  a gui can rcv this callback signal """
+        self.steps_scans_callback.emit({'nOfCompletedSteps': self.n_of_compl_steps,
+                                        'nOfStartedScans': self.n_of_started_scans})
+

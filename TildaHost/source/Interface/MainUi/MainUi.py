@@ -202,3 +202,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             MPlPlotter.close_fig()
         except Exception as e:
             logging.error('error while closing the plot window, exception is: ' + str(e))
+        try:
+            if self.tilda_passive_gui is not None:
+                self.tilda_passive_gui.close()
+        except Exception as e:
+            logging.error('error while closing tilda passive GUi, exception is: ' + str(e))

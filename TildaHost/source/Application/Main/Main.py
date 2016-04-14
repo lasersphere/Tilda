@@ -110,7 +110,7 @@ class Main(QtCore.QObject):
             self._stop_sequencer_and_save()
 
         elif self.m_state[0] is MainState.preparing_tilda_passiv:
-            self._prepare_tilda_passive(self.m_state[1])
+            self._prepare_tilda_passive(*self.m_state[1])
         elif self.m_state[0] is MainState.tilda_passiv_running:
             self._tilda_passive_running()
         elif self.m_state[0] is MainState.closing_tilda_passiv:
@@ -557,7 +557,7 @@ class Main(QtCore.QObject):
 
     """ Tilda passive operations """
 
-    def start_tilda_passive(self, n_of_bins, delay_10ns, raw_callback, status_callback):
+    def start_tilda_passive(self, n_of_bins, delay_10ns, raw_callback, status_callback, steps_scans_callback):
         self.tilda_passive_inst = TildaPassiveControl()
         iso_name = 'Ni_tipa'
         # tilda passive (tipa) works without the database! Database is for real sequencers only.
@@ -568,16 +568,16 @@ class Main(QtCore.QObject):
         self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
         self.scan_pars[iso_name]['isotopeData']['accVolt'] = self.acc_voltage
         self.scan_pars[iso_name]['track0']['nOfBins'] = n_of_bins
-        self.scan_pars[iso_name]['track0']['trigger']['trigDelay10ns'] = n_of_bins
-        self.set_state(MainState.preparing_tilda_passiv, raw_callback)
+        self.scan_pars[iso_name]['track0']['trigger']['trigDelay10ns'] = delay_10ns
+        self.set_state(MainState.preparing_tilda_passiv, (raw_callback, steps_scans_callback))
         self.tipa_status_callback_sig = status_callback
 
     def stop_tilda_passive(self):
         self.set_state(MainState.closing_tilda_passiv)
 
-    def _prepare_tilda_passive(self, raw_callback):
+    def _prepare_tilda_passive(self, raw_callback, steps_scans_callback):
         iso_name = 'Ni_tipa'
-        self.tilda_passive_inst.setup_tipa_ctrl(self.scan_pars[iso_name], raw_callback)
+        self.tilda_passive_inst.setup_tipa_ctrl(self.scan_pars[iso_name], raw_callback, steps_scans_callback)
         self.send_tipa_status(0)
         self.tilda_passive_inst.set_values(self.scan_pars[iso_name]['track0']['nOfBins'],
                                            self.scan_pars[iso_name]['track0']['trigger']['trigDelay10ns'])
@@ -598,10 +598,11 @@ class Main(QtCore.QObject):
                 self.send_tipa_status()
 
     def _close_tilda_passive(self):
-        self.tilda_passive_inst.stop()
-        self.tilda_passive_inst = None
-        self.send_tipa_status(-1)
-        self.tipa_status_callback_sig = None
+        if self.tilda_passive_inst is not None:
+            self.tilda_passive_inst.stop()
+            self.tilda_passive_inst = None
+            self.send_tipa_status(-1)
+            self.tipa_status_callback_sig = None
         self.set_state(MainState.idle)
 
     def send_tipa_status(self, maybe_new_status=None):

@@ -190,7 +190,7 @@ def simple_counter_pipe(qt_sig, act_pmt_list):
     return pipe
 
 
-def tilda_passive_pipe(initial_scan_pars, raw_callback):
+def tilda_passive_pipe(initial_scan_pars, raw_callback, steps_scans_callback):
     start = Node()
 
     pipe = Pipeline(start)
@@ -199,5 +199,25 @@ def tilda_passive_pipe(initial_scan_pars, raw_callback):
     # walk = start.attach(SN.NPrint())
     walk = start.attach(TN.NSendDataViaQtSignal(raw_callback))
     walk = walk.attach(TN.NSaveRawData())
+    walk = walk.attach(TN.NTiPaAccRawUntil2ndScan(steps_scans_callback))
+    walk = walk.attach(SN.NPrint())
+
+    walk = walk.attach(TN.NSplit32bData())
+    walk = walk.attach(TN.NCSSortRawDatatoArray())
+    walk = walk.attach(TN.NSendnOfCompletedStepsAndScansViaQtSignal(steps_scans_callback))
+    # walk = walk.attach(TN.NRemoveTrackCompleteFlag())
+    # walk = walk.attach(TN.NCSSum())
+    #
+    # pl_branch_2d = walk.attach(TN.NMPLImagePLot(1))
+    # pl_branch_2d = pl_branch_2d.attach(TN.NMPlDrawPlot())
+    #
+    # compl_tr_br = walk.attach(TN.NCheckIfTrackComplete())
+    # compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
+    #
+    # # meas_compl_br = walk.attach(TN.NCheckIfMeasurementComplete())
+    # walk = walk.attach(TN.NSaveAllTracks())
+    # #
+    # walk = walk.attach(TN.NTRSProjectize())
+    # walk = walk.attach(TN.NSaveProjection())
 
     return pipe

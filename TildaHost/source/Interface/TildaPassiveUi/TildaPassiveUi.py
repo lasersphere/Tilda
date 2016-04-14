@@ -23,6 +23,7 @@ import numpy
 class TildaPassiveUi(QtWidgets.QMainWindow, Ui_TildaPassiveMainWindow):
     tipa_raw_data_callback = QtCore.pyqtSignal(numpy.ndarray)
     tipa_status_callback = QtCore.pyqtSignal(int)
+    tipa_steps_scans_callback = QtCore.pyqtSignal(dict)
 
     def __init__(self, main_ui):
         super(TildaPassiveUi, self).__init__()
@@ -38,6 +39,7 @@ class TildaPassiveUi(QtWidgets.QMainWindow, Ui_TildaPassiveMainWindow):
 
         self.tipa_raw_data_callback.connect(self.rcv_raw_data)
         self.tipa_status_callback.connect(self.rcv_status)
+        self.tipa_steps_scans_callback.connect(self.rcv_steps_scans)
 
         self.load_settings()
         self.rcv_status(-1)
@@ -77,6 +79,12 @@ class TildaPassiveUi(QtWidgets.QMainWindow, Ui_TildaPassiveMainWindow):
             self.label_status.setStyleSheet("QLabel {background-color : yellow; color : black;}")
             self.label_status.setText('scanning\n but no events since 5s\n MCP running? save?')
 
+    def rcv_steps_scans(self, step_scans_dict):
+        steps_str = str(step_scans_dict.get('nOfCompletedSteps', None))
+        scans_str = str(step_scans_dict.get('nOfStartedScans', None))
+        self.label_acq_steps_total.setText(steps_str)
+        self.label_acq_scans_total.setText(scans_str)
+
     def load_settings(self):
         try:
             data = FileHandl.loadPickle(self.settings_path)
@@ -101,10 +109,12 @@ class TildaPassiveUi(QtWidgets.QMainWindow, Ui_TildaPassiveMainWindow):
         num_of_bins = int(set_dict['dwell_mus'] * 100)
         delay_10ns = int(set_dict['delay_mus'] * 100)
         Cfg._main_instance.start_tilda_passive(num_of_bins, delay_10ns,
-                                               self.tipa_raw_data_callback, self.tipa_status_callback)
+                                               self.tipa_raw_data_callback, self.tipa_status_callback,
+                                               self.tipa_steps_scans_callback)
 
     def stop_scan(self):
         Cfg._main_instance.stop_tilda_passive()
 
     def closeEvent(self, *args, **kwargs):
+        self.stop_scan()
         self.main_ui.close_tilda_passive()
