@@ -576,6 +576,8 @@ class Main(QtCore.QObject):
         self.set_state(MainState.closing_tilda_passiv, silent)
 
     def _prepare_tilda_passive(self, raw_callback, steps_scans_callback):
+        if self.scan_main.sequencer is not None:
+            self.scan_main.deinit_fpga()
         iso_name = 'Ni_tipa'
         self.tilda_passive_inst.setup_tipa_ctrl(self.scan_pars[iso_name], raw_callback, steps_scans_callback)
         self.send_tipa_status(0)
