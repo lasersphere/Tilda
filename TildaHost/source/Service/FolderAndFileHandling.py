@@ -90,7 +90,6 @@ def savePickle(data, pipeDataDict, ending='.raw'):
                     '_track' + str(pipeDataDict['pipeInternals']['activeTrackNumber'][0]),
                     pipeDataDict['isotopeData']['type'],
                     ending)
-    # print('saving: ' + str(data) + ' , to: ' + str(path))
     save_pickle_simple(path, data)
     return path
 

@@ -303,7 +303,6 @@ class NSaveRawData(Node):
             self.nOfSaves = -1
 
     def processData(self, data, pipeData):
-        track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         if self.nOfSaves < 0:  # save pipedata, first time something is fed to the pipelins
             self.nOfSaves = Filehandle.savePipeData(pipeData, self.nOfSaves)
         self.buf = np.append(self.buf, data)

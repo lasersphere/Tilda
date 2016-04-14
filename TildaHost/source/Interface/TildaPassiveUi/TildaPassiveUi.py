@@ -75,7 +75,7 @@ class TildaPassiveUi(QtWidgets.QMainWindow, Ui_TildaPassiveMainWindow):
             self.pushButton_start.setDisabled(True)
             self.pushButton_stop.setEnabled(True)
             self.label_status.setStyleSheet("QLabel {background-color : yellow; color : black;}")
-            self.label_status.setText('scanning, but no events since 5s, save?')
+            self.label_status.setText('scanning\n but no events since 5s\n MCP running? save?')
 
     def load_settings(self):
         try:

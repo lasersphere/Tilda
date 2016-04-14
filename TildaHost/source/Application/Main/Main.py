@@ -110,7 +110,7 @@ class Main(QtCore.QObject):
             self._stop_sequencer_and_save()
 
         elif self.m_state[0] is MainState.preparing_tilda_passiv:
-            self._prepare_tilda_passive(*self.m_state[1])
+            self._prepare_tilda_passive(self.m_state[1])
         elif self.m_state[0] is MainState.tilda_passiv_running:
             self._tilda_passive_running()
         elif self.m_state[0] is MainState.closing_tilda_passiv:
@@ -558,16 +558,29 @@ class Main(QtCore.QObject):
     """ Tilda passive operations """
 
     def start_tilda_passive(self, n_of_bins, delay_10ns, raw_callback, status_callback):
-        self.set_state(MainState.preparing_tilda_passiv, (n_of_bins, delay_10ns, raw_callback))
+        self.tilda_passive_inst = TildaPassiveControl()
+        iso_name = 'Ni_tipa'
+        # tilda passive (tipa) works without the database! Database is for real sequencers only.
+        self.scan_pars[iso_name] = self.tilda_passive_inst.tipa_get_default_scan_pars()
+        self.scan_pars[iso_name]['measureVoltPars'] = self.measure_voltage_pars
+        self.scan_pars[iso_name]['pipeInternals']['workingDirectory'] = self.working_directory
+        self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
+        self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
+        self.scan_pars[iso_name]['isotopeData']['accVolt'] = self.acc_voltage
+        self.scan_pars[iso_name]['track0']['nOfBins'] = n_of_bins
+        self.scan_pars[iso_name]['track0']['trigger']['trigDelay10ns'] = n_of_bins
+        self.set_state(MainState.preparing_tilda_passiv, raw_callback)
         self.tipa_status_callback_sig = status_callback
 
     def stop_tilda_passive(self):
         self.set_state(MainState.closing_tilda_passiv)
 
-    def _prepare_tilda_passive(self, n_of_bins, delay_10ns, raw_callback):
-        self.tilda_passive_inst = TildaPassiveControl(raw_callback)
-        self.tilda_passive_status = 0
-        self.tilda_passive_inst.set_values(n_of_bins, delay_10ns)
+    def _prepare_tilda_passive(self, raw_callback):
+        iso_name = 'Ni_tipa'
+        self.tilda_passive_inst.setup_tipa_ctrl(self.scan_pars[iso_name], raw_callback)
+        self.send_tipa_status(0)
+        self.tilda_passive_inst.set_values(self.scan_pars[iso_name]['track0']['nOfBins'],
+                                           self.scan_pars[iso_name]['track0']['trigger']['trigDelay10ns'])
         if self.tilda_passive_inst.start_scanning():
             self.tipa_timeout_counter = datetime.now()
             self.set_state(MainState.tilda_passiv_running)
@@ -577,24 +590,24 @@ class Main(QtCore.QObject):
     def _tilda_passive_running(self):
         if self.tilda_passive_inst.read_data():
             self.tipa_timeout_counter = datetime.now()
-            tilda_passive_status = self.tilda_passive_inst.read_tipa_status()
-            if tilda_passive_status != self.tilda_passive_status:
-                self.tilda_passive_status = tilda_passive_status
-                self.send_tipa_status()
+            self.send_tipa_status()
         else:
             if (datetime.now() - self.tipa_timeout_counter).total_seconds() > 5:
-                if self.tilda_passive_status != 3:
-                    self.tilda_passive_status = 3
-                    self.send_tipa_status()
+                self.send_tipa_status(3)  # go to state 3 which is only a software state to indicate a timeout
+            else:
+                self.send_tipa_status()
 
     def _close_tilda_passive(self):
         self.tilda_passive_inst.stop()
         self.tilda_passive_inst = None
-        self.tilda_passive_status = -1
-        self.send_tipa_status()
+        self.send_tipa_status(-1)
         self.tipa_status_callback_sig = None
         self.set_state(MainState.idle)
 
-    def send_tipa_status(self):
+    def send_tipa_status(self, maybe_new_status=None):
         if self.tipa_status_callback_sig is not None:
-            self.tipa_status_callback_sig.emit(self.tilda_passive_status)
+            if maybe_new_status is None:
+                maybe_new_status = self.tilda_passive_inst.read_tipa_status()
+            if maybe_new_status != self.tilda_passive_status:
+                self.tilda_passive_status = maybe_new_status
+                self.tipa_status_callback_sig.emit(self.tilda_passive_status)

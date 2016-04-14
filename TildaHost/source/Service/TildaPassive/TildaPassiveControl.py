@@ -18,13 +18,21 @@ import logging
 
 
 class TildaPassiveControl:
-    def __init__(self, raw_callback):
+    def __init__(self):
         """
         Module for operating the passive mode of Tilda
         """
-        self.tp_pipe = Tp.tilda_passive_pipe(raw_callback)
-        self.tp_pipe.start()
+        self.tp_pipe = None
         self.tp_inst = None  # instance of the loaded bitfile
+        self.scan_pars = None
+
+    def setup_tipa_ctrl(self, scan_pars, raw_callback):
+        """
+        setup the pipeline and run the Bitfile.
+        """
+        self.scan_pars = scan_pars
+        self.tp_pipe = Tp.tilda_passive_pipe(self.scan_pars, raw_callback)
+        self.tp_pipe.start()
         self.run()
 
     def stop(self):
@@ -37,6 +45,7 @@ class TildaPassiveControl:
         if self.tp_inst.type == 'tipa':
             self.tp_inst.DeInitFpga()
         self.tp_inst = None
+        self.scan_pars = None
 
     def run(self):
         """
@@ -97,3 +106,8 @@ class TildaPassiveControl:
         """
         return self.tp_inst.read_tilda_passive_status()
 
+    def tipa_get_default_scan_pars(self):
+        """
+        returns the draft scan dictionary from the TildaPassiveConfig
+        """
+        return TpCfg.draft_tipa_scan_pars

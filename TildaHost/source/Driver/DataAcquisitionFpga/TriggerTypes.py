@@ -16,3 +16,4 @@ from enum import Enum, unique
 class TriggerTypes(Enum):
     no_trigger = 0
     single_hit_delay = 1
+    single_hit = 2

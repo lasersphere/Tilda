@@ -162,6 +162,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             Cfg._main_instance.acc_volt_changed(acc_volt)
 
     def start_tilda_passive_gui(self):
+        if Cfg._main_instance.working_directory is None:
+            if self.choose_working_dir() is None:
+                return None
         if self.tilda_passive_gui is None:
             self.tilda_passive_gui = TildaPassiveUi(self)
 
