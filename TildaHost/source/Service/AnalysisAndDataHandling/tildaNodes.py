@@ -1094,33 +1094,29 @@ class NTiPaAccRawUntil2ndScan(Node):
         if self.acquired_2nd_scan:
             return data
         else:
-            bad_ind = []
-            for ind, elem in enumerate(data):
-                if elem == int('01000000100000000000000000000001', 2):  # this means a step was completed by MCP
-                    if self.n_of_started_scans:
-                        self.n_of_compl_steps += 1
-                        self.emit_steps_scan_callback()
-                elif elem == int('01000000100000000000000000000010', 2):  # this means a scan was started by MCP
-                    if self.n_of_started_scans == 0:
-                        if ind:
-                            print('buffer is: ', self.buffer, 'elem is: ', elem, 'data is: ', data)
-                            print('deleting incomplete scans until: ', ind)
-                            self.buffer = np.delete(self.buffer, np.s_[0:ind], 0)
-                    self.n_of_started_scans += 1
-                    self.emit_steps_scan_callback()
-                    if self.n_of_started_scans == 2:
-                        self.acquired_2nd_scan = True
-                        pipeData['track0']['nOfSteps'] = \
-                            self.n_of_compl_steps // (self.n_of_started_scans - 1)
-                        self.Pipeline.start()
-                        self.Pipeline.feed(self.buffer)
-                else:
-                    pass
+            pipeData['track0']['nOfCompletedSteps'] = 0
             self.buffer = np.append(self.buffer, data)
+            step_complete = int('01000000100000000000000000000001', 2)
+            new_scan = int('01000000100000000000000000000010', 2)
+            scans_in_buffer = np.where(self.buffer == new_scan)[0]
+            if scans_in_buffer.size == 1:
+                self.buffer = self.buffer[scans_in_buffer[0]:]
+                steps = np.where(self.buffer == step_complete)[0].size
+                self.emit_steps_scan_callback(steps, 1)
+            if scans_in_buffer.size >= 2:
+                self.acquired_2nd_scan = True
+                one_scan = self.buffer[scans_in_buffer[0]:scans_in_buffer[1]]
+                nOfsteps = np.where(one_scan == step_complete)[0].size
+                pipeData['track0']['nOfSteps'] = nOfsteps
+                logging.debug('number of steps should be %s' % nOfsteps)
+                steps = np.where(self.buffer == step_complete)[0].size
+                self.emit_steps_scan_callback(steps, scans_in_buffer.size)
+                self.Pipeline.start()
+                self.Pipeline.feed(self.buffer)
             return None
 
-    def emit_steps_scan_callback(self):
+    def emit_steps_scan_callback(self, steps, scans):
         """  a gui can rcv this callback signal """
-        self.steps_scans_callback.emit({'nOfCompletedSteps': self.n_of_compl_steps,
-                                        'nOfStartedScans': self.n_of_started_scans})
+        self.steps_scans_callback.emit({'nOfCompletedSteps': steps,
+                                        'nOfStartedScans': scans})
 
