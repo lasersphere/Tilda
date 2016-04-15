@@ -10,6 +10,7 @@ Module for controlling the execution of the TildaPassive "mode" or bitfile.
 """
 
 from Driver.DataAcquisitionFpga.TildaPassive import TildaPassive
+from Driver.DataAcquisitionFpga.TildaPassiveDummy import TildaPassiveDummy
 import Driver.DataAcquisitionFpga.TildaPassiveConfig as TpCfg
 import Service.AnalysisAndDataHandling.tildaPipeline as Tp
 
@@ -33,7 +34,11 @@ class TildaPassiveControl:
         self.scan_pars = scan_pars
         self.tp_pipe = Tp.tilda_passive_pipe(self.scan_pars, raw_callback, steps_scans_callback)
         self.tp_pipe.start()
-        self.run()
+        try:
+            self.run()
+        except Exception as e:
+            logging.error('hardware not found, starting Tilda Passive dummy')
+            self.run_dummy()
 
     def stop(self):
         """
@@ -52,6 +57,12 @@ class TildaPassiveControl:
         start the Tilda Passive Bitfile on the Fpga
         """
         self.tp_inst = TildaPassive()
+
+    def run_dummy(self):
+        """
+        start the dummmy if the hardware is not available
+        """
+        self.tp_inst = TildaPassiveDummy()
 
     def start_scanning(self):
         """
