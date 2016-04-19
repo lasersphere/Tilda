@@ -6,14 +6,16 @@ Created on '20.05.2015'
 
 """
 
-import matplotlib.pyplot as plt
 import logging
 import os
 
+import matplotlib.pyplot as plt
+
 import Service.AnalysisAndDataHandling.tildaNodes as TN
+import Service.FileOperations.FolderAndFileHandling as FaFH
 import polliPipe.simpleNodes as SN
 from polliPipe.node import Node
-import Service.FolderAndFileHandling as FaFH
+
 # import PyQtGraphPlotter
 
 from polliPipe.pipeline import Pipeline

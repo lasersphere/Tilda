@@ -8,10 +8,10 @@ Created on '20.05.2015'
 
 import os.path
 
-from Service.AnalysisAndDataHandling.tildaPipeline import TrsPipe
 import Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig as TRSConfig
-import Service.FolderAndFileHandling as filehand
+import Service.FileOperations.FolderAndFileHandling as filehand
 import Service.Scan.draftScanParameters as draftScan
+from Service.AnalysisAndDataHandling.tildaPipeline import TrsPipe
 
 
 path = 'TildaHost\\source\\Scratch\\exampleTRSRawData.py'

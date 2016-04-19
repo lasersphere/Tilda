@@ -10,14 +10,15 @@ Control of the Userinterface which is used
 
 """
 
-from Interface.TildaPassiveUi.Ui_TildaPassive import Ui_TildaPassiveMainWindow
-import Application.Config as Cfg
-import Service.FolderAndFileHandling as FileHandl
-
-from PyQt5 import QtWidgets
-from PyQt5 import QtCore
 import datetime
+
 import numpy
+from PyQt5 import QtCore
+from PyQt5 import QtWidgets
+
+import Application.Config as Cfg
+import Service.FileOperations.FolderAndFileHandling as FileHandl
+from Interface.TildaPassiveUi.Ui_TildaPassive import Ui_TildaPassiveMainWindow
 
 
 class TildaPassiveUi(QtWidgets.QMainWindow, Ui_TildaPassiveMainWindow):

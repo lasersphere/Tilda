@@ -4,17 +4,17 @@ Created on '11.05.2015'
 
 @author:'simkaufm'
 
-"""
-"""
+
 Module to convert the C Api Output to Python input
-Just Run cApiFileHandler on your header File created by the NI C Api generator and copy the Console Output to your Python File
+Just Run cApiFileHandler on your header File created by the NI C Api generator
+ and copy the Console Output to your Python File
 """
 import re
 import os
 from PyQt5 import QtWidgets
 
 
-class CApiAnalyser():
+class CApiAnalyser:
     def __init__(self):
         pass
 
@@ -48,7 +48,6 @@ class CApiAnalyser():
                     print(j[self.findLastUnderScore(j):j.index('=')-1] + ' = {\'ref\': ' + str(j[j.index('=')+2:-2])
                           + ', \'val\': ctypes.c_long(), \'ctr\': ' + str(val) + '}')
     
-
     def cApiFileHandler(self, headerpath, bitfilepath, fpgaresource):
         with open(headerpath, 'r') as myfile:
             inhalt = myfile.readlines()

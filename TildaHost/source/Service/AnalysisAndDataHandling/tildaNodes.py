@@ -5,20 +5,22 @@ Created on '20.05.2015'
 @author:'simkaufm'
 
 """
-import TildaTools
-from Service.FileFormat.XmlOperations import xmlAddCompleteTrack
-from Service.VoltageConversions.VoltageConversions import find_volt_in_array
-import Service.Scan.ScanDictionaryOperations as SdOp
-from Measurement.SpecData import SpecData
-from polliPipe.node import Node
-import Service.Formating as Form
-import Service.FolderAndFileHandling as Filehandle
-import Service.ProgramConfigs as ProgConfigsDict
-import Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
-from Service.AnalysisAndDataHandling.InfoHandler import InfoHandler as InfHandl
-import MPLPlotter
-import numpy as np
 import logging
+
+import numpy as np
+
+import MPLPlotter
+import Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
+import Service.FileOperations.FolderAndFileHandling as Filehandle
+import Service.Formating as Form
+from Service.ProgramConfigs import Programs as Progs
+import Service.Scan.ScanDictionaryOperations as SdOp
+import TildaTools
+from Measurement.SpecData import SpecData
+from Service.AnalysisAndDataHandling.InfoHandler import InfoHandler as InfHandl
+from Service.FileOperations.XmlOperations import xmlAddCompleteTrack
+from Service.VoltageConversions.VoltageConversions import find_volt_in_array
+from polliPipe.node import Node
 
 """ multipurpose Nodes: """
 
@@ -808,8 +810,10 @@ class NCSSortRawDatatoArray(Node):
                             print('excepti : ', e)
                             # print('scaler event: ', track_ind, self.curVoltIndex, pmt_ind, j['payload'])
                             # timestamp equals index in time array of the given scaler
-            elif j['firstHeader'] == ProgConfigsDict.programs['infoHandler']:
-                self.curVoltIndex = self.info_handl.info_handle(pipeData, j['payload'])
+            elif j['firstHeader'] == Progs.infoHandler.value:
+                v_ind = self.info_handl.info_handle(pipeData, j['payload'])
+                if v_ind is not None:
+                    self.curVoltIndex = v_ind
                 scan_complete = pipeData[track_name]['nOfCompletedSteps'] == pipeData[track_name]['nOfSteps']
                 if scan_complete:
                     if ret is None:
@@ -821,14 +825,14 @@ class NCSSortRawDatatoArray(Node):
                     scan_complete = False
                 pass
 
-            elif j['firstHeader'] == ProgConfigsDict.programs['errorHandler']:  # error send from fpga
+            elif j['firstHeader'] == Progs.errorHandler.value:  # error send from fpga
                 logging.error('fpga sends error code: ' + str(j['payload']) + 'or in binary: ' + str(
                     '{0:032b}'.format(j['payload'])))
 
-            elif j['firstHeader'] == ProgConfigsDict.programs['dac']:  # its a voltage step
+            elif j['firstHeader'] == Progs.dac.value:  # its a voltage step
                 self.curVoltIndex, self.voltArray = find_volt_in_array(j['payload'], self.voltArray, track_ind)
 
-            elif j['firstHeader'] == ProgConfigsDict.programs['continuousSequencer']:
+            elif j['firstHeader'] == Progs.continuousSequencer.value:
                 '''scaler entry '''
                 self.totalnOfScalerEvents[track_ind] += 1
                 # pipeData[track_name]['nOfCompletedSteps'] = self.totalnOfScalerEvents[

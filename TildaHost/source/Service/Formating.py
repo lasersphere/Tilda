@@ -11,7 +11,6 @@ import logging
 
 import numpy as np
 
-import Service.Scan.draftScanParameters as DftScpars
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.VoltageConversions.VoltageConversions as VCon
 
@@ -272,6 +271,7 @@ def gate_one_track(tr_ind, tr_num, pipeData, data, time_array, volt_array, ret):
             t_proj_tr[pmt_ind] = t_proj_xdata
         ret.append([v_proj_tr, t_proj_tr])
     return ret
+
 
 def time_rebin_all_data_slow(full_data, bins_to_combine):
     """

@@ -1,5 +1,4 @@
 import TildaTools
-import Tools
 
 __author__ = 'Simon-K'
 
@@ -12,10 +11,9 @@ import os
 import time
 import sys
 
-import Service.FolderAndFileHandling as FileHandle
+import Service.FileOperations.FolderAndFileHandling as FileHandle
 import Service.AnalysisAndDataHandling.tildaPipeline as TildaPipe
 import Service.Formating as Form
-import Service.Scan.draftScanParameters as Drafts
 
 # sys.ps1 = 'Necessary for matplotlib 1.4.0 to work the way it used to'
 

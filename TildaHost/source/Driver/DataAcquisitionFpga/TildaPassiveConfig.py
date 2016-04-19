@@ -9,9 +9,9 @@ Module Description: automatically created with the CApiAnalyser
 import ctypes
 
 '''Bitfile Signature:'''
-bitfileSignature = '3484C4D672E45F0D11A710760B0AB3E8'
+bitfileSignature = '9785CAF205431A4E8A9EB9C5190D2FBC'
 '''Bitfile Path:'''
-bitfilePath = 'D:/Workspace/PyCharm/Tilda/TildaTarget/bin/TildaPassive/NiFpga_TildaPassiveMain.lvbitx'
+bitfilePath = 'D:/Workspace/PyCharm/Tilda/TildaTarget/bin/TildaPassive/NiFpga_TildaPassiveMain_V101.lvbitx'
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''
