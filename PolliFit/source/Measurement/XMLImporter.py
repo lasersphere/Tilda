@@ -6,9 +6,7 @@ Created on '07.08.2015'
 
 """
 
-import csv
 import sqlite3
-from datetime import datetime
 import os
 import Service.Formating as Form
 import Physics
@@ -21,13 +19,47 @@ from Measurement.SpecData import SpecData
 
 class XMLImporter(SpecData):
     '''
-    This object reads a file with tab separated values into the ScanData structure
+    This Module Reads the .xml files.
 
-     The first column of the file is interpreted as scanning voltage, all following as scalers
-    The header has 10 lines
+    .xml file structure is:
+    -<TrigaLaserData>
+        -<header>
+            <accVolt>0</accVolt>
+            <isotope>Ni</isotope>
+            <isotopeStartTime>2016-04-14 23:32:10</isotopeStartTime>
+            <laserFreq>0</laserFreq>
+            <nOfTracks>1</nOfTracks>
+            <type>tipa</type>
+            <version>1.08</version>
+        </header>
+        -<tracks>
+            -<track0>
+                -<header>
+                    <activePmtList>[0, 1, 2, 3]</activePmtList>
+                    <colDirTrue>True</colDirTrue>
+                    <dacStartRegister18Bit>0</dacStartRegister18Bit>
+                    <dacStartVoltage>-9.993201</dacStartVoltage>
+                    <dacStepSize18Bit>1</dacStepSize18Bit>
+                    <dacStepsizeVoltage>0.001572</dacStepsizeVoltage>
+                    <dacStopVoltage>-9.992896</dacStopVoltage>
+                    <invertScan>False</invertScan>
+                    <nOfBins>1000</nOfBins>
+                    <nOfBunches>1</nOfBunches>
+                    <nOfCompletedSteps>45</nOfCompletedSteps>
+                    <nOfScans>None</nOfScans>
+                    <nOfSteps>5</nOfSteps>
+                    <softBinWidth_ns>100</softBinWidth_ns>
+                    <softwGates>[[-10, 10, 0, 10000], [0, 4, 0.0, 9900.0]]</softwGates>
+                    <trigger>{'trigDelay10ns': 10000, 'type': 'SingleHit'}</trigger>
+                    <workingTime>None</workingTime>
+                </header>
+                +<data>
+            </track0>
+        </tracks>
+        </TrigaLaserData>
     '''
 
-    def __init__(self, path):
+    def __init__(self, path, x_as_volt=True):
         '''Read the file'''
 
         print("XMLImporter is reading file", path)
@@ -47,19 +79,17 @@ class XMLImporter(SpecData):
 
         self.offset = 0  # should also be a list for mutliple tracks
         self.nrScalers = []
-        self.x = Form.create_x_axis_from_scand_dict(scandict, as_voltage=True)  # x axis, voltage
+        self.active_pmt_list = []
+        if self.seq_type in ['tipa', 'tipadummy']:
+            x_as_volt = False
+        self.x = Form.create_x_axis_from_scand_dict(scandict, as_voltage=x_as_volt)  # x axis, voltage
         self.cts = []  # countervalues
         self.err = []  # error to the countervalues
         self.stepSize = []
         self.col = False  # should also be a list for multiple tracks
         self.dwell = []
-        if self.seq_type == 'trs':
-            self.t = Form.create_time_axis_from_scan_dict(scandict)  # time axis, 10ns resolution
-            self.t_proj = []
-            self.time_res = []
-
-
-
+        self.softw_gates = None
+        self.track_names = TildaTools.get_track_names(scandict)
 
         for tr_ind, tr_name in enumerate(TildaTools.get_track_names(scandict)):
             track_dict = scandict[tr_name]
@@ -67,6 +97,8 @@ class XMLImporter(SpecData):
             nOfsteps = track_dict['nOfSteps']
             nOfBins = track_dict.get('nOfBins')
             nOfScalers = len(track_dict['activePmtList'])
+            self.active_pmt_list.append(track_dict['activePmtList'])
+
             dacStepSize18Bit = track_dict['dacStepSize18Bit']
 
             self.nrScalers.append(nOfScalers)
@@ -76,7 +108,10 @@ class XMLImporter(SpecData):
             if track_dict.get('postAccOffsetVoltControl') == 0:
                 self.offset = 0
 
-            if self.seq_type == 'trs':
+            if self.seq_type == 'trs' or self.seq_type == 'tipa':
+                self.t = Form.create_time_axis_from_scan_dict(scandict)  # time axis, 10ns resolution
+                self.t_proj = []
+                self.time_res = []
                 cts_shape = (nOfScalers, nOfsteps, nOfBins)
                 v_proj = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'voltage_projection', (nOfScalers, nOfsteps))
@@ -93,9 +128,10 @@ class XMLImporter(SpecData):
                 self.err[-1][self.err[-1] < 1] = 1  # remove 0's in the error
                 self.t_proj.append(t_proj)
                 self.time_res.append(scaler_array)
-                gates = track_dict['softwGates']
-                dwell = [g[3] - g[2] for g in gates]
+                self.softw_gates = track_dict['softwGates']
+                dwell = [g[3] - g[2] for g in self.softw_gates]
                 self.dwell.append(dwell)
+                self.softBinWidth_ns = track_dict.get('softBinWidth_ns', 10)
 
             elif self.seq_type == 'cs':
                 cts_shape = (nOfScalers, nOfsteps)
@@ -144,3 +180,10 @@ class XMLImporter(SpecData):
         cts = cts.reshape(-1)
         for i, v in enumerate(cts):
             cts[i] = f(v)
+
+    def get_scaler_step_and_bin_num(self, track_ind):
+        """ returns a tuple: (nOfScalers, nOfSteps, nOfBins) """
+        if self.seq_type in ['trs', 'trsdummy', 'tipa', 'tipadummy']:
+            return self.time_res[track_ind].shape
+        else:
+            return self.nrScalers[track_ind], self.getNrSteps(track_ind), -1

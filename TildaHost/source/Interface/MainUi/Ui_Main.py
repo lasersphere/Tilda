@@ -102,7 +102,10 @@ class Ui_TildaMainWindow(object):
         self.actionSet_acceleration_voltage.setObjectName("actionSet_acceleration_voltage")
         self.actionTilda_Passive = QtWidgets.QAction(TildaMainWindow)
         self.actionTilda_Passive.setObjectName("actionTilda_Passive")
+        self.actionLoad_spectra = QtWidgets.QAction(TildaMainWindow)
+        self.actionLoad_spectra.setObjectName("actionLoad_spectra")
         self.menuTilda_MainWindow.addAction(self.actionWorking_directory)
+        self.menuTilda_MainWindow.addAction(self.actionLoad_spectra)
         self.menuView.addAction(self.actionScan_Control)
         self.menuView.addAction(self.actionPost_acceleration_power_supply_control)
         self.menuView.addAction(self.actionSimple_Counter)
@@ -152,4 +155,5 @@ class Ui_TildaMainWindow(object):
         self.actionSet_Laser_Frequency.setText(_translate("TildaMainWindow", "set laser frequency"))
         self.actionSet_acceleration_voltage.setText(_translate("TildaMainWindow", "set acceleration voltage"))
         self.actionTilda_Passive.setText(_translate("TildaMainWindow", "Tilda Passive"))
+        self.actionLoad_spectra.setText(_translate("TildaMainWindow", "load spectra"))
 

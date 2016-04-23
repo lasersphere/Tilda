@@ -156,6 +156,7 @@
      <string>File</string>
     </property>
     <addaction name="actionWorking_directory"/>
+    <addaction name="actionLoad_spectra"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -238,6 +239,11 @@
   <action name="actionTilda_Passive">
    <property name="text">
     <string>Tilda Passive</string>
+   </property>
+  </action>
+  <action name="actionLoad_spectra">
+   <property name="text">
+    <string>load spectra</string>
    </property>
   </action>
  </widget>

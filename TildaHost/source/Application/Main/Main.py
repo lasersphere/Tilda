@@ -18,6 +18,7 @@ from datetime import datetime
 from Service.Scan.ScanMain import ScanMain
 from Service.SimpleCounter.SimpleCounter import SimpleCounterControl
 from Service.TildaPassive.TildaPassiveControl import TildaPassiveControl
+from Service.AnalysisAndDataHandling.DisplayData import DisplayData
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as Dft
 import Service.DatabaseOperations.DatabaseOperations as DbOp
@@ -28,6 +29,7 @@ from Application.Main.MainState import MainState
 class Main(QtCore.QObject):
     # this will equal the number of completed steps in the active track:
     scan_prog_call_back_sig_pipeline = QtCore.pyqtSignal(int)
+    # close_spec_display = QtCore.pyqtSignal(str)
 
     def __init__(self):
         super(Main, self).__init__()
@@ -64,11 +66,13 @@ class Main(QtCore.QObject):
         self.tipa_status_callback_sig = None
         self.tipa_timeout_counter = 0
 
+        self.displayed_data = {}  # dict of all displayed files. complete filename is key.
+
         try:
             # pass
             # self.work_dir_changed('E:/lala')
-            self.work_dir_changed('C:/temp108')
-            # self.work_dir_changed('D:\Tilda_Debugging')
+            # self.work_dir_changed('C:/temp108')
+            self.work_dir_changed('D:\Tilda_Debugging')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state(MainState.idle)
@@ -195,6 +199,27 @@ class Main(QtCore.QObject):
     def get_fpga_and_seq_state(self):
         self.get_fpga_state()
         self.get_sequencer_state()
+
+    def load_spectra_to_main(self, file):
+        """
+        will be used for displaying a spectra.
+        Later scan parameters from file can be loaded etc. to sum up more data etc.
+        """
+        try:
+            if file in self.displayed_data.keys():
+                print('already loaded')
+                return None
+            self.displayed_data[file] = DisplayData(file)
+            self.displayed_data[file].con_close_event()
+        except Exception as e:
+            logging.error('Exception while loading file %s, exception is: %s' % (file, str(e)))
+
+    def close_spectra_in_main(self, file):
+        """
+        call this to remove the corresponding file from the list of active files.
+        """
+        self.displayed_data.pop(file)
+
 
     """ operations on self.scan_pars dictionary """
 

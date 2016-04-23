@@ -320,3 +320,31 @@ def rebin_single_track(tr_ind, tr_data, tr_list, return_data, scan_dict):
         new_tr_data += np.roll(tr_data, -(reps + 1), axis=2)
     return_data.append(new_tr_data[:, :, bin_ind])
     return return_data
+
+
+def time_rebin_all_spec_data(full_data, software_bin_width_ns):
+    """
+    use this function to perform a rebinning on the time axis.
+    This means, alle bins within "bins_to_combine" will be summed up.
+    length of the output array for each voltage step will be:
+        original length // bins_to_combine
+    therefore some values in the end migth be dropped.
+    e.g. 10 // 3 = 3 -> last bin is ignored.
+    :param full_data: full time resolved scaler array, with all tracks
+    :param software_bin_width_ns, software bin width
+    :return: rebinned full_data
+    """
+    newdata = []
+    for tr_ind, tr_data in enumerate(full_data):
+        newdata = rebin_single_track_spec_data(tr_data, newdata, software_bin_width_ns)
+    return newdata
+
+
+def rebin_single_track_spec_data(tr_data, return_data, bin_width_10ns):
+    bins_to_combine = int(bin_width_10ns / 10)
+    bin_ind = np.arange(0, tr_data.shape[-1] // bins_to_combine * bins_to_combine, bins_to_combine)
+    new_tr_data = deepcopy(tr_data)
+    for reps in range(bins_to_combine - 1):
+        new_tr_data += np.roll(tr_data, -(reps + 1), axis=2)
+    return_data.append(new_tr_data[:, :, bin_ind])
+    return return_data

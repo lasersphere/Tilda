@@ -40,6 +40,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
     """
     Pipeline for the dataflow and analysis of one Isotope using the time resolved sequencer.
     Mutliple Tracks are supported.
+    always feed raw data.
     """
     start = Node()
     maintenance = start.attach(TN.NMPLCloseFigOnInit())
@@ -75,6 +76,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
 def CsPipe(initialScanPars=None, callback_sig=None):
     """
     Pipeline for the dataflow and analysis of one Isotope using the continous sequencer.
+    always feed raw data.
     """
     start = Node()
 
@@ -135,6 +137,7 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None):
     """
     pipeline for the measurement and analysis of a kepco scan
     :param initial_scan_pars: full sacn dictionary which will be used as starting point for this pipeline
+    always feed raw data.
     """
     start = Node()
 
@@ -150,6 +153,7 @@ def initPipeData(initialScanPars):
     """
     initialize the pipeData used for the analysis Pipeline
     :return: dict, {'isotopeData', 'progConfigs', 'track0', 'pipeInternals'}
+    always feed raw data.
     """
     pipeData = initialScanPars
 
@@ -165,6 +169,10 @@ def initPipeData(initialScanPars):
 
 
 def simple_counter_pipe(qt_sig, act_pmt_list):
+    """
+    pipeline for analysis and displaying while the simple counter is running.
+    always feed raw data.
+    """
     start = Node()
 
     fig, axes = plt.subplots(len(act_pmt_list), sharex=True)
@@ -193,6 +201,10 @@ def simple_counter_pipe(qt_sig, act_pmt_list):
 
 
 def tilda_passive_pipe(initial_scan_pars, raw_callback, steps_scans_callback):
+    """
+    pipeline for running the tilda passive mode.
+    always feed raw data.
+    """
     start = Node()
 
     pipe = Pipeline(start)
@@ -224,5 +236,26 @@ def tilda_passive_pipe(initial_scan_pars, raw_callback, steps_scans_callback):
     # #
     walk = walk.attach(TN.NTRSProjectize(False))
     walk = walk.attach(TN.NSaveProjection())
+
+    return pipe
+
+
+def time_resolved_display(filepath):
+    """
+    pipeline for displaying a time resolved spectra.
+    feed only time resolved specdata to it!
+    """
+    start = Node()
+
+    pipe = Pipeline(start)
+
+    pipe.pipeData['pipeInternals'] = {}
+
+    pipe.pipeData['pipeInternals']['activeXmlFilePath'] = filepath
+    # path of file is used mainly for the window title.
+    walk = start.attach(SN.NPrint())
+    # walk = walk.attach(TN.NMPLImagePlotSpecData(0, dataPath))
+    walk = walk.attach(TN.NMPLImagePlotSpecData(0))
+    walk = walk.attach(TN.NMPlDrawPlot())
 
     return pipe

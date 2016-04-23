@@ -50,6 +50,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionSet_Laser_Frequency.triggered.connect(self.set_laser_freq)
         self.actionSet_acceleration_voltage.triggered.connect(self.set_acc_volt)
         self.actionTilda_Passive.triggered.connect(self.start_tilda_passive_gui)
+        self.actionLoad_spectra.triggered.connect(self.load_spectra)
 
         """ connect double clicks on labels:"""
         self.label_workdir_set.mouseDoubleClickEvent = self.workdir_dbl_click
@@ -170,6 +171,14 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def close_tilda_passive(self):
         self.tilda_passive_gui = None
+
+    def load_spectra(self):
+        if Cfg._main_instance.working_directory is None:
+            if self.choose_working_dir() is None:
+                return None
+        file = QtWidgets.QFileDialog.getOpenFileName(
+            self, 'choose an xml file', Cfg._main_instance.working_directory, '*.xml')[0]
+        Cfg._main_instance.load_spectra_to_main(file)
 
     def closeEvent(self, *args, **kwargs):
         for win in self.act_scan_wins:

@@ -6,6 +6,7 @@ Created on '20.05.2015'
 
 """
 import logging
+from copy import deepcopy
 
 import numpy as np
 
@@ -754,6 +755,296 @@ class NMultiSpecFromSpecData(Node):
             x, y, err = spec_data_instance.getArithSpec(sc, -1)
             ret.append((np.array(x), y))
         return ret
+
+
+class NMPLImagePlotSpecData(Node):
+    def __init__(self, pmt_num):
+        """
+        plotting node, for plotting the image data of one track and one pmt
+        also the projections inside teh gates are displayed.
+        """
+        super(NMPLImagePlotSpecData, self).__init__()
+        self.type = 'MPLImagePlotSpecData'
+        self.fig, self.axes = MPLPlotter.setup_image_figure()
+        self.im_ax = self.axes[0][0]
+        self.cb_ax = self.axes[0][1]
+        self.tproj_ax = self.axes[0][2]
+        self.vproj_ax = self.axes[1][0]
+        self.pmt_radio_ax = self.axes[1][1]
+        self.tr_radio_ax = self.axes[1][2]
+        self.save_bt_ax = self.axes[1][3]
+        self.slider_ax = self.axes[2][0]
+        self.selected_pmt = pmt_num
+        self.selected_pmt_ind = None
+        self.image = None
+        self.colorbar = None
+        self.tproj_line = None  # mpl objekt
+        self.vproj_line = None
+        self.patch = None
+        self.buffer_data = None
+        self.full_data = None
+        self.aspect_img = 'auto'
+        self.gate_anno = None  # annotation for gate
+
+        self.radio_buttons_pmt = None
+        self.radio_con = None
+        self.radio_buttons_tr = None
+        self.selected_track = (0, 'track0')
+        self.save_button = None
+        self.slider = None
+        MPLPlotter.ion()
+        MPLPlotter.show(False)
+
+    def rect_select_gates(self, eclick, erelease):
+        """
+        is called via left/rigth click & release events, connection see in start()
+        will pass the coordinates of the selected area to self.update_gate_ind()
+        """
+        try:
+            volt_1, time_1 = eclick.xdata, eclick.ydata
+            volt_2, volt_3 = erelease.xdata, erelease.ydata
+            volt_1, volt_2 = sorted((volt_1, volt_2))
+            time_1, volt_3 = sorted((time_1, volt_3))
+            gates_list = [volt_1, volt_2, time_1, volt_3]
+            self.update_gate_ind(gates_list)
+            self.gate_data_and_plot(True)
+        except Exception as e:
+            print('while setting the gates this happened: ', e)
+
+    def gate_data_and_plot(self, draw=False):
+        """
+        uses the currently stored gates (self.gates_list) to gate the stored data in
+        self.buffer_data and plots the result.
+        """
+        try:
+            data = self.buffer_data
+            g_ind, g_list = self.update_gate_ind(data.softw_gates[self.selected_pmt_ind])
+            self.patch.set_xy((g_list[0], g_list[2]))
+            self.patch.set_width((g_list[1] - g_list[0]))
+            self.patch.set_height((g_list[3] - g_list[2]))
+            xdata = np.sum(
+                data.time_res[self.selected_track[0]][self.selected_pmt_ind][g_ind[0]:g_ind[1] + 1, :], axis=0)
+            ydata = np.sum(
+                data.time_res[self.selected_track[0]][self.selected_pmt_ind][:, g_ind[2]:g_ind[3] + 1], axis=1)
+            self.tproj_line.set_xdata(xdata)
+            self.vproj_line.set_ydata(ydata)
+            # +1 due to syntax of slicing!
+            self.tproj_ax.relim()
+            self.tproj_ax.set_xmargin(0.05)
+            self.tproj_ax.autoscale(enable=True, axis='x', tight=False)
+            self.vproj_ax.relim()
+            self.vproj_ax.set_ymargin(0.05)
+            self.vproj_ax.autoscale(enable=True, axis='y', tight=False)
+            if draw:
+                MPLPlotter.draw()
+        except Exception as e:
+            print('while plotting projection this happened: ', e)
+            # print('t_proj lenghts are: ',
+            #       len(np.sum(data.time_res[g_ind[0]:g_ind[1] + 1, :], axis=0)), len(self.tproj_line.get_ydata()))
+
+    def update_gate_ind(self, gates_val_list):
+        """
+        gates_val_list must be in form of, for one pmt in one track:
+        [v_min, v_max, t_min, t_max]
+
+        overwrites: self.Pipeline.pipeData[track_name]['softwGates']
+        and stores gates in self.gates_list
+        :return: tuple, ([gate_ind], [gate_vals])
+        """
+        try:
+            volt_array = self.buffer_data.x[self.selected_track[0]]
+            time_array = self.buffer_data.t[self.selected_track[0]]
+            v_min, v_max = sorted((gates_val_list[0], gates_val_list[1]))
+            v_min_ind, v_min, vdif = Form.find_closest_value_in_arr(volt_array, v_min)
+            v_max_ind, v_max, vdif = Form.find_closest_value_in_arr(volt_array, v_max)
+
+            t_min, t_max = sorted((gates_val_list[2], gates_val_list[3]))
+            t_min_ind, t_min, tdif = Form.find_closest_value_in_arr(time_array, t_min)
+            t_max_ind, t_max, tdif = Form.find_closest_value_in_arr(time_array, t_max)
+            gates_ind = [v_min_ind, v_max_ind, t_min_ind, t_max_ind]  # indices in data array
+            gates_val_list = [v_min, v_max, t_min, t_max]
+            if self.gate_anno is None:
+                self.gate_anno = self.im_ax.annotate('%s - %s V \n%s - %s ns'
+                                                     % (volt_array[v_min_ind], volt_array[v_max_ind],
+                                                        time_array[t_min_ind], time_array[t_max_ind]),
+                                                     xy=(self.im_ax.get_xlim()[0], self.im_ax.get_ylim()[1]/2),
+                                                     xycoords='data', annotation_clip=False, color='white')
+            self.gate_anno.set_text('%s - %s V \n%s - %s ns'
+                                                     % (volt_array[v_min_ind], volt_array[v_max_ind],
+                                                        time_array[t_min_ind], time_array[t_max_ind]))
+            self.gate_anno.set_x(self.im_ax.xaxis.get_view_interval()[0])
+            ymin, ymax = self.im_ax.yaxis.get_view_interval()
+            self.gate_anno.set_y(ymax - (ymax - ymin) / 6)
+            self.buffer_data.softw_gates[self.selected_pmt_ind] = gates_val_list
+            return gates_ind, gates_val_list
+        except Exception as e:
+            print('while updating the indice this happened: ', e)
+            return [0, 1, 2, 3], [-1, 1, 0, 1]
+
+    def setup_track(self, track_ind, track_name):
+        try:
+            for ax in [val for sublist in self.axes for val in sublist][:-4]:
+                if ax:  # be sure ax is not 0, don't clear radio buttons, buttons and slider
+                    MPLPlotter.clear_ax(ax)
+            self.gate_anno = None
+            volt_array = self.buffer_data.x[track_ind]
+            v_shape = volt_array.shape
+            time_array = self.buffer_data.t[track_ind]
+            t_shape = time_array.shape
+
+            self.image, self.colorbar = MPLPlotter.configure_image_plot(
+                self.fig, self.im_ax, self.cb_ax, self.Pipeline.pipeData, volt_array,
+                time_array, self.selected_pmt, track_name)
+
+            self.vproj_line, self.tproj_line = MPLPlotter.setup_projection(
+                self.axes, volt_array, time_array)
+
+            patch_ext = [volt_array[0], time_array[0],
+                         abs(volt_array[v_shape[0] / 2]), abs(time_array[t_shape[0] / 2])]
+            self.patch = MPLPlotter.add_patch(self.im_ax, patch_ext)
+
+            MPLPlotter.add_rect_select(self.im_ax, self.rect_select_gates,
+                                       volt_array[1] - volt_array[0],
+                                       time_array[1] - time_array[0])
+            if self.buffer_data.softw_gates is None:
+                gate_val_list = [np.amin(volt_array), np.amax(volt_array),
+                                 np.amin(time_array), np.amax(time_array)]  # initial values, full frame
+                self.buffer_data.softw_gates =\
+                    [[None]] * self.buffer_data.get_scaler_step_and_bin_num(track_ind)[0]
+            else:  # read gates from input
+                gate_val_list = self.buffer_data.softw_gates[self.selected_pmt_ind]
+            self.update_gate_ind(gate_val_list)
+            bin_width = self.buffer_data.softBinWidth_ns
+            if self.slider is not None:
+                self.slider.valtext.set_text('{}'.format(bin_width))
+
+            MPLPlotter.draw()
+        except Exception as e:
+            print('while starting this occured: ', e)
+
+    def pmt_radio_buttons(self, label):
+        try:
+            self.selected_pmt = int(label[3:])
+            self.selected_pmt_ind = self.buffer_data.active_pmt_list[self.selected_track[0]].index(self.selected_pmt)
+            print('selected pmt index is: ', int(label[3:]))
+            self.buffer_data.time_res = Form.time_rebin_all_spec_data(
+                self.full_data.time_res, self.buffer_data.softBinWidth_ns)
+            self.setup_track(*self.selected_track)
+            self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+            self.colorbar.set_clim(0, np.amax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+            self.colorbar.update_normal(self.image)
+            self.gate_data_and_plot()
+            self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
+            MPLPlotter.draw()
+        except Exception as e:
+            print(e)
+
+    def tr_radio_buttons(self, label):
+        tr_list = self.buffer_data.track_names
+        self.selected_track = (tr_list.index(label), label)
+        print('selected track index is: ', int(label[5:]))
+        self.buffer_data.time_res = Form.time_rebin_all_spec_data(
+            self.full_data.time_res, self.buffer_data.softBinWidth_ns)
+        self.setup_track(*self.selected_track)
+        self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+        self.colorbar.set_clim(0, np.amax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+        self.colorbar.update_normal(self.image)
+        self.gate_data_and_plot()
+        self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
+        MPLPlotter.draw()
+
+    def save_proj(self, bool):
+        """ saves projection of all tracks """
+        # pipeData = self.Pipeline.pipeData
+        # time_arr = Form.create_time_axis_from_scan_dict(self.Pipeline.pipeData, rebinning=True)
+        # v_arr = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=True)
+        # rebinned_data = Form.time_rebin_all_data(self.full_data, self.Pipeline.pipeData)
+        # data = Form.gate_all_data(pipeData, rebinned_data, time_arr, v_arr)
+        # pipeInternals = pipeData['pipeInternals']
+        # file = pipeInternals['activeXmlFilePath']
+        # rootEle = TildaTools.load_xml(file)
+        # tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
+        # for track_ind, tr_num in enumerate(track_list):
+        #     track_name = 'track%s' % tr_num
+        #     xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][0], track_name, datatype='voltage_projection')
+        #     xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][1], track_name, datatype='time_projection')
+        # TildaTools.save_xml(rootEle, file, False)
+        print('saving currently not implemented')
+
+    def rebin_changed(self, bins_10ns):
+        try:
+            bins_10ns_rounded = bins_10ns // 10 * 10
+            bins_to_combine = bins_10ns_rounded / 10
+            self.buffer_data.softBinWidth_ns = bins_10ns_rounded
+            self.slider.valtext.set_text('{}'.format(bins_10ns_rounded))
+            self.buffer_data.time_res = Form.time_rebin_all_spec_data(
+                self.full_data.time_res, self.buffer_data.softBinWidth_ns)
+            for tr_ind, tr_name in enumerate(self.buffer_data.track_names):
+                bins = self.full_data.t[tr_ind].size // bins_to_combine
+                print('new length: ', bins)
+                delay_ns = self.full_data.t[tr_ind][0]
+                self.buffer_data.t[tr_ind] = np.arange(delay_ns, bins * bins_10ns_rounded + delay_ns, bins_10ns_rounded)
+            self.setup_track(*self.selected_track)
+            self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+            self.colorbar.set_clim(0, np.amax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+            self.colorbar.update_normal(self.image)
+            self.gate_data_and_plot()
+            self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
+            MPLPlotter.draw()
+        except Exception as e:
+            print('Exception while rebinning:', e)
+
+    def start(self):
+        print('start is called')
+        if self.buffer_data is not None:
+            track_ind, track_name = (0, 'track0')
+            self.selected_track = (track_ind, track_name)
+            bin_width = self.buffer_data.softBinWidth_ns
+            self.selected_pmt_ind = self.buffer_data.active_pmt_list[self.selected_track[0]].index(self.selected_pmt)
+            self.setup_track(*self.selected_track)
+            if self.radio_buttons_pmt is None:
+                labels = ['pmt%s' % pmt for pmt in self.buffer_data.active_pmt_list[self.selected_track[0]]]
+                self.radio_buttons_pmt, self.radio_con = MPLPlotter.add_radio_buttons(
+                            self.pmt_radio_ax, labels, self.selected_pmt_ind, self.pmt_radio_buttons)
+            # self.radio_buttons_pmt.set_active(self.selected_pmt_ind)  # not available before mpl 1.5.0
+            if self.radio_buttons_tr is None:
+                label_tr = self.buffer_data.track_names
+                self.radio_buttons_tr, con = MPLPlotter.add_radio_buttons(
+                    self.tr_radio_ax, label_tr, self.selected_track[0], self.tr_radio_buttons
+                )
+            # self.radio_buttons_tr.set_active(self.selected_track[0])  # not available before mpl 1.5.0
+            if self.save_button is None:
+                self.save_button, button_con = MPLPlotter.add_button(self.save_bt_ax, 'save_proj', self.save_proj)
+            if self.slider is None:
+                self.slider, slider_con = MPLPlotter.add_slider(self.slider_ax, 'rebinning', 10, 100,
+                                                                self.rebin_changed, valfmt=u'%3d', valinit=10)
+            self.slider.valtext.set_text('{}'.format(bin_width))
+            # self.setup_track(*self.selected_track)
+
+    def processData(self, data, pipeData):
+        first_call = self.buffer_data is None
+        try:
+            self.full_data = deepcopy(data)
+            self.buffer_data = data
+            if first_call:
+                self.start()
+            ret = Form.time_rebin_all_spec_data(
+                self.full_data.time_res, self.full_data.softBinWidth_ns)
+            self.buffer_data.time_res = ret
+            self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+            self.colorbar.set_clim(0, np.amax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+            self.colorbar.update_normal(self.image)
+            self.gate_data_and_plot()
+            self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
+            pass
+        except Exception as e:
+            print('while updateing plot, this happened: ', e)
+        return data
+
+    def clear(self):
+        # i dont want to clear this window after completion of scan
+        MPLPlotter.show(True)
+        pass
 
 
 """ continous Sequencer / Simple Counter Nodes """
