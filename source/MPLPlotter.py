@@ -103,6 +103,12 @@ def close_fig(fig=None):
         plt.close(fig)
 
 
+def close_all_figs():
+    for i in plt.get_fignums():
+        plt.figure(i)
+        close_fig()
+
+
 def plt_axes(axes, plotlist):
     # axes.clear()   # really really time consuming!!
     axes.plot(*plotlist)
