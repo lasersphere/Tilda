@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_single_hit_delay_widg(object):
     def setupUi(self, single_hit_delay_widg):
         single_hit_delay_widg.setObjectName("single_hit_delay_widg")
-        single_hit_delay_widg.resize(385, 64)
+        single_hit_delay_widg.resize(385, 90)
         single_hit_delay_widg.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.gridLayout = QtWidgets.QGridLayout(single_hit_delay_widg)
         self.gridLayout.setObjectName("gridLayout")
@@ -25,7 +25,7 @@ class Ui_single_hit_delay_widg(object):
         self.gridLayout.addWidget(self.comboBox_trigInputChan, 0, 1, 1, 1)
         self.label_2 = QtWidgets.QLabel(single_hit_delay_widg)
         self.label_2.setObjectName("label_2")
-        self.gridLayout.addWidget(self.label_2, 1, 0, 1, 1)
+        self.gridLayout.addWidget(self.label_2, 2, 0, 1, 1)
         self.label = QtWidgets.QLabel(single_hit_delay_widg)
         self.label.setObjectName("label")
         self.gridLayout.addWidget(self.label, 0, 0, 1, 1)
@@ -38,13 +38,24 @@ class Ui_single_hit_delay_widg(object):
         self.doubleSpinBox_trigDelay_mus.setKeyboardTracking(False)
         self.doubleSpinBox_trigDelay_mus.setMaximum(99999999999.0)
         self.doubleSpinBox_trigDelay_mus.setObjectName("doubleSpinBox_trigDelay_mus")
-        self.gridLayout.addWidget(self.doubleSpinBox_trigDelay_mus, 1, 1, 1, 1)
+        self.gridLayout.addWidget(self.doubleSpinBox_trigDelay_mus, 2, 1, 1, 1)
         self.label_trigDelay_mus_set = QtWidgets.QLabel(single_hit_delay_widg)
         self.label_trigDelay_mus_set.setObjectName("label_trigDelay_mus_set")
-        self.gridLayout.addWidget(self.label_trigDelay_mus_set, 1, 2, 1, 1)
+        self.gridLayout.addWidget(self.label_trigDelay_mus_set, 2, 2, 1, 1)
+        self.label_3 = QtWidgets.QLabel(single_hit_delay_widg)
+        self.label_3.setObjectName("label_3")
+        self.gridLayout.addWidget(self.label_3, 1, 0, 1, 1)
+        self.comboBox_trigger_edge = QtWidgets.QComboBox(single_hit_delay_widg)
+        self.comboBox_trigger_edge.setObjectName("comboBox_trigger_edge")
+        self.gridLayout.addWidget(self.comboBox_trigger_edge, 1, 1, 1, 1)
+        self.label_selected_trigger_edge = QtWidgets.QLabel(single_hit_delay_widg)
+        self.label_selected_trigger_edge.setObjectName("label_selected_trigger_edge")
+        self.gridLayout.addWidget(self.label_selected_trigger_edge, 1, 2, 1, 1)
 
         self.retranslateUi(single_hit_delay_widg)
         QtCore.QMetaObject.connectSlotsByName(single_hit_delay_widg)
+        single_hit_delay_widg.setTabOrder(self.comboBox_trigInputChan, self.comboBox_trigger_edge)
+        single_hit_delay_widg.setTabOrder(self.comboBox_trigger_edge, self.doubleSpinBox_trigDelay_mus)
 
     def retranslateUi(self, single_hit_delay_widg):
         _translate = QtCore.QCoreApplication.translate
@@ -53,4 +64,6 @@ class Ui_single_hit_delay_widg(object):
         self.label.setText(_translate("single_hit_delay_widg", "trigger input channel"))
         self.label_trigInputChan_set.setText(_translate("single_hit_delay_widg", "TextLabel"))
         self.label_trigDelay_mus_set.setText(_translate("single_hit_delay_widg", "TextLabel"))
+        self.label_3.setText(_translate("single_hit_delay_widg", "trigger edge"))
+        self.label_selected_trigger_edge.setText(_translate("single_hit_delay_widg", "TextLabel"))
 

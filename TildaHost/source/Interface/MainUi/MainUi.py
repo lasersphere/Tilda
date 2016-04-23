@@ -208,7 +208,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         except Exception as e:
             logging.error('error while closing simple counter win:' + str(e))
         try:
-            MPlPlotter.close_fig()
+            MPlPlotter.close_all_figs()
         except Exception as e:
             logging.error('error while closing the plot window, exception is: ' + str(e))
         try:

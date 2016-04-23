@@ -7,6 +7,7 @@ Module Description:
 """
 
 from Interface.TriggerWidgets.SingleHitDelayWidgUi import SingelHitDelay
+from Interface.TriggerWidgets.SingleHitWidgUi import SingelHit
 from Interface.TriggerWidgets.NoTriggerWidgUi import NoTriggerWidg
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
 
@@ -22,4 +23,8 @@ def find_trigger_widget(trigger_dict):
     elif trig_type is TiTs.single_hit_delay:
         logging.debug('loading ' + str(trig_type.name))
         return SingelHitDelay(trigger_dict)
+    elif trig_type is TiTs.single_hit:
+        logging.debug('loading ' + str(trig_type.name))
+        return SingelHit(trigger_dict)
+
 
