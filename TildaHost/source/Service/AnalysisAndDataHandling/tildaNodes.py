@@ -548,88 +548,103 @@ class NMPLImagePLot(Node):
             print('while starting this occured: ', e)
 
     def pmt_radio_buttons(self, label):
-        self.selected_pmt = int(label[3:])
-        self.selected_pmt_ind = self.Pipeline.pipeData[self.selected_track[1]]['activePmtList'].index(self.selected_pmt)
-        print('selected pmt index is: ', int(label[3:]))
-        self.buffer_data = Form.time_rebin_all_data(
-            self.full_data, self.Pipeline.pipeData)[self.selected_track[0]][self.selected_pmt_ind]
-        self.setup_track(*self.selected_track)
-        self.image.set_data(np.transpose(self.buffer_data))
-        self.colorbar.set_clim(0, np.amax(self.buffer_data))
-        self.colorbar.update_normal(self.image)
-        self.gate_data_and_plot()
-        self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
-        MPLPlotter.draw()
+        try:
+            self.selected_pmt = int(label[3:])
+            self.selected_pmt_ind = self.Pipeline.pipeData[self.selected_track[1]]['activePmtList'].index(self.selected_pmt)
+            print('selected pmt index is: ', int(label[3:]))
+            self.buffer_data = Form.time_rebin_all_data(
+                self.full_data, self.Pipeline.pipeData)[self.selected_track[0]][self.selected_pmt_ind]
+            self.setup_track(*self.selected_track)
+            self.image.set_data(np.transpose(self.buffer_data))
+            self.colorbar.set_clim(0, np.amax(self.buffer_data))
+            self.colorbar.update_normal(self.image)
+            self.gate_data_and_plot()
+            self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
+            MPLPlotter.draw()
+        except Exception as e:
+            print(e)
 
     def tr_radio_buttons(self, label):
-        tr, tr_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
-        self.selected_track = (tr_list.index(int(label[5:])), label)
-        print('selected track index is: ', int(label[5:]))
-        self.buffer_data = Form.time_rebin_all_data(
-            self.full_data, self.Pipeline.pipeData)[self.selected_track[0]][self.selected_pmt_ind]
-        self.setup_track(*self.selected_track)
-        self.image.set_data(np.transpose(self.buffer_data))
-        self.colorbar.set_clim(0, np.amax(self.buffer_data))
-        self.colorbar.update_normal(self.image)
-        self.gate_data_and_plot()
-        self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
-        MPLPlotter.draw()
+        try:
+            tr, tr_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
+            self.selected_track = (tr_list.index(int(label[5:])), label)
+            print('selected track index is: ', int(label[5:]))
+            self.buffer_data = Form.time_rebin_all_data(
+                self.full_data, self.Pipeline.pipeData)[self.selected_track[0]][self.selected_pmt_ind]
+            self.setup_track(*self.selected_track)
+            self.image.set_data(np.transpose(self.buffer_data))
+            self.colorbar.set_clim(0, np.amax(self.buffer_data))
+            self.colorbar.update_normal(self.image)
+            self.gate_data_and_plot()
+            self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
+            MPLPlotter.draw()
+        except Exception as e:
+            print(e)
 
     def save_proj(self, bool):
         """ saves projection of all tracks """
-        pipeData = self.Pipeline.pipeData
-        time_arr = Form.create_time_axis_from_scan_dict(self.Pipeline.pipeData, rebinning=True)
-        v_arr = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=True)
-        rebinned_data = Form.time_rebin_all_data(self.full_data, self.Pipeline.pipeData)
-        data = Form.gate_all_data(pipeData, rebinned_data, time_arr, v_arr)
-        pipeInternals = pipeData['pipeInternals']
-        file = pipeInternals['activeXmlFilePath']
-        rootEle = TildaTools.load_xml(file)
-        tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
-        for track_ind, tr_num in enumerate(track_list):
-            track_name = 'track%s' % tr_num
-            xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][0], track_name, datatype='voltage_projection')
-            xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][1], track_name, datatype='time_projection')
-        TildaTools.save_xml(rootEle, file, False)
+        try:
+            pipeData = self.Pipeline.pipeData
+            time_arr = Form.create_time_axis_from_scan_dict(self.Pipeline.pipeData, rebinning=True)
+            v_arr = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=True)
+            rebinned_data = Form.time_rebin_all_data(self.full_data, self.Pipeline.pipeData)
+            data = Form.gate_all_data(pipeData, rebinned_data, time_arr, v_arr)
+            pipeInternals = pipeData['pipeInternals']
+            file = pipeInternals['activeXmlFilePath']
+            rootEle = TildaTools.load_xml(file)
+            tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
+            for track_ind, tr_num in enumerate(track_list):
+                track_name = 'track%s' % tr_num
+                xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][0], track_name, datatype='voltage_projection')
+                xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][1], track_name, datatype='time_projection')
+            TildaTools.save_xml(rootEle, file, False)
+        except Exception as e:
+            print(e)
 
     def rebin_changed(self, bins_10ns):
-        bins_10ns_rounded = bins_10ns // 10 * 10
-        self.Pipeline.pipeData[self.selected_track[1]]['softBinWidth_ns'] = bins_10ns_rounded
-        self.slider.valtext.set_text('{}'.format(bins_10ns_rounded))
-        self.buffer_data = Form.time_rebin_all_data(
-            self.full_data, self.Pipeline.pipeData)[self.selected_track[0]][self.selected_pmt_ind]
-        self.setup_track(*self.selected_track)
-        self.image.set_data(np.transpose(self.buffer_data))
-        self.colorbar.set_clim(0, np.amax(self.buffer_data))
-        self.colorbar.update_normal(self.image)
-        self.gate_data_and_plot()
-        self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
-        MPLPlotter.draw()
+        try:
+            bins_10ns_rounded = bins_10ns // 10 * 10
+            self.Pipeline.pipeData[self.selected_track[1]]['softBinWidth_ns'] = bins_10ns_rounded
+            self.slider.valtext.set_text('{}'.format(bins_10ns_rounded))
+            self.buffer_data = Form.time_rebin_all_data(
+                self.full_data, self.Pipeline.pipeData)[self.selected_track[0]][self.selected_pmt_ind]
+            self.setup_track(*self.selected_track)
+            self.image.set_data(np.transpose(self.buffer_data))
+            self.colorbar.set_clim(0, np.amax(self.buffer_data))
+            self.colorbar.update_normal(self.image)
+            self.gate_data_and_plot()
+            self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
+            MPLPlotter.draw()
+        except Exception as e:
+            print(e)
 
     def start(self):
-        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        self.selected_track = (track_ind, track_name)
-        bin_width = self.Pipeline.pipeData[self.selected_track[1]]['softBinWidth_ns']
-        self.selected_pmt_ind = self.Pipeline.pipeData[self.selected_track[1]]['activePmtList'].index(self.selected_pmt)
-        self.setup_track(*self.selected_track)
-        if self.radio_buttons_pmt is None:
-            labels = ['pmt%s' % pmt for pmt in self.Pipeline.pipeData[self.selected_track[1]]['activePmtList']]
-            self.radio_buttons_pmt, self.radio_con = MPLPlotter.add_radio_buttons(
-                        self.pmt_radio_ax, labels, self.selected_pmt_ind, self.pmt_radio_buttons)
-        # self.radio_buttons_pmt.set_active(self.selected_pmt_ind)  # not available before mpl 1.5.0
-        if self.radio_buttons_tr is None:
-            tr, tr_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
-            label_tr = ['track%s' % tr_num for tr_num in tr_list]
-            self.radio_buttons_tr, con = MPLPlotter.add_radio_buttons(
-                self.tr_radio_ax, label_tr, self.selected_track[0], self.tr_radio_buttons
-            )
-        # self.radio_buttons_tr.set_active(self.selected_track[0])  # not available before mpl 1.5.0
-        if self.save_button is None:
-            self.save_button, button_con = MPLPlotter.add_button(self.save_bt_ax, 'save_proj', self.save_proj)
-        if self.slider is None:
-            self.slider, slider_con = MPLPlotter.add_slider(self.slider_ax, 'rebinning', 10, 100,
-                                                            self.rebin_changed, valfmt=u'%3d', valinit=10)
-        self.slider.valtext.set_text('{}'.format(bin_width))
+        try:
+            track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+            self.selected_track = (track_ind, track_name)
+            bin_width = self.Pipeline.pipeData[self.selected_track[1]]['softBinWidth_ns']
+            self.selected_pmt_ind = self.Pipeline.pipeData[self.selected_track[1]]['activePmtList'].index(self.selected_pmt)
+            self.setup_track(*self.selected_track)
+            if self.radio_buttons_pmt is None:
+                labels = ['pmt%s' % pmt for pmt in self.Pipeline.pipeData[self.selected_track[1]]['activePmtList']]
+                self.radio_buttons_pmt, self.radio_con = MPLPlotter.add_radio_buttons(
+                            self.pmt_radio_ax, labels, self.selected_pmt_ind, self.pmt_radio_buttons)
+            # self.radio_buttons_pmt.set_active(self.selected_pmt_ind)  # not available before mpl 1.5.0
+            if self.radio_buttons_tr is None:
+                tr, tr_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
+                label_tr = ['track%s' % tr_num for tr_num in tr_list]
+                self.radio_buttons_tr, con = MPLPlotter.add_radio_buttons(
+                    self.tr_radio_ax, label_tr, self.selected_track[0], self.tr_radio_buttons
+                )
+            # self.radio_buttons_tr.set_active(self.selected_track[0])  # not available before mpl 1.5.0
+            if self.save_button is None:
+                self.save_button, button_con = MPLPlotter.add_button(self.save_bt_ax, 'save_proj', self.save_proj)
+            if self.slider is None:
+                self.slider, slider_con = MPLPlotter.add_slider(self.slider_ax, 'rebinning', 10, 100,
+                                                                self.rebin_changed, valfmt=u'%3d', valinit=10)
+            self.slider.valtext.set_text('{}'.format(bin_width))
+        except Exception as e:
+            print(e)
 
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']

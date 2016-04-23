@@ -1,208 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component name="dataSourceStorage">
   <data-source name="tildaDB" uuid="72766633-3329-47d7-803f-977cadb98303">
-    <database-info product="" version="" jdbc-version="" driver-name="" driver-version=""/>
-  </data-source>
-  <data-source name="AnaDB" uuid="4656f9e8-6807-40f4-ab5b-2ffdd97ce625">
-    <database-info product="" version="" jdbc-version="" driver-name="" driver-version=""/>
-  </data-source>
-  <data-source name="blub.sqlite" uuid="aa37fc5a-e67c-4581-ae97-4949afd82cd6">
-    <database-info product="" version="" jdbc-version="" driver-name="" driver-version=""/>
-  </data-source>
-  <data-source name="Sqlite (Xerial) - tildaDB.sqlite" uuid="038c5188-08fc-47a4-9815-7a7df530ca7f">
-    <database-info product="SQLite" version="3.8.9" jdbc-version="2.1" driver-name="SQLiteJDBC" driver-version="native"/>
-    <case-sensitivity plain-identifiers="mixed" quoted-identifiers="mixed"/>
-    <schema name="" catalog=""/>
-    <table name="Combined" schema="" catalog="" type="TABLE">
-      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="parname" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="config" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyJbXSIn"/>
-      <column name="final" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
-      <column name="rChi" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="val" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="statErr" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="statErrForm" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="J2Vycic="/>
-      <column name="systErr" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="systErrForm" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JzAn"/>
-      <primary-key columns="iso,parname,run"/>
-      <foreign-key name="#FAKE_Combined_1" columns="run" ref-table="Runs" ref-schema="" ref-catalog="" ref-columns="run" update-rule="3" delete-rule="3" deferrability="1"/>
-    </table>
-    <table name="Files" schema="" catalog="" type="TABLE">
-      <column name="file" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="filePath" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="date" sqlType="DATE" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="isotope" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="type" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="line" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="accVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="laserFreq" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="voltDivRatio" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="lineMult" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="lineOffset" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="trackPars" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <primary-key columns="file"/>
-      <foreign-key name="#FAKE_Files_1" columns="line" ref-table="Lines" ref-schema="" ref-catalog="" ref-columns="line" update-rule="3" delete-rule="3" deferrability="1"/>
-      <foreign-key name="#FAKE_Files_2" columns="type" ref-table="Isotopes" ref-schema="" ref-catalog="" ref-columns="iso" update-rule="3" delete-rule="3" deferrability="1"/>
-      <exported-key name="#FAKE_FitRes_2" table="FitRes" schema="" catalog="" columns="file"/>
-    </table>
-    <table name="FitRes" schema="" catalog="" type="TABLE">
-      <column name="file" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="rChi" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="pars" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <primary-key columns="file,iso,run"/>
-      <foreign-key name="#FAKE_FitRes_1" columns="run" ref-table="Runs" ref-schema="" ref-catalog="" ref-columns="run" update-rule="3" delete-rule="3" deferrability="1"/>
-      <foreign-key name="#FAKE_FitRes_2" columns="file" ref-table="Files" ref-schema="" ref-catalog="" ref-columns="file" update-rule="3" delete-rule="3" deferrability="1"/>
-    </table>
-    <table name="Isotopes" schema="" catalog="" type="TABLE">
-      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="mass" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="mass_d" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="I" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="center" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="Al" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
-      <column name="Bl" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
-      <column name="Au" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
-      <column name="Bu" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
-      <column name="fixedArat" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
-      <column name="fixedBrat" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
-      <column name="intScale" sqlType="DOUBLE" precision="0" scale="-1" nullable="true" jdbcType="6" def="MQ=="/>
-      <column name="fixedInt" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
-      <column name="relInt" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="m" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <primary-key columns="iso"/>
-      <exported-key name="#FAKE_Files_2" table="Files" schema="" catalog="" columns="type"/>
-      <exported-key name="#FAKE_Lines_2" table="Lines" schema="" catalog="" columns="reference"/>
-    </table>
-    <table name="Lines" schema="" catalog="" type="TABLE">
-      <column name="lineVar" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="reference" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="refRun" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="frequency" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="Jl" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="Ju" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="shape" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="fixShape" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="charge" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
-      <primary-key columns="linevar"/>
-      <foreign-key name="#FAKE_Lines_1" columns="refRun" ref-table="Runs" ref-schema="" ref-catalog="" ref-columns="run" update-rule="3" delete-rule="3" deferrability="1"/>
-      <foreign-key name="#FAKE_Lines_2" columns="reference" ref-table="Isotopes" ref-schema="" ref-catalog="" ref-columns="iso" update-rule="3" delete-rule="3" deferrability="1"/>
-      <exported-key name="#FAKE_Files_1" table="Files" schema="" catalog="" columns="line"/>
-    </table>
-    <table name="Runs" schema="" catalog="" type="TABLE">
-      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="lineVar" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyIiJw=="/>
-      <column name="isoVar" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyIiJw=="/>
-      <column name="scaler" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="track" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <primary-key columns="run"/>
-      <exported-key name="#FAKE_Combined_1" table="Combined" schema="" catalog="" columns="run"/>
-      <exported-key name="#FAKE_FitRes_1" table="FitRes" schema="" catalog="" columns="run"/>
-      <exported-key name="#FAKE_Lines_1" table="Lines" schema="" catalog="" columns="refRun"/>
-    </table>
-    <table name="ScanPars" schema="" catalog="" type="TABLE">
-      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="type" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="track" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
-      <column name="dacStartRegister18Bit" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
-      <column name="dacStepSize18Bit" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
-      <column name="nOfSteps" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
-      <column name="postAccOffsetVoltControl" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
-      <column name="postAccOffsetVolt" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
-      <column name="nOfScans" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
-      <column name="dwellTime10ns" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
-      <column name="activePmtList" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="colDirTrue" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
-    </table>
-  </data-source>
-  <data-source name="Sqlite (Xerial) - AnaDB.sqlite" uuid="6083bed6-4eb9-4145-98cc-75f61409a5ce">
-    <database-info product="SQLite" version="3.8.9" jdbc-version="2.1" driver-name="SQLiteJDBC" driver-version="native"/>
-    <case-sensitivity plain-identifiers="mixed" quoted-identifiers="mixed"/>
-    <schema name="" catalog=""/>
-    <table name="Combined" schema="" catalog="" type="TABLE">
-      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="parname" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="config" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyIiJw=="/>
-      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="sctr" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="final" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
-      <column name="rChi" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="val" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="statErr" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="statErrForm" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="J2Vycic="/>
-      <column name="systErr" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="systErrForm" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JzAn"/>
-      <primary-key columns="iso,parname,run,sctr"/>
-      <foreign-key name="#FAKE_Combined_1" columns="run" ref-table="Runs" ref-schema="" ref-catalog="" ref-columns="run" update-rule="3" delete-rule="3" deferrability="1"/>
-    </table>
-    <table name="Files" schema="" catalog="" type="TABLE">
-      <column name="file" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="filePath" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="date" sqlType="DATE" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="type" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="line" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="offset" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="accVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="laserFreq" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="colDirTrue" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4"/>
-      <column name="voltDivRatio" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="lineMult" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="lineOffset" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <primary-key columns="file"/>
-      <foreign-key name="#FAKE_Files_1" columns="line" ref-table="Lines" ref-schema="" ref-catalog="" ref-columns="line" update-rule="3" delete-rule="3" deferrability="1"/>
-      <foreign-key name="#FAKE_Files_2" columns="type" ref-table="Isotopes" ref-schema="" ref-catalog="" ref-columns="iso" update-rule="3" delete-rule="3" deferrability="1"/>
-    </table>
-    <table name="FitRes" schema="" catalog="" type="TABLE">
-      <column name="file" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="sctr" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="rChi" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="pars" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <primary-key columns="file,iso,run,sctr"/>
-      <foreign-key name="#FAKE_FitRes_1" columns="run" ref-table="Runs" ref-schema="" ref-catalog="" ref-columns="run" update-rule="3" delete-rule="3" deferrability="1"/>
-      <foreign-key name="#FAKE_FitRes_2" columns="file" ref-table="Files" ref-schema="" ref-catalog="" ref-columns="file" update-rule="3" delete-rule="3" deferrability="1"/>
-    </table>
-    <table name="Isotopes" schema="" catalog="" type="TABLE">
-      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="mass" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="mass_d" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="I" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="center" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="Al" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
-      <column name="Bl" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
-      <column name="Au" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
-      <column name="Bu" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
-      <column name="fixedArat" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
-      <column name="fixedBrat" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
-      <column name="intScale" sqlType="DOUBLE" precision="0" scale="-1" nullable="true" jdbcType="6" def="MQ=="/>
-      <column name="fixedInt" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
-      <column name="relInt" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="m" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <primary-key columns="iso"/>
-    </table>
-    <table name="Lines" schema="" catalog="" type="TABLE">
-      <column name="line" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="reference" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="frequency" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="Jl" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="Ju" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
-      <column name="shape" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="fixShape" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
-      <column name="charge" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
-      <primary-key columns="line"/>
-      <foreign-key name="#FAKE_Lines_1" columns="reference" ref-table="Isotopes" ref-schema="" ref-catalog="" ref-columns="iso" update-rule="3" delete-rule="3" deferrability="1"/>
-    </table>
-    <table name="Runs" schema="" catalog="" type="TABLE">
-      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
-      <column name="lineVar" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyIiJw=="/>
-      <column name="isoVar" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyIiJw=="/>
-      <primary-key columns="run"/>
-    </table>
-  </data-source>
-  <data-source name="TildaOfflineAnalysis" uuid="ce7481b1-06f6-4adc-901f-23480342c491">
     <database-info product="SQLite" version="3.8.9" jdbc-version="2.1" driver-name="SQLiteJDBC" driver-version="native"/>
     <case-sensitivity plain-identifiers="mixed" quoted-identifiers="mixed"/>
     <schema name="" catalog=""/>
@@ -310,7 +108,13 @@
       <column name="measureVoltPars" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
     </table>
   </data-source>
-  <data-source name="Sqlite (Xerial) - lala.sqlite" uuid="78cb6f86-49a0-4b98-973a-8111ae3f539a">
+  <data-source name="AnaDB" uuid="4656f9e8-6807-40f4-ab5b-2ffdd97ce625">
+    <database-info product="" version="" jdbc-version="" driver-name="" driver-version=""/>
+  </data-source>
+  <data-source name="blub.sqlite" uuid="aa37fc5a-e67c-4581-ae97-4949afd82cd6">
+    <database-info product="" version="" jdbc-version="" driver-name="" driver-version=""/>
+  </data-source>
+  <data-source name="Sqlite (Xerial) - tildaDB.sqlite" uuid="038c5188-08fc-47a4-9815-7a7df530ca7f">
     <database-info product="SQLite" version="3.8.9" jdbc-version="2.1" driver-name="SQLiteJDBC" driver-version="native"/>
     <case-sensitivity plain-identifiers="mixed" quoted-identifiers="mixed"/>
     <schema name="" catalog=""/>
@@ -345,7 +149,6 @@
       <primary-key columns="file"/>
       <foreign-key name="#FAKE_Files_1" columns="line" ref-table="Lines" ref-schema="" ref-catalog="" ref-columns="line" update-rule="3" delete-rule="3" deferrability="1"/>
       <foreign-key name="#FAKE_Files_2" columns="type" ref-table="Isotopes" ref-schema="" ref-catalog="" ref-columns="iso" update-rule="3" delete-rule="3" deferrability="1"/>
-      <exported-key name="#FAKE_FitRes_2" table="FitRes" schema="" catalog="" columns="file"/>
     </table>
     <table name="FitRes" schema="" catalog="" type="TABLE">
       <column name="file" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
@@ -374,8 +177,6 @@
       <column name="relInt" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
       <column name="m" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
       <primary-key columns="iso"/>
-      <exported-key name="#FAKE_Files_2" table="Files" schema="" catalog="" columns="type"/>
-      <exported-key name="#FAKE_Lines_2" table="Lines" schema="" catalog="" columns="reference"/>
     </table>
     <table name="Lines" schema="" catalog="" type="TABLE">
       <column name="lineVar" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
@@ -390,7 +191,6 @@
       <primary-key columns="linevar"/>
       <foreign-key name="#FAKE_Lines_1" columns="refRun" ref-table="Runs" ref-schema="" ref-catalog="" ref-columns="run" update-rule="3" delete-rule="3" deferrability="1"/>
       <foreign-key name="#FAKE_Lines_2" columns="reference" ref-table="Isotopes" ref-schema="" ref-catalog="" ref-columns="iso" update-rule="3" delete-rule="3" deferrability="1"/>
-      <exported-key name="#FAKE_Files_1" table="Files" schema="" catalog="" columns="line"/>
     </table>
     <table name="Runs" schema="" catalog="" type="TABLE">
       <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
@@ -399,9 +199,6 @@
       <column name="scaler" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
       <column name="track" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
       <primary-key columns="run"/>
-      <exported-key name="#FAKE_Combined_1" table="Combined" schema="" catalog="" columns="run"/>
-      <exported-key name="#FAKE_FitRes_1" table="FitRes" schema="" catalog="" columns="run"/>
-      <exported-key name="#FAKE_Lines_1" table="Lines" schema="" catalog="" columns="refRun"/>
     </table>
     <table name="ScanPars" schema="" catalog="" type="TABLE">
       <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
@@ -420,6 +217,414 @@
       <column name="activePmtList" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
       <column name="colDirTrue" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
       <column name="sequencerDict" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="waitForKepco25nsTicks" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="waitAfterReset25nsTicks" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="measureVoltPars" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+    </table>
+  </data-source>
+  <data-source name="Sqlite (Xerial) - AnaDB.sqlite" uuid="6083bed6-4eb9-4145-98cc-75f61409a5ce">
+    <database-info product="SQLite" version="3.8.9" jdbc-version="2.1" driver-name="SQLiteJDBC" driver-version="native"/>
+    <case-sensitivity plain-identifiers="mixed" quoted-identifiers="mixed"/>
+    <schema name="" catalog=""/>
+    <table name="Combined" schema="" catalog="" type="TABLE">
+      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="parname" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="config" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyIiJw=="/>
+      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="sctr" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="final" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
+      <column name="rChi" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="val" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="statErr" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="statErrForm" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="J2Vycic="/>
+      <column name="systErr" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="systErrForm" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JzAn"/>
+      <primary-key columns="iso,parname,run,sctr"/>
+      <foreign-key name="#FAKE_Combined_1" columns="run" ref-table="Runs" ref-schema="" ref-catalog="" ref-columns="run" update-rule="3" delete-rule="3" deferrability="1"/>
+    </table>
+    <table name="Files" schema="" catalog="" type="TABLE">
+      <column name="file" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="filePath" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="date" sqlType="DATE" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="type" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="line" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="offset" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="accVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="laserFreq" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="colDirTrue" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="voltDivRatio" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="lineMult" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="lineOffset" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <primary-key columns="file"/>
+      <foreign-key name="#FAKE_Files_1" columns="line" ref-table="Lines" ref-schema="" ref-catalog="" ref-columns="line" update-rule="3" delete-rule="3" deferrability="1"/>
+      <foreign-key name="#FAKE_Files_2" columns="type" ref-table="Isotopes" ref-schema="" ref-catalog="" ref-columns="iso" update-rule="3" delete-rule="3" deferrability="1"/>
+    </table>
+    <table name="FitRes" schema="" catalog="" type="TABLE">
+      <column name="file" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="sctr" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="rChi" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="pars" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <primary-key columns="file,iso,run,sctr"/>
+      <foreign-key name="#FAKE_FitRes_1" columns="run" ref-table="Runs" ref-schema="" ref-catalog="" ref-columns="run" update-rule="3" delete-rule="3" deferrability="1"/>
+      <foreign-key name="#FAKE_FitRes_2" columns="file" ref-table="Files" ref-schema="" ref-catalog="" ref-columns="file" update-rule="3" delete-rule="3" deferrability="1"/>
+    </table>
+    <table name="Isotopes" schema="" catalog="" type="TABLE">
+      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="mass" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="mass_d" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="I" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="center" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="Al" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
+      <column name="Bl" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
+      <column name="Au" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
+      <column name="Bu" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
+      <column name="fixedArat" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
+      <column name="fixedBrat" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
+      <column name="intScale" sqlType="DOUBLE" precision="0" scale="-1" nullable="true" jdbcType="6" def="MQ=="/>
+      <column name="fixedInt" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
+      <column name="relInt" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="m" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <primary-key columns="iso"/>
+    </table>
+    <table name="Lines" schema="" catalog="" type="TABLE">
+      <column name="line" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="reference" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="frequency" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="Jl" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="Ju" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="shape" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="fixShape" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="charge" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <primary-key columns="line"/>
+      <foreign-key name="#FAKE_Lines_1" columns="reference" ref-table="Isotopes" ref-schema="" ref-catalog="" ref-columns="iso" update-rule="3" delete-rule="3" deferrability="1"/>
+    </table>
+    <table name="Runs" schema="" catalog="" type="TABLE">
+      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="lineVar" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyIiJw=="/>
+      <column name="isoVar" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyIiJw=="/>
+      <primary-key columns="run"/>
+    </table>
+  </data-source>
+  <data-source name="TildaOfflineAnalysis" uuid="ce7481b1-06f6-4adc-901f-23480342c491">
+    <database-info product="" version="" jdbc-version="" driver-name="" driver-version=""/>
+    <schema name="" catalog=""/>
+    <table name="Combined" schema="" catalog="" type="TABLE">
+      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="parname" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="config" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyJbXSIn"/>
+      <column name="final" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
+      <column name="rChi" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="val" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="statErr" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="statErrForm" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="J2Vycic="/>
+      <column name="systErr" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="systErrForm" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JzAn"/>
+      <primary-key columns="iso,parname,run"/>
+      <foreign-key name="#FAKE_Combined_1" columns="run" ref-table="Runs" ref-schema="" ref-catalog="" ref-columns="run" update-rule="3" delete-rule="3" deferrability="1"/>
+    </table>
+    <table name="Files" schema="" catalog="" type="TABLE">
+      <column name="file" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="filePath" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="date" sqlType="DATE" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="type" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="line" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="offset" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="accVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="laserFreq" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="colDirTrue" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="voltDivRatio" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="lineMult" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="lineOffset" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <primary-key columns="file"/>
+      <foreign-key name="#FAKE_Files_1" columns="line" ref-table="Lines" ref-schema="" ref-catalog="" ref-columns="line" update-rule="3" delete-rule="3" deferrability="1"/>
+      <foreign-key name="#FAKE_Files_2" columns="type" ref-table="Isotopes" ref-schema="" ref-catalog="" ref-columns="iso" update-rule="3" delete-rule="3" deferrability="1"/>
+    </table>
+    <table name="FitRes" schema="" catalog="" type="TABLE">
+      <column name="file" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="rChi" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="pars" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <primary-key columns="file,iso,run"/>
+      <foreign-key name="#FAKE_FitRes_1" columns="run" ref-table="Runs" ref-schema="" ref-catalog="" ref-columns="run" update-rule="3" delete-rule="3" deferrability="1"/>
+      <foreign-key name="#FAKE_FitRes_2" columns="file" ref-table="Files" ref-schema="" ref-catalog="" ref-columns="file" update-rule="3" delete-rule="3" deferrability="1"/>
+    </table>
+    <table name="Isotopes" schema="" catalog="" type="TABLE">
+      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="mass" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="mass_d" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="I" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="center" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="Al" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
+      <column name="Bl" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
+      <column name="Au" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
+      <column name="Bu" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
+      <column name="fixedArat" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
+      <column name="fixedBrat" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
+      <column name="intScale" sqlType="DOUBLE" precision="0" scale="-1" nullable="true" jdbcType="6" def="MQ=="/>
+      <column name="fixedInt" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
+      <column name="relInt" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="m" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <primary-key columns="iso"/>
+    </table>
+    <table name="Lines" schema="" catalog="" type="TABLE">
+      <column name="lineVar" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="reference" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="refRun" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="frequency" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="Jl" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="Ju" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="shape" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="fixShape" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="charge" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <primary-key columns="linevar"/>
+      <foreign-key name="#FAKE_Lines_1" columns="refRun" ref-table="Runs" ref-schema="" ref-catalog="" ref-columns="run" update-rule="3" delete-rule="3" deferrability="1"/>
+      <foreign-key name="#FAKE_Lines_2" columns="reference" ref-table="Isotopes" ref-schema="" ref-catalog="" ref-columns="iso" update-rule="3" delete-rule="3" deferrability="1"/>
+    </table>
+    <table name="Runs" schema="" catalog="" type="TABLE">
+      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="lineVar" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyIiJw=="/>
+      <column name="isoVar" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyIiJw=="/>
+      <column name="scaler" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="track" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <primary-key columns="run"/>
+    </table>
+    <table name="ScanPars" schema="" catalog="" type="TABLE">
+      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="type" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="track" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="accVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="laserFreq" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="dacStartVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="dacStopVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="dacStepSizeVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="invertScan" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="nOfSteps" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="nOfScans" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="postAccOffsetVoltControl" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="postAccOffsetVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="activePmtList" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="colDirTrue" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="sequencerDict" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="waitForKepco25nsTicks" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="waitAfterReset25nsTicks" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="measureVoltPars" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+    </table>
+  </data-source>
+  <data-source name="Sqlite (Xerial) - lala.sqlite" uuid="78cb6f86-49a0-4b98-973a-8111ae3f539a">
+    <database-info product="" version="" jdbc-version="" driver-name="" driver-version=""/>
+    <schema name="" catalog=""/>
+    <table name="Combined" schema="" catalog="" type="TABLE">
+      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="parname" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="config" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyJbXSIn"/>
+      <column name="final" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
+      <column name="rChi" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="val" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="statErr" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="statErrForm" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="J2Vycic="/>
+      <column name="systErr" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="systErrForm" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JzAn"/>
+      <primary-key columns="iso,parname,run"/>
+      <foreign-key name="#FAKE_Combined_1" columns="run" ref-table="Runs" ref-schema="" ref-catalog="" ref-columns="run" update-rule="3" delete-rule="3" deferrability="1"/>
+    </table>
+    <table name="Files" schema="" catalog="" type="TABLE">
+      <column name="file" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="filePath" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="date" sqlType="DATE" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="type" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="line" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="offset" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="accVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="laserFreq" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="colDirTrue" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="voltDivRatio" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="lineMult" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="lineOffset" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <primary-key columns="file"/>
+      <foreign-key name="#FAKE_Files_1" columns="line" ref-table="Lines" ref-schema="" ref-catalog="" ref-columns="line" update-rule="3" delete-rule="3" deferrability="1"/>
+      <foreign-key name="#FAKE_Files_2" columns="type" ref-table="Isotopes" ref-schema="" ref-catalog="" ref-columns="iso" update-rule="3" delete-rule="3" deferrability="1"/>
+    </table>
+    <table name="FitRes" schema="" catalog="" type="TABLE">
+      <column name="file" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="rChi" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="pars" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <primary-key columns="file,iso,run"/>
+      <foreign-key name="#FAKE_FitRes_1" columns="run" ref-table="Runs" ref-schema="" ref-catalog="" ref-columns="run" update-rule="3" delete-rule="3" deferrability="1"/>
+      <foreign-key name="#FAKE_FitRes_2" columns="file" ref-table="Files" ref-schema="" ref-catalog="" ref-columns="file" update-rule="3" delete-rule="3" deferrability="1"/>
+    </table>
+    <table name="Isotopes" schema="" catalog="" type="TABLE">
+      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="mass" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="mass_d" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="I" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="center" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="Al" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
+      <column name="Bl" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
+      <column name="Au" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
+      <column name="Bu" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
+      <column name="fixedArat" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
+      <column name="fixedBrat" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
+      <column name="intScale" sqlType="DOUBLE" precision="0" scale="-1" nullable="true" jdbcType="6" def="MQ=="/>
+      <column name="fixedInt" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
+      <column name="relInt" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="m" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <primary-key columns="iso"/>
+    </table>
+    <table name="Lines" schema="" catalog="" type="TABLE">
+      <column name="lineVar" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="reference" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="refRun" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="frequency" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="Jl" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="Ju" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="shape" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="fixShape" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="charge" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <primary-key columns="linevar"/>
+      <foreign-key name="#FAKE_Lines_1" columns="refRun" ref-table="Runs" ref-schema="" ref-catalog="" ref-columns="run" update-rule="3" delete-rule="3" deferrability="1"/>
+      <foreign-key name="#FAKE_Lines_2" columns="reference" ref-table="Isotopes" ref-schema="" ref-catalog="" ref-columns="iso" update-rule="3" delete-rule="3" deferrability="1"/>
+    </table>
+    <table name="Runs" schema="" catalog="" type="TABLE">
+      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="lineVar" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyIiJw=="/>
+      <column name="isoVar" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyIiJw=="/>
+      <column name="scaler" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="track" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <primary-key columns="run"/>
+    </table>
+    <table name="ScanPars" schema="" catalog="" type="TABLE">
+      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="type" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="track" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="accVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="laserFreq" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="dacStartVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="dacStopVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="dacStepSizeVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="invertScan" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="nOfSteps" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="nOfScans" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="postAccOffsetVoltControl" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="postAccOffsetVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="activePmtList" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="colDirTrue" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="sequencerDict" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="waitForKepco25nsTicks" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="waitAfterReset25nsTicks" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="measureVoltPars" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+    </table>
+  </data-source>
+  <data-source name="Sqlite (Xerial) - exampleData.sqlite" uuid="b380f126-333b-4142-bb9c-82f1f43fe56d">
+    <database-info product="SQLite" version="3.8.9" jdbc-version="2.1" driver-name="SQLiteJDBC" driver-version="native"/>
+    <case-sensitivity plain-identifiers="mixed" quoted-identifiers="mixed"/>
+    <schema name="" catalog=""/>
+    <table name="Combined" schema="" catalog="" type="TABLE">
+      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="parname" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="config" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyJbXSIn"/>
+      <column name="final" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
+      <column name="rChi" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="val" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="statErr" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="statErrForm" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="J2Vycic="/>
+      <column name="systErr" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="systErrForm" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JzAn"/>
+      <primary-key columns="iso,parname,run"/>
+      <foreign-key name="#FAKE_Combined_1" columns="run" ref-table="Runs" ref-schema="" ref-catalog="" ref-columns="run" update-rule="3" delete-rule="3" deferrability="1"/>
+    </table>
+    <table name="Files" schema="" catalog="" type="TABLE">
+      <column name="file" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="filePath" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="date" sqlType="DATE" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="type" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="line" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="offset" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="accVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="laserFreq" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="colDirTrue" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="voltDivRatio" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="lineMult" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="lineOffset" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <primary-key columns="file"/>
+      <foreign-key name="#FAKE_Files_1" columns="line" ref-table="Lines" ref-schema="" ref-catalog="" ref-columns="line" update-rule="3" delete-rule="3" deferrability="1"/>
+      <foreign-key name="#FAKE_Files_2" columns="type" ref-table="Isotopes" ref-schema="" ref-catalog="" ref-columns="iso" update-rule="3" delete-rule="3" deferrability="1"/>
+    </table>
+    <table name="FitRes" schema="" catalog="" type="TABLE">
+      <column name="file" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="rChi" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="pars" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <primary-key columns="file,iso,run"/>
+      <foreign-key name="#FAKE_FitRes_1" columns="run" ref-table="Runs" ref-schema="" ref-catalog="" ref-columns="run" update-rule="3" delete-rule="3" deferrability="1"/>
+      <foreign-key name="#FAKE_FitRes_2" columns="file" ref-table="Files" ref-schema="" ref-catalog="" ref-columns="file" update-rule="3" delete-rule="3" deferrability="1"/>
+    </table>
+    <table name="Isotopes" schema="" catalog="" type="TABLE">
+      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="mass" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="mass_d" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="I" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="center" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="Al" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
+      <column name="Bl" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
+      <column name="Au" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
+      <column name="Bu" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6" def="MA=="/>
+      <column name="fixedArat" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
+      <column name="fixedBrat" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
+      <column name="intScale" sqlType="DOUBLE" precision="0" scale="-1" nullable="true" jdbcType="6" def="MQ=="/>
+      <column name="fixedInt" sqlType="BOOL" precision="0" scale="-1" nullable="true" jdbcType="4" def="MA=="/>
+      <column name="relInt" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="m" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <primary-key columns="iso"/>
+    </table>
+    <table name="Lines" schema="" catalog="" type="TABLE">
+      <column name="lineVar" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="reference" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="refRun" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="frequency" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="Jl" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="Ju" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="shape" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="fixShape" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="charge" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <primary-key columns="linevar"/>
+      <foreign-key name="#FAKE_Lines_1" columns="refRun" ref-table="Runs" ref-schema="" ref-catalog="" ref-columns="run" update-rule="3" delete-rule="3" deferrability="1"/>
+      <foreign-key name="#FAKE_Lines_2" columns="reference" ref-table="Isotopes" ref-schema="" ref-catalog="" ref-columns="iso" update-rule="3" delete-rule="3" deferrability="1"/>
+    </table>
+    <table name="Runs" schema="" catalog="" type="TABLE">
+      <column name="run" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="lineVar" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyIiJw=="/>
+      <column name="isoVar" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12" def="JyIiJw=="/>
+      <column name="scaler" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="track" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <primary-key columns="run"/>
+    </table>
+    <table name="ScanPars" schema="" catalog="" type="TABLE">
+      <column name="iso" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="type" sqlType="TEXT" precision="0" scale="-1" nullable="false" jdbcType="12"/>
+      <column name="track" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="accVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="laserFreq" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="dacStartVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="dacStopVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="dacStepSizeVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="invertScan" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="nOfSteps" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="nOfScans" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="postAccOffsetVoltControl" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
+      <column name="postAccOffsetVolt" sqlType="FLOAT" precision="0" scale="-1" nullable="true" jdbcType="6"/>
+      <column name="activePmtList" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="colDirTrue" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="sequencerDict" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
+      <column name="triggerDict" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
       <column name="waitForKepco25nsTicks" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
       <column name="waitAfterReset25nsTicks" sqlType="INT" precision="0" scale="-1" nullable="true" jdbcType="4"/>
       <column name="measureVoltPars" sqlType="TEXT" precision="0" scale="-1" nullable="true" jdbcType="12"/>
