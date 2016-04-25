@@ -10,6 +10,8 @@ import argparse
 import sys
 import functools
 
+sys.path.append('..\\..\\PolliFit\\source')
+
 from Application.Main.Main import Main
 import Application.Config as Cfg
 
