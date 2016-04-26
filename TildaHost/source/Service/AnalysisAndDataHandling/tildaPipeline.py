@@ -208,9 +208,12 @@ def tilda_passive_pipe(initial_scan_pars, raw_callback, steps_scans_callback):
     start = Node()
 
     pipe = Pipeline(start)
+    initial_scan_pars['track0']['nOfSteps'] = None
+    initial_scan_pars['track0']['nOfScans'] = 0
     pipe.pipeData = initPipeData(initial_scan_pars)
 
     maintenance = start.attach(TN.NMPLCloseFigOnInit())
+    maintenance = maintenance.attach(TN.NAddWorkingTimeOnClear(True))
 
     # walk = start.attach(SN.NPrint())
     walk = start.attach(TN.NSendDataViaQtSignal(raw_callback))
@@ -229,7 +232,6 @@ def tilda_passive_pipe(initial_scan_pars, raw_callback, steps_scans_callback):
     pl_branch_2d = pl_branch_2d.attach(TN.NMPlDrawPlot())
     #
     # compl_tr_br = walk.attach(TN.NCheckIfTrackComplete())
-    # compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
     #
     # # meas_compl_br = walk.attach(TN.NCheckIfMeasurementComplete())
     walk = walk.attach(TN.NSaveAllTracks())

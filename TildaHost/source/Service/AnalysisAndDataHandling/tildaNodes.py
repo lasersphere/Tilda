@@ -200,6 +200,33 @@ class NAddWorkingTime(Node):
         return data
 
 
+class NAddWorkingTimeOnClear(Node):
+        """
+        Node to add the Workingtime on start() and on clear(). mostly for Tilda Passive
+        :param reset: bool, set True if you want to reset the workingtime when start() is called.
+        input: anything
+        output: same as input
+        """
+
+        def __init__(self, reset=True):
+            super(NAddWorkingTimeOnClear, self).__init__()
+            self.type = 'AddWorkingTimeOnClear'
+            self.reset = reset
+
+        def start(self):
+            track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+            self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
+                self.Pipeline.pipeData[track_name], self.reset)
+
+        def processData(self, data, pipeData):
+            return data
+
+        def clear(self):
+            track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+            self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
+                self.Pipeline.pipeData[track_name])
+
+
 """ saving """
 
 
@@ -242,16 +269,17 @@ class NSaveAllTracks(Node):
         return data
 
     def clear(self):
-        pipeData = self.Pipeline.pipeData
-        pipeInternals = pipeData['pipeInternals']
-        file = pipeInternals['activeXmlFilePath']
-        rootEle = TildaTools.load_xml(file)
-        tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
-        for track_ind, tr_num in enumerate(track_list):
-            track_name = 'track%s' % tr_num
-            xmlAddCompleteTrack(rootEle, pipeData, self.storage[track_ind], track_name)
-        TildaTools.save_xml(rootEle, file, False)
-        self.storage = None
+        if self.storage is not None:
+            pipeData = self.Pipeline.pipeData
+            pipeInternals = pipeData['pipeInternals']
+            file = pipeInternals['activeXmlFilePath']
+            rootEle = TildaTools.load_xml(file)
+            tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
+            for track_ind, tr_num in enumerate(track_list):
+                track_name = 'track%s' % tr_num
+                xmlAddCompleteTrack(rootEle, pipeData, self.storage[track_ind], track_name)
+            TildaTools.save_xml(rootEle, file, False)
+            self.storage = None
 
 
 class NSaveProjection(Node):
@@ -271,17 +299,18 @@ class NSaveProjection(Node):
         return data
 
     def clear(self):
-        data = self.storage
-        pipeData = self.Pipeline.pipeData
-        pipeInternals = pipeData['pipeInternals']
-        file = pipeInternals['activeXmlFilePath']
-        rootEle = TildaTools.load_xml(file)
-        tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
-        for track_ind, tr_num in enumerate(track_list):
-            track_name = 'track%s' % tr_num
-            xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][0], track_name, datatype='voltage_projection')
-            xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][1], track_name, datatype='time_projection')
-        TildaTools.save_xml(rootEle, file, False)
+        if self.storage is not None:
+            data = self.storage
+            pipeData = self.Pipeline.pipeData
+            pipeInternals = pipeData['pipeInternals']
+            file = pipeInternals['activeXmlFilePath']
+            rootEle = TildaTools.load_xml(file)
+            tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
+            for track_ind, tr_num in enumerate(track_list):
+                track_name = 'track%s' % tr_num
+                xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][0], track_name, datatype='voltage_projection')
+                xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][1], track_name, datatype='time_projection')
+            TildaTools.save_xml(rootEle, file, False)
 
 
 class NSaveRawData(Node):
@@ -955,18 +984,21 @@ class NMPLImagePlotSpecData(Node):
             print(e)
 
     def tr_radio_buttons(self, label):
-        tr_list = self.buffer_data.track_names
-        self.selected_track = (tr_list.index(label), label)
-        print('selected track index is: ', int(label[5:]))
-        self.buffer_data.time_res = Form.time_rebin_all_spec_data(
-            self.full_data.time_res, self.buffer_data.softBinWidth_ns)
-        self.setup_track(*self.selected_track)
-        self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
-        self.colorbar.set_clim(0, np.amax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
-        self.colorbar.update_normal(self.image)
-        self.gate_data_and_plot()
-        self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
-        MPLPlotter.draw()
+        try:
+            tr_list = self.buffer_data.track_names
+            self.selected_track = (tr_list.index(label), label)
+            print('selected track index is: ', int(label[5:]))
+            self.buffer_data.time_res = Form.time_rebin_all_spec_data(
+                self.full_data.time_res, self.buffer_data.softBinWidth_ns)
+            self.setup_track(*self.selected_track)
+            self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+            self.colorbar.set_clim(0, np.amax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+            self.colorbar.update_normal(self.image)
+            self.gate_data_and_plot()
+            self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
+            MPLPlotter.draw()
+        except Exception as e:
+            print(e)
 
     def save_proj(self, bool):
         """ saves projection of all tracks """
@@ -1010,31 +1042,34 @@ class NMPLImagePlotSpecData(Node):
             print('Exception while rebinning:', e)
 
     def start(self):
-        print('start is called')
-        if self.buffer_data is not None:
-            track_ind, track_name = (0, 'track0')
-            self.selected_track = (track_ind, track_name)
-            bin_width = self.buffer_data.softBinWidth_ns
-            self.selected_pmt_ind = self.buffer_data.active_pmt_list[self.selected_track[0]].index(self.selected_pmt)
-            self.setup_track(*self.selected_track)
-            if self.radio_buttons_pmt is None:
-                labels = ['pmt%s' % pmt for pmt in self.buffer_data.active_pmt_list[self.selected_track[0]]]
-                self.radio_buttons_pmt, self.radio_con = MPLPlotter.add_radio_buttons(
-                            self.pmt_radio_ax, labels, self.selected_pmt_ind, self.pmt_radio_buttons)
-            # self.radio_buttons_pmt.set_active(self.selected_pmt_ind)  # not available before mpl 1.5.0
-            if self.radio_buttons_tr is None:
-                label_tr = self.buffer_data.track_names
-                self.radio_buttons_tr, con = MPLPlotter.add_radio_buttons(
-                    self.tr_radio_ax, label_tr, self.selected_track[0], self.tr_radio_buttons
-                )
-            # self.radio_buttons_tr.set_active(self.selected_track[0])  # not available before mpl 1.5.0
-            if self.save_button is None:
-                self.save_button, button_con = MPLPlotter.add_button(self.save_bt_ax, 'save_proj', self.save_proj)
-            if self.slider is None:
-                self.slider, slider_con = MPLPlotter.add_slider(self.slider_ax, 'rebinning', 10, 100,
-                                                                self.rebin_changed, valfmt=u'%3d', valinit=10)
-            self.slider.valtext.set_text('{}'.format(bin_width))
-            # self.setup_track(*self.selected_track)
+        try:
+            print('start is called')
+            if self.buffer_data is not None:
+                track_ind, track_name = (0, 'track0')
+                self.selected_track = (track_ind, track_name)
+                bin_width = self.buffer_data.softBinWidth_ns
+                self.selected_pmt_ind = self.buffer_data.active_pmt_list[self.selected_track[0]].index(self.selected_pmt)
+                self.setup_track(*self.selected_track)
+                if self.radio_buttons_pmt is None:
+                    labels = ['pmt%s' % pmt for pmt in self.buffer_data.active_pmt_list[self.selected_track[0]]]
+                    self.radio_buttons_pmt, self.radio_con = MPLPlotter.add_radio_buttons(
+                                self.pmt_radio_ax, labels, self.selected_pmt_ind, self.pmt_radio_buttons)
+                # self.radio_buttons_pmt.set_active(self.selected_pmt_ind)  # not available before mpl 1.5.0
+                if self.radio_buttons_tr is None:
+                    label_tr = self.buffer_data.track_names
+                    self.radio_buttons_tr, con = MPLPlotter.add_radio_buttons(
+                        self.tr_radio_ax, label_tr, self.selected_track[0], self.tr_radio_buttons
+                    )
+                # self.radio_buttons_tr.set_active(self.selected_track[0])  # not available before mpl 1.5.0
+                if self.save_button is None:
+                    self.save_button, button_con = MPLPlotter.add_button(self.save_bt_ax, 'save_proj', self.save_proj)
+                if self.slider is None:
+                    self.slider, slider_con = MPLPlotter.add_slider(self.slider_ax, 'rebinning', 10, 100,
+                                                                    self.rebin_changed, valfmt=u'%3d', valinit=10)
+                self.slider.valtext.set_text('{}'.format(bin_width))
+                # self.setup_track(*self.selected_track)
+        except Exception as e:
+            print(e)
 
     def processData(self, data, pipeData):
         first_call = self.buffer_data is None
@@ -1058,8 +1093,10 @@ class NMPLImagePlotSpecData(Node):
 
     def clear(self):
         # i dont want to clear this window after completion of scan
-        MPLPlotter.show(True)
-        pass
+        try:
+            MPLPlotter.show(True)
+        except Exception as e:
+            print(e)
 
 
 """ continous Sequencer / Simple Counter Nodes """
@@ -1411,10 +1448,11 @@ class NTiPaAccRawUntil2ndScan(Node):
             step_complete = int('01000000100000000000000000000001', 2)
             new_scan = int('01000000100000000000000000000010', 2)
             scans_in_buffer = np.where(self.buffer == new_scan)[0]
+            # np array of indices of the new scan signals in the buffer data
             if scans_in_buffer.size == 1:
                 self.buffer = self.buffer[scans_in_buffer[0]:]
                 steps = np.where(self.buffer == step_complete)[0].size
-                self.emit_steps_scan_callback(steps, 1)
+                self.emit_steps_scan_callback(steps, 0)
             if scans_in_buffer.size >= 2:
                 self.acquired_2nd_scan = True
                 one_scan = self.buffer[scans_in_buffer[0]:scans_in_buffer[1]]

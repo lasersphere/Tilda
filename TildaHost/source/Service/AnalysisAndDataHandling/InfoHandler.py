@@ -40,6 +40,7 @@ class InfoHandler:
                 return volt_index
 
         elif payload == 2:  # means scan complete
+            pipe_data[track_name]['nOfScans'] += 1
             volt_index = 0
             return volt_index
 

@@ -44,7 +44,7 @@ draft_tipa_scan_pars = {
                     'laserFreq': 0},
     'track0': {'dacStepSize18Bit': 1,
                'dacStartRegister18Bit': 0,
-               'nOfSteps': 5,
+               'nOfSteps': None,
                'nOfScans': 10, 'nOfCompletedSteps': 0, 'invertScan': False,
                'postAccOffsetVoltControl': 0, 'postAccOffsetVolt': 1000,
                'waitForKepco25nsTicks': 400,

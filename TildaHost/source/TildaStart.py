@@ -17,6 +17,7 @@ import Application.Config as Cfg
 
 _cyclic_interval_ms = 50
 
+
 def main():
     """
     main loop of tilda
