@@ -109,7 +109,8 @@ class XMLImporter(SpecData):
                 self.offset = 0
 
             if self.seq_type == 'trs' or self.seq_type == 'tipa':
-                self.t = Form.create_time_axis_from_scan_dict(scandict)  # time axis, 10ns resolution
+                self.softBinWidth_ns = track_dict.get('softBinWidth_ns', 10)
+                self.t = Form.create_time_axis_from_scan_dict(scandict)  # force 10 ns resolution
                 self.t_proj = []
                 self.time_res = []
                 cts_shape = (nOfScalers, nOfsteps, nOfBins)
@@ -127,11 +128,9 @@ class XMLImporter(SpecData):
                 self.err.append(np.sqrt(v_proj))
                 self.err[-1][self.err[-1] < 1] = 1  # remove 0's in the error
                 self.t_proj.append(t_proj)
-                self.time_res.append(scaler_array)
                 self.softw_gates = track_dict['softwGates']
                 dwell = [g[3] - g[2] for g in self.softw_gates]
                 self.dwell.append(dwell)
-                self.softBinWidth_ns = track_dict.get('softBinWidth_ns', 10)
 
             elif self.seq_type == 'cs':
                 cts_shape = (nOfScalers, nOfsteps)
@@ -140,6 +139,8 @@ class XMLImporter(SpecData):
                 self.cts.append(scaler_array)
                 self.err.append(np.sqrt(scaler_array))
                 self.dwell.append(track_dict.get('dwellTime10ns'))
+
+        print('%s was successfully imported' % self.file)
 
     def preProc(self, db):
         print('XMLImporter is using db: ', db)

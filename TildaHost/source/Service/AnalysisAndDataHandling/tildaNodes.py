@@ -926,6 +926,7 @@ class NMPLImagePlotSpecData(Node):
             return [0, 1, 2, 3], [-1, 1, 0, 1]
 
     def setup_track(self, track_ind, track_name):
+        """ setup the plots for this track """
         try:
             for ax in [val for sublist in self.axes for val in sublist][:-4]:
                 if ax:  # be sure ax is not 0, don't clear radio buttons, buttons and slider
@@ -960,6 +961,7 @@ class NMPLImagePlotSpecData(Node):
             self.update_gate_ind(gate_val_list)
             bin_width = self.buffer_data.softBinWidth_ns
             if self.slider is not None:
+                print('slider is set to:', bin_width)
                 self.slider.valtext.set_text('{}'.format(bin_width))
 
             MPLPlotter.draw()
@@ -971,8 +973,8 @@ class NMPLImagePlotSpecData(Node):
             self.selected_pmt = int(label[3:])
             self.selected_pmt_ind = self.buffer_data.active_pmt_list[self.selected_track[0]].index(self.selected_pmt)
             print('selected pmt index is: ', int(label[3:]))
-            self.buffer_data.time_res = Form.time_rebin_all_spec_data(
-                self.full_data.time_res, self.buffer_data.softBinWidth_ns)
+            self.buffer_data = Form.time_rebin_all_spec_data(
+                self.full_data, self.buffer_data.softBinWidth_ns)
             self.setup_track(*self.selected_track)
             self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.set_clim(0, np.amax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
@@ -988,8 +990,8 @@ class NMPLImagePlotSpecData(Node):
             tr_list = self.buffer_data.track_names
             self.selected_track = (tr_list.index(label), label)
             print('selected track index is: ', int(label[5:]))
-            self.buffer_data.time_res = Form.time_rebin_all_spec_data(
-                self.full_data.time_res, self.buffer_data.softBinWidth_ns)
+            self.buffer_data = Form.time_rebin_all_spec_data(
+                self.full_data, self.buffer_data.softBinWidth_ns)
             self.setup_track(*self.selected_track)
             self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.set_clim(0, np.amax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
@@ -1022,13 +1024,13 @@ class NMPLImagePlotSpecData(Node):
         try:
             bins_10ns_rounded = bins_10ns // 10 * 10
             bins_to_combine = bins_10ns_rounded / 10
-            self.buffer_data.softBinWidth_ns = bins_10ns_rounded
             self.slider.valtext.set_text('{}'.format(bins_10ns_rounded))
-            self.buffer_data.time_res = Form.time_rebin_all_spec_data(
-                self.full_data.time_res, self.buffer_data.softBinWidth_ns)
+            self.buffer_data = Form.time_rebin_all_spec_data(
+                self.full_data, bins_10ns_rounded)
+            self.buffer_data.softBinWidth_ns = bins_10ns_rounded
             for tr_ind, tr_name in enumerate(self.buffer_data.track_names):
                 bins = self.full_data.t[tr_ind].size // bins_to_combine
-                print('new length: ', bins)
+                print('new length: ', bins, self.buffer_data.softBinWidth_ns)
                 delay_ns = self.full_data.t[tr_ind][0]
                 self.buffer_data.t[tr_ind] = np.arange(delay_ns, bins * bins_10ns_rounded + delay_ns, bins_10ns_rounded)
             self.setup_track(*self.selected_track)
@@ -1042,14 +1044,15 @@ class NMPLImagePlotSpecData(Node):
             print('Exception while rebinning:', e)
 
     def start(self):
+        """ setup the radio buttons and sliders """
         try:
-            print('start is called')
             if self.buffer_data is not None:
+                print('start is called')
                 track_ind, track_name = (0, 'track0')
                 self.selected_track = (track_ind, track_name)
                 bin_width = self.buffer_data.softBinWidth_ns
                 self.selected_pmt_ind = self.buffer_data.active_pmt_list[self.selected_track[0]].index(self.selected_pmt)
-                self.setup_track(*self.selected_track)
+                self.setup_track(*self.selected_track)  # setup track with
                 if self.radio_buttons_pmt is None:
                     labels = ['pmt%s' % pmt for pmt in self.buffer_data.active_pmt_list[self.selected_track[0]]]
                     self.radio_buttons_pmt, self.radio_con = MPLPlotter.add_radio_buttons(
@@ -1075,12 +1078,12 @@ class NMPLImagePlotSpecData(Node):
         first_call = self.buffer_data is None
         try:
             self.full_data = deepcopy(data)
-            self.buffer_data = data
+            # self.buffer_data = deepcopy(data)
+            ret = Form.time_rebin_all_spec_data(
+                self.full_data, self.full_data.softBinWidth_ns)
+            self.buffer_data = ret  # here t will have different dimension than nOfBins
             if first_call:
                 self.start()
-            ret = Form.time_rebin_all_spec_data(
-                self.full_data.time_res, self.full_data.softBinWidth_ns)
-            self.buffer_data.time_res = ret
             self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.set_clim(0, np.amax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.update_normal(self.image)

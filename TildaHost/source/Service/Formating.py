@@ -265,10 +265,13 @@ def gate_one_track(tr_ind, tr_num, pipeData, data, time_array, volt_array, ret):
             gates_tr.append(gates_pmt)
     finally:
         for pmt_ind, pmt_gate in enumerate(gates_tr):
-            t_proj_xdata = np.sum(data[tr_ind][pmt_ind][pmt_gate[0]:pmt_gate[1] + 1, :], axis=0)
-            v_proj_ydata = np.sum(data[tr_ind][pmt_ind][:, pmt_gate[2]:pmt_gate[3] + 1], axis=1)
-            v_proj_tr[pmt_ind] = v_proj_ydata
-            t_proj_tr[pmt_ind] = t_proj_xdata
+            try:
+                t_proj_xdata = np.sum(data[tr_ind][pmt_ind][pmt_gate[0]:pmt_gate[1] + 1, :], axis=0)
+                v_proj_ydata = np.sum(data[tr_ind][pmt_ind][:, pmt_gate[2]:pmt_gate[3] + 1], axis=1)
+                v_proj_tr[pmt_ind] = v_proj_ydata
+                t_proj_tr[pmt_ind] = t_proj_xdata
+            except Exception as e:
+                print('bla: ', e)
         ret.append([v_proj_tr, t_proj_tr])
     return ret
 
@@ -334,13 +337,20 @@ def time_rebin_all_spec_data(full_data, software_bin_width_ns):
     :param software_bin_width_ns, software bin width
     :return: rebinned full_data
     """
-    newdata = []
-    for tr_ind, tr_data in enumerate(full_data):
-        newdata = rebin_single_track_spec_data(tr_data, newdata, software_bin_width_ns)
+    bins = deepcopy(software_bin_width_ns)
+    newdata = deepcopy(full_data)
+    newdata.time_res = []
+    for tr_ind, tr_data in enumerate(full_data.time_res):
+        newdata.time_res = rebin_single_track_spec_data(tr_data, newdata.time_res, bins)
+        newdata.t[tr_ind] = time_axis_rebin(tr_ind, full_data.t, full_data.softBinWidth_ns)
     return newdata
 
 
 def rebin_single_track_spec_data(tr_data, return_data, bin_width_10ns):
+    """
+    by rolling the array as often as there are bins to comine and summing every roll,
+    the desired indices will hold the sum.
+    """
     bins_to_combine = int(bin_width_10ns / 10)
     bin_ind = np.arange(0, tr_data.shape[-1] // bins_to_combine * bins_to_combine, bins_to_combine)
     new_tr_data = deepcopy(tr_data)
@@ -348,3 +358,14 @@ def rebin_single_track_spec_data(tr_data, return_data, bin_width_10ns):
         new_tr_data += np.roll(tr_data, -(reps + 1), axis=2)
     return_data.append(new_tr_data[:, :, bin_ind])
     return return_data
+
+
+def time_axis_rebin(tr_ind, original_t_axis_10ns_res, softw_bin_width):
+    """
+    this will reduce the time resolution of the original time axis of the given track index
+    """
+    delay_ns = original_t_axis_10ns_res[tr_ind][0]
+    bins_before = original_t_axis_10ns_res[tr_ind].size
+    bins = bins_before // (softw_bin_width / 10)
+    t_axis_tr = np.arange(delay_ns, bins * softw_bin_width + delay_ns, softw_bin_width)
+    return t_axis_tr
