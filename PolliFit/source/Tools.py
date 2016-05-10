@@ -23,15 +23,19 @@ from DBIsotope import DBIsotope
 from Spectra.FullSpec import FullSpec
 
 
-def isoPlot(db, iso, isovar = '', linevar = ''):
+def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=None, col=None):
     '''plot isotope iso'''
-    iso = DBIsotope(db, iso, isovar, linevar)
+    iso = DBIsotope(db, iso_name, isovar, linevar)
     
-    spec =  FullSpec(iso)
+    spec = FullSpec(iso)
     
     print(spec.getPars())
-    
-    plot.plot(spec.toPlot(spec.getPars()))
+    if as_freq:
+        plot.plot(spec.toPlot(spec.getPars()))
+    else:
+        plot.plot(spec.toPlotE(laserfreq, col, spec.getPars()))
+        plot.get_current_axes().set_xlabel('Energy [eV]')
+    plot.get_current_figure().suptitle(iso_name)
     plot.show()
 
 
