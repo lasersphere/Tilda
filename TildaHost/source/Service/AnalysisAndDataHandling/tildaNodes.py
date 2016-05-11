@@ -509,12 +509,12 @@ class NMPLImagePLot(Node):
         """
         try:
             v_min, v_max = sorted((gates_val_list[0], gates_val_list[1]))
-            v_min_ind, v_min, vdif = Form.find_closest_value_in_arr(self.volt_array, v_min)
-            v_max_ind, v_max, vdif = Form.find_closest_value_in_arr(self.volt_array, v_max)
+            v_min_ind, v_min, vdif = TildaTools.find_closest_value_in_arr(self.volt_array, v_min)
+            v_max_ind, v_max, vdif = TildaTools.find_closest_value_in_arr(self.volt_array, v_max)
             
             t_min, t_max = sorted((gates_val_list[2], gates_val_list[3]))
-            t_min_ind, t_min, tdif = Form.find_closest_value_in_arr(self.time_array, t_min)
-            t_max_ind, t_max, tdif = Form.find_closest_value_in_arr(self.time_array, t_max)
+            t_min_ind, t_min, tdif = TildaTools.find_closest_value_in_arr(self.time_array, t_min)
+            t_max_ind, t_max, tdif = TildaTools.find_closest_value_in_arr(self.time_array, t_max)
             gates_ind = [v_min_ind, v_max_ind, t_min_ind, t_max_ind]  # indices in data array
             gates_val_list = [v_min, v_max, t_min, t_max]
             self.gates_list[self.selected_pmt_ind] = [gates_val_list, gates_ind]
@@ -899,12 +899,12 @@ class NMPLImagePlotSpecData(Node):
             volt_array = self.buffer_data.x[self.selected_track[0]]
             time_array = self.buffer_data.t[self.selected_track[0]]
             v_min, v_max = sorted((gates_val_list[0], gates_val_list[1]))
-            v_min_ind, v_min, vdif = Form.find_closest_value_in_arr(volt_array, v_min)
-            v_max_ind, v_max, vdif = Form.find_closest_value_in_arr(volt_array, v_max)
+            v_min_ind, v_min, vdif = TildaTools.find_closest_value_in_arr(volt_array, v_min)
+            v_max_ind, v_max, vdif = TildaTools.find_closest_value_in_arr(volt_array, v_max)
 
             t_min, t_max = sorted((gates_val_list[2], gates_val_list[3]))
-            t_min_ind, t_min, tdif = Form.find_closest_value_in_arr(time_array, t_min)
-            t_max_ind, t_max, tdif = Form.find_closest_value_in_arr(time_array, t_max)
+            t_min_ind, t_min, tdif = TildaTools.find_closest_value_in_arr(time_array, t_min)
+            t_max_ind, t_max, tdif = TildaTools.find_closest_value_in_arr(time_array, t_max)
             gates_ind = [v_min_ind, v_max_ind, t_min_ind, t_max_ind]  # indices in data array
             gates_val_list = [v_min, v_max, t_min, t_max]
             if self.gate_anno is None:
