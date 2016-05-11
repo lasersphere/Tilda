@@ -8,7 +8,6 @@ Created on '07.08.2015'
 
 import sqlite3
 import os
-import Service.Formating as Form
 import Physics
 
 import numpy as np
@@ -82,7 +81,7 @@ class XMLImporter(SpecData):
         self.active_pmt_list = []
         if self.seq_type in ['tipa', 'tipadummy']:
             x_as_volt = False
-        self.x = Form.create_x_axis_from_scand_dict(scandict, as_voltage=x_as_volt)  # x axis, voltage
+        self.x = TildaTools.create_x_axis_from_file_dict(scandict, as_voltage=x_as_volt)  # x axis, voltage
         self.cts = []  # countervalues
         self.err = []  # error to the countervalues
         self.stepSize = []
@@ -108,9 +107,9 @@ class XMLImporter(SpecData):
             if track_dict.get('postAccOffsetVoltControl') == 0:
                 self.offset = 0
 
-            if self.seq_type == 'trs' or self.seq_type == 'tipa':
+            if self.seq_type in ['trs', 'tipa', 'trsdummy']:
                 self.softBinWidth_ns = track_dict.get('softBinWidth_ns', 10)
-                self.t = Form.create_time_axis_from_scan_dict(scandict)  # force 10 ns resolution
+                self.t = TildaTools.create_t_axis_from_file_dict(scandict)  # force 10 ns resolution
                 self.t_proj = []
                 self.time_res = []
                 cts_shape = (nOfScalers, nOfsteps, nOfBins)
@@ -122,7 +121,7 @@ class XMLImporter(SpecData):
                     lxmlEtree, nOfactTrack, 'scalerArray', cts_shape)
                 self.time_res.append(scaler_array)
                 if v_proj is None or t_proj is None:
-                    v_proj, t_proj = Form.gate_one_track(
+                    v_proj, t_proj = TildaTools.gate_one_track(
                         tr_ind, nOfactTrack, scandict, self.time_res, self.t, self.x, [])[0]
                 self.cts.append(v_proj)
                 self.err.append(np.sqrt(v_proj))
@@ -132,7 +131,7 @@ class XMLImporter(SpecData):
                 dwell = [g[3] - g[2] for g in self.softw_gates]
                 self.dwell.append(dwell)
 
-            elif self.seq_type == 'cs':
+            elif self.seq_type in ['cs', 'csdummy']:
                 cts_shape = (nOfScalers, nOfsteps)
                 scaler_array = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'scalerArray', cts_shape)

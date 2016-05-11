@@ -147,3 +147,100 @@ def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
     scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
     return scan_dict, xml_etree
 
+
+def gate_one_track(tr_ind, tr_num, scan_dict, data, time_array, volt_array, ret):
+    """
+    Function to gate all data of one track by applying the software gates given
+     in scan_dict[tr_name]['softwGates'] as a list of all pmts
+
+    :param tr_ind: int, indice of the track
+    :param tr_num: int, number of thr track
+    :param scan_dict: dict, as a full scandictionary of a scan
+    :param data: np.array, time resolved data array, with all tracks and pmts
+    :param time_array: list of np. arrays, time structure [ [0, 10,...,], []] for each track
+    :param volt_array: list of np. arrays, voltage axis fr each track
+    :param ret: list, on what the return will be appended.
+    :return: list, [[v_proj_tr0,t_proj_tr0], [v_proj_tr1,t_proj_tr1],...]
+    """
+
+    tr_name = 'track%s' % tr_num
+    gates_tr = []
+    pmts = len(scan_dict[tr_name]['activePmtList'])
+    t_proj_tr = np.zeros((pmts, len(time_array[tr_ind])), dtype=np.uint32)
+    v_proj_tr = np.zeros((pmts, len(volt_array[tr_ind])), dtype=np.uint32)
+    try:
+        gates_val_lists = scan_dict[tr_name]['softwGates']  # list of list for each pmt.
+        for gates_val_list in gates_val_lists:
+            v_min, v_max = sorted((gates_val_list[0], gates_val_list[1]))
+            v_min_ind, v_min, vdif = find_closest_value_in_arr(volt_array[tr_ind], v_min)
+            v_max_ind, v_max, vdif = find_closest_value_in_arr(volt_array[tr_ind], v_max)
+
+            t_min, t_max = sorted((gates_val_list[2], gates_val_list[3]))
+            t_min_ind, t_min, tdif = find_closest_value_in_arr(time_array[tr_ind], t_min)
+            t_max_ind, t_max, tdif = find_closest_value_in_arr(time_array[tr_ind], t_max)
+            gates_tr.append([v_min_ind, v_max_ind, t_min_ind, t_max_ind])  # indices in data array
+    except Exception as e:  # if gates_tr are messud up, use full scan range as gates_tr:
+        v_min = round(volt_array[tr_ind][0], 5)
+        v_max = round(volt_array[tr_ind][-1], 5)
+        t_min = time_array[tr_ind][0]
+        t_max = time_array[tr_ind][-1]
+        gates_val_list = [v_min, v_max, t_min, t_max]
+        scan_dict[tr_name]['softwGates'] = [gates_val_list for pmt in scan_dict[tr_name]['activePmtList']]
+        gates_pmt = [0, len(volt_array[tr_ind]) - 1, 0, len(time_array[tr_ind]) - 1]
+        for pmt in scan_dict[tr_name]['activePmtList']:
+            gates_tr.append(gates_pmt)
+    finally:
+        for pmt_ind, pmt_gate in enumerate(gates_tr):
+            try:
+                t_proj_xdata = np.sum(data[tr_ind][pmt_ind][pmt_gate[0]:pmt_gate[1] + 1, :], axis=0)
+                v_proj_ydata = np.sum(data[tr_ind][pmt_ind][:, pmt_gate[2]:pmt_gate[3] + 1], axis=1)
+                v_proj_tr[pmt_ind] = v_proj_ydata
+                t_proj_tr[pmt_ind] = t_proj_xdata
+            except Exception as e:
+                print('bla: ', e)
+        ret.append([v_proj_tr, t_proj_tr])
+    return ret
+
+
+def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
+    """
+    creates an x axis in units of line volts or in dac registers
+    """
+    x_arr = []
+    for tr_ind, tr_name in enumerate(get_track_names(scan_dict)):
+        if as_voltage:
+            start = scan_dict[tr_name]['dacStartVoltage']
+            stop = scan_dict[tr_name]['dacStopVoltage']
+            step = scan_dict[tr_name]['dacStepsizeVoltage']
+        else:
+            start = scan_dict[tr_name]['dacStartRegister18Bit']
+            stop = scan_dict[tr_name]['dacStopRegister18Bit']
+            step = scan_dict[tr_name]['dacStepSize18Bit']
+        x_tr = np.arange(start, stop + step, step)
+        x_arr.append(x_tr)
+    return x_arr
+
+
+def create_t_axis_from_file_dict(scan_dict, with_delay=False, bin_width=10):
+    """
+    will create a time axis for all tracks, resolution is 10ns.
+    """
+    t_arr = []
+    for tr_ind, tr_name in enumerate(get_track_names(scan_dict)):
+        if with_delay:
+            delay = scan_dict[tr_name]['trigger'].get('trigDelay10ns', 0)
+        else:
+            delay = 0
+        nofbins = scan_dict[tr_name]['nOfBins']
+        t_tr = np.arange(delay, nofbins * bin_width + delay, bin_width)
+        t_arr.append(t_tr)
+    return t_arr
+
+
+def find_closest_value_in_arr(arr, search_val):
+    """
+    goes through an array and finds the nearest value to search_val
+    :return: ind, found_val, abs(found_val - search_val)
+    """
+    ind, found_val = min(enumerate(arr), key=lambda i: abs(float(i[1]) - search_val))
+    return ind, found_val, abs(found_val - search_val)
