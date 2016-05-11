@@ -23,15 +23,19 @@ from DBIsotope import DBIsotope
 from Spectra.FullSpec import FullSpec
 
 
-def isoPlot(db, iso, isovar = '', linevar = ''):
+def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=None, col=None):
     '''plot isotope iso'''
-    iso = DBIsotope(db, iso, isovar, linevar)
+    iso = DBIsotope(db, iso_name, isovar, linevar)
     
-    spec =  FullSpec(iso)
+    spec = FullSpec(iso)
     
     print(spec.getPars())
-    
-    plot.plot(spec.toPlot(spec.getPars()))
+    if as_freq:
+        plot.plot(spec.toPlot(spec.getPars()))
+    else:
+        plot.plot(spec.toPlotE(laserfreq, col, spec.getPars()))
+        plot.get_current_axes().set_xlabel('Energy [eV]')
+    plot.get_current_figure().suptitle(iso_name)
     plot.show()
 
 
@@ -51,9 +55,10 @@ def centerPlot(db, isoL, linevar = '', width = 1e6):
     fig = plt.figure(1, (8, 8))
     fig.patch.set_facecolor('white')
     
-    for i in y:
-        plt.plot(wnx, i, '-')
-    
+    for i, val in enumerate(y):
+        plt.plot(wnx, val, '-', label=isoL[i])
+
+    plt.legend()
     plt.xlabel("Laser wavenumber / cm^-1")
     plt.ylabel("Ion energy on resonance / eV")
     plt.axvline(Physics.wavenumber(isos[0].freq), 0, 20000, color = 'k')
@@ -106,6 +111,21 @@ def _insertFile(f, db):
         print("Error working on file", f, ":", sys.exc_info()[1])
         traceback.print_tb(sys.exc_info()[2])
     con.close() 
+
+
+def _insertIso(db, iso, mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat,
+               fixedBrat, intScale, fixedInt):
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+
+    cur.execute(
+        ''' INSERT INTO Isotopes (iso, mass, mass_d, I, center,
+    Al, Bl, Au, Bu, fixedArat,
+    fixedBrat, intScale, fixedInt, relInt, m) VALUES (?, ?, ?, ?, ?,  ?, ?, ?, ?, ?,  ?, ?, ?, NULL, NULL)''',
+        (iso, mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, fixedBrat, intScale, fixedInt)
+    )
+    con.commit()
+    con.close()
 
 
 def fileList(db, type):

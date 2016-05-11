@@ -14,33 +14,34 @@ class Straight(object):
     def __init__(self):
         self.nPar = 2
         self.nFreePar = 2
-        self.pb = 0;
-        self.pm = 1;
-        
-    
+        self.pb = 0
+        self.pm = 1
+        self.x_min = None
+        self.x_max = None
+
     def evaluate(self, x, p):
+        if self.x_max is None:
+            self.x_max = x
+            self.x_min = x
+        self.x_min = min(x, self.x_min)
+        self.x_max = max(x, self.x_max)
         return p[self.pb] + x*p[self.pm]
     
     def evaluateE(self, e, freq, col, p):
         return self.evaluate(e, p)
 
-    
     def leftEdge(self):
-        return -10
-    
-    
+        return self.x_min - (self.x_min * 0.001)
+
     def rightEdge(self):
-        return 10
-    
-    
+        return self.x_max + (self.x_max * 0.001)
+
     def getPars(self):
         return [0, 1]
-    
-    
+
     def getParNames(self):
         return ['b', 'm']
-    
-    
+
     def getFixed(self):
         return [False, False]
     

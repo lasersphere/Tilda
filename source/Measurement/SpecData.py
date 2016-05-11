@@ -61,7 +61,7 @@ class SpecData(object):
             nrScalers = self.nrScalers
 
         for s in scaler:
-            if self.nrScalers >= np.abs(s):
+            if nrScalers >= np.abs(s):
                 flatx, c, e = self.getSingleSpec(abs(s), track_index)
                 for i, j in enumerate(flatc):
                     flatc[i] = j + np.copysign(1, s) * c[i]
