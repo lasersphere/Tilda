@@ -21,6 +21,7 @@ import InteractiveFit as IF
 
 db = 'V:/Projekte/COLLAPS/ROC/ROC_October/CaD2.sqlite'
 
+
 '''Crawling'''
 # Tools.crawl(db)
 #print(str(Physics.freqFromWavenumber(12722.2986*2)-Physics.freqFromWavenumber(12722.2984*2)))
@@ -31,24 +32,24 @@ db = 'V:/Projekte/COLLAPS/ROC/ROC_October/CaD2.sqlite'
 # Analyzer.combineRes('Kepco', 'b', 'Run2', db, False)
 
 '''Fitting the spectra with Voigt-Fits!'''
-# for i in range(1,3):
-    # run = str('Run' + str(i))
+for i in range(1,2):
+    run = str('Run' + str(i))
     # BatchFit.batchFit(Tools.fileList(db,'40_Ca'), db,run)
     # BatchFit.batchFit(Tools.fileList(db,'42_Ca'), db,run)
     # BatchFit.batchFit(Tools.fileList(db,'44_Ca'), db,run)
     # BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
-BatchFit.batchFit(Tools.fileList(db,'51_Ca'), db,'Run13')
-BatchFit.batchFit(Tools.fileList(db,'51_Ca'), db,'Run15')
+# BatchFit.batchFit(Tools.fileList(db,'51_Ca'), db,'Run13')
+# BatchFit.batchFit(Tools.fileList(db,'51_Ca'), db,'Run15')
 #    '''Mean of center, sigma and gamma for 40_Ca'''
 # Analyzer.combineRes('40_Ca', 'gamma',run, db)
 #     Analyzer.combineRes('40_Ca', 'sigma',run, db)
 #     Analyzer.combineRes('42_Ca', 'sigma',run, db)
 #     Analyzer.combineRes('44_Ca', 'sigma',run, db)
 #     Analyzer.combineRes('48_Ca', 'sigma',run, db)
-    # Analyzer.combineRes('40_Ca', 'center',run, db)
-    # Analyzer.combineRes('42_Ca', 'center',run, db)
-    # Analyzer.combineRes('44_Ca', 'center',run, db)
-    # Analyzer.combineRes('48_Ca', 'center',run, db)
+    #Analyzer.combineRes('40_Ca', 'center',run, db, show_plot=True)
+    #Analyzer.combineRes('42_Ca', 'center',run, db, show_plot=True)
+    Analyzer.combineRes('48_Ca', 'center',run, db, show_plot=True)
+    #Analyzer.combineRes('44_Ca', 'center',run, db, show_plot=True)
     #
     # '''Calculate the isotope shift to 48_Ca'''
     # shift40.append(Analyzer.combineShift('40_Ca', run, db)[2])
