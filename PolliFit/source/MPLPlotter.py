@@ -4,21 +4,19 @@ Created on 29.04.2014
 @author: hammen
 '''
 
-from matplotlib.dates import DateFormatter
-from matplotlib.lines import Line2D
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from mpl_toolkits.axes_grid1.axes_divider import AxesDivider
-from matplotlib import patches as patches
-from matplotlib.widgets import RectangleSelector
-from matplotlib.widgets import RadioButtons
-from matplotlib.widgets import Button
-from matplotlib.widgets import Slider
-from matplotlib.ticker import ScalarFormatter
-
 import datetime
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
-import os
+from matplotlib import patches as patches
+from matplotlib.dates import DateFormatter
+from matplotlib.lines import Line2D
+from matplotlib.widgets import Button
+from matplotlib.widgets import RadioButtons
+from matplotlib.widgets import RectangleSelector
+from matplotlib.widgets import Slider
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 def plot(*args):
@@ -166,7 +164,7 @@ def configure_image_plot(fig, im_ax, cb_ax, pipeData, volt_array_tr, time_array_
     # -5 due to resolution of 10ns so events with timestamp e.g. 10 (= 100ns) will be plotted @ 95 to 105 ns
 
     extent = [v_min, v_max, t_min, t_max]
-    initial_2d_arr = np.zeros((steps, bins), dtype=np.uint32)
+    initial_2d_arr = np.full((steps, bins), np.nan, dtype=np.double)
     image, colorbar = image_plot(fig, im_ax, cb_ax, np.transpose(initial_2d_arr), extent, 'auto')
     im_ax.xaxis.set_ticks_position('top')
     im_ax.xaxis.set_label_position('top')

@@ -40,7 +40,9 @@ class InfoHandler:
                 return volt_index
 
         elif payload == 2:  # means scan complete
-            pipe_data[track_name]['nOfScans'] += 1
+            # pipe_data[track_name]['nOfScans'] += 1  # that's dumb. is it necessary?
+            #  This should be something like nOfCompletedScans therefore 'nOfCompletedSteps'
+            # in comination with the nOfSteps does the job.
             volt_index = 0
             return volt_index
 

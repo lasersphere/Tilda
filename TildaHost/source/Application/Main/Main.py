@@ -8,22 +8,22 @@ Created on '30.09.2015'
 
 import logging
 import os
-import sys
 from copy import deepcopy
+from datetime import datetime
+
 from PyQt5 import QtCore
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QApplication
-from datetime import datetime
 
+import Application.Config as Cfg
+import Service.DatabaseOperations.DatabaseOperations as DbOp
+import Service.Scan.ScanDictionaryOperations as SdOp
+import Service.Scan.draftScanParameters as Dft
+from Application.Main.MainState import MainState
+from Service.AnalysisAndDataHandling.DisplayData import DisplayData
 from Service.Scan.ScanMain import ScanMain
 from Service.SimpleCounter.SimpleCounter import SimpleCounterControl
 from Service.TildaPassive.TildaPassiveControl import TildaPassiveControl
-from Service.AnalysisAndDataHandling.DisplayData import DisplayData
-import Service.Scan.ScanDictionaryOperations as SdOp
-import Service.Scan.draftScanParameters as Dft
-import Service.DatabaseOperations.DatabaseOperations as DbOp
-import Application.Config as Cfg
-from Application.Main.MainState import MainState
 
 
 class Main(QtCore.QObject):
@@ -71,8 +71,8 @@ class Main(QtCore.QObject):
         try:
             # pass
             # self.work_dir_changed('E:/lala')
-            # self.work_dir_changed('C:/temp108')
-            self.work_dir_changed('D:\Tilda_Debugging')
+            self.work_dir_changed('C:/temp108')
+            # self.work_dir_changed('D:\Tilda_Debugging')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state(MainState.idle)

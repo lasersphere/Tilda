@@ -6,6 +6,7 @@ Created on '20.05.2015'
 
 """
 import logging
+import time
 from copy import deepcopy
 
 import numpy as np
@@ -14,12 +15,12 @@ import MPLPlotter
 import Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
 import Service.FileOperations.FolderAndFileHandling as Filehandle
 import Service.Formating as Form
-from Service.ProgramConfigs import Programs as Progs
 import Service.Scan.ScanDictionaryOperations as SdOp
 import TildaTools
 from Measurement.SpecData import SpecData
 from Service.AnalysisAndDataHandling.InfoHandler import InfoHandler as InfHandl
 from Service.FileOperations.XmlOperations import xmlAddCompleteTrack
+from Service.ProgramConfigs import Programs as Progs
 from Service.VoltageConversions.VoltageConversions import find_volt_in_array
 from polliPipe.node import Node
 
@@ -866,10 +867,12 @@ class NMPLImagePlotSpecData(Node):
             self.patch.set_xy((g_list[0], g_list[2]))
             self.patch.set_width((g_list[1] - g_list[0]))
             self.patch.set_height((g_list[3] - g_list[2]))
-            xdata = np.sum(
+            xdata = np.nansum(
                 data.time_res[self.selected_track[0]][self.selected_pmt_ind][g_ind[0]:g_ind[1] + 1, :], axis=0)
-            ydata = np.sum(
+            xdata = np.nan_to_num(xdata)
+            ydata = np.nansum(
                 data.time_res[self.selected_track[0]][self.selected_pmt_ind][:, g_ind[2]:g_ind[3] + 1], axis=1)
+            ydata = np.nan_to_num(ydata)
             self.tproj_line.set_xdata(xdata)
             self.vproj_line.set_ydata(ydata)
             # +1 due to syntax of slicing!
@@ -977,7 +980,7 @@ class NMPLImagePlotSpecData(Node):
                 self.full_data, self.buffer_data.softBinWidth_ns)
             self.setup_track(*self.selected_track)
             self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
-            self.colorbar.set_clim(0, np.amax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+            self.colorbar.set_clim(0, np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.update_normal(self.image)
             self.gate_data_and_plot()
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
@@ -994,7 +997,7 @@ class NMPLImagePlotSpecData(Node):
                 self.full_data, self.buffer_data.softBinWidth_ns)
             self.setup_track(*self.selected_track)
             self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
-            self.colorbar.set_clim(0, np.amax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+            self.colorbar.set_clim(0, np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.update_normal(self.image)
             self.gate_data_and_plot()
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
@@ -1035,7 +1038,7 @@ class NMPLImagePlotSpecData(Node):
                 self.buffer_data.t[tr_ind] = np.arange(delay_ns, bins * bins_10ns_rounded + delay_ns, bins_10ns_rounded)
             self.setup_track(*self.selected_track)
             self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
-            self.colorbar.set_clim(0, np.amax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+            self.colorbar.set_clim(0, np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.update_normal(self.image)
             self.gate_data_and_plot()
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
@@ -1075,6 +1078,7 @@ class NMPLImagePlotSpecData(Node):
             print(e)
 
     def processData(self, data, pipeData):
+        start = time.clock()
         first_call = self.buffer_data is None
         try:
             self.full_data = deepcopy(data)
@@ -1085,13 +1089,15 @@ class NMPLImagePlotSpecData(Node):
             if first_call:
                 self.start()
             self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
-            self.colorbar.set_clim(0, np.amax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+            self.colorbar.set_clim(0, np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.update_normal(self.image)
             self.gate_data_and_plot()
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
             pass
         except Exception as e:
             print('while updateing plot, this happened: ', e)
+        end = time.clock()
+        print('plotting time was /ms : ', round((end - start)*1000, 3))
         return data
 
     def clear(self):

@@ -8,6 +8,7 @@ import random
 import sys
 
 import matplotlib.pyplot as plt
+import numpy as np
 from PyQt5 import QtWidgets
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -40,7 +41,8 @@ class Window(QtWidgets.QDialog):
         layout.addWidget(self.button)
         self.setLayout(layout)
         self.ax = self.figure.add_subplot(111)
-        data = [random.random() for i in range(10)]
+        data = [random.random() for i in range(100)]
+        data = np.random.random_sample(100)
         self.line = self.ax.add_line(Line2D(range(0, len(data)), data))
         self.ax.autoscale_view()
 
@@ -48,7 +50,9 @@ class Window(QtWidgets.QDialog):
     def plot(self):
         ''' plot some random stuff '''
         # random data
-        data = [random.random() for i in range(10)]
+        data = np.random.random_sample(100)
+        for i in range(50,61):
+            data[i] = np.nan
 
         # create an axis
         self.line.set_ydata(data)
