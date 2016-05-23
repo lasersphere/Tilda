@@ -23,7 +23,7 @@ from DBIsotope import DBIsotope
 from Spectra.FullSpec import FullSpec
 
 
-def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=None, col=None):
+def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=None, col=None, saving=False, show=True, isom=None):
     '''plot isotope iso'''
     iso = DBIsotope(db, iso_name, isovar, linevar)
     
@@ -36,7 +36,20 @@ def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=Non
         plot.plot(spec.toPlotE(laserfreq, col, spec.getPars()))
         plot.get_current_axes().set_xlabel('Energy [eV]')
     plot.get_current_figure().suptitle(iso_name)
-    plot.show()
+    if isom:
+        isoPlot(db, isom, isovar, linevar, as_freq, laserfreq, col, saving, show)
+    else:
+        if saving:
+            pathParts = str(db).split('/')
+            path = ''
+            for i in range(0,len(pathParts)-1,1):
+                path += pathParts[i] + '/'
+            path += 'simulations/'
+            plot.save(path + iso_name + '.png')
+        if show:
+            plot.show()
+        else:
+            plot.clear()
 
 
 def centerPlot(db, isoL, linevar = '', width = 1e6):
