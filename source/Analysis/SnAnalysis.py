@@ -23,27 +23,34 @@ db = 'V:/Projekte/COLLAPS/Sn/Measurement_and_Analysis_Christian/Sn.sqlite'
 
 
 '''Plotting spectra'''
-# isoL = []
-# for i in range(110,137):
-#     isoL.append(str(str(i)+'_Sn'))
-#     if i == 117 or i == 121 or i == 125 or i == 127 or i == 129 or i == 130 or i == 131:
-#         isoL.append(str(str(i)+'_Sn_m'))
-# isoL.append('137_Sn_11_2')
-# isoL.append('137_Sn_7_2')
-# isoL.append('137_Sn_3_2')
-# isoL.append('138_Sn')
-# Tools.centerPlot(db,isoL)
-# print(Physics.wavelenFromFreq(Physics.freqFromWavenumber(22110.525/2)))
-# Tools.isoPlot(db, '117_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525), saving=True, show=False, col=True, isom='117_Sn_m')
-# Tools.isoPlot(db, '121_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525), saving=True, show=False, col=True, isom='121_Sn_m')
-# Tools.isoPlot(db, '125_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525), saving=True, show=False, col=True, isom='125_Sn_m')
-# Tools.isoPlot(db, '127_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525), saving=True, show=False, col=True, isom='127_Sn_m')
-# Tools.isoPlot(db, '129_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525), saving=True, show=False, col=True, isom='129_Sn_m')
-# Tools.isoPlot(db, '130_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525), saving=True, show=False, col=True, isom='130_Sn_m')
-# Tools.isoPlot(db, '131_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525), saving=True, show=False, col=True, isom='131_Sn_m')
-#
-# for i in isoL:
-#    Tools.isoPlot(db, i, as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525), saving=True, show=False, col=True)
+isoL = []
+for i in range(110,137):
+    isoL.append(str(str(i)+'_Sn'))
+    if i == 117 or i == 121 or i == 125 or i == 127 or i == 129 or i == 130 or i == 131:
+        isoL.append(str(str(i)+'_Sn_m'))
+isoL.append('137_Sn_11_2')
+isoL.append('137_Sn_7_2')
+isoL.append('137_Sn_3_2')
+isoL.append('138_Sn')
+Tools.centerPlot(db,isoL)
+print(Physics.wavelenFromFreq(Physics.freqFromWavenumber(22110.525/2)))
+for i in isoL:
+   Tools.isoPlot(db, i, as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525),
+                 saving=True, show=False, col=True)
+Tools.isoPlot(db, '117_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525),
+              saving=True, show=False, col=True, isom_name='117_Sn_m')
+Tools.isoPlot(db, '121_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525),
+              saving=True, show=False, col=True, isom_name='121_Sn_m')
+Tools.isoPlot(db, '125_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525),
+              saving=True, show=False, col=True, isom_name='125_Sn_m')
+Tools.isoPlot(db, '127_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525),
+              saving=True, show=False, col=True, isom_name='127_Sn_m')
+Tools.isoPlot(db, '129_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525),
+              saving=True, show=False, col=True, isom_name='129_Sn_m')
+Tools.isoPlot(db, '130_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525),
+              saving=True, show=False, col=True, isom_name='130_Sn_m')
+Tools.isoPlot(db, '131_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525),
+              saving=True, show=False, col=True, isom_name='131_Sn_m')
 
 '''Crawling'''
 # Tools.crawl(db)
