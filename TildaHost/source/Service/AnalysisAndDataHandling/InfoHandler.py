@@ -7,44 +7,68 @@ Module Description: Module to hanlde the information coming from the fpga,
 
 32-bit input must begin with 'firstHeader' = 0100 and 'headerIndex' = 1
 """
+import logging
 
 
 class InfoHandler:
     def __init__(self):
-        self.completed_bunches_in_step = None
+        self.started_bunches_in_step = 0
+        self.volt_index = 0
+        self.total_started_bunches = 0
+        self.total_completed_steps = 0
+        self.total_started_scans = 0
 
     def setup(self):
-        if self.completed_bunches_in_step is None:
-            self.completed_bunches_in_step = 0
+        self.started_bunches_in_step = 0
+        self.volt_index = 0
+        self.total_started_bunches = 0
+        self.total_completed_steps = 0
+        self.total_started_scans = 0
 
     def clear(self):
-        self.completed_bunches_in_step = None
+        self.setup()
 
     def info_handle(self, pipe_data, payload):
         """
-        will directly write into pipeData
-        :param pipe_data:
-        :param payload:
+        call this whenever an info 32b element is read from fpga.
+        This function will return the current voltage index.
         """
+        step_complete = False
         track_ind, track_name = pipe_data['pipeInternals']['activeTrackNumber']
         if payload == 1:  # means step complete
-            bun = pipe_data[track_name].get('nOfBunches', -1)
-            # step will always be complete if 'nOfBunches' cannot be found, e.g. in cont seq
-            self.completed_bunches_in_step += 1
-            if self.completed_bunches_in_step == bun or bun < 0:
-                self.completed_bunches_in_step = 0
-                comp_steps = pipe_data[track_name]['nOfCompletedSteps'] + 1
-                steps = pipe_data[track_name]['nOfSteps']
-                volt_index = comp_steps % steps
-                pipe_data[track_name]['nOfCompletedSteps'] = comp_steps
-                return volt_index
+            step_complete = True
+            self.started_bunches_in_step = 0
+            self.total_completed_steps += 1
+            # logging.debug('total num of steps completed: ' + str(self.total_completed_steps))
+            pipe_data[track_name]['nOfCompletedSteps'] = self.total_completed_steps
 
-        elif payload == 2:  # means scan complete
-            # pipe_data[track_name]['nOfScans'] += 1  # that's dumb. is it necessary?
-            #  This should be something like nOfCompletedScans therefore 'nOfCompletedSteps'
-            # in comination with the nOfSteps does the job.
-            volt_index = 0
-            return volt_index
+            self.volt_index += self.sign_for_volt_ind(pipe_data[track_name]['invertScan'])
+            return self.volt_index, step_complete
+
+        elif payload == 2:  # means scan started
+            self.total_started_scans += 1
+            # logging.debug('scan started: ' + str(self.total_started_scans))
+            if pipe_data[track_name]['invertScan']:
+                if self.total_started_scans % 2 == 0:
+                    self.volt_index = -1
+                    return self.volt_index, step_complete
+                else:
+                    self.volt_index = 0
+            else:
+                self.volt_index = 0
+            return self.volt_index, step_complete
 
         elif payload == 3:  # means new bunch
-            return None
+            self.started_bunches_in_step += 1
+            self.total_started_bunches += 1
+            # logging.debug('total num of bunches started: ' + str(self.total_started_bunches))
+            return None, step_complete
+
+    def sign_for_volt_ind(self, invert_scan):
+        even_scan_num = self.total_started_scans % 2 == 0
+        if invert_scan:
+            if even_scan_num:  # in every even scan, scan dir turns around
+                return -1
+            else:
+                return 1
+        return 1

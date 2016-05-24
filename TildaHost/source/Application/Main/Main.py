@@ -70,8 +70,8 @@ class Main(QtCore.QObject):
 
         try:
             # pass
-            # self.work_dir_changed('E:/lala')
-            self.work_dir_changed('C:/temp108')
+            self.work_dir_changed('D:/lala')
+            # self.work_dir_changed('C:/temp108')
             # self.work_dir_changed('D:\Tilda_Debugging')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
@@ -228,6 +228,8 @@ class Main(QtCore.QObject):
         remove a track from the given isotope dictionary.
         """
         self.scan_pars.get(iso).pop(track)
+        self.scan_pars[iso]['isotopeData']['nOfTracks'] += -1
+        self.scan_pars[iso]['isotopeData']['nOfTracks'] = max(0, self.scan_pars[iso]['isotopeData']['nOfTracks'])
 
     def add_next_track_to_iso_in_scan_pars(self, iso):
         """

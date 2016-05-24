@@ -1122,7 +1122,6 @@ class NCSSortRawDatatoArray(Node):
         """
         super(NCSSortRawDatatoArray, self).__init__()
         self.type = 'NSortRawDatatoArray'
-        self.voltArray = None
         self.scalerArray = None
         self.curVoltIndex = None
         self.totalnOfScalerEvents = None
@@ -1133,9 +1132,6 @@ class NCSSortRawDatatoArray(Node):
     def start(self):
         scand = self.Pipeline.pipeData
         tracks, tracks_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
-
-        if self.voltArray is None:
-            self.voltArray = Form.create_default_volt_array_from_scandict(scand)
         if self.scalerArray is None:
             self.scalerArray = Form.create_default_scaler_array_from_scandict(scand)
         if self.curVoltIndex is None:
@@ -1152,59 +1148,68 @@ class NCSSortRawDatatoArray(Node):
         ret = None
         scan_complete = False
         for i, j in enumerate(data):
-            if j['headerIndex'] == 0:  # its an event from the time resolved sequencer
-                header = (j['firstHeader'] << 4) + j['secondHeader']
-                for pmt_ind, pow2 in enumerate(self.comp_list):
-                    if header & pow2:  # bitwise and to determine if this pmt got a count
-                        try:
-                            self.scalerArray[track_ind][pmt_ind][self.curVoltIndex][j['payload']] += 1
-                        except Exception as e:
-                            print('excepti : ', e)
-                            # print('scaler event: ', track_ind, self.curVoltIndex, pmt_ind, j['payload'])
-                            # timestamp equals index in time array of the given scaler
-            elif j['firstHeader'] == Progs.infoHandler.value:
-                v_ind = self.info_handl.info_handle(pipeData, j['payload'])
-                if v_ind is not None:
-                    self.curVoltIndex = v_ind
-                scan_complete = pipeData[track_name]['nOfCompletedSteps'] == pipeData[track_name]['nOfSteps']
-                if scan_complete:
-                    if ret is None:
-                        ret = []
-                    ret.append((self.scalerArray, scan_complete))
-                    logging.debug('Voltindex: ' + str(self.curVoltIndex) +
-                                  'completede steps:  ' + str(pipeData[track_name]['nOfCompletedSteps']))
-                    self.scalerArray = Form.create_default_scaler_array_from_scandict(pipeData)  # deletes all entries
-                    scan_complete = False
-                pass
+            try:
+                if j['headerIndex'] == 0:  # its an event from the time resolved sequencer
+                    header = (j['firstHeader'] << 4) + j['secondHeader']
+                    for pmt_ind, pow2 in enumerate(self.comp_list):
+                        if header & pow2:  # bitwise and to determine if this pmt got a count
+                            try:
+                                self.scalerArray[track_ind][pmt_ind][self.curVoltIndex][j['payload']] += 1
+                            except Exception as e:
+                                print('excepti : ', e)
+                                # print('scaler event: ', track_ind, self.curVoltIndex, pmt_ind, j['payload'])
+                                # timestamp equals index in time array of the given scaler
+                elif j['firstHeader'] == Progs.infoHandler.value:
+                    v_ind, step_completed = self.info_handl.info_handle(pipeData, j['payload'])
+                    if v_ind is not None:
+                        self.curVoltIndex = v_ind
+                    compl_steps = pipeData[track_name]['nOfCompletedSteps']
+                    nofsteps = pipeData[track_name]['nOfSteps']
+                    scan_complete = compl_steps % nofsteps == 0
+                    if scan_complete and step_completed:
+                        if ret is None:
+                            ret = []
+                        ret.append((self.scalerArray, scan_complete))
+                        logging.debug('Voltindex: ' + str(self.curVoltIndex) +
+                                      ' completede steps:  ' + str(pipeData[track_name]['nOfCompletedSteps']) +
+                                      ' item is: ' + str(j['payload']))
+                        self.scalerArray = Form.create_default_scaler_array_from_scandict(pipeData)
+                        # deletes all entries
 
-            elif j['firstHeader'] == Progs.errorHandler.value:  # error send from fpga
-                logging.error('fpga sends error code: ' + str(j['payload']) + 'or in binary: ' + str(
-                    '{0:032b}'.format(j['payload'])))
+                elif j['firstHeader'] == Progs.errorHandler.value:  # error send from fpga
+                    logging.error('fpga sends error code: ' + str(j['payload']) + 'or in binary: ' + str(
+                        '{0:032b}'.format(j['payload'])))
 
-            elif j['firstHeader'] == Progs.dac.value:  # its a voltage step
-                self.curVoltIndex, self.voltArray = find_volt_in_array(j['payload'], self.voltArray, track_ind)
-
-            elif j['firstHeader'] == Progs.continuousSequencer.value:
-                '''scaler entry '''
-                self.totalnOfScalerEvents[track_ind] += 1
-                # pipeData[track_name]['nOfCompletedSteps'] = self.totalnOfScalerEvents[
-                # track_ind] // 8  # floored Quotient
-                # logging.debug('total completed steps: ' + str(pipeData[track_name]['nOfCompletedSteps']))
-                try:  # only add to scalerArray, when pmt is in activePmtList.
-                    pmt_index = pipeData[track_name]['activePmtList'].index(j['secondHeader'])
-                    self.scalerArray[track_ind][pmt_index][self.curVoltIndex] += j['payload']
-                except ValueError:
+                elif j['firstHeader'] == Progs.dac.value:  # its a voltage step
+                    # print('trying to find:', j['payload'], ' in: ', self.voltArray)
+                    # self.curVoltIndex, self.voltArray = find_volt_in_array(j['payload'], self.voltArray, track_ind)
                     pass
-                if CsAna.checkIfScanComplete(pipeData, self.totalnOfScalerEvents[track_ind], track_name):
-                    # one Scan over all steps is completed, add Data to return array and clear local buffer.
-                    scan_complete = True
-                    if ret is None:
-                        ret = []
-                    ret.append((self.scalerArray, scan_complete))
-                    logging.debug('Voltindex: ' + str(self.curVoltIndex) +
-                                  'completede steps:  ' + str(pipeData[track_name]['nOfCompletedSteps']))
-                    self.scalerArray = Form.create_default_scaler_array_from_scandict(pipeData)  # deletes all entries
-                    scan_complete = False
+
+                elif j['firstHeader'] == Progs.continuousSequencer.value:
+                    '''scaler entry '''
+                    self.totalnOfScalerEvents[track_ind] += 1
+                    # pipeData[track_name]['nOfCompletedSteps'] = self.totalnOfScalerEvents[
+                    # track_ind] // 8  # floored Quotient
+                    # logging.debug('total completed steps: ' + str(pipeData[track_name]['nOfCompletedSteps']))
+                    try:  # only add to scalerArray, when pmt is in activePmtList.
+                        pmt_index = pipeData[track_name]['activePmtList'].index(j['secondHeader'])
+                        self.scalerArray[track_ind][pmt_index][self.curVoltIndex] += j['payload']
+                    except ValueError:
+                        pass
+                    if CsAna.checkIfScanComplete(pipeData, self.totalnOfScalerEvents[track_ind], track_name):
+                        # one Scan over all steps is completed, add Data to return array and clear local buffer.
+                        scan_complete = True
+                        if ret is None:
+                            ret = []
+                        ret.append((self.scalerArray, scan_complete))
+                        logging.debug('Voltindex: ' + str(self.curVoltIndex) +
+                                      ' completede steps:  ' + str(pipeData[track_name]['nOfCompletedSteps']) +
+                                      ' cont_seq item is: ' + str(j['payload']))
+                        self.scalerArray = Form.create_default_scaler_array_from_scandict(
+                            pipeData)  # deletes all entries
+                        scan_complete = False
+            except Exception as e:
+                print('error while sorting: ', e, j)
         try:
             if ret is None:
                 ret = []
