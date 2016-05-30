@@ -9,12 +9,12 @@ import os
 import time
 import numpy as np
 import ctypes
+import datetime
 
 
-class DigitialMultiMeter:
+class Ni4071:
     """
-    Class for accessing the digital Multimeter, preferably the NI-4071 7 1/2 Digit Multimeter.
-    Will be included in the future.
+    Class for accessing the Nationale Instruments 4071 digital Multimeter.
     """
 
     def __init__(self, reset=True, dev_name_str='PXI1Slot5', pwr_line_freq=50):
@@ -402,17 +402,395 @@ class DigitialMultiMeter:
             self.session, max_time, number_to_read, array_of_values, ctypes.byref(number_of_read_elements))
         return np.ctypeslib.as_array(array_of_values)[0:number_of_read_elements.value]
 
+    def check_over_range(self, measurement):
+        """
+        Takes a measurement value and determines if the value is a valid measurement
+         or a value indicating that an overrange condition occurred.
+        :param measurement: dbl, is the measured value returned from the DMM.
+        Note  If an overrange condition occurs, the Measurement value
+        contains an IEEE-defined NaN (Not a Number) value.
+        :return: bool, True if overrange
+        """
+        ret_bool = ctypes.c_bool()
+        self.dll.niDMM_IsOverRange(self.session, ctypes.c_double(measurement), ctypes.byref(ret_bool))
+        return ret_bool.value
+
+    ''' low-level Acquisition '''
+
+    def initiate_measurement(self):
+        """
+        Initiates an acquisition.
+         After you call this VI, the DMM leaves the Idle state and enters the Wait-For-Trigger state.
+          If trigger is set to Immediate mode, the DMM begins acquiring measurement data.
+          Use fetch_single_meas(), niDMM Fetch Multi Point, or niDMM Fetch Waveform to retrieve the measurement data.
+        """
+        self.dll.niDMM_Initiate(self.session)
+
+    def fetch_single_meas(self, max_time_ms=-1):
+        """
+        Returns the value from a previously initiated measurement.
+        You must call initiate_measurement() before calling this function.
+        :param max_time_ms: int, specifies the maximum time allowed for this VI to complete in milliseconds.
+         0-86400000 allowed.
+         -1 means Auto
+        :return: dbl, measurement value
+        """
+        max_time_ms = ctypes.c_int32(max_time_ms)
+        read = ctypes.c_double()
+        self.dll.niDMM_Fetch(self.session, max_time_ms, ctypes.byref(read))
+        return read.value
+
+    def fetch_multiple_meas(self, max_time_ms=-1, num_to_read=4):
+        """
+        Returns an array of values from a previously initiated multipoint measurement.
+        The number of measurements the DMM makes is determined by the values you specify
+        for the Trigger Count and Sample Count parameters of niDMM Configure Multi Point.
+        You must call initiate_measurement() to initiate a measurement before calling this function
+        :param max_time_ms: int, specifies the maximum time allowed for this VI to complete in milliseconds.
+         0-86400000 allowed.
+         -1 means Auto
+        :param num_to_read: int, specifies the number of measurements to acquire.
+        The maximum number of measurements for a finite acquisition is the (Trigger Count x Sample Count)
+        parameters in config_multi_point_meas()
+        For continuous acquisitions, up to 100,000 points can be returned at once.
+        :return: numpy array with all values
+        """
+        max_time = ctypes.c_int32(max_time_ms)
+        array_of_values = ctypes.c_double * num_to_read
+        array_of_values = array_of_values()
+        number_to_read = ctypes.c_int32(num_to_read)
+        number_of_read_elements = ctypes.c_int32()
+        self.dll.niDMM_FetchMultiPoint(
+            self.session, max_time, number_to_read, array_of_values, ctypes.byref(number_of_read_elements))
+        return np.ctypeslib.as_array(array_of_values)[0:number_of_read_elements.value]
+
+    def fetch_waveform(self, max_time_ms=-1, num_to_read=1):
+        """
+        Returns an array of values from a previously initiated multipoint measurement.
+        The number of measurements the DMM makes is determined by the values you specify
+        for the Trigger Count and Sample Count parameters of niDMM Configure Multi Point.
+        You must call initiate_measurement() to initiate a measurement before calling this function
+        :param max_time_ms: int, specifies the maximum time allowed for this VI to complete in milliseconds.
+         0-86400000 allowed.
+         -1 means Auto
+        :param num_to_read: int, specifies the number of measurements to acquire.
+        The maximum number of measurements for a finite acquisition is the (Trigger Count x Sample Count)
+        parameters in config_multi_point_meas()
+        For continuous acquisitions, up to 100,000 points can be returned at once.
+        :return: numpy array with all values
+        """
+        max_time = ctypes.c_int32(max_time_ms)
+        array_of_values = ctypes.c_double * num_to_read
+        array_of_values = array_of_values()
+        number_to_read = ctypes.c_int32(num_to_read)
+        number_of_read_elements = ctypes.c_int32()
+        self.dll.niDMM_FetchWaveform(
+            self.session, max_time, number_to_read, array_of_values, ctypes.byref(number_of_read_elements))
+        return np.ctypeslib.as_array(array_of_values)[0:number_of_read_elements.value]
+
     def readstatus(self):
+        """
+        Returns measurement backlog and acquisition status.
+        :return: (backlog, acqusition_state)
+          * Backlog specifies the number of measurements available to be read.
+           If the backlog continues to increase, data is eventually overwritten, resulting in an error.
+          * Acquisition State indicates status of the acquisition.
+                0 Running
+                1 Finished with Backlog
+                2 Finished with no Backlog
+                3 Paused
+                4 No acquisition in progress
+        """
         ret_backlog = ctypes.c_int32()
         ret_acqstate = ctypes.c_int16()
         self.dll.niDMM_ReadStatus(self.session, ctypes.byref(ret_backlog), ctypes.byref(ret_acqstate))
         return ret_backlog.value, ret_acqstate.value
 
+    def abort_meas(self):
+        """
+        Aborts a previously initiated measurement and returns the DMM to the Idle state.
+        """
+        self.dll.niDMM_Abort(self.session)
+
+    ''' Utility '''
+
+    def reset_dev(self):
+        """
+        Resets the instrument to a known state and sends initialization commands to the instrument.
+        The initialization commands set instrument settings to the state
+        necessary for the operation of the instrument driver.
+        :return:
+        """
+        self.dll.niDMM_reset(self.session)
+
+    def self_test(self):
+        """
+        Performs a self test on the DMM to ensure that the DMM is functioning properly.
+        Self test does not calibrate the DMM.
+        This function calls reset_dev(), and any configurations previous to the call will be lost.
+        All properties will be set to their default values after the call returns.
+        :return: (int, str), (test_res_num, test_res_message):
+            * test_res_num, contains the value returned from the instrument self test. Zero indicates success.
+            * For the NI 4065 and NI 4070/4071/4072, the error code returned for a self-test failure
+             is NIDMM_ERROR_SELF_TEST_FAILURE. This error code indicates that the DMM should be repaired.
+        """
+        test_res = ctypes.c_int16()
+        test_message = ctypes.create_string_buffer("".encode('utf-8'), 256)
+        self.dll.niDMM_self_test(self.session, ctypes.byref(test_res), test_message)
+        return test_res.value, test_message.value.decode('utf-8')
+
+    def revision_query(self):
+        """
+        Returns the revision numbers of the instrument driver and instrument firmware.
+        :return: (str, str), (instr. driver rev, firmware rev.)
+        """
+        instr_driver_rev = ctypes.create_string_buffer("".encode('utf-8'), 256)
+        firmware_rev = ctypes.create_string_buffer("".encode('utf-8'), 256)
+        self.dll.niDMM_revision_query(self.session, instr_driver_rev, firmware_rev)
+        return instr_driver_rev.value.decode('utf-8'), firmware_rev.value.decode('utf-8')
+
+    def get_digits_of_precision(self):
+        """
+        Returns the digits of precision calculated from the range and resolution information
+        specified in config_meas_digits()
+        :return: dbl, digits
+        """
+        ret_digits = ctypes.c_double()
+        self.dll.niDMM_GetDigitsOfPrecision(self.session, ctypes.byref(ret_digits))
+        return ret_digits.value
+
+    def get_error_message(self):
+        """
+        Takes the error cluster returned by the VIs, interprets it, and returns it as a user-readable string.
+        :return: int, str
+        """
+        ret_status = ctypes.c_int32(0)
+        ret_message = ctypes.create_string_buffer("".encode('utf-8'), 256)
+        self.dll.niDMM_error_message(self.session, ret_status, ret_message)
+        return ret_status.value, ret_message.value.decode('utf-8')
+
+    ''' Calibration '''
+
+    def self_calibration(self):
+        """
+        Executes the self-calibration routine to maintain measurement accuracy.
+
+        Note  This VI calls niDMM Reset, and any configurations previous to the call will be lost.
+        All properties will be set to their default values after the call returns.
+        """
+        self.dll.niDMM_SelfCal(self.session)
+
+    def get_calibration_count(self, internal=True):
+        """
+        Returns the calibration count for the specified type of calibration.
+        :param internal: bool, True for internal, False for external
+        :return: int, number of calbrations of that type.
+        """
+        cal_type = ctypes.c_int32(1)
+        if internal:
+            cal_type = ctypes.c_int32(0)
+        cal_count = ctypes.c_int32()
+        self.dll.niDMM_GetCalCount(self.session, cal_type, ctypes.byref(cal_count))
+        return cal_count.value
+
     def get_dmm_dev_temp(self):
+        """
+        Returns the current temperature of the NI 4070/4071/4072.
+        :return: dbl, temperature in deg Celsius
+        """
         reserved_str = ctypes.create_string_buffer("".encode('utf-8'))
         temp = ctypes.c_double()
         self.dll.niDMM_GetDevTemp(self.session, reserved_str, ctypes.byref(temp))
         return temp.value
+
+    def get_last_cal_temp(self, internal=True):
+        """
+        Returns the temperature during the last calibration procedure on the NI 4070/4071/4072.
+        :param internal: bool, True for internal, False for external
+        :return: dbl, temperature in deg C
+        """
+        cal_type = ctypes.c_int32(1)
+        if internal:
+            cal_type = ctypes.c_int32(0)
+        temp = ctypes.c_double()
+        self.dll.niDMM_GetLastCalTemp(self.session, cal_type, ctypes.byref(temp))
+        return temp.value
+
+    def get_cal_date_and_time(self, internal=True):
+        """
+        Returns the temperature during the last calibration procedure on the NI 4070/4071/4072.
+        :param internal: bool, True for internal, False for external
+        :return: datestr, date
+        """
+        cal_type = ctypes.c_int32(1)
+        if internal:
+            cal_type = ctypes.c_int32(0)
+        month = ctypes.c_int32()
+        day = ctypes.c_int32()
+        year = ctypes.c_int32()
+        hour = ctypes.c_int32()
+        minute = ctypes.c_int32()
+        self.dll.niDMM_GetCalDateAndTime(self.session, cal_type,
+                                         ctypes.byref(month), ctypes.byref(day), ctypes.byref(year),
+                                         ctypes.byref(hour), ctypes.byref(minute))
+        date = datetime.datetime(
+            month=month.value, day=day.value, year=year.value, hour=hour.value, minute=minute.value)
+        date_str = date.strftime('%Y-%m-%d %H:%m')
+        return date_str, date
+
+    ''' property Node operations: '''
+
+    def read_property_node(self, property_type, attr_id, name_str="", attr_base_str='IVI_SPECIFIC_PUBLIC_ATTR_BASE'):
+        """
+        read an attribute with a given id and a given type. Both can be found in the nidmm.h File if necessary.
+        :param attr_base_str: str, name of the IVI ATTR Base
+        :param property_type: ctypes.type
+        :param name_str: Some attributes are unique for each channel. For these, pass the name of the channel.
+         Other attributes are unique for each switch. Pass VI_NULL or an empty string for this parameter.
+          The default value is an empty string.
+        :param attr_id: int, id of the desired attribute. Can be found in the nidmm.h File
+        :return: value of the readback, type depends on input
+        """
+        ivi_attr_base = 1000000
+        bases = {'IVI_SPECIFIC_PUBLIC_ATTR_BASE': 150000 + ivi_attr_base,
+                 'IVI_SPECIFIC_PRIVATE_ATTR_BASE': 200000 + ivi_attr_base,
+                 'IVI_CLASS_PUBLIC_ATTR_BASE': ivi_attr_base + 250000}
+        # from header files:
+        # nidmm.h:
+        # define NIDMM_ATTR_BASE            IVI_SPECIFIC_PUBLIC_ATTR_BASE
+        # define NIDMM_ATTR_PRIVATE_BASE             IVI_SPECIFIC_PRIVATE_ATTR_BASE
+        # ivi.h:
+        # define IVI_ATTR_BASE                   1000000
+        # define IVI_SPECIFIC_PUBLIC_ATTR_BASE   (IVI_ATTR_BASE + 150000)
+        # /* base for public attributes of specific drivers */
+        # define IVI_SPECIFIC_PRIVATE_ATTR_BASE  (IVI_ATTR_BASE + 200000)
+        #    /* base for private attributes of specific drivers */
+        attr_base = bases[attr_base_str]
+        attr_id += attr_base
+        attr_id = ctypes.c_int32(attr_id)
+        name = ctypes.create_string_buffer(name_str.encode('utf-8'), 256)
+        if isinstance(property_type, ctypes.c_int32):
+            read_back = ctypes.c_int32()
+            self.dll.niDMM_GetAttributeViInt32(self.session, name, attr_id, ctypes.byref(read_back))
+            return read_back.value
+        elif isinstance(property_type, ctypes.c_double):
+            read_back = ctypes.c_double()
+            self.dll.niDMM_GetAttributeViReal64(self.session, name, attr_id, ctypes.byref(read_back))
+            return read_back.value
+        elif isinstance(property_type, ctypes.c_char):
+            read_back = ctypes.create_string_buffer('', 256)
+            self.dll.niDMM_GetAttributeViString(self.session, name, attr_id, ctypes.byref(read_back))
+            return read_back.value.decode('utf-8')
+        elif isinstance(property_type, ctypes.c_bool):
+            read_back = ctypes.c_bool()
+            self.dll.niDMM_GetAttributeViBoolean(self.session, name, attr_id, ctypes.byref(read_back))
+            return read_back.value
+
+    def set_property_node(self, set_val, attr_id, name_str="", attr_base_str='IVI_SPECIFIC_PUBLIC_ATTR_BASE'):
+        """
+        set an attribute with a given id and a given type. Both can be found in the nidmm.h File if necessary.
+        :param set_val: ctypes.c_double etc. object, with the desired value
+        :param attr_id: int, id of the desired attribute. Can be found in the nidmm.h File
+        :param name_str: Some attributes are unique for each channel. For these, pass the name of the channel.
+         Other attributes are unique for each switch. Pass VI_NULL or an empty string for this parameter.
+          The default value is an empty string.
+        :param attr_base_str: str, name of the IVI ATTR Base
+        """
+        ivi_attr_base = 1000000
+        bases = {'IVI_SPECIFIC_PUBLIC_ATTR_BASE': 150000 + ivi_attr_base,
+                 'IVI_SPECIFIC_PRIVATE_ATTR_BASE': 200000 + ivi_attr_base,
+                 'IVI_CLASS_PUBLIC_ATTR_BASE': ivi_attr_base + 250000}
+        # from header files:
+        # nidmm.h:
+        # define NIDMM_ATTR_BASE            IVI_SPECIFIC_PUBLIC_ATTR_BASE
+        # define NIDMM_ATTR_PRIVATE_BASE             IVI_SPECIFIC_PRIVATE_ATTR_BASE
+        # ivi.h:
+        # define IVI_ATTR_BASE                   1000000
+        # define IVI_SPECIFIC_PUBLIC_ATTR_BASE   (IVI_ATTR_BASE + 150000)
+        # /* base for public attributes of specific drivers */
+        # define IVI_SPECIFIC_PRIVATE_ATTR_BASE  (IVI_ATTR_BASE + 200000)
+        #    /* base for private attributes of specific drivers */
+        attr_base = bases[attr_base_str]
+        attr_id += attr_base
+        attr_id = ctypes.c_int32(attr_id)
+        name = ctypes.create_string_buffer(name_str.encode('utf-8'), 256)
+        if isinstance(set_val, ctypes.c_int32):
+            self.dll.niDMM_SetAttributeViInt32(self.session, name, attr_id, set_val)
+        elif isinstance(set_val, ctypes.c_double):
+            self.dll.niDMM_SetAttributeViReal64(self.session, name, attr_id, set_val)
+        elif isinstance(set_val, ctypes.c_char):
+            self.dll.niDMM_SetAttributeViString(self.session, name, attr_id, set_val)
+        elif isinstance(set_val, ctypes.c_bool):
+            self.dll.niDMM_SetAttributeViBoolean(self.session, name, attr_id, set_val)
+
+    ''' self written functions (e.g. encapsulating property nodes) '''
+
+    def set_input_resistance(self, greater_10_g_ohm=True):
+        """
+        function to set the input resistance of the NI-4071
+        :param greater_10_g_ohm: bool,
+            True if you want an input resistance higher than 10GOhm
+            False if you want 10MOhm input resistance
+
+         NOTE: >10 GOhm only supported until 10V range!
+        """
+        NIDMM_VAL_1_MEGAOHM = 1000000.0
+        NIDMM_VAL_10_MEGAOHM = 10000000.0
+        NIDMM_VAL_GREATER_THAN_10_GIGAOHM = 10000000000.0
+        NIDMM_VAL_RESISTANCE_NA = 0.0
+        NIDMM_ATTR_INPUT_RESISTANCE_id = 29
+        resistance = ctypes.c_double(NIDMM_VAL_10_MEGAOHM)
+        if greater_10_g_ohm:
+            resistance = ctypes.c_double(NIDMM_VAL_GREATER_THAN_10_GIGAOHM)
+        self.set_property_node(resistance, NIDMM_ATTR_INPUT_RESISTANCE_id)
+
+    def get_input_resistance(self):
+        """
+        function to get the currently used input resistance.
+        :return: (dbl, str),
+        (value of the input resistance as defined in nidmm.h, user readable output)
+        """
+        NIDMM_VAL_1_MEGAOHM = 1000000.0
+        NIDMM_VAL_10_MEGAOHM = 10000000.0
+        NIDMM_VAL_GREATER_THAN_10_GIGAOHM = 10000000000.0
+        NIDMM_VAL_RESISTANCE_NA = 0.0
+        NIDMM_ATTR_INPUT_RESISTANCE_id = 29
+        resistance_vals = [NIDMM_VAL_1_MEGAOHM, NIDMM_VAL_10_MEGAOHM,
+                           NIDMM_VAL_GREATER_THAN_10_GIGAOHM, NIDMM_VAL_RESISTANCE_NA]
+        resistance_name = ['1_M_Ohm', '10_M_Ohm', '>10_G_Ohm', 'Not_Available']
+        val = self.read_property_node(ctypes.c_double(), NIDMM_ATTR_INPUT_RESISTANCE_id)
+        name = resistance_name[resistance_vals.index(val)]
+        return val, name
+
+    def get_range(self):
+        """
+        read the currently used range.
+        :return: dbl, value for the range.
+        valid ranges: 0.1, 1.0, 10.0, 100.0, 1000.0
+        Auto range ON: -1.0
+        Auto range OFF: -2.0
+        Auto range ONCE: -3.0
+        """
+        val = self.read_property_node(ctypes.c_double(), 2,
+                                      attr_base_str='IVI_CLASS_PUBLIC_ATTR_BASE')
+        return val
+
+    def set_range(self, range_val):
+        """
+        function for only setting the range of the dmm
+        :param range_val: dbl, value for the range.
+        valid ranges: 0.1, 1.0, 10.0, 100.0, 1000.0
+        Auto range ON: -1.0
+        Auto range OFF: -2.0
+        Auto range ONCE: -3.0
+        """
+        self.set_property_node(ctypes.c_double(range_val), 2,
+                               attr_base_str='IVI_CLASS_PUBLIC_ATTR_BASE')
+
+
+# there are more functions that can be found in the nidmm.h file,
+# but those above were the ones in the quick reference and most important ones.
+# how to start external calibration??  niDMM_InitExtCal  -> not in quick ref!
 
 
 def test_multi():
@@ -425,8 +803,12 @@ def test_wfm():
     print(dmm.read_waveform(num_to_read=100))
 
 
+def test_self_test():
+    print(dmm.self_test())
+
+
 if __name__ == "__main__":
-    dmm = DigitialMultiMeter()
+    dmm = Ni4071()
     print(dmm.readstatus())
     i = 0
     # while i < 100:
@@ -434,6 +816,26 @@ if __name__ == "__main__":
     #     i += 1
     #     time.sleep(0.5)
     # test_multi()
-    test_wfm()
+    # test_wfm()
+    # test_self_test()
+    # print(dmm.revision_query())
+    # print(dmm.get_error_message())
+    # # dmm.self_calibration()
+    # print(dmm.get_calibration_count())
+    # print(dmm.get_cal_date_and_time())
+    # print(dmm.get_last_cal_temp())
+    print(dmm.get_range())
+    dmm.config_meas_digits(1, 100.0, 7.5)
+    print(dmm.get_range())
+
+    print(dmm.readstatus())
+    dmm.set_input_resistance(True)
+    print(dmm.get_input_resistance())
+    dmm.set_range(10.0)
+    # print(dmm.read_single_voltage())
+    dmm.set_input_resistance(True)
+    # print(dmm.read_single_voltage())
+    print(dmm.get_input_resistance())
+    print(dmm.get_range())
     # print(dmm.read_single_voltage())
     dmm.de_init_dmm()
