@@ -16,6 +16,7 @@ from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
 from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 from Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
 from Interface.TildaPassiveUi.TildaPassiveUi import TildaPassiveUi
+from Interface.DmmUi.DmmUi import DmmLiveViewUi
 import MPLPlotter as MPlPlotter
 
 import Application.Config as Cfg
@@ -40,6 +41,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.scan_progress_win = None
         self.simple_counter_gui = None
         self.tilda_passive_gui = None
+        self.dmm_live_view_win = None
 
         self.actionWorking_directory.triggered.connect(self.choose_working_dir)
         self.actionVersion.triggered.connect(self.open_version_win)
@@ -51,6 +53,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionSet_acceleration_voltage.triggered.connect(self.set_acc_volt)
         self.actionTilda_Passive.triggered.connect(self.start_tilda_passive_gui)
         self.actionLoad_spectra.triggered.connect(self.load_spectra)
+        self.actionDigital_Multimeters.triggered.connect(self.open_dmm_live_view_win)
 
         """ connect double clicks on labels:"""
         self.label_workdir_set.mouseDoubleClickEvent = self.workdir_dbl_click
@@ -60,6 +63,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.subscribe_to_main()
         self.show()
 
+
+    ''' connected actions '''
     def workdir_dbl_click(self, event):
         self.choose_working_dir()
 
@@ -105,49 +110,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             'choose working directory', os.path.expanduser('~'))
         return Cfg._main_instance.work_dir_changed(workdir)
 
-    def open_version_win(self):
-        VersionUi()
-
-    def open_scan_ctrl_win(self):
-        if Cfg._main_instance.working_directory is None:
-            if self.choose_working_dir() is None:
-                return None
-        self.act_scan_wins.append(ScanControlUi(self))
-
-    def scan_control_win_closed(self, win_ref):
-        self.act_scan_wins.remove(win_ref)
-
-    def open_scan_progress_win(self):
-        try:
-            self.scan_progress_win = ScanProgressUi(self)
-        except Exception as e:
-            print('erroror:', e)
-        # pass
-
-    def close_scan_progress_win(self):
-        self.scan_progress_win = None
-
-    def open_volt_meas_win(self):
-        self.measure_voltage_win = VoltMeasConfUi(Cfg._main_instance.measure_voltage_pars, self)
-
-    def close_volt_meas_win(self):
-        self.measure_voltage_win = None
-
-    def open_post_acc_win(self):
-        self.post_acc_win = PostAccControlUi(self)
-
-    def close_post_acc_win(self):
-        self.post_acc_win = None
-
-    def open_simple_counter_win(self):
-        sc_dial = SimpleCounterDialogUi()  # blocking!
-        if sc_dial.start:
-            self.simple_counter_gui = SimpleCounterRunningUi(self, sc_dial.act_pmts, sc_dial.datapoints)
-            # Cfg._main_instance.start_simple_counter(sc_dial.act_pmts, sc_dial.datapoints)
-
-    def close_simple_counter_win(self):
-        self.simple_counter_gui = None
-
     def set_laser_freq(self):
         laser_freq, ok = QtWidgets.QInputDialog.getDouble(self, 'Laser', 'laser wavenumber [cm-1]',
                                                           0, 0, 9999999,
@@ -162,16 +124,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         if ok:
             Cfg._main_instance.acc_volt_changed(acc_volt)
 
-    def start_tilda_passive_gui(self):
-        if Cfg._main_instance.working_directory is None:
-            if self.choose_working_dir() is None:
-                return None
-        if self.tilda_passive_gui is None:
-            self.tilda_passive_gui = TildaPassiveUi(self)
-
-    def close_tilda_passive(self):
-        self.tilda_passive_gui = None
-
     def load_spectra(self):
         if Cfg._main_instance.working_directory is None:
             if self.choose_working_dir() is None:
@@ -179,6 +131,67 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         file = QtWidgets.QFileDialog.getOpenFileName(
             self, 'choose an xml file', Cfg._main_instance.working_directory, '*.xml')[0]
         Cfg._main_instance.load_spectra_to_main(file)
+
+    ''' open windows'''
+    def open_version_win(self):
+        VersionUi()
+
+    def open_scan_ctrl_win(self):
+        if Cfg._main_instance.working_directory is None:
+            if self.choose_working_dir() is None:
+                return None
+        self.act_scan_wins.append(ScanControlUi(self))
+
+    def open_scan_progress_win(self):
+        try:
+            self.scan_progress_win = ScanProgressUi(self)
+        except Exception as e:
+            print('erroror:', e)
+        # pass
+
+    def open_volt_meas_win(self):
+        self.measure_voltage_win = VoltMeasConfUi(Cfg._main_instance.measure_voltage_pars, self)
+
+    def open_post_acc_win(self):
+        self.post_acc_win = PostAccControlUi(self)
+
+    def open_simple_counter_win(self):
+        sc_dial = SimpleCounterDialogUi()  # blocking!
+        if sc_dial.start:
+            self.simple_counter_gui = SimpleCounterRunningUi(self, sc_dial.act_pmts, sc_dial.datapoints)
+            # Cfg._main_instance.start_simple_counter(sc_dial.act_pmts, sc_dial.datapoints)
+
+    def start_tilda_passive_gui(self):
+            if Cfg._main_instance.working_directory is None:
+                if self.choose_working_dir() is None:
+                    return None
+            if self.tilda_passive_gui is None:
+                self.tilda_passive_gui = TildaPassiveUi(self)
+
+    def open_dmm_live_view_win(self):
+        self.dmm_live_view_win = DmmLiveViewUi(self)
+
+    ''' close windows '''
+    def scan_control_win_closed(self, win_ref):
+        self.act_scan_wins.remove(win_ref)
+
+    def close_scan_progress_win(self):
+        self.scan_progress_win = None
+
+    def close_volt_meas_win(self):
+        self.measure_voltage_win = None
+
+    def close_post_acc_win(self):
+        self.post_acc_win = None
+
+    def close_simple_counter_win(self):
+        self.simple_counter_gui = None
+
+    def close_tilda_passive(self):
+        self.tilda_passive_gui = None
+
+    def close_dmm_live_view_win(self):
+        self.dmm_live_view_win = None
 
     def closeEvent(self, *args, **kwargs):
         for win in self.act_scan_wins:
@@ -216,3 +229,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 self.tilda_passive_gui.close()
         except Exception as e:
             logging.error('error while closing tilda passive GUi, exception is: ' + str(e))
+        try:
+            if self.dmm_live_view_win is not None:
+                self.dmm_live_view_win.close()
+        except Exception as e:
+            logging.error('error while closing dmm_live_view_window, exception is: ' + str(e))

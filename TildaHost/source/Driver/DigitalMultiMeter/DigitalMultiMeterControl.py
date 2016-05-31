@@ -34,9 +34,13 @@ class DMMControl:
         """
         dev = None
         name = ''
+        print('preparing ', type_str, address)
         if type_str == 'Ni4071':
-            dev = Ni4071(address_str=address)
-            name = dev.name
+            try:
+                dev = Ni4071(address_str=address)
+                name = dev.name
+            except Exception as e:
+                print('starting dmm did not work exception is:', e)
         elif type_str == 'dummy':
             dev = DMMdummy(address_str=address)
             name = dev.name

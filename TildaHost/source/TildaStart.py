@@ -55,6 +55,8 @@ def start_gui():
     timer.timeout.connect(timer_call_back)
     timer.start()
     app.exec_()
+    app.closeAllWindows()
+
     return ui
 
 

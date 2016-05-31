@@ -104,6 +104,8 @@ class Ui_TildaMainWindow(object):
         self.actionTilda_Passive.setObjectName("actionTilda_Passive")
         self.actionLoad_spectra = QtWidgets.QAction(TildaMainWindow)
         self.actionLoad_spectra.setObjectName("actionLoad_spectra")
+        self.actionDigital_Multimeters = QtWidgets.QAction(TildaMainWindow)
+        self.actionDigital_Multimeters.setObjectName("actionDigital_Multimeters")
         self.menuTilda_MainWindow.addAction(self.actionWorking_directory)
         self.menuTilda_MainWindow.addAction(self.actionLoad_spectra)
         self.menuView.addAction(self.actionScan_Control)
@@ -112,6 +114,7 @@ class Ui_TildaMainWindow(object):
         self.menuView.addAction(self.actionSet_Laser_Frequency)
         self.menuView.addAction(self.actionSet_acceleration_voltage)
         self.menuView.addAction(self.actionTilda_Passive)
+        self.menuView.addAction(self.actionDigital_Multimeters)
         self.menuHelp.addAction(self.actionVersion)
         self.menuConfigure.addAction(self.actionVoltage_Measurement)
         self.menubar.addAction(self.menuTilda_MainWindow.menuAction())
@@ -156,4 +159,5 @@ class Ui_TildaMainWindow(object):
         self.actionSet_acceleration_voltage.setText(_translate("TildaMainWindow", "set acceleration voltage"))
         self.actionTilda_Passive.setText(_translate("TildaMainWindow", "Tilda Passive"))
         self.actionLoad_spectra.setText(_translate("TildaMainWindow", "load spectra"))
+        self.actionDigital_Multimeters.setText(_translate("TildaMainWindow", "Digital Multimeters"))
 

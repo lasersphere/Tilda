@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="DataSourceManagerImpl" format="xml" hash="2309097614">
+  <component name="DataSourceManagerImpl" format="xml" hash="3081241062">
     <data-source source="LOCAL" name="tildaDB" uuid="72766633-3329-47d7-803f-977cadb98303">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
@@ -56,6 +56,18 @@
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/TildaHost/source/Scratch/exampleData/exampleData.sqlite</jdbc-url>
+    </data-source>
+    <data-source source="LOCAL" name="Sqlite (Xerial) - Ni_isotopes.sqlite" uuid="15199bac-d574-493f-a625-13bb2a75e1d8">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:R:/Projekte/COLLAPS/Nickel/Measurement_and_Analysis_Simon/Ni_isotopes.sqlite</jdbc-url>
+    </data-source>
+    <data-source source="LOCAL" name="Sqlite (Xerial) - tildaDB109.sqlite" uuid="db43d10e-3472-4062-ae91-0c997afe52b4">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/PolliFit/test/Project/tildaDB109.sqlite</jdbc-url>
     </data-source>
   </component>
 </project>

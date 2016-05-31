@@ -8,6 +8,7 @@ Created on '19.05.2015'
 
 import logging
 from datetime import datetime
+from copy import deepcopy
 import Driver.DataAcquisitionFpga.FindSequencerByType as FindSeq
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as DftScan
@@ -286,6 +287,14 @@ class ScanMain:
         :return: np.array, values measured by the multimeter
         """
         return self.digital_multi_meter.read_from_multimeter(dmm_name)
+
+    def request_config_pars(self, dmm_name):
+        """
+        request the config_pars dict as a deepocpy.
+        :param dmm_name: str, name of the device
+        :return: dict, copy of the config pars.
+        """
+        return deepcopy(self.digital_multi_meter.get_raw_config_pars(dmm_name))
 
     def de_init_dmm(self, dmm_name):
         """

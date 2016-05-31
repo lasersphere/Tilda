@@ -168,6 +168,7 @@
     <addaction name="actionSet_Laser_Frequency"/>
     <addaction name="actionSet_acceleration_voltage"/>
     <addaction name="actionTilda_Passive"/>
+    <addaction name="actionDigital_Multimeters"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -244,6 +245,11 @@
   <action name="actionLoad_spectra">
    <property name="text">
     <string>load spectra</string>
+   </property>
+  </action>
+  <action name="actionDigital_Multimeters">
+   <property name="text">
+    <string>Digital Multimeters</string>
    </property>
   </action>
  </widget>
