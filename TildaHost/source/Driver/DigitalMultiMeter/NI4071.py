@@ -5,26 +5,96 @@ Created on '19.05.2015'
 @author:'simkaufm'
 
 """
-import os
-import time
 import numpy as np
 import ctypes
 import datetime
+from copy import deepcopy
+from enum import Enum, unique
+
+
+@unique
+class Ni4071TriggerSources(Enum):
+    """
+    Immediate (1) No trigger specified
+    Interval (10) Interval trigger
+    External (2) Pin 9 on the AUX Connector
+    Software Trig (3) Configures the DMM to wait until niDMM Send Software Trigger is called.
+    TTL 0 (111) PXI Trigger Line 0
+    TTL 1 (112) PXI Trigger Line 1
+    TTL 2 (113) PXI Trigger Line 2
+    TTL 3 (114) PXI Trigger Line 3
+    TTL 4 (115) PXI Trigger Line 4
+    TTL 5 (116) PXI Trigger Line 5
+    TTL 6 (117) PXI Trigger Line 6
+    TTL 7 (118) PXI Trigger Line 7
+    PXI Star (131) PXI Star trigger line
+    LBR Trig 1 (1004) Local Bus Right Trigger Line 1 of PXI/SCXI combination chassis
+    AUX Trig 1 (1001) Pin 3 on the AUX connector
+    """
+    immediate = 1
+    interval = 10
+    external = 2
+    softw_trig = 3
+    pxi_trig_0 = 111
+    pxi_trig_1 = 112
+    pxi_trig_2 = 113
+    pxi_trig_3 = 114
+    pxi_trig_4 = 115
+    pxi_trig_5 = 116
+    pxi_trig_6 = 117
+    pxi_trig_7 = 118
+    pxi_star_trig = 131
+    lbr_trig_1 = 1004
+    auf_trig_1 = 1001
+
+
+@unique
+class Ni4071MeasCompleteLoc(Enum):
+    """
+    Specifies the destination of the DMM Measurement Complete (MC) signal.
+    :param meas_compl_dest: int, This signal is issued when the DMM completes a single measurement.
+     This signal is commonly referred to as Voltmeter Complete.
+
+    None (-1) No destination specified.
+    External (2) Pin 6 on the AUX Connector
+    TTL 0 (111) PXI Trigger Line 0
+    TTL 1 (112) PXI Trigger Line 1
+    TL 2 (113) PXI Trigger Line 2
+    TTL 3 (114) PXI Trigger Line 3
+    TL 4 (115) PXI Trigger Line 4
+    TTL 5 (116) PXI Trigger Line 5
+    TTL 6 (117) PXI Trigger Line 6
+    TTL 7 (118) PXI Trigger Line 7
+    LBR Trig 0 (1003) Local Bus Right Trigger Line 0 of PXI/SCXI combination chassis
+    """
+    undefined = -1
+    external = 2
+    pxi_trig_0 = 111
+    pxi_trig_1 = 112
+    pxi_trig_2 = 113
+    pxi_trig_3 = 114
+    pxi_trig_4 = 115
+    pxi_trig_5 = 116
+    pxi_trig_6 = 117
+    pxi_trig_7 = 118
+    lbr_trig_0 = 1003
 
 
 class Ni4071:
     """
-    Class for accessing the Nationale Instruments 4071 digital Multimeter.
+    Class for accessing the National Instruments 4071 digital Multimeter.
     """
 
-    def __init__(self, reset=True, dev_name_str='PXI1Slot5', pwr_line_freq=50):
+    def __init__(self, reset=True, address_str='PXI1Slot5', pwr_line_freq=50):
         dll_path = '..\\..\\..\\binary\\nidmm_32.dll'
-        dev_name = ctypes.create_string_buffer(dev_name_str.encode('utf-8'))
+        dev_name = ctypes.create_string_buffer(address_str.encode('utf-8'))
 
         self.dll = ctypes.WinDLL(dll_path)
         self.session = ctypes.c_uint32(0)
         self.init(dev_name, reset_dev=reset)
         self.config_power_line_freq(pwr_line_freq)
+        self.config_dict = None
+        self.name = 'Ni4071_' + address_str
 
     ''' Init and close '''
 
@@ -38,13 +108,27 @@ class Ni4071:
 
     def de_init_dmm(self):
         ''' Closes the current session to the instrument. '''
+        if self.readstatus()[1] != 4:
+            self.abort_meas()
         self.dll.niDMM_close(self.session)
 
     ''' Configure '''
 
-    def config_meas_digits(self, func=1, dmm_range=10.0, resolution=7.5):
+    def config_measurement(self, dmm_range, resolution, func=1):
         """
         Configures the common properties of the measurement.
+        named configure measurement digits in quick ref.
+        :param dmm_range: dbl, range 10.00, 100.00, etc.
+        valid ranges: 0.1, 1.0, 10.0, 100.0, 1000.0
+        Auto range ON: -1.0
+        Auto range OFF: -2.0
+        Auto range ONCE: -3.0
+        :param resolution: dbl, resolution in digits
+        3.5 (3.5000000E+0) Specifies 3.5 digits resolution.
+        4.5 (4.500000E+0) Specifies 4.5 digits resolution.
+        5.5 (5.500000E+0) Specifies 5.5 digits resolution.
+        6.5 (6.500000E+0) Specifies 6.5 digits resolution.
+        7.5 (7.500000E+0) Specifies 7.5 digits resolution.
         :param func: int, DC volts, AC volts and so on
         1: DC Volts
         2: AC Volts
@@ -57,46 +141,21 @@ class Ni4071:
         104: Freq
         105: period
         108: temperature
-        :param dmm_range: dbl, range 10.00, 100.00, etc.
-        valid ranges: 0.1, 1.0, 10.0, 100.0, 1000.0
-        Auto range ON: -1.0
-        Auto range OFF: -2.0
-        Auto range ONCE: -3.0
-        :param resolution: dbl, resolution in digits
-        3.5 (3.5000000E+0) Specifies 3.5 digits resolution.
-        4.5 (4.500000E+0) Specifies 4.5 digits resolution.
-        5.5 (5.500000E+0) Specifies 5.5 digits resolution.
-        6.5 (6.500000E+0) Specifies 6.5 digits resolution.
-        7.5 (7.500000E+0) Specifies 7.5 digits resolution.
         """
         func = ctypes.c_int32(func)
         dmm_range = ctypes.c_double(dmm_range)
         res = ctypes.c_double(resolution)
         self.dll.niDMM_ConfigureMeasurementDigits(self.session, func, dmm_range, res)
 
-    def config_multi_point_meas(self, trig_count, sample_count, sample_trig, sample_interval):
+    def config_multi_point_meas(self, trig_count, sample_count, trig_src_enum, sample_interval):
         """
         Configures the properties for multipoint measurements.
         :param trig_count: int, nuzmber of triggers before returning to idle state
         :param sample_count: int32, sets the number of measurements the DMM makes
          in each measurement sequence initiated by a trigger.
 
-        :param sample_trig: specifies the sample trigger source to use.
-        Immediate (1) No trigger specified
-        Interval (10) Interval trigger
-        External (2) Pin 9 on the AUX Connector
-        Software Trig (3) Configures the DMM to wait until niDMM Send Software Trigger is called.
-        TTL 0 (111) PXI Trigger Line 0
-        TTL 1 (112) PXI Trigger Line 1
-        TTL 2 (113) PXI Trigger Line 2
-        TTL 3 (114) PXI Trigger Line 3
-        TTL 4 (115) PXI Trigger Line 4
-        TTL 5 (116) PXI Trigger Line 5
-        TTL 6 (117) PXI Trigger Line 6
-        TTL 7 (118) PXI Trigger Line 7
-        PXI Star (131) PXI Star trigger line
-        LBR Trig 1 (1004) Local Bus Right Trigger Line 1 of PXI/SCXI combination chassis
-        AUX Trig 1 (1001) Pin 3 on the AUX connector
+        :param trig_src_enum: enum, specifies the sample trigger source to use.
+         Enum defined in Ni4071TriggerSources class
 
         :param sample_interval: dbl, sets the amount of time in seconds the DMM waits between measurement cycles.
         Specify a sample interval to add settling time
@@ -109,7 +168,7 @@ class Ni4071:
         """
         trig_count = ctypes.c_int32(trig_count)
         sample_count = ctypes.c_int32(sample_count)
-        sample_trig = ctypes.c_int32(sample_trig)
+        sample_trig = ctypes.c_int32(trig_src_enum.value)
         sample_interval = ctypes.c_double(sample_interval)
         self.dll.niDMM_ConfigureMultiPoint(self.session, trig_count, sample_count, sample_trig, sample_interval)
 
@@ -218,25 +277,11 @@ class Ni4071:
 
     ''' Triggers '''
 
-    def config_trigger(self, trig_src, trig_delay):
+    def config_trigger(self, trig_src_enum, trig_delay):
         """
         Configures the DMM trigger source and trigger delay.
-        :param trig_src: int, specifies the sample trigger source to use.
-        Immediate (1) No trigger specified
-        Interval (10) Interval trigger
-        External (2) Pin 9 on the AUX Connector
-        Software Trig (3) Configures the DMM to wait until niDMM Send Software Trigger is called.
-        TTL 0 (111) PXI Trigger Line 0
-        TTL 1 (112) PXI Trigger Line 1
-        TTL 2 (113) PXI Trigger Line 2
-        TTL 3 (114) PXI Trigger Line 3
-        TTL 4 (115) PXI Trigger Line 4
-        TTL 5 (116) PXI Trigger Line 5
-        TTL 6 (117) PXI Trigger Line 6
-        TTL 7 (118) PXI Trigger Line 7
-        PXI Star (131) PXI Star trigger line
-        LBR Trig 1 (1004) Local Bus Right Trigger Line 1 of PXI/SCXI combination chassis
-        AUX Trig 1 (1001) Pin 3 on the AUX connector
+        :param trig_src_enum: enum, specifies the sample trigger source to use.
+         Enum defined in Ni4071TriggerSources class.
 
         :param trig_delay: dbl, NI-DMM sets the Trigger Delay property to this value.
         By default, Trigger Delay is -1, which means the DMM waits an appropriate settling time
@@ -248,7 +293,8 @@ class Ni4071:
         -1.0: auto delay ON
         -2.0: auto delay OFF
         """
-        self.dll.niDMM_ConfigureTrigger(self.session, ctypes.c_int32(trig_src), ctypes.c_double(trig_delay))
+        self.dll.niDMM_ConfigureTrigger(
+            self.session, ctypes.c_int32(trig_src_enum.value), ctypes.c_double(trig_delay))
 
     def send_software_trigger(self):
         """
@@ -275,25 +321,12 @@ class Ni4071:
         """
         self.dll.niDMM_ConfigureSampleTriggerSlope(self.session, ctypes.c_int32(smpl_trig_slope))
 
-    def config_meas_complete_dest(self, meas_compl_dest):
+    def config_meas_complete_dest(self, meas_compl_dest_enum):
         """
         Specifies the destination of the DMM Measurement Complete (MC) signal.
-        :param meas_compl_dest: int, This signal is issued when the DMM completes a single measurement.
-         This signal is commonly referred to as Voltmeter Complete.
-
-        None (-1) No destination specified.
-        External (2) Pin 6 on the AUX Connector
-        TTL 0 (111) PXI Trigger Line 0
-        TTL 1 (112) PXI Trigger Line 1
-        TL 2 (113) PXI Trigger Line 2
-        TTL 3 (114) PXI Trigger Line 3
-        TL 4 (115) PXI Trigger Line 4
-        TTL 5 (116) PXI Trigger Line 5
-        TTL 6 (117) PXI Trigger Line 6
-        TTL 7 (118) PXI Trigger Line 7
-        LBR Trig 0 (1003) Local Bus Right Trigger Line 0 of PXI/SCXI combination chassis
+        :param meas_compl_dest: enum, as defined in Ni4071MeasCompleteLoc class.
         """
-        self.dll.niDMM_ConfigureMeasCompleteDest(self.session, ctypes.c_int32(meas_compl_dest))
+        self.dll.niDMM_ConfigureMeasCompleteDest(self.session, ctypes.c_int32(meas_compl_dest_enum.value))
 
     def config_meas_complete_slope(self, meas_compl_slope):
         """
@@ -323,12 +356,15 @@ class Ni4071:
         On the NI 4070/4071/4072, the minimum aperture time is 8.89 µs, and the maximum aperture time is 149 s.
         Any number of powerline cycles (PLCs) within the minimum and maximum ranges
         is allowed on the NI 4070/4071/4072.
-        :return: (dbl, int), (aperture time, aperture time units seconds (0) or PLC (1))
+        :return: (dbl, str), (aperture time, unit)
         """
         apt_t = ctypes.c_double()
         apt_u = ctypes.c_int32()
         self.dll.niDMM_GetApertureTimeInfo(self.session, ctypes.byref(apt_t), ctypes.byref(apt_u))
-        return apt_t.value, apt_u.value
+        units = 'seconds'
+        if apt_u.value:
+            units = 'power line cycles'
+        return apt_t.value, units
 
     def get_meas_period(self):
         """
@@ -453,9 +489,14 @@ class Ni4071:
         The maximum number of measurements for a finite acquisition is the (Trigger Count x Sample Count)
         parameters in config_multi_point_meas()
         For continuous acquisitions, up to 100,000 points can be returned at once.
+        num_to_read = -1 will read all available data
         :return: numpy array with all values
         """
         max_time = ctypes.c_int32(max_time_ms)
+        if num_to_read < 0:  # read all available
+            num_to_read = self.readstatus()[0]
+        if num_to_read == 0:
+            return np.zeros(0, dtype=np.double)
         array_of_values = ctypes.c_double * num_to_read
         array_of_values = array_of_values()
         number_to_read = ctypes.c_int32(num_to_read)
@@ -787,55 +828,128 @@ class Ni4071:
         self.set_property_node(ctypes.c_double(range_val), 2,
                                attr_base_str='IVI_CLASS_PUBLIC_ATTR_BASE')
 
+    def load_from_config_dict(self, config_dict, reset_dev):
+        """
+        function to load all parameters stored in a config dict to the device.
+        Available values can be found by calling emit_config_pars()
+        :param config_dict: dict, containing all required values
+        :param reset_dev: bool, true for resetting the DMM on startup.
+        :return:
+        """
+        self.config_dict = deepcopy(config_dict)
+        if reset_dev:
+            self.reset_dev()
+        dmm_range = config_dict.get('range')
+        resolutin = config_dict.get('resolution')
+        self.config_measurement(dmm_range, resolutin)
+        trig_count = config_dict.get('triggerCount')
+        sample_count = config_dict.get('sampleCount')
+        trig_src_enum = Ni4071TriggerSources[config_dict.get('triggerSource')]
+        sample_interval = config_dict.get('sampleInterval_s')
+        self.config_multi_point_meas(trig_count, sample_count, trig_src_enum, sample_interval)
+        auto_z = config_dict.get('autoZero')
+        self.config_auto_zero(auto_z)
+        self.config_adc_cal(0)
+        pwr_line_freq = config_dict.get('powerLineFrequency')
+        self.config_power_line_freq(pwr_line_freq)
+        trig_delay = config_dict.get('triggerDelay_s', -1.0)
+        self.config_trigger(trig_src_enum, trig_delay)
+        trig_slope = config_dict.get('triggerSlope')
+        if trig_slope == 'falling':
+            trig_slope = 1
+        else:
+            trig_slope = 0
+        self.config_trigger_slope(trig_slope)
+        self.config_sample_trigger_slope(trig_slope)
+        meas_compl_dest_enum = Ni4071MeasCompleteLoc[config_dict.get('measurementCompleteDestination')]
+        self.config_meas_complete_dest(meas_compl_dest_enum)
+        self.config_meas_complete_slope(0)
+        greater_10_g_ohm = config_dict.get('highInputResistanceTrue')
+        self.set_input_resistance(greater_10_g_ohm)
+
+    def emit_config_pars(self):
+        """
+        function to return all needed parameters for the configruation dictionary and its values.
+        :return:dict, tuples:
+         (name, type, certain_value_list)
+        """
+        config_dict = {
+            'range': ('range', float, [-3.0, -2.0, -1.0, 0.1, 1.0, 10.0, 100.0, 1000.0]),
+            'resolution': ('resolution', float, [3.5, 4.5, 5.5, 6.5, 7.5]),
+            'triggerCount': ('#trigger events', int, range(0, 100000, 1)),
+            'sampleCount': ('#samples', int, range(0, 10000, 1)),
+            'autoZero': ('auto zero', int, [-1, 0, 1, 2]),
+            'triggerSource': ('trigger source', str, [i.name for i in Ni4071TriggerSources]),
+            'sampleInterval': ('sample Interval [s]', float, [-1.0] + [i / 10 for i in range(0, 1000)]),
+            'powerLineFrequency': ('power line frequency [Hz]', float, [50.0, 60.0]),
+            'triggerDelay_s': ('trigger delay [s]', float, [-2.0, -1.0] + [i / 10 for i in range(0, 1490)]),
+            'triggerSlope': ('trigger slope', str, ['falling', 'rising']),
+            'measurementCompleteDestination': (
+            'measurement compl. dest.', str, [i.name for i in Ni4071MeasCompleteLoc]),
+            'highInputResistanceTrue': ('high input resistance', bool, [False, True])
+        }
+        return config_dict
+
 
 # there are more functions that can be found in the nidmm.h file,
 # but those above were the ones in the quick reference and most important ones.
-# how to start external calibration??  niDMM_InitExtCal  -> not in quick ref!
+        # how to start external calibration??  niDMM_InitExtCal
+        #           -> not in quick ref! Will not be implemented for now.
 
 
-def test_multi():
-    dmm.config_multi_point_meas(1, 4, 1, 0.1)
-    print(dmm.read_multi_point(5))
-
-
-def test_wfm():
-    dmm.conf_waveform_meas(1003, 1.0, 1800000, 100)
-    print(dmm.read_waveform(num_to_read=100))
-
-
-def test_self_test():
-    print(dmm.self_test())
-
-
-if __name__ == "__main__":
-    dmm = Ni4071()
-    print(dmm.readstatus())
-    i = 0
-    # while i < 100:
-    #     print(dmm.get_dmm_dev_temp())
-    #     i += 1
-    #     time.sleep(0.5)
-    # test_multi()
-    # test_wfm()
-    # test_self_test()
-    # print(dmm.revision_query())
-    # print(dmm.get_error_message())
-    # # dmm.self_calibration()
-    # print(dmm.get_calibration_count())
-    # print(dmm.get_cal_date_and_time())
-    # print(dmm.get_last_cal_temp())
-    print(dmm.get_range())
-    dmm.config_meas_digits(1, 100.0, 7.5)
-    print(dmm.get_range())
-
-    print(dmm.readstatus())
-    dmm.set_input_resistance(True)
-    print(dmm.get_input_resistance())
-    dmm.set_range(10.0)
-    # print(dmm.read_single_voltage())
-    dmm.set_input_resistance(True)
-    # print(dmm.read_single_voltage())
-    print(dmm.get_input_resistance())
-    print(dmm.get_range())
-    # print(dmm.read_single_voltage())
-    dmm.de_init_dmm()
+        # def test_multi():
+        #     dmm.config_multi_point_meas(1, 4, 1, 0.1)
+        #     print(dmm.read_multi_point(5))
+        #
+        #
+        # def test_wfm():
+        #     dmm.conf_waveform_meas(1003, 1.0, 1800000, 100)
+        #     print(dmm.read_waveform(num_to_read=100))
+        #
+        #
+        # def test_self_test():
+        #     print(dmm.self_test())
+        #
+        #
+        # if __name__ == "__main__":
+        #     dmm = Ni4071()
+        #     print(dmm.readstatus())
+        #     i = 0
+        #     # while i < 100:
+        #     #     print(dmm.get_dmm_dev_temp())
+        #     #     i += 1
+        #     #     time.sleep(0.5)
+        #     # test_multi()
+        #     # test_wfm()
+        #     # test_self_test()
+        #     # print(dmm.revision_query())
+        #     # print(dmm.get_error_message())
+        #     # # dmm.self_calibration()
+        #     # print(dmm.get_calibration_count())
+        #     # print(dmm.get_cal_date_and_time())
+        #     # print(dmm.get_last_cal_temp())
+        #     print(dmm.get_range())
+        #     dmm.config_measurement(100.0, 7.5, 1)
+        #     print('app_time:', dmm.get_aperture_time_info())
+        #     print('meas_time:', dmm.get_meas_period())
+        #     dmm.config_auto_zero(0)
+        #     dmm.config_measurement(100.0, 7.5, 1)
+        #     print('meas_time:', dmm.get_meas_period())
+        #
+        #     dmm.config_auto_zero(1)
+        #     dmm.config_measurement(100.0, 7.5, 1)
+        #     print('meas_time:', dmm.get_meas_period())
+        #
+        #     print(dmm.get_range())
+        #
+        #     print(dmm.readstatus())
+        #     dmm.set_input_resistance(True)
+        #     print(dmm.get_input_resistance())
+        #     dmm.set_range(10.0)
+        #     # print(dmm.read_single_voltage())
+        #     dmm.set_input_resistance(True)
+        #     # print(dmm.read_single_voltage())
+        #     print(dmm.get_input_resistance())
+        #     print(dmm.get_range())
+        #     # print(dmm.read_single_voltage())
+        #     dmm.de_init_dmm()

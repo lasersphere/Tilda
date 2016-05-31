@@ -13,6 +13,7 @@ import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as DftScan
 import Service.AnalysisAndDataHandling.tildaPipeline as Tpipe
 import Driver.PostAcceleration.PostAccelerationMain as PostAcc
+import Driver.DigitalMultiMeter.DigitalMultiMeterControl as DmmCtrl
 
 
 class ScanMain:
@@ -20,6 +21,7 @@ class ScanMain:
         self.sequencer = None
         self.pipeline = None
         self.post_acc_main = PostAcc.PostAccelerationMain()
+        self.digital_multi_meter = DmmCtrl.DMMControl()
 
     def close_scan_main(self):
         """
@@ -28,6 +30,7 @@ class ScanMain:
         """
         self.deinit_post_accel_pwr_supplies()
         self.deinit_fpga()
+        self.de_init_dmm('all')
 
     def init_post_accel_pwr_supplies(self):
         """
@@ -254,3 +257,39 @@ class ScanMain:
         else:
             timeleft = 0
         return timeleft
+
+    ''' Digital Multimeter Related '''
+
+    def prepare_dmm(self, type_str, address):
+        """
+        will initialize a multimeter of given type and address.
+        :param address: str, address of the Multimeter
+        :param type_str: str, type of Multimeter
+        :return: str, name of the initialized Multimeter
+        """
+        name = self.digital_multi_meter.find_dmm_by_type(type_str, address)
+        return name
+
+    def setup_dmm_and_arm(self, dmm_name, config_dict, reset_dev):
+        """
+        function to load a configuration dictionary to a dmm and prepare this for a measurement.
+        :param dmm_name: str, name of the dmm 'type_address'
+        :param config_dict: dict, containing all necessary parameters for the given dmm
+        :param reset_dev: bool, True for resetting
+        """
+        self.digital_multi_meter.config_dmm(dmm_name, config_dict, reset_dev)
+        self.digital_multi_meter.start_measurement(dmm_name)
+
+    def read_multimeter(self, dmm_name):
+        """
+        reads all available values from the multimeter and returns them as an array.
+        :return: np.array, values measured by the multimeter
+        """
+        return self.digital_multi_meter.read_from_multimeter(dmm_name)
+
+    def de_init_dmm(self, dmm_name):
+        """
+        deinitialize the given multimeter and remove it from the self.digital_multi_meter.dmm dictionary
+        :param dmm_name: str, name of the given device.
+        """
+        self.digital_multi_meter.de_init_dmm(dmm_name)
