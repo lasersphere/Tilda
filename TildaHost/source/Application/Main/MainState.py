@@ -34,3 +34,9 @@ class MainState(Enum):
     tilda_passiv_running = 16
     closing_tilda_passiv = 17
 
+    init_dmm = 18
+    config_dmm = 19
+    reading_dmm = 20  # might not be used
+    deinit_dmm = 21
+    request_dmm_config_pars = 22
+

@@ -42,10 +42,13 @@ class DMMControl:
             except Exception as e:
                 print('starting dmm did not work exception is:', e)
         elif type_str == 'dummy':
-            dev = DMMdummy(address_str=address)
-            name = dev.name
+            try:
+                dev = DMMdummy(address_str=address)
+                name = dev.name
+            except Exception as e:
+                print('starting dmm did not work exception is:', e)
         if dev is not None:
-            self.dmm[dev.name] = dev  # will this fail?
+            self.dmm[dev.name] = dev
             return name
 
     def config_dmm(self, dmm_name, config_dict, reset_dev):
@@ -72,16 +75,33 @@ class DMMControl:
         :param dmm_name: str, name of the dmm
         :return: dict, key: (name_str, type, valid_vals)
         """
+        print('dmm to emit:', self.dmm)
         return self.dmm[dmm_name].emit_config_pars()
         # use dicts to specify for the individual dmm
 
     def read_from_multimeter(self, dmm_name):
         """
         function to read all available values from the multimeter
-        :param dmm_name: str, name if the dev
-        :return: np.array, containing all values
+        :param dmm_name: str, name of the dmm, 'all' to read all active
+        :return: dict, {key=dmm_name: np.array=read values}
         """
-        return self.dmm[dmm_name].fetch_multiple_meas(-1)
+        ret = {dmm_name: self.dmm[dmm_name].fetch_multiple_meas(-1)}  # -1 to read all available values
+        return ret
+
+    def read_from_all_active_multimeters(self):
+        """
+        reads all available values from all active dmms
+        :return: dict, key is name of dmm
+        """
+        ret_dict = {}
+        act_dmms = list(self.dmm.keys())
+        if len(act_dmms):
+            for dmm_name in act_dmms:
+                ret_dict[dmm_name] = self.read_from_multimeter(dmm_name)[dmm_name]
+            return ret_dict
+        else:
+            return None
+    # maybe feed this to pipeline directly later on.
 
     def de_init_dmm(self, dmm_name):
         """

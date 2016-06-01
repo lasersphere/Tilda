@@ -66,6 +66,8 @@ class Main(QtCore.QObject):
         self.tipa_status_callback_sig = None
         self.tipa_timeout_counter = 0
 
+        self.dmm_status = None
+
         self.displayed_data = {}  # dict of all displayed files. complete filename is key.
 
         try:
@@ -86,6 +88,7 @@ class Main(QtCore.QObject):
         """
         if self.m_state[0] is MainState.idle:
             self.get_fpga_and_seq_state()
+            self.read_dmms()
             return True
 
         elif self.m_state[0] is MainState.starting_simple_counter:
@@ -120,6 +123,13 @@ class Main(QtCore.QObject):
         elif self.m_state[0] is MainState.closing_tilda_passiv:
             self._close_tilda_passive(self.m_state[1])
 
+        elif self.m_state[0] is MainState.init_dmm:
+            self._init_dmm(*self.m_state[1])
+        elif self.m_state[0] is MainState.config_dmm:
+            self._config_and_arm_dmm(*self.m_state[1])
+        elif self.m_state[0] is MainState.request_dmm_config_pars:
+            self._request_dmm_config_pars(*self.m_state[1])
+
     """ main functions """
 
     def close_main(self):
@@ -138,7 +148,7 @@ class Main(QtCore.QObject):
         """
         if only_if_idle:
             if self.m_state[0] is MainState.idle:
-                self.m_state = req_state, val  # does this work??
+                self.m_state = req_state, val
                 self.send_state()
                 logging.debug('changed state to %s', str(self.m_state[0].name))
                 return True
@@ -180,7 +190,8 @@ class Main(QtCore.QObject):
                 'laserfreq': self.laserfreq,
                 'accvolt': self.acc_voltage,
                 'sequencer_status': self.sequencer_status,
-                'fpga_status': self.fpga_status
+                'fpga_status': self.fpga_status,
+                'dmm_status': self.dmm_status
             }
             self.main_ui_status_call_back_signal.emit(stat_dict)
 
@@ -643,3 +654,48 @@ class Main(QtCore.QObject):
             if maybe_new_status != self.tilda_passive_status:
                 self.tilda_passive_status = maybe_new_status
                 self.tipa_status_callback_sig.emit(self.tilda_passive_status)
+
+    ''' digital multimeter operations '''
+    def init_dmm(self, type_str, addr_str, callback=False):
+        self.set_state(MainState.init_dmm, (type_str, addr_str, callback))
+
+    def _init_dmm(self, type_str, addr_str, callback):
+        if self.dmm_status is None:
+            self.dmm_status = {}
+        dmm_name = self.scan_main.prepare_dmm(type_str, addr_str)
+        self.dmm_status[dmm_name] = {}
+        self.dmm_status[dmm_name]['status'] = 'initialized'
+        self.send_state()
+        self.set_state(MainState.idle)
+        if callback:
+            callback.emit(True)
+
+    def config_and_arm_dmm(self, dmm_name, config_dict, reset_dmm):
+        if self.dmm_status.get(dmm_name, False):
+            self.set_state(MainState.config_dmm, (dmm_name, config_dict, reset_dmm))
+
+    def _config_and_arm_dmm(self, dmm_name, config_dict, reset_dmm):
+        self.scan_main.setup_dmm_and_arm(dmm_name, config_dict, reset_dmm)
+        self.dmm_status[dmm_name]['status'] = 'measuring'
+        self.send_state()
+        self.set_state(MainState.idle)
+
+    def read_dmms(self):
+        readback = self.scan_main.read_multimeter('all')
+        if readback is not None:
+            for dmm_name, vals in readback.items():
+                if len(vals) > 0:
+                    t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    self.dmm_status[dmm_name]['lastReadback'] = (vals[-1], t)
+                    self.send_state()
+
+    def request_dmm_config_pars(self, dmm_name, callback):
+        self.set_state(MainState.request_dmm_config_pars, (dmm_name, callback))
+
+    def _request_dmm_config_pars(self, dmm_name, callback):
+        conf_dict = self.scan_main.request_config_pars(dmm_name)
+        callback.emit(conf_dict)
+        self.set_state(MainState.idle)
+
+
+    # CALLBACKS!!

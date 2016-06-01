@@ -286,7 +286,11 @@ class ScanMain:
         reads all available values from the multimeter and returns them as an array.
         :return: np.array, values measured by the multimeter
         """
-        return self.digital_multi_meter.read_from_multimeter(dmm_name)
+        if dmm_name == 'all':
+            ret = self.digital_multi_meter.read_from_all_active_multimeters()
+        else:
+            ret = self.digital_multi_meter.read_from_multimeter(dmm_name)
+        return ret
 
     def request_config_pars(self, dmm_name):
         """

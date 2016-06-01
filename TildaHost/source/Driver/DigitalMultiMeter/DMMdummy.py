@@ -14,7 +14,7 @@ import numpy as np
 
 class DMMdummy:
     def __init__(self, address_str='YourPC'):
-        self.name = 'dummyDMM_' + address_str
+        self.name = 'dummy_' + address_str
         self.config_dict = {
             'range': 10.0,
             'resolution': 7.5,
@@ -69,6 +69,8 @@ class DMMdummy:
         pass
 
     def fetch_multiple_meas(self, num_to_read):
+        if num_to_read == -1:
+            num_to_read = 5
         return np.full(num_to_read, 1.0, dtype=np.double)
 
     def abort_meas(self):
@@ -80,15 +82,12 @@ class DMMdummy:
         pass
 
     ''' loading '''
-
     def load_from_config_dict(self, config_dict, reset_dev):
         print('dummy dmm named: ', self.name)
         print('resetting_dev: ', reset_dev)
         print('dummy dmm loaded with: ', config_dict)
 
-
     ''' emitting config pars '''
-
     def emit_config_pars(self):
         """
         function to return all needed parameters for the configruation dictionary and its values.

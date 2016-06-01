@@ -101,6 +101,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.label_acc_volt_set.setText(str(status_dict.get('accvolt', '')))
         self.label_fpga_state_set.setText(str(status_dict.get('fpga_status', '')))
         self.label_sequencer_status_set.setText(str(status_dict.get('sequencer_status', '')))
+        self.label_dmm_status.setText(str(status_dict.get('dmm_status', '')))
         for w in self.act_scan_wins:
             w.enable_go(status_dict.get('status', '') == 'idle')
 
