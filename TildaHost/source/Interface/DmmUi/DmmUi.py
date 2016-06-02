@@ -19,8 +19,9 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
     # callback for the widget when choosing a new dmm
     # returns tuple of (dev_type, dev_adress) out of ChooseDmmWidget
     init_dmm_clicked_callback = QtCore.pyqtSignal(tuple)
-    # callback to learn when the main is done with the init of the device.
+    # callback to learn when the main is done with the init/deinit of the device.
     init_dmm_done_callback = QtCore.pyqtSignal(bool)
+    deinit_dmm_done_callback = QtCore.pyqtSignal(bool)
     # callback for the voltage readings, done by the main when in idle state
     voltage_reading = QtCore.pyqtSignal(dict)
 
@@ -43,7 +44,19 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         Cfg._main_instance.dmm_gui_subscribe(self.voltage_reading)
         self.voltage_reading.connect(self.rcvd_voltage_dict)
 
+        self.tabWidget.setTabsClosable(True)
+
+        self.tabWidget.tabCloseRequested.connect(self.tab_wants_to_be_closed)
+
         self.show()
+
+    def tab_wants_to_be_closed(self, *args):
+        tab_ind = args[0]
+        if tab_ind:
+            dmm_name = self.tabWidget.tabText(tab_ind)
+            self.deinit_dmm(dmm_name)
+            self.tabs.pop(dmm_name)
+            self.tabWidget.removeTab(tab_ind)
 
     def initialize_dmm(self, rcv_tpl):
         print('starting to initialize: ', rcv_tpl)
@@ -54,6 +67,9 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
             return None  # break when not initialized
         Cfg._main_instance.init_dmm(dev_type, dev_address, self.init_dmm_done_callback)
         self.init_dmm_done_callback.connect(functools.partial(self.setup_new_tab_widget, (dmm_name, dev_type)))
+
+    def deinit_dmm(self, dmm_name):
+        Cfg._main_instance.deinit_dmm(dmm_name)
 
     def check_for_already_active_dmms(self):
         act_dmm_dict = Cfg._main_instance.get_active_dmms()

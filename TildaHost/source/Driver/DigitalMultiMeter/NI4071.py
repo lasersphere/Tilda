@@ -6,6 +6,8 @@ Created on '19.05.2015'
 
 """
 import numpy as np
+from os import path, pardir
+
 import ctypes
 import datetime
 from copy import deepcopy
@@ -86,8 +88,7 @@ class Ni4071:
     """
 
     def __init__(self, reset=True, address_str='PXI1Slot5', pwr_line_freq=50):
-        # dll_path = '..\\..\\..\\binary\\nidmm_32.dll'  #  does not work currently
-        dll_path = 'D:\\Workspace\\PyCharm\\Tilda\\TildaHost\\binary\\nidmm_32.dll'
+        dll_path = path.join(path.dirname(__file__), pardir, pardir, pardir, 'binary\\nidmm_32.dll')
         dev_name = ctypes.create_string_buffer(address_str.encode('utf-8'))
 
         self.dll = ctypes.WinDLL(dll_path)

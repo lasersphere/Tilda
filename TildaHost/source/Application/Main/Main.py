@@ -130,6 +130,8 @@ class Main(QtCore.QObject):
             self._config_and_arm_dmm(*self.m_state[1])
         elif self.m_state[0] is MainState.request_dmm_config_pars:
             self._request_dmm_config_pars(*self.m_state[1])
+        elif self.m_state[0] is MainState.deinit_dmm:
+            self._deinit_dmm(self.m_state[1])
 
     """ main functions """
 
@@ -674,11 +676,22 @@ class Main(QtCore.QObject):
             self.dmm_status = {}
         dmm_name = self.scan_main.prepare_dmm(type_str, addr_str)
         self.dmm_status[dmm_name] = {}
-        self.dmm_status[dmm_name]['status'] = 'initialized'
+        self.dmm_status[dmm_name]['status'] = 'initialized'  # not so nice to store dmms here AND in DMMControl.py
         self.send_state()
         self.set_state(MainState.idle)
         if callback:
             callback.emit(True)
+
+    def deinit_dmm(self, dmm_name):
+        self.set_state(MainState.deinit_dmm, dmm_name)
+
+    def _deinit_dmm(self, dmm_name):
+        self.scan_main.de_init_dmm(dmm_name)
+        if dmm_name == 'all':
+            self.dmm_status = {}
+        else:
+            self.dmm_status.pop(dmm_name)
+        self.set_state(MainState.idle)
 
     def config_and_arm_dmm(self, dmm_name, config_dict, reset_dmm):
         """
