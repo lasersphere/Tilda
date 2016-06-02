@@ -18,10 +18,25 @@ class ChooseDmmWidget(QtWidgets.QWidget, Ui_Form):
         self.setupUi(self)
         self.callback = callback
         self.comboBox_choose_dmm.addItems(dmm_names)
+        self.check_standard_address(self.comboBox_choose_dmm.currentText())
 
         self.pushButton_initialize.clicked.connect(self.init_dmm)
+        self.comboBox_choose_dmm.currentTextChanged.connect(self.check_standard_address)
 
     def init_dmm(self):
         dev_name = self.comboBox_choose_dmm.currentText()
         dev_address = self.lineEdit_address_dmm.text()
         self.callback.emit((dev_name, dev_address))
+
+    def check_standard_address(self, type_str):
+        """
+        resolve the standard address and write it to the line edit
+
+        for the future this should be stored somweher else than in the gui.
+        """
+        addr = 'please insert address'
+        if type_str == 'Ni4071':
+            addr = 'PXI1Slot5'
+        elif type_str == 'dummy':
+            addr = 'somewhere'
+        self.lineEdit_address_dmm.setText(addr)

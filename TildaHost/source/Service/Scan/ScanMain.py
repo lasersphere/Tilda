@@ -7,6 +7,7 @@ Created on '19.05.2015'
 """
 
 import logging
+import time
 from datetime import datetime
 from copy import deepcopy
 import Driver.DataAcquisitionFpga.FindSequencerByType as FindSeq
@@ -284,7 +285,8 @@ class ScanMain:
     def read_multimeter(self, dmm_name):
         """
         reads all available values from the multimeter and returns them as an array.
-        :return: np.array, values measured by the multimeter
+        :return: dict, key is name of dmm
+        or None if no reading
         """
         if dmm_name == 'all':
             ret = self.digital_multi_meter.read_from_all_active_multimeters()
@@ -300,9 +302,32 @@ class ScanMain:
         """
         return deepcopy(self.digital_multi_meter.get_raw_config_pars(dmm_name))
 
+    def get_active_dmms(self):
+        """
+        function to return a dict of all active dmms
+        :return: dict of tuples, {dmm_name: (type_str, address_str, configPars_dict)}
+        """
+        return self.digital_multi_meter.get_active_dmms()
+
     def de_init_dmm(self, dmm_name):
         """
         deinitialize the given multimeter and remove it from the self.digital_multi_meter.dmm dictionary
         :param dmm_name: str, name of the given device.
         """
         self.digital_multi_meter.de_init_dmm(dmm_name)
+
+
+        # if __name__ == "__main__":
+        #     scn_main = ScanMain()
+        #     dmm_name = scn_main.prepare_dmm('dummy', 'PXI1Slot5')
+        #     cfg_raw = scn_main.request_config_pars(dmm_name)
+        #     cfg = {key: val[-1] for key, val in cfg_raw.items()}
+        #     cfg['triggerSource'] = 'interval'
+        #     print(cfg)
+        #     scn_main.setup_dmm_and_arm(dmm_name, cfg, True)
+        #     while True:
+        #         readback = scn_main.read_multimeter('all')
+        #         for dmm_name, vals in readback.items():
+        #                 if vals is not None:
+        #                     print(vals)
+        #         time.sleep(0.002)

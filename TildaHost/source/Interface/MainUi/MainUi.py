@@ -59,6 +59,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.label_workdir_set.mouseDoubleClickEvent = self.workdir_dbl_click
         self.label_laser_freq_set.mouseDoubleClickEvent = self.laser_freq_dbl_click
         self.label_acc_volt_set.mouseDoubleClickEvent = self.acc_volt_dbl_click
+        self.label_8.mouseDoubleClickEvent = self.dmm_setup_dbl_click
 
         self.subscribe_to_main()
         self.show()
@@ -73,6 +74,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def acc_volt_dbl_click(self, event):
         self.set_acc_volt()
+
+    def dmm_setup_dbl_click(self, event):
+        self.open_dmm_live_view_win()
 
     def subscribe_to_main(self):
         """
@@ -170,7 +174,18 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 self.tilda_passive_gui = TildaPassiveUi(self)
 
     def open_dmm_live_view_win(self):
-        self.dmm_live_view_win = DmmLiveViewUi(self)
+        if self.dmm_live_view_win is None:
+            self.dmm_live_view_win = DmmLiveViewUi(self)
+        else:
+            self.raise_win_to_front(self.dmm_live_view_win)
+
+    def raise_win_to_front(self, window):
+        # this will remove minimized status
+        # and restore window with keeping maximized/normal state
+        window.setWindowState(window.windowState() & ~QtCore.Qt.WindowMinimized | QtCore.Qt.WindowActive)
+
+        # this will activate the window
+        window.activateWindow()
 
     ''' close windows '''
     def scan_control_win_closed(self, win_ref):

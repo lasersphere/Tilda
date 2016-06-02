@@ -14,7 +14,9 @@ import numpy as np
 
 class DMMdummy:
     def __init__(self, address_str='YourPC'):
-        self.name = 'dummy_' + address_str
+        self.type = 'dummy'
+        self.address = address_str
+        self.name = self.type + '_' + address_str
         self.config_dict = {
             'range': 10.0,
             'resolution': 7.5,
@@ -68,7 +70,7 @@ class DMMdummy:
     def initiate_measurement(self):
         pass
 
-    def fetch_multiple_meas(self, num_to_read):
+    def fetch_multiple_meas(self, num_to_read, max_time=-1):
         if num_to_read == -1:
             num_to_read = 5
         return np.full(num_to_read, 1.0, dtype=np.double)

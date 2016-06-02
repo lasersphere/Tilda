@@ -67,6 +67,7 @@ class Main(QtCore.QObject):
         self.tipa_timeout_counter = 0
 
         self.dmm_status = None
+        self.dmm_gui_callback = None
 
         self.displayed_data = {}  # dict of all displayed files. complete filename is key.
 
@@ -657,9 +658,18 @@ class Main(QtCore.QObject):
 
     ''' digital multimeter operations '''
     def init_dmm(self, type_str, addr_str, callback=False):
+        """
+        initialize the dmm of given type and address.
+        pass a callback to know when init is done.
+        dmm should be in idle state after this.
+        :param type_str: str, type of dmm
+        :param addr_str: str, address of the given dmm
+        :param callback: callback_bool, True will be emitted after init is done.
+        """
         self.set_state(MainState.init_dmm, (type_str, addr_str, callback))
 
     def _init_dmm(self, type_str, addr_str, callback):
+        """ see init_dmm() """
         if self.dmm_status is None:
             self.dmm_status = {}
         dmm_name = self.scan_main.prepare_dmm(type_str, addr_str)
@@ -671,31 +681,68 @@ class Main(QtCore.QObject):
             callback.emit(True)
 
     def config_and_arm_dmm(self, dmm_name, config_dict, reset_dmm):
-        if self.dmm_status.get(dmm_name, False):
+        """
+        configure the dmm via the config_dict and start a measurement, so the dmm starts to store values.
+        :param dmm_name: str, name of dmm
+        :param config_dict: dict, dictionary containing all parameters to configure the given dmm
+        :param reset_dmm: bool, True if you want to rset teh device before configuring
+        """
+        if self.dmm_status.get(dmm_name, False):  # only configure and arm device if active
             self.set_state(MainState.config_dmm, (dmm_name, config_dict, reset_dmm))
 
     def _config_and_arm_dmm(self, dmm_name, config_dict, reset_dmm):
+        """  see: config_and_arm_dmm() """
         self.scan_main.setup_dmm_and_arm(dmm_name, config_dict, reset_dmm)
         self.dmm_status[dmm_name]['status'] = 'measuring'
         self.send_state()
         self.set_state(MainState.idle)
 
+    def get_active_dmms(self):
+        """
+        function to return a dict of all active dmms
+        :return: dict of tuples, {dmm_name: (type_str, address_str, configPars_dict)}
+        """
+        return self.scan_main.get_active_dmms()
+
     def read_dmms(self):
+        """
+        dmm's will be read when main is in idle state.
+        Values are already measured by the dmm in advance and main only "fetches" those.
+            -> should be a quick return of values.
+            values are emitted via send_state()
+        """
+        # return None
+        worth_sending = False
         readback = self.scan_main.read_multimeter('all')
-        if readback is not None:
+        if readback is not None:  # will be None if no dmms are active
             for dmm_name, vals in readback.items():
-                if len(vals) > 0:
+                if vals is not None:  # will be None if no new readback is available
                     t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    self.dmm_status[dmm_name]['lastReadback'] = (vals[-1], t)
+                    self.dmm_status[dmm_name]['lastReadback'] = (round(vals[-1], 8), t)
                     self.send_state()
+                    worth_sending = True
+            if self.dmm_gui_callback is not None and worth_sending:
+                self.dmm_gui_callback.emit(readback)
 
-    def request_dmm_config_pars(self, dmm_name, callback):
-        self.set_state(MainState.request_dmm_config_pars, (dmm_name, callback))
-
-    def _request_dmm_config_pars(self, dmm_name, callback):
+    def request_dmm_config_pars(self, dmm_name):
+        """
+        request the config parameters from the dmm and return them to caller.
+        :param dmm_name: str, name of dev
+        :return: dict, raw_configuration parameters, with currently set values,
+        """
         conf_dict = self.scan_main.request_config_pars(dmm_name)
-        callback.emit(conf_dict)
-        self.set_state(MainState.idle)
+        return conf_dict
 
+    def dmm_gui_subscribe(self, callback):
+        """
+        here a gui can connect to the readbackvalues of the dmms.
+        values will be emitted within read_dmms() when the main is in idle state.
+        :param callback: callback_dict, here the last readings will be send.
+        """
+        self.dmm_gui_callback = callback
 
-    # CALLBACKS!!
+    def dmm_gui_unsubscribe(self):
+        """
+        unsubscribing from self.dmm_gui_callback
+        """
+        self.dmm_gui_callback = None

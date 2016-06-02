@@ -86,14 +86,18 @@ class Ni4071:
     """
 
     def __init__(self, reset=True, address_str='PXI1Slot5', pwr_line_freq=50):
-        dll_path = '..\\..\\..\\binary\\nidmm_32.dll'
+        # dll_path = '..\\..\\..\\binary\\nidmm_32.dll'  #  does not work currently
+        dll_path = 'D:\\Workspace\\PyCharm\\Tilda\\TildaHost\\binary\\nidmm_32.dll'
         dev_name = ctypes.create_string_buffer(address_str.encode('utf-8'))
 
         self.dll = ctypes.WinDLL(dll_path)
         self.session = ctypes.c_uint32(0)
         self.init(dev_name, reset_dev=reset)
         self.config_power_line_freq(pwr_line_freq)
-        self.name = 'Ni4071_' + address_str
+        self.type = 'Ni4071'
+        self.address = address_str
+        self.name = self.type + '_' + address_str
+
         self.config_dict = {
             'range': 10.0,
             'resolution': 7.5,
@@ -108,6 +112,7 @@ class Ni4071:
             'measurementCompleteDestination': 'pxi_trig_4',
             'highInputResistanceTrue': True
         }
+        print('Ni4071 initialized')
 
 
     ''' Init and close '''
@@ -490,7 +495,7 @@ class Ni4071:
         self.dll.niDMM_Fetch(self.session, max_time_ms, ctypes.byref(read))
         return read.value
 
-    def fetch_multiple_meas(self, max_time_ms=-1, num_to_read=4):
+    def fetch_multiple_meas(self, num_to_read=4, max_time_ms=5):
         """
         Returns an array of values from a previously initiated multipoint measurement.
         The number of measurements the DMM makes is determined by the values you specify
@@ -850,36 +855,39 @@ class Ni4071:
         :param reset_dev: bool, true for resetting the DMM on startup.
         :return:
         """
-        self.config_dict = deepcopy(config_dict)
-        if reset_dev:
-            self.reset_dev()
-        dmm_range = config_dict.get('range')
-        resolutin = config_dict.get('resolution')
-        self.config_measurement(dmm_range, resolutin)
-        trig_count = config_dict.get('triggerCount')
-        sample_count = config_dict.get('sampleCount')
-        trig_src_enum = Ni4071TriggerSources[config_dict.get('triggerSource')]
-        sample_interval = config_dict.get('sampleInterval_s')
-        self.config_multi_point_meas(trig_count, sample_count, trig_src_enum, sample_interval)
-        auto_z = config_dict.get('autoZero')
-        self.config_auto_zero(auto_z)
-        self.config_adc_cal(0)
-        pwr_line_freq = config_dict.get('powerLineFrequency')
-        self.config_power_line_freq(pwr_line_freq)
-        trig_delay = config_dict.get('triggerDelay_s', -1.0)
-        self.config_trigger(trig_src_enum, trig_delay)
-        trig_slope = config_dict.get('triggerSlope')
-        if trig_slope == 'falling':
-            trig_slope = 1
-        else:
-            trig_slope = 0
-        self.config_trigger_slope(trig_slope)
-        self.config_sample_trigger_slope(trig_slope)
-        meas_compl_dest_enum = Ni4071MeasCompleteLoc[config_dict.get('measurementCompleteDestination')]
-        self.config_meas_complete_dest(meas_compl_dest_enum)
-        self.config_meas_complete_slope(0)
-        greater_10_g_ohm = config_dict.get('highInputResistanceTrue')
-        self.set_input_resistance(greater_10_g_ohm)
+        try:
+            self.config_dict = deepcopy(config_dict)
+            if reset_dev:
+                self.reset_dev()
+            dmm_range = config_dict.get('range')
+            resolutin = config_dict.get('resolution')
+            self.config_measurement(dmm_range, resolutin)
+            trig_count = config_dict.get('triggerCount')
+            sample_count = config_dict.get('sampleCount')
+            trig_src_enum = Ni4071TriggerSources[config_dict.get('triggerSource')]
+            sample_interval = config_dict.get('sampleInterval')
+            self.config_multi_point_meas(trig_count, sample_count, trig_src_enum, sample_interval)
+            auto_z = config_dict.get('autoZero')
+            self.config_auto_zero(auto_z)
+            self.config_adc_cal(0)
+            pwr_line_freq = config_dict.get('powerLineFrequency')
+            self.config_power_line_freq(pwr_line_freq)
+            trig_delay = config_dict.get('triggerDelay_s', -1.0)
+            self.config_trigger(trig_src_enum, trig_delay)
+            trig_slope = config_dict.get('triggerSlope')
+            if trig_slope == 'falling':
+                trig_slope = 1
+            else:
+                trig_slope = 0
+            self.config_trigger_slope(trig_slope)
+            self.config_sample_trigger_slope(trig_slope)
+            meas_compl_dest_enum = Ni4071MeasCompleteLoc[config_dict.get('measurementCompleteDestination')]
+            self.config_meas_complete_dest(meas_compl_dest_enum)
+            self.config_meas_complete_slope(0)
+            greater_10_g_ohm = config_dict.get('highInputResistanceTrue')
+            self.set_input_resistance(greater_10_g_ohm)
+        except Exception as e:
+            print('Exception while loading config to Ni4071: ', e)
 
     def emit_config_pars(self):
         """
@@ -913,63 +921,71 @@ class Ni4071:
 
 # there are more functions that can be found in the nidmm.h file,
 # but those above were the ones in the quick reference and most important ones.
-        # how to start external calibration??  niDMM_InitExtCal
-        #           -> not in quick ref! Will not be implemented for now.
+# how to start external calibration??  niDMM_InitExtCal
+#           -> not in quick ref! Will not be implemented for now.
 
 
-        # def test_multi():
-        #     dmm.config_multi_point_meas(1, 4, 1, 0.1)
-        #     print(dmm.read_multi_point(5))
-        #
-        #
-        # def test_wfm():
-        #     dmm.conf_waveform_meas(1003, 1.0, 1800000, 100)
-        #     print(dmm.read_waveform(num_to_read=100))
-        #
-        #
-        # def test_self_test():
-        #     print(dmm.self_test())
-        #
-        #
-        # if __name__ == "__main__":
-        #     dmm = Ni4071()
-        #     print(dmm.readstatus())
-        #     i = 0
-        #     # while i < 100:
-        #     #     print(dmm.get_dmm_dev_temp())
-        #     #     i += 1
-        #     #     time.sleep(0.5)
-        #     # test_multi()
-        #     # test_wfm()
-        #     # test_self_test()
-        #     # print(dmm.revision_query())
-        #     # print(dmm.get_error_message())
-        #     # # dmm.self_calibration()
-        #     # print(dmm.get_calibration_count())
-        #     # print(dmm.get_cal_date_and_time())
-        #     # print(dmm.get_last_cal_temp())
-        #     print(dmm.get_range())
-        #     dmm.config_measurement(100.0, 7.5, 1)
-        #     print('app_time:', dmm.get_aperture_time_info())
-        #     print('meas_time:', dmm.get_meas_period())
-        #     dmm.config_auto_zero(0)
-        #     dmm.config_measurement(100.0, 7.5, 1)
-        #     print('meas_time:', dmm.get_meas_period())
-        #
-        #     dmm.config_auto_zero(1)
-        #     dmm.config_measurement(100.0, 7.5, 1)
-        #     print('meas_time:', dmm.get_meas_period())
-        #
-        #     print(dmm.get_range())
-        #
-        #     print(dmm.readstatus())
-        #     dmm.set_input_resistance(True)
-        #     print(dmm.get_input_resistance())
-        #     dmm.set_range(10.0)
-        #     # print(dmm.read_single_voltage())
-        #     dmm.set_input_resistance(True)
-        #     # print(dmm.read_single_voltage())
-        #     print(dmm.get_input_resistance())
-        #     print(dmm.get_range())
-        #     # print(dmm.read_single_voltage())
-        #     dmm.de_init_dmm()
+# def test_multi():
+#     dmm.config_multi_point_meas(1, 4, 1, 0.1)
+#     print(dmm.read_multi_point(5))
+#
+#
+# def test_wfm():
+#     dmm.conf_waveform_meas(1003, 1.0, 1800000, 100)
+#     print(dmm.read_waveform(num_to_read=100))
+#
+#
+# def test_self_test():
+#     print(dmm.self_test())
+#
+#
+# if __name__ == "__main__":
+#     dmm = Ni4071()
+#     print(dmm.readstatus())
+#     dmm.config_dict['triggerSource'] = Ni4071TriggerSources.interval.name
+#     print(dmm.config_dict['triggerSource'])
+#     dmm.load_from_config_dict(dmm.config_dict, True)
+#     dmm.initiate_measurement()
+#     while True:
+#         ret = dmm.fetch_multiple_meas(num_to_read=-1)
+#         if ret:
+#             print(ret)
+#     i = 0
+#     # while i < 100:
+#     #     print(dmm.get_dmm_dev_temp())
+#     #     i += 1
+#     #     time.sleep(0.5)
+#     # test_multi()
+#     # test_wfm()
+#     # test_self_test()
+#     # print(dmm.revision_query())
+#     # print(dmm.get_error_message())
+#     # # dmm.self_calibration()
+#     # print(dmm.get_calibration_count())
+#     # print(dmm.get_cal_date_and_time())
+#     # print(dmm.get_last_cal_temp())
+#     print(dmm.get_range())
+#     dmm.config_measurement(100.0, 7.5, 1)
+#     print('app_time:', dmm.get_aperture_time_info())
+#     print('meas_time:', dmm.get_meas_period())
+#     dmm.config_auto_zero(0)
+#     dmm.config_measurement(100.0, 7.5, 1)
+#     print('meas_time:', dmm.get_meas_period())
+#
+#     dmm.config_auto_zero(1)
+#     dmm.config_measurement(100.0, 7.5, 1)
+#     print('meas_time:', dmm.get_meas_period())
+#
+#     print(dmm.get_range())
+#
+#     print(dmm.readstatus())
+#     dmm.set_input_resistance(True)
+#     print(dmm.get_input_resistance())
+#     dmm.set_range(10.0)
+#     # print(dmm.read_single_voltage())
+#     dmm.set_input_resistance(True)
+#     # print(dmm.read_single_voltage())
+#     print(dmm.get_input_resistance())
+#     print(dmm.get_range())
+#     # print(dmm.read_single_voltage())
+#     dmm.de_init_dmm()
