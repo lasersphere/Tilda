@@ -99,6 +99,7 @@ class Ni4071:
         self.address = address_str
         self.name = self.type + '_' + address_str
 
+        # default config dictionary for this type of DMM:
         self.config_dict = {
             'range': 10.0,
             'resolution': 7.5,

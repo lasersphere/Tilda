@@ -720,9 +720,11 @@ class Main(QtCore.QObject):
     def read_dmms(self):
         """
         dmm's will be read when main is in idle state.
+        The last readback will be stored in self.dmm_status dict.
         Values are already measured by the dmm in advance and main only "fetches" those.
             -> should be a quick return of values.
             values are emitted via send_state()
+            also values are emitted via the self.dmm_gui_callback, if there is a gui subscirbed to it.
         """
         # return None
         worth_sending = False
@@ -731,10 +733,12 @@ class Main(QtCore.QObject):
             for dmm_name, vals in readback.items():
                 if vals is not None:  # will be None if no new readback is available
                     t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    # take last element out of array and make a tuple with timestamp:
                     self.dmm_status[dmm_name]['lastReadback'] = (round(vals[-1], 8), t)
                     self.send_state()
                     worth_sending = True
             if self.dmm_gui_callback is not None and worth_sending:
+                # also send readback ot other guis that might be subscribed.
                 self.dmm_gui_callback.emit(readback)
 
     def request_dmm_config_pars(self, dmm_name):

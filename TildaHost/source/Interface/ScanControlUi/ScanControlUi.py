@@ -48,7 +48,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         will be disabled via callback signal in MainUi when status in Main is not idle
         """
         enable = bool and self.active_iso is not None
-        print('enabling Go? , ', enable, self.active_iso, bool)
+        # print('enabling Go? , ', enable, self.active_iso, bool)
         self.actionGo.setEnabled(enable)
 
     def go(self):

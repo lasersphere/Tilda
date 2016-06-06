@@ -105,9 +105,23 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.label_acc_volt_set.setText(str(status_dict.get('accvolt', '')))
         self.label_fpga_state_set.setText(str(status_dict.get('fpga_status', '')))
         self.label_sequencer_status_set.setText(str(status_dict.get('sequencer_status', '')))
-        self.label_dmm_status.setText(str(status_dict.get('dmm_status', '')))
+        self.label_dmm_status.setText(self.make_dmm_status_nice(status_dict))
         for w in self.act_scan_wins:
             w.enable_go(status_dict.get('status', '') == 'idle')
+
+    def make_dmm_status_nice(self, status_dict):
+        ret = ''
+        dmm_stat = status_dict.get('dmm_status', '')
+        if dmm_stat:
+            for dmm, dmm_dict in dmm_stat.items():
+                ret += dmm
+                stat = dmm_dict.get('status', '')
+                ret += ', status: ' + stat
+                read = dmm_dict.get('lastReadback', None)
+                if read is not None:
+                    ret += ', last reading: %.8f V | %s' % read
+                ret += ' \n'
+            return ret
 
     def choose_working_dir(self):
         """ will open a modal file dialog and set all workingdirectories of the pipeline to the chosen folder """

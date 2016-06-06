@@ -17,6 +17,8 @@ class DMMdummy:
         self.type = 'dummy'
         self.address = address_str
         self.name = self.type + '_' + address_str
+
+        # default config dictionary for this type of DMM:
         self.config_dict = {
             'range': 10.0,
             'resolution': 7.5,
@@ -35,7 +37,8 @@ class DMMdummy:
     ''' deinit and init '''
 
     def init(self, dev_name):
-        return 0
+        session_num = 0
+        return session_num
 
     def de_init_dmm(self):
         pass
