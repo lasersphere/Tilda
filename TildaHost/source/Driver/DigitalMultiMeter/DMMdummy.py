@@ -10,6 +10,7 @@ Module representing a dummy digital multimeter with all required public function
 
 """
 import numpy as np
+from copy import deepcopy
 
 
 class DMMdummy:
@@ -88,6 +89,7 @@ class DMMdummy:
 
     ''' loading '''
     def load_from_config_dict(self, config_dict, reset_dev):
+        self.config_dict = deepcopy(config_dict)
         print('dummy dmm named: ', self.name)
         print('resetting_dev: ', reset_dev)
         print('dummy dmm loaded with: ', config_dict)

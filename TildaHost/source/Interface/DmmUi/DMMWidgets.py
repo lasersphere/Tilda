@@ -9,6 +9,7 @@ Module Description:
 from PyQt5 import QtWidgets, QtCore
 from copy import deepcopy
 import functools
+import logging
 
 from Interface.DmmUi.Ui_Ni4071Widget import Ui_form_layout
 import Application.Config as Cfg
@@ -59,7 +60,7 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         :param conf_dict: dict, tuple (name_str, type_class, certain_value_list, actual_value_bool/int/str/float)
         :return:
         """
-        print('rcvd config dict: ', conf_dict)
+        # print('rcvd config dict: ', conf_dict)
         self.raw_config = conf_dict
         self.add_widgets_to_form_layout(self.raw_config, self.formLayout_config_values)
         self.formLayout_reading_and_buttons.addRow(self.reset_button, self.communicate_button)
@@ -172,3 +173,31 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
                 self.new_voltage(volt)
         except Exception as e:
             pass  # not yet initialized
+
+    def enable_communication(self, enable_bool):
+        """
+        this disables/enables all communication to the device.
+        :param enable_bool: bool, True for enabling
+        """
+        self.communicate_button.setEnabled(enable_bool)
+        self.reset_button.setEnabled(enable_bool)
+
+    def load_dict_to_gui(self, conf_dict):
+        """
+        this tries to sort all values in the dict to the corresponding keys/widgets
+        :param conf_dict: dict, key is name of parameter
+        """
+        for key, val in conf_dict.items():
+            try:
+                self.widget_value_changed(key, val)
+            except Exception as e:
+                # just print an error for now, maybe be more harsh here in the future.
+                logging.error(
+                    'error: could not change value to: %s in key: %s, error is: %s' % (key, val, e))
+
+    def get_current_config(self):
+        """
+        call this to get a dictionary containing all values in the gui
+        :return: dict, keys are parameter names.
+        """
+        return {key: val[3] for key, val in self.raw_config.items()}

@@ -27,6 +27,13 @@
       </widget>
      </widget>
     </item>
+    <item>
+     <widget class="QPushButton" name="pushButton_confirm">
+      <property name="text">
+       <string>ok</string>
+      </property>
+     </widget>
+    </item>
    </layout>
   </widget>
  </widget>

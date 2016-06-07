@@ -9,11 +9,13 @@ Created on '29.10.2015'
 from Interface.ScanControlUi.Ui_ScanControl import Ui_MainWindowScanControl
 from Interface.TrackParUi.TrackUi import TrackUi
 from Interface.SetupIsotopeUi.SetupIsotopeUi import SetupIsotopeUi
+from Interface.DmmUi.DmmUi import DmmLiveViewUi
 import Service.DatabaseOperations.DatabaseOperations as DbOp
+
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Application.Config as Cfg
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtCore
 import logging
 from copy import copy
 
@@ -28,12 +30,14 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.active_iso = None  # str, key for the self.scan_pars dict in Main
         self.win_title = None
         self.track_wins_dict = {}  # dict containing all open track windows, key is track_num
+        self.dmm_win = None  # here the open dmm_win is stored.
 
         self.actionGo.triggered.connect(self.go)
         self.actionSetup_Isotope.triggered.connect(self.setup_iso)
         self.actionAdd_Track.triggered.connect(self.add_track)
         self.actionSave_settings_to_database.triggered.connect(self.save_to_db)
         self.action_remove_track.triggered.connect(self.remove_selected_track)
+        self.actionConfigure_voltage_measurement.triggered.connect(self.open_dmm_win)
         self.listWidget.doubleClicked.connect(self.work_on_existing_track)
 
         self.main_gui = main_gui
@@ -41,6 +45,24 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.enable_go(False)
 
         self.show()
+
+    def open_dmm_win(self):
+        if self.dmm_win is None:
+            new_name = 'DMM Settings for %s' % self.active_iso
+            self.dmm_win = DmmLiveViewUi(self, new_name, enable_com=False, active_iso=self.active_iso)
+        else:
+            self.raise_win_to_front(self.dmm_win)
+
+    def close_dmm_live_view_win(self):
+        self.dmm_win = None
+
+    def raise_win_to_front(self, window):
+        # this will remove minimized status
+        # and restore window with keeping maximized/normal state
+        window.setWindowState(window.windowState() & ~QtCore.Qt.WindowMinimized | QtCore.Qt.WindowActive)
+
+        # this will activate the window
+        window.activateWindow()
 
     def enable_go(self, bool):
         """

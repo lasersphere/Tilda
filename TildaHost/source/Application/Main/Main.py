@@ -344,7 +344,6 @@ class Main(QtCore.QObject):
         :param iso_name: str, name of the isotope
         :return: dict, completed dictionary
         """
-        self.scan_pars[iso_name]['measureVoltPars'] = self.measure_voltage_pars
         self.scan_pars[iso_name]['pipeInternals']['workingDirectory'] = self.working_directory
         self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
         self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
@@ -605,6 +604,7 @@ class Main(QtCore.QObject):
         for i in trk_lis:
             logging.debug('saving track ' + str(i) + ' dict is: ' +
                           str(scan_d['track' + str(i)]))
+            logging.debug('measureVoltPars are: %s' % scan_d['measureVoltPars'])
             DbOp.add_scan_dict_to_db(self.database, scan_d, i, track_key='track' + str(i))
 
     """ Tilda passive operations """
@@ -718,8 +718,8 @@ class Main(QtCore.QObject):
         """  see: config_and_arm_dmm() """
         self.scan_main.setup_dmm_and_arm(dmm_name, config_dict, reset_dmm)
         self.dmm_status[dmm_name]['status'] = 'measuring'
-        self.send_state()
         self.set_state(MainState.idle)
+        self.send_state()
 
     def get_active_dmms(self):
         """

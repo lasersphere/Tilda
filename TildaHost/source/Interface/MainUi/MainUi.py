@@ -104,8 +104,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.label_fpga_state_set.setText(str(status_dict.get('fpga_status', '')))
         self.label_sequencer_status_set.setText(str(status_dict.get('sequencer_status', '')))
         self.label_dmm_status.setText(self.make_dmm_status_nice(status_dict))
+        stat_is_idle = status_dict.get('status', '') == 'idle'
         for w in self.act_scan_wins:
-            w.enable_go(status_dict.get('status', '') == 'idle')
+            w.enable_go(stat_is_idle)
+        if self.dmm_live_view_win is not None:
+            self.dmm_live_view_win.enable_communication(stat_is_idle)
 
     def choose_working_dir(self):
         """ will open a modal file dialog and set all workingdirectories of the pipeline to the chosen folder """

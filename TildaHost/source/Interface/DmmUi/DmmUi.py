@@ -8,6 +8,7 @@ Module Description: Main Ui for controlling the digital Multimeters connected to
 
 from PyQt5 import QtWidgets, QtCore
 import functools
+import logging
 
 from Interface.DmmUi.Ui_DmmLiveView import Ui_MainWindow
 from Interface.DmmUi.ChooseDmmWidget import ChooseDmmWidget
@@ -25,14 +26,14 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
     # callback for the voltage readings, done by the main when in idle state
     voltage_reading = QtCore.pyqtSignal(dict)
 
-    def __init__(self, parent):
+    def __init__(self, parent, window_name='DMM Live View Window', enable_com=None, active_iso=None):
         """
         this will statup the GUI and check for already active dmm's
-        :param parent: parent_gui, usually the mian in order to unsubscribe from it etc.
+        :param parent: parent_gui, usually the main in order to unsubscribe from it etc.
         """
         super(DmmLiveViewUi, self).__init__()
         self.setupUi(self)
-        self.setWindowTitle('DMM Live View Window')
+        self.setWindowTitle(window_name)
         self.parent_ui = parent
         self.dmm_types = Cfg._main_instance.scan_main.digital_multi_meter.types
         self.tabs = {
@@ -47,12 +48,48 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
 
         Cfg._main_instance.dmm_gui_subscribe(self.voltage_reading)
         self.voltage_reading.connect(self.rcvd_voltage_dict)
+        self.pushButton_confirm.clicked.connect(self.confirm_settings)
 
         self.tabWidget.setTabsClosable(True)
 
         self.tabWidget.tabCloseRequested.connect(self.tab_wants_to_be_closed)
 
         self.show()
+
+        self.comm_allow_overwrite_val = False
+        if enable_com is not None:
+            self.enable_communication(enable_com, True)
+
+        self.active_iso = active_iso
+        if self.active_iso is not None:
+            dmm_conf_dict = Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars']['dmms']
+            self.load_config_dict(dmm_conf_dict)
+
+    def enable_communication(self, comm_allow, overwrite=False):
+        """
+        allow or disable communication with a device.
+        will be disabled from mainui, when status is not idle
+        :param overwrite: bool, overwrite any following call with the comm_allow value now.
+        :param comm_allow: bool, boolean if communication is allowed or not.
+        """
+        if overwrite:
+            print('communication has ben permanently enabled/disabled: ', comm_allow)
+            self.comm_allow_overwrite_val = True
+            self._enable_communication(comm_allow)
+        else:
+            if self.comm_allow_overwrite_val:
+                print('communication is blocked')
+                return None
+            else:
+                self._enable_communication(comm_allow)
+
+    def _enable_communication(self, enable_bool):
+        self.choose_dmm_wid.pushButton_initialize.setEnabled(enable_bool)
+        self.tabWidget.setTabsClosable(enable_bool)
+        for dmm_name, val_lists in self.tabs.items():
+            if dmm_name is not 'tab0':
+                widget = val_lists[-1]
+                widget.enable_communication(enable_bool)
 
     def tab_wants_to_be_closed(self, *args):
         """
@@ -129,8 +166,46 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.voltage_reading.disconnect()
         self.parent_ui.close_dmm_live_view_win()
 
-    def poll_config_from_main(self):
-        volt_par_dict = Cfg._main_instance.measure_voltage_pars
+    def load_config_dict(self, dmm_conf_dict):
+        """
+        use this if you want to paste your config settings inside the dmm_conf_dict to the
+        corresponding interfaces.
+        Note, that this will not yet have any impact on the device itself.
+        only by communicating with it than, it will be configered
+        :param dmm_conf_dict: dict, keys are dmm_names, values are the config dicts for each dmm
+        """
+        for key, val in dmm_conf_dict.items():
+            try:
+                self.tabs[key][-1].load_dict_to_gui(val)
+            except Exception as e:
+                logging.error(
+                    'error: while loading the dmm vals to the gui of %s, this happened: %s' % (key, e))
+
+    def get_current_dmm_config(self):
+        """
+        this will return the current gui values of all active dmms
+        :return: dict, key is dmm_name, val is dict, with config of all dmms
+        """
+        ret = {}
+        for key, val in self.tabs.items():
+            if key != 'tab0':
+                try:
+                    ret[key] = self.tabs[key][-1].get_current_config()
+                except Exception as e:
+                    logging.error(
+                        'error: while reading the gui of %s, this happened: %s' % (key, e))
+        return ret
+
+    def confirm_settings(self):
+        """
+        when ok is pressed, values are stored in teh main, if an isotope has ben selected before.
+        """
+        if self.active_iso is not None:
+            Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars']['dmms'] = self.get_current_dmm_config()
+            # print('set values to: ', Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars']['dmms'])
+        self.close()
+
+
 
 
 

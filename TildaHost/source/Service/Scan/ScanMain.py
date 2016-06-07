@@ -56,6 +56,7 @@ class ScanMain:
                      ' of type: ' + scan_dict['isotopeData']['type'])
         self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
+        self.prepare_dmms_for_scan(scan_dict['measureVoltPars'].get('dmms', {}))
 
     def prep_seq(self, seq_type):
         """
@@ -308,6 +309,17 @@ class ScanMain:
         :return: dict of tuples, {dmm_name: (type_str, address_str, configPars_dict)}
         """
         return self.digital_multi_meter.get_active_dmms()
+
+    def prepare_dmms_for_scan(self, dmms_conf_dict):
+        """
+        call this pre scan in order to configure all dmms according to the
+        dmms_conf_dict, which is located in scan_dict['measureVoltPars']['dmms].
+        each dmm will be resetted before starting.
+        :param dmms_conf_dict: dict, key is name of dmm,
+         val is dict for the corresponding dmm
+        """
+        for dmm_name, dmm_conf_dict in dmms_conf_dict.items():
+            self.setup_dmm_and_arm(dmm_name, dmm_conf_dict, True)
 
     def de_init_dmm(self, dmm_name):
         """

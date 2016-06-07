@@ -22,6 +22,9 @@ class Ui_MainWindow(object):
         self.tab_0.setObjectName("tab_0")
         self.tabWidget.addTab(self.tab_0, "")
         self.verticalLayout.addWidget(self.tabWidget)
+        self.pushButton_confirm = QtWidgets.QPushButton(self.centralwidget)
+        self.pushButton_confirm.setObjectName("pushButton_confirm")
+        self.verticalLayout.addWidget(self.pushButton_confirm)
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
@@ -32,4 +35,5 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_0), _translate("MainWindow", "Tab 1"))
+        self.pushButton_confirm.setText(_translate("MainWindow", "ok"))
 
