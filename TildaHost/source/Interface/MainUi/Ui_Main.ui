@@ -177,12 +177,10 @@
      <string>Tools</string>
     </property>
     <addaction name="actionScan_Control"/>
-    <addaction name="actionPost_acceleration_power_supply_control"/>
     <addaction name="actionSimple_Counter"/>
     <addaction name="actionSet_Laser_Frequency"/>
     <addaction name="actionSet_acceleration_voltage"/>
     <addaction name="actionTilda_Passive"/>
-    <addaction name="actionDigital_Multimeters"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -194,7 +192,8 @@
     <property name="title">
      <string>Configure</string>
     </property>
-    <addaction name="actionVoltage_Measurement"/>
+    <addaction name="actionPost_acceleration_power_supply_control"/>
+    <addaction name="actionDigital_Multimeters"/>
    </widget>
    <addaction name="menuTilda_MainWindow"/>
    <addaction name="menuView"/>
@@ -233,7 +232,7 @@
   </action>
   <action name="actionPost_acceleration_power_supply_control">
    <property name="text">
-    <string>Post acceleration power supply control</string>
+    <string>Post acceleration power supplies</string>
    </property>
   </action>
   <action name="actionSimple_Counter">

@@ -11,7 +11,6 @@ from Interface.MainUi.Ui_Main import Ui_TildaMainWindow
 from Interface.VersionUi.VersionUi import VersionUi
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
 from Interface.ScanProgressUi.ScanProgressUi import ScanProgressUi
-from Interface.VoltageMeasurementConfigUi.VoltMeasConfUi import VoltMeasConfUi
 from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
 from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 from Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
@@ -37,7 +36,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
         self.act_scan_wins = []  # list of active scan windows
         self.post_acc_win = None  # only one active post acceleration window
-        self.measure_voltage_win = None
         self.scan_progress_win = None
         self.simple_counter_gui = None
         self.tilda_passive_gui = None
@@ -46,7 +44,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionWorking_directory.triggered.connect(self.choose_working_dir)
         self.actionVersion.triggered.connect(self.open_version_win)
         self.actionScan_Control.triggered.connect(self.open_scan_ctrl_win)
-        self.actionVoltage_Measurement.triggered.connect(self.open_volt_meas_win)
         self.actionPost_acceleration_power_supply_control.triggered.connect(self.open_post_acc_win)
         self.actionSimple_Counter.triggered.connect(self.open_simple_counter_win)
         self.actionSet_Laser_Frequency.triggered.connect(self.set_laser_freq)
@@ -176,9 +173,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             print('erroror:', e)
         # pass
 
-    def open_volt_meas_win(self):
-        self.measure_voltage_win = VoltMeasConfUi(Cfg._main_instance.measure_voltage_pars, self)
-
     def open_post_acc_win(self):
         self.post_acc_win = PostAccControlUi(self)
 
@@ -216,9 +210,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def close_scan_progress_win(self):
         self.scan_progress_win = None
 
-    def close_volt_meas_win(self):
-        self.measure_voltage_win = None
-
     def close_post_acc_win(self):
         self.post_acc_win = None
 
@@ -243,11 +234,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 self.post_acc_win.close()
         except Exception as e:
             logging.error('error while closing post acceleration win:' + str(e))
-        try:
-            if self.measure_voltage_win is not None:
-                self.measure_voltage_win.close()
-        except Exception as e:
-            logging.error('error while closing voltage measurement win:' + str(e))
         try:
             if self.scan_progress_win is not None:
                 self.scan_progress_win.close()

@@ -9,6 +9,7 @@ import numpy as np
 from os import path, pardir
 
 import ctypes
+import logging
 import datetime
 from copy import deepcopy
 from enum import Enum, unique
@@ -89,11 +90,16 @@ class Ni4071:
 
     def __init__(self, reset=True, address_str='PXI1Slot5', pwr_line_freq=50):
         dll_path = path.join(path.dirname(__file__), pardir, pardir, pardir, 'binary\\nidmm_32.dll')
-        dev_name = ctypes.create_string_buffer(address_str.encode('utf-8'))
 
         self.dll = ctypes.WinDLL(dll_path)
         self.session = ctypes.c_uint32(0)
-        self.init(dev_name, reset_dev=reset)
+        stat = self.init(address_str, reset_dev=reset)
+        if stat < 0:  # if init fails, start simulation
+            self.get_error_message(stat, 'while initializing Ni4071: ')
+            self.de_init_dmm()
+            print('starting simulation now')
+            stat = self.init_with_option(address_str, "Simulate=1, DriverSetup=Model:4071; BoardType:PXI")
+            self.get_error_message(stat)
         self.config_power_line_freq(pwr_line_freq)
         self.type = 'Ni4071'
         self.address = address_str
@@ -114,7 +120,7 @@ class Ni4071:
             'measurementCompleteDestination': 'pxi_trig_4',
             'highInputResistanceTrue': True
         }
-        print('Ni4071 initialized')
+        print('Ni4071 initialized, status is: %s, session is: %s' % (stat, self.session))
 
 
     ''' Init and close '''
@@ -122,16 +128,31 @@ class Ni4071:
     def init(self, dev_name, id_query=True, reset_dev=True):
         """
         Creates a new session to the instrument
-        :return: self.session
+        :return: the status
         """
-        self.dll.niDMM_init(dev_name, id_query, reset_dev, ctypes.byref(self.session))
-        return self.session
+        dev_name = ctypes.create_string_buffer(dev_name.encode('utf-8'))
+        return self.dll.niDMM_init(dev_name, id_query, reset_dev, ctypes.byref(self.session))
+
+    def init_with_option(self, dev_name, options_string, id_query=True, reset_dev=True):
+        """
+        initialize the dmm with options.
+        e.g. "Simulate=1, DriverSetup=Model:4071; BoardType:PXI" to simulate a pxi device
+        :param dev_name: str, resource name of the dev
+        :param options_string: str, can be used to pass the options
+        :param id_query: bool
+        :param reset_dev: bool
+        :return: the status
+        """
+        dev_name = ctypes.create_string_buffer(dev_name.encode('utf-8'))
+        options_string = ctypes.create_string_buffer(options_string.encode('utf-8'))
+        return self.dll.niDMM_InitWithOptions(dev_name, id_query, reset_dev, options_string, ctypes.byref(self.session))
 
     def de_init_dmm(self):
         ''' Closes the current session to the instrument. '''
         if self.readstatus()[1] != 4:
             self.abort_meas()
         self.dll.niDMM_close(self.session)
+        self.session = ctypes.c_ulong(0)
 
     ''' Configure '''
 
@@ -621,14 +642,18 @@ class Ni4071:
         self.dll.niDMM_GetDigitsOfPrecision(self.session, ctypes.byref(ret_digits))
         return ret_digits.value
 
-    def get_error_message(self):
+    def get_error_message(self, input, comment='Ni4071 yields error:'):
         """
         Takes the error cluster returned by the VIs, interprets it, and returns it as a user-readable string.
         :return: int, str
         """
-        ret_status = ctypes.c_int32(0)
+        ret_status = ctypes.c_int32(input)
         ret_message = ctypes.create_string_buffer("".encode('utf-8'), 256)
         self.dll.niDMM_error_message(self.session, ret_status, ret_message)
+        if ret_status.value < 0:
+            logging.error(
+                comment + ' errorcode is: ' + str(ret_status.value) +
+                '\n error message is: ' + ret_message.value.decode('utf-8'))
         return ret_status.value, ret_message.value.decode('utf-8')
 
     ''' Calibration '''

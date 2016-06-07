@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindowScanControl(object):
     def setupUi(self, MainWindowScanControl):
         MainWindowScanControl.setObjectName("MainWindowScanControl")
-        MainWindowScanControl.resize(419, 472)
+        MainWindowScanControl.resize(329, 283)
         MainWindowScanControl.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         MainWindowScanControl.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self.centralwidget = QtWidgets.QWidget(MainWindowScanControl)
@@ -27,7 +27,7 @@ class Ui_MainWindowScanControl(object):
         MainWindowScanControl.setStatusBar(self.statusbar)
         self.toolBar = QtWidgets.QToolBar(MainWindowScanControl)
         self.toolBar.setObjectName("toolBar")
-        MainWindowScanControl.addToolBar(QtCore.Qt.TopToolBarArea, self.toolBar)
+        MainWindowScanControl.addToolBar(QtCore.Qt.LeftToolBarArea, self.toolBar)
         self.actionGo = QtWidgets.QAction(MainWindowScanControl)
         self.actionGo.setObjectName("actionGo")
         self.actionSetup_Isotope = QtWidgets.QAction(MainWindowScanControl)
@@ -35,9 +35,13 @@ class Ui_MainWindowScanControl(object):
         self.actionAdd_Track = QtWidgets.QAction(MainWindowScanControl)
         self.actionAdd_Track.setObjectName("actionAdd_Track")
         self.actionSave_settings_to_database = QtWidgets.QAction(MainWindowScanControl)
+        icon = QtGui.QIcon.fromTheme("save")
+        self.actionSave_settings_to_database.setIcon(icon)
         self.actionSave_settings_to_database.setObjectName("actionSave_settings_to_database")
         self.action_remove_track = QtWidgets.QAction(MainWindowScanControl)
         self.action_remove_track.setObjectName("action_remove_track")
+        self.actionConfigure_voltage_measurement = QtWidgets.QAction(MainWindowScanControl)
+        self.actionConfigure_voltage_measurement.setObjectName("actionConfigure_voltage_measurement")
         self.toolBar.addAction(self.actionGo)
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.actionSetup_Isotope)
@@ -45,6 +49,8 @@ class Ui_MainWindowScanControl(object):
         self.toolBar.addAction(self.actionAdd_Track)
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.action_remove_track)
+        self.toolBar.addSeparator()
+        self.toolBar.addAction(self.actionConfigure_voltage_measurement)
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.actionSave_settings_to_database)
 
@@ -64,4 +70,5 @@ class Ui_MainWindowScanControl(object):
         self.actionSave_settings_to_database.setText(_translate("MainWindowScanControl", "save settings to database"))
         self.actionSave_settings_to_database.setShortcut(_translate("MainWindowScanControl", "Ctrl+S"))
         self.action_remove_track.setText(_translate("MainWindowScanControl", "remove track"))
+        self.actionConfigure_voltage_measurement.setText(_translate("MainWindowScanControl", "configure voltage measurement"))
 
