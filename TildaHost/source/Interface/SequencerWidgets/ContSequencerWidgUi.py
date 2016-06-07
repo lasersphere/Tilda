@@ -11,8 +11,9 @@ from Interface.SequencerWidgets.Ui_ContSeqWidg import Ui_ContSeqWidg
 
 
 class ContSeqWidg(BaseSequencerWidgUi, Ui_ContSeqWidg):
-    def __init__(self, track_dict):
+    def __init__(self, track_dict, main_gui):
         BaseSequencerWidgUi.__init__(self, track_dict)
+        self.main_gui = main_gui
 
     def set_type(self):
         self.type = 'cs'

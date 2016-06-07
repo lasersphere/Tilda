@@ -96,7 +96,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def update_status(self, status_dict):
         """
         will be called when the Main changes its status
-        status_dict keys: ['workdir', 'status', 'database', 'laserfreq', 'accvolt', 'sequencer_status', 'fpga_status']
+        status_dict keys: ['workdir', 'status', 'database', 'laserfreq', 'accvolt',
+         'sequencer_status', 'fpga_status', 'dmm_status']
         """
         self.label_workdir_set.setText(str(status_dict.get('workdir', '')))
         self.label_main_status.setText(str(status_dict.get('status', '')))
@@ -108,20 +109,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.label_dmm_status.setText(self.make_dmm_status_nice(status_dict))
         for w in self.act_scan_wins:
             w.enable_go(status_dict.get('status', '') == 'idle')
-
-    def make_dmm_status_nice(self, status_dict):
-        ret = ''
-        dmm_stat = status_dict.get('dmm_status', '')
-        if dmm_stat:
-            for dmm, dmm_dict in dmm_stat.items():
-                ret += dmm
-                stat = dmm_dict.get('status', '')
-                ret += ', status: ' + stat
-                read = dmm_dict.get('lastReadback', None)
-                if read is not None:
-                    ret += ', last reading: %.8f V | %s' % read
-                ret += ' \n'
-            return ret
 
     def choose_working_dir(self):
         """ will open a modal file dialog and set all workingdirectories of the pipeline to the chosen folder """
@@ -150,6 +137,27 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         file = QtWidgets.QFileDialog.getOpenFileName(
             self, 'choose an xml file', Cfg._main_instance.working_directory, '*.xml')[0]
         Cfg._main_instance.load_spectra_to_main(file)
+
+    ''' formatting '''
+
+    def make_dmm_status_nice(self, status_dict):
+        """
+        will round teh readback of the dmms to 8 digits and return a nicely formatted status string
+        :param status_dict: dict, keys as in self.update_status
+        :return: str, linebreak for each new dmm.
+        """
+        ret = ''
+        dmm_stat = status_dict.get('dmm_status', '')
+        if dmm_stat:
+            for dmm, dmm_dict in dmm_stat.items():
+                ret += dmm
+                stat = dmm_dict.get('status', '')
+                ret += ', status: ' + stat
+                read = dmm_dict.get('lastReadback', None)
+                if read is not None:
+                    ret += ', last reading: %.8f V | %s' % read
+                ret += ' \n'
+            return ret
 
     ''' open windows'''
     def open_version_win(self):

@@ -26,6 +26,10 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
     voltage_reading = QtCore.pyqtSignal(dict)
 
     def __init__(self, parent):
+        """
+        this will statup the GUI and check for already active dmm's
+        :param parent: parent_gui, usually the mian in order to unsubscribe from it etc.
+        """
         super(DmmLiveViewUi, self).__init__()
         self.setupUi(self)
         self.setWindowTitle('DMM Live View Window')
@@ -51,6 +55,11 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.show()
 
     def tab_wants_to_be_closed(self, *args):
+        """
+        when clicking on(X) on the tab this will be called and the dmm will be deinitialized.
+        will be called by self.tabWidget.tabCloseRequested
+        :param args: tuple, (ind,)
+        """
         tab_ind = args[0]
         if tab_ind:
             dmm_name = self.tabWidget.tabText(tab_ind)
@@ -58,9 +67,13 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
             self.tabs.pop(dmm_name)
             self.tabWidget.removeTab(tab_ind)
 
-    def initialize_dmm(self, rcv_tpl):
-        print('starting to initialize: ', rcv_tpl)
-        dev_type, dev_address = rcv_tpl
+    def initialize_dmm(self, dmm_tuple):
+        """
+        will initialize the dmm of type and adress and store the instance in the scan_main.
+        :param dmm_tuple: tuple, (dev_type_str, dev_addr_str)
+        """
+        print('starting to initialize: ', dmm_tuple)
+        dev_type, dev_address = dmm_tuple
         dmm_name = dev_type + '_' + dev_address
         if dmm_name in list(self.tabs.keys()) or dmm_name is None:
             print('could not initialize: ', dmm_name, ' ... already initialized?')
@@ -69,15 +82,21 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.init_dmm_done_callback.connect(functools.partial(self.setup_new_tab_widget, (dmm_name, dev_type)))
 
     def deinit_dmm(self, dmm_name):
+        """ deinitializes the dmm """
         Cfg._main_instance.deinit_dmm(dmm_name)
 
     def check_for_already_active_dmms(self):
+        """ checks for already active dmms """
         act_dmm_dict = Cfg._main_instance.get_active_dmms()
         for key, val in act_dmm_dict.items():
             dmm_type, dmm_addr, dmm_config = val
             self.setup_new_tab_widget((key, dmm_type), False)
 
     def setup_new_tab_widget(self, tpl, disconnect_signal=True):
+        """
+        setup a new tab inside the tab widget.
+        with the get_wid_by_type function the right widget is initiated.
+        """
         dmm_name, dev_type = tpl  # dmm_name = tab_name
         print('done initializing: ', dmm_name, dev_type)
         if disconnect_signal:
@@ -102,9 +121,18 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.tabs[key][2].new_voltage(read[-1])
 
     def closeEvent(self, *args, **kwargs):
+        """
+        when closing this window, unsubscirbe from main and from voltage readback.
+        Also tell parent gui that it is closed.
+        """
         Cfg._main_instance.dmm_gui_unsubscribe()
         self.voltage_reading.disconnect()
         self.parent_ui.close_dmm_live_view_win()
+
+    def poll_config_from_main(self):
+        volt_par_dict = Cfg._main_instance.measure_voltage_pars
+
+
 
 # if __name__ == "__main__":
 #     app = QtWidgets.QApplication(sys.argv)

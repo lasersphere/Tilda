@@ -87,7 +87,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         track_number = int(track_name[5:])
         logging.debug('working on track' + str(track_number))
         try:
-            self.track_wins_dict[str(track_number)] = TrackUi(self, track_number, self.active_iso)
+            self.track_wins_dict[str(track_number)] = TrackUi(self, track_number, self.active_iso, self.main_gui)
         except Exception as e:
             print(e)
 

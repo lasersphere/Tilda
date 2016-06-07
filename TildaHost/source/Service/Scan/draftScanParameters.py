@@ -8,7 +8,7 @@ Module containing the ScanParameters dictionaries as needed for Scanning with th
 """
 """ List of currently supported sequencer types """
 
-sequencer_types_list = ['cs', 'trs', 'csdummy', 'trsdummy']
+sequencer_types_list = ['cs', 'trs', 'csdummy', 'trsdummy', 'kepco']
 
 """ outer most dictionary contains the following keys: """
 
@@ -42,6 +42,8 @@ naming convention is type_list.  """
 cs_list = ['dwellTime10ns']
 
 trs_list = ['nOfBins', 'nOfBunches', 'softwGates', 'softBinWidth_ns']
+
+kepco_list = []
 
 csdummy_list = cs_list
 

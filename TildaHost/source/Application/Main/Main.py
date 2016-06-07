@@ -95,6 +95,7 @@ class Main(QtCore.QObject):
         elif self.m_state[0] is MainState.starting_simple_counter:
             self._start_simple_counter(*self.m_state[1])
         elif self.m_state[0] is MainState.simple_counter_running:
+            self.read_dmms()
             self._read_data_simple_counter()
         elif self.m_state[0] is MainState.stop_simple_counter:
             self._stop_simple_counter()
@@ -325,11 +326,7 @@ class Main(QtCore.QObject):
                 self.scan_start_time = datetime.now()
                 self.scan_progress['activeIso'] = iso_name
                 self.scan_progress['completedTracks'] = []
-                self.scan_pars[iso_name]['measureVoltPars'] = self.measure_voltage_pars
-                self.scan_pars[iso_name]['pipeInternals']['workingDirectory'] = self.working_directory
-                self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
-                self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
-                self.scan_pars[iso_name]['isotopeData']['accVolt'] = self.acc_voltage
+                self.add_global_infos_to_scan_pars(iso_name)
                 logging.debug('will scan: ' + iso_name + str(sorted(self.scan_pars[iso_name])))
                 self.scan_main.prepare_scan(self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline)
                 self.set_state(MainState.load_track)
@@ -340,6 +337,19 @@ class Main(QtCore.QObject):
         except Exception as e:
             print('error: ', e)
             return False
+
+    def add_global_infos_to_scan_pars(self, iso_name):
+        """
+        this will update the self.scan_pars[isoname] dict with the global informations.
+        :param iso_name: str, name of the isotope
+        :return: dict, completed dictionary
+        """
+        self.scan_pars[iso_name]['measureVoltPars'] = self.measure_voltage_pars
+        self.scan_pars[iso_name]['pipeInternals']['workingDirectory'] = self.working_directory
+        self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
+        self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
+        self.scan_pars[iso_name]['isotopeData']['accVolt'] = self.acc_voltage
+        return self.scan_pars[iso_name]
 
     def halt_scan_func(self, halt_bool):
         """
@@ -588,6 +598,7 @@ class Main(QtCore.QObject):
         """
         will save all information in the scan_pars dict for the given isotope to the database.
         """
+        self.add_global_infos_to_scan_pars(iso)
         scan_d = deepcopy(self.scan_pars[iso])
         # add_scan_dict_to_db will perform some changes on scan_d, therefore copy necessary
         trk_num, trk_lis = SdOp.get_number_of_tracks_in_scan_dict(scan_d)

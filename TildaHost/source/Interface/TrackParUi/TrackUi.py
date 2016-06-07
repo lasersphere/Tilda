@@ -25,7 +25,7 @@ import Interface.TriggerWidgets.FindDesiredTriggerWidg as FindDesiredTriggerWidg
 class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     track_ui_call_back_signal = QtCore.pyqtSignal(dict)
 
-    def __init__(self, scan_ctrl_win, track_number, active_iso_name):
+    def __init__(self, scan_ctrl_win, track_number, active_iso_name, main_gui):
         """
         Non modal Main window to determine the scanparameters for a single track of a given isotope.
         scan_ctrl_win is needed for writing the track dictionary to a given scan dictionary.
@@ -39,6 +39,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.active_iso = scan_ctrl_win.active_iso
         seq_type = self.active_iso.split('_')[-1]
         self.track_number = track_number
+        self.main_gui = main_gui
 
         self.buffer_pars = deepcopy(Cfg._main_instance.scan_pars.get(active_iso_name).get(self.track_name))
         self.buffer_pars['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()  # is needed to be able to fix stop
@@ -51,7 +52,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.setWindowTitle(self.scan_ctrl_win.win_title + '_' + self.track_name)
 
         """ sequencer specific """
-        self.sequencer_widget = FindDesiredSeqWidg.find_sequencer_widget(seq_type, self.buffer_pars)
+        self.sequencer_widget = FindDesiredSeqWidg.find_sequencer_widget(seq_type, self.buffer_pars, self.main_gui)
         self.verticalLayout.replaceWidget(self.specificSequencerSettings, self.sequencer_widget)
 
         """ Trigger related """

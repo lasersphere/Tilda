@@ -895,7 +895,7 @@ class Ni4071:
         """
         function to return all needed parameters for the configruation dictionary and its values.
         :return:dict, tuples:
-         (name, type, certain_value_list)
+         (name, type, certain_value_list, actual_value)
         """
         config_dict = {
             'range': ('range', float, [-3.0, -2.0, -1.0, 0.1, 1.0, 10.0, 100.0, 1000.0], self.config_dict['range']),
