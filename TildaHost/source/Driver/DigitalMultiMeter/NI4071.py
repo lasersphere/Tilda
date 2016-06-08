@@ -135,7 +135,7 @@ class Ni4071:
         """
         dev_name = ctypes.create_string_buffer(dev_name.encode('utf-8'))
         ret = self.dll.niDMM_init(dev_name, id_query, reset_dev, ctypes.byref(self.session))
-        if ret > 0:
+        if ret >= 0:
             self.state = 'initialized'
         else:
             self.state = 'error %s %s' % (self.get_error_message(ret, comment=''))

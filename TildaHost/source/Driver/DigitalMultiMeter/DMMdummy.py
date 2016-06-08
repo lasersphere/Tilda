@@ -19,7 +19,7 @@ class DMMdummy:
         self.type = 'dummy'
         self.address = address_str
         self.name = self.type + '_' + address_str
-        self.state = 'none'
+        self.state = 'initialized'
         self.last_readback = None
 
         # default config dictionary for this type of DMM:

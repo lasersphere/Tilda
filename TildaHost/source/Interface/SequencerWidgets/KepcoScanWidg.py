@@ -17,11 +17,14 @@ class KepcoScanWidg(BaseSequencerWidgUi, QtWidgets.QWidget):
         self.main_gui = main_gui
         self.layout = QtWidgets.QVBoxLayout()
         self.setLayout(self.layout)
+        self.layout.addWidget(
+            QtWidgets.QLabel(
+                'Kepco Scan \n\n\n select dmm settings via scan control window >>> configure voltage measurement'))
 
-        self.button_for_open_config = QtWidgets.QPushButton('config dmm')
-        self.button_for_open_config.setMaximumSize(100, 50)
-        self.button_for_open_config.clicked.connect(self.open_dmm_win)
-        self.layout.addWidget(self.button_for_open_config)
+        # self.button_for_open_config = QtWidgets.QPushButton('config dmm')
+        # self.button_for_open_config.setMaximumSize(100, 50)
+        # self.button_for_open_config.clicked.connect(self.open_dmm_win)
+        # self.layout.addWidget(self.button_for_open_config)
 
     def set_type(self):
         self.type = 'kepco'
