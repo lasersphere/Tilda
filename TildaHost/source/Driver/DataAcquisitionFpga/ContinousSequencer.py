@@ -59,7 +59,11 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         set the dwell time for the continous sequencer.
         """
         track_name = 'track' + str(track_num)
-        self.ReadWrite(self.config.dwellTime10ns, int(scanParsDict[track_name]['dwellTime10ns']))
+        if scanParsDict['isotopeData']['type'] == 'kepco':
+            dwell = 1000  # force this to 10µs if kepco scanning
+        else:
+            dwell = int(scanParsDict[track_name]['dwellTime10ns'])
+        self.ReadWrite(self.config.dwellTime10ns, dwell)
         return self.checkFpgaStatus()
 
     def setAllContSeqPars(self, scanpars, track_num):

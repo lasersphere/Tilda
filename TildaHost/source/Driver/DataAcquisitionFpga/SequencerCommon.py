@@ -90,6 +90,7 @@ class Sequencer(FPGAInterfaceHandling):
     def selectKepcoOrScalerScan(self, typestr):
         logging.debug('type of scan: ' + typestr)
         if typestr == 'kepco':
+            print('this is a kepco scan')
             self.ReadWrite(self.config.VoltOrScaler, True)
         else:
             self.ReadWrite(self.config.VoltOrScaler, False)

@@ -61,8 +61,14 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         nOfBunches: long, number of bunches that will be acquired per voltage Step
         :return: True if self.status == self.statusSuccess, else False
         """
-        self.ReadWrite(self.config.nOfBins, scanpars[track_name]['nOfBins'])
-        self.ReadWrite(self.config.nOfBunches, scanpars[track_name]['nOfBunches'])
+        if scanpars['isotopeData']['type'] == 'kepco':
+            nofbins = 1000  # force these values when performing a kepco scan within the trs
+            nofbunches = 1
+        else:
+            nofbins = scanpars[track_name]['nOfBins']
+            nofbunches = scanpars[track_name]['nOfBins']
+        self.ReadWrite(self.config.nOfBins, nofbins)
+        self.ReadWrite(self.config.nOfBunches, nofbunches)
         return self.checkFpgaStatus()
 
     def setAllScanParameters(self, scanpars, track_num):

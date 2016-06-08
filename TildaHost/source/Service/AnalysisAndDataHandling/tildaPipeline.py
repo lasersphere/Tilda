@@ -142,9 +142,10 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None):
     start = Node()
 
     pipe = Pipeline(start)
+    pipe.pipeData = initPipeData(initial_scan_pars)
 
-    walk = start.attach(TN.NSaveRawData())
-    walk = walk.attach(SN.NPrint())
+    # walk = start.attach(TN.NSaveRawData())
+    walk = start.attach(SN.NPrint())
     # more has to be included...
     return pipe
 
