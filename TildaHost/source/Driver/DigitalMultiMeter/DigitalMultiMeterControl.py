@@ -26,6 +26,9 @@ class DMMControl:
     def __init__(self):
         self.types = ['Ni4071', 'dummy']
         self.dmm = {}
+        # dict for storing all active dmm objects.
+        # key is the name of the device, which is the type_address
+        # and should therefore be unique anyhow
 
     def find_dmm_by_type(self, type_str, address):
         """
@@ -79,7 +82,7 @@ class DMMControl:
         :param dmm_name: str, name of the dmm
         :return: dict, key: (name_str, type, valid_vals)
         """
-        print('dmm to emit:', self.dmm)
+        # print('dmm to emit:', self.dmm)
         return self.dmm[dmm_name].emit_config_pars()
         # use dicts to specify for the individual dmm
 
@@ -124,12 +127,12 @@ class DMMControl:
     def get_active_dmms(self):
         """
         function to return a dict of all active dmms
-        :return: dict of tuples, {dmm_name: (type_str, address_str, configPars_dict)}
+        :return: dict of tuples, {dmm_name: (type_str, address_str, state_str, last_readback, configPars_dict)}
         """
         ret = {}
         for key, val in self.dmm.items():
-            ret[key] = (self.dmm[key].type, self.dmm[key].address,
-                        self.get_raw_config_pars(key))
+            ret[key] = (self.dmm[key].type, self.dmm[key].address, self.dmm[key].state,
+                        self.dmm[key].last_readback, self.get_raw_config_pars(key))
         return ret
 
     def de_init_dmm(self, dmm_name):

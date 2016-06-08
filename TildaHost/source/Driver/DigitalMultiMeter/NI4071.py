@@ -91,6 +91,11 @@ class Ni4071:
     def __init__(self, reset=True, address_str='PXI1Slot5', pwr_line_freq=50):
         dll_path = path.join(path.dirname(__file__), pardir, pardir, pardir, 'binary\\nidmm_32.dll')
 
+        self.type = 'Ni4071'
+        self.state = 'None'
+        self.address = address_str
+        self.name = self.type + '_' + address_str
+        self.last_readback = None  # tuple, (voltage_float, time_str)
         self.dll = ctypes.WinDLL(dll_path)
         self.session = ctypes.c_uint32(0)
         stat = self.init(address_str, reset_dev=reset)
@@ -101,9 +106,7 @@ class Ni4071:
             stat = self.init_with_option(address_str, "Simulate=1, DriverSetup=Model:4071; BoardType:PXI")
             self.get_error_message(stat)
         self.config_power_line_freq(pwr_line_freq)
-        self.type = 'Ni4071'
-        self.address = address_str
-        self.name = self.type + '_' + address_str
+
 
         # default config dictionary for this type of DMM:
         self.config_dict = {
@@ -131,7 +134,12 @@ class Ni4071:
         :return: the status
         """
         dev_name = ctypes.create_string_buffer(dev_name.encode('utf-8'))
-        return self.dll.niDMM_init(dev_name, id_query, reset_dev, ctypes.byref(self.session))
+        ret = self.dll.niDMM_init(dev_name, id_query, reset_dev, ctypes.byref(self.session))
+        if ret > 0:
+            self.state = 'initialized'
+        else:
+            self.state = 'error %s %s' % (self.get_error_message(ret, comment=''))
+        return ret
 
     def init_with_option(self, dev_name, options_string, id_query=True, reset_dev=True):
         """
@@ -145,7 +153,13 @@ class Ni4071:
         """
         dev_name = ctypes.create_string_buffer(dev_name.encode('utf-8'))
         options_string = ctypes.create_string_buffer(options_string.encode('utf-8'))
-        return self.dll.niDMM_InitWithOptions(dev_name, id_query, reset_dev, options_string, ctypes.byref(self.session))
+        ret = self.dll.niDMM_InitWithOptions(
+            dev_name, id_query, reset_dev, options_string, ctypes.byref(self.session))
+        if ret > 0:
+            self.state = 'initialized'
+        else:
+            self.state = 'error %s %s' % (self.get_error_message(ret, comment=''))
+        return ret
 
     def de_init_dmm(self):
         ''' Closes the current session to the instrument. '''
@@ -503,6 +517,7 @@ class Ni4071:
           Use fetch_single_meas(), niDMM Fetch Multi Point, or niDMM Fetch Waveform to retrieve the measurement data.
         """
         self.dll.niDMM_Initiate(self.session)
+        self.state = 'measuring'
 
     def fetch_single_meas(self, max_time_ms=-1):
         """
@@ -545,7 +560,12 @@ class Ni4071:
         number_of_read_elements = ctypes.c_int32()
         self.dll.niDMM_FetchMultiPoint(
             self.session, max_time, number_to_read, array_of_values, ctypes.byref(number_of_read_elements))
-        return np.ctypeslib.as_array(array_of_values)[0:number_of_read_elements.value]
+        ret = np.ctypeslib.as_array(array_of_values)[0:number_of_read_elements.value]
+        if ret.any():
+            t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # take last element out of array and make a tuple with timestamp:
+            self.last_readback = (round(ret[-1], 8), t)
+        return ret
 
     def fetch_waveform(self, max_time_ms=-1, num_to_read=1):
         """
@@ -594,6 +614,7 @@ class Ni4071:
         Aborts a previously initiated measurement and returns the DMM to the Idle state.
         """
         self.dll.niDMM_Abort(self.session)
+        self.state = 'aborted'
 
     ''' Utility '''
 

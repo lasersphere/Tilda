@@ -168,8 +168,8 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
     def poll_last_readback(self):
         """ this will get the last readback of this dmm as stored in the status of the main. """
         try:
-            volt = Cfg._main_instance.dmm_status.get(
-                self.dmm_name, {'lastReadback': None}).get('lastReadback', None)[0]
+            volt = Cfg._main_instance.get_active_dmms.get(
+                self.dmm_name, ('type', 'addr', 'state', (None, 'time'), {}))[3][0]
             # is tuple of (volt_float, time_str)
             if volt is not None:
                 self.new_voltage(volt)

@@ -306,7 +306,7 @@ class ScanMain:
     def get_active_dmms(self):
         """
         function to return a dict of all active dmms
-        :return: dict of tuples, {dmm_name: (type_str, address_str, configPars_dict)}
+        :return: dict of tuples, {dmm_name: (type_str, address_str, state_str, last_readback, configPars_dict)}
         """
         return self.digital_multi_meter.get_active_dmms()
 
@@ -318,7 +318,13 @@ class ScanMain:
         :param dmms_conf_dict: dict, key is name of dmm,
          val is dict for the corresponding dmm
         """
+        logging.debug('preparing dmms for scan. Config dict is: %s' % dmms_conf_dict)
+        active_dmms = self.get_active_dmms()
+        logging.debug('active dmms: %s' % active_dmms)
         for dmm_name, dmm_conf_dict in dmms_conf_dict.items():
+            if dmm_name not in active_dmms:
+                logging.warning('%s was not initialized yet, will do now.' % dmm_name)
+                self.prepare_dmm(dmm_conf_dict.get('type', ''), dmm_conf_dict.get('address', ''))
             self.setup_dmm_and_arm(dmm_name, dmm_conf_dict, True)
 
     def de_init_dmm(self, dmm_name):

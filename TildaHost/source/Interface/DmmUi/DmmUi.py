@@ -72,7 +72,6 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
             self.label_measVoltTimeout_mu_s.setParent(None)
             self.verticalLayout.removeItem(self.formLayout_pulse_len_and_timeout)
 
-
     def enable_communication(self, comm_allow, overwrite=False):
         """
         allow or disable communication with a device.
@@ -134,7 +133,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         """ checks for already active dmms """
         act_dmm_dict = Cfg._main_instance.get_active_dmms()
         for key, val in act_dmm_dict.items():
-            dmm_type, dmm_addr, dmm_config = val
+            dmm_type, dmm_addr, state_str, last_readback, dmm_config = val
             self.setup_new_tab_widget((key, dmm_type), False)
 
     def setup_new_tab_widget(self, tpl, disconnect_signal=True):
@@ -182,11 +181,16 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         only by communicating with it than, it will be configered
         :param dmm_conf_dict: dict, keys are dmm_names, values are the config dicts for each dmm
         """
+        print('loading config dict: ', meas_volt_dict)
         dmm_conf_dict = meas_volt_dict.get('dmms', {})
-        pulse_len_mu_s = meas_volt_dict.get('measVoltPulseLength25ns', 0) * 25 / 1000
-        timeout_volt_meas_mu_s = meas_volt_dict.get('measVoltTimeout10ns', 0) * 10 / 1000
-        self.doubleSpinBox_measVoltTimeout_mu_s_set.setValue(timeout_volt_meas_mu_s)
-        self.doubleSpinBox_measVoltPulseLength_mu_s.setValue(pulse_len_mu_s)
+        pulse_len_25ns = meas_volt_dict.get('measVoltPulseLength25ns', 0)
+        if pulse_len_25ns is not None:
+            pulse_len_mu_s = pulse_len_25ns * 25 / 1000
+            self.doubleSpinBox_measVoltPulseLength_mu_s.setValue(pulse_len_mu_s)
+        timeout_10_ns = meas_volt_dict.get('measVoltTimeout10ns', 0)
+        if timeout_10_ns is not None:
+            timeout_volt_meas_mu_s = timeout_10_ns * 10 / 1000
+            self.doubleSpinBox_measVoltTimeout_mu_s_set.setValue(timeout_volt_meas_mu_s)
         for key, val in dmm_conf_dict.items():
             try:
                 self.tabs[key][-1].load_dict_to_gui(val)
@@ -224,11 +228,10 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         :return: dict, measVoltPars as stated as in draftScanparameters.py in the Service layer.
         """
         meas_volt_dict = {}
-        dmms_dict = self.get_current_dmm_config()
+        meas_volt_dict['dmms'] = self.get_current_dmm_config()
         meas_volt_dict['measVoltPulseLength25ns'] = int(self.doubleSpinBox_measVoltPulseLength_mu_s.value() * 1000 / 25)
         meas_volt_dict['measVoltTimeout10ns'] = int(self.doubleSpinBox_measVoltTimeout_mu_s_set.value() * 1000 / 10)
-        ret = SdOp.merge_dicts(meas_volt_dict, dmms_dict)
-        return ret
+        return meas_volt_dict
 
     def confirm_settings(self):
         """

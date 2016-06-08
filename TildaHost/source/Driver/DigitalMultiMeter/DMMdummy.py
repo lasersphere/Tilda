@@ -10,6 +10,7 @@ Module representing a dummy digital multimeter with all required public function
 
 """
 import numpy as np
+import datetime
 from copy import deepcopy
 
 
@@ -18,6 +19,8 @@ class DMMdummy:
         self.type = 'dummy'
         self.address = address_str
         self.name = self.type + '_' + address_str
+        self.state = 'none'
+        self.last_readback = None
 
         # default config dictionary for this type of DMM:
         self.config_dict = {
@@ -40,6 +43,7 @@ class DMMdummy:
 
     def init(self, dev_name):
         session_num = 0
+        self.state = 'initialized'
         return session_num
 
     def de_init_dmm(self):
@@ -73,14 +77,20 @@ class DMMdummy:
     ''' Measurement '''
 
     def initiate_measurement(self):
+        self.state = 'measuring'
         pass
 
     def fetch_multiple_meas(self, num_to_read, max_time=-1):
         if num_to_read == -1:
             num_to_read = 5
-        return np.full(num_to_read, 1.0, dtype=np.double)
+        ret = np.full(num_to_read, 1.0, dtype=np.double)
+        t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # take last element out of array and make a tuple with timestamp:
+        self.last_readback = (round(ret[-1], 8), t)
+        return ret
 
     def abort_meas(self):
+        self.state = 'aborted'
         pass
 
     ''' self calibration '''

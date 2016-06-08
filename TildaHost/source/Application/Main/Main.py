@@ -67,7 +67,6 @@ class Main(QtCore.QObject):
         self.tipa_status_callback_sig = None
         self.tipa_timeout_counter = 0
 
-        self.dmm_status = None
         self.dmm_gui_callback = None
 
         self.displayed_data = {}  # dict of all displayed files. complete filename is key.
@@ -80,7 +79,7 @@ class Main(QtCore.QObject):
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state(MainState.idle)
-        self.autostart()
+        # self.autostart()
 
     """ cyclic function """
 
@@ -218,7 +217,7 @@ class Main(QtCore.QObject):
                 'accvolt': self.acc_voltage,
                 'sequencer_status': self.sequencer_status,
                 'fpga_status': self.fpga_status,
-                'dmm_status': self.dmm_status
+                'dmm_status': self.get_dmm_status()
             }
             self.main_ui_status_call_back_signal.emit(stat_dict)
 
@@ -365,7 +364,7 @@ class Main(QtCore.QObject):
                 logging.warning('could not start scan because state of main is ' + str(self.m_state[0].name))
                 return False
         except Exception as e:
-            print('error: ', e)
+            print('error while starting scan: ', e)
             return False
 
     def add_global_infos_to_scan_pars(self, iso_name):
@@ -717,11 +716,7 @@ class Main(QtCore.QObject):
 
     def _init_dmm(self, type_str, addr_str, callback):
         """ see init_dmm() """
-        if self.dmm_status is None:
-            self.dmm_status = {}
         dmm_name = self.scan_main.prepare_dmm(type_str, addr_str)
-        self.dmm_status[dmm_name] = {}
-        self.dmm_status[dmm_name]['status'] = 'initialized'  # not so nice to store dmms here AND in DMMControl.py
         self.send_state()
         self.set_state(MainState.idle)
         if callback:
@@ -732,40 +727,48 @@ class Main(QtCore.QObject):
 
     def _deinit_dmm(self, dmm_name):
         self.scan_main.de_init_dmm(dmm_name)
-        if dmm_name == 'all':
-            self.dmm_status = {}
-        else:
-            self.dmm_status.pop(dmm_name)
         self.set_state(MainState.idle)
+        self.send_state()
 
     def config_and_arm_dmm(self, dmm_name, config_dict, reset_dmm):
         """
         configure the dmm via the config_dict and start a measurement, so the dmm starts to store values.
         :param dmm_name: str, name of dmm
         :param config_dict: dict, dictionary containing all parameters to configure the given dmm
-        :param reset_dmm: bool, True if you want to rset teh device before configuring
+        :param reset_dmm: bool, True if you want to reset the device before configuring
         """
-        if self.dmm_status.get(dmm_name, False):  # only configure and arm device if active
+        if self.get_dmm_status().get(dmm_name, False):  # only configure and arm device if active
             self.set_state(MainState.config_dmm, (dmm_name, config_dict, reset_dmm), only_if_idle=True)
 
     def _config_and_arm_dmm(self, dmm_name, config_dict, reset_dmm):
         """  see: config_and_arm_dmm() """
         self.scan_main.setup_dmm_and_arm(dmm_name, config_dict, reset_dmm)
-        self.dmm_status[dmm_name]['status'] = 'measuring'
         self.set_state(MainState.idle)
         self.send_state()
 
     def get_active_dmms(self):
         """
         function to return a dict of all active dmms
-        :return: dict of tuples, {dmm_name: (type_str, address_str, configPars_dict)}
+        :return: dict of tuples, {dmm_name: (type_str, address_str, state_str, last_readback, configPars_dict)}
         """
         return self.scan_main.get_active_dmms()
+
+    def get_dmm_status(self):
+        """
+        this will get the status of all active dmms and return a dictionary.
+        this encapsules the get_active_dmms funtion and removes some entries
+        from their returend dict, so it can be used within self.send_state()
+        :return: dict of dict, {dmm_name1: {'status': stat_str, 'lastReadback': (voltage_float, time_str)}}}
+        """
+        ret = {}
+        for dmm_name, vals  in self.get_active_dmms().items():
+            type_str, address_str, state_str, last_readback, configPars_dict = vals
+            ret[dmm_name] = {'status': state_str, 'lastReadback': last_readback}
+        return ret
 
     def read_dmms(self):
         """
         dmm's will be read when main is in idle state.
-        The last readback will be stored in self.dmm_status dict.
         Values are already measured by the dmm in advance and main only "fetches" those.
             -> should be a quick return of values.
             values are emitted via send_state()
@@ -777,9 +780,6 @@ class Main(QtCore.QObject):
         if readback is not None:  # will be None if no dmms are active
             for dmm_name, vals in readback.items():
                 if vals is not None:  # will be None if no new readback is available
-                    t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    # take last element out of array and make a tuple with timestamp:
-                    self.dmm_status[dmm_name]['lastReadback'] = (round(vals[-1], 8), t)
                     self.send_state()
                     worth_sending = True
             if self.dmm_gui_callback is not None and worth_sending:
