@@ -143,7 +143,7 @@
     <item row="6" column="0">
      <widget class="QLabel" name="label_8">
       <property name="text">
-       <string>digital multimeter status:</string>
+       <string>digital multimeter status*:</string>
       </property>
      </widget>
     </item>

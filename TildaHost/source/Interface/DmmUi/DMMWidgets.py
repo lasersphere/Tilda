@@ -18,16 +18,16 @@ import Application.Config as Cfg
 def get_wid_by_type(dmm_type, dmm_name):
     print('initializing widget for type:', dmm_type)
     if dmm_type == 'Ni4071':
-        return Ni4071Widg(dmm_name)
+        return Ni4071Widg(dmm_name, dmm_type)
     elif dmm_type == 'dummy':
-        return Ni4071Widg(dmm_name)
+        return Ni4071Widg(dmm_name, dmm_type)
     else:
         print('could not find widget of type: ', dmm_type)
 
 
 class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
 
-    def __init__(self, dmm_name):
+    def __init__(self, dmm_name, type):
         """
         this will create a widget for an already initialized dmm.
             -> initialized as it is an object in scan_main, dmm_dict
@@ -35,6 +35,8 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         """
         super(Ni4071Widg, self).__init__()
         self.setupUi(self)
+        self.type = type  # maybe this widget can be kept so general, that no widget is neede for each dmm
+        self.address = dmm_name.replace(self.type + '_', '')
         self.dmm_name = dmm_name
         self.raw_config = None
         self.reset_button = QtWidgets.QPushButton('reset values')
@@ -180,24 +182,28 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         :param enable_bool: bool, True for enabling
         """
         self.communicate_button.setEnabled(enable_bool)
-        self.reset_button.setEnabled(enable_bool)
+        # self.reset_button.setEnabled(enable_bool)
 
     def load_dict_to_gui(self, conf_dict):
         """
         this tries to sort all values in the dict to the corresponding keys/widgets
-        :param conf_dict: dict, key is name of parameter
+        :param conf_dict: dict, for a single dmm key is name of parameter
         """
         for key, val in conf_dict.items():
-            try:
-                self.widget_value_changed(key, val)
-            except Exception as e:
-                # just print an error for now, maybe be more harsh here in the future.
-                logging.error(
-                    'error: could not change value to: %s in key: %s, error is: %s' % (key, val, e))
+            if key not in ['type', 'address']:
+                try:
+                    self.widget_value_changed(key, val)
+                except Exception as e:
+                    # just print an error for now, maybe be more harsh here in the future.
+                    logging.error(
+                        'error: could not change value to: %s in key: %s, error is: %s' % (key, val, e))
 
     def get_current_config(self):
         """
         call this to get a dictionary containing all values in the gui
         :return: dict, keys are parameter names.
         """
-        return {key: val[3] for key, val in self.raw_config.items()}
+        ret = {key: val[3] for key, val in self.raw_config.items()}
+        ret['type'] = self.type
+        ret['address'] = self.address
+        return ret

@@ -148,7 +148,7 @@ class Ui_TildaMainWindow(object):
         self.label_5.setText(_translate("TildaMainWindow", "*double click on value to change"))
         self.label_fpga_state_set.setText(_translate("TildaMainWindow", "TextLabel"))
         self.label_sequencer_status_set.setText(_translate("TildaMainWindow", "TextLabel"))
-        self.label_8.setText(_translate("TildaMainWindow", "digital multimeter status:"))
+        self.label_8.setText(_translate("TildaMainWindow", "digital multimeter status*:"))
         self.label_dmm_status.setText(_translate("TildaMainWindow", "TextLabel"))
         self.menuTilda_MainWindow.setTitle(_translate("TildaMainWindow", "File"))
         self.menuView.setTitle(_translate("TildaMainWindow", "Tools"))

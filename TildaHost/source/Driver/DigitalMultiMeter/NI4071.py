@@ -120,7 +120,7 @@ class Ni4071:
             'measurementCompleteDestination': 'pxi_trig_4',
             'highInputResistanceTrue': True
         }
-        print('Ni4071 initialized, status is: %s, session is: %s' % (stat, self.session))
+        print(self.name, ' initialized, status is: %s, session is: %s' % (stat, self.session))
 
 
     ''' Init and close '''

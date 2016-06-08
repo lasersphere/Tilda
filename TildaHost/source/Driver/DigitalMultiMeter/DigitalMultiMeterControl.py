@@ -40,13 +40,13 @@ class DMMControl:
         if type_str == 'Ni4071':
             try:
                 dev = Ni4071(address_str=address)
-                name = dev.name
+                name = dev.name  # 'type_addr'
             except Exception as e:
                 print('starting dmm did not work exception is:', e)
         elif type_str == 'dummy':
             try:
                 dev = DMMdummy(address_str=address)
-                name = dev.name
+                name = dev.name  # 'type_addr'
             except Exception as e:
                 print('starting dmm did not work exception is:', e)
         if dev is not None:

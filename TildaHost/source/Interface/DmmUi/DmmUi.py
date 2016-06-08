@@ -13,6 +13,7 @@ import logging
 from Interface.DmmUi.Ui_DmmLiveView import Ui_MainWindow
 from Interface.DmmUi.ChooseDmmWidget import ChooseDmmWidget
 from Interface.DmmUi.DMMWidgets import get_wid_by_type
+import Service.Scan.ScanDictionaryOperations as SdOp
 import Application.Config as Cfg
 
 
@@ -62,8 +63,15 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.active_iso = active_iso
         if self.active_iso is not None:
-            dmm_conf_dict = Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars']['dmms']
-            self.load_config_dict(dmm_conf_dict)
+            meas_volt_dict = Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars']
+            self.load_config_dict(meas_volt_dict)
+        else:
+            self.doubleSpinBox_measVoltTimeout_mu_s_set.setParent(None)
+            self.doubleSpinBox_measVoltPulseLength_mu_s.setParent(None)
+            self.label_measVoltPulseLength_mu_s.setParent(None)
+            self.label_measVoltTimeout_mu_s.setParent(None)
+            self.verticalLayout.removeItem(self.formLayout_pulse_len_and_timeout)
+
 
     def enable_communication(self, comm_allow, overwrite=False):
         """
@@ -73,7 +81,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         :param comm_allow: bool, boolean if communication is allowed or not.
         """
         if overwrite:
-            print('communication has ben permanently enabled/disabled: ', comm_allow)
+            print('communication has ben permanently %s' % ('enabled' if comm_allow else 'disabled'))
             self.comm_allow_overwrite_val = True
             self._enable_communication(comm_allow)
         else:
@@ -166,7 +174,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.voltage_reading.disconnect()
         self.parent_ui.close_dmm_live_view_win()
 
-    def load_config_dict(self, dmm_conf_dict):
+    def load_config_dict(self, meas_volt_dict):
         """
         use this if you want to paste your config settings inside the dmm_conf_dict to the
         corresponding interfaces.
@@ -174,12 +182,26 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         only by communicating with it than, it will be configered
         :param dmm_conf_dict: dict, keys are dmm_names, values are the config dicts for each dmm
         """
+        dmm_conf_dict = meas_volt_dict.get('dmms', {})
+        pulse_len_mu_s = meas_volt_dict.get('measVoltPulseLength25ns', 0) * 25 / 1000
+        timeout_volt_meas_mu_s = meas_volt_dict.get('measVoltTimeout10ns', 0) * 10 / 1000
+        self.doubleSpinBox_measVoltTimeout_mu_s_set.setValue(timeout_volt_meas_mu_s)
+        self.doubleSpinBox_measVoltPulseLength_mu_s.setValue(pulse_len_mu_s)
         for key, val in dmm_conf_dict.items():
             try:
                 self.tabs[key][-1].load_dict_to_gui(val)
             except Exception as e:
                 logging.error(
                     'error: while loading the dmm vals to the gui of %s, this happened: %s' % (key, e))
+                warning_ms = key + ' was not yet initialized\n \n Do you want to initialize it now?'
+                try:
+                    button_box_answer = QtWidgets.QMessageBox.question(
+                        self, 'DMM not initialized', warning_ms,
+                        QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
+                    if button_box_answer == QtWidgets.QMessageBox.Yes:
+                        self.initialize_dmm((dmm_conf_dict[key].get('type', ''), dmm_conf_dict[key].get('address', '')))
+                except Exception as e:
+                    print(e)
 
     def get_current_dmm_config(self):
         """
@@ -196,12 +218,24 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
                         'error: while reading the gui of %s, this happened: %s' % (key, e))
         return ret
 
+    def get_current_meas_volt_pars(self):
+        """
+        this will return a complete measVoltPars dict, with information off all dmms and the pulselength and timeout.
+        :return: dict, measVoltPars as stated as in draftScanparameters.py in the Service layer.
+        """
+        meas_volt_dict = {}
+        dmms_dict = self.get_current_dmm_config()
+        meas_volt_dict['measVoltPulseLength25ns'] = int(self.doubleSpinBox_measVoltPulseLength_mu_s.value() * 1000 / 25)
+        meas_volt_dict['measVoltTimeout10ns'] = int(self.doubleSpinBox_measVoltTimeout_mu_s_set.value() * 1000 / 10)
+        ret = SdOp.merge_dicts(meas_volt_dict, dmms_dict)
+        return ret
+
     def confirm_settings(self):
         """
         when ok is pressed, values are stored in teh main, if an isotope has ben selected before.
         """
         if self.active_iso is not None:
-            Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars']['dmms'] = self.get_current_dmm_config()
+            Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'] = self.get_current_meas_volt_pars()
             # print('set values to: ', Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars']['dmms'])
         self.close()
 

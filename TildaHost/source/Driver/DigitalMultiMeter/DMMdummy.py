@@ -34,6 +34,7 @@ class DMMdummy:
             'measurementCompleteDestination': 'pxi_trig_4',
             'highInputResistanceTrue': True
         }
+        print(self.name, ' initialized')
 
     ''' deinit and init '''
 

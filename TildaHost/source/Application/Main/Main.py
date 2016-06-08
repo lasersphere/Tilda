@@ -43,6 +43,7 @@ class Main(QtCore.QObject):
         self.acc_voltage = 0  # acceleration voltage of the source in volts
         self.simple_counter_inst = None
         self.cmd_queue = None
+        self.jobs_to_do_when_idle_queue = []
 
         # pyqtSignal for sending the status to the gui, if there is one connected:
         self.main_ui_status_call_back_signal = None
@@ -79,6 +80,7 @@ class Main(QtCore.QObject):
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state(MainState.idle)
+        self.autostart()
 
     """ cyclic function """
 
@@ -90,6 +92,7 @@ class Main(QtCore.QObject):
         if self.m_state[0] is MainState.idle:
             self.get_fpga_and_seq_state()
             self.read_dmms()
+            self.work_on_next_job_during_idle()
             return True
 
         elif self.m_state[0] is MainState.starting_simple_counter:
@@ -115,6 +118,7 @@ class Main(QtCore.QObject):
         elif self.m_state[0] is MainState.scanning:
             self._scanning()
             self.get_fpga_and_seq_state()
+            self.read_dmms()
         elif self.m_state[0] is MainState.saving:
             self._stop_sequencer_and_save()
 
@@ -145,7 +149,7 @@ class Main(QtCore.QObject):
         logging.debug('closing main now')
         self.scan_main.close_scan_main()
 
-    def set_state(self, req_state, val=None, only_if_idle=False):
+    def set_state(self, req_state, val=None, only_if_idle=False, queue_if_not_idle=True):
         """
         this will set the state of the main to req_state
         :return: bool, True if success
@@ -157,14 +161,33 @@ class Main(QtCore.QObject):
                 logging.debug('changed state to %s', str(self.m_state[0].name))
                 return True
             else:
-                logging.error('main is not in idle state, could not change state to: %s,\n current state is: %s',
-                              req_state, str(self.m_state[0].name))
+                if queue_if_not_idle:
+                    self.jobs_to_do_when_idle_queue.append((req_state, val))
+                    logging.warning(
+                        'added %s to jobs that will be done when returning to idle, current jobs are: %s'
+                        % (req_state, self.jobs_to_do_when_idle_queue))
+                else:
+                    logging.error('main is not in idle state, could not change state to: %s,\n current state is: %s',
+                                  req_state, str(self.m_state[0].name))
                 return False
         else:
             self.m_state = req_state, val
             self.send_state()
             logging.debug('changed state to %s', str(self.m_state[0].name))
             return True
+
+    def work_on_next_job_during_idle(self):
+        """
+        this will set the main state to next item in the self.jobs_to_do_when_idle_queue
+         and remove this job from the list
+        """
+        try:
+            if len(self.jobs_to_do_when_idle_queue):
+                new_state = self.jobs_to_do_when_idle_queue.pop(0)
+                logging.debug('working on next item in joblist: ' + str(new_state))
+                self.set_state(*new_state, only_if_idle=True)
+        except Exception as e:
+            print('work_on_next_job_during_idle  error : ', e)
 
     def gui_status_subscribe(self, callback_signal_from_gui):
         """
@@ -235,6 +258,13 @@ class Main(QtCore.QObject):
         """
         self.displayed_data.pop(file)
 
+    def autostart(self):
+        """
+        this will be called during init. call this in order to load a device or so from startup.
+        maybe this can be done via a text/xml file later on.
+        """
+        self.init_dmm('Ni4071', 'PXI1Slot5')
+        self.init_dmm('dummy', 'somewhere')
 
     """ operations on self.scan_pars dictionary """
 
@@ -344,6 +374,10 @@ class Main(QtCore.QObject):
         :param iso_name: str, name of the isotope
         :return: dict, completed dictionary
         """
+        # self.scan_pars[iso_name]['measureVoltPars'] = SdOp.merge_dicts(
+        #     self.scan_pars[iso_name]['measureVoltPars'], self.measure_voltage_pars)
+        # # in self.measure_voltage pars, the pulselength and timeout is noted.
+        # This is assumed globally for all isotopes for now.
         self.scan_pars[iso_name]['pipeInternals']['workingDirectory'] = self.working_directory
         self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
         self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
@@ -679,7 +713,7 @@ class Main(QtCore.QObject):
         :param addr_str: str, address of the given dmm
         :param callback: callback_bool, True will be emitted after init is done.
         """
-        self.set_state(MainState.init_dmm, (type_str, addr_str, callback))
+        self.set_state(MainState.init_dmm, (type_str, addr_str, callback), only_if_idle=True)
 
     def _init_dmm(self, type_str, addr_str, callback):
         """ see init_dmm() """
@@ -694,7 +728,7 @@ class Main(QtCore.QObject):
             callback.emit(True)
 
     def deinit_dmm(self, dmm_name):
-        self.set_state(MainState.deinit_dmm, dmm_name)
+        self.set_state(MainState.deinit_dmm, dmm_name, only_if_idle=True)
 
     def _deinit_dmm(self, dmm_name):
         self.scan_main.de_init_dmm(dmm_name)
@@ -712,7 +746,7 @@ class Main(QtCore.QObject):
         :param reset_dmm: bool, True if you want to rset teh device before configuring
         """
         if self.dmm_status.get(dmm_name, False):  # only configure and arm device if active
-            self.set_state(MainState.config_dmm, (dmm_name, config_dict, reset_dmm))
+            self.set_state(MainState.config_dmm, (dmm_name, config_dict, reset_dmm), only_if_idle=True)
 
     def _config_and_arm_dmm(self, dmm_name, config_dict, reset_dmm):
         """  see: config_and_arm_dmm() """
