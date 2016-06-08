@@ -189,7 +189,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
             self.doubleSpinBox_measVoltPulseLength_mu_s.setValue(pulse_len_mu_s)
         timeout_10_ns = meas_volt_dict.get('measVoltTimeout10ns', 0)
         if timeout_10_ns is not None:
-            timeout_volt_meas_mu_s = timeout_10_ns * 10 / 1000
+            timeout_volt_meas_mu_s = timeout_10_ns * 10 / 1000000
             self.doubleSpinBox_measVoltTimeout_mu_s_set.setValue(timeout_volt_meas_mu_s)
         for key, val in dmm_conf_dict.items():
             try:
@@ -230,7 +230,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         meas_volt_dict = {}
         meas_volt_dict['dmms'] = self.get_current_dmm_config()
         meas_volt_dict['measVoltPulseLength25ns'] = int(self.doubleSpinBox_measVoltPulseLength_mu_s.value() * 1000 / 25)
-        meas_volt_dict['measVoltTimeout10ns'] = int(self.doubleSpinBox_measVoltTimeout_mu_s_set.value() * 1000 / 10)
+        meas_volt_dict['measVoltTimeout10ns'] = int(self.doubleSpinBox_measVoltTimeout_mu_s_set.value() * 1000000 / 10)
         return meas_volt_dict
 
     def confirm_settings(self):
