@@ -21,6 +21,8 @@ class DMMdummy:
         self.name = self.type + '_' + address_str
         self.state = 'initialized'
         self.last_readback = None
+        self.accuracy = 10 ** -4  # uncertainty for this dmm. Can be dependent on the range etc.
+        self.accuracy_range = 10 ** -4
 
         # default config dictionary for this type of DMM:
         self.config_dict = {
@@ -35,8 +37,10 @@ class DMMdummy:
             'triggerDelay_s': 0,
             'triggerSlope': 'rising',
             'measurementCompleteDestination': 'pxi_trig_4',
-            'highInputResistanceTrue': True
+            'highInputResistanceTrue': True,
+            'accuracy': (None, None)
         }
+        self.get_accuracy()
         print(self.name, ' initialized')
 
     ''' deinit and init '''
@@ -108,29 +112,40 @@ class DMMdummy:
     ''' emitting config pars '''
     def emit_config_pars(self):
         """
-        function to return all needed parameters for the configruation dictionary and its values.
+        function to return all needed parameters for the configuration dictionary and its values.
+        This will also be used to automatically generate a gui.
+        Use the indicator_or_control_bool to determine if this is only meant for displaying or also for editing.
+        True for control
         :return:dict, tuples:
-         (name, type, certain_value_list)
+         (name, indicator_or_control_bool, type, certain_value_list)
         """
         config_dict = {
-            'range': ('range', float, [-3.0, -2.0, -1.0, 0.1, 1.0, 10.0, 100.0, 1000.0], self.config_dict['range']),
-            'resolution': ('resolution', float, [3.5, 4.5, 5.5, 6.5, 7.5], self.config_dict['resolution']),
-            'triggerCount': ('#trigger events', int, range(0, 100000, 1), self.config_dict['triggerCount']),
-            'sampleCount': ('#samples', int, range(0, 10000, 1), self.config_dict['sampleCount']),
-            'autoZero': ('auto zero', int, [-1, 0, 1, 2], self.config_dict['autoZero']),
-            'triggerSource': ('trigger source', str,
+            'range': ('range', True, float, [-3.0, -2.0, -1.0, 0.1, 1.0, 10.0, 100.0, 1000.0], self.config_dict['range']),
+            'resolution': ('resolution', True, float, [3.5, 4.5, 5.5, 6.5, 7.5], self.config_dict['resolution']),
+            'triggerCount': ('#trigger events', True, int, range(0, 100000, 1), self.config_dict['triggerCount']),
+            'sampleCount': ('#samples', True, int, range(0, 10000, 1), self.config_dict['sampleCount']),
+            'autoZero': ('auto zero', True, int, [-1, 0, 1, 2], self.config_dict['autoZero']),
+            'triggerSource': ('trigger source', True, str,
                               ['eins', 'zwei'], self.config_dict['triggerSource']),
-            'sampleInterval': ('sample Interval [s]', float,
+            'sampleInterval': ('sample Interval [s]', True, float,
                                [-1.0] + [i / 10 for i in range(0, 1000)], self.config_dict['sampleInterval']),
-            'powerLineFrequency': ('power line frequency [Hz]', float,
+            'powerLineFrequency': ('power line frequency [Hz]', True, float,
                                    [50.0, 60.0], self.config_dict['powerLineFrequency']),
-            'triggerDelay_s': ('trigger delay [s]', float,
+            'triggerDelay_s': ('trigger delay [s]', True, float,
                                [-2.0, -1.0] + [i / 10 for i in range(0, 1490)], self.config_dict['triggerDelay_s']),
-            'triggerSlope': ('trigger slope', str, ['falling', 'rising'], self.config_dict['triggerSlope']),
-            'measurementCompleteDestination': ('measurement compl. dest.', str,
+            'triggerSlope': ('trigger slope', True, str, ['falling', 'rising'], self.config_dict['triggerSlope']),
+            'measurementCompleteDestination': ('measurement compl. dest.', True, str,
                                                ['eins', 'zwei'],
                                                self.config_dict['measurementCompleteDestination']),
-            'highInputResistanceTrue': ('high input resistance', bool, [False, True]
-                                        , self.config_dict['highInputResistanceTrue'])
+            'highInputResistanceTrue': ('high input resistance', True, bool, [False, True]
+                                        , self.config_dict['highInputResistanceTrue']),
+            'accuracy': ('accuracy (reading, range)', False, tuple, [], self.config_dict['accuracy'])
         }
         return config_dict
+
+    ''' error '''
+    def get_accuracy(self):
+        """ write the error to self.config_dict['accuracy']"""
+        acc_tuple = (10 ** -4, 10 ** -3)
+        self.config_dict['accuracy'] = acc_tuple
+        return acc_tuple

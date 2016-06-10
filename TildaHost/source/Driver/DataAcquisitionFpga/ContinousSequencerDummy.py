@@ -114,7 +114,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         build data for one track and stroe it in self.artificial_build_data:
         Countervalue = Num_pmt + (num_of_step + 1)
         """
-        track_ind, track_name = scanpars['pipeInternals']['activeTrackNumber']
+        track_ind, track_name = scanpars['pipeInternals'].get('activeTrackNumber', (0, 'track0'))
         trackd = scanpars[track_name]
         x_axis = Form.create_x_axis_from_scand_dict(scanpars)[track_ind]
         num_of_steps = trackd['nOfSteps'] * trackd['nOfScans']

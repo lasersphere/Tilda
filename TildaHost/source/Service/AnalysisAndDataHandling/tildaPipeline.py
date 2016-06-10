@@ -136,7 +136,8 @@ def CsPipe(initialScanPars=None, callback_sig=None):
 def kepco_scan_pipe(initial_scan_pars, callback_sig=None):
     """
     pipeline for the measurement and analysis of a kepco scan
-    :param initial_scan_pars: full sacn dictionary which will be used as starting point for this pipeline
+    raw data and readback from dmm are fed into the pipeline.
+    :param initial_scan_pars: full scan dictionary which will be used as starting point for this pipeline
     always feed raw data.
     """
     start = Node()
@@ -146,6 +147,7 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None):
 
     # walk = start.attach(TN.NSaveRawData())
     walk = start.attach(SN.NPrint())
+    specdata_path = start.attach(TN.NStartNodeKepcoScan(False))
     # more has to be included...
     return pipe
 
@@ -153,6 +155,7 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None):
 def initPipeData(initialScanPars):
     """
     initialize the pipeData used for the analysis Pipeline
+    -> store the initialScanPars in the pipe.pipeData and create an .xml file
     :return: dict, {'isotopeData', 'progConfigs', 'track0', 'pipeInternals'}
     always feed raw data.
     """

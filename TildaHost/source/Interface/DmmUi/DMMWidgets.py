@@ -71,42 +71,46 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         """
         add input widgets to the parent layout.
         will connect each input widget to self.calling
-        :param inp_dict: dict, tuple (name_str, type_class, certain_value_list, actual_value_bool/int/str/float)
+        :param inp_dict: dict, tuple (name_str, indicator_or_control_bool, type_class, certain_value_list, actual_value_bool/int/str/float)
         :param parent_layout: Layout
         :return: None, but chnages the items in the inp_dict to a list [label, inp_type, vals, set_val, widget]
         """
         for key, val in sorted(inp_dict.items()):
             try:
                 label = val[0]
-                inp_type = val[1]
-                vals = val[2]
-                set_val = val[3]
+                indicator_or_control_bool = val[1]
+                inp_type = val[2]
+                vals = val[3]
+                set_val = val[4]
                 widget = None
-                if inp_type == float:
-                    widget = QtWidgets.QDoubleSpinBox()
-                    widget.setMaximum(max(vals))
-                    widget.setMinimum(min(vals))
-                    widget.setKeyboardTracking(False)
-                    widget.setValue(set_val)
-                    widget.valueChanged.connect(functools.partial(self.widget_value_changed, key))
-                    widget.setSingleStep(0.1)
-                elif inp_type == str:
-                    widget = QtWidgets.QComboBox()
-                    widget.addItems(vals)
-                    widget.setCurrentText(set_val)
-                    widget.currentTextChanged.connect(functools.partial(self.widget_value_changed, key))
-                elif inp_type == int:
-                    widget = QtWidgets.QSpinBox()
-                    widget.setMaximum(max(vals))
-                    widget.setMinimum(min(vals))
-                    widget.setKeyboardTracking(False)
-                    widget.setValue(set_val)
-                    widget.valueChanged.connect(functools.partial(self.widget_value_changed, key))
-                    widget.setSingleStep(1)
-                elif inp_type == bool:
-                    widget = QtWidgets.QCheckBox()
-                    widget.setChecked(set_val)
-                    widget.clicked.connect(functools.partial(self.widget_value_changed, key))
+                if indicator_or_control_bool:  # it shold be a control
+                    if inp_type == float:
+                        widget = QtWidgets.QDoubleSpinBox()
+                        widget.setMaximum(max(vals))
+                        widget.setMinimum(min(vals))
+                        widget.setKeyboardTracking(False)
+                        widget.setValue(set_val)
+                        widget.valueChanged.connect(functools.partial(self.widget_value_changed, key))
+                        widget.setSingleStep(0.1)
+                    elif inp_type == str:
+                        widget = QtWidgets.QComboBox()
+                        widget.addItems(vals)
+                        widget.setCurrentText(set_val)
+                        widget.currentTextChanged.connect(functools.partial(self.widget_value_changed, key))
+                    elif inp_type == int:
+                        widget = QtWidgets.QSpinBox()
+                        widget.setMaximum(max(vals))
+                        widget.setMinimum(min(vals))
+                        widget.setKeyboardTracking(False)
+                        widget.setValue(set_val)
+                        widget.valueChanged.connect(functools.partial(self.widget_value_changed, key))
+                        widget.setSingleStep(1)
+                    elif inp_type == bool:
+                        widget = QtWidgets.QCheckBox()
+                        widget.setChecked(set_val)
+                        widget.clicked.connect(functools.partial(self.widget_value_changed, key))
+                else:
+                    widget = QtWidgets.QLabel(str(set_val))
                 if widget is not None:
                     parent_layout.addRow(QtWidgets.QLabel(label), widget)
                     inp_dict[key] = [label, inp_type, vals, set_val, widget]

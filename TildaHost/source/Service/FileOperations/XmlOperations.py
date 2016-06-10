@@ -34,7 +34,10 @@ def xmlWriteDict(parentEle, dictionary):
     :return: returns the modified parent Element.
     """
     for key, val in sorted(dictionary.items(), key=str):
-        xmlFindOrCreateSubElement(parentEle, key, val)
+        if isinstance(val, dict):
+            xmlWriteDict(xmlFindOrCreateSubElement(parentEle, key), val)
+        else:
+            xmlFindOrCreateSubElement(parentEle, key, val)
     return parentEle
 
 
@@ -48,9 +51,19 @@ def xmlCreateIsotope(isotopeDict):
     """
     root = ET.Element('TrigaLaserData')
     xmlWriteIsoDictToHeader(root, isotopeDict)
+    xmlFindOrCreateSubElement(root, 'measureVoltPars')
     xmlFindOrCreateSubElement(root, 'tracks')
     return root
 
+def xml_add_meas_volt_pars(meas_volt_pars_dict, root_element):
+    """
+    this will add the voltage measurement parameters to the measVoltPars SubElement
+    :param meas_volt_pars_dict: dict, as in draftScanParameters.py
+    :return: root_element
+    """
+    meas_volt_pars = xmlFindOrCreateSubElement(root_element, 'measureVoltPars')
+    xmlWriteDict(meas_volt_pars, meas_volt_pars_dict)
+    return root_element
 
 def xmlWriteIsoDictToHeader(rootEle, isotopedict):
     """

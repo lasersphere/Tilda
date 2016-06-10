@@ -73,7 +73,7 @@ class Main(QtCore.QObject):
 
         try:
             # pass
-            self.work_dir_changed('D:/lala')
+            self.work_dir_changed('E:/lala')
             # self.work_dir_changed('C:/temp108')
             # self.work_dir_changed('D:\Tilda_Debugging')
         except Exception as e:
@@ -117,7 +117,7 @@ class Main(QtCore.QObject):
         elif self.m_state[0] is MainState.scanning:
             self._scanning()
             self.get_fpga_and_seq_state()
-            self.read_dmms()
+            self.read_dmms(True)
         elif self.m_state[0] is MainState.saving:
             self._stop_sequencer_and_save()
 
@@ -749,6 +749,7 @@ class Main(QtCore.QObject):
     def get_active_dmms(self):
         """
         function to return a dict of all active dmms
+        see also self.get_dmm_status()
         :return: dict of tuples, {dmm_name: (type_str, address_str, state_str, last_readback, configPars_dict)}
         """
         return self.scan_main.get_active_dmms()
@@ -766,7 +767,7 @@ class Main(QtCore.QObject):
             ret[dmm_name] = {'status': state_str, 'lastReadback': last_readback}
         return ret
 
-    def read_dmms(self):
+    def read_dmms(self, feed_to_pipe=False):
         """
         dmm's will be read when main is in idle state.
         Values are already measured by the dmm in advance and main only "fetches" those.
@@ -785,6 +786,8 @@ class Main(QtCore.QObject):
             if self.dmm_gui_callback is not None and worth_sending:
                 # also send readback ot other guis that might be subscribed.
                 self.dmm_gui_callback.emit(readback)
+            if feed_to_pipe:
+                self.scan_main.pipeline.feed(readback)
 
     def request_dmm_config_pars(self, dmm_name):
         """

@@ -76,7 +76,7 @@ draftTrackPars = {
     'trigger': {'type': 'no_trigger'}
 }
 
-draftMeasureVoltPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100}
+draftMeasureVoltPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100, 'dmms': {}}
 
 draftPipeInternals = {
     'curVoltInd': 0,

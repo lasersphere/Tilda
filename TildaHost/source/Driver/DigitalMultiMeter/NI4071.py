@@ -95,20 +95,8 @@ class Ni4071:
         self.state = 'None'
         self.address = address_str
         self.name = self.type + '_' + address_str
-        self.last_readback = None  # tuple, (voltage_float, time_str)
-        self.dll = ctypes.WinDLL(dll_path)
-        self.session = ctypes.c_uint32(0)
-        stat = self.init(address_str, reset_dev=reset)
-        if stat < 0:  # if init fails, start simulation
-            self.get_error_message(stat, 'while initializing Ni4071: ')
-            self.de_init_dmm()
-            print('starting simulation now')
-            stat = self.init_with_option(address_str, "Simulate=1, DriverSetup=Model:4071; BoardType:PXI")
-            self.get_error_message(stat)
-        self.config_power_line_freq(pwr_line_freq)
-
-
         # default config dictionary for this type of DMM:
+
         self.config_dict = {
             'range': 10.0,
             'resolution': 7.5,
@@ -121,8 +109,24 @@ class Ni4071:
             'triggerDelay_s': 0,
             'triggerSlope': 'rising',
             'measurementCompleteDestination': 'pxi_trig_4',
-            'highInputResistanceTrue': True
+            'highInputResistanceTrue': True,
+            'accuracy': (None, None)
         }
+        self.get_accuracy()
+
+        self.last_readback = None  # tuple, (voltage_float, time_str)
+        self.dll = ctypes.WinDLL(dll_path)
+        self.session = ctypes.c_uint32(0)
+
+        stat = self.init(address_str, reset_dev=reset)
+        if stat < 0:  # if init fails, start simulation
+            self.get_error_message(stat, 'while initializing Ni4071: ')
+            self.de_init_dmm()
+            print('starting simulation now')
+            stat = self.init_with_option(address_str, "Simulate=1, DriverSetup=Model:4071; BoardType:PXI")
+            self.get_error_message(stat)
+        self.config_power_line_freq(pwr_line_freq)
+
         print(self.name, ' initialized, status is: %s, session is: %s' % (stat, self.session))
 
 
@@ -198,6 +202,8 @@ class Ni4071:
         105: period
         108: temperature
         """
+        self.config_dict['range'] = dmm_range
+        self.config_dict['resolution'] = resolution
         func = ctypes.c_int32(func)
         dmm_range = ctypes.c_double(dmm_range)
         res = ctypes.c_double(resolution)
@@ -222,6 +228,10 @@ class Ni4071:
         Sample Interval as additional delay. The default value (-1) ensures that the DMM settles
         for a recommended time. This is the same as using an Immediate trigger.
         """
+        self.config_dict['triggerCount'] = trig_count
+        self.config_dict['sampleCount'] = sample_count
+        self.config_dict['triggerSource'] = trig_src_enum.name
+        self.config_dict['sampleInterval'] = sample_interval
         trig_count = ctypes.c_int32(trig_count)
         sample_count = ctypes.c_int32(sample_count)
         sample_trig = ctypes.c_int32(trig_src_enum.value)
@@ -253,6 +263,7 @@ class Ni4071:
         Specifies the powerline frequency.
         :param pwr_line_freq: dbl, 50 or 60 Hz
         """
+        self.config_dict['powerLineFrequency'] = pwr_line_freq
         self.dll.niDMM_ConfigurePowerLineFrequency(self.session, ctypes.c_double(pwr_line_freq))
 
     def config_auto_zero(self, auto_zero_mode):
@@ -269,6 +280,7 @@ class Ni4071:
         Once (2) The DMM internally disconnects the input signal following each measurement and takes a zero reading.
             It then subtracts the zero reading from the preceding reading.
         """
+        self.config_dict['autoZero'] = auto_zero_mode
         self.dll.niDMM_ConfigureAutoZeroMode(self.session, ctypes.c_int32(auto_zero_mode))
 
     def config_adc_cal(self, adc_cal_mode):
@@ -349,6 +361,8 @@ class Ni4071:
         -1.0: auto delay ON
         -2.0: auto delay OFF
         """
+        self.config_dict['triggerSource'] = trig_src_enum.name
+        self.config_dict['triggerDelay_s'] = trig_delay
         self.dll.niDMM_ConfigureTrigger(
             self.session, ctypes.c_int32(trig_src_enum.value), ctypes.c_double(trig_delay))
 
@@ -365,6 +379,7 @@ class Ni4071:
         Rising Edge: 0
         Falling Edge: 1 (default)
         """
+        self.config_dict['triggerSlope'] = 'falling' if trig_slope else 'rising'
         self.dll.niDMM_ConfigureTriggerSlope(self.session, ctypes.c_int32(trig_slope))
 
     def config_sample_trigger_slope(self, smpl_trig_slope):
@@ -375,6 +390,7 @@ class Ni4071:
         Rising Edge: 0
         Falling Edge: 1 (default)
         """
+        self.config_dict['triggerSlope'] = 'falling' if smpl_trig_slope else 'rising'
         self.dll.niDMM_ConfigureSampleTriggerSlope(self.session, ctypes.c_int32(smpl_trig_slope))
 
     def config_meas_complete_dest(self, meas_compl_dest_enum):
@@ -382,6 +398,7 @@ class Ni4071:
         Specifies the destination of the DMM Measurement Complete (MC) signal.
         :param meas_compl_dest: enum, as defined in Ni4071MeasCompleteLoc class.
         """
+        self.config_dict['measurementCompleteDestination'] = meas_compl_dest_enum.name
         self.dll.niDMM_ConfigureMeasCompleteDest(self.session, ctypes.c_int32(meas_compl_dest_enum.value))
 
     def config_meas_complete_slope(self, meas_compl_slope):
@@ -842,6 +859,7 @@ class Ni4071:
 
          NOTE: >10 GOhm only supported until 10V range!
         """
+        self.config_dict['highInputResistanceTrue'] = greater_10_g_ohm
         NIDMM_VAL_1_MEGAOHM = 1000000.0
         NIDMM_VAL_10_MEGAOHM = 10000000.0
         NIDMM_VAL_GREATER_THAN_10_GIGAOHM = 10000000000.0
@@ -892,6 +910,7 @@ class Ni4071:
         Auto range OFF: -2.0
         Auto range ONCE: -3.0
         """
+        self.config_dict['range'] = range_val
         self.set_property_node(ctypes.c_double(range_val), 2,
                                attr_base_str='IVI_CLASS_PUBLIC_ATTR_BASE')
 
@@ -939,33 +958,55 @@ class Ni4071:
 
     def emit_config_pars(self):
         """
-        function to return all needed parameters for the configruation dictionary and its values.
+        function to return all needed parameters for the configuration dictionary and its values.
+        This will also be used to automatically generate a gui.
+        Use the indicator_or_control_bool to determine if this is only meant for displaying or also for editing.
+        True for control
         :return:dict, tuples:
-         (name, type, certain_value_list, actual_value)
+         (name, indicator_or_control_bool, type, certain_value_list)
         """
         config_dict = {
-            'range': ('range', float, [-3.0, -2.0, -1.0, 0.1, 1.0, 10.0, 100.0, 1000.0], self.config_dict['range']),
-            'resolution': ('resolution', float, [3.5, 4.5, 5.5, 6.5, 7.5], self.config_dict['resolution']),
-            'triggerCount': ('#trigger events', int, range(0, 100000, 1), self.config_dict['triggerCount']),
-            'sampleCount': ('#samples', int, range(0, 10000, 1), self.config_dict['sampleCount']),
-            'autoZero': ('auto zero', int, [-1, 0, 1, 2], self.config_dict['autoZero']),
-            'triggerSource': ('trigger source', str,
+            'range': ('range', True, float, [-3.0, -2.0, -1.0, 0.1, 1.0, 10.0, 100.0, 1000.0], self.config_dict['range']),
+            'resolution': ('resolution', True, float, [3.5, 4.5, 5.5, 6.5, 7.5], self.config_dict['resolution']),
+            'triggerCount': ('#trigger events', True, int, range(0, 100000, 1), self.config_dict['triggerCount']),
+            'sampleCount': ('#samples', True, int, range(0, 10000, 1), self.config_dict['sampleCount']),
+            'autoZero': ('auto zero', True, int, [-1, 0, 1, 2], self.config_dict['autoZero']),
+            'triggerSource': ('trigger source', True, str,
                               [i.name for i in Ni4071TriggerSources], self.config_dict['triggerSource']),
-            'sampleInterval': ('sample Interval [s]', float,
+            'sampleInterval': ('sample Interval [s]', True, float,
                                [-1.0] + [i / 10 for i in range(0, 1000)], self.config_dict['sampleInterval']),
-            'powerLineFrequency': ('power line frequency [Hz]', float,
+            'powerLineFrequency': ('power line frequency [Hz]', True, float,
                                    [50.0, 60.0], self.config_dict['powerLineFrequency']),
-            'triggerDelay_s': ('trigger delay [s]', float,
+            'triggerDelay_s': ('trigger delay [s]', True, float,
                                [-2.0, -1.0] + [i / 10 for i in range(0, 1490)], self.config_dict['triggerDelay_s']),
-            'triggerSlope': ('trigger slope', str, ['falling', 'rising'], self.config_dict['triggerSlope']),
-            'measurementCompleteDestination': ('measurement compl. dest.', str,
+            'triggerSlope': ('trigger slope', True, str, ['falling', 'rising'], self.config_dict['triggerSlope']),
+            'measurementCompleteDestination': ('measurement compl. dest.', True, str,
                                                [i.name for i in Ni4071MeasCompleteLoc],
                                                self.config_dict['measurementCompleteDestination']),
-            'highInputResistanceTrue': ('high input resistance', bool, [False, True]
-                                        , self.config_dict['highInputResistanceTrue'])
+            'highInputResistanceTrue': ('high input resistance', True, bool, [False, True]
+                                        , self.config_dict['highInputResistanceTrue']),
+            'accuracy': ('accuracy (reading, range)', False, tuple, [], self.config_dict['accuracy'])
         }
         return config_dict
 
+    def get_accuracy(self):
+        """
+        function to return the accuracy for the current configuration
+        the error of the read voltage should be:
+        reading +/- (reading * reading_accuracy_float + range_accuracy_float)
+        :return: tpl, (reading_accuracy_float, range_accuracy_float)
+        """
+        # from Ni4071 specs:
+        # 2 Year, 18°C to 28°C, +/-1°C, values in ppm:
+        error_dict_2y = {0.1: (20, 8), 1: (15, 0.8), 10: (12, 0.5), 100: (20, 2), 1000: (20, 0.5)}
+        dmm_range = self.config_dict['range']
+        reading_accuracy_float, range_accuracy_float = error_dict_2y.get(dmm_range)
+        reading_accuracy_float *= 10 ** -6  # ppm
+        range_accuracy_float *= 10 ** -6  # ppm
+        range_accuracy_float *= dmm_range
+        acc_tpl = (reading_accuracy_float, range_accuracy_float)
+        self.config_dict['accuracy'] = acc_tpl
+        return acc_tpl
 
 # there are more functions that can be found in the nidmm.h file,
 # but those above were the ones in the quick reference and most important ones.

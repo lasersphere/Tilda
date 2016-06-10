@@ -12,7 +12,7 @@ from copy import deepcopy
 
 import numpy as np
 
-from Service.FileOperations.XmlOperations import xmlCreateIsotope
+from Service.FileOperations.XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars
 from TildaTools import save_xml
 
 
@@ -56,9 +56,11 @@ def createXmlFileOneIsotope(scanDict, seq_type=None, filename=None):
     :return:str, filename
     """
     isodict = deepcopy(scanDict['isotopeData'])
+    meas_volt_dict = deepcopy(scanDict['measureVoltPars'])
     if seq_type is not None:
         isodict['type'] = seq_type
     root = xmlCreateIsotope(isodict)
+    xml_add_meas_volt_pars(meas_volt_dict, root)
     if filename is None:
         path = scanDict['pipeInternals']['workingDirectory']
         filename = nameFileXml(isodict, path)

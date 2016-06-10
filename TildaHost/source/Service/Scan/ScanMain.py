@@ -90,8 +90,8 @@ class ScanMain:
         reset 'nOfCompletedSteps' to 0.
         """
         track_name = 'track' + str(track_num)
-        self.pipeline.pipeData[track_name]['nOfCompletedSteps'] = 0
         self.pipeline.pipeData['pipeInternals']['activeTrackNumber'] = (track_index, track_name)
+        self.pipeline.pipeData[track_name]['nOfCompletedSteps'] = 0
         self.pipeline.start()
 
     def start_measurement(self, scan_dict, track_num):

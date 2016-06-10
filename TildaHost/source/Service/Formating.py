@@ -158,7 +158,7 @@ def create_time_axis_from_scan_dict(scand, rebinning=False, binwidth_ns=10, dela
         logging.error('Exception while creating the time axis: ' + str(e))
 
 
-def create_default_scaler_array_from_scandict(scand, dft_val=0):
+def create_default_scaler_array_from_scandict(scand, dft_val=0, data_type=np.uint32):
     """
     create empty ScalerArray, size is determined by the track0 in the scan dictionary
     """
@@ -171,9 +171,9 @@ def create_default_scaler_array_from_scandict(scand, dft_val=0):
             n_of_scaler = len(trackd['activePmtList'])
             n_of_bins = trackd.get('nOfBins', False)
             if n_of_bins:
-                arr.append(np.full((n_of_scaler, n_of_steps, n_of_bins), dft_val, dtype=np.uint32))
+                arr.append(np.full((n_of_scaler, n_of_steps, n_of_bins), dft_val, dtype=data_type))
             else:
-                arr.append(np.full((n_of_scaler, n_of_steps), dft_val, dtype=np.uint32))
+                arr.append(np.full((n_of_scaler, n_of_steps), dft_val, dtype=data_type))
         return arr
     except Exception as e:
         logging.error('Exception while creating default scaler array,'
