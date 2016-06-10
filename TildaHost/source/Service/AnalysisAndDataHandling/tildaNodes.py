@@ -436,9 +436,7 @@ class NMPlDrawPlot(Node):
 
     def processData(self, data, pipeData):
         # t = time.time()
-        print('will draw plot now!')
         MPLPlotter.draw()
-        print('have drawn plot!')
         # logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
         return data
 
@@ -814,7 +812,8 @@ class NStartNodeKepcoScan(Node):
                                     dmm_read, dmm_name)
                                 # print('volt_reading: ', self.spec_data.cts)
                             else:
-                                print('received more voltages than it should! check your settings!')
+                                # print('received more voltages than it should! check your settings!')
+                                pass
 
         elif isinstance(data, np.ndarray):  # rawdata from fpga
             for raw_data in data:

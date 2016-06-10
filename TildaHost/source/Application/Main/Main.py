@@ -73,7 +73,7 @@ class Main(QtCore.QObject):
 
         try:
             # pass
-            self.work_dir_changed('E:/lala')
+            self.work_dir_changed('D:/lala')
             # self.work_dir_changed('C:/temp108')
             # self.work_dir_changed('D:\Tilda_Debugging')
         except Exception as e:
@@ -117,7 +117,7 @@ class Main(QtCore.QObject):
         elif self.m_state[0] is MainState.scanning:
             self._scanning()
             self.get_fpga_and_seq_state()
-            self.read_dmms(True)
+            self.read_dmms(feed_to_pipe=True)
         elif self.m_state[0] is MainState.saving:
             self._stop_sequencer_and_save()
 
@@ -777,7 +777,7 @@ class Main(QtCore.QObject):
         """
         # return None
         worth_sending = False
-        readback = self.scan_main.read_multimeter('all')
+        readback = self.scan_main.read_multimeter('all', feed_to_pipe)
         if readback is not None:  # will be None if no dmms are active
             for dmm_name, vals in readback.items():
                 if vals is not None:  # will be None if no new readback is available
@@ -786,8 +786,6 @@ class Main(QtCore.QObject):
             if self.dmm_gui_callback is not None and worth_sending:
                 # also send readback ot other guis that might be subscribed.
                 self.dmm_gui_callback.emit(readback)
-            if feed_to_pipe:
-                self.scan_main.pipeline.feed(readback)
 
     def request_dmm_config_pars(self, dmm_name):
         """

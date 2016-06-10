@@ -153,6 +153,12 @@ class ScanMain:
         stops all modules which are relevant for scanning.
         pipeline etc.
         """
+        read = self.read_data()  # read data one last time
+        if read:
+            logging.info('while stopping measurement, some data was still read.')
+        # self.abort_dmm_measurement('all')
+        self.read_multimeter('all', True)
+        self.de_init_dmm('all')  # currently a complete deinit is needed.
         print('stopping measurement, clear is: ', clear)
         self.pipeline.stop()
         if clear:
@@ -273,43 +279,6 @@ class ScanMain:
         name = self.digital_multi_meter.find_dmm_by_type(type_str, address)
         return name
 
-    def setup_dmm_and_arm(self, dmm_name, config_dict, reset_dev):
-        """
-        function to load a configuration dictionary to a dmm and prepare this for a measurement.
-        :param dmm_name: str, name of the dmm 'type_address'
-        :param config_dict: dict, containing all necessary parameters for the given dmm
-        :param reset_dev: bool, True for resetting
-        """
-        self.digital_multi_meter.config_dmm(dmm_name, config_dict, reset_dev)
-        self.digital_multi_meter.start_measurement(dmm_name)
-
-    def read_multimeter(self, dmm_name):
-        """
-        reads all available values from the multimeter and returns them as an array.
-        :return: dict, key is name of dmm
-        or None if no reading
-        """
-        if dmm_name == 'all':
-            ret = self.digital_multi_meter.read_from_all_active_multimeters()
-        else:
-            ret = self.digital_multi_meter.read_from_multimeter(dmm_name)
-        return ret
-
-    def request_config_pars(self, dmm_name):
-        """
-        request the config_pars dict as a deepocpy.
-        :param dmm_name: str, name of the device
-        :return: dict, copy of the config pars.
-        """
-        return deepcopy(self.digital_multi_meter.get_raw_config_pars(dmm_name))
-
-    def get_active_dmms(self):
-        """
-        function to return a dict of all active dmms
-        :return: dict of tuples, {dmm_name: (type_str, address_str, state_str, last_readback, configPars_dict)}
-        """
-        return self.digital_multi_meter.get_active_dmms()
-
     def prepare_dmms_for_scan(self, dmms_conf_dict):
         """
         call this pre scan in order to configure all dmms according to the
@@ -327,6 +296,55 @@ class ScanMain:
                 self.prepare_dmm(dmm_conf_dict.get('type', ''), dmm_conf_dict.get('address', ''))
             self.setup_dmm_and_arm(dmm_name, dmm_conf_dict, True)
 
+    def setup_dmm_and_arm(self, dmm_name, config_dict, reset_dev):
+        """
+        function to load a configuration dictionary to a dmm and prepare this for a measurement.
+        :param dmm_name: str, name of the dmm 'type_address'
+        :param config_dict: dict, containing all necessary parameters for the given dmm
+        :param reset_dev: bool, True for resetting
+        """
+        self.digital_multi_meter.config_dmm(dmm_name, config_dict, reset_dev)
+        self.digital_multi_meter.start_measurement(dmm_name)
+
+    def read_multimeter(self, dmm_name, feed_pipe):
+        """
+        reads all available values from the multimeter and returns them as an array.
+        :return: dict, key is name of dmm
+        or None if no reading
+        """
+        if dmm_name == 'all':
+            ret = self.digital_multi_meter.read_from_all_active_multimeters()
+        else:
+            ret = self.digital_multi_meter.read_from_multimeter(dmm_name)
+        if ret is not None and feed_pipe:  # will be None if no dmms are active
+            if self.pipeline is not None:
+                self.pipeline.feed(ret)
+
+        return ret
+
+    def request_config_pars(self, dmm_name):
+        """
+        request the config_pars dict as a deepocpy.
+        :param dmm_name: str, name of the device
+        :return: dict, copy of the config pars.
+        """
+        return deepcopy(self.digital_multi_meter.get_raw_config_pars(dmm_name))
+
+    def get_active_dmms(self):
+        """
+        function to return a dict of all active dmms
+        :return: dict of tuples, {dmm_name: (type_str, address_str, state_str, last_readback, configPars_dict)}
+        """
+        return self.digital_multi_meter.get_active_dmms()
+
+    def abort_dmm_measurement(self, dmm_name):
+        """
+        this will abort the running measurement on the given dmm.
+        type 'all' to stop all running dmms
+        :param dmm_name: str, name of dmm
+        """
+        self.digital_multi_meter.stopp_measurement(dmm_name)
+
     def de_init_dmm(self, dmm_name):
         """
         deinitialize the given multimeter and remove it from the self.digital_multi_meter.dmm dictionary
@@ -334,18 +352,22 @@ class ScanMain:
         """
         self.digital_multi_meter.de_init_dmm(dmm_name)
 
-
-        # if __name__ == "__main__":
-        #     scn_main = ScanMain()
-        #     dmm_name = scn_main.prepare_dmm('dummy', 'PXI1Slot5')
-        #     cfg_raw = scn_main.request_config_pars(dmm_name)
-        #     cfg = {key: val[-1] for key, val in cfg_raw.items()}
-        #     cfg['triggerSource'] = 'interval'
-        #     print(cfg)
-        #     scn_main.setup_dmm_and_arm(dmm_name, cfg, True)
-        #     while True:
-        #         readback = scn_main.read_multimeter('all')
-        #         for dmm_name, vals in readback.items():
-        #                 if vals is not None:
-        #                     print(vals)
-        #         time.sleep(0.002)
+# if __name__ == "__main__":
+#     scn_main = ScanMain()
+#     dmm_name = scn_main.prepare_dmm('Ni4071', 'PXI1Slot5')
+#     cfg_raw = scn_main.request_config_pars(dmm_name)
+#     cfg = {key: val[-1] for key, val in cfg_raw.items()}
+#     cfg['triggerSource'] = 'interval'
+#     print(cfg)
+#     scn_main.setup_dmm_and_arm(dmm_name, cfg, True)
+#     i = 0
+#     while i <= 1000:
+#         i += 1
+#         readback = scn_main.read_multimeter('all')
+#         for dmm_name, vals in readback.items():
+#                 if vals is not None:
+#                     print(vals)
+#         time.sleep(0.002)
+#     scn_main.abort_dmm_measurement('all')
+#     readback = scn_main.read_multimeter('all')
+#     print(readback)

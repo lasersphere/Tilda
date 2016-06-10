@@ -75,6 +75,19 @@ class DMMControl:
         """
         self.dmm[dmm_name].initiate_measurement()
 
+    def stopp_measurement(self, dmm_name):
+        """
+
+        :param dmm_name:
+        :return:
+        """
+        if dmm_name == 'all':
+            for dmm_name in list(self.dmm.keys()):
+                self.dmm[dmm_name].abort_meas()
+        else:
+            if dmm_name in list(self.dmm.keys()):
+                self.dmm[dmm_name].abort_meas()
+
     def get_raw_config_pars(self, dmm_name):
         """
         return all needed config parameters as a dict of tuples:

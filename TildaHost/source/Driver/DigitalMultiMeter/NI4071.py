@@ -534,6 +534,10 @@ class Ni4071:
           Use fetch_single_meas(), niDMM Fetch Multi Point, or niDMM Fetch Waveform to retrieve the measurement data.
         """
         self.dll.niDMM_Initiate(self.session)
+        tries = 0
+        while self.readstatus()[1] != 0:
+            tries += 1
+        logging.debug('successfully started measurement on Ni4071 after %s tries' % tries)
         self.state = 'measuring'
 
     def fetch_single_meas(self, max_time_ms=-1):
@@ -642,6 +646,7 @@ class Ni4071:
         necessary for the operation of the instrument driver.
         :return:
         """
+        logging.debug('Resetting DMM: ' + self.name)
         self.dll.niDMM_reset(self.session)
 
     def self_test(self):
