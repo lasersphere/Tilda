@@ -133,7 +133,7 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     return pipe
 
 
-def kepco_scan_pipe(initial_scan_pars, callback_sig=None):
+def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False):
     """
     pipeline for the measurement and analysis of a kepco scan
     raw data and readback from dmm are fed into the pipeline.
@@ -144,10 +144,27 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None):
 
     pipe = Pipeline(start)
     pipe.pipeData = initPipeData(initial_scan_pars)
+    dmm_names = sorted(list(pipe.pipeData['measureVoltPars']['dmms'].keys()))
+
+    fig, axes = plt.subplots(len(dmm_names), sharex=True)
+    filen = os.path.split(pipe.pipeData['pipeInternals']['activeXmlFilePath'])[1]
+    window_title = 'plot ' + filen
+    fig.canvas.set_window_title(window_title)
 
     # walk = start.attach(TN.NSaveRawData())
     walk = start.attach(SN.NPrint())
-    specdata_path = start.attach(TN.NStartNodeKepcoScan(False))
+    specdata_path = start.attach(TN.NStartNodeKepcoScan(as_voltage, dmm_names))
+    specdata_path = specdata_path.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
+
+    plot_dict = {}
+    for ind, dmm in enumerate(dmm_names):
+        plot_dict[dmm] = specdata_path.attach(TN.NSingleSpecFromSpecData([ind]))
+        plot_dict[dmm] = plot_dict[dmm].attach(TN.NMPlLivePlot(axes[ind], '%s [v]' % dmm, ['blue']))
+    axes[-1].set_xlabel('DAC line[V]' if as_voltage else 'DAC Register')
+    draw = plot_dict[dmm_names[-1]].attach(TN.NMPlDrawPlot())
+
+    specdata_path = specdata_path.attach(TN.NSaveSpecData())
+    # specdata_path = specdata_path.attach(TN.NSaveIncomDataForActiveTrack())
     # more has to be included...
     return pipe
 

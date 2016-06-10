@@ -283,6 +283,36 @@ class NSaveAllTracks(Node):
             self.storage = None
 
 
+class NSaveSpecData(Node):
+    def __init__(self):
+        """
+        Node to save specdata which is stored in a buffer until clear is called.
+        will save on clear() call!
+        input: complete, scalerArray containing all tracks.
+        output: same as input
+        """
+        super(NSaveSpecData, self).__init__()
+        self.type = 'SaveAllTracks'
+        self.storage = None
+
+    def processData(self, data, pipeData):
+        self.storage = data
+        return data
+
+    def clear(self):
+        if self.storage is not None:
+            pipeData = self.Pipeline.pipeData
+            pipeInternals = pipeData['pipeInternals']
+            file = pipeInternals['activeXmlFilePath']
+            rootEle = TildaTools.load_xml(file)
+            tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
+            for track_ind, tr_num in enumerate(track_list):
+                track_name = 'track%s' % tr_num
+                xmlAddCompleteTrack(rootEle, pipeData, self.storage.cts[track_ind], track_name)
+            TildaTools.save_xml(rootEle, file, False)
+            self.storage = None
+
+
 class NSaveProjection(Node):
     """
     Node for saving the incoming projectin data.
@@ -406,7 +436,9 @@ class NMPlDrawPlot(Node):
 
     def processData(self, data, pipeData):
         # t = time.time()
+        print('will draw plot now!')
         MPLPlotter.draw()
+        print('have drawn plot!')
         # logging.debug('plotting time (ms):' + str(round((time.time() - t) * 1000, 0)))
         return data
 
@@ -723,9 +755,11 @@ class NMPLCloseFigOnInit(Node):
 
 
 class NStartNodeKepcoScan(Node):
-    def __init__(self, x_as_voltage_bool):
+    def __init__(self, x_as_voltage_bool, dmm_names_sorted):
         """
         Node for handling the raw datastream which is created during a KepcoScan.
+        :param x_as_voltage_bool: bool, True, if you want an x-axis in voltage, this
+
         input: rawdata from fpga AND dict as readback from dmm (key is name of dmm, val is np.array)
         output: specdata, cts are voltage readings.
         """
@@ -735,11 +769,14 @@ class NStartNodeKepcoScan(Node):
         self.curVoltIndex = 0
         self.info_handl = InfHandl()
         self.x_as_voltage = x_as_voltage_bool
-        self.dmms = None  # list with the dmm names, indeces are equal to indices in spec_data.cts, etc.
+        self.dmms = dmm_names_sorted  # list with the dmm names, indeces are equal to indices in spec_data.cts, etc.
 
     def calc_voltage_err(self, voltage_reading, dmm_name):
-        read_err, range_err = self.Pipeline.pipeData['measureVoltPars']['dmms'][dmm_name].get('error', 10 ** -4)
-        return voltage_reading * read_err + range_err
+        read_err, range_err = self.Pipeline.pipeData['measureVoltPars']['dmms'][dmm_name].get('accuracy', (None, None))
+        if read_err is not None:
+            return voltage_reading * read_err + range_err
+        else:
+            return 1
 
     def start(self):
         self.spec_data = SpecData()
@@ -752,7 +789,6 @@ class NStartNodeKepcoScan(Node):
         self.spec_data.nrTracks = tracks
         # get all dmms which are used during scan and sort them into a list.
         # Therefore the index of the dmm is fixed!
-        self.dmms = sorted(list(self.Pipeline.pipeData['measureVoltPars'].get('dmms', {}).keys()))
         n_of_dmms = len(self.dmms)  # count the number of dmms
         n_of_steps = [self.Pipeline.pipeData['track' + str(tr_num)]['nOfSteps']
                       for tr_ind, tr_num in enumerate(tr_num_list)]
@@ -763,39 +799,41 @@ class NStartNodeKepcoScan(Node):
         self.spec_data.err = deepcopy(self.spec_data.cts)
 
     def processData(self, data, pipeData):
-        # track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
-        # if isinstance(data, dict):  # readback from multimeter
-        #     for dmm_name, dmm_readback_arr in data.items():
-        #         if dmm_readback_arr is not None:
-        #             index = self.dmms.index(dmm_name)  # raise exception when not found
-        #             for dmm_read in dmm_readback_arr:
-        #                 next_ind_list = np.where(np.isnan(self.spec_data.cts[track_ind][index]))[0]
-        #                 if len(next_ind_list):
-        #                     next_ind = next_ind_list[0]
-        #                     self.spec_data.cts[track_ind][index][next_ind] = dmm_read
-        #                     self.spec_data.err[track_ind][index][next_ind] = self.calc_voltage_err(dmm_read, dmm_name)
-        #                 else:
-        #                     print('received more voltages than it should! check your settings!')
-        #     print('volt_reading: ', self.spec_data.cts)
-        #
-        # elif isinstance(data, np.ndarray):  # rawdata from fpga
-        #     for raw_data in data:
-        #         # plitup each element in data and analyse what it means:
-        #         first_header, second_header, header_index, payload = Form.split_32b_data(raw_data)
-        #
-        #         if first_header == Progs.infoHandler.value:
-        #             v_ind, step_completed = self.info_handl.info_handle(pipeData, payload)
-        #             if v_ind is not None:
-        #                 self.curVoltIndex = v_ind
-        #         elif first_header == Progs.errorHandler.value:
-        #             logging.error('fpga sends error code: ' + str(payload) + 'or in binary: ' + str(
-        #                 '{0:032b}'.format(payload)))
-        #         elif first_header == Progs.dac.value:
-        #             pass  # step complete etc. will be handled with infohandler values
-        #         elif first_header == Progs.continuousSequencer:
-        #             pass  # this should not happen here.
-        #         elif header_index == 0:
-        #             pass  # should also not happen here
+        track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
+        if isinstance(data, dict):  # readback from multimeter
+            for dmm_name, dmm_readback_arr in data.items():
+                if dmm_readback_arr is not None:
+                    if dmm_name in self.dmms:  # this would only fail if creation of self.dmm was wrong
+                        dmm_ind = self.dmms.index(dmm_name)  # raise exception when not found
+                        for dmm_read in dmm_readback_arr:  # can contain more than one value
+                            if np.isnan(np.min(self.spec_data.cts[track_ind][dmm_ind])):
+                                # check if there still is room for another voltage reading
+                                volt_ind = np.where(np.isnan(self.spec_data.cts[track_ind][dmm_ind]))[0][0]
+                                self.spec_data.cts[track_ind][dmm_ind][volt_ind] = dmm_read
+                                self.spec_data.err[track_ind][dmm_ind][volt_ind] = self.calc_voltage_err(
+                                    dmm_read, dmm_name)
+                                # print('volt_reading: ', self.spec_data.cts)
+                            else:
+                                print('received more voltages than it should! check your settings!')
+
+        elif isinstance(data, np.ndarray):  # rawdata from fpga
+            for raw_data in data:
+                # plitup each element in data and analyse what it means:
+                first_header, second_header, header_index, payload = Form.split_32b_data(raw_data)
+
+                if first_header == Progs.infoHandler.value:
+                    v_ind, step_completed = self.info_handl.info_handle(pipeData, payload)
+                    if v_ind is not None:
+                        self.curVoltIndex = v_ind
+                elif first_header == Progs.errorHandler.value:
+                    logging.error('fpga sends error code: ' + str(payload) + 'or in binary: ' + str(
+                        '{0:032b}'.format(payload)))
+                elif first_header == Progs.dac.value:
+                    pass  # step complete etc. will be handled with infohandler values
+                elif first_header == Progs.continuousSequencer:
+                    pass  # this should not happen here.
+                elif header_index == 0:
+                    pass  # should also not happen here
 
         return self.spec_data
 
@@ -843,20 +881,24 @@ class NSingleArrayToSpecData(Node):
 
 
 class NSingleSpecFromSpecData(Node):
-    def __init__(self, scalers):
+    def __init__(self, scalers, track=-1):
         """
         will return a single spectrum of the given scalers
-        a tuple with (volt, cts, err) of the specified scaler and track. -1 for all tracks
+        a tuple with (volt, cts, err) of the specified scaler and track.
+        :param scalers: list, of scalers pos sign for adding, negative sign for subracting
+        :param track: int, index of track, -1 for all tracks.
+
         input: SpecData
         ouptut: tuple, (volt, cts, err)
         """
         super(NSingleSpecFromSpecData, self).__init__()
         self.type = 'SingleSpecFromSpecData'
         self.scalers = scalers
+        self.track = track
 
     def processData(self, spec_data_instance, pipeData):
         ret = []
-        x, y, err = spec_data_instance.getArithSpec(self.scalers, -1)
+        x, y, err = spec_data_instance.getArithSpec(self.scalers, self.track)
         ret.append((np.array(x), y))
         return ret
 
