@@ -158,7 +158,7 @@ class ScanMain:
             logging.info('while stopping measurement, some data was still read.')
         # self.abort_dmm_measurement('all')
         self.read_multimeter('all', True)
-        self.de_init_dmm('all')  # currently a complete deinit is needed.
+        # self.de_init_dmm('all')  # currently a complete deinit is needed.
         print('stopping measurement, clear is: ', clear)
         self.pipeline.stop()
         if clear:
