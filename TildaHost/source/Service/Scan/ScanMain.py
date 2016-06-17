@@ -157,14 +157,13 @@ class ScanMain:
         if read:
             logging.info('while stopping measurement, some data was still read.')
         ret = self.read_multimeter('all', True)
-        print('returned after scan from dmm:', ret)
         self.abort_dmm_measurement('all')
 
-        # self.de_init_dmm('all')  # currently a complete deinit is needed for proper reading of start.
         print('stopping measurement, clear is: ', clear)
         self.pipeline.stop()
         if clear:
             self.pipeline.clear()
+        self.set_dmm_to_periodic_reading('all')
 
     def halt_scan(self, b_val):
         """
@@ -339,6 +338,14 @@ class ScanMain:
         :return: dict of tuples, {dmm_name: (type_str, address_str, state_str, last_readback, configPars_dict)}
         """
         return self.digital_multi_meter.get_active_dmms()
+
+    def set_dmm_to_periodic_reading(self, dmm_name):
+        """
+        set the dmm to a predefined configuration in that it reads out a value every now and then.
+        this will configure the dmm and afterwards initiate the measurement directly.
+        :param dmm_name: str, type 'all' for all active dmms
+        """
+        self.digital_multi_meter.start_periodic_measurement(dmm_name)
 
     def abort_dmm_measurement(self, dmm_name):
         """

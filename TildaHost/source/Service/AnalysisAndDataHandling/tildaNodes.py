@@ -1607,3 +1607,21 @@ class NTiPaAccRawUntil2ndScan(Node):
         self.steps_scans_callback.emit({'nOfCompletedSteps': steps,
                                         'nOfStartedScans': scans})
 
+
+""" filtering Nodes """
+
+
+class NFilterDMMDicts(Node):
+    def __init__(self):
+        """
+        Node, that will not return any data coming from the dmm.
+        Which is identified by being a dict.
+        """
+        super(NFilterDMMDicts, self).__init__()
+        self.type = 'FilterDMMDicts'
+
+    def processData(self, data, pipeData):
+        if isinstance(data, dict):
+            return None
+        else:
+            return data
