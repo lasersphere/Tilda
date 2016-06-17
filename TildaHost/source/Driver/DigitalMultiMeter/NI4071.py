@@ -1013,6 +1013,32 @@ class Ni4071:
         self.config_dict['accuracy'] = acc_tpl
         return acc_tpl
 
+    def set_to_periodic_readout(self):
+        """
+        set the dmm to a predefined configuration in that it reads out a value every now and then.
+        this will configure the dmm and afterwards initiate the measurement directly.
+        :return: None
+        """
+        config_dict = {
+            'range': 10.0,
+            'resolution': 6.5,
+            'triggerCount': 0,
+            'sampleCount': 0,
+            'autoZero': -1,
+            'triggerSource': Ni4071TriggerSources.immediate.name,
+            'sampleInterval': -1,
+            'powerLineFrequency': 50.0,
+            'triggerDelay_s': 0,
+            'triggerSlope': 'rising',
+            'measurementCompleteDestination': Ni4071MeasCompleteLoc.pxi_trig_4.name,
+            'highInputResistanceTrue': True,
+            'accuracy': (None, None)
+        }
+        self.load_from_config_dict(config_dict, False)
+        self.get_accuracy()
+        self.initiate_measurement()
+
+
 # there are more functions that can be found in the nidmm.h file,
 # but those above were the ones in the quick reference and most important ones.
 # how to start external calibration??  niDMM_InitExtCal

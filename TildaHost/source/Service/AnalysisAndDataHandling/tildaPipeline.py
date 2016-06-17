@@ -50,7 +50,8 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
     pipe.pipeData = initPipeData(initialScanPars)
     # walk = start.attach(SN.NPrint())
     # walk = start.attach(TN.NSaveRawData())
-    walk = start.attach(TN.NSplit32bData())
+    walk = start.attach(TN.NFilterDMMDicts())
+    walk = walk.attach(TN.NSplit32bData())
     # walk = walk.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NCSSortRawDatatoArray())
     walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
@@ -81,6 +82,9 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     start = Node()
 
     pipe = Pipeline(start)
+    start = start.attach(SN.NPrint())
+    start = start.attach(TN.NFilterDMMDicts())
+
     maintenance = start.attach(TN.NMPLCloseFigOnInit())
 
     fig, axes = plt.subplots(5, sharex=True)
@@ -141,6 +145,8 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False):
     always feed raw data.
     """
     start = Node()
+
+    maintenance = start.attach(TN.NMPLCloseFigOnInit())
 
     pipe = Pipeline(start)
     pipe.pipeData = initPipeData(initial_scan_pars)
@@ -206,6 +212,8 @@ def simple_counter_pipe(qt_sig, act_pmt_list):
     sample_rate = 1 / 0.02  # values per second, fpga samples at 20ms currently
     pipe = Pipeline(start)
 
+    start = start.attach(TN.NFilterDMMDicts())
+
     walk = start.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NSPSortByPmt(sample_rate))
     walk = walk.attach(TN.NSumListsInData())
@@ -236,6 +244,8 @@ def tilda_passive_pipe(initial_scan_pars, raw_callback, steps_scans_callback):
     initial_scan_pars['track0']['nOfSteps'] = None
     initial_scan_pars['track0']['nOfScans'] = 0
     pipe.pipeData = initPipeData(initial_scan_pars)
+
+    start = start.attach(TN.NFilterDMMDicts())
 
     maintenance = start.attach(TN.NMPLCloseFigOnInit())
     maintenance = maintenance.attach(TN.NAddWorkingTimeOnClear(True))

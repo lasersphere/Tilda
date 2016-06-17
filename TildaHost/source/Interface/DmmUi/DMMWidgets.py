@@ -161,7 +161,7 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         """ configures and arms teh device with the values currently stored in self.raw_config """
         # config values must only contain key: val
         config = {key: val[3] for key, val in self.raw_config.items()}
-        Cfg._main_instance.config_and_arm_dmm(self.dmm_name, config, True)
+        Cfg._main_instance.config_and_arm_dmm(self.dmm_name, config, False)
         # Cfg._main_instance.scan_main.setup_dmm_and_arm(self.dmm_name, config, False)
 
     def new_voltage(self, val):

@@ -97,6 +97,31 @@ class DMMdummy:
         self.state = 'aborted'
         pass
 
+    def set_to_periodic_readout(self):
+        """
+        set the dmm to a predefined configuration in that it reads out a value every now and then.
+        this will also initiate the measurement directly.
+        :return: None
+        """
+        config_dict = {
+            'range': 10.0,
+            'resolution': 6.5,
+            'triggerCount': 0,
+            'sampleCount': 0,
+            'autoZero': -1,
+            'triggerSource': 'eins',
+            'sampleInterval': -1,
+            'powerLineFrequency': 50.0,
+            'triggerDelay_s': 0,
+            'triggerSlope': 'rising',
+            'measurementCompleteDestination': 'zwei',
+            'highInputResistanceTrue': True,
+            'accuracy': (None, None)
+        }
+        self.load_from_config_dict(config_dict, False)
+        self.get_accuracy()
+        self.initiate_measurement()
+
     ''' self calibration '''
 
     def self_calibration(self):

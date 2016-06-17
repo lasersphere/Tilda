@@ -703,7 +703,8 @@ class Main(QtCore.QObject):
                 self.tipa_status_callback_sig.emit(self.tilda_passive_status)
 
     ''' digital multimeter operations '''
-    def init_dmm(self, type_str, addr_str, callback=False):
+
+    def init_dmm(self, type_str, addr_str, callback=False, start_periodic=True):
         """
         initialize the dmm of given type and address.
         pass a callback to know when init is done.
@@ -711,16 +712,19 @@ class Main(QtCore.QObject):
         :param type_str: str, type of dmm
         :param addr_str: str, address of the given dmm
         :param callback: callback_bool, True will be emitted after init is done.
+        :param start_periodic: bool, True(dft) if you want the dmm to start reading values in a predefined interval.
         """
-        self.set_state(MainState.init_dmm, (type_str, addr_str, callback), only_if_idle=True)
+        self.set_state(MainState.init_dmm, (type_str, addr_str, callback, start_periodic), only_if_idle=True)
 
-    def _init_dmm(self, type_str, addr_str, callback):
+    def _init_dmm(self, type_str, addr_str, callback, start_periodic):
         """ see init_dmm() """
         dmm_name = self.scan_main.prepare_dmm(type_str, addr_str)
         self.send_state()
         self.set_state(MainState.idle)
         if callback:
             callback.emit(True)
+        if start_periodic:
+            self.scan_main.set_dmm_to_periodic_reading(dmm_name)
 
     def deinit_dmm(self, dmm_name):
         self.set_state(MainState.deinit_dmm, dmm_name, only_if_idle=True)
@@ -762,7 +766,7 @@ class Main(QtCore.QObject):
         :return: dict of dict, {dmm_name1: {'status': stat_str, 'lastReadback': (voltage_float, time_str)}}}
         """
         ret = {}
-        for dmm_name, vals  in self.get_active_dmms().items():
+        for dmm_name, vals in self.get_active_dmms().items():
             type_str, address_str, state_str, last_readback, configPars_dict = vals
             ret[dmm_name] = {'status': state_str, 'lastReadback': last_readback}
         return ret

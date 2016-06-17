@@ -75,6 +75,18 @@ class DMMControl:
         """
         self.dmm[dmm_name].initiate_measurement()
 
+    def start_periodic_measurement(self, dmm_name):
+        """
+        set the dmm to a predefined configuration in that it reads out a value every now and then.
+        this will configure the dmm and afterwards initiate the measurement directly.
+        """
+        print('starting periodic meas on: ', dmm_name)
+        if dmm_name == 'all':
+            for dmm_name in list(self.dmm.keys()):
+                self.dmm[dmm_name].set_to_periodic_readout()
+        elif dmm_name in list(self.dmm.keys()):
+            self.dmm[dmm_name].set_to_periodic_readout()
+
     def stopp_measurement(self, dmm_name):
         """
 
@@ -161,17 +173,17 @@ class DMMControl:
         self.dmm[dmm_name].de_init_dmm()
         self.dmm.pop(dmm_name)
 
-
-        # if __name__ == "__main__":
-        #     inst = DMMControl()
-        #     dmm_name = inst.find_dmm_by_type('Ni4071', 'PXI1Slot5')
-        #     conf = inst.dmm[dmm_name].config_dict
-        #     print(conf)
-        #     conf['triggerSource'] = 'interval'
-        #     print('raw:', inst.get_raw_config_pars(dmm_name))
-        #     inst.config_dmm(dmm_name, conf, True)
-        #     inst.start_measurement(dmm_name)
-        #     while True:
-        #         print(inst.read_from_all_active_multimeters())  # fix it!
-        #         # print(inst.read_from_multimeter(dmm_name))
-        #         time.sleep(0.2)
+# if __name__ == "__main__":
+#     inst = DMMControl()
+#     dmm_name = inst.find_dmm_by_type('Ni4071', 'PXI1Slot5')
+#     # conf = inst.dmm[dmm_name].config_dict
+#     # print(conf)
+#     # conf['triggerSource'] = 'interval'
+#     # print('raw:', inst.get_raw_config_pars(dmm_name))
+#     # inst.config_dmm(dmm_name, conf, True)
+#     inst.start_periodic_measurement('all')
+#     # inst.start_periodic_measurement(dmm_name)
+#     while True:
+#         print(inst.read_from_all_active_multimeters())  # fix it!
+#         # print(inst.read_from_multimeter(dmm_name))
+#         time.sleep(0.2)
