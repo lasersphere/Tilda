@@ -156,7 +156,7 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False):
     if len(dmm_names) == 1:
         axes = [axes]
     filen = os.path.split(pipe.pipeData['pipeInternals']['activeXmlFilePath'])[1]
-    window_title = 'plot ' + filen
+    window_title = 'plot ' + filenh
     fig.canvas.set_window_title(window_title)
 
     # walk = start.attach(TN.NSaveRawData())
