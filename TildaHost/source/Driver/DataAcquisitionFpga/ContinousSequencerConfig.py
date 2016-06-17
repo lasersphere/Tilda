@@ -6,11 +6,14 @@ Created on '09.07.2015'
 
 """
 import ctypes
+from os import path, pardir
 
 '''Bitfile Signature:'''
 bitfileSignature = '81D6D618F2026E5337250CD95E758A3A'
 '''Bitfile Path:'''
-bitfilePath = 'D:/Workspace/PyCharm/Tilda/TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV110.lvbitx'
+# bitfilePath = 'D:/Workspace/PyCharm/Tilda/TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV110.lvbitx'
+bitfilePath = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
+                        'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV110.lvbitx')
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''

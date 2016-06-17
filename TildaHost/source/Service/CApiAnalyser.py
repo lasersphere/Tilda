@@ -49,6 +49,10 @@ class CApiAnalyser:
                           + ', \'val\': ctypes.c_long(), \'ctr\': ' + str(val) + '}')
     
     def cApiFileHandler(self, headerpath, bitfilepath, fpgaresource):
+        tilda_ind = bitfilepath.find('/Tilda/')
+        print(tilda_ind, bitfilepath[tilda_ind + 7:])
+        bitfilepath = bitfilepath[tilda_ind + 7:]
+        bitfilepath = 'path.join(path.dirname(__file__), pardir, pardir, pardir, pardir, ' + '\'' + bitfilepath + '\'' + ')'
         with open(headerpath, 'r') as myfile:
             inhalt = myfile.readlines()
             signature = [s for s in inhalt if "Signature" in s]
@@ -56,7 +60,7 @@ class CApiAnalyser:
             print('\'\'\'Bitfile Signature:\'\'\'')
             print('bitfileSignature = ' + '\'' + signature + '\'')
             print('\'\'\'Bitfile Path:\'\'\'')
-            print(str('bitfilePath = ' + '\'' + bitfilepath + '\'').replace('\\', '\\\\'))
+            print(str('bitfilePath = ' + bitfilepath).replace('\\', '\\\\'))
             print('\'\'\'FPGA Resource:\'\'\'')
             print('fpgaResource = ' + '\'' + fpgaresource + '\'')
             indicators = [s for s in inhalt if "Indicator" in s]

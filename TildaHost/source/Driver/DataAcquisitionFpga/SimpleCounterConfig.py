@@ -6,13 +6,16 @@ Created on
 Module Description: automatically created with the CApiAnalyser
 """
 
+from os import path, pardir
+
 import ctypes
 
 
 '''Bitfile Signature:'''
 bitfileSignature = '13086A04A757C99580EBDCDE4BA18ABF'
 '''Bitfile Path:'''
-bitfilePath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\SimpleCounter\\NiFpga_SimpleCounterV101.lvbitx'
+bitfilePath = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
+                        'TildaTarget\\bin\\SimpleCounter\\NiFpga_SimpleCounterV101.lvbitx')
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''

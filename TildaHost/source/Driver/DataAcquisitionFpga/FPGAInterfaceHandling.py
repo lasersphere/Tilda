@@ -10,6 +10,8 @@ Created on '11.05.2015'
 Module to Wrap all the Handling of universal FPGA interactions, like Start, run etc.
 
 """
+
+from os import path, pardir
 import ctypes
 import sys
 import os
@@ -31,7 +33,8 @@ class FPGAInterfaceHandling():
         if not dummy:
             self.dmaReadTimeout = 1  # timeout to read from Dma Queue in ms
             self.NiFpgaUniversalInterfaceDll = ctypes.CDLL(
-                'D:\\Workspace\\PyCharm\\Tilda\\TildaHost\\binary\\NiFpgaUniversalInterfaceDll.dll')
+                path.join(path.dirname(__file__), pardir, pardir, pardir,
+                          'binary\\NiFpgaUniversalInterfaceDll.dll'))
             self.NiFpgaUniversalInterfaceDll.NiFpga_ReadFifoU32.argtypes = [
                 ctypes.c_ulong, ctypes.c_ulong, np.ctypeslib.ndpointer(np.uint32, flags="C_CONTIGUOUS"),
                 ctypes.c_ulong, ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong)

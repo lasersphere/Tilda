@@ -1,11 +1,13 @@
 __author__ = 'noertert'
 
+from os import path, pardir
 import ctypes
 
 '''Bitfile Signature:'''
 bitfileSignature = '07925F2E9ECF4BF922BD7AEDD0A076D3'
 '''Bitfile Path:'''
-bitfilePath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\HeinzingerAndKepcoTest\\NiFpga_HeinzingerAndKepcoTest_v102.lvbitx'
+bitfilePath = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
+                        'TildaTarget\\bin\\HeinzingerAndKepcoTest\\NiFpga_HeinzingerAndKepcoTest_v102.lvbitx')
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''

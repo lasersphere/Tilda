@@ -6,12 +6,15 @@ Created on 12.04.2016
 Module Description: automatically created with the CApiAnalyser
 """
 
+from os import path, pardir
+
 import ctypes
 
 '''Bitfile Signature:'''
 bitfileSignature = '9785CAF205431A4E8A9EB9C5190D2FBC'
 '''Bitfile Path:'''
-bitfilePath = 'D:/Workspace/PyCharm/Tilda/TildaTarget/bin/TildaPassive/NiFpga_TildaPassiveMain_V101.lvbitx'
+bitfilePath = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
+                        'TildaTarget/bin/TildaPassive/NiFpga_TildaPassiveMain_V101.lvbitx')
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''
