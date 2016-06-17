@@ -156,9 +156,11 @@ class ScanMain:
         read = self.read_data()  # read data one last time
         if read:
             logging.info('while stopping measurement, some data was still read.')
-        # self.abort_dmm_measurement('all')
-        self.read_multimeter('all', True)
-        # self.de_init_dmm('all')  # currently a complete deinit is needed.
+        ret = self.read_multimeter('all', True)
+        print('returned after scan from dmm:', ret)
+        self.abort_dmm_measurement('all')
+
+        # self.de_init_dmm('all')  # currently a complete deinit is needed for proper reading of start.
         print('stopping measurement, clear is: ', clear)
         self.pipeline.stop()
         if clear:
@@ -294,7 +296,7 @@ class ScanMain:
             if dmm_name not in active_dmms:
                 logging.warning('%s was not initialized yet, will do now.' % dmm_name)
                 self.prepare_dmm(dmm_conf_dict.get('type', ''), dmm_conf_dict.get('address', ''))
-            self.setup_dmm_and_arm(dmm_name, dmm_conf_dict, True)
+            self.setup_dmm_and_arm(dmm_name, dmm_conf_dict, False)
 
     def setup_dmm_and_arm(self, dmm_name, config_dict, reset_dev):
         """
@@ -303,6 +305,7 @@ class ScanMain:
         :param config_dict: dict, containing all necessary parameters for the given dmm
         :param reset_dev: bool, True for resetting
         """
+        ret = self.read_multimeter('all', False)  # read remaining values from buffer.
         self.digital_multi_meter.config_dmm(dmm_name, config_dict, reset_dev)
         self.digital_multi_meter.start_measurement(dmm_name)
 

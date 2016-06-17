@@ -263,7 +263,7 @@ class Main(QtCore.QObject):
         maybe this can be done via a text/xml file later on.
         """
         self.init_dmm('Ni4071', 'PXI1Slot5')
-        self.init_dmm('dummy', 'somewhere')
+        # self.init_dmm('dummy', 'somewhere')
 
     """ operations on self.scan_pars dictionary """
 

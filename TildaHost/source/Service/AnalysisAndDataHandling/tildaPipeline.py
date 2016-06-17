@@ -147,6 +147,8 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False):
     dmm_names = sorted(list(pipe.pipeData['measureVoltPars']['dmms'].keys()))
 
     fig, axes = plt.subplots(len(dmm_names), sharex=True)
+    if len(dmm_names) == 1:
+        axes = [axes]
     filen = os.path.split(pipe.pipeData['pipeInternals']['activeXmlFilePath'])[1]
     window_title = 'plot ' + filen
     fig.canvas.set_window_title(window_title)
