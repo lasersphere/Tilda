@@ -8,21 +8,25 @@ Created on '20.05.2015'
 import logging
 import time
 from copy import deepcopy
-
+import sqlite3
 import numpy as np
+import os
 
 import MPLPlotter
 import Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
 import Service.FileOperations.FolderAndFileHandling as Filehandle
 import Service.Formating as Form
 import Service.Scan.ScanDictionaryOperations as SdOp
+import Application.Config as Cfg
 import TildaTools
 from Measurement.SpecData import SpecData
 from Service.AnalysisAndDataHandling.InfoHandler import InfoHandler as InfHandl
 from Service.FileOperations.XmlOperations import xmlAddCompleteTrack
 from Service.ProgramConfigs import Programs as Progs
-from Service.VoltageConversions.VoltageConversions import find_volt_in_array
 from polliPipe.node import Node
+from Spectra.Straight import Straight
+from SPFitter import SPFitter
+
 
 """ multipurpose Nodes: """
 
@@ -1229,6 +1233,48 @@ class NMPLImagePlotSpecData(Node):
             MPLPlotter.show(True)
         except Exception as e:
             print(e)
+
+
+""" specdata fitting nodes """
+
+
+class NStraightKepcoFitOnClear(Node):
+    def __init__(self, axes, dmm_names_sorted):
+        super(NStraightKepcoFitOnClear, self).__init__()
+        self.type = 'SpecDataFittingOnClear'
+        self.spec_buffer = None
+        self.axes = axes
+        self.dmms = dmm_names_sorted  # list with the dmm names, indeces are equal to indices in spec_data.cts, etc.
+
+    def processData(self, data, pipeData):
+        self.spec_buffer = data
+        return data
+
+    def clear(self):
+        for ind, dmm_name in enumerate(self.dmms):
+            try:
+                fitter = SPFitter(Straight(), self.spec_buffer, ([ind], 0))
+                fitter.fit()
+                result = fitter.result()
+                plotdata = fitter.spec.toPlotE(0, 0, fitter.par)
+                self.axes[ind].add_line(MPLPlotter.line2d(plotdata[0], plotdata[1], 'red'))
+                MPLPlotter.draw()
+                pipe_internals = self.Pipeline.pipeData['pipeInternals']
+                file = pipe_internals['activeXmlFilePath']
+                db_name = os.path.basename(pipe_internals['workingDirectory']) + '.sqlite'
+                db = pipe_internals['workingDirectory'] + '\\' + db_name
+                if os.path.isfile(db):  # if the database exists, write fit results to it.
+                    con = sqlite3.connect(db)
+                    cur = con.cursor()
+                    for r in result:
+                        # Only one unique result, according to PRIMARY KEY, thanks to INSERT OR REPLACE
+                        cur.execute('''INSERT OR REPLACE INTO FitRes (file, iso, run, rChi, pars)
+                        VALUES (?, ?, ?, ?, ?)''', (os.path.basename(file), r[0], dmm_name, fitter.rchi, repr(r[1])))
+                    con.commit()
+                    con.close()
+            except Exception as e:
+                print('error while fitting:', e)
+        self.spec_buffer = None
 
 
 """ continous Sequencer / Simple Counter Nodes """

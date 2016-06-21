@@ -147,6 +147,7 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False):
     start = Node()
 
     maintenance = start.attach(TN.NMPLCloseFigOnInit())
+    maintenance = maintenance.attach(TN.NAddWorkingTimeOnClear(True))
 
     pipe = Pipeline(start)
     pipe.pipeData = initPipeData(initial_scan_pars)
@@ -173,7 +174,7 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False):
 
     specdata_path = specdata_path.attach(TN.NSaveSpecData())
 
-    maintenance = start.attach(TN.NAddWorkingTimeOnClear(True))
+    specdata_path = specdata_path.attach(TN.NStraightKepcoFitOnClear(axes, dmm_names))
     # specdata_path = specdata_path.attach(TN.NSaveIncomDataForActiveTrack())
     # more has to be included...
     return pipe
@@ -191,6 +192,7 @@ def initPipeData(initialScanPars):
     pipeData['pipeInternals']['curVoltInd'] = 0
     xml_file_name = FaFH.createXmlFileOneIsotope(pipeData)
     pipeData['pipeInternals']['activeXmlFilePath'] = xml_file_name
+
     # in the past an extra projection file was created. but for now,
     #  the projection should stay within the .xml file for this scan.
     # if pipeData['isotopeData']['type'] in ['trs', 'trsdummy']:

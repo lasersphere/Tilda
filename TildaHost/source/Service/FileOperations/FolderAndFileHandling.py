@@ -14,6 +14,7 @@ import numpy as np
 
 from Service.FileOperations.XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars
 from TildaTools import save_xml
+import Tools
 
 
 def findTildaFolder(path=os.path.dirname(os.path.abspath(__file__))):
@@ -66,6 +67,11 @@ def createXmlFileOneIsotope(scanDict, seq_type=None, filename=None):
         filename = nameFileXml(isodict, path)
     print('creating .xml File: ' + filename)
     save_xml(root, filename, False)
+    # now add it to the database:
+    db_name = os.path.basename(scanDict['pipeInternals']['workingDirectory']) + '.sqlite'
+    db = scanDict['pipeInternals']['workingDirectory'] + '\\' + db_name
+    if os.path.isfile(db):
+        Tools._insertFile(filename, db)
     return filename
 
 
