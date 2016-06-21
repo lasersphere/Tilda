@@ -39,7 +39,7 @@ def plotFit(fit):
     plt.plot(plotdat[0], plotdat[1], 'r-')
     ax1.get_xaxis().get_major_formatter().set_useOffset(False)
 
-    ax2 = plt.axes([0.15, 0.1, 0.8, 0.2])
+    ax2 = plt.axes([0.15, 0.1, 0.8, 0.2], sharex=ax1)
     plt.errorbar(data[0], fit.calcRes(), yerr=data[2], fmt='k.')
     ax2.get_xaxis().get_major_formatter().set_useOffset(False)
     plt.ylabel('Intensity / a.u.')

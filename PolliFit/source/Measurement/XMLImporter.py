@@ -79,8 +79,9 @@ class XMLImporter(SpecData):
         self.offset = 0  # should also be a list for mutliple tracks
         self.nrScalers = []
         self.active_pmt_list = []
-        if self.seq_type in ['tipa', 'tipadummy']:
-            x_as_volt = False
+        # if self.seq_type in ['tipa', 'tipadummy', 'kepco']:
+        #     x_as_volt = False
+        print('axaxis as voltage:', x_as_volt)
         self.x = TildaTools.create_x_axis_from_file_dict(scandict, as_voltage=x_as_volt)  # x axis, voltage
         self.cts = []  # countervalues
         self.err = []  # error to the countervalues
@@ -139,6 +140,21 @@ class XMLImporter(SpecData):
                 self.err.append(np.sqrt(scaler_array))
                 self.dwell.append(track_dict.get('dwellTime10ns'))
 
+            elif self.seq_type in ['kepco']:
+                meas_volt_dict = scandict['measureVoltPars']
+                dmms_dict = meas_volt_dict['dmms']
+                dmm_names = list(sorted(dmms_dict.keys()))
+                self.nrScalers = len(dmm_names)
+                cts_shape = (self.nrScalers, nOfsteps)
+                dmm_volt_array = TildaTools.xml_get_data_from_track(
+                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape, np.float)
+                self.cts.append(dmm_volt_array)
+                err = []
+                for ind, dmm_name in enumerate(dmm_names):
+                    read_acc, range_acc = eval(dmms_dict[dmm_name]['accuracy'])
+                    err.append(dmm_volt_array[ind] * read_acc + dmm_volt_array[ind] * range_acc)
+                self.err.append(err)
+
         print('%s was successfully imported' % self.file)
 
     def preProc(self, db):
@@ -155,11 +171,11 @@ class XMLImporter(SpecData):
             self.col = bool(self.col)
         else:
             raise Exception('XMLImporter: No DB-entry found!')
-
-        for j in range(len(self.x)):
-            for i in range(len(self.x[j])):
-                scanvolt = self.lineMult * float(self.x[j][i]) + self.lineOffset + self.offset
-                self.x[j][i] = float(float(self.accVolt) - scanvolt)
+        if self.seq_type not in ['kepco']:  # do not change the x axis for a kepco scan!
+            for j in range(len(self.x)):
+                for i in range(len(self.x[j])):
+                    scanvolt = self.lineMult * float(self.x[j][i]) + self.lineOffset + self.offset
+                    self.x[j][i] = float(float(self.accVolt) - scanvolt)
         con.close()
 
     def export(self, db):

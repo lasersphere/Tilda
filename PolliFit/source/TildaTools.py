@@ -20,7 +20,7 @@ def merge_dicts(d1, d2):
     return new
 
 
-def numpy_array_from_string(string, shape):
+def numpy_array_from_string(string, shape, datatytpe=np.uint32):
     """
     converts a text array saved in an lxml.etree.Element
     using the function xmlWriteToTrack back into a numpy array
@@ -29,7 +29,7 @@ def numpy_array_from_string(string, shape):
     :return: numpy array containing the desired values
     """
     string = string.replace('\\n', '').replace('[', '').replace(']', '').replace('  ', ' ')
-    result = np.fromstring(string, dtype=np.uint32, sep=' ')
+    result = np.fromstring(string, dtype=datatytpe, sep=' ')
     result = result.reshape(shape)
     return result
 
@@ -52,9 +52,10 @@ def eval_str_vals_in_dict(dicti):
             dicti[key] = ast.literal_eval(val)
         except Exception as e:
             if key == 'trigger':
-                val = val.replace("<TriggerTypes.", "\'")
-                val = val.replace(">", "\'")
-                dicti[key] = ast.literal_eval(val)
+                val['type'] = val['type'].replace('TriggerTypes.', '')
+                # val = val.replace("<TriggerTypes.", "\'")
+                # val = val.replace(">", "\'")
+                # dicti[key] = ast.literal_eval(val)
             else:
                 print(e, val, type(val))
     return dicti
@@ -103,7 +104,7 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
     return trackd
 
 
-def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape):
+def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape, datatytpe=np.uint32):
     """
     Get Data From Track
     :param root_ele:  lxml.etree.Element, root of the xml tree
@@ -116,7 +117,7 @@ def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape):
     try:
         actTrack = root_ele.find('tracks').find('track' + str(n_of_track)).find('data')
         dataText = actTrack.find(str(data_type)).text
-        data_numpy = numpy_array_from_string(dataText, data_shape)
+        data_numpy = numpy_array_from_string(dataText, data_shape, datatytpe)
         return data_numpy
     except Exception as e:
         print('error while searching ' + str(data_type) + ' in track' + str(n_of_track) + ' in ' + str(root_ele))
@@ -145,6 +146,7 @@ def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
     scan_dict['pipeInternals']['curVoltInd'] = 0
     scan_dict['pipeInternals']['activeTrackNumber'] = 'None'
     scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
+    scan_dict['measureVoltPars'] = xml_get_dict_from_ele(xml_etree)[1]['measureVoltPars']
     return scan_dict, xml_etree
 
 
@@ -212,11 +214,12 @@ def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
             start = scan_dict[tr_name]['dacStartVoltage']
             stop = scan_dict[tr_name]['dacStopVoltage']
             step = scan_dict[tr_name]['dacStepsizeVoltage']
+            x_tr = np.arange(start, stop + step, step)
         else:
             start = scan_dict[tr_name]['dacStartRegister18Bit']
             stop = scan_dict[tr_name]['dacStopRegister18Bit']
             step = scan_dict[tr_name]['dacStepSize18Bit']
-        x_tr = np.arange(start, stop + step, step)
+            x_tr = np.arange(start, stop, step)
         x_arr.append(x_tr)
     return x_arr
 

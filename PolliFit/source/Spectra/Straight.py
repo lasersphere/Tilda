@@ -31,10 +31,10 @@ class Straight(object):
         return self.evaluate(e, p)
 
     def leftEdge(self):
-        return self.x_min - (self.x_min * 0.001)
+        return self.x_min - abs((self.x_min - self.x_max) * 0.001)
 
     def rightEdge(self):
-        return self.x_max + (self.x_max * 0.001)
+        return self.x_max + abs((self.x_min - self.x_max) * 0.001)
 
     def getPars(self):
         return [0, 1]

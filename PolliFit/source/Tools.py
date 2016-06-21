@@ -88,8 +88,9 @@ def _insertFolder(path, rec, db):
     
     for _f in f:
         _insertFile(os.path.join(p, _f), db)
-        
-def _insertFile(f, db):
+
+
+def _insertFile(f, db, x_as_voltage=True):
     con = sqlite3.connect(db)
     cur = con.cursor()
     
@@ -105,7 +106,7 @@ def _insertFile(f, db):
     try:
         cur.execute('''INSERT INTO Files (file, filePath) VALUES (?, ?)''', (os.path.basename(f), f))
         con.commit()
-        spec = Meas.load(f, db, True)
+        spec = Meas.load(f, db, True, x_as_voltage)
         spec.export(db)  
     except:
         print("Error working on file", f, ":", sys.exc_info()[1])

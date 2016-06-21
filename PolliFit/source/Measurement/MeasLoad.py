@@ -16,8 +16,7 @@ from Measurement.KepcoImporterMCP import KepcoImporterMCP
 from Measurement.SimpleImporter import SimpleImporter
 
 
-
-def load(file, db, raw = False):
+def load(file, db, raw=False, x_as_voltage=True):
     e = os.path.splitext(file)[1]
 
     if e == '.txt':
@@ -45,7 +44,7 @@ def load(file, db, raw = False):
         return f
 
     elif e == '.xml':
-        f = XMLImporter(file)
+        f = XMLImporter(file, x_as_voltage)
         if not raw:
             f.preProc(db)
         return f
