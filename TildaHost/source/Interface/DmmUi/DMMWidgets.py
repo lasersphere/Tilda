@@ -136,6 +136,10 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
             widget.setValue(new_val)
             self.raw_config[key][3] = new_val
         else:
+            if isinstance(widget, QtWidgets.QComboBox):
+                widget.setCurrentText(val)
+            elif isinstance(widget, QtWidgets.QCheckBox):
+                widget.setChecked(val)
             self.raw_config[key][3] = val  # just set it for strings etc.
 
     def reset_vals(self):
@@ -145,7 +149,7 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         raw_config = Cfg._main_instance.scan_main.request_config_pars(self.dmm_name)
         for key, val in raw_config.items():
             try:
-                label, inp_type, vals, current_val = val
+                label, ind_ctrl_bool, inp_type, vals, current_val = val
                 widget = self.raw_config[key][4]
                 self.raw_config[key] = [label, inp_type, vals, current_val, widget]
                 if inp_type is float or inp_type is int:

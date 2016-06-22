@@ -57,6 +57,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.show()
 
+        self.comm_enabled = True
         self.comm_allow_overwrite_val = False
         if enable_com is not None:
             self.enable_communication(enable_com, True)
@@ -91,8 +92,9 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
                 self._enable_communication(comm_allow)
 
     def _enable_communication(self, enable_bool):
-        self.choose_dmm_wid.pushButton_initialize.setEnabled(enable_bool)
-        self.tabWidget.setTabsClosable(enable_bool)
+        self.comm_enabled = enable_bool
+        # self.choose_dmm_wid.pushButton_initialize.setEnabled(enable_bool)
+        # self.tabWidget.setTabsClosable(enable_bool)
         for dmm_name, val_lists in self.tabs.items():
             if dmm_name is not 'tab0':
                 widget = val_lists[-1]
@@ -105,11 +107,13 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         :param args: tuple, (ind,)
         """
         tab_ind = args[0]
-        if tab_ind:
+        if tab_ind:  # not for tab 0 which is teh selector tab
             dmm_name = self.tabWidget.tabText(tab_ind)
-            self.deinit_dmm(dmm_name)
             self.tabs.pop(dmm_name)
             self.tabWidget.removeTab(tab_ind)
+            if self.comm_enabled:  # deinit only if comm is allowed.
+                self.deinit_dmm(dmm_name)
+
 
     def initialize_dmm(self, dmm_tuple):
         """
