@@ -18,10 +18,10 @@ Using CApiAnalyser.py yields:
 """
 
 '''Bitfile Signature:'''
-bitfileSignature = 'D64725FC3D0C5A3C63684E39C09C7177'
+bitfileSignature = 'A2FD682B0395B76365912C5C699D4546'
 '''Bitfile Path:'''
 bitfilePath = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                        'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_107.lvbitx')
+                        'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_200.lvbitx')
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''

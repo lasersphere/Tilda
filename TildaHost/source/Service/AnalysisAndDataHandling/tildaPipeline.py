@@ -211,7 +211,7 @@ def simple_counter_pipe(qt_sig, act_pmt_list):
     fig, axes = plt.subplots(len(act_pmt_list), sharex=True)
     fig.canvas.set_window_title('Simple Counter')
 
-    sample_rate = 1 / 0.02  # values per second, fpga samples at 20ms currently
+    sample_rate = 1 / 0.2  # values per second, fpga samples at 200ms currently
     pipe = Pipeline(start)
 
     start = start.attach(TN.NFilterDMMDicts())
