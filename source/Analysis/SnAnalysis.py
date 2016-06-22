@@ -32,28 +32,30 @@ db = 'V:/Projekte/COLLAPS/Sn/Measurement_and_Analysis_Christian/Sn.sqlite'
 # isoL.append('137_Sn_7_2')
 # isoL.append('137_Sn_3_2')
 # isoL.append('138_Sn')
-# Tools.centerPlot(db,isoL)
-# print(Physics.wavelenFromFreq(Physics.freqFromWavenumber(22110.525/2)))
+# #Tools.centerPlot(db,isoL)
+wavenumber = 22110.525
+print(Physics.freqFromWavenumber(wavenumber))
+# print(Physics.wavelenFromFreq(Physics.freqFromWavenumber(wavenumber/2)))
 # for i in isoL:
-#    Tools.isoPlot(db, i, as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525),
+#    Tools.isoPlot(db, i, as_freq=False, laserfreq=Physics.freqFromWavenumber(wavenumber),
 #                  saving=True, show=False, col=True)
-# Tools.isoPlot(db, '117_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525),
+# Tools.isoPlot(db, '117_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(wavenumber),
 #               saving=True, show=False, col=True, isom_name='117_Sn_m')
-# Tools.isoPlot(db, '121_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525),
+# Tools.isoPlot(db, '121_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(wavenumber),
 #               saving=True, show=False, col=True, isom_name='121_Sn_m')
-# Tools.isoPlot(db, '125_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525),
+# Tools.isoPlot(db, '125_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(wavenumber),
 #               saving=True, show=False, col=True, isom_name='125_Sn_m')
-# Tools.isoPlot(db, '127_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525),
+# Tools.isoPlot(db, '127_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(wavenumber),
 #               saving=True, show=False, col=True, isom_name='127_Sn_m')
-# Tools.isoPlot(db, '129_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525),
+# Tools.isoPlot(db, '129_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(wavenumber),
 #               saving=True, show=False, col=True, isom_name='129_Sn_m')
-# Tools.isoPlot(db, '130_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525),
+# Tools.isoPlot(db, '130_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(wavenumber),
 #               saving=True, show=False, col=True, isom_name='130_Sn_m')
-# Tools.isoPlot(db, '131_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(22110.525),
+# Tools.isoPlot(db, '131_Sn', as_freq=False, laserfreq=Physics.freqFromWavenumber(wavenumber),
 #               saving=True, show=False, col=True, isom_name='131_Sn_m')
 
 '''Crawling'''
-# Tools.crawl(db)
+Tools.crawl(db)
 
 '''Fitting the Kepco-Scans!'''
 # BatchFit.batchFit(Tools.fileList(db,'Kepco'), db, 'Run2')
@@ -62,7 +64,7 @@ db = 'V:/Projekte/COLLAPS/Sn/Measurement_and_Analysis_Christian/Sn.sqlite'
 
 '''Fitting the spectra with Voigt-Fits!'''
 run = 'Run0'
-BatchFit.batchFit(Tools.fileList(db,'117_Sn'), db,run)
+BatchFit.batchFit(Tools.fileList(db,'63_Ni'), db,run)
 
 '''Mean of center, sigma and gamma for 120_Sn'''
 # Analyzer.combineRes('120_Sn', 'gamma',run, db)

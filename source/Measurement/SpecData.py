@@ -54,7 +54,6 @@ class SpecData(object):
         l = self.getNrSteps(track_index)
         flatc = np.zeros((l,))
         flate = np.zeros((l,))
-
         if isinstance(self.nrScalers, list):
             nrScalers = self.nrScalers[track_index]
         else:
