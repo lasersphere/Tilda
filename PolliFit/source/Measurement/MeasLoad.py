@@ -11,7 +11,7 @@ from Measurement.TLDImporter import TLDImporter
 
 from Measurement.XMLImporter import XMLImporter
 
-from Measurement.MCPImporter import MCPImporter
+from Measurement.MCPHrsImporter import MCPHrsImporter
 from Measurement.KepcoImporterMCP import KepcoImporterMCP
 from Measurement.SimpleImporter import SimpleImporter
 
@@ -32,7 +32,7 @@ def load(file, db, raw=False, x_as_voltage=True):
         return f
 
     elif e == '.mcp':
-        f = MCPImporter(file)
+        f = MCPHrsImporter(file)
         if not raw:
             f.preProc(db)
         return f

@@ -212,6 +212,7 @@ def applyChi(err, rChi):
     '''Increases error by sqrt(rChi^2) if necessary. Works for several rChi as well'''
     return err * np.max([1, np.sqrt(rChi)])
 
+
 def gaussProp(*args):
     '''Calculate sqrt of squared sum of args, as in gaussian error propagation'''
     return np.sqrt(sum(x**2 for x in args))

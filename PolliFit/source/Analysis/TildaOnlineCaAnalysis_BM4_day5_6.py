@@ -70,8 +70,8 @@ files = ['40_Ca_trs_006.xml', '40_Ca_cs_005.xml', '40_Ca_cs_006.xml', '40_Ca_trs
 
 ''' batch fitting '''
 
-for run in runs:
-    BatchFit.batchFit(files, db, run)
+# for run in runs:
+#     BatchFit.batchFit(files, db, run)
 
 
 
