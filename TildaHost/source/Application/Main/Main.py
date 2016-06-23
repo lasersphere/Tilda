@@ -427,20 +427,22 @@ class Main(QtCore.QObject):
         """
         iso_name = self.scan_progress['activeIso']
         n_of_tracks, list_of_track_nums = SdOp.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
-        try:
-            active_track_num = min(set(list_of_track_nums) - set(self.scan_progress['completedTracks']))
-            self.scan_progress['activeTrackNum'] = active_track_num
-            track_index = list_of_track_nums.index(active_track_num)
-            self.scan_main.prep_track_in_pipe(active_track_num, track_index)
-            if self.scan_main.start_measurement(self.scan_pars[iso_name], active_track_num):
-                self.set_state(MainState.scanning)
-            else:
-                logging.error('could not start scan on fpga')
-                self.set_state(MainState.error)
-        except ValueError:  # all tracks for this isotope are completed.
-            # min(... ) will yield a value error when list of track_nums = self.scan_progress['completedTracks']
-            self.scan_main.stop_measurement()
-            self.set_state(MainState.idle)
+        # try:
+        active_track_num = min(set(list_of_track_nums) - set(self.scan_progress['completedTracks']))
+        self.scan_progress['activeTrackNum'] = active_track_num
+        track_index = list_of_track_nums.index(active_track_num)
+        self.scan_main.prep_track_in_pipe(active_track_num, track_index)
+        if self.scan_main.start_measurement(self.scan_pars[iso_name], active_track_num):
+            self.set_state(MainState.scanning)
+        else:
+            logging.error('could not start scan on fpga')
+            self.set_state(MainState.error)
+        # this should not happen because it is caught by _saving
+        # except ValueError:  # all tracks for this isotope are completed.
+        #     # min(... ) will yield a value error when list of track_nums = self.scan_progress['completedTracks']
+        #     print('valueError occured, this is impossible!!!')
+        #     self.scan_main.stop_measurement()
+        #     self.set_state(MainState.idle)
 
     def _scanning(self):
         """

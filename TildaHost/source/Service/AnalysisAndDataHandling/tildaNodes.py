@@ -1334,6 +1334,9 @@ class NCSSortRawDatatoArray(Node):
                         self.curVoltIndex = v_ind
                     compl_steps = pipeData[track_name]['nOfCompletedSteps']
                     nofsteps = pipeData[track_name]['nOfSteps']
+                    if self.curVoltIndex > nofsteps:
+                        print('voltindex exceeded number of steps, split raw_data is: ', j)
+                        raise Exception
                     scan_complete = compl_steps % nofsteps == 0
                     if scan_complete and step_completed:
                         if ret is None:
@@ -1378,7 +1381,7 @@ class NCSSortRawDatatoArray(Node):
                             pipeData)  # deletes all entries
                         scan_complete = False
             except Exception as e:
-                print('error while sorting: ', e, j)
+                print('error while sorting: ', e, 'split raw data is:', j)
         try:
             if ret is None:
                 ret = []

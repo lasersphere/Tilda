@@ -82,7 +82,7 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     start = Node()
 
     pipe = Pipeline(start)
-    start = start.attach(SN.NPrint())
+    # start = start.attach(SN.NPrint())
     start = start.attach(TN.NFilterDMMDicts())
 
     maintenance = start.attach(TN.NMPLCloseFigOnInit())

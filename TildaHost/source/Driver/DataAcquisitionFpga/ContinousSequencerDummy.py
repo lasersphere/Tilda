@@ -122,6 +122,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         complete_lis = []
         scans = 0
         while scans < trackd['nOfScans']:
+            complete_lis.append(Form.add_header_to23_bit(2, 4, 0, 1))  # means scan started
             scans += 1
             j = 0
             while j < trackd['nOfSteps']:
