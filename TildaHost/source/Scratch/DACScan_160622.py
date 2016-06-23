@@ -19,12 +19,13 @@ workdir = 'D:\DACScan_160622'
 db = workdir + '\\' + os.path.basename(workdir) + '.sqlite'
 print(db, os.path.isfile(db))
 
-Tools.crawl(db)
+# Tools.crawl(db)
 
-files = Tools.fileList(db, 'DACV1_7_5_Dig')
+files = Tools.fileList(db, 'DACV2_7_5_Dig')
+print(files)
 #
-run = 'DACReg'
-BatchFit.batchFit(files[1:], db, run, x_as_voltage=False)
+run = 'DACReg_DACV2'
+BatchFit.batchFit(files, db, run, x_as_voltage=False)
 #
 # run = 'Voltage'
 # BatchFit.batchFit(files[1:], db, run, x_as_voltage=True)

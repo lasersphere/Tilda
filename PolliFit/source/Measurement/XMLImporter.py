@@ -152,7 +152,7 @@ class XMLImporter(SpecData):
                 err = []
                 for ind, dmm_name in enumerate(dmm_names):
                     read_acc, range_acc = eval(dmms_dict[dmm_name]['accuracy'])
-                    err.append(dmm_volt_array[ind] * read_acc + dmm_volt_array[ind] * range_acc)
+                    err.append(dmm_volt_array[ind] * read_acc + range_acc)
                 self.err.append(err)
 
         print('%s was successfully imported' % self.file)
