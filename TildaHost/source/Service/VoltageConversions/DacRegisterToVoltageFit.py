@@ -40,3 +40,6 @@ dac_gauge_vals = (offset, slope)
 
 # lsb = 20 / (2 ** 18)
 # print(lsb)
+
+cal_date = '2014-10-20'
+dac_name = 'AD5781_V1'

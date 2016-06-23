@@ -22,6 +22,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         self.config = CsCfg
         super(Sequencer, self).__init__(self.config.bitfilePath, self.config.bitfileSignature, self.config.fpgaResource)
         self.confHostBufferSize(self.config.transferToHostReqEle)
+        self.set_0volt_dac_register()
         self.type = self.config.seq_type
 
     '''read Indicators'''

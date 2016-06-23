@@ -7,6 +7,7 @@ Created on '08.07.2015'
 """
 from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
+import Service.VoltageConversions.VoltageConversions as VCon
 
 import time
 import logging
@@ -211,6 +212,16 @@ class Sequencer(FPGAInterfaceHandling):
             self.ReadWrite(self.config.triggerEdge, trig_num)
             self.ReadWrite(self.config.selectTrigger, trigger_dict.get('trigInputChan', 0))
             return self.checkFpgaStatus()
+
+    def set_0volt_dac_register(self, null_volt=None):
+        """
+        function to set the 0V DAC register to 0 Volts as gained by the calibration
+        :return: True if success
+        """
+        if null_volt is None:
+            null_volt = VCon.get_24bit_input_from_voltage(0)
+        self.ReadWrite(self.config.dac0VRegister, null_volt)
+        return self.checkFpgaStatus()
 
     '''getting the data'''
 
