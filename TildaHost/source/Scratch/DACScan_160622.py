@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from InteractiveFit import InteractiveFit
 
 # run = 'Run0'
-# run = 'Ni4071_PXI1Slot5'
+run = 'Ni4071_PXI1Slot5'
 # run = 'Voltage'
 
 workdir = 'D:\DACScan_160622'
@@ -23,11 +23,11 @@ print(db, os.path.isfile(db))
 
 # Tools.crawl(db)
 
-files = Tools.fileList(db, 'DACV2_7_5_Dig')
-print(files)
+# files = Tools.fileList(db, 'DACV2_7_5_Dig')
+# print(files)
 #
-run = 'DACReg_DACV2'
-fits = BatchFit.batchFit(files, db, run, x_as_voltage=False)
+# run = 'DACReg_DACV2'
+# fits = BatchFit.batchFit(files, db, run, x_as_voltage=False)
 
 # plot all residuals:
 # for fit in fits:

@@ -33,7 +33,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.track_wins_dict = {}  # dict containing all open track windows, key is track_num
         self.dmm_win = None  # here the open dmm_win is stored.
         self.num_of_reps = 1  # how often this scan will be repeated. stored at begin of scan
-        self.keep_scanning = False  # boolean to store if you want another go after this on.
+        self.go_was_clicked_before = False  # variable to stroe if the user already clicked on 'Go'
 
         self.actionGo.triggered.connect(functools.partial(self.go, True))
         self.actionSetup_Isotope.triggered.connect(self.setup_iso)
@@ -74,11 +74,14 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         """
         enable = enable_bool and self.active_iso is not None
         # print('enabling Go? , ', enable, self.active_iso, bool)
-        if not self.actionGo.isEnabled() and enable:  # one scan is done
-            if self.keep_scanning:  # keep scanning
-                self.go(False)
-            else:  # all scans are done here
-                self.spinBox_num_of_reps.setValue(self.num_of_reps)
+        if not self.actionGo.isEnabled() and enable:  # one scan is done or isotope was selected
+            if self.go_was_clicked_before:
+                self.spinBox_num_of_reps.stepDown()
+                if self.spinBox_num_of_reps.value() > 0:  # keep scanning if reps > 0
+                    self.go(False)
+                else:  # all scans are done here
+                    self.spinBox_num_of_reps.setValue(self.num_of_reps)
+                    self.go_was_clicked_before = False
         self.actionGo.setEnabled(enable)
 
     def go(self, read_spin_box=True):
@@ -86,14 +89,10 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         will set the state in the main to go
         """
         if read_spin_box:
+            self.go_was_clicked_before = True
             self.num_of_reps = self.spinBox_num_of_reps.value()
-            print('----------------')
-            print('reading spinbox: ', self.num_of_reps)
-            print('----------------')
         if Cfg._main_instance.start_scan(self.active_iso):
             self.main_gui.open_scan_progress_win()
-            self.spinBox_num_of_reps.stepDown()
-            self.keep_scanning = self.spinBox_num_of_reps.value() > 0
 
     def add_track(self):
         """
