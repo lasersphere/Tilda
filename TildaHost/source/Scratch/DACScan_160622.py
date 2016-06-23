@@ -9,6 +9,8 @@ import os
 import Analyzer
 import Tools
 import BatchFit
+import matplotlib.pyplot as plt
+
 from InteractiveFit import InteractiveFit
 
 # run = 'Run0'
@@ -25,7 +27,16 @@ files = Tools.fileList(db, 'DACV2_7_5_Dig')
 print(files)
 #
 run = 'DACReg_DACV2'
-BatchFit.batchFit(files, db, run, x_as_voltage=False)
+fits = BatchFit.batchFit(files, db, run, x_as_voltage=False)
+
+# plot all residuals:
+# for fit in fits:
+#     data = fit.meas.getArithSpec(*fit.st)
+#     res = fit.calcRes() * 1000  # go to mV
+#     plt.plot(data[0], res)
+# plt.ylabel('residuum [mV]')
+# plt.xlabel('DAC Register')
+# plt.show()
 #
 # run = 'Voltage'
 # BatchFit.batchFit(files[1:], db, run, x_as_voltage=True)
