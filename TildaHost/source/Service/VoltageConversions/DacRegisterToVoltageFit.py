@@ -5,6 +5,14 @@ Created on '26.10.2015'
 @author:'simkaufm'
 
 
+This is a sample file!
+Create one of the very same type named 'DAC_Calibration.py' in this very folder
+with the measured slope and offset of the DAC which you are using.
+One can create it with this very settings and then update the slope and the offset after calibration.
+
+
+
+
 Config File for the storage of the slope and the offset
  fitted from measurement of the DAC-Register of the AD5781 vs. Voltage read back with Agilent 3401A.
 
