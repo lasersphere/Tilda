@@ -405,6 +405,7 @@ class Main(QtCore.QObject):
         iso_name = self.scan_progress['activeIso']
         if self.scan_pars[iso_name]['isotopeData']['type'] in ['kepco']:
             # do not perform an offset measurement for a kepco scan. Proceed to load track
+            self.scan_main.init_pipeline(self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline)
             self.set_state(MainState.load_track)
             return None
         if first_call:

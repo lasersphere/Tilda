@@ -401,7 +401,6 @@ class NMPlLivePlot(Node):
         self.ax = ax
         self.title = title
         self.line_colors = line_color_list
-        print('axes causing problem are: ', self.ax)
         self.ax.set_ylabel(self.title)
         self.lines = [None for i in self.line_colors]
         self.x = None
