@@ -25,6 +25,7 @@ class ScanMain:
         self.post_acc_main = PostAcc.PostAccelerationMain()
         self.digital_multi_meter = DmmCtrl.DMMControl()
 
+    ''' scan main functions: '''
     def close_scan_main(self):
         """
         will deinitialize all active power supplies,
@@ -33,18 +34,6 @@ class ScanMain:
         self.deinit_post_accel_pwr_supplies()
         self.deinit_fpga()
         self.de_init_dmm('all')
-
-    def init_post_accel_pwr_supplies(self):
-        """
-        restarts and connects to the power devices
-        """
-        return self.post_acc_main.power_supply_init()
-
-    def deinit_post_accel_pwr_supplies(self):
-        """
-        deinitialize all active power supplies
-        """
-        self.post_acc_main.power_supply_deinit()
 
     def prepare_scan(self, scan_dict, callback_sig=None):
         """
@@ -57,6 +46,47 @@ class ScanMain:
         self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
         self.prepare_dmms_for_scan(scan_dict['measureVoltPars'].get('dmms', {}))
+
+    ''' post acceleration related functions: '''
+    def init_post_accel_pwr_supplies(self):
+        """
+        restarts and connects to the power devices
+        """
+        return self.post_acc_main.power_supply_init()
+
+    def deinit_post_accel_pwr_supplies(self):
+        """
+        deinitialize all active power supplies
+        """
+        self.post_acc_main.power_supply_deinit()
+
+    def set_post_accel_pwr_supply(self, power_supply, volt):
+        """
+        function to set the desired Heinzinger to the Voltage that is needed.
+        """
+        readback = self.post_acc_main.set_voltage(power_supply, volt)
+        return readback
+
+    def set_post_accel_pwr_spply_output(self, power_supply, outp_bool):
+        """
+        will set the output according to outp_bool
+        """
+        self.post_acc_main.set_output(power_supply, outp_bool)
+
+    def get_status_of_pwr_supply(self, power_supply, read_from_dev=True):
+        """
+        returns a list of dicts containing the status of the power supply,
+        keys are: name, programmedVoltage, voltageSetTime, readBackVolt, output
+        power_supply == 'all' will return status of all active power supplies
+        if read_from_dev is False: only return the last stored status.
+        """
+        if read_from_dev:
+            ret = self.post_acc_main.status_of_power_supply(power_supply)
+        else:
+            ret = self.post_acc_main.power_sup_status
+        return ret
+
+    ''' sequencer / fpga related functions: '''
 
     def prep_seq(self, seq_type):
         """
@@ -83,16 +113,6 @@ class ScanMain:
         if self.sequencer is not None:
             self.sequencer.DeInitFpga()
             self.sequencer = None
-
-    def prep_track_in_pipe(self, track_num, track_index):
-        """
-        prepare the pipeline for the next track
-        reset 'nOfCompletedSteps' to 0.
-        """
-        track_name = 'track' + str(track_num)
-        self.pipeline.pipeData['pipeInternals']['activeTrackNumber'] = (track_index, track_name)
-        self.pipeline.pipeData[track_name]['nOfCompletedSteps'] = 0
-        self.pipeline.start()
 
     def start_measurement(self, scan_dict, track_num):
         """
@@ -177,40 +197,16 @@ class ScanMain:
         """
         self.sequencer.abort()
 
-    def set_post_accel_pwr_supply(self, power_supply, volt):
+    ''' Pipeline / Analysis related functions: '''
+    def prep_track_in_pipe(self, track_num, track_index):
         """
-        function to set the desired Heinzinger to the Voltage that is needed.
+        prepare the pipeline for the next track
+        reset 'nOfCompletedSteps' to 0.
         """
-        readback = self.post_acc_main.set_voltage(power_supply, volt)
-        return readback
-
-    def set_post_accel_pwr_spply_output(self, power_supply, outp_bool):
-        """
-        will set the output according to outp_bool
-        """
-        self.post_acc_main.set_output(power_supply, outp_bool)
-
-    def get_status_of_pwr_supply(self, power_supply, read_from_dev=True):
-        """
-        returns a list of dicts containing the status of the power supply,
-        keys are: name, programmedVoltage, voltageSetTime, readBackVolt, output
-        power_supply == 'all' will return status of all active power supplies
-        if read_from_dev is False: only return the last stored status.
-        """
-        if read_from_dev:
-            ret = self.post_acc_main.status_of_power_supply(power_supply)
-        else:
-            ret = self.post_acc_main.power_sup_status
-        return ret
-
-    def measureOffset(self, scanpars):
-        """
-        Measure the Offset Voltage using a digital Multimeter. Hopefully the NI-4071
-        will be implemented in the future.
-        :param scanpars: dictionary, containing all scanparameters
-        :return: bool, True if success
-        """
-        return True
+        track_name = 'track' + str(track_num)
+        self.pipeline.pipeData['pipeInternals']['activeTrackNumber'] = (track_index, track_name)
+        self.pipeline.pipeData[track_name]['nOfCompletedSteps'] = 0
+        self.pipeline.start()
 
     def calc_scan_progress(self, progress_dict, scan_dict, start_time):
         """
@@ -362,6 +358,14 @@ class ScanMain:
         """
         self.digital_multi_meter.de_init_dmm(dmm_name)
 
+    def measure_offset_pre_scan(self, scan_dict):
+        """
+        Measure the Offset Voltage using one or more digital Multimeters.
+        This will not be done during a kepco scan.
+        :param scanpars: dictionary, containing all scanparameters
+        :return: bool, True if success
+        """
+        return True
 # if __name__ == "__main__":
 #     scn_main = ScanMain()
 #     dmm_name = scn_main.prepare_dmm('Ni4071', 'PXI1Slot5')
