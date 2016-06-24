@@ -48,7 +48,7 @@ class InfoHandler:
         elif payload == 2:  # means scan started
             self.total_started_scans += 1
             # logging.debug('scan started: ' + str(self.total_started_scans))
-            if pipe_data[track_name]['invertScan']:
+            if pipe_data[track_name]['invertScan']:  # if inverted, take last element on every second scan
                 if self.total_started_scans % 2 == 0:
                     self.volt_index = -1
                     return self.volt_index, step_complete
