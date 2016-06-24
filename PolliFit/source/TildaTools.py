@@ -210,6 +210,7 @@ def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
     """
     x_arr = []
     for tr_ind, tr_name in enumerate(get_track_names(scan_dict)):
+        steps = scan_dict[tr_name]['nOfSteps']
         if as_voltage:
             start = scan_dict[tr_name]['dacStartVoltage']
             stop = scan_dict[tr_name]['dacStopVoltage']
@@ -217,8 +218,8 @@ def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
             x_tr = np.arange(start, stop + step, step)
         else:
             start = scan_dict[tr_name]['dacStartRegister18Bit']
-            stop = scan_dict[tr_name]['dacStopRegister18Bit']
             step = scan_dict[tr_name]['dacStepSize18Bit']
+            stop = scan_dict[tr_name].get('dacStopRegister18Bit', start + step * (steps - 1))
             x_tr = np.arange(start, stop, step)
         x_arr.append(x_tr)
     return x_arr
