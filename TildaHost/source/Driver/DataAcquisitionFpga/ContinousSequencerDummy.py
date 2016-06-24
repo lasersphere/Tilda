@@ -78,19 +78,27 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         """
         return True
 
+    def setPostAccelerationControlState(self, desiredState, blocking=True):
+        """
+        will set the PostAccelerationControl State, so one can chose which PowerSupply will be used.
+        :return: int, the current State of the Control Box
+        """
+        pass
+
+    def getPostAccelerationControlStateIsDone(self, desired_state):
+        """
+        call this to check if the state of the hsb is already the desired one.
+        :param desired_state: int, the desired state of the box
+        :return: tuple, (bool_True_if_success, int_current_state, int_desired_state)
+        """
+        return True, desired_state, desired_state
+
     '''perform measurements:'''
 
     def measureOffset(self, scanpars, track_num):
         """
         set all scanparameters at the fpga and go into the measure Offset state.
-        What the Fpga does then to measure the Offset is:
          set DAC to 0V
-         set HeinzingerSwitchBox to the desired Heinzinger.
-         send a pulse to the DMM
-         wait until timeout/feedback from DMM
-         done
-         changed to state 'measComplete'
-        Note: not included in Version 1 !
         :return:bool, True if successfully changed State
         """
         return True

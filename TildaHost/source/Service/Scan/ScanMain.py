@@ -7,7 +7,6 @@ Created on '19.05.2015'
 """
 
 import logging
-import time
 from datetime import datetime
 from copy import deepcopy
 import Driver.DataAcquisitionFpga.FindSequencerByType as FindSeq
@@ -26,6 +25,7 @@ class ScanMain:
         self.digital_multi_meter = DmmCtrl.DMMControl()
 
     ''' scan main functions: '''
+
     def close_scan_main(self):
         """
         will deinitialize all active power supplies,
@@ -35,7 +35,7 @@ class ScanMain:
         self.deinit_fpga()
         self.de_init_dmm('all')
 
-    def prepare_scan(self, scan_dict, callback_sig=None):
+    def prepare_scan(self, scan_dict):  # callback_sig=None):
         """
         function to prepare for the scan of one isotope.
         This sets up the pipeline and loads the bitfile on the fpga of the given type.
@@ -43,11 +43,28 @@ class ScanMain:
         self.pipeline = None
         logging.info('preparing isotope: ' + scan_dict['isotopeData']['isotope'] +
                      ' of type: ' + scan_dict['isotopeData']['type'])
-        self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
+        # self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
         self.prepare_dmms_for_scan(scan_dict['measureVoltPars'].get('dmms', {}))
+        n_of_tracks, list_of_track_nums = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
+        self.set_post_acc_switch_box(scan_dict, list_of_track_nums[0])
+
+    def init_pipeline(self, scan_dict, callback_sig=None):
+        self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
+
+    def measure_offset_pre_scan(self, scan_dict):
+        """
+        Measure the Offset Voltage using one or more digital Multimeters.
+        This should not be done for a kepco scan.
+        :param scan_dict: dictionary, containing all scanparameters
+        :return: bool, True if success
+        """
+        track, track_num_lis = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
+        self.fpga_start_offset_measurement(scan_dict, track_num_lis[0])  # will be the first track in list.
+        self.digital_multi_meter.software_trigger_dmm('all')
 
     ''' post acceleration related functions: '''
+
     def init_post_accel_pwr_supplies(self):
         """
         restarts and connects to the power devices
@@ -125,6 +142,34 @@ class ScanMain:
         start_ok = self.sequencer.measureTrack(scan_dict, track_num)
         return start_ok
 
+    def set_post_acc_switch_box(self, scan_dict, track_num):
+        """
+        set the post acceleration switchbox to the desired state.
+        teh state is defined in the trackdict['postAccOffsetVoltControl']
+        the track dict is extracted from the scandict
+        :param scan_dict: dict, containgn all scna pars
+        :param track_num: int, number of the track
+        """
+        track_dict = scan_dict.get('track' + str(track_num))
+        desired_state = track_dict['postAccOffsetVoltControl']
+        self.sequencer.setPostAccelerationControlState(desired_state, False)
+
+    def post_acc_switch_box_is_set(self, des_state):
+        """
+        call this to check if the state of the hsb is already the desired one.
+        :param des_state: int, the desired state of the box
+        :return: tuple, (bool_True_if_success, int_current_state, int_desired_state)
+        """
+        return self.sequencer.getPostAccelerationControlStateIsDone(des_state)
+
+    def fpga_start_offset_measurement(self, scan_dict, track_num):
+        """
+        set all scanparameters at the fpga and go into the measure Offset state.
+         set DAC to 0V
+        :return:bool, True if successfully changed State
+        """
+        self.sequencer.measureOffset(scan_dict, track_num)
+
     def read_data(self):
         """
         read the data coming from the fpga.
@@ -176,7 +221,7 @@ class ScanMain:
         read = self.read_data()  # read data one last time
         if read:
             logging.info('while stopping measurement, some data was still read.')
-        ret = self.read_multimeter('all', True)
+        self.read_multimeter('all', True)
         self.abort_dmm_measurement('all')
 
         print('stopping measurement, clear is: ', clear)
@@ -198,6 +243,7 @@ class ScanMain:
         self.sequencer.abort()
 
     ''' Pipeline / Analysis related functions: '''
+
     def prep_track_in_pipe(self, track_num, track_index):
         """
         prepare the pipeline for the next track
@@ -300,7 +346,7 @@ class ScanMain:
         :param config_dict: dict, containing all necessary parameters for the given dmm
         :param reset_dev: bool, True for resetting
         """
-        ret = self.read_multimeter('all', False)  # read remaining values from buffer.
+        self.read_multimeter('all', False)  # read remaining values from buffer.
         self.digital_multi_meter.config_dmm(dmm_name, config_dict, reset_dev)
         self.digital_multi_meter.start_measurement(dmm_name)
 
@@ -351,6 +397,9 @@ class ScanMain:
         """
         self.digital_multi_meter.stopp_measurement(dmm_name)
 
+    def software_trigger_dmm(self, dmm_name):
+        self.digital_multi_meter.software_trigger_dmm(dmm_name)
+
     def de_init_dmm(self, dmm_name):
         """
         deinitialize the given multimeter and remove it from the self.digital_multi_meter.dmm dictionary
@@ -358,14 +407,6 @@ class ScanMain:
         """
         self.digital_multi_meter.de_init_dmm(dmm_name)
 
-    def measure_offset_pre_scan(self, scan_dict):
-        """
-        Measure the Offset Voltage using one or more digital Multimeters.
-        This will not be done during a kepco scan.
-        :param scanpars: dictionary, containing all scanparameters
-        :return: bool, True if success
-        """
-        return True
 # if __name__ == "__main__":
 #     scn_main = ScanMain()
 #     dmm_name = scn_main.prepare_dmm('Ni4071', 'PXI1Slot5')

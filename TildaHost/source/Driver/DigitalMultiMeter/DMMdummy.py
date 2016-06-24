@@ -78,6 +78,9 @@ class DMMdummy:
     def config_meas_complete_dest(self, meas_compl_des):
         pass
 
+    def send_software_trigger(self):
+        pass
+
     ''' Measurement '''
 
     def initiate_measurement(self):

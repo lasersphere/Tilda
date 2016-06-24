@@ -160,6 +160,17 @@ class DMMControl:
                         self.dmm[key].last_readback, self.get_raw_config_pars(key))
         return ret
 
+    def software_trigger_dmm(self, dmm_name):
+        """
+        fire a software trigger to the dmm in order that it will measure a value.
+        :param dmm_name: str, name of dmm 'all' for all dmms
+        """
+        if dmm_name == 'all':
+            for dmm_name in list(self.dmm.keys()):
+                self.dmm[dmm_name].send_software_trigger()
+        else:
+            self.dmm[dmm_name].send_software_trigger()
+
     def de_init_dmm(self, dmm_name):
         """
         deinitialize the given multimeter and remove it from the self.dmm dictionary

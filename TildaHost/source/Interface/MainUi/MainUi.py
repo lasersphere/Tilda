@@ -171,7 +171,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def open_scan_progress_win(self):
         try:
+            print('opening scan progress window')
+            if self.scan_progress_win is not None:
+                geom = self.scan_progress_win.geometry()
             self.scan_progress_win = ScanProgressUi(self)
+            self.scan_progress_win.setGeometry(geom)
         except Exception as e:
             print('erroror:', e)
         # pass

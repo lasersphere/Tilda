@@ -73,9 +73,9 @@ class Main(QtCore.QObject):
 
         try:
             # pass
-            self.work_dir_changed('D:/lala')
+            # self.work_dir_changed('D:/lala')
             # self.work_dir_changed('C:/temp108')
-            # self.work_dir_changed('D:\Tilda_Debugging')
+            self.work_dir_changed('E:\TildaDebugging')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state(MainState.idle)
@@ -111,6 +111,12 @@ class Main(QtCore.QObject):
         elif self.m_state[0] is MainState.set_output_power_sup:
             self._set_power_sup_outp(*self.m_state[1])
 
+        elif self.m_state[0] is MainState.preparing_scan:
+            self._start_scan(self.m_state[1])
+        elif self.m_state[0] is MainState.setting_switch_box:
+            self._setting_switch_box(self.m_state[1])
+        elif self.m_state[0] is MainState.measure_offset_voltage:
+            self._measure_offset_voltage(self.m_state[1])
         elif self.m_state[0] is MainState.load_track:
             self._load_track()
             self.get_fpga_and_seq_state()
@@ -344,28 +350,82 @@ class Main(QtCore.QObject):
         such as:
         workingDirectory, version, measureVoltPars, laserFreq
         then the bitfile is loaded to the fpga and the first track is started for scanning.
-        the state will therefor be changed to scanning
-        :return: bool, True if scan started
+        the state will therefore be changed to scanning
         """
-        try:
-            if self.m_state[0] is MainState.idle:
-                self.set_state(MainState.preparing_scan)
-                self.abort_scan = False
-                self.halt_scan = False
-                self.scan_start_time = datetime.now()
-                self.scan_progress['activeIso'] = iso_name
-                self.scan_progress['completedTracks'] = []
-                self.add_global_infos_to_scan_pars(iso_name)
-                logging.debug('will scan: ' + iso_name + str(sorted(self.scan_pars[iso_name])))
-                self.scan_main.prepare_scan(self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline)
-                self.set_state(MainState.load_track)
-                return True
-            else:
-                logging.warning('could not start scan because state of main is ' + str(self.m_state[0].name))
-                return False
-        except Exception as e:
-            print('error while starting scan: ', e)
-            return False
+        self.set_state(MainState.preparing_scan, iso_name, only_if_idle=True)
+
+    def _start_scan(self, iso_name):
+        """
+        the given isotope scan dictionary will be completed with global informations, which are valid for all isotopes,
+        such as:
+        workingDirectory, version, measureVoltPars, laserFreq
+        then the bitfile is loaded to the fpga and the first track is started for scanning.
+        the state will therefore be changed to scanning
+        """
+        self.abort_scan = False
+        self.halt_scan = False
+        self.scan_start_time = datetime.now()
+        self.scan_progress['activeIso'] = iso_name
+        self.scan_progress['completedTracks'] = []
+        self.add_global_infos_to_scan_pars(iso_name)
+        logging.debug('will scan: ' + iso_name + str(sorted(self.scan_pars[iso_name])))
+        self.scan_main.prepare_scan(self.scan_pars[iso_name])
+        n_of_tracks, list_of_track_nums = SdOp.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
+        desired_hsb_state = self.scan_pars[iso_name]['track' + str(list_of_track_nums[0])]['postAccOffsetVoltControl']
+        self.set_state(MainState.setting_switch_box, desired_hsb_state)
+
+    def _setting_switch_box(self, des_state):
+        """
+        this will be called in 'setting_switch_box' state.
+        It will exit as soon as the switchbox is set to the right value.
+        The next state is 'measure_offset_voltage'
+        :param des_state: int, desired state of the power supply switch box.
+        """
+        iso_name = self.scan_progress['activeIso']
+        n_of_tracks, list_of_track_nums = SdOp.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
+        active_track_num = min(set(list_of_track_nums) - set(self.scan_progress['completedTracks']))
+        self.scan_progress['activeTrackNum'] = active_track_num
+        done, currentState, desired_state = self.scan_main.post_acc_switch_box_is_set(des_state)
+        if done:
+            self.set_state(MainState.measure_offset_voltage, True)
+
+    def _measure_offset_voltage(self, first_call=False):
+        """
+        this function is called within the state 'measure_offset_voltage'.
+        It will proceed to the next state without any action if the scan is a kepco scan.
+        otherwise:
+            on first call:
+             it will set the fpga to measure offset state and fire a software trigger to the dmms
+            on other calls:
+                will try to get a voltage reading from the dmms
+                when all dmms are read it will go to the next state
+        next state will be 'load_track'
+        :param first_call: bool, True if this is the first call
+        """
+        iso_name = self.scan_progress['activeIso']
+        if self.scan_pars[iso_name]['isotopeData']['type'] in ['kepco']:
+            # do not perform an offset measurement for a kepco scan. Proceed to load track
+            self.set_state(MainState.load_track)
+            return None
+        if first_call:
+            # on first call set the fpga to measure offset state and
+            # software trigger the dmms
+            self.scan_main.measure_offset_pre_scan(self.scan_pars[iso_name])
+            self.set_state(MainState.measure_offset_voltage, False)
+        else:
+            read = self.read_dmms(False)
+            if read is not None:
+                dmms_dict = self.scan_pars[iso_name]['measureVoltPars']['dmms']
+                reads = []
+                for dmm_name, volt_read in read.items():
+                    if volt_read is not None:
+                        dmms_dict[dmm_name]['preScanRead'] = volt_read[0]
+                    reads.append(dmms_dict[dmm_name].get('preScanRead', None))
+                if reads.count(None) == 0:  # done when all dmms have a value
+                    self.scan_main.abort_dmm_measurement('all')
+                    self.scan_main.set_dmm_to_periodic_reading('all')
+                    self.scan_main.init_pipeline(self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline)
+                    self.set_state(MainState.load_track)
 
     def add_global_infos_to_scan_pars(self, iso_name):
         """
@@ -430,19 +490,12 @@ class Main(QtCore.QObject):
         # try:
         active_track_num = min(set(list_of_track_nums) - set(self.scan_progress['completedTracks']))
         self.scan_progress['activeTrackNum'] = active_track_num
-        track_index = list_of_track_nums.index(active_track_num)
-        self.scan_main.prep_track_in_pipe(active_track_num, track_index)
+        self.scan_main.prep_track_in_pipe(active_track_num, active_track_num)
         if self.scan_main.start_measurement(self.scan_pars[iso_name], active_track_num):
             self.set_state(MainState.scanning)
         else:
             logging.error('could not start scan on fpga')
             self.set_state(MainState.error)
-        # this should not happen because it is caught by _saving
-        # except ValueError:  # all tracks for this isotope are completed.
-        #     # min(... ) will yield a value error when list of track_nums = self.scan_progress['completedTracks']
-        #     print('valueError occured, this is impossible!!!')
-        #     self.scan_main.stop_measurement()
-        #     self.set_state(MainState.idle)
 
     def _scanning(self):
         """
@@ -469,7 +522,7 @@ class Main(QtCore.QObject):
                     if len(self.scan_progress['completedTracks']) == tracks:
                         self.set_state(MainState.saving)
                     else:
-                        self.set_state(MainState.load_track)
+                        self.set_state(MainState.setting_switch_box)
 
     def _stop_sequencer_and_save(self):
         """
@@ -780,6 +833,7 @@ class Main(QtCore.QObject):
             -> should be a quick return of values.
             values are emitted via send_state()
             also values are emitted via the self.dmm_gui_callback, if there is a gui subscirbed to it.
+        :return: None or dict, dict will always contain at least one reading.
         """
         # return None
         worth_sending = False
@@ -792,6 +846,10 @@ class Main(QtCore.QObject):
             if self.dmm_gui_callback is not None and worth_sending:
                 # also send readback ot other guis that might be subscribed.
                 self.dmm_gui_callback.emit(readback)
+        if worth_sending:
+            return readback
+        else:
+            return None
 
     def request_dmm_config_pars(self, dmm_name):
         """

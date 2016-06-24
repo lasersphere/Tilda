@@ -91,8 +91,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         if read_spin_box:
             self.go_was_clicked_before = True
             self.num_of_reps = self.spinBox_num_of_reps.value()
-        if Cfg._main_instance.start_scan(self.active_iso):
-            self.main_gui.open_scan_progress_win()
+        Cfg._main_instance.start_scan(self.active_iso)
+        self.main_gui.open_scan_progress_win()
 
     def add_track(self):
         """

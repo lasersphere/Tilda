@@ -58,6 +58,16 @@ class Sequencer(FPGAInterfaceHandling):
         logging.debug('HSB-State is: ' + str(ret))
         return ret
 
+    def getPostAccelerationControlStateIsDone(self, desired_state):
+        """
+        call this to check if the state of the hsb is already the desired one.
+        :param desired_state: int, the desired state of the box
+        :return: tuple, (bool_True_if_success, int_current_state, int_desired_state)
+        """
+        currentState = self.getHeinzControlState()
+        done = currentState == desired_state
+        return done, currentState, desired_state
+
     '''writing'''
 
     def setTrackParameters(self, trackPars):
@@ -85,7 +95,7 @@ class Sequencer(FPGAInterfaceHandling):
         self.ReadWrite(self.config.invertScan, trackPars['invertScan'])
         self.ReadWrite(self.config.waitForKepco25nsTicks, trackPars['waitForKepco25nsTicks'])
         self.ReadWrite(self.config.waitAfterReset25nsTicks, trackPars['waitAfterReset25nsTicks'])
-        self.setPostAccelerationControlState(trackPars['postAccOffsetVoltControl'], True)
+        # self.setPostAccelerationControlState(trackPars['postAccOffsetVoltControl'], True)
         return self.checkFpgaStatus()
 
     def selectKepcoOrScalerScan(self, typestr):
@@ -107,9 +117,9 @@ class Sequencer(FPGAInterfaceHandling):
             self.ReadWrite(self.config.postAccOffsetVoltControl, desiredState)
             timeout = 0
             while blocking and timeout < 30:
-                currentState = self.getHeinzControlState()
+                done, currentState, desired_state = self.getPostAccelerationControlStateIsDone(desiredState)
                 print('currentState:', currentState, '\tdesiredState: ', desiredState)
-                if currentState == desiredState:
+                if done:
                     return currentState
                 else:
                     time.sleep(0.2)
