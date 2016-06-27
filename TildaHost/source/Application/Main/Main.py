@@ -73,9 +73,9 @@ class Main(QtCore.QObject):
 
         try:
             # pass
-            # self.work_dir_changed('D:/lala')
+            self.work_dir_changed('D:/lala')
             # self.work_dir_changed('C:/temp108')
-            self.work_dir_changed('E:\TildaDebugging')
+            # self.work_dir_changed('E:\TildaDebugging')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state(MainState.idle)
@@ -93,6 +93,10 @@ class Main(QtCore.QObject):
             self.read_dmms()
             self.work_on_next_job_during_idle()
             return True
+
+        elif self.m_state[0] is MainState.error:
+            self.get_fpga_and_seq_state()
+            self.read_dmms()
 
         elif self.m_state[0] is MainState.starting_simple_counter:
             self._start_simple_counter(*self.m_state[1])
@@ -413,7 +417,7 @@ class Main(QtCore.QObject):
             # software trigger the dmms
             self.scan_main.measure_offset_pre_scan(self.scan_pars[iso_name])
             self.set_state(MainState.measure_offset_voltage, False)
-        else:
+        else:  # this will periodically read the dmms until all dmms returned a measurement
             read = self.read_dmms(False)
             if read is not None:
                 dmms_dict = self.scan_pars[iso_name]['measureVoltPars']['dmms']
@@ -423,6 +427,7 @@ class Main(QtCore.QObject):
                         dmms_dict[dmm_name]['preScanRead'] = volt_read[0]
                     reads.append(dmms_dict[dmm_name].get('preScanRead', None))
                 if reads.count(None) == 0:  # done when all dmms have a value
+                    logging.debug('all dmms returned a measurement, reading is: ' + str(read))
                     self.scan_main.abort_dmm_measurement('all')
                     self.scan_main.set_dmm_to_periodic_reading('all')
                     self.scan_main.init_pipeline(self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline)

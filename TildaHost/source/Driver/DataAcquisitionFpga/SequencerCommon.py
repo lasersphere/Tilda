@@ -145,7 +145,7 @@ class Sequencer(FPGAInterfaceHandling):
         :return: bool, True for success, False if fail within number of maxTries.
         """
         maxTries = 10
-        waitForNextTry = 0.001
+        waitForNextTry = 0.01
         if tries > 0:
             time.sleep(waitForNextTry)
         curState = self.getSeqState()
@@ -153,22 +153,25 @@ class Sequencer(FPGAInterfaceHandling):
             logging.debug('fpga states successfully changed to: ' + str(curState))
             return self.checkFpgaStatus()
         elif tries == maxTries:
-            print('could not Change to State ' + str(cmd) + ' within ' + str(maxTries)
-                  + ' tries, Current State is: ' + str(curState))
+            print('could not Change to State ' + str(cmd) + ' within ' + str(maxTries) +
+                  ' tries, Current State is: ' + str(curState))
             return False
-        elif curState in [self.config.seqStateDict['measureOffset'], self.config.seqStateDict['measureTrack'],
+        elif curState in [self.config.seqStateDict['measureTrack'],
                           self.config.seqStateDict['init']]:
             '''cannot change state while measuring or initializing, try again'''
             return self.changeSeqState(cmd, tries + 1, requestedState)
         elif curState in [self.config.seqStateDict['idle'], self.config.seqStateDict['measComplete'],
-                          self.config.seqStateDict['error']]:
+                          self.config.seqStateDict['error'], self.config.seqStateDict['measureOffset']]:
             '''send command to change state'''
-            if requestedState < 0:
-                '''only request to change state once'''
-                self.setCmdByHost(cmd)
-                return self.changeSeqState(cmd, tries + 1, cmd)
-            else:
-                return self.changeSeqState(cmd, tries + 1, requestedState)
+            try:
+                if requestedState < 0:
+                    '''only request to change state once'''
+                    self.setCmdByHost(cmd)
+                    return self.changeSeqState(cmd, tries + 1, cmd)
+                else:
+                    return self.changeSeqState(cmd, tries + 1, requestedState)
+            except Exception as e:
+                print('error while changing state:', e)
 
     def abort(self):
         """
