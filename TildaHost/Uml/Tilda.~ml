@@ -15594,7 +15594,7 @@ Only reasonable inputs are shown
 <XPD:REF name="EntryState">iOqex8Ya2EWGVGvpdixRqAAA</XPD:REF>
 </XPD:OBJ>
 <XPD:OBJ name="EntryActions[1]" type="UMLUninterpretedAction" guid="isZI0mjYtkmRaXIv8xQqAgAA">
-<XPD:ATTR name="Name" type="string">set active track num to scan progress dict</XPD:ATTR>
+<XPD:ATTR name="Name" type="string">set active track num to &quot;scan_progress&quot; dict</XPD:ATTR>
 <XPD:REF name="EntryState">iOqex8Ya2EWGVGvpdixRqAAA</XPD:REF>
 </XPD:OBJ>
 <XPD:ATTR name="#DoActivities" type="integer">1</XPD:ATTR>
@@ -15772,7 +15772,7 @@ Only reasonable inputs are shown
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
 <XPD:ATTR name="Left" type="integer">251</XPD:ATTR>
 <XPD:ATTR name="Top" type="integer">184</XPD:ATTR>
-<XPD:ATTR name="Width" type="integer">240</XPD:ATTR>
+<XPD:ATTR name="Width" type="integer">251</XPD:ATTR>
 <XPD:ATTR name="Height" type="integer">72</XPD:ATTR>
 <XPD:REF name="Model">iOqex8Ya2EWGVGvpdixRqAAA</XPD:REF>
 <XPD:OBJ name="NameCompartment" type="UMLNameCompartmentView" guid="xpCVPB4GqE2wbWVUvti/oAAA">
@@ -15960,7 +15960,7 @@ Only reasonable inputs are shown
 <XPD:OBJ name="OwnedViews[9]" type="UMLTransitionView" guid="NyeYgCtu2ECCSbmgQaM7UAAA">
 <XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
-<XPD:ATTR name="Points" type="Points">370,171;370,184</XPD:ATTR>
+<XPD:ATTR name="Points" type="Points">373,171;374,184</XPD:ATTR>
 <XPD:REF name="Model">outtSCBJN02W9GrEs4tkSgAA</XPD:REF>
 <XPD:REF name="Head">GVY9TZsUQUascOTawPqLVwAA</XPD:REF>
 <XPD:REF name="Tail">8hEyBXR14k2iWQbOKG9YZAAA</XPD:REF>
@@ -16088,7 +16088,7 @@ Only reasonable inputs are shown
 <XPD:OBJ name="OwnedViews[14]" type="UMLTransitionView" guid="kQ655dLFjUWGGvgFsB2HEQAA">
 <XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
-<XPD:ATTR name="Points" type="Points">370,255;370,280</XPD:ATTR>
+<XPD:ATTR name="Points" type="Points">374,255;373,280</XPD:ATTR>
 <XPD:REF name="Model">6Rybk3Z9ZU65MjMu74mGRwAA</XPD:REF>
 <XPD:REF name="Head">oDZerAD/N0i2rQ8DGgwlbgAA</XPD:REF>
 <XPD:REF name="Tail">GVY9TZsUQUascOTawPqLVwAA</XPD:REF>

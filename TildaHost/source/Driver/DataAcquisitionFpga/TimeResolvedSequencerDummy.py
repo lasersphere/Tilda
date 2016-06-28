@@ -127,6 +127,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         complete_lis = []
         scans = 0
         while scans < trackd['nOfScans']:
+            complete_lis.append(Form.add_header_to23_bit(2, 4, 0, 1))  # means scan started
             scans += 1
             step = 0
             while step < trackd['nOfSteps']:
@@ -134,6 +135,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
                 step += 1
                 bunch = 0
                 while bunch < trackd['nOfBunches']:
+                    complete_lis.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
                     bunch += 1
                     time = 0  # scans - 1
                     while time < trackd['nOfBins']:
@@ -159,7 +161,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         """
         result = {'nOfEle': 0, 'newData': None, 'elemRemainInFifo': 0}
         result['elemRemainInFifo'] = len(self.artificial_build_data)
-        max_read_data = 50
+        max_read_data = 200
         n_of_read_data = 0
         if result['elemRemainInFifo'] > 0:
             n_of_read_data = min(max_read_data, result['elemRemainInFifo'])

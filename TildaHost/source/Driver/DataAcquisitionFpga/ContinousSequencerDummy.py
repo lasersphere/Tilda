@@ -142,7 +142,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
                     complete_lis.append(Form.add_header_to23_bit(i + j, 2, i, 1))
                     i += 1
                     if i >= 8:
-                        complete_lis.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))
+                        complete_lis.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1)) # step complete
         self.artificial_build_data = complete_lis
 
     ''' overwriting interface functions here '''

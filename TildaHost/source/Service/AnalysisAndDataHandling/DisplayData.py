@@ -53,3 +53,11 @@ class DisplayData:
     def close_spec(self, event):
         self.fig.canvas.mpl_disconnect(self.cid)
         Cfg._main_instance.close_spectra_in_main(self.file)  # command flow goes upstream =/
+
+
+
+path = 'E:\\lala\\sums\\dummy_trsdummy_008.xml'
+if __name__ == "__main__":
+    disp_data = DisplayData(path)
+    # print(disp_data.spec.cts)
+    # print(disp_data.spec.t_proj)

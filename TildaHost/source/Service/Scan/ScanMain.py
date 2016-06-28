@@ -135,8 +135,9 @@ class ScanMain:
         After starting the measurement, the FPGA runs on its own.
         """
         track_dict = scan_dict.get('track' + str(track_num))
-        logging.debug('starting measurement with track_dict: ' +
-                      str(sorted(track_dict)))
+        logging.debug('---------------------------------------------')
+        logging.debug('starting measurement of track %s  with track_dict: %s' % (track_num, str(sorted(track_dict))))
+        logging.debug('---------------------------------------------')
         # logging.debug('postACCVoltControl is: ' + str(track_dict['postAccOffsetVoltControl']))  # this is fine.
         start_ok = self.sequencer.measureTrack(scan_dict, track_num)
         return start_ok

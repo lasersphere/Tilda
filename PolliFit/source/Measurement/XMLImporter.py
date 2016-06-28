@@ -85,6 +85,9 @@ class XMLImporter(SpecData):
         self.x = TildaTools.create_x_axis_from_file_dict(scandict, as_voltage=x_as_volt)  # x axis, voltage
         self.cts = []  # countervalues
         self.err = []  # error to the countervalues
+        self.t_proj = []  # time projection only for time resolved
+        self.time_res = []  # time resolved matrices only for time resolved measurments
+
         self.stepSize = []
         self.col = False  # should also be a list for multiple tracks
         self.dwell = []
@@ -111,17 +114,18 @@ class XMLImporter(SpecData):
             if self.seq_type in ['trs', 'tipa', 'trsdummy']:
                 self.softBinWidth_ns = track_dict.get('softBinWidth_ns', 10)
                 self.t = TildaTools.create_t_axis_from_file_dict(scandict)  # force 10 ns resolution
-                self.t_proj = []
-                self.time_res = []
                 cts_shape = (nOfScalers, nOfsteps, nOfBins)
                 v_proj = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'voltage_projection', (nOfScalers, nOfsteps))
+                    lxmlEtree, nOfactTrack, 'voltage_projection', (nOfScalers, nOfsteps),
+                    direct_parent_ele_str='projections')
                 t_proj = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'time_projection', (nOfScalers, nOfBins))
+                    lxmlEtree, nOfactTrack, 'time_projection', (nOfScalers, nOfBins),
+                    direct_parent_ele_str='projections')
                 scaler_array = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'scalerArray', cts_shape)
                 self.time_res.append(scaler_array)
                 if v_proj is None or t_proj is None:
+                    print('projections not found, gating data now.')
                     v_proj, t_proj = TildaTools.gate_one_track(
                         tr_ind, nOfactTrack, scandict, self.time_res, self.t, self.x, [])[0]
                 self.cts.append(v_proj)

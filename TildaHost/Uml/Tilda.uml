@@ -15623,7 +15623,7 @@ Only reasonable inputs are shown
 <XPD:ATTR name="Name" type="string">softw_trigger_dmms</XPD:ATTR>
 <XPD:REF name="EntryState">z8jJ+FUpxku1PqD97FmNewAA</XPD:REF>
 </XPD:OBJ>
-<XPD:ATTR name="#ExitActions" type="integer">4</XPD:ATTR>
+<XPD:ATTR name="#ExitActions" type="integer">3</XPD:ATTR>
 <XPD:OBJ name="ExitActions[0]" type="UMLUninterpretedAction" guid="7fg7JMbvt0GYBM4UeUUJeAAA">
 <XPD:ATTR name="Name" type="string">exit when all dmms measured</XPD:ATTR>
 <XPD:REF name="ExitState">z8jJ+FUpxku1PqD97FmNewAA</XPD:REF>
@@ -15634,10 +15634,6 @@ Only reasonable inputs are shown
 </XPD:OBJ>
 <XPD:OBJ name="ExitActions[2]" type="UMLUninterpretedAction" guid="pp9jUnrYskqSPIcRqVULTAAA">
 <XPD:ATTR name="Name" type="string">set dmms to periodic</XPD:ATTR>
-<XPD:REF name="ExitState">z8jJ+FUpxku1PqD97FmNewAA</XPD:REF>
-</XPD:OBJ>
-<XPD:OBJ name="ExitActions[3]" type="UMLUninterpretedAction" guid="KWyVSED8jEavjKxqKEF27AAA">
-<XPD:ATTR name="Name" type="string">init pipeline</XPD:ATTR>
 <XPD:REF name="ExitState">z8jJ+FUpxku1PqD97FmNewAA</XPD:REF>
 </XPD:OBJ>
 <XPD:ATTR name="#DoActivities" type="integer">1</XPD:ATTR>
@@ -15658,6 +15654,11 @@ Only reasonable inputs are shown
 <XPD:ATTR name="#Incomings" type="integer">2</XPD:ATTR>
 <XPD:REF name="Incomings[0]">+KtwSqPKJ0eCdyFCimPPwwAA</XPD:REF>
 <XPD:REF name="Incomings[1]">v+IEPNFM9UilRbiE8/+VEwAA</XPD:REF>
+<XPD:ATTR name="#EntryActions" type="integer">1</XPD:ATTR>
+<XPD:OBJ name="EntryActions[0]" type="UMLUninterpretedAction" guid="cTAVcQzp8UGGvMZj2Az0UwAA">
+<XPD:ATTR name="Name" type="string">first track: init pipeline</XPD:ATTR>
+<XPD:REF name="EntryState">Te7TqgRbwECLhe/6fnqIFgAA</XPD:REF>
+</XPD:OBJ>
 <XPD:ATTR name="#DoActivities" type="integer">3</XPD:ATTR>
 <XPD:OBJ name="DoActivities[0]" type="UMLUninterpretedAction" guid="zwc5mT/pOUmiRNz4rL7I0wAA">
 <XPD:ATTR name="Name" type="string">setup pipeline for next track</XPD:ATTR>
@@ -15986,7 +15987,7 @@ Only reasonable inputs are shown
 <XPD:OBJ name="OwnedViews[10]" type="UMLTransitionView" guid="PGNACsgx2Uq7H682UXyNJAAA">
 <XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
-<XPD:ATTR name="Points" type="Points">371,495;371,520</XPD:ATTR>
+<XPD:ATTR name="Points" type="Points">371,508;371,520</XPD:ATTR>
 <XPD:REF name="Model">XINndLOqZUG3ewayBaShiQAA</XPD:REF>
 <XPD:REF name="Head">DpEtNoDW+EWfwvQWPcAwUwAA</XPD:REF>
 <XPD:REF name="Tail">chgcYBFW8UaimTs0fthi2wAA</XPD:REF>
@@ -16015,7 +16016,7 @@ Only reasonable inputs are shown
 <XPD:ATTR name="Left" type="integer">268</XPD:ATTR>
 <XPD:ATTR name="Top" type="integer">424</XPD:ATTR>
 <XPD:ATTR name="Width" type="integer">207</XPD:ATTR>
-<XPD:ATTR name="Height" type="integer">72</XPD:ATTR>
+<XPD:ATTR name="Height" type="integer">85</XPD:ATTR>
 <XPD:REF name="Model">Te7TqgRbwECLhe/6fnqIFgAA</XPD:REF>
 <XPD:OBJ name="NameCompartment" type="UMLNameCompartmentView" guid="rzEq2KfFMUCSJZ3n/F9cJgAA">
 <XPD:OBJ name="NameLabel" type="LabelView" guid="BEev4JeJPEqSGo72x8PxaAAA">

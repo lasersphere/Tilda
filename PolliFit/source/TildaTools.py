@@ -104,7 +104,7 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
     return trackd
 
 
-def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape, datatytpe=np.uint32):
+def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape, datatytpe=np.uint32, direct_parent_ele_str='data'):
     """
     Get Data From Track
     :param root_ele:  lxml.etree.Element, root of the xml tree
@@ -115,7 +115,7 @@ def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape, datatyt
     :return: Text
     """
     try:
-        actTrack = root_ele.find('tracks').find('track' + str(n_of_track)).find('data')
+        actTrack = root_ele.find('tracks').find('track' + str(n_of_track)).find(direct_parent_ele_str)
         dataText = actTrack.find(str(data_type)).text
         data_numpy = numpy_array_from_string(dataText, data_shape, datatytpe)
         return data_numpy
@@ -220,7 +220,7 @@ def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
             start = scan_dict[tr_name]['dacStartRegister18Bit']
             step = scan_dict[tr_name]['dacStepSize18Bit']
             stop = scan_dict[tr_name].get('dacStopRegister18Bit', start + step * (steps - 1))
-            x_tr = np.arange(start, stop, step)
+            x_tr = np.arange(start, stop + step, step)
         x_arr.append(x_tr)
     return x_arr
 
