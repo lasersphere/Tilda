@@ -128,6 +128,7 @@ def CsPipe(initialScanPars=None, callback_sig=None):
 
     compl_tr_br = walk.attach(TN.NCheckIfTrackComplete())
     compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
+    compl_tr_br = compl_tr_br.attach(SN.NPrint())
 
     # walk = walk.attach(TN.NSaveIncomDataForActiveTrack())
     # walk = walk.attach(TN.NCheckIfMeasurementComplete())

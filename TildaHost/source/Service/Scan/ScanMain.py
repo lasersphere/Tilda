@@ -230,6 +230,7 @@ class ScanMain:
             self.pipeline.clear()
         if complete_stop:  # only touch dmms in the end of the whole scan
             self.set_dmm_to_periodic_reading('all')
+            self.pipeline = None
 
     def halt_scan(self, b_val):
         """

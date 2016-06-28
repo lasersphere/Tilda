@@ -412,12 +412,10 @@ class Main(QtCore.QObject):
         iso_name = self.scan_progress['activeIso']
         dmms_dict = self.scan_pars[iso_name]['measureVoltPars'].get('dmms', None)
         dmms_dict_is_none = dmms_dict is None
-        is_this_first_track = len(self.scan_progress['completedTracks']) == 0
-        if self.scan_pars[iso_name]['isotopeData']['type'] in ['kepco'] or dmms_dict_is_none or is_this_first_track:
+        if self.scan_pars[iso_name]['isotopeData']['type'] in ['kepco'] or dmms_dict_is_none:
             # do not perform an offset measurement for a kepco scan. Proceed to load track
             # do not perform an offset measurement if no dmm is present. Proceed to load track
             # only perform offset measurement in first track!
-            self.scan_main.init_pipeline(self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline)
             self.set_state(MainState.load_track)
             return None
         if first_call:
@@ -438,7 +436,6 @@ class Main(QtCore.QObject):
                     logging.debug('all dmms returned a measurement, reading is: ' + str(read))
                     self.scan_main.abort_dmm_measurement('all')
                     self.scan_main.set_dmm_to_periodic_reading('all')
-                    self.scan_main.init_pipeline(self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline)
                     self.set_state(MainState.load_track)
 
     def add_global_infos_to_scan_pars(self, iso_name):
@@ -500,6 +497,9 @@ class Main(QtCore.QObject):
         will switch state to 'scanning' or 'error'
         """
         iso_name = self.scan_progress['activeIso']
+        is_this_first_track = len(self.scan_progress['completedTracks']) == 0
+        if is_this_first_track:  # initialise the pipeline on first track
+            self.scan_main.init_pipeline(self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline)
         active_track_num = self.scan_progress['activeTrackNum']
         self.scan_main.prep_track_in_pipe(active_track_num, active_track_num)
         if self.scan_main.start_measurement(self.scan_pars[iso_name], active_track_num):
@@ -518,12 +518,12 @@ class Main(QtCore.QObject):
         if self.abort_scan:  # abort the scan and return to idle state
             print('abort was pressed ', self.abort_scan)
             self.scan_main.abort_scan()
-            self.set_state(MainState.saving)
+            self.set_state(MainState.saving, True)
         elif not self.scan_main.read_data():  # read_data() yields False if no Elements can be read from fpga
             if not self.scan_main.check_scanning():  # check if fpga is still in scanning state
                 if self.halt_scan:  # scan was halted
                     self.halt_scan_func(False)  # set halt variabel to false afterwards
-                    self.set_state(MainState.saving)
+                    self.set_state(MainState.saving, True)
                 else:  # normal exit after completion of each track
                     self.scan_progress['completedTracks'].append(self.scan_progress['activeTrackNum'])
                     # self.scan_main.stop_measurement(False)
@@ -539,7 +539,7 @@ class Main(QtCore.QObject):
         """
         logging.info('saving...')
         QApplication.setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))  # ignore warning
-        self.scan_main.stop_measurement(complete_stop=complete_stop, clear=True)  # stop pipeline and clear
+        self.scan_main.stop_measurement(complete_stop=complete_stop, clear=complete_stop)  # stop pipeline and clear
         QApplication.restoreOverrideCursor()  # ignore warning
         if complete_stop:  # set Main to idle state
             self.set_state(MainState.idle)
