@@ -1352,33 +1352,18 @@ class NCSSortRawDatatoArray(Node):
                         '{0:032b}'.format(j['payload'])))
 
                 elif j['firstHeader'] == Progs.dac.value:  # its a voltage step
-                    # print('trying to find:', j['payload'], ' in: ', self.voltArray)
-                    # self.curVoltIndex, self.voltArray = find_volt_in_array(j['payload'], self.voltArray, track_ind)
                     pass
 
                 elif j['firstHeader'] == Progs.continuousSequencer.value:
                     '''scaler entry '''
+                    # logging.debug('sorting pmt event to voltage index: ' + str(self.curVoltIndex))
                     self.totalnOfScalerEvents[track_ind] += 1
-                    # pipeData[track_name]['nOfCompletedSteps'] = self.totalnOfScalerEvents[
-                    # track_ind] // 8  # floored Quotient
-                    # logging.debug('total completed steps: ' + str(pipeData[track_name]['nOfCompletedSteps']))
                     try:  # only add to scalerArray, when pmt is in activePmtList.
                         pmt_index = pipeData[track_name]['activePmtList'].index(j['secondHeader'])
+                        # logging.debug('pmt_index is: ' + str(pmt_index))
                         self.scalerArray[track_ind][pmt_index][self.curVoltIndex] += j['payload']
                     except ValueError:
                         pass
-                    if CsAna.checkIfScanComplete(pipeData, self.totalnOfScalerEvents[track_ind], track_name):
-                        # one Scan over all steps is completed, add Data to return array and clear local buffer.
-                        scan_complete = True
-                        if ret is None:
-                            ret = []
-                        ret.append((self.scalerArray, scan_complete))
-                        logging.debug('Voltindex: ' + str(self.curVoltIndex) +
-                                      ' completede steps:  ' + str(pipeData[track_name]['nOfCompletedSteps']) +
-                                      ' cont_seq item is: ' + str(j['payload']))
-                        self.scalerArray = Form.create_default_scaler_array_from_scandict(
-                            pipeData)  # deletes all entries
-                        scan_complete = False
             except Exception as e:
                 print('error while sorting: ', e, 'split raw data is:', j)
         try:

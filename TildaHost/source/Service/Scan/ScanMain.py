@@ -46,8 +46,6 @@ class ScanMain:
         # self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
         self.prepare_dmms_for_scan(scan_dict['measureVoltPars'].get('dmms', {}))
-        n_of_tracks, list_of_track_nums = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
-        self.set_post_acc_switch_box(scan_dict, list_of_track_nums[0])
 
     def init_pipeline(self, scan_dict, callback_sig=None):
         self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
@@ -139,6 +137,7 @@ class ScanMain:
         track_dict = scan_dict.get('track' + str(track_num))
         logging.debug('starting measurement with track_dict: ' +
                       str(sorted(track_dict)))
+        # logging.debug('postACCVoltControl is: ' + str(track_dict['postAccOffsetVoltControl']))  # this is fine.
         start_ok = self.sequencer.measureTrack(scan_dict, track_num)
         return start_ok
 

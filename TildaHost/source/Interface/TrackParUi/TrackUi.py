@@ -102,6 +102,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         Each function is tried separately in order to give the next one a chance of execution,
         when default val is messed up.
         """
+        print('setting trackui labels by dict: ', track_dict)
         func_list = [
             # (self.doubleSpinBox_dwellTime_ms.setValue,
             #  self.check_for_none(track_dict.get('dwellTime10ns'), 0) * (10 ** -5)),
@@ -133,6 +134,11 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
                 func[0](func[1])
             except Exception as e:
                 logging.error('error while loading default track dictionary: ' + str(e))
+        # self.comboBox_postAccOffsetVoltControl.currentIndexChanged.emit(self.comboBox_postAccOffsetVoltControl.currentIndex())
+        print('setting trackui labels by dict is done postAccOffsetVoltControl is: ',
+              self.buffer_pars['postAccOffsetVoltControl'])  #
+        self.comboBox_postAccOffsetVoltControl.currentIndexChanged.emit(
+            int(self.check_for_none(track_dict.get('postAccOffsetVoltControl'), 0)))
 
     def check_for_none(self, check, replace):
         """

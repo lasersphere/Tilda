@@ -374,21 +374,24 @@ class Main(QtCore.QObject):
         self.add_global_infos_to_scan_pars(iso_name)
         logging.debug('will scan: ' + iso_name + str(sorted(self.scan_pars[iso_name])))
         self.scan_main.prepare_scan(self.scan_pars[iso_name])
-        n_of_tracks, list_of_track_nums = SdOp.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
-        desired_hsb_state = self.scan_pars[iso_name]['track' + str(list_of_track_nums[0])]['postAccOffsetVoltControl']
-        self.set_state(MainState.setting_switch_box, desired_hsb_state)
+        self.set_state(MainState.setting_switch_box, True)
 
-    def _setting_switch_box(self, des_state):
+    def _setting_switch_box(self, first_call=False):
         """
         this will be called in 'setting_switch_box' state.
         It will exit as soon as the switchbox is set to the right value.
         The next state is 'measure_offset_voltage'
-        :param des_state: int, desired state of the power supply switch box.
+        :param first_call: bool, True for first call, this will command the fpga to change the state of the setbox.
         """
         iso_name = self.scan_progress['activeIso']
         n_of_tracks, list_of_track_nums = SdOp.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
         active_track_num = min(set(list_of_track_nums) - set(self.scan_progress['completedTracks']))
-        self.scan_progress['activeTrackNum'] = active_track_num
+        if first_call:
+            self.scan_main.set_post_acc_switch_box(self.scan_pars[iso_name], active_track_num)
+            self.scan_progress['activeTrackNum'] = active_track_num
+            self.set_state(MainState.setting_switch_box, False)
+        des_state = self.scan_pars[iso_name]['track' + str(active_track_num)]['postAccOffsetVoltControl']
+        logging.debug('desired state of hsb is: ' + str(des_state))
         done, currentState, desired_state = self.scan_main.post_acc_switch_box_is_set(des_state)
         if done:
             self.set_state(MainState.measure_offset_voltage, True)
@@ -407,8 +410,11 @@ class Main(QtCore.QObject):
         :param first_call: bool, True if this is the first call
         """
         iso_name = self.scan_progress['activeIso']
-        if self.scan_pars[iso_name]['isotopeData']['type'] in ['kepco']:
+        dmms_dict = self.scan_pars[iso_name]['measureVoltPars'].get('dmms', None)
+        dmms_dict_is_none = dmms_dict is None
+        if self.scan_pars[iso_name]['isotopeData']['type'] in ['kepco'] or dmms_dict_is_none:
             # do not perform an offset measurement for a kepco scan. Proceed to load track
+            # do not perform an offset measurement if no dmm is present. Proceed to load track
             self.scan_main.init_pipeline(self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline)
             self.set_state(MainState.load_track)
             return None
@@ -420,7 +426,7 @@ class Main(QtCore.QObject):
         else:  # this will periodically read the dmms until all dmms returned a measurement
             read = self.read_dmms(False)
             if read is not None:
-                dmms_dict = self.scan_pars[iso_name]['measureVoltPars']['dmms']
+                dmms_dict = self.scan_pars[iso_name]['measureVoltPars'].get('dmms', None)
                 reads = []
                 for dmm_name, volt_read in read.items():
                     if volt_read is not None:
@@ -492,10 +498,7 @@ class Main(QtCore.QObject):
         will switch state to 'scanning' or 'error'
         """
         iso_name = self.scan_progress['activeIso']
-        n_of_tracks, list_of_track_nums = SdOp.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
-        # try:
-        active_track_num = min(set(list_of_track_nums) - set(self.scan_progress['completedTracks']))
-        self.scan_progress['activeTrackNum'] = active_track_num
+        active_track_num = self.scan_progress['activeTrackNum']
         self.scan_main.prep_track_in_pipe(active_track_num, active_track_num)
         if self.scan_main.start_measurement(self.scan_pars[iso_name], active_track_num):
             self.set_state(MainState.scanning)
@@ -528,7 +531,7 @@ class Main(QtCore.QObject):
                     if len(self.scan_progress['completedTracks']) == tracks:
                         self.set_state(MainState.saving)
                     else:
-                        self.set_state(MainState.setting_switch_box)
+                        self.set_state(MainState.setting_switch_box, True)
 
     def _stop_sequencer_and_save(self):
         """

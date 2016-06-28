@@ -176,8 +176,10 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         """
         when closing, close all track windows
         """
-        for key, val in self.track_wins_dict.items():
+        track_win_copy = copy(self.track_wins_dict)
+        for key, val in track_win_copy.items():
             val.close()
+        track_win_copy = None
 
     def closeEvent(self, event):
         """

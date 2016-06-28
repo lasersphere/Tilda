@@ -55,7 +55,7 @@ class Sequencer(FPGAInterfaceHandling):
     def getHeinzControlState(self):
         """read the state of the post Acceleration Control Box"""
         ret = self.ReadWrite(self.config.postAccOffsetVoltState).value
-        logging.debug('HSB-State is: ' + str(ret))
+        # logging.debug('HSB-State is: ' + str(ret))
         return ret
 
     def getPostAccelerationControlStateIsDone(self, desired_state):
@@ -64,8 +64,9 @@ class Sequencer(FPGAInterfaceHandling):
         :param desired_state: int, the desired state of the box
         :return: tuple, (bool_True_if_success, int_current_state, int_desired_state)
         """
-        currentState = self.getHeinzControlState()
+        currentState = int(self.getHeinzControlState())
         done = currentState == desired_state
+        logging.debug('switchbox, state: %s, desired state: %s, done: %s' % (currentState, desired_state, done))
         return done, currentState, desired_state
 
     '''writing'''
@@ -114,16 +115,19 @@ class Sequencer(FPGAInterfaceHandling):
         """
         currentState = self.getHeinzControlState()
         if currentState != desiredState:
-            self.ReadWrite(self.config.postAccOffsetVoltControl, desiredState)
-            timeout = 0
-            while blocking and timeout < 30:
-                done, currentState, desired_state = self.getPostAccelerationControlStateIsDone(desiredState)
-                print('currentState:', currentState, '\tdesiredState: ', desiredState)
-                if done:
-                    return currentState
-                else:
-                    time.sleep(0.2)
-                    timeout += 1
+            if self.changeSeqState(self.config.seqStateDict['idle']):
+                self.ReadWrite(self.config.postAccOffsetVoltControl, desiredState)
+                timeout = 0
+                while blocking and timeout < 30:
+                    done, currentState, desired_state = self.getPostAccelerationControlStateIsDone(desiredState)
+                    print('currentState:', currentState, '\tdesiredState: ', desiredState)
+                    if done:
+                        return currentState
+                    else:
+                        time.sleep(0.2)
+                        timeout += 1
+            else:
+                raise Exception('could not change the fpga state to idle for setting the switch box')
         else:
             return currentState
 
@@ -171,7 +175,7 @@ class Sequencer(FPGAInterfaceHandling):
                 else:
                     return self.changeSeqState(cmd, tries + 1, requestedState)
             except Exception as e:
-                print('error while changing state:', e)
+                print('error while changing state:', e, 'cmd: ', cmd, 'curState: ', curState)
 
     def abort(self):
         """

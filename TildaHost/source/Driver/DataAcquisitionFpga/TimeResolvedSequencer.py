@@ -105,7 +105,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         :return:bool, True if successfully changed State
         """
         if self.setAllScanParameters(scanpars, track_num):
-            return self.changeSeqState(self.config, self.config.seqStateDict['measureOffset'])
+            return self.changeSeqState(self.config.seqStateDict['measureOffset'])
 
     def measureTrack(self, scanpars, track_num):
         """
