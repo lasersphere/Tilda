@@ -39,16 +39,15 @@ class InfoHandler:
             step_complete = True
             self.started_bunches_in_step = 0
             self.total_completed_steps += 1
-            # logging.debug('total num of steps completed: ' + str(self.total_completed_steps))
             pipe_data[track_name]['nOfCompletedSteps'] = self.total_completed_steps
 
             self.volt_index += self.sign_for_volt_ind(pipe_data[track_name]['invertScan'])
-            # logging.debug('step completed, voltindex is: ' + str(self.volt_index))
+            # logging.debug('infohandler: total num of steps completed: ' + str(self.total_completed_steps))
+            # logging.debug('infohandler: step completed, voltindex is: ' + str(self.volt_index))
             return self.volt_index, step_complete
 
         elif payload == 2:  # means scan started
             self.total_started_scans += 1
-            # logging.debug('scan started: ' + str(self.total_started_scans))
             if pipe_data[track_name]['invertScan']:  # if inverted, take last element on every second scan
                 if self.total_started_scans % 2 == 0:
                     self.volt_index = -1
@@ -57,14 +56,14 @@ class InfoHandler:
                     self.volt_index = 0
             else:
                 self.volt_index = 0
-            # logging.debug('next scan started ' + str(self.total_started_scans) + ' voltindex: ' + str(self.volt_index))
+            # logging.debug('infohandler: next scan started ' + str(self.total_started_scans) + ' voltindex: ' + str(self.volt_index))
             return self.volt_index, step_complete
 
         elif payload == 3:  # means new bunch
             self.started_bunches_in_step += 1
             self.total_started_bunches += 1
-            # logging.debug('total num of bunches started: ' + str(self.total_started_bunches))
-            # logging.debug('num of bunches started in this step: ' + str(self.started_bunches_in_step))
+            # logging.debug('infohandler: total num of bunches started: ' + str(self.total_started_bunches))
+            # logging.debug('infohandler: num of bunches started in this step: ' + str(self.started_bunches_in_step))
             return None, step_complete
 
     def sign_for_volt_ind(self, invert_scan):

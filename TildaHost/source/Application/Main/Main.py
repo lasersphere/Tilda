@@ -412,31 +412,32 @@ class Main(QtCore.QObject):
         iso_name = self.scan_progress['activeIso']
         dmms_dict = self.scan_pars[iso_name]['measureVoltPars'].get('dmms', None)
         dmms_dict_is_none = dmms_dict is None
-        if self.scan_pars[iso_name]['isotopeData']['type'] in ['kepco'] or dmms_dict_is_none:
+        is_this_first_track = len(self.scan_progress['completedTracks']) == 0
+        if self.scan_pars[iso_name]['isotopeData']['type'] in ['kepco'] or dmms_dict_is_none or is_this_first_track:
             # do not perform an offset measurement for a kepco scan. Proceed to load track
             # do not perform an offset measurement if no dmm is present. Proceed to load track
             # only perform offset measurement in first track!
             self.set_state(MainState.load_track)
-            return None
-        if first_call:
-            # on first call set the fpga to measure offset state and
-            # software trigger the dmms
-            self.scan_main.measure_offset_pre_scan(self.scan_pars[iso_name])
-            self.set_state(MainState.measure_offset_voltage, False)
-        else:  # this will periodically read the dmms until all dmms returned a measurement
-            read = self.read_dmms(False)
-            if read is not None:
-                dmms_dict = self.scan_pars[iso_name]['measureVoltPars'].get('dmms', None)
-                reads = []
-                for dmm_name, volt_read in read.items():
-                    if volt_read is not None:
-                        dmms_dict[dmm_name]['preScanRead'] = volt_read[0]
-                    reads.append(dmms_dict[dmm_name].get('preScanRead', None))
-                if reads.count(None) == 0:  # done when all dmms have a value
-                    logging.debug('all dmms returned a measurement, reading is: ' + str(read))
-                    self.scan_main.abort_dmm_measurement('all')
-                    self.scan_main.set_dmm_to_periodic_reading('all')
-                    self.set_state(MainState.load_track)
+        else:
+            if first_call:
+                # on first call set the fpga to measure offset state and
+                # software trigger the dmms
+                self.scan_main.measure_offset_pre_scan(self.scan_pars[iso_name])
+                self.set_state(MainState.measure_offset_voltage, False)
+            else:  # this will periodically read the dmms until all dmms returned a measurement
+                read = self.read_dmms(False)
+                if read is not None:
+                    dmms_dict = self.scan_pars[iso_name]['measureVoltPars'].get('dmms', None)
+                    reads = []
+                    for dmm_name, volt_read in read.items():
+                        if volt_read is not None:
+                            dmms_dict[dmm_name]['preScanRead'] = volt_read[0]
+                        reads.append(dmms_dict[dmm_name].get('preScanRead', None))
+                    if reads.count(None) == 0:  # done when all dmms have a value
+                        logging.debug('all dmms returned a measurement, reading is: ' + str(read))
+                        self.scan_main.abort_dmm_measurement('all')
+                        self.scan_main.set_dmm_to_periodic_reading('all')
+                        self.set_state(MainState.load_track)
 
     def add_global_infos_to_scan_pars(self, iso_name):
         """

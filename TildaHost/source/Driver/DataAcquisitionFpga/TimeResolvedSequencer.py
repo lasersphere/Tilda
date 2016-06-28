@@ -67,7 +67,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
             nofbunches = 1
         else:
             nofbins = scanpars[track_name]['nOfBins']
-            nofbunches = scanpars[track_name]['nOfBins']
+            nofbunches = scanpars[track_name]['nOfBunches']
         self.ReadWrite(self.config.nOfBins, nofbins)
         self.ReadWrite(self.config.nOfBunches, nofbunches)
         return self.checkFpgaStatus()
