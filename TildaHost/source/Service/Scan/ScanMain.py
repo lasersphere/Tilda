@@ -212,7 +212,7 @@ class ScanMain:
         seq_state = self.sequencer.getSeqState()
         return meas_state == seq_state
 
-    def stop_measurement(self, clear=True):
+    def stop_measurement(self, complete_stop=False, clear=True):
         """
         stops all modules which are relevant for scanning.
         pipeline etc.
@@ -220,14 +220,16 @@ class ScanMain:
         read = self.read_data()  # read data one last time
         if read:
             logging.info('while stopping measurement, some data was still read.')
-        self.read_multimeter('all', True)
-        self.abort_dmm_measurement('all')
+        if complete_stop:  # only touch dmms in the end of the whole scan
+            self.read_multimeter('all', True)
+            self.abort_dmm_measurement('all')
 
         print('stopping measurement, clear is: ', clear)
         self.pipeline.stop()
         if clear:
             self.pipeline.clear()
-        self.set_dmm_to_periodic_reading('all')
+        if complete_stop:  # only touch dmms in the end of the whole scan
+            self.set_dmm_to_periodic_reading('all')
 
     def halt_scan(self, b_val):
         """

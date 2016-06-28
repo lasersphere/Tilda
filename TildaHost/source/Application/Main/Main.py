@@ -129,7 +129,7 @@ class Main(QtCore.QObject):
             self.get_fpga_and_seq_state()
             self.read_dmms(feed_to_pipe=True)
         elif self.m_state[0] is MainState.saving:
-            self._stop_sequencer_and_save()
+            self._stop_sequencer_and_save(self.m_state[1])
 
         elif self.m_state[0] is MainState.preparing_tilda_passiv:
             self._prepare_tilda_passive(*self.m_state[1])
@@ -412,9 +412,11 @@ class Main(QtCore.QObject):
         iso_name = self.scan_progress['activeIso']
         dmms_dict = self.scan_pars[iso_name]['measureVoltPars'].get('dmms', None)
         dmms_dict_is_none = dmms_dict is None
-        if self.scan_pars[iso_name]['isotopeData']['type'] in ['kepco'] or dmms_dict_is_none:
+        is_this_first_track = len(self.scan_progress['completedTracks']) == 0
+        if self.scan_pars[iso_name]['isotopeData']['type'] in ['kepco'] or dmms_dict_is_none or is_this_first_track:
             # do not perform an offset measurement for a kepco scan. Proceed to load track
             # do not perform an offset measurement if no dmm is present. Proceed to load track
+            # only perform offset measurement in first track!
             self.scan_main.init_pipeline(self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline)
             self.set_state(MainState.load_track)
             return None
@@ -528,20 +530,21 @@ class Main(QtCore.QObject):
                     # stop pipeline before starting with next track again, do not clear.
                     tracks, tr_l = SdOp.get_number_of_tracks_in_scan_dict(
                         self.scan_pars[self.scan_progress['activeIso']])
-                    if len(self.scan_progress['completedTracks']) == tracks:
-                        self.set_state(MainState.saving)
-                    else:
-                        self.set_state(MainState.setting_switch_box, True)
+                    everything_completed = len(self.scan_progress['completedTracks']) == tracks  # scan complete
+                    self.set_state(MainState.saving, everything_completed)
 
-    def _stop_sequencer_and_save(self):
+    def _stop_sequencer_and_save(self, complete_stop=False):
         """
         will be called in state 'saving'
         """
         logging.info('saving...')
         QApplication.setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))  # ignore warning
-        self.scan_main.stop_measurement()  # stop pipeline and clear
+        self.scan_main.stop_measurement(complete_stop=complete_stop, clear=True)  # stop pipeline and clear
         QApplication.restoreOverrideCursor()  # ignore warning
-        self.set_state(MainState.idle)
+        if complete_stop:  # set Main to idle state
+            self.set_state(MainState.idle)
+        else:  # keep going with next track.
+            self.set_state(MainState.setting_switch_box, True)
 
     """ simple counter """
 
