@@ -343,8 +343,12 @@ class NSaveProjection(Node):
             tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
             for track_ind, tr_num in enumerate(track_list):
                 track_name = 'track%s' % tr_num
-                xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][0], track_name, datatype='voltage_projection')
-                xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][1], track_name, datatype='time_projection')
+                xmlAddCompleteTrack(
+                    rootEle, pipeData, data[track_ind][0], track_name, datatype='voltage_projection',
+                    parent_ele_str='projections')
+                xmlAddCompleteTrack(
+                    rootEle, pipeData, data[track_ind][1], track_name, datatype='time_projection',
+                    parent_ele_str='projections')
             TildaTools.save_xml(rootEle, file, False)
 
 
@@ -659,8 +663,12 @@ class NMPLImagePLot(Node):
             tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
             for track_ind, tr_num in enumerate(track_list):
                 track_name = 'track%s' % tr_num
-                xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][0], track_name, datatype='voltage_projection')
-                xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][1], track_name, datatype='time_projection')
+                xmlAddCompleteTrack(
+                    rootEle, pipeData, data[track_ind][0], track_name, datatype='voltage_projection',
+                    parent_ele_str='projections')
+                xmlAddCompleteTrack(
+                    rootEle, pipeData, data[track_ind][1], track_name, datatype='time_projection',
+                    parent_ele_str='projections')
             TildaTools.save_xml(rootEle, file, False)
         except Exception as e:
             print(e)

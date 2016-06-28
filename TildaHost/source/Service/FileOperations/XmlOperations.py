@@ -106,9 +106,16 @@ def xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackdict):
     return rootEle
 
 
-def xmlAddCompleteTrack(rootEle, scanDict, data, track_name, datatype='scalerArray'):
+def xmlAddCompleteTrack(rootEle, scanDict, data, track_name, datatype='scalerArray', parent_ele_str='data'):
     """
     Add a complete Track to an lxml root element
+    :param rootEle: lxml.etree.Element, Element of loaded File
+    :param scanDict: dict, dictionary containing all scan parameters
+    :param data: array of data containing all scalers fpr this track
+    :param track_name: str, name of track
+    :param datatype: str, name of data that will be written to the parent_ele_str
+    :param parent_ele_str: str, name of the subelement taht will be created/found in the selected track
+    :return: rootEle
     """
     # datatype = scanDict['isotopeData']['type']
     # pipeInternalsDict = scanDict['pipeInternals']
@@ -121,5 +128,5 @@ def xmlAddCompleteTrack(rootEle, scanDict, data, track_name, datatype='scalerArr
                                  trackDict['dacStepSize18Bit'],
                                  trackDict['nOfSteps'])))
     xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackDict)
-    xmlWriteToTrack(rootEle, nOfTrack, datatype, data, 'data')
+    xmlWriteToTrack(rootEle, nOfTrack, datatype, data, parent_ele_str)
     return rootEle
