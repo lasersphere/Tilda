@@ -295,7 +295,7 @@ def time_resolved_display(filepath):
     # path of file is used mainly for the window title.
     walk = start.attach(SN.NPrint())
     # walk = walk.attach(TN.NMPLImagePlotSpecData(0, dataPath))
-    walk = walk.attach(TN.NMPLImagePlotSpecData(0))
+    walk = walk.attach(TN.NMPLImagePlotSpecData2(0))
     walk = walk.attach(TN.NMPlDrawPlot())
 
     return pipe

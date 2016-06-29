@@ -91,7 +91,7 @@ class XMLImporter(SpecData):
         self.stepSize = []
         self.col = False  # should also be a list for multiple tracks
         self.dwell = []
-        self.softw_gates = None
+        self.softw_gates = []
         self.track_names = TildaTools.get_track_names(scandict)
 
         for tr_ind, tr_name in enumerate(TildaTools.get_track_names(scandict)):
@@ -132,8 +132,8 @@ class XMLImporter(SpecData):
                 self.err.append(np.sqrt(v_proj))
                 self.err[-1][self.err[-1] < 1] = 1  # remove 0's in the error
                 self.t_proj.append(t_proj)
-                self.softw_gates = track_dict['softwGates']
-                dwell = [g[3] - g[2] for g in self.softw_gates]
+                self.softw_gates.append(track_dict['softwGates'])
+                dwell = [g[3] - g[2] for g in track_dict['softwGates']]
                 self.dwell.append(dwell)
 
             elif self.seq_type in ['cs', 'csdummy']:

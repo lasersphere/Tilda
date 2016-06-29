@@ -15,14 +15,18 @@ from Measurement.XMLImporter import XMLImporter as XmlImp
 import Application.Config as Cfg
 import MPLPlotter
 
+from PyQt5 import QtWidgets
+import sys
+import os
 
 class DisplayData:
-    def __init__(self, file):
+    def __init__(self, file, x_as_volt=False):
         self.pipe = None
         self.file = None
         self.fig = None
         self.cid = None
         self.spec = None
+        self.x_as_volt = x_as_volt
         self.load_spectra(file)
         self.select_pipe()
         self.feed_loaded_spec()
@@ -30,7 +34,7 @@ class DisplayData:
 
     def load_spectra(self, file):
         self.file = file
-        self.spec = XmlImp(file, x_as_volt=False)
+        self.spec = XmlImp(file, x_as_volt=self.x_as_volt)
 
     def select_pipe(self):
         if self.spec.seq_type in ['trs', 'trsdummy', 'tipa', 'tipadummy']:
@@ -52,12 +56,17 @@ class DisplayData:
 
     def close_spec(self, event):
         self.fig.canvas.mpl_disconnect(self.cid)
-        Cfg._main_instance.close_spectra_in_main(self.file)  # command flow goes upstream =/
+        Cfg._main_instance.close_spectra_in_main(self.file)
 
 
 
 path = 'E:\\lala\\sums\\dummy_trsdummy_008.xml'
 if __name__ == "__main__":
-    disp_data = DisplayData(path)
+    app = QtWidgets.QApplication(sys.argv)
+    # ui = TRSLivePlotWindowUi()
+    # ui.show()
+    disp_data = DisplayData(path, True)
+    app.exec()
+
     # print(disp_data.spec.cts)
     # print(disp_data.spec.t_proj)

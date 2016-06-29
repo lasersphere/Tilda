@@ -26,6 +26,7 @@ from Service.ProgramConfigs import Programs as Progs
 from polliPipe.node import Node
 from Spectra.Straight import Straight
 from SPFitter import SPFitter
+from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
 
 
 """ multipurpose Nodes: """
@@ -1241,6 +1242,31 @@ class NMPLImagePlotSpecData(Node):
         except Exception as e:
             print(e)
 
+
+class NMPLImagePlotSpecData2(Node):
+    def __init__(self, pmt_num):
+        self.gui = None
+        super(NMPLImagePlotSpecData2, self).__init__()
+        self.type = 'MPLImagePlotSpecData2'
+        self.selected_pmt = pmt_num
+        self.stored_data = None
+
+    def start(self):
+        path = self.Pipeline.pipeData['pipeInternals']['activeXmlFilePath']
+        self.gui = TRSLivePlotWindowUi(path, self)
+
+    def processData(self, data, pipeData):
+        print('processing')
+        self.gui.new_data(data)
+        self.stored_data = data
+        return data
+
+    def clear(self):
+        self.save()
+
+    def save(self):
+        path = self.Pipeline.pipeData['pipeInternals']['activeXmlFilePath']
+        print('saving file: ', path)
 
 """ specdata fitting nodes """
 
