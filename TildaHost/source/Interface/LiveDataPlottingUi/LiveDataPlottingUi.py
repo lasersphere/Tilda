@@ -12,6 +12,7 @@ import MPLPlotter
 from copy import deepcopy
 from PyQt5 import QtWidgets, Qt, QtCore
 from Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveDataPlotting
+import TildaTools as TiTs
 
 
 class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting):
@@ -85,9 +86,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.sum_scaler_changed(0)
         self.update_gates_list()
         self.update_all_plots(self.spec_data)
+        self.gate_data(self.spec_data)
 
     ''' updating the plots from specdata '''
-    def update_all_plots(self, spec_data, draw=True):
+    def update_all_plots(self, spec_data, draw=True, reset=True):
+        if reset:
+            self.reset_plots(True)
         self.update_sum_plot(spec_data, draw)
         self.update_tres_data(spec_data, draw)
         self.update_projections(spec_data, draw)
@@ -208,19 +212,22 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             print(e)
 
     ''' gating: '''
-    def gate_data(self, spec_data):
-        #  start with that now!
-        pass
-
+    def gate_data(self, spec_data, plot_bool=True):
+        self.spec_data = TiTs.gate_specdata(spec_data)
+        if plot_bool:
+            self.update_all_plots(self.spec_data)
 
     ''' table operations: '''
     def handle_gate_table_change(self, item):
         # print('item was changed: ', item.row(), item.column(), item.text())
         gate_columns = range(2, 6)
-        if item.column() in gate_columns:
+        if item.column() in gate_columns:  # this means a gate value was changed.
             sel_tr = int(self.tableWidget_gates.item(item.row(), 0).text()[5:])
             sel_sc = int(self.tableWidget_gates.item(item.row(), 1).text())
+            gate_ind = item.column() - 2
             new_val = float(item.text())
+            self.spec_data.softw_gates[sel_tr][sel_sc][gate_ind] = new_val
+            self.gate_data(self.spec_data)
             # print('gate of tr %s on scaler %s was changed to %f' % (sel_tr, sel_sc, new_val))
 
     def handle_item_clicked(self, item):

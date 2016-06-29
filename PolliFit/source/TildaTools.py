@@ -204,6 +204,40 @@ def gate_one_track(tr_ind, tr_num, scan_dict, data, time_array, volt_array, ret)
     return ret
 
 
+def gate_specdata(spec_data):
+    """
+    function to gate spec_data with the softw_gates list in the spec_data itself.
+    gate will be applied on spec_data.time_res and
+     the time projection will be written to spec_data.t_proj
+     the voltage projection will be written to spec_data.cts
+    :param spec_data: spec_data
+    :return: spec_data
+    """
+    # get indices of the values first
+    compare_arr = [spec_data.x, spec_data.x, spec_data.t, spec_data.t]
+    softw_gates_ind = [
+        [[find_closest_value_in_arr(compare_arr[lim_ind][tr_ind], lim)[0] for lim_ind, lim in enumerate(gates_pmt)]
+         for gates_pmt in gates_tr]
+        for tr_ind, gates_tr in enumerate(spec_data.softw_gates)]
+    spec_data.softw_gates = [[[compare_arr[lim_ind][tr_ind][found_ind] for lim_ind, found_ind in enumerate(gate_ind_pmt)]
+                              for gate_ind_pmt in gate_ind_tr]
+                             for tr_ind, gate_ind_tr in enumerate(softw_gates_ind)]
+    spec_data.t_proj = [[np.sum(
+                                spec_data.time_res[tr_ind][pmt_ind]
+        [softw_gates_ind[tr_ind][pmt_ind][0]:softw_gates_ind[tr_ind][pmt_ind][1] + 1, :], axis=0
+    )
+                         for pmt_ind, pmt in enumerate(tracks)]
+                         for tr_ind, tracks in enumerate(spec_data.cts)]
+    spec_data.cts = [[
+        np.sum(
+            spec_data.time_res[tr_ind][pmt_ind]
+            [:, softw_gates_ind[tr_ind][pmt_ind][2]:softw_gates_ind[tr_ind][pmt_ind][3] + 1], axis=1
+        )
+        for pmt_ind in range(scalers)] for tr_ind, scalers in enumerate(spec_data.nrScalers)]
+
+    return spec_data
+
+
 def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
     """
     creates an x axis in units of line volts or in dac registers
