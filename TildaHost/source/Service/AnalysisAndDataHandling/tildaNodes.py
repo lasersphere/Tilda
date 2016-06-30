@@ -307,15 +307,7 @@ class NSaveSpecData(Node):
 
     def clear(self):
         if self.storage is not None:
-            pipeData = self.Pipeline.pipeData
-            pipeInternals = pipeData['pipeInternals']
-            file = pipeInternals['activeXmlFilePath']
-            rootEle = TildaTools.load_xml(file)
-            tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
-            for track_ind, tr_num in enumerate(track_list):
-                track_name = 'track%s' % tr_num
-                xmlAddCompleteTrack(rootEle, pipeData, self.storage.cts[track_ind], track_name)
-            TildaTools.save_xml(rootEle, file, False)
+            Filehandle.save_spec_data(self.storage, self.Pipeline.pipeData)
             self.storage = None
 
 
@@ -1272,35 +1264,35 @@ class NMPLImagePlotSpecData(Node):
             print(e)
 
 
-class NMPLImagePlotSpecData2(Node):
+class NMPLImagePlotAndSaveSpecData(Node):
     def __init__(self, pmt_num):
         self.gui = None
-        super(NMPLImagePlotSpecData2, self).__init__()
+        super(NMPLImagePlotAndSaveSpecData, self).__init__()
         self.type = 'MPLImagePlotSpecData2'
-        self.selected_pmt = pmt_num
+        self.selected_pmt = pmt_num  # for now pmt name should be pmt_ind
         self.stored_data = None
-        self.request_plot_reset = False
 
     def start(self):
         path = self.Pipeline.pipeData['pipeInternals']['activeXmlFilePath']
         if self.gui is None:
             self.gui = TRSLivePlotWindowUi(path, self)
-        self.request_plot_reset = True
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        self.gui.setup_new_track((track_ind, track_name), (int(self.selected_pmt), self.selected_pmt))
 
     def processData(self, data, pipeData):
-        print('processing')
-        self.gui.new_data(data, self.request_plot_reset)
+        self.gui.new_data(data)
         # print('plot is updated')
-        self.request_plot_reset = False
         self.stored_data = data
-        return data
+        self.stored_data.softw_gates = self.gui.extract_all_gates_from_gui()
+        self.stored_data = TildaTools.gate_specdata(self.stored_data)
+        return self.stored_data
 
     def clear(self):
         self.save()
+        # pass
 
     def save(self):
-        path = self.Pipeline.pipeData['pipeInternals']['activeXmlFilePath']
-        print('saving file: ', path)
+        Filehandle.save_spec_data(self.stored_data, self.Pipeline.pipeData)
 
 
 """ specdata fitting nodes """

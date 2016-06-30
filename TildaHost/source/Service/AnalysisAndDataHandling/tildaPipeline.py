@@ -45,7 +45,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True):
     """
     start = Node()
     maintenance = start.attach(TN.NMPLCloseFigOnInit())
-    maintenance = maintenance.attach(TN.NAddWorkingTimeOnClear(True))
+    # maintenance = maintenance.attach(TN.NAddWorkingTimeOnClear(True))
 
     pipe = Pipeline(start)
 
@@ -60,7 +60,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True):
 
     walk = walk.attach(TN.NSortedTrsArraysToSpecData(x_as_voltage))
 
-    plotting = walk.attach(TN.NMPLImagePlotSpecData2(0))
+    walk = walk.attach(TN.NMPLImagePlotAndSaveSpecData(0))
 
     compl_tr_br = walk.attach(TN.NCheckIfTrackComplete())
     compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
@@ -302,10 +302,11 @@ def time_resolved_display(filepath):
     pipe.pipeData['pipeInternals'] = {}
 
     pipe.pipeData['pipeInternals']['activeXmlFilePath'] = filepath
+    pipe.pipeData['pipeInternals']['activeTrackNumber'] = (0, 'track0')
     # path of file is used mainly for the window title.
     walk = start.attach(SN.NPrint())
     # walk = walk.attach(TN.NMPLImagePlotSpecData(0, dataPath))
-    walk = walk.attach(TN.NMPLImagePlotSpecData2(0))
+    walk = walk.attach(TN.NMPLImagePlotAndSaveSpecData(0))
     walk = walk.attach(TN.NMPlDrawPlot())
 
     return pipe

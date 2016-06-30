@@ -55,7 +55,7 @@ class XMLImporter(SpecData):
                         elif dmm_dict.get('measure') == 'accVolt':
                             acc_volt.append(val)
                 if np.any(offset):
-                    self.offset = np.mean(offset)
+                    self.offset = np.mean(offset)  # will be overwritten below!
                 if np.any(acc_volt):
                     self.accVolt = np.mean(acc_volt)
         self.nrScalers = []
@@ -98,14 +98,14 @@ class XMLImporter(SpecData):
                 self.softBinWidth_ns = track_dict.get('softBinWidth_ns', 10)
                 self.t = TildaTools.create_t_axis_from_file_dict(scandict)  # force 10 ns resolution
                 cts_shape = (nOfScalers, nOfsteps, nOfBins)
+                scaler_array = TildaTools.xml_get_data_from_track(
+                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape)
                 v_proj = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'voltage_projection', (nOfScalers, nOfsteps),
                     direct_parent_ele_str='projections')
                 t_proj = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'time_projection', (nOfScalers, nOfBins),
                     direct_parent_ele_str='projections')
-                scaler_array = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape)
                 self.time_res.append(scaler_array)
                 if v_proj is None or t_proj is None:
                     print('projections not found, gating data now.')

@@ -24,9 +24,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.show()
         self.setWindowTitle('plot win:     ' + full_file_path)
         self.parent_node = parent_node
-        print('opened ', full_file_path)
 
-        self.x_label_sum = 'DAC Volt'
+        self.x_label_sum = 'DAC Volt [V]'
         self.full_file_path = full_file_path
 
         self.spec_data = None
@@ -47,8 +46,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         ''' time resolved related: '''
         self.add_time_resolved_plot()
-        self.tres_sel_tr = 0  # currently observed track in time resolved spectra
-        self.tres_sel_sc = 0  # currently observed scaler in time resolved spectra
+        self.tres_sel_tr_ind = 0  # int, index of currently observed track in time resolved spectra
+        self.tres_sel_tr_name = 'track0'  # str, name of track
+        self.tres_sel_sc_ind = 0  # int, index of currently observed scaler in time resolved spectra
+        self.tres_sel_sc_name = '0'  #str, name of pmt
 
         self.tres_image = None
         self.t_proj_line = None
@@ -78,7 +79,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.pushButton_save_after_scan.clicked.connect(self.parent_node.save)
         self.widget_tres_plot.setLayout(self.tres_v_layout)
 
-    def new_data(self, spec_data, reset_bool):
+    def setup_new_track(self, tr_tpl, sc_tpl):
+        self.tres_sel_tr_ind, self.tres_sel_tr_name = tr_tpl
+        self.tres_sel_sc_ind, self.tres_sel_sc_name = sc_tpl
+        self.reset_plots(True)
+
+    def new_data(self, spec_data):
         """
         call this to pass a new dataset to the gui.
         """
@@ -87,15 +93,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.sum_scaler_changed(0)
             self.update_gates_list()
             self.gate_data(self.spec_data, plot_bool=False)
-            self.update_all_plots(self.spec_data, reset=reset_bool)
+            self.update_all_plots(self.spec_data)
         except Exception as e:
             print('error in liveplotterui while receiving new data: ', e)
 
     ''' updating the plots from specdata '''
-    def update_all_plots(self, spec_data, draw=True, reset=False):
-        if reset:
-            self.reset_plots(True)
-            self.reset_table()
+    def update_all_plots(self, spec_data, draw=True):
         self.update_sum_plot(spec_data, draw)
         self.update_tres_data(spec_data, draw)
         self.update_projections(spec_data, draw)
@@ -121,9 +124,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             if self.tres_image is None:  # create image in first plot call.
                 self.tres_image, self.tres_colorbar = MPLPlotter.configure_image_plot_widget(
                     self.tres_fig, self.tres_axes['image'], self.tres_axes['colorbar'],
-                    spec_data.x[self.tres_sel_tr], spec_data.t[self.tres_sel_tr])
-            self.tres_image.set_data(np.transpose(spec_data.time_res[self.tres_sel_tr][self.tres_sel_sc]))
-            self.tres_colorbar.set_clim(0, np.nanmax(spec_data.time_res[self.tres_sel_tr][self.tres_sel_sc]))
+                    spec_data.x[self.tres_sel_tr_ind], spec_data.t[self.tres_sel_tr_ind])
+            self.tres_image.set_data(np.transpose(spec_data.time_res[self.tres_sel_tr_ind][self.tres_sel_sc_ind]))
+            self.tres_colorbar.set_clim(0, np.nanmax(spec_data.time_res[self.tres_sel_tr_ind][self.tres_sel_sc_ind]))
             self.tres_colorbar.update_normal(self.tres_image)
             if draw:
                 # self.tres_axes['image'].draw_artist(self.tres_image)
@@ -133,10 +136,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def update_projections(self, spec_data, draw=True):
         try:
-            t_proj_x = spec_data.t_proj[self.tres_sel_tr][self.tres_sel_sc]
-            t_proj_y = spec_data.t[self.tres_sel_tr]
-            v_proj_x = spec_data.x[self.tres_sel_tr]
-            v_proj_y = spec_data.cts[self.tres_sel_tr][self.tres_sel_sc]
+            t_proj_x = spec_data.t_proj[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
+            t_proj_y = spec_data.t[self.tres_sel_tr_ind]
+            v_proj_x = spec_data.x[self.tres_sel_tr_ind]
+            v_proj_y = spec_data.cts[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
             if self.t_proj_line is None:
                 self.v_proj_line, self.t_proj_line = MPLPlotter.setup_projection_widget(
                     self.tres_axes, t_proj_y, v_proj_x, x_label=self.x_label_sum)
@@ -237,19 +240,29 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def handle_item_clicked(self, item):
         """ this will select which track and scaler one is viewing. """
         if item.checkState() == QtCore.Qt.Checked:
-            currently_selected = self.find_one_scaler_track('track' + str(self.tres_sel_tr), self.tres_sel_sc)
+            currently_selected = self.find_one_scaler_track(self.tres_sel_tr_name, self.tres_sel_sc_ind)
             curr_checkb_item = self.tableWidget_gates.item(currently_selected.row(), 6)
             curr_checkb_item.setCheckState(QtCore.Qt.Unchecked)
-            self.tres_sel_tr = int(self.tableWidget_gates.item(item.row(), 0).text()[5:])
-            self.tres_sel_sc = int(self.tableWidget_gates.item(item.row(), 1).text())
-            # print('new scaler, track: ', self.tres_sel_tr, self.tres_sel_sc)
+            self.tres_sel_tr_ind = int(self.tableWidget_gates.item(item.row(), 0).text()[5:])
+            self.tres_sel_tr_name = self.tableWidget_gates.item(item.row(), 0).text()
+            self.tres_sel_sc_ind = int(self.tableWidget_gates.item(item.row(), 1).text())
+            # print('new scaler, track: ', self.tres_sel_tr_ind, self.tres_sel_sc_ind)
             self.reset_plots(True)
             self.update_tres_data(self.spec_data, True)
             self.update_projections(self.spec_data, True)
 
+    def select_scaler_tr(self, tr_name, sc_ind):
+        for row in range(self.tableWidget_gates.rowCount()):
+            curr_checkb_item = self.tableWidget_gates.item(row, 6)
+            curr_checkb_item.setCheckState(QtCore.Qt.Unchecked)
+        currently_selected = self.find_one_scaler_track(tr_name, sc_ind)
+        curr_checkb_item = self.tableWidget_gates.item(currently_selected.row(), 6)
+        curr_checkb_item.setCheckState(QtCore.Qt.Checked)
+
     def update_gates_list(self):
         """
         read all software gate entries from the specdata and fill it to the displaying table.
+        all entries before will be deleted.
         """
         if self.tableWidget_gates.rowCount() == 0:
             self.tableWidget_gates.blockSignals(True)
@@ -266,7 +279,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     checkbox_item = QtWidgets.QTableWidgetItem()
                     checkbox_item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
                     state = QtCore.Qt.Unchecked
-                    if self.tres_sel_tr == int(tr_name[5:]) and self.tres_sel_sc == pmt_ind:
+                    if self.tres_sel_tr_name == tr_name[5:] and self.tres_sel_sc_ind == pmt_ind:
                         # print('this will be set to true: ', tr_name, pmt_ind)
                         state = QtCore.Qt.Checked
                     checkbox_item.setCheckState(state)
@@ -277,13 +290,19 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                         self.tableWidget_gates.setItem(row_ind, 2 + i, gate_item)
                     # print('this was set: ', tr_name, pmt_ind)
             self.tableWidget_gates.blockSignals(False)
+        else:
+            self.select_scaler_tr(self.tres_sel_tr_name, self.tres_sel_sc_ind)
 
     def extract_one_gate_from_gui(self, tr, sc):
         item = self.find_one_scaler_track(tr, sc)
         gate_lis = []
-        for i in range(2, self.tableWidget_gates.columnCount() - 1):
-            gate_lis.append(float(self.tableWidget_gates.item(item.row(), i).text()))
+        if item is not None:
+            for i in range(2, self.tableWidget_gates.columnCount() - 1):
+                gate_lis.append(float(self.tableWidget_gates.item(item.row(), i).text()))
         return gate_lis
+
+    def extract_all_gates_from_gui(self):
+        return deepcopy(self.spec_data.softw_gates)
 
     def insert_one_gate_to_gui(self, tr, sc, liste):
         item = self.find_one_scaler_track(tr, sc)
@@ -294,6 +313,13 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.tableWidget_gates.setItem(item.row(), i, new_item)
 
     def find_one_scaler_track(self, tr, sc):
+        """
+        find the scaler of the given track and return the item
+        :param tr: str, name of track
+        :param sc: int, index of scaler
+        :return: item
+        """
+        result = None
         tr_found = self.tableWidget_gates.findItems(tr, QtCore.Qt.MatchExactly)
         if any(tr_found):
             tr_row_lis = [item.row() for item in tr_found]
@@ -310,6 +336,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         logging.debug('lievplotUI resetting table entries')
         while self.tableWidget_gates.rowCount() > 0:
             self.tableWidget_gates.removeRow(0)
+        logging.debug('livePlotUi, row count after reset of table: ', self.tableWidget_gates.rowCount())
 # if __name__ == "__main__":
 #     app = QtWidgets.QApplication(sys.argv)
 #     ui = TRSLivePlotWindowUi()

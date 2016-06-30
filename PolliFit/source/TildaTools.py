@@ -115,7 +115,7 @@ def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape, datatyt
     :return: Text
     """
     if root_ele is None:  # return an
-        return np.zeros(data_shape)
+        return np.zeros(data_shape, dtype=datatytpe)
     else:
         try:
             actTrack = root_ele.find('tracks').find('track' + str(n_of_track)).find(direct_parent_ele_str)
@@ -225,19 +225,17 @@ def gate_specdata(spec_data):
     spec_data.softw_gates = [[[compare_arr[lim_ind][tr_ind][found_ind] for lim_ind, found_ind in enumerate(gate_ind_pmt)]
                               for gate_ind_pmt in gate_ind_tr]
                              for tr_ind, gate_ind_tr in enumerate(softw_gates_ind)]
-    spec_data.t_proj = [[np.sum(
-                                spec_data.time_res[tr_ind][pmt_ind]
-        [softw_gates_ind[tr_ind][pmt_ind][0]:softw_gates_ind[tr_ind][pmt_ind][1] + 1, :], axis=0
-    )
-                         for pmt_ind, pmt in enumerate(tracks)]
-                         for tr_ind, tracks in enumerate(spec_data.cts)]
-    spec_data.cts = [[
-        np.sum(
-            spec_data.time_res[tr_ind][pmt_ind]
-            [:, softw_gates_ind[tr_ind][pmt_ind][2]:softw_gates_ind[tr_ind][pmt_ind][3] + 1], axis=1
-        )
-        for pmt_ind in range(scalers)] for tr_ind, scalers in enumerate(spec_data.nrScalers)]
 
+    for tr_ind, tr in enumerate(spec_data.cts):
+        for pmt_ind, pmt in enumerate(tr):
+            v_min_ind = softw_gates_ind[tr_ind][pmt_ind][0]
+            v_max_ind = softw_gates_ind[tr_ind][pmt_ind][1] + 1
+            t_min_in = softw_gates_ind[tr_ind][pmt_ind][2]
+            t_max_ind = softw_gates_ind[tr_ind][pmt_ind][3] + 1
+            spec_data.t_proj[tr_ind][pmt_ind] = np.sum(
+                spec_data.time_res[tr_ind][pmt_ind][v_min_ind:v_max_ind, :], axis=0)
+            spec_data.cts[tr_ind][pmt_ind] = np.sum(
+                spec_data.time_res[tr_ind][pmt_ind][:, t_min_in:t_max_ind], axis=1)
     return spec_data
 
 

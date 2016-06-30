@@ -12,9 +12,11 @@ from copy import deepcopy
 
 import numpy as np
 
-from Service.FileOperations.XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars
+from Service.FileOperations.XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, xmlAddCompleteTrack
+import Service.Scan.ScanDictionaryOperations as SdOp
 from TildaTools import save_xml
 import Tools
+import TildaTools as Tits
 
 
 def findTildaFolder(path=os.path.dirname(os.path.abspath(__file__))):
@@ -139,3 +141,31 @@ def savePipeData(pipeData, nOfSaves):
     logging.info('saving pipe data to: ' + str(savedto))
     nOfSaves += 1
     return nOfSaves
+
+
+def save_spec_data(spec_data, scan_dict):
+    """
+    this will write the necessary values of the spec_data to an already existing xml file
+    :param scan_dict: dict, containing all scan informations
+    :param spec_data: spec_data, as a result from XmlImporter()
+    :return: 
+    """
+    try:
+        existing_xml_fil_path = scan_dict['pipeInternals']['activeXmlFilePath']
+        root_ele = Tits.load_xml(existing_xml_fil_path)
+        track_nums, track_num_lis = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
+        for track_ind, tr_num in enumerate(track_num_lis):
+            track_name = 'track' + str(tr_num)
+            if len(spec_data.time_res):  # if there are any values in here, it is a time resolved measurement
+                xmlAddCompleteTrack(root_ele, scan_dict, spec_data.time_res[track_ind], track_name)
+                xmlAddCompleteTrack(
+                    root_ele, scan_dict, spec_data.cts[track_ind], track_name, datatype='voltage_projection',
+                    parent_ele_str='projections')
+                xmlAddCompleteTrack(
+                    root_ele, scan_dict, spec_data.t_proj[track_ind], track_name, datatype='time_projection',
+                    parent_ele_str='projections')
+            else:
+                xmlAddCompleteTrack(root_ele, scan_dict, spec_data.cts[track_ind], track_name)
+        Tits.save_xml(root_ele, existing_xml_fil_path, False)
+    except Exception as e:
+        print('error while saving: ', e)

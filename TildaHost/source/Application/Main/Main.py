@@ -265,6 +265,7 @@ class Main(QtCore.QObject):
         """
         call this to remove the corresponding file from the list of active files.
         """
+        logging.debug('removing spectra %s from view' % file)
         self.displayed_data.pop(file)
 
     def autostart(self):
