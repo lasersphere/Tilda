@@ -449,6 +449,7 @@ class Main(QtCore.QObject):
         #     self.scan_pars[iso_name]['measureVoltPars'], self.measure_voltage_pars)
         # # in self.measure_voltage pars, the pulselength and timeout is noted.
         # This is assumed globally for all isotopes for now.
+        self.scan_pars[iso_name] = SdOp.add_missing_voltages(self.scan_pars[iso_name])
         self.scan_pars[iso_name]['pipeInternals']['workingDirectory'] = self.working_directory
         self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
         self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq

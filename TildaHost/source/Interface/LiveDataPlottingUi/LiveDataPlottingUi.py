@@ -7,6 +7,7 @@ Module Description:
 """
 import sys
 import ast
+import logging
 import numpy as np
 import MPLPlotter
 from copy import deepcopy
@@ -77,21 +78,24 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.pushButton_save_after_scan.clicked.connect(self.parent_node.save)
         self.widget_tres_plot.setLayout(self.tres_v_layout)
 
-    def new_data(self, spec_data):
+    def new_data(self, spec_data, reset_bool):
         """
         call this to pass a new dataset to the gui.
         """
-        self.spec_data = deepcopy(spec_data)
-        print(self.spec_data.softw_gates)
-        self.sum_scaler_changed(0)
-        self.update_gates_list()
-        self.update_all_plots(self.spec_data)
-        self.gate_data(self.spec_data)
+        try:
+            self.spec_data = deepcopy(spec_data)
+            self.sum_scaler_changed(0)
+            self.update_gates_list()
+            self.gate_data(self.spec_data, plot_bool=False)
+            self.update_all_plots(self.spec_data, reset=reset_bool)
+        except Exception as e:
+            print('error in liveplotterui while receiving new data: ', e)
 
     ''' updating the plots from specdata '''
-    def update_all_plots(self, spec_data, draw=True, reset=True):
+    def update_all_plots(self, spec_data, draw=True, reset=False):
         if reset:
             self.reset_plots(True)
+            self.reset_table()
         self.update_sum_plot(spec_data, draw)
         self.update_tres_data(spec_data, draw)
         self.update_projections(spec_data, draw)
@@ -247,31 +251,32 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         read all software gate entries from the specdata and fill it to the displaying table.
         """
-        self.tableWidget_gates.blockSignals(True)
-        # self.tableWidget_gates.clear()
-        for tr_ind, tr_name in enumerate(self.spec_data.track_names):
-            offset = self.tableWidget_gates.rowCount()
-            for pmt_ind, pmt_name in enumerate(self.spec_data.active_pmt_list[tr_ind]):
-                row_ind = pmt_ind + offset
-                self.tableWidget_gates.insertRow(row_ind)
-                self.tableWidget_gates.setItem(row_ind, 0, QtWidgets.QTableWidgetItem(tr_name))
-                pmt_item = QtWidgets.QTableWidgetItem()
-                pmt_item.setData(QtCore.Qt.DisplayRole, pmt_name)
-                self.tableWidget_gates.setItem(row_ind, 1, pmt_item)
-                checkbox_item = QtWidgets.QTableWidgetItem()
-                checkbox_item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-                state = QtCore.Qt.Unchecked
-                if self.tres_sel_tr == int(tr_name[5:]) and self.tres_sel_sc == pmt_ind:
-                    print('this will be set to true: ', tr_name, pmt_ind)
-                    state = QtCore.Qt.Checked
-                checkbox_item.setCheckState(state)
-                self.tableWidget_gates.setItem(row_ind, self.tableWidget_gates.columnCount() - 1, checkbox_item)
-                for i, gate in enumerate(self.spec_data.softw_gates[tr_ind][pmt_ind]):
-                    gate_item = QtWidgets.QTableWidgetItem()
-                    gate_item.setData(QtCore.Qt.EditRole, gate)
-                    self.tableWidget_gates.setItem(row_ind, 2 + i, gate_item)
-                print('this was set: ', tr_name, pmt_ind)
-        self.tableWidget_gates.blockSignals(False)
+        if self.tableWidget_gates.rowCount() == 0:
+            self.tableWidget_gates.blockSignals(True)
+            # self.tableWidget_gates.clear()
+            for tr_ind, tr_name in enumerate(self.spec_data.track_names):
+                offset = self.tableWidget_gates.rowCount()
+                for pmt_ind, pmt_name in enumerate(self.spec_data.active_pmt_list[tr_ind]):
+                    row_ind = pmt_ind + offset
+                    self.tableWidget_gates.insertRow(row_ind)
+                    self.tableWidget_gates.setItem(row_ind, 0, QtWidgets.QTableWidgetItem(tr_name))
+                    pmt_item = QtWidgets.QTableWidgetItem()
+                    pmt_item.setData(QtCore.Qt.DisplayRole, pmt_name)
+                    self.tableWidget_gates.setItem(row_ind, 1, pmt_item)
+                    checkbox_item = QtWidgets.QTableWidgetItem()
+                    checkbox_item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+                    state = QtCore.Qt.Unchecked
+                    if self.tres_sel_tr == int(tr_name[5:]) and self.tres_sel_sc == pmt_ind:
+                        # print('this will be set to true: ', tr_name, pmt_ind)
+                        state = QtCore.Qt.Checked
+                    checkbox_item.setCheckState(state)
+                    self.tableWidget_gates.setItem(row_ind, self.tableWidget_gates.columnCount() - 1, checkbox_item)
+                    for i, gate in enumerate(self.spec_data.softw_gates[tr_ind][pmt_ind]):
+                        gate_item = QtWidgets.QTableWidgetItem()
+                        gate_item.setData(QtCore.Qt.EditRole, gate)
+                        self.tableWidget_gates.setItem(row_ind, 2 + i, gate_item)
+                    # print('this was set: ', tr_name, pmt_ind)
+            self.tableWidget_gates.blockSignals(False)
 
     def extract_one_gate_from_gui(self, tr, sc):
         item = self.find_one_scaler_track(tr, sc)
@@ -298,9 +303,14 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     result = item
         return result
 
-
-
-        # if __name__ == "__main__":
+    def reset_table(self):
+        """
+        remove all entries from the table.
+        """
+        logging.debug('lievplotUI resetting table entries')
+        while self.tableWidget_gates.rowCount() > 0:
+            self.tableWidget_gates.removeRow(0)
+# if __name__ == "__main__":
 #     app = QtWidgets.QApplication(sys.argv)
 #     ui = TRSLivePlotWindowUi()
 #     ui.show()

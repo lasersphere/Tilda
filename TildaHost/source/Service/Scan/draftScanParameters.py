@@ -6,6 +6,7 @@ Created on 20.06.2015
 
 Module containing the ScanParameters dictionaries as needed for Scanning with the standard Sequencers
 """
+from datetime import datetime
 """ List of currently supported sequencer types """
 
 sequencer_types_list = ['cs', 'trs', 'csdummy', 'trsdummy', 'kepco']
@@ -54,7 +55,8 @@ trsdummy_list = trs_list
 draftIsotopePars = {
     'version': '1.06', 'type': 'cs', 'isotope': '40_Ca',
     'nOfTracks': 1, 'accVolt': 9999.8,
-    'laserFreq': 12568.766
+    'laserFreq': 12568.766,
+    'isotopeStartTime': datetime.today().strftime('%Y-%m-%d %H:%M:%S')
 }
 
 draftTrackPars = {
@@ -82,7 +84,7 @@ draftPipeInternals = {
     'curVoltInd': 0,
     'activeTrackNumber': (0, 'track0'),
     'workingDirectory': None,
-    'activeXmlFilePath': None
+    'activeXmlFilePath': 'c:\\'
 }
 
 draftScanDict = {'isotopeData': draftIsotopePars,

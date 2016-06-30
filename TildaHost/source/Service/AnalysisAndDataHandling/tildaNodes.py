@@ -20,6 +20,7 @@ import Service.Scan.ScanDictionaryOperations as SdOp
 import Application.Config as Cfg
 import TildaTools
 from Measurement.SpecData import SpecData
+from Measurement.XMLImporter import XMLImporter
 from Service.AnalysisAndDataHandling.InfoHandler import InfoHandler as InfHandl
 from Service.FileOperations.XmlOperations import xmlAddCompleteTrack
 from Service.ProgramConfigs import Programs as Progs
@@ -765,6 +766,34 @@ class NMPLCloseFigOnInit(Node):
 """ specdata format compatible Nodes: """
 
 
+class NSortedTrsArraysToSpecData(Node):
+    def __init__(self, x_as_voltage=True):
+        """
+        when started, will init a SpecData object of given size.
+        Overwrites SpecData.cts and passes the SpecData object to the next node.
+        input: list of tuples of, [(scalerArray->containing all tracks, scan_complete_bool),...]
+        output: SpecData
+        """
+        super(NSortedTrsArraysToSpecData, self).__init__()
+        self.type = 'SortedTrsArraysToSpecData'
+        self.spec_data = None
+        self.x_as_voltage = x_as_voltage
+
+    def start(self):
+        if self.spec_data is None:
+            self.spec_data = XMLImporter(None, self.x_as_voltage, self.Pipeline.pipeData)
+            logging.debug('pipeline successfully loaded: %s' % self.spec_data.file)
+
+    def processData(self, data, pipeData):
+        for arr_scan_compl_tpl in data:
+            for tr_ind, tr_data in enumerate(arr_scan_compl_tpl[0]):
+                self.spec_data.time_res[tr_ind] += tr_data
+        return self.spec_data
+
+    def clear(self):
+        self.spec_data = None
+
+
 class NStartNodeKepcoScan(Node):
     def __init__(self, x_as_voltage_bool, dmm_names_sorted):
         """
@@ -1250,14 +1279,19 @@ class NMPLImagePlotSpecData2(Node):
         self.type = 'MPLImagePlotSpecData2'
         self.selected_pmt = pmt_num
         self.stored_data = None
+        self.request_plot_reset = False
 
     def start(self):
         path = self.Pipeline.pipeData['pipeInternals']['activeXmlFilePath']
-        self.gui = TRSLivePlotWindowUi(path, self)
+        if self.gui is None:
+            self.gui = TRSLivePlotWindowUi(path, self)
+        self.request_plot_reset = True
 
     def processData(self, data, pipeData):
         print('processing')
-        self.gui.new_data(data)
+        self.gui.new_data(data, self.request_plot_reset)
+        # print('plot is updated')
+        self.request_plot_reset = False
         self.stored_data = data
         return data
 
@@ -1267,6 +1301,7 @@ class NMPLImagePlotSpecData2(Node):
     def save(self):
         path = self.Pipeline.pipeData['pipeInternals']['activeXmlFilePath']
         print('saving file: ', path)
+
 
 """ specdata fitting nodes """
 

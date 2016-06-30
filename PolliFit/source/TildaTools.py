@@ -114,15 +114,18 @@ def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape, datatyt
     :param returnType: int or tuple of int, shape of the numpy array, 0 if output in textfrom is desired
     :return: Text
     """
-    try:
-        actTrack = root_ele.find('tracks').find('track' + str(n_of_track)).find(direct_parent_ele_str)
-        dataText = actTrack.find(str(data_type)).text
-        data_numpy = numpy_array_from_string(dataText, data_shape, datatytpe)
-        return data_numpy
-    except Exception as e:
-        print('error while searching ' + str(data_type) + ' in track' + str(n_of_track) + ' in ' + str(root_ele))
-        print('error is: ', e)
-        return None
+    if root_ele is None:  # return an
+        return np.zeros(data_shape)
+    else:
+        try:
+            actTrack = root_ele.find('tracks').find('track' + str(n_of_track)).find(direct_parent_ele_str)
+            dataText = actTrack.find(str(data_type)).text
+            data_numpy = numpy_array_from_string(dataText, data_shape, datatytpe)
+            return data_numpy
+        except Exception as e:
+            print('error while searching ' + str(data_type) + ' in track' + str(n_of_track) + ' in ' + str(root_ele))
+            print('error is: ', e)
+            return None
 
 
 def scan_dict_from_xml_file(xml_file_name, scan_dict=None):

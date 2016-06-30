@@ -17,56 +17,24 @@ from Measurement.SpecData import SpecData
 
 
 class XMLImporter(SpecData):
-    '''
-    This Module Reads the .xml files.
+    """
+    This Module Reads the .xml files or reads from a given scan_dictionary.
+    """
 
-    .xml file structure is:
-    -<TrigaLaserData>
-        -<header>
-            <accVolt>0</accVolt>
-            <isotope>Ni</isotope>
-            <isotopeStartTime>2016-04-14 23:32:10</isotopeStartTime>
-            <laserFreq>0</laserFreq>
-            <nOfTracks>1</nOfTracks>
-            <type>tipa</type>
-            <version>1.08</version>
-        </header>
-        -<tracks>
-            -<track0>
-                -<header>
-                    <activePmtList>[0, 1, 2, 3]</activePmtList>
-                    <colDirTrue>True</colDirTrue>
-                    <dacStartRegister18Bit>0</dacStartRegister18Bit>
-                    <dacStartVoltage>-9.993201</dacStartVoltage>
-                    <dacStepSize18Bit>1</dacStepSize18Bit>
-                    <dacStepsizeVoltage>0.001572</dacStepsizeVoltage>
-                    <dacStopVoltage>-9.992896</dacStopVoltage>
-                    <invertScan>False</invertScan>
-                    <nOfBins>1000</nOfBins>
-                    <nOfBunches>1</nOfBunches>
-                    <nOfCompletedSteps>45</nOfCompletedSteps>
-                    <nOfScans>None</nOfScans>
-                    <nOfSteps>5</nOfSteps>
-                    <softBinWidth_ns>100</softBinWidth_ns>
-                    <softwGates>[[-10, 10, 0, 10000], [0, 4, 0.0, 9900.0]]</softwGates>
-                    <trigger>{'trigDelay10ns': 10000, 'type': 'SingleHit'}</trigger>
-                    <workingTime>None</workingTime>
-                </header>
-                +<data>
-            </track0>
-        </tracks>
-        </TrigaLaserData>
-    '''
-
-    def __init__(self, path, x_as_volt=True):
+    def __init__(self, path=None, x_as_volt=True, scan_dict=None):
         '''Read the file'''
 
-        print("XMLImporter is reading file", path)
         super(XMLImporter, self).__init__()
+        if path is not None:
+            print("XMLImporter is reading file", path)
+            self.file = os.path.basename(path)
+            scandict, lxmlEtree = TildaTools.scan_dict_from_xml_file(path)
+        else:
+            print("XMLImporter is reading from scan_dictionary", scan_dict)
+            lxmlEtree = None
+            scandict = scan_dict
+            self.file = os.path.basename(scandict['pipeInternals']['activeXmlFilePath'])
 
-        self.file = os.path.basename(path)
-
-        scandict, lxmlEtree = TildaTools.scan_dict_from_xml_file(path)
         self.nrTracks = scandict['isotopeData']['nOfTracks']
 
         self.laserFreq = Physics.freqFromWavenumber(2 * scandict['isotopeData']['laserFreq'])
@@ -75,15 +43,28 @@ class XMLImporter(SpecData):
         self.seq_type = scandict['isotopeData']['type']
 
         self.accVolt = scandict['isotopeData']['accVolt']
-
-        self.offset = 0  # should also be a list for mutliple tracks
+        dmms_dict = scandict['measureVoltPars'].get('dmms', None)
+        if dmms_dict is not None:
+            for dmm_name, dmm_dict in dmms_dict.items():
+                offset = []
+                acc_volt = []
+                for key, val in dmm_dict.items():
+                    if key == 'preScanRead':
+                        if dmm_dict.get('measure') == 'offset':
+                            offset.append(val)
+                        elif dmm_dict.get('measure') == 'accVolt':
+                            acc_volt.append(val)
+                if np.any(offset):
+                    self.offset = np.mean(offset)
+                if np.any(acc_volt):
+                    self.accVolt = np.mean(acc_volt)
         self.nrScalers = []
         self.active_pmt_list = []
         # if self.seq_type in ['tipa', 'tipadummy', 'kepco']:
         #     x_as_volt = False
         print('axaxis as voltage:', x_as_volt)
         self.x = TildaTools.create_x_axis_from_file_dict(scandict, as_voltage=x_as_volt)  # x axis, voltage
-        self.cts = []  # countervalues
+        self.cts = []  # countervalues, this is the voltage projection here
         self.err = []  # error to the countervalues
         self.t_proj = []  # time projection only for time resolved
         self.time_res = []  # time resolved matrices only for time resolved measurments
@@ -94,6 +75,8 @@ class XMLImporter(SpecData):
         self.softw_gates = []
         self.track_names = TildaTools.get_track_names(scandict)
 
+
+        ''' operations on each track: '''
         for tr_ind, tr_name in enumerate(TildaTools.get_track_names(scandict)):
             track_dict = scandict[tr_name]
             nOfactTrack = int(tr_name[5:])
@@ -148,8 +131,8 @@ class XMLImporter(SpecData):
                 meas_volt_dict = scandict['measureVoltPars']
                 dmms_dict = meas_volt_dict['dmms']
                 dmm_names = list(sorted(dmms_dict.keys()))
-                self.nrScalers = len(dmm_names)
-                cts_shape = (self.nrScalers, nOfsteps)
+                self.nrScalers = [len(dmm_names)]
+                cts_shape = (self.nrScalers[0], nOfsteps)
                 dmm_volt_array = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'scalerArray', cts_shape, np.float)
                 self.cts.append(dmm_volt_array)
@@ -207,3 +190,7 @@ class XMLImporter(SpecData):
             return self.time_res[track_ind].shape
         else:
             return self.nrScalers[track_ind], self.getNrSteps(track_ind), -1
+
+# import Service.Scan.draftScanParameters as dft
+# test = XMLImporter(None, False, dft.draftScanDict)
+# print(test.x)

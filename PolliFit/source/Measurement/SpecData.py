@@ -4,8 +4,10 @@ Created on 29.03.2014
 @author: hammen
 '''
 import itertools as it
+from datetime import datetime
 
 import numpy as np
+
 
 class SpecData(object):
     '''
@@ -16,29 +18,28 @@ class SpecData(object):
         '''
         Constructor
         '''
-        self.path = None
-        self.type = None
-        self.line = None
-        self.time = 0
-        self.nrLoops = [1]
-        self.nrTracks = 1
-        self.nrScalers = 1
-        self.accVolt = None
-        self.laserFreq = None
-        self.col = False
-        self.dwell = 0
+        self.path = None  # str, path of the file
+        self.type = None  # str, isotope name
+        self.line = None  # str, lineVar
+        self.date = datetime.today().strftime('%Y-%m-%d %H:%M:%S')  #
+        self.nrLoops = [1]  # list of integers, len=nrTracks, holds how often the track was repeated
+        self.nrTracks = 1  # int, number of tracks in scan.
+        self.nrScalers = []  # list, len = nrTracks, holds the number of scaler for each track
+        self.accVolt = None  # float, acceleration voltage of the ions
+        self.laserFreq = None  # float, fundamental laser frequency in MHz in the laser lab system
+        self.col = False  # bool, collinear = True, anticollinear = False
+        self.dwell = 0  # float or list of lists, depending on importer
         
-        self.offset = None
-        self.lineMult = None
-        self.lineOffset = None
-        self.voltDivRatio = None
+        self.offset = None  # float, measured offset pre scan, take mean if multiple ones measured
+        self.lineMult = None  # float, applied_voltage = (DAC_voltage * lineMult + lineOffset) * voltDivRatio
+        self.lineOffset = None  # float, offset of the DAC at 0V set
+        self.voltDivRatio = None  # dict, {'accVolt': , 'offset'
         
         #Data is organized as list of tracks containing arrays with information
-        #self.x = [np.array((steps,))]
-        #self.cts = [np.array((scaler, steps))]
-        #self.err = [np.array((scaler, steps))]
-        
-        
+        self.x = []
+        self.cts = []
+        self.err = []
+
     def getSingleSpec(self, scaler, track):
         '''Return a tuple with (volt, cts, err) of the specified scaler and track. -1 for all tracks'''        
         if track == -1:
@@ -47,7 +48,6 @@ class SpecData(object):
                      [i for i in it.chain(*(t[scaler] for t in self.err))] )
         else:
             return (self.x[track], self.cts[track][scaler], self.err[track][scaler])
-    
     
     def getArithSpec(self, scaler, track_index):
         '''Same as getSingleSpec, but scaler is of type [+i, -j, +k], resulting in s[i]-s[j]+s[k]'''
@@ -86,17 +86,17 @@ class SpecData(object):
             if self.nrLoops[i] < maxLoops:
                 self._multScalerCounts(i, maxLoops / self.nrLoops[i])
     
-
-    def _multScalerCounts(self, scaler, mult):        
+    def _multScalerCounts(self, scaler, mult):
         '''Multiply counts and error of a specific scaler by mult, according to error propagation'''
         self.cts[scaler] *= mult
         self.err[scaler] *= mult
         
-
-    
     def deadtimeCorrect(self, scaler, track):
         for i, cts in enumerate(self.cts[track][scaler]):
-            self.cts[track][scaler][i] = (cts*(self.nrLoops[track]*self.dwell))/(1-(cts*(self.nrLoops[track]*self.dwell))*1.65e-8)/((self.nrLoops[track]*self.dwell))
+            self.cts[track][scaler][i] = (cts*(self.nrLoops[track]*self.dwell)) / (
+                1-(cts*(self.nrLoops[track]*self.dwell))*1.65e-8
+            )/((self.nrLoops[track]*self.dwell))
         
     
-    
+# test = SpecData()
+# print(test.date)

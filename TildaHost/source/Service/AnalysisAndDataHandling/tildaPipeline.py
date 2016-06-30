@@ -8,6 +8,7 @@ Created on '20.05.2015'
 
 import logging
 import os
+from datetime import datetime
 
 import matplotlib.pyplot as plt
 
@@ -36,7 +37,7 @@ def find_pipe_by_seq_type(scan_dict, callback_sig):
         return None
 
 
-def TrsPipe(initialScanPars=None, callback_sig=None):
+def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True):
     """
     Pipeline for the dataflow and analysis of one Isotope using the time resolved sequencer.
     Mutliple Tracks are supported.
@@ -44,6 +45,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
     """
     start = Node()
     maintenance = start.attach(TN.NMPLCloseFigOnInit())
+    maintenance = maintenance.attach(TN.NAddWorkingTimeOnClear(True))
 
     pipe = Pipeline(start)
 
@@ -55,20 +57,19 @@ def TrsPipe(initialScanPars=None, callback_sig=None):
     # walk = walk.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NCSSortRawDatatoArray())
     walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
-    walk = walk.attach(TN.NRemoveTrackCompleteFlag())
-    walk = walk.attach(TN.NCSSum())
 
-    pl_branch_2d = walk.attach(TN.NMPLImagePLot(1))
-    pl_branch_2d = pl_branch_2d.attach(TN.NMPlDrawPlot())
+    walk = walk.attach(TN.NSortedTrsArraysToSpecData(x_as_voltage))
+
+    plotting = walk.attach(TN.NMPLImagePlotSpecData2(0))
 
     compl_tr_br = walk.attach(TN.NCheckIfTrackComplete())
     compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
 
     # meas_compl_br = walk.attach(TN.NCheckIfMeasurementComplete())
-    walk = walk.attach(TN.NSaveAllTracks())
-    #
-    walk = walk.attach(TN.NTRSProjectize())
-    walk = walk.attach(TN.NSaveProjection())
+    # walk = walk.attach(TN.NSaveAllTracks())
+    # #
+    # walk = walk.attach(TN.NTRSProjectize())
+    # walk = walk.attach(TN.NSaveProjection())
     # walk = walk.attach(SN.NPrint())
 
     return pipe
@@ -190,7 +191,16 @@ def initPipeData(initialScanPars):
     """
     pipeData = initialScanPars
 
+    # trackDict = pipeData['track0']
+    # trackDict.update(dacStartVoltage=get_voltage_from_18bit(trackDict['dacStartRegister18Bit']))
+    # trackDict.update(dacStepsizeVoltage=get_voltage_from_18bit(trackDict['dacStepSize18Bit'] + int(2 ** 17)))
+    # trackDict.update(dacStopVoltage=get_voltage_from_18bit(
+    #     VCon.calc_dac_stop_18bit(trackDict['dacStartRegister18Bit'],
+    #                              trackDict['dacStepSize18Bit'],
+    #                              trackDict['nOfSteps'])))
+
     pipeData['pipeInternals']['curVoltInd'] = 0
+    pipeData['isotopeData']['isotopeStartTime'] = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
     xml_file_name = FaFH.createXmlFileOneIsotope(pipeData)
     pipeData['pipeInternals']['activeXmlFilePath'] = xml_file_name
 

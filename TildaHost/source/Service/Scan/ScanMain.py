@@ -255,6 +255,7 @@ class ScanMain:
         track_name = 'track' + str(track_num)
         self.pipeline.pipeData['pipeInternals']['activeTrackNumber'] = (track_index, track_name)
         self.pipeline.pipeData[track_name]['nOfCompletedSteps'] = 0
+        print('starting pipeline: ', self.pipeline)
         self.pipeline.start()
 
     def calc_scan_progress(self, progress_dict, scan_dict, start_time):

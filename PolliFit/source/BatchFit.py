@@ -40,10 +40,10 @@ def batchFit(fileList, db, run='Run0', x_as_voltage=True):
     print("Go for", run, "with IsoVar = \"" + var[0] + "\" and LineVar = \"" + var[1] + "\"")
     
     errcount = 0
-    
+    fits = []
     for file in fileList:
         try:
-            singleFit(file, st, dbname, run, var, cur, x_as_voltage)
+            fits.append(singleFit(file, st, dbname, run, var, cur, x_as_voltage))
         except:
             errcount += 1
             print("Error working on file", file, ":", sys.exc_info()[1])
@@ -102,4 +102,5 @@ def singleFit(file, st, db, run, var, cur, x_as_voltage=True):
         
     
     print("Finished fitting", file)
+    return fit
 
