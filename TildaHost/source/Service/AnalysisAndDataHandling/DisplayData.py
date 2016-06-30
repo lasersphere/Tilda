@@ -60,13 +60,13 @@ class DisplayData:
 
 
 
-path = 'E:\\lala\\sums\\dummy_trsdummy_008.xml'
-if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
-    # ui = TRSLivePlotWindowUi()
-    # ui.show()
-    disp_data = DisplayData(path, True)
-    app.exec()
+# path = 'E:\\lala\\sums\\dummy_trsdummy_008.xml'
+# if __name__ == "__main__":
+#     app = QtWidgets.QApplication(sys.argv)
+#     # ui = TRSLivePlotWindowUi()
+#     # ui.show()
+#     disp_data = DisplayData(path, True)
+#     app.exec()
 
     # print(disp_data.spec.cts)
     # print(disp_data.spec.t_proj)
