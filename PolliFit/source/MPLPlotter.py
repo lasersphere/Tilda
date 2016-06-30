@@ -3,7 +3,6 @@ Created on 29.04.2014
 
 @author: hammen
 '''
-
 import datetime
 import os
 
@@ -48,7 +47,7 @@ def plotFit(fit):
     plt.xlabel('Ion kinetic energy / eV')
 
 
-def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r')):
+def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), showing = False):
     # avg, stat_err, sys_err = Analyzer.combineRes(iso, par, run, db, print_extracted=False)
     # val, errs, date = Analyzer.extract(iso, par, run, db, prin=False)
     date = [datetime.datetime.strptime(d, '%Y-%m-%d %H:%M:%S') for d in date]
@@ -58,6 +57,7 @@ def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r')):
     xfmt = DateFormatter('%Y-%m-%d %H:%M:%S')
     ax.xaxis.set_major_formatter(xfmt)
     plt.errorbar(date, cts, yerr=errs, fmt=forms[0])
+    ax.set_xmargin(0.05)
     err_p = avg + abs(stat_err) + abs(syst_err)
     err_m = avg - abs(stat_err) - abs(syst_err)
     err_p_l = np.full((2,), err_p)
@@ -66,7 +66,8 @@ def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r')):
     y = (avg, avg)
     plt.plot(x, y, forms[1])
     plt.fill_between(x, err_p_l, err_m_l, alpha=0.5)
-
+    if showing:
+        show()
 
 def show(block=True):
     plt.show(block=block)

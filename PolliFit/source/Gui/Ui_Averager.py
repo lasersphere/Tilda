@@ -2,8 +2,7 @@
 
 # Form implementation generated from reading ui file 'Ui_Averager.ui'
 #
-# Created: Wed Jun 11 18:31:07 2014
-#      by: PyQt5 UI code generator 5.2.1
+# Created by: PyQt5 UI code generator 5.5
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -77,5 +76,5 @@ class Ui_Averager(object):
         self.label.setText(_translate("Averager", "reduced Chi^2"))
         self.label_2.setText(_translate("Averager", "statistic error"))
         self.label_3.setText(_translate("Averager", "systematic error"))
-        self.bsave.setText(_translate("Averager", "Save"))
+        self.bsave.setText(_translate("Averager", "Save and Plot"))
 

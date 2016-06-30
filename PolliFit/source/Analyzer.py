@@ -44,8 +44,11 @@ def extract(iso, par, run, db, fileList=[], prin=True):
     date_list = []
 
     for f, v, e in zip(files, vals, errs):
+        print(f)
         cur.execute('''SELECT date FROM Files WHERE file = ?''', (f,))
-        date = cur.fetchall()[0][0]
+        e = cur.fetchall()
+        print(e)
+        date = e[0][0]
         if date is not None:
             date_list.append(date)
         if prin:
@@ -238,7 +241,7 @@ def shiftErr(iso, run, db, val, accVolt_d, offset_d):
    
     cur.execute('''SELECT line FROM Files WHERE type = ?''', (ref,))
     (line,) = cur.fetchall()[0]
-    
+    '''
     if line == 'D1':
         if iso == '40_Ca':
             offset = 500
@@ -251,4 +254,5 @@ def shiftErr(iso, run, db, val, accVolt_d, offset_d):
     print('offsetvoltage:', offset)
     fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
     print('systematic error inputs caused by error of...\n...acc Voltage:',fac*(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d/accVolt)),'MHz  ...offset Voltage',fac*offset*offset_d/accVolt,'MHz  ...masses:',fac*(mass_d/mass+massRef_d/massRef),'MHz')
+    '''
     return fac*(np.absolute(0.5*(offset/accVolt+deltaM/mass)*accVolt_d/accVolt)+np.absolute(offset*offset_d/accVolt)+np.absolute(mass_d/mass+massRef_d/massRef))

@@ -54,9 +54,11 @@ class SpecData(object):
         l = self.getNrSteps(track_index)
         flatc = np.zeros((l,))
         flate = np.zeros((l,))
-
         if isinstance(self.nrScalers, list):
-            nrScalers = self.nrScalers[track_index]
+            if track_index == -1:
+                nrScalers = self.nrScalers[0]
+            else:
+                nrScalers = self.nrScalers[track_index]
         else:
             nrScalers = self.nrScalers
 
@@ -66,10 +68,9 @@ class SpecData(object):
                 for i, j in enumerate(flatc):
                     flatc[i] = j + np.copysign(1, s) * c[i]
                     flate[i] = flate[i] + np.square(e[i])
+                flate = np.sqrt(flate)
             else:
                 pass
-        flate = np.sqrt(flate)
-        
         return (flatx, flatc, flate)
         
     def getNrSteps(self, track):

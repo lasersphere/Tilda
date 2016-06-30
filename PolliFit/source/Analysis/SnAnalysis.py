@@ -15,8 +15,7 @@ import BatchFit
 import Analyzer
 import Tools
 import Physics
-import Measurement.MCPImporter as imp
-import Measurement.TLDImporter as tldI
+
 import InteractiveFit as IF
 
 db = 'V:/Projekte/COLLAPS/Sn/Measurement_and_Analysis_Christian/Sn.sqlite'
@@ -35,7 +34,7 @@ db = 'V:/Projekte/COLLAPS/Sn/Measurement_and_Analysis_Christian/Sn.sqlite'
 # #Tools.centerPlot(db,isoL)
 wavenumber = 22110.525
 print(Physics.freqFromWavenumber(wavenumber))
-# print(Physics.wavelenFromFreq(Physics.freqFromWavenumber(wavenumber/2)))
+print(Physics.wavelenFromFreq(Physics.freqFromWavenumber(wavenumber/2)))
 # for i in isoL:
 #    Tools.isoPlot(db, i, as_freq=False, laserfreq=Physics.freqFromWavenumber(wavenumber),
 #                  saving=True, show=False, col=True)
@@ -58,18 +57,23 @@ print(Physics.freqFromWavenumber(wavenumber))
 Tools.crawl(db)
 
 '''Fitting the Kepco-Scans!'''
-# BatchFit.batchFit(Tools.fileList(db,'Kepco'), db, 'Run2')
-# Analyzer.combineRes('Kepco', 'm', 'Run2', db, False)
-# Analyzer.combineRes('Kepco', 'b', 'Run2', db, False)
+for i in range(0,1):
+    run = 'Run' + str(i)
+    BatchFit.batchFit(Tools.fileList(db,'Kepco'), db, run)
+    Analyzer.combineRes('Kepco', 'm', run, db, show_plot=True)
+    Analyzer.combineRes('Kepco', 'b', run, db, show_plot=True)
 
 '''Fitting the spectra with Voigt-Fits!'''
-run = 'Run0'
-BatchFit.batchFit(Tools.fileList(db,'63_Ni'), db,run)
-
-'''Mean of center, sigma and gamma for 120_Sn'''
-# Analyzer.combineRes('120_Sn', 'gamma',run, db)
-# Analyzer.combineRes('120_Sn', 'sigma',run, db)
-# Analyzer.combineRes('120_Sn', 'center',run, db, show_plot=True)
-
-'''Calculate the isotope shift to 120_Sn'''
-# Analyzer.combineShift('122_Sn', run, db)
+# for i in range(0,3):
+#     run = 'Run' + str(i)
+#     BatchFit.batchFit(Tools.fileList(db,'63_Ni'), db,run)
+#     BatchFit.batchFit(Tools.fileList(db,'63_Ni'), db,'Run0m')
+#
+#     '''Mean of center, sigma and gamma for 120_Sn'''
+#     # Analyzer.combineRes('120_Sn', 'gamma',run, db)
+#     # Analyzer.combineRes('120_Sn', 'sigma',run, db)
+#     Analyzer.combineRes('63_Ni', 'center',run, db, show_plot=True)
+#
+#
+#     '''Calculate the isotope shift to 120_Sn'''
+#     # Analyzer.combineShift('122_Sn', run, db)
