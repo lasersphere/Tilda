@@ -958,6 +958,7 @@ class Ni4071:
             self.config_meas_complete_slope(0)
             greater_10_g_ohm = config_dict.get('highInputResistanceTrue')
             self.set_input_resistance(greater_10_g_ohm)
+            self.get_accuracy()
         except Exception as e:
             print('Exception while loading config to Ni4071: ', e)
 

@@ -372,7 +372,7 @@ class Main(QtCore.QObject):
         self.scan_start_time = datetime.now()
         self.scan_progress['activeIso'] = iso_name
         self.scan_progress['completedTracks'] = []
-        self.add_global_infos_to_scan_pars(iso_name)
+        self.scan_pars[iso_name] = self.add_global_infos_to_scan_pars(iso_name)
         logging.debug('will scan: ' + iso_name + str(sorted(self.scan_pars[iso_name])))
         self.scan_main.prepare_scan(self.scan_pars[iso_name])
         self.set_state(MainState.setting_switch_box, True)

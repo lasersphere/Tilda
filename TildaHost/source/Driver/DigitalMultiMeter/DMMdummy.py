@@ -122,7 +122,6 @@ class DMMdummy:
             'accuracy': (None, None)
         }
         self.load_from_config_dict(config_dict, False)
-        self.get_accuracy()
         self.initiate_measurement()
 
     ''' self calibration '''
@@ -133,6 +132,7 @@ class DMMdummy:
     ''' loading '''
     def load_from_config_dict(self, config_dict, reset_dev):
         self.config_dict = deepcopy(config_dict)
+        self.get_accuracy()
         print('dummy dmm named: ', self.name)
         print('resetting_dev: ', reset_dev)
         print('dummy dmm loaded with: ', config_dict)
