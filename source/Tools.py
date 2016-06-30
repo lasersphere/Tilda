@@ -8,31 +8,50 @@ right structure, isoPlot() to plot the spectrum of an isotope and centerplot() t
 voltages depending on laser frequencies.
 
 '''
-
-import sqlite3
 import os
+import sqlite3
 import sys
 import traceback
 
+import matplotlib.pyplot as plt
 import numpy as np
 
+import MPLPlotter as plot
 import Measurement.MeasLoad as Meas
+import Physics as Physics
 from DBIsotope import DBIsotope
 from Spectra.FullSpec import FullSpec
-import Physics as Physics
-import MPLPlotter as plot
-import matplotlib.pyplot as plt
 
-def isoPlot(db, iso, isovar = '', linevar = ''):
+
+def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=None,
+            col=None, saving=False, show=True, isom_name=None):
     '''plot isotope iso'''
-    iso = DBIsotope(db, iso, isovar, linevar)
+    iso = DBIsotope(db, iso_name, isovar, linevar)
     
-    spec =  FullSpec(iso)
+    spec = FullSpec(iso)
     
     print(spec.getPars())
-    
-    plot.plot(spec.toPlot(spec.getPars()))
-    plot.show()
+    if as_freq:
+        plot.plot(spec.toPlot(spec.getPars()))
+    else:
+        plot.plot(spec.toPlotE(laserfreq, col, spec.getPars()))
+        plot.get_current_axes().set_xlabel('Energy [eV]')
+    plt.gca().get_lines()[-1].set_label(iso_name)
+    plt.legend()
+    if isom_name:
+        isoPlot(db, isom_name, isovar, linevar, as_freq, laserfreq, col, saving, show)
+    else:
+        if saving:
+            pathParts = str(db).split('/')
+            path = ''
+            for i in range(0,len(pathParts)-1,1):
+                path += pathParts[i] + '/'
+            path += 'simulations/'
+            plot.save(path + iso_name + '.png')
+        if show:
+            plot.show()
+        else:
+            plot.clear()
 
 
 def centerPlot(db, isoL, linevar = '', width = 1e6):
@@ -51,9 +70,10 @@ def centerPlot(db, isoL, linevar = '', width = 1e6):
     fig = plt.figure(1, (8, 8))
     fig.patch.set_facecolor('white')
     
-    for i in y:
-        plt.plot(wnx, i, '-')
-    
+    for i, val in enumerate(y):
+        plt.plot(wnx, val, '-', label=isoL[i])
+
+    plt.legend()
     plt.xlabel("Laser wavenumber / cm^-1")
     plt.ylabel("Ion energy on resonance / eV")
     plt.axvline(Physics.wavenumber(isos[0].freq), 0, 20000, color = 'k')
@@ -83,8 +103,9 @@ def _insertFolder(path, rec, db):
     
     for _f in f:
         _insertFile(os.path.join(p, _f), db)
-        
-def _insertFile(f, db):
+
+
+def _insertFile(f, db, x_as_voltage=True):
     con = sqlite3.connect(db)
     cur = con.cursor()
     
@@ -100,12 +121,27 @@ def _insertFile(f, db):
     try:
         cur.execute('''INSERT INTO Files (file, filePath) VALUES (?, ?)''', (os.path.basename(f), f))
         con.commit()
-        spec = Meas.load(f, db, True)
+        spec = Meas.load(f, db, True, x_as_voltage)
         spec.export(db)  
     except:
         print("Error working on file", f, ":", sys.exc_info()[1])
         traceback.print_tb(sys.exc_info()[2])
     con.close() 
+
+
+def _insertIso(db, iso, mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat,
+               fixedBrat, intScale, fixedInt):
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+
+    cur.execute(
+        ''' INSERT INTO Isotopes (iso, mass, mass_d, I, center,
+    Al, Bl, Au, Bu, fixedArat,
+    fixedBrat, intScale, fixedInt, relInt, m) VALUES (?, ?, ?, ?, ?,  ?, ?, ?, ?, ?,  ?, ?, ?, NULL, NULL)''',
+        (iso, mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, fixedBrat, intScale, fixedInt)
+    )
+    con.commit()
+    con.close()
 
 
 def fileList(db, type):

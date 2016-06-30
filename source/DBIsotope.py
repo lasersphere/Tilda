@@ -30,7 +30,7 @@ class DBIsotope(object):
         except:
             raise Exception("No such line: " + lineVar)
         
-        self.name = iso
+        self.name = iso + isovar
         self.isovar = isovar
         self.lineVar = lineVar
         self.ref = data[0]
@@ -40,20 +40,21 @@ class DBIsotope(object):
         self.shape = eval(data[4])
         self.fixShape = eval(data[5])
         elmass = data[6] * Physics.me_u
+        print('loaded :', self.name)
         
         cur.execute('''SELECT mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, fixedBrat, intScale, fixedInt, relInt, m
-            FROM Isotopes WHERE iso = ?''', (iso,))
+            FROM Isotopes WHERE iso = ?''', (iso + isovar,))
         try:
             data = cur.fetchall()[0]
         except:
-            raise Exception("No such isotope: " + iso)
+            raise Exception("No such isotope: " + iso + isovar)
         
         self.mass = data[0] - elmass
         self.mass_d = data[1]
         self.I = data[2]
         self.center = data[3]
         self.Al = data[4]
-        self.Bl = data [5]
+        self.Bl = data[5]
         self.Au = data[6]
         self.Bu = data[7]
         self.fixArat = data[8]

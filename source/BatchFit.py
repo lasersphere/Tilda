@@ -21,7 +21,7 @@ from SPFitter import SPFitter
 import MPLPlotter as plot
 
 
-def batchFit(fileList, db, run = 'Run0'):
+def batchFit(fileList, db, run='Run0', x_as_voltage=True):
     '''Fit fileList with run and write results to db'''
     print("BatchFit started")
     print("Opening DB:", db)
@@ -43,7 +43,7 @@ def batchFit(fileList, db, run = 'Run0'):
     
     for file in fileList:
         try:
-            singleFit(file, st, dbname, run, var, cur)
+            singleFit(file, st, dbname, run, var, cur, x_as_voltage)
         except:
             errcount += 1
             print("Error working on file", file, ":", sys.exc_info()[1])
@@ -54,9 +54,9 @@ def batchFit(fileList, db, run = 'Run0'):
     con.close()
     
     print("BatchFit finished,", errcount, "errors occured")
-    
-        
-def singleFit(file, st, db, run, var, cur):
+
+
+def singleFit(file, st, db, run, var, cur, x_as_voltage=True):
     '''Fit st of file, using run. Save result to db and picture of spectrum to folder'''
     print('-----------------------------------')
     print("Fitting", file)
@@ -67,14 +67,22 @@ def singleFit(file, st, db, run, var, cur):
     except:
         raise Exception(str(file) + " not found in DB")
 
-    meas = MeasLoad.load(path, db)
+    meas = MeasLoad.load(path, db, x_as_voltage=x_as_voltage)
     if meas.type == 'Kepco':
         print('Fitting Straight!')
         spec = Straight()
     else:
-        iso = DBIsotope(db, meas.type, var[0], var[1])
-        spec = FullSpec(iso)
-        #meas.deadtimeCorrect(st[0][0],st[1])
+        try:
+            # if the measurment is an .xml file it will have a self.seq_type
+            if meas.seq_type == 'kepco':
+                spec = Straight()
+                spec.evaluate(meas.x[0][-1], (0, 1))
+            else:
+                iso = DBIsotope(db, meas.type, var[0], var[1])
+                spec = FullSpec(iso)
+        except:
+            iso = DBIsotope(db, meas.type, var[0], var[1])
+            spec = FullSpec(iso)
 
     fit = SPFitter(spec, meas, st)
     fit.fit()

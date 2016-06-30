@@ -48,13 +48,13 @@ class Pipeline(object):
         item.data = data
         self.processItem(item)
 
-    def clear(self, pipeData):
+    def clear(self):
         """
         Iterate over nodes and tell them to flush, e.g. clear their internal memory
         """
         item = Item(self.nextItemId, "clear")
         self.nextItemId += 1
-        item.data = pipeData
+        # item.data = pipeData
         self.processItem(item)
 
     def processItem(self, item):

@@ -18,7 +18,7 @@ class SPFitter(object):
         self.meas = meas
         self.st = st
         self.data = meas.getArithSpec(*st)
-        
+
         self.par = spec.getPars()
         self.oldpar = list(self.par)
         self.fix = spec.getFixed()

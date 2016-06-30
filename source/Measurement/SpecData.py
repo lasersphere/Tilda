@@ -42,27 +42,35 @@ class SpecData(object):
     def getSingleSpec(self, scaler, track):
         '''Return a tuple with (volt, cts, err) of the specified scaler and track. -1 for all tracks'''        
         if track == -1:
-            return ( [i for i in it.chain(*self.x)], [i for i in it.chain(*(t[scaler] for t in self.cts))], [i for i in it.chain(*(t[scaler] for t in self.err))] )
+            return ( [i for i in it.chain(*self.x)],
+                     [i for i in it.chain(*(t[scaler] for t in self.cts))],
+                     [i for i in it.chain(*(t[scaler] for t in self.err))] )
         else:
             return (self.x[track], self.cts[track][scaler], self.err[track][scaler])
     
     
-    def getArithSpec(self, scaler, track):
+    def getArithSpec(self, scaler, track_index):
         '''Same as getSingleSpec, but scaler is of type [+i, -j, +k], resulting in s[i]-s[j]+s[k]'''
-        l = self.getNrSteps(track)
+        l = self.getNrSteps(track_index)
         flatc = np.zeros((l,))
         flate = np.zeros((l,))
-        
+        if isinstance(self.nrScalers, list):
+            if track_index == -1:
+                nrScalers = self.nrScalers[0]
+            else:
+                nrScalers = self.nrScalers[track_index]
+        else:
+            nrScalers = self.nrScalers
+
         for s in scaler:
-            if self.nrScalers >= np.abs(s):
-                flatx, c, e = self.getSingleSpec(abs(s), track)
+            if nrScalers >= np.abs(s):
+                flatx, c, e = self.getSingleSpec(abs(s), track_index)
                 for i, j in enumerate(flatc):
                     flatc[i] = j + np.copysign(1, s) * c[i]
                     flate[i] = flate[i] + np.square(e[i])
+                flate = np.sqrt(flate)
             else:
                 pass
-        flate = np.sqrt(flate)
-        
         return (flatx, flatc, flate)
         
     def getNrSteps(self, track):
@@ -84,7 +92,7 @@ class SpecData(object):
         self.cts[scaler] *= mult
         self.err[scaler] *= mult
         
-        
+
     
     def deadtimeCorrect(self, scaler, track):
         for i, cts in enumerate(self.cts[track][scaler]):

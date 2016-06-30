@@ -35,7 +35,8 @@ shift40 = []
 shift42 = []
 shift44 = []
 
-for i in range(1,5):
+
+for i in range(1,2):
     run = str('Run' + str(i))
 #     BatchFit.batchFit(Tools.fileList(db,'40_Ca'), db,run)
 #     BatchFit.batchFit(Tools.fileList(db,'42_Ca'), db,run)
@@ -50,10 +51,9 @@ for i in range(1,5):
 #    Analyzer.combineRes('40_Ca', 'center',run, db)
 #    Analyzer.combineRes('42_Ca', 'center',run, db)
 #    Analyzer.combineRes('44_Ca', 'center',run, db)
-    Analyzer.combineRes('48_Ca', 'center',run, db)
+#    Analyzer.combineRes('48_Ca', 'center',run, db)
     print(run)
-    BatchFit.batchFit(['Run49_opticalDetection_Ca48.mcp'], db,run)
-
+    BatchFit.batchFit(['Run6_opticalDetection_Ca48.mcp','Run7_opticalDetection_Ca48.mcp','Run8_opticalDetection_Ca48.mcp','Run9_opticalDetection_Ca48.mcp','Run10_opticalDetection_Ca48.mcp'], db,run)
     # '''Calculate the isotope shift to 48_Ca'''
     # shift40.append(Analyzer.combineShift('40_Ca', run, db)[2])
     # shift42.append(Analyzer.combineShift('42_Ca', run, db)[2])

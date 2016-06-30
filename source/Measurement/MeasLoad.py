@@ -9,14 +9,13 @@ import os
 from Measurement.KepcoImporterTLD import KepcoImporterTLD
 from Measurement.TLDImporter import TLDImporter
 
-#from Measurement.XMLImporter import XMLImporter
+from Measurement.XMLImporter import XMLImporter
+
 from Measurement.MCPImporter import MCPImporter
-from Measurement.KepcoImporterMCP import KepcoImporterMCP
 from Measurement.SimpleImporter import SimpleImporter
 
 
-
-def load(file, db, raw = False):
+def load(file, db, raw=False, x_as_voltage=True):
     e = os.path.splitext(file)[1]
 
     if e == '.txt':
@@ -37,19 +36,11 @@ def load(file, db, raw = False):
             f.preProc(db)
         return f
 
-    elif e == '.kmcp':
-        f = KepcoImporterMCP(file)
+    elif e == '.xml':
+        f = XMLImporter(file, x_as_voltage)
         if not raw:
             f.preProc(db)
         return f
-
-    # elif e == '.xml':
-    #     file = file.replace('\\', '/')
-    #     absfile = (os.path.join(os.getcwd(), file))
-    #     f = XMLImporter(absfile)
-    #     if not raw:
-    #         f.preProc(db)
-    #     return f
     else:
         return None
 

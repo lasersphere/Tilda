@@ -9,11 +9,12 @@ The Analyzer can extract() parameters from fit results, combineRes() to get weig
 import sqlite3
 import ast
 import functools
+import os
 
 import numpy as np
 
 import Physics
-
+import MPLPlotter as plt
 
 
 def getFiles(iso, run, db):
@@ -24,8 +25,9 @@ def getFiles(iso, run, db):
     con.close()
     
     return [f[0] for f in e]
-    
-def extract(iso, par, run, db, fileList = []):
+
+
+def extract(iso, par, run, db, fileList=[], prin=True):
     '''Return a list of values of par of iso, filtered by files in fileList'''
     print('Extracting', iso, par, )
     con = sqlite3.connect(db)
@@ -39,24 +41,33 @@ def extract(iso, par, run, db, fileList = []):
     files = [f[0] for f in fits]
     vals = [f[par][0] for f in fitres]
     errs = [f[par][1] for f in fitres]
-    
+    date_list = []
+
     for f, v, e in zip(files, vals, errs):
-        print(f, '\t', v, '\t', e)
-    
+        print(f)
+        cur.execute('''SELECT date FROM Files WHERE file = ?''', (f,))
+        e = cur.fetchall()
+        print(e)
+        date = e[0][0]
+        if date is not None:
+            date_list.append(date)
+        if prin:
+            print(date, '\t', f, '\t', v, '\t', e)
+
     for f in fileList:
         if f not in files:
             print('Warning:', f, 'not found!')
     # for i in dates:
     #     print(i[0], '\t', i[1])
     con.close()
-    return (vals, errs)
+    return (vals, errs, date_list)
     
     
 def weightedAverage(vals, errs):
     '''Return (weighted average, propagated error, rChi^2'''
     weights = 1 / np.square(errs)
     average = sum(vals * weights) / sum(weights)
-    errorprop = 1 / sum(weights)
+    errorprop = np.sqrt(1 / sum(weights))  # was: 1 / sum(weights)
     if(len(vals) == 1):
         rChi = 0
     else:
@@ -80,7 +91,7 @@ def average(vals, errs):
     return (average, errorprop, rChi)
 
 
-def combineRes(iso, par, run, db, weighted = True):
+def combineRes(iso, par, run, db, weighted = True, print_extracted=True, show_plot=False):
     '''Calculate weighted average of par using the configuration specified in the db
     :rtype : object
     '''
@@ -97,26 +108,40 @@ def combineRes(iso, par, run, db, weighted = True):
     config = ast.literal_eval(config)
     
     print('Combining', iso, par)
-    vals, errs = extract(iso, par, run, db, config)
+    vals, errs, date = extract(iso, par, run, db, config, prin=print_extracted)
     
     if weighted:
-        val, err, rChi = weightedAverage(vals, errs)
+        avg, err, rChi = weightedAverage(vals, errs)
     else:
-        val, err, rChi = average(vals, errs)
+        avg, err, rChi = average(vals, errs)
+    print('rChi is: ', rChi, 'err is: ', err)
+
     statErr = eval(statErrForm)
     systErr = eval(systErrForm)
+    print('statErr is: ', statErr)
     
     print('Statistical error formula:', statErrForm)
     print('Systematic error formula:', systErrForm)
     print('Combined to', iso, par, '=')
-    print(str(val) + '(' + str(statErr) + ')[' + str(systErr) + ']')
+    print(str(avg) + '(' + str(statErr) + ')[' + str(systErr) + ']')
     
     cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
-        WHERE iso = ? AND parname = ? AND run = ?''', (val, statErr, systErr, rChi, iso, par, run))
+        WHERE iso = ? AND parname = ? AND run = ?''', (avg, statErr, systErr, rChi, iso, par, run))
 
     con.commit()
     con.close()
-    return (val, statErr, systErr)
+    plt.clear()
+    plotdata = (date, vals, errs, avg, statErr, systErr, ('k.', 'r'))
+    plt.plotAverage(*plotdata)
+    combined_plots_dir = os.path.join(os.path.split(db)[0], 'combined_plots')
+    if not os.path.exists(combined_plots_dir):
+        os.makedirs(combined_plots_dir)
+    avg_fig_name = os.path.join(combined_plots_dir, iso + '_' + run + '_' + par + '.png')
+    print('saving average plot to: ', avg_fig_name)
+    plt.save(avg_fig_name)
+    if show_plot:
+        plt.show(True)
+    return (avg, statErr, systErr, plotdata)
     
 
 def combineShift(iso, run, db):
@@ -139,7 +164,7 @@ def combineShift(iso, run, db):
     shiftErrors = []
     for block in config:
         if block[0]:
-            preVals, preErrs = extract(ref,'center',refRun,db,block[0])
+            preVals, preErrs, date = extract(ref,'center',refRun,db,block[0])
             preVal, preErr, preRChi = weightedAverage(preVals, preErrs)
             preErr = applyChi(preErr, preRChi)
             preErr = np.absolute(preErr)
@@ -147,10 +172,10 @@ def combineShift(iso, run, db):
             preVal = 0
             preErr = 0
 
-        intVals, intErrs = extract(iso,'center',run,db,block[1])
+        intVals, intErrs, date = extract(iso,'center',run,db,block[1])
 
         if block[2]:
-            postVals, postErrs = extract(ref,'center',refRun,db,block[2])
+            postVals, postErrs, date = extract(ref,'center',refRun,db,block[2])
             postVal, postErr, postRChi = weightedAverage(postVals, postErrs)
             postErr = np.absolute(applyChi(postErr, postRChi))
         else:
@@ -170,7 +195,6 @@ def combineShift(iso, run, db):
         shifts.extend([x - refMean for x in intVals])
         shiftErrors.extend(np.sqrt(np.square(intErrs)+np.square(errMean)))
     val, err, rChi = weightedAverage(shifts, shiftErrors)   
-    
     systE = functools.partial(shiftErr, iso, run, db, val)
     
     statErr = eval(statErrForm)
@@ -190,6 +214,7 @@ def combineShift(iso, run, db):
 def applyChi(err, rChi):
     '''Increases error by sqrt(rChi^2) if necessary. Works for several rChi as well'''
     return err * np.max([1, np.sqrt(rChi)])
+
 
 def gaussProp(*args):
     '''Calculate sqrt of squared sum of args, as in gaussian error propagation'''
@@ -216,7 +241,7 @@ def shiftErr(iso, run, db, val, accVolt_d, offset_d):
    
     cur.execute('''SELECT line FROM Files WHERE type = ?''', (ref,))
     (line,) = cur.fetchall()[0]
-    
+    '''
     if line == 'D1':
         if iso == '40_Ca':
             offset = 500
@@ -229,4 +254,5 @@ def shiftErr(iso, run, db, val, accVolt_d, offset_d):
     print('offsetvoltage:', offset)
     fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
     print('systematic error inputs caused by error of...\n...acc Voltage:',fac*(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d/accVolt)),'MHz  ...offset Voltage',fac*offset*offset_d/accVolt,'MHz  ...masses:',fac*(mass_d/mass+massRef_d/massRef),'MHz')
+    '''
     return fac*(np.absolute(0.5*(offset/accVolt+deltaM/mass)*accVolt_d/accVolt)+np.absolute(offset*offset_d/accVolt)+np.absolute(mass_d/mass+massRef_d/massRef))

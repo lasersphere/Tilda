@@ -22,8 +22,7 @@ from SPFitter import SPFitter
 
 
 class InteractiveFit(object):
-    
-    def __init__(self, file, db, run):
+    def __init__(self, file, db, run, block=True, x_as_voltage=True):
         plot.ion()
         plot.clear()
         con = sqlite3.connect(db)
@@ -41,17 +40,27 @@ class InteractiveFit(object):
         cur.execute('''SELECT isoVar, lineVar, scaler, track FROM Runs WHERE run = ?''', (run,))
         var = cur.fetchall()[0]
         st = (ast.literal_eval(var[2]), ast.literal_eval(var[3]))
-        
-        meas = MeasLoad.load(path, db)
-        if meas.type == 'Kepco':
+
+        meas = MeasLoad.load(path, db, x_as_voltage=x_as_voltage)
+        if meas.type == 'Kepco':  # keep this for all other fileformats than .xml
             spec = Straight()
         else:
-            iso = DBIsotope(db, meas.type, var[0], var[1])
-            spec = FullSpec(iso)
+            try:
+                # if the measurment is an .xml file it will have a self.seq_type
+                if meas.seq_type == 'kepco':
+                    spec = Straight()
+                    spec.evaluate(meas.x[0][-1], (0, 1))
+                else:
+                    iso = DBIsotope(db, meas.type, var[0], var[1])
+                    spec = FullSpec(iso)
+            except:
+                iso = DBIsotope(db, meas.type, var[0], var[1])
+                spec = FullSpec(iso)
             
         self.fitter = SPFitter(spec, meas, st)
         plot.plotFit(self.fitter)
-        plot.show()
+        plot.show(block)
+        self.printPars()
         
         
     def printPars(self):

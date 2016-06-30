@@ -1,13 +1,14 @@
 '''
 Created on 06.06.2014
 
-@author: hammen
+@author: hammen, chgorges
 '''
 
 import sqlite3
 import ast
 import itertools
 import numpy as np
+import copy
 
 from PyQt5 import QtWidgets, QtCore
 
@@ -26,7 +27,8 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
         self.isoSelect.currentIndexChanged.connect(self.loadParams)
         self.parameter.currentIndexChanged.connect(self.loadFiles)
         self.fileList.itemChanged.connect(self.recalc)
-        
+        self.bsave.clicked.connect(self.saving)
+
         self.dbpath = None
         
         self.show()
@@ -72,14 +74,14 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
             con = sqlite3.connect(self.dbpath)
             cur = con.cursor()
 
-            iso = self.isoSelect.currentText()
-            run = self.runSelect.currentText()
-            par = self.parameter.currentText()
+            self.iso = self.isoSelect.currentText()
+            self.run = self.runSelect.currentText()
+            self.par = self.parameter.currentText()
 
-            self.files = Analyzer.getFiles(iso, run, self.dbpath)
-            self.vals, self.errs = Analyzer.extract(iso, par, run, self.dbpath)
+            self.files = Analyzer.getFiles(self.iso, self.run, self.dbpath)
+            self.vals, self.errs, self.dates = Analyzer.extract(self.iso, self.par, self.run, self.dbpath)
 
-            cur.execute('''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ?''', (iso, par, run))
+            cur.execute('''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ?''', (self.iso, self.par, self.run))
             r = cur.fetchall()
             con.close()
 
@@ -92,7 +94,9 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
                 self.systErrForm = r[0][2]
                 cfg = ast.literal_eval(r[0][0])
                 for i, f in enumerate(self.files):
-                    if f not in cfg:
+                    if cfg == []:
+                        select[i] = True
+                    elif f not in cfg:
                         select[i] = False
 
             self.fileList.blockSignals(True)
@@ -114,19 +118,46 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
 
     def recalc(self):
         select = []
-        for i in range(self.fileList.count()):
-            select.append(self.fileList.item(i).checkState() == QtCore.Qt.Checked)
-        if len(self.vals) > 0 and len(self.errs) > 0:
-            vals = np.delete(self.vals, select, 0)
-            errs = np.delete(self.errs, select, 0)
-            val, err, rChi = Analyzer.weightedAverage(vals, errs)
+        self.chosenVals = []
+        self.chosenErrs = []
+        self.chosenDates = []
+        self.val = 0
+        self.err = 0
+        self.redChi = 0
+        self.systeErr = 0
 
-            self.result.setText(str(val))
-            self.rChi.setText(str(rChi))
-        
-        # plot.plotAverage(self.vals, self.errs, val, self.statErr)
-        
-    
+        for index in range(self.fileList.count()):
+            if self.fileList.item(index).checkState() != QtCore.Qt.Checked:
+                select.append(index)
+        if len(self.vals) > 0 and len(self.errs) > 0:
+            self.chosenVals = np.delete(copy.deepcopy(self.vals), select)
+            self.chosenErrs = np.delete(copy.deepcopy(self.errs), select)
+            self.chosenDates = np.delete(copy.deepcopy(self.dates), select)
+            if len(self.chosenVals) > 0 and len(self.chosenErrs > 0) and np.count_nonzero(self.chosenErrs) == len(self.chosenErrs):
+                self.val, self.err, self.redChi = Analyzer.weightedAverage(self.chosenVals, self.chosenErrs)
+        self.result.setText(str(self.val))
+        self.rChi.setText(str(self.redChi))
+        self.statErr.setText(str(self.err))
+        self.systErr.setText(str(self.systeErr))
+
+    def saving(self):
+        if np.any(self.chosenVals):
+            print(self.chosenVals)
+            plot.plotAverage(self.chosenDates, self.chosenVals, self.chosenErrs, self.val, self.err, self.systeErr, showing=True)
+            con = sqlite3.connect(self.dbpath)
+            cur = con.cursor()
+            cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', (self.iso, self.par, self.run))
+            con.commit()
+            con.close()
+            con = sqlite3.connect(self.dbpath)
+            cur = con.cursor()
+            cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ? WHERE iso = ?
+                AND parname = ? AND run = ?''', (self.val, self.err, self.systeErr, self.redChi, self.iso, self.par, self.run))
+            con.commit()
+            con.close()
+        else:
+            print('nothing to save!!!')
+
     def dbChange(self, dbpath):
         self.dbpath = dbpath
         self.loadRuns()  # might still cause some problems

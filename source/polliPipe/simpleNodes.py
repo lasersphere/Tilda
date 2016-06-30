@@ -28,7 +28,7 @@ class NAccumulate(Node):
         self.buf += data
         return self.buf
     
-    def clear(self, pipeData):
+    def clear(self):
         self.buf = 0
 
 
@@ -53,7 +53,7 @@ class NSubtract(Node):
         self.buf -= data
         return self.buf
 
-    def clear(self, pipeData):
+    def clear(self):
         self.buf = 0
 
 
