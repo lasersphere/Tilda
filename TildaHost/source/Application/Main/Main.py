@@ -52,7 +52,8 @@ class Main(QtCore.QObject):
         self.scan_prog_call_back_sig_pipeline.connect(self.update_scan_progress)
         # tuple of three callbacks which are needed for the live plot gui
         #  and which are emitted from the pipeline. Therefore those must be available when initialising the pipeline.
-        self.live_plot_callback_tuples = None
+        self.live_plot_callback_tuples = None  # tuple of seperate callbacks
+        self.liveplot_progress_callback = None  # dict
 
         self.scan_main = ScanMain()
         self.iso_scan_process = None
@@ -215,7 +216,7 @@ class Main(QtCore.QObject):
         """
         self.main_ui_status_call_back_signal = None
 
-    def gui_live_plot_subscribe(self, callback_tuple_from_live_plot_win):
+    def gui_live_plot_subscribe(self, callback_tuple_from_live_plot_win, liveplot_progress_callback):
         """
         a liveplot gui can pass the three needed callbacks to the main here.
         the main will use them wehn initialising the pipeline.
@@ -224,9 +225,11 @@ class Main(QtCore.QObject):
         See LiveDataPlottingUi for details.
         """
         self.live_plot_callback_tuples = callback_tuple_from_live_plot_win
+        self.liveplot_progress_callback = liveplot_progress_callback
 
     def gui_live_plot_unsubscribe(self):
         self.live_plot_callback_tuples = None
+        self.liveplot_progress_callback = None
 
     def send_state(self):
         """
@@ -502,6 +505,8 @@ class Main(QtCore.QObject):
         if progress_dict is not None:
             if self.scan_prog_call_back_sig_gui is not None:
                 self.scan_prog_call_back_sig_gui.emit(progress_dict)
+            if self.liveplot_progress_callback is not None:
+                self.liveplot_progress_callback.emit(progress_dict)
 
     def subscribe_to_scan_prog(self, callback_signal):
         """

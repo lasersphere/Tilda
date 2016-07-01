@@ -294,7 +294,9 @@ def time_rebin_all_spec_data(full_data, software_bin_width_ns):
     newdata.time_res = []
     for tr_ind, tr_data in enumerate(full_data.time_res):
         newdata.time_res = rebin_single_track_spec_data(tr_data, newdata.time_res, bins)
-        newdata.t[tr_ind] = time_axis_rebin(tr_ind, full_data.t, full_data.softBinWidth_ns)
+        newdata.t[tr_ind] = time_axis_rebin(tr_ind, full_data.t, bins)
+        pmts, steps, bin_nums = newdata.time_res[tr_ind].shape
+        newdata.t_proj[tr_ind] = np.zeros((pmts, bin_nums))
     return newdata
 
 

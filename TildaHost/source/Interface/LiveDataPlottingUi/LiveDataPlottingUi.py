@@ -16,6 +16,7 @@ from Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveD
 import TildaTools as TiTs
 from Measurement.XMLImporter import XMLImporter
 import Service.FileOperations.FolderAndFileHandling as FileHandl
+import Service.Formating as Form
 import Application.Config as Cfg
 
 
@@ -29,9 +30,16 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     # when teh pipeline wants to save, this is emitted and it send the pipeData as a dict
     save_callback = QtCore.pyqtSignal(dict)
 
+    # progress dict coming from the main
+    progress_callback = QtCore.pyqtSignal(dict)
+
     def __init__(self, full_file_path='', parent=None):
         super(TRSLivePlotWindowUi, self).__init__()
 
+        self.active_track_name = None  # str, name of the active track
+        self.active_initial_scan_dict = None  # scan dict which is stored under the active iso name in the main
+        self.active_file = None  # str, name of active file
+        self.active_iso = None  # str, name of active iso in main
         self.setupUi(self)
         self.show()
         self.setWindowTitle('plot win:     ' + full_file_path)
@@ -75,6 +83,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         self.tableWidget_gates.itemClicked.connect(self.handle_item_clicked)
         self.tableWidget_gates.itemChanged.connect(self.handle_gate_table_change)
+
+        self.spinBox.valueChanged.connect(self.rebin_data)
 
     '''setting up the plots (no data etc. written) '''
     def add_sum_plot(self):
@@ -374,10 +384,42 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.save_callback.connect(self.save)
         self.new_track_callback.connect(self.setup_new_track)
         self.new_data_callback.connect(self.new_data)
-        Cfg._main_instance.gui_live_plot_subscribe(self.callbacks)
+        self.progress_callback.connect(self.handle_progress_dict)
+        Cfg._main_instance.gui_live_plot_subscribe(self.callbacks, self.progress_callback)
 
     def unsubscribe_from_main(self):
         Cfg._main_instance.gui_live_plot_unsubscribe()
+
+    ''' rebinning '''
+    def rebin_data(self, rebin_factor_ns=None):
+        if rebin_factor_ns is None:
+            if self.active_initial_scan_dict is not None:
+                rebin_factor_ns = self.active_initial_scan_dict.get(self.active_track_name, {}).get('softBinWidth_ns', 10)
+        if self.storage_data is not None:
+            self.spec_data = Form.time_rebin_all_spec_data(self.storage_data, rebin_factor_ns)
+            try:
+                self.reset_plots(True)
+                self.gate_data(self.spec_data, True)
+            except Exception as e:
+                print('error while gating: ', e)
+            # self.update_all_plots(self.spec_data)
+
+    ''' progress related '''
+    def handle_progress_dict(self, progress_dict_from_main):
+        """
+        will be emitted from the main, each time the progress is updated
+        :param progress_dict_from_main: dict, keys:
+        ['activeIso', 'overallProgr', 'timeleft', 'activeTrack', 'totalTracks',
+        'trackProgr', 'activeScan', 'totalScans', 'activeStep',
+        'totalSteps', 'trackName', 'activeFile']
+        """
+        self.active_iso = progress_dict_from_main['activeIso']
+        if self.active_file != progress_dict_from_main['activeFile']:
+            self.active_file = progress_dict_from_main['activeFile']
+            self.setWindowTitle('plot:  %s' % self.active_file)
+        self.active_initial_scan_dict = Cfg._main_instance.scan_pars[self.active_iso]
+        self.active_track_name = progress_dict_from_main['trackName']
+
 # if __name__ == "__main__":
 #     app = QtWidgets.QApplication(sys.argv)
 #     ui = TRSLivePlotWindowUi()

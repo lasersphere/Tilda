@@ -231,12 +231,14 @@ def gate_specdata(spec_data):
         for pmt_ind, pmt in enumerate(tr):
             v_min_ind = softw_gates_ind[tr_ind][pmt_ind][0]
             v_max_ind = softw_gates_ind[tr_ind][pmt_ind][1] + 1
-            t_min_in = softw_gates_ind[tr_ind][pmt_ind][2]
+            t_min_ind = softw_gates_ind[tr_ind][pmt_ind][2]
             t_max_ind = softw_gates_ind[tr_ind][pmt_ind][3] + 1
-            spec_data.t_proj[tr_ind][pmt_ind] = np.sum(
-                spec_data.time_res[tr_ind][pmt_ind][v_min_ind:v_max_ind, :], axis=0)
-            spec_data.cts[tr_ind][pmt_ind] = np.sum(
-                spec_data.time_res[tr_ind][pmt_ind][:, t_min_in:t_max_ind], axis=1)
+            t_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][v_min_ind:v_max_ind, :], axis=0)
+            v_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][:, t_min_ind:t_max_ind], axis=1)
+            a = spec_data.t_proj[tr_ind]
+            b = spec_data.cts[tr_ind]
+            spec_data.t_proj[tr_ind][pmt_ind] = t_proj_res
+            spec_data.cts[tr_ind][pmt_ind] = v_proj_res
     return spec_data
 
 

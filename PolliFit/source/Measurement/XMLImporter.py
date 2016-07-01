@@ -77,6 +77,7 @@ class XMLImporter(SpecData):
         self.dwell = []
         self.softw_gates = []
         self.track_names = TildaTools.get_track_names(scandict)
+        self.softBinWidth_ns = []
 
 
         ''' operations on each track: '''
@@ -99,7 +100,7 @@ class XMLImporter(SpecData):
                     self.offset = 0
 
             if self.seq_type in ['trs', 'tipa', 'trsdummy']:
-                self.softBinWidth_ns = track_dict.get('softBinWidth_ns', 10)
+                self.softBinWidth_ns.append(track_dict.get('softBinWidth_ns', 10))
                 self.t = TildaTools.create_t_axis_from_file_dict(scandict)  # force 10 ns resolution
                 cts_shape = (nOfScalers, nOfsteps, nOfBins)
                 scaler_array = TildaTools.xml_get_data_from_track(
@@ -202,8 +203,12 @@ class XMLImporter(SpecData):
             return self.nrScalers[track_ind], self.getNrSteps(track_ind), -1
 
 # import Service.Scan.draftScanParameters as dft
+# import Service.Formating as Form
 # test = XMLImporter(None, False, dft.draftScanDict)
-# print(test.x)
+# a = test.t_proj[0]
+# test = Form.time_rebin_all_spec_data(test, 20)
+# b = test.t_proj[0]  # this works
+# print(len(b))
 
 # from file:
 # for file_num in range(169, 172):

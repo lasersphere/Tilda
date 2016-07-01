@@ -1101,7 +1101,7 @@ class NMPLImagePlotSpecData(Node):
             else:  # read gates from input
                 gate_val_list = self.buffer_data.softw_gates[self.selected_pmt_ind]
             self.update_gate_ind(gate_val_list)
-            bin_width = self.buffer_data.softBinWidth_ns
+            bin_width = self.buffer_data.softBinWidth_ns[track_ind]
             if self.slider is not None:
                 print('slider is set to:', bin_width)
                 self.slider.valtext.set_text('{}'.format(bin_width))
@@ -1116,7 +1116,7 @@ class NMPLImagePlotSpecData(Node):
             self.selected_pmt_ind = self.buffer_data.active_pmt_list[self.selected_track[0]].index(self.selected_pmt)
             print('selected pmt index is: ', int(label[3:]))
             self.buffer_data = Form.time_rebin_all_spec_data(
-                self.full_data, self.buffer_data.softBinWidth_ns)
+                self.full_data, self.buffer_data.softBinWidth_ns[self.selected_track[0]])
             self.setup_track(*self.selected_track)
             self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.set_clim(0, np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
@@ -1133,7 +1133,7 @@ class NMPLImagePlotSpecData(Node):
             self.selected_track = (tr_list.index(label), label)
             print('selected track index is: ', int(label[5:]))
             self.buffer_data = Form.time_rebin_all_spec_data(
-                self.full_data, self.buffer_data.softBinWidth_ns)
+                self.full_data, self.buffer_data.softBinWidth_ns[self.selected_track[0]])
             self.setup_track(*self.selected_track)
             self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.set_clim(0, np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
@@ -1169,10 +1169,10 @@ class NMPLImagePlotSpecData(Node):
             self.slider.valtext.set_text('{}'.format(bins_10ns_rounded))
             self.buffer_data = Form.time_rebin_all_spec_data(
                 self.full_data, bins_10ns_rounded)
-            self.buffer_data.softBinWidth_ns = bins_10ns_rounded
+            self.buffer_data.softBinWidth_ns[self.selected_track[0]] = bins_10ns_rounded
             for tr_ind, tr_name in enumerate(self.buffer_data.track_names):
                 bins = self.full_data.t[tr_ind].size // bins_to_combine
-                print('new length: ', bins, self.buffer_data.softBinWidth_ns)
+                print('new length: ', bins, self.buffer_data.softBinWidth_ns[self.selected_track[0]])
                 delay_ns = self.full_data.t[tr_ind][0]
                 self.buffer_data.t[tr_ind] = np.arange(delay_ns, bins * bins_10ns_rounded + delay_ns, bins_10ns_rounded)
             self.setup_track(*self.selected_track)
@@ -1192,7 +1192,7 @@ class NMPLImagePlotSpecData(Node):
                 print('start is called')
                 track_ind, track_name = (0, 'track0')
                 self.selected_track = (track_ind, track_name)
-                bin_width = self.buffer_data.softBinWidth_ns
+                bin_width = self.buffer_data.softBinWidth_ns[self.selected_track[0]]
                 self.selected_pmt_ind = self.buffer_data.active_pmt_list[self.selected_track[0]].index(self.selected_pmt)
                 self.setup_track(*self.selected_track)  # setup track with
                 if self.radio_buttons_pmt is None:
@@ -1223,7 +1223,7 @@ class NMPLImagePlotSpecData(Node):
             self.full_data = deepcopy(data)
             # self.buffer_data = deepcopy(data)
             ret = Form.time_rebin_all_spec_data(
-                self.full_data, self.full_data.softBinWidth_ns)
+                self.full_data, self.full_data.softBinWidth_ns[self.selected_track[0]])
             self.buffer_data = ret  # here t will have different dimension than nOfBins
             if first_call:
                 self.start()
