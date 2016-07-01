@@ -14,23 +14,24 @@ import Service.AnalysisAndDataHandling.tildaPipeline as TP
 from Measurement.XMLImporter import XMLImporter as XmlImp
 import Application.Config as Cfg
 import MPLPlotter
+from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtCore
 import sys
 import os
 
 class DisplayData:
     def __init__(self, file, x_as_volt=False):
         self.pipe = None
+        self.gui = None
         self.file = None
         self.fig = None
-        self.cid = None
         self.spec = None
         self.x_as_volt = x_as_volt
         self.load_spectra(file)
         self.select_pipe()
         self.feed_loaded_spec()
-        self.clear_pipe()
+        # self.clear_pipe()  # for now i don't want to save here.
 
     def load_spectra(self, file):
         self.file = file
@@ -39,9 +40,9 @@ class DisplayData:
     def select_pipe(self):
         if self.spec.seq_type in ['trs', 'trsdummy', 'tipa', 'tipadummy']:
             print('loading time resolved spectrum: ', self.file)
-            self.pipe = TP.time_resolved_display(self.file)
+            self.gui = TRSLivePlotWindowUi(self.file, self)
+            self.pipe = TP.time_resolved_display(self.file, self.gui.callbacks)
             self.pipe.start()
-            self.fig = MPLPlotter.get_current_figure()
         else:
             print('sorry, only resolved spectra currently supported')
 
@@ -51,11 +52,16 @@ class DisplayData:
     def clear_pipe(self):
         self.pipe.clear()
 
-    def con_close_event(self):
-        self.cid = self.fig.canvas.mpl_connect('close_event', self.close_spec)
+    def bring_to_focus(self):
+        window = self.gui
+        # this will remove minimized status
+        # and restore window with keeping maximized/normal state
+        window.setWindowState(window.windowState() & ~QtCore.Qt.WindowMinimized | QtCore.Qt.WindowActive)
 
-    def close_spec(self, event):
-        self.fig.canvas.mpl_disconnect(self.cid)
+        # this will activate the window
+        window.activateWindow()
+
+    def close_live_plot_win(self):
         Cfg._main_instance.close_spectra_in_main(self.file)
 
 

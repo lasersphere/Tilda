@@ -50,6 +50,9 @@ class Main(QtCore.QObject):
         # pyqtSignal for sending the scan progress to the gui while scanning.
         self.scan_prog_call_back_sig_gui = None
         self.scan_prog_call_back_sig_pipeline.connect(self.update_scan_progress)
+        # tuple of three callbacks which are needed for the live plot gui
+        #  and which are emitted from the pipeline. Therefore those must be available when initialising the pipeline.
+        self.live_plot_callback_tuples = None
 
         self.scan_main = ScanMain()
         self.iso_scan_process = None
@@ -73,7 +76,7 @@ class Main(QtCore.QObject):
 
         try:
             # pass
-            self.work_dir_changed('D:/lala')
+            self.work_dir_changed('E:/lala')
             # self.work_dir_changed('C:/temp108')
             # self.work_dir_changed('E:\TildaDebugging')
         except Exception as e:
@@ -212,6 +215,19 @@ class Main(QtCore.QObject):
         """
         self.main_ui_status_call_back_signal = None
 
+    def gui_live_plot_subscribe(self, callback_tuple_from_live_plot_win):
+        """
+        a liveplot gui can pass the three needed callbacks to the main here.
+        the main will use them wehn initialising the pipeline.
+        the pipeline will then emit the callbacks as neede.
+        :param callback_tuple_from_live_plot_win: tuple, (new_data_callback, new_track_callback, save_callback)
+        See LiveDataPlottingUi for details.
+        """
+        self.live_plot_callback_tuples = callback_tuple_from_live_plot_win
+
+    def gui_live_plot_unsubscribe(self):
+        self.live_plot_callback_tuples = None
+
     def send_state(self):
         """
         if a gui is subscribed via a call back signal in self.main_ui_status_call_back_signal.
@@ -255,9 +271,10 @@ class Main(QtCore.QObject):
         try:
             if file in self.displayed_data.keys():
                 print('already loaded')
+                self.displayed_data[file].bring_to_focus()
                 return None
             self.displayed_data[file] = DisplayData(file)
-            self.displayed_data[file].con_close_event()
+            # self.displayed_data[file].con_close_event()
         except Exception as e:
             logging.error('Exception while loading file %s, exception is: %s' % (file, str(e)))
 
@@ -508,7 +525,8 @@ class Main(QtCore.QObject):
         iso_name = self.scan_progress['activeIso']
         is_this_first_track = len(self.scan_progress['completedTracks']) == 0
         if is_this_first_track:  # initialise the pipeline on first track
-            self.scan_main.init_pipeline(self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline)
+            self.scan_main.init_pipeline(
+                self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline, self.live_plot_callback_tuples)
         active_track_num = self.scan_progress['activeTrackNum']
         self.scan_main.prep_track_in_pipe(active_track_num, active_track_num)
         if self.scan_main.start_measurement(self.scan_pars[iso_name], active_track_num):

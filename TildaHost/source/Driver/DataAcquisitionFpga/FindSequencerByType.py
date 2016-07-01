@@ -15,7 +15,7 @@ def ret_seq_instance_of_type(seq_type):
             from Driver.DataAcquisitionFpga.ContinousSequencer import ContinousSequencer as Cs
             return Cs()
         except Exception:
-            print('error: could not find hardware for continous sequencer (cs), starting dummy')
+            print('error: could not find hardware for continous sequencer (cs), starting remotedummy')
             return ret_seq_instance_of_type('csdummy')
     elif seq_type == 'trs':
         try:

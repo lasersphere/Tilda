@@ -22,14 +22,14 @@ from polliPipe.node import Node
 from polliPipe.pipeline import Pipeline
 
 
-def find_pipe_by_seq_type(scan_dict, callback_sig):
+def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples):
     seq_type = scan_dict['isotopeData']['type']
     if seq_type == 'cs' or seq_type == 'csdummy':
         logging.debug('starting pipeline of type: cs')
         return CsPipe(scan_dict, callback_sig)
     elif seq_type == 'trs' or seq_type == 'trsdummy':
         logging.debug('starting pipeline of type: trs')
-        return TrsPipe(scan_dict, callback_sig)
+        return TrsPipe(scan_dict, callback_sig, live_plot_callbacks=live_plot_callback_tuples)
     elif seq_type == 'kepco':
         logging.debug('starting pipeline of type: kepco')
         return kepco_scan_pipe(scan_dict, callback_sig)
@@ -37,7 +37,7 @@ def find_pipe_by_seq_type(scan_dict, callback_sig):
         return None
 
 
-def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True):
+def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plot_callbacks=None):
     """
     Pipeline for the dataflow and analysis of one Isotope using the time resolved sequencer.
     Mutliple Tracks are supported.
@@ -60,17 +60,10 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True):
 
     walk = walk.attach(TN.NSortedTrsArraysToSpecData(x_as_voltage))
 
-    walk = walk.attach(TN.NMPLImagePlotAndSaveSpecData(0))
+    walk = walk.attach(TN.NMPLImagePlotAndSaveSpecData(0, *live_plot_callbacks))
 
     compl_tr_br = walk.attach(TN.NCheckIfTrackComplete())
     compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
-
-    # meas_compl_br = walk.attach(TN.NCheckIfMeasurementComplete())
-    # walk = walk.attach(TN.NSaveAllTracks())
-    # #
-    # walk = walk.attach(TN.NTRSProjectize())
-    # walk = walk.attach(TN.NSaveProjection())
-    # walk = walk.attach(SN.NPrint())
 
     return pipe
 
@@ -290,7 +283,7 @@ def tilda_passive_pipe(initial_scan_pars, raw_callback, steps_scans_callback):
     return pipe
 
 
-def time_resolved_display(filepath):
+def time_resolved_display(filepath, liveplot_callbacks):
     """
     pipeline for displaying a time resolved spectra.
     feed only time resolved specdata to it!
@@ -306,7 +299,7 @@ def time_resolved_display(filepath):
     # path of file is used mainly for the window title.
     walk = start.attach(SN.NPrint())
     # walk = walk.attach(TN.NMPLImagePlotSpecData(0, dataPath))
-    walk = walk.attach(TN.NMPLImagePlotAndSaveSpecData(0))
-    walk = walk.attach(TN.NMPlDrawPlot())
+    walk = walk.attach(TN.NMPLImagePlotAndSaveSpecData(0, *liveplot_callbacks))
+    # walk = walk.attach(TN.NMPlDrawPlot())
 
     return pipe

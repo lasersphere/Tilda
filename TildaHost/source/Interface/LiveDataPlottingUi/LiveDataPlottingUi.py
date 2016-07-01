@@ -14,21 +14,39 @@ from copy import deepcopy
 from PyQt5 import QtWidgets, Qt, QtCore
 from Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveDataPlotting
 import TildaTools as TiTs
+from Measurement.XMLImporter import XMLImporter
+import Service.FileOperations.FolderAndFileHandling as FileHandl
+import Application.Config as Cfg
 
 
 class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting):
-    def __init__(self, full_file_path, parent_node):
+    # these callbacks should be called from the pipeline:
+    # for incoming new data:
+    new_data_callback = QtCore.pyqtSignal(XMLImporter)
+    # if a new track is started call:
+    # the tuple is of form: ((tr_ind, tr_name), (pmt_ind, pmt_name))
+    new_track_callback = QtCore.pyqtSignal(tuple)
+    # when teh pipeline wants to save, this is emitted and it send the pipeData as a dict
+    save_callback = QtCore.pyqtSignal(dict)
+
+    def __init__(self, full_file_path='', parent=None):
         super(TRSLivePlotWindowUi, self).__init__()
 
         self.setupUi(self)
         self.show()
         self.setWindowTitle('plot win:     ' + full_file_path)
-        self.parent_node = parent_node
 
         self.x_label_sum = 'DAC Volt [V]'
         self.full_file_path = full_file_path
 
-        self.spec_data = None
+        self.parent = parent
+
+        self.spec_data = None  # spec_data to work on.
+        self.storage_data = None  # will not be touched except when gating before saving.
+        ''' connect callbacks: '''
+        #bundle callbacks:
+        self.callbacks = (self.new_data_callback, self.new_track_callback, self.save_callback)
+        self.subscribe_to_main()
 
         ''' sum related '''
         self.add_sum_plot()
@@ -76,12 +94,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.widget_tres_plot)
         self.tres_v_layout.addWidget(self.tres_toolbar)
         self.tres_v_layout.addWidget(self.tres_canv)
-        self.pushButton_save_after_scan.clicked.connect(self.parent_node.save)
+        self.pushButton_save_after_scan.clicked.connect(self.save)
         self.widget_tres_plot.setLayout(self.tres_v_layout)
 
-    def setup_new_track(self, tr_tpl, sc_tpl):
-        self.tres_sel_tr_ind, self.tres_sel_tr_name = tr_tpl
-        self.tres_sel_sc_ind, self.tres_sel_sc_name = sc_tpl
+    def setup_new_track(self, rcv_tpl):
+        self.tres_sel_tr_ind, self.tres_sel_tr_name = rcv_tpl[0]
+        self.tres_sel_sc_ind, self.tres_sel_sc_name = rcv_tpl[1]
         self.reset_plots(True)
 
     def new_data(self, spec_data):
@@ -90,6 +108,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         try:
             self.spec_data = deepcopy(spec_data)
+            self.storage_data = deepcopy(spec_data)
             self.sum_scaler_changed(0)
             self.update_gates_list()
             self.gate_data(self.spec_data, plot_bool=False)
@@ -337,6 +356,28 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         while self.tableWidget_gates.rowCount() > 0:
             self.tableWidget_gates.removeRow(0)
         logging.debug('livePlotUi, row count after reset of table: ', self.tableWidget_gates.rowCount())
+
+    ''' saving '''
+    def save(self, pipedata_dict):
+        self.storage_data.softw_gates = self.extract_all_gates_from_gui()
+        self.gate_data(self.storage_data)
+        FileHandl.save_spec_data(self.storage_data, pipedata_dict)
+
+    ''' closing '''
+    def closeEvent(self, *args, **kwargs):
+        self.unsubscribe_from_main()
+        if self.parent is not None:
+            self.parent.close_live_plot_win()
+
+    ''' subscription to main '''
+    def subscribe_to_main(self):
+        self.save_callback.connect(self.save)
+        self.new_track_callback.connect(self.setup_new_track)
+        self.new_data_callback.connect(self.new_data)
+        Cfg._main_instance.gui_live_plot_subscribe(self.callbacks)
+
+    def unsubscribe_from_main(self):
+        Cfg._main_instance.gui_live_plot_unsubscribe()
 # if __name__ == "__main__":
 #     app = QtWidgets.QApplication(sys.argv)
 #     ui = TRSLivePlotWindowUi()

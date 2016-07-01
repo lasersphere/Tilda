@@ -16,6 +16,7 @@ from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 from Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
 from Interface.TildaPassiveUi.TildaPassiveUi import TildaPassiveUi
 from Interface.DmmUi.DmmUi import DmmLiveViewUi
+from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
 import MPLPlotter as MPlPlotter
 
 import Application.Config as Cfg
@@ -40,6 +41,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.simple_counter_gui = None
         self.tilda_passive_gui = None
         self.dmm_live_view_win = None
+        self.live_plot_win = None  # one active live plot window for displaying results from pipeline
 
         self.actionWorking_directory.triggered.connect(self.choose_working_dir)
         self.actionVersion.triggered.connect(self.open_version_win)
@@ -204,6 +206,12 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         else:
             self.raise_win_to_front(self.dmm_live_view_win)
 
+    def open_live_plot_win(self):
+        if self.live_plot_win is None:
+            self.live_plot_win = TRSLivePlotWindowUi(parent=self)
+        else:
+            self.raise_win_to_front(self.live_plot_win)
+
     def raise_win_to_front(self, window):
         # this will remove minimized status
         # and restore window with keeping maximized/normal state
@@ -230,6 +238,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def close_dmm_live_view_win(self):
         self.dmm_live_view_win = None
+
+    def close_live_plot_win(self):
+        self.live_plot_win = None
 
     def closeEvent(self, *args, **kwargs):
         for win in self.act_scan_wins:
@@ -267,3 +278,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 self.dmm_live_view_win.close()
         except Exception as e:
             logging.error('error while closing dmm_live_view_window, exception is: ' + str(e))
+        try:
+            if self.live_plot_win is not None:
+                self.live_plot_win.close()
+        except Exception as e:
+            logging.error('error while closing dmm_live_view_window, exception is: ' + str(e))
+

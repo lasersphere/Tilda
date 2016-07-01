@@ -47,8 +47,8 @@ class ScanMain:
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
         self.prepare_dmms_for_scan(scan_dict['measureVoltPars'].get('dmms', {}))
 
-    def init_pipeline(self, scan_dict, callback_sig=None):
-        self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
+    def init_pipeline(self, scan_dict, callback_sig=None, live_plot_callback_tuples=None):
+        self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples)
 
     def measure_offset_pre_scan(self, scan_dict):
         """

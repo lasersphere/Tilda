@@ -27,7 +27,6 @@ from Service.ProgramConfigs import Programs as Progs
 from polliPipe.node import Node
 from Spectra.Straight import Straight
 from SPFitter import SPFitter
-from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
 
 
 """ multipurpose Nodes: """
@@ -1249,34 +1248,30 @@ class NMPLImagePlotSpecData(Node):
 
 
 class NMPLImagePlotAndSaveSpecData(Node):
-    def __init__(self, pmt_num):
-        self.gui = None
+    def __init__(self, pmt_num, new_data_callback, new_track_callback, save_callback):
         super(NMPLImagePlotAndSaveSpecData, self).__init__()
         self.type = 'MPLImagePlotSpecData2'
         self.selected_pmt = pmt_num  # for now pmt name should be pmt_ind
         self.stored_data = None
+        self.new_data_callback = new_data_callback
+        self.new_track_callback = new_track_callback
+        self.save_callback = save_callback
 
     def start(self):
-        path = self.Pipeline.pipeData['pipeInternals']['activeXmlFilePath']
-        if self.gui is None:
-            self.gui = TRSLivePlotWindowUi(path, self)
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        self.gui.setup_new_track((track_ind, track_name), (int(self.selected_pmt), self.selected_pmt))
+        self.new_track_callback.emit(((track_ind, track_name), (int(self.selected_pmt), self.selected_pmt)))
 
     def processData(self, data, pipeData):
-        self.gui.new_data(data)
-        # print('plot is updated')
-        self.stored_data = data
-        self.stored_data.softw_gates = self.gui.extract_all_gates_from_gui()
-        self.stored_data = TildaTools.gate_specdata(self.stored_data)
-        return self.stored_data
+        self.new_data_callback.emit(deepcopy(data))
+        # now there is no chance to get the gates from gui.
+        return data
 
     def clear(self):
         self.save()
         # pass
 
     def save(self):
-        Filehandle.save_spec_data(self.stored_data, self.Pipeline.pipeData)
+        self.save_callback.emit(deepcopy(self.Pipeline.pipeData))
 
 
 """ specdata fitting nodes """
