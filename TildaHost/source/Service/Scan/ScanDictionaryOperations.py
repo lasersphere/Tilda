@@ -115,7 +115,7 @@ def add_missing_voltages(scan_dict):
                                                       sub_dict['dacStepSize18Bit'],
                                                       sub_dict['nOfSteps'])
             sub_dict.update(dacStartVoltage=VCon.get_voltage_from_18bit(sub_dict['dacStartRegister18Bit']))
-            sub_dict.update(dacStepsizeVoltage=VCon.get_voltage_from_18bit(sub_dict['dacStepSize18Bit'] + int(2 ** 17)))
+            sub_dict.update(dacStepsizeVoltage=VCon.get_stepsize_in_volt_from_18bit(sub_dict['dacStepSize18Bit']))
             sub_dict.update(dacStopVoltage=VCon.get_voltage_from_18bit(dac_stop_18bit))
             sub_dict.update(dacStopRegister18Bit=dac_stop_18bit)
     return scan_dict

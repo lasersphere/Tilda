@@ -251,12 +251,15 @@ def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
             start = scan_dict[tr_name]['dacStartVoltage']
             stop = scan_dict[tr_name]['dacStopVoltage']
             step = scan_dict[tr_name]['dacStepsizeVoltage']
-            x_tr = np.arange(start, stop + step, step)
         else:
             start = scan_dict[tr_name]['dacStartRegister18Bit']
             step = scan_dict[tr_name]['dacStepSize18Bit']
             stop = scan_dict[tr_name].get('dacStopRegister18Bit', start + step * (steps - 1))
-            x_tr = np.arange(start, stop + step, step)
+        x_tr, new_step = np.linspace(start, stop, steps, retstep=True)
+        # np.testing.assert_allclose(
+        #     new_step, step, rtol=1e-5, err_msg='error while creating x axis from file, stepsizes do not match.')
+        logging.debug('for the new x axis the new stepsize is: %s, the old one was: %s and the difference is: %s'
+                      % (new_step, step, new_step - step))
         x_arr.append(x_tr)
     return x_arr
 

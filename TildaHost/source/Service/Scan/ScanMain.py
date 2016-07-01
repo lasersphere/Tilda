@@ -112,7 +112,7 @@ class ScanMain:
             self.sequencer = FindSeq.ret_seq_instance_of_type(seq_type)
         else:
             if seq_type == 'kepco':
-                if self.sequencer.type not in DftScan.sequencer_types_list:
+                if 'dummy' in self.sequencer.type or self.sequencer.type not in DftScan.sequencer_types_list:
                     logging.debug('loading cs in order to perform kepco scan')
                     self.deinit_fpga()
                     self.sequencer = FindSeq.ret_seq_instance_of_type('cs')
