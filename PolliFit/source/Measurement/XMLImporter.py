@@ -43,21 +43,24 @@ class XMLImporter(SpecData):
         self.seq_type = scandict['isotopeData']['type']
 
         self.accVolt = scandict['isotopeData']['accVolt']
+        self.offset = None
         dmms_dict = scandict['measureVoltPars'].get('dmms', None)
         if dmms_dict is not None:
+            offset = []
+            acc_volt = []
             for dmm_name, dmm_dict in dmms_dict.items():
-                offset = []
-                acc_volt = []
                 for key, val in dmm_dict.items():
                     if key == 'preScanRead':
+                        if isinstance(val, str):
+                            val = float(val)
                         if dmm_dict.get('assignment') == 'offset':
                             offset.append(val)
                         elif dmm_dict.get('assignment') == 'accVolt':
                             acc_volt.append(val)
-                if np.any(offset):
-                    self.offset = np.mean(offset)  # will be overwritten below!
-                if np.any(acc_volt):
-                    self.accVolt = np.mean(acc_volt)
+            if np.any(offset):
+                self.offset = np.mean(offset)  # will be overwritten below!
+            if np.any(acc_volt):
+                self.accVolt = np.mean(acc_volt)
         self.nrScalers = []
         self.active_pmt_list = []
         # if self.seq_type in ['tipa', 'tipadummy', 'kepco']:
@@ -90,9 +93,10 @@ class XMLImporter(SpecData):
             self.nrScalers.append(nOfScalers)
             self.stepSize.append(dacStepSize18Bit)
             self.col = track_dict['colDirTrue']
-            self.offset = track_dict['postAccOffsetVolt']
-            if track_dict.get('postAccOffsetVoltControl') == 0:
-                self.offset = 0
+            if self.offset is None:
+                self.offset = track_dict['postAccOffsetVolt']
+                if track_dict.get('postAccOffsetVoltControl') == 0:
+                    self.offset = 0
 
             if self.seq_type in ['trs', 'tipa', 'trsdummy']:
                 self.softBinWidth_ns = track_dict.get('softBinWidth_ns', 10)
@@ -200,3 +204,9 @@ class XMLImporter(SpecData):
 # import Service.Scan.draftScanParameters as dft
 # test = XMLImporter(None, False, dft.draftScanDict)
 # print(test.x)
+
+# from file:
+# for file_num in range(169, 172):
+#     test_file = 'D:\lala\sums\Test_kepco_%s.xml' % file_num
+#     file_xml = XMLImporter(test_file, False)
+#     print(file_num, 'offset: ', file_xml.offset, 'accVolt: ', file_xml.accVolt)
