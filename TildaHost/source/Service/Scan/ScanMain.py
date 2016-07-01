@@ -45,7 +45,7 @@ class ScanMain:
                      ' of type: ' + scan_dict['isotopeData']['type'])
         # self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
-        self.prepare_dmms_for_scan(scan_dict['measureVoltPars'].get('dmms', {}))
+        self.set_dmm_to_pre_scan_config('all')
 
     def init_pipeline(self, scan_dict, callback_sig=None):
         self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
@@ -59,7 +59,7 @@ class ScanMain:
         """
         track, track_num_lis = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
         self.fpga_start_offset_measurement(scan_dict, track_num_lis[0])  # will be the first track in list.
-        self.digital_multi_meter.software_trigger_dmm('all')
+        self.digital_multi_meter.software_trigger_dmm('all')  # send a software trigger to all dmms
 
     ''' post acceleration related functions: '''
 
@@ -343,6 +343,14 @@ class ScanMain:
                 self.prepare_dmm(dmm_conf_dict.get('type', ''), dmm_conf_dict.get('address', ''))
             self.setup_dmm_and_arm(dmm_name, dmm_conf_dict, False)
 
+
+    def set_dmm_to_pre_scan_config(self, dmm_name):
+        """
+        set the dmms to the settings for a pre scan measurement.
+        :param dmm_name: str, name of the dmm 'type_address'
+        """
+        self.digital_multi_meter.start_pre_configured_meas(dmm_name, 'pre_scan')
+
     def setup_dmm_and_arm(self, dmm_name, config_dict, reset_dev):
         """
         function to load a configuration dictionary to a dmm and prepare this for a measurement.
@@ -391,7 +399,7 @@ class ScanMain:
         this will configure the dmm and afterwards initiate the measurement directly.
         :param dmm_name: str, type 'all' for all active dmms
         """
-        self.digital_multi_meter.start_periodic_measurement(dmm_name)
+        self.digital_multi_meter.start_pre_configured_meas(dmm_name, 'periodic')
 
     def abort_dmm_measurement(self, dmm_name):
         """

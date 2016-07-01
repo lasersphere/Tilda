@@ -14,14 +14,14 @@ def ret_seq_instance_of_type(seq_type):
         try:
             from Driver.DataAcquisitionFpga.ContinousSequencer import ContinousSequencer as Cs
             return Cs()
-        except WindowsError:
+        except Exception:
             print('error: could not find hardware for continous sequencer (cs), starting dummy')
             return ret_seq_instance_of_type('csdummy')
     elif seq_type == 'trs':
         try:
             from Driver.DataAcquisitionFpga.TimeResolvedSequencer import TimeResolvedSequencer as Trs
             return Trs()
-        except WindowsError:
+        except Exception:
             print('error: could not find hardware for time resolved sequencer (trs), starting dummy')
             return ret_seq_instance_of_type('trsdummy')
     elif seq_type == 'csdummy':

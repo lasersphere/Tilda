@@ -75,22 +75,22 @@ class DMMControl:
         """
         self.dmm[dmm_name].initiate_measurement()
 
-    def start_periodic_measurement(self, dmm_name):
+    def start_pre_configured_meas(self, dmm_name, pre_config_name):
         """
         set the dmm to a predefined configuration in that it reads out a value every now and then.
         this will configure the dmm and afterwards initiate the measurement directly.
         """
-        print('starting periodic meas on: ', dmm_name)
+        print('starting %s meas on: %s' % (pre_config_name, dmm_name))
         if dmm_name == 'all':
             for dmm_name in list(self.dmm.keys()):
-                self.dmm[dmm_name].set_to_periodic_readout()
+                self.dmm[dmm_name].set_to_pre_conf_setting(pre_config_name)
         elif dmm_name in list(self.dmm.keys()):
-            self.dmm[dmm_name].set_to_periodic_readout()
+            self.dmm[dmm_name].set_to_pre_conf_setting(pre_config_name)
 
     def stopp_measurement(self, dmm_name):
         """
-
-        :param dmm_name:
+        aborts the measurement on the dmm
+        :param dmm_name:str, name of dev = type_addr
         :return:
         """
         if dmm_name == 'all':

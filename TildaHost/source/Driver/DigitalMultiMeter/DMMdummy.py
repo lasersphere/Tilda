@@ -10,8 +10,60 @@ Module representing a dummy digital multimeter with all required public function
 
 """
 import numpy as np
+from enum import Enum
 import datetime
 from copy import deepcopy
+
+
+class DMMdummyPreConfigs(Enum):
+    initial = {
+            'range': 10.0,
+            'resolution': 7.5,
+            'triggerCount': 5,
+            'sampleCount': 5,
+            'autoZero': -1,
+            'triggerSource': 'pxi_trig_3',
+            'sampleInterval': -1,
+            'powerLineFrequency': 50.0,
+            'triggerDelay_s': 0,
+            'triggerSlope': 'rising',
+            'measurementCompleteDestination': 'pxi_trig_4',
+            'highInputResistanceTrue': True,
+            'assignment': 'offset',
+            'accuracy': (None, None)
+        }
+    periodic = {
+            'range': 10.0,
+            'resolution': 6.5,
+            'triggerCount': 0,
+            'sampleCount': 0,
+            'autoZero': -1,
+            'triggerSource': 'eins',
+            'sampleInterval': -1,
+            'powerLineFrequency': 50.0,
+            'triggerDelay_s': 0,
+            'triggerSlope': 'rising',
+            'measurementCompleteDestination': 'zwei',
+            'highInputResistanceTrue': True,
+            'assignment': 'offset',
+            'accuracy': (None, None)
+        }
+    pre_scan = {
+            'range': 10.0,
+            'resolution': 6.5,
+            'triggerCount': 0,
+            'sampleCount': 0,
+            'autoZero': -1,
+            'triggerSource': 'softw_trigger',
+            'sampleInterval': -1,
+            'powerLineFrequency': 50.0,
+            'triggerDelay_s': 0,
+            'triggerSlope': 'rising',
+            'measurementCompleteDestination': 'zwei',
+            'highInputResistanceTrue': True,
+            'assignment': 'offset',
+            'accuracy': (None, None)
+        }
 
 
 class DMMdummy:
@@ -25,21 +77,7 @@ class DMMdummy:
         self.accuracy_range = 10 ** -4
 
         # default config dictionary for this type of DMM:
-        self.config_dict = {
-            'range': 10.0,
-            'resolution': 7.5,
-            'triggerCount': 5,
-            'sampleCount': 5,
-            'autoZero': -1,
-            'triggerSource': 'pxi_trig_3',
-            'sampleInterval': -1,
-            'powerLineFrequency': 50.0,
-            'triggerDelay_s': 0,
-            'triggerSlope': 'rising',
-            'measurementCompleteDestination': 'pxi_trig_4',
-            'highInputResistanceTrue': True,
-            'accuracy': (None, None)
-        }
+        self.config_dict = DMMdummyPreConfigs.initial.value
         self.get_accuracy()
         print(self.name, ' initialized')
 
@@ -100,29 +138,21 @@ class DMMdummy:
         self.state = 'aborted'
         pass
 
-    def set_to_periodic_readout(self):
+    def set_to_pre_conf_setting(self, pre_conf_name):
         """
-        set the dmm to a predefined configuration in that it reads out a value every now and then.
-        this will also initiate the measurement directly.
-        :return: None
+        this will set and arm the dmm for a pre configured setting.
+        :param pre_conf_name: str, name of the setting
+        :return:
         """
-        config_dict = {
-            'range': 10.0,
-            'resolution': 6.5,
-            'triggerCount': 0,
-            'sampleCount': 0,
-            'autoZero': -1,
-            'triggerSource': 'eins',
-            'sampleInterval': -1,
-            'powerLineFrequency': 50.0,
-            'triggerDelay_s': 0,
-            'triggerSlope': 'rising',
-            'measurementCompleteDestination': 'zwei',
-            'highInputResistanceTrue': True,
-            'accuracy': (None, None)
-        }
-        self.load_from_config_dict(config_dict, False)
-        self.initiate_measurement()
+        if pre_conf_name in DMMdummyPreConfigs.__members__:
+            config_dict = DMMdummyPreConfigs[pre_conf_name].value
+            config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
+            self.load_from_config_dict(config_dict, False)
+            self.initiate_measurement()
+        else:
+            print(
+                'error: could not set the preconfiguration: %s in dmm: %s, because the config does not exist'
+                % (pre_conf_name, self.name))
 
     ''' self calibration '''
 
@@ -145,7 +175,7 @@ class DMMdummy:
         Use the indicator_or_control_bool to determine if this is only meant for displaying or also for editing.
         True for control
         :return:dict, tuples:
-         (name, indicator_or_control_bool, type, certain_value_list)
+         (name, indicator_or_control_bool, type, certain_value_list, current_value_in_config_dict)
         """
         config_dict = {
             'range': ('range', True, float, [-3.0, -2.0, -1.0, 0.1, 1.0, 10.0, 100.0, 1000.0], self.config_dict['range']),
@@ -167,7 +197,8 @@ class DMMdummy:
                                                self.config_dict['measurementCompleteDestination']),
             'highInputResistanceTrue': ('high input resistance', True, bool, [False, True]
                                         , self.config_dict['highInputResistanceTrue']),
-            'accuracy': ('accuracy (reading, range)', False, tuple, [], self.config_dict['accuracy'])
+            'accuracy': ('accuracy (reading, range)', False, tuple, [], self.config_dict['accuracy']),
+            'assignment': ('assignment', True, str, ['offset', 'accVolt'], self.config_dict['assignment'])
         }
         return config_dict
 
@@ -177,3 +208,7 @@ class DMMdummy:
         acc_tuple = (10 ** -4, 10 ** -3)
         self.config_dict['accuracy'] = acc_tuple
         return acc_tuple
+
+
+# dmm = DMMdummy()
+# dmm.set_to_pre_conf_setting('periodic')

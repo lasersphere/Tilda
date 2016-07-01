@@ -50,9 +50,9 @@ class XMLImporter(SpecData):
                 acc_volt = []
                 for key, val in dmm_dict.items():
                     if key == 'preScanRead':
-                        if dmm_dict.get('measure') == 'offset':
+                        if dmm_dict.get('assignment') == 'offset':
                             offset.append(val)
-                        elif dmm_dict.get('measure') == 'accVolt':
+                        elif dmm_dict.get('assignment') == 'accVolt':
                             acc_volt.append(val)
                 if np.any(offset):
                     self.offset = np.mean(offset)  # will be overwritten below!
