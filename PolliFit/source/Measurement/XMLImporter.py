@@ -132,13 +132,19 @@ class XMLImporter(SpecData):
                 dmms_dict = meas_volt_dict['dmms']
                 dmm_names = list(sorted(dmms_dict.keys()))
                 self.nrScalers = [len(dmm_names)]
+                self.active_pmt_list = [dmm_names]
                 cts_shape = (self.nrScalers[0], nOfsteps)
                 dmm_volt_array = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape, np.float)
+                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape, np.float, default_val=np.nan)
                 self.cts.append(dmm_volt_array)
                 err = []
                 for ind, dmm_name in enumerate(dmm_names):
-                    read_acc, range_acc = eval(dmms_dict[dmm_name]['accuracy'])
+                    read_acc = 1
+                    range_acc = 1
+                    if isinstance(dmms_dict[dmm_name]['accuracy'], str):
+                        read_acc, range_acc = eval(dmms_dict[dmm_name]['accuracy'])
+                    elif isinstance(dmms_dict[dmm_name]['accuracy'], tuple):
+                        read_acc, range_acc = dmms_dict[dmm_name]['accuracy']
                     err.append(dmm_volt_array[ind] * read_acc + range_acc)
                 self.err.append(err)
 

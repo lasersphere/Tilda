@@ -45,7 +45,7 @@ class ScanMain:
                      ' of type: ' + scan_dict['isotopeData']['type'])
         # self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
-        self.set_dmm_to_pre_scan_config('all')
+        self.prepare_dmms_for_scan(scan_dict['measureVoltPars'].get('dmms', {}))
 
     def init_pipeline(self, scan_dict, callback_sig=None):
         self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
@@ -326,11 +326,15 @@ class ScanMain:
         name = self.digital_multi_meter.find_dmm_by_type(type_str, address)
         return name
 
-    def prepare_dmms_for_scan(self, dmms_conf_dict):
+    def prepare_dmms_for_scan(self, dmms_conf_dict, pre_scan_meas=False):
         """
         call this pre scan in order to configure all dmms according to the
         dmms_conf_dict, which is located in scan_dict['measureVoltPars']['dmms].
         each dmm will be resetted before starting.
+        set pre_scan_meas to True to ignore the contents of the current config dict and
+         load from pre config
+        :param pre_scan_meas: bool, dft=False, set this to True,
+         to just load the dmms from config dict and than start the pre scan measurement
         :param dmms_conf_dict: dict, key is name of dmm,
          val is dict for the corresponding dmm
         """
@@ -341,7 +345,10 @@ class ScanMain:
             if dmm_name not in active_dmms:
                 logging.warning('%s was not initialized yet, will do now.' % dmm_name)
                 self.prepare_dmm(dmm_conf_dict.get('type', ''), dmm_conf_dict.get('address', ''))
-            self.setup_dmm_and_arm(dmm_name, dmm_conf_dict, False)
+            if pre_scan_meas:
+                self.set_dmm_to_pre_scan_config('all')
+            else:
+                self.setup_dmm_and_arm(dmm_name, dmm_conf_dict, False)
 
 
     def set_dmm_to_pre_scan_config(self, dmm_name):

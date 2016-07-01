@@ -811,24 +811,8 @@ class NStartNodeKepcoScan(Node):
             return 1
 
     def start(self):
-        self.spec_data = SpecData()
-        self.spec_data.path = self.Pipeline.pipeData['pipeInternals']['activeXmlFilePath']
-        self.spec_data.type = self.Pipeline.pipeData['isotopeData']['type']
-        # should be one track only for kepcoScan:
-        tracks, tr_num_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
-        self.spec_data.nrLoops = [self.Pipeline.pipeData['track' + str(tr_num)]['nOfScans']
-                                  for tr_num in tr_num_list]
-        self.spec_data.nrTracks = tracks
-        # get all dmms which are used during scan and sort them into a list.
-        # Therefore the index of the dmm is fixed!
-        n_of_dmms = len(self.dmms)  # count the number of dmms
-        n_of_steps = [self.Pipeline.pipeData['track' + str(tr_num)]['nOfSteps']
-                      for tr_ind, tr_num in enumerate(tr_num_list)]
-
-        self.spec_data.x = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=self.x_as_voltage)
-        self.spec_data.cts = [np.full((n_of_dmms, n_of_steps[tr_ind]), np.nan, dtype=np.double)
-                              for tr_ind, tr_num in enumerate(tr_num_list)]
-        self.spec_data.err = deepcopy(self.spec_data.cts)
+        self.spec_data = XMLImporter(None, self.x_as_voltage, self.Pipeline.pipeData)
+        # self.spec_data.cts[0] = np.full(self.spec_data.cts[0].shape, np.nan, dtype=np.double)
 
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']

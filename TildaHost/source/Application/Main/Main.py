@@ -73,7 +73,7 @@ class Main(QtCore.QObject):
 
         try:
             # pass
-            self.work_dir_changed('E:/lala')
+            self.work_dir_changed('D:/lala')
             # self.work_dir_changed('C:/temp108')
             # self.work_dir_changed('E:\TildaDebugging')
         except Exception as e:
@@ -167,7 +167,7 @@ class Main(QtCore.QObject):
             if self.m_state[0] is MainState.idle:
                 self.m_state = req_state, val
                 self.send_state()
-                logging.debug('changed state to %s', str(self.m_state[0].name))
+                logging.debug('main changed state to %s', str(self.m_state[0].name))
                 return True
             else:
                 if queue_if_not_idle:
@@ -413,10 +413,13 @@ class Main(QtCore.QObject):
         iso_name = self.scan_progress['activeIso']
         dmms_dict = self.scan_pars[iso_name]['measureVoltPars'].get('dmms', None)
         dmms_dict_is_none = dmms_dict is None
-        is_this_first_track = len(self.scan_progress['completedTracks']) == 0
-        if dmms_dict_is_none or is_this_first_track:
+        is_this_not_first_track = len(self.scan_progress['completedTracks']) != 0
+        if dmms_dict_is_none or is_this_not_first_track:
             # do not perform an offset measurement if no dmm is present. Proceed to load track
             # only perform offset measurement in first track!
+            print('skipping offset measurement, not first track: %s, dmm_dict_is_none: %s'
+                  % (is_this_not_first_track, dmms_dict_is_none))
+            print('completed tracks: ', self.scan_progress['completedTracks'])
             self.set_state(MainState.load_track)
         else:
             if first_call:

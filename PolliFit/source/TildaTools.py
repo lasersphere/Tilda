@@ -104,7 +104,8 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
     return trackd
 
 
-def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape, datatytpe=np.uint32, direct_parent_ele_str='data'):
+def xml_get_data_from_track(
+        root_ele, n_of_track, data_type, data_shape, datatytpe=np.uint32, direct_parent_ele_str='data', default_val=0):
     """
     Get Data From Track
     :param root_ele:  lxml.etree.Element, root of the xml tree
@@ -115,7 +116,7 @@ def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape, datatyt
     :return: Text
     """
     if root_ele is None:  # return an
-        return np.zeros(data_shape, dtype=datatytpe)
+        return np.full(data_shape, default_val, dtype=datatytpe)
     else:
         try:
             actTrack = root_ele.find('tracks').find('track' + str(n_of_track)).find(direct_parent_ele_str)
