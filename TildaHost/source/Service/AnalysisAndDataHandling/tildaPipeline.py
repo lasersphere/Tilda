@@ -43,6 +43,8 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     Mutliple Tracks are supported.
     always feed raw data.
     """
+    if live_plot_callbacks is None:
+        live_plot_callbacks = (None, None, None)
     start = Node()
     maintenance = start.attach(TN.NMPLCloseFigOnInit())
     # maintenance = maintenance.attach(TN.NAddWorkingTimeOnClear(True))

@@ -1259,11 +1259,14 @@ class NMPLImagePlotAndSaveSpecData(Node):
 
     def start(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        self.new_track_callback.emit(((track_ind, track_name), (int(self.selected_pmt), self.selected_pmt)))
+        if self.new_track_callback is not None:
+            self.new_track_callback.emit(((track_ind, track_name), (int(self.selected_pmt), self.selected_pmt)))
 
     def processData(self, data, pipeData):
-        self.new_data_callback.emit(deepcopy(data))
+        if self.new_data_callback is not None:
+            self.new_data_callback.emit(deepcopy(data))
         # now there is no chance to get the gates from gui.
+        self.stored_data = data
         return data
 
     def clear(self):
@@ -1271,7 +1274,11 @@ class NMPLImagePlotAndSaveSpecData(Node):
         # pass
 
     def save(self):
-        self.save_callback.emit(deepcopy(self.Pipeline.pipeData))
+        if self.save_callback is not None:  # saving is done by gui
+            self.save_callback.emit(deepcopy(self.Pipeline.pipeData))
+        else:  # no gui available
+            self.stored_data = TildaTools.gate_specdata(self.stored_data)
+            Filehandle.save_spec_data(self.stored_data, self.Pipeline.pipeData)
 
 
 """ specdata fitting nodes """
