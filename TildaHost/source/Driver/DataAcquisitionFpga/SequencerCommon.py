@@ -66,7 +66,7 @@ class Sequencer(FPGAInterfaceHandling):
         """
         currentState = int(self.getHeinzControlState())
         done = currentState == desired_state
-        logging.debug('switchbox, state: %s, desired state: %s, done: %s' % (currentState, desired_state, done))
+        # logging.debug('switchbox, state: %s, desired state: %s, done: %s' % (currentState, desired_state, done))
         return done, currentState, desired_state
 
     '''writing'''

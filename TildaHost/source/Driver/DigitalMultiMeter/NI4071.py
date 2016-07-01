@@ -571,9 +571,14 @@ class Ni4071:
         """
         self.dll.niDMM_Initiate(self.session)
         tries = 0
-        while self.readstatus()[1] != 0:
+        max_tries = 5
+        while self.readstatus()[1] != 0 and tries <= max_tries:
             tries += 1
-        logging.debug('successfully started measurement on Ni4071 after %s tries' % tries)
+        if self.readstatus()[1] == 0:
+            logging.debug('successfully started measurement on Ni4071 after %s tries' % tries)
+        else:
+            logging.error('error: could not started measurement on Ni4071 after %s tries' % tries)
+            logging.error('error: status of Ni4071 is: backlog: %s acquisition state: %s' % self.readstatus())
         self.state = 'measuring'
 
     def fetch_single_meas(self, max_time_ms=-1):

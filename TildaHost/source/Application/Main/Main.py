@@ -392,7 +392,7 @@ class Main(QtCore.QObject):
             self.scan_progress['activeTrackNum'] = active_track_num
             self.set_state(MainState.setting_switch_box, False)
         des_state = self.scan_pars[iso_name]['track' + str(active_track_num)]['postAccOffsetVoltControl']
-        logging.debug('desired state of hsb is: ' + str(des_state))
+        # logging.debug('desired state of hsb is: ' + str(des_state))
         done, currentState, desired_state = self.scan_main.post_acc_switch_box_is_set(des_state)
         if done:
             self.set_state(MainState.measure_offset_voltage, True)
