@@ -86,6 +86,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         self.spinBox.valueChanged.connect(self.rebin_data)
         self.checkBox.stateChanged.connect(self.apply_rebin_to_all_checkbox_changed)
+        self.checkBox_sum_zoom.stateChanged.connect(self.set_sum_zoomable)
+        self.checkBox_volt_line_zoom.stateChanged.connect(self.set_v_proj_zoomabel)
+
+        self.checkBox_sum_zoom.setCheckState(QtCore.Qt.Checked)
+        self.checkBox_volt_line_zoom.setCheckState(QtCore.Qt.Checked)
 
         ''' setup window size: '''
         self.resize(1024, 768)
@@ -133,6 +138,18 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.update_all_plots(self.spec_data)
         except Exception as e:
             print('error in liveplotterui while receiving new data: ', e)
+
+    def set_sum_zoomable(self, state):
+        if state == QtCore.Qt.Unchecked:
+            self.tres_axes['sum_proj'].set_navigate(False)
+        elif state == QtCore.Qt.Checked:
+            self.tres_axes['sum_proj'].set_navigate(True)
+
+    def set_v_proj_zoomabel(self, state):
+        if state == QtCore.Qt.Unchecked:
+            self.tres_axes['v_proj'].set_navigate(False)
+        elif state == QtCore.Qt.Checked:
+            self.tres_axes['v_proj'].set_navigate(True)
 
     ''' updating the plots from specdata '''
     def update_all_plots(self, spec_data, draw=True):
