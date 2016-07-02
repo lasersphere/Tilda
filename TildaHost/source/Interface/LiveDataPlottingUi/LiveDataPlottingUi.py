@@ -85,6 +85,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.tableWidget_gates.itemChanged.connect(self.handle_gate_table_change)
 
         self.spinBox.valueChanged.connect(self.rebin_data)
+        self.checkBox.stateChanged.connect(self.apply_rebin_to_all_checkbox_changed)
 
         ''' setup window size: '''
         self.resize(1024, 768)
@@ -416,7 +417,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.spinBox.blockSignals(False)
         if self.storage_data is not None:
             logging.debug('rebinning data to bins of  %s' % rebin_factor_ns)
-            self.spec_data = Form.time_rebin_all_spec_data(self.storage_data, rebin_factor_ns, self.tres_sel_tr_ind)
+            rebin_track = -1 if self.checkBox.isChecked() else self.tres_sel_tr_ind
+            self.spec_data = Form.time_rebin_all_spec_data(self.storage_data, rebin_factor_ns, rebin_track)
             print('softw_binwidth of full data: %s, of rebinned data: %s '
                   % (self.storage_data.softBinWidth_ns, self.spec_data.softBinWidth_ns))
             try:
@@ -427,6 +429,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             except Exception as e:
                 print('error while gating: ', e)
         # self.update_all_plots(self.spec_data)
+
+    def apply_rebin_to_all_checkbox_changed(self, state):
+        if state == 2:  # the checkbox is checked
+            # only rebin if true, otherwise anyhow individual gates are lost before
+            self.rebin_data(self.spinBox.value())
 
     ''' progress related '''
     def handle_progress_dict(self, progress_dict_from_main):
