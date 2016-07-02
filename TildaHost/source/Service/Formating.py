@@ -277,7 +277,7 @@ def rebin_single_track(tr_ind, tr_data, tr_list, return_data, scan_dict):
     return return_data
 
 
-def time_rebin_all_spec_data(full_data, software_bin_width_ns):
+def time_rebin_all_spec_data(full_data, software_bin_width_ns, track=-1):
     """
     use this function to perform a rebinning on the time axis.
     This means, alle bins within "bins_to_combine" will be summed up.
@@ -291,12 +291,24 @@ def time_rebin_all_spec_data(full_data, software_bin_width_ns):
     """
     bins = deepcopy(software_bin_width_ns)
     newdata = deepcopy(full_data)
-    newdata.time_res = []
-    for tr_ind, tr_data in enumerate(full_data.time_res):
-        newdata.time_res = rebin_single_track_spec_data(tr_data, newdata.time_res, bins)
+    if track == -1:
+        # newdata.time_res = []
+        for tr_ind, tr_data in enumerate(full_data.time_res):
+            newdata.time_res[tr_ind] = rebin_single_track_spec_data(tr_data, [], bins)
+            newdata.t[tr_ind] = time_axis_rebin(tr_ind, full_data.t, bins)
+            pmts, steps, bin_nums = newdata.time_res[tr_ind].shape
+            newdata.t_proj[tr_ind] = np.zeros((pmts, bin_nums))
+            full_data.softBinWidth_ns[tr_ind] = bins
+            newdata.softBinWidth_ns[tr_ind] = bins
+    else:
+        tr_ind = track
+        tr_data = newdata.time_res[tr_ind]
+        newdata.time_res[tr_ind] = rebin_single_track_spec_data(tr_data, [], bins)
         newdata.t[tr_ind] = time_axis_rebin(tr_ind, full_data.t, bins)
         pmts, steps, bin_nums = newdata.time_res[tr_ind].shape
         newdata.t_proj[tr_ind] = np.zeros((pmts, bin_nums))
+        full_data.softBinWidth_ns[tr_ind] = bins
+        newdata.softBinWidth_ns[tr_ind] = bins
     return newdata
 
 
@@ -310,7 +322,7 @@ def rebin_single_track_spec_data(tr_data, return_data, bin_width_10ns):
     new_tr_data = deepcopy(tr_data)
     for reps in range(bins_to_combine - 1):
         new_tr_data += np.roll(tr_data, -(reps + 1), axis=2)
-    return_data.append(new_tr_data[:, :, bin_ind])
+    return_data = new_tr_data[:, :, bin_ind]
     return return_data
 
 

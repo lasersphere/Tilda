@@ -36,6 +36,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def __init__(self, full_file_path='', parent=None):
         super(TRSLivePlotWindowUi, self).__init__()
 
+        self.pipedata_dict = None  # dict, containing all infos from the pipeline, will be passed to gui when save request is called from pipeline
         self.active_track_name = None  # str, name of the active track
         self.active_initial_scan_dict = None  # scan dict which is stored under the active iso name in the main
         self.active_file = None  # str, name of active file
@@ -79,12 +80,17 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         self.tres_image = None
         self.t_proj_line = None
-        self.resize(800, 600)
 
         self.tableWidget_gates.itemClicked.connect(self.handle_item_clicked)
         self.tableWidget_gates.itemChanged.connect(self.handle_gate_table_change)
 
         self.spinBox.valueChanged.connect(self.rebin_data)
+
+        ''' setup window size: '''
+        self.resize(1024, 768)
+        size_plt, size_table = self.splitter.sizes()
+        sum_size = size_plt + size_table
+        self.splitter.setSizes([sum_size * 9 // 10, sum_size // 10])
 
     '''setting up the plots (no data etc. written) '''
     def add_sum_plot(self):
@@ -121,6 +127,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.storage_data = deepcopy(spec_data)
             self.sum_scaler_changed(0)
             self.update_gates_list()
+            self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
             self.gate_data(self.spec_data, plot_bool=False)
             self.update_all_plots(self.spec_data)
         except Exception as e:
@@ -249,7 +256,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     ''' gating: '''
     def gate_data(self, spec_data, plot_bool=True):
-        self.spec_data = TiTs.gate_specdata(spec_data)
+        spec_data = TiTs.gate_specdata(spec_data)
         if plot_bool:
             self.update_all_plots(self.spec_data)
 
@@ -276,6 +283,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.tres_sel_tr_name = self.tableWidget_gates.item(item.row(), 0).text()
             self.tres_sel_sc_ind = int(self.tableWidget_gates.item(item.row(), 1).text())
             # print('new scaler, track: ', self.tres_sel_tr_ind, self.tres_sel_sc_ind)
+            self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
             self.reset_plots(True)
             self.update_tres_data(self.spec_data, True)
             self.update_projections(self.spec_data, True)
@@ -368,10 +376,17 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         logging.debug('livePlotUi, row count after reset of table: ', self.tableWidget_gates.rowCount())
 
     ''' saving '''
-    def save(self, pipedata_dict):
-        self.storage_data.softw_gates = self.extract_all_gates_from_gui()
-        self.gate_data(self.storage_data)
-        FileHandl.save_spec_data(self.storage_data, pipedata_dict)
+    def save(self, pipedata_dict=None):
+        if isinstance(pipedata_dict, bool):  # when pressing on save
+            pipedata_dict = None
+        if pipedata_dict is not None:
+            self.pipedata_dict = pipedata_dict
+        if self.pipedata_dict is not None:
+            self.storage_data.softw_gates = self.extract_all_gates_from_gui()
+            self.gate_data(self.storage_data, False)
+            FileHandl.save_spec_data(self.storage_data, self.pipedata_dict)
+        else:
+            print('could not save data, because it was not save from the scan process yet.')
 
     ''' closing '''
     def closeEvent(self, *args, **kwargs):
@@ -394,15 +409,24 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def rebin_data(self, rebin_factor_ns=None):
         if rebin_factor_ns is None:
             if self.active_initial_scan_dict is not None:
-                rebin_factor_ns = self.active_initial_scan_dict.get(self.active_track_name, {}).get('softBinWidth_ns', 10)
+                rebin_factor_ns = self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind]
+        rebin_factor_ns = rebin_factor_ns // 10 * 10
+        self.spinBox.blockSignals(True)
+        self.spinBox.setValue(rebin_factor_ns)
+        self.spinBox.blockSignals(False)
         if self.storage_data is not None:
-            self.spec_data = Form.time_rebin_all_spec_data(self.storage_data, rebin_factor_ns)
+            logging.debug('rebinning data to bins of  %s' % rebin_factor_ns)
+            self.spec_data = Form.time_rebin_all_spec_data(self.storage_data, rebin_factor_ns, self.tres_sel_tr_ind)
+            print('softw_binwidth of full data: %s, of rebinned data: %s '
+                  % (self.storage_data.softBinWidth_ns, self.spec_data.softBinWidth_ns))
             try:
+                self.gate_data(self.spec_data, False)
                 self.reset_plots(True)
-                self.gate_data(self.spec_data, True)
+                self.update_all_plots(self.spec_data)
+
             except Exception as e:
                 print('error while gating: ', e)
-            # self.update_all_plots(self.spec_data)
+        # self.update_all_plots(self.spec_data)
 
     ''' progress related '''
     def handle_progress_dict(self, progress_dict_from_main):

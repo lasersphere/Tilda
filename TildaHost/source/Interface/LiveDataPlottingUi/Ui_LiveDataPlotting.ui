@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>737</width>
+    <width>800</width>
     <height>600</height>
    </rect>
   </property>
@@ -127,9 +127,6 @@
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_4">
         <item>
-         <widget class="QWidget" name="widget_tres_plot" native="true"/>
-        </item>
-        <item>
          <layout class="QGridLayout" name="gridLayout">
           <item row="0" column="2">
            <widget class="QSpinBox" name="spinBox">
@@ -167,48 +164,69 @@
          </layout>
         </item>
         <item>
-         <widget class="QTableWidget" name="tableWidget_gates">
-          <property name="sizeAdjustPolicy">
-           <enum>QAbstractScrollArea::AdjustToContents</enum>
+         <widget class="QSplitter" name="splitter">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
           </property>
-          <property name="sortingEnabled">
-           <bool>false</bool>
+          <property name="opaqueResize">
+           <bool>true</bool>
           </property>
-          <column>
-           <property name="text">
-            <string>track</string>
+          <widget class="QWidget" name="widget_tres_plot" native="true"/>
+          <widget class="QTableWidget" name="tableWidget_gates">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
            </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>scaler</string>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
            </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>v_min [V]</string>
+           <property name="sizeAdjustPolicy">
+            <enum>QAbstractScrollArea::AdjustToContents</enum>
            </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>v_max [V]</string>
+           <property name="sortingEnabled">
+            <bool>false</bool>
            </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>t_min [ns]</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>t_max [ns]</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>show</string>
-           </property>
-          </column>
+           <column>
+            <property name="text">
+             <string>track</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>scaler</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>v_min [V]</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>v_max [V]</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>t_min [ns]</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>t_max [ns]</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>show</string>
+            </property>
+           </column>
+          </widget>
          </widget>
         </item>
        </layout>
