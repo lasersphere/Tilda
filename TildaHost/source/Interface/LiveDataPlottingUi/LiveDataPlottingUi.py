@@ -10,6 +10,7 @@ import ast
 import logging
 import numpy as np
 import MPLPlotter
+import datetime
 from copy import deepcopy
 from PyQt5 import QtWidgets, Qt, QtCore
 from Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveDataPlotting
@@ -36,6 +37,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def __init__(self, full_file_path='', parent=None):
         super(TRSLivePlotWindowUi, self).__init__()
 
+        self.last_event = None
         self.pipedata_dict = None  # dict, containing all infos from the pipeline, will be passed to gui when save request is called from pipeline
         self.active_track_name = None  # str, name of the active track
         self.active_initial_scan_dict = None  # scan dict which is stored under the active iso name in the main
@@ -134,7 +136,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.sum_scaler_changed(0)
             self.update_gates_list()
             self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
-            self.gate_data(self.spec_data, plot_bool=False)
+            # self.gate_data(self.spec_data, plot_bool=False)  # will be done inside rebinning.
             self.update_all_plots(self.spec_data)
         except Exception as e:
             print('error in liveplotterui while receiving new data: ', e)
@@ -175,10 +177,20 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def update_tres_data(self, spec_data, draw=True):
         try:
+            gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
             if self.tres_image is None:  # create image in first plot call.
                 self.tres_image, self.tres_colorbar = MPLPlotter.configure_image_plot_widget(
                     self.tres_fig, self.tres_axes['image'], self.tres_axes['colorbar'],
                     spec_data.x[self.tres_sel_tr_ind], spec_data.t[self.tres_sel_tr_ind])
+                self.rect_select = MPLPlotter.add_rect_select(
+                    self.tres_axes['image'], self.rect_select_gates,
+                    abs(spec_data.x[self.tres_sel_tr_ind][1] - spec_data.x[self.tres_sel_tr_ind][0]),
+                    abs(spec_data.t[self.tres_sel_tr_ind][1] - spec_data.t[self.tres_sel_tr_ind][0])
+                                                              )
+                self.tres_gate_patch = MPLPlotter.add_patch(self.tres_axes['image'], gates)
+            self.tres_gate_patch.set_xy((gates[0], gates[2]))
+            self.tres_gate_patch.set_width(abs(gates[1] - gates[0]))
+            self.tres_gate_patch.set_height(abs(gates[3] - gates[2]))
             self.tres_image.set_data(np.transpose(spec_data.time_res[self.tres_sel_tr_ind][self.tres_sel_sc_ind]))
             self.tres_colorbar.set_clim(0, np.nanmax(spec_data.time_res[self.tres_sel_tr_ind][self.tres_sel_sc_ind]))
             self.tres_colorbar.update_normal(self.tres_image)
@@ -188,12 +200,36 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         except Exception as e:
             print('error, while plotting time resolved, this happened: ', e)
 
+    def rect_select_gates(self, eclick, erelease):
+        """
+        is called via left/rigth click & release events, connection see in start()
+        will pass the coordinates of the selected area to self.update_gate_ind()
+        """
+        try:
+            if self.last_event != eclick:
+                # somehow the event is emitted multiple times
+                # to prevent multiple executions, it stored and compared.
+                self.last_event = eclick
+                volt_1, time_1 = eclick.xdata, eclick.ydata
+                volt_2, volt_3 = erelease.xdata, erelease.ydata
+                volt_1, volt_2 = sorted((volt_1, volt_2))
+                time_1, volt_3 = sorted((time_1, volt_3))
+                gates_list = [volt_1, volt_2, time_1, volt_3]
+                # print(datetime.datetime.now().strftime('%H:%M:%S'), ' gate select yields:', gates_list)
+                self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind] = gates_list
+                self.gate_data(self.spec_data)
+            # else:
+            #     print('this very event already has happened')
+        except Exception as e:
+            print('while setting the gates this happened: ', e)
+
     def update_projections(self, spec_data, draw=True):
         try:
             t_proj_x = spec_data.t_proj[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
             t_proj_y = spec_data.t[self.tres_sel_tr_ind]
             v_proj_x = spec_data.x[self.tres_sel_tr_ind]
             v_proj_y = spec_data.cts[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
+            gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
             if self.t_proj_line is None:
                 self.v_proj_line, self.t_proj_line = MPLPlotter.setup_projection_widget(
                     self.tres_axes, t_proj_y, v_proj_x, x_label=self.x_label_sum)
@@ -201,8 +237,17 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.tres_axes['t_proj'].add_line(self.t_proj_line)
                 self.tres_axes['v_proj'].add_line(self.v_proj_line)
                 self.tres_axes['sum_proj'].add_line(self.sum_line_proj)
+                gate_color = '0.75'
+                self.v_min_line = self.tres_axes['v_proj'].axvline(gates[0], color=gate_color)
+                self.v_max_line = self.tres_axes['v_proj'].axvline(gates[1], color=gate_color)
+                self.t_min_line = self.tres_axes['t_proj'].axhline(gates[2], color=gate_color)
+                self.t_max_line = self.tres_axes['t_proj'].axhline(gates[3], color=gate_color)
             self.t_proj_line.set_xdata(t_proj_x)
             self.v_proj_line.set_ydata(v_proj_y)
+            self.v_min_line.set_xdata([gates[0], gates[0]])
+            self.v_max_line.set_xdata([gates[1], gates[1]])
+            self.t_min_line.set_ydata([gates[2], gates[2]])
+            self.t_max_line.set_ydata([gates[3], gates[3]])
             self.sum_line_proj.set_data(self.sum_line.get_xdata(), self.sum_line.get_ydata())
             for ax_key in [('t_proj', 'y'), ('v_proj', 'x'), ('sum_proj', 'x')]:
                 self.tres_axes[ax_key[0]].relim()
@@ -275,6 +320,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     ''' gating: '''
     def gate_data(self, spec_data, plot_bool=True):
         spec_data = TiTs.gate_specdata(spec_data)
+        self.write_all_gates_to_table(spec_data)
+        # self.reset_table()
+        # self.update_gates_list()
         if plot_bool:
             self.update_all_plots(self.spec_data)
 
@@ -361,11 +409,19 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def insert_one_gate_to_gui(self, tr, sc, liste):
         item = self.find_one_scaler_track(tr, sc)
-        for i in range(2, self.tableWidget_gates.columnCount() - 1):
-            val = liste[i - 2]
-            new_item = QtWidgets.QTableWidgetItem()
-            new_item.setData(QtCore.Qt.EditRole, val)
-            self.tableWidget_gates.setItem(item.row(), i, new_item)
+        if item is not None:
+            row = item.row()
+            for i in range(2, self.tableWidget_gates.columnCount() - 1):
+                val = liste[i - 2]
+                self.tableWidget_gates.item(row, i).setData(QtCore.Qt.EditRole, str(round(val, 2)))
+
+    def write_all_gates_to_table(self, spec_data):
+        self.tableWidget_gates.blockSignals(True)
+        for tr_ind, tr_name in enumerate(spec_data.track_names):
+            for sc in range(spec_data.nrScalers[tr_ind]):
+                gates = spec_data.softw_gates[tr_ind][sc]
+                self.insert_one_gate_to_gui(tr_name, sc, gates)
+        self.tableWidget_gates.blockSignals(False)
 
     def find_one_scaler_track(self, tr, sc):
         """
