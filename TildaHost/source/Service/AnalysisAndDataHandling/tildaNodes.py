@@ -6,28 +6,27 @@ Created on '20.05.2015'
 
 """
 import logging
+import os
+import sqlite3
 import time
 from copy import deepcopy
-import sqlite3
+
 import numpy as np
-import os
 
 import MPLPlotter
 import Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
 import Service.FileOperations.FolderAndFileHandling as Filehandle
 import Service.Formating as Form
 import Service.Scan.ScanDictionaryOperations as SdOp
-import Application.Config as Cfg
 import TildaTools
 from Measurement.SpecData import SpecData
 from Measurement.XMLImporter import XMLImporter
+from SPFitter import SPFitter
 from Service.AnalysisAndDataHandling.InfoHandler import InfoHandler as InfHandl
 from Service.FileOperations.XmlOperations import xmlAddCompleteTrack
 from Service.ProgramConfigs import Programs as Progs
-from polliPipe.node import Node
 from Spectra.Straight import Straight
-from SPFitter import SPFitter
-
+from polliPipe.node import Node
 
 """ multipurpose Nodes: """
 
@@ -732,7 +731,7 @@ class NMPLImagePLot(Node):
 
 
 class NMPLCloseFigOnClear(Node):
-    def __init__(self, fig_ref):
+    def __init__(self, fig_ref=None):
         super(NMPLCloseFigOnClear, self).__init__()
         self.fig_ref = fig_ref
 
@@ -740,7 +739,10 @@ class NMPLCloseFigOnClear(Node):
         return data
 
     def clear(self):
-        MPLPlotter.close_fig(self.fig_ref)
+        if self.fig_ref is None:
+            MPLPlotter.close_all_figs()
+        else:
+            MPLPlotter.close_fig(self.fig_ref)
         self.fig_ref = None
 
 
@@ -748,7 +750,7 @@ class NMPLCloseFigOnInit(Node):
     def __init__(self):
         super(NMPLCloseFigOnInit, self).__init__()
         self.type = 'MPLCloseFigOnInit'
-        MPLPlotter.close_fig()
+        MPLPlotter.close_all_figs()
 
     def processData(self, data, pipeData):
         return data

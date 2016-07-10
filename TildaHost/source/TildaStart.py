@@ -5,10 +5,14 @@ Created on '07.05.2015'
 @author:'simkaufm'
 
 """
-import logging
 import argparse
-import sys
 import functools
+import logging
+import sys
+
+import matplotlib
+
+matplotlib.use('Qt5Agg')
 
 sys.path.append('..\\..\\PolliFit\\source')
 

@@ -6,17 +6,18 @@ Created on 29.04.2014
 import datetime
 import os
 
+import matplotlib.figure as Figure
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import patches as patches
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.dates import DateFormatter
 from matplotlib.lines import Line2D
 from matplotlib.widgets import Button
 from matplotlib.widgets import RadioButtons
 from matplotlib.widgets import RectangleSelector
 from matplotlib.widgets import Slider
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
@@ -151,7 +152,7 @@ def image_plot(fig, axes, cbax, image_data, extent, aspect='equal'):
     axes.set_xlabel('DAC voltage [V]')
     cb = fig.colorbar(img, cax=cbax)
     # cb = None
-    draw()
+    # draw()  # removed because otherwise a figure might be created.
     return img, cb
 
 
@@ -249,9 +250,10 @@ def create_figure_widget(parent_widget, facecolor='white'):
     :param facecolor:
     :return: fig, canvas, toolbar
     """
-    fig = plt.figure(facecolor=facecolor)
+    fig = Figure.Figure(facecolor=facecolor)
     canvas = FigureCanvas(fig)
     toolbar = NavigationToolbar(canvas, parent_widget)
+
     return fig, canvas, toolbar
 
 
@@ -262,7 +264,7 @@ def create_canvas_and_toolbar_to_figure(fig, parent_widget):
 
 
 def setup_image_widget(parent_widget, facecolor='white'):
-    fig = plt.figure(facecolor=facecolor)
+    fig = Figure.Figure(facecolor=facecolor)
     canvas = FigureCanvas(fig)
     toolbar = NavigationToolbar(canvas, parent_widget)
     axes = {'image': fig.add_subplot(111)}

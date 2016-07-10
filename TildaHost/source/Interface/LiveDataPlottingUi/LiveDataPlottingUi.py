@@ -5,20 +5,20 @@ Created on
 
 Module Description:
 """
-import sys
 import ast
 import logging
-import numpy as np
-import MPLPlotter
-import datetime
 from copy import deepcopy
-from PyQt5 import QtWidgets, Qt, QtCore
-from Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveDataPlotting
-import TildaTools as TiTs
-from Measurement.XMLImporter import XMLImporter
+
+import numpy as np
+from PyQt5 import QtWidgets, QtCore
+
+import Application.Config as Cfg
+import MPLPlotter
 import Service.FileOperations.FolderAndFileHandling as FileHandl
 import Service.Formating as Form
-import Application.Config as Cfg
+import TildaTools as TiTs
+from Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveDataPlotting
+from Measurement.XMLImporter import XMLImporter
 
 
 class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting):
@@ -102,7 +102,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     '''setting up the plots (no data etc. written) '''
     def add_sum_plot(self):
-        self.sum_fig, self.sum_canv, self.sum_toolbar= MPLPlotter.create_figure_widget(self)
+        self.sum_fig, self.sum_canv, self.sum_toolbar = MPLPlotter.create_figure_widget(self.tab_sum)
         self.sum_plot_layout = QtWidgets.QVBoxLayout()
         self.sum_plot_layout.addWidget(self.sum_toolbar)
         self.sum_plot_layout.addWidget(self.sum_canv)
@@ -110,7 +110,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.sum_ax = self.sum_fig.add_subplot(111)
         self.sum_ax.set_ylabel('counts')
         self.sum_ax.set_xlabel(self.x_label_sum)
-        MPLPlotter.tight_layout()
+        # MPLPlotter.tight_layout()
 
     def add_time_resolved_plot(self):
         self.tres_v_layout = QtWidgets.QVBoxLayout()

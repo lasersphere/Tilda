@@ -10,10 +10,14 @@ import numpy as np
 try:
     import Service.VoltageConversions.DAC_Calibration as AD5781Fit
 except:
-    print('No DAC calibration file found on your local harddrive!')
-    print('please calibrate your DAC and create a calibration file as described as in:')
-    print('TildaHost\\source\\Service\\VoltageConversion\\DacRegisterToVoltageFit.py')
-    raise Exception
+    raise Exception(
+        '\n------------------------------------------- \n'
+        'No DAC calibration file found on your local harddrive found at:\n'
+        'TildaHost\\source\\Service\\VoltageConversion\\DAC_Calibration.py.py\n'
+        'please calibrate your DAC and create a calibration file as described as in:\n'
+        'TildaHost\\source\\Service\\VoltageConversion\\DacRegisterToVoltageFit.py\n'
+        '------------------------------------------- \n'
+    )
 
 
 def get_18bit_from_voltage(voltage, dac_gauge_pars=AD5781Fit.dac_gauge_vals, ref_volt_neg=-10, ref_volt_pos=10):
