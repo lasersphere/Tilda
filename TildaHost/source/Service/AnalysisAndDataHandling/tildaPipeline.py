@@ -188,7 +188,6 @@ def initPipeData(initialScanPars):
 
     # trackDict = pipeData['track0']
     # trackDict.update(dacStartVoltage=get_voltage_from_18bit(trackDict['dacStartRegister18Bit']))
-    # trackDict.update(dacStepsizeVoltage=get_voltage_from_18bit(trackDict['dacStepSize18Bit'] + int(2 ** 17)))
     # trackDict.update(dacStopVoltage=get_voltage_from_18bit(
     #     VCon.calc_dac_stop_18bit(trackDict['dacStartRegister18Bit'],
     #                              trackDict['dacStepSize18Bit'],

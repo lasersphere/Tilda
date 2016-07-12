@@ -6,14 +6,15 @@ Created on '07.08.2015'
 
 """
 
-import sqlite3
 import os
-import Physics
+import sqlite3
 
 import numpy as np
 
+import Physics
 import TildaTools
 from Measurement.SpecData import SpecData
+from Service.VoltageConversions import VoltageConversions as VCon
 
 
 class XMLImporter(SpecData):
@@ -83,11 +84,37 @@ class XMLImporter(SpecData):
         ''' operations on each track: '''
         for tr_ind, tr_name in enumerate(TildaTools.get_track_names(scandict)):
             track_dict = scandict[tr_name]
+            start = scandict[tr_name]['dacStartVoltage']
+            stop = scandict[tr_name]['dacStopVoltage']
+            step = scandict[tr_name]['dacStepsizeVoltage']
+            start_reg = scandict[tr_name]['dacStartRegister18Bit']
+            step_reg = scandict[tr_name]['dacStepSize18Bit']
+            stop_reg = scandict[tr_name].get('dacStopRegister18Bit', None)
+
+
             nOfactTrack = int(tr_name[5:])
             nOfsteps = track_dict['nOfSteps']
             nOfBins = track_dict.get('nOfBins')
             nOfScalers = len(track_dict['activePmtList'])
             self.active_pmt_list.append(track_dict['activePmtList'])
+
+            print('---------------------------')
+            print('voltage debugging, ', tr_name)
+            print('x_start: ', start)
+            print('x_stop: ', stop)
+            print('x_stepsize: ', step)
+            new_step = (stop - start)/(nOfsteps - 1)
+            print('x_stepsize calc (stop - start)/(nOfsteps-1): ', new_step)
+            print('x_stop_calc (x_start + x_step * (nOfsteps - 1) ', start + step * (nOfsteps - 1))
+            print('x_start + x_stepsize calc * (nOfsteps -1)', start + new_step * (nOfsteps - 1))
+            print('---------------------------')
+            print('voltage debugging, ', tr_name)
+            print('x_start_reg: ', start_reg, VCon.get_voltage_from_18bit(start_reg))
+            print('x_stop: ', stop_reg, VCon.get_voltage_from_18bit(stop_reg))
+            print('x_stepsize: ', step_reg, VCon.get_stepsize_in_volt_from_18bit(step_reg), VCon.get_voltage_from_18bit(step_reg + int(2 ** 17)))
+            print('x_stepsize calc (stop - start)/(nOfsteps-1): ', (stop_reg - start_reg)/(nOfsteps - 1))
+            print('x_stop_calc (x_start + x_step * (nOfsteps - 1) ', start_reg + step_reg * (nOfsteps - 1))
+
 
             dacStepSize18Bit = track_dict['dacStepSize18Bit']
 

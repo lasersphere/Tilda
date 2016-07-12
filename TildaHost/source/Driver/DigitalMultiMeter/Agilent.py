@@ -9,14 +9,13 @@ Description:
 Module representing a dummy digital multimeter with all required public functions.
 
 """
-import numpy as np
-from enum import Enum
-import datetime
-from copy import deepcopy
 import socket
 import time
-import math
-import logging
+from copy import deepcopy
+from enum import Enum
+
+import numpy as np
+import serial
 
 
 class AgilentPreConfigs(Enum):
@@ -72,6 +71,11 @@ class AgilentPreConfigs(Enum):
 
 class Agilent34461A:
     def __init__(self, address_str='YourPC'):
+        self.connection_type = None  # either 'socket' or 'serial'
+        self.connection = None  # storage for the connection to the device either serial or ethernet
+        self.sleepAfterSend = 0.005  # time the program blocks before trying to read back.
+        self.buffersize = 1024
+
         self.type = 'Agilent34461A'
         self.address = address_str
         self.name = self.type + '_' + address_str
@@ -84,6 +88,24 @@ class Agilent34461A:
         self.config_dict = AgilentPreConfigs.initial.value
         self.get_accuracy()
         print(self.name, ' initialized')
+
+    ''' connection: '''
+    def establish_connection(self, addr):
+        if isinstance(str, addr):  # its an ip string
+            self.connection_type = 'socket'
+            self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.connection.connect(addr)
+        else:  # it should be a comport number
+            self.connection_type = 'serial'
+            self.connection = serial.Serial(port=int(addr) - 1)
+
+    def send_command(self, cmd_str, read_back=False):
+        if self.connection_type == 'socket':
+            self.connection.send(str.encode(cmd_str + ' \n'))
+            time.sleep(self.sleepAfterSend)
+            if read_back:
+                self.connection.recv(self.buffersize)
+
 
     ''' deinit and init '''
 
@@ -130,12 +152,44 @@ class Agilent34461A:
         pass
 
     def fetch_multiple_meas(self, num_to_read, max_time=-1):
-        if num_to_read == -1:
-            num_to_read = 5
-        ret = np.full(num_to_read, 1.0, dtype=np.double)
-        t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # take last element out of array and make a tuple with timestamp:
-        self.last_readback = (round(ret[-1], 8), t)
+        """
+        Reads and erases all measurements from reading memory up to the specified <max_readings>. The measurements
+        are read and erased from the reading memory starting with the oldest measurement first.
+        Parameter Typical Return
+        1 to 2,000,000 (readings)
+        Default is all readings in memory.
+        (none)
+        Read and remove the three oldest readings:
+        R? 3
+        Typical Response: #247-4.98748741E-01,-4.35163427E-01,-7.41859188E-01
+        The "#2" means that the next 2 digits indicate how many characters are in the returned memory string.
+        These two digits are the "47" after the "#2". Therefore, the remainder of the string is 47 digits long:
+        -4.98748741E-01,-4.35163427E-01,-7.41859188E-01
+        l The R? and DATA:REMove? queries can be used during a long series of readings to periodically remove
+        readings from memory that would normally cause the reading memory to overflow. R? does not wait
+        for all readings to complete. It sends the readings that are complete at the time the instrument
+        receives the command. Use Read? or Fetch? if you want the instrument to wait until all readings are
+        complete before sending readings.
+        l If you do not specify a value for <max_readings>, all measurements are read and erased.
+        l No error is generated if the reading memory contains less readings than requested. In this case, all
+        available readings in memory are read and deleted.
+        l The number of readings returned may be less than that requested depending on the amount of reading
+        memory in your instrument. You can store up to 1,000 measurements in the reading memory of
+        the 34460A, 10,000 measurements on the 34461A, 50,000 measurements on the 34465A/70A
+        (without the MEM option), or 2,000,000 measurements on the 34465A/70A (with the MEM option). If
+        reading memory overflows, new measurements overwrite the oldest measurements stored; the most
+        recent measurements are always preserved. No error is generated, but the Reading Mem Ovfl bit (bit
+        14) is set in the Questionable Data Register's condition register (see Status System Introduction).
+        l The instrument clears all measurements from reading memory when the measurement configuration
+        changes, or when any of these commands are executed: INITiate, MEASure:<function>?, READ?,
+        *RST, SYSTem:PRESet
+        :param num_to_read:
+        :param max_time:
+        :return:
+        """
+        ret = self.send_command('R? %s' %num_to_read, True)
+        ret_length = int(ret[2: ret[1] + 2])
+        ret = np.fromstring(ret[4:],)
         return ret
 
     def abort_meas(self):

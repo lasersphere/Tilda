@@ -5,14 +5,14 @@ Created on '19.05.2015'
 @author:'simkaufm'
 
 """
-import numpy as np
-from os import path, pardir
-
 import ctypes
-import logging
 import datetime
+import logging
 from copy import deepcopy
 from enum import Enum, unique
+from os import path, pardir
+
+import numpy as np
 
 
 @unique
@@ -81,6 +81,7 @@ class Ni4071MeasCompleteLoc(Enum):
     pxi_trig_6 = 117
     pxi_trig_7 = 118
     lbr_trig_0 = 1003
+
 
 class Ni4071PreConfigs(Enum):
     initial = {

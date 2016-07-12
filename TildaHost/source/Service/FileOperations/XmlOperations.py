@@ -9,9 +9,6 @@ from datetime import datetime as dt
 
 from lxml import etree as ET
 
-from Service.VoltageConversions.VoltageConversions import get_voltage_from_18bit
-import Service.VoltageConversions.VoltageConversions as VCon
-
 
 def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
     """
@@ -121,12 +118,13 @@ def xmlAddCompleteTrack(rootEle, scanDict, data, track_name, datatype='scalerArr
     # pipeInternalsDict = scanDict['pipeInternals']
     nOfTrack = int(track_name[5:])
     trackDict = scanDict[track_name]
-    trackDict.update(dacStartVoltage=get_voltage_from_18bit(trackDict['dacStartRegister18Bit']))
-    trackDict.update(dacStepsizeVoltage=get_voltage_from_18bit(trackDict['dacStepSize18Bit'] + int(2 ** 17)))
-    trackDict.update(dacStopVoltage=get_voltage_from_18bit(
-        VCon.calc_dac_stop_18bit(trackDict['dacStartRegister18Bit'],
-                                 trackDict['dacStepSize18Bit'],
-                                 trackDict['nOfSteps'])))
+    # this should be already included before:
+    # trackDict.update(dacStartVoltage=get_voltage_from_18bit(trackDict['dacStartRegister18Bit']))
+    # trackDict.update(dacStepsizeVoltage=VCon.get_stepsize_in_volt_from_18bit(trackDict['dacStepSize18Bit']))
+    # trackDict.update(dacStopVoltage=get_voltage_from_18bit(
+    #     VCon.calc_dac_stop_18bit(trackDict['dacStartRegister18Bit'],
+    #                              trackDict['dacStepSize18Bit'],
+    #                              trackDict['nOfSteps'])))
     xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackDict)
     xmlWriteToTrack(rootEle, nOfTrack, datatype, data, parent_ele_str)
     return rootEle
