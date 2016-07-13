@@ -44,10 +44,8 @@ def extract(iso, par, run, db, fileList=[], prin=True):
     date_list = []
 
     for f, v, e in zip(files, vals, errs):
-        print(f)
         cur.execute('''SELECT date FROM Files WHERE file = ?''', (f,))
         e = cur.fetchall()
-        print(e)
         date = e[0][0]
         if date is not None:
             date_list.append(date)

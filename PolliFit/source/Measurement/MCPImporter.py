@@ -63,11 +63,18 @@ class MCPImporter(SpecData):
                     self.offset = self.cts[0][0][self.nrSteps[0]/2]
                 else:
                     self.offset = np.mean([self.cts[0][0][self.nrSteps[0]/2-1],self.cts[0][0][self.nrSteps[0]/2+1]])
+
+                self.cts[0].append(np.array(np.zeros(self.nrSteps[0])))
+                for i, ct in enumerate(self.cts[1][0]):
+                    self.cts[0][1][i] = ct
+                self.cts = np.delete(self.cts, 1)
                 self.err = np.array(copy.deepcopy(self.cts))
                 for i,ctarray in enumerate(self.cts):
                     for j, cts in enumerate(ctarray):
                         self.err[i][j] = cts*0.01/100+0.00005
             else:
+                self.ele = self.file.split('_')
+                self.type = self.ele[0][:-2] + '_' + self.ele[0][-2:]
                 volts = self.find_data_list_in_str(file_as_str, 'SiclReaderObj')
                 self.accVolt = np.mean(volts[0][volts[1].index('lan[A-34461A-06386]:inst0')])
                 prema = np.mean(self.find_data_list_in_str(file_as_str, 'PremaVoltageObj')[0])

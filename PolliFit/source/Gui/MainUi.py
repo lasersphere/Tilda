@@ -16,7 +16,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
 
     dbSig = QtCore.pyqtSignal(str)
 
-    def __init__(self):
+    def __init__(self, db_path):
         super(MainUi, self).__init__()
         self.setupUi(self)
         self.setWindowTitle('PolliFit')
@@ -27,15 +27,22 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.batchfit.conSig(self.dbSig)
         self.bOpenDb.clicked.connect(self.openDb)
 
+        self.openDb(db_path)
         self.show()
         
         
-    def openDb(self):
-        file = QtWidgets.QFileDialog.getSaveFileName(parent=self, caption='Choose Database', directory='', filter='*.sqlite', options = QtWidgets.QFileDialog.DontConfirmOverwrite)
+    def openDb(self, db_path = ''):
+        print(db_path)
+        if not os.path.isfile(db_path):
+            file, end = QtWidgets.QFileDialog.getSaveFileName(
+                parent=self, caption='Choose Database', directory='',filter='*.sqlite',
+                options = QtWidgets.QFileDialog.DontConfirmOverwrite)
+        else:
+            file = db_path
         if file == '':
             return
-        
-        p = file[0]
+
+        p = file
         
         print('New DB: ' + p)
         
