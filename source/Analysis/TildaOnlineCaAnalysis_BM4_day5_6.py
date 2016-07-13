@@ -27,7 +27,7 @@ from Measurement.XMLImporter import XMLImporter
 databases:
 """
 
-db = 'V:\Projekte\TRIGA\Measurements and Analysis_Simon\Bunchermessungen2016' + \
+db = 'R:\Projekte\TRIGA\Measurements and Analysis_Simon\Bunchermessungen2016' + \
      '\CalciumOnline_160303_analysis\CalciumOnline_160303_analysis.sqlite'
 
 
@@ -83,7 +83,7 @@ for iso in isos:
     for run in runs:
         # pl[iso][run] = {'center': {}, 'sigma': {}, 'Int0': {}}
         pl[iso][run] = {}
-        avgc, statErrc, systErrc, plotdatac = Analyzer.combineRes(iso, 'center', run, db, show_plot=True)
+        avgc, statErrc, systErrc, plotdatac = Analyzer.combineRes(iso, 'center', run, db, show_plot=False)
         avgs, statErrs, systErrs, plotdatas = Analyzer.combineRes(iso, 'sigma', run, db, show_plot=False)
         avgi, statErri, systErri, plotdatai = Analyzer.combineRes(iso, 'Int0', run, db, show_plot=False)
         pl[iso][run]['center'] = deepcopy(plotdatac)
@@ -130,7 +130,7 @@ for par in pars: # , 'sigma', 'Int0']:
         plot.save(os.path.join(combine_plots_dir,
                                iso + '_' + par + '.png'))
 #
-#        plot.show(True)
+        # plot.show(True)
 #
 
 ''' NOW IT IS REFERENCED ON ONE TRACK AND THE OTHERS ARE PLOTTED AS A DIFFERENCE TO IT. '''

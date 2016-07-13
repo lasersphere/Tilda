@@ -3,7 +3,6 @@ Created on 29.04.2014
 
 @author: hammen
 '''
-
 import datetime
 import os
 
@@ -16,6 +15,8 @@ from matplotlib.widgets import Button
 from matplotlib.widgets import RadioButtons
 from matplotlib.widgets import RectangleSelector
 from matplotlib.widgets import Slider
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
@@ -126,8 +127,8 @@ def get_current_figure():
     return plt.gcf()
 
 
-def setup_image_figure():
-    fig = plt.figure()
+def setup_image_figure(facecolor='white'):
+    fig = plt.figure(facecolor=facecolor)
     axes = [[0, 0, 0], [0, 0, 0, 0], [0]]
 
     axes[0][0] = fig.add_subplot(111)
@@ -143,8 +144,8 @@ def setup_image_figure():
     return fig, axes
 
 
-def image_plot(fig, axes, cbax, image_date, extent, aspect='equal'):
-    img = axes.imshow(image_date, extent=extent, origin='lower',
+def image_plot(fig, axes, cbax, image_data, extent, aspect='equal'):
+    img = axes.imshow(image_data, extent=extent, origin='lower',
                       aspect=aspect, interpolation='none')
     axes.set_ylabel('time [ns]')
     axes.set_xlabel('DAC voltage [V]')
@@ -239,3 +240,93 @@ def add_slider(axes, label, valmin, valmax, confunc, valinit=0.5,
                     slidermin=slidermin, slidermax=slidermax, dragging=dragging, **kwargs)
     slider_con = slider.on_changed(confunc)
     return slider, slider_con
+
+
+def create_figure_widget(parent_widget, facecolor='white'):
+    """
+    function to include a simple matplotlib plotting widget within a parent widget.
+    :param parent_widget:
+    :param facecolor:
+    :return: fig, canvas, toolbar
+    """
+    fig = plt.figure(facecolor=facecolor)
+    canvas = FigureCanvas(fig)
+    toolbar = NavigationToolbar(canvas, parent_widget)
+    return fig, canvas, toolbar
+
+
+def create_canvas_and_toolbar_to_figure(fig, parent_widget):
+    canvas = FigureCanvas(fig)
+    toolbar = NavigationToolbar(canvas, parent_widget)
+    return canvas, toolbar
+
+
+def setup_image_widget(parent_widget, facecolor='white'):
+    fig = plt.figure(facecolor=facecolor)
+    canvas = FigureCanvas(fig)
+    toolbar = NavigationToolbar(canvas, parent_widget)
+    axes = {'image': fig.add_subplot(111)}
+    divider = make_axes_locatable(axes['image'])
+    axes['colorbar'] = divider.append_axes("right", size="5%", pad=0.05)
+    axes['t_proj'] = divider.append_axes("right", 2, pad=0.35, sharey=axes['image'])
+    axes['v_proj'] = divider.append_axes("bottom", 2, pad=0.1, sharex=axes['image'])
+    axes['t_proj'].yaxis.set_ticks_position('right')
+    axes['sum_proj'] = axes['v_proj'].twinx()
+    axes['sum_proj'].set_axes_locator(axes['v_proj'].get_axes_locator())
+
+    return fig, axes, canvas, toolbar
+
+
+def configure_image_plot_widget(fig, im_ax, cb_ax, volt_array_tr, time_array_tr):
+    steps = volt_array_tr.shape[0]
+    bins = time_array_tr.shape[0]
+    v_min = volt_array_tr[0]
+    v_max = volt_array_tr[-1]
+    t_min = time_array_tr[0] - abs(time_array_tr[1] - time_array_tr[0]) / 2
+    t_max = time_array_tr[-1] + abs(time_array_tr[1] - time_array_tr[0]) / 2
+    # -5 due to resolution of 10ns so events with timestamp e.g. 10 (= 100ns) will be plotted @ 95 to 105 ns
+
+    extent = [v_min, v_max, t_min, t_max]
+    initial_2d_arr = np.full((steps, bins), np.nan, dtype=np.double)
+    image, colorbar = image_plot(fig, im_ax, cb_ax, np.transpose(initial_2d_arr), extent, 'auto')
+    im_ax.xaxis.set_ticks_position('top')
+    im_ax.xaxis.set_label_position('top')
+    return image, colorbar
+
+
+def setup_projection_widget(axes, time_array_tr, volt_array_tr, x_label='DAC voltage [V]'):
+    tproj_ax = axes['t_proj']
+    vproj_ax = axes['v_proj']
+    t_cts = np.full(time_array_tr.shape, np.nan)
+    v_cts = np.full(volt_array_tr.shape, np.nan)
+    v_min = min(volt_array_tr)
+    v_max = max(volt_array_tr)
+
+    vproj_line = vproj_ax.add_line(line2d(volt_array_tr, v_cts, 'r'))
+    vproj_ax.set_xlim(v_min, v_max)
+    vproj_ax.autoscale(enable=True, axis='y', tight=True)
+
+    t_min = min(time_array_tr)
+    t_max = max(time_array_tr)
+    tproj_line = tproj_ax.add_line(line2d(t_cts, time_array_tr, 'r'))
+    tproj_line.set_drawstyle('default')
+    tproj_ax.set_ylim(t_min, t_max)
+    tproj_ax.autoscale(enable=True, axis='x', tight=True)
+    tproj_ax.set_xlabel('cts')
+    tproj_ax.xaxis.set_label_position('top')
+    tproj_ax.xaxis.set_ticks_position('top')
+    tproj_ax.yaxis.set_ticks_position('right')
+    vproj_ax.set_ylabel('cts')
+    vproj_ax.set_xlabel(x_label)
+
+    axes['sum_proj'].yaxis.label.set_color('blue')
+    axes['sum_proj'].spines['right'].set_color('blue')
+    axes['sum_proj'].tick_params(axis='y', colors='blue')
+    axes['sum_proj'].autoscale_view()
+    axes['sum_proj'].set_ylabel('sum_cts')
+
+    return vproj_line, tproj_line
+
+
+def tight_layout():
+    plt.tight_layout()

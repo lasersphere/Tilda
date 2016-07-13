@@ -12,7 +12,7 @@ from Gui.EmitText import EmitText
 
 app = QtWidgets.QApplication([""])
 
-ui = MainUi()
+ui = MainUi('V:/Projekte/COLLAPS/Sn/Measurement_and_Analysis_Christian/Sn.sqlit')
 
 #emi = EmitText()
 #emi.textSig.connect(ui.out)

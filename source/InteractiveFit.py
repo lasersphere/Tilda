@@ -27,7 +27,7 @@ class InteractiveFit(object):
         plot.clear()
         con = sqlite3.connect(db)
         cur = con.cursor()
-        
+        print('Starting InteractiveFit.')
         cur.execute('''SELECT filePath FROM Files WHERE file = ?''', (file,))
         
         try:
@@ -44,6 +44,7 @@ class InteractiveFit(object):
         meas = MeasLoad.load(path, db, x_as_voltage=x_as_voltage)
         if meas.type == 'Kepco':  # keep this for all other fileformats than .xml
             spec = Straight()
+            spec.evaluate(meas.x[0][-1], (0, 1))
         else:
             try:
                 # if the measurment is an .xml file it will have a self.seq_type
@@ -56,7 +57,6 @@ class InteractiveFit(object):
             except:
                 iso = DBIsotope(db, meas.type, var[0], var[1])
                 spec = FullSpec(iso)
-            
         self.fitter = SPFitter(spec, meas, st)
         plot.plotFit(self.fitter)
         plot.show(block)
