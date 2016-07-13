@@ -16,10 +16,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
 
     dbSig = QtCore.pyqtSignal(str)
 
-    def __init__(self, db_path):
+    def __init__(self, db_path, parent=None):
         super(MainUi, self).__init__()
         self.setupUi(self)
         self.setWindowTitle('PolliFit')
+        self.parent_win = parent
         
         self.crawler.conSig(self.dbSig)
         self.intfit.conSig(self.dbSig)
@@ -55,4 +56,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         
     def out(self, text):
         self.oOut.appendPlainText(text)
-        
+
+    def closeEvent(self, *args, **kwargs):
+        if self.parent_win is not None:
+            self.parent_win.close_pollifit_win()

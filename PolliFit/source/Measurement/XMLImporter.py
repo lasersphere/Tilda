@@ -64,7 +64,7 @@ class XMLImporter(SpecData):
         self.nrScalers = []
         self.active_pmt_list = []
         # if self.seq_type in ['tipa', 'tipadummy', 'kepco']:
-        #     x_as_volt = False
+        # x_as_volt = False
         print('axaxis as voltage:', x_as_volt)
         self.x = TildaTools.create_x_axis_from_file_dict(scandict, as_voltage=x_as_volt)  # x axis, voltage
         self.cts = []  # countervalues, this is the voltage projection here
@@ -175,6 +175,9 @@ class XMLImporter(SpecData):
             for tr_ind, track in enumerate(self.x):
                 scanvolt = (self.lineMult * self.x[tr_ind] + self.lineOffset + self.offset) * self.voltDivRatio['offset']
                 self.x[tr_ind] = self.accVolt * self.voltDivRatio['accVolt'] - scanvolt
+        elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
+            for tr_ind, cts_tr in enumerate(self.cts):
+                self.cts[tr_ind] = self.cts[tr_ind] - self.offset
         con.close()
 
     def export(self, db):
