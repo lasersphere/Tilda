@@ -195,9 +195,16 @@
     <addaction name="actionPost_acceleration_power_supply_control"/>
     <addaction name="actionDigital_Multimeters"/>
    </widget>
+   <widget class="QMenu" name="menuAnalysis">
+    <property name="title">
+     <string>Analysis</string>
+    </property>
+    <addaction name="actionPolliFit"/>
+   </widget>
    <addaction name="menuTilda_MainWindow"/>
    <addaction name="menuView"/>
    <addaction name="menuConfigure"/>
+   <addaction name="menuAnalysis"/>
    <addaction name="menuHelp"/>
   </widget>
   <action name="actionTracks">
@@ -263,6 +270,11 @@
   <action name="actionDigital_Multimeters">
    <property name="text">
     <string>Digital Multimeters</string>
+   </property>
+  </action>
+  <action name="actionPolliFit">
+   <property name="text">
+    <string>PolliFit</string>
    </property>
   </action>
  </widget>

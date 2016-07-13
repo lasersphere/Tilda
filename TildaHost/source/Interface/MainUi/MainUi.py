@@ -17,6 +17,7 @@ from Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningU
 from Interface.TildaPassiveUi.TildaPassiveUi import TildaPassiveUi
 from Interface.DmmUi.DmmUi import DmmLiveViewUi
 from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
+from Gui.MainUi import MainUi as PolliMainUi
 import MPLPlotter as MPlPlotter
 
 import Application.Config as Cfg
@@ -42,6 +43,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.tilda_passive_gui = None
         self.dmm_live_view_win = None
         self.live_plot_win = None  # one active live plot window for displaying results from pipeline
+        self.pollifit_win = None
 
         self.actionWorking_directory.triggered.connect(self.choose_working_dir)
         self.actionVersion.triggered.connect(self.open_version_win)
@@ -53,6 +55,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionTilda_Passive.triggered.connect(self.start_tilda_passive_gui)
         self.actionLoad_spectra.triggered.connect(self.load_spectra)
         self.actionDigital_Multimeters.triggered.connect(self.open_dmm_live_view_win)
+        self.actionPolliFit.triggered.connect(self.open_pollifit_win)
 
         """ connect double clicks on labels:"""
         self.label_workdir_set.mouseDoubleClickEvent = self.workdir_dbl_click
@@ -212,6 +215,16 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         else:
             self.raise_win_to_front(self.live_plot_win)
 
+    def open_pollifit_win(self):
+        if self.pollifit_win is None:
+            db = Cfg._main_instance.database
+            if db is None:
+                self.choose_working_dir()
+                db = Cfg._main_instance.database
+            self.pollifit_win = PolliMainUi(db)
+        else:
+            self.raise_win_to_front(self.pollifit_win)
+
     def raise_win_to_front(self, window):
         # this will remove minimized status
         # and restore window with keeping maximized/normal state
@@ -241,6 +254,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def close_live_plot_win(self):
         self.live_plot_win = None
+
+    def close_pollifit_win(self):
+        self.pollifit_win = None
 
     def closeEvent(self, *args, **kwargs):
         for win in self.act_scan_wins:
@@ -283,4 +299,10 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 self.live_plot_win.close()
         except Exception as e:
             logging.error('error while closing dmm_live_view_window, exception is: ' + str(e))
+        try:
+            if self.pollifit_win is not None:
+                self.pollifit_win.close()
+        except Exception as e:
+            logging.error('error while closing pollifit_win, exception is: ' + str(e))
+
 

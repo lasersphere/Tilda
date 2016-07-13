@@ -73,7 +73,9 @@ def createXmlFileOneIsotope(scanDict, seq_type=None, filename=None):
     db_name = os.path.basename(scanDict['pipeInternals']['workingDirectory']) + '.sqlite'
     db = scanDict['pipeInternals']['workingDirectory'] + '\\' + db_name
     if os.path.isfile(db):
-        Tools._insertFile(filename, db)
+        relative_filename = os.path.normcase(
+            os.path.join('.\\', os.path.split(os.path.dirname(filename))[1], os.path.basename(filename)))
+        Tools._insertFile(relative_filename, db)
     return filename
 
 
