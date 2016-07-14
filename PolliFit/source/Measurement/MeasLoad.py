@@ -15,7 +15,7 @@ from Measurement.MCPImporter import MCPImporter
 from Measurement.SimpleImporter import SimpleImporter
 
 
-def load(file, db, raw=False, x_as_voltage=True):
+def load(file, db, raw=False, x_as_voltage=True, softw_gates=None):
     e = os.path.splitext(file)[1]
 
     if e == '.txt':
@@ -37,7 +37,7 @@ def load(file, db, raw=False, x_as_voltage=True):
         return f
 
     elif e == '.xml':
-        f = XMLImporter(file, x_as_voltage)
+        f = XMLImporter(file, x_as_voltage, softw_gates=softw_gates)
         if not raw:
             f.preProc(db)
         return f

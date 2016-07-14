@@ -21,7 +21,7 @@ from SPFitter import SPFitter
 import MPLPlotter as plot
 
 
-def batchFit(fileList, db, run='Run0', x_as_voltage=True):
+def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None):
     '''Fit fileList with run and write results to db'''
     print("BatchFit started")
     print("Opening DB:", db)
@@ -36,6 +36,16 @@ def batchFit(fileList, db, run='Run0', x_as_voltage=True):
     cur.execute('''SELECT isoVar, lineVar, scaler, track FROM Runs WHERE run = ?''', (run,))
     var = cur.fetchall()[0]
     st = (ast.literal_eval(var[2]), ast.literal_eval(var[3]))
+    if softw_gates_trs is None:  # if no software gate provided check db
+        try:  # check if there are software gates available in database
+            cur.execute('''SELECT softwGates FROM Runs WHERE run = ?''', (run,))
+            soft_var = cur.fetchall()[0]
+            softw_gates_trs_db = ast.literal_eval(soft_var[0])
+            if isinstance(softw_gates_trs_db, list):
+                softw_gates_trs = softw_gates_trs_db
+        except Exception as e:
+            print('error while trying to extract the software Gates from Runs: ', e)
+            print('will use gates from file')
 
     print("Go for", run, "with IsoVar = \"" + var[0] + "\" and LineVar = \"" + var[1] + "\"")
     
@@ -43,7 +53,7 @@ def batchFit(fileList, db, run='Run0', x_as_voltage=True):
     fits = []
     for file in fileList:
         try:
-            fits.append(singleFit(file, st, dbname, run, var, cur, x_as_voltage))
+            fits.append(singleFit(file, st, dbname, run, var, cur, x_as_voltage, softw_gates_trs))
         except:
             errcount += 1
             print("Error working on file", file, ":", sys.exc_info()[1])
@@ -56,7 +66,7 @@ def batchFit(fileList, db, run='Run0', x_as_voltage=True):
     print("BatchFit finished,", errcount, "errors occured")
 
 
-def singleFit(file, st, db, run, var, cur, x_as_voltage=True):
+def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=None):
     '''Fit st of file, using run. Save result to db and picture of spectrum to folder'''
     print('-----------------------------------')
     print("Fitting", file)
@@ -67,7 +77,7 @@ def singleFit(file, st, db, run, var, cur, x_as_voltage=True):
     except:
         raise Exception(str(file) + " not found in DB")
 
-    meas = MeasLoad.load(path, db, x_as_voltage=x_as_voltage)
+    meas = MeasLoad.load(path, db, x_as_voltage=x_as_voltage, softw_gates=softw_gates_trs)
     if meas.type == 'Kepco':
         print('Fitting Straight!')
         spec = Straight()

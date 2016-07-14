@@ -218,10 +218,11 @@ def createDB(db):
     lineVar TEXT DEFAULT "",
     isoVar TEXT DEFAULT "",
     scaler TEXT,
-    track TEXT
+    track TEXT,
+    softwGates TEXT
     )''')
     
-    con.execute('''INSERT OR IGNORE INTO Runs VALUES ("Run0", "", "", "[0]", "-1")''')
+    con.execute('''INSERT OR IGNORE INTO Runs VALUES ("Run0", "", "", "[0]", "-1", "")''')
     
     #Fit results
     con.execute('''CREATE TABLE IF NOT EXISTS FitRes (

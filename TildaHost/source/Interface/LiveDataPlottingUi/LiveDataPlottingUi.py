@@ -8,6 +8,7 @@ Module Description:
 import ast
 import logging
 from copy import deepcopy
+import os
 
 import numpy as np
 from PyQt5 import QtWidgets, QtCore
@@ -451,6 +452,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     ''' saving '''
     def save(self, pipedata_dict=None):
+        im_path = self.full_file_path.split('.')[0] + '_' + str(self.tres_sel_tr_name) + '_' + str(self.tres_sel_sc_name) + '.png'
+        self.tres_fig.savefig(im_path)
+
         if isinstance(pipedata_dict, bool):  # when pressing on save
             pipedata_dict = None
         if pipedata_dict is not None:

@@ -278,7 +278,7 @@ class Main(QtCore.QObject):
                 print('already loaded')
                 self.displayed_data[file].bring_to_focus()
                 return None
-            self.displayed_data[file] = DisplayData(file)
+            self.displayed_data[file] = DisplayData(file, True)
             # self.displayed_data[file].con_close_event()
         except Exception as e:
             logging.error('Exception while loading file %s, exception is: %s' % (file, str(e)))

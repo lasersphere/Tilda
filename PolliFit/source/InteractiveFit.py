@@ -22,7 +22,7 @@ from SPFitter import SPFitter
 
 
 class InteractiveFit(object):
-    def __init__(self, file, db, run, block=True, x_as_voltage=True):
+    def __init__(self, file, db, run, block=True, x_as_voltage=True, softw_gates_trs=None):
         plot.ion()
         plot.clear()
         con = sqlite3.connect(db)
@@ -41,7 +41,18 @@ class InteractiveFit(object):
         var = cur.fetchall()[0]
         st = (ast.literal_eval(var[2]), ast.literal_eval(var[3]))
 
-        meas = MeasLoad.load(path, db, x_as_voltage=x_as_voltage)
+        if softw_gates_trs is None:  # if no software gates provided check db
+            try:  # check if there are software gates available in database
+                cur.execute('''SELECT softwGates FROM Runs WHERE run = ?''', (run,))
+                soft_var = cur.fetchall()[0]
+                softw_gates_trs_db = ast.literal_eval(soft_var[0])
+                if isinstance(softw_gates_trs_db, list):
+                    softw_gates_trs = softw_gates_trs_db
+            except Exception as e:
+                print('error while trying to extract the software Gates from Runs: ', e)
+                print('will use gates from file')
+
+        meas = MeasLoad.load(path, db, x_as_voltage=x_as_voltage, softw_gates=softw_gates_trs)
         if meas.type == 'Kepco':  # keep this for all other fileformats than .xml
             spec = Straight()
             spec.evaluate(meas.x[0][-1], (0, 1))

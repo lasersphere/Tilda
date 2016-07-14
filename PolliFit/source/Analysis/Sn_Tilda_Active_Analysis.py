@@ -91,18 +91,19 @@ run = 'Run0'
 #     correct_x_and_fit(path)
 
 ''' Sn 119 '''
+run = 'AllPmtsManGatesSn119'
 files_sn119 = Tools.fileList(db, '119_Sn')
 BatchFit.batchFit(files_sn119, db, run)
 
-''' Sn 124 '''
-files_sn124 = Tools.fileList(db, '124_Sn')
-files_sn124.pop(files_sn124.index('124_Sn_trs_000.xml'))  # timing was wrong
-files_sn124.pop(files_sn124.index('124_Sn_trs_001.xml'))  # timing was wrong
-
-BatchFit.batchFit(files_sn124, db, run)
-
-''' Sn 126 '''
-files_sn126 = Tools.fileList(db, '126_Sn')
-BatchFit.batchFit(files_sn126, db, run)
+# ''' Sn 124 '''
+# files_sn124 = Tools.fileList(db, '124_Sn')
+# files_sn124.pop(files_sn124.index('124_Sn_trs_000.xml'))  # timing was wrong
+# files_sn124.pop(files_sn124.index('124_Sn_trs_001.xml'))  # timing was wrong
+#
+# BatchFit.batchFit(files_sn124, db, run)
+#
+# ''' Sn 126 '''
+# files_sn126 = Tools.fileList(db, '126_Sn')
+# BatchFit.batchFit(files_sn126, db, run)
 
 
