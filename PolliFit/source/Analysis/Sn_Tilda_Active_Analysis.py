@@ -22,7 +22,7 @@ import Service.VoltageConversions.DAC_Calibration as DacCal
 workdir = "R:\Projekte\COLLAPS\Sn\Measurement_and_Analysis_Simon\Sn_beamtime_Tilda_active_data"
 db = os.path.join(workdir, os.path.split(workdir)[1] + '.sqlite')
 
-run = 'Run0'
+# run = 'Run0'
 
 
 # ''' Kepco Scans: '''
@@ -95,15 +95,16 @@ run = 'AllPmtsManGatesSn119'
 files_sn119 = Tools.fileList(db, '119_Sn')
 BatchFit.batchFit(files_sn119, db, run)
 
-# ''' Sn 124 '''
-# files_sn124 = Tools.fileList(db, '124_Sn')
-# files_sn124.pop(files_sn124.index('124_Sn_trs_000.xml'))  # timing was wrong
-# files_sn124.pop(files_sn124.index('124_Sn_trs_001.xml'))  # timing was wrong
-#
-# BatchFit.batchFit(files_sn124, db, run)
-#
-# ''' Sn 126 '''
-# files_sn126 = Tools.fileList(db, '126_Sn')
-# BatchFit.batchFit(files_sn126, db, run)
+''' Sn 124 '''
+files_sn124 = Tools.fileList(db, '124_Sn')
+files_sn124.pop(files_sn124.index('124_Sn_trs_000.xml'))  # timing was wrong
+files_sn124.pop(files_sn124.index('124_Sn_trs_001.xml'))  # timing was wrong
+run = 'AllPmtsManGatesSn124'
+BatchFit.batchFit(files_sn124, db, run)
+
+''' Sn 126 '''
+files_sn126 = Tools.fileList(db, '126_Sn')
+run = 'AllPmtsManGatesSn126'
+BatchFit.batchFit(files_sn126, db, run)
 
 
