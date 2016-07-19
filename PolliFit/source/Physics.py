@@ -7,6 +7,7 @@ A collection of physical constants and formulas
 '''
 
 import math
+
 import numpy as np
 from scipy import special
 
@@ -63,7 +64,17 @@ def voigt(x, sig, gam):
     '''Voigt profile, unnormalized, using the Faddeeva function'''
     return special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).real / (sig * math.sqrt(2 * math.pi))
 
-def HFCoeff(I, J, F):    
+def gaussian(x, mu, sig, amp):
+    """
+    gaussian function
+    :param x:
+    :param mu:
+    :param sig:
+    :return:
+    """
+    return amp/(sig * math.sqrt(2 * math.pi)) * math.exp(-0.5 * ((x - mu) / sig) ** 2)
+
+def HFCoeff(I, J, F):
     '''Return the tuple of hyperfine coefficients for A and B-factor for a given quantum state'''
     #print('Return the tuple of hyperfine coefficients for A and B-factor for I = ', I, ' J = ', J, ' F = ', F)
     C = 0.0 if I == 0 else (F*(F+1) - I*(I+1) - J*(J+1))
