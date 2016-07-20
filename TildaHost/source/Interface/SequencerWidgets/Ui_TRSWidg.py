@@ -6,7 +6,7 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 
 class Ui_TRSWidg(object):
     def setupUi(self, TRSWidg):
@@ -92,7 +92,7 @@ class Ui_TRSWidg(object):
         self.spinBox_softBinWidth.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
         self.spinBox_softBinWidth.setKeyboardTracking(False)
         self.spinBox_softBinWidth.setMinimum(10)
-        self.spinBox_softBinWidth.setMaximum(100)
+        self.spinBox_softBinWidth.setMaximum(100000)
         self.spinBox_softBinWidth.setSingleStep(10)
         self.spinBox_softBinWidth.setObjectName("spinBox_softBinWidth")
         self.gridLayout.addWidget(self.spinBox_softBinWidth, 2, 1, 1, 1)

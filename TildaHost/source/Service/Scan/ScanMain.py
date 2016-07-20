@@ -7,14 +7,15 @@ Created on '19.05.2015'
 """
 
 import logging
-from datetime import datetime
 from copy import deepcopy
+from datetime import datetime
+
 import Driver.DataAcquisitionFpga.FindSequencerByType as FindSeq
+import Driver.DigitalMultiMeter.DigitalMultiMeterControl as DmmCtrl
+import Driver.PostAcceleration.PostAccelerationMain as PostAcc
+import Service.AnalysisAndDataHandling.tildaPipeline as Tpipe
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as DftScan
-import Service.AnalysisAndDataHandling.tildaPipeline as Tpipe
-import Driver.PostAcceleration.PostAccelerationMain as PostAcc
-import Driver.DigitalMultiMeter.DigitalMultiMeterControl as DmmCtrl
 
 
 class ScanMain:
@@ -136,7 +137,8 @@ class ScanMain:
         """
         track_dict = scan_dict.get('track' + str(track_num))
         logging.debug('---------------------------------------------')
-        logging.debug('starting measurement of track %s  with track_dict: %s' % (track_num, str(sorted(track_dict))))
+        logging.debug('starting measurement of track %s  with track_dict: %s' %
+                      (track_num, str(track_dict)))
         logging.debug('---------------------------------------------')
         # logging.debug('postACCVoltControl is: ' + str(track_dict['postAccOffsetVoltControl']))  # this is fine.
         start_ok = self.sequencer.measureTrack(scan_dict, track_num)

@@ -161,7 +161,7 @@ def calc_dac_stop_18bit(start, step, num_of_steps):
     stop = start + step * num_of_steps
     :return stop_18bit
     """
-    stop = start + step * (num_of_steps - 1)
+    stop = int(start + step * (num_of_steps - 1))
     # stop = max(0, stop)
     # stop = min((2 ** 18 - 1), stop)
     return stop

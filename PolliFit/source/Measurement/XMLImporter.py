@@ -6,11 +6,12 @@ Created on '07.08.2015'
 
 """
 
+import ast
 import os
 import sqlite3
 
 import numpy as np
-import ast
+
 import Physics
 import TildaTools
 from Measurement.SpecData import SpecData
@@ -23,6 +24,8 @@ class XMLImporter(SpecData):
 
     def __init__(self, path=None, x_as_volt=True, scan_dict=None, softw_gates=None):
         '''Read the file'''
+
+        self.file = None
 
         super(XMLImporter, self).__init__()
         if path is not None:

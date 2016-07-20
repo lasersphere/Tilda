@@ -12,11 +12,11 @@ from copy import deepcopy
 
 import numpy as np
 
-from Service.FileOperations.XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, xmlAddCompleteTrack
 import Service.Scan.ScanDictionaryOperations as SdOp
-from TildaTools import save_xml
-import Tools
 import TildaTools as Tits
+import Tools
+from Service.FileOperations.XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, xmlAddCompleteTrack
+from TildaTools import save_xml
 
 
 def findTildaFolder(path=os.path.dirname(os.path.abspath(__file__))):
@@ -73,6 +73,7 @@ def createXmlFileOneIsotope(scanDict, seq_type=None, filename=None):
     db_name = os.path.basename(scanDict['pipeInternals']['workingDirectory']) + '.sqlite'
     db = scanDict['pipeInternals']['workingDirectory'] + '\\' + db_name
     if os.path.isfile(db):
+        os.chdir(scanDict['pipeInternals']['workingDirectory'])
         relative_filename = os.path.normcase(
             os.path.join('.\\', os.path.split(os.path.dirname(filename))[1], os.path.basename(filename)))
         Tools._insertFile(relative_filename, db)

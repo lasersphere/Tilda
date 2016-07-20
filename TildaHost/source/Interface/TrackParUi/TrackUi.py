@@ -5,21 +5,22 @@ Created on '29.09.2015'
 @author:'simkaufm'
 
 """
-from PyQt5 import QtWidgets
-from PyQt5 import QtCore
 import ast
 import logging
-from copy import deepcopy
 import math
+from copy import deepcopy
 
-from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
-from Interface.SetVoltageUi.SetVoltageUi import SetVoltageUi
+from PyQt5 import QtCore
+from PyQt5 import QtWidgets
+
+import Application.Config as Cfg
 import Interface.SequencerWidgets.FindDesiredSeqWidg as FindDesiredSeqWidg
+import Interface.TriggerWidgets.FindDesiredTriggerWidg as FindDesiredTriggerWidg
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.VoltageConversions.VoltageConversions as VCon
-import Application.Config as Cfg
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
-import Interface.TriggerWidgets.FindDesiredTriggerWidg as FindDesiredTriggerWidg
+from Interface.SetVoltageUi.SetVoltageUi import SetVoltageUi
+from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
 
 
 class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
@@ -193,7 +194,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.doubleSpinBox_dacStartV.setValue(start_volt)
         self.doubleSpinBox_dacStartV.blockSignals(False)
         dis = self.buffer_pars['dacStopRegister18Bit'] - self.buffer_pars['dacStartRegister18Bit']
-        self.buffer_pars['dacStepSize18Bit'] = math.copysign(self.buffer_pars['dacStepSize18Bit'], dis)
+        self.buffer_pars['dacStepSize18Bit'] = int(math.copysign(self.buffer_pars['dacStepSize18Bit'], dis))
         self.recalc_n_of_steps_stop()
 
     def dac_stop_v_set(self, stop_volt):
@@ -202,7 +203,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.buffer_pars['dacStopRegister18Bit'] = VCon.get_18bit_from_voltage(stop_volt)
         self.dac_stop_bit_user = VCon.get_18bit_from_voltage(stop_volt)  # only touch this when double spinbox is touched
         dis = self.buffer_pars['dacStopRegister18Bit'] - self.buffer_pars['dacStartRegister18Bit']
-        self.buffer_pars['dacStepSize18Bit'] = math.copysign(self.buffer_pars['dacStepSize18Bit'], dis)
+        self.buffer_pars['dacStepSize18Bit'] = int(math.copysign(self.buffer_pars['dacStepSize18Bit'], dis))
         self.recalc_n_of_steps_stop()
 
     def display_stop(self, stop_18bit):
