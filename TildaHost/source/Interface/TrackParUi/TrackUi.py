@@ -10,7 +10,7 @@ from PyQt5 import QtCore
 import ast
 import logging
 from copy import deepcopy
-import time
+import math
 
 from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
 from Interface.SetVoltageUi.SetVoltageUi import SetVoltageUi
@@ -43,6 +43,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
         self.buffer_pars = deepcopy(Cfg._main_instance.scan_pars.get(active_iso_name).get(self.track_name))
         self.buffer_pars['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()  # is needed to be able to fix stop
+        self.dac_stop_bit_user = self.calc_dac_stop_18bit()
 
         self.track_ui_call_back_signal.connect(self.refresh_pow_sup_readback)
         self.set_volt_win = None
@@ -65,10 +66,19 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.comboBox_triggerSelect.currentTextChanged.connect(self.trigger_select)
 
         """DAC Settings"""
+        self.doubleSpinBox_dacStartV.setRange(VCon.get_voltage_from_18bit(0), VCon.get_voltage_from_18bit(2 ** 18 - 1))
         self.doubleSpinBox_dacStartV.valueChanged.connect(self.dac_start_v_set)
+
+        self.doubleSpinBox_dacStopV.setRange(VCon.get_voltage_from_18bit(0), VCon.get_voltage_from_18bit(2 ** 18 - 1))
         self.doubleSpinBox_dacStopV.valueChanged.connect(self.dac_stop_v_set)
+
+        self.doubleSpinBox_dacStepSizeV.setRange(
+            VCon.get_voltage_from_18bit(-(2 ** 18 - 1)), VCon.get_voltage_from_18bit(2 ** 18 - 1))
         self.doubleSpinBox_dacStepSizeV.valueChanged.connect(self.dac_step_size_set)
+
+        self.spinBox_nOfSteps.setRange(2, 2 ** 18)
         self.spinBox_nOfSteps.valueChanged.connect(self.n_of_steps_set)
+
         self.spinBox_nOfScans.valueChanged.connect(self.n_of_scans_set)
         self.checkBox_invertScan.stateChanged.connect(self.invert_scan_set)
 
@@ -102,6 +112,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         Each function is tried separately in order to give the next one a chance of execution,
         when default val is messed up.
         """
+        cb_post_acc_ind_before_load = self.comboBox_postAccOffsetVoltControl.currentIndex()
         print('setting trackui labels by dict: ', track_dict)
         func_list = [
             # (self.doubleSpinBox_dwellTime_ms.setValue,
@@ -133,12 +144,14 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             try:
                 func[0](func[1])
             except Exception as e:
-                logging.error('error while loading default track dictionary: ' + str(e))
+               print('error while loading default track dictionary: ' + str(e))
         # self.comboBox_postAccOffsetVoltControl.currentIndexChanged.emit(self.comboBox_postAccOffsetVoltControl.currentIndex())
         print('setting trackui labels by dict is done postAccOffsetVoltControl is: ',
               self.buffer_pars['postAccOffsetVoltControl'])  #
-        self.comboBox_postAccOffsetVoltControl.currentIndexChanged.emit(
-            int(self.check_for_none(track_dict.get('postAccOffsetVoltControl'), 0)))
+        if cb_post_acc_ind_before_load == self.comboBox_postAccOffsetVoltControl.currentIndex():
+            # force index change emit if the index was not changed by loading
+            self.comboBox_postAccOffsetVoltControl.currentIndexChanged.emit(
+                int(self.check_for_none(track_dict.get('postAccOffsetVoltControl'), 0)))
 
     def check_for_none(self, check, replace):
         """
@@ -166,61 +179,55 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {}))
         self.trigger_vert_layout.addWidget(self.trigger_widget)
 
-    # def trig_for_all_tracks(self, checked):
-    #     if checked:
-    #         trig_dict = self.trigger_widget.get_trig_pars()
-    #         self.scan_ctrl_win.update_trigger_track_wins(trig_dict, self)
-    #
-    # def trigger_external_update(self, trigger_dict):
-    #     self.checkBox.setChecked(True)
-    #     self.comboBox_triggerSelect.setCurrentText(trigger_dict['type'].name)
-    #     # print(trigger_dict)
-    #     # time.sleep(0.05)
-    #     self.trigger_widget.set_vals_by_dict(trigger_dict)
-    #     self.trigger_widget.setDisabled(True)
-
     """ from lineedit/spinbox to set value """
+    '''line voltage realted:'''
     def dac_start_v_set(self, start_volt):
         """ this will write the doublespinbox value to the working dict and set the label
         it will also call recalc_step_stop to adjust the stepsize and then fine tune the stop value """
         start_18bit = VCon.get_18bit_from_voltage(start_volt)
         start_volt = VCon.get_voltage_from_18bit(start_18bit)
         self.buffer_pars['dacStartRegister18Bit'] = start_18bit
-        self.label_dacStartV_set.setText(str(start_volt) + ' | ' + str(format(start_18bit, '018b'))
-                                         + ' | ' + str(start_18bit))
+        self.label_dacStartV_set.setText(str(round(start_volt, 8)) + ' | ' + str(start_18bit))
         self.label_kepco_start.setText(str(round(start_volt * 50, 2)))
-        self.recalc_step_stop()
+        self.doubleSpinBox_dacStartV.blockSignals(True)
+        self.doubleSpinBox_dacStartV.setValue(start_volt)
+        self.doubleSpinBox_dacStartV.blockSignals(False)
+        dis = self.buffer_pars['dacStopRegister18Bit'] - self.buffer_pars['dacStartRegister18Bit']
+        self.buffer_pars['dacStepSize18Bit'] = math.copysign(self.buffer_pars['dacStepSize18Bit'], dis)
+        self.recalc_n_of_steps_stop()
 
     def dac_stop_v_set(self, stop_volt):
         """ this will write the doublespinbox value to the working dict and set the label
-        it will also call recalc_step_stop to adjust the stepsize and then fine tune the stop value """
+        it will also call recalc_n_of_steps_stop to adjust the number of steps and then fine tune the stop value """
         self.buffer_pars['dacStopRegister18Bit'] = VCon.get_18bit_from_voltage(stop_volt)
-        self.recalc_step_stop()
+        self.dac_stop_bit_user = VCon.get_18bit_from_voltage(stop_volt)  # only touch this when double spinbox is touched
+        dis = self.buffer_pars['dacStopRegister18Bit'] - self.buffer_pars['dacStartRegister18Bit']
+        self.buffer_pars['dacStepSize18Bit'] = math.copysign(self.buffer_pars['dacStepSize18Bit'], dis)
+        self.recalc_n_of_steps_stop()
 
     def display_stop(self, stop_18bit):
         """ function only for displaying the stop value """
         setval = VCon.get_voltage_from_18bit(stop_18bit)
-        self.label_dacStopV_set.setText(str(setval) + ' | ' + str(format(stop_18bit, '018b'))
-                                        + ' | ' + str(stop_18bit))
+        self.buffer_pars['dacStopRegister18Bit'] = stop_18bit
+        self.label_dacStopV_set.setText(str(round(setval, 8)) + ' | ' + str(stop_18bit))
         self.label_kepco_stop.setText(str(round(setval * 50, 2)))
-
-    def recalc_step_stop(self):
-        """ start and stop should be more or less constant therefore in most cases the stepsize must be adjusted.
-         after adjusting the step size, the stop voltage is fine tuned to the next possible value. """
-        try:
-            self.display_step_size(self.calc_step_size())
-            self.display_stop(self.calc_dac_stop_18bit())
-        except Exception as e:
-            logging.error('the following error occurred while calculating the number of steps:'
-                          + str(e))
+        self.doubleSpinBox_dacStopV.blockSignals(True)
+        self.doubleSpinBox_dacStopV.setValue(setval)
+        self.doubleSpinBox_dacStopV.blockSignals(False)
 
     def recalc_n_of_steps_stop(self):
         """ start and stop should be more or less constant if the stepsize changes,
-         the number of steps must be adjusted.
-         after adjusting the nuumber of steps, the stop voltage is fine tuned to the next possible value. """
+        the number of steps must be adjusted.
+        after adjusting the number of steps, the stop voltage is fine tuned to the next possible value.
+        """
         try:
+            self.display_step_size(self.buffer_pars['dacStepSize18Bit'])
             self.display_n_of_steps(self.calc_n_of_steps())
-            self.display_stop(self.calc_dac_stop_18bit())
+            stop = self.calc_dac_stop_18bit()
+            if stop < 0 or stop == self.buffer_pars['dacStartRegister18Bit'] or stop >= 2 ** 18:
+                return False
+            self.display_stop(stop)
+            return True
         except Exception as e:
             logging.error('the following error occurred while calculating the number of steps:'
                           + str(e))
@@ -241,7 +248,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """ calculates the stepsize: (stop - start) / nOfSteps  """
         try:
             start = self.check_for_none(self.buffer_pars.get('dacStartRegister18Bit'), 0)
-            stop = self.check_for_none(self.buffer_pars.get('dacStopRegister18Bit'), 1)
+            stop = self.dac_stop_bit_user
             steps = self.check_for_none(self.buffer_pars.get('nOfSteps'), 1)
             stepsize_18bit = VCon.calc_step_size(start, stop, steps)
         except Exception as e:
@@ -253,7 +260,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """ calculates the number of steps: abs((stop - start) / stepSize) """
         try:
             start = self.check_for_none(self.buffer_pars.get('dacStartRegister18Bit'), 0)
-            stop = self.check_for_none(self.buffer_pars.get('dacStopRegister18Bit'), 1)
+            stop = self.dac_stop_bit_user
             step = self.check_for_none(self.buffer_pars.get('dacStepSize18Bit'), 1)
             n_of_steps = VCon.calc_n_of_steps(start, stop, step)
         except Exception as e:
@@ -263,30 +270,40 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
     def dac_step_size_set(self, step_volt):
         """ if the stepsize is set, adjust the number of steps to keep start and stop constant"""
+        last_step_18bit = self.buffer_pars['dacStepSize18Bit']
         step_18bit = VCon.get_18bit_stepsize(step_volt)
         self.display_step_size(step_18bit)
-        self.recalc_n_of_steps_stop()
+        if not self.recalc_n_of_steps_stop():  # for invalid stop value, return to last valid value
+            self.display_step_size(last_step_18bit)
+            self.recalc_n_of_steps_stop()
 
     def display_step_size(self, step_18bit):
         """ stores the stepSize to the working dictionary and displays them """
         self.buffer_pars['dacStepSize18Bit'] = step_18bit
         step_volt = VCon.get_stepsize_in_volt_from_18bit(step_18bit)
-        self.label_dacStepSizeV_set.setText(str(step_volt) + ' | ' + str(format(step_18bit, '018b'))
-                                            + ' | ' + str(step_18bit))
+        self.label_dacStepSizeV_set.setText(str(round(step_volt, 8)) + ' | ' + str(step_18bit))
         self.label_kepco_step.setText(str(round(step_volt * 50, 2)))
+        self.doubleSpinBox_dacStepSizeV.blockSignals(True)
+        self.doubleSpinBox_dacStepSizeV.setValue(step_volt)
+        self.doubleSpinBox_dacStepSizeV.blockSignals(False)
 
     def n_of_steps_set(self, steps):
         """ displays the number of steps that where set and recalculates the stepSize
          in order to keep start and stop more or less constant """
         self.display_n_of_steps(steps)
-        self.recalc_step_stop()
+        self.display_step_size(self.calc_step_size())
+        self.display_stop(self.calc_dac_stop_18bit())
 
     def display_n_of_steps(self, steps):
         """ write the number of steps to the working dictionary and display them """
-        steps = int(round(steps))
+        steps = int(steps)
         self.label_nOfSteps_set.setText(str(steps))
         self.buffer_pars['nOfSteps'] = steps
+        self.spinBox_nOfSteps.blockSignals(True)
+        self.spinBox_nOfSteps.setValue(steps)
+        self.spinBox_nOfSteps.blockSignals(False)
 
+    '''other scan pars:'''
     def n_of_scans_set(self, val):
         """ write the number of scans to the working dictionary and display them """
         self.label_nOfScans_set.setText(str(val))
@@ -353,7 +370,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """
         name = self.comboBox_postAccOffsetVoltControl.currentText()
         try:
-            self.label_postAccOffsetVoltControl_set.setText(str(stat_dict.get(name).get('readBackVolt')))
+            self.label_postAccOffsetVoltControl_set.setText(
+                str(stat_dict.get(name, {}).get('readBackVolt', 'not initalized')))
         except Exception as e:
             logging.error('while reading the status, this happened: ' + str(e))
 

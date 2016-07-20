@@ -69,7 +69,8 @@ def get_stepsize_in_volt_from_18bit(voltage_18bit, dac_gauge_pars=AD5781Fit.dac_
     lsb = 20 / ((2 ** 18) - 1)  # least significant bit in +/-10V 18Bit DAC
     if dac_gauge_pars is not None:
         lsb = dac_gauge_pars[1]  # lsb = slope from DAC-Scan
-    volt = round(voltage_18bit * lsb, 6)
+    # volt = round(voltage_18bit * lsb, 8)
+    volt = voltage_18bit * lsb
     return volt
 
 
@@ -100,11 +101,11 @@ def get_voltage_from_18bit(voltage_18bit, dac_gauge_pars=AD5781Fit.dac_gauge_val
     if dac_gauge_pars is None:
         # function as described in the AD5781 Manual
         voltfloat = (ref_volt_pos - ref_volt_neg) * voltage_18bit / ((2 ** 18) - 1) + ref_volt_neg
-        voltfloat = round(voltfloat, 6)
+        # voltfloat = round(voltfloat, 8)
     else:
         # linear function (V = slope * D + offset) with offset and slope from measurement
         voltfloat = voltage_18bit * dac_gauge_pars[1] + dac_gauge_pars[0]
-        voltfloat = round(voltfloat, 6)
+        # voltfloat = round(voltfloat, 8)
     return voltfloat
 
 
@@ -161,6 +162,8 @@ def calc_dac_stop_18bit(start, step, num_of_steps):
     :return stop_18bit
     """
     stop = start + step * (num_of_steps - 1)
+    # stop = max(0, stop)
+    # stop = min((2 ** 18 - 1), stop)
     return stop
 
 
@@ -171,9 +174,11 @@ def calc_step_size(start, stop, steps):
     """
     try:
         dis = stop - start
-        stepsize_18bit = int(round(dis / (steps - 1)))
+        stepsize_18bit = int(dis / (steps - 1))
     except ZeroDivisionError:
         stepsize_18bit = 0
+    # stepsize_18bit = max(-(2 ** 18 - 1), stepsize_18bit)
+    # stepsize_18bit = min((2 ** 18 - 1), stepsize_18bit)
     return stepsize_18bit
 
 
@@ -183,7 +188,57 @@ def calc_n_of_steps(start, stop, step_size):
     """
     try:
         dis = abs(stop - start) + abs(step_size)
-        n_of_steps = int(round(dis / abs(step_size)))
+        n_of_steps = int(dis / abs(step_size))
     except ZeroDivisionError:
         n_of_steps = 0
+    # n_of_steps = max(2, n_of_steps)
+    # n_of_steps = min((2 ** 18 - 1), n_of_steps)
     return n_of_steps
+
+# # testing the step_size calculation
+# start = 0
+# stop = 2 ** 18 - 1
+# steps = []
+# stop_dif = []
+# step_size = []
+# for num_of_steps in range(2, 10000):
+#     step_18b = calc_step_size(start, stop, num_of_steps)
+#     res_stop = start + (num_of_steps - 1) * step_18b
+#     steps.append(num_of_steps)
+#     step_size.append(step_size)
+#     stop_dif.append(stop - res_stop)
+#
+#     # if res_stop > 2 ** 18 - 1:
+#     #     print(res_stop, ' at %s steps' % num_of_steps)
+#     # if res_stop != stop:
+#     #     print('stop value was not reached, stop is: %s, difference is %s at num of steps %s and step_size %s' %
+#     #           (res_stop, stop - res_stop, num_of_steps, step_18b))
+#
+# import matplotlib.pyplot as plt
+#
+# plt.plot(steps, stop_dif)
+# plt.plot(steps, step_size)
+# plt.show()
+
+
+# # testing the num of steps calculation
+# start = 0
+# stop = 2 ** 18 - 1
+# step_size_l = []
+# stop_dif = []
+# steps = []
+# for step_size in range(2, 100000):
+#     num_of_steps = calc_n_of_steps(start, stop, step_size)
+#     res_stop = start + (num_of_steps - 1) * step_size
+#     steps.append(num_of_steps)
+#     step_size_l.append(step_size)
+#     stop_dif.append(stop - res_stop)
+#
+# import matplotlib.pyplot as plt
+#
+# # step_size_l = [get_stepsize_in_volt_from_18bit(bit) for bit in step_size_l]
+# plt.plot(step_size_l, stop_dif, label='stop-calc_stop')
+# plt.plot(step_size_l, steps, label='num_of_steps')
+# plt.legend()
+# # plt.xlabel('step_size_V')
+# plt.show()

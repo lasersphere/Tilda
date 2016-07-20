@@ -221,8 +221,11 @@ def createDB(db):
     track TEXT,
     softwGates TEXT
     )''')
-    
-    con.execute('''INSERT OR IGNORE INTO Runs VALUES ("Run0", "", "", "[0]", "-1", "")''')
+    try:
+        con.execute('''INSERT OR IGNORE INTO Runs VALUES ("Run0", "", "", "[0]", "-1", "")''')
+    except Exception as e:
+        con.execute('''INSERT OR IGNORE INTO Runs VALUES ("Run0", "", "", "[0]", "-1")''')  # for older db versions
+
     
     #Fit results
     con.execute('''CREATE TABLE IF NOT EXISTS FitRes (

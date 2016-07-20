@@ -15,6 +15,7 @@ from Spectra.Straight import Straight
 from SPFitter import SPFitter
 import MPLPlotter as plot
 import BatchFit
+import Analyzer
 
 
 import Service.VoltageConversions.DAC_Calibration as DacCal
@@ -23,7 +24,6 @@ workdir = "R:\Projekte\COLLAPS\Sn\Measurement_and_Analysis_Simon\Sn_beamtime_Til
 db = os.path.join(workdir, os.path.split(workdir)[1] + '.sqlite')
 
 # run = 'Run0'
-
 
 # ''' Kepco Scans: '''
 # fl_1 = Tools.fileList(db, 'Kepco_fl1')
@@ -90,21 +90,59 @@ db = os.path.join(workdir, os.path.split(workdir)[1] + '.sqlite')
 #     path = i
 #     correct_x_and_fit(path)
 
+# ''' insert results from kepco scan and wavelength to other files: '''
+# con = sqlite3.connect(db)
+# cur = con.cursor()
+# cur.execute(
+#     '''UPDATE Files SET laserFreq=662929863.205568,
+#     voltDivRatio="{'accVolt':10000, 'offset':991.6}",
+#     lineMult=0.050417, lineOffset=0.000009, accVolt=4.0024713'''
+# )
+# con.commit()
+# con.close()
+
 ''' Sn 119 '''
+iso = '119_Sn'
 run = 'AllPmtsManGatesSn119'
-files_sn119 = Tools.fileList(db, '119_Sn')
+files_sn119 = Tools.fileList(db, iso)[:-1]  # not the flipped one
 BatchFit.batchFit(files_sn119, db, run)
+Analyzer.combineRes(iso, 'center', run, db)
+Analyzer.combineRes(iso, 'Au', run, db)
+ints0 = Analyzer.combineRes(iso, 'Int0', run, db)
+ints1 = Analyzer.combineRes(iso, 'Int1', run, db)
+
+int_rel = []
+for i, j in enumerate(ints0[3][1]):
+    int_rel.append(ints1[3][1][i] / j)
+print(int_rel)
+
 
 ''' Sn 124 '''
-files_sn124 = Tools.fileList(db, '124_Sn')
+iso = '124_Sn'
+files_sn124 = Tools.fileList(db, iso)
 files_sn124.pop(files_sn124.index('124_Sn_trs_000.xml'))  # timing was wrong
 files_sn124.pop(files_sn124.index('124_Sn_trs_001.xml'))  # timing was wrong
 run = 'AllPmtsManGatesSn124'
 BatchFit.batchFit(files_sn124, db, run)
+Analyzer.combineRes(iso, 'center', run, db)
+
+
+
 
 ''' Sn 126 '''
-files_sn126 = Tools.fileList(db, '126_Sn')
+iso = '126_Sn'
+files_sn126 = Tools.fileList(db, iso)
 run = 'AllPmtsManGatesSn126'
 BatchFit.batchFit(files_sn126, db, run)
+Analyzer.combineRes(iso, 'center', run, db)
+
+
+''' isotope shifts: '''
+run = 'AllPmtsManGatesSn119'
+Analyzer.combineShift('119_Sn', run, db)
+run = 'AllPmtsManGatesSn126'
+Analyzer.combineShift('126_Sn', run, db)
+
+
 
 
