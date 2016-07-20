@@ -8,7 +8,6 @@ Module Description:
 import ast
 import logging
 from copy import deepcopy
-import os
 
 import numpy as np
 from PyQt5 import QtWidgets, QtCore
@@ -132,12 +131,17 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         call this to pass a new dataset to the gui.
         """
         try:
+            gates = None
+            if self.spec_data is not None:
+                gates = deepcopy(self.spec_data.softw_gates)
             self.spec_data = deepcopy(spec_data)
             self.storage_data = deepcopy(spec_data)
+            if gates is not None:
+                self.spec_data.softw_gates = gates
+                self.storage_data.softw_gates = gates
             self.sum_scaler_changed(0)
             self.update_gates_list()
             self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
-            # self.gate_data(self.spec_data, plot_bool=False)  # will be done inside rebinning.
             self.update_all_plots(self.spec_data)
         except Exception as e:
             print('error in liveplotterui while receiving new data: ', e)
@@ -495,6 +499,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         if self.storage_data is not None:
             logging.debug('rebinning data to bins of  %s' % rebin_factor_ns)
             rebin_track = -1 if self.checkBox.isChecked() else self.tres_sel_tr_ind
+            # gates = deepcopy(self.spec_data.softw_gates)
+            self.storage_data.softw_gates = self.extract_all_gates_from_gui()
             self.spec_data = Form.time_rebin_all_spec_data(self.storage_data, rebin_factor_ns, rebin_track)
             print('softw_binwidth of full data: %s, of rebinned data: %s '
                   % (self.storage_data.softBinWidth_ns, self.spec_data.softBinWidth_ns))

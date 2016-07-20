@@ -1373,7 +1373,8 @@ class NCSSortRawDatatoArray(Node):
                             try:
                                 self.scalerArray[track_ind][pmt_ind][self.curVoltIndex][j['payload']] += 1
                             except Exception as e:
-                                print('excepti : ', e)
+                                print('error while sorting pmt event into scaler array: ', e,
+                                      'scalerArray: ', self.scalerArray)
                                 # print('scaler event: ', track_ind, self.curVoltIndex, pmt_ind, j['payload'])
                                 # timestamp equals index in time array of the given scaler
                 elif j['firstHeader'] == Progs.infoHandler.value:

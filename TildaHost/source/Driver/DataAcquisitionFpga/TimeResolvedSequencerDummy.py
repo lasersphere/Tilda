@@ -6,14 +6,14 @@ Created on
 Module Description: Dummy module for the time resolved sequencer, when there is no fpga at hand.
 """
 
-import numpy as np
 import ctypes
 
+import numpy as np
 
-from Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
-from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
 import Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig as TrsCfg
 import Service.Formating as Form
+from Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
+from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
 
 
 class TimeResolvedSequencer(Sequencer, MeasureVolt):
@@ -119,6 +119,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         """
         build artificial data for one track.
         """
+        print('starting to build artificial data for dummy trs')
         track_ind, track_name = scanpars['pipeInternals']['activeTrackNumber']
         trackd = scanpars[track_name]
         x_axis = Form.create_x_axis_from_scand_dict(scanpars)[track_ind]
@@ -144,10 +145,11 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
                         scaler03 = 2 ** 5 - 1  # easier for debugging
                         scaler47 = 2 ** 5 - 1  # easier for debugging
                         complete_lis.append(Form.add_header_to23_bit(time, scaler03, scaler47, 0))
-                        time += 10  # gives event pattern in 10 ns steps
+                        time += 100  # gives event pattern in 1000 ns steps
                         if time >= trackd['nOfBins']:
                             # step complete, will be send after each bunch!
                             complete_lis.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))
+        print('artificial data for dummy trs completed')
         self.artificial_build_data = complete_lis
 
     ''' overwriting interface functions here '''
@@ -161,7 +163,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         """
         result = {'nOfEle': 0, 'newData': None, 'elemRemainInFifo': 0}
         result['elemRemainInFifo'] = len(self.artificial_build_data)
-        max_read_data = 200
+        max_read_data = 20000
         n_of_read_data = 0
         if result['elemRemainInFifo'] > 0:
             n_of_read_data = min(max_read_data, result['elemRemainInFifo'])
