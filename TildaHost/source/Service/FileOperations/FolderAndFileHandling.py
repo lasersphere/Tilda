@@ -98,10 +98,10 @@ def savePickle(data, pipeDataDict, ending='.raw'):
     saves data using the pickle module
     """
     path = pipeDataDict['pipeInternals']['workingDirectory']
+    xml_path = os.path.split(pipeDataDict['pipeInternals']['activeXmlFilePath'])[1].split('.')[0]
     path = nameFile(path, 'raw',
-                    pipeDataDict['isotopeData']['isotope'] +
-                    '_track' + str(pipeDataDict['pipeInternals']['activeTrackNumber'][0]),
-                    pipeDataDict['isotopeData']['type'],
+                    xml_path,
+                    '',
                     ending)
     save_pickle_simple(path, data)
     return path

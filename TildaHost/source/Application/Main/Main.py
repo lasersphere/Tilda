@@ -77,10 +77,8 @@ class Main(QtCore.QObject):
 
         try:
             # pass
-            self.work_dir_changed('E:/lala')
+            self.work_dir_changed('D:\Sn_beamtime_Tilda_active_data')
             # self.work_dir_changed('C:/temp108')
-            # self.work_dir_changed(
-            #     'R:\\Projekte\\COLLAPS\\Sn\\Measurement_and_Analysis_Simon\\Sn_beamtime_Tilda_active_data')
             # self.work_dir_changed('E:\TildaDebugging')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
@@ -131,9 +129,9 @@ class Main(QtCore.QObject):
             self._load_track()
             self.get_fpga_and_seq_state()
         elif self.m_state[0] is MainState.scanning:
+            self.read_dmms(feed_to_pipe=True)
             self._scanning()
             self.get_fpga_and_seq_state()
-            self.read_dmms(feed_to_pipe=True)
         elif self.m_state[0] is MainState.saving:
             self._stop_sequencer_and_save(self.m_state[1])
 

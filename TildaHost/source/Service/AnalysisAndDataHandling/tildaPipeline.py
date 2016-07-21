@@ -157,7 +157,7 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False):
     window_title = 'plot ' + filen
     fig.canvas.set_window_title(window_title)
     #
-    # # walk = start.attach(TN.NSaveRawData())
+    walk = start.attach(TN.NSaveRawData())
     # walk = start.attach(SN.NPrint())
     specdata_path = start.attach(TN.NStartNodeKepcoScan(as_voltage, dmm_names))
     specdata_path = specdata_path.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
