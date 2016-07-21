@@ -9,10 +9,10 @@ import ctypes
 from os import path, pardir
 
 '''Bitfile Signature:'''
-bitfileSignature = '857079DC83AD2F54AB4DB61AF69753EF'
+bitfileSignature = 'FB344F6CB827ADA74A1942A3989C5ADB'
 '''Bitfile Path:'''
 bitfilePath = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                        'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV201.lvbitx')
+                        'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV202.lvbitx')
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''
