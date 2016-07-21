@@ -18,10 +18,10 @@ Using CApiAnalyser.py yields:
 """
 
 '''Bitfile Signature:'''
-bitfileSignature = '0ED2AF95ACA116237B6295411D13A9DD'
+bitfileSignature = '456EC63D3864F2E5D59ABE2064D5054B'
 '''Bitfile Path:'''
 bitfilePath = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                        'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_201.lvbitx')
+                        'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_202.lvbitx')
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''
@@ -58,7 +58,6 @@ nOfBins = {'ref': 0x8138, 'val': ctypes.c_ulong(), 'ctr': True}
 trigDelay10ns = {'ref': 0x813C, 'val': ctypes.c_ulong(), 'ctr': True}
 '''TargetToHostFifos:'''
 transferToHost = {'ref': 0, 'val': ctypes.c_ulong(), 'ctr': False}
-
 
 """
 Hand filled Values, for example certain values for enums:
