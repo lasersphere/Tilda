@@ -6,19 +6,10 @@ Created on 13.07.2016
 Module Description: Script to analyse the files gained via tilda active during the Sn run @COLLAPS
 """
 import os
-import numpy as np
-import Tools
-import sqlite3
-from Measurement.XMLImporter import XMLImporter
-import Service.VoltageConversions.VoltageConversions as VCon
-from Spectra.Straight import Straight
-from SPFitter import SPFitter
-import MPLPlotter as plot
-import BatchFit
+
 import Analyzer
-
-
-import Service.VoltageConversions.DAC_Calibration as DacCal
+import BatchFit
+import Tools
 
 workdir = "R:\Projekte\COLLAPS\Sn\Measurement_and_Analysis_Simon\Sn_beamtime_Tilda_active_data"
 db = os.path.join(workdir, os.path.split(workdir)[1] + '.sqlite')
@@ -89,7 +80,7 @@ db = os.path.join(workdir, os.path.split(workdir)[1] + '.sqlite')
 # for i in kepco_flat:
 #     path = i
 #     correct_x_and_fit(path)
-
+#
 # ''' insert results from kepco scan and wavelength to other files: '''
 # con = sqlite3.connect(db)
 # cur = con.cursor()
