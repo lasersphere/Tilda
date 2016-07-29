@@ -10,6 +10,7 @@ import os
 import sqlite3
 import time
 from copy import deepcopy
+from datetime import datetime, timedelta
 
 import numpy as np
 
@@ -354,10 +355,12 @@ class NSaveRawData(Node):
         """
         super(NSaveRawData, self).__init__()
         self.type = "SaveRawData"
-        self.maxArraySize = 5000
+        self.maxArraySize = 500000
 
         self.buf = None
         self.nOfSaves = None
+        self.time_of_last_save = datetime.now()
+        self.max_time_between_saves = timedelta(minutes=5)  # save every five minutes even if countrate is low
 
     def start(self):
         if self.buf is None:
@@ -368,15 +371,21 @@ class NSaveRawData(Node):
     def processData(self, data, pipeData):
         if self.nOfSaves < 0:  # save pipedata, first time something is fed to the pipelins
             self.nOfSaves = Filehandle.savePipeData(pipeData, self.nOfSaves)
+            self.time_of_last_save = datetime.now()
         self.buf = np.append(self.buf, data)
-        if self.buf.size > self.maxArraySize:  # when buffer is full, store the data to disc
+        time_since_last_save = datetime.now() - self.time_of_last_save
+        if self.buf.size > self.maxArraySize or time_since_last_save >= self.max_time_between_saves:
+            # when buffer is full or the maximum acquisition time is reached, store the data to disc
+            print('saving raw data, time since last save is: ', time_since_last_save.seconds)
             self.nOfSaves = Filehandle.saveRawData(self.buf, pipeData, self.nOfSaves)
+            self.time_of_last_save = datetime.now()
             self.buf = np.zeros(0, dtype=np.uint32)
         return data
 
     def clear(self):
         Filehandle.saveRawData(self.buf, self.Pipeline.pipeData, 0)
         Filehandle.savePipeData(self.Pipeline.pipeData, 0)  # also save the pipeData when clearing
+        self.time_of_last_save = datetime.now()
         self.nOfSaves = None
         self.buf = None
 

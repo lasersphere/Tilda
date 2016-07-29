@@ -329,7 +329,7 @@ class Agilent:
         :param trig_slope: str, 'falling' or 'rising'
         :return: trig_slope_set
         """
-        if self.type_num in ['34401A']:  # slope cannot be changed for 34401A, always active low
+        if self.type_num in ['34401A']:  # slope cannot be changed for 34401A, always active low (p. 83)
             return 'falling'
         trig_slope = 'NEG' if trig_slope == 'falling' else 'POS'
         self.send_command('TRIG:SLOP %s' % trig_slope)
