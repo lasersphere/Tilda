@@ -6,15 +6,15 @@ Created on
 Module Description: Main Ui for controlling the digital Multimeters connected to the PXI-Crate
 """
 
-from PyQt5 import QtWidgets, QtCore
 import functools
 import logging
 
-from Interface.DmmUi.Ui_DmmLiveView import Ui_MainWindow
+from PyQt5 import QtWidgets, QtCore
+
+import Application.Config as Cfg
 from Interface.DmmUi.ChooseDmmWidget import ChooseDmmWidget
 from Interface.DmmUi.DMMWidgets import get_wid_by_type
-import Service.Scan.ScanDictionaryOperations as SdOp
-import Application.Config as Cfg
+from Interface.DmmUi.Ui_DmmLiveView import Ui_MainWindow
 
 
 class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
@@ -113,7 +113,6 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
             self.tabWidget.removeTab(tab_ind)
             if self.comm_enabled:  # deinit only if comm is allowed.
                 self.deinit_dmm(dmm_name)
-
 
     def initialize_dmm(self, dmm_tuple):
         """

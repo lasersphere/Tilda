@@ -16,15 +16,14 @@ trigger source
 
 """
 
-import time
-
-from Driver.DigitalMultiMeter.NI4071 import Ni4071
+from Driver.DigitalMultiMeter.Agilent import Agilent
 from Driver.DigitalMultiMeter.DMMdummy import DMMdummy
+from Driver.DigitalMultiMeter.NI4071 import Ni4071
 
 
 class DMMControl:
     def __init__(self):
-        self.types = ['Ni4071', 'dummy']
+        self.types = ['Ni4071', 'dummy', 'Agilent']
         self.dmm = {}
         # dict for storing all active dmm objects.
         # key is the name of the device, which is the type_address
@@ -49,6 +48,12 @@ class DMMControl:
         elif type_str == 'dummy':
             try:
                 dev = DMMdummy(address_str=address)
+                name = dev.name  # 'type_addr'
+            except Exception as e:
+                print('starting dmm did not work exception is:', e)
+        elif type_str == 'Agilent':
+            try:
+                dev = Agilent(address_str=address, type_num='34401A')
                 name = dev.name  # 'type_addr'
             except Exception as e:
                 print('starting dmm did not work exception is:', e)
