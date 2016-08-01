@@ -23,7 +23,7 @@ from Driver.DigitalMultiMeter.NI4071 import Ni4071
 
 class DMMControl:
     def __init__(self):
-        self.types = ['Ni4071', 'dummy', 'Agilent']
+        self.types = ['Ni4071', 'dummy', 'Agilent_34461A', 'Agilent_34401A']
         self.dmm = {}
         # dict for storing all active dmm objects.
         # key is the name of the device, which is the type_address
@@ -51,7 +51,13 @@ class DMMControl:
                 name = dev.name  # 'type_addr'
             except Exception as e:
                 print('starting dmm did not work exception is:', e)
-        elif type_str == 'Agilent':
+        elif type_str == 'Agilent_34461A':
+            try:
+                dev = Agilent(address_str=address, type_num='34461A')
+                name = dev.name  # 'type_addr'
+            except Exception as e:
+                print('starting dmm did not work exception is:', e)
+        elif type_str == 'Agilent_34401A':
             try:
                 dev = Agilent(address_str=address, type_num='34401A')
                 name = dev.name  # 'type_addr'

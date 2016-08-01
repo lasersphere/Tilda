@@ -25,10 +25,10 @@ class AgilentPreConfigs(Enum):
     initial = {
             'range': 10.0,
             'resolution': 3e-6,
-            'triggerCount': 511,
+            'triggerCount': -1,
             'sampleCount': 1,
             'autoZero': 'ONCE',
-            'triggerSource': 'external',
+            'triggerSource': 'bus',
             'triggerDelay_s': 0,
             'triggerSlope': 'rising',
             'highInputResistanceTrue': True,
@@ -37,8 +37,8 @@ class AgilentPreConfigs(Enum):
         }
     periodic = {
             'range': 10.0,
-            'resolution': 3e-6,
-            'triggerCount': 511,
+            'resolution': 1e-5,
+            'triggerCount': -1,
             'sampleCount': 1,
             'autoZero': 'ONCE',
             'triggerSource': 'immediate',
@@ -121,10 +121,15 @@ class Agilent:
             else:  # its an ipstring
                 self.connection_type = 'socket'
                 self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.connection.connect(addr)
+                self.connection.settimeout(0.3)
+                ipport = 5024  # fixed for 34461A
+                self.connection.connect((addr, ipport))
+                print(self.connection.recv(self.buffersize))
+                print(self.connection.recv(self.buffersize))
+                self.send_command('*CLS')
                 return True
         except Exception as e:
-            logging.error('could not esatblish connection for %s, error is: %s' % (self.name, e))
+            logging.error('could not establish connection for %s, error is: %s' % (self.name, e))
             self.connection = None
             self.connection_type = None
             return False
@@ -132,10 +137,19 @@ class Agilent:
     def send_command(self, cmd_str, read_back=False, delay=None, to_float=False):
         ret = None
         if self.connection_type == 'socket':
-            self.connection.send(str.encode(cmd_str + '\n'))
+            if read_back:
+                self._flush_socket()
+            cmd = str.encode(cmd_str + '\r\n')
+            print(self.name + ' sending comand: ' + str(cmd_str))
+            self.connection.send(cmd)
             time.sleep(self.sleepAfterSend)
             if read_back:
                 ret = self.connection.recv(self.buffersize)
+                ret = ret[len(cmd):-len(b'\r\n34461A> ')]
+                # the send cmd is still in the readback and the device sends b'\r\n34461A> '
+                # everytime after return was pressed
+                if ret and to_float:
+                    ret = self.convert_to_float(ret)
         elif self.connection_type == 'serial':
             if delay is None:
                 delay = self.sleepAfterSend
@@ -151,6 +165,18 @@ class Agilent:
                     ret = self.convert_to_float(ret)
                 self.lock.release()
         return ret
+
+    def _flush_socket(self):
+        """
+        the buffer on the serial port seems to holds all previously send commands
+        and therefore those need to be flushed afterwards.
+        """
+        try:
+            while self.connection.recv(1):
+                pass
+        except Exception as e:  # tomed out
+            # print("flushing buffer yielded in, ", e)
+            pass
 
     def _ser_readline(self, delay):
         retries = 0
@@ -219,7 +245,7 @@ class Agilent:
          PLC:       100     10   1   0.2    0.02
          ResFactor: 0.3ppm 1ppm 3ppm 10ppm 100ppm
          10VRangeRes: 3E-6  1E-5 3E-5  1E-4 1E-3
-        :return:
+        :return: range, nplc, res
         """
         range = self.set_range(dmm_range)
         res_fact = {0.02: 100E-6, 0.2: 10E-6, 1: 3E-6, 10: 1E-6, 100: 0.3E-6}
@@ -271,8 +297,9 @@ class Agilent:
         trig_source_read = self.send_command('TRIG:SOUR?', True)
 
         if self.type_num in ['34461A']:
-            self.send_command('SAMP:TIM %s' % sample_interval)  # not for agilent 34401A
-            sample_interval_read = self.send_command('SAMP:TIM?', True)
+            pass  # currently yields error: '-113,"Undefined header"
+            # self.send_command('SAMPle:TIMer %s' % sample_interval)  # not for agilent 34401A
+            # sample_interval_read = self.send_command('SAMPle:TIMer?', True)
 
         self.config_dict['triggerCount'] = trig_count
         self.config_dict['sampleCount'] = sample_count
@@ -473,9 +500,14 @@ class Agilent:
             else:
                 return np.zeros(0, dtype=np.double)
         else:
-            ret = self.send_command('R? %s' % num_to_read, True)
-            ret_length = int(ret[2: ret[1] + 2])
-            ret = np.fromstring(ret[4:],)
+            if num_to_read < 0:
+                ret = self.send_command('R?', True)
+            else:
+                ret = self.send_command('R? %s' % num_to_read, True)
+            if int(ret[2:3]):  # if no value is returned, this yields b'#10' -> int(ret[2:3]) = 0
+                ret = np.fromstring(ret[2 + int(ret[1:2]):], sep=',')
+            else:
+                return np.zeros(0, dtype=np.double)
         if ret.any():
             t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             # take last element out of array and make a tuple with timestamp:
@@ -551,7 +583,7 @@ class Agilent:
          (name, indicator_or_control_bool, type, certain_value_list, current_value_in_config_dict)
         """
         trig_slope = ['falling'] if self.type_num in ['34401A'] else ['falling', 'rising']
-        trig_events = [-1] + list(range(1, 512)) if self.type_num in ['34401A'] else [-1] + list(range(1, 1e6, 1))
+        trig_events = [-1] + list(range(1, 512)) if self.type_num in ['34401A'] else [-1] + list(range(1, int(1e6), 1))
         config_dict = {
             'range': ('range', True, str, ['-1.0', '0.1', '1.0', '10.0', '100.0', '1000.0'], self.config_dict['range']),
             'resolution': ('resolution', True, str, ['1e-3', '1e-4', '3e-5', '1e-5', '3e-6'],
@@ -562,8 +594,6 @@ class Agilent:
             'autoZero': ('auto zero', True, str, ['ON', 'ONCE', 'OFF'], self.config_dict['autoZero']),
             'triggerSource': ('trigger source', True, str,
                               [i.name for i in AgilentTriggerSources], self.config_dict['triggerSource']),
-            'sampleInterval': ('sample Interval [s]', True, float,
-                               [i / 10 for i in range(10, 1000)], self.config_dict['sampleInterval']),
             'triggerDelay_s': ('trigger delay [s]', True, float,
                                [i / 10 for i in range(0, 1490)], self.config_dict['triggerDelay_s']),
             'triggerSlope': ('trigger slope', True, str, trig_slope, self.config_dict['triggerSlope']),
@@ -571,7 +601,7 @@ class Agilent:
                                         , self.config_dict['highInputResistanceTrue']),
             'accuracy': ('accuracy (reading, range)', False, tuple, [], self.config_dict['accuracy']),
             'assignment': ('assignment', True, str, ['offset', 'accVolt'], self.config_dict['assignment'])
-        }
+            }
         return config_dict
 
     ''' error '''
@@ -598,38 +628,56 @@ class Agilent:
 
 # dmm = DMMdummy()
 # dmm.set_to_pre_conf_setting('periodic')
-if __name__ == "__main__":
-    dmm = Agilent(False, 'com1', '34401A')
-    # print(dmm.reset_dev())
-    # print(dmm.send_command('SYST:ERR?', True))
-    # # print(dmm.set_range(100))
-    # # dmm.send_command('DATA:FEED RDG_STORE, "CALCulate"')
-    # print(dmm.config_measurement(10, 3e-6))
-    # # print(dmm.send_command('SYST:ERR?', True))
-    # print(dmm.config_multi_point_meas(511, 1, AgilentTriggerSources.external, 1))
-    # print(dmm.config_auto_zero('ON'))
-    # print(dmm.send_command('SYST:ERR?', True))
-    # # print(dmm.set_input_resistance(True))
-    # # print(dmm.config_trigger(AgilentTriggerSources.bus, 0))
-    # # print(dmm.config_trigger_slope('falling'))
-    # print(dmm.abort_meas())
-    # # print(dmm.send_command('SYST:ERR?', True))
-    # print(dmm.initiate_measurement())
-    # # print(dmm.send_command('SYST:ERR?', True))
-    # # print(dmm.send_software_trigger())
-    # # print(dmm.send_command('SYST:ERR?', True))
-    # time.sleep(1)
-    # print(dmm.fetch_multiple_meas(-1))
-    # # print(dmm.send_command('SYST:ERR?', True))
-    # # print(dmm.send_command('SYST:ERR?', True))
-    dmm.set_to_pre_conf_setting('initial')
-    print(dmm.emit_config_pars())
-    # x = 0
-    # while x < 100:
-    #     # print(dmm.send_software_trigger())
-    #     # print(dmm.send_software_trigger())
-    #     # print(dmm.send_software_trigger())
-    #     # print(dmm.send_software_trigger())
-    #     time.sleep(1)
-    #     print(dmm.fetch_multiple_meas(-1))
-    #     x += 1
+# if __name__ == "__main__":
+#     dmm = Agilent(False, '137.138.135.94', '34461A')
+#     # print(dmm.send_command('*IDN?', True))
+#     print(dmm.abort_meas())  # needs to be called before changes are made
+#
+#     # print(dmm.reset_dev())
+#     # print(dmm.send_command('SYST:ERR?', True))
+#     # print('range ', dmm.set_range(10))
+#     # dmm.send_command('DATA:FEED RDG_STORE, "CALCulate"')
+#     # print('range, nplc, res ', dmm.config_measurement(10, 3e-6))
+#     # # print(dmm.send_command('SYST:ERR?', True))
+#     # print(dmm.send_command('TRIG:COUN INF'))
+#     # print(dmm.send_command('TRIG:COUN?', True))
+#     # print(dmm.send_command('TRIG:SOUR?', True))
+#     # print(dmm.send_command('*LRN?', True))
+#     # print(dmm.send_command('SYST:ERR?', True))
+#
+#     # print(format(int(dmm.send_command('STAT:OPER:COND?', True, to_float=True)), '016b'))
+#
+#     # print('trig_counts, sampl_cts, trig_source, sample_interval ',
+#     #       dmm.config_multi_point_meas(-1, 1, AgilentTriggerSources.bus, 0.5))
+#     # print(format(int(dmm.send_command('STAT:OPER:COND?', True, to_float=True)), '016b'))
+#
+#     # print(dmm.config_auto_zero('OFF'))
+#     # print(dmm.send_command('SYST:ERR?', True))
+#     # print(dmm.set_input_resistance(True))
+#     # print('trig_source_read, trig_del_read', dmm.config_trigger(AgilentTriggerSources.external, 0))
+#     # print(dmm.config_trigger_slope('rising'))
+#     # print(dmm.abort_meas())
+#     # # print(dmm.send_command('SYST:ERR?', True))
+#     # print(dmm.send_command('SYST:ERR?', True))
+#     #
+#     # print(dmm.initiate_measurement())
+#     # print(dmm.send_command('SYST:ERR?', True))
+#     # time.sleep(1)
+#     # print(dmm.send_software_trigger())
+#     # time.sleep(2)
+#     # print(dmm.fetch_multiple_meas(-1))
+#     # # print(dmm.send_command('SYST:ERR?', True))
+#     # # print(dmm.send_command('SYST:ERR?', True))
+#     dmm.set_to_pre_conf_setting('initial')
+#     # print(dmm.emit_config_pars())
+#     x = 0
+#     while x < 100:
+#         print(dmm.send_software_trigger())
+#         print(dmm.send_software_trigger())
+#         print(dmm.send_software_trigger())
+#         print(dmm.send_software_trigger())
+#         time.sleep(1)
+#         print(dmm.fetch_multiple_meas(-1))
+#         x += 1
+#     print(dmm.send_command('SYST:ERR?', True))
+#     print(dmm.send_command('*ESR?', True, to_float=True))

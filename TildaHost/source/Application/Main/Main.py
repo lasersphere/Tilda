@@ -832,6 +832,7 @@ class Main(QtCore.QObject):
     def _init_dmm(self, type_str, addr_str, callback, start_periodic):
         """ see init_dmm() """
         dmm_name = self.scan_main.prepare_dmm(type_str, addr_str)
+        print('sending state')
         self.send_state()
         self.set_state(MainState.idle)
         if callback:

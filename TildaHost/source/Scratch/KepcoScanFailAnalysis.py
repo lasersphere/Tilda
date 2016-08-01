@@ -16,9 +16,10 @@ import Service.FileOperations.FolderAndFileHandling as FileHandl
 import Service.Formating as Form
 import Service.VoltageConversions.VoltageConversions as VCon
 
+np.set_printoptions(threshold=np.inf)
 raw_base = 'D:\\Sn_beamtime_Tilda_active_data\\raw'
-good_kepco = os.path.join(raw_base, 'kepco_Kepco_fl1_track0_000.raw')
-bad_kepco = os.path.join(raw_base, 'kepco_Kepco_fl1_track0_002.raw')
+good_kepco = os.path.join(raw_base, '_Kepco_fl1_kepco_029_000.raw')
+bad_kepco = os.path.join(raw_base, '_Kepco_fl1_kepco_031_000.raw')
 
 good_kepco_data_stream = FileHandl.loadPickle(good_kepco)
 good_kepco_data_stream = np.asarray([Form.split_32b_data(i) if isinstance(i, int) else i for i in good_kepco_data_stream])

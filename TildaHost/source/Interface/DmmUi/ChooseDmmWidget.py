@@ -38,6 +38,8 @@ class ChooseDmmWidget(QtWidgets.QWidget, Ui_Form):
             addr = 'PXI1Slot5'
         elif type_str == 'dummy':
             addr = 'somewhere'
-        elif type_str == 'Agilent':
+        elif type_str == 'Agilent_34461A':
+            addr = '137.138.135.94'
+        elif type_str == 'Agilent_34401A':
             addr = 'com1'
         self.lineEdit_address_dmm.setText(addr)
