@@ -122,7 +122,7 @@ class Main(QtCore.QObject):
         elif self.m_state[0] is MainState.preparing_scan:
             self._start_scan(self.m_state[1])
         elif self.m_state[0] is MainState.setting_switch_box:
-            self._setting_switch_box(self.m_state[1])
+            self._setting_switch_box(*self.m_state[1])
         elif self.m_state[0] is MainState.measure_offset_voltage:
             self._measure_offset_voltage(self.m_state[1])
         elif self.m_state[0] is MainState.load_track:
@@ -397,25 +397,39 @@ class Main(QtCore.QObject):
         self.scan_main.prepare_scan(self.scan_pars[iso_name])
         self.set_state(MainState.setting_switch_box, True)
 
-    def _setting_switch_box(self, first_call=False):
+    def _setting_switch_box(self, first_call=False, desired_state=None):
         """
         this will be called in 'setting_switch_box' state.
         It will exit as soon as the switchbox is set to the right value.
         The next state is 'measure_offset_voltage'
         :param first_call: bool, True for first call, this will command the fpga to change the state of the setbox.
         """
-        iso_name = self.scan_progress['activeIso']
-        n_of_tracks, list_of_track_nums = SdOp.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
-        active_track_num = min(set(list_of_track_nums) - set(self.scan_progress['completedTracks']))
+        if desired_state is None:
+            iso_name = self.scan_progress['activeIso']
+            n_of_tracks, list_of_track_nums = SdOp.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
+            active_track_num = min(set(list_of_track_nums) - set(self.scan_progress['completedTracks']))
+            scan_dict = self.scan_pars[iso_name]
+        else:
+            # desired state is given by function call and not the scan dict.
+            # Desired state will be stored in the main state
+            active_track_num = 0
+            scan_dict = {}
         if first_call:
-            self.scan_main.set_post_acc_switch_box(self.scan_pars[iso_name], active_track_num)
+            self.scan_main.set_post_acc_switch_box(scan_dict, active_track_num, desired_state)
             self.scan_progress['activeTrackNum'] = active_track_num
-            self.set_state(MainState.setting_switch_box, False)
-        des_state = self.scan_pars[iso_name]['track' + str(active_track_num)]['postAccOffsetVoltControl']
+            self.set_state(MainState.setting_switch_box, (False, desired_state))
+        if desired_state is None:
+            # must only be called after the desired_state = None has ben stored in the main_state
+            desired_state = self.scan_pars[iso_name]['track' + str(active_track_num)]['postAccOffsetVoltControl']
         # logging.debug('desired state of hsb is: ' + str(des_state))
-        done, currentState, desired_state = self.scan_main.post_acc_switch_box_is_set(des_state)
+        done, currentState, desired_state = self.scan_main.post_acc_switch_box_is_set(desired_state)
         if done:
-            self.set_state(MainState.measure_offset_voltage, True)
+            if desired_state == 4:
+                # switch box has ben set to loading state, which means a scan is completed
+                # will go to idle state afterwards.
+                self.set_state(MainState.idle)
+            else:  # begin with the next track
+                self.set_state(MainState.measure_offset_voltage, True)
 
     def _measure_offset_voltage(self, first_call=False):
         """
@@ -573,8 +587,8 @@ class Main(QtCore.QObject):
         QApplication.setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))  # ignore warning
         self.scan_main.stop_measurement(complete_stop=complete_stop, clear=complete_stop)  # stop pipeline and clear
         QApplication.restoreOverrideCursor()  # ignore warning
-        if complete_stop:  # set Main to idle state
-            self.set_state(MainState.idle)
+        if complete_stop:  # set switch box to loading state in order to not feed any voltage to the CEC
+            self.set_state(MainState.setting_switch_box, (True, 4))  # after this has ben completed, it will go to idle
         else:  # keep going with next track.
             self.set_state(MainState.setting_switch_box, True)
 

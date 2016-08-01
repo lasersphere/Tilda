@@ -144,7 +144,7 @@ class ScanMain:
         start_ok = self.sequencer.measureTrack(scan_dict, track_num)
         return start_ok
 
-    def set_post_acc_switch_box(self, scan_dict, track_num):
+    def set_post_acc_switch_box(self, scan_dict, track_num, desired_state=None):
         """
         set the post acceleration switchbox to the desired state.
         teh state is defined in the trackdict['postAccOffsetVoltControl']
@@ -152,8 +152,9 @@ class ScanMain:
         :param scan_dict: dict, containgn all scna pars
         :param track_num: int, number of the track
         """
-        track_dict = scan_dict.get('track' + str(track_num))
-        desired_state = track_dict['postAccOffsetVoltControl']
+        if desired_state is None:
+            track_dict = scan_dict.get('track' + str(track_num))
+            desired_state = track_dict['postAccOffsetVoltControl']
         self.sequencer.setPostAccelerationControlState(desired_state, False)
 
     def post_acc_switch_box_is_set(self, des_state):
