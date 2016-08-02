@@ -89,7 +89,7 @@ class Agilent:
         self.con_end_of_trans = b'\r\n'
         self.lock = threading.Lock()
 
-        self.type = 'Agilent'
+        self.type = 'Agilent' + '_' + type_num
         self.type_num = type_num
         self.address = address_str
         self.name = self.type + '_' + address_str
@@ -99,7 +99,7 @@ class Agilent:
         self.accuracy_range = 10 ** -4
 
         # default config dictionary for this type of DMM:
-        self.config_dict = AgilentPreConfigs.initial.value
+        self.config_dict = deepcopy(AgilentPreConfigs.initial.value)
         self.get_accuracy()
         self.init(address_str, reset_dev=reset)
         # self.establish_connection(address_str)
@@ -140,7 +140,7 @@ class Agilent:
             if read_back:
                 self._flush_socket()
             cmd = str.encode(cmd_str + '\r\n')
-            print(self.name + ' sending comand: ' + str(cmd_str))
+            # print(self.name + ' sending comand: ' + str(cmd_str))
             self.connection.send(cmd)
             time.sleep(self.sleepAfterSend)
             if read_back:
@@ -154,7 +154,7 @@ class Agilent:
             if delay is None:
                 delay = self.sleepAfterSend
             if self.lock.acquire(timeout=5):
-                print(self.name + ' sending comand: ' + str(cmd_str))
+                # print(self.name + ' sending comand: ' + str(cmd_str))
                 # self.connection.flushInput()
                 # self.connection.flushOutput()
                 self.connection.write(str.encode(cmd_str + '\n'))
@@ -174,7 +174,7 @@ class Agilent:
         try:
             while self.connection.recv(1):
                 pass
-        except Exception as e:  # tomed out
+        except Exception as e:  # timed out
             # print("flushing buffer yielded in, ", e)
             pass
 
@@ -247,16 +247,17 @@ class Agilent:
          10VRangeRes: 3E-6  1E-5 3E-5  1E-4 1E-3
         :return: range, nplc, res
         """
-        range = self.set_range(dmm_range)
+        range, err = self.set_range(dmm_range)
         res_fact = {0.02: 100E-6, 0.2: 10E-6, 1: 3E-6, 10: 1E-6, 100: 0.3E-6}
         nplc_from_res = {1e-3: '0.02', 1e-4: '0.2', 3e-5: '1', 1e-5: '10', 3e-6: '100', -1: '100'}
-        self.send_command('VOLTage:DC:NPLCycles %s' % nplc_from_res.get(range10V_res, '100'))
-        nplc = self.send_command('VOLT:DC:NPLC?', True, to_float=True)
-        res = range * res_fact.get(nplc, -1)
+        nplc = nplc_from_res.get(range10V_res, '100')
+        self.send_command('VOLTage:DC:NPLCycles %s' % nplc)
+        # nplc = self.send_command('VOLT:DC:NPLC?', True, to_float=True)
+        res = range * res_fact.get(float(nplc), -1)
         self.config_dict['range'] = range
         self.config_dict['resolution'] = res
-
-        return range, nplc, res
+        dev_err = self.get_dev_error()
+        return range, nplc, res, dev_err
 
     def config_multi_point_meas(self, trig_count, sample_count, trig_src_enum, sample_interval):
         """
@@ -286,27 +287,32 @@ class Agilent:
                 trig_count = max(trig_count, 1)
                 trig_count = min(trig_count, 511)
         self.send_command('TRIG:COUN %s' % trig_count)
-        trig_count_read = self.send_command('TRIG:COUN?', True, to_float=True)
+        trig_count_read = trig_count
+        # trig_count_read = self.send_command('TRIG:COUN?', True, to_float=True)
 
         sample_count = max(sample_count, 1)
         sample_count = min(sample_count, 1e6)
         self.send_command('SAMP:COUN %s' % sample_count)
-        sample_count_read = self.send_command('SAMP:COUN?', True, to_float=True)
+        sample_count_read = sample_count
+        # sample_count_read = self.send_command('SAMP:COUN?', True, to_float=True)
 
         self.send_command('TRIG:SOUR %s' % trig_src_enum.value)
-        trig_source_read = self.send_command('TRIG:SOUR?', True)
+        trig_source_read = trig_src_enum.value
+        # trig_source_read = self.send_command('TRIG:SOUR?', True)
 
         if self.type_num in ['34461A']:
             pass  # currently yields error: '-113,"Undefined header"
             # self.send_command('SAMPle:TIMer %s' % sample_interval)  # not for agilent 34401A
             # sample_interval_read = self.send_command('SAMPle:TIMer?', True)
 
-        self.config_dict['triggerCount'] = trig_count
+        self.config_dict['triggerCount'] = -1 if trig_count == 'INF' else trig_count
         self.config_dict['sampleCount'] = sample_count
         self.config_dict['triggerSource'] = trig_src_enum.name
         self.config_dict['sampleInterval'] = sample_interval
 
-        return trig_count_read, sample_count_read, trig_source_read, sample_interval_read
+        dev_err = self.get_dev_error()
+
+        return trig_count_read, sample_count_read, trig_source_read, sample_interval_read, dev_err
 
     def set_input_resistance(self, highResistanceTrue=True):
         """
@@ -323,25 +329,30 @@ class Agilent:
         if self.type_num in ['34461A']:
             on_off = 'ON' if highResistanceTrue else 'OFF'
             self.send_command('VOLT:DC:IMP:AUTO %s' % on_off)
-            auto_imp = self.send_command('VOLT:DC:IMP:AUTO?', True)
+            auto_imp = on_off
+            # auto_imp = self.send_command('VOLT:DC:IMP:AUTO?', True)
         elif self.type_num in ['34401A']:
             on_off = 'ON' if highResistanceTrue else 'OFF'
             self.send_command('INP:IMP:AUTO %s' % on_off)
-            auto_imp = self.send_command('INP:IMP:AUTO?', True)
+            auto_imp = on_off
+            # auto_imp = self.send_command('INP:IMP:AUTO?', True)
         self.config_dict['highInputResistanceTrue'] = highResistanceTrue
-        return auto_imp
+        dev_err = self.get_dev_error()
+        return auto_imp, dev_err
 
     def set_range(self, range_val):
         ranges = {0.1: '0.1', 1: '1', 10: '10', 100: '100', 1000: '1000', -1: 'AUTO'}
         sel_range = ranges.get(range_val, 'AUTO')
+        set_range = float(sel_range)
         if sel_range != 'AUTO':
             self.send_command('VOLT:DC:RANG %s' % sel_range)
-            set_range = self.send_command('VOLT:DC:RANG?', True, to_float=True)
+            # set_range = self.send_command('VOLT:DC:RANG?', True, to_float=True)
         else:
             self.send_command('VOLT:DC:RANG:AUTO ON')
-            set_range = -1 if self.send_command('VOLT:DC:RANG:AUTO?', True, to_float=True) == 1 else 0
-        self.config_dict['range'] = range_val
-        return set_range
+            # set_range = -1 if self.send_command('VOLT:DC:RANG:AUTO?', True, to_float=True) == 1 else 0
+        self.config_dict['range'] = set_range
+        dev_err = self.get_dev_error()
+        return set_range, dev_err
 
     def config_auto_zero(self, auto_zero_mode):
         """
@@ -361,14 +372,15 @@ class Agilent:
         """
         auto_zero_mode = auto_zero_mode if auto_zero_mode in ['OFF', 'ON', 'ONCE'] else 'ON'
         self.config_dict['autoZero'] = auto_zero_mode
+        zero_auto = auto_zero_mode
         if self.type_num in ['34461A']:
             self.send_command('VOLT:DC:ZERO:AUTO %s' % auto_zero_mode)
-            zero_auto = self.send_command('VOLT:DC:ZERO:AUTO?', True)
+            # zero_auto = self.send_command('VOLT:DC:ZERO:AUTO?', True)
         elif self.type_num in ['34401A']:
             self.send_command('ZERO:AUTO %s' % auto_zero_mode)
-            zero_auto = self.send_command('ZERO:AUTO?', True)
-        return zero_auto
-
+            # zero_auto = self.send_command('ZERO:AUTO?', True)
+        dev_err = self.get_dev_error()
+        return zero_auto, dev_err
 
     ''' Trigger '''
 
@@ -384,11 +396,14 @@ class Agilent:
         trig_delay = min(3600, trig_delay)
         trig_delay = max(0, trig_delay)
         self.send_command('TRIG:SOUR %s; DEL %s' % (trig_src_enum.value, trig_delay))
-        trig_source_read = self.send_command('TRIG:SOUR?', True)
-        trig_del_read = self.send_command('TRIG:DEL?', True)
+        trig_source_read = trig_src_enum.value
+        trig_del_read = trig_delay
+        # trig_source_read = self.send_command('TRIG:SOUR?', True)
+        # trig_del_read = self.send_command('TRIG:DEL?', True)
         self.config_dict['triggerSource'] = trig_src_enum.name
         self.config_dict['triggerDelay_s'] = trig_delay
-        return trig_source_read, trig_del_read
+        dev_err = self.get_dev_error()
+        return trig_source_read, trig_del_read, dev_err
 
     def config_trigger_slope(self, trig_slope):
         """
@@ -402,8 +417,11 @@ class Agilent:
             return 'falling'
         trig_slope = 'NEG' if trig_slope == 'falling' else 'POS'
         self.send_command('TRIG:SLOP %s' % trig_slope)
-        trig_slope_read = self.send_command('TRIG:SLOP?', True)
-        return trig_slope_read
+        trig_slope_read = trig_slope
+        # trig_slope_read = self.send_command('TRIG:SLOP?', True)
+        dev_err = self.get_dev_error()
+
+        return trig_slope_read, dev_err
 
     def config_meas_complete_slope(self, meas_compl_slope_str):
         """
@@ -416,8 +434,11 @@ class Agilent:
             return 'falling'
         trig_slope = 'NEG' if meas_compl_slope_str == 'falling' else 'POS'
         self.send_command('OUTP:TRIG:SLOP %s' % trig_slope)
-        trig_slope_read = self.send_command('OUTP:TRIG:SLOP?', True)
-        return trig_slope_read
+        trig_slope_read = trig_slope
+        # trig_slope_read = self.send_command('OUTP:TRIG:SLOP?', True)
+        dev_err = self.get_dev_error()
+
+        return trig_slope_read, dev_err
 
     def send_software_trigger(self):
         """
@@ -425,6 +446,8 @@ class Agilent:
         :return: None
         """
         self.send_command('*TRG')
+        dev_err = self.get_dev_error()
+        return dev_err
 
     ''' Measurement '''
 
@@ -437,6 +460,9 @@ class Agilent:
         """
         self.send_command('INIT')
         self.state = 'measuring'
+        dev_err = self.get_dev_error()
+
+        return dev_err
 
     def fetch_multiple_meas(self, num_to_read):
         """
@@ -474,6 +500,7 @@ class Agilent:
         :param max_time:
         :return:
         """
+        start_time = datetime.datetime.now()
         if self.type_num in ['34401A']:
             # Transfer readings stored in the multimeter’s internal memory by the
             # INITiate command to the multimeter’s output buffer where you can
@@ -500,18 +527,27 @@ class Agilent:
             else:
                 return np.zeros(0, dtype=np.double)
         else:
+            self.connection.settimeout(0.0005)
             if num_to_read < 0:
-                ret = self.send_command('R?', True)
+                ret = self.send_command('R?', True, delay=0.0005)
             else:
-                ret = self.send_command('R? %s' % num_to_read, True)
-            if int(ret[2:3]):  # if no value is returned, this yields b'#10' -> int(ret[2:3]) = 0
-                ret = np.fromstring(ret[2 + int(ret[1:2]):], sep=',')
+                ret = self.send_command('R? %s' % num_to_read, True, delay=0.0005)
+            self.connection.settimeout(0.3)
+            if ret:
+                if int(ret[2:3]):  # if no value is returned, this yields b'#10' -> int(ret[2:3]) = 0
+                    ret = np.fromstring(ret[2 + int(ret[1:2]):], sep=',')
+                else:
+                    return np.zeros(0, dtype=np.double)
             else:
                 return np.zeros(0, dtype=np.double)
         if ret.any():
             t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             # take last element out of array and make a tuple with timestamp:
             self.last_readback = (round(ret[-1], 8), t)
+        dev_err = self.get_dev_error()
+        stop_time = datetime.datetime.now()
+        reading_time = stop_time - start_time
+        print('reading from dev took %s seconds' % (reading_time.microseconds * 10 ** -6))
         return ret
 
     def abort_meas(self):
@@ -520,6 +556,9 @@ class Agilent:
         else:
             self.send_command('ABORt')
         self.state = 'aborted'
+        dev_err = self.get_dev_error()
+
+        return dev_err
 
     def set_to_pre_conf_setting(self, pre_conf_name):
         """
@@ -528,10 +567,12 @@ class Agilent:
         :return:
         """
         if pre_conf_name in AgilentPreConfigs.__members__:
-            config_dict = AgilentPreConfigs[pre_conf_name].value
-            config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
+            config_dict = deepcopy(AgilentPreConfigs[pre_conf_name].value)
+            # config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
+            print('setting %s to these preconfigured settings: %s %s' %
+                  (self.name, pre_conf_name, config_dict))
             self.load_from_config_dict(config_dict, False)
-            self.initiate_measurement()
+            return self.initiate_measurement()
         else:
             print(
                 'error: could not set the preconfiguration: %s in dmm: %s, because the config does not exist'
@@ -545,16 +586,18 @@ class Agilent:
     ''' loading '''
     def load_from_config_dict(self, config_dict, reset_dev):
         try:
+            print('setting up %s with the following config %s' % (self.name, config_dict))
+            self.abort_meas()
             self.config_dict = deepcopy(config_dict)
             if reset_dev:
                 self.reset_dev()
-            dmm_range = config_dict.get('range')
-            resolution = config_dict.get('resolution')
+            dmm_range = int(float(config_dict.get('range')))  # combobox will return a string
+            resolution = float(config_dict.get('resolution'))
             self.config_measurement(dmm_range, resolution)
             trig_count = config_dict.get('triggerCount')
             sample_count = config_dict.get('sampleCount')
             trig_src_enum = AgilentTriggerSources[config_dict.get('triggerSource')]
-            sample_interval = config_dict.get('sampleInterval')
+            sample_interval = 1  # config_dict.get('sampleInterval')  sample interval currently not used
             self.config_multi_point_meas(trig_count, sample_count, trig_src_enum, sample_interval)
             auto_z = config_dict.get('autoZero')
             self.config_auto_zero(auto_z)
@@ -568,8 +611,10 @@ class Agilent:
             self.get_accuracy()
             # just to be sure this is included:
             self.config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
-
+            dev_err = self.get_dev_error()
+            return dev_err
         except Exception as e:
+            dev_err = self.get_dev_error()
             print('Exception while loading config to Agilent: ', e)
 
     ''' emitting config pars '''
@@ -583,14 +628,15 @@ class Agilent:
          (name, indicator_or_control_bool, type, certain_value_list, current_value_in_config_dict)
         """
         trig_slope = ['falling'] if self.type_num in ['34401A'] else ['falling', 'rising']
-        trig_events = [-1] + list(range(1, 512)) if self.type_num in ['34401A'] else [-1] + list(range(1, int(1e6), 1))
+        trig_events = [-1] + list(range(1, 512)) if self.type_num in ['34401A'] else [-1] + list(range(1, 100, 1))
         config_dict = {
-            'range': ('range', True, str, ['-1.0', '0.1', '1.0', '10.0', '100.0', '1000.0'], self.config_dict['range']),
-            'resolution': ('resolution', True, str, ['1e-3', '1e-4', '3e-5', '1e-5', '3e-6'],
-                           self.config_dict['resolution']),
+            'range': ('range', True, str, ['-1.0', '0.1', '1.0', '10.0', '100.0', '1000.0'],
+                      str(self.config_dict['range'])),
+            'resolution': ('resolution', True, str, ['1e-03', '1e-04', '3e-05', '1e-05', '3e-06'],
+                           str(self.config_dict['resolution'])),
             'triggerCount': ('#trigger events', True, int, trig_events,
                              self.config_dict['triggerCount']),
-            'sampleCount': ('#samples', True, int, range(0, 10000, 1), self.config_dict['sampleCount']),
+            'sampleCount': ('#samples', True, int, range(0, 100, 1), self.config_dict['sampleCount']),
             'autoZero': ('auto zero', True, str, ['ON', 'ONCE', 'OFF'], self.config_dict['autoZero']),
             'triggerSource': ('trigger source', True, str,
                               [i.name for i in AgilentTriggerSources], self.config_dict['triggerSource']),
@@ -605,6 +651,20 @@ class Agilent:
         return config_dict
 
     ''' error '''
+    def get_dev_error(self):
+        """
+        ask device for present error
+        :return (int, str), (errornum, complete error string
+        """
+        error = self.send_command('SYST:ERR?', True)
+        if error:
+            error_num = int(error.split(sep=b',')[0])
+            if error_num != 0:
+                print('%s yields the following error: %s' % (self.name, error))
+            return error_num, error
+        else:
+            return 0, ''
+
     def get_accuracy(self):
         """
         write the error to self.config_dict['accuracy']
@@ -625,11 +685,37 @@ class Agilent:
         self.config_dict['accuracy'] = acc_tpl
         return acc_tpl
 
-
 # dmm = DMMdummy()
 # dmm.set_to_pre_conf_setting('periodic')
 # if __name__ == "__main__":
 #     dmm = Agilent(False, '137.138.135.94', '34461A')
+#     dmm.set_to_pre_conf_setting(AgilentPreConfigs.periodic.name)
+#     dmm.abort_meas()
+#     dmm.fetch_multiple_meas(-1)
+#     print(dmm.load_from_config_dict({'resolution': '3e-5',
+#                                'autoZero': 'ON',
+#                                'accuracy': (3.5000000000000004e-05, 5e-05),
+#                                'triggerCount': -1,
+#                                'triggerDelay_s': 0,
+#                                'range': '10.0',
+#                                'highInputResistanceTrue': True,
+#                                'sampleCount': 1,
+#                                'triggerSource': 'immediate',
+#                                'assignment': 'accVolt',
+#                                'triggerSlope': 'rising'}, False))
+#
+#     [print(dmm.set_to_pre_conf_setting(i)) for i in AgilentPreConfigs.__members__]
+#     print(dmm.load_from_config_dict({'resolution': '3e-6',
+#                                      'autoZero': 'ON',
+#                                      'accuracy': (3.5000000000000004e-05, 5e-05),
+#                                      'triggerCount': -1,
+#                                      'triggerDelay_s': 0,
+#                                      'range': '10.0',
+#                                      'highInputResistanceTrue': True,
+#                                      'sampleCount': 1,
+#                                      'triggerSource': 'bus',
+#                                      'assignment': 'accVolt',
+#                                      'triggerSlope': 'rising'}, False))
 #     # print(dmm.send_command('*IDN?', True))
 #     print(dmm.abort_meas())  # needs to be called before changes are made
 #
@@ -643,7 +729,8 @@ class Agilent:
 #     # print(dmm.send_command('TRIG:COUN?', True))
 #     # print(dmm.send_command('TRIG:SOUR?', True))
 #     # print(dmm.send_command('*LRN?', True))
-#     # print(dmm.send_command('SYST:ERR?', True))
+#     # dmm.send_software_trigger()
+#     # print(dmm.get_dev_error())
 #
 #     # print(format(int(dmm.send_command('STAT:OPER:COND?', True, to_float=True)), '016b'))
 #
@@ -668,15 +755,24 @@ class Agilent:
 #     # print(dmm.fetch_multiple_meas(-1))
 #     # # print(dmm.send_command('SYST:ERR?', True))
 #     # # print(dmm.send_command('SYST:ERR?', True))
+#     # dmm.set_to_pre_conf_setting('periodic')
 #     dmm.set_to_pre_conf_setting('initial')
 #     # print(dmm.emit_config_pars())
 #     x = 0
 #     while x < 100:
-#         print(dmm.send_software_trigger())
-#         print(dmm.send_software_trigger())
-#         print(dmm.send_software_trigger())
-#         print(dmm.send_software_trigger())
+#         start = datetime.datetime.now()
+#         dmm.send_software_trigger()
+#         dmm.send_software_trigger()
+#         dmm.send_software_trigger()
+#         dmm.send_software_trigger()
+#         dmm.send_software_trigger()
+#         dmm.send_software_trigger()
+#         dmm.send_software_trigger()
+#         dmm.send_software_trigger()
 #         time.sleep(1)
+#         stop = datetime.datetime.now()
+#         dif = stop - start
+#         print('time for sending 8 softw. triggers and 1 second delay: ', dif.seconds)
 #         print(dmm.fetch_multiple_meas(-1))
 #         x += 1
 #     print(dmm.send_command('SYST:ERR?', True))

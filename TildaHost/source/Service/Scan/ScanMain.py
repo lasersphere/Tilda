@@ -353,7 +353,6 @@ class ScanMain:
             else:
                 self.setup_dmm_and_arm(dmm_name, dmm_conf_dict, False)
 
-
     def set_dmm_to_pre_scan_config(self, dmm_name):
         """
         set the dmms to the settings for a pre scan measurement.
@@ -368,6 +367,7 @@ class ScanMain:
         :param config_dict: dict, containing all necessary parameters for the given dmm
         :param reset_dev: bool, True for resetting
         """
+        self.abort_dmm_measurement('all')
         self.read_multimeter('all', False)  # read remaining values from buffer.
         self.digital_multi_meter.config_dmm(dmm_name, config_dict, reset_dev)
         self.digital_multi_meter.start_measurement(dmm_name)

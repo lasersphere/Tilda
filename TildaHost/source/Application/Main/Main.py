@@ -10,6 +10,7 @@ import logging
 import os
 from copy import deepcopy
 from datetime import datetime
+from datetime import timedelta
 
 from PyQt5 import QtCore
 from PyQt5.QtGui import QCursor
@@ -72,6 +73,8 @@ class Main(QtCore.QObject):
         self.tipa_timeout_counter = 0
 
         self.dmm_gui_callback = None
+        self.last_dmm_reading_datetime = datetime.now()  # storage for the last reading time of the dmms
+        self.dmm_periodic_reading_interval = timedelta(seconds=5)
 
         self.displayed_data = {}  # dict of all displayed files. complete filename is key.
 
@@ -94,18 +97,18 @@ class Main(QtCore.QObject):
         """
         if self.m_state[0] is MainState.idle:
             self.get_fpga_and_seq_state()
-            self.read_dmms()
+            self.read_dmms(reading_interval=self.dmm_periodic_reading_interval)
             self.work_on_next_job_during_idle()
             return True
 
         elif self.m_state[0] is MainState.error:
             self.get_fpga_and_seq_state()
-            self.read_dmms()
+            self.read_dmms(reading_interval=self.dmm_periodic_reading_interval)
 
         elif self.m_state[0] is MainState.starting_simple_counter:
             self._start_simple_counter(*self.m_state[1])
         elif self.m_state[0] is MainState.simple_counter_running:
-            self.read_dmms()
+            self.read_dmms(reading_interval=self.dmm_periodic_reading_interval)
             self._read_data_simple_counter()
         elif self.m_state[0] is MainState.stop_simple_counter:
             self._stop_simple_counter()
@@ -885,28 +888,33 @@ class Main(QtCore.QObject):
             ret[dmm_name] = {'status': state_str, 'lastReadback': last_readback}
         return ret
 
-    def read_dmms(self, feed_to_pipe=False):
+    def read_dmms(self, feed_to_pipe=False, reading_interval=timedelta(seconds=0)):
         """
         dmm's will be read when main is in idle state.
         Values are already measured by the dmm in advance and main only "fetches" those.
             -> should be a quick return of values.
             values are emitted via send_state()
-            also values are emitted via the self.dmm_gui_callback, if there is a gui subscirbed to it.
+            also values are emitted via the self.dmm_gui_callback, if there is a gui subscribed to it.
         :return: None or dict, dict will always contain at least one reading.
         """
-        # return None
-        worth_sending = False
-        readback = self.scan_main.read_multimeter('all', feed_to_pipe)
-        if readback is not None:  # will be None if no dmms are active
-            for dmm_name, vals in readback.items():
-                if vals is not None:  # will be None if no new readback is available
-                    self.send_state()
-                    worth_sending = True
-            if self.dmm_gui_callback is not None and worth_sending:
-                # also send readback ot other guis that might be subscribed.
-                self.dmm_gui_callback.emit(readback)
-        if worth_sending:
-            return readback
+        # maybe put timeout here
+        if datetime.now() - self.last_dmm_reading_datetime > reading_interval:
+            # return None
+            self.last_dmm_reading_datetime = datetime.now()
+            worth_sending = False
+            readback = self.scan_main.read_multimeter('all', feed_to_pipe)
+            if readback is not None:  # will be None if no dmms are active
+                for dmm_name, vals in readback.items():
+                    if vals is not None:  # will be None if no new readback is available
+                        self.send_state()
+                        worth_sending = True
+                if self.dmm_gui_callback is not None and worth_sending:
+                    # also send readback ot other guis that might be subscribed.
+                    self.dmm_gui_callback.emit(readback)
+            if worth_sending:
+                return readback
+            else:
+                return None
         else:
             return None
 

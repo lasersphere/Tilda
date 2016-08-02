@@ -21,6 +21,10 @@ def get_wid_by_type(dmm_type, dmm_name):
         return Ni4071Widg(dmm_name, dmm_type)
     elif dmm_type == 'dummy':
         return Ni4071Widg(dmm_name, dmm_type)
+    elif dmm_type == 'Agilent_34461A':
+        return Ni4071Widg(dmm_name, dmm_type)
+    elif dmm_type == 'Agilent_34401A':
+        return Ni4071Widg(dmm_name, dmm_type)
     else:
         print('could not find widget of type: ', dmm_type)
 
@@ -62,7 +66,7 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         :param conf_dict: dict, tuple (name_str, type_class, certain_value_list, actual_value_bool/int/str/float)
         :return:
         """
-        # print('rcvd config dict: ', conf_dict)
+        print('rcvd config dict: ', conf_dict)
         self.raw_config = conf_dict
         self.add_widgets_to_form_layout(self.raw_config, self.formLayout_config_values)
         self.formLayout_reading_and_buttons.addRow(self.reset_button, self.communicate_button)
@@ -71,7 +75,8 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         """
         add input widgets to the parent layout.
         will connect each input widget to self.calling
-        :param inp_dict: dict, tuple (name_str, indicator_or_control_bool, type_class, certain_value_list, actual_value_bool/int/str/float)
+        :param inp_dict: dict, tuple (name_str, indicator_or_control_bool, type_class,
+         certain_value_list, actual_value_bool/int/str/float)
         :param parent_layout: Layout
         :return: None, but chnages the items in the inp_dict to a list [label, inp_type, vals, set_val, widget]
         """
@@ -165,6 +170,7 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         """ configures and arms teh device with the values currently stored in self.raw_config """
         # config values must only contain key: val
         config = {key: val[3] for key, val in self.raw_config.items()}
+        print('will setup dmm to: ', config)
         Cfg._main_instance.config_and_arm_dmm(self.dmm_name, config, False)
         # Cfg._main_instance.scan_main.setup_dmm_and_arm(self.dmm_name, config, False)
 

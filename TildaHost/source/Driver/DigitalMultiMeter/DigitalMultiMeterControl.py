@@ -118,7 +118,7 @@ class DMMControl:
         :param dmm_name: str, name of the dmm
         :return: dict, key: (name_str, type, valid_vals)
         """
-        # print('dmm to emit:', self.dmm)
+        # print('dmm to emit:', dmm_name, self.dmm)
         return self.dmm[dmm_name].emit_config_pars()
         # use dicts to specify for the individual dmm
 
@@ -129,7 +129,9 @@ class DMMControl:
         :return: dict, {key=dmm_name: np.array=read values}
         or None for no reading
         """
+        print('until here it gets')
         ret = self.dmm[dmm_name].fetch_multiple_meas(-1)  # -1 to read all available values
+        print('%s returned: %s' % (dmm_name, ret))
         if ret.any():  # ret must be numpy array. if it has no values return None
             ret_dict = {dmm_name: ret}
         else:
@@ -144,6 +146,7 @@ class DMMControl:
         """
         ret_dict = {}
         act_dmms = list(self.dmm.keys())
+        print('will read now, active dmms are: ', act_dmms)
         if len(act_dmms):
             for dmm_name in act_dmms:
                 reading = self.read_from_multimeter(dmm_name)  # None for no reading
