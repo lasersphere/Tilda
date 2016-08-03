@@ -81,8 +81,7 @@ class Main(QtCore.QObject):
         try:
             # pass
             # self.work_dir_changed('D:\Sn_beamtime_Tilda_active_data')
-            self.work_dir_changed('R:\Projekte\COLLAPS\Sn\Measurement_and_Analysis_Simon\Sn_beamtime_Tilda_active_data')
-            # self.work_dir_changed('E:\TildaDebugging')
+            self.work_dir_changed('D:\Development\TildaDevDebugging')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state(MainState.idle)
@@ -398,7 +397,7 @@ class Main(QtCore.QObject):
         self.scan_pars[iso_name] = self.add_global_infos_to_scan_pars(iso_name)
         logging.debug('will scan: ' + iso_name + str(sorted(self.scan_pars[iso_name])))
         self.scan_main.prepare_scan(self.scan_pars[iso_name])
-        self.set_state(MainState.setting_switch_box, True)
+        self.set_state(MainState.setting_switch_box, (True, None))
 
     def _setting_switch_box(self, first_call=False, desired_state=None):
         """
@@ -466,6 +465,7 @@ class Main(QtCore.QObject):
                 self.set_state(MainState.measure_offset_voltage, False)
             else:  # this will periodically read the dmms until all dmms returned a measurement
                 read = self.read_dmms(False)
+                print('reading of dmms prescan: ', read)
                 if read is not None:
                     dmms_dict = self.scan_pars[iso_name]['measureVoltPars'].get('dmms', None)
                     reads = []
@@ -473,6 +473,8 @@ class Main(QtCore.QObject):
                         if volt_read is not None:
                             dmms_dict[dmm_name]['preScanRead'] = volt_read[0]
                         reads.append(dmms_dict[dmm_name].get('preScanRead', None))
+                        print('readings of dmms pre scan are:', reads,
+                              ' prescan read: ', dmm_name)
                     if reads.count(None) == 0:  # done with reading when all dmms have a value
                         logging.debug('all dmms returned a measurement, reading is: ' + str(read))
                         self.scan_main.abort_dmm_measurement('all')
@@ -593,7 +595,7 @@ class Main(QtCore.QObject):
         if complete_stop:  # set switch box to loading state in order to not feed any voltage to the CEC
             self.set_state(MainState.setting_switch_box, (True, 4))  # after this has ben completed, it will go to idle
         else:  # keep going with next track.
-            self.set_state(MainState.setting_switch_box, True)
+            self.set_state(MainState.setting_switch_box, (True, None))
 
     """ simple counter """
 

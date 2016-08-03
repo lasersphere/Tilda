@@ -51,7 +51,7 @@ class AgilentPreConfigs(Enum):
     pre_scan = {
             'range': 10.0,
             'resolution': 3e-6,
-            'triggerCount': 511,
+            'triggerCount': -1,
             'sampleCount': 1,
             'autoZero': 'ONCE',
             'triggerSource': 'bus',
@@ -555,6 +555,7 @@ class Agilent:
             self.send_command('\x03')  # see p. 160 \x03 = <Ctrl-C>
         else:
             self.send_command('ABORt')
+        print(self.name, ' aborted measurement')
         self.state = 'aborted'
         dev_err = self.get_dev_error()
 

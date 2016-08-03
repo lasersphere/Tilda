@@ -349,7 +349,7 @@ class ScanMain:
                 logging.warning('%s was not initialized yet, will do now.' % dmm_name)
                 self.prepare_dmm(dmm_conf_dict.get('type', ''), dmm_conf_dict.get('address', ''))
             if pre_scan_meas:
-                self.set_dmm_to_pre_scan_config('all')
+                self.set_dmm_to_pre_scan_config(dmm_name)
             else:
                 self.setup_dmm_and_arm(dmm_name, dmm_conf_dict, False)
 
@@ -367,8 +367,8 @@ class ScanMain:
         :param config_dict: dict, containing all necessary parameters for the given dmm
         :param reset_dev: bool, True for resetting
         """
-        self.abort_dmm_measurement('all')
-        self.read_multimeter('all', False)  # read remaining values from buffer.
+        self.abort_dmm_measurement(dmm_name)
+        self.read_multimeter(dmm_name, False)  # read remaining values from buffer.
         self.digital_multi_meter.config_dmm(dmm_name, config_dict, reset_dev)
         self.digital_multi_meter.start_measurement(dmm_name)
 

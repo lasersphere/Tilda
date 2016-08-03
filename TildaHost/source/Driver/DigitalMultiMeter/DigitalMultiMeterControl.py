@@ -84,7 +84,11 @@ class DMMControl:
         must have been configured in advanced!
         :param dmm_name: str, name of dev
         """
-        self.dmm[dmm_name].initiate_measurement()
+        if dmm_name == 'all':
+            for dmm_name in list(self.dmm.keys()):
+                self.dmm[dmm_name].initiate_measurement()
+        elif dmm_name in list(self.dmm.keys()):
+            self.dmm[dmm_name].initiate_measurement()
 
     def start_pre_configured_meas(self, dmm_name, pre_config_name):
         """
@@ -129,9 +133,7 @@ class DMMControl:
         :return: dict, {key=dmm_name: np.array=read values}
         or None for no reading
         """
-        print('until here it gets')
         ret = self.dmm[dmm_name].fetch_multiple_meas(-1)  # -1 to read all available values
-        print('%s returned: %s' % (dmm_name, ret))
         if ret.any():  # ret must be numpy array. if it has no values return None
             ret_dict = {dmm_name: ret}
         else:
@@ -146,7 +148,6 @@ class DMMControl:
         """
         ret_dict = {}
         act_dmms = list(self.dmm.keys())
-        print('will read now, active dmms are: ', act_dmms)
         if len(act_dmms):
             for dmm_name in act_dmms:
                 reading = self.read_from_multimeter(dmm_name)  # None for no reading
