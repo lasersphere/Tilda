@@ -1065,6 +1065,7 @@ class Ni4071:
         :param pre_conf_name: str, name of the setting
         :return:
         """
+        print('trying to set %s to the config: %s' % (self.name, pre_conf_name))
         if pre_conf_name in Ni4071PreConfigs.__members__:
             config_dict = Ni4071PreConfigs[pre_conf_name].value
             config_dict['assignment'] = self.config_dict.get('assignment', 'offset')

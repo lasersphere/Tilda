@@ -461,7 +461,7 @@ class Agilent:
         self.send_command('INIT')
         self.state = 'measuring'
         dev_err = self.get_dev_error()
-
+        print('successfully started measurement on ', self.name)
         return dev_err
 
     def fetch_multiple_meas(self, num_to_read):
@@ -567,6 +567,7 @@ class Agilent:
         :param pre_conf_name: str, name of the setting
         :return:
         """
+        print('trying to set %s to the config: %s' % (self.name, pre_conf_name))
         if pre_conf_name in AgilentPreConfigs.__members__:
             config_dict = deepcopy(AgilentPreConfigs[pre_conf_name].value)
             # config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
