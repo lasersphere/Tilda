@@ -4,13 +4,13 @@ Created on 06.06.2014
 @author: hammen
 '''
 
-import sqlite3
 import ast
+import sqlite3
 
 from PyQt5 import QtWidgets, QtCore
 
-from InteractiveFit import InteractiveFit
 from Gui.Ui_InteractiveFit import Ui_InteractiveFit
+from InteractiveFit import InteractiveFit
 
 
 class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):

@@ -4,21 +4,18 @@ Created on 15.05.2014
 @author: hammen
 '''
 
-import sqlite3
+import ast
 import os
+import sqlite3
 import sys
 import traceback
-import ast
-
-from Measurement import MeasLoad
-
-from DBIsotope import DBIsotope
-from Spectra.Straight import Straight
-from Spectra.FullSpec import FullSpec
-
-from SPFitter import SPFitter
 
 import MPLPlotter as plot
+from DBIsotope import DBIsotope
+from Measurement import MeasLoad
+from SPFitter import SPFitter
+from Spectra.FullSpec import FullSpec
+from Spectra.Straight import Straight
 
 
 def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None):

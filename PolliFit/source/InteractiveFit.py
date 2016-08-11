@@ -8,17 +8,16 @@ Import the module in IPython and load() a file. The spectrum as well as the data
 printPars() is used to plot starting values, setPar() to change them, fit() to try and fit, reset() to
 revert to the values before the last fit try.
 '''
-import sqlite3
 import ast
 import os
+import sqlite3
 
 import MPLPlotter as plot
-
 import Measurement.MeasLoad as MeasLoad
-from Spectra.Straight import Straight
-from Spectra.FullSpec import FullSpec
 from DBIsotope import DBIsotope
 from SPFitter import SPFitter
+from Spectra.FullSpec import FullSpec
+from Spectra.Straight import Straight
 
 
 class InteractiveFit(object):

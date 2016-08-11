@@ -4,12 +4,14 @@ Created on 06.06.2014
 @author: hammen
 '''
 
-from PyQt5 import QtWidgets
-from Gui.Ui_Crawler import Ui_Crawler
 import os
 import sqlite3
 
+from PyQt5 import QtWidgets
+
 import Tools
+from Gui.Ui_Crawler import Ui_Crawler
+
 
 class CrawlerUi(QtWidgets.QWidget, Ui_Crawler):
 

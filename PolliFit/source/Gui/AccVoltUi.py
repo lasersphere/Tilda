@@ -4,21 +4,15 @@ Created on 06.06.2014
 @author: hammen, chgorges
 '''
 
-import sqlite3
-import ast
-import itertools
-import numpy as np
-import copy
-import os
 import datetime
-from matplotlib.dates import DateFormatter
-
+import os
+import sqlite3
 
 from PyQt5 import QtWidgets, QtCore
 
-from Gui.Ui_AccVolt import Ui_AccVolt
 import Analyzer
 import MPLPlotter as plot
+from Gui.Ui_AccVolt import Ui_AccVolt
 
 
 class AccVoltUi(QtWidgets.QWidget, Ui_AccVolt):

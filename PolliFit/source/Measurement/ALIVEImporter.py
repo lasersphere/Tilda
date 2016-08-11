@@ -4,14 +4,16 @@ Created on 08.08.2016
 @author: tratajzcyk
 '''
 
-import csv, ast
+import ast
+import csv
+import os
 import sqlite3
 from datetime import datetime
-import os
 
 import numpy as np
 
 from Measurement.SpecData import SpecData
+
 
 class ALIVEImporter(SpecData):
     '''

@@ -3,12 +3,10 @@ Created on 06.06.2014
 
 @author: hammen
 '''
-import sys
 
 from PyQt5 import QtWidgets
 
 from Gui.MainUi import MainUi
-from Gui.EmitText import EmitText
 
 app = QtWidgets.QApplication([""])
 

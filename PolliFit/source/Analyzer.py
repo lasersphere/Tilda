@@ -6,15 +6,15 @@ Created on 21.05.2014
 The Analyzer can extract() parameters from fit results, combineRes() to get weighted averages and combineShift() to calculate isotope shifts.
 '''
 
-import sqlite3
 import ast
 import functools
 import os
+import sqlite3
 
 import numpy as np
 
-import Physics
 import MPLPlotter as plt
+import Physics
 
 
 def getFiles(iso, run, db):

@@ -4,15 +4,15 @@ Created on 06.06.2014
 @author: hammen
 '''
 import os.path
-import sqlite3
 import sys
 from datetime import datetime
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 
-from Gui.Ui_Main import Ui_MainWindow
-import Tools
 import MPLPlotter as plot
+import Tools
+from Gui.Ui_Main import Ui_MainWindow
+
 
 class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
 

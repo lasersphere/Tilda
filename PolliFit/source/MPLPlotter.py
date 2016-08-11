@@ -18,11 +18,10 @@ from matplotlib.widgets import Button
 from matplotlib.widgets import RadioButtons
 from matplotlib.widgets import RectangleSelector
 from matplotlib.widgets import Slider
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import Physics
+
 
 def plot(*args):
     for a in args:

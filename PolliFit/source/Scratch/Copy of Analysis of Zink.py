@@ -3,21 +3,6 @@ Created on 31.03.2014
 
 @author: gorges
 '''
-import os
-import sqlite3
-import math
-
-import MPLPlotter as plot
-import numpy as np
-
-from DBIsotope import DBIsotope
-from SPFitter import SPFitter
-from Spectra.FullSpec import FullSpec
-from datetime import datetime
-import BatchFit
-import Analyzer
-import Tools
-import Physics
 
 path = 'V:/Projekte/TRIGA/Measurements and Analysis_Christian/Zink'
 #db = os.path.join(path, 'Zink.sqlite')

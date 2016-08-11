@@ -3,22 +3,16 @@ Created on 05.08.2016
 
 @author: skaufmann
 '''
-import os, sqlite3, math
-from datetime import datetime
+import os
+
 import numpy as np
 
-import MPLPlotter as plot
 import DBIsotope
-from SPFitter import SPFitter
-import Spectra.FullSpec as FullSpec
-import BatchFit
-import Analyzer
+import MPLPlotter as plot
 import Tools
-import Physics
 from Measurement.MCPImporter import MCPImporter
+from SPFitter import SPFitter
 from Spectra.FullSpec import FullSpec
-
-import InteractiveFit as IF
 
 db = 'C:\COLLAPS\Online_Analysis_Al\Al\Analysis\Analysis.sqlite'
 workdir = os.path.dirname(db)

@@ -6,14 +6,11 @@ Created on 15.05.2014
 
 import os
 
-from Measurement.KepcoImporterTLD import KepcoImporterTLD
-from Measurement.TLDImporter import TLDImporter
-
-from Measurement.XMLImporter import XMLImporter
-
-from Measurement.MCPImporter import MCPImporter
 from Measurement.ALIVEImporter import ALIVEImporter
-from Measurement.SimpleImporter import SimpleImporter
+from Measurement.KepcoImporterTLD import KepcoImporterTLD
+from Measurement.MCPImporter import MCPImporter
+from Measurement.TLDImporter import TLDImporter
+from Measurement.XMLImporter import XMLImporter
 
 
 def load(file, db, raw=False, x_as_voltage=True, softw_gates=None):

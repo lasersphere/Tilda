@@ -4,18 +4,18 @@ Created on 06.06.2014
 @author: hammen, chgorges
 '''
 
-import sqlite3
 import ast
-import itertools
-import numpy as np
 import copy
 import os
+import sqlite3
 
+import numpy as np
 from PyQt5 import QtWidgets, QtCore
 
-from Gui.Ui_Averager import Ui_Averager
 import Analyzer
 import MPLPlotter as plot
+from Gui.Ui_Averager import Ui_Averager
+
 
 class AveragerUi(QtWidgets.QWidget, Ui_Averager):
 

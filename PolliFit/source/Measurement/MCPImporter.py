@@ -4,17 +4,17 @@ Created on 02.05.2015
 @author: skaufmann, chgorges
 '''
 
-import csv, ast
-import sqlite3
-from datetime import datetime
+import ast
+import copy
 import os
 import re
-import copy
-import Physics
+import sqlite3
+from datetime import datetime
 
 import numpy as np
 
 from Measurement.SpecData import SpecData
+
 
 class MCPImporter(SpecData):
     '''
