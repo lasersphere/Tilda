@@ -36,8 +36,11 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
     
     
     def load(self):
-        self.intFit = InteractiveFit(self.fileList.currentItem().text(), self.dbpath, self.runSelect.currentText())
-        self.loadPars()
+        if self.fileList.currentItem() is not None:
+            iso = self.fileList.currentItem().text()
+            if iso:
+                self.intFit = InteractiveFit(iso, self.dbpath, self.runSelect.currentText())
+                self.loadPars()
         
         
     def fit(self):
@@ -92,7 +95,10 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
         
     
     def setPar(self, i, j):
-        val = ast.literal_eval(self.parTable.item(i, j).text())
+        try:
+            val = ast.literal_eval(self.parTable.item(i, j).text())
+        except SyntaxError as e:
+            val = 0.0
         if j == 1:
             self.intFit.setPar(i, val)
         else:
@@ -102,4 +108,3 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
         self.dbpath = dbpath
         self.loadRuns()
         self.loadIsos()
-        

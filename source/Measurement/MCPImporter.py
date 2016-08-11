@@ -10,6 +10,7 @@ from datetime import datetime
 import os
 import re
 import copy
+import Physics
 
 import numpy as np
 
@@ -79,7 +80,6 @@ class MCPImporter(SpecData):
                 self.accVolt = np.mean(volts[0][volts[1].index('lan[A-34461A-06386]:inst0')])
                 prema = np.mean(self.find_data_list_in_str(file_as_str, 'PremaVoltageObj')[0])
                 agilent = np.mean(volts[0][volts[1].index('lan[A-34461A-06287]:inst0')])
-                d_prema_agilent = prema - agilent
                 self.offset = np.mean([prema, agilent])
 
                 scans, self.nrScans, self.nrSteps, limits = self.get_scan_pars(file_as_str)
@@ -108,20 +108,22 @@ class MCPImporter(SpecData):
                 for i,ctarray in enumerate(self.cts):
                     for j, cts in enumerate(ctarray):
                         self.err[i][j] = np.sqrt(cts)
+                        self.err[i][j][self.err[i][j] == 0] = 1
             f.close()
 
-    def preProc(self, db):
-        print('MCPimporter is using db', db)
-        con = sqlite3.connect(db)
-        cur = con.cursor()
-        cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset
-                                        FROM Files WHERE file = ?''', (self.file,))
-        data = cur.fetchall()
-        if len(data) == 1:
-            (self.accVolt, self.laserFreq, self.col, self.line, self.type, self.voltDivRatio, self.lineMult,
-                    self.lineOffset, self.offset) = data[0]
-        else:
-            raise Exception('MCPImporter: No DB-entry found!')
+    def preProc(self, db, from_input=False):
+        if not from_input:
+            print('MCPimporter is using db', db)
+            con = sqlite3.connect(db)
+            cur = con.cursor()
+            cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset
+                                            FROM Files WHERE file = ?''', (self.file,))
+            data = cur.fetchall()
+            if len(data) == 1:
+                (self.accVolt, self.laserFreq, self.col, self.line, self.type, self.voltDivRatio, self.lineMult,
+                        self.lineOffset, self.offset) = data[0]
+            else:
+                raise Exception('MCPImporter: No DB-entry found!')
         if self.type == 'Kepco':
             for trackindex, tracks in enumerate(self.cts):
                 for ctindex, ct in enumerate(tracks):
@@ -136,7 +138,8 @@ class MCPImporter(SpecData):
                     self.x[trackindex][xindex]= self.accVolt*self.voltDivRatio['accVolt'] - scanvolt
             '''If the numbers of scans for the tracks are different, it will be normed to the minimal number of scans:'''
             self.norming()
-        con.close()
+        if not from_input:
+            con.close()
 
     def export(self, db):
         con = sqlite3.connect(db)
@@ -183,7 +186,7 @@ class MCPImporter(SpecData):
         limits = []
         ind = 0
         while ind!= -1:
-            ind = mcp_file_as_string.find('<,', ind)
+            ind = mcp_file_as_string.find('<<', ind)
             ind2 = mcp_file_as_string.find('<', ind + 2)
             lis = mcp_file_as_string[ind:ind2].split(',')[1:-1]
             indlim = mcp_file_as_string.find('<LineVoltageSweepObj,', ind)

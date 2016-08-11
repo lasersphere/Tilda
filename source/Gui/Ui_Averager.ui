@@ -31,6 +31,13 @@
     </widget>
    </item>
    <item>
+    <widget class="QPushButton" name="pushButton_select_all">
+     <property name="text">
+      <string>select/deselect All</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QFormLayout" name="formLayout">
      <item row="0" column="0">
       <widget class="QLabel" name="label_4">
@@ -69,7 +76,7 @@
      <item row="2" column="0">
       <widget class="QLabel" name="label_2">
        <property name="text">
-        <string>statistic error</string>
+        <string>statistic error* rChi^2</string>
        </property>
        <property name="wordWrap">
         <bool>true</bool>

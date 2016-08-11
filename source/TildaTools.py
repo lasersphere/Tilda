@@ -104,7 +104,8 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
     return trackd
 
 
-def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape, datatytpe=np.uint32, direct_parent_ele_str='data'):
+def xml_get_data_from_track(
+        root_ele, n_of_track, data_type, data_shape, datatytpe=np.uint32, direct_parent_ele_str='data', default_val=0):
     """
     Get Data From Track
     :param root_ele:  lxml.etree.Element, root of the xml tree
@@ -114,15 +115,18 @@ def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape, datatyt
     :param returnType: int or tuple of int, shape of the numpy array, 0 if output in textfrom is desired
     :return: Text
     """
-    try:
-        actTrack = root_ele.find('tracks').find('track' + str(n_of_track)).find(direct_parent_ele_str)
-        dataText = actTrack.find(str(data_type)).text
-        data_numpy = numpy_array_from_string(dataText, data_shape, datatytpe)
-        return data_numpy
-    except Exception as e:
-        print('error while searching ' + str(data_type) + ' in track' + str(n_of_track) + ' in ' + str(root_ele))
-        print('error is: ', e)
-        return None
+    if root_ele is None:  # return an
+        return np.full(data_shape, default_val, dtype=datatytpe)
+    else:
+        try:
+            actTrack = root_ele.find('tracks').find('track' + str(n_of_track)).find(direct_parent_ele_str)
+            dataText = actTrack.find(str(data_type)).text
+            data_numpy = numpy_array_from_string(dataText, data_shape, datatytpe)
+            return data_numpy
+        except Exception as e:
+            print('error while searching ' + str(data_type) + ' in track' + str(n_of_track) + ' in ' + str(root_ele))
+            print('error is: ', e)
+            return None
 
 
 def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
@@ -222,19 +226,19 @@ def gate_specdata(spec_data):
     spec_data.softw_gates = [[[compare_arr[lim_ind][tr_ind][found_ind] for lim_ind, found_ind in enumerate(gate_ind_pmt)]
                               for gate_ind_pmt in gate_ind_tr]
                              for tr_ind, gate_ind_tr in enumerate(softw_gates_ind)]
-    spec_data.t_proj = [[np.sum(
-                                spec_data.time_res[tr_ind][pmt_ind]
-        [softw_gates_ind[tr_ind][pmt_ind][0]:softw_gates_ind[tr_ind][pmt_ind][1] + 1, :], axis=0
-    )
-                         for pmt_ind, pmt in enumerate(tracks)]
-                         for tr_ind, tracks in enumerate(spec_data.cts)]
-    spec_data.cts = [[
-        np.sum(
-            spec_data.time_res[tr_ind][pmt_ind]
-            [:, softw_gates_ind[tr_ind][pmt_ind][2]:softw_gates_ind[tr_ind][pmt_ind][3] + 1], axis=1
-        )
-        for pmt_ind in range(scalers)] for tr_ind, scalers in enumerate(spec_data.nrScalers)]
 
+    for tr_ind, tr in enumerate(spec_data.cts):
+        for pmt_ind, pmt in enumerate(tr):
+            v_min_ind = softw_gates_ind[tr_ind][pmt_ind][0]
+            v_max_ind = softw_gates_ind[tr_ind][pmt_ind][1] + 1
+            t_min_ind = softw_gates_ind[tr_ind][pmt_ind][2]
+            t_max_ind = softw_gates_ind[tr_ind][pmt_ind][3] + 1
+            t_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][v_min_ind:v_max_ind, :], axis=0)
+            v_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][:, t_min_ind:t_max_ind], axis=1)
+            a = spec_data.t_proj[tr_ind]
+            b = spec_data.cts[tr_ind]
+            spec_data.t_proj[tr_ind][pmt_ind] = t_proj_res
+            spec_data.cts[tr_ind][pmt_ind] = v_proj_res
     return spec_data
 
 
@@ -249,12 +253,15 @@ def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
             start = scan_dict[tr_name]['dacStartVoltage']
             stop = scan_dict[tr_name]['dacStopVoltage']
             step = scan_dict[tr_name]['dacStepsizeVoltage']
-            x_tr = np.arange(start, stop + step, step)
         else:
             start = scan_dict[tr_name]['dacStartRegister18Bit']
             step = scan_dict[tr_name]['dacStepSize18Bit']
             stop = scan_dict[tr_name].get('dacStopRegister18Bit', start + step * (steps - 1))
-            x_tr = np.arange(start, stop + step, step)
+        x_tr, new_step = np.linspace(start, stop, steps, retstep=True)
+        # np.testing.assert_allclose(
+        #     new_step, step, rtol=1e-5, err_msg='error while creating x axis from file, stepsizes do not match.')
+        logging.debug('for the new x axis the new stepsize is: %s, the old one was: %s and the difference is: %s'
+                      % (new_step, step, new_step - step))
         x_arr.append(x_tr)
     return x_arr
 

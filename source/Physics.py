@@ -46,7 +46,7 @@ def wavelenFromFreq(frequency):
     return c / (frequency * 10 ** 6) * 10 ** 9
 
 def diffDoppler(nu_0, volt, m):
-    '''retruns the differential doppler Factor [MHZ/V]'''
+    '''returns the differential doppler Factor [MHZ/V]'''
     return nu_0*qe/np.sqrt(2*qe*volt*m*u*c**2)
 
 def relDoppler(laserFreq, v):

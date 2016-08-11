@@ -9,6 +9,7 @@ import ast
 import itertools
 import numpy as np
 import copy
+import os
 
 from PyQt5 import QtWidgets, QtCore
 
@@ -28,6 +29,9 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
         self.parameter.currentIndexChanged.connect(self.loadFiles)
         self.fileList.itemChanged.connect(self.recalc)
         self.bsave.clicked.connect(self.saving)
+        self.pushButton_select_all.clicked.connect(self.select_all)
+
+        self.select_all_state = True
 
         self.dbpath = None
         
@@ -79,7 +83,7 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
             self.par = self.parameter.currentText()
 
             self.files = Analyzer.getFiles(self.iso, self.run, self.dbpath)
-            self.vals, self.errs, self.dates = Analyzer.extract(self.iso, self.par, self.run, self.dbpath)
+            self.vals, self.errs, self.dates = Analyzer.extract(self.iso, self.par, self.run, self.dbpath, prin=False)
 
             cur.execute('''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ?''', (self.iso, self.par, self.run))
             r = cur.fetchall()
@@ -115,6 +119,24 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
         except Exception as e:
             print(str(e))
 
+    def select_all(self):
+        self.fileList.clear()
+        self.select_all_state = not self.select_all_state
+        select = [self.select_all_state] * len(self.files)
+
+        self.fileList.blockSignals(True)
+        for f, s in zip(self.files, select):
+            w = QtWidgets.QListWidgetItem(f)
+            w.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+            if s:
+                w.setCheckState(QtCore.Qt.Checked)
+            else:
+                w.setCheckState(QtCore.Qt.Unchecked)
+            self.fileList.addItem(w)
+
+        self.fileList.blockSignals(False)
+        self.recalc()
+
 
     def recalc(self):
         select = []
@@ -135,6 +157,7 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
             self.chosenDates = np.delete(copy.deepcopy(self.dates), select)
             if len(self.chosenVals) > 0 and len(self.chosenErrs > 0) and np.count_nonzero(self.chosenErrs) == len(self.chosenErrs):
                 self.val, self.err, self.redChi = Analyzer.weightedAverage(self.chosenVals, self.chosenErrs)
+        self.err = self.err * self.redChi  # does the user want it like this?
         self.result.setText(str(self.val))
         self.rChi.setText(str(self.redChi))
         self.statErr.setText(str(self.err))
@@ -142,11 +165,17 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
 
     def saving(self):
         if np.any(self.chosenVals):
-            print(self.chosenVals)
-            plot.plotAverage(self.chosenDates, self.chosenVals, self.chosenErrs, self.val, self.err, self.systeErr, showing=True)
+            filename = '%s_%s_%s.png' % (self.iso, self.run, self.par)
+            path = os.path.join(os.path.split(self.dbpath)[0], 'combined_plots', filename)
+            print(path)
+            plot.close_all_figs()
+            plot.plotAverage(self.chosenDates, self.chosenVals, self.chosenErrs,
+                             self.val, self.err, self.systeErr, showing=True, save_path=path,
+                             ylabel=str(filename.split(sep='.')[0]) + ' [MHz]')
             con = sqlite3.connect(self.dbpath)
             cur = con.cursor()
-            cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', (self.iso, self.par, self.run))
+            cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''',
+                        (self.iso, self.par, self.run))
             con.commit()
             con.close()
             con = sqlite3.connect(self.dbpath)

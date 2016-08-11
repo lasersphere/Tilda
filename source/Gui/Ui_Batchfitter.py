@@ -24,6 +24,9 @@ class Ui_Batchfitter(object):
         self.fileList.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
         self.fileList.setObjectName("fileList")
         self.verticalLayout.addWidget(self.fileList)
+        self.pushButton_select_all = QtWidgets.QPushButton(Batchfitter)
+        self.pushButton_select_all.setObjectName("pushButton_select_all")
+        self.verticalLayout.addWidget(self.pushButton_select_all)
         self.bfit = QtWidgets.QPushButton(Batchfitter)
         self.bfit.setObjectName("bfit")
         self.verticalLayout.addWidget(self.bfit)
@@ -34,5 +37,6 @@ class Ui_Batchfitter(object):
     def retranslateUi(self, Batchfitter):
         _translate = QtCore.QCoreApplication.translate
         Batchfitter.setWindowTitle(_translate("Batchfitter", "Form"))
+        self.pushButton_select_all.setText(_translate("Batchfitter", "select/deselect all"))
         self.bfit.setText(_translate("Batchfitter", "Fit"))
 
