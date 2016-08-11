@@ -28,6 +28,10 @@ class BatchfitterUi(QtWidgets.QWidget, Ui_Batchfitter):
         self.fileList.itemChanged.connect(self.recalc)
         self.bfit.clicked.connect(self.fitting)
 
+        self.pushButton_select_all.clicked.connect(self.select_all)
+
+        self.select_all_state = True
+
         self.dbpath = None
         
         self.show()
@@ -35,7 +39,7 @@ class BatchfitterUi(QtWidgets.QWidget, Ui_Batchfitter):
     
     def conSig(self, dbSig):
         dbSig.connect(self.dbChange)
-    
+
         
     def loadIsos(self):
         self.isoSelect.clear()
@@ -63,7 +67,7 @@ class BatchfitterUi(QtWidgets.QWidget, Ui_Batchfitter):
             self.files = [f[0] for f in cur.fetchall()]
             con.close()
 
-            select = [True] * len(self.files)
+            select = [False] * len(self.files)
 
 
             self.fileList.blockSignals(True)
@@ -81,6 +85,24 @@ class BatchfitterUi(QtWidgets.QWidget, Ui_Batchfitter):
             self.recalc()
         except Exception as e:
             print(str(e))
+
+    def select_all(self):
+        self.fileList.clear()
+        self.select_all_state = not self.select_all_state
+        select = [self.select_all_state] * len(self.files)
+
+        self.fileList.blockSignals(True)
+        for f, s in zip(self.files, select):
+            w = QtWidgets.QListWidgetItem(f)
+            w.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+            if s:
+                w.setCheckState(QtCore.Qt.Checked)
+            else:
+                w.setCheckState(QtCore.Qt.Unchecked)
+            self.fileList.addItem(w)
+
+        self.fileList.blockSignals(False)
+        self.recalc()
 
 
     def recalc(self):

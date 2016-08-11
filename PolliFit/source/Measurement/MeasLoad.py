@@ -12,12 +12,12 @@ from Measurement.TLDImporter import TLDImporter
 from Measurement.XMLImporter import XMLImporter
 
 from Measurement.MCPImporter import MCPImporter
+from Measurement.ALIVEImporter import ALIVEImporter
 from Measurement.SimpleImporter import SimpleImporter
 
 
 def load(file, db, raw=False, x_as_voltage=True, softw_gates=None):
     e = os.path.splitext(file)[1]
-
     if e == '.txt':
         f = KepcoImporterTLD(file)
         if not raw:
@@ -41,9 +41,14 @@ def load(file, db, raw=False, x_as_voltage=True, softw_gates=None):
         if not raw:
             f.preProc(db)
         return f
+
+    elif e == '.dat':
+        f = ALIVEImporter(file)
+        if not raw:
+            f.preProc(db)
+        return f
     else:
         return None
-
     
 def check(end):
-    return end in ['.txt', '.tld', '.xml', '.mcp', '.kmcp']
+    return end in ['.txt', '.tld', '.xml', '.mcp', '.dat']

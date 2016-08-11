@@ -28,6 +28,13 @@
     </widget>
    </item>
    <item>
+    <widget class="QPushButton" name="pushButton_select_all">
+     <property name="text">
+      <string>select/deselect all</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QPushButton" name="bfit">
      <property name="text">
       <string>Fit</string>

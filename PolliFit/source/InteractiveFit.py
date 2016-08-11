@@ -23,6 +23,8 @@ from SPFitter import SPFitter
 
 class InteractiveFit(object):
     def __init__(self, file, db, run, block=True, x_as_voltage=True, softw_gates_trs=None):
+        self.fitter_iso = None
+        self.fitter_m = None
         plot.ion()
         plot.clear()
         con = sqlite3.connect(db)
@@ -40,6 +42,7 @@ class InteractiveFit(object):
         cur.execute('''SELECT isoVar, lineVar, scaler, track FROM Runs WHERE run = ?''', (run,))
         var = cur.fetchall()[0]
         st = (ast.literal_eval(var[2]), ast.literal_eval(var[3]))
+        linevar = var[1]
 
         if softw_gates_trs is None:  # if no software gates provided check db
             try:  # check if there are software gates available in database
@@ -63,11 +66,31 @@ class InteractiveFit(object):
                     spec = Straight()
                     spec.evaluate(meas.x[0][-1], (0, 1))
                 else:
-                    iso = DBIsotope(db, meas.type, var[0], var[1])
-                    spec = FullSpec(iso)
+                    iso = DBIsotope(db, meas.type, lineVar=linevar)
+                    if var[0] == '_m':
+                        iso_m = DBIsotope(db, meas.type, var[0], var[1])
+                        spec = FullSpec(iso, iso_m)
+                        spec_iso = FullSpec(iso)
+                        spec_m = FullSpec(iso_m)
+                        self.fitter_iso = SPFitter(spec_iso, meas, st)
+                        self.fitter_m = SPFitter(spec_m, meas, st)
+                        plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False)
+                        plot.plotFit(self.fitter_m, color='-g', plot_residuals=False)
+                    else:
+                        spec = FullSpec(iso)
             except:
-                iso = DBIsotope(db, meas.type, var[0], var[1])
-                spec = FullSpec(iso)
+                iso = DBIsotope(db, meas.type, lineVar=linevar)
+                if var[0] == '_m':
+                    iso_m = DBIsotope(db, meas.type, var[0], var[1])
+                    spec = FullSpec(iso, iso_m)
+                    spec_iso = FullSpec(iso)
+                    spec_m = FullSpec(iso_m)
+                    self.fitter_iso = SPFitter(spec_iso, meas, st)
+                    self.fitter_m = SPFitter(spec_m, meas, st)
+                    plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False)
+                    plot.plotFit(self.fitter_m, color='-g', plot_residuals=False)
+                else:
+                    spec = FullSpec(iso)
         self.fitter = SPFitter(spec, meas, st)
         plot.plotFit(self.fitter)
         plot.show(block)
@@ -85,28 +108,52 @@ class InteractiveFit(object):
             
     def fit(self):
         self.fitter.fit()
+        pars = self.fitter.par
         plot.clear()
+        if self.fitter_m is not None:
+            self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
+            self.fitter_m.par = pars[0:3] + pars[len(self.fitter_iso.par):]
+            plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False)
+            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False)
         plot.plotFit(self.fitter)
         plot.show()
         
     def reset(self):
         self.fitter.reset()
+        pars = self.fitter.par
         plot.clear()
+        if self.fitter_m is not None:
+            self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
+            self.fitter_m.par = pars[0:3] + pars[len(self.fitter_iso.par):]
+            plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False)
+            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False)
         plot.plotFit(self.fitter)
         plot.show()
         
     def setPar(self, i, par):
         self.fitter.setPar(i, par)
+        pars = self.fitter.par
         plot.clear()
+        if self.fitter_m is not None:
+            self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
+            self.fitter_m.par = pars[0:3] + pars[len(self.fitter_iso.par):]
+            plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False)
+            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False)
         plot.plotFit(self.fitter)
         plot.show()
         
-    def setFit(self, i, val):
+    def setFix(self, i, val):
         self.fitter.setFix(i, val)
     
     def setPars(self, par):
         self.fitter.par = par
+        pars = self.fitter.par
         plot.clear()
+        if self.fitter_m is not None:
+            self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
+            self.fitter_m.par = pars[0:3] + pars[len(self.fitter_iso.par):]
+            plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False)
+            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False)
         plot.plotFit(self.fitter)
         plot.show()
     

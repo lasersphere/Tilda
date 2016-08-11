@@ -139,10 +139,11 @@ def combineRes(iso, par, run, db, weighted = True, print_extracted=True, show_pl
     plt.save(avg_fig_name)
     if show_plot:
         plt.show(True)
+    plt.clear()
     return (avg, statErr, systErr, plotdata)
-    
 
-def combineShift(iso, run, db):
+
+def combineShift(iso, run, db, show_plot=False):
     '''takes an Isotope a run and a database and gives the isotopeshift to the reference!'''
     print('Open DB', db)
     
@@ -160,6 +161,7 @@ def combineShift(iso, run, db):
     #each block is used to measure the isotope shift once
     shifts = []
     shiftErrors = []
+    dateIso = []
     for block in config:
         if block[0]:
             preVals, preErrs, date = extract(ref,'center',refRun,db,block[0])
@@ -171,6 +173,7 @@ def combineShift(iso, run, db):
             preErr = 0
 
         intVals, intErrs, date = extract(iso,'center',run,db,block[1])
+        [dateIso.append(i) for i in date]
 
         if block[2]:
             postVals, postErrs, date = extract(ref,'center',refRun,db,block[2])
@@ -205,7 +208,18 @@ def combineShift(iso, run, db):
     print('shifts:', shifts)
     print('shiftErrors:', shiftErrors)
     print('Mean of shifts:', val)
-    return (shifts, shiftErrors, val)
+    plotdata = (dateIso, shifts, shiftErrors, val, statErr, systErr, ('k.', 'r'))
+    plt.plotAverage(*plotdata)
+    combined_plots_dir = os.path.join(os.path.split(db)[0], 'combined_plots')
+    if not os.path.exists(combined_plots_dir):
+        os.makedirs(combined_plots_dir)
+    avg_fig_name = os.path.join(combined_plots_dir, iso + '_' + run + '_shift.png')
+    print('saving average plot to: ', avg_fig_name)
+    plt.save(avg_fig_name)
+    if show_plot:
+        plt.show(True)
+    plt.clear()
+    return (shifts, shiftErrors, val, statErr, systErr, rChi)
         
         
     
@@ -229,17 +243,17 @@ def shiftErr(iso, run, db, val, accVolt_d, offset_d):
     cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (ref,))
     (massRef, massRef_d) = cur.fetchall()[0]
     deltaM = np.absolute(mass - massRef)
-    cur.execute('''SELECT offset, accVolt FROM Files WHERE type = ?''', (iso,))
-    (offset, accVolt) = cur.fetchall()[0]
-    offset = offset*1000
+    cur.execute('''SELECT offset, accVolt, voltDivRatio FROM Files WHERE type = ?''', (iso,))
+    (offset, accVolt, voltDivRatio) = cur.fetchall()[0]
+    voltDivRatio = ast.literal_eval(voltDivRatio)
+    offset = np.abs(offset)*voltDivRatio['offset']
     cur.execute('''SELECT offset FROM Files WHERE type = ?''', (ref,))
     (refOffset,) = cur.fetchall()[0]    
-    refOffset = refOffset*1000
-    accVolt = np.absolute(refOffset)+accVolt
+    accVolt = np.absolute(refOffset)*voltDivRatio['offset']+accVolt*voltDivRatio['accVolt']
    
-    cur.execute('''SELECT line FROM Files WHERE type = ?''', (ref,))
-    (line,) = cur.fetchall()[0]
+    #cur.execute('''SELECT line FROM Files WHERE type = ?''', (ref,))
     '''
+    (line,) = cur.fetchall()[0]
     if line == 'D1':
         if iso == '40_Ca':
             offset = 500
@@ -250,7 +264,8 @@ def shiftErr(iso, run, db, val, accVolt_d, offset_d):
     else:
         offset = np.absolute(refOffset-offset)
     print('offsetvoltage:', offset)
-    fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
-    print('systematic error inputs caused by error of...\n...acc Voltage:',fac*(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d/accVolt)),'MHz  ...offset Voltage',fac*offset*offset_d/accVolt,'MHz  ...masses:',fac*(mass_d/mass+massRef_d/massRef),'MHz')
     '''
-    return fac*(np.absolute(0.5*(offset/accVolt+deltaM/mass)*accVolt_d/accVolt)+np.absolute(offset*offset_d/accVolt)+np.absolute(mass_d/mass+massRef_d/massRef))
+    fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
+    print('systematic error inputs caused by error of...\n...acc Voltage:',fac*(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d)),'MHz  ...offset Voltage',fac*offset*offset_d/accVolt,'MHz  ...masses:',fac*(mass_d/mass+massRef_d/massRef),'MHz')
+
+    return fac*(np.absolute(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d))+np.absolute(offset*offset_d/accVolt)+np.absolute(mass_d/mass+massRef_d/massRef))

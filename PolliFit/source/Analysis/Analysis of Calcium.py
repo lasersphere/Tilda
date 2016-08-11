@@ -22,8 +22,11 @@ import Physics
 db = 'V:/Projekte/COLLAPS/ROC/CaD2.sqlite'
 
 '''Plotting the Isotopes'''
-isoL = []
-# for i in range(54,52,-1):
+isoL = ['40_Ca', '43_Ca', '44_Ca']
+
+Tools.centerPlot(db, isoL)
+
+# for i in range(40,48,2):
 #     iso = str(str(i) + '_Ca')
 #     isoL.append(iso)
 # Tools.isoPlot(db, '51_Ca')

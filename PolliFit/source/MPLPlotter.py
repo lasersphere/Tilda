@@ -22,6 +22,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+import Physics
 
 def plot(*args):
     for a in args:
@@ -31,26 +32,42 @@ def plot(*args):
     plt.xlabel('Frequency [MHz]')
 
 
-def plotFit(fit):
-    data = fit.meas.getArithSpec(*fit.st)
-    plotdat = fit.spec.toPlotE(fit.meas.laserFreq, fit.meas.col, fit.par)
+def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True):
+    if x_in_freq:
+        data = fit.meas.getArithSpec(*fit.st)
+        for i, e in enumerate(data[0]):
+            v = Physics.relVelocity(Physics.qe * e, fit.spec.iso.mass * Physics.u)
+            v = -v if fit.meas.col else v
+
+            f = Physics.relDoppler(fit.meas.laserFreq, v) - fit.spec.iso.freq
+            data[0][i] = f
+        plotdat = fit.spec.toPlot(fit.par)
+    else:
+        data = fit.meas.getArithSpec(*fit.st)
+        plotdat = fit.spec.toPlotE(fit.meas.laserFreq, fit.meas.col, fit.par)
 
     fig = plt.figure(1, (8, 8))
     fig.patch.set_facecolor('white')
 
     ax1 = plt.axes([0.15, 0.35, 0.8, 0.6])
     plt.errorbar(data[0], data[1], yerr=data[2], fmt='k.')
-    plt.plot(plotdat[0], plotdat[1], 'r-')
+    plt.plot(plotdat[0], plotdat[1], color)
     ax1.get_xaxis().get_major_formatter().set_useOffset(False)
 
-    ax2 = plt.axes([0.15, 0.1, 0.8, 0.2], sharex=ax1)
-    plt.errorbar(data[0], fit.calcRes(), yerr=data[2], fmt='k.')
-    ax2.get_xaxis().get_major_formatter().set_useOffset(False)
-    plt.ylabel('Intensity / a.u.')
-    plt.xlabel('Ion kinetic energy / eV')
+    if plot_residuals:
+        ax2 = plt.axes([0.15, 0.1, 0.8, 0.2], sharex=ax1)
+        plt.errorbar(data[0], fit.calcRes(), yerr=data[2], fmt='k.')
+        ax2.get_xaxis().get_major_formatter().set_useOffset(False)
+
+    plt.ylabel('residuals / a.u.')
+    ax1.set_ylabel('cts / a.u.')
+    if x_in_freq:
+        plt.xlabel('relative frequency / MHz')
+    else:
+        plt.xlabel('Ion kinetic energy / eV')
 
 
-def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), showing = False):
+def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), showing = False, save_path='', ylabel=''):
     # avg, stat_err, sys_err = Analyzer.combineRes(iso, par, run, db, print_extracted=False)
     # val, errs, date = Analyzer.extract(iso, par, run, db, prin=False)
     date = [datetime.datetime.strptime(d, '%Y-%m-%d %H:%M:%S') for d in date]
@@ -59,16 +76,24 @@ def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), sho
     ax = plt.gca()
     xfmt = DateFormatter('%Y-%m-%d %H:%M:%S')
     ax.xaxis.set_major_formatter(xfmt)
+    ax.set_ylabel(ylabel)
     plt.errorbar(date, cts, yerr=errs, fmt=forms[0])
     ax.set_xmargin(0.05)
+    # ax.legend(['', '%s: %.3f +/- %.3f' % (xlabel, avg, stat_err)])
     err_p = avg + abs(stat_err) + abs(syst_err)
     err_m = avg - abs(stat_err) - abs(syst_err)
     err_p_l = np.full((2,), err_p)
     err_m_l = np.full((2,), err_m)
     x = (sorted(date)[0], sorted(date)[-1])
     y = (avg, avg)
-    plt.plot(x, y, forms[1])
+    plt.plot(x, y, forms[1], label='%s: %.5f +/- %.5f' % (ylabel, avg, stat_err))
+    plt.legend()
     plt.fill_between(x, err_p_l, err_m_l, alpha=0.5)
+    if save_path:
+        d = os.path.dirname(save_path)
+        if not os.path.exists(d):
+            os.makedirs(d)
+        save(save_path)
     if showing:
         show()
 

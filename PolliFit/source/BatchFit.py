@@ -68,6 +68,9 @@ def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None):
 
 def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=None):
     '''Fit st of file, using run. Save result to db and picture of spectrum to folder'''
+    fitter_iso = None
+    fitter_m = None
+
     print('-----------------------------------')
     print("Fitting", file)
     cur.execute('''SELECT filePath FROM Files WHERE file = ?''', (file,))
@@ -83,22 +86,47 @@ def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=No
         spec = Straight()
     else:
         try:
-            # if the measurment is an .xml file it will have a self.seq_type
+            # if the measurment is an .xml file it will have a seq_type
             if meas.seq_type == 'kepco':
                 spec = Straight()
                 spec.evaluate(meas.x[0][-1], (0, 1))
             else:
-                iso = DBIsotope(db, meas.type, var[0], var[1])
-                spec = FullSpec(iso)
+                iso = DBIsotope(db, meas.type, lineVar=var[1])
+                if var[0] == '_m':
+                    iso_m = DBIsotope(db, meas.type, var[0], var[1])
+                    spec = FullSpec(iso, iso_m)
+                    spec_iso = FullSpec(iso)
+                    spec_m = FullSpec(iso_m)
+                    fitter_iso = SPFitter(spec_iso, meas, st)
+                    fitter_m = SPFitter(spec_m, meas, st)
+                    # plot.plotFit(fitter_iso, color='-b', plot_residuals=False)
+                    # plot.plotFit(fitter_m, color='-g', plot_residuals=False)
+                else:
+                    spec = FullSpec(iso)
         except:
-            iso = DBIsotope(db, meas.type, var[0], var[1])
-            spec = FullSpec(iso)
-
+            iso = DBIsotope(db, meas.type, lineVar=var[1])
+            if var[0] == '_m':
+                iso_m = DBIsotope(db, meas.type, var[0], var[1])
+                spec = FullSpec(iso, iso_m)
+                spec_iso = FullSpec(iso)
+                spec_m = FullSpec(iso_m)
+                fitter_iso = SPFitter(spec_iso, meas, st)
+                fitter_m = SPFitter(spec_m, meas, st)
+                # plot.plotFit(fitter_iso, color='-b', plot_residuals=False)
+                # plot.plotFit(fitter_m, color='-g', plot_residuals=False)
+            else:
+                spec = FullSpec(iso)
     fit = SPFitter(spec, meas, st)
     fit.fit()
     
     #Create and save graph
     fig = os.path.splitext(path)[0] + run + '.png'
+    pars = fit.par
+    if fitter_m is not None:
+        fitter_iso.par = pars[0:len(fitter_iso.par)]
+        fitter_m.par = pars[0:3] + pars[len(fitter_iso.par):]
+        plot.plotFit(fitter_iso, color='-b', plot_residuals=False)
+        plot.plotFit(fitter_m, color='-g', plot_residuals=False)
     plot.plotFit(fit)
     plot.save(fig)
     plot.clear()

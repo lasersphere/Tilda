@@ -18,13 +18,14 @@ class FullSpec(object):
     '''
 
 
-    def __init__(self, iso):
+    def __init__(self, iso, iso_m=None):
         '''
         Import the shape and initializes reasonable values 
         '''
         shapemod = importlib.import_module('Spectra.' + iso.shape['name'])
         shape = getattr(shapemod, iso.shape['name'])
         self.shape = shape(iso)
+        self.iso = iso
         
         self.pOff = 0
         
@@ -33,7 +34,10 @@ class FullSpec(object):
         while miso != None:
             self.hyper.append(Hyperfine(miso, self.shape))
             miso = miso.m
-
+        miso_m = iso_m
+        while miso_m!=None:
+            self.hyper.append(Hyperfine(miso_m, self.shape))
+            miso_m = miso_m.m
         self.nPar = 1 + self.shape.nPar + sum(hf.nPar for hf in self.hyper)
         
         

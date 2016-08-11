@@ -27,6 +27,9 @@ class Ui_Averager(object):
         self.fileList.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
         self.fileList.setObjectName("fileList")
         self.verticalLayout.addWidget(self.fileList)
+        self.pushButton_select_all = QtWidgets.QPushButton(Averager)
+        self.pushButton_select_all.setObjectName("pushButton_select_all")
+        self.verticalLayout.addWidget(self.pushButton_select_all)
         self.formLayout = QtWidgets.QFormLayout()
         self.formLayout.setObjectName("formLayout")
         self.label_4 = QtWidgets.QLabel(Averager)
@@ -72,9 +75,10 @@ class Ui_Averager(object):
     def retranslateUi(self, Averager):
         _translate = QtCore.QCoreApplication.translate
         Averager.setWindowTitle(_translate("Averager", "Form"))
+        self.pushButton_select_all.setText(_translate("Averager", "select/deselect All"))
         self.label_4.setText(_translate("Averager", "result"))
         self.label.setText(_translate("Averager", "reduced Chi^2"))
-        self.label_2.setText(_translate("Averager", "statistic error"))
+        self.label_2.setText(_translate("Averager", "statistic error* rChi^2"))
         self.label_3.setText(_translate("Averager", "systematic error"))
         self.bsave.setText(_translate("Averager", "Save and Plot"))
 
