@@ -181,7 +181,10 @@ class ScanMain:
         """
         result = self.sequencer.getData()
         if result.get('nOfEle', -1) > 0:
+            start = datetime.now()
             self.pipeline.feed(result['newData'])
+            stop = datetime.now()
+            print('feeding of %s elements took: %s seconds' % (result.get('nOfEle'), stop - start))
             return True
         else:
             return False

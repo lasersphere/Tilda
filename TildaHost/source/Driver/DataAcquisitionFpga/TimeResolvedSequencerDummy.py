@@ -142,8 +142,8 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
                     while time < trackd['nOfBins']:
                         scaler03 = max(min(int((time / trackd['nOfBins']) * (2 ** 4)), (2 ** 4) - 1), 1)
                         scaler47 = max(min(int((time / trackd['nOfBins']) * (2 ** 4)), (2 ** 4) - 1), 1)
-                        scaler03 = 2 ** 5 - 1  # easier for debugging
-                        scaler47 = 2 ** 5 - 1  # easier for debugging
+                        scaler03 = 2 ** 4 - 1  # easier for debugging
+                        scaler47 = 2 ** 4 - 1  # easier for debugging
                         complete_lis.append(Form.add_header_to23_bit(time, scaler03, scaler47, 0))
                         time += 100  # gives event pattern in 1000 ns steps
                         if time >= trackd['nOfBins']:

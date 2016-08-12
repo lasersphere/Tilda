@@ -207,30 +207,30 @@ class NAddWorkingTime(Node):
 
 
 class NAddWorkingTimeOnClear(Node):
-        """
+    """
         Node to add the Workingtime on start() and on clear(). mostly for Tilda Passive
         :param reset: bool, set True if you want to reset the workingtime when start() is called.
         input: anything
         output: same as input
         """
 
-        def __init__(self, reset=True):
-            super(NAddWorkingTimeOnClear, self).__init__()
-            self.type = 'AddWorkingTimeOnClear'
-            self.reset = reset
+    def __init__(self, reset=True):
+        super(NAddWorkingTimeOnClear, self).__init__()
+        self.type = 'AddWorkingTimeOnClear'
+        self.reset = reset
 
-        def start(self):
-            track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-            self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
-                self.Pipeline.pipeData[track_name], self.reset)
+    def start(self):
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
+            self.Pipeline.pipeData[track_name], self.reset)
 
-        def processData(self, data, pipeData):
-            return data
+    def processData(self, data, pipeData):
+        return data
 
-        def clear(self):
-            track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-            self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
-                self.Pipeline.pipeData[track_name])
+    def clear(self):
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
+            self.Pipeline.pipeData[track_name])
 
 
 """ saving """
@@ -317,6 +317,7 @@ class NSaveProjection(Node):
     input: [[[v_proj_tr0_pmt0, v_proj_tr0_pmt1, ... ], [t_proj_tr0_pmt0, t_proj_tr0_pmt1, ... ]], ...]
     output: [[[v_proj_tr0_pmt0, v_proj_tr0_pmt1, ... ], [t_proj_tr0_pmt0, t_proj_tr0_pmt1, ... ]], ...]
     """
+
     def __init__(self):
         super(NSaveProjection, self).__init__()
         self.type = 'SaveProjection'
@@ -551,7 +552,7 @@ class NMPLImagePLot(Node):
             v_min, v_max = sorted((gates_val_list[0], gates_val_list[1]))
             v_min_ind, v_min, vdif = TildaTools.find_closest_value_in_arr(self.volt_array, v_min)
             v_max_ind, v_max, vdif = TildaTools.find_closest_value_in_arr(self.volt_array, v_max)
-            
+
             t_min, t_max = sorted((gates_val_list[2], gates_val_list[3]))
             t_min_ind, t_min, tdif = TildaTools.find_closest_value_in_arr(self.time_array, t_min)
             t_max_ind, t_max, tdif = TildaTools.find_closest_value_in_arr(self.time_array, t_max)
@@ -563,11 +564,11 @@ class NMPLImagePLot(Node):
                 self.gate_anno = self.im_ax.annotate('%s - %s V \n%s - %s ns'
                                                      % (self.volt_array[v_min_ind], self.volt_array[v_max_ind],
                                                         self.time_array[t_min_ind], self.time_array[t_max_ind]),
-                                                     xy=(self.im_ax.get_xlim()[0], self.im_ax.get_ylim()[1]/2),
+                                                     xy=(self.im_ax.get_xlim()[0], self.im_ax.get_ylim()[1] / 2),
                                                      xycoords='data', annotation_clip=False, color='white')
             self.gate_anno.set_text('%s - %s V \n%s - %s ns'
-                                                     % (self.volt_array[v_min_ind], self.volt_array[v_max_ind],
-                                                        self.time_array[t_min_ind], self.time_array[t_max_ind]))
+                                    % (self.volt_array[v_min_ind], self.volt_array[v_max_ind],
+                                       self.time_array[t_min_ind], self.time_array[t_max_ind]))
             self.gate_anno.set_x(self.im_ax.xaxis.get_view_interval()[0])
             ymin, ymax = self.im_ax.yaxis.get_view_interval()
             self.gate_anno.set_y(ymax - (ymax - ymin) / 6)
@@ -582,7 +583,8 @@ class NMPLImagePLot(Node):
                     MPLPlotter.clear_ax(ax)
             self.gate_anno = None
             self.gates_list = [[None]] * len(self.Pipeline.pipeData[track_name]['activePmtList'])
-            self.volt_array = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=self.as_voltage)[track_ind]
+            self.volt_array = Form.create_x_axis_from_scand_dict(self.Pipeline.pipeData, as_voltage=self.as_voltage)[
+                track_ind]
             v_shape = self.volt_array.shape
             self.time_array = Form.create_time_axis_from_scan_dict(self.Pipeline.pipeData, rebinning=True)[track_ind]
             t_shape = self.time_array.shape
@@ -604,7 +606,7 @@ class NMPLImagePLot(Node):
             if self.Pipeline.pipeData[track_name].get('softwGates', None) is None:
                 gate_val_list = [np.amin(self.volt_array), np.amax(self.volt_array),
                                  np.amin(self.time_array), np.amax(self.time_array)]  # initial values, full frame
-                self.Pipeline.pipeData[track_name]['softwGates'] =\
+                self.Pipeline.pipeData[track_name]['softwGates'] = \
                     [[None]] * len(self.Pipeline.pipeData[track_name]['activePmtList'])
             else:  # read gates from input
                 gate_val_list = self.Pipeline.pipeData[track_name].get('softwGates', None)[self.selected_pmt_ind]
@@ -619,7 +621,8 @@ class NMPLImagePLot(Node):
     def pmt_radio_buttons(self, label):
         try:
             self.selected_pmt = int(label[3:])
-            self.selected_pmt_ind = self.Pipeline.pipeData[self.selected_track[1]]['activePmtList'].index(self.selected_pmt)
+            self.selected_pmt_ind = self.Pipeline.pipeData[self.selected_track[1]]['activePmtList'].index(
+                self.selected_pmt)
             print('selected pmt index is: ', int(label[3:]))
             self.buffer_data = Form.time_rebin_all_data(
                 self.full_data, self.Pipeline.pipeData)[self.selected_track[0]][self.selected_pmt_ind]
@@ -696,12 +699,13 @@ class NMPLImagePLot(Node):
             track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
             self.selected_track = (track_ind, track_name)
             bin_width = self.Pipeline.pipeData[self.selected_track[1]]['softBinWidth_ns']
-            self.selected_pmt_ind = self.Pipeline.pipeData[self.selected_track[1]]['activePmtList'].index(self.selected_pmt)
+            self.selected_pmt_ind = self.Pipeline.pipeData[self.selected_track[1]]['activePmtList'].index(
+                self.selected_pmt)
             self.setup_track(*self.selected_track)
             if self.radio_buttons_pmt is None:
                 labels = ['pmt%s' % pmt for pmt in self.Pipeline.pipeData[self.selected_track[1]]['activePmtList']]
                 self.radio_buttons_pmt, self.radio_con = MPLPlotter.add_radio_buttons(
-                            self.pmt_radio_ax, labels, self.selected_pmt_ind, self.pmt_radio_buttons)
+                    self.pmt_radio_ax, labels, self.selected_pmt_ind, self.pmt_radio_buttons)
             # self.radio_buttons_pmt.set_active(self.selected_pmt_ind)  # not available before mpl 1.5.0
             if self.radio_buttons_tr is None:
                 tr, tr_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
@@ -1064,11 +1068,11 @@ class NMPLImagePlotSpecData(Node):
                 self.gate_anno = self.im_ax.annotate('%s - %s V \n%s - %s ns'
                                                      % (volt_array[v_min_ind], volt_array[v_max_ind],
                                                         time_array[t_min_ind], time_array[t_max_ind]),
-                                                     xy=(self.im_ax.get_xlim()[0], self.im_ax.get_ylim()[1]/2),
+                                                     xy=(self.im_ax.get_xlim()[0], self.im_ax.get_ylim()[1] / 2),
                                                      xycoords='data', annotation_clip=False, color='white')
             self.gate_anno.set_text('%s - %s V \n%s - %s ns'
-                                                     % (volt_array[v_min_ind], volt_array[v_max_ind],
-                                                        time_array[t_min_ind], time_array[t_max_ind]))
+                                    % (volt_array[v_min_ind], volt_array[v_max_ind],
+                                       time_array[t_min_ind], time_array[t_max_ind]))
             self.gate_anno.set_x(self.im_ax.xaxis.get_view_interval()[0])
             ymin, ymax = self.im_ax.yaxis.get_view_interval()
             self.gate_anno.set_y(ymax - (ymax - ymin) / 6)
@@ -1107,7 +1111,7 @@ class NMPLImagePlotSpecData(Node):
             if self.buffer_data.softw_gates is None:
                 gate_val_list = [np.amin(volt_array), np.amax(volt_array),
                                  np.amin(time_array), np.amax(time_array)]  # initial values, full frame
-                self.buffer_data.softw_gates =\
+                self.buffer_data.softw_gates = \
                     [[None]] * self.buffer_data.get_scaler_step_and_bin_num(track_ind)[0]
             else:  # read gates from input
                 gate_val_list = self.buffer_data.softw_gates[self.selected_pmt_ind]
@@ -1130,7 +1134,8 @@ class NMPLImagePlotSpecData(Node):
                 self.full_data, self.buffer_data.softBinWidth_ns[self.selected_track[0]])
             self.setup_track(*self.selected_track)
             self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
-            self.colorbar.set_clim(0, np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+            self.colorbar.set_clim(0,
+                                   np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.update_normal(self.image)
             self.gate_data_and_plot()
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
@@ -1147,7 +1152,8 @@ class NMPLImagePlotSpecData(Node):
                 self.full_data, self.buffer_data.softBinWidth_ns[self.selected_track[0]])
             self.setup_track(*self.selected_track)
             self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
-            self.colorbar.set_clim(0, np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+            self.colorbar.set_clim(0,
+                                   np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.update_normal(self.image)
             self.gate_data_and_plot()
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
@@ -1188,7 +1194,8 @@ class NMPLImagePlotSpecData(Node):
                 self.buffer_data.t[tr_ind] = np.arange(delay_ns, bins * bins_10ns_rounded + delay_ns, bins_10ns_rounded)
             self.setup_track(*self.selected_track)
             self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
-            self.colorbar.set_clim(0, np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+            self.colorbar.set_clim(0,
+                                   np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.update_normal(self.image)
             self.gate_data_and_plot()
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
@@ -1204,12 +1211,13 @@ class NMPLImagePlotSpecData(Node):
                 track_ind, track_name = (0, 'track0')
                 self.selected_track = (track_ind, track_name)
                 bin_width = self.buffer_data.softBinWidth_ns[self.selected_track[0]]
-                self.selected_pmt_ind = self.buffer_data.active_pmt_list[self.selected_track[0]].index(self.selected_pmt)
+                self.selected_pmt_ind = self.buffer_data.active_pmt_list[self.selected_track[0]].index(
+                    self.selected_pmt)
                 self.setup_track(*self.selected_track)  # setup track with
                 if self.radio_buttons_pmt is None:
                     labels = ['pmt%s' % pmt for pmt in self.buffer_data.active_pmt_list[self.selected_track[0]]]
                     self.radio_buttons_pmt, self.radio_con = MPLPlotter.add_radio_buttons(
-                                self.pmt_radio_ax, labels, self.selected_pmt_ind, self.pmt_radio_buttons)
+                        self.pmt_radio_ax, labels, self.selected_pmt_ind, self.pmt_radio_buttons)
                 # self.radio_buttons_pmt.set_active(self.selected_pmt_ind)  # not available before mpl 1.5.0
                 if self.radio_buttons_tr is None:
                     label_tr = self.buffer_data.track_names
@@ -1239,7 +1247,8 @@ class NMPLImagePlotSpecData(Node):
             if first_call:
                 self.start()
             self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
-            self.colorbar.set_clim(0, np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+            self.colorbar.set_clim(0,
+                                   np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.update_normal(self.image)
             self.gate_data_and_plot()
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
@@ -1247,7 +1256,7 @@ class NMPLImagePlotSpecData(Node):
         except Exception as e:
             print('while updateing plot, this happened: ', e)
         end = time.clock()
-        print('plotting time was /ms : ', round((end - start)*1000, 3))
+        print('plotting time was /ms : ', round((end - start) * 1000, 3))
         return data
 
     def clear(self):
@@ -1374,6 +1383,9 @@ class NCSSortRawDatatoArray(Node):
         ret = None
         scan_complete = False
         for i, j in enumerate(data):
+            first_header, second_header, header_index, payload = Form.split_32b_data(j)
+            j = {'headerIndex': header_index, 'firstHeader': first_header,
+                 'secondHeader': second_header, 'payload': payload}
             try:
                 if j['headerIndex'] == 0:  # its an event from the time resolved sequencer
                     header = (j['firstHeader'] << 4) + j['secondHeader']
@@ -1434,6 +1446,84 @@ class NCSSortRawDatatoArray(Node):
             return ret
         except Exception as e:
             print('exception: \t ', e)
+
+    def clear(self):
+        self.voltArray = None
+        self.scalerArray = None
+        self.curVoltIndex = None
+        self.totalnOfScalerEvents = None
+        self.comp_list = None
+        self.info_handl.clear()
+
+
+class NCSSortRawDatatoArrayFast(Node):
+    def __init__(self):
+        """
+        Node for sorting the splitted raw data into an scaler Array containing all tracks.
+        Missing Values will be set to 0.
+        No Value will be emitted twice.
+        input: split raw data
+        output: list of tuples [(scalerArray, scan_complete_flag)... ], missing values are 0
+        """
+        super(NCSSortRawDatatoArrayFast, self).__init__()
+        self.type = 'NCSSortRawDatatoArrayFast'
+        self.scalerArray = None
+        self.curVoltIndex = None
+        self.totalnOfScalerEvents = None
+        self.comp_list = None
+        self.stored_data = None
+        self.info_handl = InfHandl()
+        # could be shrinked to active pmts only to speed things up
+
+    def start(self):
+        scand = self.Pipeline.pipeData
+        tracks, tracks_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
+        if self.scalerArray is None:
+            self.scalerArray = np.zeros(0, dtype=[('tr', 'u2'), ('sc', 'u2'),
+                                                  ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
+        if self.curVoltIndex is None:
+            self.curVoltIndex = 0
+        if self.totalnOfScalerEvents is None:
+            self.totalnOfScalerEvents = np.full((tracks,), 0)
+        self.info_handl.setup()
+        if self.comp_list is None:
+            track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+            self.comp_list = [2 ** j for i, j in enumerate(self.Pipeline.pipeData[track_name]['activePmtList'])]
+        if self.stored_data is None:
+            self.stored_data = np.zeros(0, dtype=np.uint32)
+
+    def processData(self, data, pipeData):
+        self.stored_data = np.append(self.stored_data, data)
+        track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
+        ret = None
+        scan_complete = False
+        step_complete = Form.add_header_to23_bit(1, 4, 0, 1)
+        scan_started = Form.add_header_to23_bit(2, 4, 0, 1)
+        new_bunch = Form.add_header_to23_bit(3, 4, 0, 1)
+        dac_int_key = 2 ** 29 + 2 ** 28 + 2 ** 23
+        header_index = 2 ** 23
+        step_complete_ind = np.where(self.stored_data == step_complete)
+        if step_complete_ind[0].any():  # only work with complete steps.
+            scan_started_ind = np.where(self.stored_data == scan_started)
+            if scan_started_ind[0].any():  # for beginning only work with started scans
+                # new_bunch_ind = np.where(self.stored_data == new_bunch)  # ignore for now.
+                # dac_set_ind = np.where(self.stored_data & dac_int_key == dac_int_key)  # info not needed mostly
+                pmt_events_ind = np.where(self.stored_data & header_index == 0)
+                print(scan_started_ind[0][0], scan_started_ind[0][1])
+                # print('compare list', (pmt_events_ind >= scan_started_ind[0][0]) & (pmt_events_ind <= scan_started_ind[0][1]))
+                pmt_events_ind_cut = pmt_events_ind[0][(pmt_events_ind[0] > scan_started_ind[0][0])
+                                                & (pmt_events_ind[0] < scan_started_ind[0][1])]  # this should be altered
+                pmt_events_time = self.stored_data[pmt_events_ind_cut] & (2 ** 23 - 1)  # get only the time stamp
+                pmt_events_scaler = self.stored_data[
+                                        pmt_events_ind_cut] >> 24  # get the header where the pmt info is stored.
+                new_arr = np.zeros(len(pmt_events_ind_cut), dtype=[('tr', 'u2'), ('sc', 'u2'),
+                                                                  ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
+                new_arr['tr'] = 1
+                new_arr['sc'] = pmt_events_scaler  # currently all are written to one so 255 = all pmts active
+                new_arr['step'] = 2  # how to do this without for loop? pmt_evt_ind < step ...
+                new_arr['time'] = pmt_events_time
+                print(new_arr['sc'])
+                return pmt_events_time
 
     def clear(self):
         self.voltArray = None
@@ -1573,12 +1663,14 @@ class NTRSRebinAllData(Node):
     jnput: "2d" data as comming from NSum for Trs.
     output: "2d" data similiar to input but time axis is reduced.
     """
+
     def __init__(self):
         super(NTRSRebinAllData, self).__init__()
         self.type = 'TRSRebinAllData'
 
     def processData(self, data, pipeData):
         return Form.time_rebin_all_data(data, pipeData)
+
 
 """ QT Signal Nodes """
 
@@ -1627,6 +1719,7 @@ class NSendnOfCompletedStepsAndScansViaQtSignal(Node):
     def clear(self):
         # self.qt_signal.emit({'nOfCompletedSteps': 0, 'nOfStartedScans': 0})
         pass
+
 
 class NSendDataViaQtSignal(Node):
     """

@@ -81,7 +81,7 @@ class Main(QtCore.QObject):
         try:
             # pass
             # self.work_dir_changed('D:\Sn_beamtime_Tilda_active_data')
-            self.work_dir_changed('D:\Development\TildaDevDebugging')
+            self.work_dir_changed('E:\TildaDebugging')
         except Exception as e:
             logging.error('while loading default location of db this happened:' + str(e))
         self.set_state(MainState.idle)

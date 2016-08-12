@@ -52,21 +52,25 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     pipe = Pipeline(start)
 
     pipe.pipeData = initPipeData(initialScanPars)
-    # walk = start.attach(SN.NPrint())
-    walk = start.attach(TN.NFilterDMMDicts())
-    walk = walk.attach(TN.NSaveRawData())
+    # # walk = start.attach(SN.NPrint())
+    # walk = start.attach(TN.NFilterDMMDicts())
+    # walk = walk.attach(TN.NSaveRawData())
+    #
+    # # walk = walk.attach(TN.NSplit32bData())
+    # # walk = walk.attach(TN.NSplit32bData())
+    # walk = walk.attach(TN.NCSSortRawDatatoArray())
+    # walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
+    #
+    # walk = walk.attach(TN.NSortedTrsArraysToSpecData(x_as_voltage))
+    #
+    # walk = walk.attach(TN.NMPLImagePlotAndSaveSpecData(0, None, None, None))  # *live_plot_callbacks))
+    #
+    # compl_tr_br = walk.attach(TN.NCheckIfTrackComplete())
+    # compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
 
-    walk = walk.attach(TN.NSplit32bData())
-    # walk = walk.attach(TN.NSplit32bData())
-    walk = walk.attach(TN.NCSSortRawDatatoArray())
-    walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
-
-    walk = walk.attach(TN.NSortedTrsArraysToSpecData(x_as_voltage))
-
-    walk = walk.attach(TN.NMPLImagePlotAndSaveSpecData(0, *live_plot_callbacks))
-
-    compl_tr_br = walk.attach(TN.NCheckIfTrackComplete())
-    compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
+    # alternative pipeline:
+    fast = start.attach(TN.NCSSortRawDatatoArrayFast())
+    # fast = fast.attach(SN.NPrint())
 
     return pipe
 
