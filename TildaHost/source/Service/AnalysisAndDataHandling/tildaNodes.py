@@ -1497,33 +1497,50 @@ class NCSSortRawDatatoArrayFast(Node):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         ret = None
         scan_complete = False
-        step_complete = Form.add_header_to23_bit(1, 4, 0, 1)
-        scan_started = Form.add_header_to23_bit(2, 4, 0, 1)
-        new_bunch = Form.add_header_to23_bit(3, 4, 0, 1)
-        dac_int_key = 2 ** 29 + 2 ** 28 + 2 ** 23
-        header_index = 2 ** 23
+        step_complete = Form.add_header_to23_bit(1, 4, 0, 1)  # binary for step complete
+        scan_started = Form.add_header_to23_bit(2, 4, 0, 1)  # binary for scan started
+        new_bunch = Form.add_header_to23_bit(3, 4, 0, 1)  # binary for new bunch
+        dac_int_key = 2 ** 29 + 2 ** 28 + 2 ** 23  # binary key for an dac element
+        header_index = 2 ** 23  # binary for the headerelement
         step_complete_ind = np.where(self.stored_data == step_complete)
+        # indices of completed steps elements in data list
         if step_complete_ind[0].any():  # only work with complete steps.
+            step_complete = np.arange(self.curVoltIndex, len(step_complete_ind[0]) + self.curVoltIndex, 1)  # list with step numbers
             scan_started_ind = np.where(self.stored_data == scan_started)
-            if scan_started_ind[0].any():  # for beginning only work with started scans
+            if scan_started_ind[0].any():  # for beginning only work with one started scans
                 # new_bunch_ind = np.where(self.stored_data == new_bunch)  # ignore for now.
                 # dac_set_ind = np.where(self.stored_data & dac_int_key == dac_int_key)  # info not needed mostly
-                pmt_events_ind = np.where(self.stored_data & header_index == 0)
-                print(scan_started_ind[0][0], scan_started_ind[0][1])
-                # print('compare list', (pmt_events_ind >= scan_started_ind[0][0]) & (pmt_events_ind <= scan_started_ind[0][1]))
+                pmt_events_ind = np.where(self.stored_data & header_index == 0)  # indices of all pmt events (for trs)
                 pmt_events_ind_cut = pmt_events_ind[0][(pmt_events_ind[0] > scan_started_ind[0][0])
                                                 & (pmt_events_ind[0] < scan_started_ind[0][1])]  # this should be altered
+                # cut means only pmt events from this one scan.
                 pmt_events_time = self.stored_data[pmt_events_ind_cut] & (2 ** 23 - 1)  # get only the time stamp
                 pmt_events_scaler = self.stored_data[
                                         pmt_events_ind_cut] >> 24  # get the header where the pmt info is stored.
                 new_arr = np.zeros(len(pmt_events_ind_cut), dtype=[('tr', 'u2'), ('sc', 'u2'),
-                                                                  ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
-                new_arr['tr'] = 1
+                                                                   ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
+                new_arr['tr'] = track_ind
                 new_arr['sc'] = pmt_events_scaler  # currently all are written to one so 255 = all pmts active
                 new_arr['step'] = 2  # how to do this without for loop? pmt_evt_ind < step ...
                 new_arr['time'] = pmt_events_time
-                print(new_arr['sc'])
-                return pmt_events_time
+                # print(np.unique(new_arr, return_counts=True))
+                unique_arr, cts = np.unique(new_arr, return_counts=True)
+                # elements in new_arr are made unique and occurence is counted.
+                unique_arr['cts'] = cts
+                new_unique_arr = np.zeros(0, dtype=[('tr', 'u2'), ('sc', 'u2'),
+                                                    ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
+                # check for events with multiple pmts fired at once (only for active pmts):
+                for act_pmt in self.comp_list:
+                    # create new array with all elemennts where this pmt was active:
+                    ith_pmt_hit_list = unique_arr[np.where(unique_arr['sc'] & act_pmt)]
+                    if np.any(ith_pmt_hit_list['step']):  # cannot do any for full list, must select step or so
+                        ith_pmt_hit_list['sc'] = int(np.log2(act_pmt))
+                        new_unique_arr = np.append(new_unique_arr, ith_pmt_hit_list)
+
+                # print(u[np.where(u['time'] == 300)])
+                print(new_unique_arr)
+                # print(np.unique(new_arr, return_index=True, return_counts=True))  # how to find where to add these values on?
+                return new_arr
 
     def clear(self):
         self.voltArray = None
