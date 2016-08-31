@@ -1466,13 +1466,13 @@ class NCSSortRawDatatoArrayFast(Node):
         output: list of tuples [(scalerArray, scan_complete_flag)... ], missing values are 0
         """
         super(NCSSortRawDatatoArrayFast, self).__init__()
+        self.total_num_of_started_scans = None
         self.type = 'NCSSortRawDatatoArrayFast'
         self.scalerArray = None
         self.curVoltIndex = None
         self.totalnOfScalerEvents = None
         self.comp_list = None
         self.stored_data = None
-        self.info_handl = InfHandl()
         # could be shrinked to active pmts only to speed things up
 
     def start(self):
@@ -1485,7 +1485,8 @@ class NCSSortRawDatatoArrayFast(Node):
             self.curVoltIndex = 0
         if self.totalnOfScalerEvents is None:
             self.totalnOfScalerEvents = np.full((tracks,), 0)
-        self.info_handl.setup()
+        if self.total_num_of_started_scans is None:
+            self.total_num_of_started_scans = 0
         if self.comp_list is None:
             track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
             self.comp_list = [2 ** j for i, j in enumerate(self.Pipeline.pipeData[track_name]['activePmtList'])]
@@ -1495,52 +1496,71 @@ class NCSSortRawDatatoArrayFast(Node):
     def processData(self, data, pipeData):
         self.stored_data = np.append(self.stored_data, data)
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
-        ret = None
-        scan_complete = False
         step_complete = Form.add_header_to23_bit(1, 4, 0, 1)  # binary for step complete
         scan_started = Form.add_header_to23_bit(2, 4, 0, 1)  # binary for scan started
         new_bunch = Form.add_header_to23_bit(3, 4, 0, 1)  # binary for new bunch
         dac_int_key = 2 ** 29 + 2 ** 28 + 2 ** 23  # binary key for an dac element
         header_index = 2 ** 23  # binary for the headerelement
-        step_complete_ind = np.where(self.stored_data == step_complete)
-        # indices of completed steps elements in data list
-        if step_complete_ind[0].any():  # only work with complete steps.
-            step_complete = np.arange(self.curVoltIndex, len(step_complete_ind[0]) + self.curVoltIndex, 1)  # list with step numbers
-            scan_started_ind = np.where(self.stored_data == scan_started)
-            if scan_started_ind[0].any():  # for beginning only work with one started scans
-                # new_bunch_ind = np.where(self.stored_data == new_bunch)  # ignore for now.
-                # dac_set_ind = np.where(self.stored_data & dac_int_key == dac_int_key)  # info not needed mostly
-                pmt_events_ind = np.where(self.stored_data & header_index == 0)  # indices of all pmt events (for trs)
-                pmt_events_ind_cut = pmt_events_ind[0][(pmt_events_ind[0] > scan_started_ind[0][0])
-                                                & (pmt_events_ind[0] < scan_started_ind[0][1])]  # this should be altered
-                # cut means only pmt events from this one scan.
-                pmt_events_time = self.stored_data[pmt_events_ind_cut] & (2 ** 23 - 1)  # get only the time stamp
-                pmt_events_scaler = self.stored_data[
-                                        pmt_events_ind_cut] >> 24  # get the header where the pmt info is stored.
-                new_arr = np.zeros(len(pmt_events_ind_cut), dtype=[('tr', 'u2'), ('sc', 'u2'),
-                                                                   ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
-                new_arr['tr'] = track_ind
-                new_arr['sc'] = pmt_events_scaler  # currently all are written to one so 255 = all pmts active
-                new_arr['step'] = 2  # how to do this without for loop? pmt_evt_ind < step ...
-                new_arr['time'] = pmt_events_time
-                # print(np.unique(new_arr, return_counts=True))
-                unique_arr, cts = np.unique(new_arr, return_counts=True)
-                # elements in new_arr are made unique and occurence is counted.
-                unique_arr['cts'] = cts
-                new_unique_arr = np.zeros(0, dtype=[('tr', 'u2'), ('sc', 'u2'),
-                                                    ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
-                # check for events with multiple pmts fired at once (only for active pmts):
-                for act_pmt in self.comp_list:
-                    # create new array with all elemennts where this pmt was active:
-                    ith_pmt_hit_list = unique_arr[np.where(unique_arr['sc'] & act_pmt)]
-                    if np.any(ith_pmt_hit_list['step']):  # cannot do any for full list, must select step or so
-                        ith_pmt_hit_list['sc'] = int(np.log2(act_pmt))
-                        new_unique_arr = np.append(new_unique_arr, ith_pmt_hit_list)
-
-                # print(u[np.where(u['time'] == 300)])
-                print(new_unique_arr)
-                # print(np.unique(new_arr, return_index=True, return_counts=True))  # how to find where to add these values on?
-                return new_arr
+        step_complete_ind_list = np.where(self.stored_data == step_complete)[0]
+        if step_complete_ind_list.size:  # only work with complete steps.
+            scan_started_ind_list = np.where(self.stored_data == scan_started)[0]
+            scan_start_before_step_comp = scan_started_ind_list[0] < step_complete_ind_list[0]
+            if scan_start_before_step_comp:
+                self.total_num_of_started_scans += 1
+            x_one_scan = np.arange(0, pipeData[track_name]['nOfSteps'])  # "x-axis" for one scan
+            # make it also for two scans and invert on second rep if needed.
+            x_two_scans = np.append(x_one_scan,
+                                    np.fliplr(x_one_scan) if pipeData[track_name]['invertScan'] else x_one_scan)
+            # repeat this as often as needed for all steps held in this data set.
+            x_this_data = np.tile(x_two_scans,
+                                  np.ceil(step_complete_ind_list.size / pipeData[track_name]['nOfSteps'] / 2))
+            # roll this, so that the current step stands at position 0.
+            x_this_data = np.roll(x_this_data,
+                                  self.curVoltIndex + pipeData[track_name]['nOfSteps']
+                                  if pipeData[track_name]['invertScan'] and self.total_num_of_started_scans % 2 == 0
+                                  else self.curVoltIndex)[0:step_complete_ind_list.size]
+            # get position of all pmt events (trs:)
+            pmt_events_ind = np.where(self.stored_data & header_index == 0)[0]  # indices of all pmt events (for trs)
+            # create an array which repeatedly holds the stepnumber which is active for the element at this position
+            # by indexing this, one can directly see the right stepnumber for the element with the index of interest.
+            pmt_steps = np.repeat(x_this_data,
+                                  np.insert(np.diff(step_complete_ind_list, 1), 0, step_complete_ind_list[0]))
+            # cut pmt events which are not still in a completed step:
+            pmt_events_ind = pmt_events_ind[pmt_events_ind < pmt_steps.size]
+            # create a list of stepnumbers for all pmt events:
+            pmt_steps = pmt_steps[pmt_events_ind]
+            self.curVoltIndex = x_this_data[-1]
+            self.total_num_of_started_scans += scan_started_ind_list.size - 1 if scan_start_before_step_comp else 0
+            # new_bunch_ind = np.where(self.stored_data == new_bunch)[0]  # ignore for now.
+            # dac_set_ind = np.where(self.stored_data & dac_int_key == dac_int_key)[0]  # info not needed mostly
+            # create a list with all timestamps
+            pmt_events_time = self.stored_data[pmt_events_ind] & (2 ** 23 - 1)  # get only the time stamp
+            # create a list with all scaler numbers
+            pmt_events_scaler = self.stored_data[pmt_events_ind] >> 24  # get the header where the pmt info is stored.
+            # combine the created arrays to one new array
+            new_arr = np.zeros(len(pmt_events_ind), dtype=[('tr', 'u2'), ('sc', 'u2'),
+                                                           ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
+            new_arr['tr'] = track_ind
+            new_arr['sc'] = pmt_events_scaler  # currently all are written to one so 255 = all pmts active
+            new_arr['step'] = pmt_steps  # how to do this without for loop? pmt_evt_ind < step ...
+            new_arr['time'] = pmt_events_time
+            # create a unique array, so all double occurences of the given data are counted
+            unique_arr, cts = np.unique(new_arr, return_counts=True)
+            # ... and put into cts in the unique array:
+            unique_arr['cts'] = cts
+            # print(unique_arr)
+            new_unique_arr = np.zeros(0, dtype=[('tr', 'u2'), ('sc', 'u2'),
+                                                ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
+            # check for events with multiple pmts fired at once (only for active pmts):
+            for act_pmt in self.comp_list:
+                # create new array with all elements where this pmt was active:
+                ith_pmt_hit_list = unique_arr[np.where(unique_arr['sc'] & act_pmt)]
+                if np.any(ith_pmt_hit_list['step']):  # cannot do any for full list, must select step or so
+                    ith_pmt_hit_list['sc'] = int(np.log2(act_pmt))
+                    new_unique_arr = np.append(new_unique_arr, ith_pmt_hit_list)
+                    # print(new_unique_arr)
+            self.stored_data = self.stored_data[step_complete_ind_list[-1] + 1:]
+            return new_unique_arr
 
     def clear(self):
         self.voltArray = None
@@ -1548,7 +1568,26 @@ class NCSSortRawDatatoArrayFast(Node):
         self.curVoltIndex = None
         self.totalnOfScalerEvents = None
         self.comp_list = None
-        self.info_handl.clear()
+        self.total_num_of_started_scans = None
+
+    def sign_for_volt_ind(self, invert_scan):
+        even_scan_num = self.total_num_of_started_scans % 2 == 0
+        if invert_scan:
+            if even_scan_num:  # in every even scan, scan dir turns around
+                return -1
+            else:
+                return 1
+        return 1
+
+    def voltindex_after_scan_start(self, invert_scan):
+        if invert_scan:  # if inverted, take last element on every second scan
+            if self.total_num_of_started_scans % 2 == 0:
+                volt_index = -1
+            else:
+                volt_index = 0
+        else:
+            volt_index = 0
+        return volt_index
 
 
 class NCSSum(Node):
