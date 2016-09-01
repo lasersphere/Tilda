@@ -134,7 +134,12 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
             while step < trackd['nOfSteps']:
                 complete_lis.append(int(x_axis[step]))
                 step += 1
-                bunch = 0
+                if step % 2 == 0:
+                    bunch = 0
+                else:  # no scaler entries for all odd step numbers
+                    bunch = trackd['nOfBunches']
+                    complete_lis.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
+                    complete_lis.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))
                 while bunch < trackd['nOfBunches']:
                     complete_lis.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
                     bunch += 1

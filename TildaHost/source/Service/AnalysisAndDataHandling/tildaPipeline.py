@@ -69,8 +69,9 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     # compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
 
     # alternative pipeline:
-    fast = start.attach(TN.NCSSortRawDatatoArrayFast())
+    fast = start.attach(TN.NTRSSortRawDatatoArrayFast())
     # fast = fast.attach(SN.NPrint())
+    fast = fast.attach(TN.NTRSSumFastArrays())
 
     return pipe
 
