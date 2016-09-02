@@ -32,6 +32,16 @@ def plot(*args):
 
 
 def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True):
+    kepco = False
+    if fit.meas.type == 'Kepco':
+        x_in_freq = False
+        kepco = True
+    try:
+        if fit.meas.seq_type == 'kepco':
+            x_in_freq = False
+            kepco = True
+    except Exception:
+        pass
     if x_in_freq:
         data = fit.meas.getArithSpec(*fit.st)
         for i, e in enumerate(data[0]):
@@ -62,6 +72,8 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True):
     ax1.set_ylabel('cts / a.u.')
     if x_in_freq:
         plt.xlabel('relative frequency / MHz')
+    elif kepco:
+        plt.xlabel('Line Voltage / V')
     else:
         plt.xlabel('Ion kinetic energy / eV')
 
