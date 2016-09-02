@@ -45,6 +45,13 @@ class XMLImporter(SpecData):
         self.type = scandict['isotopeData']['isotope']
         self.seq_type = scandict['isotopeData']['type']
 
+        if 'AD5781' in self.type or 'ad5781' in self.type or 'dac_calibration' in self.type:
+            print('XMLIMporter assumes this a calibration measurement of the DAC,\n'
+                  ' therefore the x-axis will be set to units of DAC registers.\n'
+                  'key words therefore are: AD5781, ad5781, dac_calibration\n'
+                  'do not use those for the isotope name if you do not want this!\n')
+            x_as_volt = False  # assume this is a gauge measurement of the DAC, so set the x axis in DAC registers
+
         self.accVolt = scandict['isotopeData']['accVolt']
         self.offset = None
         dmms_dict = scandict['measureVoltPars'].get('dmms', None)
@@ -165,22 +172,26 @@ class XMLImporter(SpecData):
         print('XMLImporter is using db: ', db)
         con = sqlite3.connect(db)
         cur = con.cursor()
-        cur.execute('''SELECT type, line, offset, accVolt, laserFreq,
-                        colDirTrue, voltDivRatio, lineMult, lineOffset
-                        FROM Files WHERE file = ?''', (self.file,))
-        data = cur.fetchall()
-        if len(data) == 1:
-            (self.type, self.line, self.offset, self.accVolt, self.laserFreq,
-             self.col, self.voltDivRatio, self.lineMult, self.lineOffset) = data[0]
-            self.col = bool(self.col)
-        else:
-            raise Exception('XMLImporter: No DB-entry found!')
-        self.voltDivRatio = ast.literal_eval(self.voltDivRatio)
         if self.seq_type not in ['kepco']:  # do not change the x axis for a kepco scan!
+            cur.execute('''SELECT type, line, offset, accVolt, laserFreq,
+                            colDirTrue, voltDivRatio, lineMult, lineOffset
+                            FROM Files WHERE file = ?''', (self.file,))
+            data = cur.fetchall()
+            if len(data) == 1:
+                (self.type, self.line, self.offset, self.accVolt, self.laserFreq,
+                 self.col, self.voltDivRatio, self.lineMult, self.lineOffset) = data[0]
+                self.col = bool(self.col)
+            else:
+                raise Exception('XMLImporter: No DB-entry found!')
+            self.voltDivRatio = ast.literal_eval(self.voltDivRatio)
             for tr_ind, track in enumerate(self.x):
                 scanvolt = (self.lineMult * self.x[tr_ind] + self.lineOffset + self.offset) * self.voltDivRatio['offset']
                 self.x[tr_ind] = self.accVolt * self.voltDivRatio['accVolt'] - scanvolt
         elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
+            cur.execute('''SELECT offset FROM Files WHERE file = ?''', (self.file,))
+            data = cur.fetchall()
+            if len(data) == 1:
+                self.offset = data[0]
             for tr_ind, cts_tr in enumerate(self.cts):
                 self.cts[tr_ind] = self.cts[tr_ind] - self.offset
         con.close()

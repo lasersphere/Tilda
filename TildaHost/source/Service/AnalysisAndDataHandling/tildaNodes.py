@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 import numpy as np
 
 import MPLPlotter
+import Tools
 import Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
 import Service.FileOperations.FolderAndFileHandling as Filehandle
 import Service.Formating as Form
@@ -1332,10 +1333,11 @@ class NStraightKepcoFitOnClear(Node):
                 if os.path.isfile(db):  # if the database exists, write fit results to it.
                     con = sqlite3.connect(db)
                     cur = con.cursor()
+                    file_base = os.path.basename(file)
                     for r in result:
                         # Only one unique result, according to PRIMARY KEY, thanks to INSERT OR REPLACE
                         cur.execute('''INSERT OR REPLACE INTO FitRes (file, iso, run, rChi, pars)
-                        VALUES (?, ?, ?, ?, ?)''', (os.path.basename(file), r[0], dmm_name, fitter.rchi, repr(r[1])))
+                        VALUES (?, ?, ?, ?, ?)''', (file_base, r[0], dmm_name, fitter.rchi, repr(r[1])))
                     cur.execute(''' INSERT OR REPLACE INTO Runs (run, lineVar, isoVar, scaler, track)
                                 VALUES (?,?,?,?,?)''', (dmm_name, '', '', "[0]", "-1"))
                     con.commit()
@@ -1343,6 +1345,22 @@ class NStraightKepcoFitOnClear(Node):
             except Exception as e:
                 print('error while fitting:', e)
         self.spec_buffer = None
+
+    def get_offset_voltage(self, scandict):
+        mean = 0
+        dmms_dict = scandict['measureVoltPars'].get('dmms', None)
+        if dmms_dict is not None:
+            offset = []
+            for dmm_name, dmm_dict in dmms_dict.items():
+                for key, val in dmm_dict.items():
+                    if key == 'preScanRead':
+                        if isinstance(val, str):
+                            val = float(val)
+                        if dmm_dict.get('assignment') == 'offset':
+                            offset.append(val)
+            if np.any(offset):
+                mean = np.mean(offset)
+        return mean
 
 
 """ continous Sequencer / Simple Counter Nodes """
