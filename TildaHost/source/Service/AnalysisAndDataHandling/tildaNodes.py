@@ -1336,6 +1336,8 @@ class NStraightKepcoFitOnClear(Node):
                         # Only one unique result, according to PRIMARY KEY, thanks to INSERT OR REPLACE
                         cur.execute('''INSERT OR REPLACE INTO FitRes (file, iso, run, rChi, pars)
                         VALUES (?, ?, ?, ?, ?)''', (os.path.basename(file), r[0], dmm_name, fitter.rchi, repr(r[1])))
+                    cur.execute(''' INSERT OR REPLACE INTO Runs (run, lineVar, isoVar, scaler, track)
+                                VALUES (?,?,?,?,?)''', (dmm_name, '', '', "[0]", "-1"))
                     con.commit()
                     con.close()
             except Exception as e:
