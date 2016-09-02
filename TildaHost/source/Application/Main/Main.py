@@ -6,6 +6,7 @@ Created on '30.09.2015'
 
 """
 
+import ast
 import logging
 import os
 from copy import deepcopy
@@ -18,6 +19,7 @@ from PyQt5.QtWidgets import QApplication
 
 import Application.Config as Cfg
 import Service.DatabaseOperations.DatabaseOperations as DbOp
+import Service.FileOperations.FolderAndFileHandling as FileHandl
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as Dft
 from Application.Main.MainState import MainState
@@ -45,6 +47,8 @@ class Main(QtCore.QObject):
         self.simple_counter_inst = None
         self.cmd_queue = None
         self.jobs_to_do_when_idle_queue = []
+        self.autostart_dict = {}  # dict containing all infos from the autostart.xml file keys are: workingDir,
+        # autostartDevices: {dmms: {name: address}, powersupplies: {name:address}}
 
         # pyqtSignal for sending the status to the gui, if there is one connected:
         self.main_ui_status_call_back_signal = None
@@ -78,14 +82,8 @@ class Main(QtCore.QObject):
 
         self.displayed_data = {}  # dict of all displayed files. complete filename is key.
 
-        try:
-            # pass
-            # self.work_dir_changed('D:\Sn_beamtime_Tilda_active_data')
-            self.work_dir_changed('E:\TildaDebugging')
-        except Exception as e:
-            logging.error('while loading default location of db this happened:' + str(e))
         self.set_state(MainState.idle)
-        # self.autostart()
+        self.autostart()
 
     """ cyclic function """
 
@@ -293,9 +291,31 @@ class Main(QtCore.QObject):
     def autostart(self):
         """
         this will be called during init. call this in order to load a device or so from startup.
-        maybe this can be done via a text/xml file later on.
         """
-        self.init_dmm('Ni4071', 'PXI1Slot5')
+        # lala = {'autostartDevices': {'dmms': None, 'powersupplies': None}, 'workingDir': 'E:\TildaDebugging'}
+        path = FileHandl.write_to_auto_start_xml_file()
+        root_ele, autostart_tpl = FileHandl.load_auto_start_xml_file(path)
+        self.autostart_dict = autostart_tpl[1]
+        workdir = self.autostart_dict.get('workingDir', False)
+        if os.path.isdir(workdir):
+            self.work_dir_changed(workdir)
+        dmms_dict = self.autostart_dict.get('autostartDevices', {}).get('dmms', False)
+        if dmms_dict:
+            try:
+                dmms_dict = ast.literal_eval(dmms_dict)
+                for dmm_type, dmm_address in dmms_dict.items():
+                    try:
+                        self.init_dmm(dmm_type, dmm_address)
+                    except Exception as e:
+                        print('error %s in autostart() of Main.py while starting: %s on address %s' %
+                              (e, dmm_type, dmm_address))
+            except Exception as e:
+                print('error %s in autostart() of Main.py while trying to convert the following string: %s' %
+                      (e, dmms_dict))
+        power_sup_dict = self.autostart_dict.get('autostartDevices', {}).get('powersupplies', False)
+        if power_sup_dict:
+            print('automatic start of power supplies not included yet.')
+        # self.init_dmm('Ni4071', 'PXI1Slot5')
         # self.init_dmm('dummy', 'somewhere')
 
     """ operations on self.scan_pars dictionary """
@@ -357,8 +377,8 @@ class Main(QtCore.QObject):
         if workdir_str == '':  # answer of dialog when cancel is pressed
             return None
         try:
-            self.working_directory = workdir_str
-            self.database = workdir_str + '/' + os.path.split(workdir_str)[1] + '.sqlite'
+            self.working_directory = os.path.normpath(workdir_str)
+            self.database = os.path.normpath(os.path.join(workdir_str, os.path.split(workdir_str)[1] + '.sqlite'))
             DbOp.createTildaDB(self.database)
             logging.debug('working directory has been set to: ' + str(workdir_str))
         except Exception as e:
@@ -366,6 +386,8 @@ class Main(QtCore.QObject):
             self.database = None
             self.working_directory = None
         finally:
+            self.autostart_dict['workingDir'] = self.working_directory
+            FileHandl.write_to_auto_start_xml_file(self.autostart_dict)
             self.send_state()
             return self.working_directory
 

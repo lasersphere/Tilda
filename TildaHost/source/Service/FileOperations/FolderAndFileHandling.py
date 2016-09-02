@@ -15,7 +15,8 @@ import numpy as np
 import Service.Scan.ScanDictionaryOperations as SdOp
 import TildaTools as Tits
 import Tools
-from Service.FileOperations.XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, xmlAddCompleteTrack
+from Service.FileOperations.XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars,\
+    xmlAddCompleteTrack, xml_create_autostart_root, xmlWriteDict
 from TildaTools import save_xml
 
 
@@ -172,3 +173,29 @@ def save_spec_data(spec_data, scan_dict):
         Tits.save_xml(root_ele, existing_xml_fil_path, False)
     except Exception as e:
         print('error while saving: ', e)
+
+
+def write_to_auto_start_xml_file(autostart_dict=None):
+    """
+    will create an editable autostart file in Tildahost/source/autostart.xml
+    will write autostart_dict to this file if not None, else this will be untouched.
+    :return: path of autostart file
+    """
+    main_path = os.path.join(findTildaFolder(), 'TildaHost', 'source', 'autostart.xml')
+    if os.path.isfile(main_path):
+        root, root_dict = load_auto_start_xml_file(main_path)
+    else:
+        root = xml_create_autostart_root()
+    if autostart_dict is not None:
+        xmlWriteDict(root, autostart_dict)
+    Tits.save_xml(root, main_path)
+    return main_path
+
+
+def load_auto_start_xml_file(path):
+    if os.path.isfile(path):
+        root_ele = Tits.load_xml(path)
+        root_dict = Tits.xml_get_dict_from_ele(root_ele)
+        return root_ele, root_dict
+    else:
+        return None

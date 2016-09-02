@@ -9,6 +9,8 @@ from datetime import datetime as dt
 
 from lxml import etree as ET
 
+import Application.Config as Cfg
+
 
 def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
     """
@@ -52,6 +54,7 @@ def xmlCreateIsotope(isotopeDict):
     xmlFindOrCreateSubElement(root, 'tracks')
     return root
 
+
 def xml_add_meas_volt_pars(meas_volt_pars_dict, root_element):
     """
     this will add the voltage measurement parameters to the measVoltPars SubElement
@@ -61,6 +64,7 @@ def xml_add_meas_volt_pars(meas_volt_pars_dict, root_element):
     meas_volt_pars = xmlFindOrCreateSubElement(root_element, 'measureVoltPars')
     xmlWriteDict(meas_volt_pars, meas_volt_pars_dict)
     return root_element
+
 
 def xmlWriteIsoDictToHeader(rootEle, isotopedict):
     """
@@ -128,3 +132,12 @@ def xmlAddCompleteTrack(rootEle, scanDict, data, track_name, datatype='scalerArr
     xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackDict)
     xmlWriteToTrack(rootEle, nOfTrack, datatype, data, parent_ele_str)
     return rootEle
+
+
+def xml_create_autostart_root():
+    root = ET.Element('Tilda_autostart_file_%s' % Cfg.version.replace('.', '_'))
+    xmlFindOrCreateSubElement(root, 'workingDir', 'somepath')
+    devs = xmlFindOrCreateSubElement(root, 'autostartDevices')
+    xmlFindOrCreateSubElement(devs, 'dmms', '{\'dmm_name\':\'address\'}')
+    xmlFindOrCreateSubElement(devs, 'powersupplies', '{\'powersup_name\':\'address\'}')
+    return root
