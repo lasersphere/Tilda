@@ -15,7 +15,6 @@ from datetime import datetime, timedelta
 import numpy as np
 
 import MPLPlotter
-import Tools
 import Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
 import Service.FileOperations.FolderAndFileHandling as Filehandle
 import Service.Formating as Form
@@ -1656,7 +1655,8 @@ class NTRSSortRawDatatoArrayFast(Node):
                 # create a list with all timestamps
                 pmt_events_time = self.stored_data[pmt_events_ind] & (2 ** 23 - 1)  # get only the time stamp
                 # create a list with all scaler numbers
-                pmt_events_scaler = self.stored_data[pmt_events_ind] >> 24  # get the header where the pmt info is stored.
+                pmt_events_scaler = self.stored_data[
+                                        pmt_events_ind] >> 24  # get the header where the pmt info is stored.
                 # combine the created arrays to one new array
                 new_arr = np.zeros(len(pmt_events_ind), dtype=[('tr', 'u2'), ('sc', 'u2'),
                                                                ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
@@ -1731,25 +1731,40 @@ class NTRSSumFastArrays(Node):
         before_app = self.sum.size
         before_app_data_sz = data.size
         if self.sum.size:
-            not_in_sum = np.unique(
-                np.where(data[['tr', 'sc', 'step', 'time']] != self.sum[['tr', 'sc', 'step', 'time']])[0])
-            self.sum = np.append(self.sum, data[not_in_sum])
-            data = np.delete(data, not_in_sum, axis=0)
-            if data.size:
-                already_in_sum = np.unique(
-                    np.where(data[['tr', 'sc', 'step', 'time']] == self.sum[['tr', 'sc', 'step', 'time']])[0])
-                sum_indices = np.unique(
-                    np.where(self.sum[['tr', 'sc', 'step', 'time']] == data[['tr', 'sc', 'step', 'time']])[0])
-                print(data[already_in_sum], self.sum[sum_indices])
-                # those produce empty lists currently. Fix this tomorrow!
-                # make the sum here.
-                pass
-        else:  # sum was empty before.
+            appended_arr = np.append(self.sum, data)  # 1 append all data to sum
+            # sort by 'tr', 'sc', 'step', 'time' (no cts):
+            sorted_arr = np.sort(appended_arr, order=['tr', 'sc', 'step', 'time'])
+            # find all elements that occur twice:
+            unique_arr, unique_inds, uniq_cts = np.unique(sorted_arr[['tr', 'sc', 'step', 'time']],
+                                                          return_index=True, return_counts=True)
+            sum_ind = unique_inds[np.where(uniq_cts == 2)]  # only take indexes of double occuring items
+            # use indices of all twice occuring elements to add the counts of those:
+            sum_cts = sorted_arr[sum_ind]['cts'] + sorted_arr[sum_ind + 1]['cts']
+            np.put(sorted_arr['cts'], sum_ind, sum_cts)
+            # delete all remaining items:
+            self.sum = np.delete(sorted_arr, sum_ind + 1, axis=0)
+
+            # alternative with using where (maybe use if not happy anymore with above solution.
+            # not_in_sum = np.unique(
+            #     np.where(data[['tr', 'sc', 'step', 'time']] != self.sum[['tr', 'sc', 'step', 'time']])[0])
+            # self.sum = np.append(self.sum, data[not_in_sum])
+            # data = np.delete(data, not_in_sum, axis=0)
+            # if data.size:
+            #     already_in_sum = np.unique(
+            #         np.where(data[['tr', 'sc', 'step', 'time']] == self.sum[['tr', 'sc', 'step', 'time']])[0])
+            #     sum_indices = np.unique(
+            #         np.where(self.sum[['tr', 'sc', 'step', 'time']] == data[['tr', 'sc', 'step', 'time']])[0])
+            #     print(data[already_in_sum], self.sum[sum_indices])
+            #     # those produce empty lists currently. Fix this tomorrow!
+            #     # make the sum here.
+            #     pass
+        else:  # sum was empty before, so data can be just appended.
             self.sum = np.append(self.sum, data)
         # print('sum is: %s ' % self.sum)
-        print('data length before append: %s and remaining after append: %s,'
-              ' sum length before append: %s and after append %s '
-              % (before_app_data_sz, data.size, before_app, self.sum.size))
+        # print('data length before append: %s and remaining after append: %s,'
+        #       ' sum length before append: %s and after append %s '
+        #       % (before_app_data_sz, data.size, before_app, self.sum.size))
+        return self.sum
 
     def clear(self):
         self.sum = None
