@@ -71,8 +71,13 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     # alternative pipeline:
     fast = start.attach(TN.NFilterDMMDicts())
     fast = fast.attach(TN.NTRSSortRawDatatoArrayFast())
+    fast = fast.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
     # fast = fast.attach(SN.NPrint())
     fast = fast.attach(TN.NTRSSumFastArrays())
+    # fast = fast.attach(SN.NPrint())
+
+    fast_spec = fast.attach(TN.NSortedZeroFreeTRSDat2SpecData())
+    # fast_spec = fast_spec.attach(TN.NSaveSpecData())
 
     return pipe
 

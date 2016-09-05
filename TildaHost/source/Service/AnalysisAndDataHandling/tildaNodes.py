@@ -1301,6 +1301,32 @@ class NMPLImagePlotAndSaveSpecData(Node):
             Filehandle.save_spec_data(self.stored_data, self.Pipeline.pipeData)
 
 
+class NSortedZeroFreeTRSDat2SpecData(Node):
+    def __init__(self, x_as_voltage=True):
+        """
+        when started, will init a SpecData object of given size.
+        Overwrites SpecData.time_res with incoming data and passes the SpecData object to the next node.
+        Incoming data should be sum
+        input: track_list of ndarrays, [array(('sc', 'step', 'time', 'cts'),...), array(...)]
+        output: SpecData
+        """
+        super(NSortedZeroFreeTRSDat2SpecData, self).__init__()
+        self.type = 'SortedZeroFreeTRSDat2SpecData'
+        self.spec_data = None
+        self.x_as_voltage = x_as_voltage
+
+    def start(self):
+        if self.spec_data is None:
+            self.spec_data = XMLImporter(None, self.x_as_voltage, self.Pipeline.pipeData)
+            logging.debug('pipeline successfully loaded: %s' % self.spec_data.file)
+
+    def processData(self, data, pipeData):
+        self.spec_data.time_res = data
+        return self.spec_data
+
+    def clear(self):
+        self.spec_data = None
+
 """ specdata fitting nodes """
 
 
@@ -1575,32 +1601,24 @@ class NSPAddxAxis(Node):
 class NTRSSortRawDatatoArrayFast(Node):
     def __init__(self):
         """
-        Node for sorting the splitted raw data into an scaler Array containing all tracks.
-        Missing Values will be set to 0.
+        Node for sorting the raw data to the corresponding scaler, step and timestamp.
         No Value will be emitted twice.
-        input: split raw data
-        output: list of tuples [(scalerArray, scan_complete_flag)... ], missing values are 0
+        pipeData[track_name]['nOfCompletedSteps'] will be updated.
+        input: numpy.ndarray, raw data (32Bit Elements)
+        output: numpy.ndarray, dtype=[('tr', 'u2'), ('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')]
         """
         super(NTRSSortRawDatatoArrayFast, self).__init__()
-        self.total_num_of_started_scans = None
         self.type = 'TRSSortRawDatatoArrayFast'
-        self.scalerArray = None
         self.curVoltIndex = None
-        self.totalnOfScalerEvents = None
         self.comp_list = None
-        self.stored_data = None
+        self.stored_data = None  # numpy array of incoming raw data elements.
+        self.total_num_of_started_scans = None
+
         # could be shrinked to active pmts only to speed things up
 
     def start(self):
-        scand = self.Pipeline.pipeData
-        tracks, tracks_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
-        if self.scalerArray is None:
-            self.scalerArray = np.zeros(0, dtype=[('tr', 'u2'), ('sc', 'u2'),
-                                                  ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
         if self.curVoltIndex is None:
             self.curVoltIndex = 0
-        if self.totalnOfScalerEvents is None:
-            self.totalnOfScalerEvents = np.full((tracks,), 0)
         if self.total_num_of_started_scans is None:
             self.total_num_of_started_scans = 0
         if self.comp_list is None:
@@ -1619,6 +1637,7 @@ class NTRSSortRawDatatoArrayFast(Node):
         header_index = 2 ** 23  # binary for the headerelement
         step_complete_ind_list = np.where(self.stored_data == step_complete)[0]
         if step_complete_ind_list.size:  # only work with complete steps.
+            pipeData[track_name]['nOfCompletedSteps'] += step_complete_ind_list.size
             scan_start_before_step_comp = False
             scan_started_ind_list = np.where(self.stored_data == scan_started)[0]
             if scan_started_ind_list.size:
@@ -1634,9 +1653,10 @@ class NTRSSortRawDatatoArrayFast(Node):
                                   np.ceil(step_complete_ind_list.size / pipeData[track_name]['nOfSteps'] / 2))
             # roll this, so that the current step stands at position 0.
             x_this_data = np.roll(x_this_data,
-                                  self.curVoltIndex + pipeData[track_name]['nOfSteps']
+                                  -(self.curVoltIndex + pipeData[track_name]['nOfSteps'])
                                   if pipeData[track_name]['invertScan'] and self.total_num_of_started_scans % 2 == 0
-                                  else self.curVoltIndex)[0:step_complete_ind_list.size]
+                                  else -self.curVoltIndex)[0:step_complete_ind_list.size]
+            # print('starting with voltindex: ', x_this_data[0])
             # get position of all pmt events (trs:)
             pmt_events_ind = np.where(self.stored_data & header_index == 0)[0]  # indices of all pmt events (for trs)
             # create an array which repeatedly holds the stepnumber which is active for the element at this position
@@ -1648,7 +1668,7 @@ class NTRSSortRawDatatoArrayFast(Node):
                 pmt_events_ind = pmt_events_ind[pmt_events_ind < pmt_steps.size]
                 # create a list of stepnumbers for all pmt events:
                 pmt_steps = pmt_steps[pmt_events_ind]
-                self.curVoltIndex = x_this_data[-1]
+                self.curVoltIndex = x_this_data[-1] + 1
                 self.total_num_of_started_scans += scan_started_ind_list.size - 1 if scan_start_before_step_comp else 0
                 # new_bunch_ind = np.where(self.stored_data == new_bunch)[0]  # ignore for now.
                 # dac_set_ind = np.where(self.stored_data & dac_int_key == dac_int_key)[0]  # info not needed mostly
@@ -1658,9 +1678,8 @@ class NTRSSortRawDatatoArrayFast(Node):
                 pmt_events_scaler = self.stored_data[
                                         pmt_events_ind] >> 24  # get the header where the pmt info is stored.
                 # combine the created arrays to one new array
-                new_arr = np.zeros(len(pmt_events_ind), dtype=[('tr', 'u2'), ('sc', 'u2'),
-                                                               ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
-                new_arr['tr'] = track_ind
+                new_arr = np.zeros(len(pmt_events_ind), dtype=[('sc', 'u2'), ('step', 'u4'),
+                                                               ('time', 'u4'), ('cts', 'u4')])
                 new_arr['sc'] = pmt_events_scaler  # currently all are written to one so 255 = all pmts active
                 new_arr['step'] = pmt_steps  # how to do this without for loop? pmt_evt_ind < step ...
                 new_arr['time'] = pmt_events_time
@@ -1669,8 +1688,7 @@ class NTRSSortRawDatatoArrayFast(Node):
                 # ... and put into cts in the unique array:
                 unique_arr['cts'] = cts
                 # print(unique_arr)
-                new_unique_arr = np.zeros(0, dtype=[('tr', 'u2'), ('sc', 'u2'),
-                                                    ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
+                new_unique_arr = np.zeros(0, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
                 # check for events with multiple pmts fired at once (only for active pmts):
                 for act_pmt in self.comp_list:
                     # create new array with all elements where this pmt was active:
@@ -1681,19 +1699,24 @@ class NTRSSortRawDatatoArrayFast(Node):
                             new_unique_arr = np.append(new_unique_arr, ith_pmt_hit_list)
                             # print(new_unique_arr)
                 self.stored_data = self.stored_data[step_complete_ind_list[-1] + 1:]
-                new_unique_arr = np.sort(new_unique_arr, axis=0)
+                # new_unique_arr = np.sort(new_unique_arr, axis=0)
                 # print(new_unique_arr)
+                # print('current voltindex after first node:', self.curVoltIndex)
+
                 return new_unique_arr
 
     def clear(self):
-        self.voltArray = None
-        self.scalerArray = None
         self.curVoltIndex = None
-        self.totalnOfScalerEvents = None
         self.comp_list = None
+        self.stored_data = None
         self.total_num_of_started_scans = None
 
     def sign_for_volt_ind(self, invert_scan):
+        """
+        retrun the sign for increasing or decreasing the voltindex,
+        depending if it is inverted or not and if the scan is odd or even.
+        :type invert_scan: bool
+        """
         even_scan_num = self.total_num_of_started_scans % 2 == 0
         if invert_scan:
             if even_scan_num:  # in every even scan, scan dir turns around
@@ -1703,6 +1726,12 @@ class NTRSSortRawDatatoArrayFast(Node):
         return 1
 
     def voltindex_after_scan_start(self, invert_scan):
+        """
+        give the voltindex for the first element in a new scan,
+        either 0 or -1 depending if it is inverted or not and if the scan is odd or even.
+        :param invert_scan:
+        :return: -1 or 0
+        """
         if invert_scan:  # if inverted, take last element on every second scan
             if self.total_num_of_started_scans % 2 == 0:
                 volt_index = -1
@@ -1715,34 +1744,41 @@ class NTRSSortRawDatatoArrayFast(Node):
 
 class NTRSSumFastArrays(Node):
     def __init__(self):
+        """
+        sums up incoming ndarrays of the active track.
+        input: numpy.ndarray, dtype=[('tr', 'u2'), ('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')]
+        output: track_list of ndarrays, [array(('sc', 'step', 'time', 'cts'),...), array(...)]
+        """
         super(NTRSSumFastArrays, self).__init__()
         self.type = 'TRSSumFastArrays'
         self.sum = None
 
     def start(self):
         if self.sum is None:
-            self.sum = np.zeros(0, dtype=[('tr', 'u2'), ('sc', 'u2'),
-                                          ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
+            tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
+            self.sum = [np.zeros(0, dtype=[('sc', 'u2'), ('step', 'u4'),
+                                           ('time', 'u4'), ('cts', 'u4')]) for tr in range(tracks)]
 
     def processData(self, data, pipeData):
-        # tr,sc,step,time not in list -> append
+        # sc,step,time not in list -> append
         # else: sum cts, each not unique element can only be there twice!
         # -> one from before storage, one from new incoming.
-        before_app = self.sum.size
-        before_app_data_sz = data.size
-        if self.sum.size:
-            appended_arr = np.append(self.sum, data)  # 1 append all data to sum
-            # sort by 'tr', 'sc', 'step', 'time' (no cts):
-            sorted_arr = np.sort(appended_arr, order=['tr', 'sc', 'step', 'time'])
+        track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
+        # before_app = self.sum[track_ind].size
+        # before_app_data_sz = data.size
+        if self.sum[track_ind].size:
+            appended_arr = np.append(self.sum[track_ind], data)  # first append all data to sum
+            # sort by 'sc', 'step', 'time' (no cts):
+            sorted_arr = np.sort(appended_arr, order=['sc', 'step', 'time'])
             # find all elements that occur twice:
-            unique_arr, unique_inds, uniq_cts = np.unique(sorted_arr[['tr', 'sc', 'step', 'time']],
+            unique_arr, unique_inds, uniq_cts = np.unique(sorted_arr[['sc', 'step', 'time']],
                                                           return_index=True, return_counts=True)
             sum_ind = unique_inds[np.where(uniq_cts == 2)]  # only take indexes of double occuring items
             # use indices of all twice occuring elements to add the counts of those:
             sum_cts = sorted_arr[sum_ind]['cts'] + sorted_arr[sum_ind + 1]['cts']
             np.put(sorted_arr['cts'], sum_ind, sum_cts)
             # delete all remaining items:
-            self.sum = np.delete(sorted_arr, sum_ind + 1, axis=0)
+            self.sum[track_ind] = np.delete(sorted_arr, sum_ind + 1, axis=0)
 
             # alternative with using where (maybe use if not happy anymore with above solution.
             # not_in_sum = np.unique(
@@ -1759,7 +1795,7 @@ class NTRSSumFastArrays(Node):
             #     # make the sum here.
             #     pass
         else:  # sum was empty before, so data can be just appended.
-            self.sum = np.append(self.sum, data)
+            self.sum[track_ind] = np.append(self.sum[track_ind], data)
         # print('sum is: %s ' % self.sum)
         # print('data length before append: %s and remaining after append: %s,'
         #       ' sum length before append: %s and after append %s '

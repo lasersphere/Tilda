@@ -134,12 +134,13 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
             while step < trackd['nOfSteps']:
                 complete_lis.append(int(x_axis[step]))
                 step += 1
-                if step % 2 == 0:
+                if step % 2 == 0 or False:
                     bunch = 0
                 else:  # no scaler entries for all odd step numbers
                     bunch = trackd['nOfBunches']
-                    complete_lis.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
-                    complete_lis.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))
+                    for bun in range(bunch):
+                        complete_lis.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
+                    complete_lis.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1)) # step complete
                 while bunch < trackd['nOfBunches']:
                     complete_lis.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
                     bunch += 1
@@ -150,9 +151,9 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
                         scaler03 = 1  # 2 ** 4 - 1  # easier for debugging
                         scaler47 = 1  # 2 ** 4 - 1  # easier for debugging
                         complete_lis.append(Form.add_header_to23_bit(time, scaler03, scaler47, 0))
-                        time += 100  # gives event pattern in 1000 ns steps
-                        if time >= trackd['nOfBins']:
-                            # step complete, will be send after each bunch!
+                        time += 500  # gives event pattern in 1000 ns steps
+                        if time >= trackd['nOfBins'] and bunch >= trackd['nOfBunches']:
+                            # step complete, will be send after all bunches are completed
                             complete_lis.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))
         print('artificial data for dummy trs completed')
         self.artificial_build_data = complete_lis
