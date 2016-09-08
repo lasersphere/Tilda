@@ -46,8 +46,8 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     if live_plot_callbacks is None:
         live_plot_callbacks = (None, None, None)
     start = Node()
-    # maintenance = start.attach(TN.NMPLCloseFigOnClear())
-    # maintenance = maintenance.attach(TN.NAddWorkingTimeOnClear(True))
+    maintenance = start.attach(TN.NMPLCloseFigOnClear())
+    maintenance = maintenance.attach(TN.NAddWorkingTimeOnClear(True))
 
     pipe = Pipeline(start)
 
@@ -70,6 +70,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
 
     # alternative pipeline:
     fast = start.attach(TN.NFilterDMMDicts())
+    fast = fast.attach(TN.NSaveRawData())
     fast = fast.attach(TN.NTRSSortRawDatatoArrayFast())
     fast = fast.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
     # fast = fast.attach(SN.NPrint())
@@ -77,7 +78,9 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     # fast = fast.attach(SN.NPrint())
 
     fast_spec = fast.attach(TN.NSortedZeroFreeTRSDat2SpecData())
-    # fast_spec = fast_spec.attach(TN.NSaveSpecData())
+    fast_spec = fast_spec.attach(TN.NSpecDataZeroFreeProjection())
+    fast_spec = fast_spec.attach(TN.NSaveSpecData())
+
 
     return pipe
 
@@ -103,7 +106,7 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     fig.canvas.set_window_title(window_title)
 
     walk = start.attach(TN.NSaveRawData())
-    walk = start.attach(TN.NSplit32bData())
+    # walk = start.attach(TN.NSplit32bData())
     #
     walk = walk.attach(TN.NCSSortRawDatatoArray())
     walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
@@ -275,7 +278,7 @@ def tilda_passive_pipe(initial_scan_pars, raw_callback, steps_scans_callback):
     walk = walk.attach(TN.NTiPaAccRawUntil2ndScan(steps_scans_callback))
     # walk = walk.attach(SN.NPrint())
 
-    walk = walk.attach(TN.NSplit32bData())
+    # walk = walk.attach(TN.NSplit32bData())
     walk = walk.attach(TN.NCSSortRawDatatoArray())
     walk = walk.attach(TN.NSendnOfCompletedStepsAndScansViaQtSignal(steps_scans_callback))
     walk = walk.attach(TN.NRemoveTrackCompleteFlag())

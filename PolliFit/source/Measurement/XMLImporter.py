@@ -71,8 +71,8 @@ class XMLImporter(SpecData):
                 self.offset = np.mean(offset)  # will be overwritten below!
             if np.any(acc_volt):
                 self.accVolt = np.mean(acc_volt)
-        self.nrScalers = []
-        self.active_pmt_list = []
+        self.nrScalers = []  # number of scalers for this track
+        self.active_pmt_list = []  # list of scaler/pmt names for this track
         # if self.seq_type in ['tipa', 'tipadummy', 'kepco']:
         # x_as_volt = False
         print('axaxis as voltage:', x_as_volt)
@@ -216,11 +216,17 @@ class XMLImporter(SpecData):
             cts[i] = f(v)
 
     def get_scaler_step_and_bin_num(self, track_ind):
-        """ returns a tuple: (nOfScalers, nOfSteps, nOfBins) """
+        """ returns a tuple: (nOfScalers, nOfSteps, nOfBins)
+        or if track == -1 go through all tracks and append those tuples for each track """
+        if track_ind == -1:
+            return [self.get_scaler_step_and_bin_num(tr_ind) for tr_ind, x_tr in enumerate(self.x)]
+        n_of_scalers_tr = self.nrScalers[track_ind]
+        n_of_steps_tr = self.x[track_ind].size
         if self.seq_type in ['trs', 'trsdummy', 'tipa', 'tipadummy']:
-            return self.time_res[track_ind].shape
+            n_of_bins_tr = self.t[track_ind].size
         else:
-            return self.nrScalers[track_ind], self.getNrSteps(track_ind), -1
+            n_of_bins_tr = -1
+        return n_of_scalers_tr, n_of_steps_tr, n_of_bins_tr
 
 # import Service.Scan.draftScanParameters as dft
 # import Service.Formating as Form

@@ -1327,6 +1327,33 @@ class NSortedZeroFreeTRSDat2SpecData(Node):
     def clear(self):
         self.spec_data = None
 
+
+class NSpecDataZeroFreeProjection(Node):
+    def __init__(self):
+        """
+        Node to gate spec_data with the softw_gates list in the spec_data itself.
+        gate will be applied on spec_data.time_res and
+        the time projection will be written to spec_data.t_proj
+        the voltage projection will be written to spec_data.cts
+        input: specdata, time_res is zero free like
+        output: SpecData
+        """
+        super(NSpecDataZeroFreeProjection, self).__init__()
+        self.type = 'SpecDataZeroFreeProjection'
+
+    def start(self):
+        pass
+
+    def processData(self, data, pipeData):
+        ret = TildaTools.gate_zero_free_specdata(data)
+        # print(ret.t_proj)
+        # print(ret.t_proj[0][np.where(ret.t_proj[0])])
+        return ret
+
+    def clear(self):
+        pass
+
+
 """ specdata fitting nodes """
 
 
@@ -1397,7 +1424,7 @@ class NCSSortRawDatatoArray(Node):
         Node for sorting the splitted raw data into an scaler Array containing all tracks.
         Missing Values will be set to 0.
         No Value will be emitted twice.
-        input: split raw data
+        input: raw data
         output: list of tuples [(scalerArray, scan_complete_flag)... ], missing values are 0
         """
         super(NCSSortRawDatatoArray, self).__init__()
