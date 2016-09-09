@@ -140,6 +140,7 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
 
     def recalc(self):
         select = []
+        self.chosenFiles = []
         self.chosenVals = []
         self.chosenErrs = []
         self.chosenDates = []
@@ -155,6 +156,7 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
             self.chosenVals = np.delete(copy.deepcopy(self.vals), select)
             self.chosenErrs = np.delete(copy.deepcopy(self.errs), select)
             self.chosenDates = np.delete(copy.deepcopy(self.dates), select)
+            self.chosenFiles = np.delete(copy.deepcopy(self.files), select)
             if len(self.chosenVals) > 0 and len(self.chosenErrs > 0) and np.count_nonzero(self.chosenErrs) == len(self.chosenErrs):
                 self.val, self.err, self.redChi = Analyzer.weightedAverage(self.chosenVals, self.chosenErrs)
         self.err = self.err * self.redChi  # does the user want it like this?
@@ -184,6 +186,10 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
                 AND parname = ? AND run = ?''', (self.val, self.err, self.systeErr, self.redChi, self.iso, self.par, self.run))
             con.commit()
             con.close()
+
+            print('date \t file \t val \t err')
+            for i, dt in enumerate(self.chosenDates):
+                print(dt, '\t', self.chosenFiles[i], '\t', self.chosenVals[i], '\t', self.chosenErrs[i])
         else:
             print('nothing to save!!!')
 

@@ -24,7 +24,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.setWindowTitle('PolliFit')
         self.parent_win = parent
-        
+
         self.crawler.conSig(self.dbSig)
         self.intfit.conSig(self.dbSig)
         self.averager.conSig(self.dbSig)
@@ -38,7 +38,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.openDb(db_path)
         self.show()
-        
+
     def openDb(self, db_path = ''):
         print(db_path)
         if not os.path.isfile(db_path):

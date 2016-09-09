@@ -140,6 +140,12 @@ def combineRes(iso, par, run, db, weighted = True, print_extracted=True, show_pl
     if show_plot:
         plt.show(True)
     plt.clear()
+
+    files = getFiles(iso, run, db)
+    print('date \t file \t val \t err')
+    for i, dt in enumerate(date):
+        print(dt, '\t',files[i], '\t', vals[i], '\t', errs[i])
+
     return (avg, statErr, systErr, plotdata)
 
 
