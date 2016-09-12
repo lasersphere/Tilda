@@ -7,9 +7,8 @@ Created on 23.08.2016
 
 import sqlite3
 
-import numpy as np
-
 import matplotlib.pyplot as plt
+import numpy as np
 
 class KingFitter(object):
     '''
