@@ -7,12 +7,13 @@ Module Description:Interface for the running simple Counter, which will display 
 the currently selected post acceleration device.
 """
 
-from Interface.SimpleCounter.Ui_simpleCounterRunnning import Ui_SimpleCounterRunning
-import Application.Config as Cfg
+import os
 
-from PyQt5 import QtWidgets
 from PyQt5 import QtCore
-import time
+from PyQt5 import QtWidgets
+
+import Application.Config as Cfg
+from Interface.SimpleCounter.Ui_simpleCounterRunnning import Ui_SimpleCounterRunning
 
 
 class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
@@ -20,7 +21,11 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
 
     def __init__(self, main_gui, act_pmts, datapoints):
         super(SimpleCounterRunningUi, self).__init__()
+
+        work_dir_before_setup_ui = os.getcwd()
+        os.chdir(os.path.dirname(__file__))  # necessary for the icons to appear
         self.setupUi(self)
+        os.chdir(work_dir_before_setup_ui)  # change back
 
         self.main_gui = main_gui
 

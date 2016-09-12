@@ -6,12 +6,13 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 
 class Ui_SimpleCounterRunning(object):
     def setupUi(self, SimpleCounterRunning):
         SimpleCounterRunning.setObjectName("SimpleCounterRunning")
         SimpleCounterRunning.resize(311, 195)
+        SimpleCounterRunning.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.centralwidget = QtWidgets.QWidget(SimpleCounterRunning)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)

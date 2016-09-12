@@ -15,13 +15,118 @@
   </property>
   <property name="windowIcon">
    <iconset>
-    <normaloff>../../../Tilda256.ico</normaloff>../../../Tilda256.ico</iconset>
+    <normaloff>../icons/Tilda256.ico</normaloff>../icons/Tilda256.ico</iconset>
   </property>
   <property name="locale">
    <locale language="English" country="UnitedStates"/>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
+    <item row="3" column="0">
+     <widget class="QLabel" name="label">
+      <property name="text">
+       <string>main state:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="1">
+     <widget class="QLabel" name="label_main_status">
+      <property name="text">
+       <string>TextLabel</string>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="1">
+     <widget class="QLabel" name="label_workdir_set">
+      <property name="text">
+       <string>please choose a working directory in File-&gt;working directory</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="1">
+     <widget class="QLabel" name="label_database">
+      <property name="text">
+       <string>TextLabel</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="0">
+     <widget class="QLabel" name="label_2">
+      <property name="text">
+       <string>database:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="8" column="1">
+     <widget class="QLabel" name="label_acc_volt_set">
+      <property name="text">
+       <string>TextLabel</string>
+      </property>
+     </widget>
+    </item>
+    <item row="8" column="0">
+     <widget class="QLabel" name="label_4">
+      <property name="text">
+       <string>acceleration voltage [V]*:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="7" column="1">
+     <widget class="QLabel" name="label_laser_freq_set">
+      <property name="text">
+       <string>TextLabel</string>
+      </property>
+     </widget>
+    </item>
+    <item row="7" column="0">
+     <widget class="QLabel" name="label_3">
+      <property name="text">
+       <string>laser frequency [cm-1]*:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="5" column="1">
+     <widget class="QLabel" name="label_sequencer_status_set">
+      <property name="text">
+       <string>TextLabel</string>
+      </property>
+     </widget>
+    </item>
+    <item row="6" column="0">
+     <widget class="QLabel" name="label_8">
+      <property name="text">
+       <string>digital multimeter status*:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="0">
+     <widget class="QLabel" name="label_7">
+      <property name="text">
+       <string>fpga status:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="1">
+     <widget class="QLabel" name="label_fpga_state_set">
+      <property name="text">
+       <string>TextLabel</string>
+      </property>
+     </widget>
+    </item>
+    <item row="11" column="0">
+     <widget class="QLabel" name="label_5">
+      <property name="text">
+       <string>*double click on value to change</string>
+      </property>
+     </widget>
+    </item>
+    <item row="6" column="1">
+     <widget class="QLabel" name="label_dmm_status">
+      <property name="text">
+       <string>TextLabel</string>
+      </property>
+     </widget>
+    </item>
     <item row="10" column="0">
      <spacer name="verticalSpacer">
       <property name="orientation">
@@ -49,108 +154,17 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="1">
-     <widget class="QLabel" name="label_main_status">
-      <property name="text">
-       <string>TextLabel</string>
+    <item row="0" column="2">
+     <widget class="QPushButton" name="pushButton_open_dir">
+      <property name="locale">
+       <locale language="English" country="UnitedKingdom"/>
       </property>
-     </widget>
-    </item>
-    <item row="3" column="0">
-     <widget class="QLabel" name="label">
       <property name="text">
-       <string>main state:</string>
+       <string>open</string>
       </property>
-     </widget>
-    </item>
-    <item row="0" column="1">
-     <widget class="QLabel" name="label_workdir_set">
-      <property name="text">
-       <string>please choose a working directory in File-&gt;working directory</string>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="1">
-     <widget class="QLabel" name="label_database">
-      <property name="text">
-       <string>TextLabel</string>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="0">
-     <widget class="QLabel" name="label_2">
-      <property name="text">
-       <string>database:</string>
-      </property>
-     </widget>
-    </item>
-    <item row="7" column="0">
-     <widget class="QLabel" name="label_3">
-      <property name="text">
-       <string>laser frequency [cm-1]*:</string>
-      </property>
-     </widget>
-    </item>
-    <item row="8" column="0">
-     <widget class="QLabel" name="label_4">
-      <property name="text">
-       <string>acceleration voltage [V]*:</string>
-      </property>
-     </widget>
-    </item>
-    <item row="7" column="1">
-     <widget class="QLabel" name="label_laser_freq_set">
-      <property name="text">
-       <string>TextLabel</string>
-      </property>
-     </widget>
-    </item>
-    <item row="8" column="1">
-     <widget class="QLabel" name="label_acc_volt_set">
-      <property name="text">
-       <string>TextLabel</string>
-      </property>
-     </widget>
-    </item>
-    <item row="4" column="0">
-     <widget class="QLabel" name="label_7">
-      <property name="text">
-       <string>fpga status:</string>
-      </property>
-     </widget>
-    </item>
-    <item row="11" column="0">
-     <widget class="QLabel" name="label_5">
-      <property name="text">
-       <string>*double click on value to change</string>
-      </property>
-     </widget>
-    </item>
-    <item row="4" column="1">
-     <widget class="QLabel" name="label_fpga_state_set">
-      <property name="text">
-       <string>TextLabel</string>
-      </property>
-     </widget>
-    </item>
-    <item row="5" column="1">
-     <widget class="QLabel" name="label_sequencer_status_set">
-      <property name="text">
-       <string>TextLabel</string>
-      </property>
-     </widget>
-    </item>
-    <item row="6" column="0">
-     <widget class="QLabel" name="label_8">
-      <property name="text">
-       <string>digital multimeter status*:</string>
-      </property>
-     </widget>
-    </item>
-    <item row="6" column="1">
-     <widget class="QLabel" name="label_dmm_status">
-      <property name="text">
-       <string>TextLabel</string>
+      <property name="icon">
+       <iconset>
+        <normaloff>../icons/open_folder.ico</normaloff>../icons/open_folder.ico</iconset>
       </property>
      </widget>
     </item>
@@ -243,8 +257,20 @@
    </property>
   </action>
   <action name="actionSimple_Counter">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../icons/SimpleCounterNew.ico</normaloff>../icons/SimpleCounterNew.ico</iconset>
+   </property>
    <property name="text">
     <string>Simple Counter</string>
+   </property>
+   <property name="font">
+    <font>
+     <strikeout>false</strikeout>
+    </font>
    </property>
   </action>
   <action name="actionSet_Laser_Frequency">

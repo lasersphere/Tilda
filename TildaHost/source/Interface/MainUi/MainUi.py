@@ -7,25 +7,28 @@ Created on '07.05.2015'
 """
 
 """ Guis: """
+import logging
+import os
+import platform
+import subprocess
+from copy import deepcopy
+
+from PyQt5 import QtCore
+from PyQt5 import QtWidgets
+
+import Application.Config as Cfg
+import MPLPlotter as MPlPlotter
+from Gui.MainUi import MainUi as PolliMainUi
+from Interface.DmmUi.DmmUi import DmmLiveViewUi
+from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
 from Interface.MainUi.Ui_Main import Ui_TildaMainWindow
-from Interface.VersionUi.VersionUi import VersionUi
+from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
 from Interface.ScanProgressUi.ScanProgressUi import ScanProgressUi
-from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
 from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 from Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
 from Interface.TildaPassiveUi.TildaPassiveUi import TildaPassiveUi
-from Interface.DmmUi.DmmUi import DmmLiveViewUi
-from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
-from Gui.MainUi import MainUi as PolliMainUi
-import MPLPlotter as MPlPlotter
-
-import Application.Config as Cfg
-
-import logging
-import os
-from PyQt5 import QtWidgets
-from PyQt5 import QtCore
+from Interface.VersionUi.VersionUi import VersionUi
 
 
 class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
@@ -34,7 +37,12 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def __init__(self):
         QtCore.QLocale().setDefault(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         super(MainUi, self).__init__()
+        work_dir_before_setup_ui = os.getcwd()
+        os.chdir(os.path.dirname(__file__))  # necessary for the icons to appear
         self.setupUi(self)
+        os.chdir(work_dir_before_setup_ui)  # change back
+        # print('current working dir: %s' % os.getcwd())
+
 
         self.act_scan_wins = []  # list of active scan windows
         self.post_acc_win = None  # only one active post acceleration window
@@ -62,6 +70,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.label_laser_freq_set.mouseDoubleClickEvent = self.laser_freq_dbl_click
         self.label_acc_volt_set.mouseDoubleClickEvent = self.acc_volt_dbl_click
         self.label_8.mouseDoubleClickEvent = self.dmm_setup_dbl_click
+
+        """ connect buttons """
+        self.pushButton_open_dir.clicked.connect(self.open_dir)
 
         self.subscribe_to_main()
         self.show()
@@ -117,8 +128,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def choose_working_dir(self):
         """ will open a modal file dialog and set all workingdirectories of the pipeline to the chosen folder """
+        start_path = os.path.expanduser('~')
+        if Cfg._main_instance.working_directory:
+            start_path = os.path.split(Cfg._main_instance.working_directory)[0]
         workdir = QtWidgets.QFileDialog.getExistingDirectory(QtWidgets.QFileDialog(),
-            'choose working directory', os.path.expanduser('~'))
+            'choose working directory', start_path)
         return Cfg._main_instance.work_dir_changed(workdir)
 
     def set_laser_freq(self):
@@ -232,6 +246,20 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
         # this will activate the window
         window.activateWindow()
+
+    def open_dir(self):
+        path = deepcopy(Cfg._main_instance.working_directory)
+        if path:
+            if platform.system() == "Windows":
+                os.startfile(path)
+            elif platform.system() == "Darwin":
+                subprocess.Popen(["open", path])
+            else:
+                subprocess.Popen(["xdg-open", path])
+        else:
+            self.choose_working_dir()
+            self.open_dir()
+
 
     ''' close windows '''
     def scan_control_win_closed(self, win_ref):

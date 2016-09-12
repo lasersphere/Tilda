@@ -28,13 +28,19 @@ class SimpleCounterControl:
         """
         start the simple counter bitfile on the fpga
         """
-        self.sc = SimpleCounter()  # does not go automatically to dummy mode if hardware is not installed.
+        try:
+            self.sc = SimpleCounter()  # does not go automatically to dummy mode if hardware is not installed.
+            return True
+        except Exception as e:
+            print('error: could not start simple counter, error is: %s ' % e)
+            return False
 
     def run_dummy(self):
         """
         dummy simple counter
         """
         self.sc = SimpleCounterDummy()
+        return True
 
     def read_data(self):
         """

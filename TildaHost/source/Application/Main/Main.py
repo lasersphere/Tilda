@@ -628,14 +628,14 @@ class Main(QtCore.QObject):
         if self.scan_main.sequencer is not None:
             self.scan_main.deinit_fpga()
         self.simple_counter_inst = SimpleCounterControl(act_pmt_list, datapoints, callback_sig)
-        try:
-            self.simple_counter_inst.run()
-        except Exception as e:
-            print('while starting the simple counter bitfile, this happened: ', str(e))
+        ret = self.simple_counter_inst.run()
+        if ret:
+            pass
+        else:
+            print('while starting the simple counter bitfile, something did not work.')
             print('don\'t worry, starting DUMMY Simple Counter now.')
             self.simple_counter_inst.run_dummy()
-        finally:
-            self.set_state(MainState.simple_counter_running)
+        self.set_state(MainState.simple_counter_running)
 
     def _read_data_simple_counter(self):
         self.simple_counter_inst.read_data()

@@ -11,12 +11,11 @@ Module to Wrap all the Handling of universal FPGA interactions, like Start, run 
 
 """
 
-from os import path, pardir
 import ctypes
-import sys
 import os
+from os import path, pardir
+
 import numpy as np
-import logging
 
 
 class FPGAInterfaceHandling():
@@ -71,7 +70,7 @@ class FPGAInterfaceHandling():
         if run:
             self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_Run(self.session, 0))
         if self.status < self.statusSuccess:
-            sys.exit('Initialization of the Bitfile' + str(os.path.split(bitfilePath.value)[1]) +
+            raise Exception('Initialization of the Bitfile' + str(os.path.split(bitfilePath.value)[1]) +
                      ' on Fpga with ' + str(resource.value) + ' failed, status is: ' + str(self.status))
         else:
             print('Fpga Initialised on ' + str(resource.value) + '. The Session is ' + str(self.session)
