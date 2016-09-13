@@ -1021,10 +1021,10 @@ class NMPLImagePlotSpecData(Node):
             self.patch.set_xy((g_list[0], g_list[2]))
             self.patch.set_width((g_list[1] - g_list[0]))
             self.patch.set_height((g_list[3] - g_list[2]))
-            xdata = np.nansum(
+            xdata = np.sum(
                 data.time_res[self.selected_track[0]][self.selected_pmt_ind][g_ind[0]:g_ind[1] + 1, :], axis=0)
             xdata = np.nan_to_num(xdata)
-            ydata = np.nansum(
+            ydata = np.sum(
                 data.time_res[self.selected_track[0]][self.selected_pmt_ind][:, g_ind[2]:g_ind[3] + 1], axis=1)
             ydata = np.nan_to_num(ydata)
             self.tproj_line.set_xdata(xdata)
@@ -1135,7 +1135,7 @@ class NMPLImagePlotSpecData(Node):
             self.setup_track(*self.selected_track)
             self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.set_clim(0,
-                                   np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+                                   np.max(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.update_normal(self.image)
             self.gate_data_and_plot()
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
@@ -1153,7 +1153,7 @@ class NMPLImagePlotSpecData(Node):
             self.setup_track(*self.selected_track)
             self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.set_clim(0,
-                                   np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+                                   np.max(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.update_normal(self.image)
             self.gate_data_and_plot()
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
@@ -1195,7 +1195,7 @@ class NMPLImagePlotSpecData(Node):
             self.setup_track(*self.selected_track)
             self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.set_clim(0,
-                                   np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+                                   np.max(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.update_normal(self.image)
             self.gate_data_and_plot()
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
@@ -1248,7 +1248,7 @@ class NMPLImagePlotSpecData(Node):
                 self.start()
             self.image.set_data(np.transpose(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.set_clim(0,
-                                   np.nanmax(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
+                                   np.max(self.buffer_data.time_res[self.selected_track[0]][self.selected_pmt_ind]))
             self.colorbar.update_normal(self.image)
             self.gate_data_and_plot()
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
@@ -1321,7 +1321,7 @@ class NSortedZeroFreeTRSDat2SpecData(Node):
             logging.debug('pipeline successfully loaded: %s' % self.spec_data.file)
 
     def processData(self, data, pipeData):
-        self.spec_data.time_res = data
+        self.spec_data.time_res_zf = data
         return self.spec_data
 
     def clear(self):

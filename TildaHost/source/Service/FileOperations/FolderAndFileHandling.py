@@ -161,7 +161,7 @@ def save_spec_data(spec_data, scan_dict):
         for track_ind, tr_num in enumerate(track_num_lis):
             track_name = 'track' + str(tr_num)
             if len(spec_data.time_res):  # if there are any values in here, it is a time resolved measurement
-                xmlAddCompleteTrack(root_ele, scan_dict, spec_data.time_res[track_ind], track_name)
+                xmlAddCompleteTrack(root_ele, scan_dict, spec_data.time_res_zf[track_ind], track_name)
                 xmlAddCompleteTrack(
                     root_ele, scan_dict, spec_data.cts[track_ind], track_name, datatype='voltage_projection',
                     parent_ele_str='projections')

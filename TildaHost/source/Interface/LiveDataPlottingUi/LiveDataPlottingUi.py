@@ -142,7 +142,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.sum_scaler_changed(0)
             self.update_gates_list()
             self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
-            self.update_all_plots(self.spec_data)
+
+            # self.update_all_plots(self.spec_data)  # plotting already done within self.rebin_data
         except Exception as e:
             print('error in liveplotterui while receiving new data: ', e)
 
@@ -197,7 +198,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.tres_gate_patch.set_width(abs(gates[1] - gates[0]))
             self.tres_gate_patch.set_height(abs(gates[3] - gates[2]))
             self.tres_image.set_data(np.transpose(spec_data.time_res[self.tres_sel_tr_ind][self.tres_sel_sc_ind]))
-            self.tres_colorbar.set_clim(0, np.nanmax(spec_data.time_res[self.tres_sel_tr_ind][self.tres_sel_sc_ind]))
+            self.tres_colorbar.set_clim(0, np.max(spec_data.time_res[self.tres_sel_tr_ind][self.tres_sel_sc_ind]))
             self.tres_colorbar.update_normal(self.tres_image)
             if draw:
                 # self.tres_axes['image'].draw_artist(self.tres_image)

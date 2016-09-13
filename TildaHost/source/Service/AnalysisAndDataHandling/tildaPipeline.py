@@ -79,8 +79,9 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
 
     fast_spec = fast.attach(TN.NSortedZeroFreeTRSDat2SpecData())
     fast_spec = fast_spec.attach(TN.NSpecDataZeroFreeProjection())
-    fast_spec = fast_spec.attach(TN.NSaveSpecData())
+    fast_spec = fast_spec.attach(TN.NMPLImagePlotAndSaveSpecData(0, *live_plot_callbacks))
 
+    # fast_spec = fast_spec.attach(TN.NSaveSpecData())
 
     return pipe
 

@@ -80,7 +80,11 @@ class XMLImporter(SpecData):
         self.cts = []  # countervalues, this is the voltage projection here
         self.err = []  # error to the countervalues
         self.t_proj = []  # time projection only for time resolved
-        self.time_res = []  # time resolved matrices only for time resolved measurments
+        self.time_res = []  # time resolved matrices only for time resolved measurements
+        self.time_res_zf = []  # time resolved list of pmt events in form of indices, zf is for zero free,
+        #  therefore in this list are only events really happened, indices might be missing.
+        #  list contains numpy arrays with structure: ('sc', 'step', 'time', 'cts')
+        #  indices in list correspond to track indices
 
         self.stepSize = []
         self.col = False  # should also be a list for multiple tracks
@@ -122,7 +126,12 @@ class XMLImporter(SpecData):
                 t_proj = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'time_projection', (nOfScalers, nOfBins),
                     direct_parent_ele_str='projections')
-                self.time_res.append(scaler_array)
+                if isinstance(scaler_array[0], np.void):  # this is zero free data
+                    self.time_res_zf.append(scaler_array)
+                    time_res_classical_tr = TildaTools.zero_free_to_non_zero_free(self.time_res_zf, [cts_shape])[tr_ind]
+                    self.time_res.append(time_res_classical_tr)
+                else:  # classic full matrix array
+                    self.time_res.append(scaler_array)
                 if v_proj is None or t_proj is None or softw_gates is not None:
                     print('projections not found, or software gates set by hand, gating data now.')
                     if softw_gates is not None:

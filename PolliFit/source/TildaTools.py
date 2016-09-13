@@ -30,8 +30,21 @@ def numpy_array_from_string(string, shape, datatytpe=np.uint32):
     :return: numpy array containing the desired values
     """
     string = string.replace('\\n', '').replace('[', '').replace(']', '').replace('  ', ' ')
-    result = np.fromstring(string, dtype=datatytpe, sep=' ')
-    result = result.reshape(shape)
+    if '(' in string:  # its a zero free dataformat
+        string = string.replace('(', '').replace(')', '').replace(',', ' ')
+        from_string = np.fromstring(string, dtype=np.uint32, sep=' ')
+        result = np.zeros(from_string.size//4, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
+        result['sc'] = from_string[0::4]
+        result['step'] = from_string[1::4]
+        result['time'] = from_string[2::4]
+        result['cts'] = from_string[3::4]
+    else:
+        string = string.replace('nan', '0').replace('.', '')  # if dot or nan in file
+        result = np.fromstring(string, dtype=datatytpe, sep=' ')
+        result = result.reshape(shape)
+        # the following function would be ideal,
+        # but this yields errors even for the examples coming with the function
+        # result = np.genfromtxt(StringIO(string), delimiter=",", dtype=[('mystring', 'S4')])
     return result
 
 
@@ -234,31 +247,31 @@ def gate_specdata(spec_data):
             v_max_ind = softw_gates_ind[tr_ind][pmt_ind][1] + 1
             t_min_ind = softw_gates_ind[tr_ind][pmt_ind][2]
             t_max_ind = softw_gates_ind[tr_ind][pmt_ind][3] + 1
-            t_proj_res = np.nansum(spec_data.time_res[tr_ind][pmt_ind][v_min_ind:v_max_ind, :], axis=0)
-            v_proj_res = np.nansum(spec_data.time_res[tr_ind][pmt_ind][:, t_min_ind:t_max_ind], axis=1)
+            t_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][v_min_ind:v_max_ind, :], axis=0)
+            v_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][:, t_min_ind:t_max_ind], axis=1)
             spec_data.t_proj[tr_ind][pmt_ind] = t_proj_res
             spec_data.cts[tr_ind][pmt_ind] = v_proj_res
     return spec_data
 
 
-def zero_free_to_non_zero_free(spec_data):
+def zero_free_to_non_zero_free(zf_time_res_arr, dims_sc_step_time_list):
     """
     this will convert the zerofree time_res array ([(sc, step, time, cts), ...]) to
     the classic matrix approach where sc, step, time are located by index and
     cts are filled at the corresponding positions
-    :param spec_data: spec_data (time_res is zero free)
-    :return: spec_data (time_res is classic matrix)
+    :param zf_time_res_arr: list, of numpy arrays for eaach track with the zero free data structure.
+    :param dims_sc_step_time_list: list, of dimensions for each track
+                [(n_of_scalers_tr, n_of_steps_tr, n_of_bins_tr), ...]
+
     """
-    dims_sc_step_time_list = spec_data.get_scaler_step_and_bin_num(-1)
-    new_time_res = [np.full(dims_sc_step_time_list[tr_ind], np.nan) for tr_ind, tr in enumerate(dims_sc_step_time_list)]
+    new_time_res = [np.zeros(dims_sc_step_time_list[tr_ind]) for tr_ind, tr in enumerate(dims_sc_step_time_list)]
 
     for tr_ind, tr_dims in enumerate(dims_sc_step_time_list):
-        sc_arr = spec_data.time_res[tr_ind]['sc']
-        step_arr = spec_data.time_res[tr_ind]['step']
-        time_arr = spec_data.time_res[tr_ind]['time']
-        new_time_res[tr_ind][sc_arr, step_arr, time_arr] = spec_data.time_res[tr_ind]['cts']
-    spec_data.time_res = new_time_res
-    return spec_data
+        sc_arr = zf_time_res_arr[tr_ind]['sc']
+        step_arr = zf_time_res_arr[tr_ind]['step']
+        time_arr = zf_time_res_arr[tr_ind]['time']
+        new_time_res[tr_ind][sc_arr, step_arr, time_arr] = zf_time_res_arr[tr_ind]['cts']
+    return new_time_res
 
 
 def gate_zero_free_specdata(spec_data):
@@ -270,10 +283,10 @@ def gate_zero_free_specdata(spec_data):
     :param spec_data: spec_data (zero free time res)
     :return: spec_data (zero free time res)
     """
+    dimensions = spec_data.get_scaler_step_and_bin_num(-1)
     zf_spec = deepcopy(spec_data)
-    gated_non_zf_spec = gate_specdata(zero_free_to_non_zero_free(spec_data))
-    zf_spec.t_proj = deepcopy(gated_non_zf_spec.t_proj)
-    zf_spec.cts = deepcopy(gated_non_zf_spec.cts)
+    zf_spec.time_res = zero_free_to_non_zero_free(spec_data.time_res_zf, dimensions)
+    zf_spec = gate_specdata(zf_spec)
     return zf_spec
 
     # alternative solution (currently slower):
