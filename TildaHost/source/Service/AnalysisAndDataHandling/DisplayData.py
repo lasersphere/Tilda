@@ -9,16 +9,15 @@ Use this class for displaying your data.
 
 """
 
-
-import Service.AnalysisAndDataHandling.tildaPipeline as TP
-from Measurement.XMLImporter import XMLImporter as XmlImp
-import Application.Config as Cfg
-import MPLPlotter
-from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
+from datetime import datetime
 
 from PyQt5 import QtCore
-import sys
-import os
+
+import Application.Config as Cfg
+import Service.AnalysisAndDataHandling.tildaPipeline as TP
+from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
+from Measurement.XMLImporter import XMLImporter as XmlImp
+
 
 class DisplayData:
     def __init__(self, file, x_as_volt=False):
@@ -47,7 +46,10 @@ class DisplayData:
             print('sorry, only resolved spectra currently supported')
 
     def feed_loaded_spec(self):
+        start = datetime.now()
         self.pipe.feed(self.spec)
+        stop = datetime.now()
+        print('displaying data took: %s  seconds' % (stop - start))
 
     def clear_pipe(self):
         self.pipe.clear()

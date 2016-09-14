@@ -108,6 +108,7 @@ def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), sho
     if showing:
         show()
 
+
 def show(block=True):
     plt.show(block=block)
 
