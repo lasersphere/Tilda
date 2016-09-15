@@ -91,17 +91,15 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         self.spinBox.valueChanged.connect(self.rebin_data)
         self.checkBox.stateChanged.connect(self.apply_rebin_to_all_checkbox_changed)
-        self.checkBox_sum_zoom.stateChanged.connect(self.set_sum_zoomable)
-        self.checkBox_volt_line_zoom.stateChanged.connect(self.set_v_proj_zoomabel)
-
-        self.checkBox_sum_zoom.setCheckState(QtCore.Qt.Checked)
-        self.checkBox_volt_line_zoom.setCheckState(QtCore.Qt.Checked)
 
         ''' setup window size: '''
         self.resize(1024, 768)
         size_plt, size_table = self.splitter.sizes()
         sum_size = size_plt + size_table
         self.splitter.setSizes([sum_size * 9 // 10, sum_size // 10])
+        size_tres_plt, size_proj_t = self.splitter_2.sizes()
+        sum_size_spl_2 = size_tres_plt + size_proj_t
+        self.splitter_2.setSizes([sum_size_spl_2 * 2 // 3, sum_size_spl_2 * 1 // 3])
 
     '''setting up the plots (no data etc. written) '''
 
@@ -110,35 +108,40 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.sum_plot_layout = QtWidgets.QVBoxLayout()
         self.sum_plot_layout.addWidget(self.sum_wid)
         self.widget_inner_sum_plot.setLayout(self.sum_plot_layout)
-        # ??? achsen beschrft...
 
     def add_time_resolved_plot(self):
         print('adding tres')
-        self.tres_v_layout = QtWidgets.QGridLayout()
+        self.tres_v_layout = QtWidgets.QVBoxLayout()
         self.tres_widg, self.tres_plt_item = Pg.create_image_view()
-        self.tres_v_layout.addWidget(self.tres_widg, 0, 0)
-        self.v_proj_wid, self.v_proj_plt_itm = Pg.create_x_y_widget()
-        self.v_proj_plt_itm.showAxis('right')
-        self.sum_proj_view_box = Pg.create_viewbox()
-        self.v_proj_plt_itm.scene().addItem(self.sum_proj_view_box)
-        self.v_proj_plt_itm.getAxis('right').linkToView(self.sum_proj_view_box)
-        self.sum_proj_view_box.setXLink(self.v_proj_plt_itm)
-        self.v_proj_plt_itm.getAxis('right').setLabel('sum', color='#0000ff')
+        self.tres_v_layout.addWidget(self.tres_widg)
+        self.widget_tres.setLayout(self.tres_v_layout)
+        self.sum_proj_wid, self.sum_proj_plt_itm = Pg.create_x_y_widget(do_not_show_label=['top'], y_label='sum')
+        self.sum_proj_plt_itm.showAxis('right')
+        self.v_proj_view_box = Pg.create_viewbox()
+        self.sum_proj_plt_itm.scene().addItem(self.v_proj_view_box)
+        self.sum_proj_plt_itm.getAxis('right').linkToView(self.v_proj_view_box)
+        self.v_proj_view_box.setXLink(self.sum_proj_plt_itm)
+        self.sum_proj_plt_itm.getAxis('right').setLabel('cts', color='k')
+        self.sum_proj_plt_itm.getAxis('left').setLabel('sum', color='#0000ff')
         self.updateViews()
-        self.v_proj_plt_itm.vb.sigResized.connect(self.updateViews)
+        self.sum_proj_plt_itm.vb.sigResized.connect(self.updateViews)
 
-        self.t_proj_wid, self.t_proj_plt_itm = Pg.create_x_y_widget()
-        self.v_proj_plt_itm.setXLink(self.tres_plt_item)
+        self.t_proj_wid, self.t_proj_plt_itm = Pg.create_x_y_widget(do_not_show_label=['left', 'bottom'],
+                                                                    y_label='time', x_label='cts')
+        self.v_proj_layout = QtWidgets.QVBoxLayout()
+        self.t_proj_layout = QtWidgets.QVBoxLayout()
+        self.sum_proj_plt_itm.setXLink(self.tres_plt_item)
         self.t_proj_plt_itm.setYLink(self.tres_plt_item)
-        self.tres_v_layout.addWidget(self.v_proj_wid, 1, 0)
-        self.tres_v_layout.addWidget(self.t_proj_wid, 0, 1)
+        self.v_proj_layout.addWidget(self.sum_proj_wid)
+        self.t_proj_layout.addWidget(self.t_proj_wid)
+        self.widget_proj_v.setLayout(self.v_proj_layout)
+        self.widget_proj_t.setLayout(self.t_proj_layout)
         self.pushButton_save_after_scan.clicked.connect(self.save)
-        self.widget_tres_plot.setLayout(self.tres_v_layout)
         print('adding tres complete')
 
     def updateViews(self):
-        self.sum_proj_view_box.setGeometry(self.v_proj_plt_itm.vb.sceneBoundingRect())
-        self.sum_proj_view_box.linkedViewChanged(self.v_proj_plt_itm.vb, self.sum_proj_view_box.XAxis)
+        self.v_proj_view_box.setGeometry(self.sum_proj_plt_itm.vb.sceneBoundingRect())
+        self.v_proj_view_box.linkedViewChanged(self.sum_proj_plt_itm.vb, self.v_proj_view_box.XAxis)
 
     def setup_new_track(self, rcv_tpl):
         self.tres_sel_tr_ind, self.tres_sel_tr_name = rcv_tpl[0]
@@ -166,50 +169,23 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         except Exception as e:
             print('error in liveplotterui while receiving new data: ', e)
 
-    def set_sum_zoomable(self, state):
-        # ???
-        # if state == QtCore.Qt.Unchecked:
-        #     self.tres_axes['sum_proj'].set_navigate(False)
-        # elif state == QtCore.Qt.Checked:
-        #     self.tres_axes['sum_proj'].set_navigate(True)
-        pass
-
-    def set_v_proj_zoomabel(self, state):
-        # ???
-        # if state == QtCore.Qt.Unchecked:
-        #     self.tres_axes['v_proj'].set_navigate(False)
-        # elif state == QtCore.Qt.Checked:
-        #     self.tres_axes['v_proj'].set_navigate(True)
-        pass
-
     ''' updating the plots from specdata '''
 
-    def update_all_plots(self, spec_data, draw=True):
-        self.update_sum_plot(spec_data, draw)
-        self.update_tres_data(spec_data, draw)
-        self.update_projections(spec_data, draw)
+    def update_all_plots(self, spec_data):
+        self.update_sum_plot(spec_data)
+        self.update_tres_data(spec_data)
+        self.update_projections(spec_data)
 
-    def update_sum_plot(self, spec_data, draw=True):
+    def update_sum_plot(self, spec_data):
         self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpec(self.sum_scaler, self.sum_track)
         if self.sum_plt_data is None:
-            self.sum_plt_data = self.sum_plt_itm.plot(self.sum_x, self.sum_y)
+            self.sum_plt_data = self.sum_plt_itm.plot(self.sum_x, self.sum_y, pen='k')
         else:
             self.sum_plt_data.setData(self.sum_x, self.sum_y)
-            # ??? autorange
-            # self.sum_ax.relim()
-            # self.sum_ax.set_xmargin(0.01)
-            # self.sum_ax.set_ymargin(0.01)
-            # self.sum_ax.autoscale(enable=True, axis='both', tight=False)
-            # self.sum_ax.set_ylim(bottom=0)
-            # self.update_projections(spec_data)
-            # if draw:
-            #     self.sum_canv.draw()
 
-    def update_tres_data(self, spec_data, draw=True):
+    def update_tres_data(self, spec_data):
         try:
             gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
-            # if self.tres_plt_item is None:  # create image in first plot call.
-            #     self.add_time_resolved_plot()
             x_range = (float(np.min(spec_data.x[self.tres_sel_tr_ind])), np.max(spec_data.x[self.tres_sel_tr_ind]))
             x_scale = np.mean(np.ediff1d(spec_data.x[self.tres_sel_tr_ind]))
             y_range = (np.min(spec_data.t[self.tres_sel_tr_ind]), np.max(spec_data.t[self.tres_sel_tr_ind]))
@@ -219,13 +195,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                                          y_range[0] - abs(0.5 * y_scale)],
                                     scale=[x_scale, y_scale])
             self.tres_plt_item.setAspectLocked(False)
-            self.tres_plt_item.setRange(xRange=x_range, yRange=y_range)
-            self.tres_widg.updateImage()
-            self.tres_widg.updateNorm()
-            # print(x_range, x_scale, y_range, y_scale)
-            # if draw:
-            # self.tres_axes['image'].draw_artist(self.tres_image)
-            # self.draw_trs()
+            self.tres_plt_item.setRange(xRange=x_range, yRange=y_range, padding=0.05)
+            # self.tres_widg.updateImage()
+            # self.tres_widg.updateNorm()
         except Exception as e:
             print('error, while plotting time resolved, this happened: ', e)
 
@@ -254,7 +226,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         #     print('while setting the gates this happened: ', e)
         pass
 
-    def update_projections(self, spec_data, draw=True):
+    def update_projections(self, spec_data):
         try:
             t_proj_x = spec_data.t_proj[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
             t_proj_y = spec_data.t[self.tres_sel_tr_ind]
@@ -262,10 +234,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             v_proj_y = spec_data.cts[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
             gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
             if self.t_proj_plt is None:
-                self.t_proj_plt = self.t_proj_plt_itm.plot(t_proj_x, t_proj_y)
-                self.v_proj_plt = self.v_proj_plt_itm.plot(v_proj_x, v_proj_y)
-                self.sum_proj_plt = Pg.create_plot_data_item(self.sum_x, self.sum_y)
-                self.sum_proj_view_box.addItem(self.sum_proj_plt)
+                self.t_proj_plt = self.t_proj_plt_itm.plot(t_proj_x, t_proj_y, pen='k')
+                self.sum_proj_plt_data = self.sum_proj_plt_itm.plot(self.sum_x, self.sum_y, pen='b')
+                self.v_proj_plt = Pg.create_plot_data_item(v_proj_x, v_proj_y, pen='k')
+                self.v_proj_view_box.addItem(self.v_proj_plt)
                 # ??? lines for gates, color of sum?
                 # self.sum_line_proj = MPLPlotter.line2d(self.sum_line.get_xdata(), self.sum_line.get_ydata(), 'blue')
                 # self.tres_axes['t_proj'].add_line(self.t_proj_plt_itm)
@@ -279,8 +251,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             else:
                 # print('updating proj')
                 self.t_proj_plt.setData(t_proj_x, t_proj_y)
-                self.v_proj_plt.setData(v_proj_x, v_proj_y)
-                self.sum_proj_plt.setData(self.sum_x, self.sum_y)  # does this work?
+                self.sum_proj_plt_data.setData(self.sum_x, self.sum_y)
+                self.v_proj_plt.setData(v_proj_x, v_proj_y)  # does this work?
                 # self.t_proj_plt_itm.set_xdata(t_proj_x)
                 # self.v_proj_plt_itm.set_ydata(v_proj_y)
                 # self.v_min_line.set_xdata([gates[0], gates[0]])
@@ -306,11 +278,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         except Exception as e:
             print('error, while plotting projection, this happened: ', e)
-
-    def draw_trs(self):
-        # ??? delete?
-        # self.tres_canv.draw()
-        pass
 
     def reset_plots(self, clear_bool=False):
         # ??? delete
@@ -397,8 +364,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             # print('new scaler, track: ', self.tres_sel_tr_ind, self.tres_sel_sc_ind)
             self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
             self.reset_plots(True)
-            self.update_tres_data(self.spec_data, True)
-            self.update_projections(self.spec_data, True)
+            self.update_tres_data(self.spec_data)
+            self.update_projections(self.spec_data)
 
     def select_scaler_tr(self, tr_name, sc_ind):
         for row in range(self.tableWidget_gates.rowCount()):
@@ -498,9 +465,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     ''' saving '''
 
     def save(self, pipedata_dict=None):
-        im_path = self.full_file_path.split('.')[0] + '_' + str(self.tres_sel_tr_name) + '_' + str(
-            self.tres_sel_sc_name) + '.png'
-        self.tres_fig.savefig(im_path)
+        # im_path = self.full_file_path.split('.')[0] + '_' + str(self.tres_sel_tr_name) + '_' + str(
+        #     self.tres_sel_sc_name) + '.png'
 
         if isinstance(pipedata_dict, bool):  # when pressing on save
             pipedata_dict = None
@@ -551,6 +517,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             print('softw_binwidth of full data: %s, of rebinned data: %s '
                   % (self.storage_data.softBinWidth_ns, self.spec_data.softBinWidth_ns))
             try:
+                self.gate_data(self.spec_data, False)
                 self.gate_data(self.spec_data, False)
                 self.reset_plots(True)
                 self.update_all_plots(self.spec_data)

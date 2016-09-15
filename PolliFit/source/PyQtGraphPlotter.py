@@ -6,12 +6,16 @@ Created on '20.08.2015'
 
 """
 
-
 import logging
 import sys
 
+import numpy as np
+
 logging.basicConfig(level=getattr(logging, 'INFO'), format='%(message)s', stream=sys.stdout)
 import pyqtgraph as pg
+
+pg.setConfigOption('background', 'w')
+pg.setConfigOption('foreground', 'k')
 
 
 def plot_x_y(x, y):
@@ -25,17 +29,42 @@ def plot_spec_data(spec_data, sc, tr):
     return plot_x_y(x,y)
 
 
-def create_image_view():
+def create_image_view(x_label='line voltage', y_label='time'):
     plt_item = pg.PlotItem()
     imv_widget = pg.ImageView(view=plt_item)
     plt_item.invertY(False)
+    plt_item.showAxis('top')
+    plt_item.showAxis('right')
+    plt_item.showLabel('bottom', False)
+    plt_item.showLabel('right', False)
+    plt_item.getAxis('right').setStyle(showValues=False)
+    plt_item.getAxis('bottom').setStyle(showValues=False)
+    plt_item.setLabel('left', y_label)
+    plt_item.setLabel('top', x_label)
+    colors = [
+        (255, 255, 255),
+        (0, 0, 255),
+        (0, 255, 255),
+        (0, 255, 0),
+        (255, 255, 0),
+        (255, 0, 0),
+    ]
+    color = pg.ColorMap(pos=np.linspace(0.0, 1.0, len(colors)), color=colors)
+    imv_widget.setColorMap(color)
     return imv_widget, plt_item
 
 
-def create_x_y_widget():
+def create_x_y_widget(do_not_show_label=['top', 'right'], x_label='line voltage', y_label='cts'):
     widg = pg.PlotWidget()
-    plotitem = widg.getPlotItem()
-    return widg, plotitem
+    plt_item = widg.getPlotItem()
+    plt_item.showAxis('top')
+    plt_item.showAxis('right')
+    for ax in do_not_show_label:
+        plt_item.showLabel(ax, False)
+        plt_item.getAxis(ax).setStyle(showValues=False)
+    plt_item.setLabel('left' if 'left' not in do_not_show_label else 'right', y_label)
+    plt_item.setLabel('bottom' if 'bottom' not in do_not_show_label else 'top', x_label)
+    return widg, plt_item
 
 
 def create_viewbox():
@@ -68,3 +97,10 @@ def start_examples():
 #     pg.plot(x=[0, 1, 2], y=[1, 3, 0])
 #     status = app.exec_()
 #     sys.exit(status)
+from PyQt5 import QtWidgets
+
+if __name__=='__main__':
+    app = QtWidgets.QApplication(sys.argv)
+    start_examples()
+    status = app.exec_()
+    sys.exit(status)

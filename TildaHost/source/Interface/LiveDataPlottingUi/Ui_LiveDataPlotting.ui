@@ -147,13 +147,6 @@
             </property>
            </widget>
           </item>
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_4">
-            <property name="text">
-             <string>rebinning [ns]</string>
-            </property>
-           </widget>
-          </item>
           <item row="0" column="4">
            <widget class="QPushButton" name="pushButton_save_after_scan">
             <property name="text">
@@ -161,24 +154,17 @@
             </property>
            </widget>
           </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_4">
+            <property name="text">
+             <string>rebinning [ns]</string>
+            </property>
+           </widget>
+          </item>
           <item row="0" column="3">
            <widget class="QCheckBox" name="checkBox">
             <property name="text">
              <string>apply for all tracks</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QCheckBox" name="checkBox_sum_zoom">
-            <property name="text">
-             <string>sum is zoomable</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="2">
-           <widget class="QCheckBox" name="checkBox_volt_line_zoom">
-            <property name="text">
-             <string>volt projection is zoomable</string>
             </property>
            </widget>
           </item>
@@ -192,7 +178,31 @@
           <property name="opaqueResize">
            <bool>true</bool>
           </property>
-          <widget class="QWidget" name="widget_tres_plot" native="true"/>
+          <widget class="QWidget" name="widget_tres_plot" native="true">
+           <layout class="QVBoxLayout" name="verticalLayout_5">
+            <item>
+             <widget class="QSplitter" name="splitter_4">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <widget class="QSplitter" name="splitter_2">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <widget class="QWidget" name="widget_tres" native="true"/>
+               <widget class="QWidget" name="widget_proj_t" native="true"/>
+              </widget>
+              <widget class="QSplitter" name="splitter_3">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <widget class="QWidget" name="widget_proj_v" native="true"/>
+               <widget class="QWidget" name="widget_right_lower_corner" native="true"/>
+              </widget>
+             </widget>
+            </item>
+           </layout>
+          </widget>
           <widget class="QTableWidget" name="tableWidget_gates">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
