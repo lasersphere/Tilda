@@ -92,12 +92,22 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         ''' setup window size: '''
         self.resize(1024, 768)
+        ''' vertical splitter between plots and table: '''
         size_plt, size_table = self.splitter.sizes()
         sum_size = size_plt + size_table
         self.splitter.setSizes([sum_size * 9 // 10, sum_size // 10])
+        ''' horizontal splitter between tres and t_proj: '''
         size_tres_plt, size_proj_t = self.splitter_2.sizes()
         sum_size_spl_2 = size_tres_plt + size_proj_t
         self.splitter_2.setSizes([sum_size_spl_2 * 2 // 3, sum_size_spl_2 * 1 // 3])
+        ''' vertical splitter between tres and v_proj/sum_proj: '''
+        sz_v_tres, sz_v_v_proj = self.splitter_4.sizes()
+        sum_sz_v_spl = sz_v_tres + sz_v_v_proj
+        self.splitter_4.setSizes([sum_sz_v_spl // 2, sum_sz_v_spl // 2])
+        ''' horizontal splitter between v_proj and the display widget: '''
+        size_h_v_proj, size_h_display_wid= self.splitter_3.sizes()
+        sum_size_spl_3_h = size_h_v_proj + size_h_display_wid
+        self.splitter_3.setSizes([sum_size_spl_3_h * 6 // 10, sum_size_spl_3_h * 4 // 10])
 
     '''setting up the plots (no data etc. written) '''
 
@@ -139,6 +149,32 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.widget_proj_v.setLayout(self.v_proj_layout)
         self.widget_proj_t.setLayout(self.t_proj_layout)
         self.pushButton_save_after_scan.clicked.connect(self.save)
+        max_rate = 60
+        self.t_res_mouse_proxy = Pg.create_proxy(signal=self.tres_plt_item.scene().sigMouseMoved,
+                                                 slot=self.mouse_moved_tres,
+                                                 rate_limit=max_rate)
+        self.t_proj_mouse_proxy = Pg.create_proxy(signal=self.t_proj_plt_itm.scene().sigMouseMoved,
+                                                  slot=self.mouse_moved_t_proj,
+                                                  rate_limit=max_rate)
+        self.sum_proj_mouse_proxy = Pg.create_proxy(signal=self.sum_proj_plt_itm.scene().sigMouseMoved,
+                                                    slot=self.mouse_moved_sum_proj,
+                                                    rate_limit=max_rate)
+
+    def mouse_moved_tres(self, evt):
+        point = self.tres_plt_item.vb.mapSceneToView(evt[0])
+        self.print_point(point)
+
+    def mouse_moved_t_proj(self, evt):
+        point = self.t_proj_plt_itm.vb.mapSceneToView(evt[0])
+        self.print_point(point)
+
+    def mouse_moved_sum_proj(self, evt):
+        point = self.sum_proj_plt_itm.vb.mapSceneToView(evt[0])
+        self.print_point(point)
+
+    def print_point(self, point):
+        self.label_x_coord.setText(str(round(point.x(), 3)))
+        self.label_y_coord.setText(str(round(point.y(), 3)))
 
     def updateViews(self):
         """ update teh view for the overlayed plot of sum and current scaler """

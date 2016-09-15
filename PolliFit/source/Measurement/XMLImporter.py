@@ -96,6 +96,7 @@ class XMLImporter(SpecData):
 
         ''' operations on each track: '''
         for tr_ind, tr_name in enumerate(TildaTools.get_track_names(scandict)):
+
             track_dict = scandict[tr_name]
 
             nOfactTrack = int(tr_name[5:])
@@ -127,11 +128,15 @@ class XMLImporter(SpecData):
                     lxmlEtree, nOfactTrack, 'time_projection', (nOfScalers, nOfBins),
                     direct_parent_ele_str='projections')
                 if isinstance(scaler_array[0], np.void):  # this is zero free data
+
+                    # this fails somewhere for the second track
                     self.time_res_zf.append(scaler_array)
                     time_res_classical_tr = TildaTools.zero_free_to_non_zero_free(self.time_res_zf, [cts_shape])[tr_ind]
                     self.time_res.append(time_res_classical_tr)
                 else:  # classic full matrix array
                     self.time_res.append(scaler_array)
+                print('until here ok')
+
                 if v_proj is None or t_proj is None or softw_gates is not None:
                     print('projections not found, or software gates set by hand, gating data now.')
                     if softw_gates is not None:

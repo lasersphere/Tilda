@@ -83,6 +83,11 @@ def image(data):
     return pg.image(data)
 
 
+def create_proxy(signal, slot, rate_limit=60):
+    proxy = pg.SignalProxy(signal, rateLimit=rate_limit, slot=slot)
+    return proxy
+
+
 def create_roi(pos, size):
     roi = pg.ROI(pos, size, pen=0.5)
     ## handles scaling horizontally around center
