@@ -47,7 +47,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
         live_plot_callbacks = (None, None, None)
     start = Node()
     maintenance = start.attach(TN.NMPLCloseFigOnClear())
-    maintenance = maintenance.attach(TN.NAddWorkingTimeOnClear(True))
+    # maintenance = maintenance.attach(TN.NAddWorkingTimeOnClear(True))
 
     pipe = Pipeline(start)
 
@@ -82,7 +82,8 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     fast_spec = fast_spec.attach(TN.NMPLImagePlotAndSaveSpecData(0, *live_plot_callbacks))
 
     # fast_spec = fast_spec.attach(TN.NSaveSpecData())
-
+    compl_tr_br = fast.attach(TN.NCheckIfTrackComplete())
+    compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
     return pipe
 
 

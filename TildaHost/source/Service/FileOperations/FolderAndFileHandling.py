@@ -161,6 +161,7 @@ def save_spec_data(spec_data, scan_dict):
         for track_ind, tr_num in enumerate(track_num_lis):
             track_name = 'track' + str(tr_num)
             if len(spec_data.time_res):  # if there are any values in here, it is a time resolved measurement
+                scan_dict[track_name]['softwGates'] = spec_data.softw_gates[track_ind]
                 xmlAddCompleteTrack(root_ele, scan_dict, spec_data.time_res_zf[track_ind], track_name)
                 xmlAddCompleteTrack(
                     root_ele, scan_dict, spec_data.cts[track_ind], track_name, datatype='voltage_projection',
@@ -169,6 +170,7 @@ def save_spec_data(spec_data, scan_dict):
                     root_ele, scan_dict, spec_data.t_proj[track_ind], track_name, datatype='time_projection',
                     parent_ele_str='projections')
             else:
+                scan_dict[track_name]['softwGates'] = spec_data.softw_gates[track_ind]
                 xmlAddCompleteTrack(root_ele, scan_dict, spec_data.cts[track_ind], track_name)
         Tits.save_xml(root_ele, existing_xml_fil_path, False)
     except Exception as e:

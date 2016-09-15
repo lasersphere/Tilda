@@ -83,6 +83,27 @@ def image(data):
     return pg.image(data)
 
 
+def create_roi(pos, size):
+    roi = pg.ROI(pos, size, pen=0.5)
+    ## handles scaling horizontally around center
+    roi.addScaleHandle([1, 0.5], [0.5, 0.5])
+    roi.addScaleHandle([0, 0.5], [0.5, 0.5])
+
+    ## handles scaling vertically from opposite edge
+    roi.addScaleHandle([0.5, 0], [0.5, 1])
+    roi.addScaleHandle([0.5, 1], [0.5, 0])
+
+    ## handles scaling both vertically and horizontally
+    roi.addScaleHandle([1, 1], [0, 0])
+    roi.addScaleHandle([0, 0], [1, 1])
+    return roi
+
+
+def create_infinite_line(pos, angle=90, pen=0.5):
+    inf_line = pg.InfiniteLine(pos, angle=angle, pen=pen)
+    return inf_line
+
+
 def start_examples():
     import pyqtgraph.examples
     pyqtgraph.examples.run()

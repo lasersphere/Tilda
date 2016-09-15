@@ -48,7 +48,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.show()
         self.setWindowTitle('plot win:     ' + full_file_path)
 
-        self.x_label_sum = 'DAC Volt [V]'
         self.full_file_path = full_file_path
 
         self.parent = parent
@@ -66,6 +65,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         ''' sum related '''
         self.add_sum_plot()
+        self.sum_x, self.sum_y, self.sum_err = None, None, None  # storage of the sum plotting values
 
         self.sum_scaler = [0]  # list of scalers to add
         self.sum_track = -1  # int, for selecting the track which will be added. -1 for all
@@ -83,8 +83,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.tres_sel_tr_name = 'track0'  # str, name of track
         self.tres_sel_sc_ind = 0  # int, index of currently observed scaler in time resolved spectra
         self.tres_sel_sc_name = '0'  # str, name of pmt
-
-
 
         self.tableWidget_gates.itemClicked.connect(self.handle_item_clicked)
         self.tableWidget_gates.itemChanged.connect(self.handle_gate_table_change)
@@ -104,15 +102,19 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     '''setting up the plots (no data etc. written) '''
 
     def add_sum_plot(self):
+        """ sum plot on the sum tab """
         self.sum_wid, self.sum_plt_itm = Pg.create_x_y_widget()
         self.sum_plot_layout = QtWidgets.QVBoxLayout()
         self.sum_plot_layout.addWidget(self.sum_wid)
         self.widget_inner_sum_plot.setLayout(self.sum_plot_layout)
 
     def add_time_resolved_plot(self):
-        print('adding tres')
+        """ all plots on the time resolved tab -> time_resolved, time_projection, voltage_projection, sum """
         self.tres_v_layout = QtWidgets.QVBoxLayout()
         self.tres_widg, self.tres_plt_item = Pg.create_image_view()
+        self.tres_roi = Pg.create_roi([0, 0], [1, 1])
+        self.tres_roi.sigRegionChangeFinished.connect(self.rect_select_gates)
+        self.tres_plt_item.addItem(self.tres_roi)
         self.tres_v_layout.addWidget(self.tres_widg)
         self.widget_tres.setLayout(self.tres_v_layout)
         self.sum_proj_wid, self.sum_proj_plt_itm = Pg.create_x_y_widget(do_not_show_label=['top'], y_label='sum')
@@ -137,16 +139,18 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.widget_proj_v.setLayout(self.v_proj_layout)
         self.widget_proj_t.setLayout(self.t_proj_layout)
         self.pushButton_save_after_scan.clicked.connect(self.save)
-        print('adding tres complete')
 
     def updateViews(self):
+        """ update teh view for the overlayed plot of sum and current scaler """
         self.v_proj_view_box.setGeometry(self.sum_proj_plt_itm.vb.sceneBoundingRect())
         self.v_proj_view_box.linkedViewChanged(self.sum_proj_plt_itm.vb, self.v_proj_view_box.XAxis)
 
     def setup_new_track(self, rcv_tpl):
+        """
+        setup a new track -> set the indices for track and scaler
+        """
         self.tres_sel_tr_ind, self.tres_sel_tr_name = rcv_tpl[0]
         self.tres_sel_sc_ind, self.tres_sel_sc_name = rcv_tpl[1]
-        self.reset_plots(True)
 
     def new_data(self, spec_data):
         """
@@ -164,26 +168,27 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.sum_scaler_changed(0)
             self.update_gates_list()
             self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
-
-            # self.update_all_plots(self.spec_data)  # plotting already done within self.rebin_data
         except Exception as e:
             print('error in liveplotterui while receiving new data: ', e)
 
     ''' updating the plots from specdata '''
 
     def update_all_plots(self, spec_data):
+        """ wrapper to update all plots """
         self.update_sum_plot(spec_data)
-        self.update_tres_data(spec_data)
+        self.update_tres_plot(spec_data)
         self.update_projections(spec_data)
 
     def update_sum_plot(self, spec_data):
+        """ update the sum plot and store the values in self.sum_x, self.sum_y, self.sum_err"""
         self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpec(self.sum_scaler, self.sum_track)
         if self.sum_plt_data is None:
             self.sum_plt_data = self.sum_plt_itm.plot(self.sum_x, self.sum_y, pen='k')
         else:
             self.sum_plt_data.setData(self.sum_x, self.sum_y)
 
-    def update_tres_data(self, spec_data):
+    def update_tres_plot(self, spec_data):
+        """ update the time resolved plot including the roi """
         try:
             gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
             x_range = (float(np.min(spec_data.x[self.tres_sel_tr_ind])), np.max(spec_data.x[self.tres_sel_tr_ind]))
@@ -196,97 +201,69 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                                     scale=[x_scale, y_scale])
             self.tres_plt_item.setAspectLocked(False)
             self.tres_plt_item.setRange(xRange=x_range, yRange=y_range, padding=0.05)
-            # self.tres_widg.updateImage()
-            # self.tres_widg.updateNorm()
+            self.tres_roi.setPos((gates[0], gates[2]), finish=False)
+            self.tres_roi.setSize((abs(gates[0] - gates[1]), abs(gates[2] - gates[3])), finish=False)
         except Exception as e:
             print('error, while plotting time resolved, this happened: ', e)
 
-    def rect_select_gates(self, eclick, erelease):
+    def rect_select_gates(self, evt):
         """
         is called via left/rigth click & release events, connection see in start()
         will pass the coordinates of the selected area to self.update_gate_ind()
         """
-        # ???
-        # try:
-        #     if self.last_event != eclick:
-        #         # somehow the event is emitted multiple times
-        #         # to prevent multiple executions, it stored and compared.
-        #         self.last_event = eclick
-        #         volt_1, time_1 = eclick.xdata, eclick.ydata
-        #         volt_2, volt_3 = erelease.xdata, erelease.ydata
-        #         volt_1, volt_2 = sorted((volt_1, volt_2))
-        #         time_1, volt_3 = sorted((time_1, volt_3))
-        #         gates_list = [volt_1, volt_2, time_1, volt_3]
-        #         # print(datetime.datetime.now().strftime('%H:%M:%S'), ' gate select yields:', gates_list)
-        #         self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind] = gates_list
-        #         self.gate_data(self.spec_data)
-        #     # else:
-        #     #     print('this very event already has happened')
-        # except Exception as e:
-        #     print('while setting the gates this happened: ', e)
+        try:
+            x_min, t_min = self.tres_roi.pos()
+            x_max, t_max = self.tres_roi.size()
+            x_max += x_min
+            t_max += t_min
+            gates_list = [x_min, x_max, t_min, t_max]
+            # print(datetime.datetime.now().strftime('%H:%M:%S'), ' gate select yields:', gates_list)
+            self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind] = gates_list
+            self.gate_data(self.spec_data)
+            # else:
+            #     print('this very event already has happened')
+        except Exception as e:
+            print('while setting the gates this happened: ', e)
         pass
 
     def update_projections(self, spec_data):
+        """
+        update the projections, if no plot has been done yet, create plotdata items for every plot
+        """
         try:
             t_proj_x = spec_data.t_proj[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
             t_proj_y = spec_data.t[self.tres_sel_tr_ind]
             v_proj_x = spec_data.x[self.tres_sel_tr_ind]
             v_proj_y = spec_data.cts[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
             gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
+            sum_x, sum_y, sum_err = spec_data.getArithSpec(self.sum_scaler, self.tres_sel_tr_ind)
+
             if self.t_proj_plt is None:
                 self.t_proj_plt = self.t_proj_plt_itm.plot(t_proj_x, t_proj_y, pen='k')
-                self.sum_proj_plt_data = self.sum_proj_plt_itm.plot(self.sum_x, self.sum_y, pen='b')
+                self.sum_proj_plt_data = self.sum_proj_plt_itm.plot(sum_x, sum_y, pen='b')
                 self.v_proj_plt = Pg.create_plot_data_item(v_proj_x, v_proj_y, pen='k')
                 self.v_proj_view_box.addItem(self.v_proj_plt)
-                # ??? lines for gates, color of sum?
-                # self.sum_line_proj = MPLPlotter.line2d(self.sum_line.get_xdata(), self.sum_line.get_ydata(), 'blue')
-                # self.tres_axes['t_proj'].add_line(self.t_proj_plt_itm)
-                # self.tres_axes['v_proj'].add_line(self.v_proj_plt_itm)
-                # self.tres_axes['sum_proj'].add_line(self.sum_line_proj)
-                # gate_color = '0.75'
-                # self.v_min_line = self.tres_axes['v_proj'].axvline(gates[0], color=gate_color)
-                # self.v_max_line = self.tres_axes['v_proj'].axvline(gates[1], color=gate_color)
-                # self.t_min_line = self.tres_axes['t_proj'].axhline(gates[2], color=gate_color)
-                # self.t_max_line = self.tres_axes['t_proj'].axhline(gates[3], color=gate_color)
+
+                self.v_min_line = Pg.create_infinite_line(gates[0])
+                self.v_max_line = Pg.create_infinite_line(gates[1])
+                self.t_min_line = Pg.create_infinite_line(gates[2], angle=0)
+                self.t_max_line = Pg.create_infinite_line(gates[3], angle=0)
+
+                self.sum_proj_plt_itm.addItem(self.v_min_line)
+                self.sum_proj_plt_itm.addItem(self.v_max_line)
+                self.t_proj_plt_itm.addItem(self.t_min_line)
+                self.t_proj_plt_itm.addItem(self.t_max_line)
             else:
-                # print('updating proj')
                 self.t_proj_plt.setData(t_proj_x, t_proj_y)
-                self.sum_proj_plt_data.setData(self.sum_x, self.sum_y)
-                self.v_proj_plt.setData(v_proj_x, v_proj_y)  # does this work?
-                # self.t_proj_plt_itm.set_xdata(t_proj_x)
-                # self.v_proj_plt_itm.set_ydata(v_proj_y)
-                # self.v_min_line.set_xdata([gates[0], gates[0]])
-                # self.v_max_line.set_xdata([gates[1], gates[1]])
-                # self.t_min_line.set_ydata([gates[2], gates[2]])
-                # self.t_max_line.set_ydata([gates[3], gates[3]])
-                # self.sum_proj_plt.set_data(self.sum_line.get_xdata(), self.sum_line.get_ydata())
-                # for ax_key in [('t_proj', 'y'), ('v_proj', 'x'), ('sum_proj', 'x')]:
-                #     self.tres_axes[ax_key[0]].relim()
-                #     if ax_key[1] == 'y':
-                #         self.tres_axes[ax_key[0]].set_xmargin(0.05)
-                #         self.tres_axes[ax_key[0]].autoscale(enable=True, axis='x', tight=False)
-                #         self.tres_axes[ax_key[0]].set_xlim(left=0)
-                #     else:
-                #         self.tres_axes[ax_key[0]].set_ymargin(0.05)
-                #         self.tres_axes[ax_key[0]].autoscale(enable=True, axis='y', tight=False)
-                #         self.tres_axes[ax_key[0]].set_ylim(bottom=0)
-                # if draw:
-                #     # self.tres_axes['t_proj'].draw_artist(self.t_proj_line)
-                #     # self.tres_axes['v_proj'].draw_artist(self.v_proj_line)
-                #     # self.tres_axes['sum_proj'].draw_artist(self.sum_line_proj)
-                #     self.draw_trs()
+                self.sum_proj_plt_data.setData(sum_x, sum_y)
+                self.v_proj_plt.setData(v_proj_x, v_proj_y)
+                self.v_min_line.setValue(gates[0])
+                self.v_max_line.setValue(gates[1])
+                self.t_min_line.setValue(gates[2])
+                self.t_max_line.setValue(gates[3])
 
         except Exception as e:
             print('error, while plotting projection, this happened: ', e)
-
-    def reset_plots(self, clear_bool=False):
-        # ??? delete
-        # if clear_bool:
-        #     for key, ax in self.tres_axes.items():
-        #         ax.clear()
-        # self.t_proj_plt_itm = None
-        # self.tres_image = None
-        pass
 
     ''' buttons, comboboxes and listwidgets: '''
 
@@ -363,8 +340,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.tres_sel_sc_ind = int(self.tableWidget_gates.item(item.row(), 1).text())
             # print('new scaler, track: ', self.tres_sel_tr_ind, self.tres_sel_sc_ind)
             self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
-            self.reset_plots(True)
-            self.update_tres_data(self.spec_data)
+            self.update_tres_plot(self.spec_data)
             self.update_projections(self.spec_data)
 
     def select_scaler_tr(self, tr_name, sc_ind):
@@ -473,8 +449,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         if pipedata_dict is not None:
             self.pipedata_dict = pipedata_dict
         if self.pipedata_dict is not None:
-            self.storage_data.softw_gates = self.extract_all_gates_from_gui()
+            gates = self.extract_all_gates_from_gui()
+            print('gates are: %s' % gates)
+            self.storage_data.softw_gates = gates
             self.gate_data(self.storage_data, False)
+            print('gates after gating are: %s' % self.storage_data.softw_gates)
             FileHandl.save_spec_data(self.storage_data, self.pipedata_dict)
         else:
             print('could not save data, because it was not save from the scan process yet.')
@@ -519,7 +498,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             try:
                 self.gate_data(self.spec_data, False)
                 self.gate_data(self.spec_data, False)
-                self.reset_plots(True)
                 self.update_all_plots(self.spec_data)
 
             except Exception as e:
