@@ -93,7 +93,7 @@ class XMLImporter(SpecData):
         self.track_names = TildaTools.get_track_names(scandict)
         self.softBinWidth_ns = []
 
-
+        cts_shape = []
         ''' operations on each track: '''
         for tr_ind, tr_name in enumerate(TildaTools.get_track_names(scandict)):
 
@@ -118,9 +118,9 @@ class XMLImporter(SpecData):
             if self.seq_type in ['trs', 'tipa', 'trsdummy']:
                 self.softBinWidth_ns.append(track_dict.get('softBinWidth_ns', 10))
                 self.t = TildaTools.create_t_axis_from_file_dict(scandict)  # force 10 ns resolution
-                cts_shape = (nOfScalers, nOfsteps, nOfBins)
+                cts_shape.append((nOfScalers, nOfsteps, nOfBins))
                 scaler_array = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape)
+                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape[tr_ind])
                 v_proj = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'voltage_projection', (nOfScalers, nOfsteps),
                     direct_parent_ele_str='projections')
@@ -131,7 +131,7 @@ class XMLImporter(SpecData):
 
                     # this fails somewhere for the second track
                     self.time_res_zf.append(scaler_array)
-                    time_res_classical_tr = TildaTools.zero_free_to_non_zero_free(self.time_res_zf, [cts_shape])[tr_ind]
+                    time_res_classical_tr = TildaTools.zero_free_to_non_zero_free(self.time_res_zf, cts_shape)[tr_ind]
                     self.time_res.append(time_res_classical_tr)
                 else:  # classic full matrix array
                     self.time_res.append(scaler_array)

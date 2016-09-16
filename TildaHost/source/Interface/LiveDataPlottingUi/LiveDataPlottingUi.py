@@ -92,11 +92,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.checkBox.stateChanged.connect(self.apply_rebin_to_all_checkbox_changed)
 
         ''' setup window size: '''
-        self.resize(1024, 768)
+        self.resize(1024, 800)
         ''' vertical splitter between plots and table: '''
         size_plt, size_table = self.splitter.sizes()
         sum_size = size_plt + size_table
-        self.splitter.setSizes([sum_size * 9 // 10, sum_size // 10])
+        self.splitter.setSizes([sum_size * 8 // 10, sum_size * 2 // 10])
         ''' horizontal splitter between tres and t_proj: '''
         size_tres_plt, size_proj_t = self.splitter_2.sizes()
         sum_size_spl_2 = size_tres_plt + size_proj_t
