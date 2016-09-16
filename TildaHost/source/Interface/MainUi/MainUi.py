@@ -51,6 +51,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.tilda_passive_gui = None
         self.dmm_live_view_win = None
         self.live_plot_win = None  # one active live plot window for displaying results from pipeline
+        self.file_plot_wins = {}  # dict of active plot windows only for displaying from file.
         self.pollifit_win = None
 
         self.actionWorking_directory.triggered.connect(self.choose_working_dir)
@@ -155,7 +156,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 return None
         file = QtWidgets.QFileDialog.getOpenFileName(
             self, 'choose an xml file', Cfg._main_instance.working_directory, '*.xml')[0]
-        Cfg._main_instance.load_spectra_to_main(file)
+        if file not in self.file_plot_wins.keys():
+            self.open_file_plot_win(file)
+            Cfg._main_instance.load_spectra_to_main(file, self.file_plot_wins[file])
 
     ''' formatting '''
 
@@ -229,6 +232,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         else:
             self.raise_win_to_front(self.live_plot_win)
 
+    def open_file_plot_win(self, file):
+        self.file_plot_wins[file] = TRSLivePlotWindowUi(full_file_path=file,
+                                                        parent=self,
+                                                        subscribe_as_live_plot=False)
+
     def open_pollifit_win(self):
         if self.pollifit_win is None:
             db = Cfg._main_instance.database
@@ -286,6 +294,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def close_pollifit_win(self):
         self.pollifit_win = None
 
+    def close_file_plot_win(self, file):
+        self.file_plot_wins.pop(file)
+
     def closeEvent(self, *args, **kwargs):
         for win in self.act_scan_wins:
             logging.debug('will close: ' + str(win))
@@ -332,5 +343,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 self.pollifit_win.close()
         except Exception as e:
             logging.error('error while closing pollifit_win, exception is: ' + str(e))
+        list = [win for file, win in self.file_plot_wins.items()]
+        for win in list:
+            try:
+                win.close()
+            except Exception as e:
+                logging.error(str(e))
 
 

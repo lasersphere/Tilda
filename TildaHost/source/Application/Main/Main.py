@@ -266,18 +266,13 @@ class Main(QtCore.QObject):
         self.get_fpga_state()
         self.get_sequencer_state()
 
-    def load_spectra_to_main(self, file):
+    def load_spectra_to_main(self, file, gui=None):
         """
         will be used for displaying a spectra.
         Later scan parameters from file can be loaded etc. to sum up more data etc.
         """
         try:
-            if file in self.displayed_data.keys():
-                print('already loaded')
-                self.displayed_data[file].bring_to_focus()
-                return None
-            self.displayed_data[file] = DisplayData(file, True)
-            # self.displayed_data[file].con_close_event()
+            self.displayed_data[file] = DisplayData(file, gui=gui, x_as_volt=True)
         except Exception as e:
             logging.error('Exception while loading file %s, exception is: %s' % (file, str(e)))
 

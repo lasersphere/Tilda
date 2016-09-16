@@ -5,7 +5,7 @@ Created on 22/04/2016
 
 Module Description:
 
-Use this class for displaying your data.
+Use this class for displaying your data in combination with a prestarted gui.
 
 """
 
@@ -15,14 +15,13 @@ from PyQt5 import QtCore
 
 import Application.Config as Cfg
 import Service.AnalysisAndDataHandling.tildaPipeline as TP
-from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
 from Measurement.XMLImporter import XMLImporter as XmlImp
 
 
 class DisplayData:
-    def __init__(self, file, x_as_volt=False):
+    def __init__(self, file, gui, x_as_volt=False):
         self.pipe = None
-        self.gui = None
+        self.gui = gui
         self.file = None
         self.fig = None
         self.spec = None
@@ -39,8 +38,8 @@ class DisplayData:
     def select_pipe(self):
         if self.spec.seq_type in ['trs', 'trsdummy', 'tipa', 'tipadummy']:
             print('loading time resolved spectrum: ', self.file)
-            self.gui = TRSLivePlotWindowUi(self.file, self)
-            self.pipe = TP.time_resolved_display(self.file, self.gui.callbacks)
+            callbacks = (None, None, None) if self.gui is None else self.gui.callbacks
+            self.pipe = TP.time_resolved_display(self.file, callbacks)
             self.pipe.start()
         else:
             print('sorry, only resolved spectra currently supported')

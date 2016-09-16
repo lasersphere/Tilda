@@ -317,7 +317,7 @@ def time_resolved_display(filepath, liveplot_callbacks):
     # path of file is used mainly for the window title.
     walk = start.attach(SN.NPrint())
     # walk = walk.attach(TN.NMPLImagePlotSpecData(0, dataPath))
-    # walk = walk.attach(TN.NMPLImagePlotAndSaveSpecData(0, *liveplot_callbacks))
+    walk = walk.attach(TN.NMPLImagePlotAndSaveSpecData(0, *liveplot_callbacks))
     # walk = walk.attach(TN.NMPlDrawPlot())
 
     return pipe

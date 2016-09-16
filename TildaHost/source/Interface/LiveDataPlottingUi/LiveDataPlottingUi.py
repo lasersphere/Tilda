@@ -34,7 +34,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     # progress dict coming from the main
     progress_callback = QtCore.pyqtSignal(dict)
 
-    def __init__(self, full_file_path='', parent=None):
+    def __init__(self, full_file_path='', parent=None, subscribe_as_live_plot=True):
         super(TRSLivePlotWindowUi, self).__init__()
 
         self.t_proj_plt = None
@@ -60,6 +60,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.storage_data = None  # will not be touched except when gating before saving.
         ''' connect callbacks: '''
         # bundle callbacks:
+        self.subscribe_as_live_plot = subscribe_as_live_plot
         self.callbacks = (self.new_data_callback, self.new_track_callback, self.save_callback)
         self.subscribe_to_main()
 
@@ -499,7 +500,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def closeEvent(self, *args, **kwargs):
         self.unsubscribe_from_main()
         if self.parent is not None:
-            self.parent.close_live_plot_win()
+            if self.subscribe_as_live_plot:
+                self.parent.close_live_plot_win()
+            else:
+                self.parent.close_file_plot_win(self.full_file_path)
 
     ''' subscription to main '''
 
@@ -507,11 +511,13 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.save_callback.connect(self.save)
         self.new_track_callback.connect(self.setup_new_track)
         self.new_data_callback.connect(self.new_data)
-        self.progress_callback.connect(self.handle_progress_dict)
-        Cfg._main_instance.gui_live_plot_subscribe(self.callbacks, self.progress_callback)
+        if self.subscribe_as_live_plot:
+            self.progress_callback.connect(self.handle_progress_dict)
+            Cfg._main_instance.gui_live_plot_subscribe(self.callbacks, self.progress_callback)
 
     def unsubscribe_from_main(self):
-        Cfg._main_instance.gui_live_plot_unsubscribe()
+        if self.subscribe_as_live_plot:
+            Cfg._main_instance.gui_live_plot_unsubscribe()
 
     ''' rebinning '''
 
