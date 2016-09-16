@@ -156,11 +156,12 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 return None
         file = QtWidgets.QFileDialog.getOpenFileName(
             self, 'choose an xml file', Cfg._main_instance.working_directory, '*.xml')[0]
-        if file not in self.file_plot_wins.keys():
-            self.open_file_plot_win(file)
-            Cfg._main_instance.load_spectra_to_main(file, self.file_plot_wins[file])
-        else:
-            self.raise_win_to_front(self.file_plot_wins[file])
+        if file:
+            if file not in self.file_plot_wins.keys():
+                self.open_file_plot_win(file)
+                Cfg._main_instance.load_spectra_to_main(file, self.file_plot_wins[file])
+            else:
+                self.raise_win_to_front(self.file_plot_wins[file])
 
     ''' formatting '''
 
