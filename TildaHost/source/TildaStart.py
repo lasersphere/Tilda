@@ -46,9 +46,9 @@ def start_gui():
     starts the gui for the main window.
     :parameter: main, instacne of the Tilda Main() module
     """
-    from Interface.MainUi.MainUi import MainUi
     from PyQt5 import QtWidgets
     from PyQt5.QtCore import QTimer, Qt
+    from Interface.MainUi.MainUi import MainUi
 
     app = QtWidgets.QApplication(sys.argv)
     ui = MainUi()

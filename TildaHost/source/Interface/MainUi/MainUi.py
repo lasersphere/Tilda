@@ -159,6 +159,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         if file not in self.file_plot_wins.keys():
             self.open_file_plot_win(file)
             Cfg._main_instance.load_spectra_to_main(file, self.file_plot_wins[file])
+        else:
+            self.raise_win_to_front(self.file_plot_wins[file])
 
     ''' formatting '''
 
