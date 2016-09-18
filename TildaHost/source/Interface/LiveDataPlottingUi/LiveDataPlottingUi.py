@@ -71,6 +71,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.sum_scaler = [0]  # list of scalers to add
         self.sum_track = -1  # int, for selecting the track which will be added. -1 for all
 
+        self.current_step_line = None  # line to display which step is active.
+
         self.sum_list = ['add all', 'manual']
         self.comboBox_select_sum_for_pmts.addItems(self.sum_list)
         self.comboBox_select_sum_for_pmts.currentIndexChanged.connect(self.sum_scaler_changed)
@@ -281,11 +283,15 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.v_proj_plt = Pg.create_plot_data_item(v_proj_x, v_proj_y, pen='k')
                 self.v_proj_view_box.addItem(self.v_proj_plt)
 
+                self.current_step_line = Pg.create_infinite_line(self.spec_data.x[self.tres_sel_tr_ind][0],
+                                                                 pen='r')
+
                 self.v_min_line = Pg.create_infinite_line(gates[0])
                 self.v_max_line = Pg.create_infinite_line(gates[1])
                 self.t_min_line = Pg.create_infinite_line(gates[2], angle=0)
                 self.t_max_line = Pg.create_infinite_line(gates[3], angle=0)
 
+                self.sum_proj_plt_itm.addItem(self.current_step_line)
                 self.sum_proj_plt_itm.addItem(self.v_min_line)
                 self.sum_proj_plt_itm.addItem(self.v_max_line)
                 self.t_proj_plt_itm.addItem(self.t_min_line)
@@ -562,6 +568,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         'totalSteps', 'trackName', 'activeFile']
         """
         self.active_iso = progress_dict_from_main['activeIso']
+        if self.current_step_line is not None:
+            act_step = progress_dict_from_main['activeStep'] - 1
+            self.current_step_line.setValue(self.spec_data.x[self.tres_sel_tr_ind][act_step])  # could be that -1 required...
         if self.active_file != progress_dict_from_main['activeFile']:
             self.active_file = progress_dict_from_main['activeFile']
             self.setWindowTitle('plot:  %s' % self.active_file)
