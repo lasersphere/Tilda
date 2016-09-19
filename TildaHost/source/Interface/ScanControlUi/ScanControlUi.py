@@ -102,19 +102,21 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         depending on if there is still a track available in the db.
         Will not write to the database!
         """
-        Cfg._main_instance.add_next_track_to_iso_in_scan_pars(self.active_iso)
-        self.update_track_list()
+        if self.active_iso is not None:
+            Cfg._main_instance.add_next_track_to_iso_in_scan_pars(self.active_iso)
+            self.update_track_list()
 
     def remove_selected_track(self):
         """
         will remove the currently selected
         """
-        try:
-            Cfg._main_instance.remove_track_from_scan_pars(self.active_iso,
-                                                           self.listWidget.currentItem().text())
-            self.update_track_list()
-        except Exception as e:
-            logging.error('Error occurred while removing track from list: ' + str(e))
+        if self.active_iso is not None and self.listWidget.currentItem() is not None:
+            try:
+                Cfg._main_instance.remove_track_from_scan_pars(self.active_iso,
+                                                               self.listWidget.currentItem().text())
+                self.update_track_list()
+            except Exception as e:
+                logging.error('Error occurred while removing track from list: ' + str(e))
 
     def work_on_existing_track(self):
         """

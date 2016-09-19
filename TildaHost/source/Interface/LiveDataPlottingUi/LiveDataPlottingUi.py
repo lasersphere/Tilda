@@ -142,7 +142,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.sum_proj_plt_itm.vb.sigResized.connect(self.updateViews)
 
         self.t_proj_wid, self.t_proj_plt_itm = Pg.create_x_y_widget(do_not_show_label=['left', 'bottom'],
-                                                                    y_label='time', x_label='cts')
+                                                                    y_label='time [µs]', x_label='cts')
         self.v_proj_layout = QtWidgets.QVBoxLayout()
         self.t_proj_layout = QtWidgets.QVBoxLayout()
         self.sum_proj_plt_itm.setXLink(self.tres_plt_item)

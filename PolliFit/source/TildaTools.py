@@ -349,7 +349,7 @@ def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
     return x_arr
 
 
-def create_t_axis_from_file_dict(scan_dict, with_delay=False, bin_width=10):
+def create_t_axis_from_file_dict(scan_dict, with_delay=False, bin_width=10, in_mu_s=True):
     """
     will create a time axis for all tracks, resolution is 10ns.
     """
@@ -360,7 +360,8 @@ def create_t_axis_from_file_dict(scan_dict, with_delay=False, bin_width=10):
         else:
             delay = 0
         nofbins = scan_dict[tr_name]['nOfBins']
-        t_tr = np.arange(delay, nofbins * bin_width + delay, bin_width)
+        div_by = 1000 if in_mu_s else 1
+        t_tr = np.arange(delay, nofbins * bin_width + delay, bin_width) / div_by
         t_arr.append(t_tr)
     return t_arr
 

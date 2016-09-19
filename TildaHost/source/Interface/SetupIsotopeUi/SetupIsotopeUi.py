@@ -6,13 +6,13 @@ Created on '29.10.2015'
 
 """
 
-from PyQt5 import QtWidgets
 import logging
 
-from Interface.SetupIsotopeUi.Ui_setupIsotope import Ui_SetupIsotope
-import Service.Scan.ScanDictionaryOperations as SdOp
-import Service.Scan.draftScanParameters as Dft
+from PyQt5 import QtWidgets
+
 import Application.Config as Cfg
+import Service.Scan.draftScanParameters as Dft
+from Interface.SetupIsotopeUi.Ui_setupIsotope import Ui_SetupIsotope
 
 
 class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
@@ -40,6 +40,8 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         self.comboBox_sequencer_select.currentTextChanged.connect(self.sequencer_select)
 
         self.comboBox_sequencer_select.addItems(Dft.sequencer_types_list)
+        if 'trs' in Dft.sequencer_types_list:
+            self.comboBox_sequencer_select.setCurrentText('trs')
 
         self.exec_()
 

@@ -29,7 +29,7 @@ def plot_spec_data(spec_data, sc, tr):
     return plot_x_y(x,y)
 
 
-def create_image_view(x_label='line voltage', y_label='time'):
+def create_image_view(x_label='line voltage', y_label='time [µs]'):
     plt_item = pg.PlotItem()
     imv_widget = pg.ImageView(view=plt_item)
     plt_item.invertY(False)

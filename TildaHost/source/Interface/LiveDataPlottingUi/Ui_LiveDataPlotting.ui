@@ -302,12 +302,12 @@
            </column>
            <column>
             <property name="text">
-             <string>t_min [ns]</string>
+             <string>t_min [µs]</string>
             </property>
            </column>
            <column>
             <property name="text">
-             <string>t_max [ns]</string>
+             <string>t_max [µs]</string>
             </property>
            </column>
            <column>
