@@ -33,7 +33,8 @@ class AgilentPreConfigs(Enum):
             'triggerSlope': 'rising',
             'highInputResistanceTrue': True,
             'assignment': 'offset',
-            'accuracy': (None, None)
+            'accuracy': (None, None),
+            'preConfName': 'initial'
         }
     periodic = {
             'range': 10.0,
@@ -46,8 +47,9 @@ class AgilentPreConfigs(Enum):
             'triggerSlope': 'rising',
             'highInputResistanceTrue': True,
             'assignment': 'offset',
-            'accuracy': (None, None)
-        }
+            'accuracy': (None, None),
+            'preConfName': 'periodic'
+    }
     pre_scan = {
             'range': 10.0,
             'resolution': 3e-6,
@@ -59,8 +61,9 @@ class AgilentPreConfigs(Enum):
             'triggerSlope': 'rising',
             'highInputResistanceTrue': True,
             'assignment': 'offset',
-            'accuracy': (None, None)
-        }
+            'accuracy': (None, None),
+            'preConfName': 'pre_scan'
+    }
 
 @unique
 class AgilentTriggerSources(Enum):
@@ -99,7 +102,10 @@ class Agilent:
         self.accuracy_range = 10 ** -4
 
         # default config dictionary for this type of DMM:
-        self.config_dict = deepcopy(AgilentPreConfigs.initial.value)
+        self.pre_configs = AgilentPreConfigs
+
+        self.selected_pre_config_name = self.pre_configs.periodic.name
+        self.config_dict = deepcopy(self.pre_configs.periodic.value)
         self.get_accuracy()
         self.init(address_str, reset_dev=reset)
         # self.establish_connection(address_str)
@@ -568,8 +574,8 @@ class Agilent:
         :return:
         """
         print('trying to set %s to the config: %s' % (self.name, pre_conf_name))
-        if pre_conf_name in AgilentPreConfigs.__members__:
-            config_dict = deepcopy(AgilentPreConfigs[pre_conf_name].value)
+        if pre_conf_name in self.pre_configs.__members__:
+            config_dict = deepcopy(self.pre_configs[pre_conf_name].value)
             # config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
             print('setting %s to these preconfigured settings: %s %s' %
                   (self.name, pre_conf_name, config_dict))
@@ -648,7 +654,8 @@ class Agilent:
             'highInputResistanceTrue': ('high input resistance', True, bool, [False, True]
                                         , self.config_dict['highInputResistanceTrue']),
             'accuracy': ('accuracy (reading, range)', False, tuple, [], self.config_dict['accuracy']),
-            'assignment': ('assignment', True, str, ['offset', 'accVolt'], self.config_dict['assignment'])
+            'assignment': ('assignment', True, str, ['offset', 'accVolt'], self.config_dict['assignment']),
+            'preConfName': ('pre config name', False, str, [], self.selected_pre_config_name)
             }
         return config_dict
 
@@ -667,31 +674,33 @@ class Agilent:
         else:
             return 0, ''
 
-    def get_accuracy(self):
+    def get_accuracy(self, config_dict=None):
         """
         write the error to self.config_dict['accuracy']
 
         accuracy as in the manual for the 34401A (p. 216)
         Also valid for 34461A (see datasheet p. 9)
         """
+        if config_dict is None:
+            config_dict = self.config_dict
         error_dict_2y = {0.1: (0.005, 0.0035), 1: (0.004, 0.0007),
                          10: (0.0035, 0.0005), 100: (0.0045, 0.0006),
                          1000: (0.0045, 0.001)}
-        dmm_range = self.config_dict['range']
+        dmm_range = config_dict['range']
         reading_accuracy_float, range_accuracy_float = error_dict_2y.get(dmm_range)
         reading_accuracy_float *= 10 ** -2  # percent
         range_accuracy_float *= 10 ** -2  # percent
         range_accuracy_float *= dmm_range
         acc_tpl = (reading_accuracy_float, range_accuracy_float)
 
-        self.config_dict['accuracy'] = acc_tpl
+        config_dict['accuracy'] = acc_tpl
         return acc_tpl
 
 # dmm = DMMdummy()
 # dmm.set_to_pre_conf_setting('periodic')
 # if __name__ == "__main__":
 #     dmm = Agilent(False, '137.138.135.94', '34461A')
-#     dmm.set_to_pre_conf_setting(AgilentPreConfigs.periodic.name)
+#     dmm.set_to_pre_conf_setting(self.pre_configs.periodic.name)
 #     dmm.abort_meas()
 #     dmm.fetch_multiple_meas(-1)
 #     print(dmm.load_from_config_dict({'resolution': '3e-5',
@@ -706,7 +715,7 @@ class Agilent:
 #                                'assignment': 'accVolt',
 #                                'triggerSlope': 'rising'}, False))
 #
-#     [print(dmm.set_to_pre_conf_setting(i)) for i in AgilentPreConfigs.__members__]
+#     [print(dmm.set_to_pre_conf_setting(i)) for i in self.pre_configs.__members__]
 #     print(dmm.load_from_config_dict({'resolution': '3e-6',
 #                                      'autoZero': 'ON',
 #                                      'accuracy': (3.5000000000000004e-05, 5e-05),

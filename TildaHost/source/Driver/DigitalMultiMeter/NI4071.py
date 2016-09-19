@@ -98,8 +98,9 @@ class Ni4071PreConfigs(Enum):
             'measurementCompleteDestination': 'pxi_trig_4',
             'highInputResistanceTrue': True,
             'assignment': 'offset',
-            'accuracy': (None, None)
-        }
+            'accuracy': (None, None),
+            'preConfName': 'initial'
+    }
     periodic = {
             'range': 10.0,
             'resolution': 6.5,
@@ -115,7 +116,8 @@ class Ni4071PreConfigs(Enum):
             'highInputResistanceTrue': True,
             'accuracy': (None, None),
             'assignment': 'offset',
-        }
+            'preConfName': 'periodic'
+    }
     pre_scan = {
             'range': 10.0,
             'resolution': 7.5,
@@ -131,7 +133,25 @@ class Ni4071PreConfigs(Enum):
             'highInputResistanceTrue': True,
             'accuracy': (None, None),
             'assignment': 'offset',
-        }
+            'preConfName': 'pre_scan'
+    }
+    simons = {
+        'range': 100.0,
+        'resolution': 7.5,
+        'triggerCount': 0,
+        'sampleCount': 0,
+        'autoZero': -1,
+        'triggerSource': Ni4071TriggerSources.softw_trig.name,
+        'sampleInterval': -1,
+        'powerLineFrequency': 50.0,
+        'triggerDelay_s': 0,
+        'triggerSlope': 'rising',
+        'measurementCompleteDestination': Ni4071MeasCompleteLoc.pxi_trig_4.name,
+        'highInputResistanceTrue': True,
+        'accuracy': (None, None),
+        'assignment': 'offset',
+        'preConfName': 'simons'
+    }
 
 
 class Ni4071:
@@ -148,7 +168,9 @@ class Ni4071:
         self.name = self.type + '_' + address_str
         # default config dictionary for this type of DMM:
 
-        self.config_dict = Ni4071PreConfigs.initial.value
+        self.pre_configs = Ni4071PreConfigs
+        self.selected_pre_config_name = self.pre_configs.periodic.name
+        self.config_dict = self.pre_configs.periodic.value
         self.get_accuracy()
 
         self.last_readback = None  # tuple, (voltage_float, time_str)
@@ -1036,27 +1058,30 @@ class Ni4071:
             'highInputResistanceTrue': ('high input resistance', True, bool, [False, True]
                                         , self.config_dict['highInputResistanceTrue']),
             'accuracy': ('accuracy (reading, range)', False, tuple, [], self.config_dict['accuracy']),
-            'assignment': ('assignment', True, str, ['offset', 'accVolt'], self.config_dict['assignment'])
+            'assignment': ('assignment', True, str, ['offset', 'accVolt'], self.config_dict['assignment']),
+            'preConfName': ('pre config name', False, str, [], self.selected_pre_config_name)
         }
         return config_dict
 
-    def get_accuracy(self):
+    def get_accuracy(self, config_dict=None):
         """
         function to return the accuracy for the current configuration
         the error of the read voltage should be:
         reading +/- (reading * reading_accuracy_float + range_accuracy_float)
         :return: tpl, (reading_accuracy_float, range_accuracy_float)
         """
+        if config_dict is None:
+            config_dict = self.config_dict
         # from Ni4071 specs:
         # 2 Year, 18°C to 28°C, +/-1°C, values in ppm:
         error_dict_2y = {0.1: (20, 8), 1: (15, 0.8), 10: (12, 0.5), 100: (20, 2), 1000: (20, 0.5)}
-        dmm_range = self.config_dict['range']
+        dmm_range = config_dict['range']
         reading_accuracy_float, range_accuracy_float = error_dict_2y.get(dmm_range)
         reading_accuracy_float *= 10 ** -6  # ppm
         range_accuracy_float *= 10 ** -6  # ppm
         range_accuracy_float *= dmm_range
         acc_tpl = (reading_accuracy_float, range_accuracy_float)
-        self.config_dict['accuracy'] = acc_tpl
+        config_dict['accuracy'] = acc_tpl
         return acc_tpl
 
     def set_to_pre_conf_setting(self, pre_conf_name):
@@ -1066,8 +1091,9 @@ class Ni4071:
         :return:
         """
         print('trying to set %s to the config: %s' % (self.name, pre_conf_name))
-        if pre_conf_name in Ni4071PreConfigs.__members__:
-            config_dict = Ni4071PreConfigs[pre_conf_name].value
+        if pre_conf_name in self.pre_configs.__members__:
+            self.selected_pre_config_name = pre_conf_name
+            config_dict = self.pre_configs[pre_conf_name].value
             config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
             self.load_from_config_dict(config_dict, False)
             self.get_accuracy()

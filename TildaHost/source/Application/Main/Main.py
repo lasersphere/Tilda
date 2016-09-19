@@ -839,7 +839,7 @@ class Main(QtCore.QObject):
 
     ''' digital multimeter operations '''
 
-    def init_dmm(self, type_str, addr_str, callback=False, start_periodic=True):
+    def init_dmm(self, type_str, addr_str, callback=False, start_config='periodic'):
         """
         initialize the dmm of given type and address.
         pass a callback to know when init is done.
@@ -847,20 +847,19 @@ class Main(QtCore.QObject):
         :param type_str: str, type of dmm
         :param addr_str: str, address of the given dmm
         :param callback: callback_bool, True will be emitted after init is done.
-        :param start_periodic: bool, True(dft) if you want the dmm to start reading values in a predefined interval.
+        :param start_config: str, name of a pre dinfed dmm setup, dft is periodic.
         """
-        self.set_state(MainState.init_dmm, (type_str, addr_str, callback, start_periodic), only_if_idle=True)
+        self.set_state(MainState.init_dmm, (type_str, addr_str, callback, start_config), only_if_idle=True)
 
-    def _init_dmm(self, type_str, addr_str, callback, start_periodic):
+    def _init_dmm(self, type_str, addr_str, callback, start_config):
         """ see init_dmm() """
         dmm_name = self.scan_main.prepare_dmm(type_str, addr_str)
-        print('sending state')
         self.send_state()
-        self.set_state(MainState.idle)
+        if start_config is not None:
+            self.scan_main.set_dmm_to_pre_config(dmm_name, start_config)
         if callback:
             callback.emit(True)
-        if start_periodic:
-            self.scan_main.set_dmm_to_periodic_reading(dmm_name)
+        self.set_state(MainState.idle)
 
     def deinit_dmm(self, dmm_name):
         self.set_state(MainState.deinit_dmm, dmm_name, only_if_idle=True)
@@ -945,6 +944,15 @@ class Main(QtCore.QObject):
         """
         conf_dict = self.scan_main.request_config_pars(dmm_name)
         return conf_dict
+
+    def request_dmm_available_preconfigs(self, dmm_name):
+        """
+
+        :param dmm_name: str, name of dev
+        :return: list of strings with the names of the active configs.
+        """
+        configs = self.scan_main.request_dmm_available_preconfigs(dmm_name)
+        return configs
 
     def dmm_gui_subscribe(self, callback):
         """

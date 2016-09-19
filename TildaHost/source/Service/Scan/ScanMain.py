@@ -399,6 +399,10 @@ class ScanMain:
         """
         return deepcopy(self.digital_multi_meter.get_raw_config_pars(dmm_name))
 
+    def request_dmm_available_preconfigs(self, dmm_name):
+        confs = self.digital_multi_meter.get_available_preconfigs(dmm_name)
+        return confs
+
     def get_active_dmms(self):
         """
         function to return a dict of all active dmms
@@ -413,6 +417,9 @@ class ScanMain:
         :param dmm_name: str, type 'all' for all active dmms
         """
         self.digital_multi_meter.start_pre_configured_meas(dmm_name, 'periodic')
+
+    def set_dmm_to_pre_config(self, dmm_name, preconfigname):
+        self.digital_multi_meter.start_pre_configured_meas(dmm_name, preconfigname)
 
     def abort_dmm_measurement(self, dmm_name):
         """

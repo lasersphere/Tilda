@@ -126,6 +126,17 @@ class DMMControl:
         return self.dmm[dmm_name].emit_config_pars()
         # use dicts to specify for the individual dmm
 
+    def get_available_preconfigs(self, dmm_name):
+        """
+        get a list of all available config parameters
+        :param dmm_name: str, name of dev
+        :return:
+        """
+        configs = self.dmm[dmm_name].pre_configs
+        for enum in configs:
+            self.dmm[dmm_name].get_accuracy(enum.value)
+        return configs
+
     def read_from_multimeter(self, dmm_name):
         """
         function to read all available values from the multimeter

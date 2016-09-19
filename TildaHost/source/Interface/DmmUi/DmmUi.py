@@ -114,7 +114,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
             if self.comm_enabled:  # deinit only if comm is allowed.
                 self.deinit_dmm(dmm_name)
 
-    def initialize_dmm(self, dmm_tuple):
+    def initialize_dmm(self, dmm_tuple, startup_config=None):
         """
         will initialize the dmm of type and adress and store the instance in the scan_main.
         :param dmm_tuple: tuple, (dev_type_str, dev_addr_str)
@@ -125,15 +125,15 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         if dmm_name in list(self.tabs.keys()) or dmm_name is None:
             print('could not initialize: ', dmm_name, ' ... already initialized?')
             return None  # break when not initialized
-        Cfg._main_instance.init_dmm(dev_type, dev_address, self.init_dmm_done_callback)
         self.init_dmm_done_callback.connect(functools.partial(self.setup_new_tab_widget, (dmm_name, dev_type)))
+        Cfg._main_instance.init_dmm(dev_type, dev_address, self.init_dmm_done_callback, startup_config)
 
     def deinit_dmm(self, dmm_name):
         """ deinitializes the dmm """
         Cfg._main_instance.deinit_dmm(dmm_name)
 
     def check_for_already_active_dmms(self):
-        """ checks for already active dmms """
+        """ checks for already active dmms and opens tabs for them """
         act_dmm_dict = Cfg._main_instance.get_active_dmms()
         for key, val in act_dmm_dict.items():
             dmm_type, dmm_addr, state_str, last_readback, dmm_config = val
@@ -145,7 +145,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         with the get_wid_by_type function the right widget is initiated.
         """
         dmm_name, dev_type = tpl  # dmm_name = tab_name
-        print('done initializing: ', dmm_name, dev_type)
+        # print('done initializing: ', dmm_name, dev_type)
         if disconnect_signal:
             self.init_dmm_done_callback.disconnect()
         self.tabs[dmm_name] = [None, None, None]
@@ -192,7 +192,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
             self.doubleSpinBox_measVoltPulseLength_mu_s.setValue(pulse_len_mu_s)
         timeout_10_ns = meas_volt_dict.get('measVoltTimeout10ns', 0)
         if timeout_10_ns is not None:
-            timeout_volt_meas_mu_s = timeout_10_ns * 10 / 1000000
+            timeout_volt_meas_mu_s = 10000  # set to 10 s by default.
             self.doubleSpinBox_measVoltTimeout_mu_s_set.setValue(timeout_volt_meas_mu_s)
         for key, val in dmm_conf_dict.items():
             try:
@@ -206,7 +206,9 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
                         self, 'DMM not initialized', warning_ms,
                         QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
                     if button_box_answer == QtWidgets.QMessageBox.Yes:
-                        self.initialize_dmm((dmm_conf_dict[key].get('type', ''), dmm_conf_dict[key].get('address', '')))
+                        self.initialize_dmm((dmm_conf_dict[key].get('type', ''),
+                                             dmm_conf_dict[key].get('address', '')),
+                                            val.get('preConfName', 'initial'))
                 except Exception as e:
                     print(e)
 

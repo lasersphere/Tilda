@@ -6,13 +6,13 @@ Created on
 Module Description:
 """
 
-from PyQt5 import QtWidgets, QtCore
-from copy import deepcopy
 import functools
 import logging
 
-from Interface.DmmUi.Ui_Ni4071Widget import Ui_form_layout
+from PyQt5 import QtWidgets
+
 import Application.Config as Cfg
+from Interface.DmmUi.Ui_Ni4071Widget import Ui_form_layout
 
 
 def get_wid_by_type(dmm_type, dmm_name):
@@ -38,6 +38,7 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         :param dmm_name: str, name of the dmm
         """
         super(Ni4071Widg, self).__init__()
+        self.pre_confs = None  # enum of the pre configured settings fot this device.
         self.setupUi(self)
         self.type = type  # maybe this widget can be kept so general, that no widget is neede for each dmm
         self.address = dmm_name.replace(self.type + '_', '')
@@ -45,6 +46,9 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         self.raw_config = None
         self.reset_button = QtWidgets.QPushButton('reset values')
         self.communicate_button = QtWidgets.QPushButton('setup device')
+        self.label_defaul_values = QtWidgets.QLabel('preconfigured settings:')
+        self.comboBox_defaul_settings = QtWidgets.QComboBox()
+        self.comboBox_defaul_settings.currentTextChanged.connect(self.handle_pre_conf_changed)
         self.reset_button.clicked.connect(self.reset_vals)
         self.communicate_button.clicked.connect(self.communicate_with_dmm)
         self.poll_last_readback()  # therefore device must be initialized before!
@@ -70,6 +74,11 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         self.raw_config = conf_dict
         self.add_widgets_to_form_layout(self.raw_config, self.formLayout_config_values)
         self.formLayout_reading_and_buttons.addRow(self.reset_button, self.communicate_button)
+        self.comboBox_defaul_settings.blockSignals(True)
+        self.formLayout_reading_and_buttons.addRow(self.label_defaul_values, self.comboBox_defaul_settings)
+        self.comboBox_defaul_settings.blockSignals(False)
+        preconfname = self.raw_config['preConfName'][3]
+        self.setup_default_val_comboBox(preconfname)
 
     def add_widgets_to_form_layout(self, inp_dict, parent_layout):
         """
@@ -128,7 +137,7 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         """
         return min(myList, key=lambda x: abs(x - val))
 
-    def widget_value_changed(self, key, val):
+    def widget_value_changed(self, key, val, enabled=True):
         """
         when a value of a generic created input is chnaged, this function will be called.
         :param key: str, name of the caller, which should be the key in the self.raw_config dict.
@@ -145,7 +154,10 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
                 widget.setCurrentText(val)
             elif isinstance(widget, QtWidgets.QCheckBox):
                 widget.setChecked(val)
+            elif isinstance(widget, QtWidgets.QLabel):
+                widget.setText(str(val))
             self.raw_config[key][3] = val  # just set it for strings etc.
+        widget.setEnabled(enabled)
 
     def reset_vals(self):
         """
@@ -203,14 +215,44 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         this tries to sort all values in the dict to the corresponding keys/widgets
         :param conf_dict: dict, for a single dmm key is name of parameter
         """
+        enable_widgets = True if conf_dict.get('preConfName', 'initial') == 'manual' else False
         for key, val in conf_dict.items():
             if key not in ['type', 'address']:
                 try:
-                    self.widget_value_changed(key, val)
+                    if key == 'preConfName':
+                        self.comboBox_defaul_settings.blockSignals(True)
+                        self.comboBox_defaul_settings.setCurrentText(val)
+                        self.comboBox_defaul_settings.blockSignals(False)
+                    # let the assignment widget be changeable
+                    enable_wid = True if key in ['assignment', 'triggerSource'] else enable_widgets
+                    self.widget_value_changed(key, val, enable_wid)
                 except Exception as e:
                     # just print an error for now, maybe be more harsh here in the future.
                     logging.error(
                         'error: could not change value to: %s in key: %s, error is: %s' % (key, val, e))
+
+    def setup_default_val_comboBox(self, preconfname):
+        """
+        setup the combobox and disable other widgets if not manual
+        """
+        self.pre_confs = Cfg._main_instance.request_dmm_available_preconfigs(self.dmm_name)
+        names = [each for each in self.pre_confs.__members__]
+        names.append('manual')
+        self.comboBox_defaul_settings.blockSignals(True)
+        self.comboBox_defaul_settings.addItems(names)
+        act_conf = preconfname
+        conf = self.pre_confs[act_conf].value
+        self.load_dict_to_gui(conf)
+        self.comboBox_defaul_settings.blockSignals(False)
+
+    def handle_pre_conf_changed(self, text):
+        conf = {}
+        if text in self.pre_confs.__members__:
+            conf = self.pre_confs[text].value
+        elif text == 'manual':
+            conf = self.get_current_config()
+            conf['preConfName'] = 'manual'
+        self.load_dict_to_gui(conf)
 
     def get_current_config(self):
         """

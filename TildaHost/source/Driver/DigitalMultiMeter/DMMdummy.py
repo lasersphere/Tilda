@@ -9,10 +9,11 @@ Description:
 Module representing a dummy digital multimeter with all required public functions.
 
 """
-import numpy as np
-from enum import Enum
 import datetime
 from copy import deepcopy
+from enum import Enum
+
+import numpy as np
 
 
 class DMMdummyPreConfigs(Enum):
@@ -30,8 +31,9 @@ class DMMdummyPreConfigs(Enum):
             'measurementCompleteDestination': 'pxi_trig_4',
             'highInputResistanceTrue': True,
             'assignment': 'offset',
-            'accuracy': (None, None)
-        }
+            'accuracy': (None, None),
+            'preConfName': 'initial'
+    }
     periodic = {
             'range': 10.0,
             'resolution': 6.5,
@@ -46,8 +48,9 @@ class DMMdummyPreConfigs(Enum):
             'measurementCompleteDestination': 'zwei',
             'highInputResistanceTrue': True,
             'assignment': 'offset',
-            'accuracy': (None, None)
-        }
+            'accuracy': (None, None),
+            'preConfName': 'periodic'
+    }
     pre_scan = {
             'range': 10.0,
             'resolution': 6.5,
@@ -62,8 +65,9 @@ class DMMdummyPreConfigs(Enum):
             'measurementCompleteDestination': 'zwei',
             'highInputResistanceTrue': True,
             'assignment': 'offset',
-            'accuracy': (None, None)
-        }
+            'accuracy': (None, None),
+            'preConfName': 'pre_scan'
+    }
 
 
 class DMMdummy:
@@ -77,7 +81,9 @@ class DMMdummy:
         self.accuracy_range = 10 ** -4
 
         # default config dictionary for this type of DMM:
-        self.config_dict = DMMdummyPreConfigs.initial.value
+        self.pre_configs = DMMdummyPreConfigs
+        self.selected_pre_config_name = self.pre_configs.periodic.name
+        self.config_dict = self.pre_configs.periodic.value
         self.get_accuracy()
         print(self.name, ' initialized')
 
@@ -144,11 +150,13 @@ class DMMdummy:
         :param pre_conf_name: str, name of the setting
         :return:
         """
-        if pre_conf_name in DMMdummyPreConfigs.__members__:
-            config_dict = DMMdummyPreConfigs[pre_conf_name].value
+        if pre_conf_name in self.pre_configs.__members__:
+            self.selected_pre_config_name = pre_conf_name
+            config_dict = self.pre_configs[pre_conf_name].value
             config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
             self.load_from_config_dict(config_dict, False)
             self.initiate_measurement()
+            print('%s dmm loaded with preconfig: %s ' % (self.name, pre_conf_name))
         else:
             print(
                 'error: could not set the preconfiguration: %s in dmm: %s, because the config does not exist'
@@ -198,15 +206,18 @@ class DMMdummy:
             'highInputResistanceTrue': ('high input resistance', True, bool, [False, True]
                                         , self.config_dict['highInputResistanceTrue']),
             'accuracy': ('accuracy (reading, range)', False, tuple, [], self.config_dict['accuracy']),
-            'assignment': ('assignment', True, str, ['offset', 'accVolt'], self.config_dict['assignment'])
+            'assignment': ('assignment', True, str, ['offset', 'accVolt'], self.config_dict['assignment']),
+            'preConfName': ('pre config name', False, str, [], self.selected_pre_config_name)
         }
         return config_dict
 
     ''' error '''
-    def get_accuracy(self):
+    def get_accuracy(self, config_dict=None):
         """ write the error to self.config_dict['accuracy']"""
+        if config_dict is None:
+            config_dict = self.config_dict
         acc_tuple = (10 ** -4, 10 ** -3)
-        self.config_dict['accuracy'] = acc_tuple
+        config_dict['accuracy'] = acc_tuple
         return acc_tuple
 
 
