@@ -6,6 +6,7 @@ Created on
 Module Description:
 """
 import ast
+import functools
 import logging
 from copy import deepcopy
 
@@ -46,6 +47,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.active_iso = None  # str, name of active iso in main
         self.setupUi(self)
         self.show()
+        self.tabWidget.setCurrentIndex(1)  # time resolved
         self.setWindowTitle('plot win:     ' + full_file_path)
 
         self.full_file_path = full_file_path
@@ -79,7 +81,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.comboBox_select_sum_for_pmts.currentIndexChanged.connect(self.sum_scaler_changed)
         self.comboBox_select_sum_for_pmts.currentIndexChanged.emit(0)
 
-        self.lineEdit_arith_scaler_input.textChanged.connect(self.sum_scaler_lineedit_changed)
+        self.lineEdit_arith_scaler_input.textEdited.connect(self.sum_scaler_lineedit_changed)
 
         ''' time resolved related: '''
         self.add_time_resolved_plot()
@@ -94,24 +96,34 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.spinBox.valueChanged.connect(self.rebin_data)
         self.checkBox.stateChanged.connect(self.apply_rebin_to_all_checkbox_changed)
 
+        ''' all pmts related: '''
+        #  dict for all_pmt_plot page containing the ([sc], widg, plt_item) for each plot:
+        self.all_pmts_widg_plt_item_list = None
+
+        self.all_pmts_sel_tr = 0
+        self.comboBox_all_pmts_sel_tr.currentTextChanged.connect(self.cb_all_pmts_sel_tr_changed)
+
+        self.comboBox_sum_all_pmts.addItems(self.sum_list)
+        self.comboBox_sum_all_pmts.currentIndexChanged.connect(self.sum_scaler_changed)
+        self.comboBox_sum_all_pmts.currentIndexChanged.emit(0)
+
+        self.lineEdit_sum_all_pmts.textEdited.connect(self.sum_scaler_lineedit_changed)
+
         ''' setup window size: '''
-        self.resize(1024, 800)
+        w = 1024
+        h = 800
+        self.resize(w, h)
         ''' vertical splitter between plots and table: '''
-        size_plt, size_table = self.splitter.sizes()
-        sum_size = size_plt + size_table
-        self.splitter.setSizes([sum_size * 8 // 10, sum_size * 2 // 10])
+        self.splitter.setSizes([h * 8 // 10, h * 2 // 10])
         ''' horizontal splitter between tres and t_proj: '''
-        size_tres_plt, size_proj_t = self.splitter_2.sizes()
-        sum_size_spl_2 = size_tres_plt + size_proj_t
-        self.splitter_2.setSizes([sum_size_spl_2 * 2 // 3, sum_size_spl_2 * 1 // 3])
+        self.splitter_2.setSizes([w * 2 // 3, w * 1 // 3])
         ''' vertical splitter between tres and v_proj/sum_proj: '''
-        sz_v_tres, sz_v_v_proj = self.splitter_4.sizes()
-        sum_sz_v_spl = sz_v_tres + sz_v_v_proj
-        self.splitter_4.setSizes([sum_sz_v_spl // 2, sum_sz_v_spl // 2])
+        self.splitter_4.setSizes([h // 2, h // 2])
         ''' horizontal splitter between v_proj and the display widget: '''
-        size_h_v_proj, size_h_display_wid= self.splitter_3.sizes()
-        sum_size_spl_3_h = size_h_v_proj + size_h_display_wid
-        self.splitter_3.setSizes([sum_size_spl_3_h * 6 // 10, sum_size_spl_3_h * 4 // 10])
+        self.splitter_3.setSizes([w * 6 // 10, w * 4 // 10])
+        ''' vertical splitter between all pmts plot and x/y coords widg '''
+        self.splitter_allpmts.setSizes([h * 9 // 10, h * 1 // 10])
+
 
     '''setting up the plots (no data etc. written) '''
 
@@ -155,30 +167,40 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.pushButton_save_after_scan.clicked.connect(self.save)
         max_rate = 60
         self.t_res_mouse_proxy = Pg.create_proxy(signal=self.tres_plt_item.scene().sigMouseMoved,
-                                                 slot=self.mouse_moved_tres,
+                                                 slot=functools.partial(self.mouse_moved, self.tres_plt_item.vb, True),
                                                  rate_limit=max_rate)
         self.t_proj_mouse_proxy = Pg.create_proxy(signal=self.t_proj_plt_itm.scene().sigMouseMoved,
-                                                  slot=self.mouse_moved_t_proj,
+                                                  slot=functools.partial(self.mouse_moved, self.t_proj_plt_itm.vb, True),
                                                   rate_limit=max_rate)
         self.sum_proj_mouse_proxy = Pg.create_proxy(signal=self.sum_proj_plt_itm.scene().sigMouseMoved,
-                                                    slot=self.mouse_moved_sum_proj,
+                                                    slot=functools.partial(self.mouse_moved, self.sum_proj_plt_itm.vb, True),
                                                     rate_limit=max_rate)
 
-    def mouse_moved_tres(self, evt):
-        point = self.tres_plt_item.vb.mapSceneToView(evt[0])
-        self.print_point(point)
+    def add_all_pmt_plot(self):
+        """
+        add a plot for each scaler on the tab 'all pmts'.
+        Can only be called as soon as spec_data is available
+        """
+        print('adding all pmts')
+        max_rate = 60
+        all_pmts_plot_layout = QtWidgets.QVBoxLayout()
+        self.all_pmts_widg_plt_item_list = Pg.create_plot_for_all_sc(
+            all_pmts_plot_layout, self.spec_data.active_pmt_list[self.all_pmts_sel_tr],
+            self.mouse_moved, max_rate)
+        self.widget_all_pmts_plot.setLayout(all_pmts_plot_layout)
 
-    def mouse_moved_t_proj(self, evt):
-        point = self.t_proj_plt_itm.vb.mapSceneToView(evt[0])
-        self.print_point(point)
+    def mouse_moved(self, viewbox, trs, evt):
+        point = viewbox.mapSceneToView(evt[0])
+        self.print_point(trs, point)
 
-    def mouse_moved_sum_proj(self, evt):
-        point = self.sum_proj_plt_itm.vb.mapSceneToView(evt[0])
-        self.print_point(point)
+    def print_point(self, trs, point):
+        if trs:
+            self.label_x_coord.setText(str(round(point.x(), 3)))
+            self.label_y_coord.setText(str(round(point.y(), 3)))
+        else:
+            self.label_x_coord_all_pmts.setText(str(round(point.x(), 3)))
+            self.label_y_coor_all_pmts.setText(str(round(point.y(), 3)))
 
-    def print_point(self, point):
-        self.label_x_coord.setText(str(round(point.x(), 3)))
-        self.label_y_coord.setText(str(round(point.y(), 3)))
 
     def updateViews(self):
         """ update teh view for the overlayed plot of sum and current scaler """
@@ -223,6 +245,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.update_sum_plot(spec_data)
         self.update_tres_plot(spec_data)
         self.update_projections(spec_data)
+        self.update_all_pmts_plot(spec_data)
 
     def update_sum_plot(self, spec_data):
         """ update the sum plot and store the values in self.sum_x, self.sum_y, self.sum_err"""
@@ -314,6 +337,20 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         except Exception as e:
             print('error, while plotting projection, this happened: ', e)
 
+    def update_all_pmts_plot(self, spec_data, autorange_pls=False):
+        if self.all_pmts_widg_plt_item_list is None:
+            self.comboBox_all_pmts_sel_tr.blockSignals(True)
+            pmt_list = [str(i) for i in spec_data.active_pmt_list[0]]
+            pmt_list.append('all')
+            self.comboBox_all_pmts_sel_tr.addItems(pmt_list)
+            self.cb_all_pmts_sel_tr_changed(self.comboBox_all_pmts_sel_tr.currentText())
+            self.comboBox_all_pmts_sel_tr.blockSignals(False)
+
+            self.add_all_pmt_plot()
+        Pg.plot_all_sc(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr)
+        if autorange_pls:
+            self.all_pmts_widg_plt_item_list[0][-2].autoRange()
+
     ''' buttons, comboboxes and listwidgets: '''
 
     def sum_scaler_changed(self, index=None):
@@ -328,10 +365,17 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.sum_scaler = self.spec_data.active_pmt_list[0]
                 self.sum_track = -1
                 self.lineEdit_arith_scaler_input.setText(str(self.sum_scaler))
+                self.lineEdit_sum_all_pmts.setText(str(self.sum_scaler))
             self.lineEdit_arith_scaler_input.setDisabled(True)
+            self.lineEdit_sum_all_pmts.setDisabled(True)
         elif index == 1:
             # self.sum_scaler = self.valid_scaler_input
             self.lineEdit_arith_scaler_input.setDisabled(False)
+            self.lineEdit_sum_all_pmts.setDisabled(False)
+
+        # synchronize both comboboxes
+        self.comboBox_sum_all_pmts.setCurrentIndex(index)
+        self.comboBox_select_sum_for_pmts.setCurrentIndex(index)
 
     def sum_scaler_lineedit_changed(self, text):
         """
@@ -351,8 +395,24 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.label_arith_scaler_set.setText(str(hopefully_list))
                     self.update_sum_plot(self.spec_data)
                     self.update_projections(self.spec_data)
+                    if self.all_pmts_widg_plt_item_list is not None:
+                        lis = list(self.all_pmts_widg_plt_item_list[-1])
+                        lis[1] = hopefully_list
+                        tpl = tuple(lis)
+                        self.all_pmts_widg_plt_item_list[-1] = tpl
+                        self.update_all_pmts_plot(self.spec_data)
+                    self.lineEdit_sum_all_pmts.setText(text)
+                    self.lineEdit_arith_scaler_input.setText(text)
         except Exception as e:
             print(e)
+
+    def cb_all_pmts_sel_tr_changed(self, text):
+        """ handle changes in the combobox in the all pmts tab """
+        if text == 'all':
+            text = -1
+        self.all_pmts_sel_tr = int(text)
+        if self.spec_data is not None and self.all_pmts_widg_plt_item_list is not None:
+            self.update_all_pmts_plot(self.spec_data, autorange_pls=True)
 
     ''' gating: '''
 
