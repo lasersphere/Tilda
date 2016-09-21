@@ -160,7 +160,7 @@ class XMLImporter(SpecData):
                 self.dwell.append(track_dict.get('dwellTime10ns'))
 
             elif self.seq_type in ['kepco']:
-                meas_volt_dict = scandict['measureVoltPars']
+                meas_volt_dict = scandict['measureVoltPars']['duringScan']
                 dmms_dict = meas_volt_dict['dmms']
                 dmm_names = list(sorted(dmms_dict.keys()))
                 self.nrScalers = [len(dmm_names)]

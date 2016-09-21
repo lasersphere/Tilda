@@ -108,6 +108,7 @@ class Ui_MainWindowTrackPars(object):
         self.doubleSpinBox_postAccOffsetVolt.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.doubleSpinBox_postAccOffsetVolt.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
         self.doubleSpinBox_postAccOffsetVolt.setKeyboardTracking(False)
+        self.doubleSpinBox_postAccOffsetVolt.setMinimum(-10000.0)
         self.doubleSpinBox_postAccOffsetVolt.setMaximum(10000.0)
         self.doubleSpinBox_postAccOffsetVolt.setObjectName("doubleSpinBox_postAccOffsetVolt")
         self.gridLayout_4.addWidget(self.doubleSpinBox_postAccOffsetVolt, 9, 1, 1, 1)

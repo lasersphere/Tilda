@@ -6,10 +6,10 @@ Created on '19.05.2015'
 
 """
 
-import serial
-import time
 import logging
-from copy import deepcopy
+import time
+
+import serial
 
 import Driver.Heinzinger.HeinzingerCfg as hzCfg
 
@@ -70,9 +70,9 @@ class Heinzinger():
         :return: float, the voltage that has ben sent via serial
         """
         print('Heinzinger setting Volt: ' + str(volt))
-        if volt <= self.maxVolt:
+        if abs(volt) <= self.maxVolt:
             self.setVolt = round(float(volt), 3)
-        self.serWrite('SOUR:VOLT ' + str(self.setVolt))
+        self.serWrite('SOUR:VOLT ' + str(abs(self.setVolt)))
         self.time_of_last_volt_set = time.strftime('%d/%m/%y %H:%M:%S')
         return self.setVolt
 
