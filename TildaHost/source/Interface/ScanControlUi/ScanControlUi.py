@@ -45,18 +45,32 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.main_gui = main_gui
         self.update_win_title()
         self.enable_go(False)
+        self.pre_or_during_scan_str_list = ['preScan', 'duringScan']
+        self.pre_or_during_scan_index = 0
 
         self.show()
 
     def open_dmm_win(self):
         if self.dmm_win is None:
-            new_name = 'DMM Settings for %s' % self.active_iso
-            self.dmm_win = DmmLiveViewUi(self, new_name, enable_com=False, active_iso=self.active_iso)
+            pre_or_during_str = self.pre_or_during_scan_str_list[self.pre_or_during_scan_index]
+            new_name = 'DMM Settings for %s in %s' % (self.active_iso, pre_or_during_str)
+            messagebox = QtWidgets.QMessageBox()
+            messagebox.setIcon(QtWidgets.QMessageBox.Question)
+            messagebox.setText('please choose the settings for: %s' % new_name)
+            messagebox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            messagebox.exec_()
+            self.dmm_win = DmmLiveViewUi(self, new_name, enable_com=False,
+                                         active_iso=self.active_iso,
+                                         pre_or_during_scan_str=pre_or_during_str)
         else:
             self.raise_win_to_front(self.dmm_win)
 
     def close_dmm_live_view_win(self):
         self.dmm_win = None
+        if self.pre_or_during_scan_index < len(self.pre_or_during_scan_str_list):
+            self.open_dmm_win()
+        else:
+            self.pre_or_during_scan_index = 0
 
     def raise_win_to_front(self, window):
         # this will remove minimized status

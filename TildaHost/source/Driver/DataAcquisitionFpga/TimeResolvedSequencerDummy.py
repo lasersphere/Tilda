@@ -120,8 +120,11 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         build artificial data for one track.
         """
         print('starting to build artificial data for dummy trs')
+
         track_ind, track_name = scanpars['pipeInternals']['activeTrackNumber']
         trackd = scanpars[track_name]
+        print('num of steps: %s num of bins: %s num of bunches: %s num of scans: %s ' %
+              (trackd['nOfSteps'], trackd['nOfBins'], trackd['nOfBunches'], trackd['nOfScans']))
         x_axis = Form.create_x_axis_from_scand_dict(scanpars)[track_ind]
         num_of_steps = trackd['nOfSteps'] * trackd['nOfScans']
         x_axis = [Form.add_header_to23_bit(x << 2, 3, 0, 1) for x in x_axis]

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="DataSourceManagerImpl" format="xml" hash="2297261175">
+  <component name="DataSourceManagerImpl" format="xml" hash="334488875">
     <data-source source="LOCAL" name="Sqlite (Xerial) - DACScan_160622.sqlite" uuid="0a434a2e-3f75-4d19-a884-5245c8b5894c">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
@@ -12,6 +12,12 @@
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:R:/Projekte/TRIGA/Measurements and Analysis_Simon/KepcoScans und DAC Scans/DAC - AD5781/KepcoScans_160621/KepcoScans_160621.sqlite</jdbc-url>
+    </data-source>
+    <data-source source="LOCAL" name="Sqlite (Xerial) - TildaDebugging.sqlite" uuid="81917e5e-50e5-4fce-998f-17fdcde217ec">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:E:/TildaDebugging/TildaDebugging.sqlite</jdbc-url>
     </data-source>
   </component>
 </project>

@@ -122,7 +122,6 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
              VCon.get_voltage_from_18bit(self.check_for_none(track_dict.get('dacStartRegister18Bit'), 0))),
             (self.doubleSpinBox_dacStopV.setValue,
              VCon.get_voltage_from_18bit(self.check_for_none(track_dict.get('dacStopRegister18Bit'), 2 ** 18))),
-            (self.spinBox_nOfSteps.setValue, self.check_for_none(track_dict.get('nOfSteps'), 0)),
             (self.doubleSpinBox_dacStepSizeV.setValue,
              VCon.get_stepsize_in_volt_from_18bit(self.check_for_none(track_dict.get('dacStepSize18Bit'), 0))),
             (self.spinBox_nOfScans.setValue, self.check_for_none(track_dict.get('nOfScans'), 0)),
@@ -139,7 +138,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             (self.doubleSpinBox_waitAfterReset_muS.setValue,
              self.check_for_none(track_dict.get('waitAfterReset25nsTicks'), 0) * 25 * (10 ** -3)),
             (self.doubleSpinBox_waitForKepco_muS.setValue,
-             self.check_for_none(track_dict.get('waitForKepco25nsTicks'), 0) * 25 * (10 ** -3))
+             self.check_for_none(track_dict.get('waitForKepco25nsTicks'), 0) * 25 * (10 ** -3)),
+            (self.spinBox_nOfSteps.setValue, self.check_for_none(track_dict.get('nOfSteps'), 0))
         ]
         for func in func_list:
             try:

@@ -135,13 +135,13 @@ class Ni4071PreConfigs(Enum):
             'assignment': 'offset',
             'preConfName': 'pre_scan'
     }
-    simons = {
-        'range': 100.0,
+    kepco = {
+        'range': 10.0,
         'resolution': 7.5,
         'triggerCount': 0,
         'sampleCount': 0,
         'autoZero': -1,
-        'triggerSource': Ni4071TriggerSources.softw_trig.name,
+        'triggerSource': Ni4071TriggerSources.pxi_trig_3.name,
         'sampleInterval': -1,
         'powerLineFrequency': 50.0,
         'triggerDelay_s': 0,
@@ -150,7 +150,7 @@ class Ni4071PreConfigs(Enum):
         'highInputResistanceTrue': True,
         'accuracy': (None, None),
         'assignment': 'offset',
-        'preConfName': 'simons'
+        'preConfName': 'kepco'
     }
 
 

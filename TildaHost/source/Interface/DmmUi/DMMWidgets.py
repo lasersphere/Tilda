@@ -224,7 +224,7 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
                         self.comboBox_defaul_settings.setCurrentText(val)
                         self.comboBox_defaul_settings.blockSignals(False)
                     # let the assignment widget be changeable
-                    enable_wid = True if key in ['assignment', 'triggerSource'] else enable_widgets
+                    enable_wid = True if key in ['assignment'] else enable_widgets
                     self.widget_value_changed(key, val, enable_wid)
                 except Exception as e:
                     # just print an error for now, maybe be more harsh here in the future.

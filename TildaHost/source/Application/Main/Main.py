@@ -464,8 +464,8 @@ class Main(QtCore.QObject):
         :param first_call: bool, True if this is the first call
         """
         iso_name = self.scan_progress['activeIso']
-        dmms_dict = self.scan_pars[iso_name]['measureVoltPars'].get('dmms', None)
-        dmms_dict_is_none = dmms_dict is None
+        dmms_dict_pre_scan = self.scan_pars[iso_name]['measureVoltPars'].get('preScan', {}).get('dmms', None)
+        dmms_dict_is_none = dmms_dict_pre_scan is None or dmms_dict_pre_scan == {}
         is_this_not_first_track = len(self.scan_progress['completedTracks']) != 0
         if dmms_dict_is_none or is_this_not_first_track:
             # do not perform an offset measurement if no dmm is present. Proceed to load track
@@ -484,22 +484,23 @@ class Main(QtCore.QObject):
                 read = self.read_dmms(False)
                 print('reading of dmms prescan: ', read)
                 if read is not None:
-                    dmms_dict = self.scan_pars[iso_name]['measureVoltPars'].get('dmms', None)
+                    dmms_dict_pre_scan = self.scan_pars[iso_name]['measureVoltPars'].get('preScan', {}).get('dmms', None)
                     reads = []
                     for dmm_name, volt_read in read.items():
                         if volt_read is not None:
-                            dmms_dict[dmm_name]['preScanRead'] = volt_read[0]
-                        reads.append(dmms_dict[dmm_name].get('preScanRead', None))
+                            dmms_dict_pre_scan[dmm_name]['preScanRead'] = volt_read[0]
+                        reads.append(dmms_dict_pre_scan[dmm_name].get('preScanRead', None))
                         print('readings of dmms pre scan are:', reads,
                               ' prescan read: ', dmm_name)
                     if reads.count(None) == 0:  # done with reading when all dmms have a value
                         logging.debug('all dmms returned a measurement, reading is: ' + str(read))
                         self.scan_main.abort_dmm_measurement('all')
-                        if self.scan_pars[iso_name]['isotopeData']['type'] in ['kepco']:
-                            # set the dmms according to the dictionary inside the dmms_dict
-                            self.scan_main.prepare_dmms_for_scan(dmms_dict)
-                        else:
-                            self.scan_main.set_dmm_to_periodic_reading('all')
+                        dmms_dict_during_scan = self.scan_pars[iso_name]['measureVoltPars'].get('duringScan',
+                                                                                                {}).get('dmms', None)
+
+                        # when done with the pre scan measurement, setup dmms to the during scan dict.
+                        # set the dmms according to the dictionary inside the dmms_dict for during the scan
+                        self.scan_main.prepare_dmms_for_scan(dmms_dict_during_scan)
                         self.set_state(MainState.load_track)
 
     def add_global_infos_to_scan_pars(self, iso_name):
@@ -855,7 +856,7 @@ class Main(QtCore.QObject):
         """ see init_dmm() """
         dmm_name = self.scan_main.prepare_dmm(type_str, addr_str)
         self.send_state()
-        if start_config is not None:
+        if start_config is not None and dmm_name is not None:
             self.scan_main.set_dmm_to_pre_config(dmm_name, start_config)
         if callback:
             callback.emit(True)

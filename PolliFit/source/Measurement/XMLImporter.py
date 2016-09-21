@@ -54,7 +54,7 @@ class XMLImporter(SpecData):
 
         self.accVolt = scandict['isotopeData']['accVolt']
         self.offset = None
-        dmms_dict = scandict['measureVoltPars'].get('dmms', None)
+        dmms_dict = scandict['measureVoltPars']['preScan'].get('dmms', None)
         if dmms_dict is not None:
             offset = []
             acc_volt = []

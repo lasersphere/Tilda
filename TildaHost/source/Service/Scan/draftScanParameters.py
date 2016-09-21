@@ -6,7 +6,9 @@ Created on 20.06.2015
 
 Module containing the ScanParameters dictionaries as needed for Scanning with the standard Sequencers
 """
+from copy import deepcopy
 from datetime import datetime
+
 """ List of currently supported sequencer types """
 
 sequencer_types_list = ['cs', 'trs', 'csdummy', 'trsdummy', 'kepco']
@@ -27,7 +29,9 @@ pipeInternals_list = ['curVoltInd', 'activeTrackNumber', 'workingDirectory', 'ac
 """ the measureVoltPars dictionary is used to define the pulse length to start the voltage measurement
  and the timeout of the voltage measurement. It contains the following keys: """
 
-measureVoltPars_list = ['measVoltPulseLength25ns', 'measVoltTimeout10ns']
+measureVoltPars_list = ['preScan', 'duringScan']
+# measureVoltPars_list = ['measVoltPulseLength25ns', 'measVoltTimeout10ns']
+
 
 """ the track0 dictionary is only used by one track but therefore beholds
 the most information for the sequencer. It contains the following keys and
@@ -60,7 +64,7 @@ draftIsotopePars = {
 }
 
 draftTrackPars = {
-    'dacStepSize18Bit': 29127,  # form.get_24bit_input_from_voltage(1, False),
+    'dacStepSize18Bit': 2647,  # form.get_24bit_input_from_voltage(1, False),
     'dacStartRegister18Bit': 0,  # form.get_24bit_input_from_voltage(-5, False),
     'nOfSteps': 100,
     'nOfScans': 2, 'nOfCompletedSteps': 0, 'invertScan': False,
@@ -78,7 +82,8 @@ draftTrackPars = {
     'trigger': {'type': 'no_trigger'}
 }
 
-draftMeasureVoltPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100, 'dmms': {}}
+draftMeasureVoltPars_singl = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100, 'dmms': {}}
+draftMeasureVoltPars = {'preScan': deepcopy(draftMeasureVoltPars_singl), 'duringScan': deepcopy(draftMeasureVoltPars_singl)}
 
 draftPipeInternals = {
     'curVoltInd': 0,

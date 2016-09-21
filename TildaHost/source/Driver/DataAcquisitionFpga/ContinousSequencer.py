@@ -6,12 +6,11 @@ Created on '09.07.2015'
 
 """
 
-from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
-from Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
-import Driver.DataAcquisitionFpga.ContinousSequencerConfig as CsCfg
-
 import logging
-import time
+
+import Driver.DataAcquisitionFpga.ContinousSequencerConfig as CsCfg
+from Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
+from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
 
 
 class ContinousSequencer(Sequencer, MeasureVolt):
@@ -76,7 +75,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         track_name = 'track' + str(track_num)
         if self.changeSeqState(self.config.seqStateDict['idle']):
             if (self.setDwellTime(scanpars, track_num) and
-                    self.setmeasVoltParameters(scanpars['measureVoltPars']) and
+                    self.setmeasVoltParameters(scanpars['measureVoltPars']['preScan']) and
                     self.setTrackParameters(scanpars[track_name]) and
                     self.set_trigger(scanpars[track_name].get('trigger', {})) and
                     self.selectKepcoOrScalerScan(scanpars['isotopeData']['type'])):

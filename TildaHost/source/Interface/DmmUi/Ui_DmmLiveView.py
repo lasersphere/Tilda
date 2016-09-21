@@ -6,7 +6,7 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -52,6 +52,8 @@ class Ui_MainWindow(object):
         self.verticalLayout.addLayout(self.formLayout_pulse_len_and_timeout)
         self.pushButton_confirm = QtWidgets.QPushButton(self.centralwidget)
         self.pushButton_confirm.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
+        self.pushButton_confirm.setAutoDefault(True)
+        self.pushButton_confirm.setDefault(True)
         self.pushButton_confirm.setObjectName("pushButton_confirm")
         self.verticalLayout.addWidget(self.pushButton_confirm)
         MainWindow.setCentralWidget(self.centralwidget)

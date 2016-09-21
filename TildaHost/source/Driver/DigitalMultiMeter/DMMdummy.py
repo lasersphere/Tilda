@@ -68,6 +68,23 @@ class DMMdummyPreConfigs(Enum):
             'accuracy': (None, None),
             'preConfName': 'pre_scan'
     }
+    kepco = {
+        'range': 10.0,
+        'resolution': 6.5,
+        'triggerCount': 0,
+        'sampleCount': 0,
+        'autoZero': -1,
+        'triggerSource': 'softw_trigger',
+        'sampleInterval': -1,
+        'powerLineFrequency': 50.0,
+        'triggerDelay_s': 0,
+        'triggerSlope': 'rising',
+        'measurementCompleteDestination': 'zwei',
+        'highInputResistanceTrue': True,
+        'assignment': 'offset',
+        'accuracy': (None, None),
+        'preConfName': 'kepco'
+    }
 
 
 class DMMdummy:

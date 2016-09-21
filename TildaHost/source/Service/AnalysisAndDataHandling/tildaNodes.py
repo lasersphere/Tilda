@@ -818,7 +818,7 @@ class NStartNodeKepcoScan(Node):
         self.dmms = dmm_names_sorted  # list with the dmm names, indeces are equal to indices in spec_data.cts, etc.
 
     def calc_voltage_err(self, voltage_reading, dmm_name):
-        read_err, range_err = self.Pipeline.pipeData['measureVoltPars']['dmms'][dmm_name].get('accuracy', (None, None))
+        read_err, range_err = self.Pipeline.pipeData['measureVoltPars']['duringScan']['dmms'][dmm_name].get('accuracy', (None, None))
         if read_err is not None:
             return voltage_reading * read_err + range_err
         else:
@@ -1322,6 +1322,7 @@ class NSortedZeroFreeTRSDat2SpecData(Node):
 
     def processData(self, data, pipeData):
         self.spec_data.time_res_zf = data
+
         return self.spec_data
 
     def clear(self):
@@ -1400,7 +1401,7 @@ class NStraightKepcoFitOnClear(Node):
 
     def get_offset_voltage(self, scandict):
         mean = 0
-        dmms_dict = scandict['measureVoltPars'].get('dmms', None)
+        dmms_dict = scandict['measureVoltPars']['preScan'].get('dmms', None)
         if dmms_dict is not None:
             offset = []
             for dmm_name, dmm_dict in dmms_dict.items():
@@ -1640,21 +1641,26 @@ class NTRSSortRawDatatoArrayFast(Node):
         self.comp_list = None
         self.stored_data = None  # numpy array of incoming raw data elements.
         self.total_num_of_started_scans = None
+        self.completed_steps_this_track = None
 
         # could be shrinked to active pmts only to speed things up
 
     def start(self):
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
         if self.curVoltIndex is None:
             self.curVoltIndex = 0
         if self.total_num_of_started_scans is None:
             self.total_num_of_started_scans = 0
         if self.comp_list is None:
-            track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
             self.comp_list = [2 ** j for i, j in enumerate(self.Pipeline.pipeData[track_name]['activePmtList'])]
         if self.stored_data is None:
             self.stored_data = np.zeros(0, dtype=np.uint32)
+        if self.completed_steps_this_track is None:
+            self.completed_steps_this_track = self.Pipeline.pipeData[track_name].get('nOfCompletedSteps', 0)
+        self.Pipeline.pipeData[track_name]['nOfCompletedSteps'] = self.completed_steps_this_track  # make sure this exists
 
     def processData(self, data, pipeData):
+        print('sort array')
         self.stored_data = np.append(self.stored_data, data)
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         step_complete = Form.add_header_to23_bit(1, 4, 0, 1)  # binary for step complete
@@ -1730,6 +1736,8 @@ class NTRSSortRawDatatoArrayFast(Node):
                 # print(new_unique_arr)
                 # print('current voltindex after first node:', self.curVoltIndex)
 
+                print('sort array done')
+
                 return new_unique_arr
 
     def clear(self):
@@ -1737,6 +1745,7 @@ class NTRSSortRawDatatoArrayFast(Node):
         self.comp_list = None
         self.stored_data = None
         self.total_num_of_started_scans = None
+        self.completed_steps_this_track = None
 
     def sign_for_volt_ind(self, invert_scan):
         """
@@ -1891,8 +1900,10 @@ class NSendnOfCompletedStepsViaQtSignal(Node):
         self.qt_signal = qt_signal
 
     def processData(self, data, pipeData):
+        print('sending steps')
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         self.qt_signal.emit(pipeData[track_name]['nOfCompletedSteps'])
+        print('sending steps done')
         return data
 
 

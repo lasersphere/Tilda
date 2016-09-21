@@ -46,7 +46,7 @@ class ScanMain:
                      ' of type: ' + scan_dict['isotopeData']['type'])
         # self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
         self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
-        self.prepare_dmms_for_scan(scan_dict['measureVoltPars'].get('dmms', {}), pre_scan_meas=True)
+        self.prepare_dmms_for_scan(scan_dict['measureVoltPars'].get('preScan', {}).get('dmms', {}))
 
     def init_pipeline(self, scan_dict, callback_sig=None, live_plot_callback_tuples=None):
         self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples)
@@ -136,9 +136,10 @@ class ScanMain:
         After starting the measurement, the FPGA runs on its own.
         """
         track_dict = scan_dict.get('track' + str(track_num))
+        iso = scan_dict.get('isotopeData', {}).get('isotope')
         logging.debug('---------------------------------------------')
-        logging.debug('starting measurement of track %s  with track_dict: %s' %
-                      (track_num, str(track_dict)))
+        logging.debug('starting measurement of %s track %s  with track_dict: %s' %
+                      (iso, track_num, str(track_dict)))
         logging.debug('---------------------------------------------')
         # logging.debug('postACCVoltControl is: ' + str(track_dict['postAccOffsetVoltControl']))  # this is fine.
         start_ok = self.sequencer.measureTrack(scan_dict, track_num)
@@ -332,17 +333,15 @@ class ScanMain:
         name = self.digital_multi_meter.find_dmm_by_type(type_str, address)
         return name
 
-    def prepare_dmms_for_scan(self, dmms_conf_dict, pre_scan_meas=False):
+    def prepare_dmms_for_scan(self, dmms_conf_dict):
         """
         call this pre scan in order to configure all dmms according to the
-        dmms_conf_dict, which is located in scan_dict['measureVoltPars']['dmms].
+        dmms_conf_dict, which is located in scan_dict['measureVoltPars']['preScan' or 'duringScan']['dmms].
         each dmm will be resetted before starting.
         set pre_scan_meas to True to ignore the contents of the current config dict and
          load from pre config
         :param pre_scan_meas: bool, dft=False, set this to True,
          to just load the dmms from config dict and than start the pre scan measurement
-        :param dmms_conf_dict: dict, key is name of dmm,
-         val is dict for the corresponding dmm
         """
         logging.debug('preparing dmms for scan. Config dict is: %s' % dmms_conf_dict)
         active_dmms = self.get_active_dmms()
@@ -351,17 +350,7 @@ class ScanMain:
             if dmm_name not in active_dmms:
                 logging.warning('%s was not initialized yet, will do now.' % dmm_name)
                 self.prepare_dmm(dmm_conf_dict.get('type', ''), dmm_conf_dict.get('address', ''))
-            if pre_scan_meas:
-                self.set_dmm_to_pre_scan_config(dmm_name)
-            else:
-                self.setup_dmm_and_arm(dmm_name, dmm_conf_dict, False)
-
-    def set_dmm_to_pre_scan_config(self, dmm_name):
-        """
-        set the dmms to the settings for a pre scan measurement.
-        :param dmm_name: str, name of the dmm 'type_address'
-        """
-        self.digital_multi_meter.start_pre_configured_meas(dmm_name, 'pre_scan')
+            self.setup_dmm_and_arm(dmm_name, dmm_conf_dict, False)
 
     def setup_dmm_and_arm(self, dmm_name, config_dict, reset_dev):
         """

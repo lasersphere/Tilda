@@ -8,6 +8,7 @@ Module Description: Main Ui for controlling the digital Multimeters connected to
 
 import functools
 import logging
+from copy import deepcopy
 
 from PyQt5 import QtWidgets, QtCore
 
@@ -27,7 +28,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
     # callback for the voltage readings, done by the main when in idle state
     voltage_reading = QtCore.pyqtSignal(dict)
 
-    def __init__(self, parent, window_name='DMM Live View Window', enable_com=None, active_iso=None):
+    def __init__(self, parent, window_name='DMM Live View Window', enable_com=None, active_iso=None, pre_or_during_scan_str=''):
         """
         this will statup the GUI and check for already active dmm's
         :param parent: parent_gui, usually the main in order to unsubscribe from it etc.
@@ -49,6 +50,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
 
         Cfg._main_instance.dmm_gui_subscribe(self.voltage_reading)
         self.voltage_reading.connect(self.rcvd_voltage_dict)
+
         self.pushButton_confirm.clicked.connect(self.confirm_settings)
 
         self.tabWidget.setTabsClosable(True)
@@ -63,9 +65,32 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
             self.enable_communication(enable_com, True)
 
         self.active_iso = active_iso
+        self.pre_or_during_scan_str = pre_or_during_scan_str
+
         if self.active_iso is not None:
-            meas_volt_dict = Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars']
-            self.load_config_dict(meas_volt_dict)
+            scan_dict = Cfg._main_instance.scan_pars[self.active_iso]
+            meas_volt_pars_dict = scan_dict['measureVoltPars']
+            meas_volt_dict = meas_volt_pars_dict.get(self.pre_or_during_scan_str, None)
+            if meas_volt_dict is None:
+                # pass
+                self.set_pulse_len_and_timeout({})
+                for key, val in self.tabs.items():
+                    if key != 'tab0':
+                        if self.pre_or_during_scan_str == 'preScan':
+                            print('will set %s to preScan' % val[-1])
+                            val[-1].handle_pre_conf_changed('pre_scan')
+                        else:
+                            if scan_dict.get('isotopeData', {}).get('type', 'kepco') == 'kepco':
+                                val[-1].handle_pre_conf_changed('kepco')
+                            else:
+                                val[-1].handle_pre_conf_changed('periodic')
+                # maybe automatically get pres_scan config etc. here
+                # self.load_config_dict()
+            else:
+                #  copy values for measVoltPulseLength25ns and measVoltTimeout10ns from preScan
+                meas_volt_dict['measVoltTimeout10ns'] = deepcopy(meas_volt_pars_dict.get('preScan', {}).get('measVoltTimeout10ns', 0))
+                meas_volt_dict['measVoltPulseLength25ns'] = deepcopy(meas_volt_pars_dict.get('preScan', {}).get('measVoltPulseLength25ns', 0))
+                self.load_config_dict(meas_volt_dict)
         else:
             self.doubleSpinBox_measVoltTimeout_mu_s_set.setParent(None)
             self.doubleSpinBox_measVoltPulseLength_mu_s.setParent(None)
@@ -176,24 +201,37 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.voltage_reading.disconnect()
         self.parent_ui.close_dmm_live_view_win()
 
+    def set_pulse_len_and_timeout(self, meas_volt_dict):
+        """
+        sets the double spinboxes: doubleSpinBox_measVoltPulseLength_mu_s and doubleSpinBox_measVoltTimeout_mu_s_set
+        to the value given in the meas_volt_dict or to the default value
+        :param meas_volt_dict: dict, should contain 'measVoltPulseLength25ns' and 'measVoltTimeout10ns' keys
+        :return: None
+        """
+        pulse_len_25ns = meas_volt_dict.get('measVoltPulseLength25ns', 0)
+        if pulse_len_25ns is not None:
+            if pulse_len_25ns == 0:
+                pulse_len_25ns = 400  # set by default to 10µs
+            pulse_len_mu_s = pulse_len_25ns * 25 / 1000
+            self.doubleSpinBox_measVoltPulseLength_mu_s.setValue(pulse_len_mu_s)
+        timeout_10_ns = meas_volt_dict.get('measVoltTimeout10ns', 0)
+        if timeout_10_ns is not None:
+            timeout_volt_meas_mu_s = timeout_10_ns / 100000
+            if timeout_10_ns == 0:
+                timeout_volt_meas_mu_s = 10000  # set to 10 s by default.
+            self.doubleSpinBox_measVoltTimeout_mu_s_set.setValue(timeout_volt_meas_mu_s)
+
     def load_config_dict(self, meas_volt_dict):
         """
         use this if you want to paste your config settings inside the dmm_conf_dict to the
         corresponding interfaces.
         Note, that this will not yet have any impact on the device itself.
-        only by communicating with it than, it will be configered
+        only by communicating with it than, it will be configured
         :param dmm_conf_dict: dict, keys are dmm_names, values are the config dicts for each dmm
         """
         print('loading config dict: ', meas_volt_dict)
         dmm_conf_dict = meas_volt_dict.get('dmms', {})
-        pulse_len_25ns = meas_volt_dict.get('measVoltPulseLength25ns', 0)
-        if pulse_len_25ns is not None:
-            pulse_len_mu_s = pulse_len_25ns * 25 / 1000
-            self.doubleSpinBox_measVoltPulseLength_mu_s.setValue(pulse_len_mu_s)
-        timeout_10_ns = meas_volt_dict.get('measVoltTimeout10ns', 0)
-        if timeout_10_ns is not None:
-            timeout_volt_meas_mu_s = 10000  # set to 10 s by default.
-            self.doubleSpinBox_measVoltTimeout_mu_s_set.setValue(timeout_volt_meas_mu_s)
+        self.set_pulse_len_and_timeout(meas_volt_dict)
         for key, val in dmm_conf_dict.items():
             try:
                 self.tabs[key][-1].load_dict_to_gui(val)
@@ -240,11 +278,12 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def confirm_settings(self):
         """
-        when ok is pressed, values are stored in teh main, if an isotope has ben selected before.
+        when ok is pressed, values are stored in the main, if an isotope has ben selected before.
         """
         if self.active_iso is not None:
-            Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'] = self.get_current_meas_volt_pars()
-            # print('set values to: ', Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars']['dmms'])
+            Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'][self.pre_or_during_scan_str] = self.get_current_meas_volt_pars()
+            print('set values to: ', Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'])
+            self.parent_ui.pre_or_during_scan_index += 1
         self.close()
 
 

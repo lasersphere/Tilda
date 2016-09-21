@@ -234,6 +234,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             self.live_plot_win = TRSLivePlotWindowUi(parent=self)
         else:
             self.raise_win_to_front(self.live_plot_win)
+            self.live_plot_win.reset()
 
     def open_file_plot_win(self, file):
         self.file_plot_wins[file] = TRSLivePlotWindowUi(full_file_path=file,

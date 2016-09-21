@@ -9,8 +9,8 @@ Created on '23.09.2015'
 File for global Configs of Tilda
 """
 
-version = '1.11'
-versiondate = '03.08.2016'
+version = '1.12'
+versiondate = '21.09.2016'
 _main_instance = None
 # https://docs.python.org/3.4/faq/programming.html#how-do-i-share-global-variables-across-modules
 # should be best practice to store the main instance in an accessible .py

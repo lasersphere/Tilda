@@ -21,50 +21,6 @@ import numpy as np
 import serial
 
 
-class AgilentPreConfigs(Enum):
-    initial = {
-            'range': 10.0,
-            'resolution': 3e-6,
-            'triggerCount': -1,
-            'sampleCount': 1,
-            'autoZero': 'ONCE',
-            'triggerSource': 'bus',
-            'triggerDelay_s': 0,
-            'triggerSlope': 'rising',
-            'highInputResistanceTrue': True,
-            'assignment': 'offset',
-            'accuracy': (None, None),
-            'preConfName': 'initial'
-        }
-    periodic = {
-            'range': 10.0,
-            'resolution': 1e-5,
-            'triggerCount': -1,
-            'sampleCount': 1,
-            'autoZero': 'ONCE',
-            'triggerSource': 'immediate',
-            'triggerDelay_s': 0,
-            'triggerSlope': 'rising',
-            'highInputResistanceTrue': True,
-            'assignment': 'offset',
-            'accuracy': (None, None),
-            'preConfName': 'periodic'
-    }
-    pre_scan = {
-            'range': 10.0,
-            'resolution': 3e-6,
-            'triggerCount': -1,
-            'sampleCount': 1,
-            'autoZero': 'ONCE',
-            'triggerSource': 'bus',
-            'triggerDelay_s': 0,
-            'triggerSlope': 'rising',
-            'highInputResistanceTrue': True,
-            'assignment': 'offset',
-            'accuracy': (None, None),
-            'preConfName': 'pre_scan'
-    }
-
 @unique
 class AgilentTriggerSources(Enum):
     """
@@ -80,6 +36,65 @@ class AgilentTriggerSources(Enum):
     immediate = 'IMM'
     bus = 'BUS'
     external = 'EXT'
+
+
+class AgilentPreConfigs(Enum):
+    initial = {
+            'range': 10.0,
+            'resolution': 3e-6,
+            'triggerCount': -1,
+            'sampleCount': 1,
+            'autoZero': 'ONCE',
+            'triggerSource': AgilentTriggerSources.bus.name,
+            'triggerDelay_s': 0,
+            'triggerSlope': 'rising',
+            'highInputResistanceTrue': True,
+            'assignment': 'offset',
+            'accuracy': (None, None),
+            'preConfName': 'initial'
+        }
+    periodic = {
+            'range': 10.0,
+            'resolution': 1e-5,
+            'triggerCount': -1,
+            'sampleCount': 1,
+            'autoZero': 'ONCE',
+            'triggerSource': AgilentTriggerSources.immediate.name,
+            'triggerDelay_s': 0,
+            'triggerSlope': 'rising',
+            'highInputResistanceTrue': True,
+            'assignment': 'offset',
+            'accuracy': (None, None),
+            'preConfName': 'periodic'
+    }
+    pre_scan = {
+            'range': 10.0,
+            'resolution': 3e-6,
+            'triggerCount': -1,
+            'sampleCount': 1,
+            'autoZero': 'ONCE',
+            'triggerSource': AgilentTriggerSources.bus.name,
+            'triggerDelay_s': 0,
+            'triggerSlope': 'rising',
+            'highInputResistanceTrue': True,
+            'assignment': 'offset',
+            'accuracy': (None, None),
+            'preConfName': 'pre_scan'
+    }
+    kepco = {
+        'range': 10.0,
+        'resolution': 3e-6,
+        'triggerCount': -1,
+        'sampleCount': 1,
+        'autoZero': 'ONCE',
+        'triggerSource': AgilentTriggerSources.external.name,
+        'triggerDelay_s': 0,
+        'triggerSlope': 'rising',
+        'highInputResistanceTrue': True,
+        'assignment': 'offset',
+        'accuracy': (None, None),
+        'preConfName': 'kepco'
+    }
 
 
 class Agilent:

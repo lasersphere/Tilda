@@ -84,6 +84,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     # fast_spec = fast_spec.attach(TN.NSaveSpecData())
     compl_tr_br = fast.attach(TN.NCheckIfTrackComplete())
     compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
+    # compl_tr_br = compl_tr_br.attach(SN.NPrint())
     return pipe
 
 
@@ -165,7 +166,7 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False):
 
     pipe = Pipeline(start)
     pipe.pipeData = initPipeData(initial_scan_pars)
-    dmm_names = sorted(list(pipe.pipeData['measureVoltPars']['dmms'].keys()))
+    dmm_names = sorted(list(pipe.pipeData['measureVoltPars']['duringScan']['dmms'].keys()))
 
     fig, axes = plt.subplots(len(dmm_names), sharex=True)
     if len(dmm_names) == 1:

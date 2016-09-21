@@ -58,6 +58,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.tres_plt_item = None
         self.spec_data = None  # spec_data to work on.
         self.storage_data = None  # will not be touched except when gating before saving.
+        self.new_track_no_data_yet = False  # set this to true when new track is setup
         ''' connect callbacks: '''
         # bundle callbacks:
         self.subscribe_as_live_plot = subscribe_as_live_plot
@@ -188,14 +189,19 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         setup a new track -> set the indices for track and scaler
         """
+        print('receivec new track with %s %s ' % rcv_tpl)
         self.tres_sel_tr_ind, self.tres_sel_tr_name = rcv_tpl[0]
         self.tres_sel_sc_ind, self.tres_sel_sc_name = rcv_tpl[1]
+        self.new_track_no_data_yet = True
+        # need to reset stuff here if number of steps have changed.
 
     def new_data(self, spec_data):
         """
         call this to pass a new dataset to the gui.
         """
         try:
+            self.new_track_no_data_yet = False
+            print('received new data, (nOfScalers, nOfSteps, nOfBins): %s' % spec_data.get_scaler_step_and_bin_num(-1))
             gates = None
             if self.spec_data is not None:
                 gates = deepcopy(self.spec_data.softw_gates)
@@ -414,8 +420,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     checkbox_item = QtWidgets.QTableWidgetItem()
                     checkbox_item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
                     state = QtCore.Qt.Unchecked
-                    if self.tres_sel_tr_name == tr_name[5:] and self.tres_sel_sc_ind == pmt_ind:
-                        # print('this will be set to true: ', tr_name, pmt_ind)
+                    if self.tres_sel_tr_name == tr_name and self.tres_sel_sc_ind == pmt_ind:
                         state = QtCore.Qt.Checked
                     checkbox_item.setCheckState(state)
                     self.tableWidget_gates.setItem(row_ind, self.tableWidget_gates.columnCount() - 1, checkbox_item)
@@ -568,15 +573,23 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         'totalSteps', 'trackName', 'activeFile']
         """
         self.active_iso = progress_dict_from_main['activeIso']
-        if self.current_step_line is not None:
+        if self.current_step_line is not None and not self.new_track_no_data_yet:
             act_step = progress_dict_from_main['activeStep'] - 1
-            self.current_step_line.setValue(self.spec_data.x[self.tres_sel_tr_ind][act_step])  # could be that -1 required...
+            self.current_step_line.setValue(self.spec_data.x[self.tres_sel_tr_ind][act_step])
         if self.active_file != progress_dict_from_main['activeFile']:
             self.active_file = progress_dict_from_main['activeFile']
             self.setWindowTitle('plot:  %s' % self.active_file)
         self.active_initial_scan_dict = Cfg._main_instance.scan_pars[self.active_iso]
         self.active_track_name = progress_dict_from_main['trackName']
 
+    def reset(self):
+        """
+        reset all stored data etc. in order to prepare for a new isotope or so.
+        :return:
+        """
+        self.storage_data = None
+        self.spec_data = None
+        self.reset_table()
 # if __name__ == "__main__":
 #     app = QtWidgets.QApplication(sys.argv)
 #     ui = TRSLivePlotWindowUi()

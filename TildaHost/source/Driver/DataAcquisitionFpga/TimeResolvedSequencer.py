@@ -9,9 +9,10 @@ Module in  charge for loading and accessing the TimeResolvedSequencer
 Access Via the NiFpgaUniversalInterfaceDll.dll
 """
 import logging
+
+import Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig as TrsCfg
 from Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
 from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
-import Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig as TrsCfg
 
 
 class TimeResolvedSequencer(Sequencer, MeasureVolt):
@@ -82,7 +83,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         track_name = 'track' + str(track_num)
         if self.changeSeqState(self.config.seqStateDict['idle']):
             if (self.setMCSParameters(scanpars, track_name) and
-                    self.setmeasVoltParameters(scanpars['measureVoltPars']) and
+                    self.setmeasVoltParameters(scanpars['measureVoltPars']['preScan']) and
                     self.setTrackParameters(scanpars[track_name]) and
                     self.set_trigger(scanpars[track_name].get('trigger', {})) and
                     self.selectKepcoOrScalerScan(scanpars['isotopeData']['type'])):

@@ -283,10 +283,13 @@ def gate_zero_free_specdata(spec_data):
     :param spec_data: spec_data (zero free time res)
     :return: spec_data (zero free time res)
     """
-    dimensions = spec_data.get_scaler_step_and_bin_num(-1)
-    zf_spec = deepcopy(spec_data)
-    zf_spec.time_res = zero_free_to_non_zero_free(spec_data.time_res_zf, dimensions)
-    zf_spec = gate_specdata(zf_spec)
+    try:
+        dimensions = spec_data.get_scaler_step_and_bin_num(-1)
+        zf_spec = deepcopy(spec_data)
+        zf_spec.time_res = zero_free_to_non_zero_free(spec_data.time_res_zf, dimensions)
+        zf_spec = gate_specdata(zf_spec)
+    except Exception as e:
+        print('error: while gating zero free specdata: %s ' % e)
     return zf_spec
 
     # alternative solution (currently slower):

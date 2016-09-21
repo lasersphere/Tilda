@@ -66,6 +66,8 @@ class DMMControl:
         if dev is not None:
             self.dmm[dev.name] = dev
             return name
+        else:
+            return None
 
     def config_dmm(self, dmm_name, config_dict, reset_dev):
         """
