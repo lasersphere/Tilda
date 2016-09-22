@@ -84,7 +84,8 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
     this will add a pyqtgraph widget for each scaler and an additional one for the sum to the target layout.
     :param target_layout: QtLayout, here the widgets will be added
     :param pmt_list: list, containing the indices/numbers of the scalers, use specdata.active_pmt_list[tr]
-    :return: list, of tuples, (index, widget, plot_item) with sum at the last position
+    :return: list, of tuples, ('sum', pmt_list, sum_wid, sum_proxy, sum_inf_line, sum_plt_item, sum_plt_data_item)
+     with sum at the last position
     """
     return_list = []
     max_rate = max_rate
@@ -93,6 +94,8 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
                              slot=functools.partial(slot_for_mouse_move, sum_plt_item.vb, False),
                              rate_limit=max_rate)
     sum_plt_data_item = sum_plt_item.plot(pen='b')
+    sum_inf_line = create_infinite_line(0, pen='r')
+    sum_plt_item.addItem(sum_inf_line)
     for sc in pmt_list:
         widg, plt_item = create_x_y_widget(do_not_show_label=['top', 'right', 'bottom'], y_label='cts sc%s' % sc)
         plt_proxy = create_proxy(signal=plt_item.scene().sigMouseMoved,
@@ -100,17 +103,19 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
                                  rate_limit=max_rate)
         plt_item.vb.setXLink(sum_plt_item.getViewBox())
         plt_data_item = plt_item.plot(pen='k')
-        return_list.append((str(sc), [sc], widg, plt_proxy, plt_item, plt_data_item))
+        plt_inf_line = create_infinite_line(0, pen='r')
+        plt_item.addItem(plt_inf_line)
+        return_list.append((str(sc), [sc], widg, plt_proxy, plt_inf_line, plt_item, plt_data_item))
         target_layout.addWidget(widg)
     target_layout.addWidget(sum_wid)
-    return_list.append(('sum', pmt_list, sum_wid, sum_proxy, sum_plt_item, sum_plt_data_item))
+    return_list.append(('sum', pmt_list, sum_wid, sum_proxy, sum_inf_line, sum_plt_item, sum_plt_data_item))
     return return_list
 
 
 def plot_all_sc(list_of_widgets_etc, spec_data, tr):
     # print('plotting all pmts in %s' % list_of_widgets_etc)
     for val in list_of_widgets_etc:
-        name, sc, widg, proxy, plt_item, plt_data_itm = val
+        name, sc, widg, proxy, inf_line, plt_item, plt_data_itm = val
         x, y, err = spec_data.getArithSpec(sc, tr)
         plt_data_itm.setData(x, y)
 

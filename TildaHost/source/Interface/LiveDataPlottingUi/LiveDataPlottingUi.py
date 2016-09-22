@@ -197,10 +197,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         if trs:
             self.label_x_coord.setText(str(round(point.x(), 3)))
             self.label_y_coord.setText(str(round(point.y(), 3)))
-        else:
+        else:  # plot it in the all pmts tab
             self.label_x_coord_all_pmts.setText(str(round(point.x(), 3)))
             self.label_y_coor_all_pmts.setText(str(round(point.y(), 3)))
-
 
     def updateViews(self):
         """ update teh view for the overlayed plot of sum and current scaler """
@@ -340,9 +339,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def update_all_pmts_plot(self, spec_data, autorange_pls=False):
         if self.all_pmts_widg_plt_item_list is None:
             self.comboBox_all_pmts_sel_tr.blockSignals(True)
-            pmt_list = [str(i) for i in spec_data.active_pmt_list[0]]
-            pmt_list.append('all')
-            self.comboBox_all_pmts_sel_tr.addItems(pmt_list)
+            tr_list = spec_data.track_names
+            tr_list.append('all')
+            self.comboBox_all_pmts_sel_tr.addItems(tr_list)
             self.cb_all_pmts_sel_tr_changed(self.comboBox_all_pmts_sel_tr.currentText())
             self.comboBox_all_pmts_sel_tr.blockSignals(False)
 
@@ -409,8 +408,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def cb_all_pmts_sel_tr_changed(self, text):
         """ handle changes in the combobox in the all pmts tab """
         if text == 'all':
-            text = -1
-        self.all_pmts_sel_tr = int(text)
+            tr_ind = -1
+        else:
+            tr_ind = self.comboBox_all_pmts_sel_tr.currentIndex()
+        self.all_pmts_sel_tr = tr_ind
         if self.spec_data is not None and self.all_pmts_widg_plt_item_list is not None:
             self.update_all_pmts_plot(self.spec_data, autorange_pls=True)
 
@@ -564,7 +565,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             print('gates after gating are: %s' % self.storage_data.softw_gates)
             FileHandl.save_spec_data(self.storage_data, self.pipedata_dict)
         else:
-            print('could not save data, because it was not save from the scan process yet.')
+            print('could not save data, because it was not saved from the scan process yet.')
 
     ''' closing '''
 
@@ -634,13 +635,23 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         self.active_iso = progress_dict_from_main['activeIso']
         if self.current_step_line is not None and not self.new_track_no_data_yet:
-            act_step = progress_dict_from_main['activeStep'] - 1
-            self.current_step_line.setValue(self.spec_data.x[self.tres_sel_tr_ind][act_step])
+            act_step = max(progress_dict_from_main['activeStep'] - 1, 0)
+            act_tr_ind = progress_dict_from_main['activeTrack'] - 1
+            self.update_step_indication_lines(act_step, act_tr_ind)
         if self.active_file != progress_dict_from_main['activeFile']:
             self.active_file = progress_dict_from_main['activeFile']
             self.setWindowTitle('plot:  %s' % self.active_file)
         self.active_initial_scan_dict = Cfg._main_instance.scan_pars[self.active_iso]
         self.active_track_name = progress_dict_from_main['trackName']
+
+    def update_step_indication_lines(self, act_step, act_tr):
+        try:
+            val = self.spec_data.x[act_tr][act_step]
+            print('active track is: %s and active step is: %s val is: %s ' % (act_tr, act_step, val))
+            self.current_step_line.setValue(val)
+            [each[4].setValue(val) for each in self.all_pmts_widg_plt_item_list]
+        except Exception as e:
+            print(e)
 
     def reset(self):
         """
