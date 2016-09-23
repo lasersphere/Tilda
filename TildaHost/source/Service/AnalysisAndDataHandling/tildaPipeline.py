@@ -32,7 +32,7 @@ def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples):
         return TrsPipe(scan_dict, callback_sig, live_plot_callbacks=live_plot_callback_tuples)
     elif seq_type == 'kepco':
         logging.debug('starting pipeline of type: kepco')
-        return kepco_scan_pipe(scan_dict, callback_sig)
+        return kepco_scan_pipe(scan_dict, callback_sig, live_plot_callbacks=live_plot_callback_tuples)
     else:
         return None
 
@@ -120,45 +120,14 @@ def CsPipe(initialScanPars=None, callback_sig=None, live_plot_callbacks=None):
     spec = walk.attach(TN.NCS2SpecData())
     spec = spec.attach(TN.NMPLImagePlotAndSaveSpecData(0, *live_plot_callbacks))
 
-    # #
-    # branch = walk.attach(TN.NAccumulateSingleScan())
-    # # branch = branch.attach(SN.NPrint())
-    # branch = branch.attach(TN.NSingleArrayToSpecData())
-    #
-    # branch1 = branch.attach(TN.NSingleSpecFromSpecData([0]))
-    # # branch1 = branch1.attach(TN.NPlotUpdater(fig, axes[0], 'scaler 0', ['blue']))
-    # branch1 = branch1.attach(TN.NMPlLivePlot(axes[0], 'scaler 0', ['blue']))
-    #
-    # branch2 = branch.attach(TN.NSingleSpecFromSpecData([1]))
-    # branch2 = branch2.attach(TN.NMPlLivePlot(axes[1], 'scaler 1', ['green']))
-    #
-    # branch3 = branch.attach(TN.NSingleSpecFromSpecData([0, 1]))
-    # branch3 = branch3.attach(TN.NMPlLivePlot(axes[2], 'scaler 0+1', ['red']))
-    #
-    # walk = walk.attach(TN.NRemoveTrackCompleteFlag())
-    walk = walk.attach(TN.NCSSum())
-    #
-    # summe = walk.attach(TN.NSingleArrayToSpecData())
-    # sum0 = summe.attach(TN.NMultiSpecFromSpecData([[0], [1]]))
-    # sum0 = sum0.attach(TN.NMPlLivePlot(axes[3], 'live sum', ['blue', 'green']))
-    #
-    # sum01 = summe.attach(TN.NSingleSpecFromSpecData([0, 1]))
-    # sum01 = sum01.attach(TN.NMPlLivePlot(axes[4], 'scaler 0+1', ['red']))
-    # sum01 = sum01.attach(TN.NMPlDrawPlot())
-    #
-    # compl_tr_br = walk.attach(TN.NCheckIfTrackComplete())
-    # compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
-    # compl_tr_br = compl_tr_br.attach(SN.NPrint())
-    #
-    # # walk = walk.attach(TN.NSaveIncomDataForActiveTrack())
-    # # walk = walk.attach(TN.NCheckIfMeasurementComplete())
-    # # walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
-    # walk = walk.attach(TN.NSaveAllTracks())
+    compl_tr_br = spec.attach(TN.NCheckIfTrackComplete())
+    compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
+
 
     return pipe
 
 
-def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False):
+def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False, live_plot_callbacks=None):
     """
     pipeline for the measurement and analysis of a kepco scan
     raw data and readback from dmm are fed into the pipeline.
@@ -173,29 +142,19 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False):
     pipe = Pipeline(start)
     pipe.pipeData = initPipeData(initial_scan_pars)
     dmm_names = sorted(list(pipe.pipeData['measureVoltPars']['duringScan']['dmms'].keys()))
-
-    fig, axes = plt.subplots(len(dmm_names), sharex=True)
-    if len(dmm_names) == 1:
-        axes = [axes]
-    filen = os.path.split(pipe.pipeData['pipeInternals']['activeXmlFilePath'])[1]
-    window_title = 'plot ' + filen
-    fig.canvas.set_window_title(window_title)
     #
     walk = start.attach(TN.NSaveRawData())
     # walk = start.attach(SN.NPrint())
     specdata_path = start.attach(TN.NStartNodeKepcoScan(as_voltage, dmm_names))
     specdata_path = specdata_path.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
-    #
-    plot_dict = {}
-    for ind, dmm in enumerate(dmm_names):
-        plot_dict[dmm] = specdata_path.attach(TN.NSingleSpecFromSpecData([ind]))
-        plot_dict[dmm] = plot_dict[dmm].attach(TN.NMPlLivePlot(axes[ind], '%s [v]' % dmm, ['blue']))
-    axes[-1].set_xlabel('DAC line[V]' if as_voltage else 'DAC Register')
-    draw = plot_dict[dmm_names[-1]].attach(TN.NMPlDrawPlot())
 
-    specdata_path = specdata_path.attach(TN.NSaveSpecData())
+    specdata_path = specdata_path.attach(TN.NMPLImagePlotAndSaveSpecData(0, *live_plot_callbacks))
 
-    specdata_path = specdata_path.attach(TN.NStraightKepcoFitOnClear(axes, dmm_names))
+    compl_tr_br = specdata_path.attach(TN.NCheckIfTrackComplete())
+    compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
+
+    # later:
+    # specdata_path = specdata_path.attach(TN.NStraightKepcoFitOnClear(axes, dmm_names))
     # # specdata_path = specdata_path.attach(TN.NSaveIncomDataForActiveTrack())
     # # more has to be included...
     return pipe

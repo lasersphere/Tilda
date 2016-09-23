@@ -186,7 +186,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         all_pmts_plot_layout = QtWidgets.QVBoxLayout()
         self.all_pmts_widg_plt_item_list = Pg.create_plot_for_all_sc(
             all_pmts_plot_layout, self.spec_data.active_pmt_list[self.all_pmts_sel_tr],
-            self.mouse_moved, max_rate)
+            self.mouse_moved, max_rate, plot_sum=self.spec_data.seq_type != 'kepco'
+        )
         self.widget_all_pmts_plot.setLayout(all_pmts_plot_layout)
 
     def mouse_moved(self, viewbox, trs, evt):
@@ -222,8 +223,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         try:
             self.new_track_no_data_yet = False
+            print('received new data, (nOfScalers, nOfSteps, nOfBins): %s' % spec_data.get_scaler_step_and_bin_num(-1))
             if spec_data.seq_type in ['trs', 'trsdummy']:
-                print('received new data, (nOfScalers, nOfSteps, nOfBins): %s' % spec_data.get_scaler_step_and_bin_num(-1))
                 gates = None
                 if self.spec_data is not None:
                     gates = deepcopy(self.spec_data.softw_gates)
@@ -235,13 +236,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.sum_scaler_changed(0)
                 self.update_gates_list()
                 self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
-            elif spec_data.seq_type in ['cs', 'csdummy']:
+            elif spec_data.seq_type in ['cs', 'csdummy', 'kepco']:
                 self.tabWidget.setCurrentIndex(2)
                 self.spec_data = deepcopy(spec_data)
                 self.storage_data = deepcopy(spec_data)
                 self.update_all_plots(self.spec_data)
-
-
         except Exception as e:
             print('error in liveplotterui while receiving new data: ', e)
 

@@ -79,7 +79,7 @@ def create_x_y_widget(do_not_show_label=['top', 'right'], x_label='line voltage'
     return widg, plt_item
 
 
-def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rate):
+def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rate, plot_sum=True):
     """
     this will add a pyqtgraph widget for each scaler and an additional one for the sum to the target layout.
     :param target_layout: QtLayout, here the widgets will be added
@@ -89,26 +89,29 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
     """
     return_list = []
     max_rate = max_rate
-    sum_wid, sum_plt_item = create_x_y_widget(do_not_show_label=['top', 'right'], y_label='cts sum')
-    sum_proxy = create_proxy(signal=sum_plt_item.scene().sigMouseMoved,
-                             slot=functools.partial(slot_for_mouse_move, sum_plt_item.vb, False),
-                             rate_limit=max_rate)
-    sum_plt_data_item = sum_plt_item.plot(pen='b')
-    sum_inf_line = create_infinite_line(0, pen='r')
-    sum_plt_item.addItem(sum_inf_line)
-    for sc in pmt_list:
-        widg, plt_item = create_x_y_widget(do_not_show_label=['top', 'right', 'bottom'], y_label='cts sc%s' % sc)
+    for sc_ind, sc_name in enumerate(pmt_list):
+        widg, plt_item = create_x_y_widget(do_not_show_label=['top', 'right', 'bottom'], y_label='cts sc%s' % sc_name)
         plt_proxy = create_proxy(signal=plt_item.scene().sigMouseMoved,
                                  slot=functools.partial(slot_for_mouse_move, plt_item.vb, False),
                                  rate_limit=max_rate)
-        plt_item.vb.setXLink(sum_plt_item.getViewBox())
+        if sc_ind:
+            plt_item.vb.setXLink(return_list[sc_ind - 1].getViewBox())
         plt_data_item = plt_item.plot(pen='k')
         plt_inf_line = create_infinite_line(0, pen='r')
         plt_item.addItem(plt_inf_line)
-        return_list.append((str(sc), [sc], widg, plt_proxy, plt_inf_line, plt_item, plt_data_item))
+        return_list.append((str(sc_name), [sc_ind], widg, plt_proxy, plt_inf_line, plt_item, plt_data_item))
         target_layout.addWidget(widg)
-    target_layout.addWidget(sum_wid)
-    return_list.append(('sum', pmt_list, sum_wid, sum_proxy, sum_inf_line, sum_plt_item, sum_plt_data_item))
+    if plot_sum:
+        sum_wid, sum_plt_item = create_x_y_widget(do_not_show_label=['top', 'right'], y_label='cts sum')
+        sum_proxy = create_proxy(signal=sum_plt_item.scene().sigMouseMoved,
+                                 slot=functools.partial(slot_for_mouse_move, sum_plt_item.vb, False),
+                                 rate_limit=max_rate)
+        sum_plt_data_item = sum_plt_item.plot(pen='b')
+        sum_inf_line = create_infinite_line(0, pen='r')
+        sum_plt_item.addItem(sum_inf_line)
+        target_layout.addWidget(sum_wid)
+        sum_plt_item.vb.setXLink(return_list[-1].getViewBox())
+        return_list.append(('sum', range(0, len(pmt_list)), sum_wid, sum_proxy, sum_inf_line, sum_plt_item, sum_plt_data_item))
     return return_list
 
 

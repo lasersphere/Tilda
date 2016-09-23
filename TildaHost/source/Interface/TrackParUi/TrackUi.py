@@ -38,7 +38,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.track_name = 'track' + str(track_number)
         self.scan_ctrl_win = scan_ctrl_win
         self.active_iso = scan_ctrl_win.active_iso
-        seq_type = self.active_iso.split('_')[-1]
+        self.seq_type = self.active_iso.split('_')[-1]
         self.track_number = track_number
         self.main_gui = main_gui
 
@@ -54,8 +54,10 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.setWindowTitle(self.scan_ctrl_win.win_title + '_' + self.track_name)
 
         """ sequencer specific """
-        self.sequencer_widget = FindDesiredSeqWidg.find_sequencer_widget(seq_type, self.buffer_pars, self.main_gui)
+        self.sequencer_widget = FindDesiredSeqWidg.find_sequencer_widget(self.seq_type, self.buffer_pars, self.main_gui)
         self.verticalLayout.replaceWidget(self.specificSequencerSettings, self.sequencer_widget)
+        if self.seq_type == 'kepco':
+            self.spinBox_nOfScans.setMaximum(1)
 
         """ Trigger related """
         self.checkBox.setDisabled(True)

@@ -174,7 +174,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         opens a dialog for choosing the isotope. This Dialog is non Modal.
         -> Blocks other executions
         """
-        if self.active_iso:
+        if self.active_iso:  # first remove the before selected isotope from the scan pars
             Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
             self.active_iso = None
         logging.debug('setting up isotope')

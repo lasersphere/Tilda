@@ -518,6 +518,11 @@ class Main(QtCore.QObject):
         self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
         self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
         self.scan_pars[iso_name]['isotopeData']['accVolt'] = self.acc_voltage
+        if self.scan_pars[iso_name]['isotopeData']['type'] == 'kepco':
+            track_num, list_of_tracknums = SdOp.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
+            if track_num > 1:
+                [self.scan_pars[iso_name].pop('track%s' % track_num) for track_num in list_of_tracknums[1:]]
+            self.scan_pars[iso_name]['track0']['nOfScans'] = 1  # force to one scan!
         return self.scan_pars[iso_name]
 
     def halt_scan_func(self, halt_bool):
