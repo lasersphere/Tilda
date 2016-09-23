@@ -90,12 +90,15 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
     return_list = []
     max_rate = max_rate
     for sc_ind, sc_name in enumerate(pmt_list):
-        widg, plt_item = create_x_y_widget(do_not_show_label=['top', 'right', 'bottom'], y_label='cts sc%s' % sc_name)
+        label_list = ['top', 'right', 'bottom']
+        if not plot_sum:  # if the sum is not plotted, the last pmt must hold the label
+            label_list = label_list if sc_ind < len(pmt_list) - 1 else ['top', 'right']
+        widg, plt_item = create_x_y_widget(do_not_show_label=label_list, y_label='cts sc%s' % sc_name)
         plt_proxy = create_proxy(signal=plt_item.scene().sigMouseMoved,
                                  slot=functools.partial(slot_for_mouse_move, plt_item.vb, False),
                                  rate_limit=max_rate)
         if sc_ind:
-            plt_item.vb.setXLink(return_list[sc_ind - 1].getViewBox())
+            plt_item.vb.setXLink(return_list[sc_ind - 1][-2].getViewBox())
         plt_data_item = plt_item.plot(pen='k')
         plt_inf_line = create_infinite_line(0, pen='r')
         plt_item.addItem(plt_inf_line)
@@ -110,7 +113,7 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
         sum_inf_line = create_infinite_line(0, pen='r')
         sum_plt_item.addItem(sum_inf_line)
         target_layout.addWidget(sum_wid)
-        sum_plt_item.vb.setXLink(return_list[-1].getViewBox())
+        sum_plt_item.vb.setXLink(return_list[-1][-2].getViewBox())
         return_list.append(('sum', range(0, len(pmt_list)), sum_wid, sum_proxy, sum_inf_line, sum_plt_item, sum_plt_data_item))
     return return_list
 

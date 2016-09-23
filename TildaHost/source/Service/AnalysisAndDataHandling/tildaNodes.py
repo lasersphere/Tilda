@@ -1359,12 +1359,12 @@ class NSpecDataZeroFreeProjection(Node):
 
 
 class NStraightKepcoFitOnClear(Node):
-    def __init__(self, axes, dmm_names_sorted):
+    def __init__(self, dmm_names_sorted, gui_fit_res_callback=None):
         super(NStraightKepcoFitOnClear, self).__init__()
         self.type = 'SpecDataFittingOnClear'
         self.spec_buffer = None
-        self.axes = axes
-        self.dmms = dmm_names_sorted  # list with the dmm names, indeces are equal to indices in spec_data.cts, etc.
+        self.gui_fit_res_callback = gui_fit_res_callback  # must be dict
+        self.dmms = dmm_names_sorted  # list with the dmm names, indices are equal to indices in spec_data.cts, etc.
 
     def processData(self, data, pipeData):
         self.spec_buffer = data
@@ -1377,8 +1377,11 @@ class NStraightKepcoFitOnClear(Node):
                 fitter.fit()
                 result = fitter.result()
                 plotdata = fitter.spec.toPlotE(0, 0, fitter.par)
-                self.axes[ind].add_line(MPLPlotter.line2d(plotdata[0], plotdata[1], 'red'))
-                MPLPlotter.draw()
+
+                if self.gui_fit_res_callback is not None:
+                    fit_dict = {'index': ind, 'name': dmm_name, 'plotData': deepcopy(plotdata), 'result': deepcopy(result)}
+                    self.gui_fit_res_callback.emit(fit_dict)
+
                 pipe_internals = self.Pipeline.pipeData['pipeInternals']
                 file = pipe_internals['activeXmlFilePath']
                 db_name = os.path.basename(pipe_internals['workingDirectory']) + '.sqlite'

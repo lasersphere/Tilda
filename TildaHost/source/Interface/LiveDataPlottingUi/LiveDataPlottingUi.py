@@ -29,8 +29,15 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     # if a new track is started call:
     # the tuple is of form: ((tr_ind, tr_name), (pmt_ind, pmt_name))
     new_track_callback = QtCore.pyqtSignal(tuple)
-    # when teh pipeline wants to save, this is emitted and it send the pipeData as a dict
+    # when the pipeline wants to save, this is emitted and it send the pipeData as a dict
     save_callback = QtCore.pyqtSignal(dict)
+
+    # dict, fit result plot data callback
+    # -> this can be emitted from a node to send a dict containing fit results:
+    # 'plotData': tuple of ([x], [y]) values to plot a fit result.
+    # 'result': list of result-tuples (name, pardict, fix)
+    fit_results_dict_callback = QtCore.pyqtSignal(dict)
+
 
     # progress dict coming from the main
     progress_callback = QtCore.pyqtSignal(dict)
@@ -97,7 +104,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.checkBox.stateChanged.connect(self.apply_rebin_to_all_checkbox_changed)
 
         ''' all pmts related: '''
-        #  dict for all_pmt_plot page containing the ([sc], widg, plt_item) for each plot:
+        #  dict for all_pmt_plot page containing the
+        # ('sum', pmt_list, sum_wid, sum_proxy, sum_inf_line, sum_plt_item, sum_plt_data_item) for each plot:
         self.all_pmts_widg_plt_item_list = None
 
         self.all_pmts_sel_tr = 0
@@ -599,9 +607,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.save_callback.connect(self.save)
         self.new_track_callback.connect(self.setup_new_track)
         self.new_data_callback.connect(self.new_data)
+        self.fit_results_dict_callback.connect(self.rcvd_fit_res_dict)
         if self.subscribe_as_live_plot:
             self.progress_callback.connect(self.handle_progress_dict)
-            Cfg._main_instance.gui_live_plot_subscribe(self.callbacks, self.progress_callback)
+            Cfg._main_instance.gui_live_plot_subscribe(
+                self.callbacks, self.progress_callback, self.fit_results_dict_callback)
 
     def unsubscribe_from_main(self):
         if self.subscribe_as_live_plot:
@@ -679,6 +689,14 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.storage_data = None
         self.spec_data = None
         self.reset_table()
+
+    ''' fit related '''
+
+    def rcvd_fit_res_dict(self, fit_res_dict):
+        print('rcvd fit result dict: %s' % fit_res_dict['result'])
+        print('index is: %s' % fit_res_dict['index'])
+        x, y = fit_res_dict['plotData']
+        self.all_pmts_widg_plt_item_list[fit_res_dict['index']][-2].plot(x, y, pen='r')
 # if __name__ == "__main__":
 #     app = QtWidgets.QApplication(sys.argv)
 #     ui = TRSLivePlotWindowUi()

@@ -58,7 +58,9 @@ class Main(QtCore.QObject):
         # tuple of three callbacks which are needed for the live plot gui
         #  and which are emitted from the pipeline. Therefore those must be available when initialising the pipeline.
         self.live_plot_callback_tuples = None  # tuple of seperate callbacks
-        self.liveplot_progress_callback = None  # dict
+        self.live_plot_progress_callback = None  # dict
+        self.live_plot_fit_res_callback = None  # dict
+
 
         self.scan_main = ScanMain()
         self.iso_scan_process = None
@@ -216,7 +218,7 @@ class Main(QtCore.QObject):
         """
         self.main_ui_status_call_back_signal = None
 
-    def gui_live_plot_subscribe(self, callback_tuple_from_live_plot_win, liveplot_progress_callback):
+    def gui_live_plot_subscribe(self, callback_tuple_from_live_plot_win, liveplot_progress_callback, fit_res_callback):
         """
         a liveplot gui can pass the three needed callbacks to the main here.
         the main will use them wehn initialising the pipeline.
@@ -225,11 +227,13 @@ class Main(QtCore.QObject):
         See LiveDataPlottingUi for details.
         """
         self.live_plot_callback_tuples = callback_tuple_from_live_plot_win
-        self.liveplot_progress_callback = liveplot_progress_callback
+        self.live_plot_progress_callback = liveplot_progress_callback
+        self.live_plot_fit_res_callback = fit_res_callback
 
     def gui_live_plot_unsubscribe(self):
         self.live_plot_callback_tuples = None
-        self.liveplot_progress_callback = None
+        self.live_plot_progress_callback = None
+        self.live_plot_fit_res_callback = None
 
     def send_state(self):
         """
@@ -335,6 +339,10 @@ class Main(QtCore.QObject):
         seq_type = scan_d.get('isotopeData').get('type')
         next_track_num, track_num_list = SdOp.get_available_tracknum(scan_d)
         track_name = 'track' + str(next_track_num)
+        if seq_type == 'kepco':  # only one track for a kepco scan
+            if next_track_num > 0:
+                print('only one track allowed for kepco scan')
+                return None
         scand_from_db = DbOp.extract_track_dict_from_db(self.database, iso, seq_type, next_track_num)
         if scand_from_db is not None:
             logging.debug('adding track' + str(next_track_num) + ' from database')
@@ -547,8 +555,8 @@ class Main(QtCore.QObject):
         if progress_dict is not None:
             if self.scan_prog_call_back_sig_gui is not None:
                 self.scan_prog_call_back_sig_gui.emit(progress_dict)
-            if self.liveplot_progress_callback is not None:
-                self.liveplot_progress_callback.emit(progress_dict)
+            if self.live_plot_progress_callback is not None:
+                self.live_plot_progress_callback.emit(progress_dict)
 
     def subscribe_to_scan_prog(self, callback_signal):
         """
@@ -573,7 +581,9 @@ class Main(QtCore.QObject):
         is_this_first_track = len(self.scan_progress['completedTracks']) == 0
         if is_this_first_track:  # initialise the pipeline on first track
             self.scan_main.init_pipeline(
-                self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline, self.live_plot_callback_tuples)
+                self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline,
+                self.live_plot_callback_tuples,
+                fit_res_dict_callback=self.live_plot_fit_res_callback)
         active_track_num = self.scan_progress['activeTrackNum']
         self.scan_main.prep_track_in_pipe(active_track_num, active_track_num)
         if self.scan_main.start_measurement(self.scan_pars[iso_name], active_track_num):
