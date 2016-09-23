@@ -169,8 +169,8 @@ def save_spec_data(spec_data, scan_dict):
                 xmlAddCompleteTrack(
                     root_ele, scan_dict, spec_data.t_proj[track_ind], track_name, datatype='time_projection',
                     parent_ele_str='projections')
-            else:
-                scan_dict[track_name]['softwGates'] = spec_data.softw_gates[track_ind]
+            else:  # not time resolved
+                scan_dict[track_name]['softwGates'] = []
                 xmlAddCompleteTrack(root_ele, scan_dict, spec_data.cts[track_ind], track_name)
         Tits.save_xml(root_ele, existing_xml_fil_path, False)
     except Exception as e:

@@ -236,10 +236,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.update_gates_list()
                 self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
             elif spec_data.seq_type in ['cs', 'csdummy']:
-                self.tabWidget.setCurrentIndex(-1)
+                self.tabWidget.setCurrentIndex(2)
                 self.spec_data = deepcopy(spec_data)
                 self.storage_data = deepcopy(spec_data)
-                self.update_all_plots(self.spec_data, tres=False)
+                self.update_all_plots(self.spec_data)
 
 
         except Exception as e:
@@ -247,12 +247,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     ''' updating the plots from specdata '''
 
-    def update_all_plots(self, spec_data, tres=True):
+    def update_all_plots(self, spec_data):
         """ wrapper to update all plots """
         self.update_sum_plot(spec_data)
-        if tres:
+        if spec_data.seq_type in ['trs', 'trsdummy']:
             self.update_tres_plot(spec_data)
-        self.update_projections(spec_data)
+            self.update_projections(spec_data)
         self.update_all_pmts_plot(spec_data)
 
     def update_sum_plot(self, spec_data):
@@ -393,6 +393,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         :return:
         """
         try:
+            curs_pos_sum = self.lineEdit_arith_scaler_input.cursorPosition()
+            curs_pos_all_pmts = self.lineEdit_sum_all_pmts.cursorPosition()
             hopefully_list = ast.literal_eval(text)
             if isinstance(hopefully_list, list):
                 isinteger = len(hopefully_list) > 0
@@ -402,7 +404,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.sum_scaler = hopefully_list
                     self.label_arith_scaler_set.setText(str(hopefully_list))
                     self.update_sum_plot(self.spec_data)
-                    self.update_projections(self.spec_data)
+                    if self.spec_data.seq_type in ['trs', 'trsdummy']:
+                        self.update_projections(self.spec_data)
                     if self.all_pmts_widg_plt_item_list is not None:
                         lis = list(self.all_pmts_widg_plt_item_list[-1])
                         lis[1] = hopefully_list
@@ -411,6 +414,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                         self.update_all_pmts_plot(self.spec_data)
                     self.lineEdit_sum_all_pmts.setText(text)
                     self.lineEdit_arith_scaler_input.setText(text)
+                    if curs_pos_sum:
+                        self.lineEdit_arith_scaler_input.setCursorPosition(curs_pos_sum)
+                    if curs_pos_all_pmts:
+                        self.lineEdit_sum_all_pmts.setCursorPosition(curs_pos_all_pmts)
         except Exception as e:
             print(e)
 
@@ -567,11 +574,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         if pipedata_dict is not None:
             self.pipedata_dict = pipedata_dict
         if self.pipedata_dict is not None:
-            gates = self.extract_all_gates_from_gui()
-            print('gates are: %s' % gates)
-            self.storage_data.softw_gates = gates
-            self.gate_data(self.storage_data, False)
-            print('gates after gating are: %s' % self.storage_data.softw_gates)
+            if self.spec_data.seq_type in ['trs', 'trsdummy']:
+                gates = self.extract_all_gates_from_gui()
+                print('gates are: %s' % gates)
+                self.storage_data.softw_gates = gates
+                self.gate_data(self.storage_data, False)
+                print('gates after gating are: %s' % self.storage_data.softw_gates)
             FileHandl.save_spec_data(self.storage_data, self.pipedata_dict)
         else:
             print('could not save data, because it was not saved from the scan process yet.')
@@ -644,7 +652,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         print('rcvd progress')
         self.active_iso = progress_dict_from_main['activeIso']
-        if self.current_step_line is not None and not self.new_track_no_data_yet:
+        if not self.new_track_no_data_yet:
             act_step = max(progress_dict_from_main['activeStep'] - 1, 0)
             act_tr_ind = progress_dict_from_main['activeTrack'] - 1
             self.update_step_indication_lines(act_step, act_tr_ind)

@@ -36,13 +36,9 @@ class DisplayData:
         self.spec = XmlImp(file, x_as_volt=self.x_as_volt)
 
     def select_pipe(self):
-        if self.spec.seq_type in ['trs', 'trsdummy', 'tipa', 'tipadummy']:
-            print('loading time resolved spectrum: ', self.file)
-            callbacks = (None, None, None) if self.gui is None else self.gui.callbacks
-            self.pipe = TP.time_resolved_display(self.file, callbacks)
-            self.pipe.start()
-        else:
-            print('sorry, only resolved spectra currently supported')
+        callbacks = (None, None, None) if self.gui is None else self.gui.callbacks
+        self.pipe = TP.time_resolved_display(self.file, callbacks)
+        self.pipe.start()
 
     def feed_loaded_spec(self):
         start = datetime.now()

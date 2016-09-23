@@ -91,6 +91,7 @@ class XMLImporter(SpecData):
         self.dwell = []
         self.softw_gates = []
         self.track_names = TildaTools.get_track_names(scandict)
+        print('track_names are: %s ' % self.track_names)
         self.softBinWidth_ns = []
 
         cts_shape = []
