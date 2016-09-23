@@ -1623,6 +1623,32 @@ class NSPAddxAxis(Node):
         return self.buffer
 
 
+class NCS2SpecData(Node):
+    def __init__(self, x_as_voltage=True):
+        """
+        when started, will init a SpecData object of given size.
+        Overwrites SpecData.cts of teh active track with incoming data and passes the SpecData object to the next node.
+        Incoming data should be sum
+        input: scalerArray containing the sum of each scaler, for all tracks
+        output: SpecData
+        """
+        super(NCS2SpecData, self).__init__()
+        self.type = 'CS2SpecData'
+        self.spec_data = None
+        self.x_as_voltage = x_as_voltage
+
+    def start(self):
+        if self.spec_data is None:
+            self.spec_data = XMLImporter(None, self.x_as_voltage, self.Pipeline.pipeData)
+            logging.debug('pipeline successfully loaded: %s' % self.spec_data.file)
+
+    def processData(self, data, pipeData):
+        self.spec_data.cts = data
+        return self.spec_data
+
+    def clear(self):
+        self.spec_data = None
+
 """ time resolved Sequencer Nodes """
 
 

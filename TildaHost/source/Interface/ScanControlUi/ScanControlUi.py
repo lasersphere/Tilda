@@ -105,9 +105,9 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
             self.go_was_clicked_before = True
             self.num_of_reps = self.spinBox_num_of_reps.value()
         self.main_gui.open_scan_progress_win()
-        if Cfg._main_instance.scan_pars[self.active_iso]['isotopeData']['type'] in ['trs', 'trsdummy']:
+        # if Cfg._main_instance.scan_pars[self.active_iso]['isotopeData']['type'] in ['trs', 'trsdummy']:
             #  for now only open the window when using a time resolved scan.
-            self.main_gui.open_live_plot_win()
+        self.main_gui.open_live_plot_win()
         Cfg._main_instance.start_scan(self.active_iso)
 
     def add_track(self):

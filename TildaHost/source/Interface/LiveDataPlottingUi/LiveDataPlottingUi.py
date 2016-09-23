@@ -222,27 +222,36 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         try:
             self.new_track_no_data_yet = False
-            print('received new data, (nOfScalers, nOfSteps, nOfBins): %s' % spec_data.get_scaler_step_and_bin_num(-1))
-            gates = None
-            if self.spec_data is not None:
-                gates = deepcopy(self.spec_data.softw_gates)
-            self.spec_data = deepcopy(spec_data)
-            self.storage_data = deepcopy(spec_data)
-            if gates is not None:
-                self.spec_data.softw_gates = gates
-                self.storage_data.softw_gates = gates
-            self.sum_scaler_changed(0)
-            self.update_gates_list()
-            self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
+            if spec_data.seq_type in ['trs', 'trsdummy']:
+                print('received new data, (nOfScalers, nOfSteps, nOfBins): %s' % spec_data.get_scaler_step_and_bin_num(-1))
+                gates = None
+                if self.spec_data is not None:
+                    gates = deepcopy(self.spec_data.softw_gates)
+                self.spec_data = deepcopy(spec_data)
+                self.storage_data = deepcopy(spec_data)
+                if gates is not None:
+                    self.spec_data.softw_gates = gates
+                    self.storage_data.softw_gates = gates
+                self.sum_scaler_changed(0)
+                self.update_gates_list()
+                self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
+            elif spec_data.seq_type in ['cs', 'csdummy']:
+                self.tabWidget.setCurrentIndex(-1)
+                self.spec_data = deepcopy(spec_data)
+                self.storage_data = deepcopy(spec_data)
+                self.update_all_plots(self.spec_data, tres=False)
+
+
         except Exception as e:
             print('error in liveplotterui while receiving new data: ', e)
 
     ''' updating the plots from specdata '''
 
-    def update_all_plots(self, spec_data):
+    def update_all_plots(self, spec_data, tres=True):
         """ wrapper to update all plots """
         self.update_sum_plot(spec_data)
-        self.update_tres_plot(spec_data)
+        if tres:
+            self.update_tres_plot(spec_data)
         self.update_projections(spec_data)
         self.update_all_pmts_plot(spec_data)
 
@@ -633,6 +642,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         'trackProgr', 'activeScan', 'totalScans', 'activeStep',
         'totalSteps', 'trackName', 'activeFile']
         """
+        print('rcvd progress')
         self.active_iso = progress_dict_from_main['activeIso']
         if self.current_step_line is not None and not self.new_track_no_data_yet:
             act_step = max(progress_dict_from_main['activeStep'] - 1, 0)
@@ -648,7 +658,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         try:
             val = self.spec_data.x[act_tr][act_step]
             print('active track is: %s and active step is: %s val is: %s ' % (act_tr, act_step, val))
-            self.current_step_line.setValue(val)
+            if self.current_step_line is not None:
+                self.current_step_line.setValue(val)
             [each[4].setValue(val) for each in self.all_pmts_widg_plt_item_list]
         except Exception as e:
             print(e)

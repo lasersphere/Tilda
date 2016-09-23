@@ -26,7 +26,7 @@ def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples):
     seq_type = scan_dict['isotopeData']['type']
     if seq_type == 'cs' or seq_type == 'csdummy':
         logging.debug('starting pipeline of type: cs')
-        return CsPipe(scan_dict, callback_sig)
+        return CsPipe(scan_dict, callback_sig, live_plot_callbacks=live_plot_callback_tuples)
     elif seq_type == 'trs' or seq_type == 'trsdummy':
         logging.debug('starting pipeline of type: trs')
         return TrsPipe(scan_dict, callback_sig, live_plot_callbacks=live_plot_callback_tuples)
@@ -88,7 +88,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     return pipe
 
 
-def CsPipe(initialScanPars=None, callback_sig=None):
+def CsPipe(initialScanPars=None, callback_sig=None, live_plot_callbacks=None):
     """
     Pipeline for the dataflow and analysis of one Isotope using the continous sequencer.
     always feed raw data.
@@ -114,40 +114,46 @@ def CsPipe(initialScanPars=None, callback_sig=None):
     walk = walk.attach(TN.NCSSortRawDatatoArray())
     walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
 
-    #
-    branch = walk.attach(TN.NAccumulateSingleScan())
-    # branch = branch.attach(SN.NPrint())
-    branch = branch.attach(TN.NSingleArrayToSpecData())
-
-    branch1 = branch.attach(TN.NSingleSpecFromSpecData([0]))
-    # branch1 = branch1.attach(TN.NPlotUpdater(fig, axes[0], 'scaler 0', ['blue']))
-    branch1 = branch1.attach(TN.NMPlLivePlot(axes[0], 'scaler 0', ['blue']))
-
-    branch2 = branch.attach(TN.NSingleSpecFromSpecData([1]))
-    branch2 = branch2.attach(TN.NMPlLivePlot(axes[1], 'scaler 1', ['green']))
-
-    branch3 = branch.attach(TN.NSingleSpecFromSpecData([0, 1]))
-    branch3 = branch3.attach(TN.NMPlLivePlot(axes[2], 'scaler 0+1', ['red']))
-
     walk = walk.attach(TN.NRemoveTrackCompleteFlag())
     walk = walk.attach(TN.NCSSum())
 
-    summe = walk.attach(TN.NSingleArrayToSpecData())
-    sum0 = summe.attach(TN.NMultiSpecFromSpecData([[0], [1]]))
-    sum0 = sum0.attach(TN.NMPlLivePlot(axes[3], 'live sum', ['blue', 'green']))
+    spec = walk.attach(TN.NCS2SpecData())
+    spec = spec.attach(TN.NMPLImagePlotAndSaveSpecData(0, *live_plot_callbacks))
 
-    sum01 = summe.attach(TN.NSingleSpecFromSpecData([0, 1]))
-    sum01 = sum01.attach(TN.NMPlLivePlot(axes[4], 'scaler 0+1', ['red']))
-    sum01 = sum01.attach(TN.NMPlDrawPlot())
-
-    compl_tr_br = walk.attach(TN.NCheckIfTrackComplete())
-    compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
-    compl_tr_br = compl_tr_br.attach(SN.NPrint())
-
-    # walk = walk.attach(TN.NSaveIncomDataForActiveTrack())
-    # walk = walk.attach(TN.NCheckIfMeasurementComplete())
-    # walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
-    walk = walk.attach(TN.NSaveAllTracks())
+    # #
+    # branch = walk.attach(TN.NAccumulateSingleScan())
+    # # branch = branch.attach(SN.NPrint())
+    # branch = branch.attach(TN.NSingleArrayToSpecData())
+    #
+    # branch1 = branch.attach(TN.NSingleSpecFromSpecData([0]))
+    # # branch1 = branch1.attach(TN.NPlotUpdater(fig, axes[0], 'scaler 0', ['blue']))
+    # branch1 = branch1.attach(TN.NMPlLivePlot(axes[0], 'scaler 0', ['blue']))
+    #
+    # branch2 = branch.attach(TN.NSingleSpecFromSpecData([1]))
+    # branch2 = branch2.attach(TN.NMPlLivePlot(axes[1], 'scaler 1', ['green']))
+    #
+    # branch3 = branch.attach(TN.NSingleSpecFromSpecData([0, 1]))
+    # branch3 = branch3.attach(TN.NMPlLivePlot(axes[2], 'scaler 0+1', ['red']))
+    #
+    # walk = walk.attach(TN.NRemoveTrackCompleteFlag())
+    walk = walk.attach(TN.NCSSum())
+    #
+    # summe = walk.attach(TN.NSingleArrayToSpecData())
+    # sum0 = summe.attach(TN.NMultiSpecFromSpecData([[0], [1]]))
+    # sum0 = sum0.attach(TN.NMPlLivePlot(axes[3], 'live sum', ['blue', 'green']))
+    #
+    # sum01 = summe.attach(TN.NSingleSpecFromSpecData([0, 1]))
+    # sum01 = sum01.attach(TN.NMPlLivePlot(axes[4], 'scaler 0+1', ['red']))
+    # sum01 = sum01.attach(TN.NMPlDrawPlot())
+    #
+    # compl_tr_br = walk.attach(TN.NCheckIfTrackComplete())
+    # compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
+    # compl_tr_br = compl_tr_br.attach(SN.NPrint())
+    #
+    # # walk = walk.attach(TN.NSaveIncomDataForActiveTrack())
+    # # walk = walk.attach(TN.NCheckIfMeasurementComplete())
+    # # walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
+    # walk = walk.attach(TN.NSaveAllTracks())
 
     return pipe
 
