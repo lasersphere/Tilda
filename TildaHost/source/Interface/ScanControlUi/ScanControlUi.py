@@ -51,19 +51,20 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.show()
 
     def open_dmm_win(self):
-        if self.dmm_win is None:
-            pre_or_during_str = self.pre_or_during_scan_str_list[self.pre_or_during_scan_index]
-            new_name = 'DMM Settings for %s in %s' % (self.active_iso, pre_or_during_str)
-            messagebox = QtWidgets.QMessageBox()
-            messagebox.setIcon(QtWidgets.QMessageBox.Question)
-            messagebox.setText('please choose the settings for: %s' % new_name)
-            messagebox.setStandardButtons(QtWidgets.QMessageBox.Ok)
-            messagebox.exec_()
-            self.dmm_win = DmmLiveViewUi(self, new_name, enable_com=False,
-                                         active_iso=self.active_iso,
-                                         pre_or_during_scan_str=pre_or_during_str)
-        else:
-            self.raise_win_to_front(self.dmm_win)
+        if self.active_iso is not None:
+            if self.dmm_win is None:
+                pre_or_during_str = self.pre_or_during_scan_str_list[self.pre_or_during_scan_index]
+                new_name = 'DMM Settings for %s in %s' % (self.active_iso, pre_or_during_str)
+                messagebox = QtWidgets.QMessageBox()
+                messagebox.setIcon(QtWidgets.QMessageBox.Question)
+                messagebox.setText('please choose the settings for: %s' % new_name)
+                messagebox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+                messagebox.exec_()
+                self.dmm_win = DmmLiveViewUi(self, new_name, enable_com=False,
+                                             active_iso=self.active_iso,
+                                             pre_or_during_scan_str=pre_or_during_str)
+            else:
+                self.raise_win_to_front(self.dmm_win)
 
     def close_dmm_live_view_win(self):
         self.dmm_win = None
@@ -187,8 +188,9 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         """
         save all settings of the given isotope to the database.
         """
-        logging.debug('saving settings to database')
-        Cfg._main_instance.save_scan_par_to_db(self.active_iso)
+        if self.active_iso is not None:
+            logging.debug('saving settings to database')
+            Cfg._main_instance.save_scan_par_to_db(self.active_iso)
 
     def close_track_wins(self):
         """

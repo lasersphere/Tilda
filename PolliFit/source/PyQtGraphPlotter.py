@@ -84,7 +84,7 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
     this will add a pyqtgraph widget for each scaler and an additional one for the sum to the target layout.
     :param target_layout: QtLayout, here the widgets will be added
     :param pmt_list: list, containing the indices/numbers of the scalers, use specdata.active_pmt_list[tr]
-    :return: list, of tuples, ('sum', pmt_list, sum_wid, sum_proxy, sum_inf_line, sum_plt_item, sum_plt_data_item)
+    :return: list, of dicts, {'widget', 'proxy', 'vertLine', 'indList', 'pltDataItem', 'name', 'pltItem', 'fitLine'}
      with sum at the last position
     """
     return_list = []
@@ -97,12 +97,22 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
         plt_proxy = create_proxy(signal=plt_item.scene().sigMouseMoved,
                                  slot=functools.partial(slot_for_mouse_move, plt_item.vb, False),
                                  rate_limit=max_rate)
-        if sc_ind:
-            plt_item.vb.setXLink(return_list[sc_ind - 1][-2].getViewBox())
+        if sc_ind:  # link to the plot before in list, not in first index(=0) of course
+            plt_item.vb.setXLink(return_list[-1]['pltItem'].getViewBox())
         plt_data_item = plt_item.plot(pen='k')
         plt_inf_line = create_infinite_line(0, pen='r')
         plt_item.addItem(plt_inf_line)
-        return_list.append((str(sc_name), [sc_ind], widg, plt_proxy, plt_inf_line, plt_item, plt_data_item))
+        singl_dict = {
+            'name': str(sc_name),
+            'indList': [sc_ind],
+            'widget': widg,
+            'proxy': plt_proxy,
+            'vertLine': plt_inf_line,
+            'pltItem': plt_item,
+            'pltDataItem': plt_data_item,
+            'fitLine': None
+        }
+        return_list.append(singl_dict)
         target_layout.addWidget(widg)
     if plot_sum:
         sum_wid, sum_plt_item = create_x_y_widget(do_not_show_label=['top', 'right'], y_label='cts sum')
@@ -113,15 +123,26 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
         sum_inf_line = create_infinite_line(0, pen='r')
         sum_plt_item.addItem(sum_inf_line)
         target_layout.addWidget(sum_wid)
-        sum_plt_item.vb.setXLink(return_list[-1][-2].getViewBox())
-        return_list.append(('sum', range(0, len(pmt_list)), sum_wid, sum_proxy, sum_inf_line, sum_plt_item, sum_plt_data_item))
+        sum_plt_item.vb.setXLink(return_list[-1]['pltItem'].getViewBox())
+        sum_dict = {
+            'name': 'sum',
+            'indList': range(0, len(pmt_list)),
+            'widget': sum_wid,
+            'proxy': sum_proxy,
+            'vertLine': sum_inf_line,
+            'pltItem': sum_plt_item,
+            'pltDataItem': sum_plt_data_item,
+            'fitLine': None
+        }
+        return_list.append(sum_dict)
     return return_list
 
 
 def plot_all_sc(list_of_widgets_etc, spec_data, tr):
     # print('plotting all pmts in %s' % list_of_widgets_etc)
     for val in list_of_widgets_etc:
-        name, sc, widg, proxy, inf_line, plt_item, plt_data_itm = val
+        sc = val['indList']
+        plt_data_itm = val['pltDataItem']
         x, y, err = spec_data.getArithSpec(sc, tr)
         plt_data_itm.setData(x, y)
 
@@ -167,6 +188,9 @@ def create_infinite_line(pos, angle=90, pen=0.5):
     inf_line = pg.InfiniteLine(pos, angle=angle, pen=pen)
     return inf_line
 
+
+def create_text_item(*args):
+    return pg.TextItem(args)
 
 def start_examples():
     import pyqtgraph.examples

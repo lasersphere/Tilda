@@ -104,8 +104,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.checkBox.stateChanged.connect(self.apply_rebin_to_all_checkbox_changed)
 
         ''' all pmts related: '''
-        #  dict for all_pmt_plot page containing the
-        # ('sum', pmt_list, sum_wid, sum_proxy, sum_inf_line, sum_plt_item, sum_plt_data_item) for each plot:
+        #  dict for all_pmt_plot page containing a dict with the keys:
+        # 'widget', 'proxy', 'vertLine', 'indList', 'pltDataItem', 'name', 'pltItem', 'fitLine' for each plot:
         self.all_pmts_widg_plt_item_list = None
 
         self.all_pmts_sel_tr = 0
@@ -131,7 +131,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.splitter_3.setSizes([w * 6 // 10, w * 4 // 10])
         ''' vertical splitter between all pmts plot and x/y coords widg '''
         self.splitter_allpmts.setSizes([h * 9 // 10, h * 1 // 10])
-
 
     '''setting up the plots (no data etc. written) '''
 
@@ -188,6 +187,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         add a plot for each scaler on the tab 'all pmts'.
         Can only be called as soon as spec_data is available
+        keys in self.all_pmts_widg_plt_item_list:
+        'widget', 'proxy', 'vertLine', 'indList', 'pltDataItem', 'name', 'pltItem', 'fitLine'
         """
         print('adding all pmts')
         max_rate = 60
@@ -364,7 +365,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.add_all_pmt_plot()
         Pg.plot_all_sc(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr)
         if autorange_pls:
-            self.all_pmts_widg_plt_item_list[0][-2].autoRange()
+            [each['pltItem'].autoRange() for each in self.all_pmts_widg_plt_item_list]
 
     ''' buttons, comboboxes and listwidgets: '''
 
@@ -414,10 +415,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     if self.spec_data.seq_type in ['trs', 'trsdummy']:
                         self.update_projections(self.spec_data)
                     if self.all_pmts_widg_plt_item_list is not None:
-                        lis = list(self.all_pmts_widg_plt_item_list[-1])
-                        lis[1] = hopefully_list
-                        tpl = tuple(lis)
-                        self.all_pmts_widg_plt_item_list[-1] = tpl
+                        self.all_pmts_widg_plt_item_list[-1]['indList'] = hopefully_list
                         self.update_all_pmts_plot(self.spec_data)
                     self.lineEdit_sum_all_pmts.setText(text)
                     self.lineEdit_arith_scaler_input.setText(text)
@@ -677,7 +675,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             print('active track is: %s and active step is: %s val is: %s ' % (act_tr, act_step, val))
             if self.current_step_line is not None:
                 self.current_step_line.setValue(val)
-            [each[4].setValue(val) for each in self.all_pmts_widg_plt_item_list]
+            [each['vertLine'].setValue(val) for each in self.all_pmts_widg_plt_item_list]
         except Exception as e:
             print(e)
 
@@ -689,6 +687,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.storage_data = None
         self.spec_data = None
         self.reset_table()
+        self.reset_all_pmt_plots()
 
     ''' fit related '''
 
@@ -696,7 +695,23 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         print('rcvd fit result dict: %s' % fit_res_dict['result'])
         print('index is: %s' % fit_res_dict['index'])
         x, y = fit_res_dict['plotData']
-        self.all_pmts_widg_plt_item_list[fit_res_dict['index']][-2].plot(x, y, pen='r')
+        plot_dict = self.all_pmts_widg_plt_item_list[fit_res_dict['index']]
+        plt_item = plot_dict['pltItem']
+        plot_dict['fitLine'] = plt_item.plot(x, y, pen='r')
+        # does not work like this:
+        # txt = Pg.create_text_item('hello i am sc%s' % fit_res_dict['index'])
+        # plt_item.addItem(txt)
+
+    def reset_all_pmt_plots(self):
+        """
+        remove all fits etc.
+        :return:
+        """
+        for each in self.all_pmts_widg_plt_item_list:
+            if each['fitLine'] is not None:
+                each['pltItem'].removeItem(each['fitLine'])
+                each['fitLine'] = None
+
 # if __name__ == "__main__":
 #     app = QtWidgets.QApplication(sys.argv)
 #     ui = TRSLivePlotWindowUi()
