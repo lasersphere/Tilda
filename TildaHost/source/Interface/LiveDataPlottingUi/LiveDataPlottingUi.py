@@ -720,6 +720,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             if each['fitLine'] is not None:
                 each['pltItem'].removeItem(each['fitLine'])
                 each['fitLine'] = None
+            if each.get('fitText', None) is not None:
+                each['pltItem'].removeItem(each['fitText'])
+                each['fitText'] = None
+
 
 # if __name__ == "__main__":
 #     app = QtWidgets.QApplication(sys.argv)

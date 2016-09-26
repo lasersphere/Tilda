@@ -33,6 +33,7 @@ def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples, fi
     elif seq_type == 'kepco':
         logging.debug('starting pipeline of type: kepco')
         return kepco_scan_pipe(scan_dict, callback_sig,
+                               as_voltage=True,
                                live_plot_callbacks=live_plot_callback_tuples,
                                fit_res_dict_callback=fit_res_callback_dict)
     else:

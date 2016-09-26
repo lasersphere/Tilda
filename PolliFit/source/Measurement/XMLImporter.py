@@ -46,10 +46,12 @@ class XMLImporter(SpecData):
         self.seq_type = scandict['isotopeData']['type']
 
         if 'AD5781' in self.type or 'ad5781' in self.type or 'dac_calibration' in self.type:
-            print('XMLIMporter assumes this a calibration measurement of the DAC,\n'
+            print('--------------------------WARNING----------------------------------\n'
+                  'XMLIMporter assumes this a calibration measurement of the DAC,\n'
                   ' therefore the x-axis will be set to units of DAC registers.\n'
                   'key words therefore are: AD5781, ad5781, dac_calibration\n'
-                  'do not use those for the isotope name if you do not want this!\n')
+                  'do not use those for the isotope name if you do not want this!\n'
+                  '--------------------------WARNING----------------------------------\n')
             x_as_volt = False  # assume this is a gauge measurement of the DAC, so set the x axis in DAC registers
 
         self.accVolt = scandict['isotopeData']['accVolt']
