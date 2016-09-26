@@ -189,8 +189,8 @@ def create_infinite_line(pos, angle=90, pen=0.5):
     return inf_line
 
 
-def create_text_item(*args):
-    return pg.TextItem(args)
+def create_text_item(text="", color=(200, 200, 200), html=None, anchor=(0, 0)):
+    return pg.TextItem(text=text, color=color, html=html, anchor=anchor)
 
 def start_examples():
     import pyqtgraph.examples

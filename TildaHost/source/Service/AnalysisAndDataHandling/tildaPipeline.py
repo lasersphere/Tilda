@@ -139,8 +139,7 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False,
     """
     start = Node()
 
-    maintenance = start.attach(TN.NMPLCloseFigOnInit())
-    maintenance = maintenance.attach(TN.NAddWorkingTimeOnClear(True))
+    maintenance = start.attach(TN.NAddWorkingTimeOnClear(True))
 
     pipe = Pipeline(start)
     pipe.pipeData = initPipeData(initial_scan_pars)
@@ -153,13 +152,8 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False,
 
     specdata_path = specdata_path.attach(TN.NMPLImagePlotAndSaveSpecData(0, *live_plot_callbacks))
 
-    compl_tr_br = specdata_path.attach(TN.NCheckIfTrackComplete())
-    compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
-
-    # later:
-    specdata_path = specdata_path.attach(TN.NStraightKepcoFitOnClear(dmm_names, gui_fit_res_callback=fit_res_dict_callback))
-    # # specdata_path = specdata_path.attach(TN.NSaveIncomDataForActiveTrack())
-    # # more has to be included...
+    specdata_path = specdata_path.attach(TN.NStraightKepcoFitOnClear(dmm_names,
+                                                                     gui_fit_res_callback=fit_res_dict_callback))
     return pipe
 
 

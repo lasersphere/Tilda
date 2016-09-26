@@ -698,9 +698,18 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         plot_dict = self.all_pmts_widg_plt_item_list[fit_res_dict['index']]
         plt_item = plot_dict['pltItem']
         plot_dict['fitLine'] = plt_item.plot(x, y, pen='r')
-        # does not work like this:
-        # txt = Pg.create_text_item('hello i am sc%s' % fit_res_dict['index'])
-        # plt_item.addItem(txt)
+        print(fit_res_dict['result'])
+        display_text = ''
+        for i, fit_res_tuple in enumerate(fit_res_dict['result']):
+            for key, val in fit_res_tuple[1].items():
+                display_text += '%s: %g +/- %g (fixed: %s) \n' % (key, val[0], val[1], val[2])
+            display_text += '\n'
+        anchor = plt_item.getViewBox().viewRange()
+        anchor = (anchor[0][0], anchor[1][1])
+        txt = Pg.create_text_item(display_text, color='r')
+        txt.setPos(*anchor)
+        plt_item.addItem(txt)
+        plot_dict['fitText'] = txt
 
     def reset_all_pmt_plots(self):
         """

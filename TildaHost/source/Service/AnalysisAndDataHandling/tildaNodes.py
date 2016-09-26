@@ -1379,7 +1379,8 @@ class NStraightKepcoFitOnClear(Node):
                 plotdata = fitter.spec.toPlotE(0, 0, fitter.par)
 
                 if self.gui_fit_res_callback is not None:
-                    fit_dict = {'index': ind, 'name': dmm_name, 'plotData': deepcopy(plotdata), 'result': deepcopy(result)}
+                    fit_dict = {'index': ind, 'name': dmm_name,
+                                'plotData': deepcopy(plotdata), 'result': deepcopy(result)}
                     self.gui_fit_res_callback.emit(fit_dict)
 
                 pipe_internals = self.Pipeline.pipeData['pipeInternals']
