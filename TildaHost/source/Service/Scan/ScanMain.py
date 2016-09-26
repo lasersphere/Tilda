@@ -8,7 +8,7 @@ Created on '19.05.2015'
 
 import logging
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import Driver.DataAcquisitionFpga.FindSequencerByType as FindSeq
 import Driver.DigitalMultiMeter.DigitalMultiMeterControl as DmmCtrl
@@ -22,6 +22,9 @@ class ScanMain:
     def __init__(self):
         self.sequencer = None
         self.pipeline = None
+        self.switch_box_is_switched_time = None  # datetime of switching the box.
+        self.switch_box_state_before_switch = None  # state before switching
+
         self.post_acc_main = PostAcc.PostAccelerationMain()
         self.digital_multi_meter = DmmCtrl.DMMControl()
 
@@ -158,15 +161,36 @@ class ScanMain:
         if desired_state is None:
             track_dict = scan_dict.get('track' + str(track_num))
             desired_state = track_dict['postAccOffsetVoltControl']
-        self.sequencer.setPostAccelerationControlState(desired_state, False)
+        self.switch_box_state_before_switch = self.sequencer.setPostAccelerationControlState(desired_state, False)
+        self.switch_box_is_switched_time = None
 
-    def post_acc_switch_box_is_set(self, des_state):
+    def post_acc_switch_box_is_set(self, des_state, switch_box_settle_time_s=5.0):
         """
         call this to check if the state of the hsb is already the desired one.
         :param des_state: int, the desired state of the box
         :return: tuple, (bool_True_if_success, int_current_state, int_desired_state)
         """
-        return self.sequencer.getPostAccelerationControlStateIsDone(des_state)
+        try:
+            if des_state == 4:  # will go to loading, no wait afterwards needed.
+                switch_box_settle_time_s = 0.0
+            done, currentState, desired_state = self.sequencer.getPostAccelerationControlStateIsDone(des_state)
+            if done:
+                if currentState == self.switch_box_state_before_switch:
+                    #  the switchbox was already in the right state before switching,
+                    #  so no additional wait is needed.
+                    return done, currentState, desired_state
+                else:
+                    if self.switch_box_is_switched_time is None:
+                        self.switch_box_is_switched_time = datetime.now()
+                    now = datetime.now()
+                    wait = now - self.switch_box_is_switched_time
+                    done = wait >= timedelta(seconds=switch_box_settle_time_s)
+                    if done:
+                        self.switch_box_is_switched_time = None
+            return done, currentState, desired_state
+        except Exception as e:
+            print('error while setting hsb: %s' % e)
+            return False, 5, 5
 
     def fpga_start_offset_measurement(self, scan_dict, track_num):
         """

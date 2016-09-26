@@ -448,8 +448,12 @@ class Main(QtCore.QObject):
         if desired_state is None:
             # must only be called after the desired_state = None has ben stored in the main_state
             desired_state = self.scan_pars[iso_name]['track' + str(active_track_num)]['postAccOffsetVoltControl']
+        switch_box_settle_time_s = scan_dict.get('measureVoltPars', {})\
+            .get('preScan', {}).get('switchBoxSettleTimeS', 5.0)
+        # print('switchbox_settle_time is: %s' % switch_box_settle_time_s)
         # logging.debug('desired state of hsb is: ' + str(des_state))
-        done, currentState, desired_state = self.scan_main.post_acc_switch_box_is_set(desired_state)
+        done, currentState, desired_state = self.scan_main.post_acc_switch_box_is_set(desired_state,
+                                                                                      switch_box_settle_time_s)
         if done:
             if desired_state == 4:
                 # switch box has ben set to loading state, which means a scan is completed

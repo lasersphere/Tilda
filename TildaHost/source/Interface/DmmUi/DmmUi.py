@@ -72,7 +72,6 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
             meas_volt_pars_dict = scan_dict['measureVoltPars']
             meas_volt_dict = meas_volt_pars_dict.get(self.pre_or_during_scan_str, None)
             if meas_volt_dict is None:
-                # pass
                 self.set_pulse_len_and_timeout({})
                 for key, val in self.tabs.items():
                     if key != 'tab0':
@@ -90,12 +89,15 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
                 #  copy values for measVoltPulseLength25ns and measVoltTimeout10ns from preScan
                 meas_volt_dict['measVoltTimeout10ns'] = deepcopy(meas_volt_pars_dict.get('preScan', {}).get('measVoltTimeout10ns', 0))
                 meas_volt_dict['measVoltPulseLength25ns'] = deepcopy(meas_volt_pars_dict.get('preScan', {}).get('measVoltPulseLength25ns', 0))
+                meas_volt_dict['switchBoxSettleTimeS'] = deepcopy(meas_volt_pars_dict.get('preScan', {}).get('switchBoxSettleTimeS', 5.0))
                 self.load_config_dict(meas_volt_dict)
-        else:
+        else:  # delete unnecessary spinboxes when not configuring for track
             self.doubleSpinBox_measVoltTimeout_mu_s_set.setParent(None)
             self.doubleSpinBox_measVoltPulseLength_mu_s.setParent(None)
+            self.doubleSpinBox_wait_after_switchbox.setParent(None)
             self.label_measVoltPulseLength_mu_s.setParent(None)
             self.label_measVoltTimeout_mu_s.setParent(None)
+            self.label_wait_after_switchbox.setParent(None)
             self.verticalLayout.removeItem(self.formLayout_pulse_len_and_timeout)
 
     def enable_communication(self, comm_allow, overwrite=False):
@@ -220,6 +222,10 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
             if timeout_10_ns == 0:
                 timeout_volt_meas_mu_s = 10000  # set to 10 s by default.
             self.doubleSpinBox_measVoltTimeout_mu_s_set.setValue(timeout_volt_meas_mu_s)
+        settling_time_swb = meas_volt_dict.get('switchBoxSettleTimeS', 5.0)
+        if settling_time_swb is None:
+            settling_time_swb = 5.0
+        self.doubleSpinBox_wait_after_switchbox.setValue(settling_time_swb)
 
     def load_config_dict(self, meas_volt_dict):
         """
@@ -274,6 +280,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         meas_volt_dict['dmms'] = self.get_current_dmm_config()
         meas_volt_dict['measVoltPulseLength25ns'] = int(self.doubleSpinBox_measVoltPulseLength_mu_s.value() * 1000 / 25)
         meas_volt_dict['measVoltTimeout10ns'] = int(self.doubleSpinBox_measVoltTimeout_mu_s_set.value() * 1000000 / 10)
+        meas_volt_dict['switchBoxSettleTimeS'] = self.doubleSpinBox_wait_after_switchbox.value()
         return meas_volt_dict
 
     def confirm_settings(self):

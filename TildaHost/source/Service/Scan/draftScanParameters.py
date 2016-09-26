@@ -82,7 +82,8 @@ draftTrackPars = {
     'trigger': {'type': 'no_trigger'}
 }
 
-draftMeasureVoltPars_singl = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 1000000000, 'dmms': {}}
+draftMeasureVoltPars_singl = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 1000000000,
+                              'dmms': {}, 'switchBoxSettleTimeS': 5.0}
 draftMeasureVoltPars = {'preScan': deepcopy(draftMeasureVoltPars_singl), 'duringScan': deepcopy(draftMeasureVoltPars_singl)}
 
 draftPipeInternals = {
