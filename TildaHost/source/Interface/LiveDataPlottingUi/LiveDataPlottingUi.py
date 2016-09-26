@@ -11,7 +11,7 @@ import logging
 from copy import deepcopy
 
 import numpy as np
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 
 import Application.Config as Cfg
 import PyQtGraphPlotter as Pg
@@ -19,6 +19,7 @@ import Service.FileOperations.FolderAndFileHandling as FileHandl
 import Service.Formating as Form
 import TildaTools as TiTs
 from Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveDataPlotting
+from Interface.ScanProgressUi.ScanProgressUi import ScanProgressUi
 from Measurement.XMLImporter import XMLImporter
 
 
@@ -56,6 +57,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.show()
         self.tabWidget.setCurrentIndex(1)  # time resolved
         self.setWindowTitle('plot win:     ' + full_file_path)
+        self.dockWidget.setWindowTitle('progress: %s' % self.active_file)
 
         self.full_file_path = full_file_path
 
@@ -131,6 +133,25 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.splitter_3.setSizes([w * 6 // 10, w * 4 // 10])
         ''' vertical splitter between all pmts plot and x/y coords widg '''
         self.splitter_allpmts.setSizes([h * 9 // 10, h * 1 // 10])
+
+        ''' progress related: '''
+
+        try:
+            if self.subscribe_as_live_plot:
+                self.scan_prog_ui = ScanProgressUi(self.parent)
+                self.scan_prog_layout = QtWidgets.QVBoxLayout()
+                self.scan_prog_layout.addWidget(self.scan_prog_ui)
+                self.widget_progress.setLayout(self.scan_prog_layout)
+        except Exception as e:
+            print('error while adding scanprog: %s' % e)
+
+        self.show_progress_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_P), self)
+
+        self.show_progress_shortcut.activated.connect(self.show_progress)
+        self.actionProgress.triggered.connect(self.show_progress)
+
+    def show_progress(self):
+        self.dockWidget.setVisible(not self.dockWidget.isVisible())
 
     '''setting up the plots (no data etc. written) '''
 
@@ -246,7 +267,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.update_gates_list()
                 self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
             elif spec_data.seq_type in ['cs', 'csdummy', 'kepco']:
-                self.tabWidget.setCurrentIndex(2)
                 self.spec_data = deepcopy(spec_data)
                 self.storage_data = deepcopy(spec_data)
                 self.update_all_plots(self.spec_data)
@@ -355,6 +375,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def update_all_pmts_plot(self, spec_data, autorange_pls=False):
         if self.all_pmts_widg_plt_item_list is None:
+            if spec_data.seq_type not in ['trs', 'trsdummy']:
+                self.tabWidget.setCurrentIndex(2)
             self.comboBox_all_pmts_sel_tr.blockSignals(True)
             tr_list = spec_data.track_names
             tr_list.append('all')
@@ -666,6 +688,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         if self.active_file != progress_dict_from_main['activeFile']:
             self.active_file = progress_dict_from_main['activeFile']
             self.setWindowTitle('plot:  %s' % self.active_file)
+            self.dockWidget.setWindowTitle('progress: %s' % self.active_file)
+
         self.active_initial_scan_dict = Cfg._main_instance.scan_pars[self.active_iso]
         self.active_track_name = progress_dict_from_main['trackName']
 

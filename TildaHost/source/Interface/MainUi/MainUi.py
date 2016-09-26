@@ -24,7 +24,6 @@ from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
 from Interface.MainUi.Ui_Main import Ui_TildaMainWindow
 from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
-from Interface.ScanProgressUi.ScanProgressUi import ScanProgressUi
 from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 from Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
 from Interface.TildaPassiveUi.TildaPassiveUi import TildaPassiveUi
@@ -194,19 +193,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 return None
         self.act_scan_wins.append(ScanControlUi(self))
 
-    def open_scan_progress_win(self):
-        try:
-            geom = False
-            print('opening scan progress window')
-            if self.scan_progress_win is not None:
-                geom = self.scan_progress_win.geometry()
-            self.scan_progress_win = ScanProgressUi(self)
-            if geom:
-                self.scan_progress_win.setGeometry(geom)
-        except Exception as e:
-            print('erroror:', e)
-        # pass
-
     def open_post_acc_win(self):
         self.post_acc_win = PostAccControlUi(self)
 
@@ -272,13 +258,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             self.choose_working_dir()
             self.open_dir()
 
-
     ''' close windows '''
     def scan_control_win_closed(self, win_ref):
         self.act_scan_wins.remove(win_ref)
-
-    def close_scan_progress_win(self):
-        self.scan_progress_win = None
 
     def close_post_acc_win(self):
         self.post_acc_win = None

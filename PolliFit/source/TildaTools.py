@@ -39,7 +39,7 @@ def numpy_array_from_string(string, shape, datatytpe=np.uint32):
         result['time'] = from_string[2::4]
         result['cts'] = from_string[3::4]
     else:
-        string = string.replace('nan', '0').replace('.', '')  # if dot or nan in file
+        string = string.replace('nan', '0')  # if nan in file
         result = np.fromstring(string, dtype=datatytpe, sep=' ')
         result = result.reshape(shape)
         # the following function would be ideal,

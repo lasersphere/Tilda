@@ -5,11 +5,12 @@ Created on
 
 Module Description:
 """
-from PyQt5 import QtWidgets, QtCore
 import os
 
-from Interface.ScanProgressUi.Ui_ScanProgress import Ui_ScanProgress
+from PyQt5 import QtWidgets, QtCore
+
 import Application.Config as Cfg
+from Interface.ScanProgressUi.Ui_ScanProgress import Ui_ScanProgress
 
 
 class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
@@ -67,4 +68,3 @@ class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
     def closeEvent(self, *args, **kwargs):
         self.abort()
         Cfg._main_instance.unsubscribe_from_scan_prog()
-        self.main_gui.close_scan_progress_win()
