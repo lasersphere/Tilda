@@ -1690,7 +1690,6 @@ class NTRSSortRawDatatoArrayFast(Node):
         self.Pipeline.pipeData[track_name]['nOfCompletedSteps'] = self.completed_steps_this_track  # make sure this exists
 
     def processData(self, data, pipeData):
-        print('sort array')
         self.stored_data = np.append(self.stored_data, data)
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         step_complete = Form.add_header_to23_bit(1, 4, 0, 1)  # binary for step complete
@@ -1765,8 +1764,6 @@ class NTRSSortRawDatatoArrayFast(Node):
                 # new_unique_arr = np.sort(new_unique_arr, axis=0)
                 # print(new_unique_arr)
                 # print('current voltindex after first node:', self.curVoltIndex)
-
-                print('sort array done')
 
                 return new_unique_arr
 
@@ -1930,10 +1927,8 @@ class NSendnOfCompletedStepsViaQtSignal(Node):
         self.qt_signal = qt_signal
 
     def processData(self, data, pipeData):
-        print('sending steps')
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         self.qt_signal.emit(pipeData[track_name]['nOfCompletedSteps'])
-        print('sending steps done')
         return data
 
 

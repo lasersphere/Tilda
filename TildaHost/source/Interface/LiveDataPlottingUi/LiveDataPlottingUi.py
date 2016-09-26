@@ -253,7 +253,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         try:
             self.new_track_no_data_yet = False
-            print('received new data, (nOfScalers, nOfSteps, nOfBins): %s' % spec_data.get_scaler_step_and_bin_num(-1))
+            # print('received new data, (nOfScalers, nOfSteps, nOfBins): %s' % spec_data.get_scaler_step_and_bin_num(-1))
             if spec_data.seq_type in ['trs', 'trsdummy']:
                 gates = None
                 if self.spec_data is not None:
@@ -327,7 +327,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             # else:
             #     print('this very event already has happened')
         except Exception as e:
-            print('while setting the gates this happened: ', e)
+            print('error in LiveDataPlotting, while setting the gates this happened: ', e)
         pass
 
     def update_projections(self, spec_data):
@@ -559,9 +559,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def write_all_gates_to_table(self, spec_data):
         self.tableWidget_gates.blockSignals(True)
         for tr_ind, tr_name in enumerate(spec_data.track_names):
-            for sc in range(spec_data.nrScalers[tr_ind]):
-                gates = spec_data.softw_gates[tr_ind][sc]
-                self.insert_one_gate_to_gui(tr_name, sc, gates)
+            if tr_name != 'all':
+                for sc in range(spec_data.nrScalers[tr_ind]):
+                    gates = spec_data.softw_gates[tr_ind][sc]
+                    self.insert_one_gate_to_gui(tr_name, sc, gates)
         self.tableWidget_gates.blockSignals(False)
 
     def find_one_scaler_track(self, tr, sc):
@@ -588,7 +589,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         logging.debug('lievplotUI resetting table entries')
         while self.tableWidget_gates.rowCount() > 0:
             self.tableWidget_gates.removeRow(0)
-        logging.debug('livePlotUi, row count after reset of table: ', self.tableWidget_gates.rowCount())
+            # logging.debug('livePlotUi, row count after reset of table: ', self.tableWidget_gates.rowCount())
 
     ''' saving '''
 
@@ -679,7 +680,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         'trackProgr', 'activeScan', 'totalScans', 'activeStep',
         'totalSteps', 'trackName', 'activeFile']
         """
-        print('rcvd progress')
         self.active_iso = progress_dict_from_main['activeIso']
         if not self.new_track_no_data_yet:
             act_step = max(progress_dict_from_main['activeStep'] - 1, 0)
@@ -696,7 +696,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def update_step_indication_lines(self, act_step, act_tr):
         try:
             val = self.spec_data.x[act_tr][act_step]
-            print('active track is: %s and active step is: %s val is: %s ' % (act_tr, act_step, val))
+            # print('active track is: %s and active step is: %s val is: %s ' % (act_tr, act_step, val))
             if self.current_step_line is not None:
                 self.current_step_line.setValue(val)
             [each['vertLine'].setValue(val) for each in self.all_pmts_widg_plt_item_list]
