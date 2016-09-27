@@ -705,7 +705,8 @@ class Main(QtCore.QObject):
         power_supply -> self.requested_power_supply
         volt -> self.requested_voltage
         """
-        self.set_state(MainState.setting_power_supply, (power_supply, volt, call_back_signal), True)
+        self.set_state(MainState.setting_power_supply, (power_supply, volt, call_back_signal), True,
+                       queue_if_not_idle=False)
 
     def _set_power_supply_voltage(self, name, volt, call_back_signal=None):
         """

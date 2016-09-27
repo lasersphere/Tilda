@@ -592,9 +592,9 @@ class Ni4071:
           If trigger is set to Immediate mode, the DMM begins acquiring measurement data.
           Use fetch_single_meas(), niDMM Fetch Multi Point, or niDMM Fetch Waveform to retrieve the measurement data.
         """
-        self.dll.niDMM_Initiate(self.session)
+        self.get_error_message(self.dll.niDMM_Initiate(self.session))
         tries = 0
-        max_tries = 5
+        max_tries = 10
         while self.readstatus()[1] != 0 and tries <= max_tries:
             tries += 1
         if self.readstatus()[1] == 0:
