@@ -502,27 +502,32 @@ class Main(QtCore.QObject):
                 self.scan_main.measure_offset_pre_scan(self.scan_pars[iso_name])
                 self.set_state(MainState.measure_offset_voltage, False)
             else:  # this will periodically read the dmms until all dmms returned a measurement
-                read = self.read_dmms(False)
-                print('reading of dmms prescan: ', read)
-                if read is not None:
-                    dmms_dict_pre_scan = self.scan_pars[iso_name]['measureVoltPars'].get('preScan', {}).get('dmms', None)
-                    reads = []
-                    for dmm_name, volt_read in read.items():
-                        if volt_read is not None:
-                            dmms_dict_pre_scan[dmm_name]['preScanRead'] = volt_read[0]
-                        reads.append(dmms_dict_pre_scan[dmm_name].get('preScanRead', None))
-                        print('readings of dmms pre scan are:', reads,
-                              ' prescan read: ', dmm_name)
-                    if reads.count(None) == 0:  # done with reading when all dmms have a value
-                        logging.debug('all dmms returned a measurement, reading is: ' + str(read))
-                        self.scan_main.abort_dmm_measurement('all')
-                        dmms_dict_during_scan = self.scan_pars[iso_name]['measureVoltPars'].get('duringScan',
-                                                                                                {}).get('dmms', None)
+                if self.abort_scan:
+                    print('aborted pre scan measurement, aborting scan, return to idle')
+                    self.abort_scan = False
+                    self.set_state(MainState.idle)
+                else:
+                    read = self.read_dmms(False)
+                    print('reading of dmms prescan: ', read)
+                    if read is not None:
+                        dmms_dict_pre_scan = self.scan_pars[iso_name]['measureVoltPars'].get('preScan', {}).get('dmms', None)
+                        reads = []
+                        for dmm_name, volt_read in read.items():
+                            if volt_read is not None:
+                                dmms_dict_pre_scan[dmm_name]['preScanRead'] = volt_read[0]
+                            reads.append(dmms_dict_pre_scan[dmm_name].get('preScanRead', None))
+                            print('readings of dmms pre scan are:', reads,
+                                  ' prescan read: ', dmm_name)
+                        if reads.count(None) == 0:  # done with reading when all dmms have a value
+                            logging.debug('all dmms returned a measurement, reading is: ' + str(read))
+                            self.scan_main.abort_dmm_measurement('all')
+                            dmms_dict_during_scan = self.scan_pars[iso_name]['measureVoltPars'].get('duringScan',
+                                                                                                    {}).get('dmms', None)
 
-                        # when done with the pre scan measurement, setup dmms to the during scan dict.
-                        # set the dmms according to the dictionary inside the dmms_dict for during the scan
-                        self.scan_main.prepare_dmms_for_scan(dmms_dict_during_scan)
-                        self.set_state(MainState.load_track)
+                            # when done with the pre scan measurement, setup dmms to the during scan dict.
+                            # set the dmms according to the dictionary inside the dmms_dict for during the scan
+                            self.scan_main.prepare_dmms_for_scan(dmms_dict_during_scan)
+                            self.set_state(MainState.load_track)
 
     def add_global_infos_to_scan_pars(self, iso_name):
         """
