@@ -61,7 +61,6 @@ class Main(QtCore.QObject):
         self.live_plot_progress_callback = None  # dict
         self.live_plot_fit_res_callback = None  # dict
 
-
         self.scan_main = ScanMain()
         self.iso_scan_process = None
         self.scan_pars = {}  # {iso0: scan_dict, iso1: scan_dict} -> iso is unique
@@ -314,6 +313,12 @@ class Main(QtCore.QObject):
         power_sup_dict = self.autostart_dict.get('autostartDevices', {}).get('powersupplies', False)
         if power_sup_dict:
             print('automatic start of power supplies not included yet.')
+        laser_freq = self.autostart_dict.get('laserFreq', False)
+        if laser_freq:
+            self.laser_freq_changed(laser_freq)
+        acc_volt = self.autostart_dict.get('accVolt', False)
+        if acc_volt:
+            self.acc_volt_changed(acc_volt)
         # self.init_dmm('Ni4071', 'PXI1Slot5')
         # self.init_dmm('dummy', 'somewhere')
 
@@ -361,6 +366,8 @@ class Main(QtCore.QObject):
         :param laser_freq: dbl, in cm-1
         """
         self.laserfreq = laser_freq
+        self.autostart_dict['laserFreq'] = laser_freq
+        FileHandl.write_to_auto_start_xml_file(self.autostart_dict)
         self.send_state()
 
     def acc_volt_changed(self, acc_volt):
@@ -369,6 +376,8 @@ class Main(QtCore.QObject):
         :param acc_volt: dbl, in units of volt
         """
         self.acc_voltage = acc_volt
+        self.autostart_dict['accVolt'] = acc_volt
+        FileHandl.write_to_auto_start_xml_file(self.autostart_dict)
         self.send_state()
 
     """ file operations """
