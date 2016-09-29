@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="DataSourceManagerImpl" format="xml" hash="334488875">
+  <component name="DataSourceManagerImpl" format="xml" hash="1171303257">
     <data-source source="LOCAL" name="Sqlite (Xerial) - DACScan_160622.sqlite" uuid="0a434a2e-3f75-4d19-a884-5245c8b5894c">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
@@ -18,6 +18,18 @@
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:E:/TildaDebugging/TildaDebugging.sqlite</jdbc-url>
+    </data-source>
+    <data-source source="LOCAL" name="Sqlite (Xerial) - kepco_260916.sqlite" uuid="d07dcd4a-23e3-4ae0-8a85-a84178208a50">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:R:/Projekte/TRIGA/Measurements and Analysis_Simon/KepcoScans und DAC Scans/switchBoxSettleTimeDependency/kepco_260916/kepco_260916.sqlite</jdbc-url>
+    </data-source>
+    <data-source source="LOCAL" name="Sqlite (Xerial) - Ni_workspace.sqlite" uuid="68841d00-3135-4a57-b82a-6c33a67a70d6">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:R:/Projekte/COLLAPS/Nickel/Measurement_and_Analysis_Simon/Ni_workspace/Ni_workspace.sqlite</jdbc-url>
     </data-source>
   </component>
 </project>
