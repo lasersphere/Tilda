@@ -41,7 +41,7 @@ class SpecData(object):
         self.err = []
 
     def getSingleSpec(self, scaler, track):
-        '''Return a tuple with (volt, cts, err) of the specified scaler and track. -1 for all tracks'''        
+        '''Return a tuple with (volt, cts, err) of the specified scaler and track. -1 for all tracks'''
         if track == -1:
             return ( [i for i in it.chain(*self.x)],
                      [i for i in it.chain(*(t[scaler] for t in self.cts))],

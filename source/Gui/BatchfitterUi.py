@@ -4,17 +4,15 @@ Created on 06.06.2014
 @author: chgorges
 '''
 
-import sqlite3
-import ast
-import itertools
-import numpy as np
 import copy
+import sqlite3
 
+import numpy as np
 from PyQt5 import QtWidgets, QtCore
 
-from Gui.Ui_Batchfitter import Ui_Batchfitter
 import BatchFit
-import MPLPlotter as plot
+from Gui.Ui_Batchfitter import Ui_Batchfitter
+
 
 class BatchfitterUi(QtWidgets.QWidget, Ui_Batchfitter):
 

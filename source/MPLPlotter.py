@@ -18,11 +18,10 @@ from matplotlib.widgets import Button
 from matplotlib.widgets import RadioButtons
 from matplotlib.widgets import RectangleSelector
 from matplotlib.widgets import Slider
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import Physics
+
 
 def plot(*args):
     for a in args:
@@ -33,6 +32,16 @@ def plot(*args):
 
 
 def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True):
+    kepco = False
+    if fit.meas.type == 'Kepco':
+        x_in_freq = False
+        kepco = True
+    try:
+        if fit.meas.seq_type == 'kepco':
+            x_in_freq = False
+            kepco = True
+    except Exception:
+        pass
     if x_in_freq:
         data = fit.meas.getArithSpec(*fit.st)
         for i, e in enumerate(data[0]):
@@ -63,10 +72,14 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True):
     ax1.set_ylabel('cts / a.u.')
     if x_in_freq:
         plt.xlabel('relative frequency / MHz')
+    elif kepco:
+        plt.xlabel('Line Voltage / V')
     else:
         plt.xlabel('Ion kinetic energy / eV')
-
-
+    # print(plotdat[0][-2000:-100])
+    # print(plotdat[1][-2000:-100])
+    # print(data[1])
+    
 def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), showing = False, save_path='', ylabel=''):
     # avg, stat_err, sys_err = Analyzer.combineRes(iso, par, run, db, print_extracted=False)
     # val, errs, date = Analyzer.extract(iso, par, run, db, prin=False)

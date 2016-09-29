@@ -205,7 +205,7 @@ def createDB(db):
     accVolt FLOAT,
     laserFreq FLOAT,
     colDirTrue BOOL,
-    voltDivRatio FLOAT,
+    voltDivRatio TEXT,
     lineMult FLOAT,
     lineOffset FLOAT,
     FOREIGN KEY (type) REFERENCES Isotopes (iso),

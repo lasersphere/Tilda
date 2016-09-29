@@ -4,18 +4,8 @@ Created on 31.03.2014
 @author: hammen
 '''
 
-from Measurement.SimpleImporter import SimpleImporter
-import MPLPlotter as plot
-
-from DBIsotope import DBIsotope
-from SPFitter import SPFitter
-from Spectra.FullSpec import FullSpec
-
-import os
-import numpy as np
-import Tools
 import BatchFit
-import InteractiveFit
+import Tools
 
 # path = "../test/cd_c_137data.txt"
 # file = SimpleImporter(path)

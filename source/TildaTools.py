@@ -6,10 +6,11 @@ Created on
 Module Description: Tools related closely to Tilda
 """
 import ast
+import logging
 import os
+from copy import deepcopy
 
 import numpy as np
-import logging
 from lxml import etree as ET
 
 
@@ -150,7 +151,7 @@ def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
     scan_dict['pipeInternals']['curVoltInd'] = 0
     scan_dict['pipeInternals']['activeTrackNumber'] = 'None'
     scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
-    scan_dict['measureVoltPars'] = xml_get_dict_from_ele(xml_etree)[1]['measureVoltPars']
+    scan_dict['measureVoltPars'] = xml_get_dict_from_ele(xml_etree)[1].get('measureVoltPars', {})
     return scan_dict, xml_etree
 
 
@@ -233,13 +234,82 @@ def gate_specdata(spec_data):
             v_max_ind = softw_gates_ind[tr_ind][pmt_ind][1] + 1
             t_min_ind = softw_gates_ind[tr_ind][pmt_ind][2]
             t_max_ind = softw_gates_ind[tr_ind][pmt_ind][3] + 1
-            t_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][v_min_ind:v_max_ind, :], axis=0)
-            v_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][:, t_min_ind:t_max_ind], axis=1)
-            a = spec_data.t_proj[tr_ind]
-            b = spec_data.cts[tr_ind]
+            t_proj_res = np.nansum(spec_data.time_res[tr_ind][pmt_ind][v_min_ind:v_max_ind, :], axis=0)
+            v_proj_res = np.nansum(spec_data.time_res[tr_ind][pmt_ind][:, t_min_ind:t_max_ind], axis=1)
             spec_data.t_proj[tr_ind][pmt_ind] = t_proj_res
             spec_data.cts[tr_ind][pmt_ind] = v_proj_res
     return spec_data
+
+
+def zero_free_to_non_zero_free(spec_data):
+    """
+    this will convert the zerofree time_res array ([(sc, step, time, cts), ...]) to
+    the classic matrix approach where sc, step, time are located by index and
+    cts are filled at the corresponding positions
+    :param spec_data: spec_data (time_res is zero free)
+    :return: spec_data (time_res is classic matrix)
+    """
+    dims_sc_step_time_list = spec_data.get_scaler_step_and_bin_num(-1)
+    new_time_res = [np.full(dims_sc_step_time_list[tr_ind], np.nan) for tr_ind, tr in enumerate(dims_sc_step_time_list)]
+
+    for tr_ind, tr_dims in enumerate(dims_sc_step_time_list):
+        sc_arr = spec_data.time_res[tr_ind]['sc']
+        step_arr = spec_data.time_res[tr_ind]['step']
+        time_arr = spec_data.time_res[tr_ind]['time']
+        new_time_res[tr_ind][sc_arr, step_arr, time_arr] = spec_data.time_res[tr_ind]['cts']
+    spec_data.time_res = new_time_res
+    return spec_data
+
+
+def gate_zero_free_specdata(spec_data):
+    """
+    function to gate spec_data with the softw_gates list in the spec_data itself.
+    gate will be applied on spec_data.time_res and
+    the time projection will be written to spec_data.t_proj
+    the voltage projection will be written to spec_data.cts
+    :param spec_data: spec_data (zero free time res)
+    :return: spec_data (zero free time res)
+    """
+    zf_spec = deepcopy(spec_data)
+    gated_non_zf_spec = gate_specdata(zero_free_to_non_zero_free(spec_data))
+    zf_spec.t_proj = deepcopy(gated_non_zf_spec.t_proj)
+    zf_spec.cts = deepcopy(gated_non_zf_spec.cts)
+    return zf_spec
+
+    # alternative solution (currently slower):
+    # compare_arr = [spec_data.x, spec_data.x, spec_data.t, spec_data.t]
+    # softw_gates_ind = [
+    #     [[find_closest_value_in_arr(compare_arr[lim_ind][tr_ind], lim)[0] for lim_ind, lim in enumerate(gates_pmt)]
+    #      for gates_pmt in gates_tr]
+    #     for tr_ind, gates_tr in enumerate(spec_data.softw_gates)]
+    # spec_data.softw_gates = [
+    #     [[compare_arr[lim_ind][tr_ind][found_ind] for lim_ind, found_ind in enumerate(gate_ind_pmt)]
+    #      for gate_ind_pmt in gate_ind_tr]
+    #     for tr_ind, gate_ind_tr in enumerate(softw_gates_ind)]
+    #
+    # for tr_ind, tr in enumerate(spec_data.cts):
+    #     for pmt_ind, pmt in enumerate(tr):
+    #         try:
+    #             #### some pmts might not have been fired...
+    #             v_min_ind = softw_gates_ind[tr_ind][pmt_ind][0]
+    #             v_max_ind = softw_gates_ind[tr_ind][pmt_ind][1]
+    #             t_min_ind = softw_gates_ind[tr_ind][pmt_ind][2]
+    #             t_max_ind = softw_gates_ind[tr_ind][pmt_ind][3]
+    #             pmt_arr = spec_data.time_res[tr_ind][spec_data.time_res[tr_ind]['sc'] == pmt_ind]
+    #             pmt_arr_t_gated = pmt_arr[pmt_arr['time'] <= t_max_ind]
+    #             pmt_arr_t_gated = pmt_arr_t_gated[t_min_ind <= pmt_arr_t_gated['time']]
+    #             v_proj_res = [np.sum(pmt_arr_t_gated[pmt_arr_t_gated['step'] == i]['cts'], axis=0) for i in range(pmt.size)]
+    #             spec_data.cts[tr_ind][pmt_ind] = v_proj_res
+    #
+    #             pmt_arr_v_gated = pmt_arr[pmt_arr['step'] <= v_max_ind]
+    #             pmt_arr_v_gated = pmt_arr_v_gated[v_min_ind <= pmt_arr_v_gated['step']]
+    #             t_proj_res = [np.sum(pmt_arr_v_gated[pmt_arr_v_gated['time'] == t]['cts'], axis=0) for t in
+    #                           spec_data.t[tr_ind]]
+    #             spec_data.t_proj[tr_ind][pmt_ind] = t_proj_res
+    #
+    #         except Exception as e:
+    #             print(e)
+    # return spec_data
 
 
 def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
@@ -260,8 +330,8 @@ def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
         x_tr, new_step = np.linspace(start, stop, steps, retstep=True)
         # np.testing.assert_allclose(
         #     new_step, step, rtol=1e-5, err_msg='error while creating x axis from file, stepsizes do not match.')
-        logging.debug('for the new x axis the new stepsize is: %s, the old one was: %s and the difference is: %s'
-                      % (new_step, step, new_step - step))
+        # logging.debug('for the new x axis the new stepsize is: %s, the old one was: %s and the difference is: %s'
+        #               % (new_step, step, new_step - step))
         x_arr.append(x_tr)
     return x_arr
 

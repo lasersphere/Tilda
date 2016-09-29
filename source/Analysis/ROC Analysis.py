@@ -18,8 +18,9 @@ import Physics
 import Measurement.MCPImporter as imp
 import Measurement.TLDImporter as tldI
 import InteractiveFit as IF
+from KingFitter import KingFitter
 
-db = 'V:/Projekte/COLLAPS/ROC/ROC_October/CaD2.sqlite'
+db = 'V:/Projekte/COLLAPS/ROC/ROC_October/CaD2_new.sqlite'
 
 
 '''Crawling'''
@@ -32,36 +33,44 @@ db = 'V:/Projekte/COLLAPS/ROC/ROC_October/CaD2.sqlite'
 # Analyzer.combineRes('Kepco', 'b', 'Run2', db, False)
 
 '''Fitting the spectra with Voigt-Fits!'''
-for i in range(1,2):
-    run = str('Run' + str(i))
-    # BatchFit.batchFit(Tools.fileList(db,'40_Ca'), db,run)
-    # BatchFit.batchFit(Tools.fileList(db,'42_Ca'), db,run)
-    # BatchFit.batchFit(Tools.fileList(db,'44_Ca'), db,run)
-    # BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
-# BatchFit.batchFit(Tools.fileList(db,'51_Ca'), db,'Run13')
-# BatchFit.batchFit(Tools.fileList(db,'51_Ca'), db,'Run15')
-#    '''Mean of center, sigma and gamma for 40_Ca'''
-# Analyzer.combineRes('40_Ca', 'gamma',run, db)
-#     Analyzer.combineRes('40_Ca', 'sigma',run, db)
-#     Analyzer.combineRes('42_Ca', 'sigma',run, db)
-#     Analyzer.combineRes('44_Ca', 'sigma',run, db)
-#     Analyzer.combineRes('48_Ca', 'sigma',run, db)
-    #Analyzer.combineRes('40_Ca', 'center',run, db, show_plot=True)
-    #Analyzer.combineRes('42_Ca', 'center',run, db, show_plot=True)
-    Analyzer.combineRes('48_Ca', 'center',run, db, show_plot=True)
-    #Analyzer.combineRes('44_Ca', 'center',run, db, show_plot=True)
-    #
-    # '''Calculate the isotope shift to 48_Ca'''
-    # shift40.append(Analyzer.combineShift('40_Ca', run, db)[2])
-    # shift42.append(Analyzer.combineShift('42_Ca', run, db)[2])
-    # shift44.append(Analyzer.combineShift('44_Ca', run, db)[2])
-
-
-#for i in range(11,16):
-#    run = str('Run' + str(i))
+# for i in range(1,2):
+#     run = str('Run' + str(i))
+#     BatchFit.batchFit(Tools.fileList(db,'40_Ca'), db,run)
+#     BatchFit.batchFit(Tools.fileList(db,'42_Ca'), db,run)
+#     BatchFit.batchFit(Tools.fileList(db,'44_Ca'), db,run)
+#     BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db, run)
+# # BatchFit.batchFit(Tools.fileList(db,'51_Ca'), db,'Run13')
+# # BatchFit.batchFit(Tools.fileList(db,'51_Ca'), db,'Run15')
+# #    '''Mean of center, sigma and gamma for 40_Ca'''
+# # Analyzer.combineRes('40_Ca', 'gamma',run, db)
+# #     Analyzer.combineRes('40_Ca', 'sigma',run, db)
+# #     Analyzer.combineRes('42_Ca', 'sigma',run, db)
+# #     Analyzer.combineRes('44_Ca', 'sigma',run, db)
+# #     Analyzer.combineRes('48_Ca', 'sigma',run, db)
+#     Analyzer.combineRes('40_Ca', 'center',run, db, show_plot=True)
+#     Analyzer.combineRes('42_Ca', 'center',run, db, show_plot=True)
+#     Analyzer.combineRes('48_Ca', 'center',run, db, show_plot=True)
+#     #Analyzer.combineRes('44_Ca', 'center',run, db, show_plot=True)
+#     #
+#     # '''Calculate the isotope shift to 48_Ca'''
+#     # shift40.append(Analyzer.combineShift('40_Ca', run, db)[2])
+#     # shift42.append(Analyzer.combineShift('42_Ca', run, db)[2])
+#     # shift44.append(Analyzer.combineShift('44_Ca', run, db)[2])
+#
+#
+# for i in range(11,16):
+#     run = str('Run' + str(i))
 #     print(run)
-#     BatchFit.batchFit(Tools.fileList(db,'52_Ca'), db,run)
-#     Analyzer.combineRes('52_Ca','sigma', run, db)
-#    Analyzer.combineRes('52_Ca', 'center', run, db)
-#     Analyzer.combineShift('52_Ca', run, db)
-#BatchFit.batchFit(['Run97_ROC_Ca48.mcp'],db,'Run2')
+#     BatchFit.batchFit(['Run100_ROC_Ca52_ROCSignal.mcp','Run125_ROC_Ca52_ROCSignal.mcp','Run126_ROC_Ca52_ROCSignal.mcp',
+#                        'Run127_ROC_Ca52_ROCSignal.mcp','Run130_ROC_Ca52_ROCSignal.mcp','Run150_ROC_Ca52_ROCSignal.mcp'], db,run)
+#     # BatchFit.batchFit(Tools.fileList(db,'52_Ca'), db,run)
+#     # Analyzer.combineRes('52_Ca','sigma', run, db)
+#     # Analyzer.combineRes('52_Ca', 'center', run, db)
+Analyzer.combineShift('52_Ca', 'Run14', db)
+
+litvals = {'42_Ca':[0.215,.005],
+            '44_Ca':[0.288,.007],
+           '40_Ca':[-0.002,.01]}
+
+king = KingFitter(db, litvals,alpha=82,findBestAlpha=True,showing=True)
+king.calcChargeRadii()

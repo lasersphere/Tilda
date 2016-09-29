@@ -4,18 +4,18 @@ Created on 29.07.2016
 @author: chgorges
 '''
 
-import sqlite3
 import ast
-import itertools
-import numpy as np
 import copy
+import sqlite3
 import time
 
+import numpy as np
 from PyQt5 import QtWidgets, QtCore
 
-from Gui.Ui_Isoshift import Ui_Isoshift
 import Analyzer
 import MPLPlotter as plot
+from Gui.Ui_Isoshift import Ui_Isoshift
+
 
 class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
 

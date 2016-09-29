@@ -4,14 +4,16 @@ Created on 08.08.2016
 @author: tratajzcyk
 '''
 
-import csv, ast
+import ast
+import csv
+import os
 import sqlite3
 from datetime import datetime
-import os
 
 import numpy as np
 
 from Measurement.SpecData import SpecData
+
 
 class ALIVEImporter(SpecData):
     '''
@@ -36,10 +38,10 @@ class ALIVEImporter(SpecData):
         
         with open(path) as f:
             fmt = '%Y-%m-%d\t%H-%M-%S'
-            date = path.split('_')
-            date = str(date[0])[-10:] + '\t' + str(date[1])
+            date = self.file.split('_')[:2]
+            date = str(date[0]) + '\t' + str(date[1])
             print(date)
-            self.date = datetime.strptime(date, fmt )
+            self.date = datetime.strptime(date, fmt)
             f.readline()
             self.informations = f.readline()
             startVolt = float(self.informations[13:self.informations.find(';', 13)])
@@ -62,25 +64,26 @@ class ALIVEImporter(SpecData):
                 for j, counts in enumerate(row[1:]):
                     self.cts[0][j][i] = float(counts)
                     self.err[0][j][i] = max(np.sqrt(float(counts)), 1)
-            # print('x:', self.x)
-            # print('cts:', self.cts)
-            # print('err:', self.err)
- 
- 
+
     def preProc(self, db):
-        print('MCPimporter is using db', db)
+        print('ALIVEImporter is using db', db)
         con = sqlite3.connect(db)
         cur = con.cursor()
         cur.execute('''SELECT accVolt, laserFreq, colDirTrue, line, type, voltDivRatio, lineMult, lineOffset, offset
-                                        FROM Files WHERE file = ?''', (self.file,))
+                        FROM Files WHERE file = ?''', (self.file,))
         data = cur.fetchall()
         if len(data) == 1:
             (self.accVolt, self.laserFreq, self.col, self.line, self.type, self.voltDivRatio, self.lineMult,
                     self.lineOffset, self.offset) = data[0]
         else:
-            raise Exception('MCPImporter: No DB-entry found!')
+            raise Exception('ALIVEImporter: No DB-entry found!')
         self.col = bool(self.col)
-        self.voltDivRatio = ast.literal_eval(self.voltDivRatio)
+        try:
+            self.voltDivRatio = ast.literal_eval(self.voltDivRatio)
+        except Exception as e:
+            print('error while converting the voltdivratio: %s' % e)
+            self.voltDivRatio = {'accVolt': 1, 'offset': 1}
+            print('using now: %s' % self.voltDivRatio)
         for trackindex, tracks in enumerate(self.x):
             for xindex, x in enumerate(tracks):
                 scanvolt = (self.lineMult * x + self.lineOffset + self.offset) * self.voltDivRatio['offset']
@@ -110,3 +113,16 @@ class ALIVEImporter(SpecData):
     def getFloat(self, f):
         return float(f.readline().split(';')[1])
 
+if __name__=='__main__':
+    test_data = 'Data/2016-07-22_09-15-46_003.dat'
+    project = 'test/Project'
+    db = 'AliveDB.sqlite'
+    project_path = os.path.normpath(os.path.join(__file__, os.path.pardir, os.path.pardir, os.path.pardir, project))
+    test_data_path = os.path.normpath(os.path.join(project_path, test_data))
+    meas = ALIVEImporter(test_data_path)
+    db = os.path.join(project_path, db)
+    print(db, os.path.isfile(db))
+    meas.preProc(db)
+    import MPLPlotter as MplPl
+    plt = MplPl.plot(meas.getArithSpec([0], -1))
+    MplPl.show(True)

@@ -1,5 +1,5 @@
 '''
-Created on 31.03.2014
+Created on 20.09.2016
 
 @author: gorges
 '''
@@ -35,30 +35,73 @@ shift40 = []
 shift42 = []
 shift44 = []
 
+isoL=['40_Ca','42_Ca','44_Ca']
+chiSqs = [[]]
+chiSqs2 = [[]]
+divratios = []
+accratios = []
+l = 0
+# print(Physics.diffDoppler(662378005, 40000, 124))
+run = 'Run5'
+freq = 761906723.3
+for k in range(99444, 99445, 1):
+    k=k/100
+    acc = k
+    for i in range(99517, 99518, 1):
+        #i = i+ind
+        freq = 761906723.3+(1000-acc)*432
+        i = i/100
+        con = sqlite3.connect(db)
+        cur = con.cursor()
+        cur.execute('''UPDATE Lines SET frequency='''+str(freq)+''' WHERE refRun="Run5"''')
 
-for i in range(1,2):
-    run = str('Run' + str(i))
-#     BatchFit.batchFit(Tools.fileList(db,'40_Ca'), db,run)
-#     BatchFit.batchFit(Tools.fileList(db,'42_Ca'), db,run)
-#     BatchFit.batchFit(Tools.fileList(db,'44_Ca'), db,run)
-#     BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
-    '''Mean of center, sigma and gamma for 40_Ca'''
-# Analyzer.combineRes('40_Ca', 'gamma',run, db)
-#     Analyzer.combineRes('40_Ca', 'sigma',run, db)
-#     Analyzer.combineRes('42_Ca', 'sigma',run, db)
-#     Analyzer.combineRes('44_Ca', 'sigma',run, db)
-#     Analyzer.combineRes('48_Ca', 'sigma',run, db)
-#    Analyzer.combineRes('40_Ca', 'center',run, db)
-#    Analyzer.combineRes('42_Ca', 'center',run, db)
-#    Analyzer.combineRes('44_Ca', 'center',run, db)
-#    Analyzer.combineRes('48_Ca', 'center',run, db)
-    print(run)
-    BatchFit.batchFit(['Run6_opticalDetection_Ca48.mcp','Run7_opticalDetection_Ca48.mcp','Run8_opticalDetection_Ca48.mcp','Run9_opticalDetection_Ca48.mcp','Run10_opticalDetection_Ca48.mcp'], db,run)
-    # '''Calculate the isotope shift to 48_Ca'''
-    # shift40.append(Analyzer.combineShift('40_Ca', run, db)[2])
-    # shift42.append(Analyzer.combineShift('42_Ca', run, db)[2])
-    # shift44.append(Analyzer.combineShift('44_Ca', run, db)[2])
+        divratio = str(''' voltDivRatio="{'accVolt':''' + str(k) + ''', 'offset':''' + str(i) + '''}" ''')
+        cur.execute('''UPDATE Files SET ''' + divratio)
+        con.commit()
+        con.close()
+        divratios.append(i)
+        accratios.append(k)
 
-# print(str(shift40).replace('.',','))
-# print(str(shift42).replace('.',','))
-# print(str(shift44).replace('.',','))
+        '''Fitting the Kepco-Scans!'''
+        # for i in range(0,2):
+        #     run = 'ZKepRun' + str(i)
+        #     BatchFit.batchFit(Tools.fileList(db,'Kepco'), db, run)
+        #     Analyzer.combineRes('Kepco', 'm', run, db, show_plot=False)
+        #     Analyzer.combineRes('Kepco', 'b', run, db, show_plot=False)
+
+        '''Fitting the spectra with Voigt-Fits!'''
+        BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
+
+        isotopeShifts = []
+        isotopeShiftErrs = []
+        for j in isoL:
+                BatchFit.batchFit(Tools.fileList(db,j), db,run)
+                '''Calculate the isotope shift to 48_Ca'''
+                shift = Analyzer.combineShift(j, run, db)
+                isotopeShifts.append(shift[2])
+                isotopeShiftErrs.append(np.sqrt(np.square(10*shift[3])))
+
+        '''calculating red. Chi^2'''
+        litvals = [-1707.945, -1282.013, -857.714]
+        chisq = 0
+        print(isotopeShifts)
+        print(isotopeShiftErrs)
+        for index in range(0, len(isoL)):
+            chisq += np.square((isotopeShifts[index]-litvals[index])/(np.sqrt(np.square(isotopeShiftErrs[index]))))
+        chiSqs[l].append(float(chisq))
+        print('red Chi^2:', chiSqs[l])
+        print(k)
+        print(i)
+    print(k)
+    l+=1
+    chiSqs.append([])
+strA = str(accratios).replace(',','\t')
+strA = strA.replace('.', ',')
+print(strA[1:-1])
+strA = str(divratios).replace(',','\t')
+strA = strA.replace('.', ',')
+print(strA[1:-1])
+for i in chiSqs:
+    strI = str(i).replace(',','\t')
+    strI = strI.replace('.', ',')
+    print(strI[1:-1])

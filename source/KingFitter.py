@@ -40,8 +40,11 @@ class KingFitter(object):
 
         self.isotopes = []
         self.isotopeMasses = []
+        self.massErr = []
         self.isotopeShifts = []
         self.isotopeShiftErr = []
+        self.isotopeShiftStatErr = []
+        self.isotopeShiftSystErr = []
         self.run = []
 
         for i in litvals.keys():
@@ -87,7 +90,7 @@ class KingFitter(object):
         alpha = [np.sqrt(j*omega_y[i]) for i,j in enumerate(omega_x)]
         r = [0 for i in self.x]
 
-        while totaldiff>5e-15 and i < 100:
+        while totaldiff>1e-14 and i < 500:
             w = [j*omega_y[i]/(j + np.square(self.b)*omega_y[i] - 2 * self.b * alpha[i] * r[i]) for i,j in enumerate(omega_x)]
             w_x = [j*w[i] for i,j in enumerate(self.x)]
             x_bar = sum(w_x)/sum(w)
@@ -118,19 +121,22 @@ class KingFitter(object):
 
             sigma_b_square = 1/sum(w_u_fit_square)
             sigma_a_square = 1/sum(w)+np.square(x_fit_bar)*sigma_b_square
-            diff_x = np.abs(sum([w_x_fit[i] - j for i,j in enumerate(w_x)]))
-            diff_y = np.abs(sum([w_y_fit[i] - j for i,j in enumerate(w_y)]))
+            diff_x = np.abs(sum([np.abs(w_x_fit[i] - j) for i,j in enumerate(w_x)]))
+            diff_y = np.abs(sum([np.abs(w_y_fit[i] - j) for i,j in enumerate(w_y)]))
             totaldiff = diff_x+diff_y
             i+=1
-            if i == 99:
-                print('King fit not succesful!')
+            if i == 499:
+                print('Maximum number of iterations reached!')
 
         if showplot:
             plt.subplots_adjust(bottom=0.2)
             plt.xticks(rotation=25)
             ax = plt.gca()
-            ax.set_ylabel(r' M $\Delta$ $\nu$ (u MHz) ')
-            ax.set_xlabel(r'M $\Delta$ < r'+r'$^2$ > - $\alpha$ (u fm $^2$)')
+            ax.set_ylabel(r' M $\delta$ $\nu$ (u MHz) ')
+            if self.c == 0:
+                ax.set_xlabel(r'M $\delta$ < r'+r'$^2$ > (u fm $^2$)')
+            else:
+                ax.set_xlabel(r'M $\delta$ < r'+r'$^2$ > - $\alpha$ (u fm $^2$)')
             plt.errorbar(self.x, self.y, self.yerr, self.xerr, fmt='k.')
             ax.set_xmargin(0.05)
             x_king = [min(self.x) - abs(min(self.x) - max(self.x)) * 0.2,max(self.x) + abs(min(self.x) - max(self.x)) * 0.2]
@@ -149,29 +155,35 @@ class KingFitter(object):
             (name, val, statErr, systErr, run) = i
             if name != self.ref:
                 self.isotopes.append(name)
-                cur.execute('''SELECT mass FROM Isotopes WHERE iso = ?''', (name,))
-                self.isotopeMasses.append(cur.fetchall()[0][0])
+                cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (name,))
+                mass = cur.fetchall()[0]
+                self.isotopeMasses.append(mass[0])
+                self.massErr.append(mass[1])
                 self.isotopeShifts.append(val)
-                self.isotopeShiftErr.append(np.sqrt(np.square(float(statErr))+np.square(float(systErr))))
+                self.isotopeShiftStatErr.append(statErr)
+                self.isotopeShiftSystErr.append(systErr)
+                #self.isotopeShiftErr.append(np.sqrt(np.square(float(statErr))+np.square(float(systErr))))
                 self.run.append(run)
         con.close()
         self.isotopeRedMasses = [i*self.refmass/(self.refmass-i) for i in self.isotopeMasses]
 
         self.chargeradii = [(-self.a/self.isotopeRedMasses[i]+j)/self.b+self.c/self.isotopeRedMasses[i]
                             for i,j in enumerate(self.isotopeShifts)]
-        self.chargeradiiErrs = [np.sqrt(np.square(self.isotopeShiftErr[i]/self.berr)+
+        self.chargeradiiStatErrs = [np.abs(i/self.b) for i in self.isotopeShiftStatErr]
+        self.chargeradiiSystErrs = [np.sqrt(np.square(self.isotopeShiftSystErr[i]/self.b)+
                                         np.square(self.aerr/(self.isotopeRedMasses[i]*self.b))+
-                                        np.square((-self.a/self.isotopeRedMasses[i]+j)*self.berr/np.square(self.b)))
-                                for i,j in enumerate(self.isotopeShifts)]
+                                        np.square((-self.a/self.isotopeRedMasses[i]+j)*self.berr/np.square(self.b)) +
+                                        np.square((self.a/self.b+self.c)*self.massErr[i]/np.square(self.refmass)))
+                                    for i,j in enumerate(self.isotopeShifts)]
         finalVals = {}
         for i,j in enumerate(self.isotopes):
-            finalVals[j] = [self.chargeradii[i],self.chargeradiiErrs[i]]
+            finalVals[j] = [self.chargeradii[i], self.chargeradiiStatErrs[i], self.chargeradiiSystErrs[i]]
             con = sqlite3.connect(self.db)
             cur = con.cursor()
             cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', (j, 'delta_r_square', self.run[i]))
             con.commit()
             cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ? WHERE iso = ? AND parname = ?''',
-                        (self.chargeradii[i], self.chargeradiiErrs[i], 0, j, 'delta_r_square'))
+                        (self.chargeradii[i], self.chargeradiiStatErrs[i], self.chargeradiiSystErrs[i], j, 'delta_r_square'))
             con.commit()
             con.close()
         if self.showing:
@@ -182,12 +194,12 @@ class KingFitter(object):
             for i in keyVals:
                 x.append(int(str(i).split('_')[0]))
                 y.append(finalVals[i][0])
-                yerr.append(finalVals[i][1])
+                yerr.append(np.sqrt(np.square(finalVals[i][1])+np.square(finalVals[i][2])))
                 print(i, '\t', np.round(finalVals[i][0],3), '('+str(np.round(finalVals[i][1],3))+')')
             plt.subplots_adjust(bottom=0.2)
             plt.xticks(rotation=25)
             ax = plt.gca()
-            ax.set_ylabel(r'$\Delta$ < r'+r'$^2$ > (fm $^2$) ')
+            ax.set_ylabel(r'$\delta$ < r'+r'$^2$ > (fm $^2$) ')
             ax.set_xlabel('A')
             plt.errorbar(x, y, yerr, fmt='k.')
             ax.set_xmargin(0.05)

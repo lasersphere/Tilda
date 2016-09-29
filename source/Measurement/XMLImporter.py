@@ -45,6 +45,13 @@ class XMLImporter(SpecData):
         self.type = scandict['isotopeData']['isotope']
         self.seq_type = scandict['isotopeData']['type']
 
+        if 'AD5781' in self.type or 'ad5781' in self.type or 'dac_calibration' in self.type:
+            print('XMLIMporter assumes this a calibration measurement of the DAC,\n'
+                  ' therefore the x-axis will be set to units of DAC registers.\n'
+                  'key words therefore are: AD5781, ad5781, dac_calibration\n'
+                  'do not use those for the isotope name if you do not want this!\n')
+            x_as_volt = False  # assume this is a gauge measurement of the DAC, so set the x axis in DAC registers
+
         self.accVolt = scandict['isotopeData']['accVolt']
         self.offset = None
         dmms_dict = scandict['measureVoltPars'].get('dmms', None)
@@ -64,8 +71,8 @@ class XMLImporter(SpecData):
                 self.offset = np.mean(offset)  # will be overwritten below!
             if np.any(acc_volt):
                 self.accVolt = np.mean(acc_volt)
-        self.nrScalers = []
-        self.active_pmt_list = []
+        self.nrScalers = []  # number of scalers for this track
+        self.active_pmt_list = []  # list of scaler/pmt names for this track
         # if self.seq_type in ['tipa', 'tipadummy', 'kepco']:
         # x_as_volt = False
         print('axaxis as voltage:', x_as_volt)
@@ -165,22 +172,26 @@ class XMLImporter(SpecData):
         print('XMLImporter is using db: ', db)
         con = sqlite3.connect(db)
         cur = con.cursor()
-        cur.execute('''SELECT type, line, offset, accVolt, laserFreq,
-                        colDirTrue, voltDivRatio, lineMult, lineOffset
-                        FROM Files WHERE file = ?''', (self.file,))
-        data = cur.fetchall()
-        if len(data) == 1:
-            (self.type, self.line, self.offset, self.accVolt, self.laserFreq,
-             self.col, self.voltDivRatio, self.lineMult, self.lineOffset) = data[0]
-            self.col = bool(self.col)
-        else:
-            raise Exception('XMLImporter: No DB-entry found!')
-        self.voltDivRatio = ast.literal_eval(self.voltDivRatio)
         if self.seq_type not in ['kepco']:  # do not change the x axis for a kepco scan!
+            cur.execute('''SELECT type, line, offset, accVolt, laserFreq,
+                            colDirTrue, voltDivRatio, lineMult, lineOffset
+                            FROM Files WHERE file = ?''', (self.file,))
+            data = cur.fetchall()
+            if len(data) == 1:
+                (self.type, self.line, self.offset, self.accVolt, self.laserFreq,
+                 self.col, self.voltDivRatio, self.lineMult, self.lineOffset) = data[0]
+                self.col = bool(self.col)
+            else:
+                raise Exception('XMLImporter: No DB-entry found!')
+            self.voltDivRatio = ast.literal_eval(self.voltDivRatio)
             for tr_ind, track in enumerate(self.x):
                 scanvolt = (self.lineMult * self.x[tr_ind] + self.lineOffset + self.offset) * self.voltDivRatio['offset']
                 self.x[tr_ind] = self.accVolt * self.voltDivRatio['accVolt'] - scanvolt
         elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
+            cur.execute('''SELECT offset FROM Files WHERE file = ?''', (self.file,))
+            data = cur.fetchall()
+            if len(data) == 1:
+                self.offset = data[0]
             for tr_ind, cts_tr in enumerate(self.cts):
                 self.cts[tr_ind] = self.cts[tr_ind] - self.offset
         con.close()
@@ -205,11 +216,17 @@ class XMLImporter(SpecData):
             cts[i] = f(v)
 
     def get_scaler_step_and_bin_num(self, track_ind):
-        """ returns a tuple: (nOfScalers, nOfSteps, nOfBins) """
+        """ returns a tuple: (nOfScalers, nOfSteps, nOfBins)
+        or if track == -1 go through all tracks and append those tuples for each track """
+        if track_ind == -1:
+            return [self.get_scaler_step_and_bin_num(tr_ind) for tr_ind, x_tr in enumerate(self.x)]
+        n_of_scalers_tr = self.nrScalers[track_ind]
+        n_of_steps_tr = self.x[track_ind].size
         if self.seq_type in ['trs', 'trsdummy', 'tipa', 'tipadummy']:
-            return self.time_res[track_ind].shape
+            n_of_bins_tr = self.t[track_ind].size
         else:
-            return self.nrScalers[track_ind], self.getNrSteps(track_ind), -1
+            n_of_bins_tr = -1
+        return n_of_scalers_tr, n_of_steps_tr, n_of_bins_tr
 
 # import Service.Scan.draftScanParameters as dft
 # import Service.Formating as Form

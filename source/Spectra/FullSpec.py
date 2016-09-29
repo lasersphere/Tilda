@@ -4,13 +4,13 @@ Created on 25.04.2014
 @author: hammen
 '''
 
-from itertools import chain
 import importlib
+from itertools import chain
 
 import numpy as np
 
 from Spectra.Hyperfine import Hyperfine
-import Physics
+
 
 class FullSpec(object):
     '''
