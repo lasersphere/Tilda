@@ -76,8 +76,10 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True):
         plt.xlabel('Line Voltage / V')
     else:
         plt.xlabel('Ion kinetic energy / eV')
-
-
+    # print(plotdat[0][-2000:-100])
+    # print(plotdat[1][-2000:-100])
+    # print(data[1])
+    
 def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), showing = False, save_path='', ylabel=''):
     # avg, stat_err, sys_err = Analyzer.combineRes(iso, par, run, db, print_extracted=False)
     # val, errs, date = Analyzer.extract(iso, par, run, db, prin=False)

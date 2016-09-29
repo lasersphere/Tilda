@@ -74,11 +74,21 @@ class MCPImporter(SpecData):
                 self.ele = self.file.split('_')
                 self.type = self.ele[0][:-2] + '_' + self.ele[0][-2:]
                 volts = self.find_data_list_in_str(file_as_str, 'SiclReaderObj')
-                self.accVolt = np.mean(volts[0][volts[1].index('lan[A-34461A-06386]:inst0')])
+                accVoltDevice = 'lan[A-34461A-06386]:inst0'
+                offsetDevice = 'lan[A-34461A-06287]:inst0'
+                if accVoltDevice in volts[1]:
+                    self.accVolt = np.mean(volts[0][volts[1].index(accVoltDevice)])
+                else:
+                    self.accVolt = None
                 prema = np.mean(self.find_data_list_in_str(file_as_str, 'PremaVoltageObj')[0])
-                agilent = np.mean(volts[0][volts[1].index('lan[A-34461A-06287]:inst0')])
-                self.offset = np.mean([prema, agilent])
-
+                if prema != None:
+                    if offsetDevice in volts[1]:
+                        agilent = np.mean(volts[0][volts[1].index(offsetDevice)])
+                        self.offset = np.mean([prema, agilent])
+                    else:
+                        self.offset = prema
+                else:
+                    self.offset = np.mean(volts[0][volts[1].index(offsetDevice)])
                 scans, self.nrScans, self.nrSteps, limits = self.get_scan_pars(file_as_str)
 
                 self.nrLoops = len(volts[0])
@@ -137,6 +147,9 @@ class MCPImporter(SpecData):
                     scanvolt = (self.lineMult * x + self.lineOffset + self.offset) * self.voltDivRatio['offset']
                     self.x[trackindex][xindex]= self.accVolt*self.voltDivRatio['accVolt'] - scanvolt
             '''If the numbers of scans for the tracks are different, it will be normed to the minimal number of scans:'''
+            # print(self.x)
+            # print(self.cts)
+            # print(self.nrScalers)
             self.norming()
         if not from_input:
             con.close()
@@ -158,8 +171,12 @@ class MCPImporter(SpecData):
         names = []
         for ind in l_ind:
             names.append(orig_str[orig_str.find(',', ind) + 1:orig_str.find(',', orig_str.find(',', ind) + 1)])
-            ret += orig_str[
-                   orig_str.find(data_begin_str, ind) + len(data_begin_str):orig_str.find(data_end_str, ind)]
+            if (orig_str.find(data_end_str, ind) == -1):
+            #for the last scaler, there is now '>>' at the end, so find() return is -1 and the last digit of the counts will be lost...
+                ret += orig_str[orig_str.find(data_begin_str, ind) + len(data_begin_str):len(orig_str)]
+            else:
+                ret += orig_str[
+                       orig_str.find(data_begin_str, ind) + len(data_begin_str):orig_str.find(data_end_str, ind)]
             ret += '\t'
         # ret = ret[:-1]
         ret = ret.split('\t')[:-1]

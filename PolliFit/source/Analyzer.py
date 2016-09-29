@@ -68,6 +68,7 @@ def extract(iso, par, run, db, fileList=[], prin=True):
 def weightedAverage(vals, errs):
     '''Return (weighted average, propagated error, rChi^2'''
     weights = 1 / np.square(errs)
+    print(weights)
     average = sum(vals * weights) / sum(weights)
     errorprop = np.sqrt(1 / sum(weights))  # was: 1 / sum(weights)
     if(len(vals) == 1):
@@ -118,6 +119,7 @@ def combineRes(iso, par, run, db, weighted = True, print_extracted=True, show_pl
         avg, err, rChi = average(vals, errs)
     print('rChi is: ', rChi, 'err is: ', err)
 
+    systE = functools.partial(avgErr, iso, db, avg)
     statErr = eval(statErrForm)
     systErr = eval(systErrForm)
     print('statErr is: ', statErr)
@@ -206,7 +208,7 @@ def combineShift(iso, run, db, show_plot=False):
         shifts.extend([x - refMean for x in intVals])
         shiftErrors.extend(np.sqrt(np.square(intErrs)+np.square(errMean)))
     val, err, rChi = weightedAverage(shifts, shiftErrors)   
-    systE = functools.partial(shiftErr, iso, run, db, val)
+    systE = functools.partial(shiftErr, iso, run, db)
     
     statErr = eval(statErrForm)
     systErr = eval(systErrForm)
@@ -243,7 +245,9 @@ def gaussProp(*args):
     return np.sqrt(sum(x**2 for x in args))
 
 
-def shiftErr(iso, run, db, val, accVolt_d, offset_d):
+def shiftErr(iso, run, db, accVolt_d, offset_d, syst=0):
+    if str(iso)[-1] == 'm' and str(iso)[-2] == '_':
+        iso = str(iso)[:-2]
     con = sqlite3.connect(db)
     cur = con.cursor()
     cur.execute('''SELECT Lines.reference, lines.frequency FROM Runs JOIN Lines ON Runs.lineVar = Lines.lineVar WHERE Runs.run = ?''', (run,))
@@ -278,4 +282,26 @@ def shiftErr(iso, run, db, val, accVolt_d, offset_d):
     fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
     print('systematic error inputs caused by error of...\n...acc Voltage:',fac*(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d)),'MHz  ...offset Voltage',fac*offset*offset_d/accVolt,'MHz  ...masses:',fac*(mass_d/mass+massRef_d/massRef),'MHz')
 
-    return fac*(np.absolute(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d))+np.absolute(offset*offset_d/accVolt)+np.absolute(mass_d/mass+massRef_d/massRef))
+    return np.sqrt(np.square(fac*(np.absolute(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d))
+                                  +np.absolute(offset*offset_d/accVolt)+np.absolute(mass_d/mass+massRef_d/massRef)))
+                   +np.square(syst))
+
+def avgErr(iso, db, avg, accVolt_d, offset_d, syst=0):
+    if str(iso)[-1] == 'm' and str(iso)[-2] == '_':
+        iso = str(iso)[:-2]
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    cur.execute('''SELECT frequency FROM Lines''')
+    (nu0) = cur.fetchall()[0][0]
+    cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (iso,))
+    (mass, mass_d) = cur.fetchall()[0]
+    cur.execute('''SELECT offset, accVolt, voltDivRatio FROM Files WHERE type = ?''', (iso,))
+    (offset, accVolt, voltDivRatio) = cur.fetchall()[0]
+    voltDivRatio = ast.literal_eval(voltDivRatio)
+    accVolt = accVolt*voltDivRatio['accVolt'] - offset*voltDivRatio['offset']
+    distance = np.abs(avg)/Physics.diffDoppler(nu0, accVolt, mass)
+    print('voltage between left and right edge:', distance)
+
+    fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
+    return np.sqrt(np.square(fac*(np.absolute(0.5*(distance/accVolt)*(accVolt_d))+np.absolute(distance*offset_d/accVolt)
+                                  +np.absolute(mass_d/mass)))+ np.square(syst))

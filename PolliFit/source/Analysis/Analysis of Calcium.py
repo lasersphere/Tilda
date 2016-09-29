@@ -9,7 +9,7 @@ import Tools
 db = 'V:/Projekte/COLLAPS/ROC/CaD2.sqlite'
 
 '''Plotting the Isotopes'''
-isoL = ['40_Ca', '43_Ca', '44_Ca']
+isoL = ['40_Ca', '43_Ca', '44_Ca', '48_Ca']
 
 Tools.centerPlot(db, isoL)
 

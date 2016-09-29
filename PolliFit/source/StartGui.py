@@ -10,8 +10,8 @@ from Gui.MainUi import MainUi
 
 app = QtWidgets.QApplication([""])
 
-ui = MainUi('C:\COLLAPS\Online_Analysis_Al\Al\Analysis\Analysis.sqlite')
-
+ui = MainUi('V:/Projekte/COLLAPS/Sn/Measurement_and_Analysis_Christian/Sn.sqlite', overwrite_stdout=False)
+#ui = MainUi('V:\Projekte\COLLAPS\ROC\ROC_October/CaD2_new.sqlite', overwrite_stdout=False)
 #emi = EmitText()
 #emi.textSig.connect(ui.out)
 #sys.stdout = emi
