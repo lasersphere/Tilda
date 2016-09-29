@@ -61,6 +61,7 @@ def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None):
     con.close()
     
     print("BatchFit finished,", errcount, "errors occured")
+    return fits
 
 
 def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=None):

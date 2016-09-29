@@ -164,7 +164,7 @@ def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
     scan_dict['pipeInternals']['curVoltInd'] = 0
     scan_dict['pipeInternals']['activeTrackNumber'] = 'None'
     scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
-    scan_dict['measureVoltPars'] = xml_get_dict_from_ele(xml_etree)[1]['measureVoltPars']
+    scan_dict['measureVoltPars'] = xml_get_dict_from_ele(xml_etree)[1].get('measureVoltPars', {})
     return scan_dict, xml_etree
 
 

@@ -58,12 +58,9 @@ class MCPImporter(SpecData):
                     data = self.find_data_list_in_str(track,'KepcoEichungVoltageObj')
                     self.cts.append(data[0])
                     self.activePMTlist.append(data[1])
-                    self.nrTracks +=1
+                    self.nrTracks += 1
                 self.cts[0][0] = np.delete(self.cts[0][0], -1)
-                if self.nrSteps[0] % 2 == 0:
-                    self.offset = self.cts[0][0][self.nrSteps[0]/2]
-                else:
-                    self.offset = np.mean([self.cts[0][0][self.nrSteps[0]/2-1],self.cts[0][0][self.nrSteps[0]/2+1]])
+                self.offset = 0  # must be corrected later on, when fitting.
 
                 self.cts[0].append(np.array(np.zeros(self.nrSteps[0])))
                 for i, ct in enumerate(self.cts[1][0]):
@@ -125,10 +122,13 @@ class MCPImporter(SpecData):
             else:
                 raise Exception('MCPImporter: No DB-entry found!')
         if self.type == 'Kepco':
+            #  there is no pre scan mesasurement for the offset in kepco scan
+            #  so finding the value for dac volt = 0V must be done by a fit.
+            self.offset = self.find_offset_for_kepco()
             for trackindex, tracks in enumerate(self.cts):
                 for ctindex, ct in enumerate(tracks):
                     for i, j in enumerate(ct):
-                        self.cts[trackindex][ctindex][i] = (j - self.offset)
+                        self.cts[trackindex][ctindex][i] = (j - self.offset[ctindex])
         else:
             self.col = bool(self.col)
             self.voltDivRatio = ast.literal_eval(self.voltDivRatio)
@@ -178,7 +178,6 @@ class MCPImporter(SpecData):
         new_fmt = date_t.strftime('%Y-%m-%d %H:%M:%S')
         return new_fmt
 
-
     def get_scan_pars(self, mcp_file_as_string):
         scans = []
         completed_scans = []
@@ -204,3 +203,16 @@ class MCPImporter(SpecData):
             for ctIndex, ct in enumerate(track):
                 self.cts[trackindex][ctIndex] = ct*np.min(self.nrScans)/self.nrScans[trackindex]
                 self.err[trackindex][ctIndex] = self.err[trackindex][ctIndex]*np.min(self.nrScans)/self.nrScans[trackindex]
+
+    def find_offset_for_kepco(self):
+        """ find the offset of the measurement for each multimeter and return a list of the offsets for each dmm """
+        from Spectra.Straight import Straight
+        from SPFitter import SPFitter
+        offsets = []
+        print('preprocessing fits of MCPImporter for Kepco scan in order to find offset')
+        for sc_ind, cts in enumerate(self.cts[0]):  # assume only one track
+            st = ([sc_ind], 0)
+            fitter = SPFitter(Straight(), self, st)
+            fitter.fit()
+            offsets.append(fitter.par[0])  # the b parameter is the offset
+        return offsets

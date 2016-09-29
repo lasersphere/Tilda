@@ -63,6 +63,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         self.parent = parent
         self.sum_plt_data = None
+        self.trs_names_list = ['trs', 'trsdummy', 'tipa']
 
         self.tres_image = None
         self.t_proj_plt_itm = None
@@ -254,7 +255,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         try:
             self.new_track_no_data_yet = False
             # print('received new data, (nOfScalers, nOfSteps, nOfBins): %s' % spec_data.get_scaler_step_and_bin_num(-1))
-            if spec_data.seq_type in ['trs', 'trsdummy']:
+            if spec_data.seq_type in self.trs_names_list:
                 gates = None
                 if self.spec_data is not None:
                     gates = deepcopy(self.spec_data.softw_gates)
@@ -278,7 +279,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def update_all_plots(self, spec_data):
         """ wrapper to update all plots """
         self.update_sum_plot(spec_data)
-        if spec_data.seq_type in ['trs', 'trsdummy']:
+        if spec_data.seq_type in self.trs_names_list:
             self.update_tres_plot(spec_data)
             self.update_projections(spec_data)
         self.update_all_pmts_plot(spec_data)
@@ -375,7 +376,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def update_all_pmts_plot(self, spec_data, autorange_pls=False):
         if self.all_pmts_widg_plt_item_list is None:
-            if spec_data.seq_type not in ['trs', 'trsdummy']:
+            if spec_data.seq_type not in self.trs_names_list:
                 self.tabWidget.setCurrentIndex(2)
             self.comboBox_all_pmts_sel_tr.blockSignals(True)
             tr_list = spec_data.track_names
@@ -434,7 +435,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.sum_scaler = hopefully_list
                     self.label_arith_scaler_set.setText(str(hopefully_list))
                     self.update_sum_plot(self.spec_data)
-                    if self.spec_data.seq_type in ['trs', 'trsdummy']:
+                    if self.spec_data.seq_type in self.trs_names_list:
                         self.update_projections(self.spec_data)
                     if self.all_pmts_widg_plt_item_list is not None:
                         self.all_pmts_widg_plt_item_list[-1]['indList'] = hopefully_list
@@ -602,7 +603,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         if pipedata_dict is not None:
             self.pipedata_dict = pipedata_dict
         if self.pipedata_dict is not None:
-            if self.spec_data.seq_type in ['trs', 'trsdummy']:
+            if self.spec_data.seq_type in self.trs_names_list:
                 gates = self.extract_all_gates_from_gui()
                 print('gates are: %s' % gates)
                 self.storage_data.softw_gates = gates
