@@ -64,13 +64,14 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
         for i, j in enumerate(scaler_liste[0]):
             last_second_sum = np.sum(j)
             number_of_new_data_points = scaler_liste[1][i]
-            self.elements[i]['widg'].display(last_second_sum)
-            self.y_data[i] = np.roll(self.y_data[i], 1)
-            self.x_data[i] = np.roll(self.x_data[i], 1)
-            self.y_data[i][0] = last_second_sum
-            self.x_data[i] += number_of_new_data_points * self.sample_interval
-            self.x_data[i][0] = 0  # always zero at time 0
-            self.update_plot(i, self.x_data[i], self.y_data[i])
+            if number_of_new_data_points:
+                self.elements[i]['widg'].display(last_second_sum)
+                self.y_data[i] = np.roll(self.y_data[i], 1)
+                self.x_data[i] = np.roll(self.x_data[i], 1)
+                self.y_data[i][0] = last_second_sum
+                self.x_data[i] += number_of_new_data_points * self.sample_interval
+                self.x_data[i][0] = 0  # always zero at time 0
+                self.update_plot(i, self.x_data[i], self.y_data[i])
 
     def update_plot(self, indic, xdata, ydata):
         plt_data_item = self.elements[indic].get('plotDataItem', None)
