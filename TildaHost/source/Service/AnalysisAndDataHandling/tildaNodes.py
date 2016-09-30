@@ -1601,7 +1601,6 @@ class NSPSortByPmt(Node):
                 self.buffer[pmt_ind][0] = val['payload']
                 num_of_new_data[pmt_ind] += 1
         ret = self.buffer, num_of_new_data
-        print('sending', ret, type(ret))
         return ret
 
 

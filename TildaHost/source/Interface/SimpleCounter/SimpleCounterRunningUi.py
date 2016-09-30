@@ -66,11 +66,11 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
             number_of_new_data_points = scaler_liste[1][i]
             if number_of_new_data_points:
                 self.elements[i]['widg'].display(last_second_sum)
-                self.y_data[i] = np.roll(self.y_data[i], 1)
-                self.x_data[i] = np.roll(self.x_data[i], 1)
-                self.y_data[i][0] = last_second_sum
+                self.y_data[i] = np.roll(self.y_data[i], -1)
+                self.x_data[i] = np.roll(self.x_data[i], -1)
+                self.y_data[i][-1] = last_second_sum
                 self.x_data[i] += number_of_new_data_points * self.sample_interval
-                self.x_data[i][0] = 0  # always zero at time 0
+                self.x_data[i][-1] = 0  # always zero at time 0
                 self.update_plot(i, self.x_data[i], self.y_data[i])
 
     def update_plot(self, indic, xdata, ydata):
@@ -78,6 +78,7 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
         if plt_data_item is None:
             self.elements[indic]['plotDataItem'] = Pg.create_plot_data_item(xdata, ydata, pen='b')
             self.elements[indic]['pltItem'].addItem(self.elements[indic]['plotDataItem'])
+            self.elements[indic]['pltItem'].vb.invertX(True)  # as requested by Christian
         else:
             self.elements[indic]['plotDataItem'].setData(xdata, ydata)
 
