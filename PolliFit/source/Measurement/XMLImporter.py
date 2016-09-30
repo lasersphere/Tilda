@@ -44,6 +44,7 @@ class XMLImporter(SpecData):
         self.date = scandict['isotopeData']['isotopeStartTime']
         self.type = scandict['isotopeData']['isotope']
         self.seq_type = scandict['isotopeData']['type']
+        self.dac_calibration_measurement = False
 
         if 'AD5781' in self.type or 'ad5781' in self.type or 'dac_calibration' in self.type:
             print('--------------------------WARNING----------------------------------\n'
@@ -53,6 +54,7 @@ class XMLImporter(SpecData):
                   'do not use those for the isotope name if you do not want this!\n'
                   '--------------------------WARNING----------------------------------\n')
             x_as_volt = False  # assume this is a gauge measurement of the DAC, so set the x axis in DAC registers
+            self.dac_calibration_measurement = True
 
         self.accVolt = scandict['isotopeData']['accVolt']
         self.offset = None
@@ -207,8 +209,11 @@ class XMLImporter(SpecData):
         elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
             cur.execute('''SELECT offset FROM Files WHERE file = ?''', (self.file,))
             data = cur.fetchall()
-            if len(data) == 1:
-                self.offset = data[0]
+            if self.dac_calibration_measurement:
+                self.offset = 0
+            else:  # get the offset from the database or leave it as it is from import always prefer db
+                if len(data) == 1:
+                    self.offset = data[0]
             for tr_ind, cts_tr in enumerate(self.cts):
                 self.cts[tr_ind] = self.cts[tr_ind] - self.offset
         con.close()

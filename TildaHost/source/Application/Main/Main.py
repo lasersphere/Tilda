@@ -650,13 +650,14 @@ class Main(QtCore.QObject):
 
     """ simple counter """
 
-    def start_simple_counter(self, act_pmt_list, datapoints, callback_sig):
-        self.set_state(MainState.starting_simple_counter, (act_pmt_list, datapoints, callback_sig), only_if_idle=True)
+    def start_simple_counter(self, act_pmt_list, datapoints, callback_sig, sample_interval):
+        self.set_state(MainState.starting_simple_counter,
+                       (act_pmt_list, datapoints, callback_sig, sample_interval), only_if_idle=True)
 
-    def _start_simple_counter(self, act_pmt_list, datapoints, callback_sig):
+    def _start_simple_counter(self, act_pmt_list, datapoints, callback_sig, sample_interval):
         if self.scan_main.sequencer is not None:
             self.scan_main.deinit_fpga()
-        self.simple_counter_inst = SimpleCounterControl(act_pmt_list, datapoints, callback_sig)
+        self.simple_counter_inst = SimpleCounterControl(act_pmt_list, datapoints, callback_sig, sample_interval)
         ret = self.simple_counter_inst.run()
         if ret:
             pass

@@ -187,36 +187,39 @@ def initPipeData(initialScanPars):
     return pipeData
 
 
-def simple_counter_pipe(qt_sig, act_pmt_list):
+def simple_counter_pipe(qt_sig, act_pmt_list, sample_interval):
     """
     pipeline for analysis and displaying while the simple counter is running.
     always feed raw data.
     """
     start = Node()
 
-    fig, axes = plt.subplots(len(act_pmt_list), sharex=True)
-    fig.canvas.set_window_title('Simple Counter')
+    # fig, axes = plt.subplots(len(act_pmt_list), sharex=True)
+    # fig.canvas.set_window_title('Simple Counter')
 
-    sample_rate = 1 / 0.2  # values per second, fpga samples at 200ms currently
+    datapoints = 1 / sample_interval  # values per second, fpga samples at 200ms currently
     pipe = Pipeline(start)
 
     start = start.attach(TN.NFilterDMMDicts())
 
     walk = start.attach(TN.NSplit32bData())
-    walk = walk.attach(TN.NSPSortByPmt(sample_rate))
-    walk = walk.attach(TN.NSumListsInData())
-    walk = walk.attach(TN.NSendDataViaQtSignal(qt_sig))
-    walk = walk.attach(TN.NMPLCloseFigOnClear(fig))
     # walk = walk.attach(SN.NPrint())
 
-    walk = walk.attach(TN.NSPAddxAxis())
-    pmt_dict = {}
-    for pmt_ind, pmt_num in enumerate(act_pmt_list):
-        pmt_dict['pmt' + str(pmt_num)] = walk.attach(TN.NOnlyOnePmt(pmt_num))
-        pmt_dict['pmt' + str(pmt_num)] = pmt_dict['pmt' + str(pmt_num)].attach(
-            TN.NMPlLivePlot(axes[pmt_ind], 'mov. avg. Ch %s' % pmt_num, ['blue']))
-
-    draw = pmt_dict['pmt' + str(act_pmt_list[-1])].attach(TN.NMPlDrawPlot())
+    walk = walk.attach(TN.NSPSortByPmt(datapoints))
+    # walk = walk.attach(TN.NSumListsInData())
+    # walk = walk.attach(SN.NPrint())
+    walk = walk.attach(TN.NSendDataViaQtSignal(qt_sig))
+    # walk = walk.attach(TN.NMPLCloseFigOnClear(fig))
+    # walk = walk.attach(SN.NPrint())
+    #
+    # walk = walk.attach(TN.NSPAddxAxis())
+    # pmt_dict = {}
+    # for pmt_ind, pmt_num in enumerate(act_pmt_list):
+    #     pmt_dict['pmt' + str(pmt_num)] = walk.attach(TN.NOnlyOnePmt(pmt_num))
+    #     pmt_dict['pmt' + str(pmt_num)] = pmt_dict['pmt' + str(pmt_num)].attach(
+    #         TN.NMPlLivePlot(axes[pmt_ind], 'mov. avg. Ch %s' % pmt_num, ['blue']))
+    #
+    # draw = pmt_dict['pmt' + str(act_pmt_list[-1])].attach(TN.NMPlDrawPlot())
 
     return pipe
 

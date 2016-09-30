@@ -9,15 +9,17 @@ the currently selected post acceleration device.
 
 import os
 
+import numpy as np
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
 
 import Application.Config as Cfg
+import PyQtGraphPlotter as Pg
 from Interface.SimpleCounter.Ui_simpleCounterRunnning import Ui_SimpleCounterRunning
 
 
 class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
-    simple_counter_call_back_signal = QtCore.pyqtSignal(list)
+    simple_counter_call_back_signal = QtCore.pyqtSignal(tuple)
 
     def __init__(self, main_gui, act_pmts, datapoints):
         super(SimpleCounterRunningUi, self).__init__()
@@ -31,10 +33,16 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
 
         self.first_call = True
 
+        self.sample_interval = 0.2  # seconds fpga samples at 200 ms
+
         self.act_pmts = act_pmts
         self.datapoints = datapoints
         self.names = []
+        self.elements = []  # list of dicts.
         self.add_scalers_to_gridlayout(act_pmts)
+        # self.x_data = np.array([np.arange(0, self.datapoints) for i in self.act_pmts])
+        self.x_data = np.zeros((len(self.act_pmts), self.datapoints))
+        self.y_data = np.zeros((len(self.act_pmts), self.datapoints))
 
         self.simple_counter_call_back_signal.connect(self.rcv)
 
@@ -43,17 +51,34 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
         self.doubleSpinBox.valueChanged.connect(self.set_dac_volt)
         self.comboBox_post_acc_control.currentTextChanged.connect(self.set_post_acc_ctrl)
 
-        Cfg._main_instance.start_simple_counter(act_pmts, datapoints, self.simple_counter_call_back_signal)
+        Cfg._main_instance.start_simple_counter(act_pmts, datapoints,
+                                                self.simple_counter_call_back_signal, self.sample_interval)
 
         self.show()
 
     def rcv(self, scaler_liste):
+        """ handle new incoming data """
         if self.first_call:
             self.refresh_post_acc_state()
         self.first_call = False
-        for i, j in enumerate(scaler_liste):
-            if i < len(self.names):
-                getattr(self, self.names[i]).display(j)
+        for i, j in enumerate(scaler_liste[0]):
+            last_second_sum = np.sum(j)
+            number_of_new_data_points = scaler_liste[1][i]
+            self.elements[i]['widg'].display(last_second_sum)
+            self.y_data[i] = np.roll(self.y_data[i], 1)
+            self.x_data[i] = np.roll(self.x_data[i], 1)
+            self.y_data[i][0] = last_second_sum
+            self.x_data[i] += number_of_new_data_points * self.sample_interval
+            self.x_data[i][0] = 0  # always zero at time 0
+            self.update_plot(i, self.x_data[i], self.y_data[i])
+
+    def update_plot(self, indic, xdata, ydata):
+        plt_data_item = self.elements[indic].get('plotDataItem', None)
+        if plt_data_item is None:
+            self.elements[indic]['plotDataItem'] = Pg.create_plot_data_item(xdata, ydata, pen='b')
+            self.elements[indic]['pltItem'].addItem(self.elements[indic]['plotDataItem'])
+        else:
+            self.elements[indic]['plotDataItem'].setData(xdata, ydata)
 
     def stop(self):
         self.close()
@@ -79,24 +104,27 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
         for i, j in enumerate(scalers):
             try:
                 name = 'pmt_' + str(j)
-                self.names.append(name)
                 label_name = 'label_pmt_' + str(j)
-                setattr(self, name, QtWidgets.QLCDNumber(self.centralwidget))
+                widg = QtWidgets.QLCDNumber(self.centralwidget)
                 sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
                 sizePolicy.setHorizontalStretch(0)
                 sizePolicy.setVerticalStretch(0)
-                sizePolicy.setHeightForWidth(getattr(self, name).sizePolicy().hasHeightForWidth())
-                getattr(self, name).setSizePolicy(sizePolicy)
-                getattr(self, name).setObjectName(name)
-                self.gridLayout_2.addWidget(getattr(self, name), i, 1, 1, 1)
-                setattr(self, label_name, QtWidgets.QLabel(self.centralwidget))
-                getattr(self, label_name).setObjectName(label_name)
-                self.gridLayout_2.addWidget(getattr(self, label_name), i, 0, 1, 1)
+                sizePolicy.setHeightForWidth(widg.sizePolicy().hasHeightForWidth())
+                widg.setSizePolicy(sizePolicy)
+                widg.setObjectName(name)
+                label = QtWidgets.QLabel(self.centralwidget)
+                label.setObjectName(label_name)
+                self.gridLayout_2.addWidget(label, i, 0, 1, 1)
+                self.gridLayout_2.addWidget(widg, i, 1, 1, 1)
+                plt_widg, plt_item = Pg.create_x_y_widget(x_label='time [s]', y_label='cts')
+                self.gridLayout_2.addWidget(plt_widg, i, 2, 1, 1)
                 _translate = QtCore.QCoreApplication.translate
                 t = _translate('SimpleCounterRunning',
                                "<html><head/><body><p><span style=\" font-size:48pt;\">Ch" +
                                str(j) + "</span></p></body></html>")
-                getattr(self, label_name).setText(t)
-                getattr(self, name).display(0)
+                label.setText(t)
+                widg.display(0)
+                sc_dict = {'name': name, 'label': label, 'widg': widg, 'plotWid': plt_widg, 'pltItem': plt_item}
+                self.elements.append(sc_dict)
             except Exception as e:
                 print(e)

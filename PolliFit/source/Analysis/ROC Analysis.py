@@ -3,21 +3,8 @@ Created on 31.03.2014
 
 @author: gorges
 '''
-import os, sqlite3, math
-from datetime import datetime
-import numpy as np
 
-import MPLPlotter as plot
-import DBIsotope
-import SPFitter
-import Spectra.FullSpec as FullSpec
-import BatchFit
 import Analyzer
-import Tools
-import Physics
-import Measurement.MCPImporter as imp
-import Measurement.TLDImporter as tldI
-import InteractiveFit as IF
 from KingFitter import KingFitter
 
 db = 'V:/Projekte/COLLAPS/ROC/ROC_October/CaD2_new.sqlite'

@@ -159,7 +159,7 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
             self.chosenFiles = np.delete(copy.deepcopy(self.files), select)
             if len(self.chosenVals) > 0 and len(self.chosenErrs > 0) and np.count_nonzero(self.chosenErrs) == len(self.chosenErrs):
                 self.val, self.err, self.redChi = Analyzer.weightedAverage(self.chosenVals, self.chosenErrs)
-        self.err = self.err  # * self.redChi  # does the user want it like this?
+        self.err = self.err  * self.redChi  # does the user want it like this?
         self.result.setText(str(self.val))
         self.rChi.setText(str(self.redChi))
         self.statErr.setText(str(self.err))

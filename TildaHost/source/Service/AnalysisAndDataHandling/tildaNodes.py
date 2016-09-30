@@ -1593,12 +1593,16 @@ class NSPSortByPmt(Node):
         self.buffer = None
 
     def processData(self, data, pipeData):
+        num_of_new_data = [0 for i in self.act_pmt_list]
         for ind, val in enumerate(data):
             if val['secondHeader'] in self.act_pmt_list:
                 pmt_ind = self.act_pmt_list.index(val['secondHeader'])
                 self.buffer[pmt_ind] = np.roll(self.buffer[pmt_ind], 1)
                 self.buffer[pmt_ind][0] = val['payload']
-        return self.buffer
+                num_of_new_data[pmt_ind] += 1
+        ret = self.buffer, num_of_new_data
+        print('sending', ret, type(ret))
+        return ret
 
 
 class NSPAddxAxis(Node):

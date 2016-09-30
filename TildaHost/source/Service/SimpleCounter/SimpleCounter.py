@@ -12,12 +12,12 @@ from Driver.DataAcquisitionFpga.SimpleCounterDummy import SimpleCounterDummy
 
 
 class SimpleCounterControl:
-    def __init__(self, act_pmt_list, datapoints, callback_sig):
+    def __init__(self, act_pmt_list, datapoints, callback_sig, sample_interval):
         """
         module for reading from the simple counter.
         """
         self.sc_pipe = None
-        self.sc_pipe = Tp.simple_counter_pipe(callback_sig, act_pmt_list)
+        self.sc_pipe = Tp.simple_counter_pipe(callback_sig, act_pmt_list, sample_interval)
         self.sc_pipe.pipeData = {'activePmtList': act_pmt_list,
                                  'plotPoints': datapoints}
         self.sc_pipe.start()
