@@ -14,6 +14,7 @@ import subprocess
 from copy import deepcopy
 
 from PyQt5 import QtCore
+from PyQt5 import QtGui
 from PyQt5 import QtWidgets
 
 import Application.Config as Cfg
@@ -28,6 +29,7 @@ from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 from Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
 from Interface.TildaPassiveUi.TildaPassiveUi import TildaPassiveUi
 from Interface.VersionUi.VersionUi import VersionUi
+from Scratch.Tetris import Tetris
 
 
 class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
@@ -52,6 +54,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.live_plot_win = None  # one active live plot window for displaying results from pipeline
         self.file_plot_wins = {}  # dict of active plot windows only for displaying from file.
         self.pollifit_win = None
+        self.tetris = None  # pssst dont tell
 
         self.actionWorking_directory.triggered.connect(self.choose_working_dir)
         self.actionVersion.triggered.connect(self.open_version_win)
@@ -73,6 +76,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
         """ connect buttons """
         self.pushButton_open_dir.clicked.connect(self.open_dir)
+
+        """ add shortcuts """
+        QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+T"), self, self.start_tetris)
 
         self.subscribe_to_main()
         self.show()
@@ -335,5 +341,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 win.close()
             except Exception as e:
                 logging.error(str(e))
+        if self.tetris is not None:
+            self.tetris.close()
 
-
+    def start_tetris(self):
+        self.tetris = Tetris()

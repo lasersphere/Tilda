@@ -89,7 +89,7 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
     def loadFiles(self):
         self.fileList.clear()
         con = sqlite3.connect(self.dbpath)        
-        for r in con.execute('''SELECT file FROM Files WHERE type = ?''', (self.isoFilter.currentText(),)):
+        for r in con.execute('''SELECT file FROM Files WHERE type = ? ORDER BY date''', (self.isoFilter.currentText(),)):
             self.fileList.addItem(r[0])
         con.close()
         

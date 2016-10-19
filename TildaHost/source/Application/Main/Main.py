@@ -315,10 +315,10 @@ class Main(QtCore.QObject):
             print('automatic start of power supplies not included yet.')
         laser_freq = self.autostart_dict.get('laserFreq', False)
         if laser_freq:
-            self.laser_freq_changed(laser_freq)
+            self.laser_freq_changed(float(laser_freq))
         acc_volt = self.autostart_dict.get('accVolt', False)
         if acc_volt:
-            self.acc_volt_changed(acc_volt)
+            self.acc_volt_changed(float(acc_volt))
         # self.init_dmm('Ni4071', 'PXI1Slot5')
         # self.init_dmm('dummy', 'somewhere')
 
