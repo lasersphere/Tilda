@@ -19,8 +19,11 @@ website: zetcode.com
 last edited: October 2013
 """
 
+import os
+import pickle
 import random
 import sys
+from copy import deepcopy
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -33,17 +36,38 @@ class Tetris(QtWidgets.QMainWindow):
 
     def initUI(self):
         self.tboard = Board(self)
-        self.setCentralWidget(self.tboard)
+
+        nextPieceLabel = QtWidgets.QLabel()
+        nextPieceLabel.setFrameStyle(QtWidgets.QFrame.Box | QtWidgets.QFrame.Raised)
+        nextPieceLabel.setFixedWidth(80)
+        nextPieceLabel.setFixedHeight(160)
+        nextPieceLabel.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        nextPieceLabel.setAlignment(QtCore.Qt.AlignCenter)
+        self.tboard.setNextPieceLabel(nextPieceLabel)
+
+        layout = QtWidgets.QHBoxLayout()
+        v_layout = QtWidgets.QVBoxLayout()
+        layout.addWidget(self.tboard)
+        v_layout.addSpacing(200)
+        v_layout.addWidget(QtWidgets.QLabel('next:'))
+        v_layout.addWidget(nextPieceLabel)
+        widg = QtWidgets.QWidget()
+        widg_v = QtWidgets.QWidget()
+        layout.addWidget(widg_v)
+        widg.setLayout(layout)
+        widg_v.setLayout(v_layout)
+        self.setCentralWidget(widg)
 
         self.statusbar = self.statusBar()
         self.tboard.msg2Statusbar[str].connect(self.statusbar.showMessage)
 
-        self.tboard.start()
-
-        self.resize(180, 380)
+        self.resize(260, 380)
+        self.setFixedSize(260, 380)
         self.center()
         self.setWindowTitle('Tetris')
+        self.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         self.show()
+        self.tboard.start()
 
     def center(self):
         screen = QtWidgets.QDesktopWidget().screenGeometry()
@@ -61,6 +85,15 @@ class Board(QtWidgets.QFrame):
 
     def __init__(self, parent):
         super(Board, self).__init__(parent)
+        self.highscore_file = os.path.join(os.path.dirname(__file__), 'tetrishighscore.txt')
+        self.high_score = 0
+        if os.path.isfile(self.highscore_file):
+            stream = open(self.highscore_file, 'rb')
+            self.high_score = pickle.load(stream)
+            stream.close()
+        self.nextPieceLabel = None
+        self.nextPiece = Shape()
+        self.nextPiece.setRandomShape()
 
         self.initBoard()
 
@@ -267,8 +300,9 @@ class Board(QtWidgets.QFrame):
 
     def newPiece(self):
 
-        self.curPiece = Shape()
-        self.curPiece.setRandomShape()
+        self.curPiece = deepcopy(self.nextPiece)
+        self.nextPiece.setRandomShape()
+        self.showNextPiece()
         self.curX = int(Board.BoardWidth / 2 + 1)
         self.curY = Board.BoardHeight - 1 + self.curPiece.minY()
 
@@ -279,6 +313,38 @@ class Board(QtWidgets.QFrame):
             self.timer.stop()
             self.isStarted = False
             self.msg2Statusbar.emit("Game over")
+            if self.numLinesRemoved > self.high_score:
+                print('you have reached a new highscore: %s lines where removed'
+                      ' and the old high score was: %s' % (self.numLinesRemoved, self.high_score))
+                print('saving to: %s' % self.highscore_file)
+                file = open(self.highscore_file, 'wb')
+                pickle.dump(self.numLinesRemoved, file)
+                file.close()
+            else:
+                print('you did not beat the highscore of %s removed lines' % self.high_score )
+
+    def setNextPieceLabel(self, label):
+        self.nextPieceLabel = label
+
+    def showNextPiece(self):
+        if self.nextPieceLabel is None:
+            return
+
+        dx = self.nextPiece.maxX() - self.nextPiece.minX() + 1
+        dy = self.nextPiece.maxY() - self.nextPiece.minY() + 1
+        pixmap = QtGui.QPixmap(dx * self.squareWidth(), dy * self.squareHeight())
+        painter = QtGui.QPainter(pixmap)
+        painter.fillRect(pixmap.rect(), self.nextPieceLabel.palette().window())
+
+        for i in range(4):
+            x = self.nextPiece.x(i) - self.nextPiece.minX()
+            y = self.nextPiece.y(i) - self.nextPiece.minY()
+            self.drawSquare(painter, x * self.squareWidth(),
+                            y * self.squareHeight(), self.nextPiece.shape())
+
+        painter.end()
+
+        self.nextPieceLabel.setPixmap(pixmap)
 
     def tryMove(self, newPiece, newX, newY):
 
