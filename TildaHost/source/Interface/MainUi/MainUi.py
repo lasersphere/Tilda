@@ -79,6 +79,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
         """ add shortcuts """
         QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+T"), self, self.start_tetris)
+        QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+A"), self, self.open_pollifit_win)
 
         self.subscribe_to_main()
         self.show()

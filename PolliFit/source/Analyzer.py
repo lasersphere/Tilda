@@ -230,7 +230,7 @@ def combineShift(iso, run, db, show_plot=False):
     plt.save(avg_fig_name)
     if show_plot:
         plt.show(True)
-    plt.clear()
+    # plt.clear()
     return (shifts, shiftErrors, val, statErr, systErr, rChi)
         
         

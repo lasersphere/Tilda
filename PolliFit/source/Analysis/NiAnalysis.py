@@ -7,9 +7,9 @@ Module Description:  Analysis of the Nickel Data from COLLAPS taken on 28.04.-03
 """
 
 import os
-import sqlite3
 
-import InteractiveFit
+import Analyzer
+import BatchFit
 import Physics
 import Tools
 
@@ -23,21 +23,23 @@ db = os.path.join(workdir, 'Ni_workspace.sqlite')
 
 runs = ['narrow_gate', 'wide_gate']
 isotopes = ['%s_Ni' % i for i in range(58, 71)]
+stables = ['58_Ni', '60_Ni', '61_Ni', '62_Ni', '64_Ni']
+
 ''' crawling '''
 
 # Tools.crawl(db, 'Ni_April2016_mcp')
 
 # ''' laser wavelength: '''
-wavenum = 28393.0  # cm-1
-freq = Physics.freqFromWavenumber(wavenum)
-# freq -= 1250
-print(freq, Physics.wavenumber(freq), 0.5 * Physics.wavenumber(freq))
-
-con = sqlite3.connect(db)
-cur = con.cursor()
-cur.execute('''UPDATE Files SET laserFreq = ? ''', (freq, ))
-con.commit()
-con.close()
+# wavenum = 28393.0  # cm-1
+# freq = Physics.freqFromWavenumber(wavenum)
+# freq -= 1256.32701
+# print(freq, Physics.wavenumber(freq), 0.5 * Physics.wavenumber(freq))
+#
+# con = sqlite3.connect(db)
+# cur = con.cursor()
+# cur.execute('''UPDATE Files SET laserFreq = ? ''', (freq, ))
+# con.commit()
+# con.close()
 #
 # ''' kepco scan results: '''
 #
@@ -67,17 +69,39 @@ transition_freq = Physics.freqFromWavenumber(observed_wavenum)
 
 
 ''' Batch fits '''
-ni60_files = Tools.fileList(db, isotopes[2])
-ni60_cont_files = [each for each in ni60_files if 'contin' in each]
-ni60_bunch_files = [each for each in ni60_files if 'contin' not in each]
-# print(ni60_bunch_files)
 
-# BatchFit.batchFit(ni60_bunch_files, db, runs[0])
+# # create static list because selection might be necessary as removing cw files.
+# ni58_files = Tools.fileList(db, isotopes[0])
+# ni58_bunch_files = [each for each in ni58_files if 'cw' not in each]
+#
+# ni59_files = Tools.fileList(db, isotopes[1])
+#
+# ni60_files = Tools.fileList(db, isotopes[2])
+# ni60_cont_files = [each for each in ni60_files if 'contin' in each]
+# ni60_bunch_files = [each for each in ni60_files if 'contin' not in each]
+# # print(ni60_bunch_files)
+#
+# ni61_files = Tools.fileList(db, isotopes[3])
+
+files_dict = {iso: Tools.fileList(db, iso) for iso in isotopes}
+files_dict[isotopes[0]] = [each for each in files_dict[isotopes[0]] if 'cw' not in each]
+files_dict[isotopes[2]] = [each for each in files_dict[isotopes[0]] if 'contin' not in each]
+
+
+# BatchFit.batchFit(ni58_bunch_files, db, runs[0])
 # Analyzer.combineRes(isotopes[2], 'center', runs[0], db)
+for iso in stables:
+    files = files_dict[iso]
+    for run in runs:
+        BatchFit.batchFit(files, db, run)
+        Analyzer.combineRes(iso, 'center', run, db)
+
+''' isotope shift '''
 
 
 ''' Fit on certain Files '''
-searchterm = 'Run167'
-certain_file = [file for file in ni60_files if searchterm in file][0]
-fit = InteractiveFit.InteractiveFit(certain_file, db, runs[0], block=True, x_as_voltage=True)
+# searchterm = 'Run167'
+# certain_file = [file for file in ni60_files if searchterm in file][0]
+# fit = InteractiveFit.InteractiveFit(certain_file, db, runs[0], block=True, x_as_voltage=True)
 # fit.fit()
+
