@@ -6,16 +6,18 @@ Created on
 Module Description: automatically created with the CApiAnalyser
 """
 
-from os import path, pardir
-
 import ctypes
+from os import path, pardir
 
 
 '''Bitfile Signature:'''
 bitfileSignature = '2BE2BD956E75A0E9F14F6B1A6761B2FB'
+bitfileSignature_7841 = 'E87F746B4D75FAC83D98D9825FB513AE'
 '''Bitfile Path:'''
 bitfilePath = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
                         'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounterV200.lvbitx')
+bitfilePath_7841 = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
+                             'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounter_7841_v200.lvbitx')
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''
