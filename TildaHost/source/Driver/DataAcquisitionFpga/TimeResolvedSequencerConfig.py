@@ -6,9 +6,9 @@ Created on '12.05.2015'
 
 """
 
+import ctypes
 from os import path, pardir
 
-import ctypes
 import Service.Scan.draftScanParameters as draftPars
 
 
@@ -19,9 +19,12 @@ Using CApiAnalyser.py yields:
 
 '''Bitfile Signature:'''
 bitfileSignature = '06E3F09D9A50A95F62A0C612B8F0DF09'
+bitfileSignature_7841 = 'D3792E97F2A046C321644CF1B5544A9A'
 '''Bitfile Path:'''
 bitfilePath = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
                         'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_203.lvbitx')
+bitfilePath_7841 = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
+                             'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_203_7841.lvbitx')
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''

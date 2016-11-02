@@ -10,9 +10,12 @@ from os import path, pardir
 
 '''Bitfile Signature:'''
 bitfileSignature = 'FB344F6CB827ADA74A1942A3989C5ADB'
+bitfileSignature_7841 = '4D1E207CA60D8473FE2320AA107690E5'
 '''Bitfile Path:'''
 bitfilePath = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
                         'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV202.lvbitx')
+bitfilePath_7841 = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
+                             'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV202_7841.lvbitx')
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''
