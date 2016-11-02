@@ -1759,7 +1759,7 @@ class NTRSSortRawDatatoArrayFast(Node):
                     # create new array with all elements where this pmt was active:
                     if np.where(unique_arr['sc'] & act_pmt)[0].size:
                         ith_pmt_hit_list = unique_arr[np.where(unique_arr['sc'] & act_pmt)]
-                        if np.any(ith_pmt_hit_list['step']):  # cannot do any for full list, must select step or so
+                        if ith_pmt_hit_list['step'].size:  # cannot do any for full list, must select step or so
                             ith_pmt_hit_list['sc'] = int(np.log2(act_pmt))
                             new_unique_arr = np.append(new_unique_arr, ith_pmt_hit_list)
                             # print(new_unique_arr)

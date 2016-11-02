@@ -22,6 +22,10 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import Physics
 
+import matplotlib
+
+matplotlib.use('Qt5Agg')
+
 
 def plot(*args):
     for a in args:
