@@ -430,8 +430,10 @@ class Main(QtCore.QObject):
         self.scan_progress['completedTracks'] = []
         self.scan_pars[iso_name] = self.add_global_infos_to_scan_pars(iso_name)
         logging.debug('will scan: ' + iso_name + str(sorted(self.scan_pars[iso_name])))
-        self.scan_main.prepare_scan(self.scan_pars[iso_name])
-        self.set_state(MainState.setting_switch_box, (True, None))
+        if self.scan_main.prepare_scan(self.scan_pars[iso_name]):  # will be true if sequencer could be started.
+            self.set_state(MainState.setting_switch_box, (True, None))
+        else:
+            self.set_state(MainState.idle)
 
     def _setting_switch_box(self, first_call=False, desired_state=None):
         """
