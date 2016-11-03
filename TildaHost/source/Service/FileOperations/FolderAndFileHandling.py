@@ -16,7 +16,7 @@ import Service.Scan.ScanDictionaryOperations as SdOp
 import TildaTools as Tits
 import Tools
 from Service.FileOperations.XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars,\
-    xmlAddCompleteTrack, xml_create_autostart_root, xmlWriteDict
+    xmlAddCompleteTrack, xml_create_autostart_root, xmlWriteDict, xml_create_fpga_cfg_root
 from TildaTools import save_xml
 
 
@@ -201,3 +201,19 @@ def load_auto_start_xml_file(path):
         return root_ele, root_dict
     else:
         return None
+
+
+def load_fpga_xml_config_file():
+    print('loading fpga cfg')
+    path = os.path.join(findTildaFolder(), 'TildaHost', 'source',
+                             'Driver', 'DataAcquisitionFpga', 'fpga_config.xml')
+    if os.path.isfile(path):
+        root_ele = Tits.load_xml(path)
+        root_dict = Tits.xml_get_dict_from_ele(root_ele)[1]
+        return root_ele, root_dict
+    else:
+        root = xml_create_fpga_cfg_root()
+        Tits.save_xml(root, path)
+        root_ele = Tits.load_xml(path)
+        root_dict = Tits.xml_get_dict_from_ele(root_ele)[1]
+        return root_ele, root_dict

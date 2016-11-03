@@ -71,7 +71,11 @@ class FPGAInterfaceHandling():
             self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_Run(self.session, 0))
         if self.status < self.statusSuccess:
             raise Exception('Initialization of the Bitfile' + str(os.path.split(bitfilePath.value)[1]) +
-                     ' on Fpga with ' + str(resource.value) + ' failed, status is: ' + str(self.status))
+                            ' on Fpga with ' + str(resource.value) + ' failed, status is: ' + str(self.status) +
+                            '\n\n---------------------  \n'
+                            'check if your config file is set for the right fpga type'
+                            '(PXI-7841R or PXI-7852R currently)\n'
+                            'and check if the resource is ok, e.g. Rio1 or so, MAX helps to identify this')
         else:
             print('Fpga Initialised on ' + str(resource.value) + '. The Session is ' + str(self.session)
                   + '. Status is: ' + str(self.status) + '.')

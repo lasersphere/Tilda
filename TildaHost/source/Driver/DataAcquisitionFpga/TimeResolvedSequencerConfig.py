@@ -9,8 +9,13 @@ Created on '12.05.2015'
 import ctypes
 from os import path, pardir
 
+import Service.FileOperations.FolderAndFileHandling as FileHandl
 import Service.Scan.draftScanParameters as draftPars
 
+fpga_cfg_root, fpga_cfg_dict = FileHandl.load_fpga_xml_config_file()
+data_acq_cfg = fpga_cfg_dict['fpgas']['data_acquisition_fpga']
+fpga_type = data_acq_cfg['fpga_type']
+fpga_resource = data_acq_cfg['fpga_resource']
 
 """
 Indicators, controls and fifos as gained from C-Api generator
@@ -18,15 +23,21 @@ Using CApiAnalyser.py yields:
 """
 
 '''Bitfile Signature:'''
-bitfileSignature = '06E3F09D9A50A95F62A0C612B8F0DF09'
-bitfileSignature_7841 = 'D3792E97F2A046C321644CF1B5544A9A'
+bitfileSignatures = {'PXI-7852R': '06E3F09D9A50A95F62A0C612B8F0DF09',
+                     'PXI-7841R': 'D3792E97F2A046C321644CF1B5544A9A'
+                     }
+bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
-bitfilePath = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                        'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_203.lvbitx')
-bitfilePath_7841 = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                             'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_203_7841.lvbitx')
+bitfilePaths = {'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
+                                       'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_203.lvbitx'),
+                'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
+                                       'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_203_7841.lvbitx')
+                }
+
+bitfilePath = bitfilePaths[fpga_type]
+
 '''FPGA Resource:'''
-fpgaResource = 'Rio1'
+fpgaResource = fpga_resource
 '''Indicators:'''
 DACQuWriteTimeout = {'ref': 0x8126, 'val': ctypes.c_bool(), 'ctr': False}
 MCSQuWriteTimeout = {'ref': 0x812A, 'val': ctypes.c_bool(), 'ctr': False}

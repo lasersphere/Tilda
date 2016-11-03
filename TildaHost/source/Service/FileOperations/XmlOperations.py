@@ -141,3 +141,15 @@ def xml_create_autostart_root():
     xmlFindOrCreateSubElement(devs, 'dmms', '{\'dmm_name\':\'address\'}')
     xmlFindOrCreateSubElement(devs, 'powersupplies', '{\'powersup_name\':\'address\'}')
     return root
+
+
+def xml_create_fpga_cfg_root():
+    root = ET.Element('Tilda_fpga_cfg_file')
+    fpgas = xmlFindOrCreateSubElement(root, 'fpgas')
+    data_acq_fpga = xmlFindOrCreateSubElement(fpgas, 'data_acquisition_fpga')
+    xmlFindOrCreateSubElement(data_acq_fpga, 'fpga_resource', 'Rio1')
+    xmlFindOrCreateSubElement(data_acq_fpga, 'fpga_type', 'PXI-7852R')
+    control_fpga = xmlFindOrCreateSubElement(fpgas, 'control_fpga')
+    xmlFindOrCreateSubElement(control_fpga, 'fpga_resource', 'Rio0')
+    xmlFindOrCreateSubElement(control_fpga, 'fpga_type', 'PXI-7852R')
+    return root

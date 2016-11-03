@@ -8,16 +8,27 @@ Created on '09.07.2015'
 import ctypes
 from os import path, pardir
 
+import Service.FileOperations.FolderAndFileHandling as FileHandl
+
+fpga_cfg_root, fpga_cfg_dict = FileHandl.load_fpga_xml_config_file()
+data_acq_cfg = fpga_cfg_dict['fpgas']['data_acquisition_fpga']
+fpga_type = data_acq_cfg['fpga_type']
+fpga_resource = data_acq_cfg['fpga_resource']
+
 '''Bitfile Signature:'''
-bitfileSignature = 'FB344F6CB827ADA74A1942A3989C5ADB'
-bitfileSignature_7841 = '4D1E207CA60D8473FE2320AA107690E5'
+bitfileSignatures = {'PXI-7852R': 'FB344F6CB827ADA74A1942A3989C5ADB',
+                     'PXI-7841R': '4D1E207CA60D8473FE2320AA107690E5'
+                     }
+bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
-bitfilePath = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                        'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV202.lvbitx')
-bitfilePath_7841 = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                             'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV202_7841.lvbitx')
+bitfilePaths = {'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
+                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV202.lvbitx'),
+                'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
+                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV202_7841.lvbitx')
+                }
+bitfilePath = bitfilePaths[fpga_type]
 '''FPGA Resource:'''
-fpgaResource = 'Rio1'
+fpgaResource = fpga_resource
 '''Indicators:'''
 DACQuWriteTimeout = {'ref': 0x817E, 'val': ctypes.c_bool(), 'ctr': False}
 SPCtrQuWriteTimeout = {'ref': 0x813A, 'val': ctypes.c_bool(), 'ctr': False}

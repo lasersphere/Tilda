@@ -9,17 +9,29 @@ Module Description: automatically created with the CApiAnalyser
 import ctypes
 from os import path, pardir
 
+import Service.FileOperations.FolderAndFileHandling as FileHandl
+
+fpga_cfg_root, fpga_cfg_dict = FileHandl.load_fpga_xml_config_file()
+data_acq_cfg = fpga_cfg_dict['fpgas']['data_acquisition_fpga']
+fpga_type = data_acq_cfg['fpga_type']
+fpga_resource = data_acq_cfg['fpga_resource']
 
 '''Bitfile Signature:'''
-bitfileSignature = '2BE2BD956E75A0E9F14F6B1A6761B2FB'
-bitfileSignature_7841 = 'E87F746B4D75FAC83D98D9825FB513AE'
+bitfileSignatures = {
+    'PXI-7852R': '2BE2BD956E75A0E9F14F6B1A6761B2FB',
+    'PXI-7841R': 'E87F746B4D75FAC83D98D9825FB513AE'
+                     }
+bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
-bitfilePath = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                        'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounterV200.lvbitx')
-bitfilePath_7841 = path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                             'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounter_7841_v200.lvbitx')
+bitfilePaths = {
+    'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
+                           'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounterV200.lvbitx'),
+    'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
+                           'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounter_7841_v200.lvbitx')
+                }
+bitfilePath = bitfilePaths[fpga_type]
 '''FPGA Resource:'''
-fpgaResource = 'Rio1'
+fpgaResource = fpga_resource
 '''Indicators:'''
 postAccOffsetVoltState = {'ref': 0x8122, 'val': ctypes.c_ubyte(), 'ctr': False}
 DacState = {'ref': 0x8112, 'val': ctypes.c_uint(), 'ctr': False}
