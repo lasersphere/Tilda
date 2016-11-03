@@ -7,7 +7,7 @@ Created on 06.06.2014
 import ast
 import sqlite3
 
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 
 from Gui.Ui_InteractiveFit import Ui_InteractiveFit
 from InteractiveFit import InteractiveFit
@@ -25,7 +25,12 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
         self.bReset.clicked.connect(self.reset)
         self.isoFilter.currentIndexChanged.connect(self.loadFiles)
         self.parTable.cellChanged.connect(self.setPar)
-        
+
+        """ add shortcuts """
+        QtWidgets.QShortcut(QtGui.QKeySequence("L"), self, self.load)
+        QtWidgets.QShortcut(QtGui.QKeySequence("F"), self, self.fit)
+        QtWidgets.QShortcut(QtGui.QKeySequence("R"), self, self.reset)
+
         self.dbpath = None
         
         self.show()

@@ -47,7 +47,7 @@ print(one_of_each)
 for i, file_list in enumerate(one_of_each):
     # time = times[i]
     # print('Fitting all files for a settel tiem of %s s' % time)
-    fits = BatchFit.batchFit(file_list, db, run, x_as_voltage=True)
+    fits, error_files = BatchFit.batchFit(file_list, db, run, x_as_voltage=True)
 
     # plot all residuals:
     for i, fit in enumerate(fits):
