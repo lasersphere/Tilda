@@ -48,8 +48,11 @@ class ScanMain:
         logging.info('preparing isotope: ' + scan_dict['isotopeData']['isotope'] +
                      ' of type: ' + scan_dict['isotopeData']['type'])
         # self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
-        self.prep_seq(scan_dict['isotopeData']['type'])  # should be the same sequencer for the whole isotope
-        self.prepare_dmms_for_scan(scan_dict['measureVoltPars'].get('preScan', {}).get('dmms', {}))
+        if self.prep_seq(scan_dict['isotopeData']['type']):  # should be the same sequencer for the whole isotope
+            self.prepare_dmms_for_scan(scan_dict['measureVoltPars'].get('preScan', {}).get('dmms', {}))
+            return True
+        else:
+            return False
 
     def init_pipeline(self, scan_dict, callback_sig=None,
                       live_plot_callback_tuples=None, fit_res_dict_callback=None):
@@ -126,6 +129,12 @@ class ScanMain:
                 logging.debug('loading sequencer of type: ' + seq_type)
                 self.deinit_fpga()
                 self.sequencer = FindSeq.ret_seq_instance_of_type(seq_type)
+        if self.sequencer is None:  # if no matching sequencer is found (e.g. missing hardware) return False
+            print('sequencer could not be started')
+            return False
+        else:
+            print('sequencer successfully started')
+            return True
 
     def deinit_fpga(self):
         """
