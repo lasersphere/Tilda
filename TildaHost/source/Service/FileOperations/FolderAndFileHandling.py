@@ -155,12 +155,16 @@ def save_spec_data(spec_data, scan_dict):
     :return: 
     """
     try:
+        try:
+            time_res = len(spec_data.time_res) # if there are any values in here, it is a time resolved measurement
+        except Exception as e:
+            time_res = False
         existing_xml_fil_path = scan_dict['pipeInternals']['activeXmlFilePath']
         root_ele = Tits.load_xml(existing_xml_fil_path)
         track_nums, track_num_lis = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
         for track_ind, tr_num in enumerate(track_num_lis):
             track_name = 'track' + str(tr_num)
-            if len(spec_data.time_res):  # if there are any values in here, it is a time resolved measurement
+            if time_res:
                 scan_dict[track_name]['softwGates'] = spec_data.softw_gates[track_ind]
                 xmlAddCompleteTrack(root_ele, scan_dict, spec_data.time_res_zf[track_ind], track_name)
                 xmlAddCompleteTrack(

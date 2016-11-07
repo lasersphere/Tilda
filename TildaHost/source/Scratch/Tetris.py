@@ -21,6 +21,7 @@ last edited: October 2013
 
 import os
 import pickle
+import platform
 import random
 import sys
 from copy import deepcopy
@@ -94,6 +95,8 @@ class Board(QtWidgets.QFrame):
         self.nextPieceLabel = None
         self.nextPiece = Shape()
         self.nextPiece.setRandomShape()
+        self.music_is_playing = False
+        self.play_music()
 
         self.initBoard()
 
@@ -213,6 +216,9 @@ class Board(QtWidgets.QFrame):
 
         elif key == QtCore.Qt.Key_D:
             self.oneLineDown()
+
+        elif key == QtCore.Qt.Key_M:
+            self.play_music()
 
         else:
             super(Board, self).keyPressEvent(event)
@@ -384,6 +390,17 @@ class Board(QtWidgets.QFrame):
                          x + self.squareWidth() - 1, y + self.squareHeight() - 1)
         painter.drawLine(x + self.squareWidth() - 1,
                          y + self.squareHeight() - 1, x + self.squareWidth() - 1, y + 1)
+
+    def play_music(self):
+        if 'Win' in platform.system():
+            import winsound
+
+            if self.music_is_playing:
+                winsound.PlaySound(None, 0)
+            else:
+                winsound.PlaySound(
+                    os.path.join(os.path.dirname(__file__), 'TetrisTheme.wav'), winsound.SND_ASYNC + winsound.SND_LOOP)
+            self.music_is_playing = not self.music_is_playing
 
 
 class Tetrominoe(object):

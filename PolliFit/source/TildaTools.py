@@ -21,7 +21,7 @@ def merge_dicts(d1, d2):
     return new
 
 
-def numpy_array_from_string(string, shape, datatytpe=np.uint32):
+def numpy_array_from_string(string, shape, datatytpe=np.int32):
     """
     converts a text array saved in an lxml.etree.Element
     using the function xmlWriteToTrack back into a numpy array
@@ -71,7 +71,7 @@ def eval_str_vals_in_dict(dicti):
                 # val = val.replace(">", "\'")
                 # dicti[key] = ast.literal_eval(val)
             else:
-                print(e, val, type(val))
+                print('error while converting val with ast.literal_eval: ',  e, val, type(val), key)
     return dicti
 
 
@@ -119,7 +119,7 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
 
 
 def xml_get_data_from_track(
-        root_ele, n_of_track, data_type, data_shape, datatytpe=np.uint32, direct_parent_ele_str='data', default_val=0):
+        root_ele, n_of_track, data_type, data_shape, datatytpe=np.int32, direct_parent_ele_str='data', default_val=0):
     """
     Get Data From Track
     :param root_ele:  lxml.etree.Element, root of the xml tree
