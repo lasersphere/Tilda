@@ -13,7 +13,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 
 import Service.AnalysisAndDataHandling.tildaNodes as TN
-import Service.FileOperations.FolderAndFileHandling as FaFH
+import TildaTools
 import polliPipe.simpleNodes as SN
 from polliPipe.node import Node
 
@@ -176,7 +176,7 @@ def initPipeData(initialScanPars):
 
     pipeData['pipeInternals']['curVoltInd'] = 0
     pipeData['isotopeData']['isotopeStartTime'] = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
-    xml_file_name = FaFH.createXmlFileOneIsotope(pipeData)
+    xml_file_name = TildaTools.createXmlFileOneIsotope(pipeData)
     pipeData['pipeInternals']['activeXmlFilePath'] = xml_file_name
 
     # in the past an extra projection file was created. but for now,

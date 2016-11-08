@@ -10,6 +10,7 @@ import Application.Config as Cfg
 import Service.Scan.draftScanParameters as DftSc
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
 from Service.VoltageConversions import VoltageConversions as VCon
+from TildaTools import get_number_of_tracks_in_scan_dict
 
 
 def init_empty_scan_dict(type_str=None, version=None, load_default_vals=False):
@@ -57,21 +58,6 @@ def merge_dicts(d1, d2):
     new = d1.copy()
     new.update(d2)
     return new
-
-
-def get_number_of_tracks_in_scan_dict(scan_dict):
-    """
-    count the number of tracks in the given dictionary.
-    search indicator is 'track' in keys.
-    :return: (n_of_tracks, sorted(list_of_track_nums))
-    """
-    n_of_tracks = 0
-    list_of_track_nums = []
-    for key, val in scan_dict.items():
-        if 'track' in str(key):
-            n_of_tracks += 1
-            list_of_track_nums.append(int(key[5:]))
-    return n_of_tracks, sorted(list_of_track_nums)
 
 
 def get_available_tracknum(scan_dict):

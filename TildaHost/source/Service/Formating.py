@@ -11,8 +11,8 @@ from datetime import datetime as dt
 
 import numpy as np
 
-import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.VoltageConversions.VoltageConversions as VCon
+import TildaTools
 from TildaTools import gate_one_track
 
 
@@ -108,7 +108,7 @@ def create_x_axis_from_scand_dict(scand, as_voltage=False):
     """
     try:
         arr = []
-        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
+        tracks, track_num_list = TildaTools.get_number_of_tracks_in_scan_dict(scand)
         for tr in track_num_list:
             trackd = scand['track' + str(tr)]
             dac_start_18bit = trackd['dacStartRegister18Bit']
@@ -135,7 +135,7 @@ def create_time_axis_from_scan_dict(scand, rebinning=False, binwidth_ns=10, dela
     """
     try:
         arr = []
-        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
+        tracks, track_num_list = TildaTools.get_number_of_tracks_in_scan_dict(scand)
         for tr in track_num_list:
             trackd = scand['track' + str(tr)]
             bins = trackd['nOfBins']
@@ -164,7 +164,7 @@ def create_default_scaler_array_from_scandict(scand, dft_val=0, data_type=np.uin
     """
     try:
         arr = []
-        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
+        tracks, track_num_list = TildaTools.get_number_of_tracks_in_scan_dict(scand)
         for tr in track_num_list:
             trackd = scand['track' + str(tr)]
             n_of_steps = trackd['nOfSteps']
@@ -188,7 +188,7 @@ def create_default_volt_array_from_scandict(scand, dft_val=(2 ** 30)):
     """
     try:
         arr = []
-        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
+        tracks, track_num_list = TildaTools.get_number_of_tracks_in_scan_dict(scand)
         for tr in track_num_list:
             trackd = scand['track' + str(tr)]
             n_of_steps = trackd['nOfSteps']
@@ -221,7 +221,7 @@ def gate_all_data(pipeData, data, time_array, volt_array):
         [v_min_pmt1, v_max_pmt_1, t_min_pmt_1, t_max_pmt_1], ... ]
     if gates are not stored properly, the whole scan range will be used as gates.
     """
-    tracks, tr_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
+    tracks, tr_list = TildaTools.get_number_of_tracks_in_scan_dict(pipeData)
     ret = []
     for tr_ind, tr_num in enumerate(tr_list):
         ret = gate_one_track(tr_ind, tr_num, pipeData, data, time_array, volt_array, ret)
@@ -260,7 +260,7 @@ def time_rebin_all_data(full_data, scan_dict):
     :return: rebinned full_data
     """
     newdata = []
-    tracks, tr_list = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
+    tracks, tr_list = TildaTools.get_number_of_tracks_in_scan_dict(scan_dict)
     for tr_ind, tr_data in enumerate(full_data):
         newdata = rebin_single_track(tr_ind, tr_data, tr_list, newdata, scan_dict)
     return newdata

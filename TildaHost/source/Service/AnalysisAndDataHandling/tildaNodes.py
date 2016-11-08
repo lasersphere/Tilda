@@ -18,15 +18,14 @@ import MPLPlotter
 import Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
 import Service.FileOperations.FolderAndFileHandling as Filehandle
 import Service.Formating as Form
-import Service.Scan.ScanDictionaryOperations as SdOp
 import TildaTools
 from Measurement.SpecData import SpecData
 from Measurement.XMLImporter import XMLImporter
 from SPFitter import SPFitter
 from Service.AnalysisAndDataHandling.InfoHandler import InfoHandler as InfHandl
-from Service.FileOperations.XmlOperations import xmlAddCompleteTrack
 from Service.ProgramConfigs import Programs as Progs
 from Spectra.Straight import Straight
+from XmlOperations import xmlAddCompleteTrack
 from polliPipe.node import Node
 
 """ multipurpose Nodes: """
@@ -150,7 +149,7 @@ class NCheckIfMeasurementComplete(Node):
 
     def processData(self, data, pipeData):
         ret = None
-        tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
+        tracks, track_list = TildaTools.get_number_of_tracks_in_scan_dict(pipeData)
         for track_ind, tr_num in enumerate(track_list):
             track_name = 'track%s' % tr_num
             if CsAna.checkIfTrackComplete(pipeData, track_name):
@@ -280,7 +279,7 @@ class NSaveAllTracks(Node):
             pipeInternals = pipeData['pipeInternals']
             file = pipeInternals['activeXmlFilePath']
             rootEle = TildaTools.load_xml(file)
-            tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
+            tracks, track_list = TildaTools.get_number_of_tracks_in_scan_dict(pipeData)
             for track_ind, tr_num in enumerate(track_list):
                 track_name = 'track%s' % tr_num
                 xmlAddCompleteTrack(rootEle, pipeData, self.storage[track_ind], track_name)
@@ -306,7 +305,7 @@ class NSaveSpecData(Node):
 
     def clear(self):
         if self.storage is not None:
-            Filehandle.save_spec_data(self.storage, self.Pipeline.pipeData)
+            TildaTools.save_spec_data(self.storage, self.Pipeline.pipeData)
             self.storage = None
 
 
@@ -334,7 +333,7 @@ class NSaveProjection(Node):
             pipeInternals = pipeData['pipeInternals']
             file = pipeInternals['activeXmlFilePath']
             rootEle = TildaTools.load_xml(file)
-            tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
+            tracks, track_list = TildaTools.get_number_of_tracks_in_scan_dict(pipeData)
             for track_ind, tr_num in enumerate(track_list):
                 track_name = 'track%s' % tr_num
                 xmlAddCompleteTrack(
@@ -638,7 +637,7 @@ class NMPLImagePLot(Node):
 
     def tr_radio_buttons(self, label):
         try:
-            tr, tr_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
+            tr, tr_list = TildaTools.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
             self.selected_track = (tr_list.index(int(label[5:])), label)
             print('selected track index is: ', int(label[5:]))
             self.buffer_data = Form.time_rebin_all_data(
@@ -664,7 +663,7 @@ class NMPLImagePLot(Node):
             pipeInternals = pipeData['pipeInternals']
             file = pipeInternals['activeXmlFilePath']
             rootEle = TildaTools.load_xml(file)
-            tracks, track_list = SdOp.get_number_of_tracks_in_scan_dict(pipeData)
+            tracks, track_list = TildaTools.get_number_of_tracks_in_scan_dict(pipeData)
             for track_ind, tr_num in enumerate(track_list):
                 track_name = 'track%s' % tr_num
                 xmlAddCompleteTrack(
@@ -708,7 +707,7 @@ class NMPLImagePLot(Node):
                     self.pmt_radio_ax, labels, self.selected_pmt_ind, self.pmt_radio_buttons)
             # self.radio_buttons_pmt.set_active(self.selected_pmt_ind)  # not available before mpl 1.5.0
             if self.radio_buttons_tr is None:
-                tr, tr_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
+                tr, tr_list = TildaTools.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
                 label_tr = ['track%s' % tr_num for tr_num in tr_list]
                 self.radio_buttons_tr, con = MPLPlotter.add_radio_buttons(
                     self.tr_radio_ax, label_tr, self.selected_track[0], self.tr_radio_buttons
@@ -888,7 +887,7 @@ class NSingleArrayToSpecData(Node):
         self.spec_data = SpecData()
         self.spec_data.path = self.Pipeline.pipeData['pipeInternals']['activeXmlFilePath']
         self.spec_data.type = self.Pipeline.pipeData['isotopeData']['type']
-        tracks, tr_num_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
+        tracks, tr_num_list = TildaTools.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
         self.spec_data.nrLoops = [self.Pipeline.pipeData['track' + str(tr_num)]['nOfScans']
                                   for tr_num in tr_num_list]
         self.spec_data.nrTracks = tracks
@@ -1298,7 +1297,7 @@ class NMPLImagePlotAndSaveSpecData(Node):
             self.save_callback.emit(deepcopy(self.Pipeline.pipeData))
         else:  # no gui available
             self.stored_data = TildaTools.gate_specdata(self.stored_data)
-            Filehandle.save_spec_data(self.stored_data, self.Pipeline.pipeData)
+            TildaTools.save_spec_data(self.stored_data, self.Pipeline.pipeData)
 
 
 class NSortedZeroFreeTRSDat2SpecData(Node):
@@ -1443,7 +1442,7 @@ class NCSSortRawDatatoArray(Node):
 
     def start(self):
         scand = self.Pipeline.pipeData
-        tracks, tracks_num_list = SdOp.get_number_of_tracks_in_scan_dict(scand)
+        tracks, tracks_num_list = TildaTools.get_number_of_tracks_in_scan_dict(scand)
         if self.scalerArray is None:
             self.scalerArray = Form.create_default_scaler_array_from_scandict(scand)
         if self.curVoltIndex is None:
@@ -1821,7 +1820,7 @@ class NTRSSumFastArrays(Node):
 
     def start(self):
         if self.sum is None:
-            tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
+            tracks, track_num_list = TildaTools.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
             self.sum = [np.zeros(0, dtype=[('sc', 'u2'), ('step', 'u4'),
                                            ('time', 'u4'), ('cts', 'u4')]) for tr in range(tracks)]
 

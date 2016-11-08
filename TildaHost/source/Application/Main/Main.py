@@ -22,6 +22,7 @@ import Service.DatabaseOperations.DatabaseOperations as DbOp
 import Service.FileOperations.FolderAndFileHandling as FileHandl
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as Dft
+import TildaTools
 from Application.Main.MainState import MainState
 from Service.AnalysisAndDataHandling.DisplayData import DisplayData
 from Service.Scan.ScanMain import ScanMain
@@ -357,7 +358,7 @@ class Main(QtCore.QObject):
             track_to_copy_from = 'track' + str(max(track_num_list))
             logging.debug('adding track' + str(next_track_num) + ' copying values from: ' + track_to_copy_from)
             scan_d[track_name] = deepcopy(scan_d[track_to_copy_from])
-        tracks, track_num_list = SdOp.get_number_of_tracks_in_scan_dict(scan_d)
+        tracks, track_num_list = TildaTools.get_number_of_tracks_in_scan_dict(scan_d)
         scan_d['isotopeData']['nOfTracks'] = tracks
 
     def laser_freq_changed(self, laser_freq):
@@ -444,7 +445,7 @@ class Main(QtCore.QObject):
         """
         if desired_state is None:
             iso_name = self.scan_progress['activeIso']
-            n_of_tracks, list_of_track_nums = SdOp.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
+            n_of_tracks, list_of_track_nums = TildaTools.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
             active_track_num = min(set(list_of_track_nums) - set(self.scan_progress['completedTracks']))
             scan_dict = self.scan_pars[iso_name]
         else:
@@ -547,7 +548,7 @@ class Main(QtCore.QObject):
         self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
         self.scan_pars[iso_name]['isotopeData']['accVolt'] = self.acc_voltage
         if self.scan_pars[iso_name]['isotopeData']['type'] == 'kepco':
-            track_num, list_of_tracknums = SdOp.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
+            track_num, list_of_tracknums = TildaTools.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
             if track_num > 1:
                 [self.scan_pars[iso_name].pop('track%s' % track_num) for track_num in list_of_tracknums[1:]]
             self.scan_pars[iso_name]['track0']['nOfScans'] = 1  # force to one scan!
@@ -632,7 +633,7 @@ class Main(QtCore.QObject):
                     self.scan_progress['completedTracks'].append(self.scan_progress['activeTrackNum'])
                     # self.scan_main.stop_measurement(False)
                     # stop pipeline before starting with next track again, do not clear.
-                    tracks, tr_l = SdOp.get_number_of_tracks_in_scan_dict(
+                    tracks, tr_l = TildaTools.get_number_of_tracks_in_scan_dict(
                         self.scan_pars[self.scan_progress['activeIso']])
                     everything_completed = len(self.scan_progress['completedTracks']) == tracks  # scan complete
                     self.set_state(MainState.saving, everything_completed)
@@ -806,7 +807,7 @@ class Main(QtCore.QObject):
         self.add_global_infos_to_scan_pars(iso)
         scan_d = deepcopy(self.scan_pars[iso])
         # add_scan_dict_to_db will perform some changes on scan_d, therefore copy necessary
-        trk_num, trk_lis = SdOp.get_number_of_tracks_in_scan_dict(scan_d)
+        trk_num, trk_lis = TildaTools.get_number_of_tracks_in_scan_dict(scan_d)
         for i in trk_lis:
             logging.debug('saving track ' + str(i) + ' dict is: ' +
                           str(scan_d['track' + str(i)]))

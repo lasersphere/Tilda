@@ -15,7 +15,6 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 
 import Application.Config as Cfg
 import PyQtGraphPlotter as Pg
-import Service.FileOperations.FolderAndFileHandling as FileHandl
 import Service.Formating as Form
 import TildaTools as TiTs
 from Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveDataPlotting
@@ -208,18 +207,19 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def add_all_pmt_plot(self):
         """
         add a plot for each scaler on the tab 'all pmts'.
-        Can only be called as soon as spec_data is available
+
+        Can only be called as soon as spec_data is available!!
+
         keys in self.all_pmts_widg_plt_item_list:
         'widget', 'proxy', 'vertLine', 'indList', 'pltDataItem', 'name', 'pltItem', 'fitLine'
         """
-        print('adding all pmts')
         max_rate = 60
-        all_pmts_plot_layout = QtWidgets.QVBoxLayout()
+        self.all_pmts_plot_layout = QtWidgets.QVBoxLayout()
         self.all_pmts_widg_plt_item_list = Pg.create_plot_for_all_sc(
-            all_pmts_plot_layout, self.spec_data.active_pmt_list[self.all_pmts_sel_tr],
+            self.all_pmts_plot_layout, self.spec_data.active_pmt_list[self.all_pmts_sel_tr],
             self.mouse_moved, max_rate, plot_sum=self.spec_data.seq_type != 'kepco'
         )
-        self.widget_all_pmts_plot.setLayout(all_pmts_plot_layout)
+        self.widget_all_pmts_plot.setLayout(self.all_pmts_plot_layout)
 
     def mouse_moved(self, viewbox, trs, evt):
         point = viewbox.mapSceneToView(evt[0])
@@ -244,6 +244,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         print('receivec new track with %s %s ' % rcv_tpl)
         self.tres_sel_tr_ind, self.tres_sel_tr_name = rcv_tpl[0]
+        self.comboBox_all_pmts_sel_tr.setCurrentIndex(self.tres_sel_tr_ind)
         self.tres_sel_sc_ind, self.tres_sel_sc_name = rcv_tpl[1]
         self.new_track_no_data_yet = True
         # need to reset stuff here if number of steps have changed.
@@ -253,7 +254,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         call this to pass a new dataset to the gui.
         """
         try:
-            self.new_track_no_data_yet = False
+            valid_data = False
             # print('received new data, (nOfScalers, nOfSteps, nOfBins): %s' % spec_data.get_scaler_step_and_bin_num(-1))
             if spec_data.seq_type in self.trs_names_list:
                 gates = None
@@ -264,13 +265,20 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 if gates is not None:
                     self.spec_data.softw_gates = gates
                     self.storage_data.softw_gates = gates
-                self.sum_scaler_changed(0)
                 self.update_gates_list()
                 self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
+                valid_data = True
             elif spec_data.seq_type in ['cs', 'csdummy', 'kepco']:
                 self.spec_data = deepcopy(spec_data)
                 self.storage_data = deepcopy(spec_data)
                 self.update_all_plots(self.spec_data)
+                valid_data = True
+            if valid_data and self.new_track_no_data_yet:  # this means it is first call
+                # refresh the line edit by calling this here:
+                print('emitting current index now, specdata is: %s' % spec_data)
+                self.sum_scaler_changed(self.comboBox_sum_all_pmts.currentIndex())
+
+                self.new_track_no_data_yet = False
         except Exception as e:
             print('error in liveplotterui while receiving new data: ', e)
 
@@ -382,7 +390,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             tr_list = spec_data.track_names
             tr_list.append('all')
             self.comboBox_all_pmts_sel_tr.addItems(tr_list)
-            self.cb_all_pmts_sel_tr_changed(self.comboBox_all_pmts_sel_tr.currentText())
+            # self.cb_all_pmts_sel_tr_changed(self.comboBox_all_pmts_sel_tr.currentText())
             self.comboBox_all_pmts_sel_tr.blockSignals(False)
 
             self.add_all_pmt_plot()
@@ -397,14 +405,17 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         this will set the self.sum_scaler list to the values set in the gui.
         :param index: int, index of the element in the combobox
         """
+        print('sum_scaler_changed was called with index: %s ' % index)
         if index is None:
             index = self.comboBox_select_sum_for_pmts.currentIndex()
         if index == 0:
             if self.spec_data is not None:
-                self.sum_scaler = self.spec_data.active_pmt_list[0]
+                self.sum_scaler = self.spec_data.active_pmt_list[0]  # should be the same for all tracks
                 self.sum_track = -1
                 self.lineEdit_arith_scaler_input.setText(str(self.sum_scaler))
                 self.lineEdit_sum_all_pmts.setText(str(self.sum_scaler))
+            else:
+                print('but specdata is None, so line edit is not set.')
             self.lineEdit_arith_scaler_input.setDisabled(True)
             self.lineEdit_sum_all_pmts.setDisabled(True)
         elif index == 1:
@@ -609,7 +620,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.storage_data.softw_gates = gates
                 self.gate_data(self.storage_data, False)
                 print('gates after gating are: %s' % self.storage_data.softw_gates)
-            FileHandl.save_spec_data(self.storage_data, self.pipedata_dict)
+                TiTs.save_spec_data(self.storage_data, self.pipedata_dict)
         else:
             print('could not save data, because it was not saved from the scan process yet.')
 
@@ -696,11 +707,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def update_step_indication_lines(self, act_step, act_tr):
         try:
-            val = self.spec_data.x[act_tr][act_step]
-            # print('active track is: %s and active step is: %s val is: %s ' % (act_tr, act_step, val))
-            if self.current_step_line is not None:
-                self.current_step_line.setValue(val)
-            [each['vertLine'].setValue(val) for each in self.all_pmts_widg_plt_item_list]
+            if self.all_pmts_widg_plt_item_list is not None:
+                val = self.spec_data.x[act_tr][act_step]
+                # print('active track is: %s and active step is: %s val is: %s ' % (act_tr, act_step, val))
+                if self.current_step_line is not None:
+                    self.current_step_line.setValue(val)
+                [each['vertLine'].setValue(val) for each in self.all_pmts_widg_plt_item_list]
         except Exception as e:
             print(e)
 
@@ -711,8 +723,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         self.storage_data = None
         self.spec_data = None
+        self.setWindowTitle('plot: ...  loading  ... ')
         self.reset_table()
+        self.reset_sum_plots()
         self.reset_all_pmt_plots()
+        self.reset_t_res_plot()
 
     ''' fit related '''
 
@@ -738,16 +753,36 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def reset_all_pmt_plots(self):
         """
-        remove all fits etc.
+        remove everything in the all plots tab
         :return:
         """
-        for each in self.all_pmts_widg_plt_item_list:
-            if each['fitLine'] is not None:
-                each['pltItem'].removeItem(each['fitLine'])
-                each['fitLine'] = None
-            if each.get('fitText', None) is not None:
-                each['pltItem'].removeItem(each['fitText'])
-                each['fitText'] = None
+        self.all_pmts_widg_plt_item_list = None  # therefore it will be created again
+        #  when update_all_pmts_plot is called
+        self.comboBox_all_pmts_sel_tr.clear()
+        self.all_pmts_sel_tr = 0
+        QtWidgets.QWidget().setLayout(self.all_pmts_plot_layout)
+        # self.add_all_pmt_plot()  # do not call without specdata present!
+        # will be called within update_plots() when first data arrives
+        self.comboBox_sum_all_pmts.currentIndexChanged.emit(self.comboBox_sum_all_pmts.currentIndex())
+
+    def reset_sum_plots(self):
+        """
+        reset the sum plot is not really necessary, because it will always look the same more or less.
+        """
+        QtWidgets.QWidget().setLayout(self.sum_plot_layout)
+        self.sum_plt_data = None
+        self.add_sum_plot()
+
+    def reset_t_res_plot(self):
+        """
+        since their is always just one, set all data to 0 and its ok.
+        """
+        QtWidgets.QWidget().setLayout(self.tres_v_layout)
+        QtWidgets.QWidget().setLayout(self.v_proj_layout)
+        QtWidgets.QWidget().setLayout(self.t_proj_layout)
+        self.t_proj_plt = None  # in order to trigger for new data
+        self.current_step_line = None
+        self.add_time_resolved_plot()
 
 
 # if __name__ == "__main__":

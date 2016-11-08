@@ -16,6 +16,7 @@ import Driver.PostAcceleration.PostAccelerationMain as PostAcc
 import Service.AnalysisAndDataHandling.tildaPipeline as Tpipe
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as DftScan
+import TildaTools
 
 
 class ScanMain:
@@ -66,7 +67,7 @@ class ScanMain:
         :param scan_dict: dictionary, containing all scanparameters
         :return: bool, True if success
         """
-        track, track_num_lis = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
+        track, track_num_lis = TildaTools.get_number_of_tracks_in_scan_dict(scan_dict)
         self.fpga_start_offset_measurement(scan_dict, track_num_lis[0])  # will be the first track in list.
         self.digital_multi_meter.software_trigger_dmm('all')  # send a software trigger to all dmms
 
@@ -317,7 +318,7 @@ class ScanMain:
             track_name = 'track' + str(track_num)
             compl_tracks = progress_dict['completedTracks']
             compl_steps = progress_dict['nOfCompletedSteps']
-            n_of_tracks, list_of_track_nums = SdOp.get_number_of_tracks_in_scan_dict(scan_dict)
+            n_of_tracks, list_of_track_nums = TildaTools.get_number_of_tracks_in_scan_dict(scan_dict)
             track_ind = list_of_track_nums.index(track_num)
             total_steps_list, total_steps = SdOp.get_num_of_steps_in_scan(scan_dict)
             steps_in_compl_tracks = sum(total_steps_list[ind][2] for ind, track_n in enumerate(compl_tracks))
@@ -375,8 +376,6 @@ class ScanMain:
         each dmm will be resetted before starting.
         set pre_scan_meas to True to ignore the contents of the current config dict and
          load from pre config
-        :param pre_scan_meas: bool, dft=False, set this to True,
-         to just load the dmms from config dict and than start the pre scan measurement
         """
         logging.debug('preparing dmms for scan. Config dict is: %s' % dmms_conf_dict)
         active_dmms = self.get_active_dmms()

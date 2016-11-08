@@ -13,7 +13,7 @@ from copy import copy
 from PyQt5 import QtWidgets, QtCore
 
 import Application.Config as Cfg
-import Service.Scan.ScanDictionaryOperations as SdOp
+import TildaTools
 from Interface.DmmUi.DmmUi import DmmLiveViewUi
 from Interface.ScanControlUi.Ui_ScanControl import Ui_MainWindowScanControl
 from Interface.SetupIsotopeUi.SetupIsotopeUi import SetupIsotopeUi
@@ -155,7 +155,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.listWidget.clear()
         if self.active_iso:
             scan_d = Cfg._main_instance.scan_pars.get(self.active_iso)
-            t, track_num_lis = SdOp.get_number_of_tracks_in_scan_dict(scan_d)
+            t, track_num_lis = TildaTools.get_number_of_tracks_in_scan_dict(scan_d)
             newitems = ['track' + str(tr) for tr in track_num_lis]
             self.listWidget.addItems(newitems)
 
