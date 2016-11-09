@@ -9,6 +9,7 @@ import sqlite3
 
 import matplotlib.pyplot as plt
 import numpy as np
+import ast
 
 class KingFitter(object):
     '''
@@ -20,22 +21,16 @@ class KingFitter(object):
     this is described in e.g. Hammen PhD Thesis 2013
     '''
 
-    def __init__ (self, db, litvals, alpha=0, findBestAlpha=True, showing=True):
+    def __init__ (self, db, litvals={}, showing=True):
         '''
-        Import the litvals and initializes a KingFit
+        Import the litvals and initializes a KingFit, run can be specified, for run==-1 any shift results are chosen
         '''
         self.showing = showing
         self.db = db
         self.a = 0
         self.b = 1
-        self.c = alpha
 
-        self.masses = []
-        self.x_origin = []
-        self.x = []
-        self.xerr = []
-        self.y = []
-        self.yerr = []
+        self.litvals = litvals
 
         self.isotopes = []
         self.isotopeMasses = []
@@ -45,43 +40,63 @@ class KingFitter(object):
         self.isotopeShiftStatErr = []
         self.isotopeShiftSystErr = []
         self.run = []
-
-        for i in litvals.keys():
-            con = sqlite3.connect(self.db)
-            cur = con.cursor()
-            cur.execute('''SELECT mass FROM Isotopes WHERE iso = ?''', (i,))
-            self.masses.append(cur.fetchall()[0][0])
-            cur.execute('''SELECT val, statErr, systErr FROM Combined WHERE iso = ? AND parname="shift"''', (i,))
-            y = cur.fetchall()[0]
-            self.y.append(y[0])
-            self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2])))
-            con.close()
-            self.x_origin.append(litvals[i][0])
-            self.xerr.append(litvals[i][1])
-
         con = sqlite3.connect(self.db)
         cur = con.cursor()
         cur.execute('''SELECT reference FROM Lines''')
         self.ref = cur.fetchall()[0][0]
         cur.execute('''SELECT mass FROM Isotopes WHERE iso = ?''', (self.ref,))
         self.refmass = cur.fetchall()[0][0]
-        self.redmasses= [i*self.refmass/(self.refmass-i) for i in self.masses]
+        con.close()
 
+
+    def kingFit(self, run=-1, alpha=0, findBestAlpha=True):
+        self.masses = []
+        self.x_origin = []
+        self.x = []
+        self.xerr = []
+        self.y = []
+        self.yerr = []
+
+        self.c = alpha
+        self.findBestAlphaTrue = findBestAlpha
+        if self.litvals == {}:
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            cur.execute('''SELECT config FROM Combined WHERE parname="slope" AND run =?''', (run,))
+            self.litvals = ast.literal_eval(cur.fetchall()[0][0])
+            con.close()
+        for i in self.litvals.keys():
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            cur.execute('''SELECT mass FROM Isotopes WHERE iso = ?''', (i,))
+            self.masses.append(cur.fetchall()[0][0])
+            if run == -1:
+                cur.execute('''SELECT val, statErr, systErr FROM Combined WHERE iso = ? AND parname="shift"''', (i,))
+            else:
+                cur.execute('''SELECT val, statErr, systErr FROM Combined WHERE iso = ? AND parname="shift" AND run= ?''', (i,run))
+            y = cur.fetchall()[0]
+            self.y.append(y[0])
+            self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2])))
+            con.close()
+            self.x_origin.append(self.litvals[i][0])
+            self.xerr.append(self.litvals[i][1])
+
+        self.redmasses= [i*self.refmass/(self.refmass-i) for i in self.masses]
         self.y = [self.redmasses[i]*j for i,j in enumerate(self.y)]
         self.yerr = [self.redmasses[i]*j for i,j in enumerate(self.yerr)]
         self.xerr = [self.redmasses[i]*j for i,j in enumerate(self.xerr)]
 
-        if findBestAlpha:
-            self.findBestAlpha()
+        if self.findBestAlphaTrue:
+            self.findBestAlpha(run)
         self.x = [self.redmasses[i]*j - self.c for i,j in enumerate(self.x_origin)]
         print('performing King fit!')
-        (self.a, self.b, self.aerr, self.berr) = self.fit(self.showing)
+        (self.a, self.b, self.aerr, self.berr) = self.fit(run, self.showing)
         print('King fit performed, final values:')
         print('intercept: ', self.a, '(', self.aerr, ') u MHz')
         print('slope: ', self.b, '(', self.berr, ') MHz/fm^2')
 
 
-    def fit(self, showplot=True):
+    def fit(self, run, showplot=True):
         i=0
         totaldiff = 1
         omega_x = [1/np.square(i) for i in self.xerr]
@@ -89,7 +104,7 @@ class KingFitter(object):
         alpha = [np.sqrt(j*omega_y[i]) for i,j in enumerate(omega_x)]
         r = [0 for i in self.x]
 
-        while totaldiff>1e-14 and i < 500:
+        while totaldiff>1e-10 and i < 200:
             w = [j*omega_y[i]/(j + np.square(self.b)*omega_y[i] - 2 * self.b * alpha[i] * r[i]) for i,j in enumerate(omega_x)]
             w_x = [j*w[i] for i,j in enumerate(self.x)]
             x_bar = sum(w_x)/sum(w)
@@ -124,7 +139,7 @@ class KingFitter(object):
             diff_y = np.abs(sum([np.abs(w_y_fit[i] - j) for i,j in enumerate(w_y)]))
             totaldiff = diff_x+diff_y
             i+=1
-            if i == 499:
+            if i == 199:
                 print('Maximum number of iterations reached!')
 
         if showplot:
@@ -143,29 +158,68 @@ class KingFitter(object):
             plt.plot(x_king, y_king, 'r', label='King fit', )
             plt.legend()
             plt.show()
-        return (self.a, self.b, np.sqrt(sigma_a_square), np.sqrt(sigma_b_square))
 
-    def calcChargeRadii(self):
+        self.aerr = np.sqrt(sigma_a_square)
+        self.berr = np.sqrt(sigma_b_square)
         con = sqlite3.connect(self.db)
         cur = con.cursor()
-        cur.execute('''SELECT iso, val, statErr, systErr, run FROM Combined WHERE parname="shift"''')
+        cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'intercept', run))
+        con.commit()
+        cur.execute('''UPDATE Combined SET val = ?, systErr = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
+                    (self.a, self.aerr, str(self.litvals), 'kingVal', 'intercept', run))
+        con.commit()
+        cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'slope', run))
+        con.commit()
+        cur.execute('''UPDATE Combined SET val = ?, systErr = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
+                    (self.b, self.berr, str(self.litvals), 'kingVal', 'slope', run))
+        con.commit()
+        cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'alpha', run))
+        con.commit()
+        cur.execute('''UPDATE Combined SET val = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
+                    (self.c, str(self.litvals), 'kingVal', 'alpha', run))
+        con.commit()
+        con.close()
+        return (self.a, self.b, self.aerr, self.berr)
+
+    def calcChargeRadii(self,isotopes=[], run=-1):
+        print('calculating the charge radii...')
+        self.isotopes = []
+        self.isotopeMasses = []
+        self.massErr = []
+        self.isotopeShifts = []
+        self.isotopeShiftErr = []
+        self.isotopeShiftStatErr = []
+        self.isotopeShiftSystErr = []
+        self.run = []
+
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        cur.execute('''SELECT val, systErr FROM Combined WHERE parname="slope" AND run =?''', (run,))
+        (self.b, self.berr) = cur.fetchall()[0]
+        cur.execute('''SELECT val, systErr FROM Combined WHERE parname="intercept" AND run =?''', (run,))
+        (self.a, self.aerr) = cur.fetchall()[0]
+        cur.execute('''SELECT val FROM Combined WHERE parname="alpha" AND run =?''', (run,))
+        (self.c,) = cur.fetchall()[0]
+        if run == -1:
+            cur.execute('''SELECT iso, val, statErr, systErr, run FROM Combined WHERE parname="shift"''')
+        else:
+            cur.execute('''SELECT iso, val, statErr, systErr, run FROM Combined WHERE parname="shift" AND run=?''', (run,))
         vals = cur.fetchall()
         for i in vals:
             (name, val, statErr, systErr, run) = i
             if name != self.ref:
-                self.isotopes.append(name)
-                cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (name,))
-                mass = cur.fetchall()[0]
-                self.isotopeMasses.append(mass[0])
-                self.massErr.append(mass[1])
-                self.isotopeShifts.append(val)
-                self.isotopeShiftStatErr.append(statErr)
-                self.isotopeShiftSystErr.append(systErr)
-                #self.isotopeShiftErr.append(np.sqrt(np.square(float(statErr))+np.square(float(systErr))))
-                self.run.append(run)
+                if isotopes == [] or name in isotopes:
+                    self.isotopes.append(name)
+                    cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (name,))
+                    mass = cur.fetchall()[0]
+                    self.isotopeMasses.append(mass[0])
+                    self.massErr.append(mass[1])
+                    self.isotopeShifts.append(val)
+                    self.isotopeShiftStatErr.append(statErr)
+                    self.isotopeShiftSystErr.append(systErr)
+                    self.run.append(run)
         con.close()
         self.isotopeRedMasses = [i*self.refmass/(self.refmass-i) for i in self.isotopeMasses]
-
         self.chargeradii = [(-self.a/self.isotopeRedMasses[i]+j)/self.b+self.c/self.isotopeRedMasses[i]
                             for i,j in enumerate(self.isotopeShifts)]
         self.chargeradiiStatErrs = [np.abs(i/self.b) for i in self.isotopeShiftStatErr]
@@ -207,10 +261,10 @@ class KingFitter(object):
 
         return finalVals
 
-    def findBestAlpha(self):
+    def findBestAlpha(self, run):
         print('searching for the best alpha...')
         self.x = [self.redmasses[i]*j - self.c for i,j in enumerate(self.x_origin)]
-        (bestA, bestB, bestAerr, bestBerr) = self.fit(False)
+        (bestA, bestB, bestAerr, bestBerr) = self.fit(run, showplot=False)
         bestRatio = np.abs(bestAerr/bestA)
         step = 1
         best = self.c
@@ -222,7 +276,7 @@ class KingFitter(object):
                 up = True
                 self.c = - self.c
             self.x = [self.redmasses[i]*j - self.c for i,j in enumerate(self.x_origin)]
-            (newA, newB, newAerr, newBerr) = self.fit(False)
+            (newA, newB, newAerr, newBerr) = self.fit(run, showplot=False)
             newRatio = np.abs(newAerr/newA)
             if newRatio < bestRatio:
                 bestRatio = newRatio

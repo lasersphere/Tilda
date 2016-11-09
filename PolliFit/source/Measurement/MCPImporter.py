@@ -124,7 +124,7 @@ class MCPImporter(SpecData):
                 self.err = copy.deepcopy(self.cts)
                 for i,ctarray in enumerate(self.cts):
                     for j, cts in enumerate(ctarray):
-                        self.err[i][j] = np.sqrt(cts)
+                        self.err[i][j] = np.sqrt(np.abs(cts))
                         self.err[i][j][self.err[i][j] == 0] = 1
             f.close()
 

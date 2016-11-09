@@ -2,17 +2,16 @@
 
 # Form implementation generated from reading ui file 'Ui_Main.ui'
 #
-# Created: Thu Aug  4 22:40:40 2016
-#      by: PyQt5 UI code generator 5.3.1
+# Created by: PyQt5 UI code generator 5.5
 #
 # WARNING! All changes made in this file will be lost!
 
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(454, 481)
+        MainWindow.resize(642, 481)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
@@ -43,33 +42,36 @@ class Ui_MainWindow(object):
         self.splitter = QtWidgets.QSplitter(self.centralwidget)
         self.splitter.setOrientation(QtCore.Qt.Vertical)
         self.splitter.setObjectName("splitter")
-        self.tabWidget_AccVoltage = QtWidgets.QTabWidget(self.splitter)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.TabWidget = QtWidgets.QTabWidget(self.splitter)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.tabWidget_AccVoltage.sizePolicy().hasHeightForWidth())
-        self.tabWidget_AccVoltage.setSizePolicy(sizePolicy)
-        self.tabWidget_AccVoltage.setMinimumSize(QtCore.QSize(400, 20))
-        self.tabWidget_AccVoltage.setTabShape(QtWidgets.QTabWidget.Rounded)
-        self.tabWidget_AccVoltage.setObjectName("tabWidget_AccVoltage")
+        sizePolicy.setHeightForWidth(self.TabWidget.sizePolicy().hasHeightForWidth())
+        self.TabWidget.setSizePolicy(sizePolicy)
+        self.TabWidget.setMinimumSize(QtCore.QSize(400, 20))
+        self.TabWidget.setTabShape(QtWidgets.QTabWidget.Rounded)
+        self.TabWidget.setObjectName("TabWidget")
         self.crawler = CrawlerUi()
         self.crawler.setObjectName("crawler")
-        self.tabWidget_AccVoltage.addTab(self.crawler, "")
+        self.TabWidget.addTab(self.crawler, "")
         self.intfit = InteractiveFitUi()
         self.intfit.setObjectName("intfit")
-        self.tabWidget_AccVoltage.addTab(self.intfit, "")
+        self.TabWidget.addTab(self.intfit, "")
         self.batchfit = BatchfitterUi()
         self.batchfit.setObjectName("batchfit")
-        self.tabWidget_AccVoltage.addTab(self.batchfit, "")
+        self.TabWidget.addTab(self.batchfit, "")
         self.averager = AveragerUi()
         self.averager.setObjectName("averager")
-        self.tabWidget_AccVoltage.addTab(self.averager, "")
+        self.TabWidget.addTab(self.averager, "")
         self.isoshift = IsoshiftUi()
         self.isoshift.setObjectName("isoshift")
-        self.tabWidget_AccVoltage.addTab(self.isoshift, "")
+        self.TabWidget.addTab(self.isoshift, "")
         self.accVolt_tab = AccVoltUi()
         self.accVolt_tab.setObjectName("accVolt_tab")
-        self.tabWidget_AccVoltage.addTab(self.accVolt_tab, "")
+        self.TabWidget.addTab(self.accVolt_tab, "")
+        self.kingfit = KingFitUi()
+        self.kingfit.setObjectName("kingfit")
+        self.TabWidget.addTab(self.kingfit, "")
         self.oOut = QtWidgets.QPlainTextEdit(self.splitter)
         self.oOut.setPlainText("")
         self.oOut.setMaximumBlockCount(500)
@@ -77,12 +79,12 @@ class Ui_MainWindow(object):
         self.verticalLayout.addWidget(self.splitter)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 454, 26))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 642, 21))
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
 
         self.retranslateUi(MainWindow)
-        self.tabWidget_AccVoltage.setCurrentIndex(4)
+        self.TabWidget.setCurrentIndex(2)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -92,16 +94,18 @@ class Ui_MainWindow(object):
         self.oDbPath.setText(_translate("MainWindow", "TextLabel"))
         self.bOpenDb.setText(_translate("MainWindow", "Open DB"))
         self.pushButton_refresh.setText(_translate("MainWindow", "refresh"))
-        self.tabWidget_AccVoltage.setTabText(self.tabWidget_AccVoltage.indexOf(self.crawler), _translate("MainWindow", "Crawler"))
-        self.tabWidget_AccVoltage.setTabText(self.tabWidget_AccVoltage.indexOf(self.intfit), _translate("MainWindow", "Interactive Fit"))
-        self.tabWidget_AccVoltage.setTabText(self.tabWidget_AccVoltage.indexOf(self.batchfit), _translate("MainWindow", "Batch Fit"))
-        self.tabWidget_AccVoltage.setTabText(self.tabWidget_AccVoltage.indexOf(self.averager), _translate("MainWindow", "Averager"))
-        self.tabWidget_AccVoltage.setTabText(self.tabWidget_AccVoltage.indexOf(self.isoshift), _translate("MainWindow", "Isotope shift"))
-        self.tabWidget_AccVoltage.setTabText(self.tabWidget_AccVoltage.indexOf(self.accVolt_tab), _translate("MainWindow", "AccVolt"))
+        self.TabWidget.setTabText(self.TabWidget.indexOf(self.crawler), _translate("MainWindow", "Crawler"))
+        self.TabWidget.setTabText(self.TabWidget.indexOf(self.intfit), _translate("MainWindow", "Interactive Fit"))
+        self.TabWidget.setTabText(self.TabWidget.indexOf(self.batchfit), _translate("MainWindow", "Batch Fit"))
+        self.TabWidget.setTabText(self.TabWidget.indexOf(self.averager), _translate("MainWindow", "Averager"))
+        self.TabWidget.setTabText(self.TabWidget.indexOf(self.isoshift), _translate("MainWindow", "Isotope shift"))
+        self.TabWidget.setTabText(self.TabWidget.indexOf(self.accVolt_tab), _translate("MainWindow", "AccVolt"))
+        self.TabWidget.setTabText(self.TabWidget.indexOf(self.kingfit), _translate("MainWindow", "Charge Radii"))
 
+from Gui.AccVoltUi import AccVoltUi
 from Gui.AveragerUi import AveragerUi
-from Gui.InteractiveFitUi import InteractiveFitUi
 from Gui.BatchfitterUi import BatchfitterUi
 from Gui.CrawlerUi import CrawlerUi
+from Gui.InteractiveFitUi import InteractiveFitUi
 from Gui.IsoshiftUi import IsoshiftUi
-from Gui.AccVoltUi import AccVoltUi
+from Gui.KingFitUi import KingFitUi

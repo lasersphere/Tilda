@@ -57,7 +57,7 @@ def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None):
             print("Error working on file", file, ":", sys.exc_info()[1])
             traceback.print_tb(sys.exc_info()[2])
             files_with_error.append(file)
-            
+
     os.chdir(oldPath)
     con.commit()
     con.close()
