@@ -5,11 +5,11 @@ Created on 23.08.2016
 
 '''
 
+import ast
 import sqlite3
 
 import matplotlib.pyplot as plt
 import numpy as np
-import ast
 
 class KingFitter(object):
     '''
@@ -40,13 +40,17 @@ class KingFitter(object):
         self.isotopeShiftStatErr = []
         self.isotopeShiftSystErr = []
         self.run = []
-        con = sqlite3.connect(self.db)
-        cur = con.cursor()
-        cur.execute('''SELECT reference FROM Lines''')
-        self.ref = cur.fetchall()[0][0]
-        cur.execute('''SELECT mass FROM Isotopes WHERE iso = ?''', (self.ref,))
-        self.refmass = cur.fetchall()[0][0]
-        con.close()
+        try:
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            cur.execute('''SELECT reference FROM Lines''')
+            self.ref = cur.fetchall()[0][0]
+            cur.execute('''SELECT mass FROM Isotopes WHERE iso = ?''', (self.ref,))
+            self.refmass = cur.fetchall()[0][0]
+            con.close()
+        except Exception as e:
+            print('error: %s  \n\t-> Kingfitter could not find a reference isotope from'
+                  ' Lines in database or mass of this reference Isotope in Isotopes' % e)
 
 
     def kingFit(self, run=-1, alpha=0, findBestAlpha=True):

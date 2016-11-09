@@ -121,6 +121,7 @@ def _insertFile(f, db, x_as_voltage=True):
     try:
         cur.execute('''INSERT INTO Files (file, filePath) VALUES (?, ?)''', (os.path.basename(f), f))
         con.commit()
+        f = os.path.normpath(os.path.join(os.path.dirname(db), f))
         spec = Meas.load(f, db, True, x_as_voltage)
         spec.export(db)  
     except:

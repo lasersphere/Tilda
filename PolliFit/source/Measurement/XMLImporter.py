@@ -240,12 +240,13 @@ class XMLImporter(SpecData):
     def export(self, db):
         try:
             con = sqlite3.connect(db)
+            col = 1 if self.col else 0
             with con:
                 con.execute('''UPDATE Files SET date = ?, type = ?, offset = ?,
                                 laserFreq = ?, colDirTrue = ?, accVolt = ?
                                  WHERE file = ?''',
                             (self.date, self.type, self.offset,
-                             self.laserFreq, self.col, self.accVolt,
+                             self.laserFreq, col, self.accVolt,
                              self.file))
             con.close()
         except Exception as e:

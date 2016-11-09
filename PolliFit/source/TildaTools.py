@@ -14,6 +14,7 @@ from copy import deepcopy
 import numpy as np
 from lxml import etree as ET
 
+import Physics
 from XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, xmlAddCompleteTrack
 
 
@@ -111,6 +112,7 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
     reads from an xml file and returns all tracks with its parameters
     :return: dict, {'track0': {...}, 'track1':{...}, ...}
     """
+    print('xml file is file: %s' % os.path.isfile(xml_file))
     xml_etree = load_xml(xml_file)
     trackd = {}
     tracks = xml_etree.find('tracks')
@@ -416,6 +418,7 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
     accvolts = [parent_specdata.accVolt]
     for add_meas in add_spec_list:
         for tr_ind, tr in enumerate(parent_specdata.cts):
+            # try loop, if the dimensions of cts or x axis of the files do not match
             try:
                 # check if the x-axis of the two specdata are equal:
                 if np.allclose(parent_specdata.x[tr_ind], add_meas[1].x[tr_ind], rtol=1 ** -5):
@@ -423,6 +426,8 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
                         added_files.append((add_meas[0], add_meas[1].file))
                         offsets.append(add_meas[1].offset)
                         accvolts.append(add_meas[1].accVolt)
+                    for sc_ind, sc in enumerate(tr):
+                        parent_specdata.cts[tr_ind][sc_ind] += add_meas[0] * add_meas[1].cts[tr_ind][sc_ind]
                     time_res_zf = check_if_attr_exists(add_meas[1], 'time_res_zf', [[]] * add_meas[1].nrTracks)[tr_ind]
                     if len(time_res_zf):  # add the time spectrum (zero free) if it exists
                         appended_arr = np.append(parent_specdata.time_res_zf[tr_ind], time_res_zf)
@@ -437,9 +442,6 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
                         np.put(sorted_arr['cts'], sum_ind, sum_cts)
                         # delete all remaining items:
                         parent_specdata.time_res_zf[tr_ind] = np.delete(sorted_arr, sum_ind + 1, axis=0)
-                    for sc_ind, sc in enumerate(tr):
-                        parent_specdata.cts[tr_ind][sc_ind] += add_meas[0] * add_meas[1].cts[tr_ind][sc_ind]
-
                 else:
                     print('warning, file: %s does not have the'
                           ' same x-axis as the parent file: %s,'
@@ -448,6 +450,7 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
                 print('warning, file: %s does not have the'
                       ' same x-axis as the parent file: %s,'
                       ' will not add!' % (parent_specdata.file, add_meas[1].file))
+                print('error therefore is: %s' % e)
         # needs to be converted like this:
         parent_specdata.cts[tr_ind] = np.array(parent_specdata.cts[tr_ind])
         # I Don't know why this is not in this format anyhow.
@@ -458,13 +461,15 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
             os.mkdir(save_dir)
         if not filename:  # automatic filename determination
             filename = nameFile(save_dir, '', 'sum_file', suffix='.xml')
-            # create empty xml file
-            scan_dict = create_scan_dict_from_spec_data(
-                parent_specdata, filename, db)
-            scan_dict['isotopeData']['addedFiles'] = added_files
-            createXmlFileOneIsotope(scan_dict, filename=filename)
-            # call savespecdata in filehandl (will expect to have a .time_res)
-            save_spec_data(parent_specdata, scan_dict)
+        else:
+            filename = os.path.normpath(os.path.join(save_dir, filename + '.xml'))
+        # create empty xml file
+        scan_dict = create_scan_dict_from_spec_data(
+            parent_specdata, filename, db)
+        scan_dict['isotopeData']['addedFiles'] = added_files
+        createXmlFileOneIsotope(scan_dict, filename=filename)
+        # call savespecdata in filehandl (will expect to have a .time_res)
+        save_spec_data(parent_specdata, scan_dict)
 
     return parent_specdata, added_files, filename
 
@@ -491,9 +496,9 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
     :return: dict, scandict
     """
     if database_path is None:  # prefer laserfreq from db, if existant
-        laserfreq = specdata.laserFreq
+        laserfreq = specdata.laserFreq  # if existant freq is usually given in 1/cm
     else:
-        laserfreq = get_laserfreq_from_db(database_path, specdata)
+        laserfreq = Physics.wavenumber(get_laserfreq_from_db(database_path, specdata)) / 2
 
     draftIsotopePars = {
         'version': check_if_attr_exists(specdata, 'version', 'unknown'),
@@ -594,15 +599,6 @@ def createXmlFileOneIsotope(scanDict, seq_type=None, filename=None):
         filename = nameFileXml(isodict, path)
     print('creating .xml File: ' + filename)
     save_xml(root, filename, False)
-    # now add it to the database:
-    db_name = os.path.basename(scanDict['pipeInternals']['workingDirectory']) + '.sqlite'
-    db = scanDict['pipeInternals']['workingDirectory'] + '\\' + db_name
-    if os.path.isfile(db):
-        os.chdir(scanDict['pipeInternals']['workingDirectory'])
-        relative_filename = os.path.normpath(
-            os.path.join(os.path.split(os.path.dirname(filename))[1], os.path.basename(filename)))
-        # from Tools import _insertFile
-        # _insertFile(relative_filename, db)
     return filename
 
 
@@ -648,6 +644,19 @@ def save_spec_data(spec_data, scan_dict):
                 scan_dict[track_name]['softwGates'] = []
                 xmlAddCompleteTrack(root_ele, scan_dict, spec_data.cts[track_ind], track_name)
         save_xml(root_ele, existing_xml_fil_path, False)
+        # now add it to the database:
+        db_name = os.path.basename(scan_dict['pipeInternals']['workingDirectory']) + '.sqlite'
+        db = scan_dict['pipeInternals']['workingDirectory'] + '\\' + db_name
+        if os.path.isfile(db):
+            os.chdir(scan_dict['pipeInternals']['workingDirectory'])
+            relative_filename = os.path.normpath(
+                os.path.join(os.path.split(os.path.dirname(existing_xml_fil_path))[1], os.path.basename(existing_xml_fil_path)))
+            # if file is in same folder as db, replace this folder with a dot
+            db_dir_name = os.path.split(scan_dict['pipeInternals']['workingDirectory'])[1]
+            relative_filename = relative_filename.replace(
+                db_dir_name, '.')
+            from Tools import _insertFile
+            _insertFile(relative_filename, db)
     except Exception as e:
         print('error while saving: ', e)
 

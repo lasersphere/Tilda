@@ -4,15 +4,10 @@ Created on 05.10.2016
 @author: chgorges
 '''
 
-import ast
-import copy
-import os
 import sqlite3
 
-import numpy as np
 from PyQt5 import QtWidgets, QtCore
 
-import MPLPlotter as plot
 from Gui.Ui_KingFitter import Ui_KingFitter
 from KingFitter import KingFitter
 
@@ -47,7 +42,6 @@ class KingFitUi(QtWidgets.QWidget, Ui_KingFitter):
     
         
     def loadIsos(self):
-        print('loading isos!')
         self.isoList.clear()
         self.isotopes = []
         con = sqlite3.connect(self.dbpath)

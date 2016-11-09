@@ -90,11 +90,17 @@
          <height>20</height>
         </size>
        </property>
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="locale">
+        <locale language="English" country="UnitedStates"/>
+       </property>
        <property name="tabShape">
         <enum>QTabWidget::Rounded</enum>
        </property>
        <property name="currentIndex">
-        <number>2</number>
+        <number>7</number>
        </property>
        <widget class="CrawlerUi" name="crawler">
         <attribute name="title">
@@ -129,6 +135,11 @@
        <widget class="KingFitUi" name="kingfit">
         <attribute name="title">
          <string>Charge Radii</string>
+        </attribute>
+       </widget>
+       <widget class="AddFilesUi" name="addFiles_tab">
+        <attribute name="title">
+         <string>add Files</string>
         </attribute>
        </widget>
       </widget>
@@ -195,7 +206,13 @@
   <customwidget>
    <class>KingFitUi</class>
    <extends>QWidget</extends>
-   <header location="global">Gui.KingFitUi</header>
+   <header>Gui.KingFitUi</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>AddFilesUi</class>
+   <extends>QWidget</extends>
+   <header>Gui.AddFilesUi</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
