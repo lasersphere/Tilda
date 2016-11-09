@@ -447,6 +447,9 @@ for iso, cfg in sorted(configs.items()):
         [div_ratio_relevant_stable_files['60_Ni'].append(file) for file in each[2] if
          file not in div_ratio_relevant_stable_files['60_Ni']]
 div_ratio_relevant_stable_files['60_Ni'] = sorted(div_ratio_relevant_stable_files['60_Ni'])
+
+div_ratio_relevant_stable_files.pop('58_Ni')  # due to deviation of 58_Ni, do not fit this one.
+
 print('number of resonances that will be fitted: %s' %
       float(sum([len(val) for key, val in div_ratio_relevant_stable_files.items()])))
 
@@ -490,7 +493,7 @@ def chi_square_finder(acc_dev_list, off_dev_list):
             # combineRes only when happy with voltdivratio, otherwise no use...
             # [[Analyzer.combineRes(iso, par, run, db) for iso in stables] for par in pars]
             try:
-                shifts = {iso: Analyzer.combineShift(iso, run, db) for iso in stables if iso is not '60_Ni'}
+                shifts = {iso: Analyzer.combineShift(iso, run, db) for iso in stables if iso not in ['58_Ni', '60_Ni']}
             except Exception as e:
                 shifts = {}
                 print(e)
@@ -524,21 +527,22 @@ def chi_square_finder(acc_dev_list, off_dev_list):
         print('for acc volt div ratio: %s' % acc_ratios[acc_volt_ind])
         for offset_volt_ind, inner_each in enumerate(each):
             [print(fit_res_tpl) for fit_res_tpl in inner_each if len(fit_res_tpl[2])]
+    return acc_ratios, offset_div_ratios, chisquares
 
-chi_square_finder([0], [25])
+acc_ratios, offset_div_ratios, chisquares = chi_square_finder(range(-200, 220, 20), range(-200, 220, 20))
 
 print('plotting now')
-try:
-    files = extract_shifts(runs)
-    print('files are: % s' % files)
-    plot_iso_shift_stables(runs, files)
-    MPLPlotter.show(True)
-except Exception as e:
-    print('plotting did not work, error is: %s' % e)
-# print('acc\toff\tchisquare')
-# for acc_ind, acc_rat in enumerate(acc_ratios):
-#     for off_ind, off_rat in enumerate(offset_div_ratios[acc_ind]):
-#         print(('%s\t%s\t%s' % (acc_rat, off_rat, chisquares[acc_ind][off_ind])).replace('.', ','))
+# try:
+#     files = extract_shifts(runs)
+#     print('files are: % s' % files)
+#     plot_iso_shift_stables(runs, files)
+#     MPLPlotter.show(True)
+# except Exception as e:
+#     print('plotting did not work, error is: %s' % e)
+print('acc\toff\tchisquare')
+for acc_ind, acc_rat in enumerate(acc_ratios):
+    for off_ind, off_rat in enumerate(offset_div_ratios[acc_ind]):
+        print(('%s\t%s\t%s' % (acc_rat, off_rat, chisquares[acc_ind][off_ind])).replace('.', ','))
 
 print('------------------- Done -----------------')
 winsound.Beep(2500, 500)
@@ -576,32 +580,32 @@ winsound.Beep(2500, 500)
 #     [578.8150585497847, 440.44567023459007, 354.137782740749, 248.3937559156189, 381.3259146727179, 338.1318853811225,
 #      215.58028460614725, 125.67515837802476, 68.27554282371904]]
 #
-# acc_divs_result = acc_ratios
-# off_divs_result = offset_div_ratios[0]
-# chisquares_result = chisquares
+acc_divs_result = acc_ratios
+off_divs_result = offset_div_ratios[0]
+chisquares_result = chisquares
 
-# import PyQtGraphPlotter as PGplt
-# from PyQt5 import QtWidgets
-# import sys
-#
-# x_range = (float(np.min(acc_divs_result)), np.max(acc_divs_result))
-# x_scale = np.mean(np.ediff1d(acc_divs_result))
-# y_range = (float(np.min(off_divs_result)), np.max(off_divs_result))
-# y_scale = np.mean(np.ediff1d(off_divs_result))
-#
-# chisquares_result = np.array(chisquares_result)
-#
-# app = QtWidgets.QApplication(sys.argv)
-# main_win = QtWidgets.QMainWindow()
-# widg, plt_item = PGplt.create_image_view('acc_volt_div_ratio', 'offset_div_ratio')
-# widg.setImage(chisquares_result,
-#               pos=[x_range[0] - abs(0.5 * x_scale),
-#                    y_range[0] - abs(0.5 * y_scale)],
-#               scale=[x_scale, y_scale])
-# try:
-#     main_win.setCentralWidget(widg)
-# except Exception as e:
-#     print(e)
-# main_win.show()
-#
-# app.exec()
+import PyQtGraphPlotter as PGplt
+from PyQt5 import QtWidgets
+import sys
+
+x_range = (float(np.min(acc_divs_result)), np.max(acc_divs_result))
+x_scale = np.mean(np.ediff1d(acc_divs_result))
+y_range = (float(np.min(off_divs_result)), np.max(off_divs_result))
+y_scale = np.mean(np.ediff1d(off_divs_result))
+
+chisquares_result = np.array(chisquares_result)
+
+app = QtWidgets.QApplication(sys.argv)
+main_win = QtWidgets.QMainWindow()
+widg, plt_item = PGplt.create_image_view('acc_volt_div_ratio', 'offset_div_ratio')
+widg.setImage(chisquares_result,
+              pos=[x_range[0] - abs(0.5 * x_scale),
+                   y_range[0] - abs(0.5 * y_scale)],
+              scale=[x_scale, y_scale])
+try:
+    main_win.setCentralWidget(widg)
+except Exception as e:
+    print(e)
+main_win.show()
+
+app.exec()
