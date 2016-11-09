@@ -608,7 +608,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def save(self, pipedata_dict=None):
         # im_path = self.full_file_path.split('.')[0] + '_' + str(self.tres_sel_tr_name) + '_' + str(
         #     self.tres_sel_sc_name) + '.png'
-
+        print('liveplot wants to save now. PipedataDict is: %s' % pipedata_dict)
         if isinstance(pipedata_dict, bool):  # when pressing on save
             pipedata_dict = None
         if pipedata_dict is not None:
@@ -620,7 +620,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.storage_data.softw_gates = gates
                 self.gate_data(self.storage_data, False)
                 print('gates after gating are: %s' % self.storage_data.softw_gates)
-                TiTs.save_spec_data(self.storage_data, self.pipedata_dict)
+            TiTs.save_spec_data(self.storage_data, self.pipedata_dict)
         else:
             print('could not save data, because it was not saved from the scan process yet.')
 

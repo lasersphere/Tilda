@@ -159,7 +159,6 @@ class XMLImporter(SpecData):
                     self.time_res.append(time_res_classical_tr)
                 else:  # classic full matrix array
                     self.time_res.append(scaler_array)
-                print('until here ok')
 
                 if v_proj is None or t_proj is None or softw_gates is not None:
                     print('projections not found, or software gates set by hand, gating data now.')

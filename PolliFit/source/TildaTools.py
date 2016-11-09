@@ -610,8 +610,13 @@ def nameFileXml(isodict, path):
     # path = scanDict['pipeInternals']['workingDirectory']
     nIso = isodict['isotope']
     seq_type = isodict['type']
-    filename = nameFile(path, 'sums', seq_type, nIso, '.xml')
-    return filename
+    filename = nIso + '_' + seq_type + '_run'
+    subdir = os.path.join(path, 'sums')
+    files = [file if file.endswith('.xml') else '-1....' for file in os.listdir(subdir)]
+    highest_filenum = sorted([int(file[-7:-4]) for file in files])[-1]
+    print(files, highest_filenum)
+    newpath = os.path.join(subdir, filename + str('{0:03d}'.format(highest_filenum + 1)) + '.xml')
+    return newpath
 
 
 def save_spec_data(spec_data, scan_dict):
@@ -674,3 +679,8 @@ def get_number_of_tracks_in_scan_dict(scan_dict):
             n_of_tracks += 1
             list_of_track_nums.append(int(key[5:]))
     return n_of_tracks, sorted(list_of_track_nums)
+
+if __name__ == '__main__':
+    isodi = {'isotope': 'bbb', 'type': 'csdummy'}
+    newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')
+    print(newname)
