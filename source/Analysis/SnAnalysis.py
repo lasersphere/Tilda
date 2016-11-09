@@ -230,38 +230,41 @@ freq = 662305065
 #     strI = strI.replace('.', ',')
 #     print(strI[1:-1])
 '''performing a King fit analysis'''
-litvals = {'112_Sn':[-0.748025649,.0077],
-            '114_Sn':[-0.601624554,.0077],
-           '116_Sn':[ -0.464108311,.0077],
-            '117_Sn':[-0.422258642,.0075],
-           '118_Sn':[-0.327818629,.0077],
-           '119_Sn':[-0.303343067,.0075],
-            '120_Sn':[-0.202198458,.0080],
-            '122_Sn':[-0.093007073,.0077]}#Fricke charge radii
+# litvals = {'112_Sn':[-0.748025649,.0077],
+#             '114_Sn':[-0.601624554,.0077],
+#            '116_Sn':[ -0.464108311,.0077],
+#             '117_Sn':[-0.422258642,.0075],
+#            '118_Sn':[-0.327818629,.0077],
+#            '119_Sn':[-0.303343067,.0075],
+#             '120_Sn':[-0.202198458,.0080],
+#             '122_Sn':[-0.093007073,.0077]}#Fricke charge radii
 
 # litvals = {'112_Sn':[-1659.44,0.21],'113_Sn':[-1520.45,2.30],'114_Sn':[-1341.83, 0.21],'115_Sn':[-1246.07,0.19],
 #             '116_Sn':[-1017.19,0.21],'117_Sn':[-912.58,0.19],'118_Sn':[-711.39,0.21],'119_Sn':[-620.74,0.19],
 #            '120_Sn':[-441.15,0.15],'121_Sn':[-350.35,2.70],'122_Sn':[-205.8,0.21],'123_Sn':[-143.95,2.01],
 #            '125_Sn':[63.15,7.5],'117_Sn_m':[-924.45,1.81],'121_Sn_m':[-369.15,1.71]}#Anselment isotope shift
 
-king = KingFitter(db, litvals,alpha=0,findBestAlpha=True,showing=True)
-king.calcChargeRadii()
+king = KingFitter(db, showing=True)
+run = -1
+isotopes = ['122_Sn','132_Sn','133_Sn']
+king.kingFit(alpha=-849,findBestAlpha=False, run=run)
+king.calcChargeRadii(isotopes=isotopes,run=run)
 '''selecting Au, Bu, delta r^2, ...'''
-listAuBu = ['Au', 'Bu', 'delta_r_square', 'shift']
-for j in listAuBu:
-    print(j)
-    con = sqlite3.connect(db)
-    cur = con.cursor()
-    cur.execute('''SELECT iso, val, statErr, systErr FROM Combined WHERE parname=?''', (j,))
-    vals = cur.fetchall()
-    for i in vals:
-        (name, val, statErr, systErr) = i
-        err = np.sqrt(np.square(statErr)+np.square(systErr))
-        # print(str(name).split('_')[0], '\t', str(name), '\t', str(val).replace('.',','),
-        #       '\t', str(statErr).replace('.',','), '\t', str(systErr).replace('.',','))
-        #      '\t', str(err).replace('.',','))
-        if j == 'delta_r_square':
-            print(name, '\t', round(val, 4), '('+str(round(statErr*10000))+')', '['+str(round(systErr*10000))+']' )
-        else:
-            print(name, '\t', round(val, 2), '('+str(round(statErr*100))+')', '['+str(round(systErr*100))+']' )
-    con.close()
+# listAuBu = ['Au', 'Bu', 'delta_r_square', 'shift']
+# for j in listAuBu:
+#     print(j)
+#     con = sqlite3.connect(db)
+#     cur = con.cursor()
+#     cur.execute('''SELECT iso, val, statErr, systErr FROM Combined WHERE parname=?''', (j,))
+#     vals = cur.fetchall()
+#     for i in vals:
+#         (name, val, statErr, systErr) = i
+#         err = np.sqrt(np.square(statErr)+np.square(systErr))
+#         # print(str(name).split('_')[0], '\t', str(name), '\t', str(val).replace('.',','),
+#         #       '\t', str(statErr).replace('.',','), '\t', str(systErr).replace('.',','))
+#         #      '\t', str(err).replace('.',','))
+#         if j == 'delta_r_square':
+#             print(name, '\t', round(val, 4), '('+str(round(statErr*10000))+')', '['+str(round(systErr*10000))+']' )
+#         else:
+#             print(name, '\t', round(val, 2), '('+str(round(statErr*100))+')', '['+str(round(systErr*100))+']' )
+#     con.close()

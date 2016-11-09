@@ -24,7 +24,7 @@ from Spectra.FullSpec import FullSpec
 
 
 def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=None,
-            col=None, saving=False, show=True, isom_name=None):
+            col=None, saving=False, show=True, isom_name=None, prec=10000):
     '''plot isotope iso'''
     iso = DBIsotope(db, iso_name, isovar, linevar)
     
@@ -32,7 +32,7 @@ def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=Non
     
     print(spec.getPars())
     if as_freq:
-        plot.plot(spec.toPlot(spec.getPars()))
+        plot.plot(spec.toPlot(spec.getPars(), prec=prec))
     else:
         plot.plot(spec.toPlotE(laserfreq, col, spec.getPars()))
         plot.get_current_axes().set_xlabel('Energy [eV]')
@@ -149,7 +149,7 @@ def fileList(db, type):
     con = sqlite3.connect(db)
     cur = con.cursor()
     
-    cur.execute('''SELECT file FROM Files WHERE type = ?''', (type,))
+    cur.execute('''SELECT file FROM Files WHERE type = ? ORDER BY date''', (type,))
     files = cur.fetchall()
     
     return [f[0] for f in files]

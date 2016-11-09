@@ -26,5 +26,6 @@ litvals = {'57_Fe':[0.124,.028],
             '58_Fe':[0.283,.028],
            '54_Fe':[-0.313,.026]}
 
-king = KingFitter(db, litvals,alpha=0,findBestAlpha=False,showing=True)
+king = KingFitter(db, litvals,showing=True)
+king.kingFit(alpha=0,findBestAlpha=False)
 king.calcChargeRadii()

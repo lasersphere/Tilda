@@ -61,7 +61,7 @@ class BatchfitterUi(QtWidgets.QWidget, Ui_Batchfitter):
             self.run = self.runSelect.currentText()
             con = sqlite3.connect(self.dbpath)
             cur = con.cursor()
-            cur.execute('''SELECT file FROM Files WHERE type = ?''', (self.iso,))
+            cur.execute('''SELECT file FROM Files WHERE type = ? ORDER BY file''', (self.iso,))
             self.files = [f[0] for f in cur.fetchall()]
             con.close()
 

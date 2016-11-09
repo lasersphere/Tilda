@@ -30,6 +30,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.averager.conSig(self.dbSig)
         self.batchfit.conSig(self.dbSig)
         self.isoshift.conSig(self.dbSig)
+        self.kingfit.conSig(self.dbSig)
         self.accVolt_tab.conSig(self.dbSig)
         self.bOpenDb.clicked.connect(self.openDb)
         self.pushButton_refresh.clicked.connect(self.re_emit_db_path)

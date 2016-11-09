@@ -46,15 +46,17 @@ class XMLImporter(SpecData):
         self.seq_type = scandict['isotopeData']['type']
 
         if 'AD5781' in self.type or 'ad5781' in self.type or 'dac_calibration' in self.type:
-            print('XMLIMporter assumes this a calibration measurement of the DAC,\n'
+            print('--------------------------WARNING----------------------------------\n'
+                  'XMLIMporter assumes this a calibration measurement of the DAC,\n'
                   ' therefore the x-axis will be set to units of DAC registers.\n'
                   'key words therefore are: AD5781, ad5781, dac_calibration\n'
-                  'do not use those for the isotope name if you do not want this!\n')
+                  'do not use those for the isotope name if you do not want this!\n'
+                  '--------------------------WARNING----------------------------------\n')
             x_as_volt = False  # assume this is a gauge measurement of the DAC, so set the x axis in DAC registers
 
         self.accVolt = scandict['isotopeData']['accVolt']
         self.offset = None
-        dmms_dict = scandict['measureVoltPars'].get('dmms', None)
+        dmms_dict = scandict['measureVoltPars'].get('preScan', {}).get('dmms', None)
         if dmms_dict is not None:
             offset = []
             acc_volt = []
@@ -80,18 +82,24 @@ class XMLImporter(SpecData):
         self.cts = []  # countervalues, this is the voltage projection here
         self.err = []  # error to the countervalues
         self.t_proj = []  # time projection only for time resolved
-        self.time_res = []  # time resolved matrices only for time resolved measurments
+        self.time_res = []  # time resolved matrices only for time resolved measurements
+        self.time_res_zf = []  # time resolved list of pmt events in form of indices, zf is for zero free,
+        #  therefore in this list are only events really happened, indices might be missing.
+        #  list contains numpy arrays with structure: ('sc', 'step', 'time', 'cts')
+        #  indices in list correspond to track indices
 
         self.stepSize = []
         self.col = False  # should also be a list for multiple tracks
         self.dwell = []
         self.softw_gates = []
         self.track_names = TildaTools.get_track_names(scandict)
+        print('track_names are: %s ' % self.track_names)
         self.softBinWidth_ns = []
 
-
+        cts_shape = []
         ''' operations on each track: '''
         for tr_ind, tr_name in enumerate(TildaTools.get_track_names(scandict)):
+
             track_dict = scandict[tr_name]
 
             nOfactTrack = int(tr_name[5:])
@@ -113,16 +121,25 @@ class XMLImporter(SpecData):
             if self.seq_type in ['trs', 'tipa', 'trsdummy']:
                 self.softBinWidth_ns.append(track_dict.get('softBinWidth_ns', 10))
                 self.t = TildaTools.create_t_axis_from_file_dict(scandict)  # force 10 ns resolution
-                cts_shape = (nOfScalers, nOfsteps, nOfBins)
+                cts_shape.append((nOfScalers, nOfsteps, nOfBins))
                 scaler_array = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape)
+                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape[tr_ind])
                 v_proj = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'voltage_projection', (nOfScalers, nOfsteps),
                     direct_parent_ele_str='projections')
                 t_proj = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'time_projection', (nOfScalers, nOfBins),
                     direct_parent_ele_str='projections')
-                self.time_res.append(scaler_array)
+                if isinstance(scaler_array[0], np.void):  # this is zero free data
+
+                    # this fails somewhere for the second track
+                    self.time_res_zf.append(scaler_array)
+                    time_res_classical_tr = TildaTools.zero_free_to_non_zero_free(self.time_res_zf, cts_shape)[tr_ind]
+                    self.time_res.append(time_res_classical_tr)
+                else:  # classic full matrix array
+                    self.time_res.append(scaler_array)
+                print('until here ok')
+
                 if v_proj is None or t_proj is None or softw_gates is not None:
                     print('projections not found, or software gates set by hand, gating data now.')
                     if softw_gates is not None:
@@ -146,7 +163,7 @@ class XMLImporter(SpecData):
                 self.dwell.append(track_dict.get('dwellTime10ns'))
 
             elif self.seq_type in ['kepco']:
-                meas_volt_dict = scandict['measureVoltPars']
+                meas_volt_dict = scandict['measureVoltPars']['duringScan']
                 dmms_dict = meas_volt_dict['dmms']
                 dmm_names = list(sorted(dmms_dict.keys()))
                 self.nrScalers = [len(dmm_names)]

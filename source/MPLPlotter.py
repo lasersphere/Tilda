@@ -110,6 +110,7 @@ def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), sho
     if showing:
         show()
 
+
 def show(block=True):
     plt.show(block=block)
 
@@ -208,7 +209,7 @@ def configure_image_plot(fig, im_ax, cb_ax, pipeData, volt_array_tr, time_array_
     # -5 due to resolution of 10ns so events with timestamp e.g. 10 (= 100ns) will be plotted @ 95 to 105 ns
 
     extent = [v_min, v_max, t_min, t_max]
-    initial_2d_arr = np.full((steps, bins), np.nan, dtype=np.double)
+    initial_2d_arr = np.zeros((steps, bins), dtype=np.uint32)
     image, colorbar = image_plot(fig, im_ax, cb_ax, np.transpose(initial_2d_arr), extent, 'auto')
     im_ax.xaxis.set_ticks_position('top')
     im_ax.xaxis.set_label_position('top')
@@ -329,7 +330,7 @@ def configure_image_plot_widget(fig, im_ax, cb_ax, volt_array_tr, time_array_tr)
     # -5 due to resolution of 10ns so events with timestamp e.g. 10 (= 100ns) will be plotted @ 95 to 105 ns
 
     extent = [v_min, v_max, t_min, t_max]
-    initial_2d_arr = np.full((steps, bins), np.nan, dtype=np.double)
+    initial_2d_arr = np.zeros((steps, bins), dtype=np.uint32)
     image, colorbar = image_plot(fig, im_ax, cb_ax, np.transpose(initial_2d_arr), extent, 'auto')
     im_ax.xaxis.set_ticks_position('top')
     im_ax.xaxis.set_label_position('top')
@@ -339,8 +340,8 @@ def configure_image_plot_widget(fig, im_ax, cb_ax, volt_array_tr, time_array_tr)
 def setup_projection_widget(axes, time_array_tr, volt_array_tr, x_label='DAC voltage [V]'):
     tproj_ax = axes['t_proj']
     vproj_ax = axes['v_proj']
-    t_cts = np.full(time_array_tr.shape, np.nan)
-    v_cts = np.full(volt_array_tr.shape, np.nan)
+    t_cts = np.zeros(time_array_tr.shape)
+    v_cts = np.zeros(volt_array_tr.shape)
     v_min = min(volt_array_tr)
     v_max = max(volt_array_tr)
 

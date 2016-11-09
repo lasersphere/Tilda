@@ -46,6 +46,10 @@ def extract(iso, par, run, db, fileList=[], prin=True):
     for f, v, e in zip(files, vals, errs):
         cur.execute('''SELECT date FROM Files WHERE file = ?''', (f,))
         e = cur.fetchall()
+        if not len(e):  # check if maybe everything is written non capital
+            f = os.path.normcase(f)
+            cur.execute('''SELECT date FROM Files WHERE file = ?''', (f,))
+            e = cur.fetchall()
         date = e[0][0]
         if date is not None:
             date_list.append(date)
