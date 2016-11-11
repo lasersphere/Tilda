@@ -1765,10 +1765,10 @@ class NTRSSortRawDatatoArrayFast(Node):
                             ith_pmt_hit_list['sc'] = int(np.log2(act_pmt))
                             new_unique_arr = np.append(new_unique_arr, ith_pmt_hit_list)
                             # print(new_unique_arr)
-                self.stored_data = self.stored_data[step_complete_ind_list[-1] + 1:]
-                # new_unique_arr = np.sort(new_unique_arr, axis=0)
-                # print(new_unique_arr)
-                # print('current voltindex after first node:', self.curVoltIndex)
+            self.stored_data = self.stored_data[step_complete_ind_list[-1] + 1:]
+            # new_unique_arr = np.sort(new_unique_arr, axis=0)
+            # print(new_unique_arr)
+            # print('current voltindex after first node:', self.curVoltIndex)
             # send [(0,0,0,0)] arr for no counts in data
             return new_unique_arr
 
