@@ -355,6 +355,7 @@ class ScanMain:
             timeleft = dt / already_compl_steps * steps_still_to_complete
         else:
             timeleft = 0
+        print('calcutlated time left is: %s' % timeleft)
         return timeleft
 
     ''' Digital Multimeter Related '''

@@ -1293,6 +1293,7 @@ class NMPLImagePlotAndSaveSpecData(Node):
         # pass
 
     def save(self):
+        # if self.stored_data is not None:  # if no counts appeared there is no need to save this then
         if self.save_callback is not None:  # saving is done by gui
             self.save_callback.emit(deepcopy(self.Pipeline.pipeData))
         else:  # no gui available
@@ -1701,6 +1702,9 @@ class NTRSSortRawDatatoArrayFast(Node):
         header_index = 2 ** 23  # binary for the headerelement
         step_complete_ind_list = np.where(self.stored_data == step_complete)[0]
         if step_complete_ind_list.size:  # only work with complete steps.
+            # print(unique_arr)
+            # create on eleemnt with [(0,0,0,0)] in order to send through pipeline, when no counts where in step!
+            new_unique_arr = np.zeros(1, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
             pipeData[track_name]['nOfCompletedSteps'] += step_complete_ind_list.size
             scan_start_before_step_comp = False
             scan_started_ind_list = np.where(self.stored_data == scan_started)[0]
@@ -1751,8 +1755,7 @@ class NTRSSortRawDatatoArrayFast(Node):
                 unique_arr, cts = np.unique(new_arr, return_counts=True)
                 # ... and put into cts in the unique array:
                 unique_arr['cts'] = cts
-                # print(unique_arr)
-                new_unique_arr = np.zeros(0, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
+
                 # check for events with multiple pmts fired at once (only for active pmts):
                 for act_pmt in self.comp_list:
                     # create new array with all elements where this pmt was active:
@@ -1766,8 +1769,8 @@ class NTRSSortRawDatatoArrayFast(Node):
                 # new_unique_arr = np.sort(new_unique_arr, axis=0)
                 # print(new_unique_arr)
                 # print('current voltindex after first node:', self.curVoltIndex)
-
-                return new_unique_arr
+            # send [(0,0,0,0)] arr for no counts in data
+            return new_unique_arr
 
     def clear(self):
         self.curVoltIndex = None
@@ -1932,6 +1935,11 @@ class NSendnOfCompletedStepsViaQtSignal(Node):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         self.qt_signal.emit(pipeData[track_name]['nOfCompletedSteps'])
         return data
+
+    def clear(self):
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        self.qt_signal.emit(self.Pipeline.pipeData[track_name]['nOfCompletedSteps'])
+
 
 
 class NSendnOfCompletedStepsAndScansViaQtSignal(Node):

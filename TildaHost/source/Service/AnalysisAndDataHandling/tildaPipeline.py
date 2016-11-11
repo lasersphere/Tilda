@@ -55,7 +55,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     pipe = Pipeline(start)
 
     pipe.pipeData = initPipeData(initialScanPars)
-    # # walk = start.attach(SN.NPrint())
+    # walk = start.attach(SN.NPrint())
     # walk = start.attach(TN.NFilterDMMDicts())
     # walk = walk.attach(TN.NSaveRawData())
     #
