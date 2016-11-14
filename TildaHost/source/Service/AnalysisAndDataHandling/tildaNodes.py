@@ -13,6 +13,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 
 import numpy as np
+from PyQt5 import QtCore
 
 import MPLPlotter
 import Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
@@ -1985,6 +1986,28 @@ class NSendDataViaQtSignal(Node):
     def processData(self, data, pipeData):
         self.qt_signal.emit(data)
         return data
+
+
+class NProcessQtGuiEvents(Node):
+    """
+    Node for forcing Qt to process all events in the Queue
+    input: anything that suits qt_signal
+    output: same as input
+    """
+
+    def __init__(self):
+        super(NProcessQtGuiEvents, self).__init__()
+        self.type = 'ProcessQtGuiEvents'
+
+    def start(self):
+        QtCore.QCoreApplication.processEvents()
+
+    def processData(self, data, pipeData):
+        QtCore.QCoreApplication.processEvents()
+        return data
+
+    def clear(self):
+        QtCore.QCoreApplication.processEvents()
 
 
 """ Tilda passvie Nodes """

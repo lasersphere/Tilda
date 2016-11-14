@@ -74,15 +74,22 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     # alternative pipeline:
     fast = start.attach(TN.NFilterDMMDicts())
     fast = fast.attach(TN.NSaveRawData())
+    fast = fast.attach(TN.NProcessQtGuiEvents())
     fast = fast.attach(TN.NTRSSortRawDatatoArrayFast())
+    fast = fast.attach(TN.NProcessQtGuiEvents())
     fast = fast.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
     # fast = fast.attach(SN.NPrint())
     fast = fast.attach(TN.NTRSSumFastArrays())
+    fast = fast.attach(TN.NProcessQtGuiEvents())
+
     # fast = fast.attach(SN.NPrint())
 
     fast_spec = fast.attach(TN.NSortedZeroFreeTRSDat2SpecData())
+    fast_spec = fast_spec.attach(TN.NProcessQtGuiEvents())
     fast_spec = fast_spec.attach(TN.NSpecDataZeroFreeProjection())
+    fast_spec = fast_spec.attach(TN.NProcessQtGuiEvents())
     fast_spec = fast_spec.attach(TN.NMPLImagePlotAndSaveSpecData(0, *live_plot_callbacks))
+    fast_spec = fast_spec.attach(TN.NProcessQtGuiEvents())
 
     # fast_spec = fast_spec.attach(TN.NSaveSpecData())
     compl_tr_br = fast.attach(TN.NCheckIfTrackComplete())
