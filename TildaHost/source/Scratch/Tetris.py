@@ -76,6 +76,10 @@ class Tetris(QtWidgets.QMainWindow):
         self.move((screen.width() - size.width()) / 2,
                   (screen.height() - size.height()) / 2)
 
+    def closeEvent(self, *args, **kwargs):
+        self.tboard.music_is_playing = True
+        self.tboard.play_music()
+
 
 class Board(QtWidgets.QFrame):
     msg2Statusbar = QtCore.pyqtSignal(str)
@@ -192,7 +196,10 @@ class Board(QtWidgets.QFrame):
 
         key = event.key()
 
-        if key == QtCore.Qt.Key_P:
+        if key == QtCore.Qt.Key_M:
+            self.play_music()
+
+        elif key == QtCore.Qt.Key_P:
             self.pause()
             return
 
@@ -216,9 +223,6 @@ class Board(QtWidgets.QFrame):
 
         elif key == QtCore.Qt.Key_D:
             self.oneLineDown()
-
-        elif key == QtCore.Qt.Key_M:
-            self.play_music()
 
         else:
             super(Board, self).keyPressEvent(event)
@@ -318,6 +322,8 @@ class Board(QtWidgets.QFrame):
             self.curPiece.setShape(Tetrominoe.NoShape)
             self.timer.stop()
             self.isStarted = False
+            self.music_is_playing = True
+            self.play_music()
             self.msg2Statusbar.emit("Game over")
             if self.numLinesRemoved > self.high_score:
                 print('you have reached a new highscore: %s lines where removed'

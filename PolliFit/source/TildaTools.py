@@ -613,8 +613,11 @@ def nameFileXml(isodict, path):
     filename = nIso + '_' + seq_type + '_run'
     subdir = os.path.join(path, 'sums')
     files = [file if file.endswith('.xml') else '-1....' for file in os.listdir(subdir)]
-    highest_filenum = sorted([int(file[-7:-4]) for file in files])[-1]
-    print(files, highest_filenum)
+    if len(files):
+        highest_filenum = sorted([int(file[-7:-4]) for file in files])[-1]
+        print(files, highest_filenum)
+    else:
+        highest_filenum = -1
     newpath = os.path.join(subdir, filename + str('{0:03d}'.format(highest_filenum + 1)) + '.xml')
     return newpath
 

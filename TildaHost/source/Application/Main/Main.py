@@ -135,7 +135,7 @@ class Main(QtCore.QObject):
             self._scanning()
             self.get_fpga_and_seq_state()
         elif self.m_state[0] is MainState.saving:
-            self._stop_sequencer_and_save(self.m_state[1])
+            self._stop_sequencer_and_save(*self.m_state[1])
 
         elif self.m_state[0] is MainState.preparing_tilda_passiv:
             self._prepare_tilda_passive(*self.m_state[1])
@@ -601,7 +601,7 @@ class Main(QtCore.QObject):
         iso_name = self.scan_progress['activeIso']
         is_this_first_track = len(self.scan_progress['completedTracks']) == 0
         if is_this_first_track:  # initialise the pipeline on first track
-            self.scan_main.init_pipeline(
+            self.scan_main.init_analysis_thread(
                 self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline,
                 self.live_plot_callback_tuples,
                 fit_res_dict_callback=self.live_plot_fit_res_callback)
@@ -623,12 +623,13 @@ class Main(QtCore.QObject):
         if self.abort_scan:  # abort the scan and return to idle state
             print('abort was pressed ', self.abort_scan)
             self.scan_main.abort_scan()
-            self.set_state(MainState.saving, True)
+            complete_stop = True
+            self.set_state(MainState.saving, (complete_stop, True))
         elif not self.scan_main.read_data():  # read_data() yields False if no Elements can be read from fpga
             if not self.scan_main.check_scanning():  # check if fpga is still in scanning state
                 if self.halt_scan:  # scan was halted
-                    self.halt_scan_func(False)  # set halt variabel to false afterwards
-                    self.set_state(MainState.saving, True)
+                    self.halt_scan_func(False)  # set halt variable to false afterwards
+                    self.set_state(MainState.saving, (True, True))
                 else:  # normal exit after completion of each track
                     self.scan_progress['completedTracks'].append(self.scan_progress['activeTrackNum'])
                     # self.scan_main.stop_measurement(False)
@@ -636,20 +637,25 @@ class Main(QtCore.QObject):
                     tracks, tr_l = TildaTools.get_number_of_tracks_in_scan_dict(
                         self.scan_pars[self.scan_progress['activeIso']])
                     everything_completed = len(self.scan_progress['completedTracks']) == tracks  # scan complete
-                    self.set_state(MainState.saving, everything_completed)
+                    self.set_state(MainState.saving, (everything_completed, True))
 
-    def _stop_sequencer_and_save(self, complete_stop=False):
+    def _stop_sequencer_and_save(self, complete_stop=False, first_call=True):
         """
         will be called in state 'saving'
         """
-        logging.info('saving...')
-        QApplication.setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))  # ignore warning
-        self.scan_main.stop_measurement(complete_stop=complete_stop, clear=complete_stop)  # stop pipeline and clear
-        QApplication.restoreOverrideCursor()  # ignore warning
-        if complete_stop:  # set switch box to loading state in order to not feed any voltage to the CEC
-            self.set_state(MainState.setting_switch_box, (True, 4))  # after this has ben completed, it will go to idle
-        else:  # keep going with next track.
-            self.set_state(MainState.setting_switch_box, (True, None))
+        if first_call:
+            if complete_stop:
+                logging.info('saving...')
+            QApplication.setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))  # ignore warning
+            self.scan_main.stop_measurement(complete_stop=complete_stop, clear=complete_stop)  # stop pipeline and clear
+            self.set_state(MainState.saving, (complete_stop, False))  # go back to saving until analysis is complete
+        else:
+            if self.scan_main.analysis_done_check():  # when done with analysis, leave state
+                QApplication.restoreOverrideCursor()  # ignore warning
+                if complete_stop:  # set switch box to loading state in order to not feed any voltage to the CEC
+                    self.set_state(MainState.setting_switch_box, (True, 4))  # after this has ben completed, it will go to idle
+                else:  # keep going with next track. None to read from next dict.
+                    self.set_state(MainState.setting_switch_box, (True, None))
 
     """ simple counter """
 

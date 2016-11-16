@@ -10,19 +10,33 @@ import logging
 from copy import deepcopy
 from datetime import datetime, timedelta
 
+import numpy as np
+from PyQt5.QtCore import QObject, pyqtSignal
+
 import Driver.DataAcquisitionFpga.FindSequencerByType as FindSeq
 import Driver.DigitalMultiMeter.DigitalMultiMeterControl as DmmCtrl
 import Driver.PostAcceleration.PostAccelerationMain as PostAcc
-import Service.AnalysisAndDataHandling.tildaPipeline as Tpipe
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as DftScan
 import TildaTools
+from Service.AnalysisAndDataHandling.AnalysisThread import AnalysisThread as AnalThr
 
 
-class ScanMain:
+class ScanMain(QObject):
+    # signal to stop the analysis in the analysis thread,
+    # first bool is for clearing the pipeline, second bool is for stopping the whole analysis.
+    stop_analysis_sig = pyqtSignal(bool, bool)
+    # signal to prepare the pipeline for the next track. This will also start the pipe
+    prep_track_in_pipe_sig = pyqtSignal(int, int)
+    # signal which can be used to send new data to the pipeline.
+    # np.ndarray for numpy data, dict for dictionary with dmm readbacks
+    # the one you don't need, leave empty (np.ndarray(0, dtype=np.int32) / {})
+    data_to_pipe_sig = pyqtSignal(np.ndarray, dict)
+
     def __init__(self):
+        super(ScanMain, self).__init__()
         self.sequencer = None
-        self.pipeline = None
+        self.analysis_thread = None
         self.switch_box_is_switched_time = None  # datetime of switching the box.
         self.switch_box_state_before_switch = None  # state before switching
 
@@ -45,7 +59,7 @@ class ScanMain:
         function to prepare for the scan of one isotope.
         This sets up the pipeline and loads the bitfile on the fpga of the given type.
         """
-        self.pipeline = None
+        self.analysis_thread = None
         logging.info('preparing isotope: ' + scan_dict['isotopeData']['isotope'] +
                      ' of type: ' + scan_dict['isotopeData']['type'])
         # self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
@@ -55,10 +69,12 @@ class ScanMain:
         else:
             return False
 
-    def init_pipeline(self, scan_dict, callback_sig=None,
-                      live_plot_callback_tuples=None, fit_res_dict_callback=None):
-        self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig,
-                                                    live_plot_callback_tuples, fit_res_dict_callback)
+    def init_analysis_thread(self, scan_dict, callback_sig=None,
+                             live_plot_callback_tuples=None, fit_res_dict_callback=None):
+        self.analysis_thread = AnalThr(
+            scan_dict, callback_sig, live_plot_callback_tuples, fit_res_dict_callback,
+            self.stop_analysis_sig, self.prep_track_in_pipe_sig, self.data_to_pipe_sig
+        )
 
     def measure_offset_pre_scan(self, scan_dict):
         """
@@ -219,7 +235,7 @@ class ScanMain:
         result = self.sequencer.getData()
         if result.get('nOfEle', -1) > 0:
             # start = datetime.now()
-            self.pipeline.feed(result['newData'])
+            self.data_to_pipe_sig.emit(result['newData'], {})
             # stop = datetime.now()
             # print('feeding of %s elements took: %s seconds' % (result.get('nOfEle'), stop - start))
             return True
@@ -269,12 +285,9 @@ class ScanMain:
             self.abort_dmm_measurement('all')
 
         print('stopping measurement, clear is: ', clear)
-        self.pipeline.stop()
-        if clear:
-            self.pipeline.clear()
+        self.stop_analysis_sig.emit(clear, complete_stop)
         if complete_stop:  # only touch dmms in the end of the whole scan
             self.set_dmm_to_periodic_reading('all')
-            self.pipeline = None
 
     def halt_scan(self, b_val):
         """
@@ -295,11 +308,8 @@ class ScanMain:
         prepare the pipeline for the next track
         reset 'nOfCompletedSteps' to 0.
         """
-        track_name = 'track' + str(track_num)
-        self.pipeline.pipeData['pipeInternals']['activeTrackNumber'] = (track_index, track_name)
-        self.pipeline.pipeData[track_name]['nOfCompletedSteps'] = 0
-        print('starting pipeline: ', self.pipeline)
-        self.pipeline.start()
+        self.analysis_thread.start()
+        self.prep_track_in_pipe_sig.emit(track_num, track_index)
 
     def calc_scan_progress(self, progress_dict, scan_dict, start_time):
         """
@@ -352,11 +362,18 @@ class ScanMain:
         now_time = datetime.now()
         dt = now_time - start_time
         if steps_still_to_complete and already_compl_steps:
-            timeleft = dt / already_compl_steps * steps_still_to_complete
+            timeleft = max(dt / already_compl_steps * steps_still_to_complete, timedelta(seconds=0))
         else:
-            timeleft = 0
+            timeleft = timedelta(seconds=0)
         print('calcutlated time left is: %s' % timeleft)
         return timeleft
+
+    def analysis_done_check(self):
+        """
+        will return True if the Analysis is complete (-> Thread is not runnning anymore).
+        Be sure to stop it before with self.stop_measurement
+        """
+        return not self.analysis_thread.isRunning()
 
     ''' Digital Multimeter Related '''
 
@@ -410,9 +427,8 @@ class ScanMain:
         else:
             ret = self.digital_multi_meter.read_from_multimeter(dmm_name)
         if ret is not None and feed_pipe:  # will be None if no dmms are active
-            if self.pipeline is not None:
-                self.pipeline.feed(ret)
-
+            if self.analysis_thread is not None:
+                self.data_to_pipe_sig.emit(np.ndarray(0, dtype=np.int32), ret)
         return ret
 
     def request_config_pars(self, dmm_name):

@@ -448,7 +448,7 @@ for iso, cfg in sorted(configs.items()):
          file not in div_ratio_relevant_stable_files['60_Ni']]
 div_ratio_relevant_stable_files['60_Ni'] = sorted(div_ratio_relevant_stable_files['60_Ni'])
 
-div_ratio_relevant_stable_files.pop('58_Ni')  # due to deviation of 58_Ni, do not fit this one.
+# div_ratio_relevant_stable_files.pop('58_Ni')  # due to deviation of 58_Ni, do not fit this one.
 
 print('number of resonances that will be fitted: %s' %
       float(sum([len(val) for key, val in div_ratio_relevant_stable_files.items()])))
@@ -535,7 +535,7 @@ def chi_square_finder(acc_dev_list, off_dev_list):
     return acc_ratios, offset_div_ratios, chisquares
 
 
-acc_ratios, offset_div_ratios, chisquares = chi_square_finder(range(230, 355, 5), range(230, 355, 5))
+acc_ratios, offset_div_ratios, chisquares = chi_square_finder(range(340, 510, 10), range(340, 510, 10))
 #
 # print('plotting now')
 # try:
