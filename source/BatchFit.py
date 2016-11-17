@@ -47,6 +47,7 @@ def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None):
     print("Go for", run, "with IsoVar = \"" + var[0] + "\" and LineVar = \"" + var[1] + "\"")
     
     errcount = 0
+    files_with_error = []
     fits = []
     for file in fileList:
         try:
@@ -55,13 +56,14 @@ def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None):
             errcount += 1
             print("Error working on file", file, ":", sys.exc_info()[1])
             traceback.print_tb(sys.exc_info()[2])
-            
+            files_with_error.append(file)
+
     os.chdir(oldPath)
     con.commit()
     con.close()
     
     print("BatchFit finished,", errcount, "errors occured")
-    return fits
+    return fits, files_with_error
 
 
 def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=None):

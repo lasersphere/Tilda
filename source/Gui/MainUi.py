@@ -36,6 +36,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.pushButton_refresh.clicked.connect(self.re_emit_db_path)
         if overwrite_stdout:
             sys.stdout = EmitStream(textWritten=self.out)
+        else:  # do not display the output box if it is not used -> size = 0
+            self.splitter.setSizes([self.size().height(), 0])
 
         self.openDb(db_path)
         self.show()

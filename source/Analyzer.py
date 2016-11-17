@@ -68,7 +68,7 @@ def extract(iso, par, run, db, fileList=[], prin=True):
 def weightedAverage(vals, errs):
     '''Return (weighted average, propagated error, rChi^2'''
     weights = 1 / np.square(errs)
-    print(weights)
+    #print(weights)
     average = sum(vals * weights) / sum(weights)
     errorprop = np.sqrt(1 / sum(weights))  # was: 1 / sum(weights)
     if(len(vals) == 1):
@@ -135,12 +135,11 @@ def combineRes(iso, par, run, db, weighted = True, print_extracted=True, show_pl
     con.commit()
     con.close()
     plt.clear()
-    plotdata = (date, vals, errs, avg, statErr, systErr, ('k.', 'r'))
-    plt.plotAverage(*plotdata)
     combined_plots_dir = os.path.join(os.path.split(db)[0], 'combined_plots')
-    if not os.path.exists(combined_plots_dir):
-        os.makedirs(combined_plots_dir)
     avg_fig_name = os.path.join(combined_plots_dir, iso + '_' + run + '_' + par + '.png')
+    plotdata = (date, vals, errs, avg, statErr, systErr, ('k.', 'r'),
+                False, avg_fig_name, '%s_%s_%s [MHz]' % (iso, par, run))
+    plt.plotAverage(*plotdata)
     print('saving average plot to: ', avg_fig_name)
     plt.save(avg_fig_name)
     if show_plot:
@@ -220,17 +219,13 @@ def combineShift(iso, run, db, show_plot=False):
     print('shifts:', shifts)
     print('shiftErrors:', shiftErrors)
     print('Mean of shifts:', val)
-    plotdata = (dateIso, shifts, shiftErrors, val, statErr, systErr, ('k.', 'r'))
-    plt.plotAverage(*plotdata)
     combined_plots_dir = os.path.join(os.path.split(db)[0], 'combined_plots')
-    if not os.path.exists(combined_plots_dir):
-        os.makedirs(combined_plots_dir)
     avg_fig_name = os.path.join(combined_plots_dir, iso + '_' + run + '_shift.png')
-    print('saving average plot to: ', avg_fig_name)
-    plt.save(avg_fig_name)
+    plotdata = (dateIso, shifts, shiftErrors, val, statErr, systErr, ('k.', 'r'), False, avg_fig_name, '%s_shift [MHz]' % iso)
+    plt.plotAverage(*plotdata)
     if show_plot:
         plt.show(True)
-    plt.clear()
+    # plt.clear()
     return (shifts, shiftErrors, val, statErr, systErr, rChi)
         
         

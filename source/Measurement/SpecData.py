@@ -26,7 +26,7 @@ class SpecData(object):
         self.nrTracks = 1  # int, number of tracks in scan.
         self.nrScalers = []  # list, len = nrTracks, holds the number of scaler for each track
         self.accVolt = None  # float, acceleration voltage of the ions
-        self.laserFreq = None  # float, fundamental laser frequency in MHz in the laser lab system
+        self.laserFreq = 0  # float, fundamental laser frequency in MHz in the laser lab system
         self.col = False  # bool, collinear = True, anticollinear = False
         self.dwell = 0  # float or list of lists, depending on importer
         

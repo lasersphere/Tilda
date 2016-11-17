@@ -3,21 +3,13 @@ Created on 20.09.2016
 
 @author: gorges
 '''
-import os, sqlite3, math
-from datetime import datetime
+import sqlite3
+
 import numpy as np
 
-import MPLPlotter as plot
-import DBIsotope
-import SPFitter
-import Spectra.FullSpec as FullSpec
-import BatchFit
 import Analyzer
+import BatchFit
 import Tools
-import Physics
-import Measurement.MCPImporter as imp
-import Measurement.TLDImporter as tldI
-import InteractiveFit as IF
 
 db = 'V:/Projekte/COLLAPS/ROC/optical/CaD2_optical.sqlite'
 

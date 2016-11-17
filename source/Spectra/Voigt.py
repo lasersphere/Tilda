@@ -12,7 +12,7 @@ class Voigt(object):
     
     The peak height is normalized to one
     Sigma is the standard deviation of the gaussian
-    Gamma is the half width half maximum  # I think gamma is the standard deviation of the lorentz profile! CG
+    Gamma is the half width half maximum
     '''
 
     def __init__(self, iso):

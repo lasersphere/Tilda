@@ -38,10 +38,12 @@ class MCPImporter(SpecData):
         self.activePMTlist = []
         self.err = np.array([[]])
         self.x = []
+        self.post_acc_offset_volt_control = []  # which fluke?
 
         with open(path) as f:
             file_as_str = str(f.read().replace('\n', '').replace('\"', ''))
             self.file_as_str = file_as_str
+            self.version = self.get_version(self.file_as_str)
             if self.find_data_list_in_str(file_as_str, 'SiclStepObj')[0] != []:
                 self.type = 'Kepco'
                 self.nrScalers = [2]
@@ -49,13 +51,15 @@ class MCPImporter(SpecData):
                 self.date = self.get_date(file_as_str)
 
                 for index, stepnumber in enumerate(self.nrSteps):
-                    self.x.append(np.linspace(float(limits[index][0]),float(limits[index][1]),num=stepnumber))
+                    self.x.append(np.linspace(float(limits[index][0]), float(limits[index][1]), num=stepnumber))
                 dataset = file_as_str.split('>>>>')[:-1]
                 for track in dataset:
-                    data = self.find_data_list_in_str(track,'SiclStepObj')
+                    fluke_num = self.find_data_list_in_str(track, 'FlukeSwitchObj', data_begin_str=',')[0][0][0]
+                    self.post_acc_offset_volt_control.append(fluke_num)
+                    data = self.find_data_list_in_str(track, 'SiclStepObj')
                     self.cts.append(data[0])
                     self.activePMTlist.append(data[1])
-                    data = self.find_data_list_in_str(track,'KepcoEichungVoltageObj')
+                    data = self.find_data_list_in_str(track, 'KepcoEichungVoltageObj')
                     self.cts.append(data[0])
                     self.activePMTlist.append(data[1])
                     self.nrTracks += 1
@@ -95,22 +99,28 @@ class MCPImporter(SpecData):
                 self.date = self.get_date(file_as_str)
                 self.col = True
 
-                for index,stepnumber in enumerate(self.nrSteps):
-                    self.x.append(np.linspace(float(limits[index][0]),float(limits[index][1]),num=stepnumber))
+                for index, stepnumber in enumerate(self.nrSteps):
+                    self.x.append(np.linspace(float(limits[index][0]), float(limits[index][1]), num=stepnumber))
 
                 dataset = file_as_str.split('>>>>')[:-1]
                 for track in dataset:
-                    data = self.find_data_list_in_str(track,'PM_SpectrumObj')
+                    fluke_num = self.find_data_list_in_str(track, 'FlukeSwitchObj', data_begin_str=',')[0][0][0]
+                    self.post_acc_offset_volt_control.append(fluke_num)
+                    data = self.find_data_list_in_str(track, 'PM_SpectrumObj')
                     self.cts.append(data[0])
                     self.activePMTlist.append(data[1])
-                    self.nrTracks +=1
+                    self.nrTracks += 1
 
+                # remove scalers, which are not used in all tracks:
                 pmts_flat = [item for sublist in self.activePMTlist for item in sublist]
                 pmts_ok = [pmt_name for pmt_name in self.activePMTlist[0] if pmts_flat.count(pmt_name) == self.nrTracks]
-                self.cts = [[pmt for pmt_ind, pmt in enumerate(self.cts[tr_ind]) if self.activePMTlist[tr_ind][pmt_ind] in pmts_ok]
-                 for tr_ind, tr in enumerate(self.cts)]
+                self.cts = [
+                    [pmt for pmt_ind, pmt in enumerate(self.cts[tr_ind])
+                     if self.activePMTlist[tr_ind][pmt_ind] in pmts_ok]
+                    for tr_ind, tr in enumerate(self.cts)]
 
                 self.nrScalers = [len(pmts_ok) for i in self.cts]
+                self.activePMTlist = [pmts_ok for i in self.cts]
                 self.err = copy.deepcopy(self.cts)
                 for i,ctarray in enumerate(self.cts):
                     for j, cts in enumerate(ctarray):
@@ -194,6 +204,11 @@ class MCPImporter(SpecData):
         date_t = datetime.strptime(date, '%a %b %d %H:%M:%S %Y')
         new_fmt = date_t.strftime('%Y-%m-%d %H:%M:%S')
         return new_fmt
+
+    def get_version(self, mcp_file_as_string):
+        version = mcp_file_as_string[mcp_file_as_string.find('Version') + 8:
+        mcp_file_as_string.find('Version') + 18]
+        return version
 
     def get_scan_pars(self, mcp_file_as_string):
         scans = []

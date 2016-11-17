@@ -80,7 +80,7 @@ class AccVoltUi(QtWidgets.QWidget, Ui_AccVolt):
         return dates, accVolts
 
     def average_acc_volt(self):
-        dates, accVolts = self.get_date_and_acc_volt()
+        dates, accVolts = self.get_date_and_acc_volt(False)
         if any(dates):
             err_accVolts = [accVolt * self.read_error for accVolt in accVolts]
             avg, avg_err, rchi = Analyzer.weightedAverage(accVolts, err_accVolts)

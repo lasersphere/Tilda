@@ -3,21 +3,8 @@ Created on 11.07.2016
 
 @author: gorges
 '''
-import os, sqlite3, math
-from datetime import datetime
-import numpy as np
 
-import MPLPlotter as plot
-import DBIsotope
-import SPFitter
-import Spectra.FullSpec as FullSpec
-import BatchFit
-import Analyzer
-import Tools
-import Physics
 from KingFitter import KingFitter
-
-import InteractiveFit as IF
 
 db = 'V:/Projekte/COLLAPS/Sn/Measurement_and_Analysis_Christian/Sn.sqlite'
 

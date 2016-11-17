@@ -8,10 +8,13 @@ Module Description: Tools related closely to Tilda
 import ast
 import logging
 import os
+import sqlite3
 from copy import deepcopy
 
 import numpy as np
 from lxml import etree as ET
+
+from XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, xmlAddCompleteTrack
 
 
 def merge_dicts(d1, d2):
@@ -21,7 +24,7 @@ def merge_dicts(d1, d2):
     return new
 
 
-def numpy_array_from_string(string, shape, datatytpe=np.uint32):
+def numpy_array_from_string(string, shape, datatytpe=np.int32):
     """
     converts a text array saved in an lxml.etree.Element
     using the function xmlWriteToTrack back into a numpy array
@@ -71,7 +74,7 @@ def eval_str_vals_in_dict(dicti):
                 # val = val.replace(">", "\'")
                 # dicti[key] = ast.literal_eval(val)
             else:
-                print(e, val, type(val))
+                print('error while converting val with ast.literal_eval: ',  e, val, type(val), key)
     return dicti
 
 
@@ -119,14 +122,13 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
 
 
 def xml_get_data_from_track(
-        root_ele, n_of_track, data_type, data_shape, datatytpe=np.uint32, direct_parent_ele_str='data', default_val=0):
+        root_ele, n_of_track, data_type, data_shape, datatytpe=np.int32, direct_parent_ele_str='data', default_val=0):
     """
     Get Data From Track
     :param root_ele:  lxml.etree.Element, root of the xml tree
     :param n_of_track: int, which Track should be written to
     :param data_type: str, valid: 'setOffset, 'measuredOffset', 'dwellTime10ns', 'nOfmeasuredSteps',
      'nOfclompetedLoops', 'voltArray', 'timeArray', 'scalerArray'
-    :param returnType: int or tuple of int, shape of the numpy array, 0 if output in textfrom is desired
     :return: Text
     """
     if root_ele is None:  # return an
@@ -376,3 +378,290 @@ def find_closest_value_in_arr(arr, search_val):
     """
     ind, found_val = min(enumerate(arr), key=lambda i: abs(float(i[1]) - search_val))
     return ind, found_val, abs(found_val - search_val)
+
+
+def get_laserfreq_from_db(db, measurement):
+    """
+    this will connect to the database and read the laserfrequency for the file in measurement.file
+    :param db: str, path to .slite db
+    :param measurement: specdata, as of XMLImporter or MCPImporter etc.
+    :return: float, laserfrequency
+    """
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    cur.execute('''SELECT laserFreq FROM Files WHERE file = ?''', (measurement.file,))
+    data = cur.fetchall()
+    con.close()
+    if data:
+        laserfreq = data[0][0]
+        return laserfreq
+    else:
+        return 0.0
+
+
+def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=None):
+    """
+    this will add or subtract the counts in the specdata object to the given parent specdata.
+    Will only do that, if the x-axis are equal within 10 ** -5
+    :param db: str, path of sqlite database
+    :param filename: str, new filename for the added files, leave blank for automatically
+    :param save_dir: str, path of the dir where to save the new file, leave blank for not saving.
+    :param parent_specdata: specdata, original file on which data will be added.
+    :param add_spec_list: list,
+    of tuples [(int as multiplikation factor (e.g. +/- 1), specdata which will be added), ..]
+    :return: specdata, added file.
+    """
+    added_files = [parent_specdata.file]
+    offsets = [parent_specdata.offset]
+    accvolts = [parent_specdata.accVolt]
+    for add_meas in add_spec_list:
+        for tr_ind, tr in enumerate(parent_specdata.cts):
+            try:
+                # check if the x-axis of the two specdata are equal:
+                if np.allclose(parent_specdata.x[tr_ind], add_meas[1].x[tr_ind], rtol=1 ** -5):
+                    if tr_ind == 0:
+                        added_files.append((add_meas[0], add_meas[1].file))
+                        offsets.append(add_meas[1].offset)
+                        accvolts.append(add_meas[1].accVolt)
+                    time_res_zf = check_if_attr_exists(add_meas[1], 'time_res_zf', [[]] * add_meas[1].nrTracks)[tr_ind]
+                    if len(time_res_zf):  # add the time spectrum (zero free) if it exists
+                        appended_arr = np.append(parent_specdata.time_res_zf[tr_ind], time_res_zf)
+                        # sort by 'sc', 'step', 'time' (no cts):
+                        sorted_arr = np.sort(appended_arr, order=['sc', 'step', 'time'])
+                        # find all elements that occur twice:
+                        unique_arr, unique_inds, uniq_cts = np.unique(sorted_arr[['sc', 'step', 'time']],
+                                                                      return_index=True, return_counts=True)
+                        sum_ind = unique_inds[np.where(uniq_cts == 2)]  # only take indexes of double occuring items
+                        # use indices of all twice occuring elements to add the counts of those:
+                        sum_cts = sorted_arr[sum_ind]['cts'] + sorted_arr[sum_ind + 1]['cts']
+                        np.put(sorted_arr['cts'], sum_ind, sum_cts)
+                        # delete all remaining items:
+                        parent_specdata.time_res_zf[tr_ind] = np.delete(sorted_arr, sum_ind + 1, axis=0)
+                    for sc_ind, sc in enumerate(tr):
+                        parent_specdata.cts[tr_ind][sc_ind] += add_meas[0] * add_meas[1].cts[tr_ind][sc_ind]
+
+                else:
+                    print('warning, file: %s does not have the'
+                          ' same x-axis as the parent file: %s,'
+                          ' will not add!' % (parent_specdata.file, add_meas[1].file))
+            except Exception as e:
+                print('warning, file: %s does not have the'
+                      ' same x-axis as the parent file: %s,'
+                      ' will not add!' % (parent_specdata.file, add_meas[1].file))
+        # needs to be converted like this:
+        parent_specdata.cts[tr_ind] = np.array(parent_specdata.cts[tr_ind])
+        # I Don't know why this is not in this format anyhow.
+    parent_specdata.offset = np.mean(offsets)
+    parent_specdata.accVolt = np.mean(accvolts)
+    if save_dir:
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+        if not filename:  # automatic filename determination
+            filename = nameFile(save_dir, '', 'sum_file', suffix='.xml')
+            # create empty xml file
+            scan_dict = create_scan_dict_from_spec_data(
+                parent_specdata, filename, db)
+            scan_dict['isotopeData']['addedFiles'] = added_files
+            createXmlFileOneIsotope(scan_dict, filename=filename)
+            # call savespecdata in filehandl (will expect to have a .time_res)
+            save_spec_data(parent_specdata, scan_dict)
+
+    return parent_specdata, added_files, filename
+
+
+def check_if_attr_exists(parent_to_check_from, par, return_val_if_not):
+    """ use par as attribute of parent_to_check_from and return the result.
+     If this is not a valid arg, return return_val_if_not """
+    ret = return_val_if_not
+    try:
+        ret = getattr(parent_to_check_from, par)
+    except Exception as e:
+        ret = return_val_if_not
+    finally:
+        return ret
+
+
+def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_path=None):
+    """
+    create a scan_dict according to the values in the specdata.
+    Mostly foreseen for adding two or more files and therefore a scan dict is required.
+
+    :param specdata: specdata, as of XMLImprter or MCPImporter etc.
+    :param database_path: str, or None to find the laserfreq to the given specdata
+    :return: dict, scandict
+    """
+    if database_path is None:  # prefer laserfreq from db, if existant
+        laserfreq = specdata.laserFreq
+    else:
+        laserfreq = get_laserfreq_from_db(database_path, specdata)
+
+    draftIsotopePars = {
+        'version': check_if_attr_exists(specdata, 'version', 'unknown'),
+        'type': check_if_attr_exists(specdata, 'seq_type', 'cs') if specdata.type != 'Kepco' else 'Kepco',
+        'isotope': specdata.type,
+        'nOfTracks': specdata.nrTracks,
+        'accVolt': specdata.accVolt,
+        'laserFreq': laserfreq,
+        'isotopeStartTime': specdata.date
+    }
+    tracks = {}
+    for tr_ind in range(specdata.nrTracks):
+        tracks['track%s' % tr_ind] = {
+            'dacStepSize18Bit': check_if_attr_exists(
+                specdata, 'x_dac', specdata.x)[tr_ind][1] - check_if_attr_exists(
+                specdata, 'x_dac', specdata.x)[tr_ind][0],
+            'dacStartRegister18Bit': check_if_attr_exists(specdata, 'x_dac', specdata.x)[tr_ind][-1],
+            'dacStartVoltage': specdata.x[tr_ind][0],
+            'dacStopVoltage': specdata.x[tr_ind][-1],
+            'dacStepsizeVoltage': specdata.x[tr_ind][1] - specdata.x[tr_ind][0],
+            'nOfSteps': specdata.getNrSteps(tr_ind),
+            'nOfScans': specdata.nrScans[tr_ind],
+            'nOfCompletedSteps': specdata.nrScans[tr_ind] * specdata.getNrSteps(tr_ind),
+            'invertScan': check_if_attr_exists(specdata, 'invert_scan', [False] * specdata.nrTracks)[tr_ind],
+            'postAccOffsetVoltControl': specdata.post_acc_offset_volt_control, 'postAccOffsetVolt': specdata.offset,
+            'waitForKepco25nsTicks': check_if_attr_exists(specdata, 'wait_after_reset_25ns', [-1] * specdata.nrTracks)[
+                tr_ind],
+            'waitAfterReset25nsTicks': check_if_attr_exists(specdata, 'wait_for_kepco_25ns', [-1] * specdata.nrTracks)[
+                tr_ind],
+            'activePmtList': check_if_attr_exists(specdata, 'activePMTlist', False)[tr_ind] if
+            check_if_attr_exists(specdata, 'activePMTlist', []) else
+            check_if_attr_exists(specdata, 'active_pmt_list', [])[tr_ind],
+            'colDirTrue': specdata.col,
+            'dwellTime10ns': specdata.dwell,
+            'workingTime': check_if_attr_exists(specdata, 'working_time', [None] * specdata.nrTracks)[tr_ind],
+            'nOfBins': len(check_if_attr_exists(specdata, 't', [[0]] * specdata.nrTracks)[tr_ind]),
+            'softBinWidth_ns': check_if_attr_exists(specdata, 'softBinWidth_ns', [0] * specdata.nrTracks)[tr_ind],
+            'nOfBunches': 1,
+            'softwGates': check_if_attr_exists(
+                specdata, 'softw_gates', [[] * specdata.nrScalers[tr_ind]] * specdata.nrTracks)[tr_ind],
+            'trigger': {'type': 'no_trigger'}
+        }
+    draftMeasureVoltPars_singl = {'measVoltPulseLength25ns': -1, 'measVoltTimeout10ns': -1,
+                                  'dmms': {}, 'switchBoxSettleTimeS': -1}
+    pre_scan_dmms = {'unknown_dmm': {'assignment': 'offset', 'preScanRead': deepcopy(specdata.offset)},
+                     'unknown_dmm_1': {'assignment': 'accVolt', 'preScanRead': deepcopy(specdata.accVolt)},
+                     }
+    draftMeasureVoltPars = {'preScan': deepcopy(draftMeasureVoltPars_singl),
+                            'duringScan': deepcopy(draftMeasureVoltPars_singl)}
+    draftMeasureVoltPars['preScan']['dmms'] = pre_scan_dmms
+    draftPipeInternals = {
+        'curVoltInd': 0,
+        'activeTrackNumber': (0, 'track0'),
+        'workingDirectory': os.path.dirname(desired_xml_saving_path),
+        'activeXmlFilePath': desired_xml_saving_path
+    }
+    draftScanDict = {'isotopeData': draftIsotopePars,
+                     'pipeInternals': draftPipeInternals,
+                     'measureVoltPars': draftMeasureVoltPars
+                     }
+    draftScanDict.update(tracks)  # add the tracks
+    return draftScanDict
+
+
+def nameFile(path, subdir, fileName, prefix='', suffix='.tld'):
+    """
+    find an unused valid filename.
+    :return: str, path/subdir/timestamp_prefix_fileName + suffix
+    """
+    storagePath = os.path.join(path, subdir)
+    if not os.path.exists(storagePath):
+        os.makedirs(storagePath)
+    filepath = os.path.join(storagePath, prefix + '_' + fileName)
+    i = 0
+    file = filepath + '_' + str('{0:03d}'.format(i)) + suffix
+    if not os.path.isfile(file):
+        return filepath + '_' + str('{0:03d}'.format(i)) + suffix
+    while os.path.isfile(file):
+        i += 1
+        file = filepath + '_' + str('{0:03d}'.format(i)) + suffix
+    return file
+
+
+def createXmlFileOneIsotope(scanDict, seq_type=None, filename=None):
+    """
+    creates an .xml file for one Isotope. Using the Filestructure as stated in OneNote.
+    :param scanDict: {'isotopeData', 'track0', 'pipeInternals'}
+    :return:str, filename
+    """
+    isodict = deepcopy(scanDict['isotopeData'])
+    meas_volt_dict = deepcopy(scanDict['measureVoltPars'])
+    if seq_type is not None:
+        isodict['type'] = seq_type
+    root = xmlCreateIsotope(isodict)
+    xml_add_meas_volt_pars(meas_volt_dict, root)
+    if filename is None:
+        path = scanDict['pipeInternals']['workingDirectory']
+        filename = nameFileXml(isodict, path)
+    print('creating .xml File: ' + filename)
+    save_xml(root, filename, False)
+    # now add it to the database:
+    db_name = os.path.basename(scanDict['pipeInternals']['workingDirectory']) + '.sqlite'
+    db = scanDict['pipeInternals']['workingDirectory'] + '\\' + db_name
+    if os.path.isfile(db):
+        os.chdir(scanDict['pipeInternals']['workingDirectory'])
+        relative_filename = os.path.normpath(
+            os.path.join(os.path.split(os.path.dirname(filename))[1], os.path.basename(filename)))
+        # from Tools import _insertFile
+        # _insertFile(relative_filename, db)
+    return filename
+
+
+def nameFileXml(isodict, path):
+    """
+    finds a filename for the xml file in subdirectory 'sums'
+    :return:str, filename
+    """
+    # path = scanDict['pipeInternals']['workingDirectory']
+    nIso = isodict['isotope']
+    seq_type = isodict['type']
+    filename = nameFile(path, 'sums', seq_type, nIso, '.xml')
+    return filename
+
+
+def save_spec_data(spec_data, scan_dict):
+    """
+    this will write the necessary values of the spec_data to an already existing xml file
+    :param scan_dict: dict, containing all scan informations
+    :param spec_data: spec_data, as a result from XmlImporter()
+    :return:
+    """
+    try:
+        try:
+            time_res = len(spec_data.time_res) # if there are any values in here, it is a time resolved measurement
+        except Exception as e:
+            time_res = False
+        existing_xml_fil_path = scan_dict['pipeInternals']['activeXmlFilePath']
+        root_ele = load_xml(existing_xml_fil_path)
+        track_nums, track_num_lis = get_number_of_tracks_in_scan_dict(scan_dict)
+        for track_ind, tr_num in enumerate(track_num_lis):
+            track_name = 'track' + str(tr_num)
+            if time_res:
+                scan_dict[track_name]['softwGates'] = spec_data.softw_gates[track_ind]
+                xmlAddCompleteTrack(root_ele, scan_dict, spec_data.time_res_zf[track_ind], track_name)
+                xmlAddCompleteTrack(
+                    root_ele, scan_dict, spec_data.cts[track_ind], track_name, datatype='voltage_projection',
+                    parent_ele_str='projections')
+                xmlAddCompleteTrack(
+                    root_ele, scan_dict, spec_data.t_proj[track_ind], track_name, datatype='time_projection',
+                    parent_ele_str='projections')
+            else:  # not time resolved
+                scan_dict[track_name]['softwGates'] = []
+                xmlAddCompleteTrack(root_ele, scan_dict, spec_data.cts[track_ind], track_name)
+        save_xml(root_ele, existing_xml_fil_path, False)
+    except Exception as e:
+        print('error while saving: ', e)
+
+
+def get_number_of_tracks_in_scan_dict(scan_dict):
+    """
+    count the number of tracks in the given dictionary.
+    search indicator is 'track' in keys.
+    :return: (n_of_tracks, sorted(list_of_track_nums))
+    """
+    n_of_tracks = 0
+    list_of_track_nums = []
+    for key, val in scan_dict.items():
+        if 'track' in str(key):
+            n_of_tracks += 1
+            list_of_track_nums.append(int(key[5:]))
+    return n_of_tracks, sorted(list_of_track_nums)

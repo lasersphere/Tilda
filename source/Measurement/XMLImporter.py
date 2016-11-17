@@ -44,6 +44,8 @@ class XMLImporter(SpecData):
         self.date = scandict['isotopeData']['isotopeStartTime']
         self.type = scandict['isotopeData']['isotope']
         self.seq_type = scandict['isotopeData']['type']
+        self.version = scandict['isotopeData']['version']
+        self.dac_calibration_measurement = False
 
         if 'AD5781' in self.type or 'ad5781' in self.type or 'dac_calibration' in self.type:
             print('--------------------------WARNING----------------------------------\n'
@@ -53,10 +55,14 @@ class XMLImporter(SpecData):
                   'do not use those for the isotope name if you do not want this!\n'
                   '--------------------------WARNING----------------------------------\n')
             x_as_volt = False  # assume this is a gauge measurement of the DAC, so set the x axis in DAC registers
+            self.dac_calibration_measurement = True
 
         self.accVolt = scandict['isotopeData']['accVolt']
         self.offset = None
+        self.measureVoltPars = scandict['measureVoltPars']
         dmms_dict = scandict['measureVoltPars'].get('preScan', {}).get('dmms', None)
+        if isinstance(dmms_dict, str):
+            dmms_dict = None
         if dmms_dict is not None:
             offset = []
             acc_volt = []
@@ -69,9 +75,9 @@ class XMLImporter(SpecData):
                             offset.append(val)
                         elif dmm_dict.get('assignment') == 'accVolt':
                             acc_volt.append(val)
-            if np.any(offset):
-                self.offset = np.mean(offset)  # will be overwritten below!
-            if np.any(acc_volt):
+            if len(offset):
+                self.offset = np.mean(offset)
+            if len(acc_volt):
                 self.accVolt = np.mean(acc_volt)
         self.nrScalers = []  # number of scalers for this track
         self.active_pmt_list = []  # list of scaler/pmt names for this track
@@ -79,6 +85,7 @@ class XMLImporter(SpecData):
         # x_as_volt = False
         print('axaxis as voltage:', x_as_volt)
         self.x = TildaTools.create_x_axis_from_file_dict(scandict, as_voltage=x_as_volt)  # x axis, voltage
+        self.x_dac = TildaTools.create_x_axis_from_file_dict(scandict, as_voltage=False)  # handy for importing files
         self.cts = []  # countervalues, this is the voltage projection here
         self.err = []  # error to the countervalues
         self.t_proj = []  # time projection only for time resolved
@@ -95,6 +102,13 @@ class XMLImporter(SpecData):
         self.track_names = TildaTools.get_track_names(scandict)
         print('track_names are: %s ' % self.track_names)
         self.softBinWidth_ns = []
+        self.invert_scan = []
+        self.post_acc_offset_volt_control = []  # which heinzinger / Fluke
+        self.wait_for_kepco_25ns = []
+        self.wait_after_reset_25ns = []
+        self.working_time = []
+        self.nrScans = []
+
 
         cts_shape = []
         ''' operations on each track: '''
@@ -107,6 +121,13 @@ class XMLImporter(SpecData):
             nOfBins = track_dict.get('nOfBins')
             nOfScalers = len(track_dict['activePmtList'])
             self.active_pmt_list.append(track_dict['activePmtList'])
+
+            self.invert_scan.append(track_dict['invertScan'])
+            self.post_acc_offset_volt_control.append(track_dict['postAccOffsetVoltControl'])
+            self.wait_after_reset_25ns.append(track_dict['waitAfterReset25nsTicks'])
+            self.wait_for_kepco_25ns.append(track_dict['waitForKepco25nsTicks'])
+            self.working_time.append(track_dict['workingTime'])
+            self.nrScans.append(track_dict['nOfCompletedSteps'] // nOfsteps)
 
             dacStepSize18Bit = track_dict['dacStepSize18Bit']
 
@@ -159,7 +180,7 @@ class XMLImporter(SpecData):
                 scaler_array = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'scalerArray', cts_shape)
                 self.cts.append(scaler_array)
-                self.err.append(np.sqrt(scaler_array))
+                self.err.append(np.sqrt(np.abs(scaler_array)))
                 self.dwell.append(track_dict.get('dwellTime10ns'))
 
             elif self.seq_type in ['kepco']:
@@ -207,8 +228,11 @@ class XMLImporter(SpecData):
         elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
             cur.execute('''SELECT offset FROM Files WHERE file = ?''', (self.file,))
             data = cur.fetchall()
-            if len(data) == 1:
-                self.offset = data[0]
+            if self.dac_calibration_measurement:
+                self.offset = 0
+            else:  # get the offset from the database or leave it as it is from import always prefer db
+                if len(data) == 1:
+                    self.offset = data[0]
             for tr_ind, cts_tr in enumerate(self.cts):
                 self.cts[tr_ind] = self.cts[tr_ind] - self.offset
         con.close()
