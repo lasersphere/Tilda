@@ -1270,12 +1270,14 @@ class NMPLImagePlotSpecData(Node):
 class NMPLImagePlotAndSaveSpecData(Node):
     def __init__(self, pmt_num, new_data_callback, new_track_callback, save_callback):
         super(NMPLImagePlotAndSaveSpecData, self).__init__()
-        self.type = 'MPLImagePlotSpecData2'
+        self.type = 'MPLImagePlotAndSaveSpecData'
         self.selected_pmt = pmt_num  # for now pmt name should be pmt_ind
         self.stored_data = None
         self.new_data_callback = new_data_callback
         self.new_track_callback = new_track_callback
         self.save_callback = save_callback
+        self.min_time_between_emits = timedelta(milliseconds=250)
+        self.last_emit_time = datetime.now() - self.min_time_between_emits
 
     def start(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
@@ -1284,7 +1286,12 @@ class NMPLImagePlotAndSaveSpecData(Node):
 
     def processData(self, data, pipeData):
         if self.new_data_callback is not None:
-            self.new_data_callback.emit(deepcopy(data))
+            now = datetime.now()
+            dif = (now - self.last_emit_time)
+            print('time since last emit of data: %s ' % dif)
+            if dif > self.min_time_between_emits:
+                self.last_emit_time = now
+                self.new_data_callback.emit(deepcopy(data))
         # now there is no chance to get the gates from gui.
         self.stored_data = data
         return data

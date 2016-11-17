@@ -9,6 +9,7 @@ import ast
 import functools
 import logging
 from copy import deepcopy
+from datetime import datetime
 
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui
@@ -653,6 +654,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     ''' rebinning '''
 
     def rebin_data(self, rebin_factor_ns=None):
+        start = datetime.now()
         if rebin_factor_ns is None:
             if self.active_initial_scan_dict is not None:
                 rebin_factor_ns = self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind]
@@ -670,12 +672,14 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                   % (self.storage_data.softBinWidth_ns, self.spec_data.softBinWidth_ns))
             try:
                 self.gate_data(self.spec_data, False)
-                self.gate_data(self.spec_data, False)
                 self.update_all_plots(self.spec_data)
 
             except Exception as e:
                 print('error while gating: ', e)
                 # self.update_all_plots(self.spec_data)
+        stop = datetime.now()
+        dif = stop - start
+        print('rebinning took: %s' % dif)
 
     def apply_rebin_to_all_checkbox_changed(self, state):
         if state == 2:  # the checkbox is checked

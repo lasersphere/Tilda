@@ -285,7 +285,7 @@ def time_rebin_all_spec_data(full_data, software_bin_width_ns, track=-1):
         original length // bins_to_combine
     therefore some values in the end migth be dropped.
     e.g. 10 // 3 = 3 -> last bin is ignored.
-    :param full_data: full time resolved scaler array, with all tracks
+    :param full_data: specdata of type, XMLImporter
     :param software_bin_width_ns, software bin width
     :return: rebinned full_data
     """
