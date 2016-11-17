@@ -12,7 +12,6 @@ class Pipeline(object):
     A Pipeline managing the nodes and the items as well as their process through the line
     """
 
-
     def __init__(self, first):
         """
         Create attributes with default values
@@ -20,7 +19,6 @@ class Pipeline(object):
         self.first = first
         self.nextItemId = 0
         self.pipeData = {}
-
 
     def start(self):
         """
@@ -41,7 +39,7 @@ class Pipeline(object):
 
     def feed(self, data):
         """
-        Have inp processed b the Pipeline
+        Have inp processed by the Pipeline
         """
         item = Item(self.nextItemId, "data")
         self.nextItemId += 1
@@ -69,7 +67,6 @@ class Pipeline(object):
             newjobs = node.processItem(item)
             jobs.extend(newjobs)
 
-
     def getNodeByPos(self, position):
         """
         return the node at position
@@ -94,7 +91,6 @@ class Item(object):
     This represents an item going through the data analysis Pipeline. Actual items do not need
     to inherit from this, as they are dynamically bound
     """
-
 
     def __init__(self, _id, nType):
         """

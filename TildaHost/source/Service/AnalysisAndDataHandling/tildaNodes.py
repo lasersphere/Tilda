@@ -1268,16 +1268,18 @@ class NMPLImagePlotSpecData(Node):
 
 
 class NMPLImagePlotAndSaveSpecData(Node):
-    def __init__(self, pmt_num, new_data_callback, new_track_callback, save_callback):
+    def __init__(self, pmt_num, new_data_callback, new_track_callback, save_callback, gates_and_rebin_signal):
         super(NMPLImagePlotAndSaveSpecData, self).__init__()
         self.type = 'MPLImagePlotAndSaveSpecData'
         self.selected_pmt = pmt_num  # for now pmt name should be pmt_ind
         self.stored_data = None
+        self.rebinned_data = None
         self.new_data_callback = new_data_callback
         self.new_track_callback = new_track_callback
         self.save_callback = save_callback
         self.min_time_between_emits = timedelta(milliseconds=250)
         self.last_emit_time = datetime.now() - self.min_time_between_emits
+        gates_and_rebin_signal.connect(self.rcvd_gates_and_rebin)
 
     def start(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
@@ -1291,8 +1293,8 @@ class NMPLImagePlotAndSaveSpecData(Node):
             print('time since last emit of data: %s ' % dif)
             if dif > self.min_time_between_emits:
                 self.last_emit_time = now
-                self.new_data_callback.emit(deepcopy(data))
-        # now there is no chance to get the gates from gui.
+                self.rebinned_data = deepcopy(data)
+                self.rebin_and_gate_new_data()
         self.stored_data = data
         return data
 
@@ -1307,6 +1309,37 @@ class NMPLImagePlotAndSaveSpecData(Node):
         else:  # no gui available
             self.stored_data = TildaTools.gate_specdata(self.stored_data)
             TildaTools.save_spec_data(self.stored_data, self.Pipeline.pipeData)
+
+    def gate_data(self, specdata, softw_gates_for_all_tr=None):
+        if softw_gates_for_all_tr is not None:
+            specdata.softw_gates = softw_gates_for_all_tr
+        return TildaTools.gate_specdata(specdata)
+
+    def rebin_data(self, specdata, software_bin_width=None):
+        if software_bin_width is None:
+            software_bin_width = specdata.softBinWidth_ns
+        return Form.time_rebin_all_spec_data(specdata, software_bin_width, -1)
+
+    def rcvd_gates_and_rebin(self, softw_gates_for_all_tr, softBinWidth_ns, force_both=False):
+        """ when receiving new gates/bin width, this is called and will rebin and
+        then gate the data if there is a change in one of those.
+        The new data will be send afterwards. """
+        if self.rebinned_data is not None:
+            changed = force_both
+            if softBinWidth_ns != self.rebinned_data.softBinWidth_ns or changed:
+                self.rebinned_data = self.rebin_data(self.rebinned_data, softBinWidth_ns)
+                changed = True  # after rebinning also gate again
+
+            if softw_gates_for_all_tr != self.rebinned_data.softw_gates or changed:
+                self.rebinned_data = self.gate_data(self.rebinned_data, softw_gates_for_all_tr)
+                changed = True
+            if changed:
+                self.new_data_callback.emit(self.rebinned_data)
+
+    def rebin_and_gate_new_data(self):
+        """ this will force a rebin and gate followed by a send of the self.rebinned_data """
+        self.rcvd_gates_and_rebin(None, None, True)
+
 
 
 class NSortedZeroFreeTRSDat2SpecData(Node):
@@ -1947,7 +1980,6 @@ class NSendnOfCompletedStepsViaQtSignal(Node):
     def clear(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
         self.qt_signal.emit(self.Pipeline.pipeData[track_name]['nOfCompletedSteps'])
-
 
 
 class NSendnOfCompletedStepsAndScansViaQtSignal(Node):

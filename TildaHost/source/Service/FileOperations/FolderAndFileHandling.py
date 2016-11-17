@@ -12,6 +12,7 @@ import pickle
 import numpy as np
 
 import TildaTools as Tits
+from Application import Config as Cfg
 from TildaTools import nameFile
 from XmlOperations import xml_create_autostart_root, xmlWriteDict, xml_create_fpga_cfg_root
 
@@ -93,7 +94,7 @@ def write_to_auto_start_xml_file(autostart_dict=None):
     if os.path.isfile(main_path):
         root, root_dict = load_auto_start_xml_file(main_path)
     else:
-        root = xml_create_autostart_root()
+        root = xml_create_autostart_root(Cfg.version)
     if autostart_dict is not None:
         xmlWriteDict(root, autostart_dict)
     Tits.save_xml(root, main_path)
