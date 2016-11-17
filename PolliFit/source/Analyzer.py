@@ -68,7 +68,7 @@ def extract(iso, par, run, db, fileList=[], prin=True):
 def weightedAverage(vals, errs):
     '''Return (weighted average, propagated error, rChi^2'''
     weights = 1 / np.square(errs)
-    print(weights)
+    #print(weights)
     average = sum(vals * weights) / sum(weights)
     errorprop = np.sqrt(1 / sum(weights))  # was: 1 / sum(weights)
     if(len(vals) == 1):
