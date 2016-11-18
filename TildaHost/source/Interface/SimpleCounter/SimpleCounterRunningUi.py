@@ -7,6 +7,7 @@ Module Description:Interface for the running simple Counter, which will display 
 the currently selected post acceleration device.
 """
 
+import functools
 import os
 
 import numpy as np
@@ -102,31 +103,47 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
         Cfg._main_instance.simple_counter_set_dac_volt(volt_dbl)
         self.label_dac_set_volt.setText(str(volt_dbl))
 
+    def splitter_was_moved(self, caller_ind, pos, ind):
+        for pl_ind, pl_dict in enumerate(self.elements):
+            if caller_ind != pl_ind:
+                pl_dict['splitter'].blockSignals(True)
+                pl_dict['splitter'].moveSplitter(pos, ind)
+                pl_dict['splitter'].blockSignals(False)
+
     def add_scalers_to_gridlayout(self, scalers):
         for i, j in enumerate(scalers):
             try:
                 name = 'pmt_' + str(j)
                 label_name = 'label_pmt_' + str(j)
-                widg = QtWidgets.QLCDNumber(self.centralwidget)
-                sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+                splitter = QtWidgets.QSplitter(self.centralwidget)
+                splitter.setOrientation(QtCore.Qt.Horizontal)
+                label = QtWidgets.QLabel(splitter)
+                label.setObjectName(label_name)
+                widg = QtWidgets.QLCDNumber(splitter)
+                widg.setDigitCount(6)
+                sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
+                                                   QtWidgets.QSizePolicy.MinimumExpanding)
                 sizePolicy.setHorizontalStretch(0)
                 sizePolicy.setVerticalStretch(0)
+                widg.setMinimumWidth(self.width()/5)
                 sizePolicy.setHeightForWidth(widg.sizePolicy().hasHeightForWidth())
                 widg.setSizePolicy(sizePolicy)
                 widg.setObjectName(name)
-                label = QtWidgets.QLabel(self.centralwidget)
-                label.setObjectName(label_name)
-                self.gridLayout_2.addWidget(label, i, 0, 1, 1)
-                self.gridLayout_2.addWidget(widg, i, 1, 1, 1)
+
+                # self.gridLayout_2.addWidget(label, i, 0, 1, 1)
+                # self.gridLayout_2.addWidget(widg, i, 1, 1, 1)
                 plt_widg, plt_item = Pg.create_x_y_widget(x_label='time [s]', y_label='cts')
-                self.gridLayout_2.addWidget(plt_widg, i, 2, 1, 1)
+                splitter.insertWidget(2, plt_widg)
+                splitter.splitterMoved.connect(functools.partial(self.splitter_was_moved, i))
+                self.gridLayout_2.addWidget(splitter, i, 0, 1, 1)
                 _translate = QtCore.QCoreApplication.translate
                 t = _translate('SimpleCounterRunning',
                                "<html><head/><body><p><span style=\" font-size:48pt;\">Ch" +
                                str(j) + "</span></p></body></html>")
                 label.setText(t)
                 widg.display(0)
-                sc_dict = {'name': name, 'label': label, 'widg': widg, 'plotWid': plt_widg, 'pltItem': plt_item}
+                sc_dict = {'name': name, 'label': label, 'widg': widg,
+                           'plotWid': plt_widg, 'pltItem': plt_item, 'splitter': splitter}
                 self.elements.append(sc_dict)
             except Exception as e:
                 print(e)

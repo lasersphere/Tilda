@@ -286,7 +286,7 @@ def time_rebin_all_spec_data(full_data, software_bin_width_ns, track=-1):
     therefore some values in the end migth be dropped.
     e.g. 10 // 3 = 3 -> last bin is ignored.
     :param full_data: specdata of type, XMLImporter
-    :param software_bin_width_ns, software bin width
+    :param software_bin_width_ns, list, software bin width for all tracks
     :return: rebinned full_data
     """
     bins = deepcopy(software_bin_width_ns)
@@ -294,21 +294,21 @@ def time_rebin_all_spec_data(full_data, software_bin_width_ns, track=-1):
     if track == -1:
         # newdata.time_res = []
         for tr_ind, tr_data in enumerate(full_data.time_res):
-            newdata.time_res[tr_ind] = rebin_single_track_spec_data(tr_data, [], bins)
-            newdata.t[tr_ind] = time_axis_rebin(tr_ind, full_data.t, bins)
+            newdata.time_res[tr_ind] = rebin_single_track_spec_data(tr_data, [], bins[tr_ind])
+            newdata.t[tr_ind] = time_axis_rebin(tr_ind, full_data.t, bins[tr_ind])
             pmts, steps, bin_nums = newdata.time_res[tr_ind].shape
             newdata.t_proj[tr_ind] = np.zeros((pmts, bin_nums))
-            full_data.softBinWidth_ns[tr_ind] = bins
-            newdata.softBinWidth_ns[tr_ind] = bins
+            full_data.softBinWidth_ns[tr_ind] = bins[tr_ind]
+            newdata.softBinWidth_ns[tr_ind] = bins[tr_ind]
     else:
         tr_ind = track
         tr_data = newdata.time_res[tr_ind]
-        newdata.time_res[tr_ind] = rebin_single_track_spec_data(tr_data, [], bins)
-        newdata.t[tr_ind] = time_axis_rebin(tr_ind, full_data.t, bins)
+        newdata.time_res[tr_ind] = rebin_single_track_spec_data(tr_data, [], bins[tr_ind])
+        newdata.t[tr_ind] = time_axis_rebin(tr_ind, full_data.t, bins[tr_ind])
         pmts, steps, bin_nums = newdata.time_res[tr_ind].shape
         newdata.t_proj[tr_ind] = np.zeros((pmts, bin_nums))
-        full_data.softBinWidth_ns[tr_ind] = bins
-        newdata.softBinWidth_ns[tr_ind] = bins
+        full_data.softBinWidth_ns[tr_ind] = bins[tr_ind]
+        newdata.softBinWidth_ns[tr_ind] = bins[tr_ind]
     return newdata
 
 

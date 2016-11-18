@@ -331,7 +331,11 @@ class ScanMain(QObject):
             n_of_tracks, list_of_track_nums = TildaTools.get_number_of_tracks_in_scan_dict(scan_dict)
             track_ind = list_of_track_nums.index(track_num)
             total_steps_list, total_steps = SdOp.get_num_of_steps_in_scan(scan_dict)
-            steps_in_compl_tracks = sum(total_steps_list[ind][2] for ind, track_n in enumerate(compl_tracks))
+            if n_of_tracks > 1:
+                steps_in_compl_tracks = sum(total_steps_list[ind][2] for ind, track_n in enumerate(compl_tracks))
+            else:
+                # only one track and therefore all completed steps are accounted in progress_dict['completedTracks']
+                steps_in_compl_tracks = 0
             return_dict['activeIso'] = iso_name
             return_dict['overallProgr'] = float(steps_in_compl_tracks + compl_steps) / total_steps * 100
             # timeleft droht gefahr durch 0 zu teilen
@@ -348,6 +352,8 @@ class ScanMain(QObject):
             return_dict['totalSteps'] = total_steps_list[track_ind][1]
             return_dict['trackName'] = track_name
             return_dict['activeFile'] = scan_dict['pipeInternals']['activeXmlFilePath']
+            print('%s  ---  iso %s is still scanning, active track is: %s  '
+                  'timeleft is: %s' % (datetime.now(), iso_name, track_name, return_dict['timeleft']))
             return return_dict
         except Exception as e:
             print('while calculating the scan progress, this happened: ' + str(e))
@@ -365,7 +371,6 @@ class ScanMain(QObject):
             timeleft = max(dt / already_compl_steps * steps_still_to_complete, timedelta(seconds=0))
         else:
             timeleft = timedelta(seconds=0)
-        print('calcutlated time left is: %s' % timeleft)
         return timeleft
 
     def analysis_done_check(self):

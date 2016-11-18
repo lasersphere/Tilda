@@ -53,7 +53,7 @@ class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
         'trackProgr': float, 'activeScan': int, 'totalScans': int, 'activeStep': int, 'totalSteps': int,
         'trackName': str]
         """
-        print('received progress dict: %s ' % progress_dict)
+        # print('received progress dict: %s ' % progress_dict)
         self.setWindowTitle('progress ' + os.path.split(progress_dict['activeFile'])[1])  #
         self.progressBar_overall.setValue(int(progress_dict['overallProgr']))
         self.label_timeleft_set.setText(progress_dict['timeleft'])

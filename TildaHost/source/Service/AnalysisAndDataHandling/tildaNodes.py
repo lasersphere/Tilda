@@ -1268,18 +1268,23 @@ class NMPLImagePlotSpecData(Node):
 
 
 class NMPLImagePlotAndSaveSpecData(Node):
-    def __init__(self, pmt_num, new_data_callback, new_track_callback, save_callback, gates_and_rebin_signal):
+    def __init__(self, pmt_num, new_data_callback, new_track_callback, save_request, gates_and_rebin_signal):
         super(NMPLImagePlotAndSaveSpecData, self).__init__()
         self.type = 'MPLImagePlotAndSaveSpecData'
         self.selected_pmt = pmt_num  # for now pmt name should be pmt_ind
-        self.stored_data = None
-        self.rebinned_data = None
+        self.stored_data = None  # specdata, full resolution
+        self.rebinned_data = None  # specdata, rebinned
+        self.rebin_track_ind = -1  # index which track should be rebinned -1 for all
+        self.trs_names_list = ['trs', 'trsdummy', 'tipa']  # in order to deny rebinning, for other than that
+
+        self.mutex = QtCore.QMutex()  # for blocking of other threads
         self.new_data_callback = new_data_callback
         self.new_track_callback = new_track_callback
-        self.save_callback = save_callback
         self.min_time_between_emits = timedelta(milliseconds=250)
-        self.last_emit_time = datetime.now() - self.min_time_between_emits
+        # just be sure it emits on first call (important for loading etc.):
+        self.last_emit_time = datetime.now() - self.min_time_between_emits - self.min_time_between_emits
         gates_and_rebin_signal.connect(self.rcvd_gates_and_rebin)
+        save_request.connect(self.save)
 
     def start(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
@@ -1287,59 +1292,78 @@ class NMPLImagePlotAndSaveSpecData(Node):
             self.new_track_callback.emit(((track_ind, track_name), (int(self.selected_pmt), self.selected_pmt)))
 
     def processData(self, data, pipeData):
+        self.stored_data = data  # always leave original data untouched
         if self.new_data_callback is not None:
             now = datetime.now()
             dif = (now - self.last_emit_time)
-            print('time since last emit of data: %s ' % dif)
+            # print('time since last emit of data: %s ' % dif)
             if dif > self.min_time_between_emits:
                 self.last_emit_time = now
-                self.rebinned_data = deepcopy(data)
-                self.rebin_and_gate_new_data()
-        self.stored_data = data
+                self.rebin_and_gate_new_data(deepcopy(data))
         return data
 
     def clear(self):
+        # make sure it is emitted in the end again!
+        self.rebin_and_gate_new_data(self.stored_data)
         self.save()
         # pass
 
     def save(self):
-        # if self.stored_data is not None:  # if no counts appeared there is no need to save this then
-        if self.save_callback is not None:  # saving is done by gui
-            self.save_callback.emit(deepcopy(self.Pipeline.pipeData))
-        else:  # no gui available
+        if self.rebinned_data.seq_type in self.trs_names_list:
+            # copy gates from gui values and gate
+            self.stored_data.softw_gates = deepcopy(self.rebinned_data.softw_gates)
             self.stored_data = TildaTools.gate_specdata(self.stored_data)
-            TildaTools.save_spec_data(self.stored_data, self.Pipeline.pipeData)
+        # TODO what about gates in pipedata dict? updated?
+        TildaTools.save_spec_data(self.stored_data, self.Pipeline.pipeData)
 
     def gate_data(self, specdata, softw_gates_for_all_tr=None):
+        """ gates all data with the given list of gates, returns gated specdata. """
         if softw_gates_for_all_tr is not None:
             specdata.softw_gates = softw_gates_for_all_tr
         return TildaTools.gate_specdata(specdata)
 
-    def rebin_data(self, specdata, software_bin_width=None):
+    def rebin_data(self, specdata, track_ind, software_bin_width=None):
+        """ will rebin the data for track of track_ind with the given software_bin_width returns rebinned specdata """
+        self.rebin_track_ind = track_ind
         if software_bin_width is None:
             software_bin_width = specdata.softBinWidth_ns
-        return Form.time_rebin_all_spec_data(specdata, software_bin_width, -1)
+        return Form.time_rebin_all_spec_data(specdata, software_bin_width, self.rebin_track_ind)
 
-    def rcvd_gates_and_rebin(self, softw_gates_for_all_tr, softBinWidth_ns, force_both=False):
+    def rcvd_gates_and_rebin(self, softw_gates_for_all_tr, rebin_track_ind, softBinWidth_ns, force_both=False):
         """ when receiving new gates/bin width, this is called and will rebin and
         then gate the data if there is a change in one of those.
         The new data will be send afterwards. """
+        # print('received gates: %s tr_ind: %s bin_width_ns: %s' % (softw_gates_for_all_tr, rebin_track_ind, softBinWidth_ns))
         if self.rebinned_data is not None:
+            self.mutex.lock()  # can be called form other track, so mute it.
             changed = force_both
-            if softBinWidth_ns != self.rebinned_data.softBinWidth_ns or changed:
-                self.rebinned_data = self.rebin_data(self.rebinned_data, softBinWidth_ns)
-                changed = True  # after rebinning also gate again
-
-            if softw_gates_for_all_tr != self.rebinned_data.softw_gates or changed:
-                self.rebinned_data = self.gate_data(self.rebinned_data, softw_gates_for_all_tr)
-                changed = True
+            if self.rebinned_data.seq_type in self.trs_names_list:
+                if softBinWidth_ns != self.rebinned_data.softBinWidth_ns or changed:
+                    # always rebin from stored data otherwise going back to higher res does not work!
+                    self.rebinned_data = self.rebin_data(self.stored_data, rebin_track_ind, softBinWidth_ns)
+                    changed = True  # after rebinning also gate again
+                if softw_gates_for_all_tr != self.rebinned_data.softw_gates or changed:
+                    self.rebinned_data = self.gate_data(self.rebinned_data, softw_gates_for_all_tr)
+                    changed = True
             if changed:
                 self.new_data_callback.emit(self.rebinned_data)
+            else:
+                print('did not emit, because gates/rebinning was not changed.')
+            self.mutex.unlock()
+        else:
+            print('could not rebin, self.rebinned data is None')
 
-    def rebin_and_gate_new_data(self):
+    def rebin_and_gate_new_data(self, newdata):
         """ this will force a rebin and gate followed by a send of the self.rebinned_data """
-        self.rcvd_gates_and_rebin(None, None, True)
-
+        self.mutex.lock()
+        if self.rebinned_data is None:
+            self.rebinned_data = newdata
+        gates = deepcopy(self.rebinned_data.softw_gates)  # store previous set gates!
+        binwidth = deepcopy(self.rebinned_data.softBinWidth_ns)  # .. and binwidth
+        self.rebinned_data = newdata
+        self.mutex.unlock()
+        self.rcvd_gates_and_rebin(gates, self.rebin_track_ind, binwidth, True)
+        # self.mutex.unlock()
 
 
 class NSortedZeroFreeTRSDat2SpecData(Node):

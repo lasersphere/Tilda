@@ -44,21 +44,21 @@ class AnalysisThread(QThread):
             if len(self.raw_data_storage):
                 self.mutex.lock()
 
-                print('analysing data now')
+                # print('analysing data now')
                 data = deepcopy(self.raw_data_storage)
                 self.num_of_analysed_elements_total += len(data)
                 self.raw_data_storage = np.ndarray(0, dtype=np.int32)
                 self.mutex.unlock()
                 self.pipeline.feed(data)
                 # self.sleep(1)  # simulate feed
-                print('number of total analysed data: %s ' % self.num_of_analysed_elements_total)
+                # print('number of total analysed data: %s ' % self.num_of_analysed_elements_total)
             if any(self.dmm_dict_list):
                 self.mutex.lock()
                 to_feed = deepcopy(self.dmm_dict_list)
                 self.dmm_dict_list = []
                 self.mutex.unlock()
                 for dmm_dict in to_feed:
-                    print('feeding dmm dict: %s ' % dmm_dict)
+                    # print('feeding dmm dict: %s ' % dmm_dict)
                     self.pipeline.feed(dmm_dict)
                 # self.sleep(1)
             self.msleep(50)  # not sure if necessary
@@ -68,7 +68,7 @@ class AnalysisThread(QThread):
             print('will save now!')
             self.pipeline.clear()
             # self.sleep(5)  # simulate saving
-        print('done with analysis')
+        # print('done with analysis')
         self.stop_analysis_bool = False
         self.clear_after_finish = False
 

@@ -16,8 +16,6 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 
 import Application.Config as Cfg
 import PyQtGraphPlotter as Pg
-import Service.Formating as Form
-import TildaTools as TiTs
 from Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveDataPlotting
 from Interface.ScanProgressUi.ScanProgressUi import ScanProgressUi
 from Measurement.XMLImporter import XMLImporter
@@ -38,6 +36,15 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     # 'plotData': tuple of ([x], [y]) values to plot a fit result.
     # 'result': list of result-tuples (name, pardict, fix)
     fit_results_dict_callback = QtCore.pyqtSignal(dict)
+
+    # signal to request updated gated data from the pipeline.
+    # list: software gates [[[tr0_sc0_vMin, tr0_sc0_vMax, tr0_sc0_tMin, tr0_sc0_tMax], [tr0_sc1_...
+    # int: track_index to rebin -1 for all
+    # list: software bin width in ns for each track
+    new_gate_or_soft_bin_width = QtCore.pyqtSignal(list, int, list)
+
+    # save request
+    save_request = QtCore.pyqtSignal()
 
 
     # progress dict coming from the main
@@ -69,12 +76,13 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.t_proj_plt_itm = None
         self.tres_plt_item = None
         self.spec_data = None  # spec_data to work on.
-        self.storage_data = None  # will not be touched except when gating before saving.
         self.new_track_no_data_yet = False  # set this to true when new track is setup
         ''' connect callbacks: '''
         # bundle callbacks:
         self.subscribe_as_live_plot = subscribe_as_live_plot
-        self.callbacks = (self.new_data_callback, self.new_track_callback, self.save_callback)
+        self.callbacks = (self.new_data_callback, self.new_track_callback,
+                          self.save_request, self.new_gate_or_soft_bin_width,
+                          )
         self.subscribe_to_main()
 
         ''' sum related '''
@@ -250,33 +258,21 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.new_track_no_data_yet = True
         # need to reset stuff here if number of steps have changed.
 
+    ''' receive and plot new incoming data '''
+
     def new_data(self, spec_data):
         """
         call this to pass a new dataset to the gui.
         """
         try:
             valid_data = False
-            # print('received new data, (nOfScalers, nOfSteps, nOfBins): %s' % spec_data.get_scaler_step_and_bin_num(-1))
-            if spec_data.seq_type in self.trs_names_list:
-                gates = None
-                if self.spec_data is not None:
-                    gates = deepcopy(self.spec_data.softw_gates)
-                self.spec_data = deepcopy(spec_data)
-                self.storage_data = deepcopy(spec_data)
-                if gates is not None:
-                    self.spec_data.softw_gates = gates
-                    self.storage_data.softw_gates = gates
+            self.spec_data = deepcopy(spec_data)
+            self.update_all_plots(self.spec_data)
+            if self.spec_data.seq_type in self.trs_names_list:
                 self.update_gates_list()
-                self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
-                valid_data = True
-            elif spec_data.seq_type in ['cs', 'csdummy', 'kepco']:
-                self.spec_data = deepcopy(spec_data)
-                self.storage_data = deepcopy(spec_data)
-                self.update_all_plots(self.spec_data)
-                valid_data = True
+            valid_data = True
             if valid_data and self.new_track_no_data_yet:  # this means it is first call
                 # refresh the line edit by calling this here:
-                print('emitting current index now, specdata is: %s' % spec_data)
                 self.sum_scaler_changed(self.comboBox_sum_all_pmts.currentIndex())
 
                 self.new_track_no_data_yet = False
@@ -388,7 +384,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             if spec_data.seq_type not in self.trs_names_list:
                 self.tabWidget.setCurrentIndex(2)
             self.comboBox_all_pmts_sel_tr.blockSignals(True)
-            tr_list = spec_data.track_names
+            tr_list = deepcopy(spec_data.track_names)
             tr_list.append('all')
             self.comboBox_all_pmts_sel_tr.addItems(tr_list)
             # self.cb_all_pmts_sel_tr_changed(self.comboBox_all_pmts_sel_tr.currentText())
@@ -474,12 +470,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     ''' gating: '''
 
     def gate_data(self, spec_data, plot_bool=True):
-        spec_data = TiTs.gate_specdata(spec_data)
-        self.write_all_gates_to_table(spec_data)
-        # self.reset_table()
-        # self.update_gates_list()
-        if plot_bool:
-            self.update_all_plots(self.spec_data)
+        rebin_track = -1 if self.checkBox.isChecked() else self.tres_sel_tr_ind
+        self.new_gate_or_soft_bin_width.emit(
+            spec_data.softw_gates, rebin_track, spec_data.softBinWidth_ns)
 
     ''' table operations: '''
 
@@ -526,29 +519,31 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.tableWidget_gates.blockSignals(True)
             # self.tableWidget_gates.clear()
             for tr_ind, tr_name in enumerate(self.spec_data.track_names):
-                offset = self.tableWidget_gates.rowCount()
-                for pmt_ind, pmt_name in enumerate(self.spec_data.active_pmt_list[tr_ind]):
-                    row_ind = pmt_ind + offset
-                    self.tableWidget_gates.insertRow(row_ind)
-                    self.tableWidget_gates.setItem(row_ind, 0, QtWidgets.QTableWidgetItem(tr_name))
-                    pmt_item = QtWidgets.QTableWidgetItem()
-                    pmt_item.setData(QtCore.Qt.DisplayRole, pmt_name)
-                    self.tableWidget_gates.setItem(row_ind, 1, pmt_item)
-                    checkbox_item = QtWidgets.QTableWidgetItem()
-                    checkbox_item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-                    state = QtCore.Qt.Unchecked
-                    if self.tres_sel_tr_name == tr_name and self.tres_sel_sc_ind == pmt_ind:
-                        state = QtCore.Qt.Checked
-                    checkbox_item.setCheckState(state)
-                    self.tableWidget_gates.setItem(row_ind, self.tableWidget_gates.columnCount() - 1, checkbox_item)
-                    for i, gate in enumerate(self.spec_data.softw_gates[tr_ind][pmt_ind]):
-                        gate_item = QtWidgets.QTableWidgetItem()
-                        gate_item.setData(QtCore.Qt.EditRole, gate)
-                        self.tableWidget_gates.setItem(row_ind, 2 + i, gate_item)
-                        # print('this was set: ', tr_name, pmt_ind)
+                if tr_name != 'all':
+                    offset = self.tableWidget_gates.rowCount()
+                    for pmt_ind, pmt_name in enumerate(self.spec_data.active_pmt_list[tr_ind]):
+                        row_ind = pmt_ind + offset
+                        self.tableWidget_gates.insertRow(row_ind)
+                        self.tableWidget_gates.setItem(row_ind, 0, QtWidgets.QTableWidgetItem(tr_name))
+                        pmt_item = QtWidgets.QTableWidgetItem()
+                        pmt_item.setData(QtCore.Qt.DisplayRole, pmt_name)
+                        self.tableWidget_gates.setItem(row_ind, 1, pmt_item)
+                        checkbox_item = QtWidgets.QTableWidgetItem()
+                        checkbox_item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+                        state = QtCore.Qt.Unchecked
+                        if self.tres_sel_tr_name == tr_name and self.tres_sel_sc_ind == pmt_ind:
+                            state = QtCore.Qt.Checked
+                        checkbox_item.setCheckState(state)
+                        self.tableWidget_gates.setItem(row_ind, self.tableWidget_gates.columnCount() - 1, checkbox_item)
+                        for i, gate in enumerate(self.spec_data.softw_gates[tr_ind][pmt_ind]):
+                            gate_item = QtWidgets.QTableWidgetItem()
+                            gate_item.setData(QtCore.Qt.EditRole, gate)
+                            self.tableWidget_gates.setItem(row_ind, 2 + i, gate_item)
+                            # print('this was set: ', tr_name, pmt_ind)
             self.tableWidget_gates.blockSignals(False)
         else:
             self.select_scaler_tr(self.tres_sel_tr_name, self.tres_sel_sc_ind)
+        self.write_all_gates_to_table(self.spec_data)
 
     def extract_one_gate_from_gui(self, tr, sc):
         item = self.find_one_scaler_track(tr, sc)
@@ -609,21 +604,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def save(self, pipedata_dict=None):
         # im_path = self.full_file_path.split('.')[0] + '_' + str(self.tres_sel_tr_name) + '_' + str(
         #     self.tres_sel_sc_name) + '.png'
-        print('liveplot wants to save now. PipedataDict is: %s' % pipedata_dict)
-        if isinstance(pipedata_dict, bool):  # when pressing on save
-            pipedata_dict = None
-        if pipedata_dict is not None:
-            self.pipedata_dict = pipedata_dict
-        if self.pipedata_dict is not None:
-            if self.spec_data.seq_type in self.trs_names_list:
-                gates = self.extract_all_gates_from_gui()
-                print('gates are: %s' % gates)
-                self.storage_data.softw_gates = gates
-                self.gate_data(self.storage_data, False)
-                print('gates after gating are: %s' % self.storage_data.softw_gates)
-            TiTs.save_spec_data(self.storage_data, self.pipedata_dict)
-        else:
-            print('could not save data, because it was not saved from the scan process yet.')
+        print('liveplot emitting save signal now')
+        self.save_request.emit()
 
     ''' closing '''
 
@@ -659,27 +641,17 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             if self.active_initial_scan_dict is not None:
                 rebin_factor_ns = self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind]
         rebin_factor_ns = rebin_factor_ns // 10 * 10
+        self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind] = rebin_factor_ns
         self.spinBox.blockSignals(True)
         self.spinBox.setValue(rebin_factor_ns)
         self.spinBox.blockSignals(False)
-        if self.storage_data is not None:
-            logging.debug('rebinning data to bins of  %s' % rebin_factor_ns)
-            rebin_track = -1 if self.checkBox.isChecked() else self.tres_sel_tr_ind
-            # gates = deepcopy(self.spec_data.softw_gates)
-            self.storage_data.softw_gates = self.extract_all_gates_from_gui()
-            self.spec_data = Form.time_rebin_all_spec_data(self.storage_data, rebin_factor_ns, rebin_track)
-            print('softw_binwidth of full data: %s, of rebinned data: %s '
-                  % (self.storage_data.softBinWidth_ns, self.spec_data.softBinWidth_ns))
-            try:
-                self.gate_data(self.spec_data, False)
-                self.update_all_plots(self.spec_data)
-
-            except Exception as e:
-                print('error while gating: ', e)
-                # self.update_all_plots(self.spec_data)
+        logging.debug('rebinning data to bins of  %s' % rebin_factor_ns)
+        rebin_track = -1 if self.checkBox.isChecked() else self.tres_sel_tr_ind
+        self.new_gate_or_soft_bin_width.emit(
+            self.extract_all_gates_from_gui(), rebin_track, self.spec_data.softBinWidth_ns)
         stop = datetime.now()
         dif = stop - start
-        print('rebinning took: %s' % dif)
+        # print('rebinning took: %s' % dif)
 
     def apply_rebin_to_all_checkbox_changed(self, state):
         if state == 2:  # the checkbox is checked
@@ -725,7 +697,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         reset all stored data etc. in order to prepare for a new isotope or so.
         :return:
         """
-        self.storage_data = None
         self.spec_data = None
         self.setWindowTitle('plot: ...  loading  ... ')
         self.reset_table()
@@ -736,13 +707,13 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     ''' fit related '''
 
     def rcvd_fit_res_dict(self, fit_res_dict):
-        print('rcvd fit result dict: %s' % fit_res_dict['result'])
-        print('index is: %s' % fit_res_dict['index'])
+        # print('rcvd fit result dict: %s' % fit_res_dict['result'])
+        # print('index is: %s' % fit_res_dict['index'])
         x, y = fit_res_dict['plotData']
         plot_dict = self.all_pmts_widg_plt_item_list[fit_res_dict['index']]
         plt_item = plot_dict['pltItem']
         plot_dict['fitLine'] = plt_item.plot(x, y, pen='r')
-        print(fit_res_dict['result'])
+        # print(fit_res_dict['result'])
         display_text = ''
         for i, fit_res_tuple in enumerate(fit_res_dict['result']):
             for key, val in fit_res_tuple[1].items():
