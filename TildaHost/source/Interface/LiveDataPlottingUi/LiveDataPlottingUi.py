@@ -267,12 +267,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         try:
             valid_data = False
             self.spec_data = deepcopy(spec_data)
-            self.spinBox.blockSignals(True)
-            self.spinBox.setValue(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
-            self.spinBox.blockSignals(False)
 
             self.update_all_plots(self.spec_data)
             if self.spec_data.seq_type in self.trs_names_list:
+                self.spinBox.blockSignals(True)
+                self.spinBox.setValue(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
+                self.spinBox.blockSignals(False)
                 self.update_gates_list()
             valid_data = True
             if valid_data and self.new_track_no_data_yet:  # this means it is first call
@@ -304,6 +304,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def update_tres_plot(self, spec_data):
         """ update the time resolved plot including the roi """
         try:
+
             gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
             x_range = (float(np.min(spec_data.x[self.tres_sel_tr_ind])), np.max(spec_data.x[self.tres_sel_tr_ind]))
             x_scale = np.mean(np.ediff1d(spec_data.x[self.tres_sel_tr_ind]))
@@ -312,9 +313,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.tres_widg.setImage(spec_data.time_res[self.tres_sel_tr_ind][self.tres_sel_sc_ind],
                                     pos=[x_range[0] - abs(0.5 * x_scale),
                                          y_range[0] - abs(0.5 * y_scale)],
-                                    scale=[x_scale, y_scale])
-            self.tres_plt_item.setAspectLocked(False)
-            self.tres_plt_item.setRange(xRange=x_range, yRange=y_range, padding=0.05)
+                                    scale=[x_scale, y_scale],
+                                    autoRange=False)
+            if self.new_track_no_data_yet:  # set view range in first call
+                self.tres_plt_item.setAspectLocked(False)
+                self.tres_plt_item.setRange(xRange=x_range, yRange=y_range, padding=0.05)
             self.tres_roi.setPos((gates[0], gates[2]), finish=False)
             self.tres_roi.setSize((abs(gates[0] - gates[1]), abs(gates[2] - gates[3])), finish=False)
         except Exception as e:
@@ -411,7 +414,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             index = self.comboBox_select_sum_for_pmts.currentIndex()
         if index == 0:
             if self.spec_data is not None:
-                self.sum_scaler = self.spec_data.active_pmt_list[0]  # should be the same for all tracks
+                if self.spec_data.seq_type != 'kepco':
+                    self.sum_scaler = self.spec_data.active_pmt_list[0]  # should be the same for all tracks
+                else:
+                    self.sum_scaler = [0]
                 self.sum_track = -1
                 self.lineEdit_arith_scaler_input.setText(str(self.sum_scaler))
                 self.lineEdit_sum_all_pmts.setText(str(self.sum_scaler))

@@ -25,13 +25,13 @@ from polliPipe.pipeline import Pipeline
 def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples, fit_res_callback_dict):
     seq_type = scan_dict['isotopeData']['type']
     if seq_type == 'cs' or seq_type == 'csdummy':
-        logging.debug('starting pipeline of type: cs')
+        logging.debug('loading pipeline of type: cs')
         return CsPipe(scan_dict, callback_sig, live_plot_callbacks=live_plot_callback_tuples)
     elif seq_type == 'trs' or seq_type == 'trsdummy':
-        logging.debug('starting pipeline of type: trs')
+        logging.debug('loading pipeline of type: trs')
         return TrsPipe(scan_dict, callback_sig, live_plot_callbacks=live_plot_callback_tuples)
     elif seq_type == 'kepco':
-        logging.debug('starting pipeline of type: kepco')
+        logging.debug('loading pipeline of type: kepco')
         return kepco_scan_pipe(scan_dict, callback_sig,
                                as_voltage=True,
                                live_plot_callbacks=live_plot_callback_tuples,

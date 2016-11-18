@@ -612,6 +612,8 @@ def nameFileXml(isodict, path):
     seq_type = isodict['type']
     filename = nIso + '_' + seq_type + '_run'
     subdir = os.path.join(path, 'sums')
+    if not os.path.exists(subdir):
+        os.makedirs(subdir)
     files = [file if file.endswith('.xml') else '-1....' for file in os.listdir(subdir)]
     if len(files):
         highest_filenum = sorted([int(file[-7:-4]) for file in files])[-1]
