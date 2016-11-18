@@ -267,6 +267,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         try:
             valid_data = False
             self.spec_data = deepcopy(spec_data)
+            self.spinBox.blockSignals(True)
+            self.spinBox.setValue(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
+            self.spinBox.blockSignals(False)
+
             self.update_all_plots(self.spec_data)
             if self.spec_data.seq_type in self.trs_names_list:
                 self.update_gates_list()

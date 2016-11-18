@@ -1309,12 +1309,12 @@ class NMPLImagePlotAndSaveSpecData(Node):
         # pass
 
     def save(self):
-        if self.rebinned_data.seq_type in self.trs_names_list:
-            # copy gates from gui values and gate
-            self.stored_data.softw_gates = deepcopy(self.rebinned_data.softw_gates)
-            self.stored_data = TildaTools.gate_specdata(self.stored_data)
-        # TODO what about gates in pipedata dict? updated?
-        TildaTools.save_spec_data(self.stored_data, self.Pipeline.pipeData)
+        if self.stored_data is not None:  # maybe abort was pressed before any data was collected.
+            if self.rebinned_data.seq_type in self.trs_names_list:
+                # copy gates from gui values and gate
+                self.stored_data.softw_gates = deepcopy(self.rebinned_data.softw_gates)
+                self.stored_data = TildaTools.gate_specdata(self.stored_data)
+            TildaTools.save_spec_data(self.stored_data, self.Pipeline.pipeData)
 
     def gate_data(self, specdata, softw_gates_for_all_tr=None):
         """ gates all data with the given list of gates, returns gated specdata. """
@@ -1889,7 +1889,9 @@ class NTRSSumFastArrays(Node):
     def start(self):
         if self.sum is None:
             tracks, track_num_list = TildaTools.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
-            self.sum = [np.zeros(0, dtype=[('sc', 'u2'), ('step', 'u4'),
+            #  create one (0,0,0,0) element in order to always have one element with 0 cts even if abort was pressed,
+            #  before track was worked on.
+            self.sum = [np.zeros(1, dtype=[('sc', 'u2'), ('step', 'u4'),
                                            ('time', 'u4'), ('cts', 'u4')]) for tr in range(tracks)]
 
     def processData(self, data, pipeData):
