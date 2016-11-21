@@ -535,16 +535,16 @@ def chi_square_finder(acc_dev_list, off_dev_list):
     return acc_ratios, offset_div_ratios, chisquares
 
 
-acc_ratios, offset_div_ratios, chisquares = chi_square_finder(range(340, 510, 10), range(340, 510, 10))
+# acc_ratios, offset_div_ratios, chisquares = chi_square_finder([375], [370])
 #
-# print('plotting now')
-# try:
-#     files = extract_shifts(runs)
-#     print('files are: % s' % files)
-#     plot_iso_shift_stables(['narrow_gate'], files)
-#     MPLPlotter.show(True)
-# except Exception as e:
-#     print('plotting did not work, error is: %s' % e)
+print('plotting now')
+try:
+    files = extract_shifts(runs)
+    print('files are: % s' % files)
+    plot_iso_shift_stables(['narrow_gate'], files)
+    MPLPlotter.show(True)
+except Exception as e:
+    print('plotting did not work, error is: %s' % e)
 
 
 print('------------------- Done -----------------')
@@ -672,32 +672,32 @@ chisquares_result = [[1.7805125361029144, 3.212610317509303, 7.498024978976431, 
                       31.328241385086567, 19.226825718076576, 10.075644369554837, 3.8660924148171505,
                       0.5845114242995966, 0.2105937389755355]]
 
-acc_divs_result = acc_ratios
-off_divs_result = offset_div_ratios[0]
-chisquares_result = chisquares
-
-import PyQtGraphPlotter as PGplt
-from PyQt5 import QtWidgets
-import sys
-
-x_range = (float(np.min(acc_divs_result)), np.max(acc_divs_result))
-x_scale = np.mean(np.ediff1d(acc_divs_result))
-y_range = (float(np.min(off_divs_result)), np.max(off_divs_result))
-y_scale = np.mean(np.ediff1d(off_divs_result))
-
-chisquares_result = np.array(chisquares_result)
-
-app = QtWidgets.QApplication(sys.argv)
-main_win = QtWidgets.QMainWindow()
-widg, plt_item = PGplt.create_image_view('acc_volt_div_ratio', 'offset_div_ratio')
-widg.setImage(chisquares_result,
-              pos=[x_range[0] - abs(0.5 * x_scale),
-                   y_range[0] - abs(0.5 * y_scale)],
-              scale=[x_scale, y_scale])
-try:
-    main_win.setCentralWidget(widg)
-except Exception as e:
-    print(e)
-main_win.show()
-
-app.exec()
+# acc_divs_result = acc_ratios
+# off_divs_result = offset_div_ratios[0]
+# chisquares_result = chisquares
+#
+# import PyQtGraphPlotter as PGplt
+# from PyQt5 import QtWidgets
+# import sys
+#
+# x_range = (float(np.min(acc_divs_result)), np.max(acc_divs_result))
+# x_scale = np.mean(np.ediff1d(acc_divs_result))
+# y_range = (float(np.min(off_divs_result)), np.max(off_divs_result))
+# y_scale = np.mean(np.ediff1d(off_divs_result))
+#
+# chisquares_result = np.array(chisquares_result)
+#
+# app = QtWidgets.QApplication(sys.argv)
+# main_win = QtWidgets.QMainWindow()
+# widg, plt_item = PGplt.create_image_view('acc_volt_div_ratio', 'offset_div_ratio')
+# widg.setImage(chisquares_result,
+#               pos=[x_range[0] - abs(0.5 * x_scale),
+#                    y_range[0] - abs(0.5 * y_scale)],
+#               scale=[x_scale, y_scale])
+# try:
+#     main_win.setCentralWidget(widg)
+# except Exception as e:
+#     print(e)
+# main_win.show()
+#
+# app.exec()
