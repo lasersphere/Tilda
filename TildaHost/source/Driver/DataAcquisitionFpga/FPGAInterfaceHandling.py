@@ -4,11 +4,15 @@ Created on '11.05.2015'
 
 @author:'simkaufm'
 
-"""
-
-"""
 Module to Wrap all the Handling of universal FPGA interactions, like Start, run etc.
 
+All Fucntions can be found in the documentation of the C Api in:
+
+    NI Home > Support > Manuals > FPGA Interface C API Help
+
+http://zone.ni.com/reference/en-XX/help/372928G-01/TOC2.htm
+
+The docs are mostly copied from the NiFPGA.h file
 """
 
 import ctypes
@@ -68,7 +72,7 @@ class FPGAInterfaceHandling():
         if reset:
             self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_Reset(self.session))
         if run:
-            self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_Run(self.session, 0))
+            self.RunFpga()
         if self.status < self.statusSuccess:
             raise Exception('Initialization of the Bitfile' + str(os.path.split(bitfilePath.value)[1]) +
                             ' on Fpga with ' + str(resource.value) + ' failed, status is: ' + str(self.status) +
@@ -80,6 +84,10 @@ class FPGAInterfaceHandling():
             print('Fpga Initialised on ' + str(resource.value) + '. The Session is ' + str(self.session)
                   + '. Status is: ' + str(self.status) + '.')
         return self.session
+
+    def RunFpga(self):
+        """ run the  fpga """
+        return self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_Run(self.session, 0))
 
     def DeInitFpga(self):
         """
@@ -216,11 +224,22 @@ class FPGAInterfaceHandling():
         If this function is not called, standard is 10000 Elements.
         NI recommends that you increase this buffer to a size multiple of 4,096 elements
         if you run into overflow or underflow errors.
+
+        from docs:
+        Specifies the depth of the host memory part of the DMA FIFO.
+        The new depth is implemented when the next FIFO Start, FIFO Read, or FIFO Write method executes.
+        Before the new depth is set, LabVIEW empties all data from the host memory and FPGA FIFO.
+        This method is optional.
+
         :param fifoRef: Reference number of the Target-to-Host Fifo as found in hex in the C-Api generated file.
         :param nOfReqEle: int, number of requested elements.
         :return:bool, True if Status is ok
         """
-        self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ConfigureFifo(self.session, fifoRef, nOfReqEle))
+        requested_eles = ctypes.c_ulong()
+        self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ConfigureFifo2(
+            self.session, fifoRef, nOfReqEle, ctypes.byref(requested_eles)))
+        print('The Host Buffer is now set to %s elements. Requested where: %s ' % (requested_eles, nOfReqEle))
+        self.FifoStart(fifoRef)  # must be called in order to make this call effective!
         return self.checkFpgaStatus()
 
     def ClearU32FifoHostBuffer(self, fifoRef, nOfEle=-1):
@@ -239,9 +258,17 @@ class FPGAInterfaceHandling():
         """
         if nOfEle < 0:
             #check for number of elements in fifo and than release all of them.
-            return self.ClearU32FifoHostBuffer(fifoRef, self.ReadU32Fifo(fifoRef, 0)['elemRemainInFifo'])
+            remain_eles = self.ReadU32Fifo(fifoRef, 0)['elemRemainInFifo']
+            print('remaining elements in fifo before clearing all of them: %s ' % remain_eles)
+            return self.ClearU32FifoHostBuffer(fifoRef, remain_eles)
         if nOfEle > 0:
             self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReleaseFifoElements(
                 self.session, fifoRef, nOfEle
             ))
+        return self.checkFpgaStatus()
+
+    def FifoStart(self, fifoRef):
+        self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_StartFifo(
+            self.session, fifoRef
+        ))
         return self.checkFpgaStatus()
