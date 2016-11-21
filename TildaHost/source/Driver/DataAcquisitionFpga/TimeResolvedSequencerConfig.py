@@ -23,15 +23,15 @@ Using CApiAnalyser.py yields:
 """
 
 '''Bitfile Signature:'''
-bitfileSignatures = {'PXI-7852R': 'F581751C62A1DC80D72103FACEB7FCDE',
-                     'PXI-7841R': '8C01095BCBE3CC7AA48BE85B49142672'
+bitfileSignatures = {'PXI-7852R': '06E3F09D9A50A95F62A0C612B8F0DF09',
+                     'PXI-7841R': 'D3792E97F2A046C321644CF1B5544A9A'
                      }
 bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
 bitfilePaths = {'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                                       'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_204.lvbitx'),
+                                       'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_203.lvbitx'),
                 'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                                       'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_204_7841.lvbitx')
+                                       'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_203_7841.lvbitx')
                 }
 
 bitfilePath = bitfilePaths[fpga_type]
