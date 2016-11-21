@@ -39,6 +39,8 @@ class ScanMain(QObject):
         self.analysis_thread = None
         self.switch_box_is_switched_time = None  # datetime of switching the box.
         self.switch_box_state_before_switch = None  # state before switching
+        # for limiting the print of the scan progress
+        self.last_scan_prog_update = datetime.now() - timedelta(seconds=10)
 
         self.post_acc_main = PostAcc.PostAccelerationMain()
         self.digital_multi_meter = DmmCtrl.DMMControl()
@@ -352,8 +354,11 @@ class ScanMain(QObject):
             return_dict['totalSteps'] = total_steps_list[track_ind][1]
             return_dict['trackName'] = track_name
             return_dict['activeFile'] = scan_dict['pipeInternals']['activeXmlFilePath']
-            print('%s  ---  iso %s is still scanning, active track is: %s  '
-                  'timeleft is: %s' % (datetime.now(), iso_name, track_name, return_dict['timeleft']))
+            dif = datetime.now() - self.last_scan_prog_update
+            if dif > timedelta(seconds=5):
+                self.last_scan_prog_update = datetime.now()
+                print('%s  ---  iso %s is still scanning, active track is: %s  '
+                      'timeleft is: %s' % (datetime.now(), iso_name, track_name, return_dict['timeleft']))
             return return_dict
         except Exception as e:
             print('while calculating the scan progress, this happened: ' + str(e))
