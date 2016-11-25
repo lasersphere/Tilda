@@ -490,27 +490,35 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         # print('item was changed: ', item.row(), item.column(), item.text())
         gate_columns = range(2, 6)
         if item.column() in gate_columns:  # this means a gate value was changed.
-            sel_tr = int(self.tableWidget_gates.item(item.row(), 0).text()[5:])
-            sel_sc = int(self.tableWidget_gates.item(item.row(), 1).text())
-            gate_ind = item.column() - 2
+            sel_items = self.tableWidget_gates.selectedItems()
             new_val = float(item.text())
-            self.spec_data.softw_gates[sel_tr][sel_sc][gate_ind] = new_val
-            self.gate_data(self.spec_data)
-            # print('gate of tr %s on scaler %s was changed to %f' % (sel_tr, sel_sc, new_val))
+            if len(sel_items):
+                self.tableWidget_gates.blockSignals(True)
+                for each in sel_items:
+                    sel_tr = int(self.tableWidget_gates.item(each.row(), 0).text()[5:])
+                    sel_sc = int(self.tableWidget_gates.item(each.row(), 1).text())
+                    gate_ind = each.column() - 2
+                    self.spec_data.softw_gates[sel_tr][sel_sc][gate_ind] = new_val
+                    self.gate_data(self.spec_data)
+                self.tableWidget_gates.blockSignals(False)
 
     def handle_item_clicked(self, item):
         """ this will select which track and scaler one is viewing. """
-        if item.checkState() == QtCore.Qt.Checked:
-            currently_selected = self.find_one_scaler_track(self.tres_sel_tr_name, self.tres_sel_sc_ind)
-            curr_checkb_item = self.tableWidget_gates.item(currently_selected.row(), 6)
-            curr_checkb_item.setCheckState(QtCore.Qt.Unchecked)
-            self.tres_sel_tr_ind = int(self.tableWidget_gates.item(item.row(), 0).text()[5:])
-            self.tres_sel_tr_name = self.tableWidget_gates.item(item.row(), 0).text()
-            self.tres_sel_sc_ind = int(self.tableWidget_gates.item(item.row(), 1).text())
-            # print('new scaler, track: ', self.tres_sel_tr_ind, self.tres_sel_sc_ind)
-            self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
-            self.update_tres_plot(self.spec_data)
-            self.update_projections(self.spec_data)
+        if item.column() == self.tableWidget_gates.columnCount() - 1:
+            if item.checkState() == QtCore.Qt.Checked:
+                currently_selected = self.find_one_scaler_track(self.tres_sel_tr_name, self.tres_sel_sc_ind)
+                if currently_selected.row() != item.row():
+                    curr_checkb_item = self.tableWidget_gates.item(currently_selected.row(), 6)
+                    curr_checkb_item.setCheckState(QtCore.Qt.Unchecked)
+                    self.tres_sel_tr_ind = int(self.tableWidget_gates.item(item.row(), 0).text()[5:])
+                    self.tres_sel_tr_name = self.tableWidget_gates.item(item.row(), 0).text()
+                    self.tres_sel_sc_ind = int(self.tableWidget_gates.item(item.row(), 1).text())
+                    # print('new scaler, track: ', self.tres_sel_tr_ind, self.tres_sel_sc_ind)
+                    self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
+                    self.update_tres_plot(self.spec_data)
+                    self.update_projections(self.spec_data)
+            else:
+                item.setCheckState(QtCore.Qt.Checked)
 
     def select_scaler_tr(self, tr_name, sc_ind):
         for row in range(self.tableWidget_gates.rowCount()):
@@ -534,9 +542,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     for pmt_ind, pmt_name in enumerate(self.spec_data.active_pmt_list[tr_ind]):
                         row_ind = pmt_ind + offset
                         self.tableWidget_gates.insertRow(row_ind)
-                        self.tableWidget_gates.setItem(row_ind, 0, QtWidgets.QTableWidgetItem(tr_name))
+                        tr_item = QtWidgets.QTableWidgetItem(tr_name)
+                        tr_item.setFlags(QtCore.Qt.ItemIsSelectable)
+                        self.tableWidget_gates.setItem(row_ind, 0, tr_item)
                         pmt_item = QtWidgets.QTableWidgetItem()
                         pmt_item.setData(QtCore.Qt.DisplayRole, pmt_name)
+                        pmt_item.setFlags(QtCore.Qt.ItemIsSelectable)
                         self.tableWidget_gates.setItem(row_ind, 1, pmt_item)
                         checkbox_item = QtWidgets.QTableWidgetItem()
                         checkbox_item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)

@@ -6,6 +6,7 @@ Created on 29.04.2014
 import datetime
 import os
 
+import matplotlib
 import matplotlib.figure as Figure
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,8 +22,6 @@ from matplotlib.widgets import Slider
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import Physics
-
-import matplotlib
 
 matplotlib.use('Qt5Agg')
 
@@ -377,3 +376,52 @@ def setup_projection_widget(axes, time_array_tr, volt_array_tr, x_label='DAC vol
 
 def tight_layout():
     plt.tight_layout()
+
+
+def plot_par_from_combined(db, runs_to_plot, isotopes, par, plot_runs_seperate=False, show_pl=True, literature_dict=None):
+    import Tools
+    compl_x = []
+    compl_y = []
+    compl_y_err = []
+    val_statErr_rChi_shift_dict = Tools.extract_from_combined(runs_to_plot, db, isotopes, par, print_extracted=True)
+    for each in val_statErr_rChi_shift_dict.keys():
+        try:
+            if literature_dict is not None:  # try to get the literature values and substract experiment Values from it
+                vals = [(int(key_pl[:2]), val_pl[0], literature_dict.get(key_pl, [0])[0]) for key_pl, val_pl in
+                        sorted(val_statErr_rChi_shift_dict[each].items())]
+                errs = [(int(key_pl2[:2]), val_pl2[1], literature_dict.get(key_pl2, [0, 0])[1]) for key_pl2, val_pl2 in
+                        sorted(val_statErr_rChi_shift_dict[each].items())]
+                x = [valo[0] for valo in vals]
+                exp_y = [val[1] for val in vals]
+                exp_y_err = [val[1] for val in errs]
+                # maybe in future:
+                # lit_y = [val[2] for val in vals]
+                # lit_y_err = [val[2] for val in errs]
+                # exp_y = [0 for valo in vals]
+                # exp_y_err = [valo[1] for valo in errs]
+                # lit_y = [valo[1] - valo[2] for valo in vals]
+                # lit_y_err = [valo[2] for valo in errs]
+            else:
+                x_y_err = [(int(iso[:2]), val[0], val[1]) for iso, val in sorted(val_statErr_rChi_shift_dict[each].items())]
+                x = [each[0] for each in x_y_err]
+                exp_y = [each[1] for each in x_y_err]
+                exp_y_err = [each[2] for each in x_y_err]
+            if plot_runs_seperate:
+                plt.errorbar(x, exp_y, exp_y_err, label='experimental values', linestyle='None', marker="o")
+            compl_x += x
+            compl_y += exp_y
+            compl_y_err += exp_y_err
+
+        except Exception as err:
+            print('error while plotting: %s' % err)
+
+    if not plot_runs_seperate:
+        plt.errorbar(compl_x, compl_y, compl_y_err, label='runs: ' + str(sorted(val_statErr_rChi_shift_dict.keys())),
+                     linestyle='None', marker="o")
+
+    plt.legend()
+    plt.margins(0.25)
+    get_current_axes().set_ylabel('%s [MHz]' % par)
+
+    if show_pl:
+        show(True)

@@ -9,7 +9,7 @@ import os
 import sqlite3
 
 import numpy as np
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtGui
 
 import Measurement.MeasLoad as Meas
 import TildaTools as TiTs
@@ -29,6 +29,7 @@ class AddFilesUi(QtWidgets.QWidget, Ui_AddFiles):
         self.buttons_active_host_file(False)
         self.check_if_saving_possible()
 
+        ''' connect buttons '''
         self.isoFilter.currentIndexChanged.connect(self.loadFiles)
         self.pushButton_choose_host_file.clicked.connect(self.choose_host_file)
         self.pushButton_clear.clicked.connect(self.clear_host_file)
@@ -37,7 +38,12 @@ class AddFilesUi(QtWidgets.QWidget, Ui_AddFiles):
         self.pushButton_substract_file.clicked.connect(functools.partial(self.add_substract_file, -1))
         self.pushButton_remove_file.clicked.connect(self.remove_file_from_add_list)
 
-        ''' connect buttons '''
+        ''' add shortcuts '''
+        QtWidgets.QShortcut(QtGui.QKeySequence("h"), self, self.choose_host_file)
+        QtWidgets.QShortcut(QtGui.QKeySequence("ESC"), self, self.clear_host_file)
+        QtWidgets.QShortcut(QtGui.QKeySequence("+"), self, functools.partial(self.add_substract_file, 1))
+        QtWidgets.QShortcut(QtGui.QKeySequence("-"), self, functools.partial(self.add_substract_file, -1))
+
 
         self.dbpath = None
         

@@ -426,8 +426,10 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
                         added_files.append((add_meas[0], add_meas[1].file))
                         offsets.append(add_meas[1].offset)
                         accvolts.append(add_meas[1].accVolt)
+                    parent_specdata.nrScans[tr_ind] += add_meas[1].nrScans[tr_ind]
                     for sc_ind, sc in enumerate(tr):
                         parent_specdata.cts[tr_ind][sc_ind] += add_meas[0] * add_meas[1].cts[tr_ind][sc_ind]
+                        parent_specdata.cts[tr_ind][sc_ind] = parent_specdata.cts[tr_ind][sc_ind].astype(np.int32)
                     time_res_zf = check_if_attr_exists(add_meas[1], 'time_res_zf', [[]] * add_meas[1].nrTracks)[tr_ind]
                     if len(time_res_zf):  # add the time spectrum (zero free) if it exists
                         appended_arr = np.append(parent_specdata.time_res_zf[tr_ind], time_res_zf)

@@ -82,8 +82,8 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
             self.run = self.runSelect.currentText()
             self.par = self.parameter.currentText()
 
-            self.files = Analyzer.getFiles(self.iso, self.run, self.dbpath)
-            self.vals, self.errs, self.dates = Analyzer.extract(self.iso, self.par, self.run, self.dbpath, prin=False)
+            # self.files = Analyzer.getFiles(self.iso, self.run, self.dbpath)
+            self.vals, self.errs, self.dates, self.files = Analyzer.extract(self.iso, self.par, self.run, self.dbpath, prin=False)
 
             cur.execute('''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ?''', (self.iso, self.par, self.run))
             r = cur.fetchall()

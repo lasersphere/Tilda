@@ -180,6 +180,7 @@ class XMLImporter(SpecData):
                     lxmlEtree, nOfactTrack, 'scalerArray', cts_shape)
                 self.cts.append(scaler_array)
                 self.err.append(np.sqrt(np.abs(scaler_array)))
+                self.err[-1][self.err[-1] < 1] = 1  # remove 0's in the error
                 self.dwell.append(track_dict.get('dwellTime10ns'))
 
             elif self.seq_type in ['kepco']:
@@ -224,6 +225,7 @@ class XMLImporter(SpecData):
             for tr_ind, track in enumerate(self.x):
                 scanvolt = (self.lineMult * self.x[tr_ind] + self.lineOffset + self.offset) * self.voltDivRatio['offset']
                 self.x[tr_ind] = self.accVolt * self.voltDivRatio['accVolt'] - scanvolt
+            self.norming()
         elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
             cur.execute('''SELECT offset FROM Files WHERE file = ?''', (self.file,))
             data = cur.fetchall()
@@ -268,6 +270,16 @@ class XMLImporter(SpecData):
         else:
             n_of_bins_tr = -1
         return n_of_scalers_tr, n_of_steps_tr, n_of_bins_tr
+
+    def norming(self):
+        # TODO this is copied from MCP, still the dwell is not implemented in this!
+        for trackindex, track in enumerate(self.cts):
+            for ctIndex, ct in enumerate(track):
+                min_nr_of_scan = max(np.min(self.nrScans), 1)  # maybe there is a track with 0 complete scans
+                nr_of_scan_this_track = self.nrScans[trackindex]
+                if nr_of_scan_this_track:
+                    self.cts[trackindex][ctIndex] = ct * min_nr_of_scan / nr_of_scan_this_track
+                    self.err[trackindex][ctIndex] = self.err[trackindex][ctIndex] * min_nr_of_scan / nr_of_scan_this_track
 
 # import Service.Scan.draftScanParameters as dft
 # import Service.Formating as Form
