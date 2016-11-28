@@ -402,7 +402,7 @@ def plot_par_from_combined(db, runs_to_plot, isotopes, par, plot_runs_seperate=F
                 # lit_y = [valo[1] - valo[2] for valo in vals]
                 # lit_y_err = [valo[2] for valo in errs]
             else:
-                x_y_err = [(int(iso[:2]), val[0], val[1]) for iso, val in sorted(val_statErr_rChi_shift_dict[each].items())]
+                x_y_err = [(int(iso[:2]), val[0], np.sqrt(val[1] ** 2 + val[2] ** 2)) for iso, val in sorted(val_statErr_rChi_shift_dict[each].items())]
                 x = [each[0] for each in x_y_err]
                 exp_y = [each[1] for each in x_y_err]
                 exp_y_err = [each[2] for each in x_y_err]

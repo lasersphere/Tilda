@@ -14,6 +14,7 @@ import numpy as np
 
 import Analyzer
 import BatchFit
+import MPLPlotter
 import Physics
 import Tools
 from KingFitter import KingFitter
@@ -76,6 +77,28 @@ lit_radii = {
     '62_Ni': (3.836, 0.003),
     '64_Ni': (3.853, 0.003)
 }
+
+baret_radii_lit = {
+    '58_Ni': (4.8386, 0.0009 + 0.0019),
+    '60_Ni': (4.8865, 0.0008 + 0.002),
+    '61_Ni': (4.9005, 0.001 + 0.0017),
+    '62_Ni': (4.9242, 0.0009 + 0.002),
+    '64_Ni': (4.9481, 0.0009 + 0.0019)
+}
+
+v2_lit = {
+    '58_Ni': 1.283517,
+    '60_Ni': 1.283944,
+    '61_Ni': 1.283895,
+    '62_Ni': 1.283845,
+    '64_Ni': 1.284133
+}
+
+lit_radii_calc = {iso: (val[0]/v2_lit[iso], val[1])for iso, val in sorted(baret_radii_lit.items())}
+
+# using the more precise values by the self calculated one:
+lit_radii = lit_radii_calc
+
 
 delta_lit_radii = {iso: [
     lit_vals[0] - lit_radii['60_Ni'][0],
@@ -304,6 +327,16 @@ def chi_square_finder(acc_dev_list, off_dev_list):
 
 # acc_ratios, offset_div_ratios, chisquares = chi_square_finder([375], [370])
 #
+# the error for the voltage determination has been found to be:
+# 1.5 * 10 ** -4 for the accvolt ratio and the offset ratio
+# con = sqlite3.connect(db)
+# cur = con.cursor()
+# syst_error = str('systE(accVolt_d=%s, offset_d=%s)' % ('1.5 * 10 ** -4', '1.5 * 10 ** -4'))
+# cur.execute('''UPDATE Combined SET systErrForm = ? WHERE parname = ?''', (syst_error, 'shift'))
+# con.commit()
+# con.close()
+
+
 print('plotting now')
 try:
     # isotopes.remove('69_Ni')
@@ -347,11 +380,11 @@ try:
     # literature_shifts = {iso: (0, 0) for iso in isotopes}
     # plot_par_from_combined(['narrow_gate'], files)
     # MPLPlotter.show(True)
-    # MPLPlotter.plot_par_from_combined(
-    #     db,
-    #     -1, isotopes,
-    #     'shift', plot_runs_seperate=False
-    # )
+    MPLPlotter.plot_par_from_combined(
+        db,
+        -1, isotopes,
+        'shift', plot_runs_seperate=False
+    )
     pass
 except Exception as e:
     print('plotting did not work, error is: %s' % e)
@@ -403,8 +436,20 @@ except Exception as e:
 
 ''' King Plot Analysis '''
 # delta_lit_radii.pop('61_Ni')
-king = KingFitter(db, showing=True, litvals=delta_lit_radii)
+king = KingFitter(db, showing=False, litvals=delta_lit_radii)
 run = -1
 # isotopes = sorted(delta_lit_radii.keys())
-king.kingFit(alpha=-49, findBestAlpha=True, run=run)
+king.kingFit(alpha=-49, findBestAlpha=False, run=run)
 king.calcChargeRadii(isotopes=isotopes, run=run)
+
+
+con = sqlite3.connect(db)
+cur = con.cursor()
+cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? ORDER BY iso''', ('shift',))
+data = cur.fetchall()
+con.close()
+if data:
+    print(data)
+    print('iso\tshift [MHz]\t(statErr)[systErr]\t Chi^2')
+    for iso in data:
+        print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))

@@ -274,7 +274,13 @@ def shiftErr(iso, run, db, accVolt_d, offset_d, syst=0):
     print('offsetvoltage:', offset)
     '''
     fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
-    print('systematic error inputs caused by error of...\n...acc Voltage:',fac*(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d)),'MHz  ...offset Voltage',fac*offset*offset_d/accVolt,'MHz  ...masses:',fac*(mass_d/mass+massRef_d/massRef),'MHz')
+    print('systematic error inputs caused by error of...\n...acc Voltage:',
+          fac*(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d)),
+          'MHz  ...offset Voltage',
+          fac*offset*offset_d/accVolt,
+          'MHz  ...masses:',
+          fac*(mass_d/mass+massRef_d/massRef),
+          'MHz')
 
     return np.sqrt(np.square(fac*(np.absolute(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d))
                                   +np.absolute(offset*offset_d/accVolt)+np.absolute(mass_d/mass+massRef_d/massRef)))

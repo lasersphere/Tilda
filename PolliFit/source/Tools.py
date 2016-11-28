@@ -274,22 +274,23 @@ def extract_from_combined(runs_list, db, isotopes=None, par='shift', print_extra
             connection = sqlite3.connect(db)
             cursor = connection.cursor()
             cursor.execute(
-                '''SELECT run, val, statErr, rChi FROM Combined WHERE iso = ? AND parname = ? ''',
+                '''SELECT run, val, statErr, systErr, rChi FROM Combined WHERE iso = ? AND parname = ? ''',
                 (iso, par))
             data = cursor.fetchall()
             connection.close()
             if len(data):
                 if not result_dict.get(data[0][0], False):
                     result_dict[data[0][0]] = {}
-                result_dict[data[0][0]][iso] = list(data[0][i] for i in range(1, 4))
+                result_dict[data[0][0]][iso] = list(data[0][i] for i in range(1, 5))
     else:
         for selected_run in runs_list:
             result_dict[selected_run] = {}
             for iso in isotopes:
                 connection = sqlite3.connect(db)
                 cursor = connection.cursor()
-                cursor.execute('''SELECT val, statErr, rChi FROM Combined WHERE iso = ? AND run = ? AND parname = ? ''',
-                               (iso, selected_run, par))
+                cursor.execute(
+                    '''SELECT val, statErr, systErr, rChi FROM Combined WHERE iso = ? AND run = ? AND parname = ? ''',
+                    (iso, selected_run, par))
                 data = cursor.fetchall()
                 connection.close()
                 if len(data):
@@ -297,7 +298,7 @@ def extract_from_combined(runs_list, db, isotopes=None, par='shift', print_extra
     if print_extracted:
         for sel_run, run_results_dicts in sorted(result_dict.items()):
             print('--- \t%s\t%s\t ---' % (sel_run, par))
-            print('run\tiso\t%s result\tstatErr\trChi' % par)
+            print('run\tiso\t%s result\tstatErr\tsystErr\trChi' % par)
             for isot, vals in sorted(run_results_dicts.items()):
-                print('%s\t%.5f\t%.5f\t%.5f' % (isot, vals[0], vals[1], vals[2]))
+                print('%s\t%.5f\t%.5f\t%.5f\t%.5f' % (isot, vals[0], vals[1], vals[2], vals[3]))
     return result_dict

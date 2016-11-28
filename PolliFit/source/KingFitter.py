@@ -11,6 +11,7 @@ import sqlite3
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 class KingFitter(object):
     '''
     The Kingfitter needs some (at least three) charge radii as input and calculates the kingfits and new charge radii
@@ -99,17 +100,17 @@ class KingFitter(object):
         print('intercept: ', self.a, '(', self.aerr, ') u MHz')
         print('slope: ', self.b, '(', self.berr, ') MHz/fm^2')
 
-
     def fit(self, run, showplot=True):
-        i=0
+        i = 0
         totaldiff = 1
         omega_x = [1/np.square(i) for i in self.xerr]
         omega_y = [1/np.square(i) for i in self.yerr]
         alpha = [np.sqrt(j*omega_y[i]) for i,j in enumerate(omega_x)]
         r = [0 for i in self.x]
 
-        while totaldiff>1e-10 and i < 200:
-            w = [j*omega_y[i]/(j + np.square(self.b)*omega_y[i] - 2 * self.b * alpha[i] * r[i]) for i,j in enumerate(omega_x)]
+        while totaldiff > 1e-10 and i < 200:
+            w = [j*omega_y[i]/(j + np.square(self.b)*omega_y[i] - 2 * self.b * alpha[i] * r[i])
+                 for i, j in enumerate(omega_x)]
             w_x = [j*w[i] for i,j in enumerate(self.x)]
             x_bar = sum(w_x)/sum(w)
             u = [i - x_bar for i in self.x]
@@ -185,7 +186,7 @@ class KingFitter(object):
         con.close()
         return (self.a, self.b, self.aerr, self.berr)
 
-    def calcChargeRadii(self,isotopes=[], run=-1):
+    def calcChargeRadii(self, isotopes=[], run=-1):
         print('calculating the charge radii...')
         self.isotopes = []
         self.isotopeMasses = []
@@ -248,11 +249,17 @@ class KingFitter(object):
             x = []
             y = []
             yerr = []
+            print('iso\tδ<r^2>[fm^2](Δ_statδ<r^2>[fm^2])[Δ_systδ<r^2>[fm^2]]')
             for i in keyVals:
                 x.append(int(str(i).split('_')[0]))
                 y.append(finalVals[i][0])
                 yerr.append(np.sqrt(np.square(finalVals[i][1])+np.square(finalVals[i][2])))
-                print(i, '\t', np.round(finalVals[i][0],3), '('+str(np.round(finalVals[i][1],3))+')')
+                total_err = np.sqrt(np.square(finalVals[i][1])+np.square(finalVals[i][2]))
+                rel_err = np.abs(total_err / finalVals[i][0]) * 100
+                print('%s\t%.4f(%.0f)[%.0f]' % (i, finalVals[i][0],
+                                                        finalVals[i][1] * 10000,
+                                                        finalVals[i][2] * 10000))
+                # print(i, '\t', np.round(finalVals[i][0],3), '('+str(np.round(finalVals[i][1],3))+')')
             plt.subplots_adjust(bottom=0.2)
             plt.xticks(rotation=25)
             ax = plt.gca()
