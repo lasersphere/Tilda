@@ -317,4 +317,5 @@ def avgErr(iso, db, avg, par, accVolt_d, offset_d, syst=0):
     print('voltage between left and right edge:', distance)
     fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
     return np.sqrt(np.square(fac*(np.absolute(0.5*(distance/accVolt)*(accVolt_d))+np.absolute(distance*offset_d/accVolt)
-                                  +np.absolute(mass_d/mass)))+ np.square(syst))
+                                  +np.absolute(mass_d/mass)))+ np.square(syst))/cF_dist
+                                  #The uncertainty on the A- & B-Factors needs to be scaled down again
