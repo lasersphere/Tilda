@@ -24,6 +24,7 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
         self.bFit.clicked.connect(self.fit)
         self.bReset.clicked.connect(self.reset)
         self.isoFilter.currentIndexChanged.connect(self.loadFiles)
+        self.bFontSize.valueChanged.connect(self.fontSize)
         self.parTable.cellChanged.connect(self.setPar)
 
         """ add shortcuts """
@@ -113,3 +114,11 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
         self.dbpath = dbpath
         self.loadRuns()
         self.loadIsos()
+
+    def fontSize(self):
+        if self.fileList.currentItem() is not None:
+            iso = self.fileList.currentItem().text()
+            if iso:
+                self.intFit = InteractiveFit(iso, self.dbpath, self.runSelect.currentText(), fontSize=self.bFontSize.value())
+                self.loadPars()
+

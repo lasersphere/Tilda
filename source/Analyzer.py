@@ -119,7 +119,7 @@ def combineRes(iso, par, run, db, weighted = True, print_extracted=True, show_pl
         avg, err, rChi = average(vals, errs)
     print('rChi is: ', rChi, 'err is: ', err)
 
-    systE = functools.partial(avgErr, iso, db, avg)
+    systE = functools.partial(avgErr, iso, db, avg, par)
     statErr = eval(statErrForm)
     systErr = eval(systErrForm)
     print('statErr is: ', statErr)
@@ -259,21 +259,7 @@ def shiftErr(iso, run, db, accVolt_d, offset_d, syst=0):
     cur.execute('''SELECT offset FROM Files WHERE type = ?''', (ref,))
     (refOffset,) = cur.fetchall()[0]    
     accVolt = np.absolute(refOffset)*voltDivRatio['offset']+accVolt*voltDivRatio['accVolt']
-   
-    #cur.execute('''SELECT line FROM Files WHERE type = ?''', (ref,))
-    '''
-    (line,) = cur.fetchall()[0]
-    if line == 'D1':
-        if iso == '40_Ca':
-            offset = 500
-        elif iso == '44_Ca':
-            offset = np.absolute(refOffset-offset)
-        else:
-            offset = np.absolute(refOffset-offset) + 700
-    else:
-        offset = np.absolute(refOffset-offset)
-    print('offsetvoltage:', offset)
-    '''
+
     fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
     print('systematic error inputs caused by error of...\n...acc Voltage:',fac*(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d)),'MHz  ...offset Voltage',fac*offset*offset_d/accVolt,'MHz  ...masses:',fac*(mass_d/mass+massRef_d/massRef),'MHz')
 
@@ -281,22 +267,49 @@ def shiftErr(iso, run, db, accVolt_d, offset_d, syst=0):
                                   +np.absolute(offset*offset_d/accVolt)+np.absolute(mass_d/mass+massRef_d/massRef)))
                    +np.square(syst))
 
-def avgErr(iso, db, avg, accVolt_d, offset_d, syst=0):
-    if str(iso)[-1] == 'm' and str(iso)[-2] == '_':
-        iso = str(iso)[:-2]
+def avgErr(iso, db, avg, par, accVolt_d, offset_d, syst=0):
+    print('Building AverageError...')
     con = sqlite3.connect(db)
     cur = con.cursor()
     cur.execute('''SELECT frequency FROM Lines''')
     (nu0) = cur.fetchall()[0][0]
-    cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (iso,))
-    (mass, mass_d) = cur.fetchall()[0]
+    cur.execute('''SELECT mass, mass_d, I FROM Isotopes WHERE iso = ?''', (iso,))
+    (mass, mass_d, spin) = cur.fetchall()[0]
+    if str(iso)[-1] == 'm' and str(iso)[-2] == '_':
+        iso = str(iso)[:-2]
     cur.execute('''SELECT offset, accVolt, voltDivRatio FROM Files WHERE type = ?''', (iso,))
     (offset, accVolt, voltDivRatio) = cur.fetchall()[0]
+    cur.execute('''SELECT Jl, Ju FROM Lines''')
+    (jL, jU) = cur.fetchall()[0]
     voltDivRatio = ast.literal_eval(voltDivRatio)
     accVolt = accVolt*voltDivRatio['accVolt'] - offset*voltDivRatio['offset']
-    distance = np.abs(avg)/Physics.diffDoppler(nu0, accVolt, mass)
+    cF = 1
+    '''
+    for the A- and B-Factor, the (energy-) distance of the peaks
+    can be calculated with the help of the Casimir Factor:
+    C_F = F(F+1)-j(j+1)-I(I+1).
+    This distance can be converted into an offset voltage
+    so we can use the same error formula as for the isotope shift.
+    '''
+    if par == 'Au':
+        cF = (jU+spin)*(jU+spin+1)-jU*(jU+1)-spin*(spin+1)
+        cF_dist = cF*2
+    elif par == 'Al':
+        cF = (jL+spin)*(jL+spin+1)-jL*(jL+1)-spin*(spin+1)
+        cF_dist = cF*2
+    elif par == 'Bu':
+        cF = (jU+spin)*(jU+spin+1)-jU*(jU+1)-spin*(spin+1)
+        cF_dist = 4*(3/2*cF*(cF+1)- 2*spin*jU*(spin+1)*(jU+1))/(spin*jU*(2*spin-1)*(2*jU-1))
+    elif par == 'Bl':
+        cF = (jL+spin)*(jL+spin+1)-jL*(jL+1)-spin*(spin+1)
+        cF_dist = 4*(3/2*cF*(cF+1)- 2*spin*jL*(spin+1)*(jL+1))/(spin*jL*(2*spin-1)*(2*jL-1))
+    else:
+        pass
+    print('casimir factor:', cF)
+    distance = np.abs(avg*cF_dist)
+    print('frequency between left and right edge:', distance)
+    distance = distance/Physics.diffDoppler(nu0, accVolt, mass)
     print('voltage between left and right edge:', distance)
-
     fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
     return np.sqrt(np.square(fac*(np.absolute(0.5*(distance/accVolt)*(accVolt_d))+np.absolute(distance*offset_d/accVolt)
                                   +np.absolute(mass_d/mass)))+ np.square(syst))

@@ -125,9 +125,11 @@ def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=No
     if fitter_m is not None:
         fitter_iso.par = pars[0:len(fitter_iso.par)]
         fitter_m.par = pars[0:3] + pars[len(fitter_iso.par):]
-        plot.plotFit(fitter_iso, color='-b', plot_residuals=False)
+        plot.plotFit(fitter_iso, color='-r', plot_residuals=False)
         plot.plotFit(fitter_m, color='-g', plot_residuals=False)
-    plot.plotFit(fit)
+        plot.plotFit(fit, color='-b')
+    else:
+        plot.plotFit(fit)
     plot.save(fig)
     plot.clear()
     

@@ -5,11 +5,11 @@ Created on 23.08.2016
 
 '''
 
+import ast
 import sqlite3
 
 import matplotlib.pyplot as plt
 import numpy as np
-import ast
 
 class KingFitter(object):
     '''
@@ -40,13 +40,17 @@ class KingFitter(object):
         self.isotopeShiftStatErr = []
         self.isotopeShiftSystErr = []
         self.run = []
-        con = sqlite3.connect(self.db)
-        cur = con.cursor()
-        cur.execute('''SELECT reference FROM Lines''')
-        self.ref = cur.fetchall()[0][0]
-        cur.execute('''SELECT mass FROM Isotopes WHERE iso = ?''', (self.ref,))
-        self.refmass = cur.fetchall()[0][0]
-        con.close()
+        try:
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            cur.execute('''SELECT reference FROM Lines''')
+            self.ref = cur.fetchall()[0][0]
+            cur.execute('''SELECT mass FROM Isotopes WHERE iso = ?''', (self.ref,))
+            self.refmass = cur.fetchall()[0][0]
+            con.close()
+        except Exception as e:
+            print('error: %s  \n\t-> Kingfitter could not find a reference isotope from'
+                  ' Lines in database or mass of this reference Isotope in Isotopes' % e)
 
 
     def kingFit(self, run=-1, alpha=0, findBestAlpha=True):
@@ -81,10 +85,10 @@ class KingFitter(object):
             self.x_origin.append(self.litvals[i][0])
             self.xerr.append(self.litvals[i][1])
 
-        self.redmasses= [i*self.refmass/(self.refmass-i) for i in self.masses]
+        self.redmasses= [i*self.refmass/(i-self.refmass) for i in self.masses]
         self.y = [self.redmasses[i]*j for i,j in enumerate(self.y)]
-        self.yerr = [self.redmasses[i]*j for i,j in enumerate(self.yerr)]
-        self.xerr = [self.redmasses[i]*j for i,j in enumerate(self.xerr)]
+        self.yerr = [np.abs(self.redmasses[i]*j) for i,j in enumerate(self.yerr)]
+        self.xerr = [np.abs(self.redmasses[i]*j) for i,j in enumerate(self.xerr)]
 
         if self.findBestAlphaTrue:
             self.findBestAlpha(run)
@@ -152,6 +156,9 @@ class KingFitter(object):
             else:
                 ax.set_xlabel(r'M $\delta$ < r'+r'$^2$ > - $\alpha$ (u fm $^2$)')
             plt.errorbar(self.x, self.y, self.yerr, self.xerr, fmt='k.')
+            print('x', self.x, self.xerr)
+            print('y', self.y, self.yerr)
+
             ax.set_xmargin(0.05)
             x_king = [min(self.x) - abs(min(self.x) - max(self.x)) * 0.2,max(self.x) + abs(min(self.x) - max(self.x)) * 0.2]
             y_king = [self.a+self.b*i for i in x_king]
@@ -219,7 +226,7 @@ class KingFitter(object):
                     self.isotopeShiftSystErr.append(systErr)
                     self.run.append(run)
         con.close()
-        self.isotopeRedMasses = [i*self.refmass/(self.refmass-i) for i in self.isotopeMasses]
+        self.isotopeRedMasses = [i*self.refmass/(i-self.refmass) for i in self.isotopeMasses]
         self.chargeradii = [(-self.a/self.isotopeRedMasses[i]+j)/self.b+self.c/self.isotopeRedMasses[i]
                             for i,j in enumerate(self.isotopeShifts)]
         self.chargeradiiStatErrs = [np.abs(i/self.b) for i in self.isotopeShiftStatErr]
@@ -248,7 +255,9 @@ class KingFitter(object):
                 x.append(int(str(i).split('_')[0]))
                 y.append(finalVals[i][0])
                 yerr.append(np.sqrt(np.square(finalVals[i][1])+np.square(finalVals[i][2])))
-                print(i, '\t', np.round(finalVals[i][0],3), '('+str(np.round(finalVals[i][1],3))+')')
+                #print(i, '\t', np.round(finalVals[i][0],3), '('+str(np.round(finalVals[i][1],3))+')' + '('+str(np.round(finalVals[i][2],3))+')')
+                #print("'"+str(i)+"'", ':[', np.round(finalVals[i][0],3), ','+ str(np.round(np.sqrt(finalVals[i][1]**2 + finalVals[i][2]**2),3))+'],')
+
             plt.subplots_adjust(bottom=0.2)
             plt.xticks(rotation=25)
             ax = plt.gca()

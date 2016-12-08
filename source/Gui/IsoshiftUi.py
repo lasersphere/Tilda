@@ -159,7 +159,7 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
             self.referenceList = []
             self.referenceDates = []
             fitres = [item for sublist in fitres for item in sublist]
-            print('reference files are: %s' % fitres)
+            # print('reference files are: %s' % fitres)
             for i in r:
                 if i[0] in fitres:
                     self.referenceList.append(i[0])

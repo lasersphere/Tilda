@@ -32,7 +32,7 @@ class ALIVEImporter(SpecData):
         
         self.file = os.path.basename(path)
 
-        l = self._dimension(path)
+        #l = self._dimension(path)
         self.nrScalers = 1
         self.nrTracks = 1
         
@@ -52,6 +52,29 @@ class ALIVEImporter(SpecData):
             ind = self.informations.find('dwellTime')
             self.dwell = float(self.informations[ind + 9:self.informations.find(';', ind + 9)])*10**-6
             self.nrLoops = float(self.informations[self.informations.find('numScans', ind) + 8:self.informations.find('\n', ind + 8)])
+
+            self.info2= f.readline()
+            ind=self.info2.find('Isotope')
+            self.iso= self.info2[ind + 7:self.info2.find(';', ind + 7)]
+
+            self.info3= f.readline()
+            ind=self.info3.find('frequencyRed')
+            self.freq= float(self.info3[ind + 12:self.info3.find(';', ind + 12)])
+
+            self.info4= f.readline()
+            ind=self.info4.find('AccVolt')
+            self.accVoltage= float(self.info4[ind + 7:self.info4.find(';', ind + 7)])
+            ind=self.info4.find('Offset')
+            self.offsetVoltage= float(self.info4[ind + 6:self.info4.find(';', ind + 6)])
+            if self.offsetVoltage <0.01:
+                self.iso='40_Ca_ref'
+            ind=self.info4.find('KepcoFactor')
+            self.KepcoFactor= float(self.info4[ind + 11:self.info4.find(';', ind + 11)])/1000
+            ind=self.info4.find('KepcoOffset')
+            self.KepcoOffset= float(self.info4[ind + 11:self.info4.find(';', ind + 11)])/1000
+
+            self.ratio='''{'offset':1000,'accVolt':1000}'''
+
             self.columnnames = f.readline().split(';')
             read = csv.reader(f, delimiter = ';')
             l = np.floor((stopVolt-startVolt)/self.stepSize)+1
@@ -90,11 +113,15 @@ class ALIVEImporter(SpecData):
                 self.x[trackindex][xindex]= self.accVolt*self.voltDivRatio['accVolt'] - scanvolt
         print(self.x)
         print(self.cts)
-    
+
+
+
+
+
     def export(self, db):
         con = sqlite3.connect(db)
         with con:
-            con.execute('''UPDATE Files SET date = ? WHERE file = ?''', (self.date, self.file))     
+            con.execute('''UPDATE Files SET date = ?, laserFreq=?, type=?, accVolt=?, offset=?, lineMult=?, lineOffset=?, voltDivRatio=? WHERE file = ?''', (self.date, self.freq, self.iso, self.accVoltage, self.offsetVoltage, self.KepcoFactor,self.KepcoOffset, self.ratio, self.file))
         con.close()
     
     

@@ -21,9 +21,10 @@ from Spectra.Straight import Straight
 
 
 class InteractiveFit(object):
-    def __init__(self, file, db, run, block=True, x_as_voltage=True, softw_gates_trs=None):
+    def __init__(self, file, db, run, block=True, x_as_voltage=True, softw_gates_trs=None, fontSize=10):
         self.fitter_iso = None
         self.fitter_m = None
+        self.fontSize =fontSize
         plot.ion()
         plot.clear()
         con = sqlite3.connect(db)
@@ -73,10 +74,14 @@ class InteractiveFit(object):
                         spec_m = FullSpec(iso_m)
                         self.fitter_iso = SPFitter(spec_iso, meas, st)
                         self.fitter_m = SPFitter(spec_m, meas, st)
-                        plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False)
-                        plot.plotFit(self.fitter_m, color='-g', plot_residuals=False)
+                        plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False, fontsize_ticks=self.fontSize)
+                        plot.plotFit(self.fitter_m, color='-g', plot_residuals=False, fontsize_ticks=self.fontSize)
+                        self.fitter = SPFitter(spec, meas, st)
+                        plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize)
                     else:
                         spec = FullSpec(iso)
+                        self.fitter = SPFitter(spec, meas, st)
+                        plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
             except:
                 iso = DBIsotope(db, meas.type, lineVar=linevar)
                 if var[0] == '_m':
@@ -86,12 +91,14 @@ class InteractiveFit(object):
                     spec_m = FullSpec(iso_m)
                     self.fitter_iso = SPFitter(spec_iso, meas, st)
                     self.fitter_m = SPFitter(spec_m, meas, st)
-                    plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False)
-                    plot.plotFit(self.fitter_m, color='-g', plot_residuals=False)
+                    plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False, fontsize_ticks=self.fontSize)
+                    plot.plotFit(self.fitter_m, color='-g', plot_residuals=False, fontsize_ticks=self.fontSize)
+                    self.fitter = SPFitter(spec, meas, st)
+                    plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize)
                 else:
                     spec = FullSpec(iso)
-        self.fitter = SPFitter(spec, meas, st)
-        plot.plotFit(self.fitter)
+                    self.fitter = SPFitter(spec, meas, st)
+                    plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
         plot.show(block)
         self.printPars()
         
@@ -112,9 +119,11 @@ class InteractiveFit(object):
         if self.fitter_m is not None:
             self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
             self.fitter_m.par = pars[0:3] + pars[len(self.fitter_iso.par):]
-            plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False)
-            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False)
-        plot.plotFit(self.fitter)
+            plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False, fontsize_ticks=self.fontSize)
+            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False, fontsize_ticks=self.fontSize)
+            plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize)
+        else:
+            plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
         plot.show()
         
     def reset(self):
@@ -124,8 +133,8 @@ class InteractiveFit(object):
         if self.fitter_m is not None:
             self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
             self.fitter_m.par = pars[0:3] + pars[len(self.fitter_iso.par):]
-            plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False)
-            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False)
+            plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False, fontsize_ticks=self.fontSize)
+            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False, fontsize_ticks=self.fontSize)
         plot.plotFit(self.fitter)
         plot.show()
         
@@ -136,8 +145,8 @@ class InteractiveFit(object):
         if self.fitter_m is not None:
             self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
             self.fitter_m.par = pars[0:3] + pars[len(self.fitter_iso.par):]
-            plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False)
-            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False)
+            plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False, fontsize_ticks=self.fontSize)
+            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False, fontsize_ticks=self.fontSize)
         plot.plotFit(self.fitter)
         plot.show()
         
@@ -151,8 +160,8 @@ class InteractiveFit(object):
         if self.fitter_m is not None:
             self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
             self.fitter_m.par = pars[0:3] + pars[len(self.fitter_iso.par):]
-            plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False)
-            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False)
+            plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False, fontsize_ticks=self.fontSize)
+            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False, fontsize_ticks=self.fontSize)
         plot.plotFit(self.fitter)
         plot.show()
     

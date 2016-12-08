@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>642</width>
+    <width>651</width>
     <height>481</height>
    </rect>
   </property>
@@ -90,11 +90,17 @@
          <height>20</height>
         </size>
        </property>
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="locale">
+        <locale language="English" country="UnitedStates"/>
+       </property>
        <property name="tabShape">
         <enum>QTabWidget::Rounded</enum>
        </property>
        <property name="currentIndex">
-        <number>2</number>
+        <number>5</number>
        </property>
        <widget class="CrawlerUi" name="crawler">
         <attribute name="title">
@@ -131,6 +137,16 @@
          <string>Charge Radii</string>
         </attribute>
        </widget>
+       <widget class="AddFilesUi" name="addFiles_tab">
+        <attribute name="title">
+         <string>add Files</string>
+        </attribute>
+       </widget>
+       <widget class="AliveUi" name="Alive_tab">
+        <attribute name="title">
+         <string>Alive</string>
+        </attribute>
+       </widget>
       </widget>
       <widget class="QPlainTextEdit" name="oOut">
        <property name="plainText">
@@ -149,7 +165,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>642</width>
+     <width>651</width>
      <height>21</height>
     </rect>
    </property>
@@ -195,7 +211,19 @@
   <customwidget>
    <class>KingFitUi</class>
    <extends>QWidget</extends>
-   <header location="global">Gui.KingFitUi</header>
+   <header>Gui.KingFitUi</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>AddFilesUi</class>
+   <extends>QWidget</extends>
+   <header>Gui.AddFilesUi</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>AliveUi</class>
+   <extends>QWidget</extends>
+   <header>Gui.AliveUi</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

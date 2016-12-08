@@ -9,8 +9,6 @@ from datetime import datetime as dt
 
 from lxml import etree as ET
 
-import Application.Config as Cfg
-
 
 def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
     """
@@ -134,8 +132,8 @@ def xmlAddCompleteTrack(rootEle, scanDict, data, track_name, datatype='scalerArr
     return rootEle
 
 
-def xml_create_autostart_root():
-    root = ET.Element('Tilda_autostart_file_%s' % Cfg.version.replace('.', '_'))
+def xml_create_autostart_root(version):
+    root = ET.Element('Tilda_autostart_file_%s' % version.replace('.', '_'))
     xmlFindOrCreateSubElement(root, 'workingDir', 'somepath')
     devs = xmlFindOrCreateSubElement(root, 'autostartDevices')
     xmlFindOrCreateSubElement(devs, 'dmms', '{\'dmm_name\':\'address\'}')
