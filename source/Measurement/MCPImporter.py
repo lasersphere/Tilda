@@ -45,6 +45,7 @@ class MCPImporter(SpecData):
             self.file_as_str = file_as_str
             self.version = self.get_version(self.file_as_str)
             if self.find_data_list_in_str(file_as_str, 'SiclStepObj')[0] != []:
+                # its a Kepco scan and must be treated different!
                 self.type = 'Kepco'
                 self.nrScalers = [2]
                 scans, self.nrScans, self.nrSteps, limits = self.get_scan_pars(file_as_str)
@@ -75,6 +76,7 @@ class MCPImporter(SpecData):
                     for j, cts in enumerate(ctarray):
                         self.err[i][j] = cts*0.01/100+0.00005
             else:
+                # normal spectroscopy measurement
                 self.ele = self.file.split('_')
                 self.type = self.ele[0][:-2] + '_' + self.ele[0][-2:]
                 volts = self.find_data_list_in_str(file_as_str, 'SiclReaderObj')
@@ -104,7 +106,12 @@ class MCPImporter(SpecData):
 
                 dataset = file_as_str.split('>>>>')[:-1]
                 for track in dataset:
-                    fluke_num = self.find_data_list_in_str(track, 'FlukeSwitchObj', data_begin_str=',')[0][0][0]
+                    fluke_num = self.find_data_list_in_str(track, 'FlukeSwitchObj', data_begin_str=',')
+                    if fluke_num[0]:  # fluke switch might not be changed in every track!
+                        fluke_num = fluke_num[0][0][0]
+                    else:
+                        print('fluke num: %s %s ' % fluke_num)
+                        fluke_num = -1
                     self.post_acc_offset_volt_control.append(fluke_num)
                     data = self.find_data_list_in_str(track, 'PM_SpectrumObj')
                     self.cts.append(data[0])
@@ -215,11 +222,20 @@ class MCPImporter(SpecData):
         completed_scans = []
         steps = []
         limits = []
-        ind = 0
-        while ind!= -1:
-            ind = mcp_file_as_string.find('<<', ind)
-            ind2 = mcp_file_as_string.find('<', ind + 2)
-            lis = mcp_file_as_string[ind:ind2].split(',')[1:-1]
+        # first track in mcp is opened by '<<'
+        # following tracks are opened by '>,<,
+        # those are followed by:
+        # 'unknown_string, scans, completed_scans, steps, unknown_int, unknown_int, unknown_int,<
+        ind = mcp_file_as_string.find('<<', 0)
+        ind2 = mcp_file_as_string.find('<', ind + 2)
+
+        while ind != -1:
+            if scans:  # not in first call/track
+                ind = mcp_file_as_string.find('>,<', ind)
+                ind = ind if ind == -1 else ind + 3  # when no track can be found anymore yield ind = -1
+                ind2 = mcp_file_as_string.find('<', ind + 2)
+            lis = mcp_file_as_string[ind:ind2]
+            lis = lis.split(',')[1:-1]
             indlim = mcp_file_as_string.find('<LineVoltageSweepObj,', ind)
             indlim2 = mcp_file_as_string.find('>', indlim)
             if ind != -1:
@@ -227,14 +243,17 @@ class MCPImporter(SpecData):
                 completed_scans.append(int(lis[1]))
                 steps.append(int(lis[2]))
                 limits.append(mcp_file_as_string[indlim:indlim2].split(',')[1:3])
-                ind +=2
+                ind += 3
         return (scans, completed_scans, steps, limits)
 
     def norming(self):
         for trackindex, track in enumerate(self.cts):
             for ctIndex, ct in enumerate(track):
-                self.cts[trackindex][ctIndex] = ct*np.min(self.nrScans)/self.nrScans[trackindex]
-                self.err[trackindex][ctIndex] = self.err[trackindex][ctIndex]*np.min(self.nrScans)/self.nrScans[trackindex]
+                min_nr_of_scan = max(np.min(self.nrScans), 1)  # maybe there is a track with 0 complete scans
+                nr_of_scan_this_track = self.nrScans[trackindex]
+                if nr_of_scan_this_track:
+                    self.cts[trackindex][ctIndex] = ct * min_nr_of_scan / nr_of_scan_this_track
+                    self.err[trackindex][ctIndex] = self.err[trackindex][ctIndex] * min_nr_of_scan / nr_of_scan_this_track
 
     def find_offset_for_kepco(self):
         """ find the offset of the measurement for each multimeter and return a list of the offsets for each dmm """

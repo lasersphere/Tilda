@@ -190,8 +190,8 @@ def gate_one_track(tr_ind, tr_num, scan_dict, data, time_array, volt_array, ret)
     tr_name = 'track%s' % tr_num
     gates_tr = []
     pmts = len(scan_dict[tr_name]['activePmtList'])
-    t_proj_tr = np.zeros((pmts, len(time_array[tr_ind])), dtype=np.uint32)
-    v_proj_tr = np.zeros((pmts, len(volt_array[tr_ind])), dtype=np.uint32)
+    t_proj_tr = np.zeros((pmts, len(time_array[tr_ind])), dtype=np.int32)
+    v_proj_tr = np.zeros((pmts, len(volt_array[tr_ind])), dtype=np.int32)
     try:
         gates_val_lists = scan_dict[tr_name]['softwGates']  # list of list for each pmt.
         for gates_val_list in gates_val_lists:
@@ -426,8 +426,10 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
                         added_files.append((add_meas[0], add_meas[1].file))
                         offsets.append(add_meas[1].offset)
                         accvolts.append(add_meas[1].accVolt)
+                    parent_specdata.nrScans[tr_ind] += add_meas[1].nrScans[tr_ind]
                     for sc_ind, sc in enumerate(tr):
                         parent_specdata.cts[tr_ind][sc_ind] += add_meas[0] * add_meas[1].cts[tr_ind][sc_ind]
+                        parent_specdata.cts[tr_ind][sc_ind] = parent_specdata.cts[tr_ind][sc_ind].astype(np.int32)
                     time_res_zf = check_if_attr_exists(add_meas[1], 'time_res_zf', [[]] * add_meas[1].nrTracks)[tr_ind]
                     if len(time_res_zf):  # add the time spectrum (zero free) if it exists
                         appended_arr = np.append(parent_specdata.time_res_zf[tr_ind], time_res_zf)
@@ -612,6 +614,8 @@ def nameFileXml(isodict, path):
     seq_type = isodict['type']
     filename = nIso + '_' + seq_type + '_run'
     subdir = os.path.join(path, 'sums')
+    if not os.path.exists(subdir):
+        os.makedirs(subdir)
     files = [file if file.endswith('.xml') else '-1....' for file in os.listdir(subdir)]
     if len(files):
         highest_filenum = sorted([int(file[-7:-4]) for file in files])[-1]

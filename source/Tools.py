@@ -257,3 +257,48 @@ def createDB(db):
     )''')
 
     con.close()
+
+
+def extract_from_combined(runs_list, db, isotopes=None, par='shift', print_extracted=False):
+    """
+    will extract the results stored in Combined for the given parameter ('shift', 'center' etc.)
+    :param runs_list: list, of strings with the name of the runs that should be extracted
+    :param isotopes: list, of strings, with the isotopes that should be extracted
+    :param par: str, parameter name, that should be extracted
+    :return: dict, {'run_name': {'iso_name_1': (run, val, statErr, rChi), ...}}
+    """
+    result_dict = {}
+    if runs_list == -1:
+        # select all runs!
+        for iso in isotopes:
+            connection = sqlite3.connect(db)
+            cursor = connection.cursor()
+            cursor.execute(
+                '''SELECT run, val, statErr, systErr, rChi FROM Combined WHERE iso = ? AND parname = ? ''',
+                (iso, par))
+            data = cursor.fetchall()
+            connection.close()
+            if len(data):
+                if not result_dict.get(data[0][0], False):
+                    result_dict[data[0][0]] = {}
+                result_dict[data[0][0]][iso] = list(data[0][i] for i in range(1, 5))
+    else:
+        for selected_run in runs_list:
+            result_dict[selected_run] = {}
+            for iso in isotopes:
+                connection = sqlite3.connect(db)
+                cursor = connection.cursor()
+                cursor.execute(
+                    '''SELECT val, statErr, systErr, rChi FROM Combined WHERE iso = ? AND run = ? AND parname = ? ''',
+                    (iso, selected_run, par))
+                data = cursor.fetchall()
+                connection.close()
+                if len(data):
+                    result_dict[selected_run][iso] = data[0]
+    if print_extracted:
+        for sel_run, run_results_dicts in sorted(result_dict.items()):
+            print('--- \t%s\t%s\t ---' % (sel_run, par))
+            print('run\tiso\t%s result\tstatErr\tsystErr\trChi' % par)
+            for isot, vals in sorted(run_results_dicts.items()):
+                print('%s\t%.5f\t%.5f\t%.5f\t%.5f' % (isot, vals[0], vals[1], vals[2], vals[3]))
+    return result_dict

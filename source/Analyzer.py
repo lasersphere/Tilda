@@ -20,7 +20,7 @@ import Physics
 def getFiles(iso, run, db):
     con = sqlite3.connect(db)
     cur = con.cursor()
-    cur.execute('''SELECT file, pars FROM FitRes WHERE iso = ? AND run = ?''', (iso, run))
+    cur.execute('''SELECT file, pars FROM FitRes WHERE iso = ? AND run = ? ORDER BY file ''', (iso, run))
     e = cur.fetchall()
     con.close()
     
@@ -33,7 +33,7 @@ def extract(iso, par, run, db, fileList=[], prin=True):
     con = sqlite3.connect(db)
     cur = con.cursor()
     
-    cur.execute('''SELECT file, pars FROM FitRes WHERE iso = ? AND run = ?''', (iso, run))
+    cur.execute('''SELECT file, pars FROM FitRes WHERE iso = ? AND run = ? ORDER BY file''', (iso, run))
     fits = cur.fetchall()
     if fileList:
         fits = [f for f in fits if f[0] in fileList]
@@ -62,7 +62,7 @@ def extract(iso, par, run, db, fileList=[], prin=True):
     # for i in dates:
     #     print(i[0], '\t', i[1])
     con.close()
-    return (vals, errs, date_list)
+    return vals, errs, date_list, files
     
     
 def weightedAverage(vals, errs):
@@ -111,7 +111,7 @@ def combineRes(iso, par, run, db, weighted = True, print_extracted=True, show_pl
     config = ast.literal_eval(config)
     
     print('Combining', iso, par)
-    vals, errs, date = extract(iso, par, run, db, config, prin=print_extracted)
+    vals, errs, date, files = extract(iso, par, run, db, config, prin=print_extracted)
     
     if weighted:
         avg, err, rChi = weightedAverage(vals, errs)
@@ -146,10 +146,9 @@ def combineRes(iso, par, run, db, weighted = True, print_extracted=True, show_pl
         plt.show(True)
     plt.clear()
 
-    files = getFiles(iso, run, db)
     print('date \t file \t val \t err')
     for i, dt in enumerate(date):
-        print(dt, '\t',files[i], '\t', vals[i], '\t', errs[i])
+        print(dt, '\t', files[i], '\t', vals[i], '\t', errs[i])
 
     return (avg, statErr, systErr, plotdata)
 
@@ -175,7 +174,7 @@ def combineShift(iso, run, db, show_plot=False):
     dateIso = []
     for block in config:
         if block[0]:
-            preVals, preErrs, date = extract(ref,'center',refRun,db,block[0])
+            preVals, preErrs, date, files = extract(ref,'center',refRun,db,block[0])
             preVal, preErr, preRChi = weightedAverage(preVals, preErrs)
             preErr = applyChi(preErr, preRChi)
             preErr = np.absolute(preErr)
@@ -183,11 +182,11 @@ def combineShift(iso, run, db, show_plot=False):
             preVal = 0
             preErr = 0
 
-        intVals, intErrs, date = extract(iso,'center',run,db,block[1])
+        intVals, intErrs, date, files = extract(iso,'center',run,db,block[1])
         [dateIso.append(i) for i in date]
 
         if block[2]:
-            postVals, postErrs, date = extract(ref,'center',refRun,db,block[2])
+            postVals, postErrs, date, files = extract(ref,'center',refRun,db,block[2])
             postVal, postErr, postRChi = weightedAverage(postVals, postErrs)
             postErr = np.absolute(applyChi(postErr, postRChi))
         else:
@@ -261,7 +260,13 @@ def shiftErr(iso, run, db, accVolt_d, offset_d, syst=0):
     accVolt = np.absolute(refOffset)*voltDivRatio['offset']+accVolt*voltDivRatio['accVolt']
 
     fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
-    print('systematic error inputs caused by error of...\n...acc Voltage:',fac*(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d)),'MHz  ...offset Voltage',fac*offset*offset_d/accVolt,'MHz  ...masses:',fac*(mass_d/mass+massRef_d/massRef),'MHz')
+    print('systematic error inputs caused by error of...\n...acc Voltage:',
+          fac*(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d)),
+          'MHz  ...offset Voltage',
+          fac*offset*offset_d/accVolt,
+          'MHz  ...masses:',
+          fac*(mass_d/mass+massRef_d/massRef),
+          'MHz')
 
     return np.sqrt(np.square(fac*(np.absolute(0.5*(offset/accVolt+deltaM/mass)*(accVolt_d))
                                   +np.absolute(offset*offset_d/accVolt)+np.absolute(mass_d/mass+massRef_d/massRef)))
@@ -312,4 +317,5 @@ def avgErr(iso, db, avg, par, accVolt_d, offset_d, syst=0):
     print('voltage between left and right edge:', distance)
     fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
     return np.sqrt(np.square(fac*(np.absolute(0.5*(distance/accVolt)*(accVolt_d))+np.absolute(distance*offset_d/accVolt)
-                                  +np.absolute(mass_d/mass)))+ np.square(syst))
+                                  +np.absolute(mass_d/mass)))+ np.square(syst))/cF_dist
+                                  #The uncertainty on the A- & B-Factors needs to be scaled down again

@@ -28,6 +28,7 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
         self.bsave.clicked.connect(self.saving)
 
         self.dbpath = None
+        self.cfg = []
 
         self.show()
 
@@ -74,10 +75,10 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
             if len(r) > 0:
                 self.statErrForm = r[0][1]
                 self.systErrForm = r[0][2]
-                cfg = ast.literal_eval(r[0][0])
-                cfg_files = [each[1][0] for each in cfg]
+                self.cfg = ast.literal_eval(r[0][0])
+                cfg_files = [each[1][0] for each in self.cfg]
                 for i, f in enumerate(self.files):
-                    if cfg == []:
+                    if self.cfg == []:
                         select[i] = False
                     elif f not in cfg_files:
                         select[i] = False
@@ -180,6 +181,11 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
         file = self.chosenFiles[index]
         date = time.strptime(date, '%Y-%m-%d %H:%M:%S')
         date = time.mktime(date)
+        files_in_cfg = [each_block[1][0] for each_block in self.cfg]
+        if file in files_in_cfg:
+            # if fiule already in config, do not alter the cfg, just return it.
+            found_at = files_in_cfg.index(file)
+            return self.cfg[found_at]
         datesafter = {}
         datesbefore = {}
         for ref_date in self.referenceDates:

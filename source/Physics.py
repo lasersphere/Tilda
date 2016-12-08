@@ -99,8 +99,10 @@ def HFLineSplit(Al, Bl, Au, Bu, transitions):
 
 def HFInt(I, Jl, Ju, transitions):
     '''Calculate relative line intensities'''
-    #print('Calculate relative line intensities for I, Jl, Ju, transitions ',I, Jl, Ju, transitions)
-    return [(2*Fu+1)*(2*Fl+1)*(sixJ(Jl, Fl, I, Fu, Ju, 1)**2) for Fl, Fu, *r in transitions]
+    print('Calculate relative line intensities for I, Jl, Ju, transitions ',I, Jl, Ju, transitions)
+    res = [(2*Fu+1)*(2*Fl+1)*(sixJ(Jl, Fl, I, Fu, Ju, 1)**2) for Fl, Fu, *r in transitions]
+    print('result is: %s' % [round(each, 3) for each in res])
+    return res
 
 def sixJ(j1, j2, j3, J1, J2, J3):
     '''6-J symbol used for Racah coefficients'''
