@@ -190,8 +190,8 @@ def gate_one_track(tr_ind, tr_num, scan_dict, data, time_array, volt_array, ret)
     tr_name = 'track%s' % tr_num
     gates_tr = []
     pmts = len(scan_dict[tr_name]['activePmtList'])
-    t_proj_tr = np.zeros((pmts, len(time_array[tr_ind])), dtype=np.uint32)
-    v_proj_tr = np.zeros((pmts, len(volt_array[tr_ind])), dtype=np.uint32)
+    t_proj_tr = np.zeros((pmts, len(time_array[tr_ind])), dtype=np.int32)
+    v_proj_tr = np.zeros((pmts, len(volt_array[tr_ind])), dtype=np.int32)
     try:
         gates_val_lists = scan_dict[tr_name]['softwGates']  # list of list for each pmt.
         for gates_val_list in gates_val_lists:
