@@ -52,3 +52,20 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
+.idea/.name
+.idea/PolliFit.iml
+.idea/dataSources.ids
+.idea/dataSources.local.xml
+.idea/encodings.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/scopes/
+.idea/vcs.xml
+.idea/workspace.xml
+test/Project/AliveDB
+/.idea/dataSources.xml
+/.idea/inspectionProfiles/profiles_settings.xml
+/.idea/inspectionProfiles/Project_Default.xml
+/.idea/scopes/scope_settings.xml
+/.idea/misc.xml
+/.idea/PolliFit.iml

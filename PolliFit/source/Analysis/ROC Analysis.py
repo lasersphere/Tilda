@@ -55,9 +55,12 @@ db = 'V:/Projekte/COLLAPS/ROC/ROC_October/CaD2_new.sqlite'
 #     # Analyzer.combineRes('52_Ca', 'center', run, db)
 Analyzer.combineShift('52_Ca', 'Run14', db)
 
-litvals = {'42_Ca':[0.215,.005],
-            '44_Ca':[0.288,.007],
-           '40_Ca':[-0.002,.01]}
+# litvals = {'42_Ca':[0.215,.005],
+#             '44_Ca':[0.288,.007],
+#            '40_Ca':[-0.002,.01]}
 
-king = KingFitter(db, litvals,alpha=82,findBestAlpha=True,showing=True)
-king.calcChargeRadii()
+king = KingFitter(db,showing=True)
+run = -1
+king.kingFit(alpha=80,findBestAlpha=False, run=run)
+isoL = ['40_Ca','42_Ca','44_Ca','52_Ca']
+#king.calcChargeRadii(isotopes=isoL,run=run)

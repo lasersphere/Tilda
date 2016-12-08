@@ -11,7 +11,6 @@ import sqlite3
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 class KingFitter(object):
     '''
     The Kingfitter needs some (at least three) charge radii as input and calculates the kingfits and new charge radii
@@ -86,10 +85,10 @@ class KingFitter(object):
             self.x_origin.append(self.litvals[i][0])
             self.xerr.append(self.litvals[i][1])
 
-        self.redmasses= [i*self.refmass/(self.refmass-i) for i in self.masses]
+        self.redmasses= [i*self.refmass/(i-self.refmass) for i in self.masses]
         self.y = [self.redmasses[i]*j for i,j in enumerate(self.y)]
-        self.yerr = [self.redmasses[i]*j for i,j in enumerate(self.yerr)]
-        self.xerr = [self.redmasses[i]*j for i,j in enumerate(self.xerr)]
+        self.yerr = [np.abs(self.redmasses[i]*j) for i,j in enumerate(self.yerr)]
+        self.xerr = [np.abs(self.redmasses[i]*j) for i,j in enumerate(self.xerr)]
 
         if self.findBestAlphaTrue:
             self.findBestAlpha(run)
@@ -157,6 +156,9 @@ class KingFitter(object):
             else:
                 ax.set_xlabel(r'M $\delta$ < r'+r'$^2$ > - $\alpha$ (u fm $^2$)')
             plt.errorbar(self.x, self.y, self.yerr, self.xerr, fmt='k.')
+            print('x', self.x, self.xerr)
+            print('y', self.y, self.yerr)
+
             ax.set_xmargin(0.05)
             x_king = [min(self.x) - abs(min(self.x) - max(self.x)) * 0.2,max(self.x) + abs(min(self.x) - max(self.x)) * 0.2]
             y_king = [self.a+self.b*i for i in x_king]
@@ -224,7 +226,7 @@ class KingFitter(object):
                     self.isotopeShiftSystErr.append(systErr)
                     self.run.append(run)
         con.close()
-        self.isotopeRedMasses = [i*self.refmass/(self.refmass-i) for i in self.isotopeMasses]
+        self.isotopeRedMasses = [i*self.refmass/(i-self.refmass) for i in self.isotopeMasses]
         self.chargeradii = [(-self.a/self.isotopeRedMasses[i]+j)/self.b+self.c/self.isotopeRedMasses[i]
                             for i,j in enumerate(self.isotopeShifts)]
         self.chargeradiiStatErrs = [np.abs(i/self.b) for i in self.isotopeShiftStatErr]
@@ -254,12 +256,9 @@ class KingFitter(object):
                 x.append(int(str(i).split('_')[0]))
                 y.append(finalVals[i][0])
                 yerr.append(np.sqrt(np.square(finalVals[i][1])+np.square(finalVals[i][2])))
-                total_err = np.sqrt(np.square(finalVals[i][1])+np.square(finalVals[i][2]))
-                rel_err = np.abs(total_err / finalVals[i][0]) * 100
-                print('%s\t%.4f(%.0f)[%.0f]' % (i, finalVals[i][0],
-                                                        finalVals[i][1] * 10000,
-                                                        finalVals[i][2] * 10000))
-                # print(i, '\t', np.round(finalVals[i][0],3), '('+str(np.round(finalVals[i][1],3))+')')
+                #print(i, '\t', np.round(finalVals[i][0],3), '('+str(np.round(finalVals[i][1],3))+')' + '('+str(np.round(finalVals[i][2],3))+')')
+                #print("'"+str(i)+"'", ':[', np.round(finalVals[i][0],3), ','+ str(np.round(np.sqrt(finalVals[i][1]**2 + finalVals[i][2]**2),3))+'],')
+
             plt.subplots_adjust(bottom=0.2)
             plt.xticks(rotation=25)
             ax = plt.gca()

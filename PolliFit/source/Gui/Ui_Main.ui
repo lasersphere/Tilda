@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>642</width>
+    <width>651</width>
     <height>481</height>
    </rect>
   </property>
@@ -100,7 +100,7 @@
         <enum>QTabWidget::Rounded</enum>
        </property>
        <property name="currentIndex">
-        <number>7</number>
+        <number>5</number>
        </property>
        <widget class="CrawlerUi" name="crawler">
         <attribute name="title">
@@ -142,6 +142,11 @@
          <string>add Files</string>
         </attribute>
        </widget>
+       <widget class="AliveUi" name="Alive_tab">
+        <attribute name="title">
+         <string>Alive</string>
+        </attribute>
+       </widget>
       </widget>
       <widget class="QPlainTextEdit" name="oOut">
        <property name="plainText">
@@ -160,7 +165,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>642</width>
+     <width>651</width>
      <height>21</height>
     </rect>
    </property>
@@ -213,6 +218,12 @@
    <class>AddFilesUi</class>
    <extends>QWidget</extends>
    <header>Gui.AddFilesUi</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>AliveUi</class>
+   <extends>QWidget</extends>
+   <header>Gui.AliveUi</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

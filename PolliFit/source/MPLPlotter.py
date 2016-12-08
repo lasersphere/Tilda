@@ -25,6 +25,12 @@ import Physics
 
 matplotlib.use('Qt5Agg')
 
+def AlivePlot(x_data, plotdata):
+    for data in plotdata:
+        plt.errorbar(x_data, data, yerr=2, fmt='o', linestyle ='-')
+    plt.ylabel('relative discrepancy [ppm]')
+    plt.xlabel('measurement number')
+
 
 def plot(*args):
     for a in args:
@@ -34,7 +40,7 @@ def plot(*args):
     plt.xlabel('Frequency [MHz]')
 
 
-def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True):
+def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True,fontsize_ticks=10):
     kepco = False
     if fit.meas.type == 'Kepco':
         x_in_freq = False
@@ -65,24 +71,28 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True):
     plt.errorbar(data[0], data[1], yerr=data[2], fmt='k.')
     plt.plot(plotdat[0], plotdat[1], color)
     ax1.get_xaxis().get_major_formatter().set_useOffset(False)
-
+    plt.xticks(fontsize=fontsize_ticks)
+    plt.yticks(fontsize=fontsize_ticks)
     if plot_residuals:
         ax2 = plt.axes([0.15, 0.1, 0.8, 0.2], sharex=ax1)
         plt.errorbar(data[0], fit.calcRes(), yerr=data[2], fmt='k.')
         ax2.get_xaxis().get_major_formatter().set_useOffset(False)
+        ax2.locator_params(axis='y', nbins=5)
 
-    plt.ylabel('residuals / a.u.')
-    ax1.set_ylabel('cts / a.u.')
+    plt.ylabel('residuals / a.u.', fontsize=fontsize_ticks)
+    ax1.set_ylabel('cts / a.u.', fontsize=fontsize_ticks)
     if x_in_freq:
-        plt.xlabel('relative frequency / MHz')
+        plt.xlabel('relative frequency / MHz', fontsize=fontsize_ticks, labelpad=fontsize_ticks/2)
     elif kepco:
-        plt.xlabel('Line Voltage / V')
+        plt.xlabel('Line Voltage / V', fontsize=fontsize_ticks, labelpad=fontsize_ticks)
     else:
-        plt.xlabel('Ion kinetic energy / eV')
+        plt.xlabel('Ion kinetic energy / eV', fontsize=fontsize_ticks)
     # print(plotdat[0][-2000:-100])
     # print(plotdat[1][-2000:-100])
     # print(data[1])
-    
+    plt.xticks(fontsize=fontsize_ticks)
+    plt.yticks(fontsize=fontsize_ticks)
+
 def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), showing = False, save_path='', ylabel=''):
     # avg, stat_err, sys_err = Analyzer.combineRes(iso, par, run, db, print_extracted=False)
     # val, errs, date = Analyzer.extract(iso, par, run, db, prin=False)
