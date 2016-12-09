@@ -11,6 +11,7 @@ import sqlite3
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 class KingFitter(object):
     '''
     The Kingfitter needs some (at least three) charge radii as input and calculates the kingfits and new charge radii
@@ -256,8 +257,7 @@ class KingFitter(object):
                 x.append(int(str(i).split('_')[0]))
                 y.append(finalVals[i][0])
                 yerr.append(np.sqrt(np.square(finalVals[i][1])+np.square(finalVals[i][2])))
-                #print(i, '\t', np.round(finalVals[i][0],3), '('+str(np.round(finalVals[i][1],3))+')' + '('+str(np.round(finalVals[i][2],3))+')')
-                #print("'"+str(i)+"'", ':[', np.round(finalVals[i][0],3), ','+ str(np.round(np.sqrt(finalVals[i][1]**2 + finalVals[i][2]**2),3))+'],')
+                # print('%s\t%.5f(%.0f)[%.0f]' % (i, finalVals[i][0], finalVals[i][1] * 100000, finalVals[i][2] * 100000))
 
             plt.subplots_adjust(bottom=0.2)
             plt.xticks(rotation=25)

@@ -32,10 +32,10 @@ def extract(iso, par, run, db, fileList=[], prin=True):
     print('Extracting', iso, par, )
     con = sqlite3.connect(db)
     cur = con.cursor()
-    
+
     cur.execute('''SELECT file, pars FROM FitRes WHERE iso = ? AND run = ? ORDER BY file''', (iso, run))
     fits = cur.fetchall()
-    if fileList:
+    if len(fileList):
         fits = [f for f in fits if f[0] in fileList]
     fitres = [eval(f[1]) for f in fits]
     files = [f[0] for f in fits]
@@ -94,8 +94,10 @@ def average(vals, errs):
     return (average, errorprop, rChi)
 
 
-def combineRes(iso, par, run, db, weighted = True, print_extracted=True, show_plot=False):
-    '''Calculate weighted average of par using the configuration specified in the db
+def combineRes(iso, par, run, db, weighted=True, print_extracted=True,
+               show_plot=False, only_this_files=[], write_to_db=True):
+    '''
+    Calculate weighted average of par using the configuration specified in the db
     :rtype : object
     '''
     print('Open DB', db)
@@ -105,14 +107,18 @@ def combineRes(iso, par, run, db, weighted = True, print_extracted=True, show_pl
     
     cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', (iso, par, run))
     con.commit()
-    
-    cur.execute('''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ?''', (iso, par, run))
+    cur.execute(
+        '''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ?''',
+        (iso, par, run))
     (config, statErrForm, systErrForm) = cur.fetchall()[0]
     config = ast.literal_eval(config)
-    
+
+    if len(only_this_files):
+        config = only_this_files
+
     print('Combining', iso, par)
     vals, errs, date, files = extract(iso, par, run, db, config, prin=print_extracted)
-    
+
     if weighted:
         avg, err, rChi = weightedAverage(vals, errs)
     else:
@@ -128,29 +134,31 @@ def combineRes(iso, par, run, db, weighted = True, print_extracted=True, show_pl
     print('Systematic error formula:', systErrForm)
     print('Combined to', iso, par, '=')
     print(str(avg) + '(' + str(statErr) + ')[' + str(systErr) + ']')
-    
-    cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
-        WHERE iso = ? AND parname = ? AND run = ?''', (avg, statErr, systErr, rChi, iso, par, run))
-
-    con.commit()
+    if write_to_db:
+        cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
+            WHERE iso = ? AND parname = ? AND run = ?''', (avg, statErr, systErr, rChi, iso, par, run))
+        con.commit()
     con.close()
-    plt.clear()
+    plt.clear()  # TODO necessary call??
     combined_plots_dir = os.path.join(os.path.split(db)[0], 'combined_plots')
+    if not os.path.exists(combined_plots_dir):
+        os.mkdir(combined_plots_dir)
     avg_fig_name = os.path.join(combined_plots_dir, iso + '_' + run + '_' + par + '.png')
     plotdata = (date, vals, errs, avg, statErr, systErr, ('k.', 'r'),
                 False, avg_fig_name, '%s_%s_%s [MHz]' % (iso, par, run))
-    plt.plotAverage(*plotdata)
+    ax = plt.plotAverage(*plotdata)
     print('saving average plot to: ', avg_fig_name)
     plt.save(avg_fig_name)
     if show_plot:
         plt.show(True)
-    plt.clear()
+    else:
+        plt.clear()
 
     print('date \t file \t val \t err')
     for i, dt in enumerate(date):
         print(dt, '\t', files[i], '\t', vals[i], '\t', errs[i])
 
-    return (avg, statErr, systErr, plotdata)
+    return avg, statErr, systErr, rChi, plotdata, ax
 
 
 def combineShift(iso, run, db, show_plot=False):
