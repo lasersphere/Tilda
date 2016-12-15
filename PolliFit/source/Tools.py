@@ -265,7 +265,7 @@ def extract_from_combined(runs_list, db, isotopes=None, par='shift', print_extra
     :param runs_list: list, of strings with the name of the runs that should be extracted
     :param isotopes: list, of strings, with the isotopes that should be extracted
     :param par: str, parameter name, that should be extracted
-    :return: dict, {'run_name': {'iso_name_1': (run, val, statErr, rChi), ...}}
+    :return: dict, {'run_name': {'iso_name_1': (run, val, statErr, systErr, rChi), ...}}
     """
     result_dict = {}
     if runs_list == -1:
@@ -301,4 +301,9 @@ def extract_from_combined(runs_list, db, isotopes=None, par='shift', print_extra
             print('run\tiso\t%s result\tstatErr\tsystErr\trChi' % par)
             for isot, vals in sorted(run_results_dicts.items()):
                 print('%s\t%.5f\t%.5f\t%.5f\t%.5f' % (isot, vals[0], vals[1], vals[2], vals[3]))
+        for sel_run, run_results_dicts in sorted(result_dict.items()):
+            print('--- \t%s\t%s\t ---' % (sel_run, par))
+            print('iso\t%s result(statErr)[systErr]\trChi' % par)
+            for isot, vals in sorted(run_results_dicts.items()):
+                print('%s\t%.3f(%.0f)[%.0f]\t%.2f' % (isot, vals[0], vals[1] * 1000, vals[2] * 1000, vals[3]))
     return result_dict

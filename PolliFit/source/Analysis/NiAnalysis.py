@@ -58,8 +58,8 @@ literature_shifts = {
     '62_Ni': (iso_sh_freq['60-62'][0], iso_sh_freq['60-62'][1]),
     '64_Ni': (mean_is_64[0], mean_is_64[1])
 }
-print('literatur shifts from A. Steudel (1980) in MHz:')
-[print(key, val[0], val[1]) for key, val in sorted(literature_shifts.items())]
+# print('literatur shifts from A. Steudel (1980) in MHz:')
+# [print(key, val[0], val[1]) for key, val in sorted(literature_shifts.items())]
 
 
 ''' literature radii '''
@@ -102,10 +102,10 @@ delta_lit_radii = {iso: [
     np.sqrt(lit_vals[1] ** 2 + lit_radii['60_Ni'][1] ** 2)]
                    for iso, lit_vals in sorted(lit_radii.items())}
 delta_lit_radii.pop('60_Ni')
-print('iso\t<r^2>^{1/2}_{0µe}\t\Delta<r^2>^{1/2}_{0µe}\t<r^2>^{1/2}_{0µe}(A-A_{60})\t\Delta <r^2>^{1/2}_{0µe}(A-A_{60})')
-for iso, radi in sorted(lit_radii.items()):
-    dif = delta_lit_radii.get(iso, (0, 0))
-    print('%s\t%.3f\t%.3f\t%.5f\t%.5f' % (iso, radi[0], radi[1], dif[0], dif[1]))
+# print('iso\t<r^2>^{1/2}_{0µe}\t\Delta<r^2>^{1/2}_{0µe}\t<r^2>^{1/2}_{0µe}(A-A_{60})\t\Delta <r^2>^{1/2}_{0µe}(A-A_{60})')
+# for iso, radi in sorted(lit_radii.items()):
+#     dif = delta_lit_radii.get(iso, (0, 0))
+#     print('%s\t%.3f\t%.3f\t%.5f\t%.5f' % (iso, radi[0], radi[1], dif[0], dif[1]))
 
 
 ''' crawling '''
@@ -336,56 +336,85 @@ files_dict[isotopes[2]] = [each for each in files_dict[isotopes[2]] if 'contin' 
 #
 #
 # print('plotting now')
-# try:
-#     # isotopes.remove('69_Ni')
-#     # # isotopes.remove('67_Ni')
-#     # print(isotopes)
-#     # files = .extract_shifts(runs, isotopes=isotopes)
-#     # print('extracted shifts are are: % s' % files)
-#     #
-#     # print('iso\tshift [MHz]\tstatErr [Mhz]\trChi')
-#     # [print('%s\t%s\t%s\t%s' % (key, val[0], val[1], val[2])) for key, val in sorted(files[runs[0]].items())]
-#     #
-#     # print('\n\nfor Excel: \n\n')
-#     # print('iso\tshift [MHz]\tstatErr [Mhz]\trChi')
-#     # for key, val in sorted(files[runs[0]].items()):
-#     #     out_str = '%s\t%s\t%s\t%s' % (key, val[0], val[1], val[2])
-#     #     out_str = out_str.replace('.', ',')
-#     #     print(out_str)
-#     # print('\n\n\niso\tAu\td_Au\tAl\td_Al\tAu/Al\td_Au/Al')
-#     # a_fac_runs = [runs[0], 'narrow_gate_67_Ni']
-#     # al = extract_shifts(a_fac_runs, isotopes, 'Al')
-#     # au = extract_shifts(a_fac_runs, isotopes, 'Au')
-#     # ratios = []
-#     # d_ratios = []
-#     # for run in a_fac_runs:
-#     #     for iso, a_low in sorted(al[run].items()):
-#     #         if a_low[0]:
-#     #             a_up = au[run][iso]
-#     #             ratio = a_up[0] / a_low[0]
-#     #             delta_ratio = np.sqrt(
-#     #                 (a_up[1]/a_low[0]) ** 2 + (a_up[0] * a_low[1] / (a_low[0] ** 2)) ** 2
-#     #             )
-#     #             ratios.append(ratio)
-#     #             d_ratios.append(delta_ratio)
-#     #             print('%s\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f' % (
-#     #                 iso, a_up[0], a_up[1], a_low[0], a_low[1], ratio, delta_ratio))
-#     # average, errorprop, rChi = Analyzer.weightedAverage(ratios, d_ratios)
-#     # print('\nAverage Au/Al: %.5f +/- %.5f \t rChi: %.5f' % (average, errorprop, rChi))
-#     # MPLPlotter.plt.errorbar(range(59, 69, 2), ratios, d_ratios)
-#     # MPLPlotter.get_current_axes().set_xlabel('mass')
-#     # MPLPlotter.get_current_axes().set_ylabel('A_upper/A_lower')
-#     # literature_shifts = {iso: (0, 0) for iso in isotopes}
-#     # plot_par_from_combined(['narrow_gate'], files)
-#     # MPLPlotter.show(True)
-#     MPLPlotter.plot_par_from_combined(
-#         db,
-#         -1, isotopes,
-#         'shift', plot_runs_seperate=False
-#     )
-#     pass
-# except Exception as e:
-#     print('plotting did not work, error is: %s' % e)
+
+try:
+    # isotopes.remove('69_Ni')
+    # isotopes.remove('67_Ni')
+    # print(isotopes)
+    # files = Tools.fileList(runs, isotopes=isotopes)
+    # print('extracted shifts are are: % s' % files)
+    #
+    # print('iso\tshift [MHz]\tstatErr [Mhz]\trChi')
+    # [print('%s\t%s\t%s\t%s' % (key, val[0], val[1], val[2])) for key, val in sorted(files[runs[0]].items())]
+    #
+    # print('\n\nfor Excel: \n\n')
+    # print('iso\tshift [MHz]\tstatErr [Mhz]\trChi')
+    # for key, val in sorted(files[runs[0]].items()):
+    #     out_str = '%s\t%s\t%s\t%s' % (key, val[0], val[1], val[2])
+    #     out_str = out_str.replace('.', ',')
+    #     print(out_str)
+    # print('\n\n\niso\tAu\td_Au\tAl\td_Al\tAu/Al\td_Au/Al')
+    a_fac_runs = [runs[0], 'narrow_gate_67_Ni']
+    odd_isotopes = [iso for iso in isotopes if int(iso[:2]) % 2]
+
+    al = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Al', print_extracted=False)
+    au = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Au', print_extracted=False)
+    bl = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Bl', print_extracted=False)
+    bu = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Bu', print_extracted=False)
+    ratios = []
+    d_ratios = []
+    print('iso\tAu [MHz]\trChi Au\tAl [MHz]\trChi Al\tAu/Al\td_Au/Al\tBu [MHz]\trChi Bu\tBl [MHz]\trChi Bl\tBu/Bl\td_Bu/Bl')
+    for run in a_fac_runs:
+        for iso, a_low in sorted(al[run].items()):
+            if a_low[0]:
+                a_up = au[run][iso]
+                b_up = bu[run][iso]
+                b_low = bl[run][iso]
+                ratio = a_up[0] / a_low[0]
+                delta_ratio = np.sqrt(
+                    (a_up[1]/a_low[0]) ** 2 + (a_up[0] * a_low[1] / (a_low[0] ** 2)) ** 2
+                )
+                b_ratio = 0.0
+                delta_b_ratio = 0.0
+
+                b_up = [0.0 if each is None else each for each in b_up]
+                b_low = [0.0 if each is None else each for each in b_low]
+
+                if b_low[0]:
+                    b_ratio = b_up[0] / b_low[0]
+                    delta_b_ratio = np.sqrt(
+                        (b_up[1] / b_low[0]) ** 2 + (b_up[0] * b_low[1] / (b_low[0] ** 2)) ** 2
+                    )
+                ratios.append(ratio)
+                d_ratios.append(delta_ratio)
+                print('%s'
+                      '\t%.3f(%.0f)[%.0f]\t%.2f'
+                      '\t%.3f(%.0f)[%.0f]\t%.2f\t%.3f\t%.3f'
+                      '\t%.3f(%.0f)[%.0f]\t%.2f'
+                      '\t%.3f(%.0f)[%.0f]\t%.2f\t%.3f\t%.3f' % (
+                    iso, 
+                    a_up[0], a_up[1] * 1000, a_up[2] * 1000, a_up[3],
+                    a_low[0], a_low[1] * 1000, a_low[2] * 1000, a_low[3], ratio, delta_ratio,
+                    b_up[0], b_up[1] * 1000, b_up[2] * 1000, b_up[3],
+                    b_low[0], b_low[1] * 1000, b_low[2] * 1000, b_low[3], b_ratio, delta_b_ratio
+                ))
+    # average, errorprop, rChi = Analyzer.weightedAverage(ratios, d_ratios)
+    # print('\nAverage Au/Al: %.5f +/- %.5f \t rChi: %.5f' % (average, errorprop, rChi))
+    # MPLPlotter.plt.errorbar(range(59, 69, 2), ratios, d_ratios)
+    # MPLPlotter.get_current_axes().set_xlabel('mass')
+    # MPLPlotter.get_current_axes().set_ylabel('A_upper/A_lower')
+    # literature_shifts = {iso: (0, 0) for iso in isotopes}
+    # plot_par_from_combined(['narrow_gate'], files)
+    # MPLPlotter.show(True)
+    # MPLPlotter.plot_par_from_combined(
+    #     db,
+    #     -1, isotopes,
+    #     'Al', plot_runs_seperate=False
+    # )
+    # Tools.extract_from_combined(a_fac_runs, db, isotopes, par='Au', print_extracted=True)
+    pass
+except Exception as e:
+    print('plotting did not work, error is: %s' % e)
 #
 #
 # # print('------------------- Done -----------------')
@@ -393,7 +422,7 @@ files_dict[isotopes[2]] = [each for each in files_dict[isotopes[2]] if 'contin' 
 #
 # # print('\a')
 #
-
+# raise Exception
 ''' Fit on certain Files '''
 # searchterm = 'Run167'
 # certain_file = [file for file in ni60_files if searchterm in file][0]
@@ -437,7 +466,7 @@ files_dict[isotopes[2]] = [each for each in files_dict[isotopes[2]] if 'contin' 
 king = KingFitter(db, showing=True, litvals=delta_lit_radii)
 run = -1
 # isotopes = sorted(delta_lit_radii.keys())
-king.kingFit(alpha=0, findBestAlpha=False, run=run)
+king.kingFit(alpha=49, findBestAlpha=True, run=run)
 king.calcChargeRadii(isotopes=isotopes, run=run)
 
 #

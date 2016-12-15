@@ -134,6 +134,7 @@ def combineRes(iso, par, run, db, weighted=True, print_extracted=True,
     print('Systematic error formula:', systErrForm)
     print('Combined to', iso, par, '=')
     print(str(avg) + '(' + str(statErr) + ')[' + str(systErr) + ']')
+    print('Combined rounded to %s %s = %.3f(%.0f)[%.0f]' % (iso, par, avg, statErr * 1000, systErr * 1000))
     if write_to_db:
         cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
             WHERE iso = ? AND parname = ? AND run = ?''', (avg, statErr, systErr, rChi, iso, par, run))
