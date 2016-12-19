@@ -77,13 +77,21 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.tres_plt_item = None
         self.spec_data = None  # spec_data to work on.
         self.new_track_no_data_yet = False  # set this to true when new track is setup
+
+        self.graph_font_size = int(14)
+
         ''' connect callbacks: '''
         # bundle callbacks:
         self.subscribe_as_live_plot = subscribe_as_live_plot
         self.callbacks = (self.new_data_callback, self.new_track_callback,
-                          self.save_request, self.new_gate_or_soft_bin_width,
-                          )
+                          self.save_request, self.new_gate_or_soft_bin_width)
         self.subscribe_to_main()
+
+        ''' key press '''
+        QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Up), self,
+                            functools.partial(self.raise_graph_fontsize, True))
+        QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Down), self,
+                            functools.partial(self.raise_graph_fontsize, False))
 
         ''' sum related '''
         self.add_sum_plot()
@@ -159,6 +167,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.show_progress_shortcut.activated.connect(self.show_progress)
         self.actionProgress.triggered.connect(self.show_progress)
 
+        ''' font size graphs '''
+        self.actionGraph_font_size.triggered.connect(self.get_graph_fontsize)
+
     def show_progress(self):
         self.dockWidget.setVisible(not self.dockWidget.isVisible())
 
@@ -187,7 +198,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.sum_proj_plt_itm.getAxis('right').linkToView(self.v_proj_view_box)
         self.v_proj_view_box.setXLink(self.sum_proj_plt_itm)
         self.sum_proj_plt_itm.getAxis('right').setLabel('cts', color='k')
-        self.sum_proj_plt_itm.getAxis('left').setLabel('sum', color='#0000ff')
+        pen = Pg.pg.mkPen(color='#0000ff', width=1)  # make the sum label and tick blue
+        self.sum_proj_plt_itm.getAxis('left').setPen(pen)
         self.updateViews()
         self.sum_proj_plt_itm.vb.sigResized.connect(self.updateViews)
 
@@ -257,6 +269,55 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.tres_sel_sc_ind, self.tres_sel_sc_name = rcv_tpl[1]
         self.new_track_no_data_yet = True
         # need to reset stuff here if number of steps have changed.
+
+    ''' plot font size change etc. '''
+
+    def get_graph_fontsize(self):
+        try:
+            dial = QtWidgets.QInputDialog(self)
+            font_size_int, ok = QtWidgets.QInputDialog.getInt(dial, 'set the font size of the graphs',
+                                                              'font size (pt)', self.graph_font_size, 0, 80)
+            print('font size is: %s' % font_size_int)
+            if ok:
+                self.change_font_size_all_graphs(font_size_int)
+                self.graph_font_size = font_size_int
+        except Exception as e:
+            print('error while getting font size: %s' % e)
+
+    def change_font_size_all_graphs(self, font_size):
+        plots = [
+            self.sum_plt_itm, self.sum_proj_plt_itm, self.t_proj_plt_itm, self.tres_plt_item
+        ]
+        plots += [each['pltItem'] for each in self.all_pmts_widg_plt_item_list]
+        font = QtGui.QFont()
+        font.setPixelSize(font_size)
+        for plot in plots:
+            for ax in ['left', 'bottom', 'top', 'right']:
+                axis = plot.getAxis(ax)
+                axis.tickFont = font
+                axis.setStyle(tickTextOffset=int(font_size - 5))
+                axis.label.setFont(font)
+
+        axis = self.tres_widg.getHistogramWidget().axis
+        axis.tickFont = font
+        axis.setStyle(tickTextOffset=int(font_size - 5))
+        axis.label.setFont(font)
+        self.label_x_coord.setFont(font)
+        self.label_2.setFont(font)
+        self.label_5.setFont(font)
+        self.label_y_coord.setFont(font)
+
+        self.label_x_coord_all_pmts.setFont(font)
+        self.label_y_coor_all_pmts.setFont(font)
+        self.label_7.setFont(font)
+        self.label_8.setFont(font)
+
+    def raise_graph_fontsize(self, up_or_down_bool):
+        if up_or_down_bool:  # increase
+            self.graph_font_size += 1
+        else:  # decrease
+            self.graph_font_size -= 1
+        self.change_font_size_all_graphs(self.graph_font_size)
 
     ''' receive and plot new incoming data '''
 

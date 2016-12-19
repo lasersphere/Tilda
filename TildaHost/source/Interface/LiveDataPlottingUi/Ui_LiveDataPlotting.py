@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtWidgets
 class Ui_MainWindow_LiveDataPlotting(object):
     def setupUi(self, MainWindow_LiveDataPlotting):
         MainWindow_LiveDataPlotting.setObjectName("MainWindow_LiveDataPlotting")
-        MainWindow_LiveDataPlotting.resize(955, 600)
+        MainWindow_LiveDataPlotting.resize(1023, 600)
         self.centralwidget = QtWidgets.QWidget(MainWindow_LiveDataPlotting)
         self.centralwidget.setObjectName("centralwidget")
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout(self.centralwidget)
@@ -268,18 +268,24 @@ class Ui_MainWindow_LiveDataPlotting(object):
         self.dockWidget.setWidget(self.widget_progress)
         MainWindow_LiveDataPlotting.addDockWidget(QtCore.Qt.DockWidgetArea(2), self.dockWidget)
         self.menuBar = QtWidgets.QMenuBar(MainWindow_LiveDataPlotting)
-        self.menuBar.setGeometry(QtCore.QRect(0, 0, 955, 21))
+        self.menuBar.setGeometry(QtCore.QRect(0, 0, 1023, 21))
         self.menuBar.setObjectName("menuBar")
         self.menuView = QtWidgets.QMenu(self.menuBar)
         self.menuView.setObjectName("menuView")
+        self.menuEdit = QtWidgets.QMenu(self.menuBar)
+        self.menuEdit.setObjectName("menuEdit")
         MainWindow_LiveDataPlotting.setMenuBar(self.menuBar)
         self.actionProgress = QtWidgets.QAction(MainWindow_LiveDataPlotting)
         self.actionProgress.setObjectName("actionProgress")
+        self.actionGraph_font_size = QtWidgets.QAction(MainWindow_LiveDataPlotting)
+        self.actionGraph_font_size.setObjectName("actionGraph_font_size")
         self.menuView.addAction(self.actionProgress)
+        self.menuEdit.addAction(self.actionGraph_font_size)
         self.menuBar.addAction(self.menuView.menuAction())
+        self.menuBar.addAction(self.menuEdit.menuAction())
 
         self.retranslateUi(MainWindow_LiveDataPlotting)
-        self.tabWidget.setCurrentIndex(2)
+        self.tabWidget.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(MainWindow_LiveDataPlotting)
 
     def retranslateUi(self, MainWindow_LiveDataPlotting):
@@ -320,5 +326,7 @@ class Ui_MainWindow_LiveDataPlotting(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_all_pmts), _translate("MainWindow_LiveDataPlotting", "all pmts"))
         self.dockWidget.setWindowTitle(_translate("MainWindow_LiveDataPlotting", "progress"))
         self.menuView.setTitle(_translate("MainWindow_LiveDataPlotting", "view"))
+        self.menuEdit.setTitle(_translate("MainWindow_LiveDataPlotting", "edit"))
         self.actionProgress.setText(_translate("MainWindow_LiveDataPlotting", "progress"))
+        self.actionGraph_font_size.setText(_translate("MainWindow_LiveDataPlotting", "graph font size"))
 
