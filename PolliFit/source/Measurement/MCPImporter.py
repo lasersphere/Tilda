@@ -34,6 +34,7 @@ class MCPImporter(SpecData):
         self.nrTracks = 0
         self.nrSteps = 0
         self.offset = 0
+        self.offset_by_dev = {}  # dict of all devs and there mean values
         self.cts = []
         self.activePMTlist = []
         self.err = np.array([[]])
@@ -91,6 +92,7 @@ class MCPImporter(SpecData):
                     if offsetDevice in volts[1]:
                         agilent = np.mean(volts[0][volts[1].index(offsetDevice)])
                         self.offset = np.mean([prema, agilent])
+                        self.offset_by_dev = {'prema': prema, 'agilent': agilent}
                     else:
                         self.offset = prema
                 else:
@@ -161,8 +163,17 @@ class MCPImporter(SpecData):
             self.voltDivRatio = ast.literal_eval(self.voltDivRatio)
             for trackindex, tracks in enumerate(self.x):
                 for xindex, x in enumerate(tracks):
-                    scanvolt = (self.lineMult * x + self.lineOffset + self.offset) * self.voltDivRatio['offset']
-                    self.x[trackindex][xindex]= self.accVolt*self.voltDivRatio['accVolt'] - scanvolt
+                    if isinstance(self.voltDivRatio['offset'], float):  # just one number
+                        scanvolt = (self.lineMult * x + self.lineOffset + self.offset) * self.voltDivRatio['offset']
+                    else:  # offset should be a dictionary than
+                        vals = list(self.voltDivRatio['offset'].values())
+                        mean_offset_div_ratio = np.mean(vals)
+                        # treat each offset with its own divider ratio
+                        mean_offset = np.mean([val * self.offset_by_dev[key] for key, val in
+                                               self.voltDivRatio['offset'].items()])
+                        scanvolt = (self.lineMult * x + self.lineOffset) * mean_offset_div_ratio + mean_offset
+                    self.x[trackindex][xindex] = self.accVolt*self.voltDivRatio['accVolt'] - scanvolt
+
             '''If the numbers of scans for the tracks are different, it will be normed to the minimal number of scans:'''
             # print(self.x)
             # print(self.cts)

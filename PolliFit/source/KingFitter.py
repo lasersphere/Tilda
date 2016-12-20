@@ -252,12 +252,12 @@ class KingFitter(object):
             x = []
             y = []
             yerr = []
-            print('iso\tδ<r^2>[fm^2](Δ_statδ<r^2>[fm^2])[Δ_systδ<r^2>[fm^2]]')
+            # print('iso\tδ<r^2>[fm^2](Δ_statδ<r^2>[fm^2])[Δ_systδ<r^2>[fm^2]]')
             for i in keyVals:
                 x.append(int(str(i).split('_')[0]))
                 y.append(finalVals[i][0])
                 yerr.append(np.sqrt(np.square(finalVals[i][1])+np.square(finalVals[i][2])))
-                # print('%s\t%.5f(%.0f)[%.0f]' % (i, finalVals[i][0], finalVals[i][1] * 100000, finalVals[i][2] * 100000))
+                print('%s\t%.5f(%.0f)[%.0f]' % (i, finalVals[i][0], finalVals[i][1] * 100000, finalVals[i][2] * 100000))
 
             plt.subplots_adjust(bottom=0.2)
             plt.xticks(rotation=25)
@@ -267,7 +267,6 @@ class KingFitter(object):
             plt.errorbar(x, y, yerr, fmt='k.')
             ax.set_xmargin(0.05)
             plt.show()
-
 
         return finalVals
 

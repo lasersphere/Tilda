@@ -29,7 +29,7 @@ def getFiles(iso, run, db):
 
 def extract(iso, par, run, db, fileList=[], prin=True):
     '''Return a list of values of par of iso, filtered by files in fileList'''
-    print('Extracting', iso, par, )
+    print('Extracting', iso, par, run)
     con = sqlite3.connect(db)
     cur = con.cursor()
 
@@ -116,7 +116,7 @@ def combineRes(iso, par, run, db, weighted=True, print_extracted=True,
     if len(only_this_files):
         config = only_this_files
 
-    print('Combining', iso, par)
+    print('Combining', iso, par, run)
     vals, errs, date, files = extract(iso, par, run, db, config, prin=print_extracted)
 
     if weighted:
@@ -173,7 +173,7 @@ def combineShift(iso, run, db, show_plot=False):
     (config, statErrForm, systErrForm) = cur.fetchall()[0]
     '''config needs to have this shape: [(['dataREF1.*','dataREF2.*',...],['dataINTERESTING1.*','dataINT2.*',...],['dataREF4.*',...]), ([...],[...],[...]), ...]'''
     config = ast.literal_eval(config)
-    print('Combining', iso, 'shift')
+    print('Combining', iso, 'shift', run)
     
     cur.execute('''SELECT Lines.reference, lines.refRun FROM Runs JOIN Lines ON Runs.lineVar = Lines.lineVar WHERE Runs.run = ?''', (run,))
     (ref, refRun) = cur.fetchall()[0]
@@ -183,7 +183,7 @@ def combineShift(iso, run, db, show_plot=False):
     dateIso = []
     for block in config:
         if block[0]:
-            preVals, preErrs, date, files = extract(ref,'center',refRun,db,block[0])
+            preVals, preErrs, date, files = extract(ref, 'center', refRun, db, block[0])
             preVal, preErr, preRChi = weightedAverage(preVals, preErrs)
             preErr = applyChi(preErr, preRChi)
             preErr = np.absolute(preErr)
@@ -191,11 +191,11 @@ def combineShift(iso, run, db, show_plot=False):
             preVal = 0
             preErr = 0
 
-        intVals, intErrs, date, files = extract(iso,'center',run,db,block[1])
+        intVals, intErrs, date, files = extract(iso, 'center', run, db, block[1])
         [dateIso.append(i) for i in date]
 
         if block[2]:
-            postVals, postErrs, date, files = extract(ref,'center',refRun,db,block[2])
+            postVals, postErrs, date, files = extract(ref, 'center', refRun, db, block[2])
             postVal, postErr, postRChi = weightedAverage(postVals, postErrs)
             postErr = np.absolute(applyChi(postErr, postRChi))
         else:
@@ -208,8 +208,8 @@ def combineShift(iso, run, db, show_plot=False):
         else:
             refMean = (preVal + postVal)/2
 
-        if preVal == 0 or postVal == 0 or np.absolute(preVal-postVal) < np.max([preErr,postErr]):
-            errMean = np.sqrt(preErr**2+ postErr**2)
+        if preVal == 0 or postVal == 0 or np.absolute(preVal-postVal) < np.max([preErr, postErr]):
+            errMean = np.sqrt(preErr**2 + postErr**2)
         else:
             errMean = np.absolute(preVal-postVal)
         shifts.extend([x - refMean for x in intVals])
@@ -263,10 +263,14 @@ def shiftErr(iso, run, db, accVolt_d, offset_d, syst=0):
     cur.execute('''SELECT offset, accVolt, voltDivRatio FROM Files WHERE type = ?''', (iso,))
     (offset, accVolt, voltDivRatio) = cur.fetchall()[0]
     voltDivRatio = ast.literal_eval(voltDivRatio)
-    offset = np.abs(offset)*voltDivRatio['offset']
+    if isinstance(voltDivRatio['offset'], float):
+        mean_offset_div_ratio = voltDivRatio['offset']
+    else:  # if the offsetratio is not a float it is supposed to be a dict.
+        mean_offset_div_ratio = np.mean(list(voltDivRatio['offset'].values()))
+    offset = np.abs(offset) * mean_offset_div_ratio
     cur.execute('''SELECT offset FROM Files WHERE type = ?''', (ref,))
     (refOffset,) = cur.fetchall()[0]    
-    accVolt = np.absolute(refOffset)*voltDivRatio['offset']+accVolt*voltDivRatio['accVolt']
+    accVolt = np.absolute(refOffset) * mean_offset_div_ratio + accVolt*voltDivRatio['accVolt']
 
     fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
     print('systematic error inputs caused by error of...\n...acc Voltage:',
@@ -296,7 +300,11 @@ def avgErr(iso, db, avg, par, accVolt_d, offset_d, syst=0):
     cur.execute('''SELECT Jl, Ju FROM Lines''')
     (jL, jU) = cur.fetchall()[0]
     voltDivRatio = ast.literal_eval(voltDivRatio)
-    accVolt = accVolt*voltDivRatio['accVolt'] - offset*voltDivRatio['offset']
+    if isinstance(voltDivRatio['offset'], float):
+        mean_offset_div_ratio = voltDivRatio['offset']
+    else:  # if the offsetratio is not a float it is supposed to be a dict.
+        mean_offset_div_ratio = np.mean(voltDivRatio['offset'].values())
+    accVolt = accVolt*voltDivRatio['accVolt'] - offset * mean_offset_div_ratio
     cF = 1
     '''
     for the A- and B-Factor, the (energy-) distance of the peaks
@@ -324,7 +332,10 @@ def avgErr(iso, db, avg, par, accVolt_d, offset_d, syst=0):
     print('frequency between left and right edge:', distance)
     distance = distance/Physics.diffDoppler(nu0, accVolt, mass)
     print('voltage between left and right edge:', distance)
-    fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
-    return np.sqrt(np.square(fac*(np.absolute(0.5*(distance/accVolt)*(accVolt_d))+np.absolute(distance*offset_d/accVolt)
-                                  +np.absolute(mass_d/mass)))+ np.square(syst))/cF_dist
-                                  #The uncertainty on the A- & B-Factors needs to be scaled down again
+    fac = nu0 * np.sqrt(Physics.qe * accVolt / (2 * mass * Physics.u * Physics.c ** 2))
+    return np.sqrt(
+        np.square(fac * (np.absolute(0.5*(distance/accVolt) * accVolt_d) +
+                         np.absolute(distance*offset_d/accVolt) +
+                         np.absolute(mass_d/mass))) +
+        np.square(syst)) /cF_dist
+        #The uncertainty on the A- & B-Factors needs to be scaled down again

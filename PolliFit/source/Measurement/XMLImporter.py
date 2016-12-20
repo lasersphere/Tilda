@@ -47,6 +47,8 @@ class XMLImporter(SpecData):
         self.version = scandict['isotopeData']['version']
         self.dac_calibration_measurement = False
 
+        self.offset_by_dev = {}  # dict for a list off measured offset voltages key is devie name
+
         if 'AD5781' in self.type or 'ad5781' in self.type or 'dac_calibration' in self.type:
             print('--------------------------WARNING----------------------------------\n'
                   'XMLIMporter assumes this a calibration measurement of the DAC,\n'
@@ -67,14 +69,18 @@ class XMLImporter(SpecData):
             offset = []
             acc_volt = []
             for dmm_name, dmm_dict in dmms_dict.items():
+                self.offset_by_dev[dmm_name] = []
                 for key, val in dmm_dict.items():
                     if key == 'preScanRead':
                         if isinstance(val, str):
                             val = float(val)
                         if dmm_dict.get('assignment') == 'offset':
                             offset.append(val)
+                            self.offset_by_dev[dmm_name].append(val)
                         elif dmm_dict.get('assignment') == 'accVolt':
                             acc_volt.append(val)
+                if len(self.offset_by_dev[dmm_name]):
+                    self.offset_by_dev[dmm_name] = np.mean(self.offset_by_dev[dmm_name])
             if len(offset):
                 self.offset = np.mean(offset)
             if len(acc_volt):
@@ -223,7 +229,15 @@ class XMLImporter(SpecData):
                 raise Exception('XMLImporter: No DB-entry found!')
             self.voltDivRatio = ast.literal_eval(self.voltDivRatio)
             for tr_ind, track in enumerate(self.x):
-                scanvolt = (self.lineMult * self.x[tr_ind] + self.lineOffset + self.offset) * self.voltDivRatio['offset']
+                if isinstance(self.voltDivRatio['offset'], float):  # just one number
+                    scanvolt = (self.lineMult * self.x[tr_ind] + self.lineOffset + self.offset) * self.voltDivRatio['offset']
+                else:  # offset should be a dictionary than
+                    vals = list(self.voltDivRatio['offset'].values())
+                    mean_offset_div_ratio = np.mean(vals)
+                    # treat each offset with its own divider ratio
+                    mean_offset = np.mean([val * self.offset_by_dev.get(key, self.offset) for key, val in
+                                           self.voltDivRatio['offset'].items()])
+                    scanvolt = (self.lineMult * self.x[tr_ind] + self.lineOffset) * mean_offset_div_ratio + mean_offset
                 self.x[tr_ind] = self.accVolt * self.voltDivRatio['accVolt'] - scanvolt
             self.norming()
         elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.

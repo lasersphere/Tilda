@@ -8,6 +8,8 @@ Module Description:  Analysis of the Nickel Data from COLLAPS taken on 28.04.-03
 
 import math
 import os
+import sqlite3
+import ast
 
 import numpy as np
 
@@ -15,6 +17,9 @@ import Analyzer
 import Physics
 import Tools
 from KingFitter import KingFitter
+from InteractiveFit import InteractiveFit
+import BatchFit
+import MPLPlotter
 
 ''' working directory: '''
 
@@ -24,7 +29,7 @@ datafolder = os.path.join(workdir, 'Ni_April2016_mcp')
 
 db = os.path.join(workdir, 'Ni_workspace.sqlite')
 
-runs = ['narrow_gate', 'wide_gate']
+runs = ['narrow_gate', 'wide_gate', 'narrow_gate_67_Ni']
 runs = [runs[0]]
 
 isotopes = ['%s_Ni' % i for i in range(58, 71)]
@@ -60,7 +65,7 @@ literature_shifts = {
 }
 # print('literatur shifts from A. Steudel (1980) in MHz:')
 # [print(key, val[0], val[1]) for key, val in sorted(literature_shifts.items())]
-
+print(literature_shifts)
 
 ''' literature radii '''
 
@@ -134,30 +139,33 @@ delta_lit_radii.pop('60_Ni')
 # con.commit()
 # con.close()
 #
-# ''' volt div ratio: '''
-# volt_div_ratio = "{'accVolt': 1003.8, 'offset': 1003.7}"
-# con = sqlite3.connect(db)
-# cur = con.cursor()
-# cur.execute('''UPDATE Files SET voltDivRatio = ?''', (volt_div_ratio, ))
-# con.commit()
-# con.close()
+''' volt div ratio: '''
+volt_div_ratio = "{'accVolt': 1000.05, 'offset': {'prema': 1000.022, 'agilent': 999.985}}"
+# volt_div_ratio = "{'accVolt': 1000.05, 'offset': 1000.0}"
+con = sqlite3.connect(db)
+cur = con.cursor()
+cur.execute('''UPDATE Files SET voltDivRatio = ?''', (volt_div_ratio, ))
+con.commit()
+con.close()
 
 ''' diff doppler 60Ni 30kV'''
 diffdopp60 = Physics.diffDoppler(850343019.777062, 30000, 60)  # 14.6842867127 MHz/V
 
 ''' transition wavelenght: '''
 # observed_wavenum = 28364.39  # cm-1  observed wavenum from NIST, mass is unclear.
-transition_freq = 850342663.9020721  # final value, observed from voltage calibration
+# transition_freq = 850342663.9020721  # final value, observed from voltage calibration
+transition_freq = 850343019.777  # value from NIST, mass unclear
+
 # # transition_freq = Physics.freqFromWavenumber(observed_wavenum)
 # print('transition frequency: %s ' % transition_freq)
 #
-# transition_freq += 1256.32701  # correction from fitting the 60_Ni references
+transition_freq += 1256.32701  # correction from fitting the 60_Ni references
 #
-# con = sqlite3.connect(db)
-# cur = con.cursor()
-# cur.execute('''UPDATE Lines SET frequency = ?''', (transition_freq,))
-# con.commit()
-# con.close()
+con = sqlite3.connect(db)
+cur = con.cursor()
+cur.execute('''UPDATE Lines SET frequency = ?''', (transition_freq,))
+con.commit()
+con.close()
 
 ''' Batch fits '''
 selected_isos = ['65_Ni']
@@ -193,19 +201,22 @@ files_dict[isotopes[2]] = [each for each in files_dict[isotopes[2]] if 'contin' 
 
 ''' isotope shift '''
 # get all current configs:
+configs = {}
 # print('run \t iso \t val \t statErr \t rChi')
-# for iso in selected_isos:
-#     for run in runs:
-#         con = sqlite3.connect(db)
-#         cur = con.cursor()
-#         cur.execute('''SELECT config, val, statErr, rChi FROM Combined WHERE iso = ? AND run = ? AND parname = ? ''',
-#                     (iso, run, 'shift'))
-#         data = cur.fetchall()
-#         con.close()
-#         if len(data):
-#             config, val, statErr, rChi = data[0]
-#             print('%s \t %s \t %s \t %s \t %s \n %s' % (run, iso, val, statErr, rChi, config))
-#             print('\n')
+# runs = ['narrow_gate_67_Ni']
+
+for iso in isotopes:
+    for run in runs:
+        con = sqlite3.connect(db)
+        cur = con.cursor()
+        cur.execute('''SELECT config, val, statErr, rChi FROM Combined WHERE iso = ? AND run = ? AND parname = ? ''',
+                    (iso, run, 'shift'))
+        data = cur.fetchall()
+        con.close()
+        if len(data):
+            config, val, statErr, rChi = data[0]
+            # print('%s \t %s \t %s \t %s \t %s \n %s' % (run, iso, val, statErr, rChi, config))
+            configs[iso] = ast.literal_eval(config)
 
 # for iso in selected_isos:
 #     if iso != '60_Ni':
@@ -219,110 +230,127 @@ files_dict[isotopes[2]] = [each for each in files_dict[isotopes[2]] if 'contin' 
 
 
 ''' Divider Ratio Determination '''
-# acc_div_start = 1000.05
-# offset_div_start = 1000
-# configs = {}
+acc_div_start = 1000.05
+offset_div_start = 1000
 # get the relevant files which need to be fitted in the following:
-# div_ratio_relevant_stable_files = {}
-# div_ratio_relevant_stable_files['60_Ni'] = []
-# for iso, cfg in sorted(configs.items()):
-#     div_ratio_relevant_stable_files[iso] = []
-#     for each in cfg:
-#         [div_ratio_relevant_stable_files['60_Ni'].append(file) for file in each[0] if
-#          file not in div_ratio_relevant_stable_files['60_Ni']]
-#         [div_ratio_relevant_stable_files[iso].append(file) for file in each[1]]
-#         [div_ratio_relevant_stable_files['60_Ni'].append(file) for file in each[2] if
-#          file not in div_ratio_relevant_stable_files['60_Ni']]
-# div_ratio_relevant_stable_files['60_Ni'] = sorted(div_ratio_relevant_stable_files['60_Ni'])
-#
+div_ratio_relevant_stable_files = {}
+div_ratio_relevant_stable_files['60_Ni'] = []
+
+
+# for voltage divider ratio determination use only the ones with known references.
+# configs = {iso: cfg_sel for iso, cfg_sel in list(configs.items()) if iso in
+#            iso in list(literature_shifts.keys())}
+# configs.pop('60_Ni')
+
+for iso, cfg in sorted(configs.items()):
+    div_ratio_relevant_stable_files[iso] = []
+    for each in cfg:
+        [div_ratio_relevant_stable_files['60_Ni'].append(ref_before) for ref_before in each[0] if
+         ref_before not in div_ratio_relevant_stable_files['60_Ni']]
+        [div_ratio_relevant_stable_files[iso].append(file) for file in each[1]]
+        [div_ratio_relevant_stable_files['60_Ni'].append(ref_after) for ref_after in each[2] if
+         ref_after not in div_ratio_relevant_stable_files['60_Ni']]
+div_ratio_relevant_stable_files['60_Ni'] = sorted(div_ratio_relevant_stable_files['60_Ni'])
+
 # div_ratio_relevant_stable_files.pop('58_Ni')  # due to deviation of 58_Ni, do not fit this one.
-#
+
+# div_ratio_relevant_stable_files = {iso: files_sel for iso, files_sel in
+#                                    div_ratio_relevant_stable_files.items() if iso in list(literature_shifts.keys())}
+
 # print('number of resonances that will be fitted: %s' %
 #       float(sum([len(val) for key, val in div_ratio_relevant_stable_files.items()])))
-#
-#
+# for iso_name, files in sorted(div_ratio_relevant_stable_files.items()):
+#     print(iso_name, files)
+#     if iso_name == '60_Ni':
+#         BatchFit.batchFit(files, db, 'narrow_gate')  # refRun
+#     else:
+#         BatchFit.batchFit(files, db, runs[0])
+
+# raise Exception
+
 # Analyzer.combineRes('60_Ni', 'sigma', runs[0], db, print_extracted=True, show_plot=True)
-#
-#
-# def chi_square_finder(acc_dev_list, off_dev_list):
-#     offset_div_ratios = [[]]
-#     acc_ratios = []
-#     run_chi_finder = runs[0]
-#     fit_res = [[]]
-#     chisquares = [[]]
-#     acc_vol_ratio_index = 0
-#     for acc in acc_dev_list:
-#         current_acc_div = acc_div_start + acc / 100
-#         freq = -442.4 * acc / 100 - 9.6  # value found by playing with gui
-#         freq += transition_freq
-#         # freq = transition_freq
-#         print('setting transition Frequency to: %s ' % freq)
-#         acc_ratios.append(current_acc_div)
-#
-#         for off in off_dev_list:
-#
-#             freq_correction = 17.82 * off / 100 - 9.536  # determined for the region around acc_div = 1000.05
-#             new_freq = freq + freq_correction
-#
-#             curent_off_div = offset_div_start + off / 100
-#
-#             con = sqlite3.connect(db)
-#             cur = con.cursor()
-#             divratio = str({'accVolt': current_acc_div, 'offset': curent_off_div})
-#             cur.execute('''UPDATE Files SET voltDivRatio = ? ''', (divratio,))
-#             cur.execute('''UPDATE Lines SET frequency = ?''', (new_freq,))
-#             con.commit()
-#             con.close()
-#
-#             # Batchfitting:
-#             fitres = [(iso, run_chi_finder, BatchFit.batchFit(files, db, run_chi_finder)[1])
-#                       for iso, files in sorted(div_ratio_relevant_stable_files.items())]
-#
-#             # combineRes only when happy with voltdivratio, otherwise no use...
-#             # [[Analyzer.combineRes(iso, par, run, db) for iso in stables] for par in pars]
-#             try:
-#                 shifts = {iso: Analyzer.combineShift(iso, run_chi_finder, db) for iso in stables if iso not in ['58_Ni', '60_Ni']}
-#             except Exception as e:
-#                 shifts = {}
-#                 print(e)
-#
-#             # calc red. Chi ** 2:
-#             chisq = 0
-#             for iso, shift_tuple in shifts.items():
-#                 iso_shift_err = np.sqrt(np.square(shift_tuple[3]) + np.square(literature_shifts[iso][1]))
-#                 iso_chisq = np.square((shift_tuple[2] - literature_shifts[iso][0]) / iso_shift_err)
-#                 print('iso: %s chi sq: %s shift tuple: %s ' % (iso, iso_chisq, shift_tuple))
-#                 chisq += iso_chisq
-#             chisquares[acc_vol_ratio_index].append(float(chisq))
-#             fit_res[acc_vol_ratio_index].append(fitres)
-#             offset_div_ratios[acc_vol_ratio_index].append(curent_off_div)
-#
-#         acc_vol_ratio_index += 1
-#         chisquares.append([])
-#         fit_res.append([])
-#         offset_div_ratios.append([])
-#     chisquares = chisquares[:-1]  # delete last empty list in order not to confuse.
-#     fit_res = fit_res[:-1]
-#     offset_div_ratios = offset_div_ratios[:-1]
-#     print('acceleration voltage divider ratios: \n %s ' % str(acc_ratios))
-#     print('offset voltage divider ratios: \n %s ' % str(offset_div_ratios))
-#     print('Chi^2 are: \n %s ' % str(chisquares))
-#
-#     print(fit_res)
-#
-#     print('the following files failed during BatchFit: \n')
-#     for acc_volt_ind, each in enumerate(fit_res):
-#         print('for acc volt div ratio: %s' % acc_ratios[acc_volt_ind])
-#         for offset_volt_ind, inner_each in enumerate(each):
-#             [print(fit_res_tpl) for fit_res_tpl in inner_each if len(fit_res_tpl[2])]
-#     print('acc\toff\tchisquare')
-#     for acc_ind, acc_rat in enumerate(acc_ratios):
-#         for off_ind, off_rat in enumerate(offset_div_ratios[acc_ind]):
-#             print(('%s\t%s\t%s' % (acc_rat, off_rat, chisquares[acc_ind][off_ind])).replace('.', ','))
-#     return acc_ratios, offset_div_ratios, chisquares
-#
-#
-# acc_ratios, offset_div_ratios, chisquares = chi_square_finder([375], [370])
+
+
+def chi_square_finder(acc_dev_list, off_dev_list):
+    offset_div_ratios = [[]]
+    acc_ratios = []
+    run_chi_finder = runs[0]
+    fit_res = [[]]
+    chisquares = [[]]
+    acc_vol_ratio_index = 0
+    for acc in acc_dev_list:
+        current_acc_div = acc_div_start + acc / 100
+        freq = -442.4 * acc / 100 - 9.6  # value found by playing with gui
+        freq += transition_freq
+        # freq = transition_freq
+        print('setting transition Frequency to: %s ' % freq)
+        acc_ratios.append(current_acc_div)
+
+        for off in off_dev_list:
+
+            freq_correction = 17.82 * off / 100 - 9.536  # determined for the region around acc_div = 1000.05
+            new_freq = freq + freq_correction
+
+            curent_off_div = offset_div_start + off / 100
+
+            # con = sqlite3.connect(db)
+            # cur = con.cursor()
+            # divratio = str({'accVolt': current_acc_div, 'offset': curent_off_div})
+            # cur.execute('''UPDATE Files SET voltDivRatio = ? ''', (divratio,))
+            # cur.execute('''UPDATE Lines SET frequency = ?''', (new_freq,))
+            # con.commit()
+            # con.close()
+
+            # Batchfitting:
+            fitres = [(iso, run_chi_finder, BatchFit.batchFit(files, db, run_chi_finder)[1])
+                      for iso, files in sorted(div_ratio_relevant_stable_files.items())]
+
+            # combineRes only when happy with voltdivratio, otherwise no use...
+            # [[Analyzer.combineRes(iso, par, run, db) for iso in stables] for par in pars]
+            try:
+                shifts = {iso: Analyzer.combineShift(iso, run_chi_finder, db) for iso in
+                          stables if iso not in ['60_Ni']}
+            except Exception as e:
+                shifts = {}
+                print('error while combining shifts: %s' % e)
+
+            # calc red. Chi ** 2:
+            chisq = 0
+            for iso, shift_tuple in shifts.items():
+                iso_shift_err = max(np.sqrt(np.square(shift_tuple[3]) + np.square(literature_shifts[iso][1])), 1)
+                iso_chisq = np.square((shift_tuple[2] - literature_shifts[iso][0]) / iso_shift_err)
+                print('iso: %s chi sq: %s shift tuple: %s ' % (iso, iso_chisq, shift_tuple))
+                chisq += iso_chisq
+            chisquares[acc_vol_ratio_index].append(float(chisq))
+            # fit_res[acc_vol_ratio_index].append(fitres)
+            offset_div_ratios[acc_vol_ratio_index].append(curent_off_div)
+
+        acc_vol_ratio_index += 1
+        chisquares.append([])
+        fit_res.append([])
+        offset_div_ratios.append([])
+    chisquares = chisquares[:-1]  # delete last empty list in order not to confuse.
+    fit_res = fit_res[:-1]
+    offset_div_ratios = offset_div_ratios[:-1]
+    print('acceleration voltage divider ratios: \n %s ' % str(acc_ratios))
+    print('offset voltage divider ratios: \n %s ' % str(offset_div_ratios))
+    print('Chi^2 are: \n %s ' % str(chisquares))
+
+    print(fit_res)
+
+    print('the following files failed during BatchFit: \n')
+    for acc_volt_ind, each in enumerate(fit_res):
+        print('for acc volt div ratio: %s' % acc_ratios[acc_volt_ind])
+        for offset_volt_ind, inner_each in enumerate(each):
+            [print(fit_res_tpl) for fit_res_tpl in inner_each if len(fit_res_tpl[2])]
+    print('acc\toff\tchisquare')
+    for acc_ind, acc_rat in enumerate(acc_ratios):
+        for off_ind, off_rat in enumerate(offset_div_ratios[acc_ind]):
+            print(('%s\t%s\t%s' % (acc_rat, off_rat, chisquares[acc_ind][off_ind])).replace('.', ','))
+    return acc_ratios, offset_div_ratios, chisquares
+
+
+# acc_ratios, offset_div_ratios, chisquares = chi_square_finder([0], [0])
 #
 # the error for the voltage determination has been found to be:
 # 1.5 * 10 ** -4 for the accvolt ratio and the offset ratio
@@ -337,7 +365,28 @@ files_dict[isotopes[2]] = [each for each in files_dict[isotopes[2]] if 'contin' 
 #
 # print('plotting now')
 
+
+
+# try:
+#     shifts = {iso: Analyzer.combineShift(iso, 'narrow_gate', db) for iso in
+#               isotopes if iso not in ['67_Ni', '60_Ni']}
+# except Exception as e:
+#     shifts = {}
+#     print('error while combining shifts: %s' % e)
+
+# try:
+#     shifts = {iso: Analyzer.combineShift(iso, 'narrow_gate_67_Ni', db) for iso in
+#               ['67_Ni']}
+# except Exception as e:
+#     shifts = {}
+#     print('error while combining shifts of 67_Ni: %s' % e)
+
+
 try:
+    # print(literature_shifts)
+    # MPLPlotter.plot_par_from_combined(db, runs, list(literature_shifts.keys()), 'shift',
+    #                                   literature_dict=literature_shifts,
+    #                                   literature_name='A. Steudel (1980)')
     # isotopes.remove('69_Ni')
     # isotopes.remove('67_Ni')
     # print(isotopes)
@@ -426,7 +475,7 @@ except Exception as e:
 ''' Fit on certain Files '''
 # searchterm = 'Run167'
 # certain_file = [file for file in ni60_files if searchterm in file][0]
-# fit = InteractiveFit.InteractiveFit(certain_file, db, runs[0], block=True, x_as_voltage=True)
+# fit = InteractiveFit(certain_file, db, runs[0], block=True, x_as_voltage=True)
 # fit.fit()
 
 
@@ -465,18 +514,18 @@ except Exception as e:
 # delta_lit_radii.pop('61_Ni')
 king = KingFitter(db, showing=True, litvals=delta_lit_radii)
 run = -1
-# isotopes = sorted(delta_lit_radii.keys())
-king.kingFit(alpha=49, findBestAlpha=True, run=run)
+# # isotopes = sorted(delta_lit_radii.keys())
+king.kingFit(alpha=49, findBestAlpha=False, run=run)
 king.calcChargeRadii(isotopes=isotopes, run=run)
 
 #
-# con = sqlite3.connect(db)
-# cur = con.cursor()
-# cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? ORDER BY iso''', ('shift',))
-# data = cur.fetchall()
-# con.close()
-# if data:
-#     print(data)
-#     print('iso\tshift [MHz]\t(statErr)[systErr]\t Chi^2')
-#     for iso in data:
-#         print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))
+con = sqlite3.connect(db)
+cur = con.cursor()
+cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? ORDER BY iso''', ('shift',))
+data = cur.fetchall()
+con.close()
+if data:
+    print(data)
+    print('iso\tshift [MHz]\t(statErr)[systErr]\t Chi^2')
+    for iso in data:
+        print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))
