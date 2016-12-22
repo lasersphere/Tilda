@@ -8,6 +8,8 @@ Created on '29.10.2015'
 
 import functools
 import logging
+import os
+import glob
 from copy import copy
 
 from PyQt5 import QtWidgets, QtCore
@@ -34,7 +36,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.num_of_reps = 1  # how often this scan will be repeated. stored at begin of scan
         self.go_was_clicked_before = False  # variable to stroe if the user already clicked on 'Go'
 
-        self.actionGo.triggered.connect(functools.partial(self.go, True))
+        self.actionErgo.triggered.connect(functools.partial(self.go, True, True))
+        self.actionGo_on_file.triggered.connect(self.go_on_file)
         self.actionSetup_Isotope.triggered.connect(self.setup_iso)
         self.actionAdd_Track.triggered.connect(self.add_track)
         self.actionSave_settings_to_database.triggered.connect(self.save_to_db)
@@ -44,7 +47,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
 
         self.main_gui = main_gui
         self.update_win_title()
-        self.enable_go(False)
+        self.enable_go(True)
         self.pre_or_during_scan_str_list = ['preScan', 'duringScan']
         self.pre_or_during_scan_index = 0
 
@@ -87,8 +90,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         will be disabled via callback signal in MainUi when status in Main is not idle
         """
         enable = enable_bool and self.active_iso is not None
-        # print('enabling Go? , ', enable, self.active_iso, bool)
-        if not self.actionGo.isEnabled() and enable:  # one scan is done or isotope was selected
+        print('enabling Go? , ', enable, enable_bool, self.active_iso, bool)
+        if not self.actionErgo.isEnabled() and enable:  # one scan is done or isotope was selected
             if self.go_was_clicked_before:
                 self.spinBox_num_of_reps.stepDown()
                 if self.spinBox_num_of_reps.value() > 0:  # keep scanning if reps > 0
@@ -96,19 +99,52 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
                 else:  # all scans are done here
                     self.spinBox_num_of_reps.setValue(self.num_of_reps)
                     self.go_was_clicked_before = False
-        self.actionGo.setEnabled(enable)
+        self.actionErgo.setEnabled(enable)
+        # go on file can also be done without selecting an isotope before:
+        self.actionGo_on_file.setEnabled(enable_bool)
 
-    def go(self, read_spin_box=True):
+    def go(self, read_spin_box=True, ergo=True):
         """
         will set the state in the main to go
+        :param read_spin_box: bool, True for first "call"
         """
         if read_spin_box:
             self.go_was_clicked_before = True
             self.num_of_reps = self.spinBox_num_of_reps.value()
         # if Cfg._main_instance.scan_pars[self.active_iso]['isotopeData']['type'] in ['trs', 'trsdummy']:
             #  for now only open the window when using a time resolved scan.
+        acq_on_file_in_dict = isinstance(
+            Cfg._main_instance.scan_pars[self.active_iso]['isotopeData'].get('continuedAcquisitonOnFile', False), str)
+        if ergo and acq_on_file_in_dict:
+            # if its an ergo an continuedAcquisitonOnFile is already written to scandict, this must be deleted:
+            Cfg._main_instance.scan_pars[self.active_iso]['isotopeData'].pop('continuedAcquisitonOnFile')
         self.main_gui.open_live_plot_win()
         Cfg._main_instance.start_scan(self.active_iso)
+
+    def go_on_file(self):
+        """
+        starts a measurement with scan parameters from an existing file which is selected via a pop up file dialog,
+        adding up on the already accumulated data in this file.
+        """
+        parent = QtWidgets.QFileDialog(self)
+        direc = os.path.join(Cfg._main_instance.working_directory, 'sums', '*.xml')
+        # pre select the latest file
+        latest_file = max(glob.iglob(direc), key=os.path.getctime)
+        filename, ok = QtWidgets.QFileDialog.getOpenFileName(
+            parent, 'select an existing .xml file', latest_file, '*.xml')
+        if filename:
+            print('selected file: %s' % filename)
+            scan_dict, e_tree_ele = TildaTools.scan_dict_from_xml_file(filename)
+            for key, val in scan_dict.items():  # TODO delete this print
+                print(key, val)
+            # TODO load data from file and store it into pipeline. (should happen in main)
+            # TODO Prescan measurement must be list.
+            # TODO reset number of scans etc. but keep track of how many acquired.
+            scan_dict['isotopeData']['continuedAcquisitonOnFile'] = os.path.split(filename)[1]
+            self.active_iso = Cfg._main_instance.add_iso_to_scan_pars_no_database(scan_dict)
+            self.update_track_list()
+            self.update_win_title()
+            self.go(ergo=False)
 
     def add_track(self):
         """

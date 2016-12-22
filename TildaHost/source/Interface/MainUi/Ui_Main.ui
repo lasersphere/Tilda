@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>492</width>
+    <width>548</width>
     <height>247</height>
    </rect>
   </property>
@@ -175,7 +175,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>492</width>
+     <width>548</width>
      <height>21</height>
     </rect>
    </property>
@@ -194,7 +194,6 @@
     <addaction name="actionSimple_Counter"/>
     <addaction name="actionSet_Laser_Frequency"/>
     <addaction name="actionSet_acceleration_voltage"/>
-    <addaction name="actionTilda_Passive"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -230,6 +229,9 @@
    <property name="text">
     <string>Scan Control</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
   </action>
   <action name="actionVersion">
    <property name="text">
@@ -245,6 +247,12 @@
    <property name="text">
     <string>working directory</string>
    </property>
+   <property name="toolTip">
+    <string>working directory, Ctrl+W</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+W</string>
+   </property>
   </action>
   <action name="actionVoltage_Measurement">
    <property name="text">
@@ -254,6 +262,12 @@
   <action name="actionPost_acceleration_power_supply_control">
    <property name="text">
     <string>Post acceleration power supplies</string>
+   </property>
+   <property name="toolTip">
+    <string>Post acceleration power supplies, Ctrl+P</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+P</string>
    </property>
   </action>
   <action name="actionSimple_Counter">
@@ -268,19 +282,29 @@
     <string>Simple Counter</string>
    </property>
    <property name="font">
-    <font>
-     <strikeout>false</strikeout>
-    </font>
+    <font/>
    </property>
   </action>
   <action name="actionSet_Laser_Frequency">
    <property name="text">
     <string>set laser frequency</string>
    </property>
+   <property name="toolTip">
+    <string>set laser frequency, Ctrl+L</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+L</string>
+   </property>
   </action>
   <action name="actionSet_acceleration_voltage">
    <property name="text">
     <string>set acceleration voltage</string>
+   </property>
+   <property name="toolTip">
+    <string>set acceleration voltage, Ctrl+V</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+V</string>
    </property>
   </action>
   <action name="actionTilda_Passive">
@@ -292,15 +316,33 @@
    <property name="text">
     <string>load spectra</string>
    </property>
+   <property name="toolTip">
+    <string>load spectra, Ctrl+O</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
   </action>
   <action name="actionDigital_Multimeters">
    <property name="text">
     <string>Digital Multimeters</string>
    </property>
+   <property name="toolTip">
+    <string>Digital Multimeters, Ctrl+D</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+D</string>
+   </property>
   </action>
   <action name="actionPolliFit">
    <property name="text">
     <string>PolliFit</string>
+   </property>
+   <property name="toolTip">
+    <string>PolliFit, Ctrl+A</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+A</string>
    </property>
   </action>
  </widget>

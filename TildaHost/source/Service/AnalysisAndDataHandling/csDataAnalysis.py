@@ -18,12 +18,12 @@ def checkIfScanComplete(pipeData, totalnOfScalerEvents, track_name):
     return stepComplete and complete and notzero
 
 
-def checkIfTrackComplete(pipeData, track_name):
+def checkIfTrackComplete(pipeData, track_name, initial_steps=0):
     """
     Check if all Steps for this track have been completed
     :return: bool, True if finished
     """
-    nOfCompletedSteps = pipeData[track_name]['nOfCompletedSteps']
+    nOfCompletedSteps = pipeData[track_name]['nOfCompletedSteps'] - initial_steps
     nOfScans = pipeData[track_name]['nOfScans']
     nOfSteps = pipeData[track_name]['nOfSteps']
     return nOfCompletedSteps == nOfScans * nOfSteps

@@ -127,11 +127,17 @@ class NCheckIfTrackComplete(Node):
         """
         super(NCheckIfTrackComplete, self).__init__()
         self.type = 'CheckIfTrackComplete'
+        self.n_of_completed_steps_on_start = 0
+
+    def start(self):
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        if 'continuedAcquisitonOnFile' in self.Pipeline.pipeData['isotopeData']:  # its an ergo
+            self.n_of_completed_steps_on_start = self.Pipeline.pipeData[track_name]['nOfCompletedSteps']
 
     def processData(self, data, pipeData):
         ret = None
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        if CsAna.checkIfTrackComplete(pipeData, track_name):
+        if CsAna.checkIfTrackComplete(pipeData, track_name, self.n_of_completed_steps_on_start):
             ret = data
         return ret
 
@@ -196,6 +202,8 @@ class NAddWorkingTime(Node):
 
     def start(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        if self.reset:  # check if it was an go on an existing file, than do not reset!
+            self.reset = 'continuedAcquisitonOnFile' not in self.Pipeline.pipeData['isotopeData']
         self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
             self.Pipeline.pipeData[track_name], self.reset)
 
@@ -815,7 +823,7 @@ class NStartNodeKepcoScan(Node):
         self.curVoltIndex = 0
         self.info_handl = InfHandl()
         self.x_as_voltage = x_as_voltage_bool
-        self.dmms = dmm_names_sorted  # list with the dmm names, indeces are equal to indices in spec_data.cts, etc.
+        self.dmms = dmm_names_sorted  # list with the dmm names, indices are equal to indices in spec_data.cts, etc.
 
     def calc_voltage_err(self, voltage_reading, dmm_name):
         read_err, range_err = self.Pipeline.pipeData['measureVoltPars']['duringScan']['dmms'][dmm_name].get('accuracy', (None, None))
@@ -1997,10 +2005,23 @@ class NSendnOfCompletedStepsViaQtSignal(Node):
         self.type = 'SendnOfCompletedStepsViaQtSignal'
 
         self.qt_signal = qt_signal
+        self.number_of_steps_at_start = 0
+
+    def start(self):
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        # ergo or go?
+        acq_on_file_in_dict = isinstance(
+            self.Pipeline.pipeData['isotopeData'].get('continuedAcquisitonOnFile', False), str)
+        if acq_on_file_in_dict:  # go -> keep the number of steps but only emit the ones from the acutal scan.
+            self.number_of_steps_at_start = self.Pipeline.pipeData[track_name]['nOfCompletedSteps']
+        else:  # ergo -> set all number of completed steps to 0
+            self.number_of_steps_at_start = 0
+            self.Pipeline.pipeData[track_name]['nOfCompletedSteps'] = 0
 
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
-        self.qt_signal.emit(pipeData[track_name]['nOfCompletedSteps'])
+        steps_to_emit = pipeData[track_name]['nOfCompletedSteps'] - self.number_of_steps_at_start
+        self.qt_signal.emit(steps_to_emit)
         return data
 
     def clear(self):

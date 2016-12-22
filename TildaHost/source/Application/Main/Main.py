@@ -27,7 +27,6 @@ from Application.Main.MainState import MainState
 from Service.AnalysisAndDataHandling.DisplayData import DisplayData
 from Service.Scan.ScanMain import ScanMain
 from Service.SimpleCounter.SimpleCounter import SimpleCounterControl
-from Service.TildaPassive.TildaPassiveControl import TildaPassiveControl
 
 
 class Main(QtCore.QObject):
@@ -72,11 +71,6 @@ class Main(QtCore.QObject):
         self.halt_scan = False
         self.sequencer_status = None
         self.fpga_status = None
-
-        self.tilda_passive_inst = None
-        self.tilda_passive_status = -1
-        self.tipa_status_callback_sig = None
-        self.tipa_timeout_counter = 0
 
         self.dmm_gui_callback = None
         self.last_dmm_reading_datetime = datetime.now()  # storage for the last reading time of the dmms
@@ -136,13 +130,6 @@ class Main(QtCore.QObject):
             self.get_fpga_and_seq_state()
         elif self.m_state[0] is MainState.saving:
             self._stop_sequencer_and_save(*self.m_state[1])
-
-        elif self.m_state[0] is MainState.preparing_tilda_passiv:
-            self._prepare_tilda_passive(*self.m_state[1])
-        elif self.m_state[0] is MainState.tilda_passiv_running:
-            self._tilda_passive_running()
-        elif self.m_state[0] is MainState.closing_tilda_passiv:
-            self._close_tilda_passive(self.m_state[1])
 
         elif self.m_state[0] is MainState.init_dmm:
             self._init_dmm(*self.m_state[1])
@@ -799,6 +786,22 @@ class Main(QtCore.QObject):
         logging.debug('scan_pars are: ' + str(self.scan_pars))
         return key
 
+    def add_iso_to_scan_pars_no_database(self, scan_dict):
+        """
+        will add the scan_dict to self.scan_pars,
+        WITHOUT accessing the database first.
+        This is useful when loading settings from file instead of db
+        :param scan_dict: dict, scan_dict, see ..\Service\Scan\draftScanParameters.py
+        :return: str, name of isotope
+        """
+        iso = scan_dict['isotopeData']['isotope']
+        seq_type = scan_dict['isotopeData']['type']
+        key = iso + '_' + seq_type
+        self.scan_pars[key] = scan_dict
+        logging.debug('scan_pars are: ' + str(self.scan_pars))
+        return key
+
+
     def remove_iso_from_scan_pars(self, iso_seqtype):
         """
         this will remove the dictionary named 'iso_seqtype' from self.scan_pars
@@ -819,68 +822,6 @@ class Main(QtCore.QObject):
                           str(scan_d['track' + str(i)]))
             logging.debug('measureVoltPars are: %s' % scan_d['measureVoltPars'])
             DbOp.add_scan_dict_to_db(self.database, scan_d, i, track_key='track' + str(i))
-
-    """ Tilda passive operations """
-
-    def start_tilda_passive(self, n_of_bins, delay_10ns, raw_callback, status_callback, steps_scans_callback):
-        self.tilda_passive_inst = TildaPassiveControl()
-        iso_name = 'Ni_tipa'
-        # tilda passive (tipa) works without the database! Database is for real sequencers only.
-        self.scan_pars[iso_name] = self.tilda_passive_inst.tipa_get_default_scan_pars()
-        self.scan_pars[iso_name]['measureVoltPars'] = self.measure_voltage_pars
-        self.scan_pars[iso_name]['pipeInternals']['workingDirectory'] = self.working_directory
-        self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
-        self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
-        self.scan_pars[iso_name]['isotopeData']['accVolt'] = self.acc_voltage
-        self.scan_pars[iso_name]['track0']['nOfBins'] = n_of_bins
-        self.scan_pars[iso_name]['track0']['trigger']['trigDelay10ns'] = delay_10ns
-        self.set_state(MainState.preparing_tilda_passiv, (raw_callback, steps_scans_callback))
-        self.tipa_status_callback_sig = status_callback
-
-    def stop_tilda_passive(self, silent=False):
-        self.set_state(MainState.closing_tilda_passiv, silent)
-
-    def _prepare_tilda_passive(self, raw_callback, steps_scans_callback):
-        if self.scan_main.sequencer is not None:
-            self.scan_main.deinit_fpga()
-        iso_name = 'Ni_tipa'
-        self.tilda_passive_inst.setup_tipa_ctrl(self.scan_pars[iso_name], raw_callback, steps_scans_callback)
-        self.send_tipa_status(0)
-        self.tilda_passive_inst.set_values(self.scan_pars[iso_name]['track0']['nOfBins'],
-                                           self.scan_pars[iso_name]['track0']['trigger']['trigDelay10ns'])
-        if self.tilda_passive_inst.start_scanning():
-            self.tipa_timeout_counter = datetime.now()
-            self.set_state(MainState.tilda_passiv_running)
-        else:
-            self.set_state(MainState.closing_tilda_passiv)
-
-    def _tilda_passive_running(self):
-        if self.tilda_passive_inst.read_data():
-            self.tipa_timeout_counter = datetime.now()
-            self.send_tipa_status()
-        else:
-            if (datetime.now() - self.tipa_timeout_counter).total_seconds() > 5:
-                self.send_tipa_status(3)  # go to state 3 which is only a software state to indicate a timeout
-            else:
-                self.send_tipa_status()
-
-    def _close_tilda_passive(self, silent):
-        if self.tilda_passive_inst is not None:
-            print('closing silently: ', silent)
-            if not silent:
-                self.send_tipa_status(-1)
-                self.tipa_status_callback_sig = None
-            self.tilda_passive_inst.stop()
-            self.tilda_passive_inst = None
-        self.set_state(MainState.idle)
-
-    def send_tipa_status(self, maybe_new_status=None):
-        if self.tipa_status_callback_sig is not None:
-            if maybe_new_status is None:
-                maybe_new_status = self.tilda_passive_inst.read_tipa_status()
-            if maybe_new_status != self.tilda_passive_status:
-                self.tilda_passive_status = maybe_new_status
-                self.tipa_status_callback_sig.emit(self.tilda_passive_status)
 
     ''' digital multimeter operations '''
 

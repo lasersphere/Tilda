@@ -6,7 +6,6 @@ Created on '07.05.2015'
 
 """
 
-""" Guis: """
 import logging
 import os
 import platform
@@ -27,7 +26,6 @@ from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
 from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 from Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
-from Interface.TildaPassiveUi.TildaPassiveUi import TildaPassiveUi
 from Interface.VersionUi.VersionUi import VersionUi
 from Scratch.Tetris import Tetris
 
@@ -44,12 +42,10 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         os.chdir(work_dir_before_setup_ui)  # change back
         # print('current working dir: %s' % os.getcwd())
 
-
         self.act_scan_wins = []  # list of active scan windows
         self.post_acc_win = None  # only one active post acceleration window
         self.scan_progress_win = None
         self.simple_counter_gui = None
-        self.tilda_passive_gui = None
         self.dmm_live_view_win = None
         self.live_plot_win = None  # one active live plot window for displaying results from pipeline
         self.file_plot_wins = {}  # dict of active plot windows only for displaying from file.
@@ -63,7 +59,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionSimple_Counter.triggered.connect(self.open_simple_counter_win)
         self.actionSet_Laser_Frequency.triggered.connect(self.set_laser_freq)
         self.actionSet_acceleration_voltage.triggered.connect(self.set_acc_volt)
-        self.actionTilda_Passive.triggered.connect(self.start_tilda_passive_gui)
         self.actionLoad_spectra.triggered.connect(self.load_spectra)
         self.actionDigital_Multimeters.triggered.connect(self.open_dmm_live_view_win)
         self.actionPolliFit.triggered.connect(self.open_pollifit_win)
@@ -79,7 +74,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
         """ add shortcuts """
         QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+T"), self, self.start_tetris)
-        QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+A"), self, self.open_pollifit_win)
+        # QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+A"), self, self.open_pollifit_win)
 
         self.subscribe_to_main()
         self.show()
@@ -209,13 +204,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             self.simple_counter_gui = SimpleCounterRunningUi(self, sc_dial.act_pmts, sc_dial.datapoints)
             # Cfg._main_instance.start_simple_counter(sc_dial.act_pmts, sc_dial.datapoints)
 
-    def start_tilda_passive_gui(self):
-            if Cfg._main_instance.working_directory is None:
-                if self.choose_working_dir() is None:
-                    return None
-            if self.tilda_passive_gui is None:
-                self.tilda_passive_gui = TildaPassiveUi(self)
-
     def open_dmm_live_view_win(self):
         if self.dmm_live_view_win is None:
             self.dmm_live_view_win = DmmLiveViewUi(self)
@@ -275,9 +263,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def close_simple_counter_win(self):
         self.simple_counter_gui = None
 
-    def close_tilda_passive(self):
-        self.tilda_passive_gui = None
-
     def close_dmm_live_view_win(self):
         self.dmm_live_view_win = None
 
@@ -316,11 +301,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             MPlPlotter.close_all_figs()
         except Exception as e:
             logging.error('error while closing the plot window, exception is: ' + str(e))
-        try:
-            if self.tilda_passive_gui is not None:
-                self.tilda_passive_gui.close()
-        except Exception as e:
-            logging.error('error while closing tilda passive GUi, exception is: ' + str(e))
         try:
             if self.dmm_live_view_win is not None:
                 self.dmm_live_view_win.close()

@@ -123,6 +123,36 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
     return trackd
 
 
+def get_meas_volt_dict(xml_etree):
+    """ get the dictionary containing all the voltage measurement parameters
+     from an xml_etree element loaded from an xml file. """
+    meas_volt_pars_dict = xml_get_dict_from_ele(xml_etree)[1].get('measureVoltPars', {})
+    evaluate_strings_in_dict(meas_volt_pars_dict)
+    for key, val in meas_volt_pars_dict.items():
+        print(val)
+        if val['dmms'] is None:
+            meas_volt_pars_dict[key]['dmms'] = {}
+    return meas_volt_pars_dict
+
+
+def evaluate_strings_in_dict(dict_to_convert):
+    """
+    function which will convert all values inside a dict using ast.literal_eval -> '1.0' -> 1.0 etc..
+    works also for nested dicts
+    """
+    for key, val in dict_to_convert.items():
+        if isinstance(val, str):
+            try:
+                dict_to_convert[key] = ast.literal_eval(val)
+            except Exception as e:
+                # if it cannot be converted it is propably a string anyhow.
+                # print('error: %s could not convert key: %s val: %s' % (e, key, val))
+                pass
+        if isinstance(dict_to_convert[key], dict):
+            dict_to_convert[key] = evaluate_strings_in_dict(dict_to_convert[key])
+    return dict_to_convert
+
+
 def xml_get_data_from_track(
         root_ele, n_of_track, data_type, data_shape, datatytpe=np.int32, direct_parent_ele_str='data', default_val=0):
     """
@@ -168,7 +198,7 @@ def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
     scan_dict['pipeInternals']['curVoltInd'] = 0
     scan_dict['pipeInternals']['activeTrackNumber'] = 'None'
     scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
-    scan_dict['measureVoltPars'] = xml_get_dict_from_ele(xml_etree)[1].get('measureVoltPars', {})
+    scan_dict['measureVoltPars'] = get_meas_volt_dict(xml_etree)
     return scan_dict, xml_etree
 
 

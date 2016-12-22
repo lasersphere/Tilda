@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>341</width>
-    <height>211</height>
+    <height>216</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -35,6 +35,9 @@
       </item>
       <item>
        <widget class="QSpinBox" name="spinBox_num_of_reps">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;each repetition will be a seperate file&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
         <property name="alignment">
          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
         </property>
@@ -64,7 +67,9 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionGo"/>
+   <addaction name="actionErgo"/>
+   <addaction name="separator"/>
+   <addaction name="actionGo_on_file"/>
    <addaction name="separator"/>
    <addaction name="actionSetup_Isotope"/>
    <addaction name="separator"/>
@@ -76,15 +81,15 @@
    <addaction name="separator"/>
    <addaction name="actionSave_settings_to_database"/>
   </widget>
-  <action name="actionGo">
+  <action name="actionErgo">
    <property name="text">
-    <string>Go</string>
+    <string>ergo</string>
    </property>
    <property name="toolTip">
-    <string>Starts the measurement, Ctrl+G</string>
+    <string>Starts a new measurement, as configured in the settings, Ctrl+G</string>
    </property>
    <property name="shortcut">
-    <string>Ctrl+G</string>
+    <string>Ctrl+E</string>
    </property>
   </action>
   <action name="actionSetup_Isotope">
@@ -121,6 +126,17 @@
   <action name="actionConfigure_voltage_measurement">
    <property name="text">
     <string>configure voltage measurement</string>
+   </property>
+  </action>
+  <action name="actionGo_on_file">
+   <property name="text">
+    <string>go on file</string>
+   </property>
+   <property name="toolTip">
+    <string>continue running on an existing file with the same settings as in the file</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+G</string>
    </property>
   </action>
  </widget>

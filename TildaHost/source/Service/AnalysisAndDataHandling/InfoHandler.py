@@ -39,7 +39,7 @@ class InfoHandler:
             step_complete = True
             self.started_bunches_in_step = 0
             self.total_completed_steps += 1
-            pipe_data[track_name]['nOfCompletedSteps'] = self.total_completed_steps
+            pipe_data[track_name]['nOfCompletedSteps'] += 1
 
             self.volt_index += self.sign_for_volt_ind(pipe_data[track_name]['invertScan'])
             # logging.debug('infohandler: total num of steps completed: ' + str(self.total_completed_steps))
