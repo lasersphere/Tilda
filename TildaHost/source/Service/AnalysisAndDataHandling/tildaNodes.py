@@ -1619,6 +1619,15 @@ class NCSSum(Node):
         self.scalerArray = None
 
     def start(self):
+        if 'continuedAcquisitonOnFile' in self.Pipeline.pipeData['isotopeData'] and self.scalerArray is None:
+            # its a "go" on an existing file, add data to sum!
+            old_file = self.Pipeline.pipeData['isotopeData']['continuedAcquisitonOnFile']
+            file_dir = os.path.split(self.Pipeline.pipeData['pipeInternals']['activeXmlFilePath'])[0]
+            file_path = os.path.join(file_dir, old_file)
+            if os.path.isfile(file_path):
+                self.scalerArray = XMLImporter(file_path).cts
+            else:
+                print('error, in %s, could not load data from file: %s ' % (self.type, file_path))
         if self.scalerArray is None:
             self.scalerArray = Form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
 
@@ -1901,6 +1910,15 @@ class NTRSSumFastArrays(Node):
             #  before track was worked on.
             self.sum = [np.zeros(1, dtype=[('sc', 'u2'), ('step', 'u4'),
                                            ('time', 'u4'), ('cts', 'u4')]) for tr in range(tracks)]
+            # its an go an before used data should be added
+            if 'continuedAcquisitonOnFile' in self.Pipeline.pipeData['isotopeData']:
+                old_file = self.Pipeline.pipeData['isotopeData']['continuedAcquisitonOnFile']
+                file_dir = os.path.split(self.Pipeline.pipeData['pipeInternals']['activeXmlFilePath'])[0]
+                file_path = os.path.join(file_dir, old_file)
+                if os.path.isfile(file_path):
+                    self.sum = XMLImporter(file_path).time_res_zf
+                else:
+                    print('error, in %s, could not load data from file: %s ' % (self.type, file_path))
 
     def processData(self, data, pipeData):
         # sc,step,time not in list -> append

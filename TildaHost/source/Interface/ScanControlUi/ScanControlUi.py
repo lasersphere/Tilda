@@ -20,7 +20,7 @@ from Interface.DmmUi.DmmUi import DmmLiveViewUi
 from Interface.ScanControlUi.Ui_ScanControl import Ui_MainWindowScanControl
 from Interface.SetupIsotopeUi.SetupIsotopeUi import SetupIsotopeUi
 from Interface.TrackParUi.TrackUi import TrackUi
-
+from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes
 
 class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
     def __init__(self, main_gui):
@@ -90,7 +90,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         will be disabled via callback signal in MainUi when status in Main is not idle
         """
         enable = enable_bool and self.active_iso is not None
-        print('enabling Go? , ', enable, enable_bool, self.active_iso, bool)
+        # print('enabling Go? , ', enable, enable_bool, self.active_iso, bool)
         if not self.actionErgo.isEnabled() and enable:  # one scan is done or isotope was selected
             if self.go_was_clicked_before:
                 self.spinBox_num_of_reps.stepDown()
@@ -135,12 +135,17 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         if filename:
             print('selected file: %s' % filename)
             scan_dict, e_tree_ele = TildaTools.scan_dict_from_xml_file(filename)
-            for key, val in scan_dict.items():  # TODO delete this print
-                print(key, val)
-            # TODO load data from file and store it into pipeline. (should happen in main)
-            # TODO Prescan measurement must be list.
-            # TODO reset number of scans etc. but keep track of how many acquired.
             scan_dict['isotopeData']['continuedAcquisitonOnFile'] = os.path.split(filename)[1]
+            for key, val in scan_dict.items():
+                if 'track' in key:
+                    if 'trigger' in val:
+                        trig_type_str = val['trigger']['type']
+                        if 'TriggerTypes.' in trig_type_str:  # needed for older versions
+                            trig_type_str = trig_type_str.split('.')[1]
+                        try:
+                            val['trigger']['type'] = getattr(TriggerTypes, trig_type_str)
+                        except Exception as e:
+                            print('error: %s, could not do: getattr(TriggerTypes, %s) ' % (e, val['trigger']['type']))
             self.active_iso = Cfg._main_instance.add_iso_to_scan_pars_no_database(scan_dict)
             self.update_track_list()
             self.update_win_title()

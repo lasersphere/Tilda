@@ -73,10 +73,15 @@ class XMLImporter(SpecData):
                 for key, val in dmm_dict.items():
                     if key == 'preScanRead':
                         if isinstance(val, str):
-                            val = float(val)
+                            val = ast.literal_eval(val)
+                            # val = float(val)
                         if dmm_dict.get('assignment') == 'offset':
-                            offset.append(val)
-                            self.offset_by_dev[dmm_name].append(val)
+                            if isinstance(val, list):
+                                offset += val  # append to list
+                                self.offset_by_dev[dmm_name] += val
+                            else:
+                                offset.append(val)
+                                self.offset_by_dev[dmm_name].append(val)
                         elif dmm_dict.get('assignment') == 'accVolt':
                             acc_volt.append(val)
                 if len(self.offset_by_dev[dmm_name]):

@@ -447,7 +447,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         except Exception as e:
             print('error, while plotting projection, this happened: ', e)
 
-    def update_all_pmts_plot(self, spec_data, autorange_pls=False):
+    def update_all_pmts_plot(self, spec_data, autorange_pls=True):
         if self.all_pmts_widg_plt_item_list is None:
             if spec_data.seq_type not in self.trs_names_list:
                 self.tabWidget.setCurrentIndex(2)

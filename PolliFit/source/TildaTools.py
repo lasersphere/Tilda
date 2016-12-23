@@ -119,7 +119,7 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
     for t in tracks:
         trackd[str(t.tag)] = (xml_get_dict_from_ele(xml_etree)[1]['tracks'][str(t.tag)]['header'])
     for key, val in trackd.items():
-        trackd[key] = eval_str_vals_in_dict(trackd[key])
+        trackd[key] = evaluate_strings_in_dict(trackd[key])
     return trackd
 
 
@@ -145,9 +145,14 @@ def evaluate_strings_in_dict(dict_to_convert):
             try:
                 dict_to_convert[key] = ast.literal_eval(val)
             except Exception as e:
-                # if it cannot be converted it is propably a string anyhow.
-                # print('error: %s could not convert key: %s val: %s' % (e, key, val))
-                pass
+                if key == 'trigger':
+                    val['type'] = val['type'].replace('TriggerTypes.', '')
+                else:
+                    # print('error while converting val with ast.literal_eval: ', e, val, type(val), key)
+                    # if it cannot be converted it is propably a string anyhow.
+                    # print('error: %s could not convert key: %s val: %s' % (e, key, val))
+                    pass
+
         if isinstance(dict_to_convert[key], dict):
             dict_to_convert[key] = evaluate_strings_in_dict(dict_to_convert[key])
     return dict_to_convert
@@ -199,6 +204,7 @@ def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
     scan_dict['pipeInternals']['activeTrackNumber'] = 'None'
     scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
     scan_dict['measureVoltPars'] = get_meas_volt_dict(xml_etree)
+    # watchout, since trigger type is only imported as string...
     return scan_dict, xml_etree
 
 
@@ -664,6 +670,7 @@ def save_spec_data(spec_data, scan_dict):
     :return:
     """
     try:
+        scan_dict = deepcopy(scan_dict)
         try:
             time_res = len(spec_data.time_res) # if there are any values in here, it is a time resolved measurement
         except Exception as e:
@@ -673,6 +680,8 @@ def save_spec_data(spec_data, scan_dict):
         track_nums, track_num_lis = get_number_of_tracks_in_scan_dict(scan_dict)
         for track_ind, tr_num in enumerate(track_num_lis):
             track_name = 'track' + str(tr_num)
+            # only save name of trigger
+            scan_dict[track_name]['trigger']['type'] = scan_dict[track_name]['trigger']['type'].name
             if time_res:
                 scan_dict[track_name]['softwGates'] = spec_data.softw_gates[track_ind]
                 xmlAddCompleteTrack(root_ele, scan_dict, spec_data.time_res_zf[track_ind], track_name)

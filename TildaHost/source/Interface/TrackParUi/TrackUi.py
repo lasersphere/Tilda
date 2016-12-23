@@ -43,6 +43,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.main_gui = main_gui
 
         self.buffer_pars = deepcopy(Cfg._main_instance.scan_pars.get(active_iso_name).get(self.track_name))
+        print('%s parameters are: %s ' % (self.track_name, self.buffer_pars))
         self.buffer_pars['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()  # is needed to be able to fix stop
         self.dac_stop_bit_user = self.calc_dac_stop_18bit()
 

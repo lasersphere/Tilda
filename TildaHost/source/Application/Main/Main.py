@@ -504,7 +504,15 @@ class Main(QtCore.QObject):
                         reads = []
                         for dmm_name, volt_read in read.items():
                             if volt_read is not None:
-                                dmms_dict_pre_scan[dmm_name]['preScanRead'] = volt_read[0]
+                                if 'continuedAcquisitonOnFile' in self.scan_pars[iso_name]['isotopeData']:
+                                    # its a go on an existing file -> keep the acquired reading and append.
+                                    if isinstance(dmms_dict_pre_scan[dmm_name]['preScanRead'], list):
+                                        dmms_dict_pre_scan[dmm_name]['preScanRead'].append(volt_read[0])
+                                    else:
+                                        dmms_dict_pre_scan[dmm_name]['preScanRead'] = [
+                                            dmms_dict_pre_scan[dmm_name]['preScanRead'], volt_read[0]]
+                                else:  # its an ergo -> just keep the one value!
+                                    dmms_dict_pre_scan[dmm_name]['preScanRead'] = volt_read[0]
                             reads.append(dmms_dict_pre_scan[dmm_name].get('preScanRead', None))
                             print('readings of dmms pre scan are:', reads,
                                   ' prescan read: ', dmm_name)
