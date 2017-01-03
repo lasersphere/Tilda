@@ -145,6 +145,10 @@ def evaluate_strings_in_dict(dict_to_convert):
             try:
                 dict_to_convert[key] = ast.literal_eval(val)
             except Exception as e:
+                if '{' in val:
+                    # needed for data of version 1.08
+                    val = val.replace('\\', '\'').replace('TriggerTypes.', '').replace('<', '\'').replace('>', '\'')
+                    val = ast.literal_eval(val)
                 if key == 'trigger':
                     val['type'] = val['type'].replace('TriggerTypes.', '')
                 else:
