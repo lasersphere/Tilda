@@ -72,14 +72,14 @@ class Ni4071MeasCompleteLoc(Enum):
     """
     undefined = -1
     external = 2
-    pxi_trig_0 = 111
-    pxi_trig_1 = 112
-    pxi_trig_2 = 113
-    pxi_trig_3 = 114
-    pxi_trig_4 = 115
-    pxi_trig_5 = 116
-    pxi_trig_6 = 117
-    pxi_trig_7 = 118
+    PXI_Trigger_0 = 111
+    PXI_Trigger_1 = 112
+    PXI_Trigger_2 = 113
+    PXI_Trigger_3 = 114
+    PXI_Trigger_4 = 115
+    PXI_Trigger_5 = 116
+    PXI_Trigger_6 = 117
+    PXI_Trigger_7 = 118
     lbr_trig_0 = 1003
 
 
@@ -95,7 +95,7 @@ class Ni4071PreConfigs(Enum):
             'powerLineFrequency': 50.0,
             'triggerDelay_s': 0,
             'triggerSlope': 'rising',
-            'measurementCompleteDestination': 'pxi_trig_4',
+        'measurementCompleteDestination': Ni4071MeasCompleteLoc.PXI_Trigger_4.name,
             'highInputResistanceTrue': True,
             'assignment': 'offset',
             'accuracy': (None, None),
@@ -112,7 +112,7 @@ class Ni4071PreConfigs(Enum):
             'powerLineFrequency': 50.0,
             'triggerDelay_s': 0,
             'triggerSlope': 'rising',
-            'measurementCompleteDestination': Ni4071MeasCompleteLoc.pxi_trig_4.name,
+        'measurementCompleteDestination': Ni4071MeasCompleteLoc.PXI_Trigger_4.name,
             'highInputResistanceTrue': True,
             'accuracy': (None, None),
             'assignment': 'offset',
@@ -129,7 +129,7 @@ class Ni4071PreConfigs(Enum):
             'powerLineFrequency': 50.0,
             'triggerDelay_s': 0,
             'triggerSlope': 'rising',
-            'measurementCompleteDestination': Ni4071MeasCompleteLoc.pxi_trig_4.name,
+        'measurementCompleteDestination': Ni4071MeasCompleteLoc.PXI_Trigger_4.name,
             'highInputResistanceTrue': True,
             'accuracy': (None, None),
             'assignment': 'offset',
@@ -146,7 +146,7 @@ class Ni4071PreConfigs(Enum):
         'powerLineFrequency': 50.0,
         'triggerDelay_s': 0,
         'triggerSlope': 'rising',
-        'measurementCompleteDestination': Ni4071MeasCompleteLoc.pxi_trig_4.name,
+        'measurementCompleteDestination': Ni4071MeasCompleteLoc.PXI_Trigger_4.name,
         'highInputResistanceTrue': True,
         'accuracy': (None, None),
         'assignment': 'offset',
@@ -1053,7 +1053,7 @@ class Ni4071:
                                [-2.0, -1.0] + [i / 10 for i in range(0, 1490)], self.config_dict['triggerDelay_s']),
             'triggerSlope': ('trigger slope', True, str, ['falling', 'rising'], self.config_dict['triggerSlope']),
             'measurementCompleteDestination': ('measurement compl. dest.', True, str,
-                                               [i.name for i in Ni4071MeasCompleteLoc],
+                                               [i.name for i in Ni4071MeasCompleteLoc] + ['software'],
                                                self.config_dict['measurementCompleteDestination']),
             'highInputResistanceTrue': ('high input resistance', True, bool, [False, True]
                                         , self.config_dict['highInputResistanceTrue']),

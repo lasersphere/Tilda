@@ -471,6 +471,7 @@ class Main(QtCore.QObject):
             on other calls:
                 will try to get a voltage reading from the dmms
                 when all dmms are read it will go to the next state
+            -> dmms are triggered by software and voltmeter-complete TTL-from dmm is ignored.
         next state will be 'load_track'
         :param first_call: bool, True if this is the first call
         """
@@ -533,10 +534,7 @@ class Main(QtCore.QObject):
         :param iso_name: str, name of the isotope
         :return: dict, completed dictionary
         """
-        # self.scan_pars[iso_name]['measureVoltPars'] = SdOp.merge_dicts(
-        #     self.scan_pars[iso_name]['measureVoltPars'], self.measure_voltage_pars)
-        # # in self.measure_voltage pars, the pulselength and timeout is noted.
-        # This is assumed globally for all isotopes for now.
+        self.scan_pars[iso_name] = SdOp.fill_meas_complete_dest(self.scan_pars[iso_name])
         self.scan_pars[iso_name] = SdOp.add_missing_voltages(self.scan_pars[iso_name])
         self.scan_pars[iso_name]['pipeInternals']['workingDirectory'] = self.working_directory
         self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version

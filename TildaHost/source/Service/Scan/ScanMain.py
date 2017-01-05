@@ -81,7 +81,6 @@ class ScanMain(QObject):
     def measure_offset_pre_scan(self, scan_dict):
         """
         Measure the Offset Voltage using one or more digital Multimeters.
-        This should not be done for a kepco scan.
         :param scan_dict: dictionary, containing all scanparameters
         :return: bool, True if success
         """
@@ -224,6 +223,7 @@ class ScanMain(QObject):
         """
         set all scanparameters at the fpga and go into the measure Offset state.
          set DAC to 0V
+        dmms are triggered by software and voltmeter-complete TTL-from dmm is ignored.
         :return:bool, True if successfully changed State
         """
         self.sequencer.measureOffset(scan_dict, track_num)

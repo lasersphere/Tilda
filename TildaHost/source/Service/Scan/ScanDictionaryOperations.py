@@ -105,3 +105,42 @@ def add_missing_voltages(scan_dict):
             sub_dict.update(dacStopVoltage=VCon.get_voltage_from_18bit(dac_stop_18bit))
             sub_dict.update(dacStopRegister18Bit=dac_stop_18bit)
     return scan_dict
+
+
+def fill_meas_complete_dest(scan_dict):
+    """
+    this will go through all actrive dmms for this scan and find out on
+    which destination they are sending their voltmeter complete TTL-Signal.
+    In order to proceed to the next voltage step, all listed voltmeter complete TTL-Signals must have ben received.
+    Four destinations can be choosen: 'PXI_Trigger_4', 'Con1_DIO30', 'Con1_DIO31', 'software'
+    All will be combined to one of the 8 possible states:
+
+        'PXI_Trigger_4': 0,
+        'Con1_DIO30': 1,
+        'Con1_DIO31': 2,
+        'PXI_Trigger_4_Con1_DIO30': 3,
+        'PXI_Trigger_4_Con1_DIO31': 4,
+        'PXI_Trigger_4_Con1_DIO30_Con1_DIO31': 5,
+        'Con1_DIO30_Con1_DIO31': 6,
+        'software': 7
+
+    :param scan_dict: dict, containign all scan parameters
+    :return: scan_dict
+    """
+    for pre_during_key, pre_during_dict in scan_dict['measureVoltPars'].items():
+        meas_compl_locs = []
+        for dmm_name, dmm_dict in pre_during_dict['dmms'].items():
+            meas_compl_locs.append(dmm_dict['measurementCompleteDestination'])
+        if 'software' in meas_compl_locs:
+            pre_during_dict['measurementCompleteDestination'] = 'software'
+        else:
+            trigs = ['PXI_Trigger_4', 'Con1_DIO30', 'Con1_DIO31']
+            in_meas_compl_locs = [each in meas_compl_locs for each in trigs]
+            state = ''
+            for ind, each in enumerate(trigs):
+                if in_meas_compl_locs[ind]:
+                    state += each + '_'
+            state = state[:-1]
+            pre_during_dict['measurementCompleteDestination'] = state
+
+    return scan_dict

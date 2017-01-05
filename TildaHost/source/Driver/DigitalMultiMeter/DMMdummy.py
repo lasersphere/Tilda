@@ -218,7 +218,7 @@ class DMMdummy:
                                [-2.0, -1.0] + [i / 10 for i in range(0, 1490)], self.config_dict['triggerDelay_s']),
             'triggerSlope': ('trigger slope', True, str, ['falling', 'rising'], self.config_dict['triggerSlope']),
             'measurementCompleteDestination': ('measurement compl. dest.', True, str,
-                                               ['eins', 'zwei'],
+                                               ['Con1_DIO30', 'Con1_DIO31', 'software'],
                                                self.config_dict['measurementCompleteDestination']),
             'highInputResistanceTrue': ('high input resistance', True, bool, [False, True]
                                         , self.config_dict['highInputResistanceTrue']),

@@ -82,7 +82,6 @@ class AnalysisThread(QThread):
     def prepare_track_in_pipe(self, track_num, track_index):
         track_name = 'track' + str(track_num)
         self.pipeline.pipeData['pipeInternals']['activeTrackNumber'] = (track_index, track_name)
-        # self.pipeline.pipeData[track_name]['nOfCompletedSteps'] = 0  # TODO comment this in again
         print('starting pipeline: ', self.pipeline)
         self.pipeline.start()
 

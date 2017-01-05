@@ -51,7 +51,8 @@ class AgilentPreConfigs(Enum):
             'highInputResistanceTrue': True,
             'assignment': 'offset',
             'accuracy': (None, None),
-            'preConfName': 'initial'
+        'preConfName': 'initial',
+        'measurementCompleteDestination': 'Con1_DIO31'
         }
     periodic = {
             'range': 10.0,
@@ -65,7 +66,8 @@ class AgilentPreConfigs(Enum):
             'highInputResistanceTrue': True,
             'assignment': 'offset',
             'accuracy': (None, None),
-            'preConfName': 'periodic'
+        'preConfName': 'periodic',
+        'measurementCompleteDestination': 'Con1_DIO31'
     }
     pre_scan = {
             'range': 10.0,
@@ -79,7 +81,8 @@ class AgilentPreConfigs(Enum):
             'highInputResistanceTrue': True,
             'assignment': 'offset',
             'accuracy': (None, None),
-            'preConfName': 'pre_scan'
+        'preConfName': 'pre_scan',
+        'measurementCompleteDestination': 'Con1_DIO31'
     }
     kepco = {
         'range': 10.0,
@@ -93,7 +96,8 @@ class AgilentPreConfigs(Enum):
         'highInputResistanceTrue': True,
         'assignment': 'offset',
         'accuracy': (None, None),
-        'preConfName': 'kepco'
+        'preConfName': 'kepco',
+        'measurementCompleteDestination': 'Con1_DIO31'
     }
 
 
@@ -181,7 +185,7 @@ class Agilent:
                 self.connection.write(str.encode(cmd_str + '\n'))
                 time.sleep(delay)
                 if read_back:
-                    ret = self._ser_readline(delay)
+                    ret = self._ser_readline(delay, cmd_str)
                 if to_float:
                     ret = self.convert_to_float(ret)
                 self.lock.release()
@@ -199,7 +203,7 @@ class Agilent:
             # print("flushing buffer yielded in, ", e)
             pass
 
-    def _ser_readline(self, delay):
+    def _ser_readline(self, delay, cmd_str):
         retries = 0
         ret = b''
         while True:
@@ -215,7 +219,7 @@ class Agilent:
                     break
                 time.sleep(delay)
                 retries += 1
-                print('retries: ', retries)
+                print('retries reading line on %s: %s, command string was: %s' % (self.name, retries, cmd_str))
         return ret
 
     def convert_to_float(self, byte_str, prec=2, default_float=-1.0):
@@ -452,7 +456,7 @@ class Agilent:
         :return: trig_slope_read
         """
         if self.type_num in ['34401A']:  # slope cannot be changed for 34401A, always active low (p. 83/42)
-            return 'falling'
+            return 'falling', self.get_dev_error()
         trig_slope = 'NEG' if meas_compl_slope_str == 'falling' else 'POS'
         self.send_command('OUTP:TRIG:SLOP %s' % trig_slope)
         trig_slope_read = trig_slope
@@ -479,10 +483,13 @@ class Agilent:
         following the receipt of INITiate.
         :return:
         """
+        print('Initiating measurement on ', self.name)
         self.send_command('INIT')
         self.state = 'measuring'
-        dev_err = self.get_dev_error()
+        # dev_err = self.get_dev_error()  # caused problems in 34401A
+        dev_err = (0, '')
         print('successfully started measurement on ', self.name)
+        self.last_readback_len = 0  # reset this for the 34401A since all data is erased.
         return dev_err
 
     def fetch_multiple_meas(self, num_to_read):
@@ -535,19 +542,21 @@ class Agilent:
                     # might be dangerous to miss a trigger while restarting
                     self.abort_meas()
                     self.initiate_measurement()
-                    self.last_readback_len = 0
                 if ret:
                     compl = np.fromstring(ret, sep=',')
-                    ret = deepcopy(compl)[self.last_readback_len:]
+                    if compl.size == 1:
+                        ret = deepcopy(compl)
+                    else:
+                        ret = deepcopy(compl)[self.last_readback_len:]
                     self.last_readback_len = compl.size
-                    print('complete data:', compl)
-                    print('complee data size: ', compl.size)
-                    print('newdata: ', ret)
+                    # print('complete data:', compl)
+                    # print('complee data size: ', compl.size)
+                    # print('newdata: ', ret)
                 else:
                     return np.zeros(0, dtype=np.double)
             else:
                 return np.zeros(0, dtype=np.double)
-        else:
+        else:  # for 34460A/34461A
             self.connection.settimeout(0.0005)
             if num_to_read < 0:
                 ret = self.send_command('R?', True, delay=0.0005)
@@ -588,7 +597,6 @@ class Agilent:
         :param pre_conf_name: str, name of the setting
         :return:
         """
-        print('trying to set %s to the config: %s' % (self.name, pre_conf_name))
         if pre_conf_name in self.pre_configs.__members__:
             config_dict = deepcopy(self.pre_configs[pre_conf_name].value)
             # config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
@@ -617,11 +625,13 @@ class Agilent:
             dmm_range = int(float(config_dict.get('range')))  # combobox will return a string
             resolution = float(config_dict.get('resolution'))
             self.config_measurement(dmm_range, resolution)
+            # print('%s sucessfully configured range, resolution' % self.name)
             trig_count = config_dict.get('triggerCount')
             sample_count = config_dict.get('sampleCount')
             trig_src_enum = AgilentTriggerSources[config_dict.get('triggerSource')]
             sample_interval = 1  # config_dict.get('sampleInterval')  sample interval currently not used
             self.config_multi_point_meas(trig_count, sample_count, trig_src_enum, sample_interval)
+            # print('%s sucessfully config_multi_point_meas' % self.name)
             auto_z = config_dict.get('autoZero')
             self.config_auto_zero(auto_z)
             trig_delay = config_dict.get('triggerDelay_s', 0)
@@ -629,12 +639,14 @@ class Agilent:
             trig_slope = config_dict.get('triggerSlope')
             self.config_trigger_slope(trig_slope)
             self.config_meas_complete_slope('rising')
+            # print('%s sucessfully configured trigger' % self.name)
             greater_10_g_ohm = config_dict.get('highInputResistanceTrue')
             self.set_input_resistance(greater_10_g_ohm)
             self.get_accuracy()
             # just to be sure this is included:
             self.config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
             dev_err = self.get_dev_error()
+            print('%s done with loading from config dict!' % self.name)
             return dev_err
         except Exception as e:
             dev_err = self.get_dev_error()
@@ -670,7 +682,10 @@ class Agilent:
                                         , self.config_dict['highInputResistanceTrue']),
             'accuracy': ('accuracy (reading, range)', False, tuple, [], self.config_dict['accuracy']),
             'assignment': ('assignment', True, str, ['offset', 'accVolt'], self.config_dict['assignment']),
-            'preConfName': ('pre config name', False, str, [], self.selected_pre_config_name)
+            'preConfName': ('pre config name', False, str, [], self.selected_pre_config_name),
+            'measurementCompleteDestination': ('measurement compl. dest.', True, str,
+                                               ['Con1_DIO30', 'Con1_DIO31', 'software'],
+                                               self.config_dict['measurementCompleteDestination']),
             }
         return config_dict
 
@@ -687,6 +702,7 @@ class Agilent:
                 print('%s yields the following error: %s' % (self.name, error))
             return error_num, error
         else:
+            print('%s is fine and no error is present' % self.name)
             return 0, ''
 
     def get_accuracy(self, config_dict=None):
