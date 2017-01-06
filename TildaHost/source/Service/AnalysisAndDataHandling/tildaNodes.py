@@ -809,7 +809,7 @@ class NSortedTrsArraysToSpecData(Node):
 
 
 class NStartNodeKepcoScan(Node):
-    def __init__(self, x_as_voltage_bool, dmm_names_sorted):
+    def __init__(self, x_as_voltage_bool, dmm_names_sorted, scan_complete_signal):
         """
         Node for handling the raw datastream which is created during a KepcoScan.
         :param x_as_voltage_bool: bool, True, if you want an x-axis in voltage, this
@@ -824,6 +824,7 @@ class NStartNodeKepcoScan(Node):
         self.info_handl = InfHandl()
         self.x_as_voltage = x_as_voltage_bool
         self.dmms = dmm_names_sorted  # list with the dmm names, indices are equal to indices in spec_data.cts, etc.
+        self.scan_complete_signal = scan_complete_signal
 
     def calc_voltage_err(self, voltage_reading, dmm_name):
         read_err, range_err = self.Pipeline.pipeData['measureVoltPars']['duringScan']['dmms'][dmm_name].get('accuracy', (None, None))
@@ -873,11 +874,21 @@ class NStartNodeKepcoScan(Node):
                     pass  # this should not happen here.
                 elif header_index == 0:
                     pass  # should also not happen here
-
+        self.check_if_scan_complete(track_ind)
         return self.spec_data
 
     def clear(self):
         self.spec_data = None
+
+    def check_if_scan_complete(self, track_ind):
+        complete = False
+        compl_list = []
+        if self.spec_data is not None:
+            for dmm_name in self.dmms:  # this would only fail if creation of self.dmm was wrong
+                dmm_ind = self.dmms.index(dmm_name)  # raise exception when not found
+                compl_list.append(not np.any(np.isnan(self.spec_data.cts[track_ind][dmm_ind])))
+            complete = np.alltrue(compl_list)
+        self.scan_complete_signal.emit(complete)
 
 
 class NSingleArrayToSpecData(Node):

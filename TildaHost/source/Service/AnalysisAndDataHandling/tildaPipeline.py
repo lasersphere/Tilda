@@ -22,7 +22,8 @@ from polliPipe.node import Node
 from polliPipe.pipeline import Pipeline
 
 
-def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples, fit_res_callback_dict):
+def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples,
+                          fit_res_callback_dict, scan_complete_callback):
     seq_type = scan_dict['isotopeData']['type']
     if seq_type == 'cs' or seq_type == 'csdummy':
         logging.debug('loading pipeline of type: cs')
@@ -35,7 +36,8 @@ def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples, fi
         return kepco_scan_pipe(scan_dict, callback_sig,
                                as_voltage=True,
                                live_plot_callbacks=live_plot_callback_tuples,
-                               fit_res_dict_callback=fit_res_callback_dict)
+                               fit_res_dict_callback=fit_res_callback_dict,
+                               scan_complete_callback=scan_complete_callback)
     else:
         return None
 
@@ -125,7 +127,7 @@ def CsPipe(initialScanPars=None, callback_sig=None, live_plot_callbacks=None):
 
 
 def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False,
-                    live_plot_callbacks=None, fit_res_dict_callback=None):
+                    live_plot_callbacks=None, fit_res_dict_callback=None, scan_complete_callback=None):
     """
     pipeline for the measurement and analysis of a kepco scan
     raw data and readback from dmm are fed into the pipeline.
@@ -142,7 +144,7 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False,
     #
     walk = start.attach(TN.NSaveRawData())
     # walk = start.attach(SN.NPrint())
-    specdata_path = start.attach(TN.NStartNodeKepcoScan(as_voltage, dmm_names))
+    specdata_path = start.attach(TN.NStartNodeKepcoScan(as_voltage, dmm_names, scan_complete_callback))
     specdata_path = specdata_path.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
 
     specdata_path = specdata_path.attach(TN.NMPLImagePlotAndSaveSpecData(0, *live_plot_callbacks))

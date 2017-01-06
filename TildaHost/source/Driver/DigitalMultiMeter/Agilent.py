@@ -12,13 +12,13 @@ Module representing a dummy digital multimeter with all required public function
 import datetime
 import logging
 import socket
-import threading
 import time
 from copy import deepcopy
 from enum import Enum, unique
 
 import numpy as np
 import serial
+from PyQt5.QtCore import QThread, QMutex
 
 
 @unique
@@ -101,15 +101,19 @@ class AgilentPreConfigs(Enum):
     }
 
 
-class Agilent:
+class Agilent(QThread):
     def __init__(self, reset=False, address_str='YourPC', type_num='34461A'):
+        super(Agilent, self).__init__()
+        self.stop_reading_thread = False  # use this to stop reading from dmm
+        self.mutex = QMutex()
         self.last_readback_len = 0  # is used to not emit a measurement twice.
         self.connection_type = None  # either 'socket' or 'serial'
         self.connection = None  # storage for the connection to the device either serial or ethernet
         self.sleepAfterSend = 0.5  # time the program blocks before trying to read back.
         self.buffersize = 1024
         self.con_end_of_trans = b'\r\n'
-        self.lock = threading.Lock()
+        self.read_back_data = np.zeros(0,
+                                       dtype=np.double)  # all currently stored data, will be emptied each time fetched from other thread
 
         self.type = 'Agilent' + '_' + type_num
         self.type_num = type_num
@@ -178,17 +182,15 @@ class Agilent:
         elif self.connection_type == 'serial':
             if delay is None:
                 delay = self.sleepAfterSend
-            if self.lock.acquire(timeout=5):
-                # print(self.name + ' sending comand: ' + str(cmd_str))
-                # self.connection.flushInput()
-                # self.connection.flushOutput()
-                self.connection.write(str.encode(cmd_str + '\n'))
-                time.sleep(delay)
-                if read_back:
-                    ret = self._ser_readline(delay, cmd_str)
-                if to_float:
-                    ret = self.convert_to_float(ret)
-                self.lock.release()
+            # print(self.name + ' sending comand: ' + str(cmd_str))
+            # self.connection.flushInput()
+            # self.connection.flushOutput()
+            self.connection.write(str.encode(cmd_str + '\n'))
+            time.sleep(delay)
+            if read_back:
+                ret = self._ser_readline(delay, cmd_str)
+            if to_float:
+                ret = self.convert_to_float(ret)
         return ret
 
     def _flush_socket(self):
@@ -470,8 +472,10 @@ class Agilent:
         Triggers the instrument if TRIGger:SOURce BUS is selected.
         :return: None
         """
+        self.mutex.lock()
         self.send_command('*TRG')
         dev_err = self.get_dev_error()
+        self.mutex.unlock()
         return dev_err
 
     ''' Measurement '''
@@ -490,9 +494,32 @@ class Agilent:
         dev_err = (0, '')
         print('successfully started measurement on ', self.name)
         self.last_readback_len = 0  # reset this for the 34401A since all data is erased.
+        self.start()
         return dev_err
 
     def fetch_multiple_meas(self, num_to_read):
+        """
+        will return all currently stored values from the dmm.
+        Actual readout of dmms happens in _fetch_mutliple_meas in the runnning thread
+        :param num_to_read: int, -1 for all
+        :return: list
+        """
+        start_time = datetime.datetime.now()
+
+        self.mutex.lock()
+        if num_to_read < 0:  # read all
+            ret = deepcopy(self.read_back_data)
+            self.read_back_data = np.zeros(0, dtype=np.double)
+        else:
+            ret = deepcopy(self.read_back_data[:num_to_read])
+            self.read_back_data = self.read_back_data[num_to_read:]
+        self.mutex.unlock()
+        stop_time = datetime.datetime.now()
+        reading_time = stop_time - start_time
+        # print('fetching data took %s seconds' % (reading_time.microseconds * 10 ** -6))
+        return ret
+
+    def _fetch_multiple_meas(self, num_to_read):
         """
         Reads and erases all measurements from reading memory up to the specified <max_readings>. The measurements
         are read and erased from the reading memory starting with the oldest measurement first.
@@ -544,7 +571,7 @@ class Agilent:
                     self.initiate_measurement()
                 if ret:
                     compl = np.fromstring(ret, sep=',')
-                    if compl.size == 1:
+                    if compl.size == 1 and self.last_readback_len == 0:
                         ret = deepcopy(compl)
                     else:
                         ret = deepcopy(compl)[self.last_readback_len:]
@@ -573,14 +600,25 @@ class Agilent:
         if ret.any():
             t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             # take last element out of array and make a tuple with timestamp:
+            self.mutex.lock()
             self.last_readback = (round(ret[-1], 8), t)
+            self.mutex.unlock()
         dev_err = self.get_dev_error()
         stop_time = datetime.datetime.now()
         reading_time = stop_time - start_time
-        print('reading from dev took %s seconds' % (reading_time.microseconds * 10 ** -6))
+        # print('reading from dev took %s seconds' % (reading_time.microseconds * 10 ** -6))
         return ret
 
     def abort_meas(self):
+        print('aborting reading thread of %s' % self.name)
+        while self.isRunning():
+            self.mutex.lock()
+            self.stop_reading_thread = True
+            self.mutex.unlock()
+            self.msleep(20)
+        self.mutex.lock()
+        self.stop_reading_thread = False
+        self.mutex.unlock()
         if self.type_num in ['34401A']:
             self.send_command('\x03')  # see p. 160 \x03 = <Ctrl-C>
         else:
@@ -727,39 +765,57 @@ class Agilent:
         config_dict['accuracy'] = acc_tpl
         return acc_tpl
 
-# dmm = DMMdummy()
-# dmm.set_to_pre_conf_setting('periodic')
+    ''' Thread '''
+
+    def run(self):
+        print('%s reading thread started' % self.name)
+        while not self.stop_reading_thread:
+            new_data = self._fetch_multiple_meas(-1)
+            self.mutex.lock()
+            self.read_back_data = np.append(self.read_back_data, new_data)
+            self.mutex.unlock()
+            self.msleep(50)
+        print('%s reading thread stopped' % self.name)
+        self.mutex.lock()
+        self.stop_reading_thread = False
+        self.mutex.unlock()
+
 # if __name__ == "__main__":
-#     dmm = Agilent(False, '137.138.135.94', '34461A')
-#     dmm.set_to_pre_conf_setting(self.pre_configs.periodic.name)
-#     dmm.abort_meas()
-#     dmm.fetch_multiple_meas(-1)
-#     print(dmm.load_from_config_dict({'resolution': '3e-5',
-#                                'autoZero': 'ON',
-#                                'accuracy': (3.5000000000000004e-05, 5e-05),
-#                                'triggerCount': -1,
-#                                'triggerDelay_s': 0,
-#                                'range': '10.0',
-#                                'highInputResistanceTrue': True,
-#                                'sampleCount': 1,
-#                                'triggerSource': 'immediate',
-#                                'assignment': 'accVolt',
-#                                'triggerSlope': 'rising'}, False))
-#
-#     [print(dmm.set_to_pre_conf_setting(i)) for i in self.pre_configs.__members__]
-#     print(dmm.load_from_config_dict({'resolution': '3e-6',
-#                                      'autoZero': 'ON',
-#                                      'accuracy': (3.5000000000000004e-05, 5e-05),
-#                                      'triggerCount': -1,
-#                                      'triggerDelay_s': 0,
-#                                      'range': '10.0',
-#                                      'highInputResistanceTrue': True,
-#                                      'sampleCount': 1,
-#                                      'triggerSource': 'bus',
-#                                      'assignment': 'accVolt',
-#                                      'triggerSlope': 'rising'}, False))
-#     # print(dmm.send_command('*IDN?', True))
-#     print(dmm.abort_meas())  # needs to be called before changes are made
+#     dmm = Agilent(False, 'com1', '34401A')
+#     dmm.set_to_pre_conf_setting(AgilentPreConfigs.periodic.name)
+#     # dmm.abort_meas()
+#     print('thread running: %s' % dmm.isRunning())
+#     print(dmm.read_back_data)
+#     x = 0
+#     while x < 100:
+#         time.sleep(0.1)
+#         print(dmm.fetch_multiple_meas(-1))
+#     # print(dmm.load_from_config_dict({'resolution': '3e-5',
+#     #                            'autoZero': 'ON',
+#     #                            'accuracy': (3.5000000000000004e-05, 5e-05),
+#     #                            'triggerCount': -1,
+#     #                            'triggerDelay_s': 0,
+#     #                            'range': '10.0',
+#     #                            'highInputResistanceTrue': True,
+#     #                            'sampleCount': 1,
+#     #                            'triggerSource': 'immediate',
+#     #                            'assignment': 'accVolt',
+#     #                            'triggerSlope': 'rising'}, False))
+#     #
+#     # [print(dmm.set_to_pre_conf_setting(i)) for i in self.pre_configs.__members__]
+#     # print(dmm.load_from_config_dict({'resolution': '3e-6',
+#     #                                  'autoZero': 'ON',
+#     #                                  'accuracy': (3.5000000000000004e-05, 5e-05),
+#     #                                  'triggerCount': -1,
+#     #                                  'triggerDelay_s': 0,
+#     #                                  'range': '10.0',
+#     #                                  'highInputResistanceTrue': True,
+#     #                                  'sampleCount': 1,
+#     #                                  'triggerSource': 'bus',
+#     #                                  'assignment': 'accVolt',
+#     #                                  'triggerSlope': 'rising'}, False))
+#     # # print(dmm.send_command('*IDN?', True))
+#     # print(dmm.abort_meas())  # needs to be called before changes are made
 #
 #     # print(dmm.reset_dev())
 #     # print(dmm.send_command('SYST:ERR?', True))
@@ -798,24 +854,24 @@ class Agilent:
 #     # # print(dmm.send_command('SYST:ERR?', True))
 #     # # print(dmm.send_command('SYST:ERR?', True))
 #     # dmm.set_to_pre_conf_setting('periodic')
-#     dmm.set_to_pre_conf_setting('initial')
+#     # dmm.set_to_pre_conf_setting('initial')
 #     # print(dmm.emit_config_pars())
-#     x = 0
-#     while x < 100:
-#         start = datetime.datetime.now()
-#         dmm.send_software_trigger()
-#         dmm.send_software_trigger()
-#         dmm.send_software_trigger()
-#         dmm.send_software_trigger()
-#         dmm.send_software_trigger()
-#         dmm.send_software_trigger()
-#         dmm.send_software_trigger()
-#         dmm.send_software_trigger()
-#         time.sleep(1)
-#         stop = datetime.datetime.now()
-#         dif = stop - start
-#         print('time for sending 8 softw. triggers and 1 second delay: ', dif.seconds)
-#         print(dmm.fetch_multiple_meas(-1))
-#         x += 1
-#     print(dmm.send_command('SYST:ERR?', True))
-#     print(dmm.send_command('*ESR?', True, to_float=True))
+#     # x = 0
+#     # while x < 100:
+#     #     start = datetime.datetime.now()
+#     #     dmm.send_software_trigger()
+#     #     dmm.send_software_trigger()
+#     #     dmm.send_software_trigger()
+#     #     dmm.send_software_trigger()
+#     #     dmm.send_software_trigger()
+#     #     dmm.send_software_trigger()
+#     #     dmm.send_software_trigger()
+#     #     dmm.send_software_trigger()
+#     #     time.sleep(1)
+#     #     stop = datetime.datetime.now()
+#     #     dif = stop - start
+#     #     print('time for sending 8 softw. triggers and 1 second delay: ', dif.seconds)
+#     #     print(dmm.fetch_multiple_meas(-1))
+#     #     x += 1
+#     # print(dmm.send_command('SYST:ERR?', True))
+#     # print(dmm.send_command('*ESR?', True, to_float=True))

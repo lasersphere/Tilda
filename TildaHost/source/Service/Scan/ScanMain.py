@@ -72,10 +72,11 @@ class ScanMain(QObject):
             return False
 
     def init_analysis_thread(self, scan_dict, callback_sig=None,
-                             live_plot_callback_tuples=None, fit_res_dict_callback=None):
+                             live_plot_callback_tuples=None, fit_res_dict_callback=None, scan_complete_callback=None):
         self.analysis_thread = AnalThr(
             scan_dict, callback_sig, live_plot_callback_tuples, fit_res_dict_callback,
-            self.stop_analysis_sig, self.prep_track_in_pipe_sig, self.data_to_pipe_sig
+            self.stop_analysis_sig, self.prep_track_in_pipe_sig, self.data_to_pipe_sig,
+            scan_complete_callback
         )
 
     def measure_offset_pre_scan(self, scan_dict):

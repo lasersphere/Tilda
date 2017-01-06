@@ -34,6 +34,9 @@ class Main(QtCore.QObject):
     scan_prog_call_back_sig_pipeline = QtCore.pyqtSignal(int)
     # close_spec_display = QtCore.pyqtSignal(str)
 
+    # signal which will be emitted from the pipeline (for now only kepco) if the scan is completed.
+    scan_complete_callback = QtCore.pyqtSignal(bool)
+
     def __init__(self):
         super(Main, self).__init__()
         self.m_state = MainState.init
@@ -66,6 +69,8 @@ class Main(QtCore.QObject):
         self.scan_pars = {}  # {iso0: scan_dict, iso1: scan_dict} -> iso is unique
         self.scan_progress = {}  # {activeIso: str, activeTrackNum: int, completedTracks: list, nOfCompletedSteps: int}
         # nOfCompletedSteps is only for the active track!
+        self.scan_yields_complete = False
+        self.scan_complete_callback.connect(self.set_scan_yields_complete_callback)
         self.scan_start_time = None
         self.abort_scan = False
         self.halt_scan = False
@@ -597,7 +602,9 @@ class Main(QtCore.QObject):
             self.scan_main.init_analysis_thread(
                 self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline,
                 self.live_plot_callback_tuples,
-                fit_res_dict_callback=self.live_plot_fit_res_callback)
+                fit_res_dict_callback=self.live_plot_fit_res_callback,
+                scan_complete_callback=self.scan_complete_callback
+            )
         active_track_num = self.scan_progress['activeTrackNum']
         self.scan_main.prep_track_in_pipe(active_track_num, active_track_num)
         if self.scan_main.start_measurement(self.scan_pars[iso_name], active_track_num):
@@ -620,6 +627,13 @@ class Main(QtCore.QObject):
             self.set_state(MainState.saving, (complete_stop, True))
         elif not self.scan_main.read_data():  # read_data() yields False if no Elements can be read from fpga
             if not self.scan_main.check_scanning():  # check if fpga is still in scanning state
+                if self.scan_pars[self.scan_progress['activeIso']]['isotopeData']['type'] == 'kepco':
+                    # for now this feedback of the pipeline when the scan is complete
+                    # is only implemented for a kepco scan, but for the future also other pipelines might make sense.
+                    if self.scan_yields_complete or self.halt_scan:  # scan done -> normal exit etc
+                        pass
+                    else:  # scan not done -> keep scanning
+                        return None
                 if self.halt_scan:  # scan was halted
                     self.halt_scan_func(False)  # set halt variable to false afterwards
                     self.set_state(MainState.saving, (True, True))
@@ -649,6 +663,9 @@ class Main(QtCore.QObject):
                     self.set_state(MainState.setting_switch_box, (True, 4))  # after this has ben completed, it will go to idle
                 else:  # keep going with next track. None to read from next dict.
                     self.set_state(MainState.setting_switch_box, (True, None))
+
+    def set_scan_yields_complete_callback(self, complete_bool):
+        self.scan_yields_complete = complete_bool
 
     """ simple counter """
 
@@ -806,7 +823,6 @@ class Main(QtCore.QObject):
         self.scan_pars[key] = scan_dict
         logging.debug('scan_pars are: ' + str(self.scan_pars))
         return key
-
 
     def remove_iso_from_scan_pars(self, iso_seqtype):
         """
