@@ -23,15 +23,15 @@ Using CApiAnalyser.py yields:
 """
 
 '''Bitfile Signature:'''
-bitfileSignatures = {'PXI-7852R': 'EBC051BE22D0FB0D9D950CE94571933E',
-                     'PXI-7841R': 'CE82811F7B7B8500AA9106520D789F82'
+bitfileSignatures = {'PXI-7852R': 'CAFDD3D5D68CE70D2F0B083FF2A6B026',
+                     'PXI-7841R': 'D8659AE17B3FFE31128DCCEC183B3792'
                      }
 bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
 bitfilePaths = {'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                                       'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_205.lvbitx'),
+                                       'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_206.lvbitx'),
                 'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                                       'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_205_7841.lvbitx')
+                                       'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_206_7841.lvbitx')
                 }
 
 bitfilePath = bitfilePaths[fpga_type]
@@ -39,39 +39,40 @@ bitfilePath = bitfilePaths[fpga_type]
 '''FPGA Resource:'''
 fpgaResource = fpga_resource
 '''Indicators:'''
-DACQuWriteTimeout = {'ref': 0x812E, 'val': ctypes.c_bool(), 'ctr': False}
-MCSQuWriteTimeout = {'ref': 0x8132, 'val': ctypes.c_bool(), 'ctr': False}
-MCSerrorcount = {'ref': 0x812A, 'val': ctypes.c_byte(), 'ctr': False}
-postAccOffsetVoltState = {'ref': 0x8122, 'val': ctypes.c_ubyte(), 'ctr': False}
-MCSstate = {'ref': 0x813A, 'val': ctypes.c_uint(), 'ctr': False}
-measVoltState = {'ref': 0x8136, 'val': ctypes.c_uint(), 'ctr': False}
-seqState = {'ref': 0x815E, 'val': ctypes.c_uint(), 'ctr': False}
+DACQuWriteTimeout = {'ref': 0x8132, 'val': ctypes.c_bool(), 'ctr': False}
+MCSQuWriteTimeout = {'ref': 0x8136, 'val': ctypes.c_bool(), 'ctr': False}
+MCSerrorcount = {'ref': 0x812E, 'val': ctypes.c_byte(), 'ctr': False}
+postAccOffsetVoltState = {'ref': 0x8126, 'val': ctypes.c_ubyte(), 'ctr': False}
+MCSstate = {'ref': 0x813E, 'val': ctypes.c_uint(), 'ctr': False}
+measVoltState = {'ref': 0x813A, 'val': ctypes.c_uint(), 'ctr': False}
+seqState = {'ref': 0x8162, 'val': ctypes.c_uint(), 'ctr': False}
 '''Controls:'''
 VoltOrScaler = {'ref': 0x810E, 'val': ctypes.c_bool(), 'ctr': True}
-abort = {'ref': 0x8156, 'val': ctypes.c_bool(), 'ctr': True}
-halt = {'ref': 0x8152, 'val': ctypes.c_bool(), 'ctr': True}
-hostConfirmsHzOffsetIsSet = {'ref': 0x814E, 'val': ctypes.c_bool(), 'ctr': True}
-invertScan = {'ref': 0x817A, 'val': ctypes.c_bool(), 'ctr': True}
-stopVoltMeas = {'ref': 0x8112, 'val': ctypes.c_bool(), 'ctr': True}
-timedOutWhileHandshake = {'ref': 0x8162, 'val': ctypes.c_bool(), 'ctr': True}
-postAccOffsetVoltControl = {'ref': 0x8176, 'val': ctypes.c_ubyte(), 'ctr': True}
-selectTrigger = {'ref': 0x814A, 'val': ctypes.c_ubyte(), 'ctr': True}
-triggerEdge = {'ref': 0x811E, 'val': ctypes.c_ubyte(), 'ctr': True}
-cmdByHost = {'ref': 0x815A, 'val': ctypes.c_uint(), 'ctr': True}
-measVoltCompleteDest = {'ref': 0x8116, 'val': ctypes.c_uint(), 'ctr': True}
-triggerTypes = {'ref': 0x8126, 'val': ctypes.c_uint(), 'ctr': True}
-waitAfterReset25nsTicks = {'ref': 0x816E, 'val': ctypes.c_uint(), 'ctr': True}
-waitForKepco25nsTicks = {'ref': 0x8172, 'val': ctypes.c_uint(), 'ctr': True}
-dacStartRegister18Bit = {'ref': 0x8184, 'val': ctypes.c_long(), 'ctr': True}
-dacStepSize18Bit = {'ref': 0x8188, 'val': ctypes.c_long(), 'ctr': True}
-measVoltPulseLength25ns = {'ref': 0x8168, 'val': ctypes.c_long(), 'ctr': True}
-measVoltTimeout10ns = {'ref': 0x8164, 'val': ctypes.c_long(), 'ctr': True}
-nOfBunches = {'ref': 0x813C, 'val': ctypes.c_long(), 'ctr': True}
-nOfScans = {'ref': 0x817C, 'val': ctypes.c_long(), 'ctr': True}
-nOfSteps = {'ref': 0x8180, 'val': ctypes.c_long(), 'ctr': True}
-dac0VRegister = {'ref': 0x8118, 'val': ctypes.c_ulong(), 'ctr': True}
-nOfBins = {'ref': 0x8140, 'val': ctypes.c_ulong(), 'ctr': True}
-trigDelay10ns = {'ref': 0x8144, 'val': ctypes.c_ulong(), 'ctr': True}
+abort = {'ref': 0x815A, 'val': ctypes.c_bool(), 'ctr': True}
+halt = {'ref': 0x8156, 'val': ctypes.c_bool(), 'ctr': True}
+hostConfirmsHzOffsetIsSet = {'ref': 0x8152, 'val': ctypes.c_bool(), 'ctr': True}
+invertScan = {'ref': 0x817E, 'val': ctypes.c_bool(), 'ctr': True}
+pause = {'ref': 0x8112, 'val': ctypes.c_bool(), 'ctr': True}
+stopVoltMeas = {'ref': 0x8116, 'val': ctypes.c_bool(), 'ctr': True}
+timedOutWhileHandshake = {'ref': 0x8166, 'val': ctypes.c_bool(), 'ctr': True}
+postAccOffsetVoltControl = {'ref': 0x817A, 'val': ctypes.c_ubyte(), 'ctr': True}
+selectTrigger = {'ref': 0x814E, 'val': ctypes.c_ubyte(), 'ctr': True}
+triggerEdge = {'ref': 0x8122, 'val': ctypes.c_ubyte(), 'ctr': True}
+cmdByHost = {'ref': 0x815E, 'val': ctypes.c_uint(), 'ctr': True}
+measVoltCompleteDest = {'ref': 0x811A, 'val': ctypes.c_uint(), 'ctr': True}
+triggerTypes = {'ref': 0x812A, 'val': ctypes.c_uint(), 'ctr': True}
+waitAfterReset25nsTicks = {'ref': 0x8172, 'val': ctypes.c_uint(), 'ctr': True}
+waitForKepco25nsTicks = {'ref': 0x8176, 'val': ctypes.c_uint(), 'ctr': True}
+dacStartRegister18Bit = {'ref': 0x8188, 'val': ctypes.c_long(), 'ctr': True}
+dacStepSize18Bit = {'ref': 0x818C, 'val': ctypes.c_long(), 'ctr': True}
+measVoltPulseLength25ns = {'ref': 0x816C, 'val': ctypes.c_long(), 'ctr': True}
+measVoltTimeout10ns = {'ref': 0x8168, 'val': ctypes.c_long(), 'ctr': True}
+nOfBunches = {'ref': 0x8140, 'val': ctypes.c_long(), 'ctr': True}
+nOfScans = {'ref': 0x8180, 'val': ctypes.c_long(), 'ctr': True}
+nOfSteps = {'ref': 0x8184, 'val': ctypes.c_long(), 'ctr': True}
+dac0VRegister = {'ref': 0x811C, 'val': ctypes.c_ulong(), 'ctr': True}
+nOfBins = {'ref': 0x8144, 'val': ctypes.c_ulong(), 'ctr': True}
+trigDelay10ns = {'ref': 0x8148, 'val': ctypes.c_ulong(), 'ctr': True}
 '''TargetToHostFifos:'''
 transferToHost = {'ref': 0, 'val': ctypes.c_ulong(), 'ctr': False}
 

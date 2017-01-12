@@ -83,7 +83,7 @@ draftTrackPars = {
 }
 
 draftMeasureVoltPars_singl = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 1000000000,
-                              'dmms': {}, 'switchBoxSettleTimeS': 5.0, 'measVoltCompleteDest': 'software'}
+                              'dmms': {}, 'switchBoxSettleTimeS': 5.0, 'measurementCompleteDestination': 'software'}
 draftMeasureVoltPars = {'preScan': deepcopy(draftMeasureVoltPars_singl),
                         'duringScan': deepcopy(draftMeasureVoltPars_singl)}
 

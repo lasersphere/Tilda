@@ -105,6 +105,7 @@ class Agilent(QThread):
     def __init__(self, reset=False, address_str='YourPC', type_num='34461A'):
         super(Agilent, self).__init__()
         self.stop_reading_thread = False  # use this to stop reading from dmm
+        self.soft_trig_request = True  # request for a software trigger while thread is runnning
         self.mutex = QMutex()
         self.last_readback_len = 0  # is used to not emit a measurement twice.
         self.connection_type = None  # either 'socket' or 'serial'
@@ -233,7 +234,7 @@ class Agilent(QThread):
             else:
                 return 0
         except Exception as e:
-            logging.error('err', 'could not convert to float: ' + str(byte_str) + ' error is: ' + str(e))
+            logging.error('err could not convert to float: %s error is: %s' % (byte_str, e))
             return default_float
 
     ''' deinit and init '''
@@ -472,10 +473,19 @@ class Agilent(QThread):
         Triggers the instrument if TRIGger:SOURce BUS is selected.
         :return: None
         """
-        self.mutex.lock()
+        if self.isRunning():
+            self.mutex.lock()
+            self.soft_trig_request = True
+            self.mutex.unlock()
+        else:
+            self.send_software_trigger()
+
+    def _send_software_trigger(self):
+        """
+        will communicate with the device, so only call when thread is not running.
+        """
         self.send_command('*TRG')
         dev_err = self.get_dev_error()
-        self.mutex.unlock()
         return dev_err
 
     ''' Measurement '''
@@ -731,8 +741,11 @@ class Agilent(QThread):
     def get_dev_error(self):
         """
         ask device for present error
+        -> currentlsy just a dummy
         :return (int, str), (errornum, complete error string
         """
+        # currently this is overused, just assume everything is fine for now
+        # return 0, ''
         error = self.send_command('SYST:ERR?', True)
         if error:
             error_num = int(error.split(sep=b',')[0])
@@ -770,6 +783,11 @@ class Agilent(QThread):
     def run(self):
         print('%s reading thread started' % self.name)
         while not self.stop_reading_thread:
+            if self.soft_trig_request:
+                self._send_software_trigger()
+                self.mutex.lock()
+                self.soft_trig_request = False
+                self.mutex.unlock()
             new_data = self._fetch_multiple_meas(-1)
             self.mutex.lock()
             self.read_back_data = np.append(self.read_back_data, new_data)

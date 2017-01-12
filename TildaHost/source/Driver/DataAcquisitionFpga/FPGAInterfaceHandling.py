@@ -33,6 +33,7 @@ class FPGAInterfaceHandling():
         :param run: Boolean, to chose if you want to run the fpga on startup, default is True
         :return: None
         """
+        self.pause_bool = False
         if not dummy:
             self.dmaReadTimeout = 1  # timeout to read from Dma Queue in ms
             self.NiFpgaUniversalInterfaceDll = ctypes.CDLL(

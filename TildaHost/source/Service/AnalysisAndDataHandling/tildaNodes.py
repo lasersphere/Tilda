@@ -809,7 +809,8 @@ class NSortedTrsArraysToSpecData(Node):
 
 
 class NStartNodeKepcoScan(Node):
-    def __init__(self, x_as_voltage_bool, dmm_names_sorted, scan_complete_signal):
+    def __init__(self, x_as_voltage_bool, dmm_names_sorted, scan_complete_signal,
+                 dac_new_volt_set_callback):
         """
         Node for handling the raw datastream which is created during a KepcoScan.
         :param x_as_voltage_bool: bool, True, if you want an x-axis in voltage, this
@@ -825,6 +826,8 @@ class NStartNodeKepcoScan(Node):
         self.x_as_voltage = x_as_voltage_bool
         self.dmms = dmm_names_sorted  # list with the dmm names, indices are equal to indices in spec_data.cts, etc.
         self.scan_complete_signal = scan_complete_signal
+        # callback to emit when the dac has a new voltage -> software trigger dmms (if no hardware trig available)
+        self.dac_new_volt_set_callback = dac_new_volt_set_callback
 
     def calc_voltage_err(self, voltage_reading, dmm_name):
         read_err, range_err = self.Pipeline.pipeData['measureVoltPars']['duringScan']['dmms'][dmm_name].get('accuracy', (None, None))
@@ -851,6 +854,18 @@ class NStartNodeKepcoScan(Node):
                                 self.spec_data.cts[track_ind][dmm_ind][volt_ind] = dmm_read
                                 self.spec_data.err[track_ind][dmm_ind][volt_ind] = self.calc_voltage_err(
                                     dmm_read, dmm_name)
+                                try:
+                                    all_read = [self.spec_data.cts[track_ind][dmm_ind_all][volt_ind]
+                                                for dmm_ind_all, dmm_name in enumerate(self.dmms)]
+                                    if np.any(np.isnan(all_read)):
+                                        # not all dmms have a reading yet
+                                        pass
+                                    else:
+                                        # all dmms have a reading emit signal with int = -1
+                                        print('all dmms have a reading, emitting -1')
+                                        self.dac_new_volt_set_callback.emit(-1)
+                                except Exception as e:
+                                    print('error while processing data in node: %s -> %s' % (self.type, e))
                                 # print('volt_reading: ', self.spec_data.cts)
                             else:
                                 # print('received more voltages than it should! check your settings!')
@@ -869,7 +884,9 @@ class NStartNodeKepcoScan(Node):
                     logging.error('fpga sends error code: ' + str(payload) + 'or in binary: ' + str(
                         '{0:032b}'.format(payload)))
                 elif first_header == Progs.dac.value:
-                    pass  # step complete etc. will be handled with infohandler values
+                    if self.dac_new_volt_set_callback is not None:
+                        self.dac_new_volt_set_callback.emit(int(payload))
+                        # pass  # step complete etc. will be handled with infohandler values
                 elif first_header == Progs.continuousSequencer:
                     pass  # this should not happen here.
                 elif header_index == 0:

@@ -5,12 +5,12 @@ Created on '08.07.2015'
 @author:'simkaufm'
 
 """
+import logging
+import time
+
+import Service.VoltageConversions.VoltageConversions as VCon
 from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
-import Service.VoltageConversions.VoltageConversions as VCon
-
-import time
-import logging
 
 
 class Sequencer(FPGAInterfaceHandling):
@@ -154,7 +154,9 @@ class Sequencer(FPGAInterfaceHandling):
             time.sleep(waitForNextTry)
         curState = self.getSeqState()
         if curState == cmd:
-            logging.debug('fpga states successfully changed to: ' + str(curState))
+            state_name = [state_n for state_n, state_num in self.config.seqStateDict.items() if state_num == curState][
+                0]
+            logging.debug('fpga states successfully changed to: %s <-> %s' % (curState, state_name))
             return self.checkFpgaStatus()
         elif tries == maxTries:
             print('could not Change to State ' + str(cmd) + ' within ' + str(maxTries) +
@@ -202,6 +204,21 @@ class Sequencer(FPGAInterfaceHandling):
         print('setting halt to: ', val)
         self.ReadWrite(self.config.halt, val)
         return self.checkFpgaStatus()
+
+    def pause_scan(self, pause_bool=None):
+        """
+        This will pause the scan with a loop in the handshake.
+        Use this, if the laser jumped or so and you want to continue on the data.
+        :param pause_bool: bool, None if you want to toggle
+        """
+        if pause_bool is None:
+            pause_bool = not self.pause_bool
+        print('pausing the fpga, pause is: %s' % pause_bool)
+        self.ReadWrite(self.config.pause, pause_bool)
+        stat = self.checkFpgaStatus()
+        if stat:
+            self.pause_bool = pause_bool
+        return stat
 
     def set_trigger(self, trigger_dict=None):
         """

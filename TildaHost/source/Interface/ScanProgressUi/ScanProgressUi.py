@@ -37,6 +37,7 @@ class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
         """ connect buttons etc. """
         self.pushButton_abort.clicked.connect(self.abort)
         self.checkBox.clicked.connect(self.halt)
+        self.pushButton_pause.clicked.connect(self.pause_scan)
 
         self.show()
 
@@ -45,6 +46,19 @@ class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
 
     def halt(self):
         Cfg._main_instance.halt_scan_func(self.checkBox.isChecked())
+
+    def pause_scan(self):
+        """
+        This will pause the scan with a loop in the handshake.
+        Use this, if the laser jumped or so and you want to continue on the data.
+        """
+        paused_bool = Cfg._main_instance.pause_scan()
+        if paused_bool:  # this means the scan is currently paused
+            self.pushButton_pause.setText('continue')
+        else:
+            self.pushButton_pause.setText('pause')
+        self.pushButton_abort.setDisabled(paused_bool)
+        self.checkBox.setDisabled(paused_bool)
 
     def update_progress(self, progress_dict):
         """

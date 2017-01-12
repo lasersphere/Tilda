@@ -527,10 +527,11 @@ class Main(QtCore.QObject):
                             self.scan_main.abort_dmm_measurement('all')
                             dmms_dict_during_scan = self.scan_pars[iso_name]['measureVoltPars'].get('duringScan',
                                                                                                     {}).get('dmms', None)
-
+                            dmm_complete_location = self.scan_pars[iso_name]['measureVoltPars']['duringScan'][
+                                'measurementCompleteDestination']
                             # when done with the pre scan measurement, setup dmms to the during scan dict.
                             # set the dmms according to the dictionary inside the dmms_dict for during the scan
-                            self.scan_main.prepare_dmms_for_scan(dmms_dict_during_scan)
+                            self.scan_main.prepare_dmms_for_scan(dmms_dict_during_scan, dmm_complete_location)
                             self.set_state(MainState.load_track)
 
     def add_global_infos_to_scan_pars(self, iso_name):
@@ -666,6 +667,14 @@ class Main(QtCore.QObject):
 
     def set_scan_yields_complete_callback(self, complete_bool):
         self.scan_yields_complete = complete_bool
+
+    def pause_scan(self, pause_scan_bool=None):
+        """
+        This will pause the scan with a loop in the handshake.
+        Use this, if the laser jumped or so and you want to continue on the data.
+        :param pause_bool: bool, None if you want to toggle
+        """
+        return self.scan_main.pause_scan(pause_scan_bool)
 
     """ simple counter """
 

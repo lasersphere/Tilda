@@ -39,12 +39,11 @@ class MeasureVolt(FPGAInterfaceHandling):
         """
         self.ReadWrite(self.config.measVoltPulseLength25ns, measVoltPars['measVoltPulseLength25ns'])
         self.ReadWrite(self.config.measVoltTimeout10ns, measVoltPars['measVoltTimeout10ns'])
-        if measVoltPars['measurementCompleteDestination'] != 'software':
-            # will be -1 for software trigger and than the measurement will be stopped from the host
-            val = self.config.measVoltCompleteDestStateDict.get(
-                measVoltPars.get('measurementCompleteDestination', 'PXI_Trigger_4_Con1_DIO30_Con1_DIO31'), 0)
-            self.ReadWrite(self.config.measVoltCompleteDest, val)
-            print('set the measurement complete destination to state enum: %s' % val)
+        # will be 7 for software trigger and than the measurement will be stopped from the host
+        key = measVoltPars.get('measurementCompleteDestination', 'PXI_Trigger_4_Con1_DIO30_Con1_DIO31')
+        val = self.config.measVoltCompleteDestStateDict.get(key, 0)
+        self.ReadWrite(self.config.measVoltCompleteDest, val)
+        print('set the measurement complete destination to state enum: %s <-> %s' % (key, val))
         return self.checkFpgaStatus()
 
     def set_stopVoltMeas(self, stop_bool):
