@@ -6,7 +6,7 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 
 class Ui_ScanProgress(object):
     def setupUi(self, ScanProgress):
@@ -112,10 +112,13 @@ class Ui_ScanProgress(object):
         self.gridLayout_2.setObjectName("gridLayout_2")
         self.pushButton_abort = QtWidgets.QPushButton(self.centralwidget)
         self.pushButton_abort.setObjectName("pushButton_abort")
-        self.gridLayout_2.addWidget(self.pushButton_abort, 2, 1, 1, 1)
+        self.gridLayout_2.addWidget(self.pushButton_abort, 2, 2, 1, 1)
         self.checkBox = QtWidgets.QCheckBox(self.centralwidget)
         self.checkBox.setObjectName("checkBox")
-        self.gridLayout_2.addWidget(self.checkBox, 2, 0, 1, 1)
+        self.gridLayout_2.addWidget(self.checkBox, 2, 1, 1, 1)
+        self.pushButton_pause = QtWidgets.QPushButton(self.centralwidget)
+        self.pushButton_pause.setObjectName("pushButton_pause")
+        self.gridLayout_2.addWidget(self.pushButton_pause, 2, 0, 1, 1)
         self.verticalLayout.addLayout(self.gridLayout_2)
         ScanProgress.setCentralWidget(self.centralwidget)
         self.statusbar = QtWidgets.QStatusBar(ScanProgress)
@@ -148,4 +151,4 @@ class Ui_ScanProgress(object):
 "number:"))
         self.pushButton_abort.setText(_translate("ScanProgress", "abort"))
         self.checkBox.setText(_translate("ScanProgress", "halt"))
-
+        self.pushButton_pause.setText(_translate("ScanProgress", "pause"))

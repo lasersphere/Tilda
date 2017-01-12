@@ -32,6 +32,9 @@ class ScanMain(QObject):
     # np.ndarray for numpy data, dict for dictionary with dmm readbacks
     # the one you don't need, leave empty (np.ndarray(0, dtype=np.int32) / {})
     data_to_pipe_sig = pyqtSignal(np.ndarray, dict)
+    # signal send by the pipeline during a kepco scan, if a new voltage has ben set
+    # use this to trigger the dmms if wanted
+    dac_new_volt_set_callback = pyqtSignal(int)
 
     def __init__(self):
         super(ScanMain, self).__init__()
@@ -44,6 +47,7 @@ class ScanMain(QObject):
 
         self.post_acc_main = PostAcc.PostAccelerationMain()
         self.digital_multi_meter = DmmCtrl.DMMControl()
+        self.dac_new_volt_set_callback.connect(self.rcvd_dac_new_voltage_during_kepco_scan)
 
     ''' scan main functions: '''
 
@@ -73,10 +77,17 @@ class ScanMain(QObject):
 
     def init_analysis_thread(self, scan_dict, callback_sig=None,
                              live_plot_callback_tuples=None, fit_res_dict_callback=None, scan_complete_callback=None):
+        if scan_dict['measureVoltPars']['duringScan'].get('measurementCompleteDestination', '') == 'software':
+            # send the callback signal to the pipeline in order to enable software feedback when voltage is set
+            # hardware triggering of the dmm is still possible
+            dac_new_volt_set_callback = self.dac_new_volt_set_callback
+        else:  # so the dmms are not software triggered.
+            dac_new_volt_set_callback = None
+
         self.analysis_thread = AnalThr(
             scan_dict, callback_sig, live_plot_callback_tuples, fit_res_dict_callback,
             self.stop_analysis_sig, self.prep_track_in_pipe_sig, self.data_to_pipe_sig,
-            scan_complete_callback
+            scan_complete_callback, dac_new_volt_set_callback
         )
 
     def measure_offset_pre_scan(self, scan_dict):
@@ -304,6 +315,54 @@ class ScanMain(QObject):
         """
         self.sequencer.abort()
 
+    def pause_scan(self, pause_bool=None):
+        """
+        This will pause the scan with a loop in the handshake.
+        Use this, if the laser jumped or so and you want to continue on the data.
+        :param pause_bool: bool, None if you want to toggle
+        """
+        self.sequencer.pause_scan(pause_bool)
+        return self.sequencer.pause_bool
+
+    def set_stop_volt_meas_bool(self, stop_bool):
+        """
+        set the stopVoltMeas Boolean on the fpga.
+        If This is True, it will hold the fpga after the voltage is set.
+        Setting it to False then will result the fpga to send out the usual hardware meas volt trigger
+        and then it will wait for a hardware voltmeter complete feedback(or timeout),
+        this wait can be stopped by setting the stopVoltMeas Boolean to True
+        and should be done when all dmms have a reading for this voltage step.
+        :param stop_bool: bool,
+        :return: None
+        """
+        if self.sequencer is not None:
+            print('setting stopVoltMeas to: %s' % stop_bool)
+            self.sequencer.set_stopVoltMeas(stop_bool)
+            return True
+        else:
+            print('error: trying to access sequencer, but there is no sequencer initialised.'
+                  ' Function call is: set_stop_volt_meas_bool() in scan main')
+            return False
+
+    def rcvd_dac_new_voltage_during_kepco_scan(self, dac_20Bitint):
+        """
+        TODO
+        :param int:
+        :return:
+        """
+        if dac_20Bitint >= 0:  # it means dac voltage is set
+            print('received a new voltage step dac int is: %s' % dac_20Bitint)
+            self.software_trigger_dmm('all')
+            self.set_stop_volt_meas_bool(False)
+        else:  # this means all dmms returned a reading and proceed to next step please
+            self.kepco_scan_all_dmms_have_reading()
+
+    def kepco_scan_all_dmms_have_reading(self):
+        """
+        will be activated from pipe when all dmms have a reading.
+        """
+        self.set_stop_volt_meas_bool(True)
+
     ''' Pipeline / Analysis related functions: '''
 
     def prep_track_in_pipe(self, track_num, track_index):
@@ -398,7 +457,7 @@ class ScanMain(QObject):
         name = self.digital_multi_meter.find_dmm_by_type(type_str, address)
         return name
 
-    def prepare_dmms_for_scan(self, dmms_conf_dict):
+    def prepare_dmms_for_scan(self, dmms_conf_dict, dmm_meas_volt_complete_location=None):
         """
         call this pre scan in order to configure all dmms according to the
         dmms_conf_dict, which is located in scan_dict['measureVoltPars']['preScan' or 'duringScan']['dmms].
@@ -414,6 +473,9 @@ class ScanMain(QObject):
                 logging.warning('%s was not initialized yet, will do now.' % dmm_name)
                 self.prepare_dmm(dmm_conf_dict.get('type', ''), dmm_conf_dict.get('address', ''))
             self.setup_dmm_and_arm(dmm_name, dmm_conf_dict, False)
+        # if the stop bool is not addressed, set it to false pre scan in order not to hinder scanning procedure.
+        stop_bool = dmm_meas_volt_complete_location == 'software' and dmm_meas_volt_complete_location is not None
+        self.set_stop_volt_meas_bool(stop_bool)
 
     def setup_dmm_and_arm(self, dmm_name, config_dict, reset_dev):
         """

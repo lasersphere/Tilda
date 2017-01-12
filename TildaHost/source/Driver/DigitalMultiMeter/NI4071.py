@@ -81,6 +81,7 @@ class Ni4071MeasCompleteLoc(Enum):
     PXI_Trigger_6 = 117
     PXI_Trigger_7 = 118
     lbr_trig_0 = 1003
+    software = 0
 
 
 class Ni4071PreConfigs(Enum):
@@ -458,7 +459,8 @@ class Ni4071:
         :param meas_compl_dest: enum, as defined in Ni4071MeasCompleteLoc class.
         """
         self.config_dict['measurementCompleteDestination'] = meas_compl_dest_enum.name
-        self.dll.niDMM_ConfigureMeasCompleteDest(self.session, ctypes.c_int32(meas_compl_dest_enum.value))
+        if meas_compl_dest_enum != Ni4071MeasCompleteLoc.software:
+            self.dll.niDMM_ConfigureMeasCompleteDest(self.session, ctypes.c_int32(meas_compl_dest_enum.value))
 
     def config_meas_complete_slope(self, meas_compl_slope):
         """
