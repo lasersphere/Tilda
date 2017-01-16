@@ -9,8 +9,8 @@ Module to convert the C Api Output to Python input
 Just Run cApiFileHandler on your header File created by the NI C Api generator
  and copy the Console Output to your Python File
 """
-import re
 import os
+
 from PyQt5 import QtWidgets
 
 
@@ -19,10 +19,15 @@ class CApiAnalyser:
         pass
 
     def findLastUnderScore(self, string):
-        index = 0
-        for i in re.finditer('_', string):
-            index = i.end()
-        return index
+        # print('string to find last underscore: %s' % string)
+        possible_types = ['_Control', '_Indicator', '_TargetToHostFifo', '_HostToTargetFifo']
+        for each in possible_types:
+            where_is_it = string.find(each)
+            if where_is_it != -1:
+                where_is_next_underscore = string.find('_', where_is_it + 1)
+                if where_is_next_underscore != -1:
+                    return where_is_next_underscore + 1
+        return 0
 
     def analyser(self, liste, val):
         for i,j in enumerate(liste):
@@ -66,12 +71,15 @@ class CApiAnalyser:
             indicators = [s for s in inhalt if "Indicator" in s]
             controls = [s for s in inhalt if "Control" in s]
             thfifos = [s for s in inhalt if "TargetToHostFifo" in s]
+            htfifos = [s for s in inhalt if "HostToTargetFifo" in s]
             print('\'\'\'Indicators:\'\'\'')
             self.analyser(indicators, False)
             print('\'\'\'Controls:\'\'\'')
             self.analyser(controls, True)
             print('\'\'\'TargetToHostFifos:\'\'\'')
             self.analyser(thfifos, False)
+            print('\'\'\'HostToTargetFifos:\'\'\'')
+            self.analyser(htfifos, False)
 
 bitfilepath = None
 fpgaresource = None

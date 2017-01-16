@@ -218,6 +218,44 @@ class FPGAInterfaceHandling():
         ret = {'nOfEle': nOfEle, 'newData': newDataCType, 'elemRemainInFifo': elemRemainInFifo.value}
         return ret
 
+    def WriteU32Fifo(self, fiforef, data):
+        """
+        from header file:
+        NiFpga_Status NiFpga_WriteFifoU32(NiFpga_Session  session,
+                                  uint32_t        fifo,
+                                  const uint32_t* data,
+                                  size_t          numberOfElements,
+                                  uint32_t        timeout,
+                                  size_t*         emptyElementsRemaining);
+
+        /**
+         * Writes to a host-to-target FIFO of signed 64-bit integers.
+         *
+         * @param session handle to a currently open session
+         * @param fifo host-to-target FIFO to which to write
+         * @param data data to write
+         * @param numberOfElements number of elements to write
+         * @param timeout timeout in milliseconds, or NiFpga_InfiniteTimeout
+         * @param emptyElementsRemaining if non-NULL, outputs the number of empty
+         *                               elements remaining in the host memory part of
+         *                               the DMA FIFO
+         * @return result of the call
+         */
+
+        :param fiforef: uint32, fifo reference host-to-target FIFO to which to write
+        :param data: numpy array containing the 32 unsinged Bit data elements
+        :return: int, number of remaining free elements in fifo
+        """
+        remaining_empty_elements_in_fifo = ctypes.c_ulong()
+        num_of_eles = len(data)
+        data_pointer = data.ctypes.data_as(ctypes.POINTER(ctypes.c_uint32))
+        self.NiFpgaUniversalInterfaceDll.NiFpga_WriteFifoU32(self.session,
+                                                             fiforef,
+                                                             data_pointer,
+                                                             num_of_eles,
+                                                             ctypes.byref(remaining_empty_elements_in_fifo))
+        return remaining_empty_elements_in_fifo
+
     def ConfigureU32FifoHostBuffer(self, fifoRef, nOfReqEle):
         """
         Function to configure the Size of the Host sided Buffer.
