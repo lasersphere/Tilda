@@ -190,6 +190,7 @@ class ScanMain(QObject):
                       (iso, track_num, str(track_dict)))
         logging.debug('---------------------------------------------')
         # logging.debug('postACCVoltControl is: ' + str(track_dict['postAccOffsetVoltControl']))  # this is fine.
+        self.ppg_load_track(track_dict)
         start_ok = self.sequencer.measureTrack(scan_dict, track_num)
         return start_ok
 
@@ -296,6 +297,7 @@ class ScanMain(QObject):
         pipeline etc.
         """
         read = self.read_data()  # read data one last time
+        self.ppg_stop()
         if read:
             logging.info('while stopping measurement, some data was still read.')
         if complete_stop:  # only touch dmms in the end of the whole scan
@@ -574,7 +576,7 @@ class ScanMain(QObject):
         if ppg_dict:
             if self.pulse_pattern_gen is None:
                 self.ppg_init()
-            cmd_list = track_dict.get('cmdList', [])
+            cmd_list = ppg_dict.get('cmdList', [])
             if cmd_list:
                 self.ppg_run_with_list_of_commands(cmd_list)
 
@@ -582,6 +584,7 @@ class ScanMain(QObject):
         """ reset the ppg and load the list of cmds to it, then run it. """
         if self.pulse_pattern_gen is None:
             self.ppg_init()
+        print('loading pulse pattern generator with list of commands: %s' % list_of_cmds)
         self.pulse_pattern_gen.load(self.pulse_pattern_gen.convert_list_of_cmds(list_of_cmds),
                                     start_after_load=True, reset_before_load=True)
 

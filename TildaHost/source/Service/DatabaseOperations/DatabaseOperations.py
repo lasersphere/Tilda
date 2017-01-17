@@ -51,7 +51,6 @@ def form_pollifit_db_to_tilda_db(db):
     colDirTrue TEXT,
     sequencerDict TEXT,
     triggerDict TEXT,
-    pulsePattern TEXT,
     waitForKepco25nsTicks INT,
     waitAfterReset25nsTicks INT,
     measureVoltPars TEXT,

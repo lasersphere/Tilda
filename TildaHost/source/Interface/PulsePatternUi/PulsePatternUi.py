@@ -9,7 +9,7 @@ Created on '16.01.2017'
 import ast
 
 import numpy as np
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 
 import Application.Config as CfgMain
 import Service.FileOperations.FolderAndFileHandling as FileHandl
@@ -19,15 +19,22 @@ from Interface.PulsePatternUi.Ui_PulsePattern import Ui_PulsePatternWin
 class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
     pulse_pattern_status = QtCore.pyqtSignal(str)
 
-    def __init__(self, active_iso, track_name, main_gui):
+    def __init__(self, active_iso, track_name, main_gui, track_gui=None):
         super(PulsePatternUi, self).__init__()
         self.setupUi(self)
         self.setWindowTitle('pulse pattern of %s %s' % (active_iso, track_name))
         self.active_iso = active_iso
         self.track_name = track_name
         self.main_gui = main_gui
+        self.track_gui = track_gui
+        if self.main_gui.pulse_pattern_win is not None:
+            self.main_gui.pulse_pattern_win.close()
+
+        ''' state related'''
         self.ppg_state = None
         self.rcvd_state('not initialised')
+        CfgMain._main_instance.ppg_state_callback(self.pulse_pattern_status)
+        self.pulse_pattern_status.connect(self.rcvd_state)
 
         self.listWidget_cmd_list.setDragDropMode(self.listWidget_cmd_list.InternalMove)
 
@@ -40,8 +47,12 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         self.pushButton_run_pattern.clicked.connect(self.run)
         self.pushButton_close.clicked.connect(self.close_and_confirm)
 
-        CfgMain._main_instance.ppg_state_callback(self.pulse_pattern_status)
-        self.pulse_pattern_status.connect(self.rcvd_state)
+        ''' keyboard shortcuts '''
+        QtWidgets.QShortcut(QtGui.QKeySequence("DEL"), self, self.remove_selected)
+        QtWidgets.QShortcut(QtGui.QKeySequence("-"), self, self.remove_selected)
+        QtWidgets.QShortcut(QtGui.QKeySequence("A"), self, self.add_before)
+        QtWidgets.QShortcut(QtGui.QKeySequence("+"), self, self.add_before)
+
 
         self.show()
 
@@ -70,9 +81,11 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
     def close_and_confirm(self):
         """ close the window and store the pulse pattern in the scan pars of the active iso """
         items = self.cmd_list_from_gui()
-        if self.active_iso is not None:
-            print('writing %s to main' % items)
-            CfgMain._main_instance.scan_pars[self.active_iso][self.track_name]['pulsePattern']['cmdList'] = items
+        print('items in gui: ', items)
+        if self.track_gui is not None:
+            self.track_gui.buffer_pars['pulsePattern'] = {}
+            self.track_gui.buffer_pars['pulsePattern']['cmdList'] = items
+            print('wrote to buffer pars: ', self.track_gui.buffer_pars['pulsePattern']['cmdList'])
         self.close()
 
     def closeEvent(self, *args, **kwargs):

@@ -335,5 +335,6 @@ def time_axis_rebin(tr_ind, original_t_axis_10ns_res, softw_bin_width):
     bins = bins_before // (softw_bin_width / 10)
     in_mu_s = isinstance(delay_ns, float)
     div_by = 1000 if in_mu_s else 1
+    delay_ns = delay_ns * div_by  # only then it really is in ns
     t_axis_tr = np.arange(delay_ns, bins * softw_bin_width + delay_ns, softw_bin_width) / div_by
     return t_axis_tr

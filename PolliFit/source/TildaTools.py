@@ -396,14 +396,14 @@ def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
     return x_arr
 
 
-def create_t_axis_from_file_dict(scan_dict, with_delay=False, bin_width=10, in_mu_s=True):
+def create_t_axis_from_file_dict(scan_dict, with_delay=True, bin_width=10, in_mu_s=True):
     """
     will create a time axis for all tracks, resolution is 10ns.
     """
     t_arr = []
     for tr_ind, tr_name in enumerate(get_track_names(scan_dict)):
         if with_delay:
-            delay = scan_dict[tr_name]['trigger'].get('trigDelay10ns', 0)
+            delay = scan_dict[tr_name]['trigger'].get('trigDelay10ns', 0) * bin_width
         else:
             delay = 0
         nofbins = scan_dict[tr_name]['nOfBins']

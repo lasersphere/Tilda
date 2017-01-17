@@ -152,7 +152,7 @@ class XMLImporter(SpecData):
 
             if self.seq_type in ['trs', 'tipa', 'trsdummy']:
                 self.softBinWidth_ns.append(track_dict.get('softBinWidth_ns', 10))
-                self.t = TildaTools.create_t_axis_from_file_dict(scandict)  # force 10 ns resolution
+                self.t = TildaTools.create_t_axis_from_file_dict(scandict, with_delay=True)  # force 10 ns resolution
                 cts_shape.append((nOfScalers, nOfsteps, nOfBins))
                 scaler_array = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'scalerArray', cts_shape[tr_ind])

@@ -215,6 +215,7 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
         :param callback_signal: pyqtboundsignal(str)
         """
         self.state_changed_callback_signal = callback_signal
+        self.read_state()
 
     def disconnect_to_state_changed_signal(self):
         """

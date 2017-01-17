@@ -194,8 +194,10 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         if self.pulse_pattern_win is not None:
             self.main_gui.raise_win_to_front(self.pulse_pattern_win)
         else:
-            self.pulse_pattern_win = PulsePatternUi(self.active_iso, self.track_name)
-
+            self.pulse_pattern_win = PulsePatternUi(self.active_iso, self.track_name, self.main_gui, self)
+        cmd_list = self.buffer_pars.get('pulsePattern', {}).get('cmdList', [])
+        if cmd_list:
+            self.pulse_pattern_win.cmd_list_to_gui(cmd_list)
 
     """ from lineedit/spinbox to set value """
     '''line voltage realted:'''
@@ -429,3 +431,5 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         will remove the given track window from the dictionary in scan_ctrl_win
         """
         self.scan_ctrl_win.track_win_closed(self.track_number)
+        if self.pulse_pattern_win is not None:
+            self.pulse_pattern_win.close()
