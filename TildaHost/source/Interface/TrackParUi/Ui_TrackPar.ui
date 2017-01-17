@@ -112,6 +112,20 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="pushButton_config_pulse_pattern">
+        <property name="text">
+         <string>configure pulse pattern</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="Line" name="line_3">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QWidget" name="commonSequencerSettings" native="true">
         <layout class="QVBoxLayout" name="verticalLayout_4">
          <item>

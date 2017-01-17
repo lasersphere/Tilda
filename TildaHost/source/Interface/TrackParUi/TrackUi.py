@@ -19,6 +19,7 @@ import Interface.TriggerWidgets.FindDesiredTriggerWidg as FindDesiredTriggerWidg
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.VoltageConversions.VoltageConversions as VCon
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
+from Interface.PulsePatternUi.PulsePatternUi import PulsePatternUi
 from Interface.SetVoltageUi.SetVoltageUi import SetVoltageUi
 from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
 
@@ -68,6 +69,10 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {}))
         self.trigger_vert_layout.replaceWidget(self.widget_trigger_place_holder, self.trigger_widget)
         self.comboBox_triggerSelect.currentTextChanged.connect(self.trigger_select)
+
+        """ pulse pattern related """
+        self.pulse_pattern_win = None
+        self.pushButton_config_pulse_pattern.clicked.connect(self.open_pulse_pattern_window)
 
         """DAC Settings"""
         self.doubleSpinBox_dacStartV.setRange(VCon.get_voltage_from_18bit(0), VCon.get_voltage_from_18bit(2 ** 18 - 1))
@@ -182,6 +187,15 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.trigger_widget.setParent(None)
         self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {}))
         self.trigger_vert_layout.addWidget(self.trigger_widget)
+
+    """ pulse pattern related """
+
+    def open_pulse_pattern_window(self):
+        if self.pulse_pattern_win is not None:
+            self.main_gui.raise_win_to_front(self.pulse_pattern_win)
+        else:
+            self.pulse_pattern_win = PulsePatternUi(self.active_iso, self.track_name)
+
 
     """ from lineedit/spinbox to set value """
     '''line voltage realted:'''

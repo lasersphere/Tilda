@@ -129,6 +129,8 @@ class Ui_TildaMainWindow(object):
         self.actionDigital_Multimeters.setObjectName("actionDigital_Multimeters")
         self.actionPolliFit = QtWidgets.QAction(TildaMainWindow)
         self.actionPolliFit.setObjectName("actionPolliFit")
+        self.actionPulse_pattern_generator = QtWidgets.QAction(TildaMainWindow)
+        self.actionPulse_pattern_generator.setObjectName("actionPulse_pattern_generator")
         self.menuTilda_MainWindow.addAction(self.actionWorking_directory)
         self.menuTilda_MainWindow.addAction(self.actionLoad_spectra)
         self.menuView.addAction(self.actionScan_Control)
@@ -138,6 +140,7 @@ class Ui_TildaMainWindow(object):
         self.menuHelp.addAction(self.actionVersion)
         self.menuConfigure.addAction(self.actionPost_acceleration_power_supply_control)
         self.menuConfigure.addAction(self.actionDigital_Multimeters)
+        self.menuConfigure.addAction(self.actionPulse_pattern_generator)
         self.menuAnalysis.addAction(self.actionPolliFit)
         self.menubar.addAction(self.menuTilda_MainWindow.menuAction())
         self.menubar.addAction(self.menuView.menuAction())
@@ -203,4 +206,5 @@ class Ui_TildaMainWindow(object):
         self.actionPolliFit.setText(_translate("TildaMainWindow", "PolliFit"))
         self.actionPolliFit.setToolTip(_translate("TildaMainWindow", "PolliFit, Ctrl+A"))
         self.actionPolliFit.setShortcut(_translate("TildaMainWindow", "Ctrl+A"))
-
+        self.actionPulse_pattern_generator.setText(_translate("TildaMainWindow", "pulse pattern generator"))
+        self.actionPulse_pattern_generator.setShortcut(_translate("TildaMainWindow", "Ctrl+G"))

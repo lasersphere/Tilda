@@ -124,3 +124,39 @@ def load_fpga_xml_config_file():
         root_ele = Tits.load_xml(path)
         root_dict = Tits.xml_get_dict_from_ele(root_ele)[1]
         return root_ele, root_dict
+
+
+def save_txt_file_line_by_line(path, list_of_lines_str):
+    """
+    will save to an textfile as specified in path.
+    :param path: str, path, ending should be .txt
+    :param list_of_lines_str: list of str, each str will eb written to new line.
+    """
+    if not os.path.isdir(os.path.basename(path)):
+        os.mkdir(os.path.basename(path))
+    if '.txt' not in path:
+        path += '.txt'
+    with open(path, 'w') as txt_file:
+        for each in list_of_lines_str:
+            txt_file.write(each + '\n')
+    txt_file.close()
+
+
+def load_from_text_file(path):
+    """
+    will return a list with each item as a line in the textfile specified at path.
+    :param path: str, path, ending should be .txt
+    :return: list, of strings, each one is a line in the textfile at path
+    """
+    if os.path.isfile(path):
+        with open(path, 'r') as txt_file:
+            data = []
+            line = txt_file.readline()[:-1]
+            while line:
+                data.append(line)
+                line = txt_file.readline()[:-1]
+                # data = txt_file.readlines()  # TODO \n entfernen
+        txt_file.close()
+        return data
+    else:
+        return []

@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 import numpy as np
 from PyQt5.QtCore import QObject, pyqtSignal
 
+import Driver.COntrolFpga.PulsePatternGenerator as PPG
 import Driver.DataAcquisitionFpga.FindSequencerByType as FindSeq
 import Driver.DigitalMultiMeter.DigitalMultiMeterControl as DmmCtrl
 import Driver.PostAcceleration.PostAccelerationMain as PostAcc
@@ -48,6 +49,9 @@ class ScanMain(QObject):
         self.post_acc_main = PostAcc.PostAccelerationMain()
         self.digital_multi_meter = DmmCtrl.DMMControl()
         self.dac_new_volt_set_callback.connect(self.rcvd_dac_new_voltage_during_kepco_scan)
+
+        # self.pulse_pattern_gen = None
+        self.pulse_pattern_gen = PPG.PulsePatternGenerator()  # TODO outcomment later
 
     ''' scan main functions: '''
 
@@ -551,6 +555,61 @@ class ScanMain(QObject):
         :param dmm_name: str, name of the given device.
         """
         self.digital_multi_meter.de_init_dmm(dmm_name)
+
+    ''' Pulse Pattern Generator related '''
+
+    def ppg_init(self):
+        """ initialise the pulse pattern generator bitfile on the fpga """
+        self.pulse_pattern_gen = PPG.PulsePatternGenerator()
+
+    def ppg_deinit(self):
+        """ stop the bitfile on the control fpga """
+        if self.pulse_pattern_gen is not None:
+            self.pulse_pattern_gen.deinit_ppg()
+            self.pulse_pattern_gen = None
+
+    def ppg_load_track(self, track_dict):
+        """ start the pulse pattern generator according to the cmd list in the track_dict['pulsePattern'] """
+        ppg_dict = track_dict.get('pulsePattern', {})
+        if ppg_dict:
+            if self.pulse_pattern_gen is None:
+                self.ppg_init()
+            cmd_list = track_dict.get('cmdList', [])
+            if cmd_list:
+                self.ppg_run_with_list_of_commands(cmd_list)
+
+    def ppg_run_with_list_of_commands(self, list_of_cmds):
+        """ reset the ppg and load the list of cmds to it, then run it. """
+        if self.pulse_pattern_gen is None:
+            self.ppg_init()
+        self.pulse_pattern_gen.load(self.pulse_pattern_gen.convert_list_of_cmds(list_of_cmds),
+                                    start_after_load=True, reset_before_load=True)
+
+    def ppg_stop(self, reset=False):
+        """
+        stops the pulse pattern generator from executing, delete pattern from memory if wanted by reset=True
+        Always include a $stop command in order to have a defined stopping state for the outputs.
+        This will NOT remove the bitfile from the fpga.
+        """
+        if self.pulse_pattern_gen is not None:
+            if reset:
+                self.pulse_pattern_gen.reset()
+            else:
+                self.pulse_pattern_gen.stop()
+
+    def ppg_state_callback_connect(self, callback_sig):
+        """
+        use this in order to connect a signal to the state changed function and
+         emit the name of the satte each time this is changed.
+        :param callback_signal: pyqtboundsignal(str)
+        """
+        if self.pulse_pattern_gen is None:
+            self.ppg_init()
+        self.pulse_pattern_gen.connect_to_state_changed_signal(callback_sig)
+
+    def ppg_state_callback_disconnect(self):
+        self.pulse_pattern_gen.disconnect_to_state_changed_signal()
+
 
 # if __name__ == "__main__":
 #     scn_main = ScanMain()

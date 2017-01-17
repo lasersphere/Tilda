@@ -23,6 +23,7 @@ from Interface.DmmUi.DmmUi import DmmLiveViewUi
 from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
 from Interface.MainUi.Ui_Main import Ui_TildaMainWindow
 from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
+from Interface.PulsePatternUi.PulsePatternUi import PulsePatternUi
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
 from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 from Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
@@ -51,6 +52,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.file_plot_wins = {}  # dict of active plot windows only for displaying from file.
         self.pollifit_win = None
         self.tetris = None  # pssst dont tell
+        self.pulse_pattern_win = None
 
         self.actionWorking_directory.triggered.connect(self.choose_working_dir)
         self.actionVersion.triggered.connect(self.open_version_win)
@@ -62,6 +64,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionLoad_spectra.triggered.connect(self.load_spectra)
         self.actionDigital_Multimeters.triggered.connect(self.open_dmm_live_view_win)
         self.actionPolliFit.triggered.connect(self.open_pollifit_win)
+        self.actionPulse_pattern_generator.triggered.connect(self.open_pulse_pattern_win)
 
         """ connect double clicks on labels:"""
         self.label_workdir_set.mouseDoubleClickEvent = self.workdir_dbl_click
@@ -253,6 +256,13 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             self.choose_working_dir()
             self.open_dir()
 
+    def open_pulse_pattern_win(self):
+        if self.pulse_pattern_win is None:
+            self.pulse_pattern_win = PulsePatternUi(None, '', self)
+        else:
+            self.raise_win_to_front(self.pulse_pattern_win)
+
+
     ''' close windows '''
     def scan_control_win_closed(self, win_ref):
         self.act_scan_wins.remove(win_ref)
@@ -274,6 +284,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def close_file_plot_win(self, file):
         self.file_plot_wins.pop(file)
+
+    def close_pulse_pattern_win(self):
+        if self.pulse_pattern_win:
+            # self.pulse_pattern_win.close()
+            self.pulse_pattern_win = None
 
     def closeEvent(self, *args, **kwargs):
         for win in self.act_scan_wins:
@@ -316,6 +331,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 self.pollifit_win.close()
         except Exception as e:
             logging.error('error while closing pollifit_win, exception is: ' + str(e))
+        try:
+            if self.pulse_pattern_win is not None:
+                self.pulse_pattern_win.close()
+        except Exception as e:
+            logging.error('error while closing pulse_pattern_win, exception is: ' + str(e))
         list = [win for file, win in self.file_plot_wins.items()]
         for win in list:
             try:

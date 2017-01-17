@@ -39,7 +39,7 @@ MUST be appended with the keys from the corresponding sequencer (see below): """
 
 track0_list = ['dacStepSize18Bit', 'dacStartRegister18Bit', 'nOfSteps', 'nOfScans', 'nOfCompletedSteps',
                'invertScan', 'postAccOffsetVoltControl', 'postAccOffsetVolt', 'waitForKepco25nsTicks',
-               'waitAfterReset25nsTicks', 'activePmtList', 'colDirTrue', 'workingTime', 'trigger']
+               'waitAfterReset25nsTicks', 'activePmtList', 'colDirTrue', 'workingTime', 'trigger', 'pulsePattern']
 
 """  each sequencer needs its own parameters and therefore, the keys are listed below
 naming convention is type_list.  """
@@ -79,7 +79,8 @@ draftTrackPars = {
     'softBinWidth_ns': 100,
     'nOfBunches': 1,
     'softwGates': [[-10, 10, 0, 10000], [-10, 10, 0, 10000]],
-    'trigger': {'type': 'no_trigger'}
+    'trigger': {'type': 'no_trigger'},
+    'pulsePattern': {'cmdList': ['$time::1.0::1::0', '$time::1.0::0::0']}
 }
 
 draftMeasureVoltPars_singl = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 1000000000,

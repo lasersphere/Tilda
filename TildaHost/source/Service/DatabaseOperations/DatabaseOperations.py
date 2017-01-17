@@ -6,14 +6,13 @@ Created on '06.08.2015'
 
 """
 
-import sqlite3
 import ast
 import logging
-from copy import copy
+import sqlite3
 
-import Tools as PolliTools
-import Service.VoltageConversions.VoltageConversions as VCon
 import Service.Scan.ScanDictionaryOperations as SdOp
+import Service.VoltageConversions.VoltageConversions as VCon
+import Tools as PolliTools
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
 
 
@@ -24,6 +23,7 @@ def createTildaDB(db):
     """
     PolliTools.createDB(db)
     form_pollifit_db_to_tilda_db(db)
+    check_for_missing_columns_scan_pars(db)
 
 
 def form_pollifit_db_to_tilda_db(db):
@@ -51,12 +51,51 @@ def form_pollifit_db_to_tilda_db(db):
     colDirTrue TEXT,
     sequencerDict TEXT,
     triggerDict TEXT,
+    pulsePattern TEXT,
     waitForKepco25nsTicks INT,
     waitAfterReset25nsTicks INT,
-    measureVoltPars Text,
+    measureVoltPars TEXT,
+    pulsePattern TEXT,
     UNIQUE (iso, type, track)
     )''')
 
+    con.close()
+
+
+def check_for_missing_columns_scan_pars(db):
+    """ will check if all coulums for the scan pars tabel are available and add those which are not """
+    target_cols = [
+        (1, 'type', 'TEXT'),
+        (2, 'track', 'INT'),
+        (3, 'accVolt', 'FLOAT'),
+        (4, 'laserFreq', 'FLOAT'),
+        (5, 'dacStartVolt', 'FLOAT'),
+        (6, 'dacStopVolt', 'FLOAT'),
+        (7, 'dacStepSizeVolt', 'FLOAT'),
+        (8, 'invertScan', 'TEXT'),
+        (9, 'nOfSteps', 'INT'),
+        (10, 'nOfScans', 'INT'),
+        (11, 'postAccOffsetVoltControl', 'INT'),
+        (12, 'postAccOffsetVolt', 'FLOAT'),
+        (13, 'activePmtList', 'TEXT'),
+        (14, 'colDirTrue', 'TEXT'),
+        (15, 'sequencerDict', 'TEXT'),
+        (16, 'triggerDict', 'TEXT'),
+        (17, 'waitForKepco25nsTicks', 'INT'),
+        (18, 'waitAfterReset25nsTicks', 'INT'),
+        (19, 'measureVoltPars', 'TEXT'),
+        (20, 'pulsePattern', 'TEXT')
+    ]
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    cur.execute(''' PRAGMA TABLE_INFO(ScanPars)''')
+    cols = cur.fetchall()
+    cols_name_flat = [each[1] for each in cols]
+    for each in target_cols:
+        if each[1] not in cols_name_flat:
+            print('column %s was not yet in db, adding now.' % each[1])
+            cur.execute(''' ALTER TABLE ScanPars ADD COLUMN '%s' '%s' ''' % (each[1], each[2]))
+    con.commit()
     con.close()
 
 
@@ -103,7 +142,8 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
                 waitAfterReset25nsTicks = ?,
                 measureVoltPars = ?,
                 accVolt = ?,
-                laserFreq = ?
+                laserFreq = ?,
+                pulsePattern = ?
                  WHERE iso = ? AND type = ? AND track = ?''',
                     (
                         VCon.get_voltage_from_18bit(trackd['dacStartRegister18Bit']),
@@ -123,6 +163,7 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
                         str(scandict['measureVoltPars']),
                         str(isod['accVolt']),
                         isod['laserFreq'],
+                        str(trackd['pulsePattern']),
                         iso, sctype, n_of_track)
                     )
         con.commit()
@@ -175,7 +216,7 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
           postAccOffsetVolt, activePmtList, colDirTrue,
            sequencerDict, waitForKepco25nsTicks, waitAfterReset25nsTicks,
            triggerDict,
-           measureVoltPars, accVolt, laserFreq
+           measureVoltPars, accVolt, laserFreq, pulsePattern
         FROM ScanPars WHERE iso = ? AND type = ? AND track = ?
         ''', (iso, sctype, tracknum,)
     )
@@ -183,6 +224,7 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
     if data is None:
         return None
     data = list(data)
+    scand['track' + str(tracknum)]['pulsePattern'] = ast.literal_eval(data.pop(-1))
     scand['isotopeData']['laserFreq'] = data.pop(-1)
     scand['isotopeData']['accVolt'] = data.pop(-1)
     scand['measureVoltPars'] = SdOp.merge_dicts(scand['measureVoltPars'], ast.literal_eval(data.pop(-1)))
@@ -195,7 +237,7 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
 
 
 def db_track_values_to_trackdict(data, track_dict):
-    """ given a data list containing (dacStartVolt, dacStepSizeVolt, invertScan,
+    """ given a data dict containing (dacStartVolt, dacStepSizeVolt, invertScan,
          nOfSteps, nOfScans, postAccOffsetVoltControl,
           postAccOffsetVolt, activePmtList, colDirTrue,
            sequencerDict, waitForKepco25nsTicks, waitAfterReset25nsTicks,
@@ -254,3 +296,7 @@ def extract_all_tracks_from_db(db, iso, sctype):
 # # # add_scan_dict_to_db(db, Dft.draftScanDict)
 # # print(extract_track_dict_from_db(db, '44Ca', 'cs', 0))
 # print(extract_all_tracks_from_db(db, '40Ca', 'cs'))
+
+if __name__ == '__main__':
+    db = 'D:\Debugging\kepco_scan_181116\kepco_scan_181116.sqlite'
+    check_for_missing_columns_scan_pars(db)

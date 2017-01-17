@@ -207,6 +207,7 @@
     </property>
     <addaction name="actionPost_acceleration_power_supply_control"/>
     <addaction name="actionDigital_Multimeters"/>
+    <addaction name="actionPulse_pattern_generator"/>
    </widget>
    <widget class="QMenu" name="menuAnalysis">
     <property name="title">
@@ -343,6 +344,14 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+A</string>
+   </property>
+  </action>
+  <action name="actionPulse_pattern_generator">
+   <property name="text">
+    <string>pulse pattern generator</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+G</string>
    </property>
   </action>
  </widget>

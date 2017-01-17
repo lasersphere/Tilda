@@ -7,7 +7,6 @@ Created on '12.01.2017'
 """
 
 import ast
-import os
 import time
 from copy import deepcopy
 
@@ -22,10 +21,11 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
         self.config = PPGCfg
         super(PulsePatternGenerator, self).__init__(
             self.config.bitfilePath, self.config.bitfileSignature, self.config.fpgaResource)
+        self.state_changed_callback_signal = None
 
     ''' useful functions '''
 
-    def load(self, data, mem_addr=0, start_after_load=True):
+    def load(self, data, mem_addr=0, start_after_load=True, reset_before_load=True):
         """
         will load the data to the ppg
         can only write 4000 data elements per call
@@ -34,6 +34,8 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
             -> keep all data with lower index untouched and write new data to index and beyond.
         :return:
         """
+        if reset_before_load:
+            self.reset()
         to_much_data = None
         state_num, state_name = self.read_state()
         num_of_data = len(data)
@@ -45,6 +47,7 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
             self.write_to_target(data)
             self.set_load(True)
             time.sleep(0.002)
+            self.read_state()
             if to_much_data is not None:
                 self.load(to_much_data, mem_addr + 4000)
             num_of_cmds = self.read_number_of_cmds()
@@ -72,6 +75,7 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
             self.set_mem_addr(start_addr)
             self.set_run(True)
             time.sleep(0.001)
+            self.read_state()
             return self.read_error_code()
         else:
             print('cannot start the ppg,'
@@ -83,6 +87,8 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
         :return:
         """
         self.set_stop(True)
+        time.sleep(0.001)
+        self.read_state()
 
     def reset(self):
         """
@@ -137,7 +143,7 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
 
     def convert_list_of_cmds(self, cmd_list, ticks_per_us=None):
         """
-        will convert a list of commands to a numpy array
+        will convert a list of commands to a numpy array which can be fed to the fpga
         :param cmd_list: list of str, each cmd str looks like:
         cmd_str: str, "$cmd::time_us::DIO0-39::DIO40-79"
             -> cmd: stop(0), jump(1), wait(2), time(3)
@@ -202,39 +208,19 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
             print('error not able to querry command from ppg when not in idle state')
             return ret
 
-    def load_from_file(self, path, load_to_fpga=True, run_fpga_with_this=True):
+    def connect_to_state_changed_signal(self, callback_signal):
         """
-        load from a .txt file, each command must be a seperate line
-        :param path:
-        :return:
+        use this in order to connect a signal to the state changed function and
+         emit the name of the satte each time this is changed.
+        :param callback_signal: pyqtboundsignal(str)
         """
-        data_as_np_arr = np.zeros(0, dtype=np.int32)
-        if os.path.isfile(path):
-            with open(path, 'r') as txt_file:
-                data = txt_file.readlines()
-                if data:
-                    data_as_np_arr = self.convert_list_of_cmds(data)
-                    if load_to_fpga:
-                        self.load(data_as_np_arr)
-                        if run_fpga_with_this:
-                            self.start()
-            txt_file.close()
-            return data_as_np_arr
-        else:
-            print('error %s is not an existing file')
+        self.state_changed_callback_signal = callback_signal
 
-    def save_to_file(self, path, cmd_str_list):
+    def disconnect_to_state_changed_signal(self):
         """
-        save the list of commands to a .txt file.
-        :param path: str, full path of the txt file where to save to.
-        :param cmd_str_list: list of str commands.
+        disconnect the signal
         """
-        if not os.path.isdir(os.path.basename(path)):
-            os.mkdir(os.path.basename(path))
-        with open(path, 'w') as txt_file:
-            for each in cmd_str_list:
-                txt_file.write(each + '\n')
-        txt_file.close()
+        self.state_changed_callback_signal = None
 
     ''' read Indicators: '''
 
@@ -271,6 +257,8 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
         if state_num in self.config.ppg_state_dict.values():
             state_name = [state_na for state_na, state_nu in self.config.ppg_state_dict.items()
                           if state_nu == state_num][0]
+        if self.state_changed_callback_signal is not None:
+            self.state_changed_callback_signal.emit(state_name)
         return state_num, state_name
 
     def read_elements_loaded(self):
@@ -381,38 +369,42 @@ if __name__ == '__main__':
     # ppg_obj.set_continous(True)
     # ppg_obj.start()
     # input('press anything to stop')
-
-    # example_data = [
-    #     "$time::1::0::0",
-    #     "$time::1::1::0",
-    #     "$time::1::3::0",
-    #     "$time::1::2::0",
-    #     "$time::1::0::0",
-    #     "$time::1::1::0",
-    #     "$time::1::3::0",
-    #     "$time::1::2::0",
-    #     "$time::1::0::0",
-    #     "$time::1::1::0",
-    #     "$time::1::3::0",
-    #     "$time::1::2::0",
-    # ]
-    # example_data = ppg_obj.convert_list_of_cmds(example_data, 100)
-    # print(example_data)
-    # ppg_obj.reset()
-    # ppg_obj.load(example_data, start_after_load=False)
-    # # input('press anything to stop')
-    # cmds = ppg_obj.query_command(-1)
-    # print('cmds from target: %s ' % cmds)
-    # conv_cmds = ppg_obj.convert_np_arr_of_cmd_to_list_of_cmds(cmds, 100)
-    # print(conv_cmds)
-    # ppg_test_path = 'D:\\Debugging\\trs_debug\\Pulsepattern132Pattern.txt'
-    # ppg_obj.save_to_file(ppg_test_path, conv_cmds)
-    # # reconv_cmds = ppg_obj.convert_list_of_cmds(conv_cmds, 100)
-    # # print(reconv_cmds)
-    # ppg_obj.start()
+    #
+    example_data = [
+        "$time::1::0::0",
+        "$time::1::1::0",
+        "$time::1::3::0",
+        "$time::1::2::0",
+        "$time::1::0::0",
+        "$time::1::1::0",
+        "$time::1::3::0",
+        "$time::1::2::0",
+        "$time::1::0::0",
+        "$time::1::1::0",
+        "$time::1::3::0",
+        "$time::1::2::0",
+        "$stop::0::1::0",  # always use stop command in the end!
+    ]
+    example_data = ppg_obj.convert_list_of_cmds(example_data, 100)
+    print(example_data)
+    ppg_obj.reset()
+    ppg_obj.load(example_data, start_after_load=False)
+    # input('press anything to stop')
+    cmds = ppg_obj.query_command(-1)
+    print('cmds from target: %s ' % cmds)
+    conv_cmds = ppg_obj.convert_np_arr_of_cmd_to_list_of_cmds(cmds, 100)
+    print(conv_cmds)
+    ppg_test_path = 'D:\\Debugging\\trs_debug\\Pulsepattern132Pattern.txt'
+    # reconv_cmds = ppg_obj.convert_list_of_cmds(conv_cmds, 100)
+    # print(reconv_cmds)
+    ppg_obj.start()
 
     # ppg_test_path = 'D:\\Debugging\\trs_debug\\Pulsepattern132Pattern.txt'
     # print(ppg_obj.load_from_file(ppg_test_path, load_to_fpga=True, run_fpga_with_this=True))
-    # input('press anything to stop')
+    input('press anything to stop')
+    print(ppg_obj.read_state())
+    ppg_obj.stop()
+    input('press anything to stop')
+    print(ppg_obj.read_state())
 
     ppg_obj.deinit_ppg()

@@ -984,3 +984,30 @@ class Main(QtCore.QObject):
         unsubscribing from self.dmm_gui_callback
         """
         self.dmm_gui_callback = None
+
+    ''' pulse pattern operations '''
+
+    def ppg_load_pattern(self, cmd_list):
+        """ reset the ppg and load the list of cmds to it, then run it. """
+        self.scan_main.ppg_run_with_list_of_commands(cmd_list)
+
+    def ppg_stop(self, reset=False, deinit_ppg=False):
+        """
+        stops the pulse pattern generator from executing, delete pattern from memory if wanted by reset=True
+        Always include a $stop command in order to have a defined stopping state for the outputs.
+        This will NOT remove the bitfile from the fpga. Only when deinit is set True!
+        """
+        self.scan_main.ppg_stop(reset)
+        if deinit_ppg:
+            self.scan_main.ppg_deinit()
+
+    def ppg_state_callback(self, callback_signal):
+        """
+        use this in order to connect a signal to the state changed function and
+         emit the name of the satte each time this is changed.
+        :param callback_signal: pyqtboundsignal(str)
+        """
+        self.scan_main.ppg_state_callback_connect(callback_signal)
+
+    def ppg_state_disconnect(self):
+        self.scan_main.ppg_state_callback_disconnect()
