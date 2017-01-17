@@ -15633,7 +15633,7 @@ Only reasonable inputs are shown
 <XPD:REF name="ExitState">z8jJ+FUpxku1PqD97FmNewAA</XPD:REF>
 </XPD:OBJ>
 <XPD:OBJ name="ExitActions[2]" type="UMLUninterpretedAction" guid="pp9jUnrYskqSPIcRqVULTAAA">
-<XPD:ATTR name="Name" type="string">first track: set dmms to periodic</XPD:ATTR>
+<XPD:ATTR name="Name" type="string">first track: set dmms to periodic if not kepco scan, else to dmm_dict</XPD:ATTR>
 <XPD:REF name="ExitState">z8jJ+FUpxku1PqD97FmNewAA</XPD:REF>
 </XPD:OBJ>
 <XPD:ATTR name="#DoActivities" type="integer">1</XPD:ATTR>
@@ -15831,9 +15831,9 @@ Only reasonable inputs are shown
 <XPD:OBJ name="OwnedViews[2]" type="UMLStateView" guid="oDZerAD/N0i2rQ8DGgwlbgAA">
 <XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
-<XPD:ATTR name="Left" type="integer">203</XPD:ATTR>
+<XPD:ATTR name="Left" type="integer">192</XPD:ATTR>
 <XPD:ATTR name="Top" type="integer">280</XPD:ATTR>
-<XPD:ATTR name="Width" type="integer">332</XPD:ATTR>
+<XPD:ATTR name="Width" type="integer">354</XPD:ATTR>
 <XPD:ATTR name="Height" type="integer">124</XPD:ATTR>
 <XPD:REF name="Model">z8jJ+FUpxku1PqD97FmNewAA</XPD:REF>
 <XPD:OBJ name="NameCompartment" type="UMLNameCompartmentView" guid="Rh9TnEQFuUKkoPsXX6FYPgAA">

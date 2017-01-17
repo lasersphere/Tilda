@@ -155,7 +155,6 @@ def load_from_text_file(path):
             while line:
                 data.append(line)
                 line = txt_file.readline()[:-1]
-                # data = txt_file.readlines()  # TODO \n entfernen
         txt_file.close()
         return data
     else:

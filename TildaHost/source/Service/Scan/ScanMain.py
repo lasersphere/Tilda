@@ -50,8 +50,7 @@ class ScanMain(QObject):
         self.digital_multi_meter = DmmCtrl.DMMControl()
         self.dac_new_volt_set_callback.connect(self.rcvd_dac_new_voltage_during_kepco_scan)
 
-        # self.pulse_pattern_gen = None
-        self.pulse_pattern_gen = PPG.PulsePatternGenerator()  # TODO outcomment later
+        self.pulse_pattern_gen = None
 
     ''' scan main functions: '''
 
