@@ -14,6 +14,7 @@ import numpy as np
 from PyQt5.QtCore import QObject, pyqtSignal
 
 import Driver.COntrolFpga.PulsePatternGenerator as PPG
+import Driver.COntrolFpga.PulsePatternGeneratorDummy as PPGDummy
 import Driver.DataAcquisitionFpga.FindSequencerByType as FindSeq
 import Driver.DigitalMultiMeter.DigitalMultiMeterControl as DmmCtrl
 import Driver.PostAcceleration.PostAccelerationMain as PostAcc
@@ -561,7 +562,11 @@ class ScanMain(QObject):
 
     def ppg_init(self):
         """ initialise the pulse pattern generator bitfile on the fpga """
-        self.pulse_pattern_gen = PPG.PulsePatternGenerator()
+        try:
+            self.pulse_pattern_gen = PPG.PulsePatternGenerator()
+        except Exception as e:
+            print('error: %s could not initialise PulsePatternGenerator, will start dummy now' % e)
+            self.pulse_pattern_gen = PPGDummy.PulsePatternGeneratorDummy()
 
     def ppg_deinit(self):
         """ stop the bitfile on the control fpga """

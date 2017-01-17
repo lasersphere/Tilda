@@ -192,10 +192,18 @@ def create_infinite_line(pos, angle=90, pen=0.5):
 def create_text_item(text="", color=(200, 200, 200), html=None, anchor=(0, 0)):
     return pg.TextItem(text=text, color=color, html=html, anchor=anchor)
 
+
 def start_examples():
     import pyqtgraph.examples
     pyqtgraph.examples.run()
 
+
+def create_roi_polyline(positions, closed=False, pos=None, **args):
+    return pg.PolyLineROI(positions, closed, pos, **args)
+
+
+def create_pen(*args, **kargs):
+    pg.mkPen(*args, **kargs)
 
 # import sys
 # from PyQt5 import QtWidgets

@@ -7,6 +7,8 @@ Created on '16.01.2017'
 """
 
 import ast
+import sys
+import os
 
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui
@@ -14,6 +16,7 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 import Application.Config as CfgMain
 import Service.FileOperations.FolderAndFileHandling as FileHandl
 from Interface.PulsePatternUi.Ui_PulsePattern import Ui_PulsePatternWin
+import PyQtGraphPlotter as Pgplot
 
 
 class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
@@ -27,16 +30,19 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         self.track_name = track_name
         self.main_gui = main_gui
         self.track_gui = track_gui
-        if self.main_gui.pulse_pattern_win is not None:
-            self.main_gui.pulse_pattern_win.close()
+        if main_gui is not None:
+            if self.main_gui.pulse_pattern_win is not None:
+                self.main_gui.pulse_pattern_win.close()
 
         ''' state related'''
         self.ppg_state = None
         self.rcvd_state('not initialised')
-        CfgMain._main_instance.ppg_state_callback(self.pulse_pattern_status)
-        self.pulse_pattern_status.connect(self.rcvd_state)
+        if CfgMain._main_instance is not None:
+            CfgMain._main_instance.ppg_state_callback(self.pulse_pattern_status)
+            self.pulse_pattern_status.connect(self.rcvd_state)
 
         self.listWidget_cmd_list.setDragDropMode(self.listWidget_cmd_list.InternalMove)
+        self.listWidget_cmd_list.currentTextChanged.connect(self.update_gr_v)
 
         self.pushButton_remove_selected.clicked.connect(self.remove_selected)
         self.pushButton_add_cmd.clicked.connect(self.add_before)
@@ -53,6 +59,12 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         QtWidgets.QShortcut(QtGui.QKeySequence("A"), self, self.add_before)
         QtWidgets.QShortcut(QtGui.QKeySequence("+"), self, self.add_before)
 
+        ''' help '''
+        self.actionHelp.triggered.connect(self.open_help)
+
+        ''' graphical view related '''
+        self.ch_pos_dict = {}
+        self.add_graph_view()
 
         self.show()
 
@@ -64,6 +76,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         for i in range(self.listWidget_cmd_list.count()):
             self.listWidget_cmd_list.item(i).setFlags(
                 QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsDragEnabled)
+        self.update_gr_v()
 
     def cmd_list_from_gui(self):
         """ return a list of all cmds in the gui """
@@ -110,21 +123,31 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         self.listWidget_cmd_list.item(cur_row).setFlags(
             QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsDragEnabled)
 
-    def load_from_text(self):
+    def load_from_text(self, button=None, txt_path=None):
         """ load the list of cmds from an existing text file """
         parent = QtWidgets.QFileDialog(self)
-        path, ok = QtWidgets.QFileDialog.getOpenFileName(
-            parent, "select ppg .txt file", CfgMain._main_instance.working_directory, '*.txt')
-        if path:
-            list_of_cmds = FileHandl.load_from_text_file(path)
+        print('loading')
+        if txt_path is None:
+            if CfgMain._main_instance is None:
+                start_path = os.path.basename(__file__)
+            else:
+                start_path = CfgMain._main_instance.working_directory
+            txt_path, ok = QtWidgets.QFileDialog.getOpenFileName(
+                parent, "select ppg .txt file", start_path, '*.txt')
+        if txt_path:
+            list_of_cmds = FileHandl.load_from_text_file(txt_path)
             self.cmd_list_to_gui(list_of_cmds)
-            return path
+            return txt_path
 
     def save_to_text_file(self):
         """ save the current settings to a text file """
         parent = QtWidgets.QFileDialog(self)
+        if CfgMain._main_instance is None:
+            start_path = os.path.basename(__file__)
+        else:
+            start_path = CfgMain._main_instance.working_directory
         path, ok = QtWidgets.QFileDialog.getSaveFileName(
-            parent, "select ppg .txt file", CfgMain._main_instance.working_directory, '*.txt')
+            parent, "select ppg .txt file", start_path, '*.txt')
         if path:
             FileHandl.save_txt_file_line_by_line(path, self.cmd_list_from_gui())
             return path
@@ -134,8 +157,117 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         self.ppg_state = state_str
         self.label_ppg_state.setText(state_str)
 
+    ''' help '''
+    def open_help(self):
+        mb = QtWidgets.QMessageBox(self)
+        QtWidgets.QMessageBox.information(
+            mb, 'ppg help',
+            'from: \n F. Ziegler et al., A newPulse-PatternGeneratorbasedonLab'
+            'VIEWFPGA, Nucl. Instr. Meth. A 679 (2012) 1-6:\n\n'
+            'Command\t Example\t Description\n'
+            '------------------------------------------------------------\n'
+            '$time\t $time::1000::123::123\t command::time[ms] ::DO0-31::DO32-63\n'
+            '$wait\t $wait::1::123::123\t command::DI0-7::DO0-31::DO32-63\n'
+            '$jump\t $jump::0::500::500\t command::address::unused::iterationnumber\n'
+            '$stop\t $stop::0::123::123\t command::unused::DO0-31::DO32-63'
+        )
+
     """ graphical displaying """
-    # TODO
+    def add_graph_view(self):
+        try:
+            layout = QtWidgets.QVBoxLayout()
+            self.gr_v_widg, self.gr_v_plt_itm = Pgplot.create_x_y_widget(y_label='channel', x_label='time [u_s]')
+            layout.addWidget(self.gr_v_widg)
+            self.widget_graph_view.setLayout(layout)
+        except Exception as e:
+            print(e)
+
+    def update_gr_v(self):
+        """ updates the graphic view and adds a line for each item """
+        try:
+            self.ch_pos_dict = self.get_gr_v_pos_from_list_of_cmds(self.cmd_list_from_gui(), ret_dict=self.ch_pos_dict)
+            self.add_lines(self.gr_v_plt_itm)
+        except Exception as e:
+            print(e)
+
+    def add_lines(self, plt_item):
+        """ add a roi polyline line for every channel in ch_pos_dict """
+        ch_pos_dict = self.ch_pos_dict
+        for ch, ch_dict in ch_pos_dict.items():
+            if ch_dict.get('line', None) is not None:
+                ch_dict['line'].setPoints(ch_dict['pos'])
+            else:
+                ch_dict['line'] = Pgplot.create_roi_polyline(ch_dict['pos'], movable=False)
+                if 'DO' in ch:  # outputs blue
+                    pen = Pgplot.pg.mkPen('b', width=3)
+                else:  # triggers red
+                    pen = Pgplot.pg.mkPen('r', width=3)
+                ch_dict['line'].setPen(pen)
+                plt_item.addItem(ch_dict['line'])
+
+    def get_gr_v_pos_from_list_of_cmds(self, list_of_cmds=None, ret_dict={}):
+        """ get a dictionary for all active channels containing a list of positions when high or low. """
+        if list_of_cmds is None:
+            list_of_cmds = self.cmd_list_from_gui()
+        ticks_per_us = 100
+        int_cmd_list = self.convert_list_of_cmds(list_of_cmds, ticks_per_us)
+        int_cmd_list = int_cmd_list.reshape((int_cmd_list.size / 4, 4))
+        # get highest ch number
+        max_dio_0to31 = np.int(np.log2(np.max(int_cmd_list[:, 2])))
+        # max_dio_32to63 = int(np.log2(np.max(int_cmd_list[:, 3])))
+        for ch in range(0, max_dio_0to31 + 1):
+            ch_bit = 2 ** ch
+            low = ch
+            high = ch + 0.5
+            ch_pos_list = []
+            time = 0
+            for each_cmd in int_cmd_list:
+                # for each command two points are added.
+                if each_cmd[0] == 0:  # $stop
+                    y_pos = high if ch_bit & each_cmd[2] != 0 else low
+                    ch_pos_list.append([time, y_pos])
+                    time += 1  # add another us at the stop
+                    ch_pos_list.append([time, y_pos])
+                elif each_cmd[0] == 1:  # $jump
+                    pass
+
+                elif each_cmd[0] == 2:  # $wait
+                    y_pos = high if ch_bit & each_cmd[2] != 0 else low
+                    ch_pos_list.append([time, y_pos])
+                    time += 1  # draw 1 us before ris edge of trigger
+                    ch_pos_list.append([time, y_pos])
+                    tr_ch_max = np.int(np.log2(each_cmd[1]))
+                    for tr_ch in range(0, tr_ch_max + 1):
+                        tr_ch_bit = 2 ** tr_ch
+                        tr_low = -1 - tr_ch
+                        tr_high = -0.5 - tr_ch
+                        tr_active = tr_ch_bit & each_cmd[1] != 0
+                        if tr_active:
+                            tr_pos = [
+                                [time - 1, tr_low], [time, tr_low],
+                                [time, tr_high], [time + 0.5, tr_high],
+                                [time + 0.5, tr_low], [time + 1.5, tr_low],
+                            ]
+                            if ret_dict.get('DI%s' % tr_ch, None) is None:
+                                ret_dict['DI%s' % tr_ch] = {}
+                            ret_dict['DI%s' % tr_ch]['pos'] = tr_pos
+                        else:
+                            if ret_dict.get('DI%s' % tr_ch, None) is None:
+                                ret_dict['DI%s' % tr_ch] = {}
+                            ret_dict['DI%s' % tr_ch]['pos'] = []
+                        # else:  # might work
+                        #     ret_dict['DI%s' % tr_ch]['pos'] += tr_pos
+
+                elif each_cmd[0] == 3:  # $time
+                    y_pos = high if ch_bit & each_cmd[2] != 0 else low
+                    ch_pos_list.append([time, y_pos])
+                    time += (each_cmd[1] / ticks_per_us)
+                    ch_pos_list.append([time, y_pos])
+            if ch_pos_list:
+                if ret_dict.get('DO%s' % ch, None) is None:
+                    ret_dict['DO%s' % ch] = {}
+                ret_dict['DO%s' % ch]['pos'] = ch_pos_list
+        return ret_dict
 
     """ cmd conversions (copied from ppg) """
 
@@ -158,7 +290,8 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                 cmd_list[0] = cmd_dict.get(cmd_list[0], -1)
                 for i in range(1, 4):
                     cmd_list[i] = ast.literal_eval(cmd_list[i])
-                cmd_list[1] = cmd_list[1] * ticks_per_us
+                if cmd_list[0] == 3:  # $time
+                    cmd_list[1] = cmd_list[1] * ticks_per_us
                 cmd_list = np.asarray(cmd_list, dtype=np.int32)
                 return cmd_list
             except Exception as e:
@@ -178,7 +311,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         """
         ret_arr = np.zeros(0, dtype=np.int32)
         if ticks_per_us is None:
-            ticks_per_us = self.read_ticks_per_us()
+            ticks_per_us = 100  # TODO think about if this is ok to be static
         for each_cmd in cmd_list:
             ret_arr = np.append(ret_arr, self.convert_single_comand(each_cmd, ticks_per_us))
         return ret_arr
@@ -228,3 +361,11 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             #     gui = PulsePatternUi(None, '')
             #     # gui.cmd_list_to_gui(cmd_str)
             #     app.exec_()
+
+
+if __name__=='__main__':
+    app = QtWidgets.QApplication(sys.argv)
+    gui = PulsePatternUi(None, '', None)
+    gui.load_from_text(txt_path='E:\\TildaDebugging\\Pulsepattern123Pattern.txt')
+    print(gui.get_gr_v_pos_from_list_of_cmds())
+    app.exec_()
