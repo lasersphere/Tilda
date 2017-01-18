@@ -12,6 +12,8 @@ import os
 
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui
+from functools import partial
+from copy import deepcopy
 
 import Application.Config as CfgMain
 import Service.FileOperations.FolderAndFileHandling as FileHandl
@@ -24,6 +26,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
 
     def __init__(self, active_iso, track_name, main_gui, track_gui=None):
         super(PulsePatternUi, self).__init__()
+        self.gui_cmd_list = []  # list of commands in gui, always updated when self.cmd_list_from_gui() is called.
         self.setupUi(self)
         self.setWindowTitle('pulse pattern of %s %s' % (active_iso, track_name))
         self.active_iso = active_iso
@@ -42,7 +45,6 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             self.pulse_pattern_status.connect(self.rcvd_state)
 
         self.listWidget_cmd_list.setDragDropMode(self.listWidget_cmd_list.InternalMove)
-        self.listWidget_cmd_list.currentTextChanged.connect(self.update_gr_v)
 
         self.pushButton_remove_selected.clicked.connect(self.remove_selected)
         self.pushButton_add_cmd.clicked.connect(self.add_before)
@@ -58,11 +60,16 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         QtWidgets.QShortcut(QtGui.QKeySequence("-"), self, self.remove_selected)
         QtWidgets.QShortcut(QtGui.QKeySequence("A"), self, self.add_before)
         QtWidgets.QShortcut(QtGui.QKeySequence("+"), self, self.add_before)
+        QtWidgets.QShortcut(QtGui.QKeySequence("F5"), self, self.update_gr_v)
 
         ''' help '''
         self.actionHelp.triggered.connect(self.open_help)
 
         ''' graphical view related '''
+        self.listWidget_cmd_list.currentTextChanged.connect(self.update_gr_v)
+        self.listWidget_cmd_list.currentRowChanged.connect(self.update_gr_v)
+        self.listWidget_cmd_list.itemChanged.connect(self.update_gr_v)
+
         self.ch_pos_dict = {}
         self.add_graph_view()
 
@@ -83,6 +90,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         items = []
         for i in range(self.listWidget_cmd_list.count()):
             items.append(self.listWidget_cmd_list.item(i).text())
+        self.gui_cmd_list = items
         return items
 
     def remove_selected(self):
@@ -185,8 +193,12 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
     def update_gr_v(self):
         """ updates the graphic view and adds a line for each item """
         try:
-            self.ch_pos_dict = self.get_gr_v_pos_from_list_of_cmds(self.cmd_list_from_gui(), ret_dict=self.ch_pos_dict)
-            self.add_lines(self.gr_v_plt_itm)
+            old_list = deepcopy(self.gui_cmd_list)
+            new_list = self.cmd_list_from_gui()
+            if old_list != new_list:
+                # print('updating graphics view')
+                self.ch_pos_dict = self.get_gr_v_pos_from_list_of_cmds(self.cmd_list_from_gui(), ret_dict=self.ch_pos_dict)
+                self.add_lines(self.gr_v_plt_itm)
         except Exception as e:
             print(e)
 
@@ -195,7 +207,9 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         ch_pos_dict = self.ch_pos_dict
         for ch, ch_dict in ch_pos_dict.items():
             if ch_dict.get('line', None) is not None:
+                ch_dict['line'].blockSignals(True)
                 ch_dict['line'].setPoints(ch_dict['pos'])
+                ch_dict['line'].blockSignals(False)
             else:
                 ch_dict['line'] = Pgplot.create_roi_polyline(ch_dict['pos'], movable=False)
                 if 'DO' in ch:  # outputs blue

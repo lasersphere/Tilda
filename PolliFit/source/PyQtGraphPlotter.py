@@ -199,12 +199,24 @@ def start_examples():
 
 
 def create_roi_polyline(positions, closed=False, pos=None, **args):
-    return pg.PolyLineROI(positions, closed, pos, **args)
+    return MyPolyLineRoi(positions, closed, pos, **args)
 
 
 def create_pen(*args, **kargs):
     pg.mkPen(*args, **kargs)
 
+
+class MyPolyLineRoi(pg.PolyLineROI):
+    """ subclassing the PolyLineROI and overwrites the checkPointMove to always return False """
+    def __init__(self, positions, closed, pos, **args):
+        super(MyPolyLineRoi, self).__init__(positions, closed, pos, **args)
+
+    def checkPointMove(self, handles, pos, modifiers):
+        """When handles move, they must ask the ROI if the move is acceptable.
+         By default, this always returns True. Subclasses may wish override.
+         -> always returning False therefore user cannot change this.
+          Maybe change this to a clever way in the future """
+        return False
 # import sys
 # from PyQt5 import QtWidgets
 # import pyqtgraph as pg
