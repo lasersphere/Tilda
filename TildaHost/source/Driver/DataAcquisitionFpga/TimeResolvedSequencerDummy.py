@@ -198,6 +198,9 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
     def DeInitFpga(self):
         return True
 
+    def set_stopVoltMeas(self, stop_bool):
+        return True
+
 # scanp = DftSc.draftScanDict
 # test = TimeResolvedSequencer()
 # test.data_builder(scanp, 0)

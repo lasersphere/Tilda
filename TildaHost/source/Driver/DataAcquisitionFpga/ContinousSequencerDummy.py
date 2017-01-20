@@ -181,3 +181,6 @@ class ContinousSequencer(Sequencer, MeasureVolt):
 
     def DeInitFpga(self):
         return True
+
+    def set_stopVoltMeas(self, stop_bool):
+        return True

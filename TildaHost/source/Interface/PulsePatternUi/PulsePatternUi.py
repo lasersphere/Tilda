@@ -18,11 +18,15 @@ from copy import deepcopy
 import Application.Config as CfgMain
 import Service.FileOperations.FolderAndFileHandling as FileHandl
 from Interface.PulsePatternUi.Ui_PulsePattern import Ui_PulsePatternWin
+from Interface.PulsePatternUi.PpgPeriodicWidgUi import PpgPeriodicWidgUi
+from Interface.PulsePatternUi.PpgSimpleWidgUi import PpgSimpleWidgUi
+
 import PyQtGraphPlotter as Pgplot
 
 
 class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
     pulse_pattern_status = QtCore.pyqtSignal(str)
+    cmd_list_signal = QtCore.pyqtSignal(list)
 
     def __init__(self, active_iso, track_name, main_gui, track_gui=None):
         super(PulsePatternUi, self).__init__()
@@ -33,6 +37,8 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         self.track_name = track_name
         self.main_gui = main_gui
         self.track_gui = track_gui
+        self.periodic_widg = None
+        self.simple_widg = None
         if main_gui is not None:
             if self.main_gui.pulse_pattern_win is not None:
                 self.main_gui.pulse_pattern_win.close()
@@ -73,6 +79,17 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         self.ch_pos_dict = {}
         self.add_graph_view()
 
+        ''' rcv cmd list from one of those: '''
+        self.cmd_list_signal.connect(self.cmd_list_to_gui)
+
+        ''' peridoic widget related '''
+        self.periodic_widg = PpgPeriodicWidgUi(self, self.cmd_list_signal)
+        self.tab_periodic_pattern.layout().addWidget(self.periodic_widg)
+
+        ''' simple widget related '''
+        self.simple_widg = PpgSimpleWidgUi(self, self.cmd_list_signal)
+        self.tab_simple.layout().addWidget(self.simple_widg)
+
         self.show()
 
     def cmd_list_to_gui(self, cmd_list):
@@ -83,7 +100,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         for i in range(self.listWidget_cmd_list.count()):
             self.listWidget_cmd_list.item(i).setFlags(
                 QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsDragEnabled)
-        self.update_gr_v()
+        self.update_gr_v(cmd_list)
 
     def cmd_list_from_gui(self):
         """ return a list of all cmds in the gui """
@@ -102,11 +119,14 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
     def close_and_confirm(self):
         """ close the window and store the pulse pattern in the scan pars of the active iso """
         items = self.cmd_list_from_gui()
-        print('items in gui: ', items)
+        # print('items in gui: ', items)
         if self.track_gui is not None:
             self.track_gui.buffer_pars['pulsePattern'] = {}
             self.track_gui.buffer_pars['pulsePattern']['cmdList'] = items
-            print('wrote to buffer pars: ', self.track_gui.buffer_pars['pulsePattern']['cmdList'])
+            if self.periodic_widg.list_of_item_dicts:
+                self.track_gui.buffer_pars['pulsePattern']['periodicList'] = deepcopy(
+                    self.periodic_widg.list_of_item_dicts)
+            print('wrote to buffer pars: ', self.track_gui.buffer_pars['pulsePattern']['periodicList'])
         self.close()
 
     def closeEvent(self, *args, **kwargs):
@@ -134,7 +154,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
     def load_from_text(self, button=None, txt_path=None):
         """ load the list of cmds from an existing text file """
         parent = QtWidgets.QFileDialog(self)
-        print('loading')
+        # print('loading')
         if txt_path is None:
             if CfgMain._main_instance is None:
                 start_path = os.path.basename(__file__)
@@ -184,23 +204,43 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
     def add_graph_view(self):
         try:
             layout = QtWidgets.QVBoxLayout()
-            self.gr_v_widg, self.gr_v_plt_itm = Pgplot.create_x_y_widget(y_label='channel', x_label='time [u_s]')
+            self.gr_v_widg, self.gr_v_plt_itm = Pgplot.create_x_y_widget(y_label='channel', x_label='time [us]')
             layout.addWidget(self.gr_v_widg)
             self.widget_graph_view.setLayout(layout)
         except Exception as e:
             print(e)
 
-    def update_gr_v(self):
+    def update_gr_v(self, external_list=None):
         """ updates the graphic view and adds a line for each item """
         try:
+            if not isinstance(external_list, list):
+                # manual change on the cmd list -> therefore clear all other
+                # widgets because their data is probably now corrupted
+                if self.periodic_widg is not None:
+                    print('clearing periodic table')
+                    self.periodic_widg.list_view_was_changed()
             old_list = deepcopy(self.gui_cmd_list)
             new_list = self.cmd_list_from_gui()
             if old_list != new_list:
                 # print('updating graphics view')
-                self.ch_pos_dict = self.get_gr_v_pos_from_list_of_cmds(self.cmd_list_from_gui(), ret_dict=self.ch_pos_dict)
+                self.ch_pos_dict, valid_lines = self.get_gr_v_pos_from_list_of_cmds(
+                    self.cmd_list_from_gui(), ret_dict=self.ch_pos_dict)
+                lines_to_remove = [each for each in self.ch_pos_dict.keys() if each not in valid_lines]
+                self.remove_lines(self.gr_v_plt_itm, lines_to_remove)
                 self.add_lines(self.gr_v_plt_itm)
+            else:
+                pass
+                # print('nope not a new list, not redrawing here')
         except Exception as e:
             print(e)
+
+    def remove_lines(self, plt_item, remove_list):
+        ch_pos_dict = self.ch_pos_dict
+        for each in remove_list:
+            # print('removing: %s' % each)
+            if ch_pos_dict.get(each, {}).get('line', None):
+                plt_item.removeItem(ch_pos_dict[each]['line'])
+                self.ch_pos_dict.pop(each)
 
     def add_lines(self, plt_item):
         """ add a roi polyline line for every channel in ch_pos_dict """
@@ -223,6 +263,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         """ get a dictionary for all active channels containing a list of positions when high or low. """
         if list_of_cmds is None:
             list_of_cmds = self.cmd_list_from_gui()
+        valid_lines = []  # only add edited ones, other must be deleted
         ticks_per_us = 100
         int_cmd_list = self.convert_list_of_cmds(list_of_cmds, ticks_per_us)
         int_cmd_list = int_cmd_list.reshape((int_cmd_list.size / 4, 4))
@@ -265,10 +306,12 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                             if ret_dict.get('DI%s' % tr_ch, None) is None:
                                 ret_dict['DI%s' % tr_ch] = {}
                             ret_dict['DI%s' % tr_ch]['pos'] = tr_pos
+                            valid_lines.append('DI%s' % tr_ch)
                         else:
                             if ret_dict.get('DI%s' % tr_ch, None) is None:
                                 ret_dict['DI%s' % tr_ch] = {}
                             ret_dict['DI%s' % tr_ch]['pos'] = []
+                            valid_lines.append('DI%s' % tr_ch)
                         # else:  # might work
                         #     ret_dict['DI%s' % tr_ch]['pos'] += tr_pos
 
@@ -281,7 +324,8 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                 if ret_dict.get('DO%s' % ch, None) is None:
                     ret_dict['DO%s' % ch] = {}
                 ret_dict['DO%s' % ch]['pos'] = ch_pos_list
-        return ret_dict
+                valid_lines.append('DO%s' % ch)
+        return ret_dict, valid_lines
 
     """ cmd conversions (copied from ppg) """
 
@@ -380,6 +424,6 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
 if __name__=='__main__':
     app = QtWidgets.QApplication(sys.argv)
     gui = PulsePatternUi(None, '', None)
-    gui.load_from_text(txt_path='E:\\TildaDebugging\\Pulsepattern123Pattern.txt')
-    print(gui.get_gr_v_pos_from_list_of_cmds())
+    # gui.load_from_text(txt_path='E:\\TildaDebugging\\Pulsepattern123Pattern.txt')
+    # print(gui.get_gr_v_pos_from_list_of_cmds())
     app.exec_()

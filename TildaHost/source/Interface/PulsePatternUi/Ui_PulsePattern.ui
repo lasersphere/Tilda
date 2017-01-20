@@ -6,12 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>593</width>
+    <width>1220</width>
     <height>548</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
+  </property>
+  <property name="locale">
+   <locale language="English" country="UnitedStates"/>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -34,7 +37,7 @@
         </sizepolicy>
        </property>
       </widget>
-      <widget class="QTabWidget" name="tabWidget">
+      <widget class="QTabWidget" name="tabWidget_periodic_pattern">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
          <horstretch>0</horstretch>
@@ -44,12 +47,6 @@
        <property name="currentIndex">
         <number>1</number>
        </property>
-       <widget class="QWidget" name="tab_1_graph_view">
-        <attribute name="title">
-         <string>graph view</string>
-        </attribute>
-        <layout class="QVBoxLayout" name="verticalLayout_4"/>
-       </widget>
        <widget class="QWidget" name="tab_list_view">
         <attribute name="title">
          <string>list view</string>
@@ -108,6 +105,18 @@
           </layout>
          </item>
         </layout>
+       </widget>
+       <widget class="QWidget" name="tab_periodic_pattern">
+        <attribute name="title">
+         <string>periodic pattern</string>
+        </attribute>
+        <layout class="QHBoxLayout" name="horizontalLayout_4"/>
+       </widget>
+       <widget class="QWidget" name="tab_simple">
+        <attribute name="title">
+         <string>simple</string>
+        </attribute>
+        <layout class="QHBoxLayout" name="horizontalLayout_5"/>
        </widget>
       </widget>
      </widget>
@@ -174,7 +183,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>593</width>
+     <width>1220</width>
      <height>21</height>
     </rect>
    </property>
