@@ -6,7 +6,7 @@ Created on '18.01.2017'
 
 """
 
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtWidgets, QtGui, Qt
 from functools import partial
 from copy import deepcopy
 
@@ -25,10 +25,10 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
         self.setupUi(self)
         self.show()
 
-        self.list_of_item_dicts = []
+        self.list_of_item_dicts = []  # this will hold all periodic infos. its a list not a dict due to ordering.
 
         self.output_channels = ['DO%s' % i for i in range(0, 33)]
-        self.syst_rep_rate_us = 10
+        # self.sys_rep_rate_changed(100)
 
         # since no signal for moving is known, better use the buttons
         # self.listWidget_periodic_pattern.setDragDropMode(self.listWidget_periodic_pattern.InternalMove)
@@ -48,6 +48,8 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
         ''' signals '''
         self.listWidget_periodic_pattern.itemDoubleClicked.connect(self.dbl_clicked)
         self.doubleSpinBox_sys_rep_rate.valueChanged.connect(self.sys_rep_rate_changed)
+
+        self.doubleSpinBox_sys_rep_rate.setKeyboardTracking(False)
 
 
         # ''' example '''
@@ -104,24 +106,29 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
             )
         elif item_type == 'stop':
             name = 'stop | active ch when stopped: %s' % str(item_dict['actCh'])[1:-1]
+        elif item_type == 'sysRep':
+            name = 'system rep rate [us]: %s ' % item_dict['repRateUs']
         self.listWidget_periodic_pattern.item(cur_ind).setText(name)
 
     def add_trig(self, trig_dict=None):
-        """ add a trigger element """
-        cur_ind = self.listWidget_periodic_pattern.currentRow()
-        if cur_ind == -1:
-            cur_ind = 0
-        if not isinstance(trig_dict, dict):
-            trig_dict = {
-                'type': 'trig',
-                'trigName': 'NoName',
-                'trigChannels': [],
-                'actCh': []
-            }
-        self.listWidget_periodic_pattern.insertItem(cur_ind, 'trigger')
-        self.list_of_item_dicts.insert(cur_ind, trig_dict)
-        self.name_item(cur_ind)
-        self.add_stop()
+        """ add a trigger element at beginning of list """
+        trig_exists_already = True in [each['type'] == 'trig' for each in self.list_of_item_dicts]
+        if not trig_exists_already:
+            sys_rep = True in [each['type'] == 'sysRep' for each in self.list_of_item_dicts]
+            cur_ind = 1 if sys_rep else 0
+            if not isinstance(trig_dict, dict):
+                trig_dict = {
+                    'type': 'trig',
+                    'trigName': 'NoName',
+                    'trigChannels': [],
+                    'actCh': []
+                }
+            self.listWidget_periodic_pattern.insertItem(cur_ind, 'trigger')
+            self.list_of_item_dicts.insert(cur_ind, trig_dict)
+            self.name_item(cur_ind)
+            self.add_stop()
+        else:
+            print('in peridoic mode only one trigger is supported for now.')
 
     def add_stop(self, stop_dict=None):
         """ add a stop cmd at end of cmds if not yet there.
@@ -169,49 +176,80 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
                     dial = TriggerUi(self, self.list_of_item_dicts[cur_ind])
                 elif self.list_of_item_dicts[cur_ind]['type'] == 'stop':
                     dial = StopUi(self, self.list_of_item_dicts[cur_ind])
+                elif self.list_of_item_dicts[cur_ind]['type'] == 'sysRep':
+                    self.doubleSpinBox_sys_rep_rate.setFocus(Qt.Qt.OtherFocusReason)
                 if dial is not None:
                     if dial.exec():  # will return 1 for ok
                         self.list_of_item_dicts[cur_ind] = dial.get_dict_from_gui()
                         self.name_item(cur_ind)
                         self.get_cmd_list()
             except Exception as e:
-                print(e)
+                print('error while double clicked: %s ' % e)
 
     def sys_rep_rate_changed(self, val):
-        self.syst_rep_rate_us = val
+        print('system rep rate changed to: %s' % val)
+        rep_rate_dict = {
+            'type': 'sysRep',
+            'repRateUs': deepcopy(val)
+        }
+        sys_rep_in_list = [each['type'] == 'sysRep' for each in self.list_of_item_dicts]
+        if True in sys_rep_in_list:  # there is already a sysrep in the list, delete it
+            old_index = sys_rep_in_list.index(True)
+            self.listWidget_periodic_pattern.takeItem(old_index)
+            self.list_of_item_dicts.pop(old_index)
+        # insert sys period item at front of list.
+        self.list_of_item_dicts.insert(0, rep_rate_dict)
+        self.listWidget_periodic_pattern.insertItem(0, 'system repetition rate')
         self.doubleSpinBox_sys_rep_rate.blockSignals(True)
         self.doubleSpinBox_sys_rep_rate.setValue(val)
         self.doubleSpinBox_sys_rep_rate.blockSignals(False)
+        self.name_item(0)
         self.add_stop()
 
     def move_item(self, up_down):
         """ move an item in list up (-1) or down (+1) """
         cur_ind = self.listWidget_periodic_pattern.currentRow()
         if cur_ind != -1:
-            new_ind = cur_ind + up_down
-            if 0 <= new_ind <= len(self.list_of_item_dicts):
-                # move is possible
-                self.list_of_item_dicts.insert(new_ind, self.list_of_item_dicts.pop(cur_ind))
-                self.listWidget_periodic_pattern.insertItem(new_ind, self.listWidget_periodic_pattern.takeItem(cur_ind))
-                self.add_stop()
+            move_list = ['ch']
+            itm_type = self.list_of_item_dicts[cur_ind]['type']
+            if itm_type in move_list:
+                min_ind = 0
+                trig_exists_already = True in [each['type'] == 'trig' for each in self.list_of_item_dicts]
+                sys_rep_exists_alrdy = True in [each['type'] == 'sysRep' for each in self.list_of_item_dicts]
+                min_ind += 1 if trig_exists_already else 0
+                min_ind += 1 if sys_rep_exists_alrdy else 0
+                new_ind = cur_ind + up_down
+                if min_ind <= new_ind <= len(self.list_of_item_dicts):
+                    # move is possible
+                    self.list_of_item_dicts.insert(new_ind, self.list_of_item_dicts.pop(cur_ind))
+                    self.listWidget_periodic_pattern.insertItem(new_ind, self.listWidget_periodic_pattern.takeItem(cur_ind))
+                    self.listWidget_periodic_pattern.setCurrentRow(new_ind)
+                    self.add_stop()
 
-    def setup_from_list(self, list_of_dicts, sys_rep_rate_us):
+    def setup_from_list(self, list_of_dicts):
         """ setup from list of dicts """
         for ind, each_dict in enumerate(list_of_dicts):
-            self.listWidget_periodic_pattern.setCurrentRow(ind)
             if each_dict['type'] == 'trig':
                 self.add_trig(each_dict)
             elif each_dict['type'] == 'ch':
                 self.add_ch(each_dict)
             elif each_dict['type'] == 'stop':
                 self.add_stop(each_dict)
-        self.doubleSpinBox_sys_rep_rate.setValue(sys_rep_rate_us)
-        self.add_stop()
+            elif each_dict['type'] == 'sysRep':
+                self.sys_rep_rate_changed(each_dict['repRateUs'])
+            self.listWidget_periodic_pattern.setCurrentRow(ind)
 
     def get_cmd_list(self):
         """ from the peridoic setup create a cmd list as it is useable for the list view
          and send it to the list view via the self.cmd_list_callback_signal """
-        sys_per = self.syst_rep_rate_us
+        sys_rep_in_list = [each['type'] == 'sysRep' for each in self.list_of_item_dicts]
+        if True in sys_rep_in_list:
+            old_index = sys_rep_in_list.index(True)
+            sys_per = self.list_of_item_dicts[old_index]['repRateUs']
+        else:
+            sys_per = -1
+            # print('error: no system period defined! will not create command list')
+            return []
         trig_list = []
         ch_hi_lo_list = []
         t_0 = 0
@@ -313,3 +351,6 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
          from the list of commands this tab must be cleared """
         self.list_of_item_dicts = []
         self.listWidget_periodic_pattern.clear()
+
+    def return_periodic_list(self):
+        return self.list_of_item_dicts

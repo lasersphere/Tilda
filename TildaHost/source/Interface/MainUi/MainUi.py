@@ -287,7 +287,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def close_pulse_pattern_win(self):
         if self.pulse_pattern_win:
-            # self.pulse_pattern_win.close()
             self.pulse_pattern_win = None
 
     def closeEvent(self, *args, **kwargs):

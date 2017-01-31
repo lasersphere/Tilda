@@ -196,8 +196,17 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         else:
             self.pulse_pattern_win = PulsePatternUi(self.active_iso, self.track_name, self.main_gui, self)
         cmd_list = self.buffer_pars.get('pulsePattern', {}).get('cmdList', [])
+        per_list = self.buffer_pars.get('pulsePattern', {}).get('periodicList', [])
+        if per_list:
+            self.pulse_pattern_win.load_periodic(per_list)
+            # overwrite cmd_list in order to setup from periodic list! -> this will anyhow update the list view
+            # if there is a periodic list stored in the db, use this otherwise setup from cmd_list!
+            cmd_list = []
         if cmd_list:
             self.pulse_pattern_win.cmd_list_to_gui(cmd_list)
+
+    def close_pulse_pattern_window(self):
+        self.pulse_pattern_win = None
 
     """ from lineedit/spinbox to set value """
     '''line voltage realted:'''

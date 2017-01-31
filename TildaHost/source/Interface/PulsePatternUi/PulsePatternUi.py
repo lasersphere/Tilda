@@ -40,6 +40,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         self.periodic_widg = None
         self.simple_widg = None
         if main_gui is not None:
+            # close other open ppg windows here
             if self.main_gui.pulse_pattern_win is not None:
                 self.main_gui.pulse_pattern_win.close()
 
@@ -74,7 +75,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         ''' graphical view related '''
         self.listWidget_cmd_list.currentTextChanged.connect(self.update_gr_v)
         self.listWidget_cmd_list.currentRowChanged.connect(self.update_gr_v)
-        self.listWidget_cmd_list.itemChanged.connect(self.update_gr_v)
+        # self.listWidget_cmd_list.itemChanged.connect(self.update_gr_v)
 
         self.ch_pos_dict = {}
         self.add_graph_view()
@@ -123,10 +124,8 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         if self.track_gui is not None:
             self.track_gui.buffer_pars['pulsePattern'] = {}
             self.track_gui.buffer_pars['pulsePattern']['cmdList'] = items
-            if self.periodic_widg.list_of_item_dicts:
-                self.track_gui.buffer_pars['pulsePattern']['periodicList'] = deepcopy(
-                    self.periodic_widg.list_of_item_dicts)
-            print('wrote to buffer pars: ', self.track_gui.buffer_pars['pulsePattern']['periodicList'])
+            self.track_gui.buffer_pars['pulsePattern']['periodicList'] = deepcopy(
+                self.periodic_widg.return_periodic_list())
         self.close()
 
     def closeEvent(self, *args, **kwargs):
@@ -134,6 +133,8 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         if self.main_gui is not None:
             # tell main window that this window is closed.
             self.main_gui.close_pulse_pattern_win()
+        if self.track_gui is not None:
+            self.track_gui.close_pulse_pattern_window()
 
     def add_before(self):
         """ add copy of selected command before the selected one. If none selected, place at end. """
@@ -185,6 +186,11 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         self.ppg_state = state_str
         self.label_ppg_state.setText(state_str)
 
+    ''' periodic related '''
+    def load_periodic(self, per_list):
+        print('loading periodic list: %s' % per_list)
+        self.periodic_widg.setup_from_list(per_list)
+
     ''' help '''
     def open_help(self):
         mb = QtWidgets.QMessageBox(self)
@@ -208,20 +214,21 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             layout.addWidget(self.gr_v_widg)
             self.widget_graph_view.setLayout(layout)
         except Exception as e:
-            print(e)
+            print('error while adding graphical view: %s' % e)
 
     def update_gr_v(self, external_list=None):
         """ updates the graphic view and adds a line for each item """
         try:
-            if not isinstance(external_list, list):
-                # manual change on the cmd list -> therefore clear all other
-                # widgets because their data is probably now corrupted
-                if self.periodic_widg is not None:
-                    print('clearing periodic table')
-                    self.periodic_widg.list_view_was_changed()
+            print('updating praphical view, ext. list: %s' % external_list)
             old_list = deepcopy(self.gui_cmd_list)
             new_list = self.cmd_list_from_gui()
             if old_list != new_list:
+                if not isinstance(external_list, list):
+                    # manual change on the cmd list -> therefore clear all other
+                    # widgets because their data is probably now corrupted
+                    if self.periodic_widg is not None:
+                        print('clearing periodic table')
+                        self.periodic_widg.list_view_was_changed()
                 # print('updating graphics view')
                 self.ch_pos_dict, valid_lines = self.get_gr_v_pos_from_list_of_cmds(
                     self.cmd_list_from_gui(), ret_dict=self.ch_pos_dict)
@@ -232,7 +239,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                 pass
                 # print('nope not a new list, not redrawing here')
         except Exception as e:
-            print(e)
+            print('error while updating graphical view: %s' % e)
 
     def remove_lines(self, plt_item, remove_list):
         ch_pos_dict = self.ch_pos_dict
@@ -268,7 +275,8 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         int_cmd_list = self.convert_list_of_cmds(list_of_cmds, ticks_per_us)
         int_cmd_list = int_cmd_list.reshape((int_cmd_list.size / 4, 4))
         # get highest ch number
-        max_dio_0to31 = np.int(np.log2(np.max(int_cmd_list[:, 2])))
+        ch_int = np.max(int_cmd_list[:, 2])
+        max_dio_0to31 = np.int(np.log2(ch_int)) if ch_int > 1 else 1
         # max_dio_32to63 = int(np.log2(np.max(int_cmd_list[:, 3])))
         for ch in range(0, max_dio_0to31 + 1):
             ch_bit = 2 ** ch
@@ -291,7 +299,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                     ch_pos_list.append([time, y_pos])
                     time += 1  # draw 1 us before ris edge of trigger
                     ch_pos_list.append([time, y_pos])
-                    tr_ch_max = np.int(np.log2(each_cmd[1]))
+                    tr_ch_max = np.int(np.log2(each_cmd[1])) if each_cmd[1] > 1 else 1
                     for tr_ch in range(0, tr_ch_max + 1):
                         tr_ch_bit = 2 ** tr_ch
                         tr_low = -1 - tr_ch

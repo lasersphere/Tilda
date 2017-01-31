@@ -565,7 +565,7 @@ class ScanMain(QObject):
         try:
             self.pulse_pattern_gen = PPG.PulsePatternGenerator()
         except Exception as e:
-            print('error: %s could not initialise PulsePatternGenerator, will start dummy now' % e)
+            print('error: %s could not initialise PulsePatternGenerator, WILL START DUMMY NOW' % e)
             self.pulse_pattern_gen = PPGDummy.PulsePatternGeneratorDummy()
 
     def ppg_deinit(self):
