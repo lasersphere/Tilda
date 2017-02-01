@@ -26,6 +26,7 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
         self.show()
 
         self.list_of_item_dicts = []  # this will hold all periodic infos. its a list not a dict due to ordering.
+        self._backup = []  # will be used when something was cleared or so and user wants to reload
 
         self.output_channels = ['DO%s' % i for i in range(0, 33)]
         # self.sys_rep_rate_changed(100)
@@ -40,6 +41,7 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
         self.pushButton_edit_selected.clicked.connect(self.dbl_clicked)
         self.pushButton_move_up.clicked.connect(partial(self.move_item, -1))
         self.pushButton_move_down.clicked.connect(partial(self.move_item, +1))
+        self.pushButton_reload_settings.clicked.connect(self.reload_last_settings)
 
         ''' keyboard shortcuts '''
         QtWidgets.QShortcut(QtGui.QKeySequence("UP"), self, partial(self.move_item, -1))
@@ -51,22 +53,22 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
 
         self.doubleSpinBox_sys_rep_rate.setKeyboardTracking(False)
 
+        ''' example '''
+        example_data = [
+            {'type': 'sysRep', 'repRateUs': 10},
+            {'trigName': 'NoName', 'trigChannels': [0], 'actCh': [1], 'type': 'trig'},
+            {'chName': 'NoName', 'inverted': True, 'outCh': 'DO0',
+             'delayUs': 15.0, 'widthUs': 1.0, 'type': 'ch', 'numOfPulses': 3},
+            {'chName': 'NoName', 'inverted': False, 'outCh': 'DO1', 'delayUs': 1.2,
+             'widthUs': 0.8, 'type': 'ch', 'numOfPulses': 3},
+            {'chName': 'NoName', 'inverted': False, 'outCh': 'DO2',
+             'delayUs': 5.0, 'widthUs': 0.5, 'type': 'ch', 'numOfPulses': 2},
+            {'actCh': [0, 1, 2], 'type': 'stop'}
+        ]
 
-        # ''' example '''
-        # example_data = [
-        #     {'trigName': 'NoName', 'trigChannels': [0], 'actCh': [1], 'type': 'trig'},
-        #     {'chName': 'NoName', 'inverted': True, 'outCh': 'DO0',
-        #      'delayUs': 1.0, 'widthUs': 1.0, 'type': 'ch', 'numOfPulses': 3},
-        #     {'chName': 'NoName', 'inverted': False, 'outCh': 'DO1', 'delayUs': 1.2,
-        #      'widthUs': 0.8, 'type': 'ch', 'numOfPulses': 3},
-        #     {'chName': 'NoName', 'inverted': False, 'outCh': 'DO2',
-        #      'delayUs': 5.0, 'widthUs': 0.5, 'type': 'ch', 'numOfPulses': 2},
-        #     {'actCh': [0, 1, 2], 'type': 'stop'}
-        # ]
-        #
-        # self.setup_from_list(example_data, 10)
-        # self.get_cmd_list()
-        # self.get_ch_high_low_list(self.list_of_item_dicts[1], 0, 10)
+        self.setup_from_list(example_data)
+        self.get_cmd_list()
+        # self.get_ch_high_low_list(self.list_of_item_dicts[2], 0, 10)
 
     def add_ch(self, ch_dict=None):
         """ add a channel """
@@ -85,6 +87,7 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
                 'delayUs': 1.0,
                 'inverted': False
             }
+        self._backup = deepcopy(self.list_of_item_dicts)
         self.list_of_item_dicts.insert(cur_ind, ch_dict)
         self.listWidget_periodic_pattern.insertItem(cur_ind, 'ch')
         self.name_item(cur_ind)
@@ -124,6 +127,7 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
                     'actCh': []
                 }
             self.listWidget_periodic_pattern.insertItem(cur_ind, 'trigger')
+            self._backup = deepcopy(self.list_of_item_dicts)
             self.list_of_item_dicts.insert(cur_ind, trig_dict)
             self.name_item(cur_ind)
             self.add_stop()
@@ -156,6 +160,7 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
     def rem_selected(self):
         """ remove the selected item """
         cur_ind = self.listWidget_periodic_pattern.currentRow()
+        self._backup = deepcopy(self.list_of_item_dicts)
         self.list_of_item_dicts.pop(cur_ind)
         if cur_ind != -1:
             self.listWidget_periodic_pattern.takeItem(cur_ind)
@@ -166,6 +171,7 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
         cur_ind = self.listWidget_periodic_pattern.currentRow()
         if cur_ind != -1:
             try:
+                self._backup = deepcopy(self.list_of_item_dicts)
                 dial = None
                 if self.list_of_item_dicts[cur_ind]['type'] == 'ch':
                     used_outputs = [ch['outCh'] for ch in self.list_of_item_dicts if ch['type'] == 'ch']
@@ -187,12 +193,13 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
                 print('error while double clicked: %s ' % e)
 
     def sys_rep_rate_changed(self, val):
-        print('system rep rate changed to: %s' % val)
+        # print('system rep rate changed to: %s' % val)
         rep_rate_dict = {
             'type': 'sysRep',
             'repRateUs': deepcopy(val)
         }
         sys_rep_in_list = [each['type'] == 'sysRep' for each in self.list_of_item_dicts]
+        self._backup = deepcopy(self.list_of_item_dicts)
         if True in sys_rep_in_list:  # there is already a sysrep in the list, delete it
             old_index = sys_rep_in_list.index(True)
             self.listWidget_periodic_pattern.takeItem(old_index)
@@ -209,6 +216,7 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
     def move_item(self, up_down):
         """ move an item in list up (-1) or down (+1) """
         cur_ind = self.listWidget_periodic_pattern.currentRow()
+        self._backup = deepcopy(self.list_of_item_dicts)
         if cur_ind != -1:
             move_list = ['ch']
             itm_type = self.list_of_item_dicts[cur_ind]['type']
@@ -240,7 +248,7 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
             self.listWidget_periodic_pattern.setCurrentRow(ind)
 
     def get_cmd_list(self):
-        """ from the peridoic setup create a cmd list as it is useable for the list view
+        """ from the periodic setup create a cmd list as it is useable for the list view
          and send it to the list view via the self.cmd_list_callback_signal """
         sys_rep_in_list = [each['type'] == 'sysRep' for each in self.list_of_item_dicts]
         if True in sys_rep_in_list:
@@ -272,7 +280,7 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
             cmd_list.insert(0, trig_list[0])
         if stop_cmd:
             cmd_list.append(stop_cmd)
-        self.cmd_list_callback_signal.emit(cmd_list)
+        self.cmd_list_callback_signal.emit(cmd_list, 'periodic')
         return cmd_list
 
     def get_ch_high_low_list(self, ch_dict, sys_per_us, t_0=0):
@@ -349,8 +357,21 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
     def list_view_was_changed(self):
         """ since it is for now not possible to create a peridic pattern
          from the list of commands this tab must be cleared """
+        if self.list_of_item_dicts:
+            self._backup = deepcopy(self.list_of_item_dicts)
         self.list_of_item_dicts = []
         self.listWidget_periodic_pattern.clear()
 
     def return_periodic_list(self):
         return self.list_of_item_dicts
+
+    def reload_last_settings(self):
+        """ load the backup data (only runtime) """
+        if self._backup:
+            print('loading backup list of commands: %s ' % self._backup)
+            self.list_of_item_dicts = []
+            self.listWidget_periodic_pattern.clear()
+            self.setup_from_list(self._backup)
+            self.get_cmd_list()
+        else:
+            print('no backup data available')

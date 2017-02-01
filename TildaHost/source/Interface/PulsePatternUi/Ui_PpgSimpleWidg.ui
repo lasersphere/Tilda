@@ -64,7 +64,87 @@
    </item>
    <item>
     <layout class="QGridLayout" name="gridLayout">
-     <item row="0" column="0">
+     <item row="1" column="10">
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_rfqcb_release_time_ms">
+       <property name="keyboardTracking">
+        <bool>false</bool>
+       </property>
+       <property name="decimals">
+        <number>5</number>
+       </property>
+       <property name="maximum">
+        <double>10000.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLabel" name="label_14">
+       <property name="text">
+        <string>delay [ms]:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="4">
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_rfqcb_acc_time_ms">
+       <property name="keyboardTracking">
+        <bool>false</bool>
+       </property>
+       <property name="decimals">
+        <number>5</number>
+       </property>
+       <property name="maximum">
+        <double>10000.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="5">
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>release time [ms]:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="3">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>accumulation time [ms]:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_rfqcb_delay_ms">
+       <property name="keyboardTracking">
+        <bool>false</bool>
+       </property>
+       <property name="decimals">
+        <number>5</number>
+       </property>
+       <property name="maximum">
+        <double>10000.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="10">
+      <widget class="QSpinBox" name="spinBox_rfqcb_num_of_bunches">
+       <property name="keyboardTracking">
+        <bool>false</bool>
+       </property>
+       <property name="maximum">
+        <number>10000000</number>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="5">
+      <widget class="QLabel" name="label_13">
+       <property name="text">
+        <string>number of bunches:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="4">
+      <widget class="QComboBox" name="comboBox_rfqcb_out_ch"/>
+     </item>
+     <item row="0" column="3">
       <widget class="QLabel" name="label_7">
        <property name="text">
         <string>output channel:</string>
@@ -72,66 +152,12 @@
       </widget>
      </item>
      <item row="0" column="2">
-      <widget class="QLabel" name="label_13">
-       <property name="text">
-        <string>number of bunches:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="9">
-      <widget class="QDoubleSpinBox" name="doubleSpinBox_rfqcb_release_time_ms">
-       <property name="decimals">
-        <number>3</number>
-       </property>
-       <property name="maximum">
-        <double>10000.000000000000000</double>
-       </property>
-      </widget>
+      <widget class="QComboBox" name="comboBox_rfq_state"/>
      </item>
      <item row="0" column="1">
-      <widget class="QComboBox" name="comboBox_rfqcb_out_ch"/>
-     </item>
-     <item row="0" column="3">
-      <widget class="QSpinBox" name="spinBox_rfqcb_num_of_bunches"/>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_14">
+      <widget class="QLabel" name="label_15">
        <property name="text">
-        <string>delay [ms]:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QDoubleSpinBox" name="doubleSpinBox_rfqcb_delay_ms">
-       <property name="decimals">
-        <number>3</number>
-       </property>
-       <property name="maximum">
-        <double>10000.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="2">
-      <widget class="QLabel" name="label_4">
-       <property name="text">
-        <string>accumulation time [ms]:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="3">
-      <widget class="QDoubleSpinBox" name="doubleSpinBox_rfqcb_acc_time_ms">
-       <property name="decimals">
-        <number>3</number>
-       </property>
-       <property name="maximum">
-        <double>10000.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="4">
-      <widget class="QLabel" name="label_5">
-       <property name="text">
-        <string>release time [ms]:</string>
+        <string>rfq state:</string>
        </property>
       </widget>
      </item>
@@ -182,8 +208,11 @@
      </item>
      <item row="1" column="1">
       <widget class="QDoubleSpinBox" name="doubleSpinBox_beam_gate_delay_ms">
+       <property name="keyboardTracking">
+        <bool>false</bool>
+       </property>
        <property name="decimals">
-        <number>3</number>
+        <number>5</number>
        </property>
        <property name="maximum">
         <double>10000.000000000000000</double>
@@ -198,9 +227,12 @@
       </widget>
      </item>
      <item row="1" column="3">
-      <widget class="QDoubleSpinBox" name="doubleSpinBox_beam_gate_delay_open_ms">
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_beam_gate_open_ms">
+       <property name="keyboardTracking">
+        <bool>false</bool>
+       </property>
        <property name="decimals">
-        <number>3</number>
+        <number>5</number>
        </property>
        <property name="maximum">
         <double>10000.000000000000000</double>

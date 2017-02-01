@@ -26,7 +26,7 @@ import PyQtGraphPlotter as Pgplot
 
 class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
     pulse_pattern_status = QtCore.pyqtSignal(str)
-    cmd_list_signal = QtCore.pyqtSignal(list)
+    cmd_list_signal = QtCore.pyqtSignal(list, str)
 
     def __init__(self, active_iso, track_name, main_gui, track_gui=None):
         super(PulsePatternUi, self).__init__()
@@ -92,8 +92,9 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         self.tab_simple.layout().addWidget(self.simple_widg)
 
         self.show()
+        self.tabWidget_periodic_pattern.setCurrentIndex(2)
 
-    def cmd_list_to_gui(self, cmd_list):
+    def cmd_list_to_gui(self, cmd_list, caller_str=None):
         """ write a list of str cmd to the gui """
         # remove all items tht were already in the list.
         self.listWidget_cmd_list.clear()
@@ -101,7 +102,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         for i in range(self.listWidget_cmd_list.count()):
             self.listWidget_cmd_list.item(i).setFlags(
                 QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsDragEnabled)
-        self.update_gr_v(cmd_list)
+        self.update_gr_v(caller_str)
 
     def cmd_list_from_gui(self):
         """ return a list of all cmds in the gui """
@@ -126,6 +127,9 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             self.track_gui.buffer_pars['pulsePattern']['cmdList'] = items
             self.track_gui.buffer_pars['pulsePattern']['periodicList'] = deepcopy(
                 self.periodic_widg.return_periodic_list())
+            self.track_gui.buffer_pars['pulsePattern']['simpleDict'] = deepcopy(
+                self.simple_widg.return_simple_dict()
+            )
         self.close()
 
     def closeEvent(self, *args, **kwargs):
@@ -191,6 +195,12 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         print('loading periodic list: %s' % per_list)
         self.periodic_widg.setup_from_list(per_list)
 
+    ''' simple related '''
+    def load_simple_dict(self, simple_dict):
+        """ load a simple dict to the simple tab """
+        print('loading simple dict: %s ' % simple_dict)
+        self.simple_widg.load_from_simple_dict(simple_dict)
+
     ''' help '''
     def open_help(self):
         mb = QtWidgets.QMessageBox(self)
@@ -216,19 +226,30 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         except Exception as e:
             print('error while adding graphical view: %s' % e)
 
-    def update_gr_v(self, external_list=None):
+    def update_gr_v(self, caller_str=None):
         """ updates the graphic view and adds a line for each item """
         try:
-            print('updating praphical view, ext. list: %s' % external_list)
             old_list = deepcopy(self.gui_cmd_list)
             new_list = self.cmd_list_from_gui()
             if old_list != new_list:
-                if not isinstance(external_list, list):
-                    # manual change on the cmd list -> therefore clear all other
-                    # widgets because their data is probably now corrupted
-                    if self.periodic_widg is not None:
-                        print('clearing periodic table')
-                        self.periodic_widg.list_view_was_changed()
+                # print('updating praphical view, caller: %s of type: %s' % (caller_str, type(caller_str)))
+                # manual change on the cmd list -> therefore clear all other
+                # widgets because their data is probably now corrupted
+                # if caller str is specified, only clear all other widgets.
+                if isinstance(caller_str, str):
+                    if caller_str in ['simple', 'periodic']:
+                        caller_str = [caller_str]
+                    else:
+                        caller_str = ['simple', 'periodic']
+                else:
+                    print('caller is not a string but of type: %s' % type(caller_str))
+                    caller_str = ['simple', 'periodic']
+                if self.periodic_widg is not None and 'simple' in caller_str:
+                    print('clearing periodic table, due to changes in list view')
+                    self.periodic_widg.list_view_was_changed()
+                if self.simple_widg is not None and 'periodic' in caller_str:
+                    print('clearing simple tab, due to changes in list view')
+                    self.simple_widg.list_view_was_changed()
                 # print('updating graphics view')
                 self.ch_pos_dict, valid_lines = self.get_gr_v_pos_from_list_of_cmds(
                     self.cmd_list_from_gui(), ret_dict=self.ch_pos_dict)

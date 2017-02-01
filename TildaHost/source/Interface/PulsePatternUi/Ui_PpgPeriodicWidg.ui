@@ -102,6 +102,13 @@
        </property>
       </spacer>
      </item>
+     <item>
+      <widget class="QPushButton" name="pushButton_reload_settings">
+       <property name="text">
+        <string>reload settings</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
   </layout>

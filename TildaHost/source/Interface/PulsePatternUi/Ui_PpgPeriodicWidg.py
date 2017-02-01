@@ -54,6 +54,9 @@ class Ui_PpgPeriodicWidg(object):
         self.verticalLayout_4.addWidget(self.pushButton_remove_selected_periodic)
         spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.verticalLayout_4.addItem(spacerItem)
+        self.pushButton_reload_settings = QtWidgets.QPushButton(PpgPeriodicWidg)
+        self.pushButton_reload_settings.setObjectName("pushButton_reload_settings")
+        self.verticalLayout_4.addWidget(self.pushButton_reload_settings)
         self.horizontalLayout.addLayout(self.verticalLayout_4)
 
         self.retranslateUi(PpgPeriodicWidg)
@@ -69,4 +72,5 @@ class Ui_PpgPeriodicWidg(object):
         self.pushButton_move_down.setText(_translate("PpgPeriodicWidg", "move down"))
         self.pushButton_edit_selected.setText(_translate("PpgPeriodicWidg", "edit selected"))
         self.pushButton_remove_selected_periodic.setText(_translate("PpgPeriodicWidg", "remove selected"))
+        self.pushButton_reload_settings.setText(_translate("PpgPeriodicWidg", "reload settings"))
 

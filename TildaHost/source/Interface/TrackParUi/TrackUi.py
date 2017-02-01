@@ -197,6 +197,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             self.pulse_pattern_win = PulsePatternUi(self.active_iso, self.track_name, self.main_gui, self)
         cmd_list = self.buffer_pars.get('pulsePattern', {}).get('cmdList', [])
         per_list = self.buffer_pars.get('pulsePattern', {}).get('periodicList', [])
+        simple_dict = self.buffer_pars.get('pulsePattern', {}).get('simpleDict', [])
         if per_list:
             self.pulse_pattern_win.load_periodic(per_list)
             # overwrite cmd_list in order to setup from periodic list! -> this will anyhow update the list view
@@ -204,6 +205,9 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             cmd_list = []
         if cmd_list:
             self.pulse_pattern_win.cmd_list_to_gui(cmd_list)
+        if simple_dict:
+            self.pulse_pattern_win.load_simple_dict(simple_dict)
+
 
     def close_pulse_pattern_window(self):
         self.pulse_pattern_win = None
