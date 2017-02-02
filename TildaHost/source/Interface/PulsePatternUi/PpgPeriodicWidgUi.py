@@ -66,8 +66,8 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
             {'actCh': [0, 1, 2], 'type': 'stop'}
         ]
 
-        self.setup_from_list(example_data)
-        self.get_cmd_list()
+        # self.setup_from_list(example_data)
+        # self.get_cmd_list()
         # self.get_ch_high_low_list(self.list_of_item_dicts[2], 0, 10)
 
     def add_ch(self, ch_dict=None):

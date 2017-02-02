@@ -192,12 +192,14 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
 
     ''' periodic related '''
     def load_periodic(self, per_list):
+        self.tabWidget_periodic_pattern.setCurrentIndex(1)
         print('loading periodic list: %s' % per_list)
         self.periodic_widg.setup_from_list(per_list)
 
     ''' simple related '''
     def load_simple_dict(self, simple_dict):
         """ load a simple dict to the simple tab """
+        self.tabWidget_periodic_pattern.setCurrentIndex(2)
         print('loading simple dict: %s ' % simple_dict)
         self.simple_widg.load_from_simple_dict(simple_dict)
 

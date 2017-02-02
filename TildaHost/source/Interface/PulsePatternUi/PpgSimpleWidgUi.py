@@ -59,6 +59,8 @@ class PpgSimpleWidgUi(QtWidgets.QWidget, Ui_PpgSimpleWidg):
         self.doubleSpinBox_beam_gate_delay_ms.valueChanged.connect(self.gui_changed)
         self.doubleSpinBox_beam_gate_open_ms.valueChanged.connect(self.gui_changed)
 
+        self.doubleSpinBox_system_period.valueChanged.connect(self.sys_rep_rate_changed)
+
         ''' example: '''
         simple_dict = {
             'protonTrig': 'yes',
@@ -68,11 +70,11 @@ class PpgSimpleWidgUi(QtWidgets.QWidget, Ui_PpgSimpleWidg):
             'rfqNumOfBunches': 3,
             'rfqDelayMs': 0.02,
             'rfqAccTimeMs': 0.01,
-            'rfqRelTimeMs': 0.005,
-            'beamGateState': 'pulsed',
+            'rfqRelTimeMs': 0.01,
+            'beamGateState': 'always open',
             'beamGateOutpCh': 'DO1',
-            'beamGateDelayMs': 0.01,
-            'beamGateOpenTimeMs': 0.013
+            'beamGateDelayMs': 0.0,
+            'beamGateOpenTimeMs': 0.0
         }
         # self.load_from_simple_dict(simple_dict)
 
@@ -148,13 +150,35 @@ class PpgSimpleWidgUi(QtWidgets.QWidget, Ui_PpgSimpleWidg):
         }
         pr_yes_no_bool = pr_yes_no == 'yes'
         # if not proton triggered also repeat the delay
-        self.sys_rep_rate_us = (rfq_acc_time + rfq_rel_time) * 1000 \
-            if pr_yes_no_bool else (rfq_delay_ms + rfq_acc_time + rfq_rel_time) * 1000
+        new_sys_rep_rate_ms = (rfq_acc_time + rfq_rel_time) \
+            if pr_yes_no_bool else (rfq_delay_ms + rfq_acc_time + rfq_rel_time)
+        self.sys_rep_rate_changed(new_sys_rep_rate_ms)
         self.block_controls()
         cmd_list = self.get_cmd_list_from_simple_dict()
         if cmd_list:
-            print('emitting')
+            # print('emitting')
             self.cmd_list_callback_signal.emit(cmd_list, 'simple')
+
+    def sys_rep_rate_changed(self, sys_rep_rate_ms):
+        """ system rep rate was changed, adjust accumulation time if this does not match """
+        self.doubleSpinBox_system_period.blockSignals(True)
+        self.doubleSpinBox_system_period.setValue(sys_rep_rate_ms)
+        self.doubleSpinBox_system_period.blockSignals(False)
+        self.sys_rep_rate_us = sys_rep_rate_ms * 1000
+        pr_yes_no_bool = self.comboBox_proton_trig_yes_no.currentText() == 'yes'
+        rfq_acc_time_us = deepcopy(self.doubleSpinBox_rfqcb_acc_time_ms.value() * 1000)
+        rfq_rel_time_us = self.doubleSpinBox_rfqcb_release_time_ms.value() * 1000
+        rfq_delay_us = self.doubleSpinBox_rfqcb_delay_ms.value() * 1000
+        dif = 0
+        if pr_yes_no_bool:
+            sys_rep_should_be = (rfq_acc_time_us + rfq_rel_time_us)
+        else:
+            sys_rep_should_be = (rfq_delay_us + rfq_acc_time_us + rfq_rel_time_us)
+        dif = self.sys_rep_rate_us - sys_rep_should_be
+        if dif:
+            new_acc_time = (rfq_acc_time_us + dif) / 1000
+            # print('new_acc_time', new_acc_time)
+            self.doubleSpinBox_rfqcb_acc_time_ms.setValue(new_acc_time)
 
     def block_controls(self):
         """ this will activate / deactivate controls depending on if proton triggered or not """
@@ -178,7 +202,7 @@ class PpgSimpleWidgUi(QtWidgets.QWidget, Ui_PpgSimpleWidg):
         self.doubleSpinBox_beam_gate_open_ms.setDisabled(bg8_always_open)
 
         # simplify if rfq always open
-        self.spinBox_rfqcb_num_of_bunches.setEnabled(not rfq_always_open and pr_tr_yes_no)
+        self.spinBox_rfqcb_num_of_bunches.setEnabled(pr_tr_yes_no)
         self.doubleSpinBox_rfqcb_delay_ms.setEnabled(not rfq_always_open)  # and pr_tr_yes_no)
         self.doubleSpinBox_rfqcb_acc_time_ms.setDisabled(rfq_always_open)
         self.doubleSpinBox_rfqcb_release_time_ms.setDisabled(rfq_always_open)
@@ -205,7 +229,7 @@ class PpgSimpleWidgUi(QtWidgets.QWidget, Ui_PpgSimpleWidg):
             cmd_list.append('$wait::%s::%s::0' % (pr_tr_inp_int, bg8_low_int + rfq_low_int))
         cmd_list += self.create_proton_triggered_cmd_ch_list(pr_tr_yes_no)
         cmd_list.append('$stop::0::%s::0' % (bg8_low_int + rfq_low_int))
-        print(cmd_list)
+        # print(cmd_list)
         return cmd_list
 
     def append_time_cmd_to_list(self, cmd_list, time_us, ch):
@@ -247,20 +271,22 @@ class PpgSimpleWidgUi(QtWidgets.QWidget, Ui_PpgSimpleWidg):
     def get_ch_high_low_list(self, ch_str, n_of_pulses, width_us,
                              delay_us, sys_per_us, t_0=0, pr_triggered=True, always_high=False, always_low=False):
         """
-        calc if the channel is high or low a t the queried time
+        create a list of list with each containing: [[ch_int_high/ch_int_low, leftedge_time, ch_int], ... ]
         """
         ch_high_int = 2 ** int(ch_str[2:])  # 'DO2' -> 2 ** 2
         ch_low_int = 0
+        if always_high:
+            return [[ch_high_int, 0, ch_high_int], [ch_high_int, delay_us + sys_per_us * n_of_pulses, ch_high_int]]
         if width_us == 0 or always_low:
             ch_high_int = 0
-        if always_high:
-            ch_low_int = ch_high_int
+            if always_low:
+                return [[ch_high_int, 0, ch_high_int], [ch_high_int, delay_us + sys_per_us * n_of_pulses, ch_high_int]]
         inverted = False
         hi_lo_list = []
         t_first_pulse = t_0
         if 0 < delay_us:  # only apply delay when it is larger then 0
             if delay_us < sys_per_us or pr_triggered:
-                print('applying delay', delay_us, sys_per_us, pr_triggered)
+                # print('applying delay', delay_us, sys_per_us, pr_triggered)
                 # only use delay if this is not longer than sys period or use when proton triggered
                 hi_lo_list.append([ch_high_int if inverted else ch_low_int, t_0, ch_high_int])  # delay
                 t_first_pulse = t_0 + delay_us
@@ -290,10 +316,12 @@ class PpgSimpleWidgUi(QtWidgets.QWidget, Ui_PpgSimpleWidg):
             # width exceeds or is equal to the system period or is zero
             # -> keep state as in first pulse for n_of_pulses * sys_rep_rate_us
             hi_lo_list.append([ch_high_int if not inverted else ch_low_int, t_first_pulse, ch_high_int])  # first pulse
+            end_time = t_first_pulse + sys_per_us * n_of_pulses - delay_us if not pr_triggered \
+                else t_first_pulse + sys_per_us * n_of_pulses
             hi_lo_list.append(
-                [ch_high_int if inverted else ch_low_int, t_first_pulse + sys_per_us * n_of_pulses - delay_us, ch_high_int])  # end
+                [ch_high_int if inverted else ch_low_int, end_time, ch_high_int])  # end
         hi_lo_list = [[each[0], round(each[1], 2), each[2]] for each in hi_lo_list]
-        print(hi_lo_list)
+        # print(hi_lo_list)
         return hi_lo_list
 
     def get_ch_high_low_at_time(self, time, ch_hi_lo_list):
@@ -328,7 +356,7 @@ class PpgSimpleWidgUi(QtWidgets.QWidget, Ui_PpgSimpleWidg):
                 [_time,
                  sum([all_same_len_sorted[ch_ind][ind][0] for ch_ind in range(0, len(all_same_len_sorted))])]
             )
-        print(timing)
+        # print(timing)
         return ret_list
 
     def ch_hi_lo_list_to_cmd_list(self, ch_hi_lo_list):
