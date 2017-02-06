@@ -34,6 +34,7 @@ runs = [runs[0]]
 
 isotopes = ['%s_Ni' % i for i in range(58, 71)]
 isotopes.remove('69_Ni')
+odd_isotopes = [iso for iso in isotopes if int(iso[:2]) % 2]
 stables = ['58_Ni', '60_Ni', '61_Ni', '62_Ni', '64_Ni']
 
 ''' literature IS  '''
@@ -111,6 +112,125 @@ delta_lit_radii.pop('60_Ni')
 # for iso, radi in sorted(lit_radii.items()):
 #     dif = delta_lit_radii.get(iso, (0, 0))
 #     print('%s\t%.3f\t%.3f\t%.5f\t%.5f' % (iso, radi[0], radi[1], dif[0], dif[1]))
+
+''' Moments '''
+''' Quadrupole Moments '''
+# literature values from PHYSICAL REVIEW VOLUME 170, NUM HER 1 5 JUNE 1968
+# Hyperfine-Structure Studies of Ni", and the Nuclear Ground-State
+# Electric Quadrupole Moment*
+# W. J. CHILDs AND L. S. 600DMAN
+# Argonne Eationa/ Laboratory, Argonne, Illinois
+
+q_literature_61_Ni = 0.162  # barn
+d_q_literature_61_Ni = 0.015  # barn
+
+# 3d9(2D)4s  	 3D 3
+b_lower_lit = -102.979  # MHz
+d_b_lower_lit = 0.016  # MHz
+
+# e_Vzz value from this: e_Vzz = B / Q
+e_Vzz_lower = b_lower_lit / q_literature_61_Ni
+d_e_Vzz_lower = np.sqrt(
+    (e_Vzz_lower / b_lower_lit * d_b_lower_lit) ** 2 +
+    (e_Vzz_lower / q_literature_61_Ni * d_q_literature_61_Ni) ** 2)
+print(e_Vzz_lower, d_e_Vzz_lower)
+
+# for the upper state  3d9(2D)4p  	 3P° 2, no b factor was measured
+# therefore i will need to get the e_Vzz_upper from my results on 61_Ni and the q_literature_61_Ni
+b_upper_exp = -50.5033931843  # MHz
+d_b_upper_exp = 1.421  # Mhz
+
+e_Vzz_upper = b_upper_exp / q_literature_61_Ni
+d_e_Vzz_upper = np.sqrt(
+    (e_Vzz_upper / b_upper_exp * d_b_upper_exp) ** 2 +
+    (e_Vzz_upper / q_literature_61_Ni * d_q_literature_61_Ni) ** 2)
+
+print(e_Vzz_upper, d_e_Vzz_upper)
+
+def quadrupol_moment(b, d_stat_b, d_syst_b, upper=True):
+    if b:
+        e_vzz = e_Vzz_lower
+        d_e_vzz = d_e_Vzz_lower
+        if upper:
+            e_vzz = e_Vzz_upper
+            d_e_vzz = d_e_Vzz_upper
+        q = b / e_vzz
+        d_stat_q = d_stat_b / e_vzz
+        d_syst_q = np.sqrt(
+            (b / e_vzz * d_syst_b) ** 2 +
+            (b / (e_vzz ** 2) * d_e_vzz) ** 2
+        )
+        q_print = '%.3f(%.0f)[%.0f]' % (q, d_stat_q * 1000, d_syst_q * 1000)
+        d_total = np.sqrt(d_stat_q ** 2 + d_syst_q ** 2)
+        return q, d_stat_q, d_syst_q, d_total, q_print
+    else:
+        return 0, 0, 0, 0, '0.000(0)[0]'
+
+''' magnetic moments '''
+# µ = A µ_Ref / A_Ref * I / I_Ref
+# µ_ref from:
+# TABLE OF NUCLEAR MAGNETIC DIPOLE
+# AND ELECTRIC QUADRUPOLE MOMENTS
+# N.J. Stone
+# Oxford Physics, Clarendon Laboratory, Parks Road, Oxford U.K. OX1 3PU and
+# Department of Physics and Astronomy, University of Tennessee, Knoxville, USA, TN 37996-1200
+# February 2014
+# page 36
+
+mu_ref = -0.75002  # nm -> nuclear magneton
+d_mu_ref = 0.00004  # nm
+i_ref = 3 / 2
+
+# A_Ref_lower was taken from:
+# PHYSICAL REVIEW VOLUME 170, NUM HER 1 5 JUNE 1968
+# Hyperfine-Structure Studies of Ni", and the Nuclear Ground-State
+# Electric Quadrupole Moment*
+# W. J. CHILDs AND L. S. 600DMAN
+# Argonne Eationa/ Laboratory, Argonne, Illinois
+# (Received 31 January 1968)
+# table III.
+
+a_low_ref = -454.974
+d_a_low_ref = 0.003
+
+
+def magnetic_moment(a_lower, d_stat_a_lower, d_syst_a_lower, nucl_spin):
+    mu = a_lower * mu_ref / a_low_ref * nucl_spin / i_ref
+    d_stat_mu = d_stat_a_lower * mu_ref / a_low_ref * nucl_spin / i_ref
+    d_syst_mu = np.sqrt(
+        (mu_ref / a_low_ref * nucl_spin / i_ref * d_syst_a_lower) ** 2 +
+        (a_lower / a_low_ref * nucl_spin / i_ref * d_mu_ref) ** 2 +
+        (a_lower * mu_ref / (a_low_ref ** 2) * nucl_spin / i_ref * d_a_low_ref) ** 2
+    )
+    # print(mu, d_stat_mu, d_syst_mu)
+    d_total = np.sqrt(d_stat_mu ** 2 + d_stat_mu ** 2)
+    print_val = '%.4f(%.0f)[%.0f]' % (mu, d_stat_mu * 10000, d_syst_mu * 10000)
+    return mu, d_stat_mu, d_syst_mu, d_total, print_val
+
+
+# Schmidt values as in R. Neugart and G. Neyens, Nuclear Moments, Lecture Notes in Physics 700 (2006),
+# 135–189 -> Page 139:
+def mu_schmidt(I, l, proton, g_l=0, g_s=-3.826):
+    l_plus = I == l + 0.5
+    # g_l = 0
+    # g_s = -3.826
+    if proton:
+        g_l = 1
+        g_s = 5.587
+    if l_plus:
+        mu_I = ((I - 0.5) * g_l + 0.5 * g_s)
+    else:
+        mu_I = I / (I + 1) * ((I + 1.5) * g_l - 0.5 * g_s)
+    return mu_I
+
+levels = [('2p 3/2', 1, 1.5), ('1f 5/2', 3, 2.5), ('2p 1/2', 1, 0.5), ('1g 9/2', 4, 4.5)]
+# levels_michael = [('3s 1/2', 0, 0.5), ('2d 3/2', 2, 1.5), ('2d 5/2', 2, 2.5), ('1g 7/2', 4, 3.5), ('1h 11/2', 5, 5.5)]
+# levels = levels_michael
+
+mu_list_schmidt = [mu_schmidt(each[2], each[1], False) for each in levels]
+print('level\t\mu(\\nu) / \mu_N')
+for i, each in enumerate(levels):
+    print('%s\t%.2f' % (each[0], mu_list_schmidt[i]))
 
 
 ''' crawling '''
@@ -404,7 +524,6 @@ try:
     #     print(out_str)
     # print('\n\n\niso\tAu\td_Au\tAl\td_Al\tAu/Al\td_Au/Al')
     a_fac_runs = [runs[0], 'narrow_gate_67_Ni']
-    odd_isotopes = [iso for iso in isotopes if int(iso[:2]) % 2]
 
     al = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Al', print_extracted=False)
     au = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Au', print_extracted=False)
@@ -412,9 +531,22 @@ try:
     bu = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Bu', print_extracted=False)
     ratios = []
     d_ratios = []
-    print('iso\tAu [MHz]\trChi Au\tAl [MHz]\trChi Al\tAu/Al\td_Au/Al\tBu [MHz]\trChi Bu\tBl [MHz]\trChi Bl\tBu/Bl\td_Bu/Bl')
+    q_moments = []
+    magn_moments = []
+    print('iso\tI\tAu [MHz]\trChi Au\tAl [MHz]\trChi Al\tAu/Al\td_Au/Al'
+          '\tBu [MHz]\trChi Bu\tBl [MHz]\trChi Bl\tBu/Bl\td_Bu/Bl\tQ_l [b]\tQ_u [b]\tQ_m [b]'
+          '\tµ [nm]')
     for run in a_fac_runs:
         for iso, a_low in sorted(al[run].items()):
+            mass = int(iso[:2])
+            nucl_spin = 0
+            con = sqlite3.connect(db)
+            cur = con.cursor()
+            cur.execute(''' SELECT I FROM Isotopes WHERE iso = ? ''', (iso,))
+            data = cur.fetchall()
+            con.close()
+            if data:
+                nucl_spin = data[0][0]
             if a_low[0]:
                 a_up = au[run][iso]
                 b_up = bu[run][iso]
@@ -436,17 +568,120 @@ try:
                     )
                 ratios.append(ratio)
                 d_ratios.append(delta_ratio)
-                print('%s'
+                q_from_upper = quadrupol_moment(b_up[0], b_up[1], b_up[2])
+                q_from_lower = quadrupol_moment(b_low[0], b_low[1], b_low[2])
+                if q_from_lower[0] and q_from_upper[0]:
+                    q_mean = Analyzer.weightedAverage(
+                        [q_from_upper[0], q_from_lower[0]], [q_from_upper[1], q_from_lower[1]])
+                else:
+                    q_mean = (0, 0, 0)
+                q_mean_print = '%.3f(%.0f)' % (q_mean[0], q_mean[1] * 1000)
+                mu = magnetic_moment(a_low[0], a_low[1], a_low[2], nucl_spin)
+                mu_print = mu[4]
+                print('%s\t%s'
                       '\t%.3f(%.0f)[%.0f]\t%.2f'
                       '\t%.3f(%.0f)[%.0f]\t%.2f\t%.3f\t%.3f'
                       '\t%.3f(%.0f)[%.0f]\t%.2f'
-                      '\t%.3f(%.0f)[%.0f]\t%.2f\t%.3f\t%.3f' % (
-                    iso, 
+                      '\t%.3f(%.0f)[%.0f]\t%.2f\t%.3f\t%.3f'
+                      '\t%s\t%s\t%s'
+                      '\t%s' % (
+                    iso, nucl_spin,
                     a_up[0], a_up[1] * 1000, a_up[2] * 1000, a_up[3],
                     a_low[0], a_low[1] * 1000, a_low[2] * 1000, a_low[3], ratio, delta_ratio,
                     b_up[0], b_up[1] * 1000, b_up[2] * 1000, b_up[3],
-                    b_low[0], b_low[1] * 1000, b_low[2] * 1000, b_low[3], b_ratio, delta_b_ratio
+                    b_low[0], b_low[1] * 1000, b_low[2] * 1000, b_low[3], b_ratio, delta_b_ratio,
+                    q_from_lower[4], q_from_upper[4], q_mean_print,
+                    mu_print
                 ))
+                q_moments.append((mass, nucl_spin, q_mean[0], q_mean[1]))
+                magn_moments.append((mass, nucl_spin, mu[0], mu[1]))
+
+    print('magnetic moments: %s ' % magn_moments)
+    # optimize schmidt values:
+    # g_l_0 = 0
+    # g_s_0 = -3.826
+    g_l_0 = 0.125
+    g_s_0 = -2.04
+    g_l_difs = np.arange(-0.01, 0.01, 0.005)
+    g_s_difs = np.arange(-0.01, 0.01, 0.005)
+    chi_squares = [[]]
+    best_chi = [99999999999999, 0, 0]
+    for i, g_l_dif in enumerate(g_l_difs):
+        g_l = g_l_0 + g_l_dif
+        for j, g_s_dif in enumerate(g_s_difs):
+            g_s = g_s_0 + g_s_dif
+            chi_square = 0
+            for magn_i, each in enumerate(magn_moments):
+                if each[1] != 2.5:  # l = 1
+                    l = 1
+                else:
+                    l = 0
+                dif = mu_schmidt(each[1], l, False, g_l=g_l, g_s=g_s) - each[2]
+                d_dif = each[3]
+                chi_square += np.square(dif / d_dif)
+            if chi_square < best_chi[0]:
+                best_chi = chi_square, g_l, g_s
+
+    print('best chi square: %.3f %.3f %.3f' % best_chi)
+    mu_list_schmidt = [
+        (each[0], each[2], mu_schmidt(each[2], each[1], False, g_l=best_chi[1], g_s=best_chi[2])) for each in levels]
+
+    print('level\t\mu(\\nu) / \mu_N')
+    for i, each in enumerate(mu_list_schmidt):
+        print('%s\t%.2f' % (each[0], each[2]))
+
+
+    # plot magnetic moments
+    magn_mom_fig = MPLPlotter.plt.figure(0, facecolor='white')
+    magn_mom_axes = MPLPlotter.plt.axes()
+    magn_mom_axes.margins(0.1, 0.1)
+    magn_mom_axes.set_xlabel('A')
+    magn_mom_axes.set_ylabel('µ [nm]')
+    magn_mom_axes.set_xticks([each[0] for each in magn_moments])
+    magn_mom_by_spin = []
+    colors = ['b', 'g', 'k']
+    markers = ['o', 's', 'D']
+    for i, spin in enumerate([0.5, 1.5, 2.5]):
+        spin_list_x = [mu[0] for mu in magn_moments if mu[1] == spin]
+        spin_list_y = [mu[2] for mu in magn_moments if mu[1] == spin]
+        spin_list_y_err = [mu[3] for mu in magn_moments if mu[1] == spin]
+        if spin_list_x:
+            label = 'spin: %s' % spin
+            spin_line, cap_line, barline = MPLPlotter.plt.errorbar(
+                spin_list_x, spin_list_y, spin_list_y_err, axes=magn_mom_axes,
+                linestyle='None', marker=markers[i], label=label, color=colors[i]
+            )
+        for each in mu_list_schmidt:
+            if spin == each[1]:
+                hor_line = MPLPlotter.plt.axhline(each[2], label='eff. schmidt: %s' % each[0], color=colors[i])
+    MPLPlotter.plt.legend(loc=2, title='magnetic moments')
+    MPLPlotter.show(True)
+    #
+    # # plot quadrupole moments
+    # q_mom_fig = MPLPlotter.plt.figure(1, facecolor='white')
+    # q_mom_axes = MPLPlotter.plt.axes()
+    # q_mom_axes.margins(0.1, 0.1)
+    # q_mom_axes.set_xlabel('A')
+    # q_mom_axes.set_ylabel('Q [b]')
+    # q_mom_axes.set_xticks([each[0] for each in q_moments])
+    # q_mom_by_spin = []
+    # colors = ['g', 'k']
+    # markers = ['s', 'D']
+    # for i, spin in enumerate([1.5, 2.5]):
+    #     spin_list_x = [mu[0] for mu in q_moments if mu[1] == spin]
+    #     spin_list_y = [mu[2] for mu in q_moments if mu[1] == spin]
+    #     spin_list_y_err = [mu[3] for mu in q_moments if mu[1] == spin]
+    #     if spin_list_x:
+    #         label = 'spin: %s' % spin
+    #         spin_line, cap_line, barline = MPLPlotter.plt.errorbar(
+    #             spin_list_x, spin_list_y, spin_list_y_err, axes=q_mom_axes,
+    #             linestyle='None', marker=markers[i], label=label, color=colors[i]
+    #         )
+    #     MPLPlotter.plt.legend(loc=0, title='quadrupole moments')
+    # MPLPlotter.show(True)
+
+
+
     # average, errorprop, rChi = Analyzer.weightedAverage(ratios, d_ratios)
     # print('\nAverage Au/Al: %.5f +/- %.5f \t rChi: %.5f' % (average, errorprop, rChi))
     # MPLPlotter.plt.errorbar(range(59, 69, 2), ratios, d_ratios)
@@ -512,20 +747,20 @@ except Exception as e:
 
 ''' King Plot Analysis '''
 # delta_lit_radii.pop('61_Ni')
-king = KingFitter(db, showing=True, litvals=delta_lit_radii)
-run = -1
-# # isotopes = sorted(delta_lit_radii.keys())
-king.kingFit(alpha=49, findBestAlpha=False, run=run)
-king.calcChargeRadii(isotopes=isotopes, run=run)
-
+# king = KingFitter(db, showing=True, litvals=delta_lit_radii)
+# run = -1
+# # # isotopes = sorted(delta_lit_radii.keys())
+# king.kingFit(alpha=49, findBestAlpha=False, run=run)
+# king.calcChargeRadii(isotopes=isotopes, run=run)
 #
-con = sqlite3.connect(db)
-cur = con.cursor()
-cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? ORDER BY iso''', ('shift',))
-data = cur.fetchall()
-con.close()
-if data:
-    print(data)
-    print('iso\tshift [MHz]\t(statErr)[systErr]\t Chi^2')
-    for iso in data:
-        print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))
+# #
+# con = sqlite3.connect(db)
+# cur = con.cursor()
+# cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? ORDER BY iso''', ('shift',))
+# data = cur.fetchall()
+# con.close()
+# if data:
+#     print(data)
+#     print('iso\tshift [MHz]\t(statErr)[systErr]\t Chi^2')
+#     for iso in data:
+#         print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))
