@@ -47,13 +47,23 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
             self.write_to_target(data)
             self.set_load(True)
             time.sleep(0.002)
-            self.read_state()
+            print('%s %s' % self.read_state())
             if to_much_data is not None:
                 self.load(to_much_data, mem_addr + 4000)
             num_of_cmds = self.read_number_of_cmds()
             if num_of_cmds == num_of_data // 4:
                 if to_much_data is None and start_after_load:
                     self.start()
+                # time.sleep(1)
+                # print('state is: %s %s' % self.read_state())
+                # print('error code: %s %s' % self.read_error_code())
+                # print('fpga status : %s ' % self.checkFpgaStatus())
+                # print('fifo empty: %s ' % self.read_fifo_empty())
+                # print('error code: %s %s' % self.read_error_code())
+                # print('stop sctl: %s' % self.read_stop_sctl())
+                # print('start sctl: %s' % self.read_start_sctl())
+
+                print('ppg successfully started')
                 return True
             else:
                 print('error, number of commands (%s)'

@@ -7,21 +7,19 @@ Created on '16.01.2017'
 """
 
 import ast
-import sys
 import os
+import sys
+from copy import deepcopy
 
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui
-from functools import partial
-from copy import deepcopy
 
 import Application.Config as CfgMain
+import PyQtGraphPlotter as Pgplot
 import Service.FileOperations.FolderAndFileHandling as FileHandl
-from Interface.PulsePatternUi.Ui_PulsePattern import Ui_PulsePatternWin
 from Interface.PulsePatternUi.PpgPeriodicWidgUi import PpgPeriodicWidgUi
 from Interface.PulsePatternUi.PpgSimpleWidgUi import PpgSimpleWidgUi
-
-import PyQtGraphPlotter as Pgplot
+from Interface.PulsePatternUi.Ui_PulsePattern import Ui_PulsePatternWin
 
 
 class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
@@ -92,7 +90,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         self.tab_simple.layout().addWidget(self.simple_widg)
 
         self.show()
-        self.tabWidget_periodic_pattern.setCurrentIndex(2)
+        self.tabWidget_periodic_pattern.setCurrentIndex(0)
 
     def cmd_list_to_gui(self, cmd_list, caller_str=None):
         """ write a list of str cmd to the gui """
