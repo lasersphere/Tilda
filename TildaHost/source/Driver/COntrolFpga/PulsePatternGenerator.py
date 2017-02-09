@@ -62,8 +62,14 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
                 # print('error code: %s %s' % self.read_error_code())
                 # print('stop sctl: %s' % self.read_stop_sctl())
                 # print('start sctl: %s' % self.read_start_sctl())
-
-                print('ppg successfully started')
+                timeout = 0
+                while not self.read_start_sctl():  # only when start_sctl is True, the pattern is really executing!
+                    if timeout > 5:
+                        print('error: ppg pattern did not start within 5 seconds!')
+                        return False
+                    timeout += 0.001
+                    time.sleep(0.001)
+                print('ppg successfully started after about %.2f s' % timeout)
                 return True
             else:
                 print('error, number of commands (%s)'

@@ -10,6 +10,7 @@ import ast
 import os
 import sys
 from copy import deepcopy
+import functools
 
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui
@@ -29,6 +30,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
     def __init__(self, active_iso, track_name, main_gui, track_gui=None):
         super(PulsePatternUi, self).__init__()
         self.gui_cmd_list = []  # list of commands in gui, always updated when self.cmd_list_from_gui() is called.
+        self.ticks_per_us = 100  # standard with 100 MHz, change if changed on hardware.
         self.setupUi(self)
         self.setWindowTitle('pulse pattern of %s %s' % (active_iso, track_name))
         self.active_iso = active_iso
@@ -76,6 +78,9 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         # self.listWidget_cmd_list.itemChanged.connect(self.update_gr_v)
 
         self.ch_pos_dict = {}
+        self.gr_v_cursor_one = None
+        self.gr_v_cursor_two = None
+        self.gr_v_clicks = 0
         self.add_graph_view()
 
         ''' rcv cmd list from one of those: '''
@@ -92,6 +97,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         self.show()
         self.tabWidget_periodic_pattern.setCurrentIndex(0)
 
+    ''' cmd list related: '''
     def cmd_list_to_gui(self, cmd_list, caller_str=None):
         """ write a list of str cmd to the gui """
         # remove all items tht were already in the list.
@@ -116,28 +122,6 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         if cur_row != -1:
             self.listWidget_cmd_list.takeItem(cur_row)
 
-    def close_and_confirm(self):
-        """ close the window and store the pulse pattern in the scan pars of the active iso """
-        items = self.cmd_list_from_gui()
-        # print('items in gui: ', items)
-        if self.track_gui is not None:
-            self.track_gui.buffer_pars['pulsePattern'] = {}
-            self.track_gui.buffer_pars['pulsePattern']['cmdList'] = items
-            self.track_gui.buffer_pars['pulsePattern']['periodicList'] = deepcopy(
-                self.periodic_widg.return_periodic_list())
-            self.track_gui.buffer_pars['pulsePattern']['simpleDict'] = deepcopy(
-                self.simple_widg.return_simple_dict()
-            )
-        self.close()
-
-    def closeEvent(self, *args, **kwargs):
-        """ overwrite the close event """
-        if self.main_gui is not None:
-            # tell main window that this window is closed.
-            self.main_gui.close_pulse_pattern_win()
-        if self.track_gui is not None:
-            self.track_gui.close_pulse_pattern_window()
-
     def add_before(self):
         """ add copy of selected command before the selected one. If none selected, place at end. """
         cur_row = self.listWidget_cmd_list.currentRow()
@@ -153,6 +137,114 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             self.listWidget_cmd_list.insertItem(cur_row, old_item.text())
         self.listWidget_cmd_list.item(cur_row).setFlags(
             QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsDragEnabled)
+
+    def rcvd_state(self, state_str):
+        """ when state of ppg changes this signal is emitted """
+        self.ppg_state = state_str
+        self.label_ppg_state.setText(state_str)
+
+    """ cmd conversions (copied from ppg) """
+
+    def convert_single_comand(self, cmd_str, ticks_per_us=None):
+        """
+        converts a single command to a tuple of length 4
+        :param cmd_str: str, "$cmd::time_us::DIO0-39::DIO40-79"
+            -> cmd: stop(0), jump(1), wait(2), time(3)
+            time_us: float, time in us
+
+        :param ticks_per_us: int, ticks per us, usually 100 (=100MHz), None for readout from fpga
+        :return: numpy array, [int_cmd_num, int_time_in_ticks_or_other, int_DIO0-39, int_DIO40-79]
+        """
+        if ticks_per_us is None:
+            ticks_per_us = self.ticks_per_us
+        cmd_dict = {'$stop': 0, '$jump': 1, '$wait': 2, '$time': 3}
+        cmd_list = cmd_str.split('::')
+        if len(cmd_list) == 4:
+            try:
+                cmd_list[0] = cmd_dict.get(cmd_list[0], -1)
+                for i in range(1, 4):
+                    cmd_list[i] = ast.literal_eval(cmd_list[i])
+                if cmd_list[0] == 3:  # $time
+                    cmd_list[1] = cmd_list[1] * ticks_per_us
+                cmd_list = np.asarray(cmd_list, dtype=np.int32)
+                return cmd_list
+            except Exception as e:
+                print('error: could not convert the command: %s, error is: %s' % (cmd_str, e))
+        else:
+            return [-1] * 4
+
+    def convert_list_of_cmds(self, cmd_list, ticks_per_us=None):
+        """
+        will convert a list of commands to a numpy array which can be fed to the fpga
+        :param cmd_list: list of str, each cmd str looks like:
+        cmd_str: str, "$cmd::time_us::DIO0-39::DIO40-79"
+            -> cmd: stop(0), jump(1), wait(2), time(3)
+            time_us: float, time in us
+        :param ticks_per_us: int, ticks per us, usually 100 (=100MHz), None for readout from fpga
+        :return: numpy array
+        """
+        ret_arr = np.zeros(0, dtype=np.int32)
+        if ticks_per_us is None:
+            ticks_per_us = self.ticks_per_us
+        for each_cmd in cmd_list:
+            ret_arr = np.append(ret_arr, self.convert_single_comand(each_cmd, ticks_per_us))
+        return ret_arr
+
+    def convert_np_arr_of_cmd_to_list_of_cmds(self, np_arr_cmds, ticks_per_us=None):
+        ret = []
+        if ticks_per_us is None:
+            ticks_per_us = self.ticks_per_us
+        for i in range(0, len(np_arr_cmds), 4):
+            ret.append(self.convert_int_arr_to_singl_cmd(np_arr_cmds[i:i + 4], ticks_per_us))
+        return ret
+
+    def convert_int_arr_to_singl_cmd(self, int_arr, ticks_per_us=None):
+        """
+        will convert an array/tuple of integers with the 4 needed elements
+         for one command to a string as like:
+        [3, 100, 1, 0] -> "$cmd::time_us::DIO0-39::DIO40-79"
+        :param int_arr: array of length 4 conatining ints
+        :param ticks_per_us:
+        :return:
+        """
+        if ticks_per_us is None:
+            ticks_per_us = self.ticks_per_us
+        cmd_dict = {0: '$stop', 1: '$jump', 2: '$wait', 3: '$time'}
+        ret_cmd_str = '%s::%.2f::%s::%s' % (
+            cmd_dict.get(int_arr[0], 'error'), int_arr[1] / ticks_per_us, int_arr[2], int_arr[3]
+        )
+        return ret_cmd_str
+
+    def check_cmd_list_credibility(self, cmd_str_list):
+        """ check if all patterns are long enough """
+        fpga_cmd_transfer_time_ticks = 12  # ticks the fpga need to transfer the data mem->fifo->set_out
+        wait_cmd_int = 2  # $wait is int 2
+        time_cmd_int = 3  # $time is int 3
+        cmd_np_list = self.convert_list_of_cmds(cmd_str_list)
+        cmd_np_list = np.reshape(cmd_np_list, (len(cmd_str_list), 4))
+        if wait_cmd_int in cmd_np_list[:, 0]:
+            return True
+        buffer_time_list = [
+            each[1] - fpga_cmd_transfer_time_ticks for each in cmd_np_list if each[0] == time_cmd_int]
+        buffer_time = sum(buffer_time_list)
+        if buffer_time < 0:
+            dial = QtWidgets.QDialog(self)
+            QtWidgets.QMessageBox.warning(
+                dial, 'Problem with pattern!',
+                'Your pattern is not executable, because the single commands are'
+                ' shorter then the command transfer time (120us).\n'
+                'You can do one of the following:\n\n'
+                'o increase the pulse duration of each pulse\n'
+                'o introduce a longer pulse (the exec. time of this pulse is used to transfer the data)\n'
+                'o an external trigger (->$wait) will (probably) give'
+                ' the fpga enough time to transfer the pattern\n'
+                '\n\nThe pattern needs %.2f us more.' % (abs(buffer_time) / 100))
+            return False
+        else:
+            return True
+
+
+    ''' saving and loading '''
 
     def load_from_text(self, button=None, txt_path=None):
         """ load the list of cmds from an existing text file """
@@ -183,18 +275,15 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             FileHandl.save_txt_file_line_by_line(path, self.cmd_list_from_gui())
             return path
 
-    def rcvd_state(self, state_str):
-        """ when state of ppg changes this signal is emitted """
-        self.ppg_state = state_str
-        self.label_ppg_state.setText(state_str)
-
     ''' periodic related '''
+
     def load_periodic(self, per_list):
         self.tabWidget_periodic_pattern.setCurrentIndex(1)
         print('loading periodic list: %s' % per_list)
         self.periodic_widg.setup_from_list(per_list)
 
     ''' simple related '''
+
     def load_simple_dict(self, simple_dict):
         """ load a simple dict to the simple tab """
         self.tabWidget_periodic_pattern.setCurrentIndex(2)
@@ -217,14 +306,135 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         )
 
     """ graphical displaying """
+
     def add_graph_view(self):
         try:
             layout = QtWidgets.QVBoxLayout()
             self.gr_v_widg, self.gr_v_plt_itm = Pgplot.create_x_y_widget(y_label='channel', x_label='time [us]')
             layout.addWidget(self.gr_v_widg)
+            x_pos_l = QtWidgets.QLabel('time [us]: ')
+            y_pos_l = QtWidgets.QLabel('CH: ')
+            self.x_pos = QtWidgets.QLabel()
+            self.act_ch_label = QtWidgets.QLabel()
+            self.delta_t_label = QtWidgets.QLabel()
+
+            self.y_pos = QtWidgets.QLabel()
+            layout2 = QtWidgets.QHBoxLayout()
+            layout2.addWidget(x_pos_l)
+            layout2.addWidget(self.x_pos)
+            layout2.addWidget(QtWidgets.QLabel('active Channels (t):'))
+            layout2.addWidget(self.act_ch_label)
+            layout2.addWidget(QtWidgets.QLabel('delta t [us]:'))
+            layout2.addWidget(self.delta_t_label)
+            layout2.addWidget(y_pos_l)
+            layout2.addWidget(self.y_pos)
+            layout.addItem(layout2)
+            self.plt_proxy = Pgplot.create_proxy(signal=self.gr_v_plt_itm.scene().sigMouseMoved,
+                                     slot=functools.partial(self.mouse_moved, self.gr_v_plt_itm.vb),
+                                     rate_limit=60)
+            self.gr_v_mouse_click_proxy = Pgplot.create_proxy(signal=self.gr_v_plt_itm.scene().sigMouseClicked,
+                                                 slot=functools.partial(self.mouse_clicked, self.gr_v_plt_itm.vb),
+                                                 rate_limit=60)
+            self.gr_v_cursor = Pgplot.create_infinite_line(0, pen=Pgplot.create_pen(125, 125, 125, width=0.5))
+            self.gr_v_plt_itm.addItem(self.gr_v_cursor)
             self.widget_graph_view.setLayout(layout)
         except Exception as e:
             print('error while adding graphical view: %s' % e)
+
+    def mouse_moved(self, viewbox, evt):
+        """ called when mouse is moved within the gr_v_plt_item """
+        point = viewbox.mapSceneToView(evt[0])
+        self.print_point(point)
+
+    def print_point(self, point):
+        """
+        display the point to the GUI
+        """
+        x_str = '%.2f' % point.x()
+        self.x_pos.setText(x_str)
+        self.gr_v_cursor.setPos(point.x())
+        self.y_pos.setText(self.get_ch_from_y_coord(point.y()))
+        hi_ch_lis, hi_ch_str = self.get_high_channels_at_time(point.x())
+        self.act_ch_label.setText(hi_ch_str)
+
+    def get_high_channels_at_time(self, time):
+        """
+        go through the pos lists in self.ch_pos_dict for each channel and
+        check if this channel is active at this time if so, append it to the return list.
+        :param time: float, time in us
+        :return: tpl, (list of strings with high ch_names, str with ch names seperated by | )
+        """
+        high_channels = []
+        hi_ch_str = ''
+        for ch_name, ch_dict in sorted(self.ch_pos_dict.items()):
+            pos = ch_dict.get('pos', [])
+            ch_num = int(ch_name[2:])
+            ch_num = -(ch_num + 1) if 'DI' in ch_name else ch_num
+            if pos:
+                for i, hi_lo_tpl in enumerate(pos):
+                    if i < (len(pos) - 1):
+                        if pos[i][0] < time < pos[i + 1][0] and hi_lo_tpl[1] == ch_num + 0.5:
+                            high_channels.append(ch_name)
+                            hi_ch_str += '| %s ' % ch_name
+        return high_channels, hi_ch_str[1:]
+
+    def mouse_clicked(self, viewbox, evt):
+        """ called on mouseclick within the graph_view_box """
+        point = viewbox.mapSceneToView(evt[0].scenePos())
+        self.drop_cursor(point)
+
+    def drop_cursor(self, point):
+        """  for each click add a """
+        self.gr_v_clicks += 1
+        new_pos = point.x()
+        if self.gr_v_clicks % 2:  # odd number of clicks -> work on cursor one
+            if self.gr_v_cursor_one is None:
+                self.gr_v_cursor_one = Pgplot.create_infinite_line(new_pos, pen=Pgplot.create_pen(255, 128, 0, width=0.5),
+                                                                   movable=True)
+                self.gr_v_cursor_one.sigPositionChangeFinished.connect(self.cursor_moved)
+                self.gr_v_plt_itm.addItem(self.gr_v_cursor_one)
+            else:
+                self.gr_v_cursor_one.setPos(new_pos)
+        else:
+            if self.gr_v_cursor_two is None:
+                self.gr_v_cursor_two = Pgplot.create_infinite_line(new_pos, pen=Pgplot.create_pen(255, 128, 0, width=0.5),
+                                                                   movable=True)
+                self.gr_v_cursor_two.sigPositionChangeFinished.connect(self.cursor_moved)
+                self.gr_v_plt_itm.addItem(self.gr_v_cursor_two)
+            else:
+                self.gr_v_cursor_two.setPos(new_pos)
+        self.cursor_moved()
+
+    def cursor_moved(self):
+        """ checks cursor position and gives the time delta to the gui """
+        cursor_one_pos = None
+        cursor_two_pos = None
+        t_dif = 0
+        if self.gr_v_cursor_one:
+            cursor_one_pos = self.gr_v_cursor_one.value()
+        if self.gr_v_cursor_two:
+            cursor_two_pos = self.gr_v_cursor_two.value()
+        if cursor_one_pos is not None and cursor_two_pos is not None:
+            t_dif = abs(cursor_one_pos - cursor_two_pos)
+        elif cursor_one_pos is not None:
+            t_dif = abs(cursor_one_pos - self.gr_v_cursor.value())
+        elif cursor_two_pos is not None:
+            t_dif = abs(cursor_two_pos - self.gr_v_cursor.value())
+        self.delta_t_label.setText('%.2f' % t_dif)
+
+    def get_ch_from_y_coord(self, y_coord):
+        """ this will print the CH at y_coord to the gui, if there is a CH at this y coord """
+        if y_coord < 0:  # trigger line
+            y_coord += 1
+            ret = 'DI'
+        else:
+            ret = 'DO'
+        abs_y = abs(y_coord)
+        if 0 < abs_y % 1 < 0.5:
+            ret += '%d' % int(abs_y)
+        else:
+            ret = ''
+        return ret
 
     def update_gr_v(self, caller_str=None):
         """ updates the graphic view and adds a line for each item """
@@ -259,6 +469,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             else:
                 pass
                 # print('nope not a new list, not redrawing here')
+            self.highlight_selected_list_view_item(self.listWidget_cmd_list.currentRow())
         except Exception as e:
             print('error while updating graphical view: %s' % e)
 
@@ -336,13 +547,6 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                                 ret_dict['DI%s' % tr_ch] = {}
                             ret_dict['DI%s' % tr_ch]['pos'] = tr_pos
                             valid_lines.append('DI%s' % tr_ch)
-                        else:
-                            if ret_dict.get('DI%s' % tr_ch, None) is None:
-                                ret_dict['DI%s' % tr_ch] = {}
-                            ret_dict['DI%s' % tr_ch]['pos'] = []
-                            valid_lines.append('DI%s' % tr_ch)
-                        # else:  # might work
-                        #     ret_dict['DI%s' % tr_ch]['pos'] += tr_pos
 
                 elif each_cmd[0] == 3:  # $time
                     y_pos = high if ch_bit & each_cmd[2] != 0 else low
@@ -356,77 +560,23 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                 valid_lines.append('DO%s' % ch)
         return ret_dict, valid_lines
 
-    """ cmd conversions (copied from ppg) """
-
-    def convert_single_comand(self, cmd_str, ticks_per_us=None):
-        """
-        converts a single command to a tuple of length 4
-        :param cmd_str: str, "$cmd::time_us::DIO0-39::DIO40-79"
-            -> cmd: stop(0), jump(1), wait(2), time(3)
-            time_us: float, time in us
-
-        :param ticks_per_us: int, ticks per us, usually 100 (=100MHz), None for readout from fpga
-        :return: numpy array, [int_cmd_num, int_time_in_ticks_or_other, int_DIO0-39, int_DIO40-79]
-        """
-        if ticks_per_us is None:
-            ticks_per_us = self.read_ticks_per_us()
-        cmd_dict = {'$stop': 0, '$jump': 1, '$wait': 2, '$time': 3}
-        cmd_list = cmd_str.split('::')
-        if len(cmd_list) == 4:
-            try:
-                cmd_list[0] = cmd_dict.get(cmd_list[0], -1)
-                for i in range(1, 4):
-                    cmd_list[i] = ast.literal_eval(cmd_list[i])
-                if cmd_list[0] == 3:  # $time
-                    cmd_list[1] = cmd_list[1] * ticks_per_us
-                cmd_list = np.asarray(cmd_list, dtype=np.int32)
-                return cmd_list
-            except Exception as e:
-                print('error: could not convert the command: %s, error is: %s' % (cmd_str, e))
-        else:
-            return [-1] * 4
-
-    def convert_list_of_cmds(self, cmd_list, ticks_per_us=None):
-        """
-        will convert a list of commands to a numpy array which can be fed to the fpga
-        :param cmd_list: list of str, each cmd str looks like:
-        cmd_str: str, "$cmd::time_us::DIO0-39::DIO40-79"
-            -> cmd: stop(0), jump(1), wait(2), time(3)
-            time_us: float, time in us
-        :param ticks_per_us: int, ticks per us, usually 100 (=100MHz), None for readout from fpga
-        :return: numpy array
-        """
-        ret_arr = np.zeros(0, dtype=np.int32)
-        if ticks_per_us is None:
-            ticks_per_us = 100  # TODO think about if this is ok to be static
-        for each_cmd in cmd_list:
-            ret_arr = np.append(ret_arr, self.convert_single_comand(each_cmd, ticks_per_us))
-        return ret_arr
-
-    def convert_np_arr_of_cmd_to_list_of_cmds(self, np_arr_cmds, ticks_per_us=None):
-        ret = []
-        if ticks_per_us is None:
-            ticks_per_us = self.read_ticks_per_us()
-        for i in range(0, len(np_arr_cmds), 4):
-            ret.append(self.convert_int_arr_to_singl_cmd(np_arr_cmds[i:i + 4], ticks_per_us))
-        return ret
-
-    def convert_int_arr_to_singl_cmd(self, int_arr, ticks_per_us=None):
-        """
-        will convert an array/tuple of integers with the 4 needed elements
-         for one command to a string as like:
-        [3, 100, 1, 0] -> "$cmd::time_us::DIO0-39::DIO40-79"
-        :param int_arr: array of length 4 conatining ints
-        :param ticks_per_us:
-        :return:
-        """
-        if ticks_per_us is None:
-            ticks_per_us = self.read_ticks_per_us()
-        cmd_dict = {0: '$stop', 1: '$jump', 2: '$wait', 3: '$time'}
-        ret_cmd_str = '%s::%.2f::%s::%s' % (
-            cmd_dict.get(int_arr[0], 'error'), int_arr[1] / ticks_per_us, int_arr[2], int_arr[3]
-        )
-        return ret_cmd_str
+    def highlight_selected_list_view_item(self, index):
+        """ highlight the currently selected command at index in the graphical view. """
+        if index >= 0:
+            for ch_name, ch_dict in self.ch_pos_dict.items():
+                ch_line = ch_dict.get('line', False)
+                if ch_line:
+                    segments = ch_line.segments
+                    if 'DO' in ch_name:  # outputs blue
+                        standard_pen = Pgplot.pg.mkPen('b', width=3)
+                    else:  # triggers red
+                        standard_pen = Pgplot.pg.mkPen('r', width=3)
+                    selected_pen = Pgplot.create_pen('g', width=3)  # highlighted green
+                    for each in segments:
+                        if each.currentPen != standard_pen:
+                            each.setPen(standard_pen)
+                    if len(segments) >= index * 2:
+                        segments[index * 2].setPen(selected_pen)
 
     """ talk to dev """
 
@@ -437,17 +587,34 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
     def run(self):
         """ run the pulse pattern with the pattern as in the gui. """
         cmd_list = self.cmd_list_from_gui()
-        if cmd_list:
-            CfgMain._main_instance.ppg_load_pattern(cmd_list)
+        if self.check_cmd_list_credibility(cmd_list):
+            if cmd_list:
+                if CfgMain._main_instance:
+                    CfgMain._main_instance.ppg_load_pattern(cmd_list)
 
-            # if __name__ == '__main__':
-            #     from Driver.COntrolFpga.PulsePatternGenerator import PulsePatternGenerator as PPG
-            #     ppg = PPG()
-            #     ppg_test_path = 'D:\\Debugging\\trs_debug\\Pulsepattern132Pattern.txt'
-            #     app = QtWidgets.QApplication(sys.argv)
-            #     gui = PulsePatternUi(None, '')
-            #     # gui.cmd_list_to_gui(cmd_str)
-            #     app.exec_()
+    ''' window related '''
+
+    def close_and_confirm(self):
+        """ close the window and store the pulse pattern in the scan pars of the active iso """
+        items = self.cmd_list_from_gui()
+        # print('items in gui: ', items)
+        if self.track_gui is not None:
+            self.track_gui.buffer_pars['pulsePattern'] = {}
+            self.track_gui.buffer_pars['pulsePattern']['cmdList'] = items
+            self.track_gui.buffer_pars['pulsePattern']['periodicList'] = deepcopy(
+                self.periodic_widg.return_periodic_list())
+            self.track_gui.buffer_pars['pulsePattern']['simpleDict'] = deepcopy(
+                self.simple_widg.return_simple_dict()
+            )
+        self.close()
+
+    def closeEvent(self, *args, **kwargs):
+        """ overwrite the close event """
+        if self.main_gui is not None:
+            # tell main window that this window is closed.
+            self.main_gui.close_pulse_pattern_win()
+        if self.track_gui is not None:
+            self.track_gui.close_pulse_pattern_window()
 
 
 if __name__=='__main__':

@@ -184,8 +184,8 @@ def create_roi(pos, size):
     return roi
 
 
-def create_infinite_line(pos, angle=90, pen=0.5):
-    inf_line = pg.InfiniteLine(pos, angle=angle, pen=pen)
+def create_infinite_line(pos, angle=90, pen=0.5, movable=False):
+    inf_line = pg.InfiniteLine(pos, angle=angle, pen=pen, movable=movable)
     return inf_line
 
 
@@ -203,7 +203,7 @@ def create_roi_polyline(positions, closed=False, pos=None, **args):
 
 
 def create_pen(*args, **kargs):
-    pg.mkPen(*args, **kargs)
+    return pg.mkPen(*args, **kargs)
 
 
 class MyPolyLineRoi(pg.PolyLineROI):
@@ -217,6 +217,15 @@ class MyPolyLineRoi(pg.PolyLineROI):
          -> always returning False therefore user cannot change this.
           Maybe change this to a clever way in the future """
         return False
+
+    def segmentClicked(self, segment, ev=None, pos=None):  ## pos should be in this item's coordinate system
+        """ do not add a handle on clicking on the line """
+        pass
+
+    def checkRemoveHandle(self, h):
+        """ do not allow to remove a handle """
+        return False
+
 # import sys
 # from PyQt5 import QtWidgets
 # import pyqtgraph as pg
