@@ -618,7 +618,6 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         cmd_np_list = np.reshape(cmd_np_list, (len(self.gui_cmd_list), 4))
         trigger_indices = [
             (i, cmd[1]) for i, cmd in enumerate(cmd_np_list) if cmd[0] == 2]
-        print(trigger_indices)
         for ch_name, ch_dict in self.ch_pos_dict.items():
             ch_line = ch_dict.get('line', False)
             ch_int = 2 ** int(ch_name[2:])
