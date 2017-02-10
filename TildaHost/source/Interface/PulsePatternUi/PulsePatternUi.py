@@ -52,6 +52,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             self.pulse_pattern_status.connect(self.rcvd_state)
 
         self.listWidget_cmd_list.setDragDropMode(self.listWidget_cmd_list.InternalMove)
+        self.listWidget_cmd_list.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
 
         self.pushButton_remove_selected.clicked.connect(self.remove_selected)
         self.pushButton_add_cmd.clicked.connect(self.add_before)
@@ -68,6 +69,9 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         QtWidgets.QShortcut(QtGui.QKeySequence("A"), self, self.add_before)
         QtWidgets.QShortcut(QtGui.QKeySequence("+"), self, self.add_before)
         QtWidgets.QShortcut(QtGui.QKeySequence("F5"), self, self.update_gr_v)
+        QtWidgets.QShortcut(QtGui.QKeySequence("CTRL+R"), self, self.run)
+        QtWidgets.QShortcut(QtGui.QKeySequence("CTRL+S"), self, self.stop_pulse_pattern)
+        QtWidgets.QShortcut(QtGui.QKeySequence("CTRL+Q"), self, self.close_and_confirm)
 
         ''' help '''
         self.actionHelp.triggered.connect(self.open_help)
@@ -75,6 +79,8 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         ''' graphical view related '''
         self.listWidget_cmd_list.currentTextChanged.connect(self.update_gr_v)
         self.listWidget_cmd_list.currentRowChanged.connect(self.update_gr_v)
+        self.listWidget_cmd_list.itemSelectionChanged.connect(self.update_gr_v)
+
         # self.listWidget_cmd_list.itemChanged.connect(self.update_gr_v)
 
         self.ch_pos_dict = {}
@@ -98,7 +104,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         self.tabWidget_periodic_pattern.setCurrentIndex(0)
 
     ''' cmd list related: '''
-    def cmd_list_to_gui(self, cmd_list, caller_str=None):
+    def cmd_list_to_gui(self, cmd_list, caller_str=None, update_gr_v=True):
         """ write a list of str cmd to the gui """
         # remove all items tht were already in the list.
         self.listWidget_cmd_list.clear()
@@ -106,37 +112,48 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         for i in range(self.listWidget_cmd_list.count()):
             self.listWidget_cmd_list.item(i).setFlags(
                 QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsDragEnabled)
-        self.update_gr_v(caller_str)
+        if update_gr_v:
+            self.update_gr_v(caller_str)
 
     def cmd_list_from_gui(self):
         """ return a list of all cmds in the gui """
         items = []
-        for i in range(self.listWidget_cmd_list.count()):
-            items.append(self.listWidget_cmd_list.item(i).text())
+        stop_index = -1
+        num_of_items = self.listWidget_cmd_list.count()
+        for i in range(num_of_items):
+            cmd_str = self.listWidget_cmd_list.item(i).text()
+            items.append(cmd_str)
+            stop_index = i if 'stop' in cmd_str else stop_index
+        if stop_index != num_of_items - 1 and stop_index >= 0:  # stop not at end of list
+            items.insert(num_of_items - 1, items.pop(stop_index))
+            self.cmd_list_to_gui(items, update_gr_v=False)
         self.gui_cmd_list = items
         return items
 
     def remove_selected(self):
         """ if an item is selected, remove this from the list. """
-        cur_row = self.listWidget_cmd_list.currentRow()
-        if cur_row != -1:
-            self.listWidget_cmd_list.takeItem(cur_row)
+        items = self.listWidget_cmd_list.selectedItems()
+        [self.listWidget_cmd_list.takeItem(self.listWidget_cmd_list.row(each)) for each in items]
 
     def add_before(self):
         """ add copy of selected command before the selected one. If none selected, place at end. """
-        cur_row = self.listWidget_cmd_list.currentRow()
-        if cur_row == -1:
-            if self.listWidget_cmd_list.count():
-                cur_row = self.listWidget_cmd_list.count() - 1
-            else:
-                cur_row = 0
-        old_item = self.listWidget_cmd_list.item(cur_row)
-        if old_item is None:
-            self.listWidget_cmd_list.insertItem(cur_row, '$cmd::1.0::0::0')
+        # cur_row = self.listWidget_cmd_list.currentRow()
+        items = self.listWidget_cmd_list.selectedItems()
+        if items:
+            items_text = [each.text() for each in items]
+            rows = [self.listWidget_cmd_list.row(each) for each in items]
+            sorted_selection = list(sorted(zip(rows, items, items_text)))
+            rows, items, items_text = zip(*sorted_selection)
         else:
-            self.listWidget_cmd_list.insertItem(cur_row, old_item.text())
-        self.listWidget_cmd_list.item(cur_row).setFlags(
-            QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsDragEnabled)
+            items_text = ['$cmd::1.0::0::0']
+            rows = [0]
+        self.listWidget_cmd_list.insertItems(rows[0], items_text)
+        new_rows = range(rows[0], rows[0] + len(rows))
+        new_items = [self.listWidget_cmd_list.item(row) for row in new_rows]
+        for each_item in new_items:
+            each_item.setFlags(
+                QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable |
+                QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsDragEnabled)
 
     def rcvd_state(self, state_str):
         """ when state of ppg changes this signal is emitted """
@@ -295,14 +312,15 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         mb = QtWidgets.QMessageBox(self)
         QtWidgets.QMessageBox.information(
             mb, 'ppg help',
-            'from: \n F. Ziegler et al., A newPulse-PatternGeneratorbasedonLab'
-            'VIEWFPGA, Nucl. Instr. Meth. A 679 (2012) 1-6:\n\n'
+            'from: \n F. Ziegler et al., A new Pulse-Pattern Generator based on Lab'
+            'VIEW-FPGA, Nucl. Instr. Meth. A 679 (2012) 1-6:\n\n'
             'Command\t Example\t Description\n'
             '------------------------------------------------------------\n'
             '$time\t $time::1000::123::123\t command::time[ms] ::DO0-31::DO32-63\n'
             '$wait\t $wait::1::123::123\t command::DI0-7::DO0-31::DO32-63\n'
-            '$jump\t $jump::0::500::500\t command::address::unused::iterationnumber\n'
-            '$stop\t $stop::0::123::123\t command::unused::DO0-31::DO32-63'
+            '($jump\t $jump::0::500::500\t command::address::unused::iterationnumber)*\n'
+            '$stop\t $stop::0::123::123\t command::unused::DO0-31::DO32-63\n\n'
+            '* jump commands currently not supported.'
         )
 
     """ graphical displaying """
@@ -311,6 +329,8 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         try:
             layout = QtWidgets.QVBoxLayout()
             self.gr_v_widg, self.gr_v_plt_itm = Pgplot.create_x_y_widget(y_label='channel', x_label='time [us]')
+            self.gr_v_x_ax = self.gr_v_plt_itm.getAxis('left')
+
             layout.addWidget(self.gr_v_widg)
             x_pos_l = QtWidgets.QLabel('time [us]: ')
             y_pos_l = QtWidgets.QLabel('CH: ')
@@ -441,6 +461,8 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         try:
             old_list = deepcopy(self.gui_cmd_list)
             new_list = self.cmd_list_from_gui()
+            stop_in_cmds_list = [(i, each) for i, each in enumerate(new_list) if 'stop' in each]
+            stop_in_cmds = len(stop_in_cmds_list) != 0
             if old_list != new_list:
                 # print('updating praphical view, caller: %s of type: %s' % (caller_str, type(caller_str)))
                 # manual change on the cmd list -> therefore clear all other
@@ -452,13 +474,13 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                     else:
                         caller_str = ['simple', 'periodic']
                 else:
-                    print('caller is not a string but of type: %s' % type(caller_str))
+                    # print('caller is not a string but of type: %s' % type(caller_str))
                     caller_str = ['simple', 'periodic']
                 if self.periodic_widg is not None and 'simple' in caller_str:
-                    print('clearing periodic table, due to changes in list view')
+                    # print('clearing periodic table, due to changes in list view')
                     self.periodic_widg.list_view_was_changed()
                 if self.simple_widg is not None and 'periodic' in caller_str:
-                    print('clearing simple tab, due to changes in list view')
+                    # print('clearing simple tab, due to changes in list view')
                     self.simple_widg.list_view_was_changed()
                 # print('updating graphics view')
                 self.ch_pos_dict, valid_lines = self.get_gr_v_pos_from_list_of_cmds(
@@ -469,7 +491,8 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             else:
                 pass
                 # print('nope not a new list, not redrawing here')
-            self.highlight_selected_list_view_item(self.listWidget_cmd_list.currentRow())
+            selected_rows = [self.listWidget_cmd_list.row(each) for each in self.listWidget_cmd_list.selectedItems()]
+            self.highlight_selected_list_view_item(selected_rows, stop_in_cmds)
         except Exception as e:
             print('error while updating graphical view: %s' % e)
 
@@ -479,12 +502,19 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             # print('removing: %s' % each)
             if ch_pos_dict.get(each, {}).get('line', None):
                 plt_item.removeItem(ch_pos_dict[each]['line'])
+                plt_item.removeItem(ch_pos_dict[each]['low_line'])
+                plt_item.removeItem(ch_pos_dict[each]['high_line'])
                 self.ch_pos_dict.pop(each)
 
     def add_lines(self, plt_item):
         """ add a roi polyline line for every channel in ch_pos_dict """
         ch_pos_dict = self.ch_pos_dict
+        major_ticks = []
         for ch, ch_dict in ch_pos_dict.items():
+            ch_low_val = int(ch_dict['pos'][0][1])  # 0.5 -> 0 etc.
+            ch_high_val = ch_low_val + 0.5
+            major_ticks.append((ch_low_val, ch + '_low'))
+            major_ticks.append((ch_high_val, ch + '_high'))
             if ch_dict.get('line', None) is not None:
                 ch_dict['line'].blockSignals(True)
                 ch_dict['line'].setPoints(ch_dict['pos'])
@@ -496,7 +526,15 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                 else:  # triggers red
                     pen = Pgplot.pg.mkPen('r', width=3)
                 ch_dict['line'].setPen(pen)
+                # create custom grid in order not to draw minor ticks
+                ch_dict['low_line'] = Pgplot.create_infinite_line(
+                    ch_low_val, angle=0, pen=Pgplot.create_pen(125, 125, 125, style=QtCore.Qt.DashLine))
+                ch_dict['high_line'] = Pgplot.create_infinite_line(
+                    ch_high_val, angle=0, pen=Pgplot.create_pen(125, 125, 125, style=QtCore.Qt.DashLine))
                 plt_item.addItem(ch_dict['line'])
+                plt_item.addItem(ch_dict['low_line'])
+                plt_item.addItem(ch_dict['high_line'])
+        self.gr_v_x_ax.setTicks([major_ticks, []])
 
     def get_gr_v_pos_from_list_of_cmds(self, list_of_cmds=None, ret_dict={}):
         """ get a dictionary for all active channels containing a list of positions when high or low. """
@@ -510,6 +548,12 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         ch_int = np.max(int_cmd_list[:, 2])
         max_dio_0to31 = np.int(np.log2(ch_int)) if ch_int > 1 else 1
         # max_dio_32to63 = int(np.log2(np.max(int_cmd_list[:, 3])))
+        # reset trigger positions:
+        for key, val in ret_dict.items():
+            if 'DI' in key:
+                if val.get('pos', False):
+                    val['pos'] = {}
+
         for ch in range(0, max_dio_0to31 + 1):
             ch_bit = 2 ** ch
             low = ch
@@ -521,7 +565,10 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                 if each_cmd[0] == 0:  # $stop
                     y_pos = high if ch_bit & each_cmd[2] != 0 else low
                     ch_pos_list.append([time, y_pos])
-                    time += 1  # add another us at the stop
+                    time += 0.5  # add another us at the stop
+                    ch_pos_list.append([time, y_pos])
+                    ch_pos_list.append([time, y_pos])
+                    time += 0.5  # add another us at the stop
                     ch_pos_list.append([time, y_pos])
                 elif each_cmd[0] == 1:  # $jump
                     pass
@@ -531,22 +578,27 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                     ch_pos_list.append([time, y_pos])
                     time += 1  # draw 1 us before ris edge of trigger
                     ch_pos_list.append([time, y_pos])
-                    tr_ch_max = np.int(np.log2(each_cmd[1])) if each_cmd[1] > 1 else 1
-                    for tr_ch in range(0, tr_ch_max + 1):
-                        tr_ch_bit = 2 ** tr_ch
-                        tr_low = -1 - tr_ch
-                        tr_high = -0.5 - tr_ch
-                        tr_active = tr_ch_bit & each_cmd[1] != 0
-                        if tr_active:
-                            tr_pos = [
-                                [time - 1, tr_low], [time, tr_low],
-                                [time, tr_high], [time + 0.5, tr_high],
-                                [time + 0.5, tr_low], [time + 1.5, tr_low],
-                            ]
-                            if ret_dict.get('DI%s' % tr_ch, None) is None:
-                                ret_dict['DI%s' % tr_ch] = {}
-                            ret_dict['DI%s' % tr_ch]['pos'] = tr_pos
-                            valid_lines.append('DI%s' % tr_ch)
+                    # on each wait cmd check which channels are active
+                    if ch == 0:  # only do this for first call
+                        tr_ch_max = np.int(np.log2(each_cmd[1])) if each_cmd[1] > 1 else 1
+                        for tr_ch in range(0, tr_ch_max + 1):
+                            tr_ch_bit = 2 ** tr_ch
+                            tr_low = -1 - tr_ch
+                            tr_high = -0.5 - tr_ch
+                            tr_active = tr_ch_bit & each_cmd[1] != 0
+                            if tr_active:
+                                tr_pos = [
+                                    [time - 1, tr_low], [time, tr_low],
+                                    [time, tr_high], [time + 0.5, tr_high],
+                                    [time + 0.5, tr_low], [time + 2, tr_low],
+                                ]
+                                if ret_dict.get('DI%s' % tr_ch, None) is None:
+                                    ret_dict['DI%s' % tr_ch] = {}
+                                if ret_dict['DI%s' % tr_ch].get('pos', []):
+                                    ret_dict['DI%s' % tr_ch]['pos'] += tr_pos
+                                else:
+                                    ret_dict['DI%s' % tr_ch]['pos'] = tr_pos
+                                valid_lines.append('DI%s' % tr_ch)
 
                 elif each_cmd[0] == 3:  # $time
                     y_pos = high if ch_bit & each_cmd[2] != 0 else low
@@ -560,29 +612,57 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                 valid_lines.append('DO%s' % ch)
         return ret_dict, valid_lines
 
-    def highlight_selected_list_view_item(self, index):
+    def highlight_selected_list_view_item(self, indice_list, stop_in_list=True):
         """ highlight the currently selected command at index in the graphical view. """
-        if index >= 0:
-            for ch_name, ch_dict in self.ch_pos_dict.items():
-                ch_line = ch_dict.get('line', False)
-                if ch_line:
-                    segments = ch_line.segments
-                    if 'DO' in ch_name:  # outputs blue
-                        standard_pen = Pgplot.pg.mkPen('b', width=3)
-                    else:  # triggers red
-                        standard_pen = Pgplot.pg.mkPen('r', width=3)
-                    selected_pen = Pgplot.create_pen('g', width=3)  # highlighted green
-                    for each in segments:
-                        if each.currentPen != standard_pen:
-                            each.setPen(standard_pen)
-                    if len(segments) >= index * 2:
-                        segments[index * 2].setPen(selected_pen)
+        cmd_np_list = self.convert_list_of_cmds(self.gui_cmd_list)
+        cmd_np_list = np.reshape(cmd_np_list, (len(self.gui_cmd_list), 4))
+        trigger_indices = [
+            (i, cmd[1]) for i, cmd in enumerate(cmd_np_list) if cmd[0] == 2]
+        print(trigger_indices)
+        for ch_name, ch_dict in self.ch_pos_dict.items():
+            ch_line = ch_dict.get('line', False)
+            ch_int = 2 ** int(ch_name[2:])
+            normal_ch = True
+            if ch_line:   # there is an existing line for the channel
+                segments = ch_line.segments
+                if 'DO' in ch_name:  # it is an output channel
+                    standard_pen = Pgplot.pg.mkPen('b', width=3)
+                else:  # it is a trigger channel
+                    normal_ch = False
+                    standard_pen = Pgplot.pg.mkPen('r', width=3)
+                highlight_pen = Pgplot.create_pen('g', width=3)  # highlighted green
+                white_pen = Pgplot.create_pen('w', width=3)  # for separating the stop pulse
+                for i, each in enumerate(segments):
+                    if each.currentPen != standard_pen:
+                        # overwrite all segments wiht the standard pen for this type
+                        each.setPen(standard_pen)
+                    for chosen_index in indice_list:
+                        # highlight the chosen segments which are mentioned in the indice list
+                        if normal_ch:
+                            if chosen_index == self.listWidget_cmd_list.count() - 1 and stop_in_list:
+                                segments[-1].setPen(highlight_pen)
+                            else:
+                                segments[chosen_index * 2].setPen(highlight_pen)
+                        else:  # each trigger always has 6 segments, only highlight first one.
+                            trig_ind = [tr[0] for tr in trigger_indices]
+                            # print(trig_ind)
+                            if chosen_index in trig_ind:
+                                trig_num = sum([1 for each in trigger_indices
+                                                if each[0] <= chosen_index and each[1] & ch_int != 0])
+                                if trig_num > 0:
+                                    trig_ind = trig_num - 1
+                                    segments[trig_ind * 6].setPen(highlight_pen)
+                    if stop_in_list and i == len(segments) - 3 and normal_ch:
+                        each.setPen(white_pen)
 
     """ talk to dev """
 
     def stop_pulse_pattern(self):
         """ will stop the pulse pattern. """
-        CfgMain._main_instance.ppg_stop()
+        if CfgMain._main_instance is not None:
+            CfgMain._main_instance.ppg_stop()
+        else:
+            print('error, stopping pulse pattern not possible, because there is no main active')
 
     def run(self):
         """ run the pulse pattern with the pattern as in the gui. """
@@ -591,6 +671,8 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             if cmd_list:
                 if CfgMain._main_instance:
                     CfgMain._main_instance.ppg_load_pattern(cmd_list)
+                else:
+                    print('error, running pulse pattern not possible, because there is no main active')
 
     ''' window related '''
 
