@@ -104,7 +104,7 @@ lit_radii = lit_radii_calc
 
 
 delta_lit_radii = {iso: [
-    lit_vals[0] - lit_radii['60_Ni'][0],
+    lit_vals[0] ** 2 - lit_radii['60_Ni'][0] ** 2,
     np.sqrt(lit_vals[1] ** 2 + lit_radii['60_Ni'][1] ** 2)]
                    for iso, lit_vals in sorted(lit_radii.items())}
 delta_lit_radii.pop('60_Ni')
@@ -596,66 +596,66 @@ try:
                 q_moments.append((mass, nucl_spin, q_mean[0], q_mean[1]))
                 magn_moments.append((mass, nucl_spin, mu[0], mu[1]))
 
-    print('magnetic moments: %s ' % magn_moments)
-    # optimize schmidt values:
-    # g_l_0 = 0
-    # g_s_0 = -3.826
-    g_l_0 = 0.125
-    g_s_0 = -2.04
-    g_l_difs = np.arange(-0.01, 0.01, 0.005)
-    g_s_difs = np.arange(-0.01, 0.01, 0.005)
-    chi_squares = [[]]
-    best_chi = [99999999999999, 0, 0]
-    for i, g_l_dif in enumerate(g_l_difs):
-        g_l = g_l_0 + g_l_dif
-        for j, g_s_dif in enumerate(g_s_difs):
-            g_s = g_s_0 + g_s_dif
-            chi_square = 0
-            for magn_i, each in enumerate(magn_moments):
-                if each[1] != 2.5:  # l = 1
-                    l = 1
-                else:
-                    l = 0
-                dif = mu_schmidt(each[1], l, False, g_l=g_l, g_s=g_s) - each[2]
-                d_dif = each[3]
-                chi_square += np.square(dif / d_dif)
-            if chi_square < best_chi[0]:
-                best_chi = chi_square, g_l, g_s
-
-    print('best chi square: %.3f %.3f %.3f' % best_chi)
-    mu_list_schmidt = [
-        (each[0], each[2], mu_schmidt(each[2], each[1], False, g_l=best_chi[1], g_s=best_chi[2])) for each in levels]
-
-    print('level\t\mu(\\nu) / \mu_N')
-    for i, each in enumerate(mu_list_schmidt):
-        print('%s\t%.2f' % (each[0], each[2]))
-
-
-    # plot magnetic moments
-    magn_mom_fig = MPLPlotter.plt.figure(0, facecolor='white')
-    magn_mom_axes = MPLPlotter.plt.axes()
-    magn_mom_axes.margins(0.1, 0.1)
-    magn_mom_axes.set_xlabel('A')
-    magn_mom_axes.set_ylabel('µ [nm]')
-    magn_mom_axes.set_xticks([each[0] for each in magn_moments])
-    magn_mom_by_spin = []
-    colors = ['b', 'g', 'k']
-    markers = ['o', 's', 'D']
-    for i, spin in enumerate([0.5, 1.5, 2.5]):
-        spin_list_x = [mu[0] for mu in magn_moments if mu[1] == spin]
-        spin_list_y = [mu[2] for mu in magn_moments if mu[1] == spin]
-        spin_list_y_err = [mu[3] for mu in magn_moments if mu[1] == spin]
-        if spin_list_x:
-            label = 'spin: %s' % spin
-            spin_line, cap_line, barline = MPLPlotter.plt.errorbar(
-                spin_list_x, spin_list_y, spin_list_y_err, axes=magn_mom_axes,
-                linestyle='None', marker=markers[i], label=label, color=colors[i]
-            )
-        for each in mu_list_schmidt:
-            if spin == each[1]:
-                hor_line = MPLPlotter.plt.axhline(each[2], label='eff. schmidt: %s' % each[0], color=colors[i])
-    MPLPlotter.plt.legend(loc=2, title='magnetic moments')
-    MPLPlotter.show(True)
+    # print('magnetic moments: %s ' % magn_moments)
+    # # optimize schmidt values:
+    # # g_l_0 = 0
+    # # g_s_0 = -3.826
+    # g_l_0 = 0.125
+    # g_s_0 = -2.04
+    # g_l_difs = np.arange(-0.01, 0.01, 0.005)
+    # g_s_difs = np.arange(-0.01, 0.01, 0.005)
+    # chi_squares = [[]]
+    # best_chi = [99999999999999, 0, 0]
+    # for i, g_l_dif in enumerate(g_l_difs):
+    #     g_l = g_l_0 + g_l_dif
+    #     for j, g_s_dif in enumerate(g_s_difs):
+    #         g_s = g_s_0 + g_s_dif
+    #         chi_square = 0
+    #         for magn_i, each in enumerate(magn_moments):
+    #             if each[1] != 2.5:  # l = 1
+    #                 l = 1
+    #             else:
+    #                 l = 0
+    #             dif = mu_schmidt(each[1], l, False, g_l=g_l, g_s=g_s) - each[2]
+    #             d_dif = each[3]
+    #             chi_square += np.square(dif / d_dif)
+    #         if chi_square < best_chi[0]:
+    #             best_chi = chi_square, g_l, g_s
+    #
+    # print('best chi square: %.3f %.3f %.3f' % best_chi)
+    # mu_list_schmidt = [
+    #     (each[0], each[2], mu_schmidt(each[2], each[1], False, g_l=best_chi[1], g_s=best_chi[2])) for each in levels]
+    #
+    # print('level\t\mu(\\nu) / \mu_N')
+    # for i, each in enumerate(mu_list_schmidt):
+    #     print('%s\t%.2f' % (each[0], each[2]))
+    #
+    #
+    # # plot magnetic moments
+    # magn_mom_fig = MPLPlotter.plt.figure(0, facecolor='white')
+    # magn_mom_axes = MPLPlotter.plt.axes()
+    # magn_mom_axes.margins(0.1, 0.1)
+    # magn_mom_axes.set_xlabel('A')
+    # magn_mom_axes.set_ylabel('µ [nm]')
+    # magn_mom_axes.set_xticks([each[0] for each in magn_moments])
+    # magn_mom_by_spin = []
+    # colors = ['b', 'g', 'k']
+    # markers = ['o', 's', 'D']
+    # for i, spin in enumerate([0.5, 1.5, 2.5]):
+    #     spin_list_x = [mu[0] for mu in magn_moments if mu[1] == spin]
+    #     spin_list_y = [mu[2] for mu in magn_moments if mu[1] == spin]
+    #     spin_list_y_err = [mu[3] for mu in magn_moments if mu[1] == spin]
+    #     if spin_list_x:
+    #         label = 'spin: %s' % spin
+    #         spin_line, cap_line, barline = MPLPlotter.plt.errorbar(
+    #             spin_list_x, spin_list_y, spin_list_y_err, axes=magn_mom_axes,
+    #             linestyle='None', marker=markers[i], label=label, color=colors[i]
+    #         )
+    #     for each in mu_list_schmidt:
+    #         if spin == each[1]:
+    #             hor_line = MPLPlotter.plt.axhline(each[2], label='eff. schmidt: %s' % each[0], color=colors[i])
+    # MPLPlotter.plt.legend(loc=2, title='magnetic moments')
+    # MPLPlotter.show(True)
     #
     # # plot quadrupole moments
     # q_mom_fig = MPLPlotter.plt.figure(1, facecolor='white')
@@ -746,21 +746,21 @@ except Exception as e:
 # app.exec()
 
 ''' King Plot Analysis '''
-# delta_lit_radii.pop('61_Ni')
-# king = KingFitter(db, showing=True, litvals=delta_lit_radii)
-# run = -1
-# # # isotopes = sorted(delta_lit_radii.keys())
-# king.kingFit(alpha=49, findBestAlpha=False, run=run)
+# delta_lit_radii.pop('64_Ni')  # just to see whoch point is what
+king = KingFitter(db, showing=True, litvals=delta_lit_radii)
+run = -1
+# # isotopes = sorted(delta_lit_radii.keys())
+king.kingFit(alpha=362, findBestAlpha=False, run=run)
 # king.calcChargeRadii(isotopes=isotopes, run=run)
+
 #
-# #
-# con = sqlite3.connect(db)
-# cur = con.cursor()
-# cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? ORDER BY iso''', ('shift',))
-# data = cur.fetchall()
-# con.close()
-# if data:
-#     print(data)
-#     print('iso\tshift [MHz]\t(statErr)[systErr]\t Chi^2')
-#     for iso in data:
-#         print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))
+con = sqlite3.connect(db)
+cur = con.cursor()
+cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? ORDER BY iso''', ('shift',))
+data = cur.fetchall()
+con.close()
+if data:
+    print(data)
+    print('iso\tshift [MHz]\t(statErr)[systErr]\t Chi^2')
+    for iso in data:
+        print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))

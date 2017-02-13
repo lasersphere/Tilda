@@ -229,8 +229,10 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         if self.pollifit_win is None:
             db = Cfg._main_instance.database
             if db is None:
-                self.choose_working_dir()
-                db = Cfg._main_instance.database
+                if self.choose_working_dir():
+                    db = Cfg._main_instance.database
+                else:
+                    db = ''
             self.pollifit_win = PolliMainUi(db, self, overwrite_stdout=False)
         else:
             self.raise_win_to_front(self.pollifit_win)

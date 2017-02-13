@@ -288,8 +288,9 @@ class Main(QtCore.QObject):
         root_ele, autostart_tpl = FileHandl.load_auto_start_xml_file(path)
         self.autostart_dict = autostart_tpl[1]
         workdir = self.autostart_dict.get('workingDir', False)
-        if os.path.isdir(workdir):
-            self.work_dir_changed(workdir)
+        if workdir:
+            if os.path.isdir(workdir):
+                self.work_dir_changed(workdir)
         dmms_dict = self.autostart_dict.get('autostartDevices', {}).get('dmms', False)
         if dmms_dict:
             try:
