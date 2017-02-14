@@ -58,10 +58,11 @@ def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None):
             traceback.print_tb(sys.exc_info()[2])
             files_with_error.append(file)
 
-    os.chdir(oldPath)
+
     con.commit()
     con.close()
-    
+    os.chdir(oldPath)
+
     print("BatchFit finished,", errcount, "errors occured")
     return fits, files_with_error
 

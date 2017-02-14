@@ -11,6 +11,7 @@ import time
 
 import numpy as np
 from PyQt5 import QtWidgets, QtCore
+import TildaTools as TiTs
 
 import Analyzer
 import MPLPlotter as plot
@@ -20,6 +21,10 @@ from Gui.Ui_Isoshift import Ui_Isoshift
 class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
     def __init__(self):
         super(IsoshiftUi, self).__init__()
+        self.dates = []
+        self.chosenFiles = []
+        self.chosenDates = []
+        self.reference = []
         self.setupUi(self)
 
         self.runSelect.currentTextChanged.connect(self.loadIsos)
@@ -27,8 +32,12 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
         self.fileList.itemChanged.connect(self.recalc)
         self.bsave.clicked.connect(self.saving)
 
+        #self.referenceList = []
+
         self.dbpath = None
         self.cfg = []
+        self.referenceList = []
+        self.referenceDates = []
 
         self.show()
 
@@ -37,24 +46,21 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
 
     def loadIsos(self, run):
         self.isoSelect.clear()
-        con = sqlite3.connect(self.dbpath)
-        for i, e in enumerate(con.execute('''SELECT DISTINCT iso FROM FitRes WHERE run = ? ORDER BY iso''', (run,))):
-            self.isoSelect.insertItem(i, e[0])
-        con.close()
+        it = TiTs.select_from_db(self.dbpath, 'DISTINCT iso', 'FitRes', [['run'], [run]], addCond='ORDER BY iso',
+                                 caller_name=__name__)
+        if it:
+            for i, e in enumerate(it):
+                self.isoSelect.insertItem(i, e[0])
 
     def loadRuns(self):
         self.runSelect.clear()
-        con = sqlite3.connect(self.dbpath)
-        for i, r in enumerate(con.execute('''SELECT run FROM Runs''')):
+        it = TiTs.select_from_db(self.dbpath, 'run', 'Runs', caller_name=__name__)
+        for i, r in enumerate(it):
             self.runSelect.insertItem(i, r[0])
-        con.close()
 
     def loadFiles(self):
         self.fileList.clear()
         try:
-            con = sqlite3.connect(self.dbpath)
-            cur = con.cursor()
-
             self.iso = self.isoSelect.currentText()
             self.run = self.runSelect.currentText()
 
@@ -62,13 +68,12 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
 
             self.dates = []
             for file in self.files:
-                cur.execute('''SELECT date FROM Files WHERE file = ?''', (file,))
-                r = cur.fetchall()
-                self.dates.append(r[0])
+                self.dates.append(TiTs.select_from_db(self.dbpath, 'date', 'Files', [['file'], [file]],
+                                                      caller_name=__name__)[0])
 
-            cur.execute('''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ?''', (self.iso, 'shift', self.run))
-            r = cur.fetchall()
-            con.close()
+            r = TiTs.select_from_db(self.dbpath, 'config, statErrForm, systErrForm', 'Combined',
+                                    [['iso', 'parname', 'run'],[self.iso, 'shift', self.run]], caller_name=__name__)
+
             select = [True] * len(self.files)
             self.statErrForm = 0
             self.systErrForm = 0
@@ -142,32 +147,26 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
     def dbChange(self, dbpath):
         self.dbpath = dbpath
         self.loadRuns()  # might still cause some problems
-        con = sqlite3.connect(self.dbpath)
-        cur = con.cursor()
-        cur.execute('''SELECT reference, refRun FROM Lines''')
-        r = cur.fetchall()
-        con.close()
+        r = TiTs.select_from_db(self.dbpath, 'reference, RefRun', 'Lines', caller_name=__name__)
         if r:
             self.reference = r[0][0]
             self.refRun = r[0][1]
-            con = sqlite3.connect(self.dbpath)
-            cur = con.cursor()
-            cur.execute('''SELECT file, date FROM Files WHERE type = ?''', (self.reference,))
-            r = cur.fetchall()
-            cur.execute('''SELECT file FROM FitRes WHERE iso = ?''', (self.reference,))
-            fitres = cur.fetchall()
-            con.close()
+            r = TiTs.select_from_db(self.dbpath, 'file, date', 'Files', [['type'], [self.reference]],
+                                    caller_name=__name__)
+            fitres = TiTs.select_from_db(self.dbpath, 'file', 'FitRes', [['iso'], [self.reference]],
+                                         caller_name=__name__)
             self.referenceList = []
             self.referenceDates = []
-            fitres = [item for sublist in fitres for item in sublist]
-            # print('reference files are: %s' % fitres)
-            for i in r:
-                if i[0] in fitres:
-                    self.referenceList.append(i[0])
-                    self.referenceDates.append(time.strptime(i[1], '%Y-%m-%d %H:%M:%S'))
-                else:
-                    print('Warning! While creating list of reference files,'
-                          ' the reference File: %s could not be found in the fit results!' % i[0])
+            if fitres and r:
+                fitres = [item for sublist in fitres for item in sublist]
+                # print('reference files are: %s' % fitres)
+                for i in r:
+                    if i[0] in fitres:
+                        self.referenceList.append(i[0])
+                        self.referenceDates.append(time.strptime(i[1], '%Y-%m-%d %H:%M:%S'))
+                    else:
+                        print('Warning! While creating list of reference files,'
+                              ' the reference File: %s could not be found in the fit results!' % i[0])
 
     def getConfig(self, index):
         if not len(self.referenceList):

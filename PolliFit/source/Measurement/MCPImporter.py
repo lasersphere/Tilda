@@ -264,7 +264,7 @@ class MCPImporter(SpecData):
                 nr_of_scan_this_track = self.nrScans[trackindex]
                 if nr_of_scan_this_track:
                     self.cts[trackindex][ctIndex] = ct * min_nr_of_scan / nr_of_scan_this_track
-                    self.err[trackindex][ctIndex] = self.err[trackindex][ctIndex] * min_nr_of_scan / nr_of_scan_this_track
+                    self.err[trackindex][ctIndex] = np.sqrt(self.cts[trackindex][ctIndex])
 
     def find_offset_for_kepco(self):
         """ find the offset of the measurement for each multimeter and return a list of the offsets for each dmm """

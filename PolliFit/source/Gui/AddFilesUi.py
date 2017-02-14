@@ -54,26 +54,27 @@ class AddFilesUi(QtWidgets.QWidget, Ui_AddFiles):
 
     def loadIsos(self):
         self.isoFilter.clear()
-        con = sqlite3.connect(self.dbpath)
-        for i, e in enumerate(con.execute('''SELECT DISTINCT type FROM Files ORDER BY type''')):
-            self.isoFilter.insertItem(i, e[0])
+        it = TiTs.select_from_db(self.dbpath, 'DISTINCT type', 'Files', addCond='ORDER BY type', caller_name=__name__)
+        if it:
+            for i, e in enumerate(it):
+                self.isoFilter.insertItem(i, e[0])
         self.isoFilter.insertItem(-1, 'all')
-        con.close()
-    
+
     def loadFiles(self):
         self.clear_host_file()
         self.fileList.clear()
         iso = self.isoFilter.currentText()
         if iso != 'all':
-            con = sqlite3.connect(self.dbpath)
-            for r in con.execute('''SELECT file FROM Files WHERE type = ? ORDER BY date''', (iso,)):
-                self.fileList.addItem(r[0])
-            con.close()
+            it = TiTs.select_from_db(self.dbpath, 'file', 'Files', [['type'], [iso]], 'ORDER BY date',
+                                     caller_name=__name__)
+            if it:
+                for r in it:
+                    self.fileList.addItem(r[0])
         else:
-            con = sqlite3.connect(self.dbpath)
-            for r in con.execute('''SELECT file FROM Files ORDER BY date'''):
-                self.fileList.addItem(r[0])
-            con.close()
+            it = TiTs.select_from_db(self.dbpath, 'file', 'Files', addCond='ORDER BY date', caller_name=__name__)
+            if it:
+                for r in it:
+                    self.fileList.addItem(r[0])
 
     def clear_host_file(self):
         self.label_host_file_set.setText('None')
@@ -138,11 +139,7 @@ class AddFilesUi(QtWidgets.QWidget, Ui_AddFiles):
         self.label_last_saved.setText(os.path.join(save_dir, save_name))
 
     def get_full_file_path(self, file):
-        con = sqlite3.connect(self.dbpath)
-        cur = con.cursor()
-        cur.execute('''SELECT filePath FROM Files WHERE file = ? ''', (file, ))
-        data = cur.fetchall()
-        con.close()
+        data = TiTs.select_from_db(self.dbpath, 'filePath', 'Files', [['file'], [file]], caller_name=__name__)
 
         if len(data):
             rel_path = data[0][0]

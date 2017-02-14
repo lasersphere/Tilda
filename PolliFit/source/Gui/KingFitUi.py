@@ -10,6 +10,7 @@ from PyQt5 import QtWidgets, QtCore
 
 from Gui.Ui_KingFitter import Ui_KingFitter
 from KingFitter import KingFitter
+import TildaTools as TiTs
 
 
 class KingFitUi(QtWidgets.QWidget, Ui_KingFitter):
@@ -33,9 +34,8 @@ class KingFitUi(QtWidgets.QWidget, Ui_KingFitter):
         self.run = -1
         self.isotopes = []
         self.dbpath = None
-        
+
         self.show()
-        
     
     def conSig(self, dbSig):
         dbSig.connect(self.dbChange)
@@ -44,15 +44,18 @@ class KingFitUi(QtWidgets.QWidget, Ui_KingFitter):
     def loadIsos(self):
         self.isoList.clear()
         self.isotopes = []
-        con = sqlite3.connect(self.dbpath)
         if self.run == -1:
-            for i, e in enumerate(con.execute('''SELECT DISTINCT iso FROM Combined WHERE parname ="shift"  ORDER BY iso''')):
-                self.isotopes.append(e[0])
+            isoiter = TiTs.select_from_db(self.dbpath, 'DISTINCT iso', 'Combined',
+                                         [['parname'], ['shift']], 'ORDER BY iso', caller_name=__name__)
+            if isoiter:
+                for e in isoiter:
+                    self.isotopes.append(e[0])
         else:
-            for i, e in enumerate(con.execute('''SELECT DISTINCT iso FROM Combined WHERE parname ="shift" AND run = ?  ORDER BY iso''', (self.run,))):
-                self.isotopes.append(e[0])
-        con.close()
-
+            isoiter = TiTs.select_from_db(self.dbpath, 'DISTINCT iso', 'Combined',
+                                         [['parname', 'run'], ['shift', self.run]], 'ORDER BY iso', caller_name=__name__)
+            if isoiter:
+                for e in isoiter:
+                    self.isotopes.append(e[0])
         select = [True] * len(self.isotopes)
         self.isoList.blockSignals(True)
         for f, s in zip(self.isotopes, select):
@@ -69,10 +72,10 @@ class KingFitUi(QtWidgets.QWidget, Ui_KingFitter):
 
     def loadRuns(self):
         self.runSelect.clear()
-        con = sqlite3.connect(self.dbpath)
-        for i, r in enumerate(con.execute('''SELECT run FROM Runs''')):
-            self.runSelect.insertItem(i, r[0])
-        con.close()
+        runIter = TiTs.select_from_db(self.dbpath, 'run', 'Runs', caller_name=__name__)
+        if runIter:
+            for i, r in enumerate(runIter):
+                self.runSelect.insertItem(i, r[0])
 
     def select_all(self):
         self.select_all_state = not self.select_all_state
@@ -91,7 +94,7 @@ class KingFitUi(QtWidgets.QWidget, Ui_KingFitter):
         self.isoList.blockSignals(False)
 
     def kingFit(self):
-        self.king.kingFit(run=self.run,alpha=self.sAlpha.value(),findBestAlpha=self.alphaTrue.isChecked())
+        self.king.kingFit(run=self.run, alpha=self.sAlpha.value(), findBestAlpha=self.alphaTrue.isChecked())
 
     def calcChargeRadii(self):
         isotopeIndex = []
@@ -108,9 +111,11 @@ class KingFitUi(QtWidgets.QWidget, Ui_KingFitter):
         if self.allRuns.isChecked():
             self.run = -1
         else:
-            self.run = self.runSelect.itemText()
+            print(self.runSelect.currentText())
+
+            self.run = self.runSelect.currentText()
 
     def dbChange(self, dbpath):
         self.dbpath = dbpath
         self.king = KingFitter(dbpath,showing=True)
-        self.loadRuns()  # might still cause some problems
+        self.loadRuns()

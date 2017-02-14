@@ -12,6 +12,7 @@ from PyQt5 import QtWidgets, QtCore
 
 import BatchFit
 from Gui.Ui_Batchfitter import Ui_Batchfitter
+import TildaTools as TiTs
 
 
 class BatchfitterUi(QtWidgets.QWidget, Ui_Batchfitter):
@@ -31,6 +32,8 @@ class BatchfitterUi(QtWidgets.QWidget, Ui_Batchfitter):
         self.select_all_state = True
 
         self.dbpath = None
+
+        self.chosenFiles = []
         
         self.show()
         
@@ -38,35 +41,29 @@ class BatchfitterUi(QtWidgets.QWidget, Ui_Batchfitter):
     def conSig(self, dbSig):
         dbSig.connect(self.dbChange)
 
-        
     def loadIsos(self):
         self.isoSelect.clear()
-        con = sqlite3.connect(self.dbpath)
-        for i, e in enumerate(con.execute('''SELECT DISTINCT type FROM Files ORDER BY type''')):
-            self.isoSelect.insertItem(i, e[0])
-        con.close()
-    
+        it = TiTs.select_from_db(self.dbpath, 'DISTINCT type', 'Files', addCond='ORDER BY type', caller_name=__name__)
+        if it:
+            for i, e in enumerate(it):
+                self.isoSelect.insertItem(i, e[0])
+
     
     def loadRuns(self):
         self.runSelect.clear()
-        con = sqlite3.connect(self.dbpath)        
-        for i, r in enumerate(con.execute('''SELECT run FROM Runs''')):
-            self.runSelect.insertItem(i, r[0])
-        con.close()
-        
+        it = TiTs.select_from_db(self.dbpath, 'run', 'Runs', caller_name=__name__)
+        if it:
+            for i, r in enumerate(it):
+                self.runSelect.insertItem(i, r[0])
+
     def loadFiles(self):
         self.fileList.clear()
         try:
             self.iso = self.isoSelect.currentText()
             self.run = self.runSelect.currentText()
-            con = sqlite3.connect(self.dbpath)
-            cur = con.cursor()
-            cur.execute('''SELECT file FROM Files WHERE type = ? ORDER BY date''', (self.iso,))
-            self.files = [f[0] for f in cur.fetchall()]
-            con.close()
-
+            self.files = [f[0] for f in TiTs.select_from_db(self.dbpath, 'file', 'Files',
+                                        [['type'], [self.iso]], 'ORDER BY type', caller_name=__name__)]
             select = [False] * len(self.files)
-
 
             self.fileList.blockSignals(True)
             for f, s in zip(self.files, select):
@@ -116,7 +113,7 @@ class BatchfitterUi(QtWidgets.QWidget, Ui_Batchfitter):
 
     def fitting(self):
         print('chosen files: ', self.chosenFiles)
-        if self.chosenFiles != []:
+        if len(self.chosenFiles):
             BatchFit.batchFit(self.chosenFiles, self.dbpath, run=self.run)
         else:
             print('nothing to fit!!!')

@@ -10,6 +10,7 @@ import math
 
 import numpy as np
 from scipy import special
+from scipy.stats import cauchy
 
 # _d marks uncertainty
 c = 299792458;    #speed of light
@@ -63,6 +64,16 @@ def invRelDoppler(laserFreq, dopplerFreq):
 def voigt(x, sig, gam):
     '''Voigt profile, unnormalized, using the Faddeeva function'''
     return special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).real / (sig * math.sqrt(2 * math.pi))
+	
+def lorentz (x, loc, gam):
+    '''Lorentzian profile '''
+    return cauchy.pdf(x, loc, gam)
+
+def lorentzQI (x, loc, loc2, gam):
+    '''Quantum interference of lorentzian profile '''
+    cross = gam / math.pi / ((x-loc + 1j*gam)*(x-loc2 - 1j*gam))
+
+    return 2 * cross.real 
 
 def gaussian(x, mu, sig, amp):
     """

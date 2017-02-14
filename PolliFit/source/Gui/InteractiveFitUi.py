@@ -12,6 +12,8 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 from Gui.Ui_InteractiveFit import Ui_InteractiveFit
 from InteractiveFit import InteractiveFit
 
+import TildaTools as TiTs
+
 
 class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
 
@@ -48,7 +50,6 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
                 self.intFit = InteractiveFit(iso, self.dbpath, self.runSelect.currentText())
                 self.loadPars()
         
-        
     def fit(self):
         self.intFit.fit()
         self.loadPars()
@@ -77,28 +78,27 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
         
     def loadIsos(self):
         self.isoFilter.clear()
-        con = sqlite3.connect(self.dbpath)
-        for i, e in enumerate(con.execute('''SELECT DISTINCT type FROM Files ORDER BY type''')):
-            self.isoFilter.insertItem(i, e[0])
-        
-        con.close()
+        it = TiTs.select_from_db(self.dbpath, 'DISTINCT type', 'Files', addCond='ORDER BY type', caller_name=__name__)
+        if it:
+            for i, e in enumerate(it):
+                self.isoFilter.insertItem(i, e[0])
     
     
     def loadRuns(self):
         self.runSelect.clear()
-        con = sqlite3.connect(self.dbpath)        
-        for i, r in enumerate(con.execute('''SELECT run FROM Runs''')):
-            self.runSelect.insertItem(i, r[0])
-        con.close()
+        it = TiTs.select_from_db(self.dbpath, 'run', 'Runs', caller_name=__name__)
+        if it:
+            for i, r in enumerate(it):
+                self.runSelect.insertItem(i, r[0])
         
         
     def loadFiles(self):
         self.fileList.clear()
-        con = sqlite3.connect(self.dbpath)        
-        for r in con.execute('''SELECT file FROM Files WHERE type = ? ORDER BY date''', (self.isoFilter.currentText(),)):
-            self.fileList.addItem(r[0])
-        con.close()
-        
+        it = TiTs.select_from_db(self.dbpath, 'file', 'Files',
+                                     [['type'], [self.isoFilter.currentText()]], 'ORDER BY type', caller_name=__name__)
+        if it:
+            for r in it:
+                self.fileList.addItem(r[0])
     
     def setPar(self, i, j):
         try:

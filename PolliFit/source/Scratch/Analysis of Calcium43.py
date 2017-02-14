@@ -16,12 +16,14 @@ from Spectra.FullSpec import FullSpec
 from datetime import datetime
 import BatchFit
 import Analyzer
+from InteractiveFit import InteractiveFit
 import Tools
 import Physics
 
-path = 'V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Simon/BuncherMessungen2014/Ca43/'
+#path = 'V:/Projekte/A2-MAINZ-EXP/TRIGA/Measurements and Analysis_Simon/BuncherMessungen2014/Ca43/'
+path = 'C:/Workspace/PolliFit/Data/2016_12_20/'
 #db = os.path.join(path, 'CaD1.sqlite')
-db = os.path.join(path, 'CaD1.sqlite')
+db = os.path.join(path, 'Ca_Data10kV.sqlite')
 
 
 '''Crawling'''
@@ -42,6 +44,7 @@ for n in [0]:#,1,2,3]:
 # #     BatchFit.batchFit(Tools.fileList(db,'42_Ca'), db,run)
 # #     BatchFit.batchFit(Tools.fileList(db,'44_Ca'), db,run)
 # #     BatchFit.batchFit(Tools.fileList(db,'48_Ca'), db,run)
+     a = InteractiveFit('2016-04-04_12-29-04_7.bea', db, run)
      BatchFit.batchFit(Tools.fileList(db,'43_Ca'), db,run)
 #          
 #     '''Mean of center, sigma and gamma for 40_Ca'''

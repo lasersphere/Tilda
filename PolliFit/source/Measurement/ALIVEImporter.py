@@ -66,7 +66,7 @@ class ALIVEImporter(SpecData):
             self.accVoltage= float(self.info4[ind + 7:self.info4.find(';', ind + 7)])
             ind=self.info4.find('Offset')
             self.offsetVoltage= float(self.info4[ind + 6:self.info4.find(';', ind + 6)])
-            if self.offsetVoltage <0.01:
+            if abs(self.offsetVoltage) <0.01:
                 self.iso='40_Ca_ref'
             ind=self.info4.find('KepcoFactor')
             self.KepcoFactor= float(self.info4[ind + 11:self.info4.find(';', ind + 11)])/1000

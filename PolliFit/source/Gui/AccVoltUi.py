@@ -13,6 +13,7 @@ from PyQt5 import QtWidgets, QtCore
 import Analyzer
 import MPLPlotter as plot
 from Gui.Ui_AccVolt import Ui_AccVolt
+import TildaTools as TiTs
 
 
 class AccVoltUi(QtWidgets.QWidget, Ui_AccVolt):
@@ -60,23 +61,21 @@ class AccVoltUi(QtWidgets.QWidget, Ui_AccVolt):
     def get_date_and_acc_volt(self, console_print=True):
         dates = []
         accVolts = []
-        con = sqlite3.connect(self.dbpath)
-        cur = con.cursor()
-        cur.execute('''SELECT date, accVolt from Files''')
-        dates_accVolt_tpl_list = cur.fetchall()
-        for dates_accVolt_tpl in dates_accVolt_tpl_list:
-            if isinstance(dates_accVolt_tpl[0], str) and isinstance(dates_accVolt_tpl[1], float) \
-                    and dates_accVolt_tpl[1] > 0:
-                date = datetime.datetime.strptime(dates_accVolt_tpl[0], '%Y-%m-%d %H:%M:%S')
-                try:
-                    if self.dateTimeEdit_start.dateTime().toPyDateTime() <= date\
-                            <= self.dateTimeEdit_end.dateTime().toPyDateTime():
-                        dates.append(dates_accVolt_tpl[0])
-                        accVolts.append(dates_accVolt_tpl[1])
-                        if console_print:
-                            print('%s\t%s' % dates_accVolt_tpl)
-                except Exception as e:
-                    print('error while comparing: ', e)
+        dates_accVolt_tpl_list = TiTs.select_from_db(self.dbpath, 'date, accVolt', 'Files', caller_name=__name__)
+        if dates_accVolt_tpl_list:
+            for dates_accVolt_tpl in dates_accVolt_tpl_list:
+                if isinstance(dates_accVolt_tpl[0], str) and isinstance(dates_accVolt_tpl[1], float) \
+                        and dates_accVolt_tpl[1] > 0:
+                    date = datetime.datetime.strptime(dates_accVolt_tpl[0], '%Y-%m-%d %H:%M:%S')
+                    try:
+                        if self.dateTimeEdit_start.dateTime().toPyDateTime() <= date\
+                                <= self.dateTimeEdit_end.dateTime().toPyDateTime():
+                            dates.append(dates_accVolt_tpl[0])
+                            accVolts.append(dates_accVolt_tpl[1])
+                            if console_print:
+                                print('%s\t%s' % dates_accVolt_tpl)
+                    except Exception as e:
+                        print('error while comparing: ', e)
         return dates, accVolts
 
     def average_acc_volt(self):

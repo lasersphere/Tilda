@@ -7,13 +7,15 @@ Created on 29.07.2016
 import ast
 import copy
 import sqlite3
-import time
+from datetime import datetime
 
 import numpy as np
 from PyQt5 import QtWidgets, QtCore
 
 import AliveTools
 import Physics
+import functools
+import TildaTools as TiTs
 import Analyzer
 import MPLPlotter as plot
 from Gui.Ui_Alive import Ui_Alive
@@ -28,8 +30,8 @@ class AliveUi(QtWidgets.QWidget, Ui_Alive):
         self.isoSelect.currentIndexChanged.connect(self.loadFiles)
         self.isoSelect_2.currentIndexChanged.connect(self.loadFiles)
 
-        # self.fileList.itemChanged.connect(self.recalc)
-        # self.fileList_2.itemChanged.connect(self.recalc)
+        self.fileList.itemChanged.connect(self.recalc)
+        self.fileList_2.itemChanged.connect(self.recalc)
 
         self.pB_compareAuto.clicked.connect(self.compareAuto)
         self.pB_compareIndividual.clicked.connect(self.compareIndividual)
@@ -41,21 +43,68 @@ class AliveUi(QtWidgets.QWidget, Ui_Alive):
     def compareAuto(self):
         self.recalc()
 
-        speedOfLight = Physics.c
-        electronCharge = Physics.qe
-        atomicMassUnit = Physics.u
+        plot_data=[]
+        Error_data=[]
+        ref_xData=[]
+        ref_timeData=[]
+        xData=[]
+        timeData=[]
+        offsetVolt=[]
 
-        f0 = AliveTools.get_transitionFreq_from_db(self.dbpath, self.chosenFiles[0], self.run)
-        fL = AliveTools.get_laserFreq_from_db(self.dbpath, self.chosenFiles[0])
-        center = 100
-        mass = AliveTools.get_mass_from_db(self.dbpath, self.chosenFiles[0])[0] * atomicMassUnit
-        v = Physics.invRelDoppler(fL, f0 + center)
-        voltTotal = mass * speedOfLight ** 2 * ((1 - (v / speedOfLight) ** 2) ** (-1 / 2) - 1) / electronCharge
-        print(voltTotal)
 
-        print(f0)
-        f1 = Physics.relDoppler(fL, v)
-        print(f1)
+        all_Files=AliveTools.get_listAll_from_db(self.dbpath)[0]
+        HV_files=AliveTools.get_listAll_from_db(self.dbpath)[1]
+
+        for file in HV_files:
+            hv = AliveTools.calculateVoltage(self.dbpath, file['filename'], self.run)
+
+
+
+            ref_Files=AliveTools.find_ref_files(file,all_Files)
+            if ref_Files == []:
+                print('no reference files in database')
+
+            errorData=[]
+            Delta=[]
+            ref_x_data=[]
+            ref_time_data=[]
+            x_data=[]
+            time_data=[]
+            offset_volt=[]
+
+            for element in ref_Files:
+                ref = AliveTools.calculateVoltage(self.dbpath, element['filename'], self.run)
+                ref_x_data = ref_x_data +[AliveTools.get_nameNumber_and_time(element['filename'])[0]]
+                ref_time_data = ref_time_data +[AliveTools.get_nameNumber_and_time(element['filename'])[1]]
+                x_data = x_data +[AliveTools.get_nameNumber_and_time(file['filename'])[0]]
+                time_data = time_data +[AliveTools.get_nameNumber_and_time(file['filename'])[1]]
+                offset_volt=offset_volt+[AliveTools.get_offsetVolt_from_db(self.dbpath, file['filename'])]
+
+
+                Delta = Delta +[(hv[0] - ref[0])]
+                Delta_max = (hv[1] - ref[2])-(hv[0] - ref[0])
+                Delta_min =(hv[0] - ref[0])-(hv[2] - ref[1])
+                errorData=errorData+[[Delta_min,Delta_max]]
+
+            plot_data=plot_data+[Delta]
+            Error_data=Error_data + [errorData]
+            ref_xData=ref_xData+[ref_x_data]
+            ref_timeData=ref_timeData+[ref_time_data]
+            xData=xData+[x_data]
+            timeData=timeData+[time_data]
+            offsetVolt=offsetVolt+[offset_volt]
+
+        self.plotdata=AliveTools.changeListFormat(plot_data)
+        self.Error=AliveTools.changeListFormat(Error_data)
+        self.ref_x_data=AliveTools.changeListFormat(ref_xData)
+        self.x_data=AliveTools.changeListFormat(xData)
+        self.ref_time_data=AliveTools.changeListFormat(ref_timeData)
+        self.time_data=AliveTools.changeListFormat(timeData)
+        self.offset_volt=AliveTools.changeListFormat(offsetVolt)
+
+        self.saving()
+
+
 
 
 
@@ -64,163 +113,153 @@ class AliveUi(QtWidgets.QWidget, Ui_Alive):
         self.plotdata = []
 
         if len(self.chosenFiles) > 0:
-            if len(self.chosenFiles2) > 0:
+            if len(self.chosenFiles_2) > 0:
 
                 self.numberOfRef = len(self.chosenFiles)
-                self.numberOfHV = len(self.chosenFiles2)
+                self.numberOfHV = len(self.chosenFiles_2)
 
-                self.refVolt = []
-                self.hvVolt = []
+                refVolt = []
+                hvVolt = []
+                x_data=[]
+                time_data=[]
+                ref_x_data=[]
+                ref_time_data=[]
+                offsetVolt=[]
                 self.x_data =[]
+                self.time_data=[]
+                self.ref_x_data=[]
+                self.ref_time_data=[]
+                self.Error=[]
+                self.offset_volt=[]
+
 
                 for file in self.chosenFiles:
                     ref = AliveTools.calculateVoltage(self.dbpath, file, self.run)
-                    self.refVolt = self.refVolt + [ref]
+                    refVolt = refVolt + [ref]
+                    ref_x_data = ref_x_data +[AliveTools.get_nameNumber_and_time(file)[0]]
+                    ref_time_data = ref_time_data +[AliveTools.get_nameNumber_and_time(file)[1]]
 
-                for file in self.chosenFiles2:
-                    hv = AliveTools.calculateVoltage(self.dbpath, file, self.run)
-                    self.x_data = self.x_data +[AliveTools.get_nameNumber(file)]
-                    offset=AliveTools.get_offsetVolt_from_db(self.dbpath, file)
-                    self.hvVolt = self.hvVolt + [[hv,offset]]
+                for file in self.chosenFiles_2:
+                    hvVolt = hvVolt + [AliveTools.calculateVoltage(self.dbpath, file, self.run)]
+                    x_data = x_data +[AliveTools.get_nameNumber_and_time(file)[0]]
+                    time_data = time_data +[AliveTools.get_nameNumber_and_time(file)[1]]
+                    offsetVolt=offsetVolt+[AliveTools.get_offsetVolt_from_db(self.dbpath, file)]
 
-                for ref_measurement in self.refVolt:
+
+                print(hvVolt)
+                for a in range(len(refVolt)):
                     data = []
-                    for hv_measurement in self.hvVolt:
+                    Error=[]
+                    ref_xData=[]
+                    ref_timeData=[]
 
-                        Delta = (hv_measurement[0] - ref_measurement + hv_measurement[1])/hv_measurement[1]*1000000
+                    for b in range(len(hvVolt)):
+                        Delta = (hvVolt[b][0] - refVolt[a][0])
+                        Delta_max = (hvVolt[b][1] - refVolt[a][2])
+                        Delta_min = (hvVolt[b][2] - refVolt[a][1])
+
+                        #Delta = (hv_measurement[0] - ref_measurement + hv_measurement[1])/hv_measurement[1]*1000000
                         data = data + [Delta]
-
+                        Error=Error+ [[Delta-Delta_min,Delta_max-Delta]]
+                        ref_xData=ref_xData+[ref_x_data[a]]
+                        ref_timeData=ref_timeData+[ref_time_data[a]]
 
                     self.plotdata = self.plotdata + [data]
+                    self.Error=self.Error+[Error]
+                    self.offset_volt=self.offset_volt+[offsetVolt]
+                    self.x_data=self.x_data+[x_data]
+                    self.time_data=self.time_data+[time_data]
+                    self.ref_x_data=self.ref_x_data+[ref_xData]
+                    self.ref_time_data=self.ref_time_data+[ref_timeData]
+
 
                 self.saving()
-
             else:
                 print('select HV measurement')
         else:
             print('select reference measurement')
+
+
 
     def conSig(self, dbSig):
         dbSig.connect(self.dbChange)
 
     def loadIsos(self, run):
         self.isoSelect.clear()
-        con = sqlite3.connect(self.dbpath)
-        for i, e in enumerate(con.execute('''SELECT DISTINCT iso FROM FitRes WHERE run = ? ORDER BY iso''', (run,))):
-            self.isoSelect.insertItem(i, e[0])
-        con.close()
-
         self.isoSelect_2.clear()
-        con = sqlite3.connect(self.dbpath)
-        for i, e in enumerate(con.execute('''SELECT DISTINCT iso FROM FitRes WHERE run = ? ORDER BY iso''', (run,))):
-            self.isoSelect_2.insertItem(i, e[0])
-        con.close()
+
+        it = TiTs.select_from_db(self.dbpath, 'DISTINCT iso', 'FitRes', [['run'], [run]], 'ORDER BY iso',
+                                 caller_name=__name__)
+        if it:
+            for i, e in enumerate(it):
+                self.isoSelect.insertItem(i, e[0])
+                self.isoSelect_2.insertItem(i, e[0])
+
 
     def loadRuns(self):
         self.runSelect.clear()
-        con = sqlite3.connect(self.dbpath)
-        for i, r in enumerate(con.execute('''SELECT run FROM Runs''')):
-            self.runSelect.insertItem(i, r[0])
-        con.close()
+        runit = TiTs.select_from_db(self.dbpath, 'run', 'Runs', caller_name=__name__)
+        if runit:
+            for i, r in enumerate(runit):
+                self.runSelect.insertItem(i, r[0])
 
-    # better split this up into two functions!
     def loadFiles(self):
-        self.fileList.clear()
+        num = ['', '_2']
+        for i in num:
+            getattr(self, 'fileList'+str(i)).clear()
         try:
-            con = sqlite3.connect(self.dbpath)
-            cur = con.cursor()
 
-            self.iso = self.isoSelect.currentText()
+            self.iso = getattr(self, 'isoSelect'+str(num[0])).currentText()
+            self.iso_2 = getattr(self, 'isoSelect'+str(num[1])).currentText()
             self.run = self.runSelect.currentText()
             self.par = 'center'
 
-            self.files = Analyzer.getFiles(self.iso, self.run, self.dbpath)
-            self.vals, self.errs, self.dates = Analyzer.extract(self.iso, self.par, self.run, self.dbpath, prin=False)
+            #self.files = Analyzer.getFiles(self.iso, self.run, self.dbpath, files)
 
-            cur.execute(
-                '''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ?''',
-                (self.iso, self.par, self.run))
-            r = cur.fetchall()
-            con.close()
-
-            select = [True] * len(self.files)
-            self.statErrForm = 0
-            self.systErrForm = 0
-
-            if len(r) > 0:
-                self.statErrForm = r[0][1]
-                self.systErrForm = r[0][2]
-                cfg = ast.literal_eval(r[0][0])
-                for i, f in enumerate(self.files):
-                    if cfg == []:
-                        select[i] = True
-                    elif f not in cfg:
-                        select[i] = False
-
-            self.fileList.blockSignals(True)
-            for f, s in zip(self.files, select):
-                w = QtWidgets.QListWidgetItem(f)
-                w.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-                if s:
-                    w.setCheckState(QtCore.Qt.Checked)
+            self.vals, self.errs, self.dates, self.files = Analyzer.extract(getattr(self,'iso'+str(num[0])),
+                                                                            self.par, self.run, self.dbpath, prin=False)
+            self.vals_2, self.errs_2, self.dates_2, self.files_2 = Analyzer.extract(getattr(self,'iso'+str(num[1])),
+                                                                            self.par, self.run, self.dbpath, prin=False)
+            for j in num:
+                r = TiTs.select_from_db(self.dbpath, 'config, statErrForm, systErrForm', 'Combined',
+                                        [['iso', 'parname', 'run'], [getattr(self, 'iso'+str(j)), self.par, self.run]],
+                                        caller_name=__name__)
+                select = [True] * len(getattr(self, 'files'+str(j)))
+                if r:
+                    if j == '':
+                        self.statErrForm = r[0][1]
+                        self.systErrForm = r[0][2]
+                    else:
+                        self.statErrForm_2 = r[0][1]
+                        self.systErrForm_2 = r[0][2]
+                    cfg = ast.literal_eval(r[0][0])
+                    for i, f in enumerate(self.files):
+                        if cfg:
+                            select[i] = True
+                        elif f not in cfg:
+                            select[i] = False
                 else:
-                    w.setCheckState(QtCore.Qt.Unchecked)
-                self.fileList.addItem(w)
+                    if j == '':
+                        self.statErrForm = 0
+                        self.systErrForm = 0
+                    else:
+                        self.statErrForm_2 = 0
+                        self.systErrForm_2 = 0
+                getattr(self,'fileList'+str(j)).blockSignals(True)
 
-            self.fileList.blockSignals(False)
+                for f, s in zip(getattr(self, 'files'+str(j)), select):
+                    w = QtWidgets.QListWidgetItem(f)
+                    w.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+                    if s:
+                        w.setCheckState(QtCore.Qt.Checked)
+                    else:
+                        w.setCheckState(QtCore.Qt.Unchecked)
+                    getattr(self, 'fileList'+str(j)).addItem(w)
 
-            # self.recalc()
-        except Exception as e:
-            print(str(e))
-
-
-            #########################################  FILELIST_2
-        self.fileList_2.clear()
-        try:
-            con = sqlite3.connect(self.dbpath)
-            cur = con.cursor()
-
-            self.iso2 = self.isoSelect_2.currentText()
-            self.run = self.runSelect.currentText()
-            self.par = 'center'
-
-            self.files2 = Analyzer.getFiles(self.iso2, self.run, self.dbpath)
-            self.vals2, self.errs2, self.dates2 = Analyzer.extract(self.iso2, self.par, self.run, self.dbpath,
-                                                                   prin=False)
-
-            cur.execute(
-                '''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ?''',
-                (self.iso2, self.par, self.run))
-            r = cur.fetchall()
-            con.close()
-
-            select2 = [True] * len(self.files2)
-            self.statErrForm2 = 0
-            self.systErrForm2 = 0
-
-            if len(r) > 0:
-                self.statErrForm2 = r[0][1]
-                self.systErrForm2 = r[0][2]
-                cfg2 = ast.literal_eval(r[0][0])
-                for i, f in enumerate(self.files2):
-                    if cfg2 == []:
-                        select2[i] = True
-                    elif f not in cfg2:
-                        select2[i] = False
-
-            self.fileList_2.blockSignals(True)
-            for f, s in zip(self.files2, select2):
-                w = QtWidgets.QListWidgetItem(f)
-                w.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-                if s:
-                    w.setCheckState(QtCore.Qt.Checked)
-                else:
-                    w.setCheckState(QtCore.Qt.Unchecked)
-                self.fileList_2.addItem(w)
-
-            self.fileList_2.blockSignals(False)
+                getattr(self, 'fileList'+str(j)).blockSignals(False)
 
             self.recalc()
+
         except Exception as e:
             print('error: while loading files in AliveUi: %s' % e)
 
@@ -244,24 +283,24 @@ class AliveUi(QtWidgets.QWidget, Ui_Alive):
             self.chosenDates = np.delete(copy.deepcopy(self.dates), select)
             self.chosenFiles = np.delete(copy.deepcopy(self.files), select)
 
-        select2 = []
-        self.chosenFiles2 = []
-        self.chosenVals2 = []
-        self.chosenErrs2 = []
-        self.chosenDates2 = []
-        self.val2 = 0
-        self.err2 = 0
-        self.redChi2 = 0
-        self.systeErr2 = 0
+        select_2 = []
+        self.chosenFiles_2 = []
+        self.chosenVals_2 = []
+        self.chosenErrs_2 = []
+        self.chosenDates_2 = []
+        self.val_2 = 0
+        self.err_2 = 0
+        self.redChi_2 = 0
+        self.systeErr_2 = 0
 
         for index in range(self.fileList_2.count()):
             if self.fileList_2.item(index).checkState() != QtCore.Qt.Checked:
-                select2.append(index)
-        if len(self.vals2) > 0 and len(self.errs2) > 0:
-            self.chosenVals2 = np.delete(copy.deepcopy(self.vals2), select2)
-            self.chosenErrs2 = np.delete(copy.deepcopy(self.errs2), select2)
-            self.chosenDates2 = np.delete(copy.deepcopy(self.dates2), select2)
-            self.chosenFiles2 = np.delete(copy.deepcopy(self.files2), select2)
+                select_2.append(index)
+        if len(self.vals_2) > 0 and len(self.errs_2) > 0:
+            self.chosenVals_2 = np.delete(copy.deepcopy(self.vals_2), select_2)
+            self.chosenErrs_2 = np.delete(copy.deepcopy(self.errs_2), select_2)
+            self.chosenDates_2 = np.delete(copy.deepcopy(self.dates_2), select_2)
+            self.chosenFiles_2 = np.delete(copy.deepcopy(self.files_2), select_2)
 
     def dbChange(self, dbpath):
         self.dbpath = dbpath
@@ -269,5 +308,67 @@ class AliveUi(QtWidgets.QWidget, Ui_Alive):
 
     def saving(self):
         plot.clear()
-        plot.AlivePlot(self.x_data, self.plotdata)
+        plot.AlivePlot(self.x_data[0], self.plotdata, self.Error[0])
         plot.show(True)
+        print(self.x_data)
+        print(self.plotdata)
+        print(self.Error)
+        print(self.ref_x_data)
+        print(self.ref_time_data)
+        print(self.time_data)
+        print(self.offset_volt)
+
+        #Zeitstempel erzeugen
+        t = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+        ind = self.dbpath.rfind('/')
+        ind_2 = self.dbpath.rfind('.')
+        savePath = self.dbpath[:ind]
+        name = self.dbpath[ind+1:ind_2]
+
+
+        with open(savePath + '/Results_'+name+'_'+t+'.txt', 'w+') as out_file:
+            out_string ='number ; time ; Voltage ; neg. Error ; pos. Error; HV div. volt ; Ref. number ; Ref. time \n'
+            for a in range(len(self.plotdata)):
+                for b in range(len(self.plotdata[a])):
+
+                    out_string += str(self.x_data[a][b])
+                    out_string += ' ; '
+                    out_string += self.time_data[a][b]
+                    out_string += ' ; '
+                    out_string += str(self.plotdata[a][b])
+                    out_string += ' ; '
+                    out_string +=str(-self.Error[a][b][0])
+                    out_string += ' ; '
+                    out_string +=str(self.Error[a][b][1])
+                    out_string += ' ; '
+                    out_string +=str(self.offset_volt[a][b])
+                    out_string += ' ; '
+                    out_string +=str(self.ref_x_data[a][b])
+                    out_string += ' ; '
+                    out_string +=str(self.ref_time_data[a][b])
+                    out_string += '\n'
+
+                out_string += '\n'
+            out_file.write(out_string)
+
+
+        #with open(savePath + '/Results_'+name+'_'+t+'.txt', 'w+') as out_file:
+        #    out_string =''
+        #    for a in range(len(self.ref_x_data)):
+        #        out_string += 'reference measurement number = '+str(self.ref_x_data[a])
+        #        out_string += ' reference measurement time = '+self.ref_time_data[a] + '\n'
+        #        out_string +='number ; time ; Voltage ; neg. Error ; pos. Error \n'
+        #        for i in range(len(self.x_data)):
+        #            out_string += str(self.x_data[i])
+        #            out_string += ' ; '
+        #            out_string += self.time_data[i]
+        #            out_string += ' ; '
+        #            out_string += str(self.plotdata[a][i])
+        #            out_string += ' ; '
+        #            out_string +=str(-self.Error[a][i][0])
+        #            out_string += ' ; '
+        #            out_string +=str(self.Error[a][i][1])
+        #            out_string += '\n'
+        #        out_string += '\n'
+        #    out_file.write(out_string)

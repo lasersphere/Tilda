@@ -8,6 +8,7 @@ import os, sqlite3, math
 from datetime import datetime
 import numpy as np
 
+import time
 import MPLPlotter as plot
 import DBIsotope
 import SPFitter
@@ -31,10 +32,11 @@ isoL = ['109_Sn']
 for i in range(112,135, 1):
     isoL.append(str(str(i)+'_Sn'))
     if i == 113 or i == 117 or i == 119 or i == 121 or i == 123 or i == 125\
-            or i == 127 or i == 129 or i == 130 or i == 131:
+            or i == 127 or i == 128 or i == 129 or i == 130 or i == 131:
         isoL.append(str(str(i)+'_Sn_m'))
-freq = 662305065
-# isoL = ['112_Sn','114_Sn','115_Sn','116_Sn','118_Sn','119_Sn','120_Sn','122_Sn','125_Sn','126_Sn','128_Sn','131_Sn','132_Sn','133_Sn','134_Sn']
+# freq = 662305065
+# isoL = ['112_Sn','114_Sn','115_Sn','116_Sn','118_Sn','119_Sn','120_Sn','122_Sn',
+# '125_Sn','126_Sn','128_Sn','131_Sn','132_Sn','133_Sn','134_Sn']
 
 '''Plotting spectra'''
 # Tools.centerPlot(db,isoL)
@@ -73,134 +75,133 @@ freq = 662305065
 # ind = 0
 # # print(Physics.diffDoppler(662378005, 40000, 124))
 #
-# for k in range(99971, 99972, 1):
+# for k in range(99891, 99892, 1): #
 #     k=k/10
 #     acc = k
 #
-#     for i in range(100085, 100086, 1):
+#     for i in range(100003, 100004, 1): #
 #         freq = 662378005 +(10000-acc)*27.5
-        # #i = i+ind
-        # i = i/100
-        # con = sqlite3.connect(db)
-        # cur = con.cursor()
-        # cur.execute('''UPDATE Files SET laserFreq=662929863.205568,
-        #   voltDivRatio="{'accVolt':9997.1, 'offset':1000.85}",
-        #   lineMult=0.050425, lineOffset=0.00015''')
-        # divratio = str(''' voltDivRatio="{'accVolt':''' + str(k) + ''', 'offset':''' + str(i) + '''}" ''')
-        # cur.execute('''UPDATE Files SET ''' + divratio)
-        #
-        # cur.execute('''UPDATE Lines SET frequency='''+str(freq))
-        #
-        # con.commit()
-        # con.close()
-        # divratios.append(i)
-        # accratios.append(k)
-
-'''Fitting the Kepco-Scans!'''
-# for i in range(0,2):
-#     run = 'ZKepRun' + str(i)
-#     # BatchFit.batchFit(Tools.fileList(db,'Kepco'), db, run)
-#     Analyzer.combineRes('Kepco', 'm', run, db, show_plot=False)
-#     Analyzer.combineRes('Kepco', 'b', run, db, show_plot=False)
+#         #i = i+ind
+#         i = i/100
+#         con = sqlite3.connect(db)
+#         cur = con.cursor()
+#         cur.execute('''UPDATE Files SET laserFreq=662929863.205568,
+#           voltDivRatio="{'accVolt':9997.1, 'offset':1000.85}",
+#           lineMult=0.050425, lineOffset=0.00015''')
+#         divratio = str(''' voltDivRatio="{'accVolt':''' + str(k) + ''', 'offset':''' + str(i) + '''}" ''')
+#         cur.execute('''UPDATE Files SET ''' + divratio)
 #
-        # '''Fitting the spectra with Voigt-Fits!'''
-        # BatchFit.batchFit(Tools.fileList(db,'124_Sn'), db,'Run0')
-        # # BatchFit.batchFit(['124Sn_no_protonTrigger_Run018.mcp','124Sn_no_protonTrigger_Run021.mcp','124Sn_no_protonTrigger_Run024.mcp',
-        # #                    '124Sn_no_protonTrigger_Run025.mcp','124Sn_no_protonTrigger_Run031.mcp','124Sn_no_protonTrigger_Run032.mcp',
-        # #                    '124Sn_no_protonTrigger_Run037.mcp','124Sn_no_protonTrigger_Run038.mcp','124Sn_no_protonTrigger_Run043.mcp',
-        # #                    '124Sn_no_protonTrigger_Run054.mcp','124Sn_no_protonTrigger_Run056.mcp','124Sn_no_protonTrigger_Run057.mcp',
-        # #                    '124Sn_no_protonTrigger_Run061.mcp','124Sn_no_protonTrigger_Run138.mcp','124Sn_no_protonTrigger_Run139.mcp',
-        # #                    '124Sn_no_protonTrigger_Run143.mcp','124Sn_no_protonTrigger_Run152.mcp','124Sn_no_protonTrigger_Run154.mcp',
-        # #                    '124Sn_no_protonTrigger_Run175.mcp','124Sn_no_protonTrigger_Run176.mcp','124Sn_no_protonTrigger_Run182.mcp',
-        # #                    '124Sn_no_protonTrigger_Run195.mcp','124Sn_no_protonTrigger_Run204.mcp',], db,'Run0')
-        # # Analyzer.combineRes('124_Sn', 'sigma', 'Run0', db)
-        # # Analyzer.combineRes('124_Sn', 'center', 'Run0', db)
-        # isotopeShifts = []
-        # isotopeShiftErrs = []
-        # for j in isoL:
-        #     '''if there is an isomer at the isotope, we need Run1:'''
-        #     if j == '113_Sn' or j == '121_Sn' or  j == '123_Sn' or j == '125_Sn'\
-        #             or j == '129_Sn' or j == '130_Sn' or j == '131_Sn':
-        #         run = 'Run1'
-        #     elif j == '127_Sn':
-        #         run = 'Run2'
-        #     else:
-        #         run = 'Run0'
-        #
-        #     if j == '117_Sn':
-        #         con = sqlite3.connect(db)
-        #         cur = con.cursor()
-        #         cur.execute('''DELETE FROM FitRes WHERE iso="117_Sn"''')
-        #         con.commit()
-        #         con.close()
-        #         BatchFit.batchFit(['117Sn_no_protonTrigger_Run141.mcp','117Sn_no_protonTrigger_Run142.mcp',
-        #                            '117Sn_no_protonTrigger_Run179.mcp'], db, 'Run1')
-        #         BatchFit.batchFit(['117Sn_no_protonTrigger_Run033.mcp','117Sn_no_protonTrigger_Run034.mcp'], db, run)
-        #         con = sqlite3.connect(db)
-        #         cur = con.cursor()
-        #         cur.execute('''UPDATE FitRes SET run='Run10' WHERE iso="117_Sn"''')
-        #         con.commit()
-        #         con.close()
-        #
-        #         shift = Analyzer.combineShift(j, 'Run10', db)
-        #         isotopeShifts.append(shift[2])
-        #         isotopeShiftErrs.append(np.sqrt(np.square(shift[3])))
-        #         Analyzer.combineShift(str(j)+'_m', 'Run1', db)
-        #         Analyzer.combineRes(j, 'Au', 'Run10', db)
-        #         Analyzer.combineRes(str(j)+'_m', 'Au', 'Run1', db)
-        #         Analyzer.combineRes(str(j)+'_m', 'Bu', 'Run1', db)
-        #
-        #     elif j == '119_Sn':
-        #         con = sqlite3.connect(db)
-        #         cur = con.cursor()
-        #         cur.execute('''DELETE FROM FitRes WHERE iso="119_Sn"''')
-        #         con.commit()
-        #         con.close()
-        #         BatchFit.batchFit(['119Sn_no_protonTrigger_Run137.mcp','119Sn_no_protonTrigger_Run174.mcp'], db, 'Run1')
-        #         BatchFit.batchFit(['119Sn_no_protonTrigger_Run029.mcp','119Sn_no_protonTrigger_Run030.mcp',
-        #                            '119Sn_no_protonTrigger_Run055.mcp', '119Sn_no_protonTrigger_Run153.mcp'], db, run)
-        #         con = sqlite3.connect(db)
-        #         cur = con.cursor()
-        #         cur.execute('''UPDATE FitRes SET run='Run10' WHERE iso="119_Sn"''')
-        #         con.commit()
-        #         con.close()
-        #         shift = Analyzer.combineShift(j, 'Run10', db)
-        #         isotopeShifts.append(shift[2])
-        #         isotopeShiftErrs.append(np.sqrt(np.square(shift[3])))
-        #         Analyzer.combineShift(str(j)+'_m', 'Run1', db)
-        #         Analyzer.combineRes(j, 'Au', 'Run10', db)
-        #         Analyzer.combineRes(str(j)+'_m', 'Au', 'Run1', db)
-        #         Analyzer.combineRes(str(j)+'_m', 'Bu', 'Run1', db)
-        #     elif j != '110_Sn' or j != '111_Sn':
-        #         BatchFit.batchFit(Tools.fileList(db,j), db,run)
-        #         '''Calculate the isotope shift to 124_Sn'''
-        #         shift = Analyzer.combineShift(j, run, db)
-        #         isotopeShifts.append(shift[2])
-        #         isotopeShiftErrs.append(np.sqrt(np.square(shift[3])))
-        #         if run == 'Run1' or run == 'Run2':
-        #             shift_m = Analyzer.combineShift(str(j)+'_m', run, db)
-        #             if j != '130_Sn' and j != '129_Sn':
-        #                 Analyzer.combineRes(j, 'Au', run, db)
-        #             if j == '121_Sn' or j == '123_Sn' or j == '125_Sn' or j == '131_Sn' or j == '127_Sn':
-        #                 Analyzer.combineRes(j, 'Bu', run, db)
-        #             if j != '127_Sn':
-        #                 Analyzer.combineRes(str(j)+'_m', 'Au', run, db)
-        #                 Analyzer.combineRes(str(j)+'_m', 'Bu', run, db)
-        #         elif j == '109_Sn' or j == '133_Sn'  or j == '115_Sn':
-        #             Analyzer.combineRes(j, 'Au', run, db)
-        #             if j!= '115_Sn':
-        #                 Analyzer.combineRes(j, 'Bu', run, db)
-        #
-        #         '''Mean of center, sigma and gamma for the isotopes'''
-        #         # Analyzer.combineRes(j, 'center',run, db, show_plot=False)
-        #         # Analyzer.combineRes(j, 'sigma',run, db, show_plot=False)
-        #         '''comparison if intensities'''
-        #         # Ints0 = Analyzer.combineRes(j, 'Int0',run, db)
-        #         # Ints1 = Analyzer.combineRes(j, 'Int1',run, db)
-        #         # ints = []
-        #         # for i,j in enumerate(Ints0[3][1]):
-        #         #     ints.append(float(Ints1[3][1][i]/j))
-        #         # print(ints)
+#         cur.execute('''UPDATE Lines SET frequency='''+str(freq))
+#
+#         con.commit()
+#         con.close()
+#         divratios.append(i)
+#         accratios.append(k)
+# #
+# # # '''Fitting the Kepco-Scans!'''
+# # # for i in range(0,2):
+# # #     run = 'ZKepRun' + str(i)
+# # #     # BatchFit.batchFit(Tools.fileList(db,'Kepco'), db, run)
+# # #     Analyzer.combineRes('Kepco', 'm', run, db, show_plot=False)
+# # #     Analyzer.combineRes('Kepco', 'b', run, db, show_plot=False)
+# # #
+#         '''Fitting the spectra with Voigt-Fits!'''
+#         BatchFit.batchFit(Tools.fileList(db,'124_Sn'), db,'Run0')
+#         # BatchFit.batchFit(['124Sn_no_protonTrigger_Run018.mcp','124Sn_no_protonTrigger_Run021.mcp','124Sn_no_protonTrigger_Run024.mcp',
+#         #                    '124Sn_no_protonTrigger_Run025.mcp','124Sn_no_protonTrigger_Run031.mcp','124Sn_no_protonTrigger_Run032.mcp',
+#         #                    '124Sn_no_protonTrigger_Run037.mcp','124Sn_no_protonTrigger_Run038.mcp','124Sn_no_protonTrigger_Run043.mcp',
+#         #                    '124Sn_no_protonTrigger_Run054.mcp','124Sn_no_protonTrigger_Run056.mcp','124Sn_no_protonTrigger_Run057.mcp',
+#         #                    '124Sn_no_protonTrigger_Run061.mcp','124Sn_no_protonTrigger_Run138.mcp','124Sn_no_protonTrigger_Run139.mcp',
+#         #                    '124Sn_no_protonTrigger_Run143.mcp','124Sn_no_protonTrigger_Run152.mcp','124Sn_no_protonTrigger_Run154.mcp',
+#         #                    '124Sn_no_protonTrigger_Run175.mcp','124Sn_no_protonTrigger_Run176.mcp','124Sn_no_protonTrigger_Run182.mcp',
+#         #                    '124Sn_no_protonTrigger_Run195.mcp','124Sn_no_protonTrigger_Run204.mcp'], db, 'Run0')
+#         # Analyzer.combineRes('124_Sn', 'sigma', 'Run0', db)
+#         # Analyzer.combineRes('124_Sn', 'center', 'Run0', db)
+#         isotopeShifts = []
+#         isotopeShiftErrs = []
+#         for j in isoL:
+#             '''if there is an isomer at the isotope, we need Run1:'''
+#             if j == '113_Sn' or j == '121_Sn' or  j == '123_Sn' or j == '125_Sn'\
+#                     or j == '129_Sn' or j == '130_Sn' or j == '131_Sn':
+#                 run = 'Run1'
+#             elif j == '127_Sn':
+#                 run = 'Run2'
+#             else:
+#                 run = 'Run0'
+#
+#             if j == '117_Sn':
+#                 con = sqlite3.connect(db)
+#                 cur = con.cursor()
+#                 cur.execute('''DELETE FROM FitRes WHERE iso="117_Sn"''')
+#                 con.commit()
+#                 con.close()
+#                 BatchFit.batchFit(['117Sn_no_protonTrigger_Run141.mcp','117Sn_no_protonTrigger_Run142.mcp',
+#                                    '117Sn_no_protonTrigger_Run179.mcp'], db, 'Run1')
+#                 BatchFit.batchFit(['117Sn_no_protonTrigger_Run033.mcp','117Sn_no_protonTrigger_Run034.mcp'], db, run)
+#                 con = sqlite3.connect(db)
+#                 cur = con.cursor()
+#                 cur.execute('''UPDATE FitRes SET run='Run10' WHERE iso="117_Sn"''')
+#                 con.commit()
+#                 con.close()
+#
+#                 shift = Analyzer.combineShift(j, 'Run10', db)
+#                 isotopeShifts.append(shift[2])
+#                 isotopeShiftErrs.append(np.sqrt(np.square(shift[3])))
+#                 Analyzer.combineShift(str(j)+'_m', 'Run1', db)
+#                 Analyzer.combineRes(j, 'Au', 'Run10', db)
+#                 Analyzer.combineRes(str(j)+'_m', 'Au', 'Run1', db)
+#                 Analyzer.combineRes(str(j)+'_m', 'Bu', 'Run1', db)
+#
+#             elif j == '119_Sn':
+#                 con = sqlite3.connect(db)
+#                 cur = con.cursor()
+#                 cur.execute('''DELETE FROM FitRes WHERE iso="119_Sn"''')
+#                 con.commit()
+#                 con.close()
+#                 BatchFit.batchFit(['119Sn_no_protonTrigger_Run137.mcp','119Sn_no_protonTrigger_Run174.mcp'], db, 'Run1')
+#                 BatchFit.batchFit(['119Sn_no_protonTrigger_Run029.mcp','119Sn_no_protonTrigger_Run030.mcp',
+#                                    '119Sn_no_protonTrigger_Run055.mcp', '119Sn_no_protonTrigger_Run153.mcp'], db, run)
+#                 con = sqlite3.connect(db)
+#                 cur = con.cursor()
+#                 cur.execute('''UPDATE FitRes SET run='Run10' WHERE iso="119_Sn"''')
+#                 con.commit()
+#                 con.close()
+#                 shift = Analyzer.combineShift(j, 'Run10', db)
+#                 isotopeShifts.append(shift[2])
+#                 isotopeShiftErrs.append(np.sqrt(np.square(shift[3])))
+#                 Analyzer.combineShift(str(j)+'_m', 'Run1', db)
+#                 Analyzer.combineRes(j, 'Au', 'Run10', db)
+#                 Analyzer.combineRes(str(j)+'_m', 'Au', 'Run1', db)
+#                 Analyzer.combineRes(str(j)+'_m', 'Bu', 'Run1', db)
+#             elif j != '110_Sn' or j != '111_Sn':
+#                 BatchFit.batchFit(Tools.fileList(db,j), db,run)
+#                 '''Calculate the isotope shift to 124_Sn'''
+#                 shift = Analyzer.combineShift(j, run, db)
+#                 isotopeShifts.append(shift[2])
+#                 isotopeShiftErrs.append(np.sqrt(np.square(shift[3])))
+#                 if run == 'Run1' or run == 'Run2':
+#                     shift_m = Analyzer.combineShift(str(j)+'_m', run, db)
+#                     if j != '130_Sn' and j != '129_Sn':
+#                         Analyzer.combineRes(j, 'Au', run, db)
+#                     if j == '121_Sn' or j == '123_Sn' or j == '125_Sn' or j == '131_Sn' or j == '127_Sn':
+#                         Analyzer.combineRes(j, 'Bu', run, db)
+#                     if j != '127_Sn':
+#                         Analyzer.combineRes(str(j)+'_m', 'Au', run, db)
+#                         Analyzer.combineRes(str(j)+'_m', 'Bu', run, db)
+#                 elif j == '109_Sn' or j == '133_Sn'  or j == '115_Sn':
+#                     Analyzer.combineRes(j, 'Au', run, db)
+#                     if j!= '115_Sn':
+#                         Analyzer.combineRes(j, 'Bu', run, db)
+#                 '''Mean of center, sigma and gamma for the isotopes'''
+#                 # Analyzer.combineRes(j, 'center',run, db, show_plot=False)
+#                 # Analyzer.combineRes(j, 'sigma',run, db, show_plot=False)
+#                 '''comparison if intensities'''
+#                 # Ints0 = Analyzer.combineRes(j, 'Int0',run, db)
+#                 # Ints1 = Analyzer.combineRes(j, 'Int1',run, db)
+#                 # ints = []
+#                 # for i,j in enumerate(Ints0[3][1]):
+#                 #     ints.append(float(Ints1[3][1][i]/j))
+#                 # print(ints)
 #         '''calculating red. Chi^2'''
 #         litvals = [-1898.6, -1380.3, -1115.7, -1044.3, -842.6, -759.1, -588.4, -521.4, -360.3, -162.8]
 #         literrs = [18.7, 8.9, 8.3, 8.3, 8, 8.1, 8.3, 8.3, 8.9, 10]
@@ -232,6 +233,28 @@ freq = 662305065
 #     strI = str(i).replace(',','\t')
 #     strI = strI.replace('.', ',')
 #     print(strI[1:-1])
+
+# j = '117_Sn'
+# con = sqlite3.connect(db)
+# cur = con.cursor()
+# cur.execute('''DELETE FROM FitRes WHERE iso="117_Sn"''')
+# con.commit()
+# con.close()
+# BatchFit.batchFit(['117Sn_no_protonTrigger_Run141.mcp','117Sn_no_protonTrigger_Run142.mcp',
+#                    '117Sn_no_protonTrigger_Run179.mcp'], db, 'Run1')
+# BatchFit.batchFit(['117Sn_no_protonTrigger_Run033.mcp','117Sn_no_protonTrigger_Run034.mcp'], db, 'Run0')
+# con = sqlite3.connect(db)
+# cur = con.cursor()
+# cur.execute('''UPDATE FitRes SET run='Run10' WHERE iso="117_Sn"''')
+# con.commit()
+# con.close()
+#
+# shift = Analyzer.combineShift(j, 'Run10', db)
+# Analyzer.combineShift(str(j)+'_m', 'Run1', db)
+# Analyzer.combineRes(j, 'Au', 'Run10', db)
+# # Analyzer.combineRes(str(j)+'_m', 'Au', 'Run1', db)
+# Analyzer.combineRes(str(j)+'_m', 'Bu', 'Run1', db)
+
 '''performing a King fit analysis'''
 litvals = {'112_Sn':[-0.748025649,.0077],
             '114_Sn':[-0.601624554,.0077],
@@ -256,12 +279,25 @@ litvals = {'112_Sn':[-0.748025649,.0077],
 #            '129_Sn' :[ 0.172 ,0.018],'129_Sn_m' :[ 0.196 ,0.013],'130_Sn' :[ 0.234 ,0.015],'130_Sn_m' :[ 0.198 ,0.022],
 #             '131_Sn' :[ 0.227 ,0.026],'131_Sn_m' :[ 0.27 ,0.018],'132_Sn' :[ 0.3 ,0.022],'133_Sn' :[ 0.375 ,0.017],
 #            '134_Sn' :[ 0.532 ,0.006]}
-king = KingFitter(db, showing=True)
+
+# BatchFit.batchFit(['121Sn_no_protonTrigger_Run123.mcp'],db, 'Run1')
+# Analyzer.combineShift('128_Sn', 'Run1', db)
+# Analyzer.combineShift('119_Sn', 'Run1', db)
+# Analyzer.combineRes('128_Sn_m', 'Bu', 'Run1', db)
+# Analyzer.combineShift('128_Sn', 'Run1', db)
+# Analyzer.combineShift('125_Sn_m', 'Run1', db)
+# Analyzer.combineRes('125_Sn_m', 'Bu', 'Run1', db)
+# Analyzer.combineRes('125_Sn', 'Au', 'Run1', db)
+# Analyzer.combineRes('125_Sn', 'Bu', 'Run1', db)
+# Analyzer.combineRes('121_Sn', 'Au', 'Run1', db)
+
+king = KingFitter(db, showing=False, litvals=litvals)
 run = -1
-#isoL = ['122_Sn','132_Sn','131_Sn','131_Sn_m','133_Sn','134_Sn']
-king.kingFit(alpha=900,findBestAlpha=True, run=run)
-#king.calcChargeRadii(isotopes=isoL,run=run)
-# Analyzer.combineRes('133_Sn', 'Bu', 'Run0', db)
+timing = time.time()
+king.kingFit(alpha=600, findBestAlpha=True, run=run)
+print('time needed (s):', time.time()-timing)
+# king.calcChargeRadii(isotopes=isoL, run=run)
+
 '''producing a LaTeX-table'''
 # for i in isoL:
 #     a = str(i)
@@ -292,9 +328,10 @@ king.kingFit(alpha=900,findBestAlpha=True, run=run)
 #         crsystErr = 0
 #     output = str('$' + a + '$' + ' & $'+ str(nuclearSpin) + '$ & $' + str(shiftval) + '(' + str(shiftstatErr) + ') (' + str(shiftsystErr) + ')$ & $' +
 #           str(crval) + '(' + str(crstatErr) + ') (' + str(crsystErr) + ')$' + str('\\')+str('\\'))
+#     # output = str('$' + a + '$' + ' & $'+ str(nuclearSpin) + '$ & $' + str(shiftval) + '(' + str(shiftstatErr) + ') $' + str('\\') + str('\\'))
 #     output = output.replace('.', ',')
 #     print(output)
-'''for A and B, mu an Q'''
+# '''for A and B, mu and Q'''
 # muRef = -1.00104
 # dMuRef = 0.00007
 # aRef = -247.6
@@ -322,22 +359,22 @@ king.kingFit(alpha=900,findBestAlpha=True, run=run)
 #     cur.execute('''SELECT val, statErr, systErr FROM Combined WHERE parname=? AND iso = ?''', ('Au',i))
 #     try:
 #         (aval, astatErr, asystErr) = cur.fetchall()[0]
-#         mu = float(aval) *nuclSpin * muRef/aRef
-#         dstatmu = float(astatErr) *nuclSpin * muRef/aRef
-#         deltaMu = np.sqrt( (float(asystErr) *nuclSpin * muRef/aRef)**2 + (float(aval) *nuclSpin * dMuRef/aRef)**2 +
-#                           (float(aval) *nuclSpin * muRef *daRef/(aRef**2))**2 )
+#         mu = float(aval) * nuclSpin * muRef/aRef
+#         dstatmu = float(astatErr) * nuclSpin * muRef/aRef
+#         deltaMu = np.sqrt((float(asystErr) * nuclSpin * muRef/aRef)**2 + (float(aval) * nuclSpin * dMuRef/aRef)**2 +
+#                           (float(aval) * nuclSpin * muRef * daRef/(aRef**2))**2 )
 #
-#         aval = '%.2f' % (aval)
+#         aval = '%.2f' % aval
 #         astatErr = int(np.round(astatErr*100,0))
 #         asystErr = int(np.round(asystErr*100,0))
-#         avalStr =  '$' + str(aval) + '(' + str(astatErr) + ') (' + str(asystErr) + ') $'
-#         mu = '%.3f' % (mu)
+#         avalStr = '$' + str(aval) + '(' + str(astatErr) + ') (' + str(asystErr) + ') $'
+#         mu = '%.3f' % mu
 #         muerr = np.sqrt(dstatmu**2+deltaMu**2)
 #         dstatmu = int(np.round(dstatmu*1000,0))
 #         deltaMu = int(np.round(deltaMu*1000,0))
 #         muvalStr = '$' + str(mu) + '(' + str(dstatmu) + ') (' + str(deltaMu) + ') $'
-#         #muvalStr = str(mu) + '\t' + '%.5f' % (muerr)
-#         cur.execute('''SELECT val, statErr, systErr FROM Combined WHERE parname=? AND iso = ?''', ('Bu',i))
+#         # muvalStr = str(mu) + '\t' + '%.5f' % (muerr)
+#         cur.execute('''SELECT val, statErr, systErr FROM Combined WHERE parname=? AND iso = ?''', ('Bu', i))
 #         printing = True
 #         try:
 #             (bval, bstatErr, bsystErr) = cur.fetchall()[0]
@@ -353,7 +390,7 @@ king.kingFit(alpha=900,findBestAlpha=True, run=run)
 #             dstatq = int(np.round(dstatq*10000,0))
 #             deltaQ = int(np.round(deltaQ*10000,0))
 #             qValStr = str('$' + str(q) + '(' + str(dstatq) + ') (' + str(deltaQ)  + ')$')
-#             #qValStr = str(q) + '\t' + '%.5f' % (qerr)
+#             # qValStr = str(q) + '\t' + '%.5f' % (qerr)
 #         except:
 #             bvalStr = ''
 #             pass
@@ -364,13 +401,15 @@ king.kingFit(alpha=900,findBestAlpha=True, run=run)
 #         if printing:
 #             output = str('$' + a + '$' + ' & $'+ str(nuclearSpin) + '$ &' +avalStr + '& ' + muvalStr +'& ' + bvalStr
 #                          +'& ' + qValStr + str('\\')+str('\\'))
-#             #output = str(a + '\t' + str(nuclearSpin) +  '\t'+ qValStr) #'\t' + muvalStr +
+#             # output = str('$' + a + '$' + ' & $'+ str(nuclearSpin) + '$ &' +avalStr + '& ' + bvalStr + str('\\')+ str('\\') )
+#             # output = str(a + '\t' + str(nuclearSpin) + '\t' +avalStr + '\t' + muvalStr +'\t' + bvalStr
+#             #              +'\t' + qValStr)
 #             output = output.replace('.', ',')
 #             print(output)
 
 
 '''selecting Au, Bu, delta r^2, ...'''
-# listAuBu = ['Au', 'Bu']#, 'delta_r_square', 'shift']
+# listAuBu = ['Au', 'Bu', 'delta_r_square', 'shift']
 # for j in listAuBu:
 #     print(j)
 #     con = sqlite3.connect(db)
@@ -381,8 +420,8 @@ king.kingFit(alpha=900,findBestAlpha=True, run=run)
 #         (name, val, statErr, systErr) = i
 #         err = np.sqrt(np.square(statErr)+np.square(systErr))
 #         print(str(name).split('_')[0], '\t', str(name), '\t', str(val).replace('.',','),
-#               #'\t', str(statErr).replace('.',','), '\t', str(systErr).replace('.',','),
-#              '\t', str(err).replace('.',','))
+#               '\t', str(statErr).replace('.',','), '\t', str(systErr).replace('.',','))
+#              #'\t', str(err).replace('.',','))
 #         # if j == 'delta_r_square':
 #         #     print(name, '\t', round(val, 4), '('+str(round(statErr*10000))+')', '['+str(round(systErr*10000))+']' )
 #         # else:

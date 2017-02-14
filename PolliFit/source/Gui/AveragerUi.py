@@ -13,6 +13,7 @@ from PyQt5 import QtWidgets, QtCore
 
 import Analyzer
 from Gui.Ui_Averager import Ui_Averager
+import TildaTools as TiTs
 
 
 class AveragerUi(QtWidgets.QWidget, Ui_Averager):
@@ -41,61 +42,51 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
     
     def loadIsos(self, run):
         self.isoSelect.clear()
-        con = sqlite3.connect(self.dbpath)
-        for i, e in enumerate(con.execute('''SELECT DISTINCT iso FROM FitRes WHERE run = ? ORDER BY iso''',
-                                          (run,))):
-            self.isoSelect.insertItem(i, e[0])
-        con.close()
+        print('run is: ', run)
+        it = TiTs.select_from_db(self.dbpath, 'DISTINCT iso', 'FitRes', [['run'], [run]], 'ORDER BY iso',
+                                 caller_name=__name__)
+        if it:
+            for i, e in enumerate(it):
+                self.isoSelect.insertItem(i, e[0])
 
     def loadRuns(self):
         self.runSelect.clear()
-        con = sqlite3.connect(self.dbpath)        
-        for i, r in enumerate(con.execute('''SELECT run FROM Runs''')):
-            self.runSelect.insertItem(i, r[0])
-        con.close()
+        it = TiTs.select_from_db(self.dbpath, 'run', 'Runs', caller_name=__name__)
+        if it:
+            for i, r in enumerate(it):
+                self.runSelect.insertItem(i, r[0])
         
     def loadParams(self):
         self.parameter.clear()
-        con = sqlite3.connect(self.dbpath)
-        cur = con.cursor()
-        cur.execute('''SELECT pars FROM FitRes WHERE run = ? AND iso = ?''',
-                    (self.runSelect.currentText(), self.isoSelect.currentText()))
-        r = cur.fetchone()
-        con.close()
-
-        try:
-            for e in sorted(ast.literal_eval(r[0]).keys()):
-                self.parameter.addItem(e)
-        except Exception as e:
-            print(e)
+        runselect, isoSelect = self.runSelect.currentText(), self.isoSelect.currentText()
+        r = None
+        if runselect and isoSelect:
+            r = TiTs.select_from_db(self.dbpath, 'pars', 'FitRes', [['run', 'iso'],
+                            [runselect, isoSelect]], caller_name=__name__)[0]
+        if r:
+            try:
+                for e in sorted(ast.literal_eval(r[0]).keys()):
+                    self.parameter.addItem(e)
+            except Exception as e:
+                print(e)
 
     def loadFiles(self):
         self.fileList.clear()
         try:
-            con = sqlite3.connect(self.dbpath)
-            cur = con.cursor()
-
             self.iso = self.isoSelect.currentText()
             self.run = self.runSelect.currentText()
             self.par = self.parameter.currentText()
-
             # self.files = Analyzer.getFiles(self.iso, self.run, self.dbpath)
             self.vals, self.errs, self.dates, self.files = Analyzer.extract(
                 self.iso, self.par, self.run, self.dbpath, prin=False)
-
             # check if a config exists and if so check only the files within this config
-            cur.execute(
-                '''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ?''',
-                (self.iso, self.par, self.run))
-            r = cur.fetchall()
-            con.close()
-
+            r = TiTs.select_from_db(self.dbpath, 'config, statErrForm, systErrForm', 'Combined',
+                                [['iso', 'parname', 'run'], [self.iso, self.par, self.run]], caller_name=__name__)
             select = [True] * len(self.files)
-
-            if len(r) > 0:
+            if r:
                 cfg = ast.literal_eval(r[0][0])
                 for i, f in enumerate(self.files):
-                    if cfg == []:
+                    if not cfg:
                         select[i] = True
                     elif f not in cfg:
                         select[i] = False
@@ -111,8 +102,6 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
                 self.fileList.addItem(w)
 
             self.fileList.blockSignals(False)
-
-            self.recalc()
         except Exception as e:
             print('error while loading files: %s' % e)
 

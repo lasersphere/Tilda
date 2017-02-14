@@ -25,7 +25,6 @@ class CrawlerUi(QtWidgets.QWidget, Ui_Crawler):
         self.pushButton_save_sql.clicked.connect(self.save_sql_cmd)
         self.pushButton_load_sql.clicked.connect(self.load_sql_cmd)
 
-        
         self.dbpath = None
         
         self.show()
