@@ -105,7 +105,8 @@ def xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackdict):
     return rootEle
 
 
-def xmlAddCompleteTrack(rootEle, scanDict, data, track_name, datatype='scalerArray', parent_ele_str='data'):
+def xmlAddCompleteTrack(rootEle, scanDict, data, track_name, datatype='scalerArray',
+                        parent_ele_str='data', data_explanation_str=''):
     """
     Add a complete Track to an lxml root element
     :param rootEle: lxml.etree.Element, Element of loaded File
@@ -116,20 +117,52 @@ def xmlAddCompleteTrack(rootEle, scanDict, data, track_name, datatype='scalerArr
     :param parent_ele_str: str, name of the subelement taht will be created/found in the selected track
     :return: rootEle
     """
-    # datatype = scanDict['isotopeData']['type']
+    # seq_type = scanDict.get('isotopeData', {}).get('type', 'cs')
     # pipeInternalsDict = scanDict['pipeInternals']
     nOfTrack = int(track_name[5:])
     trackDict = scanDict[track_name]
-    # this should be already included before:
-    # trackDict.update(dacStartVoltage=get_voltage_from_18bit(trackDict['dacStartRegister18Bit']))
-    # trackDict.update(dacStepsizeVoltage=VCon.get_stepsize_in_volt_from_18bit(trackDict['dacStepSize18Bit']))
-    # trackDict.update(dacStopVoltage=get_voltage_from_18bit(
-    #     VCon.calc_dac_stop_18bit(trackDict['dacStartRegister18Bit'],
-    #                              trackDict['dacStepSize18Bit'],
-    #                              trackDict['nOfSteps'])))
+    # write header
     xmlWriteTrackDictToHeader(rootEle, nOfTrack, trackDict)
+    # write explanation of data
+    if data_explanation_str == '':
+        data_explanation_str = get_data_explanation_str(scanDict, datatype)
+    if data_explanation_str:
+        xmlWriteToTrack(rootEle, nOfTrack, datatype + '_explanation', data_explanation_str, parent_ele_str)
+    # write the data
     xmlWriteToTrack(rootEle, nOfTrack, datatype, data, parent_ele_str)
     return rootEle
+
+
+def get_data_explanation_str(scan_dict, datatype):
+    """ use this to stroe an explanation of the dataformat within the same xml file. """
+    seq_type = scan_dict.get('isotopeData', {}).get('type', 'cs')
+    data_explanation = ''
+    if seq_type in ['cs', 'csdummy']:  # not time resolved
+        data_explanation = 'continously acquired data.' \
+                           ' List of Lists, each list represents the counts of one' \
+                           ' scaler as listed in activePmtList.' \
+                           'Dimensions are: (len(activePmtList), nOfSteps), datatype: np.int32'
+    elif seq_type in ['trs', 'trsdummy', 'tipa']:  # time resolved
+        if 'voltage_projection' in datatype:
+            data_explanation = datatype + ' of the time resolved data.' \
+                                          ' List of Lists, each list represents the counts of one' \
+                                          ' scaler as listed in activePmtList.' \
+                                          'Dimensions are: (len(activePmtList), nOfSteps), datatype: np.int32'
+        elif 'time_projection' in datatype:
+            data_explanation = datatype + ' of the time resolved data.' \
+                                          ' List of Lists, each list represents the counts of one' \
+                                          ' scaler as listed in activePmtList.' \
+                                          'Dimensions are: (len(activePmtList), nOfBins), datatype: np.int32'
+        else:
+            data_explanation = 'time resolved data. List of tuples, each tuple consists of: \n' \
+                               '(scaler_number, line_voltage_step_number, time_stamp, number_of_counts),' \
+                               ' datatype: np.int32'
+    elif seq_type in ['kepco']:  # kepco scan
+        data_explanation = 'kepco scan data. ' \
+                           ' List of Lists, each list holds the readings of one' \
+                           ' multimeter as listed in measureVoltPars.' \
+                           'Dimensions are: (len(activePmtList), nOfSteps), datatype: np.float'
+    return data_explanation
 
 
 def xml_create_autostart_root(version):
