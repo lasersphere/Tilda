@@ -149,7 +149,8 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
                 cmd_list[0] = cmd_dict.get(cmd_list[0], -1)
                 for i in range(1, 4):
                     cmd_list[i] = ast.literal_eval(cmd_list[i])
-                cmd_list[1] = cmd_list[1] * ticks_per_us
+                if cmd_list[0] == cmd_dict['$time']:  # only multiply when it is a time cmd
+                    cmd_list[1] = cmd_list[1] * ticks_per_us
                 cmd_list = np.asarray(cmd_list, dtype=np.int32)
                 return cmd_list
             except Exception as e:

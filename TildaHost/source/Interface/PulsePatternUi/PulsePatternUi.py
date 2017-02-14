@@ -7,10 +7,10 @@ Created on '16.01.2017'
 """
 
 import ast
+import functools
 import os
 import sys
 from copy import deepcopy
-import functools
 
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui
@@ -181,7 +181,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                 cmd_list[0] = cmd_dict.get(cmd_list[0], -1)
                 for i in range(1, 4):
                     cmd_list[i] = ast.literal_eval(cmd_list[i])
-                if cmd_list[0] == 3:  # $time
+                if cmd_list[0] == cmd_dict['$time']:  # $time
                     cmd_list[1] = cmd_list[1] * ticks_per_us
                 cmd_list = np.asarray(cmd_list, dtype=np.int32)
                 return cmd_list
