@@ -140,7 +140,7 @@ def combineRes(iso, par, run, db, weighted=True, print_extracted=True,
             WHERE iso = ? AND parname = ? AND run = ?''', (avg, statErr, systErr, rChi, iso, par, run))
         con.commit()
     con.close()
-    plt.clear()  # TODO necessary call??
+    plt.clear()
     combined_plots_dir = os.path.join(os.path.split(db)[0], 'combined_plots')
     if not os.path.exists(combined_plots_dir):
         os.mkdir(combined_plots_dir)

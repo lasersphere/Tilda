@@ -9,7 +9,7 @@ Created on '23.09.2015'
 File for global Configs of Tilda
 """
 
-version = '1.14'
+version = '1.14'  # TODO change before next release!
 versiondate = '21.11.2016'
 _main_instance = None
 # _main_instance is a global variable to store the main instance and make it accessible from everywhere.
