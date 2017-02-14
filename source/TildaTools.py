@@ -18,6 +18,41 @@ import Physics
 from XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, xmlAddCompleteTrack
 
 
+def select_from_db(db, vars_select, var_from, var_where=[], addCond='', caller_name='unknown'):
+    '''connects to database and finds attributes vars_select (string) in table var_from (string)
+    with the extra condition
+    varwhere[0][i] == varwhere[1][i] (so varwhere = [list, list] is a list...)
+    '''
+    sql_cmd = ''
+    try:
+        con = sqlite3.connect(db)
+        cur = con.cursor()
+        if var_where:
+            where = var_where[0][0] + ' = ?'
+            list_where_is = [var_where[1][0]]
+            var_where[0].remove(var_where[0][0])
+            var_where[1].remove(var_where[1][0])
+            for i, j in enumerate(var_where[0]):
+                where = where + ' and ' + j + ' = ?'
+                list_where_is.append(var_where[1][i])
+            sql_cmd = str('''SELECT %s FROM %s WHERE %s %s''' % (vars_select, var_from, where, addCond))
+            cur.execute(sql_cmd, tuple(list_where_is))
+        else:
+            sql_cmd = str('''SELECT %s FROM %s %s''' % (vars_select, var_from, addCond))
+            cur.execute(sql_cmd, ())
+        var = cur.fetchall()
+        if var:
+            return var
+        else:
+            print('error, in caller %s:' % caller_name, 'There is no db entry in ', var_from, ' with ', vars_select,
+                  ' where ', var_where)
+            return None
+    except Exception as e:
+        print('error in database access while trying to execute:\n', sql_cmd, '\n', e)
+        return None
+    finally:
+        con.close()
+
 def merge_dicts(d1, d2):
     """ given two dicts, merge them into a new dict as a shallow copy """
     new = d1.copy()

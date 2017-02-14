@@ -18,6 +18,7 @@ from DBIsotope import DBIsotope
 from SPFitter import SPFitter
 from Spectra.FullSpec import FullSpec
 from Spectra.Straight import Straight
+import TildaTools as TiTs
 
 
 class InteractiveFit(object):
@@ -27,27 +28,24 @@ class InteractiveFit(object):
         self.fontSize =fontSize
         plot.ion()
         plot.clear()
-        con = sqlite3.connect(db)
-        cur = con.cursor()
         print('Starting InteractiveFit.')
-        cur.execute('''SELECT filePath FROM Files WHERE file = ?''', (file,))
-        
-        try:
-            path = os.path.join(os.path.dirname(db), cur.fetchall()[0][0])
-        except:
-            raise Exception(str(file) + " not found in DB")
+        var = TiTs.select_from_db(db, 'filePath', 'Files', [['file'], [file]], caller_name=__name__)
+        if var:
+            path = os.path.join(os.path.dirname(db), var[0][0])
+        else:
+            print(str(file) + " not found in DB")
         
         print('Loading file', path)
         
-        cur.execute('''SELECT isoVar, lineVar, scaler, track FROM Runs WHERE run = ?''', (run,))
-        var = cur.fetchall()[0]
-        st = (ast.literal_eval(var[2]), ast.literal_eval(var[3]))
-        linevar = var[1]
-
+        var = TiTs.select_from_db(db, 'isoVar, lineVar, scaler, track', 'Runs', [['run'], [run]], caller_name=__name__)
+        if var:
+            st = (ast.literal_eval(var[0][2]), ast.literal_eval(var[0][3]))
+            linevar = var[0][1]
+        else:
+            print('Run cannot be selected!')
         if softw_gates_trs is None:  # if no software gates provided check db
             try:  # check if there are software gates available in database
-                cur.execute('''SELECT softwGates FROM Runs WHERE run = ?''', (run,))
-                soft_var = cur.fetchall()[0]
+                soft_var = TiTs.select_from_db(db, 'softwGates', 'Runs', [['run'], [run]], caller_name=__name__)[0]
                 softw_gates_trs_db = ast.literal_eval(soft_var[0])
                 if isinstance(softw_gates_trs_db, list):
                     softw_gates_trs = softw_gates_trs_db
@@ -67,8 +65,8 @@ class InteractiveFit(object):
                     spec.evaluate(meas.x[0][-1], (0, 1))
                 else:
                     iso = DBIsotope(db, meas.type, lineVar=linevar)
-                    if var[0] == '_m':
-                        iso_m = DBIsotope(db, meas.type, var[0], var[1])
+                    if var[0][0] == '_m':
+                        iso_m = DBIsotope(db, meas.type, var[0][0], var[0][1])
                         spec = FullSpec(iso, iso_m)
                         spec_iso = FullSpec(iso)
                         spec_m = FullSpec(iso_m)
@@ -84,8 +82,8 @@ class InteractiveFit(object):
                         plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
             except:
                 iso = DBIsotope(db, meas.type, lineVar=linevar)
-                if var[0] == '_m':
-                    iso_m = DBIsotope(db, meas.type, var[0], var[1])
+                if var[0][0] == '_m':
+                    iso_m = DBIsotope(db, meas.type, var[0][0], var[0][1])
                     spec = FullSpec(iso, iso_m)
                     spec_iso = FullSpec(iso)
                     spec_m = FullSpec(iso_m)
@@ -133,9 +131,11 @@ class InteractiveFit(object):
         if self.fitter_m is not None:
             self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
             self.fitter_m.par = pars[0:3] + pars[len(self.fitter_iso.par):]
-            plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False, fontsize_ticks=self.fontSize)
+            plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False, fontsize_ticks=self.fontSize)
             plot.plotFit(self.fitter_m, color='-g', plot_residuals=False, fontsize_ticks=self.fontSize)
-        plot.plotFit(self.fitter)
+            plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize)
+        else:
+            plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
         plot.show()
         
     def setPar(self, i, par):
@@ -145,9 +145,11 @@ class InteractiveFit(object):
         if self.fitter_m is not None:
             self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
             self.fitter_m.par = pars[0:3] + pars[len(self.fitter_iso.par):]
-            plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False, fontsize_ticks=self.fontSize)
+            plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False, fontsize_ticks=self.fontSize)
             plot.plotFit(self.fitter_m, color='-g', plot_residuals=False, fontsize_ticks=self.fontSize)
-        plot.plotFit(self.fitter)
+            plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize)
+        else:
+            plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
         plot.show()
         
     def setFix(self, i, val):
@@ -160,8 +162,10 @@ class InteractiveFit(object):
         if self.fitter_m is not None:
             self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
             self.fitter_m.par = pars[0:3] + pars[len(self.fitter_iso.par):]
-            plot.plotFit(self.fitter_iso, color='-b', plot_residuals=False, fontsize_ticks=self.fontSize)
+            plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False, fontsize_ticks=self.fontSize)
             plot.plotFit(self.fitter_m, color='-g', plot_residuals=False, fontsize_ticks=self.fontSize)
-        plot.plotFit(self.fitter)
+            plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize)
+        else:
+            plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
         plot.show()
     

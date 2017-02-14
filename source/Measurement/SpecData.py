@@ -67,8 +67,7 @@ class SpecData(object):
                 flatx, c, e = self.getSingleSpec(abs(s), track_index)
                 for i, j in enumerate(flatc):
                     flatc[i] = j + np.copysign(1, s) * c[i]
-                    flate[i] = flate[i] + np.square(e[i])
-                flate = np.sqrt(flate)
+                flate = np.sqrt(flatc)
             else:
                 pass
         return (flatx, flatc, flate)

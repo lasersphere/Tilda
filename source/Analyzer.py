@@ -15,6 +15,7 @@ import numpy as np
 
 import MPLPlotter as plt
 import Physics
+import TildaTools as TiTs
 
 
 def getFiles(iso, run, db):
@@ -30,39 +31,34 @@ def getFiles(iso, run, db):
 def extract(iso, par, run, db, fileList=[], prin=True):
     '''Return a list of values of par of iso, filtered by files in fileList'''
     print('Extracting', iso, par, )
-    con = sqlite3.connect(db)
-    cur = con.cursor()
-    
-    cur.execute('''SELECT file, pars FROM FitRes WHERE iso = ? AND run = ? ORDER BY file''', (iso, run))
-    fits = cur.fetchall()
-    if fileList:
-        fits = [f for f in fits if f[0] in fileList]
-    fitres = [eval(f[1]) for f in fits]
-    files = [f[0] for f in fits]
-    vals = [f[par][0] for f in fitres]
-    errs = [f[par][1] for f in fitres]
-    date_list = []
+    fits = TiTs.select_from_db(db, 'file, pars', 'FitRes', [['iso', 'run'], [iso, run]], 'ORDER BY file',
+                                                             caller_name=__name__)
+    if fits:
+        if fileList:
+            fits = [f for f in fits if f[0] in fileList]
+        fitres = [eval(f[1]) for f in fits]
+        files = [f[0] for f in fits]
+        vals = [f[par][0] for f in fitres]
+        errs = [f[par][1] for f in fitres]
+        date_list = []
+        for f, v in zip(files, vals):
+            e = TiTs.select_from_db(db, 'date', 'Files', [['file'], [f]], caller_name=__name__)
+            if not len(e):  # check if maybe everything is written non capital
+                f = os.path.normcase(f)
+                e = TiTs.select_from_db(db, 'date', 'Files', [['file'], [f]], caller_name=__name__)
+            date = e[0][0]
+            if date is not None:
+                date_list.append(date)
+            if prin:
+                print(date, '\t', f, '\t', v, '\t', e)
 
-    for f, v, e in zip(files, vals, errs):
-        cur.execute('''SELECT date FROM Files WHERE file = ?''', (f,))
-        e = cur.fetchall()
-        if not len(e):  # check if maybe everything is written non capital
-            f = os.path.normcase(f)
-            cur.execute('''SELECT date FROM Files WHERE file = ?''', (f,))
-            e = cur.fetchall()
-        date = e[0][0]
-        if date is not None:
-            date_list.append(date)
-        if prin:
-            print(date, '\t', f, '\t', v, '\t', e)
-
-    for f in fileList:
-        if f not in files:
-            print('Warning:', f, 'not found!')
-    # for i in dates:
-    #     print(i[0], '\t', i[1])
-    con.close()
-    return vals, errs, date_list, files
+        if fileList:
+            for f in fileList:
+                if f not in files:
+                    print('Warning:', f, 'not found!')
+        return vals, errs, date_list, files
+    else:
+        return None, None, None, None
     
     
 def weightedAverage(vals, errs):
@@ -94,8 +90,10 @@ def average(vals, errs):
     return (average, errorprop, rChi)
 
 
-def combineRes(iso, par, run, db, weighted = True, print_extracted=True, show_plot=False):
-    '''Calculate weighted average of par using the configuration specified in the db
+def combineRes(iso, par, run, db, weighted=True, print_extracted=True,
+               show_plot=False, only_this_files=[], write_to_db=True):
+    '''
+    Calculate weighted average of par using the configuration specified in the db
     :rtype : object
     '''
     print('Open DB', db)
@@ -105,14 +103,18 @@ def combineRes(iso, par, run, db, weighted = True, print_extracted=True, show_pl
     
     cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', (iso, par, run))
     con.commit()
-    
-    cur.execute('''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ?''', (iso, par, run))
-    (config, statErrForm, systErrForm) = cur.fetchall()[0]
+    (config, statErrForm, systErrForm) = TiTs.select_from_db(db, 'config, statErrForm, systErrForm', 'Combined',
+                                                             [['iso', 'parname', 'run'], [iso, par, run]],
+                                                             caller_name=__name__)[0]
+    con.close()
     config = ast.literal_eval(config)
-    
+
+    if len(only_this_files):
+        config = only_this_files
+
     print('Combining', iso, par)
     vals, errs, date, files = extract(iso, par, run, db, config, prin=print_extracted)
-    
+
     if weighted:
         avg, err, rChi = weightedAverage(vals, errs)
     else:
@@ -128,46 +130,49 @@ def combineRes(iso, par, run, db, weighted = True, print_extracted=True, show_pl
     print('Systematic error formula:', systErrForm)
     print('Combined to', iso, par, '=')
     print(str(avg) + '(' + str(statErr) + ')[' + str(systErr) + ']')
-    
-    cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
-        WHERE iso = ? AND parname = ? AND run = ?''', (avg, statErr, systErr, rChi, iso, par, run))
-
-    con.commit()
-    con.close()
-    plt.clear()
+    if write_to_db:
+        con = sqlite3.connect(db)
+        cur = con.cursor()
+        cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
+            WHERE iso = ? AND parname = ? AND run = ?''', (avg, statErr, systErr, rChi, iso, par, run))
+        con.commit()
+        con.close()
+    plt.clear()  # TODO necessary call??
     combined_plots_dir = os.path.join(os.path.split(db)[0], 'combined_plots')
+    if not os.path.exists(combined_plots_dir):
+        os.mkdir(combined_plots_dir)
     avg_fig_name = os.path.join(combined_plots_dir, iso + '_' + run + '_' + par + '.png')
     plotdata = (date, vals, errs, avg, statErr, systErr, ('k.', 'r'),
                 False, avg_fig_name, '%s_%s_%s [MHz]' % (iso, par, run))
-    plt.plotAverage(*plotdata)
+    ax = plt.plotAverage(*plotdata)
     print('saving average plot to: ', avg_fig_name)
     plt.save(avg_fig_name)
     if show_plot:
         plt.show(True)
-    plt.clear()
+    else:
+        plt.clear()
 
     print('date \t file \t val \t err')
     for i, dt in enumerate(date):
         print(dt, '\t', files[i], '\t', vals[i], '\t', errs[i])
 
-    return (avg, statErr, systErr, plotdata)
+    return avg, statErr, systErr, rChi, plotdata, ax
 
 
 def combineShift(iso, run, db, show_plot=False):
     '''takes an Isotope a run and a database and gives the isotopeshift to the reference!'''
     print('Open DB', db)
     
-    con = sqlite3.connect(db)
-    cur = con.cursor()
-    
-    cur.execute('''SELECT config, statErrForm, systErrForm FROM Combined WHERE iso = ? AND parname = ? AND run = ?''', (iso, 'shift', run))
-    (config, statErrForm, systErrForm) = cur.fetchall()[0]
+    (config, statErrForm, systErrForm) = TiTs.select_from_db(db, 'config, statErrForm, systErrForm', 'Combined',
+                                                             [['iso', 'parname', 'run'], [iso, par, run]],
+                                                             caller_name=__name__)[0]
     '''config needs to have this shape: [(['dataREF1.*','dataREF2.*',...],['dataINTERESTING1.*','dataINT2.*',...],['dataREF4.*',...]), ([...],[...],[...]), ...]'''
     config = ast.literal_eval(config)
     print('Combining', iso, 'shift')
-    
-    cur.execute('''SELECT Lines.reference, lines.refRun FROM Runs JOIN Lines ON Runs.lineVar = Lines.lineVar WHERE Runs.run = ?''', (run,))
-    (ref, refRun) = cur.fetchall()[0]
+
+    (ref, refRun) = TiTs.select_from_db(db, 'Lines.reference, lines.refRun',
+                                        'Runs JOIN Lines ON Runs.lineVar = Lines.lineVar', [['Runs.run'], [run]],
+                                                             caller_name=__name__)[0]
     #each block is used to measure the isotope shift once
     shifts = []
     shiftErrors = []
@@ -210,7 +215,8 @@ def combineShift(iso, run, db, show_plot=False):
     
     statErr = eval(statErrForm)
     systErr = eval(systErrForm)
-    
+    con = sqlite3.connect(db)
+    cur = con.cursor()
     cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
         WHERE iso = ? AND parname = ? AND run = ?''', (val, statErr, systErr, rChi, iso, 'shift', run))
     con.commit()
@@ -316,6 +322,6 @@ def avgErr(iso, db, avg, par, accVolt_d, offset_d, syst=0):
     distance = distance/Physics.diffDoppler(nu0, accVolt, mass)
     print('voltage between left and right edge:', distance)
     fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
-    return np.sqrt(np.square(fac*(np.absolute(0.5*(distance/accVolt)*(accVolt_d))+np.absolute(distance*offset_d/accVolt)
-                                  +np.absolute(mass_d/mass)))+ np.square(syst))/cF_dist
+    return np.sqrt(np.square(fac*(np.absolute(0.5*(distance/accVolt)*accVolt_d)+np.absolute(distance*offset_d/accVolt)
+                                  + np.absolute(mass_d/mass))) + np.square(syst))/cF_dist
                                   #The uncertainty on the A- & B-Factors needs to be scaled down again

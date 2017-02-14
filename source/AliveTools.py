@@ -11,10 +11,66 @@ import os
 import sqlite3
 from copy import deepcopy
 import Physics
-
+import datetime
 import numpy as np
 
 
+def get_listAll_from_db(dbpath):
+    """
+    this will connect to the database and read all times, numbers and isotopes. Returns a list with all filenames and a
+    list with the filenames of only HV measurements. Both list are sorted by time
+    :param dbpath: str, path to .slite db
+    :return: listAll(time, number, isotope, filename), listHV(time, number, isotope, filename)
+    """
+    con = sqlite3.connect(dbpath)
+    cur = con.cursor()
+    cur.execute('''SELECT file, type FROM Files''')
+    list = cur.fetchall()
+    listAll=[]
+
+    for file in list:
+        chosenFiles=file[0]
+        ind=chosenFiles.find('_')
+        nameNumberString=chosenFiles[ind+10:]
+        ind=nameNumberString.find('_')
+        nameNumber=int(nameNumberString[:ind])
+        dateTime=chosenFiles[:19]
+        listAll=listAll+[{'date':dateTime,'number':nameNumber,'type':file[1],'filename':file[0]}]
+
+    listAll.sort(key=lambda x: datetime.datetime.strptime(x['date'], '%Y-%m-%d_%H-%M-%S'))
+
+    listHV=[]
+    for file in listAll:
+        if 'ref' not in file['type']:
+            listHV=listHV+[file]
+
+    lists=[listAll, listHV]
+    return lists
+
+
+
+def find_ref_files(file,all_Files):
+    """
+    this will search for the previous and the next reference measurement for a given HV measurement file
+    :param file: HV measurement file, all_Files: dictionary of all files
+    :return: ref_Files
+    """
+    i=0
+    j=0
+    ref_Files=[]
+    for element in all_Files:
+        if element == file:
+            i=1
+
+        if 'ref' in element['type']:
+            if i==0:
+                ref_Files = [element]
+            if i==1:
+                if j==0:
+                    ref_Files = ref_Files+[element]
+                    j=1
+
+    return (ref_Files)
 
 
 
@@ -127,9 +183,9 @@ def get_accVolt_from_db(dbpath, chosenFiles):
         return 0.0
 
 
-def get_nameNumber(chosenFiles):
+def get_nameNumber_and_time(chosenFiles):
     """
-    this will read the nameNumber for the chosenFiles
+    this will read the nameNumber and time for the chosenFiles
     :param dbpath: str, path to .slite db
     :param chosenFiles: str, name of files
     :return: int, nameNumber
@@ -140,8 +196,15 @@ def get_nameNumber(chosenFiles):
         nameNumberString=chosenFiles[ind+10:]
         ind=nameNumberString.find('_')
         nameNumber=int(nameNumberString[:ind])
+        date=chosenFiles[:10]
+        date=date.replace('-','.')
+        time=chosenFiles[11:19]
+        time=time.replace('-',':')
+        dateTime=date+' '+time
 
-        return nameNumber
+        numberAndTime=[nameNumber,dateTime]
+
+        return numberAndTime
     else:
         return 0.0
 
@@ -217,7 +280,7 @@ def get_center_from_db(dbpath, chosenFiles):
         return 0.0
 
 
-def calculateVoltage(dbpath, chosenFiles, run):
+def transformFreqToVolt(dbpath, chosenFiles, run, center):
     """
     this will calculate the applied HV between ion source and optical detection region minus the Kepco voltage from the Doppler shift
     :param dbpath: str, path to .slite db
@@ -232,14 +295,14 @@ def calculateVoltage(dbpath, chosenFiles, run):
         atomicMassUnit = Physics.u
         fL = get_laserFreq_from_db(dbpath, chosenFiles)
 
-        center = get_center_from_db(dbpath, chosenFiles)
+
         mass = get_mass_from_db(dbpath, chosenFiles)[0] * atomicMassUnit
         accVolt = get_accVolt_from_db(dbpath, chosenFiles)
         offsetVolt = get_offsetVolt_from_db(dbpath, chosenFiles)
         f0 = get_transitionFreq_from_db(dbpath, chosenFiles, run)
 
         # Calculation of Kepco Voltage
-        v = Physics.invRelDoppler(fL, f0 + center[0])
+        v = Physics.invRelDoppler(fL, f0 + center)
         voltTotal = mass * speedOfLight ** 2 * ((1 - (v / speedOfLight) ** 2) ** (-1 / 2) - 1) / electronCharge
         voltKepco = voltTotal - abs(accVolt) - abs(offsetVolt)
         # Calculation of total voltage
@@ -252,3 +315,36 @@ def calculateVoltage(dbpath, chosenFiles, run):
         return volt_Laser
     else:
         return 0.0
+
+def calculateVoltage(dbpath, chosenFiles, run):
+    """
+    this will calculate the applied HV between ion source and optical detection region minus the Kepco voltage from the Doppler shift
+    :param dbpath: str, path to .slite db
+    :param chosenFiles: str, name of files
+    :param run: str, name of run
+    :return: float, volt_Laser
+    """
+    center = get_center_from_db(dbpath, chosenFiles)
+
+    volt_Laser=transformFreqToVolt(dbpath, chosenFiles, run, center[0])
+    volt_Laser_max=transformFreqToVolt(dbpath, chosenFiles, run, center[0]-center[1])
+    volt_Laser_min=transformFreqToVolt(dbpath, chosenFiles, run, center[0]+center[1])
+
+    voltages=[volt_Laser,volt_Laser_max,volt_Laser_min]
+
+    return voltages
+
+def changeListFormat(list):
+        list1=[]
+        list2=[]
+
+        for data in list:
+            if len(data)==2:
+                list1=list1+[data[0]]
+                list2=list2+[data[1]]
+            if len(data)==1:
+                list1=list1+[data[0]]
+                list2=list2+[]
+        plotdata=[list1,list2]
+
+        return plotdata

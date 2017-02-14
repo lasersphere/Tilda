@@ -6,6 +6,7 @@ Created on 02.05.2014
 
 import numpy as np
 from scipy.optimize import curve_fit
+from scipy import version
 
 class SPFitter(object):
     '''This class encapsulates the scipi.optimize.curve_fit routine'''
@@ -41,8 +42,33 @@ class SPFitter(object):
         print("Starting fit")
         self.oldpar = list(self.par)
         
-        truncp = [p for p, f in zip(self.par, self.fix) if f == False]
-        popt, self.pcov = curve_fit(self.evaluateE, self.data[0], self.data[1], truncp, self.data[2], False)
+        truncp = [p for p, f in zip(self.par, self.fix) if not f]
+        boundl = ()
+        boundu = ()
+        for i in range(len(self.par)):
+            print(self.par[i])
+            if not self.fix[i]:
+                if self.npar[i][:3] == 'Int':
+                    if self.par[i] > 0:
+                        boundl += 0,
+                        boundu += +np.inf,
+                    else:
+                        boundl += -np.inf,
+                        boundu += 0,
+                elif self.npar[i] == 'sigma' or self.npar[i] == 'gamma':
+                    boundl += 0,
+                    boundu += +np.inf,
+                else:
+                    boundl += -np.inf,
+                    boundu += +np.inf,
+        bounds = (boundl, boundu)
+        scipy_version = int(version.version.split('.')[1])
+        if scipy_version >= 17:
+            popt, self.pcov = curve_fit(self.evaluateE, self.data[0], self.data[1],
+                                        truncp, self.data[2], False, bounds=bounds)
+        else:  # bounds not included before version 0.17.0
+            popt, self.pcov = curve_fit(self.evaluateE, self.data[0], self.data[1],
+                                        truncp, self.data[2], False)
         self.untrunc(popt)
         
         self.rchi = self.calcRchi()

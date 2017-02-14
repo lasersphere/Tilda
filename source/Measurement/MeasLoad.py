@@ -11,6 +11,7 @@ from Measurement.KepcoImporterTLD import KepcoImporterTLD
 from Measurement.MCPImporter import MCPImporter
 from Measurement.TLDImporter import TLDImporter
 from Measurement.XMLImporter import XMLImporter
+from Measurement.BeaImporter import BeaImporter
 
 
 def load(file, db, raw=False, x_as_voltage=True, softw_gates=None):
@@ -44,9 +45,16 @@ def load(file, db, raw=False, x_as_voltage=True, softw_gates=None):
         if not raw:
             f.preProc(db)
         return f
+
+    elif e == '.bea':
+        f = BeaImporter(file,0,761360000,True)
+        if not raw:
+            f.preProc(db)
+        return f
     else:
         return None
 
 
+
 def check(end):
-    return end in ['.txt', '.tld', '.xml', '.mcp', '.dat']
+    return end in ['.txt', '.tld', '.xml', '.mcp', '.dat', '.bea']

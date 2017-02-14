@@ -1,1 +1,0 @@
-UPDATE Files Set type="40_Ca", offset=0, accVolt=0, laserFreq=0, colDirTrue=1, voltDivRatio="{'accVolt': 1, 'offset': 1}", lineMult=1, lineOffset=0
