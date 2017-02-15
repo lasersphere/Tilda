@@ -69,7 +69,7 @@ class SpecData(object):
                 flate = flate + np.square(e)
             else:
                 pass
-            flate = np.sqrt(flate)
+        flate = np.sqrt(flate)
         return (flatx, flatc, flate)
         
     def getNrSteps(self, track):
