@@ -154,8 +154,47 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
     for t in tracks:
         trackd[str(t.tag)] = (xml_get_dict_from_ele(xml_etree)[1]['tracks'][str(t.tag)]['header'])
     for key, val in trackd.items():
-        trackd[key] = eval_str_vals_in_dict(trackd[key])
+        trackd[key] = evaluate_strings_in_dict(trackd[key])
     return trackd
+
+
+def get_meas_volt_dict(xml_etree):
+    """ get the dictionary containing all the voltage measurement parameters
+     from an xml_etree element loaded from an xml file. """
+    meas_volt_pars_dict = xml_get_dict_from_ele(xml_etree)[1].get('measureVoltPars', {})
+    evaluate_strings_in_dict(meas_volt_pars_dict)
+    for key, val in meas_volt_pars_dict.items():
+        print(val)
+        if val['dmms'] is None:
+            meas_volt_pars_dict[key]['dmms'] = {}
+    return meas_volt_pars_dict
+
+
+def evaluate_strings_in_dict(dict_to_convert):
+    """
+    function which will convert all values inside a dict using ast.literal_eval -> '1.0' -> 1.0 etc..
+    works also for nested dicts
+    """
+    for key, val in dict_to_convert.items():
+        if isinstance(val, str):
+            try:
+                dict_to_convert[key] = ast.literal_eval(val)
+            except Exception as e:
+                if '{' in val:
+                    # needed for data of version 1.08
+                    val = val.replace('\\', '\'').replace('TriggerTypes.', '').replace('<', '\'').replace('>', '\'')
+                    val = ast.literal_eval(val)
+                if key == 'trigger':
+                    val['type'] = val['type'].replace('TriggerTypes.', '')
+                else:
+                    # print('error while converting val with ast.literal_eval: ', e, val, type(val), key)
+                    # if it cannot be converted it is propably a string anyhow.
+                    # print('error: %s could not convert key: %s val: %s' % (e, key, val))
+                    pass
+
+        if isinstance(dict_to_convert[key], dict):
+            dict_to_convert[key] = evaluate_strings_in_dict(dict_to_convert[key])
+    return dict_to_convert
 
 
 def xml_get_data_from_track(
@@ -203,7 +242,8 @@ def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
     scan_dict['pipeInternals']['curVoltInd'] = 0
     scan_dict['pipeInternals']['activeTrackNumber'] = 'None'
     scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
-    scan_dict['measureVoltPars'] = xml_get_dict_from_ele(xml_etree)[1].get('measureVoltPars', {})
+    scan_dict['measureVoltPars'] = get_meas_volt_dict(xml_etree)
+    # watchout, since trigger type is only imported as string...
     return scan_dict, xml_etree
 
 
@@ -391,14 +431,14 @@ def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
     return x_arr
 
 
-def create_t_axis_from_file_dict(scan_dict, with_delay=False, bin_width=10, in_mu_s=True):
+def create_t_axis_from_file_dict(scan_dict, with_delay=True, bin_width=10, in_mu_s=True):
     """
     will create a time axis for all tracks, resolution is 10ns.
     """
     t_arr = []
     for tr_ind, tr_name in enumerate(get_track_names(scan_dict)):
         if with_delay:
-            delay = scan_dict[tr_name]['trigger'].get('trigDelay10ns', 0)
+            delay = scan_dict[tr_name]['trigger'].get('trigDelay10ns', 0) * bin_width
         else:
             delay = 0
         nofbins = scan_dict[tr_name]['nOfBins']
@@ -576,7 +616,8 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
             'nOfBunches': 1,
             'softwGates': check_if_attr_exists(
                 specdata, 'softw_gates', [[] * specdata.nrScalers[tr_ind]] * specdata.nrTracks)[tr_ind],
-            'trigger': {'type': 'no_trigger'}
+            'trigger': {'type': 'no_trigger'},
+            'pulsePattern': {'cmdList': [], 'periodicList': [], 'simpleDict': {}}
         }
     draftMeasureVoltPars_singl = {'measVoltPulseLength25ns': -1, 'measVoltTimeout10ns': -1,
                                   'dmms': {}, 'switchBoxSettleTimeS': -1}
@@ -669,6 +710,7 @@ def save_spec_data(spec_data, scan_dict):
     :return:
     """
     try:
+        scan_dict = deepcopy(scan_dict)
         try:
             time_res = len(spec_data.time_res) # if there are any values in here, it is a time resolved measurement
         except Exception as e:
@@ -678,6 +720,8 @@ def save_spec_data(spec_data, scan_dict):
         track_nums, track_num_lis = get_number_of_tracks_in_scan_dict(scan_dict)
         for track_ind, tr_num in enumerate(track_num_lis):
             track_name = 'track' + str(tr_num)
+            # only save name of trigger
+            scan_dict[track_name]['trigger']['type'] = scan_dict[track_name]['trigger']['type'].name
             if time_res:
                 scan_dict[track_name]['softwGates'] = spec_data.softw_gates[track_ind]
                 xmlAddCompleteTrack(root_ele, scan_dict, spec_data.time_res_zf[track_ind], track_name)

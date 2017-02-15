@@ -184,18 +184,47 @@ def create_roi(pos, size):
     return roi
 
 
-def create_infinite_line(pos, angle=90, pen=0.5):
-    inf_line = pg.InfiniteLine(pos, angle=angle, pen=pen)
+def create_infinite_line(pos, angle=90, pen=0.5, movable=False):
+    inf_line = pg.InfiniteLine(pos, angle=angle, pen=pen, movable=movable)
     return inf_line
 
 
 def create_text_item(text="", color=(200, 200, 200), html=None, anchor=(0, 0)):
     return pg.TextItem(text=text, color=color, html=html, anchor=anchor)
 
+
 def start_examples():
     import pyqtgraph.examples
     pyqtgraph.examples.run()
 
+
+def create_roi_polyline(positions, closed=False, pos=None, **args):
+    return MyPolyLineRoi(positions, closed, pos, **args)
+
+
+def create_pen(*args, **kargs):
+    return pg.mkPen(*args, **kargs)
+
+
+class MyPolyLineRoi(pg.PolyLineROI):
+    """ subclassing the PolyLineROI and overwrites the checkPointMove to always return False """
+    def __init__(self, positions, closed, pos, **args):
+        super(MyPolyLineRoi, self).__init__(positions, closed, pos, **args)
+
+    def checkPointMove(self, handles, pos, modifiers):
+        """When handles move, they must ask the ROI if the move is acceptable.
+         By default, this always returns True. Subclasses may wish override.
+         -> always returning False therefore user cannot change this.
+          Maybe change this to a clever way in the future """
+        return False
+
+    def segmentClicked(self, segment, ev=None, pos=None):  ## pos should be in this item's coordinate system
+        """ do not add a handle on clicking on the line """
+        pass
+
+    def checkRemoveHandle(self, h):
+        """ do not allow to remove a handle """
+        return False
 
 # import sys
 # from PyQt5 import QtWidgets

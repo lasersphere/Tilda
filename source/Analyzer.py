@@ -130,14 +130,13 @@ def combineRes(iso, par, run, db, weighted=True, print_extracted=True,
     print('Systematic error formula:', systErrForm)
     print('Combined to', iso, par, '=')
     print(str(avg) + '(' + str(statErr) + ')[' + str(systErr) + ']')
+    print('Combined rounded to %s %s = %.3f(%.0f)[%.0f]' % (iso, par, avg, statErr * 1000, systErr * 1000))
     if write_to_db:
-        con = sqlite3.connect(db)
-        cur = con.cursor()
         cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
             WHERE iso = ? AND parname = ? AND run = ?''', (avg, statErr, systErr, rChi, iso, par, run))
         con.commit()
-        con.close()
-    plt.clear()  # TODO necessary call??
+    con.close()
+    plt.clear()
     combined_plots_dir = os.path.join(os.path.split(db)[0], 'combined_plots')
     if not os.path.exists(combined_plots_dir):
         os.mkdir(combined_plots_dir)
@@ -179,7 +178,7 @@ def combineShift(iso, run, db, show_plot=False):
     dateIso = []
     for block in config:
         if block[0]:
-            preVals, preErrs, date, files = extract(ref,'center',refRun,db,block[0])
+            preVals, preErrs, date, files = extract(ref, 'center', refRun, db, block[0])
             preVal, preErr, preRChi = weightedAverage(preVals, preErrs)
             preErr = applyChi(preErr, preRChi)
             preErr = np.absolute(preErr)
@@ -187,11 +186,11 @@ def combineShift(iso, run, db, show_plot=False):
             preVal = 0
             preErr = 0
 
-        intVals, intErrs, date, files = extract(iso,'center',run,db,block[1])
+        intVals, intErrs, date, files = extract(iso, 'center', run, db, block[1])
         [dateIso.append(i) for i in date]
 
         if block[2]:
-            postVals, postErrs, date, files = extract(ref,'center',refRun,db,block[2])
+            postVals, postErrs, date, files = extract(ref, 'center', refRun, db, block[2])
             postVal, postErr, postRChi = weightedAverage(postVals, postErrs)
             postErr = np.absolute(applyChi(postErr, postRChi))
         else:
@@ -204,8 +203,8 @@ def combineShift(iso, run, db, show_plot=False):
         else:
             refMean = (preVal + postVal)/2
 
-        if preVal == 0 or postVal == 0 or np.absolute(preVal-postVal) < np.max([preErr,postErr]):
-            errMean = np.sqrt(preErr**2+ postErr**2)
+        if preVal == 0 or postVal == 0 or np.absolute(preVal-postVal) < np.max([preErr, postErr]):
+            errMean = np.sqrt(preErr**2 + postErr**2)
         else:
             errMean = np.absolute(preVal-postVal)
         shifts.extend([x - refMean for x in intVals])
@@ -260,10 +259,14 @@ def shiftErr(iso, run, db, accVolt_d, offset_d, syst=0):
     cur.execute('''SELECT offset, accVolt, voltDivRatio FROM Files WHERE type = ?''', (iso,))
     (offset, accVolt, voltDivRatio) = cur.fetchall()[0]
     voltDivRatio = ast.literal_eval(voltDivRatio)
-    offset = np.abs(offset)*voltDivRatio['offset']
+    if isinstance(voltDivRatio['offset'], float):
+        mean_offset_div_ratio = voltDivRatio['offset']
+    else:  # if the offsetratio is not a float it is supposed to be a dict.
+        mean_offset_div_ratio = np.mean(list(voltDivRatio['offset'].values()))
+    offset = np.abs(offset) * mean_offset_div_ratio
     cur.execute('''SELECT offset FROM Files WHERE type = ?''', (ref,))
     (refOffset,) = cur.fetchall()[0]    
-    accVolt = np.absolute(refOffset)*voltDivRatio['offset']+accVolt*voltDivRatio['accVolt']
+    accVolt = np.absolute(refOffset) * mean_offset_div_ratio + accVolt*voltDivRatio['accVolt']
 
     fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
     print('systematic error inputs caused by error of...\n...acc Voltage:',
@@ -293,7 +296,11 @@ def avgErr(iso, db, avg, par, accVolt_d, offset_d, syst=0):
     cur.execute('''SELECT Jl, Ju FROM Lines''')
     (jL, jU) = cur.fetchall()[0]
     voltDivRatio = ast.literal_eval(voltDivRatio)
-    accVolt = accVolt*voltDivRatio['accVolt'] - offset*voltDivRatio['offset']
+    if isinstance(voltDivRatio['offset'], float):
+        mean_offset_div_ratio = voltDivRatio['offset']
+    else:  # if the offsetratio is not a float it is supposed to be a dict.
+        mean_offset_div_ratio = np.mean(voltDivRatio['offset'].values())
+    accVolt = accVolt*voltDivRatio['accVolt'] - offset * mean_offset_div_ratio
     cF = 1
     '''
     for the A- and B-Factor, the (energy-) distance of the peaks
@@ -321,7 +328,10 @@ def avgErr(iso, db, avg, par, accVolt_d, offset_d, syst=0):
     print('frequency between left and right edge:', distance)
     distance = distance/Physics.diffDoppler(nu0, accVolt, mass)
     print('voltage between left and right edge:', distance)
-    fac = nu0*np.sqrt(Physics.qe*accVolt/(2*mass*Physics.u*Physics.c**2))
-    return np.sqrt(np.square(fac*(np.absolute(0.5*(distance/accVolt)*accVolt_d)+np.absolute(distance*offset_d/accVolt)
-                                  + np.absolute(mass_d/mass))) + np.square(syst))/cF_dist
-                                  #The uncertainty on the A- & B-Factors needs to be scaled down again
+    fac = nu0 * np.sqrt(Physics.qe * accVolt / (2 * mass * Physics.u * Physics.c ** 2))
+    return np.sqrt(
+        np.square(fac * (np.absolute(0.5*(distance/accVolt) * accVolt_d) +
+                         np.absolute(distance*offset_d/accVolt) +
+                         np.absolute(mass_d/mass))) +
+        np.square(syst)) /cF_dist
+        #The uncertainty on the A- & B-Factors needs to be scaled down again
