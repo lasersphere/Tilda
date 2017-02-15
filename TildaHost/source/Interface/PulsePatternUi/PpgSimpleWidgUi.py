@@ -10,9 +10,10 @@ of opening and closing the beam gate and the rfq.
 
 """
 
-from PyQt5 import QtWidgets, QtCore
-from functools import partial
 from copy import deepcopy
+from functools import partial
+
+from PyQt5 import QtWidgets
 
 from Interface.PulsePatternUi.Ui_PpgSimpleWidg import Ui_PpgSimpleWidg
 
@@ -76,7 +77,7 @@ class PpgSimpleWidgUi(QtWidgets.QWidget, Ui_PpgSimpleWidg):
             'beamGateDelayMs': 0.0,
             'beamGateOpenTimeMs': 0.0
         }
-        self.load_from_simple_dict(simple_dict)
+        # self.load_from_simple_dict(simple_dict)
 
     def load_from_simple_dict(self, simple_dict):
         """ load the values in the simple dict to the gui """

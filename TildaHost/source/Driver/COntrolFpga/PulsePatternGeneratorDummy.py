@@ -6,12 +6,6 @@ Created on '12.01.2017'
 
 """
 
-import ast
-import time
-from copy import deepcopy
-
-import numpy as np
-
 from Driver.COntrolFpga import PulsePatternGeneratorConfig as PPGCfg
 from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 
@@ -37,7 +31,7 @@ class PulsePatternGeneratorDummy(FPGAInterfaceHandling):
     def reset(self):
         pass
 
-    def deinit_ppg(self):
+    def deinit_ppg(self, finalize_com=False):
         pass
 
     def convert_single_comand(self, cmd_str, ticks_per_us=None):

@@ -5,14 +5,12 @@ Created on 06.06.2014
 '''
 
 import ast
-import sqlite3
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 
+import TildaTools as TiTs
 from Gui.Ui_InteractiveFit import Ui_InteractiveFit
 from InteractiveFit import InteractiveFit
-
-import TildaTools as TiTs
 
 
 class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
@@ -51,9 +49,12 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
                 self.loadPars()
         
     def fit(self):
-        self.intFit.fit()
-        self.loadPars()
-    
+        try:
+            self.intFit.fit()
+            self.loadPars()
+        except Exception as e:
+            print('error while fitting: %s' % e)
+
     
     def reset(self):
         self.intFit.reset()

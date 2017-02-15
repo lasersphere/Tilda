@@ -61,7 +61,8 @@ class ScanMain(QObject):
         set 0V on the DAC and turn off all fpga outputs
         """
         self.deinit_post_accel_pwr_supplies()
-        self.deinit_fpga()
+        self.deinit_fpga(True)
+        self.ppg_deinit(True)
         self.de_init_dmm('all')
 
     def prepare_scan(self, scan_dict):  # callback_sig=None):
@@ -170,12 +171,12 @@ class ScanMain(QObject):
             print('sequencer successfully started')
             return True
 
-    def deinit_fpga(self):
+    def deinit_fpga(self, finalize_com=False):
         """
         deinitilaizes the fpga
         """
         if self.sequencer is not None:
-            self.sequencer.DeInitFpga()
+            self.sequencer.DeInitFpga(finalize_com)
             self.sequencer = None
 
     def start_measurement(self, scan_dict, track_num):
@@ -562,16 +563,22 @@ class ScanMain(QObject):
 
     def ppg_init(self):
         """ initialise the pulse pattern generator bitfile on the fpga """
-        try:
-            self.pulse_pattern_gen = PPG.PulsePatternGenerator()
-        except Exception as e:
-            print('error: %s could not initialise PulsePatternGenerator, WILL START DUMMY NOW' % e)
-            self.pulse_pattern_gen = PPGDummy.PulsePatternGeneratorDummy()
+        if self.pulse_pattern_gen is None:
+            try:
+                self.pulse_pattern_gen = PPG.PulsePatternGenerator()
+            except Exception as e:
+                print('error: %s could not initialise PulsePatternGenerator, WILL START DUMMY NOW' % e)
+                self.pulse_pattern_gen = PPGDummy.PulsePatternGeneratorDummy()
+        else:
+            print('error, could not initialize the fpga bitfile,'
+                  ' because there is already a running ppg session: %s' % self.pulse_pattern_gen.session)
+            print('deinitialise this and then try again.')
 
-    def ppg_deinit(self):
+    def ppg_deinit(self, finalize_com=False):
         """ stop the bitfile on the control fpga """
         if self.pulse_pattern_gen is not None:
-            self.pulse_pattern_gen.deinit_ppg()
+            self.pulse_pattern_gen.deinit_ppg(finalize_com)
+            # self.pulse_pattern_gen.ppg_state_callback_disconnect()
             self.pulse_pattern_gen = None
 
     def ppg_load_track(self, track_dict):

@@ -1688,7 +1688,7 @@ class NSPSortByPmt(Node):
     def __init__(self, datapoints):
         super(NSPSortByPmt, self).__init__()
         self.type = 'NSortByPmt'
-        self.datapoints = datapoints
+        self.datapoints = int(datapoints)
         self.buffer = None
         self.act_pmt_list = None
 

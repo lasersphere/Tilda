@@ -19,7 +19,7 @@ def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
     if subEle == None:
         ET.SubElement(parentEle, tagString)
         return xmlFindOrCreateSubElement(parentEle, tagString, value)
-    if value != '':
+    if str(value):
         subEle.text = str(value)
     return subEle
 

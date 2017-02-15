@@ -10,12 +10,13 @@ This bitfile is foreseen for DAQ in parallel to the Master Control Program (MCP)
 
 """
 
-from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
-import Driver.DataAcquisitionFpga.TildaPassiveConfig as TpCfg
-import Service.Formating as Form
+import ctypes
 
 import numpy as np
-import ctypes
+
+import Driver.DataAcquisitionFpga.TildaPassiveConfig as TpCfg
+import Service.Formating as Form
+from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 
 
 class TildaPassiveDummy(FPGAInterfaceHandling):
@@ -33,7 +34,10 @@ class TildaPassiveDummy(FPGAInterfaceHandling):
 
     """ overwrite  of FPGAInTerfacehandling """
 
-    def DeInitFpga(self):
+    def DeInitFpga(self, finalize_com=False):
+        return True
+
+    def FinalizeFPGACom(self):
         return True
 
     """ normal functions to overwrite: """

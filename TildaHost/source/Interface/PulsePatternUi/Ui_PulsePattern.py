@@ -6,7 +6,7 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 
 class Ui_PulsePatternWin(object):
     def setupUi(self, PulsePatternWin):
@@ -80,6 +80,9 @@ class Ui_PulsePatternWin(object):
         self.verticalLayout.addWidget(self.splitter)
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
+        self.pushButton_reset_fpga = QtWidgets.QPushButton(self.centralwidget)
+        self.pushButton_reset_fpga.setObjectName("pushButton_reset_fpga")
+        self.horizontalLayout.addWidget(self.pushButton_reset_fpga)
         self.pushButton_stop = QtWidgets.QPushButton(self.centralwidget)
         self.pushButton_stop.setObjectName("pushButton_stop")
         self.horizontalLayout.addWidget(self.pushButton_stop)
@@ -135,6 +138,7 @@ class Ui_PulsePatternWin(object):
         self.tabWidget_periodic_pattern.setTabText(self.tabWidget_periodic_pattern.indexOf(self.tab_list_view), _translate("PulsePatternWin", "list view"))
         self.tabWidget_periodic_pattern.setTabText(self.tabWidget_periodic_pattern.indexOf(self.tab_periodic_pattern), _translate("PulsePatternWin", "periodic pattern"))
         self.tabWidget_periodic_pattern.setTabText(self.tabWidget_periodic_pattern.indexOf(self.tab_simple), _translate("PulsePatternWin", "simple"))
+        self.pushButton_reset_fpga.setText(_translate("PulsePatternWin", "reset fpga"))
         self.pushButton_stop.setText(_translate("PulsePatternWin", "stop pulse pattern"))
         self.pushButton_run_pattern.setText(_translate("PulsePatternWin", "run pulse pattern"))
         self.pushButton_close.setText(_translate("PulsePatternWin", "close and confirm"))

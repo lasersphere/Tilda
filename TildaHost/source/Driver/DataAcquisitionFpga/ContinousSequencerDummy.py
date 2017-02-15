@@ -6,15 +6,14 @@ Created on '09.07.2015'
 
 """
 
-from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
-from Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
+import ctypes
+
+import numpy as np
+
 import Driver.DataAcquisitionFpga.ContinousSequencerConfig as CsCfg
 import Service.Formating as Form
-
-import logging
-import time
-import numpy as np
-import ctypes
+from Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
+from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
 
 
 class ContinousSequencer(Sequencer, MeasureVolt):
@@ -179,8 +178,8 @@ class ContinousSequencer(Sequencer, MeasureVolt):
     def halt(self, val):
         return True
 
-    def DeInitFpga(self):
+    def DeInitFpga(self, finalize_com=False):
         return True
 
-    def set_stopVoltMeas(self, stop_bool):
+    def FinalizeFPGACom(self):
         return True

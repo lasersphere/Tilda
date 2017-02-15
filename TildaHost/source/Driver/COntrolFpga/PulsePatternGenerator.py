@@ -123,12 +123,12 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
             state_num, state_name = self.read_state()
             tries += 1
 
-    def deinit_ppg(self):
+    def deinit_ppg(self, finalize_com=False):
         """
         stops the fpga
         :return:
         """
-        self.DeInitFpga()
+        self.DeInitFpga(finalize_com)
 
     def convert_single_comand(self, cmd_str, ticks_per_us=None):
         """

@@ -124,6 +124,13 @@
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
+       <widget class="QPushButton" name="pushButton_reset_fpga">
+        <property name="text">
+         <string>reset fpga</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="pushButton_stop">
         <property name="text">
          <string>stop pulse pattern</string>

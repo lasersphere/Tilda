@@ -6,10 +6,10 @@ Created on
 Module Description: Module for simulating a simple Counter, if no FPGA is at hand
 """
 
+import numpy as np
+
 import Service.Formating as Form
 
-
-import numpy as np
 
 class SimpleCounterDummy:
     def __init__(self):
@@ -63,6 +63,9 @@ class SimpleCounterDummy:
             val = Form.add_header_to23_bit(pmt_num + 1, 1, pmt_num, 1)
             data[pmt_num] = np.full((num_of_vals,), val)
         return data.flatten('F')
+
+    def FinalizeFPGACom(self, finalize_com=False):
+        pass
 
 
 # scd = SimpleCounterDummy()

@@ -988,6 +988,10 @@ class Main(QtCore.QObject):
 
     ''' pulse pattern operations '''
 
+    def ppg_init(self):
+        """ this will initialize the fpga bitfile. """
+        self.scan_main.ppg_init()
+
     def ppg_load_pattern(self, cmd_list):
         """ reset the ppg and load the list of cmds to it, then run it. """
         self.scan_main.ppg_run_with_list_of_commands(cmd_list)
@@ -1000,15 +1004,17 @@ class Main(QtCore.QObject):
         """
         self.scan_main.ppg_stop(reset)
         if deinit_ppg:
-            self.scan_main.ppg_deinit()
+            self.scan_main.ppg_deinit(False)
 
     def ppg_state_callback(self, callback_signal):
         """
         use this in order to connect a signal to the state changed function and
-         emit the name of the satte each time this is changed.
+         emit the name of the state each time this is changed.
         :param callback_signal: pyqtboundsignal(str)
         """
         self.scan_main.ppg_state_callback_connect(callback_signal)
 
     def ppg_state_disconnect(self):
+        print('disconnecting ...')
         self.scan_main.ppg_state_callback_disconnect()
+        print('disconnected')

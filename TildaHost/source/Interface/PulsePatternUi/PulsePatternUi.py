@@ -59,6 +59,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         self.pushButton_load_txt.clicked.connect(self.load_from_text)
         self.pushButton_save_txt.clicked.connect(self.save_to_text_file)
 
+        self.pushButton_reset_fpga.clicked.connect(self.reset_fpga)
         self.pushButton_stop.clicked.connect(self.stop_pulse_pattern)
         self.pushButton_run_pattern.clicked.connect(self.run)
         self.pushButton_close.clicked.connect(self.close_and_confirm)
@@ -259,7 +260,6 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             return False
         else:
             return True
-
 
     ''' saving and loading '''
 
@@ -543,7 +543,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         valid_lines = []  # only add edited ones, other must be deleted
         ticks_per_us = 100
         int_cmd_list = self.convert_list_of_cmds(list_of_cmds, ticks_per_us)
-        int_cmd_list = int_cmd_list.reshape((int_cmd_list.size / 4, 4))
+        int_cmd_list = int_cmd_list.reshape((int_cmd_list.size // 4, 4))
         # get highest ch number
         ch_int = np.max(int_cmd_list[:, 2])
         max_dio_0to31 = np.int(np.log2(ch_int)) if ch_int > 1 else 1
@@ -655,6 +655,18 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                         each.setPen(white_pen)
 
     """ talk to dev """
+
+    def reset_fpga(self):
+        if CfgMain._main_instance is not None:
+            print('stopping ppg')
+            CfgMain._main_instance.ppg_stop(reset=False, deinit_ppg=True)
+            print('ppg stopped, initialising again.')
+            CfgMain._main_instance.ppg_init()
+            print('ppg initialized, connecting callback')
+            CfgMain._main_instance.ppg_state_callback(self.pulse_pattern_status)
+            print('callback connected')
+        else:
+            print('error, resetting fpga not possible, because there is no main active')
 
     def stop_pulse_pattern(self):
         """ will stop the pulse pattern. """

@@ -90,12 +90,25 @@ class FPGAInterfaceHandling():
         """ run the  fpga """
         return self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_Run(self.session, 0))
 
-    def DeInitFpga(self):
+    def DeInitFpga(self, finalize_com=False):
         """
         Deinitilize the Fpga with all necessary functions.
         :return: status
         """
         self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_Close(self.session, 0))
+        if finalize_com:
+            self.FinalizeFPGACom()
+        return self.status
+
+    def FinalizeFPGACom(self):
+        """
+        You must call this function after all other function calls if
+        NiFpga_Initialize succeeds.
+
+        This function unloads the NiFpga library.
+
+        :return: status
+        """
         self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_Finalize())
         return self.status
 

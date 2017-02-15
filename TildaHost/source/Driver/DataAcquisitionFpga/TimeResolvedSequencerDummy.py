@@ -195,7 +195,10 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
     def halt(self, val):
         return True
 
-    def DeInitFpga(self):
+    def DeInitFpga(self, finalize_com=False):
+        return True
+
+    def FinalizeFPGACom(self):
         return True
 
     def set_stopVoltMeas(self, stop_bool):
