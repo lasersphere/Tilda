@@ -114,6 +114,9 @@ delta_lit_radii.pop('60_Ni')
 #     print('%s\t%.3f\t%.3f\t%.5f\t%.5f' % (iso, radi[0], radi[1], dif[0], dif[1]))
 
 ''' Moments '''
+a_low_61_Ni_lit = (-455.974, 0.003)
+b_low_61_Ni_lit = (-102.979, 0.016)
+
 ''' Quadrupole Moments '''
 # literature values from PHYSICAL REVIEW VOLUME 170, NUM HER 1 5 JUNE 1968
 # Hyperfine-Structure Studies of Ni", and the Nuclear Ground-State
@@ -121,6 +124,8 @@ delta_lit_radii.pop('60_Ni')
 # W. J. CHILDs AND L. S. 600DMAN
 # Argonne Eationa/ Laboratory, Argonne, Illinois
 
+mass_q_literature_61_Ni = 61  # u
+spin_q_literature = 3/2
 q_literature_61_Ni = 0.162  # barn
 d_q_literature_61_Ni = 0.015  # barn
 
@@ -129,23 +134,25 @@ b_lower_lit = -102.979  # MHz
 d_b_lower_lit = 0.016  # MHz
 
 # e_Vzz value from this: e_Vzz = B / Q
-e_Vzz_lower = b_lower_lit / q_literature_61_Ni
+e_Vzz_lower = q_literature_61_Ni / b_lower_lit
 d_e_Vzz_lower = np.sqrt(
     (e_Vzz_lower / b_lower_lit * d_b_lower_lit) ** 2 +
     (e_Vzz_lower / q_literature_61_Ni * d_q_literature_61_Ni) ** 2)
 print(e_Vzz_lower, d_e_Vzz_lower)
+print('eVzz = %.3f(%.0f) b/ kHz' % (e_Vzz_lower * 1000, d_e_Vzz_lower * 1e6))
 
 # for the upper state  3d9(2D)4p  	 3P° 2, no b factor was measured
 # therefore i will need to get the e_Vzz_upper from my results on 61_Ni and the q_literature_61_Ni
-b_upper_exp = -50.5033931843  # MHz
-d_b_upper_exp = 1.421  # Mhz
+b_upper_exp = -50.597 # MHz
+d_b_upper_exp = 1.43  # Mhz
 
-e_Vzz_upper = b_upper_exp / q_literature_61_Ni
+e_Vzz_upper = q_literature_61_Ni / b_upper_exp
 d_e_Vzz_upper = np.sqrt(
     (e_Vzz_upper / b_upper_exp * d_b_upper_exp) ** 2 +
     (e_Vzz_upper / q_literature_61_Ni * d_q_literature_61_Ni) ** 2)
 
 print(e_Vzz_upper, d_e_Vzz_upper)
+
 
 def quadrupol_moment(b, d_stat_b, d_syst_b, upper=True):
     if b:
@@ -154,11 +161,11 @@ def quadrupol_moment(b, d_stat_b, d_syst_b, upper=True):
         if upper:
             e_vzz = e_Vzz_upper
             d_e_vzz = d_e_Vzz_upper
-        q = b / e_vzz
-        d_stat_q = d_stat_b / e_vzz
+        q = b * e_vzz
+        d_stat_q = d_stat_b * e_vzz
         d_syst_q = np.sqrt(
-            (b / e_vzz * d_syst_b) ** 2 +
-            (b / (e_vzz ** 2) * d_e_vzz) ** 2
+            (e_vzz * d_syst_b) ** 2 +
+            (b * d_e_vzz) ** 2
         )
         q_print = '%.3f(%.0f)[%.0f]' % (q, d_stat_q * 1000, d_syst_q * 1000)
         d_total = np.sqrt(d_stat_q ** 2 + d_syst_q ** 2)
@@ -177,9 +184,18 @@ def quadrupol_moment(b, d_stat_b, d_syst_b, upper=True):
 # February 2014
 # page 36
 
+mass_mu_ref = 61
 mu_ref = -0.75002  # nm -> nuclear magneton
 d_mu_ref = 0.00004  # nm
 i_ref = 3 / 2
+
+# (spin, µ, d_µ)
+lit_magnetic_moments = {
+    # '57_Ni': (3/2, -0.7975, 0.0014),  # not measured
+    '61_Ni': (61, 3/2, -0.75002, 0.00004),
+    '65_Ni': (65, 5/2, 0.69, 0.06),
+    '67_Ni': (67, 1/2, 0.601, 0.005)
+}
 
 # A_Ref_lower was taken from:
 # PHYSICAL REVIEW VOLUME 170, NUM HER 1 5 JUNE 1968
@@ -210,12 +226,12 @@ def magnetic_moment(a_lower, d_stat_a_lower, d_syst_a_lower, nucl_spin):
 
 # Schmidt values as in R. Neugart and G. Neyens, Nuclear Moments, Lecture Notes in Physics 700 (2006),
 # 135–189 -> Page 139:
-def mu_schmidt(I, l, proton, g_l=0, g_s=-3.826):
+def mu_schmidt(I, l, proton, g_l=0., g_s=-3.826):
     l_plus = I == l + 0.5
     # g_l = 0
     # g_s = -3.826
     if proton:
-        g_l = 1
+        g_l = 1.
         g_s = 5.587
     if l_plus:
         mu_I = ((I - 0.5) * g_l + 0.5 * g_s)
@@ -568,8 +584,8 @@ try:
                     )
                 ratios.append(ratio)
                 d_ratios.append(delta_ratio)
-                q_from_upper = quadrupol_moment(b_up[0], b_up[1], b_up[2])
-                q_from_lower = quadrupol_moment(b_low[0], b_low[1], b_low[2])
+                q_from_upper = quadrupol_moment(b_up[0], b_up[1], b_up[2], upper=True)
+                q_from_lower = quadrupol_moment(b_low[0], b_low[1], b_low[2], upper=False)
                 if q_from_lower[0] and q_from_upper[0]:
                     q_mean = Analyzer.weightedAverage(
                         [q_from_upper[0], q_from_lower[0]], [q_from_upper[1], q_from_lower[1]])
@@ -593,7 +609,7 @@ try:
                     q_from_lower[4], q_from_upper[4], q_mean_print,
                     mu_print
                 ))
-                q_moments.append((mass, nucl_spin, q_mean[0], q_mean[1]))
+                q_moments.append((mass, nucl_spin, q_from_lower[0], q_from_lower[1]))
                 magn_moments.append((mass, nucl_spin, mu[0], mu[1]))
 
     # print('magnetic moments: %s ' % magn_moments)
@@ -645,18 +661,45 @@ try:
     #     spin_list_x = [mu[0] for mu in magn_moments if mu[1] == spin]
     #     spin_list_y = [mu[2] for mu in magn_moments if mu[1] == spin]
     #     spin_list_y_err = [mu[3] for mu in magn_moments if mu[1] == spin]
-    #     if spin_list_x:
+    #     if len(spin_list_x):
     #         label = 'spin: %s' % spin
     #         spin_line, cap_line, barline = MPLPlotter.plt.errorbar(
     #             spin_list_x, spin_list_y, spin_list_y_err, axes=magn_mom_axes,
     #             linestyle='None', marker=markers[i], label=label, color=colors[i]
     #         )
-    #     for each in mu_list_schmidt:
-    #         if spin == each[1]:
-    #             hor_line = MPLPlotter.plt.axhline(each[2], label='eff. schmidt: %s' % each[0], color=colors[i])
-    # MPLPlotter.plt.legend(loc=2, title='magnetic moments')
-    # MPLPlotter.show(True)
-    #
+    #     lit_spin_list_x = [lit_mu[0] + 0.15 for iso, lit_mu in lit_magnetic_moments.items() if lit_mu[1] == spin]
+    #     lit_spin_list_y = [lit_mu[2] for iso, lit_mu in lit_magnetic_moments.items() if lit_mu[1] == spin]
+    #     lit_spin_list_y_err = [lit_mu[3] for iso, lit_mu in lit_magnetic_moments.items() if lit_mu[1] == spin]
+    #     if len(lit_spin_list_x):
+    #         label = 'spin: %s (lit.)' % spin
+    #         lit_spin_line, lit_cap_line, lit_barline = MPLPlotter.plt.errorbar(
+    #             lit_spin_list_x, lit_spin_list_y, lit_spin_list_y_err, axes=magn_mom_axes,
+    #             linestyle='None', marker=markers[i], label=label, color=colors[i],
+    #             markerfacecolor='w', markeredgewidth=1.5, markeredgecolor=colors[i]
+    #         )
+        # display rel. to 0
+        # for j, each in enumerate(lit_spin_list_x):
+        #     same_mass = [mu for mu in magn_moments if mu[0] == each - 0.15]
+        #     if len(same_mass):
+        #         label = 'spin: %s (exp.)' % spin
+        #         MPLPlotter.plt.errorbar(
+        #             same_mass[0][0], 0, same_mass[0][3], axes=magn_mom_axes,
+        #             linestyle='None', marker=markers[i], label=label, color=colors[i]
+        #         )
+        #         label = 'spin: %s (lit.)' % spin
+        #         MPLPlotter.plt.errorbar(
+        #             each, lit_spin_list_y[j] - same_mass[0][2], lit_spin_list_y_err[j], axes=magn_mom_axes,
+        #             linestyle='None', marker=markers[i], label=label, color=colors[i],
+        #             markerfacecolor='w', markeredgewidth=1.5, markeredgecolor=colors[i]
+        #         )
+        #         print(same_mass)
+
+        for each in mu_list_schmidt:
+            if spin == each[1]:
+                hor_line = MPLPlotter.plt.axhline(each[2], label='eff. schmidt: %s' % each[0], color=colors[i])
+    MPLPlotter.plt.legend(loc=2, title='magnetic moments')
+    MPLPlotter.show(True)
+
     # # plot quadrupole moments
     # q_mom_fig = MPLPlotter.plt.figure(1, facecolor='white')
     # q_mom_axes = MPLPlotter.plt.axes()
@@ -677,7 +720,16 @@ try:
     #             spin_list_x, spin_list_y, spin_list_y_err, axes=q_mom_axes,
     #             linestyle='None', marker=markers[i], label=label, color=colors[i]
     #         )
-    #     MPLPlotter.plt.legend(loc=0, title='quadrupole moments')
+    #     if spin == spin_q_literature:
+    #
+    #         label = 'spin: %s (lit.)' % spin
+    #         spin_line_lit, cap_line_lit, barline_lit = MPLPlotter.plt.errorbar(
+    #             [mass_q_literature_61_Ni + 0.15],
+    #             [q_literature_61_Ni],
+    #             [d_q_literature_61_Ni], axes=q_mom_axes,
+    #             linestyle='None', marker=markers[i], label=label, color=colors[i], markerfacecolor='w'
+    #         )
+    # MPLPlotter.plt.legend(loc=0, title='quadrupole moments')
     # MPLPlotter.show(True)
 
 
@@ -746,21 +798,71 @@ except Exception as e:
 # app.exec()
 
 ''' King Plot Analysis '''
-# delta_lit_radii.pop('64_Ni')  # just to see whoch point is what
-king = KingFitter(db, showing=True, litvals=delta_lit_radii)
-run = -1
+# # delta_lit_radii.pop('64_Ni')  # just to see whoch point is what
+# king = KingFitter(db, showing=True, litvals=delta_lit_radii)
+# run = -1
 # # isotopes = sorted(delta_lit_radii.keys())
-king.kingFit(alpha=362, findBestAlpha=False, run=run)
+# print(isotopes)
+# king.kingFit(alpha=0, findBestAlpha=False, run=run)
+# # king.kingFit(alpha=362, findBestAlpha=False, run=run)
 # king.calcChargeRadii(isotopes=isotopes, run=run)
-
 #
-con = sqlite3.connect(db)
-cur = con.cursor()
-cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? ORDER BY iso''', ('shift',))
-data = cur.fetchall()
-con.close()
-if data:
-    print(data)
-    print('iso\tshift [MHz]\t(statErr)[systErr]\t Chi^2')
-    for iso in data:
-        print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))
+# #
+# con = sqlite3.connect(db)
+# cur = con.cursor()
+# cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? ORDER BY iso''', ('shift',))
+# data = cur.fetchall()
+# con.close()
+# iso_shift_plot_data_x = []
+# iso_shift_plot_data_y = []
+# iso_shift_plot_data_err = []
+# if data:
+#     print(data)
+#     print('iso\tshift [MHz]\t(statErr)[systErr]\t Chi^2')
+#     for iso in data:
+#         iso_shift_plot_data_x.append(int(iso[0][:2]))
+#         iso_shift_plot_data_y.append(float(iso[1]))
+#         err = np.sqrt(iso[2] ** 2 + iso[3] ** 2)
+#         iso_shift_plot_data_err.append(err)
+#         print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))
+#
+# MPLPlotter.plt.figure(facecolor='w')
+# MPLPlotter.plt.errorbar(iso_shift_plot_data_x, iso_shift_plot_data_y, iso_shift_plot_data_err, marker='.')
+# MPLPlotter.plt.margins(0.1)
+# MPLPlotter.plt.xlabel('A')
+# MPLPlotter.plt.ylabel(r'$\delta \nu$ (MHz)')
+# MPLPlotter.show(True)
+
+
+# just a plot for the a factor of 61Ni:
+a_low_61_Ni_exp = al['narrow_gate']['61_Ni']
+d_a_low_exp = np.sqrt(a_low_61_Ni_exp[1] ** 2 + a_low_61_Ni_exp[2] ** 2)
+b_low_61_Ni_exp = bl['narrow_gate']['61_Ni']
+d_b_low_exp = np.sqrt(b_low_61_Ni_exp[1] ** 2 + b_low_61_Ni_exp[2] ** 2)
+a_low_dif = a_low_61_Ni_exp[0] - a_low_61_Ni_lit[0]
+d_a_low_dif = np.sqrt(a_low_61_Ni_exp[1] ** 2 + a_low_61_Ni_exp[2] ** 2 + a_low_61_Ni_lit[1] ** 2)
+b_low_dif = b_low_61_Ni_exp[0] - b_low_61_Ni_lit[0]
+d_b_low_dif = np.sqrt(b_low_61_Ni_exp[1] ** 2 + b_low_61_Ni_exp[2] ** 2 + b_low_61_Ni_lit[1] ** 2)
+
+
+label = '61_Ni A_lower (exp.)'
+a_low_line, a_low_cap_line, a_low_barline = MPLPlotter.plt.errorbar(
+    61-0.5, 0, d_a_low_exp, linestyle='None', marker='o', label=label, color='g')
+label = '61_Ni A_lower (lit.)'
+a_low_line_lit, a_low_cap_line_lit, a_low_barline_lit = MPLPlotter.plt.errorbar(
+    61-0.25, a_low_dif, d_a_low_dif, linestyle='None', marker='o', label=label, color='g',
+    markerfacecolor='w', markeredgewidth=1.5, markeredgecolor='g')
+
+label = '61_Ni B_lower (exp.)'
+b_low_line, b_low_cap_line, b_low_barline = MPLPlotter.plt.errorbar(
+    61+0.25, 0, d_b_low_exp, linestyle='None', marker='D', label=label, color='b')
+label = '61_Ni B_lower (lit.)'
+b_low_line_lit, b_low_cap_line_lit, b_low_barline_lit = MPLPlotter.plt.errorbar(
+    61+0.5, b_low_dif, d_b_low_dif, linestyle='None', marker='D', label=label, color='b',
+    markerfacecolor='w', markeredgewidth=1.5, markeredgecolor='b')
+
+MPLPlotter.plt.gcf().set_facecolor('w')
+MPLPlotter.plt.legend(loc=0)
+MPLPlotter.plt.margins(0.15)
+MPLPlotter.plt.xticks([61])
+MPLPlotter.show(True)

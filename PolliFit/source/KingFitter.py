@@ -170,6 +170,7 @@ class KingFitter(object):
             x_king = [min(self.x) - abs(min(self.x) - max(self.x)) * 0.2,max(self.x) + abs(min(self.x) - max(self.x)) * 0.2]
             y_king = [self.a+self.b*i for i in x_king]
             plt.plot(x_king, y_king, 'r', label='King fit', )
+            plt.gcf().set_facecolor('w')
             plt.legend()
             plt.show()
 
@@ -253,6 +254,7 @@ class KingFitter(object):
             con.commit()
             con.close()
         if self.showing:
+            finalVals[self.ref] = [0, 0, 0]
             keyVals = sorted(finalVals)
             x = []
             y = []
@@ -272,6 +274,8 @@ class KingFitter(object):
             ax.set_xlabel('A')
             plt.errorbar(x, y, yerr, fmt='k.')
             ax.set_xmargin(0.05)
+            plt.margins(0.1)
+            plt.gcf().set_facecolor('w')
             plt.show()
 
 
