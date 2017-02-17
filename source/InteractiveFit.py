@@ -10,15 +10,14 @@ revert to the values before the last fit try.
 '''
 import ast
 import os
-import sqlite3
 
 import MPLPlotter as plot
 import Measurement.MeasLoad as MeasLoad
+import TildaTools as TiTs
 from DBIsotope import DBIsotope
 from SPFitter import SPFitter
 from Spectra.FullSpec import FullSpec
 from Spectra.Straight import Straight
-import TildaTools as TiTs
 
 
 class InteractiveFit(object):
@@ -57,12 +56,16 @@ class InteractiveFit(object):
         if meas.type == 'Kepco':  # keep this for all other fileformats than .xml
             spec = Straight()
             spec.evaluate(meas.x[0][-1], (0, 1))
+            self.fitter = SPFitter(spec, meas, st)
+            plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
         else:
             try:
                 # if the measurment is an .xml file it will have a self.seq_type
                 if meas.seq_type == 'kepco':
                     spec = Straight()
                     spec.evaluate(meas.x[0][-1], (0, 1))
+                    self.fitter = SPFitter(spec, meas, st)
+                    plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
                 else:
                     iso = DBIsotope(db, meas.type, lineVar=linevar)
                     if var[0][0] == '_m':
@@ -100,12 +103,10 @@ class InteractiveFit(object):
         plot.show(block)
         self.printPars()
         
-        
     def printPars(self):
         print('Current parameters:')
         for n, p, f in zip(self.fitter.npar, self.fitter.par, self.fitter.fix):
             print(n + '\t' + str(p) + '\t' + str(f))
-            
             
     def getPars(self):
         return zip(self.fitter.npar, self.fitter.par, self.fitter.fix)

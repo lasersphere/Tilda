@@ -33,8 +33,8 @@ def extract(iso, par, run, db, fileList=[], prin=True):
     print('Extracting', iso, par, )
     fits = TiTs.select_from_db(db, 'file, pars', 'FitRes', [['iso', 'run'], [iso, run]], 'ORDER BY file',
                                                              caller_name=__name__)
-    if fits:
-        if fileList:
+    if fits is not None:
+        if len(fileList):
             fits = [f for f in fits if f[0] in fileList]
         fitres = [eval(f[1]) for f in fits]
         files = [f[0] for f in fits]
@@ -52,7 +52,7 @@ def extract(iso, par, run, db, fileList=[], prin=True):
             if prin:
                 print(date, '\t', f, '\t', v, '\t', e)
 
-        if fileList:
+        if len(fileList):
             for f in fileList:
                 if f not in files:
                     print('Warning:', f, 'not found!')
@@ -114,7 +114,7 @@ def combineRes(iso, par, run, db, weighted=True, print_extracted=True,
 
     print('Combining', iso, par)
     vals, errs, date, files = extract(iso, par, run, db, config, prin=print_extracted)
-
+    print(files)
     if weighted:
         avg, err, rChi = weightedAverage(vals, errs)
     else:
@@ -132,6 +132,8 @@ def combineRes(iso, par, run, db, weighted=True, print_extracted=True,
     print(str(avg) + '(' + str(statErr) + ')[' + str(systErr) + ']')
     print('Combined rounded to %s %s = %.3f(%.0f)[%.0f]' % (iso, par, avg, statErr * 1000, systErr * 1000))
     if write_to_db:
+        con = sqlite3.connect(db)
+        cur = con.cursor()
         cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
             WHERE iso = ? AND parname = ? AND run = ?''', (avg, statErr, systErr, rChi, iso, par, run))
         con.commit()
@@ -147,6 +149,7 @@ def combineRes(iso, par, run, db, weighted=True, print_extracted=True,
     print('saving average plot to: ', avg_fig_name)
     plt.save(avg_fig_name)
     if show_plot:
+        print('showing plot!')
         plt.show(True)
     else:
         plt.clear()
@@ -163,7 +166,7 @@ def combineShift(iso, run, db, show_plot=False):
     print('Open DB', db)
     
     (config, statErrForm, systErrForm) = TiTs.select_from_db(db, 'config, statErrForm, systErrForm', 'Combined',
-                                                             [['iso', 'parname', 'run'], [iso, par, run]],
+                                                             [['iso', 'parname', 'run'], [iso, 'shift', run]],
                                                              caller_name=__name__)[0]
     '''config needs to have this shape: [(['dataREF1.*','dataREF2.*',...],['dataINTERESTING1.*','dataINT2.*',...],['dataREF4.*',...]), ([...],[...],[...]), ...]'''
     config = ast.literal_eval(config)
