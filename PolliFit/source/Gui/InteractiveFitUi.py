@@ -80,7 +80,7 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
     def loadIsos(self):
         self.isoFilter.clear()
         it = TiTs.select_from_db(self.dbpath, 'DISTINCT type', 'Files', addCond='ORDER BY type', caller_name=__name__)
-        if it:
+        if it is not None:
             for i, e in enumerate(it):
                 self.isoFilter.insertItem(i, e[0])
     
@@ -88,7 +88,7 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
     def loadRuns(self):
         self.runSelect.clear()
         it = TiTs.select_from_db(self.dbpath, 'run', 'Runs', caller_name=__name__)
-        if it:
+        if it is not None:
             for i, r in enumerate(it):
                 self.runSelect.insertItem(i, r[0])
         
@@ -97,7 +97,7 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
         self.fileList.clear()
         it = TiTs.select_from_db(self.dbpath, 'file', 'Files',
                                      [['type'], [self.isoFilter.currentText()]], 'ORDER BY type', caller_name=__name__)
-        if it:
+        if it is not None:
             for r in it:
                 self.fileList.addItem(r[0])
     

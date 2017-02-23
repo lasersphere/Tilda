@@ -88,6 +88,7 @@ class MCPImporter(SpecData):
                 else:
                     self.accVolt = None
                 prema = np.mean(self.find_data_list_in_str(file_as_str, 'PremaVoltageObj')[0])
+                print(prema)
                 if prema != None:
                     if offsetDevice in volts[1]:
                         agilent = np.mean(volts[0][volts[1].index(offsetDevice)])
@@ -173,7 +174,6 @@ class MCPImporter(SpecData):
                                                self.voltDivRatio['offset'].items()])
                         scanvolt = (self.lineMult * x + self.lineOffset) * mean_offset_div_ratio + mean_offset
                     self.x[trackindex][xindex] = self.accVolt*self.voltDivRatio['accVolt'] - scanvolt
-
             '''If the numbers of scans for the tracks are different, it will be normed to the minimal number of scans:'''
             # print(self.x)
             # print(self.cts)

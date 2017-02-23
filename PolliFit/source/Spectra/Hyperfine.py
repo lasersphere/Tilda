@@ -70,11 +70,7 @@ class Hyperfine(object):
 
         self.lineSplit = Physics.HFLineSplit(p[self.pAl], p[self.pBl], Au, Bu, self.trans)
         self.intens = self.buildInt(p)
-        if self.iso.shape['name'] == 'LorentzQI':
-            for i in range(len(self.trans)):
-                self.IntCross[i] = p[self.pIntCross + i]
-        else:
-            self.IntCross = []
+        self.IntCross = self.buildIntCross(p)
     
   
     def getPars(self, pos = 0):
@@ -86,23 +82,40 @@ class Hyperfine(object):
         self.pBu = pos + 4        
         self.pInt = pos + 5
         self.pIntCross = pos + 5 + len(self.trans)
-        
+
         if self.fixInt:
-            if len(self.iso.relInt) != len(self.trans):
-                print("List of relative intensities has to consist of", len(self.trans), "elements! \n"
-                                                                    "Using RACAH coefficients instead....")
-                ret = [x for x in Physics.HFInt(self.iso.I, self.iso.Jl, self.iso.Ju, self.trans)]
-                div = ret[0]
-                for i in range(0, len(ret)):
-                    ret[i] = ret[i]/div
-                ret[0] *= self.iso.intScale
+            if self.iso.shape['name'] == 'LorentzQI':
+                if len(self.iso.relInt) != 2* len(self.trans):
+                    print("List of relative intensities has to consist of", len(self.trans), "elements! \n"
+                                                                    "Using RACAH coefficients instead.... \n"
+                                                                    "The sign of some CrossIntensities could be wrong!")
+                    ret = [x for x in Physics.HFInt(self.iso.I, self.iso.Jl, self.iso.Ju, self.trans)]
+                    div = ret[0]
+                    for i in range(0, len(ret)):
+                        ret[i] = ret[i] / div
+                    ret[0] *= self.iso.intScale
+                    self.IntCross = [g * (- 0.2) for g in ret] if self.iso.shape['name'] == 'LorentzQI' else []
+                else:
+                    ret = [i / self.iso.relInt[0] for i in self.iso.relInt[:len(self.trans)]]
+                    self.IntCross = [i / self.iso.relInt[0] for i in self.iso.relInt[len(self.trans):]]
+                    ret[0] *= self.iso.intScale
             else:
-                ret = [i / self.iso.relInt[0] for i in self.iso.relInt]
-                ret[0] *= self.iso.intScale
+                self.IntCross = []
+                if len(self.iso.relInt) != len(self.trans):
+                    print("List of relative intensities has to consist of", len(self.trans), "elements! \n"
+                                                                    "Using RACAH coefficients instead....")
+                    ret = [x for x in Physics.HFInt(self.iso.I, self.iso.Jl, self.iso.Ju, self.trans)]
+                    div = ret[0]
+                    for i in range(0, len(ret)):
+                        ret[i] = ret[i]/div
+                    ret[0] *= self.iso.intScale
+                else:
+                    ret = [i / self.iso.relInt[0] for i in self.iso.relInt]
+                    ret[0] *= self.iso.intScale
         else:
             ret = [self.iso.intScale * x for x in Physics.HFInt(self.iso.I, self.iso.Jl, self.iso.Ju, self.trans)]
+            self.IntCross = [g * (- 0.2) for g in ret] if self.iso.shape['name'] == 'LorentzQI' else []
 
-        self.IntCross = [g * (- 0.2) for g in ret] if self.iso.shape['name'] == 'LorentzQI' else []
         # faktor -0.2 is the mean ratio to Int
 
         return ([self.iso.center, self.iso.Al, self.iso.Bl, self.iso.Au, self.iso.Bu]
@@ -132,7 +145,13 @@ class Hyperfine(object):
          
         fInt = [False] + (len(self.trans) - 1)*[True] if self.fixInt else len(self.trans)*[False]
 
-        fCross = len(self.trans)*[False] if self.iso.shape['name'] == 'LorentzQI' else []
+        if self.iso.shape['name'] == 'LorentzQI':
+            if self.fixInt:
+                fCross = len(self.trans) * [True]
+            else:
+                fCross = len(self.trans) * [False]
+        else:
+            fCross=[]
 
         return [False] + ret + fInt + fCross
     
@@ -147,7 +166,22 @@ class Hyperfine(object):
                 ret[i] = p[self.pInt + i]
                 
         return ret
-    
+
+
+    def buildIntCross(self,p):
+        '''If relative intensities are fixed in LorentzQI shape, calculate absolute intensities. Else return relevant parameters directly'''
+        if self.iso.shape['name'] == 'LorentzQI':
+            ret = len(self.trans) * [0]
+            for i in range(len(self.trans)):
+                if (self.fixInt and i > 0):
+                    ret[i] = ret[0] * p[self.pIntCross + i]
+                else:
+                    ret[i] = p[self.pIntCross + i]
+        else:
+            ret = []
+
+        return ret
+
     
     def leftEdge(self, p):
         '''Return the left edge of the spectrum in Mhz'''

@@ -94,6 +94,7 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True,fontsize_ticks=
         plt.xlabel('Ion kinetic energy / eV', fontsize=fontsize_ticks)
     # print(plotdat[0][-2000:-100])
     # print(plotdat[1][-2000:-100])
+    # np.set_printoptions(threshold=2000)
     # print(data[1])
     plt.xticks(fontsize=fontsize_ticks)
     plt.yticks(fontsize=fontsize_ticks)

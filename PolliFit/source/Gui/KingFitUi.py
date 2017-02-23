@@ -47,13 +47,13 @@ class KingFitUi(QtWidgets.QWidget, Ui_KingFitter):
         if self.run == -1:
             isoiter = TiTs.select_from_db(self.dbpath, 'DISTINCT iso', 'Combined',
                                          [['parname'], ['shift']], 'ORDER BY iso', caller_name=__name__)
-            if isoiter:
+            if isoiter is not None:
                 for e in isoiter:
                     self.isotopes.append(e[0])
         else:
             isoiter = TiTs.select_from_db(self.dbpath, 'DISTINCT iso', 'Combined',
                                          [['parname', 'run'], ['shift', self.run]], 'ORDER BY iso', caller_name=__name__)
-            if isoiter:
+            if isoiter is not None:
                 for e in isoiter:
                     self.isotopes.append(e[0])
         select = [True] * len(self.isotopes)
@@ -73,7 +73,7 @@ class KingFitUi(QtWidgets.QWidget, Ui_KingFitter):
     def loadRuns(self):
         self.runSelect.clear()
         runIter = TiTs.select_from_db(self.dbpath, 'run', 'Runs', caller_name=__name__)
-        if runIter:
+        if runIter is not None:
             for i, r in enumerate(runIter):
                 self.runSelect.insertItem(i, r[0])
 

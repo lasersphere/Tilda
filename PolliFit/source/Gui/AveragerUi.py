@@ -45,14 +45,14 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
         print('run is: ', run)
         it = TiTs.select_from_db(self.dbpath, 'DISTINCT iso', 'FitRes', [['run'], [run]], 'ORDER BY iso',
                                  caller_name=__name__)
-        if it:
+        if it is not None:
             for i, e in enumerate(it):
                 self.isoSelect.insertItem(i, e[0])
 
     def loadRuns(self):
         self.runSelect.clear()
         it = TiTs.select_from_db(self.dbpath, 'run', 'Runs', caller_name=__name__)
-        if it:
+        if it is not None:
             for i, r in enumerate(it):
                 self.runSelect.insertItem(i, r[0])
         
@@ -63,7 +63,7 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
         if runselect and isoSelect:
             r = TiTs.select_from_db(self.dbpath, 'pars', 'FitRes', [['run', 'iso'],
                             [runselect, isoSelect]], caller_name=__name__)[0]
-        if r:
+        if r is not None:
             try:
                 for e in sorted(ast.literal_eval(r[0]).keys()):
                     self.parameter.addItem(e)
@@ -83,7 +83,7 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
             r = TiTs.select_from_db(self.dbpath, 'config, statErrForm, systErrForm', 'Combined',
                                 [['iso', 'parname', 'run'], [self.iso, self.par, self.run]], caller_name=__name__)
             select = [True] * len(self.files)
-            if r:
+            if r is not None:
                 cfg = ast.literal_eval(r[0][0])
                 for i, f in enumerate(self.files):
                     if not cfg:
@@ -119,7 +119,7 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
             else:
                 w.setCheckState(QtCore.Qt.Unchecked)
             self.fileList.addItem(w)
-
+        print('selected all!')
         self.fileList.blockSignals(False)
         self.recalc()
 
@@ -130,16 +130,18 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
         self.err = 0
         self.redChi = 0
         self.systeErr = 0
-
+        print('recalculating!')
         for index in range(self.fileList.count()):
             if self.fileList.item(index).checkState() != QtCore.Qt.Checked:
                 select.append(index)
         if len(self.vals) > 0 and len(self.errs) > 0:
             self.chosenFiles = np.delete(copy.deepcopy(self.files), select)
+            print('self.chosenFiles: ', self.chosenFiles)
             if len(self.chosenFiles) > 0:
                 self.val, self.err, self.systeErr, self.redChi, plotdata, ax = Analyzer.combineRes(
                     self.iso, self.par, self.run, self.dbpath,
                     show_plot=False, only_this_files=self.chosenFiles, write_to_db=False)
+                print('values: ', self.val, self.err, self.systeErr, self.redChi, plotdata, ax)
         self.result.setText(str(self.val))
         self.rChi.setText(str(self.redChi))
         self.statErr.setText(str(self.err))

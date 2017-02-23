@@ -48,15 +48,16 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
         self.isoSelect.clear()
         it = TiTs.select_from_db(self.dbpath, 'DISTINCT iso', 'FitRes', [['run'], [run]], addCond='ORDER BY iso',
                                  caller_name=__name__)
-        if it:
+        if it is not None:
             for i, e in enumerate(it):
                 self.isoSelect.insertItem(i, e[0])
 
     def loadRuns(self):
         self.runSelect.clear()
         it = TiTs.select_from_db(self.dbpath, 'run', 'Runs', caller_name=__name__)
-        for i, r in enumerate(it):
-            self.runSelect.insertItem(i, r[0])
+        if it is not None:
+            for i, r in enumerate(it):
+                self.runSelect.insertItem(i, r[0])
 
     def loadFiles(self):
         self.fileList.clear()
@@ -77,7 +78,7 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
             select = [True] * len(self.files)
             self.statErrForm = 0
             self.systErrForm = 0
-            if len(r) > 0:
+            if r is not None and len(r) > 0:
                 self.statErrForm = r[0][1]
                 self.systErrForm = r[0][2]
                 self.cfg = ast.literal_eval(r[0][0])
@@ -148,7 +149,7 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
         self.dbpath = dbpath
         self.loadRuns()  # might still cause some problems
         r = TiTs.select_from_db(self.dbpath, 'reference, RefRun', 'Lines', caller_name=__name__)
-        if r:
+        if r is not None:
             self.reference = r[0][0]
             self.refRun = r[0][1]
             r = TiTs.select_from_db(self.dbpath, 'file, date', 'Files', [['type'], [self.reference]],
@@ -157,7 +158,7 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
                                          caller_name=__name__)
             self.referenceList = []
             self.referenceDates = []
-            if fitres and r:
+            if fitres is not None and r is not None:
                 fitres = [item for sublist in fitres for item in sublist]
                 # print('reference files are: %s' % fitres)
                 for i in r:
