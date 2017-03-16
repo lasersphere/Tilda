@@ -20,13 +20,17 @@ from matplotlib.widgets import RadioButtons
 from matplotlib.widgets import RectangleSelector
 from matplotlib.widgets import Slider
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from Spectra.AsymmetricVoigt import AsymmetricVoigt
+from SPFitter import SPFitter
+from Spectra.FullSpec import FullSpec
+from copy import deepcopy
 
 import Physics
 
 matplotlib.use('Qt5Agg')
 
-def AlivePlot(x_data, plotdata, error):
 
+def AlivePlot(x_data, plotdata, error):
     arr = np.asarray
     y_err = arr(error).T
     for data in plotdata:
@@ -45,7 +49,7 @@ def plot(*args):
     plt.xlabel('Frequency [MHz]')
 
 
-def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True,fontsize_ticks=10):
+def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks=10):
     kepco = False
     if fit.meas.type == 'Kepco':
         x_in_freq = False
@@ -69,12 +73,70 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True,fontsize_ticks=
         data = fit.meas.getArithSpec(*fit.st)
         plotdat = fit.spec.toPlotE(fit.meas.laserFreq, fit.meas.col, fit.par)
 
+    shape = fit.spec.shape
+    main_peaks_plot_data = []
+    side_peaks_plot_data = []
+    if isinstance(shape, AsymmetricVoigt):
+        main_peaks = deepcopy(fit)
+        main_peaks.spec.iso.shape['name'] = 'Voigt'
+        side_peaks = deepcopy(main_peaks)
+        main_full_spec = FullSpec(main_peaks.spec.iso)
+        main_fit = SPFitter(main_full_spec, main_peaks.meas, main_peaks.st)
+        for i, par in enumerate(main_peaks.npar):  # pass fit results to new plot
+            if par in main_fit.npar:
+                main_fit.par[main_fit.npar.index(par)] = main_peaks.par[i]
+        if x_in_freq:
+            main_peaks_plot_data = main_fit.spec.toPlot(main_fit.par)
+        else:
+            main_peaks_plot_data = main_fit.spec.toPlotE(main_fit.meas.laserFreq, main_fit.meas.col, main_fit.par)
+
+        side_peaks_spec = FullSpec(side_peaks.spec.iso)
+        side_peaks_fit = SPFitter(side_peaks_spec, side_peaks.meas, side_peaks.st)
+        asym_intensity = side_peaks.par[side_peaks.npar.index('IntAsym')]
+        asym_center_energy = side_peaks.par[side_peaks.npar.index('centerAsym')]  # eV
+
+        # # e to freq
+        # main_center_mhz = main_fit.par[main_fit.npar.index('center')]
+        #
+        # f = Physics.addEnergyToFrequencyPoint(
+        #     main_center_mhz, -1 * asym_center_energy, fit.spec.iso, fit.meas.laserFreq, fit.meas.col)
+
+        center_velocity = Physics.invRelDoppler(fit.meas.laserFreq,
+                                                fit.spec.iso.freq + fit.spec.iso.center)
+        center_velocity = - center_velocity if fit.meas.col else center_velocity
+        center_volts = Physics.relEnergy(
+            center_velocity, fit.spec.iso.mass * Physics.u) / Physics.qe
+
+        diff_doppl_MHz = Physics.diffDoppler(
+            fit.spec.iso.freq + fit.spec.iso.center,
+            center_volts, fit.spec.iso.mass)
+        side_peak_freq = asym_center_energy * diff_doppl_MHz
+
+        for i, par in enumerate(side_peaks.npar):
+            if par in side_peaks_fit.npar:
+                new_par = side_peaks.par[i]
+                if par == 'center':
+                    new_par += side_peak_freq
+                elif 'Int' in par:
+                    new_par *= asym_intensity
+                side_peaks_fit.par[side_peaks_fit.npar.index(par)] = new_par
+        if x_in_freq:
+            side_peaks_plot_data = side_peaks_fit.spec.toPlot(side_peaks_fit.par)
+        else:
+            side_peaks_plot_data = side_peaks_fit.spec.toPlotE(
+                side_peaks.meas.laserFreq, side_peaks.meas.col, side_peaks_fit.par)
+        color = '-b'
+
     fig = plt.figure(1, (8, 8))
     fig.patch.set_facecolor('white')
 
     ax1 = plt.axes([0.15, 0.35, 0.8, 0.6])
     plt.errorbar(data[0], data[1], yerr=data[2], fmt='k.')
     plt.plot(plotdat[0], plotdat[1], color)
+    if len(main_peaks_plot_data):
+        plt.plot(main_peaks_plot_data[0], main_peaks_plot_data[1], '-g')
+    if len(side_peaks_plot_data):
+        plt.plot(side_peaks_plot_data[0], side_peaks_plot_data[1], '-r')
     ax1.get_xaxis().get_major_formatter().set_useOffset(False)
     plt.xticks(fontsize=fontsize_ticks)
     plt.yticks(fontsize=fontsize_ticks)
@@ -409,39 +471,47 @@ def tight_layout():
     plt.tight_layout()
 
 
-def plot_par_from_combined(db, runs_to_plot, isotopes, par, plot_runs_seperate=False, show_pl=True, literature_dict=None):
+def plot_par_from_combined(db, runs_to_plot, isotopes,
+                           par, plot_runs_seperate=False, show_pl=True,
+                           literature_dict=None, literature_name='lit. values'):
     import Tools
     compl_x = []
     compl_y = []
     compl_y_err = []
+    lit_y = None
+    lit_y_err = None
     val_statErr_rChi_shift_dict = Tools.extract_from_combined(runs_to_plot, db, isotopes, par, print_extracted=True)
     for each in val_statErr_rChi_shift_dict.keys():
         try:
-            if literature_dict is not None:  # try to get the literature values and substract experiment Values from it
-                vals = [(int(key_pl[:2]), val_pl[0], literature_dict.get(key_pl, [0])[0]) for key_pl, val_pl in
-                        sorted(val_statErr_rChi_shift_dict[each].items())]
-                errs = [(int(key_pl2[:2]), val_pl2[1], literature_dict.get(key_pl2, [0, 0])[1]) for key_pl2, val_pl2 in
-                        sorted(val_statErr_rChi_shift_dict[each].items())]
-                x = [valo[0] for valo in vals]
-                exp_y = [val[1] for val in vals]
-                exp_y_err = [val[1] for val in errs]
-                # maybe in future:
-                # lit_y = [val[2] for val in vals]
-                # lit_y_err = [val[2] for val in errs]
-                # exp_y = [0 for valo in vals]
-                # exp_y_err = [valo[1] for valo in errs]
-                # lit_y = [valo[1] - valo[2] for valo in vals]
-                # lit_y_err = [valo[2] for valo in errs]
-            else:
-                x_y_err = [(int(iso[:2]), val[0], np.sqrt(val[1] ** 2 + val[2] ** 2)) for iso, val in sorted(val_statErr_rChi_shift_dict[each].items())]
-                x = [each[0] for each in x_y_err]
-                exp_y = [each[1] for each in x_y_err]
-                exp_y_err = [each[2] for each in x_y_err]
-            if plot_runs_seperate:
-                plt.errorbar(x, exp_y, exp_y_err, label='experimental values', linestyle='None', marker="o")
-            compl_x += x
-            compl_y += exp_y
-            compl_y_err += exp_y_err
+            if each:
+                if literature_dict is not None:  # try to get the literature values and substract experiment Values from it
+                    vals = [(int(key_pl[:2]), val_pl[0], literature_dict.get(key_pl, [0])[0]) for key_pl, val_pl in
+                            sorted(val_statErr_rChi_shift_dict[each].items())]
+                    errs = [(int(key_pl2[:2]), val_pl2[1], literature_dict.get(key_pl2, [0, 0])[1]) for key_pl2, val_pl2 in
+                            sorted(val_statErr_rChi_shift_dict[each].items())]
+                    x = [valo[0] for valo in vals]
+                    # exp_y = [val[1] for val in vals]
+                    # exp_y_err = [val[1] for val in errs]
+                    # maybe in future:
+                    # lit_y = [val[2] for val in vals]
+                    # lit_y_err = [val[2] for val in errs]
+                    exp_y = [0 for valo in vals]
+                    exp_y_err = [valo[1] for valo in errs]
+                    lit_y = [valo[1] - valo[2] for valo in vals]
+                    lit_y_err = [valo[2] for valo in errs]
+                else:
+                    x_y_err = [(int(iso[:2]), val[0], np.sqrt(val[1] ** 2 + val[2] ** 2))
+                               for iso, val in sorted(val_statErr_rChi_shift_dict[each].items())]
+                    x = [each[0] for each in x_y_err]
+                    exp_y = [each[1] for each in x_y_err]
+                    exp_y_err = [each[2] for each in x_y_err]
+                if plot_runs_seperate:
+                    plt.errorbar(x, exp_y, exp_y_err, label='exp. values', linestyle='None', marker="o")
+                    if lit_y is not None:
+                        plt.errorbar(x, lit_y, lit_y_err, label=literature_name, linestyle='None', marker="o")
+                compl_x += x
+                compl_y += exp_y
+                compl_y_err += exp_y_err
 
         except Exception as err:
             print('error while plotting: %s' % err)
@@ -449,10 +519,14 @@ def plot_par_from_combined(db, runs_to_plot, isotopes, par, plot_runs_seperate=F
     if not plot_runs_seperate:
         plt.errorbar(compl_x, compl_y, compl_y_err, label='runs: ' + str(sorted(val_statErr_rChi_shift_dict.keys())),
                      linestyle='None', marker="o")
+        if lit_y is not None:
+            plt.errorbar(compl_x, lit_y, lit_y_err, label=literature_name,
+                         linestyle='None', marker="o")
 
     plt.legend()
     plt.margins(0.25)
     get_current_axes().set_ylabel('%s [MHz]' % par)
-
+    plt.gcf().set_facecolor('w')
     if show_pl:
         show(True)
+    return compl_x, compl_y, compl_y_err

@@ -307,3 +307,53 @@ def extract_from_combined(runs_list, db, isotopes=None, par='shift', print_extra
             for isot, vals in sorted(run_results_dicts.items()):
                 print('%s\t%.3f(%.0f)[%.0f]\t%.2f' % (isot, vals[0], vals[1] * 1000, vals[2] * 1000, vals[3]))
     return result_dict
+
+
+def extract_from_fitRes(runs_list, db, isotopes=None):
+    """
+    extract the fit results for an isotope from the database.
+    :param runs_list: list of strings with the run names, -1 for all runs
+    :param db: str, database path
+    :param isotopes: list of str, isotope names of interes
+    :return: dict, {run: {filename: (iso, runNum, rChi, fitres_dict), ...}}
+    """
+    unknown_run_number = -1
+    ret_dict = {}
+    ret_unsorted_data = []
+    if runs_list == -1:
+        # select all runs!
+        for iso in isotopes:
+            connection = sqlite3.connect(db)
+            cursor = connection.cursor()
+            cursor.execute('''SELECT file, iso, run, rChi, pars FROM FitRes WHERE iso = ? ORDER BY file''', (iso,))
+            data = cursor.fetchall()
+            connection.close()
+            if len(data):
+                ret_unsorted_data += data
+    else:
+        for run in runs_list:
+            for iso in isotopes:
+                connection = sqlite3.connect(db)
+                cursor = connection.cursor()
+                cursor.execute(
+                    '''SELECT file, iso, run, rChi, pars FROM FitRes WHERE iso = ? AND run = ?  ORDER BY file''',
+                    (iso, run))
+                data = cursor.fetchall()
+                connection.close()
+                if len(data):
+                    ret_unsorted_data += data
+    for each in ret_unsorted_data:
+        file_name, iso, run, r_chi_sq, pars_dict = each
+        file_name_split = file_name.split('.')[0]
+        if 'Run' in file_name_split:
+            run_num = int(file_name_split[file_name_split.index('Run') + 3:file_name_split.index('Run') + 6])
+            run_str = 'Run%03d_' % run_num
+        else:
+            run_num = unknown_run_number
+            run_str = 'unknownRun%03d_' % abs(run_num)
+            unknown_run_number -= 1
+        pars_dict = eval(pars_dict)
+        if not ret_dict.get(run, False):
+            ret_dict[run] = {}  # was not existing yet
+        ret_dict[run][file_name] = (iso, run_num, r_chi_sq, pars_dict)
+    return ret_dict

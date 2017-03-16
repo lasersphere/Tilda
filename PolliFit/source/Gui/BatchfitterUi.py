@@ -62,7 +62,7 @@ class BatchfitterUi(QtWidgets.QWidget, Ui_Batchfitter):
             self.iso = self.isoSelect.currentText()
             self.run = self.runSelect.currentText()
             self.files = [f[0] for f in TiTs.select_from_db(self.dbpath, 'file', 'Files',
-                                        [['type'], [self.iso]], 'ORDER BY type', caller_name=__name__)]
+                                        [['type'], [self.iso]], 'ORDER BY date', caller_name=__name__)]
             select = [False] * len(self.files)
 
             self.fileList.blockSignals(True)

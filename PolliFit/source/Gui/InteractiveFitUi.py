@@ -96,7 +96,7 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
     def loadFiles(self):
         self.fileList.clear()
         it = TiTs.select_from_db(self.dbpath, 'file', 'Files',
-                                     [['type'], [self.isoFilter.currentText()]], 'ORDER BY type', caller_name=__name__)
+                                     [['type'], [self.isoFilter.currentText()]], 'ORDER BY date', caller_name=__name__)
         if it is not None:
             for r in it:
                 self.fileList.addItem(r[0])

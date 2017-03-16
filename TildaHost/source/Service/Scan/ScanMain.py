@@ -191,8 +191,9 @@ class ScanMain(QObject):
                       (iso, track_num, str(track_dict)))
         logging.debug('---------------------------------------------')
         # logging.debug('postACCVoltControl is: ' + str(track_dict['postAccOffsetVoltControl']))  # this is fine.
-        self.ppg_load_track(track_dict)
+        self.ppg_stop(False)  # stop the ppg, to ensure the daq is not triggered unintendly
         start_ok = self.sequencer.measureTrack(scan_dict, track_num)
+        self.ppg_load_track(track_dict)  # first start the measurement, then load the pulse pattern on th ppg
         return start_ok
 
     def set_post_acc_switch_box(self, scan_dict, track_num, desired_state=None):

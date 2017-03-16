@@ -9,6 +9,7 @@ import TildaTools as TiTS
 
 import sqlite3
 
+
 class DBIsotope(object):
     '''
     A sqlite database driven version fo the isotope object

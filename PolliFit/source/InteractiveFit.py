@@ -83,7 +83,7 @@ class InteractiveFit(object):
                         spec = FullSpec(iso)
                         self.fitter = SPFitter(spec, meas, st)
                         plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
-            except:
+            except:  # for mcp data etc
                 iso = DBIsotope(db, meas.type, lineVar=linevar)
                 if var[0][0] == '_m':
                     iso_m = DBIsotope(db, meas.type, var[0][0], var[0][1])

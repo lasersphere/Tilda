@@ -98,7 +98,7 @@ class KingFitter(object):
         self.x = [self.redmasses[i]*j - self.c for i,j in enumerate(self.x_origin)]
         print('performing King fit!')
         if find_slope_with_statistical_error:
-            (self.a, self.b, self.aerr, self.berr) = self.fit(run, showplot=False )
+            (self.a, self.b, self.aerr, self.berr) = self.fit(run, showplot=True)
             self.yerr = self.yerr_total
             (self.a, self.b, self.aerr, self.berr) = self.fit(run, showplot=self.showing, bFix=True)
         else:
@@ -249,8 +249,10 @@ class KingFitter(object):
             cur = con.cursor()
             cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', (j, 'delta_r_square', self.run[i]))
             con.commit()
-            cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ? WHERE iso = ? AND parname = ?''',
-                        (self.chargeradii[i], self.chargeradiiStatErrs[i], self.chargeradiiSystErrs[i], j, 'delta_r_square'))
+            cur.execute(
+                '''UPDATE Combined SET val = ?, statErr = ?, systErr = ? WHERE iso = ? AND parname = ? and run = ?''',
+                (self.chargeradii[i], self.chargeradiiStatErrs[i],
+                 self.chargeradiiSystErrs[i], j, 'delta_r_square', self.run[i]))
             con.commit()
             con.close()
         if self.showing:
@@ -264,7 +266,8 @@ class KingFitter(object):
                 x.append(int(str(i).split('_')[0]))
                 y.append(finalVals[i][0])
                 yerr.append(np.sqrt(np.square(finalVals[i][1])+np.square(finalVals[i][2])))
-                print(i, '\t', np.round(finalVals[i][0],3), '('+str(np.round(finalVals[i][1],3))+')' + '('+str(np.round(finalVals[i][2],3))+')')
+                # print(i, '\t', np.round(finalVals[i][0],3), '('+str(np.round(finalVals[i][1],3))+')' + '('+str(np.round(finalVals[i][2],3))+')')
+                print('%s\t%0.3f(%d)[%d]' % (i, finalVals[i][0], finalVals[i][1] * 1000, finalVals[i][2] * 1000))
                 #print("'"+str(i)+"'", ':[', np.round(finalVals[i][0],3), ','+ str(np.round(np.sqrt(finalVals[i][1]**2 + finalVals[i][2]**2),3))+'],')
 
             plt.subplots_adjust(bottom=0.2)
