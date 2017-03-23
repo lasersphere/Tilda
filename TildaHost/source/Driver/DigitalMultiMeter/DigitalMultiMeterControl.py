@@ -19,11 +19,12 @@ trigger source
 from Driver.DigitalMultiMeter.Agilent import Agilent
 from Driver.DigitalMultiMeter.DMMdummy import DMMdummy
 from Driver.DigitalMultiMeter.NI4071 import Ni4071
+from Driver.DigitalMultiMeter.AgilentM918x import AgilentM918x
 
 
 class DMMControl:
     def __init__(self):
-        self.types = ['Ni4071', 'dummy', 'Agilent_34461A', 'Agilent_34401A']
+        self.types = ['Ni4071', 'dummy', 'Agilent_34461A', 'Agilent_34401A', 'Agilent_M918x']
         self.dmm = {}
         # dict for storing all active dmm objects.
         # key is the name of the device, which is the type_address
@@ -61,6 +62,12 @@ class DMMControl:
             try:
                 dev = Agilent(address_str=address, type_num='34401A')
                 name = dev.name  # 'type_addr'
+            except Exception as e:
+                print('starting dmm did not work exception is:', e)
+        elif type_str == 'Agilent_M918x':
+            try:
+                dev = AgilentM918x(address_str=address)
+                name = dev.name # 'type_addr'
             except Exception as e:
                 print('starting dmm did not work exception is:', e)
         if dev is not None:

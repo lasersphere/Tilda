@@ -25,6 +25,8 @@ def get_wid_by_type(dmm_type, dmm_name):
         return Ni4071Widg(dmm_name, dmm_type)
     elif dmm_type == 'Agilent_34401A':
         return Ni4071Widg(dmm_name, dmm_type)
+    elif dmm_type == 'Agilent_M918x':
+        return Ni4071Widg(dmm_name, dmm_type)
     else:
         print('could not find widget of type: ', dmm_type)
 
