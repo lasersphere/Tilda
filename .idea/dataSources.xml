@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourceManagerImpl" format="xml" hash="1214349189">
+    <data-source source="LOCAL" name="Sqlite (Xerial) - DACScan_160622.sqlite" uuid="0a434a2e-3f75-4d19-a884-5245c8b5894c">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:D:/DACScan_160622/DACScan_160622.sqlite</jdbc-url>
+    </data-source>
+    <data-source source="LOCAL" name="Sqlite (Xerial) - KepcoScans_160621.sqlite" uuid="275bb161-8ffe-49d5-8ba2-a7b9fcea37e1">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:R:/Projekte/TRIGA/Measurements and Analysis_Simon/KepcoScans und DAC Scans/DAC - AD5781/KepcoScans_160621/KepcoScans_160621.sqlite</jdbc-url>
+    </data-source>
+    <data-source source="LOCAL" name="Sqlite (Xerial) - Sn_beamtime_Tilda_active_data.sqlite" uuid="6d106678-eaae-443f-9ce2-501b9244eedc">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:C:\Sn_data\Sn_beamtime_Tilda_active_data\Sn_beamtime_Tilda_active_data.sqlite</jdbc-url>
+    </data-source>
+  </component>
+</project>
