@@ -31,13 +31,15 @@ datafolder = os.path.join(workdir, 'Ni_April2016_mcp')
 db = os.path.join(workdir, 'Ni_workspace.sqlite')
 
 # runs = ['narrow_gate_asym', 'narrow_gate_asym_67_Ni']
+# runs = ['narrow_gate', 'narrow_gate_67_Ni']
 # runs = ['wide_gate_asym', 'wide_gate_asym_67_Ni']
 # runs = ['wide_gate', 'wide_gate_67_Ni']
 # runs = ['wide_gate_67_Ni']
 # runs = [runs[0], runs[2]]
 runs = ['wide_gate_asym', 'wide_gate_asym_67_Ni',
         'wide_gate', 'wide_gate_67_Ni',
-        'narrow_gate_asym', 'narrow_gate_asym_67_Ni']
+        'narrow_gate_asym', 'narrow_gate_asym_67_Ni',
+        'narrow_gate', 'narrow_gate_67_Ni']
 
 isotopes = ['%s_Ni' % i for i in range(58, 71)]
 isotopes.remove('69_Ni')
@@ -311,7 +313,8 @@ print(freq, Physics.wavenumber(freq), 0.5 * Physics.wavenumber(freq))
 # con.close()
 #
 ''' volt div ratio: '''
-volt_div_ratio = "{'accVolt': 1000.05, 'offset': {'prema': 1000.022, 'agilent': 999.985}}"
+volt_div_ratio = "{'accVolt': 1000.05, 'offset': {'prema': 1000.022, 'agilent': 999.985}}"  # from datasheet
+# volt_div_ratio = "{'accVolt': 999.95, 'offset': {'prema': 1000.272, 'agilent': 1000.235}}"  # found chisquare min
 # volt_div_ratio = "{'accVolt': 1000.05, 'offset': 1000.0}"
 con = sqlite3.connect(db)
 cur = con.cursor()
@@ -324,14 +327,18 @@ diffdopp60 = Physics.diffDoppler(850343019.777062, 30000, 60)  # 14.6842867127 M
 
 ''' transition wavelenght: '''
 # observed_wavenum = 28364.39  # cm-1  observed wavenum from NIST, mass is unclear.
-# transition_freq = 850342663.9020721  # final value, observed from voltage calibration
+# # transition_freq = 850342663.9020721  # final value, observed from voltage calibration
 transition_freq = 850343019.777  # value from NIST, mass unclear
-
-# # transition_freq = Physics.freqFromWavenumber(observed_wavenum)
-# print('transition frequency: %s ' % transition_freq)
 #
+# # # transition_freq = Physics.freqFromWavenumber(observed_wavenum)
+# # print('transition frequency: %s ' % transition_freq)
+# #
 transition_freq += 1256.32701 - 460  # correction from fitting the 60_Ni references
-#
+
+
+# fitting for the divider ratios: {'accVolt': 999.95, 'offset': {'prema': 1000.272, 'agilent': 1000.235}} :
+# transition_freq = 850343845.66301  # see one line above ;)
+
 con = sqlite3.connect(db)
 cur = con.cursor()
 cur.execute('''UPDATE Lines SET frequency = ?''', (transition_freq,))
@@ -439,20 +446,22 @@ def isotope_shift_batch_fitting(runs, isotopes, pars=None, combine_shift=True):
 # # files_w_err = isotope_shift_batch_fitting(
 # #     ['wide_gate_asym_free'], even_isotopes, pars=['centerAsym', 'IntAsym'], combine_shift=False)
 # print('--------------------------------------------------------------------')
-# print('files with error during batchfit: ', files_w_err)
+# print('files with error during batchfit: ', zip(runs, files_w_err))
 # print('--------------------------------------------------------------------')
-# raise Exception('got until here wohooo')
+# raise Exception('got until here wohooo, remember to copy 67_Ni results now!')
 
 ''' Divider Ratio Determination '''
 acc_div_start = 1000.05
-offset_div_start = 1000
+offset_prema_div_start = 1000.022
+offset_agi_div_start = 999.985
 # get the relevant files which need to be fitted in the following:
 div_ratio_relevant_stable_files = {}
 div_ratio_relevant_stable_files['60_Ni'] = []
 
 
-def chi_square_finder(acc_dev_list, off_dev_list):
-    offset_div_ratios = [[]]
+def chi_square_finder(acc_dev_list, offset_dev_list, runs):
+    offset_prema_div_ratios = [[]]
+    offset_agi_div_ratios = [[]]
     acc_ratios = []
     run_chi_finder = runs[0]
     fit_res = [[]]
@@ -466,24 +475,27 @@ def chi_square_finder(acc_dev_list, off_dev_list):
         print('setting transition Frequency to: %s ' % freq)
         acc_ratios.append(current_acc_div)
 
-        for off in off_dev_list:
+        for off_div in offset_dev_list:
 
-            freq_correction = 17.82 * off / 100 - 9.536  # determined for the region around acc_div = 1000.05
+            freq_correction = 17.82 * off_div / 100 - 9.536  # determined for the region around acc_div = 1000.05
             new_freq = freq + freq_correction
 
-            curent_off_div = offset_div_start + off / 100
+            curent_prema_off_div = offset_prema_div_start + off_div / 100
 
-            # con = sqlite3.connect(db)
-            # cur = con.cursor()
-            # divratio = str({'accVolt': current_acc_div, 'offset': curent_off_div})
-            # cur.execute('''UPDATE Files SET voltDivRatio = ? ''', (divratio,))
-            # cur.execute('''UPDATE Lines SET frequency = ?''', (new_freq,))
-            # con.commit()
-            # con.close()
+            current_agi_off_div = offset_agi_div_start + off_div / 100
+
+            con = sqlite3.connect(db)
+            cur = con.cursor()
+            volt_div_ratio = "{'accVolt': %.3f, 'offset': {'prema': %.3f, 'agilent': %.3f}}" % (
+                current_acc_div, curent_prema_off_div, current_agi_off_div)
+
+            cur.execute('''UPDATE Files SET voltDivRatio = ? ''', (volt_div_ratio,))
+            cur.execute('''UPDATE Lines SET frequency = ?''', (new_freq,))
+            con.commit()
+            con.close()
 
             # Batchfitting:
-            fitres = [(iso, run_chi_finder, BatchFit.batchFit(files, db, run_chi_finder)[1])
-                      for iso, files in sorted(div_ratio_relevant_stable_files.items())]
+            fitres = isotope_shift_batch_fitting(runs, stables, combine_shift=False)
 
             # combineRes only when happy with voltdivratio, otherwise no use...
             # [[Analyzer.combineRes(iso, par, run, db) for iso in stables] for par in pars]
@@ -503,17 +515,21 @@ def chi_square_finder(acc_dev_list, off_dev_list):
                 chisq += iso_chisq
             chisquares[acc_vol_ratio_index].append(float(chisq))
             # fit_res[acc_vol_ratio_index].append(fitres)
-            offset_div_ratios[acc_vol_ratio_index].append(curent_off_div)
+            offset_prema_div_ratios[acc_vol_ratio_index].append(curent_prema_off_div)
+            offset_agi_div_ratios[acc_vol_ratio_index].append(current_agi_off_div)
 
         acc_vol_ratio_index += 1
         chisquares.append([])
         fit_res.append([])
-        offset_div_ratios.append([])
+        offset_prema_div_ratios.append([])
+        offset_agi_div_ratios.append([])
     chisquares = chisquares[:-1]  # delete last empty list in order not to confuse.
     fit_res = fit_res[:-1]
-    offset_div_ratios = offset_div_ratios[:-1]
+    offset_prema_div_ratios = offset_prema_div_ratios[:-1]
+    offset_agi_div_ratios = offset_agi_div_ratios[:-1]
     print('acceleration voltage divider ratios: \n %s ' % str(acc_ratios))
-    print('offset voltage divider ratios: \n %s ' % str(offset_div_ratios))
+    print('offset voltage divider ratios prema: \n %s ' % str(offset_prema_div_ratios))
+    print('offset voltage divider ratios agilent: \n %s ' % str(offset_agi_div_ratios))
     print('Chi^2 are: \n %s ' % str(chisquares))
 
     print(fit_res)
@@ -523,11 +539,12 @@ def chi_square_finder(acc_dev_list, off_dev_list):
         print('for acc volt div ratio: %s' % acc_ratios[acc_volt_ind])
         for offset_volt_ind, inner_each in enumerate(each):
             [print(fit_res_tpl) for fit_res_tpl in inner_each if len(fit_res_tpl[2])]
-    print('acc\toff\tchisquare')
+    print('acc\toff_prema\toff_agi\tchisquare')
     for acc_ind, acc_rat in enumerate(acc_ratios):
-        for off_ind, off_rat in enumerate(offset_div_ratios[acc_ind]):
-            print(('%s\t%s\t%s' % (acc_rat, off_rat, chisquares[acc_ind][off_ind])).replace('.', ','))
-    return acc_ratios, offset_div_ratios, chisquares
+        for off_ind, off_rat in enumerate(offset_prema_div_ratios[acc_ind]):
+            print(('%.3f\t%.3f\t%.3f\t%.3f' % (acc_rat, off_rat, offset_agi_div_ratios[acc_ind][off_ind],
+                                               chisquares[acc_ind][off_ind])).replace('.', ','))
+    return acc_ratios, offset_prema_div_ratios, offset_agi_div_ratios, chisquares
 
 
 def chisquare_finder_kepco(run_chi_finder, kepco_dif_list):
@@ -578,7 +595,15 @@ def chisquare_finder_kepco(run_chi_finder, kepco_dif_list):
 
     return best_chi_sq_kepco
 
-# acc_ratios, offset_div_ratios, chisquares = chi_square_finder([0], [0])
+# acc_ratios, offset_prema_div_ratios, offset_agi_div_ratios, chisquares = chi_square_finder(
+#     list(range(-25, 35, 5)), list(range(-40, 40, 5)), ['wide_gate_asym'])
+# acc_ratios, offset_prema_div_ratios, offset_agi_div_ratios, chisquares = chi_square_finder(
+#     [-10], [25], ['wide_gate_asym'])
+# print('----------------------------')
+# print('result of chisquare min: ', acc_ratios, offset_prema_div_ratios, offset_agi_div_ratios, chisquares)
+# print('----------------------------')
+# raise Exception('wohooo volt div determination done!')
+
 #
 # the error for the voltage determination has been found to be:
 # 1.5 * 10 ** -4 for the accvolt ratio and the offset ratio
@@ -970,10 +995,10 @@ for iso, shift_tuple in sorted(wide_g_sym.items()):
     y_err_sym += shift_tuple[1],
     y_err_asym += wide_g[iso][1],
 
-MPLPlotter.plt.errorbar([new_x-0.1 for new_x in x], y_sym, y_err_sym,
-                        marker='o', color='b', linestyle='None', label='wide - wide')
-MPLPlotter.plt.errorbar([new_x+0.1 for new_x in x], y_dif, y_err_asym,
-                        marker='o', color='r', linestyle='None', label='wide - wide_asym')
+# MPLPlotter.plt.errorbar([new_x-0.1 for new_x in x], y_sym, y_err_sym,
+#                         marker='o', color='b', linestyle='None', label='wide - wide')
+# MPLPlotter.plt.errorbar([new_x+0.1 for new_x in x], y_dif, y_err_asym,
+#                         marker='o', color='r', linestyle='None', label='wide - wide_asym')
 # MPLPlotter.get_current_figure().set_facecolor('w')
 # MPLPlotter.plt.margins(0.1)
 # MPLPlotter.plt.xlabel('A')
@@ -1036,15 +1061,16 @@ for file_name, fitres_tpl in sorted(sym_fitres.items()):
         sigma_dif_a_err += asym_pars_dict['sigma'][1],
 
 # plot rChi square difference:
-MPLPlotter.plt.errorbar([new_x-0.1 for new_x in run_nums], r_chi_sym, marker='o', color='b', linestyle='None')
-MPLPlotter.plt.errorbar([new_x+0.1 for new_x in run_nums], r_chi_diff, marker='o', color='r', linestyle='None')
-MPLPlotter.get_current_figure().set_facecolor('w')
-MPLPlotter.plt.margins(0.1)
-MPLPlotter.plt.xlabel('run number')
-MPLPlotter.plt.ylabel('rChiSq')
-MPLPlotter.plt.show(True)
-#
-# # plot all parameters as difference between par(Voigt) - par(asymVoigt)
+# MPLPlotter.clear()
+# MPLPlotter.plt.errorbar([new_x-0.1 for new_x in run_nums], r_chi_sym, marker='o', color='b', linestyle='None')
+# MPLPlotter.plt.errorbar([new_x+0.1 for new_x in run_nums], r_chi_diff, marker='o', color='r', linestyle='None')
+# MPLPlotter.get_current_figure().set_facecolor('w')
+# MPLPlotter.plt.margins(0.1)
+# MPLPlotter.plt.xlabel('run number')
+# MPLPlotter.plt.ylabel('rChiSq')
+# MPLPlotter.plt.show(True)
+
+# plot all parameters as difference between par(Voigt) - par(asymVoigt)
 # for par, dif_list, sym_err, asym_err in [('center', center_diff, center_diff_s_err, center_diff_a_err),
 #                                          ('Au', au_dif, au_dif_s_err, au_dif_a_err),
 #                                          ('Al', al_dif, al_dif_s_err, al_dif_a_err),
@@ -1065,8 +1091,8 @@ MPLPlotter.plt.show(True)
 
 
 ''' King Plot Analysis '''
-# delta_lit_radii.pop('64_Ni')  # just to see whoch point is what
-king = KingFitter(db, showing=True, litvals=delta_lit_radii)
+# delta_lit_radii.pop('62_Ni')  # just to see whoch point is what
+king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, font_size=18)
 # runs = ['narrow_gate', 'narrow_gate_67_Ni', 'narrow_gate_asym', 'narrow_gate_asym_67_Ni']
 # runs = ['wide_gate_asym', 'wide_gate_asym_67_Ni']
 # run = 'narrow_gate_asym'
@@ -1074,9 +1100,11 @@ run = runs[0]
 # isotopes = sorted(delta_lit_radii.keys())
 print(isotopes)
 king.kingFit(alpha=0, findBestAlpha=False, run=run, find_slope_with_statistical_error=False)
-# king.kingFit(alpha=378, findBestAlpha=True, run=run, find_slope_with_statistical_error=True)
-# king.kingFit(alpha=362, findBestAlpha=False, run=run)
 king.calcChargeRadii(isotopes=isotopes, run=run)
+
+# king.kingFit(alpha=378, findBestAlpha=True, run=run, find_slope_with_statistical_error=True)
+king.kingFit(alpha=362, findBestAlpha=True, run=run)
+king.calcChargeRadii(isotopes=isotopes, run=run, plot_evens_seperate=True)
 # king.calcChargeRadii(isotopes=isotopes, run=run)
 #
 # # print / plot isotope shift:
@@ -1100,11 +1128,14 @@ if data:
         print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))
 #
 MPLPlotter.plt.figure(facecolor='w')
+fontsize_ticks = 18
 MPLPlotter.plt.errorbar(iso_shift_plot_data_x, iso_shift_plot_data_y, iso_shift_plot_data_err,
                         marker='o', linestyle='None')
+MPLPlotter.plt.xticks(fontsize=fontsize_ticks)
+MPLPlotter.plt.yticks(fontsize=fontsize_ticks)
 MPLPlotter.plt.margins(0.1)
-MPLPlotter.plt.xlabel('A')
-MPLPlotter.plt.ylabel(r'$\delta \nu$ (MHz)')
+MPLPlotter.plt.xlabel('A', fontsize=fontsize_ticks)
+MPLPlotter.plt.ylabel(r'$\delta \nu$ (MHz)', fontsize=fontsize_ticks)
 MPLPlotter.show(True)
 
 

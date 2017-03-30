@@ -242,8 +242,8 @@ def combineShift(iso, run, db, show_plot=False):
     combined_plots_dir = os.path.join(os.path.split(db)[0], 'combined_plots')
     avg_fig_name = os.path.join(combined_plots_dir, iso + '_' + run + '_shift.png')
     plotdata = (dateIso, shifts, shiftErrors, val, statErr, systErr, ('k.', 'r'), False, avg_fig_name, '%s_shift [MHz]' % iso)
-    plt.plotAverage(*plotdata)
     if show_plot:
+        plt.plotAverage(*plotdata)
         plt.show(True)
     # plt.clear()
     return (shifts, shiftErrors, val, statErr, systErr, rChi)

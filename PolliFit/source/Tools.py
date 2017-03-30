@@ -357,3 +357,62 @@ def extract_from_fitRes(runs_list, db, isotopes=None):
             ret_dict[run] = {}  # was not existing yet
         ret_dict[run][file_name] = (iso, run_num, r_chi_sq, pars_dict)
     return ret_dict
+
+
+def extract_file_as_ascii(db, file, sc, tr, x_in_freq=False, line_var='', save_to='', softw_gates=None):
+    file_path = os.path.join(os.path.dirname(db), file)
+    if save_to == '':  # automatic determination and store in Ascii_files relative to db
+        save_to = os.path.join(os.path.dirname(db), 'Ascii_files', os.path.split(file)[1].split('.')[0] + '.txt')
+    meas = Meas.load(file_path, db, raw=not x_in_freq, softw_gates=softw_gates)
+
+    arith_spec = meas.getArithSpec(sc, tr)
+    if x_in_freq:
+        iso = DBIsotope(db, meas.type, lineVar=line_var)
+        if iso is not None:
+            for i, e in enumerate(arith_spec[0]):  # transfer to frequency
+
+                v = Physics.relVelocity(Physics.qe * e, iso.mass * Physics.u)
+                v = -v if meas.col else v
+
+                f = Physics.relDoppler(meas.laserFreq, v) - iso.freq
+                arith_spec[0][i] = f
+
+    print(arith_spec)
+    print(save_to)
+    if not os.path.exists(os.path.dirname(save_to)):
+        os.mkdir(os.path.dirname(save_to))
+    header = []
+    x_name = 'f /MHz' if x_in_freq else 'dac_volts'
+    with open(save_to, 'w') as f:
+        for each in header:
+            f.write(each)
+        f.write('%s\tcts\terr\n' % x_name)
+        for dac_volts, cts, err in zip(*arith_spec):
+            if x_in_freq:
+                f.write('%.3f\t%.3f\t%.3f\n' % (dac_volts, cts, err))
+            else:
+                f.write('%.7f\t%.3f\t%.3f\n' % (dac_volts, cts, err))
+    f.close()
+    return save_to
+
+
+if __name__ == '__main__':
+    workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
+    db = os.path.join(workdir, 'Ni_workspace.sqlite')
+    save_to = os.path.join(workdir, 'Ascii_files', 'test.txt')
+    files = ['Ni_April2016_mcp\\58Ni_no_protonTrigger_Run210.mcp',
+             'Ni_April2016_mcp\\59Ni_no_protonTrigger_Run113.mcp',
+             'Ni_April2016_mcp\\60Ni_no_protonTrigger_Run096.mcp',
+             'Ni_April2016_mcp\\61Ni_no_protonTrigger_Run159.mcp',
+             'Ni_April2016_mcp\\62Ni_no_protonTrigger_Run145.mcp',
+             'Ni_April2016_mcp\\63Ni_no_protonTrigger_Run169.mcp',
+             'Ni_April2016_mcp\\64Ni_no_protonTrigger_Run174.mcp',
+             'Ni_April2016_mcp\\65Ni_no_protonTrigger_Run181.mcp',
+             'Ni_April2016_mcp\\66Ni_no_protonTrigger_Run102.mcp',
+             'Ni_April2016_mcp\\67Ni_no_protonTrigger_3Tracks_Run191.mcp',
+             'Ni_April2016_mcp\\68Ni_no_protonTrigger_Run135.mcp',
+             'Ni_April2016_mcp\\70Ni_protonTrigger_Run248_sum_252_254_259_265.xml'
+             ]
+    for file in files:
+        extract_file_as_ascii(db, file, [4, 5, 6, 7],
+                              -1, line_var='tisa_60_asym_wide', x_in_freq=True)
