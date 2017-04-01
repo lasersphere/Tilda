@@ -364,36 +364,51 @@ def extract_file_as_ascii(db, file, sc, tr, x_in_freq=False, line_var='', save_t
     if save_to == '':  # automatic determination and store in Ascii_files relative to db
         save_to = os.path.join(os.path.dirname(db), 'Ascii_files', os.path.split(file)[1].split('.')[0] + '.txt')
     meas = Meas.load(file_path, db, raw=not x_in_freq, softw_gates=softw_gates)
-
-    arith_spec = meas.getArithSpec(sc, tr)
+    # i want an arith spec for each pmt here:
+    arith_spec = [meas.getArithSpec([abs(each)], tr) for each in sc]
     if x_in_freq:
         iso = DBIsotope(db, meas.type, lineVar=line_var)
         if iso is not None:
-            for i, e in enumerate(arith_spec[0]):  # transfer to frequency
+            for i, e in enumerate(arith_spec[0][0]):  # transfer to frequency
 
                 v = Physics.relVelocity(Physics.qe * e, iso.mass * Physics.u)
                 v = -v if meas.col else v
 
                 f = Physics.relDoppler(meas.laserFreq, v) - iso.freq
-                arith_spec[0][i] = f
+                arith_spec[0][0][i] = f
 
     print(arith_spec)
     print(save_to)
     if not os.path.exists(os.path.dirname(save_to)):
         os.mkdir(os.path.dirname(save_to))
-    header = []
+    header = create_header_list(meas)
     x_name = 'f /MHz' if x_in_freq else 'dac_volts'
     with open(save_to, 'w') as f:
         for each in header:
-            f.write(each)
-        f.write('%s\tcts\terr\n' % x_name)
-        for dac_volts, cts, err in zip(*arith_spec):
+            f.write(each + '\n')
+        col_name = '%s\t' % x_name
+        for each in sc:
+            col_name += 'scaler_%s\t' % each
+        f.write(col_name + '\n')
+        for dac_i, dac_volts in enumerate(arith_spec[0][0]):
             if x_in_freq:
-                f.write('%.3f\t%.3f\t%.3f\n' % (dac_volts, cts, err))
+                line = '%.3f\t' % dac_volts
             else:
-                f.write('%.7f\t%.3f\t%.3f\n' % (dac_volts, cts, err))
+                line = '%.7f\t' % dac_volts
+            for sc_i, each in enumerate(sc):
+                line += '%.3f\t' % arith_spec[sc_i][1][dac_i]
+            f.write(line + '\n')
     f.close()
     return save_to
+
+
+def create_header_list(meas):
+    header = []
+    header += 'date: %s' % meas.date,
+    header += 'laser frequency: %s' % meas.laserFreq,
+    header.append('###### end of header + 1 line column names ######')
+    print('header is: ', header)
+    return header
 
 
 if __name__ == '__main__':
