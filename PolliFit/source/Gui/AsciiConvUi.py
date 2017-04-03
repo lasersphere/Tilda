@@ -34,6 +34,11 @@ class AsciiConvUi(QtWidgets.QWidget, Ui_AsciiConv):
         self.lineEdit_softw_gates.editingFinished.connect(self.softw_gates_changed)
         self.checkBox_x_axis_in_freq.stateChanged.connect(self.check_box_changed)
 
+        self.lineEdit_tracks.setText('-1')
+        self.lineEdit_softw_gates.setText('[[[-10, 10, 0.5, 99], [-10, 10, 0.5, 99]]]')
+        self.lineEdit_scalers.setText('[0, 1]')
+        self.checkBox_x_axis_in_freq.setChecked(False)
+
     def sel_files(self):
         """ open file selection dialog and convert selected t ascii """
         filter = "XML (*.xml);;MCP (*.mcp)"
