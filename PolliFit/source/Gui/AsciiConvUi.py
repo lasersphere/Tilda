@@ -9,6 +9,8 @@ Gui for converting specdata to an ascii file.
 
 import ast
 import os
+import platform
+import subprocess
 
 from PyQt5 import QtWidgets, Qt
 
@@ -29,15 +31,18 @@ class AsciiConvUi(QtWidgets.QWidget, Ui_AsciiConv):
 
         self.pushButton_sel_and_conv.clicked.connect(self.sel_files)
         self.pushButton_choose_output.clicked.connect(self.output_dir_change)
+        self.pushButton_open_out_dir.clicked.connect(self.open_dir)
 
         self.lineEdit_scalers.editingFinished.connect(self.scalers_changed)
         self.lineEdit_softw_gates.editingFinished.connect(self.softw_gates_changed)
         self.checkBox_x_axis_in_freq.stateChanged.connect(self.check_box_changed)
 
         self.lineEdit_tracks.setText('-1')
-        self.lineEdit_softw_gates.setText('[[[-10, 10, 0.5, 99], [-10, 10, 0.5, 99]]]')
-        self.lineEdit_scalers.setText('[0, 1]')
-        self.checkBox_x_axis_in_freq.setChecked(False)
+        self.softw_gates = [[[-10, 10, 0, 99], [-10, 10, 0, 99], [-10, 10, 0, 99], [-10, 10, 0, 99]]]
+        self.lineEdit_softw_gates.setText(str(self.softw_gates))
+        self.scalers = [0, 1]
+        self.lineEdit_scalers.setText(str(self.scalers))
+        self.lineEdit_lineVar.setText('tisa_60_asym_wide')
 
     def sel_files(self):
         """ open file selection dialog and convert selected t ascii """
@@ -61,7 +66,6 @@ class AsciiConvUi(QtWidgets.QWidget, Ui_AsciiConv):
             add_name = '_' + self.lineEdit_add_name.text() if self.lineEdit_add_name.text() else ''
             save_to = os.path.join(
                 self.output_dir, os.path.split(file)[1].split('.')[0] + add_name + '.txt')
-            # TODO fix when selecting frequency...
             Tools.extract_file_as_ascii(
                 self.dbpath, file, sc, tr, x_in_freq=x_in_freq,
                 line_var=line_var, save_to=save_to, softw_gates=self.softw_gates)
@@ -84,6 +88,23 @@ class AsciiConvUi(QtWidgets.QWidget, Ui_AsciiConv):
             self.output_dir = dirname
         if self.output_dir is not None:
             self.label_current_output.setText(self.output_dir)
+
+    def open_dir(self):
+        path = self.output_dir
+        if self.output_dir is not None:
+            if os.path.exists(path):
+                if platform.system() == "Windows":
+                    os.startfile(path)
+                elif platform.system() == "Darwin":
+                    subprocess.Popen(["open", path])
+                else:
+                    subprocess.Popen(["xdg-open", path])
+            else:
+                self.output_dir_change()
+                self.open_dir()
+        else:
+            self.output_dir_change()
+            self.open_dir()
 
     def scalers_changed(self):
         """ lineedit in scaler finished, check if it is a list. """

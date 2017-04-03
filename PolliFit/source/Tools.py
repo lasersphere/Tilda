@@ -377,11 +377,9 @@ def extract_file_as_ascii(db, file, sc, tr, x_in_freq=False, line_var='', save_t
                 f = Physics.relDoppler(meas.laserFreq, v) - iso.freq
                 arith_spec[0][0][i] = f
 
-    print(arith_spec)
-    print(save_to)
     if not os.path.exists(os.path.dirname(save_to)):
         os.mkdir(os.path.dirname(save_to))
-    header = create_header_list(meas)
+    header = create_header_list(meas, sc, tr)
     x_name = 'f /MHz' if x_in_freq else 'dac_volts'
     with open(save_to, 'w') as f:
         for each in header:
@@ -402,12 +400,40 @@ def extract_file_as_ascii(db, file, sc, tr, x_in_freq=False, line_var='', save_t
     return save_to
 
 
-def create_header_list(meas):
+def create_header_list(meas, sc, tr):
+    from Measurement.XMLImporter import XMLImporter as Xml
     header = []
     header += 'date: %s' % meas.date,
-    header += 'laser frequency: %s' % meas.laserFreq,
+    kepco = meas.type == 'Kepco'  # Kepco and MCP file
+    tilda_file = isinstance(meas, Xml)
+    if tilda_file:
+        kepco = meas.seq_type == 'kepco'
+        header += 'track working time: %s' % meas.working_time,
+        header += 'isotope: %s' % meas.type,
+
+    if kepco:
+        pass
+    else:
+        header += 'laser frequency: %s' % meas.laserFreq,
+        header += 'collinear: %s' % meas.col,
+        header += 'scaler: %s' % str(sc),
+        header += 'tracks: %s' % tr,
+        if tilda_file:
+            header += 'software gates [v_min, v_max, t_min, t_max]: %s' % meas.softw_gates,
+    header += 'number of scans: %s' % meas.nrScans,
+    if tilda_file:
+        ret = meas.get_scaler_step_and_bin_num(tr)
+        n_of_scalers_tr, n_of_steps_tr, n_of_bins_tr = zip(*ret)
+        header += 'number of steps: %s' % str(n_of_steps_tr),
+    else:
+        header += 'number of steps: %s' % meas.nrSteps,
+    if meas.offset_by_dev == {}:
+        header += 'offset voltage: %s' % meas.offset,
+    else:
+        header += 'offset voltage: %s' % meas.offset_by_dev,
+    if not kepco:
+        header += 'acceleration voltage: %.5f' % meas.accVolt,
     header.append('###### end of header + 1 line column names ######')
-    print('header is: ', header)
     return header
 
 
@@ -415,19 +441,23 @@ if __name__ == '__main__':
     workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
     db = os.path.join(workdir, 'Ni_workspace.sqlite')
     save_to = os.path.join(workdir, 'Ascii_files', 'test.txt')
+    # files = ['Ni_April2016_mcp\\58Ni_no_protonTrigger_Run210.mcp',
+    #          'Ni_April2016_mcp\\59Ni_no_protonTrigger_Run113.mcp',
+    #          'Ni_April2016_mcp\\60Ni_no_protonTrigger_Run096.mcp',
+    #          'Ni_April2016_mcp\\61Ni_no_protonTrigger_Run159.mcp',
+    #          'Ni_April2016_mcp\\62Ni_no_protonTrigger_Run145.mcp',
+    #          'Ni_April2016_mcp\\63Ni_no_protonTrigger_Run169.mcp',
+    #          'Ni_April2016_mcp\\64Ni_no_protonTrigger_Run174.mcp',
+    #          'Ni_April2016_mcp\\65Ni_no_protonTrigger_Run181.mcp',
+    #          'Ni_April2016_mcp\\66Ni_no_protonTrigger_Run102.mcp',
+    #          'Ni_April2016_mcp\\67Ni_no_protonTrigger_3Tracks_Run191.mcp',
+    #          'Ni_April2016_mcp\\68Ni_no_protonTrigger_Run135.mcp',
+    #          'Ni_April2016_mcp\\70Ni_protonTrigger_Run248_sum_252_254_259_265.xml'
+    #          ]
     files = ['Ni_April2016_mcp\\58Ni_no_protonTrigger_Run210.mcp',
-             'Ni_April2016_mcp\\59Ni_no_protonTrigger_Run113.mcp',
-             'Ni_April2016_mcp\\60Ni_no_protonTrigger_Run096.mcp',
-             'Ni_April2016_mcp\\61Ni_no_protonTrigger_Run159.mcp',
-             'Ni_April2016_mcp\\62Ni_no_protonTrigger_Run145.mcp',
-             'Ni_April2016_mcp\\63Ni_no_protonTrigger_Run169.mcp',
-             'Ni_April2016_mcp\\64Ni_no_protonTrigger_Run174.mcp',
-             'Ni_April2016_mcp\\65Ni_no_protonTrigger_Run181.mcp',
-             'Ni_April2016_mcp\\66Ni_no_protonTrigger_Run102.mcp',
-             'Ni_April2016_mcp\\67Ni_no_protonTrigger_3Tracks_Run191.mcp',
-             'Ni_April2016_mcp\\68Ni_no_protonTrigger_Run135.mcp',
-             'Ni_April2016_mcp\\70Ni_protonTrigger_Run248_sum_252_254_259_265.xml'
+             'Ni_April2016_mcp\\70Ni_protonTrigger_Run248_sum_252_254_259_265.xml',
+             'Ni_April2016_mcp\\67Ni_no_protonTrigger_3Tracks_Run191.mcp'
              ]
     for file in files:
         extract_file_as_ascii(db, file, [4, 5, 6, 7],
-                              -1, line_var='tisa_60_asym_wide', x_in_freq=True)
+                              -1, line_var='tisa_60_asym_wide', x_in_freq=False)
