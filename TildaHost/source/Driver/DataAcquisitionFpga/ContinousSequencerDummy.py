@@ -183,3 +183,6 @@ class ContinousSequencer(Sequencer, MeasureVolt):
 
     def FinalizeFPGACom(self):
         return True
+
+    def set_stopVoltMeas(self, stop_bool):
+        return True
