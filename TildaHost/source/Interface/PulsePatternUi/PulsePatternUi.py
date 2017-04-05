@@ -250,7 +250,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             QtWidgets.QMessageBox.warning(
                 dial, 'Problem with pattern!',
                 'Your pattern is not executable, because the single commands are'
-                ' shorter then the command transfer time (120us).\n'
+                ' shorter then the command transfer time (120ns).\n'
                 'You can do one of the following:\n\n'
                 'o increase the pulse duration of each pulse\n'
                 'o introduce a longer pulse (the exec. time of this pulse is used to transfer the data)\n'

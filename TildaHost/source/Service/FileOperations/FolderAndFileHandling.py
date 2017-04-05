@@ -22,13 +22,13 @@ def findTildaFolder(path=os.path.dirname(os.path.abspath(__file__))):
     tries to find the Tilda folder relative to execution file
     :return: str, path of Tilda Folder
     """
-    if 'Tilda' in os.path.split(path)[0]:
-        path = findTildaFolder(os.path.dirname(path))
-    elif 'Tilda' in os.path.split(path)[1]:
-        path = path
-    else:
+    if 'Tilda' == os.path.basename(path):
+        return path
+    elif os.path.basename(path) == '':
         path = 'could not find Tilda folder'
-    return path
+        return path
+    else:
+        return findTildaFolder(os.path.split(path)[0])
 
 
 def savePickle(data, pipeDataDict, ending='.raw'):
