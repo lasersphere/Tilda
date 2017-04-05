@@ -23,11 +23,13 @@ class KingFitter(object):
     this is described in e.g. Hammen PhD Thesis 2013
     '''
 
-    def __init__ (self, db, litvals={}, showing=True):
+    def __init__ (self, db, litvals={}, showing=True, plot_y_mhz=True, font_size=12):
         '''
         Import the litvals and initializes a KingFit, run can be specified, for run==-1 any shift results are chosen
         '''
         self.showing = showing
+        self.fontsize = font_size  # fontsize used in plots
+        self.plot_y_mhz = plot_y_mhz  # use False to plot y axis in gigahertz
         self.db = db
         self.a = 0
         self.b = 1
@@ -48,7 +50,6 @@ class KingFitter(object):
         except Exception as e:
             print('error: %s  \n\t-> Kingfitter could not find a reference isotope from'
                   ' Lines in database or mass of this reference Isotope in Isotopes' % e)
-
 
     def kingFit(self, run=-1, alpha=0, findBestAlpha=True, find_slope_with_statistical_error=False):
         '''
@@ -98,7 +99,7 @@ class KingFitter(object):
         self.x = [self.redmasses[i]*j - self.c for i,j in enumerate(self.x_origin)]
         print('performing King fit!')
         if find_slope_with_statistical_error:
-            (self.a, self.b, self.aerr, self.berr) = self.fit(run, showplot=False )
+            (self.a, self.b, self.aerr, self.berr) = self.fit(run, showplot=True)
             self.yerr = self.yerr_total
             (self.a, self.b, self.aerr, self.berr) = self.fit(run, showplot=self.showing, bFix=True)
         else:
@@ -107,7 +108,11 @@ class KingFitter(object):
         print('intercept: ', self.a, '(', self.aerr, ') u MHz')
         print('slope: ', self.b, '(', self.berr, ') MHz/fm^2')
 
-    def fit(self, run, showplot=True, bFix=False):
+    def fit(self, run, showplot=True, bFix=False, plot_y_mhz=None, font_size=None):
+        if plot_y_mhz is None:
+            plot_y_mhz = self.plot_y_mhz
+        if font_size is None:
+            font_size = self.fontsize
         i = 0
         totaldiff = 1
         omega_x = [1/np.square(i) for i in self.xerr]
@@ -157,21 +162,36 @@ class KingFitter(object):
             plt.subplots_adjust(bottom=0.2)
             plt.xticks(rotation=25)
             ax = plt.gca()
-            ax.set_ylabel(r' M $\delta$ $\nu$ (u MHz) ')
-            if self.c == 0:
-                ax.set_xlabel(r'M $\delta$ < r'+r'$^2$ > (u fm $^2$)')
+            if plot_y_mhz:
+                ax.set_ylabel(r' M $\delta$ $\nu$ (u MHz) ', fontsize=font_size)
             else:
-                ax.set_xlabel(r'M $\delta$ < r'+r'$^2$ > - $\alpha$ (u fm $^2$)')
-            plt.errorbar(self.x, self.y, self.yerr, self.xerr, fmt='k.')
+                ax.set_ylabel(r' M $\delta$ $\nu$ (u GHz) ', fontsize=font_size)
+            if self.c == 0:
+                ax.set_xlabel(r'M $\delta$ < r'+r'$^2$ > (u fm $^2$)', fontsize=font_size)
+            else:
+                ax.set_xlabel(r'M $\delta$ < r'+r'$^2$ > - $\alpha$ (u fm $^2$)', fontsize=font_size)
+            if plot_y_mhz:
+               plt.errorbar(self.x, self.y, self.yerr, self.xerr, fmt='k.')
+            else:  # plot in Gigahertz
+                y_ghz = [each / 1000 for each in self.y]
+                y_err_ghz = [each / 1000 for each in self.yerr]
+                plt.errorbar(self.x, y_ghz, y_err_ghz, self.xerr, fmt='k.')
+
             # print('x', self.x, self.xerr)
             # print('y', self.y, self.yerr)
 
             ax.set_xmargin(0.05)
             x_king = [min(self.x) - abs(min(self.x) - max(self.x)) * 0.2,max(self.x) + abs(min(self.x) - max(self.x)) * 0.2]
             y_king = [self.a+self.b*i for i in x_king]
-            plt.plot(x_king, y_king, 'r', label='King fit', )
+            if plot_y_mhz:
+                plt.plot(x_king, y_king, 'r', label='King fit')
+            else:
+                y_king_ghz = [each/1000 for each in y_king]
+                plt.plot(x_king, y_king_ghz, 'r', label='King fit')
             plt.gcf().set_facecolor('w')
             plt.legend()
+            plt.xticks(fontsize=font_size)
+            plt.yticks(fontsize=font_size)
             plt.show()
 
         self.aerr = np.sqrt(sigma_a_square)
@@ -197,7 +217,7 @@ class KingFitter(object):
         con.close()
         return (self.a, self.b, self.aerr, self.berr)
 
-    def calcChargeRadii(self, isotopes=[], run=-1):
+    def calcChargeRadii(self, isotopes=[], run=-1, plot_evens_seperate=False):
         print('calculating the charge radii...')
         self.isotopes = []
         self.isotopeMasses = []
@@ -249,11 +269,14 @@ class KingFitter(object):
             cur = con.cursor()
             cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', (j, 'delta_r_square', self.run[i]))
             con.commit()
-            cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ? WHERE iso = ? AND parname = ?''',
-                        (self.chargeradii[i], self.chargeradiiStatErrs[i], self.chargeradiiSystErrs[i], j, 'delta_r_square'))
+            cur.execute(
+                '''UPDATE Combined SET val = ?, statErr = ?, systErr = ? WHERE iso = ? AND parname = ? and run = ?''',
+                (self.chargeradii[i], self.chargeradiiStatErrs[i],
+                 self.chargeradiiSystErrs[i], j, 'delta_r_square', self.run[i]))
             con.commit()
             con.close()
         if self.showing:
+            font_size = self.fontsize
             finalVals[self.ref] = [0, 0, 0]
             keyVals = sorted(finalVals)
             x = []
@@ -264,20 +287,34 @@ class KingFitter(object):
                 x.append(int(str(i).split('_')[0]))
                 y.append(finalVals[i][0])
                 yerr.append(np.sqrt(np.square(finalVals[i][1])+np.square(finalVals[i][2])))
-                print(i, '\t', np.round(finalVals[i][0],3), '('+str(np.round(finalVals[i][1],3))+')' + '('+str(np.round(finalVals[i][2],3))+')')
+                # print(i, '\t', np.round(finalVals[i][0],3), '('+str(np.round(finalVals[i][1],3))+')' + '('+str(np.round(finalVals[i][2],3))+')')
+                print('%s\t%0.3f(%d)[%d]' % (i, finalVals[i][0], finalVals[i][1] * 1000, finalVals[i][2] * 1000))
                 #print("'"+str(i)+"'", ':[', np.round(finalVals[i][0],3), ','+ str(np.round(np.sqrt(finalVals[i][1]**2 + finalVals[i][2]**2),3))+'],')
 
             plt.subplots_adjust(bottom=0.2)
             plt.xticks(rotation=25)
             ax = plt.gca()
-            ax.set_ylabel(r'$\delta$ < r'+r'$^2$ > (fm $^2$) ')
-            ax.set_xlabel('A')
-            plt.errorbar(x, y, yerr, fmt='k.')
+            ax.set_ylabel(r'$\delta$ < r'+r'$^2$ > (fm $^2$) ', fontsize=font_size)
+            ax.set_xlabel('A', fontsize=font_size)
+            if plot_evens_seperate:
+                x_odd = [each for each in x if each % 2 != 0]
+                y_odd = [each for i, each in enumerate(y) if x[i] % 2 != 0]
+                y_odd_err = [each for i, each in enumerate(yerr) if x[i] % 2 != 0]
+                x_even = [each for each in x if each % 2 == 0]
+                y_even = [each for i, each in enumerate(y) if x[i] % 2 == 0]
+                y_even_err = [each for i, each in enumerate(yerr) if x[i] % 2 == 0]
+
+                plt.errorbar(x_even, y_even, y_even_err, fmt='ro', label='even', linestyle='-')
+                plt.errorbar(x_odd, y_odd, y_odd_err, fmt='r^', label='odd', linestyle='--')
+                plt.legend(loc=2)
+            else:
+                plt.errorbar(x, y, yerr, fmt='k.')
             ax.set_xmargin(0.05)
             plt.margins(0.1)
             plt.gcf().set_facecolor('w')
+            plt.xticks(fontsize=font_size)
+            plt.yticks(fontsize=font_size)
             plt.show()
-
 
         return finalVals
 

@@ -39,8 +39,7 @@ class Hyperfine(object):
         self.pBu = 4
         self.pInt = 5
         self.pIntCross = 5 + len(self.trans)
-        
-        
+
     def evaluate(self, x, p):
         '''Return the value of the hyperfine structure at point x/MHz'''   
         rx = x - p[self.pCenter]
@@ -49,8 +48,6 @@ class Hyperfine(object):
         else:
             return sum(i * self.shape.evaluate(rx - j, p) for i, j in zip(self.intens, self.lineSplit)) \
                    + sum(i * self.shape.evaluateQI(rx - j, p, j, self.lineSplit) for i, j in zip(self.IntCross, self.lineSplit))
-
-
 
     def evaluateE(self, e, freq, col, p):
         '''Return the value of the hyperfine structure at point e/eV'''
@@ -61,7 +58,6 @@ class Hyperfine(object):
         
         return self.evaluate(f, p)
     
-    
     def recalc(self, p):
         '''Recalculate upper A and B factors, line splittings and intensities'''
         #Use upper factors as ratio if fixed, else directly
@@ -71,9 +67,8 @@ class Hyperfine(object):
         self.lineSplit = Physics.HFLineSplit(p[self.pAl], p[self.pBl], Au, Bu, self.trans)
         self.intens = self.buildInt(p)
         self.IntCross = self.buildIntCross(p)
-    
-  
-    def getPars(self, pos = 0):
+
+    def getPars(self, pos=0):
         '''Return list of initial parameters and initialize positions'''
         self.pCenter = pos
         self.pAl = pos + 1
@@ -85,7 +80,7 @@ class Hyperfine(object):
 
         if self.fixInt:
             if self.iso.shape['name'] == 'LorentzQI':
-                if len(self.iso.relInt) != 2* len(self.trans):
+                if len(self.iso.relInt) != 2 * len(self.trans):
                     print("List of relative intensities has to consist of", len(self.trans), "elements! \n"
                                                                     "Using RACAH coefficients instead.... \n"
                                                                     "The sign of some CrossIntensities could be wrong!")
@@ -120,16 +115,14 @@ class Hyperfine(object):
 
         return ([self.iso.center, self.iso.Al, self.iso.Bl, self.iso.Au, self.iso.Bu]
                 + ret + self.IntCross)
-    
-    
+
     def getParNames(self):
         '''Return list of the parameter names'''
         if self.iso.shape['name'] == 'LorentzQI':
-            return ['center', 'Al', 'Bl', 'Au', 'Bu',] + ['Int' + str(x) for x in range(len(self.trans))] +\
+            return ['center', 'Al', 'Bl', 'Au', 'Bu'] + ['Int' + str(x) for x in range(len(self.trans))] +\
                    ['IntCross' + str(x) for x in range(len(self.trans))]
         else:
-            return ['center', 'Al', 'Bl', 'Au', 'Bu',] + ['Int' + str(x) for x in range(len(self.trans))]
-    
+            return ['center', 'Al', 'Bl', 'Au', 'Bu'] + ['Int' + str(x) for x in range(len(self.trans))]
     
     def getFixed(self):
         '''Return list of parmeters with their fixed-status'''
@@ -155,7 +148,6 @@ class Hyperfine(object):
 
         return [False] + ret + fInt + fCross
     
-    
     def buildInt(self, p):
         '''If relative intensities are fixed, calculate absolute intensities. Else return relevant parameters directly'''
         ret = len(self.trans) * [0]
@@ -166,7 +158,6 @@ class Hyperfine(object):
                 ret[i] = p[self.pInt + i]
                 
         return ret
-
 
     def buildIntCross(self,p):
         '''If relative intensities are fixed in LorentzQI shape, calculate absolute intensities. Else return relevant parameters directly'''
@@ -182,19 +173,16 @@ class Hyperfine(object):
 
         return ret
 
-    
     def leftEdge(self, p):
         '''Return the left edge of the spectrum in Mhz'''
         self.recalc(p)
         return p[self.pCenter] + min(self.lineSplit) + self.shape.leftEdge(p)
     
-    
     def rightEdge(self, p):
         '''Return the right edge of the spectrum in MHz'''
         self.recalc(p)
         return p[self.pCenter] + max(self.lineSplit) + self.shape.rightEdge(p)
-    
-    
+
     def leftEdgeE(self, freq, p):
         '''Return the left edge of the spectrum in eV'''
         self.recalc(p)
@@ -202,7 +190,6 @@ class Hyperfine(object):
         v = Physics.invRelDoppler(freq, l)
 
         return (self.iso.mass * Physics.u * v**2)/2 / Physics.qe
-    
     
     def rightEdgeE(self, freq, p):
         '''Return the right edge of the spectrum in eV'''

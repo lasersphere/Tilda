@@ -24,7 +24,7 @@ class SPFitter(object):
         self.oldpar = list(self.par)
         self.fix = spec.getFixed()
         self.npar = spec.getParNames()
-        self.pard = None #Will contain the parameter errors after fitting
+        self.pard = None  # Will contain the parameter errors after fitting
         
         self.oldp = None
         self.pcov = None
@@ -45,22 +45,25 @@ class SPFitter(object):
         truncp = [p for p, f in zip(self.par, self.fix) if not f]
         boundl = ()
         boundu = ()
-        for i in range(len(self.par)):
-            print(self.par[i])
-            if not self.fix[i]:
-                if self.npar[i][:3] == 'Int':
-                    if self.par[i] > 0:
+        try:
+            for i in range(len(self.par)):
+                # print(self.par[i])
+                if not self.fix[i]:
+                    if self.npar[i][:3] == 'Int':
+                        if self.par[i] > 0:
+                            boundl += 0,
+                            boundu += +np.inf,
+                        else:
+                            boundl += -np.inf,
+                            boundu += 0,
+                    elif self.npar[i] in ['sigma', 'gamma']:
                         boundl += 0,
                         boundu += +np.inf,
                     else:
                         boundl += -np.inf,
-                        boundu += 0,
-                elif self.npar[i] == 'sigma' or self.npar[i] == 'gamma':
-                    boundl += 0,
-                    boundu += +np.inf,
-                else:
-                    boundl += -np.inf,
-                    boundu += +np.inf,
+                        boundu += +np.inf,
+        except Exception as e:
+            print('error in fit: %s' % e)
         bounds = (boundl, boundu)
         scipy_version = int(version.version.split('.')[1])
         if scipy_version >= 17:

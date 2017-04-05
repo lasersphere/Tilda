@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourceManagerImpl" format="xml" hash="733277075">
+    <data-source source="LOCAL" name="Sqlite (Xerial) - TildaDebug.sqlite" uuid="7c8022af-5a83-4912-a2f9-c6647b77e320">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:C:/TildaDebug/TildaDebug.sqlite</jdbc-url>
+    </data-source>
+  </component>
+</project>

@@ -91,10 +91,12 @@ class Board(QtWidgets.QFrame):
     def __init__(self, parent):
         super(Board, self).__init__(parent)
         self.highscore_file = os.path.join(os.path.dirname(__file__), 'tetrishighscore.txt')
-        self.high_score = 0
+        self.high_score = []
         if os.path.isfile(self.highscore_file):
             stream = open(self.highscore_file, 'rb')
-            self.high_score = pickle.load(stream)
+            loaded = pickle.load(stream)
+            if isinstance(loaded, list):
+                self.high_score = loaded
             stream.close()
         self.nextPieceLabel = None
         self.nextPiece = Shape()
@@ -325,15 +327,33 @@ class Board(QtWidgets.QFrame):
             self.music_is_playing = True
             self.play_music()
             self.msg2Statusbar.emit("Game over")
-            if self.numLinesRemoved > self.high_score:
+            your_rank = 6
+            new_high_score_reached = False
+            for rank, each in enumerate(self.high_score):
+                print('%s \t %s  \t  %s ' % (rank + 1, each[0], each[1]))
+                new_high_score_reached = each[1] < self.numLinesRemoved
+                if new_high_score_reached:
+                    your_rank = min(rank, your_rank)
+            if len(self.high_score) < 5 or new_high_score_reached:
+                inp_dial = QtWidgets.QInputDialog(self)
+                text, ok = QtWidgets.QInputDialog.getText(inp_dial, 'game over!', 'your name:')
+                if ok:
+                    self.high_score.insert(your_rank, (text, self.numLinesRemoved))
+                    self.high_score = self.high_score[:min(6, len(self.high_score))]
                 print('you have reached a new highscore: %s lines where removed'
                       ' and the old high score was: %s' % (self.numLinesRemoved, self.high_score))
                 print('saving to: %s' % self.highscore_file)
                 file = open(self.highscore_file, 'wb')
-                pickle.dump(self.numLinesRemoved, file)
+                pickle.dump(self.high_score, file)
                 file.close()
             else:
                 print('you did not beat the highscore of %s removed lines' % self.high_score )
+            high_score_par = QtWidgets.QMessageBox(self)
+            high_sc_str = ''
+            for rank, each in enumerate(self.high_score):
+                high_sc_str += '%s \t %s \t %s \n' % (rank + 1, each[0], each[1])
+            QtWidgets.QMessageBox.information(
+                high_score_par, 'high score', 'rank \t name \t lines \n' + high_sc_str)
 
     def setNextPieceLabel(self, label):
         self.nextPieceLabel = label

@@ -48,6 +48,7 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
         if it is not None:
             for i, e in enumerate(it):
                 self.isoSelect.insertItem(i, e[0])
+        self.isoSelect.insertItem(-1, 'all')
 
     def loadRuns(self):
         self.runSelect.clear()
@@ -59,11 +60,18 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
     def loadParams(self):
         self.parameter.clear()
         runselect, isoSelect = self.runSelect.currentText(), self.isoSelect.currentText()
+        if isoSelect == 'all':
+            isoSelect = self.isoSelect.itemText(0)  # just use the parameters from iso at first position
         r = None
         if runselect and isoSelect:
-            r = TiTs.select_from_db(self.dbpath, 'pars', 'FitRes', [['run', 'iso'],
-                            [runselect, isoSelect]], caller_name=__name__)[0]
+            if isoSelect == 'all':
+                r = TiTs.select_from_db(self.dbpath, 'pars', 'FitRes', [['run'], [runselect]], caller_name=__name__)
+            else:
+                r = TiTs.select_from_db(self.dbpath, 'pars', 'FitRes', [['run', 'iso'],
+                                [runselect, isoSelect]], caller_name=__name__)
+
         if r is not None:
+            r = r[0]
             try:
                 for e in sorted(ast.literal_eval(r[0]).keys()):
                     self.parameter.addItem(e)
@@ -80,8 +88,13 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
             self.vals, self.errs, self.dates, self.files = Analyzer.extract(
                 self.iso, self.par, self.run, self.dbpath, prin=False)
             # check if a config exists and if so check only the files within this config
-            r = TiTs.select_from_db(self.dbpath, 'config, statErrForm, systErrForm', 'Combined',
-                                [['iso', 'parname', 'run'], [self.iso, self.par, self.run]], caller_name=__name__)
+            if self.iso == 'all':
+                r = TiTs.select_from_db(self.dbpath, 'config, statErrForm, systErrForm', 'Combined',
+                                        [['parname', 'run'], [self.par, self.run]],
+                                        caller_name=__name__)
+            else:
+                r = TiTs.select_from_db(self.dbpath, 'config, statErrForm, systErrForm', 'Combined',
+                                    [['iso', 'parname', 'run'], [self.iso, self.par, self.run]], caller_name=__name__)
             select = [True] * len(self.files)
             if r is not None:
                 cfg = ast.literal_eval(r[0][0])
