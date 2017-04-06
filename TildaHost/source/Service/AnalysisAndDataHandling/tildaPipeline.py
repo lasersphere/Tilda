@@ -143,7 +143,8 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False,
     pipe.pipeData = initPipeData(initial_scan_pars)
     dmm_names = sorted(list(pipe.pipeData['measureVoltPars']['duringScan']['dmms'].keys()))
     #
-    walk = start.attach(TN.NSaveRawData())
+    # raw data for kepco -> dict -> cannot be saved with hdf5 -> do not save raw data
+    # walk = start.attach(TN.NSaveRawData())
     # debug = start.attach(SN.NPrint())
     specdata_path = start.attach(TN.NStartNodeKepcoScan(as_voltage, dmm_names,
                                                         scan_complete_callback, dac_new_volt_set_callback))
