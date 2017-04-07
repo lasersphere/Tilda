@@ -801,6 +801,15 @@ class Main(QtCore.QObject):
         isos = DbOp.check_for_existing_isos(self.database, seq_type)
         return isos
 
+    def get_isotope_settings_from_db(self, iso):
+        """ go into the Isotopes table in the database and return all values for this isotope """
+        iso = DbOp.get_iso_settings(self.database, iso)
+        return iso
+
+    def update_iso_in_db(self, iso, settings_list):
+        """ edit or create the iso with the settings in settings_list to Isotopes """
+        DbOp.update_iso_settings(self.database, iso, settings_list)
+
     def add_new_iso_to_db(self, iso, seq_type):
         """
         add a new isotope of type seq, to the database

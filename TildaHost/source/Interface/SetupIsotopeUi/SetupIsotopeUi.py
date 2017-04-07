@@ -8,11 +8,12 @@ Created on '29.10.2015'
 
 import logging
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtCore
 
 import Application.Config as Cfg
 import Service.Scan.draftScanParameters as Dft
 from Interface.SetupIsotopeUi.Ui_setupIsotope import Ui_SetupIsotope
+from Interface.SetupIsotopeUi.SetupIsotopeDatabase import SetupIsotopeDatabase
 
 
 class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
@@ -54,7 +55,14 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         iso = self.lineEdit_new_isotope.text()
         seq_type = self.comboBox_sequencer_select.currentText()
         iso = Cfg._main_instance.add_new_iso_to_db(iso, seq_type)
+        if iso is not None:  # its a new isotope!
+            self.config_iso_db_dialog(iso)
         self.update_isos(iso)
+
+    def config_iso_db_dialog(self, new_iso):
+        """ open a dialog to configure the new isotope in the table Isotopes in the db """
+        self.dial = SetupIsotopeDatabase(new_iso, self)
+        self.dial.raise_()
 
     def iso_select(self, iso_str):
         """ is called when something changed in the comboBox for the isotope

@@ -184,6 +184,62 @@ def check_for_existing_isos(db, sctype):
     return isos
 
 
+def get_iso_settings(db, iso):
+    """
+    get the settings of the desired isotope. None, if not existing yet.
+    settings are: mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, fixedBrat, intScale, fixedInt, relInt, m, midTof
+    return: (cols_list, vals_list)
+    """
+    print('getting settings of iso: %s from db' % iso)
+    cols = ['iso', 'mass', 'mass_d', 'I', 'center', 'Al', 'Bl', 'Au', 'Bu',
+            'fixedArat', 'fixedBrat', 'intScale', 'fixedInt', 'relInt', 'm', 'midTof']
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    cur.execute(' SELECT mass, mass_d, I, center, Al, Bl, Au, Bu,'
+                ' fixedArat, fixedBrat, intScale, fixedInt, relInt, m, midTof FROM Isotopes WHERE iso = ? ',
+                (iso,))
+    ret = cur.fetchall()
+    con.close()
+    if len(ret):
+        ret = ret[0]
+        ret = list(ret)
+        ret.insert(0, iso)
+    else:
+        return None
+    return cols, ret
+
+
+def update_iso_settings(db, iso, settings_list):
+    """
+    update or create the settings for the desired isotope in the db
+    :param db: str, path of db
+    :param iso: str, name of iso existing / not existing
+    :param settings_list: list, contains:
+        mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, fixedBrat, intScale, fixedInt, relInt, m, midTof
+    :return: None
+    """
+    iso_exist = get_iso_settings(db, iso) is not None
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    if iso_exist:
+        cur.execute(''' UPDATE Isotopes SET mass = ?, mass_d = ?, I = ?, center = ?, Al = ?, Bl = ?, Au = ?, Bu = ?,
+fixedArat = ?, fixedBrat = ?, intScale = ?, fixedInt = ?, relInt = ?, m = ?, midTof = ? WHERE iso = ?''',
+            (settings_list[0], settings_list[1], settings_list[2], settings_list[3],
+             settings_list[4], settings_list[5], settings_list[6], settings_list[7],
+             settings_list[8], settings_list[9], settings_list[10], settings_list[11],
+             settings_list[12], settings_list[13], settings_list[14], iso))
+    else:
+        cur.execute(
+            '''INSERT INTO Isotopes (iso, mass, mass_d, I, center, Al, Bl, Au, Bu,
+fixedArat, fixedBrat, intScale, fixedInt, relInt, m, midTof) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+            (iso, settings_list[0], settings_list[1], settings_list[2], settings_list[3],
+             settings_list[4], settings_list[5], settings_list[6], settings_list[7],
+             settings_list[8], settings_list[9], settings_list[10], settings_list[11],
+             settings_list[12], settings_list[13], settings_list[14]))
+    con.commit()
+    con.close()
+
+
 def add_new_iso(db, iso, seq_type):
     """ write an empty isotope dictionary of a given scantype to the database """
     if iso is '':
@@ -301,3 +357,4 @@ if __name__ == '__main__':
     workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
     db = os.path.join(workdir, 'Ni_workspace.sqlite')
     # print(get_software_gates_from_db(db, '60_Ni', 'wide_gate'))
+    print(get_iso_settings(db, '6230_Ni'))
