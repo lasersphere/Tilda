@@ -711,8 +711,14 @@ def save_spec_data(spec_data, scan_dict):
     """
     try:
         scan_dict = deepcopy(scan_dict)
+        version = float(scan_dict['isotopeData']['version'])
+        # scan_dict = create_scan_dict_from_spec_data(spec_data, scan_dict['pipeInternals']['activeXmlFilePath'])
         try:
-            time_res = len(spec_data.time_res) # if there are any values in here, it is a time resolved measurement
+            if version > 1.1:
+                time_res = len(spec_data.time_res_zf)
+            else:
+                # if there are any values in here, it is a time resolved measurement
+                time_res = len(spec_data.time_res)
         except Exception as e:
             time_res = False
         existing_xml_fil_path = scan_dict['pipeInternals']['activeXmlFilePath']
@@ -721,10 +727,14 @@ def save_spec_data(spec_data, scan_dict):
         for track_ind, tr_num in enumerate(track_num_lis):
             track_name = 'track' + str(tr_num)
             # only save name of trigger
-            scan_dict[track_name]['trigger']['type'] = scan_dict[track_name]['trigger']['type'].name
+            if not isinstance(scan_dict[track_name]['trigger']['type'], str):
+                scan_dict[track_name]['trigger']['type'] = scan_dict[track_name]['trigger']['type'].name
             if time_res:
                 scan_dict[track_name]['softwGates'] = spec_data.softw_gates[track_ind]
-                xmlAddCompleteTrack(root_ele, scan_dict, spec_data.time_res_zf[track_ind], track_name)
+                if version > 1.1:
+                    xmlAddCompleteTrack(root_ele, scan_dict, spec_data.time_res_zf[track_ind], track_name)
+                else:
+                    xmlAddCompleteTrack(root_ele, scan_dict, spec_data.time_res[track_ind], track_name)
                 xmlAddCompleteTrack(
                     root_ele, scan_dict, spec_data.cts[track_ind], track_name, datatype='voltage_projection',
                     parent_ele_str='projections')

@@ -39,6 +39,7 @@ class DisplayData:
         callbacks = (None, None, None) if self.gui is None else self.gui.callbacks
         self.pipe = TP.time_resolved_display(self.file, callbacks)
         self.pipe.start()
+        print('pipeline started')
 
     def feed_loaded_spec(self):
         start = datetime.now()
