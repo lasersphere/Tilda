@@ -42,15 +42,8 @@ class InteractiveFit(object):
             linevar = var[0][1]
         else:
             print('Run cannot be selected!')
-        if softw_gates_trs is None:  # if no software gates provided check db
-            try:  # check if there are software gates available in database
-                soft_var = TiTs.select_from_db(db, 'softwGates', 'Runs', [['run'], [run]], caller_name=__name__)[0]
-                softw_gates_trs_db = ast.literal_eval(soft_var[0])
-                if isinstance(softw_gates_trs_db, list):
-                    softw_gates_trs = softw_gates_trs_db
-            except Exception as e:
-                print('error while trying to extract the software Gates from Runs: ', e)
-                print('will use gates from file')
+        if softw_gates_trs is None:  # # if no software gate provided pass on run and db via software gates
+            softw_gates_trs = (db, run)
 
         meas = MeasLoad.load(path, db, x_as_voltage=x_as_voltage, softw_gates=softw_gates_trs)
         if meas.type == 'Kepco':  # keep this for all other fileformats than .xml

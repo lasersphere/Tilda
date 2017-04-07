@@ -13,7 +13,7 @@ import sqlite3
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.VoltageConversions.VoltageConversions as VCon
 import Tools as PolliTools
-from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
+from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TriTypes
 
 
 def createTildaDB(db):
@@ -92,7 +92,7 @@ def check_for_missing_columns_scan_pars(db):
     cols_name_flat = [each[1] for each in cols]
     for each in target_cols:
         if each[1] not in cols_name_flat:
-            print('column %s was not yet in db, adding now.' % each[1])
+            print('column %s in ScanPars Table was not yet in db, adding now.' % each[1])
             cur.execute(''' ALTER TABLE ScanPars ADD COLUMN '%s' '%s' ''' % (each[1], each[2]))
     con.commit()
     con.close()
@@ -228,7 +228,7 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
     scand['isotopeData']['accVolt'] = data.pop(-1)
     scand['measureVoltPars'] = SdOp.merge_dicts(scand['measureVoltPars'], ast.literal_eval(data.pop(-1)))
     scand['track' + str(tracknum)]['trigger'] = ast.literal_eval(data.pop(-1))
-    scand['track' + str(tracknum)]['trigger']['type'] = getattr(TiTs, scand['track' + str(tracknum)]['trigger']['type'])
+    scand['track' + str(tracknum)]['trigger']['type'] = getattr(TriTypes, scand['track' + str(tracknum)]['trigger']['type'])
     scand['track' + str(tracknum)] = db_track_values_to_trackdict(data, scand['track' + str(tracknum)])
     con.close()
 
@@ -297,5 +297,7 @@ def extract_all_tracks_from_db(db, iso, sctype):
 # print(extract_all_tracks_from_db(db, '40Ca', 'cs'))
 
 if __name__ == '__main__':
-    db = 'D:\Debugging\kepco_scan_181116\kepco_scan_181116.sqlite'
-    check_for_missing_columns_scan_pars(db)
+    import os
+    workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
+    db = os.path.join(workdir, 'Ni_workspace.sqlite')
+    # print(get_software_gates_from_db(db, '60_Ni', 'wide_gate'))

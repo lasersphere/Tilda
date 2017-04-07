@@ -23,7 +23,22 @@ class XMLImporter(SpecData):
     """
 
     def __init__(self, path=None, x_as_volt=True, scan_dict=None, softw_gates=None):
-        '''Read the file'''
+        """
+        read the xml file
+        :param path: str, path to the xml file, set None to load from scan_dict
+        :param x_as_volt: bool, True for voltage, False for DAC register
+        :param scan_dict: dict, contains all scan information,
+         can be used to create a xmlimporter object instead of a .xml file
+        :param softw_gates:  
+            None: read gates from File
+            tuple: (db_str, run_str) -> read software gates from db
+            list: [
+            [[tr0_sc0_vmin, tr0_sc0_vmax, tr0_sc0_t_min, tr0_sc0_tmax], [other sc]],
+            [[tr1_sc0_vmin, tr1_sc0_vmax, tr1_sc0_t_min, tr1_sc0_tmax], [other sc]]
+            ]
+            also possible list: (use same gates for all tracks)
+            [[tr0_sc0_vmin, tr0_sc0_vmax, tr0_sc0_t_min, tr0_sc0_tmax], [other sc]]
+        """
 
         self.file = None
 
@@ -174,7 +189,24 @@ class XMLImporter(SpecData):
                 if v_proj is None or t_proj is None or softw_gates is not None:
                     print('projections not found, or software gates set by hand, gating data now.')
                     if softw_gates is not None:
-                        scandict[tr_name]['softwGates'] = softw_gates[tr_ind]
+                        if isinstance(softw_gates, tuple):
+                            # if the software gates are given as a tuple it should consist of:
+                            # (db_str, run_str)
+                            new_gates = TildaTools.get_software_gates_from_db(softw_gates[0],
+                                                                              self.type, softw_gates[1])
+                            if new_gates is not None:
+                                # when db states -> use file,
+                                # software gates from file will not be overwritten
+                                scandict[tr_name]['softwGates'] = new_gates 
+                        else:
+                            if isinstance(softw_gates[tr_ind][0], list):
+                                # software gates are defined for each track individually
+                                scandict[tr_name]['softwGates'] = softw_gates[tr_ind]
+                            else:
+                                # software gates are only defined for one track
+                                # -> one dimension less than for all tracks.
+                                # -> need to be copied for the others
+                                scandict[tr_name]['softwGates'] = softw_gates
                     v_proj, t_proj = TildaTools.gate_one_track(
                         tr_ind, nOfactTrack, scandict, self.time_res, self.t, self.x, [])[0]
                 self.cts.append(v_proj)

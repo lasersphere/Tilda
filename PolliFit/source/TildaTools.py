@@ -770,3 +770,49 @@ if __name__ == '__main__':
     isodi = {'isotope': 'bbb', 'type': 'csdummy'}
     newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')
     print(newname)
+
+
+def get_software_gates_from_db(db, iso, run):
+    """
+    get the software gates for a SINGLE TRACK from the database.
+    voltages will be gated from -10 to 10 V.
+    timings will be calculated like this:
+    start_gate_sc0 = mid_tof + delay_sc0 - 0.5 * width
+    stopp_gate_sc0 = mid_tof + delay_sc0 + 0.5 * width
+    """
+    voltage_gates = [-10.0, 10.0]
+    softw_gates_db = []
+    use_db = select_from_db(
+        db, 'softwGates', 'Runs', [['run'], [run]],
+        caller_name='get_software_gates_from_db in DataBaseOperations.py')
+    run_gates_width = select_from_db(
+        db, 'softwGateWidth', 'Runs', [['run'], [run]],
+        caller_name='get_software_gates_from_db in DataBaseOperations.py')
+    run_gates_delay = select_from_db(
+        db, 'softwGateDelayList', 'Runs', [['run'], [run]],
+        caller_name='get_software_gates_from_db in DataBaseOperations.py')
+    iso_mid_tof = select_from_db(
+        db, 'midTof', 'Isotopes', [['iso'], [iso]],
+        caller_name='get_software_gates_from_db in DataBaseOperations.py')
+    if use_db == 'file':
+        return None
+    if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None:
+        return None  # return None if failur by getting stuff from db
+    else:
+        run_gates_width = run_gates_width[0][0]
+        run_gates_delay = run_gates_delay[0][0]
+        iso_mid_tof = iso_mid_tof[0][0]
+        del_list = ast.literal_eval(run_gates_delay)
+        for each_del in del_list:
+            softw_gates_db.append(
+                [voltage_gates[0], voltage_gates[1],
+                 iso_mid_tof + each_del - 0.5 * run_gates_width,
+                 iso_mid_tof + each_del + 0.5 * run_gates_width]
+            )
+        print('extracted software gates for isotope: %s and run %s from db %s: ' % (iso, run, os.path.split(db)[1]),
+              softw_gates_db)
+        return softw_gates_db
+
+
+
+

@@ -61,6 +61,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         
         if not os.path.isfile(p):
             Tools.createDB(p)
+        Tools.add_missing_columns(p)
         
         self.dbPath = p
         self.oDbPath.setText(self.dbPath)

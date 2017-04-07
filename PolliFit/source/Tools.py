@@ -176,7 +176,8 @@ def createDB(db):
     intScale DOUBLE DEFAULT 1,
     fixedInt BOOL DEFAULT 0,
     relInt TEXT,
-    m TEXT
+    m TEXT,
+    midTof FLOAT
     )''')
     
     #Lines
@@ -219,12 +220,14 @@ def createDB(db):
     isoVar TEXT DEFAULT "",
     scaler TEXT,
     track TEXT,
-    softwGates TEXT
+    softwGates TEXT,
+    softwGateWidth FLOAT,
+    softwGateDelayList TEXT
     )''')
-    try:
-        con.execute('''INSERT OR IGNORE INTO Runs VALUES ("Run0", "", "", "[0]", "-1", "")''')
-    except Exception as e:
-        con.execute('''INSERT OR IGNORE INTO Runs VALUES ("Run0", "", "", "[0]", "-1")''')  # for older db versions
+    # try:
+    #     con.execute('''INSERT OR IGNORE INTO Runs VALUES ("Run0", "", "", "[0]", "-1", "")''')
+    # except Exception as e:
+    #     con.execute('''INSERT OR IGNORE INTO Runs VALUES ("Run0", "", "", "[0]", "-1")''')  # for older db versions
 
     
     #Fit results
@@ -257,6 +260,56 @@ def createDB(db):
     )''')
 
     con.close()
+    add_missing_columns(db)
+
+
+def add_missing_columns(db):
+    """ this will add missing columns to an already existing databases.
+     For adding new columns add them to cols """
+    cols = {
+        'Isotopes': [
+            (0, 'iso', 'TEXT', 1, None, 1),
+            (1, 'mass', 'FLOAT', 0, None, 0),
+            (2, 'mass_d', 'FLOAT', 0, None, 0),
+            (3, 'I', 'FLOAT', 0, None, 0),
+            (4, 'center', 'FLOAT', 0, None, 0),
+            (5, 'Al', 'FLOAT', 0, '0', 0),
+            (6, 'Bl', 'FLOAT', 0, '0', 0),
+            (7, 'Au', 'FLOAT', 0, '0', 0),
+            (8, 'Bu', 'FLOAT', 0, '0', 0),
+            (9, 'fixedArat', 'BOOL', 0, '0', 0),
+            (10, 'fixedBrat', 'BOOL', 0, '0', 0),
+            (11, 'intScale', 'DOUBLE', 0, '1', 0),
+            (12, 'fixedInt', 'BOOL', 0, '0', 0),
+            (13, 'relInt', 'TEXT', 0, None, 0),
+            (14, 'm', 'TEXT', 0, None, 0),
+            (15, 'midTof', 'FLOAT', 0, '0', 0)
+        ],
+        'Runs': [
+            (0, 'run', 'TEXT', 1, None, 1),
+            (1, 'lineVar', 'TEXT', 0, '""', 0),
+            (2, 'isoVar', 'TEXT', 0, '""', 0),
+            (3, 'scaler', 'TEXT', 0, None, 0),
+            (4, 'track', 'TEXT', 0, None, 0),
+            (5, 'softwGates', 'TEXT', 0, None, 0),
+            (6, 'softwGateWidth', 'FLOAT', 0, None, 0),
+            (7, 'softwGateDelayList', 'TEXT', 0, None, 0),
+        ]
+    }
+    for table_name, target_cols in cols.items():
+        con = sqlite3.connect(db)
+        cur = con.cursor()
+        cur.execute(''' PRAGMA TABLE_INFO('%s')''' % table_name)
+        exist_cols = cur.fetchall()
+        # for each in exist_cols:
+        #     print(each, ',')
+        cols_name_flat = [each[1] for each in exist_cols]
+        for each in target_cols:
+            if each[1] not in cols_name_flat:
+                print('column %s in table %s was not yet in db, adding now.' % (each[1], table_name))
+                cur.execute(''' ALTER TABLE '%s' ADD COLUMN '%s' '%s' ''' % (table_name, each[1], each[2]))
+        con.commit()
+        con.close()
 
 
 def extract_from_combined(runs_list, db, isotopes=None, par='shift', print_extracted=False):
@@ -440,24 +493,25 @@ def create_header_list(meas, sc, tr):
 if __name__ == '__main__':
     workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
     db = os.path.join(workdir, 'Ni_workspace.sqlite')
-    save_to = os.path.join(workdir, 'Ascii_files', 'test.txt')
+    # save_to = os.path.join(workdir, 'Ascii_files', 'test.txt')
+    # # files = ['Ni_April2016_mcp\\58Ni_no_protonTrigger_Run210.mcp',
+    # #          'Ni_April2016_mcp\\59Ni_no_protonTrigger_Run113.mcp',
+    # #          'Ni_April2016_mcp\\60Ni_no_protonTrigger_Run096.mcp',
+    # #          'Ni_April2016_mcp\\61Ni_no_protonTrigger_Run159.mcp',
+    # #          'Ni_April2016_mcp\\62Ni_no_protonTrigger_Run145.mcp',
+    # #          'Ni_April2016_mcp\\63Ni_no_protonTrigger_Run169.mcp',
+    # #          'Ni_April2016_mcp\\64Ni_no_protonTrigger_Run174.mcp',
+    # #          'Ni_April2016_mcp\\65Ni_no_protonTrigger_Run181.mcp',
+    # #          'Ni_April2016_mcp\\66Ni_no_protonTrigger_Run102.mcp',
+    # #          'Ni_April2016_mcp\\67Ni_no_protonTrigger_3Tracks_Run191.mcp',
+    # #          'Ni_April2016_mcp\\68Ni_no_protonTrigger_Run135.mcp',
+    # #          'Ni_April2016_mcp\\70Ni_protonTrigger_Run248_sum_252_254_259_265.xml'
+    # #          ]
     # files = ['Ni_April2016_mcp\\58Ni_no_protonTrigger_Run210.mcp',
-    #          'Ni_April2016_mcp\\59Ni_no_protonTrigger_Run113.mcp',
-    #          'Ni_April2016_mcp\\60Ni_no_protonTrigger_Run096.mcp',
-    #          'Ni_April2016_mcp\\61Ni_no_protonTrigger_Run159.mcp',
-    #          'Ni_April2016_mcp\\62Ni_no_protonTrigger_Run145.mcp',
-    #          'Ni_April2016_mcp\\63Ni_no_protonTrigger_Run169.mcp',
-    #          'Ni_April2016_mcp\\64Ni_no_protonTrigger_Run174.mcp',
-    #          'Ni_April2016_mcp\\65Ni_no_protonTrigger_Run181.mcp',
-    #          'Ni_April2016_mcp\\66Ni_no_protonTrigger_Run102.mcp',
-    #          'Ni_April2016_mcp\\67Ni_no_protonTrigger_3Tracks_Run191.mcp',
-    #          'Ni_April2016_mcp\\68Ni_no_protonTrigger_Run135.mcp',
-    #          'Ni_April2016_mcp\\70Ni_protonTrigger_Run248_sum_252_254_259_265.xml'
+    #          'Ni_April2016_mcp\\70Ni_protonTrigger_Run248_sum_252_254_259_265.xml',
+    #          'Ni_April2016_mcp\\67Ni_no_protonTrigger_3Tracks_Run191.mcp'
     #          ]
-    files = ['Ni_April2016_mcp\\58Ni_no_protonTrigger_Run210.mcp',
-             'Ni_April2016_mcp\\70Ni_protonTrigger_Run248_sum_252_254_259_265.xml',
-             'Ni_April2016_mcp\\67Ni_no_protonTrigger_3Tracks_Run191.mcp'
-             ]
-    for file in files:
-        extract_file_as_ascii(db, file, [4, 5, 6, 7],
-                              -1, line_var='tisa_60_asym_wide', x_in_freq=False)
+    # for file in files:
+    #     extract_file_as_ascii(db, file, [4, 5, 6, 7],
+    #                           -1, line_var='tisa_60_asym_wide', x_in_freq=False)
+    add_missing_columns(db)
