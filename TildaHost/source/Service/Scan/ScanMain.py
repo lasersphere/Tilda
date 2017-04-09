@@ -11,6 +11,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 
 import numpy as np
+from PyQt5 import QtWidgets, Qt
 from PyQt5.QtCore import QObject, pyqtSignal
 
 import Driver.COntrolFpga.PulsePatternGenerator as PPG
@@ -52,6 +53,8 @@ class ScanMain(QObject):
         self.dac_new_volt_set_callback.connect(self.rcvd_dac_new_voltage_during_kepco_scan)
 
         self.pulse_pattern_gen = None
+        self.ground_pin_warned = False
+        self.ground_warning_win = None
 
     ''' scan main functions: '''
 
@@ -194,6 +197,7 @@ class ScanMain(QObject):
         self.ppg_stop(False)  # stop the ppg, to ensure the daq is not triggered unintendly
         start_ok = self.sequencer.measureTrack(scan_dict, track_num)
         self.ppg_load_track(track_dict)  # first start the measurement, then load the pulse pattern on th ppg
+        self.ground_pin_warned = False
         return start_ok
 
     def set_post_acc_switch_box(self, scan_dict, track_num, desired_state=None):
@@ -510,7 +514,32 @@ class ScanMain(QObject):
         if ret is not None and feed_pipe:  # will be None if no dmms are active
             if self.analysis_thread is not None:
                 self.data_to_pipe_sig.emit(np.ndarray(0, dtype=np.int32), ret)
+                self.check_ground_pin_warn_user(ret)
+
         return ret
+
+    def check_ground_pin_warn_user(self, dmm_readback_dict, zero_range=0.05):
+        """ function to open a window when a dmm returns an absolute value below zero_range """
+        for key, val in dmm_readback_dict.items():
+            if len(val[np.abs(val) < zero_range]) and not self.ground_pin_warned:
+                if self.ground_warning_win is not None:
+                    self.ground_warning_win.close()
+                self.ground_pin_warned = True
+                self.ground_warning_win = QtWidgets.QMainWindow()
+                self.ground_warning_win.setWindowTitle('ground pin warning!')
+                palette = Qt.QPalette()
+                palette.setColor(Qt.QPalette.Background, Qt.QColor.fromRgb(255, 128, 0, 255))
+                centr_widg = QtWidgets.QWidget()
+                lay = QtWidgets.QVBoxLayout()
+                label = QtWidgets.QLabel('---- Warning! ----- ')
+                label.setAlignment(Qt.Qt.AlignCenter)
+                lay.addWidget(label)
+                lay.addWidget(QtWidgets.QLabel('dmm: %s yielded a measurement close to 0V\n'
+                                               ' is the setup grounded?' % key))
+                centr_widg.setLayout(lay)
+                self.ground_warning_win.setCentralWidget(centr_widg)
+                self.ground_warning_win.setPalette(palette)
+                self.ground_warning_win.show()
 
     def request_config_pars(self, dmm_name):
         """

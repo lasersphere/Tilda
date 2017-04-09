@@ -151,7 +151,8 @@ class DMMdummy:
     def fetch_multiple_meas(self, num_to_read, max_time=-1):
         if num_to_read == -1:
             num_to_read = 5
-        ret = np.full(num_to_read, 1.0, dtype=np.double)
+        ret_val = 1
+        ret = np.full(num_to_read, ret_val, dtype=np.double)
         t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         # take last element out of array and make a tuple with timestamp:
         self.last_readback = (round(ret[-1], 8), t)
