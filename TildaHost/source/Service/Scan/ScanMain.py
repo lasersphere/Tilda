@@ -521,25 +521,26 @@ class ScanMain(QObject):
     def check_ground_pin_warn_user(self, dmm_readback_dict, zero_range=0.05):
         """ function to open a window when a dmm returns an absolute value below zero_range """
         for key, val in dmm_readback_dict.items():
-            if len(val[np.abs(val) < zero_range]) and not self.ground_pin_warned:
-                if self.ground_warning_win is not None:
-                    self.ground_warning_win.close()
-                self.ground_pin_warned = True
-                self.ground_warning_win = QtWidgets.QMainWindow()
-                self.ground_warning_win.setWindowTitle('ground pin warning!')
-                palette = Qt.QPalette()
-                palette.setColor(Qt.QPalette.Background, Qt.QColor.fromRgb(255, 128, 0, 255))
-                centr_widg = QtWidgets.QWidget()
-                lay = QtWidgets.QVBoxLayout()
-                label = QtWidgets.QLabel('---- Warning! ----- ')
-                label.setAlignment(Qt.Qt.AlignCenter)
-                lay.addWidget(label)
-                lay.addWidget(QtWidgets.QLabel('dmm: %s yielded a measurement close to 0V\n'
-                                               ' is the setup grounded?' % key))
-                centr_widg.setLayout(lay)
-                self.ground_warning_win.setCentralWidget(centr_widg)
-                self.ground_warning_win.setPalette(palette)
-                self.ground_warning_win.show()
+            if val is not None:
+                if len(val[np.abs(val) < zero_range]) and not self.ground_pin_warned:
+                    if self.ground_warning_win is not None:
+                        self.ground_warning_win.close()
+                    self.ground_pin_warned = True
+                    self.ground_warning_win = QtWidgets.QMainWindow()
+                    self.ground_warning_win.setWindowTitle('ground pin warning!')
+                    palette = Qt.QPalette()
+                    palette.setColor(Qt.QPalette.Background, Qt.QColor.fromRgb(255, 128, 0, 255))
+                    centr_widg = QtWidgets.QWidget()
+                    lay = QtWidgets.QVBoxLayout()
+                    label = QtWidgets.QLabel('---- Warning! ----- ')
+                    label.setAlignment(Qt.Qt.AlignCenter)
+                    lay.addWidget(label)
+                    lay.addWidget(QtWidgets.QLabel('dmm: %s yielded a measurement close to 0V\n'
+                                                   ' is the setup grounded?' % key))
+                    centr_widg.setLayout(lay)
+                    self.ground_warning_win.setCentralWidget(centr_widg)
+                    self.ground_warning_win.setPalette(palette)
+                    self.ground_warning_win.show()
 
     def request_config_pars(self, dmm_name):
         """

@@ -166,32 +166,35 @@ class Agilent(QThread):
 
     def send_command(self, cmd_str, read_back=False, delay=None, to_float=False):
         ret = None
-        if self.connection_type == 'socket':
-            if read_back:
-                self._flush_socket()
-            cmd = str.encode(cmd_str + '\r\n')
-            # print(self.name + ' sending comand: ' + str(cmd_str))
-            self.connection.send(cmd)
-            time.sleep(self.sleepAfterSend)
-            if read_back:
-                ret = self.connection.recv(self.buffersize)
-                ret = ret[len(cmd):-len(b'\r\n34461A> ')]
-                # the send cmd is still in the readback and the device sends b'\r\n34461A> '
-                # everytime after return was pressed
-                if ret and to_float:
+        try:
+            if self.connection_type == 'socket':
+                if read_back:
+                    self._flush_socket()
+                cmd = str.encode(cmd_str + '\r\n')
+                # print(self.name + ' sending comand: ' + str(cmd_str))
+                self.connection.send(cmd)
+                time.sleep(self.sleepAfterSend)
+                if read_back:
+                    ret = self.connection.recv(self.buffersize)
+                    ret = ret[len(cmd):-len(b'\r\n34461A> ')]
+                    # the send cmd is still in the readback and the device sends b'\r\n34461A> '
+                    # everytime after return was pressed
+                    if ret and to_float:
+                        ret = self.convert_to_float(ret)
+            elif self.connection_type == 'serial':
+                if delay is None:
+                    delay = self.sleepAfterSend
+                # print(self.name + ' sending comand: ' + str(cmd_str))
+                # self.connection.flushInput()
+                # self.connection.flushOutput()
+                self.connection.write(str.encode(cmd_str + '\n'))
+                time.sleep(delay)
+                if read_back:
+                    ret = self._ser_readline(delay, cmd_str)
+                if to_float:
                     ret = self.convert_to_float(ret)
-        elif self.connection_type == 'serial':
-            if delay is None:
-                delay = self.sleepAfterSend
-            # print(self.name + ' sending comand: ' + str(cmd_str))
-            # self.connection.flushInput()
-            # self.connection.flushOutput()
-            self.connection.write(str.encode(cmd_str + '\n'))
-            time.sleep(delay)
-            if read_back:
-                ret = self._ser_readline(delay, cmd_str)
-            if to_float:
-                ret = self.convert_to_float(ret)
+        except Exception as e:
+            print('error in %s : ' % self.name, e)
         return ret
 
     def _flush_socket(self):
@@ -252,7 +255,7 @@ class Agilent(QThread):
         return ret
 
     def de_init_dmm(self):
-        pass
+        self.abort_meas()
 
     def reset_dev(self):
         self.send_command('*RST')
@@ -357,6 +360,7 @@ class Agilent(QThread):
         if self.type_num in ['34461A']:
             on_off = 'ON' if highResistanceTrue else 'OFF'
             self.send_command('VOLT:DC:IMP:AUTO %s' % on_off)
+            print(self.name, ' 34461A setting input resistance: ', 'VOLT:DC:IMP:AUTO %s' % on_off)
             auto_imp = on_off
             # auto_imp = self.send_command('VOLT:DC:IMP:AUTO?', True)
         elif self.type_num in ['34401A']:
@@ -431,7 +435,7 @@ class Agilent(QThread):
         self.config_dict['triggerSource'] = trig_src_enum.name
         self.config_dict['triggerDelay_s'] = trig_delay
         dev_err = self.get_dev_error()
-        return trig_source_read, trig_del_read, dev_err
+        return trig_source_read, trig_del_read
 
     def config_trigger_slope(self, trig_slope):
         """
@@ -601,9 +605,12 @@ class Agilent(QThread):
                 ret = self.send_command('R? %s' % num_to_read, True, delay=0.0005)
             self.connection.settimeout(0.3)
             if ret:
-                if int(ret[2:3]):  # if no value is returned, this yields b'#10' -> int(ret[2:3]) = 0
-                    ret = np.fromstring(ret[2 + int(ret[1:2]):], sep=',')
-                else:
+                try:  # try, because somebody might shut the whole thing off
+                    if int(ret[2:3]):  # if no value is returned, this yields b'#10' -> int(ret[2:3]) = 0
+                        ret = np.fromstring(ret[2 + int(ret[1:2]):], sep=',')
+                    else:
+                        return np.zeros(0, dtype=np.double)
+                except Exception as e:
                     return np.zeros(0, dtype=np.double)
             else:
                 return np.zeros(0, dtype=np.double)
@@ -679,17 +686,21 @@ class Agilent(QThread):
             trig_src_enum = AgilentTriggerSources[config_dict.get('triggerSource')]
             sample_interval = 1  # config_dict.get('sampleInterval')  sample interval currently not used
             self.config_multi_point_meas(trig_count, sample_count, trig_src_enum, sample_interval)
-            # print('%s sucessfully config_multi_point_meas' % self.name)
+            print('%s sucessfully config_multi_point_meas' % self.name)
+            greater_10_g_ohm = config_dict.get('highInputResistanceTrue')
+            self.set_input_resistance(greater_10_g_ohm)
+            print('%s sucessfully configured high z' % self.name)
             auto_z = config_dict.get('autoZero')
             self.config_auto_zero(auto_z)
+            print('%s sucessfully configured auto zero' % self.name)
             trig_delay = config_dict.get('triggerDelay_s', 0)
             self.config_trigger(trig_src_enum, trig_delay)
             trig_slope = config_dict.get('triggerSlope')
+            print('%s sucessfully configured trig source and delay' % self.name)
             self.config_trigger_slope(trig_slope)
+            print('%s sucessfully configured trig slope' % self.name)
             self.config_meas_complete_slope('rising')
-            # print('%s sucessfully configured trigger' % self.name)
-            greater_10_g_ohm = config_dict.get('highInputResistanceTrue')
-            self.set_input_resistance(greater_10_g_ohm)
+            print('%s sucessfully configured trigger' % self.name)
             self.get_accuracy()
             # just to be sure this is included:
             self.config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
@@ -748,10 +759,14 @@ class Agilent(QThread):
         # return 0, ''
         error = self.send_command('SYST:ERR?', True)
         if error:
-            error_num = int(error.split(sep=b',')[0])
-            if error_num != 0:
-                print('%s yields the following error: %s' % (self.name, error))
-            return error_num, error
+            try:
+                error_num = int(error.split(sep=b',')[0])
+                if error_num != 0:
+                    print('%s yields the following error: %s' % (self.name, error))
+                return error_num, error
+            except Exception as e:
+                print('error in %s while interpreting error message: ' % self.name, error)
+                return 0, ''
         else:
             print('%s is fine and no error is present' % self.name)
             return 0, ''
