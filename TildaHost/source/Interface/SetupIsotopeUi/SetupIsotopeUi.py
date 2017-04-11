@@ -44,6 +44,11 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         if 'trs' in Dft.sequencer_types_list:
             self.comboBox_sequencer_select.setCurrentText('trs')
 
+        self.pushButton_add_new_to_db.setToolTip('This will add a new isotope to the database'
+                                                 ' if one with the given name is not existing yet. \n'
+                                                 'It will copy the settings from the isotope selected above.\n'
+                                                 'If you do not want to copy from db, select the blank one.')
+
         self.exec_()
 
     def init_seq(self):
@@ -54,7 +59,9 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         """ connect to the db and add a new isotope if this has not yet been added """
         iso = self.lineEdit_new_isotope.text()
         seq_type = self.comboBox_sequencer_select.currentText()
-        iso = Cfg._main_instance.add_new_iso_to_db(iso, seq_type)
+        existing_iso = self.comboBox_isotope.currentText()
+        existing_iso = None if existing_iso == '' else existing_iso
+        iso = Cfg._main_instance.add_new_iso_to_db(iso, seq_type, existing_iso)
         if iso is not None:  # its a new isotope!
             self.config_iso_db_dialog(iso)
         self.update_isos(iso)
@@ -81,6 +88,7 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
         self.comboBox_isotope.clear()
         sequencer = self.comboBox_sequencer_select.currentText()
         isos = Cfg._main_instance.get_available_isos_from_db(sequencer)
+        isos.append('')
         self.comboBox_isotope.addItems(isos)
         index = 0
         if set_string is not None:

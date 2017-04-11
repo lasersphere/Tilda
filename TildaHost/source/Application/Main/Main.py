@@ -470,8 +470,6 @@ class Main(QtCore.QObject):
     def _measure_offset_voltage(self, first_call=False):
         """
         this function is called within the state 'measure_offset_voltage'.
-        It will proceed to the next state without any action if the scan is a kepco scan.
-        otherwise:
             on first call:
              it will set the fpga to measure offset state and fire a software trigger to the dmms
             on other calls:
@@ -815,11 +813,11 @@ class Main(QtCore.QObject):
         """ edit or create the iso with the settings in settings_list to Isotopes """
         DbOp.update_iso_settings(self.database, iso, settings_list)
 
-    def add_new_iso_to_db(self, iso, seq_type):
+    def add_new_iso_to_db(self, iso, seq_type, exisiting_iso=None):
         """
-        add a new isotope of type seq, to the database
+        add a new isotope of type seq, to the database, will try to copy from existing iso
         """
-        return DbOp.add_new_iso(self.database, iso, seq_type)
+        return DbOp.add_new_iso(self.database, iso, seq_type, exisiting_iso)
 
     def add_iso_to_scan_pars(self, iso, seq_type):
         """

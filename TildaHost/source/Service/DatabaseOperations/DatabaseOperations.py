@@ -240,19 +240,30 @@ fixedArat, fixedBrat, intScale, fixedInt, relInt, m, midTof) VALUES (?,?,?,?,?,?
     con.close()
 
 
-def add_new_iso(db, iso, seq_type):
+def add_new_iso(db, iso, seq_type, exisiting_iso=None):
     """ write an empty isotope dictionary of a given scantype to the database """
     if iso is '':
         return None
     if iso in check_for_existing_isos(db, seq_type):
         logging.info('isotope ' + iso + ' (' + seq_type + ')' + ' already created, will not be added')
         return None
-    scand = SdOp.init_empty_scan_dict(type_str=seq_type, load_default_vals=True)
-    scand['isotopeData']['isotope'] = iso
-    scand['isotopeData']['type'] = seq_type
-    scand['pipeInternals']['activeTrackNumber'] = 0
-    add_scan_dict_to_db(db, scand, 0, track_key='track0')
-    logging.debug('added ' + iso + ' (' + seq_type + ') to database')
+    if exisiting_iso is None:
+        scand = SdOp.init_empty_scan_dict(type_str=seq_type, load_default_vals=True)
+        scand['isotopeData']['isotope'] = iso
+        scand['isotopeData']['type'] = seq_type
+        scand['pipeInternals']['activeTrackNumber'] = 0
+        add_scan_dict_to_db(db, scand, 0, track_key='track0')
+        logging.debug('added ' + iso + ' (' + seq_type + ') to database')
+    else:
+        print('adding new iso %s and copying from %s ' % (iso, exisiting_iso))
+        con = sqlite3.connect(db)
+        cur = con.cursor()
+        cur.execute('''CREATE TEMPORARY TABLE tmp AS SELECT * FROM ScanPars WHERE iso = ?''', (exisiting_iso,))
+        cur.execute('''UPDATE tmp SET iso = ?''', (iso,))
+        cur.execute('''INSERT INTO ScanPars SELECT * FROM tmp''')
+        cur.execute('''DROP TABLE tmp''')
+        con.commit()
+        con.close()
     return iso
 
 
@@ -354,7 +365,8 @@ def extract_all_tracks_from_db(db, iso, sctype):
 
 if __name__ == '__main__':
     import os
-    workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
-    db = os.path.join(workdir, 'Ni_workspace.sqlite')
+    workdir = 'C:\\TildaDebugging\\Test_17_04_10'
+    db = os.path.join(workdir, 'Test_17_04_10.sqlite')
     # print(get_software_gates_from_db(db, '60_Ni', 'wide_gate'))
-    print(get_iso_settings(db, '6230_Ni'))
+    # print(get_iso_settings(db, '6230_Ni'))
+    add_new_iso(db, 'new2', 'csdummy', 'new')

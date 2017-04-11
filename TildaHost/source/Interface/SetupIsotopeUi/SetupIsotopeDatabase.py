@@ -3,7 +3,7 @@ Created on
 
 @author: simkaufm
 
-Module Description:
+Module Description: Dialog for setting up an Isotope in the table Isotopes.
 """
 
 from Interface.SetupIsotopeUi.Ui_setupIsotopeDatabase import Ui_setupIsotopeDatabase
