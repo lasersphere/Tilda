@@ -862,8 +862,9 @@ class NStartNodeKepcoScan(Node):
                                         pass
                                     else:
                                         # all dmms have a reading emit signal with int = -1
-                                        print('all dmms have a reading, emitting -1')
-                                        self.dac_new_volt_set_callback.emit(-1)
+                                        print('all dmms have a reading, emitting -1', self.dac_new_volt_set_callback)
+                                        if self.dac_new_volt_set_callback is not None:
+                                            self.dac_new_volt_set_callback.emit(-1)
                                 except Exception as e:
                                     print('error while processing data in node: %s -> %s' % (self.type, e))
                                 # print('volt_reading: ', self.spec_data.cts)
@@ -873,7 +874,7 @@ class NStartNodeKepcoScan(Node):
 
         elif isinstance(data, np.ndarray):  # rawdata from fpga
             for raw_data in data:
-                # plitup each element in data and analyse what it means:
+                # splitup each element in data and analyse what it means:
                 first_header, second_header, header_index, payload = Form.split_32b_data(raw_data)
 
                 if first_header == Progs.infoHandler.value:

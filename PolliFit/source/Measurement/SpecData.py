@@ -61,12 +61,22 @@ class SpecData(object):
                 nrScalers = self.nrScalers[track_index]
         else:
             nrScalers = self.nrScalers
-
+        kepco = False
+        try:
+            if self.seq_type == 'kepco':
+                kepco = True
+        except Exception as e:
+            pass
+        if self.type == 'Kepco':  # for mcp data...
+            kepco = True
         for s in scaler:
             s = int(s)
             if nrScalers >= np.abs(s):
                 flatx, c, e = self.getSingleSpec(abs(s), track_index)
-                flatc = flatc + np.copysign(c, s)
+                if kepco:
+                    flatc = flatc + c # if c < 0 and s > 0 -> flatc > 0
+                else:
+                    flatc = flatc + np.copysign(c, s)  # if c < 0 and s > 0 -> flatc > 0
                 flate = flate + np.square(e)
             else:
                 pass

@@ -102,9 +102,11 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
         stop ppg and go to idle state
         :return:
         """
-        self.set_stop(True)
-        time.sleep(0.001)
-        self.read_state()
+        state_num, state_name = self.read_state()
+        if state_name in ['run']:  # only stop when running!
+            self.set_stop(True)
+            time.sleep(0.001)
+            self.read_state()
 
     def reset(self):
         """
