@@ -124,6 +124,7 @@ class Agilent(QThread):
         self.last_readback = None
         self.accuracy = 10 ** -4  # uncertainty for this dmm. Can be dependent on the range etc.
         self.accuracy_range = 10 ** -4
+        self.stored_send_cmd = ''
 
         # default config dictionary for this type of DMM:
         self.pre_configs = AgilentPreConfigs
@@ -164,12 +165,21 @@ class Agilent(QThread):
             self.connection_type = None
             return False
 
-    def send_command(self, cmd_str, read_back=False, delay=None, to_float=False):
+    def send_command(self, cmd_str, read_back=False, delay=None, to_float=False, postpone_send=False):
         ret = None
         try:
             if self.connection_type == 'socket':
+                if postpone_send:
+                    if self.stored_send_cmd != '':
+                        self.stored_send_cmd += ';:' + cmd_str
+                    else:
+                        self.stored_send_cmd += cmd_str
+                    return None
                 if read_back:
                     self._flush_socket()
+                if self.stored_send_cmd != '':
+                    cmd_str = self.stored_send_cmd + cmd_str
+                    self.stored_send_cmd = ''
                 cmd = str.encode(cmd_str + '\r\n')
                 # print(self.name + ' sending comand: ' + str(cmd_str))
                 self.connection.send(cmd)
@@ -262,7 +272,7 @@ class Agilent(QThread):
 
     ''' config measurement '''
 
-    def config_measurement(self, dmm_range, range10V_res):
+    def config_measurement(self, dmm_range, range10V_res, postpone_send=False):
         """
         Sets all measurement parameters and trigger parameters to their default values for AC or DC voltage measurements.
         Also specifies the range and resolution.
@@ -278,11 +288,11 @@ class Agilent(QThread):
          10VRangeRes: 3E-6  1E-5 3E-5  1E-4 1E-3
         :return: range, nplc, res
         """
-        range, err = self.set_range(dmm_range)
+        range, err = self.set_range(dmm_range, postpone_send=postpone_send)
         res_fact = {0.02: 100E-6, 0.2: 10E-6, 1: 3E-6, 10: 1E-6, 100: 0.3E-6}
         nplc_from_res = {1e-3: '0.02', 1e-4: '0.2', 3e-5: '1', 1e-5: '10', 3e-6: '100', -1: '100'}
         nplc = nplc_from_res.get(range10V_res, '100')
-        self.send_command('VOLTage:DC:NPLCycles %s' % nplc)
+        self.send_command('VOLTage:DC:NPLCycles %s' % nplc, postpone_send=postpone_send)
         # nplc = self.send_command('VOLT:DC:NPLC?', True, to_float=True)
         res = range * res_fact.get(float(nplc), -1)
         self.config_dict['range'] = range
@@ -290,7 +300,7 @@ class Agilent(QThread):
         dev_err = self.get_dev_error()
         return range, nplc, res, dev_err
 
-    def config_multi_point_meas(self, trig_count, sample_count, trig_src_enum, sample_interval):
+    def config_multi_point_meas(self, trig_count, sample_count, trig_src_enum, sample_interval, postpone_send=False):
         """
         Configures the properties for multipoint measurements.
         :param trig_count: int, Selects the number of triggers that are accepted
@@ -317,19 +327,20 @@ class Agilent(QThread):
             else:
                 trig_count = max(trig_count, 1)
                 trig_count = min(trig_count, 511)
-        self.send_command('TRIG:COUN %s' % trig_count)
-        trig_count_read = trig_count
-        # trig_count_read = self.send_command('TRIG:COUN?', True, to_float=True)
-
         sample_count = max(sample_count, 1)
         sample_count = min(sample_count, 1e6)
-        self.send_command('SAMP:COUN %s' % sample_count)
-        sample_count_read = sample_count
+
+        self.send_command('TRIG:COUN %s' % trig_count, postpone_send=postpone_send)
+        # trig_count_read = self.send_command('TRIG:COUN?', True, to_float=True)
+
+        self.send_command('SAMP:COUN %s' % sample_count, postpone_send=postpone_send)
         # sample_count_read = self.send_command('SAMP:COUN?', True, to_float=True)
 
-        self.send_command('TRIG:SOUR %s' % trig_src_enum.value)
-        trig_source_read = trig_src_enum.value
+        self.send_command('TRIG:SOUR %s' % trig_src_enum.value, postpone_send=postpone_send)
         # trig_source_read = self.send_command('TRIG:SOUR?', True)
+        trig_count_read = trig_count
+        sample_count_read = sample_count
+        trig_source_read = trig_src_enum.value
 
         if self.type_num in ['34461A']:
             pass  # currently yields error: '-113,"Undefined header"
@@ -345,7 +356,7 @@ class Agilent(QThread):
 
         return trig_count_read, sample_count_read, trig_source_read, sample_interval_read, dev_err
 
-    def set_input_resistance(self, highResistanceTrue=True):
+    def set_input_resistance(self, highResistanceTrue=True, postpone_send=False):
         """
         Disables or enables automatic input impedance mode for DC voltage and ratio measurements.
         :param highResistanceTrue: bool,
@@ -358,8 +369,9 @@ class Agilent(QThread):
         """
         auto_imp = None
         if self.type_num in ['34461A']:
+
             on_off = 'ON' if highResistanceTrue else 'OFF'
-            self.send_command('VOLT:DC:IMP:AUTO %s' % on_off)
+            self.send_command('VOLT:DC:IMP:AUTO %s' % on_off, postpone_send=postpone_send)
             print(self.name, ' 34461A setting input resistance: ', 'VOLT:DC:IMP:AUTO %s' % on_off)
             auto_imp = on_off
             # auto_imp = self.send_command('VOLT:DC:IMP:AUTO?', True)
@@ -372,21 +384,21 @@ class Agilent(QThread):
         dev_err = self.get_dev_error()
         return auto_imp, dev_err
 
-    def set_range(self, range_val):
+    def set_range(self, range_val, postpone_send=False):
         ranges = {0.1: '0.1', 1: '1', 10: '10', 100: '100', 1000: '1000', -1: 'AUTO'}
         sel_range = ranges.get(range_val, 'AUTO')
         set_range = float(sel_range)
         if sel_range != 'AUTO':
-            self.send_command('VOLT:DC:RANG %s' % sel_range)
+            self.send_command('VOLT:DC:RANG %s' % sel_range, postpone_send=postpone_send)
             # set_range = self.send_command('VOLT:DC:RANG?', True, to_float=True)
         else:
-            self.send_command('VOLT:DC:RANG:AUTO ON')
+            self.send_command('VOLT:DC:RANG:AUTO ON', postpone_send=postpone_send)
             # set_range = -1 if self.send_command('VOLT:DC:RANG:AUTO?', True, to_float=True) == 1 else 0
         self.config_dict['range'] = set_range
         dev_err = self.get_dev_error()
         return set_range, dev_err
 
-    def config_auto_zero(self, auto_zero_mode):
+    def config_auto_zero(self, auto_zero_mode, postpone_send=False):
         """
         Disables or enables the autozero mode for DC voltage and ratio measurements.
         :param auto_zero_mode: str, OFF|ON|ONCE
@@ -406,7 +418,7 @@ class Agilent(QThread):
         self.config_dict['autoZero'] = auto_zero_mode
         zero_auto = auto_zero_mode
         if self.type_num in ['34461A']:
-            self.send_command('VOLT:DC:ZERO:AUTO %s' % auto_zero_mode)
+            self.send_command('VOLT:DC:ZERO:AUTO %s' % auto_zero_mode, postpone_send=postpone_send)
             # zero_auto = self.send_command('VOLT:DC:ZERO:AUTO?', True)
         elif self.type_num in ['34401A']:
             self.send_command('ZERO:AUTO %s' % auto_zero_mode)
@@ -416,7 +428,7 @@ class Agilent(QThread):
 
     ''' Trigger '''
 
-    def config_trigger(self, trig_src_enum, trig_delay):
+    def config_trigger(self, trig_src_enum, trig_delay, postpone_send=False):
         """
         Selects the trigger source for measurements.
         Sets the delay between the trigger signal and the first measurement. This may be useful in applications
@@ -427,7 +439,7 @@ class Agilent(QThread):
         """
         trig_delay = min(3600, trig_delay)
         trig_delay = max(0, trig_delay)
-        self.send_command('TRIG:SOUR %s; DEL %s' % (trig_src_enum.value, trig_delay))
+        self.send_command('TRIG:SOUR %s; DEL %s' % (trig_src_enum.value, trig_delay), postpone_send=postpone_send)
         trig_source_read = trig_src_enum.value
         trig_del_read = trig_delay
         # trig_source_read = self.send_command('TRIG:SOUR?', True)
@@ -437,7 +449,7 @@ class Agilent(QThread):
         dev_err = self.get_dev_error()
         return trig_source_read, trig_del_read
 
-    def config_trigger_slope(self, trig_slope):
+    def config_trigger_slope(self, trig_slope, postpone_send=False):
         """
         Selects whether the instrument uses the rising edge (POS) or the falling edge (NEG) of the trigger signal on
         the rear-panel Ext Trig BNC connector when external triggering is selected;
@@ -448,14 +460,14 @@ class Agilent(QThread):
         if self.type_num in ['34401A']:  # slope cannot be changed for 34401A, always active low (p. 83/42)
             return 'falling'
         trig_slope = 'NEG' if trig_slope == 'falling' else 'POS'
-        self.send_command('TRIG:SLOP %s' % trig_slope)
+        self.send_command('TRIG:SLOP %s' % trig_slope, postpone_send=postpone_send)
         trig_slope_read = trig_slope
         # trig_slope_read = self.send_command('TRIG:SLOP?', True)
         dev_err = self.get_dev_error()
 
         return trig_slope_read, dev_err
 
-    def config_meas_complete_slope(self, meas_compl_slope_str):
+    def config_meas_complete_slope(self, meas_compl_slope_str, postpone_send=False):
         """
         Selects the slope of the voltmeter complete output signal on the rear-panel VM Comp BNC connector
         slope cannot be changed for 34401A, always active low (p. 83)
@@ -465,7 +477,7 @@ class Agilent(QThread):
         if self.type_num in ['34401A']:  # slope cannot be changed for 34401A, always active low (p. 83/42)
             return 'falling', self.get_dev_error()
         trig_slope = 'NEG' if meas_compl_slope_str == 'falling' else 'POS'
-        self.send_command('OUTP:TRIG:SLOP %s' % trig_slope)
+        self.send_command('OUTP:TRIG:SLOP %s' % trig_slope, postpone_send=postpone_send)
         trig_slope_read = trig_slope
         # trig_slope_read = self.send_command('OUTP:TRIG:SLOP?', True)
         dev_err = self.get_dev_error()
@@ -673,34 +685,38 @@ class Agilent(QThread):
     def load_from_config_dict(self, config_dict, reset_dev):
         try:
             print('setting up %s with the following config %s' % (self.name, config_dict))
+            postpone_send = False
+            if self.type_num in ['34461A']:
+                postpone_send = True
             self.abort_meas()
             self.config_dict = deepcopy(config_dict)
             if reset_dev:
                 self.reset_dev()
             dmm_range = int(float(config_dict.get('range')))  # combobox will return a string
             resolution = float(config_dict.get('resolution'))
-            self.config_measurement(dmm_range, resolution)
+            self.config_measurement(dmm_range, resolution, postpone_send=postpone_send)
             # print('%s sucessfully configured range, resolution' % self.name)
             trig_count = config_dict.get('triggerCount')
             sample_count = config_dict.get('sampleCount')
             trig_src_enum = AgilentTriggerSources[config_dict.get('triggerSource')]
             sample_interval = 1  # config_dict.get('sampleInterval')  sample interval currently not used
-            self.config_multi_point_meas(trig_count, sample_count, trig_src_enum, sample_interval)
-            print('%s sucessfully config_multi_point_meas' % self.name)
+            self.config_multi_point_meas(trig_count, sample_count, trig_src_enum,
+                                         sample_interval, postpone_send=postpone_send)
+            # print('%s sucessfully config_multi_point_meas' % self.name)
             greater_10_g_ohm = config_dict.get('highInputResistanceTrue')
-            self.set_input_resistance(greater_10_g_ohm)
-            print('%s sucessfully configured high z' % self.name)
+            self.set_input_resistance(greater_10_g_ohm, postpone_send=postpone_send)
+            # print('%s sucessfully configured high z' % self.name)
             auto_z = config_dict.get('autoZero')
-            self.config_auto_zero(auto_z)
-            print('%s sucessfully configured auto zero' % self.name)
+            self.config_auto_zero(auto_z, postpone_send=postpone_send)
+            # print('%s sucessfully configured auto zero' % self.name)
             trig_delay = config_dict.get('triggerDelay_s', 0)
-            self.config_trigger(trig_src_enum, trig_delay)
+            self.config_trigger(trig_src_enum, trig_delay, postpone_send=postpone_send)
             trig_slope = config_dict.get('triggerSlope')
-            print('%s sucessfully configured trig source and delay' % self.name)
-            self.config_trigger_slope(trig_slope)
-            print('%s sucessfully configured trig slope' % self.name)
-            self.config_meas_complete_slope('rising')
-            print('%s sucessfully configured trigger' % self.name)
+            # print('%s sucessfully configured trig source and delay' % self.name)
+            self.config_trigger_slope(trig_slope, postpone_send=postpone_send)
+            # print('%s sucessfully configured trig slope' % self.name)
+            self.config_meas_complete_slope('rising', postpone_send=False)
+            # print('%s sucessfully configured trigger' % self.name)
             self.get_accuracy()
             # just to be sure this is included:
             self.config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
@@ -757,18 +773,21 @@ class Agilent(QThread):
         """
         # currently this is overused, just assume everything is fine for now
         # return 0, ''
-        error = self.send_command('SYST:ERR?', True)
-        if error:
-            try:
-                error_num = int(error.split(sep=b',')[0])
-                if error_num != 0:
-                    print('%s yields the following error: %s' % (self.name, error))
-                return error_num, error
-            except Exception as e:
-                print('error in %s while interpreting error message: ' % self.name, error)
+        if self.stored_send_cmd == '':  # only pull error when nothing is stored.
+            error = self.send_command('SYST:ERR?', True)
+            if error:
+                try:
+                    error_num = int(error.split(sep=b',')[0])
+                    if error_num != 0:
+                        print('%s yields the following error: %s' % (self.name, error))
+                    return error_num, error
+                except Exception as e:
+                    print('error in %s while interpreting error message: ' % self.name, error)
+                    return 0, ''
+            else:
+                print('%s is fine and no error is present' % self.name)
                 return 0, ''
         else:
-            print('%s is fine and no error is present' % self.name)
             return 0, ''
 
     def get_accuracy(self, config_dict=None):

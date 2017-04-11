@@ -145,7 +145,7 @@ class Ni4071PreConfigs(Enum):
         'triggerSource': Ni4071TriggerSources.pxi_trig_3.name,
         'sampleInterval': -1,
         'powerLineFrequency': 50.0,
-        'triggerDelay_s': 0,
+        'triggerDelay_s': 0.5,
         'triggerSlope': 'rising',
         'measurementCompleteDestination': Ni4071MeasCompleteLoc.PXI_Trigger_4.name,
         'highInputResistanceTrue': True,

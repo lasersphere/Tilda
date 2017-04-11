@@ -9,6 +9,7 @@ Created on '19.05.2015'
 import logging
 from copy import deepcopy
 from datetime import datetime, timedelta
+import time
 
 import numpy as np
 from PyQt5 import QtWidgets, Qt
@@ -500,6 +501,7 @@ class ScanMain(QObject):
         self.read_multimeter(dmm_name, False)  # read remaining values from buffer.
         self.digital_multi_meter.config_dmm(dmm_name, config_dict, reset_dev)
         self.digital_multi_meter.start_measurement(dmm_name)
+        time.sleep(1)
 
     def read_multimeter(self, dmm_name, feed_pipe):
         """

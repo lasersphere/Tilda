@@ -862,7 +862,7 @@ class NStartNodeKepcoScan(Node):
                                         pass
                                     else:
                                         # all dmms have a reading emit signal with int = -1
-                                        print('all dmms have a reading, emitting -1', self.dac_new_volt_set_callback)
+                                        # print('all dmms have a reading, emitting -1', self.dac_new_volt_set_callback)
                                         if self.dac_new_volt_set_callback is not None:
                                             self.dac_new_volt_set_callback.emit(-1)
                                 except Exception as e:
