@@ -39,9 +39,15 @@ class ChooseDmmWidget(QtWidgets.QWidget, Ui_Form):
         elif type_str == 'dummy':
             addr = 'somewhere'
         elif type_str == 'Agilent_34461A':
-            addr = '137.138.135.94'
+            addr = 'COLLAPSAGILENT01'
         elif type_str == 'Agilent_34401A':
             addr = 'com1'
         elif type_str == 'Agilent_M918x':
             addr = 'PXI6::15::INSTR'
         self.lineEdit_address_dmm.setText(addr)
+        self.lineEdit_address_dmm.setToolTip(' for COLLAPS:\n'
+                                             'COLLAPSAGILENT01 - 137.138.135.84 (not fixed ?)'
+                                             ' - Isolde hall COLLAPS DAQ area\n'
+                                             'COLLAPSAGILENT02 - 137.138.135.94 (not fixed ?)'
+                                             ' - ISCOOL rack\n'
+                                             )

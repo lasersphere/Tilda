@@ -813,98 +813,105 @@ class Agilent(QThread):
         self.stop_reading_thread = False
         self.mutex.unlock()
 
-# if __name__ == "__main__":
-#     dmm = Agilent(False, 'com1', '34401A')
-#     dmm.set_to_pre_conf_setting(AgilentPreConfigs.periodic.name)
-#     # dmm.abort_meas()
-#     print('thread running: %s' % dmm.isRunning())
-#     print(dmm.read_back_data)
-#     x = 0
-#     while x < 100:
-#         time.sleep(0.1)
-#         print(dmm.fetch_multiple_meas(-1))
-#     # print(dmm.load_from_config_dict({'resolution': '3e-5',
-#     #                            'autoZero': 'ON',
-#     #                            'accuracy': (3.5000000000000004e-05, 5e-05),
-#     #                            'triggerCount': -1,
-#     #                            'triggerDelay_s': 0,
-#     #                            'range': '10.0',
-#     #                            'highInputResistanceTrue': True,
-#     #                            'sampleCount': 1,
-#     #                            'triggerSource': 'immediate',
-#     #                            'assignment': 'accVolt',
-#     #                            'triggerSlope': 'rising'}, False))
-#     #
-#     # [print(dmm.set_to_pre_conf_setting(i)) for i in self.pre_configs.__members__]
-#     # print(dmm.load_from_config_dict({'resolution': '3e-6',
-#     #                                  'autoZero': 'ON',
-#     #                                  'accuracy': (3.5000000000000004e-05, 5e-05),
-#     #                                  'triggerCount': -1,
-#     #                                  'triggerDelay_s': 0,
-#     #                                  'range': '10.0',
-#     #                                  'highInputResistanceTrue': True,
-#     #                                  'sampleCount': 1,
-#     #                                  'triggerSource': 'bus',
-#     #                                  'assignment': 'accVolt',
-#     #                                  'triggerSlope': 'rising'}, False))
-#     # # print(dmm.send_command('*IDN?', True))
-#     # print(dmm.abort_meas())  # needs to be called before changes are made
-#
-#     # print(dmm.reset_dev())
-#     # print(dmm.send_command('SYST:ERR?', True))
-#     # print('range ', dmm.set_range(10))
-#     # dmm.send_command('DATA:FEED RDG_STORE, "CALCulate"')
-#     # print('range, nplc, res ', dmm.config_measurement(10, 3e-6))
-#     # # print(dmm.send_command('SYST:ERR?', True))
-#     # print(dmm.send_command('TRIG:COUN INF'))
-#     # print(dmm.send_command('TRIG:COUN?', True))
-#     # print(dmm.send_command('TRIG:SOUR?', True))
-#     # print(dmm.send_command('*LRN?', True))
-#     # dmm.send_software_trigger()
-#     # print(dmm.get_dev_error())
-#
-#     # print(format(int(dmm.send_command('STAT:OPER:COND?', True, to_float=True)), '016b'))
-#
-#     # print('trig_counts, sampl_cts, trig_source, sample_interval ',
-#     #       dmm.config_multi_point_meas(-1, 1, AgilentTriggerSources.bus, 0.5))
-#     # print(format(int(dmm.send_command('STAT:OPER:COND?', True, to_float=True)), '016b'))
-#
-#     # print(dmm.config_auto_zero('OFF'))
-#     # print(dmm.send_command('SYST:ERR?', True))
-#     # print(dmm.set_input_resistance(True))
-#     # print('trig_source_read, trig_del_read', dmm.config_trigger(AgilentTriggerSources.external, 0))
-#     # print(dmm.config_trigger_slope('rising'))
-#     # print(dmm.abort_meas())
-#     # # print(dmm.send_command('SYST:ERR?', True))
-#     # print(dmm.send_command('SYST:ERR?', True))
-#     #
-#     # print(dmm.initiate_measurement())
-#     # print(dmm.send_command('SYST:ERR?', True))
-#     # time.sleep(1)
-#     # print(dmm.send_software_trigger())
-#     # time.sleep(2)
-#     # print(dmm.fetch_multiple_meas(-1))
-#     # # print(dmm.send_command('SYST:ERR?', True))
-#     # # print(dmm.send_command('SYST:ERR?', True))
-#     # dmm.set_to_pre_conf_setting('periodic')
-#     # dmm.set_to_pre_conf_setting('initial')
-#     # print(dmm.emit_config_pars())
-#     # x = 0
-#     # while x < 100:
-#     #     start = datetime.datetime.now()
-#     #     dmm.send_software_trigger()
-#     #     dmm.send_software_trigger()
-#     #     dmm.send_software_trigger()
-#     #     dmm.send_software_trigger()
-#     #     dmm.send_software_trigger()
-#     #     dmm.send_software_trigger()
-#     #     dmm.send_software_trigger()
-#     #     dmm.send_software_trigger()
-#     #     time.sleep(1)
-#     #     stop = datetime.datetime.now()
-#     #     dif = stop - start
-#     #     print('time for sending 8 softw. triggers and 1 second delay: ', dif.seconds)
-#     #     print(dmm.fetch_multiple_meas(-1))
-#     #     x += 1
-#     # print(dmm.send_command('SYST:ERR?', True))
-#     # print(dmm.send_command('*ESR?', True, to_float=True))
+if __name__ == "__main__":
+    # dmm = Agilent(False, 'com1', '34401A')
+    # dmm = Agilent(False, '137.138.135.84', '34461A')
+    start = datetime.datetime.now()
+    dmm = Agilent(False, 'COLLAPSAGILENT02', '34461A')
+    dmm.set_to_pre_conf_setting(AgilentPreConfigs.periodic.name)
+    stopp = datetime.datetime.now()
+    needed_time = stopp - start
+    print('startup took: ', needed_time.seconds)
+    # dmm.abort_meas()
+    print('thread running: %s' % dmm.isRunning())
+    print(dmm.read_back_data)
+    x = 0
+    while x < 50:
+        time.sleep(0.1)
+        print(dmm.fetch_multiple_meas(-1))
+        x += 1
+    # print(dmm.load_from_config_dict({'resolution': '3e-5',
+    #                            'autoZero': 'ON',
+    #                            'accuracy': (3.5000000000000004e-05, 5e-05),
+    #                            'triggerCount': -1,
+    #                            'triggerDelay_s': 0,
+    #                            'range': '10.0',
+    #                            'highInputResistanceTrue': True,
+    #                            'sampleCount': 1,
+    #                            'triggerSource': 'immediate',
+    #                            'assignment': 'accVolt',
+    #                            'triggerSlope': 'rising'}, False))
+    #
+    # [print(dmm.set_to_pre_conf_setting(i)) for i in self.pre_configs.__members__]
+    # print(dmm.load_from_config_dict({'resolution': '3e-6',
+    #                                  'autoZero': 'ON',
+    #                                  'accuracy': (3.5000000000000004e-05, 5e-05),
+    #                                  'triggerCount': -1,
+    #                                  'triggerDelay_s': 0,
+    #                                  'range': '10.0',
+    #                                  'highInputResistanceTrue': True,
+    #                                  'sampleCount': 1,
+    #                                  'triggerSource': 'bus',
+    #                                  'assignment': 'accVolt',
+    #                                  'triggerSlope': 'rising'}, False))
+    # # print(dmm.send_command('*IDN?', True))
+    # print(dmm.abort_meas())  # needs to be called before changes are made
+
+    # print(dmm.reset_dev())
+    # print(dmm.send_command('SYST:ERR?', True))
+    # print('range ', dmm.set_range(10))
+    # dmm.send_command('DATA:FEED RDG_STORE, "CALCulate"')
+    # print('range, nplc, res ', dmm.config_measurement(10, 3e-6))
+    # # print(dmm.send_command('SYST:ERR?', True))
+    # print(dmm.send_command('TRIG:COUN INF'))
+    # print(dmm.send_command('TRIG:COUN?', True))
+    # print(dmm.send_command('TRIG:SOUR?', True))
+    # print(dmm.send_command('*LRN?', True))
+    # dmm.send_software_trigger()
+    # print(dmm.get_dev_error())
+
+    # print(format(int(dmm.send_command('STAT:OPER:COND?', True, to_float=True)), '016b'))
+
+    # print('trig_counts, sampl_cts, trig_source, sample_interval ',
+    #       dmm.config_multi_point_meas(-1, 1, AgilentTriggerSources.bus, 0.5))
+    # print(format(int(dmm.send_command('STAT:OPER:COND?', True, to_float=True)), '016b'))
+
+    # print(dmm.config_auto_zero('OFF'))
+    # print(dmm.send_command('SYST:ERR?', True))
+    # print(dmm.set_input_resistance(True))
+    # print('trig_source_read, trig_del_read', dmm.config_trigger(AgilentTriggerSources.external, 0))
+    # print(dmm.config_trigger_slope('rising'))
+    # print(dmm.abort_meas())
+    # # print(dmm.send_command('SYST:ERR?', True))
+    # print(dmm.send_command('SYST:ERR?', True))
+    #
+    # print(dmm.initiate_measurement())
+    # print(dmm.send_command('SYST:ERR?', True))
+    # time.sleep(1)
+    # print(dmm.send_software_trigger())
+    # time.sleep(2)
+    # print(dmm.fetch_multiple_meas(-1))
+    # # print(dmm.send_command('SYST:ERR?', True))
+    # # print(dmm.send_command('SYST:ERR?', True))
+    # dmm.set_to_pre_conf_setting('periodic')
+    # dmm.set_to_pre_conf_setting('initial')
+    # print(dmm.emit_config_pars())
+    # x = 0
+    # while x < 100:
+    #     start = datetime.datetime.now()
+    #     dmm.send_software_trigger()
+    #     dmm.send_software_trigger()
+    #     dmm.send_software_trigger()
+    #     dmm.send_software_trigger()
+    #     dmm.send_software_trigger()
+    #     dmm.send_software_trigger()
+    #     dmm.send_software_trigger()
+    #     dmm.send_software_trigger()
+    #     time.sleep(1)
+    #     stop = datetime.datetime.now()
+    #     dif = stop - start
+    #     print('time for sending 8 softw. triggers and 1 second delay: ', dif.seconds)
+    #     print(dmm.fetch_multiple_meas(-1))
+    #     x += 1
+    # print(dmm.send_command('SYST:ERR?', True))
+    # print(dmm.send_command('*ESR?', True, to_float=True))
