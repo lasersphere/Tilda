@@ -174,9 +174,7 @@ class XMLImporter(SpecData):
                 v_proj = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'voltage_projection', (nOfScalers, nOfsteps),
                     direct_parent_ele_str='projections')
-                t_proj = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'time_projection', (nOfScalers, nOfBins),
-                    direct_parent_ele_str='projections')
+                t_proj = None
                 if isinstance(scaler_array[0], np.void):  # this is zero free data
 
                     # this fails somewhere for the second track

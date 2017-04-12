@@ -738,9 +738,10 @@ def save_spec_data(spec_data, scan_dict):
                 xmlAddCompleteTrack(
                     root_ele, scan_dict, spec_data.cts[track_ind], track_name, datatype='voltage_projection',
                     parent_ele_str='projections')
-                xmlAddCompleteTrack(
-                    root_ele, scan_dict, spec_data.t_proj[track_ind], track_name, datatype='time_projection',
-                    parent_ele_str='projections')
+                # removed saving of time projection, because nobody wins anything on this.
+                # xmlAddCompleteTrack(
+                #     root_ele, scan_dict, spec_data.t_proj[track_ind], track_name, datatype='time_projection',
+                #     parent_ele_str='projections')
             else:  # not time resolved
                 scan_dict[track_name]['softwGates'] = []
                 xmlAddCompleteTrack(root_ele, scan_dict, spec_data.cts[track_ind], track_name)
