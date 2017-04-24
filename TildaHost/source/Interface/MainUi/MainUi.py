@@ -28,6 +28,7 @@ from Interface.ScanControlUi.ScanControlUi import ScanControlUi
 from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 from Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
 from Interface.VersionUi.VersionUi import VersionUi
+from Interface.DialogsUi.ScanCompleteDialUi import ScanCompleteDialUi
 from Scratch.Tetris import Tetris
 
 
@@ -54,6 +55,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.tetris = None  # pssst dont tell
         self.pulse_pattern_win = None
         self.scan_complete_win = None
+        self.show_scan_compl_win = True
 
         self.actionWorking_directory.triggered.connect(self.choose_working_dir)
         self.actionVersion.triggered.connect(self.open_version_win)
@@ -66,6 +68,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionDigital_Multimeters.triggered.connect(self.open_dmm_live_view_win)
         self.actionPolliFit.triggered.connect(self.open_pollifit_win)
         self.actionPulse_pattern_generator.triggered.connect(self.open_pulse_pattern_win)
+        self.actionShow_scan_finished_win.triggered.connect(self.show_scan_finished_change)
 
         """ connect double clicks on labels:"""
         self.label_workdir_set.mouseDoubleClickEvent = self.workdir_dbl_click
@@ -82,7 +85,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
         self.subscribe_to_main()
         self.show()
-
 
     ''' connected actions '''
     def workdir_dbl_click(self, event):
@@ -196,6 +198,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 ret += ' \n'
             return ret
 
+    ''' configure '''
+    def show_scan_finished_change(self, show_win_bool):
+        self.show_scan_compl_win = show_win_bool
+        self.actionShow_scan_finished_win.setChecked(show_win_bool)
+
     ''' open windows'''
     def open_version_win(self):
         VersionUi()
@@ -273,11 +280,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             self.raise_win_to_front(self.pulse_pattern_win)
 
     def open_scan_complete_win(self):
-        if self.scan_complete_win is None:
-            # TODO open scan complete win here
-            pass
-        else:
-            self.raise_win_to_front(self.scan_complete_win)
+        if self.show_scan_compl_win:
+            if self.scan_complete_win is None:
+                self.scan_complete_win = ScanCompleteDialUi(self)
+            else:
+                self.raise_win_to_front(self.scan_complete_win)
 
     ''' close windows '''
     def scan_control_win_closed(self, win_ref):
@@ -304,6 +311,10 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def close_pulse_pattern_win(self):
         if self.pulse_pattern_win:
             self.pulse_pattern_win = None
+
+    def close_scan_complete_win(self):
+        if self.scan_complete_win:
+            self.scan_complete_win = None
 
     def closeEvent(self, *args, **kwargs):
         for win in self.act_scan_wins:

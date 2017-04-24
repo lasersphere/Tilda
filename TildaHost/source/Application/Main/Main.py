@@ -497,11 +497,12 @@ class Main(QtCore.QObject):
             if first_call:
                 # on first call set the fpga to measure offset state and
                 # software trigger the dmms
-                # also delete any prescan reading there might be.
-                for dmm_name, pre_scan_dict in dmms_dict_pre_scan.items():
-                    print('prescandict is: ', pre_scan_dict)
-                    pre_scan_dict['preScanRead'] = None
-                    print('set preScanRead of %s to None' % dmm_name)
+                if 'continuedAcquisitonOnFile' not in self.scan_pars[iso_name]['isotopeData']:  # -> ergo
+                    # also delete any prescan reading there might be. for an ergo, keep them for a go
+                    for dmm_name, pre_scan_dict in dmms_dict_pre_scan.items():
+                        print('prescandict is: ', pre_scan_dict)
+                        pre_scan_dict['preScanRead'] = None
+                        print('set preScanRead of %s to None' % dmm_name)
                 self.scan_main.measure_offset_pre_scan(self.scan_pars[iso_name])
                 self.set_state(MainState.measure_offset_voltage, False)
             else:  # this will periodically read the dmms until all dmms returned a measurement

@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Dialog</class>
- <widget class="QDialog" name="Dialog">
+ <class>ScanComplete</class>
+ <widget class="QDialog" name="ScanComplete">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
+    <width>401</width>
     <height>179</height>
    </rect>
   </property>
@@ -24,9 +24,9 @@
      </colorrole>
      <colorrole role="Window">
       <brush brushstyle="SolidPattern">
-       <color alpha="150">
+       <color alpha="255">
         <red>0</red>
-        <green>167</green>
+        <green>255</green>
         <blue>0</blue>
        </color>
       </brush>
@@ -44,9 +44,9 @@
      </colorrole>
      <colorrole role="Window">
       <brush brushstyle="SolidPattern">
-       <color alpha="150">
+       <color alpha="255">
         <red>0</red>
-        <green>167</green>
+        <green>255</green>
         <blue>0</blue>
        </color>
       </brush>
@@ -55,18 +55,18 @@
     <disabled>
      <colorrole role="Base">
       <brush brushstyle="SolidPattern">
-       <color alpha="150">
+       <color alpha="255">
         <red>0</red>
-        <green>167</green>
+        <green>255</green>
         <blue>0</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Window">
       <brush brushstyle="SolidPattern">
-       <color alpha="150">
+       <color alpha="255">
         <red>0</red>
-        <green>167</green>
+        <green>255</green>
         <blue>0</blue>
        </color>
       </brush>
@@ -80,7 +80,7 @@
    </font>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Scan Complete</string>
   </property>
   <property name="locale">
    <locale language="English" country="UnitedStates"/>
@@ -90,11 +90,11 @@
     <widget class="QLabel" name="label">
      <property name="font">
       <font>
-       <pointsize>24</pointsize>
+       <pointsize>36</pointsize>
       </font>
      </property>
      <property name="text">
-      <string>Scan complete!</string>
+      <string>scan complete!</string>
      </property>
      <property name="textFormat">
       <enum>Qt::AutoText</enum>
@@ -106,13 +106,23 @@
    </item>
    <item>
     <widget class="QCheckBox" name="checkBox">
+     <property name="font">
+      <font>
+       <pointsize>16</pointsize>
+      </font>
+     </property>
      <property name="text">
-      <string>do not show in the future</string>
+      <string>do not show this window in the future</string>
      </property>
     </widget>
    </item>
    <item>
     <widget class="QPushButton" name="pushButton">
+     <property name="font">
+      <font>
+       <pointsize>16</pointsize>
+      </font>
+     </property>
      <property name="autoFillBackground">
       <bool>false</bool>
      </property>
