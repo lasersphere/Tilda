@@ -37,6 +37,9 @@ class Main(QtCore.QObject):
     # signal which will be emitted from the pipeline (for now only kepco) if the scan is completed.
     scan_complete_callback = QtCore.pyqtSignal(bool)
 
+    # string which can be connected to in order to get info / warninings from main
+    info_warning_string_main_signal = QtCore.pyqtSignal(str)
+
     def __init__(self):
         super(Main, self).__init__()
         self.m_state = MainState.init
@@ -665,6 +668,7 @@ class Main(QtCore.QObject):
             if self.scan_main.analysis_done_check():  # when done with analysis, leave state
                 QApplication.restoreOverrideCursor()  # ignore warning
                 if complete_stop:  # set switch box to loading state in order to not feed any voltage to the CEC
+                    self.send_info('scan_complete')
                     self.set_state(MainState.setting_switch_box, (True, 4))  # after this has ben completed, it will go to idle
                 else:  # keep going with next track. None to read from next dict.
                     self.set_state(MainState.setting_switch_box, (True, None))
@@ -1030,3 +1034,10 @@ class Main(QtCore.QObject):
         print('disconnecting ...')
         self.scan_main.ppg_state_callback_disconnect()
         print('disconnected')
+
+    ''' send information / warnings to gui or so '''
+
+    def send_info(self, info_str):
+        """ send an info string via this signal """
+        if isinstance(info_str, str):
+            self.info_warning_string_main_signal.emit(info_str)

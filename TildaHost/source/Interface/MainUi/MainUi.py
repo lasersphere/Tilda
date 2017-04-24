@@ -53,6 +53,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.pollifit_win = None
         self.tetris = None  # pssst dont tell
         self.pulse_pattern_win = None
+        self.scan_complete_win = None
 
         self.actionWorking_directory.triggered.connect(self.choose_working_dir)
         self.actionVersion.triggered.connect(self.open_version_win)
@@ -103,6 +104,13 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         Cfg._main_instance.gui_status_subscribe(self.main_ui_status_call_back_signal)
         self.main_ui_status_call_back_signal.connect(self.update_status)
         Cfg._main_instance.send_state()
+        Cfg._main_instance.info_warning_string_main_signal.connect(self.info_from_main)
+
+    def info_from_main(self, info_str):
+        """ handle info strings which are emitted from the main """
+        # print('----------info from main: %s ---------------' % info_str)
+        if info_str == 'scan_complete':
+            self.open_scan_complete_win()
 
     def unsubscribe_from_main(self):
         """
@@ -264,6 +272,12 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         else:
             self.raise_win_to_front(self.pulse_pattern_win)
 
+    def open_scan_complete_win(self):
+        if self.scan_complete_win is None:
+            # TODO open scan complete win here
+            pass
+        else:
+            self.raise_win_to_front(self.scan_complete_win)
 
     ''' close windows '''
     def scan_control_win_closed(self, win_ref):
