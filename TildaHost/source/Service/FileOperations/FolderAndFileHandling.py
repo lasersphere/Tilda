@@ -25,8 +25,8 @@ def findTildaFolder(path=os.path.dirname(os.path.abspath(__file__))):
     tries to find the Tilda folder relative to execution file
     :return: str, path of Tilda Folder
     """
-    if 'Tilda' == os.path.basename(path):
-        return path
+    if 'TildaHost' == os.path.basename(path):
+        return os.path.dirname(path)
     elif os.path.basename(path) == '':
         path = 'could not find Tilda folder'
         return path
