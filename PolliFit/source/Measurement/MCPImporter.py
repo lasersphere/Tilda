@@ -179,6 +179,7 @@ class MCPImporter(SpecData):
             # print(self.cts)
             # print(self.nrScalers)
             self.norming()
+            self.x_units = self.x_units_enums.total_volts
         if not from_input:
             con.close()
 

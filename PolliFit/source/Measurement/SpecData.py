@@ -8,6 +8,16 @@ from datetime import datetime
 
 import numpy as np
 
+from enum import Enum, unique
+
+
+class SpecDataXAxisUnits(Enum):
+    line_volts = 'line voltage / V'  # from DAC
+    total_volts = 'total volts / V'  # from  AccVolt + Offset + line_volt * Kepco (usually after preProc)
+    dac_register_bits = 'DAC register bits / a.u.'
+    # when calibrating an DAC it might be usefull to have DAC register bits as x axis
+    frequency = 'frequency / MHz'  # for plotting etc.
+
 
 class SpecData(object):
     '''
@@ -34,6 +44,9 @@ class SpecData(object):
         self.lineMult = None  # float, applied_voltage = (DAC_voltage * lineMult + lineOffset) * voltDivRatio
         self.lineOffset = None  # float, offset of the DAC at 0V set
         self.voltDivRatio = None  # dict, {'accVolt': , 'offset'
+
+        self.x_units_enums = SpecDataXAxisUnits  # to choose from
+        self.x_units = SpecDataXAxisUnits.line_volts  # unit of the x axis
         
         #Data is organized as list of tracks containing arrays with information
         self.x = []
@@ -107,6 +120,10 @@ class SpecData(object):
                 1-(cts*(self.nrLoops[track]*self.dwell))*1.65e-8
             )/((self.nrLoops[track]*self.dwell))
         
-    
-# test = SpecData()
-# print(test.date)
+
+if __name__ == '__main__':
+    test = SpecData()
+    print(test.date)
+    print(test.x_units.value)
+    test.x_units = test.x_units_enums.frequency
+    print(test.x_units.value)

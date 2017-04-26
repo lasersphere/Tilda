@@ -275,6 +275,7 @@ class XMLImporter(SpecData):
                     scanvolt = (self.lineMult * self.x[tr_ind] + self.lineOffset) * mean_offset_div_ratio + mean_offset
                 self.x[tr_ind] = self.accVolt * self.voltDivRatio['accVolt'] - scanvolt
             self.norming()
+            self.x_units = self.x_units_enums.total_volts
         elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
             cur.execute('''SELECT offset FROM Files WHERE file = ?''', (self.file,))
             data = cur.fetchall()

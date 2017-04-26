@@ -279,8 +279,8 @@ def time_resolved_display(filepath, liveplot_callbacks):
     pipe.pipeData['pipeInternals'] = {}
 
     pipe.pipeData['pipeInternals']['activeXmlFilePath'] = filepath
-    scan_dict, xml_etree = TildaTools.scan_dict_from_xml_file(filepath, pipe.pipeData)
-    pipe.pipeData = scan_dict
+    # scan_dict, xml_etree = TildaTools.scan_dict_from_xml_file(filepath, pipe.pipeData)
+    # pipe.pipeData = scan_dict
     pipe.pipeData['pipeInternals']['activeTrackNumber'] = (0, 'track0')
 
     # path of file is used mainly for the window title.

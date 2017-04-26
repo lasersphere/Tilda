@@ -159,6 +159,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.scan_prog_layout = QtWidgets.QVBoxLayout()
                 self.scan_prog_layout.addWidget(self.scan_prog_ui)
                 self.widget_progress.setLayout(self.scan_prog_layout)
+            else:
+                self.show_progress(False)
         except Exception as e:
             print('error while adding scanprog: %s' % e)
 
@@ -170,8 +172,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         ''' font size graphs '''
         self.actionGraph_font_size.triggered.connect(self.get_graph_fontsize)
 
-    def show_progress(self):
-        self.dockWidget.setVisible(not self.dockWidget.isVisible())
+    def show_progress(self, show=None):
+        if show is not None:
+            self.dockWidget.setVisible(show)
+        else:  # just toggle
+            self.dockWidget.setVisible(not self.dockWidget.isVisible())
 
     '''setting up the plots (no data etc. written) '''
 
@@ -204,7 +209,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.sum_proj_plt_itm.vb.sigResized.connect(self.updateViews)
 
         self.t_proj_wid, self.t_proj_plt_itm = Pg.create_x_y_widget(do_not_show_label=['left', 'bottom'],
-                                                                    y_label='time [µs]', x_label='cts')
+                                                                    y_label='time / µs', x_label='cts')
         self.v_proj_layout = QtWidgets.QVBoxLayout()
         self.t_proj_layout = QtWidgets.QVBoxLayout()
         self.sum_proj_plt_itm.setXLink(self.tres_plt_item)
@@ -238,7 +243,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.all_pmts_plot_layout = QtWidgets.QVBoxLayout()
         self.all_pmts_widg_plt_item_list = Pg.create_plot_for_all_sc(
             self.all_pmts_plot_layout, self.spec_data.active_pmt_list[self.all_pmts_sel_tr],
-            self.mouse_moved, max_rate, plot_sum=self.spec_data.seq_type != 'kepco'
+            self.mouse_moved, max_rate, plot_sum=self.spec_data.seq_type != 'kepco',
+            inf_line=self.subscribe_as_live_plot
         )
         self.widget_all_pmts_plot.setLayout(self.all_pmts_plot_layout)
 
@@ -361,21 +367,24 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.sum_plt_data = self.sum_plt_itm.plot(self.sum_x, self.sum_y, pen='k')
         else:
             self.sum_plt_data.setData(self.sum_x, self.sum_y)
+        self.sum_plt_itm.setLabel('bottom', spec_data.x_units.value)
 
     def update_tres_plot(self, spec_data):
         """ update the time resolved plot including the roi """
         try:
 
             gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
-            x_range = (float(np.min(spec_data.x[self.tres_sel_tr_ind])), np.max(spec_data.x[self.tres_sel_tr_ind]))
+            # x_range = (float(np.min(spec_data.x[self.tres_sel_tr_ind])), np.max(spec_data.x[self.tres_sel_tr_ind]))
+            x_range = (float(spec_data.x[self.tres_sel_tr_ind][0]), spec_data.x[self.tres_sel_tr_ind][-1])
             x_scale = np.mean(np.ediff1d(spec_data.x[self.tres_sel_tr_ind]))
             y_range = (np.min(spec_data.t[self.tres_sel_tr_ind]), np.max(spec_data.t[self.tres_sel_tr_ind]))
             y_scale = np.mean(np.ediff1d(spec_data.t[self.tres_sel_tr_ind]))
             self.tres_widg.setImage(spec_data.time_res[self.tres_sel_tr_ind][self.tres_sel_sc_ind],
-                                    pos=[x_range[0] - abs(0.5 * x_scale),
+                                    pos=[x_range[0] - 0.5 * x_scale,  # changed from abs(...)
                                          y_range[0] - abs(0.5 * y_scale)],
                                     scale=[x_scale, y_scale],
                                     autoRange=False)
+            self.tres_plt_item.setLabel('top', spec_data.x_units.value)
             if self.new_track_no_data_yet:  # set view range in first call
                 self.tres_plt_item.setAspectLocked(False)
                 self.tres_plt_item.setRange(xRange=x_range, yRange=y_range, padding=0.05)
@@ -422,15 +431,16 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.v_proj_plt = Pg.create_plot_data_item(v_proj_x, v_proj_y, pen='k')
                 self.v_proj_view_box.addItem(self.v_proj_plt)
 
-                self.current_step_line = Pg.create_infinite_line(self.spec_data.x[self.tres_sel_tr_ind][0],
-                                                                 pen='r')
+                if self.subscribe_as_live_plot:
+                    self.current_step_line = Pg.create_infinite_line(self.spec_data.x[self.tres_sel_tr_ind][0],
+                                                                     pen='r')
+                    self.sum_proj_plt_itm.addItem(self.current_step_line)
 
                 self.v_min_line = Pg.create_infinite_line(gates[0])
                 self.v_max_line = Pg.create_infinite_line(gates[1])
                 self.t_min_line = Pg.create_infinite_line(gates[2], angle=0)
                 self.t_max_line = Pg.create_infinite_line(gates[3], angle=0)
 
-                self.sum_proj_plt_itm.addItem(self.current_step_line)
                 self.sum_proj_plt_itm.addItem(self.v_min_line)
                 self.sum_proj_plt_itm.addItem(self.v_max_line)
                 self.t_proj_plt_itm.addItem(self.t_min_line)
@@ -443,6 +453,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.v_max_line.setValue(gates[1])
                 self.t_min_line.setValue(gates[2])
                 self.t_max_line.setValue(gates[3])
+            self.sum_proj_plt_itm.setLabel('bottom', spec_data.x_units.value)
 
         except Exception as e:
             print('error, while plotting projection, this happened: ', e)
@@ -462,6 +473,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         Pg.plot_all_sc(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr)
         if autorange_pls:
             [each['pltItem'].autoRange() for each in self.all_pmts_widg_plt_item_list]
+            self.all_pmts_widg_plt_item_list[-1]['pltItem'].setLabel('bottom', spec_data.x_units.value)
+            self.all_pmts_widg_plt_item_list[0]['pltItem'].setLabel('top', spec_data.x_units.value)
 
     ''' buttons, comboboxes and listwidgets: '''
 
@@ -684,8 +697,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     ''' saving '''
 
     def save(self, pipedata_dict=None):
-        # im_path = self.full_file_path.split('.')[0] + '_' + str(self.tres_sel_tr_name) + '_' + str(
-        #     self.tres_sel_sc_name) + '.png'
+        im_path = self.full_file_path.split('.')[0] + '_' + str(self.tres_sel_tr_name) + '_' + str(
+            self.tres_sel_sc_name) + '.png'
+        test = self.grab()
+        test.save(im_path)
+        print('saved to: ', im_path)
         print('liveplot emitting save signal now')
         self.save_request.emit()
 
@@ -770,7 +786,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 # print('active track is: %s and active step is: %s val is: %s ' % (act_tr, act_step, val))
                 if self.current_step_line is not None:
                     self.current_step_line.setValue(val)
-                [each['vertLine'].setValue(val) for each in self.all_pmts_widg_plt_item_list]
+                if self.subscribe_as_live_plot:
+                    [each['vertLine'].setValue(val) for each in self.all_pmts_widg_plt_item_list]
         except Exception as e:
             print(e)
 

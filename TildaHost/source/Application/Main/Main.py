@@ -265,13 +265,13 @@ class Main(QtCore.QObject):
         self.get_fpga_state()
         self.get_sequencer_state()
 
-    def load_spectra_to_main(self, file, gui=None):
+    def load_spectra_to_main(self, file, gui=None, loaded_spec=None):
         """
         will be used for displaying a spectra.
         Later scan parameters from file can be loaded etc. to sum up more data etc.
         """
         try:
-            self.displayed_data[file] = DisplayData(file, gui=gui, x_as_volt=True)
+            self.displayed_data[file] = DisplayData(file, gui=gui, x_as_volt=True, loaded_spec=loaded_spec)
         except Exception as e:
             logging.error('Exception while loading file %s, exception is: %s' % (file, str(e)))
 
@@ -427,6 +427,7 @@ class Main(QtCore.QObject):
         self.scan_progress['completedTracks'] = []
         self.scan_pars[iso_name] = self.add_global_infos_to_scan_pars(iso_name)
         logging.debug('will scan: ' + iso_name + str(sorted(self.scan_pars[iso_name])))
+        self.send_info('starting_scan')
         if self.scan_main.prepare_scan(self.scan_pars[iso_name]):  # will be true if sequencer could be started.
             self.set_state(MainState.setting_switch_box, (True, None))
         else:

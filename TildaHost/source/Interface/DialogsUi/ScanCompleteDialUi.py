@@ -52,7 +52,7 @@ class ScanCompleteDialUi(QtWidgets.QDialog, Ui_ScanComplete):
 
     def closeEvent(self, *args, **kwargs):
         """ overwrite the close event """
-        self.play_music()
+        # self.play_music()
         if self.main_gui is not None:
             # tell main window that this window is closed.
             self.main_gui.close_scan_complete_win()

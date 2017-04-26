@@ -19,10 +19,11 @@ from XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, xmlAddComple
 
 
 def select_from_db(db, vars_select, var_from, var_where=[], addCond='', caller_name='unknown'):
-    '''connects to database and finds attributes vars_select (string) in table var_from (string)
+    """
+    connects to database and finds attributes vars_select (string) in table var_from (string)
     with the extra condition
     varwhere[0][i] == varwhere[1][i] (so varwhere = [list, list] is a list...)
-    '''
+    """
     sql_cmd = ''
     try:
         con = sqlite3.connect(db)
@@ -319,13 +320,12 @@ def gate_specdata(spec_data):
     spec_data.softw_gates = [[[compare_arr[lim_ind][tr_ind][found_ind] for lim_ind, found_ind in enumerate(gate_ind_pmt)]
                               for gate_ind_pmt in gate_ind_tr]
                              for tr_ind, gate_ind_tr in enumerate(softw_gates_ind)]
-
     for tr_ind, tr in enumerate(spec_data.cts):
         for pmt_ind, pmt in enumerate(tr):
-            v_min_ind = softw_gates_ind[tr_ind][pmt_ind][0]
-            v_max_ind = softw_gates_ind[tr_ind][pmt_ind][1] + 1
-            t_min_ind = softw_gates_ind[tr_ind][pmt_ind][2]
-            t_max_ind = softw_gates_ind[tr_ind][pmt_ind][3] + 1
+            v_min_ind = min(softw_gates_ind[tr_ind][pmt_ind][0], softw_gates_ind[tr_ind][pmt_ind][1])
+            v_max_ind = max(softw_gates_ind[tr_ind][pmt_ind][0], softw_gates_ind[tr_ind][pmt_ind][1]) + 1
+            t_min_ind = min(softw_gates_ind[tr_ind][pmt_ind][2], softw_gates_ind[tr_ind][pmt_ind][3])
+            t_max_ind = max(softw_gates_ind[tr_ind][pmt_ind][2], softw_gates_ind[tr_ind][pmt_ind][3]) + 1
             t_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][v_min_ind:v_max_ind, :], axis=0)
             v_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][:, t_min_ind:t_max_ind], axis=1)
             spec_data.t_proj[tr_ind][pmt_ind] = t_proj_res
@@ -453,7 +453,12 @@ def find_closest_value_in_arr(arr, search_val):
     goes through an array and finds the nearest value to search_val
     :return: ind, found_val, abs(found_val - search_val)
     """
-    ind, found_val = min(enumerate(arr), key=lambda i: abs(float(i[1]) - search_val))
+    if np.isinf(search_val):
+        search_val = np.max(arr) if search_val > 0 else np.min(arr)
+    if isinstance(arr, list):
+        arr = np.array(arr)
+    ind = (np.abs(arr - search_val)).argmin()
+    found_val = arr[ind]
     return ind, found_val, abs(found_val - search_val)
 
 
@@ -551,12 +556,14 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
     return parent_specdata, added_files, filename
 
 
-def check_if_attr_exists(parent_to_check_from, par, return_val_if_not):
+def check_if_attr_exists(parent_to_check_from, par, return_val_if_not, and_not_equal_to=None):
     """ use par as attribute of parent_to_check_from and return the result.
      If this is not a valid arg, return return_val_if_not """
     ret = return_val_if_not
     try:
         ret = getattr(parent_to_check_from, par)
+        if ret == and_not_equal_to:
+            ret = return_val_if_not
     except Exception as e:
         ret = return_val_if_not
     finally:
@@ -612,10 +619,11 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
             'dwellTime10ns': specdata.dwell,
             'workingTime': check_if_attr_exists(specdata, 'working_time', [None] * specdata.nrTracks)[tr_ind],
             'nOfBins': len(check_if_attr_exists(specdata, 't', [[0]] * specdata.nrTracks)[tr_ind]),
-            'softBinWidth_ns': check_if_attr_exists(specdata, 'softBinWidth_ns', [0] * specdata.nrTracks)[tr_ind],
+            'softBinWidth_ns': check_if_attr_exists(specdata, 'softBinWidth_ns',
+                                                    [0] * specdata.nrTracks, [])[tr_ind],
             'nOfBunches': 1,
             'softwGates': check_if_attr_exists(
-                specdata, 'softw_gates', [[] * specdata.nrScalers[tr_ind]] * specdata.nrTracks)[tr_ind],
+                specdata, 'softw_gates', [[] * specdata.nrScalers[tr_ind]] * specdata.nrTracks, [])[tr_ind],
             'trigger': {'type': 'no_trigger'},
             'pulsePattern': {'cmdList': [], 'periodicList': [], 'simpleDict': {}}
         }
@@ -694,11 +702,20 @@ def nameFileXml(isodict, path):
         os.makedirs(subdir)
     files = [file if file.endswith('.xml') else '-1....' for file in os.listdir(subdir)]
     if len(files):
-        highest_filenum = sorted([int(file[-7:-4]) for file in files])[-1]
-        print(files, highest_filenum)
+        try:
+            highest_filenum = sorted(
+                [int(file[file.index('_run') + 4:file.index('_run') + 7]) for file in files if '_run' in file])[-1]
+        except Exception as e:
+            print('error finding run number, with _run***.xml (*** should be integers) error is: ', e)
+            highest_filenum = -1
     else:
         highest_filenum = -1
     newpath = os.path.join(subdir, filename + str('{0:03d}'.format(highest_filenum + 1)) + '.xml')
+    while os.path.isfile(newpath):  # do not overwrite!
+        print('error: file already exists! Check your file naming not conflict with '
+              '_run***.xml (*** should be integers) filenum is: ', highest_filenum)
+        highest_filenum += 1
+        newpath = os.path.join(subdir, filename + str('{0:03d}'.format(highest_filenum + 1)) + '.xml')
     return newpath
 
 
@@ -777,11 +794,6 @@ def get_number_of_tracks_in_scan_dict(scan_dict):
             list_of_track_nums.append(int(key[5:]))
     return n_of_tracks, sorted(list_of_track_nums)
 
-if __name__ == '__main__':
-    isodi = {'isotope': 'bbb', 'type': 'csdummy'}
-    newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')
-    print(newname)
-
 
 def get_software_gates_from_db(db, iso, run):
     """
@@ -791,8 +803,20 @@ def get_software_gates_from_db(db, iso, run):
     start_gate_sc0 = mid_tof + delay_sc0 - 0.5 * width
     stopp_gate_sc0 = mid_tof + delay_sc0 + 0.5 * width
     """
-    voltage_gates = [-10.0, 10.0]
-    softw_gates_db = []
+    use_db, run_gates_width, run_gates_delay, iso_mid_tof = get_gate_pars_from_db(db, iso, run)
+    if use_db == 'file':
+        return None
+    if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None:
+        return None  # return None if failur by getting stuff from db
+    else:
+        softw_gates_db = calc_soft_gates_from_db_pars(run_gates_width, run_gates_delay, iso_mid_tof)
+        print('extracted software gates for isotope: %s and run %s from db %s: ' % (iso, run, os.path.split(db)[1]),
+              softw_gates_db)
+        return softw_gates_db
+
+
+def get_gate_pars_from_db(db, iso, run):
+    """ will get the use_db, run_gates_width, run_gates_delay, iso_mid_tof from the database """
     use_db = select_from_db(
         db, 'softwGates', 'Runs', [['run'], [run]],
         caller_name='get_software_gates_from_db in DataBaseOperations.py')
@@ -805,25 +829,80 @@ def get_software_gates_from_db(db, iso, run):
     iso_mid_tof = select_from_db(
         db, 'midTof', 'Isotopes', [['iso'], [iso]],
         caller_name='get_software_gates_from_db in DataBaseOperations.py')
-    if use_db == 'file':
-        return None
     if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None:
-        return None  # return None if failur by getting stuff from db
+        return None, None, None, None
     else:
         run_gates_width = run_gates_width[0][0]
         run_gates_delay = run_gates_delay[0][0]
         iso_mid_tof = iso_mid_tof[0][0]
         del_list = ast.literal_eval(run_gates_delay)
-        for each_del in del_list:
-            softw_gates_db.append(
-                [voltage_gates[0], voltage_gates[1],
-                 iso_mid_tof + each_del - 0.5 * run_gates_width,
-                 iso_mid_tof + each_del + 0.5 * run_gates_width]
-            )
-        print('extracted software gates for isotope: %s and run %s from db %s: ' % (iso, run, os.path.split(db)[1]),
-              softw_gates_db)
-        return softw_gates_db
+        return use_db, run_gates_width, del_list, iso_mid_tof
 
 
+def calc_soft_gates_from_db_pars(run_gates_width, del_list, iso_mid_tof):
+    """
+    calc the software gates for a SINGLE TRACK from the given pars.
+    voltages will be gated from -10 to 10 V.
+    timings will be calculated like this:
+    start_gate_sc0 = mid_tof + delay_sc0 - 0.5 * width
+    stopp_gate_sc0 = mid_tof + delay_sc0 + 0.5 * width
+    """
+    # gates should be applied for all voltages/frequencies
+    voltage_gates = [-np.inf, np.inf]
+    softw_gates_db = []
+    for each_del in del_list:
+        softw_gates_db.append(
+            [voltage_gates[0], voltage_gates[1],
+             iso_mid_tof + each_del - 0.5 * run_gates_width,
+             iso_mid_tof + each_del + 0.5 * run_gates_width]
+        )
+    return softw_gates_db
+
+
+def calc_db_pars_from_software_gate(softw_gates_single_tr):
+    """ inverse function to calc_soft_gates_from_db_pars"""
+    run_gates_width = 0
+    del_list = []
+    iso_mid_tof = 0
+    for i, each in enumerate(softw_gates_single_tr):
+        t_min, t_max = each[2], each[3]
+        if i == 0:  # reference on first scaler one cannot tell on which was referenced before
+            run_gates_width = t_max - t_min
+            iso_mid_tof = t_min + run_gates_width * 0.5
+        del_list.append(t_min + 0.5 * run_gates_width - iso_mid_tof)
+    return run_gates_width, del_list, iso_mid_tof
+
+
+def convert_volt_axis_to_freq(x_axis_energy, mass, col, laser_freq, iso_center_freq):
+    """
+    will convert an x axis given in total voltage (accvolt + offset + line * kepco)
+    to frequency relative to the iso center freq
+    :return: list, x_axis in freq
+    """
+    x_axis_freq = deepcopy(x_axis_energy)
+    for tr_ind, x_each_track in enumerate(x_axis_energy):
+        for i, e in enumerate(x_each_track):
+            v = Physics.relVelocity(Physics.qe * e, mass * Physics.u)
+            v = -v if col else v
+
+            f = Physics.relDoppler(laser_freq, v) - iso_center_freq
+            x_axis_freq[tr_ind][i] = f
+    return x_axis_freq
+
+
+def convert_fit_volt_axis_to_freq(fit):
+    """
+     will convert an x axis given in total voltage (accvolt + offset + line * kepco)
+     to frequency relative to the iso center freq
+     :return: list, x_axis in freq
+    """
+    x_axis_in_freq = convert_volt_axis_to_freq(fit.meas.x, fit.spec.iso.mass,
+                                               fit.meas.col, fit.meas.laserFreq, fit.spec.iso.freq)
+    return x_axis_in_freq
+
+if __name__ == '__main__':
+    isodi = {'isotope': 'bbb', 'type': 'csdummy'}
+    newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')
+    print(newname)
 
 

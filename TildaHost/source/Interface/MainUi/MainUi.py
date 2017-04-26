@@ -113,6 +113,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         # print('----------info from main: %s ---------------' % info_str)
         if info_str == 'scan_complete':
             self.open_scan_complete_win()
+        elif info_str == 'starting_scan':
+            if self.scan_complete_win is not None:
+                self.scan_complete_win.close()
 
     def unsubscribe_from_main(self):
         """
@@ -164,16 +167,17 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         if ok:
             Cfg._main_instance.acc_volt_changed(acc_volt)
 
-    def load_spectra(self):
+    def load_spectra(self, file=None, loaded_spec=None):
         if Cfg._main_instance.working_directory is None:
             if self.choose_working_dir() is None:
                 return None
-        file = QtWidgets.QFileDialog.getOpenFileName(
-            self, 'choose an xml file', Cfg._main_instance.working_directory, '*.xml')[0]
+        if not isinstance(file, str):
+            file = QtWidgets.QFileDialog.getOpenFileName(
+                self, 'choose an xml file', Cfg._main_instance.working_directory, '*.xml')[0]
         if file:
             if file not in self.file_plot_wins.keys():
                 self.open_file_plot_win(file)
-                Cfg._main_instance.load_spectra_to_main(file, self.file_plot_wins[file])
+                Cfg._main_instance.load_spectra_to_main(file, self.file_plot_wins[file], loaded_spec=loaded_spec)
             else:
                 self.raise_win_to_front(self.file_plot_wins[file])
 

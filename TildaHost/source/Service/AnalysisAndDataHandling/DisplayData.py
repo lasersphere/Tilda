@@ -19,21 +19,24 @@ from Measurement.XMLImporter import XMLImporter as XmlImp
 
 
 class DisplayData:
-    def __init__(self, file, gui, x_as_volt=False):
+    def __init__(self, file, gui, x_as_volt=False, loaded_spec=None):
         self.pipe = None
         self.gui = gui
         self.file = None
         self.fig = None
         self.spec = None
         self.x_as_volt = x_as_volt
-        self.load_spectra(file)
+        self.load_spectra(file, loaded_spec)
         self.select_pipe()
-        self.feed_loaded_spec()
+        self.feed_loaded_spec(self.spec)
         # self.clear_pipe()  # for now i don't want to save here.
 
-    def load_spectra(self, file):
+    def load_spectra(self, file, loaded_spec=None):
         self.file = file
-        self.spec = XmlImp(file, x_as_volt=self.x_as_volt)
+        if loaded_spec is None:
+            self.spec = XmlImp(file, x_as_volt=self.x_as_volt)
+        else:
+            self.spec = loaded_spec
 
     def select_pipe(self):
         callbacks = (None, None, None) if self.gui is None else self.gui.callbacks
@@ -41,9 +44,12 @@ class DisplayData:
         self.pipe.start()
         print('pipeline started')
 
-    def feed_loaded_spec(self):
+    def feed_loaded_spec(self, spec=None):
         start = datetime.now()
-        self.pipe.feed(self.spec)
+        if spec is None and self.spec is not None:
+            self.pipe.feed(self.spec)
+        else:
+            self.pipe.feed(spec)
         stop = datetime.now()
         print('displaying data took: %s  seconds' % (stop - start))
 

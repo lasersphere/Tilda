@@ -26,6 +26,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.parent_win = parent
         self.crawler.conSig(self.dbSig)
         self.intfit.conSig(self.dbSig)
+        self.intfit.con_main_tilda_gui(self.parent_win)
         self.averager.conSig(self.dbSig)
         self.batchfit.conSig(self.dbSig)
         self.isoshift.conSig(self.dbSig)

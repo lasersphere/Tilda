@@ -5,6 +5,7 @@ Created on 06.06.2014
 '''
 
 import ast
+from copy import deepcopy
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 
@@ -15,13 +16,13 @@ from InteractiveFit import InteractiveFit
 
 class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
 
-
     def __init__(self):
         super(InteractiveFitUi, self).__init__()
         self.setupUi(self)
 
         self.bLoad.clicked.connect(self.load)
         self.bFit.clicked.connect(self.fit)
+        self.pushButton_check_softw_gates.clicked.connect(self.open_softw_gates)
         self.bReset.clicked.connect(self.reset)
         self.isoFilter.currentIndexChanged.connect(self.loadFiles)
         self.bFontSize.valueChanged.connect(self.fontSize)
@@ -33,14 +34,16 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
         QtWidgets.QShortcut(QtGui.QKeySequence("R"), self, self.reset)
 
         self.dbpath = None
+        self.main_tilda_gui = None
         
         self.show()
-        
-    
+
+    def con_main_tilda_gui(self, main_tilda_gui):
+        self.main_tilda_gui = main_tilda_gui
+
     def conSig(self, dbSig):
         dbSig.connect(self.dbChange)
-    
-    
+
     def load(self):
         if self.fileList.currentItem() is not None:
             iso = self.fileList.currentItem().text()
@@ -55,7 +58,6 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
         except Exception as e:
             print('error while fitting: %s' % e)
 
-    
     def reset(self):
         self.intFit.reset()
         self.loadPars()
@@ -63,7 +65,8 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
     def loadPars(self):
         self.parTable.blockSignals(True)
         self.parTable.setRowCount(len(self.intFit.fitter.par))
-        for i, (n, v, f) in enumerate(self.intFit.getPars()):
+        pars = self.intFit.getPars()
+        for i, (n, v, f) in enumerate(pars):
             w = QtWidgets.QTableWidgetItem(n)
             w.setFlags(QtCore.Qt.ItemIsEnabled)
             self.parTable.setItem(i, 0, w)
@@ -73,17 +76,14 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
             
             w = QtWidgets.QTableWidgetItem(str(f))
             self.parTable.setItem(i, 2, w)
-            
         self.parTable.blockSignals(False)
                 
-        
     def loadIsos(self):
         self.isoFilter.clear()
         it = TiTs.select_from_db(self.dbpath, 'DISTINCT type', 'Files', addCond='ORDER BY type', caller_name=__name__)
         if it is not None:
             for i, e in enumerate(it):
                 self.isoFilter.insertItem(i, e[0])
-    
     
     def loadRuns(self):
         self.runSelect.clear()
@@ -92,7 +92,6 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
             for i, r in enumerate(it):
                 self.runSelect.insertItem(i, r[0])
         
-        
     def loadFiles(self):
         self.fileList.clear()
         it = TiTs.select_from_db(self.dbpath, 'file', 'Files',
@@ -100,7 +99,7 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
         if it is not None:
             for r in it:
                 self.fileList.addItem(r[0])
-    
+
     def setPar(self, i, j):
         try:
             val = ast.literal_eval(self.parTable.item(i, j).text())
@@ -122,4 +121,25 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
             if iso:
                 self.intFit = InteractiveFit(iso, self.dbpath, self.runSelect.currentText(), fontSize=self.bFontSize.value())
                 self.loadPars()
+
+    def open_softw_gates(self):
+        cur_itm = self.fileList.currentItem()
+        if cur_itm is not None:
+            if '.xml' in cur_itm.text():
+                if self.main_tilda_gui:
+                    import os
+                    file_path = TiTs.select_from_db(self.dbpath, 'filePath', 'Files',
+                                                    [['file'], [cur_itm.text()]], 'ORDER BY date',
+                                                    caller_name=__name__)
+                    if file_path is None:
+                        return None
+                    file_n = os.path.join(os.path.dirname(self.dbpath), file_path[0][0])
+                    spec_to_plot = deepcopy(self.intFit.fitter.meas)
+                    x_in_freq = TiTs.convert_fit_volt_axis_to_freq(self.intFit.fitter)
+                    spec_to_plot.x = x_in_freq
+                    spec_to_plot.x_units = spec_to_plot.x_units_enums.frequency
+                    self.main_tilda_gui.load_spectra(file_n, spec_to_plot)  # -> will be loaded to the main of Tilda
+                else:
+                    print('get TILDA for full support')
+                print('jup this is an xml file')
 

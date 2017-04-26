@@ -1329,6 +1329,12 @@ class NMPLImagePlotAndSaveSpecData(Node):
             self.new_track_callback.emit(((track_ind, track_name), (int(self.selected_pmt), self.selected_pmt)))
 
     def processData(self, data, pipeData):
+        if not pipeData.get('isotopeData', False):  # only create on first call mainly used in display data pipe
+            # print('scan dict was not created yet, creating now!')
+            path = pipeData['pipeInternals']['activeXmlFilePath']
+            new_scan_dict = TildaTools.create_scan_dict_from_spec_data(data, path)
+            # print('new_scan_dict is:', new_scan_dict)
+            self.Pipeline.pipeData = new_scan_dict
         self.stored_data = data  # always leave original data untouched
         if self.new_data_callback is not None:
             now = datetime.now()

@@ -39,7 +39,7 @@ def plot_spec_data(spec_data, sc, tr, plot_item=None, pen='k'):
         plot_item.plot(x, y, pen=pen)
 
 
-def create_image_view(x_label='line voltage', y_label='time [µs]'):
+def create_image_view(x_label='line voltage', y_label='time / µs'):
     plt_item = pg.PlotItem()
     imv_widget = pg.ImageView(view=plt_item)
     plt_item.invertY(False)
@@ -79,7 +79,7 @@ def create_x_y_widget(do_not_show_label=['top', 'right'], x_label='line voltage'
     return widg, plt_item
 
 
-def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rate, plot_sum=True):
+def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rate, plot_sum=True, inf_line=True):
     """
     this will add a pyqtgraph widget for each scaler and an additional one for the sum to the target layout.
     :param target_layout: QtLayout, here the widgets will be added
@@ -100,8 +100,11 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
         if sc_ind:  # link to the plot before in list, not in first index(=0) of course
             plt_item.vb.setXLink(return_list[-1]['pltItem'].getViewBox())
         plt_data_item = plt_item.plot(pen='k')
-        plt_inf_line = create_infinite_line(0, pen='r')
-        plt_item.addItem(plt_inf_line)
+        if inf_line:
+            plt_inf_line = create_infinite_line(0, pen='r')
+            plt_item.addItem(plt_inf_line)
+        else:
+            plt_inf_line = None
         singl_dict = {
             'name': str(sc_name),
             'indList': [sc_ind],
@@ -120,8 +123,11 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
                                  slot=functools.partial(slot_for_mouse_move, sum_plt_item.vb, False),
                                  rate_limit=max_rate)
         sum_plt_data_item = sum_plt_item.plot(pen='b')
-        sum_inf_line = create_infinite_line(0, pen='r')
-        sum_plt_item.addItem(sum_inf_line)
+        if inf_line:
+            sum_inf_line = create_infinite_line(0, pen='r')
+            sum_plt_item.addItem(sum_inf_line)
+        else:
+            sum_inf_line = None
         target_layout.addWidget(sum_wid)
         sum_plt_item.vb.setXLink(return_list[-1]['pltItem'].getViewBox())
         sum_dict = {
