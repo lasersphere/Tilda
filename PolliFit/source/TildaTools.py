@@ -23,6 +23,14 @@ def select_from_db(db, vars_select, var_from, var_where=[], addCond='', caller_n
     connects to database and finds attributes vars_select (string) in table var_from (string)
     with the extra condition
     varwhere[0][i] == varwhere[1][i] (so varwhere = [list, list] is a list...)
+    addCond -> e.g. 'ORDER BY date'
+    will convert to:
+
+        SELECT vars_select FROM var_from WHERE varwhere[0][i] == varwhere[1][i] ... addCond
+
+    :return
+        None, if failure,
+        list, with of tuples with values if success [(vars_select0, vars_select1...), (...)]
     """
     sql_cmd = ''
     try:
@@ -53,6 +61,7 @@ def select_from_db(db, vars_select, var_from, var_where=[], addCond='', caller_n
         return None
     finally:
         con.close()
+
 
 def merge_dicts(d1, d2):
     """ given two dicts, merge them into a new dict as a shallow copy """
@@ -569,6 +578,29 @@ def check_if_attr_exists(parent_to_check_from, par, return_val_if_not, and_not_e
     finally:
         return ret
 
+
+def check_var_type(list_of_vars):
+    """
+    will go trough a list of vars and check if they are in the right type,
+     range and correct them to a standard value if not
+    :param list_of_vars: list of tuples, [(var_to_check, var_type, var_range, standard_val), (...) ... ]
+    var_range is a list: [min_val, max_val], leave empty for not checking a range
+    :return: list, corrected vars
+    """
+    ret = []
+    for var_to_check, var_type, var_range, standard_val in list_of_vars:
+        if isinstance(var_to_check, var_type):
+            if len(var_range):
+                if var_range[0] < var_to_check < var_range[1]:
+                    good_val = var_to_check
+                else:  # right type and in range
+                    good_val = standard_val
+            else:  # type ok, range does not matter
+                good_val = var_to_check
+        else:  # if type is wrong, use stanadrd val !?
+            good_val = standard_val
+        ret.append(good_val)
+    return ret
 
 def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_path=None):
     """
