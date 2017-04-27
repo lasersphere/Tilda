@@ -248,45 +248,62 @@ class XMLImporter(SpecData):
         print('%s was successfully imported' % self.file)
 
     def preProc(self, db):
-        print('XMLImporter is using db: ', db)
-        con = sqlite3.connect(db)
-        cur = con.cursor()
-        if self.seq_type not in ['kepco']:  # do not change the x axis for a kepco scan!
-            cur.execute('''SELECT type, line, offset, accVolt, laserFreq,
-                            colDirTrue, voltDivRatio, lineMult, lineOffset
-                            FROM Files WHERE file = ?''', (self.file,))
-            data = cur.fetchall()
-            if len(data) == 1:
-                (self.type, self.line, self.offset, self.accVolt, self.laserFreq,
-                 self.col, self.voltDivRatio, self.lineMult, self.lineOffset) = data[0]
-                self.col = bool(self.col)
-            else:
-                raise Exception('XMLImporter: No DB-entry found!')
-            self.voltDivRatio = ast.literal_eval(self.voltDivRatio)
-            for tr_ind, track in enumerate(self.x):
-                if isinstance(self.voltDivRatio['offset'], float):  # just one number
-                    scanvolt = (self.lineMult * self.x[tr_ind] + self.lineOffset + self.offset) * self.voltDivRatio['offset']
-                else:  # offset should be a dictionary than
-                    vals = list(self.voltDivRatio['offset'].values())
-                    mean_offset_div_ratio = np.mean(vals)
-                    # treat each offset with its own divider ratio
-                    mean_offset = np.mean([val * self.offset_by_dev.get(key, self.offset) for key, val in
-                                           self.voltDivRatio['offset'].items()])
-                    scanvolt = (self.lineMult * self.x[tr_ind] + self.lineOffset) * mean_offset_div_ratio + mean_offset
-                self.x[tr_ind] = self.accVolt * self.voltDivRatio['accVolt'] - scanvolt
-            self.norming()
-            self.x_units = self.x_units_enums.total_volts
-        elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
-            cur.execute('''SELECT offset FROM Files WHERE file = ?''', (self.file,))
-            data = cur.fetchall()
-            if self.dac_calibration_measurement:
-                self.offset = 0
-            else:  # get the offset from the database or leave it as it is from import always prefer db
-                if len(data) == 1:
-                    self.offset = data[0]
-            for tr_ind, cts_tr in enumerate(self.cts):
-                self.cts[tr_ind] = self.cts[tr_ind] - self.offset
-        con.close()
+        try:
+            print('XMLImporter is using db: ', db)
+            con = sqlite3.connect(db)
+            cur = con.cursor()
+            if self.seq_type not in ['kepco']:  # do not change the x axis for a kepco scan!
+                # cur.execute('''SELECT type, line, offset, accVolt, laserFreq,
+                #                 colDirTrue, voltDivRatio, lineMult, lineOffset
+                #                 FROM Files WHERE file = ?''', (self.file,))
+                # data = cur.fetchall()
+                db_ret = TildaTools.select_from_db(
+                    db, 'type, line, offset, accVolt, laserFreq, colDirTrue, voltDivRatio, lineMult, lineOffset',
+                    'Files', [['file'], [self.file]])
+                if db_ret is None:
+                    raise Exception('XMLImporter: No DB-entry found!')
+                if len(db_ret) == 1:
+                    (self.type, self.line, self.offset, self.accVolt, self.laserFreq,
+                     self.col, self.voltDivRatio, self.lineMult, self.lineOffset) = db_ret[0]
+                    self.col = bool(self.col)
+                else:
+                    raise Exception('XMLImporter: No DB-entry found!')
+                try:
+                    self.voltDivRatio = ast.literal_eval(self.voltDivRatio)
+                except Exception as e:
+                    print('error, converting voltage divider ratio from db, error is: ', e)
+                    print('setting voltage divider ratio to 1 !')
+                    self.voltDivRatio = {'offset': 1.0, 'accVolt': 1.0}
+                for tr_ind, track in enumerate(self.x):
+                    if isinstance(self.voltDivRatio['offset'], float):  # just one number
+                        scanvolt = (self.lineMult * self.x[tr_ind] + self.lineOffset + self.offset) * self.voltDivRatio['offset']
+                    else:  # offset should be a dictionary than
+                        vals = list(self.voltDivRatio['offset'].values())
+                        mean_offset_div_ratio = np.mean(vals)
+                        # treat each offset with its own divider ratio
+                        mean_offset = np.mean([val * self.offset_by_dev.get(key, self.offset) for key, val in
+                                               self.voltDivRatio['offset'].items()])
+                        scanvolt = (self.lineMult * self.x[tr_ind] + self.lineOffset) * mean_offset_div_ratio + mean_offset
+                    self.x[tr_ind] = self.accVolt * self.voltDivRatio['accVolt'] - scanvolt
+                self.norming()
+                self.x_units = self.x_units_enums.total_volts
+            elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
+                db_ret = TildaTools.select_from_db(db, 'offset', 'Files', [['file'], [self.file]])
+                # cur.execute('''SELECT offset FROM Files WHERE file = ?''', (self.file,))
+                # data = cur.fetchall()
+                if db_ret is None:
+                    raise Exception('XMLImporter: No DB-entry found!')
+                if self.dac_calibration_measurement:
+                    self.offset = 0
+                else:  # get the offset from the database or leave it as it is from import always prefer db
+                    if len(db_ret) == 1:
+                        self.offset = db_ret[0]
+                for tr_ind, cts_tr in enumerate(self.cts):
+                    self.cts[tr_ind] = self.cts[tr_ind] - self.offset
+            con.close()
+        except Exception as e:
+            print('error while preprocessing file %s, error is: %s, check db values!' % (self.file, e))
+            con.close()
 
     def export(self, db):
         try:
