@@ -10,6 +10,7 @@ Module for the Agilent/Keysight 3458A 8.5 digit Multimeter
 
 """
 import datetime
+import time
 from copy import deepcopy
 from enum import Enum
 
@@ -199,6 +200,9 @@ class Agilent3458a:
             self.gpib.write('TARM AUTO')  # set to arm always
         self.gpib.write('NRDGS %d' % sample_count)  # number of readings per sample event
         self.gpib.write('TRIG %s' % trig_source_enum.value)
+        if sample_interval:
+            pass
+            #TODO
 
     def set_input_resistance(self, highResistanceTrue=True):
         if highResistanceTrue:
@@ -328,5 +332,11 @@ class Agilent3458a:
 if __name__ == '__main__':
     try:
         dev = Agilent3458a(True, 'GPIB0::22::INSTR')
+        dev.gpib.writer('DCV 10, 0.0001')
+        dev.gpib.write('TRIG EXT')
+        while True:
+            time.sleep(5)
+            reading_time = datetime.datetime.now()
+            print(reading_time, ' : ', dev.gpib.read())
     except Exception as e:
         print(e)
