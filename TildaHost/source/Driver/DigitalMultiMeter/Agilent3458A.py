@@ -115,6 +115,7 @@ class Agilent3458a:
         self.accuracy_range = 10 ** -4
         self.res_man = visa.ResourceManager()
         self.gpib = None
+        self.gpib_timeout_ms = 100
         self.state = 'initialized'
 
         # default config dictionary for this type of DMM:
@@ -158,9 +159,13 @@ class Agilent3458a:
         """
         session_num = 0
         self.gpib = self.res_man.open_resource(addr)
-        self.gpib.read_termination = '\r\n'
+        self.gpib.timeout = self.gpib_timeout_ms
         if reset:
             self.gpib.write('PRESET NORM')
+            # self.gpib.write('RESET')
+        time.sleep(0.1)
+        self.gpib.read_termination = '\r\n'
+
         self.state = 'initialized'
         return session_num
 
@@ -240,14 +245,30 @@ class Agilent3458a:
         pass
 
     def fetch_multiple_meas(self, num_to_read, max_time=-1):
-        if num_to_read == -1:
-            num_to_read = 5
-        ret_val = 1
-        ret = np.full(num_to_read, ret_val, dtype=np.double)
-        t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # take last element out of array and make a tuple with timestamp:
-        self.last_readback = (round(ret[-1], 8), t)
-        return ret
+        available = self.gpib.query('MCOUNT?')
+        print('avaiable:', available)
+        try:
+            available = int(available)
+        except Exception as e:
+            print(e)
+        if available > 0:
+            if num_to_read == -1:
+                num_to_read = available
+            self.gpib.write('TRIG HOLD')
+            ret = self.gpib.query('RMEM 1,%d' % num_to_read)
+            #TODO get trig source from config dict
+            # self.gpib.write('MEM FIFO;TRIG %s' % self.config_dict[])
+            self.gpib.write('MEM FIFO;TRIG EXT')
+            # typical response:
+            # ret = '-1.500911593E+00,-1.500911355E+00,-1.500910163E+00,-1.500910640E+00,-1.500911236E+00,-1.500909567E+00'
+            # ret_val = 1
+            # ret = np.full(num_to_read, ret_val, dtype=np.double)
+            # t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # # take last element out of array and make a tuple with timestamp:
+            # self.last_readback = (round(ret[-1], 8), t)
+            return ret
+        else:
+            return -1
 
     def abort_meas(self):
         self.state = 'aborted'
@@ -332,11 +353,20 @@ class Agilent3458a:
 if __name__ == '__main__':
     try:
         dev = Agilent3458a(True, 'GPIB0::22::INSTR')
-        dev.gpib.writer('DCV 10, 0.0001')
+        # print(dev.gpib.query('ERR?'))
+        # print('write ok')
+        # print(dev.gpib.query('FUNC DCV 10, 0.0001'))
+        dev.gpib.write('DCV 10, 0.0001')
         dev.gpib.write('TRIG EXT')
+        dev.gpib.write('MEM FIFO')
         while True:
             time.sleep(5)
             reading_time = datetime.datetime.now()
-            print(reading_time, ' : ', dev.gpib.read())
+            try:
+                ret = dev.fetch_multiple_meas(-1)
+                if ret != -1:
+                    print(reading_time, ' : ', ret)
+            except Exception as e:
+                print(e)
     except Exception as e:
         print(e)
