@@ -16,19 +16,9 @@ from Interface.DmmUi.Ui_Ni4071Widget import Ui_form_layout
 
 
 def get_wid_by_type(dmm_type, dmm_name):
+    """ same widget used by all type, each dmm will emit its parameters """
     print('initializing widget for type:', dmm_type)
-    if dmm_type == 'Ni4071':
-        return Ni4071Widg(dmm_name, dmm_type)
-    elif dmm_type == 'dummy':
-        return Ni4071Widg(dmm_name, dmm_type)
-    elif dmm_type == 'Agilent_34461A':
-        return Ni4071Widg(dmm_name, dmm_type)
-    elif dmm_type == 'Agilent_34401A':
-        return Ni4071Widg(dmm_name, dmm_type)
-    elif dmm_type == 'Agilent_M918x':
-        return Ni4071Widg(dmm_name, dmm_type)
-    else:
-        print('could not find widget of type: ', dmm_type)
+    return Ni4071Widg(dmm_name, dmm_type)
 
 
 class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):

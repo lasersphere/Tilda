@@ -20,11 +20,13 @@ from Driver.DigitalMultiMeter.Agilent import Agilent
 from Driver.DigitalMultiMeter.DMMdummy import DMMdummy
 from Driver.DigitalMultiMeter.NI4071 import Ni4071
 from Driver.DigitalMultiMeter.AgilentM918x import AgilentM918x
+from Driver.DigitalMultiMeter.Agilent3458A import Agilent3458A
 
 
 class DMMControl:
     def __init__(self):
-        self.types = ['Ni4071', 'dummy', 'Agilent_34461A', 'Agilent_34401A', 'Agilent_M918x']
+        self.types = ['Ni4071', 'dummy', 'Agilent_34461A',
+                      'Agilent_34401A', 'Agilent_M918x', 'Agilent_3458A']
         self.dmm = {}
         # dict for storing all active dmm objects.
         # key is the name of the device, which is the type_address
@@ -68,6 +70,12 @@ class DMMControl:
             try:
                 dev = AgilentM918x(address_str=address)
                 name = dev.name # 'type_addr'
+            except Exception as e:
+                print('starting dmm did not work exception is:', e)
+        elif type_str == 'Agilent_3458A':
+            try:
+                dev = Agilent3458A(address_str=address)
+                name = dev.name  # 'type_addr'
             except Exception as e:
                 print('starting dmm did not work exception is:', e)
         if dev is not None:
@@ -131,7 +139,7 @@ class DMMControl:
         :param dmm_name: str, name of the dmm
         :return: dict, key: (name_str, type, valid_vals)
         """
-        # print('dmm to emit:', dmm_name, self.dmm)
+        print('dmm to emit:', dmm_name, self.dmm)
         return self.dmm[dmm_name].emit_config_pars()
         # use dicts to specify for the individual dmm
 

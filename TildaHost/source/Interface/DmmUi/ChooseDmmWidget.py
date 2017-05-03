@@ -42,6 +42,8 @@ class ChooseDmmWidget(QtWidgets.QWidget, Ui_Form):
             addr = 'COLLAPSAGILENT01'
         elif type_str == 'Agilent_34401A':
             addr = 'com1'
+        elif type_str == 'Agilent_3458A':
+            addr = 'GPIB0::22::INSTR'
         elif type_str == 'Agilent_M918x':
             addr = 'PXI6::15::INSTR'
         self.lineEdit_address_dmm.setText(addr)
