@@ -12186,7 +12186,7 @@ Only reasonable inputs are shown
 <XPD:OBJ name="Top" type="UMLCompositeState" guid="i/InMGN9wEmijTPSSi/OzQAA">
 <XPD:ATTR name="Name" type="string">TOP</XPD:ATTR>
 <XPD:REF name="StateMachine">zwBMtH6GPE+29Kx2wyOkXwAA</XPD:REF>
-<XPD:ATTR name="#Subvertices" type="integer">14</XPD:ATTR>
+<XPD:ATTR name="#Subvertices" type="integer">15</XPD:ATTR>
 <XPD:OBJ name="Subvertices[0]" type="UMLPseudostate" guid="YRYy3Yshd0S7QE2TB406pAAA">
 <XPD:ATTR name="Name" type="string">Initial1</XPD:ATTR>
 <XPD:ATTR name="PseudostateKind" type="UMLPseudostateKind">pkInitial</XPD:ATTR>
@@ -12246,7 +12246,7 @@ Only reasonable inputs are shown
 </XPD:OBJ>
 </XPD:OBJ>
 <XPD:OBJ name="Subvertices[3]" type="UMLCompositeState" guid="z8jJ+FUpxku1PqD97FmNewAA">
-<XPD:ATTR name="Name" type="string">measure_offset_voltage</XPD:ATTR>
+<XPD:ATTR name="Name" type="string">measure_pre_scan</XPD:ATTR>
 <XPD:REF name="ContainerState">i/InMGN9wEmijTPSSi/OzQAA</XPD:REF>
 <XPD:ATTR name="#Views" type="integer">2</XPD:ATTR>
 <XPD:REF name="Views[0]">oDZerAD/N0i2rQ8DGgwlbgAA</XPD:REF>
@@ -12265,9 +12265,9 @@ Only reasonable inputs are shown
 <XPD:ATTR name="Name" type="string">first track: softw_trigger_dmms</XPD:ATTR>
 <XPD:REF name="EntryState">z8jJ+FUpxku1PqD97FmNewAA</XPD:REF>
 </XPD:OBJ>
-<XPD:ATTR name="#ExitActions" type="integer">3</XPD:ATTR>
+<XPD:ATTR name="#ExitActions" type="integer">4</XPD:ATTR>
 <XPD:OBJ name="ExitActions[0]" type="UMLUninterpretedAction" guid="7fg7JMbvt0GYBM4UeUUJeAAA">
-<XPD:ATTR name="Name" type="string">first track: exit when all dmms measured</XPD:ATTR>
+<XPD:ATTR name="Name" type="string">first track: exit when all dmms measured &amp; all TRITON vals have arrived</XPD:ATTR>
 <XPD:REF name="ExitState">z8jJ+FUpxku1PqD97FmNewAA</XPD:REF>
 </XPD:OBJ>
 <XPD:OBJ name="ExitActions[1]" type="UMLUninterpretedAction" guid="4zImi0HIAEyui3KXiqojtwAA">
@@ -12278,9 +12278,17 @@ Only reasonable inputs are shown
 <XPD:ATTR name="Name" type="string">first track: set dmms to periodic if not kepco scan, else to dmm_dict</XPD:ATTR>
 <XPD:REF name="ExitState">z8jJ+FUpxku1PqD97FmNewAA</XPD:REF>
 </XPD:OBJ>
-<XPD:ATTR name="#DoActivities" type="integer">1</XPD:ATTR>
+<XPD:OBJ name="ExitActions[3]" type="UMLUninterpretedAction" guid="SERf+cXwT0SaQ79znclz3QAA">
+<XPD:ATTR name="Name" type="string">write TRITON pre scan measurements to scan dict: 'triton': 'prescan': 'dev': [vals]</XPD:ATTR>
+<XPD:REF name="ExitState">z8jJ+FUpxku1PqD97FmNewAA</XPD:REF>
+</XPD:OBJ>
+<XPD:ATTR name="#DoActivities" type="integer">2</XPD:ATTR>
 <XPD:OBJ name="DoActivities[0]" type="UMLUninterpretedAction" guid="RBSq+kTiwEuqaihN6voupwAA">
 <XPD:ATTR name="Name" type="string">first track: poll measurement from dmm</XPD:ATTR>
+<XPD:REF name="DoActivityState">z8jJ+FUpxku1PqD97FmNewAA</XPD:REF>
+</XPD:OBJ>
+<XPD:OBJ name="DoActivities[1]" type="UMLUninterpretedAction" guid="jUuRRqAd8UO0FhdJ1+gM5gAA">
+<XPD:ATTR name="Name" type="string">first track: wait for enough measurements from selected TRITON device channel</XPD:ATTR>
 <XPD:REF name="DoActivityState">z8jJ+FUpxku1PqD97FmNewAA</XPD:REF>
 </XPD:OBJ>
 </XPD:OBJ>
@@ -12411,7 +12419,7 @@ Only reasonable inputs are shown
 <XPD:ATTR name="#Outgoings" type="integer">1</XPD:ATTR>
 <XPD:REF name="Outgoings[0]">VkH6nIC6iEupNL2P1Yak5AAA</XPD:REF>
 <XPD:ATTR name="#Incomings" type="integer">1</XPD:ATTR>
-<XPD:REF name="Incomings[0]">HGQeJgci80Or4I0WbqE2NgAA</XPD:REF>
+<XPD:REF name="Incomings[0]">0/YMzg5cCES56eTLcp8ZdQAA</XPD:REF>
 <XPD:ATTR name="#DoActivities" type="integer">4</XPD:ATTR>
 <XPD:OBJ name="DoActivities[0]" type="UMLUninterpretedAction" guid="p8D1In/vXEm9HgqSFUmvQwAA">
 <XPD:ATTR name="Name" type="string">stop dmms</XPD:ATTR>
@@ -12430,6 +12438,52 @@ Only reasonable inputs are shown
 <XPD:REF name="DoActivityState">SjGy+9s1M0qE1fAhIqajygAA</XPD:REF>
 </XPD:OBJ>
 </XPD:OBJ>
+<XPD:OBJ name="Subvertices[14]" type="UMLCompositeState" guid="I66+pB5R0kO2GH3HDuzuzQAA">
+<XPD:ATTR name="Name" type="string">measure_post_scan</XPD:ATTR>
+<XPD:REF name="ContainerState">i/InMGN9wEmijTPSSi/OzQAA</XPD:REF>
+<XPD:ATTR name="#Views" type="integer">2</XPD:ATTR>
+<XPD:REF name="Views[0]">3+MSH+w+kE6ZrqwKcB6/uQAA</XPD:REF>
+<XPD:REF name="Views[1]">3oo+iEWAE06La7wfWxTjlgAA</XPD:REF>
+<XPD:ATTR name="#Outgoings" type="integer">1</XPD:ATTR>
+<XPD:REF name="Outgoings[0]">0/YMzg5cCES56eTLcp8ZdQAA</XPD:REF>
+<XPD:ATTR name="#Incomings" type="integer">1</XPD:ATTR>
+<XPD:REF name="Incomings[0]">HGQeJgci80Or4I0WbqE2NgAA</XPD:REF>
+<XPD:ATTR name="#EntryActions" type="integer">2</XPD:ATTR>
+<XPD:OBJ name="EntryActions[0]" type="UMLUninterpretedAction" guid="vhHGffD/7UOsVV0SQD2TBAAA">
+<XPD:ATTR name="Name" type="string">set fpga to measure offset state</XPD:ATTR>
+<XPD:REF name="EntryState">I66+pB5R0kO2GH3HDuzuzQAA</XPD:REF>
+</XPD:OBJ>
+<XPD:OBJ name="EntryActions[1]" type="UMLUninterpretedAction" guid="LyDgCcReDkOyATL+nXQWJQAA">
+<XPD:ATTR name="Name" type="string">first track: softw_trigger_dmms</XPD:ATTR>
+<XPD:REF name="EntryState">I66+pB5R0kO2GH3HDuzuzQAA</XPD:REF>
+</XPD:OBJ>
+<XPD:ATTR name="#ExitActions" type="integer">4</XPD:ATTR>
+<XPD:OBJ name="ExitActions[0]" type="UMLUninterpretedAction" guid="wIiWZNTyyEeq8MQ+CFOyMwAA">
+<XPD:ATTR name="Name" type="string">first track: exit when all dmms measured &amp; all TRITON vals have arrived</XPD:ATTR>
+<XPD:REF name="ExitState">I66+pB5R0kO2GH3HDuzuzQAA</XPD:REF>
+</XPD:OBJ>
+<XPD:OBJ name="ExitActions[1]" type="UMLUninterpretedAction" guid="tiyulEx/n0CoyuAHjSch4gAA">
+<XPD:ATTR name="Name" type="string">first track: write meas to dmm dict, key: 'pre_scan_meas'</XPD:ATTR>
+<XPD:REF name="ExitState">I66+pB5R0kO2GH3HDuzuzQAA</XPD:REF>
+</XPD:OBJ>
+<XPD:OBJ name="ExitActions[2]" type="UMLUninterpretedAction" guid="5Pzkcw5vSESWoPDJ0IWRewAA">
+<XPD:ATTR name="Name" type="string">first track: set dmms to periodic if not kepco scan, else to dmm_dict</XPD:ATTR>
+<XPD:REF name="ExitState">I66+pB5R0kO2GH3HDuzuzQAA</XPD:REF>
+</XPD:OBJ>
+<XPD:OBJ name="ExitActions[3]" type="UMLUninterpretedAction" guid="YGWWMWpJqkWt0EqVIVzblAAA">
+<XPD:ATTR name="Name" type="string">write TRITON pre scan measurements to scan dict: 'triton': 'postcan': 'dev': [vals]</XPD:ATTR>
+<XPD:REF name="ExitState">I66+pB5R0kO2GH3HDuzuzQAA</XPD:REF>
+</XPD:OBJ>
+<XPD:ATTR name="#DoActivities" type="integer">2</XPD:ATTR>
+<XPD:OBJ name="DoActivities[0]" type="UMLUninterpretedAction" guid="OUvTI+s8kECwXEcYvrQjiwAA">
+<XPD:ATTR name="Name" type="string">first track: poll measurement from dmm</XPD:ATTR>
+<XPD:REF name="DoActivityState">I66+pB5R0kO2GH3HDuzuzQAA</XPD:REF>
+</XPD:OBJ>
+<XPD:OBJ name="DoActivities[1]" type="UMLUninterpretedAction" guid="wFj86TaAr0WFrzCR468iDgAA">
+<XPD:ATTR name="Name" type="string">first track: wait for enough measurements from selected TRITON device channel</XPD:ATTR>
+<XPD:REF name="DoActivityState">I66+pB5R0kO2GH3HDuzuzQAA</XPD:REF>
+</XPD:OBJ>
+</XPD:OBJ>
 </XPD:OBJ>
 <XPD:ATTR name="#OwnedDiagrams" type="integer">1</XPD:ATTR>
 <XPD:OBJ name="OwnedDiagrams[0]" type="UMLStatechartDiagram" guid="BS4CrfJA2kuUAuVCXarZ/gAA">
@@ -12437,7 +12491,7 @@ Only reasonable inputs are shown
 <XPD:REF name="DiagramOwner">zwBMtH6GPE+29Kx2wyOkXwAA</XPD:REF>
 <XPD:OBJ name="DiagramView" type="UMLStatechartDiagramView" guid="YqgPPME+kUGjkVkTM6+VUwAA">
 <XPD:REF name="Diagram">BS4CrfJA2kuUAuVCXarZ/gAA</XPD:REF>
-<XPD:ATTR name="#OwnedViews" type="integer">21</XPD:ATTR>
+<XPD:ATTR name="#OwnedViews" type="integer">23</XPD:ATTR>
 <XPD:OBJ name="OwnedViews[0]" type="UMLPseudostateView" guid="JXpLDJSVHE+B/Ua6hfHohwAA">
 <XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
@@ -12473,14 +12527,14 @@ Only reasonable inputs are shown
 <XPD:OBJ name="OwnedViews[2]" type="UMLStateView" guid="oDZerAD/N0i2rQ8DGgwlbgAA">
 <XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
-<XPD:ATTR name="Left" type="integer">192</XPD:ATTR>
-<XPD:ATTR name="Top" type="integer">280</XPD:ATTR>
-<XPD:ATTR name="Width" type="integer">354</XPD:ATTR>
-<XPD:ATTR name="Height" type="integer">124</XPD:ATTR>
+<XPD:ATTR name="Left" type="integer">164</XPD:ATTR>
+<XPD:ATTR name="Top" type="integer">272</XPD:ATTR>
+<XPD:ATTR name="Width" type="integer">421</XPD:ATTR>
+<XPD:ATTR name="Height" type="integer">137</XPD:ATTR>
 <XPD:REF name="Model">z8jJ+FUpxku1PqD97FmNewAA</XPD:REF>
 <XPD:OBJ name="NameCompartment" type="UMLNameCompartmentView" guid="Rh9TnEQFuUKkoPsXX6FYPgAA">
 <XPD:OBJ name="NameLabel" type="LabelView" guid="kQghTSvlz0mwgJZYvRVhjQAA">
-<XPD:ATTR name="Text" type="string">measure_offset_voltage</XPD:ATTR>
+<XPD:ATTR name="Text" type="string">measure_pre_scan</XPD:ATTR>
 </XPD:OBJ>
 <XPD:OBJ name="StereotypeLabel" type="LabelView" guid="SIo9pPxaLEyB2fs+QhebvgAA">
 <XPD:ATTR name="Visible" type="boolean">False</XPD:ATTR>
@@ -12716,7 +12770,7 @@ Only reasonable inputs are shown
 <XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
 <XPD:ATTR name="LineStyle" type="LineStyleKind">lsRectilinear</XPD:ATTR>
-<XPD:ATTR name="Points" type="Points">541,776;576,776;576,72;402,72</XPD:ATTR>
+<XPD:ATTR name="Points" type="Points">737,836;820,836;820,67;402,67</XPD:ATTR>
 <XPD:REF name="Model">VkH6nIC6iEupNL2P1Yak5AAA</XPD:REF>
 <XPD:REF name="Head">K9brld3QSEGyGDXNjbRIlAAA</XPD:REF>
 <XPD:REF name="Tail">9z7fY49b2ESJVcUVogmVXAAA</XPD:REF>
@@ -12742,7 +12796,7 @@ Only reasonable inputs are shown
 <XPD:OBJ name="OwnedViews[13]" type="UMLTransitionView" guid="JSPbmmuUBUCah+dAN4T+lwAA">
 <XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
-<XPD:ATTR name="Points" type="Points">368,403;368,424</XPD:ATTR>
+<XPD:ATTR name="Points" type="Points">371,408;370,424</XPD:ATTR>
 <XPD:REF name="Model">v+IEPNFM9UilRbiE8/+VEwAA</XPD:REF>
 <XPD:REF name="Head">chgcYBFW8UaimTs0fthi2wAA</XPD:REF>
 <XPD:REF name="Tail">oDZerAD/N0i2rQ8DGgwlbgAA</XPD:REF>
@@ -12768,7 +12822,7 @@ Only reasonable inputs are shown
 <XPD:OBJ name="OwnedViews[14]" type="UMLTransitionView" guid="kQ655dLFjUWGGvgFsB2HEQAA">
 <XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
-<XPD:ATTR name="Points" type="Points">369,255;369,280</XPD:ATTR>
+<XPD:ATTR name="Points" type="Points">370,255;371,272</XPD:ATTR>
 <XPD:REF name="Model">6Rybk3Z9ZU65MjMu74mGRwAA</XPD:REF>
 <XPD:REF name="Head">oDZerAD/N0i2rQ8DGgwlbgAA</XPD:REF>
 <XPD:REF name="Tail">GVY9TZsUQUascOTawPqLVwAA</XPD:REF>
@@ -12821,7 +12875,7 @@ Only reasonable inputs are shown
 <XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
 <XPD:ATTR name="LineStyle" type="LineStyleKind">lsRectilinear</XPD:ATTR>
-<XPD:ATTR name="Points" type="Points">362,774;112,774;112,224;244,224</XPD:ATTR>
+<XPD:ATTR name="Points" type="Points">364,723;112,723;112,224;244,224</XPD:ATTR>
 <XPD:REF name="Model">xKVX+KNwJU+GRZZW6rP4egAA</XPD:REF>
 <XPD:REF name="Head">GVY9TZsUQUascOTawPqLVwAA</XPD:REF>
 <XPD:REF name="Tail">MrRk1LkWz0S3ynEFz3dWjgAA</XPD:REF>
@@ -12847,8 +12901,8 @@ Only reasonable inputs are shown
 <XPD:OBJ name="OwnedViews[17]" type="UMLStateView" guid="9z7fY49b2ESJVcUVogmVXAAA">
 <XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
-<XPD:ATTR name="Left" type="integer">436</XPD:ATTR>
-<XPD:ATTR name="Top" type="integer">732</XPD:ATTR>
+<XPD:ATTR name="Left" type="integer">632</XPD:ATTR>
+<XPD:ATTR name="Top" type="integer">782</XPD:ATTR>
 <XPD:ATTR name="Width" type="integer">106</XPD:ATTR>
 <XPD:ATTR name="Height" type="integer">85</XPD:ATTR>
 <XPD:REF name="Model">SjGy+9s1M0qE1fAhIqajygAA</XPD:REF>
@@ -12870,7 +12924,7 @@ Only reasonable inputs are shown
 <XPD:OBJ name="OwnedViews[18]" type="UMLTransitionView" guid="HqCBuemLBk+1rEHTIym4lwAA">
 <XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
-<XPD:ATTR name="Points" type="Points">369,702;369,767</XPD:ATTR>
+<XPD:ATTR name="Points" type="Points">370,702;371,716</XPD:ATTR>
 <XPD:REF name="Model">8Tl1BULNgEa14xLShXt1qgAA</XPD:REF>
 <XPD:REF name="Head">MrRk1LkWz0S3ynEFz3dWjgAA</XPD:REF>
 <XPD:REF name="Tail">ueUt6u5SE0O3f/USqP4ljAAA</XPD:REF>
@@ -12896,8 +12950,8 @@ Only reasonable inputs are shown
 <XPD:OBJ name="OwnedViews[19]" type="UMLPseudostateView" guid="MrRk1LkWz0S3ynEFz3dWjgAA">
 <XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
-<XPD:ATTR name="Left" type="integer">362</XPD:ATTR>
-<XPD:ATTR name="Top" type="integer">767</XPD:ATTR>
+<XPD:ATTR name="Left" type="integer">364</XPD:ATTR>
+<XPD:ATTR name="Top" type="integer">716</XPD:ATTR>
 <XPD:ATTR name="Width" type="integer">15</XPD:ATTR>
 <XPD:ATTR name="Height" type="integer">15</XPD:ATTR>
 <XPD:REF name="Model">VlAz2Qg+xE2vUxSWkoiDjwAA</XPD:REF>
@@ -12905,9 +12959,9 @@ Only reasonable inputs are shown
 <XPD:OBJ name="OwnedViews[20]" type="UMLTransitionView" guid="1NCWcdgQPEesbrAplf4vpQAA">
 <XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
-<XPD:ATTR name="Points" type="Points">376,774;436,774</XPD:ATTR>
+<XPD:ATTR name="Points" type="Points">371,730;371,756</XPD:ATTR>
 <XPD:REF name="Model">HGQeJgci80Or4I0WbqE2NgAA</XPD:REF>
-<XPD:REF name="Head">9z7fY49b2ESJVcUVogmVXAAA</XPD:REF>
+<XPD:REF name="Head">3+MSH+w+kE6ZrqwKcB6/uQAA</XPD:REF>
 <XPD:REF name="Tail">MrRk1LkWz0S3ynEFz3dWjgAA</XPD:REF>
 <XPD:OBJ name="NameLabel" type="EdgeLabelView" guid="Cx8sl/zmX0eGXc0C8pmQqQAA">
 <XPD:ATTR name="Alpha" type="real">1,5707963267949</XPD:ATTR>
@@ -12928,9 +12982,58 @@ Only reasonable inputs are shown
 <XPD:REF name="Model">HGQeJgci80Or4I0WbqE2NgAA</XPD:REF>
 </XPD:OBJ>
 </XPD:OBJ>
+<XPD:OBJ name="OwnedViews[21]" type="UMLStateView" guid="3+MSH+w+kE6ZrqwKcB6/uQAA">
+<XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
+<XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
+<XPD:ATTR name="Left" type="integer">160</XPD:ATTR>
+<XPD:ATTR name="Top" type="integer">756</XPD:ATTR>
+<XPD:ATTR name="Width" type="integer">421</XPD:ATTR>
+<XPD:ATTR name="Height" type="integer">137</XPD:ATTR>
+<XPD:REF name="Model">I66+pB5R0kO2GH3HDuzuzQAA</XPD:REF>
+<XPD:OBJ name="NameCompartment" type="UMLNameCompartmentView" guid="PpGfEc3hhUezXDB4HI8tsgAA">
+<XPD:OBJ name="NameLabel" type="LabelView" guid="wxajeDfIeEe7qmzdBnsbBQAA">
+<XPD:ATTR name="Text" type="string">measure_post_scan</XPD:ATTR>
+</XPD:OBJ>
+<XPD:OBJ name="StereotypeLabel" type="LabelView" guid="pwi9qGSdh02qEL5AM8sTIwAA">
+<XPD:ATTR name="Visible" type="boolean">False</XPD:ATTR>
+</XPD:OBJ>
+<XPD:OBJ name="PropertyLabel" type="LabelView" guid="ApvZnq5Y90OwvVnkLUaAoAAA">
+<XPD:ATTR name="Visible" type="boolean">False</XPD:ATTR>
 </XPD:OBJ>
 </XPD:OBJ>
-<XPD:ATTR name="#Transitions" type="integer">15</XPD:ATTR>
+<XPD:OBJ name="InternalTransitionCompartment" type="UMLInternalTransitionCompartmentView" guid="3oo+iEWAE06La7wfWxTjlgAA">
+<XPD:REF name="Model">I66+pB5R0kO2GH3HDuzuzQAA</XPD:REF>
+</XPD:OBJ>
+</XPD:OBJ>
+<XPD:OBJ name="OwnedViews[22]" type="UMLTransitionView" guid="wdSyy2+lfkC1yYQUuAXHjwAA">
+<XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
+<XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
+<XPD:ATTR name="Points" type="Points">580,824;632,824</XPD:ATTR>
+<XPD:REF name="Model">0/YMzg5cCES56eTLcp8ZdQAA</XPD:REF>
+<XPD:REF name="Head">9z7fY49b2ESJVcUVogmVXAAA</XPD:REF>
+<XPD:REF name="Tail">3+MSH+w+kE6ZrqwKcB6/uQAA</XPD:REF>
+<XPD:OBJ name="NameLabel" type="EdgeLabelView" guid="Kr1IYOBLIU6vns56rserPQAA">
+<XPD:ATTR name="Visible" type="boolean">False</XPD:ATTR>
+<XPD:ATTR name="Alpha" type="real">1,5707963267949</XPD:ATTR>
+<XPD:ATTR name="Distance" type="real">15</XPD:ATTR>
+<XPD:REF name="Model">0/YMzg5cCES56eTLcp8ZdQAA</XPD:REF>
+</XPD:OBJ>
+<XPD:OBJ name="StereotypeLabel" type="EdgeLabelView" guid="O2yZpOWNLU+LIXSZCDyflgAA">
+<XPD:ATTR name="Visible" type="boolean">False</XPD:ATTR>
+<XPD:ATTR name="Alpha" type="real">1,5707963267949</XPD:ATTR>
+<XPD:ATTR name="Distance" type="real">30</XPD:ATTR>
+<XPD:REF name="Model">0/YMzg5cCES56eTLcp8ZdQAA</XPD:REF>
+</XPD:OBJ>
+<XPD:OBJ name="PropertyLabel" type="EdgeLabelView" guid="SttWpcDsb06ABmvBHxc/KwAA">
+<XPD:ATTR name="Visible" type="boolean">False</XPD:ATTR>
+<XPD:ATTR name="Alpha" type="real">-1,5707963267949</XPD:ATTR>
+<XPD:ATTR name="Distance" type="real">15</XPD:ATTR>
+<XPD:REF name="Model">0/YMzg5cCES56eTLcp8ZdQAA</XPD:REF>
+</XPD:OBJ>
+</XPD:OBJ>
+</XPD:OBJ>
+</XPD:OBJ>
+<XPD:ATTR name="#Transitions" type="integer">16</XPD:ATTR>
 <XPD:OBJ name="Transitions[0]" type="UMLTransition" guid="9ytsWaCPIUS+ExY3bh8EKwAA">
 <XPD:REF name="StateMachine">zwBMtH6GPE+29Kx2wyOkXwAA</XPD:REF>
 <XPD:REF name="Source">YRYy3Yshd0S7QE2TB406pAAA</XPD:REF>
@@ -13057,12 +13160,22 @@ Only reasonable inputs are shown
 <XPD:ATTR name="Name" type="string">done</XPD:ATTR>
 <XPD:REF name="StateMachine">zwBMtH6GPE+29Kx2wyOkXwAA</XPD:REF>
 <XPD:REF name="Source">VlAz2Qg+xE2vUxSWkoiDjwAA</XPD:REF>
-<XPD:REF name="Target">SjGy+9s1M0qE1fAhIqajygAA</XPD:REF>
+<XPD:REF name="Target">I66+pB5R0kO2GH3HDuzuzQAA</XPD:REF>
 <XPD:ATTR name="#Views" type="integer">4</XPD:ATTR>
 <XPD:REF name="Views[0]">1NCWcdgQPEesbrAplf4vpQAA</XPD:REF>
 <XPD:REF name="Views[1]">Cx8sl/zmX0eGXc0C8pmQqQAA</XPD:REF>
 <XPD:REF name="Views[2]">a4Uoz4thuUqlt1/kIMOHnQAA</XPD:REF>
 <XPD:REF name="Views[3]">BCVy1ZUFQ0qRNROnm9OZbgAA</XPD:REF>
+</XPD:OBJ>
+<XPD:OBJ name="Transitions[15]" type="UMLTransition" guid="0/YMzg5cCES56eTLcp8ZdQAA">
+<XPD:REF name="StateMachine">zwBMtH6GPE+29Kx2wyOkXwAA</XPD:REF>
+<XPD:REF name="Source">I66+pB5R0kO2GH3HDuzuzQAA</XPD:REF>
+<XPD:REF name="Target">SjGy+9s1M0qE1fAhIqajygAA</XPD:REF>
+<XPD:ATTR name="#Views" type="integer">4</XPD:ATTR>
+<XPD:REF name="Views[0]">wdSyy2+lfkC1yYQUuAXHjwAA</XPD:REF>
+<XPD:REF name="Views[1]">Kr1IYOBLIU6vns56rserPQAA</XPD:REF>
+<XPD:REF name="Views[2]">O2yZpOWNLU+LIXSZCDyflgAA</XPD:REF>
+<XPD:REF name="Views[3]">SttWpcDsb06ABmvBHxc/KwAA</XPD:REF>
 </XPD:OBJ>
 </XPD:OBJ>
 <XPD:ATTR name="#OwnedElements" type="integer">48</XPD:ATTR>

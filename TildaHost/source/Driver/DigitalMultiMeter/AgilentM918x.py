@@ -202,7 +202,7 @@ class AgilentM918x:
 
         self.type = 'Agilent_M918x'
         self.state = 'None'
-        self.address = address_str
+        self.address = address_str.replace('.', ':')  # colons not allowed in name but needed for gpib
         self.name = self.type + '_' + address_str
         # default config dictionary for this type of DMM:
 
@@ -215,12 +215,12 @@ class AgilentM918x:
         self.dll = ctypes.WinDLL(dll_path)
         self.session = ctypes.c_uint32(0)
 
-        stat = self.init(address_str, reset_dev=reset)
+        stat = self.init(self.address, reset_dev=reset)
         if stat < 0:  # if init fails, start simulation
             self.get_error_message(stat, 'while initializing AgM918x: ')
             self.de_init_dmm()
             print('starting simulation now')
-            stat = self.init_with_option(address_str, "Simulate=True, DriverSetup=Model:AgM9183A")
+            stat = self.init_with_option(self.address, "Simulate=True, DriverSetup=Model:AgM9183A")
             self.get_error_message(stat)
         self.config_power_line_freq(pwr_line_freq)
 

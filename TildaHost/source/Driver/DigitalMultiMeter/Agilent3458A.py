@@ -46,6 +46,7 @@ class Agilent3458aPreConfigs(Enum):
         'highInputResistanceTrue': True,
         'assignment': 'offset',
         'accuracy': (None, None),
+        'measurementCompleteDestination': 'software',
         'preConfName': 'initial'
     }
     periodic = {
@@ -59,6 +60,7 @@ class Agilent3458aPreConfigs(Enum):
         'highInputResistanceTrue': True,
         'assignment': 'offset',
         'accuracy': (None, None),
+        'measurementCompleteDestination': 'Con1_DIO30',
         'preConfName': 'periodic'
     }
     pre_scan = {
@@ -72,6 +74,7 @@ class Agilent3458aPreConfigs(Enum):
         'highInputResistanceTrue': True,
         'assignment': 'offset',
         'accuracy': (None, None),
+        'measurementCompleteDestination': 'software',
         'preConfName': 'pre_scan'
     }
     kepco = {
@@ -85,6 +88,7 @@ class Agilent3458aPreConfigs(Enum):
         'highInputResistanceTrue': True,
         'assignment': 'offset',
         'accuracy': (None, None),
+        'measurementCompleteDestination': 'Con1_DIO30',
         'preConfName': 'kepco'
     }
 
@@ -92,7 +96,8 @@ class Agilent3458aPreConfigs(Enum):
 class Agilent3458A:
     def __init__(self, reset=True, address_str='YourPC'):
         self.type = 'Agilent_3458A'
-        self.address = address_str
+        self.address = address_str.replace('.', ':')  # colons not allowed in name but needed for gpib
+        # self.address = 'GPIB0::' + address_str + '::INSTR'
         self.name = self.type + '_' + address_str
         self.state = 'error'
         # self.last_readback = None
@@ -111,7 +116,7 @@ class Agilent3458A:
         self.pre_configs = Agilent3458aPreConfigs
         self.selected_pre_config_name = self.pre_configs.initial.name
         self.config_dict = self.pre_configs.initial.value
-        self.init(address_str, reset)
+        self.init(self.address, reset)
         self.get_accuracy()
         print(self.name, ' initialized')
 
@@ -295,9 +300,9 @@ class Agilent3458A:
     #     # ALWAYS FALLING EDGE! CANNOT BE CHANGED!
     #     pass
 
-    # def config_meas_complete_dest(self, meas_compl_des):
-    #     # ALWAYS EXTERNAL CONNECTOR
-    #     pass
+    def config_meas_complete_dest(self, meas_compl_des):
+        if meas_compl_des in ['Con1_DIO30', 'Con1_DIO31', 'software']:
+            self.config_dict['measurementCompleteDestination'] = meas_compl_des
 
     def config_meas_compl_slope(self, positive=True, postpone_send=False):
         """
@@ -425,6 +430,9 @@ class Agilent3458A:
         try:
             self.hold_trigger()
 
+            meas_compl_dest = config_dict['measurementCompleteDestination']
+            self.config_meas_complete_dest(meas_compl_dest)
+
             dmm_range = config_dict['range']  # str, ['AUTO', '0.1', '1', '10', '100', '1000']
             dmm_res = config_dict['resolution']  # str, [0.1, 0.01, 0.001, 0.0001, 0.00001]
             self.config_measurement(dmm_range, dmm_res, postpone_send=True)
@@ -473,7 +481,10 @@ class Agilent3458A:
                                         , self.config_dict['highInputResistanceTrue']),
             'accuracy': ('accuracy (reading, range)', False, tuple, [], self.config_dict['accuracy']),
             'assignment': ('assignment', True, str, ['offset', 'accVolt'], self.config_dict['assignment']),
-            'preConfName': ('pre config name', False, str, [], self.config_dict['preConfName'])
+            'preConfName': ('pre config name', False, str, [], self.config_dict['preConfName']),
+            'measurementCompleteDestination': ('measurement compl. dest.', True, str,
+                                               ['Con1_DIO30', 'Con1_DIO31', 'software'],
+                                               self.config_dict['measurementCompleteDestination']),
         }
         return config_dict
 
@@ -535,7 +546,7 @@ class Agilent3458A:
 
 if __name__ == '__main__':
     try:
-        dev = Agilent3458A(True, 'GPIB0::22::INSTR')
+        dev = Agilent3458A(True, 'GPIB0..22..INSTR')
         # print(dev.gpib.query('ERR?'))
         # print('write ok')
         # print(dev.gpib.query('FUNC DCV 10, 0.0001'))

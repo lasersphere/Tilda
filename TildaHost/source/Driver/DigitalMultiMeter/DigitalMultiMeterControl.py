@@ -69,7 +69,7 @@ class DMMControl:
         elif type_str == 'Agilent_M918x':
             try:
                 dev = AgilentM918x(address_str=address)
-                name = dev.name # 'type_addr'
+                name = dev.name  # 'type_addr'
             except Exception as e:
                 print('starting dmm did not work exception is:', e)
         elif type_str == 'Agilent_3458A':

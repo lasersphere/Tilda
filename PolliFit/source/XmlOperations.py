@@ -13,8 +13,11 @@ from lxml import etree as ET
 def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
     """
     finds or creates a Subelement with the tag tagString and text=value to the parent Element.
+    Try not to use colons in the tagstring!
     :return: returns the SubElement
     """
+    if ':' in tagString:  # this will otherwise cause problems with namespace in xml!
+        tagString = tagString.replace(':', '.')
     subEle = parentEle.find(tagString)
     if subEle == None:
         ET.SubElement(parentEle, tagString)
