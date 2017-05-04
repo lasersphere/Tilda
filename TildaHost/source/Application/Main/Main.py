@@ -127,8 +127,8 @@ class Main(QtCore.QObject):
             self._start_scan(self.m_state[1])
         elif self.m_state[0] is MainState.setting_switch_box:
             self._setting_switch_box(*self.m_state[1])
-        elif self.m_state[0] is MainState.measure_offset_voltage:
-            self._measure_offset_voltage(self.m_state[1])
+        elif self.m_state[0] is MainState.measure_pre_scan:
+            self._measure_pre_and_post_scan(self.m_state[1])
         elif self.m_state[0] is MainState.load_track:
             self._load_track()
             self.get_fpga_and_seq_state()
@@ -437,7 +437,7 @@ class Main(QtCore.QObject):
         """
         this will be called in 'setting_switch_box' state.
         It will exit as soon as the switchbox is set to the right value.
-        The next state is 'measure_offset_voltage'
+        The next state is 'measure_pre_scan'
         :param first_call: bool, True for first call, this will command the fpga to change the state of the setbox.
         """
         if desired_state is None:
@@ -469,11 +469,11 @@ class Main(QtCore.QObject):
                 # will go to idle state afterwards.
                 self.set_state(MainState.idle)
             else:  # begin with the next track
-                self.set_state(MainState.measure_offset_voltage, True)
+                self.set_state(MainState.measure_pre_scan, True)
 
-    def _measure_offset_voltage(self, first_call=False):
+    def _measure_pre_and_post_scan(self, first_call=False):
         """
-        this function is called within the state 'measure_offset_voltage'.
+        this function is called within the state 'measure_pre_scan'.
             on first call:
              it will set the fpga to measure offset state and fire a software trigger to the dmms
             on other calls:
@@ -505,7 +505,7 @@ class Main(QtCore.QObject):
                         pre_scan_dict['preScanRead'] = None
                         print('set preScanRead of %s to None' % dmm_name)
                 self.scan_main.measure_offset_pre_scan(self.scan_pars[iso_name])
-                self.set_state(MainState.measure_offset_voltage, False)
+                self.set_state(MainState.measure_pre_scan, False)
             else:  # this will periodically read the dmms until all dmms returned a measurement
                 if self.abort_scan:
                     print('aborted pre scan measurement, aborting scan, return to idle')

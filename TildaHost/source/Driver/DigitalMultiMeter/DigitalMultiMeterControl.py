@@ -139,7 +139,7 @@ class DMMControl:
         :param dmm_name: str, name of the dmm
         :return: dict, key: (name_str, type, valid_vals)
         """
-        print('dmm to emit:', dmm_name, self.dmm)
+        # print('dmm to emit:', dmm_name, self.dmm)
         return self.dmm[dmm_name].emit_config_pars()
         # use dicts to specify for the individual dmm
 
