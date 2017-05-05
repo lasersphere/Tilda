@@ -337,7 +337,9 @@ class Agilent3458A:
             various events for most measurement functions. Refer to Chapter 5 for
             information on sub-sampling.
         """
-        self.send_command('TRIG SGL')
+        self.send_command('TARM AUTO;TRIG AUTO;NRDGS 1')
+
+        self.send_command('TRIG SGL')  # does not work
 
     ''' Measurement '''
 
@@ -358,6 +360,7 @@ class Agilent3458A:
         :parameter num_to_read: int, unused, because all values are read
         :return: -1 for failure, numpy array
         """
+        ret = ''
         available = self.send_command('MCOUNT?', as_query=True, default_return='6')
         try:
             available = int(available)
@@ -365,15 +368,19 @@ class Agilent3458A:
             print('error, reading from %s failed to convert: %s, error is: %s' % (self.name, available, fail))
             return np.array([])
         if available > 0:
-            num_to_read = available
-            self.send_command('TBUFF ON;TRIG HOLD', postpone_send=True)
-            # self.gpib.write('TRIG HOLD')
             # typical response:
             typ_ret = '-1.500911593E+00,-1.500911355E+00,-1.500910163E+00, ' \
                       '-1.500910640E+00,-1.500911236E+00,-1.500909567E+00'
-            ret = self.send_command('RMEM 1,%d' % num_to_read, as_query=True, default_return=typ_ret)
-            trig_src = self.trig_src_enum[self.config_dict['triggerSource']].value[0]
-            self.send_command('MEM FIFO;TRIG %s' % trig_src)
+            num_to_read = available
+            # nice way but might loose trigger
+            # self.send_command('TBUFF ON;TRIG HOLD', postpone_send=True)
+            # self.gpib.write('TRIG HOLD')
+            # ret = self.send_command('RMEM 1,%d' % num_to_read, as_query=True, default_return=typ_ret)
+            # trig_src = self.trig_src_enum[self.config_dict['triggerSource']].value[0]
+            # self.send_command('MEM FIFO;TRIG %s' % trig_src)
+            # in order not to loose triggers, read directly by polling from bus
+            for i in range(0, num_to_read):
+                ret += self.send_command('', as_query=True, default_return=typ_ret) + ','
             try:
                 ret = np.fromstring(ret, sep=',')
                 t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -547,33 +554,78 @@ class Agilent3458A:
 if __name__ == '__main__':
     try:
         dev = Agilent3458A(True, 'GPIB0..22..INSTR')
-        # print(dev.gpib.query('ERR?'))
-        # print('write ok')
-        # print(dev.gpib.query('FUNC DCV 10, 0.0001'))
-        # TODO test this
-        dev.gpib.write('DCV 10, 0.0001')
-        dev.gpib.write('TRIG EXT')
-        dev.gpib.write('MEM FIFO')
-        input('first triggers ok?')
-        dev.gpib.write('TBUFF ON;TRIG HOLD')
-        num_to_read = int(dev.gpib.query('MCOUNT?'))
-        ret = dev.gpib.query('RMEM 1,%d' % num_to_read)
-        input('now trigger again!')
-        dev.gpib.write('MEM FIFO;TRIG EXT')
 
-        while True:
-            time.sleep(5)
-            reading_time = datetime.datetime.now()
-            try:
-                ret = dev.fetch_multiple_meas(-1)
-                if ret != -1:
-                    print(reading_time, ' : ', ret)
-            except Exception as e:
-                print(e)
+        dev.set_to_pre_conf_setting('pre_scan')
+
+        while input('send software trigger') != 'q':
+            dev.send_software_trigger()
+            # pass
+
+        print('measured', dev.fetch_multiple_meas(-1))
+
+        # # print(dev.gpib.query('ERR?'))
+        # # print('write ok')
+        # # print(dev.gpib.query('FUNC DCV 10, 0.0001'))
+        # # TODO test this
+        # dev.gpib.write('DCV 10, 0.0001')
+        #
+        # #niceway, but losses trigger:
+        # dev.gpib.write('TRIG EXT')
+        # dev.gpib.write('MEM FIFO')
+        # input('first triggers ok?')
+        # # dev.gpib.write('TBUFF ON;TRIG HOLD')
+        # # dev.gpib.write('TBUFF ON')
+        # # num_to_read = int(dev.gpib.query('MCOUNT?'))
+        # # print('num_to_read: ', num_to_read)
+        # # ret = dev.gpib.query('RMEM 1,%d' % num_to_read)
+        # # print('ret: ', ret)
+        # # input('now trigger again!')
+        # # dev.gpib.write('MEM FIFO;TRIG EXT')
+        # # time.sleep(5)  # sleep for catching up with the triggers
+        # # num_to_read = int(dev.gpib.query('MCOUNT?'))
+        # # if num_to_read:
+        # #     print('num_to_read: ', num_to_read)
+        # #     ret = dev.gpib.query('RMEM 1,%d' % num_to_read)
+        # #     print('ret: ', ret)
+        # # else:
+        # #     print('nothing to read, not triggered again.')
+        # start = datetime.datetime.now()
+        # ret = dev.fetch_multiple_meas(-1)
+        # print('ret: ', ret)
+        # stopp = datetime.datetime.now()
+        # read_time = stopp - start
+        # print('read_time: ', read_time)   # 157 ms for 50 vals
+        #
+        #
+        # # # ugly alternative:
+        # # ret = ''
+        # # dev.gpib.write('TRIG EXT')
+        # # dev.gpib.write('MEM FIFO')
+        # # input('first triggers ok?')
+        # # num_to_read = int(dev.gpib.query('MCOUNT?'))
+        # # print('num_to_read: ', num_to_read)
+        # # for i in range(0, num_to_read):
+        # #     ret += dev.send_command('', as_query=True) + ','
+        # # print('ret: ', ret)
+        # # input('now trigger again!')
+        # # # dev.gpib.write('MEM FIFO;TRIG EXT')
+        # # time.sleep(5)  # sleep for catching up with the triggers
+        # # num_to_read = int(dev.gpib.query('MCOUNT?'))
+        # # print('num_to_read: ', num_to_read)
+        # # ret = ''
+        # # start = datetime.datetime.now()
+        # # for i in range(0, num_to_read):
+        # #     ret += dev.send_command('', as_query=True) + ','
+        # # print('ret: ', ret)
+        # # stopp = datetime.datetime.now()
+        # # read_time = stopp - start
+        # # print('read_time: ', read_time)   # 150 ms for 50 vals
+
+
     except Exception as e:
         print(e)
 
 
-        # TODO test software triggering!
-        # TODO test periodic reading
-        # TODO test Kepco Scan
+        # TODO test software triggering! -> NO
+        # TODO test periodic reading  -> NO
+        # TODO test Kepco Scan  -> No
