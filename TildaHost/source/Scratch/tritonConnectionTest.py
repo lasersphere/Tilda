@@ -9,16 +9,15 @@ import Pyro4
 import mysql.connector as Sql
 
 sqlCfg = {
-    'user': 'userName',
-    'password': '123456',
-    'host': 'hostAdress',
-    'database': 'DataBaseName',
+    'user': 'root',
+    'password': 'Alive2015!',
+    'host': '192.168.30.39',
+    'database': 'tl_db',
 }
 
+hmacKey = b'6\x19\n\xad\x909\xda\xea\xb5\xc5]\xbc\xa1m\x863'
 
-hmacKey = b'6\x19\n\fko\x909\loa\poa\xb5\xc5]\xbc\xa1m\x863'
-
-name_of_dev_to_subscribe = 'something'
+name_of_dev_to_subscribe = 'Picoamperemeter'
 
 #Set Pyro variables
 Pyro4.config.SERIALIZER = "serpent"
@@ -27,7 +26,7 @@ Pyro4.config.HOST = socket.gethostbyname(socket.gethostname())
 #Pyro4.config.SERVERTYPE = 'multiplex'
 Pyro4.config.SERVERTYPE = 'thread'
 sys.excepthook = Pyro4.util.excepthook
-#Pyro4.config.DETAILED_TRACEBACK = True
+Pyro4.config.DETAILED_TRACEBACK = True
 
 try:
     db = Sql.connect(**sqlCfg)
@@ -40,7 +39,7 @@ dbCur.execute('''SELECT deviceName FROM devices WHERE uri IS NOT NULL''')
 devs = []
 res = dbCur.fetchall()
 for r in res:
-    devs.append(r)
+    devs.append(r[0])
 
 print('active devices are: ', devs)
 
@@ -48,12 +47,13 @@ print('active devices are: ', devs)
 def get_channels_of_dev(dev):
     dbCur.execute(
         '''SELECT devicetypes.channels FROM devices JOIN devicetypes ON
-            devicetypes.deviceType = devices.deviceType WHERE devices.deviceName = ?''',
+            devicetypes.deviceType = devices.deviceType WHERE devices.deviceName = %s''',
         (str(dev),))
     res = ast.literal_eval(dbCur.fetchone()[0])
     return res
 
 for dev in devs:
+    print(dev)
     channels = get_channels_of_dev(dev)
     print('dev %s has channels: ', channels)
 
@@ -160,9 +160,11 @@ class TritonObject(object):
 
     def resolveName(self, name):
         """Resolve a device name to a Proxy using the uri from the database. Return None if not started"""
+        print('resolving name: ', name)
         self.db.commit()
-        self.dbCur.execute('''SELECT uri FROM devices WHERE deviceName=?''', (name,))
+        self.dbCur.execute('''SELECT uri FROM devices WHERE deviceName=%s''', (name,))
         result = self.dbCur.fetchall()
+        print('result: ', result[0][0])
         dev = Pyro4.Proxy(result[0][0])
         return dev
 

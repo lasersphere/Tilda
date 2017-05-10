@@ -334,9 +334,9 @@ class Agilent3458A:
             various events for most measurement functions. Refer to Chapter 5 for
             information on sub-sampling.
         """
-        self.send_command('TARM AUTO;TRIG AUTO;NRDGS 1')
-
-        self.send_command('TRIG SGL')  # does not work
+        reads = self.config_dict['sampleCount']
+        self.send_command('INBUF ON;TARM AUTO;NRDGS %d,AUTO;TRIG SGL' % reads)
+        # input Buffer needs to be turned on! Because Trig sgl otherwise holds the bus
 
     ''' Measurement '''
 
@@ -450,7 +450,10 @@ class Agilent3458A:
             sample_interval_s = config_dict['sampleInterval']  # float
             self.config_multi_point_meas(trig_count, trig_del_s, trig_src_enum, sample_count, sample_interval_s,
                                          postpone_send=True)
-
+            if reset_dev:
+                self.send_command('MEM FIFO', postpone_send=True)
+            else:
+                self.send_command('MEM CONT', postpone_send=True)
             self.config_meas_compl_slope(positive=True)  # always positive TTL
 
             self.get_accuracy()
@@ -555,6 +558,7 @@ if __name__ == '__main__':
         dev.set_to_pre_conf_setting('pre_scan')
 
         while input('send software trigger') != 'q':
+            print('sending software trigger')
             dev.send_software_trigger()
             # pass
 
