@@ -10,15 +10,12 @@ Module for the Agilent/Keysight 3458A 8.5 digit Multimeter
 
 """
 import datetime
-import time
 import logging
-from copy import deepcopy
+import time
 from enum import Enum
 
 import numpy as np
 import visa
-
-import TildaTools as TiTs
 
 
 class Agilent3458aTriggerSources(Enum):
@@ -68,7 +65,7 @@ class Agilent3458aPreConfigs(Enum):
         'resolution': '0.0001',
         'triggerCount': 1,
         'sampleCount': 20,
-        'triggerSource': Agilent3458aTriggerSources.single.name,
+        'triggerSource': Agilent3458aTriggerSources.hold.name,
         'sampleInterval': -1,
         'triggerDelay_s': 0,
         'highInputResistanceTrue': True,
