@@ -661,8 +661,8 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
         }
     draftMeasureVoltPars_singl = {'measVoltPulseLength25ns': -1, 'measVoltTimeout10ns': -1,
                                   'dmms': {}, 'switchBoxSettleTimeS': -1}
-    pre_scan_dmms = {'unknown_dmm': {'assignment': 'offset', 'preScanRead': deepcopy(specdata.offset)},
-                     'unknown_dmm_1': {'assignment': 'accVolt', 'preScanRead': deepcopy(specdata.accVolt)},
+    pre_scan_dmms = {'unknown_dmm': {'assignment': 'offset', 'preScanRead': [deepcopy(specdata.offset)]},
+                     'unknown_dmm_1': {'assignment': 'accVolt', 'preScanRead': [deepcopy(specdata.accVolt)]},
                      }
     draftMeasureVoltPars = {'preScan': deepcopy(draftMeasureVoltPars_singl),
                             'duringScan': deepcopy(draftMeasureVoltPars_singl)}

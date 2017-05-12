@@ -55,7 +55,7 @@ class DMMdummyPreConfigs(Enum):
         'range': 10.0,
         'resolution': 6.5,
         'triggerCount': 0,
-        'sampleCount': 0,
+        'sampleCount': 10,
         'autoZero': -1,
         'triggerSource': 'softw_trigger',
         'sampleInterval': -1,

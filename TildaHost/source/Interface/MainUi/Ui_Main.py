@@ -135,6 +135,8 @@ class Ui_TildaMainWindow(object):
         self.actionShow_scan_finished_win.setCheckable(True)
         self.actionShow_scan_finished_win.setChecked(True)
         self.actionShow_scan_finished_win.setObjectName("actionShow_scan_finished_win")
+        self.actionPre_scan_timeout = QtWidgets.QAction(TildaMainWindow)
+        self.actionPre_scan_timeout.setObjectName("actionPre_scan_timeout")
         self.menuTilda_MainWindow.addAction(self.actionWorking_directory)
         self.menuTilda_MainWindow.addAction(self.actionLoad_spectra)
         self.menuView.addAction(self.actionScan_Control)
@@ -146,6 +148,7 @@ class Ui_TildaMainWindow(object):
         self.menuView.addAction(self.actionDigital_Multimeters)
         self.menuHelp.addAction(self.actionVersion)
         self.menuConfigure.addAction(self.actionShow_scan_finished_win)
+        self.menuConfigure.addAction(self.actionPre_scan_timeout)
         self.menuAnalysis.addAction(self.actionPolliFit)
         self.menubar.addAction(self.menuTilda_MainWindow.menuAction())
         self.menubar.addAction(self.menuView.menuAction())
@@ -214,4 +217,5 @@ class Ui_TildaMainWindow(object):
         self.actionPulse_pattern_generator.setText(_translate("TildaMainWindow", "pulse pattern generator"))
         self.actionPulse_pattern_generator.setShortcut(_translate("TildaMainWindow", "Ctrl+G"))
         self.actionShow_scan_finished_win.setText(_translate("TildaMainWindow", "show scan finished win"))
+        self.actionPre_scan_timeout.setText(_translate("TildaMainWindow", "pre scan timeout"))
 

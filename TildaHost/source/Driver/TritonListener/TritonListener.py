@@ -163,6 +163,8 @@ class TritonListener(TritonObject):
     def start_log(self):
         """ start logging of the desired channels and devs.
          Be sure to setup the log before hand with self.setup_log """
+        if self.log == {}:
+            self.logging_complete = True
         for dev, dev_dict in self.log.items():
             if dev != 'timeoutS':
                 for ch, ch_dict in dev_dict.items():
@@ -199,8 +201,9 @@ class TritonListener(TritonObject):
 if __name__=='__main__':
     trit_lis = TritonListener()
     # trit_lis.create_dummy_dev()
-    trit_lis.setup_log({'dummyDev': {'calls': {'required': 2, 'data': []}, 'random': {'required': 5, 'data': []}},
-                        'timeoutS': 20})
+    # trit_lis.setup_log({'dummyDev': {'calls': {'required': 2, 'data': []}, 'random': {'required': 5, 'data': []}},
+    #                     'timeoutS': 20})
+    trit_lis.setup_log({})
     trit_lis.start_log()
     input('anything to stop')
     trit_lis.start_log()

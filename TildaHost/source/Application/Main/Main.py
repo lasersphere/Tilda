@@ -80,6 +80,9 @@ class Main(QtCore.QObject):
         self.sequencer_status = None
         self.fpga_status = None
 
+        self.pre_scan_measurement_start_time = datetime.now()
+        self.pre_scan_measurement_timeout_s = timedelta(seconds=60)
+
         self.dmm_gui_callback = None
         self.last_dmm_reading_datetime = datetime.now()  # storage for the last reading time of the dmms
         self.dmm_periodic_reading_interval = timedelta(seconds=5)
@@ -294,6 +297,7 @@ class Main(QtCore.QObject):
         if workdir:
             if os.path.isdir(workdir):
                 self.work_dir_changed(workdir)
+
         dmms_dict = self.autostart_dict.get('autostartDevices', {}).get('dmms', False)
         if dmms_dict:
             try:
@@ -307,6 +311,9 @@ class Main(QtCore.QObject):
             except Exception as e:
                 print('error %s in autostart() of Main.py while trying to convert the following string: %s' %
                       (e, dmms_dict))
+        pre_scan_timeout = self.autostart_dict.get('preScanTimeoutS', None)
+        if pre_scan_timeout is not None:
+            self.pre_scan_timeout_changed(float(pre_scan_timeout))
         power_sup_dict = self.autostart_dict.get('autostartDevices', {}).get('powersupplies', False)
         if power_sup_dict:
             print('automatic start of power supplies not included yet.')
@@ -318,6 +325,13 @@ class Main(QtCore.QObject):
             self.acc_volt_changed(float(acc_volt))
         # self.init_dmm('Ni4071', 'PXI1Slot5')
         # self.init_dmm('dummy', 'somewhere')
+
+    def pre_scan_timeout_changed(self, timeout_s):
+        """ changes the pre scan timeout which is used to cap
+         the pre scan measurement if nto enough values come in etc. """
+        self.pre_scan_measurement_timeout_s = timedelta(seconds=timeout_s)
+        self.autostart_dict['preScanTimeoutS'] = timeout_s
+        FileHandl.write_to_auto_start_xml_file(self.autostart_dict)
 
     """ operations on self.scan_pars dictionary """
 
@@ -484,63 +498,40 @@ class Main(QtCore.QObject):
         :param first_call: bool, True if this is the first call
         """
         iso_name = self.scan_progress['activeIso']
-        dmms_dict_pre_scan = self.scan_pars[iso_name]['measureVoltPars'].get('preScan', {}).get('dmms', None)
-        dmms_dict_is_none = dmms_dict_pre_scan is None or dmms_dict_pre_scan == {}
-        is_this_not_first_track = len(self.scan_progress['completedTracks']) != 0
-        if dmms_dict_is_none or is_this_not_first_track:
+
+        this_is_not_first_track = len(self.scan_progress['completedTracks']) != 0
+        if this_is_not_first_track:
             # do not perform an offset measurement if no dmm is present. Proceed to load track
             # only perform offset measurement in first track!
-            print('skipping offset measurement, not first track: %s, dmm_dict_is_none: %s'
-                  % (is_this_not_first_track, dmms_dict_is_none))
+            print('skipping offset measurement, not first track: %s' % this_is_not_first_track)
             print('completed tracks: ', self.scan_progress['completedTracks'])
             self.set_state(MainState.load_track)
         else:
             if first_call:
                 # on first call set the fpga to measure offset state and
-                # software trigger the dmms
-                if 'continuedAcquisitonOnFile' not in self.scan_pars[iso_name]['isotopeData']:  # -> ergo
-                    # also delete any prescan reading there might be. for an ergo, keep them for a go
-                    for dmm_name, pre_scan_dict in dmms_dict_pre_scan.items():
-                        print('prescandict is: ', pre_scan_dict)
-                        pre_scan_dict['preScanRead'] = None
-                        print('set preScanRead of %s to None' % dmm_name)
-                self.scan_main.measure_offset_pre_scan(self.scan_pars[iso_name])
-                self.set_state(MainState.measure_pre_scan, False)
+                # software trigger the dmms, also setup the triton listener
+                self.scan_main.start_pre_scan_measurement(self.scan_pars[iso_name])
+                self.pre_scan_measurement_start_time = datetime.now()
+                self.set_state(MainState.measure_pre_scan, False)   #set first call to false!
             else:  # this will periodically read the dmms until all dmms returned a measurement
                 if self.abort_scan:
                     print('aborted pre scan measurement, aborting scan, return to idle')
+                    self.scan_main.stop_measurement(True, False)
                     self.abort_scan = False
                     self.set_state(MainState.idle)
-                else:
-                    read = self.read_dmms(False)
-                    print('reading of dmms prescan: ', read)
-                    if read is not None:
-                        dmms_dict_pre_scan = self.scan_pars[iso_name]['measureVoltPars'].get('preScan', {}).get('dmms', None)
-                        reads = []
-                        for dmm_name, volt_read in read.items():
-                            if volt_read is not None:
-                                if 'continuedAcquisitonOnFile' in self.scan_pars[iso_name]['isotopeData']:
-                                    # its a go on an existing file -> keep the acquired reading and append.
-                                    if isinstance(dmms_dict_pre_scan[dmm_name]['preScanRead'], list):
-                                        dmms_dict_pre_scan[dmm_name]['preScanRead'].append(volt_read[0])
-                                    else:
-                                        dmms_dict_pre_scan[dmm_name]['preScanRead'] = [
-                                            dmms_dict_pre_scan[dmm_name]['preScanRead'], volt_read[0]]
-                                else:  # its an ergo -> just keep the one value!
-                                    dmms_dict_pre_scan[dmm_name]['preScanRead'] = volt_read[0]
-                            reads.append(dmms_dict_pre_scan[dmm_name].get('preScanRead', None))
-                            print('readings of dmms pre scan are:', reads,
-                                  ' prescan read: ', dmm_name)
-                        if reads.count(None) == 0:  # done with reading when all dmms have a value
-                            logging.debug('all dmms returned a measurement, reading is: ' + str(read))
-                            self.scan_main.abort_dmm_measurement('all')
-                            dmms_dict_during_scan = self.scan_pars[iso_name]['measureVoltPars'].get('duringScan',
-                                                                                                    {}).get('dmms', None)
-                            dmm_complete_location = self.scan_pars[iso_name]['measureVoltPars']['duringScan'][
-                                'measurementCompleteDestination']
-                            # when done with the pre scan measurement, setup dmms to the during scan dict.
-                            # set the dmms according to the dictionary inside the dmms_dict for during the scan
-                            self.scan_main.prepare_dmms_for_scan(dmms_dict_during_scan, dmm_complete_location)
+                else:  # read dmms until all values are there.
+                    time_since_start = datetime.now() - self.pre_scan_measurement_start_time
+                    if self.pre_scan_measurement_timeout_s < time_since_start:
+                        print('--------- WARNING ----------')
+                        print('pre scan measurement timedout after %s s. but timeout'
+                              ' is set to %s s. Anyhow continuing with scan now.' % (
+                            time_since_start.seconds, self.pre_scan_measurement_timeout_s.seconds))
+                        print('--------- WARNING ----------')
+                        self.send_info('pre_scan_timeout')
+                        self.set_state(MainState.load_track)
+                    else:
+                        if self.scan_main.prescan_measurement(
+                                scan_dict=self.scan_pars[iso_name], dmm_reading=self.read_dmms(False)):
                             self.set_state(MainState.load_track)
 
     def add_global_infos_to_scan_pars(self, iso_name):

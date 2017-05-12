@@ -1520,7 +1520,10 @@ class NStraightKepcoFitOnClear(Node):
                 for key, val in dmm_dict.items():
                     if key == 'preScanRead':
                         if isinstance(val, str):
-                            val = float(val)
+                            try:
+                                val = float(val)
+                            except Exception as e:
+                                print('error, could not convert %s to float' % val)
                         if dmm_dict.get('assignment') == 'offset':
                             offset.append(val)
             if np.any(offset):

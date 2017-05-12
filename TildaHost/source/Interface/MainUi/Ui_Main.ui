@@ -209,6 +209,7 @@
      <string>Configure</string>
     </property>
     <addaction name="actionShow_scan_finished_win"/>
+    <addaction name="actionPre_scan_timeout"/>
    </widget>
    <widget class="QMenu" name="menuAnalysis">
     <property name="title">
@@ -364,6 +365,11 @@
    </property>
    <property name="text">
     <string>show scan finished win</string>
+   </property>
+  </action>
+  <action name="actionPre_scan_timeout">
+   <property name="text">
+    <string>pre scan timeout</string>
    </property>
   </action>
  </widget>

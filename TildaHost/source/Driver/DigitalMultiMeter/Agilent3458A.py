@@ -200,7 +200,7 @@ class Agilent3458A:
                     self.gpib.write(cmd_str)
                     return default_return
             else:
-                logging.debug('%s sending command: ' % self.name + cmd_str)
+                # logging.debug('%s sending command: ' % self.name + cmd_str)
                 return default_return
 
 

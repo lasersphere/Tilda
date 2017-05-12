@@ -103,15 +103,87 @@ class ScanMain(QObject):
             scan_complete_callback, dac_new_volt_set_callback
         )
 
-    def measure_offset_pre_scan(self, scan_dict):
+    def start_pre_scan_measurement(self, scan_dict):
         """
-        Measure the Offset Voltage using one or more digital Multimeters.
+        Start the prescan Measurement of the Offset Voltage etc.
+        using one or more digital Multimeters and Triton devices.
+            -> 0 V are applied from the DAC and the corrsponding post acceleration device (Fluke Heinzinger)
+            is connected to the beamline
         :param scan_dict: dictionary, containing all scanparameters
         :return: bool, True if success
         """
-        track, track_num_lis = TildaTools.get_number_of_tracks_in_scan_dict(scan_dict)
-        self.fpga_start_offset_measurement(scan_dict, track_num_lis[0])  # will be the first track in list.
-        self.digital_multi_meter.software_trigger_dmm('all')  # send a software trigger to all dmms
+        dmms_dict_pre_scan = scan_dict['measureVoltPars'].get('preScan', {}).get('dmms', None)
+        dmms_dict_is_none = dmms_dict_pre_scan is None or dmms_dict_pre_scan == {}
+        if dmms_dict_is_none:
+            return False
+        else:
+            if 'continuedAcquisitonOnFile' not in scan_dict['isotopeData']:  # -> ergo
+                # also delete any prescan reading there might be. for an ergo, keep them for a go
+                for dmm_name, pre_scan_dict in dmms_dict_pre_scan.items():
+                    print('prescandict is: ', pre_scan_dict)
+                    pre_scan_dict['preScanRead'] = []
+                    print('set preScanRead of %s to []' % dmm_name)
+            track, track_num_lis = TildaTools.get_number_of_tracks_in_scan_dict(scan_dict)
+            self.fpga_start_offset_measurement(scan_dict, track_num_lis[0])  # will be the first track in list.
+            self.digital_multi_meter.software_trigger_dmm('all')  # send a software trigger to all dmms
+            self.start_triton_log()
+            return True
+
+    def prescan_measurement(self, scan_dict, dmm_reading):
+        """
+        here all pre scan measurements are performed.
+        :param scan_dict: dict, the usual scan dict
+        :param dmm_reading: None or dict, dict will always contain at least one reading of one dmm
+        :return: bool, True if finished.
+        """
+        done = self.pre_scan_voltage_measurement(scan_dict, dmm_reading)
+        done = done and self.check_triton_log_complete()
+        if done:
+            return True
+        else:
+            return False
+
+    def pre_scan_voltage_measurement(self, scan_dict, dmm_reading):
+        """
+        prescan voltage measurement, return True if all dmms have a value.
+        :param scan_dict:
+        :param dmm_reading:
+        :return: bool, True when finished
+        """
+        print('reading of dmms prescan: ', dmm_reading)
+        if dmm_reading is not None:
+            dmms_dict_pre_scan = scan_dict['measureVoltPars'].get('preScan', {}).get('dmms', None)
+            for dmm_name, volt_read in dmm_reading.items():
+                if volt_read is not None:
+                    samples = dmms_dict_pre_scan[dmm_name]['sampleCount']
+                    acquired_samples = dmms_dict_pre_scan[dmm_name]['acquiredPreScan']
+                    still_to_acquire = max(0, samples - acquired_samples)
+                    if len(volt_read) > still_to_acquire:  # to much data, need to shrink this
+                        volt_read = volt_read[0:still_to_acquire]
+                    dmms_dict_pre_scan[dmm_name]['preScanRead'] += list(volt_read)
+                    dmms_dict_pre_scan[dmm_name]['acquiredPreScan'] += len(volt_read)
+            dmms_complete_check_sum = 0
+            for dmm_name, dmm_dict in dmms_dict_pre_scan.items():
+                samples = dmms_dict_pre_scan[dmm_name]['sampleCount']
+                acquired_samples = dmms_dict_pre_scan[dmm_name]['acquiredPreScan']
+                still_to_acquire = max(0, samples - acquired_samples)
+                dmms_complete_check_sum += still_to_acquire
+            if dmms_complete_check_sum == 0:  # done with reading when all dmms have a value
+                print('all dmms have a reading')
+                for dmm_name, dmm_dict in dmms_dict_pre_scan.items():
+                    dmms_dict_pre_scan[dmm_name]['acquiredPreScan'] = len(dmms_dict_pre_scan[dmm_name]['preScanRead'])
+                    print(dmm_name, dmms_dict_pre_scan[dmm_name]['acquiredPreScan'],
+                          dmms_dict_pre_scan[dmm_name]['preScanRead'])
+                self.abort_dmm_measurement('all')
+                dmms_dict_during_scan = scan_dict['measureVoltPars'].get('duringScan', {}).get('dmms', None)
+                dmm_complete_location = scan_dict['measureVoltPars']['duringScan'][
+                    'measurementCompleteDestination']
+                # when done with the pre scan measurement, setup dmms to the during scan dict.
+                # set the dmms according to the dictionary inside the dmms_dict for during the scan
+                self.prepare_dmms_for_scan(dmms_dict_during_scan, dmm_complete_location)
+                return True
+            else:
+                return False
 
     ''' post acceleration related functions: '''
 
@@ -309,6 +381,7 @@ class ScanMain(QObject):
         """
         read = self.read_data()  # read data one last time
         self.ppg_stop()
+        self.stop_triton_listener()
         if read:
             logging.info('while stopping measurement, some data was still read.')
         if complete_stop:  # only touch dmms in the end of the whole scan
@@ -486,6 +559,7 @@ class ScanMain(QObject):
         active_dmms = self.get_active_dmms()
         logging.debug('active dmms: %s' % active_dmms)
         for dmm_name, dmm_conf_dict in dmms_conf_dict.items():
+            dmms_conf_dict[dmm_name]['acquiredPreScan'] = 0  # reset the acquired samples
             if dmm_name not in active_dmms:
                 logging.warning('%s was not initialized yet, will do now.' % dmm_name)
                 self.prepare_dmm(dmm_conf_dict.get('type', ''), dmm_conf_dict.get('address', ''))
@@ -681,18 +755,28 @@ class ScanMain(QObject):
 
     def stop_triton_listener(self):
         """
-        remove the triton istener and unsubscribe from devices
+        remove the triton listener and unsubscribe from devices.
         """
-        if self.triton_listener is None:
+        if self.triton_listener is not None:
             self.triton_listener.off()
+            self.triton_listener = None
+
+    def abort_triton_log(self):
+        """ this just stops the log and leaves the listener alive """
+        if self.triton_listener is not None:
+            self.triton_listener.stop_log()
 
     def start_triton_log(self):
         """ must have ben setup first """
-        self.triton_listener.start_log()
+        if self.triton_listener is not None:
+            self.triton_listener.start_log()
 
     def check_triton_log_complete(self):
         """ check if the triton logger completed """
-        return self.triton_listener.logging_complete
+        if self.triton_listener is not None:
+            return self.triton_listener.logging_complete
+        else:
+            return True
 
     def get_available_triton(self):
         """
@@ -700,7 +784,10 @@ class ScanMain(QObject):
         If no db available, use the self created dummy device.
         :return: dict, {dev: ['ch1', 'ch2' ...]}
         """
-        return self.triton_listener.get_devs_from_db()
+        if self.triton_listener is not None:
+            return self.triton_listener.get_devs_from_db()
+        else:
+            return {}
 
 # if __name__ == "__main__":
 #     scn_main = ScanMain()

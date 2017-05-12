@@ -69,6 +69,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionPolliFit.triggered.connect(self.open_pollifit_win)
         self.actionPulse_pattern_generator.triggered.connect(self.open_pulse_pattern_win)
         self.actionShow_scan_finished_win.triggered.connect(self.show_scan_finished_change)
+        self.actionPre_scan_timeout.triggered.connect(self.set_pre_scan_timeout)
 
         """ connect double clicks on labels:"""
         self.label_workdir_set.mouseDoubleClickEvent = self.workdir_dbl_click
@@ -116,6 +117,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         elif info_str == 'starting_scan':
             if self.scan_complete_win is not None:
                 self.scan_complete_win.close()
+        elif info_str == 'pre_scan_timeout':
+            info = QtWidgets.QMessageBox.information(
+                self, 'test1', '-------- Warning -------\n '
+                               'the pre scan measurment did not finish within the given time!\n'
+                               'Press ok, to proceed with scan.')
 
     def unsubscribe_from_main(self):
         """
@@ -180,6 +186,17 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 Cfg._main_instance.load_spectra_to_main(file, self.file_plot_wins[file], loaded_spec=loaded_spec)
             else:
                 self.raise_win_to_front(self.file_plot_wins[file])
+
+    def set_pre_scan_timeout(self):
+        """ set the pre_scan timeout """
+        par = QtWidgets.QInputDialog(self)
+        timeout_s, ok = QtWidgets.QInputDialog.getDouble(
+            par, 'configure pre scan timeout',
+            'The pre scan timeout is the maximum time for any pre scan measurement.\n'
+            'If not all measurements are completed within this time, the measurement is started anyhow.',
+            Cfg._main_instance.pre_scan_measurement_timeout_s.seconds)
+        if ok:
+            Cfg._main_instance.pre_scan_timeout_changed(timeout_s)
 
     ''' formatting '''
 
