@@ -20,6 +20,7 @@ import Driver.COntrolFpga.PulsePatternGeneratorDummy as PPGDummy
 import Driver.DataAcquisitionFpga.FindSequencerByType as FindSeq
 import Driver.DigitalMultiMeter.DigitalMultiMeterControl as DmmCtrl
 import Driver.PostAcceleration.PostAccelerationMain as PostAcc
+from Driver.TritonListener.TritonListener import TritonListener as TritonListener
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as DftScan
 import TildaTools
@@ -57,6 +58,8 @@ class ScanMain(QObject):
         self.ground_pin_warned = False
         self.ground_warning_win = None
 
+        self.triton_listener = None
+
     ''' scan main functions: '''
 
     def close_scan_main(self):
@@ -80,6 +83,7 @@ class ScanMain(QObject):
         # self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
         if self.prep_seq(scan_dict['isotopeData']['type']):  # should be the same sequencer for the whole isotope
             self.prepare_dmms_for_scan(scan_dict['measureVoltPars'].get('preScan', {}).get('dmms', {}))
+            self.prepare_triton_listener_for_scan(scan_dict.get('triton', {}))
             return True
         else:
             return False
@@ -657,6 +661,46 @@ class ScanMain(QObject):
     def ppg_state_callback_disconnect(self):
         self.pulse_pattern_gen.disconnect_to_state_changed_signal()
 
+    ''' Triton related '''
+
+    def prepare_triton_listener_for_scan(self, triton_scan_dict, pre_post_scan_str='prescan'):
+        """
+        setup the triton listener if this has not ben setup yet.
+        subscribe to all channels as defined in the triton_scan_dict.
+        :param triton_scan_dict: dict of dicts, e.g.:
+        {'prescan': {'dev1': {'ch1': {'data': [], 'required': 2, 'acquired': 0},
+                           'ch2': {'data': [], 'required': 5, 'acquired': 0}}},
+        'postscan': {...}}
+        :return: None
+        """
+        if self.triton_listener is None:
+            self.triton_listener = TritonListener()
+        if self.triton_listener.logging:
+            self.triton_listener.stop_log()
+        self.triton_listener.setup_log(triton_scan_dict.get(pre_post_scan_str, {}))
+
+    def stop_triton_listener(self):
+        """
+        remove the triton istener and unsubscribe from devices
+        """
+        if self.triton_listener is None:
+            self.triton_listener.off()
+
+    def start_triton_log(self):
+        """ must have ben setup first """
+        self.triton_listener.start_log()
+
+    def check_triton_log_complete(self):
+        """ check if the triton logger completed """
+        return self.triton_listener.logging_complete
+
+    def get_available_triton(self):
+        """
+        return a dict with all channels and their channels as a list.
+        If no db available, use the self created dummy device.
+        :return: dict, {dev: ['ch1', 'ch2' ...]}
+        """
+        return self.triton_listener.get_devs_from_db()
 
 # if __name__ == "__main__":
 #     scn_main = ScanMain()

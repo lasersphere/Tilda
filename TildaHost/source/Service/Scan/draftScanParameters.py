@@ -15,7 +15,7 @@ sequencer_types_list = ['cs', 'trs', 'csdummy', 'trsdummy', 'kepco']
 
 """ outer most dictionary contains the following keys: """
 
-scanDict_list = ['isotopeData', 'track0', 'pipeInternals', 'measureVoltPars']
+scanDict_list = ['isotopeData', 'track0', 'pipeInternals', 'measureVoltPars', 'triton']
 
 """ the isotopeData dictionary is used for the whole isotope and contains the following keys: """
 
@@ -31,6 +31,9 @@ pipeInternals_list = ['curVoltInd', 'activeTrackNumber', 'workingDirectory', 'ac
 
 measureVoltPars_list = ['preScan', 'duringScan']
 # measureVoltPars_list = ['measVoltPulseLength25ns', 'measVoltTimeout10ns']
+
+""" list of default triton pars: """
+triton_list = ['preScan', 'postScan']
 
 
 """ the track0 dictionary is only used by one track but therefore beholds
@@ -95,10 +98,19 @@ draftPipeInternals = {
     'activeXmlFilePath': 'c:\\'
 }
 
+draft_triton_pars_singl = {'dummyDev': {'calls': 2, 'random': 4}, 'timeoutS': 60}
+
+draft_triton_pars = {
+    'preScan': deepcopy(draft_triton_pars_singl),
+    'postScan': deepcopy(draft_triton_pars_singl),
+
+}
+
 draftScanDict = {'isotopeData': draftIsotopePars,
                  'track0': draftTrackPars,
                  'pipeInternals': draftPipeInternals,
-                 'measureVoltPars': draftMeasureVoltPars
+                 'measureVoltPars': draftMeasureVoltPars,
+                 'triton': draft_triton_pars
                  }
 
 # for the time resolved sequencer us this:

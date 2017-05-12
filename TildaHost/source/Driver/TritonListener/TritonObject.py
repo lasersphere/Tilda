@@ -1,111 +1,65 @@
-import ast
+"""
+Created on 11.05.2017
+
+@author: simkaufm
+
+Module Description:
+    Triton Object copied from TRITON in order to connect to TritonObjects(devices) in Triton.
+    If this ever changes within Triton, changes here might be necessary
+"""
+
 import logging
-import socket
-import sys
 from datetime import datetime
 from threading import Thread
 
 import Pyro4
 import mysql.connector as Sql
 
-sqlCfg = {
-    'user': 'root',
-    'password': 'Alive2015!',
-    'host': '192.168.30.39',
-    'database': 'tl_db',
-}
-
-hmacKey = b'6\x19\n\fko\x909\loa\poa\xb5\xc5]\xbc\xa1m\x863'
-
-name_of_dev_to_subscribe = 'Picoamperemeter'
-
-#Set Pyro variables
-Pyro4.config.SERIALIZER = "serpent"
-Pyro4.config.HMAC_KEY = hmacKey
-Pyro4.config.HOST = socket.gethostbyname(socket.gethostname())
-#Pyro4.config.SERVERTYPE = 'multiplex'
-Pyro4.config.SERVERTYPE = 'thread'
-sys.excepthook = Pyro4.util.excepthook
-Pyro4.config.DETAILED_TRACEBACK = True
-
-try:
-    db = Sql.connect(**sqlCfg)
-except Sql.Error:
-    raise
-
-dbCur = db.cursor()
-
-dbCur.execute('''SELECT deviceName FROM devices WHERE uri IS NOT NULL''')
-devs = []
-res = dbCur.fetchall()
-for r in res:
-    devs.append(r[0])
-
-print('active devices are: ', devs)
-
-
-def get_channels_of_dev(dev):
-    dbCur.execute(
-        '''SELECT devicetypes.channels FROM devices JOIN devicetypes ON
-            devicetypes.deviceType = devices.deviceType WHERE devices.deviceName = %s''',
-        (str(dev),))
-    res = ast.literal_eval(dbCur.fetchone()[0])
-    return res
-
-for dev in devs:
-    print(dev)
-    channels = get_channels_of_dev(dev)
-    print('dev %s has channels: ', channels)
-
-# self must have uri!
-
-
-class TritonListener:
-    def _serve(self):
-        '''Start pyro daemon'''
-        self._daemon = Pyro4.Daemon()
-        self.uri = self._daemon.register(self)
-        self._daemonT = Thread(target=self._daemon.requestLoop)
-        self._daemonT.start()
-
-    def connect_to_dev(self, uri, name):
-        dev = Pyro4.Proxy(self.uri)  # ??
-        dev._addSub(uri, name)
-        dev._pyroRelease()
-
 
 class TritonObject(object):
-    '''
+    """
     Basic TritonObject with fundamental abilities: Pyro receiving, DB connections, subscribing
-    '''
+    """
 
-    def __init__(self, name):
-        '''
+    def __init__(self, name='TildaListener', sqlCfg={}):
+        """
         Constructor
-        '''
+        :parameter name: str, name of the object one is creating
+        :parameter sqlCfg: dict
+        """
         super(TritonObject, self).__init__()
 
         self.name = name
         self.type = 'TritonObject'
 
         self._recFrom = {}
-        self.db = Sql.connect(**sqlCfg)
-        self.dbCur = self.db.cursor()
+        try:
+            self.db = Sql.connect(**sqlCfg)
+            self.dbCur = self.db.cursor()
+        except Exception as e:
+            logging.error('error, TritonObject Could not connect to db, error is: %s' % e)
+            self.db = None
+            self.dbCur = None
 
         self._serve()
 
     def _stop(self):
-        '''Unsubscribe from all and stop pyro daemon'''
+        """
+        Unsubscribe from all and stop pyro daemon
+        """
         logging.debug('Unsubscribing from ' + str(self._recFrom))
         for dev in self._recFrom.copy().keys():
             self.unsubscribe(dev)
 
         self._daemon.shutdown()
         self._daemonT.join()
-        self.db.close()
+        if self.db is not None:
+            self.db.close()
 
     def _serve(self):
-        '''Start pyro daemon'''
+        """
+        Start pyro daemon
+        """
         self._daemon = Pyro4.Daemon()
         self.uri = self._daemon.register(self)
         self._daemonT = Thread(target=self._daemon.requestLoop)
@@ -119,10 +73,10 @@ class TritonObject(object):
 
     """Methods for subscribing"""
 
-    def subscribe(self, ndev):
+    def subscribe(self, ndev, uri=''):
         """Subscribe to an object using its name"""
-        dev = self.resolveName(ndev)
-        if dev != None:
+        dev = self.resolveName(ndev, uri)
+        if dev is not None:
             self.send('out', 'Subscribing to ' + ndev)
             self._recFrom[ndev] = dev
             dev._addSub(self.uri, self.name)
@@ -158,18 +112,39 @@ class TritonObject(object):
     def _receive(self, dev, t, ch, val):
         print(t, dev, ch, val)
 
-    def resolveName(self, name):
+    def resolveName(self, name, uri=''):
         """Resolve a device name to a Proxy using the uri from the database. Return None if not started"""
         print('resolving name: ', name)
-        self.db.commit()
-        self.dbCur.execute('''SELECT uri FROM devices WHERE deviceName=%s''', (name,))
-        result = self.dbCur.fetchall()
-        print('result: ', result[0][0])
-        dev = Pyro4.Proxy(result[0][0])
+        if self.db is not None:
+            self.db.commit()
+            self.dbCur.execute('''SELECT uri FROM devices WHERE deviceName=%s''', (name,))
+            result = self.dbCur.fetchall()
+            print('result: ', result[0][0])
+            dev = Pyro4.Proxy(result[0][0])
+        else:  # name should be str(uri) then
+            dev = Pyro4.Proxy(uri)
         return dev
 
 
 if __name__=='__main__':
-    listener = TritonObject('TildaListener')
-    listener.subscribe(name_of_dev_to_subscribe)
-    input('press anything to stop')
+    import socket
+    import sys
+
+    hmacKey = b'6\x19\n\xad\x909\xda\xea\xb5\xc5]\xbc\xa1m\x863'
+    # Set Pyro variables
+    Pyro4.config.SERIALIZER = "serpent"
+    Pyro4.config.HMAC_KEY = hmacKey
+    Pyro4.config.HOST = socket.gethostbyname(socket.gethostname())
+    # Pyro4.config.SERVERTYPE = 'multiplex'
+    Pyro4.config.SERVERTYPE = 'thread'
+    sys.excepthook = Pyro4.util.excepthook
+    Pyro4.config.DETAILED_TRACEBACK = True
+
+    triton_obj = TritonObject()
+    from Driver.TritonListener.DummyTritonDevice import DummyTritonDevice
+    dummy_dev = DummyTritonDevice('dummyDev')
+    triton_obj.subscribe(str(dummy_dev.uri))
+    dummy_dev.setInterval(1)
+    input('anykey to stop')
+    triton_obj._stop()
+    dummy_dev._stop()
