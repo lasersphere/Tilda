@@ -37,7 +37,10 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.setWindowTitle(window_name)
         self.parent_ui = parent
-        self.dmm_types = Cfg._main_instance.scan_main.digital_multi_meter.types
+        try:
+            self.dmm_types = Cfg._main_instance.scan_main.digital_multi_meter.types
+        except AttributeError:
+            self.dmm_types = ['None']
         self.tabs = {
             'tab0': [self.tab_0, None, None]}  # dict for storing all tabs, key: [QWidget(), Layout, userWidget]
         self.tabWidget.setTabText(0, 'choose dmm')
@@ -47,8 +50,10 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.choose_dmm_wid = ChooseDmmWidget(self.init_dmm_clicked_callback, self.dmm_types)
         self.tabs['tab0'][2] = self.tabs['tab0'][1].addWidget(self.choose_dmm_wid)
-
-        Cfg._main_instance.dmm_gui_subscribe(self.voltage_reading)
+        try:
+            Cfg._main_instance.dmm_gui_subscribe(self.voltage_reading)
+        except AttributeError:  # no main available
+            pass
         self.voltage_reading.connect(self.rcvd_voltage_dict)
 
         self.pushButton_confirm.clicked.connect(self.confirm_settings)
@@ -161,10 +166,13 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def check_for_already_active_dmms(self):
         """ checks for already active dmms and opens tabs for them """
-        act_dmm_dict = Cfg._main_instance.get_active_dmms()
-        for key, val in act_dmm_dict.items():
-            dmm_type, dmm_addr, state_str, last_readback, dmm_config = val
-            self.setup_new_tab_widget((key, dmm_type), False)
+        try:
+            act_dmm_dict = Cfg._main_instance.get_active_dmms()
+            for key, val in act_dmm_dict.items():
+                dmm_type, dmm_addr, state_str, last_readback, dmm_config = val
+                self.setup_new_tab_widget((key, dmm_type), False)
+        except AttributeError:  # no main instance available
+            pass
 
     def setup_new_tab_widget(self, tpl, disconnect_signal=True):
         """

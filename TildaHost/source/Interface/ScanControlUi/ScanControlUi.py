@@ -7,20 +7,21 @@ Created on '29.10.2015'
 """
 
 import functools
+import glob
 import logging
 import os
-import glob
 from copy import copy
 
 from PyQt5 import QtWidgets, QtCore
 
 import Application.Config as Cfg
 import TildaTools
+from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes
 from Interface.DmmUi.DmmUi import DmmLiveViewUi
 from Interface.ScanControlUi.Ui_ScanControl import Ui_MainWindowScanControl
 from Interface.SetupIsotopeUi.SetupIsotopeUi import SetupIsotopeUi
 from Interface.TrackParUi.TrackUi import TrackUi
-from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes
+
 
 class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
     def __init__(self, main_gui):
@@ -75,6 +76,11 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
             self.open_dmm_win()
         else:
             self.pre_or_during_scan_index = 0
+
+    def open_pre_post_scan_win(self):
+        """ open a window to configure the post/pre scan measurment via a link to Triton """
+        pass
+        # TODO
 
     def raise_win_to_front(self, window):
         # this will remove minimized status
