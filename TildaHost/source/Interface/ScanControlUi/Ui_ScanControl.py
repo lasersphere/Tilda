@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindowScanControl(object):
     def setupUi(self, MainWindowScanControl):
         MainWindowScanControl.setObjectName("MainWindowScanControl")
-        MainWindowScanControl.resize(341, 216)
+        MainWindowScanControl.resize(341, 239)
         MainWindowScanControl.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         MainWindowScanControl.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self.centralwidget = QtWidgets.QWidget(MainWindowScanControl)
@@ -57,6 +57,8 @@ class Ui_MainWindowScanControl(object):
         self.actionConfigure_voltage_measurement.setObjectName("actionConfigure_voltage_measurement")
         self.actionGo_on_file = QtWidgets.QAction(MainWindowScanControl)
         self.actionGo_on_file.setObjectName("actionGo_on_file")
+        self.actionConf_pre_post_scan_measurement = QtWidgets.QAction(MainWindowScanControl)
+        self.actionConf_pre_post_scan_measurement.setObjectName("actionConf_pre_post_scan_measurement")
         self.toolBar.addAction(self.actionErgo)
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.actionGo_on_file)
@@ -68,6 +70,8 @@ class Ui_MainWindowScanControl(object):
         self.toolBar.addAction(self.action_remove_track)
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.actionConfigure_voltage_measurement)
+        self.toolBar.addSeparator()
+        self.toolBar.addAction(self.actionConf_pre_post_scan_measurement)
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.actionSave_settings_to_database)
 
@@ -93,4 +97,5 @@ class Ui_MainWindowScanControl(object):
         self.actionGo_on_file.setText(_translate("MainWindowScanControl", "go on file"))
         self.actionGo_on_file.setToolTip(_translate("MainWindowScanControl", "continue running on an existing file with the same settings as in the file"))
         self.actionGo_on_file.setShortcut(_translate("MainWindowScanControl", "Ctrl+G"))
+        self.actionConf_pre_post_scan_measurement.setText(_translate("MainWindowScanControl", "conf. pre/post scan measurement"))
 

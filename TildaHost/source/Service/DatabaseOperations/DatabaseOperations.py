@@ -55,6 +55,7 @@ def form_pollifit_db_to_tilda_db(db):
     waitAfterReset25nsTicks INT,
     measureVoltPars TEXT,
     pulsePattern TEXT,
+    triton TEXT,
     UNIQUE (iso, type, track)
     )''')
 
@@ -83,7 +84,8 @@ def check_for_missing_columns_scan_pars(db):
         (17, 'waitForKepco25nsTicks', 'INT'),
         (18, 'waitAfterReset25nsTicks', 'INT'),
         (19, 'measureVoltPars', 'TEXT'),
-        (20, 'pulsePattern', 'TEXT')
+        (20, 'pulsePattern', 'TEXT'),
+        (21, 'triton', 'TEXT')
     ]
     con = sqlite3.connect(db)
     cur = con.cursor()

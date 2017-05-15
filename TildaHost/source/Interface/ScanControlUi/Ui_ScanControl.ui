@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>341</width>
-    <height>216</height>
+    <height>239</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -79,6 +79,8 @@
    <addaction name="separator"/>
    <addaction name="actionConfigure_voltage_measurement"/>
    <addaction name="separator"/>
+   <addaction name="actionConf_pre_post_scan_measurement"/>
+   <addaction name="separator"/>
    <addaction name="actionSave_settings_to_database"/>
   </widget>
   <action name="actionErgo">
@@ -137,6 +139,11 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+G</string>
+   </property>
+  </action>
+  <action name="actionConf_pre_post_scan_measurement">
+   <property name="text">
+    <string>conf. pre/post scan measurement</string>
    </property>
   </action>
  </widget>
