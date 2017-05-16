@@ -58,7 +58,8 @@ class ScanMain(QObject):
         self.ground_pin_warned = False
         self.ground_warning_win = None
 
-        self.triton_listener = None
+        # self.triton_listener = None
+        self.triton_listener = TritonListener()
 
     ''' scan main functions: '''
 
@@ -71,6 +72,7 @@ class ScanMain(QObject):
         self.deinit_fpga(True)
         self.ppg_deinit(True)
         self.de_init_dmm('all')
+        self.stop_triton_listener()
 
     def prepare_scan(self, scan_dict):  # callback_sig=None):
         """

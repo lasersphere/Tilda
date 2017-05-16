@@ -44,6 +44,9 @@ class TritonListener(TritonObject):
         self.log_start_time = datetime.now()
         self.log_timeout = timedelta(seconds=60)
 
+        # Todo remove after debugging is done!
+        self.create_dummy_dev()
+
     def create_dummy_dev(self, name='dummyDev'):
         self.dummy_dev = DummyTritonDevice(name)
         # self.subscribe(str(self.dummy_dev.uri))

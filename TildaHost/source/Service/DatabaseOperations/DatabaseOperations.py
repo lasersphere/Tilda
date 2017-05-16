@@ -144,7 +144,8 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
                 measureVoltPars = ?,
                 accVolt = ?,
                 laserFreq = ?,
-                pulsePattern = ?
+                pulsePattern = ?,
+                triton = ?
                  WHERE iso = ? AND type = ? AND track = ?''',
                     (
                         VCon.get_voltage_from_18bit(trackd['dacStartRegister18Bit']),
@@ -165,6 +166,7 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
                         str(isod['accVolt']),
                         isod['laserFreq'],
                         str(trackd['pulsePattern']),
+                        str(scandict['triton']),
                         iso, sctype, n_of_track)
                     )
         con.commit()
@@ -284,7 +286,7 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
           postAccOffsetVolt, activePmtList, colDirTrue,
            sequencerDict, waitForKepco25nsTicks, waitAfterReset25nsTicks,
            triggerDict,
-           measureVoltPars, accVolt, laserFreq, pulsePattern
+           measureVoltPars, accVolt, laserFreq, pulsePattern, triton
         FROM ScanPars WHERE iso = ? AND type = ? AND track = ?
         ''', (iso, sctype, tracknum,)
     )
@@ -292,6 +294,8 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
     if data is None:
         return None
     data = list(data)
+    triton = data.pop(-1)
+    scand['triton'] = ast.literal_eval(triton) if triton is not None else {}
     scand['track' + str(tracknum)]['pulsePattern'] = ast.literal_eval(data.pop(-1))
     scand['isotopeData']['laserFreq'] = data.pop(-1)
     scand['isotopeData']['accVolt'] = data.pop(-1)

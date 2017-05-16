@@ -8,7 +8,7 @@ description: Main gui for configuring the pre / during / post scan settings
 
 """
 
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, Qt
 import logging
 import functools
 from copy import deepcopy
@@ -47,6 +47,19 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         self.active_iso = active_iso
         self.setWindowTitle('pre / during / post scan settings of %s' % self.active_iso)
 
+        # Triton related:
+        self.cur_dev = None
+        self.triton_scan_dict = self.get_triton_scan_pars()
+        self.triton_scan_dict_backup = deepcopy(self.triton_scan_dict)  # to keep any data stored in the channels
+        self.active_devices = self.setup_triton_devs()  # dict with active device
+        import json
+        print(
+            json.dumps(self.triton_scan_dict, sort_keys=True, indent=4))
+
+        # self.listWidget_devices.currentItemChanged.connect(self.dev_selection_changed)
+        self.listWidget_devices.itemClicked.connect(self.dev_selection_changed)
+        self.tableWidget_channels.itemClicked.connect(self.check_any_ch_active)
+
         # digital multimeter related
         self.current_meas_volt_settings = {}  # storge for current settings
         self.comm_enabled = False  # from this window the dmms should not be controlled
@@ -78,17 +91,18 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         """
         when ok is pressed, values are stored in the main, if an isotope has ben selected before.
         """
-        if self.active_iso is not None:
+        if self.active_iso is not None and Cfg._main_instance is not None:
             # check stuff from storage
             for pre_scan_key, meas_volt_dict in self.current_meas_volt_settings.items():
-                Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'][pre_scan_key] = deepcopy(meas_volt_dict)
+                Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'][pre_scan_key] = deepcopy(
+                    meas_volt_dict)
             # overwrite with actual
             Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'][
                 self.pre_or_during_scan_str] = self.get_current_meas_volt_pars()
+            if self.cur_dev is not None:
+                self.triton_scan_dict[self.pre_or_during_scan_str][self.cur_dev] = self.get_selected_channels()
+            Cfg._main_instance.scan_pars[self.active_iso]['triton'] = self.triton_scan_dict
             print('set values to: ', Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'])
-            # TODO remove this:
-            import json
-            print(json.dumps(Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'], sort_keys=True, indent=4))
         self.close()
 
     def closeEvent(self, event):
@@ -113,17 +127,15 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         self.pre_or_during_scan_str = pre_post_during_str
         existing_config = None if self.current_meas_volt_settings == {} else self.current_meas_volt_settings
         self.setup_volt_meas_from_main(existing_config)
-        # TODO remove this:
-        print('existing config:')
-        import json
-        print(json.dumps(existing_config, sort_keys=True, indent=4))
+        self.active_devices = self.setup_triton_devs()
 
     def triton_checkbox_changed(self, state):
         """
         disable the main widget and leaves empty dict at:
              {'triton': {self.pre_or_during_scan_str: {} ... }
         """
-        self.treeView_triton.setEnabled(state == 2)
+        self.listWidget_devices.setEnabled(state == 2)
+        self.tableWidget_channels.setEnabled(state == 2)
 
     def voltage_checkbox_changed(self, state):
         """
@@ -166,10 +178,10 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
                     meas_volt_pars_dict.get('preScan', {}).get('switchBoxSettleTimeS', 5.0))
                 self.load_config_dict(meas_volt_dict)
         else:
-            self.checkBox_voltage_measure.setChecked(False)
-            self.voltage_checkbox_changed(0)
-            self.checkBox_triton_measure.setChecked(False)
-            self.triton_checkbox_changed(0)
+            self.checkBox_voltage_measure.setChecked(True)
+            self.voltage_checkbox_changed(2)
+            self.checkBox_triton_measure.setChecked(True)
+            self.triton_checkbox_changed(2)
 
     def tab_wants_to_be_closed(self, *args):
         """
@@ -326,9 +338,175 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         meas_volt_dict['switchBoxSettleTimeS'] = self.doubleSpinBox_wait_after_switchbox.value()
         return meas_volt_dict
 
+    ''' triton related '''
 
-if __name__=='__main__':
+    def setup_triton_devs(self):
+        """
+        called on startup, fill list with devices
+        :return: dict, {dev: ['ch1', 'ch2' ...]}
+        """
+        self.listWidget_devices.clear()
+        active_devices = self.get_channels_from_main()
+        triton_scan_dict = self.triton_scan_dict.get(self.pre_or_during_scan_str, {})
+        for dev, ch_list in active_devices.items():
+            dev_itm = QtWidgets.QListWidgetItem(dev, self.listWidget_devices)
+            dev_itm.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+            dev_itm.setCheckState(QtCore.Qt.Unchecked)
+            if dev in triton_scan_dict.keys():
+                dev_itm.setCheckState(QtCore.Qt.Checked)
+            self.listWidget_devices.addItem(dev_itm)
+        # also show not available devices:
+        for dev, ch_dict in triton_scan_dict.items():
+            if dev not in active_devices.keys():
+                dev_itm = QtWidgets.QListWidgetItem(dev, self.listWidget_devices)
+                dev_itm.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+                dev_itm.setCheckState(QtCore.Qt.Checked)
+                dev_itm.setBackground(QtCore.Qt.red)
+                dev_itm.setToolTip('offline')
+                self.listWidget_devices.addItem(dev_itm)
+        return active_devices
+
+    def dev_selection_changed(self, cur):
+        """
+        when a device is clicked on, show the active channels of this device
+        :param cur: QListWidgetItem, currently selected one.
+        :return:
+        """
+        if cur is not None:
+            self.tableWidget_channels.clear()
+            triton_scan_dict = self.triton_scan_dict.get(self.pre_or_during_scan_str, {})
+            self.cur_dev = cur.text()
+            cur_dev_selected = cur.checkState() == 2
+            if self.cur_dev not in triton_scan_dict:
+                existing = deepcopy(
+                    self.triton_scan_dict_backup.get(self.pre_or_during_scan_str, {}).get(self.cur_dev, {}))
+                if existing == {}:  # was not existing in scan pars yet
+                    existing = {ch: {'required': 1, 'acquired': 0, 'data': []}
+                                for ch in self.active_devices.get(self.cur_dev, {})}
+                if self.triton_scan_dict_backup.get(self.pre_or_during_scan_str, None) is None:
+                    self.triton_scan_dict[self.pre_or_during_scan_str] = {}
+                self.triton_scan_dict[self.pre_or_during_scan_str][self.cur_dev] = existing
+                triton_scan_dict = self.triton_scan_dict.get(self.pre_or_during_scan_str, {})
+            channels = self.active_devices.get(self.cur_dev, [])
+            self.tableWidget_channels.setColumnCount(2)
+            self.tableWidget_channels.setHorizontalHeaderLabels(['ch name', '# of samples'])
+            self.tableWidget_channels.setRowCount(len(channels))
+
+            for i, ch in enumerate(channels):
+                ch_itm = QtWidgets.QTableWidgetItem(ch)
+                ch_itm.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+                ch_itm.setCheckState(QtCore.Qt.Unchecked)
+                required_itm = QtWidgets.QTableWidgetItem('0')
+                # required_itm.setFlags(QtCore.Qt.ItemIsEditable)
+                if ch in triton_scan_dict.get(self.cur_dev, {}).keys():
+                    check = QtCore.Qt.Checked if cur_dev_selected else QtCore.Qt.Unchecked
+                    ch_itm.setCheckState(check)
+                    required_itm.setText(str(triton_scan_dict[self.cur_dev][ch]['required']))
+                self.tableWidget_channels.setItem(i, 0, ch_itm)
+                self.tableWidget_channels.setItem(i, 1, required_itm)
+            self.check_any_ch_active()
+
+    def get_selected_channels(self):
+        """
+        get the selected channels which are currently displayed
+        :return: dict, {'ch1': {'required': .. , 'acquired': 0, 'data': []}, ...}
+        """
+        ret = {}
+        if self.cur_dev is not None:
+            for i in range(self.tableWidget_channels.rowCount()):
+                ch_itm = self.tableWidget_channels.item(i, 0)
+                if ch_itm.checkState() == 2:
+                    req_itm = self.tableWidget_channels.item(i, 1)
+                    sample_count = 0
+                    try:
+                        sample_count = int(req_itm.text())
+                    except Exception as e:
+                        print('error in converting %s error is: %s' % (req_itm.text(), e))
+                    if sample_count > 0:
+                        ret[ch_itm.text()] = {'required': sample_count,
+                                              'acquired': 0,
+                                              'data': []}
+        return ret
+
+    def check_any_ch_active(self):
+        """
+        check if any channel is selected in gui and update:
+            self.triton_scan_dict[self.pre_or_during_scan_str][self.cur_dev] accordingly
+        """
+        ret = []
+        for i in range(self.tableWidget_channels.rowCount()):
+            ch_itm = self.tableWidget_channels.item(i, 0)
+            ret.append(ch_itm.checkState() == 2)
+        dev_itm = self.listWidget_devices.findItems(self.cur_dev, Qt.Qt.MatchExactly)[0]
+        if any(ret):
+            dev_itm.setCheckState(QtCore.Qt.Checked)
+            # TODO, like this, any exisitng data is overwritten as soon as the user deselects and select the ch
+            self.triton_scan_dict[self.pre_or_during_scan_str][self.cur_dev] = self.get_selected_channels()
+        else:  # no ch active, can remove the dev
+            self.triton_scan_dict[self.pre_or_during_scan_str].pop(self.cur_dev)
+            dev_itm.setCheckState(QtCore.Qt.Unchecked)
+
+    def get_channels_from_main(self):
+        """
+        get a dict of all online devices with a list of channels from the main
+        :return: dict, {dev: ['ch1', 'ch2' ...]}
+        """
+        try:
+            triton_dict = Cfg._main_instance.scan_main.get_available_triton()
+        except AttributeError:  # if no main available ( gui test etc.)
+            triton_dict = {'no_main_dev': ['ch1', 'ch2'],
+                           'no_main_dev2': ['ch1', 'ch2', 'ch3']}
+        return triton_dict
+
+    def get_triton_scan_pars(self):
+        """
+        get the triton part of the scan dict in teh main or return default
+        :return: dict, for triton scan parameters, pre / during / post scan
+        """
+        default_ret = {'preScan': {'no_main_dev': {'ch2': {'required': 5,
+                                                           'acquired': 0,
+                                                           'data': []}},
+                                   'no_main_dev2': {'ch2': {'required': 2,
+                                                            'acquired': 0,
+                                                            'data': []},
+                                                    'ch3': {'required': 15,
+                                                            'acquired': 0,
+                                                            'data': []}
+                                                    }
+                                   },
+                       'duringScan': {'no_main_dev': {'ch1': {'required': 5,
+                                                              'acquired': 0,
+                                                              'data': []}},
+                                      'no_main_dev2': {'ch1': {'required': 2,
+                                                               'acquired': 0,
+                                                               'data': []},
+                                                       'ch2': {'required': 15,
+                                                               'acquired': 0,
+                                                               'data': []}
+                                                       }
+                                      },
+                       'postScan': {'no_main_dev3': {'ch2': {'required': 5,
+                                                             'acquired': 0,
+                                                             'data': []}},
+                                    'no_main_dev4': {'ch2': {'required': 2,
+                                                             'acquired': 0,
+                                                             'data': []},
+                                                     'ch3': {'required': 15,
+                                                             'acquired': 0,
+                                                             'data': []}
+                                                     }
+                                    }
+                       }
+        try:
+            triton_dict = Cfg._main_instance.scan_pars[self.active_iso].get('triton', {})
+        except AttributeError:  # if no main available ( gui test etc.)
+            triton_dict = default_ret
+        return triton_dict
+
+
+if __name__ == '__main__':
     import sys
+
     app = QtWidgets.QApplication(sys.argv)
     gui = PreScanConfigUi(None, '')
     app.exec_()
