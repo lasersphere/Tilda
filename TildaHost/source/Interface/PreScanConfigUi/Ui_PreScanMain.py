@@ -6,7 +6,7 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 class Ui_PreScanMainWin(object):
     def setupUi(self, PreScanMainWin):
@@ -29,6 +29,9 @@ class Ui_PreScanMainWin(object):
         self.voltage_mainwidget.setObjectName("voltage_mainwidget")
         self.verticalLayout_3 = QtWidgets.QVBoxLayout(self.voltage_mainwidget)
         self.verticalLayout_3.setObjectName("verticalLayout_3")
+        self.checkBox_voltage_measure = QtWidgets.QCheckBox(self.voltage_mainwidget)
+        self.checkBox_voltage_measure.setObjectName("checkBox_voltage_measure")
+        self.verticalLayout_3.addWidget(self.checkBox_voltage_measure)
         self.tabWidget = QtWidgets.QTabWidget(self.voltage_mainwidget)
         self.tabWidget.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.tabWidget.setObjectName("tabWidget")
@@ -67,6 +70,14 @@ class Ui_PreScanMainWin(object):
         self.mainTabWidget.addTab(self.volt_tab, "")
         self.triton_tab = QtWidgets.QWidget()
         self.triton_tab.setObjectName("triton_tab")
+        self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.triton_tab)
+        self.verticalLayout_4.setObjectName("verticalLayout_4")
+        self.checkBox_triton_measure = QtWidgets.QCheckBox(self.triton_tab)
+        self.checkBox_triton_measure.setObjectName("checkBox_triton_measure")
+        self.verticalLayout_4.addWidget(self.checkBox_triton_measure)
+        self.treeView_triton = QtWidgets.QTreeView(self.triton_tab)
+        self.treeView_triton.setObjectName("treeView_triton")
+        self.verticalLayout_4.addWidget(self.treeView_triton)
         self.mainTabWidget.addTab(self.triton_tab, "")
         self.verticalLayout.addWidget(self.mainTabWidget)
         self.horizontalLayout = QtWidgets.QHBoxLayout()
@@ -97,10 +108,12 @@ class Ui_PreScanMainWin(object):
     def retranslateUi(self, PreScanMainWin):
         _translate = QtCore.QCoreApplication.translate
         PreScanMainWin.setWindowTitle(_translate("PreScanMainWin", "MainWindow"))
+        self.checkBox_voltage_measure.setText(_translate("PreScanMainWin", "measure"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_0), _translate("PreScanMainWin", "Tab 1"))
         self.label_measVoltPulseLength_mu_s.setText(_translate("PreScanMainWin", "Pulse length for voltage measurement request [µs]"))
         self.label_measVoltTimeout_mu_s.setText(_translate("PreScanMainWin", "timeout for voltage measurement [ms]"))
         self.mainTabWidget.setTabText(self.mainTabWidget.indexOf(self.volt_tab), _translate("PreScanMainWin", "voltage meas."))
+        self.checkBox_triton_measure.setText(_translate("PreScanMainWin", "measure"))
         self.mainTabWidget.setTabText(self.mainTabWidget.indexOf(self.triton_tab), _translate("PreScanMainWin", "triton"))
         self.label_wait_after_switchbox.setText(_translate("PreScanMainWin", "wait after switchbox changed [s]"))
 

@@ -189,6 +189,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.tabs[dmm_name][1] = QtWidgets.QVBoxLayout(self.tabs[dmm_name][0])
         self.tabWidget.setCurrentWidget(self.tabs[dmm_name][0])
         self.tabs[dmm_name][2] = get_wid_by_type(dev_type, dmm_name)
+        self.tabs[dmm_name][2].enable_communication(self.comm_enabled)
         self.tabs[dmm_name][1].addWidget(self.tabs[dmm_name][2])
         return True
 

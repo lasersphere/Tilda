@@ -510,9 +510,12 @@ class Main(QtCore.QObject):
             if first_call:
                 # on first call set the fpga to measure offset state and
                 # software trigger the dmms, also setup the triton listener
-                self.scan_main.start_pre_scan_measurement(self.scan_pars[iso_name])
-                self.pre_scan_measurement_start_time = datetime.now()
-                self.set_state(MainState.measure_pre_scan, False)   #set first call to false!
+                if self.scan_main.start_pre_scan_measurement(self.scan_pars[iso_name]):
+                    self.pre_scan_measurement_start_time = datetime.now()
+                    self.set_state(MainState.measure_pre_scan, False)   #set first call to false!
+                else:
+                    # scan main says: no pre scan measurement required!
+                    self.set_state(MainState.load_track)
             else:  # this will periodically read the dmms until all dmms returned a measurement
                 if self.abort_scan:
                     print('aborted pre scan measurement, aborting scan, return to idle')

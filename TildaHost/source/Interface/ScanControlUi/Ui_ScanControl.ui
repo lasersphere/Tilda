@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>341</width>
-    <height>239</height>
+    <height>228</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -76,8 +76,6 @@
    <addaction name="actionAdd_Track"/>
    <addaction name="separator"/>
    <addaction name="action_remove_track"/>
-   <addaction name="separator"/>
-   <addaction name="actionConfigure_voltage_measurement"/>
    <addaction name="separator"/>
    <addaction name="actionConf_pre_post_scan_measurement"/>
    <addaction name="separator"/>

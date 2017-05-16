@@ -32,6 +32,13 @@
          <widget class="QWidget" name="voltage_mainwidget" native="true">
           <layout class="QVBoxLayout" name="verticalLayout_3">
            <item>
+            <widget class="QCheckBox" name="checkBox_voltage_measure">
+             <property name="text">
+              <string>measure</string>
+             </property>
+            </widget>
+           </item>
+           <item>
             <widget class="QTabWidget" name="tabWidget">
              <property name="locale">
               <locale language="English" country="UnitedStates"/>
@@ -117,6 +124,18 @@
        <attribute name="title">
         <string>triton</string>
        </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_4">
+        <item>
+         <widget class="QCheckBox" name="checkBox_triton_measure">
+          <property name="text">
+           <string>measure</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QTreeView" name="treeView_triton"/>
+        </item>
+       </layout>
       </widget>
      </widget>
     </item>

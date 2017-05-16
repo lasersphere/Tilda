@@ -21,6 +21,7 @@ from Interface.DmmUi.DmmUi import DmmLiveViewUi
 from Interface.ScanControlUi.Ui_ScanControl import Ui_MainWindowScanControl
 from Interface.SetupIsotopeUi.SetupIsotopeUi import SetupIsotopeUi
 from Interface.TrackParUi.TrackUi import TrackUi
+from Interface.PreScanConfigUi.PreScanConfigUi import PreScanConfigUi
 
 
 class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
@@ -33,9 +34,9 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.active_iso = None  # str, key for the self.scan_pars dict in Main
         self.win_title = None
         self.track_wins_dict = {}  # dict containing all open track windows, key is track_num
-        self.dmm_win = None  # here the open dmm_win is stored.
+        self.pre_scan_win = None
         self.num_of_reps = 1  # how often this scan will be repeated. stored at begin of scan
-        self.go_was_clicked_before = False  # variable to stroe if the user already clicked on 'Go'
+        self.go_was_clicked_before = False  # variable to store if the user already clicked on 'Go'
 
         self.actionErgo.triggered.connect(functools.partial(self.go, True, True))
         self.actionGo_on_file.triggered.connect(self.go_on_file)
@@ -43,44 +44,28 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.actionAdd_Track.triggered.connect(self.add_track)
         self.actionSave_settings_to_database.triggered.connect(self.save_to_db)
         self.action_remove_track.triggered.connect(self.remove_selected_track)
-        self.actionConfigure_voltage_measurement.triggered.connect(self.open_dmm_win)
+        self.actionConf_pre_post_scan_measurement.triggered.connect(self.open_pre_post_scan_win)
         self.listWidget.doubleClicked.connect(self.work_on_existing_track)
 
         self.main_gui = main_gui
         self.update_win_title()
         self.enable_go(True)
-        self.pre_or_during_scan_str_list = ['preScan', 'duringScan']
+        self.pre_or_during_scan_str_list = ['preScan', 'duringScan', 'postScan']
         self.pre_or_during_scan_index = 0
 
         self.show()
 
-    def open_dmm_win(self):
-        if self.active_iso is not None:
-            if self.dmm_win is None:
-                pre_or_during_str = self.pre_or_during_scan_str_list[self.pre_or_during_scan_index]
-                new_name = 'DMM Settings for %s in %s' % (self.active_iso, pre_or_during_str)
-                messagebox = QtWidgets.QMessageBox()
-                messagebox.setIcon(QtWidgets.QMessageBox.Question)
-                messagebox.setText('please choose the settings for: %s' % new_name)
-                messagebox.setStandardButtons(QtWidgets.QMessageBox.Ok)
-                messagebox.exec_()
-                self.dmm_win = DmmLiveViewUi(self, new_name, enable_com=False,
-                                             active_iso=self.active_iso,
-                                             pre_or_during_scan_str=pre_or_during_str)
-            else:
-                self.raise_win_to_front(self.dmm_win)
-
-    def close_dmm_live_view_win(self):
-        self.dmm_win = None
-        if self.pre_or_during_scan_index < len(self.pre_or_during_scan_str_list):
-            self.open_dmm_win()
-        else:
-            self.pre_or_during_scan_index = 0
+    def close_pre_post_scan_win(self):
+        """ remove PreScanConfigUi from storage """
+        self.pre_scan_win = None
 
     def open_pre_post_scan_win(self):
         """ open a window to configure the post/pre scan measurment via a link to Triton """
-        pass
-        # TODO
+        if self.active_iso is not None:
+            if self.pre_scan_win is None:
+                self.pre_scan_win = PreScanConfigUi(self, self.active_iso)
+            else:
+                self.raise_win_to_front(self.pre_scan_win)
 
     def raise_win_to_front(self, window):
         # this will remove minimized status

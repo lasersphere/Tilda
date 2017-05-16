@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindowScanControl(object):
     def setupUi(self, MainWindowScanControl):
         MainWindowScanControl.setObjectName("MainWindowScanControl")
-        MainWindowScanControl.resize(341, 239)
+        MainWindowScanControl.resize(341, 228)
         MainWindowScanControl.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         MainWindowScanControl.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self.centralwidget = QtWidgets.QWidget(MainWindowScanControl)
@@ -68,8 +68,6 @@ class Ui_MainWindowScanControl(object):
         self.toolBar.addAction(self.actionAdd_Track)
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.action_remove_track)
-        self.toolBar.addSeparator()
-        self.toolBar.addAction(self.actionConfigure_voltage_measurement)
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.actionConf_pre_post_scan_measurement)
         self.toolBar.addSeparator()
