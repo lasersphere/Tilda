@@ -180,6 +180,21 @@ def get_meas_volt_dict(xml_etree):
     return meas_volt_pars_dict
 
 
+def get_triton_dict_from_xml_root(xml_etree):
+    """
+    get the triton dictionary from an exisitng xml file.
+    :param xml_etree: lxml.etree.Element, Element of loaded File
+    :return: dict,
+    {'preScan': {'dummyDev': {'ch1': {'required': 2, 'data': [1,2], 'acquired': 2}, ...}},
+     'postScan': ...,
+     'duringScan': ...}
+    """
+    triton_dict = xml_get_dict_from_ele(xml_etree)[1].get('triton', {})
+    evaluate_strings_in_dict(triton_dict)
+    print('triton_dict from file: ', triton_dict)
+    return triton_dict
+
+
 def evaluate_strings_in_dict(dict_to_convert):
     """
     function which will convert all values inside a dict using ast.literal_eval -> '1.0' -> 1.0 etc..
@@ -253,6 +268,7 @@ def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
     scan_dict['pipeInternals']['activeTrackNumber'] = 'None'
     scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
     scan_dict['measureVoltPars'] = get_meas_volt_dict(xml_etree)
+    scan_dict['triton'] = get_triton_dict_from_xml_root(xml_etree)
     # watchout, since trigger type is only imported as string...
     return scan_dict, xml_etree
 
@@ -661,8 +677,8 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
         }
     draftMeasureVoltPars_singl = {'measVoltPulseLength25ns': -1, 'measVoltTimeout10ns': -1,
                                   'dmms': {}, 'switchBoxSettleTimeS': -1}
-    pre_scan_dmms = {'unknown_dmm': {'assignment': 'offset', 'preScanRead': [deepcopy(specdata.offset)]},
-                     'unknown_dmm_1': {'assignment': 'accVolt', 'preScanRead': [deepcopy(specdata.accVolt)]},
+    pre_scan_dmms = {'unknown_dmm': {'assignment': 'offset', 'readings': [deepcopy(specdata.offset)]},
+                     'unknown_dmm_1': {'assignment': 'accVolt', 'readings': [deepcopy(specdata.accVolt)]},
                      }
     draftMeasureVoltPars = {'preScan': deepcopy(draftMeasureVoltPars_singl),
                             'duringScan': deepcopy(draftMeasureVoltPars_singl)}

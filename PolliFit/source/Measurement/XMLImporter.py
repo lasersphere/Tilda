@@ -78,6 +78,8 @@ class XMLImporter(SpecData):
         self.offset = None
         self.measureVoltPars = scandict['measureVoltPars']
         dmms_dict = scandict['measureVoltPars'].get('preScan', {}).get('dmms', None)
+        # for backwards compability:
+        read_key = 'preScanRead' if float(self.version) <= 1.17 else 'readings'
         if isinstance(dmms_dict, str):
             dmms_dict = None
         if dmms_dict is not None:
@@ -86,7 +88,7 @@ class XMLImporter(SpecData):
             for dmm_name, dmm_dict in dmms_dict.items():
                 self.offset_by_dev[dmm_name] = []
                 for key, val in dmm_dict.items():
-                    if key == 'preScanRead':
+                    if key == read_key:
                         if isinstance(val, str):
                             val = ast.literal_eval(val)
                             # val = float(val)

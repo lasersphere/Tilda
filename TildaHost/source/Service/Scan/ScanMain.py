@@ -23,7 +23,8 @@ import Driver.PostAcceleration.PostAccelerationMain as PostAcc
 from Driver.TritonListener.TritonListener import TritonListener as TritonListener
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as DftScan
-import TildaTools
+import TildaTools as TiTs
+import XmlOperations as XmlOps
 from Service.AnalysisAndDataHandling.AnalysisThread import AnalysisThread as AnalThr
 
 
@@ -53,6 +54,7 @@ class ScanMain(QObject):
         self.post_acc_main = PostAcc.PostAccelerationMain()
         self.digital_multi_meter = DmmCtrl.DMMControl()
         self.dac_new_volt_set_callback.connect(self.rcvd_dac_new_voltage_during_kepco_scan)
+        self.dmm_pre_scan_done = False  # bool to use when pre/during/post scan measurement of dmms is completed
 
         self.pulse_pattern_gen = None
         self.ground_pin_warned = False
@@ -60,6 +62,7 @@ class ScanMain(QObject):
 
         # self.triton_listener = None
         self.triton_listener = TritonListener()
+        self.triton_pre_scan_done = False  # bool to use when pre/during/post scan measurement of triton is completed
 
     ''' scan main functions: '''
 
@@ -80,6 +83,12 @@ class ScanMain(QObject):
         This sets up the pipeline and loads the bitfile on the fpga of the given type.
         """
         self.analysis_thread = None
+
+        scan_dict['pipeInternals']['curVoltInd'] = 0
+        scan_dict['isotopeData']['isotopeStartTime'] = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+        xml_file_name = TiTs.createXmlFileOneIsotope(scan_dict)
+        scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
+
         logging.info('preparing isotope: ' + scan_dict['isotopeData']['isotope'] +
                      ' of type: ' + scan_dict['isotopeData']['type'])
         # self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
@@ -98,7 +107,6 @@ class ScanMain(QObject):
             dac_new_volt_set_callback = self.dac_new_volt_set_callback
         else:  # so the dmms are not software triggered.
             dac_new_volt_set_callback = None
-
         self.analysis_thread = AnalThr(
             scan_dict, callback_sig, live_plot_callback_tuples, fit_res_dict_callback,
             self.stop_analysis_sig, self.prep_track_in_pipe_sig, self.data_to_pipe_sig,
@@ -116,19 +124,27 @@ class ScanMain(QObject):
         """
         dmms_dict_pre_scan = scan_dict['measureVoltPars'].get('preScan', {}).get('dmms', None)
         dmms_dict_is_none = dmms_dict_pre_scan is None or dmms_dict_pre_scan == {}
-        if dmms_dict_is_none:
+        triton_dict_pre_scan = scan_dict.get('triton', {}).get('preScan', {})
+        triton_dict_is_none = triton_dict_pre_scan is None or triton_dict_pre_scan == {}
+        if dmms_dict_is_none and triton_dict_is_none:
             return False
         else:
             if 'continuedAcquisitonOnFile' not in scan_dict['isotopeData']:  # -> ergo
                 # also delete any prescan reading there might be. for an ergo, keep them for a go
                 for dmm_name, pre_scan_dict in dmms_dict_pre_scan.items():
-                    print('prescandict is: ', pre_scan_dict)
-                    pre_scan_dict['preScanRead'] = []
-                    print('set preScanRead of %s to []' % dmm_name)
-            track, track_num_lis = TildaTools.get_number_of_tracks_in_scan_dict(scan_dict)
+                    # print('prescandict is: ', pre_scan_dict)
+                    pre_scan_dict['readings'] = []
+                    # print('set readings of %s to []' % dmm_name)
+                # also for triton:
+                for dev, dev_ch_dict in triton_dict_pre_scan.items():
+                    for ch_name, ch_dict in dev_ch_dict.items():
+                        ch_dict['data'] = []
+            track, track_num_lis = TiTs.get_number_of_tracks_in_scan_dict(scan_dict)
             self.fpga_start_offset_measurement(scan_dict, track_num_lis[0])  # will be the first track in list.
             self.digital_multi_meter.software_trigger_dmm('all')  # send a software trigger to all dmms
             self.start_triton_log()
+            self.dmm_pre_scan_done = False
+            self.triton_pre_scan_done = False
             return True
 
     def prescan_measurement(self, scan_dict, dmm_reading):
@@ -138,9 +154,11 @@ class ScanMain(QObject):
         :param dmm_reading: None or dict, dict will always contain at least one reading of one dmm
         :return: bool, True if finished.
         """
-        done = self.pre_scan_voltage_measurement(scan_dict, dmm_reading)
-        done = done and self.check_triton_log_complete()
-        if done:
+        if not self.dmm_pre_scan_done:  # when complete, do not check again (otherwise it saves again.)
+            self.dmm_pre_scan_done = self.pre_scan_voltage_measurement(scan_dict, dmm_reading)
+        if not self.triton_pre_scan_done:  # when complete, do not check again (otherwise it saves again.)
+            self.triton_pre_scan_done = self.check_triton_log_complete(scan_dict)
+        if self.dmm_pre_scan_done and self.triton_pre_scan_done:
             return True
         else:
             return False
@@ -152,7 +170,7 @@ class ScanMain(QObject):
         :param dmm_reading:
         :return: bool, True when finished
         """
-        print('reading of dmms prescan: ', dmm_reading)
+        # print('reading of dmms prescan: ', dmm_reading)
         if dmm_reading is not None:
             dmms_dict_pre_scan = scan_dict['measureVoltPars'].get('preScan', {}).get('dmms', None)
             for dmm_name, volt_read in dmm_reading.items():
@@ -162,7 +180,7 @@ class ScanMain(QObject):
                     still_to_acquire = max(0, samples - acquired_samples)
                     if len(volt_read) > still_to_acquire:  # to much data, need to shrink this
                         volt_read = volt_read[0:still_to_acquire]
-                    dmms_dict_pre_scan[dmm_name]['preScanRead'] += list(volt_read)
+                    dmms_dict_pre_scan[dmm_name]['readings'] += list(volt_read)
                     dmms_dict_pre_scan[dmm_name]['acquiredPreScan'] += len(volt_read)
             dmms_complete_check_sum = 0
             for dmm_name, dmm_dict in dmms_dict_pre_scan.items():
@@ -173,13 +191,14 @@ class ScanMain(QObject):
             if dmms_complete_check_sum == 0:  # done with reading when all dmms have a value
                 print('all dmms have a reading')
                 for dmm_name, dmm_dict in dmms_dict_pre_scan.items():
-                    dmms_dict_pre_scan[dmm_name]['acquiredPreScan'] = len(dmms_dict_pre_scan[dmm_name]['preScanRead'])
-                    print(dmm_name, dmms_dict_pre_scan[dmm_name]['acquiredPreScan'],
-                          dmms_dict_pre_scan[dmm_name]['preScanRead'])
+                    dmms_dict_pre_scan[dmm_name]['acquiredPreScan'] = len(dmms_dict_pre_scan[dmm_name]['readings'])
+                    # print(dmm_name, dmms_dict_pre_scan[dmm_name]['acquiredPreScan'],
+                    #       dmms_dict_pre_scan[dmm_name]['readings'])
                 self.abort_dmm_measurement('all')
                 dmms_dict_during_scan = scan_dict['measureVoltPars'].get('duringScan', {}).get('dmms', None)
                 dmm_complete_location = scan_dict['measureVoltPars']['duringScan'][
                     'measurementCompleteDestination']
+                self.save_dmm_readings_to_file(scan_dict, 'preScan')
                 # when done with the pre scan measurement, setup dmms to the during scan dict.
                 # set the dmms according to the dictionary inside the dmms_dict for during the scan
                 self.prepare_dmms_for_scan(dmms_dict_during_scan, dmm_complete_location)
@@ -383,7 +402,6 @@ class ScanMain(QObject):
         """
         read = self.read_data()  # read data one last time
         self.ppg_stop()
-        self.stop_triton_listener()
         if read:
             logging.info('while stopping measurement, some data was still read.')
         if complete_stop:  # only touch dmms in the end of the whole scan
@@ -482,7 +500,7 @@ class ScanMain(QObject):
             track_name = 'track' + str(track_num)
             compl_tracks = progress_dict['completedTracks']
             compl_steps = progress_dict['nOfCompletedSteps']
-            n_of_tracks, list_of_track_nums = TildaTools.get_number_of_tracks_in_scan_dict(scan_dict)
+            n_of_tracks, list_of_track_nums = TiTs.get_number_of_tracks_in_scan_dict(scan_dict)
             track_ind = list_of_track_nums.index(track_num)
             total_steps_list, total_steps = SdOp.get_num_of_steps_in_scan(scan_dict)
             if n_of_tracks > 1:
@@ -557,9 +575,9 @@ class ScanMain(QObject):
         set pre_scan_meas to True to ignore the contents of the current config dict and
          load from pre config
         """
-        logging.debug('preparing dmms for scan. Config dict is: %s' % dmms_conf_dict)
+        # logging.debug('preparing dmms for scan. Config dict is: %s' % dmms_conf_dict)
         active_dmms = self.get_active_dmms()
-        logging.debug('active dmms: %s' % active_dmms)
+        # logging.debug('active dmms: %s' % active_dmms)
         for dmm_name, dmm_conf_dict in dmms_conf_dict.items():
             dmms_conf_dict[dmm_name]['acquiredPreScan'] = 0  # reset the acquired samples
             if dmm_name not in active_dmms:
@@ -672,6 +690,25 @@ class ScanMain(QObject):
         """
         self.digital_multi_meter.de_init_dmm(dmm_name)
 
+    def save_dmm_readings_to_file(self, scan_dict, pre_during_post_scan_str='preScan'):
+        """
+        save the readings of the dmm directly to the
+        :param scan_dict: dict as the suual scan dict.
+        :param pre_during_post_scan_str: str, preScan / duringScan / postScan
+        :return:
+        """
+        file = scan_dict['pipeInternals']['activeXmlFilePath']
+        if file:
+            root = TiTs.load_xml(file)
+            meas_volt = XmlOps.xmlFindOrCreateSubElement(root, 'measureVoltPars')
+            pre_during_ele = XmlOps.xmlFindOrCreateSubElement(meas_volt, pre_during_post_scan_str)
+            dmms_ele = XmlOps.xmlFindOrCreateSubElement(pre_during_ele, 'dmms')
+            dmms_dict = scan_dict['measureVoltPars'].get(pre_during_post_scan_str, {}).get('dmms', {})
+            for dmm_name, dmm_dict in dmms_dict.items():
+                dmm_ele = XmlOps.xmlFindOrCreateSubElement(dmms_ele, dmm_name)
+                XmlOps.xmlFindOrCreateSubElement(dmm_ele, 'readings', dmm_dict['readings'])
+            TiTs.save_xml(root, file)
+
     ''' Pulse Pattern Generator related '''
 
     def ppg_init(self):
@@ -739,7 +776,7 @@ class ScanMain(QObject):
 
     ''' Triton related '''
 
-    def prepare_triton_listener_for_scan(self, triton_scan_dict, pre_post_scan_str='prescan'):
+    def prepare_triton_listener_for_scan(self, triton_scan_dict, pre_post_scan_str='preScan'):
         """
         setup the triton listener if this has not ben setup yet.
         subscribe to all channels as defined in the triton_scan_dict.
@@ -773,12 +810,44 @@ class ScanMain(QObject):
         if self.triton_listener is not None:
             self.triton_listener.start_log()
 
-    def check_triton_log_complete(self):
+    def check_triton_log_complete(self, scan_dict):
         """ check if the triton logger completed """
         if self.triton_listener is not None:
-            return self.triton_listener.logging_complete
+            if self.triton_listener.logging_complete:
+                self.save_triton_log(scan_dict)
+                return True
+            else:
+                return False
         else:
+            print('triton log not existing')
             return True
+
+    def get_triton_log_data(self):
+        """
+        get the data in the triton log
+        :return: dict, {'dummyDev': {'ch1': {'required': 2, 'data': [], 'acquired': 0}, ...}}
+        """
+        if self.triton_listener is not None:
+            return self.triton_listener.log
+        else:
+            return {}
+
+    def save_triton_log(self, scan_dict, pre_during_post_scan_str='preScan'):
+        """
+        save the currently logged data to the file defined in the scan pars
+        :param scan_dict: dict, the usual scan dict, see  Service/Scan/draftScanParameters.py
+        """
+        file = scan_dict['pipeInternals']['activeXmlFilePath']
+        if file:
+            triton_dict = self.get_triton_log_data()
+            if triton_dict:
+                print('triton log complete, saving to: %s' % file)
+                print('saving: ', triton_dict)
+                root = TiTs.load_xml(file)
+                triton_ele = XmlOps.xmlFindOrCreateSubElement(root, 'triton')
+                pre_ele = XmlOps.xmlFindOrCreateSubElement(triton_ele, pre_during_post_scan_str)
+                XmlOps.xmlWriteDict(pre_ele, triton_dict)
+                TiTs.save_xml(root, file)
 
     def get_available_triton(self):
         """

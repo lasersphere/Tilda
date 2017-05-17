@@ -1518,7 +1518,7 @@ class NStraightKepcoFitOnClear(Node):
             offset = []
             for dmm_name, dmm_dict in dmms_dict.items():
                 for key, val in dmm_dict.items():
-                    if key == 'preScanRead':
+                    if key == 'readings':
                         if isinstance(val, str):
                             try:
                                 val = float(val)

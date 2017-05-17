@@ -71,6 +71,7 @@ class DummyTritonDevice(TritonObject):
 
     def receive(self, dev, t, ch, val):
         print(self.name, dev, t, ch, val)
+        # pass
 
     def _emit(self):
         """Called on new subscriber. Emit the concurrent values."""

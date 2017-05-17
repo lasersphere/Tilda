@@ -522,7 +522,8 @@ class Main(QtCore.QObject):
                     self.scan_main.stop_measurement(True, False)
                     self.abort_scan = False
                     self.set_state(MainState.idle)
-                else:  # read dmms until all values are there.
+                else:  # read dmms & triton devices until all values are there.
+                    # check timeout
                     time_since_start = datetime.now() - self.pre_scan_measurement_start_time
                     if self.pre_scan_measurement_timeout_s < time_since_start:
                         print('--------- WARNING ----------')
@@ -532,7 +533,7 @@ class Main(QtCore.QObject):
                         print('--------- WARNING ----------')
                         self.send_info('pre_scan_timeout')
                         self.set_state(MainState.load_track)
-                    else:
+                    else:  # not timedout check, if all vlaues are there
                         if self.scan_main.prescan_measurement(
                                 scan_dict=self.scan_pars[iso_name], dmm_reading=self.read_dmms(False)):
                             self.set_state(MainState.load_track)
@@ -549,6 +550,8 @@ class Main(QtCore.QObject):
         self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
         self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
         self.scan_pars[iso_name]['isotopeData']['accVolt'] = self.acc_voltage
+        if self.scan_pars[iso_name].get('triton', None) is None:
+            self.scan_pars[iso_name]['triton'] = {}
         if self.scan_pars[iso_name]['isotopeData']['type'] == 'kepco':
             track_num, list_of_tracknums = TildaTools.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
             if track_num > 1:

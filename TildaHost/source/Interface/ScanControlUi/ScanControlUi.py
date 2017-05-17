@@ -53,6 +53,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.pre_or_during_scan_str_list = ['preScan', 'duringScan', 'postScan']
         self.pre_or_during_scan_index = 0
 
+        self.enable_config_actions(False)
+
         self.show()
 
     def close_pre_post_scan_win(self):
@@ -93,6 +95,13 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.actionErgo.setEnabled(enable)
         # go on file can also be done without selecting an isotope before:
         self.actionGo_on_file.setEnabled(enable_bool)
+
+    def enable_config_actions(self, enable_bool):
+        """ this will enable/disable the config elements """
+        self.actionAdd_Track.setEnabled(enable_bool)
+        self.actionSave_settings_to_database.setEnabled(enable_bool)
+        self.action_remove_track.setEnabled(enable_bool)
+        self.actionConf_pre_post_scan_measurement.setEnabled(enable_bool)
 
     def go(self, read_spin_box=True, ergo=True):
         """
@@ -207,10 +216,13 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         -> Blocks other executions
         """
         if self.active_iso:  # first remove the before selected isotope from the scan pars
+            self.enable_config_actions(False)
             Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
             self.active_iso = None
         logging.debug('setting up isotope')
         SetupIsotopeUi(self)
+        if self.active_iso:
+            self.enable_config_actions(True)
         self.update_track_list()
         self.update_win_title()
         Cfg._main_instance.send_state()  # request state from main for enabling go

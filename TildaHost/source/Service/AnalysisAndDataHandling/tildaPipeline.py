@@ -173,10 +173,10 @@ def initPipeData(initialScanPars):
     #                              trackDict['dacStepSize18Bit'],
     #                              trackDict['nOfSteps'])))
 
-    pipeData['pipeInternals']['curVoltInd'] = 0
-    pipeData['isotopeData']['isotopeStartTime'] = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
-    xml_file_name = TildaTools.createXmlFileOneIsotope(pipeData)
-    pipeData['pipeInternals']['activeXmlFilePath'] = xml_file_name
+    # pipeData['pipeInternals']['curVoltInd'] = 0
+    # pipeData['isotopeData']['isotopeStartTime'] = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+    # xml_file_name = TildaTools.createXmlFileOneIsotope(pipeData)
+    # pipeData['pipeInternals']['activeXmlFilePath'] = xml_file_name
 
     # in the past an extra projection file was created. but for now,
     #  the projection should stay within the .xml file for this scan.

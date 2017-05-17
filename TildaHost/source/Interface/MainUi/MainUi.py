@@ -119,7 +119,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 self.scan_complete_win.close()
         elif info_str == 'pre_scan_timeout':
             info = QtWidgets.QMessageBox.information(
-                self, 'test1', '-------- Warning -------\n '
+                self, 'Warning!', '-------- Warning -------\n '
                                'the pre scan measurment did not finish within the given time!\n'
                                'Press ok, to proceed with scan.')
 

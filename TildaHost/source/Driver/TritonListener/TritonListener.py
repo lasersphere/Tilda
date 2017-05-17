@@ -13,7 +13,6 @@ import socket
 import sys
 import ast
 from copy import deepcopy
-from datetime import datetime, timedelta
 
 from Driver.TritonListener.TritonObject import TritonObject
 from Driver.TritonListener.DummyTritonDevice import DummyTritonDevice
@@ -41,8 +40,6 @@ class TritonListener(TritonObject):
         self.logging = False
         self.logged_data = {}
         self.logging_complete = False
-        self.log_start_time = datetime.now()
-        self.log_timeout = timedelta(seconds=60)
 
         # Todo remove after debugging is done!
         self.create_dummy_dev()
@@ -89,30 +86,28 @@ class TritonListener(TritonObject):
         the log is a dict containing the devs which should be logged and
         the channels as a dict with the number of required values:
 
-            {'dummyDev': {'calls': 2, 'random': 4}, 'timeoutS': 60}
+            {'dummyDev': {'ch1': {'required': 2, 'data': [], 'acquired': 0}, ...}}
 
         """
         self.log = log
         self.logging_complete = False
         self.back_up_log = deepcopy(self.log)  # store backup log, because i will work on self.log
-        timeout_s = self.log.get('timeoutS', 60)
-        self.log_timeout = timedelta(seconds=timeout_s)
         self.subscribe_to_devs_in_log()
 
     def subscribe_to_devs_in_log(self):
         """ subscirbe to all devs in the log if not already subscribed to """
         existing = list(self._recFrom.keys())
         for dev in self.log.keys():
-            if dev not in existing and dev != 'timeoutS':
+            if dev not in existing:
                 if dev != 'dummyDev':
                     self.subscribe(dev)
-                else:
+                else:  # dummyDev is wanted!
                     if self.dummy_dev is None:
                         self.create_dummy_dev()
                     # print('subscribing to uri:',  self.dummy_dev.uri)
                     self.subscribe('dummyDev', str(self.dummy_dev.uri))
         existing2 = list(self._recFrom.keys())
-        for subscribed_dev in existing2:
+        for subscribed_dev in existing2:  # unsubscribe from all devs which are not in the log
             if subscribed_dev not in self.log.keys():
                 # print('unsubscribing: ', subscribed_dev)
                 self.unsubscribe(subscribed_dev)
@@ -129,14 +124,6 @@ class TritonListener(TritonObject):
         :return:
         """
         if self.logging:
-            log_time = datetime.now() - self.log_start_time
-            if log_time >= self.log_timeout:  # timedout!
-                print('----------  WARNING  ----------')
-                print('Triton Listener timedout after %s s' % log_time.seconds,
-                      'remaining readings on devs and channels: ', self.log)
-                print('----------  WARNING  ----------')
-                self.logging_complete = True
-                self.stop_log()
             if dev in self.log.keys():
                 if ch in self.log[dev].keys():
                     if self.log[dev][ch]['required'] > self.log[dev][ch]['acquired']:
@@ -150,31 +137,26 @@ class TritonListener(TritonObject):
         """ return True if all values have ben acquired """
         check_sum = 0
         for dev, dev_log in self.log.items():
-            if dev != 'timeoutS':
-                for ch, val in dev_log.items():
-                    check_sum += max(0, val['required'] - val['acquired'])
+            for ch, val in dev_log.items():
+                check_sum += max(0, val['required'] - val['acquired'])
         if check_sum == 0:
             print('logging complete')
             self.logging_complete = True
             for dev, dev_log in self.log.items():
-                if dev != 'timeoutS':
-                    for ch, val in dev_log.items():
-                        val['acquired'] = len(val['data'])
+                for ch, val in dev_log.items():
+                    val['acquired'] = len(val['data'])
             print(self.log)
             self.stop_log()
 
     def start_log(self):
         """ start logging of the desired channels and devs.
          Be sure to setup the log before hand with self.setup_log """
-        if self.log == {}:
-            self.logging_complete = True
+        self.logging_complete = self.log == {}
         for dev, dev_dict in self.log.items():
-            if dev != 'timeoutS':
-                for ch, ch_dict in dev_dict.items():
-                    ch_dict['acquired'] = 0
-        # print('log before start:', self.log)
+            for ch, ch_dict in dev_dict.items():
+                ch_dict['acquired'] = 0
+        print('log before start:', self.log)
         self.logging = True
-        self.log_start_time = datetime.now()
 
     def stop_log(self):
         """ stop logging, by setting self.logging to False """
@@ -187,6 +169,7 @@ class TritonListener(TritonObject):
         self._stop()
         if self.dummy_dev is not None:
             self.dummy_dev._stop()
+            self.dummy_dev = None
 
     def setup_pyro(self, hmackey):
         """
@@ -204,8 +187,7 @@ class TritonListener(TritonObject):
 if __name__=='__main__':
     trit_lis = TritonListener()
     # trit_lis.create_dummy_dev()
-    # trit_lis.setup_log({'dummyDev': {'calls': {'required': 2, 'data': []}, 'random': {'required': 5, 'data': []}},
-    #                     'timeoutS': 20})
+    # trit_lis.setup_log({'dummyDev': {'calls': {'required': 2, 'data': []}, 'random': {'required': 5, 'data': []}}})
     trit_lis.setup_log({})
     trit_lis.start_log()
     input('anything to stop')
