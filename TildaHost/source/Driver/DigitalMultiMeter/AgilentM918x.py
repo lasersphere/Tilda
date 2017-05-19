@@ -25,7 +25,7 @@ import numpy as np
 class AgM918xTriggerSources(Enum):
     """
     Immediate (1) DMM does not wait for a trigger of any kind
-    External (2) DMM waits for a trigger on the external trigger input (Which pin? 9?)
+    External (2) DMM waits for a trigger on the external trigger input. Positive Signal (3.5V-12V) between 7(pos) and 4(neg)
     Software (3) DMM waits for execution of Send Software Trigger function
     Interval (10) DMM waits for the length of time specified by the Sample Interval attribute to elapse
     TTL 0 (111) PXI Trigger Line 0
@@ -123,7 +123,7 @@ class AgM918xMeasCompleteLoc(Enum):
 class AgilentM918xPreConfigs(Enum):
     initial = {
         'range': 20.0,
-        'resolution': 7.5,
+        'resolution': 6.5,
         'triggerCount': 5,
         'sampleCount': 5,
         'autoZero': -1,
@@ -141,8 +141,8 @@ class AgilentM918xPreConfigs(Enum):
     periodic = {
         'range': 20.0,
         'resolution': 6.5,
-        'triggerCount': 0,
-        'sampleCount': 0,
+        'triggerCount': 5,
+        'sampleCount': 5,
         'autoZero': -1,
         'triggerSource': 'eins',
         'sampleInterval': -1,
@@ -308,6 +308,23 @@ class AgilentM918x:
         self.dll.AgM918x_ConfigureMeasurement(self.session, func, dmm_range, res)
         pass
 
+    def config_dcvoltage_measurement(self, dcv_range, dcv_res):
+        """
+        Configures all instrument settings necessary to measure DC Voltage, given the parameters of Range, Resolution
+        and AutoRange. If auto range is enabled, then the Range parameter specifies the initial range.
+        :param dcv_range:   The measurement range in units of Volts. Positive values represent the absolute value of the
+                            maximum DC voltage expected. The driver uses this value to select the appropriate range for
+                            the measurement.
+        :param dcv_res:     The measurement resolution in units of Volts. The Resolution parameter is divided by the
+                            absolute value of the Range parameter to produce a dimensionless number of measurement
+                            counts which is used to select the integration time of the analog-to-digital converter.
+        autorange must be False for Multi Sample mode and will therefore not be user-defined
+        """
+        dcv_range = ctypes.c_double(dcv_range)
+        dcv_res = ctypes.c_double(dcv_res)
+        autorange = ctypes.c_bool(False)
+        self.dll.AgM918x_DCVoltConfigureAll(self.session, dcv_range, dcv_res, autorange)
+
     def config_multi_point_meas(self, trig_count, sample_count, trig_src_enum, sample_interval):
         """
         Configures the properties for multipoint measurements.
@@ -343,13 +360,25 @@ class AgilentM918x:
         sample_interval = ctypes.c_double(sample_interval)
         self.dll.AgM918x_ConfigureMultiPoint(self.session, trig_count, sample_count, sample_trig, sample_interval)
 
-    def set_input_resistance(self, highResistanceTrue=True):
+    def set_input_resistance(self, greater_10_g_ohm=True):
         """
-        Seems like there is no input_resistance attribute with the AgM918x, so this function may be obsolete
-        :param highResistanceTrue:
-        :return:
+        function to set the input resistance of the AgM918x
+        :param greater_10_g_ohm: bool,
+            True if you want an input resistance higher than 10GOhm
+            False if you want 10MOhm input resistance
+
+         NOTE: >10 GOhm only supported until 2V range!
         """
-        pass
+        self.config_dict['highInputResistanceTrue'] = greater_10_g_ohm
+        NIDMM_VAL_1_MEGAOHM = 1000000.0
+        NIDMM_VAL_10_MEGAOHM = 10000000.0
+        NIDMM_VAL_GREATER_THAN_10_GIGAOHM = 10000000000.0
+        NIDMM_VAL_RESISTANCE_NA = 0.0
+        NIDMM_ATTR_INPUT_RESISTANCE_id = 29
+        resistance = ctypes.c_double(NIDMM_VAL_10_MEGAOHM)
+        if greater_10_g_ohm:
+            resistance = ctypes.c_double(NIDMM_VAL_GREATER_THAN_10_GIGAOHM)
+        self.set_property_node(resistance, NIDMM_ATTR_INPUT_RESISTANCE_id)
 
     def get_range(self):
         """
@@ -536,6 +565,7 @@ class AgilentM918x:
         #if num_to_read == 0:
         #    return np.zeros(0, dtype=np.double)
         num_to_read = self.config_dict.get('sampleCount')
+        print("Called fetch_multiple_meas() function. num_to_read is: " + str(num_to_read))
         array_of_values = ctypes.c_double * num_to_read
         array_of_values = array_of_values()
         number_to_read = ctypes.c_int32(num_to_read)
@@ -649,8 +679,9 @@ class AgilentM918x:
             if reset_dev:
                 self.reset_dev()
             dmm_range = config_dict.get('range')
-            resolutin = config_dict.get('resolution')
-            self.config_measurement(dmm_range, resolutin)
+            resolution = config_dict.get('resolution')
+            self.config_measurement(dmm_range, resolution)
+            self.config_dcvoltage_measurement(dmm_range, resolution)
             trig_count = config_dict.get('triggerCount')
             sample_count = config_dict.get('sampleCount')
             trig_src_enum = AgM918xTriggerSources[config_dict.get('triggerSource')]
@@ -783,8 +814,8 @@ class AgilentM918x:
          (name, indicator_or_control_bool, type, certain_value_list, current_value_in_config_dict)
         """
         config_dict = {
-            'range': ('range', True, float, [-3.0, -2.0, -1.0, 0.1, 1.0, 10.0, 100.0, 1000.0], self.config_dict['range']),
-            'resolution': ('resolution', True, float, [3.5, 4.5, 5.5, 6.5, 7.5], self.config_dict['resolution']),
+            'range': ('range', True, float, [-3.0, -2.0, -1.0, 0.2, 2.0, 20.0, 200.0, 300.0], self.config_dict['range']),
+            'resolution': ('resolution', True, float, [3.5, 4.5, 5.5, 6.5], self.config_dict['resolution']),
             'triggerCount': ('#trigger events', True, int, range(0, 100000, 1), self.config_dict['triggerCount']),
             'sampleCount': ('#samples', True, int, range(0, 10000, 1), self.config_dict['sampleCount']),
             'autoZero': ('auto zero', True, int, [-1, 0, 1, 2], self.config_dict['autoZero']),
