@@ -41,7 +41,7 @@ class TritonListener(TritonObject):
         self.logged_data = {}
         self.logging_complete = False
 
-        # Todo remove after debugging is done!
+        # TODO remove after debugging is done!
         self.create_dummy_dev()
 
     def create_dummy_dev(self, name='dummyDev'):

@@ -131,7 +131,7 @@ class Main(QtCore.QObject):
         elif self.m_state[0] is MainState.setting_switch_box:
             self._setting_switch_box(*self.m_state[1])
         elif self.m_state[0] is MainState.measure_pre_scan:
-            self._measure_pre_and_post_scan(self.m_state[1])
+            self._measure_pre_and_post_scan(*self.m_state[1])
         elif self.m_state[0] is MainState.load_track:
             self._load_track()
             self.get_fpga_and_seq_state()
@@ -483,9 +483,9 @@ class Main(QtCore.QObject):
                 # will go to idle state afterwards.
                 self.set_state(MainState.idle)
             else:  # begin with the next track
-                self.set_state(MainState.measure_pre_scan, True)
+                self.set_state(MainState.measure_pre_scan, (True, 'preScan'))
 
-    def _measure_pre_and_post_scan(self, first_call=False):
+    def _measure_pre_and_post_scan(self, first_call=False, pre_post_scan_str='preScan'):
         """
         this function is called within the state 'measure_pre_scan'.
             on first call:
@@ -496,47 +496,61 @@ class Main(QtCore.QObject):
             -> dmms are triggered by software and voltmeter-complete TTL-from dmm is ignored.
         next state will be 'load_track'
         :param first_call: bool, True if this is the first call
+        :param pre_post_scan_str: str, preScan or postScan corresponding if this is a pre or post scan measurement
         """
         iso_name = self.scan_progress['activeIso']
 
         this_is_not_first_track = len(self.scan_progress['completedTracks']) != 0
-        if this_is_not_first_track:
+        if this_is_not_first_track and pre_post_scan_str != 'postScan':
             # do not perform an offset measurement if no dmm is present. Proceed to load track
-            # only perform offset measurement in first track!
+            # only perform offset measurement in first track or if 'postScan' is requested!
             print('skipping offset measurement, not first track: %s' % this_is_not_first_track)
             print('completed tracks: ', self.scan_progress['completedTracks'])
             self.set_state(MainState.load_track)
         else:
             if first_call:
-                # on first call set the fpga to measure offset state and
+                # on first call or when called with 'postScan' set the fpga to measure offset state and
                 # software trigger the dmms, also setup the triton listener
-                if self.scan_main.start_pre_scan_measurement(self.scan_pars[iso_name]):
+                if pre_post_scan_str == 'postScan':  # setup triton listener and dmms for post scan measurement
+                    self.scan_main.prepare_dmms_for_scan(
+                        self.scan_pars[iso_name]['measureVoltPars'].get(pre_post_scan_str, {}).get('dmms', {}))
+                    self.scan_main.prepare_triton_listener_for_scan(
+                        self.scan_pars[iso_name].get('triton', {}), pre_post_scan_str)
+                if self.scan_main.start_pre_scan_measurement(self.scan_pars[iso_name], pre_post_scan_str):
                     self.pre_scan_measurement_start_time = datetime.now()
-                    self.set_state(MainState.measure_pre_scan, False)   #set first call to false!
+                    self.set_state(MainState.measure_pre_scan, (False, pre_post_scan_str))   # set first call to false!
                 else:
-                    # scan main says: no pre scan measurement required!
+                    # scan main returns False -> no pre scan measurement required!
                     self.set_state(MainState.load_track)
-            else:  # this will periodically read the dmms until all dmms returned a measurement
+            else:  # this will periodically read the dmms and triton until all dmms returned a measurement
                 if self.abort_scan:
                     print('aborted pre scan measurement, aborting scan, return to idle')
-                    self.scan_main.stop_measurement(True, False)
+                    self.scan_main.stop_measurement(True, True)
                     self.abort_scan = False
+                    if pre_post_scan_str == 'preScan':  # onlöy delete file when aborting preScan!
+                        FileHandl.delete_file(self.scan_pars[iso_name]['pipeInternals']['activeXmlFilePath'])
                     self.set_state(MainState.idle)
                 else:  # read dmms & triton devices until all values are there.
                     # check timeout
                     time_since_start = datetime.now() - self.pre_scan_measurement_start_time
-                    if self.pre_scan_measurement_timeout_s < time_since_start:
+                    if self.pre_scan_measurement_timeout_s < time_since_start:  # timed out
                         print('--------- WARNING ----------')
-                        print('pre scan measurement timedout after %s s. but timeout'
+                        print('pre scan measurement timed out after %s s. but timeout'
                               ' is set to %s s. Anyhow continuing with scan now.' % (
                             time_since_start.seconds, self.pre_scan_measurement_timeout_s.seconds))
                         print('--------- WARNING ----------')
                         self.send_info('pre_scan_timeout')
                         self.set_state(MainState.load_track)
-                    else:  # not timedout check, if all vlaues are there
+                    else:  # not timed out, check if all values are measured yet:
                         if self.scan_main.prescan_measurement(
-                                scan_dict=self.scan_pars[iso_name], dmm_reading=self.read_dmms(False)):
-                            self.set_state(MainState.load_track)
+                                scan_dict=self.scan_pars[iso_name], dmm_reading=self.read_dmms(False),
+                                pre_during_post_scan_str=pre_post_scan_str):
+                            if pre_post_scan_str == 'postScan':
+                                self.send_info('scan_complete')
+                                self.set_state(MainState.setting_switch_box, (True, 4))
+                                # after this has ben completed, it will go to idle
+                            else:
+                                self.set_state(MainState.load_track)
 
     def add_global_infos_to_scan_pars(self, iso_name):
         """
@@ -667,8 +681,7 @@ class Main(QtCore.QObject):
             if self.scan_main.analysis_done_check():  # when done with analysis, leave state
                 QApplication.restoreOverrideCursor()  # ignore warning
                 if complete_stop:  # set switch box to loading state in order to not feed any voltage to the CEC
-                    self.send_info('scan_complete')
-                    self.set_state(MainState.setting_switch_box, (True, 4))  # after this has ben completed, it will go to idle
+                    self.set_state(MainState.measure_pre_scan, (True, 'postScan'))
                 else:  # keep going with next track. None to read from next dict.
                     self.set_state(MainState.setting_switch_box, (True, None))
 

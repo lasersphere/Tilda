@@ -834,8 +834,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         #  when update_all_pmts_plot is called
         self.comboBox_all_pmts_sel_tr.clear()
         self.all_pmts_sel_tr = 0
-        QtWidgets.QWidget().setLayout(self.all_pmts_plot_layout)
-        # self.add_all_pmt_plot()  # do not call without specdata present!
+        try:
+            if isinstance(self.all_pmts_plot_layout, QtWidgets.QVBoxLayout):
+                QtWidgets.QWidget().setLayout(self.all_pmts_plot_layout)
+        except Exception as e:
+            print('warning: while resetting the all_pmt_plot tab/plot: ', e)
         # will be called within update_plots() when first data arrives
         self.comboBox_sum_all_pmts.currentIndexChanged.emit(self.comboBox_sum_all_pmts.currentIndex())
 
