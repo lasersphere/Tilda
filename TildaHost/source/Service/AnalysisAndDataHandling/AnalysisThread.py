@@ -41,7 +41,7 @@ class AnalysisThread(QThread):
         new_data_signal.connect(self.new_data)
 
     def run(self):
-        print('thread running')
+        print('analysis thread running')
         while not self.stop_analysis_bool or len(self.raw_data_storage) or any(self.dmm_dict_list):
             if len(self.raw_data_storage):
                 self.mutex.lock()

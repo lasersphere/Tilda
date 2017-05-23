@@ -50,7 +50,7 @@ class Agilent3458aPreConfigs(Enum):
         'range': '10',
         'resolution': '0.01',
         'triggerCount': -1,
-        'sampleCount': 1,
+        'sampleCount': 10,
         'triggerSource': Agilent3458aTriggerSources.auto.name,
         'sampleInterval': 0.5,
         'triggerDelay_s': 0,
@@ -102,7 +102,7 @@ class Agilent3458A:
         self.last_readback = (0, t)
         self.res_man = visa.ResourceManager()
         self.gpib = None
-        self.gpib_timeout_ms = 100
+        self.gpib_timeout_ms = 200  # would also just work with 50 ms, but risky, so better leave at 100 ms
         self.state = 'initialized'
 
         self.stored_send_cmd = ''
@@ -115,6 +115,7 @@ class Agilent3458A:
         self.config_dict = self.pre_configs.initial.value
         self.init(self.address, reset)
         self.get_accuracy()
+        self.get_dev_err()
         print(self.name, ' initialized')
 
     ''' deinit and init '''
@@ -275,7 +276,9 @@ class Agilent3458A:
 
     def hold_trigger(self):
         """ set trigger to hold in order to not start measureing while configuring """
+        self.send_command('INBUF OFF', postpone_send=False)
         self.config_trigger(self.trig_src_enum.hold, 0)
+        time.sleep(0.2)
 
     def config_trigger(self, trig_source_enum, trig_delay_s, postpone_send=False):
         """
@@ -290,7 +293,8 @@ class Agilent3458A:
         """
         self.config_dict['triggerSource'] = trig_source_enum.name  # str
         self.config_dict['triggerDelay_s'] = trig_delay_s  # float
-        self.send_command('TRIG %s' % trig_source_enum.value[0], postpone_send=True)
+        # decided tot use tbuf on because dmm is quite often busy and then does not response.
+        self.send_command('TBUFF ON;TRIG %s' % trig_source_enum.value[0], postpone_send=True)
         self.send_command('DELAY %s' % trig_delay_s, postpone_send=postpone_send)
 
     # def config_trigger_slope(self, trig_slope):
@@ -336,6 +340,7 @@ class Agilent3458A:
         """
         reads = self.config_dict['sampleCount']
         self.send_command('INBUF ON;TARM AUTO;NRDGS %d,AUTO;TRIG SGL' % reads)
+        time.sleep(0.2)
         # input Buffer needs to be turned on! Because Trig sgl otherwise holds the bus
 
     ''' Measurement '''
@@ -356,36 +361,48 @@ class Agilent3458A:
         the dmm will continue measuring after this.
         :parameter num_to_read: int, unused, because all values are read
         :return: -1 for failure, numpy array
+
+        some comments:
+
+            unfortuneately RMEM turns off the Memory and therefore we would miss triggers
+            coming from the fpga, so we cannot use this.
+
+            Also reading the number of elements in the storage with MCOUNT? becomes problematic,
+            because when using the software trigger we need to turn the input buffer on INBUFF ON, and
+            now reading from the BUS by calling query with an empty command will first return
+            what is still in the buffer, so it will probably not tell you the number of elements
+            in the storage but the last reading.
+
+            Therefore i ended up just reading all elements directly from the buffer until i run into a timeout,
+            then i know that no elements are available anymore currently.
         """
-        ret = ''
-        available = self.send_command('MCOUNT?', as_query=True, default_return='6')
-        try:
-            available = int(available)
-        except Exception as fail:
-            print('error, reading from %s failed to convert: %s, error is: %s' % (self.name, available, fail))
-            return np.array([])
-        if available > 0:
-            # typical response:
+        if self.state == 'measuring':
+            # start_t = datetime.datetime.now()
+            ret = ''
             typ_ret = '-1.500911593E+00,-1.500911355E+00,-1.500910163E+00, ' \
                       '-1.500910640E+00,-1.500911236E+00,-1.500909567E+00'
-            num_to_read = available
-            # nice way but might loose trigger
-            # self.send_command('TBUFF ON;TRIG HOLD', postpone_send=True)
-            # self.gpib.write('TRIG HOLD')
-            # ret = self.send_command('RMEM 1,%d' % num_to_read, as_query=True, default_return=typ_ret)
-            # trig_src = self.trig_src_enum[self.config_dict['triggerSource']].value[0]
-            # self.send_command('MEM FIFO;TRIG %s' % trig_src)
-            # in order not to loose triggers, read directly by polling from bus
-            for i in range(0, num_to_read):
-                ret += self.send_command('', as_query=True, default_return=typ_ret) + ','
+            num_read = 0
+            max_num_read = 10
+            timedout = False
+            while not timedout:  # append all readings from buffer until timeout
+                try:
+                    ret += self.send_command('', as_query=True, default_return=typ_ret) + ','
+                    num_read += 1
+                    timedout = False or num_read > max_num_read
+                except Exception as e:
+                    timedout = True
             try:
                 ret = np.fromstring(ret, sep=',')
+                if ret.size == 0:
+                    return np.array([])
                 t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 # take last element out of array and make a tuple with timestamp:
                 self.last_readback = (round(ret[-1], 8), t)
             except Exception as fail:
                 print('error, reading from %s failed to convert: %s, error is: %s' % (self.name, ret, fail))
                 return np.array([])
+            # done = datetime.datetime.now() - start_t
+            # print('done fetching, ', ret, '%.3f ms' % (done.microseconds / 1000))
             return ret
         else:
             return np.array([])
@@ -395,8 +412,12 @@ class Agilent3458A:
         This will abort reading. The only function doing this seems to be RESET, so this is called followed by calling PRESET NORM
         :return: None
         """
+        self.send_command('INBUF OFF', postpone_send=False)
+        time.sleep(0.2)
         self.send_command('RESET')
+        time.sleep(0.2)
         self.send_command('PRESET NORM')
+        time.sleep(0.2)
         self.state = 'aborted'
 
     def set_to_pre_conf_setting(self, pre_conf_name):
@@ -454,7 +475,8 @@ class Agilent3458A:
                 self.send_command('MEM FIFO', postpone_send=True)
             else:
                 self.send_command('MEM CONT', postpone_send=True)
-            self.config_meas_compl_slope(positive=True)  # always positive TTL
+            self.send_command('INBUF ON', postpone_send=True)
+            self.config_meas_compl_slope(positive=True, postpone_send=False)  # always positive TTL
 
             self.get_accuracy()
             print('%s dmm loaded with: ' % self.name, config_dict)
@@ -555,19 +577,29 @@ if __name__ == '__main__':
     try:
         dev = Agilent3458A(True, 'GPIB0..22..INSTR')
 
-        dev.set_to_pre_conf_setting('pre_scan')
+        print(dev.get_dev_err())
 
-        while input('send software trigger') != 'q':
-            print('sending software trigger')
-            dev.send_software_trigger()
-            # pass
+        dev.set_to_pre_conf_setting(Agilent3458aPreConfigs.pre_scan.name)
+        # dev.send_software_trigger()
 
-        print('measured', dev.fetch_multiple_meas(-1))
+        readings = 0
+        print('starting to fetch')
+        ret = dev.fetch_multiple_meas(-1)
+        print('reading: ', ret)
+        readings += len(ret)
+        print('number of readings: ', readings)
+        while True:
+            time.sleep(0.2)
+            ret = dev.fetch_multiple_meas(-1)
+            print('reading: ', ret)
+            readings += len(ret)
+            print('number of readings: ', readings)
+
+        # print('measured', dev.fetch_multiple_meas(-1))
 
         # # print(dev.gpib.query('ERR?'))
         # # print('write ok')
         # # print(dev.gpib.query('FUNC DCV 10, 0.0001'))
-        # # TODO test this
         # dev.gpib.write('DCV 10, 0.0001')
         #
         # #niceway, but losses trigger:
@@ -626,7 +658,3 @@ if __name__ == '__main__':
     except Exception as e:
         print(e)
 
-
-        # TODO test software triggering! -> NO
-        # TODO test periodic reading  -> NO
-        # TODO test Kepco Scan  -> No

@@ -141,7 +141,7 @@ class ScanMain(QObject):
                     for ch_name, ch_dict in dev_ch_dict.items():
                         ch_dict['data'] = []
             track, track_num_lis = TiTs.get_number_of_tracks_in_scan_dict(scan_dict)
-            self.fpga_start_offset_measurement(scan_dict, track_num_lis[0])  # will be the first track in list.
+            self.fpga_start_offset_measurement(scan_dict, track_num_lis[0], pre_post_scan_meas_str)  # will be the first track in list.
             self.digital_multi_meter.software_trigger_dmm('all')  # send a software trigger to all dmms
             self.start_triton_log()
             self.dmm_pre_scan_done = False
@@ -343,14 +343,14 @@ class ScanMain(QObject):
             print('error while setting hsb: %s' % e)
             return False, 5, 5
 
-    def fpga_start_offset_measurement(self, scan_dict, track_num):
+    def fpga_start_offset_measurement(self, scan_dict, track_num, pre_post_scan_meas_str):
         """
         set all scanparameters at the fpga and go into the measure Offset state.
          set DAC to 0V
         dmms are triggered by software and voltmeter-complete TTL-from dmm is ignored.
         :return:bool, True if successfully changed State
         """
-        self.sequencer.measureOffset(scan_dict, track_num)
+        self.sequencer.measureOffset(scan_dict, track_num, pre_post_scan_meas_str)
 
     def read_data(self):
         """

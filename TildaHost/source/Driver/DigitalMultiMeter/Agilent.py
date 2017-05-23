@@ -6,7 +6,7 @@ Created on '05.07.2016'
 
 Description:
 
-Module representing a dummy digital multimeter with all required public functions.
+Module representing the agilent multimeters with ethernet connection, used e.g. at CERN
 
 """
 import datetime

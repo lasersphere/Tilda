@@ -73,7 +73,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         self.ReadWrite(self.config.nOfBunches, nofbunches)
         return self.checkFpgaStatus()
 
-    def setAllScanParameters(self, scanpars, track_num):
+    def setAllScanParameters(self, scanpars, track_num, pre_post_scan_meas_str):
         """
         Use the dictionary format of act_scan_wins, to set all parameters at once.
          Therefore Sequencer must be in idle state
@@ -83,7 +83,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         track_name = 'track' + str(track_num)
         if self.changeSeqState(self.config.seqStateDict['idle']):
             if (self.setMCSParameters(scanpars, track_name) and
-                    self.setmeasVoltParameters(scanpars['measureVoltPars']['preScan']) and
+                    self.setmeasVoltParameters(scanpars['measureVoltPars'][pre_post_scan_meas_str]) and
                     self.setTrackParameters(scanpars[track_name]) and
                     self.set_trigger(scanpars[track_name].get('trigger', {})) and
                     self.selectKepcoOrScalerScan(scanpars['isotopeData']['type'])):
@@ -92,7 +92,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
 
     '''perform measurements:'''
 
-    def measureOffset(self, scanpars, track_num):
+    def measureOffset(self, scanpars, track_num, pre_post_scan_meas_str):
         """
         set all scanparameters at the fpga and go into the measure Offset state.
         What the Fpga does then to measure the Offset is:
@@ -105,7 +105,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         Note: not included in Version 1 !
         :return:bool, True if successfully changed State
         """
-        if self.setAllScanParameters(scanpars, track_num):
+        if self.setAllScanParameters(scanpars, track_num, pre_post_scan_meas_str):
             return self.changeSeqState(self.config.seqStateDict['measureOffset'])
 
     def measureTrack(self, scanpars, track_num):
@@ -116,7 +116,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         In parallel, host has to read the data from the host sided buffer in parallel.
         :return:bool, True if successfully changed State
         """
-        if self.setAllScanParameters(scanpars, track_num):
+        if self.setAllScanParameters(scanpars, track_num, 'duringScan'):
             return self.changeSeqState(self.config.seqStateDict['measureTrack'])
         else:
             logging.debug('values could not be set')

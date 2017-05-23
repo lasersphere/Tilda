@@ -66,7 +66,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         self.ReadWrite(self.config.dwellTime10ns, dwell)
         return self.checkFpgaStatus()
 
-    def setAllContSeqPars(self, scanpars, track_num):
+    def setAllContSeqPars(self, scanpars, track_num, pre_post_scan_meas_str):
         """
         Set all Scanparameters, needed for the continousSequencer
         :param scanpars: dict, containing all scanparameters
@@ -75,7 +75,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         track_name = 'track' + str(track_num)
         if self.changeSeqState(self.config.seqStateDict['idle']):
             if (self.setDwellTime(scanpars, track_num) and
-                    self.setmeasVoltParameters(scanpars['measureVoltPars']['preScan']) and
+                    self.setmeasVoltParameters(scanpars['measureVoltPars'][pre_post_scan_meas_str]) and
                     self.setTrackParameters(scanpars[track_name]) and
                     self.set_trigger(scanpars[track_name].get('trigger', {})) and
                     self.selectKepcoOrScalerScan(scanpars['isotopeData']['type'])):
@@ -84,7 +84,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
 
     '''perform measurements:'''
 
-    def measureOffset(self, scanpars, track_num):
+    def measureOffset(self, scanpars, track_num, pre_post_scan_meas_str):
         """
         set all scanparameters at the fpga and go into the measure Offset state.
         What the Fpga does then to measure the Offset is:
@@ -97,7 +97,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         Note: not included in Version 1 !
         :return:bool, True if successfully changed State
         """
-        if self.setAllContSeqPars(scanpars, track_num):
+        if self.setAllContSeqPars(scanpars, track_num, pre_post_scan_meas_str):
             return self.changeSeqState(self.config.seqStateDict['measureOffset'])
 
     def measureTrack(self, scanpars, track_num):
@@ -108,7 +108,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         In parallel, host has to read the data from the host sided buffer in parallel.
         :return:bool, True if successfully changed State
         """
-        if self.setAllContSeqPars(scanpars, track_num):
+        if self.setAllContSeqPars(scanpars, track_num, 'duringScan'):
             return self.changeSeqState(self.config.seqStateDict['measureTrack'])
         else:
             logging.debug('values could not be set')
