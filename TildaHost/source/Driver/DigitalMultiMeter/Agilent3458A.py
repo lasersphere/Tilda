@@ -13,9 +13,11 @@ import datetime
 import logging
 import time
 from enum import Enum
+from copy import deepcopy
 
 import numpy as np
 import visa
+from PyQt5.QtCore import QThread, QMutex
 
 
 class Agilent3458aTriggerSources(Enum):
@@ -90,8 +92,15 @@ class Agilent3458aPreConfigs(Enum):
     }
 
 
-class Agilent3458A:
+class Agilent3458A(QThread):
     def __init__(self, reset=True, address_str='YourPC'):
+        super(Agilent3458A, self).__init__()
+        self.stop_reading_thread = False  # use this to stop reading from dmm
+        self.soft_trig_request = True  # request for a software trigger while thread is runnning
+        self.mutex = QMutex()
+        # all currently stored data, will be emptied each time fetched from other thread
+        self.read_back_data = np.zeros(0, dtype=np.double)
+
         self.type = 'Agilent_3458A'
         self.address = address_str.replace('.', ':')  # colons not allowed in name but needed for gpib
         # self.address = 'GPIB0::' + address_str + '::INSTR'
@@ -350,9 +359,32 @@ class Agilent3458A:
         The 3458A seems not have a function similiar to this.
         but this is called from dmmControl upstream.
         """
+        self.start()
         self.state = 'measuring'
 
-    def fetch_multiple_meas(self, num_to_read=-1):
+    def fetch_multiple_meas(self, num_to_read):
+        """
+        will return all currently stored values from the dmm.
+        Actual readout of dmms happens in _fetch_mutliple_meas in the runnning thread
+        :param num_to_read: int, -1 for all
+        :return: list
+        """
+        start_time = datetime.datetime.now()
+
+        self.mutex.lock()
+        if num_to_read < 0:  # read all
+            ret = deepcopy(self.read_back_data)
+            self.read_back_data = np.zeros(0, dtype=np.double)
+        else:
+            ret = deepcopy(self.read_back_data[:num_to_read])
+            self.read_back_data = self.read_back_data[num_to_read:]
+        self.mutex.unlock()
+        stop_time = datetime.datetime.now()
+        reading_time = stop_time - start_time
+        # print('fetching data took %s seconds' % (reading_time.microseconds * 10 ** -6))
+        return ret
+
+    def _fetch_multiple_meas(self, num_to_read=-1):
         """
         fetch all available values from the Multimeter.
         Calling values from the Memory unfortunately will stop the memory,
@@ -378,6 +410,7 @@ class Agilent3458A:
         """
         if self.state == 'measuring':
             # start_t = datetime.datetime.now()
+            # print('reading started')
             ret = ''
             typ_ret = '-1.500911593E+00,-1.500911355E+00,-1.500910163E+00, ' \
                       '-1.500910640E+00,-1.500911236E+00,-1.500909567E+00'
@@ -397,7 +430,9 @@ class Agilent3458A:
                     return np.array([])
                 t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 # take last element out of array and make a tuple with timestamp:
+                self.mutex.lock()
                 self.last_readback = (round(ret[-1], 8), t)
+                self.mutex.unlock()
             except Exception as fail:
                 print('error, reading from %s failed to convert: %s, error is: %s' % (self.name, ret, fail))
                 return np.array([])
@@ -412,6 +447,14 @@ class Agilent3458A:
         This will abort reading. The only function doing this seems to be RESET, so this is called followed by calling PRESET NORM
         :return: None
         """
+        while self.isRunning():
+            self.mutex.lock()
+            self.stop_reading_thread = True
+            self.mutex.unlock()
+            self.msleep(20)
+        self.mutex.lock()
+        self.stop_reading_thread = False
+        self.mutex.unlock()
         self.send_command('INBUF OFF', postpone_send=False)
         time.sleep(0.2)
         self.send_command('RESET')
@@ -431,7 +474,7 @@ class Agilent3458A:
             config_dict = self.pre_configs[pre_conf_name].value
             config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
             self.load_from_config_dict(config_dict, False)
-            self.initiate_measurement()
+            # self.initiate_measurement()
             print('%s dmm loaded with preconfig: %s ' % (self.name, pre_conf_name))
         else:
             print(
@@ -572,6 +615,21 @@ class Agilent3458A:
             print('-> return was: ', ret)
             return [0, 'i dont know, something went wrong']
 
+    ''' Thread '''
+
+    def run(self):
+        print('%s reading thread started' % self.name)
+        while not self.stop_reading_thread:
+            new_data = self._fetch_multiple_meas(-1)
+            self.mutex.lock()
+            self.read_back_data = np.append(self.read_back_data, new_data)
+            self.mutex.unlock()
+            self.msleep(50)
+        print('%s reading thread stopped' % self.name)
+        self.mutex.lock()
+        self.stop_reading_thread = False
+        self.mutex.unlock()
+
 
 if __name__ == '__main__':
     try:
@@ -580,7 +638,8 @@ if __name__ == '__main__':
         print(dev.get_dev_err())
 
         dev.set_to_pre_conf_setting(Agilent3458aPreConfigs.pre_scan.name)
-        # dev.send_software_trigger()
+        dev.send_software_trigger()
+        dev.initiate_measurement()
 
         readings = 0
         print('starting to fetch')
