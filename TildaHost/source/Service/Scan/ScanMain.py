@@ -579,9 +579,9 @@ class ScanMain(QObject):
         set pre_scan_meas to True to ignore the contents of the current config dict and
          load from pre config
         """
-        # logging.debug('preparing dmms for scan. Config dict is: %s' % dmms_conf_dict)
+        logging.debug('preparing dmms for scan. Config dict is: %s' % dmms_conf_dict)
         active_dmms = self.get_active_dmms()
-        # logging.debug('active dmms: %s' % active_dmms)
+        logging.debug('active dmms: %s' % active_dmms)
         for dmm_name, dmm_conf_dict in dmms_conf_dict.items():
             dmms_conf_dict[dmm_name]['acquiredPreScan'] = 0  # reset the acquired samples
             if dmm_name not in active_dmms:

@@ -55,14 +55,21 @@ class TritonListener(TritonObject):
         :param dev: str, name of dev
         :return: list, ['ch1', 'ch2' ...]
         """
+        ret = ''
+        channels = ['calls', 'random']
+
         if self.dbCur is not None:
             self.dbCur.execute(
                 '''SELECT devicetypes.channels FROM devices JOIN devicetypes ON
                     devicetypes.deviceType = devices.deviceType WHERE devices.deviceName = %s''',
                 (str(dev),))
-            channels = ast.literal_eval(self.dbCur.fetchone()[0])
-        else:
-            channels = ['calls', 'random']
+            try:
+                ret = self.dbCur.fetchone()
+                if ret is None:
+                    return ['None']
+                channels = ast.literal_eval(ret[0])
+            except Exception as e:
+                print('error in converting list of channels %s from dev %s, error message is: %s' % (ret, dev, e))
         return channels
 
     def get_devs_from_db(self):
