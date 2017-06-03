@@ -19,6 +19,7 @@ from PyQt5 import QtWidgets
 import Application.Config as Cfg
 import MPLPlotter as MPlPlotter
 from Gui.MainUi import MainUi as PolliMainUi
+from Interface.DialogsUi.ScanCompleteDialUi import ScanCompleteDialUi
 from Interface.DmmUi.DmmUi import DmmLiveViewUi
 from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
 from Interface.MainUi.Ui_Main import Ui_TildaMainWindow
@@ -28,7 +29,6 @@ from Interface.ScanControlUi.ScanControlUi import ScanControlUi
 from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 from Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
 from Interface.VersionUi.VersionUi import VersionUi
-from Interface.DialogsUi.ScanCompleteDialUi import ScanCompleteDialUi
 from Scratch.Tetris import Tetris
 
 
@@ -235,7 +235,10 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.act_scan_wins.append(ScanControlUi(self))
 
     def open_post_acc_win(self):
-        self.post_acc_win = PostAccControlUi(self)
+        if self.post_acc_win is None:
+            self.post_acc_win = PostAccControlUi(self)
+        else:
+            self.raise_win_to_front(self.post_acc_win)
 
     def open_simple_counter_win(self):
         sc_dial = SimpleCounterDialogUi()  # blocking!
@@ -304,8 +307,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         if self.show_scan_compl_win:
             if self.scan_complete_win is None:
                 self.scan_complete_win = ScanCompleteDialUi(self)
-            else:
-                self.raise_win_to_front(self.scan_complete_win)
+            self.raise_win_to_front(self.scan_complete_win)
 
     ''' close windows '''
     def scan_control_win_closed(self, win_ref):

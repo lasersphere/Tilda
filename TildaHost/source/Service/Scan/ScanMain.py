@@ -7,9 +7,9 @@ Created on '19.05.2015'
 """
 
 import logging
+import time
 from copy import deepcopy
 from datetime import datetime, timedelta
-import time
 
 import numpy as np
 from PyQt5 import QtWidgets, Qt
@@ -20,11 +20,11 @@ import Driver.COntrolFpga.PulsePatternGeneratorDummy as PPGDummy
 import Driver.DataAcquisitionFpga.FindSequencerByType as FindSeq
 import Driver.DigitalMultiMeter.DigitalMultiMeterControl as DmmCtrl
 import Driver.PostAcceleration.PostAccelerationMain as PostAcc
-from Driver.TritonListener.TritonListener import TritonListener as TritonListener
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as DftScan
 import TildaTools as TiTs
 import XmlOperations as XmlOps
+from Driver.TritonListener.TritonListener import TritonListener as TritonListener
 from Service.AnalysisAndDataHandling.AnalysisThread import AnalysisThread as AnalThr
 
 
@@ -142,10 +142,12 @@ class ScanMain(QObject):
                         ch_dict['data'] = []
             track, track_num_lis = TiTs.get_number_of_tracks_in_scan_dict(scan_dict)
             self.fpga_start_offset_measurement(scan_dict, track_num_lis[0], pre_post_scan_meas_str)  # will be the first track in list.
-            self.digital_multi_meter.software_trigger_dmm('all')  # send a software trigger to all dmms
-            self.start_triton_log()
-            self.dmm_pre_scan_done = False
-            self.triton_pre_scan_done = False
+            if not dmms_dict_is_none:
+                self.digital_multi_meter.software_trigger_dmm('all')  # send a software trigger to all dmms
+            if not triton_dict_is_none:
+                self.start_triton_log()
+            self.dmm_pre_scan_done = dmms_dict_is_none
+            self.triton_pre_scan_done = triton_dict_is_none
             return True
 
     def prescan_measurement(self, scan_dict, dmm_reading, pre_during_post_scan_str):

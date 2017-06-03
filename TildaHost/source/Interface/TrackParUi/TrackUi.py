@@ -39,6 +39,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.track_name = 'track' + str(track_number)
         self.scan_ctrl_win = scan_ctrl_win
         self.active_iso = scan_ctrl_win.active_iso
+        self.subscription_name = self.active_iso + '_' + self.track_name
         self.seq_type = self.active_iso.split('_')[-1]
         self.track_number = track_number
         self.main_gui = main_gui
@@ -112,6 +113,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.doubleSpinBox_waitForKepco_muS.valueChanged.connect(self.wait_for_kepco_mu_sec)
 
         self.set_labels_by_dict(self.buffer_pars)
+        Cfg._main_instance.subscribe_to_power_sub_status(self.track_ui_call_back_signal, self.subscription_name)
         self.show()
 
     """functions:"""
@@ -207,7 +209,6 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             self.pulse_pattern_win.cmd_list_to_gui(cmd_list)
         if simple_dict:
             self.pulse_pattern_win.load_simple_dict(simple_dict)
-
 
     def close_pulse_pattern_window(self):
         self.pulse_pattern_win = None
@@ -393,7 +394,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """ write to the working dictionary and set the label """
         val = self.comboBox_postAccOffsetVoltControl.currentText()
         if val != 'Kepco':
-            Cfg._main_instance.power_supply_status(val, self.track_ui_call_back_signal)
+            Cfg._main_instance.power_supply_status(val, self.subscription_name)
         self.label_postAccOffsetVoltControl_set.setText(val)
         self.buffer_pars['postAccOffsetVoltControl'] = index
 
@@ -419,8 +420,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         power_supply = self.comboBox_postAccOffsetVoltControl.currentText()
         if power_supply != 'Kepco':
             volt = self.buffer_pars['postAccOffsetVolt']
-            Cfg._main_instance.set_power_supply_voltage(power_supply, volt, self.track_ui_call_back_signal)
-            self.set_volt_win = SetVoltageUi(power_supply, volt, self.track_ui_call_back_signal)
+            Cfg._main_instance.set_power_supply_voltage(power_supply, volt, self.subscription_name)
+            self.set_volt_win = SetVoltageUi(power_supply, volt, self.subscription_name)
 
     def cancel(self):
         """ closes the window without further actions """
@@ -443,6 +444,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """
         will remove the given track window from the dictionary in scan_ctrl_win
         """
+        Cfg._main_instance.un_subscribe_to_power_sub_status(self.subscription_name)
         self.scan_ctrl_win.track_win_closed(self.track_number)
         if self.pulse_pattern_win is not None:
             self.pulse_pattern_win.close()

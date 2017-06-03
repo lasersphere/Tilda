@@ -56,6 +56,8 @@ class Main(QtCore.QObject):
         self.autostart_dict = {}  # dict containing all infos from the autostart.xml file keys are: workingDir,
         # autostartDevices: {dmms: {name: address}, powersupplies: {name:address}}
 
+        # dict of pyqtSignals(dict) for sending the status of the power supply to the correspnding gui
+        self.power_sup_stat_callback_signals = {}
         # pyqtSignal for sending the status to the gui, if there is one connected:
         self.main_ui_status_call_back_signal = None
         # pyqtSignal for sending the scan progress to the gui while scanning.
@@ -171,7 +173,7 @@ class Main(QtCore.QObject):
             if self.m_state[0] is MainState.idle:
                 self.m_state = req_state, val
                 self.send_state()
-                logging.debug('main changed state to %s', str(self.m_state[0].name))
+                logging.debug('main changed state to ' + str(self.m_state[0].name) + ' val is: ' + str(val))
                 return True
             else:
                 if queue_if_not_idle:
@@ -186,7 +188,7 @@ class Main(QtCore.QObject):
         else:
             self.m_state = req_state, val
             self.send_state()
-            logging.debug('changed state to %s', str(self.m_state[0].name))
+            logging.debug('main changed state to ' + str(self.m_state[0].name) + ' val is: ' + str(val))
             return True
 
     def work_on_next_job_during_idle(self):
@@ -521,14 +523,17 @@ class Main(QtCore.QObject):
                     self.set_state(MainState.measure_pre_scan, (False, pre_post_scan_str))   # set first call to false!
                 else:
                     # scan main returns False -> no pre scan measurement required!
-                    self.set_state(MainState.load_track)
+                    if pre_post_scan_str == 'postScan':
+                        self.send_info('scan_complete')
+                        self.set_state(MainState.setting_switch_box, (True, 4))
+                        # after this has ben completed, it will go to idle
+                    else:
+                        self.set_state(MainState.load_track)
             else:  # this will periodically read the dmms and triton until all dmms returned a measurement
                 if self.abort_scan:
                     print('aborted pre scan measurement, aborting scan, return to idle')
                     self.scan_main.stop_measurement(True, True)
                     self.abort_scan = False
-                    if pre_post_scan_str == 'preScan':  # onlöy delete file when aborting preScan!
-                        FileHandl.delete_file(self.scan_pars[iso_name]['pipeInternals']['activeXmlFilePath'])
                     self.set_state(MainState.idle)
                 else:  # read dmms & triton devices until all values are there.
                     # check timeout
@@ -540,7 +545,12 @@ class Main(QtCore.QObject):
                             time_since_start.seconds, self.pre_scan_measurement_timeout_s.seconds))
                         print('--------- WARNING ----------')
                         self.send_info('pre_scan_timeout')
-                        self.set_state(MainState.load_track)
+                        if pre_post_scan_str == 'postScan':
+                            self.send_info('scan_complete')
+                            self.set_state(MainState.setting_switch_box, (True, 4))
+                            # after this has ben completed, it will go to idle
+                        else:
+                            self.set_state(MainState.load_track)
                     else:  # not timed out, check if all values are measured yet:
                         if self.scan_main.prescan_measurement(
                                 scan_dict=self.scan_pars[iso_name], dmm_reading=self.read_dmms(False),
@@ -680,7 +690,9 @@ class Main(QtCore.QObject):
         else:
             if self.scan_main.analysis_done_check():  # when done with analysis, leave state
                 QApplication.restoreOverrideCursor()  # ignore warning
-                if complete_stop:  # set switch box to loading state in order to not feed any voltage to the CEC
+                if complete_stop:
+                    # set switch box to loading state in order to not
+                    #  feed any voltage to the CEC
                     self.set_state(MainState.measure_pre_scan, (True, 'postScan'))
                 else:  # keep going with next track. None to read from next dict.
                     self.set_state(MainState.setting_switch_box, (True, None))
@@ -748,6 +760,23 @@ class Main(QtCore.QObject):
 
     """ postaccleration power supply functions """
 
+    def subscribe_to_power_sub_status(self, callback_signal, key):
+        """
+        can be used for a gui to subscribe to the status of the power supply
+        :param callback_signal: QtCore.pyqtSignal(dict)
+        :param key: str, key which will be used to subscribe and unsubscribe!
+        """
+        self.power_sup_stat_callback_signals[key] = callback_signal
+        return key
+
+    def un_subscribe_to_power_sub_status(self, key):
+        """
+        unsubscribe from status of the power supplies
+        :param key: str, key which will be used to subscribe and unsubscribe!
+        """
+        if key in self.power_sup_stat_callback_signals.keys():
+            self.power_sup_stat_callback_signals.pop(key)
+
     def init_power_sups(self, call_back_signal=None):
         """
         initializes all power supplies and reads the status afterwards.
@@ -806,8 +835,10 @@ class Main(QtCore.QObject):
         self.requested_power_supply_status
         """
         stat = self.scan_main.get_status_of_pwr_supply(name)
-        if call_back_sig is not None:
-            call_back_sig.emit(stat)
+        if call_back_sig is not None and isinstance(call_back_sig, str):
+            call_back_sig = self.power_sup_stat_callback_signals.get(call_back_sig, None)
+            if call_back_sig is not None:
+                call_back_sig.emit(stat)
         self.set_state(MainState.idle)
 
     """ database functions """

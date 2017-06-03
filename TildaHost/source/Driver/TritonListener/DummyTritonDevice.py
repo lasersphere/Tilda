@@ -8,11 +8,12 @@ Module Description:
     Therefore no database is required. One can connenct to it via its Pyro4 - uri
 """
 import logging
-import time
 import random
+import time
 from datetime import datetime
 from functools import wraps
 from threading import Thread, Event, Lock
+
 import Pyro4
 
 from Driver.TritonListener.TritonObject import TritonObject
@@ -103,8 +104,8 @@ class DummyTritonDevice(TritonObject):
             logging.error(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
         elif ch == 'out':
             logging.info(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
-        else:
-            logging.debug(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
+        # else:
+        #     logging.debug(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
 
         for sub in self._sendTo.values():
             sub._receive(self.name, t, ch, val)
@@ -120,7 +121,7 @@ class DummyTritonDevice(TritonObject):
             startTime = time.time()
             self.periodic()
             diff = round(time.time() - startTime, 1)
-            logging.debug('processing time: ' + str(diff))
+            # logging.debug('processing time: ' + str(diff))
             if diff > self._interval and self._interval != 0:
                 self.send('err', 'processing time is bigger than interval! Setting interval to ' + str(diff))
                 self.setInterval(diff)

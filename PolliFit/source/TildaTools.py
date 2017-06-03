@@ -6,6 +6,7 @@ Created on
 Module Description: Tools related closely to Tilda
 """
 import ast
+import json
 import logging
 import os
 import sqlite3
@@ -175,7 +176,7 @@ def get_meas_volt_dict(xml_etree):
     evaluate_strings_in_dict(meas_volt_pars_dict)
     for key, val in meas_volt_pars_dict.items():
         print(val)
-        if val['dmms'] is None:
+        if val.get('dmms', None) is None:
             meas_volt_pars_dict[key]['dmms'] = {}
     return meas_volt_pars_dict
 
@@ -948,9 +949,13 @@ def convert_fit_volt_axis_to_freq(fit):
                                                fit.meas.col, fit.meas.laserFreq, fit.spec.iso.freq)
     return x_axis_in_freq
 
+
+def print_dict_pretty(dict):
+    """ module for pretty printing a dictionary """
+    print(json.dumps(dict, sort_keys=True, indent=4))
+
 if __name__ == '__main__':
     isodi = {'isotope': 'bbb', 'type': 'csdummy'}
     newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')
     print(newname)
-
 

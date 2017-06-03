@@ -29,7 +29,7 @@ pipeInternals_list = ['curVoltInd', 'activeTrackNumber', 'workingDirectory', 'ac
 """ the measureVoltPars dictionary is used to define the pulse length to start the voltage measurement
  and the timeout of the voltage measurement. It contains the following keys: """
 
-measureVoltPars_list = ['preScan', 'duringScan']
+measureVoltPars_list = ['preScan', 'duringScan', 'postScan']
 # measureVoltPars_list = ['measVoltPulseLength25ns', 'measVoltTimeout10ns']
 
 """ list of default triton pars: """
@@ -87,9 +87,10 @@ draftTrackPars = {
 }
 
 draftMeasureVoltPars_singl = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 1000000000,
-                              'dmms': {}, 'switchBoxSettleTimeS': 5.0, 'measurementCompleteDestination': 'software'}
+                              'dmms': {}, 'switchBoxSettleTimeS': 2.0, 'measurementCompleteDestination': 'software'}
 draftMeasureVoltPars = {'preScan': deepcopy(draftMeasureVoltPars_singl),
-                        'duringScan': deepcopy(draftMeasureVoltPars_singl)}
+                        'duringScan': deepcopy(draftMeasureVoltPars_singl),
+                        'postScan': deepcopy(draftMeasureVoltPars_singl)}
 
 draftPipeInternals = {
     'curVoltInd': 0,
@@ -98,7 +99,9 @@ draftPipeInternals = {
     'activeXmlFilePath': 'c:\\'
 }
 
-draft_triton_pars_singl = {'dummyDev': {'calls': 2, 'random': 4}, 'timeoutS': 60}
+draft_triton_pars_singl = {'dummyDev': {
+    'calls': {'required': 2, 'data': [], 'acquired': 0},
+    'random': {'required': 4, 'data': [], 'acquired': 0}}}
 
 draft_triton_pars = {
     'preScan': deepcopy(draft_triton_pars_singl),
