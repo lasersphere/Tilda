@@ -17,11 +17,10 @@ from PyQt5 import QtWidgets, QtCore
 import Application.Config as Cfg
 import TildaTools
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes
-from Interface.DmmUi.DmmUi import DmmLiveViewUi
+from Interface.PreScanConfigUi.PreScanConfigUi import PreScanConfigUi
 from Interface.ScanControlUi.Ui_ScanControl import Ui_MainWindowScanControl
 from Interface.SetupIsotopeUi.SetupIsotopeUi import SetupIsotopeUi
 from Interface.TrackParUi.TrackUi import TrackUi
-from Interface.PreScanConfigUi.PreScanConfigUi import PreScanConfigUi
 
 
 class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
@@ -128,28 +127,29 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         """
         parent = QtWidgets.QFileDialog(self)
         direc = os.path.join(Cfg._main_instance.working_directory, 'sums', '*.xml')
-        # pre select the latest file
-        latest_file = max(glob.iglob(direc), key=os.path.getctime)
-        filename, ok = QtWidgets.QFileDialog.getOpenFileName(
-            parent, 'select an existing .xml file', latest_file, '*.xml')
-        if filename:
-            print('selected file: %s' % filename)
-            scan_dict, e_tree_ele = TildaTools.scan_dict_from_xml_file(filename)
-            scan_dict['isotopeData']['continuedAcquisitonOnFile'] = os.path.split(filename)[1]
-            for key, val in scan_dict.items():
-                if 'track' in key:
-                    if 'trigger' in val:
-                        trig_type_str = val['trigger']['type']
-                        if 'TriggerTypes.' in trig_type_str:  # needed for older versions
-                            trig_type_str = trig_type_str.split('.')[1]
-                        try:
-                            val['trigger']['type'] = getattr(TriggerTypes, trig_type_str)
-                        except Exception as e:
-                            print('error: %s, could not do: getattr(TriggerTypes, %s) ' % (e, val['trigger']['type']))
-            self.active_iso = Cfg._main_instance.add_iso_to_scan_pars_no_database(scan_dict)
-            self.update_track_list()
-            self.update_win_title()
-            self.go(ergo=False)
+        if os.path.isdir(os.path.split(direc)[0]):
+            # pre select the latest file
+            latest_file = max(glob.iglob(direc), key=os.path.getctime)
+            filename, ok = QtWidgets.QFileDialog.getOpenFileName(
+                parent, 'select an existing .xml file', latest_file, '*.xml')
+            if filename:
+                print('selected file: %s' % filename)
+                scan_dict, e_tree_ele = TildaTools.scan_dict_from_xml_file(filename)
+                scan_dict['isotopeData']['continuedAcquisitonOnFile'] = os.path.split(filename)[1]
+                for key, val in scan_dict.items():
+                    if 'track' in key:
+                        if 'trigger' in val:
+                            trig_type_str = val['trigger']['type']
+                            if 'TriggerTypes.' in trig_type_str:  # needed for older versions
+                                trig_type_str = trig_type_str.split('.')[1]
+                            try:
+                                val['trigger']['type'] = getattr(TriggerTypes, trig_type_str)
+                            except Exception as e:
+                                print('error: %s, could not do: getattr(TriggerTypes, %s) ' % (e, val['trigger']['type']))
+                self.active_iso = Cfg._main_instance.add_iso_to_scan_pars_no_database(scan_dict)
+                self.update_track_list()
+                self.update_win_title()
+                self.go(ergo=False)
 
     def add_track(self):
         """

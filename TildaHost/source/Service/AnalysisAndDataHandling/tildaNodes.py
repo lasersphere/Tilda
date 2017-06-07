@@ -1834,8 +1834,9 @@ class NTRSSortRawDatatoArrayFast(Node):
                     self.total_num_of_started_scans += 1
             x_one_scan = np.arange(0, pipeData[track_name]['nOfSteps'])  # "x-axis" for one scan
             # make it also for two scans and invert on second rep if needed.
+            # note fliplr must be >= 2-d
             x_two_scans = np.append(x_one_scan,
-                                    np.fliplr(x_one_scan) if pipeData[track_name]['invertScan'] else x_one_scan)
+                                    np.fliplr([x_one_scan])[0] if pipeData[track_name]['invertScan'] else x_one_scan)
             # repeat this as often as needed for all steps held in this data set.
             x_this_data = np.tile(x_two_scans,
                                   np.ceil(step_complete_ind_list.size / pipeData[track_name]['nOfSteps'] / 2))

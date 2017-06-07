@@ -565,7 +565,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         gate_columns = range(2, 6)
         if item.column() in gate_columns:  # this means a gate value was changed.
             sel_items = self.tableWidget_gates.selectedItems()
-            new_val = float(item.text())
+            try:
+                new_val = float(item.text())
+            except Exception as e:
+                print('error, could not convert value to float: ', item.text())
+                item.setText('0.0')
+                return None
             if len(sel_items):
                 self.tableWidget_gates.blockSignals(True)
                 for each in sel_items:
@@ -591,8 +596,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
                     self.update_tres_plot(self.spec_data)
                     self.update_projections(self.spec_data)
-            else:
-                item.setCheckState(QtCore.Qt.Checked)
+            # else:
+            #     item.setCheckState(QtCore.Qt.Checked)
+        currently_selected = self.find_one_scaler_track(self.tres_sel_tr_name, self.tres_sel_sc_ind)
+        curr_checkb_item = self.tableWidget_gates.item(currently_selected.row(), 6)
+        curr_checkb_item.setCheckState(QtCore.Qt.Checked)
 
     def select_scaler_tr(self, tr_name, sc_ind):
         for row in range(self.tableWidget_gates.rowCount()):
@@ -863,6 +871,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
 
 # if __name__ == "__main__":
+#     import sys
 #     app = QtWidgets.QApplication(sys.argv)
 #     ui = TRSLivePlotWindowUi()
 #     ui.show()

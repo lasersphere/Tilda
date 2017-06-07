@@ -7,6 +7,7 @@ Module Description: Dummy module for the time resolved sequencer, when there is 
 """
 
 import ctypes
+from datetime import datetime
 
 import numpy as np
 
@@ -119,47 +120,49 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         """
         build artificial data for one track.
         """
-        print('starting to build artificial data for dummy trs')
-
+        print(datetime.now(), 'starting to build artificial data for dummy trs')
         track_ind, track_name = scanpars['pipeInternals']['activeTrackNumber']
         trackd = scanpars[track_name]
         print('num of steps: %s num of bins: %s num of bunches: %s num of scans: %s ' %
               (trackd['nOfSteps'], trackd['nOfBins'], trackd['nOfBunches'], trackd['nOfScans']))
-        x_axis = Form.create_x_axis_from_scand_dict(scanpars)[track_ind]
-        num_of_steps = trackd['nOfSteps'] * trackd['nOfScans']
-        x_axis = [Form.add_header_to23_bit(x << 2, 3, 0, 1) for x in x_axis]
+        one_scan = self.build_one_scan(scanpars, trackd, track_ind)
         complete_lis = []
-        scans = 0
-        while scans < trackd['nOfScans']:
+        for i in range(trackd['nOfScans']):
             complete_lis.append(Form.add_header_to23_bit(2, 4, 0, 1))  # means scan started
-            scans += 1
-            step = 0
-            while step < trackd['nOfSteps']:
-                complete_lis.append(int(x_axis[step]))
-                step += 1
-                if step % 2 == 0 or False:
-                    bunch = 0
-                else:  # no scaler entries for all odd step numbers
-                    bunch = trackd['nOfBunches']
-                    for bun in range(bunch):
-                        complete_lis.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
-                    complete_lis.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1)) # step complete
-                while bunch < trackd['nOfBunches']:
-                    complete_lis.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
-                    bunch += 1
-                    time = 0  # scans - 1
-                    while time < trackd['nOfBins']:
-                        scaler03 = max(min(int((time / trackd['nOfBins']) * (2 ** 4)), (2 ** 4) - 1), 1)
-                        scaler47 = max(min(int((time / trackd['nOfBins']) * (2 ** 4)), (2 ** 4) - 1), 1)
-                        scaler03 = 1  # 2 ** 4 - 1  # easier for debugging
-                        scaler47 = 1  # 2 ** 4 - 1  # easier for debugging
-                        complete_lis.append(Form.add_header_to23_bit(time, scaler03, scaler47, 0))
-                        time += 100  # gives event pattern in 1000 ns steps
-                        if time >= trackd['nOfBins'] and bunch >= trackd['nOfBunches']:
-                            # step complete, will be send after all bunches are completed
-                            complete_lis.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))
-        print('artificial data for dummy trs completed')
+            complete_lis += one_scan
+
+        print(datetime.now(), 'artificial data for dummy trs completed')
         self.artificial_build_data = complete_lis
+
+    def build_one_scan(self, scanpars, trackd, track_ind):
+        """ build data for one scan """
+        step = 0
+        count_time_dif = trackd['nOfBins'] // trackd['nOfSteps']
+        x_axis = Form.create_x_axis_from_scand_dict(scanpars)[track_ind]
+        x_axis = [Form.add_header_to23_bit(x << 2, 3, 0, 1) for x in x_axis]
+        one_scan = []
+        while step < trackd['nOfSteps']:
+            one_scan.append(int(x_axis[step]))
+            if step % 2 == 1 or False:
+                bunch = 0
+            else:  # no scaler entries for all even step numbers
+                bunch = trackd['nOfBunches']
+                for bun in range(bunch):
+                    one_scan.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
+                one_scan.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))  # step complete
+            while bunch < trackd['nOfBunches']:
+                one_scan.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
+                bunch += 1
+                scaler03 = 2 ** 4 - 1  # easier for debugging
+                scaler47 = 2 ** 4 - 1  # easier for debugging
+                [one_scan.append(
+                    Form.add_header_to23_bit(count_time_dif * i, scaler03, scaler47, 0))
+                 for i in range(step)]
+                if bunch >= trackd['nOfBunches']:
+                    # step complete, will be send after all bunches are completed
+                    one_scan.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))
+            step += 1
+        return one_scan
 
     ''' overwriting interface functions here '''
 
