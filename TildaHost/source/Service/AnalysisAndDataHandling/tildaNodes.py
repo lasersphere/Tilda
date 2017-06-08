@@ -1320,8 +1320,10 @@ class NMPLImagePlotAndSaveSpecData(Node):
         self.min_time_between_emits = timedelta(milliseconds=250)
         # just be sure it emits on first call (important for loading etc.):
         self.last_emit_time = datetime.now() - self.min_time_between_emits - self.min_time_between_emits
-        gates_and_rebin_signal.connect(self.rcvd_gates_and_rebin)
-        save_request.connect(self.save)
+        if gates_and_rebin_signal is not None:
+            gates_and_rebin_signal.connect(self.rcvd_gates_and_rebin)
+        if save_request is not None:
+            save_request.connect(self.save)
 
     def start(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
@@ -1389,7 +1391,8 @@ class NMPLImagePlotAndSaveSpecData(Node):
                     self.rebinned_data = self.gate_data(self.rebinned_data, softw_gates_for_all_tr)
                     changed = True
             if changed:
-                self.new_data_callback.emit(self.rebinned_data)
+                if self.new_data_callback is not None:
+                    self.new_data_callback.emit(self.rebinned_data)
             else:
                 print('did not emit, because gates/rebinning was not changed.')
             self.mutex.unlock()
@@ -1857,8 +1860,6 @@ class NTRSSortRawDatatoArrayFast(Node):
                 pmt_events_ind = pmt_events_ind[pmt_events_ind < pmt_steps.size]
                 # create a list of stepnumbers for all pmt events:
                 pmt_steps = pmt_steps[pmt_events_ind]
-                self.curVoltIndex = x_this_data[-1] + 1
-                self.total_num_of_started_scans += scan_started_ind_list.size - 1 if scan_start_before_step_comp else 0
                 # new_bunch_ind = np.where(self.stored_data == new_bunch)[0]  # ignore for now.
                 # dac_set_ind = np.where(self.stored_data & dac_int_key == dac_int_key)[0]  # info not needed mostly
                 # create a list with all timestamps
@@ -1886,6 +1887,8 @@ class NTRSSortRawDatatoArrayFast(Node):
                             ith_pmt_hit_list['sc'] = int(np.log2(act_pmt))
                             new_unique_arr = np.append(new_unique_arr, ith_pmt_hit_list)
                             # print(new_unique_arr)
+            self.total_num_of_started_scans += scan_started_ind_list.size - 1 if scan_start_before_step_comp else 0
+            self.curVoltIndex = x_this_data[-1] + 1
             self.stored_data = self.stored_data[step_complete_ind_list[-1] + 1:]
             # new_unique_arr = np.sort(new_unique_arr, axis=0)
             # print(new_unique_arr)
@@ -2078,12 +2081,14 @@ class NSendnOfCompletedStepsViaQtSignal(Node):
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         steps_to_emit = pipeData[track_name]['nOfCompletedSteps'] - self.number_of_steps_at_start
-        self.qt_signal.emit(steps_to_emit)
+        if self.qt_signal is not None:
+            self.qt_signal.emit(steps_to_emit)
         return data
 
     def clear(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        self.qt_signal.emit(self.Pipeline.pipeData[track_name]['nOfCompletedSteps'])
+        if self.qt_signal is not None:
+            self.qt_signal.emit(self.Pipeline.pipeData[track_name]['nOfCompletedSteps'])
 
 
 class NSendnOfCompletedStepsAndScansViaQtSignal(Node):

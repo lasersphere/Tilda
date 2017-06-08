@@ -83,7 +83,7 @@ def numpy_array_from_string(string, shape, datatytpe=np.int32):
     if '(' in string:  # its a zero free dataformat
         string = string.replace('(', '').replace(')', '').replace(',', ' ')
         from_string = np.fromstring(string, dtype=np.uint32, sep=' ')
-        result = np.zeros(from_string.size//4, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
+        result = np.zeros(from_string.size // 4, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
         result['sc'] = from_string[0::4]
         result['step'] = from_string[1::4]
         result['time'] = from_string[2::4]
@@ -121,7 +121,7 @@ def eval_str_vals_in_dict(dicti):
                 # val = val.replace(">", "\'")
                 # dicti[key] = ast.literal_eval(val)
             else:
-                print('error while converting val with ast.literal_eval: ',  e, val, type(val), key)
+                print('error while converting val with ast.literal_eval: ', e, val, type(val), key)
     return dicti
 
 
@@ -343,9 +343,10 @@ def gate_specdata(spec_data):
         [[find_closest_value_in_arr(compare_arr[lim_ind][tr_ind], lim)[0] for lim_ind, lim in enumerate(gates_pmt)]
          for gates_pmt in gates_tr]
         for tr_ind, gates_tr in enumerate(spec_data.softw_gates)]
-    spec_data.softw_gates = [[[compare_arr[lim_ind][tr_ind][found_ind] for lim_ind, found_ind in enumerate(gate_ind_pmt)]
-                              for gate_ind_pmt in gate_ind_tr]
-                             for tr_ind, gate_ind_tr in enumerate(softw_gates_ind)]
+    spec_data.softw_gates = [
+        [[compare_arr[lim_ind][tr_ind][found_ind] for lim_ind, found_ind in enumerate(gate_ind_pmt)]
+         for gate_ind_pmt in gate_ind_tr]
+        for tr_ind, gate_ind_tr in enumerate(softw_gates_ind)]
     for tr_ind, tr in enumerate(spec_data.cts):
         for pmt_ind, pmt in enumerate(tr):
             v_min_ind = min(softw_gates_ind[tr_ind][pmt_ind][0], softw_gates_ind[tr_ind][pmt_ind][1])
@@ -546,7 +547,7 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
                                                                       return_index=True, return_counts=True)
                         sum_ind = unique_inds[np.where(uniq_cts == 2)]  # only take indexes of double occuring items
                         # use indices of all twice occuring elements to add the counts of those:
-                        sum_cts = sorted_arr[sum_ind]['cts'] + sorted_arr[sum_ind + 1]['cts']
+                        sum_cts = sorted_arr[sum_ind]['cts'] + add_meas[0] * sorted_arr[sum_ind + 1]['cts']
                         np.put(sorted_arr['cts'], sum_ind, sum_cts)
                         # delete all remaining items:
                         parent_specdata.time_res_zf[tr_ind] = np.delete(sorted_arr, sum_ind + 1, axis=0)
@@ -618,6 +619,7 @@ def check_var_type(list_of_vars):
             good_val = standard_val
         ret.append(good_val)
     return ret
+
 
 def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_path=None):
     """
@@ -818,7 +820,8 @@ def save_spec_data(spec_data, scan_dict):
         if os.path.isfile(db):
             os.chdir(scan_dict['pipeInternals']['workingDirectory'])
             relative_filename = os.path.normpath(
-                os.path.join(os.path.split(os.path.dirname(existing_xml_fil_path))[1], os.path.basename(existing_xml_fil_path)))
+                os.path.join(os.path.split(os.path.dirname(existing_xml_fil_path))[1],
+                             os.path.basename(existing_xml_fil_path)))
             # if file is in same folder as db, replace this folder with a dot
             db_dir_name = os.path.split(scan_dict['pipeInternals']['workingDirectory'])[1]
             relative_filename = relative_filename.replace(
@@ -954,8 +957,56 @@ def print_dict_pretty(dict):
     """ module for pretty printing a dictionary """
     print(json.dumps(dict, sort_keys=True, indent=4))
 
+
+def translate_raw_data(raw_data):
+    """ translate raw data to string for interpretation """
+    step_complete = add_header_to23_bit(1, 4, 0, 1)  # binary for step complete
+    scan_started = add_header_to23_bit(2, 4, 0, 1)  # binary for scan started
+    new_bunch = add_header_to23_bit(3, 4, 0, 1)  # binary for new bunch
+    dac_int_key = 2 ** 29 + 2 ** 28 + 2 ** 23  # binary key for an dac element
+    header_index = 2 ** 23  # binary for the headerelement
+    step_comp_ct = 0
+    scan_start_ct = 0
+    new_bunch_ct = 0
+    dac_ct = 0
+    pmt_ct = 0
+    for each in raw_data:
+        if each == step_complete:
+            step_comp_ct += 1
+            print(each, '\t step complete %d ' % step_comp_ct)
+        elif each == scan_started:
+            scan_start_ct += 1
+            print(each, '\t scan started  %d' % scan_start_ct, '\t current step: %d' % step_comp_ct)
+        elif each == new_bunch:
+            new_bunch_ct += 1
+            print(each, '\t new bunch %d ' % new_bunch_ct, '\t current step: %d' % step_comp_ct)
+        elif not each & header_index:
+            pmt_ct += 1
+            time = each & (2 ** 23 - 1)
+            act_pmt = each >> 24
+            act_pmts = [i for i in range(0, 7) if 2 ** i & act_pmt]
+            print(each, '\t pmt_event number %d, act pmt: %s, timestamp: %d' % (pmt_ct, str(act_pmts), time),
+                  '\t current step: %d' % step_comp_ct)
+        elif each & dac_int_key:
+            dac_ct += 1
+            print(each, '\t dac bit: %d' % dac_ct, '\t current step: %d' % step_comp_ct)
+        else:
+            print(each, '\t could not be resolved ', format(each, '#032b')[2:], '\t current step: %d' % step_comp_ct)
+
+
+def add_header_to23_bit(bit23, firstheader, secondheader, indexheader):
+    """
+    enter a 32 bit header and the other header without their shift.
+    So for firstheader = 3 (0011) only enter 3.
+    """
+    sh_firstheader = firstheader << 28
+    sh_secondheader = secondheader << 24
+    sh_indexheader = indexheader << 23
+    result = sh_firstheader + sh_secondheader + sh_indexheader + bit23
+    return result
+
+
 if __name__ == '__main__':
     isodi = {'isotope': 'bbb', 'type': 'csdummy'}
     newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')
     print(newname)
-
