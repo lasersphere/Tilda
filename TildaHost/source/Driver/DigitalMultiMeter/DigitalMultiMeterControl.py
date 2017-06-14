@@ -16,6 +16,9 @@ trigger source
 
 """
 
+import logging
+from copy import deepcopy
+
 from Driver.DigitalMultiMeter.Agilent import Agilent
 from Driver.DigitalMultiMeter.DMMdummy import DMMdummy
 from Driver.DigitalMultiMeter.NI4071 import Ni4071
@@ -91,8 +94,8 @@ class DMMControl:
         :param config_dict: dict, dictionary for the given dmm
         :param reset_dev: bool, True for resetting the device before configuration
         """
-        print('active dmms:', self.dmm)
-        print('loading from config: ', config_dict)
+        logging.info('active dmms: ' + str(self.dmm))
+        logging.debug('loading from config: ' + str(config_dict))
         self.dmm[dmm_name].load_from_config_dict(config_dict, reset_dev)
 
     def start_measurement(self, dmm_name):
@@ -190,8 +193,6 @@ class DMMControl:
         else:
             return None
 
-    # maybe feed this to pipeline directly later on.
-
     def get_active_dmms(self):
         """
         function to return a dict of all active dmms
@@ -213,6 +214,10 @@ class DMMControl:
                 self.dmm[dmm_name].send_software_trigger()
         else:
             self.dmm[dmm_name].send_software_trigger()
+
+    def get_accuracy(self, dmm_name, config):
+        """ get the accuracy tuple from the dmm with the given config """
+        return deepcopy(self.dmm[dmm_name].get_accuracy(config))
 
     def de_init_dmm(self, dmm_name):
         """

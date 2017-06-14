@@ -28,7 +28,8 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
     # callback for the voltage readings, done by the main when in idle state
     voltage_reading = QtCore.pyqtSignal(dict)
 
-    def __init__(self, parent, window_name='DMM Live View Window', enable_com=None, active_iso=None, pre_or_during_scan_str=''):
+    def __init__(self, parent, window_name='DMM Live View Window',
+                 enable_com=None, active_iso=None, pre_or_during_scan_str=''):
         """
         this will statup the GUI and check for already active dmm's
         :param parent: parent_gui, usually the main in order to unsubscribe from it etc.
@@ -41,6 +42,9 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
             self.dmm_types = Cfg._main_instance.scan_main.digital_multi_meter.types
         except AttributeError:
             self.dmm_types = ['None']
+
+        self.comm_enabled = True
+
         self.tabs = {
             'tab0': [self.tab_0, None, None]}  # dict for storing all tabs, key: [QWidget(), Layout, userWidget]
         self.tabWidget.setTabText(0, 'choose dmm')
@@ -64,7 +68,6 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.show()
 
-        self.comm_enabled = True
         self.comm_allow_overwrite_val = False
         if enable_com is not None:
             self.enable_communication(enable_com, True)
@@ -172,6 +175,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
                 dmm_type, dmm_addr, state_str, last_readback, dmm_config = val
                 self.setup_new_tab_widget((key, dmm_type), False)
         except AttributeError:  # no main instance available
+            logging.error('while checking for already active dmms an exception occured', exc_info=True)
             pass
 
     def setup_new_tab_widget(self, tpl, disconnect_signal=True):
@@ -277,7 +281,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
                     ret[key] = self.tabs[key][-1].get_current_config()
                 except Exception as e:
                     logging.error(
-                        'error: while reading the gui of %s, this happened: %s' % (key, e))
+                        'error: while reading the gui of %s, this happened: %s' % (key, e), exc_info=True)
         return ret
 
     def get_current_meas_volt_pars(self):

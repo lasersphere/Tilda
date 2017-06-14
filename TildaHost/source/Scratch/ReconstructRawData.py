@@ -18,10 +18,10 @@ from Service.AnalysisAndDataHandling.tildaPipeline import find_pipe_by_seq_type
 work_dir = 'E:/Workspace/Al_Collaps_analysis'
 raw_files = os.path.join(work_dir, 'raw')
 sums_dir = os.path.join(work_dir, 'sums')
-filenames = os.listdir(sums_dir)
+# filenames = os.listdir(sums_dir)
 
 
-# filenames = ['26Al_trs_run142.xml']
+filenames = ['29Al_trs_run228.xml']
 
 # work_dir = 'E:/TildaDebugging2'
 # raw_files = os.path.join(work_dir, 'raw')
@@ -43,7 +43,7 @@ def reconstruct_file_from_raw(file_name, raw_files, workdir):
     """ reconstruct a file from the raw data files. Will find all raw data, even its a go on something. """
     # workdir = 'G:/Experiments/Collaps/Collaps_items/data_online/Al/Al_2017_Tilda'
     # raw_files = os.path.join(workdir, 'raw')
-    max_element_fed = 200000
+    max_element_fed = 1
     xml_files = [file_name]
     go_on = find_go(file_name, workdir)
     while go_on:
@@ -147,30 +147,35 @@ tot_ct = 0
 not_saved_files = []
 excpetion_on_files = []
 no_xml = []
-for file in filenames:
-    print('------------- working on: %s ----------' % file)
-    try:
-        if file.endswith('.xml'):  # no files that were not saved!
-            tot_ct += 1
-            print('file')
-            new_file = reconstruct_file_from_raw(file, raw_files, work_dir)
-            print('reconstruction done')
-            if os.path.getsize(os.path.join(work_dir, 'sums', file)) > 6000:
-                comp_res = compare_xml(os.path.join(sums_dir, file), [new_file])
-                if len(comp_res):
-                    not_equal_files.append((file, comp_res))
-                    not_eq_ct += 1
-                    print(os.path.join(sums_dir, file), ' and ', new_file, '  are NOT equal')
-                else:
-                    eq_ct += 1
-                    print(os.path.join(sums_dir, file), ' and ', new_file, '  are equal')
-            else:
-                not_saved_files.append(file)
-        else:
-            no_xml.append(file)
-    except Exception as e:
-        excpetion_on_files.append((file, e))
-    print('------------- done with: %s ----------' % file)
+# for file in filenames:
+#     print('------------- working on: %s ----------' % file)
+#     try:
+#         if file.endswith('.xml'):  # no files that were not saved!
+#             tot_ct += 1
+#             print('file')
+#             new_file = reconstruct_file_from_raw(file, raw_files, work_dir)
+#             print('reconstruction done')
+#             if os.path.getsize(os.path.join(work_dir, 'sums', file)) > 6000:
+#                 comp_res = compare_xml(os.path.join(sums_dir, file), [new_file])
+#                 if len(comp_res):
+#                     not_equal_files.append((file, comp_res))
+#                     not_eq_ct += 1
+#                     print(os.path.join(sums_dir, file), ' and ', new_file, '  are NOT equal')
+#                 else:
+#                     eq_ct += 1
+#                     print(os.path.join(sums_dir, file), ' and ', new_file, '  are equal')
+#             else:
+#                 not_saved_files.append(file)
+#         else:
+#             no_xml.append(file)
+#     except Exception as e:
+#         excpetion_on_files.append((file, e))
+#     print('------------- done with: %s ----------' % file)
+
+filenames = [os.path.join('E:/Workspace/Al_Collaps_analysis/reconstructed/sums', fi) for fi in os.listdir('E:/Workspace/Al_Collaps_analysis/reconstructed/sums')]
+print('not equal files: ',
+      compare_xml(os.path.join('E:/Workspace/Al_Collaps_analysis/reconstructed/sums', '10_feed_29Al_trs_run228.xml'),
+                  filenames))
 
 print('total files: %s, equal files: %s,'
       ' not equal files: %s, percentage_not_equal: %.2f %%' % (

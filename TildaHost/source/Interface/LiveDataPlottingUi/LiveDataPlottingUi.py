@@ -41,7 +41,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     # list: software gates [[[tr0_sc0_vMin, tr0_sc0_vMax, tr0_sc0_tMin, tr0_sc0_tMax], [tr0_sc1_...
     # int: track_index to rebin -1 for all
     # list: software bin width in ns for each track
-    new_gate_or_soft_bin_width = QtCore.pyqtSignal(list, int, list)
+    # bool: plot bool to force a plotting even if nothing has changed.
+    new_gate_or_soft_bin_width = QtCore.pyqtSignal(list, int, list, bool)
 
     # save request
     save_request = QtCore.pyqtSignal()
@@ -60,6 +61,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.active_initial_scan_dict = None  # scan dict which is stored under the active iso name in the main
         self.active_file = None  # str, name of active file
         self.active_iso = None  # str, name of active iso in main
+        self.overall_scan_progress = 0  # float, will be 1 when scan completed updated via scan progress dict from main
         self.setupUi(self)
         self.show()
         self.tabWidget.setCurrentIndex(1)  # time resolved
@@ -354,20 +356,24 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def update_all_plots(self, spec_data):
         """ wrapper to update all plots """
-        self.update_sum_plot(spec_data)
-        if spec_data.seq_type in self.trs_names_list:
-            self.update_tres_plot(spec_data)
-            self.update_projections(spec_data)
-        self.update_all_pmts_plot(spec_data)
+        try:
+            self.update_sum_plot(spec_data)
+            if spec_data.seq_type in self.trs_names_list:
+                self.update_tres_plot(spec_data)
+                self.update_projections(spec_data)
+            self.update_all_pmts_plot(spec_data)
+        except Exception as e:
+            logging.error('error in updating plots: ' + str(e), exc_info=True)
 
     def update_sum_plot(self, spec_data):
         """ update the sum plot and store the values in self.sum_x, self.sum_y, self.sum_err"""
-        self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpec(self.sum_scaler, self.sum_track)
-        if self.sum_plt_data is None:
-            self.sum_plt_data = self.sum_plt_itm.plot(self.sum_x, self.sum_y, pen='k')
-        else:
-            self.sum_plt_data.setData(self.sum_x, self.sum_y)
-        self.sum_plt_itm.setLabel('bottom', spec_data.x_units.value)
+        if self.sum_scaler is not None:
+            self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpec(self.sum_scaler, self.sum_track)
+            if self.sum_plt_data is None:
+                self.sum_plt_data = self.sum_plt_itm.plot(self.sum_x, self.sum_y, pen='k')
+            else:
+                self.sum_plt_data.setData(self.sum_x, self.sum_y)
+            self.sum_plt_itm.setLabel('bottom', spec_data.x_units.value)
 
     def update_tres_plot(self, spec_data):
         """ update the time resolved plot including the roi """
@@ -418,42 +424,43 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         update the projections, if no plot has been done yet, create plotdata items for every plot
         """
         try:
-            t_proj_x = spec_data.t_proj[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
-            t_proj_y = spec_data.t[self.tres_sel_tr_ind]
-            v_proj_x = spec_data.x[self.tres_sel_tr_ind]
-            v_proj_y = spec_data.cts[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
-            gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
-            sum_x, sum_y, sum_err = spec_data.getArithSpec(self.sum_scaler, self.tres_sel_tr_ind)
+            if self.sum_scaler is not None:
+                t_proj_x = spec_data.t_proj[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
+                t_proj_y = spec_data.t[self.tres_sel_tr_ind]
+                v_proj_x = spec_data.x[self.tres_sel_tr_ind]
+                v_proj_y = spec_data.cts[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
+                gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
+                sum_x, sum_y, sum_err = spec_data.getArithSpec(self.sum_scaler, self.tres_sel_tr_ind)
 
-            if self.t_proj_plt is None:
-                self.t_proj_plt = self.t_proj_plt_itm.plot(t_proj_x, t_proj_y, pen='k')
-                self.sum_proj_plt_data = self.sum_proj_plt_itm.plot(sum_x, sum_y, pen='b')
-                self.v_proj_plt = Pg.create_plot_data_item(v_proj_x, v_proj_y, pen='k')
-                self.v_proj_view_box.addItem(self.v_proj_plt)
+                if self.t_proj_plt is None:
+                    self.t_proj_plt = self.t_proj_plt_itm.plot(t_proj_x, t_proj_y, pen='k')
+                    self.sum_proj_plt_data = self.sum_proj_plt_itm.plot(sum_x, sum_y, pen='b')
+                    self.v_proj_plt = Pg.create_plot_data_item(v_proj_x, v_proj_y, pen='k')
+                    self.v_proj_view_box.addItem(self.v_proj_plt)
 
-                if self.subscribe_as_live_plot:
-                    self.current_step_line = Pg.create_infinite_line(self.spec_data.x[self.tres_sel_tr_ind][0],
-                                                                     pen='r')
-                    self.sum_proj_plt_itm.addItem(self.current_step_line)
+                    if self.subscribe_as_live_plot:
+                        self.current_step_line = Pg.create_infinite_line(self.spec_data.x[self.tres_sel_tr_ind][0],
+                                                                         pen='r')
+                        self.sum_proj_plt_itm.addItem(self.current_step_line)
 
-                self.v_min_line = Pg.create_infinite_line(gates[0])
-                self.v_max_line = Pg.create_infinite_line(gates[1])
-                self.t_min_line = Pg.create_infinite_line(gates[2], angle=0)
-                self.t_max_line = Pg.create_infinite_line(gates[3], angle=0)
+                    self.v_min_line = Pg.create_infinite_line(gates[0])
+                    self.v_max_line = Pg.create_infinite_line(gates[1])
+                    self.t_min_line = Pg.create_infinite_line(gates[2], angle=0)
+                    self.t_max_line = Pg.create_infinite_line(gates[3], angle=0)
 
-                self.sum_proj_plt_itm.addItem(self.v_min_line)
-                self.sum_proj_plt_itm.addItem(self.v_max_line)
-                self.t_proj_plt_itm.addItem(self.t_min_line)
-                self.t_proj_plt_itm.addItem(self.t_max_line)
-            else:
-                self.t_proj_plt.setData(t_proj_x, t_proj_y)
-                self.sum_proj_plt_data.setData(sum_x, sum_y)
-                self.v_proj_plt.setData(v_proj_x, v_proj_y)
-                self.v_min_line.setValue(gates[0])
-                self.v_max_line.setValue(gates[1])
-                self.t_min_line.setValue(gates[2])
-                self.t_max_line.setValue(gates[3])
-            self.sum_proj_plt_itm.setLabel('bottom', spec_data.x_units.value)
+                    self.sum_proj_plt_itm.addItem(self.v_min_line)
+                    self.sum_proj_plt_itm.addItem(self.v_max_line)
+                    self.t_proj_plt_itm.addItem(self.t_min_line)
+                    self.t_proj_plt_itm.addItem(self.t_max_line)
+                else:
+                    self.t_proj_plt.setData(t_proj_x, t_proj_y)
+                    self.sum_proj_plt_data.setData(sum_x, sum_y)
+                    self.v_proj_plt.setData(v_proj_x, v_proj_y)
+                    self.v_min_line.setValue(gates[0])
+                    self.v_max_line.setValue(gates[1])
+                    self.t_min_line.setValue(gates[2])
+                    self.t_max_line.setValue(gates[3])
+                self.sum_proj_plt_itm.setLabel('bottom', spec_data.x_units.value)
 
         except Exception as e:
             print('error, while plotting projection, this happened: ', e)
@@ -553,10 +560,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     ''' gating: '''
 
-    def gate_data(self, spec_data, plot_bool=True):
+    def gate_data(self, spec_data, plot_bool=False):
         rebin_track = -1 if self.checkBox.isChecked() else self.tres_sel_tr_ind
+        if spec_data is None:
+            spec_data = self.spec_data
         self.new_gate_or_soft_bin_width.emit(
-            spec_data.softw_gates, rebin_track, spec_data.softBinWidth_ns)
+            spec_data.softw_gates, rebin_track, spec_data.softBinWidth_ns, plot_bool)
 
     ''' table operations: '''
 
@@ -715,13 +724,23 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     ''' closing '''
 
-    def closeEvent(self, *args, **kwargs):
-        self.unsubscribe_from_main()
+    def closeEvent(self, event):
+        if self.subscribe_as_live_plot:
+            if self.overall_scan_progress == 100:
+                self.unsubscribe_from_main()
         if self.parent is not None:
             if self.subscribe_as_live_plot:
-                self.parent.close_live_plot_win()
+                if self.overall_scan_progress == 100:
+                    self.parent.close_live_plot_win()
+                    event.accept()
+                else:
+                    print(
+                        'will not close plot window while scanning!'
+                        ' scan progress is: %.2f' % self.overall_scan_progress)
+                    event.ignore()
             else:
                 self.parent.close_file_plot_win(self.full_file_path)
+                event.accept()
 
     ''' subscription to main '''
 
@@ -754,7 +773,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         logging.debug('rebinning data to bins of  %s' % rebin_factor_ns)
         rebin_track = -1 if self.checkBox.isChecked() else self.tres_sel_tr_ind
         self.new_gate_or_soft_bin_width.emit(
-            self.extract_all_gates_from_gui(), rebin_track, self.spec_data.softBinWidth_ns)
+            self.extract_all_gates_from_gui(), rebin_track, self.spec_data.softBinWidth_ns, False)
         stop = datetime.now()
         dif = stop - start
         # print('rebinning took: %s' % dif)
@@ -786,6 +805,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         self.active_initial_scan_dict = Cfg._main_instance.scan_pars[self.active_iso]
         self.active_track_name = progress_dict_from_main['trackName']
+        self.overall_scan_progress = progress_dict_from_main['overallProgr']
 
     def update_step_indication_lines(self, act_step, act_tr):
         try:
@@ -806,6 +826,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         self.spec_data = None
         self.setWindowTitle('plot: ...  loading  ... ')
+        self.scan_prog_ui.reset()
         self.reset_table()
         self.reset_sum_plots()
         self.reset_all_pmt_plots()
@@ -856,6 +877,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         QtWidgets.QWidget().setLayout(self.sum_plot_layout)
         self.sum_plt_data = None
+        self.sum_scaler = None
+        self.sum_track = None
         self.add_sum_plot()
 
     def reset_t_res_plot(self):

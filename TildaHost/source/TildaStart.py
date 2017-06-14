@@ -8,7 +8,9 @@ Created on '07.05.2015'
 import argparse
 import functools
 import logging
+from logging.handlers import RotatingFileHandler
 import sys
+import os
 
 import matplotlib
 
@@ -32,8 +34,41 @@ def main():
     args = parser.parse_args()
 
     # setup logging
-    logging.basicConfig(level=getattr(logging, args.log_level), format='%(message)s', stream=sys.stdout)
-    logging.info('Log level set to ' + args.log_level)
+    # logging.basicConfig(level=getattr(logging, args.log_level), format='%(message)s', stream=sys.stdout)
+    # logging.info('Log level set to ' + args.log_level)
+
+    log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(module)s %(funcName)s(%(lineno)d) %(message)s')
+
+    debug_file = './logs/debug'
+    error_file = './logs/err'
+    if not os.path.isdir(os.path.dirname(debug_file)):
+        os.mkdir(os.path.dirname(debug_file))
+
+    app_log = logging.getLogger()
+    # app_log.setLevel(getattr(logging, args.log_level))
+    app_log.setLevel(logging.DEBUG)
+
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(getattr(logging, args.log_level))
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    # ch.setFormatter(log_formatter)
+    app_log.addHandler(ch)
+
+    my_handler = RotatingFileHandler(debug_file, mode='a', maxBytes=5 * 1024 * 1024,
+                                     backupCount=2, encoding=None, delay=0)
+    my_handler.setFormatter(log_formatter)
+    my_handler.setLevel(logging.DEBUG)
+    app_log.addHandler(my_handler)
+
+    my_handler = RotatingFileHandler(error_file, mode='a', maxBytes=5 * 1024 * 1024,
+                                     backupCount=2, encoding=None, delay=0)
+    my_handler.setFormatter(log_formatter)
+    my_handler.setLevel(logging.ERROR)
+    app_log.addHandler(my_handler)
+
+    app_log.info('****************************** starting ******************************')
+    app_log.info('Log level set to ' + args.log_level)
 
     # starting the main loop and storing the instance in Cfg.main_instance
     Cfg._main_instance = Main()

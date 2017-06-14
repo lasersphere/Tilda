@@ -544,7 +544,7 @@ class ScanMain(QObject):
         """
         calculate the time that is left until the whole scan is completed.
         Therfore measure the expired time since scan start and compare it with remaining steps.
-        :return: int, time that is left
+        :return: timedelta, time that is left
         """
         now_time = datetime.now()
         dt = now_time - start_time
@@ -716,6 +716,10 @@ class ScanMain(QObject):
                 logging.debug('saved %s meas of dmm: %s, reading is: %s' % (
                     pre_during_post_scan_str, dmm_name, str(dmm_dict['readings'])))
             TiTs.save_xml(root, file)
+
+    def dmm_get_accuracy(self, dmm_name, config):
+        """ get the accuracy tuple from the dmm with the given config """
+        return self.digital_multi_meter.get_accuracy(dmm_name, config)
 
     ''' Pulse Pattern Generator related '''
 

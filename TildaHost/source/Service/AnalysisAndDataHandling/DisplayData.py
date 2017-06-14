@@ -29,6 +29,11 @@ class DisplayData:
         self.load_spectra(file, loaded_spec)
         self.select_pipe()
         self.feed_loaded_spec(self.spec)
+        self.gui.gate_data(None, True)
+        # self.gui.new_gate_or_soft_bin_width.emit(
+        #     self.spec.softw_gates, -1, self.spec.softBinWidth_ns)(self.spec)
+        # self.gui.new_gate_or_soft_bin_width.emit(
+        #     self.spec.softw_gates, -1, self.spec.softBinWidth_ns)(self.spec)
         # self.clear_pipe()  # for now i don't want to save here.
 
     def load_spectra(self, file, loaded_spec=None):

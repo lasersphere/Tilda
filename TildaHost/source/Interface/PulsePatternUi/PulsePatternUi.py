@@ -520,6 +520,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                 ch_dict['line'].setPoints(ch_dict['pos'])
                 ch_dict['line'].blockSignals(False)
             else:
+                # TODO improve this!
                 ch_dict['line'] = Pgplot.create_roi_polyline(ch_dict['pos'], movable=False)
                 if 'DO' in ch:  # outputs blue
                     pen = Pgplot.pg.mkPen('b', width=3)

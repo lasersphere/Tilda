@@ -1045,6 +1045,10 @@ class Main(QtCore.QObject):
         """
         self.dmm_gui_callback = None
 
+    def dmm_get_accuracy(self, dmm_name, config):
+        """ get the accuracy tuple from the dmm with the given config """
+        return self.scan_main.dmm_get_accuracy(dmm_name, config)
+
     ''' pulse pattern operations '''
 
     def ppg_init(self):

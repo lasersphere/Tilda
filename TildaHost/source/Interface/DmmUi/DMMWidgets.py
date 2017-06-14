@@ -17,7 +17,7 @@ from Interface.DmmUi.Ui_Ni4071Widget import Ui_form_layout
 
 def get_wid_by_type(dmm_type, dmm_name):
     """ same widget used by all type, each dmm will emit its parameters """
-    print('initializing widget for type:', dmm_type)
+    logging.info('initializing widget for type: ' + dmm_type)
     return Ni4071Widg(dmm_name, dmm_type)
 
 
@@ -45,7 +45,7 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         self.communicate_button.clicked.connect(self.communicate_with_dmm)
         self.poll_last_readback()  # therefore device must be initialized before!
         self.request_conf_pars_from_dev(True)  # therefore device must be initialized before!
-        print('finished init of: ', self.dmm_name, ' widget')
+        logging.info('finished init of: ' + self.dmm_name + ' widget')
 
     def request_conf_pars_from_dev(self, store_and_setup):
         """
@@ -62,7 +62,8 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         :param conf_dict: dict, tuple (name_str, type_class, certain_value_list, actual_value_bool/int/str/float)
         :return:
         """
-        print('rcvd config dict: ', conf_dict)
+        logging.debug('rcvd config dict: ' + str(conf_dict))
+        logging.info('setting up dmm widget from config dict for dmm ' + self.dmm_name)
         self.raw_config = conf_dict
         self.add_widgets_to_form_layout(self.raw_config, self.formLayout_config_values)
         self.formLayout_reading_and_buttons.addRow(self.reset_button, self.communicate_button)
@@ -129,9 +130,9 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         """
         return min(myList, key=lambda x: abs(x - val))
 
-    def widget_value_changed(self, key, val, enabled=True):
+    def widget_value_changed(self, key, val, enabled=True, update_acc=True):
         """
-        when a value of a generic created input is chnaged, this function will be called.
+        when a value of a generic created input is changed, this function will be called.
         :param key: str, name of the caller, which should be the key in the self.raw_config dict.
         :param val: bool/str/int/float
         :return:
@@ -150,6 +151,8 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
                 widget.setText(str(val))
             self.raw_config[key][3] = val  # just set it for strings etc.
         widget.setEnabled(enabled)
+        if update_acc:
+            self.update_accuracy()
 
     def reset_vals(self):
         """
@@ -194,6 +197,21 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         except Exception as e:
             pass  # not yet initialized
 
+    def poll_accuracy(self):
+        """
+        get the accuracy for the current configuration
+        which will be calculated from the device on the driver layer.
+        :return: tuple, tuple of the accuracy
+        """
+        acc_tuple = Cfg._main_instance.dmm_get_accuracy(self.dmm_name, self.get_current_config())
+        return acc_tuple
+
+    def update_accuracy(self):
+        """ update the accuracy tuple in the gui """
+        if 'accuracy' in self.raw_config.keys():
+            enabled = self.raw_config['accuracy'][-1].isEnabled()
+            self.widget_value_changed('accuracy', self.poll_accuracy(), enabled, update_acc=False)
+
     def enable_communication(self, enable_bool):
         """
         this disables/enables all communication to the device.
@@ -232,9 +250,12 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         names.append('manual')
         self.comboBox_defaul_settings.blockSignals(True)
         self.comboBox_defaul_settings.addItems(names)
-        act_conf = preconfname
-        conf = self.pre_confs[act_conf].value
-        self.load_dict_to_gui(conf)
+        if preconfname != 'manual':
+            act_conf = preconfname
+            conf = self.pre_confs[act_conf].value
+            self.load_dict_to_gui(conf)
+        else:
+            self.comboBox_defaul_settings.setCurrentText(preconfname)
         self.comboBox_defaul_settings.blockSignals(False)
 
     def handle_pre_conf_changed(self, text):

@@ -41,6 +41,19 @@ class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
 
         self.show()
 
+    def reset(self):
+        self.checkBox.setChecked(False)
+        self.progressBar_overall.setValue(0)
+        self.label_timeleft_set.setText('-1')
+        self.label_act_track_num.setText('-1')
+        self.label_total_track_num.setText('-1')  #
+        self.progressBar_track.setValue(0)
+        self.label_act_scan_number.setText('-1')
+        self.label_max_scan_number.setText('-1')  #
+        self.label_act_completed_steps.setText('-1')
+        self.label_max_completed_steps.setText('-1')  #
+        self.groupBox.setTitle('track...')
+
     def abort(self):
         Cfg._main_instance.abort_scan = True
 

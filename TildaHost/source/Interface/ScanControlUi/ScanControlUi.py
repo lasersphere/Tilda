@@ -94,6 +94,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.actionErgo.setEnabled(enable)
         # go on file can also be done without selecting an isotope before:
         self.actionGo_on_file.setEnabled(enable_bool)
+        self.actionSetup_Isotope.setEnabled(enable_bool)
 
     def enable_config_actions(self, enable_bool):
         """ this will enable/disable the config elements """
@@ -182,7 +183,10 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         track_number = int(track_name[5:])
         logging.debug('working on track' + str(track_number))
         try:
-            self.track_wins_dict[str(track_number)] = TrackUi(self, track_number, self.active_iso, self.main_gui)
+            if self.track_wins_dict.get(str(track_number), None) is not None:
+                self.raise_win_to_front(self.track_wins_dict[str(track_number)])
+            else:
+                self.track_wins_dict[str(track_number)] = TrackUi(self, track_number, self.active_iso, self.main_gui)
         except Exception as e:
             print(e)
 
