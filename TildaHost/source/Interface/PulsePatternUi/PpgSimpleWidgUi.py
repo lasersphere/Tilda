@@ -12,6 +12,8 @@ of opening and closing the beam gate and the rfq.
 
 from copy import deepcopy
 from functools import partial
+import logging
+from datetime import datetime
 
 from PyQt5 import QtWidgets
 
@@ -122,7 +124,8 @@ class PpgSimpleWidgUi(QtWidgets.QWidget, Ui_PpgSimpleWidg):
         self.comboBox_rfqcb_out_ch.blockSignals(False)
 
     def gui_changed(self):
-        """ this ios called whenever something in the gui changes """
+        """ this is called whenever something in the gui changes """
+        logging.debug('simple tab gui was changed, computing ...')
         pr_yes_no = self.comboBox_proton_trig_yes_no.currentText()
         pr_inp = self.comboBox_proton_trig_input_ch.currentText()
         rfq_state = self.comboBox_rfq_state.currentText()
@@ -155,10 +158,14 @@ class PpgSimpleWidgUi(QtWidgets.QWidget, Ui_PpgSimpleWidg):
             if pr_yes_no_bool else (rfq_delay_ms + rfq_acc_time + rfq_rel_time)
         self.sys_rep_rate_changed(new_sys_rep_rate_ms)
         self.block_controls()
+        # logging.debug('getting cmd list from simple dict ...')
         cmd_list = self.get_cmd_list_from_simple_dict()
+        # logging.debug('... got cmd list from simple dict.')
+
         if cmd_list:
             # print('emitting')
             self.cmd_list_callback_signal.emit(cmd_list, 'simple')
+        logging.debug('... simple tab gui was changed, computing is done.')
 
     def sys_rep_rate_changed(self, sys_rep_rate_ms):
         """ system rep rate was changed, adjust accumulation time if this does not match """
@@ -265,8 +272,12 @@ class PpgSimpleWidgUi(QtWidgets.QWidget, Ui_PpgSimpleWidg):
                     delays[i], self.sys_rep_rate_us, t_0=t_0, pr_triggered=pr_tr_yes_no,
                     always_high=always_open[i], always_low=always_closed[i]
                 ))
+        # logging.debug('combining high low list ...')
         ch_hi_lo_list_combined = self.combine_ch_high_low_lists(ch_hi_lo_list)
+        # logging.debug(' ... combining high low list is done.')
+        # logging.debug('converting high low list to cmd list ...')
         cmd_list = self.ch_hi_lo_list_to_cmd_list(ch_hi_lo_list_combined)
+        # logging.debug('... converting high low list to cmd list is done.')
         return cmd_list
 
     def get_ch_high_low_list(self, ch_str, n_of_pulses, width_us,
@@ -274,6 +285,8 @@ class PpgSimpleWidgUi(QtWidgets.QWidget, Ui_PpgSimpleWidg):
         """
         create a list of list with each containing: [[ch_int_high/ch_int_low, leftedge_time, ch_int], ... ]
         """
+        # logging.debug('starting creation of high low list ...')
+        creation_start_t = datetime.now()
         ch_high_int = 2 ** int(ch_str[2:])  # 'DO2' -> 2 ** 2
         ch_low_int = 0
         if always_high:
@@ -323,6 +336,9 @@ class PpgSimpleWidgUi(QtWidgets.QWidget, Ui_PpgSimpleWidg):
                 [ch_high_int if inverted else ch_low_int, end_time, ch_high_int])  # end
         hi_lo_list = [[each[0], round(each[1], 2), each[2]] for each in hi_lo_list]
         # print(hi_lo_list)
+        creation_done_t = datetime.now()
+        # logging.debug('... creation of high low list is done after %.1f ms'
+        #               % ((creation_done_t - creation_start_t).microseconds / 1000))
         return hi_lo_list
 
     def get_ch_high_low_at_time(self, time, ch_hi_lo_list):
@@ -338,26 +354,20 @@ class PpgSimpleWidgUi(QtWidgets.QWidget, Ui_PpgSimpleWidg):
         return time_hi_lo_ele, index
 
     def combine_ch_high_low_lists(self, all_ch_high_lo_lists):
-        """ by iteratively calling this function, add up all all single channel high low list to a common one """
+        """ combine all high_low channel lists, and
+         return a common high_low list, like [[t0, sum_chs], [t1, sum_chs], ...] """
         ret_list = []
         timing = []
+        # logging.debug('\t within combine_ch_high_low_lists: getting timings now')
         for singl_ch_high_lo_lis in all_ch_high_lo_lists:
             timing += [each[1] for each in singl_ch_high_lo_lis]
         timing = sorted(set(timing))
-        all_same_len_sorted = []
-        for singl_ch_high_lo_lis in all_ch_high_lo_lists:
-            for each_time in timing:
-                elem, ind = self.get_ch_high_low_at_time(each_time, deepcopy(singl_ch_high_lo_lis))
-                if each_time != singl_ch_high_lo_lis[ind][1]:
-                    singl_ch_high_lo_lis.insert(ind, elem)
-            new_sorted = list(sorted(singl_ch_high_lo_lis, key=lambda _each: _each[1]))
-            all_same_len_sorted.append(new_sorted)
         for ind, _time in enumerate(timing):
-            ret_list.append(
-                [_time,
-                 sum([all_same_len_sorted[ch_ind][ind][0] for ch_ind in range(0, len(all_same_len_sorted))])]
-            )
-        # print(timing)
+            ret_list.append([
+                _time,
+                sum([self.get_ch_high_low_at_time(_time, each_ch_list)[0][0] for each_ch_list in all_ch_high_lo_lists])
+            ])
+        # logging.debug('\t within combine_ch_high_low_lists: DONE')
         return ret_list
 
     def ch_hi_lo_list_to_cmd_list(self, ch_hi_lo_list):
