@@ -8,6 +8,7 @@ Module Description: Dummy module for the time resolved sequencer, when there is 
 
 import ctypes
 from datetime import datetime
+import logging
 
 import numpy as np
 
@@ -173,6 +174,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         elemRemainInFifo = int, number of Elements still in FifoBuffer
         :return:
         """
+        st = datetime.now()
         result = {'nOfEle': 0, 'newData': None, 'elemRemainInFifo': 0}
         result['elemRemainInFifo'] = len(self.artificial_build_data)
         max_read_data = 20000
@@ -186,6 +188,8 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
                                       if j not in range(n_of_read_data)]
         if result['elemRemainInFifo'] == 0:
             self.status = TrsCfg.seqStateDict['measComplete']
+        elapsed = datetime.now() - st
+        logging.debug('reading from dummy trs sequemncer took %.1f ms ' % (elapsed.microseconds / 1000))
         return result
 
     def getSeqState(self):

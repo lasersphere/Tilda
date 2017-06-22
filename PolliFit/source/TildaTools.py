@@ -160,22 +160,29 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
     """
     print('xml file is file: %s' % os.path.isfile(xml_file))
     xml_etree = load_xml(xml_file)
-    trackd = {}
+    all_trackd = {}
     tracks = xml_etree.find('tracks')
     for t in tracks:
-        trackd[str(t.tag)] = (xml_get_dict_from_ele(xml_etree)[1]['tracks'][str(t.tag)]['header'])
-    for key, val in trackd.items():
-        trackd[key] = evaluate_strings_in_dict(trackd[key])
-    return trackd
+        all_trackd[str(t.tag)] = (xml_get_dict_from_ele(xml_etree)[1]['tracks'][str(t.tag)]['header'])
+    for tr_name, track_d in all_trackd.items():
+        all_trackd[tr_name] = evaluate_strings_in_dict(all_trackd[tr_name])
+    for tr_name, track_d in all_trackd.items():
+        # make sure no None values exist for measureVoltPars['dmm']
+        for key, val in track_d.get('measureVoltPars', {}).items():
+            if val.get('dmms', None) is None:
+                val['dmms'] = {}
+    return all_trackd
 
 
 def get_meas_volt_dict(xml_etree):
-    """ get the dictionary containing all the voltage measurement parameters
+    """
+        OUTDATED SINCE VERSION 1.19
+
+    get the dictionary containing all the voltage measurement parameters
      from an xml_etree element loaded from an xml file. """
     meas_volt_pars_dict = xml_get_dict_from_ele(xml_etree)[1].get('measureVoltPars', {})
     evaluate_strings_in_dict(meas_volt_pars_dict)
     for key, val in meas_volt_pars_dict.items():
-        print(val)
         if val.get('dmms', None) is None:
             meas_volt_pars_dict[key]['dmms'] = {}
     return meas_volt_pars_dict
@@ -183,6 +190,7 @@ def get_meas_volt_dict(xml_etree):
 
 def get_triton_dict_from_xml_root(xml_etree):
     """
+    OUTDATED SINCE VERSION 1.19
     get the triton dictionary from an exisitng xml file.
     :param xml_etree: lxml.etree.Element, Element of loaded File
     :return: dict,
@@ -192,7 +200,7 @@ def get_triton_dict_from_xml_root(xml_etree):
     """
     triton_dict = xml_get_dict_from_ele(xml_etree)[1].get('triton', {})
     evaluate_strings_in_dict(triton_dict)
-    print('triton_dict from file: ', triton_dict)
+    # print('triton_dict from file: ', triton_dict)
     return triton_dict
 
 
@@ -268,8 +276,11 @@ def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
     scan_dict['pipeInternals']['curVoltInd'] = 0
     scan_dict['pipeInternals']['activeTrackNumber'] = 'None'
     scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
-    scan_dict['measureVoltPars'] = get_meas_volt_dict(xml_etree)
-    scan_dict['triton'] = get_triton_dict_from_xml_root(xml_etree)
+    if float(scan_dict['isotopeData']['version']) <= 1.18:
+        # after this version, those infos are stored within each track!
+        # kept this for backwards compatibility
+        scan_dict['measureVoltPars'] = get_meas_volt_dict(xml_etree)
+        scan_dict['triton'] = get_triton_dict_from_xml_root(xml_etree)
     # watchout, since trigger type is only imported as string...
     return scan_dict, xml_etree
 
@@ -676,7 +687,9 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
             'softwGates': check_if_attr_exists(
                 specdata, 'softw_gates', [[] * specdata.nrScalers[tr_ind]] * specdata.nrTracks, [])[tr_ind],
             'trigger': {'type': 'no_trigger'},
-            'pulsePattern': {'cmdList': [], 'periodicList': [], 'simpleDict': {}}
+            'pulsePattern': {'cmdList': [], 'periodicList': [], 'simpleDict': {}},
+            'measureVoltPars': specdata.measureVoltPars[tr_ind],
+            'triton': specdata.tritonPars[tr_ind]
         }
     draftMeasureVoltPars_singl = {'measVoltPulseLength25ns': -1, 'measVoltTimeout10ns': -1,
                                   'dmms': {}, 'switchBoxSettleTimeS': -1}
@@ -694,7 +707,6 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
     }
     draftScanDict = {'isotopeData': draftIsotopePars,
                      'pipeInternals': draftPipeInternals,
-                     'measureVoltPars': draftMeasureVoltPars
                      }
     draftScanDict.update(tracks)  # add the tracks
     return draftScanDict
@@ -726,11 +738,11 @@ def createXmlFileOneIsotope(scanDict, seq_type=None, filename=None):
     :return:str, filename
     """
     isodict = deepcopy(scanDict['isotopeData'])
-    meas_volt_dict = deepcopy(scanDict['measureVoltPars'])
+    # meas_volt_dict = deepcopy(scanDict['measureVoltPars'])
     if seq_type is not None:
         isodict['type'] = seq_type
     root = xmlCreateIsotope(isodict)
-    xml_add_meas_volt_pars(meas_volt_dict, root)
+    # xml_add_meas_volt_pars(meas_volt_dict, root)
     if filename is None:
         path = scanDict['pipeInternals']['workingDirectory']
         filename = nameFileXml(isodict, path)
@@ -891,7 +903,7 @@ def get_gate_pars_from_db(db, iso, run):
         return use_db, run_gates_width, del_list, iso_mid_tof
 
 
-def calc_soft_gates_from_db_pars(run_gates_width, del_list, iso_mid_tof):
+def calc_soft_gates_from_db_pars(run_gates_width, del_list, iso_mid_tof, voltage_gates=[-np.inf, np.inf]):
     """
     calc the software gates for a SINGLE TRACK from the given pars.
     voltages will be gated from -10 to 10 V.
@@ -900,7 +912,6 @@ def calc_soft_gates_from_db_pars(run_gates_width, del_list, iso_mid_tof):
     stopp_gate_sc0 = mid_tof + delay_sc0 + 0.5 * width
     """
     # gates should be applied for all voltages/frequencies
-    voltage_gates = [-np.inf, np.inf]
     softw_gates_db = []
     for each_del in del_list:
         softw_gates_db.append(

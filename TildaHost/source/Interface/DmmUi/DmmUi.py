@@ -29,7 +29,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
     voltage_reading = QtCore.pyqtSignal(dict)
 
     def __init__(self, parent, window_name='DMM Live View Window',
-                 enable_com=None, active_iso=None, pre_or_during_scan_str=''):
+                 enable_com=None, active_iso=None, pre_or_during_scan_str='', selected_track_name=None):
         """
         this will statup the GUI and check for already active dmm's
         :param parent: parent_gui, usually the main in order to unsubscribe from it etc.
@@ -73,11 +73,12 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
             self.enable_communication(enable_com, True)
 
         self.active_iso = active_iso
+        self.selected_track_name = selected_track_name
         self.pre_or_during_scan_str = pre_or_during_scan_str
 
         if self.active_iso is not None:
             scan_dict = Cfg._main_instance.scan_pars[self.active_iso]
-            meas_volt_pars_dict = scan_dict['measureVoltPars']
+            meas_volt_pars_dict = scan_dict[self.selected_track_name]['measureVoltPars']
             meas_volt_dict = meas_volt_pars_dict.get(self.pre_or_during_scan_str, None)
             if meas_volt_dict is None:
                 self.set_pulse_len_and_timeout({})
@@ -301,8 +302,11 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         when ok is pressed, values are stored in the main, if an isotope has ben selected before.
         """
         if self.active_iso is not None:
-            Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'][self.pre_or_during_scan_str] = self.get_current_meas_volt_pars()
-            print('set values to: ', Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'])
+            Cfg._main_instance.scan_pars[
+                self.active_iso][self.selected_track_name][
+                'measureVoltPars'][self.pre_or_during_scan_str] = self.get_current_meas_volt_pars()
+            logging.debug('dmmUi has set values to: ' + str(
+                Cfg._main_instance.scan_pars[self.active_iso][self.selected_track_name]['measureVoltPars']))
             self.parent_ui.pre_or_during_scan_index += 1
         self.close()
 

@@ -162,11 +162,11 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
                         str(trigger_dict),
                         trackd['waitForKepco25nsTicks'],
                         trackd['waitAfterReset25nsTicks'],
-                        str(scandict['measureVoltPars']),
+                        str(trackd['measureVoltPars']),
                         str(isod['accVolt']),
                         isod['laserFreq'],
                         str(trackd['pulsePattern']),
-                        str(scandict['triton']),
+                        str(trackd['triton']),
                         iso, sctype, n_of_track)
                     )
         con.commit()
@@ -295,11 +295,12 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
         return None
     data = list(data)
     triton = data.pop(-1)
-    scand['triton'] = ast.literal_eval(triton) if triton is not None else {}
+    scand['track' + str(tracknum)]['triton'] = ast.literal_eval(triton) if triton is not None else {}
     scand['track' + str(tracknum)]['pulsePattern'] = ast.literal_eval(data.pop(-1))
     scand['isotopeData']['laserFreq'] = data.pop(-1)
     scand['isotopeData']['accVolt'] = data.pop(-1)
-    scand['measureVoltPars'] = SdOp.merge_dicts(scand['measureVoltPars'], ast.literal_eval(data.pop(-1)))
+    scand['track' + str(tracknum)]['measureVoltPars'] = SdOp.merge_dicts(
+        scand['track' + str(tracknum)]['measureVoltPars'], ast.literal_eval(data.pop(-1)))
     scand['track' + str(tracknum)]['trigger'] = ast.literal_eval(data.pop(-1))
     scand['track' + str(tracknum)]['trigger']['type'] = getattr(TriTypes, scand['track' + str(tracknum)]['trigger']['type'])
     scand['track' + str(tracknum)] = db_track_values_to_trackdict(data, scand['track' + str(tracknum)])
@@ -313,7 +314,7 @@ def db_track_values_to_trackdict(data, track_dict):
          nOfSteps, nOfScans, postAccOffsetVoltControl,
           postAccOffsetVolt, activePmtList, colDirTrue,
            sequencerDict, waitForKepco25nsTicks, waitAfterReset25nsTicks,
-            measureVoltPars, accVolt, laserFreq) from the database, this
+            accVolt, laserFreq) from the database, this
             converts all values to a useable track dictionary."""
     dict_keys_list = ['dacStartRegister18Bit', 'dacStepSize18Bit', 'invertScan',
                       'nOfSteps', 'nOfScans', 'postAccOffsetVoltControl',
@@ -350,7 +351,7 @@ def get_number_of_tracks_in_db(db, iso, sctype):
 def extract_all_tracks_from_db(db, iso, sctype):
     """ will return one scandict which contains all tracks for the given isotope.
      naming is 'track0':{ ... } , 'track1':{ ... } etc.
-     general infos like measureVoltPars will be merged, latter (higher tracknum) will overwrite """
+     general infos like will be merged, latter (higher tracknum) will overwrite """
     n_o_tracks = get_number_of_tracks_in_db(db, iso, sctype)
     scand = {}
     for i in range(n_o_tracks):

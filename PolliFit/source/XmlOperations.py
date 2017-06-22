@@ -55,17 +55,18 @@ def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
     return subEle
 
 
-def xmlWriteDict(parentEle, dictionary):
+def xmlWriteDict(parentEle, dictionary, exclude=[]):
     """
     finds or creates a Subelement with the tag tagString and text=value to the
     parent Element for each key and value pair in the dictionary.
     :return: returns the modified parent Element.
     """
     for key, val in sorted(dictionary.items(), key=str):
-        if isinstance(val, dict):
-            xmlWriteDict(xmlFindOrCreateSubElement(parentEle, key), val)
-        else:
-            xmlFindOrCreateSubElement(parentEle, key, val)
+        if key not in exclude:
+            if isinstance(val, dict):
+                xmlWriteDict(xmlFindOrCreateSubElement(parentEle, key), val)
+            else:
+                xmlFindOrCreateSubElement(parentEle, key, val)
     return parentEle
 
 
@@ -79,7 +80,6 @@ def xmlCreateIsotope(isotopeDict):
     """
     root = ET.Element('TrigaLaserData')
     xmlWriteIsoDictToHeader(root, isotopeDict)
-    xmlFindOrCreateSubElement(root, 'measureVoltPars')
     xmlFindOrCreateSubElement(root, 'tracks')
     return root
 

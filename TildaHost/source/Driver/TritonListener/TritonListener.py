@@ -12,6 +12,7 @@ import Pyro4
 import socket
 import sys
 import ast
+import logging
 from copy import deepcopy
 
 from Driver.TritonListener.TritonObject import TritonObject
@@ -118,7 +119,7 @@ class TritonListener(TritonObject):
             if subscribed_dev not in self.log.keys():
                 # print('unsubscribing: ', subscribed_dev)
                 self.unsubscribe(subscribed_dev)
-        print('subscribed triton devices after setup: ', list(self._recFrom.keys()))
+        logging.info('subscribed triton devices after setup: ' + str(list(self._recFrom.keys())))
 
     def _receive(self, dev, t, ch, val):
         """

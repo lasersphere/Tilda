@@ -9,6 +9,7 @@ Created on '07.08.2015'
 import ast
 import os
 import sqlite3
+import logging
 
 import numpy as np
 
@@ -44,11 +45,11 @@ class XMLImporter(SpecData):
 
         super(XMLImporter, self).__init__()
         if path is not None:
-            print("XMLImporter is reading file", path)
+            logging.info("XMLImporter is reading file " + path)
             self.file = os.path.basename(path)
             scandict, lxmlEtree = TildaTools.scan_dict_from_xml_file(path)
         else:
-            print("XMLImporter is reading from scan_dictionary", scan_dict)
+            logging.info("XMLImporter is reading from scan_dictionary " + str(scan_dict))
             lxmlEtree = None
             scandict = scan_dict
             self.file = os.path.basename(scandict['pipeInternals']['activeXmlFilePath'])
@@ -62,56 +63,30 @@ class XMLImporter(SpecData):
         self.version = scandict['isotopeData']['version']
         self.dac_calibration_measurement = False
 
-        self.offset_by_dev = {}  # dict for a list off measured offset voltages key is devie name
+        self.offset_by_dev = [{}]  # list (track_indexed) of dicts for a list of measured offset voltages
+        #  key is device name value is list, which is split into pre scan and post scan values
 
         if 'AD5781' in self.type or 'ad5781' in self.type or 'dac_calibration' in self.type:
-            print('--------------------------WARNING----------------------------------\n'
-                  'XMLIMporter assumes this a calibration measurement of the DAC,\n'
-                  ' therefore the x-axis will be set to units of DAC registers.\n'
-                  'key words therefore are: AD5781, ad5781, dac_calibration\n'
-                  'do not use those for the isotope name if you do not want this!\n'
-                  '--------------------------WARNING----------------------------------\n')
+            logging.warning('--------------------------WARNING----------------------------------\n'
+                            'XMLIMporter assumes this a calibration measurement of the DAC,\n'
+                            ' therefore the x-axis will be set to units of DAC registers.\n'
+                            'key words therefore are: AD5781, ad5781, dac_calibration\n'
+                            'do not use those for the isotope name if you do not want this!\n'
+                            '--------------------------WARNING----------------------------------\n')
             x_as_volt = False  # assume this is a gauge measurement of the DAC, so set the x axis in DAC registers
             self.dac_calibration_measurement = True
 
         self.accVolt = scandict['isotopeData']['accVolt']
         self.offset = None
-        self.measureVoltPars = scandict['measureVoltPars']
-        dmms_dict = scandict['measureVoltPars'].get('preScan', {}).get('dmms', None)
-        # for backwards compability:
-        read_key = 'preScanRead' if float(self.version) <= 1.17 else 'readings'
-        if isinstance(dmms_dict, str):
-            dmms_dict = None
-        if dmms_dict is not None:
-            offset = []
-            acc_volt = []
-            for dmm_name, dmm_dict in dmms_dict.items():
-                self.offset_by_dev[dmm_name] = []
-                for key, val in dmm_dict.items():
-                    if key == read_key:
-                        if isinstance(val, str):
-                            val = ast.literal_eval(val)
-                            # val = float(val)
-                        if dmm_dict.get('assignment') == 'offset':
-                            if isinstance(val, list):
-                                offset += val  # append to list
-                                self.offset_by_dev[dmm_name] += val
-                            else:
-                                offset.append(val)
-                                self.offset_by_dev[dmm_name].append(val)
-                        elif dmm_dict.get('assignment') == 'accVolt':
-                            acc_volt.append(val)
-                if len(self.offset_by_dev[dmm_name]):
-                    self.offset_by_dev[dmm_name] = np.mean(self.offset_by_dev[dmm_name])
-            if len(offset):
-                self.offset = np.mean(offset)
-            if len(acc_volt):
-                self.accVolt = np.mean(acc_volt)
+        self.offset_by_dev, self.offset_by_dev_mean, self.offset = self.get_dmm_measurement(scandict, 'offset')
+        self.acc_volt_by_dev, self.acc_volt_by_dev_mean, self.accVolt = self.get_dmm_measurement(scandict, 'accVolt')
+        self.accVolt = np.mean(self.accVolt)  # accvolt is assumed to be constant all the time. -> just one float
+
         self.nrScalers = []  # number of scalers for this track
         self.active_pmt_list = []  # list of scaler/pmt names for this track
         # if self.seq_type in ['tipa', 'tipadummy', 'kepco']:
         # x_as_volt = False
-        print('axaxis as voltage:', x_as_volt)
+        logging.debug('axaxis as voltage: %s ' % x_as_volt)
         self.x = TildaTools.create_x_axis_from_file_dict(scandict, as_voltage=x_as_volt)  # x axis, voltage
         self.x_dac = TildaTools.create_x_axis_from_file_dict(scandict, as_voltage=False)  # handy for importing files
         self.cts = []  # countervalues, this is the voltage projection here
@@ -128,7 +103,7 @@ class XMLImporter(SpecData):
         self.dwell = []
         self.softw_gates = []
         self.track_names = TildaTools.get_track_names(scandict)
-        print('track_names are: %s ' % self.track_names)
+        logging.debug('track_names are: %s ' % self.track_names)
         self.softBinWidth_ns = []
         self.invert_scan = []
         self.post_acc_offset_volt_control = []  # which heinzinger / Fluke
@@ -137,12 +112,15 @@ class XMLImporter(SpecData):
         self.working_time = []
         self.nrScans = []
 
-
         cts_shape = []
+        self.measureVoltPars = []
+        self.tritonPars = []
         ''' operations on each track: '''
         for tr_ind, tr_name in enumerate(TildaTools.get_track_names(scandict)):
 
             track_dict = scandict[tr_name]
+            self.measureVoltPars.append(track_dict.get('measureVoltPars', {}))
+            self.tritonPars.append(track_dict.get('triton', {}))
 
             nOfactTrack = int(tr_name[5:])
             nOfsteps = track_dict['nOfSteps']
@@ -187,7 +165,8 @@ class XMLImporter(SpecData):
                     self.time_res.append(scaler_array)
 
                 if v_proj is None or t_proj is None or softw_gates is not None:
-                    print('projections not found, or software gates set by hand, gating data now.')
+                    logging.info(' while importing: projections not found,'
+                                    ' or software gates set by hand, gating data now.')
                     if softw_gates is not None:
                         if isinstance(softw_gates, tuple):
                             # if the software gates are given as a tuple it should consist of:
@@ -197,7 +176,7 @@ class XMLImporter(SpecData):
                             if new_gates is not None:
                                 # when db states -> use file,
                                 # software gates from file will not be overwritten
-                                scandict[tr_name]['softwGates'] = new_gates 
+                                scandict[tr_name]['softwGates'] = new_gates
                         else:
                             if isinstance(softw_gates[tr_ind][0], list):
                                 # software gates are defined for each track individually
@@ -247,18 +226,14 @@ class XMLImporter(SpecData):
                     err.append(dmm_volt_array[ind] * read_acc + range_acc)
                 self.err.append(err)
 
-        print('%s was successfully imported' % self.file)
+        logging.info('%s was successfully imported' % self.file)
 
     def preProc(self, db):
         try:
-            print('XMLImporter is using db: ', db)
+            logging.info('XMLImporter is using db: %s' % db)
             con = sqlite3.connect(db)
             cur = con.cursor()
             if self.seq_type not in ['kepco']:  # do not change the x axis for a kepco scan!
-                # cur.execute('''SELECT type, line, offset, accVolt, laserFreq,
-                #                 colDirTrue, voltDivRatio, lineMult, lineOffset
-                #                 FROM Files WHERE file = ?''', (self.file,))
-                # data = cur.fetchall()
                 db_ret = TildaTools.select_from_db(
                     db, 'type, line, offset, accVolt, laserFreq, colDirTrue, voltDivRatio, lineMult, lineOffset',
                     'Files', [['file'], [self.file]])
@@ -268,24 +243,31 @@ class XMLImporter(SpecData):
                     (self.type, self.line, self.offset, self.accVolt, self.laserFreq,
                      self.col, self.voltDivRatio, self.lineMult, self.lineOffset) = db_ret[0]
                     self.col = bool(self.col)
+                    # should be a string of a list of offset values for each track:
+                    self.offset = ast.literal_eval(self.offset)
                 else:
                     raise Exception('XMLImporter: No DB-entry found!')
                 try:
                     self.voltDivRatio = ast.literal_eval(self.voltDivRatio)
                 except Exception as e:
-                    print('error, converting voltage divider ratio from db, error is: ', e)
-                    print('setting voltage divider ratio to 1 !')
+                    logging.error('error, converting voltage divider ratio from db, error is: ' + str(e), exc_info=True)
+                    logging.info('setting voltage divider ratio to 1 !')
                     self.voltDivRatio = {'offset': 1.0, 'accVolt': 1.0}
                 for tr_ind, track in enumerate(self.x):
                     if isinstance(self.voltDivRatio['offset'], float):  # just one number
-                        scanvolt = (self.lineMult * self.x[tr_ind] + self.lineOffset + self.offset) * self.voltDivRatio['offset']
+                        scanvolt = (self.lineMult * self.x[tr_ind] + self.lineOffset + self.offset[tr_ind]) * \
+                                   self.voltDivRatio[
+                                       'offset']
                     else:  # offset should be a dictionary than
                         vals = list(self.voltDivRatio['offset'].values())
                         mean_offset_div_ratio = np.mean(vals)
                         # treat each offset with its own divider ratio
-                        mean_offset = np.mean([val * self.offset_by_dev.get(key, self.offset) for key, val in
-                                               self.voltDivRatio['offset'].items()])
-                        scanvolt = (self.lineMult * self.x[tr_ind] + self.lineOffset) * mean_offset_div_ratio + mean_offset
+                        # x axis is multiplied by mean divider ratio value anyhow, similiar to kepco scans
+                        mean_offset = np.mean(
+                            [val * self.offset_by_dev_mean[tr_ind].get(key, self.offset[tr_ind]) for key, val in
+                             self.voltDivRatio['offset'].items()])
+                        scanvolt = (self.lineMult * self.x[
+                            tr_ind] + self.lineOffset) * mean_offset_div_ratio + mean_offset
                     self.x[tr_ind] = self.accVolt * self.voltDivRatio['accVolt'] - scanvolt
                 self.norming()
                 self.x_units = self.x_units_enums.total_volts
@@ -304,7 +286,8 @@ class XMLImporter(SpecData):
                     self.cts[tr_ind] = self.cts[tr_ind] - self.offset
             con.close()
         except Exception as e:
-            print('error while preprocessing file %s, error is: %s, check db values!' % (self.file, e))
+            logging.error(
+                'error while preprocessing file %s, error is: %s, check db values!' % (self.file, e), exc_info=True)
             con.close()
 
     def export(self, db):
@@ -315,12 +298,12 @@ class XMLImporter(SpecData):
                 con.execute('''UPDATE Files SET date = ?, type = ?, offset = ?,
                                 laserFreq = ?, colDirTrue = ?, accVolt = ?
                                  WHERE file = ?''',
-                            (self.date, self.type, self.offset,
+                            (self.date, self.type, str(self.offset),
                              self.laserFreq, col, self.accVolt,
                              self.file))
             con.close()
         except Exception as e:
-            print(e)
+            logging.error('error while exporting values from file %s, error is: %s' % (self.file, e), exc_info=True)
 
     def evalErr(self, cts, f):
         cts = cts.reshape(-1)
@@ -348,7 +331,64 @@ class XMLImporter(SpecData):
                 nr_of_scan_this_track = self.nrScans[trackindex]
                 if nr_of_scan_this_track:
                     self.cts[trackindex][ctIndex] = ct * min_nr_of_scan / nr_of_scan_this_track
-                    self.err[trackindex][ctIndex] = self.err[trackindex][ctIndex] * min_nr_of_scan / nr_of_scan_this_track
+                    self.err[trackindex][ctIndex] = self.err[trackindex][
+                                                        ctIndex] * min_nr_of_scan / nr_of_scan_this_track
+
+    def get_dmm_measurement(self, scandict, assignment='offset'):
+        """
+        before version 1.18, the offset and accvolt voltages were only measured once before the scan.
+        There was NO track wise measurement possible.
+        All tracks were assumed to have the same offset.
+        """
+        offset_by_dev = []  # track wise dicts for offsets measured by devs. key is dmm_name
+        offset_by_dev_mean = []  # same as offset by dev but instead of storing all values,
+        #  here only a mean is stored for each dev
+        offset_vals_list = []  # track wise all offset values
+        offset_mean = []  # track wise mean values of offset for all devices with offset assignment
+        if float(self.version) <= 1.18:
+            # only prescan available and only before first track
+            # in order to have a value for each track, copy this existing one:
+            dmms_dict_list = [(scandict['measureVoltPars'].get('preScan', {}).get('dmms', {}), {})] * self.nrTracks
+        else:
+            dmms_dict_list = []
+            # consist of a tuple of dicts for each track
+            # [(tr0_dmm_pre_scan_read_dict, tr0_dmm_post_scan_read_dict), ...]
+            for key, track_d in sorted(scandict.items()):
+                if 'track' in key:
+                    dmms_dict_list.append(
+                        (track_d.get('measureVoltPars', {}).get('preScan', {}).get('dmms', {}),
+                         track_d.get('measureVoltPars', {}).get('postScan', {}).get('dmms', {}))
+                    )
+        # for backwards compability:
+        read_key = 'preScanRead' if float(self.version) <= 1.17 else 'readings'
+        for tr_ind, each in enumerate(dmms_dict_list):
+            offset_by_dev.append({})
+            offset_by_dev_mean.append({})
+            offset_vals_list.append([])
+            for post_pre_ind, post_pre_dict in enumerate(each):
+
+                for dmm_name, dmm_dict in post_pre_dict.items():
+                    if post_pre_ind == 0:
+                        offset_by_dev[tr_ind][dmm_name] = [[], []]
+                    for key, val in dmm_dict.items():
+                        if key == read_key:
+                            if isinstance(val, str):
+                                val = ast.literal_eval(val)
+                            if dmm_dict.get('assignment') == assignment:
+                                if isinstance(val, list):
+                                    offset_vals_list[tr_ind] += val  # append to list
+                                    offset_by_dev[tr_ind][dmm_name][post_pre_ind] += val
+                                else:
+                                    offset_vals_list[tr_ind].append(val)
+                                    offset_by_dev[tr_ind][dmm_name][post_pre_ind].append(val)
+            for dmm_name, offset_list_dmm in offset_by_dev[tr_ind].items():  # get mean value for this dmm in this track
+                offset_by_dev_flat = [item for sublist in offset_list_dmm for item in sublist]
+                offset_by_dev_mean[tr_ind][dmm_name] = np.mean(offset_by_dev_flat)
+            if len(offset_vals_list[tr_ind]):
+                # mean of all dmms for this track
+                offset_mean += np.mean(offset_vals_list[tr_ind]),
+        return offset_by_dev, offset_by_dev_mean, offset_mean
+
 
 # import Service.Scan.draftScanParameters as dft
 # import Service.Formating as Form
@@ -360,6 +400,7 @@ class XMLImporter(SpecData):
 
 # from file:
 # for file_num in range(169, 172):
-#     test_file = 'D:\lala\sums\Test_kepco_%s.xml' % file_num
-#     file_xml = XMLImporter(test_file, False)
-#     print(file_num, 'offset: ', file_xml.offset, 'accVolt: ', file_xml.accVolt)
+if __name__ == '__main__':
+    test_file = 'E:/TildaDebugging2/sums/tests_trsdummy_run109.xml'
+    file_xml = XMLImporter(test_file, True)
+    print('offset: ', file_xml.offset, 'accVolt: ', file_xml.accVolt)

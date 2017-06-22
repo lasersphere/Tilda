@@ -16,24 +16,23 @@ import numpy as np
 
 # example scan dictionary:
 scnd = {
-    'measureVoltPars': {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100},
-        'isotopeData': {'accVolt': 9999.8, 'type': 'cs', 'isotopeStartTime': '2015-08-27 14:45:18',
-                        'version': 1.06, 'nOfTracks': 1, 'isotope': 'Ca_40', 'laserFreq': 12568.766},
-        'pipeInternals': {'curVoltInd': 0, 'activeXmlFilePath': None, 'activeTrackNumber': 0,
-                          'workingDirectory': None},
-        'track0': {'dacStartRegister18Bit': 503312, 'invertScan': 0, 'waitForKepco25nsTicks': 40,
-                           'nOfSteps': 61, 'waitAfterReset25nsTicks': 4000, 'dacStepSize18Bit': 520,
-                           'activePmtList': [0, 1], 'nOfCompletedSteps': 0, 'postAccOffsetVolt': 500,
-                           'dwellTime10ns': 2000000, 'nOfScans': 50, 'colDirTrue': False,
-                           'workingTime': ['unknown'], 'postAccOffsetVoltControl': 2}
-        }
-
-
+    'isotopeData': {'accVolt': 9999.8, 'type': 'cs', 'isotopeStartTime': '2015-08-27 14:45:18',
+                    'version': 1.06, 'nOfTracks': 1, 'isotope': 'Ca_40', 'laserFreq': 12568.766},
+    'pipeInternals': {'curVoltInd': 0, 'activeXmlFilePath': None, 'activeTrackNumber': 0,
+                      'workingDirectory': None},
+    'track0': {'dacStartRegister18Bit': 503312, 'invertScan': 0, 'waitForKepco25nsTicks': 40,
+               'nOfSteps': 61, 'waitAfterReset25nsTicks': 4000, 'dacStepSize18Bit': 520,
+               'activePmtList': [0, 1], 'nOfCompletedSteps': 0, 'postAccOffsetVolt': 500,
+               'dwellTime10ns': 2000000, 'nOfScans': 50, 'colDirTrue': False,
+               'workingTime': ['unknown'], 'postAccOffsetVoltControl': 2,
+               'measureVoltPars': {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100},
+               }
+}
 
 exampleData = np.random.random((scnd['track0']['nOfSteps'], len(scnd['track0']['activePmtList'])))
 
-def TestPipe():
 
+def TestPipe():
     start = TP.Node()
 
     pipe = TP.Pipeline(start)
@@ -52,6 +51,7 @@ def TestPipe():
 pipe = TestPipe()
 pipe.start()
 import numpy
+
 numpy.set_printoptions(threshold=numpy.nan)
 
 pipe.feed(exampleData)

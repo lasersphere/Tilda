@@ -324,6 +324,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def close_live_plot_win(self):
         self.live_plot_win = None
+        for scan_ctrl_win in self.act_scan_wins:
+            scan_ctrl_win.enable_reopen_plot_win()
 
     def close_pollifit_win(self):
         self.pollifit_win = None

@@ -145,7 +145,9 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False,
 
     pipe = Pipeline(start)
     pipe.pipeData = initPipeData(initial_scan_pars)
-    dmm_names = sorted(list(pipe.pipeData['measureVoltPars']['duringScan']['dmms'].keys()))
+
+    # kepco scan should always just have one track
+    dmm_names = sorted(list(pipe.pipeData['track0']['measureVoltPars']['duringScan']['dmms'].keys()))
     #
     # raw data for kepco -> dict -> cannot be saved with hdf5 -> do not save raw data
     # walk = start.attach(TN.NSaveRawData())

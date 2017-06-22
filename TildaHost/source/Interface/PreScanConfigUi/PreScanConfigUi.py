@@ -30,7 +30,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
     # callback for the voltage readings, done by the main when in idle state
     voltage_reading = QtCore.pyqtSignal(dict)
 
-    def __init__(self, parent, active_iso=''):
+    def __init__(self, parent, active_iso='', active_track_name=''):
         super(PreScanConfigUi, self).__init__()
         self.setupUi(self)
         self.show()
@@ -45,7 +45,8 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
 
         self.parent_ui = parent
         self.active_iso = active_iso
-        self.setWindowTitle('pre / during / post scan settings of %s' % self.active_iso)
+        self.act_track_name = active_track_name
+        self.setWindowTitle('pre / during / post scan settings of %s %s ' % (self.active_iso, self.act_track_name))
 
         # Triton related:
         self.cur_dev = None  # str, currently selected device name
@@ -95,27 +96,29 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
 
     def confirm(self):
         """
-        when ok is pressed, values are stored in the main, if an isotope has ben selected before.
+        when ok is pressed, values are stored in the parent track ui.
+        They are written to the main as soon as confirm is clicked in track gui.
         """
-        if self.active_iso is not None and Cfg._main_instance is not None:
-            # check stuff from storage
-            for pre_scan_key, meas_volt_dict in self.current_meas_volt_settings.items():
-                Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'][pre_scan_key] = deepcopy(
-                    meas_volt_dict)
-            # overwrite with actual
-            Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'][
-                self.pre_or_during_scan_str] = self.get_current_meas_volt_pars()
-            # read latest triton settings from gui:
-            self.triton_scan_dict[self.pre_or_during_scan_str] = self.get_current_triton_settings() \
-                if self.checkBox_triton_measure.isChecked() else {}
-            Cfg._main_instance.scan_pars[self.active_iso]['triton'] = self.triton_scan_dict
-            Cfg._main_instance.pre_scan_timeout_changed(self.doubleSpinBox_timeout_pre_scan_s.value())
-            # print('set values to: ', Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'])
-        # print('stored triton dict: ')
-        # import json
-        # print(
-        #     json.dumps(self.triton_scan_dict, sort_keys=True, indent=4))
-        self.close()
+        try:
+            self.pre_post_during_changed(self.comboBox.currentText())
+            logging.debug('confirmed meas volt settings')
+            logging.debug('act iso: %s, main inst: %s ' % (str(self.active_iso), str(Cfg._main_instance)))
+            if self.active_iso is not None and Cfg._main_instance is not None:
+                logging.debug('accessing main now')
+                # check stuff from storage
+                logging.debug('current_meas_volt_settings:' + str(self.current_meas_volt_settings))
+                for pre_scan_key, meas_volt_dict in self.current_meas_volt_settings.items():
+                    self.parent_ui.buffer_pars['measureVoltPars'][pre_scan_key] = deepcopy(meas_volt_dict)
+                # read latest triton settings from gui:
+                self.triton_scan_dict[self.pre_or_during_scan_str] = self.get_current_triton_settings() \
+                    if self.checkBox_triton_measure.isChecked() else {}
+                self.parent_ui.buffer_pars['triton'] = self.triton_scan_dict
+                Cfg._main_instance.pre_scan_timeout_changed(self.doubleSpinBox_timeout_pre_scan_s.value())
+                # print('set values to: ', Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'])
+
+            self.close()
+        except Exception as e:
+            logging.error('error while writing meas volt pars to main %s' % e, exc_info=True)
 
     def closeEvent(self, event):
         """
@@ -164,7 +167,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
                 self.triton_scan_dict[self.pre_or_during_scan_str])
             #  clear current settins
             self.triton_scan_dict[self.pre_or_during_scan_str] = {}
-        #  setup gui according to the settings now.
+        # setup gui according to the settings now.
         self.setup_triton_devs(state == 2)  # force measure if true
 
     def voltage_checkbox_changed(self, state):
@@ -187,7 +190,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         if self.active_iso is not None and self.parent_ui is not None:
             if meas_volt_pars_dict is None:  # try to get it from main
                 scan_dict = Cfg._main_instance.scan_pars[self.active_iso]
-                meas_volt_pars_dict = scan_dict['measureVoltPars']
+                meas_volt_pars_dict = scan_dict[self.act_track_name]['measureVoltPars']
             meas_volt_dict = meas_volt_pars_dict.get(self.pre_or_during_scan_str, None)
             if meas_volt_dict is None:
                 self.set_pulse_len_and_timeout({})
@@ -428,7 +431,8 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
             self.cur_dev = cur.text()
             print('cur dev: ', self.cur_dev, '  checkstate: ', cur_dev_selected)
             new_dev = False
-            if self.cur_dev not in self.triton_scan_dict.get(self.pre_or_during_scan_str, {}).keys() and cur_dev_selected:
+            if self.cur_dev not in self.triton_scan_dict.get(self.pre_or_during_scan_str,
+                                                             {}).keys() and cur_dev_selected:
                 # device was not in current scan settings, will add now.
                 # check for existing settings in backup:
                 existing = deepcopy(
@@ -535,7 +539,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
 
     def get_triton_scan_pars(self):
         """
-        get the triton part of the scan dict in teh main or return default
+        get the triton part of the scan dict for one track in the main or return default
         :return: dict, for triton scan parameters, pre / during / post scan
         """
         default_ret = {'preScan': {'no_main_dev': {'ch2': {'required': 5,
@@ -573,7 +577,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
                                     }
                        }
         try:
-            triton_dict = Cfg._main_instance.scan_pars[self.active_iso].get('triton', {})
+            triton_dict = Cfg._main_instance.scan_pars[self.active_iso][self.act_track_name].get('triton', {})
         except AttributeError:  # if no main available ( gui test etc.)
             triton_dict = default_ret
         return triton_dict
@@ -583,7 +587,8 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         # force update of self.triton_scan_dict[self.pre_or_during_scan_str][self.cur_dev] from gui:
         self.check_any_ch_active()
         # now check if this should be measured anyhow:
-        triton_dict = self.triton_scan_dict[self.pre_or_during_scan_str] if self.checkBox_triton_measure.isChecked() else {}
+        triton_dict = self.triton_scan_dict[
+            self.pre_or_during_scan_str] if self.checkBox_triton_measure.isChecked() else {}
         return triton_dict
 
 
@@ -591,5 +596,5 @@ if __name__ == '__main__':
     import sys
 
     app = QtWidgets.QApplication(sys.argv)
-    gui = PreScanConfigUi(None, '')
+    gui = PreScanConfigUi(None, '', '')
     app.exec_()

@@ -78,6 +78,8 @@ def convert_scandict_v104_to_v106(scandict):
     """
     converts a scandictionary created in Version 1.04 to the new format as it should be in v1.06
     was needed for working with the collected .raw data from 29.07.2015.
+
+    not supported anymore 20.06.2017
     """
     # trackdft = draft_scan_dict['track0']
     track = scandict['track0']

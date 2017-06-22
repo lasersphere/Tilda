@@ -8,6 +8,7 @@ Module Description:
 
 from Interface.SequencerWidgets.BaseSequencerWidg import BaseSequencerWidgUi
 from Interface.SequencerWidgets.Ui_TRSWidg import Ui_TRSWidg
+import TildaTools as TiTs
 
 import ast
 import logging
@@ -27,6 +28,8 @@ class TRSWidg(BaseSequencerWidgUi, Ui_TRSWidg):
         self.spinBox_softBinWidth.valueChanged.connect(self.software_bin_width_set)
         self.spinBox_nOfBunches.valueChanged.connect(self.n_of_bunches_set)
         self.lineEdit.textChanged.connect(self.softw_gates_set)
+        self.doubleSpinBox_gate_width.valueChanged.connect(self.gate_width_set)
+        self.doubleSpinBox_mid_tof.valueChanged.connect(self.mid_tof_set)
 
     def n_of_bins_set(self, val):
         self.buffer_pars['nOfBins'] = val
@@ -45,17 +48,43 @@ class TRSWidg(BaseSequencerWidgUi, Ui_TRSWidg):
         self.buffer_pars['nOfBunches'] = val
         self.label_nOfBunches_set.setText(str(val))
 
+    def mid_tof_set(self, val):
+        self.label_mid_tof_set.setText('%.2f us' % val)
+        self.calc_softw_gates_from_gui()
+
+    def gate_width_set(self, val):
+        self.label_gate_width_set.setText('%.2f us' % val)
+        self.calc_softw_gates_from_gui()
+
     def softw_gates_set(self, text):
         try:
-            print(self.buffer_pars)
             inp = ast.literal_eval(text)
             if isinstance(inp, list):
                 self.label_softwGates_set.setText(str(inp).replace('],', '],\n'))
-                self.buffer_pars['softwGates'] = inp
             else:
                 logging.debug('input is not a list')
         except Exception as e:
             logging.debug('you typed something invalid: ' + str(e))
+        self.calc_softw_gates_from_gui()
+
+    def calc_softw_gates_from_gui(self):
+        delay_list = self.lineEdit.text()
+        try:
+            delay_list = ast.literal_eval(delay_list)
+            if isinstance(delay_list, list):
+                self.label_softwGates_set.setText(str(delay_list).replace('],', '],\n'))
+            else:
+                logging.debug('input is not a list')
+        except Exception as e:
+            logging.debug('you typed something invalid: ' + str(e))
+        softw_gates = TiTs.calc_soft_gates_from_db_pars(
+            self.doubleSpinBox_gate_width.value(),
+            delay_list,
+            self.doubleSpinBox_mid_tof.value(),
+            voltage_gates=[-10.0, 10.0]
+        )
+        logging.debug('software gates are: ' + str(softw_gates))
+        self.buffer_pars['softwGates'] = softw_gates
 
     def set_vals_by_dict(self):
         if self.buffer_pars.get('nOfBins', False):
@@ -71,8 +100,14 @@ class TRSWidg(BaseSequencerWidgUi, Ui_TRSWidg):
                 self.spinBox_nOfBunches.valueChanged.emit(self.buffer_pars.get('nOfBunches'))
         if self.buffer_pars.get('softwGates', False):
             if self.buffer_pars.get('softwGates') is not None:
-                self.lineEdit.setText(str(self.buffer_pars.get('softwGates')))
-                self.lineEdit.textChanged.emit(str(self.buffer_pars.get('softwGates')))
+                run_gates_width, del_list, iso_mid_tof = TiTs.calc_db_pars_from_software_gate(
+                    self.buffer_pars.get('softwGates'))
+                logging.debug('software gates from dict: ' + str(self.buffer_pars.get('softwGates')))
+                logging.debug('width: %.2f, del_list: %s, mid_tof: %.3f' % (run_gates_width, del_list, iso_mid_tof))
+                self.doubleSpinBox_gate_width.setValue(run_gates_width)
+                self.doubleSpinBox_mid_tof.setValue(iso_mid_tof)
+                self.lineEdit.setText(str(del_list))
+                self.lineEdit.textChanged.emit(str(del_list))
         else:
             lis = [[None]] * len(self.buffer_pars.get('activePmtList', []))
             self.lineEdit.setText(str(lis))

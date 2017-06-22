@@ -47,7 +47,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     # save request
     save_request = QtCore.pyqtSignal()
 
-
     # progress dict coming from the main
     progress_callback = QtCore.pyqtSignal(dict)
 
@@ -80,11 +79,14 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.spec_data = None  # spec_data to work on.
         self.new_track_no_data_yet = False  # set this to true when new track is setup
 
+        self.last_gr_update_done_time = datetime.now()
+
         self.graph_font_size = int(14)
 
         ''' connect callbacks: '''
         # bundle callbacks:
         self.subscribe_as_live_plot = subscribe_as_live_plot
+        self.get_existing_callbacks_from_main()
         self.callbacks = (self.new_data_callback, self.new_track_callback,
                           self.save_request, self.new_gate_or_soft_bin_width)
         self.subscribe_to_main()
@@ -164,7 +166,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             else:
                 self.show_progress(False)
         except Exception as e:
-            print('error while adding scanprog: %s' % e)
+            logging.error('error while adding scanprog: %s' % e, exc_info=True)
 
         self.show_progress_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_P), self)
 
@@ -226,10 +228,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                                                  slot=functools.partial(self.mouse_moved, self.tres_plt_item.vb, True),
                                                  rate_limit=max_rate)
         self.t_proj_mouse_proxy = Pg.create_proxy(signal=self.t_proj_plt_itm.scene().sigMouseMoved,
-                                                  slot=functools.partial(self.mouse_moved, self.t_proj_plt_itm.vb, True),
+                                                  slot=functools.partial(self.mouse_moved, self.t_proj_plt_itm.vb,
+                                                                         True),
                                                   rate_limit=max_rate)
         self.sum_proj_mouse_proxy = Pg.create_proxy(signal=self.sum_proj_plt_itm.scene().sigMouseMoved,
-                                                    slot=functools.partial(self.mouse_moved, self.sum_proj_plt_itm.vb, True),
+                                                    slot=functools.partial(self.mouse_moved, self.sum_proj_plt_itm.vb,
+                                                                           True),
                                                     rate_limit=max_rate)
 
     def add_all_pmt_plot(self):
@@ -271,7 +275,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         setup a new track -> set the indices for track and scaler
         """
-        print('receivec new track with %s %s ' % rcv_tpl)
+        logging.info('livbeplot window received new track with %s %s ' % rcv_tpl)
         self.tres_sel_tr_ind, self.tres_sel_tr_name = rcv_tpl[0]
         self.comboBox_all_pmts_sel_tr.setCurrentIndex(self.tres_sel_tr_ind)
         self.tres_sel_sc_ind, self.tres_sel_sc_name = rcv_tpl[1]
@@ -285,12 +289,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             dial = QtWidgets.QInputDialog(self)
             font_size_int, ok = QtWidgets.QInputDialog.getInt(dial, 'set the font size of the graphs',
                                                               'font size (pt)', self.graph_font_size, 0, 80)
-            print('font size is: %s' % font_size_int)
+            logging.info('liveplotterui: font size is: %s' % font_size_int)
             if ok:
                 self.change_font_size_all_graphs(font_size_int)
                 self.graph_font_size = font_size_int
         except Exception as e:
-            print('error while getting font size: %s' % e)
+            logging.error('liveplotterui, error while getting font size: %s' % e, exc_info=True)
 
     def change_font_size_all_graphs(self, font_size):
         plots = [
@@ -334,6 +338,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         call this to pass a new dataset to the gui.
         """
         try:
+            # TODO remove this, when resuvbscribe of liveplot window is working
+            st = datetime.now()
+            elapsed = st - self.last_gr_update_done_time
+            logging.debug('received new data, updating now. Time since last update: %.2f' % (elapsed.microseconds / 1000))
             valid_data = False
             self.spec_data = deepcopy(spec_data)
 
@@ -349,8 +357,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.sum_scaler_changed(self.comboBox_sum_all_pmts.currentIndex())
 
                 self.new_track_no_data_yet = False
+            self.last_gr_update_done_time = datetime.now()
+            elapsed = self.last_gr_update_done_time - st
+            logging.debug('done updating plot, plotting took %.2f ms' % (elapsed.microseconds / 1000))
         except Exception as e:
-            print('error in liveplotterui while receiving new data: ', e)
+            logging.error('error in liveplotterui while receiving new data: %s ' % e, exc_info=True)
 
     ''' updating the plots from specdata '''
 
@@ -397,7 +408,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.tres_roi.setPos((gates[0], gates[2]), finish=False)
             self.tres_roi.setSize((abs(gates[0] - gates[1]), abs(gates[2] - gates[3])), finish=False)
         except Exception as e:
-            print('error, while plotting time resolved, this happened: ', e)
+            logging.error('error, while plotting time resolved, this happened: %s ' % e, exc_info=True)
 
     def rect_select_gates(self, evt):
         """
@@ -416,7 +427,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             # else:
             #     print('this very event already has happened')
         except Exception as e:
-            print('error in LiveDataPlotting, while setting the gates this happened: ', e)
+            logging.error('error in LiveDataPlotting, while setting the gates this happened: %s ' % e, exc_info=True)
         pass
 
     def update_projections(self, spec_data):
@@ -441,7 +452,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     if self.subscribe_as_live_plot:
                         self.current_step_line = Pg.create_infinite_line(self.spec_data.x[self.tres_sel_tr_ind][0],
                                                                          pen='r')
-                        self.sum_proj_plt_itm.addItem(self.current_step_line)
+                        self.sum_proj_plt_itm.addItem(self.current_step_line, ignoreBounds=True)
 
                     self.v_min_line = Pg.create_infinite_line(gates[0])
                     self.v_max_line = Pg.create_infinite_line(gates[1])
@@ -463,7 +474,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.sum_proj_plt_itm.setLabel('bottom', spec_data.x_units.value)
 
         except Exception as e:
-            print('error, while plotting projection, this happened: ', e)
+            logging.error('error, while plotting projection, this happened: %s' % e, exc_info=True)
 
     def update_all_pmts_plot(self, spec_data, autorange_pls=True):
         if self.all_pmts_widg_plt_item_list is None:
@@ -490,7 +501,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         this will set the self.sum_scaler list to the values set in the gui.
         :param index: int, index of the element in the combobox
         """
-        print('sum_scaler_changed was called with index: %s ' % index)
+        logging.info('liveplotterui: sum_scaler_changed was called with index: %s ' % index)
         if index is None:
             index = self.comboBox_select_sum_for_pmts.currentIndex()
         if index == 0:
@@ -503,7 +514,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.lineEdit_arith_scaler_input.setText(str(self.sum_scaler))
                 self.lineEdit_sum_all_pmts.setText(str(self.sum_scaler))
             else:
-                print('but specdata is None, so line edit is not set.')
+                logging.info('liveplotterui: but specdata is None, so line edit is not set.')
             self.lineEdit_arith_scaler_input.setDisabled(True)
             self.lineEdit_sum_all_pmts.setDisabled(True)
         elif index == 1:
@@ -546,7 +557,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     if curs_pos_all_pmts:
                         self.lineEdit_sum_all_pmts.setCursorPosition(curs_pos_all_pmts)
         except Exception as e:
-            print(e)
+            logging.error('error on changing line edit of summed scalers in liveplotterui: %s' % e, exc_info=True)
 
     def cb_all_pmts_sel_tr_changed(self, text):
         """ handle changes in the combobox in the all pmts tab """
@@ -577,7 +588,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             try:
                 new_val = float(item.text())
             except Exception as e:
-                print('error, could not convert value to float: ', item.text())
+                logging.error(
+                    'error, could not convert value to float: %s, error is: %s' % (item.text(), e), exc_info=True)
                 item.setText('0.0')
                 return None
             if len(sel_items):
@@ -605,8 +617,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.rebin_data(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
                     self.update_tres_plot(self.spec_data)
                     self.update_projections(self.spec_data)
-            # else:
-            #     item.setCheckState(QtCore.Qt.Checked)
+                    # else:
+                    #     item.setCheckState(QtCore.Qt.Checked)
         currently_selected = self.find_one_scaler_track(self.tres_sel_tr_name, self.tres_sel_sc_ind)
         curr_checkb_item = self.tableWidget_gates.item(currently_selected.row(), 6)
         curr_checkb_item.setCheckState(QtCore.Qt.Checked)
@@ -718,31 +730,36 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.tres_sel_sc_name) + '.png'
         test = self.grab()
         test.save(im_path)
-        print('saved to: ', im_path)
-        print('liveplot emitting save signal now')
+        logging.info('livbeplotterui, saved image to: %s' % str(im_path))
+        logging.info('liveplot emitting save signal now')
         self.save_request.emit()
 
     ''' closing '''
 
     def closeEvent(self, event):
         if self.subscribe_as_live_plot:
-            if self.overall_scan_progress == 100:
-                self.unsubscribe_from_main()
+            self.unsubscribe_from_main()
         if self.parent is not None:
             if self.subscribe_as_live_plot:
-                if self.overall_scan_progress == 100:
-                    self.parent.close_live_plot_win()
-                    event.accept()
-                else:
-                    print(
-                        'will not close plot window while scanning!'
-                        ' scan progress is: %.2f' % self.overall_scan_progress)
-                    event.ignore()
+                self.parent.close_live_plot_win()
             else:
                 self.parent.close_file_plot_win(self.full_file_path)
                 event.accept()
 
     ''' subscription to main '''
+
+    def get_existing_callbacks_from_main(self):
+        """ check wether existing callbacks are still around in the main adn then connect to those. """
+        if Cfg._main_instance is not None:
+            if Cfg._main_instance.live_plot_callback_tuples is not None:  # then all are not None
+                logging.info('TRSLivePlotWindowUi is connecting to existing callbacks in main')
+                callbacks = Cfg._main_instance.live_plot_callback_tuples
+                self.new_data_callback = callbacks[0]
+                self.new_track_callback = callbacks[1]
+                self.save_request = callbacks[2]
+                self.new_gate_or_soft_bin_width = callbacks[3]
+                self.progress_callback = Cfg._main_instance.live_plot_progress_callback
+                self.fit_results_dict_callback = Cfg._main_instance.live_plot_fit_res_callback
 
     def subscribe_to_main(self):
         self.save_callback.connect(self.save)
@@ -756,7 +773,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def unsubscribe_from_main(self):
         if self.subscribe_as_live_plot:
-            Cfg._main_instance.gui_live_plot_unsubscribe()
+            if self.overall_scan_progress >= 100:  # only delete callbacks, when scan is completed!?
+                Cfg._main_instance.gui_live_plot_unsubscribe()
 
     ''' rebinning '''
 
@@ -817,7 +835,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 if self.subscribe_as_live_plot:
                     [each['vertLine'].setValue(val) for each in self.all_pmts_widg_plt_item_list]
         except Exception as e:
-            print(e)
+            logging.error('error in liveplotterui while updating step indication line: %s' % e)
 
     def reset(self):
         """
@@ -867,7 +885,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             if isinstance(self.all_pmts_plot_layout, QtWidgets.QVBoxLayout):
                 QtWidgets.QWidget().setLayout(self.all_pmts_plot_layout)
         except Exception as e:
-            print('warning: while resetting the all_pmt_plot tab/plot: ', e)
+            logging.error('error: while resetting the all_pmt_plot tab/plot: %s' % e, exc_info=True)
         # will be called within update_plots() when first data arrives
         self.comboBox_sum_all_pmts.currentIndexChanged.emit(self.comboBox_sum_all_pmts.currentIndex())
 
@@ -891,7 +909,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.t_proj_plt = None  # in order to trigger for new data
         self.current_step_line = None
         self.add_time_resolved_plot()
-
 
 # if __name__ == "__main__":
 #     import sys

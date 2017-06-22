@@ -15,7 +15,7 @@ sequencer_types_list = ['cs', 'trs', 'csdummy', 'trsdummy', 'kepco']
 
 """ outer most dictionary contains the following keys: """
 
-scanDict_list = ['isotopeData', 'track0', 'pipeInternals', 'measureVoltPars', 'triton']
+scanDict_list = ['isotopeData', 'track0', 'pipeInternals']
 
 """ the isotopeData dictionary is used for the whole isotope and contains the following keys: """
 
@@ -42,7 +42,8 @@ MUST be appended with the keys from the corresponding sequencer (see below): """
 
 track0_list = ['dacStepSize18Bit', 'dacStartRegister18Bit', 'nOfSteps', 'nOfScans', 'nOfCompletedSteps',
                'invertScan', 'postAccOffsetVoltControl', 'postAccOffsetVolt', 'waitForKepco25nsTicks',
-               'waitAfterReset25nsTicks', 'activePmtList', 'colDirTrue', 'workingTime', 'trigger', 'pulsePattern']
+               'waitAfterReset25nsTicks', 'activePmtList', 'colDirTrue', 'workingTime', 'trigger', 'pulsePattern',
+               'measureVoltPars', 'triton']
 
 """  each sequencer needs its own parameters and therefore, the keys are listed below
 naming convention is type_list.  """
@@ -64,26 +65,6 @@ draftIsotopePars = {
     'nOfTracks': 1, 'accVolt': 9999.8,
     'laserFreq': 12568.766,
     'isotopeStartTime': datetime.today().strftime('%Y-%m-%d %H:%M:%S')
-}
-
-draftTrackPars = {
-    'dacStepSize18Bit': 2647,  # form.get_24bit_input_from_voltage(1, False),
-    'dacStartRegister18Bit': 0,  # form.get_24bit_input_from_voltage(-5, False),
-    'nOfSteps': 100,
-    'nOfScans': 2, 'nOfCompletedSteps': 0, 'invertScan': False,
-    'postAccOffsetVoltControl': 0, 'postAccOffsetVolt': 1000,
-    'waitForKepco25nsTicks': 400,
-    'waitAfterReset25nsTicks': 20000,
-    'activePmtList': [0, 1],
-    'colDirTrue': False,
-    'dwellTime10ns': 2000000,
-    'workingTime': None,
-    'nOfBins': 1000,
-    'softBinWidth_ns': 100,
-    'nOfBunches': 1,
-    'softwGates': [[-10, 10, 0, 10000], [-10, 10, 0, 10000]],
-    'trigger': {'type': 'no_trigger'},
-    'pulsePattern': {'cmdList': ['$time::1.0::1::0', '$time::1.0::0::0']}
 }
 
 draftMeasureVoltPars_singl = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 1000000000,
@@ -109,11 +90,31 @@ draft_triton_pars = {
 
 }
 
+draftTrackPars = {
+    'dacStepSize18Bit': 2647,  # form.get_24bit_input_from_voltage(1, False),
+    'dacStartRegister18Bit': 0,  # form.get_24bit_input_from_voltage(-5, False),
+    'nOfSteps': 100,
+    'nOfScans': 2, 'nOfCompletedSteps': 0, 'invertScan': False,
+    'postAccOffsetVoltControl': 0, 'postAccOffsetVolt': 1000,
+    'waitForKepco25nsTicks': 400,
+    'waitAfterReset25nsTicks': 20000,
+    'activePmtList': [0, 1],
+    'colDirTrue': False,
+    'dwellTime10ns': 2000000,
+    'workingTime': None,
+    'nOfBins': 1000,
+    'softBinWidth_ns': 100,
+    'nOfBunches': 1,
+    'softwGates': [[-10, 10, 0, 10000], [-10, 10, 0, 10000]],
+    'trigger': {'type': 'no_trigger'},
+    'pulsePattern': {'cmdList': ['$time::1.0::1::0', '$time::1.0::0::0']},
+    'measureVoltPars': draftMeasureVoltPars,
+    'triton': draft_triton_pars
+}
+
 draftScanDict = {'isotopeData': draftIsotopePars,
                  'track0': draftTrackPars,
                  'pipeInternals': draftPipeInternals,
-                 'measureVoltPars': draftMeasureVoltPars,
-                 'triton': draft_triton_pars
                  }
 
 # for the time resolved sequencer us this:

@@ -28,14 +28,9 @@ def init_empty_scan_dict(type_str=None, version=None, load_default_vals=False):
             scand['track0'][key] = DftSc.draftTrackPars.get(key)
         for key, val in scand['isotopeData'].items():
             scand['isotopeData'][key] = DftSc.draftIsotopePars.get(key)
-        for key, val in scand['measureVoltPars'].items():
-            scand['measureVoltPars'][key] = DftSc.draftMeasureVoltPars.get(key)
-        scand['triton'] = DftSc.draft_triton_pars
     else:
-        for key, val in scand['measureVoltPars'].items():
-            scand['measureVoltPars'][key] = {}
-        for key, val in scand['triton'].items():
-            scand['triton'][key] = {}
+        scand['track0']['measureVoltPars'] = {'preScan': {}, 'postScan': {}, 'duringScan': {}}
+        scand['track0']['triton'] = {'preScan': {}, 'postScan': {}, 'duringScan': {}}
     scand['isotopeData']['version'] = Cfg.version
     scand['track0']['trigger'] = {'type': TiTs.no_trigger}
     scand['track0']['pulsePattern'] = {'cmdList': [], 'periodicList': [], 'simpleDict': {}}
@@ -116,7 +111,7 @@ def add_missing_voltages(scan_dict):
 
 def fill_meas_complete_dest(scan_dict):
     """
-    this will go through all actrive dmms for this scan and find out on
+    this will go through all actrive dmms, in all tracks for this scan and find out on
     which destination they are sending their voltmeter complete TTL-Signal.
     In order to proceed to the next voltage step, all listed voltmeter complete TTL-Signals must have ben received.
     Four destinations can be choosen: 'PXI_Trigger_4', 'Con1_DIO30', 'Con1_DIO31', 'software'
@@ -134,21 +129,24 @@ def fill_meas_complete_dest(scan_dict):
     :param scan_dict: dict, containign all scan parameters
     :return: scan_dict
     """
-    for pre_during_key, pre_during_dict in scan_dict['measureVoltPars'].items():
-        if pre_during_dict is not None:
-            meas_compl_locs = []
-            for dmm_name, dmm_dict in pre_during_dict.get('dmms', {}).items():
-                meas_compl_locs.append(dmm_dict['measurementCompleteDestination'])
-            if 'software' in meas_compl_locs:
-                pre_during_dict['measurementCompleteDestination'] = 'software'
-            else:
-                trigs = ['PXI_Trigger_4', 'Con1_DIO30', 'Con1_DIO31']
-                in_meas_compl_locs = [each in meas_compl_locs for each in trigs]
-                state = ''
-                for ind, each in enumerate(trigs):
-                    if in_meas_compl_locs[ind]:
-                        state += each + '_'
-                state = state[:-1]
-                pre_during_dict['measurementCompleteDestination'] = state
+    for key, subdicts in scan_dict.items():
+        if 'track' in key:
+            # its a track dict
+            for pre_during_key, pre_during_dict in subdicts['measureVoltPars'].items():
+                if pre_during_dict is not None:
+                    meas_compl_locs = []
+                    for dmm_name, dmm_dict in pre_during_dict.get('dmms', {}).items():
+                        meas_compl_locs.append(dmm_dict['measurementCompleteDestination'])
+                    if 'software' in meas_compl_locs:
+                        pre_during_dict['measurementCompleteDestination'] = 'software'
+                    else:
+                        trigs = ['PXI_Trigger_4', 'Con1_DIO30', 'Con1_DIO31']
+                        in_meas_compl_locs = [each in meas_compl_locs for each in trigs]
+                        state = ''
+                        for ind, each in enumerate(trigs):
+                            if in_meas_compl_locs[ind]:
+                                state += each + '_'
+                        state = state[:-1]
+                        pre_during_dict['measurementCompleteDestination'] = state
 
     return scan_dict

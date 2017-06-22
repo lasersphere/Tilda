@@ -830,7 +830,9 @@ class NStartNodeKepcoScan(Node):
         self.dac_new_volt_set_callback = dac_new_volt_set_callback
 
     def calc_voltage_err(self, voltage_reading, dmm_name):
-        read_err, range_err = self.Pipeline.pipeData['measureVoltPars']['duringScan']['dmms'][dmm_name].get('accuracy', (None, None))
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        read_err, range_err = self.Pipeline.pipeData[track_name]['measureVoltPars']['duringScan']['dmms'][dmm_name].get(
+            'accuracy', (None, None))
         if read_err is not None:
             return voltage_reading * read_err + range_err
         else:
@@ -867,7 +869,7 @@ class NStartNodeKepcoScan(Node):
                                             self.dac_new_volt_set_callback.emit(-1)
                                 except Exception as e:
                                     print('error while processing data in node: %s -> %s' % (self.type, e))
-                                # print('volt_reading: ', self.spec_data.cts)
+                                    # print('volt_reading: ', self.spec_data.cts)
                             else:
                                 # print('received more voltages than it should! check your settings!')
                                 pass
@@ -1394,10 +1396,10 @@ class NMPLImagePlotAndSaveSpecData(Node):
                 if self.new_data_callback is not None:
                     self.new_data_callback.emit(self.rebinned_data)
             else:
-                print('did not emit, because gates/rebinning was not changed.')
+                logging.debug('did not emit, because gates/rebinning was not changed.')
             self.mutex.unlock()
         else:
-            print('could not rebin, self.rebinned data is None')
+            logging.debug('could not rebin, self.rebinned data is None')
 
     def rebin_and_gate_new_data(self, newdata):
         """ this will force a rebin and gate followed by a send of the self.rebinned_data """
@@ -1516,7 +1518,8 @@ class NStraightKepcoFitOnClear(Node):
 
     def get_offset_voltage(self, scandict):
         mean = 0
-        dmms_dict = scandict['measureVoltPars']['preScan'].get('dmms', None)
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        dmms_dict = scandict[track_name]['measureVoltPars']['preScan'].get('dmms', None)
         if dmms_dict is not None:
             offset = []
             for dmm_name, dmm_dict in dmms_dict.items():
@@ -1779,6 +1782,7 @@ class NCS2SpecData(Node):
     def clear(self):
         self.spec_data = None
 
+
 """ time resolved Sequencer Nodes """
 
 
@@ -1813,7 +1817,8 @@ class NTRSSortRawDatatoArrayFast(Node):
             self.stored_data = np.zeros(0, dtype=np.uint32)
         if self.completed_steps_this_track is None:
             self.completed_steps_this_track = self.Pipeline.pipeData[track_name].get('nOfCompletedSteps', 0)
-        self.Pipeline.pipeData[track_name]['nOfCompletedSteps'] = self.completed_steps_this_track  # make sure this exists
+        self.Pipeline.pipeData[track_name][
+            'nOfCompletedSteps'] = self.completed_steps_this_track  # make sure this exists
 
     def processData(self, data, pipeData):
         self.stored_data = np.append(self.stored_data, data)

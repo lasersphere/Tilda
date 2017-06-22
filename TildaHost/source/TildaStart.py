@@ -90,8 +90,8 @@ def start_gui():
     timer = QTimer()
     timer.setTimerType(Qt.PreciseTimer)
     timer.setInterval(_cyclic_interval_ms)
-    timer_call_back = functools.partial(cyclic, ui=ui)
-    timer.timeout.connect(timer_call_back)
+    # timer_call_back = functools.partial(cyclic, ui=ui)
+    timer.timeout.connect(cyclic)
     timer.start()
     app.exec_()
     app.closeAllWindows()
@@ -99,7 +99,7 @@ def start_gui():
     return ui
 
 
-def cyclic(ui):
+def cyclic():
     """
     periodic execution of these functions, when timer timesout, after _cyclic_interval_ms
     -> all calls should be brief, otherwise Gui is blocked

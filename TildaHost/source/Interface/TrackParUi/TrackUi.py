@@ -8,6 +8,7 @@ Created on '29.09.2015'
 import ast
 import logging
 import math
+import os
 from copy import deepcopy
 
 from PyQt5 import QtCore
@@ -22,6 +23,7 @@ from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
 from Interface.PulsePatternUi.PulsePatternUi import PulsePatternUi
 from Interface.SetVoltageUi.SetVoltageUi import SetVoltageUi
 from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
+from Interface.PreScanConfigUi.PreScanConfigUi import PreScanConfigUi
 
 
 class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
@@ -35,17 +37,26 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         default_track_dict is the default dictionary which will be deepcopied and then worked on.
         """
         super(TrackUi, self).__init__()
+        os.chdir(os.path.dirname(__file__))  # necessary for the icons to appear
 
         self.track_name = 'track' + str(track_number)
+
         self.scan_ctrl_win = scan_ctrl_win
-        self.active_iso = scan_ctrl_win.active_iso
+        if scan_ctrl_win is None:
+            self.active_iso = 'None_trs'
+        else:
+            self.active_iso = scan_ctrl_win.active_iso
         self.subscription_name = self.active_iso + '_' + self.track_name
         self.seq_type = self.active_iso.split('_')[-1]
         self.track_number = track_number
         self.main_gui = main_gui
 
-        self.buffer_pars = deepcopy(Cfg._main_instance.scan_pars.get(active_iso_name).get(self.track_name))
-        print('%s parameters are: %s ' % (self.track_name, self.buffer_pars))
+        if Cfg._main_instance is not None:
+            self.buffer_pars = deepcopy(Cfg._main_instance.scan_pars.get(active_iso_name).get(self.track_name))
+        else:
+            import Service.Scan.draftScanParameters as dft
+            self.buffer_pars = deepcopy(dft.draftTrackPars)
+        logging.info('%s parameters are: %s ' % (self.track_name, self.buffer_pars))
         self.buffer_pars['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()  # is needed to be able to fix stop
         self.dac_stop_bit_user = self.calc_dac_stop_18bit()
 
@@ -54,7 +65,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
         self.setupUi(self)
 
-        self.setWindowTitle(self.scan_ctrl_win.win_title + '_' + self.track_name)
+        if self.scan_ctrl_win is not None:
+            self.setWindowTitle(self.scan_ctrl_win.win_title + '_' + self.track_name)
 
         """ sequencer specific """
         self.sequencer_widget = FindDesiredSeqWidg.find_sequencer_widget(self.seq_type, self.buffer_pars, self.main_gui)
@@ -75,11 +87,15 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.pulse_pattern_win = None
         self.pushButton_config_pulse_pattern.clicked.connect(self.open_pulse_pattern_window)
 
+        """ pre post scan measurement related """
+        self.pre_post_scan_window = None
+        self.pushButton_conf_pre_post_tr_meas.clicked.connect(self.open_pre_post_conf_win)
+
         """DAC Settings"""
-        self.doubleSpinBox_dacStartV.setRange(VCon.get_voltage_from_18bit(0), VCon.get_voltage_from_18bit(2 ** 18 - 1))
+        self.doubleSpinBox_dacStartV.setRange(-10.5, 10.5)
         self.doubleSpinBox_dacStartV.valueChanged.connect(self.dac_start_v_set)
 
-        self.doubleSpinBox_dacStopV.setRange(VCon.get_voltage_from_18bit(0), VCon.get_voltage_from_18bit(2 ** 18 - 1))
+        self.doubleSpinBox_dacStopV.setRange(-10.5, 10.5)
         self.doubleSpinBox_dacStopV.valueChanged.connect(self.dac_stop_v_set)
 
         self.doubleSpinBox_dacStepSizeV.setRange(
@@ -113,10 +129,12 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.doubleSpinBox_waitForKepco_muS.valueChanged.connect(self.wait_for_kepco_mu_sec)
 
         self.set_labels_by_dict(self.buffer_pars)
-        Cfg._main_instance.subscribe_to_power_sub_status(self.track_ui_call_back_signal, self.subscription_name)
+        if Cfg._main_instance is not None:
+            Cfg._main_instance.subscribe_to_power_sub_status(self.track_ui_call_back_signal, self.subscription_name)
         self.show()
 
     """functions:"""
+
     def set_labels_by_dict(self, track_dict):
         """" the values in the track_dict will be written to the corresponding spinboxes,
         which will call the connected functions.
@@ -124,7 +142,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         when default val is messed up.
         """
         cb_post_acc_ind_before_load = self.comboBox_postAccOffsetVoltControl.currentIndex()
-        print('setting trackui labels by dict: ', track_dict)
+        logging.info('setting trackui labels by dict: ', track_dict)
         func_list = [
             # (self.doubleSpinBox_dwellTime_ms.setValue,
             #  self.check_for_none(track_dict.get('dwellTime10ns'), 0) * (10 ** -5)),
@@ -155,10 +173,10 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             try:
                 func[0](func[1])
             except Exception as e:
-               print('error while loading default track dictionary: ' + str(e))
+                logging.error('error while loading default track dictionary: ' + str(e), exc_info=True)
         # self.comboBox_postAccOffsetVoltControl.currentIndexChanged.emit(self.comboBox_postAccOffsetVoltControl.currentIndex())
-        print('setting trackui labels by dict is done postAccOffsetVoltControl is: ',
-              self.buffer_pars['postAccOffsetVoltControl'])  #
+        logging.info('setting trackui labels by dict is done postAccOffsetVoltControl is: ' + str(
+            self.buffer_pars['postAccOffsetVoltControl']))
         if cb_post_acc_ind_before_load == self.comboBox_postAccOffsetVoltControl.currentIndex():
             # force index change emit if the index was not changed by loading
             self.comboBox_postAccOffsetVoltControl.currentIndexChanged.emit(
@@ -172,28 +190,27 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             check = replace
         return check
 
-    def update_trigger_combob(self, default_trig=TiTs.no_trigger):
+    def update_trigger_combob(self, default_trig=TiTs.no_trigger.name):
         """
         updates the trigger combo box by looking up the members of the enum
         """
         self.comboBox_triggerSelect.addItems([tr.name for tr in TiTs])
-        self.comboBox_triggerSelect.setCurrentIndex(self.buffer_pars.get(
-            'trigger', {'type': default_trig}).get('type', default_trig.value).value)
 
     def trigger_select(self, trig_str):
         """
-        finds the deisred trigger widget and sets it into self.trigger_widget
+        finds the desired trigger widget and sets it into self.trigger_widget
         """
         self.buffer_pars.get('trigger', {})['type'] = getattr(TiTs, trig_str)
         self.trigger_vert_layout.removeWidget(self.trigger_widget)
-        self.trigger_widget.setParent(None)
+        if self.trigger_widget is not None:
+            self.trigger_widget.setParent(None)
         self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {}))
         self.trigger_vert_layout.addWidget(self.trigger_widget)
 
     """ pulse pattern related """
 
     def open_pulse_pattern_window(self):
-        if self.pulse_pattern_win is not None:
+        if self.pulse_pattern_win is not None and self.main_gui is not None:
             self.main_gui.raise_win_to_front(self.pulse_pattern_win)
         else:
             self.pulse_pattern_win = PulsePatternUi(self.active_iso, self.track_name, self.main_gui, self)
@@ -213,8 +230,22 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def close_pulse_pattern_window(self):
         self.pulse_pattern_win = None
 
+    """ pre post scan meas related """
+
+    def open_pre_post_conf_win(self):
+        """ open a new pre post scan config win or raise an existing one to front"""
+        if self.pre_post_scan_window is None:
+            self.pre_post_scan_window = PreScanConfigUi(self, self.active_iso, self.track_name)
+        else:
+            self.raise_win_to_front(self.pre_post_scan_window)
+
+    def close_pre_post_scan_win(self):
+        """ pre post scan window was closed, remove reference """
+        self.pre_post_scan_window = None
+
     """ from lineedit/spinbox to set value """
     '''line voltage realted:'''
+
     def dac_start_v_set(self, start_volt):
         """ this will write the doublespinbox value to the working dict and set the label
         it will also call recalc_step_stop to adjust the stepsize and then fine tune the stop value """
@@ -234,7 +265,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """ this will write the doublespinbox value to the working dict and set the label
         it will also call recalc_n_of_steps_stop to adjust the number of steps and then fine tune the stop value """
         self.buffer_pars['dacStopRegister18Bit'] = VCon.get_18bit_from_voltage(stop_volt)
-        self.dac_stop_bit_user = VCon.get_18bit_from_voltage(stop_volt)  # only touch this when double spinbox is touched
+        self.dac_stop_bit_user = VCon.get_18bit_from_voltage(
+            stop_volt)  # only touch this when double spinbox is touched
         dis = self.buffer_pars['dacStopRegister18Bit'] - self.buffer_pars['dacStartRegister18Bit']
         self.buffer_pars['dacStepSize18Bit'] = int(math.copysign(self.buffer_pars['dacStepSize18Bit'], dis))
         self.recalc_n_of_steps_stop()
@@ -338,6 +370,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.spinBox_nOfSteps.blockSignals(False)
 
     '''other scan pars:'''
+
     def n_of_scans_set(self, val):
         """ write the number of scans to the working dictionary and display them """
         self.label_nOfScans_set.setText(str(val))
@@ -389,12 +422,14 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         setval = time_25ns * 25 * (10 ** -3)
         self.label_waitForKepco_muS_set.setText(str(round(setval, 3)))
 
-    """ set voltages """
+    """ set offset voltages (heinzingers) """
+
     def post_acc_offset_volt_control_set(self, index):
         """ write to the working dictionary and set the label """
         val = self.comboBox_postAccOffsetVoltControl.currentText()
         if val != 'Kepco':
-            Cfg._main_instance.power_supply_status(val, self.subscription_name)
+            if Cfg._main_instance is not None:
+                Cfg._main_instance.power_supply_status(val, self.subscription_name)
         self.label_postAccOffsetVoltControl_set.setText(val)
         self.buffer_pars['postAccOffsetVoltControl'] = index
 
@@ -420,8 +455,11 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         power_supply = self.comboBox_postAccOffsetVoltControl.currentText()
         if power_supply != 'Kepco':
             volt = self.buffer_pars['postAccOffsetVolt']
-            Cfg._main_instance.set_power_supply_voltage(power_supply, volt, self.subscription_name)
-            self.set_volt_win = SetVoltageUi(power_supply, volt, self.subscription_name)
+            if Cfg._main_instance is not None:
+                Cfg._main_instance.set_power_supply_voltage(power_supply, volt, self.subscription_name)
+                self.set_volt_win = SetVoltageUi(power_supply, volt, self.subscription_name)
+
+    """ other stuff """
 
     def cancel(self):
         """ closes the window without further actions """
@@ -431,12 +469,22 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """ closes the window and overwrites the corresponding track in the main """
         self.buffer_pars = SdOp.merge_dicts(self.buffer_pars, self.sequencer_widget.get_seq_pars())
         self.buffer_pars['trigger'] = self.trigger_widget.get_trig_pars()
-        Cfg._main_instance.scan_pars[self.active_iso][self.track_name] = deepcopy(self.buffer_pars)
+        if Cfg._main_instance is not None:
+            Cfg._main_instance.scan_pars[self.active_iso][self.track_name] = deepcopy(self.buffer_pars)
+        logging.debug('confirmed track dict: ' + str(self.buffer_pars))
+        # logging.debug('measure volt pars:')
+        # import json
+        # logging.debug(
+        #     json.dumps(self.buffer_pars['measureVoltPars'], sort_keys=True, indent=4))
         self.close()
 
     def reset_to_default(self):
         """ will reset all spinboxes to the default value which is stored in teh main. """
-        default_d = deepcopy(Cfg._main_instance.scan_pars[self.active_iso][self.track_name])
+        if Cfg._main_instance is not None:
+            default_d = deepcopy(Cfg._main_instance.scan_pars[self.active_iso][self.track_name])
+        else:
+            import Service.Scan.draftScanParameters as dft
+            default_d = deepcopy(dft.draftTrackPars)
         default_d['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()
         self.set_labels_by_dict(default_d)
 
@@ -444,7 +492,36 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """
         will remove the given track window from the dictionary in scan_ctrl_win
         """
-        Cfg._main_instance.un_subscribe_to_power_sub_status(self.subscription_name)
-        self.scan_ctrl_win.track_win_closed(self.track_number)
+        if Cfg._main_instance is not None:
+            Cfg._main_instance.un_subscribe_to_power_sub_status(self.subscription_name)
+        if self.scan_ctrl_win is not None:
+            self.scan_ctrl_win.track_win_closed(self.track_number)
         if self.pulse_pattern_win is not None:
             self.pulse_pattern_win.close()
+        if self.pre_post_scan_window is not None:
+            self.pre_post_scan_window.close()
+
+    def raise_win_to_front(self, window):
+        # this will remove minimized status
+        # and restore window with keeping maximized/normal state
+        window.setWindowState(window.windowState() & ~QtCore.Qt.WindowMinimized | QtCore.Qt.WindowActive)
+
+        # this will activate the window
+        window.activateWindow()
+
+
+# aah zu nervig
+if __name__ == '__main__':
+    import sys
+
+    log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(module)s %(funcName)s(%(lineno)d) %(message)s')
+
+    app_log = logging.getLogger()
+    app_log.setLevel(logging.DEBUG)
+    app_log.info('Log level set to ' + 'DEBUG')
+
+    app = QtWidgets.QApplication(sys.argv)
+    gui = TrackUi(None, 0, 'lala', None)
+    # gui.load_from_text(txt_path='E:\\TildaDebugging\\Pulsepattern123Pattern.txt')
+    # print(gui.get_gr_v_pos_from_list_of_cmds())
+    app.exec_()

@@ -83,7 +83,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         track_name = 'track' + str(track_num)
         if self.changeSeqState(self.config.seqStateDict['idle']):
             if (self.setMCSParameters(scanpars, track_name) and
-                    self.setmeasVoltParameters(scanpars['measureVoltPars'][pre_post_scan_meas_str]) and
+                    self.setmeasVoltParameters(scanpars[track_name]['measureVoltPars'][pre_post_scan_meas_str]) and
                     self.setTrackParameters(scanpars[track_name]) and
                     self.set_trigger(scanpars[track_name].get('trigger', {})) and
                     self.selectKepcoOrScalerScan(scanpars['isotopeData']['type'])):
