@@ -144,13 +144,22 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
     return return_list
 
 
-def plot_all_sc(list_of_widgets_etc, spec_data, tr):
+def plot_all_sc(list_of_widgets_etc, spec_data, tr, stepMode=False):
     # print('plotting all pmts in %s' % list_of_widgets_etc)
     for val in list_of_widgets_etc:
         sc = val['indList']
         plt_data_itm = val['pltDataItem']
         x, y, err = spec_data.getArithSpec(sc, tr)
-        plt_data_itm.setData(x, y)
+        if stepMode:
+            x = convert_xaxis_for_step_mode(x)
+        plt_data_itm.setData(x, y, stepMode=stepMode)
+
+
+def convert_xaxis_for_step_mode(x_axis):
+    x_axis_step = np.mean(np.ediff1d(x_axis))
+    x_axis = np.append(x_axis, [x_axis[-1] + x_axis_step])
+    x_axis += -0.5 * abs(x_axis_step)
+    return x_axis
 
 
 def create_viewbox():

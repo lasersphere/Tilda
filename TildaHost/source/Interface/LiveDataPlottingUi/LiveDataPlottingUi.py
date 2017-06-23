@@ -125,7 +125,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.lineEdit_arith_scaler_input.setText(str(self.sum_scaler))
             self.lineEdit_sum_all_pmts.setText(str(self.sum_scaler))
 
-        self.current_step_line = None  # line to display which step is active.
+        self.current_step_line = None  # line to display which step is active.(used in projection)
+        self.sum_current_step_line = None  # same for sum
 
         self.sum_list = ['add all', 'manual']
         self.comboBox_select_sum_for_pmts.addItems(self.sum_list)
@@ -359,6 +360,13 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.graph_font_size -= 1
         self.change_font_size_all_graphs(self.graph_font_size)
 
+    def convert_xaxis_for_step_mode(self, x_axis):
+        x_axis_step = np.mean(np.ediff1d(x_axis))
+        x_axis = np.append(x_axis, [x_axis[-1] + x_axis_step])
+        x_axis += -0.5 * abs(x_axis_step)
+        return x_axis
+
+
     ''' receive and plot new incoming data '''
 
     def new_data(self, spec_data):
@@ -407,8 +415,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpec(self.sum_scaler, self.sum_track)
             if self.sum_plt_data is None:
                 self.sum_plt_data = self.sum_plt_itm.plot(self.sum_x, self.sum_y, pen='k')
+                if self.subscribe_as_live_plot:
+                    self.sum_current_step_line = Pg.create_infinite_line(self.spec_data.x[self.tres_sel_tr_ind][0],
+                                                                     pen='r')
+                    self.sum_plt_itm.addItem(self.sum_current_step_line, ignoreBounds=True)
             else:
-                self.sum_plt_data.setData(self.sum_x, self.sum_y)
+                self.sum_plt_data.setData(self.convert_xaxis_for_step_mode(self.sum_x), self.sum_y, stepMode=True)
             self.sum_plt_itm.setLabel('bottom', spec_data.x_units.value)
 
     def update_tres_plot(self, spec_data):
@@ -490,8 +502,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.t_proj_plt_itm.addItem(self.t_max_line)
                 else:
                     self.t_proj_plt.setData(t_proj_x, t_proj_y)
-                    self.sum_proj_plt_data.setData(sum_x, sum_y)
-                    self.v_proj_plt.setData(v_proj_x, v_proj_y)
+                    self.sum_proj_plt_data.setData(self.convert_xaxis_for_step_mode(sum_x), sum_y, stepMode=True)
+                    self.v_proj_plt.setData(self.convert_xaxis_for_step_mode(v_proj_x), v_proj_y, stepMode=True)
                     self.v_min_line.setValue(gates[0])
                     self.v_max_line.setValue(gates[1])
                     self.t_min_line.setValue(gates[2])
@@ -515,7 +527,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.comboBox_all_pmts_sel_tr.blockSignals(False)
 
             self.add_all_pmt_plot()
-        Pg.plot_all_sc(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr)
+        Pg.plot_all_sc(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr, stepMode=True)
         if autorange_pls:
             [each['pltItem'].autoRange() for each in self.all_pmts_widg_plt_item_list]
             self.all_pmts_widg_plt_item_list[-1]['pltItem'].setLabel('bottom', spec_data.x_units.value)
@@ -870,6 +882,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 # print('active track is: %s and active step is: %s val is: %s ' % (act_tr, act_step, val))
                 if self.current_step_line is not None:
                     self.current_step_line.setValue(val)
+                if self.sum_current_step_line is not None:
+                    self.sum_current_step_line.setValue(val)
                 if self.subscribe_as_live_plot:
                     [each['vertLine'].setValue(val) for each in self.all_pmts_widg_plt_item_list]
         except Exception as e:
@@ -946,6 +960,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         QtWidgets.QWidget().setLayout(self.t_proj_layout)
         self.t_proj_plt = None  # in order to trigger for new data
         self.current_step_line = None
+        self.sum_current_step_line = None
         self.add_time_resolved_plot()
 
 # if __name__ == "__main__":
