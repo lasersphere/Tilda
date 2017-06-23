@@ -1380,7 +1380,8 @@ class NMPLImagePlotAndSaveSpecData(Node):
         """ when receiving new gates/bin width, this is called and will rebin and
         then gate the data if there is a change in one of those.
         The new data will be send afterwards. """
-        # print('received gates: %s tr_ind: %s bin_width_ns: %s' % (softw_gates_for_all_tr, rebin_track_ind, softBinWidth_ns))
+        logging.debug('received gates: %s tr_ind: %s bin_width_ns: %s'
+                      % (softw_gates_for_all_tr, rebin_track_ind, softBinWidth_ns))
         if self.rebinned_data is not None:
             self.mutex.lock()  # can be called form other track, so mute it.
             changed = force_both

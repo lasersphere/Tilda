@@ -10,6 +10,7 @@ Use this class for displaying your data in combination with a prestarted gui.
 """
 
 from datetime import datetime
+import logging
 
 from PyQt5 import QtCore
 
@@ -30,11 +31,6 @@ class DisplayData:
         self.select_pipe()
         self.feed_loaded_spec(self.spec)
         self.gui.gate_data(None, True)
-        # self.gui.new_gate_or_soft_bin_width.emit(
-        #     self.spec.softw_gates, -1, self.spec.softBinWidth_ns)(self.spec)
-        # self.gui.new_gate_or_soft_bin_width.emit(
-        #     self.spec.softw_gates, -1, self.spec.softBinWidth_ns)(self.spec)
-        # self.clear_pipe()  # for now i don't want to save here.
 
     def load_spectra(self, file, loaded_spec=None):
         self.file = file
@@ -47,7 +43,7 @@ class DisplayData:
         callbacks = (None, None, None) if self.gui is None else self.gui.callbacks
         self.pipe = TP.time_resolved_display(self.file, callbacks)
         self.pipe.start()
-        print('pipeline started')
+        logging.info('pipeline started to display %s ' % self.file)
 
     def feed_loaded_spec(self, spec=None):
         start = datetime.now()
@@ -56,7 +52,7 @@ class DisplayData:
         else:
             self.pipe.feed(spec)
         stop = datetime.now()
-        print('displaying data took: %s  seconds' % (stop - start))
+        logging.info('displaying data took: %.1f ms' % ((stop - start).microseconds / 1000))
 
     def clear_pipe(self):
         self.pipe.clear()

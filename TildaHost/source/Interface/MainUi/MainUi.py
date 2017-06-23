@@ -173,7 +173,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         if ok:
             Cfg._main_instance.acc_volt_changed(acc_volt)
 
-    def load_spectra(self, file=None, loaded_spec=None):
+    def load_spectra(self, file=None, loaded_spec=None, sum_sc_tr=None):
         if Cfg._main_instance.working_directory is None:
             if self.choose_working_dir() is None:
                 return None
@@ -182,7 +182,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 self, 'choose an xml file', Cfg._main_instance.working_directory, '*.xml')[0]
         if file:
             if file not in self.file_plot_wins.keys():
-                self.open_file_plot_win(file)
+                self.open_file_plot_win(file, sum_sc_tr=sum_sc_tr)
                 Cfg._main_instance.load_spectra_to_main(file, self.file_plot_wins[file], loaded_spec=loaded_spec)
             else:
                 self.raise_win_to_front(self.file_plot_wins[file])
@@ -259,10 +259,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             self.raise_win_to_front(self.live_plot_win)
             self.live_plot_win.reset()
 
-    def open_file_plot_win(self, file):
+    def open_file_plot_win(self, file, sum_sc_tr=None):
         self.file_plot_wins[file] = TRSLivePlotWindowUi(full_file_path=file,
                                                         parent=self,
-                                                        subscribe_as_live_plot=False)
+                                                        subscribe_as_live_plot=False,
+                                                        sum_sc_tr=sum_sc_tr)
 
     def open_pollifit_win(self):
         if self.pollifit_win is None:

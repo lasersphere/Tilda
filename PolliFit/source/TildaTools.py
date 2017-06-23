@@ -348,6 +348,14 @@ def gate_specdata(spec_data):
     :param spec_data: spec_data
     :return: spec_data
     """
+    logging.debug('gating data now, software gates are: %s' % spec_data.softw_gates)
+    # check if enough gates are given for this track
+    for tr_ind, gates_tr in enumerate(spec_data.softw_gates):
+        tr_scalers = spec_data.nrScalers[tr_ind]
+        dif = tr_scalers - len(gates_tr)
+        if dif > 0:  # not enough gates defined for this track will add now
+            for i in range(dif):
+                spec_data.softw_gates[tr_ind].append([float('-inf'), float('inf'), 0, float('inf')])
     # get indices of the values first
     compare_arr = [spec_data.x, spec_data.x, spec_data.t, spec_data.t]
     softw_gates_ind = [

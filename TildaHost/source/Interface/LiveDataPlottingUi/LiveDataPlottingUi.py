@@ -50,7 +50,21 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     # progress dict coming from the main
     progress_callback = QtCore.pyqtSignal(dict)
 
-    def __init__(self, full_file_path='', parent=None, subscribe_as_live_plot=True):
+    def __init__(self, full_file_path='', parent=None, subscribe_as_live_plot=True, sum_sc_tr=None):
+        """
+        initilaises a liveplot window either for liveplotting of incoming data
+        or to display previously saved xml data
+        :param full_file_path: str, path of xml file.
+        :param parent: reference to parent window
+        :param subscribe_as_live_plot: bool,
+            True for subscribing as live plot window (9only one allowed)
+            False for displaying previously stored data
+        :param sum_sc_tr: list, can be used to overwrite on startup
+         which scalers of which track should be added for the sum. Syntax as in Pollifit -> Runs table scaler, track
+            [[+/-sc0, +/-sc1,...], tr]
+                sc0-n: index of the scaler that should be added,
+                tr: index of the track that should be added, -1 for all tracks
+        """
         super(TRSLivePlotWindowUi, self).__init__()
 
         self.t_proj_plt = None
@@ -103,6 +117,13 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         self.sum_scaler = [0]  # list of scalers to add
         self.sum_track = -1  # int, for selecting the track which will be added. -1 for all
+        self.sum_sc_tr_external = sum_sc_tr
+        if self.sum_sc_tr_external is not None:
+            # overwrite with external
+            self.sum_scaler = self.sum_sc_tr_external[0]
+            self.sum_track = self.sum_sc_tr_external[1]
+            self.lineEdit_arith_scaler_input.setText(str(self.sum_scaler))
+            self.lineEdit_sum_all_pmts.setText(str(self.sum_scaler))
 
         self.current_step_line = None  # line to display which step is active.
 
@@ -175,6 +196,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         ''' font size graphs '''
         self.actionGraph_font_size.triggered.connect(self.get_graph_fontsize)
+
+        ''' update sum  '''
+        self.sum_scaler_changed()
 
     def show_progress(self, show=None):
         if show is not None:
@@ -277,7 +301,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         logging.info('livbeplot window received new track with %s %s ' % rcv_tpl)
         self.tres_sel_tr_ind, self.tres_sel_tr_name = rcv_tpl[0]
-        self.comboBox_all_pmts_sel_tr.setCurrentIndex(self.tres_sel_tr_ind)
+        if self.subscribe_as_live_plot:
+            logging.info(
+                'liveplot window received new track with updating index in comboBox_all_pmts_sel_tr to %s'
+                % self.tres_sel_tr_ind)
+            self.comboBox_all_pmts_sel_tr.setCurrentIndex(self.tres_sel_tr_ind)
         self.tres_sel_sc_ind, self.tres_sel_sc_name = rcv_tpl[1]
         self.new_track_no_data_yet = True
         # need to reset stuff here if number of steps have changed.
@@ -338,10 +366,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         call this to pass a new dataset to the gui.
         """
         try:
-            # TODO remove this, when resuvbscribe of liveplot window is working
             st = datetime.now()
-            elapsed = st - self.last_gr_update_done_time
-            logging.debug('received new data, updating now. Time since last update: %.2f' % (elapsed.microseconds / 1000))
             valid_data = False
             self.spec_data = deepcopy(spec_data)
 
@@ -485,6 +510,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             tr_list.append('all')
             self.comboBox_all_pmts_sel_tr.addItems(tr_list)
             # self.cb_all_pmts_sel_tr_changed(self.comboBox_all_pmts_sel_tr.currentText())
+            if self.sum_sc_tr_external is not None:
+                self.set_tr_sel_by_index(self.sum_track)
             self.comboBox_all_pmts_sel_tr.blockSignals(False)
 
             self.add_all_pmt_plot()
@@ -503,8 +530,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         logging.info('liveplotterui: sum_scaler_changed was called with index: %s ' % index)
         if index is None:
-            index = self.comboBox_select_sum_for_pmts.currentIndex()
-        if index == 0:
+            index = self.comboBox_select_sum_for_pmts.currentIndex() if self.sum_sc_tr_external is None else 1
+        if index == 0:  # add all
             if self.spec_data is not None:
                 if self.spec_data.seq_type != 'kepco':
                     self.sum_scaler = self.spec_data.active_pmt_list[0]  # should be the same for all tracks
@@ -517,7 +544,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 logging.info('liveplotterui: but specdata is None, so line edit is not set.')
             self.lineEdit_arith_scaler_input.setDisabled(True)
             self.lineEdit_sum_all_pmts.setDisabled(True)
-        elif index == 1:
+        elif index == 1:  # manual
             # self.sum_scaler = self.valid_scaler_input
             self.lineEdit_arith_scaler_input.setDisabled(False)
             self.lineEdit_sum_all_pmts.setDisabled(False)
@@ -568,6 +595,17 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.all_pmts_sel_tr = tr_ind
         if self.spec_data is not None and self.all_pmts_widg_plt_item_list is not None:
             self.update_all_pmts_plot(self.spec_data, autorange_pls=True)
+
+    def set_tr_sel_by_index(self, tr_ind):
+        new_ind = tr_ind != self.all_pmts_sel_tr
+        if tr_ind == -1:
+            tr_ind = self.comboBox_all_pmts_sel_tr.count() - 1
+        logging.debug('setting current index of comboBox_all_pmts_sel_tr to: %s' % tr_ind)
+        self.comboBox_all_pmts_sel_tr.blockSignals(True)
+        self.comboBox_all_pmts_sel_tr.setCurrentIndex(tr_ind)
+        self.comboBox_all_pmts_sel_tr.blockSignals(False)
+        if new_ind:
+            self.cb_all_pmts_sel_tr_changed(self.comboBox_all_pmts_sel_tr.currentText())
 
     ''' gating: '''
 
