@@ -155,8 +155,8 @@ class Main(QtCore.QObject):
         elif self.m_state[0] is MainState.deinit_dmm:
             self._deinit_dmm(self.m_state[1])
         elapsed = datetime.now() - st
-        if elapsed.microseconds > 1000:
-            logging.debug('cyclic execution took longer than 1ms: %.1f ms, state is: %s'
+        if elapsed.microseconds > 50000:
+            logging.warning('cyclic execution took longer than 50ms, it took: %.1f ms, state is: %s'
                           % (elapsed.microseconds / 1000, self.m_state[0].name))
 
     """ main functions """

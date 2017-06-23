@@ -348,7 +348,7 @@ def gate_specdata(spec_data):
     :param spec_data: spec_data
     :return: spec_data
     """
-    logging.debug('gating data now, software gates are: %s' % spec_data.softw_gates)
+    # logging.debug('gating data now, software gates are: %s' % spec_data.softw_gates)
     # check if enough gates are given for this track
     for tr_ind, gates_tr in enumerate(spec_data.softw_gates):
         tr_scalers = spec_data.nrScalers[tr_ind]

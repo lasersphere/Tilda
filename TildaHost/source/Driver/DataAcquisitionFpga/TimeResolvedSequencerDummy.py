@@ -177,19 +177,18 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         st = datetime.now()
         result = {'nOfEle': 0, 'newData': None, 'elemRemainInFifo': 0}
         result['elemRemainInFifo'] = len(self.artificial_build_data)
-        max_read_data = 20000
+        max_read_data = 2000
         n_of_read_data = 0
         if result['elemRemainInFifo'] > 0:
             n_of_read_data = min(max_read_data, result['elemRemainInFifo'])
             result['newData'] = np.array(self.artificial_build_data[0:n_of_read_data])
             result['nOfEle'] = n_of_read_data
             result['elemRemainInFifo'] = len(self.artificial_build_data) - n_of_read_data
-        self.artificial_build_data = [i for j, i in enumerate(self.artificial_build_data)
-                                      if j not in range(n_of_read_data)]
+        self.artificial_build_data = self.artificial_build_data[n_of_read_data:]
         if result['elemRemainInFifo'] == 0:
             self.status = TrsCfg.seqStateDict['measComplete']
         elapsed = datetime.now() - st
-        logging.debug('reading from dummy trs sequemncer took %.1f ms ' % (elapsed.microseconds / 1000))
+        # logging.debug('reading from dummy trs sequemncer took %.1f ms ' % (elapsed.microseconds / 1000))
         return result
 
     def getSeqState(self):

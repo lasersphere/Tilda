@@ -384,7 +384,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.new_track_no_data_yet = False
             self.last_gr_update_done_time = datetime.now()
             elapsed = self.last_gr_update_done_time - st
-            logging.debug('done updating plot, plotting took %.2f ms' % (elapsed.microseconds / 1000))
+            # logging.debug('done updating plot, plotting took %.2f ms' % (elapsed.microseconds / 1000))
         except Exception as e:
             logging.error('error in liveplotterui while receiving new data: %s ' % e, exc_info=True)
 
