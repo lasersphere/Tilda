@@ -6,6 +6,7 @@ Created on 22/04/2016
 Module Description:
 
 Use this class for displaying your data in combination with a prestarted gui.
+This module will run the pipeline etc. to display the data use a LiveDataPlottingUi as gui
 
 """
 
@@ -14,7 +15,6 @@ import logging
 
 from PyQt5 import QtCore
 
-import Application.Config as Cfg
 import Service.AnalysisAndDataHandling.tildaPipeline as TP
 from Measurement.XMLImporter import XMLImporter as XmlImp
 
@@ -24,7 +24,6 @@ class DisplayData:
         self.pipe = None
         self.gui = gui
         self.file = None
-        self.fig = None
         self.spec = None
         self.x_as_volt = x_as_volt
         self.load_spectra(file, loaded_spec)
@@ -66,8 +65,14 @@ class DisplayData:
         # this will activate the window
         window.activateWindow()
 
-    def close_live_plot_win(self):
-        Cfg._main_instance.close_spectra_in_main(self.file)
+    def close_display_data(self):
+        # self.clear_pipe()
+        self.pipe.stop()
+        del self.pipe
+        del self.spec
+        # self.pipe = None
+        # self.spec = None
+        logging.info('closed Displaydata of file %s' % self.file)
 
 
 

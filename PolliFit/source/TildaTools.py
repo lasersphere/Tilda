@@ -410,12 +410,14 @@ def gate_zero_free_specdata(spec_data):
     """
     try:
         dimensions = spec_data.get_scaler_step_and_bin_num(-1)
-        zf_spec = deepcopy(spec_data)
-        zf_spec.time_res = zero_free_to_non_zero_free(spec_data.time_res_zf, dimensions)
-        zf_spec = gate_specdata(zf_spec)
+        # i dont think a copy is necessary.
+        # zf_spec = deepcopy(spec_data)
+        # zf_spec = spec_data
+        spec_data.time_res = zero_free_to_non_zero_free(spec_data.time_res_zf, dimensions)
+        spec_data = gate_specdata(spec_data)
     except Exception as e:
         print('error: while gating zero free specdata: %s ' % e)
-    return zf_spec
+    return spec_data
 
     # alternative solution (currently slower):
     # compare_arr = [spec_data.x, spec_data.x, spec_data.t, spec_data.t]

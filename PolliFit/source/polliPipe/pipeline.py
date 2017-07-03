@@ -46,6 +46,14 @@ class Pipeline(object):
         item.data = data
         self.processItem(item)
 
+    def save(self):
+        """
+        go through nodes and trigger the save function
+        """
+        item = Item(self.nextItemId, "save")
+        self.nextItemId += 1
+        self.processItem(item)
+
     def clear(self):
         """
         Iterate over nodes and tell them to flush, e.g. clear their internal memory

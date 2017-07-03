@@ -6,8 +6,9 @@ Created on
 Module Description:
 """
 import os
+import logging
 
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui, Qt
 
 import Application.Config as Cfg
 from Interface.ScanProgressUi.Ui_ScanProgress import Ui_ScanProgress
@@ -16,16 +17,17 @@ from Interface.ScanProgressUi.Ui_ScanProgress import Ui_ScanProgress
 class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
     scan_prog_callback_sig = QtCore.pyqtSignal(dict)
 
-    def __init__(self, main_gui):
+    def __init__(self, parent):
         """
         non modal scan progress window, which will be showing the progress of the scan and
         give the user the ability to abort or to halt the scan.
         """
-        super(ScanProgressUi, self).__init__()
-        self.setupUi(self)
-        self.main_gui = main_gui
+        super(ScanProgressUi, self).__init__(parent=parent)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)  # necessary for not keeping it in memory
 
-        Cfg._main_instance.subscribe_to_scan_prog(self.scan_prog_callback_sig)
+        self.setupUi(self)
+
+        self.scan_prog_callback_sig = Cfg._main_instance.subscribe_to_scan_prog()
         self.scan_prog_callback_sig.connect(self.update_progress)
 
         self.progressBar_track.setMaximum(100)
@@ -33,6 +35,7 @@ class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
 
         self.progressBar_overall.setValue(0)
         self.progressBar_track.setValue(0)
+        self.progressbar_color()
 
         """ connect buttons etc. """
         self.pushButton_abort.clicked.connect(self.abort)
@@ -53,9 +56,32 @@ class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
         self.label_act_completed_steps.setText('-1')
         self.label_max_completed_steps.setText('-1')  #
         self.groupBox.setTitle('track...')
+        self.progressbar_color()
 
     def abort(self):
         Cfg._main_instance.abort_scan = True
+        self.progressbar_color('red')
+
+    def progressbar_color(self, color='#1ED760'):
+        # default set to green
+        try:
+            logging.debug('setting background color')
+            # style = """QProgressBar::chunk { background-color: %s; }""" % color
+            st = """
+                QProgressBar::chunk { background-color: %s; }
+
+                QProgressBar {
+                border: 1px solid grey;
+                border-radius: 2px;
+                text-align: right;
+                background: #eeeeee;
+                }
+                """ % color
+
+            self.progressBar_overall.setStyleSheet(st)
+            self.progressBar_track.setStyleSheet(st)
+        except Exception as e:
+            logging.error('error while setting palette: %s' % e, exc_info=True)
 
     def halt(self):
         Cfg._main_instance.halt_scan_func(self.checkBox.isChecked())
@@ -80,7 +106,6 @@ class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
         'trackProgr': float, 'activeScan': int, 'totalScans': int, 'activeStep': int, 'totalSteps': int,
         'trackName': str]
         """
-        # print('received progress dict: %s ' % progress_dict)
         self.setWindowTitle('progress ' + os.path.split(progress_dict['activeFile'])[1])  #
         self.progressBar_overall.setValue(int(progress_dict['overallProgr']))
         self.label_timeleft_set.setText(progress_dict['timeleft'])
@@ -93,6 +118,5 @@ class ScanProgressUi(QtWidgets.QMainWindow, Ui_ScanProgress):
         self.label_max_completed_steps.setText(str(progress_dict['totalSteps']))  #
         self.groupBox.setTitle(str(progress_dict['trackName']))
 
-    def closeEvent(self, *args, **kwargs):
-        self.abort()
-        Cfg._main_instance.unsubscribe_from_scan_prog()
+    # def closeEvent(self, *args, **kwargs):
+    #     self.abort()

@@ -48,7 +48,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.actionSave_settings_to_database.triggered.connect(self.save_to_db)
         self.action_remove_track.triggered.connect(self.remove_selected_track)
         self.listWidget.doubleClicked.connect(self.work_on_existing_track)
-        self.actionRe_open_plot_win.triggered.connect(self.main_gui.open_live_plot_win)
+        self.actionRe_open_plot_win.triggered.connect(self.reopen_live_pl_win)
 
         self.actionRe_open_plot_win.setEnabled(False)
 
@@ -246,6 +246,10 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
     def enable_reopen_plot_win(self):
         """ if a live plot window was opened from within this scan control window, allow to reopen it. """
         self.actionRe_open_plot_win.setEnabled(self.plot_window_was_opened_here)
+
+    def reopen_live_pl_win(self):
+        self.main_gui.open_live_plot_win()
+        self.actionRe_open_plot_win.setEnabled(False)
 
     def closeEvent(self, event):
         """

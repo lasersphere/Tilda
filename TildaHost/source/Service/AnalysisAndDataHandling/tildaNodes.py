@@ -1307,7 +1307,8 @@ class NMPLImagePlotSpecData(Node):
 
 
 class NMPLImagePlotAndSaveSpecData(Node):
-    def __init__(self, pmt_num, new_data_callback, new_track_callback, save_request, gates_and_rebin_signal):
+    def __init__(self, pmt_num, new_data_callback, new_track_callback,
+                 save_request, gates_and_rebin_signal, save_data=True):
         super(NMPLImagePlotAndSaveSpecData, self).__init__()
         self.type = 'MPLImagePlotAndSaveSpecData'
         self.selected_pmt = pmt_num  # for now pmt name should be pmt_ind
@@ -1315,6 +1316,7 @@ class NMPLImagePlotAndSaveSpecData(Node):
         self.rebinned_data = None  # specdata, rebinned
         self.rebin_track_ind = -1  # index which track should be rebinned -1 for all
         self.trs_names_list = ['trs', 'trsdummy', 'tipa']  # in order to deny rebinning, for other than that
+        self.save_data = save_data
 
         self.mutex = QtCore.QMutex()  # for blocking of other threads
         self.new_data_callback = new_data_callback
@@ -1351,11 +1353,16 @@ class NMPLImagePlotAndSaveSpecData(Node):
 
     def clear(self):
         # make sure it is emitted in the end again!
-        self.rebin_and_gate_new_data(self.stored_data)
-        self.save()
+        # if self.save_data:
+        #     self.save()
+        del self.stored_data
+        del self.rebinned_data
+        self.stored_data = None
+        self.rebinned_data = None
         # pass
 
     def save(self):
+        self.rebin_and_gate_new_data(self.stored_data)
         if self.stored_data is not None:  # maybe abort was pressed before any data was collected.
             if self.rebinned_data.seq_type in self.trs_names_list:
                 # copy gates from gui values and gate
@@ -1405,7 +1412,7 @@ class NMPLImagePlotAndSaveSpecData(Node):
     def rebin_and_gate_new_data(self, newdata):
         """ this will force a rebin and gate followed by a send of the self.rebinned_data """
         self.mutex.lock()
-        if self.rebinned_data is None:
+        if self.rebinned_data is None:  # do not overwrite before getting the previous settings
             self.rebinned_data = newdata
         gates = deepcopy(self.rebinned_data.softw_gates)  # store previous set gates!
         binwidth = deepcopy(self.rebinned_data.softBinWidth_ns)  # .. and binwidth

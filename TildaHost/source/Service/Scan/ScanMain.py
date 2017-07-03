@@ -8,6 +8,7 @@ Created on '19.05.2015'
 
 import logging
 import time
+import gc
 from copy import deepcopy
 from datetime import datetime, timedelta
 
@@ -82,7 +83,9 @@ class ScanMain(QObject):
         function to prepare for the scan of one isotope.
         This sets up the pipeline and loads the bitfile on the fpga of the given type.
         """
-        self.analysis_thread = None
+        del self.analysis_thread
+        gc.collect()
+        # self.analysis_thread = None
 
         scan_dict['pipeInternals']['curVoltInd'] = 0
         scan_dict['isotopeData']['isotopeStartTime'] = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
@@ -598,7 +601,7 @@ class ScanMain(QObject):
         """
         logging.debug('preparing dmms for scan. Config dict is: %s' % dmms_conf_dict)
         active_dmms = self.get_active_dmms()
-        logging.debug('active dmms: %s' % active_dmms)
+        logging.debug('active dmms: %s' % list(active_dmms.keys()))
         for dmm_name, dmm_conf_dict in dmms_conf_dict.items():
             dmms_conf_dict[dmm_name]['acquiredPreScan'] = 0  # reset the acquired samples
             if dmm_name not in active_dmms:

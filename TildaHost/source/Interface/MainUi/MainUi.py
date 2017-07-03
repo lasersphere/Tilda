@@ -11,10 +11,13 @@ import os
 import platform
 import subprocess
 from copy import deepcopy
+import gc
+import functools
 
 from PyQt5 import QtCore
 from PyQt5 import QtGui
 from PyQt5 import QtWidgets
+from PyQt5.QtCore import QTimer, Qt
 
 import Application.Config as Cfg
 import MPLPlotter as MPlPlotter
@@ -254,16 +257,17 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def open_live_plot_win(self):
         if self.live_plot_win is None:
-            self.live_plot_win = TRSLivePlotWindowUi(parent=self)
+            self.live_plot_win = TRSLivePlotWindowUi()
+            self.live_plot_win.destroyed.connect(self.close_live_plot_win)
         else:
             self.raise_win_to_front(self.live_plot_win)
             self.live_plot_win.reset()
 
     def open_file_plot_win(self, file, sum_sc_tr=None):
         self.file_plot_wins[file] = TRSLivePlotWindowUi(full_file_path=file,
-                                                        parent=self,
                                                         subscribe_as_live_plot=False,
                                                         sum_sc_tr=sum_sc_tr)
+        self.file_plot_wins[file].destroyed.connect(functools.partial(self.close_file_plot_win, file))
 
     def open_pollifit_win(self):
         if self.pollifit_win is None:
@@ -324,15 +328,25 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.dmm_live_view_win = None
 
     def close_live_plot_win(self):
+        del self.live_plot_win
         self.live_plot_win = None
+        gc.collect()
+
         for scan_ctrl_win in self.act_scan_wins:
             scan_ctrl_win.enable_reopen_plot_win()
+        logging.info('closed live plot window')
 
     def close_pollifit_win(self):
         self.pollifit_win = None
 
     def close_file_plot_win(self, file):
-        self.file_plot_wins.pop(file)
+        logging.debug('removing file plot window from MainUi: %s' % file)
+        if Cfg._main_instance is not None:
+            Cfg._main_instance.close_spectra_in_main(file)
+
+        del self.file_plot_wins[file]
+        gc.collect()
+        logging.debug('remaining file plot wins are: ' + str(self.file_plot_wins))
 
     def close_pulse_pattern_win(self):
         if self.pulse_pattern_win:

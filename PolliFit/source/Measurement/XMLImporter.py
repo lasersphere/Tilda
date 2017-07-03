@@ -400,7 +400,36 @@ class XMLImporter(SpecData):
 
 # from file:
 # for file_num in range(169, 172):
-if __name__ == '__main__':
-    test_file = 'E:/TildaDebugging2/sums/tests_trsdummy_run109.xml'
-    file_xml = XMLImporter(test_file, True)
-    print('offset: ', file_xml.offset, 'accVolt: ', file_xml.accVolt)
+# if __name__ == '__main__':
+#     import os
+#     import psutil
+#
+#     process = psutil.Process(os.getpid())
+#     mem_offset = process.memory_info().rss / float(2 ** 20)
+#     print('memory used: %.1f MB' % mem_offset)
+#     test_file = 'E:/TildaDebugging2/sums/HighBinsinglTr_trsdummy_run058.xml'
+#     file_size = os.stat(test_file).st_size * 10 ** -6
+#     print('file size: %.1f MB' % file_size)
+#     file_xml = []
+#     for i in range(0, 10):
+#         try:
+#             file_xml.append(XMLImporter(test_file, True))
+#             # each ele has 14 bytes (u2, u4, u4, u4)
+#             print('size of zf data: %.1f MB' % (file_xml[0].time_res_zf[0].nbytes * 10 ** -6))
+#             print('size of time res data: %.1f MB' % (file_xml[0].time_res[0].nbytes * 10 ** -6))
+#             print('size of t data: %.1f MB' % (file_xml[0].t[0].nbytes * 10 ** -6))
+#             print('size of t_proj data: %.1f MB' % (file_xml[0].t_proj[0].nbytes * 10 ** -6))
+#             print('files: %d memory used: %.1f MB rss %.1f MB vms' % (i+1,
+#                                                                       process.memory_info().rss / float(2 ** 20),
+#                                                                       process.memory_info().vms / float(2 ** 20)))
+#
+#             # del file_xml[0]
+#             # print('files: %d memory used: %.1f MB' % (i + 1, process.memory_info().rss / float(2 ** 20)))
+#         except MemoryError:
+#             break
+#     # print('offset: ', file_xml.offset, 'accVolt: ', file_xml.accVolt)
+#     input('anykey to delete file from ram')
+#     del file_xml
+#     file_xml = None
+#     print('files: 0 memory used: %.1f MB' % (process.memory_info().rss / float(2 ** 20)))
+#     input('anykey to stop')

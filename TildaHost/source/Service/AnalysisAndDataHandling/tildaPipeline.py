@@ -52,8 +52,6 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     if live_plot_callbacks is None:
         live_plot_callbacks = (None, None, None, None)
     start = Node()
-    maintenance = start.attach(TN.NMPLCloseFigOnClear())
-    # maintenance = maintenance.attach(TN.NAddWorkingTimeOnClear(True))
 
     pipe = Pipeline(start)
 

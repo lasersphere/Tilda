@@ -9,7 +9,7 @@ Created on '30.09.2015'
 import ast
 import logging
 import os
-import time
+import gc
 from copy import deepcopy
 from datetime import datetime
 from datetime import timedelta
@@ -23,6 +23,7 @@ import Service.DatabaseOperations.DatabaseOperations as DbOp
 import Service.FileOperations.FolderAndFileHandling as FileHandl
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as Dft
+from Measurement.XMLImporter import XMLImporter
 import TildaTools
 from Application.Main.MainState import MainState
 from Service.AnalysisAndDataHandling.DisplayData import DisplayData
@@ -40,6 +41,35 @@ class Main(QtCore.QObject):
 
     # string which can be connected to in order to get info / warninings from main
     info_warning_string_main_signal = QtCore.pyqtSignal(str)
+
+    # Callbacks for a live plot
+    # these callbacks should be called from the pipeline:
+    # for incoming new data:
+    new_data_callback = QtCore.pyqtSignal(XMLImporter)
+    # if a new track is started call:
+    # the tuple is of form: ((tr_ind, tr_name), (pmt_ind, pmt_name))
+    new_track_callback = QtCore.pyqtSignal(tuple)
+    # when the pipeline wants to save, this is emitted and it send the pipeData as a dict
+    save_callback = QtCore.pyqtSignal(dict)
+
+    # dict, fit result plot data callback
+    # -> this can be emitted from a node to send a dict containing fit results:
+    # 'plotData': tuple of ([x], [y]) values to plot a fit result.
+    # 'result': list of result-tuples (name, pardict, fix)
+    fit_results_dict_callback = QtCore.pyqtSignal(dict)
+
+    # signal to request updated gated data from the pipeline.
+    # list: software gates [[[tr0_sc0_vMin, tr0_sc0_vMax, tr0_sc0_tMin, tr0_sc0_tMax], [tr0_sc1_...
+    # int: track_index to rebin -1 for all
+    # list: software bin width in ns for each track
+    # bool: plot bool to force a plotting even if nothing has changed.
+    new_gate_or_soft_bin_width = QtCore.pyqtSignal(list, int, list, bool)
+
+    # save request
+    save_request = QtCore.pyqtSignal()
+
+    # progress dict coming from the main
+    live_plot_progress_callback = QtCore.pyqtSignal(dict)
 
     def __init__(self):
         super(Main, self).__init__()
@@ -66,9 +96,6 @@ class Main(QtCore.QObject):
         self.scan_prog_call_back_sig_pipeline.connect(self.update_scan_progress)
         # tuple of three callbacks which are needed for the live plot gui
         #  and which are emitted from the pipeline. Therefore those must be available when initialising the pipeline.
-        self.live_plot_callback_tuples = None  # tuple of seperate callbacks
-        self.live_plot_progress_callback = None  # dict
-        self.live_plot_fit_res_callback = None  # dict
 
         self.scan_main = ScanMain()
         self.iso_scan_process = None
@@ -224,26 +251,14 @@ class Main(QtCore.QObject):
         """
         self.main_ui_status_call_back_signal = None
 
-    def gui_live_plot_subscribe(self, callback_tuple_from_live_plot_win, liveplot_progress_callback, fit_res_callback):
+    def gui_live_plot_subscribe(self):
         """
-        a liveplot gui can pass the three needed callbacks to the main here.
-        the main will use them when initialising the pipeline.
-        the pipeline will then emit the callbacks as needed.
-        only one liveplot window allowed at a time!
-        :param callback_tuple_from_live_plot_win: tuple, (new_data_callback, new_track_callback, save_callback)
-        See LiveDataPlottingUi for details.
+        return the callbacks which are connected to the pipeline foa a gui to subscribe to.
+        It makes sense to keep them alive as long as the main exists.
         """
-        self.live_plot_callback_tuples = callback_tuple_from_live_plot_win
-        self.live_plot_progress_callback = liveplot_progress_callback
-        self.live_plot_fit_res_callback = fit_res_callback
-
-    def gui_live_plot_unsubscribe(self):
-        """
-        a live plot window can call this to remove any subscription to the callbacks
-        """
-        self.live_plot_callback_tuples = None
-        self.live_plot_progress_callback = None
-        self.live_plot_fit_res_callback = None
+        return (self.new_data_callback, self.new_track_callback,
+                self.save_request, self.new_gate_or_soft_bin_width,
+                self.fit_results_dict_callback, self.live_plot_progress_callback)
 
     def send_state(self):
         """
@@ -288,14 +303,18 @@ class Main(QtCore.QObject):
         try:
             self.displayed_data[file] = DisplayData(file, gui=gui, x_as_volt=True, loaded_spec=loaded_spec)
         except Exception as e:
-            logging.error('Exception while loading file %s, exception is: %s' % (file, str(e)))
+            logging.error('Exception while loading file %s, exception is: %s' % (file, str(e)), exc_info=True)
 
     def close_spectra_in_main(self, file):
         """
         call this to remove the corresponding file from the list of active files.
         """
-        logging.debug('removing spectra %s from view' % file)
-        self.displayed_data.pop(file)
+        # logging.debug('removing spectra %s from view' % file)
+        self.displayed_data[file].close_display_data()
+        del self.displayed_data[file]
+        gc.collect()  # needs to be collected otherwise memory is piled up.
+        logging.info('removed spectra %s from main' % file)
+        logging.debug('remaining displayed_data is: ' + str(self.displayed_data))
 
     def autostart(self):
         """
@@ -634,16 +653,15 @@ class Main(QtCore.QObject):
                                                           self.scan_pars[self.scan_progress['activeIso']],
                                                           self.scan_start_time)
         if progress_dict is not None:
-            if self.scan_prog_call_back_sig_gui is not None:
-                self.scan_prog_call_back_sig_gui.emit(progress_dict)
             if self.live_plot_progress_callback is not None:
                 self.live_plot_progress_callback.emit(progress_dict)
 
-    def subscribe_to_scan_prog(self, callback_signal):
+    def subscribe_to_scan_prog(self):
         """
-        the scanProgressUi can subscribe via this function
+        the scanProgressUi can poll the correct pyqtsignal for getting a progress update here.
+        simply connect to it.
         """
-        self.scan_prog_call_back_sig_gui = callback_signal
+        return self.live_plot_progress_callback
 
     def unsubscribe_from_scan_prog(self):
         """
@@ -665,8 +683,9 @@ class Main(QtCore.QObject):
         if is_this_first_track:  # initialise the pipeline on first track
             self.scan_main.init_analysis_thread(
                 self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline,
-                self.live_plot_callback_tuples,
-                fit_res_dict_callback=self.live_plot_fit_res_callback,
+                live_plot_callback_tuples=(self.new_data_callback, self.new_track_callback,
+                                           self.save_request, self.new_gate_or_soft_bin_width),
+                fit_res_dict_callback=self.fit_results_dict_callback,
                 scan_complete_callback=self.scan_complete_callback,
             )
         self.scan_main.prep_track_in_pipe(active_track_num, active_track_num)
