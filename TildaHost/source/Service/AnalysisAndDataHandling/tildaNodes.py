@@ -1491,6 +1491,9 @@ class NStraightKepcoFitOnClear(Node):
         self.spec_buffer = data
         return data
 
+    def save(self):
+        self.clear()
+
     def clear(self):
         for ind, dmm_name in enumerate(self.dmms):
             try:
@@ -1521,7 +1524,7 @@ class NStraightKepcoFitOnClear(Node):
                     con.commit()
                     con.close()
             except Exception as e:
-                print('error while fitting:', e)
+                logging.error('error while fitting: %s' % e, exc_info=True)
         self.spec_buffer = None
 
     def get_offset_voltage(self, scandict):

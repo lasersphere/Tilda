@@ -492,8 +492,8 @@ class Main(QtCore.QObject):
             iso_name = self.scan_progress['activeIso']
             n_of_tracks, list_of_track_nums = TildaTools.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
             active_track_num = min(set(list_of_track_nums) - set(self.scan_progress['completedTracks']))
-            logging.debug('list of track nums is: %s, completed tracks: %s, active track num is: %s'
-                          % (list_of_track_nums, self.scan_progress['completedTracks'], active_track_num))
+            # logging.debug('list of track nums is: %s, completed tracks: %s, active track num is: %s'
+            #               % (list_of_track_nums, self.scan_progress['completedTracks'], active_track_num))
             scan_dict = self.scan_pars[iso_name]
         else:
             # desired state is given by function call and not the scan dict.

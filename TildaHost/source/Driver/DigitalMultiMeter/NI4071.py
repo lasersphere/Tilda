@@ -497,7 +497,8 @@ class Ni4071:
         """
         apt_t = ctypes.c_double()
         apt_u = ctypes.c_int32()
-        self.dll.niDMM_GetApertureTimeInfo(self.session, ctypes.byref(apt_t), ctypes.byref(apt_u))
+        self.get_error_message(
+            self.dll.niDMM_GetApertureTimeInfo(self.session, ctypes.byref(apt_t), ctypes.byref(apt_u)))
         units = 'seconds'
         if apt_u.value:
             units = 'power line cycles'
@@ -870,19 +871,23 @@ class Ni4071:
         name = ctypes.create_string_buffer(name_str.encode('utf-8'), 256)
         if isinstance(property_type, ctypes.c_int32):
             read_back = ctypes.c_int32()
-            self.dll.niDMM_GetAttributeViInt32(self.session, name, attr_id, ctypes.byref(read_back))
+            self.get_error_message(
+                self.dll.niDMM_GetAttributeViInt32(self.session, name, attr_id, ctypes.byref(read_back)))
             return read_back.value
         elif isinstance(property_type, ctypes.c_double):
             read_back = ctypes.c_double()
-            self.dll.niDMM_GetAttributeViReal64(self.session, name, attr_id, ctypes.byref(read_back))
+            self.get_error_message(
+                self.dll.niDMM_GetAttributeViReal64(self.session, name, attr_id, ctypes.byref(read_back)))
             return read_back.value
         elif isinstance(property_type, ctypes.c_char):
             read_back = ctypes.create_string_buffer('', 256)
-            self.dll.niDMM_GetAttributeViString(self.session, name, attr_id, ctypes.byref(read_back))
+            self.get_error_message(
+                self.dll.niDMM_GetAttributeViString(self.session, name, attr_id, ctypes.byref(read_back)))
             return read_back.value.decode('utf-8')
         elif isinstance(property_type, ctypes.c_bool):
             read_back = ctypes.c_bool()
-            self.dll.niDMM_GetAttributeViBoolean(self.session, name, attr_id, ctypes.byref(read_back))
+            self.get_error_message(
+                self.dll.niDMM_GetAttributeViBoolean(self.session, name, attr_id, ctypes.byref(read_back)))
             return read_back.value
 
     def set_property_node(self, set_val, attr_id, name_str="", attr_base_str='IVI_SPECIFIC_PUBLIC_ATTR_BASE'):
@@ -914,13 +919,13 @@ class Ni4071:
         attr_id = ctypes.c_int32(attr_id)
         name = ctypes.create_string_buffer(name_str.encode('utf-8'), 256)
         if isinstance(set_val, ctypes.c_int32):
-            self.dll.niDMM_SetAttributeViInt32(self.session, name, attr_id, set_val)
+            self.get_error_message(self.dll.niDMM_SetAttributeViInt32(self.session, name, attr_id, set_val))
         elif isinstance(set_val, ctypes.c_double):
-            self.dll.niDMM_SetAttributeViReal64(self.session, name, attr_id, set_val)
+            self.get_error_message(self.dll.niDMM_SetAttributeViReal64(self.session, name, attr_id, set_val))
         elif isinstance(set_val, ctypes.c_char):
-            self.dll.niDMM_SetAttributeViString(self.session, name, attr_id, set_val)
+            self.get_error_message(self.dll.niDMM_SetAttributeViString(self.session, name, attr_id, set_val))
         elif isinstance(set_val, ctypes.c_bool):
-            self.dll.niDMM_SetAttributeViBoolean(self.session, name, attr_id, set_val)
+            self.get_error_message(self.dll.niDMM_SetAttributeViBoolean(self.session, name, attr_id, set_val))
 
     ''' self written functions (e.g. encapsulating property nodes) '''
 
@@ -996,7 +1001,7 @@ class Ni4071:
             units = ctypes.c_int32(0)
         self.set_property_node(units,
                                attr_id=322,
-                               name_str='NIDMM_ATTR_APERTURE_TIME_UNITS',
+                               name_str='',
                                attr_base_str='IVI_CLASS_PUBLIC_ATTR_BASE')
 
     def set_aperture_time(self, nplc):
@@ -1016,9 +1021,18 @@ class Ni4071:
         self.set_property_node(
             ctypes.c_double(float(nplc)),
             attr_id=321,
-            name_str='IVIDMM_ATTR_APERTURE_TIME',
+            name_str='',
             attr_base_str='IVI_CLASS_PUBLIC_ATTR_BASE'
         )
+        logging.debug('setting apperture to %.1f nplc' % float(nplc))
+        nplc_r, units_r = self.get_aperture_time_info()
+        if units_r != 'seconds':
+            freq = self.config_dict.get('powerLineFrequency', '50')
+            apptime = nplc_r / float(freq)
+        else:
+            apptime = nplc_r
+
+        logging.debug('apperture has ben set to: %.1f, units: %s this is %.3f s' % (nplc_r, units_r, apptime))
 
     def load_from_config_dict(self, config_dict, reset_dev):
         """
