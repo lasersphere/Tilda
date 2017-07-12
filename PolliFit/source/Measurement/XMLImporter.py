@@ -107,8 +107,8 @@ class XMLImporter(SpecData):
         self.softBinWidth_ns = []
         self.invert_scan = []
         self.post_acc_offset_volt_control = []  # which heinzinger / Fluke
-        self.wait_for_kepco_25ns = []
-        self.wait_after_reset_25ns = []
+        self.wait_for_kepco_1us = []
+        self.wait_after_reset_1us = []
         self.working_time = []
         self.nrScans = []
 
@@ -130,8 +130,20 @@ class XMLImporter(SpecData):
 
             self.invert_scan.append(track_dict['invertScan'])
             self.post_acc_offset_volt_control.append(track_dict['postAccOffsetVoltControl'])
-            self.wait_after_reset_25ns.append(track_dict['waitAfterReset25nsTicks'])
-            self.wait_for_kepco_25ns.append(track_dict['waitForKepco25nsTicks'])
+
+            if track_dict.get('waitAfterReset25nsTicks', None) is not None:
+                # this was named like this before version 1.19
+                wait_1us = track_dict['waitAfterReset25nsTicks'] * 25 / 1000
+                self.wait_after_reset_1us.append(wait_1us)
+            if track_dict.get('waitAfterReset1us', None) is not None:
+                self.wait_after_reset_1us.append(track_dict['waitAfterReset1us'])
+
+            if track_dict.get('waitForKepco25nsTicks', None) is not None:
+                wait_1us = track_dict['waitForKepco25nsTicks'] * 25 / 1000
+                self.wait_for_kepco_1us.append(wait_1us)
+            if track_dict.get('waitForKepco1us', None) is not None:
+                self.wait_for_kepco_1us.append(track_dict['waitForKepco1us'])
+
             self.working_time.append(track_dict['workingTime'])
             self.nrScans.append(track_dict['nOfCompletedSteps'] // nOfsteps)
 
@@ -263,6 +275,7 @@ class XMLImporter(SpecData):
                         mean_offset_div_ratio = np.mean(vals)
                         # treat each offset with its own divider ratio
                         # x axis is multiplied by mean divider ratio value anyhow, similiar to kepco scans
+
                         mean_offset = np.mean(
                             [val * self.offset_by_dev_mean[tr_ind].get(key, self.offset[tr_ind]) for key, val in
                              self.voltDivRatio['offset'].items()])
@@ -383,7 +396,8 @@ class XMLImporter(SpecData):
                                     offset_by_dev[tr_ind][dmm_name][post_pre_ind].append(val)
             for dmm_name, offset_list_dmm in offset_by_dev[tr_ind].items():  # get mean value for this dmm in this track
                 offset_by_dev_flat = [item for sublist in offset_list_dmm for item in sublist]
-                offset_by_dev_mean[tr_ind][dmm_name] = np.mean(offset_by_dev_flat)
+                if len(offset_by_dev_flat):
+                    offset_by_dev_mean[tr_ind][dmm_name] = np.mean(offset_by_dev_flat)
             if len(offset_vals_list[tr_ind]):
                 # mean of all dmms for this track
                 offset_mean += np.mean(offset_vals_list[tr_ind]),

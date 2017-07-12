@@ -680,9 +680,9 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
             'nOfCompletedSteps': specdata.nrScans[tr_ind] * specdata.getNrSteps(tr_ind),
             'invertScan': check_if_attr_exists(specdata, 'invert_scan', [False] * specdata.nrTracks)[tr_ind],
             'postAccOffsetVoltControl': specdata.post_acc_offset_volt_control, 'postAccOffsetVolt': specdata.offset,
-            'waitForKepco25nsTicks': check_if_attr_exists(specdata, 'wait_after_reset_25ns', [-1] * specdata.nrTracks)[
+            'waitForKepco1us': check_if_attr_exists(specdata, 'wait_after_reset_1us', [-1] * specdata.nrTracks)[
                 tr_ind],
-            'waitAfterReset25nsTicks': check_if_attr_exists(specdata, 'wait_for_kepco_25ns', [-1] * specdata.nrTracks)[
+            'waitAfterReset1us': check_if_attr_exists(specdata, 'wait_for_kepco_1us', [-1] * specdata.nrTracks)[
                 tr_ind],
             'activePmtList': check_if_attr_exists(specdata, 'activePMTlist', False)[tr_ind] if
             check_if_attr_exists(specdata, 'activePMTlist', []) else

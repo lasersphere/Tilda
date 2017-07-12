@@ -164,9 +164,9 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             (self.checkBox_colDirTrue.setChecked, self.check_for_none(track_dict.get('colDirTrue'), False)),
             (self.col_dir_true_set, self.check_for_none(track_dict.get('colDirTrue'), False)),
             (self.doubleSpinBox_waitAfterReset_muS.setValue,
-             self.check_for_none(track_dict.get('waitAfterReset25nsTicks'), 0) * 25 * (10 ** -3)),
+             self.check_for_none(track_dict.get('waitAfterReset1us'), 0)),
             (self.doubleSpinBox_waitForKepco_muS.setValue,
-             self.check_for_none(track_dict.get('waitForKepco25nsTicks'), 0) * 25 * (10 ** -3)),
+             self.check_for_none(track_dict.get('waitForKepco1us'), 0)),
             (self.spinBox_nOfSteps.setValue, self.check_for_none(track_dict.get('nOfSteps'), 0))
         ]
         for func in func_list:
@@ -410,17 +410,17 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
     def wait_after_reset_mu_sec_set(self, time_mu_s):
         """ write to the working dictionary and set the label """
-        time_25ns = int(round(time_mu_s / 25 * (10 ** 3)))
-        self.buffer_pars['waitAfterReset25nsTicks'] = time_25ns
-        setval = time_25ns * 25 * (10 ** -3)
-        self.label_waitAfterReset_muS_set.setText(str(round(setval, 3)))
+        time_us = int(time_mu_s)
+        self.buffer_pars['waitAfterReset1us'] = time_us
+        setval = time_us
+        self.label_waitAfterReset_muS_set.setText(str(setval))
 
     def wait_for_kepco_mu_sec(self, time_mu_s):
         """ write to the working dictionary and set the label """
-        time_25ns = int(round(time_mu_s / 25 * (10 ** 3)))
-        self.buffer_pars['waitForKepco25nsTicks'] = time_25ns
-        setval = time_25ns * 25 * (10 ** -3)
-        self.label_waitForKepco_muS_set.setText(str(round(setval, 3)))
+        time_1_us = int(time_mu_s)
+        self.buffer_pars['waitForKepco1us'] = time_1_us
+        setval = time_1_us
+        self.label_waitForKepco_muS_set.setText(str(setval))
 
     """ set offset voltages (heinzingers) """
 

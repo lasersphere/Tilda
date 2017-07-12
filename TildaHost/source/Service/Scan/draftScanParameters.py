@@ -41,8 +41,8 @@ the most information for the sequencer. It contains the following keys and
 MUST be appended with the keys from the corresponding sequencer (see below): """
 
 track0_list = ['dacStepSize18Bit', 'dacStartRegister18Bit', 'nOfSteps', 'nOfScans', 'nOfCompletedSteps',
-               'invertScan', 'postAccOffsetVoltControl', 'postAccOffsetVolt', 'waitForKepco25nsTicks',
-               'waitAfterReset25nsTicks', 'activePmtList', 'colDirTrue', 'workingTime', 'trigger', 'pulsePattern',
+               'invertScan', 'postAccOffsetVoltControl', 'postAccOffsetVolt', 'waitForKepco1us',
+               'waitAfterReset1us', 'activePmtList', 'colDirTrue', 'workingTime', 'trigger', 'pulsePattern',
                'measureVoltPars', 'triton']
 
 """  each sequencer needs its own parameters and therefore, the keys are listed below
@@ -96,8 +96,8 @@ draftTrackPars = {
     'nOfSteps': 100,
     'nOfScans': 2, 'nOfCompletedSteps': 0, 'invertScan': False,
     'postAccOffsetVoltControl': 0, 'postAccOffsetVolt': 1000,
-    'waitForKepco25nsTicks': 400,
-    'waitAfterReset25nsTicks': 20000,
+    'waitForKepco1us': 100,
+    'waitAfterReset1us': 500,
     'activePmtList': [0, 1],
     'colDirTrue': False,
     'dwellTime10ns': 2000000,
@@ -124,7 +124,7 @@ draftScanDict = {'isotopeData': draftIsotopePars,
 # 'dacStartRegister18Bit': int('00000000001000000000', 2), 'nOfSteps': 20,
 # 'nOfScans': 30, 'nOfCompletedSteps': 0, 'invertScan': False,
 # 'measureOffset': False, 'postAccOffsetVoltControl': 1, 'postAccOffsetVolt': 1000,
-# 'waitForKepco25nsTicks': 40,
-# 'waitAfterReset25nsTicks': 4000,
+# 'waitForKepco1us': 40,
+# 'waitAfterReset1us': 4000,
 # 'activePmtList': [0, 2, 4]
 # }

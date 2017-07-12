@@ -82,10 +82,10 @@ class Sequencer(FPGAInterfaceHandling):
         nOfScans: long, Number of Loops over this Track
         invertScan: bool, if True invert Scandirection on every 2nd Scan
         postAccOffsetVoltControl: ubyte, Enum to determine which heinzinger will be active
-        waitForKepco25nsTicks: uint, time interval after the voltage has been set and the unit waits
-         before the scalers are activated. Unit is 25ns
-        waitAfterReset25nsTicks: uint, time interval after the voltage has been reseted and the unit waits
-         before the scalers are activated. Unit is 25ns
+        waitForKepco1us: u32b, time interval after the voltage has been set and the unit waits
+         before the scalers are activated. Unit is 1us
+        waitAfterReset1us: u32b, time interval after the voltage has been reseted and the unit waits
+         before the scalers are activated. Unit is 1us
         :return: True if self.status == self.statusSuccess, else False
         """
 
@@ -94,8 +94,9 @@ class Sequencer(FPGAInterfaceHandling):
         self.ReadWrite(self.config.nOfSteps, trackPars['nOfSteps'])
         self.ReadWrite(self.config.nOfScans, trackPars['nOfScans'])
         self.ReadWrite(self.config.invertScan, trackPars['invertScan'])
-        self.ReadWrite(self.config.waitForKepco25nsTicks, trackPars['waitForKepco25nsTicks'])
-        self.ReadWrite(self.config.waitAfterReset25nsTicks, trackPars['waitAfterReset25nsTicks'])
+        # TODO needs to be changed when bitfile is compiled:
+        self.ReadWrite(self.config.waitForKepco25nsTicks, trackPars.get('waitForKepco1us', 50))
+        self.ReadWrite(self.config.waitAfterReset25nsTicks, trackPars.get('waitAfterReset1us', 500))
         # self.setPostAccelerationControlState(trackPars['postAccOffsetVoltControl'], True)
         return self.checkFpgaStatus()
 

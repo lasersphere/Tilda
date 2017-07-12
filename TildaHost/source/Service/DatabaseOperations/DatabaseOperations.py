@@ -51,8 +51,8 @@ def form_pollifit_db_to_tilda_db(db):
     colDirTrue TEXT,
     sequencerDict TEXT,
     triggerDict TEXT,
-    waitForKepco25nsTicks INT,
-    waitAfterReset25nsTicks INT,
+    waitForKepco1us INT,
+    waitAfterReset1us INT,
     measureVoltPars TEXT,
     pulsePattern TEXT,
     triton TEXT,
@@ -81,8 +81,8 @@ def check_for_missing_columns_scan_pars(db):
         (14, 'colDirTrue', 'TEXT'),
         (15, 'sequencerDict', 'TEXT'),
         (16, 'triggerDict', 'TEXT'),
-        (17, 'waitForKepco25nsTicks', 'INT'),
-        (18, 'waitAfterReset25nsTicks', 'INT'),
+        (17, 'waitForKepco1us', 'INT'),
+        (18, 'waitAfterReset1us', 'INT'),
         (19, 'measureVoltPars', 'TEXT'),
         (20, 'pulsePattern', 'TEXT'),
         (21, 'triton', 'TEXT')
@@ -139,8 +139,8 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
                 colDirTrue = ?,
                 sequencerDict = ?,
                 triggerDict = ?,
-                waitForKepco25nsTicks = ?,
-                waitAfterReset25nsTicks = ?,
+                waitForKepco1us = ?,
+                waitAfterReset1us = ?,
                 measureVoltPars = ?,
                 accVolt = ?,
                 laserFreq = ?,
@@ -160,8 +160,8 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
                         str(trackd['colDirTrue']),
                         str(SdOp.sequencer_dict_from_track_dict(trackd, sctype)),
                         str(trigger_dict),
-                        trackd['waitForKepco25nsTicks'],
-                        trackd['waitAfterReset25nsTicks'],
+                        trackd['waitForKepco1us'],
+                        trackd['waitAfterReset1us'],
                         str(trackd['measureVoltPars']),
                         str(isod['accVolt']),
                         isod['laserFreq'],
@@ -284,7 +284,7 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
         SELECT     dacStartVolt, dacStepSizeVolt, invertScan,
          nOfSteps, nOfScans, postAccOffsetVoltControl,
           postAccOffsetVolt, activePmtList, colDirTrue,
-           sequencerDict, waitForKepco25nsTicks, waitAfterReset25nsTicks,
+           sequencerDict, waitForKepco1us, waitAfterReset1us,
            triggerDict,
            measureVoltPars, accVolt, laserFreq, pulsePattern, triton
         FROM ScanPars WHERE iso = ? AND type = ? AND track = ?
@@ -313,13 +313,13 @@ def db_track_values_to_trackdict(data, track_dict):
     """ given a data dict containing (dacStartVolt, dacStepSizeVolt, invertScan,
          nOfSteps, nOfScans, postAccOffsetVoltControl,
           postAccOffsetVolt, activePmtList, colDirTrue,
-           sequencerDict, waitForKepco25nsTicks, waitAfterReset25nsTicks,
+           sequencerDict, waitForKepco1us, waitAfterReset1us,
             accVolt, laserFreq) from the database, this
             converts all values to a useable track dictionary."""
     dict_keys_list = ['dacStartRegister18Bit', 'dacStepSize18Bit', 'invertScan',
                       'nOfSteps', 'nOfScans', 'postAccOffsetVoltControl',
                       'postAccOffsetVolt', 'activePmtList', 'colDirTrue',
-                      'sequencerDict', 'waitForKepco25nsTicks', 'waitAfterReset25nsTicks']
+                      'sequencerDict', 'waitForKepco1us', 'waitAfterReset1us']
     conversion_list = ['VCon.get_18bit_from_voltage(%s)', 'VCon.get_18bit_stepsize(%s)', '%s',
                        '%s', '%s', '%s',
                        '%s', '%s', '%s',

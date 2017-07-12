@@ -9,6 +9,8 @@ Module Description:
 from Interface.TriggerWidgets.SingleHitDelayWidgUi import SingelHitDelay
 from Interface.TriggerWidgets.SingleHitWidgUi import SingelHit
 from Interface.TriggerWidgets.NoTriggerWidgUi import NoTriggerWidg
+from Interface.TriggerWidgets.SweepTriggerWidgUi import SweepUi
+from Interface.TriggerWidgets.SoftwareTriggerWidgUi import SoftwareTriggerUi
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
 
 import logging
@@ -26,5 +28,11 @@ def find_trigger_widget(trigger_dict):
     elif trig_type is TiTs.single_hit:
         logging.debug('loading ' + str(trig_type.name))
         return SingelHit(trigger_dict)
+    elif trig_type is TiTs.software:
+        logging.debug('loading ' + str(trig_type.name))
+        return SoftwareTriggerUi(trigger_dict)
+    elif trig_type is TiTs.sweep:
+        logging.debug('loading ' + str(trig_type.name))
+        return SweepUi(trigger_dict)
 
 

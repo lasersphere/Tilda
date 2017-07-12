@@ -120,7 +120,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         direc = os.path.join(Cfg._main_instance.working_directory, 'sums', '*.xml')
         if os.path.isdir(os.path.split(direc)[0]):
             # pre select the latest file
-            if filename is None:
+            if filename is None or filename is False:
                 latest_file = max(glob.iglob(direc), key=os.path.getctime)
                 filename, ok = QtWidgets.QFileDialog.getOpenFileName(
                     parent, 'select an existing .xml file', latest_file, '*.xml')

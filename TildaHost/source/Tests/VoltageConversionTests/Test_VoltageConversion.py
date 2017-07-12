@@ -16,14 +16,14 @@ import Service.Formating as Form
 
 scan_d = {'track0': {
     'workingTime': None, 'nOfSteps': 5, 'dacStepSize18Bit': 10, 'dacStartRegister18Bit': 0, 'nOfScans': 30,
-    'colDirTrue': False, 'postAccOffsetVoltControl': 2, 'waitAfterReset25nsTicks': 4000,
+    'colDirTrue': False, 'postAccOffsetVoltControl': 2, 'waitAfterReset1us': 4000,
     'postAccOffsetVolt': 1000, 'dwellTime10ns': 2000000, 'activePmtList': [0, 1],
-    'waitForKepco25nsTicks': 40, 'invertScan': False, 'nOfCompletedSteps': 0},
+    'waitForKepco1us': 40, 'invertScan': False, 'nOfCompletedSteps': 0},
     'track1': {
     'workingTime': None, 'nOfSteps': 5, 'dacStepSize18Bit': -10, 'dacStartRegister18Bit': 40, 'nOfScans': 30,
-    'colDirTrue': False, 'postAccOffsetVoltControl': 2, 'waitAfterReset25nsTicks': 4000,
+    'colDirTrue': False, 'postAccOffsetVoltControl': 2, 'waitAfterReset1us': 4000,
     'postAccOffsetVolt': 1000, 'dwellTime10ns': 2000000, 'activePmtList': [0, 1],
-    'waitForKepco25nsTicks': 40, 'invertScan': False, 'nOfCompletedSteps': 0,
+    'waitForKepco1us': 40, 'invertScan': False, 'nOfCompletedSteps': 0,
     'measureVoltPars': {'measVoltTimeout10ns': 100, 'measVoltPulseLength25ns': 400}},
     'pipeInternals': {'workingDirectory': None, 'activeTrackNumber': 0, 'curVoltInd': 0, 'activeXmlFilePath': None},
     'isotopeData': {
