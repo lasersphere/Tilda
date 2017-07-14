@@ -10,6 +10,7 @@ import logging
 import math
 import os
 from copy import deepcopy
+import gc
 
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
@@ -24,10 +25,13 @@ from Interface.PulsePatternUi.PulsePatternUi import PulsePatternUi
 from Interface.SetVoltageUi.SetVoltageUi import SetVoltageUi
 from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
 from Interface.PreScanConfigUi.PreScanConfigUi import PreScanConfigUi
+from Interface.OutBitsUi.OutBitsUi import OutBitsUi
 
 
 class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     track_ui_call_back_signal = QtCore.pyqtSignal(dict)
+
+    outbits_confirmed_signal = QtCore.pyqtSignal(dict)
 
     def __init__(self, scan_ctrl_win, track_number, active_iso_name, main_gui):
         """
@@ -90,6 +94,11 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """ pre post scan measurement related """
         self.pre_post_scan_window = None
         self.pushButton_conf_pre_post_tr_meas.clicked.connect(self.open_pre_post_conf_win)
+
+        """ outbit related """
+        self.outbit_win = None
+        self.pushButton_con_outbits.clicked.connect(self.open_outbits_win)
+        self.outbits_confirmed_signal.connect(self.received_new_outbit_dict)
 
         """DAC Settings"""
         self.doubleSpinBox_dacStartV.setRange(-10.5, 10.5)
@@ -242,6 +251,30 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def close_pre_post_scan_win(self):
         """ pre post scan window was closed, remove reference """
         self.pre_post_scan_window = None
+
+    """ outBits related """
+
+    def open_outbits_win(self):
+        """ open outbit config won or raise to front """
+        if self.outbit_win is None:
+            self.outbit_win = OutBitsUi(self, deepcopy(self.buffer_pars.get('outBits', {})), self.outbits_confirmed_signal)
+            self.outbit_win.destroyed.connect(self.outbit_win_closed)
+        else:
+            self.raise_win_to_front(self.outbit_win)
+        logging.info('opened outbit win in iso %s for track %s' % (self.active_iso, self.track_name))
+
+    def received_new_outbit_dict(self, outbit_dict):
+        """ when gui clicks ok this should be emitted """
+        self.buffer_pars['outBits'] = deepcopy(outbit_dict)
+        logging.debug('trackUi of iso %s for track %s received outbit dict: %s'
+                      % (self.active_iso, self.track_name, self.buffer_pars['outBits']))
+
+    def outbit_win_closed(self):
+        """ outbit win was closed -> remove from namespace """
+        del self.outbit_win
+        self.outbit_win = None
+        gc.collect()
+        logging.info('closed outbit win in iso %s for track %s' % (self.active_iso, self.track_name))
 
     """ from lineedit/spinbox to set value """
     '''line voltage realted:'''
@@ -500,6 +533,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             self.pulse_pattern_win.close()
         if self.pre_post_scan_window is not None:
             self.pre_post_scan_window.close()
+        if self.outbit_win is not None:
+            self.outbit_win.close()
 
     def raise_win_to_front(self, window):
         # this will remove minimized status

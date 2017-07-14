@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>413</width>
-    <height>589</height>
+    <height>627</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -129,6 +129,20 @@
        <widget class="QPushButton" name="pushButton_conf_pre_post_tr_meas">
         <property name="text">
          <string>configure pre/post track measurement</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="Line" name="line_5">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pushButton_con_outbits">
+        <property name="text">
+         <string>configure outbits</string>
         </property>
        </widget>
       </item>

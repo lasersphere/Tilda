@@ -94,9 +94,8 @@ class Sequencer(FPGAInterfaceHandling):
         self.ReadWrite(self.config.nOfSteps, trackPars['nOfSteps'])
         self.ReadWrite(self.config.nOfScans, trackPars['nOfScans'])
         self.ReadWrite(self.config.invertScan, trackPars['invertScan'])
-        # TODO needs to be changed when bitfile is compiled:
-        self.ReadWrite(self.config.waitForKepco25nsTicks, trackPars.get('waitForKepco1us', 50))
-        self.ReadWrite(self.config.waitAfterReset25nsTicks, trackPars.get('waitAfterReset1us', 500))
+        self.ReadWrite(self.config.waitForKepcous, trackPars.get('waitForKepco1us', 50))
+        self.ReadWrite(self.config.waitAfterResetus, trackPars.get('waitAfterReset1us', 500))
         # self.setPostAccelerationControlState(trackPars['postAccOffsetVoltControl'], True)
         return self.checkFpgaStatus()
 

@@ -13,9 +13,10 @@ import logging
 import Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig as TrsCfg
 from Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
 from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
+from Driver.DataAcquisitionFpga.OutBits import Outbits
 
 
-class TimeResolvedSequencer(Sequencer, MeasureVolt):
+class TimeResolvedSequencer(Sequencer, MeasureVolt, Outbits):
     def __init__(self):
         """
         initiates the FPGA, resetted and running.
@@ -86,7 +87,8 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
                     self.setmeasVoltParameters(scanpars[track_name]['measureVoltPars'][pre_post_scan_meas_str]) and
                     self.setTrackParameters(scanpars[track_name]) and
                     self.set_trigger(scanpars[track_name].get('trigger', {})) and
-                    self.selectKepcoOrScalerScan(scanpars['isotopeData']['type'])):
+                    self.selectKepcoOrScalerScan(scanpars['isotopeData']['type']) and
+                    self.set_outbits_cmd(scanpars[track_name]['outBits'])):
                 return self.checkFpgaStatus()
         return False
 

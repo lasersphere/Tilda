@@ -43,7 +43,7 @@ MUST be appended with the keys from the corresponding sequencer (see below): """
 track0_list = ['dacStepSize18Bit', 'dacStartRegister18Bit', 'nOfSteps', 'nOfScans', 'nOfCompletedSteps',
                'invertScan', 'postAccOffsetVoltControl', 'postAccOffsetVolt', 'waitForKepco1us',
                'waitAfterReset1us', 'activePmtList', 'colDirTrue', 'workingTime', 'trigger', 'pulsePattern',
-               'measureVoltPars', 'triton']
+               'measureVoltPars', 'triton', 'outBits']
 
 """  each sequencer needs its own parameters and therefore, the keys are listed below
 naming convention is type_list.  """
@@ -90,6 +90,12 @@ draft_triton_pars = {
 
 }
 
+draft_outbits = {
+    'outbit0': [('toggle', 'scan', 0)],
+    'outbit1': [('on', 'step', 1), ('off', 'step', 5)],
+    'outbit2': [('on', 'step', 1), ('off', 'step', 5)]
+}
+
 draftTrackPars = {
     'dacStepSize18Bit': 2647,  # form.get_24bit_input_from_voltage(1, False),
     'dacStartRegister18Bit': 0,  # form.get_24bit_input_from_voltage(-5, False),
@@ -109,7 +115,8 @@ draftTrackPars = {
     'trigger': {'type': 'no_trigger'},
     'pulsePattern': {'cmdList': ['$time::1.0::1::0', '$time::1.0::0::0']},
     'measureVoltPars': draftMeasureVoltPars,
-    'triton': draft_triton_pars
+    'triton': draft_triton_pars,
+    'outBits': draft_outbits
 }
 
 draftScanDict = {'isotopeData': draftIsotopePars,

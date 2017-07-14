@@ -10,10 +10,11 @@ import logging
 
 import Driver.DataAcquisitionFpga.ContinousSequencerConfig as CsCfg
 from Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
+from Driver.DataAcquisitionFpga.OutBits import Outbits
 from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
 
 
-class ContinousSequencer(Sequencer, MeasureVolt):
+class ContinousSequencer(Sequencer, MeasureVolt, Outbits):
     def __init__(self):
         """
         Initiates a fpga object using the init in FPGAInterfaceHandling
@@ -78,7 +79,8 @@ class ContinousSequencer(Sequencer, MeasureVolt):
                     self.setmeasVoltParameters(scanpars[track_name]['measureVoltPars'][pre_post_scan_meas_str]) and
                     self.setTrackParameters(scanpars[track_name]) and
                     self.set_trigger(scanpars[track_name].get('trigger', {})) and
-                    self.selectKepcoOrScalerScan(scanpars['isotopeData']['type'])):
+                    self.selectKepcoOrScalerScan(scanpars['isotopeData']['type']) and
+                    self.set_outbits_cmd(scanpars[track_name]['outBits'])):
                 return self.checkFpgaStatus()
         return False
 
