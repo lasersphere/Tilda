@@ -126,7 +126,7 @@ class Ni4071PreConfigs(Enum):
         'resolution': '7.5',
         'nplc': '100',
         'triggerCount': 0,
-        'sampleCount': 0,
+        'sampleCount': 1,
         'autoZero': -1,
         'triggerSource': Ni4071TriggerSources.softw_trig.name,
         'sampleInterval': -1,
