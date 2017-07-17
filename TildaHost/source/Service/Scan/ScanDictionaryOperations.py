@@ -31,7 +31,7 @@ def init_empty_scan_dict(type_str=None, version=None, load_default_vals=False):
     else:
         scand['track0']['measureVoltPars'] = {'preScan': {}, 'postScan': {}, 'duringScan': {}}
         scand['track0']['triton'] = {'preScan': {}, 'postScan': {}, 'duringScan': {}}
-        scand['track0']['outBits'] = {}
+        scand['track0']['outbits'] = {}
     scand['isotopeData']['version'] = Cfg.version
     scand['track0']['trigger'] = {'type': TiTs.no_trigger}
     scand['track0']['pulsePattern'] = {'cmdList': [], 'periodicList': [], 'simpleDict': {}}

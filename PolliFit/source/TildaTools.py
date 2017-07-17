@@ -158,7 +158,7 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
     reads from an xml file and returns all tracks with its parameters
     :return: dict, {'track0': {...}, 'track1':{...}, ...}
     """
-    print('xml file is file: %s' % os.path.isfile(xml_file))
+    logging.info('xml file is file: %s' % os.path.isfile(xml_file))
     xml_etree = load_xml(xml_file)
     all_trackd = {}
     tracks = xml_etree.find('tracks')
@@ -1028,6 +1028,7 @@ def add_header_to23_bit(bit23, firstheader, secondheader, indexheader):
 
 
 if __name__ == '__main__':
-    isodi = {'isotope': 'bbb', 'type': 'csdummy'}
-    newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')
-    print(newname)
+    # isodi = {'isotope': 'bbb', 'type': 'csdummy'}
+    # newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')
+    # print(newname)
+    get_all_tracks_of_xml_in_one_dict('E:/TildaDebugging3/sums/Test_trsdummy_run005.xml')

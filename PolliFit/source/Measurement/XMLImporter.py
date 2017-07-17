@@ -115,12 +115,14 @@ class XMLImporter(SpecData):
         cts_shape = []
         self.measureVoltPars = []
         self.tritonPars = []
+        self.outbitsPars = []
         ''' operations on each track: '''
         for tr_ind, tr_name in enumerate(TildaTools.get_track_names(scandict)):
 
             track_dict = scandict[tr_name]
             self.measureVoltPars.append(track_dict.get('measureVoltPars', {}))
             self.tritonPars.append(track_dict.get('triton', {}))
+            self.outbitsPars.append(track_dict.get('outbits', {}))
 
             nOfactTrack = int(tr_name[5:])
             nOfsteps = track_dict['nOfSteps']

@@ -252,12 +252,12 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """ pre post scan window was closed, remove reference """
         self.pre_post_scan_window = None
 
-    """ outBits related """
+    """ outbits related """
 
     def open_outbits_win(self):
         """ open outbit config won or raise to front """
         if self.outbit_win is None:
-            self.outbit_win = OutBitsUi(self, deepcopy(self.buffer_pars.get('outBits', {})), self.outbits_confirmed_signal)
+            self.outbit_win = OutBitsUi(self, deepcopy(self.buffer_pars.get('outbits', {})), self.outbits_confirmed_signal)
             self.outbit_win.destroyed.connect(self.outbit_win_closed)
         else:
             self.raise_win_to_front(self.outbit_win)
@@ -265,9 +265,9 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
     def received_new_outbit_dict(self, outbit_dict):
         """ when gui clicks ok this should be emitted """
-        self.buffer_pars['outBits'] = deepcopy(outbit_dict)
+        self.buffer_pars['outbits'] = deepcopy(outbit_dict)
         logging.debug('trackUi of iso %s for track %s received outbit dict: %s'
-                      % (self.active_iso, self.track_name, self.buffer_pars['outBits']))
+                      % (self.active_iso, self.track_name, self.buffer_pars['outbits']))
 
     def outbit_win_closed(self):
         """ outbit win was closed -> remove from namespace """

@@ -43,7 +43,7 @@ MUST be appended with the keys from the corresponding sequencer (see below): """
 track0_list = ['dacStepSize18Bit', 'dacStartRegister18Bit', 'nOfSteps', 'nOfScans', 'nOfCompletedSteps',
                'invertScan', 'postAccOffsetVoltControl', 'postAccOffsetVolt', 'waitForKepco1us',
                'waitAfterReset1us', 'activePmtList', 'colDirTrue', 'workingTime', 'trigger', 'pulsePattern',
-               'measureVoltPars', 'triton', 'outBits']
+               'measureVoltPars', 'triton', 'outbits']
 
 """  each sequencer needs its own parameters and therefore, the keys are listed below
 naming convention is type_list.  """
@@ -116,7 +116,7 @@ draftTrackPars = {
     'pulsePattern': {'cmdList': ['$time::1.0::1::0', '$time::1.0::0::0']},
     'measureVoltPars': draftMeasureVoltPars,
     'triton': draft_triton_pars,
-    'outBits': draft_outbits
+    'outbits': draft_outbits
 }
 
 draftScanDict = {'isotopeData': draftIsotopePars,
