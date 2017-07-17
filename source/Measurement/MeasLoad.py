@@ -12,6 +12,7 @@ from Measurement.MCPImporter import MCPImporter
 from Measurement.TLDImporter import TLDImporter
 from Measurement.XMLImporter import XMLImporter
 from Measurement.BeaImporter import BeaImporter
+from Measurement.SimpleImporter import SimpleImporter
 
 
 def load(file, db, raw=False, x_as_voltage=True, softw_gates=None):
@@ -24,6 +25,12 @@ def load(file, db, raw=False, x_as_voltage=True, softw_gates=None):
     
     elif e == '.tld':
         f = TLDImporter(file)
+        if not raw:
+            f.preProc(db)
+        return f
+
+    elif e == '.sp':
+        f = SimpleImporter(file)
         if not raw:
             f.preProc(db)
         return f
@@ -57,4 +64,4 @@ def load(file, db, raw=False, x_as_voltage=True, softw_gates=None):
 
 
 def check(end):
-    return end in ['.txt', '.tld', '.xml', '.mcp', '.dat', '.bea']
+    return end in ['.txt', '.tld', '.xml', '.mcp', '.dat', '.bea', '.sp']

@@ -21,7 +21,7 @@ from KingFitter import KingFitter
 
 import InteractiveFit as IF
 
-db = 'V:/Projekte/COLLAPS/Sn/Measurement_and_Analysis_Christian/Sn.sqlite'
+db = 'C:/Users/Christian/Downloads/Sn.sqlite'
 
 '''preparing a list of isotopes'''
 # isoL = ['109_Sn','112_Sn']
@@ -40,7 +40,10 @@ for i in range(112,135, 1):
 
 '''Plotting spectra'''
 # Tools.centerPlot(db,isoL)
-
+# Tools.isoPlot(db, '131_Sn', isovar='_m')
+# Tools.isoPlot(db, '131_Sn')
+# Tools.isoPlot(db, '132_Sn')
+# Tools.isoPlot(db, '109_Sn')
 # wavenumber = 22112.96
 # print(Physics.freqFromWavenumber(wavenumber))
 # print(Physics.wavelenFromFreq(Physics.freqFromWavenumber(wavenumber)))
@@ -98,13 +101,13 @@ for i in range(112,135, 1):
 #         divratios.append(i)
 #         accratios.append(k)
 # #
-# # # '''Fitting the Kepco-Scans!'''
-# # # for i in range(0,2):
-# # #     run = 'ZKepRun' + str(i)
-# # #     # BatchFit.batchFit(Tools.fileList(db,'Kepco'), db, run)
-# # #     Analyzer.combineRes('Kepco', 'm', run, db, show_plot=False)
-# # #     Analyzer.combineRes('Kepco', 'b', run, db, show_plot=False)
-# # #
+'''Fitting the Kepco-Scans!'''
+# for i in range(0,1):
+#     run = 'ZKepRun' + str(i)
+#     BatchFit.batchFit(Tools.fileList(db,'Kepco'), db, run)
+#     # Analyzer.combineRes('Kepco', 'm', run, db, show_plot=False)
+#     # Analyzer.combineRes('Kepco', 'b', run, db, show_plot=False)
+BatchFit.batchFit(Tools.fileList(db, '124_Sn'), db, 'Run10')
 #         '''Fitting the spectra with Voigt-Fits!'''
 #         BatchFit.batchFit(Tools.fileList(db,'124_Sn'), db,'Run0')
 #         # BatchFit.batchFit(['124Sn_no_protonTrigger_Run018.mcp','124Sn_no_protonTrigger_Run021.mcp','124Sn_no_protonTrigger_Run024.mcp',
@@ -284,18 +287,16 @@ litvals = {'112_Sn':[-0.748025649,.0077],
 # Analyzer.combineShift('128_Sn', 'Run1', db)
 # Analyzer.combineShift('119_Sn', 'Run1', db)
 # Analyzer.combineRes('128_Sn_m', 'Bu', 'Run1', db)
-# Analyzer.combineShift('128_Sn', 'Run1', db)
+# Analyzer.combineShift('109_Sn', 'Run0', db)
 # Analyzer.combineShift('125_Sn_m', 'Run1', db)
 # Analyzer.combineRes('125_Sn_m', 'Bu', 'Run1', db)
 # Analyzer.combineRes('125_Sn', 'Au', 'Run1', db)
 # Analyzer.combineRes('125_Sn', 'Bu', 'Run1', db)
 # Analyzer.combineRes('121_Sn', 'Au', 'Run1', db)
 
-king = KingFitter(db, showing=False, litvals=litvals)
-run = -1
-timing = time.time()
-king.kingFit(alpha=600, findBestAlpha=True, run=run)
-print('time needed (s):', time.time()-timing)
+# king = KingFitter(db, showing=False, litvals=litvals)
+# run = -1
+# # king.kingFit(alpha=849, findBestAlpha=True, run=run)
 # king.calcChargeRadii(isotopes=isoL, run=run)
 
 '''producing a LaTeX-table'''
@@ -331,6 +332,8 @@ print('time needed (s):', time.time()-timing)
 #     # output = str('$' + a + '$' + ' & $'+ str(nuclearSpin) + '$ & $' + str(shiftval) + '(' + str(shiftstatErr) + ') $' + str('\\') + str('\\'))
 #     output = output.replace('.', ',')
 #     print(output)
+# isoL = ['117_Sn_m']
+#
 # '''for A and B, mu and Q'''
 # muRef = -1.00104
 # dMuRef = 0.00007

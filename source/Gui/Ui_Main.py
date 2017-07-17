@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(651, 481)
+        MainWindow.resize(772, 858)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
@@ -74,6 +74,9 @@ class Ui_MainWindow(object):
         self.kingfit = KingFitUi()
         self.kingfit.setObjectName("kingfit")
         self.TabWidget.addTab(self.kingfit, "")
+        self.moments = MomentsUi()
+        self.moments.setObjectName("moments")
+        self.TabWidget.addTab(self.moments, "")
         self.addFiles_tab = AddFilesUi()
         self.addFiles_tab.setObjectName("addFiles_tab")
         self.TabWidget.addTab(self.addFiles_tab, "")
@@ -87,12 +90,12 @@ class Ui_MainWindow(object):
         self.verticalLayout.addWidget(self.splitter)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 651, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 772, 21))
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
 
         self.retranslateUi(MainWindow)
-        self.TabWidget.setCurrentIndex(5)
+        self.TabWidget.setCurrentIndex(7)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -109,6 +112,7 @@ class Ui_MainWindow(object):
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.isoshift), _translate("MainWindow", "Isotope shift"))
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.accVolt_tab), _translate("MainWindow", "AccVolt"))
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.kingfit), _translate("MainWindow", "Charge Radii"))
+        self.TabWidget.setTabText(self.TabWidget.indexOf(self.moments), _translate("MainWindow", "Moments"))
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.addFiles_tab), _translate("MainWindow", "add Files"))
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.Alive_tab), _translate("MainWindow", "Alive"))
 
@@ -121,3 +125,4 @@ from Gui.CrawlerUi import CrawlerUi
 from Gui.InteractiveFitUi import InteractiveFitUi
 from Gui.IsoshiftUi import IsoshiftUi
 from Gui.KingFitUi import KingFitUi
+from Gui.MomentsUi import MomentsUi

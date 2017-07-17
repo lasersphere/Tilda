@@ -146,7 +146,7 @@ class AliveUi(QtWidgets.QWidget, Ui_Alive):
                     offsetVolt=offsetVolt+[AliveTools.get_offsetVolt_from_db(self.dbpath, file)]
 
 
-                print(hvVolt)
+
                 for a in range(len(refVolt)):
                     data = []
                     Error=[]
@@ -190,7 +190,7 @@ class AliveUi(QtWidgets.QWidget, Ui_Alive):
 
         it = TiTs.select_from_db(self.dbpath, 'DISTINCT iso', 'FitRes', [['run'], [run]], 'ORDER BY iso',
                                  caller_name=__name__)
-        if it:
+        if it is not None:
             for i, e in enumerate(it):
                 self.isoSelect.insertItem(i, e[0])
                 self.isoSelect_2.insertItem(i, e[0])
@@ -199,7 +199,7 @@ class AliveUi(QtWidgets.QWidget, Ui_Alive):
     def loadRuns(self):
         self.runSelect.clear()
         runit = TiTs.select_from_db(self.dbpath, 'run', 'Runs', caller_name=__name__)
-        if runit:
+        if runit is not None:
             for i, r in enumerate(runit):
                 self.runSelect.insertItem(i, r[0])
 
@@ -225,7 +225,7 @@ class AliveUi(QtWidgets.QWidget, Ui_Alive):
                                         [['iso', 'parname', 'run'], [getattr(self, 'iso'+str(j)), self.par, self.run]],
                                         caller_name=__name__)
                 select = [True] * len(getattr(self, 'files'+str(j)))
-                if r:
+                if r is not None:
                     if j == '':
                         self.statErrForm = r[0][1]
                         self.systErrForm = r[0][2]
@@ -308,15 +308,15 @@ class AliveUi(QtWidgets.QWidget, Ui_Alive):
 
     def saving(self):
         plot.clear()
-        plot.AlivePlot(self.x_data[0], self.plotdata, self.Error[0])
+        plot.AlivePlot(self.x_data[0], self.plotdata, self.Error[0], self.ref_x_data)
         plot.show(True)
-        print(self.x_data)
-        print(self.plotdata)
-        print(self.Error)
-        print(self.ref_x_data)
-        print(self.ref_time_data)
-        print(self.time_data)
-        print(self.offset_volt)
+        #print(self.x_data)
+        #print(self.plotdata)
+        #print(self.Error)
+        #print(self.ref_x_data)
+        #print(self.ref_time_data)
+        #print(self.time_data)
+        #print(self.offset_volt)
 
         #Zeitstempel erzeugen
         t = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -351,24 +351,3 @@ class AliveUi(QtWidgets.QWidget, Ui_Alive):
 
                 out_string += '\n'
             out_file.write(out_string)
-
-
-        #with open(savePath + '/Results_'+name+'_'+t+'.txt', 'w+') as out_file:
-        #    out_string =''
-        #    for a in range(len(self.ref_x_data)):
-        #        out_string += 'reference measurement number = '+str(self.ref_x_data[a])
-        #        out_string += ' reference measurement time = '+self.ref_time_data[a] + '\n'
-        #        out_string +='number ; time ; Voltage ; neg. Error ; pos. Error \n'
-        #        for i in range(len(self.x_data)):
-        #            out_string += str(self.x_data[i])
-        #            out_string += ' ; '
-        #            out_string += self.time_data[i]
-        #            out_string += ' ; '
-        #            out_string += str(self.plotdata[a][i])
-        #            out_string += ' ; '
-        #            out_string +=str(-self.Error[a][i][0])
-        #            out_string += ' ; '
-        #            out_string +=str(self.Error[a][i][1])
-        #            out_string += '\n'
-        #        out_string += '\n'
-        #    out_file.write(out_string)

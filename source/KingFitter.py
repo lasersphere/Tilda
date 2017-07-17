@@ -235,21 +235,21 @@ class KingFitter(object):
         self.isotopeRedMasses = [i*self.ref_mass/(i-self.ref_mass) for i in self.isotopeMasses]
         self.chargeradii = [(-self.a/self.isotopeRedMasses[i]+j)/self.b+self.c/self.isotopeRedMasses[i]
                             for i,j in enumerate(self.isotopeShifts)]
-        self.chargeradiiStatErrs = [np.abs(i/self.b) for i in self.isotopeShiftStatErr]
-        self.chargeradiiSystErrs = [np.sqrt(np.square(self.isotopeShiftSystErr[i]/self.b)+
+        #self.chargeradiiStatErrs = [np.abs(i/self.b) for i in self.isotopeShiftStatErr]
+        self.chargeradiiTotalErrs = [np.sqrt(np.square(self.isotopeShiftStatErr[i]/self.b)+
                                         np.square(self.aerr/(self.isotopeRedMasses[i]*self.b))+
                                         np.square((-self.a/self.isotopeRedMasses[i]+j)*self.berr/np.square(self.b)) +
                                         np.square((self.a/self.b+self.c)*self.massErr[i]/np.square(self.ref_mass)))
                                     for i,j in enumerate(self.isotopeShifts)]
         finalVals = {}
         for i,j in enumerate(self.isotopes):
-            finalVals[j] = [self.chargeradii[i], self.chargeradiiStatErrs[i], self.chargeradiiSystErrs[i]]
+            finalVals[j] = [self.chargeradii[i], self.chargeradiiTotalErrs[i]]
             con = sqlite3.connect(self.db)
             cur = con.cursor()
             cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', (j, 'delta_r_square', self.run[i]))
             con.commit()
             cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ? WHERE iso = ? AND parname = ?''',
-                        (self.chargeradii[i], self.chargeradiiStatErrs[i], self.chargeradiiSystErrs[i], j, 'delta_r_square'))
+                        (self.chargeradii[i], 0, self.chargeradiiTotalErrs[i], j, 'delta_r_square'))
             con.commit()
             con.close()
         if self.showing:
@@ -257,12 +257,12 @@ class KingFitter(object):
             x = []
             y = []
             yerr = []
-            print('iso\t $\delta$ <r$^2$>[fm$^2$]($\Delta_{stat}$ $\delta$<r$^2$>[fm$^2$])[$\Delta_{syst}$ $\delta$<r$^2$>[fm$^2$]]')
+            print('iso\t $\delta$ <r$^2$>[fm$^2$]($\Delta$ $\delta$<r$^2$>[fm$^2$])')
             for i in keyVals:
                 x.append(int(str(i).split('_')[0]))
                 y.append(finalVals[i][0])
-                yerr.append(np.sqrt(np.square(finalVals[i][1])+np.square(finalVals[i][2])))
-                print(i, '\t', np.round(finalVals[i][0],3), '('+str(np.round(finalVals[i][1],3))+')' + '('+str(np.round(finalVals[i][2],3))+')')
+                yerr.append(finalVals[i][1])
+                print(i, '\t', np.round(finalVals[i][0],3), '('+str(np.round(finalVals[i][1],3))+')')
                 #print("'"+str(i)+"'", ':[', np.round(finalVals[i][0],3), ','+ str(np.round(np.sqrt(finalVals[i][1]**2 + finalVals[i][2]**2),3))+'],')
 
             plt.subplots_adjust(bottom=0.2)

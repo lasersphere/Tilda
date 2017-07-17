@@ -43,7 +43,7 @@ class FullSpec(object):
         
     def evaluate(self, x, p, ih = -1):
         '''Return the value of the hyperfine structure at point x / MHz'''
-        if ih == -1:        
+        if ih == -1:
             return p[self.pOff] + sum(hf.evaluate(x, p) for hf in self.hyper)
         else:
             return p[self.pOff] + self.hyper[ih].evaluate(x, p)

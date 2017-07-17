@@ -41,12 +41,10 @@ class SPFitter(object):
         '''
         print("Starting fit")
         self.oldpar = list(self.par)
-        
         truncp = [p for p, f in zip(self.par, self.fix) if not f]
         boundl = ()
         boundu = ()
         for i in range(len(self.par)):
-            print(self.par[i])
             if not self.fix[i]:
                 if self.npar[i][:3] == 'Int':
                     if self.par[i] > 0:

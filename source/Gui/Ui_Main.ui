@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>651</width>
-    <height>481</height>
+    <width>772</width>
+    <height>858</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -100,7 +100,7 @@
         <enum>QTabWidget::Rounded</enum>
        </property>
        <property name="currentIndex">
-        <number>5</number>
+        <number>7</number>
        </property>
        <widget class="CrawlerUi" name="crawler">
         <attribute name="title">
@@ -137,6 +137,11 @@
          <string>Charge Radii</string>
         </attribute>
        </widget>
+       <widget class="MomentsUi" name="moments">
+        <attribute name="title">
+         <string>Moments</string>
+        </attribute>
+       </widget>
        <widget class="AddFilesUi" name="addFiles_tab">
         <attribute name="title">
          <string>add Files</string>
@@ -165,7 +170,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>651</width>
+     <width>772</width>
      <height>21</height>
     </rect>
    </property>
@@ -224,6 +229,12 @@
    <class>AliveUi</class>
    <extends>QWidget</extends>
    <header>Gui.AliveUi</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>MomentsUi</class>
+   <extends>QWidget</extends>
+   <header>Gui.MomentsUi</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
