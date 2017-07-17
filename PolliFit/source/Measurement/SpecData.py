@@ -47,7 +47,7 @@ class SpecData(object):
 
         self.x_units_enums = SpecDataXAxisUnits  # to choose from
         self.x_units = SpecDataXAxisUnits.line_volts  # unit of the x axis
-        
+
         #Data is organized as list of tracks containing arrays with information
         self.x = []
         self.cts = []
@@ -74,22 +74,12 @@ class SpecData(object):
                 nrScalers = self.nrScalers[track_index]
         else:
             nrScalers = self.nrScalers
-        kepco = False
-        try:
-            if self.seq_type == 'kepco':
-                kepco = True
-        except Exception as e:
-            pass
-        if self.type == 'Kepco':  # for mcp data...
-            kepco = True
+
         for s in scaler:
             s = int(s)
             if nrScalers >= np.abs(s):
                 flatx, c, e = self.getSingleSpec(abs(s), track_index)
-                if kepco:
-                    flatc = flatc + c # if c < 0 and s > 0 -> flatc > 0
-                else:
-                    flatc = flatc + np.copysign(c, s)  # if c < 0 and s > 0 -> flatc > 0
+                flatc = flatc + np.copysign(np.ones_like(c), s) * c
                 flate = flate + np.square(e)
             else:
                 pass

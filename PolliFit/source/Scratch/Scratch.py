@@ -7,7 +7,35 @@ Created on 31.03.2014
 import BatchFit
 import Tools
 import Analyzer
+import numpy as np
+import Physics
+import copy
 
+kBE = 8.61733*10**-5 # eV/K
+kBJ = 1.38064852*10**-23 #J/K
+T = 1275
+U = 10000
+qe = 1.602176565e-19    #electron charge
+
+c = 299792458    #speed of light
+u = 1.660538921e-27    #atomic mass unit
+for i in [40,48]:
+    m = i*u
+
+    v = np.sqrt(2*qe*U/m)
+
+    nu0 = 755222765.9
+    gamma = 1/np.sqrt(1-(v/c)**2)
+    R = 1/2*np.sqrt(kBE*T/U)
+
+
+    w = nu0 * gamma * np.sqrt(2*kBJ*T/(m*c**2))
+
+    xeta = R*w/2
+
+    print(xeta)
+
+# print(Physics.freqFromWavenumber(16303.13364))
 # bestdiff = 10**12
 # values = [-0.9816, 0.785, -1.096, 0.653, -1.3469, -1.463, -0.573]
 # valueErrs = [0.0049, 0.010, 0.45, 0.007, 0.005, 0.015, 0.015]

@@ -43,7 +43,7 @@ class SPFitter(object):
         self.oldp = None
         self.pcov = None
         self.rchi = None
-        
+
     def fit(self):
         '''
         Fit the free parameters of spec to data

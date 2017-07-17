@@ -28,7 +28,6 @@ qe_d = 3.5e-27;
 def relVelocity(e, m):
     '''Return the relativistic velocity of a body with kinetic energy e/J and mass m/kg'''
     mcs = m*c*c
-    
     return c * math.sqrt(1 - (mcs / (e + mcs))**2)
 
 
@@ -89,7 +88,13 @@ def invRelDoppler(laserFreq, dopplerFreq):
 def voigt(x, sig, gam):
     '''Voigt profile, unnormalized, using the Faddeeva function'''
     return special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).real / (sig * math.sqrt(2 * math.pi))
-	
+
+def fanoVoigt(x, sig, gam, dispersive):
+    '''Fano Voigt profile, unnormalized, using the Faddeeva function and their imaginary part'''
+    return special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).real / (sig * math.sqrt(2 * math.pi)) +\
+           dispersive * special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).imag / (sig * math.sqrt(2 * math.pi))
+
+
 def lorentz (x, loc, gam):
     '''Lorentzian profile '''
     return cauchy.pdf(x, loc, gam)
@@ -98,7 +103,7 @@ def lorentzQI (x, loc, loc2, gam):
     '''Quantum interference of lorentzian profile '''
     cross = gam / math.pi / ((x-loc + 1j*gam)*(x-loc2 - 1j*gam))
 
-    return 2 * cross.real 
+    return 2 * cross.real
 
 def gaussian(x, mu, sig, amp):
     """

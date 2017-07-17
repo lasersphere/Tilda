@@ -46,7 +46,7 @@ class FullSpec(object):
             return p[self.pOff] + sum(hf.evaluate(x, p) for hf in self.hyper)
         else:
             return p[self.pOff] + self.hyper[ih].evaluate(x, p)
-    
+
     def evaluateE(self, e, freq, col, p, ih = -1):
         '''Return the value of the hyperfine structure at point e / eV'''
         if ih == -1:
@@ -74,7 +74,7 @@ class FullSpec(object):
             pos += hf.nPar
             
         return ret
-    
+
     def getParNames(self):
         '''Return list of the parameter names'''
         return ['offset'] + self.shape.getParNames() + list(chain(*([hf.getParNames() for hf in self.hyper])))
@@ -82,7 +82,7 @@ class FullSpec(object):
     def getFixed(self):
         '''Return list of parmeters with their fixed-status'''
         return [False] + self.shape.getFixed() + list(chain(*[hf.getFixed() for hf in self.hyper]))
-    
+
     def parAssign(self):
         '''Return [(hf.name, parAssign)], where parAssign is a boolean list indicating relevant parameters'''
         ret = []
@@ -116,15 +116,15 @@ class FullSpec(object):
     def leftEdge(self, p):
         '''Return the left edge of the spectrum in Mhz'''
         return min(hf.leftEdge(p) for hf in self.hyper)
-    
+
     def rightEdge(self, p):
         '''Return the right edge of the spectrum in MHz'''
         return max(hf.rightEdge(p) for hf in self.hyper)
-    
+
     def leftEdgeE(self, freq, p):
         '''Return the left edge of the spectrum in eV'''
         return min(hf.leftEdgeE(freq, p) for hf in self.hyper)
-    
+
     def rightEdgeE(self, freq, p):
         '''Return the right edge of the spectrum in eV'''
         return max(hf.rightEdgeE(freq, p) for hf in self.hyper)
