@@ -24,7 +24,7 @@ Using CApiAnalyser.py yields:
 
 '''Bitfile Signature:'''
 bitfileSignatures = {'PXI-7852R': 'A53A64C1BCCD22CD7F401CF0BFC05CE7',
-                     'PXI-7841R': '533AFBA8FEF8968435611571542DFE15'
+                     'PXI-7841R': 'B8E28A90C00ED205D28FA65A5C713C1D'
                      }
 bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
