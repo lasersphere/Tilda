@@ -43,7 +43,7 @@ class Outbits(FPGAInterfaceHandling):
         This will return the state of the Outbit state machine
         :return: tuple, (state_num_int, state_name_str)
         """
-        state_num = self.ReadWrite(self.config.OutBitsState)
+        state_num = self.ReadWrite(self.config.OutBitsState).value
         states = {
             0: 'init',
             1: 'idle',

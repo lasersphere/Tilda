@@ -398,7 +398,10 @@ class ScanMain(QObject):
         if self.sequencer is not None:
             session = self.sequencer.session.value
             status = self.sequencer.status
-            return {'session': session, 'status': status}
+            state_num, state_str = self.sequencer.read_outbits_state()
+            outb_arr = self.sequencer.read_outbits_number_of_cmds()
+            return {'session': session, 'status': status,
+                    'outbit state': (state_num, state_str), 'outbit_n_of_cmd': str(outb_arr)}
         else:
             return None
 

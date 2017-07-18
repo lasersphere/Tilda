@@ -76,9 +76,11 @@ class TritonObject(object):
     def subscribe(self, ndev, uri=''):
         """Subscribe to an object using its name"""
         dev = self.resolveName(ndev, uri)
+        logging.debug('resolved name of %s, dev is: %s, self.uri is: %s' % (ndev, str(dev), str(self.uri)))
         if dev is not None:
             self.send('out', 'Subscribing to ' + ndev)
             self._recFrom[ndev] = dev
+            logging.info('%s with uri %s is subscribing to: %s' % (self.name, self.uri, str(dev)))
             dev._addSub(self.uri, self.name)
             self.send('out', 'Added')
             dev._pyroRelease()
@@ -115,12 +117,14 @@ class TritonObject(object):
     def resolveName(self, name, uri=''):
         """Resolve a device name to a Proxy using the uri from the database. Return None if not started"""
         logging.info('TritonObject resolving name: %s' % name)
+        dev = None
         if self.db is not None:
             self.db.commit()
-            self.dbCur.execute('''SELECT uri FROM devices WHERE deviceName=?''', (name,))
+            self.dbCur.execute('''SELECT uri FROM devices WHERE deviceName=%s''', (name,))
             result = self.dbCur.fetchall()
             logging.info('TritonObject resolve name result: %s' % str(result[0][0]))
-            dev = Pyro4.Proxy(result[0][0])
+            if result[0][0] is not None:
+                dev = Pyro4.Proxy(result[0][0])
         else:  # name should be str(uri) then
             dev = Pyro4.Proxy(uri)
         return dev

@@ -44,9 +44,6 @@ class TritonListener(TritonObject):
         self.logged_data = {}
         self.logging_complete = False
 
-        # TODO remove after debugging is done!
-        self.create_dummy_dev()
-
     def create_dummy_dev(self, name='dummyDev'):
         self.dummy_dev = DummyTritonDevice(name)
         # self.subscribe(str(self.dummy_dev.uri))
@@ -60,11 +57,12 @@ class TritonListener(TritonObject):
         """
         ret = ''
         channels = ['calls', 'random']
+        logging.debug('getting channels of dev %s' % str(dev))
 
         if self.dbCur is not None:
             self.dbCur.execute(
                 '''SELECT devicetypes.channels FROM devices JOIN devicetypes ON
-                    devicetypes.deviceType = devices.deviceType WHERE devices.deviceName=?''',
+                    devicetypes.deviceType = devices.deviceType WHERE devices.deviceName = %s''',
                 (str(dev),))
             try:
                 ret = self.dbCur.fetchone()
@@ -75,6 +73,7 @@ class TritonListener(TritonObject):
                 logging.error(
                     'error in converting list of channels %s from dev %s, error message is: %s' % (ret, dev, e),
                     exc_info=True)
+        logging.debug('available channels of dev %s are: %s ' % (str(dev), str(channels)))
         return channels
 
     def get_devs_from_db(self):
@@ -87,7 +86,7 @@ class TritonListener(TritonObject):
             self.dbCur.execute('''SELECT deviceName FROM devices WHERE uri IS NOT NULL''')
             res = self.dbCur.fetchall()
             for dev in res:
-                devs[dev] = self.get_channels_of_dev(dev)
+                devs[dev[0]] = self.get_channels_of_dev(dev[0])
         else:
             devs['dummyDev'] = self.get_channels_of_dev('dummyDev')
         return devs
@@ -101,13 +100,25 @@ class TritonListener(TritonObject):
             {'dummyDev': {'ch1': {'required': 2, 'data': [], 'acquired': 0}, ...}}
 
         """
-        self.log = log
-        self.logging_complete = False
-        self.back_up_log = deepcopy(self.log)  # store backup log, because i will work on self.log
-        self.subscribe_to_devs_in_log()
+        if log is None or log == {}:
+            self.log = {}
+            self.logging_complete = True  # do not log
+            self.back_up_log = deepcopy(self.log)  # store backup log, because i will work on self.log
+        else:
+            self.log = log
+            self.logging_complete = False
+            self.back_up_log = deepcopy(self.log)  # store backup log, because i will work on self.log
+            self.subscribe_to_devs_in_log()
+            if len(list(self._recFrom.keys())):
+                self.logging_complete = False
+            else:
+                # could not resolve names etc. do not log!
+                self.logging_complete = True
+                self.log = {}
+                self.back_up_log = deepcopy(self.log)  # store backup log, because i will work on self.log
 
     def subscribe_to_devs_in_log(self):
-        """ subscirbe to all devs in the log if not already subscribed to """
+        """ subscribe to all devs in the log if not already subscribed to """
         existing = list(self._recFrom.keys())
         for dev in self.log.keys():
             if dev not in existing:
@@ -193,14 +204,32 @@ class TritonListener(TritonObject):
         # Pyro4.config.SERVERTYPE = 'multiplex'
         Pyro4.config.SERVERTYPE = 'thread'
         sys.excepthook = Pyro4.util.excepthook
+        # Pyro4.config.DETAILED_TRACEBACK = True
 
 if __name__=='__main__':
+
+    app_log = logging.getLogger()
+    # app_log.setLevel(getattr(logging, args.log_level))
+    app_log.setLevel(logging.DEBUG)
+
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    # ch.setFormatter(log_formatter)
+    app_log.addHandler(ch)
+
+    app_log.info('****************************** starting ******************************')
+    app_log.info('Log level set to DEBUG')
+
+
     trit_lis = TritonListener()
     # trit_lis.create_dummy_dev()
-    # trit_lis.setup_log({'dummyDev': {'calls': {'required': 2, 'data': []}, 'random': {'required': 5, 'data': []}}})
-    trit_lis.setup_log({})
+    trit_lis.setup_log({'DummyPS': {'current': {'required': 50, 'data': []}}})
+    # trit_lis.setup_log({})
     trit_lis.start_log()
+    # input('anything to stop')
+    # trit_lis.start_log()
     input('anything to stop')
-    trit_lis.start_log()
-    input('anything to stop')
+    print(trit_lis.log)
     trit_lis.off()
