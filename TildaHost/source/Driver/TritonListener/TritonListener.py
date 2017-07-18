@@ -8,15 +8,16 @@ Module Description:
     and listen to this device. The module will listen to the device prescan, (during) and after scan.
 
 """
-import Pyro4
-import socket
-import sys
 import ast
 import logging
+import socket
+import sys
 from copy import deepcopy
 
-from Driver.TritonListener.TritonObject import TritonObject
+import Pyro4
+
 from Driver.TritonListener.DummyTritonDevice import DummyTritonDevice
+from Driver.TritonListener.TritonObject import TritonObject
 
 
 class TritonListener(TritonObject):
@@ -29,8 +30,9 @@ class TritonListener(TritonObject):
             from Driver.TritonListener.TritonConfig import sqlCfg, hmacKey
         except ImportError as e:
             from Driver.TritonListener.TritonDraftConfig import sqlCfg, hmacKey
-            print('error, while loading Triton config from Driver.TritonListener.TritonConfig : %s' % e)
-            print('will use default (Driver.TritonListener.TritonDraftConfig) and dummy mode now!')
+            logging.error('error, while loading Triton config from Driver.TritonListener.TritonConfig : %s'
+                          '\n will use default (Driver.TritonListener.TritonDraftConfig) and dummy mode now!' % e,
+                          exc_info=True)
         self.setup_pyro(hmacKey)
         super(TritonListener, self).__init__(name, sqlCfg)
 
@@ -62,7 +64,7 @@ class TritonListener(TritonObject):
         if self.dbCur is not None:
             self.dbCur.execute(
                 '''SELECT devicetypes.channels FROM devices JOIN devicetypes ON
-                    devicetypes.deviceType = devices.deviceType WHERE devices.deviceName = %s''',
+                    devicetypes.deviceType = devices.deviceType WHERE devices.deviceName=?''',
                 (str(dev),))
             try:
                 ret = self.dbCur.fetchone()
@@ -70,7 +72,9 @@ class TritonListener(TritonObject):
                     return ['None']
                 channels = ast.literal_eval(ret[0])
             except Exception as e:
-                print('error in converting list of channels %s from dev %s, error message is: %s' % (ret, dev, e))
+                logging.error(
+                    'error in converting list of channels %s from dev %s, error message is: %s' % (ret, dev, e),
+                    exc_info=True)
         return channels
 
     def get_devs_from_db(self):
@@ -112,12 +116,12 @@ class TritonListener(TritonObject):
                 else:  # dummyDev is wanted!
                     if self.dummy_dev is None:
                         self.create_dummy_dev()
-                    # print('subscribing to uri:',  self.dummy_dev.uri)
+                    # logging.debug('subscribing to uri: %s' % str(self.dummy_dev.uri))
                     self.subscribe('dummyDev', str(self.dummy_dev.uri))
         existing2 = list(self._recFrom.keys())
         for subscribed_dev in existing2:  # unsubscribe from all devs which are not in the log
             if subscribed_dev not in self.log.keys():
-                # print('unsubscribing: ', subscribed_dev)
+                # logging.debug('unsubscribing: %s' % str(subscribed_dev))
                 self.unsubscribe(subscribed_dev)
         logging.info('subscribed triton devices after setup: ' + str(list(self._recFrom.keys())))
 
@@ -138,7 +142,6 @@ class TritonListener(TritonObject):
                         # not enough data on this channel yet
                         self.log[dev][ch]['data'].append(val)
                         self.log[dev][ch]['acquired'] += 1
-                        # print(dev, t, ch, val)
             self.check_log_complete()
 
     def check_log_complete(self):
@@ -148,12 +151,12 @@ class TritonListener(TritonObject):
             for ch, val in dev_log.items():
                 check_sum += max(0, val['required'] - val['acquired'])
         if check_sum == 0:
-            print('logging complete')
+            logging.info('TritonListener: logging complete')
             self.logging_complete = True
             for dev, dev_log in self.log.items():
                 for ch, val in dev_log.items():
                     val['acquired'] = len(val['data'])
-            print(self.log)
+            logging.debug('TritonLitener self.log after completion: %s' % str(self.log))
             self.stop_log()
 
     def start_log(self):
@@ -163,12 +166,11 @@ class TritonListener(TritonObject):
         for dev, dev_dict in self.log.items():
             for ch, ch_dict in dev_dict.items():
                 ch_dict['acquired'] = 0
-        print('log before start:', self.log)
+        logging.debug('log before start: %s' % str(self.log))
         self.logging = True
 
     def stop_log(self):
         """ stop logging, by setting self.logging to False """
-        # print(self.log)
         self.logging = False
 
     def off(self):

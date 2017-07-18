@@ -110,16 +110,16 @@ class TritonObject(object):
         self.send('err', "".join(Pyro4.util.getPyroTraceback()))
 
     def _receive(self, dev, t, ch, val):
-        print(t, dev, ch, val)
+        logging.debug('received: %s\t%s\t%s\t%s' % (str(t), str(dev), str(ch), str(val)))
 
     def resolveName(self, name, uri=''):
         """Resolve a device name to a Proxy using the uri from the database. Return None if not started"""
-        print('resolving name: ', name)
+        logging.info('TritonObject resolving name: %s' % name)
         if self.db is not None:
             self.db.commit()
-            self.dbCur.execute('''SELECT uri FROM devices WHERE deviceName=%s''', (name,))
+            self.dbCur.execute('''SELECT uri FROM devices WHERE deviceName=?''', (name,))
             result = self.dbCur.fetchall()
-            print('result: ', result[0][0])
+            logging.info('TritonObject resolve name result: %s' % str(result[0][0]))
             dev = Pyro4.Proxy(result[0][0])
         else:  # name should be str(uri) then
             dev = Pyro4.Proxy(uri)
