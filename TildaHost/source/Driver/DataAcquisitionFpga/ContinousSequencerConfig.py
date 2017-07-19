@@ -16,15 +16,15 @@ fpga_type = data_acq_cfg['fpga_type']
 fpga_resource = data_acq_cfg['fpga_resource']
 
 '''Bitfile Signature:'''
-bitfileSignatures = {'PXI-7852R': '7E8463455896679DC12AB4BDC4D40718',
-                     'PXI-7841R': '1F029A63EF2841F0211A61A74B2DFA35'
+bitfileSignatures = {'PXI-7852R': '33CB04F913691A16344BAD2C297EF27C',
+                     'PXI-7841R': '5E3E9C7DFFF6041857F1C7C7AA741572'
                      }
 bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
 bitfilePaths = {'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV206.lvbitx'),
+                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV210.lvbitx'),
                 'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV206_7841.lvbitx')
+                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV210_7841.lvbitx')
                 }
 bitfilePath = bitfilePaths[fpga_type]
 '''FPGA Resource:'''
