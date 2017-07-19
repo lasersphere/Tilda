@@ -301,10 +301,10 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
                 pulse_len_25ns = 400  # set by default to 10µs
             pulse_len_mu_s = pulse_len_25ns * 25 / 1000
             self.doubleSpinBox_measVoltPulseLength_mu_s.setValue(pulse_len_mu_s)
-        timeout_10_ns = meas_volt_dict.get('measVoltTimeout10ns', 0)
+        timeout_10_ns = meas_volt_dict.get('measVoltTimeout10ns', -1)
         if timeout_10_ns is not None:
             timeout_volt_meas_mu_s = timeout_10_ns / 100000
-            if timeout_10_ns == 0:
+            if timeout_10_ns == -1:
                 timeout_volt_meas_mu_s = 10000  # set to 10 s by default.
             self.doubleSpinBox_measVoltTimeout_mu_s_set.setValue(timeout_volt_meas_mu_s)
         settling_time_swb = meas_volt_dict.get('switchBoxSettleTimeS', 5.0)
@@ -531,7 +531,9 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         :return: dict, {dev: ['ch1', 'ch2' ...]}
         """
         try:
+            logging.info('getting active triton devs..')
             triton_dict = Cfg._main_instance.scan_main.get_available_triton()
+            logging.info('active triton devs: %s' % str(triton_dict))
         except AttributeError:  # if no main available ( gui test etc.)
             triton_dict = {'no_main_dev': ['ch1', 'ch2'],
                            'no_main_dev2': ['ch1', 'ch2', 'ch3']}

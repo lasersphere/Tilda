@@ -246,6 +246,12 @@ class Sequencer(FPGAInterfaceHandling):
             self.ReadWrite(self.config.triggerEdge, trig_num)
             self.ReadWrite(self.config.selectTrigger, trigger_dict.get('trigInputChan', 0))
             return self.checkFpgaStatus()
+        elif trigger_type is TiTs.sweep:
+            trig_num = ['either', 'rising', 'falling'].index(trigger_dict.get('trigEdge', 'rising'))
+            logging.debug('triggernum is: %s' % trig_num)
+            self.ReadWrite(self.config.triggerEdge, trig_num)
+            self.ReadWrite(self.config.selectTrigger, trigger_dict.get('trigInputChan', 0))
+            return self.checkFpgaStatus()
 
     def set_0volt_dac_register(self, null_volt=None):
         """

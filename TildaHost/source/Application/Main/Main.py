@@ -110,6 +110,8 @@ class Main(QtCore.QObject):
         self.sequencer_status = None
         self.fpga_status = None
 
+        self.remove_active_iso_after_scan_complete = False
+
         self.pre_scan_measurement_start_time = datetime.now()
         self.pre_scan_measurement_timeout_s = timedelta(seconds=60)
 
@@ -504,6 +506,13 @@ class Main(QtCore.QObject):
             if scan_complete:
                 self.send_info('scan_complete')
                 desired_state = 4  # overwrite on scan complete, always go to loading after scan complete
+                if self.remove_active_iso_after_scan_complete:
+                    act_iso = deepcopy(self.scan_progress['activeIso'])
+                    logging.info('after scan completion iso %s will now be deleted from the scan pars.' % act_iso)
+                    self.scan_progress['activeIso'] = ''
+                    self.remove_iso_from_scan_pars(act_iso)
+                    self.remove_active_iso_after_scan_complete = False
+                self.scan_progress['activeIso'] = ''
             self.scan_main.set_post_acc_switch_box(scan_dict, active_track_num, desired_state)
             if active_track_num >= 0 and not scan_complete:
                 # only update active track num when loading from track dict.
@@ -951,8 +960,13 @@ class Main(QtCore.QObject):
         """
         this will remove the dictionary named 'iso_seqtype' from self.scan_pars
         """
-        self.scan_pars.pop(iso_seqtype)
-        logging.debug('scan_pars are: ' + str(self.scan_pars))
+        if iso_seqtype != self.scan_progress.get('activeIso', 'None'):
+            self.scan_pars.pop(iso_seqtype)
+            logging.debug('removed iso %s from scan pars. scan_pars are: %s' % (iso_seqtype, str(self.scan_pars)))
+        else:
+            self.remove_active_iso_after_scan_complete = True
+            logging.info('could not remove %s because this is the current scan parameter.'
+                         ' Will remove this after scan completed.' % iso_seqtype)
 
     def save_scan_par_to_db(self, iso):
         """

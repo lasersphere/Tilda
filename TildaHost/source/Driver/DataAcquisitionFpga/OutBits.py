@@ -33,9 +33,10 @@ class Outbits(FPGAInterfaceHandling):
             After each completed track, the memory is cleared again and the numbers will be 0
         :return: tuple, (nOfCommansOutBit0, nOfCommansOutBit1, nOfCommansOutBit2)
         """
-        ret = (self.ReadWrite(self.config.nOfCmdsOutbit0),
-               self.ReadWrite(self.config.nOfCmdsOutbit1),
-               self.ReadWrite(self.config.nOfCmdsOutbit2))
+        ret = (self.ReadWrite(self.config.nOfCmdsOutbit0).value,
+               self.ReadWrite(self.config.nOfCmdsOutbit1).value,
+               self.ReadWrite(self.config.nOfCmdsOutbit2).value)
+        # logging.debug('outbit number of cmds: %s' % str(ret))
         return ret
 
     def read_outbits_state(self):
@@ -52,11 +53,12 @@ class Outbits(FPGAInterfaceHandling):
             4: 'clearing',
             5: 'error'
         }
+        # logging.debug('outbit state %s' % states.get(state_num, 'unknown'))
         return state_num, states.get(state_num, 'unknown')
 
     ''' writing: '''
 
-    def set_outbits_cmd(self, outbit_cmd_dict):
+    def set_outbits_cmd(self, outbit_cmd_dict, pre_post_during_str):
         """
         call this function to write the settings for the outbits to the fpga.
         control of setting the outbits is handled internally by the sequencer.
@@ -68,16 +70,22 @@ class Outbits(FPGAInterfaceHandling):
             'outbit2': [('toggle'/'on'/'off', 'step'/'scan', step/scan_number_int), …]
             }
         """
-        try:
-            cmd_32b_l, orig_cmd_l = self._convert_dict_of_cmd_to_32b_eles(outbit_cmd_dict)
-        except Exception as e:
-            logging.error('could not convert the outbit dictionary'
-                          ' %s to 32b commands, error is: %s' % (outbit_cmd_dict, e))
-            return False
-        if len(cmd_32b_l):
-            logging.info('writing %d outbit commands.' % len(cmd_32b_l))
-            self._write_to_target(cmd_32b_l)
-        return self.checkFpgaStatus()
+        if pre_post_during_str == 'duringScan':
+            try:
+                cmd_32b_l, orig_cmd_l = self._convert_dict_of_cmd_to_32b_eles(outbit_cmd_dict)
+            except Exception as e:
+                logging.error('could not convert the outbit dictionary'
+                              ' %s to 32b commands, error is: %s' % (outbit_cmd_dict, e))
+                return False
+            if len(cmd_32b_l):
+                logging.info('writing %d outbit commands. origininal dict was: %s' %
+                             (len(cmd_32b_l), str(outbit_cmd_dict)))
+                for i, each in enumerate(cmd_32b_l):
+                    logging.debug(format(each, '032b') + '\t' + str(orig_cmd_l[i]))
+                self._write_to_target(cmd_32b_l)
+            return self.checkFpgaStatus()
+        else:
+            return True
 
     def _convert_dict_of_cmd_to_32b_eles(self, outbit_cmd_dict):
         """

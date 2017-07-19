@@ -8,7 +8,7 @@ Module Description:  Gui for configuring the outbits for each track
 
 import logging
 import numpy as np
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtWidgets, QtGui, QtCore
 from copy import deepcopy
 
 
@@ -21,6 +21,8 @@ class OutBitsUi(QtWidgets.QMainWindow, Ui_outbits):
     def __init__(self, parent, outbit_dict={}, confirm_settings_signal=None):
         super(OutBitsUi, self).__init__(parent=parent)
         self.setupUi(self)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)  # necessary for not keeping it in memory
+
 
         self.temp_outbit_dict = outbit_dict
         self.confirm_settings_signal = confirm_settings_signal

@@ -15,6 +15,7 @@ import sys
 from copy import deepcopy
 
 import Pyro4
+import mysql.connector as Sql
 
 from Driver.TritonListener.DummyTritonDevice import DummyTritonDevice
 from Driver.TritonListener.TritonObject import TritonObject
@@ -59,13 +60,23 @@ class TritonListener(TritonObject):
         channels = ['calls', 'random']
         logging.debug('getting channels of dev %s' % str(dev))
 
-        if self.dbCur is not None:
-            self.dbCur.execute(
+        try:
+            db = Sql.connect(**self.sql_config)
+            dbCur = db.cursor()
+            logging.info('connecting to db: %s at ip: %s' % (self.sql_config.get('database', 'unknown'),
+                                                             self.sql_config.get('host', 'unknown')))
+        except Exception as e:
+            logging.error('error, TritonObject Could not connect to db, error is: %s' % e)
+            db = None
+            dbCur = None
+
+        if dbCur is not None:
+            dbCur.execute(
                 '''SELECT devicetypes.channels FROM devices JOIN devicetypes ON
                     devicetypes.deviceType = devices.deviceType WHERE devices.deviceName = %s''',
                 (str(dev),))
             try:
-                ret = self.dbCur.fetchone()
+                ret = dbCur.fetchone()
                 if ret is None:
                     return ['None']
                 channels = ast.literal_eval(ret[0])
@@ -73,6 +84,7 @@ class TritonListener(TritonObject):
                 logging.error(
                     'error in converting list of channels %s from dev %s, error message is: %s' % (ret, dev, e),
                     exc_info=True)
+            db.close()
         logging.debug('available channels of dev %s are: %s ' % (str(dev), str(channels)))
         return channels
 
@@ -82,11 +94,21 @@ class TritonListener(TritonObject):
         :return: dict, {dev: ['ch1', 'ch2' ...]}
         """
         devs = {}
-        if self.dbCur is not None:
-            self.dbCur.execute('''SELECT deviceName FROM devices WHERE uri IS NOT NULL''')
-            res = self.dbCur.fetchall()
+        try:
+            db = Sql.connect(**self.sql_config)
+            dbCur = db.cursor()
+            logging.info('connecting to db: %s at ip: %s' % (self.sql_config.get('database', 'unknown'),
+                                                             self.sql_config.get('host', 'unknown')))
+        except Exception as e:
+            logging.error('error, TritonObject Could not connect to db, error is: %s' % e)
+            db = None
+            dbCur = None
+        if dbCur is not None:
+            dbCur.execute('''SELECT deviceName FROM devices WHERE uri IS NOT NULL''')
+            res = dbCur.fetchall()
             for dev in res:
                 devs[dev[0]] = self.get_channels_of_dev(dev[0])
+            db.close()
         else:
             devs['dummyDev'] = self.get_channels_of_dev('dummyDev')
         return devs

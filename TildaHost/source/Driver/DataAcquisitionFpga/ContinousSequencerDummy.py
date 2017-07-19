@@ -186,3 +186,9 @@ class ContinousSequencer(Sequencer, MeasureVolt):
 
     def set_stopVoltMeas(self, stop_bool):
         return True
+
+    def read_outbits_state(self):
+        return 0, 'dummy'
+
+    def read_outbits_number_of_cmds(self):
+        return 0, 0, 0

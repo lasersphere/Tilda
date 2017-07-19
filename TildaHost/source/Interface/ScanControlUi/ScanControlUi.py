@@ -256,6 +256,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         unsubscribe from parent gui when closed
         """
         if self.active_iso:
+            Cfg._main_instance.abort_scan = True
             Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
         logging.info('closing scan win ' + str(self.win_title))
         self.close_track_wins()

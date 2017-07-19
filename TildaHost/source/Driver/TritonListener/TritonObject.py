@@ -31,15 +31,9 @@ class TritonObject(object):
 
         self.name = name
         self.type = 'TritonObject'
+        self.sql_config = sqlCfg
 
         self._recFrom = {}
-        try:
-            self.db = Sql.connect(**sqlCfg)
-            self.dbCur = self.db.cursor()
-        except Exception as e:
-            logging.error('error, TritonObject Could not connect to db, error is: %s' % e)
-            self.db = None
-            self.dbCur = None
 
         self._serve()
 
@@ -53,8 +47,6 @@ class TritonObject(object):
 
         self._daemon.shutdown()
         self._daemonT.join()
-        if self.db is not None:
-            self.db.close()
 
     def _serve(self):
         """
@@ -118,15 +110,27 @@ class TritonObject(object):
         """Resolve a device name to a Proxy using the uri from the database. Return None if not started"""
         logging.info('TritonObject resolving name: %s' % name)
         dev = None
-        if self.db is not None:
-            self.db.commit()
-            self.dbCur.execute('''SELECT uri FROM devices WHERE deviceName=%s''', (name,))
-            result = self.dbCur.fetchall()
-            logging.info('TritonObject resolve name result: %s' % str(result[0][0]))
-            if result[0][0] is not None:
-                dev = Pyro4.Proxy(result[0][0])
+        try:
+            db = Sql.connect(**self.sql_config)
+            dbCur = db.cursor()
+            logging.info('connecting to db: %s at ip: %s' % (self.sql_config.get('database', 'unknown'),
+                                                             self.sql_config.get('host', 'unknown')))
+        except Exception as e:
+            logging.error('error, TritonObject Could not connect to db, error is: %s' % e)
+            db = None
+            dbCur = None
+        if db is not None:
+            db.commit()
+            dbCur.execute('''SELECT uri FROM devices WHERE deviceName=%s''', (name,))
+            result = dbCur.fetchall()
+            if len(result):
+                logging.info('TritonObject resolve name result: %s' % str(result[0][0]))
+                if result[0][0] is not None:
+                    dev = Pyro4.Proxy(result[0][0])
         else:  # name should be str(uri) then
             dev = Pyro4.Proxy(uri)
+        if db is not None:
+            db.close()
         return dev
 
 

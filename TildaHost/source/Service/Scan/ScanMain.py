@@ -390,6 +390,7 @@ class ScanMain(QObject):
             timeout = 'fine'
             if self.sequencer.getDACQuWriteTimeout():
                 timeout = 'timedout'
+            # logging.debug('sequencer state is: %s' % state)
             return {'type': self.sequencer.type, 'state': state, 'DMA Queue status': timeout}
         else:
             return None

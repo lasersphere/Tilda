@@ -39,7 +39,7 @@ SPstate = {'ref': 0x8152, 'val': ctypes.c_uint(), 'ctr': False}
 measVoltState = {'ref': 0x819A, 'val': ctypes.c_uint(), 'ctr': False}
 seqState = {'ref': 0x8186, 'val': ctypes.c_uint(), 'ctr': False}
 nOfCmdsOutbit0 = {'ref': 0x8118, 'val': ctypes.c_ulong(), 'ctr': False}
-nOfCmdsOutbit02 = {'ref': 0x8110, 'val': ctypes.c_ulong(), 'ctr': False}
+nOfCmdsOutbit2 = {'ref': 0x8110, 'val': ctypes.c_ulong(), 'ctr': False}
 nOfCmdsOutbit1 = {'ref': 0x8114, 'val': ctypes.c_ulong(), 'ctr': False}
 '''Controls:'''
 VoltOrScaler = {'ref': 0x810E, 'val': ctypes.c_bool(), 'ctr': True}

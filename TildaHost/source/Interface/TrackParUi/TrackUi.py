@@ -199,11 +199,14 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             check = replace
         return check
 
-    def update_trigger_combob(self, default_trig=TiTs.no_trigger.name):
+    def update_trigger_combob(self, default_trig=None):
         """
         updates the trigger combo box by looking up the members of the enum
         """
         self.comboBox_triggerSelect.addItems([tr.name for tr in TiTs])
+        if default_trig is None:
+            trig_type = self.buffer_pars.get('trigger', {}).get('type', TiTs.no_trigger)
+            self.comboBox_triggerSelect.setCurrentText(trig_type.name)
 
     def trigger_select(self, trig_str):
         """
