@@ -37,12 +37,15 @@ class OutBitsUi(QtWidgets.QMainWindow, Ui_outbits):
         self.pushButton_add_outbit.clicked.connect(self.add_item)
         self.pushButton_remove_selected.clicked.connect(self.rem_selected)
 
+        self.pushButton_help.clicked.connect(self.open_help)
+
         """ keyboard shortcuts """
         QtWidgets.QShortcut(QtGui.QKeySequence("A"), self, self.add_item)
         QtWidgets.QShortcut(QtGui.QKeySequence("E"), self, self.edit_selected)
         QtWidgets.QShortcut(QtGui.QKeySequence("DEL"), self, self.rem_selected)
         QtWidgets.QShortcut(QtGui.QKeySequence("O"), self, self.confirm)
         QtWidgets.QShortcut(QtGui.QKeySequence("ESC"), self, self.close)
+        QtWidgets.QShortcut(QtGui.QKeySequence("F1"), self, self.open_help)
 
         """ mouse shortcuts """
         self.listWidget_outbits.itemDoubleClicked.connect(self.edit_selected)
@@ -145,6 +148,38 @@ class OutBitsUi(QtWidgets.QMainWindow, Ui_outbits):
             return outb_name, index, cmd
         else:
             return '', -1, ('', '', -1)
+
+    def open_help(self):
+        logging.debug('opening outbit help window')
+        message = QtWidgets.QMessageBox(parent=self)
+        message.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        message.setWindowTitle('outbit help')
+        message.setText('The so called outbits are three digital outputs (DO) '
+                        'on the TTL-Linedriver which can be used '
+                        'to control something with an TTL-pulse.\n\n'
+                        'Each DO can be set ON or OFF for each STEP or SCAN. '
+                        'It will stay ON/OFF until another ON/OFF command is activated.\n '
+                        '\tFor each outbit a maximum of 40 commands can be set.\n'
+                        'The TOGGLE mode will set the bit to on or off alternating with each STEP or SCAN.\n'
+                        '\tOnly one toggle command per outbit is allowed.\n'
+                        '\twill be ON in first step/scan and OFF in next step/scan\n'
+                        'After completion of each track all outbits are turned off.\n\n'
+                        'The outbits are located on the DOs:\n'
+                        '\toutbit0\t\t\tDO3\n'
+                        '\toutbit1\t\t\tDO5\n'
+                        '\toutbit2\t\t\tDO7\n\n'
+                        'The Outbits are set in parallel to setting the voltage, '
+                        'so if a more precise timing is wanted, '
+                        'either use the pulse pattern generator or use one of the other flags, e.g. trs scanning.\n\n'
+                        'WARNING:\n'
+                        'currently the TTL-Linedriver seems to suffer from '
+                        'crosstalking on the DOs and when addressing DO3 or DO5, '
+                        'parts of this output will also be detectable at DO5.\n'
+                        'So currently it is recommended to ONLY USE outbit0 and outbit2 (DO5&7) '
+                        'to have no interference between the outputs.'
+                        )
+        message.exec_()
+        logging.debug('outbit help window closed')
 
     ''' close and confirm '''
 

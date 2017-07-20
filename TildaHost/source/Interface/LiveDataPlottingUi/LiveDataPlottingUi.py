@@ -203,7 +203,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         logging.info('LiveDataPlottingUi opened ... ')
 
     def show_progress(self, show=None):
-        if self.scan_prog_ui is None:
+        if self.scan_prog_ui is None and self.subscribe_as_live_plot:
+            logging.debug('self.scan_prog_ui is None')
             self.show_progress_window()
         if show is not None:
             self.dockWidget.setVisible(show)
@@ -416,7 +417,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         if self.sum_scaler is not None:
             self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpec(self.sum_scaler, self.sum_track)
             if self.sum_plt_data is None:
-                self.sum_plt_data = self.sum_plt_itm.plot(self.sum_x, self.sum_y, pen='k')
+                self.sum_plt_data = self.sum_plt_itm.plot(
+                    self.convert_xaxis_for_step_mode(self.sum_x), self.sum_y, stepMode=True, pen='k')
                 if self.subscribe_as_live_plot:
                     self.sum_current_step_line = Pg.create_infinite_line(self.spec_data.x[self.tres_sel_tr_ind][0],
                                                                          pen='r')
@@ -486,8 +488,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
                 if self.t_proj_plt is None:
                     self.t_proj_plt = self.t_proj_plt_itm.plot(t_proj_x, t_proj_y, pen='k')
-                    self.sum_proj_plt_data = self.sum_proj_plt_itm.plot(sum_x, sum_y, pen='b')
-                    self.v_proj_plt = Pg.create_plot_data_item(v_proj_x, v_proj_y, pen='k')
+                    self.sum_proj_plt_data = self.sum_proj_plt_itm.plot(
+                        self.convert_xaxis_for_step_mode(sum_x), sum_y, pen='b', stepMode=True)
+                    self.v_proj_plt = Pg.create_plot_data_item(
+                        self.convert_xaxis_for_step_mode(v_proj_x), v_proj_y, pen='k', stepMode=True)
                     self.v_proj_view_box.addItem(self.v_proj_plt)
 
                     if self.subscribe_as_live_plot:
@@ -798,7 +802,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def get_existing_callbacks_from_main(self):
         """ check wether existing callbacks are still around in the main adn then connect to those. """
-        if Cfg._main_instance is not None:
+        if Cfg._main_instance is not None and self.subscribe_as_live_plot:
             logging.info('TRSLivePlotWindowUi is connecting to existing callbacks in main')
             callbacks = Cfg._main_instance.gui_live_plot_subscribe()
             self.new_data_callback = callbacks[0]
@@ -913,7 +917,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def scan_progress_ui_destroyed(self):
         logging.info('scan progress window was destroyed.')
         self.scan_prog_ui = None
-
 
     ''' fit related '''
 

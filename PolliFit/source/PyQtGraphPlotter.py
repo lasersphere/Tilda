@@ -166,8 +166,8 @@ def create_viewbox():
     return pg.ViewBox()
 
 
-def create_plot_data_item(x, y, pen='b'):
-    return pg.PlotDataItem(x, y, pen=pen)
+def create_plot_data_item(x, y, pen='b', stepMode=False):
+    return pg.PlotDataItem(x, y, pen=pen, stepMode=stepMode)
 
 
 def create_axisitem(orientation):

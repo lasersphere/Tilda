@@ -76,11 +76,14 @@ class XMLImporter(SpecData):
             x_as_volt = False  # assume this is a gauge measurement of the DAC, so set the x axis in DAC registers
             self.dac_calibration_measurement = True
 
-        self.accVolt = scandict['isotopeData']['accVolt']
         self.offset = None
         self.offset_by_dev, self.offset_by_dev_mean, self.offset = self.get_dmm_measurement(scandict, 'offset')
         self.acc_volt_by_dev, self.acc_volt_by_dev_mean, self.accVolt = self.get_dmm_measurement(scandict, 'accVolt')
-        self.accVolt = np.mean(self.accVolt)  # accvolt is assumed to be constant all the time. -> just one float
+        if len(self.accVolt):
+            self.accVolt = np.mean(self.accVolt)  # accvolt is assumed to be constant all the time. -> just one float
+        else:
+            # take the value as set from the gui if dmms did not measure it.
+            self.accVolt = scandict['isotopeData']['accVolt']
 
         self.nrScalers = []  # number of scalers for this track
         self.active_pmt_list = []  # list of scaler/pmt names for this track
