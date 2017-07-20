@@ -121,9 +121,9 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         """
         build artificial data for one track.
         """
-        print(datetime.now(), 'starting to build artificial data for dummy trs')
         track_ind, track_name = scanpars['pipeInternals']['activeTrackNumber']
         trackd = scanpars[track_name]
+        logging.debug('starting to build artificial data for dummy trs for track %s' % track_name)
         print('num of steps: %s num of bins: %s num of bunches: %s num of scans: %s ' %
               (trackd['nOfSteps'], trackd['nOfBins'], trackd['nOfBunches'], trackd['nOfScans']))
         one_scan = self.build_one_scan(scanpars, trackd, track_ind)
@@ -132,7 +132,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
             complete_lis.append(Form.add_header_to23_bit(2, 4, 0, 1))  # means scan started
             complete_lis += one_scan
 
-        print(datetime.now(), 'artificial data for dummy trs completed')
+        logging.debug('artificial data for dummy trs completed')
         self.artificial_build_data = complete_lis
 
     def build_one_scan(self, scanpars, trackd, track_ind):

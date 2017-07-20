@@ -1361,6 +1361,10 @@ class NMPLImagePlotAndSaveSpecData(Node):
         self.rebinned_data = None
         # pass
 
+    def stop(self):
+        logging.info('pipeline was stopped')
+        self.rebin_and_gate_new_data(self.stored_data)
+
     def save(self):
         self.rebin_and_gate_new_data(self.stored_data)
         if self.stored_data is not None:  # maybe abort was pressed before any data was collected.
@@ -1574,8 +1578,7 @@ class NCSSortRawDatatoArray(Node):
         tracks, tracks_num_list = TildaTools.get_number_of_tracks_in_scan_dict(scand)
         if self.scalerArray is None:
             self.scalerArray = Form.create_default_scaler_array_from_scandict(scand)
-        if self.curVoltIndex is None:
-            self.curVoltIndex = 0
+        self.curVoltIndex = 0
         if self.totalnOfScalerEvents is None:
             self.totalnOfScalerEvents = np.full((tracks,), 0)
         self.info_handl.setup()
@@ -1818,12 +1821,9 @@ class NTRSSortRawDatatoArrayFast(Node):
 
     def start(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        if self.curVoltIndex is None:
-            self.curVoltIndex = 0
-        if self.total_num_of_started_scans is None:
-            self.total_num_of_started_scans = 0
-        if self.comp_list is None:
-            self.comp_list = [2 ** j for i, j in enumerate(self.Pipeline.pipeData[track_name]['activePmtList'])]
+        self.curVoltIndex = 0
+        self.total_num_of_started_scans = 0
+        self.comp_list = [2 ** j for i, j in enumerate(self.Pipeline.pipeData[track_name]['activePmtList'])]
         if self.stored_data is None:
             self.stored_data = np.zeros(0, dtype=np.uint32)
         if self.completed_steps_this_track is None:
