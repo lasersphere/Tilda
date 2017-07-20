@@ -6,46 +6,52 @@ Created on 22/04/2016
 Module Description:
 
 Use this class for displaying your data in combination with a prestarted gui.
+This module will run the pipeline etc. to display the data use a LiveDataPlottingUi as gui
 
 """
 
 from datetime import datetime
+import logging
 
 from PyQt5 import QtCore
 
-import Application.Config as Cfg
 import Service.AnalysisAndDataHandling.tildaPipeline as TP
 from Measurement.XMLImporter import XMLImporter as XmlImp
 
 
 class DisplayData:
-    def __init__(self, file, gui, x_as_volt=False):
+    def __init__(self, file, gui, x_as_volt=False, loaded_spec=None):
         self.pipe = None
         self.gui = gui
         self.file = None
-        self.fig = None
         self.spec = None
         self.x_as_volt = x_as_volt
-        self.load_spectra(file)
+        self.load_spectra(file, loaded_spec)
         self.select_pipe()
-        self.feed_loaded_spec()
-        # self.clear_pipe()  # for now i don't want to save here.
+        self.feed_loaded_spec(self.spec)
+        self.gui.gate_data(None, True)
 
-    def load_spectra(self, file):
+    def load_spectra(self, file, loaded_spec=None):
         self.file = file
-        self.spec = XmlImp(file, x_as_volt=self.x_as_volt)
+        if loaded_spec is None:
+            self.spec = XmlImp(file, x_as_volt=self.x_as_volt)
+        else:
+            self.spec = loaded_spec
 
     def select_pipe(self):
         callbacks = (None, None, None) if self.gui is None else self.gui.callbacks
         self.pipe = TP.time_resolved_display(self.file, callbacks)
         self.pipe.start()
-        print('pipeline started')
+        logging.info('pipeline started to display %s ' % self.file)
 
-    def feed_loaded_spec(self):
+    def feed_loaded_spec(self, spec=None):
         start = datetime.now()
-        self.pipe.feed(self.spec)
+        if spec is None and self.spec is not None:
+            self.pipe.feed(self.spec)
+        else:
+            self.pipe.feed(spec)
         stop = datetime.now()
-        print('displaying data took: %s  seconds' % (stop - start))
+        logging.info('displaying data took: %.1f ms' % ((stop - start).microseconds / 1000))
 
     def clear_pipe(self):
         self.pipe.clear()
@@ -59,8 +65,14 @@ class DisplayData:
         # this will activate the window
         window.activateWindow()
 
-    def close_live_plot_win(self):
-        Cfg._main_instance.close_spectra_in_main(self.file)
+    def close_display_data(self):
+        # self.clear_pipe()
+        self.pipe.stop()
+        del self.pipe
+        del self.spec
+        # self.pipe = None
+        # self.spec = None
+        logging.info('closed Displaydata of file %s' % self.file)
 
 
 

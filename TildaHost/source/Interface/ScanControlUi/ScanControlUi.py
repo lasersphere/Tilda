@@ -7,20 +7,20 @@ Created on '29.10.2015'
 """
 
 import functools
+import glob
 import logging
 import os
-import glob
 from copy import copy
 
 from PyQt5 import QtWidgets, QtCore
 
 import Application.Config as Cfg
 import TildaTools
-from Interface.DmmUi.DmmUi import DmmLiveViewUi
+from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes
 from Interface.ScanControlUi.Ui_ScanControl import Ui_MainWindowScanControl
 from Interface.SetupIsotopeUi.SetupIsotopeUi import SetupIsotopeUi
 from Interface.TrackParUi.TrackUi import TrackUi
-from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes
+
 
 class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
     def __init__(self, main_gui):
@@ -32,9 +32,14 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.active_iso = None  # str, key for the self.scan_pars dict in Main
         self.win_title = None
         self.track_wins_dict = {}  # dict containing all open track windows, key is track_num
-        self.dmm_win = None  # here the open dmm_win is stored.
         self.num_of_reps = 1  # how often this scan will be repeated. stored at begin of scan
-        self.go_was_clicked_before = False  # variable to stroe if the user already clicked on 'Go'
+        self.go_was_clicked_before = False  # variable to store if the user already clicked on 'Go'
+
+        self.main_gui = main_gui
+        self.update_win_title()
+        self.enable_go(True)
+        self.enable_config_actions(False)
+        self.plot_window_was_opened_here = False
 
         self.actionErgo.triggered.connect(functools.partial(self.go, True, True))
         self.actionGo_on_file.triggered.connect(self.go_on_file)
@@ -42,39 +47,12 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.actionAdd_Track.triggered.connect(self.add_track)
         self.actionSave_settings_to_database.triggered.connect(self.save_to_db)
         self.action_remove_track.triggered.connect(self.remove_selected_track)
-        self.actionConfigure_voltage_measurement.triggered.connect(self.open_dmm_win)
         self.listWidget.doubleClicked.connect(self.work_on_existing_track)
+        self.actionRe_open_plot_win.triggered.connect(self.reopen_live_pl_win)
 
-        self.main_gui = main_gui
-        self.update_win_title()
-        self.enable_go(True)
-        self.pre_or_during_scan_str_list = ['preScan', 'duringScan']
-        self.pre_or_during_scan_index = 0
+        self.actionRe_open_plot_win.setEnabled(False)
 
         self.show()
-
-    def open_dmm_win(self):
-        if self.active_iso is not None:
-            if self.dmm_win is None:
-                pre_or_during_str = self.pre_or_during_scan_str_list[self.pre_or_during_scan_index]
-                new_name = 'DMM Settings for %s in %s' % (self.active_iso, pre_or_during_str)
-                messagebox = QtWidgets.QMessageBox()
-                messagebox.setIcon(QtWidgets.QMessageBox.Question)
-                messagebox.setText('please choose the settings for: %s' % new_name)
-                messagebox.setStandardButtons(QtWidgets.QMessageBox.Ok)
-                messagebox.exec_()
-                self.dmm_win = DmmLiveViewUi(self, new_name, enable_com=False,
-                                             active_iso=self.active_iso,
-                                             pre_or_during_scan_str=pre_or_during_str)
-            else:
-                self.raise_win_to_front(self.dmm_win)
-
-    def close_dmm_live_view_win(self):
-        self.dmm_win = None
-        if self.pre_or_during_scan_index < len(self.pre_or_during_scan_str_list):
-            self.open_dmm_win()
-        else:
-            self.pre_or_during_scan_index = 0
 
     def raise_win_to_front(self, window):
         # this will remove minimized status
@@ -95,13 +73,25 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
             if self.go_was_clicked_before:
                 self.spinBox_num_of_reps.stepDown()
                 if self.spinBox_num_of_reps.value() > 0:  # keep scanning if reps > 0
-                    self.go(False)
+                    if self.checkBox_reps_as_go.isChecked():
+                        direc = os.path.join(Cfg._main_instance.working_directory, 'sums', '*.xml')
+                        latest_file = max(glob.iglob(direc), key=os.path.getctime)
+                        self.go_on_file(latest_file)
+                    else:
+                        self.go(False)
                 else:  # all scans are done here
                     self.spinBox_num_of_reps.setValue(self.num_of_reps)
                     self.go_was_clicked_before = False
         self.actionErgo.setEnabled(enable)
         # go on file can also be done without selecting an isotope before:
         self.actionGo_on_file.setEnabled(enable_bool)
+        self.actionSetup_Isotope.setEnabled(enable_bool)
+
+    def enable_config_actions(self, enable_bool):
+        """ this will enable/disable the config elements """
+        self.actionAdd_Track.setEnabled(enable_bool)
+        self.actionSave_settings_to_database.setEnabled(enable_bool)
+        self.action_remove_track.setEnabled(enable_bool)
 
     def go(self, read_spin_box=True, ergo=True):
         """
@@ -118,38 +108,40 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         if ergo and acq_on_file_in_dict:
             # if its an ergo an continuedAcquisitonOnFile is already written to scandict, this must be deleted:
             Cfg._main_instance.scan_pars[self.active_iso]['isotopeData'].pop('continuedAcquisitonOnFile')
-        self.main_gui.open_live_plot_win()
+        self.wrap_open_live_plot_win()
         Cfg._main_instance.start_scan(self.active_iso)
 
-    def go_on_file(self):
+    def go_on_file(self, filename=None):
         """
         starts a measurement with scan parameters from an existing file which is selected via a pop up file dialog,
         adding up on the already accumulated data in this file.
         """
         parent = QtWidgets.QFileDialog(self)
         direc = os.path.join(Cfg._main_instance.working_directory, 'sums', '*.xml')
-        # pre select the latest file
-        latest_file = max(glob.iglob(direc), key=os.path.getctime)
-        filename, ok = QtWidgets.QFileDialog.getOpenFileName(
-            parent, 'select an existing .xml file', latest_file, '*.xml')
-        if filename:
-            print('selected file: %s' % filename)
-            scan_dict, e_tree_ele = TildaTools.scan_dict_from_xml_file(filename)
-            scan_dict['isotopeData']['continuedAcquisitonOnFile'] = os.path.split(filename)[1]
-            for key, val in scan_dict.items():
-                if 'track' in key:
-                    if 'trigger' in val:
-                        trig_type_str = val['trigger']['type']
-                        if 'TriggerTypes.' in trig_type_str:  # needed for older versions
-                            trig_type_str = trig_type_str.split('.')[1]
-                        try:
-                            val['trigger']['type'] = getattr(TriggerTypes, trig_type_str)
-                        except Exception as e:
-                            print('error: %s, could not do: getattr(TriggerTypes, %s) ' % (e, val['trigger']['type']))
-            self.active_iso = Cfg._main_instance.add_iso_to_scan_pars_no_database(scan_dict)
-            self.update_track_list()
-            self.update_win_title()
-            self.go(ergo=False)
+        if os.path.isdir(os.path.split(direc)[0]):
+            # pre select the latest file
+            if filename is None or filename is False:
+                latest_file = max(glob.iglob(direc), key=os.path.getctime)
+                filename, ok = QtWidgets.QFileDialog.getOpenFileName(
+                    parent, 'select an existing .xml file', latest_file, '*.xml')
+            if filename:
+                logging.info('continuing acquisition on: %s' % filename)
+                scan_dict, e_tree_ele = TildaTools.scan_dict_from_xml_file(filename)
+                scan_dict['isotopeData']['continuedAcquisitonOnFile'] = os.path.split(filename)[1]
+                for key, val in scan_dict.items():
+                    if 'track' in key:
+                        if 'trigger' in val:
+                            trig_type_str = val['trigger']['type']
+                            if 'TriggerTypes.' in trig_type_str:  # needed for older versions
+                                trig_type_str = trig_type_str.split('.')[1]
+                            try:
+                                val['trigger']['type'] = getattr(TriggerTypes, trig_type_str)
+                            except Exception as e:
+                                print('error: %s, could not do: getattr(TriggerTypes, %s) ' % (e, val['trigger']['type']))
+                self.active_iso = Cfg._main_instance.add_iso_to_scan_pars_no_database(scan_dict)
+                self.update_track_list()
+                self.update_win_title()
+                self.go(ergo=False)
 
     def add_track(self):
         """
@@ -182,7 +174,10 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         track_number = int(track_name[5:])
         logging.debug('working on track' + str(track_number))
         try:
-            self.track_wins_dict[str(track_number)] = TrackUi(self, track_number, self.active_iso, self.main_gui)
+            if self.track_wins_dict.get(str(track_number), None) is not None:
+                self.raise_win_to_front(self.track_wins_dict[str(track_number)])
+            else:
+                self.track_wins_dict[str(track_number)] = TrackUi(self, track_number, self.active_iso, self.main_gui)
         except Exception as e:
             print(e)
 
@@ -216,10 +211,13 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         -> Blocks other executions
         """
         if self.active_iso:  # first remove the before selected isotope from the scan pars
+            self.enable_config_actions(False)
             Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
             self.active_iso = None
         logging.debug('setting up isotope')
         SetupIsotopeUi(self)
+        if self.active_iso:
+            self.enable_config_actions(True)
         self.update_track_list()
         self.update_win_title()
         Cfg._main_instance.send_state()  # request state from main for enabling go
@@ -241,11 +239,24 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
             val.close()
         track_win_copy = None
 
+    def wrap_open_live_plot_win(self):
+        self.plot_window_was_opened_here = True
+        self.main_gui.open_live_plot_win()
+
+    def enable_reopen_plot_win(self):
+        """ if a live plot window was opened from within this scan control window, allow to reopen it. """
+        self.actionRe_open_plot_win.setEnabled(self.plot_window_was_opened_here)
+
+    def reopen_live_pl_win(self):
+        self.main_gui.open_live_plot_win()
+        self.actionRe_open_plot_win.setEnabled(False)
+
     def closeEvent(self, event):
         """
         unsubscribe from parent gui when closed
         """
         if self.active_iso:
+            Cfg._main_instance.abort_scan = True
             Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
         logging.info('closing scan win ' + str(self.win_title))
         self.close_track_wins()

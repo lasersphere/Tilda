@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>341</width>
-    <height>216</height>
+    <width>376</width>
+    <height>226</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -54,6 +54,16 @@
       </item>
      </layout>
     </item>
+    <item>
+     <widget class="QCheckBox" name="checkBox_reps_as_go">
+      <property name="layoutDirection">
+       <enum>Qt::RightToLeft</enum>
+      </property>
+      <property name="text">
+       <string>repetitions as go</string>
+      </property>
+     </widget>
+    </item>
    </layout>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -77,9 +87,9 @@
    <addaction name="separator"/>
    <addaction name="action_remove_track"/>
    <addaction name="separator"/>
-   <addaction name="actionConfigure_voltage_measurement"/>
-   <addaction name="separator"/>
    <addaction name="actionSave_settings_to_database"/>
+   <addaction name="separator"/>
+   <addaction name="actionRe_open_plot_win"/>
   </widget>
   <action name="actionErgo">
    <property name="text">
@@ -123,11 +133,6 @@
     <string>remove track</string>
    </property>
   </action>
-  <action name="actionConfigure_voltage_measurement">
-   <property name="text">
-    <string>configure voltage measurement</string>
-   </property>
-  </action>
   <action name="actionGo_on_file">
    <property name="text">
     <string>go on file</string>
@@ -137,6 +142,11 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+G</string>
+   </property>
+  </action>
+  <action name="actionRe_open_plot_win">
+   <property name="text">
+    <string>re open plot win</string>
    </property>
   </action>
  </widget>

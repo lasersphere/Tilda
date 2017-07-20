@@ -194,6 +194,9 @@
     <addaction name="actionSimple_Counter"/>
     <addaction name="actionSet_Laser_Frequency"/>
     <addaction name="actionSet_acceleration_voltage"/>
+    <addaction name="actionPulse_pattern_generator"/>
+    <addaction name="actionPost_acceleration_power_supply_control"/>
+    <addaction name="actionDigital_Multimeters"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -205,9 +208,8 @@
     <property name="title">
      <string>Configure</string>
     </property>
-    <addaction name="actionPost_acceleration_power_supply_control"/>
-    <addaction name="actionDigital_Multimeters"/>
-    <addaction name="actionPulse_pattern_generator"/>
+    <addaction name="actionShow_scan_finished_win"/>
+    <addaction name="actionPre_scan_timeout"/>
    </widget>
    <widget class="QMenu" name="menuAnalysis">
     <property name="title">
@@ -352,6 +354,22 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+G</string>
+   </property>
+  </action>
+  <action name="actionShow_scan_finished_win">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>show scan finished win</string>
+   </property>
+  </action>
+  <action name="actionPre_scan_timeout">
+   <property name="text">
+    <string>pre scan timeout</string>
    </property>
   </action>
  </widget>

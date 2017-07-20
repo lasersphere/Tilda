@@ -11,14 +11,18 @@ import os
 import platform
 import subprocess
 from copy import deepcopy
+import gc
+import functools
 
 from PyQt5 import QtCore
 from PyQt5 import QtGui
 from PyQt5 import QtWidgets
+from PyQt5.QtCore import QTimer, Qt
 
 import Application.Config as Cfg
 import MPLPlotter as MPlPlotter
 from Gui.MainUi import MainUi as PolliMainUi
+from Interface.DialogsUi.ScanCompleteDialUi import ScanCompleteDialUi
 from Interface.DmmUi.DmmUi import DmmLiveViewUi
 from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
 from Interface.MainUi.Ui_Main import Ui_TildaMainWindow
@@ -53,6 +57,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.pollifit_win = None
         self.tetris = None  # pssst dont tell
         self.pulse_pattern_win = None
+        self.scan_complete_win = None
+        self.show_scan_compl_win = True
 
         self.actionWorking_directory.triggered.connect(self.choose_working_dir)
         self.actionVersion.triggered.connect(self.open_version_win)
@@ -65,6 +71,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionDigital_Multimeters.triggered.connect(self.open_dmm_live_view_win)
         self.actionPolliFit.triggered.connect(self.open_pollifit_win)
         self.actionPulse_pattern_generator.triggered.connect(self.open_pulse_pattern_win)
+        self.actionShow_scan_finished_win.triggered.connect(self.show_scan_finished_change)
+        self.actionPre_scan_timeout.triggered.connect(self.set_pre_scan_timeout)
 
         """ connect double clicks on labels:"""
         self.label_workdir_set.mouseDoubleClickEvent = self.workdir_dbl_click
@@ -81,7 +89,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
         self.subscribe_to_main()
         self.show()
-
 
     ''' connected actions '''
     def workdir_dbl_click(self, event):
@@ -103,6 +110,21 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         Cfg._main_instance.gui_status_subscribe(self.main_ui_status_call_back_signal)
         self.main_ui_status_call_back_signal.connect(self.update_status)
         Cfg._main_instance.send_state()
+        Cfg._main_instance.info_warning_string_main_signal.connect(self.info_from_main)
+
+    def info_from_main(self, info_str):
+        """ handle info strings which are emitted from the main """
+        # print('----------info from main: %s ---------------' % info_str)
+        if info_str == 'scan_complete':
+            self.open_scan_complete_win()
+        elif info_str == 'starting_scan':
+            if self.scan_complete_win is not None:
+                self.scan_complete_win.close()
+        elif info_str == 'pre_scan_timeout':
+            info = QtWidgets.QMessageBox.information(
+                self, 'Warning!', '-------- Warning -------\n '
+                               'the pre scan measurment did not finish within the given time!\n'
+                               'Press ok, to proceed with scan.')
 
     def unsubscribe_from_main(self):
         """
@@ -154,18 +176,30 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         if ok:
             Cfg._main_instance.acc_volt_changed(acc_volt)
 
-    def load_spectra(self):
+    def load_spectra(self, file=None, loaded_spec=None, sum_sc_tr=None):
         if Cfg._main_instance.working_directory is None:
             if self.choose_working_dir() is None:
                 return None
-        file = QtWidgets.QFileDialog.getOpenFileName(
-            self, 'choose an xml file', Cfg._main_instance.working_directory, '*.xml')[0]
+        if not isinstance(file, str):
+            file = QtWidgets.QFileDialog.getOpenFileName(
+                self, 'choose an xml file', Cfg._main_instance.working_directory, '*.xml')[0]
         if file:
             if file not in self.file_plot_wins.keys():
-                self.open_file_plot_win(file)
-                Cfg._main_instance.load_spectra_to_main(file, self.file_plot_wins[file])
+                self.open_file_plot_win(file, sum_sc_tr=sum_sc_tr)
+                Cfg._main_instance.load_spectra_to_main(file, self.file_plot_wins[file], loaded_spec=loaded_spec)
             else:
                 self.raise_win_to_front(self.file_plot_wins[file])
+
+    def set_pre_scan_timeout(self):
+        """ set the pre_scan timeout """
+        par = QtWidgets.QInputDialog(self)
+        timeout_s, ok = QtWidgets.QInputDialog.getDouble(
+            par, 'configure pre scan timeout',
+            'The pre scan timeout is the maximum time for any pre scan measurement.\n'
+            'If not all measurements are completed within this time, the measurement is started anyhow.',
+            Cfg._main_instance.pre_scan_measurement_timeout_s.seconds)
+        if ok:
+            Cfg._main_instance.pre_scan_timeout_changed(timeout_s)
 
     ''' formatting '''
 
@@ -188,6 +222,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 ret += ' \n'
             return ret
 
+    ''' configure '''
+    def show_scan_finished_change(self, show_win_bool):
+        self.show_scan_compl_win = show_win_bool
+        self.actionShow_scan_finished_win.setChecked(show_win_bool)
+
     ''' open windows'''
     def open_version_win(self):
         VersionUi()
@@ -199,7 +238,10 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.act_scan_wins.append(ScanControlUi(self))
 
     def open_post_acc_win(self):
-        self.post_acc_win = PostAccControlUi(self)
+        if self.post_acc_win is None:
+            self.post_acc_win = PostAccControlUi(self)
+        else:
+            self.raise_win_to_front(self.post_acc_win)
 
     def open_simple_counter_win(self):
         sc_dial = SimpleCounterDialogUi()  # blocking!
@@ -215,15 +257,17 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def open_live_plot_win(self):
         if self.live_plot_win is None:
-            self.live_plot_win = TRSLivePlotWindowUi(parent=self)
+            self.live_plot_win = TRSLivePlotWindowUi()
+            self.live_plot_win.destroyed.connect(self.close_live_plot_win)
         else:
             self.raise_win_to_front(self.live_plot_win)
             self.live_plot_win.reset()
 
-    def open_file_plot_win(self, file):
+    def open_file_plot_win(self, file, sum_sc_tr=None):
         self.file_plot_wins[file] = TRSLivePlotWindowUi(full_file_path=file,
-                                                        parent=self,
-                                                        subscribe_as_live_plot=False)
+                                                        subscribe_as_live_plot=False,
+                                                        sum_sc_tr=sum_sc_tr)
+        self.file_plot_wins[file].destroyed.connect(functools.partial(self.close_file_plot_win, file))
 
     def open_pollifit_win(self):
         if self.pollifit_win is None:
@@ -264,6 +308,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         else:
             self.raise_win_to_front(self.pulse_pattern_win)
 
+    def open_scan_complete_win(self):
+        if self.show_scan_compl_win:
+            if self.scan_complete_win is None:
+                self.scan_complete_win = ScanCompleteDialUi(self)
+            self.raise_win_to_front(self.scan_complete_win)
 
     ''' close windows '''
     def scan_control_win_closed(self, win_ref):
@@ -279,17 +328,33 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.dmm_live_view_win = None
 
     def close_live_plot_win(self):
+        del self.live_plot_win
         self.live_plot_win = None
+        gc.collect()
+
+        for scan_ctrl_win in self.act_scan_wins:
+            scan_ctrl_win.enable_reopen_plot_win()
+        logging.info('closed live plot window')
 
     def close_pollifit_win(self):
         self.pollifit_win = None
 
     def close_file_plot_win(self, file):
-        self.file_plot_wins.pop(file)
+        logging.debug('removing file plot window from MainUi: %s' % file)
+        if Cfg._main_instance is not None:
+            Cfg._main_instance.close_spectra_in_main(file)
+
+        del self.file_plot_wins[file]
+        gc.collect()
+        logging.debug('remaining file plot wins are: ' + str(self.file_plot_wins))
 
     def close_pulse_pattern_win(self):
         if self.pulse_pattern_win:
             self.pulse_pattern_win = None
+
+    def close_scan_complete_win(self):
+        if self.scan_complete_win:
+            self.scan_complete_win = None
 
     def closeEvent(self, *args, **kwargs):
         for win in self.act_scan_wins:

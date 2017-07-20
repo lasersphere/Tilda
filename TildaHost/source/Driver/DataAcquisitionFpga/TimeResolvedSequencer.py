@@ -13,9 +13,10 @@ import logging
 import Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig as TrsCfg
 from Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
 from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
+from Driver.DataAcquisitionFpga.OutBits import Outbits
 
 
-class TimeResolvedSequencer(Sequencer, MeasureVolt):
+class TimeResolvedSequencer(Sequencer, MeasureVolt, Outbits):
     def __init__(self):
         """
         initiates the FPGA, resetted and running.
@@ -73,7 +74,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         self.ReadWrite(self.config.nOfBunches, nofbunches)
         return self.checkFpgaStatus()
 
-    def setAllScanParameters(self, scanpars, track_num):
+    def setAllScanParameters(self, scanpars, track_num, pre_post_scan_meas_str):
         """
         Use the dictionary format of act_scan_wins, to set all parameters at once.
          Therefore Sequencer must be in idle state
@@ -83,16 +84,17 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         track_name = 'track' + str(track_num)
         if self.changeSeqState(self.config.seqStateDict['idle']):
             if (self.setMCSParameters(scanpars, track_name) and
-                    self.setmeasVoltParameters(scanpars['measureVoltPars']['preScan']) and
+                    self.setmeasVoltParameters(scanpars[track_name]['measureVoltPars'][pre_post_scan_meas_str]) and
                     self.setTrackParameters(scanpars[track_name]) and
                     self.set_trigger(scanpars[track_name].get('trigger', {})) and
-                    self.selectKepcoOrScalerScan(scanpars['isotopeData']['type'])):
+                    self.selectKepcoOrScalerScan(scanpars['isotopeData']['type']) and
+                    self.set_outbits_cmd(scanpars[track_name]['outbits'], pre_post_scan_meas_str)):
                 return self.checkFpgaStatus()
         return False
 
     '''perform measurements:'''
 
-    def measureOffset(self, scanpars, track_num):
+    def measureOffset(self, scanpars, track_num, pre_post_scan_meas_str):
         """
         set all scanparameters at the fpga and go into the measure Offset state.
         What the Fpga does then to measure the Offset is:
@@ -105,7 +107,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         Note: not included in Version 1 !
         :return:bool, True if successfully changed State
         """
-        if self.setAllScanParameters(scanpars, track_num):
+        if self.setAllScanParameters(scanpars, track_num, pre_post_scan_meas_str):
             return self.changeSeqState(self.config.seqStateDict['measureOffset'])
 
     def measureTrack(self, scanpars, track_num):
@@ -116,7 +118,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         In parallel, host has to read the data from the host sided buffer in parallel.
         :return:bool, True if successfully changed State
         """
-        if self.setAllScanParameters(scanpars, track_num):
+        if self.setAllScanParameters(scanpars, track_num, 'duringScan'):
             return self.changeSeqState(self.config.seqStateDict['measureTrack'])
         else:
             logging.debug('values could not be set')

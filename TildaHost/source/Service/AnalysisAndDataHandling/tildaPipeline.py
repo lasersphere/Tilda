@@ -50,10 +50,8 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     always feed raw data.
     """
     if live_plot_callbacks is None:
-        live_plot_callbacks = (None, None, None)
+        live_plot_callbacks = (None, None, None, None)
     start = Node()
-    maintenance = start.attach(TN.NMPLCloseFigOnClear())
-    # maintenance = maintenance.attach(TN.NAddWorkingTimeOnClear(True))
 
     pipe = Pipeline(start)
 
@@ -94,6 +92,8 @@ def CsPipe(initialScanPars=None, callback_sig=None, live_plot_callbacks=None):
     always feed raw data.
     """
     start = Node()
+    if live_plot_callbacks is None:
+        live_plot_callbacks = (None, None, None, None)
 
     pipe = Pipeline(start)
     # start = start.attach(SN.NPrint())
@@ -138,10 +138,14 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False,
     start = Node()
 
     maintenance = start.attach(TN.NAddWorkingTimeOnClear(True))
+    if live_plot_callbacks is None:
+        live_plot_callbacks = (None, None, None, None)
 
     pipe = Pipeline(start)
     pipe.pipeData = initPipeData(initial_scan_pars)
-    dmm_names = sorted(list(pipe.pipeData['measureVoltPars']['duringScan']['dmms'].keys()))
+
+    # kepco scan should always just have one track
+    dmm_names = sorted(list(pipe.pipeData['track0']['measureVoltPars']['duringScan']['dmms'].keys()))
     #
     # raw data for kepco -> dict -> cannot be saved with hdf5 -> do not save raw data
     # walk = start.attach(TN.NSaveRawData())
@@ -173,10 +177,10 @@ def initPipeData(initialScanPars):
     #                              trackDict['dacStepSize18Bit'],
     #                              trackDict['nOfSteps'])))
 
-    pipeData['pipeInternals']['curVoltInd'] = 0
-    pipeData['isotopeData']['isotopeStartTime'] = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
-    xml_file_name = TildaTools.createXmlFileOneIsotope(pipeData)
-    pipeData['pipeInternals']['activeXmlFilePath'] = xml_file_name
+    # pipeData['pipeInternals']['curVoltInd'] = 0
+    # pipeData['isotopeData']['isotopeStartTime'] = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+    # xml_file_name = TildaTools.createXmlFileOneIsotope(pipeData)
+    # pipeData['pipeInternals']['activeXmlFilePath'] = xml_file_name
 
     # in the past an extra projection file was created. but for now,
     #  the projection should stay within the .xml file for this scan.
@@ -275,12 +279,14 @@ def time_resolved_display(filepath, liveplot_callbacks):
     start = Node()
 
     pipe = Pipeline(start)
+    if liveplot_callbacks is None:
+        liveplot_callbacks = (None, None, None, None)
 
     pipe.pipeData['pipeInternals'] = {}
 
     pipe.pipeData['pipeInternals']['activeXmlFilePath'] = filepath
-    scan_dict, xml_etree = TildaTools.scan_dict_from_xml_file(filepath, pipe.pipeData)
-    pipe.pipeData = scan_dict
+    # scan_dict, xml_etree = TildaTools.scan_dict_from_xml_file(filepath, pipe.pipeData)
+    # pipe.pipeData = scan_dict
     pipe.pipeData['pipeInternals']['activeTrackNumber'] = (0, 'track0')
 
     # path of file is used mainly for the window title.

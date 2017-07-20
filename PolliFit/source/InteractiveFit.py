@@ -134,6 +134,13 @@ class InteractiveFit(object):
         
     def setPar(self, i, par):
         self.fitter.setPar(i, par)
+        if self.fitter.npar[i] in ['softwGatesWidth', 'softwGatesDelayList', 'midTof']:
+            # one of the gate parameter was changed -> gate data again
+            # then data needs also to be gated again.
+            gates_tr0 = TiTs.calc_soft_gates_from_db_pars(self.fitter.par[-3], self.fitter.par[-2], self.fitter.par[-1])
+            softw_gate_all_tr = [gates_tr0 for each in self.fitter.meas.cts]
+            self.fitter.meas.softw_gates = softw_gate_all_tr
+            self.fitter.meas = TiTs.gate_specdata(self.fitter.meas)
         pars = self.fitter.par
         plot.clear()
         if self.fitter_m is not None:

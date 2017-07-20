@@ -27,11 +27,11 @@ class Sequencer(FPGAInterfaceHandling):
         """
         if nOfreqEle <= 0:
             self.ConfigureU32FifoHostBuffer(self.config.transferToHost['ref'], self.config.transferToHostReqEle)
-            print('Size of Host Sided Buffer has been set to: ' + str(self.config.transferToHostReqEle)
-                  + ' numbers of 32-Bit Elements')
+            logging.debug('Size of Host Sided Buffer has been set to: ' + str(self.config.transferToHostReqEle)
+                         + ' numbers of 32-Bit Elements')
         elif nOfreqEle > 0:
             self.ConfigureU32FifoHostBuffer(self.config.transferToHost['ref'], nOfreqEle)
-            print('Size of Host Sided Buffer has been set to: ' + str(nOfreqEle) + ' numbers of 32-Bit Elements')
+            logging.debug('Size of Host Sided Buffer has been set to: ' + str(nOfreqEle) + ' numbers of 32-Bit Elements')
         return self.checkFpgaStatus()
 
     def clearHostBuffer(self, nOfEle=-1):
@@ -82,10 +82,10 @@ class Sequencer(FPGAInterfaceHandling):
         nOfScans: long, Number of Loops over this Track
         invertScan: bool, if True invert Scandirection on every 2nd Scan
         postAccOffsetVoltControl: ubyte, Enum to determine which heinzinger will be active
-        waitForKepco25nsTicks: uint, time interval after the voltage has been set and the unit waits
-         before the scalers are activated. Unit is 25ns
-        waitAfterReset25nsTicks: uint, time interval after the voltage has been reseted and the unit waits
-         before the scalers are activated. Unit is 25ns
+        waitForKepco1us: u32b, time interval after the voltage has been set and the unit waits
+         before the scalers are activated. Unit is 1us
+        waitAfterReset1us: u32b, time interval after the voltage has been reseted and the unit waits
+         before the scalers are activated. Unit is 1us
         :return: True if self.status == self.statusSuccess, else False
         """
 
@@ -94,15 +94,15 @@ class Sequencer(FPGAInterfaceHandling):
         self.ReadWrite(self.config.nOfSteps, trackPars['nOfSteps'])
         self.ReadWrite(self.config.nOfScans, trackPars['nOfScans'])
         self.ReadWrite(self.config.invertScan, trackPars['invertScan'])
-        self.ReadWrite(self.config.waitForKepco25nsTicks, trackPars['waitForKepco25nsTicks'])
-        self.ReadWrite(self.config.waitAfterReset25nsTicks, trackPars['waitAfterReset25nsTicks'])
+        self.ReadWrite(self.config.waitForKepcous, trackPars.get('waitForKepco1us', 50))
+        self.ReadWrite(self.config.waitAfterResetus, trackPars.get('waitAfterReset1us', 500))
         # self.setPostAccelerationControlState(trackPars['postAccOffsetVoltControl'], True)
         return self.checkFpgaStatus()
 
     def selectKepcoOrScalerScan(self, typestr):
         logging.debug('type of scan: ' + typestr)
         if typestr == 'kepco':
-            print('this is a kepco scan')
+            logging.info('this is a kepco scan')
             self.ReadWrite(self.config.VoltOrScaler, True)
         else:
             self.ReadWrite(self.config.VoltOrScaler, False)
@@ -120,7 +120,7 @@ class Sequencer(FPGAInterfaceHandling):
                 timeout = 0
                 while blocking and timeout < 30:
                     done, currentState, desired_state = self.getPostAccelerationControlStateIsDone(desiredState)
-                    print('currentState:', currentState, '\tdesiredState: ', desiredState)
+                    logging.info('currentState: %s\tdesiredState: %s' % (currentState, desiredState))
                     if done:
                         return currentState
                     else:
@@ -159,8 +159,8 @@ class Sequencer(FPGAInterfaceHandling):
             logging.debug('fpga states successfully changed to: %s <-> %s' % (curState, state_name))
             return self.checkFpgaStatus()
         elif tries == maxTries:
-            print('could not Change to State ' + str(cmd) + ' within ' + str(maxTries) +
-                  ' tries, Current State is: ' + str(curState))
+            logging.warning('could not Change to State ' + str(cmd) + ' within ' + str(maxTries) +
+                            ' tries, Current State is: ' + str(curState))
             return False
         elif curState in [self.config.seqStateDict['measureTrack'],
                           self.config.seqStateDict['init']]:
@@ -177,7 +177,7 @@ class Sequencer(FPGAInterfaceHandling):
                 else:
                     return self.changeSeqState(cmd, tries + 1, requestedState)
             except Exception as e:
-                print('error while changing state:', e, 'cmd: ', cmd, 'curState: ', curState)
+                logging.error('error while changing state: %s cmd: %s curState: %s' % (e, cmd, curState))
 
     def abort(self):
         """
@@ -201,7 +201,7 @@ class Sequencer(FPGAInterfaceHandling):
         halts the Mesaruement after one loop is finished
         :return: True if success
         """
-        print('setting halt to: ', val)
+        logging.info('setting halt to: %s' % val)
         self.ReadWrite(self.config.halt, val)
         return self.checkFpgaStatus()
 
@@ -213,7 +213,7 @@ class Sequencer(FPGAInterfaceHandling):
         """
         if pause_bool is None:
             pause_bool = not self.pause_bool
-        print('pausing the fpga, pause is: %s' % pause_bool)
+        logging.info('pausing the fpga, pause is: %s' % pause_bool)
         self.ReadWrite(self.config.pause, pause_bool)
         stat = self.checkFpgaStatus()
         if stat:
@@ -237,12 +237,18 @@ class Sequencer(FPGAInterfaceHandling):
             self.ReadWrite(self.config.selectTrigger, trigger_dict.get('trigInputChan', 0))
             self.ReadWrite(self.config.trigDelay10ns, int(trigger_dict.get('trigDelay10ns', 0)))
             trig_num = ['either', 'rising', 'falling'].index(trigger_dict.get('trigEdge', 'rising'))
-            print('triggernum is: ', trig_num)
+            logging.debug('triggernum is: %s' % trig_num)
             self.ReadWrite(self.config.triggerEdge, trig_num)
             return self.checkFpgaStatus()
         elif trigger_type is TiTs.single_hit:
             trig_num = ['either', 'rising', 'falling'].index(trigger_dict.get('trigEdge', 'rising'))
-            print('triggernum is: ', trig_num)
+            logging.debug('triggernum is: %s' % trig_num)
+            self.ReadWrite(self.config.triggerEdge, trig_num)
+            self.ReadWrite(self.config.selectTrigger, trigger_dict.get('trigInputChan', 0))
+            return self.checkFpgaStatus()
+        elif trigger_type is TiTs.sweep:
+            trig_num = ['either', 'rising', 'falling'].index(trigger_dict.get('trigEdge', 'rising'))
+            logging.debug('triggernum is: %s' % trig_num)
             self.ReadWrite(self.config.triggerEdge, trig_num)
             self.ReadWrite(self.config.selectTrigger, trigger_dict.get('trigInputChan', 0))
             return self.checkFpgaStatus()

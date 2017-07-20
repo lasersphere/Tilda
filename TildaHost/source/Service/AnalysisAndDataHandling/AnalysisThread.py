@@ -7,6 +7,7 @@ Module Description:  Module that will hold the main Analysis Thread for each sca
 """
 import sys
 import time
+import logging
 from copy import deepcopy
 from datetime import datetime
 
@@ -41,7 +42,7 @@ class AnalysisThread(QThread):
         new_data_signal.connect(self.new_data)
 
     def run(self):
-        print('thread running')
+        logging.info('analysis thread running now')
         while not self.stop_analysis_bool or len(self.raw_data_storage) or any(self.dmm_dict_list):
             if len(self.raw_data_storage):
                 self.mutex.lock()
@@ -67,8 +68,8 @@ class AnalysisThread(QThread):
         if self.clear_after_finish:
             # this means saving! -> finish analysis of all stored elements,
             # before clearing the pipe!
-            print('will save now!')
-            self.pipeline.clear()
+            logging.info('will save now!')
+            self.pipeline.save()
             # self.sleep(5)  # simulate saving
         # print('done with analysis')
         self.stop_analysis_bool = False
@@ -84,7 +85,7 @@ class AnalysisThread(QThread):
     def prepare_track_in_pipe(self, track_num, track_index):
         track_name = 'track' + str(track_num)
         self.pipeline.pipeData['pipeInternals']['activeTrackNumber'] = (track_index, track_name)
-        print('starting pipeline: ', self.pipeline)
+        logging.info('starting pipeline: ' + str(self.pipeline))
         self.pipeline.start()
 
     def new_data(self, data, dmm_dict):

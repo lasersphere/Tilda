@@ -78,6 +78,8 @@ def convert_scandict_v104_to_v106(scandict):
     """
     converts a scandictionary created in Version 1.04 to the new format as it should be in v1.06
     was needed for working with the collected .raw data from 29.07.2015.
+
+    not supported anymore 20.06.2017
     """
     # trackdft = draft_scan_dict['track0']
     track = scandict['track0']
@@ -314,16 +316,34 @@ def time_rebin_all_spec_data(full_data, software_bin_width_ns, track=-1):
 
 def rebin_single_track_spec_data(tr_data, return_data, bin_width_10ns):
     """
-    by rolling the array as often as there are bins to comine and summing every roll,
+    by rolling the array as often as there are bins to combine and summing every roll,
     the desired indices will hold the sum.
     """
+    start_t = dt.now()
     bins_to_combine = int(bin_width_10ns / 10)
-    bin_ind = np.arange(0, tr_data.shape[-1] // bins_to_combine * bins_to_combine, bins_to_combine)
-    new_tr_data = deepcopy(tr_data)
-    for reps in range(bins_to_combine - 1):
-        new_tr_data += np.roll(tr_data, -(reps + 1), axis=2)
-    return_data = new_tr_data[:, :, bin_ind]
-    return return_data
+    scaler, steps, time_bins = tr_data.shape
+    total_elements = scaler * steps * time_bins
+    n_time_bins = time_bins // bins_to_combine
+    max_bin = n_time_bins * bins_to_combine
+    # time_bins // n_time_bins might have a remainder
+    # -> time axis of the tr_data cannot be split into the given number (/width) of time bins without a remainder
+    # cut off remaining bins.
+    tr_data = tr_data[:, :, :max_bin]  # cut of last time steps, if it max_bin is not equal the end
+    # expand the matrix along the time axis with the given number of bins and take the sum over this axis:
+    tr_data = tr_data.reshape(scaler, steps, n_time_bins, time_bins // n_time_bins).sum(3)
+
+    # old:
+    # bins_to_combine = int(bin_width_10ns / 10)
+    # bin_ind = np.arange(0, tr_data.shape[-1] // bins_to_combine * bins_to_combine, bins_to_combine)
+    # new_tr_data = deepcopy(tr_data)
+    # for reps in range(bins_to_combine - 1):  # this means i have to hold the array ten times or so in ram :(
+    #     new_tr_data += np.roll(tr_data, -(reps + 1), axis=2)
+    # return_data = new_tr_data[:, :, bin_ind]
+
+    elapsed = dt.now() - start_t
+    # logging.debug('done with rebinning of track with %s elements or %.1f MB after %.1f ms:'
+    #               % (total_elements, total_elements * 32 / 8 * 10 ** -6, elapsed.microseconds / 1000))
+    return tr_data
 
 
 def time_axis_rebin(tr_ind, original_t_axis_10ns_res, softw_bin_width):

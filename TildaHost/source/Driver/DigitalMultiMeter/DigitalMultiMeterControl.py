@@ -16,15 +16,20 @@ trigger source
 
 """
 
+import logging
+from copy import deepcopy
+
 from Driver.DigitalMultiMeter.Agilent import Agilent
 from Driver.DigitalMultiMeter.DMMdummy import DMMdummy
 from Driver.DigitalMultiMeter.NI4071 import Ni4071
 from Driver.DigitalMultiMeter.AgilentM918x import AgilentM918x
+from Driver.DigitalMultiMeter.Agilent3458A import Agilent3458A
 
 
 class DMMControl:
     def __init__(self):
-        self.types = ['Ni4071', 'dummy', 'Agilent_34461A', 'Agilent_34401A', 'Agilent_M918x']
+        self.types = ['Ni4071', 'dummy', 'Agilent_34461A',
+                      'Agilent_34401A', 'Agilent_M918x', 'Agilent_3458A']
         self.dmm = {}
         # dict for storing all active dmm objects.
         # key is the name of the device, which is the type_address
@@ -67,7 +72,13 @@ class DMMControl:
         elif type_str == 'Agilent_M918x':
             try:
                 dev = AgilentM918x(address_str=address)
-                name = dev.name # 'type_addr'
+                name = dev.name  # 'type_addr'
+            except Exception as e:
+                print('starting dmm did not work exception is:', e)
+        elif type_str == 'Agilent_3458A':
+            try:
+                dev = Agilent3458A(address_str=address)
+                name = dev.name  # 'type_addr'
             except Exception as e:
                 print('starting dmm did not work exception is:', e)
         if dev is not None:
@@ -83,8 +94,8 @@ class DMMControl:
         :param config_dict: dict, dictionary for the given dmm
         :param reset_dev: bool, True for resetting the device before configuration
         """
-        print('active dmms:', self.dmm)
-        print('loading from config: ', config_dict)
+        logging.info('active dmms: ' + str(self.dmm))
+        logging.debug('loading from config: ' + str(config_dict))
         self.dmm[dmm_name].load_from_config_dict(config_dict, reset_dev)
 
     def start_measurement(self, dmm_name):
@@ -182,8 +193,6 @@ class DMMControl:
         else:
             return None
 
-    # maybe feed this to pipeline directly later on.
-
     def get_active_dmms(self):
         """
         function to return a dict of all active dmms
@@ -205,6 +214,10 @@ class DMMControl:
                 self.dmm[dmm_name].send_software_trigger()
         else:
             self.dmm[dmm_name].send_software_trigger()
+
+    def get_accuracy(self, dmm_name, config):
+        """ get the accuracy tuple from the dmm with the given config """
+        return deepcopy(self.dmm[dmm_name].get_accuracy(config))
 
     def de_init_dmm(self, dmm_name):
         """

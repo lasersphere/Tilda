@@ -55,7 +55,7 @@ class DMMdummyPreConfigs(Enum):
         'range': 10.0,
         'resolution': 6.5,
         'triggerCount': 0,
-        'sampleCount': 0,
+        'sampleCount': 10,
         'autoZero': -1,
         'triggerSource': 'softw_trigger',
         'sampleInterval': -1,
@@ -234,7 +234,8 @@ class DMMdummy:
         """ write the error to self.config_dict['accuracy']"""
         if config_dict is None:
             config_dict = self.config_dict
-        acc_tuple = (10 ** -4, 10 ** -3)
+        dmm_range = config_dict.get('range', 10)
+        acc_tuple = (10 ** -4, dmm_range * 10 ** -3)
         config_dict['accuracy'] = acc_tuple
         return acc_tuple
 

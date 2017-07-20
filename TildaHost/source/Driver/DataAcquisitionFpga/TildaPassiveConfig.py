@@ -59,7 +59,7 @@ draft_tipa_scan_pars = {
                'softBinWidth_ns': 10,
                'nOfBunches': 1,
                'softwGates': [[-10, 10, 0, 10000], [-10, 10, 0, 10000], [-10, 10, 0, 10000], [-10, 10, 0, 10000]],
-               'trigger': {'type': 'SingleHit', 'trigDelay10ns': 5000}
+               'trigger': {'type': 'SingleHit', 'trigDelay10ns': 5000},
+               'measureVoltPars': {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100}
                },
-    'measureVoltPars': {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100}
 }

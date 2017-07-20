@@ -94,7 +94,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
 
     '''perform measurements:'''
 
-    def measureOffset(self, scanpars, track_num):
+    def measureOffset(self, scanpars, track_num, pre_post_scan_meas_str):
         """
         set all scanparameters at the fpga and go into the measure Offset state.
          set DAC to 0V
@@ -186,3 +186,9 @@ class ContinousSequencer(Sequencer, MeasureVolt):
 
     def set_stopVoltMeas(self, stop_bool):
         return True
+
+    def read_outbits_state(self):
+        return 0, 'dummy'
+
+    def read_outbits_number_of_cmds(self):
+        return 0, 0, 0

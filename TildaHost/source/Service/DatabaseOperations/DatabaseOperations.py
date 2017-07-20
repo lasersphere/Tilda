@@ -51,10 +51,12 @@ def form_pollifit_db_to_tilda_db(db):
     colDirTrue TEXT,
     sequencerDict TEXT,
     triggerDict TEXT,
-    waitForKepco25nsTicks INT,
-    waitAfterReset25nsTicks INT,
+    waitForKepco1us INT,
+    waitAfterReset1us INT,
     measureVoltPars TEXT,
     pulsePattern TEXT,
+    triton TEXT,
+    outbits TEXT,
     UNIQUE (iso, type, track)
     )''')
 
@@ -80,10 +82,12 @@ def check_for_missing_columns_scan_pars(db):
         (14, 'colDirTrue', 'TEXT'),
         (15, 'sequencerDict', 'TEXT'),
         (16, 'triggerDict', 'TEXT'),
-        (17, 'waitForKepco25nsTicks', 'INT'),
-        (18, 'waitAfterReset25nsTicks', 'INT'),
+        (17, 'waitForKepco1us', 'INT'),
+        (18, 'waitAfterReset1us', 'INT'),
         (19, 'measureVoltPars', 'TEXT'),
-        (20, 'pulsePattern', 'TEXT')
+        (20, 'pulsePattern', 'TEXT'),
+        (21, 'triton', 'TEXT'),
+        (22, 'outbits', 'TEXT')
     ]
     con = sqlite3.connect(db)
     cur = con.cursor()
@@ -92,7 +96,7 @@ def check_for_missing_columns_scan_pars(db):
     cols_name_flat = [each[1] for each in cols]
     for each in target_cols:
         if each[1] not in cols_name_flat:
-            print('column %s in ScanPars Table was not yet in db, adding now.' % each[1])
+            logging.info('column %s in ScanPars Table was not yet in db, adding now.' % each[1])
             cur.execute(''' ALTER TABLE ScanPars ADD COLUMN '%s' '%s' ''' % (each[1], each[2]))
     con.commit()
     con.close()
@@ -137,13 +141,15 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
                 colDirTrue = ?,
                 sequencerDict = ?,
                 triggerDict = ?,
-                waitForKepco25nsTicks = ?,
-                waitAfterReset25nsTicks = ?,
+                waitForKepco1us = ?,
+                waitAfterReset1us = ?,
                 measureVoltPars = ?,
                 accVolt = ?,
                 laserFreq = ?,
-                pulsePattern = ?
-                 WHERE iso = ? AND type = ? AND track = ?''',
+                pulsePattern = ?,
+                triton = ?,
+                outbits = ?
+                WHERE iso = ? AND type = ? AND track = ?''',
                     (
                         VCon.get_voltage_from_18bit(trackd['dacStartRegister18Bit']),
                         stop_volt,
@@ -157,12 +163,14 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
                         str(trackd['colDirTrue']),
                         str(SdOp.sequencer_dict_from_track_dict(trackd, sctype)),
                         str(trigger_dict),
-                        trackd['waitForKepco25nsTicks'],
-                        trackd['waitAfterReset25nsTicks'],
-                        str(scandict['measureVoltPars']),
+                        trackd['waitForKepco1us'],
+                        trackd['waitAfterReset1us'],
+                        str(trackd['measureVoltPars']),
                         str(isod['accVolt']),
                         isod['laserFreq'],
                         str(trackd['pulsePattern']),
+                        str(trackd['triton']),
+                        str(trackd['outbits']),
                         iso, sctype, n_of_track)
                     )
         con.commit()
@@ -190,7 +198,7 @@ def get_iso_settings(db, iso):
     settings are: mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, fixedBrat, intScale, fixedInt, relInt, m, midTof
     return: (cols_list, vals_list)
     """
-    print('getting settings of iso: %s from db' % iso)
+    logging.info('getting settings of iso: %s from db' % iso)
     cols = ['iso', 'mass', 'mass_d', 'I', 'center', 'Al', 'Bl', 'Au', 'Bu',
             'fixedArat', 'fixedBrat', 'intScale', 'fixedInt', 'relInt', 'm', 'midTof']
     con = sqlite3.connect(db)
@@ -255,7 +263,7 @@ def add_new_iso(db, iso, seq_type, exisiting_iso=None):
         add_scan_dict_to_db(db, scand, 0, track_key='track0')
         logging.debug('added ' + iso + ' (' + seq_type + ') to database')
     else:
-        print('adding new iso %s and copying from %s ' % (iso, exisiting_iso))
+        logging.info('adding new iso %s and copying from %s ' % (iso, exisiting_iso))
         con = sqlite3.connect(db)
         cur = con.cursor()
         cur.execute('''CREATE TEMPORARY TABLE tmp AS SELECT * FROM ScanPars WHERE iso = ?''', (exisiting_iso,))
@@ -280,9 +288,9 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
         SELECT     dacStartVolt, dacStepSizeVolt, invertScan,
          nOfSteps, nOfScans, postAccOffsetVoltControl,
           postAccOffsetVolt, activePmtList, colDirTrue,
-           sequencerDict, waitForKepco25nsTicks, waitAfterReset25nsTicks,
+           sequencerDict, waitForKepco1us, waitAfterReset1us,
            triggerDict,
-           measureVoltPars, accVolt, laserFreq, pulsePattern
+           measureVoltPars, accVolt, laserFreq, pulsePattern, triton, outbits
         FROM ScanPars WHERE iso = ? AND type = ? AND track = ?
         ''', (iso, sctype, tracknum,)
     )
@@ -290,10 +298,15 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
     if data is None:
         return None
     data = list(data)
+    outbits = data.pop(-1)
+    scand['track' + str(tracknum)]['outbits'] = ast.literal_eval(outbits) if outbits is not None else {}
+    triton = data.pop(-1)
+    scand['track' + str(tracknum)]['triton'] = ast.literal_eval(triton) if triton is not None else {}
     scand['track' + str(tracknum)]['pulsePattern'] = ast.literal_eval(data.pop(-1))
     scand['isotopeData']['laserFreq'] = data.pop(-1)
     scand['isotopeData']['accVolt'] = data.pop(-1)
-    scand['measureVoltPars'] = SdOp.merge_dicts(scand['measureVoltPars'], ast.literal_eval(data.pop(-1)))
+    scand['track' + str(tracknum)]['measureVoltPars'] = SdOp.merge_dicts(
+        scand['track' + str(tracknum)]['measureVoltPars'], ast.literal_eval(data.pop(-1)))
     scand['track' + str(tracknum)]['trigger'] = ast.literal_eval(data.pop(-1))
     scand['track' + str(tracknum)]['trigger']['type'] = getattr(TriTypes, scand['track' + str(tracknum)]['trigger']['type'])
     scand['track' + str(tracknum)] = db_track_values_to_trackdict(data, scand['track' + str(tracknum)])
@@ -306,13 +319,13 @@ def db_track_values_to_trackdict(data, track_dict):
     """ given a data dict containing (dacStartVolt, dacStepSizeVolt, invertScan,
          nOfSteps, nOfScans, postAccOffsetVoltControl,
           postAccOffsetVolt, activePmtList, colDirTrue,
-           sequencerDict, waitForKepco25nsTicks, waitAfterReset25nsTicks,
-            measureVoltPars, accVolt, laserFreq) from the database, this
+           sequencerDict, waitForKepco1us, waitAfterReset1us,
+            accVolt, laserFreq) from the database, this
             converts all values to a useable track dictionary."""
     dict_keys_list = ['dacStartRegister18Bit', 'dacStepSize18Bit', 'invertScan',
                       'nOfSteps', 'nOfScans', 'postAccOffsetVoltControl',
                       'postAccOffsetVolt', 'activePmtList', 'colDirTrue',
-                      'sequencerDict', 'waitForKepco25nsTicks', 'waitAfterReset25nsTicks']
+                      'sequencerDict', 'waitForKepco1us', 'waitAfterReset1us']
     conversion_list = ['VCon.get_18bit_from_voltage(%s)', 'VCon.get_18bit_stepsize(%s)', '%s',
                        '%s', '%s', '%s',
                        '%s', '%s', '%s',
@@ -344,7 +357,7 @@ def get_number_of_tracks_in_db(db, iso, sctype):
 def extract_all_tracks_from_db(db, iso, sctype):
     """ will return one scandict which contains all tracks for the given isotope.
      naming is 'track0':{ ... } , 'track1':{ ... } etc.
-     general infos like measureVoltPars will be merged, latter (higher tracknum) will overwrite """
+     general infos like will be merged, latter (higher tracknum) will overwrite """
     n_o_tracks = get_number_of_tracks_in_db(db, iso, sctype)
     scand = {}
     for i in range(n_o_tracks):

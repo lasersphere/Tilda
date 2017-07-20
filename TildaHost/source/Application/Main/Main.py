@@ -9,6 +9,7 @@ Created on '30.09.2015'
 import ast
 import logging
 import os
+import gc
 from copy import deepcopy
 from datetime import datetime
 from datetime import timedelta
@@ -22,6 +23,7 @@ import Service.DatabaseOperations.DatabaseOperations as DbOp
 import Service.FileOperations.FolderAndFileHandling as FileHandl
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as Dft
+from Measurement.XMLImporter import XMLImporter
 import TildaTools
 from Application.Main.MainState import MainState
 from Service.AnalysisAndDataHandling.DisplayData import DisplayData
@@ -36,6 +38,38 @@ class Main(QtCore.QObject):
 
     # signal which will be emitted from the pipeline (for now only kepco) if the scan is completed.
     scan_complete_callback = QtCore.pyqtSignal(bool)
+
+    # string which can be connected to in order to get info / warninings from main
+    info_warning_string_main_signal = QtCore.pyqtSignal(str)
+
+    # Callbacks for a live plot
+    # these callbacks should be called from the pipeline:
+    # for incoming new data:
+    new_data_callback = QtCore.pyqtSignal(XMLImporter)
+    # if a new track is started call:
+    # the tuple is of form: ((tr_ind, tr_name), (pmt_ind, pmt_name))
+    new_track_callback = QtCore.pyqtSignal(tuple)
+    # when the pipeline wants to save, this is emitted and it send the pipeData as a dict
+    save_callback = QtCore.pyqtSignal(dict)
+
+    # dict, fit result plot data callback
+    # -> this can be emitted from a node to send a dict containing fit results:
+    # 'plotData': tuple of ([x], [y]) values to plot a fit result.
+    # 'result': list of result-tuples (name, pardict, fix)
+    fit_results_dict_callback = QtCore.pyqtSignal(dict)
+
+    # signal to request updated gated data from the pipeline.
+    # list: software gates [[[tr0_sc0_vMin, tr0_sc0_vMax, tr0_sc0_tMin, tr0_sc0_tMax], [tr0_sc1_...
+    # int: track_index to rebin -1 for all
+    # list: software bin width in ns for each track
+    # bool: plot bool to force a plotting even if nothing has changed.
+    new_gate_or_soft_bin_width = QtCore.pyqtSignal(list, int, list, bool)
+
+    # save request
+    save_request = QtCore.pyqtSignal()
+
+    # progress dict coming from the main
+    live_plot_progress_callback = QtCore.pyqtSignal(dict)
 
     def __init__(self):
         super(Main, self).__init__()
@@ -53,6 +87,8 @@ class Main(QtCore.QObject):
         self.autostart_dict = {}  # dict containing all infos from the autostart.xml file keys are: workingDir,
         # autostartDevices: {dmms: {name: address}, powersupplies: {name:address}}
 
+        # dict of pyqtSignals(dict) for sending the status of the power supply to the correspnding gui
+        self.power_sup_stat_callback_signals = {}
         # pyqtSignal for sending the status to the gui, if there is one connected:
         self.main_ui_status_call_back_signal = None
         # pyqtSignal for sending the scan progress to the gui while scanning.
@@ -60,9 +96,6 @@ class Main(QtCore.QObject):
         self.scan_prog_call_back_sig_pipeline.connect(self.update_scan_progress)
         # tuple of three callbacks which are needed for the live plot gui
         #  and which are emitted from the pipeline. Therefore those must be available when initialising the pipeline.
-        self.live_plot_callback_tuples = None  # tuple of seperate callbacks
-        self.live_plot_progress_callback = None  # dict
-        self.live_plot_fit_res_callback = None  # dict
 
         self.scan_main = ScanMain()
         self.iso_scan_process = None
@@ -76,6 +109,11 @@ class Main(QtCore.QObject):
         self.halt_scan = False
         self.sequencer_status = None
         self.fpga_status = None
+
+        self.remove_active_iso_after_scan_complete = False
+
+        self.pre_scan_measurement_start_time = datetime.now()
+        self.pre_scan_measurement_timeout_s = timedelta(seconds=60)
 
         self.dmm_gui_callback = None
         self.last_dmm_reading_datetime = datetime.now()  # storage for the last reading time of the dmms
@@ -93,6 +131,7 @@ class Main(QtCore.QObject):
         cyclic function called regularly by the QtTimer initiated in TildaStart.py
         This will control the main
         """
+        st = datetime.now()
         if self.m_state[0] is MainState.idle:
             self.get_fpga_and_seq_state()
             self.read_dmms(reading_interval=self.dmm_periodic_reading_interval)
@@ -124,8 +163,8 @@ class Main(QtCore.QObject):
             self._start_scan(self.m_state[1])
         elif self.m_state[0] is MainState.setting_switch_box:
             self._setting_switch_box(*self.m_state[1])
-        elif self.m_state[0] is MainState.measure_offset_voltage:
-            self._measure_offset_voltage(self.m_state[1])
+        elif self.m_state[0] is MainState.measure_pre_scan:
+            self._measure_pre_and_post_scan(*self.m_state[1])
         elif self.m_state[0] is MainState.load_track:
             self._load_track()
             self.get_fpga_and_seq_state()
@@ -144,6 +183,10 @@ class Main(QtCore.QObject):
             self._request_dmm_config_pars(*self.m_state[1])
         elif self.m_state[0] is MainState.deinit_dmm:
             self._deinit_dmm(self.m_state[1])
+        elapsed = datetime.now() - st
+        if elapsed.microseconds > 50000:
+            logging.warning('cyclic execution took longer than 50ms, it took: %.1f ms, state is: %s'
+                          % (elapsed.microseconds / 1000, self.m_state[0].name))
 
     """ main functions """
 
@@ -165,7 +208,7 @@ class Main(QtCore.QObject):
             if self.m_state[0] is MainState.idle:
                 self.m_state = req_state, val
                 self.send_state()
-                logging.debug('main changed state to %s', str(self.m_state[0].name))
+                logging.debug('main changed state to ' + str(self.m_state[0].name) + ' val is: ' + str(val))
                 return True
             else:
                 if queue_if_not_idle:
@@ -180,7 +223,7 @@ class Main(QtCore.QObject):
         else:
             self.m_state = req_state, val
             self.send_state()
-            logging.debug('changed state to %s', str(self.m_state[0].name))
+            logging.debug('main changed state to ' + str(self.m_state[0].name) + ' val is: ' + str(val))
             return True
 
     def work_on_next_job_during_idle(self):
@@ -210,22 +253,14 @@ class Main(QtCore.QObject):
         """
         self.main_ui_status_call_back_signal = None
 
-    def gui_live_plot_subscribe(self, callback_tuple_from_live_plot_win, liveplot_progress_callback, fit_res_callback):
+    def gui_live_plot_subscribe(self):
         """
-        a liveplot gui can pass the three needed callbacks to the main here.
-        the main will use them wehn initialising the pipeline.
-        the pipeline will then emit the callbacks as neede.
-        :param callback_tuple_from_live_plot_win: tuple, (new_data_callback, new_track_callback, save_callback)
-        See LiveDataPlottingUi for details.
+        return the callbacks which are connected to the pipeline foa a gui to subscribe to.
+        It makes sense to keep them alive as long as the main exists.
         """
-        self.live_plot_callback_tuples = callback_tuple_from_live_plot_win
-        self.live_plot_progress_callback = liveplot_progress_callback
-        self.live_plot_fit_res_callback = fit_res_callback
-
-    def gui_live_plot_unsubscribe(self):
-        self.live_plot_callback_tuples = None
-        self.live_plot_progress_callback = None
-        self.live_plot_fit_res_callback = None
+        return (self.new_data_callback, self.new_track_callback,
+                self.save_request, self.new_gate_or_soft_bin_width,
+                self.fit_results_dict_callback, self.live_plot_progress_callback)
 
     def send_state(self):
         """
@@ -262,22 +297,26 @@ class Main(QtCore.QObject):
         self.get_fpga_state()
         self.get_sequencer_state()
 
-    def load_spectra_to_main(self, file, gui=None):
+    def load_spectra_to_main(self, file, gui=None, loaded_spec=None):
         """
         will be used for displaying a spectra.
         Later scan parameters from file can be loaded etc. to sum up more data etc.
         """
         try:
-            self.displayed_data[file] = DisplayData(file, gui=gui, x_as_volt=True)
+            self.displayed_data[file] = DisplayData(file, gui=gui, x_as_volt=True, loaded_spec=loaded_spec)
         except Exception as e:
-            logging.error('Exception while loading file %s, exception is: %s' % (file, str(e)))
+            logging.error('Exception while loading file %s, exception is: %s' % (file, str(e)), exc_info=True)
 
     def close_spectra_in_main(self, file):
         """
         call this to remove the corresponding file from the list of active files.
         """
-        logging.debug('removing spectra %s from view' % file)
-        self.displayed_data.pop(file)
+        # logging.debug('removing spectra %s from view' % file)
+        self.displayed_data[file].close_display_data()
+        del self.displayed_data[file]
+        gc.collect()  # needs to be collected otherwise memory is piled up.
+        logging.info('removed spectra %s from main' % file)
+        logging.debug('remaining displayed_data is: ' + str(self.displayed_data))
 
     def autostart(self):
         """
@@ -291,6 +330,7 @@ class Main(QtCore.QObject):
         if workdir:
             if os.path.isdir(workdir):
                 self.work_dir_changed(workdir)
+
         dmms_dict = self.autostart_dict.get('autostartDevices', {}).get('dmms', False)
         if dmms_dict:
             try:
@@ -304,6 +344,9 @@ class Main(QtCore.QObject):
             except Exception as e:
                 print('error %s in autostart() of Main.py while trying to convert the following string: %s' %
                       (e, dmms_dict))
+        pre_scan_timeout = self.autostart_dict.get('preScanTimeoutS', None)
+        if pre_scan_timeout is not None:
+            self.pre_scan_timeout_changed(float(pre_scan_timeout))
         power_sup_dict = self.autostart_dict.get('autostartDevices', {}).get('powersupplies', False)
         if power_sup_dict:
             print('automatic start of power supplies not included yet.')
@@ -315,6 +358,13 @@ class Main(QtCore.QObject):
             self.acc_volt_changed(float(acc_volt))
         # self.init_dmm('Ni4071', 'PXI1Slot5')
         # self.init_dmm('dummy', 'somewhere')
+
+    def pre_scan_timeout_changed(self, timeout_s):
+        """ changes the pre scan timeout which is used to cap
+         the pre scan measurement if nto enough values come in etc. """
+        self.pre_scan_measurement_timeout_s = timedelta(seconds=timeout_s)
+        self.autostart_dict['preScanTimeoutS'] = timeout_s
+        FileHandl.write_to_auto_start_xml_file(self.autostart_dict)
 
     """ operations on self.scan_pars dictionary """
 
@@ -403,7 +453,7 @@ class Main(QtCore.QObject):
         """
         the given isotope scan dictionary will be completed with global informations, which are valid for all isotopes,
         such as:
-        workingDirectory, version, measureVoltPars, laserFreq
+        workingDirectory, version, laserFreq
         then the bitfile is loaded to the fpga and the first track is started for scanning.
         the state will therefore be changed to scanning
         """
@@ -424,52 +474,80 @@ class Main(QtCore.QObject):
         self.scan_progress['completedTracks'] = []
         self.scan_pars[iso_name] = self.add_global_infos_to_scan_pars(iso_name)
         logging.debug('will scan: ' + iso_name + str(sorted(self.scan_pars[iso_name])))
-        if self.scan_main.prepare_scan(self.scan_pars[iso_name]):  # will be true if sequencer could be started.
-            self.set_state(MainState.setting_switch_box, (True, None))
+        self.send_info('starting_scan')
+        if self.scan_main.prepare_scan(self.scan_pars[iso_name]):
+            # will be true if sequencer could be started.
+            self.set_state(MainState.setting_switch_box, (True, None, False))
         else:
             self.set_state(MainState.idle)
 
-    def _setting_switch_box(self, first_call=False, desired_state=None):
+    def _setting_switch_box(self, first_call=False, desired_state=None, scan_complete=False):
         """
         this will be called in 'setting_switch_box' state.
         It will exit as soon as the switchbox is set to the right value.
-        The next state is 'measure_offset_voltage'
+        The next state is 'measure_pre_scan'
         :param first_call: bool, True for first call, this will command the fpga to change the state of the setbox.
+        :param desired_state: int, desired state of the switchbox 0-4, None to get from scan pars
         """
-        if desired_state is None:
+        switch_box_settle_time_s = 2.0
+        if desired_state is None and not scan_complete:
             iso_name = self.scan_progress['activeIso']
             n_of_tracks, list_of_track_nums = TildaTools.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
             active_track_num = min(set(list_of_track_nums) - set(self.scan_progress['completedTracks']))
+            # logging.debug('list of track nums is: %s, completed tracks: %s, active track num is: %s'
+            #               % (list_of_track_nums, self.scan_progress['completedTracks'], active_track_num))
             scan_dict = self.scan_pars[iso_name]
         else:
             # desired state is given by function call and not the scan dict.
             # Desired state will be stored in the main state
-            active_track_num = 0
+            active_track_num = -1
             scan_dict = {}
         if first_call:
+            if scan_complete:
+                self.send_info('scan_complete')
+                desired_state = 4  # overwrite on scan complete, always go to loading after scan complete
+                if self.remove_active_iso_after_scan_complete:
+                    act_iso = deepcopy(self.scan_progress['activeIso'])
+                    logging.info('after scan completion iso %s will now be deleted from the scan pars.' % act_iso)
+                    self.scan_progress['activeIso'] = ''
+                    self.remove_iso_from_scan_pars(act_iso)
+                    self.remove_active_iso_after_scan_complete = False
+                self.scan_progress['activeIso'] = ''
             self.scan_main.set_post_acc_switch_box(scan_dict, active_track_num, desired_state)
-            self.scan_progress['activeTrackNum'] = active_track_num
-            self.set_state(MainState.setting_switch_box, (False, desired_state))
+            if active_track_num >= 0 and not scan_complete:
+                # only update active track num when loading from track dict.
+                self.scan_progress['activeTrackNum'] = active_track_num
+            self.set_state(MainState.setting_switch_box, (False, desired_state, scan_complete))
+            return False
         if desired_state is None:
             # must only be called after the desired_state = None has ben stored in the main_state
             desired_state = self.scan_pars[iso_name]['track' + str(active_track_num)]['postAccOffsetVoltControl']
-        switch_box_settle_time_s = scan_dict.get('measureVoltPars', {})\
-            .get('preScan', {}).get('switchBoxSettleTimeS', 5.0)
+            switch_box_settle_time_s = scan_dict.get(
+                'track' + str(self.scan_progress['activeTrackNum']), {}).get('measureVoltPars', {})\
+                .get('preScan', {}).get('switchBoxSettleTimeS', 5.0)
         # print('switchbox_settle_time is: %s' % switch_box_settle_time_s)
         # logging.debug('desired state of hsb is: ' + str(des_state))
         done, currentState, desired_state = self.scan_main.post_acc_switch_box_is_set(desired_state,
                                                                                       switch_box_settle_time_s)
+        if self.abort_scan:
+            logging.info('aborted setting the switch box, aborting scan,'
+                         ' setting switchbox to loading state, return to idle')
+            self.scan_main.stop_measurement(True, True)
+            self.abort_scan = False
+            self.set_state(MainState.setting_switch_box, (True, 4, True))
+            return False
         if done:
-            if desired_state == 4:
-                # switch box has ben set to loading state, which means a scan is completed
+            if scan_complete:
+                # scan completed, set switch box to loading state.
                 # will go to idle state afterwards.
                 self.set_state(MainState.idle)
             else:  # begin with the next track
-                self.set_state(MainState.measure_offset_voltage, True)
+                # scan_complete False because idle otherwise (above).
+                self.set_state(MainState.measure_pre_scan, (True, 'preScan', False))
 
-    def _measure_offset_voltage(self, first_call=False):
+    def _measure_pre_and_post_scan(self, first_call=False, pre_post_scan_str='preScan', scan_complete=False):
         """
-        this function is called within the state 'measure_offset_voltage'.
+        this function is called within the state 'measure_pre_scan'.
             on first call:
              it will set the fpga to measure offset state and fire a software trigger to the dmms
             on other calls:
@@ -478,64 +556,66 @@ class Main(QtCore.QObject):
             -> dmms are triggered by software and voltmeter-complete TTL-from dmm is ignored.
         next state will be 'load_track'
         :param first_call: bool, True if this is the first call
+        :param pre_post_scan_str: str, preScan or postScan corresponding if this is a pre or post scan measurement
         """
         iso_name = self.scan_progress['activeIso']
-        dmms_dict_pre_scan = self.scan_pars[iso_name]['measureVoltPars'].get('preScan', {}).get('dmms', None)
-        dmms_dict_is_none = dmms_dict_pre_scan is None or dmms_dict_pre_scan == {}
-        is_this_not_first_track = len(self.scan_progress['completedTracks']) != 0
-        if dmms_dict_is_none or is_this_not_first_track:
-            # do not perform an offset measurement if no dmm is present. Proceed to load track
-            # only perform offset measurement in first track!
-            print('skipping offset measurement, not first track: %s, dmm_dict_is_none: %s'
-                  % (is_this_not_first_track, dmms_dict_is_none))
-            print('completed tracks: ', self.scan_progress['completedTracks'])
-            self.set_state(MainState.load_track)
-        else:
-            if first_call:
-                # on first call set the fpga to measure offset state and
-                # software trigger the dmms
-                # also delete any prescan reading there might be.
-                for dmm_name, pre_scan_dict in dmms_dict_pre_scan.items():
-                    print('prescandict is: ', pre_scan_dict)
-                    pre_scan_dict['preScanRead'] = None
-                    print('set preScanRead of %s to None' % dmm_name)
-                self.scan_main.measure_offset_pre_scan(self.scan_pars[iso_name])
-                self.set_state(MainState.measure_offset_voltage, False)
-            else:  # this will periodically read the dmms until all dmms returned a measurement
-                if self.abort_scan:
-                    print('aborted pre scan measurement, aborting scan, return to idle')
-                    self.abort_scan = False
-                    self.set_state(MainState.idle)
+        active_track_num = self.scan_progress['activeTrackNum']
+        act_track_name = 'track' + str(active_track_num)
+
+        if first_call:
+            # on first call set the fpga to measure offset state and setup the dmms and the triton listener
+            # then software trigger the dmms
+            self.scan_main.prepare_dmms_for_scan(
+                self.scan_pars[iso_name][act_track_name]['measureVoltPars'].get(pre_post_scan_str, {}).get('dmms', {}))
+            self.scan_main.prepare_triton_listener_for_scan(
+                self.scan_pars[iso_name][act_track_name].get('triton', {}), pre_post_scan_str)
+            if self.scan_main.start_pre_scan_measurement(self.scan_pars[iso_name], act_track_name, pre_post_scan_str):
+                self.pre_scan_measurement_start_time = datetime.now()
+                self.set_state(MainState.measure_pre_scan, (False, pre_post_scan_str, scan_complete))   # set first call to false!
+            else:
+                # scan main returns False -> no pre scan measurement required!
+                if pre_post_scan_str == 'postScan':
+                    self.set_state(MainState.setting_switch_box, (True, None, scan_complete))  # scan_complete=True
+                    # after this has ben completed, it will go to idle
                 else:
-                    read = self.read_dmms(False)
-                    print('reading of dmms prescan: ', read)
-                    if read is not None:
-                        dmms_dict_pre_scan = self.scan_pars[iso_name]['measureVoltPars'].get('preScan', {}).get('dmms', None)
-                        reads = []
-                        for dmm_name, volt_read in read.items():
-                            if volt_read is not None:
-                                if 'continuedAcquisitonOnFile' in self.scan_pars[iso_name]['isotopeData']:
-                                    # its a go on an existing file -> keep the acquired reading and append.
-                                    if isinstance(dmms_dict_pre_scan[dmm_name]['preScanRead'], list):
-                                        dmms_dict_pre_scan[dmm_name]['preScanRead'].append(volt_read[0])
-                                    else:
-                                        dmms_dict_pre_scan[dmm_name]['preScanRead'] = [
-                                            dmms_dict_pre_scan[dmm_name]['preScanRead'], volt_read[0]]
-                                else:  # its an ergo -> just keep the one value!
-                                    dmms_dict_pre_scan[dmm_name]['preScanRead'] = volt_read[0]
-                            reads.append(dmms_dict_pre_scan[dmm_name].get('preScanRead', None))
-                            print('readings of dmms pre scan are:', reads,
-                                  ' prescan read: ', dmm_name)
-                        if reads.count(None) == 0:  # done with reading when all dmms have a value
-                            logging.debug('all dmms returned a measurement, reading is: ' + str(read))
-                            self.scan_main.abort_dmm_measurement('all')
-                            dmms_dict_during_scan = self.scan_pars[iso_name]['measureVoltPars'].get('duringScan',
-                                                                                                    {}).get('dmms', None)
-                            dmm_complete_location = self.scan_pars[iso_name]['measureVoltPars']['duringScan'][
-                                'measurementCompleteDestination']
-                            # when done with the pre scan measurement, setup dmms to the during scan dict.
-                            # set the dmms according to the dictionary inside the dmms_dict for during the scan
-                            self.scan_main.prepare_dmms_for_scan(dmms_dict_during_scan, dmm_complete_location)
+                    # otherwise load next track
+                    self.set_state(MainState.load_track)
+        else:  # this will periodically read the dmms and triton until all dmms returned a measurement
+            if self.abort_scan:
+                logging.info('ABORT was pressed. Aborting pre scan measurement, aborting scan,'
+                             ' setting switchbox to loading state, return to idle')
+                self.scan_main.stop_measurement(True, True)
+                self.abort_scan = False
+                self.set_state(MainState.setting_switch_box, (True, 4, True))
+            else:  # read dmms & triton devices until all values are there.
+                # check timeout
+                time_since_start = datetime.now() - self.pre_scan_measurement_start_time
+                if self.pre_scan_measurement_timeout_s < time_since_start:  # timed out
+                    logging.warning('--------- WARNING ----------\n'
+                                    'pre scan measurement timed out after %s s. but timeout'
+                                    ' is set to %s s. Anyhow continuing with scan now.\n'
+                                    '--------- WARNING ----------'
+                                    % (time_since_start.seconds, self.pre_scan_measurement_timeout_s.seconds))
+                    self.send_info('pre_scan_timeout')
+                    if pre_post_scan_str == 'postScan':
+                        # if this was a post scan measurement, scan is complete -> set switch box
+                        self.set_state(MainState.setting_switch_box, (True, None, scan_complete))  # scan_complete=True
+                        # after this has ben completed, it will go to idle
+                    else:
+                        # otherwise load next track
+                        self.set_state(MainState.load_track)
+                else:
+                    # not timed out, check if all values are measured yet:
+                    # note: if dmms / triton log complete they will be set to duringScan pars (or periodic (for dmms))
+                    if self.scan_main.prescan_measurement(
+                            scan_dict=self.scan_pars[iso_name], dmm_reading=self.read_dmms(False),
+                            pre_during_post_scan_str=pre_post_scan_str,
+                            tr_name='track' + str(self.scan_progress['activeTrackNum'])):
+                        if pre_post_scan_str == 'postScan':
+                            # if this was a post scan measurement, scan is complete -> set switch box
+                            self.set_state(MainState.setting_switch_box, (True, None, scan_complete))  # scan_complete=True
+                            # after this has ben completed, it will go to idle
+                        else:
                             self.set_state(MainState.load_track)
 
     def add_global_infos_to_scan_pars(self, iso_name):
@@ -550,6 +630,11 @@ class Main(QtCore.QObject):
         self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
         self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
         self.scan_pars[iso_name]['isotopeData']['accVolt'] = self.acc_voltage
+        for key, track_d in self.scan_pars[iso_name].items():
+            #  fill empty triton dicts to each track if there is not one already
+            if 'track' in key:
+                if self.scan_pars[iso_name][key].get('triton', None) is None:
+                    self.scan_pars[iso_name][key]['triton'] = {}
         if self.scan_pars[iso_name]['isotopeData']['type'] == 'kepco':
             track_num, list_of_tracknums = TildaTools.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
             if track_num > 1:
@@ -577,16 +662,15 @@ class Main(QtCore.QObject):
                                                           self.scan_pars[self.scan_progress['activeIso']],
                                                           self.scan_start_time)
         if progress_dict is not None:
-            if self.scan_prog_call_back_sig_gui is not None:
-                self.scan_prog_call_back_sig_gui.emit(progress_dict)
             if self.live_plot_progress_callback is not None:
                 self.live_plot_progress_callback.emit(progress_dict)
 
-    def subscribe_to_scan_prog(self, callback_signal):
+    def subscribe_to_scan_prog(self):
         """
-        the scanProgressUi can subscribe via this function
+        the scanProgressUi can poll the correct pyqtsignal for getting a progress update here.
+        simply connect to it.
         """
-        self.scan_prog_call_back_sig_gui = callback_signal
+        return self.live_plot_progress_callback
 
     def unsubscribe_from_scan_prog(self):
         """
@@ -602,15 +686,17 @@ class Main(QtCore.QObject):
         will switch state to 'scanning' or 'error'
         """
         iso_name = self.scan_progress['activeIso']
+        active_track_num = self.scan_progress['activeTrackNum']
+
         is_this_first_track = len(self.scan_progress['completedTracks']) == 0
         if is_this_first_track:  # initialise the pipeline on first track
             self.scan_main.init_analysis_thread(
                 self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline,
-                self.live_plot_callback_tuples,
-                fit_res_dict_callback=self.live_plot_fit_res_callback,
-                scan_complete_callback=self.scan_complete_callback
+                live_plot_callback_tuples=(self.new_data_callback, self.new_track_callback,
+                                           self.save_request, self.new_gate_or_soft_bin_width),
+                fit_res_dict_callback=self.fit_results_dict_callback,
+                scan_complete_callback=self.scan_complete_callback,
             )
-        active_track_num = self.scan_progress['activeTrackNum']
         self.scan_main.prep_track_in_pipe(active_track_num, active_track_num)
         if self.scan_main.start_measurement(self.scan_pars[iso_name], active_track_num):
             self.set_state(MainState.scanning)
@@ -626,10 +712,13 @@ class Main(QtCore.QObject):
         AND the state is not measuring state anymore.
         """
         if self.abort_scan:  # abort the scan and return to idle state
-            print('abort was pressed ', self.abort_scan)
+            logging.info('\t ABORT was pressed during scan.'
+                         'Now: Abort scan -> saving -> post scan measurement -> setting switchbox -> idle')
             self.scan_main.abort_scan()
+            self.abort_scan = False
             complete_stop = True
             self.set_state(MainState.saving, (complete_stop, True))
+            return None
         elif not self.scan_main.read_data():  # read_data() yields False if no Elements can be read from fpga
             if not self.scan_main.check_scanning():  # check if fpga is still in scanning state
                 if self.scan_pars[self.scan_progress['activeIso']]['isotopeData']['type'] == 'kepco':
@@ -640,16 +729,21 @@ class Main(QtCore.QObject):
                     else:  # scan not done -> keep scanning
                         return None
                 if self.halt_scan:  # scan was halted
-                    self.halt_scan_func(False)  # set halt variable to false afterwards
-                    self.set_state(MainState.saving, (True, True))
+                    self.halt_scan_func(False)  # set halt variable to false afterwards, also on fpga
+                    complete_stop = True
+                    self.set_state(MainState.saving, (complete_stop, True))
                 else:  # normal exit after completion of each track
                     self.scan_progress['completedTracks'].append(self.scan_progress['activeTrackNum'])
-                    # self.scan_main.stop_measurement(False)
-                    # stop pipeline before starting with next track again, do not clear.
                     tracks, tr_l = TildaTools.get_number_of_tracks_in_scan_dict(
                         self.scan_pars[self.scan_progress['activeIso']])
-                    everything_completed = len(self.scan_progress['completedTracks']) == tracks  # scan complete
-                    self.set_state(MainState.saving, (everything_completed, True))
+                    complete_stop = len(self.scan_progress['completedTracks']) == tracks  # scan complete
+                    logging.debug(
+                        'number of completed tracks: %d, %s, total number of tracks: %d, stopping: %s'
+                        % (len(self.scan_progress['completedTracks']),
+                           self.scan_progress['completedTracks'], tracks, complete_stop))
+                    self.set_state(MainState.saving, (complete_stop, True))
+            else:  # fpga is still scanning, so keep reading data (see above)
+                return None
 
     def _stop_sequencer_and_save(self, complete_stop=False, first_call=True):
         """
@@ -664,10 +758,7 @@ class Main(QtCore.QObject):
         else:
             if self.scan_main.analysis_done_check():  # when done with analysis, leave state
                 QApplication.restoreOverrideCursor()  # ignore warning
-                if complete_stop:  # set switch box to loading state in order to not feed any voltage to the CEC
-                    self.set_state(MainState.setting_switch_box, (True, 4))  # after this has ben completed, it will go to idle
-                else:  # keep going with next track. None to read from next dict.
-                    self.set_state(MainState.setting_switch_box, (True, None))
+                self.set_state(MainState.measure_pre_scan, (True, 'postScan', complete_stop))
 
     def set_scan_yields_complete_callback(self, complete_bool):
         self.scan_yields_complete = complete_bool
@@ -732,6 +823,23 @@ class Main(QtCore.QObject):
 
     """ postaccleration power supply functions """
 
+    def subscribe_to_power_sub_status(self, callback_signal, key):
+        """
+        can be used for a gui to subscribe to the status of the power supply
+        :param callback_signal: QtCore.pyqtSignal(dict)
+        :param key: str, key which will be used to subscribe and unsubscribe!
+        """
+        self.power_sup_stat_callback_signals[key] = callback_signal
+        return key
+
+    def un_subscribe_to_power_sub_status(self, key):
+        """
+        unsubscribe from status of the power supplies
+        :param key: str, key which will be used to subscribe and unsubscribe!
+        """
+        if key in self.power_sup_stat_callback_signals.keys():
+            self.power_sup_stat_callback_signals.pop(key)
+
     def init_power_sups(self, call_back_signal=None):
         """
         initializes all power supplies and reads the status afterwards.
@@ -790,8 +898,10 @@ class Main(QtCore.QObject):
         self.requested_power_supply_status
         """
         stat = self.scan_main.get_status_of_pwr_supply(name)
-        if call_back_sig is not None:
-            call_back_sig.emit(stat)
+        if call_back_sig is not None and isinstance(call_back_sig, str):
+            call_back_sig = self.power_sup_stat_callback_signals.get(call_back_sig, None)
+            if call_back_sig is not None:
+                call_back_sig.emit(stat)
         self.set_state(MainState.idle)
 
     """ database functions """
@@ -850,8 +960,13 @@ class Main(QtCore.QObject):
         """
         this will remove the dictionary named 'iso_seqtype' from self.scan_pars
         """
-        self.scan_pars.pop(iso_seqtype)
-        logging.debug('scan_pars are: ' + str(self.scan_pars))
+        if iso_seqtype != self.scan_progress.get('activeIso', 'None'):
+            self.scan_pars.pop(iso_seqtype)
+            logging.debug('removed iso %s from scan pars. scan_pars are: %s' % (iso_seqtype, str(self.scan_pars)))
+        else:
+            self.remove_active_iso_after_scan_complete = True
+            logging.info('could not remove %s because this is the current scan parameter.'
+                         ' Will remove this after scan completed.' % iso_seqtype)
 
     def save_scan_par_to_db(self, iso):
         """
@@ -864,7 +979,8 @@ class Main(QtCore.QObject):
         for i in trk_lis:
             logging.debug('saving track ' + str(i) + ' dict is: ' +
                           str(scan_d['track' + str(i)]))
-            logging.debug('measureVoltPars are: %s' % scan_d['measureVoltPars'])
+            logging.debug('measureVoltPars are: %s'
+                          % scan_d['track' + str(i)]['measureVoltPars'])
             DbOp.add_scan_dict_to_db(self.database, scan_d, i, track_key='track' + str(i))
 
     ''' digital multimeter operations '''
@@ -998,6 +1114,10 @@ class Main(QtCore.QObject):
         """
         self.dmm_gui_callback = None
 
+    def dmm_get_accuracy(self, dmm_name, config):
+        """ get the accuracy tuple from the dmm with the given config """
+        return self.scan_main.dmm_get_accuracy(dmm_name, config)
+
     ''' pulse pattern operations '''
 
     def ppg_init(self):
@@ -1030,3 +1150,11 @@ class Main(QtCore.QObject):
         print('disconnecting ...')
         self.scan_main.ppg_state_callback_disconnect()
         print('disconnected')
+
+    ''' send information / warnings to gui or so '''
+
+    def send_info(self, info_str):
+        """ send an info string via this signal """
+        logging.info('sending the info: %s' % info_str)
+        if isinstance(info_str, str):
+            self.info_warning_string_main_signal.emit(info_str)

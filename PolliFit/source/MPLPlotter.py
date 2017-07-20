@@ -26,19 +26,32 @@ from Spectra.FullSpec import FullSpec
 from copy import deepcopy
 
 import Physics
+import random
 
 matplotlib.use('Qt5Agg')
 
+def AlivePlot(x_data, plotdata, error, refData):
 
-def AlivePlot(x_data, plotdata, error):
     arr = np.asarray
     y_err = arr(error).T
+    n=0
     for data in plotdata:
-        plt.errorbar(x_data, data, yerr=y_err, fmt='o', linestyle ='-')
+
+        plt.errorbar(x_data, data, yerr=y_err, fmt='o', linestyle ='-', label=refData[n][0])
+        n=n+1
         #plt.errorbar(x_data, data, fmt='o', linestyle ='-')
     #plt.ylabel('relative discrepancy [ppm]')
     plt.ylabel('voltage [V]')
     plt.xlabel('measurement number')
+    #Ab hier zum Plotten der Legende
+    legend=plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.1),
+          ncol=3, fancybox=True, shadow=True)
+    frame = legend.get_frame()
+    frame.set_facecolor('0.90')
+    for label in legend.get_texts():
+        label.set_fontsize('large')
+    for label in legend.get_lines():
+        label.set_linewidth(1.5)  # the legend line width
 
 
 def plot(*args):
@@ -160,6 +173,45 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
     # print(data[1])
     plt.xticks(fontsize=fontsize_ticks)
     plt.yticks(fontsize=fontsize_ticks)
+
+
+def plotMoments(cts, q=True,fontsize_ticks=10):
+    if q:
+        fig = plt.figure(1, (8, 6))
+        fig.clear()
+        fig.patch.set_facecolor('white')
+        ax1 = plt.axes([0.1, 0.1, 0.85, 0.85])
+        ax = plt.gca()
+        ax.set_ylabel('Q (b) ')
+    else:
+        fig2 = plt.figure(2, (8, 6))
+        fig2.clear()
+        fig2.patch.set_facecolor('white')
+        ax1 = plt.axes([0.1, 0.1, 0.85, 0.85])
+        ax = plt.gca()
+        ax.set_ylabel(r'$\mu$ ($\mu_N$) ')
+
+    markerlist = ['s', 'o',  '>', '<', 'v', 'h', 'd', '*', 'p']
+    x = 0
+    for i in cts.keys():
+        plt.errorbar(cts[i][0], cts[i][1], cts[i][2], label=str(i), linestyle='dotted',
+                     marker=markerlist[x], ms=10, elinewidth=2)
+        x += 1
+        if x > 8:
+            x = 0
+    plt.legend()
+    ax1.get_xaxis().get_major_formatter().set_useOffset(False)
+    plt.xticks(fontsize=fontsize_ticks)
+    plt.yticks(fontsize=fontsize_ticks)
+
+    plt.xticks(rotation=25)
+
+    ax.set_xlabel('mass number A')
+    plt.gcf().set_facecolor('white')
+
+    ax.set_xmargin(0.05)
+    plt.show()
+
 
 
 def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), showing = False, save_path='', ylabel=''):

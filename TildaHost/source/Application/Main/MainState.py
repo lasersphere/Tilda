@@ -27,7 +27,7 @@ class MainState(Enum):
 
     preparing_scan = 11
     setting_switch_box = 24
-    measure_offset_voltage = 23
+    measure_pre_scan = 23
     load_track = 12
     scanning = 13
     saving = 14

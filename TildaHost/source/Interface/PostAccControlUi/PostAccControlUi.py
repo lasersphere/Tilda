@@ -6,13 +6,12 @@ Created on
 Module Description: Gui for a simple control of up to 3 post acceleration devices.
 """
 
-from PyQt5 import QtWidgets, QtCore
 import logging
-import time
 
+from PyQt5 import QtWidgets, QtCore
 
-from Interface.PostAccControlUi.Ui_PostAccControl import Ui_MainWindow_PostAcc
 import Application.Config as Cfg
+from Interface.PostAccControlUi.Ui_PostAccControl import Ui_MainWindow_PostAcc
 
 
 class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
@@ -22,6 +21,7 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         super(PostAccControlUi, self).__init__()
         self.setupUi(self)
 
+        self.subscription_name = 'PostAccControlUi'
         self.main_ui = main_ui
         self.scan_main = None
         self.post_acc_main = None
@@ -31,6 +31,7 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         self.pushButton_refresh.clicked.connect(self.get_status_of_power_sup)
         self.pushButton_all_on_off.clicked.connect(self.all_off)
 
+        Cfg._main_instance.subscribe_to_power_sub_status(self.pacc_call_back_signal, self.subscription_name)
         self.pacc_call_back_signal.connect(self.rcvd_new_status_dict)
 
         self.show()
@@ -56,7 +57,7 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         reset_labels = {}
         for i in range(1, 4):
             self.update_single_power_sup(reset_labels, str(i))
-        Cfg._main_instance.init_power_sups(self.pacc_call_back_signal)
+        Cfg._main_instance.init_power_sups(self.subscription_name)
 
     def rcvd_new_status_dict(self, status_dict_list):
         """
@@ -73,7 +74,7 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         """
         request a status dict from the main.
         """
-        Cfg._main_instance.power_supply_status(name, self.pacc_call_back_signal)
+        Cfg._main_instance.power_supply_status(name, self.subscription_name)
 
     def update_single_power_sup(self, status_dict, num_str):
         """
@@ -102,7 +103,7 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         if name is not None:
             voltage = getattr(self, 'doubleSpinBox_set_volt' + name[-1:]).value()
             if name is not None:
-                Cfg._main_instance.set_power_supply_voltage(name, voltage, self.pacc_call_back_signal)
+                Cfg._main_instance.set_power_supply_voltage(name, voltage, self.subscription_name)
 
     def set_outp(self, name, outp=None):
         if name is not None:
@@ -113,7 +114,7 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
                     new_outp = not cur_outp  # if not specified, just toggle the output status
                 else:
                     new_outp = outp
-                Cfg._main_instance.set_power_sup_outp(name, new_outp, self.pacc_call_back_signal)
+                Cfg._main_instance.set_power_sup_outp(name, new_outp, self.subscription_name)
 
     def set_outp1(self):
         self.set_outp(self.resol_power_sup(1))
@@ -125,7 +126,7 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         self.set_outp(self.resol_power_sup(3))
 
     def all_off(self):
-        Cfg._main_instance.set_power_sup_outp('all', False, self.pacc_call_back_signal)
+        Cfg._main_instance.set_power_sup_outp('all', False, self.subscription_name)
 
     def button_color(self, butn, on_off):
         """
@@ -147,4 +148,5 @@ class PostAccControlUi(QtWidgets.QMainWindow, Ui_MainWindow_PostAcc):
         """
         unsubscribe in the corresponding main
         """
+        Cfg._main_instance.un_subscribe_to_power_sub_status(self.subscription_name)
         self.main_ui.close_post_acc_win()

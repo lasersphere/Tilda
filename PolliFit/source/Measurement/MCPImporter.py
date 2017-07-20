@@ -128,11 +128,10 @@ class MCPImporter(SpecData):
                     [pmt for pmt_ind, pmt in enumerate(self.cts[tr_ind])
                      if self.activePMTlist[tr_ind][pmt_ind] in pmts_ok]
                     for tr_ind, tr in enumerate(self.cts)]
-
                 self.nrScalers = [len(pmts_ok) for i in self.cts]
                 self.activePMTlist = [pmts_ok for i in self.cts]
                 self.err = copy.deepcopy(self.cts)
-                for i,ctarray in enumerate(self.cts):
+                for i, ctarray in enumerate(self.cts):
                     for j, cts in enumerate(ctarray):
                         self.err[i][j] = np.sqrt(np.abs(cts))
                         self.err[i][j][self.err[i][j] == 0.0] = 1
@@ -159,6 +158,7 @@ class MCPImporter(SpecData):
                 for ctindex, ct in enumerate(tracks):
                     for i, j in enumerate(ct):
                         self.cts[trackindex][ctindex][i] = (j - self.offset[ctindex])
+
         else:
             self.col = bool(self.col)
             self.voltDivRatio = ast.literal_eval(self.voltDivRatio)
@@ -179,6 +179,7 @@ class MCPImporter(SpecData):
             # print(self.cts)
             # print(self.nrScalers)
             self.norming()
+            self.x_units = self.x_units_enums.total_volts
         if not from_input:
             con.close()
 

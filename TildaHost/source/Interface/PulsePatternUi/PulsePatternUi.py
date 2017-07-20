@@ -10,6 +10,8 @@ import ast
 import functools
 import os
 import sys
+import logging
+from datetime import datetime, timedelta
 from copy import deepcopy
 
 import numpy as np
@@ -78,8 +80,8 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         self.actionHelp.triggered.connect(self.open_help)
 
         ''' graphical view related '''
-        self.listWidget_cmd_list.currentTextChanged.connect(self.update_gr_v)
-        self.listWidget_cmd_list.currentRowChanged.connect(self.update_gr_v)
+        # self.listWidget_cmd_list.currentTextChanged.connect(self.update_gr_v)
+        # self.listWidget_cmd_list.currentRowChanged.connect(self.update_gr_v)
         self.listWidget_cmd_list.itemSelectionChanged.connect(self.update_gr_v)
 
         # self.listWidget_cmd_list.itemChanged.connect(self.update_gr_v)
@@ -89,6 +91,8 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         self.gr_v_cursor_two = None
         self.gr_v_clicks = 0
         self.add_graph_view()
+        self.stop_highlight = None  # will be added when a stop is in list
+        self.highlight_line_list = []  # will be added when stuff is clicked on
 
         ''' rcv cmd list from one of those: '''
         self.cmd_list_signal.connect(self.cmd_list_to_gui)
@@ -105,6 +109,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         self.tabWidget_periodic_pattern.setCurrentIndex(0)
 
     ''' cmd list related: '''
+
     def cmd_list_to_gui(self, cmd_list, caller_str=None, update_gr_v=True):
         """ write a list of str cmd to the gui """
         # remove all items tht were already in the list.
@@ -308,6 +313,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         self.simple_widg.load_from_simple_dict(simple_dict)
 
     ''' help '''
+
     def open_help(self):
         mb = QtWidgets.QMessageBox(self)
         QtWidgets.QMessageBox.information(
@@ -350,13 +356,14 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             layout2.addWidget(self.y_pos)
             layout.addItem(layout2)
             self.plt_proxy = Pgplot.create_proxy(signal=self.gr_v_plt_itm.scene().sigMouseMoved,
-                                     slot=functools.partial(self.mouse_moved, self.gr_v_plt_itm.vb),
-                                     rate_limit=60)
-            self.gr_v_mouse_click_proxy = Pgplot.create_proxy(signal=self.gr_v_plt_itm.scene().sigMouseClicked,
-                                                 slot=functools.partial(self.mouse_clicked, self.gr_v_plt_itm.vb),
+                                                 slot=functools.partial(self.mouse_moved, self.gr_v_plt_itm.vb),
                                                  rate_limit=60)
+            self.gr_v_mouse_click_proxy = Pgplot.create_proxy(signal=self.gr_v_plt_itm.scene().sigMouseClicked,
+                                                              slot=functools.partial(self.mouse_clicked,
+                                                                                     self.gr_v_plt_itm.vb),
+                                                              rate_limit=60)
             self.gr_v_cursor = Pgplot.create_infinite_line(0, pen=Pgplot.create_pen(125, 125, 125, width=0.5))
-            self.gr_v_plt_itm.addItem(self.gr_v_cursor)
+            self.gr_v_plt_itm.addItem(self.gr_v_cursor, ignoreBounds=True)
             self.widget_graph_view.setLayout(layout)
         except Exception as e:
             print('error while adding graphical view: %s' % e)
@@ -372,7 +379,15 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         """
         x_str = '%.2f' % point.x()
         self.x_pos.setText(x_str)
-        self.gr_v_cursor.setPos(point.x())
+        # this takes a lot of time: (probably the emit of the position is delayed?)
+        # self.gr_v_cursor.setPos(point.x())
+
+        # this is strangely much faster:
+        self.gr_v_plt_itm.removeItem(self.gr_v_cursor)
+        self.gr_v_cursor = None
+        self.gr_v_cursor = Pgplot.create_infinite_line(point.x(), pen=Pgplot.create_pen(125, 125, 125, width=0.5))
+        self.gr_v_plt_itm.addItem(self.gr_v_cursor, ignoreBounds=True)
+
         self.y_pos.setText(self.get_ch_from_y_coord(point.y()))
         hi_ch_lis, hi_ch_str = self.get_high_channels_at_time(point.x())
         self.act_ch_label.setText(hi_ch_str)
@@ -384,6 +399,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         :param time: float, time in us
         :return: tpl, (list of strings with high ch_names, str with ch names seperated by | )
         """
+        # logging.debug('starting to get channels high at time: %.3f ....' % time)
         high_channels = []
         hi_ch_str = ''
         for ch_name, ch_dict in sorted(self.ch_pos_dict.items()):
@@ -396,6 +412,8 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                         if pos[i][0] < time < pos[i + 1][0] and hi_lo_tpl[1] == ch_num + 0.5:
                             high_channels.append(ch_name)
                             hi_ch_str += '| %s ' % ch_name
+        # logging.debug('... DONE to get channels high at time: %.3f' % time)
+
         return high_channels, hi_ch_str[1:]
 
     def mouse_clicked(self, viewbox, evt):
@@ -409,7 +427,8 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         new_pos = point.x()
         if self.gr_v_clicks % 2:  # odd number of clicks -> work on cursor one
             if self.gr_v_cursor_one is None:
-                self.gr_v_cursor_one = Pgplot.create_infinite_line(new_pos, pen=Pgplot.create_pen(255, 128, 0, width=0.5),
+                self.gr_v_cursor_one = Pgplot.create_infinite_line(new_pos,
+                                                                   pen=Pgplot.create_pen(255, 128, 0, width=0.5),
                                                                    movable=True)
                 self.gr_v_cursor_one.sigPositionChangeFinished.connect(self.cursor_moved)
                 self.gr_v_plt_itm.addItem(self.gr_v_cursor_one)
@@ -417,7 +436,8 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                 self.gr_v_cursor_one.setPos(new_pos)
         else:
             if self.gr_v_cursor_two is None:
-                self.gr_v_cursor_two = Pgplot.create_infinite_line(new_pos, pen=Pgplot.create_pen(255, 128, 0, width=0.5),
+                self.gr_v_cursor_two = Pgplot.create_infinite_line(new_pos,
+                                                                   pen=Pgplot.create_pen(255, 128, 0, width=0.5),
                                                                    movable=True)
                 self.gr_v_cursor_two.sigPositionChangeFinished.connect(self.cursor_moved)
                 self.gr_v_plt_itm.addItem(self.gr_v_cursor_two)
@@ -459,6 +479,8 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
     def update_gr_v(self, caller_str=None):
         """ updates the graphic view and adds a line for each item """
         try:
+            # logging.debug('updating graphical view ...')
+            upd_start_t = datetime.now()
             old_list = deepcopy(self.gui_cmd_list)
             new_list = self.cmd_list_from_gui()
             stop_in_cmds_list = [(i, each) for i, each in enumerate(new_list) if 'stop' in each]
@@ -482,7 +504,6 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                 if self.simple_widg is not None and 'periodic' in caller_str:
                     # print('clearing simple tab, due to changes in list view')
                     self.simple_widg.list_view_was_changed()
-                # print('updating graphics view')
                 self.ch_pos_dict, valid_lines = self.get_gr_v_pos_from_list_of_cmds(
                     self.cmd_list_from_gui(), ret_dict=self.ch_pos_dict)
                 lines_to_remove = [each for each in self.ch_pos_dict.keys() if each not in valid_lines]
@@ -493,6 +514,9 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                 # print('nope not a new list, not redrawing here')
             selected_rows = [self.listWidget_cmd_list.row(each) for each in self.listWidget_cmd_list.selectedItems()]
             self.highlight_selected_list_view_item(selected_rows, stop_in_cmds)
+            upd_done_t = datetime.now()
+            # logging.debug('... done updating graphical view after %.1f ms'
+            #               % ((upd_done_t - upd_start_t).microseconds / 1000))
         except Exception as e:
             print('error while updating graphical view: %s' % e)
 
@@ -515,12 +539,22 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             ch_high_val = ch_low_val + 0.5
             major_ticks.append((ch_low_val, ch + '_low'))
             major_ticks.append((ch_high_val, ch + '_high'))
+            # logging.debug(str(ch) + ' points are: ' + str(ch_dict['pos']))
+            x, y = zip(*ch_dict['pos'])
+            # logging.debug('x: ' + str(x))
+            # logging.debug('y: ' + str(y))
             if ch_dict.get('line', None) is not None:
                 ch_dict['line'].blockSignals(True)
-                ch_dict['line'].setPoints(ch_dict['pos'])
+                start = datetime.now()
+                ch_dict['line'].setData(x, y)
+                stop = datetime.now()
+                # logging.debug(str(ch) + ' setting points took: ' + str(stop - start))
                 ch_dict['line'].blockSignals(False)
             else:
-                ch_dict['line'] = Pgplot.create_roi_polyline(ch_dict['pos'], movable=False)
+                start = datetime.now()
+                ch_dict['line'] = Pgplot.create_plot_data_item(x, y)
+                stop = datetime.now()
+                # logging.debug(str(ch) + ' creating roi took: ' + str(stop - start))
                 if 'DO' in ch:  # outputs blue
                     pen = Pgplot.pg.mkPen('b', width=3)
                 else:  # triggers red
@@ -618,41 +652,56 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         cmd_np_list = np.reshape(cmd_np_list, (len(self.gui_cmd_list), 4))
         trigger_indices = [
             (i, cmd[1]) for i, cmd in enumerate(cmd_np_list) if cmd[0] == 2]
+        indice_list = list(sorted(indice_list))
+        ch_ind = -1
         for ch_name, ch_dict in self.ch_pos_dict.items():
             ch_line = ch_dict.get('line', False)
             ch_int = 2 ** int(ch_name[2:])
-            normal_ch = True
-            if ch_line:   # there is an existing line for the channel
-                segments = ch_line.segments
-                if 'DO' in ch_name:  # it is an output channel
-                    standard_pen = Pgplot.pg.mkPen('b', width=3)
-                else:  # it is a trigger channel
-                    normal_ch = False
-                    standard_pen = Pgplot.pg.mkPen('r', width=3)
-                highlight_pen = Pgplot.create_pen('g', width=3)  # highlighted green
-                white_pen = Pgplot.create_pen('w', width=3)  # for separating the stop pulse
-                for i, each in enumerate(segments):
-                    if each.currentPen != standard_pen:
-                        # overwrite all segments wiht the standard pen for this type
-                        each.setPen(standard_pen)
-                    for chosen_index in indice_list:
-                        # highlight the chosen segments which are mentioned in the indice list
-                        if normal_ch:
-                            if chosen_index == self.listWidget_cmd_list.count() - 1 and stop_in_list:
-                                segments[-1].setPen(highlight_pen)
-                            else:
-                                segments[chosen_index * 2].setPen(highlight_pen)
-                        else:  # each trigger always has 6 segments, only highlight first one.
-                            trig_ind = [tr[0] for tr in trigger_indices]
-                            # print(trig_ind)
-                            if chosen_index in trig_ind:
-                                trig_num = sum([1 for each in trigger_indices
-                                                if each[0] <= chosen_index and each[1] & ch_int != 0])
-                                if trig_num > 0:
-                                    trig_ind = trig_num - 1
-                                    segments[trig_ind * 6].setPen(highlight_pen)
-                    if stop_in_list and i == len(segments) - 3 and normal_ch:
-                        each.setPen(white_pen)
+            normal_ch = 'DO' in ch_name
+            if normal_ch:
+                ch_ind += 1
+            if ch_line:  # there is an existing line for the channel
+                # logging.debug(str(ch_name) + 'pos: ' + str(ch_dict.get('pos', [])))
+                if normal_ch and ch_ind == 0:
+                    if stop_in_list:
+                        stop_time_start = ch_dict.get('pos', [])[-4][0]
+                        stop_time_end = ch_dict.get('pos', [])[-1][0]
+                        if self.stop_highlight is not None:
+                            self.stop_highlight.setRegion([stop_time_start, stop_time_end])
+                        else:
+                            self.stop_highlight = Pgplot.pg.LinearRegionItem(
+                                [stop_time_start, stop_time_end], movable=False, brush=(255, 0, 0, 50))
+                        self.gr_v_plt_itm.addItem(self.stop_highlight, ignoreBounds=True)
+                    for each in self.highlight_line_list:  # first remove all highlights
+                        logging.debug('removing ' + str(each))
+                        self.gr_v_plt_itm.removeItem(each)
+                    self.highlight_line_list = []
+
+                    # if more indices follow up on each other, just take first and last index
+                    run = []
+                    result = [run]
+                    expect = None
+                    for v in indice_list:
+                        if (v == expect) or (expect is None):
+                            run.append(v)
+                        else:
+                            run = [v]
+                            result.append(run)
+                        expect = v + 1
+                    for indice_group in result:
+                        if len(indice_group) == 1:
+                            highlight_time_start = ch_dict.get('pos', [])[indice_group[0] * 2][0]
+                            highlight_time_end = ch_dict.get('pos', [])[indice_group[0] * 2 + 1][0]
+                            self.highlight_line_list.append(Pgplot.pg.LinearRegionItem(
+                                [highlight_time_start, highlight_time_end], movable=False, brush=(0, 0, 255, 50)))
+                        elif len(indice_group) > 1:
+                            highlight_time_start = ch_dict.get('pos', [])[indice_group[0] * 2][0]
+                            highlight_time_end = ch_dict.get('pos', [])[indice_group[-1] * 2 + 1][0]
+                            self.highlight_line_list.append(Pgplot.pg.LinearRegionItem(
+                                [highlight_time_start, highlight_time_end], movable=False, brush=(0, 0, 255, 50)))
+                    for each in self.highlight_line_list:
+                        self.gr_v_plt_itm.addItem(each, ignoreBounds=True)
+                        # logging.debug('no_continuous_indice_list: ' + str(result))
 
     """ talk to dev """
 
@@ -710,7 +759,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             self.track_gui.close_pulse_pattern_window()
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     gui = PulsePatternUi(None, '', None)
     # gui.load_from_text(txt_path='E:\\TildaDebugging\\Pulsepattern123Pattern.txt')

@@ -28,7 +28,8 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
     # callback for the voltage readings, done by the main when in idle state
     voltage_reading = QtCore.pyqtSignal(dict)
 
-    def __init__(self, parent, window_name='DMM Live View Window', enable_com=None, active_iso=None, pre_or_during_scan_str=''):
+    def __init__(self, parent, window_name='DMM Live View Window',
+                 enable_com=None, active_iso=None, pre_or_during_scan_str='', selected_track_name=None):
         """
         this will statup the GUI and check for already active dmm's
         :param parent: parent_gui, usually the main in order to unsubscribe from it etc.
@@ -37,7 +38,13 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.setWindowTitle(window_name)
         self.parent_ui = parent
-        self.dmm_types = Cfg._main_instance.scan_main.digital_multi_meter.types
+        try:
+            self.dmm_types = Cfg._main_instance.scan_main.digital_multi_meter.types
+        except AttributeError:
+            self.dmm_types = ['None']
+
+        self.comm_enabled = True
+
         self.tabs = {
             'tab0': [self.tab_0, None, None]}  # dict for storing all tabs, key: [QWidget(), Layout, userWidget]
         self.tabWidget.setTabText(0, 'choose dmm')
@@ -47,8 +54,10 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.choose_dmm_wid = ChooseDmmWidget(self.init_dmm_clicked_callback, self.dmm_types)
         self.tabs['tab0'][2] = self.tabs['tab0'][1].addWidget(self.choose_dmm_wid)
-
-        Cfg._main_instance.dmm_gui_subscribe(self.voltage_reading)
+        try:
+            Cfg._main_instance.dmm_gui_subscribe(self.voltage_reading)
+        except AttributeError:  # no main available
+            pass
         self.voltage_reading.connect(self.rcvd_voltage_dict)
 
         self.pushButton_confirm.clicked.connect(self.confirm_settings)
@@ -59,17 +68,17 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.show()
 
-        self.comm_enabled = True
         self.comm_allow_overwrite_val = False
         if enable_com is not None:
             self.enable_communication(enable_com, True)
 
         self.active_iso = active_iso
+        self.selected_track_name = selected_track_name
         self.pre_or_during_scan_str = pre_or_during_scan_str
 
         if self.active_iso is not None:
             scan_dict = Cfg._main_instance.scan_pars[self.active_iso]
-            meas_volt_pars_dict = scan_dict['measureVoltPars']
+            meas_volt_pars_dict = scan_dict[self.selected_track_name]['measureVoltPars']
             meas_volt_dict = meas_volt_pars_dict.get(self.pre_or_during_scan_str, None)
             if meas_volt_dict is None:
                 self.set_pulse_len_and_timeout({})
@@ -161,10 +170,14 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def check_for_already_active_dmms(self):
         """ checks for already active dmms and opens tabs for them """
-        act_dmm_dict = Cfg._main_instance.get_active_dmms()
-        for key, val in act_dmm_dict.items():
-            dmm_type, dmm_addr, state_str, last_readback, dmm_config = val
-            self.setup_new_tab_widget((key, dmm_type), False)
+        try:
+            act_dmm_dict = Cfg._main_instance.get_active_dmms()
+            for key, val in act_dmm_dict.items():
+                dmm_type, dmm_addr, state_str, last_readback, dmm_config = val
+                self.setup_new_tab_widget((key, dmm_type), False)
+        except AttributeError:  # no main instance available
+            logging.error('while checking for already active dmms an exception occured', exc_info=True)
+            pass
 
     def setup_new_tab_widget(self, tpl, disconnect_signal=True):
         """
@@ -181,6 +194,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.tabs[dmm_name][1] = QtWidgets.QVBoxLayout(self.tabs[dmm_name][0])
         self.tabWidget.setCurrentWidget(self.tabs[dmm_name][0])
         self.tabs[dmm_name][2] = get_wid_by_type(dev_type, dmm_name)
+        self.tabs[dmm_name][2].enable_communication(self.comm_enabled)
         self.tabs[dmm_name][1].addWidget(self.tabs[dmm_name][2])
         return True
 
@@ -268,7 +282,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
                     ret[key] = self.tabs[key][-1].get_current_config()
                 except Exception as e:
                     logging.error(
-                        'error: while reading the gui of %s, this happened: %s' % (key, e))
+                        'error: while reading the gui of %s, this happened: %s' % (key, e), exc_info=True)
         return ret
 
     def get_current_meas_volt_pars(self):
@@ -288,8 +302,11 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         when ok is pressed, values are stored in the main, if an isotope has ben selected before.
         """
         if self.active_iso is not None:
-            Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'][self.pre_or_during_scan_str] = self.get_current_meas_volt_pars()
-            print('set values to: ', Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'])
+            Cfg._main_instance.scan_pars[
+                self.active_iso][self.selected_track_name][
+                'measureVoltPars'][self.pre_or_during_scan_str] = self.get_current_meas_volt_pars()
+            logging.debug('dmmUi has set values to: ' + str(
+                Cfg._main_instance.scan_pars[self.active_iso][self.selected_track_name]['measureVoltPars']))
             self.parent_ui.pre_or_during_scan_index += 1
         self.close()
 

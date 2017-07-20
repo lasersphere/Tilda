@@ -8,6 +8,7 @@ Created on '13.11.2015'
 Module for returning an instance of the desired Sequencer
 """
 from PyQt5 import QtWidgets
+import logging
 
 
 def ret_seq_instance_of_type(seq_type):
@@ -40,6 +41,7 @@ def ret_seq_instance_of_type(seq_type):
             from Driver.DataAcquisitionFpga.TimeResolvedSequencer import TimeResolvedSequencer as Trs
             return Trs()
         except Exception:
+            logging.error('error while loading trs: %s' % e, exc_info=True)
             reply = QtWidgets.QMessageBox.warning(
                 QtWidgets.QWidget(),
                 'Hardware not found!',

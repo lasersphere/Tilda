@@ -5,6 +5,7 @@ Created on '08.07.2015'
 @author:'simkaufm'
 
 """
+import logging
 
 from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 
@@ -38,12 +39,21 @@ class MeasureVolt(FPGAInterfaceHandling):
         :return: True if self.status == self.statusSuccess, else False
         """
         self.ReadWrite(self.config.measVoltPulseLength25ns, measVoltPars['measVoltPulseLength25ns'])
-        self.ReadWrite(self.config.measVoltTimeout10ns, measVoltPars['measVoltTimeout10ns'])
         # will be 7 for software trigger and than the measurement will be stopped from the host
-        key = measVoltPars.get('measurementCompleteDestination', 'PXI_Trigger_4_Con1_DIO30_Con1_DIO31')
-        val = self.config.measVoltCompleteDestStateDict.get(key, 0)
-        self.ReadWrite(self.config.measVoltCompleteDest, val)
-        print('set the measurement complete destination to state enum: %s <-> %s' % (key, val))
+        meas_volt_complete_state = measVoltPars.get('measurementCompleteDestination',
+                                                    'PXI_Trigger_4_Con1_DIO30_Con1_DIO31')
+        meas_volt_complete_state_num = self.config.measVoltCompleteDestStateDict.get(meas_volt_complete_state, 0)
+        self.ReadWrite(self.config.measVoltCompleteDest, meas_volt_complete_state_num)
+        logging.info(
+            'set the measurement complete destination to state enum: %s <-> %s' % (meas_volt_complete_state, meas_volt_complete_state_num))
+        if meas_volt_complete_state == 'software':  # software triggering!
+            # when software triggering is used, use a delay of 0 so, the measurement does not time out.
+            self.ReadWrite(self.config.measVoltTimeout10ns, 0)
+            logging.debug('setting the timeout for the voltage measurement to zero'
+                          ' in order to have this triggered by software and it does bnot timeout.')
+        else:
+            self.ReadWrite(self.config.measVoltTimeout10ns, measVoltPars['measVoltTimeout10ns'])
+
         return self.checkFpgaStatus()
 
     def set_stopVoltMeas(self, stop_bool):

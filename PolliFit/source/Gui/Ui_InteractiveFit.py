@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_InteractiveFit(object):
     def setupUi(self, InteractiveFit):
         InteractiveFit.setObjectName("InteractiveFit")
-        InteractiveFit.resize(263, 215)
+        InteractiveFit.resize(381, 330)
         self.verticalLayout_3 = QtWidgets.QVBoxLayout(InteractiveFit)
         self.verticalLayout_3.setObjectName("verticalLayout_3")
         self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
@@ -51,6 +51,9 @@ class Ui_InteractiveFit(object):
         self.bFit = QtWidgets.QPushButton(InteractiveFit)
         self.bFit.setObjectName("bFit")
         self.horizontalLayout.addWidget(self.bFit)
+        self.pushButton_check_softw_gates = QtWidgets.QPushButton(InteractiveFit)
+        self.pushButton_check_softw_gates.setObjectName("pushButton_check_softw_gates")
+        self.horizontalLayout.addWidget(self.pushButton_check_softw_gates)
         self.bReset = QtWidgets.QPushButton(InteractiveFit)
         self.bReset.setObjectName("bReset")
         self.horizontalLayout.addWidget(self.bReset)
@@ -91,6 +94,7 @@ class Ui_InteractiveFit(object):
         item = self.parTable.horizontalHeaderItem(2)
         item.setText(_translate("InteractiveFit", "Fixed"))
         self.bFit.setText(_translate("InteractiveFit", "Fit"))
+        self.pushButton_check_softw_gates.setText(_translate("InteractiveFit", "check software gates"))
         self.bReset.setText(_translate("InteractiveFit", "Reset"))
         self.label.setText(_translate("InteractiveFit", "Font size"))
 

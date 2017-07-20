@@ -8,13 +8,20 @@ Description:
 
 Module representing the Agilent M918x digital multimeter with all required public functions.
 
+Note:
+    Due to the hardware limitation of only 80 Trigger counts the dmm is not easily
+    suitable for Kepco scans with hardware feedback.
+
+    Just Restarting the measurement when 80 Triggers have ben
+    collected would be too risky to loose triggers in between.
+    Software triggered kepco scans would probably work,
+    but since they are not favorable anyhow implementation does not seem to make sense.
+    Just don't perform Kepco scans with this multimeter.
 """
-
-
-
 import ctypes
 import datetime
 import logging
+import time
 from copy import deepcopy
 from enum import Enum, unique
 from os import path, pardir
@@ -24,53 +31,46 @@ import numpy as np
 @unique
 class AgM918xTriggerSources(Enum):
     """
-    Immediate (1) DMM does not wait for a trigger of any kind
-    External (2) DMM waits for a trigger on the external trigger input (Which pin? 9?)
-    Software (3) DMM waits for execution of Send Software Trigger function
-    Interval (10) DMM waits for the length of time specified by the Sample Interval attribute to elapse
-    TTL 0 (111) PXI Trigger Line 0
-    TTL 1 (112) PXI Trigger Line 1
-    TTL 2 (113) PXI Trigger Line 2
-    TTL 3 (114) PXI Trigger Line 3
-    TTL 4 (115) PXI Trigger Line 4
-    TTL 5 (116) PXI Trigger Line 5
-    TTL 6 (117) PXI Trigger Line 6
-    TTL 7 (118) PXI Trigger Line 7
-    ECL 0 (119) ECL Trigger Line 0
-    ECL 1 (120) ECL Trigger Line 1
-    PXI Star (131) PXI Star trigger line
-    RTSI 0 (140) RTSI Trigger Line 0
-    RTSI 1 (141) RTSI Trigger Line 1
-    RTSI 2 (142) RTSI Trigger Line 2
-    RTSI 3 (143) RTSI Trigger Line 3
-    RTSI 4 (144) RTSI Trigger Line 4
-    RTSI 5 (145) RTSI Trigger Line 5
-    RTSI 6 (146) RTSI Trigger Line 6
-    """
-    immediate = 1
-    external = 2
-    softw_trig = 3
-    interval = 10
-    pxi_trig_0 = 111
-    pxi_trig_1 = 112
-    pxi_trig_2 = 113
-    pxi_trig_3 = 114
-    pxi_trig_4 = 115
-    pxi_trig_5 = 116
-    pxi_trig_6 = 117
-    pxi_trig_7 = 118
-    ecl_trig_0 = 119
-    ecl_trig_1 = 120
-    pxi_star_trig = 131
-    rtsi_trig_0 = 140
-    rtsi_trig_1 = 141
-    rtsi_trig_2 = 142
-    rtsi_trig_3 = 143
-    rtsi_trig_4 = 144
-    rtsi_trig_5 = 145
-    rtsi_trig_6 = 146
+    Will be used with the funciton AgM918x_TriggerSetSource
+    from AgM918x.h :
+        #define AGM918X_VAL_TRIGGER_SOURCE_IMMEDIATE                0
+        #define AGM918X_VAL_TRIGGER_SOURCE_EXTERNAL                 1
+        #define AGM918X_VAL_TRIGGER_SOURCE_INTERNAL                 2
+        #define AGM918X_VAL_TRIGGER_SOURCE_TTL1                     3
+        #define AGM918X_VAL_TRIGGER_SOURCE_TTL2                     4
+        #define AGM918X_VAL_TRIGGER_SOURCE_TTL3                     5
+        #define AGM918X_VAL_TRIGGER_SOURCE_TTL4                     6
+        #define AGM918X_VAL_TRIGGER_SOURCE_TTL5                     7
+        #define AGM918X_VAL_TRIGGER_SOURCE_TTL6                     8
+        #define AGM918X_VAL_TRIGGER_SOURCE_PXI_STAR                 9
 
-@unique
+        AGM918X_VAL_TRIGGER_SOURCE_IMMEDIATE
+            The DMM exits the Wait-For-Trigger state immediately after entering.
+            It does not wait for a trigger of any kind. This source only applies when the Acquistion Model is Trigger.
+
+        AGM918X_VAL_TRIGGER_SOURCE_EXTERNAL
+            The DMM exits the Wait-For-Trigger state when a trigger occurs on the external trigger input.
+
+        AGM918X_VAL_TRIGGER_SOURCE_INTERNAL
+            The DMM exits the Wait-For-Trigger state when the input signal passes through
+            the programmed analog level with the programmed slope
+
+        AGM918X_VAL_TRIGGER_SOURCE_TTL1
+            The DMM exits the Wait-For-Trigger state when it receives a trigger on TTL1.
+
+    """
+    immediate = 0
+    external = 1
+    internal = 2
+    ttl_1 = 3
+    ttl_2 = 4
+    ttl_3 = 5
+    ttl_4 = 6
+    ttl_5 = 7
+    ttl_6 = 8
+    pxi_star = 9
+
+
 class AgM918xMeasCompleteLoc(Enum):
     """
     Specifies the destination of the DMM Measurement Complete (MC) signal.
@@ -78,7 +78,8 @@ class AgM918xMeasCompleteLoc(Enum):
      This signal is commonly referred to as Voltmeter Complete.
 
     None (-1) No destination specified.
-    External (2) Routes the measurement complete signal to the external connector (Pin 6?).
+    External (2) Routes the measurement complete signal to the external connector (Pin 2).
+    -> External = 'Con1_DIO30' or 'Con1_DIO31'
     TTL 0 (111) Routes the measurement complete signal to TTL0.
     TTL 1 (112) Routes the measurement complete signal to TTL1.
     TTL 2 (113) Routes the measurement complete signal to TTL2.
@@ -99,7 +100,8 @@ class AgM918xMeasCompleteLoc(Enum):
     RTSI 6 (146) Routes the measurement complete signal to RTSI7.
     """
     undefined = -1
-    external = 2
+    Con1_DIO30 = 2  # this means external
+    Con1_DIO31 = 2  # this means external
     PXI_Trigger_0 = 111
     PXI_Trigger_1 = 112
     PXI_Trigger_2 = 113
@@ -120,74 +122,35 @@ class AgM918xMeasCompleteLoc(Enum):
     RTSI_TRIGGER_6 = 146
     software = 0
 
+
 class AgilentM918xPreConfigs(Enum):
-    initial = {
-        'range': 20.0,
-        'resolution': 7.5,
-        'triggerCount': 5,
-        'sampleCount': 5,
-        'autoZero': -1,
-        'triggerSource': 'pxi_trig_3',
-        'sampleInterval': -1,
-        'powerLineFrequency': 50.0,
-        'triggerDelay_s': 0,
-        'triggerSlope': 'rising',
-        'measurementCompleteDestination': 'Con1_DIO30',
-        'highInputResistanceTrue': True,
-        'assignment': 'offset',
-        'accuracy': (None, None),
-        'preConfName': 'initial'
-    }
     periodic = {
-        'range': 20.0,
-        'resolution': 6.5,
-        'triggerCount': 0,
-        'sampleCount': 0,
-        'autoZero': -1,
-        'triggerSource': 'eins',
-        'sampleInterval': -1,
-        'powerLineFrequency': 50.0,
+        'range': '20.0',
+        'resolution': '0.00048',
+        'sampleCount': 20,
+        'triggerSource': AgM918xTriggerSources.immediate.name,
+        'powerLineFrequency': '50.0',
         'triggerDelay_s': 0,
         'triggerSlope': 'rising',
-        'measurementCompleteDestination': 'Con1_DIO30',
+        'measurementCompleteDestination': AgM918xMeasCompleteLoc.software.name,
         'highInputResistanceTrue': True,
         'assignment': 'offset',
         'accuracy': (None, None),
         'preConfName': 'periodic'
     }
     pre_scan = {
-        'range': 20.0,
-        'resolution': 6.5,
-        'triggerCount': 0,
-        'sampleCount': 0,
-        'autoZero': -1,
-        'triggerSource': 'softw_trigger',
-        'sampleInterval': -1,
-        'powerLineFrequency': 50.0,
+        'range': '20.0',
+        'resolution': '0.00001',
+        'sampleCount': 20,
+        'triggerSource': AgM918xTriggerSources.immediate.name,
+        'powerLineFrequency': '50.0',
         'triggerDelay_s': 0,
         'triggerSlope': 'rising',
-        'measurementCompleteDestination': 'Con1_DIO30',
+        'measurementCompleteDestination': AgM918xMeasCompleteLoc.software.name,
         'highInputResistanceTrue': True,
         'assignment': 'offset',
         'accuracy': (None, None),
         'preConfName': 'pre_scan'
-    }
-    kepco = {
-        'range': 20.0,
-        'resolution': 6.5,
-        'triggerCount': 0,
-        'sampleCount': 0,
-        'autoZero': -1,
-        'triggerSource': 'softw_trigger',
-        'sampleInterval': -1,
-        'powerLineFrequency': 50.0,
-        'triggerDelay_s': 0,
-        'triggerSlope': 'rising',
-        'measurementCompleteDestination': 'Con1_DIO30',
-        'highInputResistanceTrue': True,
-        'assignment': 'offset',
-        'accuracy': (None, None),
-        'preConfName': 'kepco'
     }
 
 
@@ -195,14 +158,14 @@ class AgilentM918x:
     """
     Class for accessing the Agilent M918x digital Multimeter.
     """
-    def __init__(self, reset=True, address_str='PXI6::15::INSTR', pwr_line_freq=50):
-        dll_path = path.join(path.dirname(__file__), pardir, pardir, pardir, 'binary\\AgM918x.dll')
+    def __init__(self, reset=True, address_str='PXI6..15..INSTR', pwr_line_freq='50'):
+        dll_path = path.normpath(path.join(path.dirname(__file__), pardir, pardir, pardir, 'binary\\AgM918x.dll'))
         print(dll_path)
         #dll_path = 'C:\\Program Files (x86)\\IVI Foundation\\IVI\\Bin\\AgM918x.dll'
 
         self.type = 'Agilent_M918x'
         self.state = 'None'
-        self.address = address_str
+        self.address = address_str.replace('.', ':')  # colons not allowed in name but needed for gpib
         self.name = self.type + '_' + address_str
         # default config dictionary for this type of DMM:
 
@@ -212,17 +175,24 @@ class AgilentM918x:
         self.get_accuracy()
 
         self.last_readback = None  # tuple, (voltage_float, time_str)
+        self.already_read = False  # buffer on device cannot be cleared
+        # -> use this variable if you have read from buffer =>
+        #  dev is in idle state. reset variable when initializing measurement!
+        self.stored_data = np.array([])
+
         self.dll = ctypes.WinDLL(dll_path)
         self.session = ctypes.c_uint32(0)
 
-        stat = self.init(address_str, reset_dev=reset)
+        stat = self.init(self.address, reset_dev=reset)
         if stat < 0:  # if init fails, start simulation
             self.get_error_message(stat, 'while initializing AgM918x: ')
             self.de_init_dmm()
             print('starting simulation now')
-            stat = self.init_with_option(address_str, "Simulate=True, DriverSetup=Model:AgM9183A")
+            stat = self.init_with_option(self.address, "Simulate=True, DriverSetup=Model:AgM9183A")
             self.get_error_message(stat)
         self.config_power_line_freq(pwr_line_freq)
+        self.set_to_pre_conf_setting(self.pre_configs.periodic.name)
+
 
         print(self.name, ' initialized, status is: %s, session is: %s' % (stat, self.session))
 
@@ -263,12 +233,11 @@ class AgilentM918x:
         return ret
 
     def de_init_dmm(self):
-        ''' Closes the current session to the instrument. '''
-        if self.get_initiated() == True:
+        """ Closes the current session to the instrument. """
+        if self.get_initiated():
             self.abort_meas()
         self.dll.AgM918x_close(self.session)
         self.session = ctypes.c_ulong(0)
-        pass
 
     ''' Configure '''
 
@@ -276,17 +245,8 @@ class AgilentM918x:
         """
         Configures the common properties of the measurement.
         named configure measurement digits in quick ref.
-        :param dmm_range: dbl, range 20.00, 200.00, etc.
-        Positive values represent the absolute value of the maximum measurement expected.
-        The driver coerces this value to the appropriate range for the instrument.
-        Possible ranges are: 0.2, 2.0, 20.0, 200.0, 2000.0
-        Auto range ON: -1.0
-        :param resolution: dbl, resolution in digits
-        3.5 (3.5000000E+0) Specifies 3.5 digits resolution.
-        4.5 (4.500000E+0) Specifies 4.5 digits resolution.
-        5.5 (5.500000E+0) Specifies 5.5 digits resolution.
-        6.5 (6.500000E+0) Specifies 6.5 digits resolution.
-        7.5 (7.500000E+0) Specifies 7.5 digits resolution.
+        :param dmm_range: str, ['0.2', '2.0', '20.0', '200.0', '300.0']
+        :param resolution: str, The measurement resolution in absolute units.
         :param func: int, DC volts, AC volts and so on
         1: DC_VOLTS
         2: AC_VOLTS
@@ -303,157 +263,132 @@ class AgilentM918x:
         self.config_dict['range'] = dmm_range
         self.config_dict['resolution'] = resolution
         func = ctypes.c_int32(func)
-        dmm_range = ctypes.c_double(dmm_range)
-        res = ctypes.c_double(resolution)
-        self.dll.AgM918x_ConfigureMeasurement(self.session, func, dmm_range, res)
-        pass
+        dmm_range = ctypes.c_double(float(dmm_range))
+        res = ctypes.c_double(float(resolution))
+        self.get_error_message(self.dll.AgM918x_ConfigureMeasurement(self.session, func, dmm_range, res))
 
-    def config_multi_point_meas(self, trig_count, sample_count, trig_src_enum, sample_interval):
+    def config_dcvoltage_measurement(self, dcv_range, dcv_res):
         """
-        Configures the properties for multipoint measurements.
-        REMARK: (from documentation) This function is implemented by calling into the instrument-specific MultiSample Configure function.
-        Therefore, the TriggerCount parameter must be 1, and the SampleTrigger parameter must specify Interval
-        triggering. Also, the trigger source must be something other than Immediate.
+        Configures all instrument settings necessary to measure DC Voltage, given the parameters of Range, Resolution
+        and AutoRange. If auto range is enabled, then the Range parameter specifies the initial range.
+        :param dcv_range:   str, ['0.2', '2.0', '20.0', '200.0', '300.0']
+        :param dcv_res:     str, ['3.5', '4.5', '5.5', '6.5']
+                            The measurement resolution in units of Volts. The Resolution parameter is divided by the
+                            absolute value of the Range parameter to produce a dimensionless number of measurement
+                            counts which is used to select the integration time of the analog-to-digital converter.
+        autorange must be False for Multi Sample mode and will therefore not be user-defined
+        """
+        dcv_range = ctypes.c_double(float(dcv_range))
+        dcv_res = ctypes.c_double(float(dcv_res))
+        autorange = ctypes.c_bool(False)
+        self.get_error_message(
+            self.dll.AgM918x_DCVoltConfigureAll(self.session, dcv_range, dcv_res, autorange))
 
-        :param trig_count: int, must be 1
-        :param sample_count: int32, sets the number of measurements the DMM makes
-         in each measurement sequence initiated by a trigger.
+    def config_multi_point_meas(self, sample_count, trig_src_enum, trig_delay_s, trig_slope):
+        """
+        Configures the trigger source and the number of counts before the dmm will return to idle.
+
+        :param sample_count: int32, actually will be the number of triggers (followed by one sample each)
+        until the dmm returns to idle state (only in idle state values can be fetched!)
 
         :param trig_src_enum: enum, specifies the sample trigger source to use.
          Enum defined in AgM918x TriggerSources class
-        :param sample_trigger: int32, this parameter must specify Interval sampling (10)
 
-        :param sample_interval: dbl, sets the amount of time in seconds the DMM waits between measurement cycles.
-        Specify a sample interval to add settling time between measurement cycles or to decrease
-        the measurement rate. Sample Interval only applies when the Sample Trigger is set to Interval.
+        :param trig_delay_s: float, delay of the trigger
 
-        On the NI 4060, the Sample Interval value is used as the settling time. (Same on AgM918x??)
-        When sample interval is set to 0, the DMM does not settle between measurement cycles.
-        The NI 4065 and NI 4070/4071/4072 use the value specified in Sample Interval as additional delay.
-        The default value (-1) ensures that the DMM settles for a recommended time.
-        This is the same as using an Immediate trigger.
+        :param trigger_slope: str, 'falling' or 'rising'
+
         """
-        self.config_dict['triggerCount'] = trig_count
         self.config_dict['sampleCount'] = sample_count
-        self.config_dict['triggerSource'] = trig_src_enum.name
-        self.config_dict['sampleInterval'] = sample_interval
-        trig_count = ctypes.c_int32(trig_count)
         sample_count = ctypes.c_int32(sample_count)
-        sample_trig = ctypes.c_int32(trig_src_enum.value)
-        sample_interval = ctypes.c_double(sample_interval)
-        self.dll.AgM918x_ConfigureMultiPoint(self.session, trig_count, sample_count, sample_trig, sample_interval)
+        self.get_error_message(self.dll.AgM918x_TriggerSetAcquisitionModel(self.session, ctypes.c_int32(0)))  # trigger model
+        self.get_error_message(self.dll.AgM918x_TriggerSetCount(self.session, sample_count))
+        self.config_trigger(trig_src_enum, trig_delay_s, trig_slope)
 
-    def set_input_resistance(self, highResistanceTrue=True):
+    def set_input_resistance(self, greater_10_g_ohm=True):
         """
-        Seems like there is no input_resistance attribute with the AgM918x, so this function may be obsolete
-        :param highResistanceTrue:
-        :return:
+        function to set the input resistance of the AgM918x
+        :param greater_10_g_ohm: bool,
+            True if you want an input resistance higher than 10GOhm
+            False if you want 10MOhm input resistance
+
+         NOTE: >10 GOhm only supported until 2V range!
         """
-        pass
+        self.config_dict['highInputResistanceTrue'] = greater_10_g_ohm
+        NIDMM_VAL_1_MEGAOHM = 1000000.0
+        NIDMM_VAL_10_MEGAOHM = 10000000.0
+        NIDMM_VAL_GREATER_THAN_10_GIGAOHM = 10000000000.0
+        NIDMM_VAL_RESISTANCE_NA = 0.0
+        NIDMM_ATTR_INPUT_RESISTANCE_id = 29
+        resistance = ctypes.c_double(NIDMM_VAL_10_MEGAOHM)
+        if greater_10_g_ohm:
+            resistance = ctypes.c_double(NIDMM_VAL_GREATER_THAN_10_GIGAOHM)
+        self.set_property_node(resistance, NIDMM_ATTR_INPUT_RESISTANCE_id)
 
     def get_range(self):
         """
         read the currently used range.
         :return: dbl, value for the range.
-        valid ranges: 0.1, 1.0, 10.0, 100.0, 1000.0
-        Auto range ON: -1.0
-        Auto range OFF: -2.0
-        Auto range ONCE: -3.0
+        valid ranges:
         """
         val = self.read_property_node(ctypes.c_double(), 2,
                                       attr_base_str='IVI_CLASS_PUBLIC_ATTR_BASE')
+        return str(val)
+
+    def get_resolution(self):
+        val = self.read_property_node(ctypes.c_double(), 8, attr_base_str='IVI_CLASS_ATTR_BASE')
         return val
 
     def set_range(self, range_val):
         """
         function for only setting the range of the dmm
         :param range_val: dbl, value for the range.
-        valid ranges: 0.1, 1.0, 10.0, 100.0, 1000.0
-        Auto range ON: -1.0
-        Auto range OFF: -2.0
-        Auto range ONCE: -3.0
+        valid ranges:
         """
         self.config_dict['range'] = range_val
-        self.set_property_node(ctypes.c_double(range_val), 2,
+        self.set_property_node(ctypes.c_double(float(range_val)), 2,
                                attr_base_str='IVI_CLASS_PUBLIC_ATTR_BASE')
-        pass
 
     ''' Measurement Options'''
 
     def config_power_line_freq(self, pwr_line_freq):
         """
         Specifies the powerline frequency.
-        :param pwr_line_freq: dbl, 50 or 60 Hz
+        :param pwr_line_freq: str, '50' or '60' Hz
         """
         self.config_dict['powerLineFrequency'] = pwr_line_freq
-        self.dll.AgM918x_ConfigurePowerLineFrequency(self.session, ctypes.c_double(pwr_line_freq))
-
-    def config_auto_zero(self, auto_zero_mode):
-        """
-        AgM918x seems to not support auto zero function.
-        !!!
-        Configures the DMM for Auto Zero. When Auto Zero is ON, the DMM internally disconnects the input
-         and takes a zero reading. It then subtracts the zero reading from the measurement.
-          This prevents offset voltages present on the input circuitry of the DMM from affecting
-           measurement accuracy. When Auto Zero is OFF, the DMM does not compensate for zero reading offset.
-        :param auto_zero_mode: int,
-        Auto (default) (-1)  NI-DMM chooses the Auto Zero setting based on the configured function and resolution.
-        Off (0) Disables Auto Zero.  Note  The NI 4065 does not support this setting.
-        On (1) The DMM internally disconnects the input signal following each measurement and takes a zero reading.
-            It then subtracts the zero reading from the preceding reading.
-        Once (2) The DMM internally disconnects the input signal following each measurement and takes a zero reading.
-            It then subtracts the zero reading from the preceding reading.
-        """
-        pass
-
-    def config_adc_cal(self, adc_cal_mode):
-        """
-        AgM918x seems not to support adc cal function
-        !!!
-        Allows the DMM to compensate for gain drift since the last external or self-calibration.
-         When ADC Calibration is ON, the DMM measures an internal reference to calculate the correct gain
-          for the measurement. When ADC Calibration is OFF, the DMM does not compensate for changes to the gain.
-        :param adc_cal_mode: int,
-        ON (-1) The DMM measures an internal reference to calculate the correct gain for the measurement.
-        OFF (0) The DMM does not compensate for changes to the gain.
-        AUTO (1) The DMM enables or disables ADC calibration based on the configured function and resolution.
-        """
-        pass
-
+        self.get_error_message(
+            self.dll.AgM918x_ConfigurePowerLineFrequency(self.session, ctypes.c_double(float(pwr_line_freq))))
 
     ''' Trigger '''
 
-    def config_trigger(self, trig_src_enum, trig_delay):
+    def config_trigger(self, trig_src_enum, trig_delay_s, trigger_slope):
         """
         Configures the DMM trigger source and trigger delay.
         :param trig_src_enum: enum, specifies the sample trigger source to use.
          Enum defined in AgM918xTriggerSources class.
 
-        :param trig_delay: dbl, The length of time between when the DMM receives the trigger
+        :param trig_delay_s: dbl, The length of time between when the DMM receives the trigger
         and when it takes a measurement (in seconds).
-        By default, Trigger Delay is -1, which means the DMM waits an appropriate settling time
-        before taking the measurement.
 
-        valid values:
-        50µs to 15.0 s (resolution is 1µs up to 65µs then 16µs)
-        -1.0: auto delay ON
-        -2.0: auto delay OFF
+        :param trigger_slope: str, 'falling' or 'rising'
         """
         self.config_dict['triggerSource'] = trig_src_enum.name
-        self.config_dict['triggerDelay_s'] = trig_delay
-        self.dll.AgM918x_ConfigureTrigger(
-            self.session, ctypes.c_int32(trig_src_enum.value), ctypes.c_double(trig_delay))
-        pass
+        self.config_dict['triggerDelay_s'] = trig_delay_s
+        self.get_error_message(self.dll.AgM918x_TriggerSetSource(self.session, ctypes.c_int32(trig_src_enum.value)))
+        self.get_error_message(self.dll.AgM918x_TriggerSetDelay(self.session, ctypes.c_double(trig_delay_s)))
+        self.config_trigger_slope(trigger_slope)
 
     def config_trigger_slope(self, trig_slope):
         """
         Sets the Trigger Slope property to either rising edge (positive) or falling edge (negative) polarity.
-        :param trig_slope: int,
+        :param trig_slope: str, 'falling' or 'rising'
         Rising Edge: 0
         Falling Edge: 1 (default)
         """
-        self.config_dict['triggerSlope'] = 'falling' if trig_slope else 'rising'
-        self.dll.AgM918x_ConfigureTriggerSlope(self.session, ctypes.c_int32(trig_slope))
+        self.config_dict['triggerSlope'] = trig_slope
+        slope_int = 1 if trig_slope == 'falling' else 0
+        self.get_error_message(self.dll.AgM918x_ConfigureTriggerSlope(self.session, ctypes.c_int32(slope_int)))
 
     def config_meas_complete_dest(self, meas_compl_dest_enum):
         """
@@ -462,45 +397,45 @@ class AgilentM918x:
         """
         self.config_dict['measurementCompleteDestination'] = meas_compl_dest_enum.name
         if meas_compl_dest_enum != AgM918xMeasCompleteLoc.software:
-            self.dll.AgM918x_ConfigureMeasCompleteDest(self.session, ctypes.c_int32(meas_compl_dest_enum.value))
+            self.get_error_message(
+                self.dll.AgM918x_ConfigureMeasCompleteDest(self.session, ctypes.c_int32(meas_compl_dest_enum.value)))
 
     def send_software_trigger(self):
         """
-        sends a command to trigger the DMM
-        Function seems to be not supported by AgM918x. There is no AgM918x_SendSoftwareTrigger
+        Software Trigger seems to be not supported by AgM918x. There is no AgM918x_SendSoftwareTrigger
+        -> therefore just initiate measurement with the previously configured settings (trigger = immediate)
         """
-        pass
-
-    ''' Actual Values '''
-
-
+        logging.debug(self.name + ' sending software trigger')
+        self.abort_meas()
+        self.initiate_measurement()
 
     ''' Measurement '''
 
     def initiate_measurement(self):
         """
         Initiates an acquisition.
-         After you call this VI, the DMM leaves the Idle state and enters the Wait-For-Trigger state.
-          If trigger is set to Immediate mode, the DMM begins acquiring measurement data.
-          Use fetch_single_meas(), AgM918x Fetch Multi Point, or AgM918x Fetch Waveform to retrieve the measurement data.
+        After you call this VI, the DMM leaves the Idle state and enters the Wait-For-Trigger state.
+        If trigger is set to Immediate mode, the DMM begins acquiring measurement data.
+        Use fetch_single_meas(), AgM918x Fetch Multi Point, or
+        AgM918x Fetch Waveform to retrieve the measurement data.
+        But they will only return a value when the dmm is back in the idle state!
+        Abort will delete all measurements.
         """
-        self.get_error_message(self.dll.AgM918x_Initiate(self.session))
-        #---SINCE READSTATUS() DOES NOT WORK, WE WILL EXCLUDE IT AND USE A SIMPLE CALL OF INITIATE---
-        #tries = 0
-        #max_tries = 10
-        #while self.readstatus()[1] != 0 and tries <= max_tries:
-        #    tries += 1
-        #if self.readstatus()[1] == 0:
-        #    logging.debug('successfully started measurement on AgM918x after %s tries' % tries)
-        #else:
-        #    logging.error('error: could not started measurement on AgM918x after %s tries' % tries)
-        #    logging.error('error: status of AgM918x is: backlog: %s acquisition state: %s' % self.readstatus())
-        self.state = 'measuring'
+        # print(self.name, '  initiating measurement')
+        if self.get_initiated():
+            print('WARNING! trying to initialize %s again!' % self.name)
+        # logging.debug(self.name + '  initiating measurement now!')
+        err_code, err_msg = self.get_error_message(self.dll.AgM918x_Initiate(self.session))
+        # print(err_msg)
+        self.already_read = False
+        self.state = 'measuring' if err_code >= 0 else 'error'
+        time.sleep(0.3)
 
     def fetch_single_meas(self, max_time_ms=-1):
         """
         Returns the value from a previously initiated measurement.
         You must call initiate_measurement() before calling this function.
+        Will only return a value when dmm is back in idle state!
         :param max_time_ms: int, specifies the maximum time allowed for this VI to complete in milliseconds.
          0-86400000 allowed.
          -1 means Auto
@@ -511,72 +446,72 @@ class AgilentM918x:
         self.dll.AgM918x_Fetch(self.session, max_time_ms, ctypes.byref(read))
         return read.value
 
-    def fetch_multiple_meas(self, num_to_read=-1, max_time_ms=-1):
+    def fetch_multiple_meas(self, num_to_read=-1, max_time_ms=10):
         """
-         Returns an array of values from a previously initiated multipoint measurement.
-         The number of measurements the DMM makes is determined by the values you specify
-         for the Trigger Count and Sample Count parameters of AgM918x Configure Multi Point.
-         You must call initiate_measurement() to initiate a measurement before calling this function
-         :param max_time_ms: int, specifies the maximum time allowed for this VI to complete in milliseconds.
-          0-86400000 allowed.
-          -1 means Auto
-         :param num_to_read: int, specifies the number of measurements to acquire.
-         The maximum number of measurements for a finite acquisition is the (Trigger Count x Sample Count)
-         parameters in config_multi_point_meas()
-         For continuous acquisitions, up to 100,000 points can be returned at once.
-         num_to_read = -1 will read all available data
-         :return: numpy array with all values
-         """
-        max_time = ctypes.c_int32(max_time_ms)
-        # ---SINCE READSTATUS() DOES NOT WORK, WE WILL EXCLUDE IT AND USE A SIMPLE CALL OF INITIATE---
-        #BUT then num_to_read cannot be -1 as default read all, but must be set to the number ov values available
-        #????How do we get the number of available readings???? For now assume its the same as in samplecount
-        #if num_to_read < 0:  # read all available
-        #    num_to_read = self.readstatus()[0]
-        #if num_to_read == 0:
-        #    return np.zeros(0, dtype=np.double)
-        num_to_read = self.config_dict.get('sampleCount')
-        array_of_values = ctypes.c_double * num_to_read
-        array_of_values = array_of_values()
-        number_to_read = ctypes.c_int32(num_to_read)
-        number_of_read_elements = ctypes.c_int32()
-        self.dll.AgM918x_FetchMultiPoint(
-            self.session, max_time, number_to_read, array_of_values, ctypes.byref(number_of_read_elements))
-        ret = np.ctypeslib.as_array(array_of_values)[0:number_of_read_elements.value]
-        if ret.any():
-            t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            # take last element out of array and make a tuple with timestamp:
-            self.last_readback = (round(ret[-1], 8), t)
+        Returns an array of values from a previously initiated measurement
+        when the dmm is back in idle state.
+        The number of measurements the DMM makes is determined by the values you specify
+        for the Sample Count parameters of AgM918x Configure Multi Point.
+        You must call initiate_measurement() to initiate a measurement before calling this function
+        It will only return a value when the dmm is back in idle though!
+        Aborting the measurement will delete all readings in storage!
+
+        :param max_time_ms: int, specifies the maximum time allowed for this function to complete in milliseconds.
+        0-86400000 allowed.
+        -1 means Auto
+
+        :param num_to_read: int, specifies the number of measurements to acquire. Is limited to 80.
+        num_to_read = -1 will read number of samples as stored in self.config_dict.get('sampleCount')
+        :return: numpy array with all values
+        """
+        ret = np.array([])
+        start_time = datetime.datetime.now()
+        while self.get_initiated():
+            now = datetime.datetime.now()
+            elapsed_time_ms = (now - start_time).microseconds
+            if elapsed_time_ms >= max_time_ms:
+                # when still measuring after max_time_ms
+                # do not call AgM918x_FetchMultiPoint then, because this will result in an error
+                # but return an empty array
+                # print(self.name, 'timedout during reading')
+                return ret
+            pass
+        if not self.already_read:  # only return values once!
+            # if max_time_ms == -1:
+            #     max_time_ms = 100  # set default to 100 ms
+            max_time = ctypes.c_int32(max_time_ms)
+            if num_to_read < 1:  # if -1 or 0 take sampleCount as number to read
+                num_to_read = self.config_dict.get('sampleCount')
+            # print("Called fetch_multiple_meas() function. num_to_read is: " + str(num_to_read))
+            array_of_values = ctypes.c_double * num_to_read
+            array_of_values = array_of_values()
+            number_to_read = ctypes.c_int32(num_to_read)
+            number_of_read_elements = ctypes.c_int32()
+            self.dll.AgM918x_FetchMultiPoint(
+                self.session, max_time, number_to_read, array_of_values, ctypes.byref(number_of_read_elements))
+            ret = np.ctypeslib.as_array(array_of_values)[0:number_of_read_elements.value]
+            if ret.any():
+                self.already_read = True
+                t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                # take last element out of array and make a tuple with timestamp:
+                self.last_readback = (round(ret[-1], 8), t)
+            if self.config_dict['preConfName'] == 'periodic':
+                self.initiate_measurement()  # restart the measurement for periodic measurements
         return ret
 
-    def readstatus(self):
+    def abort_meas(self, force=False):
         """
-        Readstatus seems not to be available for AgM918x.
-        Either we have to work around it by using other functions (which?) or we remove all uses of readstatus.
-        Should: Returns measurement backlog and acquisition status.
-        :return: (backlog, acqusition_state)
-          * Backlog specifies the number of measurements available to be read.
-           If the backlog continues to increase, data is eventually overwritten, resulting in an error.
-          * Acquisition State indicates status of the acquisition.
-                0 Running
-                1 Finished with Backlog
-                2 Finished with no Backlog
-                3 Paused
-                4 No acquisition in progress
+        Aborts a previously initiated measurement and returns the DMM to the idle state.
         """
-        #Dummy implementation!!! REMOVE BEFORE USE
-        ret_backlog = ctypes.c_int32(1)
-        ret_acqstate = ctypes.c_int16(4)
-        return ret_backlog.value, ret_acqstate.value
-
-    def abort_meas(self):
+        if self.get_initiated() or force:
+            logging.debug(self.name + ' aborting measurement')
+            self.get_error_message(self.dll.AgM918x_Abort(self.session))
         self.state = 'aborted'
-        self.dll.AgM918x_Abort(self.session)
-        pass
 
     def set_to_pre_conf_setting(self, pre_conf_name):
         """
-        this will set and arm the dmm for a pre configured setting.
+        this will configure the dmm for a pre configured setting.
+        be sure to initiate measurement afterwards!
         :param pre_conf_name: str, name of the setting
         :return:
         """
@@ -585,7 +520,6 @@ class AgilentM918x:
             config_dict = self.pre_configs[pre_conf_name].value
             config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
             self.load_from_config_dict(config_dict, False)
-            self.initiate_measurement()
             print('%s dmm loaded with preconfig: %s ' % (self.name, pre_conf_name))
         else:
             print(
@@ -603,25 +537,21 @@ class AgilentM918x:
         ret_message = ctypes.create_string_buffer("".encode('utf-8'), 256)
         self.dll.AgM918x_error_message(self.session, ret_status, ret_message)
         if ret_status.value < 0:
-            logging.error(
+            print(
                 comment + ' errorcode is: ' + str(ret_status.value) +
                 '\n error message is: ' + ret_message.value.decode('utf-8'))
         return ret_status.value, ret_message.value.decode('utf-8')
 
     def get_initiated(self):
-        '''
+        """
         Returns true if the DMM is currently measuring.
         :return: bool
-        '''
-        ret = None
+        """
+        ret = False
         ret = ctypes.c_bool(ret)
-        self.dll.AgM918x_MeasurementGetInitiated(self.session, ctypes.byref(ret))
+        self.get_error_message(self.dll.AgM918x_MeasurementGetInitiated(self.session, ctypes.byref(ret)))
+        self.state = 'measuring' if ret else 'idle'
         return ret
-
-    ''' self calibration '''
-
-    def self_calibration(self):
-        pass
 
     '''Utility'''
     def reset_dev(self):
@@ -645,41 +575,42 @@ class AgilentM918x:
         :return:
         """
         try:
+            # without abort it 'works'
+            self.abort_meas()
             self.config_dict = deepcopy(config_dict)
+
             if reset_dev:
                 self.reset_dev()
             dmm_range = config_dict.get('range')
-            resolutin = config_dict.get('resolution')
-            self.config_measurement(dmm_range, resolutin)
-            trig_count = config_dict.get('triggerCount')
+            resolution = config_dict.get('resolution')
+            self.config_measurement(dmm_range, resolution, func=1)
+            self.config_dcvoltage_measurement(dmm_range, resolution)
+
             sample_count = config_dict.get('sampleCount')
             trig_src_enum = AgM918xTriggerSources[config_dict.get('triggerSource')]
-            sample_interval = config_dict.get('sampleInterval')
-            self.config_multi_point_meas(trig_count, sample_count, trig_src_enum, sample_interval)
-            auto_z = config_dict.get('autoZero')
-            self.config_auto_zero(auto_z)
-            self.config_adc_cal(0)
+            trig_delay_s = config_dict.get('triggerDelay_s', 0)
+            trig_slope = config_dict.get('triggerSlope')
+            self.config_multi_point_meas(sample_count, trig_src_enum, trig_delay_s, trig_slope)
+
             pwr_line_freq = config_dict.get('powerLineFrequency')
             self.config_power_line_freq(pwr_line_freq)
-            trig_delay = config_dict.get('triggerDelay_s', -1.0)
-            self.config_trigger(trig_src_enum, trig_delay)
-            trig_slope = config_dict.get('triggerSlope')
-            if trig_slope == 'falling':
-                trig_slope = 1
-            else:
-                trig_slope = 0
-            self.config_trigger_slope(trig_slope)
-            self.config_sample_trigger_slope(trig_slope)
+
             meas_compl_dest_enum = AgM918xMeasCompleteLoc[config_dict.get('measurementCompleteDestination')]
             self.config_meas_complete_dest(meas_compl_dest_enum)
-            self.config_meas_complete_slope(0)
+
             greater_10_g_ohm = config_dict.get('highInputResistanceTrue')
             self.set_input_resistance(greater_10_g_ohm)
+
             self.get_accuracy()
+
             # just to be sure this is included:
             self.config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
         except Exception as e:
-            print('Exception while loading config to Ni4071: ', e)
+            print('error, Exception while loading config to %s: ' % self.name, e)
+            print('config dict was:')
+            import json
+            print(
+                json.dumps(self.config_dict, sort_keys=True, indent=4))
 
     ''' property Node operations: '''
 
@@ -730,7 +661,6 @@ class AgilentM918x:
             read_back = ctypes.c_bool()
             self.dll.Ag918x_GetAttributeViBoolean(self.session, name, attr_id, ctypes.byref(read_back))
             return read_back.value
-
 
     def set_property_node(self, set_val, attr_id, name_str="", attr_base_str='IVI_SPECIFIC_ATTR_BASE'):
         """
@@ -783,19 +713,17 @@ class AgilentM918x:
          (name, indicator_or_control_bool, type, certain_value_list, current_value_in_config_dict)
         """
         config_dict = {
-            'range': ('range', True, float, [-3.0, -2.0, -1.0, 0.1, 1.0, 10.0, 100.0, 1000.0], self.config_dict['range']),
-            'resolution': ('resolution', True, float, [3.5, 4.5, 5.5, 6.5, 7.5], self.config_dict['resolution']),
-            'triggerCount': ('#trigger events', True, int, range(0, 100000, 1), self.config_dict['triggerCount']),
-            'sampleCount': ('#samples', True, int, range(0, 10000, 1), self.config_dict['sampleCount']),
-            'autoZero': ('auto zero', True, int, [-1, 0, 1, 2], self.config_dict['autoZero']),
+            'range': ('range', True, str, ['0.2', '2.0', '20.0', '200.0', '300.0'], self.config_dict['range']),
+            'resolution': ('resolution', True, str,
+                           ['0.00001', '0.00004', '0.00008', '0.00048', '0.001', '0.005'],
+                           self.config_dict['resolution']),
+            'sampleCount': ('#samples', True, int, range(0, 80, 1), self.config_dict['sampleCount']),
             'triggerSource': ('trigger source', True, str,
-                              ['eins', 'zwei'], self.config_dict['triggerSource']),
-            'sampleInterval': ('sample Interval [s]', True, float,
-                               [-1.0] + [i / 10 for i in range(0, 1000)], self.config_dict['sampleInterval']),
-            'powerLineFrequency': ('power line frequency [Hz]', True, float,
-                                   [50.0, 60.0], self.config_dict['powerLineFrequency']),
-            'triggerDelay_s': ('trigger delay [s]', True, float,
-                               [-2.0, -1.0] + [i / 10 for i in range(0, 1490)], self.config_dict['triggerDelay_s']),
+                              [i.name for i in AgM918xTriggerSources], self.config_dict['triggerSource']),
+            'powerLineFrequency': ('power line frequency / Hz', True, str,
+                                   ['50.0', '60.0'], self.config_dict['powerLineFrequency']),
+            'triggerDelay_s': ('trigger delay / s', True, float,
+                               [i / 10 for i in range(0, 1490)], self.config_dict['triggerDelay_s']),
             'triggerSlope': ('trigger slope', True, str, ['falling', 'rising'], self.config_dict['triggerSlope']),
             'measurementCompleteDestination': ('measurement compl. dest.', True, str,
                                                ['Con1_DIO30', 'Con1_DIO31', 'software'],
@@ -822,17 +750,39 @@ class AgilentM918x:
             config_dict = self.config_dict
         # from AgM918x specs:
         # 1 Year, 23°C, +/-1°C, values in ppm:
-        error_dict_1y = {0.2: (30, 5), 2: (20, 2), 20: (40, 6), 200: (30, 2), 2000: (1300, 2)}
+        error_dict_1y = {'0.2': (30, 5), '2.0': (20, 2), '20.0': (40, 6), '200.0': (30, 2), '300.0': (1300, 2)}
         dmm_range = config_dict['range']
-        reading_accuracy_float, range_accuracy_float = error_dict_1y.get(dmm_range)
+        reading_accuracy_float, range_accuracy_float = error_dict_1y.get(dmm_range, (1300, 2))
         reading_accuracy_float *= 10 ** -6 #ppm
-        range_accuracy_float *= 10 **-6 #ppm
-        range_accuracy_float *= dmm_range
+        range_accuracy_float *= 10 ** -6 #ppm
+        range_accuracy_float *= float(dmm_range)
         acc_tpl = (reading_accuracy_float, range_accuracy_float)
         config_dict['accuracy'] = acc_tpl
         return acc_tpl
 
 
+if __name__=='__main__':
+    dmm = AgilentM918x()
+    conf_dict = AgilentM918xPreConfigs.pre_scan.value
+    ress = []
+    for i in ['0.00001', '0.00005', '0.0001', '0.0005', '0.001', '0.005']:
+        conf_dict['resolution'] = i
+        dmm.load_from_config_dict(conf_dict, False)
+        ress += dmm.get_resolution(),
+        print(i, ress[-1])
+    print(ress)
+    dmm.initiate_measurement()
+    dmm.send_software_trigger()
+    # print(dmm.fetch_single_meas(10))
+    # print(dmm.fetch_single_meas(10))
+    # print(dmm.fetch_single_meas(10))
+    while True:
+        ret = dmm.fetch_multiple_meas(-1, -1)
+        time.sleep(1)
 
-# dmm = DMMdummy()
-# dmm.set_to_pre_conf_setting('periodic')
+        if ret.any():
+            print(ret)
+        else:
+            print('nope')
+    # print(dmm.fetch_multiple_meas(5, 100))
+    # print(dmm.fetch_multiple_meas(5, 100))

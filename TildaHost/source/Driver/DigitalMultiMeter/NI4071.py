@@ -86,65 +86,69 @@ class Ni4071MeasCompleteLoc(Enum):
 
 class Ni4071PreConfigs(Enum):
     initial = {
-            'range': 10.0,
-            'resolution': 7.5,
-            'triggerCount': 5,
-            'sampleCount': 5,
-            'autoZero': -1,
-            'triggerSource': 'pxi_trig_3',
-            'sampleInterval': -1,
-            'powerLineFrequency': 50.0,
-            'triggerDelay_s': 0,
-            'triggerSlope': 'rising',
+        'range': '10.0',
+        'resolution': '7.5',
+        'nplc': '10',
+        'triggerCount': 5,
+        'sampleCount': 5,
+        'autoZero': -1,
+        'triggerSource': 'pxi_trig_3',
+        'sampleInterval': -1,
+        'powerLineFrequency': '50.0',
+        'triggerDelay_s': 0,
+        'triggerSlope': 'rising',
         'measurementCompleteDestination': Ni4071MeasCompleteLoc.PXI_Trigger_4.name,
-            'highInputResistanceTrue': True,
-            'assignment': 'offset',
-            'accuracy': (None, None),
-            'preConfName': 'initial'
+        'highInputResistanceTrue': True,
+        'assignment': 'offset',
+        'accuracy': (None, None),
+        'preConfName': 'initial'
     }
     periodic = {
-            'range': 10.0,
-            'resolution': 6.5,
-            'triggerCount': 0,
-            'sampleCount': 0,
-            'autoZero': -1,
-            'triggerSource': Ni4071TriggerSources.immediate.name,
-            'sampleInterval': -1,
-            'powerLineFrequency': 50.0,
-            'triggerDelay_s': 0,
-            'triggerSlope': 'rising',
+        'range': '10.0',
+        'resolution': '6.5',
+        'nplc': '10',
+        'triggerCount': 0,
+        'sampleCount': 0,
+        'autoZero': -1,
+        'triggerSource': Ni4071TriggerSources.immediate.name,
+        'sampleInterval': -1,
+        'powerLineFrequency': '50.0',
+        'triggerDelay_s': 0,
+        'triggerSlope': 'rising',
         'measurementCompleteDestination': Ni4071MeasCompleteLoc.PXI_Trigger_4.name,
-            'highInputResistanceTrue': True,
-            'accuracy': (None, None),
-            'assignment': 'offset',
-            'preConfName': 'periodic'
+        'highInputResistanceTrue': True,
+        'accuracy': (None, None),
+        'assignment': 'offset',
+        'preConfName': 'periodic'
     }
     pre_scan = {
-            'range': 10.0,
-            'resolution': 7.5,
-            'triggerCount': 0,
-            'sampleCount': 0,
-            'autoZero': -1,
-            'triggerSource': Ni4071TriggerSources.softw_trig.name,
-            'sampleInterval': -1,
-            'powerLineFrequency': 50.0,
-            'triggerDelay_s': 0,
-            'triggerSlope': 'rising',
+        'range': '10.0',
+        'resolution': '7.5',
+        'nplc': '100',
+        'triggerCount': 0,
+        'sampleCount': 1,
+        'autoZero': -1,
+        'triggerSource': Ni4071TriggerSources.softw_trig.name,
+        'sampleInterval': -1,
+        'powerLineFrequency': '50.0',
+        'triggerDelay_s': 0,
+        'triggerSlope': 'rising',
         'measurementCompleteDestination': Ni4071MeasCompleteLoc.PXI_Trigger_4.name,
-            'highInputResistanceTrue': True,
-            'accuracy': (None, None),
-            'assignment': 'offset',
-            'preConfName': 'pre_scan'
+        'highInputResistanceTrue': True,
+        'accuracy': (None, None),
+        'assignment': 'offset',
+        'preConfName': 'pre_scan'
     }
     kepco = {
-        'range': 10.0,
-        'resolution': 7.5,
+        'range': '10.0',
+        'resolution': '7.5',
+        'nplc': '100',
         'triggerCount': 0,
         'sampleCount': 0,
         'autoZero': -1,
         'triggerSource': Ni4071TriggerSources.pxi_trig_3.name,
         'sampleInterval': -1,
-        'powerLineFrequency': 50.0,
+        'powerLineFrequency': '50.0',
         'triggerDelay_s': 0.5,
         'triggerSlope': 'rising',
         'measurementCompleteDestination': Ni4071MeasCompleteLoc.PXI_Trigger_4.name,
@@ -160,7 +164,7 @@ class Ni4071:
     Class for accessing the National Instruments 4071 digital Multimeter.
     """
 
-    def __init__(self, reset=True, address_str='PXI1Slot5', pwr_line_freq=50):
+    def __init__(self, reset=True, address_str='PXI1Slot5', pwr_line_freq='50.0'):
         dll_path = path.join(path.dirname(__file__), pardir, pardir, pardir, 'binary\\nidmm_32.dll')
 
         self.type = 'Ni4071'
@@ -188,7 +192,6 @@ class Ni4071:
         self.config_power_line_freq(pwr_line_freq)
 
         print(self.name, ' initialized, status is: %s, session is: %s' % (stat, self.session))
-
 
     ''' Init and close '''
 
@@ -238,12 +241,12 @@ class Ni4071:
         """
         Configures the common properties of the measurement.
         named configure measurement digits in quick ref.
-        :param dmm_range: dbl, range 10.00, 100.00, etc.
+        :param dmm_range: str, range 10.00, 100.00, etc.
         valid ranges: 0.1, 1.0, 10.0, 100.0, 1000.0
         Auto range ON: -1.0
         Auto range OFF: -2.0
         Auto range ONCE: -3.0
-        :param resolution: dbl, resolution in digits
+        :param resolution: str, resolution in digits
         3.5 (3.5000000E+0) Specifies 3.5 digits resolution.
         4.5 (4.500000E+0) Specifies 4.5 digits resolution.
         5.5 (5.500000E+0) Specifies 5.5 digits resolution.
@@ -265,8 +268,8 @@ class Ni4071:
         self.config_dict['range'] = dmm_range
         self.config_dict['resolution'] = resolution
         func = ctypes.c_int32(func)
-        dmm_range = ctypes.c_double(dmm_range)
-        res = ctypes.c_double(resolution)
+        dmm_range = ctypes.c_double(float(dmm_range))
+        res = ctypes.c_double(float(resolution))
         self.dll.niDMM_ConfigureMeasurementDigits(self.session, func, dmm_range, res)
 
     def config_multi_point_meas(self, trig_count, sample_count, trig_src_enum, sample_interval):
@@ -324,7 +327,7 @@ class Ni4071:
         :param pwr_line_freq: dbl, 50 or 60 Hz
         """
         self.config_dict['powerLineFrequency'] = pwr_line_freq
-        self.dll.niDMM_ConfigurePowerLineFrequency(self.session, ctypes.c_double(pwr_line_freq))
+        self.dll.niDMM_ConfigurePowerLineFrequency(self.session, ctypes.c_double(float(pwr_line_freq)))
 
     def config_auto_zero(self, auto_zero_mode):
         """
@@ -494,7 +497,8 @@ class Ni4071:
         """
         apt_t = ctypes.c_double()
         apt_u = ctypes.c_int32()
-        self.dll.niDMM_GetApertureTimeInfo(self.session, ctypes.byref(apt_t), ctypes.byref(apt_u))
+        self.get_error_message(
+            self.dll.niDMM_GetApertureTimeInfo(self.session, ctypes.byref(apt_t), ctypes.byref(apt_u)))
         units = 'seconds'
         if apt_u.value:
             units = 'power line cycles'
@@ -867,19 +871,23 @@ class Ni4071:
         name = ctypes.create_string_buffer(name_str.encode('utf-8'), 256)
         if isinstance(property_type, ctypes.c_int32):
             read_back = ctypes.c_int32()
-            self.dll.niDMM_GetAttributeViInt32(self.session, name, attr_id, ctypes.byref(read_back))
+            self.get_error_message(
+                self.dll.niDMM_GetAttributeViInt32(self.session, name, attr_id, ctypes.byref(read_back)))
             return read_back.value
         elif isinstance(property_type, ctypes.c_double):
             read_back = ctypes.c_double()
-            self.dll.niDMM_GetAttributeViReal64(self.session, name, attr_id, ctypes.byref(read_back))
+            self.get_error_message(
+                self.dll.niDMM_GetAttributeViReal64(self.session, name, attr_id, ctypes.byref(read_back)))
             return read_back.value
         elif isinstance(property_type, ctypes.c_char):
             read_back = ctypes.create_string_buffer('', 256)
-            self.dll.niDMM_GetAttributeViString(self.session, name, attr_id, ctypes.byref(read_back))
+            self.get_error_message(
+                self.dll.niDMM_GetAttributeViString(self.session, name, attr_id, ctypes.byref(read_back)))
             return read_back.value.decode('utf-8')
         elif isinstance(property_type, ctypes.c_bool):
             read_back = ctypes.c_bool()
-            self.dll.niDMM_GetAttributeViBoolean(self.session, name, attr_id, ctypes.byref(read_back))
+            self.get_error_message(
+                self.dll.niDMM_GetAttributeViBoolean(self.session, name, attr_id, ctypes.byref(read_back)))
             return read_back.value
 
     def set_property_node(self, set_val, attr_id, name_str="", attr_base_str='IVI_SPECIFIC_PUBLIC_ATTR_BASE'):
@@ -911,13 +919,13 @@ class Ni4071:
         attr_id = ctypes.c_int32(attr_id)
         name = ctypes.create_string_buffer(name_str.encode('utf-8'), 256)
         if isinstance(set_val, ctypes.c_int32):
-            self.dll.niDMM_SetAttributeViInt32(self.session, name, attr_id, set_val)
+            self.get_error_message(self.dll.niDMM_SetAttributeViInt32(self.session, name, attr_id, set_val))
         elif isinstance(set_val, ctypes.c_double):
-            self.dll.niDMM_SetAttributeViReal64(self.session, name, attr_id, set_val)
+            self.get_error_message(self.dll.niDMM_SetAttributeViReal64(self.session, name, attr_id, set_val))
         elif isinstance(set_val, ctypes.c_char):
-            self.dll.niDMM_SetAttributeViString(self.session, name, attr_id, set_val)
+            self.get_error_message(self.dll.niDMM_SetAttributeViString(self.session, name, attr_id, set_val))
         elif isinstance(set_val, ctypes.c_bool):
-            self.dll.niDMM_SetAttributeViBoolean(self.session, name, attr_id, set_val)
+            self.get_error_message(self.dll.niDMM_SetAttributeViBoolean(self.session, name, attr_id, set_val))
 
     ''' self written functions (e.g. encapsulating property nodes) '''
 
@@ -982,8 +990,49 @@ class Ni4071:
         Auto range ONCE: -3.0
         """
         self.config_dict['range'] = range_val
-        self.set_property_node(ctypes.c_double(range_val), 2,
+        self.set_property_node(ctypes.c_double(float(range_val)), 2,
                                attr_base_str='IVI_CLASS_PUBLIC_ATTR_BASE')
+
+    def set_aperture_time_units(self, in_plc=True):
+        """ set the aperture time units to powerline cycles or seconds"""
+        if in_plc:
+            units = ctypes.c_int32(1)
+        else:
+            units = ctypes.c_int32(0)
+        self.set_property_node(units,
+                               attr_id=322,
+                               name_str='',
+                               attr_base_str='IVI_CLASS_PUBLIC_ATTR_BASE')
+
+    def set_aperture_time(self, nplc):
+        """
+        this will set the aperture time units to power line cycles and
+         then the aperture time itself.
+        :param nplc: float, -> c_double
+            allowed vals on Ni4071,
+             anything between
+             8.89µs (0.00044 plc(50Hz) or 0.0005334 plc(60Hz))
+             & 149 s (7450 plc(50Hz) or 8.940 plc(60Hz))
+            for simplicity, allowed vals are:
+                0.1 PLC, 1 PLC, 5 PLC, 10 PLC, and 100 PLC
+        """
+        self.set_aperture_time_units(True)
+        self.config_dict['nplc'] = nplc
+        self.set_property_node(
+            ctypes.c_double(float(nplc)),
+            attr_id=321,
+            name_str='',
+            attr_base_str='IVI_CLASS_PUBLIC_ATTR_BASE'
+        )
+        logging.debug('setting apperture to %.1f nplc' % float(nplc))
+        nplc_r, units_r = self.get_aperture_time_info()
+        if units_r != 'seconds':
+            freq = self.config_dict.get('powerLineFrequency', '50')
+            apptime = nplc_r / float(freq)
+        else:
+            apptime = nplc_r
+
+        logging.debug('apperture has ben set to: %.1f, units: %s this is %.3f s' % (nplc_r, units_r, apptime))
 
     def load_from_config_dict(self, config_dict, reset_dev):
         """
@@ -997,6 +1046,7 @@ class Ni4071:
             self.config_dict = deepcopy(config_dict)
             if reset_dev:
                 self.reset_dev()
+            self.selected_pre_config_name = config_dict.get('preConfName', 'manual')
             dmm_range = config_dict.get('range')
             resolutin = config_dict.get('resolution')
             self.config_measurement(dmm_range, resolutin)
@@ -1024,11 +1074,12 @@ class Ni4071:
             self.config_meas_complete_slope(0)
             greater_10_g_ohm = config_dict.get('highInputResistanceTrue')
             self.set_input_resistance(greater_10_g_ohm)
+            self.set_aperture_time(config_dict.get('nplc', '100'))
             self.get_accuracy()
             # just to be sure this is included:
             self.config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
         except Exception as e:
-            print('Exception while loading config to Ni4071: ', e)
+            logging.error('Exception while loading config to Ni4071: ' + str(e), exc_info=True)
 
     def emit_config_pars(self):
         """
@@ -1040,8 +1091,11 @@ class Ni4071:
          (name, indicator_or_control_bool, type, certain_value_list)
         """
         config_dict = {
-            'range': ('range', True, float, [-3.0, -2.0, -1.0, 0.1, 1.0, 10.0, 100.0, 1000.0], self.config_dict['range']),
-            'resolution': ('resolution', True, float, [3.5, 4.5, 5.5, 6.5, 7.5], self.config_dict['resolution']),
+            'range': (
+                'range', True, str, ['-3.0', '-2.0', '-1.0', '0.1', '1.0', '10.0', '100.0', '1000.0'],
+                self.config_dict['range']),
+            'resolution': ('resolution', True, str, ['3.5', '4.5', '5.5', '6.5', '7.5'],
+                           self.config_dict['resolution']),
             'triggerCount': ('#trigger events', True, int, range(0, 100000, 1), self.config_dict['triggerCount']),
             'sampleCount': ('#samples', True, int, range(0, 10000, 1), self.config_dict['sampleCount']),
             'autoZero': ('auto zero', True, int, [-1, 0, 1, 2], self.config_dict['autoZero']),
@@ -1049,8 +1103,8 @@ class Ni4071:
                               [i.name for i in Ni4071TriggerSources], self.config_dict['triggerSource']),
             'sampleInterval': ('sample Interval [s]', True, float,
                                [-1.0] + [i / 10 for i in range(0, 1000)], self.config_dict['sampleInterval']),
-            'powerLineFrequency': ('power line frequency [Hz]', True, float,
-                                   [50.0, 60.0], self.config_dict['powerLineFrequency']),
+            'powerLineFrequency': ('power line frequency [Hz]', True, str,
+                                   ['50.0', '60.0'], self.config_dict['powerLineFrequency']),
             'triggerDelay_s': ('trigger delay [s]', True, float,
                                [-2.0, -1.0] + [i / 10 for i in range(0, 1490)], self.config_dict['triggerDelay_s']),
             'triggerSlope': ('trigger slope', True, str, ['falling', 'rising'], self.config_dict['triggerSlope']),
@@ -1061,7 +1115,9 @@ class Ni4071:
                                         , self.config_dict['highInputResistanceTrue']),
             'accuracy': ('accuracy (reading, range)', False, tuple, [], self.config_dict['accuracy']),
             'assignment': ('assignment', True, str, ['offset', 'accVolt'], self.config_dict['assignment']),
-            'preConfName': ('pre config name', False, str, [], self.selected_pre_config_name)
+            'preConfName': ('pre config name', False, str, [], self.selected_pre_config_name),
+            'nplc': ('number of power line cycles', True, str,
+                     ['0.1', '1', '5', '10', '100'], self.config_dict.get('nplc', '100'))
         }
         return config_dict
 
@@ -1070,18 +1126,49 @@ class Ni4071:
         function to return the accuracy for the current configuration
         the error of the read voltage should be:
         reading +/- (reading * reading_accuracy_float + range_accuracy_float)
+
+        additional noise error is calculated according to:
+            http://digital.ni.com/public.nsf/allkb/9FAB5BCA55D1E693862579F00076772D
+
+        rms noise from graph (by eye with origin) (see page 3 Ni4071 specifications):
+            0.01 (nplc) = ~2 rms noise (ppm of range)
+            0.1 (nplc) = ~0.35 rms noise (ppm of range)
+            1 (nplc) = ~0.1 rms noise (ppm of range)
+            10 (nplc) = ~0.03 rms noise (ppm of range)
+            100 (nplc) = ~0.012 rms noise (ppm of range)
+
+        rms noise mutliplier:
+            100 mV (range) = 15 range multiplication factor
+            1 V (range) = 2 range multiplication factor
+            10 V (range) = 1 range multiplication factor
+            100 V (range) = 6 range multiplication factor
+            1000 V (range) = 1 range multiplication factor
+
+        error is now:
+            err_noise_pmm_range = rms_noise_pmm * (range_multiplication_factor ** 2) / 2
+        add this to the range_accuracy_float
         :return: tpl, (reading_accuracy_float, range_accuracy_float)
         """
         if config_dict is None:
             config_dict = self.config_dict
         # from Ni4071 specs:
         # 2 Year, 18°C to 28°C, +/-1°C, values in ppm:
-        error_dict_2y = {0.1: (20, 8), 1: (15, 0.8), 10: (12, 0.5), 100: (20, 2), 1000: (20, 0.5)}
+        error_dict_2y = {'0.1': (20, 8), '1.0': (15, 0.8), '10.0': (12, 0.5), '100.0': (20, 2), '1000.0': (20, 0.5)}
+        # from eye on page 3 in specs:
+        rms_noise_ppm_plc = {'0.1': 0.35, '1': 0.1, '5': 0.04, '10': 0.03, '100': 0.012}
+        # from specs:
+        multiplic = {'0.1': 15, '1.0': 2, '10.0': 1, '100.0': 6, '1000.0': 1}
+
         dmm_range = config_dict['range']
+        dmm_nplc = config_dict.get('nplc', '1')
         reading_accuracy_float, range_accuracy_float = error_dict_2y.get(dmm_range)
+        # logging.debug(self.name + ' range accuracy is: %.3f ppm of range' % range_accuracy_float)
         reading_accuracy_float *= 10 ** -6  # ppm
         range_accuracy_float *= 10 ** -6  # ppm
-        range_accuracy_float *= dmm_range
+        rang_noise = rms_noise_ppm_plc[dmm_nplc] * (multiplic[dmm_range] ** 2) / 2
+        # logging.debug(self.name + ' range noise is %.3f ppm of range' % rang_noise)
+        range_accuracy_float += (rang_noise * 10 ** -6)
+        range_accuracy_float *= float(dmm_range)
         acc_tpl = (reading_accuracy_float, range_accuracy_float)
         config_dict['accuracy'] = acc_tpl
         return acc_tpl
@@ -1092,7 +1179,7 @@ class Ni4071:
         :param pre_conf_name: str, name of the setting
         :return:
         """
-        print('trying to set %s to the config: %s' % (self.name, pre_conf_name))
+        logging.info('trying to set %s to the config: %s' % (self.name, pre_conf_name))
         if pre_conf_name in self.pre_configs.__members__:
             self.selected_pre_config_name = pre_conf_name
             config_dict = self.pre_configs[pre_conf_name].value
@@ -1101,10 +1188,9 @@ class Ni4071:
             self.get_accuracy()
             self.initiate_measurement()
         else:
-            print(
+            logging.error(
                 'error: could not set the preconfiguration: %s in dmm: %s, because the config does not exist'
                 % (pre_conf_name, self.name))
-
 
 # there are more functions that can be found in the nidmm.h file,
 # but those above were the ones in the quick reference and most important ones.

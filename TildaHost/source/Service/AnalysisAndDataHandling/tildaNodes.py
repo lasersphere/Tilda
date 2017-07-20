@@ -830,7 +830,9 @@ class NStartNodeKepcoScan(Node):
         self.dac_new_volt_set_callback = dac_new_volt_set_callback
 
     def calc_voltage_err(self, voltage_reading, dmm_name):
-        read_err, range_err = self.Pipeline.pipeData['measureVoltPars']['duringScan']['dmms'][dmm_name].get('accuracy', (None, None))
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        read_err, range_err = self.Pipeline.pipeData[track_name]['measureVoltPars']['duringScan']['dmms'][dmm_name].get(
+            'accuracy', (None, None))
         if read_err is not None:
             return voltage_reading * read_err + range_err
         else:
@@ -867,7 +869,7 @@ class NStartNodeKepcoScan(Node):
                                             self.dac_new_volt_set_callback.emit(-1)
                                 except Exception as e:
                                     print('error while processing data in node: %s -> %s' % (self.type, e))
-                                # print('volt_reading: ', self.spec_data.cts)
+                                    # print('volt_reading: ', self.spec_data.cts)
                             else:
                                 # print('received more voltages than it should! check your settings!')
                                 pass
@@ -1305,7 +1307,8 @@ class NMPLImagePlotSpecData(Node):
 
 
 class NMPLImagePlotAndSaveSpecData(Node):
-    def __init__(self, pmt_num, new_data_callback, new_track_callback, save_request, gates_and_rebin_signal):
+    def __init__(self, pmt_num, new_data_callback, new_track_callback,
+                 save_request, gates_and_rebin_signal, save_data=True):
         super(NMPLImagePlotAndSaveSpecData, self).__init__()
         self.type = 'MPLImagePlotAndSaveSpecData'
         self.selected_pmt = pmt_num  # for now pmt name should be pmt_ind
@@ -1313,6 +1316,7 @@ class NMPLImagePlotAndSaveSpecData(Node):
         self.rebinned_data = None  # specdata, rebinned
         self.rebin_track_ind = -1  # index which track should be rebinned -1 for all
         self.trs_names_list = ['trs', 'trsdummy', 'tipa']  # in order to deny rebinning, for other than that
+        self.save_data = save_data
 
         self.mutex = QtCore.QMutex()  # for blocking of other threads
         self.new_data_callback = new_data_callback
@@ -1320,8 +1324,10 @@ class NMPLImagePlotAndSaveSpecData(Node):
         self.min_time_between_emits = timedelta(milliseconds=250)
         # just be sure it emits on first call (important for loading etc.):
         self.last_emit_time = datetime.now() - self.min_time_between_emits - self.min_time_between_emits
-        gates_and_rebin_signal.connect(self.rcvd_gates_and_rebin)
-        save_request.connect(self.save)
+        if gates_and_rebin_signal is not None:
+            gates_and_rebin_signal.connect(self.rcvd_gates_and_rebin)
+        if save_request is not None:
+            save_request.connect(self.save)
 
     def start(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
@@ -1329,6 +1335,12 @@ class NMPLImagePlotAndSaveSpecData(Node):
             self.new_track_callback.emit(((track_ind, track_name), (int(self.selected_pmt), self.selected_pmt)))
 
     def processData(self, data, pipeData):
+        if not pipeData.get('isotopeData', False):  # only create on first call mainly used in display data pipe
+            # print('scan dict was not created yet, creating now!')
+            path = pipeData['pipeInternals']['activeXmlFilePath']
+            new_scan_dict = TildaTools.create_scan_dict_from_spec_data(data, path)
+            # print('new_scan_dict is:', new_scan_dict)
+            self.Pipeline.pipeData = new_scan_dict
         self.stored_data = data  # always leave original data untouched
         if self.new_data_callback is not None:
             now = datetime.now()
@@ -1341,11 +1353,20 @@ class NMPLImagePlotAndSaveSpecData(Node):
 
     def clear(self):
         # make sure it is emitted in the end again!
-        self.rebin_and_gate_new_data(self.stored_data)
-        self.save()
+        # if self.save_data:
+        #     self.save()
+        del self.stored_data
+        del self.rebinned_data
+        self.stored_data = None
+        self.rebinned_data = None
         # pass
 
+    def stop(self):
+        logging.info('pipeline was stopped')
+        self.rebin_and_gate_new_data(self.stored_data)
+
     def save(self):
+        self.rebin_and_gate_new_data(self.stored_data)
         if self.stored_data is not None:  # maybe abort was pressed before any data was collected.
             if self.rebinned_data.seq_type in self.trs_names_list:
                 # copy gates from gui values and gate
@@ -1370,7 +1391,8 @@ class NMPLImagePlotAndSaveSpecData(Node):
         """ when receiving new gates/bin width, this is called and will rebin and
         then gate the data if there is a change in one of those.
         The new data will be send afterwards. """
-        # print('received gates: %s tr_ind: %s bin_width_ns: %s' % (softw_gates_for_all_tr, rebin_track_ind, softBinWidth_ns))
+        # logging.debug('received gates: %s tr_ind: %s bin_width_ns: %s'
+        #               % (softw_gates_for_all_tr, rebin_track_ind, softBinWidth_ns))
         if self.rebinned_data is not None:
             self.mutex.lock()  # can be called form other track, so mute it.
             changed = force_both
@@ -1383,17 +1405,18 @@ class NMPLImagePlotAndSaveSpecData(Node):
                     self.rebinned_data = self.gate_data(self.rebinned_data, softw_gates_for_all_tr)
                     changed = True
             if changed:
-                self.new_data_callback.emit(self.rebinned_data)
+                if self.new_data_callback is not None:
+                    self.new_data_callback.emit(self.rebinned_data)
             else:
-                print('did not emit, because gates/rebinning was not changed.')
+                logging.debug('did not emit, because gates/rebinning was not changed.')
             self.mutex.unlock()
         else:
-            print('could not rebin, self.rebinned data is None')
+            logging.debug('could not rebin, self.rebinned data is None')
 
     def rebin_and_gate_new_data(self, newdata):
         """ this will force a rebin and gate followed by a send of the self.rebinned_data """
         self.mutex.lock()
-        if self.rebinned_data is None:
+        if self.rebinned_data is None:  # do not overwrite before getting the previous settings
             self.rebinned_data = newdata
         gates = deepcopy(self.rebinned_data.softw_gates)  # store previous set gates!
         binwidth = deepcopy(self.rebinned_data.softBinWidth_ns)  # .. and binwidth
@@ -1472,6 +1495,9 @@ class NStraightKepcoFitOnClear(Node):
         self.spec_buffer = data
         return data
 
+    def save(self):
+        self.clear()
+
     def clear(self):
         for ind, dmm_name in enumerate(self.dmms):
             try:
@@ -1502,19 +1528,23 @@ class NStraightKepcoFitOnClear(Node):
                     con.commit()
                     con.close()
             except Exception as e:
-                print('error while fitting:', e)
+                logging.error('error while fitting: %s' % e, exc_info=True)
         self.spec_buffer = None
 
     def get_offset_voltage(self, scandict):
         mean = 0
-        dmms_dict = scandict['measureVoltPars']['preScan'].get('dmms', None)
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        dmms_dict = scandict[track_name]['measureVoltPars']['preScan'].get('dmms', None)
         if dmms_dict is not None:
             offset = []
             for dmm_name, dmm_dict in dmms_dict.items():
                 for key, val in dmm_dict.items():
-                    if key == 'preScanRead':
+                    if key == 'readings':
                         if isinstance(val, str):
-                            val = float(val)
+                            try:
+                                val = float(val)
+                            except Exception as e:
+                                print('error, could not convert %s to float' % val)
                         if dmm_dict.get('assignment') == 'offset':
                             offset.append(val)
             if np.any(offset):
@@ -1548,8 +1578,7 @@ class NCSSortRawDatatoArray(Node):
         tracks, tracks_num_list = TildaTools.get_number_of_tracks_in_scan_dict(scand)
         if self.scalerArray is None:
             self.scalerArray = Form.create_default_scaler_array_from_scandict(scand)
-        if self.curVoltIndex is None:
-            self.curVoltIndex = 0
+        self.curVoltIndex = 0
         if self.totalnOfScalerEvents is None:
             self.totalnOfScalerEvents = np.full((tracks,), 0)
         self.info_handl.setup()
@@ -1767,6 +1796,7 @@ class NCS2SpecData(Node):
     def clear(self):
         self.spec_data = None
 
+
 """ time resolved Sequencer Nodes """
 
 
@@ -1791,17 +1821,15 @@ class NTRSSortRawDatatoArrayFast(Node):
 
     def start(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        if self.curVoltIndex is None:
-            self.curVoltIndex = 0
-        if self.total_num_of_started_scans is None:
-            self.total_num_of_started_scans = 0
-        if self.comp_list is None:
-            self.comp_list = [2 ** j for i, j in enumerate(self.Pipeline.pipeData[track_name]['activePmtList'])]
+        self.curVoltIndex = 0
+        self.total_num_of_started_scans = 0
+        self.comp_list = [2 ** j for i, j in enumerate(self.Pipeline.pipeData[track_name]['activePmtList'])]
         if self.stored_data is None:
             self.stored_data = np.zeros(0, dtype=np.uint32)
         if self.completed_steps_this_track is None:
             self.completed_steps_this_track = self.Pipeline.pipeData[track_name].get('nOfCompletedSteps', 0)
-        self.Pipeline.pipeData[track_name]['nOfCompletedSteps'] = self.completed_steps_this_track  # make sure this exists
+        self.Pipeline.pipeData[track_name][
+            'nOfCompletedSteps'] = self.completed_steps_this_track  # make sure this exists
 
     def processData(self, data, pipeData):
         self.stored_data = np.append(self.stored_data, data)
@@ -1825,8 +1853,9 @@ class NTRSSortRawDatatoArrayFast(Node):
                     self.total_num_of_started_scans += 1
             x_one_scan = np.arange(0, pipeData[track_name]['nOfSteps'])  # "x-axis" for one scan
             # make it also for two scans and invert on second rep if needed.
+            # note fliplr must be >= 2-d
             x_two_scans = np.append(x_one_scan,
-                                    np.fliplr(x_one_scan) if pipeData[track_name]['invertScan'] else x_one_scan)
+                                    np.fliplr([x_one_scan])[0] if pipeData[track_name]['invertScan'] else x_one_scan)
             # repeat this as often as needed for all steps held in this data set.
             x_this_data = np.tile(x_two_scans,
                                   np.ceil(step_complete_ind_list.size / pipeData[track_name]['nOfSteps'] / 2))
@@ -1847,8 +1876,6 @@ class NTRSSortRawDatatoArrayFast(Node):
                 pmt_events_ind = pmt_events_ind[pmt_events_ind < pmt_steps.size]
                 # create a list of stepnumbers for all pmt events:
                 pmt_steps = pmt_steps[pmt_events_ind]
-                self.curVoltIndex = x_this_data[-1] + 1
-                self.total_num_of_started_scans += scan_started_ind_list.size - 1 if scan_start_before_step_comp else 0
                 # new_bunch_ind = np.where(self.stored_data == new_bunch)[0]  # ignore for now.
                 # dac_set_ind = np.where(self.stored_data & dac_int_key == dac_int_key)[0]  # info not needed mostly
                 # create a list with all timestamps
@@ -1876,6 +1903,8 @@ class NTRSSortRawDatatoArrayFast(Node):
                             ith_pmt_hit_list['sc'] = int(np.log2(act_pmt))
                             new_unique_arr = np.append(new_unique_arr, ith_pmt_hit_list)
                             # print(new_unique_arr)
+            self.total_num_of_started_scans += scan_started_ind_list.size - 1 if scan_start_before_step_comp else 0
+            self.curVoltIndex = x_this_data[-1] + 1
             self.stored_data = self.stored_data[step_complete_ind_list[-1] + 1:]
             # new_unique_arr = np.sort(new_unique_arr, axis=0)
             # print(new_unique_arr)
@@ -2068,12 +2097,14 @@ class NSendnOfCompletedStepsViaQtSignal(Node):
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         steps_to_emit = pipeData[track_name]['nOfCompletedSteps'] - self.number_of_steps_at_start
-        self.qt_signal.emit(steps_to_emit)
+        if self.qt_signal is not None:
+            self.qt_signal.emit(steps_to_emit)
         return data
 
     def clear(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        self.qt_signal.emit(self.Pipeline.pipeData[track_name]['nOfCompletedSteps'])
+        if self.qt_signal is not None:
+            self.qt_signal.emit(self.Pipeline.pipeData[track_name]['nOfCompletedSteps'])
 
 
 class NSendnOfCompletedStepsAndScansViaQtSignal(Node):

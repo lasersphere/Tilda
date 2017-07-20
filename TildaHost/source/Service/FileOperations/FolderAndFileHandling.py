@@ -34,6 +34,13 @@ def findTildaFolder(path=os.path.dirname(os.path.abspath(__file__))):
         return findTildaFolder(os.path.split(path)[0])
 
 
+def delete_file(file):
+    """ this will delete an existing file """
+    if os.path.isfile(file):
+        print('deleting: ', file)
+        os.remove(file)
+
+
 """ pickle related (will not be used anymore in the future) """
 
 

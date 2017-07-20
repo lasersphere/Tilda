@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>651</width>
-    <height>481</height>
+    <width>811</width>
+    <height>858</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -77,7 +77,7 @@
       <property name="orientation">
        <enum>Qt::Vertical</enum>
       </property>
-      <widget class="QTabWidget" name="asciiconverter">
+      <widget class="QTabWidget" name="TabWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Maximum" vsizetype="Expanding">
          <horstretch>0</horstretch>
@@ -100,7 +100,7 @@
         <enum>QTabWidget::Rounded</enum>
        </property>
        <property name="currentIndex">
-        <number>9</number>
+        <number>10</number>
        </property>
        <widget class="CrawlerUi" name="crawler">
         <attribute name="title">
@@ -137,6 +137,11 @@
          <string>Charge Radii</string>
         </attribute>
        </widget>
+       <widget class="MomentsUi" name="moments">
+        <attribute name="title">
+         <string>Moments</string>
+        </attribute>
+       </widget>
        <widget class="AddFilesUi" name="addFiles_tab">
         <attribute name="title">
          <string>add Files</string>
@@ -149,7 +154,7 @@
        </widget>
        <widget class="AsciiConvUi" name="asciiConv_tab">
         <attribute name="title">
-         <string>ASCII</string>
+         <string>ASCII conv.</string>
         </attribute>
        </widget>
       </widget>
@@ -170,8 +175,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>651</width>
-     <height>26</height>
+     <width>811</width>
+     <height>21</height>
     </rect>
    </property>
   </widget>
@@ -229,6 +234,12 @@
    <class>AliveUi</class>
    <extends>QWidget</extends>
    <header>Gui.AliveUi</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>MomentsUi</class>
+   <extends>QWidget</extends>
+   <header>Gui.MomentsUi</header>
    <container>1</container>
   </customwidget>
   <customwidget>
