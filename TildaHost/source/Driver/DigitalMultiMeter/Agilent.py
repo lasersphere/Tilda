@@ -40,8 +40,8 @@ class AgilentTriggerSources(Enum):
 
 class AgilentPreConfigs(Enum):
     initial = {
-            'range': 10.0,
-            'resolution': 3e-6,
+            'range': '10.0',
+            'resolution': '3e-06',
             'triggerCount': -1,
             'sampleCount': 1,
             'autoZero': 'ONCE',
@@ -55,8 +55,8 @@ class AgilentPreConfigs(Enum):
         'measurementCompleteDestination': 'Con1_DIO31'
         }
     periodic = {
-            'range': 10.0,
-            'resolution': 1e-5,
+            'range': '10.0',
+            'resolution': '1e-05',
             'triggerCount': -1,
             'sampleCount': 1,
             'autoZero': 'ONCE',
@@ -70,8 +70,8 @@ class AgilentPreConfigs(Enum):
         'measurementCompleteDestination': 'Con1_DIO31'
     }
     pre_scan = {
-            'range': 10.0,
-            'resolution': 3e-6,
+            'range': '10.0',
+            'resolution': '3e-06',
             'triggerCount': -1,
             'sampleCount': 1,
             'autoZero': 'ONCE',
@@ -85,8 +85,8 @@ class AgilentPreConfigs(Enum):
         'measurementCompleteDestination': 'Con1_DIO31'
     }
     kepco = {
-        'range': 10.0,
-        'resolution': 3e-6,
+        'range': '10.0',
+        'resolution': '3e-06',
         'triggerCount': -1,
         'sampleCount': 1,
         'autoZero': 'ONCE',
@@ -134,7 +134,7 @@ class Agilent(QThread):
         self.get_accuracy()
         self.init(address_str, reset_dev=reset)
         # self.establish_connection(address_str)
-        print(self.name, ' initialized')
+        logging.info(self.name + ' initialized')
 
     ''' connection: '''
     def establish_connection(self, addr):
@@ -147,7 +147,7 @@ class Agilent(QThread):
                                                 dsrdtr=True, parity=serial.PARITY_EVEN,
                                                 stopbits=serial.STOPBITS_TWO, bytesize=serial.SEVENBITS)
                 init_read = self.send_command('SYST:ERR?', True)
-                print('serial connection established and error at init is: ', init_read)
+                logging.info('serial connection established and error at init is: %s' % str(init_read))
                 return True
             else:  # its an ipstring
                 self.connection_type = 'socket'
@@ -155,8 +155,8 @@ class Agilent(QThread):
                 self.connection.settimeout(0.3)
                 ipport = 5024  # fixed for 34461A
                 self.connection.connect((addr, ipport))
-                print(self.connection.recv(self.buffersize))
-                print(self.connection.recv(self.buffersize))
+                logging.debug(self.connection.recv(self.buffersize))
+                logging.debug(self.connection.recv(self.buffersize))
                 self.send_command('*CLS')
                 return True
         except Exception as e:
@@ -171,6 +171,10 @@ class Agilent(QThread):
             if self.connection_type == 'socket':
                 if postpone_send:
                     if self.stored_send_cmd != '':
+                        # from docs:
+                        # Use a colon and a semicolon to link commands from different subsystems. For example, in the following
+                        # example, an error is generated if you do not use both the colon and semicolon:
+                        # TRIG:COUN MIN;:SAMP:COUN MIN
                         self.stored_send_cmd += ';:' + cmd_str
                     else:
                         self.stored_send_cmd += cmd_str
@@ -178,10 +182,10 @@ class Agilent(QThread):
                 if read_back:
                     self._flush_socket()
                 if self.stored_send_cmd != '':
-                    cmd_str = self.stored_send_cmd + cmd_str
+                    cmd_str = self.stored_send_cmd + ';:' + cmd_str
                     self.stored_send_cmd = ''
                 cmd = str.encode(cmd_str + '\r\n')
-                # print(self.name + ' sending comand: ' + str(cmd_str))
+                logging.debug(self.name + ' sending comand: ' + str(cmd_str))
                 self.connection.send(cmd)
                 time.sleep(self.sleepAfterSend)
                 if read_back:
@@ -204,7 +208,7 @@ class Agilent(QThread):
                 if to_float:
                     ret = self.convert_to_float(ret)
         except Exception as e:
-            print('error in %s : ' % self.name, e)
+            logging.error('error in %s : %s' % (self.name, e), exc_info=True)
         return ret
 
     def _flush_socket(self):
@@ -235,7 +239,7 @@ class Agilent(QThread):
                     break
                 time.sleep(delay)
                 retries += 1
-                print('retries reading line on %s: %s, command string was: %s' % (self.name, retries, cmd_str))
+                logging.debug('retries reading line on %s: %s, command string was: %s' % (self.name, retries, cmd_str))
         return ret
 
     def convert_to_float(self, byte_str, prec=2, default_float=-1.0):
@@ -277,8 +281,9 @@ class Agilent(QThread):
         Sets all measurement parameters and trigger parameters to their default values for AC or DC voltage measurements.
         Also specifies the range and resolution.
         sets autorange if range is wrong
-        :param dmm_range: int, range of dmm, [0.1, 1, 10, 100, 1000, -1 == Auto]
-        :param range10V_res: float, resolution of the measurement in the 10V range
+        :param dmm_range: str, range of dmm, ['AUTO', '0.1', '1.0', '10.0', '100.0', '1000.0']
+        :param range10V_res: str, ['1e-03', '1e-04', '3e-05', '1e-05', '3e-06']
+         resolution of the measurement in the 10V range
          which will here be set via the number of power line cycles:
          [1E-3, 1E-4, 3E-5, 1E-5, 3E-6, -1=Max=3E-6]
          from Manual p.452:
@@ -290,11 +295,12 @@ class Agilent(QThread):
         """
         range, err = self.set_range(dmm_range, postpone_send=postpone_send)
         res_fact = {0.02: 100E-6, 0.2: 10E-6, 1: 3E-6, 10: 1E-6, 100: 0.3E-6}
-        nplc_from_res = {1e-3: '0.02', 1e-4: '0.2', 3e-5: '1', 1e-5: '10', 3e-6: '100', -1: '100'}
+        nplc_from_res = {'1e-03': '0.02', '1e-04': '0.2', '3e-05': '1', '1e-05': '10', '3e-06': '100'}
         nplc = nplc_from_res.get(range10V_res, '100')
-        self.send_command('VOLTage:DC:NPLCycles %s' % nplc, postpone_send=postpone_send)
+        self.send_command('VOLT:DC:NPLC %s' % nplc, postpone_send=postpone_send)
         # nplc = self.send_command('VOLT:DC:NPLC?', True, to_float=True)
-        res = range * res_fact.get(float(nplc), -1)
+        range_float = float(dmm_range) if dmm_range != 'AUTO' else 100
+        res = range_float * res_fact.get(float(nplc), -1)
         self.config_dict['range'] = range
         self.config_dict['resolution'] = res
         dev_err = self.get_dev_error()
@@ -330,13 +336,12 @@ class Agilent(QThread):
         sample_count = max(sample_count, 1)
         sample_count = min(sample_count, 1e6)
 
-        self.send_command('TRIG:COUN %s' % trig_count, postpone_send=postpone_send)
+        self.send_command('TRIG:COUN %s; SOUR %s' % (trig_count, trig_src_enum.value), postpone_send=postpone_send)
         # trig_count_read = self.send_command('TRIG:COUN?', True, to_float=True)
 
         self.send_command('SAMP:COUN %s' % sample_count, postpone_send=postpone_send)
         # sample_count_read = self.send_command('SAMP:COUN?', True, to_float=True)
 
-        self.send_command('TRIG:SOUR %s' % trig_src_enum.value, postpone_send=postpone_send)
         # trig_source_read = self.send_command('TRIG:SOUR?', True)
         trig_count_read = trig_count
         sample_count_read = sample_count
@@ -372,7 +377,7 @@ class Agilent(QThread):
 
             on_off = 'ON' if highResistanceTrue else 'OFF'
             self.send_command('VOLT:DC:IMP:AUTO %s' % on_off, postpone_send=postpone_send)
-            print(self.name, ' 34461A setting input resistance: ', 'VOLT:DC:IMP:AUTO %s' % on_off)
+            logging.info(self.name + ' 34461A setting input resistance: ' + 'VOLT:DC:IMP:AUTO %s' % on_off)
             auto_imp = on_off
             # auto_imp = self.send_command('VOLT:DC:IMP:AUTO?', True)
         elif self.type_num in ['34401A']:
@@ -385,18 +390,19 @@ class Agilent(QThread):
         return auto_imp, dev_err
 
     def set_range(self, range_val, postpone_send=False):
-        ranges = {0.1: '0.1', 1: '1', 10: '10', 100: '100', 1000: '1000', -1: 'AUTO'}
-        sel_range = ranges.get(range_val, 'AUTO')
-        set_range = float(sel_range)
-        if sel_range != 'AUTO':
-            self.send_command('VOLT:DC:RANG %s' % sel_range, postpone_send=postpone_send)
+        """
+        set the range for the meas
+        :param range_val: str, ['AUTO', '0.1', '1.0', '10.0', '100.0', '1000.0']
+        """
+        if range_val != 'AUTO':
+            self.send_command('VOLT:DC:RANG %s' % range_val, postpone_send=postpone_send)
             # set_range = self.send_command('VOLT:DC:RANG?', True, to_float=True)
         else:
             self.send_command('VOLT:DC:RANG:AUTO ON', postpone_send=postpone_send)
             # set_range = -1 if self.send_command('VOLT:DC:RANG:AUTO?', True, to_float=True) == 1 else 0
-        self.config_dict['range'] = set_range
-        dev_err = self.get_dev_error()
-        return set_range, dev_err
+        self.config_dict['range'] = range_val
+        dev_err = 0, ''
+        return range_val, dev_err
 
     def config_auto_zero(self, auto_zero_mode, postpone_send=False):
         """
@@ -439,7 +445,7 @@ class Agilent(QThread):
         """
         trig_delay = min(3600, trig_delay)
         trig_delay = max(0, trig_delay)
-        self.send_command('TRIG:SOUR %s; DEL %s' % (trig_src_enum.value, trig_delay), postpone_send=postpone_send)
+        self.send_command('TRIG:SOUR %s;DEL %s' % (trig_src_enum.value, trig_delay), postpone_send=postpone_send)
         trig_source_read = trig_src_enum.value
         trig_del_read = trig_delay
         # trig_source_read = self.send_command('TRIG:SOUR?', True)
@@ -513,12 +519,12 @@ class Agilent(QThread):
         following the receipt of INITiate.
         :return:
         """
-        print('Initiating measurement on ', self.name)
+        logging.info('Initiating measurement on %s' % self.name)
         self.send_command('INIT')
         self.state = 'measuring'
         # dev_err = self.get_dev_error()  # caused problems in 34401A
         dev_err = (0, '')
-        print('successfully started measurement on ', self.name)
+        logging.info('successfully started measurement on %s ' % self.name)
         self.last_readback_len = 0  # reset this for the 34401A since all data is erased.
         self.start()
         return dev_err
@@ -639,7 +645,7 @@ class Agilent(QThread):
         return ret
 
     def abort_meas(self):
-        print('aborting reading thread of %s' % self.name)
+        logging.info('aborting reading thread of %s' % self.name)
         while self.isRunning():
             self.mutex.lock()
             self.stop_reading_thread = True
@@ -652,7 +658,7 @@ class Agilent(QThread):
             self.send_command('\x03')  # see p. 160 \x03 = <Ctrl-C>
         else:
             self.send_command('ABORt')
-        print(self.name, ' aborted measurement')
+        logging.info(self.name + ' aborted measurement')
         self.state = 'aborted'
         dev_err = self.get_dev_error()
 
@@ -667,12 +673,12 @@ class Agilent(QThread):
         if pre_conf_name in self.pre_configs.__members__:
             config_dict = deepcopy(self.pre_configs[pre_conf_name].value)
             # config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
-            print('setting %s to these preconfigured settings: %s %s' %
+            logging.info('setting %s to these preconfigured settings: %s %s' %
                   (self.name, pre_conf_name, config_dict))
             self.load_from_config_dict(config_dict, False)
             return self.initiate_measurement()
         else:
-            print(
+            logging.error(
                 'error: could not set the preconfiguration: %s in dmm: %s, because the config does not exist'
                 % (pre_conf_name, self.name))
 
@@ -684,7 +690,7 @@ class Agilent(QThread):
     ''' loading '''
     def load_from_config_dict(self, config_dict, reset_dev):
         try:
-            print('setting up %s with the following config %s' % (self.name, config_dict))
+            logging.info('setting up %s with the following config %s' % (self.name, config_dict))
             postpone_send = False
             if self.type_num in ['34461A']:
                 postpone_send = True
@@ -692,8 +698,8 @@ class Agilent(QThread):
             self.config_dict = deepcopy(config_dict)
             if reset_dev:
                 self.reset_dev()
-            dmm_range = int(float(config_dict.get('range')))  # combobox will return a string
-            resolution = float(config_dict.get('resolution'))
+            dmm_range = config_dict.get('range')  # combobox will return a string
+            resolution = config_dict.get('resolution')
             self.config_measurement(dmm_range, resolution, postpone_send=postpone_send)
             # print('%s sucessfully configured range, resolution' % self.name)
             trig_count = config_dict.get('triggerCount')
@@ -721,11 +727,11 @@ class Agilent(QThread):
             # just to be sure this is included:
             self.config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
             dev_err = self.get_dev_error()
-            print('%s done with loading from config dict!' % self.name)
+            logging.info('%s done with loading from config dict!' % self.name)
             return dev_err
         except Exception as e:
             dev_err = self.get_dev_error()
-            print('Exception while loading config to Agilent: ', e)
+            logging.error('Exception while loading config to Agilent: %s' % e, exc_info=True)
 
     ''' emitting config pars '''
     def emit_config_pars(self):
@@ -740,7 +746,7 @@ class Agilent(QThread):
         trig_slope = ['falling'] if self.type_num in ['34401A'] else ['falling', 'rising']
         trig_events = [-1] + list(range(1, 512)) if self.type_num in ['34401A'] else [-1] + list(range(1, 100, 1))
         config_dict = {
-            'range': ('range', True, str, ['-1.0', '0.1', '1.0', '10.0', '100.0', '1000.0'],
+            'range': ('range', True, str, ['AUTO', '0.1', '1.0', '10.0', '100.0', '1000.0'],
                       str(self.config_dict['range'])),
             'resolution': ('resolution', True, str, ['1e-03', '1e-04', '3e-05', '1e-05', '3e-06'],
                            str(self.config_dict['resolution'])),
@@ -779,13 +785,14 @@ class Agilent(QThread):
                 try:
                     error_num = int(error.split(sep=b',')[0])
                     if error_num != 0:
-                        print('%s yields the following error: %s' % (self.name, error))
+                        logging.error('%s yields the following error: %s' % (self.name, error))
                     return error_num, error
                 except Exception as e:
-                    print('error in %s while interpreting error message: ' % self.name, error)
+                    logging.error(
+                        'error in %s while interpreting error message: %s' % (self.name, error), exc_info=True)
                     return 0, ''
             else:
-                print('%s is fine and no error is present' % self.name)
+                logging.debug('%s is fine and no error is present' % self.name)
                 return 0, ''
         else:
             return 0, ''
@@ -799,14 +806,15 @@ class Agilent(QThread):
         """
         if config_dict is None:
             config_dict = self.config_dict
-        error_dict_2y = {0.1: (0.005, 0.0035), 1: (0.004, 0.0007),
-                         10: (0.0035, 0.0005), 100: (0.0045, 0.0006),
-                         1000: (0.0045, 0.001)}
+        error_dict_2y = {'0.1': (0.005, 0.0035), '1.0': (0.004, 0.0007),
+                         '10.0': (0.0035, 0.0005), '100.0': (0.0045, 0.0006),
+                         '1000.0': (0.0045, 0.001),
+                         'AUTO': (0.005, 0.0035)}
         dmm_range = config_dict['range']
-        reading_accuracy_float, range_accuracy_float = error_dict_2y.get(dmm_range)
+        reading_accuracy_float, range_accuracy_float = error_dict_2y.get(dmm_range, (0.005, 0.0035))
         reading_accuracy_float *= 10 ** -2  # percent
         range_accuracy_float *= 10 ** -2  # percent
-        range_accuracy_float *= dmm_range
+        range_accuracy_float *= float(dmm_range) if dmm_range != 'AUTO' else 100
         acc_tpl = (reading_accuracy_float, range_accuracy_float)
 
         config_dict['accuracy'] = acc_tpl
@@ -815,7 +823,7 @@ class Agilent(QThread):
     ''' Thread '''
 
     def run(self):
-        print('%s reading thread started' % self.name)
+        logging.info('%s reading thread started' % self.name)
         while not self.stop_reading_thread:
             if self.soft_trig_request:
                 self._send_software_trigger()
@@ -827,7 +835,7 @@ class Agilent(QThread):
             self.read_back_data = np.append(self.read_back_data, new_data)
             self.mutex.unlock()
             self.msleep(50)
-        print('%s reading thread stopped' % self.name)
+        logging.info('%s reading thread stopped' % self.name)
         self.mutex.lock()
         self.stop_reading_thread = False
         self.mutex.unlock()
@@ -856,7 +864,7 @@ if __name__ == "__main__":
     dmm.set_to_pre_conf_setting(AgilentPreConfigs.periodic.name)
     stopp = datetime.datetime.now()
     needed_time = stopp - start
-    logging.info('startup took: ', needed_time.seconds)
+    logging.info('startup took: %.1f s' % needed_time.seconds)
     # dmm.abort_meas()
     logging.info('thread running: %s' % dmm.isRunning())
     logging.info(dmm.read_back_data)

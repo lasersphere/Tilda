@@ -239,7 +239,7 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
                 except Exception as e:
                     # just print an error for now, maybe be more harsh here in the future.
                     logging.error(
-                        'error: could not change value to: %s in key: %s, error is: %s' % (key, val, e))
+                        'error: could not change value to: %s in key: %s, error is: %s' % (key, val, e), exc_info=True)
 
     def setup_default_val_comboBox(self, preconfname):
         """
