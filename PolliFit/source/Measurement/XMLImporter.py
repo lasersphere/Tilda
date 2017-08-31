@@ -261,7 +261,11 @@ class XMLImporter(SpecData):
                      self.col, self.voltDivRatio, self.lineMult, self.lineOffset) = db_ret[0]
                     self.col = bool(self.col)
                     # should be a string of a list of offset values for each track:
-                    self.offset = ast.literal_eval(self.offset)
+                    if isinstance(self.offset, float):
+                        # old databases might still have just one value for the offset in the db
+                        self.offset = [self.offset] * self.nrTracks
+                    elif isinstance(self.offset, str):
+                        self.offset = ast.literal_eval(self.offset)
                 else:
                     raise Exception('XMLImporter: No DB-entry found!')
                 try:

@@ -21,13 +21,17 @@ class Hyperfine(object):
 
         self.fixA = iso.fixArat
         self.fixB = iso.fixBrat
+        self.fixedAl = iso.fixedAl
+        self.fixedBl = iso.fixedBl
+        self.fixedAu = iso.fixedAu
+        self.fixedBu = iso.fixedBu
         self.fixInt = iso.fixInt
         self.center = iso.center
         
         self.trans = Physics.HFTrans(self.iso.I, self.iso.Jl, self.iso.Ju)
 
-        Au = iso.Au * iso.Al if self.fixA else iso.Au
-        Bu = iso.Bu * iso.Bl if self.fixB else iso.Bu
+        Au = iso.Au * iso.Al if self.fixA and not self.fixedAu else iso.Au
+        Bu = iso.Bu * iso.Bl if self.fixB and not self.fixedBu else iso.Bu
         self.lineSplit = Physics.HFLineSplit(iso.Al, iso.Bl, Au, Bu, self.trans)
 
         self.nPar = 5 + 2 * len(self.trans) if self.iso.shape['name'] == 'LorentzQI' else 5 + len(self.trans)
@@ -125,15 +129,24 @@ class Hyperfine(object):
             return ['center', 'Al', 'Bl', 'Au', 'Bu'] + ['Int' + str(x) for x in range(len(self.trans))]
     
     def getFixed(self):
-        '''Return list of parmeters with their fixed-status'''
-        ret = 4*[True]
-        if self.iso.I > 0.1 and self.iso.Jl > 0.1:
+        '''
+        Return list of parmeters with their fixed-status
+        par names see: self.getParNames
+        ['center', 'Al', 'Bl', 'Au', 'Bu'] + [... int etc. ...]
+
+        '''
+        ret = 4 * [True]
+        if self.iso.I > 0.1 and self.iso.Jl > 0.1 and not self.fixedAl:
+            # Al
             ret[0] = False
-        if self.iso.I > 0.6 and self.iso.Jl > 0.6:
+        if self.iso.I > 0.6 and self.iso.Jl > 0.6 and not self.fixedBl:
+            # Bl
             ret[1] = False
-        if self.iso.I > 0.1 and self.iso.Ju > 0.1 and not self.fixA:
+        if self.iso.I > 0.1 and self.iso.Ju > 0.1 and not self.fixA and not self.fixedAu:
+            # Au
             ret[2] = False
-        if self.iso.I > 0.6 and self.iso.Ju > 0.6 and not self.fixB:
+        if self.iso.I > 0.6 and self.iso.Ju > 0.6 and not self.fixB and not self.fixedBu:
+            # Bu
             ret[3] = False
          
         fInt = [False] + (len(self.trans) - 1)*[True] if self.fixInt else len(self.trans)*[False]

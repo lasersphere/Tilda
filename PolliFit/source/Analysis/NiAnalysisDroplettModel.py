@@ -15,7 +15,7 @@ import numpy as np
 import TildaTools as TiTs
 from matplotlib import pyplot as plt
 
-workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
+workdir = 'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
 
 datafolder = os.path.join(workdir, 'Ni_April2016_mcp')
 
@@ -191,11 +191,11 @@ font_size = 20
 plt.plot(Ni_even_N, ni_radii_diff_even, 'ro', label='Ni N even', linestyle='-')
 plt.plot(Ni_odd_N, ni_radii_diff_odd, 'r^', label='Ni N odd', linestyle='--')
 
-plt.plot(Zn_even_N, Zn_even, 'bo', label='Zn N even', linestyle='-')
-plt.plot(Zn_odd_N, Zn_odd, 'b^', label='Zn N odd', linestyle='--')
+# plt.plot(Zn_even_N, Zn_even, 'bo', label='Zn N even', linestyle='-')
+# plt.plot(Zn_odd_N, Zn_odd, 'b^', label='Zn N odd', linestyle='--')
 
-plt.plot(Cu_even_N, Cu_even, 'ko', label='Cu N even', linestyle='-')
-plt.plot(Cu_odd_N, Cu_odd, 'k^', label='Cu N odd', linestyle='--')
+plt.plot(Cu_even_N, Cu_even, 'bd', label='Cu N even', linestyle='-')
+plt.plot(Cu_odd_N, Cu_odd, 'b*', label='Cu N odd', linestyle='--')
 
 plt.gcf().set_facecolor('w')
 plt.axvline(40, color='r', linestyle='-.', linewidth=1)

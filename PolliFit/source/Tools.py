@@ -177,7 +177,11 @@ def createDB(db):
     fixedInt BOOL DEFAULT 0,
     relInt TEXT,
     m TEXT,
-    midTof FLOAT
+    midTof FLOAT,
+    fixedAl BOOL DEFAULT 0,
+    fixedBl BOOL DEFAULT 0,
+    fixedAu BOOL DEFAULT 0,
+    fixedBu BOOL DEFAULT 0
     )''')
     
     #Lines
@@ -268,11 +272,11 @@ def add_missing_columns(db):
      For adding new columns add them to cols """
     cols = {
         'Isotopes': [
-            (0, 'iso', 'TEXT', 1, None, 1),
-            (1, 'mass', 'FLOAT', 0, None, 0),
-            (2, 'mass_d', 'FLOAT', 0, None, 0),
-            (3, 'I', 'FLOAT', 0, None, 0),
-            (4, 'center', 'FLOAT', 0, None, 0),
+            (0, 'iso', 'TEXT', 1, '""', 1),
+            (1, 'mass', 'FLOAT', 0, '0', 0),
+            (2, 'mass_d', 'FLOAT', 0, '0', 0),
+            (3, 'I', 'FLOAT', 0, '0', 0),
+            (4, 'center', 'FLOAT', 0, '0', 0),
             (5, 'Al', 'FLOAT', 0, '0', 0),
             (6, 'Bl', 'FLOAT', 0, '0', 0),
             (7, 'Au', 'FLOAT', 0, '0', 0),
@@ -281,19 +285,23 @@ def add_missing_columns(db):
             (10, 'fixedBrat', 'BOOL', 0, '0', 0),
             (11, 'intScale', 'DOUBLE', 0, '1', 0),
             (12, 'fixedInt', 'BOOL', 0, '0', 0),
-            (13, 'relInt', 'TEXT', 0, None, 0),
-            (14, 'm', 'TEXT', 0, None, 0),
-            (15, 'midTof', 'FLOAT', 0, '0', 0)
+            (13, 'relInt', 'TEXT', 0, '[]', 0),
+            (14, 'm', 'TEXT', 0, '""', 0),
+            (15, 'midTof', 'FLOAT', 0, '0', 0),
+            (16, 'fixedAl', 'BOOL', 0, '0', 0),
+            (17, 'fixedBl', 'BOOL', 0, '0', 0),
+            (18, 'fixedAu', 'BOOL', 0, '0', 0),
+            (19, 'fixedBu', 'BOOL', 0, '0', 0),
         ],
         'Runs': [
-            (0, 'run', 'TEXT', 1, None, 1),
+            (0, 'run', 'TEXT', 1, '""', 1),
             (1, 'lineVar', 'TEXT', 0, '""', 0),
             (2, 'isoVar', 'TEXT', 0, '""', 0),
-            (3, 'scaler', 'TEXT', 0, None, 0),
-            (4, 'track', 'TEXT', 0, None, 0),
-            (5, 'softwGates', 'TEXT', 0, None, 0),
-            (6, 'softwGateWidth', 'FLOAT', 0, None, 0),
-            (7, 'softwGateDelayList', 'TEXT', 0, None, 0),
+            (3, 'scaler', 'TEXT', 0, '[]', 0),
+            (4, 'track', 'TEXT', 0, '-1', 0),
+            (5, 'softwGates', 'TEXT', 0, '[]', 0),
+            (6, 'softwGateWidth', 'FLOAT', 0, '0', 0),
+            (7, 'softwGateDelayList', 'TEXT', 0, '[]', 0),
         ]
     }
     for table_name, target_cols in cols.items():
@@ -304,10 +312,12 @@ def add_missing_columns(db):
         # for each in exist_cols:
         #     print(each, ',')
         cols_name_flat = [each[1] for each in exist_cols]
+        print('flat cols of %s : %s ' % (table_name, cols_name_flat))
         for each in target_cols:
             if each[1] not in cols_name_flat:
                 print('column %s in table %s was not yet in db, adding now.' % (each[1], table_name))
-                cur.execute(''' ALTER TABLE '%s' ADD COLUMN '%s' '%s' ''' % (table_name, each[1], each[2]))
+                cur.execute(''' ALTER TABLE '%s' ADD COLUMN '%s' '%s' DEFAULT '%s' '''
+                            % (table_name, each[1], each[2], each[4]))
         con.commit()
         con.close()
 

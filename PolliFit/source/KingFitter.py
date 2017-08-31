@@ -280,12 +280,12 @@ class KingFitter(object):
             x = []
             y = []
             yerr = []
-            print('iso\t $\delta$ <r$^2$>[fm$^2$]($\Delta$ $\delta$<r$^2$>[fm$^2$])')
+            print('iso\t $\delta$ <r$^2$>[fm$^2$]')
             for i in keyVals:
                 x.append(int(str(i).split('_')[0]))
                 y.append(finalVals[i][0])
                 yerr.append(finalVals[i][1])
-                print(i, '\t', np.round(finalVals[i][0],3), '('+str(np.round(finalVals[i][1],3))+')')
+                print('%s\t%.3f(%.0f)' % (i, finalVals[i][0], finalVals[i][1] * 1000))
                 #print("'"+str(i)+"'", ':[', np.round(finalVals[i][0],3), ','+ str(np.round(np.sqrt(finalVals[i][1]**2 + finalVals[i][2]**2),3))+'],')
 
             plt.subplots_adjust(bottom=0.2)
