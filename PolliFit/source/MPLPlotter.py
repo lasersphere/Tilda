@@ -85,8 +85,11 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
     else:
         data = fit.meas.getArithSpec(*fit.st)
         plotdat = fit.spec.toPlotE(fit.meas.laserFreq, fit.meas.col, fit.par)
-
-    shape = fit.spec.shape
+    shape = None
+    try:
+        shape = fit.spec.shape
+    except Exception as e:
+        print('warning, spectra has no shape maybe kepco fit? Than its ok. error msg: %s' % e)
     main_peaks_plot_data = []
     side_peaks_plot_data = []
     if isinstance(shape, AsymmetricVoigt):
@@ -228,6 +231,7 @@ def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), sho
         ax.xaxis.set_major_formatter(xfmt)
         ax.set_ylabel(ylabel)
         ax.set_xmargin(0.05)
+        ax.ticklabel_format(useOffset=False, axis='y')
 
         plt.errorbar(date, cts, yerr=errs, fmt=forms[0], axes=ax)
 
@@ -534,6 +538,8 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
     lit_y = None
     lit_y_err = None
     val_statErr_rChi_shift_dict = Tools.extract_from_combined(runs_to_plot, db, isotopes, par, print_extracted=True)
+    literarture_has_been_plotted = False
+    offset = -0.2
     for each in val_statErr_rChi_shift_dict.keys():
         try:
             if each:
@@ -542,32 +548,34 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
                             sorted(val_statErr_rChi_shift_dict[each].items())]
                     errs = [(int(key_pl2[:2]), val_pl2[1], literature_dict.get(key_pl2, [0, 0])[1]) for key_pl2, val_pl2 in
                             sorted(val_statErr_rChi_shift_dict[each].items())]
-                    x = [valo[0] for valo in vals]
+                    x = [valo[0] + offset for valo in vals]
                     # exp_y = [val[1] for val in vals]
                     # exp_y_err = [val[1] for val in errs]
                     # maybe in future:
                     # lit_y = [val[2] for val in vals]
                     # lit_y_err = [val[2] for val in errs]
-                    exp_y = [0 for valo in vals]
+                    exp_y = [valo[1] - valo[2] for valo in vals]
                     exp_y_err = [valo[1] for valo in errs]
-                    lit_y = [valo[1] - valo[2] for valo in vals]
+                    lit_y = [0 for valo in vals]
                     lit_y_err = [valo[2] for valo in errs]
                 else:
                     x_y_err = [(int(iso[:2]), val[0], np.sqrt(val[1] ** 2 + val[2] ** 2))
                                for iso, val in sorted(val_statErr_rChi_shift_dict[each].items())]
-                    x = [each[0] for each in x_y_err]
+                    x = [each[0] + offset for each in x_y_err]
                     exp_y = [each[1] for each in x_y_err]
                     exp_y_err = [each[2] for each in x_y_err]
                 if plot_runs_seperate:
-                    plt.errorbar(x, exp_y, exp_y_err, label='exp. values', linestyle='None', marker="o")
-                    if lit_y is not None:
+                    plt.errorbar(x, exp_y, exp_y_err, label='%s' % each, linestyle='None', marker="o")
+                    if lit_y is not None and not literarture_has_been_plotted:
                         plt.errorbar(x, lit_y, lit_y_err, label=literature_name, linestyle='None', marker="o")
+                        literarture_has_been_plotted = True
                 compl_x += x
                 compl_y += exp_y
                 compl_y_err += exp_y_err
 
         except Exception as err:
             print('error while plotting: %s' % err)
+        offset += 0.1
 
     if not plot_runs_seperate:
         plt.errorbar(compl_x, compl_y, compl_y_err, label='runs: ' + str(sorted(val_statErr_rChi_shift_dict.keys())),
@@ -576,7 +584,7 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
             plt.errorbar(compl_x, lit_y, lit_y_err, label=literature_name,
                          linestyle='None', marker="o")
 
-    plt.legend()
+    plt.legend(loc=2)
     plt.margins(0.25)
     get_current_axes().set_ylabel('%s [MHz]' % par)
     plt.gcf().set_facecolor('w')

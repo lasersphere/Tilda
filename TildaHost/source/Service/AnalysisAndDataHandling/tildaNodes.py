@@ -1318,12 +1318,12 @@ class NMPLImagePlotAndSaveSpecData(Node):
         self.trs_names_list = ['trs', 'trsdummy', 'tipa']  # in order to deny rebinning, for other than that
         self.save_data = save_data
 
-        self.mutex = QtCore.QMutex()  # for blocking of other threads
         self.new_data_callback = new_data_callback
         self.new_track_callback = new_track_callback
         self.min_time_between_emits = timedelta(milliseconds=250)
         # just be sure it emits on first call (important for loading etc.):
         self.last_emit_time = datetime.now() - self.min_time_between_emits - self.min_time_between_emits
+        self.mutex = QtCore.QMutex()  # for blocking of other threads
         if gates_and_rebin_signal is not None:
             gates_and_rebin_signal.connect(self.rcvd_gates_and_rebin)
         if save_request is not None:
@@ -1405,8 +1405,15 @@ class NMPLImagePlotAndSaveSpecData(Node):
                     self.rebinned_data = self.gate_data(self.rebinned_data, softw_gates_for_all_tr)
                     changed = True
             if changed:
-                if self.new_data_callback is not None:
-                    self.new_data_callback.emit(self.rebinned_data)
+                try:
+                    if self.new_data_callback is not None:
+                        self.new_data_callback.emit(self.rebinned_data)
+                except Exception as e:
+                    pass
+                    # sometimes new_data_callback migth have ben deleted already here.
+                    # This happens when closing an offline plot window.
+                    # logging.error('error while receiving gates in NMPLImagePlotAndSaveSpecData, error is: %s' % e,
+                    #               exc_info=True)
             else:
                 logging.debug('did not emit, because gates/rebinning was not changed.')
             self.mutex.unlock()

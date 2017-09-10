@@ -303,9 +303,18 @@ class XMLImporter(SpecData):
                     self.offset = 0
                 else:  # get the offset from the database or leave it as it is from import always prefer db
                     if len(db_ret) == 1:
-                        self.offset = db_ret[0]
+                        offset_db = db_ret[0]
+                        self.offset = offset_db
                 for tr_ind, cts_tr in enumerate(self.cts):
-                    self.cts[tr_ind] = self.cts[tr_ind] - self.offset
+                    if len(self.active_pmt_list[tr_ind]):
+                        for dmm_ind, dmm_name in enumerate(self.active_pmt_list[tr_ind]):
+                            offset_dmm_tr = self.offset_by_dev_mean[tr_ind][dmm_name]
+                            self.cts[tr_ind][dmm_ind] = self.cts[tr_ind][dmm_ind] - offset_dmm_tr
+                            logging.debug('preprocessing kepco x-axis: dmm_name: %s, track: %s, offset_dmm_tr; %s'
+                                          % (dmm_name, tr_ind, offset_dmm_tr))
+                    else:
+                        self.cts[tr_ind] = self.cts[tr_ind] - self.offset
+
             con.close()
         except Exception as e:
             logging.error(
