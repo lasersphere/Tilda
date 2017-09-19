@@ -24,7 +24,7 @@ from Spectra.FullSpec import FullSpec
 
 
 def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=None,
-            col=None, saving=False, show=True, isom_name=None, prec=10000):
+            col=None, saving=False, show=True, isom_name=None, prec=10000, clear=False):
     '''plot isotope iso'''
     iso = DBIsotope(db, iso_name, isovar, linevar)
     
@@ -34,7 +34,8 @@ def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=Non
     if as_freq:
         plot.plot(spec.toPlot(spec.getPars(), prec=prec))
         center_str = '%.1f MHz' % iso.center
-        plt.axvline(x=iso.center, color='r', label='center: %s' % center_str)
+        center_color = plt.gca().get_lines()[-1].get_color()
+        plt.axvline(x=iso.center, color=center_color, linestyle='--', label='%s center: %s' % (iso_name, center_str))
 
     else:
         plot.plot(spec.toPlotE(laserfreq, col, spec.getPars()))
@@ -44,7 +45,8 @@ def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=Non
         vel_center = Physics.invRelDoppler(laserfreq, freq_center)  # velocity
         energ_center = (iso.mass * Physics.u * vel_center ** 2) / 2 / Physics.qe
         center_str = '%.1f eV' % energ_center
-        plt.axvline(x=energ_center, color='r', label='center: %s' % center_str)
+        center_color = plt.gca().get_lines()[-1].get_color()
+        plt.axvline(x=energ_center, color=center_color, linestyle='--', label='%s center: %s' % (iso_name, center_str))
 
     plt.gca().get_lines()[-2].set_label(iso_name)
     plt.gcf().set_facecolor('w')
@@ -53,15 +55,15 @@ def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=Non
         isoPlot(db, isom_name, isovar, linevar, as_freq, laserfreq, col, saving, show)
     else:
         if saving:
-            pathParts = str(db).split('/')
-            path = ''
-            for i in range(0,len(pathParts)-1,1):
-                path += pathParts[i] + '/'
-            path += 'simulations/'
-            plot.save(path + iso_name + '.png')
+            db_dir = os.path.dirname(db)
+            path = os.path.join(db_dir, 'simulations')
+            if not os.path.isdir(path):
+                os.mkdir(path)
+            file_path = os.path.join(path, iso_name + '.png')
+            plot.save(file_path)
         if show:
             plot.show()
-        else:
+        if clear:
             plot.clear()
 
 

@@ -101,4 +101,12 @@ for f_date_tuple in ret:
     smaller_then_2kb = 'deleted, stopped before saving' if file_size <= 2000 else ''
     print('%s\t%s\t%s\t%s' % (run_num, f_date_tuple[0], f_date_tuple[1], smaller_then_2kb))
 
-Tools.isoPlot(db, '60_Ni', linevar='tisa_60_asym_free', col=True, laserfreq=851336076.2983379, as_freq=False)
+Tools.isoPlot(db, '67_Ni', linevar='tisa_60_asym_free', col=True,
+              laserfreq=851336076.2983379, as_freq=False, show=False, saving=True)
+Tools.isoPlot(db, '61_Ni', linevar='tisa_60_asym_free', col=True,
+              laserfreq=851336076.2983379, as_freq=False, saving=True, show=False, clear=True)
+Tools.isoPlot(db, '60_Ni', linevar='tisa_60_asym_free', col=True,
+              laserfreq=851336076.2983379, as_freq=False, saving=True)
+
+
+# Tools.createDB(db)
