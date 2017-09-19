@@ -33,10 +33,21 @@ def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=Non
     print(spec.getPars())
     if as_freq:
         plot.plot(spec.toPlot(spec.getPars(), prec=prec))
+        center_str = '%.1f MHz' % iso.center
+        plt.axvline(x=iso.center, color='r', label='center: %s' % center_str)
+
     else:
         plot.plot(spec.toPlotE(laserfreq, col, spec.getPars()))
         plot.get_current_axes().set_xlabel('Energy [eV]')
-    plt.gca().get_lines()[-1].set_label(iso_name)
+        # convert center frequency to energy
+        freq_center = iso.center + iso.freq
+        vel_center = Physics.invRelDoppler(laserfreq, freq_center)  # velocity
+        energ_center = (iso.mass * Physics.u * vel_center ** 2) / 2 / Physics.qe
+        center_str = '%.1f eV' % energ_center
+        plt.axvline(x=energ_center, color='r', label='center: %s' % center_str)
+
+    plt.gca().get_lines()[-2].set_label(iso_name)
+    plt.gcf().set_facecolor('w')
     plt.legend()
     if isom_name:
         isoPlot(db, isom_name, isovar, linevar, as_freq, laserfreq, col, saving, show)

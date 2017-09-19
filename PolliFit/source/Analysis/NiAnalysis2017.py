@@ -25,11 +25,11 @@ import TildaTools as TiTs
 
 ''' working directory: '''
 
-workdir = 'C:\\workspace\\NickelOnlineAnalysis2017'
+workdir = 'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace2017\\Ni_2017'
 
 datafolder = os.path.join(workdir, 'sums')
 
-db = os.path.join(workdir, 'NickelOnlineAnalysis2017.sqlite')
+db = os.path.join(workdir, 'Ni_2017.sqlite')
 
 runs = ['Voigt', 'AsymExpVoigt', 'AsymVoigtFree', '2016Experiment']
 
@@ -83,7 +83,22 @@ last_year_shifts = {
     '64_Ni': (1029.6, 0.4)
 }
 
-MPLPlotter.plot_par_from_combined(db, runs, list(sorted(literature_shifts.keys())), 'shift',
-                                  literature_dict=literature_shifts, plot_runs_seperate=True,
-                                  literature_name='A. Steudel (1980)',
-                                  show_pl=True)
+# MPLPlotter.plot_par_from_combined(db, runs, list(sorted(literature_shifts.keys())), 'shift',
+#                                   literature_dict=literature_shifts, plot_runs_seperate=True,
+#                                   literature_name='A. Steudel (1980)',
+#                                   show_pl=True)
+
+
+con = sqlite3.connect(db)
+cur = con.cursor()
+cur.execute(''' SELECT date, file FROM Files ORDER BY date ''')
+ret = cur.fetchall()
+con.close()
+
+for f_date_tuple in ret:
+    run_num = f_date_tuple[1].split('.')[0][-3:]
+    file_size = os.path.getsize(os.path.join(datafolder, f_date_tuple[1]))
+    smaller_then_2kb = 'deleted, stopped before saving' if file_size <= 2000 else ''
+    print('%s\t%s\t%s\t%s' % (run_num, f_date_tuple[0], f_date_tuple[1], smaller_then_2kb))
+
+Tools.isoPlot(db, '60_Ni', linevar='tisa_60_asym_free', col=True, laserfreq=851336076.2983379, as_freq=False)
