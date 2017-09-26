@@ -181,14 +181,17 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             if self.choose_working_dir() is None:
                 return None
         if not isinstance(file, str):
-            file = QtWidgets.QFileDialog.getOpenFileName(
+            files = QtWidgets.QFileDialog.getOpenFileNames(
                 self, 'choose an xml file', Cfg._main_instance.working_directory, '*.xml')[0]
-        if file:
-            if file not in self.file_plot_wins.keys():
-                self.open_file_plot_win(file, sum_sc_tr=sum_sc_tr)
-                Cfg._main_instance.load_spectra_to_main(file, self.file_plot_wins[file], loaded_spec=loaded_spec)
-            else:
-                self.raise_win_to_front(self.file_plot_wins[file])
+        else:
+            files = [file]
+        if files:
+            for file in files:
+                if file not in self.file_plot_wins.keys():
+                    self.open_file_plot_win(file, sum_sc_tr=sum_sc_tr)
+                    Cfg._main_instance.load_spectra_to_main(file, self.file_plot_wins[file], loaded_spec=loaded_spec)
+                else:
+                    self.raise_win_to_front(self.file_plot_wins[file])
 
     def set_pre_scan_timeout(self):
         """ set the pre_scan timeout """
