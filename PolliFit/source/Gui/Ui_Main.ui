@@ -152,6 +152,11 @@
          <string>Alive</string>
         </attribute>
        </widget>
+       <widget class="ColAcolUi" name="ColAcol_tab">
+        <attribute name="title">
+         <string>Col./Acol.</string>
+        </attribute>
+       </widget>
        <widget class="AsciiConvUi" name="asciiConv_tab">
         <attribute name="title">
          <string>ASCII conv.</string>
@@ -246,6 +251,12 @@
    <class>AsciiConvUi</class>
    <extends>QWidget</extends>
    <header>Gui.AsciiConvUi</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ColAcolUi</class>
+   <extends>QWidget</extends>
+   <header>Gui.ColAcolUi</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

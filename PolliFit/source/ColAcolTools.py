@@ -9,13 +9,6 @@ import ast
 from TildaTools import select_from_db
 import Physics
 
-workdir = 'C:\\Users\\pimgram\\IKP ownCloud\\User\\Phillip\\_Barium\\Auswertungen\\'
-
-datafolder = os.path.join(workdir, 'sums')
-
-db = os.path.join(workdir, 'Barium_Data_D1.sqlite')
-
-
 
 def absolute_frequency(db, fit1, fit2):
     """
@@ -99,12 +92,9 @@ def absolute_frequency(db, fit1, fit2):
     #Stat. Error Calc
     #Consisting of a gaussian error of laserFreq1_d, laserFreq2_d and f_corr_d
 
-    print(error1)
-    print(error2)
-    print(error3)
     absFreq_d = (error1 ** 2 + error2 ** 2 + error3 ** 2) ** 0.5
 
-
+    print(str(absFreq) + ' +- ' + str(absFreq_d))
     return [absFreq, absFreq_d]
 
 
@@ -113,17 +103,7 @@ def files_to_csv(db, measList, pathOut):
     file = open(pathOut, 'w')
     for pair in measList:
         result = absolute_frequency(db, pair[0], pair[1])
-        file.write(str(result[0]) + '; ' + str(result[1]))
+        file.write(str(result[0]) + ', ' + str(result[1]))
 
     file.close()
 
-
-
-#print(absolute_frequency(db, '138Ba_acol_cs_run128.xml', '138Ba_col_cs_run127.xml'))
-#p = os.path.join(workdir, 'test.txt')
-
-#print(files_to_csv(db, [['138Ba_acol_cs_run128.xml', '138Ba_col_cs_run127.xml']], p))
-
-file = open(os.path.join(workdir, 'test\\test.txt'), 'w')
-file.write('hello')
-file.close()
