@@ -222,6 +222,7 @@ def createDB(db):
     offset FLOAT,
     accVolt FLOAT,
     laserFreq FLOAT,
+    laserFreq_d FLOAT,
     colDirTrue BOOL,
     voltDivRatio TEXT,
     lineMult FLOAT,
@@ -315,6 +316,21 @@ def add_missing_columns(db):
             (5, 'softwGates', 'TEXT', 0, '[]', 0),
             (6, 'softwGateWidth', 'FLOAT', 0, '0', 0),
             (7, 'softwGateDelayList', 'TEXT', 0, '[]', 0),
+        ],
+        'Files': [
+            (0, 'file', 'TEXT', 1, '""', 1),
+            (1, 'filePath', 'TEXT', 1, '""', 0),
+            (2, 'date', 'DATE', 0, '""', 0),
+            (3, 'type', 'TEXT', 0, '""', 0),
+            (4, 'line', 'TEXT', 0, '""', 0),
+            (5, 'offset', 'FLOAT', 0, '[]', 0),
+            (6, 'accVolt', 'FLOAT', 0, '0', 0),
+            (7, 'laserFreq', 'FLOAT', 0, '0', 0),
+            (8, 'laserFreq_d', 'FLOAT', 0, '0', 0),
+            (9, 'colDirTrue', 'BOOL', 0, 'NULL', 0),
+            (10, 'voltDivRatio', 'TEXT', 0, '""', 0),
+            (11, 'lineMult', 'FLOAT', 0, '0', 0),
+            (12, 'lineOffset', 'FLOAT', 0, '0', 0),
         ]
     }
     for table_name, target_cols in cols.items():
