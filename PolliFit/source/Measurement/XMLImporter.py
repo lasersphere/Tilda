@@ -76,7 +76,6 @@ class XMLImporter(SpecData):
             x_as_volt = False  # assume this is a gauge measurement of the DAC, so set the x axis in DAC registers
             self.dac_calibration_measurement = True
 
-        self.offset = None
         self.offset_by_dev, self.offset_by_dev_mean, self.offset = self.get_dmm_measurement(scandict, 'offset')
         self.acc_volt_by_dev, self.acc_volt_by_dev_mean, self.accVolt = self.get_dmm_measurement(scandict, 'accVolt')
         if len(self.accVolt):
@@ -157,11 +156,6 @@ class XMLImporter(SpecData):
             self.nrScalers.append(nOfScalers)
             self.stepSize.append(dacStepSize18Bit)
             self.col = track_dict['colDirTrue']
-            if self.offset is None:
-                self.offset = track_dict['postAccOffsetVolt']
-                if track_dict.get('postAccOffsetVoltControl') == 0:
-                    self.offset = 0
-
             if self.seq_type in ['trs', 'tipa', 'trsdummy']:
                 self.softBinWidth_ns.append(track_dict.get('softBinWidth_ns', 10))
                 self.t = TildaTools.create_t_axis_from_file_dict(scandict, with_delay=True)  # force 10 ns resolution
@@ -376,6 +370,7 @@ class XMLImporter(SpecData):
         #  here only a mean is stored for each dev
         offset_vals_list = []  # track wise all offset values
         offset_mean = []  # track wise mean values of offset for all devices with offset assignment
+        set_value_list = []
         if float(self.version) <= 1.18:
             # only prescan available and only before first track
             # in order to have a value for each track, copy this existing one:
@@ -390,35 +385,62 @@ class XMLImporter(SpecData):
                         (track_d.get('measureVoltPars', {}).get('preScan', {}).get('dmms', {}),
                          track_d.get('measureVoltPars', {}).get('postScan', {}).get('dmms', {}))
                     )
-        # for backwards compability:
-        read_key = 'preScanRead' if float(self.version) <= 1.17 else 'readings'
-        for tr_ind, each in enumerate(dmms_dict_list):
-            offset_by_dev.append({})
-            offset_by_dev_mean.append({})
-            offset_vals_list.append([])
-            for post_pre_ind, post_pre_dict in enumerate(each):
+                    # if no measurements were taken an empty dict is appended.
+                    if assignment == 'offset':
+                        set_value_list += track_d.get('postAccOffsetVolt', 0.0),
+                    elif assignment == 'accVolt':
+                        set_value_list += scandict.get('isotopeData', {}).get('accVolt', 0.0),
 
-                for dmm_name, dmm_dict in post_pre_dict.items():
-                    if post_pre_ind == 0:
-                        offset_by_dev[tr_ind][dmm_name] = [[], []]
-                    for key, val in dmm_dict.items():
-                        if key == read_key:
-                            if isinstance(val, str):
-                                val = ast.literal_eval(val)
-                            if dmm_dict.get('assignment') == assignment:
-                                if isinstance(val, list):
-                                    offset_vals_list[tr_ind] += val  # append to list
-                                    offset_by_dev[tr_ind][dmm_name][post_pre_ind] += val
-                                else:
-                                    offset_vals_list[tr_ind].append(val)
-                                    offset_by_dev[tr_ind][dmm_name][post_pre_ind].append(val)
-            for dmm_name, offset_list_dmm in offset_by_dev[tr_ind].items():  # get mean value for this dmm in this track
-                offset_by_dev_flat = [item for sublist in offset_list_dmm for item in sublist]
-                if len(offset_by_dev_flat):
-                    offset_by_dev_mean[tr_ind][dmm_name] = np.mean(offset_by_dev_flat)
-            if len(offset_vals_list[tr_ind]):
-                # mean of all dmms for this track
-                offset_mean += np.mean(offset_vals_list[tr_ind]),
+        # check if any measurement was taken at all
+        measurement_taken = any([any(each[0]) or any(each[1]) for each in dmms_dict_list])
+
+        if measurement_taken:
+            # at least in one track the offset/accvolt voltage was measured
+
+            # for backwards compability:
+            read_key = 'preScanRead' if float(self.version) <= 1.17 else 'readings'
+
+            for tr_ind, each in enumerate(dmms_dict_list):
+                offset_by_dev.append({})
+                offset_by_dev_mean.append({})
+                offset_vals_list.append([])
+
+                if each[0] == {} and each[1] == {}:
+                    # no measurement was taken for this track, copy from the track before.
+                    # this will fail when voltage is not measured in track0 but e.g. track1
+                    # dont do this ;)
+                    offset_by_dev[tr_ind] = offset_by_dev[tr_ind - 1]
+                    offset_vals_list[tr_ind] = offset_vals_list[tr_ind - 1]
+                else:
+                    for post_pre_ind, post_pre_dict in enumerate(each):
+                        # post_pre_dict will be {} if no measurement was taken in this track.
+                        for dmm_name, dmm_dict in post_pre_dict.items():
+                            if post_pre_ind == 0:
+                                offset_by_dev[tr_ind][dmm_name] = [[], []]
+                            for key, val in dmm_dict.items():
+                                if key == read_key:
+                                    if isinstance(val, str):
+                                        val = ast.literal_eval(val)
+                                    if dmm_dict.get('assignment') == assignment:
+                                        if isinstance(val, list):
+                                            offset_vals_list[tr_ind] += val  # append to list
+                                            offset_by_dev[tr_ind][dmm_name][post_pre_ind] += val
+                                        else:
+                                            offset_vals_list[tr_ind].append(val)
+                                            offset_by_dev[tr_ind][dmm_name][post_pre_ind].append(val)
+                for dmm_name, offset_list_dmm in offset_by_dev[tr_ind].items():
+                    # get mean value for this dmm in this track
+                    offset_by_dev_flat = [item for sublist in offset_list_dmm for item in sublist]
+                    if len(offset_by_dev_flat):
+                        offset_by_dev_mean[tr_ind][dmm_name] = np.mean(offset_by_dev_flat)
+                if len(offset_vals_list[tr_ind]):
+                    # mean of all dmms for this track
+                    offset_mean += np.mean(offset_vals_list[tr_ind]),
+        else:
+            # no measurement was taken at all -> take set values
+            offset_mean = set_value_list
+            offset_by_dev_mean = [{'setValue': each} for each in set_value_list]
+            offset_by_dev = [{'setValue': [[each], [each]]} for each in set_value_list]
         return offset_by_dev, offset_by_dev_mean, offset_mean
 
 
