@@ -68,10 +68,11 @@ class ColAcolUi(QtWidgets.QWidget, Ui_ColAcol):
         self.lAcol.clear()
         self.lCol.clear()
         db = self.dbpath
-        r = TiTs.select_from_db(db, 'file', 'FitRes')
+        r = TiTs.select_from_db(db, 'file', 'FitRes', [], '', 'Gui.ColAcolUi')
 
-        for each in r:
-            self.addToAll(each[0])
+        if r is not None:
+            for each in r:
+                self.addToAll(each[0])
 
     def shiftToCol(self):
         for index in range(self.lAll.count()):
