@@ -1,7 +1,7 @@
 '''
-Created on 29.07.2016
+Created on 17.10.2017
 
-@author: K. Koenig
+@author: P. Imgram
 '''
 
 import ast

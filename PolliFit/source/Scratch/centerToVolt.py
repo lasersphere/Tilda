@@ -8,6 +8,7 @@ import os
 import ast
 from TildaTools import select_from_db
 import Physics
+import numpy as np
 
 workdir = 'C:\\Users\\pimgram\\IKP ownCloud\\User\\Phillip\\_Barium\\Auswertungen\\'
 
@@ -124,6 +125,29 @@ def files_to_csv(db, measList, pathOut):
 
 #print(files_to_csv(db, [['138Ba_acol_cs_run128.xml', '138Ba_col_cs_run127.xml']], p))
 
-file = open(os.path.join(workdir, 'test\\test.txt'), 'w')
-file.write('hello')
-file.close()
+#file = open('test\\test.txt', 'w')
+#file.write('hello')
+#file.close()
+
+#file = open(os.path.join(workdir, 'test\\test.txt'), 'w')
+#file.write('hello')
+#file.close()
+
+print(os.path.splitext('asd.txt'))
+
+#dict = {'asf': 'asd'}
+#b = dict.get('abc', {})
+
+#print(b)
+#print(bool(b))
+c = {}
+a = [[], [], [], []]
+a[1] = a[1] + [1, 2, 3] + c.get('aaa', [])
+
+print(a)
+
+a[2] = a[2] + [2, 3, 4]
+
+print(a)
+print(bool(a))
+print(np.mean(a[1]))

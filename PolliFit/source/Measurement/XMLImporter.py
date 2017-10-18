@@ -56,7 +56,7 @@ class XMLImporter(SpecData):
 
         self.nrTracks = scandict['isotopeData']['nOfTracks']
 
-        self.laserFreq = Physics.freqFromWavenumber(2 * scandict['isotopeData']['laserFreq'])
+        self.laserFreq, self.laserFreq_d = Physics.freqFromWavenumber(2 * scandict['isotopeData']['laserFreq']), 0.0
         self.date = scandict['isotopeData']['isotopeStartTime']
         self.type = scandict['isotopeData']['isotope']
         self.seq_type = scandict['isotopeData']['type']
@@ -237,6 +237,7 @@ class XMLImporter(SpecData):
                     err.append(dmm_volt_array[ind] * read_acc + range_acc)
                 self.err.append(err)
 
+        self.get_frequency_measurement(path, self.tritonPars)
         logging.info('%s was successfully imported' % self.file)
 
     def preProc(self, db):
@@ -321,10 +322,10 @@ class XMLImporter(SpecData):
             col = 1 if self.col else 0
             with con:
                 con.execute('''UPDATE Files SET date = ?, type = ?, offset = ?,
-                                laserFreq = ?, colDirTrue = ?, accVolt = ?
+                                laserFreq = ?, colDirTrue = ?, accVolt = ?, laserFreq_d = ?
                                  WHERE file = ?''',
                             (self.date, self.type, str(self.offset),
-                             self.laserFreq, col, self.accVolt,
+                             self.laserFreq, col, self.accVolt, self.laserFreq_d,
                              self.file))
             con.close()
         except Exception as e:
@@ -442,6 +443,84 @@ class XMLImporter(SpecData):
             offset_by_dev_mean = [{'setValue': each} for each in set_value_list]
             offset_by_dev = [{'setValue': [[each], [each]]} for each in set_value_list]
         return offset_by_dev, offset_by_dev_mean, offset_mean
+
+
+    def get_frequency_measurement(self, path, scan_triton_dict):
+        """
+        It is assumed the frequency has been measured before and/or after first measurement track since
+        frequency measurements per track like [f1, f2, ..] is not (yet) supported.
+        The frequency measurement is measured by Triton device FrequencyComb1, FrequencyComb2, FreuqencyComb3
+        or FrequencyComb4. The first found device is used for the DB, every other Frequency is written into an
+        external file in path.
+        The frequency is calculated by averaging preScan and (if taken) postScan values.
+        :param scandict:
+        :return: laserFreq, laserFreq_d
+        """
+
+        measTaken = False
+        freq_list = [[]]
+        print(scan_triton_dict)
+        for track in scan_triton_dict:
+            if not measTaken:
+                freq_data = [[], [], [], []]
+
+                if bool(track.get('preScan')):
+                    #preScan
+                    fc1_pre = track.get('preScan', {}).get('FrequencyComb1', {})
+                    fc2_pre = track.get('preScan', {}).get('FrequencyComb2', {})
+                    fc3_pre = track.get('preScan', {}).get('FrequencyComb3', {})
+                    fc4_pre = track.get('preScan', {}).get('FrequencyComb4', {})
+                else:
+                    fc1_pre, fc2_pre, fc3_pre, fc4_pre = {}, {}, {}, {}
+
+                if bool(track.get('postScan')):
+                    #postScan
+                    fc1_post = track.get('postScan', {}).get('FrequencyComb1', {})
+                    fc2_post = track.get('postScan', {}).get('FrequencyComb2', {})
+                    fc3_post = track.get('postScan', {}).get('FrequencyComb3', {})
+                    fc4_post = track.get('postScan', {}).get('FrequencyComb4', {})
+                else:
+                    fc1_post, fc2_post, fc3_post, fc4_post = {}, {}, {}, {}
+
+                freq_data[0] = freq_data[0] + fc1_pre.get('comb_freq', {}).get('data', []) + fc1_post.get('comb_freq', {}).get('data', [])
+                freq_data[1] = freq_data[1] + fc2_pre.get('comb_freq', {}).get('data', []) + fc2_post.get('comb_freq', {}).get('data', [])
+                freq_data[2] = freq_data[2] + fc3_pre.get('comb_freq', {}).get('data', []) + fc3_post.get('comb_freq', {}).get('data', [])
+                freq_data[3] = freq_data[3] + fc4_pre.get('comb_freq', {}).get('data', []) + fc4_post.get('comb_freq', {}).get('data', [])
+
+
+                if bool(freq_data[0]):
+                    freq_list[0].append([np.mean(freq_data[0]), np.std(freq_data[0])])
+                    measTaken = True
+
+                if bool(freq_data[1]):
+                    freq_list[0].append([np.mean(freq_data[1]), np.std(freq_data[1])])
+                    measTaken = True
+
+                if bool(freq_data[2]):
+                    freq_list[0].append([np.mean(freq_data[2]), np.std(freq_data[2])])
+                    measTaken = True
+
+                if bool(freq_data[3]):
+                    freq_list[0].append([np.mean(freq_data[3]), np.std(freq_data[3])])
+                    measTaken = True
+
+
+        if measTaken:
+            self.laserFreq = freq_list[0][0][0] / 1000000  #in MHz
+            self.laserFreq_d = freq_list[0][0][1] / 1000000 #in MHz
+            (dir, file) = os.path.split(path)
+            (filename, end) = os.path.splitext(file)
+            #f = open(os.path.join(dir, filename + '_frequencies.txt'), 'w')
+            for freq in freq_list[0]:
+                #f.write(str(freq[0]/1000000) + '; ' + str(freq[1]/1000000))
+                print('Measured Frequencies in ' + str(file) + ' :')
+                print(str(freq[0]/1000000) + ' +- ' + str(freq[1]/1000000) + ' MHz')
+
+            #f.close()
+
+
+
+
 
 
 # import Service.Scan.draftScanParameters as dft
