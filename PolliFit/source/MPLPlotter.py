@@ -30,6 +30,12 @@ import random
 
 matplotlib.use('Qt5Agg')
 
+def colAcolPlot(x_data, plotdata, error):
+    plt.errorbar(x_data, plotdata, yerr=error, fmt='o', linestyle='-')
+    plt.ylabel('transition frequency / MHz')
+    plt.xlabel('measurement number')
+    plt.axis([0, len(plotdata)+1, min(plotdata)-max(error)*1.2, max(plotdata)+max(error)*1.2])
+
 def AlivePlot(x_data, plotdata, error, refData):
 
     arr = np.asarray

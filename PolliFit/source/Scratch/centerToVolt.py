@@ -9,6 +9,7 @@ import ast
 from TildaTools import select_from_db
 import Physics
 import numpy as np
+import MPLPlotter as mpl
 
 workdir = 'C:\\Users\\pimgram\\IKP ownCloud\\User\\Phillip\\_Barium\\Auswertungen\\'
 
@@ -133,21 +134,29 @@ def files_to_csv(db, measList, pathOut):
 #file.write('hello')
 #file.close()
 
-print(os.path.splitext('asd.txt'))
+
+
+#print(os.path.splitext('asd.txt'))
 
 #dict = {'asf': 'asd'}
 #b = dict.get('abc', {})
 
 #print(b)
 #print(bool(b))
-c = {}
-a = [[], [], [], []]
-a[1] = a[1] + [1, 2, 3] + c.get('aaa', [])
+#c = {}
+#a = [[], [], [], []]
+#a[1] = a[1] + [1, 2, 3] + c.get('aaa', [])
 
-print(a)
+#print(a)
 
-a[2] = a[2] + [2, 3, 4]
+#a[2] = a[2] + [2, 3, 4]
 
-print(a)
-print(bool(a))
-print(np.mean(a[1]))
+#print(a)
+#print(bool(a))
+#print(np.mean(a[1]))
+
+#mpl.colAcolPlot([1, 2, 3],[123.5, 124.6, 122.2], [0.2, 1, 0.9])
+#mpl.show()
+
+print(303870538.531*2)
+print(0.237944336317*2)

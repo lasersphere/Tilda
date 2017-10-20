@@ -8,6 +8,7 @@ import os
 import ast
 from TildaTools import select_from_db
 import Physics
+import MPLPlotter as plot
 
 
 def absolute_frequency(db, fit1, fit2):
@@ -19,6 +20,7 @@ def absolute_frequency(db, fit1, fit2):
 
     #Fit1 processing
     file1 = select_from_db(db, 'type, laserFreq, colDirTrue, laserFreq_d', 'Files', [['file'], [fit1]])
+    #print(fit1)
     isotope1 = select_from_db(db, 'mass', 'Isotopes', [['iso'], [file1[0][0]]])
     fitRes1 = select_from_db(db, 'run, pars', 'FitRes', [['file'], [fit1]])
     run1 = select_from_db(db, 'frequency', 'Lines', [['refRun'], [fitRes1[0][0]]])
@@ -43,6 +45,7 @@ def absolute_frequency(db, fit1, fit2):
     #Fit2 processing
 
     file2 = select_from_db(db, 'type, laserFreq, colDirTrue, laserFreq_d', 'Files', [['file'], [fit2]])
+    #print(fit2)
     isotope2 = select_from_db(db, 'mass', 'Isotopes', [['iso'], [file2[0][0]]])
     fitRes2 = select_from_db(db, 'run, pars', 'FitRes', [['file'], [fit2]])
     run2 = select_from_db(db, 'frequency', 'Lines', [['refRun'], [fitRes2[0][0]]])
@@ -62,10 +65,12 @@ def absolute_frequency(db, fit1, fit2):
     velCenter2_d = ((2*Physics.c*relFreq2/((1+(relFreq2/laserFreq2)**2)*laserFreq2**2))-(2*Physics.c*relFreq2*(-1+(relFreq2/laserFreq2)**2)/((1+(relFreq2/laserFreq2)**2)**2 * laserFreq2**2)))*relFreq2_d
     energCenter2 = (isoMass2 * Physics.u * velCenter2 ** 2) / 2 / Physics.qe
     energCenter2_d = isoMass1 * Physics.u * velCenter2 / Physics.qe * velCenter2_d
+    #print([energCenter2, energCenter1_d])
 
     #Voltage Difference
 
-    voltDif = abs(energCenter1 - energCenter2)
+    voltDif = (energCenter1 - energCenter2)
+    #print(voltDif)
     voltDif_d = (energCenter1_d ** 2 + energCenter2_d ** 2) ** 0.5
     diffDoppler = Physics.diffDoppler(refFreq1, energCenter1, isoMass1)
     f_corr = voltDif*diffDoppler
@@ -78,15 +83,17 @@ def absolute_frequency(db, fit1, fit2):
         print("Error is absolute Frequency measurement. A collinear and an anti-collinear measurement file expected.")
         return
     elif colDir1 == 0: #Means fit1 is the acol file
+        #print('Fit1 acol')
         absFreq = ((laserFreq1 + f_corr) * laserFreq2) ** 0.5
         error1 = laserFreq2 * laserFreq1_d / (2 * (laserFreq2 * (laserFreq1 + f_corr)) ** 0.5)
         error2 = (laserFreq1 + f_corr) * laserFreq2_d / (2 * (laserFreq2 * (laserFreq1 + f_corr)) ** 0.5)
         error3 = laserFreq2 * f_corr_d / (2 * (laserFreq2 * (laserFreq1 + f_corr)) ** 0.5)
     else: #Means fit2 is the acol file
-        absFreq = ((laserFreq2 + f_corr) * laserFreq1) ** 0.5
-        error1 = laserFreq1 * laserFreq2_d / (2 * (laserFreq1 * (laserFreq2 + f_corr)) ** 0.5)
-        error2 = (laserFreq2 + f_corr) * laserFreq1_d / (2 * (laserFreq1 * (laserFreq2 + f_corr)) ** 0.5)
-        error3 = laserFreq1 * f_corr_d / (2 * (laserFreq1 * (laserFreq2 + f_corr)) ** 0.5)
+        #print('Fit2 acol')
+        absFreq = ((laserFreq2 - f_corr) * laserFreq1) ** 0.5
+        error1 = laserFreq1 * laserFreq2_d / (2 * (laserFreq1 * (laserFreq2 - f_corr)) ** 0.5)
+        error2 = (laserFreq2 - f_corr) * laserFreq1_d / (2 * (laserFreq1 * (laserFreq2 - f_corr)) ** 0.5)
+        error3 = laserFreq1 * f_corr_d / (2 * (laserFreq1 * (laserFreq2 - f_corr)) ** 0.5)
 
 
     #Stat. Error Calc
@@ -100,10 +107,21 @@ def absolute_frequency(db, fit1, fit2):
 
 def files_to_csv(db, measList, pathOut):
 
+    mL = []
+    fL = []
+    fL_d = []
+    i=1
+    print('Absolute transition frequency results: ')
     file = open(pathOut, 'w')
     for pair in measList:
         result = absolute_frequency(db, pair[0], pair[1])
-        file.write(str(result[0]) + ', ' + str(result[1]))
-
+        file.write(str(result[0]) + ', ' + str(result[1])+'\n')
+        mL.append(i)
+        fL.append(result[0])
+        fL_d.append(result[1])
+        i=i+1
     file.close()
+    print('Done')
+    plot.colAcolPlot(mL, fL, fL_d)
+    plot.show()
 

@@ -459,7 +459,7 @@ class XMLImporter(SpecData):
 
         measTaken = False
         freq_list = [[]]
-        print(scan_triton_dict)
+        #print(scan_triton_dict)
         for track in scan_triton_dict:
             if not measTaken:
                 freq_data = [[], [], [], []]
@@ -482,39 +482,39 @@ class XMLImporter(SpecData):
                 else:
                     fc1_post, fc2_post, fc3_post, fc4_post = {}, {}, {}, {}
 
-                freq_data[0] = freq_data[0] + fc1_pre.get('comb_freq', {}).get('data', []) + fc1_post.get('comb_freq', {}).get('data', [])
-                freq_data[1] = freq_data[1] + fc2_pre.get('comb_freq', {}).get('data', []) + fc2_post.get('comb_freq', {}).get('data', [])
-                freq_data[2] = freq_data[2] + fc3_pre.get('comb_freq', {}).get('data', []) + fc3_post.get('comb_freq', {}).get('data', [])
-                freq_data[3] = freq_data[3] + fc4_pre.get('comb_freq', {}).get('data', []) + fc4_post.get('comb_freq', {}).get('data', [])
+                freq_data[0] = freq_data[0] + fc1_pre.get('comb_freq_mult', {}).get('data', []) + fc1_post.get('comb_freq_mult', {}).get('data', [])
+                freq_data[1] = freq_data[1] + fc2_pre.get('comb_freq_mult', {}).get('data', []) + fc2_post.get('comb_freq_mult', {}).get('data', [])
+                freq_data[2] = freq_data[2] + fc3_pre.get('comb_freq_mult', {}).get('data', []) + fc3_post.get('comb_freq_mult', {}).get('data', [])
+                freq_data[3] = freq_data[3] + fc4_pre.get('comb_freq_mult', {}).get('data', []) + fc4_post.get('comb_freq_mult', {}).get('data', [])
 
 
                 if bool(freq_data[0]):
-                    freq_list[0].append([np.mean(freq_data[0]), np.std(freq_data[0])])
+                    freq_list[0].append(['fC1: ', np.mean(freq_data[0]), np.std(freq_data[0])])
                     measTaken = True
 
                 if bool(freq_data[1]):
-                    freq_list[0].append([np.mean(freq_data[1]), np.std(freq_data[1])])
+                    freq_list[0].append(['fC2: ', np.mean(freq_data[1]), np.std(freq_data[1])])
                     measTaken = True
 
                 if bool(freq_data[2]):
-                    freq_list[0].append([np.mean(freq_data[2]), np.std(freq_data[2])])
+                    freq_list[0].append(['fC3: ', np.mean(freq_data[2]), np.std(freq_data[2])])
                     measTaken = True
 
                 if bool(freq_data[3]):
-                    freq_list[0].append([np.mean(freq_data[3]), np.std(freq_data[3])])
+                    freq_list[0].append(['fC4: ', np.mean(freq_data[3]), np.std(freq_data[3])])
                     measTaken = True
 
 
         if measTaken:
-            self.laserFreq = freq_list[0][0][0] / 1000000  #in MHz
-            self.laserFreq_d = freq_list[0][0][1] / 1000000 #in MHz
+            self.laserFreq = freq_list[0][0][1] / 1000000  #in MHz
+            self.laserFreq_d = freq_list[0][0][2] / 1000000 #in MHz
             (dir, file) = os.path.split(path)
             (filename, end) = os.path.splitext(file)
             #f = open(os.path.join(dir, filename + '_frequencies.txt'), 'w')
             for freq in freq_list[0]:
                 #f.write(str(freq[0]/1000000) + '; ' + str(freq[1]/1000000))
                 print('Measured Frequencies in ' + str(file) + ' :')
-                print(str(freq[0]/1000000) + ' +- ' + str(freq[1]/1000000) + ' MHz')
+                print(freq[0] + str(freq[1]/1000000) + ' +- ' + str(freq[2]/1000000) + ' MHz')
 
             #f.close()
 
