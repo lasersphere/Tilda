@@ -511,9 +511,9 @@ class XMLImporter(SpecData):
             (dir, file) = os.path.split(path)
             (filename, end) = os.path.splitext(file)
             #f = open(os.path.join(dir, filename + '_frequencies.txt'), 'w')
+            print('Measured Frequencies in ' + str(file) + ' :')
             for freq in freq_list[0]:
                 #f.write(str(freq[0]/1000000) + '; ' + str(freq[1]/1000000))
-                print('Measured Frequencies in ' + str(file) + ' :')
                 print(freq[0] + str(freq[1]/1000000) + ' +- ' + str(freq[2]/1000000) + ' MHz')
 
             #f.close()
