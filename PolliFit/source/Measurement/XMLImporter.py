@@ -449,9 +449,8 @@ class XMLImporter(SpecData):
         """
         It is assumed the frequency has been measured before and/or after first measurement track since
         frequency measurements per track like [f1, f2, ..] is not (yet) supported.
-        The frequency measurement is measured by Triton device FrequencyComb1, FrequencyComb2, FreuqencyComb3
-        or FrequencyComb4. The first found device is used for the DB, every other Frequency is written into an
-        external file in path.
+        The frequency measurement is measured by Triton device FrequencyComb1 and/or FrequencyComb2. The first found
+        frequency is used for the DB, every found frequency is written into the console.
         The frequency is calculated by averaging preScan and (if taken) postScan values.
         :param scandict:
         :return: laserFreq, laserFreq_d
@@ -468,40 +467,36 @@ class XMLImporter(SpecData):
                     #preScan
                     fc1_pre = track.get('preScan', {}).get('FrequencyComb1', {})
                     fc2_pre = track.get('preScan', {}).get('FrequencyComb2', {})
-                    fc3_pre = track.get('preScan', {}).get('FrequencyComb3', {})
-                    fc4_pre = track.get('preScan', {}).get('FrequencyComb4', {})
                 else:
-                    fc1_pre, fc2_pre, fc3_pre, fc4_pre = {}, {}, {}, {}
+                    fc1_pre, fc2_pre = {}, {}
 
                 if bool(track.get('postScan')):
                     #postScan
                     fc1_post = track.get('postScan', {}).get('FrequencyComb1', {})
                     fc2_post = track.get('postScan', {}).get('FrequencyComb2', {})
-                    fc3_post = track.get('postScan', {}).get('FrequencyComb3', {})
-                    fc4_post = track.get('postScan', {}).get('FrequencyComb4', {})
                 else:
-                    fc1_post, fc2_post, fc3_post, fc4_post = {}, {}, {}, {}
+                    fc1_post, fc2_post = {}, {}
 
-                freq_data[0] = freq_data[0] + fc1_pre.get('comb_freq_mult', {}).get('data', []) + fc1_post.get('comb_freq_mult', {}).get('data', [])
-                freq_data[1] = freq_data[1] + fc2_pre.get('comb_freq_mult', {}).get('data', []) + fc2_post.get('comb_freq_mult', {}).get('data', [])
-                freq_data[2] = freq_data[2] + fc3_pre.get('comb_freq_mult', {}).get('data', []) + fc3_post.get('comb_freq_mult', {}).get('data', [])
-                freq_data[3] = freq_data[3] + fc4_pre.get('comb_freq_mult', {}).get('data', []) + fc4_post.get('comb_freq_mult', {}).get('data', [])
+                freq_data[0] = freq_data[0] + fc1_pre.get('comb_freq_acol', {}).get('data', []) + fc1_post.get('comb_freq_acol', {}).get('data', [])
+                freq_data[1] = freq_data[1] + fc1_pre.get('comb_freq_col', {}).get('data', []) + fc1_post.get('comb_freq_col', {}).get('data', [])
+                freq_data[2] = freq_data[2] + fc2_pre.get('comb_freq_acol', {}).get('data', []) + fc2_post.get('comb_freq_acol', {}).get('data', [])
+                freq_data[3] = freq_data[3] + fc2_pre.get('comb_freq_col', {}).get('data', []) + fc2_post.get('comb_freq_col', {}).get('data', [])
 
 
                 if bool(freq_data[0]):
-                    freq_list[0].append(['fC1: ', np.mean(freq_data[0]), np.std(freq_data[0])])
+                    freq_list[0].append(['fC1 Acol: ', np.mean(freq_data[0]), np.std(freq_data[0])])
                     measTaken = True
 
                 if bool(freq_data[1]):
-                    freq_list[0].append(['fC2: ', np.mean(freq_data[1]), np.std(freq_data[1])])
+                    freq_list[0].append(['fC1 Col: ', np.mean(freq_data[1]), np.std(freq_data[1])])
                     measTaken = True
 
                 if bool(freq_data[2]):
-                    freq_list[0].append(['fC3: ', np.mean(freq_data[2]), np.std(freq_data[2])])
+                    freq_list[0].append(['fC2 Acol: ', np.mean(freq_data[2]), np.std(freq_data[2])])
                     measTaken = True
 
                 if bool(freq_data[3]):
-                    freq_list[0].append(['fC4: ', np.mean(freq_data[3]), np.std(freq_data[3])])
+                    freq_list[0].append(['fC2 Col: ', np.mean(freq_data[3]), np.std(freq_data[3])])
                     measTaken = True
 
 
