@@ -290,6 +290,9 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
     '''
     config = ast.literal_eval(config)
     print('Combining', iso, 'shift')
+    print('config is:')
+    for each in config:
+        print(each)
 
     ref_refrun = TiTs.select_from_db(db, 'Lines.reference, lines.refRun',
                                      'Runs JOIN Lines ON Runs.lineVar = Lines.lineVar', [['Runs.run'], [run]],
@@ -373,7 +376,7 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
         plt.plot_iso_shift_time_dep(
             ref_dates_date_time, ref_dates_date_time_float, ref_centers, ref_errs, ref,
             iso_dates_datetime, iso_dates_datetime_float, iso_centers, iso_errs, iso,
-            slope, offset, plt_label, (block_shifts, block_shifts_errs), file_name, show_plot=True)
+            slope, offset, plt_label, (block_shifts, block_shifts_errs), file_name, show_plot=show_plot)
         shifts += block_shifts
         shiftErrors += block_shifts_errs
     # in the end get the mean value of all shifts:
@@ -447,9 +450,19 @@ def shiftErr(iso, run, db, accVolt_d, offset_d, syst=0):
         mean_offset_div_ratio = voltDivRatio['offset']
     else:  # if the offsetratio is not a float it is supposed to be a dict.
         mean_offset_div_ratio = np.mean(list(voltDivRatio['offset'].values()))
+    if isinstance(offset, str):
+        offset = ast.literal_eval(offset)
+        if isinstance(offset, list):
+            # offset will be list for each track
+            offset = np.mean(offset)
     offset = np.abs(offset) * mean_offset_div_ratio
     cur.execute('''SELECT offset FROM Files WHERE type = ?''', (ref,))
     (refOffset,) = cur.fetchall()[0]
+    if isinstance(refOffset, str):
+        refOffset = ast.literal_eval(refOffset)
+        if isinstance(refOffset, list):
+            # offset will be list for each track
+            refOffset = np.mean(refOffset)
     accVolt = np.absolute(refOffset) * mean_offset_div_ratio + accVolt * voltDivRatio['accVolt']
 
     fac = nu0 * np.sqrt(Physics.qe * accVolt / (2 * mass * Physics.u * Physics.c ** 2))
@@ -479,13 +492,18 @@ def avgErr(iso, db, avg, par, accVolt_d, offset_d, syst=0):
         iso = str(iso)[:-2]
     cur.execute('''SELECT offset, accVolt, voltDivRatio FROM Files WHERE type = ?''', (iso,))
     (offset, accVolt, voltDivRatio) = cur.fetchall()[0]
-    cur.execute('''SELECT Jl, Ju FROM Lines''')
-    (jL, jU) = cur.fetchall()[0]
     voltDivRatio = ast.literal_eval(voltDivRatio)
     if isinstance(voltDivRatio['offset'], float):
         mean_offset_div_ratio = voltDivRatio['offset']
     else:  # if the offsetratio is not a float it is supposed to be a dict.
         mean_offset_div_ratio = np.mean(list(voltDivRatio['offset'].values()))
+    if isinstance(offset, str):
+        offset = ast.literal_eval(offset)
+        if isinstance(offset, list):
+            offset = np.mean(offset)
+
+    cur.execute('''SELECT Jl, Ju FROM Lines''')
+    (jL, jU) = cur.fetchall()[0]
     accVolt = accVolt * voltDivRatio['accVolt'] - offset * mean_offset_div_ratio
     cF = 1
     cF_dist = 1

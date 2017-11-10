@@ -217,7 +217,11 @@ class XMLImporter(SpecData):
                 self.dwell.append(track_dict.get('dwellTime10ns'))
 
             elif self.seq_type in ['kepco']:
-                meas_volt_dict = scandict['track0']['measureVoltPars']['duringScan']
+                if float(self.version) <= 1.12:
+                    # kept this for older versions
+                    meas_volt_dict = scandict['measureVoltPars']['duringScan']
+                else:
+                    meas_volt_dict = scandict['track0']['measureVoltPars']['duringScan']
                 dmms_dict = meas_volt_dict['dmms']
                 dmm_names = list(sorted(dmms_dict.keys()))
                 self.nrScalers = [len(dmm_names)]
@@ -237,7 +241,7 @@ class XMLImporter(SpecData):
                     err.append(dmm_volt_array[ind] * read_acc + range_acc)
                 self.err.append(err)
 
-        self.get_frequency_measurement(path, self.tritonPars)
+        self.laserFreq, self.laserFreq_d = self.get_frequency_measurement(path, self.tritonPars)
         logging.info('%s was successfully imported' % self.file)
 
     def preProc(self, db):
@@ -352,10 +356,13 @@ class XMLImporter(SpecData):
     def norming(self):
         # TODO this is copied from MCP, still the dwell is not implemented in this!
         for trackindex, track in enumerate(self.cts):
+            track = track.astype(np.float32)
+            self.cts[trackindex] = track
             for ctIndex, ct in enumerate(track):
                 min_nr_of_scan = max(np.min(self.nrScans), 1)  # maybe there is a track with 0 complete scans
                 nr_of_scan_this_track = self.nrScans[trackindex]
                 if nr_of_scan_this_track:
+                    # dtype int32 causes problems here!
                     self.cts[trackindex][ctIndex] = ct * min_nr_of_scan / nr_of_scan_this_track
                     self.err[trackindex][ctIndex] = self.err[trackindex][
                                                         ctIndex] * min_nr_of_scan / nr_of_scan_this_track
@@ -444,7 +451,6 @@ class XMLImporter(SpecData):
             offset_by_dev = [{'setValue': [[each], [each]]} for each in set_value_list]
         return offset_by_dev, offset_by_dev_mean, offset_mean
 
-
     def get_frequency_measurement(self, path, scan_triton_dict):
         """
         It is assumed the frequency has been measured before and/or after first measurement track since
@@ -452,66 +458,72 @@ class XMLImporter(SpecData):
         The frequency measurement is measured by Triton device FrequencyComb1 and/or FrequencyComb2. The first found
         frequency is used for the DB, every found frequency is written into the console.
         The frequency is calculated by averaging preScan and (if taken) postScan values.
-        :param scandict:
-        :return: laserFreq, laserFreq_d
+        :param path: str, path of the imported file
+        :param scan_triton_dict:  dict, scan parameters
+        :return: laser_freq, laser_freq_d
         """
-
-        measTaken = False
+        meas_taken = False
         freq_list = [[]]
-        #print(scan_triton_dict)
+        # print(scan_triton_dict)
         for track in scan_triton_dict:
-            if not measTaken:
+            if not meas_taken:
                 freq_data = [[], [], [], []]
 
                 if bool(track.get('preScan')):
-                    #preScan
+                    # preScan
                     fc1_pre = track.get('preScan', {}).get('FrequencyComb1', {})
                     fc2_pre = track.get('preScan', {}).get('FrequencyComb2', {})
                 else:
                     fc1_pre, fc2_pre = {}, {}
 
                 if bool(track.get('postScan')):
-                    #postScan
+                    # postScan
                     fc1_post = track.get('postScan', {}).get('FrequencyComb1', {})
                     fc2_post = track.get('postScan', {}).get('FrequencyComb2', {})
                 else:
                     fc1_post, fc2_post = {}, {}
 
-                freq_data[0] = freq_data[0] + fc1_pre.get('comb_freq_acol', {}).get('data', []) + fc1_post.get('comb_freq_acol', {}).get('data', [])
-                freq_data[1] = freq_data[1] + fc1_pre.get('comb_freq_col', {}).get('data', []) + fc1_post.get('comb_freq_col', {}).get('data', [])
-                freq_data[2] = freq_data[2] + fc2_pre.get('comb_freq_acol', {}).get('data', []) + fc2_post.get('comb_freq_acol', {}).get('data', [])
-                freq_data[3] = freq_data[3] + fc2_pre.get('comb_freq_col', {}).get('data', []) + fc2_post.get('comb_freq_col', {}).get('data', [])
-
+                freq_data[0] = freq_data[0] + fc1_pre.get(
+                    'comb_freq_acol', {}).get('data', []) + fc1_post.get('comb_freq_acol', {}).get('data', [])
+                freq_data[1] = freq_data[1] + fc1_pre.get(
+                    'comb_freq_col', {}).get('data', []) + fc1_post.get('comb_freq_col', {}).get('data', [])
+                freq_data[2] = freq_data[2] + fc2_pre.get(
+                    'comb_freq_acol', {}).get('data', []) + fc2_post.get('comb_freq_acol', {}).get('data', [])
+                freq_data[3] = freq_data[3] + fc2_pre.get(
+                    'comb_freq_col', {}).get('data', []) + fc2_post.get('comb_freq_col', {}).get('data', [])
 
                 if bool(freq_data[0]):
                     freq_list[0].append(['fC1 Acol: ', np.mean(freq_data[0]), np.std(freq_data[0])])
-                    measTaken = True
+                    meas_taken = True
 
                 if bool(freq_data[1]):
                     freq_list[0].append(['fC1 Col: ', np.mean(freq_data[1]), np.std(freq_data[1])])
-                    measTaken = True
+                    meas_taken = True
 
                 if bool(freq_data[2]):
                     freq_list[0].append(['fC2 Acol: ', np.mean(freq_data[2]), np.std(freq_data[2])])
-                    measTaken = True
+                    meas_taken = True
 
                 if bool(freq_data[3]):
                     freq_list[0].append(['fC2 Col: ', np.mean(freq_data[3]), np.std(freq_data[3])])
-                    measTaken = True
+                    meas_taken = True
 
-
-        if measTaken:
-            self.laserFreq = freq_list[0][0][1] / 1000000  #in MHz
-            self.laserFreq_d = freq_list[0][0][2] / 1000000 #in MHz
+        if meas_taken:
+            laser_freq = freq_list[0][0][1] / 1000000  # in MHz
+            laser_freq_d = freq_list[0][0][2] / 1000000  # in MHz
             (dir, file) = os.path.split(path)
             (filename, end) = os.path.splitext(file)
-            #f = open(os.path.join(dir, filename + '_frequencies.txt'), 'w')
+            # f = open(os.path.join(dir, filename + '_frequencies.txt'), 'w')
             print('Measured Frequencies in ' + str(file) + ' :')
             for freq in freq_list[0]:
-                #f.write(str(freq[0]/1000000) + '; ' + str(freq[1]/1000000))
+                # f.write(str(freq[0]/1000000) + '; ' + str(freq[1]/1000000))
                 print(freq[0] + str(freq[1]/1000000) + ' +- ' + str(freq[2]/1000000) + ' MHz')
+            # f.close()
+        else:
+            laser_freq = self.laserFreq
+            laser_freq_d = self.laserFreq_d
 
-            #f.close()
+        return laser_freq, laser_freq_d
 
 
 

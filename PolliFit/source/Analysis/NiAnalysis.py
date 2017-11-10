@@ -39,6 +39,8 @@ odd_isotopes = [iso for iso in isotopes if int(iso[:2]) % 2]
 even_isotopes = [iso for iso in isotopes if int(iso[:2]) % 2 == 0]
 stables = ['58_Ni', '60_Ni', '61_Ni', '62_Ni', '64_Ni']
 
+Tools.add_missing_columns(db)
+
 ''' Masses '''
 # masses = {
 #     '58_Ni': (57935342.4, 0.5),
@@ -135,6 +137,14 @@ delta_lit_radii = {iso: [
     np.sqrt(lit_vals[1] ** 2 + lit_radii['60_Ni'][1] ** 2)]
                    for iso, lit_vals in sorted(lit_radii.items())}
 delta_lit_radii.pop('60_Ni')
+
+delta_lit_radii_58 = {iso: [
+    lit_vals[0] ** 2 - lit_radii['58_Ni'][0] ** 2,
+    np.sqrt(lit_vals[1] ** 2 + lit_radii['58_Ni'][1] ** 2)]
+                   for iso, lit_vals in sorted(lit_radii.items())}
+delta_lit_radii_58.pop('58_Ni')
+
+
 print(
     'iso\t<r^2>^{1/2}_{0µe}\t\Delta<r^2>^{1/2}_{0µe}\t<r^2>^{1/2}_{0µe}(A-A_{60})\t\Delta <r^2>^{1/2}_{0µe}(A-A_{60})')
 for iso, radi in sorted(lit_radii.items()):
@@ -1156,11 +1166,12 @@ except Exception as e:
 # #     MPLPlotter.plt.show(True)
 
 ''' King Plot Analysis '''
+run = 'wide_gate_asym'
+
 # raise (Exception('stopping before king fit'))
 # delta_lit_radii.pop('62_Ni')  # just to see which point is what
-king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, font_size=18)
+king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, font_size=18, ref_run=run)
 # run = 'narrow_gate_asym'
-run = 'wide_gate_asym'
 # isotopes = sorted(delta_lit_radii.keys())
 # print(isotopes)
 # king.kingFit(alpha=0, findBestAlpha=False, run=run, find_slope_with_statistical_error=False)
