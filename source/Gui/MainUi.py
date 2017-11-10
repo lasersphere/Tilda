@@ -26,6 +26,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.parent_win = parent
         self.crawler.conSig(self.dbSig)
         self.intfit.conSig(self.dbSig)
+        self.intfit.con_main_tilda_gui(self.parent_win)
         self.averager.conSig(self.dbSig)
         self.batchfit.conSig(self.dbSig)
         self.isoshift.conSig(self.dbSig)
@@ -34,6 +35,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.accVolt_tab.conSig(self.dbSig)
         self.Alive_tab.conSig(self.dbSig)
         self.addFiles_tab.conSig(self.dbSig)
+        self.asciiConv_tab.conSig(self.dbSig)
         self.bOpenDb.clicked.connect(self.openDb)
         self.pushButton_refresh.clicked.connect(self.re_emit_db_path)
         if overwrite_stdout:
@@ -61,6 +63,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         
         if not os.path.isfile(p):
             Tools.createDB(p)
+        Tools.add_missing_columns(p)
         
         self.dbPath = p
         self.oDbPath.setText(self.dbPath)

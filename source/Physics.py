@@ -30,6 +30,31 @@ def relVelocity(e, m):
     mcs = m*c*c
     return c * math.sqrt(1 - (mcs / (e + mcs))**2)
 
+
+def relEnergy(v, m):
+    """ return the relativistic energy of a body moving with velocity v/m/s and mass m/kg """
+    mcs = m * c * c
+    gamma = 1 / np.sqrt(1 - (v / c) ** 2)
+    return mcs * (gamma - 1)
+
+
+def addEnergyToFrequencyPoint(freq, energy, iso, laser_freq, col):
+    """ Returns the frequency /MHz shifted by an energy /eV of the isotop. laser_Freq / MHZ, col / bool """
+    try:
+        velocity = invRelDoppler(laser_freq, freq + iso.freq)
+        total_e = relEnergy(velocity, iso.mass * u)
+
+        center_asym_joule = energy * qe
+
+        v = relVelocity(total_e + center_asym_joule, iso.mass * u)
+        v = -v if col else v
+
+        shifted_f = relDoppler(laser_freq, v) - iso.freq
+    except Exception as e:
+        print('error while shifting frequency: %s ' % e)
+        shifted_f = freq
+    return shifted_f
+
 def wavenumber(frequency):
     '''Returns the wavenumber/1/cm at a given frequency/MHz'''
     return 10**4* frequency / c

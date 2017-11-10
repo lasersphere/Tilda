@@ -30,10 +30,14 @@ def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=Non
     
     spec = FullSpec(iso)
     
+
     print(spec.getPars())
+    data = ''
     if as_freq:
+        data = spec.toPlot(spec.getPars(), prec=prec)
         plot.plot(spec.toPlot(spec.getPars(), prec=prec))
     else:
+        data = spec.toPlotE(laserfreq, col, spec.getPars(), prec=prec)
         plot.plot(spec.toPlotE(laserfreq, col, spec.getPars()))
         plot.get_current_axes().set_xlabel('Energy [eV]')
     plt.gca().get_lines()[-1].set_label(iso_name)
@@ -44,7 +48,7 @@ def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=Non
         if saving:
             pathParts = str(db).split('/')
             path = ''
-            for i in range(0,len(pathParts)-1,1):
+            for i in range(0, len(pathParts)-1, 1):
                 path += pathParts[i] + '/'
             path += 'simulations/'
             plot.save(path + iso_name + '.png')
@@ -52,6 +56,7 @@ def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=Non
             plot.show()
         else:
             plot.clear()
+    return data
 
 
 def centerPlot(db, isoL, linevar = '', width = 1e6):
@@ -176,7 +181,8 @@ def createDB(db):
     intScale DOUBLE DEFAULT 1,
     fixedInt BOOL DEFAULT 0,
     relInt TEXT,
-    m TEXT
+    m TEXT,
+    midTof FLOAT
     )''')
     
     #Lines
@@ -219,12 +225,14 @@ def createDB(db):
     isoVar TEXT DEFAULT "",
     scaler TEXT,
     track TEXT,
-    softwGates TEXT
+    softwGates TEXT,
+    softwGateWidth FLOAT,
+    softwGateDelayList TEXT
     )''')
-    try:
-        con.execute('''INSERT OR IGNORE INTO Runs VALUES ("Run0", "", "", "[0]", "-1", "")''')
-    except Exception as e:
-        con.execute('''INSERT OR IGNORE INTO Runs VALUES ("Run0", "", "", "[0]", "-1")''')  # for older db versions
+    # try:
+    #     con.execute('''INSERT OR IGNORE INTO Runs VALUES ("Run0", "", "", "[0]", "-1", "")''')
+    # except Exception as e:
+    #     con.execute('''INSERT OR IGNORE INTO Runs VALUES ("Run0", "", "", "[0]", "-1")''')  # for older db versions
 
     
     #Fit results
@@ -257,6 +265,56 @@ def createDB(db):
     )''')
 
     con.close()
+    add_missing_columns(db)
+
+
+def add_missing_columns(db):
+    """ this will add missing columns to an already existing databases.
+     For adding new columns add them to cols """
+    cols = {
+        'Isotopes': [
+            (0, 'iso', 'TEXT', 1, None, 1),
+            (1, 'mass', 'FLOAT', 0, None, 0),
+            (2, 'mass_d', 'FLOAT', 0, None, 0),
+            (3, 'I', 'FLOAT', 0, None, 0),
+            (4, 'center', 'FLOAT', 0, None, 0),
+            (5, 'Al', 'FLOAT', 0, '0', 0),
+            (6, 'Bl', 'FLOAT', 0, '0', 0),
+            (7, 'Au', 'FLOAT', 0, '0', 0),
+            (8, 'Bu', 'FLOAT', 0, '0', 0),
+            (9, 'fixedArat', 'BOOL', 0, '0', 0),
+            (10, 'fixedBrat', 'BOOL', 0, '0', 0),
+            (11, 'intScale', 'DOUBLE', 0, '1', 0),
+            (12, 'fixedInt', 'BOOL', 0, '0', 0),
+            (13, 'relInt', 'TEXT', 0, None, 0),
+            (14, 'm', 'TEXT', 0, None, 0),
+            (15, 'midTof', 'FLOAT', 0, '0', 0)
+        ],
+        'Runs': [
+            (0, 'run', 'TEXT', 1, None, 1),
+            (1, 'lineVar', 'TEXT', 0, '""', 0),
+            (2, 'isoVar', 'TEXT', 0, '""', 0),
+            (3, 'scaler', 'TEXT', 0, None, 0),
+            (4, 'track', 'TEXT', 0, None, 0),
+            (5, 'softwGates', 'TEXT', 0, None, 0),
+            (6, 'softwGateWidth', 'FLOAT', 0, None, 0),
+            (7, 'softwGateDelayList', 'TEXT', 0, None, 0),
+        ]
+    }
+    for table_name, target_cols in cols.items():
+        con = sqlite3.connect(db)
+        cur = con.cursor()
+        cur.execute(''' PRAGMA TABLE_INFO('%s')''' % table_name)
+        exist_cols = cur.fetchall()
+        # for each in exist_cols:
+        #     print(each, ',')
+        cols_name_flat = [each[1] for each in exist_cols]
+        for each in target_cols:
+            if each[1] not in cols_name_flat:
+                print('column %s in table %s was not yet in db, adding now.' % (each[1], table_name))
+                cur.execute(''' ALTER TABLE '%s' ADD COLUMN '%s' '%s' ''' % (table_name, each[1], each[2]))
+        con.commit()
+        con.close()
 
 
 def extract_from_combined(runs_list, db, isotopes=None, par='shift', print_extracted=False):
@@ -307,3 +365,158 @@ def extract_from_combined(runs_list, db, isotopes=None, par='shift', print_extra
             for isot, vals in sorted(run_results_dicts.items()):
                 print('%s\t%.3f(%.0f)[%.0f]\t%.2f' % (isot, vals[0], vals[1] * 1000, vals[2] * 1000, vals[3]))
     return result_dict
+
+
+def extract_from_fitRes(runs_list, db, isotopes=None):
+    """
+    extract the fit results for an isotope from the database.
+    :param runs_list: list of strings with the run names, -1 for all runs
+    :param db: str, database path
+    :param isotopes: list of str, isotope names of interes
+    :return: dict, {run: {filename: (iso, runNum, rChi, fitres_dict), ...}}
+    """
+    unknown_run_number = -1
+    ret_dict = {}
+    ret_unsorted_data = []
+    if runs_list == -1:
+        # select all runs!
+        for iso in isotopes:
+            connection = sqlite3.connect(db)
+            cursor = connection.cursor()
+            cursor.execute('''SELECT file, iso, run, rChi, pars FROM FitRes WHERE iso = ? ORDER BY file''', (iso,))
+            data = cursor.fetchall()
+            connection.close()
+            if len(data):
+                ret_unsorted_data += data
+    else:
+        for run in runs_list:
+            for iso in isotopes:
+                connection = sqlite3.connect(db)
+                cursor = connection.cursor()
+                cursor.execute(
+                    '''SELECT file, iso, run, rChi, pars FROM FitRes WHERE iso = ? AND run = ?  ORDER BY file''',
+                    (iso, run))
+                data = cursor.fetchall()
+                connection.close()
+                if len(data):
+                    ret_unsorted_data += data
+    for each in ret_unsorted_data:
+        file_name, iso, run, r_chi_sq, pars_dict = each
+        file_name_split = file_name.split('.')[0]
+        if 'Run' in file_name_split:
+            run_num = int(file_name_split[file_name_split.index('Run') + 3:file_name_split.index('Run') + 6])
+            run_str = 'Run%03d_' % run_num
+        else:
+            run_num = unknown_run_number
+            run_str = 'unknownRun%03d_' % abs(run_num)
+            unknown_run_number -= 1
+        pars_dict = eval(pars_dict)
+        if not ret_dict.get(run, False):
+            ret_dict[run] = {}  # was not existing yet
+        ret_dict[run][file_name] = (iso, run_num, r_chi_sq, pars_dict)
+    return ret_dict
+
+
+def extract_file_as_ascii(db, file, sc, tr, x_in_freq=False, line_var='', save_to='', softw_gates=None):
+    file_path = os.path.join(os.path.dirname(db), file)
+    if save_to == '':  # automatic determination and store in Ascii_files relative to db
+        save_to = os.path.join(os.path.dirname(db), 'Ascii_files', os.path.split(file)[1].split('.')[0] + '.txt')
+    meas = Meas.load(file_path, db, raw=not x_in_freq, softw_gates=softw_gates)
+    # i want an arith spec for each pmt here:
+    arith_spec = [meas.getArithSpec([abs(each)], tr) for each in sc]
+    if x_in_freq:
+        iso = DBIsotope(db, meas.type, lineVar=line_var)
+        if iso is not None:
+            for i, e in enumerate(arith_spec[0][0]):  # transfer to frequency
+
+                v = Physics.relVelocity(Physics.qe * e, iso.mass * Physics.u)
+                v = -v if meas.col else v
+
+                f = Physics.relDoppler(meas.laserFreq, v) - iso.freq
+                arith_spec[0][0][i] = f
+
+    if not os.path.exists(os.path.dirname(save_to)):
+        os.mkdir(os.path.dirname(save_to))
+    header = create_header_list(meas, sc, tr)
+    x_name = 'f /MHz' if x_in_freq else 'dac_volts'
+    with open(save_to, 'w') as f:
+        for each in header:
+            f.write(each + '\n')
+        col_name = '%s\t' % x_name
+        for each in sc:
+            col_name += 'scaler_%s\t' % each
+        f.write(col_name + '\n')
+        for dac_i, dac_volts in enumerate(arith_spec[0][0]):
+            if x_in_freq:
+                line = '%.3f\t' % dac_volts
+            else:
+                line = '%.7f\t' % dac_volts
+            for sc_i, each in enumerate(sc):
+                line += '%.3f\t' % arith_spec[sc_i][1][dac_i]
+            f.write(line + '\n')
+    f.close()
+    return save_to
+
+
+def create_header_list(meas, sc, tr):
+    from Measurement.XMLImporter import XMLImporter as Xml
+    header = []
+    header += 'date: %s' % meas.date,
+    kepco = meas.type == 'Kepco'  # Kepco and MCP file
+    tilda_file = isinstance(meas, Xml)
+    if tilda_file:
+        kepco = meas.seq_type == 'kepco'
+        header += 'track working time: %s' % meas.working_time,
+        header += 'isotope: %s' % meas.type,
+
+    if kepco:
+        pass
+    else:
+        header += 'laser frequency: %s' % meas.laserFreq,
+        header += 'collinear: %s' % meas.col,
+        header += 'scaler: %s' % str(sc),
+        header += 'tracks: %s' % tr,
+        if tilda_file:
+            header += 'software gates [v_min, v_max, t_min, t_max]: %s' % meas.softw_gates,
+    header += 'number of scans: %s' % meas.nrScans,
+    if tilda_file:
+        ret = meas.get_scaler_step_and_bin_num(tr)
+        n_of_scalers_tr, n_of_steps_tr, n_of_bins_tr = zip(*ret)
+        header += 'number of steps: %s' % str(n_of_steps_tr),
+    else:
+        header += 'number of steps: %s' % meas.nrSteps,
+    if meas.offset_by_dev == {}:
+        header += 'offset voltage: %s' % meas.offset,
+    else:
+        header += 'offset voltage: %s' % meas.offset_by_dev,
+    if not kepco:
+        header += 'acceleration voltage: %.5f' % meas.accVolt,
+    header.append('###### end of header + 1 line column names ######')
+    return header
+
+
+if __name__ == '__main__':
+    workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
+    db = os.path.join(workdir, 'Ni_workspace.sqlite')
+    # save_to = os.path.join(workdir, 'Ascii_files', 'test.txt')
+    # # files = ['Ni_April2016_mcp\\58Ni_no_protonTrigger_Run210.mcp',
+    # #          'Ni_April2016_mcp\\59Ni_no_protonTrigger_Run113.mcp',
+    # #          'Ni_April2016_mcp\\60Ni_no_protonTrigger_Run096.mcp',
+    # #          'Ni_April2016_mcp\\61Ni_no_protonTrigger_Run159.mcp',
+    # #          'Ni_April2016_mcp\\62Ni_no_protonTrigger_Run145.mcp',
+    # #          'Ni_April2016_mcp\\63Ni_no_protonTrigger_Run169.mcp',
+    # #          'Ni_April2016_mcp\\64Ni_no_protonTrigger_Run174.mcp',
+    # #          'Ni_April2016_mcp\\65Ni_no_protonTrigger_Run181.mcp',
+    # #          'Ni_April2016_mcp\\66Ni_no_protonTrigger_Run102.mcp',
+    # #          'Ni_April2016_mcp\\67Ni_no_protonTrigger_3Tracks_Run191.mcp',
+    # #          'Ni_April2016_mcp\\68Ni_no_protonTrigger_Run135.mcp',
+    # #          'Ni_April2016_mcp\\70Ni_protonTrigger_Run248_sum_252_254_259_265.xml'
+    # #          ]
+    # files = ['Ni_April2016_mcp\\58Ni_no_protonTrigger_Run210.mcp',
+    #          'Ni_April2016_mcp\\70Ni_protonTrigger_Run248_sum_252_254_259_265.xml',
+    #          'Ni_April2016_mcp\\67Ni_no_protonTrigger_3Tracks_Run191.mcp'
+    #          ]
+    # for file in files:
+    #     extract_file_as_ascii(db, file, [4, 5, 6, 7],
+    #                           -1, line_var='tisa_60_asym_wide', x_in_freq=False)
+    add_missing_columns(db)

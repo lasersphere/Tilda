@@ -31,8 +31,12 @@ def getFiles(iso, run, db):
 def extract(iso, par, run, db, fileList=[], prin=True):
     '''Return a list of values of par of iso, filtered by files in fileList'''
     print('Extracting', iso, par, )
-    fits = TiTs.select_from_db(db, 'file, pars', 'FitRes', [['iso', 'run'], [iso, run]], 'ORDER BY file',
-                                                             caller_name=__name__)
+    if iso == 'all':
+        fits = TiTs.select_from_db(db, 'file, pars', 'FitRes', [['run'], [run]], 'ORDER BY file',
+                                   caller_name=__name__)
+    else:
+        fits = TiTs.select_from_db(db, 'file, pars', 'FitRes', [['iso', 'run'], [iso, run]], 'ORDER BY file',
+                                                                 caller_name=__name__)
     if fits is not None:
         if len(fileList):
             fits = [f for f in fits if f[0] in fileList]
@@ -103,10 +107,19 @@ def combineRes(iso, par, run, db, weighted=True, print_extracted=True,
     
     cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', (iso, par, run))
     con.commit()
-    (config, statErrForm, systErrForm) = TiTs.select_from_db(db, 'config, statErrForm, systErrForm', 'Combined',
-                                                             [['iso', 'parname', 'run'], [iso, par, run]],
-                                                             caller_name=__name__)[0]
+    if iso == 'all':
+        r = TiTs.select_from_db(db, 'config, statErrForm, systErrForm', 'Combined',
+                                [['parname', 'run'], [par, run]],
+                                caller_name=__name__)
+    else:
+        r = TiTs.select_from_db(db, 'config, statErrForm, systErrForm', 'Combined',
+                                                                 [['iso', 'parname', 'run'], [iso, par, run]],
+                                                                 caller_name=__name__)
     con.close()
+    if r is not None:
+        (config, statErrForm, systErrForm) = r[0]
+    else:
+        return [None] * 6
     config = ast.literal_eval(config)
 
     if len(only_this_files):
@@ -229,8 +242,8 @@ def combineShift(iso, run, db, show_plot=False):
     combined_plots_dir = os.path.join(os.path.split(db)[0], 'combined_plots')
     avg_fig_name = os.path.join(combined_plots_dir, iso + '_' + run + '_shift.png')
     plotdata = (dateIso, shifts, shiftErrors, val, statErr, systErr, ('k.', 'r'), False, avg_fig_name, '%s_shift [MHz]' % iso)
-    plt.plotAverage(*plotdata)
     if show_plot:
+        plt.plotAverage(*plotdata)
         plt.show(True)
     # plt.clear()
     return (shifts, shiftErrors, val, statErr, systErr, rChi)
@@ -302,9 +315,10 @@ def avgErr(iso, db, avg, par, accVolt_d, offset_d, syst=0):
     if isinstance(voltDivRatio['offset'], float):
         mean_offset_div_ratio = voltDivRatio['offset']
     else:  # if the offsetratio is not a float it is supposed to be a dict.
-        mean_offset_div_ratio = np.mean(voltDivRatio['offset'].values())
+        mean_offset_div_ratio = np.mean(list(voltDivRatio['offset'].values()))
     accVolt = accVolt*voltDivRatio['accVolt'] - offset * mean_offset_div_ratio
     cF = 1
+    cF_dist = 1
     '''
     for the A- and B-Factor, the (energy-) distance of the peaks
     can be calculated with the help of the Casimir Factor:
@@ -320,10 +334,16 @@ def avgErr(iso, db, avg, par, accVolt_d, offset_d, syst=0):
         cF_dist = cF*2
     elif par == 'Bu':
         cF = (jU+spin)*(jU+spin+1)-jU*(jU+1)-spin*(spin+1)
-        cF_dist = 4*(3/2*cF*(cF+1)- 2*spin*jU*(spin+1)*(jU+1))/(spin*jU*(2*spin-1)*(2*jU-1))
+        if (spin*jU*(2*spin-1)*(2*jU-1)) != 0:
+            cF_dist = 4*(3/2*cF*(cF+1) - 2*spin*jU*(spin+1)*(jU+1))/(spin*jU*(2*spin-1)*(2*jU-1))
+        else:
+            cF_dist = 1
     elif par == 'Bl':
         cF = (jL+spin)*(jL+spin+1)-jL*(jL+1)-spin*(spin+1)
-        cF_dist = 4*(3/2*cF*(cF+1)- 2*spin*jL*(spin+1)*(jL+1))/(spin*jL*(2*spin-1)*(2*jL-1))
+        if (spin*jL*(2*spin-1)*(2*jL-1)) != 0:
+            cF_dist = 4*(3/2*cF*(cF+1) - 2*spin*jL*(spin+1)*(jL+1))/(spin*jL*(2*spin-1)*(2*jL-1))
+        else:
+            cF_dist = 1
     else:
         pass
     print('casimir factor:', cF)

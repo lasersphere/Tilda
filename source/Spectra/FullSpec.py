@@ -10,13 +10,13 @@ from itertools import chain
 import numpy as np
 
 from Spectra.Hyperfine import Hyperfine
+from Spectra.AsymmetricVoigt import AsymmetricVoigt
 
 
 class FullSpec(object):
     '''
     A full spectrum function consisting of offset + all isotopes in iso with lineshape as declared in iso
     '''
-
 
     def __init__(self, iso, iso_m=None):
         '''
@@ -40,15 +40,13 @@ class FullSpec(object):
             miso_m = miso_m.m
         self.nPar = 1 + self.shape.nPar + sum(hf.nPar for hf in self.hyper)
         
-        
-    def evaluate(self, x, p, ih = -1):
-        '''Return the value of the hyperfine structure at point x / MHz'''
-        if ih == -1:
+    def evaluate(self, x, p, ih=-1):
+        '''Return the value of the hyperfine structure at point x / MHz, ih=index hyperfine'''
+        if ih == -1:        
             return p[self.pOff] + sum(hf.evaluate(x, p) for hf in self.hyper)
         else:
             return p[self.pOff] + self.hyper[ih].evaluate(x, p)
-    
-    
+
     def evaluateE(self, e, freq, col, p, ih = -1):
         '''Return the value of the hyperfine structure at point e / eV'''
         if ih == -1:
@@ -56,15 +54,13 @@ class FullSpec(object):
         else:
             return p[self.pOff] + self.hyper[ih].evaluateE(e, freq, col, p)
 
-
     def recalc(self, p):
         '''Forward recalc to lower objects'''
         self.shape.recalc(p)
         for hf in self.hyper:
             hf.recalc(p)
      
-  
-    def getPars(self, pos = 0):
+    def getPars(self, pos=0):
         '''Return list of initial parameters and initialize positions'''
         self.pOff = pos
         ret = [0]
@@ -78,24 +74,24 @@ class FullSpec(object):
             pos += hf.nPar
             
         return ret
-    
-    
+
     def getParNames(self):
         '''Return list of the parameter names'''
-        return (['offset'] + self.shape.getParNames() + list(chain(*([hf.getParNames() for hf in self.hyper]))))
-    
+        return ['offset'] + self.shape.getParNames() + list(chain(*([hf.getParNames() for hf in self.hyper])))
     
     def getFixed(self):
         '''Return list of parmeters with their fixed-status'''
         return [False] + self.shape.getFixed() + list(chain(*[hf.getFixed() for hf in self.hyper]))
-    
-    
+
     def parAssign(self):
         '''Return [(hf.name, parAssign)], where parAssign is a boolean list indicating relevant parameters'''
         ret = []
         i = 1 + self.shape.nPar
         a = [False] * self.nPar
-        a[0:3] = [True] * 3
+        if isinstance(self.shape, AsymmetricVoigt):
+            a[0:5] = [True] * 5  # 'offset', 'sigma', 'gamma', 'centerAsym', 'IntAsym'
+        else:
+            a[0:3] = [True] * 3  # 'offset', 'sigma', 'gamma'  for normal voigt
         for hf in self.hyper:
             assi = list(a)
             assi[i:(i+hf.nPar)] = [True] * hf.nPar
@@ -105,34 +101,30 @@ class FullSpec(object):
             
         return ret
     
-    def toPlot(self, p, prec = 10000):
+    def toPlot(self, p, prec=10000):
         '''Return ([x/Mhz], [y]) values with prec number of points'''
         self.recalc(p)
         return ([x for x in np.linspace(self.leftEdge(p), self.rightEdge(p), prec)],
                 [self.evaluate(x, p) for x in np.linspace(self.leftEdge(p), self.rightEdge(p), prec)])
       
-    def toPlotE(self, freq, col, p, prec = 10000):
+    def toPlotE(self, freq, col, p, prec=10000):
         '''Return ([x/eV], [y]) values with prec number of points'''
         self.recalc(p)
         return ([x for x in np.linspace(self.leftEdgeE(freq, p), self.rightEdgeE(freq, p), prec)],
                 [self.evaluateE(x, freq, col, p) for x in np.linspace(self.leftEdgeE(freq, p), self.rightEdgeE(freq, p), prec)])
-    
-           
+
     def leftEdge(self, p):
         '''Return the left edge of the spectrum in Mhz'''
         return min(hf.leftEdge(p) for hf in self.hyper)
-    
-    
+
     def rightEdge(self, p):
         '''Return the right edge of the spectrum in MHz'''
         return max(hf.rightEdge(p) for hf in self.hyper)
-    
-    
+
     def leftEdgeE(self, freq, p):
         '''Return the left edge of the spectrum in eV'''
         return min(hf.leftEdgeE(freq, p) for hf in self.hyper)
-    
-    
+
     def rightEdgeE(self, freq, p):
         '''Return the right edge of the spectrum in eV'''
         return max(hf.rightEdgeE(freq, p) for hf in self.hyper)

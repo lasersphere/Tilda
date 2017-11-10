@@ -51,6 +51,9 @@ class Node(object):
             if newData is not None:
                 item.data = newData
                 newjobs = self.createJobs(item)
+        elif item.type == "save":
+            self.save()
+            newjobs = self.createJobs(item, False)
         
         return newjobs
 
@@ -84,6 +87,12 @@ class Node(object):
     def stop(self):
         """
         halt the pipeline
+        """
+        pass
+
+    def save(self):
+        """
+        trigger the save function in the nodes
         """
         pass
 

@@ -8,6 +8,9 @@ import numpy as np
 from scipy.optimize import curve_fit
 from scipy import version
 
+import TildaTools as TiTs
+
+
 class SPFitter(object):
     '''This class encapsulates the scipi.optimize.curve_fit routine'''
 
@@ -24,13 +27,23 @@ class SPFitter(object):
         self.oldpar = list(self.par)
         self.fix = spec.getFixed()
         self.npar = spec.getParNames()
-        self.pard = None #Will contain the parameter errors after fitting
-        
+        self.pard = None  # Will contain the parameter errors after fitting
+
+        try:
+            # will fail if no software gates available: -> not time resolved...
+            run_gates_width, del_list, iso_mid_tof = TiTs.calc_db_pars_from_software_gate(
+                self.meas.softw_gates[0])  # track 0
+            # run_gates_width, del_list, iso_mid_tof = 0, 0, 0
+            self.par += run_gates_width, del_list, iso_mid_tof
+            self.fix += True, True, True
+            self.npar += 'softwGatesWidth', 'softwGatesDelayList', 'midTof'
+        except Exception as e:
+            # fail on purpose, just to check if software gates exist
+            pass
         self.oldp = None
         self.pcov = None
         self.rchi = None
-        
-        
+
     def fit(self):
         '''
         Fit the free parameters of spec to data
@@ -40,25 +53,32 @@ class SPFitter(object):
         Curve_fit expects standard deviations as weights
         '''
         print("Starting fit")
+        self.data = self.meas.getArithSpec(*self.st)  # needed if data was regated in between.
+
         self.oldpar = list(self.par)
+        
         truncp = [p for p, f in zip(self.par, self.fix) if not f]
         boundl = ()
         boundu = ()
-        for i in range(len(self.par)):
-            if not self.fix[i]:
-                if self.npar[i][:3] == 'Int':
-                    if self.par[i] > 0:
+        try:
+            for i in range(len(self.par)):
+                # print(self.par[i])
+                if not self.fix[i]:
+                    if self.npar[i][:3] == 'Int':
+                        if self.par[i] > 0:
+                            boundl += 0,
+                            boundu += +np.inf,
+                        else:
+                            boundl += -np.inf,
+                            boundu += 0,
+                    elif self.npar[i] in ['sigma', 'gamma']:
                         boundl += 0,
                         boundu += +np.inf,
                     else:
                         boundl += -np.inf,
-                        boundu += 0,
-                elif self.npar[i] == 'sigma' or self.npar[i] == 'gamma':
-                    boundl += 0,
-                    boundu += +np.inf,
-                else:
-                    boundl += -np.inf,
-                    boundu += +np.inf,
+                        boundu += +np.inf,
+        except Exception as e:
+            print('error in fit: %s' % e)
         bounds = (boundl, boundu)
         scipy_version = int(version.version.split('.')[1])
         if scipy_version >= 17:

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>772</width>
+    <width>811</width>
     <height>858</height>
    </rect>
   </property>
@@ -100,7 +100,7 @@
         <enum>QTabWidget::Rounded</enum>
        </property>
        <property name="currentIndex">
-        <number>7</number>
+        <number>10</number>
        </property>
        <widget class="CrawlerUi" name="crawler">
         <attribute name="title">
@@ -152,6 +152,11 @@
          <string>Alive</string>
         </attribute>
        </widget>
+       <widget class="AsciiConvUi" name="asciiConv_tab">
+        <attribute name="title">
+         <string>ASCII conv.</string>
+        </attribute>
+       </widget>
       </widget>
       <widget class="QPlainTextEdit" name="oOut">
        <property name="plainText">
@@ -170,7 +175,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>772</width>
+     <width>811</width>
      <height>21</height>
     </rect>
    </property>
@@ -235,6 +240,12 @@
    <class>MomentsUi</class>
    <extends>QWidget</extends>
    <header>Gui.MomentsUi</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>AsciiConvUi</class>
+   <extends>QWidget</extends>
+   <header>Gui.AsciiConvUi</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

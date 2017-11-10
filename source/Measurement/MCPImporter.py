@@ -134,7 +134,7 @@ class MCPImporter(SpecData):
                 for i, ctarray in enumerate(self.cts):
                     for j, cts in enumerate(ctarray):
                         self.err[i][j] = np.sqrt(np.abs(cts))
-                        self.err[i][j][self.err[i][j] == 0.] = 1
+                        self.err[i][j][self.err[i][j] == 0.0] = 1
             f.close()
 
     def preProc(self, db, from_input=False):
@@ -179,6 +179,7 @@ class MCPImporter(SpecData):
             # print(self.cts)
             # print(self.nrScalers)
             self.norming()
+            self.x_units = self.x_units_enums.total_volts
         if not from_input:
             con.close()
 
@@ -264,7 +265,7 @@ class MCPImporter(SpecData):
                 nr_of_scan_this_track = self.nrScans[trackindex]
                 if nr_of_scan_this_track:
                     self.cts[trackindex][ctIndex] = ct * min_nr_of_scan / nr_of_scan_this_track
-                    self.err[trackindex][ctIndex] = np.sqrt(self.cts[trackindex][ctIndex])
+                    self.err[trackindex][ctIndex] = self.err[trackindex][ctIndex] * min_nr_of_scan / nr_of_scan_this_track
 
     def find_offset_for_kepco(self):
         """ find the offset of the measurement for each multimeter and return a list of the offsets for each dmm """

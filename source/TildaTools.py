@@ -6,6 +6,7 @@ Created on
 Module Description: Tools related closely to Tilda
 """
 import ast
+import json
 import logging
 import os
 import sqlite3
@@ -19,10 +20,19 @@ from XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, xmlAddComple
 
 
 def select_from_db(db, vars_select, var_from, var_where=[], addCond='', caller_name='unknown'):
-    '''connects to database and finds attributes vars_select (string) in table var_from (string)
+    """
+    connects to database and finds attributes vars_select (string) in table var_from (string)
     with the extra condition
     varwhere[0][i] == varwhere[1][i] (so varwhere = [list, list] is a list...)
-    '''
+    addCond -> e.g. 'ORDER BY date'
+    will convert to:
+
+        SELECT vars_select FROM var_from WHERE varwhere[0][i] == varwhere[1][i] ... addCond
+
+    :return
+        None, if failure,
+        list, with of tuples with values if success [(vars_select0, vars_select1...), (...)]
+    """
     sql_cmd = ''
     try:
         con = sqlite3.connect(db)
@@ -53,6 +63,7 @@ def select_from_db(db, vars_select, var_from, var_where=[], addCond='', caller_n
     finally:
         con.close()
 
+
 def merge_dicts(d1, d2):
     """ given two dicts, merge them into a new dict as a shallow copy """
     new = d1.copy()
@@ -72,7 +83,7 @@ def numpy_array_from_string(string, shape, datatytpe=np.int32):
     if '(' in string:  # its a zero free dataformat
         string = string.replace('(', '').replace(')', '').replace(',', ' ')
         from_string = np.fromstring(string, dtype=np.uint32, sep=' ')
-        result = np.zeros(from_string.size//4, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
+        result = np.zeros(from_string.size // 4, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
         result['sc'] = from_string[0::4]
         result['step'] = from_string[1::4]
         result['time'] = from_string[2::4]
@@ -110,7 +121,7 @@ def eval_str_vals_in_dict(dicti):
                 # val = val.replace(">", "\'")
                 # dicti[key] = ast.literal_eval(val)
             else:
-                print('error while converting val with ast.literal_eval: ',  e, val, type(val), key)
+                print('error while converting val with ast.literal_eval: ', e, val, type(val), key)
     return dicti
 
 
@@ -147,27 +158,50 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
     reads from an xml file and returns all tracks with its parameters
     :return: dict, {'track0': {...}, 'track1':{...}, ...}
     """
-    print('xml file is file: %s' % os.path.isfile(xml_file))
+    logging.info('xml file is file: %s' % os.path.isfile(xml_file))
     xml_etree = load_xml(xml_file)
-    trackd = {}
+    all_trackd = {}
     tracks = xml_etree.find('tracks')
     for t in tracks:
-        trackd[str(t.tag)] = (xml_get_dict_from_ele(xml_etree)[1]['tracks'][str(t.tag)]['header'])
-    for key, val in trackd.items():
-        trackd[key] = evaluate_strings_in_dict(trackd[key])
-    return trackd
+        all_trackd[str(t.tag)] = (xml_get_dict_from_ele(xml_etree)[1]['tracks'][str(t.tag)]['header'])
+    for tr_name, track_d in all_trackd.items():
+        all_trackd[tr_name] = evaluate_strings_in_dict(all_trackd[tr_name])
+    for tr_name, track_d in all_trackd.items():
+        # make sure no None values exist for measureVoltPars['dmm']
+        for key, val in track_d.get('measureVoltPars', {}).items():
+            if val.get('dmms', None) is None:
+                val['dmms'] = {}
+    return all_trackd
 
 
 def get_meas_volt_dict(xml_etree):
-    """ get the dictionary containing all the voltage measurement parameters
+    """
+        OUTDATED SINCE VERSION 1.19
+
+    get the dictionary containing all the voltage measurement parameters
      from an xml_etree element loaded from an xml file. """
     meas_volt_pars_dict = xml_get_dict_from_ele(xml_etree)[1].get('measureVoltPars', {})
     evaluate_strings_in_dict(meas_volt_pars_dict)
     for key, val in meas_volt_pars_dict.items():
-        print(val)
-        if val['dmms'] is None:
+        if val.get('dmms', None) is None:
             meas_volt_pars_dict[key]['dmms'] = {}
     return meas_volt_pars_dict
+
+
+def get_triton_dict_from_xml_root(xml_etree):
+    """
+    OUTDATED SINCE VERSION 1.19
+    get the triton dictionary from an exisitng xml file.
+    :param xml_etree: lxml.etree.Element, Element of loaded File
+    :return: dict,
+    {'preScan': {'dummyDev': {'ch1': {'required': 2, 'data': [1,2], 'acquired': 2}, ...}},
+     'postScan': ...,
+     'duringScan': ...}
+    """
+    triton_dict = xml_get_dict_from_ele(xml_etree)[1].get('triton', {})
+    evaluate_strings_in_dict(triton_dict)
+    # print('triton_dict from file: ', triton_dict)
+    return triton_dict
 
 
 def evaluate_strings_in_dict(dict_to_convert):
@@ -242,7 +276,11 @@ def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
     scan_dict['pipeInternals']['curVoltInd'] = 0
     scan_dict['pipeInternals']['activeTrackNumber'] = 'None'
     scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
-    scan_dict['measureVoltPars'] = get_meas_volt_dict(xml_etree)
+    if float(scan_dict['isotopeData']['version']) <= 1.18:
+        # after this version, those infos are stored within each track!
+        # kept this for backwards compatibility
+        scan_dict['measureVoltPars'] = get_meas_volt_dict(xml_etree)
+        scan_dict['triton'] = get_triton_dict_from_xml_root(xml_etree)
     # watchout, since trigger type is only imported as string...
     return scan_dict, xml_etree
 
@@ -310,22 +348,30 @@ def gate_specdata(spec_data):
     :param spec_data: spec_data
     :return: spec_data
     """
+    # logging.debug('gating data now, software gates are: %s' % spec_data.softw_gates)
+    # check if enough gates are given for this track
+    for tr_ind, gates_tr in enumerate(spec_data.softw_gates):
+        tr_scalers = spec_data.nrScalers[tr_ind]
+        dif = tr_scalers - len(gates_tr)
+        if dif > 0:  # not enough gates defined for this track will add now
+            for i in range(dif):
+                spec_data.softw_gates[tr_ind].append([float('-inf'), float('inf'), 0, float('inf')])
     # get indices of the values first
     compare_arr = [spec_data.x, spec_data.x, spec_data.t, spec_data.t]
     softw_gates_ind = [
         [[find_closest_value_in_arr(compare_arr[lim_ind][tr_ind], lim)[0] for lim_ind, lim in enumerate(gates_pmt)]
          for gates_pmt in gates_tr]
         for tr_ind, gates_tr in enumerate(spec_data.softw_gates)]
-    spec_data.softw_gates = [[[compare_arr[lim_ind][tr_ind][found_ind] for lim_ind, found_ind in enumerate(gate_ind_pmt)]
-                              for gate_ind_pmt in gate_ind_tr]
-                             for tr_ind, gate_ind_tr in enumerate(softw_gates_ind)]
-
+    spec_data.softw_gates = [
+        [[compare_arr[lim_ind][tr_ind][found_ind] for lim_ind, found_ind in enumerate(gate_ind_pmt)]
+         for gate_ind_pmt in gate_ind_tr]
+        for tr_ind, gate_ind_tr in enumerate(softw_gates_ind)]
     for tr_ind, tr in enumerate(spec_data.cts):
         for pmt_ind, pmt in enumerate(tr):
-            v_min_ind = softw_gates_ind[tr_ind][pmt_ind][0]
-            v_max_ind = softw_gates_ind[tr_ind][pmt_ind][1] + 1
-            t_min_ind = softw_gates_ind[tr_ind][pmt_ind][2]
-            t_max_ind = softw_gates_ind[tr_ind][pmt_ind][3] + 1
+            v_min_ind = min(softw_gates_ind[tr_ind][pmt_ind][0], softw_gates_ind[tr_ind][pmt_ind][1])
+            v_max_ind = max(softw_gates_ind[tr_ind][pmt_ind][0], softw_gates_ind[tr_ind][pmt_ind][1]) + 1
+            t_min_ind = min(softw_gates_ind[tr_ind][pmt_ind][2], softw_gates_ind[tr_ind][pmt_ind][3])
+            t_max_ind = max(softw_gates_ind[tr_ind][pmt_ind][2], softw_gates_ind[tr_ind][pmt_ind][3]) + 1
             t_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][v_min_ind:v_max_ind, :], axis=0)
             v_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][:, t_min_ind:t_max_ind], axis=1)
             spec_data.t_proj[tr_ind][pmt_ind] = t_proj_res
@@ -364,12 +410,14 @@ def gate_zero_free_specdata(spec_data):
     """
     try:
         dimensions = spec_data.get_scaler_step_and_bin_num(-1)
-        zf_spec = deepcopy(spec_data)
-        zf_spec.time_res = zero_free_to_non_zero_free(spec_data.time_res_zf, dimensions)
-        zf_spec = gate_specdata(zf_spec)
+        # i dont think a copy is necessary.
+        # zf_spec = deepcopy(spec_data)
+        # zf_spec = spec_data
+        spec_data.time_res = zero_free_to_non_zero_free(spec_data.time_res_zf, dimensions)
+        spec_data = gate_specdata(spec_data)
     except Exception as e:
         print('error: while gating zero free specdata: %s ' % e)
-    return zf_spec
+    return spec_data
 
     # alternative solution (currently slower):
     # compare_arr = [spec_data.x, spec_data.x, spec_data.t, spec_data.t]
@@ -453,7 +501,12 @@ def find_closest_value_in_arr(arr, search_val):
     goes through an array and finds the nearest value to search_val
     :return: ind, found_val, abs(found_val - search_val)
     """
-    ind, found_val = min(enumerate(arr), key=lambda i: abs(float(i[1]) - search_val))
+    if np.isinf(search_val):
+        search_val = np.max(arr) if search_val > 0 else np.min(arr)
+    if isinstance(arr, list):
+        arr = np.array(arr)
+    ind = (np.abs(arr - search_val)).argmin()
+    found_val = arr[ind]
     return ind, found_val, abs(found_val - search_val)
 
 
@@ -515,7 +568,7 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
                                                                       return_index=True, return_counts=True)
                         sum_ind = unique_inds[np.where(uniq_cts == 2)]  # only take indexes of double occuring items
                         # use indices of all twice occuring elements to add the counts of those:
-                        sum_cts = sorted_arr[sum_ind]['cts'] + sorted_arr[sum_ind + 1]['cts']
+                        sum_cts = sorted_arr[sum_ind]['cts'] + add_meas[0] * sorted_arr[sum_ind + 1]['cts']
                         np.put(sorted_arr['cts'], sum_ind, sum_cts)
                         # delete all remaining items:
                         parent_specdata.time_res_zf[tr_ind] = np.delete(sorted_arr, sum_ind + 1, axis=0)
@@ -551,16 +604,42 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
     return parent_specdata, added_files, filename
 
 
-def check_if_attr_exists(parent_to_check_from, par, return_val_if_not):
+def check_if_attr_exists(parent_to_check_from, par, return_val_if_not, and_not_equal_to=None):
     """ use par as attribute of parent_to_check_from and return the result.
      If this is not a valid arg, return return_val_if_not """
     ret = return_val_if_not
     try:
         ret = getattr(parent_to_check_from, par)
+        if ret == and_not_equal_to:
+            ret = return_val_if_not
     except Exception as e:
         ret = return_val_if_not
     finally:
         return ret
+
+
+def check_var_type(list_of_vars):
+    """
+    will go trough a list of vars and check if they are in the right type,
+     range and correct them to a standard value if not
+    :param list_of_vars: list of tuples, [(var_to_check, var_type, var_range, standard_val), (...) ... ]
+    var_range is a list: [min_val, max_val], leave empty for not checking a range
+    :return: list, corrected vars
+    """
+    ret = []
+    for var_to_check, var_type, var_range, standard_val in list_of_vars:
+        if isinstance(var_to_check, var_type):
+            if len(var_range):
+                if var_range[0] < var_to_check < var_range[1]:
+                    good_val = var_to_check
+                else:  # right type and in range
+                    good_val = standard_val
+            else:  # type ok, range does not matter
+                good_val = var_to_check
+        else:  # if type is wrong, use stanadrd val !?
+            good_val = standard_val
+        ret.append(good_val)
+    return ret
 
 
 def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_path=None):
@@ -601,9 +680,9 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
             'nOfCompletedSteps': specdata.nrScans[tr_ind] * specdata.getNrSteps(tr_ind),
             'invertScan': check_if_attr_exists(specdata, 'invert_scan', [False] * specdata.nrTracks)[tr_ind],
             'postAccOffsetVoltControl': specdata.post_acc_offset_volt_control, 'postAccOffsetVolt': specdata.offset,
-            'waitForKepco25nsTicks': check_if_attr_exists(specdata, 'wait_after_reset_25ns', [-1] * specdata.nrTracks)[
+            'waitForKepco1us': check_if_attr_exists(specdata, 'wait_after_reset_1us', [-1] * specdata.nrTracks)[
                 tr_ind],
-            'waitAfterReset25nsTicks': check_if_attr_exists(specdata, 'wait_for_kepco_25ns', [-1] * specdata.nrTracks)[
+            'waitAfterReset1us': check_if_attr_exists(specdata, 'wait_for_kepco_1us', [-1] * specdata.nrTracks)[
                 tr_ind],
             'activePmtList': check_if_attr_exists(specdata, 'activePMTlist', False)[tr_ind] if
             check_if_attr_exists(specdata, 'activePMTlist', []) else
@@ -612,17 +691,20 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
             'dwellTime10ns': specdata.dwell,
             'workingTime': check_if_attr_exists(specdata, 'working_time', [None] * specdata.nrTracks)[tr_ind],
             'nOfBins': len(check_if_attr_exists(specdata, 't', [[0]] * specdata.nrTracks)[tr_ind]),
-            'softBinWidth_ns': check_if_attr_exists(specdata, 'softBinWidth_ns', [0] * specdata.nrTracks)[tr_ind],
+            'softBinWidth_ns': check_if_attr_exists(specdata, 'softBinWidth_ns',
+                                                    [0] * specdata.nrTracks, [])[tr_ind],
             'nOfBunches': 1,
             'softwGates': check_if_attr_exists(
-                specdata, 'softw_gates', [[] * specdata.nrScalers[tr_ind]] * specdata.nrTracks)[tr_ind],
+                specdata, 'softw_gates', [[] * specdata.nrScalers[tr_ind]] * specdata.nrTracks, [])[tr_ind],
             'trigger': {'type': 'no_trigger'},
-            'pulsePattern': {'cmdList': [], 'periodicList': [], 'simpleDict': {}}
+            'pulsePattern': {'cmdList': [], 'periodicList': [], 'simpleDict': {}},
+            'measureVoltPars': specdata.measureVoltPars[tr_ind],
+            'triton': specdata.tritonPars[tr_ind]
         }
     draftMeasureVoltPars_singl = {'measVoltPulseLength25ns': -1, 'measVoltTimeout10ns': -1,
                                   'dmms': {}, 'switchBoxSettleTimeS': -1}
-    pre_scan_dmms = {'unknown_dmm': {'assignment': 'offset', 'preScanRead': deepcopy(specdata.offset)},
-                     'unknown_dmm_1': {'assignment': 'accVolt', 'preScanRead': deepcopy(specdata.accVolt)},
+    pre_scan_dmms = {'unknown_dmm': {'assignment': 'offset', 'readings': [deepcopy(specdata.offset)]},
+                     'unknown_dmm_1': {'assignment': 'accVolt', 'readings': [deepcopy(specdata.accVolt)]},
                      }
     draftMeasureVoltPars = {'preScan': deepcopy(draftMeasureVoltPars_singl),
                             'duringScan': deepcopy(draftMeasureVoltPars_singl)}
@@ -635,7 +717,6 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
     }
     draftScanDict = {'isotopeData': draftIsotopePars,
                      'pipeInternals': draftPipeInternals,
-                     'measureVoltPars': draftMeasureVoltPars
                      }
     draftScanDict.update(tracks)  # add the tracks
     return draftScanDict
@@ -667,11 +748,11 @@ def createXmlFileOneIsotope(scanDict, seq_type=None, filename=None):
     :return:str, filename
     """
     isodict = deepcopy(scanDict['isotopeData'])
-    meas_volt_dict = deepcopy(scanDict['measureVoltPars'])
+    # meas_volt_dict = deepcopy(scanDict['measureVoltPars'])
     if seq_type is not None:
         isodict['type'] = seq_type
     root = xmlCreateIsotope(isodict)
-    xml_add_meas_volt_pars(meas_volt_dict, root)
+    # xml_add_meas_volt_pars(meas_volt_dict, root)
     if filename is None:
         path = scanDict['pipeInternals']['workingDirectory']
         filename = nameFileXml(isodict, path)
@@ -694,11 +775,20 @@ def nameFileXml(isodict, path):
         os.makedirs(subdir)
     files = [file if file.endswith('.xml') else '-1....' for file in os.listdir(subdir)]
     if len(files):
-        highest_filenum = sorted([int(file[-7:-4]) for file in files])[-1]
-        print(files, highest_filenum)
+        try:
+            highest_filenum = sorted(
+                [int(file[file.index('_run') + 4:file.index('_run') + 7]) for file in files if '_run' in file])[-1]
+        except Exception as e:
+            print('error finding run number, with _run***.xml (*** should be integers) error is: ', e)
+            highest_filenum = -1
     else:
         highest_filenum = -1
     newpath = os.path.join(subdir, filename + str('{0:03d}'.format(highest_filenum + 1)) + '.xml')
+    while os.path.isfile(newpath):  # do not overwrite!
+        print('error: file already exists! Check your file naming not conflict with '
+              '_run***.xml (*** should be integers) filenum is: ', highest_filenum)
+        highest_filenum += 1
+        newpath = os.path.join(subdir, filename + str('{0:03d}'.format(highest_filenum + 1)) + '.xml')
     return newpath
 
 
@@ -711,8 +801,14 @@ def save_spec_data(spec_data, scan_dict):
     """
     try:
         scan_dict = deepcopy(scan_dict)
+        version = float(scan_dict['isotopeData']['version'])
+        # scan_dict = create_scan_dict_from_spec_data(spec_data, scan_dict['pipeInternals']['activeXmlFilePath'])
         try:
-            time_res = len(spec_data.time_res) # if there are any values in here, it is a time resolved measurement
+            if version > 1.1:
+                time_res = len(spec_data.time_res_zf)
+            else:
+                # if there are any values in here, it is a time resolved measurement
+                time_res = len(spec_data.time_res)
         except Exception as e:
             time_res = False
         existing_xml_fil_path = scan_dict['pipeInternals']['activeXmlFilePath']
@@ -721,16 +817,21 @@ def save_spec_data(spec_data, scan_dict):
         for track_ind, tr_num in enumerate(track_num_lis):
             track_name = 'track' + str(tr_num)
             # only save name of trigger
-            scan_dict[track_name]['trigger']['type'] = scan_dict[track_name]['trigger']['type'].name
+            if not isinstance(scan_dict[track_name]['trigger']['type'], str):
+                scan_dict[track_name]['trigger']['type'] = scan_dict[track_name]['trigger']['type'].name
             if time_res:
                 scan_dict[track_name]['softwGates'] = spec_data.softw_gates[track_ind]
-                xmlAddCompleteTrack(root_ele, scan_dict, spec_data.time_res_zf[track_ind], track_name)
+                if version > 1.1:
+                    xmlAddCompleteTrack(root_ele, scan_dict, spec_data.time_res_zf[track_ind], track_name)
+                else:
+                    xmlAddCompleteTrack(root_ele, scan_dict, spec_data.time_res[track_ind], track_name)
                 xmlAddCompleteTrack(
                     root_ele, scan_dict, spec_data.cts[track_ind], track_name, datatype='voltage_projection',
                     parent_ele_str='projections')
-                xmlAddCompleteTrack(
-                    root_ele, scan_dict, spec_data.t_proj[track_ind], track_name, datatype='time_projection',
-                    parent_ele_str='projections')
+                # removed saving of time projection, because nobody wins anything on this.
+                # xmlAddCompleteTrack(
+                #     root_ele, scan_dict, spec_data.t_proj[track_ind], track_name, datatype='time_projection',
+                #     parent_ele_str='projections')
             else:  # not time resolved
                 scan_dict[track_name]['softwGates'] = []
                 xmlAddCompleteTrack(root_ele, scan_dict, spec_data.cts[track_ind], track_name)
@@ -741,7 +842,8 @@ def save_spec_data(spec_data, scan_dict):
         if os.path.isfile(db):
             os.chdir(scan_dict['pipeInternals']['workingDirectory'])
             relative_filename = os.path.normpath(
-                os.path.join(os.path.split(os.path.dirname(existing_xml_fil_path))[1], os.path.basename(existing_xml_fil_path)))
+                os.path.join(os.path.split(os.path.dirname(existing_xml_fil_path))[1],
+                             os.path.basename(existing_xml_fil_path)))
             # if file is in same folder as db, replace this folder with a dot
             db_dir_name = os.path.split(scan_dict['pipeInternals']['workingDirectory'])[1]
             relative_filename = relative_filename.replace(
@@ -766,7 +868,167 @@ def get_number_of_tracks_in_scan_dict(scan_dict):
             list_of_track_nums.append(int(key[5:]))
     return n_of_tracks, sorted(list_of_track_nums)
 
+
+def get_software_gates_from_db(db, iso, run):
+    """
+    get the software gates for a SINGLE TRACK from the database.
+    voltages will be gated from -10 to 10 V.
+    timings will be calculated like this:
+    start_gate_sc0 = mid_tof + delay_sc0 - 0.5 * width
+    stopp_gate_sc0 = mid_tof + delay_sc0 + 0.5 * width
+    """
+    use_db, run_gates_width, run_gates_delay, iso_mid_tof = get_gate_pars_from_db(db, iso, run)
+    if use_db == 'file':
+        return None
+    if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None:
+        return None  # return None if failur by getting stuff from db
+    else:
+        softw_gates_db = calc_soft_gates_from_db_pars(run_gates_width, run_gates_delay, iso_mid_tof)
+        print('extracted software gates for isotope: %s and run %s from db %s: ' % (iso, run, os.path.split(db)[1]),
+              softw_gates_db)
+        return softw_gates_db
+
+
+def get_gate_pars_from_db(db, iso, run):
+    """ will get the use_db, run_gates_width, run_gates_delay, iso_mid_tof from the database """
+    use_db = select_from_db(
+        db, 'softwGates', 'Runs', [['run'], [run]],
+        caller_name='get_software_gates_from_db in DataBaseOperations.py')
+    run_gates_width = select_from_db(
+        db, 'softwGateWidth', 'Runs', [['run'], [run]],
+        caller_name='get_software_gates_from_db in DataBaseOperations.py')
+    run_gates_delay = select_from_db(
+        db, 'softwGateDelayList', 'Runs', [['run'], [run]],
+        caller_name='get_software_gates_from_db in DataBaseOperations.py')
+    iso_mid_tof = select_from_db(
+        db, 'midTof', 'Isotopes', [['iso'], [iso]],
+        caller_name='get_software_gates_from_db in DataBaseOperations.py')
+    if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None:
+        return None, None, None, None
+    else:
+        run_gates_width = run_gates_width[0][0]
+        run_gates_delay = run_gates_delay[0][0]
+        iso_mid_tof = iso_mid_tof[0][0]
+        del_list = ast.literal_eval(run_gates_delay)
+        return use_db, run_gates_width, del_list, iso_mid_tof
+
+
+def calc_soft_gates_from_db_pars(run_gates_width, del_list, iso_mid_tof, voltage_gates=[-np.inf, np.inf]):
+    """
+    calc the software gates for a SINGLE TRACK from the given pars.
+    voltages will be gated from -10 to 10 V.
+    timings will be calculated like this:
+    start_gate_sc0 = mid_tof + delay_sc0 - 0.5 * width
+    stopp_gate_sc0 = mid_tof + delay_sc0 + 0.5 * width
+    """
+    # gates should be applied for all voltages/frequencies
+    softw_gates_db = []
+    for each_del in del_list:
+        softw_gates_db.append(
+            [voltage_gates[0], voltage_gates[1],
+             iso_mid_tof + each_del - 0.5 * run_gates_width,
+             iso_mid_tof + each_del + 0.5 * run_gates_width]
+        )
+    return softw_gates_db
+
+
+def calc_db_pars_from_software_gate(softw_gates_single_tr):
+    """ inverse function to calc_soft_gates_from_db_pars"""
+    run_gates_width = 0
+    del_list = []
+    iso_mid_tof = 0
+    for i, each in enumerate(softw_gates_single_tr):
+        t_min, t_max = each[2], each[3]
+        if i == 0:  # reference on first scaler one cannot tell on which was referenced before
+            run_gates_width = t_max - t_min
+            iso_mid_tof = t_min + run_gates_width * 0.5
+        del_list.append(t_min + 0.5 * run_gates_width - iso_mid_tof)
+    return run_gates_width, del_list, iso_mid_tof
+
+
+def convert_volt_axis_to_freq(x_axis_energy, mass, col, laser_freq, iso_center_freq):
+    """
+    will convert an x axis given in total voltage (accvolt + offset + line * kepco)
+    to frequency relative to the iso center freq
+    :return: list, x_axis in freq
+    """
+    x_axis_freq = deepcopy(x_axis_energy)
+    for tr_ind, x_each_track in enumerate(x_axis_energy):
+        for i, e in enumerate(x_each_track):
+            v = Physics.relVelocity(Physics.qe * e, mass * Physics.u)
+            v = -v if col else v
+
+            f = Physics.relDoppler(laser_freq, v) - iso_center_freq
+            x_axis_freq[tr_ind][i] = f
+    return x_axis_freq
+
+
+def convert_fit_volt_axis_to_freq(fit):
+    """
+     will convert an x axis given in total voltage (accvolt + offset + line * kepco)
+     to frequency relative to the iso center freq
+     :return: list, x_axis in freq
+    """
+    x_axis_in_freq = convert_volt_axis_to_freq(fit.meas.x, fit.spec.iso.mass,
+                                               fit.meas.col, fit.meas.laserFreq, fit.spec.iso.freq)
+    return x_axis_in_freq
+
+
+def print_dict_pretty(dict):
+    """ module for pretty printing a dictionary """
+    print(json.dumps(dict, sort_keys=True, indent=4))
+
+
+def translate_raw_data(raw_data):
+    """ translate raw data to string for interpretation """
+    step_complete = add_header_to23_bit(1, 4, 0, 1)  # binary for step complete
+    scan_started = add_header_to23_bit(2, 4, 0, 1)  # binary for scan started
+    new_bunch = add_header_to23_bit(3, 4, 0, 1)  # binary for new bunch
+    dac_int_key = 2 ** 29 + 2 ** 28 + 2 ** 23  # binary key for an dac element
+    header_index = 2 ** 23  # binary for the headerelement
+    step_comp_ct = 0
+    scan_start_ct = 0
+    new_bunch_ct = 0
+    dac_ct = 0
+    pmt_ct = 0
+    for each in raw_data:
+        if each == step_complete:
+            step_comp_ct += 1
+            print(each, '\t step complete %d ' % step_comp_ct)
+        elif each == scan_started:
+            scan_start_ct += 1
+            print(each, '\t scan started  %d' % scan_start_ct, '\t current step: %d' % step_comp_ct)
+        elif each == new_bunch:
+            new_bunch_ct += 1
+            print(each, '\t new bunch %d ' % new_bunch_ct, '\t current step: %d' % step_comp_ct)
+        elif not each & header_index:
+            pmt_ct += 1
+            time = each & (2 ** 23 - 1)
+            act_pmt = each >> 24
+            act_pmts = [i for i in range(0, 7) if 2 ** i & act_pmt]
+            print(each, '\t pmt_event number %d, act pmt: %s, timestamp: %d' % (pmt_ct, str(act_pmts), time),
+                  '\t current step: %d' % step_comp_ct)
+        elif each & dac_int_key:
+            dac_ct += 1
+            print(each, '\t dac bit: %d' % dac_ct, '\t current step: %d' % step_comp_ct)
+        else:
+            print(each, '\t could not be resolved ', format(each, '#032b')[2:], '\t current step: %d' % step_comp_ct)
+
+
+def add_header_to23_bit(bit23, firstheader, secondheader, indexheader):
+    """
+    enter a 32 bit header and the other header without their shift.
+    So for firstheader = 3 (0011) only enter 3.
+    """
+    sh_firstheader = firstheader << 28
+    sh_secondheader = secondheader << 24
+    sh_indexheader = indexheader << 23
+    result = sh_firstheader + sh_secondheader + sh_indexheader + bit23
+    return result
+
+
 if __name__ == '__main__':
-    isodi = {'isotope': 'bbb', 'type': 'csdummy'}
-    newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')
-    print(newname)
+    # isodi = {'isotope': 'bbb', 'type': 'csdummy'}
+    # newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')
+    # print(newname)
+    get_all_tracks_of_xml_in_one_dict('E:/TildaDebugging3/sums/Test_trsdummy_run005.xml')

@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(772, 858)
+        MainWindow.resize(811, 858)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
@@ -83,6 +83,9 @@ class Ui_MainWindow(object):
         self.Alive_tab = AliveUi()
         self.Alive_tab.setObjectName("Alive_tab")
         self.TabWidget.addTab(self.Alive_tab, "")
+        self.asciiConv_tab = AsciiConvUi()
+        self.asciiConv_tab.setObjectName("asciiConv_tab")
+        self.TabWidget.addTab(self.asciiConv_tab, "")
         self.oOut = QtWidgets.QPlainTextEdit(self.splitter)
         self.oOut.setPlainText("")
         self.oOut.setMaximumBlockCount(500)
@@ -90,12 +93,12 @@ class Ui_MainWindow(object):
         self.verticalLayout.addWidget(self.splitter)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 772, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 811, 21))
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
 
         self.retranslateUi(MainWindow)
-        self.TabWidget.setCurrentIndex(7)
+        self.TabWidget.setCurrentIndex(10)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -115,10 +118,12 @@ class Ui_MainWindow(object):
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.moments), _translate("MainWindow", "Moments"))
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.addFiles_tab), _translate("MainWindow", "add Files"))
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.Alive_tab), _translate("MainWindow", "Alive"))
+        self.TabWidget.setTabText(self.TabWidget.indexOf(self.asciiConv_tab), _translate("MainWindow", "ASCII conv."))
 
 from Gui.AccVoltUi import AccVoltUi
 from Gui.AddFilesUi import AddFilesUi
 from Gui.AliveUi import AliveUi
+from Gui.AsciiConvUi import AsciiConvUi
 from Gui.AveragerUi import AveragerUi
 from Gui.BatchfitterUi import BatchfitterUi
 from Gui.CrawlerUi import CrawlerUi

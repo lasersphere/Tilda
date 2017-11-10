@@ -33,16 +33,8 @@ def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None):
     cur.execute('''SELECT isoVar, lineVar, scaler, track FROM Runs WHERE run = ?''', (run,))
     var = cur.fetchall()[0]
     st = (ast.literal_eval(var[2]), ast.literal_eval(var[3]))
-    if softw_gates_trs is None:  # if no software gate provided check db
-        try:  # check if there are software gates available in database
-            cur.execute('''SELECT softwGates FROM Runs WHERE run = ?''', (run,))
-            soft_var = cur.fetchall()[0]
-            softw_gates_trs_db = ast.literal_eval(soft_var[0])
-            if isinstance(softw_gates_trs_db, list):
-                softw_gates_trs = softw_gates_trs_db
-        except Exception as e:
-            print('error while trying to extract the software Gates from Runs: ', e)
-            print('will use gates from file')
+    if softw_gates_trs is None:  # if no software gate provided pass on run and db via software gates
+        softw_gates_trs = (db, run)
 
     print("Go for", run, "with IsoVar = \"" + var[0] + "\" and LineVar = \"" + var[1] + "\"")
     
