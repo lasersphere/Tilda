@@ -66,8 +66,8 @@ def extract(iso, par, run, db, fileList=[], prin=True):
         return vals, errs, date_list, files
     else:
         return None, None, None, None
-
-
+    
+    
 def weightedAverage(vals, errs):
     '''Return (weighted average, propagated error, rChi^2'''
     weights = 1 / np.square(errs)

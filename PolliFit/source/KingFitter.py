@@ -57,6 +57,7 @@ class KingFitter(object):
             print('error: %s  \n\t-> Kingfitter could not find a reference isotope from'
                   ' Lines in database or mass of this reference Isotope in Isotopes' % e)
 
+
     def kingFit(self, run=-1, alpha=0, findBestAlpha=True, find_slope_with_statistical_error=False):
         '''
         For find_b_with_statistical_error=True:
