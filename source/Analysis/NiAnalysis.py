@@ -10,6 +10,7 @@ import math
 import os
 import sqlite3
 import ast
+from datetime import datetime, timedelta
 
 import numpy as np
 
@@ -24,28 +25,21 @@ import TildaTools as TiTs
 
 ''' working directory: '''
 
-workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
+workdir = 'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
 
 datafolder = os.path.join(workdir, 'Ni_April2016_mcp')
 
 db = os.path.join(workdir, 'Ni_workspace.sqlite')
 
-# runs = ['narrow_gate_asym', 'narrow_gate_asym_67_Ni']
-# runs = ['narrow_gate', 'narrow_gate_67_Ni']
-# runs = ['wide_gate_asym', 'wide_gate_asym_67_Ni']
-# runs = ['wide_gate', 'wide_gate_67_Ni']
-# runs = ['wide_gate_67_Ni']
-# runs = [runs[0], runs[2]]
-runs = ['wide_gate_asym', 'wide_gate_asym_67_Ni',
-        'wide_gate', 'wide_gate_67_Ni',
-        'narrow_gate_asym', 'narrow_gate_asym_67_Ni',
-        'narrow_gate', 'narrow_gate_67_Ni']
+runs = ['wide_gate_asym', 'wide_gate_asym_67_Ni']
 
 isotopes = ['%s_Ni' % i for i in range(58, 71)]
 isotopes.remove('69_Ni')
 odd_isotopes = [iso for iso in isotopes if int(iso[:2]) % 2]
 even_isotopes = [iso for iso in isotopes if int(iso[:2]) % 2 == 0]
 stables = ['58_Ni', '60_Ni', '61_Ni', '62_Ni', '64_Ni']
+
+Tools.add_missing_columns(db)
 
 ''' Masses '''
 # masses = {
@@ -90,14 +84,15 @@ is_64_ni = [iso_sh_freq['60-62'][0] + iso_sh_freq['62-64'][0], - iso_sh_freq['58
 err_is_64_ni = [round(math.sqrt(iso_sh_freq['62-64'][1] ** 2 + iso_sh_freq['60-62'][1] ** 2), 2),
                 round(math.sqrt(iso_sh_freq['58-60'][1] ** 2 + iso_sh_freq['58-64'][1] ** 2), 2)]
 mean_is_64 = Analyzer.weightedAverage(is_64_ni, err_is_64_ni)
-print(mean_is_64)
+print('isotope shifts for 64_ni', is_64_ni, err_is_64_ni)
+print('mean:', mean_is_64)
 #
 literature_shifts = {
     '58_Ni': (-1 * iso_sh_freq['58-60'][0], iso_sh_freq['58-60'][1]),
     '60_Ni': (0, 0),
     '61_Ni': (iso_sh_freq['60-61'][0], iso_sh_freq['60-61'][1]),
     '62_Ni': (iso_sh_freq['60-62'][0], iso_sh_freq['60-62'][1]),
-    '64_Ni': (mean_is_64[0], mean_is_64[1])
+    '64_Ni': (round(mean_is_64[0], 2), round(mean_is_64[1], 2))
 }
 print('literatur shifts from A. Steudel (1980) in MHz:')
 [print(key, val[0], val[1]) for key, val in sorted(literature_shifts.items())]
@@ -132,25 +127,33 @@ v2_lit = {
     '64_Ni': 1.284133
 }
 
-lit_radii_calc = {iso: (val[0]/v2_lit[iso], val[1])for iso, val in sorted(baret_radii_lit.items())}
+lit_radii_calc = {iso: (val[0] / v2_lit[iso], val[1]) for iso, val in sorted(baret_radii_lit.items())}
 
 # using the more precise values by the self calculated one:
 lit_radii = lit_radii_calc
-
 
 delta_lit_radii = {iso: [
     lit_vals[0] ** 2 - lit_radii['60_Ni'][0] ** 2,
     np.sqrt(lit_vals[1] ** 2 + lit_radii['60_Ni'][1] ** 2)]
                    for iso, lit_vals in sorted(lit_radii.items())}
 delta_lit_radii.pop('60_Ni')
-print('iso\t<r^2>^{1/2}_{0µe}\t\Delta<r^2>^{1/2}_{0µe}\t<r^2>^{1/2}_{0µe}(A-A_{60})\t\Delta <r^2>^{1/2}_{0µe}(A-A_{60})')
+
+delta_lit_radii_58 = {iso: [
+    lit_vals[0] ** 2 - lit_radii['58_Ni'][0] ** 2,
+    np.sqrt(lit_vals[1] ** 2 + lit_radii['58_Ni'][1] ** 2)]
+                   for iso, lit_vals in sorted(lit_radii.items())}
+delta_lit_radii_58.pop('58_Ni')
+
+
+print(
+    'iso\t<r^2>^{1/2}_{0µe}\t\Delta<r^2>^{1/2}_{0µe}\t<r^2>^{1/2}_{0µe}(A-A_{60})\t\Delta <r^2>^{1/2}_{0µe}(A-A_{60})')
 for iso, radi in sorted(lit_radii.items()):
     dif = delta_lit_radii.get(iso, (0, 0))
     print('%s\t%.3f\t%.3f\t%.5f\t%.5f' % (iso, radi[0], radi[1], dif[0], dif[1]))
 
 ''' Moments '''
-a_low_61_Ni_lit = (-455.974, 0.003)
-b_low_61_Ni_lit = (-102.979, 0.016)
+a_low_61_Ni_lit = (-454.972, 0.003)
+b_low_61_Ni_lit = (-102.951, 0.016)
 
 ''' Quadrupole Moments '''
 # literature values from PHYSICAL REVIEW VOLUME 170, NUM HER 1 5 JUNE 1968
@@ -160,27 +163,27 @@ b_low_61_Ni_lit = (-102.979, 0.016)
 # Argonne Eationa/ Laboratory, Argonne, Illinois
 
 mass_q_literature_61_Ni = 61  # u
-spin_q_literature = 3/2
+spin_q_literature = 3 / 2
 q_literature_61_Ni = 0.162  # barn
 d_q_literature_61_Ni = 0.015  # barn
 
-lit_q_moments = [(61.1, 3/2, 0.162, 0.015), (61.2, 5/2, -0.2, 0.03), (61.3, 5/2, -0.08, 0.07)]
+lit_q_moments = [(61.1, 3 / 2, 0.162, 0.015), (61.2, 5 / 2, -0.2, 0.03), (61.3, 5 / 2, -0.08, 0.07)]
 
 # 3d9(2D)4s  	 3D 3
 b_lower_lit = -102.979  # MHz
 d_b_lower_lit = 0.016  # MHz
 
-# e_Vzz value from this: e_Vzz = B / Q
+# e_Vzz value from this: e_Vzz = Q / B
 e_Vzz_lower = q_literature_61_Ni / b_lower_lit
 d_e_Vzz_lower = np.sqrt(
     (e_Vzz_lower / b_lower_lit * d_b_lower_lit) ** 2 +
     (e_Vzz_lower / q_literature_61_Ni * d_q_literature_61_Ni) ** 2)
 print(e_Vzz_lower, d_e_Vzz_lower)
-print('eVzz = %.3f(%.0f) b/ kHz' % (e_Vzz_lower * 1000, d_e_Vzz_lower * 1e6))
+print('eVzz_lower = %.3f(%.0f) b/ kHz' % (e_Vzz_lower * 1000, d_e_Vzz_lower * 1e6))
 
 # for the upper state  3d9(2D)4p  	 3P° 2, no b factor was measured
 # therefore i will need to get the e_Vzz_upper from my results on 61_Ni and the q_literature_61_Ni
-b_upper_exp = -50.597 # MHz
+b_upper_exp = -50.597  # MHz
 d_b_upper_exp = 1.43  # Mhz
 
 e_Vzz_upper = q_literature_61_Ni / b_upper_exp
@@ -189,6 +192,7 @@ d_e_Vzz_upper = np.sqrt(
     (e_Vzz_upper / q_literature_61_Ni * d_q_literature_61_Ni) ** 2)
 
 print(e_Vzz_upper, d_e_Vzz_upper)
+print('eVzz_upper = %.3f(%.0f) b/ kHz' % (e_Vzz_upper * 1000, d_e_Vzz_upper * 1e6))
 
 
 def quadrupol_moment(b, d_stat_b, d_syst_b, upper=True):
@@ -199,7 +203,7 @@ def quadrupol_moment(b, d_stat_b, d_syst_b, upper=True):
             e_vzz = e_Vzz_upper
             d_e_vzz = d_e_Vzz_upper
         q = b * e_vzz
-        d_stat_q = d_stat_b * e_vzz
+        d_stat_q = abs(d_stat_b * e_vzz)
         d_syst_q = np.sqrt(
             (e_vzz * d_syst_b) ** 2 +
             (b * d_e_vzz) ** 2
@@ -209,6 +213,7 @@ def quadrupol_moment(b, d_stat_b, d_syst_b, upper=True):
         return q, d_stat_q, d_syst_q, d_total, q_print
     else:
         return 0, 0, 0, 0, '0.000(0)[0]'
+
 
 ''' magnetic moments '''
 # µ = A µ_Ref / A_Ref * I / I_Ref
@@ -229,9 +234,9 @@ i_ref = 3 / 2
 # (spin, µ, d_µ)
 lit_magnetic_moments = {
     # '57_Ni': (3/2, -0.7975, 0.0014),  # not measured
-    '61_Ni': (61, 3/2, -0.75002, 0.00004),
-    '65_Ni': (65, 5/2, 0.69, 0.06),
-    '67_Ni': (67, 1/2, 0.601, 0.005)
+    '61_Ni': (61, 3 / 2, -0.75002, 0.00004),
+    '65_Ni': (65, 5 / 2, 0.69, 0.06),
+    '67_Ni': (67, 1 / 2, 0.601, 0.005)
 }
 
 # A_Ref_lower was taken from:
@@ -276,6 +281,7 @@ def mu_schmidt(I, l, proton, g_l=0., g_s=-3.826):
         mu_I = I / (I + 1) * ((I + 1.5) * g_l - 0.5 * g_s)
     return mu_I
 
+
 levels = [('2p 3/2', 1, 1.5), ('1f 5/2', 3, 2.5), ('2p 1/2', 1, 0.5), ('1g 9/2', 4, 4.5)]
 # levels_michael = [('3s 1/2', 0, 0.5), ('2d 3/2', 2, 1.5), ('2d 5/2', 2, 2.5), ('1g 7/2', 4, 3.5), ('1h 11/2', 5, 5.5)]
 # levels = levels_michael
@@ -284,7 +290,6 @@ mu_list_schmidt = [mu_schmidt(each[2], each[1], False) for each in levels]
 print('level\t\mu(\\nu) / \mu_N')
 for i, each in enumerate(levels):
     print('%s\t%.2f' % (each[0], mu_list_schmidt[i]))
-
 
 ''' crawling '''
 
@@ -314,11 +319,11 @@ print(freq, Physics.wavenumber(freq), 0.5 * Physics.wavenumber(freq))
 #
 ''' volt div ratio: '''
 volt_div_ratio = "{'accVolt': 1000.05, 'offset': {'prema': 1000.022, 'agilent': 999.985}}"  # from datasheet
-# volt_div_ratio = "{'accVolt': 999.95, 'offset': {'prema': 1000.272, 'agilent': 1000.235}}"  # found chisquare min
-# volt_div_ratio = "{'accVolt': 1000.05, 'offset': 1000.0}"
+# volt_div_ratio = "{'accVolt': 1000.05, 'offset': {'prema': 1000.442, 'agilent': 1000.405}}"  # found chisquare min
+# volt_div_ratio = "{'accVolt': 998.85, 'offset': {'prema': 999.222, 'agilent': 999.185}}"  # found chisquare min
 con = sqlite3.connect(db)
 cur = con.cursor()
-cur.execute('''UPDATE Files SET voltDivRatio = ?''', (volt_div_ratio, ))
+cur.execute('''UPDATE Files SET voltDivRatio = ?''', (volt_div_ratio,))
 con.commit()
 con.close()
 
@@ -335,9 +340,11 @@ transition_freq = 850343019.777  # value from NIST, mass unclear
 # #
 transition_freq += 1256.32701 - 460  # correction from fitting the 60_Ni references
 
+# # volt_div_ratio = "{'accVolt': 1000.05, 'offset': {'prema': 1000.442, 'agilent': 1000.405}}"  # found chisquare min
+# transition_freq = 850343804.45241  # see one line above ;)
 
-# fitting for the divider ratios: {'accVolt': 999.95, 'offset': {'prema': 1000.272, 'agilent': 1000.235}} :
-# transition_freq = 850343845.66301  # see one line above ;)
+# volt_div_ratio = "{'accVolt': 998.85, 'offset': {'prema': 999.222, 'agilent': 999.185}}" # found chisquare min
+# transition_freq = 850344366.10401  # see one line above ;)
 
 con = sqlite3.connect(db)
 cur = con.cursor()
@@ -345,53 +352,61 @@ cur.execute('''UPDATE Lines SET frequency = ?''', (transition_freq,))
 con.commit()
 con.close()
 
-
 ''' isotope shift and batch fitting'''
-# selected_isos = ['58_Ni', '60_Ni']
-selected_isos = isotopes
 
 
-def isotope_shift_batch_fitting(runs, isotopes, pars=None, combine_shift=True):
+def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes, pars=None, combine_shift=True):
+    """
+    get all configs for the used runs and fit those. then combine the reults.
+    Be careful with 67Ni here scaler numeration is different.
+    Currently only works for runs = ['wide_gate_asym', 'wide_gate_asym_67_Ni']
+    """
     # get all current configs:
     configs = {}
     files_with_error = []
     # print('run \t iso \t val \t statErr \t rChi')
-    # runs = ['narrow_gate_67_Ni']
+    print('will fit the isotopes: %s' % isotopes)
+    st_time = datetime.now()
+    print('started at: %s' % st_time)
 
-    for run in runs:
-        configs[run] = {}
-        for iso in isotopes:
-            con = sqlite3.connect(db)
-            cur = con.cursor()
-            cur.execute('''SELECT config, val, statErr, rChi FROM Combined WHERE iso = ? AND run = ? AND parname = ? ''',
-                        (iso, run, 'shift'))
-            data = cur.fetchall()
-            con.close()
-            if len(data):
-                config, val, statErr, rChi = data[0]
-                # print('%s \t %s \t %s \t %s \t %s \n %s' % (run, iso, val, statErr, rChi, config))
-                configs[run][iso] = ast.literal_eval(config)
+    # get all needed files, sorted by run:
+    # note: the config for 67Ni should also be stored under run_iso name
+    configs[run_isos] = {}
+    for iso in isotopes:
+        con = sqlite3.connect(db)
+        cur = con.cursor()
+        cur.execute(
+            '''SELECT config, val, statErr, rChi FROM Combined WHERE iso = ? AND run = ? AND parname = ? ''',
+            (iso, run_isos, 'shift'))
+        data = cur.fetchall()
+        con.close()
+        if len(data):
+            config, val, statErr, rChi = data[0]
+            # print('%s \t %s \t %s \t %s \t %s \n %s' % (run, iso, val, statErr, rChi, config))
+            configs[run_isos][iso] = ast.literal_eval(config)
+        else:
+            print('error: run: %s iso: %s no config found' % (run_isos, iso))
 
-    # batchfit all files in all configs
+    # sort files in cfg by ref or iso
     all_iso_shift_files = {}
-    for run_name, run_dicts in configs.items():
+    for run_name in [run_isos, run_67_ni]:
         all_iso_shift_files[run_name] = {'refs': [], 'isoFiles': []}
-        for iso, cfg in run_dicts.items():
-            # print(iso, cfg)
-            for each_cfg in cfg:
-                ref_before = each_cfg[0]
-                iso_files = each_cfg[1]
-                ref_after = each_cfg[2]
-                all_iso_shift_files[run_name]['refs'] += ref_before + ref_after
-                all_iso_shift_files[run_name]['isoFiles'] += iso_files
+        for iso, cfg in configs[run_isos].items():
+            if ('67' in iso and '67' in run_name) or ('67' not in iso and '67' not in run_name):
+                for each_cfg in cfg:
+                    ref_before = each_cfg[0]
+                    iso_files = each_cfg[1]
+                    ref_after = each_cfg[2]
+                    all_iso_shift_files[run_name]['refs'] += ref_before + ref_after
+                    all_iso_shift_files[run_name]['isoFiles'] += iso_files
         all_iso_shift_files[run_name]['refs'] = sorted(list(set(all_iso_shift_files[run_name]['refs'])))
         all_iso_shift_files[run_name]['isoFiles'] = sorted(list(set(all_iso_shift_files[run_name]['isoFiles'])))
 
     print('-------------- all_all_iso_shift_files -------------')
     print(all_iso_shift_files)
 
-    for run in runs:
-        print('run is: ', run, runs)
+    for run in [run_isos, run_67_ni]:
+        print('run is: ', run, [run_isos, run_67_ni])
         ret = TiTs.select_from_db(db, 'Lines.reference, lines.refRun',
                                   'Runs JOIN Lines ON Runs.lineVar = Lines.lineVar', [['Runs.run'], [run]],
                                   caller_name='Ni_analysis')
@@ -401,54 +416,62 @@ def isotope_shift_batch_fitting(runs, isotopes, pars=None, combine_shift=True):
             raise Exception('refRun not found')
         print('---------- working on %s with refRun: %s -------------' % (run, refRun))
         ref_fits, ref_files_w_error = BatchFit.batchFit(all_iso_shift_files[run]['refs'], db, refRun)
+        print('------------------- all ref files of run %s fitted -------------------' % run)
         iso_fits, iso_files_w_error = BatchFit.batchFit(all_iso_shift_files[run]['isoFiles'], db, run)
+        print('------------------- all files of run %s fitted -------------------' % run)
         files_with_error.append(ref_files_w_error)
         files_with_error.append(iso_files_w_error)
-        for iso in selected_isos:
-            do_stuff = False
-            if '67' in run:
-                if iso == '67_Ni':
-                    do_stuff = True
-                else:
-                    do_stuff = False
-            else:
-                if iso != '67_Ni':
-                    do_stuff = True
-            if do_stuff:
-                if pars is not None:
-                    for par in pars:
-                        Analyzer.combineRes(iso, par, run, db)  # create db entry then add error formulas
-                        if par in ['sigma', 'Al', 'Au', 'Bl', 'Bu']:
-                            con = sqlite3.connect(db)
-                            cur = con.cursor()
-                            syst_error = str('systE(accVolt_d=%s, offset_d=%s)' % ('1.5 * 10 ** -4', '1.5 * 10 ** -4'))
-                            cur.execute('''UPDATE Combined SET systErrForm = ? WHERE parname = ?''', (syst_error, par))
-                            cur.execute(''' UPDATE Combined SET statErrForm = ? ''', ('applyChi(err, rChi)',))
-                            con.commit()
-                            con.close()
-                            Analyzer.combineRes(iso, par, run, db)  # then combine again
 
-                if iso != '60_Ni' and combine_shift:
-                    Analyzer.combineShift(iso, run, db, show_plot=False)  # create db entry then add error formulas
+    # rename the fit reults for 'wide_gate_asym_67_Ni' to 'wide_gate_asym'
+    # in order to have all all in combined for run 'wide_gate_asym'
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    cur.execute('''DELETE FROM FitRes WHERE run = ? AND iso = ?''', (run_isos, '67_Ni'))  # delete old Fit results
+    con.commit()
+    cur.execute('''UPDATE FitRes SET run = ? WHERE iso = ?''', (run_isos, '67_Ni'))  # rename
+    con.commit()
+    con.close()
+
+    # now combine results
+    for iso in isotopes:
+        if pars is not None:
+            for par in pars:
+                Analyzer.combineRes(iso, par, run_isos, db)  # create db entry then add error formulas
+                if par in ['sigma', 'Al', 'Au', 'Bl', 'Bu']:
                     con = sqlite3.connect(db)
                     cur = con.cursor()
-                    cur.execute(''' UPDATE Combined SET statErrForm = ? ''', ('applyChi(err, rChi)',))
                     syst_error = str('systE(accVolt_d=%s, offset_d=%s)' % ('1.5 * 10 ** -4', '1.5 * 10 ** -4'))
-                    cur.execute('''UPDATE Combined SET systErrForm = ? WHERE parname = ?''', (syst_error, 'shift'))
+                    cur.execute('''UPDATE Combined SET systErrForm = ? WHERE parname = ?''', (syst_error, par))
+                    cur.execute(''' UPDATE Combined SET statErrForm = ? ''', ('applyChi(err, rChi)',))
                     con.commit()
                     con.close()
-                    Analyzer.combineShift(iso, run, db, show_plot=False)  # then combine again
+                    Analyzer.combineRes(iso, par, run_isos, db)  # then combine again
+
+        if iso != '60_Ni' and combine_shift:
+            Analyzer.combineShiftByTime(iso, run_isos, db, show_plot=False)  # create db entry then add error formulas
+            con = sqlite3.connect(db)
+            cur = con.cursor()
+            cur.execute(''' UPDATE Combined SET statErrForm = ? ''', ('applyChi(err, rChi)',))
+            syst_error = str('systE(accVolt_d=%s, offset_d=%s)' % ('1.5 * 10 ** -4', '1.5 * 10 ** -4'))
+            cur.execute('''UPDATE Combined SET systErrForm = ? WHERE parname = ?''', (syst_error, 'shift'))
+            con.commit()
+            con.close()
+            Analyzer.combineShiftByTime(iso, run_isos, db, show_plot=False)  # then combine again
+    done_time = datetime.now()
+    elapsed = done_time - st_time
+    print('finished bacthfitting at %s after %.1f min' % (done_time, elapsed.seconds / 60))
     return files_with_error
+
 
 # Batchfitting and parameter combination Isotope Shift ...
 
-# files_w_err = isotope_shift_batch_fitting(runs, isotopes, pars=['center', 'Al', 'Au', 'Bl', 'Bu'])
-# # files_w_err = isotope_shift_batch_fitting(
-# #     ['wide_gate_asym_free'], even_isotopes, pars=['centerAsym', 'IntAsym'], combine_shift=False)
+
+# files_w_err = isotope_shift_batch_fitting(
+#     'wide_gate_asym', 'wide_gate_asym_67_Ni', isotopes, pars=['center', 'Al', 'Au', 'Bl', 'Bu'], combine_shift=True)
 # print('--------------------------------------------------------------------')
-# print('files with error during batchfit: ', zip(runs, files_w_err))
+# print('files with error during batchfit: ', (['wide_gate_asym', 'wide_gate_asym_67_Ni'], files_w_err))
 # print('--------------------------------------------------------------------')
-# raise Exception('got until here wohooo, remember to copy 67_Ni results now!')
+
 
 ''' Divider Ratio Determination '''
 acc_div_start = 1000.05
@@ -500,7 +523,7 @@ def chi_square_finder(acc_dev_list, offset_dev_list, runs):
             # combineRes only when happy with voltdivratio, otherwise no use...
             # [[Analyzer.combineRes(iso, par, run, db) for iso in stables] for par in pars]
             try:
-                shifts = {iso: Analyzer.combineShift(iso, run_chi_finder, db) for iso in
+                shifts = {iso: Analyzer.combineShiftByTime(iso, run_chi_finder, db) for iso in
                           stables if iso not in ['60_Ni']}
             except Exception as e:
                 shifts = {}
@@ -517,6 +540,19 @@ def chi_square_finder(acc_dev_list, offset_dev_list, runs):
             # fit_res[acc_vol_ratio_index].append(fitres)
             offset_prema_div_ratios[acc_vol_ratio_index].append(curent_prema_off_div)
             offset_agi_div_ratios[acc_vol_ratio_index].append(current_agi_off_div)
+            try:
+                off_str = str(round(current_agi_off_div, 3)).replace('.', '_')
+                acc_str = str(round(current_acc_div, 3)).replace('.', '_')
+                save_name = os.path.join(workdir, 'divider_ratio', 'acc_%s_off_%s.png' % (acc_str, off_str))
+                MPLPlotter.plot_par_from_combined(db, ['wide_gate_asym'], list(literature_shifts.keys()), 'shift',
+                                                  literature_dict=literature_shifts, plot_runs_seperate=False,
+                                                  literature_name='A. Steudel (1980)\n '
+                                                                  'acc_ratio: %s\n off_ratio: %s' % (acc_str, off_str),
+                                                  show_pl=False,
+                                                  save_path=save_name)
+                MPLPlotter.clear()
+            except Exception as e:
+                print('could not plot, moving on, error was %s' % e)
 
         acc_vol_ratio_index += 1
         chisquares.append([])
@@ -565,7 +601,7 @@ def chisquare_finder_kepco(run_chi_finder, kepco_dif_list):
         isotope_shift_batch_fitting([run_chi_finder], stables)
 
         try:
-            shifts = {iso: Analyzer.combineShift(iso, run_chi_finder, db) for iso in
+            shifts = {iso: Analyzer.combineShiftByTime(iso, run_chi_finder, db) for iso in
                       stables if iso not in ['60_Ni']}
         except Exception as e:
             shifts = {}
@@ -595,14 +631,56 @@ def chisquare_finder_kepco(run_chi_finder, kepco_dif_list):
 
     return best_chi_sq_kepco
 
+
+# remember:
+#  acc_div_start = 1000.05
+# offset_prema_div_start = 1000.022
+# offset_agi_div_start = 999.985
+
+# acc_volt_deviation_list = [-120]  # each ele will eb divided by 100 and then added to the current ratio
+# off_volt_deviation_list = [-80]  # each ele will eb divided by 100 and then added to the current ratio
+# # acc_volt_deviation_list = list(range(-190, -125, 5))
+# # off_volt_deviation_list = list(range(-30, 85, 5))
+# # each ele will eb divided by 100 and then added to the current ratio
+# # off_volt_deviation_list += list(range(-14, 10, 3))
+#
+# # stables.remove('61_Ni')
+# # literature_shifts.pop('61_Ni')
+# # print('stables: %s' % stables)
+#
+# fits_to_fit = len(acc_volt_deviation_list) * len(off_volt_deviation_list)
+# start_time = datetime.now()
+# # time_per_analysis_s = 180  # roughly
+# time_per_analysis_s = 155  # roughly fixed Al Bl
+# # time_per_analysis_s = 62  # roughly no 61Ni
+# expected_elaps_m = time_per_analysis_s * fits_to_fit / 60
+# expect_stop = start_time + timedelta(seconds=(time_per_analysis_s * fits_to_fit))
+# print('Fitting of %s runs started at %s, should be finished in %.1f m at %s'
+#       % (fits_to_fit, start_time, expected_elaps_m, expect_stop))
+#
+# in_ret = input('continue? [y/n]')
+# if in_ret not in ['y', 'Y']:
+#     raise Exception('decided to stop')
+# start_time = datetime.now()  # overwrite because start time need time to decide
 # acc_ratios, offset_prema_div_ratios, offset_agi_div_ratios, chisquares = chi_square_finder(
-#     list(range(-25, 35, 5)), list(range(-40, 40, 5)), ['wide_gate_asym'])
-# acc_ratios, offset_prema_div_ratios, offset_agi_div_ratios, chisquares = chi_square_finder(
-#     [-10], [25], ['wide_gate_asym'])
+#     acc_volt_deviation_list, off_volt_deviation_list, ['wide_gate_asym'])
 # print('----------------------------')
 # print('result of chisquare min: ', acc_ratios, offset_prema_div_ratios, offset_agi_div_ratios, chisquares)
 # print('----------------------------')
-# raise Exception('wohooo volt div determination done!')
+# done_time = datetime.now()
+# elapsed = done_time - start_time
+# time_per_fit = elapsed.seconds / fits_to_fit
+# print('done at %s after %.1f min with roughly %.1f s/ratio_analysis' % (done_time, elapsed.seconds / 60, time_per_fit))
+# # raise Exception('wohooo volt div determination done!')
+#
+# if len(acc_volt_deviation_list) == 1:
+#     # make 2d plot
+#     import MPLPlotter
+#
+#     deg_freedom = 3  # for leaving out 61_Ni
+#     red_ch_sq = np.array(chisquares[0]) / deg_freedom
+#     MPLPlotter.plot([offset_agi_div_ratios[0], red_ch_sq])
+#     MPLPlotter.show(True)
 
 #
 # the error for the voltage determination has been found to be:
@@ -621,14 +699,14 @@ def chisquare_finder_kepco(run_chi_finder, kepco_dif_list):
 
 
 # try:
-#     shifts = {iso: Analyzer.combineShift(iso, 'narrow_gate_asym', db) for iso in
+#     shifts = {iso: Analyzer.combineShiftByTime(iso, 'narrow_gate_asym', db) for iso in
 #               isotopes if iso not in ['67_Ni', '60_Ni']}
 # except Exception as e:
 #     shifts = {}
 #     print('error while combining shifts: %s' % e)
 #
 # try:
-#     shifts = {iso: Analyzer.combineShift(iso, 'narrow_gate_asym_67_Ni', db) for iso in
+#     shifts = {iso: Analyzer.combineShiftByTime(iso, 'narrow_gate_asym_67_Ni', db) for iso in
 #               ['67_Ni']}
 # except Exception as e:
 #     shifts = {}
@@ -656,9 +734,9 @@ try:
     #     out_str = out_str.replace('.', ',')
     #     print(out_str)
     print('\n\n\niso\tAu\td_Au\tAl\td_Al\tAu/Al\td_Au/Al')
-    a_fac_runs = runs
+    a_fac_runs = ['wide_gate_asym', 'wide_gate_asym_67_Ni']
 
-    al = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Al', print_extracted=True)
+    al = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Al', print_extracted=False)
     au = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Au', print_extracted=False)
     bl = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Bl', print_extracted=False)
     bu = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Bu', print_extracted=False)
@@ -683,12 +761,12 @@ try:
             if data:
                 nucl_spin = data[0][0]
             if a_low[0]:
-                a_up = au[run][iso]
-                b_up = bu[run][iso]
-                b_low = bl[run][iso]
+                a_up = (0, 0, 0, 0) if au[run][iso] == (None, None, None, None) else au[run][iso]  # when fixed use 0's
+                b_up = (0, 0, 0, 0) if bu[run][iso] == (None, None, None, None) else bu[run][iso]
+                b_low = (0, 0, 0, 0) if bl[run][iso] == (None, None, None, None) else bl[run][iso]
                 ratio = a_up[0] / a_low[0]
                 delta_ratio = np.sqrt(
-                    (a_up[1]/a_low[0]) ** 2 + (a_up[0] * a_low[1] / (a_low[0] ** 2)) ** 2
+                    (a_up[1] / a_low[0]) ** 2 + (a_up[0] * a_low[1] / (a_low[0] ** 2)) ** 2
                 )
                 b_ratio = 0.0
                 delta_b_ratio = 0.0
@@ -722,16 +800,16 @@ try:
                       '\t%.3f(%.0f)[%.0f]\t%.2f\t%.3f\t%.3f'
                       '\t%s\t%s\t%s'
                       '\t%s' % (
-                    iso, nucl_spin,
-                    a_up[0], a_up[1] * 1000, a_up[2] * 1000, a_up[3],
-                    a_low[0], a_low[1] * 1000, a_low[2] * 1000, a_low[3], ratio, delta_ratio,
-                    b_up[0], b_up[1] * 1000, b_up[2] * 1000, b_up[3],
-                    b_low[0], b_low[1] * 1000, b_low[2] * 1000, b_low[3], b_ratio, delta_b_ratio,
-                    q_from_lower[4], q_from_upper[4], q_mean_print,
-                    mu_print
-                ))
-                q_moments.append((mass, nucl_spin, q_from_lower[0], q_from_lower[1]))
-                magn_moments.append((mass, nucl_spin, mu[0], mu[1]))
+                          iso, nucl_spin,
+                          a_up[0], a_up[1] * 1000, a_up[2] * 1000, a_up[3],
+                          a_low[0], a_low[1] * 1000, a_low[2] * 1000, a_low[3], ratio, delta_ratio,
+                          b_up[0], b_up[1] * 1000, b_up[2] * 1000, b_up[3],
+                          b_low[0], b_low[1] * 1000, b_low[2] * 1000, b_low[3], b_ratio, delta_b_ratio,
+                          q_from_lower[4], q_from_upper[4], q_mean_print,
+                          mu_print
+                      ))
+                q_moments.append((mass, nucl_spin, q_from_lower[0], q_from_lower[3]))
+                magn_moments.append((mass, nucl_spin, mu[0], mu[3]))
 
     print('magnetic moments: %s ' % magn_moments)
     # optimize schmidt values:
@@ -766,7 +844,6 @@ try:
     print('level\t\mu(\\nu) / \mu_N')
     for i, each in enumerate(mu_list_schmidt):
         print('%s\t%.2f' % (each[0], each[2]))
-
 
     # plot magnetic moments
     magn_mom_fig = MPLPlotter.plt.figure(0, facecolor='white')
@@ -820,7 +897,7 @@ try:
                 hor_line = MPLPlotter.plt.axhline(each[2], label='eff. schmidt: %s' % each[0], color=colors[i])
     MPLPlotter.plt.legend(loc=2, title='magnetic moments')
     MPLPlotter.show(True)
-    
+
     # plot g factor g = µ/I
     g_fac_fig = MPLPlotter.plt.figure(1, facecolor='white')
     g_fac_axes = MPLPlotter.plt.axes()
@@ -834,7 +911,7 @@ try:
     for i, spin in enumerate([0.5, 1.5, 2.5]):
         spin_list_x = [mu[0] for mu in magn_moments if mu[1] == spin]
         spin_list_y = [mu[2] / spin for mu in magn_moments if mu[1] == spin]
-        spin_list_y_err = [mu[3] /spin for mu in magn_moments if mu[1] == spin]
+        spin_list_y_err = [mu[3] / spin for mu in magn_moments if mu[1] == spin]
         if len(spin_list_x):
             label = 'spin: %s' % spin
             spin_line, cap_line, barline = MPLPlotter.plt.errorbar(
@@ -944,13 +1021,13 @@ except Exception as e:
 
 ''' results: '''
 # acc_divs_result = acc_ratios
-# off_divs_result = offset_div_ratios[0]
+# off_divs_result = offset_agi_div_ratios[0]
 # chisquares_result = chisquares
 #
 # import PyQtGraphPlotter as PGplt
 # from PyQt5 import QtWidgets
 # import sys
-#
+# print('plotting image')
 # x_range = (float(np.min(acc_divs_result)), np.max(acc_divs_result))
 # x_scale = np.mean(np.ediff1d(acc_divs_result))
 # y_range = (float(np.min(off_divs_result)), np.max(off_divs_result))
@@ -970,141 +1047,140 @@ except Exception as e:
 # except Exception as e:
 #     print(e)
 # main_win.show()
-#
+# input('anything to proceed')
 # app.exec()
-
+# input('anything to proceed')
 ''' Run comparison '''
-runs_comp = ['wide_gate', 'wide_gate_asym']
-shift_ret = Tools.extract_from_combined(runs_comp, db, isotopes, 'shift')
-wide_g_sym = shift_ret['wide_gate']
-# sym['67_Ni'] = shift_ret['narrow_gate_67_Ni']['67_Ni']
-wide_g = shift_ret['wide_gate_asym']
-# asym['67_Ni'] = shift_ret['narrow_gate_asym_67_Ni']['67_Ni']
-x = []
-y_sym = []
-y_dif = []
-y_err_sym = []
-y_err_asym = []
-for iso, shift_tuple in sorted(wide_g_sym.items()):
-    x += int(iso[:2]),
-    y_sym += 0,
-    y_dif += shift_tuple[0] - wide_g[iso][0],
-    # y_err_sym += np.sqrt(shift_tuple[1] ** 2 + shift_tuple[2] ** 2),
-    # y_err_asym += np.sqrt(wide_g[iso][1] ** 2 + wide_g[iso][2] ** 2),
-    # only statistical errors:
-    y_err_sym += shift_tuple[1],
-    y_err_asym += wide_g[iso][1],
-
-# MPLPlotter.plt.errorbar([new_x-0.1 for new_x in x], y_sym, y_err_sym,
-#                         marker='o', color='b', linestyle='None', label='wide - wide')
-# MPLPlotter.plt.errorbar([new_x+0.1 for new_x in x], y_dif, y_err_asym,
-#                         marker='o', color='r', linestyle='None', label='wide - wide_asym')
-# MPLPlotter.get_current_figure().set_facecolor('w')
-# MPLPlotter.plt.margins(0.1)
-# MPLPlotter.plt.xlabel('A')
-# MPLPlotter.plt.ylabel('shift(wide) - shift(wide_asym) /MHz')
-# MPLPlotter.plt.legend()
-# MPLPlotter.plt.show(True)
-
-extract_dict = Tools.extract_from_fitRes(-1, db, isotopes)
-print('extracted dict:', extract_dict)
-sym_fitres = extract_dict['wide_gate']
-# sym_fitres = TiTs.merge_dicts(extract_dict['wide_gate'], extract_dict['wide_gate_67_Ni'])
-asym_fitres = extract_dict['wide_gate_asym']
-# asym_fitres = TiTs.merge_dicts(extract_dict['wide_gate_asym'], extract_dict['wide_gate_asym_67_Ni'])
-
-run_nums = []
-r_chi_sym = []
-r_chi_diff = []
-center_diff = []
-center_diff_s_err = []
-center_diff_a_err = []
-au_dif = []
-au_dif_s_err = []
-au_dif_a_err = []
-al_dif = []
-al_dif_s_err = []
-al_dif_a_err = []
-bu_diff = []
-bu_dif_s_err = []
-bu_dif_a_err = []
-bl_diff = []
-bl_dif_s_err = []
-bl_dif_a_err = []
-sigma_dif = []
-sigma_dif_s_err = []
-sigma_dif_a_err = []
-for file_name, fitres_tpl in sorted(sym_fitres.items()):
-    sym_iso, sym_run_num, sym_r_chi_sq, sym_pars_dict = fitres_tpl
-    asym_iso, asym_run_num, asym_r_chi_sq, asym_pars_dict = asym_fitres.get(file_name, [None] * 4)
-    if asym_iso is not None:
-        run_nums += sym_run_num,
-        r_chi_sym += sym_r_chi_sq,
-        r_chi_diff += asym_r_chi_sq,
-        center_diff += [sym_pars_dict['center'][0] - asym_pars_dict['center'][0]]
-        center_diff_s_err += sym_pars_dict['center'][1],
-        center_diff_a_err += asym_pars_dict['center'][1],
-        au_dif += [sym_pars_dict['Au'][0] - asym_pars_dict['Au'][0]]
-        au_dif_s_err += sym_pars_dict['Au'][1],
-        au_dif_a_err += asym_pars_dict['Au'][1],
-        al_dif += [sym_pars_dict['Al'][0] - asym_pars_dict['Al'][0]]
-        al_dif_s_err += sym_pars_dict['Al'][1],
-        al_dif_a_err += asym_pars_dict['Al'][1],
-        bu_diff += [sym_pars_dict['Bu'][0] - asym_pars_dict['Bu'][0]]
-        bu_dif_s_err += sym_pars_dict['Bu'][1],
-        bu_dif_a_err += asym_pars_dict['Bu'][1],
-        bl_diff += [sym_pars_dict['Bl'][0] - asym_pars_dict['Bl'][0]]
-        bl_dif_s_err += sym_pars_dict['Bl'][1],
-        bl_dif_a_err += asym_pars_dict['Bl'][1],
-        sigma_dif += [sym_pars_dict['sigma'][0] - asym_pars_dict['sigma'][0]]
-        sigma_dif_s_err += sym_pars_dict['sigma'][1],
-        sigma_dif_a_err += asym_pars_dict['sigma'][1],
-
-# plot rChi square difference:
-# MPLPlotter.clear()
-# MPLPlotter.plt.errorbar([new_x-0.1 for new_x in run_nums], r_chi_sym, marker='o', color='b', linestyle='None')
-# MPLPlotter.plt.errorbar([new_x+0.1 for new_x in run_nums], r_chi_diff, marker='o', color='r', linestyle='None')
-# MPLPlotter.get_current_figure().set_facecolor('w')
-# MPLPlotter.plt.margins(0.1)
-# MPLPlotter.plt.xlabel('run number')
-# MPLPlotter.plt.ylabel('rChiSq')
-# MPLPlotter.plt.show(True)
-
-# plot all parameters as difference between par(Voigt) - par(asymVoigt)
-# for par, dif_list, sym_err, asym_err in [('center', center_diff, center_diff_s_err, center_diff_a_err),
-#                                          ('Au', au_dif, au_dif_s_err, au_dif_a_err),
-#                                          ('Al', al_dif, al_dif_s_err, al_dif_a_err),
-#                                          ('Bu', bu_diff, bu_dif_s_err, bu_dif_a_err),
-#                                          ('Bl', bl_diff, bl_dif_s_err, bl_dif_a_err),
-#                                          ('sigma', sigma_dif, sigma_dif_s_err, sigma_dif_a_err)]:
-#     MPLPlotter.plt.errorbar(
-#         [new_x-0.1 for new_x in run_nums], [0] * len(dif_list), sym_err, marker='o', color='b', linestyle='None')
-#     MPLPlotter.plt.errorbar(
-#         [new_x+0.1 for new_x in run_nums], dif_list, asym_err, marker='o', color='r', linestyle='None')
-#     MPLPlotter.get_current_figure().set_facecolor('w')
-#     MPLPlotter.plt.margins(0.1)
-#     MPLPlotter.plt.xlabel('run number')
-#     MPLPlotter.plt.ylabel('%s(Voigt) - %s(asymVoigt)' % (par, par))
-#     MPLPlotter.plt.show(True)
-
-
-
+# for now use wide_gate_asym
+# runs_comp = ['wide_gate', 'wide_gate_asym']
+# shift_ret = Tools.extract_from_combined(runs_comp, db, isotopes, 'shift')
+# wide_g_sym = shift_ret['wide_gate']
+# # sym['67_Ni'] = shift_ret['narrow_gate_67_Ni']['67_Ni']
+# wide_g = shift_ret['wide_gate_asym']
+# # asym['67_Ni'] = shift_ret['narrow_gate_asym_67_Ni']['67_Ni']
+# x = []
+# y_sym = []
+# y_dif = []
+# y_err_sym = []
+# y_err_asym = []
+# for iso, shift_tuple in sorted(wide_g_sym.items()):
+#     x += int(iso[:2]),
+#     y_sym += 0,
+#     y_dif += shift_tuple[0] - wide_g[iso][0],
+#     # y_err_sym += np.sqrt(shift_tuple[1] ** 2 + shift_tuple[2] ** 2),
+#     # y_err_asym += np.sqrt(wide_g[iso][1] ** 2 + wide_g[iso][2] ** 2),
+#     # only statistical errors:
+#     y_err_sym += shift_tuple[1],
+#     y_err_asym += wide_g[iso][1],
+#
+# # MPLPlotter.plt.errorbar([new_x-0.1 for new_x in x], y_sym, y_err_sym,
+# #                         marker='o', color='b', linestyle='None', label='wide - wide')
+# # MPLPlotter.plt.errorbar([new_x+0.1 for new_x in x], y_dif, y_err_asym,
+# #                         marker='o', color='r', linestyle='None', label='wide - wide_asym')
+# # MPLPlotter.get_current_figure().set_facecolor('w')
+# # MPLPlotter.plt.margins(0.1)
+# # MPLPlotter.plt.xlabel('A')
+# # MPLPlotter.plt.ylabel('shift(wide) - shift(wide_asym) /MHz')
+# # MPLPlotter.plt.legend()
+# # MPLPlotter.plt.show(True)
+#
+# extract_dict = Tools.extract_from_fitRes(-1, db, isotopes)
+# print('extracted dict:', extract_dict)
+# sym_fitres = extract_dict['wide_gate']
+# # sym_fitres = TiTs.merge_dicts(extract_dict['wide_gate'], extract_dict['wide_gate_67_Ni'])
+# asym_fitres = extract_dict['wide_gate_asym']
+# # asym_fitres = TiTs.merge_dicts(extract_dict['wide_gate_asym'], extract_dict['wide_gate_asym_67_Ni'])
+#
+# run_nums = []
+# r_chi_sym = []
+# r_chi_diff = []
+# center_diff = []
+# center_diff_s_err = []
+# center_diff_a_err = []
+# au_dif = []
+# au_dif_s_err = []
+# au_dif_a_err = []
+# al_dif = []
+# al_dif_s_err = []
+# al_dif_a_err = []
+# bu_diff = []
+# bu_dif_s_err = []
+# bu_dif_a_err = []
+# bl_diff = []
+# bl_dif_s_err = []
+# bl_dif_a_err = []
+# sigma_dif = []
+# sigma_dif_s_err = []
+# sigma_dif_a_err = []
+# for file_name, fitres_tpl in sorted(sym_fitres.items()):
+#     sym_iso, sym_run_num, sym_r_chi_sq, sym_pars_dict = fitres_tpl
+#     asym_iso, asym_run_num, asym_r_chi_sq, asym_pars_dict = asym_fitres.get(file_name, [None] * 4)
+#     if asym_iso is not None:
+#         run_nums += sym_run_num,
+#         r_chi_sym += sym_r_chi_sq,
+#         r_chi_diff += asym_r_chi_sq,
+#         center_diff += [sym_pars_dict['center'][0] - asym_pars_dict['center'][0]]
+#         center_diff_s_err += sym_pars_dict['center'][1],
+#         center_diff_a_err += asym_pars_dict['center'][1],
+#         au_dif += [sym_pars_dict['Au'][0] - asym_pars_dict['Au'][0]]
+#         au_dif_s_err += sym_pars_dict['Au'][1],
+#         au_dif_a_err += asym_pars_dict['Au'][1],
+#         al_dif += [sym_pars_dict['Al'][0] - asym_pars_dict['Al'][0]]
+#         al_dif_s_err += sym_pars_dict['Al'][1],
+#         al_dif_a_err += asym_pars_dict['Al'][1],
+#         bu_diff += [sym_pars_dict['Bu'][0] - asym_pars_dict['Bu'][0]]
+#         bu_dif_s_err += sym_pars_dict['Bu'][1],
+#         bu_dif_a_err += asym_pars_dict['Bu'][1],
+#         bl_diff += [sym_pars_dict['Bl'][0] - asym_pars_dict['Bl'][0]]
+#         bl_dif_s_err += sym_pars_dict['Bl'][1],
+#         bl_dif_a_err += asym_pars_dict['Bl'][1],
+#         sigma_dif += [sym_pars_dict['sigma'][0] - asym_pars_dict['sigma'][0]]
+#         sigma_dif_s_err += sym_pars_dict['sigma'][1],
+#         sigma_dif_a_err += asym_pars_dict['sigma'][1],
+#
+# # plot rChi square difference:
+# # MPLPlotter.clear()
+# # MPLPlotter.plt.errorbar([new_x-0.1 for new_x in run_nums], r_chi_sym, marker='o', color='b', linestyle='None')
+# # MPLPlotter.plt.errorbar([new_x+0.1 for new_x in run_nums], r_chi_diff, marker='o', color='r', linestyle='None')
+# # MPLPlotter.get_current_figure().set_facecolor('w')
+# # MPLPlotter.plt.margins(0.1)
+# # MPLPlotter.plt.xlabel('run number')
+# # MPLPlotter.plt.ylabel('rChiSq')
+# # MPLPlotter.plt.show(True)
+#
+# # plot all parameters as difference between par(Voigt) - par(asymVoigt)
+# # for par, dif_list, sym_err, asym_err in [('center', center_diff, center_diff_s_err, center_diff_a_err),
+# #                                          ('Au', au_dif, au_dif_s_err, au_dif_a_err),
+# #                                          ('Al', al_dif, al_dif_s_err, al_dif_a_err),
+# #                                          ('Bu', bu_diff, bu_dif_s_err, bu_dif_a_err),
+# #                                          ('Bl', bl_diff, bl_dif_s_err, bl_dif_a_err),
+# #                                          ('sigma', sigma_dif, sigma_dif_s_err, sigma_dif_a_err)]:
+# #     MPLPlotter.plt.errorbar(
+# #         [new_x-0.1 for new_x in run_nums], [0] * len(dif_list), sym_err, marker='o', color='b', linestyle='None')
+# #     MPLPlotter.plt.errorbar(
+# #         [new_x+0.1 for new_x in run_nums], dif_list, asym_err, marker='o', color='r', linestyle='None')
+# #     MPLPlotter.get_current_figure().set_facecolor('w')
+# #     MPLPlotter.plt.margins(0.1)
+# #     MPLPlotter.plt.xlabel('run number')
+# #     MPLPlotter.plt.ylabel('%s(Voigt) - %s(asymVoigt)' % (par, par))
+# #     MPLPlotter.plt.show(True)
 
 ''' King Plot Analysis '''
-# delta_lit_radii.pop('62_Ni')  # just to see whoch point is what
-king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, font_size=18)
-# runs = ['narrow_gate', 'narrow_gate_67_Ni', 'narrow_gate_asym', 'narrow_gate_asym_67_Ni']
-# runs = ['wide_gate_asym', 'wide_gate_asym_67_Ni']
+run = 'wide_gate_asym'
+
+# raise (Exception('stopping before king fit'))
+# delta_lit_radii.pop('62_Ni')  # just to see which point is what
+king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, font_size=18, ref_run=run)
 # run = 'narrow_gate_asym'
-run = runs[0]
 # isotopes = sorted(delta_lit_radii.keys())
-print(isotopes)
-king.kingFit(alpha=0, findBestAlpha=False, run=run, find_slope_with_statistical_error=False)
-king.calcChargeRadii(isotopes=isotopes, run=run)
+# print(isotopes)
+# king.kingFit(alpha=0, findBestAlpha=False, run=run, find_slope_with_statistical_error=False)
+# king.calcChargeRadii(isotopes=isotopes, run=run, plot_evens_seperate=True)
 
 # king.kingFit(alpha=378, findBestAlpha=True, run=run, find_slope_with_statistical_error=True)
 king.kingFit(alpha=362, findBestAlpha=True, run=run)
-king.calcChargeRadii(isotopes=isotopes, run=run, plot_evens_seperate=True)
+radii_alpha = king.calcChargeRadii(isotopes=isotopes, run=run, plot_evens_seperate=True)
+print('radii with alpha', radii_alpha)
 # king.calcChargeRadii(isotopes=isotopes, run=run)
 #
 # # print / plot isotope shift:
@@ -1125,7 +1201,11 @@ if data:
         iso_shift_plot_data_y.append(float(iso[1]))
         err = np.sqrt(iso[2] ** 2 + iso[3] ** 2)
         iso_shift_plot_data_err.append(err)
-        print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))
+        radii_iso, radii_iso_err = (radii_alpha.get(iso[0], [0])[0], radii_alpha.get(iso[0], [0, 0])[1])
+        # print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))
+        # for latex:
+        print('$ %s $ & %.1f(%.0f)[%.0f] & %.3f(%.0f) \\\\'
+              % (iso[0][:2], iso[1], iso[2] * 10, iso[3] * 10, radii_iso, radii_iso_err * 1000))
 #
 MPLPlotter.plt.figure(facecolor='w')
 fontsize_ticks = 18
@@ -1137,7 +1217,6 @@ MPLPlotter.plt.margins(0.1)
 MPLPlotter.plt.xlabel('A', fontsize=fontsize_ticks)
 MPLPlotter.plt.ylabel(r'$\delta \nu$ (MHz)', fontsize=fontsize_ticks)
 MPLPlotter.show(True)
-
 
 # just a plot for the a factor of 61Ni:
 # a_low_61_Ni_exp = al['narrow_gate']['61_Ni']

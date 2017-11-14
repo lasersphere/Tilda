@@ -104,7 +104,7 @@ class InteractiveFit(object):
     def getPars(self):
         return zip(self.fitter.npar, self.fitter.par, self.fitter.fix)
             
-    def fit(self):
+    def fit(self, show=True):
         self.fitter.fit()
         pars = self.fitter.par
         plot.clear()
@@ -116,7 +116,7 @@ class InteractiveFit(object):
             plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize)
         else:
             plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
-        plot.show()
+        plot.show(show)
         
     def reset(self):
         self.fitter.reset()
@@ -169,4 +169,8 @@ class InteractiveFit(object):
         else:
             plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
         plot.show()
-    
+
+    def save_fig_to(self, path):
+        plot.save(path)
+        print('interactive fit saved_to:', path)
+

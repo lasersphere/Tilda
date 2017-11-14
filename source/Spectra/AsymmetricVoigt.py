@@ -25,10 +25,10 @@ class AsymmetricVoigt(object):
     def __init__(self, iso):
         '''Initialize'''
         self.iso = iso
-        self.nPar = 4
+        self.nPar = 5
 
         self.norm = 1
-        self.asym_norm = 1
+        self.asym_norm = 1  # norming facotr for all side peaks
         self.diff_doppl = 1
         self.calc_diff_doppl(iso.shape['laserFreq'], iso.shape['col'])
 
@@ -36,15 +36,19 @@ class AsymmetricVoigt(object):
         self.pGam = 1
         self.p_asym_center = 2  # position of the center of the 2nd voigt -> asymmetric peak
         self.p_asym_int = 3  # position of the relative intensity in the asymmetric peak
-        self.recalc([iso.shape['gau'], iso.shape['lor'], iso.shape['centerAsym'], iso.shape['IntAsym']])
+        self.p_n_of_peaks = 4  #  position of the number of peaks
+        self.recalc([iso.shape['gau'], iso.shape['lor'], iso.shape['centerAsym'],
+                     iso.shape['IntAsym'], iso.shape['nOfPeaks']])
 
     def evaluate(self, x, p):
         """ Return the value of the hyperfine structure at point x / MHz """
         ret = Physics.voigt(x, p[self.pSig], p[self.pGam]) / self.norm
 
-        side_peak_freq = p[self.p_asym_center] * self.diff_doppl
+        for peak_num in range(p[self.p_n_of_peaks]):
 
-        ret += Physics.voigt(x - side_peak_freq, p[self.pSig], p[self.pGam]) / self.asym_norm
+            side_peak_freq = p[self.p_asym_center] * self.diff_doppl * (peak_num + 1)
+
+            ret += Physics.voigt(x - side_peak_freq, p[self.pSig], p[self.pGam]) / (self.asym_norm * (2 ** peak_num))
 
         return ret
     
@@ -55,11 +59,11 @@ class AsymmetricVoigt(object):
 
     def leftEdge(self, p):
         """Return the left edge of the spectrum in Mhz"""
-        return -5 * (p[self.pSig] + p[self.pGam])
+        return -10 * (p[self.pSig] + p[self.pGam])
     
     def rightEdge(self, p):
         """Return the right edge of the spectrum in MHz"""
-        return 5 * (p[self.pSig] + p[self.pGam])
+        return 10 * (p[self.pSig] + p[self.pGam])
     
     def getPars(self, pos = 0):
         """Return list of initial parameters and initialize positions"""
@@ -67,18 +71,19 @@ class AsymmetricVoigt(object):
         self.pGam = pos + 1
         self.p_asym_center = pos + 2
         self.p_asym_int = pos + 3
+        self.p_n_of_peaks = pos + 4
 
         return [self.iso.shape['gau'], self.iso.shape['lor'],
-                self.iso.shape['centerAsym'], self.iso.shape['IntAsym']]
+                self.iso.shape['centerAsym'], self.iso.shape['IntAsym'], self.iso.shape['nOfPeaks']]
     
     def getParNames(self):
         '''Return list of the parameter names'''
-        return ['sigma', 'gamma', 'centerAsym', 'IntAsym']
+        return ['sigma', 'gamma', 'centerAsym', 'IntAsym', 'nOfPeaks']
     
     def getFixed(self):
         '''Return list of parmeters with their fixed-status'''
         return [self.iso.fixShape['gau'], self.iso.fixShape['lor'],
-                self.iso.fixShape['centerAsym'], self.iso.fixShape['IntAsym']]
+                self.iso.fixShape['centerAsym'], self.iso.fixShape['IntAsym'], self.iso.fixShape['nOfPeaks']]
 
     def calc_diff_doppl(self, laser_freq, col):
         """ calculate the differential doppler factor for this shape and store it in self.diff_doppl """

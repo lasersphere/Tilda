@@ -34,6 +34,7 @@ def select_from_db(db, vars_select, var_from, var_where=[], addCond='', caller_n
         list, with of tuples with values if success [(vars_select0, vars_select1...), (...)]
     """
     sql_cmd = ''
+    con = None
     try:
         con = sqlite3.connect(db)
         cur = con.cursor()
@@ -61,7 +62,8 @@ def select_from_db(db, vars_select, var_from, var_where=[], addCond='', caller_n
         print('error in database access while trying to execute:\n', sql_cmd, '\n', e)
         return None
     finally:
-        con.close()
+        if con is not None:
+            con.close()
 
 
 def merge_dicts(d1, d2):
@@ -276,7 +278,12 @@ def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
     scan_dict['pipeInternals']['curVoltInd'] = 0
     scan_dict['pipeInternals']['activeTrackNumber'] = 'None'
     scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
-    if float(scan_dict['isotopeData']['version']) <= 1.18:
+    try:
+        version = float(scan_dict['isotopeData']['version'])
+    except ValueError:  # MCP Data which was summed to an combined .xml file has version like 2.0.0.23,
+        version = 0.1
+        scan_dict['isotopeData']['version'] = '0.1'
+    if version <= 1.18:
         # after this version, those infos are stored within each track!
         # kept this for backwards compatibility
         scan_dict['measureVoltPars'] = get_meas_volt_dict(xml_etree)

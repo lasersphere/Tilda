@@ -23,7 +23,7 @@ class KingFitter(object):
     this is described in e.g. Hammen PhD Thesis 2013
     '''
 
-    def __init__ (self, db, litvals={}, showing=True, plot_y_mhz=True, font_size=12):
+    def __init__ (self, db, litvals={}, showing=True, plot_y_mhz=True, font_size=12, ref_run=-1):
         '''
         Import the litvals and initializes a KingFit, run can be specified, for run==-1 any shift results are chosen
         '''
@@ -45,11 +45,18 @@ class KingFitter(object):
         self.isotopeShiftSystErr = []
         self.run = []
         try:
-            self.ref = TiTs.select_from_db(self.db, 'reference', 'Lines', caller_name=__name__)[0][0]
-            self.ref_mass = TiTs.select_from_db(self.db, 'mass', 'Isotopes', [['iso'], [self.ref]], caller_name=__name__)[0][0]
+            if ref_run == -1:
+                self.ref = TiTs.select_from_db(self.db, 'reference', 'Lines', caller_name=__name__)[0][0]
+            else:
+                self.ref = TiTs.select_from_db(self.db, 'reference', 'Lines',
+                                               [['refRun'], [ref_run]],
+                                               caller_name=__name__)[0][0]
+            self.ref_mass = TiTs.select_from_db(self.db, 'mass', 'Isotopes',
+                                                [['iso'], [self.ref]], caller_name=__name__)[0][0]
         except Exception as e:
             print('error: %s  \n\t-> Kingfitter could not find a reference isotope from'
                   ' Lines in database or mass of this reference Isotope in Isotopes' % e)
+
 
     def kingFit(self, run=-1, alpha=0, findBestAlpha=True, find_slope_with_statistical_error=False):
         '''
@@ -82,17 +89,17 @@ class KingFitter(object):
                                         [['iso', 'parname', 'run'], [i, 'shift', run]], caller_name=__name__)[0]
             self.y.append(y[0])
             if find_slope_with_statistical_error:
-                self.yerr.append(y[1]) #statistical error
-                self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2]))) #total error
+                self.yerr.append(y[1])  # statistical error
+                self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
             else:
-                self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2]))) #total error
+                self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
             self.x_origin.append(self.litvals[i][0])
             self.xerr.append(self.litvals[i][1])
         self.redmasses= [i*self.ref_mass/(i-self.ref_mass) for i in self.masses]
         self.y = [self.redmasses[i]*j for i,j in enumerate(self.y)]
-        self.yerr = [np.abs(self.redmasses[i]*j) for i,j in enumerate(self.yerr)]
-        self.yerr_total = [np.abs(self.redmasses[i]*j) for i,j in enumerate(self.yerr_total)]
-        self.xerr = [np.abs(self.redmasses[i]*j) for i,j in enumerate(self.xerr)]
+        self.yerr = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.yerr)]
+        self.yerr_total = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.yerr_total)]
+        self.xerr = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.xerr)]
 
         if self.findBestAlphaTrue:
             self.findBestAlpha(run)
@@ -236,10 +243,10 @@ class KingFitter(object):
                                                   [['parname', 'run'], ['alpha', run]], caller_name=__name__)[0]
         vals = []
         if run == -1:
-            vals = TiTs.select_from_db(self.db,'iso, val, statErr, systErr, run', 'Combined', [['parname'], ['shift']],
+            vals = TiTs.select_from_db(self.db, 'iso, val, statErr, systErr, run', 'Combined', [['parname'], ['shift']],
                                        caller_name=__name__)
         else:
-            vals = TiTs.select_from_db(self.db,'iso, val, statErr, systErr, run', 'Combined',
+            vals = TiTs.select_from_db(self.db, 'iso, val, statErr, systErr, run', 'Combined',
                                        [['parname', 'run'], ['shift', run]], caller_name=__name__)
         for i in vals:
             (name, val, statErr, systErr, run) = i
@@ -267,10 +274,12 @@ class KingFitter(object):
             finalVals[j] = [self.chargeradii[i], self.chargeradiiTotalErrs[i]]
             con = sqlite3.connect(self.db)
             cur = con.cursor()
-            cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', (j, 'delta_r_square', self.run[i]))
+            cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''',
+                        (j, 'delta_r_square', self.run[i]))
             con.commit()
-            cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ? WHERE iso = ? AND parname = ?''',
-                        (self.chargeradii[i], 0, self.chargeradiiTotalErrs[i], j, 'delta_r_square'))
+            cur.execute(
+                '''UPDATE Combined SET val = ?, statErr = ?, systErr = ? WHERE iso = ? AND parname = ? AND run = ?''',
+                (self.chargeradii[i], 0, self.chargeradiiTotalErrs[i], j, 'delta_r_square', self.run[i]))
             con.commit()
             con.close()
         if self.showing:
@@ -280,12 +289,12 @@ class KingFitter(object):
             x = []
             y = []
             yerr = []
-            print('iso\t $\delta$ <r$^2$>[fm$^2$]($\Delta$ $\delta$<r$^2$>[fm$^2$])')
+            print('iso\t $\delta$ <r$^2$>[fm$^2$]')
             for i in keyVals:
                 x.append(int(str(i).split('_')[0]))
                 y.append(finalVals[i][0])
                 yerr.append(finalVals[i][1])
-                print(i, '\t', np.round(finalVals[i][0],3), '('+str(np.round(finalVals[i][1],3))+')')
+                print('%s\t%.3f(%.0f)' % (i, finalVals[i][0], finalVals[i][1] * 1000))
                 #print("'"+str(i)+"'", ':[', np.round(finalVals[i][0],3), ','+ str(np.round(np.sqrt(finalVals[i][1]**2 + finalVals[i][2]**2),3))+'],')
 
             plt.subplots_adjust(bottom=0.2)

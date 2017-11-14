@@ -30,6 +30,12 @@ import random
 
 matplotlib.use('Qt5Agg')
 
+def colAcolPlot(x_data, plotdata, error):
+    plt.errorbar(x_data, plotdata, yerr=error, fmt='o', linestyle='-')
+    plt.ylabel('transition frequency / MHz')
+    plt.xlabel('measurement number')
+    plt.axis([0, len(plotdata)+1, min(plotdata)-max(error)*1.2, max(plotdata)+max(error)*1.2])
+
 def AlivePlot(x_data, plotdata, error, refData):
 
     arr = np.asarray
@@ -85,14 +91,18 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
     else:
         data = fit.meas.getArithSpec(*fit.st)
         plotdat = fit.spec.toPlotE(fit.meas.laserFreq, fit.meas.col, fit.par)
-
-    shape = fit.spec.shape
+    shape = None
+    try:
+        shape = fit.spec.shape
+    except Exception as e:
+        print('warning, spectra has no shape maybe kepco fit? Than its ok. error msg: %s' % e)
     main_peaks_plot_data = []
-    side_peaks_plot_data = []
+    all_side_peaks_plot_data = []
+
     if isinstance(shape, AsymmetricVoigt):
         main_peaks = deepcopy(fit)
         main_peaks.spec.iso.shape['name'] = 'Voigt'
-        side_peaks = deepcopy(main_peaks)
+        side_peaks = [deepcopy(main_peaks) for i in range(main_peaks.par[main_peaks.npar.index('nOfPeaks')])]
         main_full_spec = FullSpec(main_peaks.spec.iso)
         main_fit = SPFitter(main_full_spec, main_peaks.meas, main_peaks.st)
         for i, par in enumerate(main_peaks.npar):  # pass fit results to new plot
@@ -103,53 +113,57 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
         else:
             main_peaks_plot_data = main_fit.spec.toPlotE(main_fit.meas.laserFreq, main_fit.meas.col, main_fit.par)
 
-        side_peaks_spec = FullSpec(side_peaks.spec.iso)
-        side_peaks_fit = SPFitter(side_peaks_spec, side_peaks.meas, side_peaks.st)
-        asym_intensity = side_peaks.par[side_peaks.npar.index('IntAsym')]
-        asym_center_energy = side_peaks.par[side_peaks.npar.index('centerAsym')]  # eV
+        # now plot sied peaks:
 
-        # # e to freq
-        # main_center_mhz = main_fit.par[main_fit.npar.index('center')]
-        #
-        # f = Physics.addEnergyToFrequencyPoint(
-        #     main_center_mhz, -1 * asym_center_energy, fit.spec.iso, fit.meas.laserFreq, fit.meas.col)
+        for side_peak_num, side_peak in enumerate(side_peaks):
+            side_peaks_spec = FullSpec(side_peak.spec.iso)
+            side_peaks_fit = SPFitter(side_peaks_spec, side_peak.meas, side_peak.st)
+            asym_intensity = side_peak.par[side_peak.npar.index('IntAsym')] / (2 ** side_peak_num)
+            asym_center_energy = side_peak.par[side_peak.npar.index('centerAsym')]  # eV
 
-        center_velocity = Physics.invRelDoppler(fit.meas.laserFreq,
-                                                fit.spec.iso.freq + fit.spec.iso.center)
-        center_velocity = - center_velocity if fit.meas.col else center_velocity
-        center_volts = Physics.relEnergy(
-            center_velocity, fit.spec.iso.mass * Physics.u) / Physics.qe
+            center_velocity = Physics.invRelDoppler(fit.meas.laserFreq,
+                                                    fit.spec.iso.freq + fit.spec.iso.center)
+            center_velocity = - center_velocity if fit.meas.col else center_velocity
+            center_energy = Physics.relEnergy(
+                center_velocity, fit.spec.iso.mass * Physics.u) / Physics.qe
 
-        diff_doppl_MHz = Physics.diffDoppler(
-            fit.spec.iso.freq + fit.spec.iso.center,
-            center_volts, fit.spec.iso.mass)
-        side_peak_freq = asym_center_energy * diff_doppl_MHz
+            diff_doppl_MHz = Physics.diffDoppler(
+                fit.spec.iso.freq + fit.spec.iso.center,
+                center_energy, fit.spec.iso.mass)
 
-        for i, par in enumerate(side_peaks.npar):
-            if par in side_peaks_fit.npar:
-                new_par = side_peaks.par[i]
-                if par == 'center':
-                    new_par += side_peak_freq
-                elif 'Int' in par:
-                    new_par *= asym_intensity
-                side_peaks_fit.par[side_peaks_fit.npar.index(par)] = new_par
-        if x_in_freq:
-            side_peaks_plot_data = side_peaks_fit.spec.toPlot(side_peaks_fit.par)
-        else:
-            side_peaks_plot_data = side_peaks_fit.spec.toPlotE(
-                side_peaks.meas.laserFreq, side_peaks.meas.col, side_peaks_fit.par)
+            side_peak_freq = asym_center_energy * diff_doppl_MHz * (side_peak_num + 1)
+
+            for i, par in enumerate(side_peak.npar):
+                if par in side_peaks_fit.npar:
+                    new_par = side_peak.par[i]
+                    if par == 'center':
+                        new_par += side_peak_freq
+                    elif 'Int' in par:
+                        new_par *= asym_intensity
+                    side_peaks_fit.par[side_peaks_fit.npar.index(par)] = new_par
+            if x_in_freq:
+                side_peaks_plot_data = side_peaks_fit.spec.toPlot(side_peaks_fit.par)
+            else:
+                side_peaks_plot_data = side_peaks_fit.spec.toPlotE(
+                    side_peak.meas.laserFreq, side_peak.meas.col, side_peaks_fit.par)
+            all_side_peaks_plot_data.append(side_peaks_plot_data)
         color = '-b'
 
     fig = plt.figure(1, (8, 8))
     fig.patch.set_facecolor('white')
 
     ax1 = plt.axes([0.15, 0.35, 0.8, 0.6])
-    plt.errorbar(data[0], data[1], yerr=data[2], fmt='k.')
-    plt.plot(plotdat[0], plotdat[1], color)
+    plt.errorbar(data[0], data[1], yerr=data[2], fmt='k.', label=fit.meas.file)
+    plt_label = 'straight' if kepco else str(fit.spec.iso.shape['name'])
+    plt.plot(plotdat[0], plotdat[1], color, label=plt_label)
     if len(main_peaks_plot_data):
-        plt.plot(main_peaks_plot_data[0], main_peaks_plot_data[1], '-g')
-    if len(side_peaks_plot_data):
-        plt.plot(side_peaks_plot_data[0], side_peaks_plot_data[1], '-r')
+        plt.plot(main_peaks_plot_data[0], main_peaks_plot_data[1], '-g', label='main peak')
+    for side_peak_num, side_peaks_plot_data in enumerate(all_side_peaks_plot_data):
+        colors = ['r', 'c', 'm', 'y', 'k']
+        line_styles = ['-', '--', '-.', ':']
+        color_line = [line_style + color for line_style in line_styles for color in colors]
+        plt.plot(side_peaks_plot_data[0], side_peaks_plot_data[1],
+                 color_line[side_peak_num], label='satellite peak #%d' % (side_peak_num + 1))
     ax1.get_xaxis().get_major_formatter().set_useOffset(False)
     plt.xticks(fontsize=fontsize_ticks)
     plt.yticks(fontsize=fontsize_ticks)
@@ -170,9 +184,10 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
     # print(plotdat[0][-2000:-100])
     # print(plotdat[1][-2000:-100])
     # np.set_printoptions(threshold=2000)
-    #print(data[1])
+    # print(data[1])
     plt.xticks(fontsize=fontsize_ticks)
     plt.yticks(fontsize=fontsize_ticks)
+    ax1.legend(loc=2)
 
 
 def plotMoments(cts, q=True,fontsize_ticks=10):
@@ -213,7 +228,6 @@ def plotMoments(cts, q=True,fontsize_ticks=10):
     plt.show()
 
 
-
 def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), showing = False, save_path='', ylabel=''):
     # avg, stat_err, sys_err = Analyzer.combineRes(iso, par, run, db, print_extracted=False)
     # val, errs, date = Analyzer.extract(iso, par, run, db, prin=False)
@@ -229,6 +243,7 @@ def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), sho
         ax.xaxis.set_major_formatter(xfmt)
         ax.set_ylabel(ylabel)
         ax.set_xmargin(0.05)
+        ax.ticklabel_format(useOffset=False, axis='y')
 
         plt.errorbar(date, cts, yerr=errs, fmt=forms[0], axes=ax)
 
@@ -251,11 +266,12 @@ def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), sho
             d = os.path.dirname(save_path)
             if not os.path.exists(d):
                 os.makedirs(d)
+            print('saving combined plot to: %s' % save_path)
             save(save_path)
         if showing:
             show()
     except Exception as e:
-        print('error while plottin average: %s' % e)
+        print('error while plotting average: %s' % e)
     return ax
 
 
@@ -525,7 +541,8 @@ def tight_layout():
 
 def plot_par_from_combined(db, runs_to_plot, isotopes,
                            par, plot_runs_seperate=False, show_pl=True,
-                           literature_dict=None, literature_name='lit. values'):
+                           literature_dict=None, literature_name='lit. values',
+                           save_path='', use_syst_err_only=False):
     import Tools
     compl_x = []
     compl_y = []
@@ -533,40 +550,46 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
     lit_y = None
     lit_y_err = None
     val_statErr_rChi_shift_dict = Tools.extract_from_combined(runs_to_plot, db, isotopes, par, print_extracted=True)
-    for each in val_statErr_rChi_shift_dict.keys():
+    literarture_has_been_plotted = False
+    err_index = 2 if use_syst_err_only else 1
+    offset = -0.2
+    for each in runs_to_plot:
         try:
             if each:
                 if literature_dict is not None:  # try to get the literature values and substract experiment Values from it
                     vals = [(int(key_pl[:2]), val_pl[0], literature_dict.get(key_pl, [0])[0]) for key_pl, val_pl in
                             sorted(val_statErr_rChi_shift_dict[each].items())]
-                    errs = [(int(key_pl2[:2]), val_pl2[1], literature_dict.get(key_pl2, [0, 0])[1]) for key_pl2, val_pl2 in
+                    errs = [(int(key_pl2[:2]), val_pl2[err_index], literature_dict.get(key_pl2, [0, 0])[err_index]) for key_pl2, val_pl2 in
                             sorted(val_statErr_rChi_shift_dict[each].items())]
-                    x = [valo[0] for valo in vals]
+                    x = [valo[0] + offset for valo in vals]
                     # exp_y = [val[1] for val in vals]
                     # exp_y_err = [val[1] for val in errs]
                     # maybe in future:
                     # lit_y = [val[2] for val in vals]
                     # lit_y_err = [val[2] for val in errs]
-                    exp_y = [0 for valo in vals]
+                    exp_y = [valo[1] - valo[2] for valo in vals]
                     exp_y_err = [valo[1] for valo in errs]
-                    lit_y = [valo[1] - valo[2] for valo in vals]
+                    lit_y = [0 for valo in vals]
                     lit_y_err = [valo[2] for valo in errs]
                 else:
                     x_y_err = [(int(iso[:2]), val[0], np.sqrt(val[1] ** 2 + val[2] ** 2))
                                for iso, val in sorted(val_statErr_rChi_shift_dict[each].items())]
-                    x = [each[0] for each in x_y_err]
+                    x = [each[0] + offset for each in x_y_err]
                     exp_y = [each[1] for each in x_y_err]
                     exp_y_err = [each[2] for each in x_y_err]
                 if plot_runs_seperate:
-                    plt.errorbar(x, exp_y, exp_y_err, label='exp. values', linestyle='None', marker="o")
-                    if lit_y is not None:
+                    if lit_y is not None and not literarture_has_been_plotted:
                         plt.errorbar(x, lit_y, lit_y_err, label=literature_name, linestyle='None', marker="o")
+                        literarture_has_been_plotted = True
+                    plt.errorbar(x, exp_y, exp_y_err, label='%s' % each, linestyle='None', marker="o")
+
                 compl_x += x
                 compl_y += exp_y
                 compl_y_err += exp_y_err
 
         except Exception as err:
             print('error while plotting: %s' % err)
+        offset += 0.1
 
     if not plot_runs_seperate:
         plt.errorbar(compl_x, compl_y, compl_y_err, label='runs: ' + str(sorted(val_statErr_rChi_shift_dict.keys())),
@@ -575,10 +598,61 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
             plt.errorbar(compl_x, lit_y, lit_y_err, label=literature_name,
                          linestyle='None', marker="o")
 
-    plt.legend()
+    plt.legend(loc=2)
     plt.margins(0.25)
     get_current_axes().set_ylabel('%s [MHz]' % par)
     plt.gcf().set_facecolor('w')
+    if save_path:
+        d = os.path.dirname(save_path)
+        if not os.path.exists(d):
+            os.makedirs(d)
+        save(save_path)
     if show_pl:
         show(True)
     return compl_x, compl_y, compl_y_err
+
+
+def plot_iso_shift_time_dep(
+        ref_dates_date_time, ref_dates_date_time_float, ref_centers, ref_errs, ref,
+        iso_dates_datetime, iso_dates_datetime_float, iso_centers, iso_errs, iso,
+        slope, offset, plt_label, shift_result_tuple, file_name='', show_plot=True):
+    """ function to plot the isotope shift along with the references versus timestamp of the files """
+    fig = plt.figure('shift %s' % iso, figsize=(16, 9))
+    fig.set_facecolor('w')
+    main_ax = fig.add_axes([0.1, 0.2, 0.7, 0.6])
+    first_ref = np.min(ref_dates_date_time_float)
+    ref_line = main_ax.errorbar(ref_dates_date_time, ref_centers, yerr=ref_errs, fmt='ko', label='ref center %s' % ref)
+    min_t_abs = min(np.min(ref_dates_date_time_float), np.min(iso_dates_datetime_float))
+    max_t_abs = max(np.max(ref_dates_date_time_float), np.max(iso_dates_datetime_float))
+    padding = max((max_t_abs - min_t_abs) / 100 * 5, 10)
+    fit_plot_data_x_datetime = [datetime.datetime.fromtimestamp(min_t_abs - padding),
+                                datetime.datetime.fromtimestamp(max_t_abs + padding)]
+    fit_plot_data_x = [each.timestamp() - first_ref for each in fit_plot_data_x_datetime]
+    fit_plot_data_y = [x * slope + offset for x in fit_plot_data_x]
+    fit_line = plt.plot(fit_plot_data_x_datetime, fit_plot_data_y, label=plt_label, color='r')[0]
+    plt.xticks(rotation=25)
+    xfmt = DateFormatter('%Y-%m-%d %H:%M:%S')
+    main_ax.xaxis.set_major_formatter(xfmt)
+    main_ax.set_ylabel('ref %s center [MHz]' % ref)
+    twinx = plt.twinx(main_ax)
+    iso_line = twinx.errorbar(iso_dates_datetime, iso_centers, yerr=iso_errs, fmt='bs', label='center %s' % iso)
+    twinx.set_ylabel('%s center [MHz]' % iso, color='b')
+    twinx.tick_params('y', colors='b')
+    lines = [ref_line, fit_line, iso_line]
+    # shift_result_tuple should be a tuple of ([shift_run0, shift_run1, ...], [err_shift_run0, err_shift_run1, ...])
+    shift_result_str = 'shift ' + str(
+        ['%.1f +/- %.1f MHz' % (each, shift_result_tuple[1][i]) for i, each in enumerate(shift_result_tuple[0])])
+    line_lables = [l.get_label() for l in lines] + [shift_result_str]
+    lines += [patches.Rectangle((0, 0), 1, 1, fc="w", fill=False, edgecolor='none', linewidth=0)]
+    fig.legend(lines, line_lables, loc='upper center', ncol=2,
+               bbox_to_anchor=(0.1, 0.8, 0.7, 0.2), mode='expand')
+    twinx.ticklabel_format(axis='y', useOffset=False)
+    if file_name:
+        if not os.path.isdir(os.path.dirname(file_name)):
+            os.mkdir(os.path.dirname(file_name))
+        print('saving to: %s' % file_name)
+        save(file_name)
+    if show_plot:
+        plt.show(True)
+    clear()
+    plt.close(fig)

@@ -39,7 +39,8 @@ class DBIsotope(object):
             print('loaded :', self.name)
 
         data = TiTS.select_from_db(db,
-            'mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, fixedBrat, intScale, fixedInt, relInt, m', 'Isotopes',
+                                   'mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, fixedBrat, intScale,'
+                                   ' fixedInt, relInt, m, fixedAl, fixedBl, fixedAu, fixedBu', 'Isotopes',
                                    [['iso'], [iso + isovar]], caller_name=__name__)[0]
         if not data:
             print("No such isotope: " + iso + isovar)
@@ -56,6 +57,11 @@ class DBIsotope(object):
             self.fixBrat = data[9]
             self.intScale = data[10]
             self.fixInt = data[11]
+            self.fixedAl = bool(data[14])
+            self.fixedBl = bool(data[15])
+            self.fixedAu = bool(data[16])
+            self.fixedBu = bool(data[17])
+
             if data[12]:
                 self.relInt = eval(data[12])
             else:
