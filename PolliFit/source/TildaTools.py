@@ -780,11 +780,12 @@ def nameFileXml(isodict, path):
     subdir = os.path.join(path, 'sums')
     if not os.path.exists(subdir):
         os.makedirs(subdir)
-    files = [file if file.endswith('.xml') else '-1....' for file in os.listdir(subdir)]
+    # get existing xml files in sums and take tehir name without the ending ".xml":
+    files = [file.split('.')[0] if file.endswith('.xml') else '-1....' for file in os.listdir(subdir)]
     if len(files):
         try:
             highest_filenum = sorted(
-                [int(file[file.index('_run') + 4:file.index('_run') + 7]) for file in files if '_run' in file])[-1]
+                [int(file[file.index('_run') + 4:]) for file in files if '_run' in file])[-1]
         except Exception as e:
             print('error finding run number, with _run***.xml (*** should be integers) error is: ', e)
             highest_filenum = -1
@@ -795,7 +796,7 @@ def nameFileXml(isodict, path):
         print('error: file already exists! Check your file naming not conflict with '
               '_run***.xml (*** should be integers) filenum is: ', highest_filenum)
         highest_filenum += 1
-        newpath = os.path.join(subdir, filename + str('{0:03d}'.format(highest_filenum + 1)) + '.xml')
+        newpath = os.path.join(subdir, filename + '_NameErr_' + str('{0:03d}'.format(highest_filenum + 1)) + '.xml')
     return newpath
 
 
@@ -1038,4 +1039,9 @@ if __name__ == '__main__':
     # isodi = {'isotope': 'bbb', 'type': 'csdummy'}
     # newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')
     # print(newname)
-    get_all_tracks_of_xml_in_one_dict('E:/TildaDebugging3/sums/Test_trsdummy_run005.xml')
+    # get_all_tracks_of_xml_in_one_dict('E:/TildaDebugging3/sums/Test_trsdummy_run005.xml')
+    import Service.Scan.draftScanParameters as dft
+
+    sc_dict = dft.draftScanDict
+    isodict = sc_dict['isotopeData']
+    print(nameFileXml(isodict, 'E:\\temp2'))
