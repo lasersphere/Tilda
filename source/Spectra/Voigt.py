@@ -28,18 +28,18 @@ class Voigt(object):
     def evaluate(self, x, p):
         '''Return the value of the hyperfine structure at point x / MHz'''
         return Physics.voigt(x, p[self.pSig], p[self.pGam]) / self.norm
-    
-    
+
+
     def recalc(self, p):
         '''Recalculate the norm factor'''
         self.norm = Physics.voigt(0, p[self.pSig], p[self.pGam])
-    
-    
+
+
     def leftEdge(self, p):
         '''Return the left edge of the spectrum in Mhz'''
         return -5 * (p[self.pSig] + p[self.pGam])
-    
-    
+
+
     def rightEdge(self, p):
         '''Return the right edge of the spectrum in MHz'''
         return 5 * (p[self.pSig] + p[self.pGam])
@@ -49,7 +49,8 @@ class Voigt(object):
         '''Return list of initial parameters and initialize positions'''
         self.pSig = pos
         self.pGam = pos + 1
-        
+        self.p_offset_slope = pos + 2
+
         return [self.iso.shape['gau'], self.iso.shape['lor']]
     
     

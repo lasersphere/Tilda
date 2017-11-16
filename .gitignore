@@ -69,3 +69,4 @@ test/Project/AliveDB
 /.idea/scopes/scope_settings.xml
 /.idea/misc.xml
 /.idea/PolliFit.iml
+/source/current_db_loc.txt

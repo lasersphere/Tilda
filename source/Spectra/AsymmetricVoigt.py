@@ -12,6 +12,8 @@ class AsymmetricVoigt(object):
     Implementation of a voigt profile object using the Faddeeva function
     overlapped with a second voigt in distance centerAsym and
      relative intensity IntAsym to the main peak
+     distance will be assumed to be in eV if the laserFreq is a float.
+     if the distance is desired in frequency, use 'laserFreq': None
 
 
     The peak height is normalized to one
@@ -19,7 +21,11 @@ class AsymmetricVoigt(object):
     Gamma is the half width half maximum
 
     line needs to have:
-    'gau', 'lor', 'centerAsym', 'IntAsym', 'laserFreq', 'col'
+    'gau', 'lor', 'centerAsym', 'IntAsym', 'laserFreq', 'col', 'nOfPeaks'
+
+    optional:
+    'offsetSlope' (for an linear offset added to the voigt)
+
     """
 
     def __init__(self, iso):
@@ -83,11 +89,13 @@ class AsymmetricVoigt(object):
     def getFixed(self):
         '''Return list of parmeters with their fixed-status'''
         return [self.iso.fixShape['gau'], self.iso.fixShape['lor'],
-                self.iso.fixShape['centerAsym'], self.iso.fixShape['IntAsym'], self.iso.fixShape['nOfPeaks']]
+                self.iso.fixShape['centerAsym'], self.iso.fixShape['IntAsym'],
+                self.iso.fixShape['nOfPeaks']]
 
     def calc_diff_doppl(self, laser_freq, col):
         """ calculate the differential doppler factor for this shape and store it in self.diff_doppl """
-        center_velocity = Physics.invRelDoppler(laser_freq, self.iso.freq + self.iso.center)
-        center_velocity = - center_velocity if col else center_velocity
-        center_volts = Physics.relEnergy(center_velocity, self.iso.mass * Physics.u) / Physics.qe
-        self.diff_doppl = Physics.diffDoppler(laser_freq, center_volts, self.iso.mass)
+        if laser_freq is not None:
+            center_velocity = Physics.invRelDoppler(laser_freq, self.iso.freq + self.iso.center)
+            center_velocity = - center_velocity if col else center_velocity
+            center_volts = Physics.relEnergy(center_velocity, self.iso.mass * Physics.u) / Physics.qe
+            self.diff_doppl = Physics.diffDoppler(laser_freq, center_volts, self.iso.mass)
