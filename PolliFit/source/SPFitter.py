@@ -9,6 +9,7 @@ from scipy.optimize import curve_fit
 from scipy import version
 
 import TildaTools as TiTs
+from Measurement.SpecData import SpecDataXAxisUnits
 
 
 class SPFitter(object):

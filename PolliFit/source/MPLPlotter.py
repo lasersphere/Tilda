@@ -102,43 +102,37 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
     if isinstance(shape, AsymmetricVoigt):
         main_peaks = deepcopy(fit)
         main_peaks.spec.iso.shape['name'] = 'Voigt'
-        side_peaks = [deepcopy(main_peaks) for i in range(main_peaks.par[main_peaks.npar.index('nOfPeaks')])]
         main_full_spec = FullSpec(main_peaks.spec.iso)
         main_fit = SPFitter(main_full_spec, main_peaks.meas, main_peaks.st)
         for i, par in enumerate(main_peaks.npar):  # pass fit results to new plot
             if par in main_fit.npar:
                 main_fit.par[main_fit.npar.index(par)] = main_peaks.par[i]
+        # create a list of side peaks with the pars from the main peak
+        side_peaks = [deepcopy(main_peaks) for i in range(main_peaks.par[main_peaks.npar.index('nOfPeaks')])]
         if x_in_freq:
             main_peaks_plot_data = main_fit.spec.toPlot(main_fit.par)
         else:
             main_peaks_plot_data = main_fit.spec.toPlotE(main_fit.meas.laserFreq, main_fit.meas.col, main_fit.par)
 
-        # now plot sied peaks:
-
+        # now plot side peaks:
         for side_peak_num, side_peak in enumerate(side_peaks):
-            side_peaks_spec = FullSpec(side_peak.spec.iso)
-            side_peaks_fit = SPFitter(side_peaks_spec, side_peak.meas, side_peak.st)
+            side_peaks_spec = FullSpec(side_peak.spec.iso)  # create FullSpec for each side peak
+            side_peaks_fit = SPFitter(side_peaks_spec, side_peak.meas, side_peak.st)  # .. aand fit
+            # calc intensity for this peak:
             asym_intensity = side_peak.par[side_peak.npar.index('IntAsym')] / (2 ** side_peak_num)
-            asym_center_energy = side_peak.par[side_peak.npar.index('centerAsym')]  # eV
+            asym_center_energy = side_peak.par[side_peak.npar.index('centerAsym')]  # eV or MHz
 
-            center_velocity = Physics.invRelDoppler(fit.meas.laserFreq,
-                                                    fit.spec.iso.freq + fit.spec.iso.center)
-            center_velocity = - center_velocity if fit.meas.col else center_velocity
-            center_energy = Physics.relEnergy(
-                center_velocity, fit.spec.iso.mass * Physics.u) / Physics.qe
-
-            diff_doppl_MHz = Physics.diffDoppler(
-                fit.spec.iso.freq + fit.spec.iso.center,
-                center_energy, fit.spec.iso.mass)
+            diff_doppl_MHz = shape.diff_doppl
 
             side_peak_freq = asym_center_energy * diff_doppl_MHz * (side_peak_num + 1)
 
+            # copy relevant parameters from asymmetric to normal voigt:
             for i, par in enumerate(side_peak.npar):
                 if par in side_peaks_fit.npar:
                     new_par = side_peak.par[i]
-                    if par == 'center':
+                    if par == 'center':   # shift center of this plot
                         new_par += side_peak_freq
-                    elif 'Int' in par:
+                    elif 'Int' in par:  # calc intensity of this plot
                         new_par *= asym_intensity
                     side_peaks_fit.par[side_peaks_fit.npar.index(par)] = new_par
             if x_in_freq:
