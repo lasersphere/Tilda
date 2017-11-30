@@ -11,7 +11,7 @@ import Physics
 import MPLPlotter as plot
 
 
-def absolute_frequency(db, fit1, fit2):
+def absolute_frequency(db, fit1, run1, fit2, run2):
     """
     Calculates the absolute transition frequency from a collinear and an anti-collinear measurement.
     Returns a list [absFreq, absFreqError], where absFreqError is the combined gaussian error of laserFreq1_d,
@@ -22,13 +22,14 @@ def absolute_frequency(db, fit1, fit2):
     file1 = select_from_db(db, 'type, laserFreq, colDirTrue, laserFreq_d', 'Files', [['file'], [fit1]])
     #print(fit1)
     isotope1 = select_from_db(db, 'mass', 'Isotopes', [['iso'], [file1[0][0]]])
-    fitRes1 = select_from_db(db, 'run, pars', 'FitRes', [['file'], [fit1]])
-    run1 = select_from_db(db, 'frequency', 'Lines', [['refRun'], [fitRes1[0][0]]])
+    fitRes1 = select_from_db(db, 'run, pars', 'FitRes', [['file', 'run'], [fit1, run1]])
+    lineVar1 = select_from_db(db, 'lineVar', 'Runs', [['run'], [run1]])
+    f_run1 = select_from_db(db, 'frequency', 'Lines', [['lineVar'], [lineVar1[0][0]]])
 
     fitPars1 = ast.literal_eval("".join(fitRes1[0][1]))
     center1 = float(fitPars1['center'][0])
     center1_d = float(fitPars1['center'][1])
-    refFreq1 = float(run1[0][0])
+    refFreq1 = float(f_run1[0][0])
     relFreq1 = center1 + refFreq1
     relFreq1_d = center1_d
     isoMass1 = float(isotope1[0][0])
@@ -47,13 +48,14 @@ def absolute_frequency(db, fit1, fit2):
     file2 = select_from_db(db, 'type, laserFreq, colDirTrue, laserFreq_d', 'Files', [['file'], [fit2]])
     #print(fit2)
     isotope2 = select_from_db(db, 'mass', 'Isotopes', [['iso'], [file2[0][0]]])
-    fitRes2 = select_from_db(db, 'run, pars', 'FitRes', [['file'], [fit2]])
-    run2 = select_from_db(db, 'frequency', 'Lines', [['refRun'], [fitRes2[0][0]]])
+    fitRes2 = select_from_db(db, 'run, pars', 'FitRes', [['file', 'run'], [fit2, run2]])
+    lineVar2 = select_from_db(db, 'lineVar', 'Runs', [['run'], [run2]])
+    f_run2 = select_from_db(db, 'frequency', 'Lines', [['lineVar'], [lineVar2[0][0]]])
 
     fitPars2 = ast.literal_eval("".join(fitRes2[0][1]))
     center2 = float(fitPars2['center'][0])
     center2_d = float(fitPars2['center'][1])
-    refFreq2 = float(run2[0][0])
+    refFreq2 = float(f_run2[0][0])
     relFreq2 = center2 + refFreq2
     relFreq2_d = center2_d
     isoMass2 = float(isotope2[0][0])
@@ -114,8 +116,9 @@ def files_to_csv(db, measList, pathOut):
     print('Absolute transition frequency results: ')
     file = open(pathOut, 'w')
     for pair in measList:
-        result = absolute_frequency(db, pair[0], pair[1])
-        file.write(str(result[0]) + ', ' + str(result[1])+'\n')
+        print('Pair0: ' + str(pair[0]) + 'Pair1: ' + str(pair[1]) + ' Pair2: ' + str(pair[2]) + ' Pair3: ' + str(pair[3]))
+        result = absolute_frequency(db, pair[0], pair[1], pair[2], pair[3])
+        file.write(str(i) + ', ' + str(result[0]) + ', ' + str(result[1])+'\n')
         mL.append(i)
         fL.append(result[0])
         fL_d.append(result[1])

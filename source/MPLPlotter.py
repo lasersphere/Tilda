@@ -68,7 +68,8 @@ def plot(*args):
     plt.xlabel('Frequency [MHz]')
 
 
-def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks=10):
+def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks=10,
+            plot_data=True, add_label='', plot_side_peaks=True):
     kepco = False
     if fit.meas.type == 'Kepco':
         x_in_freq = False
@@ -141,23 +142,28 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
                 side_peaks_plot_data = side_peaks_fit.spec.toPlotE(
                     side_peak.meas.laserFreq, side_peak.meas.col, side_peaks_fit.par)
             all_side_peaks_plot_data.append(side_peaks_plot_data)
-        color = '-b'
+        # color = '-b'
 
     fig = plt.figure(1, (8, 8))
     fig.patch.set_facecolor('white')
 
     ax1 = plt.axes([0.15, 0.35, 0.8, 0.6])
-    plt.errorbar(data[0], data[1], yerr=data[2], fmt='k.', label=fit.meas.file)
+    if plot_data:
+        plt.errorbar(data[0], data[1], yerr=data[2], fmt='k.', label=fit.meas.file)
     plt_label = 'straight' if kepco else str(fit.spec.iso.shape['name'])
-    plt.plot(plotdat[0], plotdat[1], color, label=plt_label)
-    if len(main_peaks_plot_data):
-        plt.plot(main_peaks_plot_data[0], main_peaks_plot_data[1], '-g', label='main peak')
-    for side_peak_num, side_peaks_plot_data in enumerate(all_side_peaks_plot_data):
-        colors = ['r', 'c', 'm', 'y', 'k']
-        line_styles = ['-', '--', '-.', ':']
-        color_line = [line_style + color for line_style in line_styles for color in colors]
-        plt.plot(side_peaks_plot_data[0], side_peaks_plot_data[1],
-                 color_line[side_peak_num], label='satellite peak #%d' % (side_peak_num + 1))
+    main_plot = plt.plot(plotdat[0], plotdat[1], color, label=plt_label + add_label)
+    main_plot_color = main_plot[0].get_color()
+    if plot_side_peaks:
+        if len(main_peaks_plot_data):
+            # plot main peak dotted but in same color as host line
+            plt.plot(main_peaks_plot_data[0], main_peaks_plot_data[1],
+                     color=main_plot_color, label='main peak' + add_label, linestyle=':')
+        for side_peak_num, side_peaks_plot_data in enumerate(all_side_peaks_plot_data):
+            # plot side peaks dashed / dashdot alternating with number of side peaks in same color as main peak
+            line_style = '--' if side_peak_num % 2 == 0 else '-.'
+            plt.plot(side_peaks_plot_data[0], side_peaks_plot_data[1],
+                     linestyle=line_style, color=main_plot_color,
+                     label='satellite peak #%d' % (side_peak_num + 1) + add_label)
     ax1.get_xaxis().get_major_formatter().set_useOffset(False)
     plt.xticks(fontsize=fontsize_ticks)
     plt.yticks(fontsize=fontsize_ticks)

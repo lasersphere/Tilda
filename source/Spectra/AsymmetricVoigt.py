@@ -42,7 +42,7 @@ class AsymmetricVoigt(object):
         self.pGam = 1
         self.p_asym_center = 2  # position of the center of the 2nd voigt -> asymmetric peak
         self.p_asym_int = 3  # position of the relative intensity in the asymmetric peak
-        self.p_n_of_peaks = 4  #  position of the number of peaks
+        self.p_n_of_peaks = 4  # position of the number of peaks
         self.recalc([iso.shape['gau'], iso.shape['lor'], iso.shape['centerAsym'],
                      iso.shape['IntAsym'], iso.shape['nOfPeaks']])
 
