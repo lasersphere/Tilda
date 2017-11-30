@@ -84,6 +84,16 @@ class SpecData(object):
             else:
                 pass
         flate = np.sqrt(flate)
+
+        # cut_lower = 50
+        # cut_upper = 100
+        # flatx = list(flatx)
+        # flate = list(flate)
+        # flatc = list(flatc)
+        # flatx = flatx[0:cut_lower] + flatx[cut_upper:]
+        # flatc = flatc[0:cut_lower] + flatc[cut_upper:]
+        # flate = flate[0:cut_lower] + flate[cut_upper:]
+
         return (flatx, flatc, flate)
         
     def getNrSteps(self, track):

@@ -54,25 +54,30 @@ class ColAcolUi(QtWidgets.QWidget, Ui_ColAcol):
     def addToCol(self, label):
         w = QtWidgets.QListWidgetItem(label)
         w.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-        w.setCheckState(QtCore.Qt.Checked)
-        self.lAll.addItem(w)
+        w.setCheckState(QtCore.Qt.Unchecked)
+        self.lCol.addItem(w)
 
     def addToAcol(self, label):
         w = QtWidgets.QListWidgetItem(label)
         w.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-        w.setCheckState(QtCore.Qt.Checked)
-        self.lAll.addItem(w)
+        w.setCheckState(QtCore.Qt.Unchecked)
+        self.lAcol.addItem(w)
 
     def loadFits(self):
         self.lAll.clear()
         self.lAcol.clear()
         self.lCol.clear()
         db = self.dbpath
-        r = TiTs.select_from_db(db, 'file', 'FitRes', [], '', 'Gui.ColAcolUi')
+        r = TiTs.select_from_db(db, 'file, run', 'FitRes', [], '', 'Gui.ColAcolUi')
 
         if r is not None:
             for each in r:
-                self.addToAll(each[0])
+                if each[0].find('_acol_') is not -1:
+                    self.addToAcol(each[0] + " - Run: " + each[1])
+                elif each[0].find('_col_') is not -1:
+                    self.addToCol(each[0] + " - Run: " + each[1])
+                else:
+                    self.addToAll(each[0] + " - Run: " + each[1])
 
     def shiftToCol(self):
         for index in range(self.lAll.count()):
@@ -111,9 +116,9 @@ class ColAcolUi(QtWidgets.QWidget, Ui_ColAcol):
         self.iPath.setText(str(projectPath))
 
     def wToList(self):
-        list = []
+        list = [] #[file1, run1, file2, run2]
         for index in range(self.lCol.count()):
-            list.append([str(self.lCol.item(index).text()), str(self.lAcol.item(index).text())])
+            list.append([str(self.lCol.item(index).text().split(' - ')[0]), str(self.lCol.item(index).text().split('Run: ')[1]), str(self.lAcol.item(index).text().split(' - ')[0]), str(self.lAcol.item(index).text().split('Run: ')[1])])
 
         return list
 

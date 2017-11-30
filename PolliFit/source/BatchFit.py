@@ -115,12 +115,14 @@ def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=No
     #Create and save graph
     fig = os.path.splitext(path)[0] + run + '.png'
     pars = fit.par
+    num_of_common_vals = fit.spec.shape.nPar + 2  # number of common parameters useful if isotope
+    #  is being used -> comes from the number of parameters the shape needs e.g. (Voigt:2) + offset + offsetSlope = 4
     if fitter_m is not None:
         fitter_iso.par = pars[0:len(fitter_iso.par)]
-        fitter_m.par = pars[0:3] + pars[len(fitter_iso.par):]
-        plot.plotFit(fitter_iso, color='-r', plot_residuals=False)
-        plot.plotFit(fitter_m, color='-g', plot_residuals=False)
-        plot.plotFit(fit, color='-b')
+        fitter_m.par = pars[0:num_of_common_vals] + pars[len(fitter_iso.par):]
+        plot.plotFit(fitter_iso, color='-r', plot_residuals=False, plot_data=False, add_label=' gs')
+        plot.plotFit(fitter_m, color='-g', plot_residuals=False, plot_data=False, add_label=' m')
+        plot.plotFit(fit, color='-b', add_label=' gs+m', plot_side_peaks=False)
     else:
         plot.plotFit(fit)
     plot.save(fig)
