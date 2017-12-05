@@ -8,11 +8,11 @@ Created on '16.01.2017'
 
 import ast
 import functools
+import logging
 import os
 import sys
-import logging
-from datetime import datetime, timedelta
 from copy import deepcopy
+from datetime import datetime
 
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui
@@ -322,7 +322,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             'VIEW-FPGA, Nucl. Instr. Meth. A 679 (2012) 1-6:\n\n'
             'Command\t Example\t Description\n'
             '------------------------------------------------------------\n'
-            '$time\t $time::1000::123::123\t command::time[ms] ::DO0-31::DO32-63\n'
+            '$time\t $time::1000::123::123\t command::time[us] ::DO0-31::DO32-63\n'
             '$wait\t $wait::1::123::123\t command::DI0-7::DO0-31::DO32-63\n'
             '($jump\t $jump::0::500::500\t command::address::unused::iterationnumber)*\n'
             '$stop\t $stop::0::123::123\t command::unused::DO0-31::DO32-63\n\n'
