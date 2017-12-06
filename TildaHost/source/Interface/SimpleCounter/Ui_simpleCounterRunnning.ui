@@ -148,6 +148,13 @@
      </layout>
     </item>
     <item>
+     <widget class="QPushButton" name="pushButton_reset_graphs">
+      <property name="text">
+       <string>Reset All Graphs</string>
+      </property>
+     </widget>
+    </item>
+    <item>
      <widget class="QPushButton" name="pushButton_stop">
       <property name="text">
        <string>STOP</string>

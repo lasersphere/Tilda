@@ -859,9 +859,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         self.active_iso = progress_dict_from_main['activeIso']
         if not self.new_track_no_data_yet:
-            act_step = max(progress_dict_from_main['activeStep'] - 1, 0)
+            act_step_ind = max(progress_dict_from_main['actStepIndex'] - 1, 0)
             act_tr_ind = progress_dict_from_main['activeTrack'] - 1
-            self.update_step_indication_lines(act_step, act_tr_ind)
+            self.update_step_indication_lines(act_step_ind, act_tr_ind)
         if self.active_file != progress_dict_from_main['activeFile']:
             self.active_file = progress_dict_from_main['activeFile']
             self.setWindowTitle('plot:  %s' % self.active_file)
@@ -875,7 +875,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         try:
             if self.all_pmts_widg_plt_item_list is not None:
                 val = self.spec_data.x[act_tr][act_step]
-                # print('active track is: %s and active step is: %s val is: %s ' % (act_tr, act_step, val))
+                print('active track is: %s and active step is: %s val is: %s ' % (act_tr, act_step, val))
                 if self.current_step_line is not None:
                     self.current_step_line.setValue(val)
                 if self.sum_current_step_line is not None:

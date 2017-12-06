@@ -550,6 +550,10 @@ class ScanMain(QObject):
             return_dict['totalScans'] = total_steps_list[track_ind][0]
             return_dict['activeStep'] = compl_steps - (return_dict['activeScan'] - 1) * total_steps_list[track_ind][1]
             return_dict['totalSteps'] = total_steps_list[track_ind][1]
+            if return_dict['activeScan']%2==0:
+                return_dict['actStepIndex']=return_dict['totalSteps']-return_dict['activeStep']
+            else:
+                return_dict['actStepIndex'] = return_dict['activeStep']
             return_dict['trackName'] = track_name
             return_dict['activeFile'] = scan_dict['pipeInternals']['activeXmlFilePath']
             dif = datetime.now() - self.last_scan_prog_update
