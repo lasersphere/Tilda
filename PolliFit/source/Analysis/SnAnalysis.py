@@ -107,7 +107,7 @@ for i in range(112,135, 1):
 #     BatchFit.batchFit(Tools.fileList(db,'Kepco'), db, run)
 #     # Analyzer.combineRes('Kepco', 'm', run, db, show_plot=False)
 #     # Analyzer.combineRes('Kepco', 'b', run, db, show_plot=False)
-BatchFit.batchFit(Tools.fileList(db, '124_Sn'), db, 'Run10')
+# BatchFit.batchFit(Tools.fileList(db, '124_Sn'), db, 'Run10')
 #         '''Fitting the spectra with Voigt-Fits!'''
 #         BatchFit.batchFit(Tools.fileList(db,'124_Sn'), db,'Run0')
 #         # BatchFit.batchFit(['124Sn_no_protonTrigger_Run018.mcp','124Sn_no_protonTrigger_Run021.mcp','124Sn_no_protonTrigger_Run024.mcp',

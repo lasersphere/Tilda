@@ -101,15 +101,27 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
                 self.fileList.addItem(r[0])
 
     def setPar(self, i, j):
+        val = ''
         try:
             val = ast.literal_eval(self.parTable.item(i, j).text())
-        except SyntaxError as e:
-            val = 0.0
+        except Exception as e:
+            print('error: %s while converting your typed value: %s using 0.0 / False instead' % (e, val))
+            val = 0.0 if j == 1 else False
+        if isinstance(val, float) or isinstance(val, int)\
+                or isinstance(val, bool) or (isinstance(val, list) and j == 2):
+            val = val
+        else:
+            e = 'val is not a float / int / bool / (list and fix)'
+            print('error: %s while converting your typed value: %s using 0.0 / False instead' % (e, val))
+            val = 0.0 if j == 1 else False
         if j == 1:
             self.intFit.setPar(i, val)
         else:
             self.intFit.setFix(i, val)
-    
+        self.parTable.blockSignals(True)
+        self.parTable.item(i, j).setText(str(val))
+        self.parTable.blockSignals(False)
+
     def dbChange(self, dbpath):
         self.dbpath = dbpath
         self.loadRuns()

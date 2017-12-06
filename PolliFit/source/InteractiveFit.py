@@ -68,10 +68,13 @@ class InteractiveFit(object):
                         spec_m = FullSpec(iso_m)
                         self.fitter_iso = SPFitter(spec_iso, meas, st)
                         self.fitter_m = SPFitter(spec_m, meas, st)
-                        plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False, fontsize_ticks=self.fontSize)
-                        plot.plotFit(self.fitter_m, color='-g', plot_residuals=False, fontsize_ticks=self.fontSize)
+                        plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False,
+                                     fontsize_ticks=self.fontSize, plot_data=False, add_label=' gs')
+                        plot.plotFit(self.fitter_m, color='-g', plot_residuals=False,
+                                     fontsize_ticks=self.fontSize, plot_data=False, add_label=' m')
                         self.fitter = SPFitter(spec, meas, st)
-                        plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize)
+                        plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize,
+                                     add_label=' gs+m', plot_side_peaks=False)
                     else:
                         spec = FullSpec(iso)
                         self.fitter = SPFitter(spec, meas, st)
@@ -85,14 +88,20 @@ class InteractiveFit(object):
                     spec_m = FullSpec(iso_m)
                     self.fitter_iso = SPFitter(spec_iso, meas, st)
                     self.fitter_m = SPFitter(spec_m, meas, st)
-                    plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False, fontsize_ticks=self.fontSize)
-                    plot.plotFit(self.fitter_m, color='-g', plot_residuals=False, fontsize_ticks=self.fontSize)
+                    plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False,
+                                 fontsize_ticks=self.fontSize, plot_data=False, add_label=' gs')
+                    plot.plotFit(self.fitter_m, color='-g', plot_residuals=False,
+                                 fontsize_ticks=self.fontSize, plot_data=False, add_label=' m')
                     self.fitter = SPFitter(spec, meas, st)
-                    plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize)
+                    plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize,
+                                 add_label=' gs+m', plot_side_peaks=False)
                 else:
                     spec = FullSpec(iso)
                     self.fitter = SPFitter(spec, meas, st)
                     plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
+        self.num_of_common_vals = self.fitter.spec.shape.nPar + 2  # number of common parameters useful if isotope
+        #  is being used -> comes from the number of parameters the shape needs
+        #  e.g. (Voigt:2) + offset + offsetSlope = 4
         plot.show(block)
         self.printPars()
         
@@ -104,19 +113,22 @@ class InteractiveFit(object):
     def getPars(self):
         return zip(self.fitter.npar, self.fitter.par, self.fitter.fix)
             
-    def fit(self):
+    def fit(self, show=True):
         self.fitter.fit()
         pars = self.fitter.par
         plot.clear()
         if self.fitter_m is not None:
             self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
-            self.fitter_m.par = pars[0:3] + pars[len(self.fitter_iso.par):]
-            plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False, fontsize_ticks=self.fontSize)
-            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False, fontsize_ticks=self.fontSize)
-            plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize)
+            self.fitter_m.par = pars[0:self.num_of_common_vals] + pars[len(self.fitter_iso.par):]
+            plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False,
+                         fontsize_ticks=self.fontSize, plot_data=False, add_label=' gs')
+            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False,
+                         fontsize_ticks=self.fontSize, plot_data=False, add_label=' m')
+            plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize,
+                         add_label=' gs+m', plot_side_peaks=False)
         else:
             plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
-        plot.show()
+        plot.show(show)
         
     def reset(self):
         self.fitter.reset()
@@ -124,10 +136,13 @@ class InteractiveFit(object):
         plot.clear()
         if self.fitter_m is not None:
             self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
-            self.fitter_m.par = pars[0:3] + pars[len(self.fitter_iso.par):]
-            plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False, fontsize_ticks=self.fontSize)
-            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False, fontsize_ticks=self.fontSize)
-            plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize)
+            self.fitter_m.par = pars[0:self.num_of_common_vals] + pars[len(self.fitter_iso.par):]
+            plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False,
+                         fontsize_ticks=self.fontSize, plot_data=False, add_label=' gs')
+            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False,
+                         fontsize_ticks=self.fontSize, plot_data=False, add_label=' m')
+            plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize,
+                         add_label=' gs+m', plot_side_peaks=False)
         else:
             plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
         plot.show()
@@ -145,10 +160,13 @@ class InteractiveFit(object):
         plot.clear()
         if self.fitter_m is not None:
             self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
-            self.fitter_m.par = pars[0:3] + pars[len(self.fitter_iso.par):]
-            plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False, fontsize_ticks=self.fontSize)
-            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False, fontsize_ticks=self.fontSize)
-            plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize)
+            self.fitter_m.par = pars[0:self.num_of_common_vals] + pars[len(self.fitter_iso.par):]
+            plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False,
+                         fontsize_ticks=self.fontSize, plot_data=False, add_label=' gs')
+            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False,
+                         fontsize_ticks=self.fontSize, plot_data=False, add_label=' m')
+            plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize,
+                         add_label=' gs+m', plot_side_peaks=False)
         else:
             plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
         plot.show()
@@ -162,11 +180,18 @@ class InteractiveFit(object):
         plot.clear()
         if self.fitter_m is not None:
             self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
-            self.fitter_m.par = pars[0:3] + pars[len(self.fitter_iso.par):]
-            plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False, fontsize_ticks=self.fontSize)
-            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False, fontsize_ticks=self.fontSize)
-            plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize)
+            self.fitter_m.par = pars[0:self.num_of_common_vals] + pars[len(self.fitter_iso.par):]
+            plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False,
+                         fontsize_ticks=self.fontSize, plot_data=False, add_label=' gs')
+            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False,
+                         fontsize_ticks=self.fontSize, plot_data=False, add_label=' m')
+            plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize,
+                         add_label=' gs+m', plot_side_peaks=False)
         else:
             plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
         plot.show()
-    
+
+    def save_fig_to(self, path):
+        plot.save(path)
+        print('interactive fit saved_to:', path)
+

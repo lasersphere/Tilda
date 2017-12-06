@@ -398,6 +398,9 @@ class NSaveRawData(Node):
         self.nOfSaves = None
         self.buf = None
 
+    def save(self):
+        self.clear()
+
 
 """ plotting """
 
@@ -1893,7 +1896,8 @@ class NTRSSortRawDatatoArrayFast(Node):
                 # combine the created arrays to one new array
                 new_arr = np.zeros(len(pmt_events_ind), dtype=[('sc', 'u2'), ('step', 'u4'),
                                                                ('time', 'u4'), ('cts', 'u4')])
-                new_arr['sc'] = pmt_events_scaler  # currently all are written to one so 255 = all pmts active
+                new_arr['sc'] = pmt_events_scaler  # currently all are written to one so 255 = all pmts active,
+                #  this is fixed below
                 new_arr['step'] = pmt_steps  # how to do this without for loop? pmt_evt_ind < step ...
                 new_arr['time'] = pmt_events_time
                 # create a unique array, so all double occurences of the given data are counted

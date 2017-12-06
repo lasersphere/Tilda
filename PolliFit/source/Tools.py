@@ -386,7 +386,10 @@ def extract_from_combined(runs_list, db, isotopes=None, par='shift', print_extra
                 data = cursor.fetchall()
                 connection.close()
                 if len(data):
-                    result_dict[selected_run][iso] = data[0]
+                    # print('data is: ', data)
+                    # might have elements with 'null' or anything that is not a float
+                    data = [each if isinstance(each, float) else 0.0 for each in data[0]]
+                    result_dict[selected_run][iso] = data
     if print_extracted:
         for sel_run, run_results_dicts in sorted(result_dict.items()):
             print('--- \t%s\t%s\t ---' % (sel_run, par))
