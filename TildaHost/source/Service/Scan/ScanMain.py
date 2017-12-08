@@ -510,7 +510,7 @@ class ScanMain(QObject):
         progress_dict must contain: {activeIso: str, activeTrackNum: int, completedTracks: list, nOfCompletedSteps: int}
         scan_dict_contains scan values only for active scan
         return_dict contains: ['activeIso', 'overallProgr', 'timeleft', 'activeTrack', 'totalTracks',
-        'trackProgr', 'activeScan', 'totalScans', 'activeStep', 'totalSteps', 'trackName']
+        'trackProgr', 'activeScan', 'totalScans', 'activeStep','actStepIndex' 'totalSteps', 'trackName']
         """
         try:
             return_dict = dict.fromkeys(['activeIso', 'overallProgr', 'timeleft', 'activeTrack', 'totalTracks',
@@ -550,10 +550,10 @@ class ScanMain(QObject):
             return_dict['totalScans'] = total_steps_list[track_ind][0]
             return_dict['activeStep'] = compl_steps - (return_dict['activeScan'] - 1) * total_steps_list[track_ind][1]
             return_dict['totalSteps'] = total_steps_list[track_ind][1]
-            if return_dict['activeScan']%2==0:
+            if return_dict['activeScan']%2==0 and scan_dict[track_name]['invertScan']:
                 return_dict['actStepIndex']=return_dict['totalSteps']-return_dict['activeStep']
             else:
-                return_dict['actStepIndex'] = return_dict['activeStep']
+                return_dict['actStepIndex'] = return_dict['activeStep']-1
             return_dict['trackName'] = track_name
             return_dict['activeFile'] = scan_dict['pipeInternals']['activeXmlFilePath']
             dif = datetime.now() - self.last_scan_prog_update

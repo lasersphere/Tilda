@@ -859,7 +859,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         self.active_iso = progress_dict_from_main['activeIso']
         if not self.new_track_no_data_yet:
-            act_step_ind = max(progress_dict_from_main['actStepIndex'] - 1, 0)
+            act_step_ind = max(progress_dict_from_main['actStepIndex'], 0)
             act_tr_ind = progress_dict_from_main['activeTrack'] - 1
             self.update_step_indication_lines(act_step_ind, act_tr_ind)
         if self.active_file != progress_dict_from_main['activeFile']:
