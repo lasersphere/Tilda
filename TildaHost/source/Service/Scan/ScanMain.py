@@ -550,8 +550,8 @@ class ScanMain(QObject):
             return_dict['totalScans'] = total_steps_list[track_ind][0]
             return_dict['activeStep'] = compl_steps - (return_dict['activeScan'] - 1) * total_steps_list[track_ind][1]
             return_dict['totalSteps'] = total_steps_list[track_ind][1]
-            if return_dict['activeScan']%2==0 and scan_dict[track_name]['invertScan']:
-                return_dict['actStepIndex']=return_dict['totalSteps']-return_dict['activeStep']
+            if return_dict['activeScan'] % 2 == 0 and scan_dict[track_name]['invertScan']:
+                return_dict['actStepIndex'] = return_dict['totalSteps']-return_dict['activeStep']
             else:
                 return_dict['actStepIndex'] = return_dict['activeStep']-1
             return_dict['trackName'] = track_name

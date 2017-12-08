@@ -112,8 +112,8 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
 
         """
         self.status = TrsCfg.seqStateDict['measureTrack']
-        print('measureing track: ' + str(track_num) +
-              '\nscanparameters are:' + str(scanpars))
+        logging.info('measuring track: ' + str(track_num) +
+                     '\nscanparameters are:' + str(scanpars))
         self.data_builder(scanpars, track_num)
         return True
 
@@ -124,45 +124,48 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         track_ind, track_name = scanpars['pipeInternals']['activeTrackNumber']
         trackd = scanpars[track_name]
         logging.debug('starting to build artificial data for dummy trs for track %s' % track_name)
-        print('num of steps: %s num of bins: %s num of bunches: %s num of scans: %s ' %
-              (trackd['nOfSteps'], trackd['nOfBins'], trackd['nOfBunches'], trackd['nOfScans']))
+        logging.debug('num of steps: %s num of bins: %s num of bunches: %s num of scans: %s ' %
+                      (trackd['nOfSteps'], trackd['nOfBins'], trackd['nOfBunches'], trackd['nOfScans']))
         one_scan = self.build_one_scan(scanpars, trackd, track_ind)
+        one_scan_inverted = self.build_one_scan(scanpars, trackd, track_ind, True)
         complete_lis = []
         for i in range(trackd['nOfScans']):
             complete_lis.append(Form.add_header_to23_bit(2, 4, 0, 1))  # means scan started
-            complete_lis += one_scan
+            complete_lis += one_scan if i % 2 == 0 or not trackd['invertScan'] else one_scan_inverted
+            # if scan is inverted, use the data for an inverted scan on every odd scan number
 
         logging.debug('artificial data for dummy trs completed')
         self.artificial_build_data = complete_lis
 
-    def build_one_scan(self, scanpars, trackd, track_ind):
+    def build_one_scan(self, scanpars, trackd, track_ind, inverted=False):
         """ build data for one scan """
-        step = 0
+        step = trackd['nOfSteps'] - 1 if inverted else 0
         count_time_dif = trackd['nOfBins'] // trackd['nOfSteps']
         x_axis = Form.create_x_axis_from_scand_dict(scanpars)[track_ind]
         x_axis = [Form.add_header_to23_bit(x << 2, 3, 0, 1) for x in x_axis]
         one_scan = []
-        while step < trackd['nOfSteps']:
-            one_scan.append(int(x_axis[step]))
-            if step % 2 == 1 or False:
-                bunch = 0
+        while step < trackd['nOfSteps'] and not inverted or step >= 0 and inverted:
+            # count steps upwards if not inverted, otherwise count downwards
+            one_scan.append(int(x_axis[step]))  # start with dac information
+            if step % 2 == 1:
+                bunch = 0  # set bunch to 0 in order to create cts below
             else:  # no scaler entries for all even step numbers
                 bunch = trackd['nOfBunches']
-                for bun in range(bunch):
+                for bun in range(bunch):  # add as meany bunch complete infos as needed to complete this step
                     one_scan.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
                 one_scan.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))  # step complete
-            while bunch < trackd['nOfBunches']:
+            while bunch < trackd['nOfBunches']:  # only for uneven steps
                 one_scan.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
                 bunch += 1
-                scaler03 = 2 ** 4 - 1  # easier for debugging
-                scaler47 = 2 ** 4 - 1  # easier for debugging
+                scaler03 = 2 ** 4 - 1  # easier for debugging, all pmt have a count
+                scaler47 = 2 ** 4 - 1  # easier for debugging, all pmt have a count
                 [one_scan.append(
                     Form.add_header_to23_bit(count_time_dif * i, scaler03, scaler47, 0))
-                 for i in range(step)]
+                 for i in range(step)]  # add pmt events with time difference count_time_dif * stepIndex
                 if bunch >= trackd['nOfBunches']:
                     # step complete, will be send after all bunches are completed
                     one_scan.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))
-            step += 1
+            step += -1 if inverted else 1
         return one_scan
 
     ''' overwriting interface functions here '''

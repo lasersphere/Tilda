@@ -1856,25 +1856,36 @@ class NTRSSortRawDatatoArrayFast(Node):
             new_unique_arr = np.zeros(1, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
             pipeData[track_name]['nOfCompletedSteps'] += step_complete_ind_list.size
             scan_start_before_step_comp = False
-            scan_started_ind_list = np.where(self.stored_data == scan_started)[0]
+            scan_started_ind_list = np.where(self.stored_data[:step_complete_ind_list[-1]] == scan_started)[0]
+            # account only started scans until the last step complete element was registered
             if scan_started_ind_list.size:
                 scan_start_before_step_comp = scan_started_ind_list[0] < step_complete_ind_list[0]
                 if scan_start_before_step_comp:
+                    # if the first scan_started_index is smaller than the first step_complete_ind_list
+                    # i need to increase this counter already here before creating the x-axis!
                     self.total_num_of_started_scans += 1
-            x_one_scan = np.arange(0, pipeData[track_name]['nOfSteps'])  # "x-axis" for one scan
+                    # logging.debug('a scan was started before a step was completed, number of started scans is: %s'
+                    #               % self.total_num_of_started_scans)
+            x_one_scan = np.arange(0, pipeData[track_name]['nOfSteps'])
+            # "x-axis" for one scan in terms of x-step-indices
             # make it also for two scans and invert on second rep if needed.
             # note fliplr must be >= 2-d
             x_two_scans = np.append(x_one_scan,
                                     np.fliplr([x_one_scan])[0] if pipeData[track_name]['invertScan'] else x_one_scan)
             # repeat this as often as needed for all steps held in this data set.
             x_this_data = np.tile(x_two_scans,
-                                  np.ceil(step_complete_ind_list.size / pipeData[track_name]['nOfSteps'] / 2))
+                                  np.ceil((step_complete_ind_list.size + 2) / pipeData[track_name]['nOfSteps'] / 2))
             # roll this, so that the current step stands at position 0.
+            # logging.debug('uncut x_data: %s' % x_this_data)
             x_this_data = np.roll(x_this_data,
-                                  -(self.curVoltIndex + pipeData[track_name]['nOfSteps'])
+                                  self.curVoltIndex + 1
                                   if pipeData[track_name]['invertScan'] and self.total_num_of_started_scans % 2 == 0
-                                  else -self.curVoltIndex)[0:step_complete_ind_list.size]
-            # print('starting with voltindex: ', x_this_data[0])
+                                  else -self.curVoltIndex)
+            next_volt_step_ind = x_this_data[step_complete_ind_list.size]
+            x_this_data = x_this_data[0:step_complete_ind_list.size]
+            # logging.debug('starting with voltindice: %s,\n current voltindex is: %s,'
+            #               ' next voltINdex: %s, scans started: %s'
+            #               % (x_this_data, self.curVoltIndex, next_volt_step_ind, self.total_num_of_started_scans))
             # get position of all pmt events (trs:)
             pmt_events_ind = np.where(self.stored_data & header_index == 0)[0]  # indices of all pmt events (for trs)
             # create an array which repeatedly holds the stepnumber which is active for the element at this position
@@ -1914,8 +1925,9 @@ class NTRSSortRawDatatoArrayFast(Node):
                             ith_pmt_hit_list['sc'] = int(np.log2(act_pmt))
                             new_unique_arr = np.append(new_unique_arr, ith_pmt_hit_list)
                             # print(new_unique_arr)
-            self.total_num_of_started_scans += scan_started_ind_list.size - 1 if scan_start_before_step_comp else 0
-            self.curVoltIndex = x_this_data[-1] + 1
+            add_sc = scan_started_ind_list.size - 1 if scan_start_before_step_comp else scan_started_ind_list.size
+            self.total_num_of_started_scans += add_sc  # num of scan start inf elements in list, -1 if already above +1
+            self.curVoltIndex = next_volt_step_ind
             self.stored_data = self.stored_data[step_complete_ind_list[-1] + 1:]
             # new_unique_arr = np.sort(new_unique_arr, axis=0)
             # print(new_unique_arr)

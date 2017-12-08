@@ -875,7 +875,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         try:
             if self.all_pmts_widg_plt_item_list is not None:
                 val = self.spec_data.x[act_tr][act_step]
-                print('active track is: %s and active step is: %s val is: %s ' % (act_tr, act_step, val))
+                # logging.debug('active track is: %s and active step is: %s val is: %s ' % (act_tr, act_step, val))
                 if self.current_step_line is not None:
                     self.current_step_line.setValue(val)
                 if self.sum_current_step_line is not None:
