@@ -32,7 +32,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Tetris(QtWidgets.QMainWindow):
     def __init__(self):
         super(Tetris, self).__init__()
-
+        self.toolbar = self.addToolBar('test')
+        self.statusbar = self.statusBar()
+        self.help_action = self.toolbar.addAction('help')
         self.initUI()
 
     def initUI(self):
@@ -59,7 +61,6 @@ class Tetris(QtWidgets.QMainWindow):
         widg_v.setLayout(v_layout)
         self.setCentralWidget(widg)
 
-        self.statusbar = self.statusBar()
         self.tboard.msg2Statusbar[str].connect(self.statusbar.showMessage)
 
         self.resize(260, 380)
@@ -69,6 +70,7 @@ class Tetris(QtWidgets.QMainWindow):
         self.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         self.show()
         self.tboard.start()
+        self.help_action.triggered.connect(self.tboard.help_win)
 
     def center(self):
         screen = QtWidgets.QDesktopWidget().screenGeometry()
@@ -203,6 +205,23 @@ class Board(QtWidgets.QFrame):
 
         elif key == QtCore.Qt.Key_P:
             self.pause()
+            return
+
+        elif key == QtCore.Qt.Key_H:
+            self.show_highscore()
+            return
+
+        elif key == QtCore.Qt.Key_F1:
+            self.help_win()
+            return
+
+        elif key == QtCore.Qt.Key_R:
+            dial = QtWidgets.QMessageBox(self)
+            resp = QtWidgets.QMessageBox.question(dial, 'restart Tetris?',
+                                                  'Do you really want to restart Tetris and loose your progress?')
+            if resp == QtWidgets.QMessageBox.Yes:
+                self.initBoard()
+                self.start()
             return
 
         if self.isPaused:
@@ -347,13 +366,16 @@ class Board(QtWidgets.QFrame):
                 pickle.dump(self.high_score, file)
                 file.close()
             else:
-                print('you did not beat the highscore of %s removed lines' % self.high_score )
-            high_score_par = QtWidgets.QMessageBox(self)
-            high_sc_str = ''
-            for rank, each in enumerate(self.high_score):
-                high_sc_str += '%s \t %s \t %s \n' % (rank + 1, each[0], each[1])
-            QtWidgets.QMessageBox.information(
-                high_score_par, 'high score', 'rank \t name \t lines \n' + high_sc_str)
+                print('you did not beat the highscore of %s removed lines' % self.high_score)
+            self.show_highscore()
+
+    def show_highscore(self):
+        high_score_par = QtWidgets.QMessageBox(self)
+        high_sc_str = ''
+        for rank, each in enumerate(self.high_score):
+            high_sc_str += '%s \t %s \t %s \n' % (rank + 1, each[0], each[1])
+        QtWidgets.QMessageBox.information(
+            high_score_par, 'high score', 'rank \t name \t lines \n' + high_sc_str)
 
     def setNextPieceLabel(self, label):
         self.nextPieceLabel = label
@@ -427,6 +449,32 @@ class Board(QtWidgets.QFrame):
                 winsound.PlaySound(
                     os.path.join(os.path.dirname(__file__), 'TetrisTheme.wav'), winsound.SND_ASYNC + winsound.SND_LOOP)
             self.music_is_playing = not self.music_is_playing
+
+    def focusOutEvent(self, *args, **kwargs):
+        if self.music_is_playing:
+            self.play_music()
+        if not self.isPaused:
+            self.pause()
+
+    def focusInEvent(self, *args, **kwargs):
+        self.play_music()  # restart music in any case requested by Phillip
+        if not self.play_music():
+            self.play_music()
+
+    def help_win(self):
+        help_win_base = QtWidgets.QMessageBox(self)
+        QtWidgets.QMessageBox.information(help_win_base, 'Tetris help',
+                                          'Control keys: \n'
+                                          'right-/left-arrow key \t move piece\n'
+                                          'up-/down-arrow key \t turn piece\n'
+                                          'd \t move piece down a bit\n'
+                                          'space \t move piece down in one move\n'
+                                          'm \t music on/off toggle\n'
+                                          'p \t pause game toggle\n'
+                                          'h \t open highscore\n'
+                                          'F1 \t open help win\n'
+                                          'r \t restart Tetris\n'
+                                          )
 
 
 class Tetrominoe(object):
