@@ -79,6 +79,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.label_laser_freq_set.mouseDoubleClickEvent = self.laser_freq_dbl_click
         self.label_acc_volt_set.mouseDoubleClickEvent = self.acc_volt_dbl_click
         self.label_8.mouseDoubleClickEvent = self.dmm_setup_dbl_click
+        self.label_triton_subscription.mouseDoubleClickEvent = self.triton_dbl_click
 
         """ connect buttons """
         self.pushButton_open_dir.clicked.connect(self.open_dir)
@@ -102,6 +103,14 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def dmm_setup_dbl_click(self, event):
         self.open_dmm_live_view_win()
+
+    def triton_dbl_click(self, event):
+        dial = QtWidgets.QMessageBox(self)
+        ret = QtWidgets.QMessageBox.question(dial,
+                                             'Triton Unsubscribe','Do you want to unsubscribe from all triton devs?'
+                                             )
+        if ret==QtWidgets.QMessageBox.Yes:
+            Cfg._main_instance.triton_unsubscribe_all()
 
     def subscribe_to_main(self):
         """
@@ -147,6 +156,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.label_fpga_state_set.setText(str(status_dict.get('fpga_status', '')))
         self.label_sequencer_status_set.setText(str(status_dict.get('sequencer_status', '')))
         self.label_dmm_status.setText(self.make_dmm_status_nice(status_dict))
+        self.label_triton_subscription.setText(status_dict.get('triton_status',''))
         stat_is_idle = status_dict.get('status', '') == 'idle'
         for w in self.act_scan_wins:
             w.enable_go(stat_is_idle)

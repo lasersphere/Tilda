@@ -110,6 +110,8 @@ class Main(QtCore.QObject):
         self.sequencer_status = None
         self.fpga_status = None
 
+        self.triton_status = None
+
         self.remove_active_iso_after_scan_complete = False
 
         self.pre_scan_measurement_start_time = datetime.now()
@@ -132,6 +134,7 @@ class Main(QtCore.QObject):
         This will control the main
         """
         st = datetime.now()
+        self.get_triton_log()
         if self.m_state[0] is MainState.idle:
             self.get_fpga_and_seq_state()
             self.read_dmms(reading_interval=self.dmm_periodic_reading_interval)
@@ -183,6 +186,8 @@ class Main(QtCore.QObject):
             self._request_dmm_config_pars(*self.m_state[1])
         elif self.m_state[0] is MainState.deinit_dmm:
             self._deinit_dmm(self.m_state[1])
+        elif self.m_state[0] is MainState.triton_unsubscribe:
+            self._triton_unsubscribe_all()
         elapsed = datetime.now() - st
         if elapsed.microseconds > 50000:
             logging.warning('cyclic execution took longer than 50ms, it took: %.1f ms, state is: %s'
@@ -277,7 +282,8 @@ class Main(QtCore.QObject):
                 'accvolt': self.acc_voltage,
                 'sequencer_status': self.sequencer_status,
                 'fpga_status': self.fpga_status,
-                'dmm_status': self.get_dmm_status()
+                'dmm_status': self.get_dmm_status(),
+                'triton_status': str(self.triton_status)
             }
             self.main_ui_status_call_back_signal.emit(stat_dict)
 
@@ -1150,6 +1156,22 @@ class Main(QtCore.QObject):
         print('disconnecting ...')
         self.scan_main.ppg_state_callback_disconnect()
         print('disconnected')
+
+    ''' triton related'''
+
+    def get_triton_log(self):
+        triton_status = self.scan_main.get_triton_receivers()
+        if triton_status != self.triton_status:
+            self.triton_status = triton_status
+            self.send_state()
+
+    def triton_unsubscribe_all(self):
+        self.set_state(MainState.triton_unsubscribe, only_if_idle=True)
+
+    def _triton_unsubscribe_all(self):
+        self.scan_main.stop_triton_listener(stop_dummy_dev=False, restart=True)
+        self.set_state(MainState.idle)
+
 
     ''' send information / warnings to gui or so '''
 

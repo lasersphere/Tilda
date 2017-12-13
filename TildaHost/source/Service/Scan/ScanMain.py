@@ -838,13 +838,15 @@ class ScanMain(QObject):
             self.triton_listener.stop_log()
         self.triton_listener.setup_log(triton_scan_dict.get(pre_post_scan_str, {}))
 
-    def stop_triton_listener(self):
+    def stop_triton_listener(self, stop_dummy_dev=True, restart=False):
         """
         remove the triton listener and unsubscribe from devices.
         """
         if self.triton_listener is not None:
-            self.triton_listener.off()
+            self.triton_listener.off(stop_dummy_dev)
             self.triton_listener = None
+        if restart:
+            self.triton_listener = TritonListener()
 
     def abort_triton_log(self):
         """ this just stops the log and leaves the listener alive """
@@ -910,6 +912,14 @@ class ScanMain(QObject):
             return self.triton_listener.get_devs_from_db()
         else:
             return {}
+
+    def get_triton_receivers(self):
+        if self.triton_listener is None:
+            return []
+        else:
+            return self.triton_listener.get_receivers()
+
+
 
 # if __name__ == "__main__":
 #     scn_main = ScanMain()

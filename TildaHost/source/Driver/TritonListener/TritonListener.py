@@ -91,6 +91,7 @@ class TritonListener(TritonObject):
     def get_devs_from_db(self):
         """
         return a dict with all channels and their channels as a list.
+        if no db is available return dummy dev
         :return: dict, {dev: ['ch1', 'ch2' ...]}
         """
         devs = {}
@@ -110,6 +111,7 @@ class TritonListener(TritonObject):
                 devs[dev[0]] = self.get_channels_of_dev(dev[0])
             db.close()
         else:
+            logging.warning('no db connection, returning local dummyDev!')
             devs['dummyDev'] = self.get_channels_of_dev('dummyDev')
         return devs
 
@@ -206,11 +208,11 @@ class TritonListener(TritonObject):
         """ stop logging, by setting self.logging to False """
         self.logging = False
 
-    def off(self):
+    def off(self, stop_dummy_dev=True):
         """ unsubscribe from all devs and stop the dummy device if this was started. """
         self.stop_log()
         self._stop()
-        if self.dummy_dev is not None:
+        if self.dummy_dev is not None and stop_dummy_dev:
             self.dummy_dev._stop()
             self.dummy_dev = None
 
@@ -227,6 +229,9 @@ class TritonListener(TritonObject):
         Pyro4.config.SERVERTYPE = 'thread'
         sys.excepthook = Pyro4.util.excepthook
         # Pyro4.config.DETAILED_TRACEBACK = True
+
+    def get_receivers(self):
+        return list(sorted(self._recFrom.keys()))
 
 if __name__=='__main__':
 
