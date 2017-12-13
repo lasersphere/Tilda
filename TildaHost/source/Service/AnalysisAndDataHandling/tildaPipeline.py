@@ -59,7 +59,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     # walk = start.attach(SN.NPrint())
 
     # alternative pipeline:
-    fast = start.attach(TN.NFilterDMMDicts())
+    fast = start.attach(TN.NFilterDMMDictsAndSave())  # Replaced former NFilterDMMDicts
     fast = fast.attach(TN.NSaveRawData())
     # fast = fast.attach(TN.NProcessQtGuiEvents())
     fast = fast.attach(TN.NTRSSortRawDatatoArrayFast())
@@ -97,7 +97,7 @@ def CsPipe(initialScanPars=None, callback_sig=None, live_plot_callbacks=None):
 
     pipe = Pipeline(start)
     # start = start.attach(SN.NPrint())
-    start = start.attach(TN.NFilterDMMDicts())
+    start = start.attach(TN.NFilterDMMDictsAndSave())  # Replaced former NFilterDMMDicts
 
     maintenance = start.attach(TN.NMPLCloseFigOnInit())
 

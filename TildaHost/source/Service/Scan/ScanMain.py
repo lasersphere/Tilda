@@ -300,6 +300,13 @@ class ScanMain(QObject):
         will start the measurement for one track.
         After starting the measurement, the FPGA runs on its own.
         """
+        # TODO: prepare during scan measurements of triton devices
+        # Must think about how to implement those. Do we want to do it here?
+        # We could also set up a feed into the pipeline and then catch them
+        # in a node, like the dmm data.
+        # Otherwise Something similar to start_pre_scan_measurement and
+        # prescan_measurement could be used here
+
         track_dict = scan_dict.get('track' + str(track_num))
         iso = scan_dict.get('isotopeData', {}).get('isotope')
         logging.debug('---------------------------------------------')
@@ -422,6 +429,9 @@ class ScanMain(QObject):
         """
         read = self.read_data()  # read data one last time
         self.ppg_stop()
+        # TODO: stop and save during scan measurements of triton devices,
+        # Need further thoughts into the implementation, see start_measurement
+
         if read:
             logging.info('while stopping measurement, some data was still read.')
         if complete_stop:  # only touch dmms in the end of the whole scan
@@ -730,21 +740,9 @@ class ScanMain(QObject):
         :return:
         """
         file = scan_dict['pipeInternals']['activeXmlFilePath']
-        if file:
-            root = TiTs.load_xml(file)
-            tracks = XmlOps.xmlFindOrCreateSubElement(root, 'tracks')
-            track = XmlOps.xmlFindOrCreateSubElement(tracks, tr_name)
-            track_header = XmlOps.xmlFindOrCreateSubElement(track, 'header')
-            meas_volt = XmlOps.xmlFindOrCreateSubElement(track_header, 'measureVoltPars')
-            pre_during_ele = XmlOps.xmlFindOrCreateSubElement(meas_volt, pre_during_post_scan_str)
-            dmms_ele = XmlOps.xmlFindOrCreateSubElement(pre_during_ele, 'dmms')
-            dmms_dict = scan_dict[tr_name]['measureVoltPars'].get(pre_during_post_scan_str, {}).get('dmms', {})
-            for dmm_name, dmm_dict in dmms_dict.items():
-                dmm_ele = XmlOps.xmlFindOrCreateSubElement(dmms_ele, dmm_name)
-                XmlOps.xmlFindOrCreateSubElement(dmm_ele, 'readings', dmm_dict['readings'])
-                logging.debug('saved %s meas of dmm: %s, reading is: %s' % (
-                    pre_during_post_scan_str, dmm_name, str(dmm_dict['readings'])))
-            TiTs.save_xml(root, file)
+        dmms_dict = scan_dict[tr_name]['measureVoltPars'].get(pre_during_post_scan_str, {}).get('dmms', {})
+        # the save process is moved to TildaTools, so its better accessible
+        TiTs.save_dmm_readings_to_xml(file, tr_name, dmms_dict, pre_during_post_scan_str)
 
     def dmm_get_accuracy(self, dmm_name, config):
         """ get the accuracy tuple from the dmm with the given config """
@@ -888,19 +886,9 @@ class ScanMain(QObject):
         :param scan_dict: dict, the usual scan dict, see  Service/Scan/draftScanParameters.py
         """
         file = scan_dict['pipeInternals']['activeXmlFilePath']
-        if file:
-            triton_dict = self.get_triton_log_data()
-            if triton_dict:
-                logging.info('triton %s log complete, saving to: %s' % (pre_during_post_scan_str, file))
-                logging.debug('saving: ' + str(triton_dict))
-                root = TiTs.load_xml(file)
-                tracks = XmlOps.xmlFindOrCreateSubElement(root, 'tracks')
-                track = XmlOps.xmlFindOrCreateSubElement(tracks, tr_name)
-                track_header = XmlOps.xmlFindOrCreateSubElement(track, 'header')
-                triton_ele = XmlOps.xmlFindOrCreateSubElement(track_header, 'triton')
-                pre_ele = XmlOps.xmlFindOrCreateSubElement(triton_ele, pre_during_post_scan_str)
-                XmlOps.xmlWriteDict(pre_ele, triton_dict)
-                TiTs.save_xml(root, file)
+        triton_dict = self.get_triton_log_data()
+        # The save process is moved to TildaTools for better accessibility
+        TiTs.save_triton_to_xml(file, tr_name, triton_dict, pre_during_post_scan_str=pre_during_post_scan_str)
 
     def get_available_triton(self):
         """

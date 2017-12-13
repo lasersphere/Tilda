@@ -191,7 +191,7 @@ class TritonListener(TritonObject):
             for dev, dev_log in self.log.items():
                 for ch, val in dev_log.items():
                     val['acquired'] = len(val['data'])
-            logging.debug('TritonLitener self.log after completion: %s' % str(self.log))
+            logging.debug('TritonListener self.log after completion: %s' % str(self.log))
             self.stop_log()
 
     def start_log(self):
@@ -212,6 +212,7 @@ class TritonListener(TritonObject):
         """ unsubscribe from all devs and stop the dummy device if this was started. """
         self.stop_log()
         self._stop()
+        # If there is a dummy_dev stop it, except if we only want to reset the pipeline.
         if self.dummy_dev is not None and stop_dummy_dev:
             self.dummy_dev._stop()
             self.dummy_dev = None

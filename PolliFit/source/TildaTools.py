@@ -16,7 +16,8 @@ import numpy as np
 from lxml import etree as ET
 
 import Physics
-from XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, xmlAddCompleteTrack
+from XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, \
+    xmlAddCompleteTrack, xmlFindOrCreateSubElement, xmlWriteDict
 
 
 def select_from_db(db, vars_select, var_from, var_where=[], addCond='', caller_name='unknown'):
@@ -174,8 +175,8 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
             if val.get('dmms', None) is None:
                 val['dmms'] = {}
         for key, val in track_d.get('triton', {}).items():
-                if val is None:
-                    track_d['triton'][key] = {}
+            if val is None:
+                track_d['triton'][key] = {}
     return all_trackd
 
 
@@ -193,6 +194,32 @@ def get_meas_volt_dict(xml_etree):
     return meas_volt_pars_dict
 
 
+def save_dmm_readings_to_xml(file, tr_name, dmms_dict, pre_during_post_scan_str):
+    """
+    Will save the dmms dicts gotten from the scan_dict to the given xml file.
+
+    :param file: str, path to xml file
+    :param tr_name: str, track name
+    :param dmms_dict: dict, 'dmms':{...}... as in draft scan pars
+    :param pre_during_post_scan_str: str, preScan / duringScan / postScan
+    :return: None
+    """
+    if file:
+        root = load_xml(file)
+        tracks = xmlFindOrCreateSubElement(root, 'tracks')
+        track = xmlFindOrCreateSubElement(tracks, tr_name)
+        track_header = xmlFindOrCreateSubElement(track, 'header')
+        meas_volt = xmlFindOrCreateSubElement(track_header, 'measureVoltPars')
+        pre_during_ele = xmlFindOrCreateSubElement(meas_volt, pre_during_post_scan_str)
+        dmms_ele = xmlFindOrCreateSubElement(pre_during_ele, 'dmms')
+        for dmm_name, dmm_dict in dmms_dict.items():
+            dmm_ele = xmlFindOrCreateSubElement(dmms_ele, dmm_name)
+            xmlFindOrCreateSubElement(dmm_ele, 'readings', dmm_dict['readings'])
+            logging.debug('saved %s meas of dmm: %s, reading is: %s' % (
+                pre_during_post_scan_str, dmm_name, str(dmm_dict['readings'])))
+        save_xml(root, file)
+
+
 def get_triton_dict_from_xml_root(xml_etree):
     """
     OUTDATED SINCE VERSION 1.19
@@ -207,6 +234,30 @@ def get_triton_dict_from_xml_root(xml_etree):
     evaluate_strings_in_dict(triton_dict)
     # print('triton_dict from file: ', triton_dict)
     return triton_dict
+
+
+def save_triton_to_xml(file, tr_name, triton_dict, pre_during_post_scan_str='preScan'):
+    """
+    will save the triton log gotten from the triton dict to the given xml file.
+
+    :param file: str, path of the xml file
+    :param tr_name: str, track name
+    :param triton_dict:  dict, {'dummyDev': {'ch1': {'required': 2, 'data': [], 'acquired': 0}, ...}}
+    :param pre_during_post_scan_str: str, preScan / duringScan / postScan
+    :return: None
+    """
+    if file:
+        if triton_dict:
+            logging.info('triton %s log complete, saving to: %s' % (pre_during_post_scan_str, file))
+            logging.debug('saving: ' + str(triton_dict))
+            root = load_xml(file)
+            tracks = xmlFindOrCreateSubElement(root, 'tracks')
+            track = xmlFindOrCreateSubElement(tracks, tr_name)
+            track_header = xmlFindOrCreateSubElement(track, 'header')
+            triton_ele = xmlFindOrCreateSubElement(track_header, 'triton')
+            pre_ele = xmlFindOrCreateSubElement(triton_ele, pre_during_post_scan_str)
+            xmlWriteDict(pre_ele, triton_dict)
+            save_xml(root, file)
 
 
 def evaluate_strings_in_dict(dict_to_convert):
