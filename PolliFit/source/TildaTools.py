@@ -169,10 +169,13 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
     for tr_name, track_d in all_trackd.items():
         all_trackd[tr_name] = evaluate_strings_in_dict(all_trackd[tr_name])
     for tr_name, track_d in all_trackd.items():
-        # make sure no None values exist for measureVoltPars['dmm']
+        # make sure no None values exist for measureVoltPars['dmm'] or triton
         for key, val in track_d.get('measureVoltPars', {}).items():
             if val.get('dmms', None) is None:
                 val['dmms'] = {}
+        for key, val in track_d.get('triton', {}).items():
+                if val is None:
+                    track_d['triton'][key] = {}
     return all_trackd
 
 
@@ -1040,8 +1043,10 @@ if __name__ == '__main__':
     # newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')
     # print(newname)
     # get_all_tracks_of_xml_in_one_dict('E:/TildaDebugging3/sums/Test_trsdummy_run005.xml')
-    import Service.Scan.draftScanParameters as dft
-
-    sc_dict = dft.draftScanDict
-    isodict = sc_dict['isotopeData']
-    print(nameFileXml(isodict, 'E:\\temp2'))
+    # import Service.Scan.draftScanParameters as dft
+    #
+    # sc_dict = dft.draftScanDict
+    # isodict = sc_dict['isotopeData']
+    # print(nameFileXml(isodict, 'E:\\temp2'))
+    ret = get_all_tracks_of_xml_in_one_dict('C:\\TRITON_TILDA\\Temp\\sums\\anewnew_trsdummy_run045.xml')
+    print(ret['track0']['triton'])

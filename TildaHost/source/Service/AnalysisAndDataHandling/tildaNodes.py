@@ -1836,8 +1836,7 @@ class NTRSSortRawDatatoArrayFast(Node):
         self.comp_list = [2 ** j for i, j in enumerate(self.Pipeline.pipeData[track_name]['activePmtList'])]
         if self.stored_data is None:
             self.stored_data = np.zeros(0, dtype=np.uint32)
-        if self.completed_steps_this_track is None:
-            self.completed_steps_this_track = self.Pipeline.pipeData[track_name].get('nOfCompletedSteps', 0)
+        self.completed_steps_this_track = self.Pipeline.pipeData[track_name].get('nOfCompletedSteps', 0)
         self.Pipeline.pipeData[track_name][
             'nOfCompletedSteps'] = self.completed_steps_this_track  # make sure this exists
 
