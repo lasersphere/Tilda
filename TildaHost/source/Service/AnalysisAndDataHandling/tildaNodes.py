@@ -1875,6 +1875,7 @@ class NTRSSortRawDatatoArrayFast(Node):
             # repeat this as often as needed for all steps held in this data set.
             x_this_data = np.tile(x_two_scans,
                                   np.ceil((step_complete_ind_list.size + 2) / pipeData[track_name]['nOfSteps'] / 2))
+            # +2 needed for next_volt_step_ind, see below
             # roll this, so that the current step stands at position 0.
             # logging.debug('uncut x_data: %s' % x_this_data)
             x_this_data = np.roll(x_this_data,

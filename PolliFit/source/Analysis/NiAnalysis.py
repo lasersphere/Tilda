@@ -168,45 +168,39 @@ q_literature_61_Ni = 0.162  # barn
 d_q_literature_61_Ni = 0.015  # barn
 
 lit_q_moments = [(61.1, 3 / 2, 0.162, 0.015), (61.2, 5 / 2, -0.2, 0.03), (61.3, 5 / 2, -0.08, 0.07)]
-
+# 5/2- states are isomere with 5.34 ns life time. Values out of Nuclear Moments 2014
 # 3d9(2D)4s  	 3D 3
 b_lower_lit = -102.979  # MHz
 d_b_lower_lit = 0.016  # MHz
 
-# e_Vzz value from this: e_Vzz = Q / B
-e_Vzz_lower = q_literature_61_Ni / b_lower_lit
+# Q = B / eVzz -> eVzz = B/Q  see Neugart_LNP_700
+
+e_Vzz_lower = b_lower_lit / q_literature_61_Ni
 d_e_Vzz_lower = np.sqrt(
-    (e_Vzz_lower / b_lower_lit * d_b_lower_lit) ** 2 +
-    (e_Vzz_lower / q_literature_61_Ni * d_q_literature_61_Ni) ** 2)
+    (d_b_lower_lit / q_literature_61_Ni) ** 2 +
+    (b_lower_lit * d_q_literature_61_Ni / (q_literature_61_Ni ** 2)) ** 2
+)
 print(e_Vzz_lower, d_e_Vzz_lower)
 print('eVzz_lower = %.3f(%.0f) b/ kHz' % (e_Vzz_lower * 1000, d_e_Vzz_lower * 1e6))
 
 # for the upper state  3d9(2D)4p  	 3P° 2, no b factor was measured
 # therefore i will need to get the e_Vzz_upper from my results on 61_Ni and the q_literature_61_Ni
-b_upper_exp = -50.597  # MHz
-d_b_upper_exp = 1.43  # Mhz
-
-e_Vzz_upper = q_literature_61_Ni / b_upper_exp
-d_e_Vzz_upper = np.sqrt(
-    (e_Vzz_upper / b_upper_exp * d_b_upper_exp) ** 2 +
-    (e_Vzz_upper / q_literature_61_Ni * d_q_literature_61_Ni) ** 2)
-
-print(e_Vzz_upper, d_e_Vzz_upper)
-print('eVzz_upper = %.3f(%.0f) b/ kHz' % (e_Vzz_upper * 1000, d_e_Vzz_upper * 1e6))
+# do not do this!
 
 
-def quadrupol_moment(b, d_stat_b, d_syst_b, upper=True):
+def quadrupol_moment(b, d_stat_b, d_syst_b):
+    """
+    get the quadrupolemoment for the lower B with the given eVzz from literature with
+     Q = B / eVzz
+    """
     if b:
         e_vzz = e_Vzz_lower
         d_e_vzz = d_e_Vzz_lower
-        if upper:
-            e_vzz = e_Vzz_upper
-            d_e_vzz = d_e_Vzz_upper
-        q = b * e_vzz
-        d_stat_q = abs(d_stat_b * e_vzz)
+        q = b / e_vzz
+        d_stat_q = abs(d_stat_b / e_vzz)
         d_syst_q = np.sqrt(
-            (e_vzz * d_syst_b) ** 2 +
-            (b * d_e_vzz) ** 2
+            (d_syst_b / e_vzz) ** 2 +
+            (b * d_e_vzz / (e_vzz ** 2)) ** 2
         )
         q_print = '%.3f(%.0f)[%.0f]' % (q, d_stat_q * 1000, d_syst_q * 1000)
         d_total = np.sqrt(d_stat_q ** 2 + d_syst_q ** 2)
@@ -287,10 +281,15 @@ levels = [('2p 3/2', 1, 1.5), ('1f 5/2', 3, 2.5), ('2p 1/2', 1, 0.5), ('1g 9/2',
 # levels = levels_michael
 
 mu_list_schmidt = [mu_schmidt(each[2], each[1], False) for each in levels]
-print('level\t\mu(\\nu) / \mu_N')
-for i, each in enumerate(levels):
-    print('%s\t%.2f' % (each[0], mu_list_schmidt[i]))
-
+mu_list_schmidt_eff = [mu_schmidt(each[2], each[1], False, g_s=-2.6782) for each in levels]
+print('level \t µ_free \t g_free \t µ_eff \t g_eff')
+try:
+    for ind, each in enumerate(levels):
+        lvl, l, nuc_spin = each
+        print('%s\t%.2f\t%.2f\t%.2f\t%.2f' % (lvl, mu_list_schmidt[ind], mu_list_schmidt[ind] / nuc_spin,
+                                             mu_list_schmidt_eff[ind], mu_list_schmidt_eff[ind] / nuc_spin))
+except Exception as e:
+    print(e)
 ''' crawling '''
 
 # Tools.crawl(db, 'Ni_April2016_mcp')
@@ -747,7 +746,7 @@ try:
     q_moments = []
     magn_moments = []
     print('iso\tI\tAu [MHz]\trChi Au\tAl [MHz]\trChi Al\tAu/Al\td_Au/Al'
-          '\tBu [MHz]\trChi Bu\tBl [MHz]\trChi Bl\tBu/Bl\td_Bu/Bl\tQ_l [b]\tQ_u [b]\tQ_m [b]'
+          '\tBu [MHz]\trChi Bu\tBl [MHz]\trChi Bl\tBu/Bl\td_Bu/Bl\tQ_l [b] '
           '\tµ [nm]')
     for run in a_fac_runs:
         for iso, a_low in sorted(al[run].items()):
@@ -783,14 +782,7 @@ try:
                     d_b_ratios.append(delta_b_ratio)
                 ratios.append(ratio)
                 d_ratios.append(delta_ratio)
-                q_from_upper = quadrupol_moment(b_up[0], b_up[1], b_up[2], upper=True)
-                q_from_lower = quadrupol_moment(b_low[0], b_low[1], b_low[2], upper=False)
-                if q_from_lower[0] and q_from_upper[0]:
-                    q_mean = Analyzer.weightedAverage(
-                        [q_from_upper[0], q_from_lower[0]], [q_from_upper[1], q_from_lower[1]])
-                else:
-                    q_mean = (0, 0, 0)
-                q_mean_print = '%.3f(%.0f)' % (q_mean[0], q_mean[1] * 1000)
+                q_from_lower = quadrupol_moment(b_low[0], b_low[1], b_low[2])
                 mu = magnetic_moment(a_low[0], a_low[1], a_low[2], nucl_spin)
                 mu_print = mu[4]
                 print('%s\t%s'
@@ -798,14 +790,14 @@ try:
                       '\t%.3f(%.0f)[%.0f]\t%.2f\t%.3f\t%.3f'
                       '\t%.3f(%.0f)[%.0f]\t%.2f'
                       '\t%.3f(%.0f)[%.0f]\t%.2f\t%.3f\t%.3f'
-                      '\t%s\t%s\t%s'
+                      '\t%s'
                       '\t%s' % (
                           iso, nucl_spin,
                           a_up[0], a_up[1] * 1000, a_up[2] * 1000, a_up[3],
                           a_low[0], a_low[1] * 1000, a_low[2] * 1000, a_low[3], ratio, delta_ratio,
                           b_up[0], b_up[1] * 1000, b_up[2] * 1000, b_up[3],
                           b_low[0], b_low[1] * 1000, b_low[2] * 1000, b_low[3], b_ratio, delta_b_ratio,
-                          q_from_lower[4], q_from_upper[4], q_mean_print,
+                          q_from_lower[4],
                           mu_print
                       ))
                 q_moments.append((mass, nucl_spin, q_from_lower[0], q_from_lower[3]))
@@ -1174,7 +1166,7 @@ king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, f
 # run = 'narrow_gate_asym'
 # isotopes = sorted(delta_lit_radii.keys())
 # print(isotopes)
-# king.kingFit(alpha=0, findBestAlpha=False, run=run, find_slope_with_statistical_error=False)
+king.kingFit(alpha=0, findBestAlpha=False, run=run, find_slope_with_statistical_error=False)
 # king.calcChargeRadii(isotopes=isotopes, run=run, plot_evens_seperate=True)
 
 # king.kingFit(alpha=378, findBestAlpha=True, run=run, find_slope_with_statistical_error=True)

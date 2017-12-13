@@ -137,7 +137,9 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         :param val: bool/str/int/float
         :return:
         """
-        label, inp_type, vals, current_val, widget = self.raw_config[key]
+        label, inp_type, vals, current_val, widget = self.raw_config.get(key, (None, None, None, None))
+        if label is None:
+            return None
         if inp_type is float or inp_type is int:
             new_val = self.coerce_val_tolist_val(val, vals)
             widget.setValue(new_val)
