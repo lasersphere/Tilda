@@ -33,6 +33,7 @@ from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 from Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
 from Interface.VersionUi.VersionUi import VersionUi
 from Scratch.Tetris import Tetris
+from Scratch.Snake import MyApp as Snake
 
 
 class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
@@ -56,6 +57,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.file_plot_wins = {}  # dict of active plot windows only for displaying from file.
         self.pollifit_win = None
         self.tetris = None  # pssst dont tell
+        self.snake = None
         self.pulse_pattern_win = None
         self.scan_complete_win = None
         self.show_scan_compl_win = True
@@ -86,6 +88,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
         """ add shortcuts """
         QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+T"), self, self.start_tetris)
+        QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+S"), self, self.start_snake)
         # QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+A"), self, self.open_pollifit_win)
 
         self.subscribe_to_main()
@@ -424,5 +427,12 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         if self.tetris is not None:
             self.tetris.close()
 
+        if self.snake is not None:
+            self.snake.close()
+
     def start_tetris(self):
         self.tetris = Tetris()
+
+    def start_snake(self):
+        self.snake = Snake()
+        self.snake.show()

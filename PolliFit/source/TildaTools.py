@@ -169,18 +169,9 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
         all_trackd[str(t.tag)] = (xml_get_dict_from_ele(xml_etree)[1]['tracks'][str(t.tag)]['header'])
     for tr_name, track_d in all_trackd.items():
         all_trackd[tr_name] = evaluate_strings_in_dict(all_trackd[tr_name])
-    for tr_name, track_d in all_trackd.items():
-        # make sure no None values exist for measureVoltPars['dmm']
-        for key, val in track_d.get('measureVoltPars', {}).items():
-            if val.get('dmms', None) is None:
-                val['dmms'] = {}
-        # in contrary to measureVoltaPars, we don't know if any triton measurements are configured
-        for pre_post_during_dict in track_d.get('triton',{}):
-            # make sure no None values exist for preScan/duringScan/postScan
-            if pre_post_during_dict is not None:
-                for key, val in pre_post_during_dict.items():
-                    if val is None:
-                        track_d['triton'][key] = {}
+    # make sure no None values exist due to something
+    # like <something\> caused by an empty dict when saving.
+    all_trackd = replace_none_vals_in_dict(all_trackd, {})
     return all_trackd
 
 
@@ -289,6 +280,22 @@ def evaluate_strings_in_dict(dict_to_convert):
         if isinstance(dict_to_convert[key], dict):
             dict_to_convert[key] = evaluate_strings_in_dict(dict_to_convert[key])
     return dict_to_convert
+
+
+def replace_none_vals_in_dict(dict_to_check, replace_val={}):
+    """
+    this will iterate through the given dict, wich can be nested and
+    replace all values that are None with the given replace val.
+    :param dict_to_check: dict, can be nested
+    :param replace_val: anything
+    :return: dict without None vals
+    """
+    for key, val in dict_to_check.items():
+        if isinstance(dict_to_check[key], dict):
+            dict_to_check[key] = replace_none_vals_in_dict(dict_to_check[key], replace_val)
+        elif val is None:
+            dict_to_check[key] = replace_val
+    return dict_to_check
 
 
 def xml_get_data_from_track(
@@ -915,9 +922,10 @@ def save_spec_data(spec_data, scan_dict):
             relative_filename = relative_filename.replace(
                 db_dir_name, '.')
             from Tools import _insertFile
+            logging.debug('will insert file: %s to database: %s' % (relative_filename, db))
             _insertFile(relative_filename, db)
     except Exception as e:
-        print('error while saving: ', e)
+        logging.erro('error while saving: %s' % e, exc_info=True)
 
 
 def get_number_of_tracks_in_scan_dict(scan_dict):
@@ -1103,5 +1111,5 @@ if __name__ == '__main__':
     # sc_dict = dft.draftScanDict
     # isodict = sc_dict['isotopeData']
     # print(nameFileXml(isodict, 'E:\\temp2'))
-    ret = get_all_tracks_of_xml_in_one_dict('C:\\TRITON_TILDA\\Temp\\sums\\anewnew_trsdummy_run045.xml')
+    ret = get_all_tracks_of_xml_in_one_dict('E:\\temp2\\sums\\notrit_csdummy_run1546.xml')
     print(ret['track0']['triton'])
