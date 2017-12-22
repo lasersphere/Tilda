@@ -51,6 +51,8 @@ class Main(QtCore.QObject):
     new_track_callback = QtCore.pyqtSignal(tuple)
     # when the pipeline wants to save, this is emitted and it send the pipeData as a dict
     save_callback = QtCore.pyqtSignal(dict)
+    # for incoming new dmm or triton data
+    pre_post_meas_data_dict_callback = QtCore.pyqtSignal(dict)
 
     # dict, fit result plot data callback
     # -> this can be emitted from a node to send a dict containing fit results:
@@ -172,7 +174,7 @@ class Main(QtCore.QObject):
             self._load_track()
             self.get_fpga_and_seq_state()
         elif self.m_state[0] is MainState.scanning:
-            self.read_dmms(feed_to_pipe=True)
+            self.read_dmms(feed_to_pipe=True) #TODO: Also read_triton
             self._scanning()
             self.get_fpga_and_seq_state()
         elif self.m_state[0] is MainState.saving:
@@ -265,7 +267,8 @@ class Main(QtCore.QObject):
         """
         return (self.new_data_callback, self.new_track_callback,
                 self.save_request, self.new_gate_or_soft_bin_width,
-                self.fit_results_dict_callback, self.live_plot_progress_callback)
+                self.fit_results_dict_callback, self.live_plot_progress_callback,
+                self.pre_post_meas_data_dict_callback)
 
     def send_state(self):
         """
@@ -699,7 +702,8 @@ class Main(QtCore.QObject):
             self.scan_main.init_analysis_thread(
                 self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline,
                 live_plot_callback_tuples=(self.new_data_callback, self.new_track_callback,
-                                           self.save_request, self.new_gate_or_soft_bin_width),
+                                           self.save_request, self.new_gate_or_soft_bin_width,
+                                           self.pre_post_meas_data_dict_callback),
                 fit_res_dict_callback=self.fit_results_dict_callback,
                 scan_complete_callback=self.scan_complete_callback,
             )

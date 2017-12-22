@@ -21,7 +21,7 @@
        <locale language="English" country="UnitedStates"/>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="tab_sum">
        <attribute name="title">
@@ -460,6 +460,11 @@
          </widget>
         </item>
        </layout>
+      </widget>
+      <widget class="QWidget" name="tab_pre_post_meas">
+       <attribute name="title">
+        <string>pre/during/post scan measurements</string>
+       </attribute>
       </widget>
      </widget>
     </item>

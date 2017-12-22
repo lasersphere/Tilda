@@ -472,6 +472,8 @@ class XMLImporter(SpecData):
         # print(scan_triton_dict)
         for track in scan_triton_dict:
             freq_comb_data_tr = {}
+            # make sure there is indeed a pre post scan measurement and not None
+            # if track is not None:
             pre_scan_dict = track.get('preScan', {})
             pre_scan_dict = {} if pre_scan_dict is None else pre_scan_dict
             post_scan_dict = track.get('postScan', {})

@@ -1311,7 +1311,7 @@ class NMPLImagePlotSpecData(Node):
 
 class NMPLImagePlotAndSaveSpecData(Node):
     def __init__(self, pmt_num, new_data_callback, new_track_callback,
-                 save_request, gates_and_rebin_signal, save_data=True):
+                 save_request, gates_and_rebin_signal, pre_post_meas_data_dict_callback, save_data=True):
         super(NMPLImagePlotAndSaveSpecData, self).__init__()
         self.type = 'MPLImagePlotAndSaveSpecData'
         self.selected_pmt = pmt_num  # for now pmt name should be pmt_ind
@@ -2271,7 +2271,7 @@ class NFilterDMMDicts(Node):
 
 
 class NFilterDMMDictsAndSave(Node):
-    def __init__(self):
+    def __init__(self, pre_post_meas_data_dict_callback):
         """
         Node, that will not return any data coming from the dmm.
         Which is identified by being a dict.
@@ -2283,17 +2283,33 @@ class NFilterDMMDictsAndSave(Node):
 
         # Instead of the local storage variable, we could also work on the pipeline directly. Not nice, but might work.
         self.store_data = None
+        self.dmm_data = None
+        self.triton_data = None
+        self.active_track_name = 'track0'
+
+        # callback to update the pre_during_post_meas_tabs
+        self.pre_post_meas_data_dict_callback = pre_post_meas_data_dict_callback
+
+    # def start(self):
+    #     track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+    #     self.store_data = deepcopy(self.Pipeline.pipeData[track_name]['measureVoltPars'].get('duringScan', {}).get('dmms', None))
+    #     for dmm_name, dmm_vals in self.store_data.items():
+    #         if dmm_vals.get('readings', None) is None:
+    #             dmm_vals['readings'] = []
 
     def start(self):
-        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        self.store_data = deepcopy(self.Pipeline.pipeData[track_name]['measureVoltPars'].get('duringScan', {}).get('dmms', None))
-        for dmm_name, dmm_vals in self.store_data.items():
+        track_ind, self.active_track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        self.store_data = deepcopy(self.Pipeline.pipeData)
+        self.dmm_data = self.store_data[self.active_track_name]['measureVoltPars'].get('duringScan', {}).get('dmms', None)
+        self.triton_data = self.store_data[self.active_track_name]['triton'].get('duringScan', {})
+        for dmm_name, dmm_vals in self.store_data[self.active_track_name]['measureVoltPars']['duringScan']['dmms'].items():
             if dmm_vals.get('readings', None) is None:
                 dmm_vals['readings'] = []
 
-    def processData(self, data, pipeData):
+    def processData(self, data, pipeData):#TODO: emit data (also triton) to signal
         if isinstance(data, dict):
             self.sort_dmms(data)
+            self.emit_data_signal()
             return None
         else:
             return data
@@ -2301,10 +2317,17 @@ class NFilterDMMDictsAndSave(Node):
     def sort_dmms(self, dmm_reading):
         if dmm_reading is not None:
             for dmm_name, volt_read in dmm_reading.items():
-                if dmm_name in self.store_data.keys():
+                if dmm_name in self.dmm_data.keys():
                     # if the readback from this dmm is not wanted by the scan dict, just ignore it.
                     if volt_read is not None:
-                        self.store_data[dmm_name]['readings'] += list(volt_read)
+                        self.dmm_data[dmm_name]['readings']+=list(volt_read)
+                        self.store_data[self.active_track_name]['measureVoltPars']['duringScan']['dmms'] = self.dmm_data
+
+
+    def emit_data_signal(self):
+        self.pre_post_meas_data_dict_callback.emit(self.store_data)
+        pass
+
 
     def save(self):
         # Alternative: Save to dict directly. This however will be overwritten by the SaveSpecData Node,
@@ -2312,5 +2335,6 @@ class NFilterDMMDictsAndSave(Node):
         # file = self.Pipeline.pipeData['pipeInternals']['activeXmlFilePath']
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
         # TildaTools.save_dmm_readings_to_xml(file, track_name, self.store_data, 'duringScan')
-        self.Pipeline.pipeData[track_name]['measureVoltPars']['duringScan']['dmms'] = deepcopy(self.store_data)
+        self.Pipeline.pipeData = deepcopy(self.store_data)
+        pass
 

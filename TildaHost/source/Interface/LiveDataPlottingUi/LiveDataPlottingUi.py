@@ -21,6 +21,7 @@ import Application.Config as Cfg
 import PyQtGraphPlotter as Pg
 from Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveDataPlotting
 from Interface.ScanProgressUi.ScanProgressUi import ScanProgressUi
+from Interface.LiveDataPlottingUi.PreDurPostMeasUi import PrePostTabWidget
 from Measurement.XMLImporter import XMLImporter
 
 
@@ -33,6 +34,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     new_track_callback = QtCore.pyqtSignal(tuple)
     # when the pipeline wants to save, this is emitted and it send the pipeData as a dict
     save_callback = QtCore.pyqtSignal(dict)
+
+    # TODO comment
+    pre_post_meas_data_dict_callback = QtCore.pyqtSignal(dict)
 
     # dict, fit result plot data callback
     # -> this can be emitted from a node to send a dict containing fit results:
@@ -106,7 +110,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.subscribe_as_live_plot = subscribe_as_live_plot
         self.get_existing_callbacks_from_main()
         self.callbacks = (self.new_data_callback, self.new_track_callback,
-                          self.save_request, self.new_gate_or_soft_bin_width)
+                          self.save_request, self.new_gate_or_soft_bin_width,
+                          self.pre_post_meas_data_dict_callback)
         self.subscribe_to_main()
 
         ''' key press '''
@@ -201,6 +206,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         ''' update sum  '''
         self.sum_scaler_changed()
         logging.info('LiveDataPlottingUi opened ... ')
+
 
     def show_progress(self, show=None):
         if self.scan_prog_ui is None and self.subscribe_as_live_plot:
@@ -801,7 +807,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     ''' subscription to main '''
 
     def get_existing_callbacks_from_main(self):
-        """ check wether existing callbacks are still around in the main adn then connect to those. """
+        """ check wether existing callbacks are still around in the main and then connect to those. """
         if Cfg._main_instance is not None and self.subscribe_as_live_plot:
             logging.info('TRSLivePlotWindowUi is connecting to existing callbacks in main')
             callbacks = Cfg._main_instance.gui_live_plot_subscribe()
@@ -811,6 +817,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.new_gate_or_soft_bin_width = callbacks[3]
             self.fit_results_dict_callback = callbacks[4]
             self.progress_callback = callbacks[5]
+            self.pre_post_meas_data_dict_callback = callbacks[6]
 
     def subscribe_to_main(self):
         if self.subscribe_as_live_plot:
@@ -821,6 +828,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.new_track_callback.connect(self.setup_new_track)
         self.new_data_callback.connect(self.new_data)
         self.fit_results_dict_callback.connect(self.rcvd_fit_res_dict)
+        self.pre_post_meas_data_dict_callback.connect(self.rebuild_pre_post_meas_gui)
 
     ''' rebinning '''
 
@@ -979,9 +987,108 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.sum_current_step_line = None
         self.add_time_resolved_plot()
 
-# if __name__ == "__main__":
-#     import sys
-#     app = QtWidgets.QApplication(sys.argv)
-#     ui = TRSLivePlotWindowUi()
-#     ui.show()
-#     app.exec()
+    def rebuild_pre_post_meas_gui(self, pre_post_meas_dict):
+        """
+        add a tab for each track on the tab 'pre/during/post scan measurements'.
+
+        """
+        # TODO: seems like the first ever created Widget can't be overwritten
+        self.tab_layout = QtWidgets.QGridLayout(self.tab_pre_post_meas)
+        self.pre_post_tab_widget = PrePostTabWidget(pre_post_meas_dict)
+        self.tab_layout.addWidget(self.pre_post_tab_widget)
+
+
+
+if __name__ == "__main__":
+    import sys
+    import time
+
+    # test_dict = {'track0': {'preScan':
+    #                             {'dmm': {'dmm1': {'data': [1, 2, 3, 4, 5, 6, 7], 'required': 9}},
+    #                              'triton':  {'dev0': {'data': [1, 2, 3, 4, 5], 'required': 10}}},
+    #                         'duringScan':
+    #                             {'dmm': {'dmm1': {'data': [], 'required': 100},
+    #                                      'dmm2': {'data': [1,2], 'required': 2}},
+    #                              'triton': {'dev0': {'data': [1, 2, 3, 4, 5], 'required': 10},
+    #                                         'dev1': {'data': [1, 2, 3, 4, 5], 'required': 10},
+    #                                         'dev2': {'data': [1, 2, 3, 4, 5], 'required': 5}}},
+    #                         'postScan':
+    #                             {'dmm': {'dmm1': {'data': [1, 2, 3, 4, 5, 6, 7], 'required': 9}},
+    #                              'triton': {'dev0': {'data': [1, 2, 3, 4, 5], 'required': 10}}}
+    #                         },
+    #              'track1': {'preScan':
+    #                             {'dmm': {'dmm1': {'data': [1, 2, 3, 4, 5, 6, 7], 'required': 9}},
+    #                              'triton':  {'dev0': {'data': [1, 2, 3, 4, 5], 'required': 10}}},
+    #                         'postScan':
+    #                             {'dmm': {'dmm1': {'data': [1, 2, 3, 4, 5, 6, 7], 'required': 9}},
+    #                              'triton': {'dev0': {'data': [1, 2, 3, 4, 5], 'required': 10}}}
+    #                         }}
+    test_dict = {'isotopeData': {'type': 'trsdummy', 'nOfTracks': 1, 'accVolt': 3000.0, 'version': '1.20', 'isotopeStartTime': '2017-12-20 14:32:13', 'isotope': 'anew', 'laserFreq': 120.0},
+                 'pipeInternals': {'activeTrackNumber': (0, 'track0'), 'workingDirectory': 'C:\\TRITON_TILDA\\Temp', 'activeXmlFilePath': 'C:\\TRITON_TILDA\\Temp\\sums\\anew_trsdummy_run132.xml', 'curVoltInd': 0},
+                 'track0': {'activePmtList': [0, 1],
+                            'measureVoltPars': {'duringScan': {'measVoltPulseLength25ns': 400,
+                                                               'dmms': {'dummy_somewhere': {'triggerDelay_s': 0.0,
+                                                                                            'sampleCount': 0,
+                                                                                            'readings': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                                                                                            'triggerCount': 0
+                                                                                            }
+                                                                        }
+                                                               },
+                                                'postScan': {},
+                                                'preScan': {'dmms': {'dummy_somewhere': {'sampleCount': 10,
+                                                                                         'readings': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+                                                                                         }
+                                                                     }
+                                                            }
+                                                },
+                            'triton': {'duringScan':{'dev0': {'ch0': {'aquired': 6,
+                                                                      'data': [1,2,3,4,5,6],
+                                                                      'required': 10
+                                                                      }
+                                                              }
+                                                     },
+                                       'preScan':{},
+                                       'postScan':{}
+                                       }
+                            },
+                 'track1': {'measureVoltPars': {'duringScan': {'dmms': {'dummy_somewhere': {'sampleCount': 0,
+                                                                                            'readings': [1.0, 1.0, 1.0,
+                                                                                                         1.0, 1.0, 1.0,
+                                                                                                         1.0, 1.0, 1.0,
+                                                                                                         1.0]
+                                                                                            }
+                                                                        }
+                                                               },
+                                                'postScan': {},
+                                                'preScan': {'dmms': {'dummy_somewhere': {'sampleCount': 10,
+                                                                                         'readings': [1.0, 1.0, 1.0,
+                                                                                                      1.0, 1.0, 1.0,
+                                                                                                      1.0, 1.0, 1.0,
+                                                                                                      1.0]
+                                                                                         }
+                                                                     }
+                                                            }
+                                                },
+                            'triton': {'duringScan': {'dev0': {'ch0': {'aquired': 10,
+                                                                       'data': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                                                                       'required': 10
+                                                                       }
+                                                               }
+                                                      },
+                                       'preScan': {},
+                                       'postScan': {'dev0': {'ch0': {'aquired': 6,
+                                                                       'data': [1, 2, 3, 4, 5, 6],
+                                                                       'required': 10
+                                                                       }
+                                                               }
+                                                      }
+                                       }
+                            }
+                 }
+
+    app = QtWidgets.QApplication(sys.argv)
+    ui = TRSLivePlotWindowUi()
+    ui.pre_post_meas_data_dict_callback.emit(test_dict)
+    ui.show()
+
+    app.exec()
