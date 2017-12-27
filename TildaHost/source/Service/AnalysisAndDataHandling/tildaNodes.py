@@ -2306,7 +2306,7 @@ class NFilterDMMDictsAndSave(Node):
             if dmm_vals.get('readings', None) is None:
                 dmm_vals['readings'] = []
 
-    def processData(self, data, pipeData):#TODO: emit data (also triton) to signal
+    def processData(self, data, pipeData):# TODO: emit data (also triton) to signal
         if isinstance(data, dict):
             self.sort_dmms(data)
             self.emit_data_signal()
@@ -2320,14 +2320,12 @@ class NFilterDMMDictsAndSave(Node):
                 if dmm_name in self.dmm_data.keys():
                     # if the readback from this dmm is not wanted by the scan dict, just ignore it.
                     if volt_read is not None:
-                        self.dmm_data[dmm_name]['readings']+=list(volt_read)
+                        self.dmm_data[dmm_name]['readings'] += list(volt_read)
                         self.store_data[self.active_track_name]['measureVoltPars']['duringScan']['dmms'] = self.dmm_data
-
 
     def emit_data_signal(self):
         self.pre_post_meas_data_dict_callback.emit(self.store_data)
         pass
-
 
     def save(self):
         # Alternative: Save to dict directly. This however will be overwritten by the SaveSpecData Node,

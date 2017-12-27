@@ -7,9 +7,9 @@ Created on '07.08.2015'
 """
 
 import ast
+import logging
 import os
 import sqlite3
-import logging
 
 import numpy as np
 
@@ -536,12 +536,12 @@ class XMLImporter(SpecData):
             laser_freq_d = np.mean(valid_freq_meas_errs) / 1000000  # in MHz
             (dir, file) = os.path.split(path)
             (filename, end) = os.path.splitext(file)
-            print('Measured Frequencies in ' + str(file) + ' :')
+            logging.debug('Measured Frequencies in ' + str(file) + ' :')
             for tr in freqs_by_dev:
                 for comb_key, read_tuple in sorted(tr.items()):
-                    print('%s : %.3f +/- %.3f MHz' % (comb_key, read_tupl[0] / 1000000, read_tupl[1] / 1000000))
+                    logging.debug('%s : %.3f +/- %.3f MHz' % (comb_key, read_tupl[0] / 1000000, read_tupl[1] / 1000000))
         else:
-            print('no comb measurement detected')
+            logging.info('no comb measurement detected, using laserfreq given from GUI')
             laser_freq = self.laserFreq
             laser_freq_d = self.laserFreq_d
 

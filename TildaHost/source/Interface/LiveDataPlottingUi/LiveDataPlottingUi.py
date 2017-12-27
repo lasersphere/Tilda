@@ -19,9 +19,9 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 
 import Application.Config as Cfg
 import PyQtGraphPlotter as Pg
+from Interface.LiveDataPlottingUi.PreDurPostMeasUi import PrePostTabWidget
 from Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveDataPlotting
 from Interface.ScanProgressUi.ScanProgressUi import ScanProgressUi
-from Interface.LiveDataPlottingUi.PreDurPostMeasUi import PrePostTabWidget
 from Measurement.XMLImporter import XMLImporter
 
 
@@ -207,6 +207,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.sum_scaler_changed()
         logging.info('LiveDataPlottingUi opened ... ')
 
+        ''' pre / post / during related  '''
+        self.pre_post_tab_widget = None
 
     def show_progress(self, show=None):
         if self.scan_prog_ui is None and self.subscribe_as_live_plot:
@@ -994,14 +996,16 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         # TODO: seems like the first ever created Widget can't be overwritten
         self.tab_layout = QtWidgets.QGridLayout(self.tab_pre_post_meas)
-        self.pre_post_tab_widget = PrePostTabWidget(pre_post_meas_dict)
-        self.tab_layout.addWidget(self.pre_post_tab_widget)
+        if self.pre_post_tab_widget is None:
+            self.pre_post_tab_widget = PrePostTabWidget(pre_post_meas_dict)
+            self.tab_layout.addWidget(self.pre_post_tab_widget)
+        else:
+            self.pre_post_tab_widget.update_data(pre_post_meas_dict)
 
 
 
 if __name__ == "__main__":
     import sys
-    import time
 
     # test_dict = {'track0': {'preScan':
     #                             {'dmm': {'dmm1': {'data': [1, 2, 3, 4, 5, 6, 7], 'required': 9}},
@@ -1089,6 +1093,22 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     ui = TRSLivePlotWindowUi()
     ui.pre_post_meas_data_dict_callback.emit(test_dict)
+    test_dict2 = deepcopy(test_dict)
+    test_dict2['track0']['triton']['duringScan'] = {'dev0': {'ch1': {'aquired': 13,
+                                                                       'data': [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                                                                                0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                                                                                13,
+                                                                                0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                                                                                13],
+                                                                       'required': 0
+                                                                       }
+                                                               }
+                                                      }
     ui.show()
+
+    ui.pre_post_meas_data_dict_callback.emit(test_dict2)
+
+    # time.sleep(2)
+
 
     app.exec()

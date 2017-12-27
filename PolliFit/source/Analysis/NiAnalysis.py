@@ -6,22 +6,21 @@ Created on
 Module Description:  Analysis of the Nickel Data from COLLAPS taken on 28.04.-03.05.2016
 """
 
+import ast
 import math
 import os
 import sqlite3
-import ast
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import numpy as np
 
 import Analyzer
-import Physics
-import Tools
-from KingFitter import KingFitter
-from InteractiveFit import InteractiveFit
 import BatchFit
 import MPLPlotter
+import Physics
 import TildaTools as TiTs
+import Tools
+from KingFitter import KingFitter
 
 ''' working directory: '''
 
@@ -43,6 +42,8 @@ Tools.add_missing_columns(db)
 
 ''' Masses '''
 # masses = {
+#     '56_Ni': (55942127.872, 0.452),
+#     '57_Ni': (56939791.525, 0.624),
 #     '58_Ni': (57935342.4, 0.5),
 #     '59_Ni': (58934346.2, 0.5),
 #     '60_Ni': (59930785.9, 0.5),
@@ -55,7 +56,9 @@ Tools.add_missing_columns(db)
 #     '67_Ni': (66931569, 3),
 #     '68_Ni': (67931869, 3),
 #     '69_Ni': (68935610, 4),
-#     '70_Ni': (69936431.3, 2.3)
+#     '70_Ni': (69936431.3, 2.3),
+#     '71_Ni': (70940518.964, 2.401),
+#     '72_Ni': (71941785.926, 2.401)
 # }
 #
 # con = sqlite3.connect(db)
