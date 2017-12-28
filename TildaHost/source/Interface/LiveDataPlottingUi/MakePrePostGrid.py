@@ -5,13 +5,14 @@ Created on 19.12.2017
 
 Module Description:
 """
+import functools
 from copy import deepcopy
 
 from PyQt5 import QtWidgets, QtGui
 
 
 class PrePostGridWidget(QtWidgets.QWidget):
-    def __init__(self, pre_dur_post_str, pre_post_meas_dict_this_track):
+    def __init__(self, pre_dur_post_str, pre_post_meas_dict_this_track, parent, tr_name):
         """
         displays all values for all devices for pre_du_post scan
         returns a widget which can be used to update those values.
@@ -19,7 +20,10 @@ class PrePostGridWidget(QtWidgets.QWidget):
         :param pre_dur_post_str:
         :param pre_post_meas_dict_this_track: dict
         """
-        QtWidgets.QWidget.__init__(self)
+        QtWidgets.QWidget.__init__(self, parent)
+        self.parent = parent
+        self.act_track = tr_name  # store this for recognition from upper levels
+        self.pre_dur_post_str = pre_dur_post_str  # store this for recognition from upper levels
 
         # copy the dict
         self.track_data_dict = deepcopy(pre_post_meas_dict_this_track)
@@ -51,6 +55,7 @@ class PrePostGridWidget(QtWidgets.QWidget):
         # insert check box
         cb_plot_dev = QtWidgets.QCheckBox(self)
         self.gridLayout_devices.addWidget(cb_plot_dev, index, 0, 1, 1)
+        cb_plot_dev.clicked.connect(functools.partial(self.check_box_clicked, device_name))
         # set name of device
         label_name_dev = QtWidgets.QLabel(self)
         self.gridLayout_devices.addWidget(label_name_dev, index, 1, 1, 1)
@@ -128,6 +133,7 @@ class PrePostGridWidget(QtWidgets.QWidget):
         # Todo delete unnecessary widgets here
         # -> devices that are in self.dmm_widget_dicts or
         # self.triton_widget_dicts but not in self.track_data_dict anymore.
+        self.check_unnecessary()
 
         for dmm in sorted(self.dmm_dict.keys()):  # sorting is always preferable when displaying
             if dmm not in self.dmm_widget_dicts.keys():  # add dmm, was not existing yet
@@ -164,3 +170,7 @@ class PrePostGridWidget(QtWidgets.QWidget):
         """ compare devices self.track_data_dict with the widget dicts and delete unnessecary widgets """
         # TODO
         pass
+
+    def check_box_clicked(self, *args):
+        """ connect to this function when a checkbox was clicked and pass on to the parent """
+        self.parent.plot_checkbox_clicked(args, self.pre_dur_post_str, self.act_track)

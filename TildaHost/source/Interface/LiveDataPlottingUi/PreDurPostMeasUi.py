@@ -5,6 +5,7 @@ Created on 19.12.2017
 
 Module Description:
 """
+import logging
 from copy import deepcopy
 
 from PyQt5 import QtWidgets
@@ -15,7 +16,7 @@ from Interface.LiveDataPlottingUi.MakePrePostGrid import PrePostGridWidget
 class PrePostTabWidget(QtWidgets.QTabWidget):
     def __init__(self, pre_post_meas_dict):
         """
-        will cretae a tab for each track
+        will create a tab for each track and hold all tracks within here.
         :param pre_post_meas_dict:
         """
         QtWidgets.QTabWidget.__init__(self)
@@ -88,7 +89,7 @@ class PrePostTabWidget(QtWidgets.QTabWidget):
         pre_post_label.setText(pre_dur_post_str)
         parent_layout.setWidget(index, QtWidgets.QFormLayout.LabelRole, pre_post_label)
         # add dev_content to the preScan field -> all exisitng devises of the preScan are in this widget.
-        pre_post_during_grid_widget = PrePostGridWidget(pre_dur_post_str, self.data_dict[tr_name])
+        pre_post_during_grid_widget = PrePostGridWidget(pre_dur_post_str, self.data_dict[tr_name], self, tr_name)
         parent_layout.setWidget(index, QtWidgets.QFormLayout.FieldRole, pre_post_during_grid_widget)
         # ---------- add divider line ---------
         index += 1  # add new line to the Form
@@ -110,4 +111,25 @@ class PrePostTabWidget(QtWidgets.QTabWidget):
             for ind, pre_dur_post_str in enumerate(['preScan', 'duringScan', 'postScan']):
                 self.pre_post_during_grid_widget[tr_name][ind].update_data(
                     pre_dur_post_str, self.data_dict[tr_name])
+
+    def plot_checkbox_clicked(self, *args):
+        """ when a plot yes/no check box was clicked in one of the devices,
+         this function will be called and can pass on the new info to the plotwidget.
+        *args will be a tuple, ((dev_name_str, cb_True/False_bool), pre_post_during_scan_str, track_name_str) for example:
+         (('dev0:ch0', False), 'duringScan', 'track0')
+        """
+        (dev_name, checkbox_bool), pre_post_during_str, tr_name = args
+        logging.debug('plot cb licked, args: %s' % str(args))
+        triton_dev_bool = ':' in dev_name  # dmms are not allowed to have ':' in name! (due to xml data struct)
+        # pass this on to the plot widget, which can handle the relevant data:
+        relevant_data = []
+        try:
+            if triton_dev_bool:
+                dev, ch = dev_name.split(':')
+                relevant_data = self.data_dict[tr_name]['triton'][pre_post_during_str][dev][ch]['data']
+            else:
+                relevant_data = self.data_dict[tr_name]['measureVoltPars'][pre_post_during_str]['dmms'][dev_name]['readings']
+        except Exception as e:
+            logging.error('error while getting data from storage, error is: %s' % e, exc_info=True)
+        logging.debug('data of selected dev %s in track %s is: %s ' % (dev_name, tr_name, relevant_data))
 

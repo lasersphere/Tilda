@@ -1003,9 +1003,22 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.pre_post_tab_widget.update_data(pre_post_meas_dict)
 
 
-
 if __name__ == "__main__":
     import sys
+
+    app_log = logging.getLogger()
+    # app_log.setLevel(getattr(logging, args.log_level))
+    app_log.setLevel(logging.DEBUG)
+
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    # ch.setFormatter(log_formatter)
+    app_log.addHandler(ch)
+
+    app_log.info('****************************** starting ******************************')
+    app_log.info('Log level set to DEBUG')
 
     # test_dict = {'track0': {'preScan':
     #                             {'dmm': {'dmm1': {'data': [1, 2, 3, 4, 5, 6, 7], 'required': 9}},
@@ -1045,14 +1058,14 @@ if __name__ == "__main__":
                                                                      }
                                                             }
                                                 },
-                            'triton': {'duringScan':{'dev0': {'ch0': {'aquired': 6,
+                            'triton': {'duringScan': {'dev0': {'ch0': {'aquired': 6,
                                                                       'data': [1,2,3,4,5,6],
                                                                       'required': 10
                                                                       }
                                                               }
                                                      },
-                                       'preScan':{},
-                                       'postScan':{}
+                                       'preScan': {},
+                                       'postScan': {}
                                        }
                             },
                  'track1': {'measureVoltPars': {'duringScan': {'dmms': {'dummy_somewhere': {'sampleCount': 0,
@@ -1107,6 +1120,7 @@ if __name__ == "__main__":
     ui.show()
 
     ui.pre_post_meas_data_dict_callback.emit(test_dict2)
+    # TODO when emitting this ch0 of dev0 is overwritten! currently the Gui is not updated by deleting this then!
 
     # time.sleep(2)
 
