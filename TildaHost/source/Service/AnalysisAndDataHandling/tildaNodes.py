@@ -2273,29 +2273,22 @@ class NFilterDMMDicts(Node):
 class NFilterDMMDictsAndSave(Node):
     def __init__(self, pre_post_meas_data_dict_callback):
         """
-        Node, that will not return any data coming from the dmm.
+        Node, that will not return any data coming from the dmm or TritonListener.
         Which is identified by being a dict.
-        Stores them locally and on call of save, emits them back to the Pipeline.
+        Emits the received data for live plotting.
+        Also Stores the data locally and on call of save, emits them back to the Pipeline.
         """
-        # TODO: Can we build a similar construct for triton data? Send it into the pipeline somewhere as dicts and catch them here?
         super(NFilterDMMDictsAndSave, self).__init__()
         self.type = 'FilterDMMDictsAndSave'
 
         # Instead of the local storage variable, we could also work on the pipeline directly. Not nice, but might work.
         self.store_data = None
         self.dmm_data = None
-        self.triton_data = None
+        # self.triton_data = None #TODO: not needed, or is it advantageous to store triton data separately?
         self.active_track_name = 'track0'
 
         # callback to update the pre_during_post_meas_tabs
         self.pre_post_meas_data_dict_callback = pre_post_meas_data_dict_callback
-
-    # def start(self):
-    #     track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-    #     self.store_data = deepcopy(self.Pipeline.pipeData[track_name]['measureVoltPars'].get('duringScan', {}).get('dmms', None))
-    #     for dmm_name, dmm_vals in self.store_data.items():
-    #         if dmm_vals.get('readings', None) is None:
-    #             dmm_vals['readings'] = []
 
     def start(self):
         track_ind, self.active_track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
@@ -2306,15 +2299,20 @@ class NFilterDMMDictsAndSave(Node):
             if dmm_vals.get('readings', None) is None:
                 dmm_vals['readings'] = []
 
-    def processData(self, data, pipeData):# TODO: emit data (also triton) to signal
+    def processData(self, data, pipeData):
         if isinstance(data, dict):
-            self.sort_dmms(data)
-            self.emit_data_signal()
+            # dmm data comes in dicts like {dmm_name:[data]}. triton data comes as {track: {triton:{...}}}
+            if 'triton' in data.get(self.active_track_name, {}):
+                self.sort_triton(data)
+            else:
+                self.sort_dmms(data)
+            self.emit_data_signal()  # emit signal for live data plotting
             return None
         else:
             return data
 
     def sort_dmms(self, dmm_reading):
+        # sorts all dmm readings into the store_data
         if dmm_reading is not None:
             for dmm_name, volt_read in dmm_reading.items():
                 if dmm_name in self.dmm_data.keys():
@@ -2323,16 +2321,15 @@ class NFilterDMMDictsAndSave(Node):
                         self.dmm_data[dmm_name]['readings'] += list(volt_read)
                         self.store_data[self.active_track_name]['measureVoltPars']['duringScan']['dmms'] = self.dmm_data
 
+    def sort_triton(self, triton_dict):
+        # copies the triton dict that was received from the pipeline into the store_data
+        self.store_data[self.active_track_name]['triton'] = triton_dict[self.active_track_name]['triton']
+
     def emit_data_signal(self):
+        # emits the store data dict for live data plotting
         self.pre_post_meas_data_dict_callback.emit(self.store_data)
-        pass
 
     def save(self):
-        # Alternative: Save to dict directly. This however will be overwritten by the SaveSpecData Node,
-        # which also has a local copy of the spec_data dict
-        # file = self.Pipeline.pipeData['pipeInternals']['activeXmlFilePath']
-        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        # TildaTools.save_dmm_readings_to_xml(file, track_name, self.store_data, 'duringScan')
+        # overwrites the pipeData with store_data. The pipeData will be stored later on
         self.Pipeline.pipeData = deepcopy(self.store_data)
-        pass
 

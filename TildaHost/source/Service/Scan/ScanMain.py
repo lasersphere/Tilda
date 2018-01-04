@@ -16,6 +16,7 @@ import numpy as np
 from PyQt5 import QtWidgets, Qt
 from PyQt5.QtCore import QObject, pyqtSignal
 
+import Application.Config as Cfg
 import Driver.COntrolFpga.PulsePatternGenerator as PPG
 import Driver.COntrolFpga.PulsePatternGeneratorDummy as PPGDummy
 import Driver.DataAcquisitionFpga.FindSequencerByType as FindSeq
@@ -42,6 +43,9 @@ class ScanMain(QObject):
     # signal send by the pipeline during a kepco scan, if a new voltage has ben set
     # use this to trigger the dmms if wanted
     dac_new_volt_set_callback = pyqtSignal(int)
+    # signal to emit dmm values for live plotting during the pre/post scans.
+    # is also used for triton values in TritonListener
+    pre_post_meas_data_dict_callback = pyqtSignal(dict)
 
     def __init__(self):
         super(ScanMain, self).__init__()
@@ -118,6 +122,13 @@ class ScanMain(QObject):
             scan_complete_callback, dac_new_volt_set_callback
         )
 
+    def get_existing_callbacks_from_main(self):
+        """ check wether existing callbacks are still around in the main and then connect to those. """
+        if Cfg._main_instance is not None:
+            logging.info('ScanMain is connecting to existing callbacks in main')
+            callbacks = Cfg._main_instance.gui_live_plot_subscribe()
+            self.pre_post_meas_data_dict_callback = callbacks[6]
+
     def start_pre_scan_measurement(self, scan_dict, act_track_name, pre_post_scan_meas_str='preScan'):
         """
         Start the prescan Measurement of the Offset Voltage etc.
@@ -127,6 +138,10 @@ class ScanMain(QObject):
         :param scan_dict: dictionary, containing all scanparameters
         :return: bool, True if success
         """
+        # get the existing liveplotting callback from the main
+        #TODO: This works here and doesn't work in init. I think however, that this here might not be the best place
+        self.get_existing_callbacks_from_main()
+
         dmms_dict_pre_scan = scan_dict[act_track_name]['measureVoltPars'].get(pre_post_scan_meas_str, {}).get('dmms',
                                                                                                               None)
         dmms_dict_is_none = dmms_dict_pre_scan is None or dmms_dict_pre_scan == {}
@@ -197,6 +212,8 @@ class ScanMain(QObject):
                             volt_read = volt_read[0:still_to_acquire]
                         dmms_dict_pre_scan[dmm_name]['readings'] += list(volt_read)
                         dmms_dict_pre_scan[dmm_name]['acquiredPreScan'] += len(volt_read)
+                        # emit dmm_reading for live data plotting
+                        self.pre_post_meas_data_dict_callback.emit(scan_dict)
             dmms_complete_check_sum = 0
             for dmm_name, dmm_dict in dmms_dict_pre_scan.items():
                 samples = dmms_dict_pre_scan[dmm_name]['sampleCount']
@@ -300,14 +317,10 @@ class ScanMain(QObject):
         will start the measurement for one track.
         After starting the measurement, the FPGA runs on its own.
         """
-        # TODO: prepare during scan measurements of triton devices
-        # Must think about how to implement those. Do we want to do it here?
-        # We could also set up a feed into the pipeline and then catch them
-        # in a node, like the dmm data.
-        # Otherwise Something similar to start_pre_scan_measurement and
-        # prescan_measurement could be used here
+        # TODO: preparing during scan measurements of triton devices - is it okay to do this here?
 
-        track_dict = scan_dict.get('track' + str(track_num))
+        act_track_name = 'track' + str(track_num)
+        track_dict = scan_dict.get(act_track_name)
         iso = scan_dict.get('isotopeData', {}).get('isotope')
         logging.debug('---------------------------------------------')
         logging.debug('starting measurement of %s track %s  with track_dict: %s' %
@@ -318,6 +331,12 @@ class ScanMain(QObject):
         start_ok = self.sequencer.measureTrack(scan_dict, track_num)
         self.ppg_load_track(track_dict)  # first start the measurement, then load the pulse pattern on th ppg
         self.ground_pin_warned = False
+
+        # start triton log for during scan if required
+        triton_dict_pre_scan = scan_dict[act_track_name].get('triton', {}).get('duringScan', {})
+        triton_dict_is_none = triton_dict_pre_scan is None or triton_dict_pre_scan == {}
+        if not triton_dict_is_none:
+            self.start_triton_log()
         return start_ok
 
     def set_post_acc_switch_box(self, scan_dict, track_num, desired_state=None):
@@ -429,8 +448,8 @@ class ScanMain(QObject):
         """
         read = self.read_data()  # read data one last time
         self.ppg_stop()
-        # TODO: stop and save during scan measurements of triton devices,
-        # Need further thoughts into the implementation, see start_measurement
+        # TODO: abort_triton_log() is not sufficient for saving the data. Need to save the triton data somehow!
+        # TODO: looks like saving should be done somewhere else, since we don't have scan_dict and tr_name available here
 
         if read:
             logging.info('while stopping measurement, some data was still read.')
@@ -820,7 +839,7 @@ class ScanMain(QObject):
 
     ''' Triton related '''
 
-    def prepare_triton_listener_for_scan(self, triton_scan_dict, pre_post_scan_str='preScan'):
+    def prepare_triton_listener_for_scan(self, triton_scan_dict, pre_post_scan_str='preScan', track_name='track0'):
         """
         setup the triton listener if this has not ben setup yet.
         subscribe to all channels as defined in the triton_scan_dict.
@@ -834,7 +853,7 @@ class ScanMain(QObject):
             self.triton_listener = TritonListener()
         if self.triton_listener.logging:
             self.triton_listener.stop_log()
-        self.triton_listener.setup_log(triton_scan_dict.get(pre_post_scan_str, {}))
+        self.triton_listener.setup_log(triton_scan_dict.get(pre_post_scan_str, {}), pre_post_scan_str, track_name)
 
     def stop_triton_listener(self, stop_dummy_dev=True, restart=False):
         """
@@ -862,7 +881,7 @@ class ScanMain(QObject):
             if self.triton_listener.logging_complete:
                 self.save_triton_log(scan_dict, tr_name, pre_during_post_scan_str)
                 if pre_during_post_scan_str == 'preScan':
-                    self.prepare_triton_listener_for_scan(scan_dict[tr_name]['triton'], 'duringScan')
+                    self.prepare_triton_listener_for_scan(scan_dict[tr_name]['triton'], 'duringScan', tr_name)
                 return True
             else:
                 return False

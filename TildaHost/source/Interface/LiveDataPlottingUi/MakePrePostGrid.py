@@ -6,6 +6,7 @@ Created on 19.12.2017
 Module Description:
 """
 import functools
+import logging
 from copy import deepcopy
 
 from PyQt5 import QtWidgets, QtGui
@@ -88,24 +89,28 @@ class PrePostGridWidget(QtWidgets.QWidget):
         :return:
         """
         label_name_dev.setText(device_name)
-        try:
-            device_data = device_dict['data']
-        except:
-            device_data = device_dict['readings']
-        try:
+        if device_dict.get('data') is not None:
+            new_data = device_dict['data']
+        elif device_dict.get('readings') is not None:
+            new_data = device_dict.get('readings')
+        else:  # if the dict doesn't contain data, just use the existing data
+            new_data = False
+        if device_dict.get('required') is not None:
             device_data_required = device_dict['required']
-        except:
+        elif device_dict.get('sampleCount') is not None:
             device_data_required = device_dict['sampleCount']
-        # if device_data.__len__() > 10:
-        #     device_data = device_data[-2:]
-        label_data_dev.setText(str(device_data))
-        label_data_dev.moveCursor(QtGui.QTextCursor.End)
+        else:  # if the dict doesn't contain required or sample count, don't update the progress. We know nothing then.
+            device_data_required = False
 
-        if device_data_required is 0:
+        if new_data:  # only update if new data has been sent in the dict
+            label_data_dev.setText(str(new_data)[1:-1])
+            label_data_dev.moveCursor(QtGui.QTextCursor.End)
+
+        if device_data_required < 1:  # negative values and 0 mean continuous acquisition
             progressBar_dev.setValue(100)
             progressBar_dev.setFormat('continuous')
-        else:
-            progressBar_dev.setProperty("value", 100 * len(device_data) / device_data_required)
+        elif device_data_required and new_data:  # only update progress if the dict has complete information
+            progressBar_dev.setProperty("value", 100 * len(new_data) / device_data_required)
 
     def update_dev_from_dict(self, dev_widget_dict, dev_name, new_device_dict):
         """ simple wrapper for update dev """
@@ -133,6 +138,8 @@ class PrePostGridWidget(QtWidgets.QWidget):
         # Todo delete unnecessary widgets here
         # -> devices that are in self.dmm_widget_dicts or
         # self.triton_widget_dicts but not in self.track_data_dict anymore.
+        # TODO: might be difficult, because the triton devices only send the triton part of the dict to the pipe.
+        # -> probably better to reset everything on a new go (or rewrite from file if go on file)
         self.check_unnecessary()
 
         for dmm in sorted(self.dmm_dict.keys()):  # sorting is always preferable when displaying
@@ -166,9 +173,22 @@ class PrePostGridWidget(QtWidgets.QWidget):
                 self.update_dev_from_dict(self.triton_widget_dicts[dev_plus_channel_name], dev_plus_channel_name,
                                           self.triton_dict[dev][channel])
 
+    def return_data(self, dev_name, is_triton_bool):
+        ''' converts the text of the data label to a list of numbers and returns those (for plotting) '''
+        if is_triton_bool:
+            data_str = self.triton_widget_dicts[dev_name]['dataLabel'].toPlainText()
+        else:
+            data_str = self.dmm_widget_dicts[dev_name]['dataLabel'].toPlainText()
+        try:  # might be there is no data yet. Then we can't convert anything to numbers
+            ret = [float(n) for n in data_str.split(',')]
+        except:
+            ret = []
+        return ret
+
     def check_unnecessary(self):
         """ compare devices self.track_data_dict with the widget dicts and delete unnessecary widgets """
-        # TODO
+        # TODO becomes a problem whenever another go is done. The old widgets and values live on...
+        # Shouldn't be a problem during scanning though.
         pass
 
     def check_box_clicked(self, *args):

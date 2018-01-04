@@ -16,12 +16,21 @@ from copy import deepcopy
 
 import Pyro4
 import mysql.connector as Sql
+import numpy as np
+from PyQt5.QtCore import QObject, pyqtSignal
 
+import Application.Config as Cfg
 from Driver.TritonListener.DummyTritonDevice import DummyTritonDevice
 from Driver.TritonListener.TritonObject import TritonObject
 
 
 class TritonListener(TritonObject):
+    # signal to emit dmm values for live plotting during the pre/post scans.
+    # is also used for triton values in TritonListener
+    pre_post_meas_data_dict_callback = pyqtSignal(dict)
+    # signal to emit data to the pipeLine
+    data_to_pipe_sig = pyqtSignal(np.ndarray, dict)
+
     def __init__(self, name='TritonListener'):
         """
         :parameter name: str, name of this class
@@ -44,6 +53,10 @@ class TritonListener(TritonObject):
         self.logging = False
         self.logged_data = {}
         self.logging_complete = False
+
+        # variables to store the actual track and scan strings for emitting the live data dict
+        self.pre_dur_post_str = 'preScan'
+        self.track_name = 'track0'
 
     def create_dummy_dev(self, name='dummyDev'):
         self.dummy_dev = DummyTritonDevice(name)
@@ -115,7 +128,15 @@ class TritonListener(TritonObject):
             devs['dummyDev'] = self.get_channels_of_dev('dummyDev')
         return devs
 
-    def setup_log(self, log):
+    def get_existing_callbacks_from_main(self):
+        """ check wether existing callbacks are still around in the main and then connect to those. """
+        if Cfg._main_instance is not None:
+            logging.info('TritonListener is connecting to existing callbacks in main')
+            callbacks = Cfg._main_instance.gui_live_plot_subscribe()
+            self.pre_post_meas_data_dict_callback = callbacks[6]
+            self.data_to_pipe_sig = Cfg._main_instance.scan_main.data_to_pipe_sig  #TODO: this works, but is it nice?
+
+    def setup_log(self, log, pre_dur_post_str, track_name):
         """
         setup the log and subscribe to all required devices
         the log is a dict containing the devs which should be logged and
@@ -124,6 +145,12 @@ class TritonListener(TritonObject):
             {'dummyDev': {'ch1': {'required': 2, 'data': [], 'acquired': 0}, ...}}
 
         """
+        # connect to the callback for live data plotting so the log can be emitted as well
+        self.get_existing_callbacks_from_main()
+        # note down the track and which part of the scan is done
+        self.track_name = track_name
+        self.pre_dur_post_str = pre_dur_post_str
+
         if log is None or log == {}:
             self.log = {}
             self.logging_complete = True  # do not log
@@ -173,10 +200,17 @@ class TritonListener(TritonObject):
         if self.logging:
             if dev in self.log.keys():
                 if ch in self.log[dev].keys():
-                    if self.log[dev][ch]['required'] > self.log[dev][ch]['acquired']:
-                        # not enough data on this channel yet
+                    if self.log[dev][ch]['required'] > self.log[dev][ch]['acquired'] \
+                            or self.log[dev][ch]['required'] < 1 and self.pre_dur_post_str == 'duringScan':
+                        # not enough data on this channel yet or continuous acquisition (only allowed during scan)
                         self.log[dev][ch]['data'].append(val)
                         self.log[dev][ch]['acquired'] += 1
+                        triton_live_data_dict = {self.track_name: {'triton': {self.pre_dur_post_str: self.log}}}
+                        if self.pre_dur_post_str == 'duringScan':
+                            # in duringScan emit the received values to the pipe!
+                            self.data_to_pipe_sig.emit(np.ndarray(0, dtype=np.int32), triton_live_data_dict)
+                        else:  # in pre and postScan emit received value to callback for live data plotting
+                            self.pre_post_meas_data_dict_callback.emit(triton_live_data_dict)
             self.check_log_complete()
 
     def check_log_complete(self):
@@ -184,7 +218,15 @@ class TritonListener(TritonObject):
         check_sum = 0
         for dev, dev_log in self.log.items():
             for ch, val in dev_log.items():
-                check_sum += max(0, val['required'] - val['acquired'])
+                # for periodic data taking 'required' will be negative. Checksum must not be 0
+                if val['required'] < 1:
+                    if self.pre_dur_post_str == 'duringScan':
+                        check_sum += 1
+                    else:  # continuous acquisition only makes sense duringScan
+                        logging.error('Triton device %s, channel %s: continuous acquisition not allowed in %s.'
+                                      % (dev, ch, self.pre_dur_post_str))
+                else:
+                    check_sum += max(0, val['required'] - val['acquired'])
         if check_sum == 0:
             logging.info('TritonListener: logging complete')
             self.logging_complete = True
@@ -253,7 +295,7 @@ if __name__=='__main__':
 
     trit_lis = TritonListener()
     # trit_lis.create_dummy_dev()
-    trit_lis.setup_log({'DummyPS': {'current': {'required': 50, 'data': []}}})
+    trit_lis.setup_log({'DummyPS': {'current': {'required': 50, 'data': []}}}, 'track0')
     # trit_lis.setup_log({})
     trit_lis.start_log()
     # input('anything to stop')
