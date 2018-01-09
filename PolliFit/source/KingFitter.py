@@ -53,6 +53,8 @@ class KingFitter(object):
                                                caller_name=__name__)[0][0]
             self.ref_mass = TiTs.select_from_db(self.db, 'mass', 'Isotopes',
                                                 [['iso'], [self.ref]], caller_name=__name__)[0][0]
+            self.ref_massErr = TiTs.select_from_db(self.db, 'mass_d', 'Isotopes',
+                                                [['iso'], [self.ref]], caller_name=__name__)[0][0]
         except Exception as e:
             print('error: %s  \n\t-> Kingfitter could not find a reference isotope from'
                   ' Lines in database or mass of this reference Isotope in Isotopes' % e)
@@ -112,8 +114,8 @@ class KingFitter(object):
         else:
             (self.a, self.b, self.aerr, self.berr) = self.fit(run, showplot=self.showing)
         print('King fit performed, final values:')
-        print('intercept: ', self.a, '(', self.aerr, ') u MHz')
-        print('slope: ', self.b, '(', self.berr, ') MHz/fm^2')
+        print('intercept: ', self.a, '(', self.aerr, ') u MHz', '\t percent: %.2f' % (self.aerr / self.a * 100))
+        print('slope: ', self.b, '(', self.berr, ') MHz/fm^2',  '\t percent: %.2f' % (self.berr / self.b * 100))
 
     def fit(self, run, showplot=True, bFix=False, plot_y_mhz=None, font_size=None):
         if plot_y_mhz is None:
@@ -261,14 +263,23 @@ class KingFitter(object):
                     self.isotopeShiftSystErr.append(systErr)
                     self.run.append(run)
         self.isotopeRedMasses = [i*self.ref_mass/(i-self.ref_mass) for i in self.isotopeMasses]
-        self.chargeradii = [(-self.a/self.isotopeRedMasses[i]+j)/self.b+self.c/self.isotopeRedMasses[i]
-                            for i,j in enumerate(self.isotopeShifts)]
+        # from error prop:
+        self.isotopeRedMassesErr = [
+            ((iso_m_d * (self.ref_mass ** 2)) / (iso_m - self.ref_mass) ** 2) ** 2 +
+            ((self.ref_massErr * (iso_m ** 2)) / (iso_m - self.ref_mass) ** 2) ** 2
+            for iso_m, iso_m_d in zip(self.isotopeMasses, self.massErr)
+        ]
+        self.chargeradii = [(j - self.a / self.isotopeRedMasses[i]) / self.b + self.c / self.isotopeRedMasses[i]
+                            for i, j in enumerate(self.isotopeShifts)]
         #self.chargeradiiStatErrs = [np.abs(i/self.b) for i in self.isotopeShiftStatErr]
-        self.chargeradiiTotalErrs = [np.sqrt(np.square(self.isotopeShiftStatErr[i]/self.b)+
-                                        np.square(self.aerr/(self.isotopeRedMasses[i]*self.b))+
-                                        np.square((-self.a/self.isotopeRedMasses[i]+j)*self.berr/np.square(self.b)) +
-                                        np.square((self.a/self.b+self.c)*self.massErr[i]/np.square(self.ref_mass)))
-                                    for i,j in enumerate(self.isotopeShifts)]
+        self.chargeradiiTotalErrs = [np.sqrt(
+            np.square(self.isotopeShiftStatErr[i]/self.b) +
+            np.square(self.aerr/(self.isotopeRedMasses[i]*self.b)) +
+            np.square((self.a/self.isotopeRedMasses[i]-j)*self.berr/np.square(self.b)) +
+            np.square(
+                (self.a/self.b-self.c) * self.isotopeRedMassesErr[i]/np.square(self.isotopeRedMasses[i]))
+        )
+                                     for i, j in enumerate(self.isotopeShifts)]
         finalVals = {}
         for i,j in enumerate(self.isotopes):
             finalVals[j] = [self.chargeradii[i], self.chargeradiiTotalErrs[i]]
@@ -294,7 +305,8 @@ class KingFitter(object):
                 x.append(int(str(i).split('_')[0]))
                 y.append(finalVals[i][0])
                 yerr.append(finalVals[i][1])
-                print('%s\t%.3f(%.0f)' % (i, finalVals[i][0], finalVals[i][1] * 1000))
+                print('%s\t%.3f(%.0f)\t%.1f' % (i, finalVals[i][0], finalVals[i][1] * 1000,
+                                                finalVals[i][1] / max(abs(finalVals[i][0]), 0.000000000000001) * 100))
                 #print("'"+str(i)+"'", ':[', np.round(finalVals[i][0],3), ','+ str(np.round(np.sqrt(finalVals[i][1]**2 + finalVals[i][2]**2),3))+'],')
 
             plt.subplots_adjust(bottom=0.2)
