@@ -160,7 +160,7 @@ class KingFitter(object):
                 self.b = sum(betaWV)/sum(betaWU)
             self.a = y_bar - self.b*x_bar
 
-            sigma_b_square = 1/sum(w_u_fit_square)
+            sigma_b_square = 1/sum(w_u_fit_square) if not bFix else 0
             sigma_a_square = 1/sum(w)+np.square(x_fit_bar)*sigma_b_square
             diff_x = np.abs(sum([np.abs(w_x_fit[i] - j) for i,j in enumerate(w_x)]))
             diff_y = np.abs(sum([np.abs(w_y_fit[i] - j) for i,j in enumerate(w_y)]))
@@ -280,6 +280,22 @@ class KingFitter(object):
                 (self.a/self.b-self.c) * self.isotopeRedMassesErr[i]/np.square(self.isotopeRedMasses[i]))
         )
                                      for i, j in enumerate(self.isotopeShifts)]
+        errs_to_print = [(
+                             self.isotopes[i],
+                             self.chargeradii[i],
+                             self.chargeradiiTotalErrs[i],
+                             abs(self.chargeradiiTotalErrs[i] / self.chargeradii[i]) * 100,
+                             abs(self.isotopeShiftStatErr[i] / self.b),
+                             abs(self.aerr / (self.isotopeRedMasses[i] * self.b)),
+                             abs((self.a / self.isotopeRedMasses[i] - j) * self.berr / np.square(self.b)),
+                             abs((self.a / self.b - self.c) * self.isotopeRedMassesErr[i] / np.square(self.isotopeRedMasses[i])),
+                         )
+            for i, j in enumerate(self.isotopeShifts)
+        ]
+        print('iso\tdr^2\tDelta dr^2\tDelta IS\tDelta K\tDelta F\tDelta M')
+        for each in errs_to_print:
+            print('%s\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\t%.4f\t%.4f' % each)
+
         finalVals = {}
         for i,j in enumerate(self.isotopes):
             finalVals[j] = [self.chargeradii[i], self.chargeradiiTotalErrs[i]]

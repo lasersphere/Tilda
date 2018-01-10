@@ -52,7 +52,8 @@ class MyApp(QMainWindow, Ui_MainWindow):
 
         # Important property that deletes all widgets (including QTimer)
         # on close.
-        self.setAttribute(Qt.WA_DeleteOnClose)
+        # self.setAttribute(Qt.WA_DeleteOnClose)
+
         self.setFocusPolicy(Qt.StrongFocus)
 
         # Variables

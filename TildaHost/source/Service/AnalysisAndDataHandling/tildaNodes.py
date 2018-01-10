@@ -211,6 +211,7 @@ class NAddWorkingTime(Node):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
         self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
             self.Pipeline.pipeData[track_name])
+        logging.debug('working time has ben set to: %s ' % str(self.Pipeline.pipeData[track_name]['workingTime']))
         return data
 
 
@@ -2331,5 +2332,9 @@ class NFilterDMMDictsAndSave(Node):
 
     def save(self):
         # overwrites the pipeData with store_data. The pipeData will be stored later on
-        self.Pipeline.pipeData = deepcopy(self.store_data)
+        # self.Pipeline.pipeData = deepcopy(self.store_data)
+        self.Pipeline.pipeData[self.active_track_name]['measureVoltPars'] = deepcopy(
+            self.store_data[self.active_track_name]['measureVoltPars'])
+        self.Pipeline.pipeData[self.active_track_name]['triton'] = deepcopy(
+            self.store_data[self.active_track_name]['triton'])
 

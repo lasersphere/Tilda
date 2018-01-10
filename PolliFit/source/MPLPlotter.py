@@ -542,18 +542,27 @@ def tight_layout():
 def plot_par_from_combined(db, runs_to_plot, isotopes,
                            par, plot_runs_seperate=False, show_pl=True,
                            literature_dict=None, literature_name='lit. values',
-                           save_path='', use_syst_err_only=False):
+                           save_path='', use_syst_err_only=False, comments=None, markers=None, colors=None,
+                           legend_loc=2):
     import Tools
     compl_x = []
     compl_y = []
     compl_y_err = []
+    if comments is None:
+        # should be a list with a comment for each run
+        comments = [''] * len(runs_to_plot)
+    if markers is None:
+        # should be a list with a marker for each run
+        markers = ['o'] * len(runs_to_plot)
+    if colors is None:
+        colors = ['g', 'r', 'c', 'k'] * (len(runs_to_plot) // 4)
     lit_y = None
     lit_y_err = None
     val_statErr_rChi_shift_dict = Tools.extract_from_combined(runs_to_plot, db, isotopes, par, print_extracted=True)
     literarture_has_been_plotted = False
     err_index = 2 if use_syst_err_only else 1
     offset = -0.2
-    for each in runs_to_plot:
+    for ind, each in enumerate(runs_to_plot):
         try:
             if each:
                 if literature_dict is not None:  # try to get the literature values and substract experiment Values from it
@@ -581,7 +590,8 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
                     if lit_y is not None and not literarture_has_been_plotted:
                         plt.errorbar(x, lit_y, lit_y_err, label=literature_name, linestyle='None', marker="o")
                         literarture_has_been_plotted = True
-                    plt.errorbar(x, exp_y, exp_y_err, label='%s' % each, linestyle='None', marker="o")
+                    plt.errorbar(x, exp_y, exp_y_err, label='%s%s' % (each, comments[ind]),
+                                 linestyle='None', marker=markers[ind], color=colors[ind])
 
                 compl_x += x
                 compl_y += exp_y
@@ -598,7 +608,7 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
             plt.errorbar(compl_x, lit_y, lit_y_err, label=literature_name,
                          linestyle='None', marker="o")
 
-    plt.legend(loc=2)
+    plt.legend(loc=legend_loc)
     plt.margins(0.25)
     get_current_axes().set_ylabel('%s [MHz]' % par)
     plt.gcf().set_facecolor('w')
