@@ -77,13 +77,13 @@ class PrePostGridWidget(QtWidgets.QWidget):
         self.update_dev(cb_plot_dev, label_name_dev, label_data_dev, progressBar_dev, device_name, device_dict)
         return cb_plot_dev, label_name_dev, label_data_dev, progressBar_dev
 
-    def update_dev(self, cb_plot_dev, label_name_dev, label_data_dev, progressBar_dev, device_name, device_dict):
+    def update_dev(self, cb_plot_dev, label_name_dev, label_data_dev, progress_bar_dev, device_name, device_dict):
         """
         update an existing device
         :param cb_plot_dev: qcheckbox, for plotting or not, currently not used
         :param label_name_dev: qlabel, name of dev
         :param label_data_dev: qTextEdit, for displaying the data
-        :param progressBar_dev: qProgressBar, for displaying the progress
+        :param progress_bBar_dev: qProgressBar, for displaying the progress
         :param device_name: str, name of device to be dipslayed
         :param device_dict: dict, contains the data/readings of a device
         :return:
@@ -105,12 +105,15 @@ class PrePostGridWidget(QtWidgets.QWidget):
         if new_data:  # only update if new data has been sent in the dict
             label_data_dev.setText(str(new_data)[1:-1])
             label_data_dev.moveCursor(QtGui.QTextCursor.End)
+        else:
+            label_data_dev.setText('No data available (yet)!')
+
 
         if device_data_required < 1:  # negative values and 0 mean continuous acquisition
-            progressBar_dev.setValue(100)
-            progressBar_dev.setFormat('continuous')
+            progress_bar_dev.setValue(100)
+            progress_bar_dev.setFormat('continuous')
         elif device_data_required and new_data:  # only update progress if the dict has complete information
-            progressBar_dev.setProperty("value", 100 * len(new_data) / device_data_required)
+            progress_bar_dev.setProperty("value", 100 * len(new_data) / device_data_required)
 
     def update_dev_from_dict(self, dev_widget_dict, dev_name, new_device_dict):
         """ simple wrapper for update dev """
@@ -135,12 +138,6 @@ class PrePostGridWidget(QtWidgets.QWidget):
         self.track_data_dict = deepcopy(pre_post_meas_dict_this_track)
 
         self.dmm_dict = self.track_data_dict.get('measureVoltPars', {}).get(pre_dur_post_str, {}).get('dmms', {})
-        # Todo delete unnecessary widgets here
-        # -> devices that are in self.dmm_widget_dicts or
-        # self.triton_widget_dicts but not in self.track_data_dict anymore.
-        # TODO: might be difficult, because the triton devices only send the triton part of the dict to the pipe.
-        # -> probably better to reset everything on a new go (or rewrite from file if go on file)
-        self.check_unnecessary()
 
         for dmm in sorted(self.dmm_dict.keys()):  # sorting is always preferable when displaying
             if dmm not in self.dmm_widget_dicts.keys():  # add dmm, was not existing yet
@@ -173,23 +170,6 @@ class PrePostGridWidget(QtWidgets.QWidget):
                 self.update_dev_from_dict(self.triton_widget_dicts[dev_plus_channel_name], dev_plus_channel_name,
                                           self.triton_dict[dev][channel])
 
-    def return_data(self, dev_name, is_triton_bool):
-        ''' converts the text of the data label to a list of numbers and returns those (for plotting) '''
-        if is_triton_bool:
-            data_str = self.triton_widget_dicts[dev_name]['dataLabel'].toPlainText()
-        else:
-            data_str = self.dmm_widget_dicts[dev_name]['dataLabel'].toPlainText()
-        try:  # might be there is no data yet. Then we can't convert anything to numbers
-            ret = [float(n) for n in data_str.split(',')]
-        except:
-            ret = []
-        return ret
-
-    def check_unnecessary(self):
-        """ compare devices self.track_data_dict with the widget dicts and delete unnessecary widgets """
-        # TODO becomes a problem whenever another go is done. The old widgets and values live on...
-        # Shouldn't be a problem during scanning though.
-        pass
 
     def check_box_clicked(self, *args):
         """ connect to this function when a checkbox was clicked and pass on to the parent """

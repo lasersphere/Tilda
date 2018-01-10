@@ -6,12 +6,15 @@ Created on 19.12.2017
 Module Description:
 """
 import logging
+import time
 from copy import deepcopy
 
 from PyQt5 import QtWidgets
 
 import PyQtGraphPlotter as Pg
+import TildaTools as TiTs
 from Interface.LiveDataPlottingUi.MakePrePostGrid import PrePostGridWidget
+from Interface.LiveDataPlottingUi.PreDurPostPlotter import PreDurPostPlotter
 
 
 class PrePostTabWidget(QtWidgets.QTabWidget):
@@ -21,8 +24,7 @@ class PrePostTabWidget(QtWidgets.QTabWidget):
         :param pre_post_meas_dict:
         """
         QtWidgets.QTabWidget.__init__(self)
-
-        self.data_dict = pre_post_meas_dict
+        self.data_dict = deepcopy(pre_post_meas_dict)
         self.pre_post_during_grid_widget = {}  # {'track0': [preScan, duringScan, postScan], ... } -
         # Grid widgets that will be created on first call. for each track!
 
@@ -40,7 +42,7 @@ class PrePostTabWidget(QtWidgets.QTabWidget):
 
         # plot dict stores all info about the different plots
         # {'plotname':{'widget':wid, 'type':dmm/triton, 'name':dmm/dev, 'chan':ch/-}}
-        self.plot_dict = {}
+        # self.plot_dict = {}
 
     def create_new_tab(self, track_name):
         new_tab = QtWidgets.QTabWidget()
@@ -68,13 +70,11 @@ class PrePostTabWidget(QtWidgets.QTabWidget):
         # add the data window to the layout
         self.pre_post_data_widget = QtWidgets.QWidget()
         splitter.addWidget(self.pre_post_data_widget)
-        #self.pre_post_data_widget.setStyleSheet('background-color: yellow')  # TODO just for testing
         self.plot_pre_post_widget = QtWidgets.QWidget()
         # add the plot window to the layout
         splitter.addWidget(self.plot_pre_post_widget)
-        #self.plot_pre_post_widget.setStyleSheet('background-color: red')  # TODO just for testing
-        self.plot_layout = QtWidgets.QVBoxLayout(self.plot_pre_post_widget)
-        #self.plot_layout.addItem(QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)) #TODO: maybe find a way to automatically expand the plotwindow?
+        self.plot_layout = PreDurPostPlotter(self.plot_pre_post_widget, self)
+
 
         # The pre/during/post data shall be presented in a Form Layout
         data_layout = QtWidgets.QFormLayout(self.pre_post_data_widget)
@@ -111,33 +111,15 @@ class PrePostTabWidget(QtWidgets.QTabWidget):
         :param pre_post_meas_dict: dict, as self.data_dict
         :return:
         """
-        self.data_dict = deepcopy(pre_post_meas_dict)  # contains all tracks
+        # merge the new data into the existing dict
+        TiTs.merge_extend_dicts(self.data_dict, deepcopy(pre_post_meas_dict), overwrite=True)
+        # self.data_dict = deepcopy(pre_post_meas_dict)  # contains all tracks
         for tr_name in self.track_list:
             for ind, pre_dur_post_str in enumerate(['preScan', 'duringScan', 'postScan']):
                 self.pre_post_during_grid_widget[tr_name][ind].update_data(
                     pre_dur_post_str, self.data_dict[tr_name])
-        self.update_plot_windows()
+        self.plot_layout.update_plot_windows()
 
-    # def plot_checkbox_clicked(self, *args): #TODO: I chose another way to define the checkbox action. For final remove this
-    #     """ when a plot yes/no check box was clicked in one of the devices,
-    #      this function will be called and can pass on the new info to the plotwidget.
-    #     *args will be a tuple, ((dev_name_str, cb_True/False_bool), pre_post_during_scan_str, track_name_str) for example:
-    #      (('dev0:ch0', False), 'duringScan', 'track0')
-    #     """
-    #     (dev_name, checkbox_bool), pre_post_during_str, tr_name = args
-    #     logging.debug('plot cb licked, args: %s' % str(args))
-    #     triton_dev_bool = ':' in dev_name  # dmms are not allowed to have ':' in name! (due to xml data struct)
-    #     # pass this on to the plot widget, which can handle the relevant data:
-    #     relevant_data = []
-    #     try:
-    #         if triton_dev_bool:
-    #             dev, ch = dev_name.split(':')
-    #             relevant_data = self.data_dict[tr_name]['triton'][pre_post_during_str][dev][ch]['data']
-    #         else:
-    #             relevant_data = self.data_dict[tr_name]['measureVoltPars'][pre_post_during_str]['dmms'][dev_name]['readings']
-    #     except Exception as e:
-    #         logging.error('error while getting data from storage, error is: %s' % e, exc_info=True)
-    #     logging.debug('data of selected dev %s in track %s is: %s ' % (dev_name, tr_name, relevant_data))
 
     def plot_checkbox_clicked(self, *args):
         """ when a plot yes/no check box was clicked in one of the devices,
@@ -147,76 +129,14 @@ class PrePostTabWidget(QtWidgets.QTabWidget):
         """
         (dev_name, checkbox_bool), pre_post_during_str, tr_name = args
         logging.debug('plot cb licked, args: %s' % str(args))
-        triton_dev_bool = ':' in dev_name  # dmms are not allowed to have ':' in name! (due to xml data struct)
         if checkbox_bool:
-            self.create_plot_window(args)
-            logging.debug('creating plot for dev %s in track %s is' % (dev_name, tr_name))
+            self.plot_layout.create_plot_window(args)
         else:
-            self.remove_plot_window(pre_post_during_str+' - '+dev_name)
+            self.plot_layout.hide_plot_window(pre_post_during_str+' - '+dev_name)
 
 
-    def create_plot_window(self, args):
-        '''
-        creates an entry to the plot_dict with all relevant information about this plot.
-        calls update_plot_windows to display the new plot along with the existing ones
-        :param args: tuple, ((dev_name_str, cb_True/False_bool), pre_post_during_scan_str, track_name_str) for example:
-         (('dev0:ch0', False), 'duringScan', 'track0')
-        '''
-        (dev_name, checkbox_bool), pre_post_during_str, tr_name = args
-        triton_dev_bool = ':' in dev_name  # dmms are not allowed to have ':' in name! (due to xml data struct)
-        if triton_dev_bool:
-            name, ch = dev_name.split(':')
-        else:
-            name = dev_name
-            ch = ''
-        live_plot_wid, live_plot_itm = Pg.create_x_y_widget(
-            do_not_show_label=['top', 'right', 'bottom'], y_label=pre_post_during_str+' - '+dev_name)
-        # add entry to the plot_dict
-        plotname = pre_post_during_str + ' - ' + dev_name
-        self.plot_dict[plotname] = {'plotwid': live_plot_wid,
-                                    'plotitem': live_plot_itm,
-                                    'istriton': triton_dev_bool,
-                                    'devname': dev_name,
-                                    'name': name,
-                                    'chan': ch,
-                                    'track': tr_name,
-                                    'predurpost': pre_post_during_str}
-        # add plot-widget to the plot_layout and update all plots to get them filled with data
-        self.plot_layout.addWidget(self.plot_dict[plotname]['plotwid'])
-        self.update_plot_windows()
 
 
-    def remove_plot_window(self, plotname):
-        '''
-        removes the plot from the plot_dict and calls update_plot_windows to display the updated list
-        :param plotname: the plotname as stored in the dict.
-                For triton devices its dev (dev_name=dev:ch), for dmms dev_name
-        '''
-        self.plot_dict[plotname]['plotwid'].setParent(None)
-        self.plot_layout.removeWidget(self.plot_dict[plotname]['plotwid'])
-        del self.plot_dict[plotname]
-        self.update_plot_windows()
-
-
-    def update_plot_windows(self):
-        '''
-        updates all active plots with the data stored in the data_label of the corresponding widget
-        '''
-        for plots in self.plot_dict:  #iterate over all active plots
-            #extract basic information of the plot. Needed to find the data
-            pre_dur_post_str = self.plot_dict[plots]['predurpost']
-            tr_name = self.plot_dict[plots]['track']
-            is_triton = self.plot_dict[plots]['istriton']
-            dev_name = self.plot_dict[plots]['devname']
-            plot_data = []
-            plot_color = 'r'  # standard color for the plots
-            for ind, pdp_str in enumerate(['preScan', 'duringScan', 'postScan']):
-                # iterate over the pre/dur/post-widgets to find the one where the data is stored
-                if pdp_str == pre_dur_post_str:
-                    plot_color = ['k', 'r', 'b'][ind]  # individual colors for pre/dur/postScan data
-                    plot_data = self.pre_post_during_grid_widget[tr_name][ind].return_data(dev_name, is_triton)
-            # renew the plot with the received data
-            self.plot_dict[plots]['plotitem'].plot(plot_data, pen=plot_color)
 
 
 

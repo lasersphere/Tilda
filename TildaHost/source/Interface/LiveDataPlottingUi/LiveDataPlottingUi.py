@@ -209,6 +209,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         ''' pre / post / during related  '''
         self.pre_post_tab_widget = None
+        self.tab_layout = None
+        self.mutex = QtCore.QMutex()
 
     def show_progress(self, show=None):
         if self.scan_prog_ui is None and self.subscribe_as_live_plot:
@@ -907,6 +909,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.reset_sum_plots()
         self.reset_all_pmt_plots()
         self.reset_t_res_plot()
+        self.reset_pre_post_meas_gui()
 
     def show_progress_window(self):
         try:
@@ -992,15 +995,35 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def rebuild_pre_post_meas_gui(self, pre_post_meas_dict):
         """
         add a tab for each track on the tab 'pre/during/post scan measurements'.
-
+        if it exists, update the data inside
+        :param pre_post_meas_dict: the new data
         """
-        # TODO: seems like the first ever created Widget can't be overwritten
-        self.tab_layout = QtWidgets.QGridLayout(self.tab_pre_post_meas)
         if self.pre_post_tab_widget is None:
+            if self.tab_layout is None:
+                print('creating tab layout')
+                self.tab_layout = QtWidgets.QGridLayout(self.tab_pre_post_meas)
+            self.mutex.lock()
+
             self.pre_post_tab_widget = PrePostTabWidget(pre_post_meas_dict)
             self.tab_layout.addWidget(self.pre_post_tab_widget)
+            self.mutex.unlock()
         else:
+            self.mutex.lock()
             self.pre_post_tab_widget.update_data(pre_post_meas_dict)
+            self.mutex.unlock()
+
+    def reset_pre_post_meas_gui(self):
+        '''
+        call the self destruction of the widget
+        '''
+        if self.pre_post_tab_widget is not None:
+            # if the tab_widget exists, delete it.
+            logging.debug('deleting pre_pre_post_tab_widget')
+            self.mutex.lock()  # Make sure no othe fuction call tries to access the widget in between.
+            self.pre_post_tab_widget.deleteLater()
+            self.pre_post_tab_widget = None  # Make sure it's None so its in a definite state
+            self.mutex.unlock()  # Release the widget for other function calls.
+
 
 
 if __name__ == "__main__":
@@ -1105,6 +1128,8 @@ if __name__ == "__main__":
 
     app = QtWidgets.QApplication(sys.argv)
     ui = TRSLivePlotWindowUi()
+    ui.tabWidget.setCurrentIndex(3)  # time resolved
+
     ui.pre_post_meas_data_dict_callback.emit(test_dict)
     test_dict2 = deepcopy(test_dict)
     test_dict2['track0']['triton']['duringScan'] = {'dev0': {'ch1': {'aquired': 13,
@@ -1118,11 +1143,16 @@ if __name__ == "__main__":
                                                                }
                                                       }
     ui.show()
+    ui.tabWidget.setCurrentIndex(3)  # time resolved
 
-    ui.pre_post_meas_data_dict_callback.emit(test_dict2)
+    for i in range(0, 100):
+        ui.pre_post_meas_data_dict_callback.emit(test_dict2)
+    # ui.pre_post_meas_data_dict_callback.emit(test_dict2)
+    # ui.pre_post_meas_data_dict_callback.emit(test_dict2)
     # TODO when emitting this ch0 of dev0 is overwritten! currently the Gui is not updated by deleting this then!
 
     # time.sleep(2)
+
 
 
     app.exec()

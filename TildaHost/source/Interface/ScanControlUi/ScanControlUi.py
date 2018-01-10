@@ -97,6 +97,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         """
         will set the state in the main to go
         :param read_spin_box: bool, True for first "call"
+                ergo: bool, False for go on file
         """
         if read_spin_box:
             self.go_was_clicked_before = True
@@ -108,6 +109,9 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         if ergo and acq_on_file_in_dict:
             # if its an ergo an continuedAcquisitonOnFile is already written to scandict, this must be deleted:
             Cfg._main_instance.scan_pars[self.active_iso]['isotopeData'].pop('continuedAcquisitonOnFile')
+        if ergo:
+            # if its an ergo we do not want any old readings of dmms or triton devs in the scandict
+            Cfg._main_instance.remove_old_dmm_triton_from_scan_pars(self.active_iso)
         self.wrap_open_live_plot_win()
         Cfg._main_instance.start_scan(self.active_iso)
 

@@ -982,6 +982,33 @@ class Main(QtCore.QObject):
             logging.info('could not remove %s because this is the current scan parameter.'
                          ' Will remove this after scan completed.' % iso_seqtype)
 
+    def remove_old_dmm_triton_from_scan_pars(self, iso):
+        """
+        overwrites all dmm and triton 'readings' and 'data' entries for a fresh scan.
+        """
+        is_there_something_to_remove = 0
+        for keys in self.scan_pars[iso]:
+            if 'track' in keys:
+                for predurpos in self.scan_pars[iso][keys]['measureVoltPars']:
+                    for dmm_names, dmm_dicts in self.scan_pars[iso][keys]['measureVoltPars'][predurpos]['dmms'].items():
+                        for entries in dmm_dicts:
+                            if entries == 'readings' and len(dmm_dicts[entries]) > 0:
+                                is_there_something_to_remove += 1
+                                dmm_dicts[entries] = []
+                            elif entries == 'aquiredPreScan':
+                                dmm_dicts[entries] = 0
+                for predurpos in self.scan_pars[iso][keys]['triton']:
+                    for dev_names, dev_dicts in self.scan_pars[iso][keys]['triton'].get(predurpos, {}).items():
+                        for channels, ch_dicts in dev_dicts.items():
+                            for entries in ch_dicts:
+                                if entries == 'data' and len(ch_dicts[entries]) > 0:
+                                    is_there_something_to_remove += 1
+                                    ch_dicts[entries] = []
+                                elif entries == 'acquired':
+                                    ch_dicts[entries] = 0
+        logging.info('removed %s old dmm or triton data entries' % is_there_something_to_remove)
+
+
     def save_scan_par_to_db(self, iso):
         """
         will save all information in the scan_pars dict for the given isotope to the database.

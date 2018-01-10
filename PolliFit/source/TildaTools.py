@@ -74,6 +74,27 @@ def merge_dicts(d1, d2):
     return new
 
 
+def merge_extend_dicts(target_dict, new_dict, overwrite=False):
+    """
+    This function is used, to merge the content of the second dict into the first.
+    Whenever a dict is found inside the dict, a recursive function call is executed, merging the sub-dicts as well.
+    :param overwrite: íf True, overwrite conflicting values (e.g. int, float, str, bool...). If False keep the old one.
+    :returns None: This function works on the target dict! No new dict is returned!
+    """
+    for keys, vals in new_dict.items():
+        if keys in target_dict:  # key exists already
+            is_same = vals == target_dict[keys]
+            if not is_same:  # key exists but vals are different
+                if type(vals) is dict:  # if its a dict then check this again
+                    merge_extend_dicts(target_dict[keys], vals, overwrite)
+                else:  # key exists, but vals are different and can't be combined
+                    if overwrite:  # if authorized, overwrite the existing value with the new one
+                        target_dict[keys] = vals
+            # else: key exists and vals are identical - do nothing
+        else:  # key doesn't exist
+            target_dict[keys] = new_dict[keys]
+
+
 def numpy_array_from_string(string, shape, datatytpe=np.int32):
     """
     converts a text array saved in an lxml.etree.Element
