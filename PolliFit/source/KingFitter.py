@@ -108,11 +108,11 @@ class KingFitter(object):
         self.x = [self.redmasses[i]*j - self.c for i,j in enumerate(self.x_origin)]
         print('performing King fit!')
         if find_slope_with_statistical_error:
-            (self.a, self.b, self.aerr, self.berr) = self.fit(run, showplot=True)
+            (self.a, self.b, self.aerr, self.berr, a_b_correlation) = self.fit(run, showplot=True)
             self.yerr = self.yerr_total
-            (self.a, self.b, self.aerr, self.berr) = self.fit(run, showplot=self.showing, bFix=True)
+            (self.a, self.b, self.aerr, self.berr, a_b_correlation) = self.fit(run, showplot=self.showing, bFix=True)
         else:
-            (self.a, self.b, self.aerr, self.berr) = self.fit(run, showplot=self.showing)
+            (self.a, self.b, self.aerr, self.berr, a_b_correlation) = self.fit(run, showplot=self.showing)
         print('King fit performed, final values:')
         print('intercept: ', self.a, '(', self.aerr, ') u MHz', '\t percent: %.2f' % (self.aerr / self.a * 100))
         print('slope: ', self.b, '(', self.berr, ') MHz/fm^2',  '\t percent: %.2f' % (self.berr / self.b * 100))
@@ -127,7 +127,7 @@ class KingFitter(object):
         omega_x = [1/np.square(i) for i in self.xerr]
         omega_y = [1/np.square(i) for i in self.yerr]
         alpha = [np.sqrt(j*omega_y[i]) for i,j in enumerate(omega_x)]
-        r = [0 for i in self.x]
+        r = [0 for i in self.x]  # muonic data is not correlated to iso shift measurement results
 
         while totaldiff > 1e-10 and i < 200:
             w = [j*omega_y[i]/(j + np.square(self.b)*omega_y[i] - 2 * self.b * alpha[i] * r[i])
@@ -155,6 +155,13 @@ class KingFitter(object):
             betaW = [j*w[i] for i,j in enumerate(beta)]
             betaWV = [j*v[i] for i,j in enumerate(betaW)]
             betaWU = [j*u[i] for i,j in enumerate(betaW)]
+
+            # covariance
+            sigma_b_tilde_square = 1 / (sum([w_i * u_fit[i] ** 2 for i, w_i in enumerate(w)]))
+            sigma_a_tilde_square = 1 / (sum([w_i for w_i in w])) + x_bar ** 2 * sigma_b_tilde_square
+            cov_a_b = - x_bar * sigma_b_tilde_square
+            # r_ab in paper:
+            a_b_correlation_coeff = - x_bar * np.sqrt(sigma_b_tilde_square) / np.sqrt(sigma_a_tilde_square)
 
             if not bFix:
                 self.b = sum(betaWV)/sum(betaWU)
@@ -224,7 +231,10 @@ class KingFitter(object):
                     (self.c, str(self.litvals), 'kingVal', 'alpha', run))
         con.commit()
         con.close()
-        return (self.a, self.b, self.aerr, self.berr)
+
+        print('correlation coefficient of a and b is: %.5f' % a_b_correlation_coeff)
+
+        return (self.a, self.b, self.aerr, self.berr, a_b_correlation_coeff)
 
     def calcChargeRadii(self, isotopes=[], run=-1, plot_evens_seperate=False):
         print('calculating the charge radii...')
@@ -354,8 +364,7 @@ class KingFitter(object):
 
     def findBestAlpha(self, run):
         self.x = [self.redmasses[i]*j - self.c for i,j in enumerate(self.x_origin)]
-        (bestA, bestB, bestAerr, bestBerr) = self.fit(run, showplot=False)
-        bestRatio = np.abs(bestAerr/bestA)
+        (bestA, bestB, bestAerr, bestBerr, bestCorrelation) = self.fit(run, showplot=False)
         step = 1
         best = self.c
         end = False
@@ -366,10 +375,9 @@ class KingFitter(object):
             if np.abs(self.c) >= 2000: #searching just between [-2000,2000]
                 self.c = - self.c + step
             self.x = [self.redmasses[i]*j - self.c for i,j in enumerate(self.x_origin)]
-            (newA, newB, newAerr, newBerr) = self.fit(run, showplot=False)
-            newRatio = np.abs(newAerr/newA)
-            if newRatio < bestRatio:
-                bestRatio = newRatio
+            (newA, newB, newAerr, newBerr, newCorrelation) = self.fit(run, showplot=False)
+            if abs(newCorrelation) < abs(bestCorrelation):
+                bestCorrelation = newCorrelation
                 best = self.c
                 self.c += step
 
