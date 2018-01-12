@@ -990,7 +990,8 @@ class Main(QtCore.QObject):
         for keys in self.scan_pars[iso]:
             if 'track' in keys:
                 for predurpos in self.scan_pars[iso][keys]['measureVoltPars']:
-                    for dmm_names, dmm_dicts in self.scan_pars[iso][keys]['measureVoltPars'][predurpos]['dmms'].items():
+                    for dmm_names, dmm_dicts in \
+                            self.scan_pars[iso][keys]['measureVoltPars'][predurpos].get('dmms', {}).items():
                         for entries in dmm_dicts:
                             if entries == 'readings' and len(dmm_dicts[entries]) > 0:
                                 is_there_something_to_remove += 1

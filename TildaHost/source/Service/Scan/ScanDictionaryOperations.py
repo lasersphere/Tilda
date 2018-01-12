@@ -112,7 +112,7 @@ def add_missing_voltages(scan_dict):
 
 def fill_meas_complete_dest(scan_dict):
     """
-    this will go through all actrive dmms, in all tracks for this scan and find out on
+    this will go through all active dmms, in all tracks for this scan and find out on
     which destination they are sending their voltmeter complete TTL-Signal.
     In order to proceed to the next voltage step, all listed voltmeter complete TTL-Signals must have ben received.
     Four destinations can be choosen: 'PXI_Trigger_4', 'Con1_DIO30', 'Con1_DIO31', 'software'
