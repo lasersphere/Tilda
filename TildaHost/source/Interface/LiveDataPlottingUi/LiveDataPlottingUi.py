@@ -212,6 +212,50 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.tab_layout = None
         self.mutex = QtCore.QMutex()
 
+        ''' detach/attach functionality all tabs '''
+        # connect double click to detach function
+        self.tabWidget.tabBarDoubleClicked.connect(self.detach_tab)
+        # prepare tabs for re-attachment
+        for index in range(0, self.tabWidget.count()):
+            widget = self.tabWidget.widget(index)
+            widget.index = index  # store the original indices of the widgets for re-attaching them at the correct index
+            widget.closeEvent = self.make_new_close(widget)  # overwrite closeEvent for re-attaching
+
+    def detach_tab(self, index):
+        """
+        removes tge tab from the tabWidget and opens it as a new Window
+        :param index: index of the tab to be detached
+        """
+        widget = self.tabWidget.widget(index)
+        window_title = self.tabWidget.tabText(index)
+        if index != -1:  # only if double click was on a tab header
+            self.tabWidget.removeTab(index)
+            widget.setWindowFlags(QtCore.Qt.Window)
+            widget.setWindowTitle(window_title)
+            # widget.setParent(None)  # necessary to make the new window independent from the old one
+            widget.show()
+
+    def make_new_close(self, parent):
+        """
+        provide a function to overwrite the closeEvent of the parent
+        :param parent: widget whose closeEvent is to be re-defined
+        :return: function that closes the window and calls the attach_tab function
+        """
+        tab_widget = self  # for passing self into the new function
+        def close_detached(QCloseEvent):
+            tab_widget.attach_tab(parent)
+        return close_detached
+
+    def attach_tab(self, widget):
+        """
+        re-attaches a previously detached widget to TabWidget at its original index
+        :param widget: the widget to be re-attached
+        """
+        if self.tabWidget.indexOf(widget) == -1:  # for whatever reason the widget might be inside the tabWidget already
+            widget.setWindowFlags(QtCore.Qt.Widget)
+            # widget.setParent(self.tabWidget)  # parent was removed during detaching
+            self.tabWidget.insertTab(widget.index, widget, widget.windowTitle())
+
     def show_progress(self, show=None):
         if self.scan_prog_ui is None and self.subscribe_as_live_plot:
             logging.debug('self.scan_prog_ui is None')

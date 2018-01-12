@@ -74,7 +74,7 @@ def merge_dicts(d1, d2):
     return new
 
 
-def merge_extend_dicts(target_dict, new_dict, overwrite=False):
+def merge_extend_dicts(target_dict, new_dict, overwrite=True):
     """
     This function is used, to merge the content of the second dict into the first.
     Whenever a dict is found inside the dict, a recursive function call is executed, merging the sub-dicts as well.

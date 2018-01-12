@@ -2323,8 +2323,8 @@ class NFilterDMMDictsAndSave(Node):
                         self.store_data[self.active_track_name]['measureVoltPars']['duringScan']['dmms'] = self.dmm_data
 
     def sort_triton(self, triton_dict):
-        # copies the triton dict that was received from the pipeline into the store_data
-        self.store_data[self.active_track_name]['triton'] = triton_dict[self.active_track_name]['triton']
+        # merges the triton dict that was received from the pipeline into the store_data
+        TildaTools.merge_extend_dicts(self.store_data, triton_dict)
 
     def emit_data_signal(self):
         # emits the store data dict for live data plotting

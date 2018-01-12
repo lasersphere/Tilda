@@ -112,7 +112,7 @@ class PrePostTabWidget(QtWidgets.QTabWidget):
         :return:
         """
         # merge the new data into the existing dict
-        TiTs.merge_extend_dicts(self.data_dict, deepcopy(pre_post_meas_dict), overwrite=True)
+        TiTs.merge_extend_dicts(self.data_dict, deepcopy(pre_post_meas_dict))
         # self.data_dict = deepcopy(pre_post_meas_dict)  # contains all tracks
         for tr_name in self.track_list:
             for ind, pre_dur_post_str in enumerate(['preScan', 'duringScan', 'postScan']):
