@@ -9,9 +9,9 @@ Created on '23.09.2015'
 File for global Configs of Tilda
 """
 
-version = '1.20'
-versiondate = '20.07.2017'
-approved_by = 'Simon Kaufmann - s.kaufmann@uni-mainz.de'
+version = '1.21'
+versiondate = '17.01.2018'
+approved_by = 'Felix Sommer fsommer@ikp.tu-darmstadt.de  and  Simon Kaufmann - s.kaufmann@uni-mainz.de'
 _main_instance = None
 # _main_instance is a global variable to store the main instance and make it accessible from everywhere.
 # https://docs.python.org/3.4/faq/programming.html#how-do-i-share-global-variables-across-modules
