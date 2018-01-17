@@ -17,7 +17,7 @@ class ChannelUi(QtWidgets.QDialog, Ui_ChannelUi):
         self.setupUi(self)
         self.channel_dict = ch_dict
 
-        self.output_channels = ['DO%s' % i for i in range(0, 33)]
+        self.output_channels = ['DO%s' % i for i in range(0, 32)]
         self.output_channels = [ch for ch in self.output_channels if ch not in used_outputs]
 
         self.comboBox_out_ch.addItems(self.output_channels)

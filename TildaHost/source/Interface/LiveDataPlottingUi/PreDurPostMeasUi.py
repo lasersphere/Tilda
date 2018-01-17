@@ -28,6 +28,9 @@ class PrePostTabWidget(QtWidgets.QTabWidget):
         self.pre_post_during_grid_widget = {}  # {'track0': [preScan, duringScan, postScan], ... } -
         # Grid widgets that will be created on first call. for each track!
 
+        # plot dict connects the plots to the tracks
+        self.plot_dict = {}
+
         self.track_list = []
         self.track_tabs_dict = {}  # key is track name
         for key in sorted(self.data_dict):
@@ -40,9 +43,6 @@ class PrePostTabWidget(QtWidgets.QTabWidget):
             self.track_tabs_dict[track_name] = self.create_new_tab(track_name)
             self.addTab(self.track_tabs_dict[track_name], track_name)
 
-        # plot dict stores all info about the different plots
-        # {'plotname':{'widget':wid, 'type':dmm/triton, 'name':dmm/dev, 'chan':ch/-}}
-        # self.plot_dict = {}
 
     def create_new_tab(self, track_name):
         new_tab = QtWidgets.QTabWidget()
@@ -73,8 +73,7 @@ class PrePostTabWidget(QtWidgets.QTabWidget):
         self.plot_pre_post_widget = QtWidgets.QWidget()
         # add the plot window to the layout
         splitter.addWidget(self.plot_pre_post_widget)
-        self.plot_layout = PreDurPostPlotter(self.plot_pre_post_widget, self)
-
+        self.plot_dict[track_name] = PreDurPostPlotter(self.plot_pre_post_widget, self)
 
         # The pre/during/post data shall be presented in a Form Layout
         data_layout = QtWidgets.QFormLayout(self.pre_post_data_widget)
@@ -118,7 +117,8 @@ class PrePostTabWidget(QtWidgets.QTabWidget):
             for ind, pre_dur_post_str in enumerate(['preScan', 'duringScan', 'postScan']):
                 self.pre_post_during_grid_widget[tr_name][ind].update_data(
                     pre_dur_post_str, self.data_dict[tr_name])
-        self.plot_layout.update_plot_windows()
+        for tr_name, plot_widget_tr in self.plot_dict.items():
+            plot_widget_tr.update_plot_windows()
 
 
     def plot_checkbox_clicked(self, *args):
@@ -130,9 +130,9 @@ class PrePostTabWidget(QtWidgets.QTabWidget):
         (dev_name, checkbox_bool), pre_post_during_str, tr_name = args
         logging.debug('plot cb licked, args: %s' % str(args))
         if checkbox_bool:
-            self.plot_layout.create_plot_window(args)
+            self.plot_dict[tr_name].create_plot_window(args)
         else:
-            self.plot_layout.hide_plot_window(pre_post_during_str+' - '+dev_name)
+            self.plot_dict[tr_name].hide_plot_window(pre_post_during_str+' - '+dev_name)
 
 
 

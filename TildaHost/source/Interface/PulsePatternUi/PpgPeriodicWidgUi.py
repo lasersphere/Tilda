@@ -28,7 +28,7 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
         self.list_of_item_dicts = []  # this will hold all periodic infos. its a list not a dict due to ordering.
         self._backup = []  # will be used when something was cleared or so and user wants to reload
 
-        self.output_channels = ['DO%s' % i for i in range(0, 33)]
+        self.output_channels = ['DO%s' % i for i in range(0, 32)]
         # self.sys_rep_rate_changed(100)
 
         # since no signal for moving is known, better use the buttons

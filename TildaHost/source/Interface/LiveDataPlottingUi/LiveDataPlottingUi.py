@@ -223,7 +223,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def detach_tab(self, index):
         """
-        removes tge tab from the tabWidget and opens it as a new Window
+        removes the tab from the tabWidget and opens it as a new Window
         :param index: index of the tab to be detached
         """
         widget = self.tabWidget.widget(index)
@@ -253,8 +253,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         if self.tabWidget.indexOf(widget) == -1:  # for whatever reason the widget might be inside the tabWidget already
             widget.setWindowFlags(QtCore.Qt.Widget)
-            # widget.setParent(self.tabWidget)  # parent was removed during detaching
+            # widget.setParent(self.tabWidget.widget(0).parent())  # parent was removed during detaching
+
             self.tabWidget.insertTab(widget.index, widget, widget.windowTitle())
+            widget.show()
 
     def show_progress(self, show=None):
         if self.scan_prog_ui is None and self.subscribe_as_live_plot:

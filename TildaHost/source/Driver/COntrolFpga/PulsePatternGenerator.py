@@ -8,6 +8,7 @@ Created on '12.01.2017'
 
 import ast
 import time
+import logging
 from copy import deepcopy
 
 import numpy as np
@@ -47,7 +48,7 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
             self.write_to_target(data)
             self.set_load(True)
             time.sleep(0.002)
-            print('%s %s' % self.read_state())
+            logging.info('%s %s' % self.read_state())
             if to_much_data is not None:
                 self.load(to_much_data, mem_addr + 4000)
             num_of_cmds = self.read_number_of_cmds()
@@ -65,19 +66,19 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
                 timeout = 0
                 while not self.read_start_sctl():  # only when start_sctl is True, the pattern is really executing!
                     if timeout > 5:
-                        print('error: ppg pattern did not start within 5 seconds!')
+                        logging.error('error: ppg pattern did not start within 5 seconds!')
                         return False
                     timeout += 0.001
                     time.sleep(0.001)
-                print('ppg successfully started after about %.2f s' % timeout)
+                logging.info('ppg successfully started after about %.2f s' % timeout)
                 return True
             else:
-                print('error, number of commands (%s)'
-                      ' does not match length of data // 4 (%s)' % (num_of_cmds, num_of_data))
+                logging.error('error, number of commands (%s)'
+                              ' does not match length of data // 4 (%s)' % (num_of_cmds, num_of_data), exc_info=True)
                 return False
         else:
-            print('cannot load data to fpga,'
-                  ' since it is not in idle state, state is: %s %s' % (state_num, state_name))
+            logging.info('cannot load data to fpga,'
+                         ' since it is not in idle state, state is: %s %s' % (state_num, state_name))
 
     def start(self, run_continous=True, start_addr=0):
         """
@@ -94,8 +95,8 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
             self.read_state()
             return self.read_error_code()
         else:
-            print('cannot start the ppg,'
-                  ' since it is not in idle state, state is: %s %s' % (state_num, state_name))
+            logging.info('cannot start the ppg,'
+                         'since it is not in idle state, state is: %s %s' % (state_num, state_name))
 
     def stop(self):
         """
@@ -153,10 +154,10 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
                     cmd_list[i] = ast.literal_eval(cmd_list[i])
                 if cmd_list[0] == cmd_dict['$time']:  # only multiply when it is a time cmd
                     cmd_list[1] = cmd_list[1] * ticks_per_us
-                cmd_list = np.asarray(cmd_list, dtype=np.int32)
+                cmd_list = np.asarray(cmd_list, dtype=np.uint32)
                 return cmd_list
             except Exception as e:
-                print('error: could not convert the command: %s, error is: %s' % (cmd_str, e))
+                logging.error('error: could not convert the command: %s, error is: %s' % (cmd_str, e), exc_info=True)
         else:
             return [-1] * 4
 
@@ -170,7 +171,7 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
         :param ticks_per_us: int, ticks per us, usually 100 (=100MHz), None for readout from fpga
         :return: numpy array
         """
-        ret_arr = np.zeros(0, dtype=np.int32)
+        ret_arr = np.zeros(0, dtype=np.uint32)
         if ticks_per_us is None:
             ticks_per_us = self.read_ticks_per_us()
         for each_cmd in cmd_list:
@@ -208,7 +209,7 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
         :param mem_address: int, memory address at which the command is. -1 for all
         :return: numpy array with the commands
         """
-        ret = np.zeros(0, dtype=np.int32)
+        ret = np.zeros(0, dtype=np.uint32)
         state_num, state_name = self.read_state()
         if state_name in ['idle']:
             if mem_address == -1:
@@ -224,7 +225,7 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
                 self.set_query(False)
             return ret
         else:
-            print('error not able to querry command from ppg when not in idle state')
+            logging.error('error not able to querry command from ppg when not in idle state')
             return ret
 
     def connect_to_state_changed_signal(self, callback_signal):
@@ -268,7 +269,7 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
             4: 'more than one error'}
         err_message = err_dict.get(err, 'error unknown')
         if err != 0:
-            print('error: ppg yields errorcode: %s <-> %s' % (err, err_message))
+            logging.error('error: ppg yields errorcode: %s <-> %s' % (err, err_message))
         return err, err_message
 
     def read_state(self):

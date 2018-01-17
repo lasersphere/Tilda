@@ -42,7 +42,8 @@ class PrePostGridWidget(QtWidgets.QWidget):
 
         self.index = 0
 
-        self.update_data(pre_dur_post_str, pre_post_meas_dict_this_track)
+        self.completed_scans_on_first_call = 0
+        self.update_data(pre_dur_post_str, pre_post_meas_dict_this_track, first_call=True)
 
     def setup_device_grid(self, index, device_name, device_dict):
         """
@@ -73,11 +74,13 @@ class PrePostGridWidget(QtWidgets.QWidget):
         # insert progress bar
         progressBar_dev = QtWidgets.QProgressBar(self)
         progressBar_dev.setMaximumSize(100, 40)
+        progressBar_dev.setValue(0)
         self.gridLayout_devices.addWidget(progressBar_dev, index, 3, 1, 1)
         self.update_dev(cb_plot_dev, label_name_dev, label_data_dev, progressBar_dev, device_name, device_dict)
         return cb_plot_dev, label_name_dev, label_data_dev, progressBar_dev
 
-    def update_dev(self, cb_plot_dev, label_name_dev, label_data_dev, progress_bar_dev, device_name, device_dict):
+    def update_dev(self, cb_plot_dev, label_name_dev, label_data_dev, progress_bar_dev,
+                   device_name, device_dict, first_call=False):
         """
         update an existing device
         :param cb_plot_dev: qcheckbox, for plotting or not, currently not used
@@ -94,38 +97,45 @@ class PrePostGridWidget(QtWidgets.QWidget):
         elif device_dict.get('readings') is not None:
             new_data = device_dict.get('readings')
         else:  # if the dict doesn't contain data, just use the existing data
-            new_data = False
+            new_data = []
         if device_dict.get('required') is not None:
             device_data_required = device_dict['required']
         elif device_dict.get('sampleCount') is not None:
             device_data_required = device_dict['sampleCount']
         else:  # if the dict doesn't contain required or sample count, don't update the progress. We know nothing then.
-            device_data_required = False
+            device_data_required = 0
 
-        if new_data:  # only update if new data has been sent in the dict
+        if first_call and device_data_required > 0:
+            self.completed_scans_on_first_call = len(new_data)//device_data_required
+
+        if len(new_data):  # only update if new data has been sent in the dict
             label_data_dev.setText(str(new_data)[1:-1])
             label_data_dev.moveCursor(QtGui.QTextCursor.End)
         else:
             label_data_dev.setText('No data available (yet)!')
 
-
         if device_data_required < 1:  # negative values and 0 mean continuous acquisition
             progress_bar_dev.setValue(100)
             progress_bar_dev.setFormat('continuous')
-        elif device_data_required and new_data:  # only update progress if the dict has complete information
-            progress_bar_dev.setProperty("value", 100 * len(new_data) / device_data_required)
+        elif device_data_required > 0 and len(new_data):  # only update progress if the dict has complete information
+            done_this_scan = len(new_data) % device_data_required
+            no_completed_scans = len(new_data)//device_data_required
+            if no_completed_scans == self.completed_scans_on_first_call +1:
+                done_this_scan = device_data_required
+            progress_bar_dev.setProperty("value", 100 * done_this_scan / device_data_required)
 
-    def update_dev_from_dict(self, dev_widget_dict, dev_name, new_device_dict):
+    def update_dev_from_dict(self, dev_widget_dict, dev_name, new_device_dict, first_call=False):
         """ simple wrapper for update dev """
         self.update_dev(dev_widget_dict['plotCb'],
                         dev_widget_dict['nameLabel'],
                         dev_widget_dict['dataLabel'],
                         dev_widget_dict['progressBar'],
                         dev_name,
-                        new_device_dict
+                        new_device_dict,
+                        first_call=first_call
                         )
 
-    def update_data(self, pre_dur_post_str, pre_post_meas_dict_this_track):
+    def update_data(self, pre_dur_post_str, pre_post_meas_dict_this_track, first_call=False):
         """
         this will update the existing grid widget for each device with the new data for this track.
         If device was not created yet it will be created here.
@@ -150,7 +160,7 @@ class PrePostGridWidget(QtWidgets.QWidget):
                                               'index': deepcopy(self.index)
                                               }
                 self.index += 1
-            self.update_dev_from_dict(self.dmm_widget_dicts[dmm], dmm, self.dmm_dict[dmm])
+            self.update_dev_from_dict(self.dmm_widget_dicts[dmm], dmm, self.dmm_dict[dmm], first_call=first_call)
 
         self.triton_dict = self.track_data_dict.get('triton', {}).get(pre_dur_post_str, {})
         for dev in sorted(self.triton_dict.keys()):
@@ -168,7 +178,7 @@ class PrePostGridWidget(QtWidgets.QWidget):
                                                                        }
                     self.index += 1
                 self.update_dev_from_dict(self.triton_widget_dicts[dev_plus_channel_name], dev_plus_channel_name,
-                                          self.triton_dict[dev][channel])
+                                          self.triton_dict[dev][channel], first_call=first_call)
 
 
     def check_box_clicked(self, *args):

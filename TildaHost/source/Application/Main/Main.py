@@ -589,6 +589,8 @@ class Main(QtCore.QObject):
                 else:
                     # otherwise load next track
                     self.set_state(MainState.load_track)
+            # emit the scan_pars to the pre_post_live_data ui
+                    self.pre_post_meas_data_dict_callback.emit(self.scan_pars[iso_name])
         else:  # this will periodically read the dmms and triton until all dmms returned a measurement
             if self.abort_scan:
                 logging.info('ABORT was pressed. Aborting pre scan measurement, aborting scan,'
@@ -763,10 +765,6 @@ class Main(QtCore.QObject):
             if complete_stop:
                 logging.info('saving...')
             QApplication.setOverrideCursor(QCursor(QtCore.Qt.WaitCursor))  # ignore warning
-            #TODO: instead of saving triton log, just emit it to the pipeline? Because the save will be overwritten
-            self.scan_main.save_triton_log(self.scan_pars[self.scan_progress['activeIso']],
-                                           'track' + str(self.scan_progress['activeTrackNum']),
-                                           'duringScan')  # save triton
             self.scan_main.stop_measurement(complete_stop=complete_stop, clear=complete_stop)  # stop pipeline and clear
             self.set_state(MainState.saving, (complete_stop, False))  # go back to saving until analysis is complete
         else:

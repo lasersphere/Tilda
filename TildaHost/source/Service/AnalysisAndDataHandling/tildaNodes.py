@@ -2293,9 +2293,10 @@ class NFilterDMMDictsAndSave(Node):
 
     def start(self):
         track_ind, self.active_track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        self.store_data = deepcopy(self.Pipeline.pipeData)
-        self.dmm_data = self.store_data[self.active_track_name]['measureVoltPars'].get('duringScan', {}).get('dmms', None)
-        self.triton_data = self.store_data[self.active_track_name]['triton'].get('duringScan', {})
+        if self.store_data is None:
+            self.store_data = deepcopy(self.Pipeline.pipeData)
+        # self.dmm_data = self.store_data[self.active_track_name]['measureVoltPars'].get('duringScan', {}).get('dmms', None)
+        # self.triton_data = self.store_data[self.active_track_name]['triton'].get('duringScan', {})
         for dmm_name, dmm_vals in self.store_data[self.active_track_name]['measureVoltPars']['duringScan']['dmms'].items():
             if dmm_vals.get('readings', None) is None:
                 dmm_vals['readings'] = []
@@ -2316,11 +2317,13 @@ class NFilterDMMDictsAndSave(Node):
         # sorts all dmm readings into the store_data
         if dmm_reading is not None:
             for dmm_name, volt_read in dmm_reading.items():
-                if dmm_name in self.dmm_data.keys():
+                if dmm_name in self.store_data[self.active_track_name]['measureVoltPars']['duringScan'].get(
+                        'dmms', {}).keys():
                     # if the readback from this dmm is not wanted by the scan dict, just ignore it.
                     if volt_read is not None:
-                        self.dmm_data[dmm_name]['readings'] += list(volt_read)
-                        self.store_data[self.active_track_name]['measureVoltPars']['duringScan']['dmms'] = self.dmm_data
+                        # self.dmm_data[dmm_name]['readings'] += list(volt_read)
+                        self.store_data[self.active_track_name]['measureVoltPars']['duringScan'][
+                            'dmms'][dmm_name]['readings'] += list(volt_read)
 
     def sort_triton(self, triton_dict):
         # merges the triton dict that was received from the pipeline into the store_data
@@ -2333,8 +2336,10 @@ class NFilterDMMDictsAndSave(Node):
     def save(self):
         # overwrites the pipeData with store_data. The pipeData will be stored later on
         # self.Pipeline.pipeData = deepcopy(self.store_data)
-        self.Pipeline.pipeData[self.active_track_name]['measureVoltPars'] = deepcopy(
-            self.store_data[self.active_track_name]['measureVoltPars'])
-        self.Pipeline.pipeData[self.active_track_name]['triton'] = deepcopy(
-            self.store_data[self.active_track_name]['triton'])
+        for key, val in self.Pipeline.pipeData.items():
+            if 'track' in key:
+                self.Pipeline.pipeData[key]['measureVoltPars']['duringScan'] = deepcopy(
+                    self.store_data[key]['measureVoltPars']['duringScan'])
+                self.Pipeline.pipeData[key]['triton']['duringScan'] = deepcopy(
+                    self.store_data[key]['triton']['duringScan'])
 

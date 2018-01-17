@@ -227,13 +227,15 @@ class ScanMain(QObject):
                     # print(dmm_name, dmms_dict_pre_scan[dmm_name]['acquiredPreScan'],
                     #       dmms_dict_pre_scan[dmm_name]['readings'])
                 self.abort_dmm_measurement('all')
-                dmms_dict_during_scan = scan_dict[tr_name]['measureVoltPars'].get('duringScan', {}).get('dmms', None)
-                dmm_complete_location = scan_dict[tr_name]['measureVoltPars']['duringScan'][
-                    'measurementCompleteDestination']
                 self.save_dmm_readings_to_file(scan_dict, tr_name, pre_during_post_scan_str)
                 # when done with the pre scan measurement, setup dmms to the during scan dict.
                 # set the dmms according to the dictionary inside the dmms_dict for during the scan
-                self.prepare_dmms_for_scan(dmms_dict_during_scan, dmm_complete_location)
+                if pre_during_post_scan_str == 'preScan':
+                    dmms_dict_during_scan = scan_dict[tr_name]['measureVoltPars'].get('duringScan', {}).get('dmms',
+                                                                                                            None)
+                    dmm_complete_location = scan_dict[tr_name]['measureVoltPars']['duringScan'][
+                        'measurementCompleteDestination']
+                    self.prepare_dmms_for_scan(dmms_dict_during_scan, dmm_complete_location)
                 return True
             else:
                 return False
@@ -448,9 +450,6 @@ class ScanMain(QObject):
         """
         read = self.read_data()  # read data one last time
         self.ppg_stop()
-        # TODO: abort_triton_log() is not sufficient for saving the data. Need to save the triton data somehow!
-        # TODO: looks like saving should be done somewhere else, since we don't have scan_dict and tr_name available here
-
         if read:
             logging.info('while stopping measurement, some data was still read.')
         if complete_stop:  # only touch dmms in the end of the whole scan

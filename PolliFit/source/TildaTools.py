@@ -74,11 +74,12 @@ def merge_dicts(d1, d2):
     return new
 
 
-def merge_extend_dicts(target_dict, new_dict, overwrite=True):
+def merge_extend_dicts(target_dict, new_dict, overwrite=True, force_overwrite=False):
     """
     This function is used, to merge the content of the second dict into the first.
     Whenever a dict is found inside the dict, a recursive function call is executed, merging the sub-dicts as well.
     :param overwrite: íf True, overwrite conflicting values (e.g. int, float, str, bool...). If False keep the old one.
+    :param force_overwrite: if True, empty lists overwrite existing lists.
     :returns None: This function works on the target dict! No new dict is returned!
     """
     for keys, vals in new_dict.items():
@@ -87,6 +88,15 @@ def merge_extend_dicts(target_dict, new_dict, overwrite=True):
             if not is_same:  # key exists but vals are different
                 if type(vals) is dict:  # if its a dict then check this again
                     merge_extend_dicts(target_dict[keys], vals, overwrite)
+                elif type(vals) is list:
+                    if force_overwrite: # if overwriting existing lists with empty lists is allowed
+                        target_dict[keys] = vals
+                    else: # if the new list has actually values in it then we want to overwrite the old values
+                        if type(target_dict[keys]) is list:
+                            if len(vals) > len(target_dict[keys]):
+                                target_dict[keys] = vals
+                        elif len(vals):
+                            target_dict[keys] = vals
                 else:  # key exists, but vals are different and can't be combined
                     if overwrite:  # if authorized, overwrite the existing value with the new one
                         target_dict[keys] = vals

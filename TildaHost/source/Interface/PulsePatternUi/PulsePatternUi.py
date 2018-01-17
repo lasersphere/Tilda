@@ -189,10 +189,10 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                     cmd_list[i] = ast.literal_eval(cmd_list[i])
                 if cmd_list[0] == cmd_dict['$time']:  # $time
                     cmd_list[1] = cmd_list[1] * ticks_per_us
-                cmd_list = np.asarray(cmd_list, dtype=np.int32)
+                cmd_list = np.asarray(cmd_list, dtype=np.uint32)
                 return cmd_list
             except Exception as e:
-                print('error: could not convert the command: %s, error is: %s' % (cmd_str, e))
+                logging.error('error: could not convert the command: %s, error is: %s' % (cmd_str, e), exc_info=True)
         else:
             return [-1] * 4
 
@@ -206,7 +206,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         :param ticks_per_us: int, ticks per us, usually 100 (=100MHz), None for readout from fpga
         :return: numpy array
         """
-        ret_arr = np.zeros(0, dtype=np.int32)
+        ret_arr = np.zeros(0, dtype=np.uint32)
         if ticks_per_us is None:
             ticks_per_us = self.ticks_per_us
         for each_cmd in cmd_list:
@@ -301,7 +301,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
 
     def load_periodic(self, per_list):
         self.tabWidget_periodic_pattern.setCurrentIndex(1)
-        print('loading periodic list: %s' % per_list)
+        logging.info('loading periodic list: %s' % per_list)
         self.periodic_widg.setup_from_list(per_list)
 
     ''' simple related '''
@@ -309,7 +309,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
     def load_simple_dict(self, simple_dict):
         """ load a simple dict to the simple tab """
         self.tabWidget_periodic_pattern.setCurrentIndex(2)
-        print('loading simple dict: %s ' % simple_dict)
+        logging.info('loading simple dict: %s ' % simple_dict)
         self.simple_widg.load_from_simple_dict(simple_dict)
 
     ''' help '''
@@ -366,7 +366,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             self.gr_v_plt_itm.addItem(self.gr_v_cursor, ignoreBounds=True)
             self.widget_graph_view.setLayout(layout)
         except Exception as e:
-            print('error while adding graphical view: %s' % e)
+            logging.error('error while adding graphical view: %s' % e, exc_info=True)
 
     def mouse_moved(self, viewbox, evt):
         """ called when mouse is moved within the gr_v_plt_item """
@@ -518,7 +518,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             # logging.debug('... done updating graphical view after %.1f ms'
             #               % ((upd_done_t - upd_start_t).microseconds / 1000))
         except Exception as e:
-            print('error while updating graphical view: %s' % e)
+            logging.error('error while updating graphical view: %s' % e, exc_info=True)
 
     def remove_lines(self, plt_item, remove_list):
         ch_pos_dict = self.ch_pos_dict
@@ -580,7 +580,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
         int_cmd_list = int_cmd_list.reshape((int_cmd_list.size // 4, 4))
         # get highest ch number
         ch_int = np.max(int_cmd_list[:, 2])
-        max_dio_0to31 = np.int(np.log2(ch_int)) if ch_int > 1 else 1
+        max_dio_0to31 = np.uint(np.log2(ch_int)) if ch_int > 1 else 1
         # max_dio_32to63 = int(np.log2(np.max(int_cmd_list[:, 3])))
         # reset trigger positions:
         for key, val in ret_dict.items():
@@ -614,7 +614,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                     ch_pos_list.append([time, y_pos])
                     # on each wait cmd check which channels are active
                     if ch == 0:  # only do this for first call
-                        tr_ch_max = np.int(np.log2(each_cmd[1])) if each_cmd[1] > 1 else 1
+                        tr_ch_max = np.uint(np.log2(each_cmd[1])) if each_cmd[1] > 1 else 1
                         for tr_ch in range(0, tr_ch_max + 1):
                             tr_ch_bit = 2 ** tr_ch
                             tr_low = -1 - tr_ch
@@ -707,22 +707,22 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
 
     def reset_fpga(self):
         if CfgMain._main_instance is not None:
-            print('stopping ppg')
+            logging.debug('stopping ppg')
             CfgMain._main_instance.ppg_stop(reset=False, deinit_ppg=True)
-            print('ppg stopped, initialising again.')
+            logging.debug('ppg stopped, initialising again.')
             CfgMain._main_instance.ppg_init()
-            print('ppg initialized, connecting callback')
+            logging.debug('ppg initialized, connecting callback')
             CfgMain._main_instance.ppg_state_callback(self.pulse_pattern_status)
-            print('callback connected')
+            logging.debug('callback connected')
         else:
-            print('error, resetting fpga not possible, because there is no main active')
+            logging.error('error, resetting fpga not possible, because there is no main active')
 
     def stop_pulse_pattern(self):
         """ will stop the pulse pattern. """
         if CfgMain._main_instance is not None:
             CfgMain._main_instance.ppg_stop()
         else:
-            print('error, stopping pulse pattern not possible, because there is no main active')
+            logging.error('error, stopping pulse pattern not possible, because there is no main active')
 
     def run(self):
         """ run the pulse pattern with the pattern as in the gui. """
@@ -732,7 +732,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
                 if CfgMain._main_instance:
                     CfgMain._main_instance.ppg_load_pattern(cmd_list)
                 else:
-                    print('error, running pulse pattern not possible, because there is no main active')
+                    logging.error('error, running pulse pattern not possible, because there is no main active')
 
     ''' window related '''
 

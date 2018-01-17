@@ -141,7 +141,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
                             try:
                                 val['trigger']['type'] = getattr(TriggerTypes, trig_type_str)
                             except Exception as e:
-                                print('error: %s, could not do: getattr(TriggerTypes, %s) ' % (e, val['trigger']['type']))
+                                logging.error(
+                                    'error: %s, could not do: getattr(TriggerTypes, %s) ' % (e, val['trigger']['type']))
                 self.active_iso = Cfg._main_instance.add_iso_to_scan_pars_no_database(scan_dict)
                 self.update_track_list()
                 self.update_win_title()
