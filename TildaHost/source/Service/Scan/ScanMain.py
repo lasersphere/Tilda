@@ -172,7 +172,7 @@ class ScanMain(QObject):
             self.triton_pre_scan_done = triton_dict_is_none
             return True
 
-    def prescan_measurement(self, scan_dict, dmm_reading, pre_during_post_scan_str, tr_name):
+    def prescan_measurement(self, scan_dict, dmm_reading, pre_during_post_scan_str, tr_name, force_save_continue=False):
         """
         here all pre scan measurements are performed.
         :param scan_dict: dict, the usual scan dict
@@ -181,15 +181,17 @@ class ScanMain(QObject):
         """
         if not self.dmm_pre_scan_done:  # when complete, do not check again (otherwise it saves again.)
             self.dmm_pre_scan_done = self.pre_scan_voltage_measurement(scan_dict, dmm_reading, pre_during_post_scan_str,
-                                                                       tr_name)
+                                                                       tr_name, force_save_continue=force_save_continue)
         if not self.triton_pre_scan_done:  # when complete, do not check again (otherwise it saves again.)
-            self.triton_pre_scan_done = self.check_triton_log_complete(scan_dict, pre_during_post_scan_str, tr_name)
+            self.triton_pre_scan_done = self.check_triton_log_complete(scan_dict, pre_during_post_scan_str,
+                                                                       tr_name, force_save_continue=force_save_continue)
         if self.dmm_pre_scan_done and self.triton_pre_scan_done:
             return True
         else:
             return False
 
-    def pre_scan_voltage_measurement(self, scan_dict, dmm_reading, pre_during_post_scan_str, tr_name):
+    def pre_scan_voltage_measurement(self, scan_dict, dmm_reading, pre_during_post_scan_str,
+                                     tr_name, force_save_continue=False):
         """
         prescan voltage measurement, return True if all dmms have a value.
         Then save all values to file.
@@ -199,8 +201,10 @@ class ScanMain(QObject):
         :return: bool, True when finished
         """
         # print('reading of dmms prescan: ', dmm_reading)
+        dmms_complete_check_sum = -1
+        dmms_dict_pre_scan = scan_dict[tr_name]['measureVoltPars'].get(pre_during_post_scan_str, {}).get('dmms', None)
+
         if dmm_reading is not None:
-            dmms_dict_pre_scan = scan_dict[tr_name]['measureVoltPars'].get(pre_during_post_scan_str, {}).get('dmms', None)
             for dmm_name, volt_read in dmm_reading.items():
                 if dmm_name in dmms_dict_pre_scan.keys():
                     # if the readback from this dmm is not wanted by the scan dict, just ignore it.
@@ -220,25 +224,26 @@ class ScanMain(QObject):
                 acquired_samples = dmms_dict_pre_scan[dmm_name]['acquiredPreScan']
                 still_to_acquire = max(0, samples - acquired_samples)
                 dmms_complete_check_sum += still_to_acquire
-            if dmms_complete_check_sum == 0:  # done with reading when all dmms have a value
-                logging.info('all dmms have a reading')
-                for dmm_name, dmm_dict in dmms_dict_pre_scan.items():
-                    dmms_dict_pre_scan[dmm_name]['acquiredPreScan'] = len(dmms_dict_pre_scan[dmm_name]['readings'])
-                    # print(dmm_name, dmms_dict_pre_scan[dmm_name]['acquiredPreScan'],
-                    #       dmms_dict_pre_scan[dmm_name]['readings'])
-                self.abort_dmm_measurement('all')
-                self.save_dmm_readings_to_file(scan_dict, tr_name, pre_during_post_scan_str)
-                # when done with the pre scan measurement, setup dmms to the during scan dict.
-                # set the dmms according to the dictionary inside the dmms_dict for during the scan
-                if pre_during_post_scan_str == 'preScan':
-                    dmms_dict_during_scan = scan_dict[tr_name]['measureVoltPars'].get('duringScan', {}).get('dmms',
-                                                                                                            None)
-                    dmm_complete_location = scan_dict[tr_name]['measureVoltPars']['duringScan'][
-                        'measurementCompleteDestination']
-                    self.prepare_dmms_for_scan(dmms_dict_during_scan, dmm_complete_location)
-                return True
-            else:
-                return False
+
+        if dmms_complete_check_sum == 0 or force_save_continue:  # done with reading when all dmms have a value
+            logging.info('all dmms have a reading or forced to save')
+            for dmm_name, dmm_dict in dmms_dict_pre_scan.items():
+                dmms_dict_pre_scan[dmm_name]['acquiredPreScan'] = len(dmms_dict_pre_scan[dmm_name]['readings'])
+                # print(dmm_name, dmms_dict_pre_scan[dmm_name]['acquiredPreScan'],
+                #       dmms_dict_pre_scan[dmm_name]['readings'])
+            self.abort_dmm_measurement('all')
+            self.save_dmm_readings_to_file(scan_dict, tr_name, pre_during_post_scan_str)
+            # when done with the pre scan measurement, setup dmms to the during scan dict.
+            # set the dmms according to the dictionary inside the dmms_dict for during the scan
+            if pre_during_post_scan_str == 'preScan':
+                dmms_dict_during_scan = scan_dict[tr_name]['measureVoltPars'].get('duringScan', {}).get('dmms',
+                                                                                                        None)
+                dmm_complete_location = scan_dict[tr_name]['measureVoltPars']['duringScan'][
+                    'measurementCompleteDestination']
+                self.prepare_dmms_for_scan(dmms_dict_during_scan, dmm_complete_location)
+            return True
+        else:  # not complete and not forced
+            return False
 
     ''' post acceleration related functions: '''
 
@@ -874,11 +879,13 @@ class ScanMain(QObject):
         if self.triton_listener is not None:
             self.triton_listener.start_log()
 
-    def check_triton_log_complete(self, scan_dict, pre_during_post_scan_str, tr_name):
+    def check_triton_log_complete(self, scan_dict, pre_during_post_scan_str, tr_name, force_save_continue=False):
         """ check if the triton logger completed """
         if self.triton_listener is not None:
-            if self.triton_listener.logging_complete:
+            if self.triton_listener.logging_complete or force_save_continue:
                 self.save_triton_log(scan_dict, tr_name, pre_during_post_scan_str)
+                if self.triton_listener.logging:
+                    self.abort_triton_log()
                 if pre_during_post_scan_str == 'preScan':
                     self.prepare_triton_listener_for_scan(scan_dict[tr_name]['triton'], 'duringScan', tr_name)
                 return True

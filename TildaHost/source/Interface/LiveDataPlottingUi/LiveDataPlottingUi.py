@@ -23,6 +23,7 @@ from Interface.LiveDataPlottingUi.PreDurPostMeasUi import PrePostTabWidget
 from Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveDataPlotting
 from Interface.ScanProgressUi.ScanProgressUi import ScanProgressUi
 from Measurement.XMLImporter import XMLImporter
+import TildaTools as TiTs
 
 
 class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting):
@@ -234,6 +235,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             widget.setWindowTitle(window_title)
             # widget.setParent(None)  # necessary to make the new window independent from the old one
             widget.show()
+            logging.info('Widget %s detached' % str(window_title))
 
     def make_new_close(self, parent):
         """
@@ -257,6 +259,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
             self.tabWidget.insertTab(widget.index, widget, widget.windowTitle())
             widget.show()
+            logging.info('Window %s re-attached' % str(widget.windowTitle()))
 
     def show_progress(self, show=None):
         if self.scan_prog_ui is None and self.subscribe_as_live_plot:
@@ -449,6 +452,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.sum_scaler_changed(self.comboBox_sum_all_pmts.currentIndex())
 
                 self.new_track_no_data_yet = False
+
+            if not self.subscribe_as_live_plot:
+                # if not subscribed as live plot create scan dict from spec data once
+                # and emit, so that pre post meas is displayed properly
+                scan_dict = TiTs.create_scan_dict_from_spec_data(self.spec_data, self.full_file_path)
+                self.pre_post_meas_data_dict_callback.emit(scan_dict)
             self.last_gr_update_done_time = datetime.now()
             elapsed = self.last_gr_update_done_time - st
             # logging.debug('done updating plot, plotting took %.2f ms' % (elapsed.microseconds / 1000))
@@ -1050,7 +1059,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.tab_layout = QtWidgets.QGridLayout(self.tab_pre_post_meas)
             self.mutex.lock()
 
-            self.pre_post_tab_widget = PrePostTabWidget(pre_post_meas_dict)
+            self.pre_post_tab_widget = PrePostTabWidget(pre_post_meas_dict, self.subscribe_as_live_plot)
             self.tab_layout.addWidget(self.pre_post_tab_widget)
             self.mutex.unlock()
         else:

@@ -608,6 +608,10 @@ class Main(QtCore.QObject):
                                     '--------- WARNING ----------'
                                     % (time_since_start.seconds, self.pre_scan_measurement_timeout_s.seconds))
                     self.send_info('pre_scan_timeout')
+                    self.scan_main.prescan_measurement(
+                        scan_dict=self.scan_pars[iso_name], dmm_reading=None,
+                        pre_during_post_scan_str=pre_post_scan_str,
+                        tr_name='track' + str(self.scan_progress['activeTrackNum']), force_save_continue=True)
                     if pre_post_scan_str == 'postScan':
                         # if this was a post scan measurement, scan is complete -> set switch box
                         self.set_state(MainState.setting_switch_box, (True, None, scan_complete))  # scan_complete=True

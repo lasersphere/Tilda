@@ -18,12 +18,13 @@ from Interface.LiveDataPlottingUi.PreDurPostPlotter import PreDurPostPlotter
 
 
 class PrePostTabWidget(QtWidgets.QTabWidget):
-    def __init__(self, pre_post_meas_dict):
+    def __init__(self, pre_post_meas_dict, is_live_data):
         """
         will create a tab for each track and hold all tracks within here.
         :param pre_post_meas_dict:
         """
         QtWidgets.QTabWidget.__init__(self)
+        self.is_live_plot = is_live_data
         self.data_dict = deepcopy(pre_post_meas_dict)
         self.pre_post_during_grid_widget = {}  # {'track0': [preScan, duringScan, postScan], ... } -
         # Grid widgets that will be created on first call. for each track!
@@ -93,7 +94,8 @@ class PrePostTabWidget(QtWidgets.QTabWidget):
         pre_post_label.setText(pre_dur_post_str)
         parent_layout.setWidget(index, QtWidgets.QFormLayout.LabelRole, pre_post_label)
         # add dev_content to the preScan field -> all exisitng devises of the preScan are in this widget.
-        pre_post_during_grid_widget = PrePostGridWidget(pre_dur_post_str, self.data_dict[tr_name], self, tr_name)
+        pre_post_during_grid_widget = PrePostGridWidget(pre_dur_post_str, self.data_dict[tr_name],
+                                                        self, tr_name, self.is_live_plot)
         parent_layout.setWidget(index, QtWidgets.QFormLayout.FieldRole, pre_post_during_grid_widget)
         # ---------- add divider line ---------
         index += 1  # add new line to the Form
