@@ -23,7 +23,7 @@ class KingFitter(object):
     this is described in e.g. Hammen PhD Thesis 2013
     '''
 
-    def __init__ (self, db, litvals={}, showing=True, plot_y_mhz=True, font_size=12):
+    def __init__ (self, db, litvals={}, showing=True, plot_y_mhz=True, font_size=12, ref_run=-1):
         '''
         Import the litvals and initializes a KingFit, run can be specified, for run==-1 any shift results are chosen
         '''
@@ -45,11 +45,20 @@ class KingFitter(object):
         self.isotopeShiftSystErr = []
         self.run = []
         try:
-            self.ref = TiTs.select_from_db(self.db, 'reference', 'Lines', caller_name=__name__)[0][0]
-            self.ref_mass = TiTs.select_from_db(self.db, 'mass', 'Isotopes', [['iso'], [self.ref]], caller_name=__name__)[0][0]
+            if ref_run == -1:
+                self.ref = TiTs.select_from_db(self.db, 'reference', 'Lines', caller_name=__name__)[0][0]
+            else:
+                self.ref = TiTs.select_from_db(self.db, 'reference', 'Lines',
+                                               [['refRun'], [ref_run]],
+                                               caller_name=__name__)[0][0]
+            self.ref_mass = TiTs.select_from_db(self.db, 'mass', 'Isotopes',
+                                                [['iso'], [self.ref]], caller_name=__name__)[0][0]
+            self.ref_massErr = TiTs.select_from_db(self.db, 'mass_d', 'Isotopes',
+                                                [['iso'], [self.ref]], caller_name=__name__)[0][0]
         except Exception as e:
             print('error: %s  \n\t-> Kingfitter could not find a reference isotope from'
                   ' Lines in database or mass of this reference Isotope in Isotopes' % e)
+
 
     def kingFit(self, run=-1, alpha=0, findBestAlpha=True, find_slope_with_statistical_error=False):
         '''
@@ -82,31 +91,31 @@ class KingFitter(object):
                                         [['iso', 'parname', 'run'], [i, 'shift', run]], caller_name=__name__)[0]
             self.y.append(y[0])
             if find_slope_with_statistical_error:
-                self.yerr.append(y[1]) #statistical error
-                self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2]))) #total error
+                self.yerr.append(y[1])  # statistical error
+                self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
             else:
-                self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2]))) #total error
+                self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
             self.x_origin.append(self.litvals[i][0])
             self.xerr.append(self.litvals[i][1])
         self.redmasses= [i*self.ref_mass/(i-self.ref_mass) for i in self.masses]
         self.y = [self.redmasses[i]*j for i,j in enumerate(self.y)]
-        self.yerr = [np.abs(self.redmasses[i]*j) for i,j in enumerate(self.yerr)]
-        self.yerr_total = [np.abs(self.redmasses[i]*j) for i,j in enumerate(self.yerr_total)]
-        self.xerr = [np.abs(self.redmasses[i]*j) for i,j in enumerate(self.xerr)]
+        self.yerr = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.yerr)]
+        self.yerr_total = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.yerr_total)]
+        self.xerr = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.xerr)]
 
         if self.findBestAlphaTrue:
             self.findBestAlpha(run)
         self.x = [self.redmasses[i]*j - self.c for i,j in enumerate(self.x_origin)]
         print('performing King fit!')
         if find_slope_with_statistical_error:
-            (self.a, self.b, self.aerr, self.berr) = self.fit(run, showplot=True)
+            (self.a, self.b, self.aerr, self.berr, a_b_correlation) = self.fit(run, showplot=True)
             self.yerr = self.yerr_total
-            (self.a, self.b, self.aerr, self.berr) = self.fit(run, showplot=self.showing, bFix=True)
+            (self.a, self.b, self.aerr, self.berr, a_b_correlation) = self.fit(run, showplot=self.showing, bFix=True)
         else:
-            (self.a, self.b, self.aerr, self.berr) = self.fit(run, showplot=self.showing)
+            (self.a, self.b, self.aerr, self.berr, a_b_correlation) = self.fit(run, showplot=self.showing)
         print('King fit performed, final values:')
-        print('intercept: ', self.a, '(', self.aerr, ') u MHz')
-        print('slope: ', self.b, '(', self.berr, ') MHz/fm^2')
+        print('intercept: ', self.a, '(', self.aerr, ') u MHz', '\t percent: %.2f' % (self.aerr / self.a * 100))
+        print('slope: ', self.b, '(', self.berr, ') MHz/fm^2',  '\t percent: %.2f' % (self.berr / self.b * 100))
 
     def fit(self, run, showplot=True, bFix=False, plot_y_mhz=None, font_size=None):
         if plot_y_mhz is None:
@@ -118,7 +127,7 @@ class KingFitter(object):
         omega_x = [1/np.square(i) for i in self.xerr]
         omega_y = [1/np.square(i) for i in self.yerr]
         alpha = [np.sqrt(j*omega_y[i]) for i,j in enumerate(omega_x)]
-        r = [0 for i in self.x]
+        r = [0 for i in self.x]  # muonic data is not correlated to iso shift measurement results
 
         while totaldiff > 1e-10 and i < 200:
             w = [j*omega_y[i]/(j + np.square(self.b)*omega_y[i] - 2 * self.b * alpha[i] * r[i])
@@ -147,11 +156,18 @@ class KingFitter(object):
             betaWV = [j*v[i] for i,j in enumerate(betaW)]
             betaWU = [j*u[i] for i,j in enumerate(betaW)]
 
+            # covariance
+            sigma_b_tilde_square = 1 / (sum([w_i * u_fit[i] ** 2 for i, w_i in enumerate(w)]))
+            sigma_a_tilde_square = 1 / (sum([w_i for w_i in w])) + x_bar ** 2 * sigma_b_tilde_square
+            cov_a_b = - x_bar * sigma_b_tilde_square
+            # r_ab in paper:
+            a_b_correlation_coeff = - x_bar * np.sqrt(sigma_b_tilde_square) / np.sqrt(sigma_a_tilde_square)
+
             if not bFix:
                 self.b = sum(betaWV)/sum(betaWU)
             self.a = y_bar - self.b*x_bar
 
-            sigma_b_square = 1/sum(w_u_fit_square)
+            sigma_b_square = 1/sum(w_u_fit_square) if not bFix else 0
             sigma_a_square = 1/sum(w)+np.square(x_fit_bar)*sigma_b_square
             diff_x = np.abs(sum([np.abs(w_x_fit[i] - j) for i,j in enumerate(w_x)]))
             diff_y = np.abs(sum([np.abs(w_y_fit[i] - j) for i,j in enumerate(w_y)]))
@@ -215,7 +231,10 @@ class KingFitter(object):
                     (self.c, str(self.litvals), 'kingVal', 'alpha', run))
         con.commit()
         con.close()
-        return (self.a, self.b, self.aerr, self.berr)
+
+        print('correlation coefficient of a and b is: %.5f' % a_b_correlation_coeff)
+
+        return (self.a, self.b, self.aerr, self.berr, a_b_correlation_coeff)
 
     def calcChargeRadii(self, isotopes=[], run=-1, plot_evens_seperate=False):
         print('calculating the charge radii...')
@@ -236,10 +255,10 @@ class KingFitter(object):
                                                   [['parname', 'run'], ['alpha', run]], caller_name=__name__)[0]
         vals = []
         if run == -1:
-            vals = TiTs.select_from_db(self.db,'iso, val, statErr, systErr, run', 'Combined', [['parname'], ['shift']],
+            vals = TiTs.select_from_db(self.db, 'iso, val, statErr, systErr, run', 'Combined', [['parname'], ['shift']],
                                        caller_name=__name__)
         else:
-            vals = TiTs.select_from_db(self.db,'iso, val, statErr, systErr, run', 'Combined',
+            vals = TiTs.select_from_db(self.db, 'iso, val, statErr, systErr, run', 'Combined',
                                        [['parname', 'run'], ['shift', run]], caller_name=__name__)
         for i in vals:
             (name, val, statErr, systErr, run) = i
@@ -254,23 +273,50 @@ class KingFitter(object):
                     self.isotopeShiftSystErr.append(systErr)
                     self.run.append(run)
         self.isotopeRedMasses = [i*self.ref_mass/(i-self.ref_mass) for i in self.isotopeMasses]
-        self.chargeradii = [(-self.a/self.isotopeRedMasses[i]+j)/self.b+self.c/self.isotopeRedMasses[i]
-                            for i,j in enumerate(self.isotopeShifts)]
+        # from error prop:
+        self.isotopeRedMassesErr = [
+            ((iso_m_d * (self.ref_mass ** 2)) / (iso_m - self.ref_mass) ** 2) ** 2 +
+            ((self.ref_massErr * (iso_m ** 2)) / (iso_m - self.ref_mass) ** 2) ** 2
+            for iso_m, iso_m_d in zip(self.isotopeMasses, self.massErr)
+        ]
+        self.chargeradii = [(j - self.a / self.isotopeRedMasses[i]) / self.b + self.c / self.isotopeRedMasses[i]
+                            for i, j in enumerate(self.isotopeShifts)]
         #self.chargeradiiStatErrs = [np.abs(i/self.b) for i in self.isotopeShiftStatErr]
-        self.chargeradiiTotalErrs = [np.sqrt(np.square(self.isotopeShiftStatErr[i]/self.b)+
-                                        np.square(self.aerr/(self.isotopeRedMasses[i]*self.b))+
-                                        np.square((-self.a/self.isotopeRedMasses[i]+j)*self.berr/np.square(self.b)) +
-                                        np.square((self.a/self.b+self.c)*self.massErr[i]/np.square(self.ref_mass)))
-                                    for i,j in enumerate(self.isotopeShifts)]
+        self.chargeradiiTotalErrs = [np.sqrt(
+            np.square(self.isotopeShiftStatErr[i]/self.b) +
+            np.square(self.aerr/(self.isotopeRedMasses[i]*self.b)) +
+            np.square((self.a/self.isotopeRedMasses[i]-j)*self.berr/np.square(self.b)) +
+            np.square(
+                (self.a/self.b-self.c) * self.isotopeRedMassesErr[i]/np.square(self.isotopeRedMasses[i]))
+        )
+                                     for i, j in enumerate(self.isotopeShifts)]
+        errs_to_print = [(
+                             self.isotopes[i],
+                             self.chargeradii[i],
+                             self.chargeradiiTotalErrs[i],
+                             abs(self.chargeradiiTotalErrs[i] / self.chargeradii[i]) * 100,
+                             abs(self.isotopeShiftStatErr[i] / self.b),
+                             abs(self.aerr / (self.isotopeRedMasses[i] * self.b)),
+                             abs((self.a / self.isotopeRedMasses[i] - j) * self.berr / np.square(self.b)),
+                             abs((self.a / self.b - self.c) * self.isotopeRedMassesErr[i] / np.square(self.isotopeRedMasses[i])),
+                         )
+            for i, j in enumerate(self.isotopeShifts)
+        ]
+        print('iso\tdr^2\tDelta dr^2\tDelta IS\tDelta K\tDelta F\tDelta M')
+        for each in errs_to_print:
+            print('%s\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\t%.4f\t%.4f' % each)
+
         finalVals = {}
         for i,j in enumerate(self.isotopes):
             finalVals[j] = [self.chargeradii[i], self.chargeradiiTotalErrs[i]]
             con = sqlite3.connect(self.db)
             cur = con.cursor()
-            cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', (j, 'delta_r_square', self.run[i]))
+            cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''',
+                        (j, 'delta_r_square', self.run[i]))
             con.commit()
-            cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ? WHERE iso = ? AND parname = ?''',
-                        (self.chargeradii[i], 0, self.chargeradiiTotalErrs[i], j, 'delta_r_square'))
+            cur.execute(
+                '''UPDATE Combined SET val = ?, statErr = ?, systErr = ? WHERE iso = ? AND parname = ? AND run = ?''',
+                (self.chargeradii[i], 0, self.chargeradiiTotalErrs[i], j, 'delta_r_square', self.run[i]))
             con.commit()
             con.close()
         if self.showing:
@@ -280,12 +326,13 @@ class KingFitter(object):
             x = []
             y = []
             yerr = []
-            print('iso\t $\delta$ <r$^2$>[fm$^2$]($\Delta$ $\delta$<r$^2$>[fm$^2$])')
+            print('iso\t $\delta$ <r$^2$>[fm$^2$]')
             for i in keyVals:
                 x.append(int(str(i).split('_')[0]))
                 y.append(finalVals[i][0])
                 yerr.append(finalVals[i][1])
-                print(i, '\t', np.round(finalVals[i][0],3), '('+str(np.round(finalVals[i][1],3))+')')
+                print('%s\t%.3f(%.0f)\t%.1f' % (i, finalVals[i][0], finalVals[i][1] * 1000,
+                                                finalVals[i][1] / max(abs(finalVals[i][0]), 0.000000000000001) * 100))
                 #print("'"+str(i)+"'", ':[', np.round(finalVals[i][0],3), ','+ str(np.round(np.sqrt(finalVals[i][1]**2 + finalVals[i][2]**2),3))+'],')
 
             plt.subplots_adjust(bottom=0.2)
@@ -317,8 +364,7 @@ class KingFitter(object):
 
     def findBestAlpha(self, run):
         self.x = [self.redmasses[i]*j - self.c for i,j in enumerate(self.x_origin)]
-        (bestA, bestB, bestAerr, bestBerr) = self.fit(run, showplot=False)
-        bestRatio = np.abs(bestAerr/bestA)
+        (bestA, bestB, bestAerr, bestBerr, bestCorrelation) = self.fit(run, showplot=False)
         step = 1
         best = self.c
         end = False
@@ -329,10 +375,9 @@ class KingFitter(object):
             if np.abs(self.c) >= 2000: #searching just between [-2000,2000]
                 self.c = - self.c + step
             self.x = [self.redmasses[i]*j - self.c for i,j in enumerate(self.x_origin)]
-            (newA, newB, newAerr, newBerr) = self.fit(run, showplot=False)
-            newRatio = np.abs(newAerr/newA)
-            if newRatio < bestRatio:
-                bestRatio = newRatio
+            (newA, newB, newAerr, newBerr, newCorrelation) = self.fit(run, showplot=False)
+            if abs(newCorrelation) < abs(bestCorrelation):
+                bestCorrelation = newCorrelation
                 best = self.c
                 self.c += step
 

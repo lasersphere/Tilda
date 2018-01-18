@@ -11,6 +11,7 @@ import numpy as np
 
 from Spectra.Hyperfine import Hyperfine
 from Spectra.AsymmetricVoigt import AsymmetricVoigt
+import Physics
 
 
 class FullSpec(object):
@@ -22,12 +23,15 @@ class FullSpec(object):
         '''
         Import the shape and initializes reasonable values 
         '''
+        # for example: iso.shape['name'] = 'Voigt'
         shapemod = importlib.import_module('Spectra.' + iso.shape['name'])
         shape = getattr(shapemod, iso.shape['name'])
+        # leading to: Spectra.Voigt.Voigt(iso)
         self.shape = shape(iso)
         self.iso = iso
         
         self.pOff = 0
+        self.p_offset_slope = 1
         
         miso = iso
         self.hyper = []
@@ -38,21 +42,28 @@ class FullSpec(object):
         while miso_m!=None:
             self.hyper.append(Hyperfine(miso_m, self.shape))
             miso_m = miso_m.m
-        self.nPar = 1 + self.shape.nPar + sum(hf.nPar for hf in self.hyper)
+        self.nPar = 2 + self.shape.nPar + sum(hf.nPar for hf in self.hyper)
         
     def evaluate(self, x, p, ih=-1):
         '''Return the value of the hyperfine structure at point x / MHz, ih=index hyperfine'''
         if ih == -1:        
-            return p[self.pOff] + sum(hf.evaluate(x, p) for hf in self.hyper)
+            return p[self.pOff] + x * p[self.p_offset_slope] + sum(hf.evaluate(x, p) for hf in self.hyper)
         else:
-            return p[self.pOff] + self.hyper[ih].evaluate(x, p)
+            return p[self.pOff] + x * p[self.p_offset_slope] + self.hyper[ih].evaluate(x, p)
 
     def evaluateE(self, e, freq, col, p, ih = -1):
         '''Return the value of the hyperfine structure at point e / eV'''
-        if ih == -1:
-            return p[self.pOff] + sum(hf.evaluateE(e, freq, col, p) for hf in self.hyper)
-        else:
-            return p[self.pOff] + self.hyper[ih].evaluateE(e, freq, col, p)
+
+        # used to be like the call in self.evaluate, but calling hf.evaluateE ...
+        # since introducing the linear offset this caused problems, so now the frequency is already converted here
+
+        v = Physics.relVelocity(Physics.qe * e, self.iso.mass * Physics.u)
+        v = -v if col else v
+
+        f = Physics.relDoppler(freq, v) - self.iso.freq
+
+        return self.evaluate(f, p, ih)
+
 
     def recalc(self, p):
         '''Forward recalc to lower objects'''
@@ -63,8 +74,9 @@ class FullSpec(object):
     def getPars(self, pos=0):
         '''Return list of initial parameters and initialize positions'''
         self.pOff = pos
-        ret = [0]
-        pos += 1
+        self.p_offset_slope = pos + 1
+        ret = [self.iso.shape.get('offset', 0), self.iso.shape.get('offsetSlope', 0)]
+        pos += 2
         
         ret += self.shape.getPars(pos)
         pos += self.shape.nPar
@@ -77,21 +89,22 @@ class FullSpec(object):
 
     def getParNames(self):
         '''Return list of the parameter names'''
-        return ['offset'] + self.shape.getParNames() + list(chain(*([hf.getParNames() for hf in self.hyper])))
+        return ['offset', 'offsetSlope'] + self.shape.getParNames() + list(chain(*([hf.getParNames() for hf in self.hyper])))
     
     def getFixed(self):
         '''Return list of parmeters with their fixed-status'''
-        return [False] + self.shape.getFixed() + list(chain(*[hf.getFixed() for hf in self.hyper]))
+        return [self.iso.fixShape.get('offset', False), self.iso.fixShape.get('offsetSlope', True)] +\
+               self.shape.getFixed() + list(chain(*[hf.getFixed() for hf in self.hyper]))
 
     def parAssign(self):
         '''Return [(hf.name, parAssign)], where parAssign is a boolean list indicating relevant parameters'''
         ret = []
-        i = 1 + self.shape.nPar
+        i = 2 + self.shape.nPar  # 2 for offset, offsetSlope
         a = [False] * self.nPar
         if isinstance(self.shape, AsymmetricVoigt):
-            a[0:5] = [True] * 5  # 'offset', 'sigma', 'gamma', 'centerAsym', 'IntAsym'
+            a[0:6] = [True] * 6  # 'offset', 'offsetSlope', 'sigma', 'gamma', 'centerAsym', 'IntAsym'
         else:
-            a[0:3] = [True] * 3  # 'offset', 'sigma', 'gamma'  for normal voigt
+            a[0:4] = [True] * 4  # 'offset', 'offsetSlope', 'sigma', 'gamma'  for normal voigt
         for hf in self.hyper:
             assi = list(a)
             assi[i:(i+hf.nPar)] = [True] * hf.nPar

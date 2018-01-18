@@ -45,6 +45,7 @@ class DummyTritonDevice(TritonObject):
 
         self.lock = Lock()
         self.locktimeout = 5
+        logging.debug('dummyDev started')
 
 
     def _stop(self):
@@ -53,6 +54,7 @@ class DummyTritonDevice(TritonObject):
         """
 
         # self._commitUri(None)
+        logging.info('Stopping dummy_dev')
 
         if self._thread is not None:
             self.setInterval(0)

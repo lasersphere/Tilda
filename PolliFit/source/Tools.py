@@ -24,7 +24,7 @@ from Spectra.FullSpec import FullSpec
 
 
 def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=None,
-            col=None, saving=False, show=True, isom_name=None, prec=10000):
+            col=None, saving=False, show=True, isom_name=None, prec=10000, clear=False):
     '''plot isotope iso'''
     iso = DBIsotope(db, iso_name, isovar, linevar)
     
@@ -33,24 +33,37 @@ def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=Non
     print(spec.getPars())
     if as_freq:
         plot.plot(spec.toPlot(spec.getPars(), prec=prec))
+        center_str = '%.1f MHz' % iso.center
+        center_color = plt.gca().get_lines()[-1].get_color()
+        plt.axvline(x=iso.center, color=center_color, linestyle='--', label='%s center: %s' % (iso_name, center_str))
+
     else:
         plot.plot(spec.toPlotE(laserfreq, col, spec.getPars()))
         plot.get_current_axes().set_xlabel('Energy [eV]')
-    plt.gca().get_lines()[-1].set_label(iso_name)
+        # convert center frequency to energy
+        freq_center = iso.center + iso.freq
+        vel_center = Physics.invRelDoppler(laserfreq, freq_center)  # velocity
+        energ_center = (iso.mass * Physics.u * vel_center ** 2) / 2 / Physics.qe
+        center_str = '%.1f eV' % energ_center
+        center_color = plt.gca().get_lines()[-1].get_color()
+        plt.axvline(x=energ_center, color=center_color, linestyle='--', label='%s center: %s' % (iso_name, center_str))
+
+    plt.gca().get_lines()[-2].set_label(iso_name)
+    plt.gcf().set_facecolor('w')
     plt.legend()
     if isom_name:
         isoPlot(db, isom_name, isovar, linevar, as_freq, laserfreq, col, saving, show)
     else:
         if saving:
-            pathParts = str(db).split('/')
-            path = ''
-            for i in range(0,len(pathParts)-1,1):
-                path += pathParts[i] + '/'
-            path += 'simulations/'
-            plot.save(path + iso_name + '.png')
+            db_dir = os.path.dirname(db)
+            path = os.path.join(db_dir, 'simulations')
+            if not os.path.isdir(path):
+                os.mkdir(path)
+            file_path = os.path.join(path, iso_name + '.png')
+            plot.save(file_path)
         if show:
             plot.show()
-        else:
+        if clear:
             plot.clear()
 
 
@@ -177,7 +190,11 @@ def createDB(db):
     fixedInt BOOL DEFAULT 0,
     relInt TEXT,
     m TEXT,
-    midTof FLOAT
+    midTof FLOAT,
+    fixedAl BOOL DEFAULT 0,
+    fixedBl BOOL DEFAULT 0,
+    fixedAu BOOL DEFAULT 0,
+    fixedBu BOOL DEFAULT 0
     )''')
     
     #Lines
@@ -205,6 +222,7 @@ def createDB(db):
     offset FLOAT,
     accVolt FLOAT,
     laserFreq FLOAT,
+    laserFreq_d FLOAT,
     colDirTrue BOOL,
     voltDivRatio TEXT,
     lineMult FLOAT,
@@ -268,11 +286,11 @@ def add_missing_columns(db):
      For adding new columns add them to cols """
     cols = {
         'Isotopes': [
-            (0, 'iso', 'TEXT', 1, None, 1),
-            (1, 'mass', 'FLOAT', 0, None, 0),
-            (2, 'mass_d', 'FLOAT', 0, None, 0),
-            (3, 'I', 'FLOAT', 0, None, 0),
-            (4, 'center', 'FLOAT', 0, None, 0),
+            (0, 'iso', 'TEXT', 1, '""', 1),
+            (1, 'mass', 'FLOAT', 0, '0', 0),
+            (2, 'mass_d', 'FLOAT', 0, '0', 0),
+            (3, 'I', 'FLOAT', 0, '0', 0),
+            (4, 'center', 'FLOAT', 0, '0', 0),
             (5, 'Al', 'FLOAT', 0, '0', 0),
             (6, 'Bl', 'FLOAT', 0, '0', 0),
             (7, 'Au', 'FLOAT', 0, '0', 0),
@@ -281,19 +299,38 @@ def add_missing_columns(db):
             (10, 'fixedBrat', 'BOOL', 0, '0', 0),
             (11, 'intScale', 'DOUBLE', 0, '1', 0),
             (12, 'fixedInt', 'BOOL', 0, '0', 0),
-            (13, 'relInt', 'TEXT', 0, None, 0),
-            (14, 'm', 'TEXT', 0, None, 0),
-            (15, 'midTof', 'FLOAT', 0, '0', 0)
+            (13, 'relInt', 'TEXT', 0, '[]', 0),
+            (14, 'm', 'TEXT', 0, '""', 0),
+            (15, 'midTof', 'FLOAT', 0, '0', 0),
+            (16, 'fixedAl', 'BOOL', 0, '0', 0),
+            (17, 'fixedBl', 'BOOL', 0, '0', 0),
+            (18, 'fixedAu', 'BOOL', 0, '0', 0),
+            (19, 'fixedBu', 'BOOL', 0, '0', 0),
         ],
         'Runs': [
-            (0, 'run', 'TEXT', 1, None, 1),
+            (0, 'run', 'TEXT', 1, '""', 1),
             (1, 'lineVar', 'TEXT', 0, '""', 0),
             (2, 'isoVar', 'TEXT', 0, '""', 0),
-            (3, 'scaler', 'TEXT', 0, None, 0),
-            (4, 'track', 'TEXT', 0, None, 0),
-            (5, 'softwGates', 'TEXT', 0, None, 0),
-            (6, 'softwGateWidth', 'FLOAT', 0, None, 0),
-            (7, 'softwGateDelayList', 'TEXT', 0, None, 0),
+            (3, 'scaler', 'TEXT', 0, '[]', 0),
+            (4, 'track', 'TEXT', 0, '-1', 0),
+            (5, 'softwGates', 'TEXT', 0, '[]', 0),
+            (6, 'softwGateWidth', 'FLOAT', 0, '0', 0),
+            (7, 'softwGateDelayList', 'TEXT', 0, '[]', 0),
+        ],
+        'Files': [
+            (0, 'file', 'TEXT', 1, '""', 1),
+            (1, 'filePath', 'TEXT', 1, '""', 0),
+            (2, 'date', 'DATE', 0, '""', 0),
+            (3, 'type', 'TEXT', 0, '""', 0),
+            (4, 'line', 'TEXT', 0, '""', 0),
+            (5, 'offset', 'FLOAT', 0, '[]', 0),
+            (6, 'accVolt', 'FLOAT', 0, '0', 0),
+            (7, 'laserFreq', 'FLOAT', 0, '0', 0),
+            (8, 'laserFreq_d', 'FLOAT', 0, '0', 0),
+            (9, 'colDirTrue', 'BOOL', 0, 'NULL', 0),
+            (10, 'voltDivRatio', 'TEXT', 0, '""', 0),
+            (11, 'lineMult', 'FLOAT', 0, '0', 0),
+            (12, 'lineOffset', 'FLOAT', 0, '0', 0),
         ]
     }
     for table_name, target_cols in cols.items():
@@ -304,10 +341,12 @@ def add_missing_columns(db):
         # for each in exist_cols:
         #     print(each, ',')
         cols_name_flat = [each[1] for each in exist_cols]
+        print('flat cols of %s : %s ' % (table_name, cols_name_flat))
         for each in target_cols:
             if each[1] not in cols_name_flat:
                 print('column %s in table %s was not yet in db, adding now.' % (each[1], table_name))
-                cur.execute(''' ALTER TABLE '%s' ADD COLUMN '%s' '%s' ''' % (table_name, each[1], each[2]))
+                cur.execute(''' ALTER TABLE '%s' ADD COLUMN '%s' '%s' DEFAULT '%s' '''
+                            % (table_name, each[1], each[2], each[4]))
         con.commit()
         con.close()
 
@@ -347,7 +386,10 @@ def extract_from_combined(runs_list, db, isotopes=None, par='shift', print_extra
                 data = cursor.fetchall()
                 connection.close()
                 if len(data):
-                    result_dict[selected_run][iso] = data[0]
+                    # print('data is: ', data)
+                    # might have elements with 'null' or anything that is not a float
+                    data = [each if isinstance(each, float) else 0.0 for each in data[0]]
+                    result_dict[selected_run][iso] = data
     if print_extracted:
         for sel_run, run_results_dicts in sorted(result_dict.items()):
             print('--- \t%s\t%s\t ---' % (sel_run, par))

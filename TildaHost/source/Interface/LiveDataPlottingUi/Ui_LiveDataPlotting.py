@@ -6,7 +6,7 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 class Ui_MainWindow_LiveDataPlotting(object):
     def setupUi(self, MainWindow_LiveDataPlotting):
@@ -258,6 +258,9 @@ class Ui_MainWindow_LiveDataPlotting(object):
         self.verticalLayout_7.addWidget(self.splitter_allpmts)
         self.verticalLayout_6.addWidget(self.widget_all_pmts)
         self.tabWidget.addTab(self.tab_all_pmts, "")
+        self.tab_pre_post_meas = QtWidgets.QWidget()
+        self.tab_pre_post_meas.setObjectName("tab_pre_post_meas")
+        self.tabWidget.addTab(self.tab_pre_post_meas, "")
         self.horizontalLayout_2.addWidget(self.tabWidget)
         MainWindow_LiveDataPlotting.setCentralWidget(self.centralwidget)
         self.dockWidget = QtWidgets.QDockWidget(MainWindow_LiveDataPlotting)
@@ -285,7 +288,7 @@ class Ui_MainWindow_LiveDataPlotting(object):
         self.menuBar.addAction(self.menuEdit.menuAction())
 
         self.retranslateUi(MainWindow_LiveDataPlotting)
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(3)
         QtCore.QMetaObject.connectSlotsByName(MainWindow_LiveDataPlotting)
 
     def retranslateUi(self, MainWindow_LiveDataPlotting):
@@ -324,6 +327,7 @@ class Ui_MainWindow_LiveDataPlotting(object):
         self.label_x_coord_all_pmts.setText(_translate("MainWindow_LiveDataPlotting", "x_value"))
         self.label_6.setText(_translate("MainWindow_LiveDataPlotting", "sum over:"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_all_pmts), _translate("MainWindow_LiveDataPlotting", "all pmts"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_pre_post_meas), _translate("MainWindow_LiveDataPlotting", "pre/during/post scan measurements"))
         self.dockWidget.setWindowTitle(_translate("MainWindow_LiveDataPlotting", "progress"))
         self.menuView.setTitle(_translate("MainWindow_LiveDataPlotting", "view"))
         self.menuEdit.setTitle(_translate("MainWindow_LiveDataPlotting", "edit"))

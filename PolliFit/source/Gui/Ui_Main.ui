@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>811</width>
-    <height>858</height>
+    <width>872</width>
+    <height>597</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -100,7 +100,7 @@
         <enum>QTabWidget::Rounded</enum>
        </property>
        <property name="currentIndex">
-        <number>10</number>
+        <number>0</number>
        </property>
        <widget class="CrawlerUi" name="crawler">
         <attribute name="title">
@@ -152,6 +152,11 @@
          <string>Alive</string>
         </attribute>
        </widget>
+       <widget class="ColAcolUi" name="ColAcol_tab">
+        <attribute name="title">
+         <string>Col./Acol.</string>
+        </attribute>
+       </widget>
        <widget class="AsciiConvUi" name="asciiConv_tab">
         <attribute name="title">
          <string>ASCII conv.</string>
@@ -175,7 +180,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>811</width>
+     <width>872</width>
      <height>21</height>
     </rect>
    </property>
@@ -246,6 +251,12 @@
    <class>AsciiConvUi</class>
    <extends>QWidget</extends>
    <header>Gui.AsciiConvUi</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ColAcolUi</class>
+   <extends>QWidget</extends>
+   <header>Gui.ColAcolUi</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

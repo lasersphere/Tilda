@@ -22,6 +22,13 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
+    <item row="5" column="0">
+     <widget class="QLabel" name="label_6">
+      <property name="text">
+       <string>sequencer status:</string>
+      </property>
+     </widget>
+    </item>
     <item row="3" column="0">
      <widget class="QLabel" name="label">
       <property name="text">
@@ -29,21 +36,21 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="1">
+    <item row="3" column="2">
      <widget class="QLabel" name="label_main_status">
       <property name="text">
        <string>TextLabel</string>
       </property>
      </widget>
     </item>
-    <item row="0" column="1">
+    <item row="0" column="2">
      <widget class="QLabel" name="label_workdir_set">
       <property name="text">
        <string>please choose a working directory in File-&gt;working directory</string>
       </property>
      </widget>
     </item>
-    <item row="1" column="1">
+    <item row="1" column="2">
      <widget class="QLabel" name="label_database">
       <property name="text">
        <string>TextLabel</string>
@@ -57,7 +64,7 @@
       </property>
      </widget>
     </item>
-    <item row="8" column="1">
+    <item row="8" column="2">
      <widget class="QLabel" name="label_acc_volt_set">
       <property name="text">
        <string>TextLabel</string>
@@ -71,7 +78,7 @@
       </property>
      </widget>
     </item>
-    <item row="7" column="1">
+    <item row="7" column="2">
      <widget class="QLabel" name="label_laser_freq_set">
       <property name="text">
        <string>TextLabel</string>
@@ -85,7 +92,7 @@
       </property>
      </widget>
     </item>
-    <item row="5" column="1">
+    <item row="5" column="2">
      <widget class="QLabel" name="label_sequencer_status_set">
       <property name="text">
        <string>TextLabel</string>
@@ -106,7 +113,7 @@
       </property>
      </widget>
     </item>
-    <item row="4" column="1">
+    <item row="4" column="2">
      <widget class="QLabel" name="label_fpga_state_set">
       <property name="text">
        <string>TextLabel</string>
@@ -120,7 +127,7 @@
       </property>
      </widget>
     </item>
-    <item row="6" column="1">
+    <item row="6" column="2">
      <widget class="QLabel" name="label_dmm_status">
       <property name="text">
        <string>TextLabel</string>
@@ -140,13 +147,6 @@
       </property>
      </spacer>
     </item>
-    <item row="5" column="0">
-     <widget class="QLabel" name="label_6">
-      <property name="text">
-       <string>sequencer status:</string>
-      </property>
-     </widget>
-    </item>
     <item row="0" column="0">
      <widget class="QLabel" name="label_workdir">
       <property name="text">
@@ -154,7 +154,7 @@
       </property>
      </widget>
     </item>
-    <item row="0" column="2">
+    <item row="0" column="3">
      <widget class="QPushButton" name="pushButton_open_dir">
       <property name="locale">
        <locale language="English" country="UnitedKingdom"/>
@@ -165,6 +165,20 @@
       <property name="icon">
        <iconset>
         <normaloff>../icons/open_folder.ico</normaloff>../icons/open_folder.ico</iconset>
+      </property>
+     </widget>
+    </item>
+    <item row="9" column="0">
+     <widget class="QLabel" name="label_9">
+      <property name="text">
+       <string>triton subscriptions*:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="9" column="2">
+     <widget class="QLabel" name="label_triton_subscription">
+      <property name="text">
+       <string>TextLabel</string>
       </property>
      </widget>
     </item>

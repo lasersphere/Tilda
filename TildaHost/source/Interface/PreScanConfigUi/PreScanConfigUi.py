@@ -490,7 +490,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
                             sample_count = int(req_itm.text())
                         except Exception as e:
                             print('error in converting %s error is: %s' % (req_itm.text(), e))
-                        if sample_count > 0:
+                        if sample_count:  #TODO: in order to allow continous aquisition we need to allow negative and/or zero values here. Probably can remove the whole if statement
                             ret[ch_itm.text()] = {'required': sample_count,
                                                   'acquired': 0,
                                                   'data': []}
@@ -585,7 +585,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         return triton_dict
 
     def get_current_triton_settings(self):
-        """ return the current triton dict, which is updated contanstly when user clicks on something. """
+        """ return the current triton dict, which is updated constantly when user clicks on something. """
         # force update of self.triton_scan_dict[self.pre_or_during_scan_str][self.cur_dev] from gui:
         self.check_any_ch_active()
         # now check if this should be measured anyhow:

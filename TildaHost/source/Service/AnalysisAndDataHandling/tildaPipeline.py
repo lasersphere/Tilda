@@ -50,7 +50,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     always feed raw data.
     """
     if live_plot_callbacks is None:
-        live_plot_callbacks = (None, None, None, None)
+        live_plot_callbacks = (None, None, None, None, None)
     start = Node()
 
     pipe = Pipeline(start)
@@ -59,7 +59,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     # walk = start.attach(SN.NPrint())
 
     # alternative pipeline:
-    fast = start.attach(TN.NFilterDMMDicts())
+    fast = start.attach(TN.NFilterDMMDictsAndSave(live_plot_callbacks[4]))  # Replaced former NFilterDMMDicts AndSave
     fast = fast.attach(TN.NSaveRawData())
     # fast = fast.attach(TN.NProcessQtGuiEvents())
     fast = fast.attach(TN.NTRSSortRawDatatoArrayFast())
@@ -93,11 +93,11 @@ def CsPipe(initialScanPars=None, callback_sig=None, live_plot_callbacks=None):
     """
     start = Node()
     if live_plot_callbacks is None:
-        live_plot_callbacks = (None, None, None, None)
+        live_plot_callbacks = (None, None, None, None, None)
 
     pipe = Pipeline(start)
     # start = start.attach(SN.NPrint())
-    start = start.attach(TN.NFilterDMMDicts())
+    start = start.attach(TN.NFilterDMMDictsAndSave(live_plot_callbacks[4]))  # Replaced former NFilterDMMDicts
 
     maintenance = start.attach(TN.NMPLCloseFigOnInit())
 
@@ -139,7 +139,7 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False,
 
     maintenance = start.attach(TN.NAddWorkingTimeOnClear(True))
     if live_plot_callbacks is None:
-        live_plot_callbacks = (None, None, None, None)
+        live_plot_callbacks = (None, None, None, None, None)
 
     pipe = Pipeline(start)
     pipe.pipeData = initPipeData(initial_scan_pars)

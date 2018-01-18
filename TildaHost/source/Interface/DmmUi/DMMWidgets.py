@@ -137,7 +137,9 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         :param val: bool/str/int/float
         :return:
         """
-        label, inp_type, vals, current_val, widget = self.raw_config[key]
+        label, inp_type, vals, current_val, widget = self.raw_config.get(key, (None, None, None, None))
+        if label is None:
+            return None
         if inp_type is float or inp_type is int:
             new_val = self.coerce_val_tolist_val(val, vals)
             widget.setValue(new_val)
@@ -227,7 +229,9 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
         """
         enable_widgets = True if conf_dict.get('preConfName', 'initial') == 'manual' else False
         for key, val in conf_dict.items():
-            if key not in ['type', 'address']:
+            if key not in ['type', 'address', 'readings', 'acquiredPreScan']:
+                # readings and acquiredPreScan popped up in some scan settings,
+                #  just make sure they don't cause problems here
                 try:
                     if key == 'preConfName':
                         self.comboBox_defaul_settings.blockSignals(True)
@@ -239,7 +243,7 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
                 except Exception as e:
                     # just print an error for now, maybe be more harsh here in the future.
                     logging.error(
-                        'error: could not change value to: %s in key: %s, error is: %s' % (key, val, e), exc_info=True)
+                        'error: could not change value to: %s in key: %s, error is: %s' % (val, key, e), exc_info=True)
 
     def setup_default_val_comboBox(self, preconfname):
         """

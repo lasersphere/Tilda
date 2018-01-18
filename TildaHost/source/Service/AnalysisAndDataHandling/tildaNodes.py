@@ -211,6 +211,7 @@ class NAddWorkingTime(Node):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
         self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
             self.Pipeline.pipeData[track_name])
+        logging.debug('working time has ben set to: %s ' % str(self.Pipeline.pipeData[track_name]['workingTime']))
         return data
 
 
@@ -239,6 +240,9 @@ class NAddWorkingTimeOnClear(Node):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
         self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
             self.Pipeline.pipeData[track_name])
+
+    def save(self):
+        self.clear()
 
 
 """ saving """
@@ -397,6 +401,9 @@ class NSaveRawData(Node):
         self.time_of_last_save = datetime.now()
         self.nOfSaves = None
         self.buf = None
+
+    def save(self):
+        self.clear()
 
 
 """ plotting """
@@ -1308,7 +1315,7 @@ class NMPLImagePlotSpecData(Node):
 
 class NMPLImagePlotAndSaveSpecData(Node):
     def __init__(self, pmt_num, new_data_callback, new_track_callback,
-                 save_request, gates_and_rebin_signal, save_data=True):
+                 save_request, gates_and_rebin_signal, pre_post_meas_data_dict_callback, save_data=True):
         super(NMPLImagePlotAndSaveSpecData, self).__init__()
         self.type = 'MPLImagePlotAndSaveSpecData'
         self.selected_pmt = pmt_num  # for now pmt name should be pmt_ind
@@ -1318,12 +1325,12 @@ class NMPLImagePlotAndSaveSpecData(Node):
         self.trs_names_list = ['trs', 'trsdummy', 'tipa']  # in order to deny rebinning, for other than that
         self.save_data = save_data
 
-        self.mutex = QtCore.QMutex()  # for blocking of other threads
         self.new_data_callback = new_data_callback
         self.new_track_callback = new_track_callback
         self.min_time_between_emits = timedelta(milliseconds=250)
         # just be sure it emits on first call (important for loading etc.):
         self.last_emit_time = datetime.now() - self.min_time_between_emits - self.min_time_between_emits
+        self.mutex = QtCore.QMutex()  # for blocking of other threads
         if gates_and_rebin_signal is not None:
             gates_and_rebin_signal.connect(self.rcvd_gates_and_rebin)
         if save_request is not None:
@@ -1405,8 +1412,15 @@ class NMPLImagePlotAndSaveSpecData(Node):
                     self.rebinned_data = self.gate_data(self.rebinned_data, softw_gates_for_all_tr)
                     changed = True
             if changed:
-                if self.new_data_callback is not None:
-                    self.new_data_callback.emit(self.rebinned_data)
+                try:
+                    if self.new_data_callback is not None:
+                        self.new_data_callback.emit(self.rebinned_data)
+                except Exception as e:
+                    pass
+                    # sometimes new_data_callback migth have ben deleted already here.
+                    # This happens when closing an offline plot window.
+                    # logging.error('error while receiving gates in NMPLImagePlotAndSaveSpecData, error is: %s' % e,
+                    #               exc_info=True)
             else:
                 logging.debug('did not emit, because gates/rebinning was not changed.')
             self.mutex.unlock()
@@ -1826,8 +1840,7 @@ class NTRSSortRawDatatoArrayFast(Node):
         self.comp_list = [2 ** j for i, j in enumerate(self.Pipeline.pipeData[track_name]['activePmtList'])]
         if self.stored_data is None:
             self.stored_data = np.zeros(0, dtype=np.uint32)
-        if self.completed_steps_this_track is None:
-            self.completed_steps_this_track = self.Pipeline.pipeData[track_name].get('nOfCompletedSteps', 0)
+        self.completed_steps_this_track = self.Pipeline.pipeData[track_name].get('nOfCompletedSteps', 0)
         self.Pipeline.pipeData[track_name][
             'nOfCompletedSteps'] = self.completed_steps_this_track  # make sure this exists
 
@@ -1846,25 +1859,37 @@ class NTRSSortRawDatatoArrayFast(Node):
             new_unique_arr = np.zeros(1, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
             pipeData[track_name]['nOfCompletedSteps'] += step_complete_ind_list.size
             scan_start_before_step_comp = False
-            scan_started_ind_list = np.where(self.stored_data == scan_started)[0]
+            scan_started_ind_list = np.where(self.stored_data[:step_complete_ind_list[-1]] == scan_started)[0]
+            # account only started scans until the last step complete element was registered
             if scan_started_ind_list.size:
                 scan_start_before_step_comp = scan_started_ind_list[0] < step_complete_ind_list[0]
                 if scan_start_before_step_comp:
+                    # if the first scan_started_index is smaller than the first step_complete_ind_list
+                    # i need to increase this counter already here before creating the x-axis!
                     self.total_num_of_started_scans += 1
-            x_one_scan = np.arange(0, pipeData[track_name]['nOfSteps'])  # "x-axis" for one scan
+                    # logging.debug('a scan was started before a step was completed, number of started scans is: %s'
+                    #               % self.total_num_of_started_scans)
+            x_one_scan = np.arange(0, pipeData[track_name]['nOfSteps'])
+            # "x-axis" for one scan in terms of x-step-indices
             # make it also for two scans and invert on second rep if needed.
             # note fliplr must be >= 2-d
             x_two_scans = np.append(x_one_scan,
                                     np.fliplr([x_one_scan])[0] if pipeData[track_name]['invertScan'] else x_one_scan)
             # repeat this as often as needed for all steps held in this data set.
             x_this_data = np.tile(x_two_scans,
-                                  np.ceil(step_complete_ind_list.size / pipeData[track_name]['nOfSteps'] / 2))
+                                  np.ceil((step_complete_ind_list.size + 2) / pipeData[track_name]['nOfSteps'] / 2))
+            # +2 needed for next_volt_step_ind, see below
             # roll this, so that the current step stands at position 0.
+            # logging.debug('uncut x_data: %s' % x_this_data)
             x_this_data = np.roll(x_this_data,
-                                  -(self.curVoltIndex + pipeData[track_name]['nOfSteps'])
+                                  self.curVoltIndex + 1
                                   if pipeData[track_name]['invertScan'] and self.total_num_of_started_scans % 2 == 0
-                                  else -self.curVoltIndex)[0:step_complete_ind_list.size]
-            # print('starting with voltindex: ', x_this_data[0])
+                                  else -self.curVoltIndex)
+            next_volt_step_ind = x_this_data[step_complete_ind_list.size]
+            x_this_data = x_this_data[0:step_complete_ind_list.size]
+            # logging.debug('starting with voltindice: %s,\n current voltindex is: %s,'
+            #               ' next voltINdex: %s, scans started: %s'
+            #               % (x_this_data, self.curVoltIndex, next_volt_step_ind, self.total_num_of_started_scans))
             # get position of all pmt events (trs:)
             pmt_events_ind = np.where(self.stored_data & header_index == 0)[0]  # indices of all pmt events (for trs)
             # create an array which repeatedly holds the stepnumber which is active for the element at this position
@@ -1886,7 +1911,8 @@ class NTRSSortRawDatatoArrayFast(Node):
                 # combine the created arrays to one new array
                 new_arr = np.zeros(len(pmt_events_ind), dtype=[('sc', 'u2'), ('step', 'u4'),
                                                                ('time', 'u4'), ('cts', 'u4')])
-                new_arr['sc'] = pmt_events_scaler  # currently all are written to one so 255 = all pmts active
+                new_arr['sc'] = pmt_events_scaler  # currently all are written to one so 255 = all pmts active,
+                #  this is fixed below
                 new_arr['step'] = pmt_steps  # how to do this without for loop? pmt_evt_ind < step ...
                 new_arr['time'] = pmt_events_time
                 # create a unique array, so all double occurences of the given data are counted
@@ -1903,8 +1929,9 @@ class NTRSSortRawDatatoArrayFast(Node):
                             ith_pmt_hit_list['sc'] = int(np.log2(act_pmt))
                             new_unique_arr = np.append(new_unique_arr, ith_pmt_hit_list)
                             # print(new_unique_arr)
-            self.total_num_of_started_scans += scan_started_ind_list.size - 1 if scan_start_before_step_comp else 0
-            self.curVoltIndex = x_this_data[-1] + 1
+            add_sc = scan_started_ind_list.size - 1 if scan_start_before_step_comp else scan_started_ind_list.size
+            self.total_num_of_started_scans += add_sc  # num of scan start inf elements in list, -1 if already above +1
+            self.curVoltIndex = next_volt_step_ind
             self.stored_data = self.stored_data[step_complete_ind_list[-1] + 1:]
             # new_unique_arr = np.sort(new_unique_arr, axis=0)
             # print(new_unique_arr)
@@ -2245,3 +2272,79 @@ class NFilterDMMDicts(Node):
             return None
         else:
             return data
+
+
+class NFilterDMMDictsAndSave(Node):
+    def __init__(self, pre_post_meas_data_dict_callback):
+        """
+        Node, that will not return any data coming from the dmm or TritonListener.
+        Which is identified by being a dict.
+        Emits the received data for live plotting.
+        Also Stores the data locally and on call of save, emits them back to the Pipeline.
+        """
+        super(NFilterDMMDictsAndSave, self).__init__()
+        self.type = 'FilterDMMDictsAndSave'
+
+        # Instead of the local storage variable, we could also work on the pipeline directly. Not nice, but might work.
+        self.store_data = None
+        self.dmm_data = None
+        # self.triton_data = None #TODO: not needed, or is it advantageous to store triton data separately?
+        self.active_track_name = 'track0'
+
+        # callback to update the pre_during_post_meas_tabs
+        self.pre_post_meas_data_dict_callback = pre_post_meas_data_dict_callback
+
+    def start(self):
+        track_ind, self.active_track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        if self.store_data is None:
+            self.store_data = deepcopy(self.Pipeline.pipeData)
+        # self.dmm_data = self.store_data[self.active_track_name]['measureVoltPars'].get('duringScan', {}).get('dmms', None)
+        # self.triton_data = self.store_data[self.active_track_name]['triton'].get('duringScan', {})
+        for dmm_name, dmm_vals in self.store_data[self.active_track_name]['measureVoltPars']['duringScan']['dmms'].items():
+            if dmm_vals.get('readings', None) is None:
+                dmm_vals['readings'] = []
+
+    def processData(self, data, pipeData):
+        if isinstance(data, dict):
+            # dmm data comes in dicts like {dmm_name:[data]}. triton data comes as {track: {triton:{...}}}
+            if 'triton' in data.get(self.active_track_name, {}):
+                self.sort_triton(data)
+            else:
+                self.sort_dmms(data)
+            self.emit_data_signal()  # emit signal for live data plotting
+            return None
+        else:
+            return data
+
+    def sort_dmms(self, dmm_reading):
+        # sorts all dmm readings into the store_data
+        if dmm_reading is not None:
+            for dmm_name, volt_read in dmm_reading.items():
+                if dmm_name in self.store_data[self.active_track_name]['measureVoltPars']['duringScan'].get(
+                        'dmms', {}).keys():
+                    # if the readback from this dmm is not wanted by the scan dict, just ignore it.
+                    if volt_read is not None:
+                        # self.dmm_data[dmm_name]['readings'] += list(volt_read)
+                        self.store_data[self.active_track_name]['measureVoltPars']['duringScan'][
+                            'dmms'][dmm_name]['readings'] += list(volt_read)
+
+    def sort_triton(self, triton_dict):
+        # merges the triton dict that was received from the pipeline into the store_data
+        TildaTools.merge_extend_dicts(self.store_data, triton_dict)
+
+    def emit_data_signal(self):
+        # emits the store data dict for live data plotting
+        self.pre_post_meas_data_dict_callback.emit(self.store_data)
+
+    def save(self):
+        # overwrites the pipeData with store_data. The pipeData will be stored later on
+        # self.Pipeline.pipeData = deepcopy(self.store_data)
+        for key, val in self.Pipeline.pipeData.items():
+            if 'track' in key:
+                self.Pipeline.pipeData[key]['measureVoltPars']['duringScan'] = deepcopy(
+                    self.store_data[key]['measureVoltPars']['duringScan'])
+                self.Pipeline.pipeData[key]['triton']['duringScan'] = deepcopy(
+                    self.store_data[key]['triton']['duringScan'])
+                # print('triton dict on save in pipeline:')
+                # TildaTools.print_dict_pretty(self.Pipeline.pipeData[key]['triton']['duringScan'])
+

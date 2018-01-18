@@ -36,6 +36,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.Alive_tab.conSig(self.dbSig)
         self.addFiles_tab.conSig(self.dbSig)
         self.asciiConv_tab.conSig(self.dbSig)
+        self.ColAcol_tab.conSig(self.dbSig)
         self.bOpenDb.clicked.connect(self.openDb)
         self.pushButton_refresh.clicked.connect(self.re_emit_db_path)
         if overwrite_stdout:
@@ -68,6 +69,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.dbPath = p
         self.oDbPath.setText(self.dbPath)
         self.dbSig.emit(self.dbPath)
+        self.save_db_path_to_text_file()
 
     def re_emit_db_path(self):
         self.dbSig.emit(self.dbPath)
@@ -87,6 +89,14 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         plot.close_all_figs()
         if self.parent_win is not None:
             self.parent_win.close_pollifit_win()
+
+    def save_db_path_to_text_file(self):
+        cur_dir = os.path.dirname(__file__)
+        source_dir = os.path.join(cur_dir, os.pardir)
+        txt_file = os.path.normpath(os.path.join(source_dir, 'current_db_loc.txt'))
+        print('saving current db_loc to: %s' % txt_file)
+        with open(txt_file, 'w') as f:
+            f.write(self.dbPath + '\n')
 
 
 class EmitStream(QtCore.QObject):

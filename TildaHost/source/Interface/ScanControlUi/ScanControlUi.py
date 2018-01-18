@@ -76,7 +76,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
                     if self.checkBox_reps_as_go.isChecked():
                         direc = os.path.join(Cfg._main_instance.working_directory, 'sums', '*.xml')
                         latest_file = max(glob.iglob(direc), key=os.path.getctime)
-                        self.go_on_file(latest_file)
+                        self.go_on_file(latest_file, read_num_reps_from_spinbox=False)
                     else:
                         self.go(False)
                 else:  # all scans are done here
@@ -97,6 +97,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         """
         will set the state in the main to go
         :param read_spin_box: bool, True for first "call"
+                ergo: bool, False for go on file
         """
         if read_spin_box:
             self.go_was_clicked_before = True
@@ -108,10 +109,13 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         if ergo and acq_on_file_in_dict:
             # if its an ergo an continuedAcquisitonOnFile is already written to scandict, this must be deleted:
             Cfg._main_instance.scan_pars[self.active_iso]['isotopeData'].pop('continuedAcquisitonOnFile')
+        if ergo:
+            # if its an ergo we do not want any old readings of dmms or triton devs in the scandict
+            Cfg._main_instance.remove_old_dmm_triton_from_scan_pars(self.active_iso)
         self.wrap_open_live_plot_win()
         Cfg._main_instance.start_scan(self.active_iso)
 
-    def go_on_file(self, filename=None):
+    def go_on_file(self, filename=None, read_num_reps_from_spinbox=True):
         """
         starts a measurement with scan parameters from an existing file which is selected via a pop up file dialog,
         adding up on the already accumulated data in this file.
@@ -137,11 +141,12 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
                             try:
                                 val['trigger']['type'] = getattr(TriggerTypes, trig_type_str)
                             except Exception as e:
-                                print('error: %s, could not do: getattr(TriggerTypes, %s) ' % (e, val['trigger']['type']))
+                                logging.error(
+                                    'error: %s, could not do: getattr(TriggerTypes, %s) ' % (e, val['trigger']['type']))
                 self.active_iso = Cfg._main_instance.add_iso_to_scan_pars_no_database(scan_dict)
                 self.update_track_list()
                 self.update_win_title()
-                self.go(ergo=False)
+                self.go(read_spin_box=read_num_reps_from_spinbox, ergo=False)
 
     def add_track(self):
         """

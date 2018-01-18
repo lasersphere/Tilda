@@ -49,6 +49,7 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
 
         self.pushButton_stop.clicked.connect(self.stop)
         self.pushButton_refresh_post_acc_state.clicked.connect(self.refresh_post_acc_state)
+        self.pushButton_reset_graphs.clicked.connect(self.reset_graphs)
         self.doubleSpinBox.valueChanged.connect(self.set_dac_volt)
         self.comboBox_post_acc_control.currentTextChanged.connect(self.set_post_acc_ctrl)
 
@@ -97,6 +98,10 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
     def refresh_post_acc_state(self):
         state_num, state_name = Cfg._main_instance.get_simple_counter_post_acc()
         self.label_post_acc_readback_state.setText(state_name)
+
+    def reset_graphs(self):
+        self.x_data = np.zeros((len(self.act_pmts), self.datapoints))
+        self.y_data = np.zeros((len(self.act_pmts), self.datapoints))
 
     def set_dac_volt(self):
         volt_dbl = self.doubleSpinBox.value()

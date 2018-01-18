@@ -19,9 +19,11 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 
 import Application.Config as Cfg
 import PyQtGraphPlotter as Pg
+from Interface.LiveDataPlottingUi.PreDurPostMeasUi import PrePostTabWidget
 from Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveDataPlotting
 from Interface.ScanProgressUi.ScanProgressUi import ScanProgressUi
 from Measurement.XMLImporter import XMLImporter
+import TildaTools as TiTs
 
 
 class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting):
@@ -33,6 +35,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     new_track_callback = QtCore.pyqtSignal(tuple)
     # when the pipeline wants to save, this is emitted and it send the pipeData as a dict
     save_callback = QtCore.pyqtSignal(dict)
+
+    # TODO comment
+    pre_post_meas_data_dict_callback = QtCore.pyqtSignal(dict)
 
     # dict, fit result plot data callback
     # -> this can be emitted from a node to send a dict containing fit results:
@@ -106,7 +111,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.subscribe_as_live_plot = subscribe_as_live_plot
         self.get_existing_callbacks_from_main()
         self.callbacks = (self.new_data_callback, self.new_track_callback,
-                          self.save_request, self.new_gate_or_soft_bin_width)
+                          self.save_request, self.new_gate_or_soft_bin_width,
+                          self.pre_post_meas_data_dict_callback)
         self.subscribe_to_main()
 
         ''' key press '''
@@ -201,6 +207,59 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         ''' update sum  '''
         self.sum_scaler_changed()
         logging.info('LiveDataPlottingUi opened ... ')
+
+        ''' pre / post / during related  '''
+        self.pre_post_tab_widget = None
+        self.tab_layout = None
+        self.mutex = QtCore.QMutex()
+
+        ''' detach/attach functionality all tabs '''
+        # connect double click to detach function
+        self.tabWidget.tabBarDoubleClicked.connect(self.detach_tab)
+        # prepare tabs for re-attachment
+        for index in range(0, self.tabWidget.count()):
+            widget = self.tabWidget.widget(index)
+            widget.index = index  # store the original indices of the widgets for re-attaching them at the correct index
+            widget.closeEvent = self.make_new_close(widget)  # overwrite closeEvent for re-attaching
+
+    def detach_tab(self, index):
+        """
+        removes the tab from the tabWidget and opens it as a new Window
+        :param index: index of the tab to be detached
+        """
+        widget = self.tabWidget.widget(index)
+        window_title = self.tabWidget.tabText(index)
+        if index != -1:  # only if double click was on a tab header
+            self.tabWidget.removeTab(index)
+            widget.setWindowFlags(QtCore.Qt.Window)
+            widget.setWindowTitle(window_title)
+            # widget.setParent(None)  # necessary to make the new window independent from the old one
+            widget.show()
+            logging.info('Widget %s detached' % str(window_title))
+
+    def make_new_close(self, parent):
+        """
+        provide a function to overwrite the closeEvent of the parent
+        :param parent: widget whose closeEvent is to be re-defined
+        :return: function that closes the window and calls the attach_tab function
+        """
+        tab_widget = self  # for passing self into the new function
+        def close_detached(QCloseEvent):
+            tab_widget.attach_tab(parent)
+        return close_detached
+
+    def attach_tab(self, widget):
+        """
+        re-attaches a previously detached widget to TabWidget at its original index
+        :param widget: the widget to be re-attached
+        """
+        if self.tabWidget.indexOf(widget) == -1:  # for whatever reason the widget might be inside the tabWidget already
+            widget.setWindowFlags(QtCore.Qt.Widget)
+            # widget.setParent(self.tabWidget.widget(0).parent())  # parent was removed during detaching
+
+            self.tabWidget.insertTab(widget.index, widget, widget.windowTitle())
+            widget.show()
+            logging.info('Window %s re-attached' % str(widget.windowTitle()))
 
     def show_progress(self, show=None):
         if self.scan_prog_ui is None and self.subscribe_as_live_plot:
@@ -393,6 +452,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.sum_scaler_changed(self.comboBox_sum_all_pmts.currentIndex())
 
                 self.new_track_no_data_yet = False
+
+            if not self.subscribe_as_live_plot:
+                # if not subscribed as live plot create scan dict from spec data once
+                # and emit, so that pre post meas is displayed properly
+                scan_dict = TiTs.create_scan_dict_from_spec_data(self.spec_data, self.full_file_path)
+                self.pre_post_meas_data_dict_callback.emit(scan_dict)
             self.last_gr_update_done_time = datetime.now()
             elapsed = self.last_gr_update_done_time - st
             # logging.debug('done updating plot, plotting took %.2f ms' % (elapsed.microseconds / 1000))
@@ -801,7 +866,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     ''' subscription to main '''
 
     def get_existing_callbacks_from_main(self):
-        """ check wether existing callbacks are still around in the main adn then connect to those. """
+        """ check wether existing callbacks are still around in the main and then connect to those. """
         if Cfg._main_instance is not None and self.subscribe_as_live_plot:
             logging.info('TRSLivePlotWindowUi is connecting to existing callbacks in main')
             callbacks = Cfg._main_instance.gui_live_plot_subscribe()
@@ -811,6 +876,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.new_gate_or_soft_bin_width = callbacks[3]
             self.fit_results_dict_callback = callbacks[4]
             self.progress_callback = callbacks[5]
+            self.pre_post_meas_data_dict_callback = callbacks[6]
 
     def subscribe_to_main(self):
         if self.subscribe_as_live_plot:
@@ -821,6 +887,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.new_track_callback.connect(self.setup_new_track)
         self.new_data_callback.connect(self.new_data)
         self.fit_results_dict_callback.connect(self.rcvd_fit_res_dict)
+        self.pre_post_meas_data_dict_callback.connect(self.rebuild_pre_post_meas_gui)
 
     ''' rebinning '''
 
@@ -859,9 +926,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         self.active_iso = progress_dict_from_main['activeIso']
         if not self.new_track_no_data_yet:
-            act_step = max(progress_dict_from_main['activeStep'] - 1, 0)
+            act_step_ind = max(progress_dict_from_main['actStepIndex'], 0)
             act_tr_ind = progress_dict_from_main['activeTrack'] - 1
-            self.update_step_indication_lines(act_step, act_tr_ind)
+            self.update_step_indication_lines(act_step_ind, act_tr_ind)
         if self.active_file != progress_dict_from_main['activeFile']:
             self.active_file = progress_dict_from_main['activeFile']
             self.setWindowTitle('plot:  %s' % self.active_file)
@@ -875,7 +942,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         try:
             if self.all_pmts_widg_plt_item_list is not None:
                 val = self.spec_data.x[act_tr][act_step]
-                # print('active track is: %s and active step is: %s val is: %s ' % (act_tr, act_step, val))
+                # logging.debug('active track is: %s and active step is: %s val is: %s ' % (act_tr, act_step, val))
                 if self.current_step_line is not None:
                     self.current_step_line.setValue(val)
                 if self.sum_current_step_line is not None:
@@ -897,6 +964,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.reset_sum_plots()
         self.reset_all_pmt_plots()
         self.reset_t_res_plot()
+        self.reset_pre_post_meas_gui()
 
     def show_progress_window(self):
         try:
@@ -979,9 +1047,167 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.sum_current_step_line = None
         self.add_time_resolved_plot()
 
-# if __name__ == "__main__":
-#     import sys
-#     app = QtWidgets.QApplication(sys.argv)
-#     ui = TRSLivePlotWindowUi()
-#     ui.show()
-#     app.exec()
+    def rebuild_pre_post_meas_gui(self, pre_post_meas_dict):
+        """
+        add a tab for each track on the tab 'pre/during/post scan measurements'.
+        if it exists, update the data inside
+        :param pre_post_meas_dict: the new data
+        """
+        if self.pre_post_tab_widget is None:
+            if self.tab_layout is None:
+                print('creating tab layout')
+                self.tab_layout = QtWidgets.QGridLayout(self.tab_pre_post_meas)
+            self.mutex.lock()
+
+            self.pre_post_tab_widget = PrePostTabWidget(pre_post_meas_dict, self.subscribe_as_live_plot)
+            self.tab_layout.addWidget(self.pre_post_tab_widget)
+            self.mutex.unlock()
+        else:
+            self.mutex.lock()
+            self.pre_post_tab_widget.update_data(pre_post_meas_dict)
+            self.mutex.unlock()
+
+    def reset_pre_post_meas_gui(self):
+        '''
+        call the self destruction of the widget
+        '''
+        if self.pre_post_tab_widget is not None:
+            # if the tab_widget exists, delete it.
+            logging.debug('deleting pre_pre_post_tab_widget')
+            self.mutex.lock()  # Make sure no othe fuction call tries to access the widget in between.
+            self.pre_post_tab_widget.deleteLater()
+            self.pre_post_tab_widget = None  # Make sure it's None so its in a definite state
+            self.mutex.unlock()  # Release the widget for other function calls.
+
+
+
+if __name__ == "__main__":
+    import sys
+
+    app_log = logging.getLogger()
+    # app_log.setLevel(getattr(logging, args.log_level))
+    app_log.setLevel(logging.DEBUG)
+
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    # ch.setFormatter(log_formatter)
+    app_log.addHandler(ch)
+
+    app_log.info('****************************** starting ******************************')
+    app_log.info('Log level set to DEBUG')
+
+    # test_dict = {'track0': {'preScan':
+    #                             {'dmm': {'dmm1': {'data': [1, 2, 3, 4, 5, 6, 7], 'required': 9}},
+    #                              'triton':  {'dev0': {'data': [1, 2, 3, 4, 5], 'required': 10}}},
+    #                         'duringScan':
+    #                             {'dmm': {'dmm1': {'data': [], 'required': 100},
+    #                                      'dmm2': {'data': [1,2], 'required': 2}},
+    #                              'triton': {'dev0': {'data': [1, 2, 3, 4, 5], 'required': 10},
+    #                                         'dev1': {'data': [1, 2, 3, 4, 5], 'required': 10},
+    #                                         'dev2': {'data': [1, 2, 3, 4, 5], 'required': 5}}},
+    #                         'postScan':
+    #                             {'dmm': {'dmm1': {'data': [1, 2, 3, 4, 5, 6, 7], 'required': 9}},
+    #                              'triton': {'dev0': {'data': [1, 2, 3, 4, 5], 'required': 10}}}
+    #                         },
+    #              'track1': {'preScan':
+    #                             {'dmm': {'dmm1': {'data': [1, 2, 3, 4, 5, 6, 7], 'required': 9}},
+    #                              'triton':  {'dev0': {'data': [1, 2, 3, 4, 5], 'required': 10}}},
+    #                         'postScan':
+    #                             {'dmm': {'dmm1': {'data': [1, 2, 3, 4, 5, 6, 7], 'required': 9}},
+    #                              'triton': {'dev0': {'data': [1, 2, 3, 4, 5], 'required': 10}}}
+    #                         }}
+    test_dict = {'isotopeData': {'type': 'trsdummy', 'nOfTracks': 1, 'accVolt': 3000.0, 'version': '1.20', 'isotopeStartTime': '2017-12-20 14:32:13', 'isotope': 'anew', 'laserFreq': 120.0},
+                 'pipeInternals': {'activeTrackNumber': (0, 'track0'), 'workingDirectory': 'C:\\TRITON_TILDA\\Temp', 'activeXmlFilePath': 'C:\\TRITON_TILDA\\Temp\\sums\\anew_trsdummy_run132.xml', 'curVoltInd': 0},
+                 'track0': {'activePmtList': [0, 1],
+                            'measureVoltPars': {'duringScan': {'measVoltPulseLength25ns': 400,
+                                                               'dmms': {'dummy_somewhere': {'triggerDelay_s': 0.0,
+                                                                                            'sampleCount': 0,
+                                                                                            'readings': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                                                                                            'triggerCount': 0
+                                                                                            }
+                                                                        }
+                                                               },
+                                                'postScan': {},
+                                                'preScan': {'dmms': {'dummy_somewhere': {'sampleCount': 10,
+                                                                                         'readings': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+                                                                                         }
+                                                                     }
+                                                            }
+                                                },
+                            'triton': {'duringScan': {'dev0': {'ch0': {'aquired': 6,
+                                                                      'data': [1,2,3,4,5,6],
+                                                                      'required': 10
+                                                                      }
+                                                              }
+                                                     },
+                                       'preScan': {},
+                                       'postScan': {}
+                                       }
+                            },
+                 'track1': {'measureVoltPars': {'duringScan': {'dmms': {'dummy_somewhere': {'sampleCount': 0,
+                                                                                            'readings': [1.0, 1.0, 1.0,
+                                                                                                         1.0, 1.0, 1.0,
+                                                                                                         1.0, 1.0, 1.0,
+                                                                                                         1.0]
+                                                                                            }
+                                                                        }
+                                                               },
+                                                'postScan': {},
+                                                'preScan': {'dmms': {'dummy_somewhere': {'sampleCount': 10,
+                                                                                         'readings': [1.0, 1.0, 1.0,
+                                                                                                      1.0, 1.0, 1.0,
+                                                                                                      1.0, 1.0, 1.0,
+                                                                                                      1.0]
+                                                                                         }
+                                                                     }
+                                                            }
+                                                },
+                            'triton': {'duringScan': {'dev0': {'ch0': {'aquired': 10,
+                                                                       'data': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                                                                       'required': 10
+                                                                       }
+                                                               }
+                                                      },
+                                       'preScan': {},
+                                       'postScan': {'dev0': {'ch0': {'aquired': 6,
+                                                                       'data': [1, 2, 3, 4, 5, 6],
+                                                                       'required': 10
+                                                                       }
+                                                               }
+                                                      }
+                                       }
+                            }
+                 }
+
+    app = QtWidgets.QApplication(sys.argv)
+    ui = TRSLivePlotWindowUi()
+    ui.tabWidget.setCurrentIndex(3)  # time resolved
+
+    ui.pre_post_meas_data_dict_callback.emit(test_dict)
+    test_dict2 = deepcopy(test_dict)
+    test_dict2['track0']['triton']['duringScan'] = {'dev0': {'ch1': {'aquired': 13,
+                                                                       'data': [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                                                                                0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                                                                                13,
+                                                                                0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                                                                                13],
+                                                                       'required': 0
+                                                                       }
+                                                               }
+                                                      }
+    ui.show()
+    ui.tabWidget.setCurrentIndex(3)  # time resolved
+
+    for i in range(0, 100):
+        ui.pre_post_meas_data_dict_callback.emit(test_dict2)
+    # ui.pre_post_meas_data_dict_callback.emit(test_dict2)
+    # ui.pre_post_meas_data_dict_callback.emit(test_dict2)
+    # TODO when emitting this ch0 of dev0 is overwritten! currently the Gui is not updated by deleting this then!
+
+    # time.sleep(2)
+
+
+
+    app.exec()

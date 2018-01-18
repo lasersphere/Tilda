@@ -6,7 +6,7 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 class Ui_SimpleCounterRunning(object):
     def setupUi(self, SimpleCounterRunning):
@@ -86,6 +86,9 @@ class Ui_SimpleCounterRunning(object):
         self.gridLayout.addLayout(self.gridLayout_3, 0, 2, 1, 1)
         self.verticalLayout_2.addLayout(self.gridLayout)
         self.verticalLayout.addLayout(self.verticalLayout_2)
+        self.pushButton_reset_graphs = QtWidgets.QPushButton(self.centralwidget)
+        self.pushButton_reset_graphs.setObjectName("pushButton_reset_graphs")
+        self.verticalLayout.addWidget(self.pushButton_reset_graphs)
         self.pushButton_stop = QtWidgets.QPushButton(self.centralwidget)
         self.pushButton_stop.setObjectName("pushButton_stop")
         self.verticalLayout.addWidget(self.pushButton_stop)
@@ -106,5 +109,16 @@ class Ui_SimpleCounterRunning(object):
         self.label_dac_set_volt.setText(_translate("SimpleCounterRunning", "TextLabel"))
         self.pushButton_refresh_post_acc_state.setText(_translate("SimpleCounterRunning", "Refresh"))
         self.label_post_acc_readback_state.setText(_translate("SimpleCounterRunning", "TextLabel"))
+        self.pushButton_reset_graphs.setText(_translate("SimpleCounterRunning", "Reset All Graphs"))
         self.pushButton_stop.setText(_translate("SimpleCounterRunning", "STOP"))
+
+
+if __name__ == "__main__":
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    SimpleCounterRunning = QtWidgets.QMainWindow()
+    ui = Ui_SimpleCounterRunning()
+    ui.setupUi(SimpleCounterRunning)
+    SimpleCounterRunning.show()
+    sys.exit(app.exec_())
 

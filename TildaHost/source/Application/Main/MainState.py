@@ -42,3 +42,5 @@ class MainState(Enum):
     deinit_dmm = 21
     request_dmm_config_pars = 22
 
+    triton_unsubscribe = 25
+

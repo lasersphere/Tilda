@@ -51,6 +51,8 @@ class Main(QtCore.QObject):
     new_track_callback = QtCore.pyqtSignal(tuple)
     # when the pipeline wants to save, this is emitted and it send the pipeData as a dict
     save_callback = QtCore.pyqtSignal(dict)
+    # for incoming new dmm or triton data
+    pre_post_meas_data_dict_callback = QtCore.pyqtSignal(dict)
 
     # dict, fit result plot data callback
     # -> this can be emitted from a node to send a dict containing fit results:
@@ -110,6 +112,8 @@ class Main(QtCore.QObject):
         self.sequencer_status = None
         self.fpga_status = None
 
+        self.triton_status = None
+
         self.remove_active_iso_after_scan_complete = False
 
         self.pre_scan_measurement_start_time = datetime.now()
@@ -132,6 +136,7 @@ class Main(QtCore.QObject):
         This will control the main
         """
         st = datetime.now()
+        self.get_triton_log()
         if self.m_state[0] is MainState.idle:
             self.get_fpga_and_seq_state()
             self.read_dmms(reading_interval=self.dmm_periodic_reading_interval)
@@ -169,7 +174,7 @@ class Main(QtCore.QObject):
             self._load_track()
             self.get_fpga_and_seq_state()
         elif self.m_state[0] is MainState.scanning:
-            self.read_dmms(feed_to_pipe=True)
+            self.read_dmms(feed_to_pipe=True) #TODO: Also read_triton
             self._scanning()
             self.get_fpga_and_seq_state()
         elif self.m_state[0] is MainState.saving:
@@ -183,6 +188,8 @@ class Main(QtCore.QObject):
             self._request_dmm_config_pars(*self.m_state[1])
         elif self.m_state[0] is MainState.deinit_dmm:
             self._deinit_dmm(self.m_state[1])
+        elif self.m_state[0] is MainState.triton_unsubscribe:
+            self._triton_unsubscribe_all()
         elapsed = datetime.now() - st
         if elapsed.microseconds > 50000:
             logging.warning('cyclic execution took longer than 50ms, it took: %.1f ms, state is: %s'
@@ -260,7 +267,8 @@ class Main(QtCore.QObject):
         """
         return (self.new_data_callback, self.new_track_callback,
                 self.save_request, self.new_gate_or_soft_bin_width,
-                self.fit_results_dict_callback, self.live_plot_progress_callback)
+                self.fit_results_dict_callback, self.live_plot_progress_callback,
+                self.pre_post_meas_data_dict_callback)
 
     def send_state(self):
         """
@@ -277,7 +285,8 @@ class Main(QtCore.QObject):
                 'accvolt': self.acc_voltage,
                 'sequencer_status': self.sequencer_status,
                 'fpga_status': self.fpga_status,
-                'dmm_status': self.get_dmm_status()
+                'dmm_status': self.get_dmm_status(),
+                'triton_status': str(self.triton_status)
             }
             self.main_ui_status_call_back_signal.emit(stat_dict)
 
@@ -568,7 +577,9 @@ class Main(QtCore.QObject):
             self.scan_main.prepare_dmms_for_scan(
                 self.scan_pars[iso_name][act_track_name]['measureVoltPars'].get(pre_post_scan_str, {}).get('dmms', {}))
             self.scan_main.prepare_triton_listener_for_scan(
-                self.scan_pars[iso_name][act_track_name].get('triton', {}), pre_post_scan_str)
+                self.scan_pars[iso_name][act_track_name].get('triton', {}), pre_post_scan_str, act_track_name)
+            # emit the scan_pars to the pre_post_live_data ui
+            self.pre_post_meas_data_dict_callback.emit(self.scan_pars[iso_name])
             if self.scan_main.start_pre_scan_measurement(self.scan_pars[iso_name], act_track_name, pre_post_scan_str):
                 self.pre_scan_measurement_start_time = datetime.now()
                 self.set_state(MainState.measure_pre_scan, (False, pre_post_scan_str, scan_complete))   # set first call to false!
@@ -580,6 +591,7 @@ class Main(QtCore.QObject):
                 else:
                     # otherwise load next track
                     self.set_state(MainState.load_track)
+
         else:  # this will periodically read the dmms and triton until all dmms returned a measurement
             if self.abort_scan:
                 logging.info('ABORT was pressed. Aborting pre scan measurement, aborting scan,'
@@ -597,6 +609,10 @@ class Main(QtCore.QObject):
                                     '--------- WARNING ----------'
                                     % (time_since_start.seconds, self.pre_scan_measurement_timeout_s.seconds))
                     self.send_info('pre_scan_timeout')
+                    self.scan_main.prescan_measurement(
+                        scan_dict=self.scan_pars[iso_name], dmm_reading=None,
+                        pre_during_post_scan_str=pre_post_scan_str,
+                        tr_name='track' + str(self.scan_progress['activeTrackNum']), force_save_continue=True)
                     if pre_post_scan_str == 'postScan':
                         # if this was a post scan measurement, scan is complete -> set switch box
                         self.set_state(MainState.setting_switch_box, (True, None, scan_complete))  # scan_complete=True
@@ -693,7 +709,8 @@ class Main(QtCore.QObject):
             self.scan_main.init_analysis_thread(
                 self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline,
                 live_plot_callback_tuples=(self.new_data_callback, self.new_track_callback,
-                                           self.save_request, self.new_gate_or_soft_bin_width),
+                                           self.save_request, self.new_gate_or_soft_bin_width,
+                                           self.pre_post_meas_data_dict_callback),
                 fit_res_dict_callback=self.fit_results_dict_callback,
                 scan_complete_callback=self.scan_complete_callback,
             )
@@ -968,6 +985,34 @@ class Main(QtCore.QObject):
             logging.info('could not remove %s because this is the current scan parameter.'
                          ' Will remove this after scan completed.' % iso_seqtype)
 
+    def remove_old_dmm_triton_from_scan_pars(self, iso):
+        """
+        overwrites all dmm and triton 'readings' and 'data' entries for a fresh scan.
+        """
+        is_there_something_to_remove = 0
+        for keys in self.scan_pars[iso]:
+            if 'track' in keys:
+                for predurpos in self.scan_pars[iso][keys]['measureVoltPars']:
+                    for dmm_names, dmm_dicts in \
+                            self.scan_pars[iso][keys]['measureVoltPars'][predurpos].get('dmms', {}).items():
+                        for entries in dmm_dicts:
+                            if entries == 'readings' and len(dmm_dicts[entries]) > 0:
+                                is_there_something_to_remove += 1
+                                dmm_dicts[entries] = []
+                            elif entries == 'aquiredPreScan':
+                                dmm_dicts[entries] = 0
+                for predurpos in self.scan_pars[iso][keys]['triton']:
+                    for dev_names, dev_dicts in self.scan_pars[iso][keys]['triton'].get(predurpos, {}).items():
+                        for channels, ch_dicts in dev_dicts.items():
+                            for entries in ch_dicts:
+                                if entries == 'data' and len(ch_dicts[entries]) > 0:
+                                    is_there_something_to_remove += 1
+                                    ch_dicts[entries] = []
+                                elif entries == 'acquired':
+                                    ch_dicts[entries] = 0
+        logging.info('removed %s old dmm or triton data entries' % is_there_something_to_remove)
+
+
     def save_scan_par_to_db(self, iso):
         """
         will save all information in the scan_pars dict for the given isotope to the database.
@@ -1150,6 +1195,22 @@ class Main(QtCore.QObject):
         print('disconnecting ...')
         self.scan_main.ppg_state_callback_disconnect()
         print('disconnected')
+
+    ''' triton related'''
+
+    def get_triton_log(self):
+        triton_status = self.scan_main.get_triton_receivers()
+        if triton_status != self.triton_status:
+            self.triton_status = triton_status
+            self.send_state()
+
+    def triton_unsubscribe_all(self):
+        self.set_state(MainState.triton_unsubscribe, only_if_idle=True)
+
+    def _triton_unsubscribe_all(self):
+        self.scan_main.stop_triton_listener(stop_dummy_dev=False, restart=True)
+        self.set_state(MainState.idle)
+
 
     ''' send information / warnings to gui or so '''
 

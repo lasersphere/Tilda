@@ -33,6 +33,7 @@ from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 from Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
 from Interface.VersionUi.VersionUi import VersionUi
 from Scratch.Tetris import Tetris
+from Scratch.Snake import MyApp as Snake
 
 
 class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
@@ -56,6 +57,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.file_plot_wins = {}  # dict of active plot windows only for displaying from file.
         self.pollifit_win = None
         self.tetris = None  # pssst dont tell
+        self.snake = None
         self.pulse_pattern_win = None
         self.scan_complete_win = None
         self.show_scan_compl_win = True
@@ -79,12 +81,14 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.label_laser_freq_set.mouseDoubleClickEvent = self.laser_freq_dbl_click
         self.label_acc_volt_set.mouseDoubleClickEvent = self.acc_volt_dbl_click
         self.label_8.mouseDoubleClickEvent = self.dmm_setup_dbl_click
+        self.label_triton_subscription.mouseDoubleClickEvent = self.triton_dbl_click
 
         """ connect buttons """
         self.pushButton_open_dir.clicked.connect(self.open_dir)
 
         """ add shortcuts """
         QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+T"), self, self.start_tetris)
+        QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+Shift+S"), self, self.start_snake)
         # QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+A"), self, self.open_pollifit_win)
 
         self.subscribe_to_main()
@@ -102,6 +106,14 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def dmm_setup_dbl_click(self, event):
         self.open_dmm_live_view_win()
+
+    def triton_dbl_click(self, event):
+        dial = QtWidgets.QMessageBox(self)
+        ret = QtWidgets.QMessageBox.question(dial,
+                                             'Triton Unsubscribe','Do you want to unsubscribe from all triton devs?'
+                                             )
+        if ret==QtWidgets.QMessageBox.Yes:
+            Cfg._main_instance.triton_unsubscribe_all()
 
     def subscribe_to_main(self):
         """
@@ -147,6 +159,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.label_fpga_state_set.setText(str(status_dict.get('fpga_status', '')))
         self.label_sequencer_status_set.setText(str(status_dict.get('sequencer_status', '')))
         self.label_dmm_status.setText(self.make_dmm_status_nice(status_dict))
+        self.label_triton_subscription.setText(status_dict.get('triton_status',''))
         stat_is_idle = status_dict.get('status', '') == 'idle'
         for w in self.act_scan_wins:
             w.enable_go(stat_is_idle)
@@ -181,14 +194,17 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             if self.choose_working_dir() is None:
                 return None
         if not isinstance(file, str):
-            file = QtWidgets.QFileDialog.getOpenFileName(
+            files = QtWidgets.QFileDialog.getOpenFileNames(
                 self, 'choose an xml file', Cfg._main_instance.working_directory, '*.xml')[0]
-        if file:
-            if file not in self.file_plot_wins.keys():
-                self.open_file_plot_win(file, sum_sc_tr=sum_sc_tr)
-                Cfg._main_instance.load_spectra_to_main(file, self.file_plot_wins[file], loaded_spec=loaded_spec)
-            else:
-                self.raise_win_to_front(self.file_plot_wins[file])
+        else:
+            files = [file]
+        if files:
+            for file in files:
+                if file not in self.file_plot_wins.keys():
+                    self.open_file_plot_win(file, sum_sc_tr=sum_sc_tr)
+                    Cfg._main_instance.load_spectra_to_main(file, self.file_plot_wins[file], loaded_spec=loaded_spec)
+                else:
+                    self.raise_win_to_front(self.file_plot_wins[file])
 
     def set_pre_scan_timeout(self):
         """ set the pre_scan timeout """
@@ -411,5 +427,12 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         if self.tetris is not None:
             self.tetris.close()
 
+        if self.snake is not None:
+            self.snake.close()
+
     def start_tetris(self):
         self.tetris = Tetris()
+
+    def start_snake(self):
+        self.snake = Snake()
+        self.snake.show()

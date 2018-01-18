@@ -7,9 +7,9 @@ Created on '07.08.2015'
 """
 
 import ast
+import logging
 import os
 import sqlite3
-import logging
 
 import numpy as np
 
@@ -56,7 +56,7 @@ class XMLImporter(SpecData):
 
         self.nrTracks = scandict['isotopeData']['nOfTracks']
 
-        self.laserFreq = Physics.freqFromWavenumber(2 * scandict['isotopeData']['laserFreq'])
+        self.laserFreq, self.laserFreq_d = Physics.freqFromWavenumber(2 * scandict['isotopeData']['laserFreq']), 0.0
         self.date = scandict['isotopeData']['isotopeStartTime']
         self.type = scandict['isotopeData']['isotope']
         self.seq_type = scandict['isotopeData']['type']
@@ -76,7 +76,6 @@ class XMLImporter(SpecData):
             x_as_volt = False  # assume this is a gauge measurement of the DAC, so set the x axis in DAC registers
             self.dac_calibration_measurement = True
 
-        self.offset = None
         self.offset_by_dev, self.offset_by_dev_mean, self.offset = self.get_dmm_measurement(scandict, 'offset')
         self.acc_volt_by_dev, self.acc_volt_by_dev_mean, self.accVolt = self.get_dmm_measurement(scandict, 'accVolt')
         if len(self.accVolt):
@@ -122,10 +121,12 @@ class XMLImporter(SpecData):
         ''' operations on each track: '''
         for tr_ind, tr_name in enumerate(TildaTools.get_track_names(scandict)):
 
+
             track_dict = scandict[tr_name]
             self.measureVoltPars.append(track_dict.get('measureVoltPars', {}))
             self.tritonPars.append(track_dict.get('triton', {}))
             self.outbitsPars.append(track_dict.get('outbits', {}))
+            self.col = track_dict['colDirTrue']
 
             nOfactTrack = int(tr_name[5:])
             nOfsteps = track_dict['nOfSteps']
@@ -157,11 +158,6 @@ class XMLImporter(SpecData):
             self.nrScalers.append(nOfScalers)
             self.stepSize.append(dacStepSize18Bit)
             self.col = track_dict['colDirTrue']
-            if self.offset is None:
-                self.offset = track_dict['postAccOffsetVolt']
-                if track_dict.get('postAccOffsetVoltControl') == 0:
-                    self.offset = 0
-
             if self.seq_type in ['trs', 'tipa', 'trsdummy']:
                 self.softBinWidth_ns.append(track_dict.get('softBinWidth_ns', 10))
                 self.t = TildaTools.create_t_axis_from_file_dict(scandict, with_delay=True)  # force 10 ns resolution
@@ -223,7 +219,11 @@ class XMLImporter(SpecData):
                 self.dwell.append(track_dict.get('dwellTime10ns'))
 
             elif self.seq_type in ['kepco']:
-                meas_volt_dict = scandict['track0']['measureVoltPars']['duringScan']
+                if float(self.version) <= 1.12:
+                    # kept this for older versions
+                    meas_volt_dict = scandict['measureVoltPars']['duringScan']
+                else:
+                    meas_volt_dict = scandict['track0']['measureVoltPars']['duringScan']
                 dmms_dict = meas_volt_dict['dmms']
                 dmm_names = list(sorted(dmms_dict.keys()))
                 self.nrScalers = [len(dmm_names)]
@@ -243,6 +243,7 @@ class XMLImporter(SpecData):
                     err.append(dmm_volt_array[ind] * read_acc + range_acc)
                 self.err.append(err)
 
+        self.laserFreq, self.laserFreq_d = self.get_frequency_measurement(path, self.tritonPars)
         logging.info('%s was successfully imported' % self.file)
 
     def preProc(self, db):
@@ -261,7 +262,11 @@ class XMLImporter(SpecData):
                      self.col, self.voltDivRatio, self.lineMult, self.lineOffset) = db_ret[0]
                     self.col = bool(self.col)
                     # should be a string of a list of offset values for each track:
-                    self.offset = ast.literal_eval(self.offset)
+                    if isinstance(self.offset, float):
+                        # old databases might still have just one value for the offset in the db
+                        self.offset = [self.offset] * self.nrTracks
+                    elif isinstance(self.offset, str):
+                        self.offset = ast.literal_eval(self.offset)
                 else:
                     raise Exception('XMLImporter: No DB-entry found!')
                 try:
@@ -299,9 +304,18 @@ class XMLImporter(SpecData):
                     self.offset = 0
                 else:  # get the offset from the database or leave it as it is from import always prefer db
                     if len(db_ret) == 1:
-                        self.offset = db_ret[0]
+                        offset_db = db_ret[0]
+                        self.offset = offset_db
                 for tr_ind, cts_tr in enumerate(self.cts):
-                    self.cts[tr_ind] = self.cts[tr_ind] - self.offset
+                    if len(self.active_pmt_list[tr_ind]):
+                        for dmm_ind, dmm_name in enumerate(self.active_pmt_list[tr_ind]):
+                            offset_dmm_tr = self.offset_by_dev_mean[tr_ind][dmm_name]
+                            self.cts[tr_ind][dmm_ind] = self.cts[tr_ind][dmm_ind] - offset_dmm_tr
+                            logging.debug('preprocessing kepco x-axis: dmm_name: %s, track: %s, offset_dmm_tr; %s'
+                                          % (dmm_name, tr_ind, offset_dmm_tr))
+                    else:
+                        self.cts[tr_ind] = self.cts[tr_ind] - self.offset
+
             con.close()
         except Exception as e:
             logging.error(
@@ -314,10 +328,10 @@ class XMLImporter(SpecData):
             col = 1 if self.col else 0
             with con:
                 con.execute('''UPDATE Files SET date = ?, type = ?, offset = ?,
-                                laserFreq = ?, colDirTrue = ?, accVolt = ?
+                                laserFreq = ?, colDirTrue = ?, accVolt = ?, laserFreq_d = ?
                                  WHERE file = ?''',
                             (self.date, self.type, str(self.offset),
-                             self.laserFreq, col, self.accVolt,
+                             self.laserFreq, col, self.accVolt, self.laserFreq_d,
                              self.file))
             con.close()
         except Exception as e:
@@ -344,10 +358,13 @@ class XMLImporter(SpecData):
     def norming(self):
         # TODO this is copied from MCP, still the dwell is not implemented in this!
         for trackindex, track in enumerate(self.cts):
+            track = track.astype(np.float32)
+            self.cts[trackindex] = track
             for ctIndex, ct in enumerate(track):
                 min_nr_of_scan = max(np.min(self.nrScans), 1)  # maybe there is a track with 0 complete scans
                 nr_of_scan_this_track = self.nrScans[trackindex]
                 if nr_of_scan_this_track:
+                    # dtype int32 causes problems here!
                     self.cts[trackindex][ctIndex] = ct * min_nr_of_scan / nr_of_scan_this_track
                     self.err[trackindex][ctIndex] = self.err[trackindex][
                                                         ctIndex] * min_nr_of_scan / nr_of_scan_this_track
@@ -363,6 +380,7 @@ class XMLImporter(SpecData):
         #  here only a mean is stored for each dev
         offset_vals_list = []  # track wise all offset values
         offset_mean = []  # track wise mean values of offset for all devices with offset assignment
+        set_value_list = []
         if float(self.version) <= 1.18:
             # only prescan available and only before first track
             # in order to have a value for each track, copy this existing one:
@@ -377,36 +395,161 @@ class XMLImporter(SpecData):
                         (track_d.get('measureVoltPars', {}).get('preScan', {}).get('dmms', {}),
                          track_d.get('measureVoltPars', {}).get('postScan', {}).get('dmms', {}))
                     )
-        # for backwards compability:
-        read_key = 'preScanRead' if float(self.version) <= 1.17 else 'readings'
-        for tr_ind, each in enumerate(dmms_dict_list):
-            offset_by_dev.append({})
-            offset_by_dev_mean.append({})
-            offset_vals_list.append([])
-            for post_pre_ind, post_pre_dict in enumerate(each):
+                    # if no measurements were taken an empty dict is appended.
+                    if assignment == 'offset':
+                        set_value_list += track_d.get('postAccOffsetVolt', 0.0),
+                    elif assignment == 'accVolt':
+                        set_value_list += scandict.get('isotopeData', {}).get('accVolt', 0.0),
 
-                for dmm_name, dmm_dict in post_pre_dict.items():
-                    if post_pre_ind == 0:
-                        offset_by_dev[tr_ind][dmm_name] = [[], []]
-                    for key, val in dmm_dict.items():
-                        if key == read_key:
-                            if isinstance(val, str):
-                                val = ast.literal_eval(val)
-                            if dmm_dict.get('assignment') == assignment:
-                                if isinstance(val, list):
-                                    offset_vals_list[tr_ind] += val  # append to list
-                                    offset_by_dev[tr_ind][dmm_name][post_pre_ind] += val
-                                else:
-                                    offset_vals_list[tr_ind].append(val)
-                                    offset_by_dev[tr_ind][dmm_name][post_pre_ind].append(val)
-            for dmm_name, offset_list_dmm in offset_by_dev[tr_ind].items():  # get mean value for this dmm in this track
-                offset_by_dev_flat = [item for sublist in offset_list_dmm for item in sublist]
-                if len(offset_by_dev_flat):
-                    offset_by_dev_mean[tr_ind][dmm_name] = np.mean(offset_by_dev_flat)
-            if len(offset_vals_list[tr_ind]):
-                # mean of all dmms for this track
-                offset_mean += np.mean(offset_vals_list[tr_ind]),
+        # check if any measurement was taken at all
+        measurement_taken = any([any(each[0]) or any(each[1]) for each in dmms_dict_list])
+
+        if measurement_taken:
+            # at least in one track the offset/accvolt voltage was measured
+
+            # for backwards compability:
+            read_key = 'preScanRead' if float(self.version) <= 1.17 else 'readings'
+
+            for tr_ind, each in enumerate(dmms_dict_list):
+                offset_by_dev.append({})
+                offset_by_dev_mean.append({})
+                offset_vals_list.append([])
+
+                if each[0] == {} and each[1] == {}:
+                    # no measurement was taken for this track, copy from the track before.
+                    # this will fail when voltage is not measured in track0 but e.g. track1
+                    # dont do this ;)
+                    offset_by_dev[tr_ind] = offset_by_dev[tr_ind - 1]
+                    offset_vals_list[tr_ind] = offset_vals_list[tr_ind - 1]
+                else:
+                    for post_pre_ind, post_pre_dict in enumerate(each):
+                        # post_pre_dict will be {} if no measurement was taken in this track.
+                        for dmm_name, dmm_dict in post_pre_dict.items():
+                            if post_pre_ind == 0:
+                                offset_by_dev[tr_ind][dmm_name] = [[], []]
+                            for key, val in dmm_dict.items():
+                                if key == read_key:
+                                    if isinstance(val, str):
+                                        val = ast.literal_eval(val)
+                                    if dmm_dict.get('assignment') == assignment:
+                                        if isinstance(val, list):
+                                            offset_vals_list[tr_ind] += val  # append to list
+                                            offset_by_dev[tr_ind][dmm_name][post_pre_ind] += val
+                                        else:
+                                            offset_vals_list[tr_ind].append(val)
+                                            offset_by_dev[tr_ind][dmm_name][post_pre_ind].append(val)
+                for dmm_name, offset_list_dmm in offset_by_dev[tr_ind].items():
+                    # get mean value for this dmm in this track
+                    offset_by_dev_flat = [item for sublist in offset_list_dmm for item in sublist]
+                    if len(offset_by_dev_flat):
+                        offset_by_dev_mean[tr_ind][dmm_name] = np.mean(offset_by_dev_flat)
+                if len(offset_vals_list[tr_ind]):
+                    # mean of all dmms for this track
+                    offset_mean += np.mean(offset_vals_list[tr_ind]),
+        else:
+            # no measurement was taken at all -> take set values
+            offset_mean = set_value_list
+            offset_by_dev_mean = [{'setValue': each} for each in set_value_list]
+            offset_by_dev = [{'setValue': [[each], [each]]} for each in set_value_list]
         return offset_by_dev, offset_by_dev_mean, offset_mean
+
+    def get_frequency_measurement(self, path, scan_triton_dict):
+        """
+        It is assumed the frequency has been measured before and/or after first measurement track since
+        frequency measurements per track like [f1, f2, ..] is not (yet) supported.
+        The frequency measurement is measured by Triton device FrequencyComb1 and/or FrequencyComb2. The first found
+        frequency is used for the DB, every found frequency is written into the console.
+        The frequency is calculated by averaging preScan and (if taken) postScan values.
+        :param path: str, path of the imported file
+        :param scan_triton_dict:  dict, scan parameters
+        :return: laser_freq, laser_freq_d
+        """
+        meas_taken = False
+        freq_list = []  # holds frequency track_wise
+        freq_err_list = []  # holds error of frequency track_wise
+        freqs_by_dev = []  # holds mean value of each comb for each track,
+        # each track will be dict: {'combkey': (mean_val, mean_err), ... }
+        # print(scan_triton_dict)
+        for track in scan_triton_dict:
+            freq_comb_data_tr = {}
+            # make sure there is indeed a pre post scan measurement and not None
+            # if track is not None:
+            pre_scan_dict = track.get('preScan', {})
+            pre_scan_dict = {} if pre_scan_dict is None else pre_scan_dict
+            post_scan_dict = track.get('postScan', {})
+            post_scan_dict = {} if post_scan_dict is None else post_scan_dict
+
+            for key, val_dict in pre_scan_dict.items():
+                if 'Comb' in key:
+                    freq_comb_data_tr[key] = {}
+                    freq_comb_data_tr[key]['aCol'] = val_dict.get('comb_freq_acol', {}).get('data', [])
+                    freq_comb_data_tr[key]['col'] = val_dict.get('comb_freq_col', {}).get('data', [])
+
+            # now check post scan and append values to existing list or create new
+
+            for key, val_dict in post_scan_dict.items():
+                if 'Comb' in key:
+                    if not freq_comb_data_tr.get(key, {}):
+                        # no measurement was done pre scan for this comb, create empty dict.
+                        freq_comb_data_tr[key] = {}
+                    for col_a_col_key in ['aCol', 'col']:
+                        if not len(freq_comb_data_tr[key].get(col_a_col_key, [])):
+                            # the key was not existing yet, create or overwrite empty list
+                            freq_comb_data_tr[key][col_a_col_key] = []
+                    freq_comb_data_tr[key]['aCol'] += val_dict.get('comb_freq_acol', {}).get('data', [])
+                    freq_comb_data_tr[key]['col'] += val_dict.get('comb_freq_col', {}).get('data', [])
+
+            # now take the mean value for this track:
+            combs_freq_mean_tr = {}  # list for the mean value of all combs that have a reading for this track
+            for comb_key, comb_a_col_col_dict in freq_comb_data_tr.items():
+                # im interested in col/aCol frequency reading:
+                col_a_col_key = 'col' if self.col else 'aCol'
+                # get the mean value from one comb in this track
+                comb_mean = np.mean(comb_a_col_col_dict.get(col_a_col_key, [0]))
+                comb_err = np.std(comb_a_col_col_dict.get(col_a_col_key, [0]))
+                combs_freq_mean_tr[comb_key] = (comb_mean, comb_err)
+            freqs_by_dev.append(combs_freq_mean_tr)
+
+            # get the mean of all comb readings for this track:
+            if any(combs_freq_mean_tr):
+                means = []
+                err_means = []
+                for comb_key, read_tupl in combs_freq_mean_tr.items():
+                    means.append(read_tupl[0])
+                    err_means.append(read_tupl[1])
+                freq_list.append(np.mean(means))
+                freq_err_list.append(np.mean(err_means))
+                meas_taken = True
+            else:
+                freq_list.append(-1)  # append negative value to indicate there was no measurement in this track
+                freq_err_list.append(-1)
+
+        # create ONE mean value for whole file:
+        if meas_taken:
+            valid_freq_meas = []
+            valid_freq_meas_errs = []
+            for i, each in enumerate(freq_list):
+                if each > 0.0:
+                    valid_freq_meas.append(each)
+                    valid_freq_meas_errs.append(freq_err_list[i])
+            laser_freq = np.mean(valid_freq_meas) / 1000000  # in MHz
+            laser_freq_d = np.mean(valid_freq_meas_errs) / 1000000  # in MHz
+            (dir, file) = os.path.split(path)
+            (filename, end) = os.path.splitext(file)
+            logging.debug('Measured Frequencies in ' + str(file) + ' :')
+            for tr in freqs_by_dev:
+                for comb_key, read_tuple in sorted(tr.items()):
+                    logging.debug('%s : %.3f +/- %.3f MHz' % (comb_key, read_tupl[0] / 1000000, read_tupl[1] / 1000000))
+        else:
+            logging.info('no comb measurement detected, using laserfreq given from GUI')
+            laser_freq = self.laserFreq
+            laser_freq_d = self.laserFreq_d
+
+        return laser_freq, laser_freq_d
+
+
+
+
 
 
 # import Service.Scan.draftScanParameters as dft
@@ -419,36 +562,6 @@ class XMLImporter(SpecData):
 
 # from file:
 # for file_num in range(169, 172):
-# if __name__ == '__main__':
-#     import os
-#     import psutil
-#
-#     process = psutil.Process(os.getpid())
-#     mem_offset = process.memory_info().rss / float(2 ** 20)
-#     print('memory used: %.1f MB' % mem_offset)
-#     test_file = 'E:/TildaDebugging2/sums/HighBinsinglTr_trsdummy_run058.xml'
-#     file_size = os.stat(test_file).st_size * 10 ** -6
-#     print('file size: %.1f MB' % file_size)
-#     file_xml = []
-#     for i in range(0, 10):
-#         try:
-#             file_xml.append(XMLImporter(test_file, True))
-#             # each ele has 14 bytes (u2, u4, u4, u4)
-#             print('size of zf data: %.1f MB' % (file_xml[0].time_res_zf[0].nbytes * 10 ** -6))
-#             print('size of time res data: %.1f MB' % (file_xml[0].time_res[0].nbytes * 10 ** -6))
-#             print('size of t data: %.1f MB' % (file_xml[0].t[0].nbytes * 10 ** -6))
-#             print('size of t_proj data: %.1f MB' % (file_xml[0].t_proj[0].nbytes * 10 ** -6))
-#             print('files: %d memory used: %.1f MB rss %.1f MB vms' % (i+1,
-#                                                                       process.memory_info().rss / float(2 ** 20),
-#                                                                       process.memory_info().vms / float(2 ** 20)))
-#
-#             # del file_xml[0]
-#             # print('files: %d memory used: %.1f MB' % (i + 1, process.memory_info().rss / float(2 ** 20)))
-#         except MemoryError:
-#             break
-#     # print('offset: ', file_xml.offset, 'accVolt: ', file_xml.accVolt)
-#     input('anykey to delete file from ram')
-#     del file_xml
-#     file_xml = None
-#     print('files: 0 memory used: %.1f MB' % (process.memory_info().rss / float(2 ** 20)))
-#     input('anykey to stop')
+if __name__ == '__main__':
+    meas = XMLImporter('E:\\temp2\\data\\137Ba_acol_cs_run511.xml')
+    print(meas.laserFreq)

@@ -9,6 +9,7 @@ from scipy.optimize import curve_fit
 from scipy import version
 
 import TildaTools as TiTs
+from Measurement.SpecData import SpecDataXAxisUnits
 
 
 class SPFitter(object):
@@ -56,27 +57,33 @@ class SPFitter(object):
         self.data = self.meas.getArithSpec(*self.st)  # needed if data was regated in between.
 
         self.oldpar = list(self.par)
-        
-        truncp = [p for p, f in zip(self.par, self.fix) if not f]
+
+        truncp = [p for p, f in zip(self.par, self.fix) if not f or isinstance(f, list)]
         boundl = ()
         boundu = ()
         try:
             for i in range(len(self.par)):
                 # print(self.par[i])
-                if not self.fix[i]:
-                    if self.npar[i][:3] == 'Int':
-                        if self.par[i] > 0:
+                if isinstance(self.fix[i], list):
+                    # -> bounds are explicitly given as a list
+                    boundl += self.fix[i][0],
+                    boundu += self.fix[i][1],
+                else:
+                    # check if it is fixed and matches one of the given restrictions:
+                    if not self.fix[i]:
+                        if self.npar[i][:3] == 'Int':
+                            if self.par[i] > 0:
+                                boundl += 0,
+                                boundu += +np.inf,
+                            else:
+                                boundl += -np.inf,
+                                boundu += 0,
+                        elif self.npar[i] in ['sigma', 'gamma']:
                             boundl += 0,
                             boundu += +np.inf,
                         else:
                             boundl += -np.inf,
-                            boundu += 0,
-                    elif self.npar[i] in ['sigma', 'gamma']:
-                        boundl += 0,
-                        boundu += +np.inf,
-                    else:
-                        boundl += -np.inf,
-                        boundu += +np.inf,
+                            boundu += +np.inf,
         except Exception as e:
             print('error in fit: %s' % e)
         bounds = (boundl, boundu)
@@ -96,10 +103,10 @@ class SPFitter(object):
         
         err = [np.sqrt(self.pcov[j][j]) for j in range(self.pcov.shape[0])]
         errit = iter(err)
-        self.pard = [0 if f else next(errit) for f in self.fix]
+        self.pard = [0 if f and not isinstance(f, list) else next(errit) for f in self.fix]
 
         for n, x, e in zip(self.npar, self.par, self.pard):
-            print(str(n) + '\t' +  str(x) + '\t' + '+-' + '\t' + str(e))
+            print(str(n) + '\t' + str(x) + '\t' + '+-' + '\t' + str(e))
    
         
     def calcRchi(self):
@@ -109,7 +116,10 @@ class SPFitter(object):
     
     def calcNdef(self):
         '''Calculate number of degrees of freedom'''
-        return (len(self.data[0]) - (len(self.fix) - sum(self.fix)))
+        # if bounds are given instead of boolean, write False to fixed bool list.
+        fixed_bool_list = [f if isinstance(f, bool) else False for f in self.fix]
+        fixed_sum = sum(fixed_bool_list)
+        return (len(self.data[0]) - (len(self.fix) - fixed_sum))
     
     
     def calcRes(self):
@@ -128,7 +138,7 @@ class SPFitter(object):
         '''Copy the free parameters to their places in the full parameter set'''
         ip = iter(p)
         for i, f in enumerate(self.fix):
-            if not f:
+            if not f or isinstance(f, list):
                 self.par[i] = next(ip)
                 
         return 
