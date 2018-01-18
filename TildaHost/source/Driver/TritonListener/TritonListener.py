@@ -200,7 +200,8 @@ class TritonListener(TritonObject):
         if self.logging:
             if dev in self.log.keys():
                 if ch in self.log[dev].keys():
-                    if self.log[dev][ch]['required'] > self.log[dev][ch]['acquired'] \
+                    acq_on_log_start = self.back_up_log[dev][ch]['acquired']
+                    if self.log[dev][ch]['required'] + acq_on_log_start > self.log[dev][ch]['acquired'] \
                             or self.log[dev][ch]['required'] < 1 and self.pre_dur_post_str == 'duringScan':
                         # not enough data on this channel yet or continuous acquisition (only allowed during scan)
                         self.log[dev][ch]['data'].append(val)
@@ -226,13 +227,14 @@ class TritonListener(TritonObject):
                         logging.error('Triton device %s, channel %s: continuous acquisition not allowed in %s.'
                                       % (dev, ch, self.pre_dur_post_str))
                 else:
-                    check_sum += max(0, val['required'] - val['acquired'])
+                    acq_on_log_start = self.back_up_log[dev][ch]['acquired']
+                    check_sum += max(0, val['required'] - val['acquired'] + acq_on_log_start)
         if check_sum == 0:
             logging.info('TritonListener: logging complete')
             self.logging_complete = True
-            for dev, dev_log in self.log.items():
-                for ch, val in dev_log.items():
-                    val['acquired'] = len(val['data'])
+            # for dev, dev_log in self.log.items():
+            #     for ch, val in dev_log.items():
+            #         val['acquired'] = len(val['data'])
             logging.debug('TritonListener self.log after completion: %s' % str(self.log))
             self.stop_log()
 
@@ -240,9 +242,9 @@ class TritonListener(TritonObject):
         """ start logging of the desired channels and devs.
          Be sure to setup the log before hand with self.setup_log """
         self.logging_complete = self.log == {}
-        for dev, dev_dict in self.log.items():
-            for ch, ch_dict in dev_dict.items():
-                ch_dict['acquired'] = 0
+        # for dev, dev_dict in self.log.items():
+        #     for ch, ch_dict in dev_dict.items():
+        #         ch_dict['acquired'] = 0
         logging.debug('log before start: %s' % str(self.log))
         self.logging = True
 

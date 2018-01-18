@@ -275,7 +275,7 @@ def save_triton_to_xml(file, tr_name, triton_dict, pre_during_post_scan_str='pre
     if file:
         if triton_dict:
             logging.info('triton %s log complete, saving to: %s' % (pre_during_post_scan_str, file))
-            logging.debug('saving: ' + str(triton_dict))
+            logging.debug('saving directly to xml file: ' + str(triton_dict))
             root = load_xml(file)
             tracks = xmlFindOrCreateSubElement(root, 'tracks')
             track = xmlFindOrCreateSubElement(tracks, tr_name)

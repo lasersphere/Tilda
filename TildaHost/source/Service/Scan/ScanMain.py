@@ -454,13 +454,14 @@ class ScanMain(QObject):
         pipeline etc.
         """
         read = self.read_data()  # read data one last time
+        self.abort_triton_log()
         self.ppg_stop()
         if read:
             logging.info('while stopping measurement, some data was still read.')
         if complete_stop:  # only touch dmms in the end of the whole scan
             self.read_multimeter('all', True)
             self.abort_dmm_measurement('all')
-            self.abort_triton_log()
+
 
         logging.info('stopping measurement, clear is: ' + str(clear))
         self.stop_analysis_sig.emit(clear, complete_stop)

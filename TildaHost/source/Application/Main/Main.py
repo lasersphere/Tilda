@@ -578,6 +578,8 @@ class Main(QtCore.QObject):
                 self.scan_pars[iso_name][act_track_name]['measureVoltPars'].get(pre_post_scan_str, {}).get('dmms', {}))
             self.scan_main.prepare_triton_listener_for_scan(
                 self.scan_pars[iso_name][act_track_name].get('triton', {}), pre_post_scan_str, act_track_name)
+            # emit the scan_pars to the pre_post_live_data ui
+            self.pre_post_meas_data_dict_callback.emit(self.scan_pars[iso_name])
             if self.scan_main.start_pre_scan_measurement(self.scan_pars[iso_name], act_track_name, pre_post_scan_str):
                 self.pre_scan_measurement_start_time = datetime.now()
                 self.set_state(MainState.measure_pre_scan, (False, pre_post_scan_str, scan_complete))   # set first call to false!
@@ -589,8 +591,7 @@ class Main(QtCore.QObject):
                 else:
                     # otherwise load next track
                     self.set_state(MainState.load_track)
-            # emit the scan_pars to the pre_post_live_data ui
-                    self.pre_post_meas_data_dict_callback.emit(self.scan_pars[iso_name])
+
         else:  # this will periodically read the dmms and triton until all dmms returned a measurement
             if self.abort_scan:
                 logging.info('ABORT was pressed. Aborting pre scan measurement, aborting scan,'

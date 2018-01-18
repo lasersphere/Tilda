@@ -241,6 +241,9 @@ class NAddWorkingTimeOnClear(Node):
         self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
             self.Pipeline.pipeData[track_name])
 
+    def save(self):
+        self.clear()
+
 
 """ saving """
 
@@ -2342,4 +2345,6 @@ class NFilterDMMDictsAndSave(Node):
                     self.store_data[key]['measureVoltPars']['duringScan'])
                 self.Pipeline.pipeData[key]['triton']['duringScan'] = deepcopy(
                     self.store_data[key]['triton']['duringScan'])
+                # print('triton dict on save in pipeline:')
+                # TildaTools.print_dict_pretty(self.Pipeline.pipeData[key]['triton']['duringScan'])
 
