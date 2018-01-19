@@ -398,82 +398,104 @@ files_w_err = {}
 #         Analyzer.combineShiftByTime(iso, current_run, db, show_plot=False)
 #         # Analyzer.combineShift(iso, current_run, db, show_plot=False)
 #
-# # print shifts:
-#
-# con = sqlite3.connect(db)
-# cur = con.cursor()
-# cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? AND run = ? ORDER BY iso''',
-#             ('shift', current_run))
-# data = cur.fetchall()
-# con.close()
-# iso_shift_plot_data_x = []
-# iso_shift_plot_data_y = []
-# iso_shift_plot_data_err = []
-# if data:
-#     print(data)
-#     print('iso\tshift [MHz]\t(statErr)[systErr]\t Chi^2')
-#     for iso in data:
-#         iso_shift_plot_data_x.append(int(iso[0][:2]))
-#         iso_shift_plot_data_y.append(float(iso[1]))
-#         err = np.sqrt(iso[2] ** 2 + iso[3] ** 2)
-#         iso_shift_plot_data_err.append(err)
-#         print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))
+# print shifts:
+
+con = sqlite3.connect(db)
+cur = con.cursor()
+cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? AND run = ? ORDER BY iso''',
+            ('shift', current_run))
+data = cur.fetchall()
+con.close()
+iso_shift_plot_data_x = []
+iso_shift_plot_data_y = []
+iso_shift_plot_data_err = []
+if data:
+    print(data)
+    print('iso\tshift [MHz]\t(statErr)[systErr]\t Chi^2')
+    for iso in data:
+        iso_shift_plot_data_x.append(int(iso[0][:2]))
+        iso_shift_plot_data_y.append(float(iso[1]))
+        err = np.sqrt(iso[2] ** 2 + iso[3] ** 2)
+        iso_shift_plot_data_err.append(err)
+        # print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))
+        a = '%s\t%.2f\t%.2f' % (iso[0], iso[1], iso[2])
+        a = a.replace('.', ',')
+        print(a)
+
 
 ''' compare shifts '''
 
-# # create literature shift dict from 2016 run:
-# con = sqlite3.connect(db)
-# cur = con.cursor()
-# cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? AND run = ? ORDER BY iso''',
-#             ('shift', '2016Experiment'))
-# shifts2016 = cur.fetchall()
-# con.close()
-#
-# shifts2016_dict = {}
-# for iso, val, statErr, systErr, rChi in shifts2016:
-#     shifts2016_dict[iso] = (val, statErr)
-#
-# print('shifts from 2016:')
-# TiTs.print_dict_pretty(shifts2016_dict)
+# create literature shift dict from 2016 run:
+con = sqlite3.connect(db)
+cur = con.cursor()
+cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? AND run = ? ORDER BY iso''',
+            ('shift', '2016Experiment'))
+shifts2016 = cur.fetchall()
+con.close()
+
+shifts2016_dict = {}
+for iso, val, statErr, systErr, rChi in shifts2016:
+    shifts2016_dict[iso] = (val, statErr)
+
+print('shifts from 2016:')
+TiTs.print_dict_pretty(shifts2016_dict)
 #
 # MPLPlotter.plot_par_from_combined(db, [normal_run, run_hot_cec],
 #                                   isotopes, 'shift', show_pl=True,
 #                                   plot_runs_seperate=True, literature_dict=shifts2016_dict,
-#                                   literature_name='2016 Data (as reference)')
+#                                   literature_name='2016 Data (as reference) (Simon)',
+#                                   comments=[' (Simon)', ' (Simon)', '', ''],
+#                                   markers=['s', 's', 'D', 'D'],
+#                                   colors=[(1, 0, 0), (1, 0.1, 0.7), (0.4, 0.4, 1), (1, 0.3, 0.3)],
+#                                   start_offset=-0.1,
+#                                   legend_loc=3
+#                                   )
+
+MPLPlotter.plot_par_from_combined(db, [normal_run, '2016ExpLiang', '2017ExpLiang'],
+                                  isotopes, 'shift', show_pl=True,
+                                  plot_runs_seperate=True, literature_dict=shifts2016_dict,
+                                  literature_name='2016 Data (as reference) (Simon)',
+                                  comments=[' 2017Exp (Simon)', '', ''],
+                                  markers=['s', 'D', 'D'],
+                                  colors=[(1, 0, 0), (0.6, 0.4, 1), (1, 0.5, 0.3)],
+                                  legend_loc=3
+                                  )
 
 
 ''' King plot and charge radii '''
 
-# king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, font_size=18)
-# # king.kingFit(alpha=0, findBestAlpha=False, run=current_run, find_slope_with_statistical_error=False)
-# # king.calcChargeRadii(isotopes=isotopes, run=current_run, plot_evens_seperate=True)
-#
-# king.kingFit(alpha=365, findBestAlpha=True, run=current_run)
-# radii_alpha = king.calcChargeRadii(isotopes=isotopes, run=current_run, plot_evens_seperate=True)
-# print('radii with alpha', radii_alpha)
+king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, font_size=18)
+# king.kingFit(alpha=0, findBestAlpha=False, run=current_run, find_slope_with_statistical_error=False)
+# king.calcChargeRadii(isotopes=isotopes, run=current_run, plot_evens_seperate=True)
+
+king.kingFit(alpha=365, findBestAlpha=True, run=current_run)
+radii_alpha = king.calcChargeRadii(isotopes=isotopes, run=current_run, plot_evens_seperate=True)
+print('radii with alpha', radii_alpha)
 
 ''' compare radii '''
 
-# # create literature radii dict from 2016 run:
-# con = sqlite3.connect(db)
-# cur = con.cursor()
-# cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? AND run = ? ORDER BY iso''',
-#             ('delta_r_square', exp_2016_run))
-# radii2016 = cur.fetchall()
-# con.close()
-#
-# radii2016_dict = {}
-# for iso, val, statErr, systErr, rChi in radii2016:
-#     radii2016_dict[iso] = (val, statErr, systErr)
-#
-# print('shifts from 2016:')
-# TiTs.print_dict_pretty(radii2016_dict)
-#
-# MPLPlotter.plot_par_from_combined(db, [normal_run],
-#                                   isotopes, 'delta_r_square', show_pl=True,
-#                                   plot_runs_seperate=True, literature_dict=radii2016_dict,
-#                                   literature_name='2016 Data (as reference)',
-#                                   use_syst_err_only=True)
+# create literature radii dict from 2016 run:
+con = sqlite3.connect(db)
+cur = con.cursor()
+cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? AND run = ? ORDER BY iso''',
+            ('delta_r_square', exp_2016_run))
+radii2016 = cur.fetchall()
+con.close()
+
+radii2016_dict = {}
+for iso, val, statErr, systErr, rChi in radii2016:
+    radii2016_dict[iso] = (val, statErr, systErr)
+
+print('shifts from 2016:')
+TiTs.print_dict_pretty(radii2016_dict)
+
+MPLPlotter.plot_par_from_combined(db, [normal_run],
+                                  isotopes, 'delta_r_square', show_pl=True,
+                                  plot_runs_seperate=True, literature_dict=radii2016_dict,
+                                  literature_name='2016 Data (as reference)',
+                                  use_syst_err_only=True,
+                                  comments=[' - 2017 Data'],
+                                  start_offset=-0.05)
 
 
 ''' A and B factors and moments '''
@@ -585,6 +607,8 @@ bu2016 = Tools.extract_from_combined(runs2016, db2016, odd_isotopes2016, par='Bu
 hf_factors2016_list = [al2016, au2016, bl2016, bu2016]
 hf_factors2016 = {par: hf_factors2016_list[i] for i, par in enumerate(pars)}
 
+# odd_isotopes = ['61_Ni', '65_Ni']
+
 for par in pars:
     try:
         ref_dict = hf_factors2016[par][runs2016[0]]
@@ -592,7 +616,8 @@ for par in pars:
         MPLPlotter.plot_par_from_combined(db, [normal_run],
                                           odd_isotopes, par, show_pl=True,
                                           plot_runs_seperate=True, literature_dict=ref_dict,
-                                          literature_name='2016 Data (as reference)')
+                                          literature_name='2016 Data (as reference)',
+                                          start_offset=-0.05)
         MPLPlotter.clear()
     except Exception as e:
         print('error: %s' % e)

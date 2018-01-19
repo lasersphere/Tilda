@@ -1169,11 +1169,12 @@ king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, f
 # run = 'narrow_gate_asym'
 # isotopes = sorted(delta_lit_radii.keys())
 # print(isotopes)
+# king.kingFit(alpha=0, findBestAlpha=False, run=run, find_slope_with_statistical_error=True)
 king.kingFit(alpha=0, findBestAlpha=False, run=run, find_slope_with_statistical_error=False)
 # king.calcChargeRadii(isotopes=isotopes, run=run, plot_evens_seperate=True)
 
 # king.kingFit(alpha=378, findBestAlpha=True, run=run, find_slope_with_statistical_error=True)
-king.kingFit(alpha=362, findBestAlpha=True, run=run)
+king.kingFit(alpha=364, findBestAlpha=True, run=run)
 radii_alpha = king.calcChargeRadii(isotopes=isotopes, run=run, plot_evens_seperate=True)
 print('radii with alpha', radii_alpha)
 # king.calcChargeRadii(isotopes=isotopes, run=run)
