@@ -9,6 +9,8 @@ import ast
 from TildaTools import select_from_db
 import Physics
 import MPLPlotter as plot
+import numpy
+import Analyzer
 
 
 def absolute_frequency(db, fit1, run1, fit2, run2):
@@ -104,7 +106,7 @@ def absolute_frequency(db, fit1, run1, fit2, run2):
     absFreq_d = (error1 ** 2 + error2 ** 2 + error3 ** 2) ** 0.5
 
     print(str(absFreq) + ' +- ' + str(absFreq_d))
-    return [absFreq, absFreq_d]
+    return [absFreq, absFreq_d, laserFreq1, laserFreq1_d, laserFreq2, laserFreq2_d]
 
 
 def files_to_csv(db, measList, pathOut):
@@ -115,15 +117,25 @@ def files_to_csv(db, measList, pathOut):
     i=1
     print('Absolute transition frequency results: ')
     file = open(pathOut, 'w')
+    file.write('MeasNr, AbsFreq, AbsFreq_d, LaserFreq1, LaserFreq1_d, LaserFreq2, LaserFreq2_d\n')
     for pair in measList:
         print('Pair0: ' + str(pair[0]) + 'Pair1: ' + str(pair[1]) + ' Pair2: ' + str(pair[2]) + ' Pair3: ' + str(pair[3]))
         result = absolute_frequency(db, pair[0], pair[1], pair[2], pair[3])
-        file.write(str(i) + ', ' + str(result[0]) + ', ' + str(result[1])+'\n')
+        file.write(str(i) + ', ' + str(result[0]) + ', ' + str(result[1]) + ', ' + str(result[2]) + ', '
+                   + str(result[3]) + ', ' + str(result[4]) + ', ' + str(result[5]) + '\n')
         mL.append(i)
         fL.append(result[0])
         fL_d.append(result[1])
         i=i+1
+
+    # Calculate weighted avg + error and std of the avg
+    wAvg, wError, chi = Analyzer.weightedAverage(fL, fL_d)
+    avgError = numpy.std(fL) / (len(fL))**0.5
+    out = 'weighted avg: ' + str(wAvg) + ', weighted avg error: ' + str(wError) + ', Error of Mean: ' + str(avgError)
+    file.write('\n')
+    file.write(out)
     file.close()
+    print(out)
     print('Done')
     plot.colAcolPlot(mL, fL, fL_d)
     plot.show()
