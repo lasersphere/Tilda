@@ -99,9 +99,11 @@ class InteractiveFit(object):
                     spec = FullSpec(iso)
                     self.fitter = SPFitter(spec, meas, st)
                     plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize)
-        self.num_of_common_vals = self.fitter.spec.shape.nPar + 2  # number of common parameters useful if isotope
-        #  is being used -> comes from the number of parameters the shape needs
-        #  e.g. (Voigt:2) + offset + offsetSlope = 4
+        self.num_of_common_vals = 0
+        if not isinstance(self.fitter.spec, Straight):
+            self.num_of_common_vals = self.fitter.spec.shape.nPar + 2  # number of common parameters useful if isotope
+            #  is being used -> comes from the number of parameters the shape needs
+            #  e.g. (Voigt:2) + offset + offsetSlope = 4
         plot.show(block)
         self.printPars()
         

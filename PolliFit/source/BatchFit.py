@@ -115,7 +115,9 @@ def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=No
     #Create and save graph
     fig = os.path.splitext(path)[0] + run + '.png'
     pars = fit.par
-    num_of_common_vals = fit.spec.shape.nPar + 2  # number of common parameters useful if isotope
+    num_of_common_vals = 0
+    if not isinstance(spec, Straight):
+        num_of_common_vals = fit.spec.shape.nPar + 2  # number of common parameters useful if isotope
     #  is being used -> comes from the number of parameters the shape needs e.g. (Voigt:2) + offset + offsetSlope = 4
     if fitter_m is not None:
         fitter_iso.par = pars[0:len(fitter_iso.par)]
