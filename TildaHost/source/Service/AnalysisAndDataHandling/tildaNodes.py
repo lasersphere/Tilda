@@ -2344,7 +2344,7 @@ class NFilterDMMDictsAndSave(Node):
                 self.Pipeline.pipeData[key]['measureVoltPars']['duringScan'] = deepcopy(
                     self.store_data[key]['measureVoltPars']['duringScan'])
                 self.Pipeline.pipeData[key]['triton']['duringScan'] = deepcopy(
-                    self.store_data[key]['triton']['duringScan'])
+                    self.store_data[key]['triton'].get('duringScan', {}))
                 # print('triton dict on save in pipeline:')
                 # TildaTools.print_dict_pretty(self.Pipeline.pipeData[key]['triton']['duringScan'])
 
