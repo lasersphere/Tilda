@@ -87,7 +87,9 @@ class ScanMain(QObject):
         function to prepare for the scan of one isotope.
         This sets up the pipeline and loads the bitfile on the fpga of the given type.
         """
-        del self.analysis_thread
+        if self.analysis_thread:
+            # if analysis_thread already exists, delete it
+            del self.analysis_thread
         gc.collect()
         # self.analysis_thread = None
 
