@@ -31,6 +31,8 @@ class MCPImporter(SpecData):
         self.file = os.path.basename(path)
         self.type = ''
         self.nrScalers = []
+        self.nrBunches = []  # list for each track an integer with the number for
+        #  bunches per step for this track as it is unknown in MCP this is always 1
         self.nrTracks = 0
         self.nrSteps = 0
         self.offset = 0
@@ -40,6 +42,7 @@ class MCPImporter(SpecData):
         self.err = np.array([[]])
         self.x = []
         self.post_acc_offset_volt_control = []  # which fluke?
+
 
         with open(path) as f:
             file_as_str = str(f.read().replace('\n', '').replace('\"', ''))
@@ -120,6 +123,7 @@ class MCPImporter(SpecData):
                     self.cts.append(data[0])
                     self.activePMTlist.append(data[1])
                     self.nrTracks += 1
+                    self.nrBunches += 1,
 
                 # remove scalers, which are not used in all tracks:
                 pmts_flat = [item for sublist in self.activePMTlist for item in sublist]

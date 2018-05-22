@@ -39,7 +39,7 @@ from Scratch.Snake import MyApp as Snake
 class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     main_ui_status_call_back_signal = QtCore.pyqtSignal(dict)
 
-    def __init__(self):
+    def __init__(self, application=None):
         QtCore.QLocale().setDefault(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         super(MainUi, self).__init__()
         work_dir_before_setup_ui = os.getcwd()
@@ -61,6 +61,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.pulse_pattern_win = None
         self.scan_complete_win = None
         self.show_scan_compl_win = True
+
+        self.application = application
 
         self.actionWorking_directory.triggered.connect(self.choose_working_dir)
         self.actionVersion.triggered.connect(self.open_version_win)
@@ -273,7 +275,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def open_live_plot_win(self):
         if self.live_plot_win is None:
-            self.live_plot_win = TRSLivePlotWindowUi()
+            self.live_plot_win = TRSLivePlotWindowUi(application=self.application)
             self.live_plot_win.destroyed.connect(self.close_live_plot_win)
         else:
             self.raise_win_to_front(self.live_plot_win)
@@ -282,7 +284,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def open_file_plot_win(self, file, sum_sc_tr=None):
         self.file_plot_wins[file] = TRSLivePlotWindowUi(full_file_path=file,
                                                         subscribe_as_live_plot=False,
-                                                        sum_sc_tr=sum_sc_tr)
+                                                        sum_sc_tr=sum_sc_tr,
+                                                        application=self.application)
         self.file_plot_wins[file].destroyed.connect(functools.partial(self.close_file_plot_win, file))
 
     def open_pollifit_win(self):

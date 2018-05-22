@@ -63,6 +63,8 @@ class XMLImporter(SpecData):
         self.version = scandict['isotopeData']['version']
         self.dac_calibration_measurement = False
 
+        self.trigger = []  # list of triggers for each track
+
         self.offset_by_dev = [{}]  # list (track_indexed) of dicts for a list of measured offset voltages
         #  key is device name value is list, which is split into pre scan and post scan values
 
@@ -113,6 +115,7 @@ class XMLImporter(SpecData):
         self.wait_after_reset_1us = []
         self.working_time = []
         self.nrScans = []
+        self.nrBunches = []  # list for each track an integer with the number fo bunches per step for this track
 
         cts_shape = []
         self.measureVoltPars = []
@@ -132,6 +135,7 @@ class XMLImporter(SpecData):
             nOfsteps = track_dict['nOfSteps']
             nOfBins = track_dict.get('nOfBins')
             nOfScalers = len(track_dict['activePmtList'])
+            self.nrBunches += track_dict.get('nOfBunches', 1),
             self.active_pmt_list.append(track_dict['activePmtList'])
 
             self.invert_scan.append(track_dict['invertScan'])
@@ -154,6 +158,8 @@ class XMLImporter(SpecData):
             self.nrScans.append(track_dict['nOfCompletedSteps'] // nOfsteps)
 
             dacStepSize18Bit = track_dict['dacStepSize18Bit']
+
+            self.trigger.append(track_dict.get('trigger', None))
 
             self.nrScalers.append(nOfScalers)
             self.stepSize.append(dacStepSize18Bit)

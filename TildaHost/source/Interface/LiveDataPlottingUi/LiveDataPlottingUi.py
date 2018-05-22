@@ -11,6 +11,7 @@ Here it is only displayed. Gating etc. is done by the pipelines.
 import ast
 import functools
 import logging
+import time
 from copy import deepcopy
 from datetime import datetime
 
@@ -52,13 +53,16 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     # bool: plot bool to force a plotting even if nothing has changed.
     new_gate_or_soft_bin_width = QtCore.pyqtSignal(list, int, list, bool)
 
+    # float: self.needed_plot_update_time_ms, time which the last plot took in ms
+    needed_plotting_time_ms_callback = QtCore.pyqtSignal(float)
+
     # save request
     save_request = QtCore.pyqtSignal()
 
     # progress dict coming from the main
     progress_callback = QtCore.pyqtSignal(dict)
 
-    def __init__(self, full_file_path='', parent=None, subscribe_as_live_plot=True, sum_sc_tr=None):
+    def __init__(self, full_file_path='', parent=None, subscribe_as_live_plot=True, sum_sc_tr=None, application=None):
         """
         initilaises a liveplot window either for liveplotting of incoming data
         or to display previously saved xml data
@@ -91,7 +95,14 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.dockWidget.setWindowTitle('progress: %s' % self.active_file)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)  # necessary for not keeping it in memory
 
+        # application can be given from top in order to force processing events
+        self.application = application
+
         self.full_file_path = full_file_path
+        # used to find out if plotting is currently in progress, e.g. before exporting a screenshot
+        self.updating_plot = False
+
+        self.needed_plot_update_time_ms = 0.0
 
         self.sum_plt_data = None
         self.trs_names_list = ['trs', 'trsdummy', 'tipa']
@@ -112,7 +123,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.get_existing_callbacks_from_main()
         self.callbacks = (self.new_data_callback, self.new_track_callback,
                           self.save_request, self.new_gate_or_soft_bin_width,
-                          self.pre_post_meas_data_dict_callback)
+                          self.pre_post_meas_data_dict_callback,
+                          self.needed_plotting_time_ms_callback)
         self.subscribe_to_main()
 
         ''' key press '''
@@ -244,8 +256,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         :return: function that closes the window and calls the attach_tab function
         """
         tab_widget = self  # for passing self into the new function
+
         def close_detached(QCloseEvent):
             tab_widget.attach_tab(parent)
+
         return close_detached
 
     def attach_tab(self, widget):
@@ -459,8 +473,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 scan_dict = TiTs.create_scan_dict_from_spec_data(self.spec_data, self.full_file_path)
                 self.pre_post_meas_data_dict_callback.emit(scan_dict)
             self.last_gr_update_done_time = datetime.now()
-            elapsed = self.last_gr_update_done_time - st
-            # logging.debug('done updating plot, plotting took %.2f ms' % (elapsed.microseconds / 1000))
+            elapsed_ms = (self.last_gr_update_done_time - st).microseconds / 1000
+            self.needed_plot_update_time_ms = elapsed_ms
+            self.needed_plotting_time_ms_callback.emit(self.needed_plot_update_time_ms)
+
+            # logging.debug('done updating plot, plotting took %.2f ms' % self.needed_plot_update_time_ms)
         except Exception as e:
             logging.error('error in liveplotterui while receiving new data: %s ' % e, exc_info=True)
 
@@ -469,13 +486,18 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def update_all_plots(self, spec_data):
         """ wrapper to update all plots """
         try:
+            self.updating_plot = True
             self.update_sum_plot(spec_data)
             if spec_data.seq_type in self.trs_names_list:
                 self.update_tres_plot(spec_data)
                 self.update_projections(spec_data)
             self.update_all_pmts_plot(spec_data)
+            if self.application is not None:
+                self.application.processEvents()
         except Exception as e:
             logging.error('error in updating plots: ' + str(e), exc_info=True)
+        finally:
+            self.updating_plot = False
 
     def update_sum_plot(self, spec_data):
         """ update the sum plot and store the values in self.sum_x, self.sum_y, self.sum_err"""
@@ -517,6 +539,20 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.tres_roi.setSize((abs(gates[0] - gates[1]), abs(gates[2] - gates[3])), finish=False)
         except Exception as e:
             logging.error('error, while plotting time resolved, this happened: %s ' % e, exc_info=True)
+
+    def set_time_range(self, t_min=-1.0, t_max=-1.0, padding=0.05):
+        """
+        set the time range to display of the plot according to t_min / t_max
+        :param t_min: float, -1.0 for automatic around gate
+        :param t_max: float, -1.0 for automatic around gate
+        :return:
+        """
+        if t_min >= 0 and t_max > 0:
+            y_range = (t_min, t_max)
+        else:
+            gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
+            y_range = (gates[2], gates[3])
+        self.tres_plt_item.setRange(yRange=y_range, padding=padding)
 
     def rect_select_gates(self, evt):
         """
@@ -877,6 +913,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.fit_results_dict_callback = callbacks[4]
             self.progress_callback = callbacks[5]
             self.pre_post_meas_data_dict_callback = callbacks[6]
+            self.needed_plotting_time_ms_callback = callbacks[7]
 
     def subscribe_to_main(self):
         if self.subscribe_as_live_plot:
@@ -904,7 +941,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         logging.debug('rebinning data to bins of  %s' % rebin_factor_ns)
         rebin_track = -1 if self.checkBox.isChecked() else self.tres_sel_tr_ind
         self.new_gate_or_soft_bin_width.emit(
-            self.extract_all_gates_from_gui(), rebin_track, self.spec_data.softBinWidth_ns, False)
+            self.extract_all_gates_from_gui(), rebin_track,
+            self.spec_data.softBinWidth_ns, False)
         stop = datetime.now()
         dif = stop - start
         # print('rebinning took: %s' % dif)
@@ -1079,6 +1117,38 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.pre_post_tab_widget = None  # Make sure it's None so its in a definite state
             self.mutex.unlock()  # Release the widget for other function calls.
 
+    def export_screen_shot(self, storage_path='', quality=-1):
+        """
+        function to export a screenshot fo the full window.
+        :param storage_path: str, full storage path, leave empty to open dialog
+        :param quality: int, -1 default, range 0-100, 0 -> low quality save, 100 -> high quality save
+        :return: path
+        """
+        start = datetime.now()
+        if not storage_path:
+            dial = QtWidgets.QFileDialog(self)
+            init_filter = self.full_file_path.split('.')[0] + '.jpg'
+            storage_path, ending = QtWidgets.QFileDialog.getSaveFileName(dial,
+                                                                         'Chooose a storage location for the screenshot',
+                                                                         init_filter,
+                                                                         '*.jpg'
+                                                                         )
+
+            if not storage_path:  # cancel clicked
+                return None
+        timeout = 0
+        while self.updating_plot and timeout < 10:
+            time.sleep(0.01)
+            timeout += 0.01
+        logging.info('grabbing screen now')
+        self.update()
+        pixm = self.grab()
+        pixm.save(storage_path, 'jpg', quality)
+        stop = datetime.now()
+        dif = stop - start
+        dif_sec = dif.microseconds * 10 ** -6
+        logging.info('saved screenshot after %.3fs to: %s' % (dif_sec, storage_path))
+        return storage_path
 
 
 if __name__ == "__main__":
@@ -1118,30 +1188,39 @@ if __name__ == "__main__":
     #                             {'dmm': {'dmm1': {'data': [1, 2, 3, 4, 5, 6, 7], 'required': 9}},
     #                              'triton': {'dev0': {'data': [1, 2, 3, 4, 5], 'required': 10}}}
     #                         }}
-    test_dict = {'isotopeData': {'type': 'trsdummy', 'nOfTracks': 1, 'accVolt': 3000.0, 'version': '1.20', 'isotopeStartTime': '2017-12-20 14:32:13', 'isotope': 'anew', 'laserFreq': 120.0},
-                 'pipeInternals': {'activeTrackNumber': (0, 'track0'), 'workingDirectory': 'C:\\TRITON_TILDA\\Temp', 'activeXmlFilePath': 'C:\\TRITON_TILDA\\Temp\\sums\\anew_trsdummy_run132.xml', 'curVoltInd': 0},
+    test_dict = {'isotopeData': {'type': 'trsdummy', 'nOfTracks': 1, 'accVolt': 3000.0, 'version': '1.20',
+                                 'isotopeStartTime': '2017-12-20 14:32:13', 'isotope': 'anew', 'laserFreq': 120.0},
+                 'pipeInternals': {'activeTrackNumber': (0, 'track0'), 'workingDirectory': 'C:\\TRITON_TILDA\\Temp',
+                                   'activeXmlFilePath': 'C:\\TRITON_TILDA\\Temp\\sums\\anew_trsdummy_run132.xml',
+                                   'curVoltInd': 0},
                  'track0': {'activePmtList': [0, 1],
                             'measureVoltPars': {'duringScan': {'measVoltPulseLength25ns': 400,
                                                                'dmms': {'dummy_somewhere': {'triggerDelay_s': 0.0,
                                                                                             'sampleCount': 0,
-                                                                                            'readings': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                                                                                            'readings': [1.0, 1.0, 1.0,
+                                                                                                         1.0, 1.0, 1.0,
+                                                                                                         1.0, 1.0, 1.0,
+                                                                                                         1.0],
                                                                                             'triggerCount': 0
                                                                                             }
                                                                         }
                                                                },
                                                 'postScan': {},
                                                 'preScan': {'dmms': {'dummy_somewhere': {'sampleCount': 10,
-                                                                                         'readings': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+                                                                                         'readings': [1.0, 1.0, 1.0,
+                                                                                                      1.0, 1.0, 1.0,
+                                                                                                      1.0, 1.0, 1.0,
+                                                                                                      1.0]
                                                                                          }
                                                                      }
                                                             }
                                                 },
                             'triton': {'duringScan': {'dev0': {'ch0': {'aquired': 6,
-                                                                      'data': [1,2,3,4,5,6],
-                                                                      'required': 10
-                                                                      }
-                                                              }
-                                                     },
+                                                                       'data': [1, 2, 3, 4, 5, 6],
+                                                                       'required': 10
+                                                                       }
+                                                               }
+                                                      },
                                        'preScan': {},
                                        'postScan': {}
                                        }
@@ -1172,11 +1251,11 @@ if __name__ == "__main__":
                                                       },
                                        'preScan': {},
                                        'postScan': {'dev0': {'ch0': {'aquired': 6,
-                                                                       'data': [1, 2, 3, 4, 5, 6],
-                                                                       'required': 10
-                                                                       }
-                                                               }
-                                                      }
+                                                                     'data': [1, 2, 3, 4, 5, 6],
+                                                                     'required': 10
+                                                                     }
+                                                             }
+                                                    }
                                        }
                             }
                  }
@@ -1188,15 +1267,15 @@ if __name__ == "__main__":
     ui.pre_post_meas_data_dict_callback.emit(test_dict)
     test_dict2 = deepcopy(test_dict)
     test_dict2['track0']['triton']['duringScan'] = {'dev0': {'ch1': {'aquired': 13,
-                                                                       'data': [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-                                                                                0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-                                                                                13,
-                                                                                0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-                                                                                13],
-                                                                       'required': 0
-                                                                       }
-                                                               }
-                                                      }
+                                                                     'data': [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                                                                              0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                                                                              13,
+                                                                              0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                                                                              13],
+                                                                     'required': 0
+                                                                     }
+                                                             }
+                                                    }
     ui.show()
     ui.tabWidget.setCurrentIndex(3)  # time resolved
 

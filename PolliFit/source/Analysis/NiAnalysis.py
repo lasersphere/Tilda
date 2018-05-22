@@ -101,6 +101,18 @@ print('literatur shifts from A. Steudel (1980) in MHz:')
 [print(key, val[0], val[1]) for key, val in sorted(literature_shifts.items())]
 print(literature_shifts)
 
+# # write literature shifts to db:
+# con = sqlite3.connect(db)
+# cur = con.cursor()
+# for iso, shift_tuple in literature_shifts.items():
+#     cur.execute(
+#         '''INSERT OR IGNORE INTO Combined (iso, parname, run, config,
+#  val, statErr, systErr) VALUES (?, ?, ?, ?, ?, ?, ?)''',
+#         (iso, 'shift', 'Steudel_1980', '[]', shift_tuple[0], shift_tuple[1], 0.0))
+# con.commit()
+# con.close()
+
+
 ''' literature radii '''
 
 # from Landolt-Börnstein - Group I Elementary Particles, Nuclei and Atoms, Fricke 2004
@@ -357,7 +369,7 @@ con.close()
 ''' isotope shift and batch fitting'''
 
 
-def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes, pars=None, combine_shift=True):
+def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes_batch_fit, pars=None, combine_shift=True, perform_fit=True):
     """
     get all configs for the used runs and fit those. then combine the reults.
     Be careful with 67Ni here scaler numeration is different.
@@ -367,14 +379,14 @@ def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes, pars=None, combin
     configs = {}
     files_with_error = []
     # print('run \t iso \t val \t statErr \t rChi')
-    print('will fit the isotopes: %s' % isotopes)
+    print('will fit the isotopes: %s' % isotopes_batch_fit)
     st_time = datetime.now()
     print('started at: %s' % st_time)
 
     # get all needed files, sorted by run:
     # note: the config for 67Ni should also be stored under run_iso name
     configs[run_isos] = {}
-    for iso in isotopes:
+    for iso in isotopes_batch_fit:
         con = sqlite3.connect(db)
         cur = con.cursor()
         cur.execute(
@@ -391,9 +403,13 @@ def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes, pars=None, combin
 
     # sort files in cfg by ref or iso
     all_iso_shift_files = {}
+    all_iso_shift_files_by_iso = {}
     for run_name in [run_isos, run_67_ni]:
         all_iso_shift_files[run_name] = {'refs': [], 'isoFiles': []}
+        all_iso_shift_files_by_iso[run_name] = {'refs': {}, 'isoFiles': {}}
         for iso, cfg in configs[run_isos].items():
+            all_iso_shift_files_by_iso[run_name]['isoFiles'][iso] = []
+            all_iso_shift_files_by_iso[run_name]['refs'][iso] = []
             if ('67' in iso and '67' in run_name) or ('67' not in iso and '67' not in run_name):
                 for each_cfg in cfg:
                     ref_before = each_cfg[0]
@@ -401,6 +417,8 @@ def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes, pars=None, combin
                     ref_after = each_cfg[2]
                     all_iso_shift_files[run_name]['refs'] += ref_before + ref_after
                     all_iso_shift_files[run_name]['isoFiles'] += iso_files
+                    all_iso_shift_files_by_iso[run_name]['isoFiles'][iso] += iso_files
+                    all_iso_shift_files_by_iso[run_name]['refs'][iso] += ref_before + ref_after
         all_iso_shift_files[run_name]['refs'] = sorted(list(set(all_iso_shift_files[run_name]['refs'])))
         all_iso_shift_files[run_name]['isoFiles'] = sorted(list(set(all_iso_shift_files[run_name]['isoFiles'])))
 
@@ -408,46 +426,64 @@ def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes, pars=None, combin
     print(all_iso_shift_files)
 
     for run in [run_isos, run_67_ni]:
-        print('run is: ', run, [run_isos, run_67_ni])
-        ret = TiTs.select_from_db(db, 'Lines.reference, lines.refRun',
-                                  'Runs JOIN Lines ON Runs.lineVar = Lines.lineVar', [['Runs.run'], [run]],
-                                  caller_name='Ni_analysis')
-        if ret is not None:
-            ref, refRun = ret[0]
-        else:
-            raise Exception('refRun not found')
-        print('---------- working on %s with refRun: %s -------------' % (run, refRun))
-        ref_fits, ref_files_w_error = BatchFit.batchFit(all_iso_shift_files[run]['refs'], db, refRun)
-        print('------------------- all ref files of run %s fitted -------------------' % run)
-        iso_fits, iso_files_w_error = BatchFit.batchFit(all_iso_shift_files[run]['isoFiles'], db, run)
-        print('------------------- all files of run %s fitted -------------------' % run)
-        files_with_error.append(ref_files_w_error)
-        files_with_error.append(iso_files_w_error)
+        if perform_fit:
+            print('run is: ', run, [run_isos, run_67_ni])
+            ret = TiTs.select_from_db(db, 'Lines.reference, lines.refRun',
+                                      'Runs JOIN Lines ON Runs.lineVar = Lines.lineVar', [['Runs.run'], [run]],
+                                      caller_name='Ni_analysis')
+            if ret is not None:
+                ref, refRun = ret[0]
+            else:
+                raise Exception('refRun not found')
+            print('---------- working on %s with refRun: %s -------------' % (run, refRun))
+            ref_fits, ref_files_w_error = BatchFit.batchFit(all_iso_shift_files[run]['refs'], db, refRun)
+            print('------------------- all ref files of run %s fitted -------------------' % run)
+            iso_fits, iso_files_w_error = BatchFit.batchFit(all_iso_shift_files[run]['isoFiles'], db, run)
+            print('------------------- all files of run %s fitted -------------------' % run)
+            files_with_error.append(ref_files_w_error)
+            files_with_error.append(iso_files_w_error)
+    if perform_fit and '67_Ni' in isotopes_batch_fit:
+        # rename the fit reults for 'wide_gate_asym_67_Ni' to 'wide_gate_asym'
+        # in order to have all all in combined for run 'wide_gate_asym'
+        # will only be necessary if a fit was performed otherwise results should be already renamed
+        con = sqlite3.connect(db)
+        cur = con.cursor()
+        cur.execute('''DELETE FROM FitRes WHERE run = ? AND iso = ?''', (run_isos, '67_Ni'))  # delete old Fit results
+        con.commit()
+        cur.execute('''UPDATE FitRes SET run = ? WHERE iso = ?''', (run_isos, '67_Ni'))  # rename
+        con.commit()
+        con.close()
 
-    # rename the fit reults for 'wide_gate_asym_67_Ni' to 'wide_gate_asym'
-    # in order to have all all in combined for run 'wide_gate_asym'
-    con = sqlite3.connect(db)
-    cur = con.cursor()
-    cur.execute('''DELETE FROM FitRes WHERE run = ? AND iso = ?''', (run_isos, '67_Ni'))  # delete old Fit results
-    con.commit()
-    cur.execute('''UPDATE FitRes SET run = ? WHERE iso = ?''', (run_isos, '67_Ni'))  # rename
-    con.commit()
-    con.close()
-
+    syst_error = str('systE(accVolt_d=%s, offset_d=%s)' % ('1.5 * 10 ** -4', '1.5 * 10 ** -4'))
     # now combine results
-    for iso in isotopes:
+    for iso in isotopes_batch_fit:
         if pars is not None:
             for par in pars:
                 Analyzer.combineRes(iso, par, run_isos, db)  # create db entry then add error formulas
-                if par in ['sigma', 'Al', 'Au', 'Bl', 'Bu']:
+                if par in ['sigma', 'Al', 'Au', 'Bl', 'Bu', 'center']:
+                    relevant_files = [isos[0] for refs_before, isos, refs_after in configs[run_isos][iso]]
                     con = sqlite3.connect(db)
                     cur = con.cursor()
-                    syst_error = str('systE(accVolt_d=%s, offset_d=%s)' % ('1.5 * 10 ** -4', '1.5 * 10 ** -4'))
                     cur.execute('''UPDATE Combined SET systErrForm = ? WHERE parname = ?''', (syst_error, par))
                     cur.execute(''' UPDATE Combined SET statErrForm = ? ''', ('applyChi(err, rChi)',))
+                    cur.execute(''' UPDATE Combined SET config = ? WHERE iso = ? AND run = ? AND parname = ? ''',
+                                (str(relevant_files), iso, run_isos, par))
                     con.commit()
                     con.close()
                     Analyzer.combineRes(iso, par, run_isos, db)  # then combine again
+                    if iso == '67_Ni' and par == 'Au':
+                        # 67_Ni only has one file were A&B can be left free,
+                        #  therefore it needs to be treated seperately
+                        ni67_Al = 1090.33170375
+                        ni67_Al_stat_err = 2.352703835
+                        ni67_Au = 424.756765644
+                        ni67_Au_stat_err = 3.37324439988
+                        accvolt_d = 1.5 * 10 ** -4
+                        offset_d = 1.5 * 10 ** -4
+                        # Au needs to be combined from all Al in 67Ni by multiplikation with the found ratio:
+                        # 0.3893 +/- 0.0006
+                        Analyzer.combineRes(iso, par, run_isos, db, combine_from_par='Al',
+                                            combine_from_multipl=0.3893, combine_from_mult_err=0.0006)
 
         if iso != '60_Ni' and combine_shift:
             Analyzer.combineShiftByTime(iso, run_isos, db, show_plot=False)  # create db entry then add error formulas
@@ -459,6 +495,9 @@ def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes, pars=None, combin
             con.commit()
             con.close()
             Analyzer.combineShiftByTime(iso, run_isos, db, show_plot=False)  # then combine again
+        # now combine the center of all relevant iso files, to have the plot on the harddrive
+        Analyzer.combineRes(iso, 'center', run_isos,
+                            db, only_this_files=all_iso_shift_files_by_iso[run_isos]['isoFiles'][iso])
     done_time = datetime.now()
     elapsed = done_time - st_time
     print('finished bacthfitting at %s after %.1f min' % (done_time, elapsed.seconds / 60))
@@ -468,11 +507,12 @@ def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes, pars=None, combin
 # Batchfitting and parameter combination Isotope Shift ...
 
 
-# files_w_err = isotope_shift_batch_fitting(
-#     'wide_gate_asym', 'wide_gate_asym_67_Ni', isotopes, pars=['center', 'Al', 'Au', 'Bl', 'Bu'], combine_shift=True)
-# print('--------------------------------------------------------------------')
-# print('files with error during batchfit: ', (['wide_gate_asym', 'wide_gate_asym_67_Ni'], files_w_err))
-# print('--------------------------------------------------------------------')
+files_w_err = isotope_shift_batch_fitting(
+    'wide_gate_asym', 'wide_gate_asym_67_Ni', ['67_Ni'],  # isotopes,
+    pars=['center', 'Al', 'Au', 'Bl', 'Bu'], combine_shift=False, perform_fit=False)
+print('--------------------------------------------------------------------')
+print('files with error during batchfit: ', (['wide_gate_asym', 'wide_gate_asym_67_Ni'], files_w_err))
+print('--------------------------------------------------------------------')
 
 
 ''' Divider Ratio Determination '''
@@ -547,7 +587,7 @@ def chi_square_finder(acc_dev_list, offset_dev_list, runs):
                 acc_str = str(round(current_acc_div, 3)).replace('.', '_')
                 save_name = os.path.join(workdir, 'divider_ratio', 'acc_%s_off_%s.png' % (acc_str, off_str))
                 MPLPlotter.plot_par_from_combined(db, ['wide_gate_asym'], list(literature_shifts.keys()), 'shift',
-                                                  literature_dict=literature_shifts, plot_runs_seperate=False,
+                                                  literature_run='Steudel_1980', plot_runs_seperate=False,
                                                   literature_name='A. Steudel (1980)\n '
                                                                   'acc_ratio: %s\n off_ratio: %s' % (acc_str, off_str),
                                                   show_pl=False,
@@ -698,23 +738,6 @@ def chisquare_finder_kepco(run_chi_finder, kepco_dif_list):
 #
 # print('plotting now')
 
-
-
-# try:
-#     shifts = {iso: Analyzer.combineShiftByTime(iso, 'narrow_gate_asym', db) for iso in
-#               isotopes if iso not in ['67_Ni', '60_Ni']}
-# except Exception as e:
-#     shifts = {}
-#     print('error while combining shifts: %s' % e)
-#
-# try:
-#     shifts = {iso: Analyzer.combineShiftByTime(iso, 'narrow_gate_asym_67_Ni', db) for iso in
-#               ['67_Ni']}
-# except Exception as e:
-#     shifts = {}
-#     print('error while combining shifts of 67_Ni: %s' % e)
-
-
 try:
     # kepco_dif = [each / 10000 for each in range(-20, -11)]
     # # best_chi_square = chisquare_finder_kepco('narrow_gate_asym', [0])
@@ -722,7 +745,7 @@ try:
     # print('best chi square kepco: ', best_chi_square)
     # print('literature shifts',  literature_shifts)
     MPLPlotter.plot_par_from_combined(db, ['wide_gate_asym'], list(literature_shifts.keys()), 'shift',
-                                      literature_dict=literature_shifts, plot_runs_seperate=False,
+                                      literature_run='Steudel_1980', plot_runs_seperate=False,
                                       literature_name='A. Steudel (1980)')
     # print(isotopes)
 
@@ -789,17 +812,17 @@ try:
                 mu = magnetic_moment(a_low[0], a_low[1], a_low[2], nucl_spin)
                 mu_print = mu[4]
                 print('%s\t%s'
-                      '\t%.3f(%.0f)[%.0f]\t%.2f'
-                      '\t%.3f(%.0f)[%.0f]\t%.2f\t%.3f\t%.3f'
-                      '\t%.3f(%.0f)[%.0f]\t%.2f'
-                      '\t%.3f(%.0f)[%.0f]\t%.2f\t%.3f\t%.3f'
+                      '\t%.2f(%.0f)[%.0f]\t%.2f'
+                      '\t%.2f(%.0f)[%.0f]\t%.2f\t%.3f\t%.3f'
+                      '\t%.2f(%.0f)[%.0f]\t%.2f'
+                      '\t%.2f(%.0f)[%.0f]\t%.2f\t%.3f\t%.3f'
                       '\t%s'
                       '\t%s' % (
                           iso, nucl_spin,
-                          a_up[0], a_up[1] * 1000, a_up[2] * 1000, a_up[3],
-                          a_low[0], a_low[1] * 1000, a_low[2] * 1000, a_low[3], ratio, delta_ratio,
-                          b_up[0], b_up[1] * 1000, b_up[2] * 1000, b_up[3],
-                          b_low[0], b_low[1] * 1000, b_low[2] * 1000, b_low[3], b_ratio, delta_b_ratio,
+                          a_up[0], a_up[1] * 100, a_up[2] * 100, a_up[3],
+                          a_low[0], a_low[1] * 100, a_low[2] * 100, a_low[3], ratio, delta_ratio,
+                          b_up[0], b_up[1] * 100, b_up[2] * 100, b_up[3],
+                          b_low[0], b_low[1] * 100, b_low[2] * 100, b_low[3], b_ratio, delta_b_ratio,
                           q_from_lower[4],
                           mu_print
                       ))
@@ -1171,7 +1194,7 @@ king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, f
 # print(isotopes)
 # king.kingFit(alpha=0, findBestAlpha=False, run=run, find_slope_with_statistical_error=True)
 king.kingFit(alpha=0, findBestAlpha=False, run=run, find_slope_with_statistical_error=False)
-# king.calcChargeRadii(isotopes=isotopes, run=run, plot_evens_seperate=True)
+king.calcChargeRadii(isotopes=isotopes, run=run, plot_evens_seperate=True)
 
 # king.kingFit(alpha=378, findBestAlpha=True, run=run, find_slope_with_statistical_error=True)
 king.kingFit(alpha=364, findBestAlpha=True, run=run)
@@ -1198,10 +1221,10 @@ if data:
         err = np.sqrt(iso[2] ** 2 + iso[3] ** 2)
         iso_shift_plot_data_err.append(err)
         radii_iso, radii_iso_err = (radii_alpha.get(iso[0], [0])[0], radii_alpha.get(iso[0], [0, 0])[1])
-        # print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))
+        print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))
         # for latex:
-        print('$ %s $ & %.1f(%.0f)[%.0f] & %.3f(%.0f) \\\\'
-              % (iso[0][:2], iso[1], iso[2] * 10, iso[3] * 10, radii_iso, radii_iso_err * 1000))
+        # print('$ %s $ & %.1f(%.0f)[%.0f] & %.3f(%.0f) \\\\'
+        #       % (iso[0][:2], iso[1], iso[2] * 10, iso[3] * 10, radii_iso, radii_iso_err * 1000))
 #
 MPLPlotter.plt.figure(facecolor='w')
 fontsize_ticks = 18
@@ -1213,36 +1236,3 @@ MPLPlotter.plt.margins(0.1)
 MPLPlotter.plt.xlabel('A', fontsize=fontsize_ticks)
 MPLPlotter.plt.ylabel(r'$\delta \nu$ (MHz)', fontsize=fontsize_ticks)
 MPLPlotter.show(True)
-
-# just a plot for the a factor of 61Ni:
-# a_low_61_Ni_exp = al['narrow_gate']['61_Ni']
-# d_a_low_exp = np.sqrt(a_low_61_Ni_exp[1] ** 2 + a_low_61_Ni_exp[2] ** 2)
-# b_low_61_Ni_exp = bl['narrow_gate']['61_Ni']
-# d_b_low_exp = np.sqrt(b_low_61_Ni_exp[1] ** 2 + b_low_61_Ni_exp[2] ** 2)
-# a_low_dif = a_low_61_Ni_exp[0] - a_low_61_Ni_lit[0]
-# d_a_low_dif = a_low_61_Ni_lit[1]
-# b_low_dif = b_low_61_Ni_exp[0] - b_low_61_Ni_lit[0]
-# d_b_low_dif = b_low_61_Ni_lit[1]
-#
-#
-# label = '61_Ni A_lower (exp.)'
-# a_low_line, a_low_cap_line, a_low_barline = MPLPlotter.plt.errorbar(
-#     61-0.5, 0, d_a_low_exp, linestyle='None', marker='o', label=label, color='g')
-# label = '61_Ni A_lower (lit.)'
-# a_low_line_lit, a_low_cap_line_lit, a_low_barline_lit = MPLPlotter.plt.errorbar(
-#     61-0.25, a_low_dif, d_a_low_dif, linestyle='None', marker='o', label=label, color='g',
-#     markerfacecolor='w', markeredgewidth=1.5, markeredgecolor='g')
-#
-# label = '61_Ni B_lower (exp.)'
-# b_low_line, b_low_cap_line, b_low_barline = MPLPlotter.plt.errorbar(
-#     61+0.25, 0, d_b_low_exp, linestyle='None', marker='D', label=label, color='b')
-# label = '61_Ni B_lower (lit.)'
-# b_low_line_lit, b_low_cap_line_lit, b_low_barline_lit = MPLPlotter.plt.errorbar(
-#     61+0.5, b_low_dif, d_b_low_dif, linestyle='None', marker='D', label=label, color='b',
-#     markerfacecolor='w', markeredgewidth=1.5, markeredgecolor='b')
-#
-# MPLPlotter.plt.gcf().set_facecolor('w')
-# MPLPlotter.plt.legend(loc=0)
-# MPLPlotter.plt.margins(0.15)
-# MPLPlotter.plt.xticks([61])
-# MPLPlotter.show(True)

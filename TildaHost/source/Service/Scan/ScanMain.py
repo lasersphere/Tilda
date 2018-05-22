@@ -91,7 +91,9 @@ class ScanMain(QObject):
             # if analysis_thread already exists, delete it
             del self.analysis_thread
         gc.collect()
-        # self.analysis_thread = None
+
+        # self.analysis_thread should exist!
+        self.analysis_thread = None
 
         scan_dict['pipeInternals']['curVoltInd'] = 0
         scan_dict['isotopeData']['isotopeStartTime'] = datetime.today().strftime('%Y-%m-%d %H:%M:%S')

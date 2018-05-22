@@ -700,7 +700,8 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
         scan_dict = create_scan_dict_from_spec_data(
             parent_specdata, filename, db)
         scan_dict['isotopeData']['addedFiles'] = added_files
-        createXmlFileOneIsotope(scan_dict, filename=filename)
+        # take the time from the host file!
+        createXmlFileOneIsotope(scan_dict, filename=filename, take_time_now=False)
         # call savespecdata in filehandl (will expect to have a .time_res)
         save_spec_data(parent_specdata, scan_dict)
 
@@ -799,7 +800,7 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
             'nOfBunches': 1,
             'softwGates': check_if_attr_exists(
                 specdata, 'softw_gates', [[] * specdata.nrScalers[tr_ind]] * specdata.nrTracks, [])[tr_ind],
-            'trigger': {'type': 'no_trigger'},
+            'trigger': check_if_attr_exists(specdata, 'trigger', [{'type': 'no_trigger'}] * specdata.nrTracks)[tr_ind],
             'pulsePattern': {'cmdList': [], 'periodicList': [], 'simpleDict': {}},
             'measureVoltPars': specdata.measureVoltPars[tr_ind],
             'triton': specdata.tritonPars[tr_ind]
@@ -844,7 +845,7 @@ def nameFile(path, subdir, fileName, prefix='', suffix='.tld'):
     return file
 
 
-def createXmlFileOneIsotope(scanDict, seq_type=None, filename=None):
+def createXmlFileOneIsotope(scanDict, seq_type=None, filename=None, take_time_now=True):
     """
     creates an .xml file for one Isotope. Using the Filestructure as stated in OneNote.
     :param scanDict: {'isotopeData', 'track0', 'pipeInternals'}
@@ -854,7 +855,7 @@ def createXmlFileOneIsotope(scanDict, seq_type=None, filename=None):
     # meas_volt_dict = deepcopy(scanDict['measureVoltPars'])
     if seq_type is not None:
         isodict['type'] = seq_type
-    root = xmlCreateIsotope(isodict)
+    root = xmlCreateIsotope(isodict, take_time_now=take_time_now)
     # xml_add_meas_volt_pars(meas_volt_dict, root)
     if filename is None:
         path = scanDict['pipeInternals']['workingDirectory']
@@ -956,7 +957,7 @@ def save_spec_data(spec_data, scan_dict):
             logging.debug('will insert file: %s to database: %s' % (relative_filename, db))
             _insertFile(relative_filename, db)
     except Exception as e:
-        logging.erro('error while saving: %s' % e, exc_info=True)
+        logging.error('error while saving: %s' % e, exc_info=True)
 
 
 def get_number_of_tracks_in_scan_dict(scan_dict):

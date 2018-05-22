@@ -67,6 +67,9 @@ class Main(QtCore.QObject):
     # bool: plot bool to force a plotting even if nothing has changed.
     new_gate_or_soft_bin_width = QtCore.pyqtSignal(list, int, list, bool)
 
+    # float: self.needed_plot_update_time_ms, time which the last plot took in ms
+    needed_plotting_time_ms_callback = QtCore.pyqtSignal(float)
+
     # save request
     save_request = QtCore.pyqtSignal()
 
@@ -268,7 +271,8 @@ class Main(QtCore.QObject):
         return (self.new_data_callback, self.new_track_callback,
                 self.save_request, self.new_gate_or_soft_bin_width,
                 self.fit_results_dict_callback, self.live_plot_progress_callback,
-                self.pre_post_meas_data_dict_callback)
+                self.pre_post_meas_data_dict_callback,
+                self.needed_plotting_time_ms_callback)
 
     def send_state(self):
         """
@@ -710,7 +714,8 @@ class Main(QtCore.QObject):
                 self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline,
                 live_plot_callback_tuples=(self.new_data_callback, self.new_track_callback,
                                            self.save_request, self.new_gate_or_soft_bin_width,
-                                           self.pre_post_meas_data_dict_callback),
+                                           self.pre_post_meas_data_dict_callback,
+                                           self.needed_plotting_time_ms_callback),
                 fit_res_dict_callback=self.fit_results_dict_callback,
                 scan_complete_callback=self.scan_complete_callback,
             )

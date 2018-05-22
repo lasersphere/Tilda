@@ -50,7 +50,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     always feed raw data.
     """
     if live_plot_callbacks is None:
-        live_plot_callbacks = (None, None, None, None, None)
+        live_plot_callbacks = (None, None, None, None, None, None)
     start = Node()
 
     pipe = Pipeline(start)
@@ -93,7 +93,7 @@ def CsPipe(initialScanPars=None, callback_sig=None, live_plot_callbacks=None):
     """
     start = Node()
     if live_plot_callbacks is None:
-        live_plot_callbacks = (None, None, None, None, None)
+        live_plot_callbacks = (None, None, None, None, None, None)
 
     pipe = Pipeline(start)
     # start = start.attach(SN.NPrint())
@@ -139,7 +139,7 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False,
 
     maintenance = start.attach(TN.NAddWorkingTimeOnClear(True))
     if live_plot_callbacks is None:
-        live_plot_callbacks = (None, None, None, None, None)
+        live_plot_callbacks = (None, None, None, None, None, None)
 
     pipe = Pipeline(start)
     pipe.pipeData = initPipeData(initial_scan_pars)
@@ -280,7 +280,7 @@ def time_resolved_display(filepath, liveplot_callbacks):
 
     pipe = Pipeline(start)
     if liveplot_callbacks is None:
-        liveplot_callbacks = (None, None, None, None)
+        liveplot_callbacks = (None, None, None, None, None, None)
 
     pipe.pipeData['pipeInternals'] = {}
 

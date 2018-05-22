@@ -1315,7 +1315,8 @@ class NMPLImagePlotSpecData(Node):
 
 class NMPLImagePlotAndSaveSpecData(Node):
     def __init__(self, pmt_num, new_data_callback, new_track_callback,
-                 save_request, gates_and_rebin_signal, pre_post_meas_data_dict_callback, save_data=True):
+                 save_request, gates_and_rebin_signal, pre_post_meas_data_dict_callback,
+                 needed_plotting_time_ms_callback, save_data=True):
         super(NMPLImagePlotAndSaveSpecData, self).__init__()
         self.type = 'MPLImagePlotAndSaveSpecData'
         self.selected_pmt = pmt_num  # for now pmt name should be pmt_ind
@@ -1327,7 +1328,9 @@ class NMPLImagePlotAndSaveSpecData(Node):
 
         self.new_data_callback = new_data_callback
         self.new_track_callback = new_track_callback
-        self.min_time_between_emits = timedelta(milliseconds=250)
+        min_time_ms = 250.0
+        self.min_time_between_emits = timedelta(milliseconds=min_time_ms)  # fixed!
+        self.adapted_min_time_between_emits = timedelta(milliseconds=min_time_ms) # can be changed when gui takes longer to plot
         # just be sure it emits on first call (important for loading etc.):
         self.last_emit_time = datetime.now() - self.min_time_between_emits - self.min_time_between_emits
         self.mutex = QtCore.QMutex()  # for blocking of other threads
@@ -1335,6 +1338,8 @@ class NMPLImagePlotAndSaveSpecData(Node):
             gates_and_rebin_signal.connect(self.rcvd_gates_and_rebin)
         if save_request is not None:
             save_request.connect(self.save)
+        if needed_plotting_time_ms_callback is not None:
+            needed_plotting_time_ms_callback.connect(self.rcvd_needed_plotting_time_ms)
 
     def start(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
@@ -1353,7 +1358,7 @@ class NMPLImagePlotAndSaveSpecData(Node):
             now = datetime.now()
             dif = (now - self.last_emit_time)
             # print('time since last emit of data: %s ' % dif)
-            if dif > self.min_time_between_emits:
+            if dif > self.adapted_min_time_between_emits:
                 self.last_emit_time = now
                 self.rebin_and_gate_new_data(deepcopy(data))
         return data
@@ -1394,13 +1399,31 @@ class NMPLImagePlotAndSaveSpecData(Node):
             software_bin_width = specdata.softBinWidth_ns
         return Form.time_rebin_all_spec_data(specdata, software_bin_width, self.rebin_track_ind)
 
-    def rcvd_gates_and_rebin(self, softw_gates_for_all_tr, rebin_track_ind, softBinWidth_ns, force_both=False):
+    def rcvd_needed_plotting_time_ms(self, needed_plotting_time_ms):
+        """
+        when the liveplot takes quite some time to update,
+        the analysis thread must be stopped from constantly pushing its values to the plotting window.
+        It will only change the plotting time if it increases.
+        :param needed_plotting_time_ms: float, time in ms the gui needed to plot
+        :return:
+        """
+        current_time_emits_ms = self.min_time_between_emits.microseconds / 1000
+        new_time_between_emits_ms = max(self.min_time_between_emits.microseconds / 1000, needed_plotting_time_ms)
+        if new_time_between_emits_ms >= current_time_emits_ms:
+            logging.debug('Updating time between plot is now: %.1f ms but would actually be: %.1f ms  '
+                          % (self.adapted_min_time_between_emits.microseconds / 1000, new_time_between_emits_ms))
+        # TODO use the following to update the new time:
+        # self.adapted_min_time_between_emits = timedelta(milliseconds=new_time_between_emits_ms)
+
+    def rcvd_gates_and_rebin(self, softw_gates_for_all_tr, rebin_track_ind, softBinWidth_ns,
+                             force_both=False):
         """ when receiving new gates/bin width, this is called and will rebin and
         then gate the data if there is a change in one of those.
         The new data will be send afterwards. """
         # logging.debug('received gates: %s tr_ind: %s bin_width_ns: %s'
         #               % (softw_gates_for_all_tr, rebin_track_ind, softBinWidth_ns))
         if self.rebinned_data is not None:
+
             self.mutex.lock()  # can be called form other track, so mute it.
             changed = force_both
             if self.rebinned_data.seq_type in self.trs_names_list:
@@ -1815,7 +1838,7 @@ class NCS2SpecData(Node):
 
 
 class NTRSSortRawDatatoArrayFast(Node):
-    def __init__(self):
+    def __init__(self, bunch_start_stop_tr_wise=None):
         """
         Node for sorting the raw data to the corresponding scaler, step and timestamp.
         No Value will be emitted twice.
@@ -1830,6 +1853,9 @@ class NTRSSortRawDatatoArrayFast(Node):
         self.stored_data = None  # numpy array of incoming raw data elements.
         self.total_num_of_started_scans = None
         self.completed_steps_this_track = None
+        self.bunch_start_stop_tr_wise = bunch_start_stop_tr_wise  # list of of tuples of (start, stop) indices
+        #  which bunches should be used for each track
+        self.bunch_start_stop_cur_tr = (0, -1)
 
         # could be shrinked to active pmts only to speed things up
 
@@ -1843,6 +1869,9 @@ class NTRSSortRawDatatoArrayFast(Node):
         self.completed_steps_this_track = self.Pipeline.pipeData[track_name].get('nOfCompletedSteps', 0)
         self.Pipeline.pipeData[track_name][
             'nOfCompletedSteps'] = self.completed_steps_this_track  # make sure this exists
+        if self.bunch_start_stop_tr_wise is not None:
+            self.bunch_start_stop_cur_tr = self.bunch_start_stop_tr_wise[track_ind]
+
 
     def processData(self, data, pipeData):
         self.stored_data = np.append(self.stored_data, data)
@@ -1860,6 +1889,8 @@ class NTRSSortRawDatatoArrayFast(Node):
             pipeData[track_name]['nOfCompletedSteps'] += step_complete_ind_list.size
             scan_start_before_step_comp = False
             scan_started_ind_list = np.where(self.stored_data[:step_complete_ind_list[-1]] == scan_started)[0]
+            # only completed steps! -> all bunches are included, no need to store which one was last worked on
+            new_bunch_ind_list = np.where(self.stored_data[:step_complete_ind_list[-1]] == new_bunch)[0]
             # account only started scans until the last step complete element was registered
             if scan_started_ind_list.size:
                 scan_start_before_step_comp = scan_started_ind_list[0] < step_complete_ind_list[0]
@@ -1877,7 +1908,9 @@ class NTRSSortRawDatatoArrayFast(Node):
                                     np.fliplr([x_one_scan])[0] if pipeData[track_name]['invertScan'] else x_one_scan)
             # repeat this as often as needed for all steps held in this data set.
             x_this_data = np.tile(x_two_scans,
-                                  np.ceil((step_complete_ind_list.size + 2) / pipeData[track_name]['nOfSteps'] / 2))
+                                  np.ceil(
+                                      (step_complete_ind_list.size + 2) / pipeData[track_name]['nOfSteps'] / 2
+                                  ).astype(np.int32))  # np.ceil confusingly returns a np.float64
             # +2 needed for next_volt_step_ind, see below
             # roll this, so that the current step stands at position 0.
             # logging.debug('uncut x_data: %s' % x_this_data)

@@ -55,17 +55,17 @@ def main():
     # ch.setFormatter(log_formatter)
     app_log.addHandler(ch)
 
-    my_handler = RotatingFileHandler(debug_file, mode='a', maxBytes=5 * 1024 * 1024,
+    my_debug_handler = RotatingFileHandler(debug_file, mode='a', maxBytes=5 * 1024 * 1024,
                                      backupCount=2, encoding=None, delay=0)
-    my_handler.setFormatter(log_formatter)
-    my_handler.setLevel(logging.DEBUG)
-    app_log.addHandler(my_handler)
+    my_debug_handler.setFormatter(log_formatter)
+    my_debug_handler.setLevel(logging.DEBUG)
+    app_log.addHandler(my_debug_handler)
 
-    my_handler = RotatingFileHandler(error_file, mode='a', maxBytes=5 * 1024 * 1024,
+    my_err_handler = RotatingFileHandler(error_file, mode='a', maxBytes=5 * 1024 * 1024,
                                      backupCount=2, encoding=None, delay=0)
-    my_handler.setFormatter(log_formatter)
-    my_handler.setLevel(logging.ERROR)
-    app_log.addHandler(my_handler)
+    my_err_handler.setFormatter(log_formatter)
+    my_err_handler.setLevel(logging.ERROR)
+    app_log.addHandler(my_err_handler)
 
     app_log.info('****************************** starting ******************************')
     app_log.info('Log level set to ' + args.log_level)
@@ -86,7 +86,7 @@ def start_gui():
     from Interface.MainUi.MainUi import MainUi
 
     app = QtWidgets.QApplication(sys.argv)
-    ui = MainUi()
+    ui = MainUi(app)
     timer = QTimer()
     timer.setTimerType(Qt.PreciseTimer)
     timer.setInterval(_cyclic_interval_ms)
@@ -105,6 +105,7 @@ def cyclic():
     -> all calls should be brief, otherwise Gui is blocked
     """
     Cfg._main_instance.cyclic()
+
 
 if __name__ == "__main__":
     main()
