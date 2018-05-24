@@ -191,7 +191,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         if result['elemRemainInFifo'] == 0:
             self.status = TrsCfg.seqStateDict['measComplete']
         elapsed = datetime.now() - st
-        # logging.debug('reading from dummy trs sequemncer took %.1f ms ' % (elapsed.microseconds / 1000))
+        # logging.debug('reading from dummy trs sequencer took %.1f ms ' % (elapsed.total_seconds() * 1000))
         return result
 
     def getSeqState(self):

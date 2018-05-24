@@ -245,6 +245,24 @@ class NAddWorkingTimeOnClear(Node):
         self.clear()
 
 
+class NSleep(Node):
+    """
+    Node that will call time.sleep(sleeping_time_s) every time data comes in.
+    Can be used to simulate long processing times in analysis.
+    """
+
+    def __init__(self, sleeping_time_s):
+        super(NSleep, self).__init__()
+        self.type = 'Sleep'
+        self.sleeping_time_s = sleeping_time_s
+
+    def processData(self, data, pipeData):
+        logging.info('analysis sleeping now for %s s, zzzZZZzzzZZZ ....' % self.sleeping_time_s)
+        time.sleep(self.sleeping_time_s)
+        logging.info('analysis waking up now, and continuing to work.')
+        return data
+
+
 """ saving """
 
 
@@ -1407,11 +1425,13 @@ class NMPLImagePlotAndSaveSpecData(Node):
         :param needed_plotting_time_ms: float, time in ms the gui needed to plot
         :return:
         """
-        current_time_emits_ms = self.min_time_between_emits.microseconds / 1000
-        new_time_between_emits_ms = max(self.min_time_between_emits.microseconds / 1000, needed_plotting_time_ms)
+        current_time_emits_ms = self.min_time_between_emits.total_seconds() * 1000
+        new_time_between_emits_ms = max(self.min_time_between_emits.total_seconds() * 1000, needed_plotting_time_ms)
         if new_time_between_emits_ms >= current_time_emits_ms:
-            logging.debug('Updating time between plot is now: %.1f ms but would actually be: %.1f ms  '
-                          % (self.adapted_min_time_between_emits.microseconds / 1000, new_time_between_emits_ms))
+            logging.debug('Updating time between plot is now: %.1f ms but would'
+                          ' actually be: %.1f ms and plots actually needed: %.1f '
+                          % (self.adapted_min_time_between_emits.total_seconds() * 1000,
+                             new_time_between_emits_ms, needed_plotting_time_ms))
         # TODO use the following to update the new time:
         # self.adapted_min_time_between_emits = timedelta(milliseconds=new_time_between_emits_ms)
 

@@ -87,6 +87,7 @@ def start_gui():
 
     app = QtWidgets.QApplication(sys.argv)
     ui = MainUi(app)
+    Cfg._main_instance.application = app
     timer = QTimer()
     timer.setTimerType(Qt.PreciseTimer)
     timer.setInterval(_cyclic_interval_ms)

@@ -548,7 +548,7 @@ class Agilent(QThread):
         self.mutex.unlock()
         stop_time = datetime.datetime.now()
         reading_time = stop_time - start_time
-        # print('fetching data took %s seconds' % (reading_time.microseconds * 10 ** -6))
+        # print('fetching data took %s seconds' % reading_time.total_seconds())
         return ret
 
     def _fetch_multiple_meas(self, num_to_read):

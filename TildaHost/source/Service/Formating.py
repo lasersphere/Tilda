@@ -342,7 +342,7 @@ def rebin_single_track_spec_data(tr_data, return_data, bin_width_10ns):
 
     elapsed = dt.now() - start_t
     # logging.debug('done with rebinning of track with %s elements or %.1f MB after %.1f ms:'
-    #               % (total_elements, total_elements * 32 / 8 * 10 ** -6, elapsed.microseconds / 1000))
+    #               % (total_elements, total_elements * 32 / 8 * 10 ** -6, elapsed.total_seconds() * 1000))
     return tr_data
 
 

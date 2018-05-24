@@ -52,7 +52,12 @@ class AnalysisThread(QThread):
                 self.num_of_analysed_elements_total += len(data)
                 self.raw_data_storage = np.ndarray(0, dtype=np.int32)
                 self.mutex.unlock()
+                st_feed = datetime.now()
                 self.pipeline.feed(data)
+                done_feed = datetime.now()
+                elapsed_feed_ms = (done_feed - st_feed).total_seconds() * 1000
+                logging.debug('Analyzing %d data points took %.1f ms'
+                              % (self.num_of_analysed_elements_total, elapsed_feed_ms))
                 # self.sleep(1)  # simulate feed
                 # print('number of total analysed data: %s ' % self.num_of_analysed_elements_total)
             if any(self.dmm_dict_list):
