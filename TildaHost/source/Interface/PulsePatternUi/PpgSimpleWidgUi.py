@@ -338,7 +338,7 @@ class PpgSimpleWidgUi(QtWidgets.QWidget, Ui_PpgSimpleWidg):
         # print(hi_lo_list)
         creation_done_t = datetime.now()
         # logging.debug('... creation of high low list is done after %.1f ms'
-        #               % ((creation_done_t - creation_start_t).microseconds / 1000))
+        #               % ((creation_done_t - creation_start_t).total_seconds() * 1000))
         return hi_lo_list
 
     def get_ch_high_low_at_time(self, time, ch_hi_lo_list):

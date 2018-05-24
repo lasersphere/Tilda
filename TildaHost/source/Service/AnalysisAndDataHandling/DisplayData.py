@@ -51,7 +51,7 @@ class DisplayData:
         else:
             self.pipe.feed(spec)
         stop = datetime.now()
-        logging.info('displaying data took: %.1f ms' % ((stop - start).microseconds / 1000))
+        logging.info('displaying data took: %.1f ms' % ((stop - start).total_seconds() * 1000))
 
     def clear_pipe(self):
         self.pipe.clear()

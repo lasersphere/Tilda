@@ -131,6 +131,9 @@ class Main(QtCore.QObject):
         self.set_state(MainState.idle)
         self.autostart()
 
+        self.application = None  # store the current application in here,
+        # useful when wanting to force event processing by calling self.application.processEvents()
+
     """ cyclic function """
 
     def cyclic(self):
@@ -139,6 +142,15 @@ class Main(QtCore.QObject):
         This will control the main
         """
         st = datetime.now()
+
+        if self.application is not None:
+            self.application.processEvents()
+            elapsed_proc_evts_ms = (datetime.now() - st).total_seconds() * 1000
+            if elapsed_proc_evts_ms > 10:
+                logging.warning(
+                    'Processing events in beginning of cyclic loop took unexpected long: %.1f ms'
+                    % elapsed_proc_evts_ms)
+
         self.get_triton_log()
         if self.m_state[0] is MainState.idle:
             self.get_fpga_and_seq_state()
@@ -194,9 +206,9 @@ class Main(QtCore.QObject):
         elif self.m_state[0] is MainState.triton_unsubscribe:
             self._triton_unsubscribe_all()
         elapsed = datetime.now() - st
-        if elapsed.microseconds > 50000:
+        if elapsed.total_seconds() > 0.05:
             logging.warning('cyclic execution took longer than 50ms, it took: %.1f ms, state is: %s'
-                          % (elapsed.microseconds / 1000, self.m_state[0].name))
+                          % (elapsed.total_seconds() * 1000, self.m_state[0].name))
 
     """ main functions """
 

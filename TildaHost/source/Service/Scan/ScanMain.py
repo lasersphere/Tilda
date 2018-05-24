@@ -410,10 +410,11 @@ class ScanMain(QObject):
         """
         result = self.sequencer.getData()
         if result.get('nOfEle', -1) > 0:
-            # start = datetime.now()
+            start = datetime.now()
             self.data_to_pipe_sig.emit(result['newData'], {})
-            # stop = datetime.now()
-            # print('feeding of %s elements took: %s seconds' % (result.get('nOfEle'), stop - start))
+            stop = datetime.now()
+            # logging.debug('feeding of %s elements took: %.1f ms'
+            #               % (result.get('nOfEle'), (stop - start).total_seconds() * 1000))
             return True
         else:
             return False

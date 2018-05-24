@@ -454,7 +454,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             valid_data = False
             self.spec_data = deepcopy(spec_data)
 
-            self.update_all_plots(self.spec_data)
+            update_time_res_spec = self.needed_plot_update_time_ms <= 150
+            # update teh time resolved spec if the last time the plot was faster plotted than 100ms
+            # 150 ms should be ok to update all other plots
+            self.update_all_plots(self.spec_data, update_tres=update_time_res_spec)
             if self.spec_data.seq_type in self.trs_names_list:
                 self.spinBox.blockSignals(True)
                 self.spinBox.setValue(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
@@ -473,7 +476,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 scan_dict = TiTs.create_scan_dict_from_spec_data(self.spec_data, self.full_file_path)
                 self.pre_post_meas_data_dict_callback.emit(scan_dict)
             self.last_gr_update_done_time = datetime.now()
-            elapsed_ms = (self.last_gr_update_done_time - st).microseconds / 1000
+            elapsed_ms = (self.last_gr_update_done_time - st).total_seconds() * 1000
             self.needed_plot_update_time_ms = elapsed_ms
             self.needed_plotting_time_ms_callback.emit(self.needed_plot_update_time_ms)
 
@@ -483,13 +486,14 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     ''' updating the plots from specdata '''
 
-    def update_all_plots(self, spec_data):
+    def update_all_plots(self, spec_data, update_tres=True):
         """ wrapper to update all plots """
         try:
             self.updating_plot = True
             self.update_sum_plot(spec_data)
             if spec_data.seq_type in self.trs_names_list:
-                self.update_tres_plot(spec_data)
+                if update_tres:
+                    self.update_tres_plot(spec_data)
                 self.update_projections(spec_data)
             self.update_all_pmts_plot(spec_data)
             if self.application is not None:

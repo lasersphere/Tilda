@@ -516,7 +516,7 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
             self.highlight_selected_list_view_item(selected_rows, stop_in_cmds)
             upd_done_t = datetime.now()
             # logging.debug('... done updating graphical view after %.1f ms'
-            #               % ((upd_done_t - upd_start_t).microseconds / 1000))
+            #               % ((upd_done_t - upd_start_t).total_seconds() * 1000))
         except Exception as e:
             logging.error('error while updating graphical view: %s' % e, exc_info=True)
 

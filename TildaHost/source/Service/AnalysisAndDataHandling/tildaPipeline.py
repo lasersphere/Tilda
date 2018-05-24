@@ -60,6 +60,8 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
 
     # alternative pipeline:
     fast = start.attach(TN.NFilterDMMDictsAndSave(live_plot_callbacks[4]))  # Replaced former NFilterDMMDicts AndSave
+    # # use the sleep node in order to simulate long processing times in pipeline
+    # fast = fast.attach(TN.NSleep(sleeping_time_s=0.5))
     fast = fast.attach(TN.NSaveRawData())
     # fast = fast.attach(TN.NProcessQtGuiEvents())
     fast = fast.attach(TN.NTRSSortRawDatatoArrayFast())

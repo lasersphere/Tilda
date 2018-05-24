@@ -468,7 +468,7 @@ class AgilentM918x:
         start_time = datetime.datetime.now()
         while self.get_initiated():
             now = datetime.datetime.now()
-            elapsed_time_ms = (now - start_time).microseconds
+            elapsed_time_ms = (now - start_time).total_seconds() * 1000
             if elapsed_time_ms >= max_time_ms:
                 # when still measuring after max_time_ms
                 # do not call AgM918x_FetchMultiPoint then, because this will result in an error
