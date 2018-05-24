@@ -1425,13 +1425,11 @@ class NMPLImagePlotAndSaveSpecData(Node):
         :param needed_plotting_time_ms: float, time in ms the gui needed to plot
         :return:
         """
-        current_time_emits_ms = self.min_time_between_emits.total_seconds() * 1000
-        new_time_between_emits_ms = max(self.min_time_between_emits.total_seconds() * 1000, needed_plotting_time_ms)
+        current_time_emits_ms = self.min_time_between_emits.microseconds / 1000
+        new_time_between_emits_ms = max(self.min_time_between_emits.microseconds / 1000, needed_plotting_time_ms)
         if new_time_between_emits_ms >= current_time_emits_ms:
-            logging.debug('Updating time between plot is now: %.1f ms but would'
-                          ' actually be: %.1f ms and plots actually needed: %.1f '
-                          % (self.adapted_min_time_between_emits.total_seconds() * 1000,
-                             new_time_between_emits_ms, needed_plotting_time_ms))
+            logging.debug('Updating time between plot is now: %.1f ms but would actually be: %.1f ms  '
+                          % (self.adapted_min_time_between_emits.microseconds / 1000, new_time_between_emits_ms))
         # TODO use the following to update the new time:
         # self.adapted_min_time_between_emits = timedelta(milliseconds=new_time_between_emits_ms)
 
