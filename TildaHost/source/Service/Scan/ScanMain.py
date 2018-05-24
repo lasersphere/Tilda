@@ -682,8 +682,12 @@ class ScanMain(QObject):
             ret = self.digital_multi_meter.read_from_all_active_multimeters()
         else:
             ret = self.digital_multi_meter.read_from_multimeter(dmm_name)
+        worth_feeding = False
         if ret is not None and feed_pipe:  # will be None if no dmms are active
-            if self.analysis_thread is not None:
+            for dmm_name, val in ret.items():
+                if val is not None:
+                    worth_feeding = True
+            if self.analysis_thread is not None and worth_feeding:
                 self.data_to_pipe_sig.emit(np.ndarray(0, dtype=np.int32), ret)
                 self.check_ground_pin_warn_user(ret)
 

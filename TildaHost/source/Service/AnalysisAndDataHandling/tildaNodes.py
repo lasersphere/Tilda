@@ -2341,12 +2341,19 @@ class NFilterDMMDictsAndSave(Node):
         self.dmm_data = None
         # self.triton_data = None #TODO: not needed, or is it advantageous to store triton data separately?
         self.active_track_name = 'track0'
+        self.emitted_ctr = 0  # just to keep track how often the signal was emitted to the GUI
+        self.incoming_dict_ctr = 0
+
+        self.time_between_emits_ms = timedelta(milliseconds=500)  # dmm measurements should not be required that often.
+        self.time_since_last_emit = datetime.now() - self.time_between_emits_ms - self.time_between_emits_ms
 
         # callback to update the pre_during_post_meas_tabs
         self.pre_post_meas_data_dict_callback = pre_post_meas_data_dict_callback
 
     def start(self):
         track_ind, self.active_track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        self.emitted_ctr = 0
+        self.incoming_dict_ctr = 0
         if self.store_data is None:
             self.store_data = deepcopy(self.Pipeline.pipeData)
         # self.dmm_data = self.store_data[self.active_track_name]['measureVoltPars'].get('duringScan', {}).get('dmms', None)
@@ -2357,6 +2364,7 @@ class NFilterDMMDictsAndSave(Node):
 
     def processData(self, data, pipeData):
         if isinstance(data, dict):
+            self.incoming_dict_ctr += 1
             # dmm data comes in dicts like {dmm_name:[data]}. triton data comes as {track: {triton:{...}}}
             if 'triton' in data.get(self.active_track_name, {}):
                 self.sort_triton(data)
@@ -2385,7 +2393,17 @@ class NFilterDMMDictsAndSave(Node):
 
     def emit_data_signal(self):
         # emits the store data dict for live data plotting
-        self.pre_post_meas_data_dict_callback.emit(self.store_data)
+        now_time = datetime.now()
+        elapsed_since_last_emit = now_time - self.time_since_last_emit
+        if elapsed_since_last_emit > self.time_between_emits_ms:
+            self.emitted_ctr += 1
+            logging.debug('emitting dmm / triton dict counter: %d while already %d dicts'
+                          ' were incoming. Max emitting time is: %.1f ms'
+                          % (self.emitted_ctr, self.incoming_dict_ctr,
+                             self.time_between_emits_ms.total_seconds() * 1000))
+            self.pre_post_meas_data_dict_callback.emit(self.store_data)
+            self.time_since_last_emit = now_time
+        pass
 
     def save(self):
         # overwrites the pipeData with store_data. The pipeData will be stored later on

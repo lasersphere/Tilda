@@ -457,6 +457,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             update_time_res_spec = self.needed_plot_update_time_ms <= 150
             # update teh time resolved spec if the last time the plot was faster plotted than 100ms
             # 150 ms should be ok to update all other plots
+            if not update_time_res_spec:
+                logging.warning('did not update time resolved plot, because the last plotting time'
+                                ' was %.1f ms and this is longer than 150 ms'
+                                % self.needed_plot_update_time_ms)
             self.update_all_plots(self.spec_data, update_tres=update_time_res_spec)
             if self.spec_data.seq_type in self.trs_names_list:
                 self.spinBox.blockSignals(True)
