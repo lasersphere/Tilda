@@ -1101,7 +1101,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         if self.pre_post_tab_widget is None:
             if self.tab_layout is None:
-                print('creating tab layout')
+                logging.info('creating tab layout')
                 self.tab_layout = QtWidgets.QGridLayout(self.tab_pre_post_meas)
             self.mutex.lock()
 

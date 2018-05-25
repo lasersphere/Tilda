@@ -24,6 +24,7 @@ class AnalysisThread(QThread):
     def __init__(self, scan_dict, callback_sig, live_plot_callback_tuples, fit_res_callback_dict,
                  stop_request_signal, prep_track_in_pipe_signal, new_data_signal, scan_complete_callback,
                  dac_new_volt_set_callback):
+        # TODO comment all parameters here!!!!!
         super(AnalysisThread, self).__init__()
         self.pipeline = find_pipe_by_seq_type(scan_dict, callback_sig,
                                               live_plot_callback_tuples, fit_res_callback_dict,

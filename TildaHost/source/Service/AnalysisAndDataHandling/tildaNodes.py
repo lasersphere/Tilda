@@ -1425,11 +1425,13 @@ class NMPLImagePlotAndSaveSpecData(Node):
         :param needed_plotting_time_ms: float, time in ms the gui needed to plot
         :return:
         """
-        current_time_emits_ms = self.min_time_between_emits.microseconds / 1000
-        new_time_between_emits_ms = max(self.min_time_between_emits.microseconds / 1000, needed_plotting_time_ms)
+        current_time_emits_ms = self.min_time_between_emits.total_seconds() * 1000
+        new_time_between_emits_ms = max(self.min_time_between_emits.total_seconds() * 1000, needed_plotting_time_ms)
         if new_time_between_emits_ms >= current_time_emits_ms:
-            logging.debug('Updating time between plot is now: %.1f ms but would actually be: %.1f ms  '
-                          % (self.adapted_min_time_between_emits.microseconds / 1000, new_time_between_emits_ms))
+            logging.debug('Updating time between plot is now: %.1f ms but would'
+                          ' actually be: %.1f ms and plot needed: %.1f ms'
+                          % (self.adapted_min_time_between_emits.total_seconds() * 1000,
+                             new_time_between_emits_ms, needed_plotting_time_ms))
         # TODO use the following to update the new time:
         # self.adapted_min_time_between_emits = timedelta(milliseconds=new_time_between_emits_ms)
 
@@ -1889,7 +1891,6 @@ class NTRSSortRawDatatoArrayFast(Node):
             'nOfCompletedSteps'] = self.completed_steps_this_track  # make sure this exists
         if self.bunch_start_stop_tr_wise is not None:
             self.bunch_start_stop_cur_tr = self.bunch_start_stop_tr_wise[track_ind]
-
 
     def processData(self, data, pipeData):
         self.stored_data = np.append(self.stored_data, data)
