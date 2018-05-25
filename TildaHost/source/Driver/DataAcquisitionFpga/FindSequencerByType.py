@@ -12,7 +12,7 @@ import logging
 
 
 def ret_seq_instance_of_type(seq_type):
-    print('searching for sequencer of type: %s' % seq_type)
+    logging.info('searching for sequencer of type: %s' % seq_type)
     if seq_type == 'cs' or seq_type == 'kepco':
         try:
             from Driver.DataAcquisitionFpga.ContinousSequencer import ContinousSequencer as Cs
@@ -40,7 +40,7 @@ def ret_seq_instance_of_type(seq_type):
         try:
             from Driver.DataAcquisitionFpga.TimeResolvedSequencer import TimeResolvedSequencer as Trs
             return Trs()
-        except Exception:
+        except Exception as e:
             logging.error('error while loading trs: %s' % e, exc_info=True)
             reply = QtWidgets.QMessageBox.warning(
                 QtWidgets.QWidget(),
@@ -57,10 +57,10 @@ def ret_seq_instance_of_type(seq_type):
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
             )
             if reply == QtWidgets.QMessageBox.Yes:
-                print('ok, will load dummy')
+                logging.info('will load dummy on user request')
                 return ret_seq_instance_of_type('trsdummy')
             else:
-                print('i will not load any sequencer and abort mission now')
+                logging.info('i will not load any sequencer and abort mission now')
                 return None
     elif seq_type == 'csdummy':
         from Driver.DataAcquisitionFpga.ContinousSequencerDummy import ContinousSequencer as CsDummy

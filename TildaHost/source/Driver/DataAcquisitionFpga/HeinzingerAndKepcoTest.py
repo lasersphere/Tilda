@@ -44,7 +44,7 @@ class HsbAndDac(FPGAInterfaceHandling):
         read = self.ReadWrite(hat.postAccOffsetVoltState).value
         while deviceNumber != read:
             read = self.ReadWrite(hat.postAccOffsetVoltState).value
-            print(read)
+            logging.debug(read)
             time.sleep(0.25)
         return self.checkFpgaStatus()
 

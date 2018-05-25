@@ -7,6 +7,7 @@ Created on '09.07.2015'
 """
 
 import ctypes
+import logging
 
 import numpy as np
 
@@ -111,7 +112,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         :return:bool, True if successfully changed State
         """
         self.status = CsCfg.seqStateDict['measureTrack']
-        print('measureing track: ' + str(track_num) +
+        logging.debug('measuring track: ' + str(track_num) +
                       '\nscanparameter are:' + str(scanpars))
         self.data_builder(scanpars, track_num)
         return True

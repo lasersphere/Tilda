@@ -520,9 +520,9 @@ class AgilentM918x:
             config_dict = self.pre_configs[pre_conf_name].value
             config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
             self.load_from_config_dict(config_dict, False)
-            print('%s dmm loaded with preconfig: %s ' % (self.name, pre_conf_name))
+            logging.info('%s dmm loaded with preconfig: %s ' % (self.name, pre_conf_name))
         else:
-            print(
+            logging.error(
                 'error: could not set the preconfiguration: %s in dmm: %s, because the config does not exist'
                 % (pre_conf_name, self.name))
 
@@ -537,7 +537,7 @@ class AgilentM918x:
         ret_message = ctypes.create_string_buffer("".encode('utf-8'), 256)
         self.dll.AgM918x_error_message(self.session, ret_status, ret_message)
         if ret_status.value < 0:
-            print(
+            logging.error(
                 comment + ' errorcode is: ' + str(ret_status.value) +
                 '\n error message is: ' + ret_message.value.decode('utf-8'))
         return ret_status.value, ret_message.value.decode('utf-8')

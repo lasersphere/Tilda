@@ -73,7 +73,7 @@ class DummyTritonDevice(TritonObject):
         self.receive(dev, t, ch, val)
 
     def receive(self, dev, t, ch, val):
-        print(self.name, dev, t, ch, val)
+        logging.debug('%s received from dev %s at %s on channel %s : %s' % (self.name, dev, t, ch, val))
         # pass
 
     def _emit(self):
@@ -151,7 +151,7 @@ class DummyTritonDevice(TritonObject):
 
     def _commitUri(self, uri):
         """Write the uri into the device table"""
-        print(uri)
+        logging.info('uri of %s : %s' % (self.name, uri))
 
     @staticmethod
     def locked(func):

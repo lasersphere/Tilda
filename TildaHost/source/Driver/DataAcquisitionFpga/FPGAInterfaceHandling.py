@@ -16,6 +16,7 @@ The docs are mostly copied from the NiFPGA.h file
 """
 
 import ctypes
+import logging
 import os
 from os import path, pardir
 
@@ -82,7 +83,7 @@ class FPGAInterfaceHandling():
                             '(PXI-7841R or PXI-7852R currently)\n'
                             'and check if the resource is ok, e.g. Rio1 or so, MAX helps to identify this')
         else:
-            print('Fpga Initialised on ' + str(resource.value) + '. The Session is ' + str(self.session)
+            logging.info('Fpga Initialised on ' + str(resource.value) + '. The Session is ' + str(self.session)
                   + '. Status is: ' + str(self.status) + '.')
         return self.session
 
@@ -136,11 +137,11 @@ class FPGAInterfaceHandling():
         if self.status == self.statusSuccess:
             return True
         elif self.status < self.statusSuccess:
-            print('Fpga Status Yields Error, Code is: ' + str(self.status))
+            logging.error('Fpga Status Yields Error, Code is: ' + str(self.status))
             return False
         elif self.status > self.statusSuccess:
-            print('There is a WarningCode ' + str(self.status) +
-                  ' on Session ' + str(self.session.value) + ' .')
+            logging.warning('There is a WarningCode ' + str(self.status) +
+                            ' on Session ' + str(self.session.value) + ' .')
             return True
 
     '''Indicator/Control Operations:'''
@@ -290,7 +291,7 @@ class FPGAInterfaceHandling():
         requested_eles = ctypes.c_ulong()
         self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ConfigureFifo2(
             self.session, fifoRef, nOfReqEle, ctypes.byref(requested_eles)))
-        print('The Host Buffer is now set to %s elements. Requested where: %s ' % (requested_eles, nOfReqEle))
+        logging.info('The Host Buffer is now set to %s elements. Requested where: %s ' % (requested_eles, nOfReqEle))
         self.FifoStart(fifoRef)  # must be called in order to make this call effective!
         return self.checkFpgaStatus()
 
@@ -311,7 +312,7 @@ class FPGAInterfaceHandling():
         if nOfEle < 0:
             #check for number of elements in fifo and than release all of them.
             remain_eles = self.ReadU32Fifo(fifoRef, 0)['elemRemainInFifo']
-            print('remaining elements in fifo before clearing all of them: %s ' % remain_eles)
+            logging.info('remaining elements in fifo before clearing all of them: %s ' % remain_eles)
             return self.ClearU32FifoHostBuffer(fifoRef, remain_eles)
         if nOfEle > 0:
             self.StatusHandling(self.NiFpgaUniversalInterfaceDll.NiFpga_ReleaseFifoElements(

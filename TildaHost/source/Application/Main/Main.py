@@ -270,7 +270,7 @@ class Main(QtCore.QObject):
                 logging.debug('working on next item in joblist: ' + str(new_state))
                 self.set_state(*new_state, only_if_idle=True)
         except Exception as e:
-            print('work_on_next_job_during_idle  error : ', e)
+            logging.error('work_on_next_job_during_idle  error : %s ' % e, exc_info=True)
 
     def gui_status_subscribe(self, callback_signal_from_gui):
         """
@@ -375,17 +375,17 @@ class Main(QtCore.QObject):
                     try:
                         self.init_dmm(dmm_type, dmm_address)
                     except Exception as e:
-                        print('error %s in autostart() of Main.py while starting: %s on address %s' %
-                              (e, dmm_type, dmm_address))
+                        logging.error('error %s in autostart() of Main.py while starting: %s on address %s' %
+                              (e, dmm_type, dmm_address), exc_info=True)
             except Exception as e:
-                print('error %s in autostart() of Main.py while trying to convert the following string: %s' %
-                      (e, dmms_dict))
+                logging.error('error %s in autostart() of Main.py while trying to convert the following string: %s' %
+                      (e, dmms_dict), exc_info=True)
         pre_scan_timeout = self.autostart_dict.get('preScanTimeoutS', None)
         if pre_scan_timeout is not None:
             self.pre_scan_timeout_changed(float(pre_scan_timeout))
         power_sup_dict = self.autostart_dict.get('autostartDevices', {}).get('powersupplies', False)
         if power_sup_dict:
-            print('automatic start of power supplies not included yet.')
+            logging.warning('automatic start of power supplies not included yet.')
         laser_freq = self.autostart_dict.get('laserFreq', False)
         if laser_freq:
             self.laser_freq_changed(float(laser_freq))
@@ -426,7 +426,7 @@ class Main(QtCore.QObject):
         track_name = 'track' + str(next_track_num)
         if seq_type == 'kepco':  # only one track for a kepco scan
             if next_track_num > 0:
-                print('only one track allowed for kepco scan')
+                logging.warning('only one track allowed for kepco scan')
                 return None
         scand_from_db = DbOp.extract_track_dict_from_db(self.database, iso, seq_type, next_track_num)
         if scand_from_db is not None:
@@ -830,8 +830,8 @@ class Main(QtCore.QObject):
         if ret:
             pass
         else:
-            print('while starting the simple counter bitfile, something did not work.')
-            print('don\'t worry, starting DUMMY Simple Counter now.')
+            logging.warning('while starting the simple counter bitfile, something did not work.'
+                            ' Don\'t worry, starting DUMMY Simple Counter now.')
             self.simple_counter_inst.run_dummy()
         self.set_state(MainState.simple_counter_running)
 
@@ -1220,9 +1220,10 @@ class Main(QtCore.QObject):
         self.scan_main.ppg_state_callback_connect(callback_signal)
 
     def ppg_state_disconnect(self):
-        print('disconnecting ...')
+        logging.debug('disconnecting ppg qtsygnal callback...')
         self.scan_main.ppg_state_callback_disconnect()
-        print('disconnected')
+        logging.debug('ppg qtsygnal callback disconnected')
+
 
     ''' triton related'''
 
