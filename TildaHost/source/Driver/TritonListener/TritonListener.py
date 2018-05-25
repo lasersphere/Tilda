@@ -57,8 +57,6 @@ class TritonListener(TritonObject):
         self.logged_data = {}
         self.logging_complete = False
 
-        self.triton_live_data_dict = {}  # dict to store all triton log results until next emit is allowed.
-
         self.last_emit_to_analysis_pipeline_datetime = datetime.now()
         self.time_between_emits_to_pipeline = timedelta(milliseconds=500)
         # limit this to 500 ms in order nto to flush the pipeline with emitted signals
@@ -213,27 +211,27 @@ class TritonListener(TritonObject):
                     if self.log[dev][ch]['required'] + acq_on_log_start > self.log[dev][ch]['acquired'] \
                             or self.log[dev][ch]['required'] < 1 and self.pre_dur_post_str == 'duringScan':
                         # not enough data on this channel yet or continuous acquisition (only allowed during scan)
+                        # all data is always stored in the .log until the logging is stopped.
                         self.log[dev][ch]['data'].append(val)
                         self.log[dev][ch]['acquired'] += 1
-                        # store data in the existing dict:
-                        TiTs.deepupdate(self.triton_live_data_dict,
-                                        {self.track_name: {'triton': {self.pre_dur_post_str: self.log}}})
+                        # store data in the existing dict: DOOh not necessary because data is stored in log!
+                        triton_live_data_dict = {self.track_name: {'triton': {self.pre_dur_post_str: self.log}}}
                         # now update the 'acquired' number for each channel and dev
-                        for dev, chs in self.triton_live_data_dict[
-                            self.track_name]['triton'][self.pre_dur_post_str].items():
-                            for ch_name, ch_data in chs.items():
-                                ch_data['acquired'] = len(ch_data['data'])
+                        # for dev, chs in self.triton_live_data_dict[
+                        #     self.track_name]['triton'][self.pre_dur_post_str].items():
+                        #     for ch_name, ch_data in chs.items():
+                        #         ch_data['acquired'] = len(ch_data['data'])
                         if self.pre_dur_post_str == 'duringScan':
                             timedelta_since_laste_send = datetime.now() - self.last_emit_to_analysis_pipeline_datetime
                             if timedelta_since_laste_send >= self.time_between_emits_to_pipeline:
                                 # in duringScan emit the received values to the pipe!
-                                self.data_to_pipe_sig.emit(np.ndarray(0, dtype=np.int32),
-                                                           deepcopy(self.triton_live_data_dict))
+                                to_send = deepcopy(triton_live_data_dict)
+                                # self.triton_live_data_dict = {}  # reset storage after emit
+                                self.data_to_pipe_sig.emit(np.ndarray(0, dtype=np.int32), to_send)
                                 self.last_emit_to_analysis_pipeline_datetime = datetime.now()
-                                self.triton_live_data_dict = {}
                         else:  # in pre and postScan emit received value to callback for live data plotting
-                            self.pre_post_meas_data_dict_callback.emit(deepcopy(self.triton_live_data_dict))
-                            self.triton_live_data_dict = {}
+                            self.pre_post_meas_data_dict_callback.emit(deepcopy(triton_live_data_dict))
+                            # self.triton_live_data_dict = {}  # reset storage after emit
             self.check_log_complete()
 
     def check_log_complete(self):
@@ -259,6 +257,9 @@ class TritonListener(TritonObject):
             #         val['acquired'] = len(val['data'])
             logging.debug('TritonListener self.log after completion: %s' % str(self.log))
             self.stop_log()
+            return True
+        else:
+            return False
 
     def start_log(self):
         """ start logging of the desired channels and devs.

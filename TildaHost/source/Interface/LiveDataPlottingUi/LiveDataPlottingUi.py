@@ -103,6 +103,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.updating_plot = False
 
         self.needed_plot_update_time_ms = 0.0
+        self.calls_since_last_time_res_plot_update = 0  # to force update of tres plot if the plot is too slow.
 
         self.sum_plt_data = None
         self.trs_names_list = ['trs', 'trsdummy', 'tipa']
@@ -454,13 +455,20 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             valid_data = False
             self.spec_data = deepcopy(spec_data)
 
-            update_time_res_spec = self.needed_plot_update_time_ms <= 150
+            update_time_ms = 200
+            update_time_res_spec = self.needed_plot_update_time_ms <= update_time_ms \
+                                   or self.calls_since_last_time_res_plot_update > 5
             # update teh time resolved spec if the last time the plot was faster plotted than 100ms
             # 150 ms should be ok to update all other plots
-            if not update_time_res_spec:
+            # anyhow every fifth plot it will force to plot the time res
+            if update_time_res_spec:
+                self.calls_since_last_time_res_plot_update = 0
+            else:
                 logging.warning('did not update time resolved plot, because the last plotting time'
-                                ' was %.1f ms and this is longer than 150 ms'
-                                % self.needed_plot_update_time_ms)
+                                ' was %.1f ms and this is longer than %.1f ms'
+                                % (self.needed_plot_update_time_ms, update_time_ms))
+                self.calls_since_last_time_res_plot_update += 1
+
             self.update_all_plots(self.spec_data, update_tres=update_time_res_spec)
             if self.spec_data.seq_type in self.trs_names_list:
                 self.spinBox.blockSignals(True)
