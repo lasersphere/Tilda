@@ -937,6 +937,10 @@ class ScanMain(QObject):
             return {}
 
     def get_triton_receivers(self):
+        """
+        get a list of all subscribed devices
+        :return: list, ['dev0', 'dev1', ... ]
+        """
         if self.triton_listener is None:
             return []
         else:

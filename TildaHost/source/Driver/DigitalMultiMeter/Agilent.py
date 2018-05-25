@@ -840,6 +840,7 @@ class Agilent(QThread):
         self.stop_reading_thread = False
         self.mutex.unlock()
 
+
 if __name__ == "__main__":
     # dmm = Agilent(False, 'com1', '34401A')
     # dmm = Agilent(False, '137.138.135.84', '34461A')
@@ -864,7 +865,7 @@ if __name__ == "__main__":
     dmm.set_to_pre_conf_setting(AgilentPreConfigs.periodic.name)
     stopp = datetime.datetime.now()
     needed_time = stopp - start
-    logging.info('startup took: %.1f s' % needed_time.seconds)
+    logging.info('startup took: %.3f s' % needed_time.total_seconds())
     # dmm.abort_meas()
     logging.info('thread running: %s' % dmm.isRunning())
     logging.info(dmm.read_back_data)

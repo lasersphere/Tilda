@@ -53,7 +53,7 @@ class AnalysisThread(QThread):
                 self.raw_data_storage = np.ndarray(0, dtype=np.int32)
                 self.mutex.unlock()
                 st_feed = datetime.now()
-                self.pipeline.feed(data)
+                self.pipeline.feed(data)  # takes a while
                 done_feed = datetime.now()
                 elapsed_feed_ms = (done_feed - st_feed).total_seconds() * 1000
                 logging.debug('Analyzing %d data points took %.1f ms'

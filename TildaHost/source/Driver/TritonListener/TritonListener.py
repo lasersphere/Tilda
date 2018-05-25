@@ -13,6 +13,8 @@ import logging
 import socket
 import sys
 from copy import deepcopy
+from datetime import datetime
+from datetime import timedelta
 
 import Pyro4
 import mysql.connector as Sql
@@ -22,6 +24,7 @@ from PyQt5.QtCore import QObject, pyqtSignal
 import Application.Config as Cfg
 from Driver.TritonListener.DummyTritonDevice import DummyTritonDevice
 from Driver.TritonListener.TritonObject import TritonObject
+import TildaTools as TiTs
 
 
 class TritonListener(TritonObject):
@@ -53,6 +56,12 @@ class TritonListener(TritonObject):
         self.logging = False
         self.logged_data = {}
         self.logging_complete = False
+
+        self.triton_live_data_dict = {}  # dict to store all triton log results until next emit is allowed.
+
+        self.last_emit_to_analysis_pipeline_datetime = datetime.now()
+        self.time_between_emits_to_pipeline = timedelta(milliseconds=500)
+        # limit this to 500 ms in order nto to flush the pipeline with emitted signals
 
         # variables to store the actual track and scan strings for emitting the live data dict
         self.pre_dur_post_str = 'preScan'
@@ -206,16 +215,29 @@ class TritonListener(TritonObject):
                         # not enough data on this channel yet or continuous acquisition (only allowed during scan)
                         self.log[dev][ch]['data'].append(val)
                         self.log[dev][ch]['acquired'] += 1
-                        triton_live_data_dict = {self.track_name: {'triton': {self.pre_dur_post_str: self.log}}}
+                        # store data in the existing dict:
+                        TiTs.deepupdate(self.triton_live_data_dict,
+                                        {self.track_name: {'triton': {self.pre_dur_post_str: self.log}}})
+                        # now update the 'acquired' number for each channel and dev
+                        for dev, chs in self.triton_live_data_dict[
+                            self.track_name]['triton'][self.pre_dur_post_str].items():
+                            for ch_name, ch_data in chs.items():
+                                ch_data['acquired'] = len(ch_data['data'])
                         if self.pre_dur_post_str == 'duringScan':
-                            # in duringScan emit the received values to the pipe!
-                            self.data_to_pipe_sig.emit(np.ndarray(0, dtype=np.int32), triton_live_data_dict)
+                            timedelta_since_laste_send = datetime.now() - self.last_emit_to_analysis_pipeline_datetime
+                            if timedelta_since_laste_send >= self.time_between_emits_to_pipeline:
+                                # in duringScan emit the received values to the pipe!
+                                self.data_to_pipe_sig.emit(np.ndarray(0, dtype=np.int32),
+                                                           deepcopy(self.triton_live_data_dict))
+                                self.last_emit_to_analysis_pipeline_datetime = datetime.now()
+                                self.triton_live_data_dict = {}
                         else:  # in pre and postScan emit received value to callback for live data plotting
-                            self.pre_post_meas_data_dict_callback.emit(triton_live_data_dict)
+                            self.pre_post_meas_data_dict_callback.emit(deepcopy(self.triton_live_data_dict))
+                            self.triton_live_data_dict = {}
             self.check_log_complete()
 
     def check_log_complete(self):
-        """ return True if all values have ben acquired """
+        """ calls self.stop_log() if all values have ben acquired """
         check_sum = 0
         for dev, dev_log in self.log.items():
             for ch, val in dev_log.items():
@@ -278,8 +300,8 @@ class TritonListener(TritonObject):
     def get_receivers(self):
         return list(sorted(self._recFrom.keys()))
 
-if __name__=='__main__':
 
+if __name__ == '__main__':
     app_log = logging.getLogger()
     # app_log.setLevel(getattr(logging, args.log_level))
     app_log.setLevel(logging.DEBUG)
@@ -293,7 +315,6 @@ if __name__=='__main__':
 
     app_log.info('****************************** starting ******************************')
     app_log.info('Log level set to DEBUG')
-
 
     trit_lis = TritonListener()
     # trit_lis.create_dummy_dev()

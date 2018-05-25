@@ -11,6 +11,7 @@ import logging
 import os
 import sqlite3
 from copy import deepcopy
+from copy import copy
 
 import numpy as np
 from lxml import etree as ET
@@ -103,6 +104,42 @@ def merge_extend_dicts(target_dict, new_dict, overwrite=True, force_overwrite=Fa
             # else: key exists and vals are identical - do nothing
         else:  # key doesn't exist
             target_dict[keys] = new_dict[keys]
+
+
+# Copyright Ferry Boender, released under the MIT license.
+# see here. https://www.electricmonk.nl/log/2017/05/07/merging-two-python-dictionaries-by-deep-updating/
+def deepupdate(target, src):
+    """
+    Deep update target dict with src
+    For each k,v in src: if k doesn't exist in target, it is deep copied from
+    src to target. Otherwise, if v is a list, target[k] is extended with
+    src[k]. If v is a set, target[k] is updated with v, If v is a dict,
+    recursively deep-update it.
+
+    Examples:
+    >>> t = {'name': 'Ferry', 'hobbies': ['programming', 'sci-fi']}
+    >>> deepupdate(t, {'hobbies': ['gaming']})
+    >>> print(t)
+    {'name': 'Ferry', 'hobbies': ['programming', 'sci-fi', 'gaming']}
+    """
+    for k, v in src.items():
+        if type(v) == list:
+            if not k in target:
+                target[k] = deepcopy(v)
+            else:
+                target[k].extend(v)
+        elif type(v) == dict:
+            if not k in target:
+                target[k] = deepcopy(v)
+            else:
+                deepupdate(target[k], v)
+        elif type(v) == set:
+            if not k in target:
+                target[k] = v.copy()
+            else:
+                target[k].update(v.copy())
+        else:
+            target[k] = copy(v)
 
 
 def numpy_array_from_string(string, shape, datatytpe=np.int32):
@@ -1143,5 +1180,51 @@ if __name__ == '__main__':
     # sc_dict = dft.draftScanDict
     # isodict = sc_dict['isotopeData']
     # print(nameFileXml(isodict, 'E:\\temp2'))
-    ret = get_all_tracks_of_xml_in_one_dict('E:\\temp2\\sums\\notrit_csdummy_run1546.xml')
-    print(ret['track0']['triton'])
+    # ret = get_all_tracks_of_xml_in_one_dict('E:\\temp2\\sums\\notrit_csdummy_run1546.xml')
+    # print(ret['track0']['triton'])
+    sample_dict0 = {'track0':
+        {'triton':
+            {'preScan':
+                {'dummyDev': {
+                    'calls': {'required': 2, 'data': [0, 1], 'acquired': 2},
+                    'random': {'required': 4, 'data': [0, 1, 2, 3], 'acquired': 4}}}}}}
+    sample_dict1 = {'track0':
+        {'triton':
+            {'preScan':
+                {'dummyDev': {
+                    'calls': {'required': 2, 'data': [2], 'acquired': 1},
+                    'random': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
+    sample_dict2 = {}
+    sample_dict3 = {'track0':
+        {'triton':
+            {'preScan':
+                {'dummyDev2': {
+                    'calls': {'required': 2, 'data': [2], 'acquired': 1},
+                    'random': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
+    sample_dict4 = {'track0':
+        {'triton':
+            {'preScan':
+                {'dummyDev': {
+                    'calls1': {'required': 2, 'data': [2], 'acquired': 1},
+                    'random1': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
+    sample_dict5 = {'track0':
+        {'triton':
+            {'postScan':
+                {'dummyDev': {
+                    'calls1': {'required': 2, 'data': [2], 'acquired': 1},
+                    'random1': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
+
+    test_d0 = {'lala': [0, 1]}
+    test_d1 = {'lala': [1, 2], 'blub': [5,6]}
+
+    deepupdate(sample_dict0, sample_dict1)
+    deepupdate(sample_dict0, sample_dict2)
+    deepupdate(sample_dict0, sample_dict3)
+    deepupdate(sample_dict0, sample_dict4)
+    deepupdate(sample_dict0, sample_dict5)
+    for dev, chs in sample_dict0['track0']['triton']['preScan'].items():
+        for ch_name, ch_data in chs.items():
+            print(ch_data)
+            ch_data['acquired'] = len(ch_data['data'])
+
+    print_dict_pretty(sample_dict0)

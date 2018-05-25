@@ -125,6 +125,11 @@ class Main(QtCore.QObject):
         self.dmm_gui_callback = None
         self.last_dmm_reading_datetime = datetime.now()  # storage for the last reading time of the dmms
         self.dmm_periodic_reading_interval = timedelta(seconds=5)
+        self.dmm_periodic_reading_interval_during_scan = timedelta(seconds=1)
+
+        self.last_triton_reading_datetime = datetime.now()
+        # store last reading time of the subscribed triton device names in order not to read every 50ms
+        self.triton_reading_interval = timedelta(milliseconds=100)
 
         self.displayed_data = {}  # dict of all displayed files. complete filename is key.
 
@@ -151,7 +156,7 @@ class Main(QtCore.QObject):
                     'Processing events in beginning of cyclic loop took unexpected long: %.1f ms'
                     % elapsed_proc_evts_ms)
 
-        self.get_triton_log()
+        self.get_triton_log(reading_interval=self.triton_reading_interval)
         if self.m_state[0] is MainState.idle:
             self.get_fpga_and_seq_state()
             self.read_dmms(reading_interval=self.dmm_periodic_reading_interval)
@@ -189,7 +194,13 @@ class Main(QtCore.QObject):
             self._load_track()
             self.get_fpga_and_seq_state()
         elif self.m_state[0] is MainState.scanning:
-            self.read_dmms(feed_to_pipe=True) #TODO: Also read_triton
+            act_iso = deepcopy(self.scan_progress.get('activeIso', ''))
+            dmm_readinterval = self.dmm_periodic_reading_interval_during_scan
+            if act_iso:
+                act_seq_type = self.scan_pars.get(act_iso, {}).get('isotopeData', {}).get('type', 'kepco')
+                if act_seq_type == 'kepco':
+                    dmm_readinterval = timedelta(seconds=0.1)
+            self.read_dmms(feed_to_pipe=True, reading_interval=dmm_readinterval)
             self._scanning()
             self.get_fpga_and_seq_state()
         elif self.m_state[0] is MainState.saving:
@@ -1135,7 +1146,7 @@ class Main(QtCore.QObject):
                         self.send_state()
                         worth_sending = True
                 if self.dmm_gui_callback is not None and worth_sending:
-                    # also send readback ot other guis that might be subscribed.
+                    # also send readback to other guis that might be subscribed.
                     self.dmm_gui_callback.emit(readback)
             if worth_sending:
                 return readback
@@ -1215,11 +1226,19 @@ class Main(QtCore.QObject):
 
     ''' triton related'''
 
-    def get_triton_log(self):
-        triton_status = self.scan_main.get_triton_receivers()
-        if triton_status != self.triton_status:
-            self.triton_status = triton_status
-            self.send_state()
+    def get_triton_log(self, reading_interval=timedelta(seconds=0.0)):
+        """
+        get the triton devices which the triton listener is subscribed to.
+        emit a status update if the devices have changed.
+        :param reading_interval: timedelta, fastest allowed reading time
+        :return: None
+        """
+        if datetime.now() - self.last_triton_reading_datetime >= reading_interval:
+            self.last_triton_reading_datetime = datetime.now()
+            triton_status = self.scan_main.get_triton_receivers()
+            if triton_status != self.triton_status:
+                self.triton_status = triton_status
+                self.send_state()
 
     def triton_unsubscribe_all(self):
         self.set_state(MainState.triton_unsubscribe, only_if_idle=True)
