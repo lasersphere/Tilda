@@ -437,7 +437,7 @@ class Agilent3458A(QThread):
                 print('error, reading from %s failed to convert: %s, error is: %s' % (self.name, ret, fail))
                 return np.array([])
             # done = datetime.datetime.now() - start_t
-            # print('done fetching, ', ret, '%.3f ms' % (done.microseconds / 1000))
+            # print('done fetching, ', ret, '%.3f ms' % (done.total_seconds() * 1000))
             return ret
         else:
             return np.array([])
