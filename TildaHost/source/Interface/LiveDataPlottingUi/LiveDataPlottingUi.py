@@ -173,6 +173,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         self.setup_range_please = True  # boolean to store if the range has ben setup yet or not
 
+        self.tres_offline_txt_itm = None  # Textitem to display, when tres plot is not plotted currently
+
         ''' all pmts related: '''
         #  dict for all_pmt_plot page containing a dict with the keys:
         # 'widget', 'proxy', 'vertLine', 'indList', 'pltDataItem', 'name', 'pltItem', 'fitLine' for each plot:
@@ -456,8 +458,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.spec_data = deepcopy(spec_data)
 
             update_time_ms = 200
+            max_calls_without_plot = 5
             update_time_res_spec = self.needed_plot_update_time_ms <= update_time_ms \
-                                   or self.calls_since_last_time_res_plot_update > 5
+                                   or self.calls_since_last_time_res_plot_update > max_calls_without_plot
             # update teh time resolved spec if the last time the plot was faster plotted than 100ms
             # 150 ms should be ok to update all other plots
             # anyhow every fifth plot it will force to plot the time res
@@ -465,8 +468,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.calls_since_last_time_res_plot_update = 0
             else:
                 logging.warning('did not update time resolved plot, because the last plotting time'
-                                ' was %.1f ms and this is longer than %.1f ms'
-                                % (self.needed_plot_update_time_ms, update_time_ms))
+                                ' was %.1f ms and this is longer than %.1f ms and it'
+                                ' was only missed %s times yet but %s are allowed'
+                                % (self.needed_plot_update_time_ms, update_time_ms,
+                                   self.calls_since_last_time_res_plot_update, max_calls_without_plot))
                 self.calls_since_last_time_res_plot_update += 1
 
             self.update_all_plots(self.spec_data, update_tres=update_time_res_spec)
@@ -506,6 +511,18 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             if spec_data.seq_type in self.trs_names_list:
                 if update_tres:
                     self.update_tres_plot(spec_data)
+                    if self.tres_offline_txt_itm is not None:
+                        self.tres_plt_item.removeItem(self.tres_offline_txt_itm)
+                    self.tres_offline_txt_itm = None
+                else:
+                    if self.tres_offline_txt_itm is None:
+                        self.tres_offline_txt_itm = Pg.pg.TextItem(text='this plot is currently offline', color=(255, 0, 0))
+                        self.tres_plt_item.addItem(self.tres_offline_txt_itm)
+                    tres_cur_range = self.tres_plt_item.viewRange()
+                    text_x_pos = tres_cur_range[0][0] + (tres_cur_range[0][1] - tres_cur_range[0][0]) / 100
+                    text_y_pos = tres_cur_range[1][1] + (tres_cur_range[1][1] - tres_cur_range[1][0]) / 100
+                    logging.debug('writing offline message to position: x = %s, \t y = %s' % (text_x_pos, text_y_pos))
+                    self.tres_offline_txt_itm.setPos(text_x_pos, text_y_pos)
                 self.update_projections(spec_data)
             self.update_all_pmts_plot(spec_data)
             if self.application is not None:
