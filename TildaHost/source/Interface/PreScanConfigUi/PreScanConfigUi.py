@@ -54,9 +54,9 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         self.triton_scan_dict_backup = deepcopy(self.triton_scan_dict)  # to keep any data stored in the channels
         self.active_devices = None  # dict with active device will be updated on each self.setup_triton_devs () call
         self.setup_triton_devs()
-        # print('incoming triton dict: ')
+        # logging.info('incoming triton dict: ')
         # import json
-        # print(
+        # logging.debug(
         #     json.dumps(self.triton_scan_dict, sort_keys=True, indent=4))
 
         # self.listWidget_devices.currentItemChanged.connect(self.dev_selection_changed)
@@ -79,7 +79,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         self.tabWidget.setTabText(0, 'choose dmm')
         self.tabs['tab0'][1] = QtWidgets.QVBoxLayout(self.tabs['tab0'][0])
         self.init_dmm_clicked_callback.connect(self.initialize_dmm)
-        self.check_for_already_active_dmms()
+        #self.check_for_already_active_dmms()
 
         self.choose_dmm_wid = ChooseDmmWidget(self.init_dmm_clicked_callback, self.dmm_types)
         self.tabs['tab0'][2] = self.tabs['tab0'][1].addWidget(self.choose_dmm_wid)
@@ -100,7 +100,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         They are written to the main as soon as confirm is clicked in track gui.
         """
         try:
-            self.pre_post_during_changed(self.comboBox.currentText())
+            self.pre_post_during_changed(self.comboBox.currentText(), closing_widget=True)
             logging.debug('confirmed meas volt settings')
             logging.debug('act iso: %s, main inst: %s ' % (str(self.active_iso), str(Cfg._main_instance)))
             if self.active_iso is not None and Cfg._main_instance is not None:
@@ -114,7 +114,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
                     if self.checkBox_triton_measure.isChecked() else {}
                 self.parent_ui.buffer_pars['triton'] = self.triton_scan_dict
                 Cfg._main_instance.pre_scan_timeout_changed(self.doubleSpinBox_timeout_pre_scan_s.value())
-                # print('set values to: ', Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'])
+                # logging.info('set values to: ', Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'])
 
             self.close()
         except Exception as e:
@@ -130,13 +130,28 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
             self.voltage_reading.disconnect()
             self.parent_ui.close_pre_post_scan_win()
 
-    def pre_post_during_changed(self, pre_post_during_str):
-        """ whenever this is changed, load stuff from main. """
+    def pre_post_during_changed(self, pre_post_during_str, closing_widget = False):
+        """
+        whenever this is changed, load stuff from main.
+        :param: pre_post_during_str: the NEW tabs pre/post/during string
+        """
         # store values from current setting first!
         self.current_meas_volt_settings[self.pre_or_during_scan_str] = self.get_current_meas_volt_pars()
         self.triton_scan_dict[self.pre_or_during_scan_str] = self.get_current_triton_settings()
+        if not closing_widget: #Do this only when switching between tabs
+            # remove all tabs to load them new from config
+            while self.tabs.__len__() > 1:
+                dmm_name = self.tabWidget.tabText(1)
+                self.tabs.pop(dmm_name)
+                self.tabWidget.removeTab(1)
+            # for tab_ind in range(self.tabs.__len__()):
+            #     if tab_ind != 0:
+            #         dmm_name = self.tabWidget.tabText(tab_ind)
+            #         self.tabs.pop(dmm_name)
+            #         self.tabWidget.removeTab(tab_ind)
         # now load from main or from stored values for the newly selected pre/post/during thing
         self.pre_or_during_scan_str = pre_post_during_str
+        existing_config = None
         existing_config = None if self.current_meas_volt_settings.get(self.pre_or_during_scan_str, {}) == {} \
             else self.current_meas_volt_settings
         self.setup_volt_meas_from_main(existing_config)
@@ -188,18 +203,23 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         :return:
         """
         if self.active_iso is not None and self.parent_ui is not None:
-            if meas_volt_pars_dict is None:  # try to get it from main
-                scan_dict = Cfg._main_instance.scan_pars[self.active_iso]
-                meas_volt_pars_dict = scan_dict[self.act_track_name]['measureVoltPars']
+            if meas_volt_pars_dict is None:  # try to get it from main. Usually only the case when opening the window anew
+                if self.parent_ui.buffer_pars is not None:
+                    # First try to get it from buffer_pars of self.parent_ui!
+                    meas_volt_pars_dict = self.parent_ui.buffer_pars['measureVoltPars']
+                else:
+                    # If for whatever reason buffer_pars are not available (should never be the case) try loading from main
+                    scan_dict = Cfg._main_instance.scan_pars[self.active_iso]
+                    meas_volt_pars_dict = scan_dict[self.act_track_name]['measureVoltPars']
             meas_volt_dict = meas_volt_pars_dict.get(self.pre_or_during_scan_str, None)
-            if meas_volt_dict is None:
+            if meas_volt_dict is None: # there are no settings available yet for this pre/dur/post string
                 self.set_pulse_len_and_timeout({})
                 self.checkBox_voltage_measure.setChecked(False)
                 self.voltage_checkbox_changed(0)
                 for key, val in self.tabs.items():
                     if key != 'tab0':
                         if self.pre_or_during_scan_str == 'preScan':
-                            print('will set %s to preScan' % val[-1])
+                            logging.info('will set %s to preScan' % val[-1])
                             val[-1].handle_pre_conf_changed('pre_scan')
             else:
                 #  copy values for measVoltPulseLength25ns and measVoltTimeout10ns from preScan
@@ -220,26 +240,49 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         """
         when clicking on(X) on the tab this will be called and the dmm will be deinitialized.
         will be called by self.tabWidget.tabCloseRequested
+        the user will be asked whether or not he wants to de-initialize the device
         :param args: tuple, (ind,)
         """
         tab_ind = args[0]
         if tab_ind:  # not for tab 0 which is teh selector tab
             dmm_name = self.tabWidget.tabText(tab_ind)
+            de_init_bool = self.deinit_dialog(dmm_name) # Ask for deinit in a dialog!
             self.tabs.pop(dmm_name)
             self.tabWidget.removeTab(tab_ind)
-            if self.comm_enabled:  # deinit only if comm is allowed.
+            #if self.comm_enabled:  # deinit only if comm is allowed. This overrides a de-init wish of the user!
+            if de_init_bool:
+                logging.info('User requested deinitialization of %s' %dmm_name)
                 self.deinit_dmm(dmm_name)
+
+    def deinit_dialog(self, dmm_name):
+        """
+        Pops up a dialog to ask the user whether the chosen DMM should be de-initialized or kept active.
+        :param dmm_name: Identifies the control
+        :return: Bool: Whether the dmm was closed or not
+        """
+        msg = QtWidgets.QMessageBox()
+        msg.setText('Do you also want to de-initialize %s?' % dmm_name)
+        msg.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        msg.setDetailedText(
+            'If you want to continue using this DMM in any other pre- or post-measurements, it should not be de-initialized here. If No is chosen, the DMM will only be removed from the current pre/post/during measurement but not de-initialized.')
+        retval = msg.exec_()  # 65536 for No and 16384 for Yes
+        if retval == 65536:
+            return False # User does not want to de-initialize the dmm
+        elif retval == 16384:
+            return True # User wants to de-initialize the dmm
+        else:
+            pass
 
     def initialize_dmm(self, dmm_tuple, startup_config=None):
         """
         will initialize the dmm of type and adress and store the instance in the scan_main.
         :param dmm_tuple: tuple, (dev_type_str, dev_addr_str)
         """
-        print('starting to initialize: ', dmm_tuple)
+        logging.info('starting to initialize: ', dmm_tuple)
         dev_type, dev_address = dmm_tuple
         dmm_name = dev_type + '_' + dev_address
         if dmm_name in list(self.tabs.keys()) or dmm_name is None:
-            print('could not initialize: ', dmm_name, ' ... already initialized?')
+            logging.warning('could not initialize: ', dmm_name, ' ... already initialized?')
             return None  # break when not initialized
         self.init_dmm_done_callback.connect(functools.partial(self.setup_new_tab_widget, (dmm_name, dev_type)))
         Cfg._main_instance.init_dmm(dev_type, dev_address, self.init_dmm_done_callback, startup_config)
@@ -263,9 +306,9 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         setup a new tab inside the tab widget.
         with the get_wid_by_type function the right widget is initiated.
         """
-        print('setting up tab: ', tpl)
+        logging.debug('setting up tab: ', tpl)
         dmm_name, dev_type = tpl  # dmm_name = tab_name
-        # print('done initializing: ', dmm_name, dev_type)
+        # logging.debug('done initializing: ', dmm_name, dev_type)
         if disconnect_signal:
             self.init_dmm_done_callback.disconnect()
         self.tabs[dmm_name] = [None, None, None]
@@ -320,28 +363,39 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         only by communicating with it than, it will be configured
         :param dmm_conf_dict: dict, keys are dmm_names, values are the config dicts for each dmm
         """
-        print('loading config dict: ', meas_volt_dict)
+        logging.info('loading config dict: ', meas_volt_dict)
         dmm_conf_dict = meas_volt_dict.get('dmms', {})
         self.checkBox_voltage_measure.setChecked(dmm_conf_dict != {})
         self.voltage_checkbox_changed(2 if dmm_conf_dict != {} else 0)
         self.set_pulse_len_and_timeout(meas_volt_dict)
-        for key, val in dmm_conf_dict.items():
-            try:
+        for key, val in dmm_conf_dict.items(): #key: dmm_name ;val: dmm configuration
+            # first check whether the DMM is already intialized
+            act_dmm_dict = Cfg._main_instance.get_active_dmms()
+            if key in act_dmm_dict:
+                # DMM is already initialized. Only load the info to the tab
+                dmm_type, dmm_addr, state_str, last_readback, dmm_config = act_dmm_dict[key]
+                self.setup_new_tab_widget((key, dmm_type), False)
                 self.tabs[key][-1].load_dict_to_gui(val)
-            except Exception as e:
-                logging.error(
-                    'error: while loading the dmm vals to the gui of %s, this happened: %s' % (key, e))
-                warning_ms = key + ' was not yet initialized\n \n Do you want to initialize it now?'
-                try:
-                    button_box_answer = QtWidgets.QMessageBox.question(
-                        self, 'DMM not initialized', warning_ms,
-                        QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
-                    if button_box_answer == QtWidgets.QMessageBox.Yes:
-                        self.initialize_dmm((dmm_conf_dict[key].get('type', ''),
-                                             dmm_conf_dict[key].get('address', '')),
-                                            val.get('preConfName', 'initial'))
+            else:
+                # Not initialized yet.
+                try: #could possibly be removed. Was the previous standard call.
+                    self.tabs[key][-1].load_dict_to_gui(val)
                 except Exception as e:
-                    print(e)
+                    logging.error(
+                        'error: while loading the dmm vals to the gui of %s, this happened: %s' % (key, e))
+                    warning_ms = key + ' was not yet initialized\n \n Do you want to initialize it now?'
+                    try:
+                        # Ask user whether he wants to initialize the DMM now
+                        button_box_answer = QtWidgets.QMessageBox.question(
+                            self, 'DMM not initialized', warning_ms,
+                            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
+                        if button_box_answer == QtWidgets.QMessageBox.Yes:
+                            # if user wants to initialize, do so
+                            self.initialize_dmm((dmm_conf_dict[key].get('type', ''),
+                                                 dmm_conf_dict[key].get('address', '')),
+                                                val.get('preConfName', 'initial'))
+                    except Exception as e:
+                        logging.error(e)
 
     def get_current_dmm_config(self):
         """
@@ -429,7 +483,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
             while self.tableWidget_channels.rowCount() > 0:
                 self.tableWidget_channels.removeRow(0)
             self.cur_dev = cur.text()
-            print('cur dev: ', self.cur_dev, '  checkstate: ', cur_dev_selected)
+            logging.info('cur dev: ', self.cur_dev, '  checkstate: ', cur_dev_selected)
             new_dev = False
             if self.cur_dev not in self.triton_scan_dict.get(self.pre_or_during_scan_str,
                                                              {}).keys() and cur_dev_selected:
@@ -489,7 +543,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
                         try:
                             sample_count = int(req_itm.text())
                         except Exception as e:
-                            print('error in converting %s error is: %s' % (req_itm.text(), e))
+                            logging.error('error in converting %s error is: %s' % (req_itm.text(), e))
                         if sample_count:  #TODO: in order to allow continous aquisition we need to allow negative and/or zero values here. Probably can remove the whole if statement
                             ret[ch_itm.text()] = {'required': sample_count,
                                                   'acquired': 0,
@@ -509,7 +563,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         accordingly
         """
         if self.cur_dev is not None:
-            print('cur dev: ', self.cur_dev)
+            logging.info('cur dev: ', self.cur_dev)
             ret = []
             for i in range(self.tableWidget_channels.rowCount()):
                 ch_itm = self.tableWidget_channels.item(i, 0)
