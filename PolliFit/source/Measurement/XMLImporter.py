@@ -399,6 +399,7 @@ class XMLImporter(SpecData):
                 if 'track' in key:
                     dmms_dict_list.append(
                         (track_d.get('measureVoltPars', {}).get('preScan', {}).get('dmms', {}),
+                         track_d.get('measureVoltPars', {}).get('duringScan', {}).get('dmms', {}),
                          track_d.get('measureVoltPars', {}).get('postScan', {}).get('dmms', {}))
                     )
                     # if no measurements were taken an empty dict is appended.
@@ -408,7 +409,7 @@ class XMLImporter(SpecData):
                         set_value_list += scandict.get('isotopeData', {}).get('accVolt', 0.0),
 
         # check if any measurement was taken at all
-        measurement_taken = any([any(each[0]) or any(each[1]) for each in dmms_dict_list])
+        measurement_taken = any([any(each[0]) or any(each[1]) or any(each[2]) for each in dmms_dict_list])
 
         if measurement_taken:
             # at least in one track the offset/accvolt voltage was measured
@@ -421,30 +422,30 @@ class XMLImporter(SpecData):
                 offset_by_dev_mean.append({})
                 offset_vals_list.append([])
 
-                if each[0] == {} and each[1] == {}:
+                if each[0] == {} and each[1] == {} and each[2] == {}:
                     # no measurement was taken for this track, copy from the track before.
                     # this will fail when voltage is not measured in track0 but e.g. track1
                     # dont do this ;)
                     offset_by_dev[tr_ind] = offset_by_dev[tr_ind - 1]
                     offset_vals_list[tr_ind] = offset_vals_list[tr_ind - 1]
                 else:
-                    for post_pre_ind, post_pre_dict in enumerate(each):
+                    for pre_dur_post_ind, post_pre_dict in enumerate(each):
                         # post_pre_dict will be {} if no measurement was taken in this track.
                         for dmm_name, dmm_dict in post_pre_dict.items():
-                            if post_pre_ind == 0:
-                                offset_by_dev[tr_ind][dmm_name] = [[], []]
+                            if offset_by_dev[tr_ind].get(dmm_name, None) is None:
+                                # initialise an empty list for pre, during and post scan values.
+                                offset_by_dev[tr_ind][dmm_name] = [[], [], []]
                             for key, val in dmm_dict.items():
                                 if key == read_key:
                                     if isinstance(val, str):
                                         val = ast.literal_eval(val)
                                     if dmm_dict.get('assignment') == assignment:
                                         if isinstance(val, list):
-                                            if val != []: # somehow adding an empty list aborted the whole function call here
-                                                offset_vals_list[tr_ind] += val  # append to list
-                                                offset_by_dev[tr_ind][dmm_name][post_pre_ind] += val # this one crashed
+                                            offset_vals_list[tr_ind] += val  # append to list
+                                            offset_by_dev[tr_ind][dmm_name][pre_dur_post_ind] += val
                                         else:
                                             offset_vals_list[tr_ind].append(val)
-                                            offset_by_dev[tr_ind][dmm_name][post_pre_ind].append(val)
+                                            offset_by_dev[tr_ind][dmm_name][pre_dur_post_ind].append(val)
                 for dmm_name, offset_list_dmm in offset_by_dev[tr_ind].items():
                     # get mean value for this dmm in this track
                     offset_by_dev_flat = [item for sublist in offset_list_dmm for item in sublist]

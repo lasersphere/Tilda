@@ -203,7 +203,8 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         :return:
         """
         if self.active_iso is not None and self.parent_ui is not None:
-            if meas_volt_pars_dict is None:  # try to get it from main. Usually only the case when opening the window anew
+            if meas_volt_pars_dict is None:
+                # try to get it from main. Usually only the case when opening the window anew
                 if self.parent_ui.buffer_pars is not None:
                     # First try to get it from buffer_pars of self.parent_ui!
                     meas_volt_pars_dict = self.parent_ui.buffer_pars['measureVoltPars']
@@ -212,7 +213,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
                     scan_dict = Cfg._main_instance.scan_pars[self.active_iso]
                     meas_volt_pars_dict = scan_dict[self.act_track_name]['measureVoltPars']
             meas_volt_dict = meas_volt_pars_dict.get(self.pre_or_during_scan_str, None)
-            if meas_volt_dict is None: # there are no settings available yet for this pre/dur/post string
+            if meas_volt_dict is None:  # there are no settings available yet for this pre/dur/post string
                 self.set_pulse_len_and_timeout({})
                 self.checkBox_voltage_measure.setChecked(False)
                 self.voltage_checkbox_changed(0)
@@ -264,12 +265,14 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         msg.setText('Do you also want to de-initialize %s?' % dmm_name)
         msg.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         msg.setDetailedText(
-            'If you want to continue using this DMM in any other pre- or post-measurements, it should not be de-initialized here. If No is chosen, the DMM will only be removed from the current pre/post/during measurement but not de-initialized.')
+            'If you want to continue using this DMM in any other pre- or post-measurements,'
+            ' it should not be de-initialized here. If No is chosen, the DMM will only be removed'
+            ' from the current pre/post/during measurement but not de-initialized.')
         retval = msg.exec_()  # 65536 for No and 16384 for Yes
         if retval == 65536:
-            return False # User does not want to de-initialize the dmm
+            return False  # User does not want to de-initialize the dmm
         elif retval == 16384:
-            return True # User wants to de-initialize the dmm
+            return True  # User wants to de-initialize the dmm
         else:
             pass
 
@@ -278,7 +281,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         will initialize the dmm of type and adress and store the instance in the scan_main.
         :param dmm_tuple: tuple, (dev_type_str, dev_addr_str)
         """
-        print('starting to initialize: ', dmm_tuple)
+        logging.info('starting to initialize: %s %s ' % dmm_tuple)
         dev_type, dev_address = dmm_tuple
         dmm_name = dev_type + '_' + dev_address
         if dmm_name in list(self.tabs.keys()) or dmm_name is None:
@@ -306,10 +309,11 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         setup a new tab inside the tab widget.
         with the get_wid_by_type function the right widget is initiated.
         """
-        print('setting up tab: ', tpl)
+        logging.info('setting up tab: ' + str(tpl))
         dmm_name, dev_type = tpl  # dmm_name = tab_name
         # logging.debug('done initializing: ', dmm_name, dev_type)
         if disconnect_signal:
+            logging.debug('Main is done initializing: ' + str(tpl))
             self.init_dmm_done_callback.disconnect()
         self.tabs[dmm_name] = [None, None, None]
         self.tabs[dmm_name][0] = QtWidgets.QWidget()
@@ -319,6 +323,23 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         self.tabs[dmm_name][2] = Ni4071Widg(dmm_name, dev_type)
         self.tabs[dmm_name][2].enable_communication(self.comm_enabled)
         self.tabs[dmm_name][1].addWidget(self.tabs[dmm_name][2])
+        if disconnect_signal:
+            # when done with initialising the device try to get the scan values
+            # from the host ui / the main for this tab/dmm
+            val = self.current_meas_volt_settings.get(self.pre_or_during_scan_str, {}).get(dmm_name, {})
+            if val == {}:
+                if self.parent_ui.buffer_pars is not None:
+                    # First try to get it from buffer_pars of self.parent_ui!
+                    meas_volt_pars_dict = self.parent_ui.buffer_pars['measureVoltPars']
+                else:
+                    # If for whatever reason buffer_pars are not available
+                    #  (should never be the case) try loading from main
+                    scan_dict = Cfg._main_instance.scan_pars[self.active_iso]
+                    meas_volt_pars_dict = scan_dict[self.act_track_name]['measureVoltPars']
+                meas_volt_dict = meas_volt_pars_dict.get(self.pre_or_during_scan_str, None)
+                val = meas_volt_dict.get('dmms', {}).get(dmm_name, {})
+            if val != {}:
+                self.tabs[dmm_name][-1].load_dict_to_gui(val)
         return True
 
     def rcvd_voltage_dict(self, voltage_dict):
@@ -363,7 +384,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         only by communicating with it than, it will be configured
         :param dmm_conf_dict: dict, keys are dmm_names, values are the config dicts for each dmm
         """
-        logging.info('loading config dict: ', meas_volt_dict)
+        logging.info('loading config dict: ' + str(meas_volt_dict))
         dmm_conf_dict = meas_volt_dict.get('dmms', {})
         self.checkBox_voltage_measure.setChecked(dmm_conf_dict != {})
         self.voltage_checkbox_changed(2 if dmm_conf_dict != {} else 0)
