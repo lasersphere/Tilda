@@ -16,6 +16,7 @@ from PyQt5.QtCore import QThread, pyqtSignal, QObject, QMutex
 from PyQt5.QtWidgets import QApplication
 
 from Service.AnalysisAndDataHandling.tildaPipeline import find_pipe_by_seq_type
+import TildaTools as TiTs
 
 
 class AnalysisThread(QThread):
@@ -35,6 +36,8 @@ class AnalysisThread(QThread):
         self.num_of_analysed_elements_total = 0
         self.raw_data_storage = np.ndarray(0, dtype=np.int32)
         self.dmm_dict_list = []
+        self.dmm_dict_merge = {} # replaces dmm_dict_list in order to avoid building a huge list
+        self.triton_dict_merge = {} # same for triton dicts
         self.mutex = QMutex()
         # using mute expression in order to solve race cond, between append from outside loop
         # and read(/shrink) from inside loop
@@ -44,7 +47,8 @@ class AnalysisThread(QThread):
 
     def run(self):
         logging.info('analysis thread running now')
-        while not self.stop_analysis_bool or len(self.raw_data_storage) or any(self.dmm_dict_list):
+        while not self.stop_analysis_bool or len(self.raw_data_storage) or any(self.dmm_dict_list) \
+                or any(self.dmm_dict_merge) or any(self.triton_dict_merge):
             if len(self.raw_data_storage):
                 self.mutex.lock()
 
@@ -61,10 +65,14 @@ class AnalysisThread(QThread):
                               % (self.num_of_analysed_elements_total, elapsed_feed_ms))
                 # self.sleep(1)  # simulate feed
                 # print('number of total analysed data: %s ' % self.num_of_analysed_elements_total)
-            if any(self.dmm_dict_list):
+            if any(self.dmm_dict_list) or any(self.dmm_dict_merge) or any(self.triton_dict_merge):
                 self.mutex.lock()
+                self.dmm_dict_list.append(self.dmm_dict_merge)
+                self.dmm_dict_list.append(self.triton_dict_merge)
                 to_feed = deepcopy(self.dmm_dict_list)
                 self.dmm_dict_list = []
+                self.dmm_dict_merge = {}
+                self.triton_dict_merge = {}
                 self.mutex.unlock()
                 for dmm_dict in to_feed:
                     # print('feeding dmm dict: %s ' % dmm_dict)
@@ -98,7 +106,16 @@ class AnalysisThread(QThread):
         self.mutex.lock()
         self.raw_data_storage = np.append(self.raw_data_storage, data)
         if any(dmm_dict):
-            self.dmm_dict_list.append(dmm_dict)
+            # TODO: Don't use append. Careful! This includes triton dicts which have a different format (scan_dict)
+            #self.dmm_dict_list.append(dmm_dict)
+            #current_track_no = self.pipeline.pipeData['pipeInternals']['activeTrackNumber']
+            current_track = self.pipeline.pipeData['pipeInternals']['activeTrackNumber'][1]
+            if current_track in dmm_dict:
+                logging.debug('merging triton dict %s into %s.' %(dmm_dict, self.triton_dict_merge))
+                TiTs.merge_extend_dicts(self.triton_dict_merge, dmm_dict)
+            else:
+                logging.debug('merging dmm dict %s into %s.' % (dmm_dict, self.dmm_dict_merge))
+                TiTs.deepupdate(self.dmm_dict_merge, dmm_dict)
         self.mutex.unlock()
 
 

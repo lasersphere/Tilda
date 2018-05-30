@@ -138,6 +138,11 @@ def deepupdate(target, src):
                 target[k] = v.copy()
             else:
                 target[k].update(v.copy())
+        elif type(v) == np.ndarray:
+            if not k in target:
+                target[k] = deepcopy(v)
+            else:
+                target[k] = np.append(target[k], v)
         else:
             target[k] = copy(v)
 
@@ -1213,7 +1218,10 @@ if __name__ == '__main__':
                 {'dummyDev': {
                     'calls1': {'required': 2, 'data': [2], 'acquired': 1},
                     'random1': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
-
+    np1 = np.array([1, 1])
+    np2 = np.array([2, 2])
+    dmm_sample_dict0 = {'dummy_somewhere': np1, 'dummy_else' : np2}
+    dmm_sample_dict1 = {'dummy_somewhere': np2, 'dummy_else' : np1, 'more_dummy' : np2}
     test_d0 = {'lala': [0, 1]}
     test_d1 = {'lala': [1, 2], 'blub': [5,6]}
 
@@ -1222,9 +1230,12 @@ if __name__ == '__main__':
     deepupdate(sample_dict0, sample_dict3)
     deepupdate(sample_dict0, sample_dict4)
     deepupdate(sample_dict0, sample_dict5)
+    realdict = {'track0': {'triton': {'duringScan': {'dummyDev': {'random': {'required': -1, 'data': [], 'acquired': 0}, 'calls': {'required': -1, 'data': [3], 'acquired': 1}}}}}}
+    deepupdate(dmm_sample_dict0, dmm_sample_dict1)
+    print(dmm_sample_dict0)
     for dev, chs in sample_dict0['track0']['triton']['preScan'].items():
         for ch_name, ch_data in chs.items():
-            print(ch_data)
+            #print(ch_data)
             ch_data['acquired'] = len(ch_data['data'])
 
-    print_dict_pretty(sample_dict0)
+    #print_dict_pretty(sample_dict0)
