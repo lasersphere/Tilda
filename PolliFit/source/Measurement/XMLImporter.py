@@ -439,8 +439,9 @@ class XMLImporter(SpecData):
                                         val = ast.literal_eval(val)
                                     if dmm_dict.get('assignment') == assignment:
                                         if isinstance(val, list):
-                                            offset_vals_list[tr_ind] += val  # append to list
-                                            offset_by_dev[tr_ind][dmm_name][post_pre_ind] += val
+                                            if val != []: # somehow adding an empty list aborted the whole function call here
+                                                offset_vals_list[tr_ind] += val  # append to list
+                                                offset_by_dev[tr_ind][dmm_name][post_pre_ind] += val # this one crashed
                                         else:
                                             offset_vals_list[tr_ind].append(val)
                                             offset_by_dev[tr_ind][dmm_name][post_pre_ind].append(val)

@@ -278,7 +278,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         will initialize the dmm of type and adress and store the instance in the scan_main.
         :param dmm_tuple: tuple, (dev_type_str, dev_addr_str)
         """
-        logging.info('starting to initialize: ', dmm_tuple)
+        print('starting to initialize: ', dmm_tuple)
         dev_type, dev_address = dmm_tuple
         dmm_name = dev_type + '_' + dev_address
         if dmm_name in list(self.tabs.keys()) or dmm_name is None:
@@ -306,7 +306,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         setup a new tab inside the tab widget.
         with the get_wid_by_type function the right widget is initiated.
         """
-        logging.debug('setting up tab: ', tpl)
+        print('setting up tab: ', tpl)
         dmm_name, dev_type = tpl  # dmm_name = tab_name
         # logging.debug('done initializing: ', dmm_name, dev_type)
         if disconnect_signal:
@@ -483,7 +483,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
             while self.tableWidget_channels.rowCount() > 0:
                 self.tableWidget_channels.removeRow(0)
             self.cur_dev = cur.text()
-            logging.info('cur dev: ', self.cur_dev, '  checkstate: ', cur_dev_selected)
+            logging.info('cur dev: %s checkstate: %s' %(self.cur_dev,cur_dev_selected))
             new_dev = False
             if self.cur_dev not in self.triton_scan_dict.get(self.pre_or_during_scan_str,
                                                              {}).keys() and cur_dev_selected:
@@ -563,7 +563,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         accordingly
         """
         if self.cur_dev is not None:
-            logging.info('cur dev: ', self.cur_dev)
+            logging.info('cur dev: %s' % self.cur_dev)
             ret = []
             for i in range(self.tableWidget_channels.rowCount()):
                 ch_itm = self.tableWidget_channels.item(i, 0)
