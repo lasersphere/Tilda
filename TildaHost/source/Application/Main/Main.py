@@ -96,6 +96,9 @@ class Main(QtCore.QObject):
         self.power_sup_stat_callback_signals = {}
         # pyqtSignal for sending the status to the gui, if there is one connected:
         self.main_ui_status_call_back_signal = None
+        # update interval
+        self.main_ui_status_call_back_signal_timedelta_between_emits = timedelta(milliseconds=500)
+        self.main_ui_status_call_back_signal_last_emit_time = datetime.now()
         # pyqtSignal for sending the scan progress to the gui while scanning.
         self.scan_prog_call_back_sig_gui = None
         self.scan_prog_call_back_sig_pipeline.connect(self.update_scan_progress)
@@ -216,6 +219,7 @@ class Main(QtCore.QObject):
             self._deinit_dmm(self.m_state[1])
         elif self.m_state[0] is MainState.triton_unsubscribe:
             self._triton_unsubscribe_all()
+        self.send_state(ignore_max_interval=False)
         elapsed = datetime.now() - st
         if elapsed.total_seconds() > 0.05:
             logging.warning('cyclic execution took longer than 50ms, it took: %.1f ms, state is: %s'
@@ -297,11 +301,13 @@ class Main(QtCore.QObject):
                 self.pre_post_meas_data_dict_callback,
                 self.needed_plotting_time_ms_callback)
 
-    def send_state(self):
+    def send_state(self, ignore_max_interval=True):
         """
         if a gui is subscribed via a call back signal in self.main_ui_status_call_back_signal.
         This function will emit a status dictionary containing the following keys:
         status_dict keys: ['workdir', 'status', 'database', 'laserfreq', 'accvolt', 'sequencer_status', 'fpga_status']
+        :param ignore_max_interval: bool, use True to send the status no matter what or
+         False, if the status should be only send next time the interval has passed, than from the cyclic() call.
         """
         if self.main_ui_status_call_back_signal is not None:
             stat_dict = {
@@ -315,19 +321,26 @@ class Main(QtCore.QObject):
                 'dmm_status': self.get_dmm_status(),
                 'triton_status': str(self.triton_status)
             }
-            self.main_ui_status_call_back_signal.emit(stat_dict)
+            elapsed = datetime.now() - self.main_ui_status_call_back_signal_last_emit_time
+            if elapsed >= self.main_ui_status_call_back_signal_timedelta_between_emits or ignore_max_interval:
+                logging.debug('emitting %s, from %s, value is %s'
+                              % ('main_ui_status_call_back_signal',
+                                 'Application.Main.Main.Main#send_state',
+                                 str(stat_dict)))
+                self.main_ui_status_call_back_signal.emit(stat_dict)
+                self.main_ui_status_call_back_signal_last_emit_time = datetime.now()
 
     def get_sequencer_state(self):
         sequencer_state = self.scan_main.read_sequencer_status()
         if sequencer_state != self.sequencer_status:
             self.sequencer_status = sequencer_state
-            self.send_state()
+            self.send_state(ignore_max_interval=False)
 
     def get_fpga_state(self):
         fpga_state = self.scan_main.read_fpga_status()
         if fpga_state != self.fpga_status:
             self.fpga_status = fpga_state
-            self.send_state()
+            self.send_state(ignore_max_interval=False)
 
     def get_fpga_and_seq_state(self):
         self.get_fpga_state()
@@ -606,6 +619,10 @@ class Main(QtCore.QObject):
             self.scan_main.prepare_triton_listener_for_scan(
                 self.scan_pars[iso_name][act_track_name].get('triton', {}), pre_post_scan_str, act_track_name)
             # emit the scan_pars to the pre_post_live_data ui
+            logging.debug('emitting %s, from %s, value is %s'
+                          % ('pre_post_meas_data_dict_callback',
+                             'Application.Main.Main.Main#_measure_pre_and_post_scan',
+                             str(self.scan_pars[iso_name])))
             self.pre_post_meas_data_dict_callback.emit(self.scan_pars[iso_name])
             if self.scan_main.start_pre_scan_measurement(self.scan_pars[iso_name], act_track_name, pre_post_scan_str):
                 self.pre_scan_measurement_start_time = datetime.now()
@@ -706,6 +723,10 @@ class Main(QtCore.QObject):
                                                           self.scan_start_time)
         if progress_dict is not None:
             if self.live_plot_progress_callback is not None:
+                logging.debug('emitting %s, from %s, value is %s'
+                              % ('live_plot_progress_callback',
+                                 'Application.Main.Main.Main#update_scan_progress',
+                                 str(progress_dict)))
                 self.live_plot_progress_callback.emit(progress_dict)
 
     def subscribe_to_scan_prog(self):
@@ -946,6 +967,10 @@ class Main(QtCore.QObject):
         if call_back_sig is not None and isinstance(call_back_sig, str):
             call_back_sig = self.power_sup_stat_callback_signals.get(call_back_sig, None)
             if call_back_sig is not None:
+                logging.debug('emitting %s, from %s, value is %s'
+                              % ('call_back_sig',
+                                 'Application.Main.Main.Main#_power_supply_status',
+                                 str(stat)))
                 call_back_sig.emit(stat)
         self.set_state(MainState.idle)
 
@@ -1077,6 +1102,10 @@ class Main(QtCore.QObject):
         if start_config is not None and dmm_name is not None:
             self.scan_main.set_dmm_to_pre_config(dmm_name, start_config)
         if callback:
+            logging.debug('emitting %s, from %s, value is %s'
+                          % ('callback',
+                             'Application.Main.Main.Main#_init_dmm',
+                             str(True)))
             callback.emit(True)
         self.set_state(MainState.idle)
 
@@ -1143,12 +1172,16 @@ class Main(QtCore.QObject):
             if readback is not None:  # will be None if no dmms are active
                 for dmm_name, vals in readback.items():
                     if vals is not None:  # will be None if no new readback is available
-                        self.send_state()
                         worth_sending = True
                 if self.dmm_gui_callback is not None and worth_sending:
                     # also send readback to other guis that might be subscribed.
+                    logging.debug('emitting %s, from %s, value is %s'
+                                  % ('dmm_gui_callback',
+                                     'Application.Main.Main.Main#read_dmms',
+                                     str(readback)))
                     self.dmm_gui_callback.emit(readback)
             if worth_sending:
+                self.send_state()
                 return readback
             else:
                 return None
@@ -1255,4 +1288,8 @@ class Main(QtCore.QObject):
         """ send an info string via this signal """
         logging.info('sending the info: %s' % info_str)
         if isinstance(info_str, str):
+            logging.debug('emitting %s, from %s, value is %s'
+                          % ('info_warning_string_main_signal',
+                             'Application.Main.Main.Main#send_info',
+                             str(info_str)))
             self.info_warning_string_main_signal.emit(info_str)

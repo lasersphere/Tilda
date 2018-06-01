@@ -34,7 +34,7 @@ class AnalysisThread(QThread):
         self.clear_after_finish = False  # boolean that will tell the pipeline to clear(->save)
         #  or not after analysis completion
         self.num_of_analysed_elements_total = 0
-        self.raw_data_storage = np.ndarray(0, dtype=np.int32)
+        self.raw_data_storage = np.zeros(0, dtype=np.int32)
         self.dmm_dict_list = []
         self.dmm_dict_merge = {} # replaces dmm_dict_list in order to avoid building a huge list
         self.triton_dict_merge = {} # same for triton dicts
@@ -55,9 +55,10 @@ class AnalysisThread(QThread):
                 # print('analysing data now')
                 data = deepcopy(self.raw_data_storage)
                 self.num_of_analysed_elements_total += len(data)
-                self.raw_data_storage = np.ndarray(0, dtype=np.int32)
+                self.raw_data_storage = np.zeros(0, dtype=np.int32)
                 self.mutex.unlock()
                 st_feed = datetime.now()
+                logging.info('Analyzing now!')
                 self.pipeline.feed(data)  # takes a while
                 done_feed = datetime.now()
                 elapsed_feed_ms = (done_feed - st_feed).total_seconds() * 1000
@@ -79,6 +80,9 @@ class AnalysisThread(QThread):
                     self.pipeline.feed(dmm_dict)
                 # self.sleep(1)
             self.msleep(50)  # not sure if necessary
+        if self.stop_analysis_bool:
+            logging.info('stopping pipeline now!')
+            self.pipeline.stop()
         if self.clear_after_finish:
             # this means saving! -> finish analysis of all stored elements,
             # before clearing the pipe!
@@ -88,9 +92,10 @@ class AnalysisThread(QThread):
         # print('done with analysis')
         self.stop_analysis_bool = False
         self.clear_after_finish = False
+        self.quit()  # stop the thread from running
 
     def stop_analysis(self, clear_also):
-        self.pipeline.stop()
+        logging.info('ScanMain received stop pipeline command')
         # also finish analysis of all stored elements first before stopping all analysis.
         # when aborted or halted no new data will be fed anyhow!
         self.stop_analysis_bool = True  # anyhow stop the thread from running
@@ -103,19 +108,40 @@ class AnalysisThread(QThread):
         self.pipeline.start()
 
     def new_data(self, data, dmm_dict):
+        """
+        new data coming in either from the raw datastream of the fpga or
+         a dictionary from the digital mulitmeter's / triton listener.
+         The data is emitted from the TritonListener._receive() / ScanMain.read_multimeter()
+        :param data: np.array, holds 32b raw events from the fpga data stream
+        :param dmm_dict: dict, either triton or dmm dict.
+            triton dict: {'track0':
+                            {'triton':
+                             {'duringScan': {'dev_name':
+                                                {'ch0': {'data': [ ... ], 'required': -1, 'acquired': 20},
+                                                 'ch1': {'data': ...}}}}}}
+                 --> NOTE: the triton_log is always sending ALL data, so the same data is emitted multiple times.
+
+             dmm dict: {'dev_name0': array([ 1.,  1.,  1.,  1.,  1.]),
+                        'dev_name1': array([ 1.,  1.,  1.,  1.,  1.])}
+                --> NOTE: data is only emitted ONCE -> can be stored here or is lost.
+        :return:
+        """
         self.mutex.lock()
         self.raw_data_storage = np.append(self.raw_data_storage, data)
         if any(dmm_dict):
-            # TODO: Don't use append. Careful! This includes triton dicts which have a different format (scan_dict)
-            #self.dmm_dict_list.append(dmm_dict)
-            #current_track_no = self.pipeline.pipeData['pipeInternals']['activeTrackNumber']
+            # self.dmm_dict_list.append(dmm_dict)
+            # current_track_no = self.pipeline.pipeData['pipeInternals']['activeTrackNumber']
             current_track = self.pipeline.pipeData['pipeInternals']['activeTrackNumber'][1]
             if current_track in dmm_dict:
+                # it is a triton dict
                 logging.debug('merging triton dict %s into %s.' %(dmm_dict, self.triton_dict_merge))
-                TiTs.merge_extend_dicts(self.triton_dict_merge, dmm_dict)
+                TiTs.merge_extend_dicts(self.triton_dict_merge, dmm_dict)  # this will take care of the multiple emits.
+                logging.debug('merge result is: %s ' % self.triton_dict_merge)
             else:
+                # it must be a dmm dict
                 logging.debug('merging dmm dict %s into %s.' % (dmm_dict, self.dmm_dict_merge))
                 TiTs.deepupdate(self.dmm_dict_merge, dmm_dict)
+                logging.debug('merge result is: %s ' % self.dmm_dict_merge)
         self.mutex.unlock()
 
 

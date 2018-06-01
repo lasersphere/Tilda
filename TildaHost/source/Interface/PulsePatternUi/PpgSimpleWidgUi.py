@@ -164,6 +164,10 @@ class PpgSimpleWidgUi(QtWidgets.QWidget, Ui_PpgSimpleWidg):
 
         if cmd_list:
             # print('emitting')
+            logging.debug('emitting %s, from %s, value is %s'
+                          % ('cmd_list_callback_signal',
+                             'Interface.PulsePatternUi.PpgSimpleWidgUi.PpgSimpleWidgUi#gui_changed',
+                             str((cmd_list, 'simple'))))
             self.cmd_list_callback_signal.emit(cmd_list, 'simple')
         logging.debug('... simple tab gui was changed, computing is done.')
 

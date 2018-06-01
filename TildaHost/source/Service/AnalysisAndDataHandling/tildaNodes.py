@@ -891,6 +891,8 @@ class NStartNodeKepcoScan(Node):
                                         # all dmms have a reading emit signal with int = -1
                                         # print('all dmms have a reading, emitting -1', self.dac_new_volt_set_callback)
                                         if self.dac_new_volt_set_callback is not None:
+                                            logging.debug('emitting %s from Node %s, value is %s'
+                                                          % ('dac_new_volt_set_callback', self.type, -1))
                                             self.dac_new_volt_set_callback.emit(-1)
                                 except Exception as e:
                                     print('error while processing data in node: %s -> %s' % (self.type, e))
@@ -913,6 +915,8 @@ class NStartNodeKepcoScan(Node):
                         '{0:032b}'.format(payload)))
                 elif first_header == Progs.dac.value:
                     if self.dac_new_volt_set_callback is not None:
+                        logging.debug('emitting %s from Node %s, value is %s'
+                                      % ('dac_new_volt_set_callback', self.type, str(int(payload))))
                         self.dac_new_volt_set_callback.emit(int(payload))
                         # pass  # step complete etc. will be handled with infohandler values
                 elif first_header == Progs.continuousSequencer:
@@ -933,6 +937,8 @@ class NStartNodeKepcoScan(Node):
                 dmm_ind = self.dmms.index(dmm_name)  # raise exception when not found
                 compl_list.append(not np.any(np.isnan(self.spec_data.cts[track_ind][dmm_ind])))
             complete = np.alltrue(compl_list)
+        logging.debug('emitting %s from Node %s, value is %s'
+                      % ('scan_complete_signal', self.type, str(complete)))
         self.scan_complete_signal.emit(complete)
 
 
@@ -1362,6 +1368,9 @@ class NMPLImagePlotAndSaveSpecData(Node):
     def start(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
         if self.new_track_callback is not None:
+            logging.debug('emitting %s from Node %s, value is %s'
+                          % ('new_track_callback', self.type,
+                             str(((track_ind, track_name), (int(self.selected_pmt), self.selected_pmt)))))
             self.new_track_callback.emit(((track_ind, track_name), (int(self.selected_pmt), self.selected_pmt)))
 
     def processData(self, data, pipeData):
@@ -1457,6 +1466,8 @@ class NMPLImagePlotAndSaveSpecData(Node):
             if changed:
                 try:
                     if self.new_data_callback is not None:
+                        logging.debug('emitting %s from Node %s, value is %s'
+                                      % ('new_data_callback', self.type, 'self.rebinned_data'))
                         self.new_data_callback.emit(self.rebinned_data)
                 except Exception as e:
                     pass
@@ -1566,6 +1577,8 @@ class NStraightKepcoFitOnClear(Node):
                 if self.gui_fit_res_callback is not None:
                     fit_dict = {'index': ind, 'name': dmm_name,
                                 'plotData': deepcopy(plotdata), 'result': deepcopy(result)}
+                    logging.debug('emitting %s from Node %s, value is %s'
+                                  % ('gui_fit_res_callback', self.type, str(fit_dict)))
                     self.gui_fit_res_callback.emit(fit_dict)
 
                 pipe_internals = self.Pipeline.pipeData['pipeInternals']
@@ -1943,6 +1956,7 @@ class NTRSSortRawDatatoArrayFast(Node):
             #               ' next voltINdex: %s, scans started: %s'
             #               % (x_this_data, self.curVoltIndex, next_volt_step_ind, self.total_num_of_started_scans))
             # get position of all pmt events (trs:)
+            # logging.debug('stored data is: ' + str(self.stored_data))
             pmt_events_ind = np.where(self.stored_data & header_index == 0)[0]  # indices of all pmt events (for trs)
             # create an array which repeatedly holds the stepnumber which is active for the element at this position
             # by indexing this, one can directly see the right stepnumber for the element with the index of interest.
@@ -2177,6 +2191,8 @@ class NSendnOfCompletedStepsViaQtSignal(Node):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         steps_to_emit = pipeData[track_name]['nOfCompletedSteps'] - self.number_of_steps_at_start
         if self.qt_signal is not None:
+            logging.debug('emitting %s from Node %s, value is %s'
+                          % ('qt_signal', self.type, str(steps_to_emit)))
             self.qt_signal.emit(steps_to_emit)
         return data
 
@@ -2205,10 +2221,14 @@ class NSendnOfCompletedStepsAndScansViaQtSignal(Node):
         compl_steps = pipeData[track_name]['nOfCompletedSteps']
         steps = pipeData[track_name]['nOfSteps']
         scans = compl_steps // steps
+        logging.debug('emitting %s from Node %s, value is %s'
+                      % ('qt_signal', self.type, str({'nOfCompletedSteps': compl_steps, 'nOfStartedScans': scans})))
         self.qt_signal.emit({'nOfCompletedSteps': compl_steps, 'nOfStartedScans': scans})
         return data
 
     def clear(self):
+        # logging.debug('emitting %s from Node %s, value is %s'
+        #               % ('qt_signal', self.type, str({'nOfCompletedSteps': 0, 'nOfStartedScans': 0})))
         # self.qt_signal.emit({'nOfCompletedSteps': 0, 'nOfStartedScans': 0})
         pass
 
@@ -2227,6 +2247,8 @@ class NSendDataViaQtSignal(Node):
         self.qt_signal = qt_signal
 
     def processData(self, data, pipeData):
+        logging.debug('emitting %s from Node %s, value is %s'
+                      % ('qt_signal', self.type, 'data .. too long to print'))
         self.qt_signal.emit(data)
         return data
 
@@ -2303,6 +2325,10 @@ class NTiPaAccRawUntil2ndScan(Node):
 
     def emit_steps_scan_callback(self, steps, scans):
         """  a gui can rcv this callback signal """
+        logging.debug('emitting %s from Node %s, value is %s'
+                      % ('emit_steps_scan_callback',
+                         self.type, str({'nOfCompletedSteps': steps,
+                                        'nOfStartedScans': scans})))
         self.steps_scans_callback.emit({'nOfCompletedSteps': steps,
                                         'nOfStartedScans': scans})
 

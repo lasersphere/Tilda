@@ -491,10 +491,18 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 # if not subscribed as live plot create scan dict from spec data once
                 # and emit, so that pre post meas is displayed properly
                 scan_dict = TiTs.create_scan_dict_from_spec_data(self.spec_data, self.full_file_path)
+                logging.debug('emitting %s, from %s, value is %s'
+                              % ('pre_post_meas_data_dict_callback',
+                                 'Interface.LiveDataPlottingUi.LiveDataPlottingUi.TRSLivePlotWindowUi#new_data',
+                                 str(scan_dict)))
                 self.pre_post_meas_data_dict_callback.emit(scan_dict)
             self.last_gr_update_done_time = datetime.now()
             elapsed_ms = (self.last_gr_update_done_time - st).total_seconds() * 1000
             self.needed_plot_update_time_ms = elapsed_ms
+            logging.debug('emitting %s, from %s, value is %s'
+                          % ('needed_plotting_time_ms_callback',
+                             'Interface.LiveDataPlottingUi.LiveDataPlottingUi.TRSLivePlotWindowUi#new_data',
+                             str(self.needed_plot_update_time_ms)))
             self.needed_plotting_time_ms_callback.emit(self.needed_plot_update_time_ms)
 
             # logging.debug('done updating plot, plotting took %.2f ms' % self.needed_plot_update_time_ms)
@@ -767,6 +775,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         rebin_track = -1 if self.checkBox.isChecked() else self.tres_sel_tr_ind
         if spec_data is None:
             spec_data = self.spec_data
+        logging.debug('emitting %s, from %s, value is %s'
+                      % ('new_gate_or_soft_bin_width',
+                         'Interface.LiveDataPlottingUi.LiveDataPlottingUi.TRSLivePlotWindowUi#gate_data',
+                         str((spec_data.softw_gates, rebin_track, spec_data.softBinWidth_ns, plot_bool))))
         self.new_gate_or_soft_bin_width.emit(
             spec_data.softw_gates, rebin_track, spec_data.softBinWidth_ns, plot_bool)
 
@@ -924,6 +936,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         test.save(im_path)
         logging.info('livbeplotterui, saved image to: %s' % str(im_path))
         logging.info('liveplot emitting save signal now')
+        logging.debug('emitting %s, from %s, value is %s'
+                      % ('save_request',
+                         'Interface.LiveDataPlottingUi.LiveDataPlottingUi.TRSLivePlotWindowUi#save',
+                         str('-')))
         self.save_request.emit()
 
     ''' closing '''
@@ -973,6 +989,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.spinBox.blockSignals(False)
         logging.debug('rebinning data to bins of  %s' % rebin_factor_ns)
         rebin_track = -1 if self.checkBox.isChecked() else self.tres_sel_tr_ind
+        logging.debug('emitting %s, from %s, value is %s'
+                      % ('new_gate_or_soft_bin_width',
+                         'Interface.LiveDataPlottingUi.LiveDataPlottingUi.TRSLivePlotWindowUi#rebin_data',
+                         str((self.extract_all_gates_from_gui(), rebin_track,
+                              self.spec_data.softBinWidth_ns, False))))
         self.new_gate_or_soft_bin_width.emit(
             self.extract_all_gates_from_gui(), rebin_track,
             self.spec_data.softBinWidth_ns, False)
@@ -1094,6 +1115,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         except Exception as e:
             logging.error('error: while resetting the all_pmt_plot tab/plot: %s' % e, exc_info=True)
         # will be called within update_plots() when first data arrives
+        logging.debug('emitting %s, from %s, value is %s'
+                      % ('comboBox_sum_all_pmts',
+                         'Interface.LiveDataPlottingUi.LiveDataPlottingUi.TRSLivePlotWindowUi#reset_all_pmt_plots',
+                         str(self.comboBox_sum_all_pmts.currentIndex())))
         self.comboBox_sum_all_pmts.currentIndexChanged.emit(self.comboBox_sum_all_pmts.currentIndex())
 
     def reset_sum_plots(self):

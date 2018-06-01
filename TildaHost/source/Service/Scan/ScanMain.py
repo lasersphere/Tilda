@@ -69,6 +69,12 @@ class ScanMain(QObject):
         self.triton_listener = TritonListener()
         self.triton_pre_scan_done = False  # bool to use when pre/during/post scan measurement of triton is completed
 
+        # needed to prevent emitting of pyqtsignals every 50 ms
+        self.incoming_raw_data_storage = np.zeros(0, dtype=np.int32)
+
+        self.datetime_of_last_raw_data_emit = datetime.now()
+        self.timedelta_between_raw_data_emits = timedelta(milliseconds=250)
+
     ''' scan main functions: '''
 
     def close_scan_main(self):
@@ -143,7 +149,6 @@ class ScanMain(QObject):
         :return: bool, True if success
         """
         # get the existing liveplotting callback from the main
-        #TODO: This works here and doesn't work in init. I think however, that this here might not be the best place
         self.get_existing_callbacks_from_main()
 
         dmms_dict_pre_scan = scan_dict[act_track_name]['measureVoltPars'].get(pre_post_scan_meas_str, {}).get('dmms',
@@ -221,6 +226,10 @@ class ScanMain(QObject):
                         dmms_dict_pre_scan[dmm_name]['readings'] += list(volt_read)
                         dmms_dict_pre_scan[dmm_name]['acquiredPreScan'] += len(volt_read)
                         # emit dmm_reading for live data plotting
+                        logging.debug('emitting %s, from %s, value is %s'
+                                      % ('pre_post_meas_data_dict_callback',
+                                         'Service.Scan.ScanMain.ScanMain#pre_scan_voltage_measurement',
+                                         str(scan_dict)))
                         self.pre_post_meas_data_dict_callback.emit(scan_dict)
             dmms_complete_check_sum = 0
             for dmm_name, dmm_dict in dmms_dict_pre_scan.items():
@@ -402,16 +411,40 @@ class ScanMain(QObject):
         """
         self.sequencer.measureOffset(scan_dict, track_num, pre_post_scan_meas_str)
 
-    def read_data(self):
+    def read_data(self, force_emit=False):
         """
         read the data coming from the fpga.
         The data will be directly fed to the pipeline.
+        :param force_emit: bool,
+            use False to emit data only every allowed interval, in order not to emit pyqtsignals every 50ms
+            use True in order to force the emit of all newly incoming data and the data from storage!
+                -> needed when stopping the scan
         :return: bool, True if nOfEle > 0 that were read
         """
+        # and then send bigger packages at once.
         result = self.sequencer.getData()
-        if result.get('nOfEle', -1) > 0:
+        if result.get('nOfEle', -1) > 0 or self.incoming_raw_data_storage.size:
+            # some new data came in or there is still data in the storage
+            if result.get('nOfEle', -1) > 0 and result.get('newData', None) is not None:
+                # logging.debug('appending: %s' % str(deepcopy(result['newData'])))
+                self.incoming_raw_data_storage = np.append(self.incoming_raw_data_storage,
+                                                           deepcopy(result['newData']))
             start = datetime.now()
-            self.data_to_pipe_sig.emit(result['newData'], {})
+            elapsed = start - self.datetime_of_last_raw_data_emit
+            if elapsed >= self.timedelta_between_raw_data_emits or force_emit:
+                # enough time has elapsed that another emit is allowed or the emit was forced,
+                # e.g. useful when measurement is stopped.
+
+                # if None in self.incoming_raw_data_storage:
+                #     logging.warning('warning, there is a None value in the storage!!!!')
+                logging.debug('emitting %s, from %s, value is %s, force emit is: %s'
+                              % ('data_to_pipe_sig',
+                                 'Service.Scan.ScanMain.ScanMain#read_data',
+                                 'data, too long to print elements: ' + str(self.incoming_raw_data_storage.size),
+                                 force_emit))
+                self.data_to_pipe_sig.emit(deepcopy(self.incoming_raw_data_storage), {})
+                self.incoming_raw_data_storage = np.zeros(0, dtype=np.int32)
+                self.datetime_of_last_raw_data_emit = datetime.now()
             stop = datetime.now()
             # logging.debug('feeding of %s elements took: %.1f ms'
             #               % (result.get('nOfEle'), (stop - start).total_seconds() * 1000))
@@ -458,7 +491,7 @@ class ScanMain(QObject):
         stops all modules which are relevant for scanning.
         pipeline etc.
         """
-        read = self.read_data()  # read data one last time
+        read = self.read_data(force_emit=True)  # read data one last time
         self.abort_triton_log()
         self.ppg_stop()
         if read:
@@ -467,8 +500,11 @@ class ScanMain(QObject):
             self.read_multimeter('all', True)
             self.abort_dmm_measurement('all')
 
-
         logging.info('stopping measurement, clear is: ' + str(clear))
+        logging.debug('emitting %s, from %s, value is %s'
+                      % ('stop_analysis_sig',
+                         'Service.Scan.ScanMain.ScanMain#stop_measurement',
+                         str((clear, complete_stop))))
         self.stop_analysis_sig.emit(clear, complete_stop)
         if complete_stop:  # only touch dmms in the end of the whole scan
             self.set_dmm_to_periodic_reading('all')
@@ -541,6 +577,10 @@ class ScanMain(QObject):
         reset 'nOfCompletedSteps' to 0.
         """
         self.analysis_thread.start()
+        logging.debug('emitting %s, from %s, value is %s'
+                      % ('prep_track_in_pipe_sig',
+                         'Service.Scan.ScanMain.ScanMain#prep_track_in_pipe',
+                         str((track_num, track_index))))
         self.prep_track_in_pipe_sig.emit(track_num, track_index)
 
     def calc_scan_progress(self, progress_dict, scan_dict, start_time):
@@ -688,7 +728,11 @@ class ScanMain(QObject):
                 if val is not None:
                     worth_feeding = True
             if self.analysis_thread is not None and worth_feeding:
-                self.data_to_pipe_sig.emit(np.ndarray(0, dtype=np.int32), ret)
+                logging.debug('emitting %s, from %s, value is %s'
+                              % ('data_to_pipe_sig',
+                                 'Service.Scan.ScanMain.ScanMain#read_multimeter',
+                                 str((np.zeros(0, dtype=np.int32), ret))))
+                self.data_to_pipe_sig.emit(np.zeros(0, dtype=np.int32), ret)
                 self.check_ground_pin_warn_user(ret)
 
         return ret

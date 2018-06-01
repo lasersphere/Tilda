@@ -279,6 +279,10 @@ class PulsePatternGenerator(FPGAInterfaceHandling):
             state_name = [state_na for state_na, state_nu in self.config.ppg_state_dict.items()
                           if state_nu == state_num][0]
         if self.state_changed_callback_signal is not None:
+            logging.debug('emitting %s, from %s, value is %s'
+                          % ('state_changed_callback_signal',
+                             'Driver.COntrolFpga.PulsePatternGenerator.PulsePatternGenerator#read_state',
+                             str(state_name)))
             self.state_changed_callback_signal.emit(state_name)
         return state_num, state_name
 

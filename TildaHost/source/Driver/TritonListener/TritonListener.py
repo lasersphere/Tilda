@@ -227,9 +227,17 @@ class TritonListener(TritonObject):
                                 # in duringScan emit the received values to the pipe!
                                 to_send = deepcopy(triton_live_data_dict)
                                 # self.triton_live_data_dict = {}  # reset storage after emit
+                                logging.debug('emitting %s, from %s, value is %s'
+                                              % ('data_to_pipe_sig',
+                                                 'Driver.TritonListener.TritonListener.TritonListener#_receive',
+                                                 str((np.ndarray(0, dtype=np.int32), to_send))))
                                 self.data_to_pipe_sig.emit(np.ndarray(0, dtype=np.int32), to_send)
                                 self.last_emit_to_analysis_pipeline_datetime = datetime.now()
                         else:  # in pre and postScan emit received value to callback for live data plotting
+                            logging.debug('emitting %s, from %s, value is %s'
+                                          % ('pre_post_meas_data_dict_callback',
+                                             'Driver.TritonListener.TritonListener.TritonListener#_receive',
+                                             str(deepcopy(triton_live_data_dict))))
                             self.pre_post_meas_data_dict_callback.emit(deepcopy(triton_live_data_dict))
                             # self.triton_live_data_dict = {}  # reset storage after emit
             self.check_log_complete()

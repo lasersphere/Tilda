@@ -186,6 +186,10 @@ class OutBitsUi(QtWidgets.QMainWindow, Ui_outbits):
     def confirm(self):
         """ confirm the selected settings and tell parent """
         if self.confirm_settings_signal is not None:
+            logging.debug('emitting %s, from %s, value is %s'
+                          % ('confirm_settings_signal',
+                             'Interface.OutBitsUi.OutBitsUi.OutBitsUi#confirm',
+                             str(self.temp_outbit_dict)))
             self.confirm_settings_signal.emit(self.temp_outbit_dict)
         self.close()
 

@@ -9,6 +9,7 @@ Created on '18.01.2017'
 from PyQt5 import QtWidgets, QtGui, Qt
 from functools import partial
 from copy import deepcopy
+import logging
 
 from Interface.PulsePatternUi.Ui_PpgPeriodicWidg import Ui_PpgPeriodicWidg
 from Interface.PulsePatternUi.ChannelUi import ChannelUi
@@ -280,6 +281,10 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
             cmd_list.insert(0, trig_list[0])
         if stop_cmd:
             cmd_list.append(stop_cmd)
+        logging.debug('emitting %s, from %s, value is %s'
+                      % ('cmd_list_callback_signal',
+                         'Interface.PulsePatternUi.PpgPeriodicWidgUi.PpgPeriodicWidgUi#get_cmd_list',
+                         str((cmd_list, 'periodic'))))
         self.cmd_list_callback_signal.emit(cmd_list, 'periodic')
         return cmd_list
 

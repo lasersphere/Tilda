@@ -7,6 +7,7 @@ Module Description:
 """
 
 from PyQt5 import QtWidgets
+import logging
 
 from Interface.DmmUi.Ui_ChooseDmmWidget import Ui_Form
 
@@ -27,6 +28,10 @@ class ChooseDmmWidget(QtWidgets.QWidget, Ui_Form):
         self.check_valid_addr()
         dev_name = self.comboBox_choose_dmm.currentText()
         dev_address = self.lineEdit_address_dmm.text()
+        logging.debug('emitting %s, from %s, value is %s'
+                      % ('callback',
+                         'Interface.DmmUi.ChooseDmmWidget.ChooseDmmWidget#init_dmm',
+                         str((dev_name, dev_address))))
         self.callback.emit((dev_name, dev_address))
 
     def check_standard_address(self, type_str):
