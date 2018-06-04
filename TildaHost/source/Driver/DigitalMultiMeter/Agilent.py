@@ -105,16 +105,17 @@ class Agilent(QThread):
     def __init__(self, reset=False, address_str='YourPC', type_num='34461A'):
         super(Agilent, self).__init__()
         self.stop_reading_thread = False  # use this to stop reading from dmm
-        self.soft_trig_request = True  # request for a software trigger while thread is runnning
+        self.soft_trig_request = False  # request for a software trigger while thread is runnning
         self.mutex = QMutex()
         self.last_readback_len = 0  # is used to not emit a measurement twice.
         self.connection_type = None  # either 'socket' or 'serial'
         self.connection = None  # storage for the connection to the device either serial or ethernet
-        self.sleepAfterSend = 0.5  # time the program blocks before trying to read back.
+        self.sleepAfterSend_ethernet = 0.05  # time the program blocks before trying to read back.
+        self.sleepAfterSend_serial = 0.5  # time the program blocks before trying to read back.
         self.buffersize = 1024
         self.con_end_of_trans = b'\r\n'
-        self.read_back_data = np.zeros(0,
-                                       dtype=np.double)  # all currently stored data, will be emptied each time fetched from other thread
+        self.read_back_data = np.zeros(0, dtype=np.double)
+        # all currently stored data, will be emptied each time fetched from other thread
 
         self.type = 'Agilent' + '_' + type_num
         self.type_num = type_num
@@ -165,7 +166,8 @@ class Agilent(QThread):
             self.connection_type = None
             return False
 
-    def send_command(self, cmd_str, read_back=False, delay=None, to_float=False, postpone_send=False):
+    def send_command(self, cmd_str, read_back=False, delay=None,
+                     to_float=False, postpone_send=False, debug_logging=True):
         ret = None
         try:
             if self.connection_type == 'socket':
@@ -185,10 +187,12 @@ class Agilent(QThread):
                     cmd_str = self.stored_send_cmd + ';:' + cmd_str
                     self.stored_send_cmd = ''
                 cmd = str.encode(cmd_str + '\r\n')
-                logging.debug(self.name + ' sending comand: ' + str(cmd_str))
+                if debug_logging:
+                    logging.debug(self.name + ' sending comand: ' + str(cmd_str))
                 self.connection.send(cmd)
-                time.sleep(self.sleepAfterSend)
                 if read_back:
+                    time.sleep(self.sleepAfterSend_ethernet)
+                    # sleep only when a readback is required
                     ret = self.connection.recv(self.buffersize)
                     ret = ret[len(cmd):-len(b'\r\n34461A> ')]
                     # the send cmd is still in the readback and the device sends b'\r\n34461A> '
@@ -197,7 +201,7 @@ class Agilent(QThread):
                         ret = self.convert_to_float(ret)
             elif self.connection_type == 'serial':
                 if delay is None:
-                    delay = self.sleepAfterSend
+                    delay = self.sleepAfterSend_serial
                 # print(self.name + ' sending comand: ' + str(cmd_str))
                 # self.connection.flushInput()
                 # self.connection.flushOutput()
@@ -207,6 +211,9 @@ class Agilent(QThread):
                     ret = self._ser_readline(delay, cmd_str)
                 if to_float:
                     ret = self.convert_to_float(ret)
+        except socket.timeout:
+            logging.error('%s tryed sending of command %s, but timed out'
+                          % (self.name, cmd_str))
         except Exception as e:
             logging.error('error in %s : %s' % (self.name, e), exc_info=True)
         return ret
@@ -500,7 +507,7 @@ class Agilent(QThread):
             self.soft_trig_request = True
             self.mutex.unlock()
         else:
-            self.send_software_trigger()
+            self._send_software_trigger()
 
     def _send_software_trigger(self):
         """
@@ -592,10 +599,10 @@ class Agilent(QThread):
             # Transfer readings stored in the multimeter’s internal memory by the
             # INITiate command to the multimeter’s output buffer where you can
             # read them into your bus controller.
-            data_points = self.send_command('DATA:POINts?', True, to_float=True)
+            data_points = self.send_command('DATA:POINts?', True, to_float=True, debug_logging=False)
             # data_points = 1
             if data_points > 0:
-                ret = self.send_command('FETC?', True)
+                ret = self.send_command('FETC?', True, debug_logging=False)
                 if data_points >= int(self.config_dict.get('triggerCount', 1) * 0.8):
                     # measurement is 80% completed, need to load a new measurement
                     # might be dangerous to miss a trigger while restarting
@@ -618,9 +625,9 @@ class Agilent(QThread):
         else:  # for 34460A/34461A
             self.connection.settimeout(0.0005)
             if num_to_read < 0:
-                ret = self.send_command('R?', True, delay=0.0005)
+                ret = self.send_command('R?', True, delay=0.0005, debug_logging=False)
             else:
-                ret = self.send_command('R? %s' % num_to_read, True, delay=0.0005)
+                ret = self.send_command('R? %s' % num_to_read, True, delay=0.0005, debug_logging=False)
             self.connection.settimeout(0.3)
             if ret:
                 try:  # try, because somebody might shut the whole thing off
@@ -645,22 +652,29 @@ class Agilent(QThread):
         return ret
 
     def abort_meas(self):
-        logging.info('aborting reading thread of %s' % self.name)
-        while self.isRunning():
+        if self.state != 'aborted':
+            # does not make sense to force abort when this is already aborted!
+            logging.info('aborting reading thread of %s' % self.name)
+            while self.isRunning():
+                self.mutex.lock()
+                self.stop_reading_thread = True
+                self.mutex.unlock()
+                self.msleep(20)
             self.mutex.lock()
-            self.stop_reading_thread = True
+            self.stop_reading_thread = False
             self.mutex.unlock()
-            self.msleep(20)
-        self.mutex.lock()
-        self.stop_reading_thread = False
-        self.mutex.unlock()
-        if self.type_num in ['34401A']:
-            self.send_command('\x03')  # see p. 160 \x03 = <Ctrl-C>
+            if self.type_num in ['34401A']:
+                self.send_command('\x03')  # see p. 160 \x03 = <Ctrl-C>
+            else:
+                self.send_command('ABORt')
+            logging.info(self.name + ' aborted measurement')
+            self.state = 'aborted'
+            dev_err = self.get_dev_error()
+
         else:
-            self.send_command('ABORt')
-        logging.info(self.name + ' aborted measurement')
-        self.state = 'aborted'
-        dev_err = self.get_dev_error()
+            logging.debug('no need to abort a measurement in %s since it is already in state %s'
+                          % (self.name, self.state))
+            dev_err = self.get_dev_error(just_say_its_all_fine=True)
 
         return dev_err
 
@@ -726,7 +740,7 @@ class Agilent(QThread):
             self.get_accuracy()
             # just to be sure this is included:
             self.config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
-            dev_err = self.get_dev_error()
+            dev_err = self.get_dev_error(just_say_its_all_fine=False)
             logging.info('%s done with loading from config dict!' % self.name)
             return dev_err
         except Exception as e:
@@ -771,15 +785,16 @@ class Agilent(QThread):
         return config_dict
 
     ''' error '''
-    def get_dev_error(self):
+    def get_dev_error(self, just_say_its_all_fine=True):
         """
         ask device for present error
-        -> currentlsy just a dummy
+        -> currently just a dummy, due to usage of "just_say_its_all_fine"
+        :param just_say_its_all_fine: bool, True for no communication with dev and just return 0, ''
         :return (int, str), (errornum, complete error string
         """
         # currently this is overused, just assume everything is fine for now
         # return 0, ''
-        if self.stored_send_cmd == '':  # only pull error when nothing is stored.
+        if self.stored_send_cmd == '' and not just_say_its_all_fine:  # only pull error when nothing is stored.
             error = self.send_command('SYST:ERR?', True)
             if error:
                 try:
@@ -862,10 +877,16 @@ if __name__ == "__main__":
 
     start = datetime.datetime.now()
     dmm = Agilent(False, 'COLLAPSAGILENT01', '34461A')
-    dmm.set_to_pre_conf_setting(AgilentPreConfigs.periodic.name)
+    start_setup = datetime.datetime.now()
+    dmm.abort_meas()
+    # dmm.set_to_pre_conf_setting(AgilentPreConfigs.periodic.name)
+    dmm.set_to_pre_conf_setting(AgilentPreConfigs.pre_scan.name)
+    dmm.send_software_trigger()
     stopp = datetime.datetime.now()
     needed_time = stopp - start
-    logging.info('startup took: %.3f s' % needed_time.total_seconds())
+    needed_time_setup = stopp - start_setup
+    logging.info('startup including init took: %.3f s' % needed_time.total_seconds())
+    logging.info('setup to prefonfigured setting took: %.3f s' % needed_time_setup.total_seconds())
     # dmm.abort_meas()
     logging.info('thread running: %s' % dmm.isRunning())
     logging.info(dmm.read_back_data)
@@ -874,3 +895,5 @@ if __name__ == "__main__":
         time.sleep(0.1)
         logging.debug(dmm.fetch_multiple_meas(-1))
         x += 1
+
+    dmm.get_dev_error(just_say_its_all_fine=False)
