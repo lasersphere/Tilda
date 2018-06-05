@@ -531,9 +531,15 @@ class Agilent(QThread):
         self.state = 'measuring'
         # dev_err = self.get_dev_error()  # caused problems in 34401A
         dev_err = (0, '')
-        logging.info('successfully started measurement on %s ' % self.name)
         self.last_readback_len = 0  # reset this for the 34401A since all data is erased.
         self.start()
+        trig_src = self.config_dict.get('triggerSource', AgilentTriggerSources.external.name)
+        if trig_src == AgilentTriggerSources.external.name:
+            logging.info('%s has send an initiate measurement command and will sleep for 2s,'
+                         ' because the trigger source is set to external and might be missed otherwise.' % self.name)
+            time.sleep(2)  # introduced sleep in order not to miss any trigger
+        logging.info('successfully started measurement on %s ' % self.name)
+
         return dev_err
 
     def fetch_multiple_meas(self, num_to_read):

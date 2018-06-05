@@ -330,8 +330,10 @@ def rebin_single_track_spec_data(tr_data, return_data, bin_width_10ns):
     # cut off remaining bins.
     tr_data = tr_data[:, :, :max_bin]  # cut of last time steps, if it max_bin is not equal the end
     # expand the matrix along the time axis with the given number of bins and take the sum over this axis:
-    tr_data = tr_data.reshape(scaler, steps, n_time_bins, time_bins // n_time_bins).sum(3)
-
+    try:
+        tr_data = tr_data.reshape(scaler, steps, n_time_bins, time_bins // n_time_bins).sum(3)
+    except Exception:
+        pass
     # old:
     # bins_to_combine = int(bin_width_10ns / 10)
     # bin_ind = np.arange(0, tr_data.shape[-1] // bins_to_combine * bins_to_combine, bins_to_combine)
