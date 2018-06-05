@@ -265,8 +265,12 @@ class Ni4071:
         105: period
         108: temperature
         """
-        self.config_dict['range'] = dmm_range
-        self.config_dict['resolution'] = resolution
+        if isinstance(dmm_range, float):
+            dmm_range = '%.1f' % dmm_range
+        self.config_dict['range'] = deepcopy(dmm_range)
+        if isinstance(resolution, float):
+            resolution = '%.1f' % resolution
+        self.config_dict['resolution'] = deepcopy(resolution)
         func = ctypes.c_int32(func)
         dmm_range = ctypes.c_double(float(dmm_range))
         res = ctypes.c_double(float(resolution))
@@ -326,7 +330,9 @@ class Ni4071:
         Specifies the powerline frequency.
         :param pwr_line_freq: dbl, 50 or 60 Hz
         """
-        self.config_dict['powerLineFrequency'] = pwr_line_freq
+        if isinstance(pwr_line_freq, float):
+            pwr_line_freq = '%.1f' % pwr_line_freq
+        self.config_dict['powerLineFrequency'] = deepcopy(pwr_line_freq)
         self.dll.niDMM_ConfigurePowerLineFrequency(self.session, ctypes.c_double(float(pwr_line_freq)))
 
     def config_auto_zero(self, auto_zero_mode):
@@ -989,7 +995,9 @@ class Ni4071:
         Auto range OFF: -2.0
         Auto range ONCE: -3.0
         """
-        self.config_dict['range'] = range_val
+        if isinstance(range_val, float):
+            range_val = '%.1f' % range_val
+        self.config_dict['range'] = deepcopy(range_val)
         self.set_property_node(ctypes.c_double(float(range_val)), 2,
                                attr_base_str='IVI_CLASS_PUBLIC_ATTR_BASE')
 
@@ -1017,7 +1025,11 @@ class Ni4071:
                 0.1 PLC, 1 PLC, 5 PLC, 10 PLC, and 100 PLC
         """
         self.set_aperture_time_units(True)
-        self.config_dict['nplc'] = nplc
+        if isinstance(nplc, float):
+            nplc = '%.1f' % nplc
+        if isinstance(nplc, int):
+            nplc = '%d' % nplc
+        self.config_dict['nplc'] = deepcopy(nplc)
         self.set_property_node(
             ctypes.c_double(float(nplc)),
             attr_id=321,
@@ -1161,7 +1173,18 @@ class Ni4071:
 
         dmm_range = config_dict['range']
         dmm_nplc = config_dict.get('nplc', '1')
-        reading_accuracy_float, range_accuracy_float = error_dict_2y.get(dmm_range)
+        if isinstance(dmm_range, float):
+            dmm_range = '%.1f' % dmm_range
+        if isinstance(dmm_nplc, int):
+            dmm_nplc = '%.d' % dmm_nplc
+        if isinstance(dmm_nplc, float):
+            dmm_nplc = '%.1f' % dmm_nplc
+        err_tpl_2y = error_dict_2y.get(dmm_range, None)
+        if err_tpl_2y is None:
+            # give up and use largest error
+            err_tpl_2y = (20, 8)
+        reading_accuracy_float, range_accuracy_float = err_tpl_2y
+        # return worst accuracy if it cannot be found in dict
         # logging.debug(self.name + ' range accuracy is: %.3f ppm of range' % range_accuracy_float)
         reading_accuracy_float *= 10 ** -6  # ppm
         range_accuracy_float *= 10 ** -6  # ppm
