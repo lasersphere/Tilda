@@ -140,7 +140,8 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
     def build_one_scan(self, scanpars, trackd, track_ind, inverted=False):
         """ build data for one scan """
         step = trackd['nOfSteps'] - 1 if inverted else 0
-        count_time_dif = trackd['nOfBins'] // trackd['nOfSteps']
+        count_time_dif = trackd['nOfBins'] // (trackd['nOfSteps'] + trackd['nOfBunches'] * trackd['nOfSteps'])
+        # distribute pmts events all over time axis in last step
         x_axis = Form.create_x_axis_from_scand_dict(scanpars)[track_ind]
         x_axis = [Form.add_header_to23_bit(x << 2, 3, 0, 1) for x in x_axis]
         one_scan = []
@@ -156,12 +157,14 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
                 one_scan.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))  # step complete
             while bunch < trackd['nOfBunches']:  # only for uneven steps
                 one_scan.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
-                bunch += 1
                 scaler03 = 2 ** 4 - 1  # easier for debugging, all pmt have a count
                 scaler47 = 2 ** 4 - 1  # easier for debugging, all pmt have a count
-                [one_scan.append(
-                    Form.add_header_to23_bit(count_time_dif * i, scaler03, scaler47, 0))
-                 for i in range(step)]  # add pmt events with time difference count_time_dif * stepIndex
+                [[one_scan.append(
+                    Form.add_header_to23_bit(count_time_dif * i + (bunch * step) * count_time_dif,
+                                             scaler03, scaler47, 0))
+                 for i in range(step)] for bun in range(bunch + 1)]
+                # add pmt events with time difference count_time_dif * stepIndex
+                bunch += 1
                 if bunch >= trackd['nOfBunches']:
                     # step complete, will be send after all bunches are completed
                     one_scan.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))
@@ -202,6 +205,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         return True
 
     def halt(self, val):
+        self.artificial_build_data = []
         return True
 
     def DeInitFpga(self, finalize_com=False):

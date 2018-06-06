@@ -1,6 +1,8 @@
 """
 Module for reconstructing raw data to an xml file.
 
+This will find all raw data for the selected .xml file (given the "normal" TILDA folder naming)
+and will reconstruct a new xml file by just analysing the raw data agin but only with the selected bunches
 """
 import os
 from datetime import datetime
@@ -14,19 +16,24 @@ import numpy as np
 import Service.FileOperations.FolderAndFileHandling as FilesHandl
 from Service.AnalysisAndDataHandling.tildaPipeline import find_pipe_by_seq_type
 
-# filenames = ['26Al_trs_run142.xml']
+# set your file directory here (where the .sqlite db is located)
+# better work on a copy of the whole thing!
 work_dir = 'E:/temp4'
 raw_files = os.path.join(work_dir, 'raw')
 sums_dir = os.path.join(work_dir, 'sums')
-filenames = os.listdir(sums_dir)
+filenames = os.listdir(sums_dir)  # just take all files in the sum folder, must be a list!
+filenames = filenames[:1]  # select the files you actually want to analyse, can also be explicit!
 
-
-# filenames = ['one_trsdummy_run000.xml']
-
-# work_dir = 'E:/TildaDebugging2'
-# raw_files = os.path.join(work_dir, 'raw')
-# sums_dir = os.path.join(work_dir, 'sums')
-# filenames = os.listdir(sums_dir)
+#  select which bunches you want to appear in the reconstructed .xml files
+starting_bunch = 0  # start counting by 0 !
+stop_bunch = 5  # start counting by 0 !
+use_all_bunch_combination_between_those = True
+# set to True -> analyse the files with all possible combinations of the start / stop bunch
+# set to False -> just create one reconstructed file with the selected starting and stop bunch
+reconstruct_original_file = False
+# True -> analyse raw data again with all bunches allowed
+# (useful to have the "original" file also in the corresponding folder and check the analysis)
+# False -> don't do that
 
 
 def find_go(file_name, workdir):
@@ -39,11 +46,11 @@ def find_go(file_name, workdir):
     return go_on
 
 
-def reconstruct_file_from_raw(file_name, raw_files, workdir):
+def reconstruct_file_from_raw(file_name, raw_files, workdir, bunch_start_stop_tr_wise=None, new_file_name_external=''):
     """ reconstruct a file from the raw data files. Will find all raw data, even its a go on something. """
     # workdir = 'G:/Experiments/Collaps/Collaps_items/data_online/Al/Al_2017_Tilda'
     # raw_files = os.path.join(workdir, 'raw')
-    max_element_fed = 1
+    max_element_fed = 10000000
     xml_files = [file_name]
     go_on = find_go(file_name, workdir)
     while go_on:
@@ -75,7 +82,10 @@ def reconstruct_file_from_raw(file_name, raw_files, workdir):
     # print(scan_dict)#
     # TiTs.print_dict_pretty(scan_dict)
     reconstructed_folder = os.path.normpath(os.path.join(workdir, 'reconstructed', 'sums')).replace('\\', '\\\\')
-    new_file_name = os.path.join(reconstructed_folder, file_name)
+    if new_file_name_external:
+        new_file_name = os.path.join(reconstructed_folder, new_file_name_external)
+    else:
+        new_file_name = os.path.join(reconstructed_folder, file_name)
     if not os.path.isdir(reconstructed_folder):
         print('creating folder: %s' % reconstructed_folder)
         os.mkdir(os.path.split(reconstructed_folder)[0])
@@ -90,10 +100,11 @@ def reconstruct_file_from_raw(file_name, raw_files, workdir):
 
     pipe = find_pipe_by_seq_type(scan_dict,
                                  callback_sig=None,
-                                 live_plot_callback_tuples=(None, None, None, None, None),
+                                 live_plot_callback_tuples=(None, None, None, None, None, None),
                                  fit_res_callback_dict=None,
                                  scan_complete_callback=None,
-                                 dac_new_volt_set_callback=None)
+                                 dac_new_volt_set_callback=None,
+                                 bunch_start_stop_tr_wise=bunch_start_stop_tr_wise)
     # print(pipe, type(pipe))
     print('new file name: ', new_file_name)
     # print('file renamed to: ', new_file_name)
@@ -114,7 +125,6 @@ def reconstruct_file_from_raw(file_name, raw_files, workdir):
         pipe.save()
         save_done = datetime.now()
         # print('saving took: ', save_done - save_start)
-        # new_file_name = 'G:/Experiments/Collaps/Collaps_items/data_online/Al/Al_2017_Tilda/reconstructed/sums/27Al_trs_run063.xml'
         root = TiTs.load_xml(new_file_name)
         header = XmlOps.xmlFindOrCreateSubElement(root, 'header')
         XmlOps.xmlFindOrCreateSubElement(header, 'isotopeStartTime',
@@ -159,52 +169,54 @@ tot_ct = 0
 not_saved_files = []
 excpetion_on_files = []
 no_xml = []
+elapsed_list_tot_sec = {}
+bunch_start_stop_tr_wise = {}
+y_axis_files = {}
+
 for file in filenames:
     print('------------- working on: %s ----------' % file)
+    elapsed_list_tot_sec[file] = []
+    if reconstruct_original_file:  # can be set on top of script
+        bunch_start_stop_tr_wise[file] = [None]
+    else:
+        bunch_start_stop_tr_wise[file] = []
+    y_axis_files[file] = []
     try:
         if file.endswith('.xml'):  # no files that were not saved!
             tot_ct += 1
-            print('file')
-            new_file = reconstruct_file_from_raw(file, raw_files, work_dir)
-            print('reconstruction done')
-        #     if os.path.getsize(os.path.join(work_dir, 'sums', file)) > 6000:
-        #         comp_res = compare_xml(os.path.join(sums_dir, file), [new_file])
-        #         if len(comp_res):
-        #             not_equal_files.append((file, comp_res))
-        #             not_eq_ct += 1
-        #             print(os.path.join(sums_dir, file), ' and ', new_file, '  are NOT equal')
-        #         else:
-        #             eq_ct += 1
-        #             print(os.path.join(sums_dir, file), ' and ', new_file, '  are equal')
-        #     else:
-        #         not_saved_files.append(file)
-        # else:
-        #     no_xml.append(file)
+            print('file %s' % file)
+
+            if use_all_bunch_combination_between_those:  # can be set on top of script
+                for i in range(starting_bunch, stop_bunch):  # can be set on top of script
+                    for j in range(i + 1, stop_bunch + 1):
+                        bunch_start_stop_tr_wise[file] += [(i, j)],
+            else:
+                bunch_start_stop_tr_wise[file] += [(starting_bunch, stop_bunch)],
+            for each in bunch_start_stop_tr_wise[file]:
+                print('using bunch settings: %s' % each)
+                st_rec = datetime.now()
+                f = str(file.split()[0])
+                new_file_name_ext = f + '_None.xml' if each is None else\
+                    f + '_start_%s_stop_%s.xml' % (each[0][0], each[0][1])
+                new_file = reconstruct_file_from_raw(file, raw_files, work_dir,
+                                                     bunch_start_stop_tr_wise=each,
+                                                     new_file_name_external=new_file_name_ext)
+                elapsed_rec = datetime.now() - st_rec
+                elapsed_list_tot_sec[file] += elapsed_rec.total_seconds(),
+                print('reconstruction done after %.3f s' % elapsed_rec.total_seconds())
+                y_axis = max(XMLImporter(new_file).getArithSpec([0], -1)[1])
+                y_axis_files[file] += y_axis,
+
+        else:
+            no_xml.append(file)
     except Exception as e:
         excpetion_on_files.append((file, e))
+        print('failed during file: %s with error: %s' % (file, e))
     print('------------- done with: %s ----------' % file)
 
-filenames = [os.path.join('E:/Workspace/Al_Collaps_analysis/reconstructed/sums', fi) for fi in os.listdir('E:/Workspace/Al_Collaps_analysis/reconstructed/sums')]
-print('not equal files: ',
-      compare_xml(os.path.join('E:/Workspace/Al_Collaps_analysis/reconstructed/sums', '10_feed_29Al_trs_run228.xml'),
-                  filenames))
+print('Analysis done, Result:')
+print('%s\t%s\t%s\t%s' % ('file', 'bunch_settings', 'analysis took / s', 'max counts'))
+for file, bunch_start_stop_tr_wise_file in bunch_start_stop_tr_wise.items():
+    for i, each in enumerate(bunch_start_stop_tr_wise_file):
+        print('%s\t%s\t%.3f\t%s' % (file, str(each), elapsed_list_tot_sec[file][i], str(y_axis_files[file][i])))
 
-print('total files: %s, equal files: %s,'
-      ' not equal files: %s, percentage_not_equal: %.2f %%' % (
-          tot_ct, eq_ct, not_eq_ct, (not_eq_ct / max(1, (eq_ct + not_eq_ct))) * 100))
-
-print('files that are not equal after reconstruction:')
-for not_equal_file in not_equal_files:
-    print('\t', not_equal_file)
-
-print('files not saved:')
-for f in not_saved_files:
-    print('\t', f)
-
-print('files with exception:')
-for f in excpetion_on_files:
-    print('\t', f)
-
-print('%d files that are no xml: ' % len(no_xml))
-for f in no_xml:
-    print('\t', f)

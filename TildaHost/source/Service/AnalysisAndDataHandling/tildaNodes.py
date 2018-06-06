@@ -869,6 +869,7 @@ class NStartNodeKepcoScan(Node):
 
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
+        step_completed = False  # will be set to True if this is in the datastream
         if isinstance(data, dict):  # readback from multimeter
             for dmm_name, dmm_readback_arr in data.items():
                 if dmm_readback_arr is not None:
@@ -901,7 +902,7 @@ class NStartNodeKepcoScan(Node):
                                 # print('received more voltages than it should! check your settings!')
                                 pass
 
-        elif isinstance(data, np.ndarray):  # rawdata from fpga
+        elif isinstance(data, np.ndarray):  # rawdata from fpga info etc.
             for raw_data in data:
                 # splitup each element in data and analyse what it means:
                 first_header, second_header, header_index, payload = Form.split_32b_data(raw_data)
@@ -923,23 +924,35 @@ class NStartNodeKepcoScan(Node):
                     pass  # this should not happen here.
                 elif header_index == 0:
                     pass  # should also not happen here
-        self.check_if_scan_complete(track_ind)
+                # could be implemented: but can cause confusion with aa real completed scan
+                # needs to be done for each raw element otherwise a step complete or so might be missed.
+                # self.check_if_scan_complete(track_ind, step_completed)
+        self.check_if_scan_complete(track_ind, step_completed)
         return self.spec_data
 
     def clear(self):
         self.spec_data = None
 
-    def check_if_scan_complete(self, track_ind):
-        complete = False
+    def check_if_scan_complete(self, track_ind, step_completed):
+        all_readings_for_all_dmms_have_ben_acquired = False
         compl_list = []
         if self.spec_data is not None:
             for dmm_name in self.dmms:  # this would only fail if creation of self.dmm was wrong
                 dmm_ind = self.dmms.index(dmm_name)  # raise exception when not found
                 compl_list.append(not np.any(np.isnan(self.spec_data.cts[track_ind][dmm_ind])))
-            complete = np.alltrue(compl_list)
+            all_readings_for_all_dmms_have_ben_acquired = np.alltrue(compl_list)
+
+        # if self.spec_data is not None:
+        #     num_of_steps = len(self.spec_data.x[track_ind])
+        #     if self.curVoltIndex + 1 == num_of_steps and step_completed:
+        #         #  i completed the last voltage step!!!
+        #         # but this is only from the fpga side,
+        #         #  this does not mean, that all dmms have send their values yet...
+        #         self.scan_complete_signal.emit(True)
+
         logging.debug('emitting %s from Node %s, value is %s'
-                      % ('scan_complete_signal', self.type, str(complete)))
-        self.scan_complete_signal.emit(complete)
+                      % ('scan_complete_signal', self.type, str(all_readings_for_all_dmms_have_ben_acquired)))
+        self.scan_complete_signal.emit(all_readings_for_all_dmms_have_ben_acquired)
 
 
 class NSingleArrayToSpecData(Node):
@@ -1598,7 +1611,7 @@ class NStraightKepcoFitOnClear(Node):
                     con.commit()
                     con.close()
             except Exception as e:
-                logging.error('error while fitting: %s' % e, exc_info=True)
+                logging.error('error while fitting values in dmm %s error is: %s' % (dmm_name, e), exc_info=True)
         self.spec_buffer = None
 
     def get_offset_voltage(self, scandict):
@@ -1923,6 +1936,37 @@ class NTRSSortRawDatatoArrayFast(Node):
             scan_started_ind_list = np.where(self.stored_data[:step_complete_ind_list[-1]] == scan_started)[0]
             # only completed steps! -> all bunches are included, no need to store which one was last worked on
             new_bunch_ind_list = np.where(self.stored_data[:step_complete_ind_list[-1]] == new_bunch)[0]
+            bunch_allowed_ind_flat = np.zeros(0, dtype=np.int32)
+            if self.bunch_start_stop_tr_wise is not None:
+                # step is complete, so all bunches must be in.
+                num_of_bunches = np.where(new_bunch_ind_list < step_complete_ind_list[0])[0].size
+                bunch_nums = np.tile(np.arange(0, num_of_bunches), step_complete_ind_list.size)
+                # allowed bunch indices in self.stored data
+                # stopp_ind_... is already not valid data anymore.
+                # [[start_ind_step0, stopp_ind_step0], [start_ind_step1, stopp_ind_step1], ....]
+                start_b = self.bunch_start_stop_cur_tr[0]
+                stop_b = self.bunch_start_stop_cur_tr[1]
+
+                # print(start_b, stop_b)
+                sliced_bunch_start_ind_list = new_bunch_ind_list[start_b::num_of_bunches]
+                if stop_b + 1 == num_of_bunches:
+                    # if user wants the last bunch to be the last bunch in the step,
+                    #  take the step complete indices as stopping points!
+                    sliced_bunch_stopp_ind_list = deepcopy(step_complete_ind_list)
+                else:
+                    sliced_bunch_stopp_ind_list = new_bunch_ind_list[stop_b::num_of_bunches]
+                sliced_bunch_ind_list = np.append(sliced_bunch_start_ind_list,
+                                                  sliced_bunch_stopp_ind_list).reshape(2, step_complete_ind_list.size).T
+                for start_ind, stopp_ind in sliced_bunch_ind_list:
+                    # create a flat array, that holda all allowed indices in self.stored_data,
+                    # between the allowed bunch numbers
+                    # e.g. it was
+                    # [[start_ind_step0, stopp_ind_step0], [start_ind_step1, stopp_ind_step1], ....]
+                    #   = [[2, 7], [14, 24], ...]  (indices dependent on # of events in between bunches)
+                    # than -> bunch_allowed_ind_flat = [2, 3, 4, 5, 6, 14, 15, 16, ..., 23, ... ]
+                    # this can than be compared with the indices of the pmt see some lines down.
+                    bunch_allowed_ind_flat = np.append(bunch_allowed_ind_flat,
+                                                       np.arange(start_ind, stopp_ind, dtype=np.int32))
             # account only started scans until the last step complete element was registered
             if scan_started_ind_list.size:
                 scan_start_before_step_comp = scan_started_ind_list[0] < step_complete_ind_list[0]
@@ -1965,6 +2009,10 @@ class NTRSSortRawDatatoArrayFast(Node):
             if pmt_events_ind.size:
                 # cut pmt events which are not still in a completed step:
                 pmt_events_ind = pmt_events_ind[pmt_events_ind < pmt_steps.size]
+                if bunch_allowed_ind_flat.size:
+                    # if only certain bunches are allowed, use only the allowed indices.
+                    pmt_events_ind = np.intersect1d(pmt_events_ind, bunch_allowed_ind_flat)
+                # print(pmt_events_ind)
                 # create a list of stepnumbers for all pmt events:
                 pmt_steps = pmt_steps[pmt_events_ind]
                 # new_bunch_ind = np.where(self.stored_data == new_bunch)[0]  # ignore for now.

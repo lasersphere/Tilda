@@ -34,6 +34,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.track_wins_dict = {}  # dict containing all open track windows, key is track_num
         self.num_of_reps = 1  # how often this scan will be repeated. stored at begin of scan
         self.go_was_clicked_before = False  # variable to store if the user already clicked on 'Go'
+        self.last_scan_was_aborted_or_halted = False
 
         self.main_gui = main_gui
         self.update_win_title()
@@ -72,16 +73,18 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         if not self.actionErgo.isEnabled() and enable:  # one scan is done or isotope was selected
             if self.go_was_clicked_before:
                 self.spinBox_num_of_reps.stepDown()
-                if self.spinBox_num_of_reps.value() > 0:  # keep scanning if reps > 0
+                if self.spinBox_num_of_reps.value() > 0 and not self.last_scan_was_aborted_or_halted:
+                    # keep scanning if reps > 0 and no scan was aborted
                     if self.checkBox_reps_as_go.isChecked():
                         direc = os.path.join(Cfg._main_instance.working_directory, 'sums', '*.xml')
                         latest_file = max(glob.iglob(direc), key=os.path.getctime)
                         self.go_on_file(latest_file, read_num_reps_from_spinbox=False)
                     else:
                         self.go(False)
-                else:  # all scans are done here
+                else:  # all scans are done here or one scan was aborted
                     self.spinBox_num_of_reps.setValue(self.num_of_reps)
                     self.go_was_clicked_before = False
+                    self.last_scan_was_aborted_or_halted = False  # reset abort variable when last scan was done
         self.actionErgo.setEnabled(enable)
         # go on file can also be done without selecting an isotope before:
         self.actionGo_on_file.setEnabled(enable_bool)
@@ -99,6 +102,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         :param read_spin_box: bool, True for first "call"
                 ergo: bool, False for go on file
         """
+        self.last_scan_was_aborted_or_halted = False  # no matter what when clicking go, this will be set False
         if read_spin_box:
             self.go_was_clicked_before = True
             self.num_of_reps = self.spinBox_num_of_reps.value()
@@ -255,6 +259,26 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
     def reopen_live_pl_win(self):
         self.main_gui.open_live_plot_win()
         self.actionRe_open_plot_win.setEnabled(False)
+
+    def scan_was_aborted(self):
+        """
+        this can be called from outside, if the scan was aborted and
+        corresponding reactions can be perforemd,
+        e.g. do not proceed with the next repetition...
+        :return:
+        """
+        logging.info('scan control window %s received: scan_aborted command' % self.win_title)
+        self.last_scan_was_aborted_or_halted = True
+
+    def scan_was_halted(self):
+        """
+        this can be called from outside, if the scan was halted and
+        corresponding reactions can be perforemd,
+        e.g. do not proceed with the next repetition...
+        :return:
+        """
+        logging.info('scan control window %s received: scan_halted command' % self.win_title)
+        self.last_scan_was_aborted_or_halted = True
 
     def closeEvent(self, event):
         """

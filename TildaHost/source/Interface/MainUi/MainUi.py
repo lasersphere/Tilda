@@ -139,6 +139,21 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 self, 'Warning!', '-------- Warning -------\n '
                                'the pre scan measurment did not finish within the given time!\n'
                                'Press ok, to proceed with scan.')
+        elif info_str == 'scan_aborted':
+            # tell all scan control windows that the scan was aborted
+            for each in self.act_scan_wins:
+                each.scan_was_aborted()
+        elif info_str == 'scan_halted':
+            # tell all scan control windows that the scan was halted
+            for each in self.act_scan_wins:
+                each.scan_was_halted()
+        elif info_str == 'kepco_scan_timedout':
+            info = QtWidgets.QMessageBox.information(
+                self, 'Warning!',
+                '-------- Warning -------\n '
+                'the kepco scan finished ramping the voltage,\n'
+                'but not all digital multimeters delivered a reading!\n'
+                'Check your cabling and the timing of the trigger send to the digital multimeters!')
 
     def unsubscribe_from_main(self):
         """

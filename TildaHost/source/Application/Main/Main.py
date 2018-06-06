@@ -130,6 +130,12 @@ class Main(QtCore.QObject):
         self.dmm_periodic_reading_interval = timedelta(seconds=5)
         self.dmm_periodic_reading_interval_during_scan = timedelta(seconds=1)
 
+        self.kepco_meas_not_done_first_time = None # take the moment when fpga is done
+        # and kepco scan is not complete yet, use None to indicate first call!
+        self.kepco_meas_done_max_wait_for_dmm_meas = timedelta(seconds=5)
+        # maximum time the user will have to wait after the fpga has completed a kepco scan
+        # and not all dmms have delivered a reading yet
+
         self.last_triton_reading_datetime = datetime.now()
         # store last reading time of the subscribed triton device names in order not to read every 50ms
         self.triton_reading_interval = timedelta(milliseconds=100)
@@ -581,6 +587,7 @@ class Main(QtCore.QObject):
         if self.abort_scan:
             logging.info('aborted setting the switch box, aborting scan,'
                          ' setting switchbox to loading state, return to idle')
+            self.send_info('scan_aborted')
             self.scan_main.stop_measurement(True, True)
             self.abort_scan = False
             self.set_state(MainState.setting_switch_box, (True, 4, True))
@@ -634,12 +641,19 @@ class Main(QtCore.QObject):
                     # after this has ben completed, it will go to idle
                 else:
                     # otherwise load next track
+                    # need to setup dmms and triton for during scan here!
+                    dmms_dict_during_scan = self.scan_pars[iso_name][act_track_name].get(
+                        'measureVoltPars', {}).get('duringScan', {}).get('dmms', {})
+                    dmm_complete_location = self.scan_pars[iso_name][act_track_name].get(
+                        'measureVoltPars', {}).get('duringScan', {}).get('measurementCompleteDestination', None)
+                    self.scan_main.prepare_dmms_for_scan(dmms_dict_during_scan, dmm_complete_location)
                     self.set_state(MainState.load_track)
 
         else:  # this will periodically read the dmms and triton until all dmms returned a measurement
             if self.abort_scan:
                 logging.info('ABORT was pressed. Aborting pre scan measurement, aborting scan,'
                              ' setting switchbox to loading state, return to idle')
+                self.send_info('scan_aborted')
                 self.scan_main.stop_measurement(True, True)
                 self.abort_scan = False
                 self.set_state(MainState.setting_switch_box, (True, 4, True))
@@ -780,6 +794,7 @@ class Main(QtCore.QObject):
         if self.abort_scan:  # abort the scan and return to idle state
             logging.info('\t ABORT was pressed during scan.'
                          'Now: Abort scan -> saving -> post scan measurement -> setting switchbox -> idle')
+            self.send_info('scan_aborted')
             self.scan_main.abort_scan()
             self.abort_scan = False
             complete_stop = True
@@ -787,14 +802,33 @@ class Main(QtCore.QObject):
             return None
         elif not self.scan_main.read_data():  # read_data() yields False if no Elements can be read from fpga
             if not self.scan_main.check_scanning():  # check if fpga is still in scanning state
+                # fpga is done scanning
                 if self.scan_pars[self.scan_progress['activeIso']]['isotopeData']['type'] == 'kepco':
                     # for now this feedback of the pipeline when the scan is complete
                     # is only implemented for a kepco scan, but for the future also other pipelines might make sense.
                     if self.scan_yields_complete or self.halt_scan:  # scan done -> normal exit etc
+                        # only used in kepco scan currently
+                        self.kepco_meas_not_done_first_time = None  # just be srue this is resetted
                         pass
-                    else:  # scan not done -> keep scanning
-                        return None
+                    else:  # scan not done
+                        # -> keep "scanning" wait for more dmm values to come in
+                        # or time out!
+                        if self.kepco_meas_not_done_first_time is None:
+                            # take the datetime on first call
+                            self.kepco_meas_not_done_first_time = datetime.now()
+                        elapsed_since_first = datetime.now() - self.kepco_meas_not_done_first_time
+                        if elapsed_since_first >= self.kepco_meas_done_max_wait_for_dmm_meas:
+                            # waited long enough for the dmms, will halt scan now!
+                            self.send_info('kepco_scan_timedout')
+                            self.kepco_meas_not_done_first_time = None
+                        else:
+                            # keep waiting for dmm(s)!
+                            logging.debug('fpga says kepco scan is complete but not all'
+                                          ' dmms have returend a reading yet, waiting already for %.2f s'
+                                          % elapsed_since_first.total_seconds())
+                            return None
                 if self.halt_scan:  # scan was halted
+                    self.send_info('scan_halted')
                     self.halt_scan_func(False)  # set halt variable to false afterwards, also on fpga
                     complete_stop = True
                     self.set_state(MainState.saving, (complete_stop, True))

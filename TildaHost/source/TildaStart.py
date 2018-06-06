@@ -56,13 +56,13 @@ def main():
     app_log.addHandler(ch)
 
     my_debug_handler = RotatingFileHandler(debug_file, mode='a', maxBytes=5 * 1024 * 1024,
-                                     backupCount=2, encoding=None, delay=0)
+                                     backupCount=10, encoding=None, delay=0)
     my_debug_handler.setFormatter(log_formatter)
     my_debug_handler.setLevel(logging.DEBUG)
     app_log.addHandler(my_debug_handler)
 
     my_err_handler = RotatingFileHandler(error_file, mode='a', maxBytes=5 * 1024 * 1024,
-                                     backupCount=2, encoding=None, delay=0)
+                                     backupCount=10, encoding=None, delay=0)
     my_err_handler.setFormatter(log_formatter)
     my_err_handler.setLevel(logging.ERROR)
     app_log.addHandler(my_err_handler)

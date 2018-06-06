@@ -23,14 +23,17 @@ from polliPipe.pipeline import Pipeline
 
 
 def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples,
-                          fit_res_callback_dict, scan_complete_callback, dac_new_volt_set_callback):
+                          fit_res_callback_dict, scan_complete_callback, dac_new_volt_set_callback,
+                          bunch_start_stop_tr_wise=None):
     seq_type = scan_dict['isotopeData']['type']
     if seq_type == 'cs' or seq_type == 'csdummy':
         logging.debug('loading pipeline of type: cs')
         return CsPipe(scan_dict, callback_sig, live_plot_callbacks=live_plot_callback_tuples)
     elif seq_type == 'trs' or seq_type == 'trsdummy':
         logging.debug('loading pipeline of type: trs')
-        return TrsPipe(scan_dict, callback_sig, live_plot_callbacks=live_plot_callback_tuples)
+        return TrsPipe(scan_dict, callback_sig,
+                       live_plot_callbacks=live_plot_callback_tuples,
+                       bunch_start_stop_tr_wise=bunch_start_stop_tr_wise)
     elif seq_type == 'kepco':
         logging.debug('loading pipeline of type: kepco')
         return kepco_scan_pipe(scan_dict, callback_sig,
@@ -43,7 +46,8 @@ def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples,
         return None
 
 
-def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plot_callbacks=None):
+def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True,
+            live_plot_callbacks=None, bunch_start_stop_tr_wise=None):
     """
     Pipeline for the dataflow and analysis of one Isotope using the time resolved sequencer.
     Mutliple Tracks are supported.
@@ -64,7 +68,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True, live_plo
     # fast = fast.attach(TN.NSleep(sleeping_time_s=2.0))
     fast = fast.attach(TN.NSaveRawData())
     # fast = fast.attach(TN.NProcessQtGuiEvents())
-    fast = fast.attach(TN.NTRSSortRawDatatoArrayFast())
+    fast = fast.attach(TN.NTRSSortRawDatatoArrayFast(bunch_start_stop_tr_wise=bunch_start_stop_tr_wise))
     # fast = fast.attach(TN.NProcessQtGuiEvents())
     fast = fast.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
     # fast = fast.attach(SN.NPrint())
