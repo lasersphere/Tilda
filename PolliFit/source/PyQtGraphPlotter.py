@@ -9,6 +9,7 @@ Created on '20.08.2015'
 import functools
 import logging
 import sys
+from copy import deepcopy
 
 import numpy as np
 
@@ -151,7 +152,7 @@ def plot_all_sc(list_of_widgets_etc, spec_data, tr, stepMode=False):
         plt_data_itm = val['pltDataItem']
         x, y, err = spec_data.getArithSpec(sc, tr)
         if stepMode:
-            x = convert_xaxis_for_step_mode(x)
+            x = convert_xaxis_for_step_mode(deepcopy(x))
         plt_data_itm.setData(x, y, stepMode=stepMode)
 
 

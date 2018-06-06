@@ -460,7 +460,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             update_time_ms = 200
             max_calls_without_plot = 5
             update_time_res_spec = self.needed_plot_update_time_ms <= update_time_ms \
-                                   or self.calls_since_last_time_res_plot_update > max_calls_without_plot
+                                   or self.calls_since_last_time_res_plot_update > max_calls_without_plot or \
+                                   not self.subscribe_as_live_plot
             # update teh time resolved spec if the last time the plot was faster plotted than 100ms
             # 150 ms should be ok to update all other plots
             # anyhow every fifth plot it will force to plot the time res
@@ -561,12 +562,14 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
             gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
             # x_range = (float(np.min(spec_data.x[self.tres_sel_tr_ind])), np.max(spec_data.x[self.tres_sel_tr_ind]))
-            x_range = (float(spec_data.x[self.tres_sel_tr_ind][0]), spec_data.x[self.tres_sel_tr_ind][-1])
+            x_copy = deepcopy(spec_data.x[self.tres_sel_tr_ind])
+            x_copy = self.convert_xaxis_for_step_mode(x_copy)
+            x_range = (x_copy[0], x_copy[-1])
             x_scale = np.mean(np.ediff1d(spec_data.x[self.tres_sel_tr_ind]))
             y_range = (np.min(spec_data.t[self.tres_sel_tr_ind]), np.max(spec_data.t[self.tres_sel_tr_ind]))
             y_scale = np.mean(np.ediff1d(spec_data.t[self.tres_sel_tr_ind]))
             self.tres_widg.setImage(spec_data.time_res[self.tres_sel_tr_ind][self.tres_sel_sc_ind],
-                                    pos=[x_range[0] - 0.5 * x_scale,  # changed from abs(...)
+                                    pos=[x_range[0],
                                          y_range[0] - abs(0.5 * y_scale)],
                                     scale=[x_scale, y_scale],
                                     autoRange=False)
