@@ -143,6 +143,7 @@ def deepupdate(target, src):
                 target[k] = deepcopy(v)
             else:
                 target[k] = np.append(target[k], v)
+        #TODO: Elif v is None do nothing? Because it might just replace an empty dict with None
         else:
             target[k] = copy(v)
 
