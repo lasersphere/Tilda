@@ -26,11 +26,12 @@ filenames = filenames[:1]  # select the files you actually want to analyse, can 
 
 #  select which bunches you want to appear in the reconstructed .xml files
 starting_bunch = 0  # start counting by 0 !
-stop_bunch = 5  # start counting by 0 !
+stop_bunch = 9  # start counting by 0 !
+# to get a single bunch do something like start_bunch = 0 and stop_bunch = 0  -> selected bunch0 only
 use_all_bunch_combination_between_those = True
 # set to True -> analyse the files with all possible combinations of the start / stop bunch
 # set to False -> just create one reconstructed file with the selected starting and stop bunch
-reconstruct_original_file = False
+reconstruct_original_file = True
 # True -> analyse raw data again with all bunches allowed
 # (useful to have the "original" file also in the corresponding folder and check the analysis)
 # False -> don't do that
@@ -187,8 +188,8 @@ for file in filenames:
             print('file %s' % file)
 
             if use_all_bunch_combination_between_those:  # can be set on top of script
-                for i in range(starting_bunch, stop_bunch):  # can be set on top of script
-                    for j in range(i + 1, stop_bunch + 1):
+                for i in range(starting_bunch, stop_bunch + 1):  # can be set on top of script
+                    for j in range(i, stop_bunch + 1):
                         bunch_start_stop_tr_wise[file] += [(i, j)],
             else:
                 bunch_start_stop_tr_wise[file] += [(starting_bunch, stop_bunch)],

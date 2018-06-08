@@ -128,6 +128,8 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
                       (trackd['nOfSteps'], trackd['nOfBins'], trackd['nOfBunches'], trackd['nOfScans']))
         one_scan = self.build_one_scan(scanpars, trackd, track_ind)
         one_scan_inverted = self.build_one_scan(scanpars, trackd, track_ind, True)
+        logging.debug('length of one_scan: %d, length of one_scan_inverted: %d'
+                      % (len(one_scan), len(one_scan_inverted)))
         complete_lis = []
         for i in range(trackd['nOfScans']):
             complete_lis.append(Form.add_header_to23_bit(2, 4, 0, 1))  # means scan started
@@ -139,36 +141,80 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
 
     def build_one_scan(self, scanpars, trackd, track_ind, inverted=False):
         """ build data for one scan """
-        step = trackd['nOfSteps'] - 1 if inverted else 0
-        count_time_dif = trackd['nOfBins'] // (trackd['nOfSteps'] + trackd['nOfBunches'] * trackd['nOfSteps'])
+        num_bins = trackd['nOfBins']
+        num_steps = trackd['nOfSteps']
+        num_bunches = trackd['nOfBunches']
+
+        # if the stepnumber is quite high, the pattern needs to be repeated,
+        #  otherwise counts will overlap or exceed the time window
+        # the minimal time difference is 1 = 10 ns
+        # time
+        # |         - max_t     -
+        # |      -  -        -  -
+        # |   -  -  -     -  -  -
+        # |-  -  -  -  -  -  -  -  -
+        # |__________________________ x axis
+        #        max_step
+        count_time_dif = num_bins // (num_steps * num_bunches)  # problem if this is smaller than one!
+
+        reps_needed = 1
+        while count_time_dif < 2.0:
+            # problem -> the pattern does not fit in one scan without touching
+            # -> repeat the pattern!
+            # increase reps_needed until count_time_dif is bigger than one
+            reps_needed += 1
+            count_time_dif = num_bins // ((num_steps * num_bunches) / reps_needed)
+
+        max_steps_one_pattern = num_steps // reps_needed  # calculate the maximum step of one pattern
+        cur_step = max_steps_one_pattern - 1 if inverted else 0
+        logging.info('artificial build data in dummy trs'
+                     ' with %d bunches, %d bins and %s steps must be repeated %d times'
+                     ' time difference between counts is: %d'
+                     ' The maximum step for one pattern is: %d'
+                     % (num_bunches, num_bins, num_steps, reps_needed, count_time_dif, max_steps_one_pattern))
+
         # distribute pmts events all over time axis in last step
         x_axis = Form.create_x_axis_from_scand_dict(scanpars)[track_ind]
         x_axis = [Form.add_header_to23_bit(x << 2, 3, 0, 1) for x in x_axis]
-        one_scan = []
-        while step < trackd['nOfSteps'] and not inverted or step >= 0 and inverted:
+        one_scan = []  # flat list with all counts and events coming from the "fpga" datastream
+        num_of_cts_per_bun_step = []
+        one_rep_dac_missing = []  # list [ [one_step], [one_step], ... ]
+        cur_step_evts = []
+        while cur_step < max_steps_one_pattern and not inverted or cur_step >= 0 and inverted:
             # count steps upwards if not inverted, otherwise count downwards
-            one_scan.append(int(x_axis[step]))  # start with dac information
-            if step % 2 == 1:
-                bunch = 0  # set bunch to 0 in order to create cts below
+            cur_step_evts = []
+            if cur_step % 2 == 1:
+                cur_bunch = 0  # set bunch to 0 in order to create cts below
             else:  # no scaler entries for all even step numbers
-                bunch = trackd['nOfBunches']
-                for bun in range(bunch):  # add as meany bunch complete infos as needed to complete this step
-                    one_scan.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
-                one_scan.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))  # step complete
-            while bunch < trackd['nOfBunches']:  # only for uneven steps
-                one_scan.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
+                cur_bunch = num_bunches
+                for bun in range(cur_bunch):  # add as meany bunch complete infos as needed to complete this step
+                    cur_step_evts.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
+                cur_step_evts.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))  # step complete
+            while cur_bunch < num_bunches:  # only for uneven steps
+                cur_step_evts.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
                 scaler03 = 2 ** 4 - 1  # easier for debugging, all pmt have a count
                 scaler47 = 2 ** 4 - 1  # easier for debugging, all pmt have a count
-                [[one_scan.append(
-                    Form.add_header_to23_bit(count_time_dif * i + (bunch * step) * count_time_dif,
-                                             scaler03, scaler47, 0))
-                 for i in range(step)] for bun in range(bunch + 1)]
+                time_offset_cur_bunch_cur_step = cur_bunch * cur_step
+                cur_bunc_cur_step_cts = []
+                [[cur_bunc_cur_step_cts.append(Form.add_header_to23_bit(
+                    int(count_time_dif * (i + time_offset_cur_bunch_cur_step)),
+                    scaler03, scaler47, 0))
+                    for i in range(cur_step)] for _ in range(cur_bunch + 1)]
+                num_of_cts_per_bun_step.append((cur_step, cur_bunch, len(cur_bunc_cur_step_cts)))
+                cur_step_evts += cur_bunc_cur_step_cts
                 # add pmt events with time difference count_time_dif * stepIndex
-                bunch += 1
-                if bunch >= trackd['nOfBunches']:
+                cur_bunch += 1
+                if cur_bunch >= num_bunches:
                     # step complete, will be send after all bunches are completed
-                    one_scan.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))
-            step += -1 if inverted else 1
+                    cur_step_evts.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))
+            cur_step += -1 if inverted else 1
+            one_rep_dac_missing.append(cur_step_evts)
+
+        for cur_step_one_scan in range(num_steps):
+            one_scan += int(x_axis[cur_step_one_scan]),  # start with dac information
+            one_scan += one_rep_dac_missing[cur_step_one_scan % max_steps_one_pattern]
+
+        logging.debug('one scan was created. [(step, bunch, #cts)] were set: %s' % str(num_of_cts_per_bun_step))
         return one_scan
 
     ''' overwriting interface functions here '''

@@ -12,7 +12,7 @@ import logging
 import os
 from copy import copy
 
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 
 import Application.Config as Cfg
 import TildaTools
@@ -52,6 +52,9 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.actionRe_open_plot_win.triggered.connect(self.reopen_live_pl_win)
 
         self.actionRe_open_plot_win.setEnabled(False)
+
+        ''' adding additional Keyboard shortcuts, some are already defined from the QT Designer File '''
+        QtWidgets.QShortcut(QtGui.QKeySequence("ESC"), self, self.close)
 
         self.show()
 

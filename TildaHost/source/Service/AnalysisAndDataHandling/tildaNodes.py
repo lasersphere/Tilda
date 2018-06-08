@@ -1940,16 +1940,16 @@ class NTRSSortRawDatatoArrayFast(Node):
             if self.bunch_start_stop_tr_wise is not None:
                 # step is complete, so all bunches must be in.
                 num_of_bunches = np.where(new_bunch_ind_list < step_complete_ind_list[0])[0].size
-                bunch_nums = np.tile(np.arange(0, num_of_bunches), step_complete_ind_list.size)
                 # allowed bunch indices in self.stored data
                 # stopp_ind_... is already not valid data anymore.
                 # [[start_ind_step0, stopp_ind_step0], [start_ind_step1, stopp_ind_step1], ....]
                 start_b = self.bunch_start_stop_cur_tr[0]
-                stop_b = self.bunch_start_stop_cur_tr[1]
+                stop_b = self.bunch_start_stop_cur_tr[1] + 1  # because the following will be exclusive for this bunch
+                # user wants bunches until bunch 8 (start counting from 0) so bunch9 is the first to exclude.
 
                 # print(start_b, stop_b)
                 sliced_bunch_start_ind_list = new_bunch_ind_list[start_b::num_of_bunches]
-                if stop_b + 1 == num_of_bunches:
+                if stop_b == num_of_bunches:
                     # if user wants the last bunch to be the last bunch in the step,
                     #  take the step complete indices as stopping points!
                     sliced_bunch_stopp_ind_list = deepcopy(step_complete_ind_list)
@@ -2129,6 +2129,8 @@ class NTRSSumFastArrays(Node):
         if self.sum[track_ind].size:
             appended_arr = np.append(self.sum[track_ind], data)  # first append all data to sum
             # sort by 'sc', 'step', 'time' (no cts):
+            # TODO this is an "atomic" operation and will not be able from GIL to unlock the thread its runnning in
+            # -> either do it only with "short" arrays or find another way.
             sorted_arr = np.sort(appended_arr, order=['sc', 'step', 'time'])
             # find all elements that occur twice:
             unique_arr, unique_inds, uniq_cts = np.unique(sorted_arr[['sc', 'step', 'time']],

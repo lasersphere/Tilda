@@ -427,25 +427,28 @@ class ScanMain(QObject):
             # some new data came in or there is still data in the storage
             if result.get('nOfEle', -1) > 0 and result.get('newData', None) is not None:
                 # logging.debug('appending: %s' % str(deepcopy(result['newData'])))
-                self.incoming_raw_data_storage = np.append(self.incoming_raw_data_storage,
-                                                           deepcopy(result['newData']))
-            start = datetime.now()
-            elapsed = start - self.datetime_of_last_raw_data_emit
-            if elapsed >= self.timedelta_between_raw_data_emits or force_emit:
-                # enough time has elapsed that another emit is allowed or the emit was forced,
-                # e.g. useful when measurement is stopped.
+                # just emit it directly again
+                self.data_to_pipe_sig.emit(deepcopy(result.get('newData', None)), {})
 
-                # if None in self.incoming_raw_data_storage:
-                #     logging.warning('warning, there is a None value in the storage!!!!')
-                logging.debug('emitting %s, from %s, value is %s, force emit is: %s'
-                              % ('data_to_pipe_sig',
-                                 'Service.Scan.ScanMain.ScanMain#read_data',
-                                 'data, too long to print elements: ' + str(self.incoming_raw_data_storage.size),
-                                 force_emit))
-                self.data_to_pipe_sig.emit(deepcopy(self.incoming_raw_data_storage), {})
-                self.incoming_raw_data_storage = np.zeros(0, dtype=np.int32)
-                self.datetime_of_last_raw_data_emit = datetime.now()
-            stop = datetime.now()
+            #     self.incoming_raw_data_storage = np.append(self.incoming_raw_data_storage,
+            #                                                deepcopy(result['newData']))
+            # start = datetime.now()
+            # elapsed = start - self.datetime_of_last_raw_data_emit
+            # if elapsed >= self.timedelta_between_raw_data_emits or force_emit:
+            #     # enough time has elapsed that another emit is allowed or the emit was forced,
+            #     # e.g. useful when measurement is stopped.
+            #
+            #     # if None in self.incoming_raw_data_storage:
+            #     #     logging.warning('warning, there is a None value in the storage!!!!')
+            #     logging.debug('emitting %s, from %s, value is %s, force emit is: %s'
+            #                   % ('data_to_pipe_sig',
+            #                      'Service.Scan.ScanMain.ScanMain#read_data',
+            #                      'data, too long to print elements: ' + str(self.incoming_raw_data_storage.size),
+            #                      force_emit))
+            #     self.data_to_pipe_sig.emit(deepcopy(self.incoming_raw_data_storage), {})
+            #     self.incoming_raw_data_storage = np.zeros(0, dtype=np.int32)
+            #     self.datetime_of_last_raw_data_emit = datetime.now()
+            # stop = datetime.now()
             # logging.debug('feeding of %s elements took: %.1f ms'
             #               % (result.get('nOfEle'), (stop - start).total_seconds() * 1000))
             return True

@@ -10,6 +10,7 @@ import time
 import logging
 from copy import deepcopy
 from datetime import datetime
+from datetime import timedelta
 
 import numpy as np
 from PyQt5.QtCore import QThread, pyqtSignal, QObject, QMutex
@@ -34,11 +35,15 @@ class AnalysisThread(QThread):
         self.clear_after_finish = False  # boolean that will tell the pipeline to clear(->save)
         #  or not after analysis completion
         self.num_of_analysed_elements_total = 0
+        self.num_of_max_eles_to_analyse_per_feed = 100000
         self.raw_data_storage = np.zeros(0, dtype=np.int32)
         self.dmm_dict_list = []
         self.dmm_dict_merge = {} # replaces dmm_dict_list in order to avoid building a huge list
         self.triton_dict_merge = {} # same for triton dicts
         self.mutex = QMutex()
+
+        self.max_analysis_time_ms = 0.0
+        self.max_data_points = 0
         # using mute expression in order to solve race cond, between append from outside loop
         # and read(/shrink) from inside loop
         stop_request_signal.connect(self.stop_analysis)
@@ -50,20 +55,33 @@ class AnalysisThread(QThread):
         while not self.stop_analysis_bool or len(self.raw_data_storage) or any(self.dmm_dict_list) \
                 or any(self.dmm_dict_merge) or any(self.triton_dict_merge):
             if len(self.raw_data_storage):
-                self.mutex.lock()
 
-                # print('analysing data now')
+                self.mutex.lock()
                 data = deepcopy(self.raw_data_storage)
+                eles_to_anal = data.size
+                data_pts_in_storage = 0  # maybe limit the number of fed elements
                 self.num_of_analysed_elements_total += len(data)
                 self.raw_data_storage = np.zeros(0, dtype=np.int32)
                 self.mutex.unlock()
+
                 st_feed = datetime.now()
                 logging.info('Analyzing now!')
+                # TODO some operations (np.sort, ...) in the pipeline
+                #  might not be able to release its lock during feed
+                # -> GIL will not be able to release the lock of this thread
+                # -> analThread blocks gui
                 self.pipeline.feed(data)  # takes a while
                 done_feed = datetime.now()
                 elapsed_feed_ms = (done_feed - st_feed).total_seconds() * 1000
-                logging.debug('Analyzing %d data points took %.1f ms'
-                              % (self.num_of_analysed_elements_total, elapsed_feed_ms))
+                if elapsed_feed_ms >= self.max_analysis_time_ms:
+                    self.max_analysis_time_ms = elapsed_feed_ms
+                    self.max_data_points = eles_to_anal
+                logging.debug('Analyzing %d data points took %.1f ms, total number of analyzed elements %d'
+                              ' maximum analysis time was %.1f ms for %d datapoints. '
+                              'Currently %d datapoints are still in storage and waiting for analysis.'
+                              % (eles_to_anal, elapsed_feed_ms, self.num_of_analysed_elements_total,
+                                 self.max_analysis_time_ms, self.max_data_points,
+                                 data_pts_in_storage))
                 # self.sleep(1)  # simulate feed
                 # print('number of total analysed data: %s ' % self.num_of_analysed_elements_total)
             if any(self.dmm_dict_list) or any(self.dmm_dict_merge) or any(self.triton_dict_merge):

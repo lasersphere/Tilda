@@ -389,6 +389,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.comboBox_all_pmts_sel_tr.setCurrentIndex(self.tres_sel_tr_ind)
         self.tres_sel_sc_ind, self.tres_sel_sc_name = rcv_tpl[1]
         self.new_track_no_data_yet = True
+        self.setup_range_please = True
         # need to reset stuff here if number of steps have changed.
 
     ''' plot font size change etc. '''
@@ -575,6 +576,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                                     autoRange=False)
             self.tres_plt_item.setLabel('top', spec_data.x_units.value)
             if self.new_track_no_data_yet or self.setup_range_please:  # set view range in first call
+                # TODO if window is still open this might fail to be called.
                 logging.debug('setting x_range to: %s and y_range to: %s' % (str(x_range), str(y_range)))
                 self.tres_plt_item.setAspectLocked(False)
                 self.tres_plt_item.setRange(xRange=x_range, yRange=y_range, padding=0.05)
