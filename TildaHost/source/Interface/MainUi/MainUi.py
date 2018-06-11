@@ -135,10 +135,22 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             if self.scan_complete_win is not None:
                 self.scan_complete_win.close()
         elif info_str == 'pre_scan_timeout':
-            info = QtWidgets.QMessageBox.information(
-                self, 'Warning!', '-------- Warning -------\n '
-                               'the pre scan measurment did not finish within the given time!\n'
-                               'Press ok, to proceed with scan.')
+            # Realized this message should not interrupt the scan from continuing
+            # info = QtWidgets.QMessageBox.information(
+            #     self, 'Warning!', '-------- Warning -------\n '
+            #                    'the pre scan measurment did not finish within the given time!\n'
+            #                    'Press ok, to proceed with scan.')
+            self.d = QtWidgets.QDialog()
+            self.d.setWindowFlags(Qt.WindowStaysOnTopHint)
+            layout = QtWidgets.QHBoxLayout(self.d)
+            warning_text = QtWidgets.QLabel()
+            warning_text.setAlignment(Qt.AlignCenter)
+            warning_text.setText('-------- Warning -------\n '
+                                 'The pre scan measurment did not finish within the given time!\n'
+                                 'Will continue now')
+            layout.addWidget(warning_text)
+            self.d.setWindowTitle("Pre/Post Scan Timeout")
+            self.d.show()
         elif info_str == 'scan_aborted':
             # tell all scan control windows that the scan was aborted
             for each in self.act_scan_wins:
