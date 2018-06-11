@@ -141,7 +141,7 @@ class TritonListener(TritonObject):
             logging.info('TritonListener is connecting to existing callbacks in main')
             callbacks = Cfg._main_instance.gui_live_plot_subscribe()
             self.pre_post_meas_data_dict_callback = callbacks[6]
-            self.data_to_pipe_sig = Cfg._main_instance.scan_main.data_to_pipe_sig  # TODO: this works, but is it nice?
+            self.data_to_pipe_sig = Cfg._main_instance.scan_main.data_to_pipe_sig
 
     def setup_log(self, log, pre_dur_post_str, track_name):
         """

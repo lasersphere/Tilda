@@ -565,7 +565,9 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
                             sample_count = int(req_itm.text())
                         except Exception as e:
                             logging.error('error in converting %s error is: %s' % (req_itm.text(), e))
-                        if sample_count:  #TODO: in order to allow continous aquisition we need to allow negative and/or zero values here. Probably can remove the whole if statement
+                        if sample_count:
+                            # TODO: in order to allow continous aquisition we need to allow negative
+                            # and/or zero values here. Probably can remove the whole if statement
                             ret[ch_itm.text()] = {'required': sample_count,
                                                   'acquired': 0,
                                                   'data': []}

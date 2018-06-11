@@ -72,14 +72,15 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True,
     # fast = fast.attach(TN.NProcessQtGuiEvents())
     fast = fast.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
     # fast = fast.attach(SN.NPrint())
-    fast = fast.attach(TN.NTRSSumFastArrays())
+    # old = fast.attach(TN.NTRSSumFastArrays())  # outdated
+    fast_spec = fast.attach(TN.NTRSSumFastArraysSpecData(x_as_voltage=x_as_voltage))
     # fast = fast.attach(TN.NProcessQtGuiEvents())
 
     # fast = fast.attach(SN.NPrint())
 
-    fast_spec = fast.attach(TN.NSortedZeroFreeTRSDat2SpecData())
+    # old_spec = old.attach(TN.NSortedZeroFreeTRSDat2SpecData())  # outdated
     # fast_spec = fast_spec.attach(TN.NProcessQtGuiEvents())
-    fast_spec = fast_spec.attach(TN.NSpecDataZeroFreeProjection())
+    # old_spec = old_spec.attach(TN.NSpecDataZeroFreeProjection())  # outdated
     # fast_spec = fast_spec.attach(TN.NProcessQtGuiEvents())
     # fast_spec = fast_spec.attach(SN.NPrint())
     fast_spec = fast_spec.attach(TN.NMPLImagePlotAndSaveSpecData(0, *live_plot_callbacks))

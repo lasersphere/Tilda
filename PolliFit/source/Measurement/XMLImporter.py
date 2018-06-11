@@ -175,13 +175,13 @@ class XMLImporter(SpecData):
                     direct_parent_ele_str='projections')
                 t_proj = None
                 if isinstance(scaler_array[0], np.void):  # this is zero free data
-
-                    # this fails somewhere for the second track
                     self.time_res_zf.append(scaler_array)
                     time_res_classical_tr = TildaTools.zero_free_to_non_zero_free(self.time_res_zf, cts_shape)[tr_ind]
                     self.time_res.append(time_res_classical_tr)
                 else:  # classic full matrix array
                     self.time_res.append(scaler_array)
+                    zf_data_tr = TildaTools.non_zero_free_to_zero_free([scaler_array])[0]
+                    self.time_res_zf.append(zf_data_tr)
 
                 if v_proj is None or t_proj is None or softw_gates is not None:
                     logging.info(' while importing: projections not found,'

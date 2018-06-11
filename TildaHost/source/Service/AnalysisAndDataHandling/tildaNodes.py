@@ -1447,14 +1447,15 @@ class NMPLImagePlotAndSaveSpecData(Node):
         :param needed_plotting_time_ms: float, time in ms the gui needed to plot
         :return:
         """
-        current_time_emits_ms = self.min_time_between_emits.total_seconds() * 1000
-        new_time_between_emits_ms = max(self.min_time_between_emits.total_seconds() * 1000, needed_plotting_time_ms)
-        if new_time_between_emits_ms >= current_time_emits_ms:
-            logging.debug('Updating time between plot is now: %.1f ms but would'
-                          ' actually be: %.1f ms and plot needed: %.1f ms'
-                          % (self.adapted_min_time_between_emits.total_seconds() * 1000,
-                             new_time_between_emits_ms, needed_plotting_time_ms))
-        # TODO use the following to update the new time:
+        pass
+        # this is not necessary anymore because this was taken into account in the GUI itself.
+        # current_time_emits_ms = self.min_time_between_emits.total_seconds() * 1000
+        # new_time_between_emits_ms = max(self.min_time_between_emits.total_seconds() * 1000, needed_plotting_time_ms)
+        # if new_time_between_emits_ms >= current_time_emits_ms:
+        #     logging.debug('Updating time between plot is now: %.1f ms but would'
+        #                   ' actually be: %.1f ms and plot needed: %.1f ms'
+        #                   % (self.adapted_min_time_between_emits.total_seconds() * 1000,
+        #                      new_time_between_emits_ms, needed_plotting_time_ms))
         # self.adapted_min_time_between_emits = timedelta(milliseconds=new_time_between_emits_ms)
 
     def rcvd_gates_and_rebin(self, softw_gates_for_all_tr, rebin_track_ind, softBinWidth_ns,
@@ -1928,6 +1929,7 @@ class NTRSSortRawDatatoArrayFast(Node):
         header_index = 2 ** 23  # binary for the headerelement
         step_complete_ind_list = np.where(self.stored_data == step_complete)[0]
         if step_complete_ind_list.size:  # only work with complete steps.
+            start_sort = datetime.now()
             # print(unique_arr)
             # create on eleemnt with [(0,0,0,0)] in order to send through pipeline, when no counts where in step!
             new_unique_arr = np.zeros(1, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
@@ -2051,6 +2053,8 @@ class NTRSSortRawDatatoArrayFast(Node):
             # print(new_unique_arr)
             # print('current voltindex after first node:', self.curVoltIndex)
             # send [(0,0,0,0)] arr for no counts in data
+            elapsed_sort = datetime.now() - start_sort
+            logging.debug('sorting data in %s took %.3f s' % (self.type, elapsed_sort.total_seconds()))
             return new_unique_arr
 
     def clear(self):
@@ -2126,11 +2130,14 @@ class NTRSSumFastArrays(Node):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         # before_app = self.sum[track_ind].size
         # before_app_data_sz = data.size
+        start_sum = datetime.now()
+
         if self.sum[track_ind].size:
             appended_arr = np.append(self.sum[track_ind], data)  # first append all data to sum
             # sort by 'sc', 'step', 'time' (no cts):
-            # TODO this is an "atomic" operation and will not be able from GIL to unlock the thread its runnning in
+            # this is an "atomic" operation and will not be able from GIL to unlock the thread its runnning in
             # -> either do it only with "short" arrays or find another way.
+            # since this node blocks the GIL quite a lot it was replaced by NTRSSumFastArraysSpecData
             sorted_arr = np.sort(appended_arr, order=['sc', 'step', 'time'])
             # find all elements that occur twice:
             unique_arr, unique_inds, uniq_cts = np.unique(sorted_arr[['sc', 'step', 'time']],
@@ -2162,10 +2169,68 @@ class NTRSSumFastArrays(Node):
         # print('data length before append: %s and remaining after append: %s,'
         #       ' sum length before append: %s and after append %s '
         #       % (before_app_data_sz, data.size, before_app, self.sum.size))
+        elapsed_sum = datetime.now() - start_sum
+        logging.debug('summing data in %s took %.3f s' % (self.type, elapsed_sum.total_seconds()))
         return self.sum
 
     def clear(self):
         self.sum = None
+
+
+class NTRSSumFastArraysSpecData(Node):
+    def __init__(self, x_as_voltage):
+        """
+        sums up incoming ndarrays of the active track and returns a spec_data instance.
+        input: numpy.ndarray, dtype=[('tr', 'u2'), ('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')]
+        output: spec_data, XMLImporter
+        """
+        super(NTRSSumFastArraysSpecData, self).__init__()
+        self.type = 'TRSSumFastArraysSpecData'
+
+        self.spec_data = None  # sum will be hold in .time_res and .time_res_zf
+        self.x_as_voltage = x_as_voltage
+
+    def start(self):
+        if self.spec_data is None:
+            file_path = None
+            if 'continuedAcquisitonOnFile' in self.Pipeline.pipeData['isotopeData']:
+                # its a "go" on an existing file -> use already collected data as starting point!
+                old_file = self.Pipeline.pipeData['isotopeData']['continuedAcquisitonOnFile']
+                file_dir = os.path.split(self.Pipeline.pipeData['pipeInternals']['activeXmlFilePath'])[0]
+                file_path = os.path.join(file_dir, old_file)
+                if not os.path.isfile(file_path):
+                    file_path = file_path
+                else:
+                    logging.error('error, in %s, could not load data from file: %s ' % (self.type, file_path))
+            self.spec_data = XMLImporter(file_path, self.x_as_voltage, self.Pipeline.pipeData)
+
+    def processData(self, data, pipeData):
+        # sc,step,time not in list -> append
+        # else: sum cts, each not unique element can only be there twice!
+        # -> one from before storage, one from new incoming.
+        track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
+        # before_app = self.sum[track_ind].size
+        # before_app_data_sz = data.size
+        start_sum = datetime.now()
+        dimensions = [self.spec_data.get_scaler_step_and_bin_num(track_ind)]
+        # convert zero free to non zero free, for faster summing!
+        zero_data = TildaTools.zero_free_to_non_zero_free([data], dimensions)
+        self.spec_data.time_res[track_ind] += zero_data[0]  # add it to existing, by just adding the two matrices
+
+        # zero_free data is not needed afterwards -> only create it on saving
+        # now create a zero free array again from the whole matrix
+        # self.spec_data.time_res_zf[track_ind] = TildaTools.non_zero_free_to_zero_free(
+        #     [self.spec_data.time_res[track_ind]])[0]
+
+        elapsed_sum = datetime.now() - start_sum
+        logging.debug('summing data in %s took %.3f s' % (self.type, elapsed_sum.total_seconds()))
+        return self.spec_data
+
+    def clear(self):
+        self.spec_data = None
+
+    def save(self):
+        self.clear()
 
 
 class NTRSProjectize(Node):
@@ -2416,7 +2481,6 @@ class NFilterDMMDictsAndSave(Node):
         # Instead of the local storage variable, we could also work on the pipeline directly. Not nice, but might work.
         self.store_data = None
         self.dmm_data = None
-        # self.triton_data = None #TODO: not needed, or is it advantageous to store triton data separately?
         self.active_track_name = 'track0'
         self.emitted_ctr = 0  # just to keep track how often the signal was emitted to the GUI
         self.incoming_dict_ctr = 0
@@ -2433,8 +2497,6 @@ class NFilterDMMDictsAndSave(Node):
         self.incoming_dict_ctr = 0
         if self.store_data is None:
             self.store_data = deepcopy(self.Pipeline.pipeData)
-        # self.dmm_data = self.store_data[self.active_track_name]['measureVoltPars'].get('duringScan', {}).get('dmms', None)
-        # self.triton_data = self.store_data[self.active_track_name]['triton'].get('duringScan', {})
         for dmm_name, dmm_vals in self.store_data[self.active_track_name]['measureVoltPars']['duringScan']['dmms'].items():
             if dmm_vals.get('readings', None) is None:
                 dmm_vals['readings'] = []

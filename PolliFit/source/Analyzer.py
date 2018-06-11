@@ -524,7 +524,6 @@ def combineShiftOffsetPerBunchDisplay(iso, run, db, show_plot=False):
         offset_dir = os.path.dirname(file_name)
         if not os.path.isdir(offset_dir):
             os.mkdir(offset_dir)
-        # TODO y labels -> offset instead of shift
         plt.plot_iso_shift_time_dep(
             ref_dates_date_time, ref_dates_date_time_float, ref_offsets, ref_errs, ref,
             iso_dates_datetime, iso_dates_datetime_float, iso_offsets, iso_errs, iso,

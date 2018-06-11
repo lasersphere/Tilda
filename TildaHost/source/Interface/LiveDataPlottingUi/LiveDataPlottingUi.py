@@ -576,7 +576,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                                     autoRange=False)
             self.tres_plt_item.setLabel('top', spec_data.x_units.value)
             if self.new_track_no_data_yet or self.setup_range_please:  # set view range in first call
-                # TODO if window is still open this might fail to be called.
                 logging.debug('setting x_range to: %s and y_range to: %s' % (str(x_range), str(y_range)))
                 self.tres_plt_item.setAspectLocked(False)
                 self.tres_plt_item.setRange(xRange=x_range, yRange=y_range, padding=0.05)
@@ -1346,7 +1345,6 @@ if __name__ == "__main__":
         ui.pre_post_meas_data_dict_callback.emit(test_dict2)
     # ui.pre_post_meas_data_dict_callback.emit(test_dict2)
     # ui.pre_post_meas_data_dict_callback.emit(test_dict2)
-    # TODO when emitting this ch0 of dev0 is overwritten! currently the Gui is not updated by deleting this then!
 
     # time.sleep(2)
 

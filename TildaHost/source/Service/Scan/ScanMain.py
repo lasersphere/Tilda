@@ -337,8 +337,6 @@ class ScanMain(QObject):
         will start the measurement for one track.
         After starting the measurement, the FPGA runs on its own.
         """
-        # TODO: preparing during scan measurements of triton devices - is it okay to do this here?
-
         act_track_name = 'track' + str(track_num)
         track_dict = scan_dict.get(act_track_name)
         iso = scan_dict.get('isotopeData', {}).get('isotope')
@@ -555,8 +553,11 @@ class ScanMain(QObject):
 
     def rcvd_dac_new_voltage_during_kepco_scan(self, dac_20Bitint):
         """
-        TODO
-        :param int:
+        Called when a new voltage is sent from the analysis pipeline.
+        -> voltage on the FPGA is set and the software things
+            (e.g. trigger all dmms by software for voltage measurement)
+            for this step can be done.
+        :param dac_20Bitint: int, dac 20 bit integer indicating which dac step was lastly analyzed in the pipeline.
         :return:
         """
         if dac_20Bitint >= 0:  # it means dac voltage is set

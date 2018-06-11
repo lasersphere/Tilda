@@ -535,7 +535,8 @@ def zero_free_to_non_zero_free(zf_time_res_arr, dims_sc_step_time_list):
                 [(n_of_scalers_tr, n_of_steps_tr, n_of_bins_tr), ...]
 
     """
-    new_time_res = [np.zeros(dims_sc_step_time_list[tr_ind]) for tr_ind, tr in enumerate(dims_sc_step_time_list)]
+    new_time_res = [np.zeros(dims_sc_step_time_list[tr_ind], dtype=np.int32)
+                    for tr_ind, tr in enumerate(dims_sc_step_time_list)]
 
     for tr_ind, tr_dims in enumerate(dims_sc_step_time_list):
         sc_arr = zf_time_res_arr[tr_ind]['sc']
@@ -543,6 +544,38 @@ def zero_free_to_non_zero_free(zf_time_res_arr, dims_sc_step_time_list):
         time_arr = zf_time_res_arr[tr_ind]['time']
         new_time_res[tr_ind][sc_arr, step_arr, time_arr] = zf_time_res_arr[tr_ind]['cts']
     return new_time_res
+
+
+def non_zero_free_to_zero_free(non_zf_tr_wise_matrices):
+    """
+    Convert a trackwise list of numpy arrays which contains all counts and zeros for all pixel without an event
+    to a zero free data format like [([(sc, step, time, cts), ...]), ... tr1 ... ]
+    :param non_zf_tr_wise_matrices: list of numpy ndarrays with dimensons: [[sc_tr0, step_tr0, bins_tr0], ... tr1 ...]
+    :return: list of "zero free data format" one array for each track
+            ->  [([(sc, step, time, cts), ...]), ... tr1 ... ]
+    """
+    result = []
+
+    for tr_ind, tr_dat in enumerate(non_zf_tr_wise_matrices):
+        result.append([])
+        sc_tr, step_tr, bons_tr = tr_dat.shape
+        for sc in range(sc_tr):
+            non_z_ind = np.nonzero(tr_dat[sc])
+            step_sc_tr, time_sc_tr = non_z_ind
+            cts_sc_tr = tr_dat[sc, step_sc_tr, time_sc_tr]
+            res_sc_tr = np.zeros(step_sc_tr.size,
+                                 dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
+
+            res_sc_tr['sc'] = np.full(step_sc_tr.size, sc, dtype=[('sc', 'u2')])
+            res_sc_tr['step'] = step_sc_tr
+            res_sc_tr['time'] = time_sc_tr
+            res_sc_tr['cts'] = cts_sc_tr
+            if sc:
+                result[tr_ind] = np.append(result[tr_ind], res_sc_tr)
+            else:
+                result[tr_ind] = res_sc_tr
+
+    return result
 
 
 def gate_zero_free_specdata(spec_data):
@@ -562,7 +595,7 @@ def gate_zero_free_specdata(spec_data):
         spec_data.time_res = zero_free_to_non_zero_free(spec_data.time_res_zf, dimensions)
         spec_data = gate_specdata(spec_data)
     except Exception as e:
-        print('error: while gating zero free specdata: %s ' % e)
+        logging.error('error: while gating zero free specdata: %s ' % e, exc_info=True)
     return spec_data
 
     # alternative solution (currently slower):
@@ -951,6 +984,10 @@ def save_spec_data(spec_data, scan_dict):
         scan_dict = deepcopy(scan_dict)
         version = float(scan_dict['isotopeData']['version'])
         # scan_dict = create_scan_dict_from_spec_data(spec_data, scan_dict['pipeInternals']['activeXmlFilePath'])
+
+        # be sure that zero free data is created for storing in the file!
+        spec_data.time_res_zf = non_zero_free_to_zero_free(spec_data.time_res)
+
         try:
             if version > 1.1:
                 time_res = len(spec_data.time_res_zf)

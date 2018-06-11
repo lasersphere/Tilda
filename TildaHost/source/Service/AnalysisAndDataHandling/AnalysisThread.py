@@ -26,7 +26,58 @@ class AnalysisThread(QThread):
     def __init__(self, scan_dict, callback_sig, live_plot_callback_tuples, fit_res_callback_dict,
                  stop_request_signal, prep_track_in_pipe_signal, new_data_signal, scan_complete_callback,
                  dac_new_volt_set_callback):
-        # TODO comment all parameters here!!!!!
+        """
+        Analysis thread which will run during scanning and use the Pollifit pipeline to continuously
+        analyse the incoming raw data from the FPGA.
+        -> be aware of pythons Global Interpreter Lock (GIL) which handles the execution of the threads.
+          -> allow your computations in the pipeline to be interruptable from GIL
+             (e.g. do NOT use sort() on a long array)
+        :param scan_dict: dict, contains all scan information, see Service/Scan/draftScanParameters.py:122
+        :param callback_sig: QtCore.pyqtSignal(int), scan_prog_call_back_sig_pipeline,
+                            this will equal the number of completed steps in the active track
+        :param live_plot_callback_tuples:  tuple of pyqtSignals:
+                (self.new_data_callback,  # QtCore.pyqtSignal(XMLImporter)
+                                            for the live plot to emit new data from the pipe to the gui
+
+                 self.new_track_callback, # QtCore.pyqtSignal(tuple),
+                    # the tuple is of form: ((tr_ind, tr_name), (pmt_ind, pmt_name)) -> setup gui for next track
+
+                 self.save_request, # QtCore.pyqtSignal(dict)
+                    # when the pipeline wants to save, this is emitted and it send the pipeData as a dict
+
+                 self.new_gate_or_soft_bin_width,  # QtCore.pyqtSignal(list, int, list, bool)
+                    # signal to request updated gated data from the pipeline.
+                    # list: software gates [[[tr0_sc0_vMin, tr0_sc0_vMax, tr0_sc0_tMin, tr0_sc0_tMax], [tr0_sc1_...
+                    # int: track_index to rebin -1 for all
+                    # list: software bin width in ns for each track
+                    # bool: plot bool to force a plotting even if nothing has changed.
+
+                 self.pre_post_meas_data_dict_callback, # QtCore.pyqtSignal(dict)
+                    # for incoming new dmm or triton data
+                 self.needed_plotting_time_ms_callback  # QtCore.pyqtSignal(float)
+                   # float: self.needed_plot_update_time_ms, time which the last plot took in ms currently unused
+                 )
+        :param fit_res_callback_dict: QtCore.pyqtSignal(dict),
+                dict, fit result plot data callback
+                -> this can be emitted from a node to send a dict containing fit results:
+                'plotData': tuple of ([x], [y]) values to plot a fit result.
+                'result': list of result-tuples (name, pardict, fix)
+        :param stop_request_signal: pyqtSignal(bool, bool),
+                signal to stop the analysis in the analysis thread,
+                first bool is for clearing the pipeline, second bool is for stopping the whole analysis.
+        :param prep_track_in_pipe_signal: pyqtSignal(int, int),
+                signal to prepare the pipeline for the next track. This will also start the pipe
+                holds:  track_num, track_index
+        :param new_data_signal:  pyqtSignal(np.ndarray, dict),
+                signal which can be used to send new data to the pipeline.
+                np.ndarray for numpy data, dict for dictionary with dmm readbacks
+                the one you don't need, leave empty (np.ndarray(0, dtype=np.int32) / {})
+        :param scan_complete_callback: QtCore.pyqtSignal(bool),
+                signal which will be emitted from the pipeline (for now ONLY kepco) if the scan is completed.
+        :param dac_new_volt_set_callback: pyqtSignal(int),
+                signal send by the pipeline during a kepco scan, if a new voltage has ben set
+                use this to trigger the dmms if wanted
+        """
         super(AnalysisThread, self).__init__()
         self.pipeline = find_pipe_by_seq_type(scan_dict, callback_sig,
                                               live_plot_callback_tuples, fit_res_callback_dict,
@@ -66,10 +117,12 @@ class AnalysisThread(QThread):
 
                 st_feed = datetime.now()
                 logging.info('Analyzing now!')
-                # TODO some operations (np.sort, ...) in the pipeline
+                #  some operations (np.sort, ...) in the pipeline
                 #  might not be able to release its lock during feed
                 # -> GIL will not be able to release the lock of this thread
                 # -> analThread blocks gui
+                # Always program the pipeline in an interruptable way!
+                # keep single calls short and don't pile up
                 self.pipeline.feed(data)  # takes a while
                 done_feed = datetime.now()
                 elapsed_feed_ms = (done_feed - st_feed).total_seconds() * 1000
