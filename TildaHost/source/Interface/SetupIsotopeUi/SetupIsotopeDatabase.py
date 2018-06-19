@@ -6,6 +6,7 @@ Created on
 Module Description: Dialog for setting up an Isotope in the table Isotopes.
 """
 
+import logging
 from Interface.SetupIsotopeUi.Ui_setupIsotopeDatabase import Ui_setupIsotopeDatabase
 
 from PyQt5 import QtWidgets, QtCore
@@ -48,9 +49,9 @@ class SetupIsotopeDatabase(QtWidgets.QDialog, Ui_setupIsotopeDatabase):
             self.tableWidget_iso_pars.setItem(i, 1, w)
 
     def ok_pressed(self):
-        print('ok')
         vals = [self.tableWidget_iso_pars.item(i, 1).text() for i in range(self.tableWidget_iso_pars.rowCount())]
         iso = vals[0]
+        logging.info('pressed ok -> adding isotope %s to db now' % iso)
         vals = vals[1:]
         if Cfg._main_instance is not None:
             Cfg._main_instance.update_iso_in_db(iso, vals)
@@ -63,6 +64,6 @@ if __name__ == '__main__':
     workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
     db = os.path.join(workdir, 'Ni_workspace.sqlite')
     gui = SetupIsotopeDatabase(db)
-    print(len(gui.pars), len(gui.vals))
+    # print(len(gui.pars), len(gui.vals))
     app.exec_()
 

@@ -10,6 +10,7 @@ Module representing a dummy digital multimeter with all required public function
 
 """
 import datetime
+import logging
 from copy import deepcopy
 from enum import Enum
 
@@ -104,7 +105,7 @@ class DMMdummy:
         self.selected_pre_config_name = self.pre_configs.periodic.name
         self.config_dict = self.pre_configs.periodic.value
         self.get_accuracy()
-        print(self.name, ' initialized')
+        logging.info('%s initialized' % self.name)
 
     ''' deinit and init '''
 
@@ -182,9 +183,9 @@ class DMMdummy:
             config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
             self.load_from_config_dict(config_dict, False)
             self.initiate_measurement()
-            print('%s dmm loaded with preconfig: %s ' % (self.name, pre_conf_name))
+            logging.info('%s dmm loaded with preconfig: %s ' % (self.name, pre_conf_name))
         else:
-            print(
+            logging.error(
                 'error: could not set the preconfiguration: %s in dmm: %s, because the config does not exist'
                 % (pre_conf_name, self.name))
 
@@ -197,9 +198,9 @@ class DMMdummy:
     def load_from_config_dict(self, config_dict, reset_dev):
         self.config_dict = deepcopy(config_dict)
         self.get_accuracy()
-        print('dummy dmm named: ', self.name)
-        print('resetting_dev: ', reset_dev)
-        print('dummy dmm loaded with: ', config_dict)
+        logging.info('dummy dmm named: %s' % self.name)
+        logging.info('resetting_dev: %s' % str(reset_dev))
+        logging.info('dummy dmm loaded with: %s' % str(config_dict))
 
     ''' emitting config pars '''
     def emit_config_pars(self):

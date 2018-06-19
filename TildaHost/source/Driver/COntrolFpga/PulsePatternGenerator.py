@@ -411,14 +411,14 @@ if __name__ == '__main__':
         "$stop::0::1::0",  # always use stop command in the end!
     ]
     example_data = ppg_obj.convert_list_of_cmds(example_data, 100)
-    print(example_data)
+    logging.debug(str(example_data))
     ppg_obj.reset()
     ppg_obj.load(example_data, start_after_load=False)
     # input('press anything to stop')
     cmds = ppg_obj.query_command(-1)
-    print('cmds from target: %s ' % cmds)
+    logging.debug('cmds from target: %s ' % cmds)
     conv_cmds = ppg_obj.convert_np_arr_of_cmd_to_list_of_cmds(cmds, 100)
-    print(conv_cmds)
+    logging.debug(conv_cmds)
     ppg_test_path = 'D:\\Debugging\\trs_debug\\Pulsepattern132Pattern.txt'
     # reconv_cmds = ppg_obj.convert_list_of_cmds(conv_cmds, 100)
     # print(reconv_cmds)
@@ -427,9 +427,9 @@ if __name__ == '__main__':
     # ppg_test_path = 'D:\\Debugging\\trs_debug\\Pulsepattern132Pattern.txt'
     # print(ppg_obj.load_from_file(ppg_test_path, load_to_fpga=True, run_fpga_with_this=True))
     input('press anything to stop')
-    print(ppg_obj.read_state())
+    logging.debug(ppg_obj.read_state())
     ppg_obj.stop()
     input('press anything to stop')
-    print(ppg_obj.read_state())
+    logging.debug(ppg_obj.read_state())
 
     ppg_obj.deinit_ppg()

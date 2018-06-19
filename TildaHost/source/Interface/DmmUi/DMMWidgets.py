@@ -122,7 +122,11 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
                     parent_layout.addRow(QtWidgets.QLabel(label), widget)
                     inp_dict[key] = [label, inp_type, vals, set_val, widget]
             except Exception as e:
-                print(e)
+                logging.error('error while adding a widget to the form layout in'
+                              ' Interface.DmmUi.DMMWidgets.Ni4071Widg#add_widgets_to_form_layout,\n'
+                              'for dmm: %s'
+                              'key: %s, val: %s\n'
+                              'errormessage: %s' % (self.dmm_name, key, str(val), str(e)), exc_info=True)
 
     def coerce_val_tolist_val(self, val, myList):
         """
@@ -173,13 +177,15 @@ class Ni4071Widg(QtWidgets.QWidget, Ui_form_layout):
                 elif inp_type is bool:
                     widget.setChecked(current_val)
             except Exception as e:
-                print(e)
+                logging.error('error occurred for dmm %s in Interface.DmmUi.DMMWidgets.Ni4071Widg#reset_vals'
+                              ' for key: %s, val: %s\n'
+                              ' error is: %s' % (self.dmm_name, key, str(val), str(e)), exc_info=True)
 
     def communicate_with_dmm(self):
         """ configures and arms teh device with the values currently stored in self.raw_config """
         # config values must only contain key: val
         config = {key: val[3] for key, val in self.raw_config.items()}
-        print('will setup dmm to: ', config)
+        logging.info('will setup dmm %s to: %s' % (self.dmm_name, config))
         Cfg._main_instance.config_and_arm_dmm(self.dmm_name, config, False)
         # Cfg._main_instance.scan_main.setup_dmm_and_arm(self.dmm_name, config, False)
 

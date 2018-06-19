@@ -186,12 +186,12 @@ class Ni4071:
         if stat < 0:  # if init fails, start simulation
             self.get_error_message(stat, 'while initializing Ni4071: ')
             self.de_init_dmm()
-            print('starting simulation now')
+            logging.warning('initialisation of %s did not work, starting simulation now' % self.name)
             stat = self.init_with_option(address_str, "Simulate=1, DriverSetup=Model:4071; BoardType:PXI")
             self.get_error_message(stat)
         self.config_power_line_freq(pwr_line_freq)
 
-        print(self.name, ' initialized, status is: %s, session is: %s' % (stat, self.session))
+        logging.info('%s initialized, status is: %s, session is: %s' % (self.name, stat, self.session))
 
     ''' Init and close '''
 

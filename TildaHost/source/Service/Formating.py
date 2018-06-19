@@ -51,7 +51,8 @@ def eval_str_vals_in_dict(dicti):
         try:
             dicti[key] = ast.literal_eval(val)
         except Exception as e:
-            print(e, val, type(val))
+            logging.error('error while converting %s of type %s to a string, error is: %s'
+                          % (val, type(val), e), exc_info=True)
     return dicti
 
 
@@ -151,7 +152,8 @@ def create_time_axis_from_scan_dict(scand, rebinning=False, binwidth_ns=10, dela
                 try:
                     delay_ns = trackd['trigger']['trigDelay10ns'] * 10
                 except Exception as e:
-                    print('while creating a time axis, this exception occured: ', e)
+                    logging.error(
+                        'while creating a time axis, this exception occured: %s' % e)
                     delay_ns = 0
             x = np.arange(delay_ns, bins * binwidth_ns + delay_ns, binwidth_ns)
             arr.append(x)

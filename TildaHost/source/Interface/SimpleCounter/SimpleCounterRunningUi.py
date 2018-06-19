@@ -9,6 +9,7 @@ the currently selected post acceleration device.
 
 import functools
 import os
+import logging
 
 import numpy as np
 from PyQt5 import QtCore
@@ -151,4 +152,5 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
                            'plotWid': plt_widg, 'pltItem': plt_item, 'splitter': splitter}
                 self.elements.append(sc_dict)
             except Exception as e:
-                print(e)
+                logging.error('error in Interface.SimpleCounter.SimpleCounterRunningUi'
+                              '.SimpleCounterRunningUi#add_scalers_to_gridlayout: %s' % e, exc_info=True)

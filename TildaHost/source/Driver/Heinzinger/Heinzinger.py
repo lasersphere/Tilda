@@ -25,7 +25,7 @@ class Heinzinger():
         self.setVolt = 0
         self.time_of_last_volt_set = None
         self.sleepAfterSend = 0.05
-        print('connecting to ' + self.name + ' on com port: ' + str(com))
+        logging.info('connecting to %s on com port: %s' % (self.name, str(com)))
         self.idn = ''
         self.ser = serial.Serial(port=com - 1, baudrate=9600, timeout=0.1,
                                  parity='N', stopbits=1, bytesize=8, xonxoff=True,
@@ -35,14 +35,14 @@ class Heinzinger():
             self.reset()
             self.idn = str(self.serWrite('*IDN?', True))
             if self.idn != str(None):
-                print(self.idn + 'initialized on Com: ' + str(com))
+                logging.info('%s initialized on Com: %s' % (str(self.idn), str(com)))
                 self.setAverage(1)
                 self.setOutput(True)
                 # self.setVoltage(0)   # not absolutely necessary
                 self.setCurrent(hzCfg.currentWhenTurnedOn)
         except OSError:
             self.errorcount += 1
-            print('error occurred, error count is: ' + str(self.errorcount))
+            logging.error('error occurred in %s, error count is: %s' % (self.name, str(self.errorcount)))
 
     def reset(self):
         """
@@ -69,7 +69,7 @@ class Heinzinger():
         :param volt: float, 3 Digits of precision
         :return: float, the voltage that has ben sent via serial
         """
-        print('Heinzinger setting Volt: ' + str(volt))
+        logging.info('%s setting Volt: ' % (self.name, str(volt)))
         if abs(volt) <= self.maxVolt:
             self.setVolt = round(float(volt), 3)
         self.serWrite('SOUR:VOLT ' + str(abs(self.setVolt)))

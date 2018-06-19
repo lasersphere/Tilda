@@ -191,7 +191,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
             else:
                 self.track_wins_dict[str(track_number)] = TrackUi(self, track_number, self.active_iso, self.main_gui)
         except Exception as e:
-            print(e)
+            logging.error('error while opening track window, error is: %s' % e, exc_info=True)
 
     def track_win_closed(self, tracknum_int):
         self.track_wins_dict.pop(str(tracknum_int))

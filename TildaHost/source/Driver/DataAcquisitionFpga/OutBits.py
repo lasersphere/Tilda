@@ -135,5 +135,5 @@ if __name__ == '__main__':
 
     converted, org_l = outbit._convert_dict_of_cmd_to_32b_eles(to_convert)
     for i, each in enumerate(converted):
-        print(format(each, '032b'), org_l[i])
-    print(org_l)
+        logging.debug('%s\t %s' % (str(format(each, '032b')), str(org_l[i])))
+    logging.debug(str(org_l))

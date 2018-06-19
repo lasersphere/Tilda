@@ -125,7 +125,7 @@ class Agilent3458A(QThread):
         self.init(self.address, reset)
         self.get_accuracy()
         self.get_dev_err()
-        print(self.name, ' initialized')
+        logging.info('%s initialized' % self.name)
 
     ''' deinit and init '''
 
@@ -168,7 +168,8 @@ class Agilent3458A(QThread):
             self.gpib.read_termination = '\r\n'
             self.state = 'initialized'
         except Exception as e:
-            print('error: while establishing gpib connection, %s yielded the error: %s' % (self.name, e))
+            logging.error(
+                'error: while establishing gpib connection, %s yielded the error: %s' % (self.name, e), exc_info=True)
             self.gpib = None  # this will cause a dummy mode and all sends will just be printed.
             self.state = 'connection error'
 
@@ -434,7 +435,9 @@ class Agilent3458A(QThread):
                 self.last_readback = (round(ret[-1], 8), t)
                 self.mutex.unlock()
             except Exception as fail:
-                print('error, reading from %s failed to convert: %s, error is: %s' % (self.name, ret, fail))
+                logging.error(
+                    'error, reading from %s failed to convert: %s, error is: %s' % (self.name, ret, fail),
+                    exc_info=True)
                 return np.array([])
             # done = datetime.datetime.now() - start_t
             # print('done fetching, ', ret, '%.3f ms' % (done.total_seconds() * 1000))
@@ -475,9 +478,9 @@ class Agilent3458A(QThread):
             config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
             self.load_from_config_dict(config_dict, False)
             # self.initiate_measurement()
-            print('%s dmm loaded with preconfig: %s ' % (self.name, pre_conf_name))
+            logging.info('%s dmm loaded with preconfig: %s ' % (self.name, pre_conf_name))
         else:
-            print(
+            logging.error(
                 'error: could not set the preconfiguration: %s in dmm: %s, because the config does not exist'
                 % (pre_conf_name, self.name))
 
@@ -522,9 +525,11 @@ class Agilent3458A(QThread):
             self.config_meas_compl_slope(positive=True, postpone_send=False)  # always positive TTL
 
             self.get_accuracy()
-            print('%s dmm loaded with: ' % self.name, config_dict)
+            logging.info('%s dmm loaded with: ' % self.name, config_dict)
         except Exception as eexc:
-            print('error: %s failed to setup from config dict: %s error is: %s' % (self.name, config_dict, eexc))
+            logging.error(
+                'error: %s failed to setup from config dict: %s error is: %s' % (self.name, config_dict, eexc),
+                exc_info=True)
 
     ''' emitting config pars '''
     def emit_config_pars(self):
@@ -607,25 +612,27 @@ class Agilent3458A(QThread):
             ret = ret.split(',')
             ret[0] = int(ret[0])
             if ret[0] != 0:
-                print('error: digital multimeter: %s yields the error: %s' % (self.name, ret[1]))
+                logging.error(
+                    'error: digital multimeter: %s yields the error: %s' % (self.name, ret[1]))
             return ret
         except Exception as errrr:
-            print('error: while polling the error from digital multimeter: %s'
-                  ' the following error occured: %s' % (self.name, errrr))
-            print('-> return was: ', ret)
+            logging.error(
+                'error: while polling the error from digital multimeter: %s'
+                ' the following error occured: %s -> return was: %s ' % (self.name, errrr, str(ret)),
+                exc_info=True)
             return [0, 'i dont know, something went wrong']
 
     ''' Thread '''
 
     def run(self):
-        print('%s reading thread started' % self.name)
+        logging.info('%s reading thread started' % self.name)
         while not self.stop_reading_thread:
             new_data = self._fetch_multiple_meas(-1)
             self.mutex.lock()
             self.read_back_data = np.append(self.read_back_data, new_data)
             self.mutex.unlock()
             self.msleep(50)
-        print('%s reading thread stopped' % self.name)
+        logging.info('%s reading thread stopped' % self.name)
         self.mutex.lock()
         self.stop_reading_thread = False
         self.mutex.unlock()
@@ -635,24 +642,24 @@ if __name__ == '__main__':
     try:
         dev = Agilent3458A(True, 'GPIB0..22..INSTR')
 
-        print(dev.get_dev_err())
+        logging.debug(str(dev.get_dev_err()))
 
         dev.set_to_pre_conf_setting(Agilent3458aPreConfigs.pre_scan.name)
         dev.send_software_trigger()
         dev.initiate_measurement()
 
         readings = 0
-        print('starting to fetch')
+        logging.debug('starting to fetch')
         ret = dev.fetch_multiple_meas(-1)
-        print('reading: ', ret)
+        logging.debug('reading: %s' % str(ret))
         readings += len(ret)
-        print('number of readings: ', readings)
+        logging.debug('number of readings: %s ' % str(readings))
         while True:
             time.sleep(0.2)
             ret = dev.fetch_multiple_meas(-1)
-            print('reading: ', ret)
+            logging.debug('reading: %s' % str(ret))
             readings += len(ret)
-            print('number of readings: ', readings)
+            logging.debug('number of readings: %s ' % str(readings))
 
         # print('measured', dev.fetch_multiple_meas(-1))
 
@@ -715,5 +722,5 @@ if __name__ == '__main__':
 
 
     except Exception as e:
-        print(e)
+        logging.error(str(e), exc_info=True)
 

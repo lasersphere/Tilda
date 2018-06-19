@@ -133,7 +133,7 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
             self.name_item(cur_ind)
             self.add_stop()
         else:
-            print('in peridoic mode only one trigger is supported for now.')
+            logging.warning('did not add another trigger, in periodic mode only one trigger is supported for now.')
 
     def add_stop(self, stop_dict=None):
         """ add a stop cmd at end of cmds if not yet there.
@@ -191,7 +191,7 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
                         self.name_item(cur_ind)
                         self.get_cmd_list()
             except Exception as e:
-                print('error while double clicked: %s ' % e)
+                logging.error('error while double clicked: %s ' % e, exc_info=True)
 
     def sys_rep_rate_changed(self, val):
         # print('system rep rate changed to: %s' % val)
@@ -373,10 +373,10 @@ class PpgPeriodicWidgUi(QtWidgets.QWidget, Ui_PpgPeriodicWidg):
     def reload_last_settings(self):
         """ load the backup data (only runtime) """
         if self._backup:
-            print('loading backup list of commands: %s ' % self._backup)
+            logging.info('loading backup list of commands: %s ' % self._backup)
             self.list_of_item_dicts = []
             self.listWidget_periodic_pattern.clear()
             self.setup_from_list(self._backup)
             self.get_cmd_list()
         else:
-            print('no backup data available')
+            logging.debug('no backup data available')

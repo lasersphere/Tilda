@@ -159,14 +159,15 @@ class AgilentM918x:
     Class for accessing the Agilent M918x digital Multimeter.
     """
     def __init__(self, reset=True, address_str='PXI6..15..INSTR', pwr_line_freq='50'):
-        dll_path = path.normpath(path.join(path.dirname(__file__), pardir, pardir, pardir, 'binary\\AgM918x.dll'))
-        print(dll_path)
-        #dll_path = 'C:\\Program Files (x86)\\IVI Foundation\\IVI\\Bin\\AgM918x.dll'
-
         self.type = 'Agilent_M918x'
         self.state = 'None'
         self.address = address_str.replace('.', ':')  # colons not allowed in name but needed for gpib
         self.name = self.type + '_' + address_str
+
+        dll_path = path.normpath(path.join(path.dirname(__file__), pardir, pardir, pardir, 'binary\\AgM918x.dll'))
+        logging.info('%s loading dll from path: %s' % (self.name, str(dll_path)))
+        #dll_path = 'C:\\Program Files (x86)\\IVI Foundation\\IVI\\Bin\\AgM918x.dll'
+
         # default config dictionary for this type of DMM:
 
         self.pre_configs = AgilentM918xPreConfigs
@@ -187,15 +188,13 @@ class AgilentM918x:
         if stat < 0:  # if init fails, start simulation
             self.get_error_message(stat, 'while initializing AgM918x: ')
             self.de_init_dmm()
-            print('starting simulation now')
+            logging.info('%s is starting simulation now' % self.name)
             stat = self.init_with_option(self.address, "Simulate=True, DriverSetup=Model:AgM9183A")
             self.get_error_message(stat)
         self.config_power_line_freq(pwr_line_freq)
         self.set_to_pre_conf_setting(self.pre_configs.periodic.name)
 
-
-        print(self.name, ' initialized, status is: %s, session is: %s' % (stat, self.session))
-
+        logging.info('%s initialized, status is: %s, session is: %s' % (self.name, stat, self.session))
 
     ''' init and close '''
 
@@ -423,7 +422,7 @@ class AgilentM918x:
         """
         # print(self.name, '  initiating measurement')
         if self.get_initiated():
-            print('WARNING! trying to initialize %s again!' % self.name)
+            logging.warning('WARNING! trying to initialize %s again!' % self.name)
         # logging.debug(self.name + '  initiating measurement now!')
         err_code, err_msg = self.get_error_message(self.dll.AgM918x_Initiate(self.session))
         # print(err_msg)
@@ -606,11 +605,8 @@ class AgilentM918x:
             # just to be sure this is included:
             self.config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
         except Exception as e:
-            print('error, Exception while loading config to %s: ' % self.name, e)
-            print('config dict was:')
-            import json
-            print(
-                json.dumps(self.config_dict, sort_keys=True, indent=4))
+            logging.error('error, Exception while loading config to %s: %s\n'
+                          ' config dict was: %s' % (self.name, str(e), str(self.config_dict)), exc_info=True)
 
     ''' property Node operations: '''
 

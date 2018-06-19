@@ -20,6 +20,7 @@ last edited: October 2013
 """
 
 import os
+import logging
 import pickle
 import platform
 import random
@@ -349,7 +350,7 @@ class Board(QtWidgets.QFrame):
             your_rank = 6
             new_high_score_reached = False
             for rank, each in enumerate(self.high_score):
-                print('%s \t %s  \t  %s ' % (rank + 1, each[0], each[1]))
+                logging.info('%s \t %s  \t  %s ' % (rank + 1, each[0], each[1]))
                 new_high_score_reached = each[1] < self.numLinesRemoved
                 if new_high_score_reached:
                     your_rank = min(rank, your_rank)
@@ -359,14 +360,14 @@ class Board(QtWidgets.QFrame):
                 if ok:
                     self.high_score.insert(your_rank, (text, self.numLinesRemoved))
                     self.high_score = self.high_score[:min(6, len(self.high_score))]
-                print('you have reached a new highscore: %s lines where removed'
-                      ' and the old high score was: %s' % (self.numLinesRemoved, self.high_score))
-                print('saving to: %s' % self.highscore_file)
+                logging.info('you have reached a new highscore: %s lines where removed'
+                             ' and the old high score was: %s' % (self.numLinesRemoved, self.high_score))
+                logging.info('saving to: %s' % self.highscore_file)
                 file = open(self.highscore_file, 'wb')
                 pickle.dump(self.high_score, file)
                 file.close()
             else:
-                print('you did not beat the highscore of %s removed lines' % self.high_score)
+                logging.info('you did not beat the highscore of %s removed lines' % self.high_score)
             self.show_highscore()
 
     def show_highscore(self):

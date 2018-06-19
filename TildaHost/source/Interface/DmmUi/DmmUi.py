@@ -85,7 +85,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
                 for key, val in self.tabs.items():
                     if key != 'tab0':
                         if self.pre_or_during_scan_str == 'preScan':
-                            print('will set %s to preScan' % val[-1])
+                            logging.info('will set %s to preScan' % val[-1])
                             val[-1].handle_pre_conf_changed('pre_scan')
                         else:
                             if scan_dict.get('isotopeData', {}).get('type', 'kepco') == 'kepco':
@@ -96,9 +96,12 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
                 # self.load_config_dict()
             else:
                 #  copy values for measVoltPulseLength25ns and measVoltTimeout10ns from preScan
-                meas_volt_dict['measVoltTimeout10ns'] = deepcopy(meas_volt_pars_dict.get('preScan', {}).get('measVoltTimeout10ns', 0))
-                meas_volt_dict['measVoltPulseLength25ns'] = deepcopy(meas_volt_pars_dict.get('preScan', {}).get('measVoltPulseLength25ns', 0))
-                meas_volt_dict['switchBoxSettleTimeS'] = deepcopy(meas_volt_pars_dict.get('preScan', {}).get('switchBoxSettleTimeS', 5.0))
+                meas_volt_dict['measVoltTimeout10ns'] = deepcopy(meas_volt_pars_dict.get(
+                    'preScan', {}).get('measVoltTimeout10ns', 0))
+                meas_volt_dict['measVoltPulseLength25ns'] = deepcopy(meas_volt_pars_dict.get(
+                    'preScan', {}).get('measVoltPulseLength25ns', 0))
+                meas_volt_dict['switchBoxSettleTimeS'] = deepcopy(meas_volt_pars_dict.get(
+                    'preScan', {}).get('switchBoxSettleTimeS', 5.0))
                 self.load_config_dict(meas_volt_dict)
         else:  # delete unnecessary spinboxes when not configuring for track
             self.doubleSpinBox_measVoltTimeout_mu_s_set.setParent(None)
@@ -117,12 +120,13 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         :param comm_allow: bool, boolean if communication is allowed or not.
         """
         if overwrite:
-            print('communication has ben permanently %s' % ('enabled' if comm_allow else 'disabled'))
+            logging.debug('communication has ben permanently %s in %s'
+                          % ('enabled' if comm_allow else 'disabled', str(self.windowTitle())))
             self.comm_allow_overwrite_val = True
             self._enable_communication(comm_allow)
         else:
             if self.comm_allow_overwrite_val:
-                print('communication is blocked')
+                logging.debug('communication is blocked in %s' % str(self.windowTitle()))
                 return None
             else:
                 self._enable_communication(comm_allow)
@@ -155,11 +159,11 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         will initialize the dmm of type and adress and store the instance in the scan_main.
         :param dmm_tuple: tuple, (dev_type_str, dev_addr_str)
         """
-        print('starting to initialize: ', dmm_tuple)
+        logging.info('starting to initialize dmm: %s' % str(dmm_tuple))
         dev_type, dev_address = dmm_tuple
         dmm_name = dev_type + '_' + dev_address
         if dmm_name in list(self.tabs.keys()) or dmm_name is None:
-            print('could not initialize: ', dmm_name, ' ... already initialized?')
+            logging.warning('could not initialize dmm: %s ... already initialized?' % dmm_name)
             return None  # break when not initialized
         self.init_dmm_done_callback.connect(functools.partial(self.setup_new_tab_widget, (dmm_name, dev_type)))
         Cfg._main_instance.init_dmm(dev_type, dev_address, self.init_dmm_done_callback, startup_config)
@@ -249,7 +253,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         only by communicating with it than, it will be configured
         :param dmm_conf_dict: dict, keys are dmm_names, values are the config dicts for each dmm
         """
-        print('loading config dict: ', meas_volt_dict)
+        logging.info('loading voltage measurement config dict: %s' % str(meas_volt_dict))
         dmm_conf_dict = meas_volt_dict.get('dmms', {})
         self.set_pulse_len_and_timeout(meas_volt_dict)
         for key, val in dmm_conf_dict.items():
@@ -268,7 +272,8 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
                                              dmm_conf_dict[key].get('address', '')),
                                             val.get('preConfName', 'initial'))
                 except Exception as e:
-                    print(e)
+                    logging.error('error in %s while loading the dmm: %s with the config: %s\n'
+                                  ' error is: %s ' % (self.name, key, str(val), str(e)), exc_info=True)
 
     def get_current_dmm_config(self):
         """

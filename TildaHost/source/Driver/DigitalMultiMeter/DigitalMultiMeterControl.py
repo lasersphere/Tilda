@@ -44,43 +44,49 @@ class DMMControl:
         """
         dev = None
         name = ''
-        print('preparing ', type_str, address)
+        logging.info('preparing digital multimeter of type: %s at address: %s' % (type_str, address))
         if type_str == 'Ni4071':
             try:
                 dev = Ni4071(address_str=address)
                 name = dev.name  # 'type_addr'
             except Exception as e:
-                print('starting dmm did not work exception is:', e)
+                logging.error('starting dmm (type: %s, addr.: %s) did not work exception is: %s'
+                              % (type_str, address, e), exc_info=True)
         elif type_str == 'dummy':
             try:
                 dev = DMMdummy(address_str=address)
                 name = dev.name  # 'type_addr'
             except Exception as e:
-                print('starting dmm did not work exception is:', e)
+                logging.error('starting dmm (type: %s, addr.: %s) did not work exception is: %s'
+                              % (type_str, address, e), exc_info=True)
         elif type_str == 'Agilent_34461A':
             try:
                 dev = Agilent(address_str=address, type_num='34461A')
                 name = dev.name  # 'type_addr'
             except Exception as e:
-                print('starting dmm did not work exception is:', e)
+                logging.error('starting dmm (type: %s, addr.: %s) did not work exception is: %s'
+                              % (type_str, address, e), exc_info=True)
         elif type_str == 'Agilent_34401A':
             try:
                 dev = Agilent(address_str=address, type_num='34401A')
                 name = dev.name  # 'type_addr'
             except Exception as e:
-                print('starting dmm did not work exception is:', e)
+                logging.error('starting dmm (type: %s, addr.: %s) did not work exception is: %s'
+                              % (type_str, address, e), exc_info=True)
         elif type_str == 'Agilent_M918x':
             try:
                 dev = AgilentM918x(address_str=address)
                 name = dev.name  # 'type_addr'
             except Exception as e:
-                print('starting dmm did not work exception is:', e)
+                logging.error('starting dmm (type: %s, addr.: %s) did not work exception is: %s'
+                              % (type_str, address, e), exc_info=True)
         elif type_str == 'Agilent_3458A':
             try:
                 dev = Agilent3458A(address_str=address)
                 name = dev.name  # 'type_addr'
             except Exception as e:
-                print('starting dmm did not work exception is:', e)
+                logging.error('starting dmm (type: %s, addr.: %s) did not work exception is: %s'
+                              % (type_str, address, e), exc_info=True)
         if dev is not None:
             self.dmm[dev.name] = dev
             return name
@@ -115,7 +121,7 @@ class DMMControl:
         set the dmm to a predefined configuration in that it reads out a value every now and then.
         this will configure the dmm and afterwards initiate the measurement directly.
         """
-        print('starting %s meas on: %s' % (pre_config_name, dmm_name))
+        logging.info('starting %s meas on dmm: %s' % (pre_config_name, dmm_name))
         if dmm_name == 'all':
             for dmm_name in list(self.dmm.keys()):
                 self.dmm[dmm_name].set_to_pre_conf_setting(pre_config_name)

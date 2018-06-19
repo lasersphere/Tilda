@@ -407,7 +407,9 @@ class NSaveRawData(Node):
         time_since_last_save = datetime.now() - self.time_of_last_save
         if self.buf.size > self.maxArraySize or time_since_last_save >= self.max_time_between_saves:
             # when buffer is full or the maximum acquisition time is reached, store the data to disc
-            print('saving raw data, time since last save is: ', time_since_last_save.seconds)
+            logging.info('%s saving %s elements of raw data,'
+                         ' time since last save is: %s'
+                         % (self.type, str(self.buf.size), time_since_last_save.total_seconds()))
             self.nOfSaves = Filehandle.saveRawData(self.buf, pipeData, self.nOfSaves)
             self.time_of_last_save = datetime.now()
             self.buf = np.zeros(0, dtype=np.uint32)
@@ -539,13 +541,15 @@ class NMPLImagePLot(Node):
             self.update_gate_ind(gates_list)
             self.gate_data_and_plot(True)
         except Exception as e:
-            print('while setting the gates this happened: ', e)
+            logging.error('while setting the gates this happened: %s' % e)
 
     def gate_data_and_plot(self, draw=False):
         """
         uses the currently stored gates (self.gates_list) to gate the stored data in
         self.buffer_data and plots the result.
         """
+        sum_l = 0
+        data_l = 0
         try:
             data = self.buffer_data
             g_list = self.gates_list[self.selected_pmt_ind][0]
@@ -569,8 +573,8 @@ class NMPLImagePLot(Node):
             if draw:
                 MPLPlotter.draw()
         except Exception as e:
-            print('while plotting projection this happened: ', e)
-            print('t_proj lenghts are: ', sum_l, data_l)
+            logging.error('while plotting projection this happened: %s'
+                          't_proj lenghts are: %s %s' % (e, str(sum_l), str(data_l)), exc_info=True)
 
     def update_gate_ind(self, gates_val_list):
         """
@@ -607,7 +611,7 @@ class NMPLImagePLot(Node):
             self.gate_anno.set_y(ymax - (ymax - ymin) / 6)
             return self.gates_list
         except Exception as e:
-            print('while updating the indice this happened: ', e)
+            logging.error('while updating the indice this happened: %s' % e, exc_info=True)
 
     def setup_track(self, track_ind, track_name):
         try:
@@ -649,14 +653,14 @@ class NMPLImagePLot(Node):
 
             MPLPlotter.draw()
         except Exception as e:
-            print('while starting this occured: ', e)
+            logging.error('while starting this occured: %s' % e, exc_info=True)
 
     def pmt_radio_buttons(self, label):
         try:
             self.selected_pmt = int(label[3:])
             self.selected_pmt_ind = self.Pipeline.pipeData[self.selected_track[1]]['activePmtList'].index(
                 self.selected_pmt)
-            print('selected pmt index is: ', int(label[3:]))
+            logging.info('selected pmt index is: %d' % int(label[3:]))
             self.buffer_data = Form.time_rebin_all_data(
                 self.full_data, self.Pipeline.pipeData)[self.selected_track[0]][self.selected_pmt_ind]
             self.setup_track(*self.selected_track)
@@ -667,13 +671,13 @@ class NMPLImagePLot(Node):
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
             MPLPlotter.draw()
         except Exception as e:
-            print(e)
+            logging.error('error in %s: %s' % (self.type, e), exc_info=True)
 
     def tr_radio_buttons(self, label):
         try:
             tr, tr_list = TildaTools.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
             self.selected_track = (tr_list.index(int(label[5:])), label)
-            print('selected track index is: ', int(label[5:]))
+            logging.info('selected track index is: %d' % int(label[5:]))
             self.buffer_data = Form.time_rebin_all_data(
                 self.full_data, self.Pipeline.pipeData)[self.selected_track[0]][self.selected_pmt_ind]
             self.setup_track(*self.selected_track)
@@ -684,7 +688,7 @@ class NMPLImagePLot(Node):
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
             MPLPlotter.draw()
         except Exception as e:
-            print(e)
+            logging.error('error in %s: %s' % (self.type, e), exc_info=True)
 
     def save_proj(self, bool):
         """ saves projection of all tracks """
@@ -708,7 +712,7 @@ class NMPLImagePLot(Node):
                     parent_ele_str='projections')
             TildaTools.save_xml(rootEle, file, False)
         except Exception as e:
-            print(e)
+            logging.error('error in %s: %s' % (self.type, e), exc_info=True)
 
     def rebin_changed(self, bins_10ns):
         try:
@@ -725,7 +729,7 @@ class NMPLImagePLot(Node):
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
             MPLPlotter.draw()
         except Exception as e:
-            print(e)
+            logging.error('error in %s: %s' % (self.type, e), exc_info=True)
 
     def start(self):
         try:
@@ -754,7 +758,7 @@ class NMPLImagePLot(Node):
                                                                 self.rebin_changed, valfmt=u'%3d', valinit=10)
             self.slider.valtext.set_text('{}'.format(bin_width))
         except Exception as e:
-            print(e)
+            logging.error('error in %s: %s' % (self.type, e), exc_info=True)
 
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
@@ -768,7 +772,7 @@ class NMPLImagePLot(Node):
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
             pass
         except Exception as e:
-            print('while updateing plot, this happened: ', e)
+            logging.error('while updateing plot, this happened: %s' % e, exc_info=True)
         return data
 
     def clear(self):
@@ -896,7 +900,8 @@ class NStartNodeKepcoScan(Node):
                                                           % ('dac_new_volt_set_callback', self.type, -1))
                                             self.dac_new_volt_set_callback.emit(-1)
                                 except Exception as e:
-                                    print('error while processing data in node: %s -> %s' % (self.type, e))
+                                    logging.error('error while processing data in node: %s -> %s' % (self.type, e)
+                                                  , exc_info=True)
                                     # print('volt_reading: ', self.spec_data.cts)
                             else:
                                 # print('received more voltages than it should! check your settings!')
@@ -1091,7 +1096,7 @@ class NMPLImagePlotSpecData(Node):
             self.update_gate_ind(gates_list)
             self.gate_data_and_plot(True)
         except Exception as e:
-            print('while setting the gates this happened: ', e)
+            logging.error('while setting the gates this happened: %s' % e, exc_info=True)
 
     def gate_data_and_plot(self, draw=False):
         """
@@ -1122,7 +1127,7 @@ class NMPLImagePlotSpecData(Node):
             if draw:
                 MPLPlotter.draw()
         except Exception as e:
-            print('while plotting projection this happened: ', e)
+            logging.error('while plotting projection this happened: %s' % e, exc_info=True)
             # print('t_proj lenghts are: ',
             #       len(np.sum(data.time_res[g_ind[0]:g_ind[1] + 1, :], axis=0)), len(self.tproj_line.get_ydata()))
 
@@ -1162,7 +1167,7 @@ class NMPLImagePlotSpecData(Node):
             self.buffer_data.softw_gates[self.selected_pmt_ind] = gates_val_list
             return gates_ind, gates_val_list
         except Exception as e:
-            print('while updating the indice this happened: ', e)
+            logging.error('while updating the indice this happened: %s' % e, exc_info=True)
             return [0, 1, 2, 3], [-1, 1, 0, 1]
 
     def setup_track(self, track_ind, track_name):
@@ -1201,18 +1206,18 @@ class NMPLImagePlotSpecData(Node):
             self.update_gate_ind(gate_val_list)
             bin_width = self.buffer_data.softBinWidth_ns[track_ind]
             if self.slider is not None:
-                print('slider is set to:', bin_width)
+                logging.info('slider is set to: %s' % bin_width)
                 self.slider.valtext.set_text('{}'.format(bin_width))
 
             MPLPlotter.draw()
         except Exception as e:
-            print('while starting this occured: ', e)
+            logging.error('while starting this occured: %s' % e)
 
     def pmt_radio_buttons(self, label):
         try:
             self.selected_pmt = int(label[3:])
             self.selected_pmt_ind = self.buffer_data.active_pmt_list[self.selected_track[0]].index(self.selected_pmt)
-            print('selected pmt index is: ', int(label[3:]))
+            logging.info('selected pmt index is: %d' % int(label[3:]))
             self.buffer_data = Form.time_rebin_all_spec_data(
                 self.full_data, self.buffer_data.softBinWidth_ns[self.selected_track[0]])
             self.setup_track(*self.selected_track)
@@ -1224,13 +1229,13 @@ class NMPLImagePlotSpecData(Node):
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
             MPLPlotter.draw()
         except Exception as e:
-            print(e)
+            logging.error('error in %s: %s' % (self.type, e), exc_info=True)
 
     def tr_radio_buttons(self, label):
         try:
             tr_list = self.buffer_data.track_names
             self.selected_track = (tr_list.index(label), label)
-            print('selected track index is: ', int(label[5:]))
+            logging.info('selected track index is: %d' % int(label[5:]))
             self.buffer_data = Form.time_rebin_all_spec_data(
                 self.full_data, self.buffer_data.softBinWidth_ns[self.selected_track[0]])
             self.setup_track(*self.selected_track)
@@ -1242,7 +1247,7 @@ class NMPLImagePlotSpecData(Node):
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
             MPLPlotter.draw()
         except Exception as e:
-            print(e)
+            logging.error('error in %s: %s' % (self.type, e), exc_info=True)
 
     def save_proj(self, bool):
         """ saves projection of all tracks """
@@ -1260,7 +1265,7 @@ class NMPLImagePlotSpecData(Node):
         #     xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][0], track_name, datatype='voltage_projection')
         #     xmlAddCompleteTrack(rootEle, pipeData, data[track_ind][1], track_name, datatype='time_projection')
         # TildaTools.save_xml(rootEle, file, False)
-        print('saving currently not implemented')
+        logging.error('saving currently not implemented')
 
     def rebin_changed(self, bins_10ns):
         try:
@@ -1272,7 +1277,8 @@ class NMPLImagePlotSpecData(Node):
             self.buffer_data.softBinWidth_ns[self.selected_track[0]] = bins_10ns_rounded
             for tr_ind, tr_name in enumerate(self.buffer_data.track_names):
                 bins = self.full_data.t[tr_ind].size // bins_to_combine
-                print('new length: ', bins, self.buffer_data.softBinWidth_ns[self.selected_track[0]])
+                logging.info('new length: %s %s '
+                             % (str(bins), str(self.buffer_data.softBinWidth_ns[self.selected_track[0]])))
                 delay_ns = self.full_data.t[tr_ind][0]
                 self.buffer_data.t[tr_ind] = np.arange(delay_ns, bins * bins_10ns_rounded + delay_ns, bins_10ns_rounded)
             self.setup_track(*self.selected_track)
@@ -1284,13 +1290,13 @@ class NMPLImagePlotSpecData(Node):
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
             MPLPlotter.draw()
         except Exception as e:
-            print('Exception while rebinning:', e)
+            logging.error('error in %s: %s' % (self.type, e), exc_info=True)
 
     def start(self):
         """ setup the radio buttons and sliders """
         try:
             if self.buffer_data is not None:
-                print('start is called')
+                logging.info('start is called')
                 track_ind, track_name = (0, 'track0')
                 self.selected_track = (track_ind, track_name)
                 bin_width = self.buffer_data.softBinWidth_ns[self.selected_track[0]]
@@ -1316,7 +1322,7 @@ class NMPLImagePlotSpecData(Node):
                 self.slider.valtext.set_text('{}'.format(bin_width))
                 # self.setup_track(*self.selected_track)
         except Exception as e:
-            print(e)
+            logging.error('error in %s: %s' % (self.type, e), exc_info=True)
 
     def processData(self, data, pipeData):
         start = time.clock()
@@ -1337,9 +1343,9 @@ class NMPLImagePlotSpecData(Node):
             self.im_ax.set_aspect(self.aspect_img, adjustable='box-forced')
             pass
         except Exception as e:
-            print('while updateing plot, this happened: ', e)
+            logging.error('error in %s: %s' % (self.type, e), exc_info=True)
         end = time.clock()
-        print('plotting time was /ms : ', round((end - start) * 1000, 3))
+        logging.debug('plotting time was /ms : %.1f ms ' % round((end - start) * 1000, 3))
         return data
 
     def clear(self):
@@ -1347,7 +1353,7 @@ class NMPLImagePlotSpecData(Node):
         try:
             MPLPlotter.show(True)
         except Exception as e:
-            print(e)
+            logging.error('error in %s: %s' % (self.type, e), exc_info=True)
 
 
 class NMPLImagePlotAndSaveSpecData(Node):
@@ -1628,7 +1634,8 @@ class NStraightKepcoFitOnClear(Node):
                             try:
                                 val = float(val)
                             except Exception as e:
-                                print('error, could not convert %s to float' % val)
+                                logging.error('error, could not convert %s to float, error is: %s'
+                                              % (val, e), exc_info=True)
                         if dmm_dict.get('assignment') == 'offset':
                             offset.append(val)
             if np.any(offset):
@@ -1686,8 +1693,8 @@ class NCSSortRawDatatoArray(Node):
                             try:
                                 self.scalerArray[track_ind][pmt_ind][self.curVoltIndex][j['payload']] += 1
                             except Exception as e:
-                                print('error while sorting pmt event into scaler array: ', e,
-                                      'scalerArray: ', self.scalerArray)
+                                logging.error('error while sorting pmt event into scaler array: %s \n'
+                                              ' scalerArray: %s' % (e, self.scalerArray), exc_info=True)
                                 # print('scaler event: ', track_ind, self.curVoltIndex, pmt_ind, j['payload'])
                                 # timestamp equals index in time array of the given scaler
                 elif j['firstHeader'] == Progs.infoHandler.value:
@@ -1697,7 +1704,7 @@ class NCSSortRawDatatoArray(Node):
                     compl_steps = pipeData[track_name]['nOfCompletedSteps']
                     nofsteps = pipeData[track_name]['nOfSteps']
                     if self.curVoltIndex > nofsteps:
-                        print('voltindex exceeded number of steps, split raw_data is: ', j)
+                        logging.error('voltindex exceeded number of steps, split raw_data is: %s' % str(j))
                         raise Exception
                     scan_complete = compl_steps % nofsteps == 0
                     if scan_complete and step_completed:
@@ -1728,7 +1735,7 @@ class NCSSortRawDatatoArray(Node):
                     except ValueError:
                         pass
             except Exception as e:
-                print('error while sorting: ', e, 'split raw data is:', j)
+                logging.error('error while sorting: %s split raw data is: %s' % (e, str(j)), exc_info=True)
         try:
             if ret is None:
                 ret = []
@@ -1737,7 +1744,7 @@ class NCSSortRawDatatoArray(Node):
             self.scalerArray = Form.create_default_scaler_array_from_scandict(pipeData)  # deletes all entries
             return ret
         except Exception as e:
-            print('exception: \t ', e)
+            logging.error('error in %s: %s' % (self.type, e), exc_info=True)
 
     def clear(self):
         self.voltArray = None
@@ -1769,7 +1776,7 @@ class NCSSum(Node):
             if os.path.isfile(file_path):
                 self.scalerArray = XMLImporter(file_path).cts
             else:
-                print('error, in %s, could not load data from file: %s ' % (self.type, file_path))
+                logging.error('error, in %s, could not load data from file: %s ' % (self.type, file_path))
         if self.scalerArray is None:
             self.scalerArray = Form.create_default_scaler_array_from_scandict(self.Pipeline.pipeData)
 
@@ -1782,7 +1789,7 @@ class NCSSum(Node):
                 # logging.debug('sum is: ' + str(self.scalerArray[0][0:2]) + str(self.scalerArray[0][-2:]))
             return self.scalerArray
         except Exception as e:
-            print('exception: ', e)
+            logging.error('error in %s: %s' % (self.type, e), exc_info=True)
 
     def clear(self):
         self.scalerArray = None
@@ -2121,7 +2128,7 @@ class NTRSSumFastArrays(Node):
                 if os.path.isfile(file_path):
                     self.sum = XMLImporter(file_path).time_res_zf
                 else:
-                    print('error, in %s, could not load data from file: %s ' % (self.type, file_path))
+                    logging.error('error, in %s, could not load data from file: %s ' % (self.type, file_path))
 
     def processData(self, data, pipeData):
         # sc,step,time not in list -> append

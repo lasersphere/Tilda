@@ -11,6 +11,7 @@ Control of the Userinterface which is used
 """
 
 import datetime
+import logging
 
 import numpy
 from PyQt5 import QtCore
@@ -103,7 +104,7 @@ class TildaPassiveUi(QtWidgets.QMainWindow, Ui_TildaPassiveMainWindow):
             self.doubleSpinBox_delay.setValue(data.get('delay_mus', 0))
             return data
         except Exception as e:
-            print('settings could not be loaded, because ', e)
+            logging.error('settings could not be loaded, because %s' % e)
 
     def save_settings(self):
         data = self.read_indicators()

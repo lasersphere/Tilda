@@ -6,6 +6,8 @@ Created on
 Module Description: Module for running and controling the SimpleCounter Bitfile on the FPGA
 """
 
+import logging
+
 import Service.AnalysisAndDataHandling.tildaPipeline as Tp
 from Driver.DataAcquisitionFpga.SimpleCounter import SimpleCounter
 from Driver.DataAcquisitionFpga.SimpleCounterDummy import SimpleCounterDummy
@@ -32,7 +34,7 @@ class SimpleCounterControl:
             self.sc = SimpleCounter()  # does not go automatically to dummy mode if hardware is not installed.
             return True
         except Exception as e:
-            print('error: could not start simple counter, error is: %s ' % e)
+            logging.error('error: could not start simple counter, error is: %s ' % e, exc_info=True)
             return False
 
     def run_dummy(self):

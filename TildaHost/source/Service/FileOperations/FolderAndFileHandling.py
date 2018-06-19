@@ -37,7 +37,7 @@ def findTildaFolder(path=os.path.dirname(os.path.abspath(__file__))):
 def delete_file(file):
     """ this will delete an existing file """
     if os.path.isfile(file):
-        print('deleting: ', file)
+        logging.info('deleting file: %s' % file)
         os.remove(file)
 
 
@@ -104,7 +104,7 @@ def save_json_simple(path, data_to_save):
         with open(path, 'w') as f:
             json.dump(data_to_save, f)
     except Exception as e:
-        print('error json could not dump data, error is: %s' % e)
+        logging.error('error json could not dump data, error is: %s' % e, exc_info=True)
     return path
 
 
