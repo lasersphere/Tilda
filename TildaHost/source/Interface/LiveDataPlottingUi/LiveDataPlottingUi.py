@@ -102,6 +102,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         # used to find out if plotting is currently in progress, e.g. before exporting a screenshot
         self.updating_plot = False
 
+        self.allowed_update_time_ms = 200  # if this is exceeded, the tres is not plotted
+        #  anymore in order to speed up plotting
         self.needed_plot_update_time_ms = 0.0
         self.calls_since_last_time_res_plot_update = 0  # to force update of tres plot if the plot is too slow.
 
@@ -133,6 +135,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                             functools.partial(self.raise_graph_fontsize, True))
         QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Down), self,
                             functools.partial(self.raise_graph_fontsize, False))
+        QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_F5), self,
+                            functools.partial(self.update_all_plots, None, True))
 
         ''' sum related '''
         self.add_sum_plot()
@@ -420,6 +424,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 axis.setStyle(tickTextOffset=int(font_size - 5))
                 axis.label.setFont(font)
 
+        if self.tres_offline_txt_itm is not None:
+            self.tres_offline_txt_itm.setFont(font)
+
         axis = self.tres_widg.getHistogramWidget().axis
         axis.tickFont = font
         axis.setStyle(tickTextOffset=int(font_size - 5))
@@ -453,69 +460,75 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         call this to pass a new dataset to the gui.
         """
-        try:
-            st = datetime.now()
-            valid_data = False
-            self.spec_data = deepcopy(spec_data)
+        if spec_data is not None:
+            # do not overwrite the spec_data with None values!
+            try:
+                st = datetime.now()
+                valid_data = False
+                self.spec_data = deepcopy(spec_data)
 
-            update_time_ms = 200
-            max_calls_without_plot = 5
-            update_time_res_spec = self.needed_plot_update_time_ms <= update_time_ms \
-                                   or self.calls_since_last_time_res_plot_update > max_calls_without_plot or \
-                                   not self.subscribe_as_live_plot
-            # update teh time resolved spec if the last time the plot was faster plotted than 100ms
-            # 150 ms should be ok to update all other plots
-            # anyhow every fifth plot it will force to plot the time res
-            if update_time_res_spec:
-                self.calls_since_last_time_res_plot_update = 0
-            else:
-                logging.warning('did not update time resolved plot, because the last plotting time'
-                                ' was %.1f ms and this is longer than %.1f ms and it'
-                                ' was only missed %s times yet but %s are allowed'
-                                % (self.needed_plot_update_time_ms, update_time_ms,
-                                   self.calls_since_last_time_res_plot_update, max_calls_without_plot))
-                self.calls_since_last_time_res_plot_update += 1
+                update_time_ms = self.allowed_update_time_ms
+                max_calls_without_plot = 5
+                update_time_res_spec = self.needed_plot_update_time_ms <= update_time_ms \
+                                       or self.calls_since_last_time_res_plot_update > max_calls_without_plot or \
+                                       not self.subscribe_as_live_plot
+                # update teh time resolved spec if the last time the plot was faster plotted than 100ms
+                # 150 ms should be ok to update all other plots
+                # anyhow every fifth plot it will force to plot the time res
+                if update_time_res_spec:
+                    self.calls_since_last_time_res_plot_update = 0
+                else:
+                    logging.warning('did not update time resolved plot, because the last plotting time'
+                                    ' was %.1f ms and this is longer than %.1f ms and it'
+                                    ' was only missed %s times yet but %s are allowed'
+                                    % (self.needed_plot_update_time_ms, update_time_ms,
+                                       self.calls_since_last_time_res_plot_update, max_calls_without_plot))
+                    self.calls_since_last_time_res_plot_update += 1
 
-            self.update_all_plots(self.spec_data, update_tres=update_time_res_spec)
-            if self.spec_data.seq_type in self.trs_names_list:
-                self.spinBox.blockSignals(True)
-                self.spinBox.setValue(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
-                self.spinBox.blockSignals(False)
-                self.update_gates_list()
-            valid_data = True
-            if valid_data and self.new_track_no_data_yet:  # this means it is first call
-                # refresh the line edit by calling this here:
-                self.sum_scaler_changed(self.comboBox_sum_all_pmts.currentIndex())
+                self.update_all_plots(self.spec_data, update_tres=update_time_res_spec)
+                if self.spec_data.seq_type in self.trs_names_list:
+                    self.spinBox.blockSignals(True)
+                    self.spinBox.setValue(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
+                    self.spinBox.blockSignals(False)
+                    self.update_gates_list()
+                valid_data = True
+                if valid_data and self.new_track_no_data_yet:  # this means it is first call
+                    # refresh the line edit by calling this here:
+                    self.sum_scaler_changed(self.comboBox_sum_all_pmts.currentIndex())
 
-                self.new_track_no_data_yet = False
+                    self.new_track_no_data_yet = False
 
-            if not self.subscribe_as_live_plot:
-                # if not subscribed as live plot create scan dict from spec data once
-                # and emit, so that pre post meas is displayed properly
-                scan_dict = TiTs.create_scan_dict_from_spec_data(self.spec_data, self.full_file_path)
+                if not self.subscribe_as_live_plot:
+                    # if not subscribed as live plot create scan dict from spec data once
+                    # and emit, so that pre post meas is displayed properly
+                    scan_dict = TiTs.create_scan_dict_from_spec_data(self.spec_data, self.full_file_path)
+                    logging.debug('emitting %s, from %s, value is %s'
+                                  % ('pre_post_meas_data_dict_callback',
+                                     'Interface.LiveDataPlottingUi.LiveDataPlottingUi.TRSLivePlotWindowUi#new_data',
+                                     str(scan_dict)))
+                    self.pre_post_meas_data_dict_callback.emit(scan_dict)
+                self.last_gr_update_done_time = datetime.now()
+                elapsed_ms = (self.last_gr_update_done_time - st).total_seconds() * 1000
+                self.needed_plot_update_time_ms = elapsed_ms
                 logging.debug('emitting %s, from %s, value is %s'
-                              % ('pre_post_meas_data_dict_callback',
+                              % ('needed_plotting_time_ms_callback',
                                  'Interface.LiveDataPlottingUi.LiveDataPlottingUi.TRSLivePlotWindowUi#new_data',
-                                 str(scan_dict)))
-                self.pre_post_meas_data_dict_callback.emit(scan_dict)
-            self.last_gr_update_done_time = datetime.now()
-            elapsed_ms = (self.last_gr_update_done_time - st).total_seconds() * 1000
-            self.needed_plot_update_time_ms = elapsed_ms
-            logging.debug('emitting %s, from %s, value is %s'
-                          % ('needed_plotting_time_ms_callback',
-                             'Interface.LiveDataPlottingUi.LiveDataPlottingUi.TRSLivePlotWindowUi#new_data',
-                             str(self.needed_plot_update_time_ms)))
-            self.needed_plotting_time_ms_callback.emit(self.needed_plot_update_time_ms)
+                                 str(self.needed_plot_update_time_ms)))
+                self.needed_plotting_time_ms_callback.emit(self.needed_plot_update_time_ms)
 
-            # logging.debug('done updating plot, plotting took %.2f ms' % self.needed_plot_update_time_ms)
-        except Exception as e:
-            logging.error('error in liveplotterui while receiving new data: %s ' % e, exc_info=True)
+                # logging.debug('done updating plot, plotting took %.2f ms' % self.needed_plot_update_time_ms)
+            except Exception as e:
+                logging.error('error in liveplotterui while receiving new data: %s ' % e, exc_info=True)
 
     ''' updating the plots from specdata '''
 
     def update_all_plots(self, spec_data, update_tres=True):
         """ wrapper to update all plots """
         try:
+            if spec_data is None and self.spec_data is not None:
+                #  for updating by F5
+                spec_data = self.spec_data
+            logging.debug('updating all plots with %s %s' % (str(spec_data), str(update_tres)))
             self.updating_plot = True
             self.update_sum_plot(spec_data)
             if spec_data.seq_type in self.trs_names_list:
@@ -525,9 +538,18 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                         self.tres_plt_item.removeItem(self.tres_offline_txt_itm)
                     self.tres_offline_txt_itm = None
                 else:
+                    # this time it will not update the time projection
+                    # -> display a message to the user in the upper left corner
                     if self.tres_offline_txt_itm is None:
-                        self.tres_offline_txt_itm = Pg.pg.TextItem(text='this plot is currently offline', color=(255, 0, 0))
-                        self.tres_plt_item.addItem(self.tres_offline_txt_itm)
+                        self.tres_offline_txt_itm = Pg.pg.TextItem(
+                            text='this plot is currently offline, wait or press "F5"', color=(255, 0, 0))
+                        font = QtGui.QFont()
+                        font.setPixelSize(self.graph_font_size)
+                        self.tres_offline_txt_itm.setFont(font)
+                        total_w = self.tres_plt_item.width()
+                        self.tres_offline_txt_itm.setTextWidth(int(total_w - 2 * total_w / 10))
+                        self.tres_plt_item.addItem(self.tres_offline_txt_itm, ignoreBounds=True)
+                        # ignoreBounds True -> this text will not be relevant when determining the autorange
                     tres_cur_range = self.tres_plt_item.viewRange()
                     text_x_pos = tres_cur_range[0][0] + (tres_cur_range[0][1] - tres_cur_range[0][0]) / 100
                     text_y_pos = tres_cur_range[1][1] + (tres_cur_range[1][1] - tres_cur_range[1][0]) / 100
@@ -1053,6 +1075,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         reset all stored data etc. in order to prepare for a new isotope or so.
         :return:
         """
+        logging.info('resetting LiveDataPlottingUi now ... ')
         self.spec_data = None
         self.setWindowTitle('plot: ...  loading  ... ')
         self.scan_prog_ui.reset()
