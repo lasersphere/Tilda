@@ -34,6 +34,7 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
         self.main_gui = main_gui
 
         self.first_call = True
+        self.arrayFull = False
 
         self.sample_interval = 0.2  # seconds fpga samples at 200 ms
 
@@ -43,8 +44,8 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
         self.elements = []  # list of dicts.
         self.add_scalers_to_gridlayout(act_pmts)
         # self.x_data = np.array([np.arange(0, self.datapoints) for i in self.act_pmts])
-        self.x_data = np.zeros((len(self.act_pmts), self.datapoints))
-        self.y_data = np.zeros((len(self.act_pmts), self.datapoints))
+        self.x_data = np.zeros((len(self.act_pmts), 1))
+        self.y_data = np.zeros((len(self.act_pmts), 1))
 
         self.simple_counter_call_back_signal.connect(self.rcv)
 
@@ -64,17 +65,38 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
         if self.first_call:
             self.refresh_post_acc_state()
         self.first_call = False
-        for i, j in enumerate(scaler_liste[0]):
-            last_second_sum = np.sum(j)
-            number_of_new_data_points = scaler_liste[1][i]
-            if number_of_new_data_points:
-                self.elements[i]['widg'].display(last_second_sum)
-                self.y_data[i] = np.roll(self.y_data[i], -1)
-                self.x_data[i] = np.roll(self.x_data[i], -1)
-                self.y_data[i][-1] = last_second_sum
-                self.x_data[i] += number_of_new_data_points * self.sample_interval
-                self.x_data[i][-1] = 0  # always zero at time 0
-                self.update_plot(i, self.x_data[i], self.y_data[i])
+        if not self.arrayFull:
+            # As long as the array is not at max length we have to increase its size step by step.
+            # Else zero values will appear and mess up the axis scaling.
+            for i, j in enumerate(scaler_liste[0]):
+                last_second_sum = np.sum(j)
+                number_of_new_data_points = scaler_liste[1][i]
+                if number_of_new_data_points:
+                    self.elements[i]['widg'].display(last_second_sum)
+                    self.y_data[i][-1] = last_second_sum
+                    self.x_data[i] += number_of_new_data_points * self.sample_interval
+                    self.x_data[i][-1] = 0  # always zero at time 0
+                    self.update_plot(i, self.x_data[i], self.y_data[i])
+            if self.x_data.shape[1] == self.datapoints:#
+                # Once full array size is reached we can proceed with normal data handling below
+                self.arrayFull = True
+            else:
+                # Increase array size by 1 adding zeros to the end.
+                # These will be overwritten in the next call and therefore never be displayed in the scaler.
+                self.x_data = np.concatenate((self.x_data, np.zeros((len(self.act_pmts), 1))), axis=1)
+                self.y_data = np.concatenate((self.y_data, np.zeros((len(self.act_pmts), 1))), axis=1)
+        else:
+            for i, j in enumerate(scaler_liste[0]):
+                last_second_sum = np.sum(j)
+                number_of_new_data_points = scaler_liste[1][i]
+                if number_of_new_data_points:
+                    self.elements[i]['widg'].display(last_second_sum)
+                    self.y_data[i] = np.roll(self.y_data[i], -1)
+                    self.x_data[i] = np.roll(self.x_data[i], -1)
+                    self.y_data[i][-1] = last_second_sum
+                    self.x_data[i] += number_of_new_data_points * self.sample_interval
+                    self.x_data[i][-1] = 0  # always zero at time 0
+                    self.update_plot(i, self.x_data[i], self.y_data[i])
 
     def update_plot(self, indic, xdata, ydata):
         plt_data_item = self.elements[indic].get('plotDataItem', None)
@@ -101,8 +123,9 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
         self.label_post_acc_readback_state.setText(state_name)
 
     def reset_graphs(self):
-        self.x_data = np.zeros((len(self.act_pmts), self.datapoints))
-        self.y_data = np.zeros((len(self.act_pmts), self.datapoints))
+        self.x_data = np.zeros((len(self.act_pmts), 1))
+        self.y_data = np.zeros((len(self.act_pmts), 1))
+        self.arrayFull = False
 
     def set_dac_volt(self):
         volt_dbl = self.doubleSpinBox.value()
@@ -139,6 +162,7 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
                 # self.gridLayout_2.addWidget(label, i, 0, 1, 1)
                 # self.gridLayout_2.addWidget(widg, i, 1, 1, 1)
                 plt_widg, plt_item = Pg.create_x_y_widget(x_label='time [s]', y_label='cts')
+                plt_widg.setMinimumWidth(self.width() / 3)
                 splitter.insertWidget(2, plt_widg)
                 splitter.splitterMoved.connect(functools.partial(self.splitter_was_moved, i))
                 self.gridLayout_2.addWidget(splitter, i, 0, 1, 1)
