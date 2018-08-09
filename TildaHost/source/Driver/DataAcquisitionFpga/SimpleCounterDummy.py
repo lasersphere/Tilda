@@ -45,7 +45,7 @@ class SimpleCounterDummy:
         post_acc_name = 'Kepco'
         return post_acc_state, post_acc_name
 
-    def dummy_data(self, num_of_vals):
+    def dummy_data(self, num_of_vals, random=True):
         """
         builds dummy data with form:
         pmt_num + 1
@@ -60,8 +60,15 @@ class SimpleCounterDummy:
         """
         data = np.zeros((8, num_of_vals), dtype=np.int32)
         for pmt_num in range(0, 8):
-            val = Form.add_header_to23_bit(pmt_num + 1, 1, pmt_num, 1)
-            data[pmt_num] = np.full((num_of_vals,), val)
+            if random:
+                pass
+
+                data[pmt_num] = np.array(
+                    [Form.add_header_to23_bit(each, 1, pmt_num, 1) for
+                     each in np.random.randint(pmt_num * 10 + 10, pmt_num * 10 + 20, size=num_of_vals)])
+            else:
+                val = Form.add_header_to23_bit(pmt_num + 1, 1, pmt_num, 1)
+                data[pmt_num] = np.full((num_of_vals,), val)
         return data.flatten('F')
 
     def FinalizeFPGACom(self, finalize_com=False):
