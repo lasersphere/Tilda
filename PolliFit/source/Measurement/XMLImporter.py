@@ -53,6 +53,7 @@ class XMLImporter(SpecData):
             lxmlEtree = None
             scandict = scan_dict
             self.file = os.path.basename(scandict['pipeInternals']['activeXmlFilePath'])
+            path = scandict['pipeInternals']['activeXmlFilePath']  # needed for get_frequency_measurement(...)
 
         self.nrTracks = scandict['isotopeData']['nOfTracks']
 
@@ -542,6 +543,7 @@ class XMLImporter(SpecData):
                     valid_freq_meas_errs.append(freq_err_list[i])
             laser_freq = np.mean(valid_freq_meas) / 1000000  # in MHz
             laser_freq_d = np.mean(valid_freq_meas_errs) / 1000000  # in MHz
+            logging.debug('getting frequency from path: %s' % path)
             (dir, file) = os.path.split(path)
             (filename, end) = os.path.splitext(file)
             logging.debug('Measured Frequencies in ' + str(file) + ' :')
