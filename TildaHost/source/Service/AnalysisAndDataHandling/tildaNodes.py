@@ -186,19 +186,20 @@ class NOnlyOnePmt(Node):
         return [data[self.pmt_ind]]
 
 
-class NAddWorkingTime(Node):
+class NAddWorkingTimeOnStart(Node):
     """
-    Node to add the Workingtime each time data is processed.
-    It also adds the workingtime when start() is called.
+    Node to add the Workingtime to self.Pipeline.pipeData when start() is called.
+    It will add the current time to the list if this is a go on a file.
     :param reset: bool, set True if you want to reset the workingtime when start() is called.
     input: anything
     output: same as input
     """
 
     def __init__(self, reset=True):
-        super(NAddWorkingTime, self).__init__()
-        self.type = 'AddWorkingTime'
+        super(NAddWorkingTimeOnStart, self).__init__()
+        self.type = 'AddWorkingTimeOnStart'
         self.reset = reset
+        self.track_was_completed_working_time_was_written = False
 
     def start(self):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
@@ -206,12 +207,9 @@ class NAddWorkingTime(Node):
             self.reset = 'continuedAcquisitonOnFile' not in self.Pipeline.pipeData['isotopeData']
         self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
             self.Pipeline.pipeData[track_name], self.reset)
+        self.track_was_completed_working_time_was_written = False
 
     def processData(self, data, pipeData):
-        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
-            self.Pipeline.pipeData[track_name])
-        logging.debug('working time has ben set to: %s ' % str(self.Pipeline.pipeData[track_name]['workingTime']))
         return data
 
 
@@ -1425,6 +1423,10 @@ class NMPLImagePlotAndSaveSpecData(Node):
 
     def save(self):
         self.rebin_and_gate_new_data(self.stored_data)
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
+            self.Pipeline.pipeData[track_name])
+        logging.debug('working time has ben set to: %s ' % str(self.Pipeline.pipeData[track_name]['workingTime']))
         if self.stored_data is not None:  # maybe abort was pressed before any data was collected.
             if self.rebinned_data.seq_type in self.trs_names_list:
                 # copy gates from gui values and gate

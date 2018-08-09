@@ -647,6 +647,8 @@ class Main(QtCore.QObject):
                     dmm_complete_location = self.scan_pars[iso_name][act_track_name].get(
                         'measureVoltPars', {}).get('duringScan', {}).get('measurementCompleteDestination', None)
                     self.scan_main.prepare_dmms_for_scan(dmms_dict_during_scan, dmm_complete_location)
+                    self.scan_main.prepare_triton_listener_for_scan(
+                        self.scan_pars[iso_name][act_track_name].get('triton', {}), 'duringScan', act_track_name)
                     self.set_state(MainState.load_track)
 
         else:  # this will periodically read the dmms and triton until all dmms returned a measurement

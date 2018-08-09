@@ -88,7 +88,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True,
 
     # fast_spec = fast_spec.attach(TN.NSaveSpecData())
     compl_tr_br = fast.attach(TN.NCheckIfTrackComplete())
-    compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
+    compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTimeOnStart(True))
     # compl_tr_br = compl_tr_br.attach(SN.NPrint())
     return pipe
 
@@ -128,7 +128,7 @@ def CsPipe(initialScanPars=None, callback_sig=None, live_plot_callbacks=None):
     spec = spec.attach(TN.NMPLImagePlotAndSaveSpecData(0, *live_plot_callbacks))
 
     compl_tr_br = spec.attach(TN.NCheckIfTrackComplete())
-    compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTime(True))
+    compl_tr_br = compl_tr_br.attach(TN.NAddWorkingTimeOnStart(True))
 
     return pipe
 
