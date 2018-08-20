@@ -68,10 +68,12 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
         if not self.arrayFull:
             # As long as the array is not at max length we have to increase its size step by step.
             # Else zero values will appear and mess up the axis scaling.
+            new_data = False
             for i, j in enumerate(scaler_liste[0]):
                 last_second_sum = np.sum(j)
                 number_of_new_data_points = scaler_liste[1][i]
                 if number_of_new_data_points:
+                    new_data = True
                     self.elements[i]['widg'].display(last_second_sum)
                     self.y_data[i][-1] = last_second_sum
                     self.x_data[i] += number_of_new_data_points * self.sample_interval
@@ -80,7 +82,7 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
             if self.x_data.shape[1] == self.datapoints:#
                 # Once full array size is reached we can proceed with normal data handling below
                 self.arrayFull = True
-            else:
+            elif new_data:
                 # Increase array size by 1 adding zeros to the end.
                 # These will be overwritten in the next call and therefore never be displayed in the scaler.
                 self.x_data = np.concatenate((self.x_data, np.zeros((len(self.act_pmts), 1))), axis=1)
