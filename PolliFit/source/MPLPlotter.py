@@ -69,7 +69,7 @@ def plot(*args):
 
 
 def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks=12,
-            plot_data=True, add_label='', plot_side_peaks=True, data_fmt='k.'):
+            plot_data=True, add_label='', plot_side_peaks=True, data_fmt='k.', save_plot=False, save_path='C:\\'):
     kepco = False
     if fit.meas.type == 'Kepco':
         x_in_freq = False
@@ -147,6 +147,20 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
     fig = plt.figure(1, (8, 8))
     fig.patch.set_facecolor('white')
 
+    # save plot data as ASCII
+    path_clear = False
+    if save_plot:
+        x = "Relative frequency / MHz" if x_in_freq else "Ion kinetic energy / eV"
+        if not os.path.exists(save_path):
+            try:
+                os.makedirs(save_path)
+                path_clear = True
+            except Exception as e:
+                print('saving directory has not been created. Writing permission in DB directory? error msg: %s' % e)
+        else:
+            path_clear = True
+
+
     ax1 = plt.axes([0.15, 0.35, 0.8, 0.50])
     data_line = None
     if plot_data:
@@ -162,6 +176,14 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
             side_peak = plt.plot(main_peaks_plot_data[0], main_peaks_plot_data[1],
                                  color=main_plot_color, label='main peak' + add_label, linestyle=':')
             side_peak_lines += side_peak[0],
+            if save_plot and path_clear:
+                p = os.path.join(save_path, os.path.splitext(fit.meas.file)[0] + "_fit_mainPeak_" + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
+                f = open(p, 'w')
+                f.write(x + ", Main Peak cts / a.u.\n")
+                for i in range(len(main_peaks_plot_data[0])):
+                    f.write(str(main_peaks_plot_data[0][i]) + ", " + str(main_peaks_plot_data[1][i]) + "\n")
+                f.close()
+                print("Saved to file ", p)
         for side_peak_num, side_peaks_plot_data in enumerate(all_side_peaks_plot_data):
             # plot side peaks dashed / dashdot alternating with number of side peaks in same color as main peak
             line_style = '--' if side_peak_num % 2 == 0 else '-.'
@@ -169,6 +191,15 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
                                  linestyle=line_style, color=main_plot_color,
                                  label='satellite peak #%d' % (side_peak_num + 1) + add_label)
             side_peak_lines += side_peak[0],
+            if save_plot and path_clear:
+                p = os.path.join(save_path, os.path.splitext(fit.meas.file)[0] + "_fit_sidePeak" + str(side_peak_num) + "_" + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
+                f = open(p, 'w')
+                f.write(x + ", SidePeak " + str(side_peak_num) + " cts / a.u.\n")
+                for i in range(len(side_peaks_plot_data[0])):
+                    f.write(str(side_peaks_plot_data[0][i]) + ", " + str(side_peaks_plot_data[1][i]) + "\n")
+                f.close()
+                print("Saved to file ", p)
+
     ax1.get_xaxis().get_major_formatter().set_useOffset(False)
     plt.xticks(fontsize=fontsize_ticks)
     plt.yticks(fontsize=fontsize_ticks)
@@ -190,6 +221,24 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
     # print(plotdat[1][-2000:-100])
     # np.set_printoptions(threshold=2000)
     # print(data[1])
+
+    if save_plot and path_clear:
+        p = os.path.join(save_path, os.path.splitext(fit.meas.file)[0] + "_data_" + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
+        f = open(p, 'w')
+        f.write(x + ", Data cts / a.u., Fit residuals cts / a.u., Data uncertainty cts / a.u.\n")
+        res = fit.calcRes()
+        for i in range(len(data[0])):
+            f.write(str(data[0][i]) + ", " + str(data[1][i]) + ", " + str(res[i]) + ", " + str(data[2][i]) + "\n")
+        f.close()
+        print("Saved to file ", p)
+        p = os.path.join(save_path, os.path.splitext(fit.meas.file)[0] + "_fit_fullShape_" + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
+        f = open(p, 'w')
+        f.write(x + ", Full fit cts / a.u.\n")
+        for i in range(len(plotdat[0])):
+            f.write(str(plotdat[0][i]) + ", " + str(plotdat[1][i]) + "\n")
+        f.close()
+        print("Saved to file ", p)
+
     plt.xticks(fontsize=fontsize_ticks)
     plt.yticks(fontsize=fontsize_ticks)
     if data_line is None:

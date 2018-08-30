@@ -26,7 +26,7 @@ class LorentzAsy(object):
 
         self.pGam = 0
         self.asyPar = 1
-        self.recalc([iso.shape['lor'], iso.shape['asy']])
+        self.recalc([iso.shape.get('lor', iso.shape.get('gamma', 0.0)), iso.shape['asy']]) # .get() structure due to naming difference in .getParNames() and shape['']
     
     def evaluate(self, x, p):
         '''Return the value of the hyperfine structure at point x / MHz'''
@@ -51,7 +51,7 @@ class LorentzAsy(object):
         self.pGam = pos
         self.asyPar = pos + 1
 
-        return [self.iso.shape['lor'], self.iso.shape['asy']]
+        return [self.iso.shape.get('lor', self.iso.shape.get('gamma', 0.0)), self.iso.shape['asy']] # .get() structure due to naming difference in .getParNames() and shape['']
 
 
     def getParNames(self):
@@ -61,4 +61,4 @@ class LorentzAsy(object):
 
     def getFixed(self):
         '''Return list of parmeters with their fixed-status'''
-        return [self.iso.fixShape['lor'], self.iso.fixShape['asy']]
+        return [self.iso.fixShape.get('lor', self.iso.fixShape.get('gamma', False)), self.iso.fixShape['asy']] # .get() structure due to naming difference in .getParNames() and shape['']

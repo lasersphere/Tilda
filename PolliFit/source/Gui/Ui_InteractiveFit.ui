@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>381</width>
-    <height>330</height>
+    <width>858</width>
+    <height>533</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -89,6 +89,13 @@
            </property>
           </widget>
          </item>
+         <item>
+          <widget class="QPushButton" name="bParsToDB">
+           <property name="text">
+            <string>Save Line Pars</string>
+           </property>
+          </widget>
+         </item>
         </layout>
        </item>
       </layout>
@@ -125,6 +132,36 @@
         </size>
        </property>
       </spacer>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="cX_in_freq">
+       <property name="layoutDirection">
+        <enum>Qt::LeftToRight</enum>
+       </property>
+       <property name="text">
+        <string>Show x in Freq?</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="cSave_fit">
+       <property name="layoutDirection">
+        <enum>Qt::LeftToRight</enum>
+       </property>
+       <property name="text">
+        <string>Save Fit as ASCII</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="Line" name="line">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QLabel" name="label">

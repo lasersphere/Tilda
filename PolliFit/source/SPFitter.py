@@ -10,6 +10,7 @@ from scipy import version
 
 import TildaTools as TiTs
 from Measurement.SpecData import SpecDataXAxisUnits
+import Physics
 
 
 class SPFitter(object):
@@ -29,6 +30,8 @@ class SPFitter(object):
         self.fix = spec.getFixed()
         self.npar = spec.getParNames()
         self.pard = None  # Will contain the parameter errors after fitting
+
+        self.difDop = 0  # for conversion to energy
 
         try:
             # will fail if no software gates available: -> not time resolved...
@@ -182,6 +185,31 @@ class SPFitter(object):
             ret.append((name, pardict, fix))
             
         return ret
+
+
+    def parsToE(self):
+        p = self.par[:]
+        f = self.fix[:]
+
+        # Center index is in all shapes
+        center_index = self.npar.index("center")
+
+        # Dif. Doppler calc.
+        v = abs(Physics.invRelDoppler(self.meas.laserFreq, self.par[center_index]+self.spec.iso.freq))
+        centerE = Physics.relEnergy(v, self.spec.iso.mass * Physics.u) / Physics.qe
+        self.difDop = Physics.diffDoppler(self.par[center_index]+self.spec.iso.freq, centerE, self.spec.iso.mass)
+
+        # Change "Values" & "Fixed" Lists
+        p[center_index] = centerE
+        for i, n in enumerate(self.npar):
+            if n in ['sigma', 'gamma', 'centerAsym', 'Al', 'Bl', 'Au', 'Bu']:
+                p[i] = p[i] / self.difDop
+
+                if isinstance(f[i], list):
+                    f[i][0] = f[i][0] / self.difDop
+                    f[i][1] = f[i][1] / self.difDop
+
+        return zip(self.npar, p, f)
             
     def reset(self):
         '''Reset parameters to the values before optimization'''
@@ -191,6 +219,22 @@ class SPFitter(object):
     def setPar(self, i, par):
         '''Set parameter with name to value par'''
         self.par[i] = par
+
+    def setParE(self, i, par):
+        if self.npar[i] in ['sigma', 'gamma', 'centerAsym', 'center', 'Al', 'Bl', 'Au', 'Bu']:
+            if self.npar[i] == 'center':
+                v = Physics.relVelocity(par * Physics.qe, self.spec.iso.mass * Physics.u)
+                print("v: ", v)
+                if self.meas.col:
+                    v = -v
+
+                f = Physics.relDoppler(self.meas.laserFreq, v) - self.spec.iso.freq
+                print("f: ", f)
+                self.par[i] = f
+            else:
+                self.par[i] = par * self.difDop
+        else:
+            self.setPar(i, par)
 
             
     def setFix(self, i, val):
