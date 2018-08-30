@@ -51,11 +51,11 @@ other_run2017 = normal_run if current_run is run_hot_cec else run_hot_cec
 # select if the files need to be fitted or not:
 perform_bacthfit = False
 # same for combining shifts:
-combine_shifts = True
+combine_shifts = False
 # ... and the offset:
 combine_offset = False
 # combine final run values -> joined of hot cec and normal
-combine_final_run = True
+combine_final_run = False
 
 
 # for plotting:
@@ -795,7 +795,7 @@ MPLPlotter.plot_par_from_combined(db, runs_to_compare,
 
 ''' King plot and charge radii '''
 
-king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, font_size=18)
+king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, font_size=26)
 king.kingFit(alpha=0, findBestAlpha=False, run=current_run, find_slope_with_statistical_error=False)
 # king.calcChargeRadii(isotopes=isotopes, run=current_run, plot_evens_seperate=True)
 

@@ -106,6 +106,9 @@ class KingFitter(object):
         if self.findBestAlphaTrue:
             self.findBestAlpha(run)
         self.x = [self.redmasses[i]*j - self.c for i,j in enumerate(self.x_origin)]
+        print('masses:', self.masses)
+        print('x:', self.x)
+        print('y:', self.y)
         print('performing King fit!')
         if find_slope_with_statistical_error:
             (self.a, self.b, self.aerr, self.berr, a_b_correlation) = self.fit(run, showplot=True)
@@ -176,36 +179,39 @@ class KingFitter(object):
 
         if showplot:
             plt.subplots_adjust(bottom=0.2)
-            plt.xticks(rotation=25)
+            plt.xticks(rotation=0)
             ax = plt.gca()
             if plot_y_mhz:
-                ax.set_ylabel(r' M $\delta$ $\nu$ (u MHz) ', fontsize=font_size)
+                ax.set_ylabel(r' $\mu$ $\delta$ $\nu^{60,A}$ / u MHz ', fontsize=font_size)
             else:
-                ax.set_ylabel(r' M $\delta$ $\nu$ (u GHz) ', fontsize=font_size)
+                ax.set_ylabel(r' $\mu$ $\delta$ $\nu^{60,A}$ / u GHz ', fontsize=font_size)
             if self.c == 0:
-                ax.set_xlabel(r'M $\delta$ < r'+r'$^2$ > (u fm $^2$)', fontsize=font_size)
+                ax.set_xlabel(r'$\mu$ $\delta$ $\langle$ r$_c$'+r'$^2$ $\rangle$ $^{60,A}$ / u fm $^2$', fontsize=font_size)
             else:
-                ax.set_xlabel(r'M $\delta$ < r'+r'$^2$ > - $\alpha$ (u fm $^2$)', fontsize=font_size)
+                ax.set_xlabel(r'$\mu$ $\delta$ < r'+r'$^2$ >$^{60,A}$ - $\alpha$ / u fm $^2$', fontsize=font_size)
+            ax.set_xmargin(0.05)
+            x_king = [min(self.x) - abs(min(self.x) - max(self.x)) * 0.2,
+                      max(self.x) + abs(min(self.x) - max(self.x)) * 0.2]
+            y_king = [self.a + self.b * i for i in x_king]
             if plot_y_mhz:
-               plt.errorbar(self.x, self.y, self.yerr, self.xerr, fmt='k.')
+                plt.plot(x_king, y_king, 'r', label='King fit', linewidth=2)
+            else:
+                y_king_ghz = [each / 1000 for each in y_king]
+                plt.plot(x_king, y_king_ghz, 'r', label='King fit', linewidth=2)
+
+            if plot_y_mhz:
+               plt.errorbar(self.x, self.y, self.yerr, self.xerr, fmt='k.', markersize=10)
             else:  # plot in Gigahertz
                 y_ghz = [each / 1000 for each in self.y]
                 y_err_ghz = [each / 1000 for each in self.yerr]
-                plt.errorbar(self.x, y_ghz, y_err_ghz, self.xerr, fmt='k.')
+                plt.errorbar(self.x, y_ghz, y_err_ghz, self.xerr, fmt='k.', markersize=10)
 
             # print('x', self.x, self.xerr)
             # print('y', self.y, self.yerr)
 
-            ax.set_xmargin(0.05)
-            x_king = [min(self.x) - abs(min(self.x) - max(self.x)) * 0.2,max(self.x) + abs(min(self.x) - max(self.x)) * 0.2]
-            y_king = [self.a+self.b*i for i in x_king]
-            if plot_y_mhz:
-                plt.plot(x_king, y_king, 'r', label='King fit')
-            else:
-                y_king_ghz = [each/1000 for each in y_king]
-                plt.plot(x_king, y_king_ghz, 'r', label='King fit')
+
             plt.gcf().set_facecolor('w')
-            plt.legend()
+            plt.legend(fontsize=font_size)
             plt.xticks(fontsize=font_size)
             plt.yticks(fontsize=font_size)
             plt.show()
