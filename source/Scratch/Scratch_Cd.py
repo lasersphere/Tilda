@@ -11,10 +11,10 @@ import numpy as np
 import Physics
 import copy
 
-db = 'E:/Workspace/PolliFit/test/Project/Cadmium.sqlite'
+db = 'C:/Workspace/PolliFit/test/Project/Cadmium.sqlite'
 #
-file = open('E:/Workspace/PolliFit/test/Project/Data/Cd.sp', 'w')
-isotope_list = ['111_Cd', '111_Cd_m', '114_Cd', '116_Cd', '118_Cd', '119_Cd', '119_Cd_m', '127_Cd',  '127_Cd_m']
+file = open('C:/Workspace/PolliFit/test/Project/Data/Cd128.dat', 'w')
+isotope_list = ['100_Cd', '101_Cd', '102_Cd', '103_Cd', '104_Cd', '105_Cd', '106_Cd', '107_Cd', '108_Cd', '109_Cd', '110_Cd', '111_Cd', '112_Cd', '113_Cd', '114_Cd', '115_Cd', '116_Cd', '121_Cd', '123_Cd', '124_Cd', '125_Cd', '126_Cd', '127_Cd', '128_Cd', '129_Cd', '130_Cd']
 isomer_list = ['111_Cd', '119_Cd', '127_Cd']
 for i in isotope_list:
     data = Tools.isoPlot(db, i, saving=True, show=False, prec=5000)

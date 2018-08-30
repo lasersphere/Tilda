@@ -10,6 +10,7 @@ from copy import deepcopy
 from PyQt5 import QtWidgets, QtCore, QtGui
 
 import TildaTools as TiTs
+import Physics
 from Gui.Ui_InteractiveFit import Ui_InteractiveFit
 from InteractiveFit import InteractiveFit
 
@@ -27,6 +28,9 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
         self.isoFilter.currentIndexChanged.connect(self.loadFiles)
         self.bFontSize.valueChanged.connect(self.fontSize)
         self.parTable.cellChanged.connect(self.setPar)
+        self.cX_in_freq.stateChanged.connect(self.load)
+        self.cSave_fit.stateChanged.connect(self.load)
+        self.bParsToDB.clicked.connect(self.parsToDB)
 
         """ add shortcuts """
         QtWidgets.QShortcut(QtGui.QKeySequence("L"), self, self.load)
@@ -48,11 +52,12 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
         if self.fileList.currentItem() is not None:
             iso = self.fileList.currentItem().text()
             if iso:
-                self.intFit = InteractiveFit(iso, self.dbpath, self.runSelect.currentText())
+                self.intFit = InteractiveFit(iso, self.dbpath, self.runSelect.currentText(), plot_in_freq=self.cX_in_freq.isChecked(), save_plot=self.cSave_fit.isChecked())
                 self.loadPars()
         
     def fit(self):
         try:
+            self.intFit.printPars()
             self.intFit.fit()
             self.loadPars()
         except Exception as e:
@@ -65,7 +70,11 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
     def loadPars(self):
         self.parTable.blockSignals(True)
         self.parTable.setRowCount(len(self.intFit.fitter.par))
-        pars = self.intFit.getPars()
+        if self.cX_in_freq.isChecked():
+            pars = self.intFit.getPars()
+        else:
+            pars = self.intFit.getParsE()
+
         for i, (n, v, f) in enumerate(pars):
             w = QtWidgets.QTableWidgetItem(n)
             w.setFlags(QtCore.Qt.ItemIsEnabled)
@@ -122,6 +131,8 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
         self.parTable.item(i, j).setText(str(val))
         self.parTable.blockSignals(False)
 
+
+
     def dbChange(self, dbpath):
         self.dbpath = dbpath
         self.loadRuns()
@@ -131,7 +142,7 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
         if self.fileList.currentItem() is not None:
             iso = self.fileList.currentItem().text()
             if iso:
-                self.intFit = InteractiveFit(iso, self.dbpath, self.runSelect.currentText(), fontSize=self.bFontSize.value())
+                self.intFit = InteractiveFit(iso, self.dbpath, self.runSelect.currentText(), fontSize=self.bFontSize.value(), plot_in_freq=self.cX_in_freq.isChecked(), save_plot=self.cSave_fit.isChecked())
                 self.loadPars()
 
     def open_softw_gates(self):
@@ -154,4 +165,11 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
                 else:
                     print('get TILDA for full support')
                 print('jup this is an xml file')
+
+    def parsToDB(self):
+        try:
+            self.intFit.parsToDB(self.dbpath)
+        except Exception as e:
+            print("error: no file loaded!")
+
 

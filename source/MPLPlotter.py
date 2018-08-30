@@ -69,7 +69,7 @@ def plot(*args):
 
 
 def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks=10,
-            plot_data=True, add_label='', plot_side_peaks=True):
+            plot_data=True, add_label='', plot_side_peaks=True, save_plot=False, save_path='C:\\'):
     kepco = False
     if fit.meas.type == 'Kepco':
         x_in_freq = False
@@ -147,6 +147,20 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
     fig = plt.figure(1, (8, 8))
     fig.patch.set_facecolor('white')
 
+    # save plot data as ASCII
+    path_clear = False
+    if save_plot:
+        x = "Relative frequency / MHz" if x_in_freq else "Ion kinetic energy / eV"
+        if not os.path.exists(save_path):
+            try:
+                os.makedirs(save_path)
+                path_clear = True
+            except Exception as e:
+                print('saving directory has not been created. Writing permission in DB directory? error msg: %s' % e)
+        else:
+            path_clear = True
+
+
     ax1 = plt.axes([0.15, 0.35, 0.8, 0.6])
     if plot_data:
         plt.errorbar(data[0], data[1], yerr=data[2], fmt='k.', label=fit.meas.file)
@@ -158,12 +172,29 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
             # plot main peak dotted but in same color as host line
             plt.plot(main_peaks_plot_data[0], main_peaks_plot_data[1],
                      color=main_plot_color, label='main peak' + add_label, linestyle=':')
+            if save_plot and path_clear:
+                p = os.path.join(save_path, os.path.splitext(fit.meas.file)[0] + "_fit_mainPeak_" + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
+                f = open(p, 'w')
+                f.write(x + ", Main Peak cts / a.u.\n")
+                for i in range(len(main_peaks_plot_data[0])):
+                    f.write(str(main_peaks_plot_data[0][i]) + ", " + str(main_peaks_plot_data[1][i]) + "\n")
+                f.close()
+                print("Saved to file ", p)
         for side_peak_num, side_peaks_plot_data in enumerate(all_side_peaks_plot_data):
             # plot side peaks dashed / dashdot alternating with number of side peaks in same color as main peak
             line_style = '--' if side_peak_num % 2 == 0 else '-.'
             plt.plot(side_peaks_plot_data[0], side_peaks_plot_data[1],
                      linestyle=line_style, color=main_plot_color,
                      label='satellite peak #%d' % (side_peak_num + 1) + add_label)
+            if save_plot and path_clear:
+                p = os.path.join(save_path, os.path.splitext(fit.meas.file)[0] + "_fit_sidePeak" + str(side_peak_num) + "_" + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
+                f = open(p, 'w')
+                f.write(x + ", SidePeak " + str(side_peak_num) + " cts / a.u.\n")
+                for i in range(len(side_peaks_plot_data[0])):
+                    f.write(str(side_peaks_plot_data[0][i]) + ", " + str(side_peaks_plot_data[1][i]) + "\n")
+                f.close()
+                print("Saved to file ", p)
+
     ax1.get_xaxis().get_major_formatter().set_useOffset(False)
     plt.xticks(fontsize=fontsize_ticks)
     plt.yticks(fontsize=fontsize_ticks)
@@ -185,6 +216,24 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
     # print(plotdat[1][-2000:-100])
     # np.set_printoptions(threshold=2000)
     # print(data[1])
+
+    if save_plot and path_clear:
+        p = os.path.join(save_path, os.path.splitext(fit.meas.file)[0] + "_data_" + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
+        f = open(p, 'w')
+        f.write(x + ", Data cts / a.u., Fit residuals cts / a.u., Data uncertainty cts / a.u.\n")
+        res = fit.calcRes()
+        for i in range(len(data[0])):
+            f.write(str(data[0][i]) + ", " + str(data[1][i]) + ", " + str(res[i]) + ", " + str(data[2][i]) + "\n")
+        f.close()
+        print("Saved to file ", p)
+        p = os.path.join(save_path, os.path.splitext(fit.meas.file)[0] + "_fit_fullShape_" + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
+        f = open(p, 'w')
+        f.write(x + ", Full fit cts / a.u.\n")
+        for i in range(len(plotdat[0])):
+            f.write(str(plotdat[0][i]) + ", " + str(plotdat[1][i]) + "\n")
+        f.close()
+        print("Saved to file ", p)
+
     plt.xticks(fontsize=fontsize_ticks)
     plt.yticks(fontsize=fontsize_ticks)
     ax1.legend(loc=2)
@@ -542,18 +591,29 @@ def tight_layout():
 def plot_par_from_combined(db, runs_to_plot, isotopes,
                            par, plot_runs_seperate=False, show_pl=True,
                            literature_dict=None, literature_name='lit. values',
-                           save_path='', use_syst_err_only=False):
+                           save_path='', use_syst_err_only=False, comments=None, markers=None, colors=None,
+                           legend_loc=2, start_offset=-0.3):
     import Tools
     compl_x = []
     compl_y = []
     compl_y_err = []
+    if comments is None:
+        # should be a list with a comment for each run
+        comments = [''] * len(runs_to_plot)
+    if markers is None:
+        # should be a list with a marker for each run
+        markers = ['o'] * len(runs_to_plot)
+    if colors is None:
+        colors = ['g', 'r', 'c', 'k'] * max((len(runs_to_plot) // 4), 1)
     lit_y = None
     lit_y_err = None
     val_statErr_rChi_shift_dict = Tools.extract_from_combined(runs_to_plot, db, isotopes, par, print_extracted=True)
     literarture_has_been_plotted = False
     err_index = 2 if use_syst_err_only else 1
-    offset = -0.2
-    for each in runs_to_plot:
+    lit_exists = 0 if literature_dict is None else 1
+    offset = start_offset
+    offset_per_run = abs(offset) * 2 / (len(runs_to_plot) + lit_exists - 1)
+    for ind, each in enumerate(runs_to_plot):
         try:
             if each:
                 if literature_dict is not None:  # try to get the literature values and substract experiment Values from it
@@ -579,9 +639,12 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
                     exp_y_err = [each[2] for each in x_y_err]
                 if plot_runs_seperate:
                     if lit_y is not None and not literarture_has_been_plotted:
-                        plt.errorbar(x, lit_y, lit_y_err, label=literature_name, linestyle='None', marker="o")
+                        offset += offset_per_run
+                        x_lit = [valo[0] + offset for valo in vals]
+                        plt.errorbar(x_lit, lit_y, lit_y_err, label=literature_name, linestyle='None', marker="o")
                         literarture_has_been_plotted = True
-                    plt.errorbar(x, exp_y, exp_y_err, label='%s' % each, linestyle='None', marker="o")
+                    plt.errorbar(x, exp_y, exp_y_err, label='%s%s' % (each, comments[ind]),
+                                 linestyle='None', marker=markers[ind], color=colors[ind])
 
                 compl_x += x
                 compl_y += exp_y
@@ -589,7 +652,7 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
 
         except Exception as err:
             print('error while plotting: %s' % err)
-        offset += 0.1
+        offset += offset_per_run
 
     if not plot_runs_seperate:
         plt.errorbar(compl_x, compl_y, compl_y_err, label='runs: ' + str(sorted(val_statErr_rChi_shift_dict.keys())),
@@ -598,7 +661,7 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
             plt.errorbar(compl_x, lit_y, lit_y_err, label=literature_name,
                          linestyle='None', marker="o")
 
-    plt.legend(loc=2)
+    plt.legend(loc=legend_loc)
     plt.margins(0.25)
     get_current_axes().set_ylabel('%s [MHz]' % par)
     plt.gcf().set_facecolor('w')

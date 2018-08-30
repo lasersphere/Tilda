@@ -16,7 +16,8 @@ import numpy as np
 from lxml import etree as ET
 
 import Physics
-from XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, xmlAddCompleteTrack
+from XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, \
+    xmlAddCompleteTrack, xmlFindOrCreateSubElement, xmlWriteDict
 
 
 def select_from_db(db, vars_select, var_from, var_where=[], addCond='', caller_name='unknown'):
@@ -71,6 +72,37 @@ def merge_dicts(d1, d2):
     new = d1.copy()
     new.update(d2)
     return new
+
+
+def merge_extend_dicts(target_dict, new_dict, overwrite=True, force_overwrite=False):
+    """
+    This function is used, to merge the content of the second dict into the first.
+    Whenever a dict is found inside the dict, a recursive function call is executed, merging the sub-dicts as well.
+    :param overwrite: íf True, overwrite conflicting values (e.g. int, float, str, bool...). If False keep the old one.
+    :param force_overwrite: if True, empty lists overwrite existing lists.
+    :returns None: This function works on the target dict! No new dict is returned!
+    """
+    for keys, vals in new_dict.items():
+        if keys in target_dict:  # key exists already
+            is_same = vals == target_dict[keys]
+            if not is_same:  # key exists but vals are different
+                if type(vals) is dict:  # if its a dict then check this again
+                    merge_extend_dicts(target_dict[keys], vals, overwrite)
+                elif type(vals) is list:
+                    if force_overwrite: # if overwriting existing lists with empty lists is allowed
+                        target_dict[keys] = vals
+                    else: # if the new list has actually values in it then we want to overwrite the old values
+                        if type(target_dict[keys]) is list:
+                            if len(vals) > len(target_dict[keys]):
+                                target_dict[keys] = vals
+                        elif len(vals):
+                            target_dict[keys] = vals
+                else:  # key exists, but vals are different and can't be combined
+                    if overwrite:  # if authorized, overwrite the existing value with the new one
+                        target_dict[keys] = vals
+            # else: key exists and vals are identical - do nothing
+        else:  # key doesn't exist
+            target_dict[keys] = new_dict[keys]
 
 
 def numpy_array_from_string(string, shape, datatytpe=np.int32):
@@ -168,11 +200,9 @@ def get_all_tracks_of_xml_in_one_dict(xml_file):
         all_trackd[str(t.tag)] = (xml_get_dict_from_ele(xml_etree)[1]['tracks'][str(t.tag)]['header'])
     for tr_name, track_d in all_trackd.items():
         all_trackd[tr_name] = evaluate_strings_in_dict(all_trackd[tr_name])
-    for tr_name, track_d in all_trackd.items():
-        # make sure no None values exist for measureVoltPars['dmm']
-        for key, val in track_d.get('measureVoltPars', {}).items():
-            if val.get('dmms', None) is None:
-                val['dmms'] = {}
+    # make sure no None values exist due to something
+    # like <something\> caused by an empty dict when saving.
+    all_trackd = replace_none_vals_in_dict(all_trackd, {})
     return all_trackd
 
 
@@ -190,6 +220,32 @@ def get_meas_volt_dict(xml_etree):
     return meas_volt_pars_dict
 
 
+def save_dmm_readings_to_xml(file, tr_name, dmms_dict, pre_during_post_scan_str):
+    """
+    Will save the dmms dicts gotten from the scan_dict to the given xml file.
+
+    :param file: str, path to xml file
+    :param tr_name: str, track name
+    :param dmms_dict: dict, 'dmms':{...}... as in draft scan pars
+    :param pre_during_post_scan_str: str, preScan / duringScan / postScan
+    :return: None
+    """
+    if file:
+        root = load_xml(file)
+        tracks = xmlFindOrCreateSubElement(root, 'tracks')
+        track = xmlFindOrCreateSubElement(tracks, tr_name)
+        track_header = xmlFindOrCreateSubElement(track, 'header')
+        meas_volt = xmlFindOrCreateSubElement(track_header, 'measureVoltPars')
+        pre_during_ele = xmlFindOrCreateSubElement(meas_volt, pre_during_post_scan_str)
+        dmms_ele = xmlFindOrCreateSubElement(pre_during_ele, 'dmms')
+        for dmm_name, dmm_dict in dmms_dict.items():
+            dmm_ele = xmlFindOrCreateSubElement(dmms_ele, dmm_name)
+            xmlFindOrCreateSubElement(dmm_ele, 'readings', dmm_dict['readings'])
+            logging.debug('saved %s meas of dmm: %s, reading is: %s' % (
+                pre_during_post_scan_str, dmm_name, str(dmm_dict['readings'])))
+        save_xml(root, file)
+
+
 def get_triton_dict_from_xml_root(xml_etree):
     """
     OUTDATED SINCE VERSION 1.19
@@ -204,6 +260,30 @@ def get_triton_dict_from_xml_root(xml_etree):
     evaluate_strings_in_dict(triton_dict)
     # print('triton_dict from file: ', triton_dict)
     return triton_dict
+
+
+def save_triton_to_xml(file, tr_name, triton_dict, pre_during_post_scan_str='preScan'):
+    """
+    will save the triton log gotten from the triton dict to the given xml file.
+
+    :param file: str, path of the xml file
+    :param tr_name: str, track name
+    :param triton_dict:  dict, {'dummyDev': {'ch1': {'required': 2, 'data': [], 'acquired': 0}, ...}}
+    :param pre_during_post_scan_str: str, preScan / duringScan / postScan
+    :return: None
+    """
+    if file:
+        if triton_dict:
+            logging.info('triton %s log complete, saving to: %s' % (pre_during_post_scan_str, file))
+            logging.debug('saving directly to xml file: ' + str(triton_dict))
+            root = load_xml(file)
+            tracks = xmlFindOrCreateSubElement(root, 'tracks')
+            track = xmlFindOrCreateSubElement(tracks, tr_name)
+            track_header = xmlFindOrCreateSubElement(track, 'header')
+            triton_ele = xmlFindOrCreateSubElement(track_header, 'triton')
+            pre_ele = xmlFindOrCreateSubElement(triton_ele, pre_during_post_scan_str)
+            xmlWriteDict(pre_ele, triton_dict)
+            save_xml(root, file)
 
 
 def evaluate_strings_in_dict(dict_to_convert):
@@ -231,6 +311,22 @@ def evaluate_strings_in_dict(dict_to_convert):
         if isinstance(dict_to_convert[key], dict):
             dict_to_convert[key] = evaluate_strings_in_dict(dict_to_convert[key])
     return dict_to_convert
+
+
+def replace_none_vals_in_dict(dict_to_check, replace_val={}):
+    """
+    this will iterate through the given dict, wich can be nested and
+    replace all values that are None with the given replace val.
+    :param dict_to_check: dict, can be nested
+    :param replace_val: anything
+    :return: dict without None vals
+    """
+    for key, val in dict_to_check.items():
+        if isinstance(dict_to_check[key], dict):
+            dict_to_check[key] = replace_none_vals_in_dict(dict_to_check[key], replace_val)
+        elif val is None:
+            dict_to_check[key] = replace_val
+    return dict_to_check
 
 
 def xml_get_data_from_track(
@@ -780,11 +876,12 @@ def nameFileXml(isodict, path):
     subdir = os.path.join(path, 'sums')
     if not os.path.exists(subdir):
         os.makedirs(subdir)
-    files = [file if file.endswith('.xml') else '-1....' for file in os.listdir(subdir)]
+    # get existing xml files in sums and take tehir name without the ending ".xml":
+    files = [file.split('.')[0] if file.endswith('.xml') else '-1....' for file in os.listdir(subdir)]
     if len(files):
         try:
             highest_filenum = sorted(
-                [int(file[file.index('_run') + 4:file.index('_run') + 7]) for file in files if '_run' in file])[-1]
+                [int(file[file.index('_run') + 4:]) for file in files if '_run' in file])[-1]
         except Exception as e:
             print('error finding run number, with _run***.xml (*** should be integers) error is: ', e)
             highest_filenum = -1
@@ -795,7 +892,7 @@ def nameFileXml(isodict, path):
         print('error: file already exists! Check your file naming not conflict with '
               '_run***.xml (*** should be integers) filenum is: ', highest_filenum)
         highest_filenum += 1
-        newpath = os.path.join(subdir, filename + str('{0:03d}'.format(highest_filenum + 1)) + '.xml')
+        newpath = os.path.join(subdir, filename + '_NameErr_' + str('{0:03d}'.format(highest_filenum + 1)) + '.xml')
     return newpath
 
 
@@ -856,9 +953,10 @@ def save_spec_data(spec_data, scan_dict):
             relative_filename = relative_filename.replace(
                 db_dir_name, '.')
             from Tools import _insertFile
+            logging.debug('will insert file: %s to database: %s' % (relative_filename, db))
             _insertFile(relative_filename, db)
     except Exception as e:
-        print('error while saving: ', e)
+        logging.erro('error while saving: %s' % e, exc_info=True)
 
 
 def get_number_of_tracks_in_scan_dict(scan_dict):
@@ -1038,4 +1136,11 @@ if __name__ == '__main__':
     # isodi = {'isotope': 'bbb', 'type': 'csdummy'}
     # newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')
     # print(newname)
-    get_all_tracks_of_xml_in_one_dict('E:/TildaDebugging3/sums/Test_trsdummy_run005.xml')
+    # get_all_tracks_of_xml_in_one_dict('E:/TildaDebugging3/sums/Test_trsdummy_run005.xml')
+    # import Service.Scan.draftScanParameters as dft
+    #
+    # sc_dict = dft.draftScanDict
+    # isodict = sc_dict['isotopeData']
+    # print(nameFileXml(isodict, 'E:\\temp2'))
+    ret = get_all_tracks_of_xml_in_one_dict('E:\\temp2\\sums\\notrit_csdummy_run1546.xml')
+    print(ret['track0']['triton'])

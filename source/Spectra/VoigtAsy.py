@@ -26,7 +26,8 @@ class VoigtAsy(object):
         self.pSig = 0
         self.pGam = 1
         self.asyPar = 2
-        self.recalc([iso.shape['gau'], iso.shape['lor'], iso.shape['asy']])
+        self.recalc([iso.shape.get('gau', iso.shape.get('sigma', 0.0)),
+                     iso.shape.get('lor', iso.shape.get('gamma', 0.0)), iso.shape['asy']]) # .get() structure due to naming difference in .getParNames() and shape['']
     
     
     def evaluate(self, x, p):
@@ -56,7 +57,8 @@ class VoigtAsy(object):
         self.pGam = pos + 1
         self.asyPar = pos + 2
         
-        return [self.iso.shape['gau'], self.iso.shape['lor'], self.iso.shape['asy']]
+        return [self.iso.shape.get('gau', self.iso.shape.get('sigma', 0.0)),
+                self.iso.shape.get('lor', self.iso.shape.get('gamma', 0.0)), self.iso.shape['asy']] # .get() structure due to naming difference in .getParNames() and shape['']
     
     
     def getParNames(self):
@@ -66,5 +68,6 @@ class VoigtAsy(object):
     
     def getFixed(self):
         '''Return list of parmeters with their fixed-status'''
-        return [self.iso.fixShape['gau'], self.iso.fixShape['lor'], self.iso.fixShape['asy']]
+        return [self.iso.fixShape.get('gau', self.iso.fixShape.get('sigma', False)),
+                self.iso.fixShape.get('lor', self.iso.fixShape.get('gamma', False)), self.iso.fixShape['asy']] # .get() structure due to naming difference in .getParNames() and shape['']
         

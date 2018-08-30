@@ -19,7 +19,7 @@ class LorentzQI(object):
         self.iso = iso
         self.nPar = 1
         self.pGam = 0
-        self.recalc([iso.shape['lor']])
+        self.recalc([iso.shape.get('lor', iso.shape.get('gamma', 0.0))])
 
 
     def evaluate(self, x, p):
@@ -65,7 +65,7 @@ class LorentzQI(object):
         '''Return list of initial parameters and initialize positions'''
         self.pGam = pos
         
-        return [self.iso.shape['lor']]
+        return [self.iso.shape.get('lor', self.iso.shape.get('gamma', 0.0))]
     
     
     def getParNames(self):
@@ -75,5 +75,5 @@ class LorentzQI(object):
     
     def getFixed(self):
         '''Return list of parmeters with their fixed-status'''
-        return [self.iso.fixShape['lor']]
+        return [self.iso.fixShape.get('lor', self.iso.fixShape.get('gamma', False))]
         
