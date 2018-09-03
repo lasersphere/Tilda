@@ -77,7 +77,7 @@ class Agilent3458aPreConfigs(Enum):
         'accuracy': (None, None),
         'measurementCompleteDestination': 'software',
         'preConfName': 'pre_scan',
-        'nplc': 10
+        'nplc': 100
     }
     kepco = {
         'range': '1000',
