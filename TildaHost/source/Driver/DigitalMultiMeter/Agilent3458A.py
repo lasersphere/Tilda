@@ -126,6 +126,7 @@ class Agilent3458A(QThread):
         self.pre_configs = Agilent3458aPreConfigs
         self.selected_pre_config_name = self.pre_configs.initial.name
         self.config_dict = self.pre_configs.initial.value
+        self.measuring_time_ms = int(max(50, self.config_dict['nplc'] / 50 * 1000))  # assuming 50 Hz
         self.init(self.address, reset)
         self.get_accuracy()
         self.get_dev_err()
@@ -166,6 +167,7 @@ class Agilent3458A(QThread):
             self.gpib = self.res_man.open_resource(addr)
             self.gpib.timeout = self.gpib_timeout_ms
             if reset:
+                self.send_command('MEM FIFO')  # clear the memory and set first in first out
                 self.send_command('PRESET NORM')
                 self.config_dict = self.pre_configs.initial.value
             time.sleep(0.1)
@@ -367,6 +369,8 @@ class Agilent3458A(QThread):
         The 3458A seems not have a function similiar to this.
         but this is called from dmmControl upstream.
         """
+        self.measuring_time_ms = int(max(50, self.config_dict['nplc'] / 50 * 1000))
+        logging.debug('measuring time seems to be %s ms' % self.measuring_time_ms)
         self.start()
         self.state = 'measuring'
 
@@ -427,6 +431,7 @@ class Agilent3458A(QThread):
             timedout = False
             while not timedout:  # append all readings from buffer until timeout
                 try:
+                    self.stored_send_cmd = ''
                     ret += self.send_command('', as_query=True, default_return=typ_ret) + ','
                     num_read += 1
                     timedout = False or num_read > max_num_read
@@ -473,17 +478,18 @@ class Agilent3458A(QThread):
         time.sleep(0.2)
         self.state = 'aborted'
 
-    def set_to_pre_conf_setting(self, pre_conf_name):
+    def set_to_pre_conf_setting(self, pre_conf_name, reset_mem=True):
         """
         this will set and arm the dmm for a pre configured setting.
         :param pre_conf_name: str, name of the setting
+        :param reset_mem: bool, True for resetting the memory of the device, False to keep it. True is default
         :return: None
         """
         if pre_conf_name in self.pre_configs.__members__:
             self.selected_pre_config_name = pre_conf_name
             config_dict = self.pre_configs[pre_conf_name].value
             config_dict['assignment'] = self.config_dict.get('assignment', 'offset')
-            self.load_from_config_dict(config_dict, False)
+            self.load_from_config_dict(config_dict, reset_dev=reset_mem)
             # self.initiate_measurement()
             logging.info('%s dmm loaded with preconfig: %s ' % (self.name, pre_conf_name))
         else:
@@ -641,7 +647,7 @@ class Agilent3458A(QThread):
             self.mutex.lock()
             self.read_back_data = np.append(self.read_back_data, new_data)
             self.mutex.unlock()
-            self.msleep(50)
+            self.msleep(self.measuring_time_ms)
         logging.info('%s reading thread stopped' % self.name)
         self.mutex.lock()
         self.stop_reading_thread = False
@@ -649,7 +655,16 @@ class Agilent3458A(QThread):
 
 
 if __name__ == '__main__':
+    import sys
     try:
+        app_log = logging.getLogger()
+        # app_log.setLevel(getattr(logging, args.log_level))
+        app_log.setLevel(logging.DEBUG)
+
+        ch = logging.StreamHandler(sys.stdout)
+        ch.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        ch.setFormatter(formatter)
         dev = Agilent3458A(True, 'GPIB0..22..INSTR')
 
         logging.debug(str(dev.get_dev_err()))
@@ -659,6 +674,7 @@ if __name__ == '__main__':
         dev.initiate_measurement()
 
         readings = 0
+        start = datetime.datetime.now()
         logging.debug('starting to fetch')
         ret = dev.fetch_multiple_meas(-1)
         logging.debug('reading: %s' % str(ret))
@@ -669,7 +685,9 @@ if __name__ == '__main__':
             ret = dev.fetch_multiple_meas(-1)
             logging.debug('reading: %s' % str(ret))
             readings += len(ret)
-            logging.debug('number of readings: %s ' % str(readings))
+            elapsed = datetime.datetime.now() - start
+            elapsed_s = elapsed.total_seconds()
+            logging.debug('number of readings: %s elapsed: %.3f ' % (str(readings), elapsed_s))
 
         # print('measured', dev.fetch_multiple_meas(-1))
 
