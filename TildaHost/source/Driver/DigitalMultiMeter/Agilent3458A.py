@@ -46,7 +46,8 @@ class Agilent3458aPreConfigs(Enum):
         'assignment': 'offset',
         'accuracy': (None, None),
         'measurementCompleteDestination': 'software',
-        'preConfName': 'initial'
+        'preConfName': 'initial',
+        'nplc': 1
     }
     periodic = {
         'range': '10',
@@ -60,7 +61,8 @@ class Agilent3458aPreConfigs(Enum):
         'assignment': 'offset',
         'accuracy': (None, None),
         'measurementCompleteDestination': 'Con1_DIO30',
-        'preConfName': 'periodic'
+        'preConfName': 'periodic',
+        'nplc': 1
     }
     pre_scan = {
         'range': '10',
@@ -74,7 +76,8 @@ class Agilent3458aPreConfigs(Enum):
         'assignment': 'offset',
         'accuracy': (None, None),
         'measurementCompleteDestination': 'software',
-        'preConfName': 'pre_scan'
+        'preConfName': 'pre_scan',
+        'nplc': 10
     }
     kepco = {
         'range': '1000',
@@ -88,7 +91,8 @@ class Agilent3458aPreConfigs(Enum):
         'assignment': 'offset',
         'accuracy': (None, None),
         'measurementCompleteDestination': 'Con1_DIO30',
-        'preConfName': 'kepco'
+        'preConfName': 'kepco',
+        'nplc': 1
     }
 
 
@@ -217,16 +221,19 @@ class Agilent3458A(QThread):
 
     ''' config measurement '''
 
-    def config_measurement(self, dmm_range, resolution, postpone_send=False):
+    def config_measurement(self, dmm_range, resolution, nplc, postpone_send=False):
         """
-        set to dc meas with range and resolution
+        set to dc meas with range, resolution and power line cycles
         :param dmm_range: str, ['AUTO', '0.1', '1', '10', '100', '1000']
         :param resolution: str, [0.1, 0.01, 0.001, 0.0001, 0.00001]
+        :param nplc: int, [0-10 plc_step // 1 & 10-1000 // 10 plc_step]
         :return: None
         """
         self.config_dict['range'] = dmm_range
         self.config_dict['resolution'] = resolution  # str, [0.1, 0.01, 0.001, 0.0001, 0.00001]
+        self.config_dict['nplc'] = nplc
         self.send_command('DCV %s, %s' % (dmm_range, resolution), postpone_send=postpone_send)
+        self.send_command('NPLC %s' % nplc)
 
     def config_multi_point_meas(self, trig_count, trig_delay_s, trig_source_enum,
                                 sample_count, sample_interval_s=0, postpone_send=False):
@@ -506,7 +513,8 @@ class Agilent3458A(QThread):
 
             dmm_range = config_dict['range']  # str, ['AUTO', '0.1', '1', '10', '100', '1000']
             dmm_res = config_dict['resolution']  # str, [0.1, 0.01, 0.001, 0.0001, 0.00001]
-            self.config_measurement(dmm_range, dmm_res, postpone_send=True)
+            dmm_nplc = config_dict['nplc']  # int, [0-10 plc_step // 1 & 10-1000 // 10 plc_step]
+            self.config_measurement(dmm_range, dmm_res, dmm_nplc, postpone_send=True)
 
             self.set_input_resistance(config_dict['highInputResistanceTrue'], postpone_send=True)   # bool
 
@@ -562,6 +570,8 @@ class Agilent3458A(QThread):
             'measurementCompleteDestination': ('measurement compl. dest.', True, str,
                                                ['Con1_DIO30', 'Con1_DIO31', 'software'],
                                                self.config_dict['measurementCompleteDestination']),
+            'nplc': ('int. time / nplc', True, int, list(range(0, 11)) + list(range(20, 1010, 10)),
+                     self.config_dict['nplc'])
         }
         return config_dict
 
