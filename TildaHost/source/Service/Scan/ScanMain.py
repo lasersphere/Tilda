@@ -139,6 +139,19 @@ class ScanMain(QObject):
             callbacks = Cfg._main_instance.gui_live_plot_subscribe()
             self.pre_post_meas_data_dict_callback = callbacks[6]
 
+    def prepare_pre_scan_measurement(self, scan_dict, act_track_name, pre_post_scan_str):
+        """
+        call this function to PREPARE any device required for the pre-/during-/post- scan measurement
+        :param scan_dict: dict, with all scan pars for the current iso, see Service/Scan/draftScanParameters.py:122
+        :param act_track_name: str, name of the active track -> 'track0'
+        :param pre_post_scan_str: str, either 'preScan' / 'duringScan' / 'postScan'
+        :return: None
+        """
+        dmm_conf_dict = scan_dict[act_track_name]['measureVoltPars'].get(pre_post_scan_str, {}).get('dmms', {})
+        triton_dict = scan_dict[act_track_name].get('triton', {})
+        self.prepare_dmms_for_scan(dmm_conf_dict)
+        self.prepare_triton_listener_for_scan(triton_dict, pre_post_scan_str, act_track_name)
+
     def start_pre_scan_measurement(self, scan_dict, act_track_name, pre_post_scan_meas_str='preScan'):
         """
         Start the prescan Measurement of the Offset Voltage etc.
@@ -146,6 +159,8 @@ class ScanMain(QObject):
             -> 0 V are applied from the DAC and the corrsponding post acceleration device (Fluke Heinzinger)
             is connected to the beamline
         :param scan_dict: dictionary, containing all scanparameters
+        :param act_track_name: str, name of the active track -> 'track0'
+        :param pre_post_scan_meas_str: str, either 'preScan' / 'duringScan' / 'postScan'
         :return: bool, True if success
         """
         # get the existing liveplotting callback from the main
@@ -246,14 +261,6 @@ class ScanMain(QObject):
                 #       dmms_dict_pre_scan[dmm_name]['readings'])
             self.abort_dmm_measurement('all')
             self.save_dmm_readings_to_file(scan_dict, tr_name, pre_during_post_scan_str)
-            # when done with the pre scan measurement, setup dmms to the during scan dict.
-            # set the dmms according to the dictionary inside the dmms_dict for during the scan
-            if pre_during_post_scan_str == 'preScan':
-                dmms_dict_during_scan = scan_dict[tr_name]['measureVoltPars'].get('duringScan', {}).get('dmms',
-                                                                                                        None)
-                dmm_complete_location = scan_dict[tr_name]['measureVoltPars']['duringScan'][
-                    'measurementCompleteDestination']
-                self.prepare_dmms_for_scan(dmms_dict_during_scan, dmm_complete_location)
             return True
         else:  # not complete and not forced
             return False
@@ -911,6 +918,8 @@ class ScanMain(QObject):
         'postscan': {...}}
         :return: None
         """
+        logging.debug('preparing TRITON Listener for %s measurement. Config dict is: %s'
+                      % (pre_post_scan_str, triton_scan_dict.get(pre_post_scan_str, {})))
         if self.triton_listener is None:
             self.triton_listener = TritonListener()
         if self.triton_listener.logging:
@@ -944,8 +953,6 @@ class ScanMain(QObject):
                 self.save_triton_log(scan_dict, tr_name, pre_during_post_scan_str)
                 if self.triton_listener.logging:
                     self.abort_triton_log()
-                if pre_during_post_scan_str == 'preScan':
-                    self.prepare_triton_listener_for_scan(scan_dict[tr_name]['triton'], 'duringScan', tr_name)
                 return True
             else:
                 return False

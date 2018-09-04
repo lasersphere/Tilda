@@ -621,10 +621,7 @@ class Main(QtCore.QObject):
         if first_call:
             # on first call set the fpga to measure offset state and setup the dmms and the triton listener
             # then software trigger the dmms
-            self.scan_main.prepare_dmms_for_scan(
-                self.scan_pars[iso_name][act_track_name]['measureVoltPars'].get(pre_post_scan_str, {}).get('dmms', {}))
-            self.scan_main.prepare_triton_listener_for_scan(
-                self.scan_pars[iso_name][act_track_name].get('triton', {}), pre_post_scan_str, act_track_name)
+            self.scan_main.prepare_pre_scan_measurement(self.scan_pars[iso_name], act_track_name, pre_post_scan_str)
             # emit the scan_pars to the pre_post_live_data ui
             logging.debug('emitting %s, from %s, value is %s'
                           % ('pre_post_meas_data_dict_callback',
@@ -641,14 +638,6 @@ class Main(QtCore.QObject):
                     # after this has ben completed, it will go to idle
                 else:
                     # otherwise load next track
-                    # need to setup dmms and triton for during scan here!
-                    dmms_dict_during_scan = self.scan_pars[iso_name][act_track_name].get(
-                        'measureVoltPars', {}).get('duringScan', {}).get('dmms', {})
-                    dmm_complete_location = self.scan_pars[iso_name][act_track_name].get(
-                        'measureVoltPars', {}).get('duringScan', {}).get('measurementCompleteDestination', None)
-                    self.scan_main.prepare_dmms_for_scan(dmms_dict_during_scan, dmm_complete_location)
-                    self.scan_main.prepare_triton_listener_for_scan(
-                        self.scan_pars[iso_name][act_track_name].get('triton', {}), 'duringScan', act_track_name)
                     self.set_state(MainState.load_track)
 
         else:  # this will periodically read the dmms and triton until all dmms returned a measurement
@@ -678,7 +667,7 @@ class Main(QtCore.QObject):
                         self.set_state(MainState.setting_switch_box, (True, None, scan_complete))  # scan_complete=True
                         # after this has ben completed, it will go to idle
                     else:
-                        # otherwise load next track
+                        # otherwise prepare devices (Triton, dmms, ...) for during scan measurement and
                         self.set_state(MainState.load_track)
                 else:
                     # not timed out, check if all values are measured yet:
@@ -692,6 +681,7 @@ class Main(QtCore.QObject):
                             self.set_state(MainState.setting_switch_box, (True, None, scan_complete))  # scan_complete=True
                             # after this has ben completed, it will go to idle
                         else:
+                            # otherwise prepare devices (Triton, dmms, ...) for during scan measurement and
                             self.set_state(MainState.load_track)
 
     def add_global_infos_to_scan_pars(self, iso_name):
@@ -767,6 +757,11 @@ class Main(QtCore.QObject):
         """
         iso_name = self.scan_progress['activeIso']
         active_track_num = self.scan_progress['activeTrackNum']
+        act_track_name = 'track' + str(active_track_num)
+
+        # prepare any pre / during scan device for duringScan when loading a track
+        self.scan_main.prepare_pre_scan_measurement(self.scan_pars[iso_name], act_track_name,
+                                                    pre_post_scan_str='duringScan')
 
         is_this_first_track = len(self.scan_progress['completedTracks']) == 0
         if is_this_first_track:  # initialise the pipeline on first track
