@@ -438,7 +438,9 @@ class Agilent3458A(QThread):
                 except Exception as e:
                     timedout = True
             try:
+                logging.debug('%s returned readings: %s' % (self.name, ret))
                 ret = np.fromstring(ret, sep=',')
+                logging.debug('%s converted readings to: %s' % (self.name, ret))
                 if ret.size == 0:
                     return np.array([])
                 t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
