@@ -68,7 +68,7 @@ class Agilent3458aPreConfigs(Enum):
         'range': '10',
         'resolution': '0.0001',
         'triggerCount': 1,
-        'sampleCount': 20,
+        'sampleCount': 10,
         'triggerSource': Agilent3458aTriggerSources.hold.name,
         'sampleInterval': -1,
         'triggerDelay_s': 0,
@@ -115,11 +115,10 @@ class Agilent3458A(QThread):
         self.last_readback = (0, t)
         self.res_man = visa.ResourceManager()
         self.gpib = None
-        self.gpib_timeout_ms = 10000  # would also just work with 50 ms, but risky, so better leave at 100 ms
-        # time out must be set rather high, because otherwise the chances are pretty high,
-        #  that a sign in the communication is lost
-        # TODO not ideal that a high timeout is required,
-        # since this is used to know when no values are still incoming...
+        self.gpib_timeout_ms = 200  # would also just work with 50 ms, but risky, so better leave at 100 ms
+        # time out must be set rather high for slow measurements, because otherwise the chances are pretty high,
+        #  that a +/- sign in the communication is lost
+        self.gpib_timeout_reading_ms_min = 1000  # 1s minimum timeout during reading thread to avoid problems
         self.state = 'initialized'
 
         self.stored_send_cmd = ''
@@ -130,7 +129,8 @@ class Agilent3458A(QThread):
         self.pre_configs = Agilent3458aPreConfigs
         self.selected_pre_config_name = self.pre_configs.initial.name
         self.config_dict = self.pre_configs.initial.value
-        self.measuring_time_ms = int(max(50, self.config_dict['nplc'] / 50 * 1000))  # assuming 50 Hz
+        self.gpib_timeout_reading_ms = int(
+            max(self.gpib_timeout_reading_ms_min, self.config_dict['nplc'] / 50 * 1000))  # assuming 50 Hz
         self.init(self.address, reset)
         self.get_accuracy()
         self.get_dev_err()
@@ -373,8 +373,8 @@ class Agilent3458A(QThread):
         The 3458A seems not have a function similiar to this.
         but this is called from dmmControl upstream.
         """
-        self.measuring_time_ms = int(max(50, self.config_dict['nplc'] / 50 * 1000))
-        logging.debug('measuring time seems to be %s ms' % self.measuring_time_ms)
+        self.gpib_timeout_reading_ms = int(max(self.gpib_timeout_reading_ms_min, self.config_dict['nplc'] / 50 * 1000))
+        logging.debug('measuring time seems to be %s ms' % self.gpib_timeout_reading_ms)
         self.start()
         self.state = 'measuring'
 
@@ -440,6 +440,8 @@ class Agilent3458A(QThread):
                     num_read += 1
                     timedout = False or num_read >= max_num_read
                 except Exception as e:
+                    # logging.warning('%s timedout during query of values (might be intentional) error: %s'
+                    #                 % (self.name, e), exc_info=True)
                     timedout = True
             try:
                 logging.debug('%s returned readings: %s' % (self.name, ret))
@@ -648,12 +650,14 @@ class Agilent3458A(QThread):
 
     def run(self):
         logging.info('%s reading thread started' % self.name)
+        self.gpib.timeout = self.gpib_timeout_reading_ms
+        # set the measurement time as timeout for the gpib Bus
         while not self.stop_reading_thread:
             new_data = self._fetch_multiple_meas(-1)
             self.mutex.lock()
             self.read_back_data = np.append(self.read_back_data, new_data)
             self.mutex.unlock()
-            self.msleep(self.measuring_time_ms)
+        self.gpib.timeout = self.gpib_timeout_ms
         logging.info('%s reading thread stopped' % self.name)
         self.mutex.lock()
         self.stop_reading_thread = False
@@ -671,9 +675,11 @@ if __name__ == '__main__':
         ch.setLevel(logging.DEBUG)
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
         ch.setFormatter(formatter)
+        app_log.addHandler(ch)
+
         dev = Agilent3458A(True, 'GPIB0..22..INSTR')
 
-        logging.debug(str(dev.get_dev_err()))
+        # logging.debug(str(dev.get_dev_err()))
 
         dev.set_to_pre_conf_setting(Agilent3458aPreConfigs.pre_scan.name)
         dev.send_software_trigger()
@@ -681,10 +687,10 @@ if __name__ == '__main__':
 
         readings = 0
         start = datetime.datetime.now()
-        logging.debug('starting to fetch')
-        ret = dev.fetch_multiple_meas(-1)
-        logging.debug('reading: %s' % str(ret))
-        readings += len(ret)
+        # logging.debug('starting to fetch')
+        # ret = dev.fetch_multiple_meas(-1)
+        # logging.debug('reading: %s' % str(ret))
+        # readings += len(ret)
         logging.debug('number of readings: %s ' % str(readings))
         while True:
             time.sleep(0.2)

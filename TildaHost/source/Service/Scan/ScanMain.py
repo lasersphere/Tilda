@@ -151,6 +151,7 @@ class ScanMain(QObject):
         triton_dict = scan_dict[act_track_name].get('triton', {})
         self.prepare_dmms_for_scan(dmm_conf_dict)
         self.prepare_triton_listener_for_scan(triton_dict, pre_post_scan_str, act_track_name)
+        time.sleep(0.5)  # allow the device to settle for 500 ms
 
     def start_pre_scan_measurement(self, scan_dict, act_track_name, pre_post_scan_meas_str='preScan'):
         """
