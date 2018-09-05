@@ -115,7 +115,11 @@ class Agilent3458A(QThread):
         self.last_readback = (0, t)
         self.res_man = visa.ResourceManager()
         self.gpib = None
-        self.gpib_timeout_ms = 200  # would also just work with 50 ms, but risky, so better leave at 100 ms
+        self.gpib_timeout_ms = 10000  # would also just work with 50 ms, but risky, so better leave at 100 ms
+        # time out must be set rather high, because otherwise the chances are pretty high,
+        #  that a sign in the communication is lost
+        # TODO not ideal that a high timeout is required,
+        # since this is used to know when no values are still incoming...
         self.state = 'initialized'
 
         self.stored_send_cmd = ''
@@ -427,14 +431,14 @@ class Agilent3458A(QThread):
             typ_ret = '-1.500911593E+00,-1.500911355E+00,-1.500910163E+00, ' \
                       '-1.500910640E+00,-1.500911236E+00,-1.500909567E+00'
             num_read = 0
-            max_num_read = 10
+            max_num_read = 1
             timedout = False
             while not timedout:  # append all readings from buffer until timeout
                 try:
                     self.stored_send_cmd = ''
                     ret += self.send_command('', as_query=True, default_return=typ_ret) + ','
                     num_read += 1
-                    timedout = False or num_read > max_num_read
+                    timedout = False or num_read >= max_num_read
                 except Exception as e:
                     timedout = True
             try:
