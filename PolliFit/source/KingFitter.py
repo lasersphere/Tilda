@@ -247,7 +247,12 @@ class KingFitter(object):
 
             # print('x', self.x, self.xerr)
             # print('y', self.y, self.yerr)
-
+            print('%s\t%s\t%s\t%s\t%s' % ('x', 'x_err', 'y', 'y_stat_err', 'y_err_total'))
+            for i, x in enumerate(self.x):
+                print('%.5f\t%.5f\t%.5f\t%.5f\t%.5f' % (x, self.xerr[i], self.y[i], self.yerr[i], self.yerr_total[i]))
+            print('%s\t%s' % ('King_fit_x', 'King_fit_y'))
+            print('%.5f\t%.5f' % (x_king[0], y_king[0]))
+            print('%.5f\t%.5f' % (x_king[1], y_king[1]))
 
             plt.gcf().set_facecolor('w')
             plt.legend(fontsize=font_size)
@@ -491,6 +496,7 @@ class KingFitter(object):
                 self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
             else:
                 self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
+                self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
             self.x_origin.append(self.litvals[i][0])
             self.xerr.append(self.litvals[i][1])
 
@@ -511,6 +517,7 @@ class KingFitter(object):
                     self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
                 else:
                     self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
+                    self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
                 self.x_origin.append(self.litvals[i][0])
                 self.xerr.append(self.litvals[i][1])
 

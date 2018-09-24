@@ -9,6 +9,7 @@ Here it is only displayed. Gating etc. is done by the pipelines.
 
 """
 import ast
+import os
 import functools
 import logging
 import time
@@ -137,6 +138,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                             functools.partial(self.raise_graph_fontsize, False))
         QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_F5), self,
                             functools.partial(self.update_all_plots, None, True))
+        QtWidgets.QShortcut(QtGui.QKeySequence("CTRL+S"), self, self.export_screen_shot)
 
         ''' sum related '''
         self.add_sum_plot()
@@ -204,7 +206,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         ''' vertical splitter between tres and v_proj/sum_proj: '''
         self.splitter_4.setSizes([h // 2, h // 2])
         ''' horizontal splitter between v_proj and the display widget: '''
-        self.splitter_3.setSizes([w * 6 // 10, w * 4 // 10])
+        self.splitter_3.setSizes([w * 55 // 100, w * 42.5 // 100])
         ''' vertical splitter between all pmts plot and x/y coords widg '''
         self.splitter_allpmts.setSizes([h * 9 // 10, h * 1 // 10])
 
@@ -302,6 +304,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def add_time_resolved_plot(self):
         """ all plots on the time resolved tab -> time_resolved, time_projection, voltage_projection, sum """
+        # time resolved related:
         self.tres_v_layout = QtWidgets.QVBoxLayout()
         self.tres_widg, self.tres_plt_item = Pg.create_image_view()
         self.tres_roi = Pg.create_roi([0, 0], [1, 1])
@@ -309,27 +312,32 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.tres_plt_item.addItem(self.tres_roi)
         self.tres_v_layout.addWidget(self.tres_widg)
         self.widget_tres.setLayout(self.tres_v_layout)
+
+        # sum / voltage projection related:
         self.sum_proj_wid, self.sum_proj_plt_itm = Pg.create_x_y_widget(do_not_show_label=['top'], y_label='sum')
         self.sum_proj_plt_itm.showAxis('right')
-        self.v_proj_view_box = Pg.create_viewbox()
-        self.sum_proj_plt_itm.scene().addItem(self.v_proj_view_box)
-        self.sum_proj_plt_itm.getAxis('right').linkToView(self.v_proj_view_box)
-        self.v_proj_view_box.setXLink(self.tres_widg.view)
+        self.v_proj_pltitem = Pg.create_plotitem()
+        # self.sum_proj_plt_itm.scene().addItem(self.v_proj_pltitem.vb)
+        self.sum_proj_plt_itm.scene().addItem(self.v_proj_pltitem.vb)
+        # self.sum_proj_plt_itm.addItem(self.v_proj_pltitem)
+        self.sum_proj_plt_itm.getAxis('right').linkToView(self.v_proj_pltitem.vb)
+        # self.sum_proj_plt_itm.getAxis('right').linkToView(self.v_proj_pltitem)
         self.sum_proj_plt_itm.getAxis('right').setLabel('cts', color='k')
         pen = Pg.pg.mkPen(color='#0000ff', width=1)  # make the sum label and tick blue
         self.sum_proj_plt_itm.getAxis('left').setPen(pen)
         self.updateViews()
         self.sum_proj_plt_itm.vb.sigResized.connect(self.updateViews)
+        self.v_proj_layout = QtWidgets.QVBoxLayout()
+        self.v_proj_layout.addWidget(self.sum_proj_wid)
+        self.widget_proj_v.setLayout(self.v_proj_layout)
 
+        # self.sum_proj_plt_itm.getAxis('bottom').setTicks(self.tres_plt_item.getAxis('bottom').tick)
+
+        # time projection related:
         self.t_proj_wid, self.t_proj_plt_itm = Pg.create_x_y_widget(do_not_show_label=['left', 'bottom'],
                                                                     y_label='time / µs', x_label='cts')
-        self.v_proj_layout = QtWidgets.QVBoxLayout()
         self.t_proj_layout = QtWidgets.QVBoxLayout()
-        self.sum_proj_plt_itm.setXLink(self.tres_widg.view)
-        self.t_proj_plt_itm.setYLink(self.tres_widg.view)
-        self.v_proj_layout.addWidget(self.sum_proj_wid)
         self.t_proj_layout.addWidget(self.t_proj_wid)
-        self.widget_proj_v.setLayout(self.v_proj_layout)
         self.widget_proj_t.setLayout(self.t_proj_layout)
         self.pushButton_save_after_scan.clicked.connect(self.save)
         max_rate = 60
@@ -344,6 +352,42 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                                                     slot=functools.partial(self.mouse_moved, self.sum_proj_plt_itm.vb,
                                                                            True),
                                                     rate_limit=max_rate)
+
+        # adjust ranges:
+        t_res_range = self.tres_plt_item.vb.viewRange()
+        # # -> [[-4.2249999999999996, 5.2249999999999996], [-0.10000000000000001, 1.1000000000000001]]
+        # #  [[xmin, xmax], [ymin, ymax]]
+        self.tres_plt_item.setRange(xRange=(t_res_range[0][0], t_res_range[0][1]),
+                                    yRange=(t_res_range[1][0], t_res_range[1][1]),
+                                    padding=0,
+                                    update=True)
+        self.tres_plt_item.setAspectLocked(False)
+
+        self.sum_proj_plt_itm.setXRange(t_res_range[0][0], t_res_range[0][1], padding=0)
+        # ranges needed to be linked manually since "setXLink" caused some really strange offset in the linked axis
+        self.tres_plt_item.sigXRangeChanged.connect(self.tres_x_range_changed)
+        self.sum_proj_plt_itm.sigXRangeChanged.connect(self.sum_x_range_changed)
+        self.v_proj_pltitem.sigXRangeChanged.connect(self.v_proj_x_range_changed)
+
+        self.t_proj_plt_itm.setYRange(t_res_range[1][0], t_res_range[1][1], padding=0)
+        self.tres_plt_item.sigYRangeChanged.connect(self.tres_y_range_changed)
+        self.t_proj_plt_itm.sigYRangeChanged.connect(self.t_proj_y_range_changed)
+
+    def tres_x_range_changed(self, vb, xmin_xmax):
+        self.sum_proj_plt_itm.setXRange(xmin_xmax[0], xmin_xmax[1], padding=0)
+        self.v_proj_pltitem.vb.setXRange(xmin_xmax[0], xmin_xmax[1], padding=0)
+
+    def sum_x_range_changed(self, vb, xmin_xmax):
+        self.tres_plt_item.setXRange(xmin_xmax[0], xmin_xmax[1], padding=0)
+
+    def v_proj_x_range_changed(self, vb, xmin_xmax):
+        self.tres_plt_item.setXRange(xmin_xmax[0], xmin_xmax[1], padding=0)
+
+    def tres_y_range_changed(self, vb, ymin_ymax):
+        self.t_proj_plt_itm.setYRange(ymin_ymax[0], ymin_ymax[1], padding=0)
+
+    def t_proj_y_range_changed(self, vb, ymin_ymax):
+        self.tres_plt_item.setYRange(ymin_ymax[0], ymin_ymax[1], padding=0)
 
     def add_all_pmt_plot(self):
         """
@@ -377,8 +421,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def updateViews(self):
         """ update the view for the overlayed plot of sum and current scaler """
-        self.v_proj_view_box.setGeometry(self.sum_proj_plt_itm.vb.sceneBoundingRect())
-        self.v_proj_view_box.linkedViewChanged(self.sum_proj_plt_itm.vb, self.v_proj_view_box.XAxis)
+        self.v_proj_pltitem.vb.setGeometry(self.sum_proj_plt_itm.vb.sceneBoundingRect())
+        self.v_proj_pltitem.vb.linkedViewChanged(self.sum_proj_plt_itm.vb, self.v_proj_pltitem.vb.XAxis)
 
     def setup_new_track(self, rcv_tpl):
         """
@@ -596,6 +640,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                                          y_range[0] - abs(0.5 * y_scale)],
                                     scale=[x_scale, y_scale],
                                     autoRange=False)
+            self.tres_plt_item.setAspectLocked(False)
             self.tres_plt_item.setLabel('top', spec_data.x_units.value)
             if self.new_track_no_data_yet or self.setup_range_please:  # set view range in first call
                 logging.debug('setting x_range to: %s and y_range to: %s' % (str(x_range), str(y_range)))
@@ -658,9 +703,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.t_proj_plt = self.t_proj_plt_itm.plot(t_proj_x, t_proj_y, pen='k')
                     self.sum_proj_plt_data = self.sum_proj_plt_itm.plot(
                         self.convert_xaxis_for_step_mode(sum_x), sum_y, pen='b', stepMode=True)
-                    self.v_proj_plt = Pg.create_plot_data_item(
+                    # self.v_proj_plt = Pg.create_plot_data_item(
+                    #     self.convert_xaxis_for_step_mode(v_proj_x), v_proj_y, pen='k', stepMode=True)
+                    self.v_proj_plt = self.v_proj_pltitem.plot(
                         self.convert_xaxis_for_step_mode(v_proj_x), v_proj_y, pen='k', stepMode=True)
-                    self.v_proj_view_box.addItem(self.v_proj_plt)
+                    self.v_proj_pltitem.vb.addItem(self.v_proj_plt)
 
                     if self.subscribe_as_live_plot:
                         self.current_step_line = Pg.create_infinite_line(self.spec_data.x[self.tres_sel_tr_ind][0],
@@ -1202,9 +1249,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.pre_post_tab_widget = None  # Make sure it's None so its in a definite state
             self.mutex.unlock()  # Release the widget for other function calls.
 
-    def export_screen_shot(self, storage_path='', quality=-1):
+    def export_screen_shot(self, storage_path='', quality=100):
         """
         function to export a screenshot fo the full window.
+        and export all currently shown plots of the time resolved tab
+        as .png, .svg and their data as .csv using the export functions of pyqtgraph.
         :param storage_path: str, full storage path, leave empty to open dialog
         :param quality: int, -1 default, range 0-100, 0 -> low quality save, 100 -> high quality save
         :return: path
@@ -1212,11 +1261,17 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         start = datetime.now()
         if not storage_path:
             dial = QtWidgets.QFileDialog(self)
-            init_filter = self.full_file_path.split('.')[0] + '.jpg'
+            if self.full_file_path:
+                init_filter = self.full_file_path.split('.')[0] + '.png'
+            elif self.active_file:
+                init_filter = self.active_file.split('.')[0] + '.png'
+            else:
+                init_filter = '.png'
+            logging.debug('initial filter for q-Dialog is: %s' % init_filter)
             storage_path, ending = QtWidgets.QFileDialog.getSaveFileName(dial,
                                                                          'Chooose a storage location for the screenshot',
                                                                          init_filter,
-                                                                         '*.jpg'
+                                                                         '*.png'
                                                                          )
 
             if not storage_path:  # cancel clicked
@@ -1228,16 +1283,85 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         logging.info('grabbing screen now')
         self.update()
         pixm = self.grab()
-        pixm.save(storage_path, 'jpg', quality)
-        stop = datetime.now()
-        dif = stop - start
-        dif_sec = dif.microseconds * 10 ** -6
-        logging.info('saved screenshot after %.3fs to: %s' % (dif_sec, storage_path))
+        ending = os.path.splitext(storage_path)[1]
+        # logging.debug('ending is %s' % ending)
+        if pixm.save(storage_path, ending[1:], quality):
+            stop = datetime.now()
+            dif = stop - start
+            dif_sec = dif.microseconds * 10 ** -6
+            logging.info('saved screenshot with a quality of: %s after %.3fs to: %s' % (quality, dif_sec, storage_path))
+        else:
+            logging.warning('saving went wrong, did not save to: %s ' % storage_path)
+        # with pyqtgraph:
+        import pyqtgraph.exporters as pgexp
+        plots = [
+            self.sum_proj_plt_itm, self.t_proj_plt_itm, self.tres_plt_item #, self.v_proj_pltitem  currently somehow this causes an error
+        ]
+        names = ['_sum', '_t_proj', '_tres', '_v_proj']
+        try:
+            # try loop because this is only now optimized for time resolved plots etc.
+            t_res_pixelsize_vb = (self.tres_plt_item.vb.width(), self.tres_plt_item.vb.height())  # (width, height)
+            width_scale = 1024 / t_res_pixelsize_vb[0]  # viewbox should be 1024 wide
+            t_res_vb_final_height = int(width_scale * t_res_pixelsize_vb[1])
+            # store final height of time resolved viewbox
+        except Exception as e:
+            logging.error(e, exc_info=True)
+        for i, pl in enumerate(plots):
+            try:
+                base_file_name = os.path.splitext(storage_path)[0]
+
+                # export as .svg, which sometimes does not look that nice :(
+                exporter_svg = pgexp.SVGExporter(pl)
+                exporter_svg.export(base_file_name + names[i] + '.svg')
+
+                # export as .png:
+                pl_w, pl_h = (pl.width(), pl.height())
+                pl_vb_w, pl_vb_h = (pl.vb.width(), pl.vb.height())
+                width_scale = 1024 / pl_vb_w  # viewbox should be 1024 wide in the end
+                height_scale = t_res_vb_final_height / pl_vb_h
+                exporter_png = pgexp.ImageExporter(pl)
+                if names[i] == '_t_proj':
+                    # this is a t_proj were the height shjould match with t_res
+                    # scale height to same as vb of final tres
+                    exporter_png.parameters()['height'] = int(pl_h * height_scale)
+                    logging.debug('scaled height to: %s' % int(pl_h * height_scale))
+                else:
+                    exporter_png.parameters()['width'] = int(pl_w * width_scale)
+                    # viewbox should be 1024 wide and proportional height
+                exporter_png.export(base_file_name + names[i] + '.png')
+
+                #  export the currently visible as .csv
+                if 'tres' in names[i]:
+                    tres_csv_file = base_file_name + names[i] + '.csv'
+                    # copy current matrix of counts with all zeros... but witht he applied time binning
+                    cts_float = deepcopy(self.spec_data.time_res[self.tres_sel_tr_ind][self.tres_sel_sc_ind]).astype(dtype=np.float)
+                    t_axis = deepcopy(self.spec_data.t[self.tres_sel_tr_ind])
+                    t_axis = np.insert(t_axis, 0, 0)  # expand t_axis by one for coord 0,0 in matrix
+                    x_axis = deepcopy(self.spec_data.x[self.tres_sel_tr_ind])
+                    # cts_float = value.astype(dtype=np.float)
+                    # print(cts_float.shape)
+                    cts_float = np.insert(cts_float, 0, x_axis, axis=1)
+                    # print(cts_float_pl_x.shape)
+                    cts_float = np.insert(cts_float, 0, t_axis, axis=0)
+                    # print(cts_float_pl_x_y.shape)
+                    np.savetxt(
+                        tres_csv_file, cts_float, delimiter='\t', fmt='%.5f',
+                        header='column indicator is time axis, row indicator is volt axis. Works fine with origin')
+
+                else:
+                    # time resolved array causes problems as csv
+                    exporter_csv = pgexp.CSVExporter(pl)
+                    exporter_csv.parameters()['separator'] = 'tab'
+                    exporter_csv.parameters()['precision'] = 100  # 10 ns
+                    exporter_csv.export(base_file_name + names[i] + '.csv')
+            except Exception as e:
+                logging.error('error while saving %s : %s' % (names[i], e), exc_info=True)
         return storage_path
 
 
 if __name__ == "__main__":
     import sys
+    from Service.AnalysisAndDataHandling.DisplayData import DisplayData
 
     app_log = logging.getLogger()
     # app_log.setLevel(getattr(logging, args.log_level))
@@ -1252,6 +1376,15 @@ if __name__ == "__main__":
 
     app_log.info('****************************** starting ******************************')
     app_log.info('Log level set to DEBUG')
+
+    test_file = 'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\' \
+                'Measurement_and_Analysis_Simon\\Ni_workspace2017\\Ni_2017\\sums\\60_Ni_trs_run114.xml'
+
+    app = QtWidgets.QApplication(sys.argv)
+    ui = TRSLivePlotWindowUi(test_file, subscribe_as_live_plot=False, application=app)
+    spec = XMLImporter(test_file)
+    spec.softBinWidth_ns = [100]
+    disp_data = DisplayData(test_file, ui, x_as_volt=True, loaded_spec=spec)
 
     # test_dict = {'track0': {'preScan':
     #                             {'dmm': {'dmm1': {'data': [1, 2, 3, 4, 5, 6, 7], 'required': 9}},
@@ -1273,103 +1406,103 @@ if __name__ == "__main__":
     #                             {'dmm': {'dmm1': {'data': [1, 2, 3, 4, 5, 6, 7], 'required': 9}},
     #                              'triton': {'dev0': {'data': [1, 2, 3, 4, 5], 'required': 10}}}
     #                         }}
-    test_dict = {'isotopeData': {'type': 'trsdummy', 'nOfTracks': 1, 'accVolt': 3000.0, 'version': '1.20',
-                                 'isotopeStartTime': '2017-12-20 14:32:13', 'isotope': 'anew', 'laserFreq': 120.0},
-                 'pipeInternals': {'activeTrackNumber': (0, 'track0'), 'workingDirectory': 'C:\\TRITON_TILDA\\Temp',
-                                   'activeXmlFilePath': 'C:\\TRITON_TILDA\\Temp\\sums\\anew_trsdummy_run132.xml',
-                                   'curVoltInd': 0},
-                 'track0': {'activePmtList': [0, 1],
-                            'measureVoltPars': {'duringScan': {'measVoltPulseLength25ns': 400,
-                                                               'dmms': {'dummy_somewhere': {'triggerDelay_s': 0.0,
-                                                                                            'sampleCount': 0,
-                                                                                            'readings': [1.0, 1.0, 1.0,
-                                                                                                         1.0, 1.0, 1.0,
-                                                                                                         1.0, 1.0, 1.0,
-                                                                                                         1.0],
-                                                                                            'triggerCount': 0
-                                                                                            }
-                                                                        }
-                                                               },
-                                                'postScan': {},
-                                                'preScan': {'dmms': {'dummy_somewhere': {'sampleCount': 10,
-                                                                                         'readings': [1.0, 1.0, 1.0,
-                                                                                                      1.0, 1.0, 1.0,
-                                                                                                      1.0, 1.0, 1.0,
-                                                                                                      1.0]
-                                                                                         }
-                                                                     }
-                                                            }
-                                                },
-                            'triton': {'duringScan': {'dev0': {'ch0': {'aquired': 6,
-                                                                       'data': [1, 2, 3, 4, 5, 6],
-                                                                       'required': 10
-                                                                       }
-                                                               }
-                                                      },
-                                       'preScan': {},
-                                       'postScan': {}
-                                       }
-                            },
-                 'track1': {'measureVoltPars': {'duringScan': {'dmms': {'dummy_somewhere': {'sampleCount': 0,
-                                                                                            'readings': [1.0, 1.0, 1.0,
-                                                                                                         1.0, 1.0, 1.0,
-                                                                                                         1.0, 1.0, 1.0,
-                                                                                                         1.0]
-                                                                                            }
-                                                                        }
-                                                               },
-                                                'postScan': {},
-                                                'preScan': {'dmms': {'dummy_somewhere': {'sampleCount': 10,
-                                                                                         'readings': [1.0, 1.0, 1.0,
-                                                                                                      1.0, 1.0, 1.0,
-                                                                                                      1.0, 1.0, 1.0,
-                                                                                                      1.0]
-                                                                                         }
-                                                                     }
-                                                            }
-                                                },
-                            'triton': {'duringScan': {'dev0': {'ch0': {'aquired': 10,
-                                                                       'data': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-                                                                       'required': 10
-                                                                       }
-                                                               }
-                                                      },
-                                       'preScan': {},
-                                       'postScan': {'dev0': {'ch0': {'aquired': 6,
-                                                                     'data': [1, 2, 3, 4, 5, 6],
-                                                                     'required': 10
-                                                                     }
-                                                             }
-                                                    }
-                                       }
-                            }
-                 }
-
-    app = QtWidgets.QApplication(sys.argv)
-    ui = TRSLivePlotWindowUi()
-    ui.tabWidget.setCurrentIndex(3)  # time resolved
-
-    ui.pre_post_meas_data_dict_callback.emit(test_dict)
-    test_dict2 = deepcopy(test_dict)
-    test_dict2['track0']['triton']['duringScan'] = {'dev0': {'ch1': {'aquired': 13,
-                                                                     'data': [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-                                                                              0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-                                                                              13,
-                                                                              0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-                                                                              13],
-                                                                     'required': 0
-                                                                     }
-                                                             }
-                                                    }
-    ui.show()
-    ui.tabWidget.setCurrentIndex(3)  # time resolved
-
-    for i in range(0, 100):
-        ui.pre_post_meas_data_dict_callback.emit(test_dict2)
-    # ui.pre_post_meas_data_dict_callback.emit(test_dict2)
-    # ui.pre_post_meas_data_dict_callback.emit(test_dict2)
-
-    # time.sleep(2)
+    # test_dict = {'isotopeData': {'type': 'trsdummy', 'nOfTracks': 1, 'accVolt': 3000.0, 'version': '1.20',
+    #                              'isotopeStartTime': '2017-12-20 14:32:13', 'isotope': 'anew', 'laserFreq': 120.0},
+    #              'pipeInternals': {'activeTrackNumber': (0, 'track0'), 'workingDirectory': 'C:\\TRITON_TILDA\\Temp',
+    #                                'activeXmlFilePath': 'C:\\TRITON_TILDA\\Temp\\sums\\anew_trsdummy_run132.xml',
+    #                                'curVoltInd': 0},
+    #              'track0': {'activePmtList': [0, 1],
+    #                         'measureVoltPars': {'duringScan': {'measVoltPulseLength25ns': 400,
+    #                                                            'dmms': {'dummy_somewhere': {'triggerDelay_s': 0.0,
+    #                                                                                         'sampleCount': 0,
+    #                                                                                         'readings': [1.0, 1.0, 1.0,
+    #                                                                                                      1.0, 1.0, 1.0,
+    #                                                                                                      1.0, 1.0, 1.0,
+    #                                                                                                      1.0],
+    #                                                                                         'triggerCount': 0
+    #                                                                                         }
+    #                                                                     }
+    #                                                            },
+    #                                             'postScan': {},
+    #                                             'preScan': {'dmms': {'dummy_somewhere': {'sampleCount': 10,
+    #                                                                                      'readings': [1.0, 1.0, 1.0,
+    #                                                                                                   1.0, 1.0, 1.0,
+    #                                                                                                   1.0, 1.0, 1.0,
+    #                                                                                                   1.0]
+    #                                                                                      }
+    #                                                                  }
+    #                                                         }
+    #                                             },
+    #                         'triton': {'duringScan': {'dev0': {'ch0': {'aquired': 6,
+    #                                                                    'data': [1, 2, 3, 4, 5, 6],
+    #                                                                    'required': 10
+    #                                                                    }
+    #                                                            }
+    #                                                   },
+    #                                    'preScan': {},
+    #                                    'postScan': {}
+    #                                    }
+    #                         },
+    #              'track1': {'measureVoltPars': {'duringScan': {'dmms': {'dummy_somewhere': {'sampleCount': 0,
+    #                                                                                         'readings': [1.0, 1.0, 1.0,
+    #                                                                                                      1.0, 1.0, 1.0,
+    #                                                                                                      1.0, 1.0, 1.0,
+    #                                                                                                      1.0]
+    #                                                                                         }
+    #                                                                     }
+    #                                                            },
+    #                                             'postScan': {},
+    #                                             'preScan': {'dmms': {'dummy_somewhere': {'sampleCount': 10,
+    #                                                                                      'readings': [1.0, 1.0, 1.0,
+    #                                                                                                   1.0, 1.0, 1.0,
+    #                                                                                                   1.0, 1.0, 1.0,
+    #                                                                                                   1.0]
+    #                                                                                      }
+    #                                                                  }
+    #                                                         }
+    #                                             },
+    #                         'triton': {'duringScan': {'dev0': {'ch0': {'aquired': 10,
+    #                                                                    'data': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    #                                                                    'required': 10
+    #                                                                    }
+    #                                                            }
+    #                                                   },
+    #                                    'preScan': {},
+    #                                    'postScan': {'dev0': {'ch0': {'aquired': 6,
+    #                                                                  'data': [1, 2, 3, 4, 5, 6],
+    #                                                                  'required': 10
+    #                                                                  }
+    #                                                          }
+    #                                                 }
+    #                                    }
+    #                         }
+    #              }
+    #
+    # app = QtWidgets.QApplication(sys.argv)
+    # ui = TRSLivePlotWindowUi()
+    # ui.tabWidget.setCurrentIndex(3)  # time resolved
+    #
+    # ui.pre_post_meas_data_dict_callback.emit(test_dict)
+    # test_dict2 = deepcopy(test_dict)
+    # test_dict2['track0']['triton']['duringScan'] = {'dev0': {'ch1': {'aquired': 13,
+    #                                                                  'data': [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+    #                                                                           0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    #                                                                           13,
+    #                                                                           0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    #                                                                           13],
+    #                                                                  'required': 0
+    #                                                                  }
+    #                                                          }
+    #                                                 }
+    # ui.show()
+    # ui.tabWidget.setCurrentIndex(3)  # time resolved
+    #
+    # for i in range(0, 100):
+    #     ui.pre_post_meas_data_dict_callback.emit(test_dict2)
+    # # ui.pre_post_meas_data_dict_callback.emit(test_dict2)
+    # # ui.pre_post_meas_data_dict_callback.emit(test_dict2)
+    #
+    # # time.sleep(2)
 
 
 

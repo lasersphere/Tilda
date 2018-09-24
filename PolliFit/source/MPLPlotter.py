@@ -690,6 +690,9 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
                                      label=lit_name, linestyle='None',
                                      marker=lit_marker, color=lit_color)
                         literarture_has_been_plotted = True
+                        compl_x += x_lit
+                        compl_y += lit_y
+                        compl_y_err += lit_y_err
                     plt_name = each if comments[ind] == '' else comments[ind]
                     plt.errorbar(x, exp_y, exp_y_err, label='%s' % plt_name,
                                  linestyle='None', marker=markers[ind], color=colors[ind])
@@ -712,7 +715,10 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
     plt.legend(loc='upper center', ncol=2,
                bbox_to_anchor=(0., 0.98, 1, 0.2), mode='expand',
                fontsize=fontsize_ticks+2, numpoints=1)
-
+    # print for origin etc.:
+    print('x\tval\tval_err')
+    for i, each in enumerate(compl_x):
+        print('%.2f\t%.8f\t%.8f' % (each, compl_y[i], compl_y_err[i]))
     plt.margins(0.25)
     ax.set_ylabel('%s [MHz]' % par)
     ax.set_xlabel('A')
@@ -730,7 +736,7 @@ def plot_iso_shift_time_dep(
         ref_dates_date_time, ref_dates_date_time_float, ref_centers, ref_errs, ref,
         iso_dates_datetime, iso_dates_datetime_float, iso_centers, iso_errs, iso,
         slope, offset, plt_label, shift_result_tuple, file_name='', show_plot=True,
-        fig_name='shift', par_name='center [MHz]'):
+        fig_name='shift', par_name='center [MHz]', font_size=12):
     """ function to plot the isotope shift along with the references versus timestamp of the files """
     fig = plt.figure('%s %s' % (fig_name, iso), figsize=(16, 9))
     fig.set_facecolor('w')
@@ -748,11 +754,12 @@ def plot_iso_shift_time_dep(
     plt.xticks(rotation=25)
     xfmt = DateFormatter('%Y-%m-%d %H:%M:%S')
     main_ax.xaxis.set_major_formatter(xfmt)
-    main_ax.set_ylabel('ref %s %s' % (ref, par_name))
+    main_ax.set_ylabel('ref %s %s' % (ref, par_name), fontsize=font_size)
+    main_ax.tick_params(labelsize=font_size)
     twinx = plt.twinx(main_ax)
     iso_line = twinx.errorbar(iso_dates_datetime, iso_centers, yerr=iso_errs, fmt='bs', label='center %s' % iso)
-    twinx.set_ylabel('%s %s' % (iso, par_name), color='b')
-    twinx.tick_params('y', colors='b')
+    twinx.set_ylabel('%s %s' % (iso, par_name), color='b', fontsize=font_size)
+    twinx.tick_params('y', colors='b', labelsize=font_size)
     lines = [ref_line, fit_line, iso_line]
     # shift_result_tuple should be a tuple of ([shift_run0, shift_run1, ...], [err_shift_run0, err_shift_run1, ...])
     shift_result_str = 'shift ' + str(
@@ -760,7 +767,7 @@ def plot_iso_shift_time_dep(
     line_lables = [l.get_label() for l in lines] + [shift_result_str]
     lines += [patches.Rectangle((0, 0), 1, 1, fc="w", fill=False, edgecolor='none', linewidth=0)]
     fig.legend(lines, line_lables, loc='upper center', ncol=2,
-               bbox_to_anchor=(0.1, 0.8, 0.7, 0.2), mode='expand')
+               bbox_to_anchor=(0.1, 0.8, 0.7, 0.2), mode='expand', fontsize=font_size+2, numpoints=1)
     twinx.ticklabel_format(axis='y', useOffset=False)
     if file_name:
         if not os.path.isdir(os.path.dirname(file_name)):

@@ -167,6 +167,10 @@ def create_viewbox():
     return pg.ViewBox()
 
 
+def create_plotitem():
+    return pg.PlotItem()
+
+
 def create_plot_data_item(x, y, pen='b', stepMode=False):
     return pg.PlotDataItem(x, y, pen=pen, stepMode=stepMode)
 
