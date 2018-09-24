@@ -153,17 +153,26 @@ class AnalysisThread(QThread):
             self.msleep(50)  # not sure if necessary
         if self.stop_analysis_bool:
             logging.info('stopping pipeline now!')
-            self.pipeline.stop()
+            try:
+                self.pipeline.stop()
+            except Exception as e:
+                logging.error('while stopping the pipeline the error in pipeline.stop() occurred: %s' % e,
+                              exc_info=True)
         if self.clear_after_finish:
             # this means saving! -> finish analysis of all stored elements,
             # before clearing the pipe!
             logging.info('will save now!')
-            self.pipeline.save()
+            try:
+                self.pipeline.save()
+            except Exception as e:
+                logging.error('while saving the error in pipeline.save() occurred: %s' % e, exc_info=True)
+            logging.info('Saving completed!')
             # self.sleep(5)  # simulate saving
         # print('done with analysis')
         self.stop_analysis_bool = False
         self.clear_after_finish = False
         self.quit()  # stop the thread from running
+        logging.info('Analysis thread was successfully stopped!')
 
     def stop_analysis(self, clear_also):
         logging.info('ScanMain received stop pipeline command')

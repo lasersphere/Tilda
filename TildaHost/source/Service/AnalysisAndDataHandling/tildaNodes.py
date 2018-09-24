@@ -235,9 +235,13 @@ class NAddWorkingTimeOnClear(Node):
         return data
 
     def clear(self):
-        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
-            self.Pipeline.pipeData[track_name])
+        try:
+            track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+            self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
+                self.Pipeline.pipeData[track_name])
+        except Exception as e:
+            logging.warning('pipeline was stopped, but Node %s could not execute clear(),'
+                            ' maybe no data was incoming yet? Error was: %s' % (self.type, e))
 
     def save(self):
         self.clear()
@@ -414,11 +418,18 @@ class NSaveRawData(Node):
         return data
 
     def clear(self):
-        Filehandle.saveRawData(self.buf, self.Pipeline.pipeData, 0)
-        Filehandle.savePipeData(self.Pipeline.pipeData, 0)  # also save the pipeData when clearing
-        self.time_of_last_save = datetime.now()
-        self.nOfSaves = None
-        self.buf = None
+        try:
+            if self.buf is not None:
+                if self.buf.size:
+                    Filehandle.saveRawData(self.buf, self.Pipeline.pipeData, 0)
+                    Filehandle.savePipeData(self.Pipeline.pipeData, 0)  # also save the pipeData when clearing
+        except Exception as e:
+            logging.warning('pipeline was stopped, but Node %s could not execute clear(),'
+                            ' maybe no data was incoming yet? Error was: %s' % (self.type, e))
+        finally:
+            self.time_of_last_save = datetime.now()
+            self.nOfSaves = None
+            self.buf = None
 
     def save(self):
         self.clear()
@@ -1418,21 +1429,30 @@ class NMPLImagePlotAndSaveSpecData(Node):
         # pass
 
     def stop(self):
-        logging.info('pipeline was stopped')
-        self.rebin_and_gate_new_data(self.stored_data)
+        try:
+            logging.info('pipeline was stopped')
+            # if self.stored_data is not None:
+            self.rebin_and_gate_new_data(self.stored_data)
+        except Exception as e:
+            logging.warning('pipeline was stopped, but Node %s could not execute stop(),'
+                            ' maybe no data was incoming yet? Error was: %s' % (self.type, e))
 
     def save(self):
-        self.rebin_and_gate_new_data(self.stored_data)
-        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
-            self.Pipeline.pipeData[track_name])
-        logging.debug('working time has ben set to: %s ' % str(self.Pipeline.pipeData[track_name]['workingTime']))
-        if self.stored_data is not None:  # maybe abort was pressed before any data was collected.
-            if self.rebinned_data.seq_type in self.trs_names_list:
-                # copy gates from gui values and gate
-                self.stored_data.softw_gates = deepcopy(self.rebinned_data.softw_gates)
-                self.stored_data = TildaTools.gate_specdata(self.stored_data)
-            TildaTools.save_spec_data(self.stored_data, self.Pipeline.pipeData)
+        try:
+            self.rebin_and_gate_new_data(self.stored_data)
+            track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+            self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
+                self.Pipeline.pipeData[track_name])
+            logging.debug('working time has ben set to: %s ' % str(self.Pipeline.pipeData[track_name]['workingTime']))
+            if self.stored_data is not None:  # maybe abort was pressed before any data was collected.
+                if self.rebinned_data.seq_type in self.trs_names_list:
+                    # copy gates from gui values and gate
+                    self.stored_data.softw_gates = deepcopy(self.rebinned_data.softw_gates)
+                    self.stored_data = TildaTools.gate_specdata(self.stored_data)
+                TildaTools.save_spec_data(self.stored_data, self.Pipeline.pipeData)
+        except Exception as e:
+            logging.warning('pipeline was stopped, but Node %s could not execute save(),'
+                            ' maybe no data was incoming yet? Error was: %s' % (self.type, e))
 
     def gate_data(self, specdata, softw_gates_for_all_tr=None):
         """ gates all data with the given list of gates, returns gated specdata. """
@@ -1505,15 +1525,22 @@ class NMPLImagePlotAndSaveSpecData(Node):
 
     def rebin_and_gate_new_data(self, newdata):
         """ this will force a rebin and gate followed by a send of the self.rebinned_data """
-        self.mutex.lock()
-        if self.rebinned_data is None:  # do not overwrite before getting the previous settings
-            self.rebinned_data = newdata
-        gates = deepcopy(self.rebinned_data.softw_gates)  # store previous set gates!
-        binwidth = deepcopy(self.rebinned_data.softBinWidth_ns)  # .. and binwidth
-        self.rebinned_data = newdata
-        self.mutex.unlock()
-        self.rcvd_gates_and_rebin(gates, self.rebin_track_ind, binwidth, True)
-        # self.mutex.unlock()
+        try:
+            if newdata is not None:
+                self.mutex.lock()
+                if self.rebinned_data is None:  # do not overwrite before getting the previous settings
+                    self.rebinned_data = newdata
+                gates = deepcopy(self.rebinned_data.softw_gates)  # store previous set gates!
+                binwidth = deepcopy(self.rebinned_data.softBinWidth_ns)  # .. and binwidth
+                self.rebinned_data = newdata
+                self.mutex.unlock()
+                self.rcvd_gates_and_rebin(gates, self.rebin_track_ind, binwidth, True)
+        except Exception as e:
+            logging.error(
+                'while rebinning new data in %s.rebin_and_gate_new_data() the following error occurred: %s'
+                % (self.type, e)
+            )
+            self.mutex.unlock()
 
 
 class NSortedZeroFreeTRSDat2SpecData(Node):
@@ -2321,9 +2348,13 @@ class NSendnOfCompletedStepsViaQtSignal(Node):
         return data
 
     def clear(self):
-        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        if self.qt_signal is not None:
-            self.qt_signal.emit(self.Pipeline.pipeData[track_name]['nOfCompletedSteps'])
+        try:
+            track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+            if self.qt_signal is not None:
+                self.qt_signal.emit(self.Pipeline.pipeData[track_name]['nOfCompletedSteps'])
+        except Exception as e:
+            logging.warning('pipeline was stopped, but Node %s could not execute clear(),'
+                            ' maybe no data was incoming yet? Error was: %s' % (self.type, e))
 
 
 class NSendnOfCompletedStepsAndScansViaQtSignal(Node):
@@ -2556,12 +2587,16 @@ class NFilterDMMDictsAndSave(Node):
     def save(self):
         # overwrites the pipeData with store_data. The pipeData will be stored later on
         # self.Pipeline.pipeData = deepcopy(self.store_data)
-        for key, val in self.Pipeline.pipeData.items():
-            if 'track' in key:
-                self.Pipeline.pipeData[key]['measureVoltPars']['duringScan'] = deepcopy(
-                    self.store_data[key]['measureVoltPars']['duringScan'])
-                self.Pipeline.pipeData[key]['triton']['duringScan'] = deepcopy(
-                    self.store_data[key]['triton'].get('duringScan', {}))
+        try:
+            for key, val in self.Pipeline.pipeData.items():
+                if 'track' in key:
+                    self.Pipeline.pipeData[key]['measureVoltPars']['duringScan'] = deepcopy(
+                        self.store_data[key]['measureVoltPars']['duringScan'])
+                    self.Pipeline.pipeData[key]['triton']['duringScan'] = deepcopy(
+                        self.store_data[key]['triton'].get('duringScan', {}))
                 # print('triton dict on save in pipeline:')
                 # TildaTools.print_dict_pretty(self.Pipeline.pipeData[key]['triton']['duringScan'])
+        except Exception as e:
+            logging.warning('pipeline was stopped, but Node %s could not execute save(),'
+                            ' maybe no data was incoming yet? Error was: %s' % (self.type, e))
 
