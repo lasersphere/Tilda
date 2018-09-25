@@ -1433,6 +1433,10 @@ class NMPLImagePlotAndSaveSpecData(Node):
             logging.info('pipeline was stopped')
             # if self.stored_data is not None:
             self.rebin_and_gate_new_data(self.stored_data)
+            track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+            self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
+                self.Pipeline.pipeData[track_name])
+            logging.debug('working time has ben set to: %s ' % str(self.Pipeline.pipeData[track_name]['workingTime']))
         except Exception as e:
             logging.warning('pipeline was stopped, but Node %s could not execute stop(),'
                             ' maybe no data was incoming yet? Error was: %s' % (self.type, e))
@@ -1440,10 +1444,6 @@ class NMPLImagePlotAndSaveSpecData(Node):
     def save(self):
         try:
             self.rebin_and_gate_new_data(self.stored_data)
-            track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-            self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
-                self.Pipeline.pipeData[track_name])
-            logging.debug('working time has ben set to: %s ' % str(self.Pipeline.pipeData[track_name]['workingTime']))
             if self.stored_data is not None:  # maybe abort was pressed before any data was collected.
                 if self.rebinned_data.seq_type in self.trs_names_list:
                     # copy gates from gui values and gate

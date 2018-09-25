@@ -36,6 +36,7 @@ class Ui_EditOutbit(object):
         self.comboBox_scan_step.setObjectName("comboBox_scan_step")
         self.formLayout.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.comboBox_scan_step)
         self.spinBox_scan_step_num = QtWidgets.QSpinBox(EditOutbit)
+        self.spinBox_scan_step_num.setMaximum(99999999)
         self.spinBox_scan_step_num.setObjectName("spinBox_scan_step_num")
         self.formLayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.spinBox_scan_step_num)
         self.label_4 = QtWidgets.QLabel(EditOutbit)

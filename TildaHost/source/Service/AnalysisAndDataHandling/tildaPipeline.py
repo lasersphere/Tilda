@@ -144,7 +144,7 @@ def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False,
     """
     start = Node()
 
-    maintenance = start.attach(TN.NAddWorkingTimeOnClear(True))
+    maintenance = start.attach(TN.NAddWorkingTimeOnStart(True))
     if live_plot_callbacks is None:
         live_plot_callbacks = (None, None, None, None, None, None)
 

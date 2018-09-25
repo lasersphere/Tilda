@@ -177,6 +177,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.spinBox.valueChanged.connect(self.rebin_data)
         self.checkBox.stateChanged.connect(self.apply_rebin_to_all_checkbox_changed)
 
+        self.pushButton_save_after_scan.setText('save current view')
+        self.pushButton_save_after_scan.clicked.connect(self.export_screen_shot)
+
         self.setup_range_please = True  # boolean to store if the range has ben setup yet or not
 
         self.tres_offline_txt_itm = None  # Textitem to display, when tres plot is not plotted currently
@@ -339,7 +342,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.t_proj_layout = QtWidgets.QVBoxLayout()
         self.t_proj_layout.addWidget(self.t_proj_wid)
         self.widget_proj_t.setLayout(self.t_proj_layout)
-        self.pushButton_save_after_scan.clicked.connect(self.save)
+        # self.pushButton_save_after_scan.clicked.connect(self.save)
         max_rate = 60
         self.t_res_mouse_proxy = Pg.create_proxy(signal=self.tres_plt_item.scene().sigMouseMoved,
                                                  slot=functools.partial(self.mouse_moved, self.tres_plt_item.vb, True),

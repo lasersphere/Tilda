@@ -487,9 +487,9 @@ def extract_file_as_ascii(db, file, sc, tr, x_in_freq=False, line_var='', save_t
             if x_in_freq:
                 line = '%.3f\t' % dac_volts
             else:
-                line = '%.7f\t' % dac_volts
+                line = '%.8f\t' % dac_volts
             for sc_i, each in enumerate(sc):
-                line += '%.3f\t' % arith_spec[sc_i][1][dac_i]
+                line += '%.8f\t' % arith_spec[sc_i][1][dac_i]
             f.write(line + '\n')
     f.close()
     return save_to
