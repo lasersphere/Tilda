@@ -1,0 +1,82 @@
+"""
+Change list between release with the info on fixes, major changes etc. last changes always on top.
+to identify links use: (htt...)
+"""
+
+***************************************   Changes for version 1.23 ***************************************
+
+Summary (find details below):
+
+This is the start of the Changelog for Tilda, major changes will be summarized
+at the beginning of each release log, followed by a short but detailed description
+of added features, improvements and bug fixes. Links to the relevant Asana tasks are helpful.
+
+
+A script for the selective analysis of only some bunches per step was implemented.
+Also the analysis of the data was considerably improved and does not block the Graphical User Interface
+anymore by blocking the global interpreter lock.
+Also some relevant bug fixes, from fixing the plot display to some improvements of
+an unwanted dependency of the pre-/during- scan measurement.
+
+
+Added:
+    - Change log between releases
+
+    - Script for analysis of only some bunches:
+        User can select which bunches to analyse, best is to see in Scratch/ReconstructRawData.py
+        As requested in (https://app.asana.com/0/10893101573162/113240495951759/f)
+
+    - for Agilent3458A an option to adjust the number of power line cycles (NPLC) was added.
+
+    - export function for the currently shown time resolved view, as a .pgn of the whole window and
+      all currently shown plots are saved as .png, .svg and .csv. The user is asked to choose the storage location.
+      Currently only supported in time resolved plot.
+      Shortcut: Strg + S
+
+Improved:
+
+    - dummy data constructed in TimeResolvedSequencerDummy is now of better quality since there is
+      always a 10ns gap in the time axis and the pattern is repeated if it does not fit over all steps.
+      Also number of bunches will be relevant.
+      It is also possible to have a count in every bin, to stress the memory as much as possible,
+      therefore one has to set count_in_every_bin=True in self.data_builder(...)
+
+    - Analysis of time resolved data was improved:
+        as before, incoming raw data is translated to zero free data array
+        (scaler_number, line_voltage_step_number, time_stamp, number_of_counts)
+        but now instead of appending this to a zero free sum array of all counts, this short array is translated to a
+        full non zero free matrix, which is then added to the sum matrix, this goes rather quick and the
+        sorting algorithm for sorting raw_data->zero_free_array->full_matrix stays rather at the same speed and
+        does not increase towards the end of the scan by more incoming data.
+        Before the sorting algorithm took rather long and it could not be interrupted therefore
+        the analysis thread could not be interrupted from the global interpreter lock (GIL) and the GUI was "frozen".
+        (https://app.asana.com/0/10893101573162/684292750460327/f)
+
+    - replaced remaining print(..) calls by appropiate logging.something(..) calls
+    (https://app.asana.com/0/10893101573162/686607755696863/f)
+
+Fixed:
+
+    - a-axis in time resolved plot and voltage projction now matches range, before it was a little bit offset.
+      Same for y-axis in time projection and the corresponding y-axis in time resolved plot
+    - If Timeout occurs in pre-/post meas the dialog is not modal anymore, so scan can continue without user input.
+      (https://app.asana.com/0/10893101573162/705131685031306/f)
+    - fixed "breathing" of plotrange (https://app.asana.com/0/10893101573162/705027703451576/f)
+    - fixed communication with Agilent3458A (https://app.asana.com/0/10893101573162/807169587029550/f)
+    - fixed issue with during scan measurement preparation, which was before dependent on the pre scan measurement
+      and would not start a triton / dmm measurement depending on the pre scan
+      (https://app.asana.com/0/10893101573162/805241150974142/f)
+      (https://app.asana.com/0/10893101573162/773897941897101/f)
+    - fixed behavior of all Nodes, when the scan was stopped before data was coming in
+      (https://app.asana.com/0/10893101573162/635091025014538/f)
+    - Outbit Ui -> step/Scan number input was limited to 99, replaced with 99999999
+    - working time for each track was not saved properly in some cases this was fixed by introducing the nodes
+      NAddWorkingTimeOnStart(...) and by adding the working time also in the stop() call in the node
+      NMPLImagePlotAndSaveSpecData(...)
+      (https://app.asana.com/0/10893101573162/773897941897102/f)
+
+
+***********************************************************************************************************************
+
+
+

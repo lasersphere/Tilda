@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_Version(object):
     def setupUi(self, Version):
         Version.setObjectName("Version")
-        Version.resize(188, 81)
+        Version.resize(203, 96)
         Version.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.gridLayout_2 = QtWidgets.QGridLayout(Version)
         self.gridLayout_2.setObjectName("gridLayout_2")
@@ -41,6 +41,9 @@ class Ui_Version(object):
         self.labelVersionFix.setObjectName("labelVersionFix")
         self.gridLayout.addWidget(self.labelVersionFix, 0, 0, 1, 1)
         self.gridLayout_2.addLayout(self.gridLayout, 0, 0, 1, 1)
+        self.pushButton_whatsNew = QtWidgets.QPushButton(Version)
+        self.pushButton_whatsNew.setObjectName("pushButton_whatsNew")
+        self.gridLayout_2.addWidget(self.pushButton_whatsNew, 1, 0, 1, 1)
 
         self.retranslateUi(Version)
         QtCore.QMetaObject.connectSlotsByName(Version)
@@ -52,4 +55,5 @@ class Ui_Version(object):
         self.labelDate.setText(_translate("Version", "TextLabel"))
         self.labelVersion.setText(_translate("Version", "TextLabel"))
         self.labelVersionFix.setText(_translate("Version", "Version:"))
+        self.pushButton_whatsNew.setText(_translate("Version", "what\'s new?"))
 
