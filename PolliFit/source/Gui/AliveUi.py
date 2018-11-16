@@ -159,8 +159,8 @@ class AliveUi(QtWidgets.QWidget, Ui_Alive):
                         Delta_min = (hvVolt[b][2] - refVolt[a][1])
 
                         #Delta = (hv_measurement[0] - ref_measurement + hv_measurement[1])/hv_measurement[1]*1000000
-                        data = data + [Delta]
-                        Error=Error+ [[Delta-Delta_min,Delta_max-Delta]]
+                        data = data + [-Delta] # Bisher wurde immer betrag der Spannung ausgegeben. Auf Wunsch jetzt negativ
+                        Error=Error+ [[-(Delta-Delta_min),-(Delta_max-Delta)]]
                         ref_xData=ref_xData+[ref_x_data[a]]
                         ref_timeData=ref_timeData+[ref_time_data[a]]
 

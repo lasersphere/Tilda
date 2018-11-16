@@ -436,7 +436,11 @@ def combineShiftOffsetPerBunchDisplay(iso, run, db, show_plot=False):
     """
     takes an Isotope a run and a database and gives offsets per bunch for all
      Isotopes involved in one IsotopeShift value
-        :return: list, (shifts, shiftErrors, shifts_weighted_mean, statErr, systErr, rChi)
+        :return: offsets, offsetErrs, config
+
+        offsets: list, [[ref_offset0, ref_offset1, ... ], [iso_offset0, iso_offset1, ...]]
+        offsetErrs: list, [[ref_offset_err0, ref_offset_err1, ... ], [iso_offset_err0, iso_offset_err1, ...]]
+        config: list, [(ref_file_str0, ref_file_str1, ...), (iso_file_str0, ...), (ref_file_str0, ...)]
     """
     print('Open DB', db)
     # get the shift config for this iso and run:
@@ -557,7 +561,7 @@ def combineShiftOffsetPerBunchDisplay(iso, run, db, show_plot=False):
     #     plt.show(True)
     # plt.clear()
 
-    return offsets, offsetErrors
+    return offsets, offsetErrors, config
 
 
 def straight_func(x, slope, offset):

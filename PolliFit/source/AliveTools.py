@@ -51,7 +51,7 @@ def get_listAll_from_db(dbpath):
 
 def find_ref_files(file,all_Files):
     """
-    this will search for the previous and the next reference measurement for a given HV measurement file
+    this will search for the previous and the next reference measurement for a given HV measurement file.
     :param file: HV measurement file, all_Files: dictionary of all files
     :return: ref_Files
     """
@@ -190,18 +190,24 @@ def get_nameNumber_and_time(chosenFiles):
     :param chosenFiles: str, name of files
     :return: int, nameNumber
     """
+    #War für altes Datenaufnahmesystem geschrieben. Nummer auslesen ist angepasst. Zeit nicht, da automatischer Vergleich eh noch nicht implementiert
     if len(chosenFiles) > 0:
+        fileType=chosenFiles[-4:]
 
-        ind=chosenFiles.find('_')
-        nameNumberString=chosenFiles[ind+10:]
-        ind=nameNumberString.find('_')
-        nameNumber=int(nameNumberString[:ind])
-        date=chosenFiles[:10]
-        date=date.replace('-','.')
-        time=chosenFiles[11:19]
-        time=time.replace('-',':')
-        dateTime=date+' '+time
-
+        if fileType=='.dat':
+            ind=chosenFiles.find('_')
+            nameNumberString=chosenFiles[ind+10:]
+            ind=nameNumberString.find('_')
+            nameNumber=int(nameNumberString[:ind])
+            date=chosenFiles[:10]
+            date=date.replace('-','.')
+            time=chosenFiles[11:19]
+            time=time.replace('-',':')
+            dateTime=date+' '+time
+        elif fileType=='.xml':
+            ind=chosenFiles.find('.xml')
+            nameNumber=int(chosenFiles[ind-3:ind])
+            dateTime=str(0)
         numberAndTime=[nameNumber,dateTime]
 
         return numberAndTime
@@ -224,11 +230,13 @@ def get_offsetVolt_from_db(dbpath, chosenFiles):
         cur = con.cursor()
         cur.execute('''SELECT offset FROM Files WHERE file = ?''', (file,))
         offsetVolt = cur.fetchall()
+        if offsetVolt==[('[0]',)]:
+            offsetVolt=[(0.0,)]
         if offsetVolt:
-            offsetVoltage = offsetVolt[0][0] * offsetVoltRatio
+            offsetVoltage =offsetVolt[0][0] * offsetVoltRatio
         return offsetVoltage
     else:
-        return 0.0
+        return 0.00
 
 
 def get_mass_from_db(dbpath, chosenFiles):

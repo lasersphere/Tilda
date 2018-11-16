@@ -59,7 +59,7 @@ combine_offset = False
 # combine final run values -> joined of hot cec and normal
 combine_final_run = False
 print_moments_latex = True
-combine_final_moments = True
+combine_final_moments = False
 
 
 # for plotting:
@@ -861,10 +861,10 @@ MPLPlotter.plot_par_from_combined(db, runs_to_compare,
 
 king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, font_size=26)
 king.kingFit(alpha=0, findBestAlpha=False, run=current_run, find_slope_with_statistical_error=False)
-# king.calcChargeRadii(isotopes=isotopes, run=current_run, plot_evens_seperate=True)
+king.calcChargeRadii(isotopes=isotopes, run=current_run, plot_evens_seperate=True, print_results=True)
 
 king.kingFit(alpha=365, findBestAlpha=True, run=final_2017_run)
-radii_alpha = king.calcChargeRadii(isotopes=isotopes, run=final_2017_run, plot_evens_seperate=True)
+radii_alpha = king.calcChargeRadii(isotopes=isotopes, run=final_2017_run, plot_evens_seperate=True, print_results=True)
 print('radii with alpha', radii_alpha)
 
 ''' compare radii '''

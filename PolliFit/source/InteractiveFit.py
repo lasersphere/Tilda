@@ -69,7 +69,7 @@ class InteractiveFit(object):
                     plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize, data_fmt=data_fmt)
                 else:
                     iso = DBIsotope(db, meas.type, lineVar=linevar)
-                    if var[0][0] == '_m':
+                    if var[0][0] == '_m' or var[0][0] == '_m1' or var[0][0] == '_m2':
                         iso_m = DBIsotope(db, meas.type, var[0][0], var[0][1])
                         spec = FullSpec(iso, iso_m)
                         spec_iso = FullSpec(iso)
@@ -139,8 +139,15 @@ class InteractiveFit(object):
         if clear_plot:
             plot.clear()
         if self.fitter_m is not None:
-            self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
-            self.fitter_m.par = pars[0:self.num_of_common_vals] + pars[len(self.fitter_iso.par):]
+            if self.fitter.meas.seq_type == 'trs':  # needed in next step since self.fitter_iso.par has 3 pars for trs meas appended:
+                num_of_trs_pars = 3  # SoftwGatesWidth, SoftwGatesDelayList, midTof
+                trs_pars = pars[-3:]
+            else:
+                num_of_trs_pars = 0
+                trs_pars = []
+
+            self.fitter_iso.par = pars[0:len(self.fitter_iso.par) - num_of_trs_pars] + trs_pars
+            self.fitter_m.par = pars[0:self.num_of_common_vals] + pars[len(self.fitter_iso.par) - num_of_trs_pars:]
             plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False,
                          fontsize_ticks=self.fontSize, plot_data=False, add_label=' gs',
                          data_fmt=data_fmt, x_in_freq=self.plot_in_freq,
@@ -164,8 +171,15 @@ class InteractiveFit(object):
         pars = self.fitter.par
         plot.clear()
         if self.fitter_m is not None:
-            self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
-            self.fitter_m.par = pars[0:self.num_of_common_vals] + pars[len(self.fitter_iso.par):]
+            if self.fitter.meas.seq_type == 'trs':  # needed in next step since self.fitter_iso.par has 3 pars for trs meas appended:
+                num_of_trs_pars = 3  # SoftwGatesWidth, SoftwGatesDelayList, midTof
+                trs_pars = pars[-3:]
+            else:
+                num_of_trs_pars = 0
+                trs_pars = []
+
+            self.fitter_iso.par = pars[0:len(self.fitter_iso.par) - num_of_trs_pars] + trs_pars
+            self.fitter_m.par = pars[0:self.num_of_common_vals] + pars[len(self.fitter_iso.par) - num_of_trs_pars:]
             plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False,
                          fontsize_ticks=self.fontSize, plot_data=False, add_label=' gs', x_in_freq=self.plot_in_freq)
             plot.plotFit(self.fitter_m, color='-g', plot_residuals=False,
@@ -191,8 +205,16 @@ class InteractiveFit(object):
         pars = self.fitter.par
         plot.clear()
         if self.fitter_m is not None:
-            self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
-            self.fitter_m.par = pars[0:self.num_of_common_vals] + pars[len(self.fitter_iso.par):]
+            if self.fitter.meas.seq_type == 'trs':  # needed in next step since self.fitter_iso.par has 3 pars for trs meas appended:
+                num_of_trs_pars = 3                 # SoftwGatesWidth, SoftwGatesDelayList, midTof
+                trs_pars = pars[-3:]
+            else:
+                num_of_trs_pars = 0
+                trs_pars = []
+
+            self.fitter_iso.par = pars[0:len(self.fitter_iso.par)-num_of_trs_pars] + trs_pars
+            self.fitter_m.par = pars[0:self.num_of_common_vals] + pars[len(self.fitter_iso.par)-num_of_trs_pars:]
+            print()
             plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False,
                          fontsize_ticks=self.fontSize, plot_data=False, add_label=' gs', x_in_freq=self.plot_in_freq)
             plot.plotFit(self.fitter_m, color='-g', plot_residuals=False,
@@ -211,8 +233,15 @@ class InteractiveFit(object):
         pars = self.fitter.par
         plot.clear()
         if self.fitter_m is not None:
-            self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
-            self.fitter_m.par = pars[0:self.num_of_common_vals] + pars[len(self.fitter_iso.par):]
+            if self.fitter.meas.seq_type == 'trs':  # needed in next step since self.fitter_iso.par has 3 pars for trs meas appended:
+                num_of_trs_pars = 3  # SoftwGatesWidth, SoftwGatesDelayList, midTof
+                trs_pars = pars[-3:]
+            else:
+                num_of_trs_pars = 0
+                trs_pars = []
+
+            self.fitter_iso.par = pars[0:len(self.fitter_iso.par) - num_of_trs_pars] + trs_pars
+            self.fitter_m.par = pars[0:self.num_of_common_vals] + pars[len(self.fitter_iso.par) - num_of_trs_pars:]
             plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False,
                          fontsize_ticks=self.fontSize, plot_data=False, add_label=' gs', x_in_freq=self.plot_in_freq)
             plot.plotFit(self.fitter_m, color='-g', plot_residuals=False,
