@@ -85,11 +85,12 @@ def get_laserFreq_from_db(dbpath, chosenFiles):
         file = chosenFiles  # [0]
         con = sqlite3.connect(dbpath)
         cur = con.cursor()
-        cur.execute('''SELECT laserFreq FROM Files WHERE file = ?''', (file,))
+        cur.execute('''SELECT laserFreq, laserFreq_d FROM Files WHERE file = ?''', (file,))
         laserfreq = cur.fetchall()
         if laserfreq:
             laserfrequency = laserfreq[0][0]
-            return laserfrequency
+            laserfrequency_d = laserfreq[0][1]
+            return [laserfrequency, laserfrequency_d]
         else:
             return 0.0
 
@@ -190,7 +191,7 @@ def get_nameNumber_and_time(chosenFiles):
     :param chosenFiles: str, name of files
     :return: int, nameNumber
     """
-    #War für altes Datenaufnahmesystem geschrieben. Nummer auslesen ist angepasst. Zeit nicht, da automatischer Vergleich eh noch nicht implementiert
+    #War fï¿½r altes Datenaufnahmesystem geschrieben. Nummer auslesen ist angepasst. Zeit nicht, da automatischer Vergleich eh noch nicht implementiert
     if len(chosenFiles) > 0:
         fileType=chosenFiles[-4:]
 
@@ -233,7 +234,35 @@ def get_offsetVolt_from_db(dbpath, chosenFiles):
         if offsetVolt==[('[0]',)]:
             offsetVolt=[(0.0,)]
         if offsetVolt:
-            offsetVoltage =offsetVolt[0][0] * offsetVoltRatio
+            offsetVoltage =ast.literal_eval(offsetVolt[0][0])[0] * offsetVoltRatio
+        return offsetVoltage
+    else:
+        return 0.00
+
+
+def get_real_offsetVolt_from_db(dbpath, chosenFiles, measOffset, gain, voltDivRatio):
+    """
+    this will connect to the database and read the offsetVolt for the chosenFiles. Afterwards, the real offset is
+    calculated with the divOffset, gain and divRatio.
+    :param dbpath: str, path to .slite db
+    :param chosenFiles: str, name of files
+    :return: float, offsetVoltage
+    """
+    if len(chosenFiles) > 0:
+        file = chosenFiles  # [0]
+        con = sqlite3.connect(dbpath)
+        cur = con.cursor()
+        cur.execute('''SELECT offset FROM Files WHERE file = ?''', (file,))
+        offsetVolt = cur.fetchall()
+        if offsetVolt==[('[0]',)]:
+            offsetVolt=[(0.0,)]
+        if offsetVolt:
+            print("File: ", file)
+            print("meas: ", ast.literal_eval(offsetVolt[0][0])[0])
+            print("measOffset: ", measOffset)
+            print("gain: ", gain)
+            print("voltDivRatio: ", voltDivRatio)
+            offsetVoltage =(ast.literal_eval(offsetVolt[0][0])[0]-measOffset) * gain * voltDivRatio
         return offsetVoltage
     else:
         return 0.00
@@ -310,11 +339,11 @@ def transformFreqToVolt(dbpath, chosenFiles, run, center):
         f0 = get_transitionFreq_from_db(dbpath, chosenFiles, run)
 
         # Calculation of Kepco Voltage
-        v = Physics.invRelDoppler(fL, f0 + center)
+        v = Physics.invRelDoppler(fL[0], f0 + center)
         voltTotal = mass * speedOfLight ** 2 * ((1 - (v / speedOfLight) ** 2) ** (-1 / 2) - 1) / electronCharge
         voltKepco = voltTotal - abs(accVolt) - abs(offsetVolt)
         # Calculation of total voltage
-        v_Laser = Physics.invRelDoppler(fL, f0)
+        v_Laser = Physics.invRelDoppler(fL[0], f0)
         voltTotal_Laser = mass * speedOfLight ** 2 * (
         (1 - (v_Laser / speedOfLight) ** 2) ** (-1 / 2) - 1) / electronCharge
         volt_Laser = voltTotal_Laser - voltKepco
@@ -333,11 +362,12 @@ def calculateVoltage(dbpath, chosenFiles, run):
     :return: float, volt_Laser
     """
     center = get_center_from_db(dbpath, chosenFiles)
+    laserFreq_d = get_laserFreq_from_db(dbpath, chosenFiles) #Not implemented yet. But should work by only adding it to next 3 lines
+
 
     volt_Laser=transformFreqToVolt(dbpath, chosenFiles, run, center[0])
     volt_Laser_max=transformFreqToVolt(dbpath, chosenFiles, run, center[0]-center[1])
     volt_Laser_min=transformFreqToVolt(dbpath, chosenFiles, run, center[0]+center[1])
-
     voltages=[volt_Laser,volt_Laser_max,volt_Laser_min]
 
     return voltages
