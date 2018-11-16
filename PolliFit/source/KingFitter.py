@@ -362,21 +362,30 @@ class KingFitter(object):
         )
                                      for i, j in enumerate(self.isotopeShifts)]
         errs_to_print = [(
-                             self.isotopes[i],
-                             self.chargeradii[i],
-                             self.chargeradiiTotalErrs[i],
-                             abs(self.chargeradiiTotalErrs[i] / self.chargeradii[i]) * 100,
-                             abs(self.isotopeShiftStatErr[i] / self.b),
-                             abs(self.aerr / (self.isotopeRedMasses[i] * self.b)),
-                             abs((self.a / self.isotopeRedMasses[i] - j) * self.berr / np.square(self.b)),
-                             abs((self.a / self.b - self.c) * self.isotopeRedMassesErr[i] / np.square(self.isotopeRedMasses[i])),
+                             self.isotopes[i],  # iso
+                             self.isotopeShifts[i],  # shift
+                             self.isotopeShiftStatErr[i],  # shift_stat_err
+                             abs(self.isotopeShiftStatErr[i] / self.isotopeShifts[i]) * 100,  # rel. shift_stat_err
+                             self.chargeradii[i],  # dr^2
+                             self.chargeradiiTotalErrs[i],  # Delta dr^2
+                             abs(self.chargeradiiTotalErrs[i] / self.chargeradii[i]) * 100,  # rel. Delta dr^2
+                             abs(self.isotopeShiftStatErr[i] / self.b),  # Delta Is
+                             abs(self.aerr / (self.isotopeRedMasses[i] * self.b)),  # Delta K
+                             abs((self.a / self.isotopeRedMasses[i] - j) * self.berr / np.square(self.b)),  # Delta F
+                             abs((self.a / self.b - self.c) * self.isotopeRedMassesErr[i] / np.square(self.isotopeRedMasses[i])),  # Delta M
                          )
             for i, j in enumerate(self.isotopeShifts)
         ]
         if print_results:
-            print('iso\tdr^2\tDelta dr^2\tDelta IS\tDelta K\tDelta F\tDelta M')
+            # print error componenet that are combined to get the total charge radii uncertainty -> Gaussian error prop
+            # e.g. Delta IS -> abs(self.isotopeShiftStatErr[i] / self.b) -> shift_stat_err / F
+            # K -> mass shift factor -> self.a
+            # F -> field shift factor -> self.b
+            # alpha -> x-axis offset -> self.c
+            print('iso\tshift\tshift_stat_err\trel. shift_stat_err\t'
+                  'dr^2\tDelta dr^2\trel. Delta dr^2\tDelta IS\tDelta K\tDelta F\tDelta M')
             for each in errs_to_print:
-                print('%s\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\t%.4f\t%.4f' % each)
+                print('%s\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\t%.2f\t%.8f\t%.8f\t%.8f\t%.3E' % each)
 
         finalVals = {}
         for i,j in enumerate(self.isotopes):

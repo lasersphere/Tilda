@@ -1132,6 +1132,84 @@ def calc_db_pars_from_software_gate(softw_gates_single_tr):
     return run_gates_width, del_list, iso_mid_tof
 
 
+def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak, show_plt=True):
+    """
+    This will analyse the time projection of the counts.
+    It will get the background, the maximum counts, the timings of the maximum counts
+    and where the counts have reached the desired percentage of the maximum peak (above background)
+    each value will be given per track and scaler.
+    :param percentage_of_peak:
+    :return:
+    """
+    import matplotlib.pyplot as plt
+    fig, axes = plt.subplots(spec_data.nrScalers[0], spec_data.nrTracks)
+    print(axes)
+    if spec_data.nrTracks == 1:
+        axes = [[ax] for ax in axes]
+    backgrounds = []
+    max_counts = []
+    bunch_begin_times = []
+    max_counts_times = []
+    max_counts_ind = []
+    bunch_end_times = []
+    bunch_lenght_us = []
+    # from Measurement.XMLImporter import XMLImporter
+    # spec_data = XMLImporter()
+    tr = -1
+    for tr_t_proj in spec_data.t_proj:
+        print('tr_tproj', tr_t_proj.shape)
+        tr += 1
+        sc = -1
+        max_counts.append(np.max(tr_t_proj, axis=1))  # for all scalers at once
+        max_counts_ind.append(np.argmax(tr_t_proj, axis=1))
+        print(max_counts_ind)
+        max_counts_times.append(spec_data.t[tr][max_counts_ind[tr]])
+        bunch_begin_times += [],
+        bunch_end_times += [],
+        bunch_lenght_us += [],
+        backgrounds += [],
+        for sc_t_proj in tr_t_proj:
+            sc += 1
+            # background calc
+            smpl_ind = [0, 1, 2, 3, 4, -5, -4, -3, -2, -1]  # explicit indice to sample the background
+            sc_back_sampl = sc_t_proj[smpl_ind]
+            sc_back_mean = np.mean(sc_back_sampl)
+            backgrounds[tr] += sc_back_mean,
+            # print(sc_back_sampl, sc_back_mean)
+            # print(tr, sc, max(sc_t_proj), sc_t_proj)
+            cond_min = (max_counts[tr][sc] - sc_back_mean) * (percentage_of_peak / 100) + sc_back_mean
+            indice_above_cond = np.where(sc_t_proj >= cond_min)
+            # print(sc_t_proj[indice_above_cond])
+            # print(spec_data.t[tr][indice_above_cond])
+            bunch_begin_times[tr].append(spec_data.t[tr][indice_above_cond][0])
+            bunch_end_times[tr].append(spec_data.t[tr][indice_above_cond][-1])
+            bunch_lenght_us[tr].append(bunch_end_times[tr][-1] - bunch_begin_times[tr][-1])
+            print(len(axes), tr, sc)
+            pl_sc_tr = axes[sc][tr].plot(spec_data.t[tr], spec_data.t_proj[tr][sc])
+            axes[sc][tr].autoscale(enable=True)
+            axes[sc][tr].axvline(bunch_begin_times[tr][-1], color='g')
+            axes[sc][tr].axvline(bunch_end_times[tr][-1], color='g')
+            axes[sc][tr].axvline(max_counts_times[tr][sc], color='r')
+
+    fig.tight_layout()
+    if show_plt:
+        plt.show(block=True)
+
+
+    print(max_counts)
+    print(backgrounds)
+    print(bunch_begin_times)
+    print(max_counts_times)
+    print(bunch_end_times)
+    print(bunch_lenght_us)
+
+
+
+
+
+
+
+
 def convert_volt_axis_to_freq(x_axis_energy, mass, col, laser_freq, iso_center_freq):
     """
     will convert an x axis given in total voltage (accvolt + offset + line * kepco)

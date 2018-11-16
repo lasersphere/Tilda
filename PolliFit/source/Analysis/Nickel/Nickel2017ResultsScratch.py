@@ -151,14 +151,16 @@ for iso, radi in sorted(lit_radii.items()):
 
 con = sqlite3.connect(db)
 cur = con.cursor()
-cur.execute(''' SELECT iso, I From main.Isotopes ORDER BY iso''')
+cur.execute(''' SELECT iso, I, mass, mass_d From main.Isotopes ORDER BY iso''')
 spins = cur.fetchall()
 con.close()
 print(spins)
 spins_dict = {}
-for iso, spin in spins:
+masses_dict = {}
+for iso, spin, mass, mass_d in spins:
     if iso in isotopes:
         spins_dict[iso] = spin
+        masses_dict[iso] = (mass, mass_d)
 
 shifts = Tools.extract_from_combined([final_2017_run], db, isotopes, par='shift')
 d_r2_dict = Tools.extract_from_combined([final_2017_run], db, isotopes, par='delta_r_square')
@@ -207,3 +209,40 @@ moments = ['iso & I & $A_u$ / MHz & $A_l$  / MHz & $A_u$/$A_l$	& $B_u$  / MHz & 
            '	0.00(0)[0] & 0.00(0)[0] & 	0.000(000)']
 for each in moments:
     print(each)
+
+
+shift_68_ni, shift_stat_err_68_ni, shift_syst_err_68_ni = shifts[final_2017_run]['68_Ni'][:-1]
+shift_68_ni_err = np.sqrt(shift_stat_err_68_ni ** 2 + shift_syst_err_68_ni ** 2)
+d_r2_68_ni, d_r2_stat_err_68_ni, d_r2_syst_err_68_ni = d_r2_dict[final_2017_run]['68_Ni'][:-1]
+d_r2_68_ni_err = np.sqrt(d_r2_stat_err_68_ni ** 2 + d_r2_syst_err_68_ni ** 2)
+
+mass_68, mass_68_err = masses_dict['68_Ni']
+ref_mass, ref_massErr = masses_dict['60_Ni']
+
+isotopeMasses = [mass_68]
+massErr = [mass_68_err]
+
+#from Kingfitter.py:
+red_mass_68 = [i*ref_mass/(i-ref_mass) for i in isotopeMasses][0]
+        # from error prop:
+red_mass_68_err = [
+    ((iso_m_d * (ref_mass ** 2)) / (iso_m - ref_mass) ** 2) ** 2 +
+    ((ref_massErr * (iso_m ** 2)) / (iso_m - ref_mass) ** 2) ** 2
+    for iso_m, iso_m_d in zip(isotopeMasses, massErr)
+][0]
+print(red_mass_68, red_mass_68_err)
+mod_isotope_shift = red_mass_68 * shift_68_ni
+mod_isotope_shift_err = np.sqrt((shift_68_ni * red_mass_68_err) ** 2 +
+                                (red_mass_68 * shift_68_ni_err) ** 2)
+print('%.3f(%.0f) uGHz' % (mod_isotope_shift * 10 ** -3, mod_isotope_shift_err))
+print(mod_isotope_shift, mod_isotope_shift_err)
+
+mod_d_r2 = red_mass_68 * d_r2_68_ni  # u fm2
+mod_d_r2_err = np.sqrt((d_r2_68_ni * red_mass_68_err) ** 2 +
+                       (red_mass_68 * d_r2_68_ni_err) ** 2)
+
+print('%.3f(%.0f) ufm2' % (mod_d_r2, mod_d_r2_err))
+print(mod_d_r2, mod_d_r2_err)
+
+
+# mod_shift =
