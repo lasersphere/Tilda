@@ -37,6 +37,7 @@ class KingFitter(object):
 
         self.litvals = litvals
         self.incl_projected= incl_projected
+        self.reset_y_values = True # can be changed when calcRedVar() may not reset y redMasses (important for 3DKing)
 
         self.isotopes = []
         self.isotopeMasses = []
@@ -58,15 +59,14 @@ class KingFitter(object):
                                                 [['iso'], [self.ref]], caller_name=__name__)[0][0]
             self.ref_massErr = TiTs.select_from_db(self.db, 'mass_d', 'Isotopes',
                                                 [['iso'], [self.ref]], caller_name=__name__)[0][0]
-            self.ref_massErr = TiTs.select_from_db(self.db, 'mass_d', 'Isotopes',
-                                                [['iso'], [self.ref]], caller_name=__name__)[0][0]
+
         except Exception as e:
             print('error: %s  \n\t-> Kingfitter could not find a reference isotope from'
                   ' Lines in database or mass of this reference Isotope in Isotopes' % e)
 
 
     def kingFit(self, run=-1, alpha=0, findBestAlpha=True, find_slope_with_statistical_error=False,
-                print_coeff=True, print_information=True):
+                print_coeff=True, print_information=True, results_to_db=True):
         '''
         For find_b_with_statistical_error=True:
         performs at first a KingFit with just statistical uncertainty to find out the slope, afterwards
@@ -74,7 +74,7 @@ class KingFitter(object):
         '''
 
         self.calcRedVar(run=run, find_slope_with_statistical_error=find_slope_with_statistical_error,
-                        findBestAlpha=findBestAlpha, alpha=alpha)
+                        findBestAlpha=findBestAlpha, alpha=alpha, reset_y_values=self.reset_y_values)
 
         final_a = final_b = slope_syst_err = intercept_syst_err = slope_stat_err = intercept_stat_err = 0
 
@@ -140,24 +140,25 @@ class KingFitter(object):
             final_a = self.a
             final_b = self.b
 
-        con = sqlite3.connect(self.db)
-        cur = con.cursor()
-        cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'intercept', run))
-        con.commit()
-        cur.execute('''UPDATE Combined SET val = ?, statErr = ?,  systErr = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
-                     (final_a, intercept_stat_err, intercept_syst_err, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'intercept', run))
-        con.commit()
-        cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'slope', run))
-        con.commit()
-        cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
-                    (final_b, slope_stat_err, slope_syst_err, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'slope', run))
-        con.commit()
-        cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'alpha', run))
-        con.commit()
-        cur.execute('''UPDATE Combined SET val = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
-                    (self.c, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'alpha', run))
-        con.commit()
-        con.close()
+        if results_to_db:
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'intercept', run))
+            con.commit()
+            cur.execute('''UPDATE Combined SET val = ?, statErr = ?,  systErr = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
+                        (final_a, intercept_stat_err, intercept_syst_err, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'intercept', run))
+            con.commit()
+            cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'slope', run))
+            con.commit()
+            cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
+                        (final_b, slope_stat_err, slope_syst_err, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'slope', run))
+            con.commit()
+            cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'alpha', run))
+            con.commit()
+            cur.execute('''UPDATE Combined SET val = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
+                        (self.c, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'alpha', run))
+            con.commit()
+            con.close()
 
     def fit(self, run, showplot=True, bFix=False, plot_y_mhz=None, font_size=None, print_corr_coeff=True):
         if plot_y_mhz is None:
@@ -239,6 +240,12 @@ class KingFitter(object):
                 plt.plot(x_king, y_king_ghz, 'r', label='King fit', linewidth=2)
 
             if plot_y_mhz:
+                plt.plot(x_king, y_king, 'r', label='King fit', linewidth=2)
+            else:
+                y_king_ghz = [each / 1000 for each in y_king]
+                plt.plot(x_king, y_king_ghz, 'r', label='King fit', linewidth=2)
+
+            if plot_y_mhz:
                plt.errorbar(self.x, self.y, self.yerr, self.xerr, fmt='k.', markersize=10)
             else:  # plot in Gigahertz
                 y_ghz = [each / 1000 for each in self.y]
@@ -253,6 +260,7 @@ class KingFitter(object):
             print('%s\t%s' % ('King_fit_x', 'King_fit_y'))
             print('%.5f\t%.5f' % (x_king[0], y_king[0]))
             print('%.5f\t%.5f' % (x_king[1], y_king[1]))
+
 
             plt.gcf().set_facecolor('w')
             plt.legend(fontsize=font_size)
@@ -474,14 +482,16 @@ class KingFitter(object):
         print('best alpha is: ', self.c)
 
 
-    def calcRedVar(self, run=-1, find_slope_with_statistical_error=False, alpha=0, findBestAlpha=False):
-        self.masses = []
+    def calcRedVar(self, run=-1, find_slope_with_statistical_error=False, alpha=0, findBestAlpha=False, reset_y_values=True):
         self.x_origin = []
         self.x = []
         self.xerr = []
-        self.y = []
-        self.yerr = []
-        self.yerr_total = []
+
+        if reset_y_values: # Added this for 3DKingPlot since y-values and masses do not change, only x-values; saves time
+            self.masses = []
+            self.y = []
+            self.yerr = []
+            self.yerr_total = []
 
         self.c = alpha
         self.findBestAlphaTrue = findBestAlpha
@@ -490,7 +500,8 @@ class KingFitter(object):
             self.litvals = ast.literal_eval(TiTs.select_from_db(self.db, 'config', 'Combined',
                                                [['parname', 'run'], ['slope', run]], caller_name=__name__)[0][0])
         for i in self.litvals.keys():
-            self.masses.append(TiTs.select_from_db(self.db, 'mass', 'Isotopes', [['iso'], [i]],
+            if reset_y_values:
+                self.masses.append(TiTs.select_from_db(self.db, 'mass', 'Isotopes', [['iso'], [i]],
                                                    caller_name=__name__)[0][0])
             y = [0,0,0]
             if run == -1:
@@ -504,21 +515,21 @@ class KingFitter(object):
                 self.yerr.append(y[1])  # statistical error
                 self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
             else:
-                self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
-                self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
+                self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total errorself.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
             self.x_origin.append(self.litvals[i][0])
             self.xerr.append(self.litvals[i][1])
 
         if self.incl_projected:
             for i in self.litvals.keys():
-                self.masses.append(TiTs.select_from_db(self.db, 'mass', 'Isotopes', [['iso'], [i]],
-                                                       caller_name=__name__)[0][0])
-                y = [0, 0, 0]
-                if run == -1:
-                    y = TiTs.select_from_db(self.db, 'val, statErr, systErr', 'Combined',
+                if reset_y_values: # Added this for 3DKingPlot since y-values and masses do not change, only x-values; saves time
+                    self.masses.append(TiTs.select_from_db(self.db, 'mass', 'Isotopes', [['iso'], [i]],
+                                                           caller_name=__name__)[0][0])
+                    y = [0, 0, 0]
+                    if run == -1:
+                        y = TiTs.select_from_db(self.db, 'val, statErr, systErr', 'Combined',
                                                 [['iso', 'parname'], [i, 'projected IS']], caller_name=__name__)[0]
-                else:
-                    y = TiTs.select_from_db(self.db, 'val, statErr, systErr', 'Combined',
+                    else:
+                        y = TiTs.select_from_db(self.db, 'val, statErr, systErr', 'Combined',
                                                 [['iso', 'parname', 'run'], [i, 'projected IS', run]], caller_name=__name__)[0]
                 self.y.append(y[0])
                 if find_slope_with_statistical_error:
@@ -530,12 +541,14 @@ class KingFitter(object):
                 self.x_origin.append(self.litvals[i][0])
                 self.xerr.append(self.litvals[i][1])
 
-        self.redmasses= [i*self.ref_mass/(i-self.ref_mass) for i in self.masses]
-        self.y = [self.redmasses[i]*j for i,j in enumerate(self.y)]
-        self.yerr = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.yerr)]
-        self.yerr_total = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.yerr_total)]
-        self.xerr = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.xerr)]
+        if reset_y_values:
+            self.redmasses= [i*self.ref_mass/(i-self.ref_mass) for i in self.masses]
+            self.y = [self.redmasses[i]*j for i,j in enumerate(self.y)]
+            self.yerr = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.yerr)]
+            self.yerr_total = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.yerr_total)]
 
         if self.findBestAlphaTrue:
             self.findBestAlpha(run)
+
         self.x = [self.redmasses[i]*j - self.c for i,j in enumerate(self.x_origin)]
+        self.xerr = [np.abs(self.redmasses[i] * j) for i, j in enumerate(self.xerr)]

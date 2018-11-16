@@ -69,4 +69,4 @@ class DBIsotope(object):
             if not data[13]:
                 self.m = None
             else:
-                self.m = DBIsotope(db, data[13], lineVar)
+                self.m = DBIsotope(db, data[13], lineVar=lineVar)

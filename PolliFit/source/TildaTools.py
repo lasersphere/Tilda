@@ -720,6 +720,7 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
     of tuples [(int as multiplikation factor (e.g. +/- 1), specdata which will be added), ..]
     :return: specdata, added file.
     """
+
     added_files = [parent_specdata.file]
     offsets = [parent_specdata.offset]
     accvolts = [parent_specdata.accVolt]
@@ -737,20 +738,16 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
                     for sc_ind, sc in enumerate(tr):
                         parent_specdata.cts[tr_ind][sc_ind] += add_meas[0] * add_meas[1].cts[tr_ind][sc_ind]
                         parent_specdata.cts[tr_ind][sc_ind] = parent_specdata.cts[tr_ind][sc_ind].astype(np.int32)
-                    time_res_zf = check_if_attr_exists(add_meas[1], 'time_res_zf', [[]] * add_meas[1].nrTracks)[tr_ind]
-                    if len(time_res_zf):  # add the time spectrum (zero free) if it exists
-                        appended_arr = np.append(parent_specdata.time_res_zf[tr_ind], time_res_zf)
-                        # sort by 'sc', 'step', 'time' (no cts):
-                        sorted_arr = np.sort(appended_arr, order=['sc', 'step', 'time'])
-                        # find all elements that occur twice:
-                        unique_arr, unique_inds, uniq_cts = np.unique(sorted_arr[['sc', 'step', 'time']],
-                                                                      return_index=True, return_counts=True)
-                        sum_ind = unique_inds[np.where(uniq_cts == 2)]  # only take indexes of double occuring items
-                        # use indices of all twice occuring elements to add the counts of those:
-                        sum_cts = sorted_arr[sum_ind]['cts'] + add_meas[0] * sorted_arr[sum_ind + 1]['cts']
-                        np.put(sorted_arr['cts'], sum_ind, sum_cts)
-                        # delete all remaining items:
-                        parent_specdata.time_res_zf[tr_ind] = np.delete(sorted_arr, sum_ind + 1, axis=0)
+                        # add time_res (with zero) matrices if 'time_res' data exists
+                        #  this is always the case for time resolved data
+                        if check_if_attr_exists(parent_specdata, 'time_res', False) and check_if_attr_exists(
+                                add_meas[1], 'time_res', False):
+                            try:
+                                parent_specdata.time_res[tr_ind][sc_ind] += \
+                                    add_meas[0] * add_meas[1].time_res[tr_ind][sc_ind]
+                            except Exception as e:
+                                print('Timing bins seem not to be the same. '
+                                      'Files can not be added in time domain. Error is: %s' % e)
                 else:
                     print('warning, file: %s does not have the'
                           ' same x-axis as the parent file: %s,'
@@ -763,6 +760,10 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
         # needs to be converted like this:
         parent_specdata.cts[tr_ind] = np.array(parent_specdata.cts[tr_ind])
         # I Don't know why this is not in this format anyhow.
+
+    # create the zero free data from the non zero free
+    parent_specdata.time_res_zf = non_zero_free_to_zero_free(parent_specdata.time_res)
+
     parent_specdata.offset = np.mean(offsets)
     parent_specdata.accVolt = np.mean(accvolts)
     if save_dir:
@@ -1089,7 +1090,7 @@ def get_gate_pars_from_db(db, iso, run):
     iso_mid_tof = select_from_db(
         db, 'midTof', 'Isotopes', [['iso'], [iso]],
         caller_name='get_software_gates_from_db in DataBaseOperations.py')
-    if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None:
+    if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None or iso_mid_tof[0][0] is None or run_gates_width[0][0] is None or run_gates_delay[0][0] is None: # added 3 cases since iso_mid_tof etc. is usually an array and != none (?)
         return None, None, None, None
     else:
         run_gates_width = run_gates_width[0][0]
