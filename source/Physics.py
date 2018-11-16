@@ -115,6 +115,20 @@ def gaussian(x, mu, sig, amp):
     """
     return amp/(sig * math.sqrt(2 * math.pi)) * math.exp(-0.5 * ((x - mu) / sig) ** 2)
 
+def transit(x, t):
+    """
+    transit broadening function. Demtröder Laserspectroscopy (german) Eq. (3.58).
+    Uses same method as numpy.sinc(x) to calculate x = 0.
+    :param x: frequency
+    :param t: transit time
+    :return:
+    """
+
+    x = np.asanyarray(x)
+    y = 2*np.pi*np.where(x == 0, 1.0e-20, x)*10**6 # from frequency to angular frequency
+    return (np.sin(0.5*t*y))**2/y**2
+
+
 def HFCoeff(I, J, F):
     '''Return the tuple of hyperfine coefficients for A and B-factor for a given quantum state'''
     #print('Return the tuple of hyperfine coefficients for A and B-factor for I = ', I, ' J = ', J, ' F = ', F)

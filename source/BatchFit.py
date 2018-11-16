@@ -18,7 +18,7 @@ from Spectra.FullSpec import FullSpec
 from Spectra.Straight import Straight
 
 
-def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None):
+def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None, save_file_as='.png'):
     '''Fit fileList with run and write results to db'''
     print("BatchFit started")
     print("Opening DB:", db)
@@ -43,7 +43,7 @@ def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None):
     fits = []
     for file in fileList:
         try:
-            fits.append(singleFit(file, st, dbname, run, var, cur, x_as_voltage, softw_gates_trs))
+            fits.append(singleFit(file, st, dbname, run, var, cur, x_as_voltage, softw_gates_trs, save_file_as=save_file_as))
         except:
             errcount += 1
             print("Error working on file", file, ":", sys.exc_info()[1])
@@ -59,7 +59,7 @@ def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None):
     return fits, files_with_error
 
 
-def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=None):
+def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=None, save_file_as='.png'):
     '''Fit st of file, using run. Save result to db and picture of spectrum to folder'''
     fitter_iso = None
     fitter_m = None
@@ -113,9 +113,10 @@ def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=No
     fit.fit()
     
     #Create and save graph
-    fig = os.path.splitext(path)[0] + run + '.png'
     pars = fit.par
-    num_of_common_vals = fit.spec.shape.nPar + 2  # number of common parameters useful if isotope
+    num_of_common_vals = 0
+    if not isinstance(spec, Straight):
+        num_of_common_vals = fit.spec.shape.nPar + 2  # number of common parameters useful if isotope
     #  is being used -> comes from the number of parameters the shape needs e.g. (Voigt:2) + offset + offsetSlope = 4
     if fitter_m is not None:
         fitter_iso.par = pars[0:len(fitter_iso.par)]
@@ -125,6 +126,8 @@ def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=No
         plot.plotFit(fit, color='-b', add_label=' gs+m', plot_side_peaks=False)
     else:
         plot.plotFit(fit)
+
+    fig = os.path.splitext(path)[0] + run + save_file_as
     plot.save(fig)
     plot.clear()
     

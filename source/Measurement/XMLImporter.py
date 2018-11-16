@@ -14,6 +14,7 @@ import sqlite3
 import numpy as np
 
 import Physics
+import Tools
 import TildaTools
 from Measurement.SpecData import SpecData
 
@@ -53,6 +54,7 @@ class XMLImporter(SpecData):
             lxmlEtree = None
             scandict = scan_dict
             self.file = os.path.basename(scandict['pipeInternals']['activeXmlFilePath'])
+            path = scandict['pipeInternals']['activeXmlFilePath']  # needed for get_frequency_measurement(...)
 
         self.nrTracks = scandict['isotopeData']['nOfTracks']
 
@@ -62,6 +64,8 @@ class XMLImporter(SpecData):
         self.seq_type = scandict['isotopeData']['type']
         self.version = scandict['isotopeData']['version']
         self.dac_calibration_measurement = False
+
+        self.trigger = []  # list of triggers for each track
 
         self.offset_by_dev = [{}]  # list (track_indexed) of dicts for a list of measured offset voltages
         #  key is device name value is list, which is split into pre scan and post scan values
@@ -113,6 +117,7 @@ class XMLImporter(SpecData):
         self.wait_after_reset_1us = []
         self.working_time = []
         self.nrScans = []
+        self.nrBunches = []  # list for each track an integer with the number fo bunches per step for this track
 
         cts_shape = []
         self.measureVoltPars = []
@@ -132,6 +137,7 @@ class XMLImporter(SpecData):
             nOfsteps = track_dict['nOfSteps']
             nOfBins = track_dict.get('nOfBins')
             nOfScalers = len(track_dict['activePmtList'])
+            self.nrBunches += track_dict.get('nOfBunches', 1),
             self.active_pmt_list.append(track_dict['activePmtList'])
 
             self.invert_scan.append(track_dict['invertScan'])
@@ -155,6 +161,8 @@ class XMLImporter(SpecData):
 
             dacStepSize18Bit = track_dict['dacStepSize18Bit']
 
+            self.trigger.append(track_dict.get('trigger', None))
+
             self.nrScalers.append(nOfScalers)
             self.stepSize.append(dacStepSize18Bit)
             self.col = track_dict['colDirTrue']
@@ -169,13 +177,13 @@ class XMLImporter(SpecData):
                     direct_parent_ele_str='projections')
                 t_proj = None
                 if isinstance(scaler_array[0], np.void):  # this is zero free data
-
-                    # this fails somewhere for the second track
                     self.time_res_zf.append(scaler_array)
                     time_res_classical_tr = TildaTools.zero_free_to_non_zero_free(self.time_res_zf, cts_shape)[tr_ind]
                     self.time_res.append(time_res_classical_tr)
                 else:  # classic full matrix array
                     self.time_res.append(scaler_array)
+                    zf_data_tr = TildaTools.non_zero_free_to_zero_free([scaler_array])[0]
+                    self.time_res_zf.append(zf_data_tr)
 
                 if v_proj is None or t_proj is None or softw_gates is not None:
                     logging.info(' while importing: projections not found,'
@@ -276,22 +284,9 @@ class XMLImporter(SpecData):
                     logging.info('setting voltage divider ratio to 1 !')
                     self.voltDivRatio = {'offset': 1.0, 'accVolt': 1.0}
                 for tr_ind, track in enumerate(self.x):
-                    if isinstance(self.voltDivRatio['offset'], float):  # just one number
-                        scanvolt = (self.lineMult * self.x[tr_ind] + self.lineOffset + self.offset[tr_ind]) * \
-                                   self.voltDivRatio[
-                                       'offset']
-                    else:  # offset should be a dictionary than
-                        vals = list(self.voltDivRatio['offset'].values())
-                        mean_offset_div_ratio = np.mean(vals)
-                        # treat each offset with its own divider ratio
-                        # x axis is multiplied by mean divider ratio value anyhow, similiar to kepco scans
-
-                        mean_offset = np.mean(
-                            [val * self.offset_by_dev_mean[tr_ind].get(key, self.offset[tr_ind]) for key, val in
-                             self.voltDivRatio['offset'].items()])
-                        scanvolt = (self.lineMult * self.x[
-                            tr_ind] + self.lineOffset) * mean_offset_div_ratio + mean_offset
-                    self.x[tr_ind] = self.accVolt * self.voltDivRatio['accVolt'] - scanvolt
+                    self.x[tr_ind] = Tools.line_to_total_volt(self.x[tr_ind], self.lineMult, self.lineOffset,
+                                                              self.offset[tr_ind], self.accVolt, self.voltDivRatio,
+                                                              offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])
                 self.norming()
                 self.x_units = self.x_units_enums.total_volts
             elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
@@ -393,6 +388,7 @@ class XMLImporter(SpecData):
                 if 'track' in key:
                     dmms_dict_list.append(
                         (track_d.get('measureVoltPars', {}).get('preScan', {}).get('dmms', {}),
+                         track_d.get('measureVoltPars', {}).get('duringScan', {}).get('dmms', {}),
                          track_d.get('measureVoltPars', {}).get('postScan', {}).get('dmms', {}))
                     )
                     # if no measurements were taken an empty dict is appended.
@@ -402,7 +398,7 @@ class XMLImporter(SpecData):
                         set_value_list += scandict.get('isotopeData', {}).get('accVolt', 0.0),
 
         # check if any measurement was taken at all
-        measurement_taken = any([any(each[0]) or any(each[1]) for each in dmms_dict_list])
+        measurement_taken = any([any(each[0]) or any(each[1]) or any(each[2]) for each in dmms_dict_list])
 
         if measurement_taken:
             # at least in one track the offset/accvolt voltage was measured
@@ -415,18 +411,19 @@ class XMLImporter(SpecData):
                 offset_by_dev_mean.append({})
                 offset_vals_list.append([])
 
-                if each[0] == {} and each[1] == {}:
+                if each[0] == {} and each[1] == {} and each[2] == {}:
                     # no measurement was taken for this track, copy from the track before.
                     # this will fail when voltage is not measured in track0 but e.g. track1
                     # dont do this ;)
                     offset_by_dev[tr_ind] = offset_by_dev[tr_ind - 1]
                     offset_vals_list[tr_ind] = offset_vals_list[tr_ind - 1]
                 else:
-                    for post_pre_ind, post_pre_dict in enumerate(each):
+                    for pre_dur_post_ind, post_pre_dict in enumerate(each):
                         # post_pre_dict will be {} if no measurement was taken in this track.
                         for dmm_name, dmm_dict in post_pre_dict.items():
-                            if post_pre_ind == 0:
-                                offset_by_dev[tr_ind][dmm_name] = [[], []]
+                            if offset_by_dev[tr_ind].get(dmm_name, None) is None:
+                                # initialise an empty list for pre, during and post scan values.
+                                offset_by_dev[tr_ind][dmm_name] = [[], [], []]
                             for key, val in dmm_dict.items():
                                 if key == read_key:
                                     if isinstance(val, str):
@@ -434,10 +431,10 @@ class XMLImporter(SpecData):
                                     if dmm_dict.get('assignment') == assignment:
                                         if isinstance(val, list):
                                             offset_vals_list[tr_ind] += val  # append to list
-                                            offset_by_dev[tr_ind][dmm_name][post_pre_ind] += val
+                                            offset_by_dev[tr_ind][dmm_name][pre_dur_post_ind] += val
                                         else:
                                             offset_vals_list[tr_ind].append(val)
-                                            offset_by_dev[tr_ind][dmm_name][post_pre_ind].append(val)
+                                            offset_by_dev[tr_ind][dmm_name][pre_dur_post_ind].append(val)
                 for dmm_name, offset_list_dmm in offset_by_dev[tr_ind].items():
                     # get mean value for this dmm in this track
                     offset_by_dev_flat = [item for sublist in offset_list_dmm for item in sublist]
@@ -472,10 +469,12 @@ class XMLImporter(SpecData):
         # print(scan_triton_dict)
         for track in scan_triton_dict:
             freq_comb_data_tr = {}
-            # make sure there is indeed a pre post scan measurement and not None
+            # make sure there is indeed a pre during post scan measurement and not None
             # if track is not None:
             pre_scan_dict = track.get('preScan', {})
             pre_scan_dict = {} if pre_scan_dict is None else pre_scan_dict
+            during_scan_dict = track.get('duringScan', {})
+            during_scan_dict = {} if during_scan_dict is None else during_scan_dict
             post_scan_dict = track.get('postScan', {})
             post_scan_dict = {} if post_scan_dict is None else post_scan_dict
 
@@ -485,12 +484,28 @@ class XMLImporter(SpecData):
                     freq_comb_data_tr[key]['aCol'] = val_dict.get('comb_freq_acol', {}).get('data', [])
                     freq_comb_data_tr[key]['col'] = val_dict.get('comb_freq_col', {}).get('data', [])
 
+            # now check during scan and append values to existing list or create new
+
+            for key, val_dict in during_scan_dict.items():
+                if 'Comb' in key:
+                    if not freq_comb_data_tr.get(key, {}):
+                        # no measurement was done pre scan for this comb, create empty dict.
+                        freq_comb_data_tr[key] = {}
+                    for col_a_col_key in ['aCol', 'col']:
+                        if not len(freq_comb_data_tr[key].get(col_a_col_key, [])):
+                            # the key was not existing yet, create or overwrite empty list
+                            freq_comb_data_tr[key][col_a_col_key] = []
+                    freq_comb_data_tr[key]['aCol'] += val_dict.get('comb_freq_acol', {}).get('data', [])
+                    freq_comb_data_tr[key]['col'] += val_dict.get('comb_freq_col', {}).get('data', [])
+                    # freq_comb_data_tr[key]['col'] = [x+203 for x in freq_comb_data_tr[key]['col']]# 203 MHz just due to AOM, REMOVE AFTERWARDS; NO PUSH!!
+                    # print("freq_comb_data_tr[key]['col']: ", freq_comb_data_tr[key]['col'])
+
             # now check post scan and append values to existing list or create new
 
             for key, val_dict in post_scan_dict.items():
                 if 'Comb' in key:
                     if not freq_comb_data_tr.get(key, {}):
-                        # no measurement was done pre scan for this comb, create empty dict.
+                        # no measurement was done before for this comb, create empty dict.
                         freq_comb_data_tr[key] = {}
                     for col_a_col_key in ['aCol', 'col']:
                         if not len(freq_comb_data_tr[key].get(col_a_col_key, [])):
@@ -532,8 +547,9 @@ class XMLImporter(SpecData):
                 if each > 0.0:
                     valid_freq_meas.append(each)
                     valid_freq_meas_errs.append(freq_err_list[i])
-            laser_freq = np.mean(valid_freq_meas) / 1000000  # in MHz
+            laser_freq = (np.mean(valid_freq_meas) / 1000000)  # in MHz
             laser_freq_d = np.mean(valid_freq_meas_errs) / 1000000  # in MHz
+            logging.debug('getting frequency from path: %s' % path)
             (dir, file) = os.path.split(path)
             (filename, end) = os.path.splitext(file)
             logging.debug('Measured Frequencies in ' + str(file) + ' :')

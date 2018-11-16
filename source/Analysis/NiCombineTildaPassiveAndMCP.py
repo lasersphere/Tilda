@@ -23,7 +23,8 @@ sys.setrecursionlimit(2000)
 
 ''' working directory: '''
 
-workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
+# workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
+workdir = 'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
 
 mcp_file_folder = os.path.join(workdir, 'Ni_April2016_mcp')
 tipa_file_folder = os.path.join(workdir, 'TiPaData')
@@ -32,8 +33,10 @@ tipa_files = [os.path.join(tipa_file_folder, file) for file in tipa_files]
 
 db = os.path.join(workdir, 'Ni_workspace.sqlite')
 
-runs = ['narrow_gate', 'wide_gate']
-runs = [runs[0]]
+# old:
+# runs = ['narrow_gate', 'wide_gate']
+# runs = [runs[0]]
+runs = ['wide_gate_asym']
 
 isotopes = ['%s_Ni' % i for i in range(58, 71)]
 isotopes.remove('69_Ni')
@@ -46,11 +49,14 @@ for iso in isotopes:
     mcp_files += [os.path.join(mcp_file_folder, each) for each in Tools.fileList(db, iso)]
 
 
-def find_file(search):
+def find_file(search, load_meas=True):
     for file in tipa_files:
         if search in file:
-            return TiTs.load_xml(file), file
-    print('Warning! Searchterm: %s not found in tips files!' % search)
+            if load_meas:
+                return TiTs.load_xml(file), file
+            else:  # faster
+                return None, file
+    print('Warning! Searchterm: %s not found in tipa files!' % search)
     return None, None
 
 
@@ -85,6 +91,8 @@ def write_mcp_to_tipa(search_tuple):
 
 
 print([('%03d' % i, '%03d' % (i + 11)) for i in range(37, 53)])
+# first one always is MCP run number second one always is TiPa run number as stated in the lablog.
+# (mcp_run_num, tipa_run_num)
 search_tuple_list = [('010', '013'), ('011', '014'), ('012', '015'), ('013', '016'), ('014', '017'),
                      ('015', '020'), ('017', '021'),
                      ('018', '024'), ('019', '025'), ('020', '026'), ('022', '028'),
@@ -92,7 +100,7 @@ search_tuple_list = [('010', '013'), ('011', '014'), ('012', '015'), ('013', '01
                      ('030', '038'),
                      ('032', '042'), ('033', '043'), ('034', '000'), ('035', '046'),
                      ('036', '047'), ('037', '048'), ('038', '049'), ('039', '050'), ('040', '051'), ('041', '052'),
-                     ('042', '053'), ('043', '054'), ('044', '055'), ('045', '056'), ('047', '057'),
+                     ('042', '053'), ('043', '054'), ('045', '056'), ('047', '057'),
                      ('048', '058'), ('049', '059'),
                      ('050', '060'), ('051', '061'), ('052', '062'), ('053', '063'),
                      ('054', '000'), ('055', '064'), ('056', '065'), ('057', '066'), ('058', '067'), ('059', '068'),
@@ -185,6 +193,114 @@ start = datetime.now()
 #             all.append(('%03d' % i, '000'))
 #     print(all)
 #     app.exec_()
+
+''' check for abnormalities in time structure '''
+# get all relevant files first from the used config in the db
+configs = {}
+for iso in isotopes:
+    ret = TiTs.select_from_db(db, 'config', 'Combined', [['iso', 'run', 'parname'], [iso, runs[0], 'shift']])
+    if ret is not None:
+        ret = ret[0][0]
+        configs[iso] = ast.literal_eval(ret)
+        # print(configs[iso])
+
+flat_configs = {}  # each file only once, just to check time structure!
+for iso_name, conf in sorted(configs.items()):
+    flat_configs[iso_name] = []
+    for each in conf:
+        for file in each:
+            for tipa_f in file:
+                if tipa_f not in flat_configs[iso_name]:
+                    flat_configs[iso_name] += tipa_f,
+    # print(iso_name, flat_configs[iso_name])
+
+all_files = TiTs.select_from_db(db, 'file', 'Files', addCond='ORDER BY date')
+flat_configs['all'] = []
+for each in all_files:
+    if '.mcp' in each[0] and 'epco' not in each[0]:
+        flat_configs['all'] += each[0],
+
+
+def find_tipa_file_to_mcp_file(mcp_file_str):
+    # print('finding: ', mcp_file_str)
+    run_str = mcp_file_str.split('.')[0].split('Run')[1]  # '010' etc.
+    try:
+        for mcp_run_str, tipa_run_str in search_tuple_list:
+            if run_str in mcp_run_str:
+                tipa_meas, tipa_file_n = find_file(tipa_run_str, load_meas=False)
+                return tipa_meas, tipa_file_n
+    except Exception as e:
+        print('error: %s converting run str: %s, ' % (e, run_str))
+        return None, None
+    return None, None
+
+flat_configs_tipa = {}
+for isotope, flat_conf in sorted(flat_configs.items()):
+    flat_configs_tipa[isotope] = []
+    for mcp_f in flat_conf:
+        if mcp_f:
+            tipa_meas, tipa_file_n = find_tipa_file_to_mcp_file(mcp_f)
+            if tipa_file_n is not None:
+                # tipa_file_n = tipa_file_n.split('\\')[1]
+                flat_configs_tipa[isotope] += (tipa_file_n, mcp_f),
+                tipa_file_n = os.path.split(tipa_file_n)[1]
+            print('%s\t%s\t%s' % (isotope, mcp_f, tipa_file_n))
+
+''' plot the time structure and save it as a .jpg '''
+from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
+from Service.AnalysisAndDataHandling.DisplayData import DisplayData
+
+from PyQt5 import QtWidgets, QtGui
+from Measurement.XMLImporter import XMLImporter
+from PyQt5.QtCore import *
+import time
+
+
+app = QtWidgets.QApplication(sys.argv)
+ui = QtWidgets.QMainWindow()
+label = QtWidgets.QLabel()
+ui.setCentralWidget(label)
+ui.show()
+# copy = flat_configs_tipa
+# flat_configs_tipa = {}
+# flat_configs_tipa['58_Ni'] = copy['58_Ni']
+storage_path = 'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace\\TimeStructureAnalysis'
+
+win = []  # all windows need to be stored when wanting to keep them open.
+# file_names = []
+for iso, files in sorted(flat_configs_tipa.items()):
+    # if iso in ['58_Ni', '59_Ni', '60_Ni', '61_Ni', '62_Ni', '63_Ni',
+    #            '64_Ni', '65_Ni', '66_Ni', '67_Ni', '68_Ni', '70_Ni']:
+    if iso in ['65_Ni']:
+        cur_dir = os.path.join(storage_path, iso)
+        if not os.path.isdir(cur_dir):
+            os.mkdir(cur_dir)
+        # files = [files[-1]]
+        for tipa_f, mcp_f in files:
+            logging.info('working on: %s' % tipa_f)
+            # label.setText('working on: %s' % tipa_f)
+            try:
+                cur_win = TRSLivePlotWindowUi(tipa_f, subscribe_as_live_plot=False, application=app)
+                spec = XMLImporter(tipa_f, softw_gates=(db, runs[0]))
+                spec.softBinWidth_ns = [100]
+                disp_data = DisplayData(tipa_f, cur_win, x_as_volt=True, loaded_spec=spec)
+                cur_win.set_time_range(padding=0.2)
+                win += cur_win,   # if one wants to see all the windows comment this in.
+                f_name = iso + '_real_iso_' + spec.type + '_mcp_file_' + mcp_f.split('.')[0] + '_tipa_file_' + os.path.split(tipa_f)[1]
+                f_name = f_name.split('.')[0]
+                f_name += '.jpg'
+                f_name_full = os.path.join(cur_dir, f_name)
+                # file_names += f_name_full,
+
+                cur_win.export_screen_shot(f_name_full, quality=100)
+                cur_win.close()
+
+            except Exception as e:
+                print(e)
+label.setText('Done!')
+app.deleteLater()
+app.exec_()
+app.closeAllWindows()
 
 
 ''' direct comparison of files MCP - TIPA ~ 0 in order to have the same counts in both DAQs '''
@@ -473,20 +589,20 @@ def write_gates_to_tipa_xml(search_tuple, t_min, t_max):
         return True
     else:
         return False
-err_gates = []
-file = open(best_gates, 'r')
-line = file.readline()
-while line:
-    line = file.readline()
-    line = line.replace(',', '.').replace('. ', ', ').replace('\t', ', ')
-    line = '[' + line + ']'
-    line = ast.literal_eval(line)
-    print(line)
-    if write_gates_to_tipa_xml(line[0], line[5], line[6]):
-        print('saving ok')
-    else:
-        err_gates.append(line)
-        print('broke')
-
-print('lines with error: %s' % err_gates)
+# err_gates = []
+# file = open(best_gates, 'r')
+# line = file.readline()
+# while line:
+#     line = file.readline()
+#     line = line.replace(',', '.').replace('. ', ', ').replace('\t', ', ')
+#     line = '[' + line + ']'
+#     line = ast.literal_eval(line)
+#     print(line)
+#     if write_gates_to_tipa_xml(line[0], line[5], line[6]):
+#         print('saving ok')
+#     else:
+#         err_gates.append(line)
+#         print('broke')
+#
+# print('lines with error: %s' % err_gates)
 

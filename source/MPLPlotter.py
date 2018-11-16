@@ -68,8 +68,8 @@ def plot(*args):
     plt.xlabel('Frequency [MHz]')
 
 
-def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks=10,
-            plot_data=True, add_label='', plot_side_peaks=True, save_plot=False, save_path='C:\\'):
+def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks=12,
+            plot_data=True, add_label='', plot_side_peaks=True, data_fmt='k.', save_plot=False, save_path='C:\\'):
     kepco = False
     if fit.meas.type == 'Kepco':
         x_in_freq = False
@@ -161,17 +161,21 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
             path_clear = True
 
 
-    ax1 = plt.axes([0.15, 0.35, 0.8, 0.6])
+    ax1 = plt.axes([0.15, 0.35, 0.8, 0.50])
+    data_line = None
     if plot_data:
-        plt.errorbar(data[0], data[1], yerr=data[2], fmt='k.', label=fit.meas.file)
+        data_line = plt.errorbar(data[0], data[1], yerr=data[2], fmt=data_fmt, label=fit.meas.file)
+        # data_line.set_label(fit.meas.file)
     plt_label = 'straight' if kepco else str(fit.spec.iso.shape['name'])
     main_plot = plt.plot(plotdat[0], plotdat[1], color, label=plt_label + add_label)
     main_plot_color = main_plot[0].get_color()
+    side_peak_lines = []
     if plot_side_peaks:
         if len(main_peaks_plot_data):
             # plot main peak dotted but in same color as host line
-            plt.plot(main_peaks_plot_data[0], main_peaks_plot_data[1],
-                     color=main_plot_color, label='main peak' + add_label, linestyle=':')
+            side_peak = plt.plot(main_peaks_plot_data[0], main_peaks_plot_data[1],
+                                 color=main_plot_color, label='main peak' + add_label, linestyle=':')
+            side_peak_lines += side_peak[0],
             if save_plot and path_clear:
                 p = os.path.join(save_path, os.path.splitext(fit.meas.file)[0] + "_fit_mainPeak_" + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
                 f = open(p, 'w')
@@ -183,9 +187,10 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
         for side_peak_num, side_peaks_plot_data in enumerate(all_side_peaks_plot_data):
             # plot side peaks dashed / dashdot alternating with number of side peaks in same color as main peak
             line_style = '--' if side_peak_num % 2 == 0 else '-.'
-            plt.plot(side_peaks_plot_data[0], side_peaks_plot_data[1],
-                     linestyle=line_style, color=main_plot_color,
-                     label='satellite peak #%d' % (side_peak_num + 1) + add_label)
+            side_peak = plt.plot(side_peaks_plot_data[0], side_peaks_plot_data[1],
+                                 linestyle=line_style, color=main_plot_color,
+                                 label='satellite peak #%d' % (side_peak_num + 1) + add_label)
+            side_peak_lines += side_peak[0],
             if save_plot and path_clear:
                 p = os.path.join(save_path, os.path.splitext(fit.meas.file)[0] + "_fit_sidePeak" + str(side_peak_num) + "_" + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
                 f = open(p, 'w')
@@ -236,7 +241,14 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
 
     plt.xticks(fontsize=fontsize_ticks)
     plt.yticks(fontsize=fontsize_ticks)
-    ax1.legend(loc=2)
+    if data_line is None:
+        lines = [main_plot[0]] + side_peak_lines
+    else:
+        lines = [data_line, main_plot[0]] + side_peak_lines
+    labels = [each.get_label() for each in lines]
+    fig.legend(lines, labels, loc='upper center', ncol=2,
+               bbox_to_anchor=(0.15, 0.8, 0.8, 0.2), mode='expand',
+               fontsize=fontsize_ticks+2, numpoints=1)
 
 
 def plotMoments(cts, q=True,fontsize_ticks=10):
@@ -590,9 +602,10 @@ def tight_layout():
 
 def plot_par_from_combined(db, runs_to_plot, isotopes,
                            par, plot_runs_seperate=False, show_pl=True,
-                           literature_dict=None, literature_name='lit. values',
+                           literature_run=None, literature_name='lit. values',
                            save_path='', use_syst_err_only=False, comments=None, markers=None, colors=None,
-                           legend_loc=2, start_offset=-0.3):
+                           legend_loc=2, start_offset=-0.3, use_full_error=True,
+                           lit_color='b', lit_marker='o', fontsize_ticks=12):
     import Tools
     compl_x = []
     compl_y = []
@@ -608,19 +621,50 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
     lit_y = None
     lit_y_err = None
     val_statErr_rChi_shift_dict = Tools.extract_from_combined(runs_to_plot, db, isotopes, par, print_extracted=True)
+    lit_val_statErr_rChi_shift_dict = None
+    if literature_run is not None:
+        lit_val_statErr_rChi_shift_dict = Tools.extract_from_combined(
+            [literature_run], db, isotopes, par, print_extracted=True).get(literature_run, {})
+        if len(lit_val_statErr_rChi_shift_dict) == 0:
+            lit_val_statErr_rChi_shift_dict = None  # set it to None
     literarture_has_been_plotted = False
     err_index = 2 if use_syst_err_only else 1
-    lit_exists = 0 if literature_dict is None else 1
+    if use_full_error:
+        err_index = -1
+    lit_exists = 0 if literature_run is None else 1
     offset = start_offset
     offset_per_run = abs(offset) * 2 / (len(runs_to_plot) + lit_exists - 1)
+
+    fig = plt.figure(1, (8, 8))
+    fig.patch.set_facecolor('w')
+    ax = plt.axes([0.15, 0.1, 0.8, 0.75])
+
     for ind, each in enumerate(runs_to_plot):
         try:
             if each:
-                if literature_dict is not None:  # try to get the literature values and substract experiment Values from it
-                    vals = [(int(key_pl[:2]), val_pl[0], literature_dict.get(key_pl, [0])[0]) for key_pl, val_pl in
+                if lit_val_statErr_rChi_shift_dict is not None:
+                    # try to get the literature values and substract experiment Values from it
+                    # key of isotope should begin with mass number followed by '_' and isotope name
+                    # vals [(mass_int, exp_value_float, lit_val_float), ...]
+                    vals = [(int(key_pl.split('_')[0]), val_pl[0],
+                             lit_val_statErr_rChi_shift_dict.get(key_pl, [0])[0]) for key_pl, val_pl in
                             sorted(val_statErr_rChi_shift_dict[each].items())]
-                    errs = [(int(key_pl2[:2]), val_pl2[err_index], literature_dict.get(key_pl2, [0, 0])[err_index]) for key_pl2, val_pl2 in
-                            sorted(val_statErr_rChi_shift_dict[each].items())]
+                    if err_index > 0:
+                        errs = [(int(key_pl2.split('_')[0]), val_pl2[err_index],
+                                 lit_val_statErr_rChi_shift_dict.get(key_pl2, [0, 0])[err_index]) for key_pl2, val_pl2 in
+                                sorted(val_statErr_rChi_shift_dict[each].items())]
+                    else:  # use the full error with gaussian error prop
+                        errs = [(int(key_pl2.split('_')[0]),
+                                 np.sqrt(
+                                     val_pl2[1] ** 2 + val_pl2[2] ** 2
+                                 ),
+                                 np.sqrt(
+                                     lit_val_statErr_rChi_shift_dict.get(key_pl2, [0, 0])[1] ** 2 +
+                                     lit_val_statErr_rChi_shift_dict.get(key_pl2, [0, 0])[2] ** 2
+                                 )
+                                 ) for key_pl2, val_pl2
+                                in
+                                sorted(val_statErr_rChi_shift_dict[each].items())]
                     x = [valo[0] + offset for valo in vals]
                     # exp_y = [val[1] for val in vals]
                     # exp_y_err = [val[1] for val in errs]
@@ -641,9 +685,13 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
                     if lit_y is not None and not literarture_has_been_plotted:
                         offset += offset_per_run
                         x_lit = [valo[0] + offset for valo in vals]
-                        plt.errorbar(x_lit, lit_y, lit_y_err, label=literature_name, linestyle='None', marker="o")
+                        lit_name = literature_run + ' (ref)' if literature_name == '' else literature_name + ' (ref)'
+                        plt.errorbar(x_lit, lit_y, lit_y_err,
+                                     label=lit_name, linestyle='None',
+                                     marker=lit_marker, color=lit_color)
                         literarture_has_been_plotted = True
-                    plt.errorbar(x, exp_y, exp_y_err, label='%s%s' % (each, comments[ind]),
+                    plt_name = each if comments[ind] == '' else comments[ind]
+                    plt.errorbar(x, exp_y, exp_y_err, label='%s' % plt_name,
                                  linestyle='None', marker=markers[ind], color=colors[ind])
 
                 compl_x += x
@@ -661,10 +709,13 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
             plt.errorbar(compl_x, lit_y, lit_y_err, label=literature_name,
                          linestyle='None', marker="o")
 
-    plt.legend(loc=legend_loc)
+    plt.legend(loc='upper center', ncol=2,
+               bbox_to_anchor=(0., 0.98, 1, 0.2), mode='expand',
+               fontsize=fontsize_ticks+2, numpoints=1)
+
     plt.margins(0.25)
-    get_current_axes().set_ylabel('%s [MHz]' % par)
-    plt.gcf().set_facecolor('w')
+    ax.set_ylabel('%s [MHz]' % par)
+    ax.set_xlabel('A')
     if save_path:
         d = os.path.dirname(save_path)
         if not os.path.exists(d):
@@ -678,9 +729,10 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
 def plot_iso_shift_time_dep(
         ref_dates_date_time, ref_dates_date_time_float, ref_centers, ref_errs, ref,
         iso_dates_datetime, iso_dates_datetime_float, iso_centers, iso_errs, iso,
-        slope, offset, plt_label, shift_result_tuple, file_name='', show_plot=True):
+        slope, offset, plt_label, shift_result_tuple, file_name='', show_plot=True,
+        fig_name='shift', par_name='center [MHz]'):
     """ function to plot the isotope shift along with the references versus timestamp of the files """
-    fig = plt.figure('shift %s' % iso, figsize=(16, 9))
+    fig = plt.figure('%s %s' % (fig_name, iso), figsize=(16, 9))
     fig.set_facecolor('w')
     main_ax = fig.add_axes([0.1, 0.2, 0.7, 0.6])
     first_ref = np.min(ref_dates_date_time_float)
@@ -696,10 +748,10 @@ def plot_iso_shift_time_dep(
     plt.xticks(rotation=25)
     xfmt = DateFormatter('%Y-%m-%d %H:%M:%S')
     main_ax.xaxis.set_major_formatter(xfmt)
-    main_ax.set_ylabel('ref %s center [MHz]' % ref)
+    main_ax.set_ylabel('ref %s %s' % (ref, par_name))
     twinx = plt.twinx(main_ax)
     iso_line = twinx.errorbar(iso_dates_datetime, iso_centers, yerr=iso_errs, fmt='bs', label='center %s' % iso)
-    twinx.set_ylabel('%s center [MHz]' % iso, color='b')
+    twinx.set_ylabel('%s %s' % (iso, par_name), color='b')
     twinx.tick_params('y', colors='b')
     lines = [ref_line, fit_line, iso_line]
     # shift_result_tuple should be a tuple of ([shift_run0, shift_run1, ...], [err_shift_run0, err_shift_run1, ...])

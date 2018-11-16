@@ -114,7 +114,7 @@ class BatchfitterUi(QtWidgets.QWidget, Ui_Batchfitter):
     def fitting(self):
         print('chosen files: ', self.chosenFiles)
         if len(self.chosenFiles):
-            BatchFit.batchFit(self.chosenFiles, self.dbpath, run=self.run)
+            BatchFit.batchFit(self.chosenFiles, self.dbpath, run=self.run, save_file_as=str(self.savePlotAs.currentText()))
         else:
             print('nothing to fit!!!')
 

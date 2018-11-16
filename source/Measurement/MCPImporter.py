@@ -12,6 +12,7 @@ import sqlite3
 from datetime import datetime
 
 import numpy as np
+import Tools
 
 from Measurement.SpecData import SpecData
 
@@ -31,6 +32,8 @@ class MCPImporter(SpecData):
         self.file = os.path.basename(path)
         self.type = ''
         self.nrScalers = []
+        self.nrBunches = []  # list for each track an integer with the number for
+        #  bunches per step for this track as it is unknown in MCP this is always 1
         self.nrTracks = 0
         self.nrSteps = 0
         self.offset = 0
@@ -40,6 +43,7 @@ class MCPImporter(SpecData):
         self.err = np.array([[]])
         self.x = []
         self.post_acc_offset_volt_control = []  # which fluke?
+
 
         with open(path) as f:
             file_as_str = str(f.read().replace('\n', '').replace('\"', ''))
@@ -120,6 +124,7 @@ class MCPImporter(SpecData):
                     self.cts.append(data[0])
                     self.activePMTlist.append(data[1])
                     self.nrTracks += 1
+                    self.nrBunches += 1,
 
                 # remove scalers, which are not used in all tracks:
                 pmts_flat = [item for sublist in self.activePMTlist for item in sublist]
@@ -163,17 +168,20 @@ class MCPImporter(SpecData):
             self.col = bool(self.col)
             self.voltDivRatio = ast.literal_eval(self.voltDivRatio)
             for trackindex, tracks in enumerate(self.x):
-                for xindex, x in enumerate(tracks):
-                    if isinstance(self.voltDivRatio['offset'], float):  # just one number
-                        scanvolt = (self.lineMult * x + self.lineOffset + self.offset) * self.voltDivRatio['offset']
-                    else:  # offset should be a dictionary than
-                        vals = list(self.voltDivRatio['offset'].values())
-                        mean_offset_div_ratio = np.mean(vals)
-                        # treat each offset with its own divider ratio
-                        mean_offset = np.mean([val * self.offset_by_dev[key] for key, val in
-                                               self.voltDivRatio['offset'].items()])
-                        scanvolt = (self.lineMult * x + self.lineOffset) * mean_offset_div_ratio + mean_offset
-                    self.x[trackindex][xindex] = self.accVolt*self.voltDivRatio['accVolt'] - scanvolt
+                # for xindex, x in enumerate(tracks):
+                #     if isinstance(self.voltDivRatio['offset'], float):  # just one number
+                #         scanvolt = (self.lineMult * x + self.lineOffset + self.offset) * self.voltDivRatio['offset']
+                #     else:  # offset should be a dictionary than
+                #         vals = list(self.voltDivRatio['offset'].values())
+                #         mean_offset_div_ratio = np.mean(vals)
+                #         # treat each offset with its own divider ratio
+                #         mean_offset = np.mean([val * self.offset_by_dev[key] for key, val in
+                #                                self.voltDivRatio['offset'].items()])
+                #         scanvolt = (self.lineMult * x + self.lineOffset) * mean_offset_div_ratio + mean_offset
+                #     self.x[trackindex][xindex] = self.accVolt*self.voltDivRatio['accVolt'] - scanvolt
+                self.x[trackindex] = Tools.line_to_total_volt(self.x[trackindex], self.lineMult, self.lineOffset,
+                                                              self.offset, self.accVolt, self.voltDivRatio,
+                                                              offset_by_dev_mean=self.offset_by_dev)
             '''If the numbers of scans for the tracks are different, it will be normed to the minimal number of scans:'''
             # print(self.x)
             # print(self.cts)
@@ -254,7 +262,17 @@ class MCPImporter(SpecData):
                 scans.append(int(lis[0]))
                 completed_scans.append(int(lis[1]))
                 steps.append(int(lis[2]))
-                limits.append(mcp_file_as_string[indlim:indlim2].split(',')[1:3])
+                # limits.append(mcp_file_as_string[indlim:indlim2].split(',')[1:3])
+                if indlim != -1:
+                    limits.append(mcp_file_as_string[indlim:indlim2].split(',')[1:3])
+                else:
+                    # -> no LineVoltageSweepObj included
+                    # might be a release curve
+                    indtrig = mcp_file_as_string.find('<TriggerObj,', ind)
+                    indtrig2 = mcp_file_as_string.find('>', indtrig)
+                    start_time = 10  # bascially one time bin TODO actually read from file
+                    end_time = steps[-1] * start_time
+                    limits.append([start_time, end_time])
                 ind += 3
         return (scans, completed_scans, steps, limits)
 

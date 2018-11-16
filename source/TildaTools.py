@@ -11,6 +11,7 @@ import logging
 import os
 import sqlite3
 from copy import deepcopy
+from copy import copy
 
 import numpy as np
 from lxml import etree as ET
@@ -103,6 +104,48 @@ def merge_extend_dicts(target_dict, new_dict, overwrite=True, force_overwrite=Fa
             # else: key exists and vals are identical - do nothing
         else:  # key doesn't exist
             target_dict[keys] = new_dict[keys]
+
+
+# Copyright Ferry Boender, released under the MIT license.
+# see here. https://www.electricmonk.nl/log/2017/05/07/merging-two-python-dictionaries-by-deep-updating/
+def deepupdate(target, src):
+    """
+    Deep update target dict with src
+    For each k,v in src: if k doesn't exist in target, it is deep copied from
+    src to target. Otherwise, if v is a list, target[k] is extended with
+    src[k]. If v is a set, target[k] is updated with v, If v is a dict,
+    recursively deep-update it.
+
+    Examples:
+    >>> t = {'name': 'Ferry', 'hobbies': ['programming', 'sci-fi']}
+    >>> deepupdate(t, {'hobbies': ['gaming']})
+    >>> print(t)
+    {'name': 'Ferry', 'hobbies': ['programming', 'sci-fi', 'gaming']}
+    """
+    for k, v in src.items():
+        if type(v) == list:
+            if not k in target:
+                target[k] = deepcopy(v)
+            else:
+                target[k].extend(v)
+        elif type(v) == dict:
+            if not k in target:
+                target[k] = deepcopy(v)
+            else:
+                deepupdate(target[k], v)
+        elif type(v) == set:
+            if not k in target:
+                target[k] = v.copy()
+            else:
+                target[k].update(v.copy())
+        elif type(v) == np.ndarray:
+            if not k in target:
+                target[k] = deepcopy(v)
+            else:
+                target[k] = np.append(target[k], v)
+        #TODO: Elif v is None do nothing? Because it might just replace an empty dict with None
+        else:
+            target[k] = copy(v)
 
 
 def numpy_array_from_string(string, shape, datatytpe=np.int32):
@@ -492,7 +535,8 @@ def zero_free_to_non_zero_free(zf_time_res_arr, dims_sc_step_time_list):
                 [(n_of_scalers_tr, n_of_steps_tr, n_of_bins_tr), ...]
 
     """
-    new_time_res = [np.zeros(dims_sc_step_time_list[tr_ind]) for tr_ind, tr in enumerate(dims_sc_step_time_list)]
+    new_time_res = [np.zeros(dims_sc_step_time_list[tr_ind], dtype=np.int32)
+                    for tr_ind, tr in enumerate(dims_sc_step_time_list)]
 
     for tr_ind, tr_dims in enumerate(dims_sc_step_time_list):
         sc_arr = zf_time_res_arr[tr_ind]['sc']
@@ -500,6 +544,38 @@ def zero_free_to_non_zero_free(zf_time_res_arr, dims_sc_step_time_list):
         time_arr = zf_time_res_arr[tr_ind]['time']
         new_time_res[tr_ind][sc_arr, step_arr, time_arr] = zf_time_res_arr[tr_ind]['cts']
     return new_time_res
+
+
+def non_zero_free_to_zero_free(non_zf_tr_wise_matrices):
+    """
+    Convert a trackwise list of numpy arrays which contains all counts and zeros for all pixel without an event
+    to a zero free data format like [([(sc, step, time, cts), ...]), ... tr1 ... ]
+    :param non_zf_tr_wise_matrices: list of numpy ndarrays with dimensons: [[sc_tr0, step_tr0, bins_tr0], ... tr1 ...]
+    :return: list of "zero free data format" one array for each track
+            ->  [([(sc, step, time, cts), ...]), ... tr1 ... ]
+    """
+    result = []
+
+    for tr_ind, tr_dat in enumerate(non_zf_tr_wise_matrices):
+        result.append([])
+        sc_tr, step_tr, bons_tr = tr_dat.shape
+        for sc in range(sc_tr):
+            non_z_ind = np.nonzero(tr_dat[sc])
+            step_sc_tr, time_sc_tr = non_z_ind
+            cts_sc_tr = tr_dat[sc, step_sc_tr, time_sc_tr]
+            res_sc_tr = np.zeros(step_sc_tr.size,
+                                 dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
+
+            res_sc_tr['sc'] = np.full(step_sc_tr.size, sc, dtype=[('sc', 'u2')])
+            res_sc_tr['step'] = step_sc_tr
+            res_sc_tr['time'] = time_sc_tr
+            res_sc_tr['cts'] = cts_sc_tr
+            if sc:
+                result[tr_ind] = np.append(result[tr_ind], res_sc_tr)
+            else:
+                result[tr_ind] = res_sc_tr
+
+    return result
 
 
 def gate_zero_free_specdata(spec_data):
@@ -519,7 +595,7 @@ def gate_zero_free_specdata(spec_data):
         spec_data.time_res = zero_free_to_non_zero_free(spec_data.time_res_zf, dimensions)
         spec_data = gate_specdata(spec_data)
     except Exception as e:
-        print('error: while gating zero free specdata: %s ' % e)
+        logging.error('error: while gating zero free specdata: %s ' % e, exc_info=True)
     return spec_data
 
     # alternative solution (currently slower):
@@ -644,6 +720,7 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
     of tuples [(int as multiplikation factor (e.g. +/- 1), specdata which will be added), ..]
     :return: specdata, added file.
     """
+
     added_files = [parent_specdata.file]
     offsets = [parent_specdata.offset]
     accvolts = [parent_specdata.accVolt]
@@ -661,20 +738,16 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
                     for sc_ind, sc in enumerate(tr):
                         parent_specdata.cts[tr_ind][sc_ind] += add_meas[0] * add_meas[1].cts[tr_ind][sc_ind]
                         parent_specdata.cts[tr_ind][sc_ind] = parent_specdata.cts[tr_ind][sc_ind].astype(np.int32)
-                    time_res_zf = check_if_attr_exists(add_meas[1], 'time_res_zf', [[]] * add_meas[1].nrTracks)[tr_ind]
-                    if len(time_res_zf):  # add the time spectrum (zero free) if it exists
-                        appended_arr = np.append(parent_specdata.time_res_zf[tr_ind], time_res_zf)
-                        # sort by 'sc', 'step', 'time' (no cts):
-                        sorted_arr = np.sort(appended_arr, order=['sc', 'step', 'time'])
-                        # find all elements that occur twice:
-                        unique_arr, unique_inds, uniq_cts = np.unique(sorted_arr[['sc', 'step', 'time']],
-                                                                      return_index=True, return_counts=True)
-                        sum_ind = unique_inds[np.where(uniq_cts == 2)]  # only take indexes of double occuring items
-                        # use indices of all twice occuring elements to add the counts of those:
-                        sum_cts = sorted_arr[sum_ind]['cts'] + add_meas[0] * sorted_arr[sum_ind + 1]['cts']
-                        np.put(sorted_arr['cts'], sum_ind, sum_cts)
-                        # delete all remaining items:
-                        parent_specdata.time_res_zf[tr_ind] = np.delete(sorted_arr, sum_ind + 1, axis=0)
+                        # add time_res (with zero) matrices if 'time_res' data exists
+                        #  this is always the case for time resolved data
+                        if check_if_attr_exists(parent_specdata, 'time_res', False) and check_if_attr_exists(
+                                add_meas[1], 'time_res', False):
+                            try:
+                                parent_specdata.time_res[tr_ind][sc_ind] += \
+                                    add_meas[0] * add_meas[1].time_res[tr_ind][sc_ind]
+                            except Exception as e:
+                                print('Timing bins seem not to be the same. '
+                                      'Files can not be added in time domain. Error is: %s' % e)
                 else:
                     print('warning, file: %s does not have the'
                           ' same x-axis as the parent file: %s,'
@@ -687,6 +760,10 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
         # needs to be converted like this:
         parent_specdata.cts[tr_ind] = np.array(parent_specdata.cts[tr_ind])
         # I Don't know why this is not in this format anyhow.
+
+    # create the zero free data from the non zero free
+    parent_specdata.time_res_zf = non_zero_free_to_zero_free(parent_specdata.time_res)
+
     parent_specdata.offset = np.mean(offsets)
     parent_specdata.accVolt = np.mean(accvolts)
     if save_dir:
@@ -700,7 +777,8 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
         scan_dict = create_scan_dict_from_spec_data(
             parent_specdata, filename, db)
         scan_dict['isotopeData']['addedFiles'] = added_files
-        createXmlFileOneIsotope(scan_dict, filename=filename)
+        # take the time from the host file!
+        createXmlFileOneIsotope(scan_dict, filename=filename, take_time_now=False)
         # call savespecdata in filehandl (will expect to have a .time_res)
         save_spec_data(parent_specdata, scan_dict)
 
@@ -799,7 +877,7 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
             'nOfBunches': 1,
             'softwGates': check_if_attr_exists(
                 specdata, 'softw_gates', [[] * specdata.nrScalers[tr_ind]] * specdata.nrTracks, [])[tr_ind],
-            'trigger': {'type': 'no_trigger'},
+            'trigger': check_if_attr_exists(specdata, 'trigger', [{'type': 'no_trigger'}] * specdata.nrTracks)[tr_ind],
             'pulsePattern': {'cmdList': [], 'periodicList': [], 'simpleDict': {}},
             'measureVoltPars': specdata.measureVoltPars[tr_ind],
             'triton': specdata.tritonPars[tr_ind]
@@ -844,7 +922,7 @@ def nameFile(path, subdir, fileName, prefix='', suffix='.tld'):
     return file
 
 
-def createXmlFileOneIsotope(scanDict, seq_type=None, filename=None):
+def createXmlFileOneIsotope(scanDict, seq_type=None, filename=None, take_time_now=True):
     """
     creates an .xml file for one Isotope. Using the Filestructure as stated in OneNote.
     :param scanDict: {'isotopeData', 'track0', 'pipeInternals'}
@@ -854,7 +932,7 @@ def createXmlFileOneIsotope(scanDict, seq_type=None, filename=None):
     # meas_volt_dict = deepcopy(scanDict['measureVoltPars'])
     if seq_type is not None:
         isodict['type'] = seq_type
-    root = xmlCreateIsotope(isodict)
+    root = xmlCreateIsotope(isodict, take_time_now=take_time_now)
     # xml_add_meas_volt_pars(meas_volt_dict, root)
     if filename is None:
         path = scanDict['pipeInternals']['workingDirectory']
@@ -907,6 +985,10 @@ def save_spec_data(spec_data, scan_dict):
         scan_dict = deepcopy(scan_dict)
         version = float(scan_dict['isotopeData']['version'])
         # scan_dict = create_scan_dict_from_spec_data(spec_data, scan_dict['pipeInternals']['activeXmlFilePath'])
+
+        # be sure that zero free data is created for storing in the file!
+        spec_data.time_res_zf = non_zero_free_to_zero_free(spec_data.time_res)
+
         try:
             if version > 1.1:
                 time_res = len(spec_data.time_res_zf)
@@ -956,7 +1038,7 @@ def save_spec_data(spec_data, scan_dict):
             logging.debug('will insert file: %s to database: %s' % (relative_filename, db))
             _insertFile(relative_filename, db)
     except Exception as e:
-        logging.erro('error while saving: %s' % e, exc_info=True)
+        logging.error('error while saving: %s' % e, exc_info=True)
 
 
 def get_number_of_tracks_in_scan_dict(scan_dict):
@@ -1008,7 +1090,7 @@ def get_gate_pars_from_db(db, iso, run):
     iso_mid_tof = select_from_db(
         db, 'midTof', 'Isotopes', [['iso'], [iso]],
         caller_name='get_software_gates_from_db in DataBaseOperations.py')
-    if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None:
+    if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None or iso_mid_tof[0][0] is None or run_gates_width[0][0] is None or run_gates_delay[0][0] is None: # added 3 cases since iso_mid_tof etc. is usually an array and != none (?)
         return None, None, None, None
     else:
         run_gates_width = run_gates_width[0][0]
@@ -1142,5 +1224,57 @@ if __name__ == '__main__':
     # sc_dict = dft.draftScanDict
     # isodict = sc_dict['isotopeData']
     # print(nameFileXml(isodict, 'E:\\temp2'))
-    ret = get_all_tracks_of_xml_in_one_dict('E:\\temp2\\sums\\notrit_csdummy_run1546.xml')
-    print(ret['track0']['triton'])
+    # ret = get_all_tracks_of_xml_in_one_dict('E:\\temp2\\sums\\notrit_csdummy_run1546.xml')
+    # print(ret['track0']['triton'])
+    sample_dict0 = {'track0':
+        {'triton':
+            {'preScan':
+                {'dummyDev': {
+                    'calls': {'required': 2, 'data': [0, 1], 'acquired': 2},
+                    'random': {'required': 4, 'data': [0, 1, 2, 3], 'acquired': 4}}}}}}
+    sample_dict1 = {'track0':
+        {'triton':
+            {'preScan':
+                {'dummyDev': {
+                    'calls': {'required': 2, 'data': [2], 'acquired': 1},
+                    'random': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
+    sample_dict2 = {}
+    sample_dict3 = {'track0':
+        {'triton':
+            {'preScan':
+                {'dummyDev2': {
+                    'calls': {'required': 2, 'data': [2], 'acquired': 1},
+                    'random': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
+    sample_dict4 = {'track0':
+        {'triton':
+            {'preScan':
+                {'dummyDev': {
+                    'calls1': {'required': 2, 'data': [2], 'acquired': 1},
+                    'random1': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
+    sample_dict5 = {'track0':
+        {'triton':
+            {'postScan':
+                {'dummyDev': {
+                    'calls1': {'required': 2, 'data': [2], 'acquired': 1},
+                    'random1': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
+    np1 = np.array([1, 1])
+    np2 = np.array([2, 2])
+    dmm_sample_dict0 = {'dummy_somewhere': np1, 'dummy_else' : np2}
+    dmm_sample_dict1 = {'dummy_somewhere': np2, 'dummy_else' : np1, 'more_dummy' : np2}
+    test_d0 = {'lala': [0, 1]}
+    test_d1 = {'lala': [1, 2], 'blub': [5,6]}
+
+    deepupdate(sample_dict0, sample_dict1)
+    deepupdate(sample_dict0, sample_dict2)
+    deepupdate(sample_dict0, sample_dict3)
+    deepupdate(sample_dict0, sample_dict4)
+    deepupdate(sample_dict0, sample_dict5)
+    realdict = {'track0': {'triton': {'duringScan': {'dummyDev': {'random': {'required': -1, 'data': [], 'acquired': 0}, 'calls': {'required': -1, 'data': [3], 'acquired': 1}}}}}}
+    deepupdate(dmm_sample_dict0, dmm_sample_dict1)
+    print(dmm_sample_dict0)
+    for dev, chs in sample_dict0['track0']['triton']['preScan'].items():
+        for ch_name, ch_data in chs.items():
+            #print(ch_data)
+            ch_data['acquired'] = len(ch_data['data'])
+
+    #print_dict_pretty(sample_dict0)

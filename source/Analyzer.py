@@ -19,6 +19,7 @@ from scipy.optimize import curve_fit
 import MPLPlotter as plt
 import Physics
 import TildaTools as TiTs
+import Measurement.MeasLoad as Loader
 
 
 def getFiles(iso, run, db):
@@ -98,7 +99,8 @@ def average(vals, errs):
 
 
 def combineRes(iso, par, run, db, weighted=True, print_extracted=True,
-               show_plot=False, only_this_files=[], write_to_db=True):
+               show_plot=False, only_this_files=[], write_to_db=True,
+               combine_from_par='', combine_from_multipl=1.0, combine_from_mult_err=0.0):
     '''
     Calculate weighted average of par using the configuration specified in the db
     :rtype : object
@@ -128,8 +130,19 @@ def combineRes(iso, par, run, db, weighted=True, print_extracted=True,
     if len(only_this_files):
         config = only_this_files
 
-    print('Combining', iso, par)
-    vals, errs, date, files = extract(iso, par, run, db, config, prin=print_extracted)
+    if combine_from_par == '':
+        print('Combining', iso, par)
+
+        vals, errs, date, files = extract(iso, par, run, db, config, prin=print_extracted)
+    else:
+        print('Combining ', iso, par, ' from par %s with multiplication %s +/- %s'
+              % (combine_from_par, combine_from_multipl, combine_from_mult_err))
+        vals_temp, errs_temp, date, files = extract(iso, combine_from_par, run, db, config, prin=print_extracted)
+        vals = [val * combine_from_multipl for val in vals_temp]
+        errs = [np.sqrt(
+            (combine_from_mult_err * vals[i]) ** 2 + (err * combine_from_multipl) ** 2
+        ) for i, err in enumerate(errs_temp)]
+
     print(files)
     if weighted:
         avg, err, rChi = weightedAverage(vals, errs)
@@ -368,7 +381,7 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
             block_shifts_errs += [np.sqrt(iso_errs[i] ** 2 + ref_extrapol_err ** 2)]
 
         # plot and save on disc
-        pic_name = 'shift_%s_' % iso
+        pic_name = 'shift_%s_%s_' % (iso, run)
         for file in iso_files:
             pic_name += file.split('.')[0] + '_'
         pic_name = pic_name[:-1] + '.png'
@@ -409,6 +422,134 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
     plt.clear()
 
     return shifts, shiftErrors, shifts_weighted_mean, statErr, systErr, rChi
+
+
+def combineShiftOffsetPerBunchDisplay(iso, run, db, show_plot=False):
+    """
+    takes an Isotope a run and a database and gives offsets per bunch for all
+     Isotopes involved in one IsotopeShift value
+        :return: list, (shifts, shiftErrors, shifts_weighted_mean, statErr, systErr, rChi)
+    """
+    print('Open DB', db)
+    # get the shift config for this iso and run:
+    conf_staterrform_systerrform = TiTs.select_from_db(db, 'config, statErrForm, systErrForm', 'Combined',
+                                                       [['iso', 'parname', 'run'], [iso, 'shift', run]],
+                                                       caller_name=__name__)
+    if conf_staterrform_systerrform:
+        (config, statErrForm, systErrForm) = conf_staterrform_systerrform[0]
+    else:
+        return [None] * 6
+    '''config needs to have this shape:
+    [
+    (['dataREF1.*','dataREF2.*',...],
+    ['dataINTERESTING1.*','dataINT2.*',...],
+    ['dataREF4.*',...]),
+    ([...],[...],[...]),
+    ...
+    ]
+    '''
+    config = ast.literal_eval(config)
+    print('Combining', iso, 'shift')
+    print('config is:')
+    for each in config:
+        print(each)
+
+    ref_refrun = TiTs.select_from_db(db, 'Lines.reference, lines.refRun',
+                                     'Runs JOIN Lines ON Runs.lineVar = Lines.lineVar', [['Runs.run'], [run]],
+                                     caller_name=__name__)
+    if ref_refrun is not None:
+        (ref, refRun) = ref_refrun[0]
+    else:
+        return [None] * 6
+    # each block is used to measure the isotope shift once
+    offsets = []
+    offsetErrors = []
+    dateIso = []  # dates as string for average plot
+    print(config)
+    for block in config:
+        block_offsets = []
+        block_offsets_errs = []
+        pre_ref_files, iso_files, post_ref_files = block
+        ref_files = pre_ref_files + post_ref_files
+        print('ref_files:')
+        for each in ref_files:
+            print(each)
+        if len(ref_files) == 0:
+            logging.warning('warning, no ref files found!')
+            return [None] * 6
+        ref_offsets, ref_errs, ref_dates, ref_files = extract(ref, 'offset', refRun, db, ref_files)
+        for i, ref_f in enumerate(ref_files):
+            fil_path_rel = TiTs.select_from_db(db, 'filePath', 'Files',
+                                               [['file'], [ref_f]], caller_name=__name__)
+            fil_path_abs = os.path.join(os.path.dirname(db), fil_path_rel[0][0])
+            meas = Loader.load(fil_path_abs, db, raw=True)
+            scans = meas.nrScans[0]  # take number of scans from track0
+            bunches_per_step = meas.nrBunches[0]
+            ref_offsets[i] = ref_offsets[i] / scans / bunches_per_step
+            ref_errs[i] = ref_errs[i] / scans / bunches_per_step
+        ref_dates_date_time = [datetime.strptime(each, '%Y-%m-%d %H:%M:%S') for each in ref_dates]
+        ref_dates_date_time_float = [datetime.strptime(each, '%Y-%m-%d %H:%M:%S').timestamp() for each in ref_dates]
+        first_ref = np.min(ref_dates_date_time_float)
+        ref_dates_float_relative = [each - first_ref for each in ref_dates_date_time_float]
+        refs_elapsed_s = np.max(ref_dates_date_time_float) - first_ref
+        iso_offsets, iso_errs, iso_dates, iso_files = extract(iso, 'offset', run, db, iso_files)
+        for i, iso_f in enumerate(iso_files):
+            fil_path_rel = TiTs.select_from_db(db, 'filePath', 'Files',
+                                               [['file'], [iso_f]], caller_name=__name__)
+            fil_path_abs = os.path.join(os.path.dirname(db), fil_path_rel[0][0])
+            meas = Loader.load(fil_path_abs, db, raw=True)
+            scans = meas.nrScans[0]  # take number of scans from track0
+            bunches_per_step = meas.nrBunches[0]
+            iso_offsets[i] = iso_offsets[i] / scans / bunches_per_step
+            iso_errs[i] = iso_errs[i] / scans / bunches_per_step
+
+        iso_dates_datetime = [datetime.strptime(each, '%Y-%m-%d %H:%M:%S') for each in iso_dates]
+        iso_dates_datetime_float = [datetime.strptime(each, '%Y-%m-%d %H:%M:%S').timestamp() for each in iso_dates]
+        iso_date_float_relative = [each - first_ref for each in iso_dates_datetime_float]
+        dateIso += iso_dates
+
+        offset, offset_err, rChi = weightedAverage(ref_offsets, ref_errs)
+        plt_label = 'mean val: %.1f +/- %.1f rChi: %.1f' % (offset, offset_err, rChi)
+        # calc iso offset for each ref
+        for i, iso_rel_date in enumerate(iso_date_float_relative):
+            block_offsets += [iso_offsets[i]]
+            block_offsets_errs += [iso_errs[i]]
+
+        # plot and save on disc
+        pic_name = 'offset_%s_%s_' % (iso, run)
+        for file in iso_files:
+            pic_name += file.split('.')[0] + '_'
+        pic_name = pic_name[:-1] + '.png'
+        file_name = os.path.join(os.path.dirname(db), 'offset_pics', pic_name)
+        offset_dir = os.path.dirname(file_name)
+        if not os.path.isdir(offset_dir):
+            os.mkdir(offset_dir)
+        plt.plot_iso_shift_time_dep(
+            ref_dates_date_time, ref_dates_date_time_float, ref_offsets, ref_errs, ref,
+            iso_dates_datetime, iso_dates_datetime_float, iso_offsets, iso_errs, iso,
+            0, offset, plt_label, (block_offsets, block_offsets_errs), file_name, show_plot=show_plot,
+            fig_name='offset', par_name='offset'
+        )
+        offsets += [[ref_offsets, block_offsets]]
+        offsetErrors += [[ref_errs, block_offsets_errs]]
+    # in the end get the mean value of all offsets:
+    # offsets_weighted_mean, err, rChi = weightedAverage(offsets, offsetErrors)
+
+    print('offsets:', offsets)
+    print('offsetErrors:', offsetErrors)
+    # print('Mean of offsets: %.2f(%.0f)' % (offsets_weighted_mean, err))
+    # print('rChi: %.2f' % rChi)
+    combined_plots_dir = os.path.join(os.path.split(db)[0], 'combined_plots')
+    avg_fig_name = os.path.join(combined_plots_dir, iso + '_' + run + '_offset.png')
+    # plotdata = (
+    #     dateIso, offsets, offsetErrors, offsets_weighted_mean,
+    #     0, 0, ('k.', 'r'), False, avg_fig_name, '%s_offset [MHz]' % iso)
+    # plt.plotAverage(*plotdata)
+    # if show_plot:
+    #     plt.show(True)
+    # plt.clear()
+
+    return offsets, offsetErrors
 
 
 def straight_func(x, slope, offset):

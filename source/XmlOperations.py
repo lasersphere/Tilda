@@ -70,7 +70,7 @@ def xmlWriteDict(parentEle, dictionary, exclude=[]):
     return parentEle
 
 
-def xmlCreateIsotope(isotopeDict):
+def xmlCreateIsotope(isotopeDict, take_time_now=True):
     """
     Builds the lxml Element Body for one isotope.
     Constant information for all isotopes is included in header.
@@ -79,7 +79,7 @@ def xmlCreateIsotope(isotopeDict):
     :return: lxml.etree.Element
     """
     root = ET.Element('TrigaLaserData')
-    xmlWriteIsoDictToHeader(root, isotopeDict)
+    xmlWriteIsoDictToHeader(root, isotopeDict, take_time_now=take_time_now)
     xmlFindOrCreateSubElement(root, 'tracks')
     return root
 
@@ -95,13 +95,14 @@ def xml_add_meas_volt_pars(meas_volt_pars_dict, root_element):
     return root_element
 
 
-def xmlWriteIsoDictToHeader(rootEle, isotopedict):
+def xmlWriteIsoDictToHeader(rootEle, isotopedict, take_time_now=True):
     """
     write the complete isotopedict and the datetime to the header of the xml structure
     """
     head = xmlFindOrCreateSubElement(rootEle, 'header')
-    time = str(dt.now().strftime("%Y-%m-%d %H:%M:%S"))
-    isotopedict.update(isotopeStartTime=time)
+    if take_time_now:
+        time = str(dt.now().strftime("%Y-%m-%d %H:%M:%S"))
+        isotopedict.update(isotopeStartTime=time)
     xmlWriteDict(head, isotopedict)
     return rootEle
 
