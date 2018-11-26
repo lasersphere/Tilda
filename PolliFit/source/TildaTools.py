@@ -192,7 +192,7 @@ def eval_str_vals_in_dict(dicti):
         try:
             dicti[key] = ast.literal_eval(val)
         except Exception as e:
-            if key == 'trigger':
+            if key == 'trigger' or key == 'scan_trigger':
                 val['type'] = val['type'].replace('TriggerTypes.', '')
                 # val = val.replace("<TriggerTypes.", "\'")
                 # val = val.replace(">", "\'")
@@ -343,7 +343,7 @@ def evaluate_strings_in_dict(dict_to_convert):
                     # needed for data of version 1.08
                     val = val.replace('\\', '\'').replace('TriggerTypes.', '').replace('<', '\'').replace('>', '\'')
                     val = ast.literal_eval(val)
-                if key == 'trigger':
+                if key == 'trigger' or key == 'scan_trigger':
                     val['type'] = val['type'].replace('TriggerTypes.', '')
                 else:
                     # print('error while converting val with ast.literal_eval: ', e, val, type(val), key)
@@ -878,6 +878,7 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
             'softwGates': check_if_attr_exists(
                 specdata, 'softw_gates', [[] * specdata.nrScalers[tr_ind]] * specdata.nrTracks, [])[tr_ind],
             'trigger': check_if_attr_exists(specdata, 'trigger', [{'type': 'no_trigger'}] * specdata.nrTracks)[tr_ind],
+            'scan_trigger': check_if_attr_exists(specdata, 'scan_trigger', [{'type': 'no_trigger'}]* specdata.nrTracks)[tr_ind],
             'pulsePattern': {'cmdList': [], 'periodicList': [], 'simpleDict': {}},
             'measureVoltPars': specdata.measureVoltPars[tr_ind],
             'triton': specdata.tritonPars[tr_ind]
@@ -1005,6 +1006,8 @@ def save_spec_data(spec_data, scan_dict):
             # only save name of trigger
             if not isinstance(scan_dict[track_name]['trigger']['type'], str):
                 scan_dict[track_name]['trigger']['type'] = scan_dict[track_name]['trigger']['type'].name
+            if not isinstance(scan_dict[track_name]['scan_trigger']['type'], str):
+                scan_dict[track_name]['scan_trigger']['type'] = scan_dict[track_name]['scan_trigger']['type'].name
             if time_res:
                 scan_dict[track_name]['softwGates'] = spec_data.softw_gates[track_ind]
                 if version > 1.1:

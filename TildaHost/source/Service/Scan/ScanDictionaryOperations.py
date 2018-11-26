@@ -34,6 +34,7 @@ def init_empty_scan_dict(type_str=None, version=None, load_default_vals=False):
         scand['track0']['outbits'] = {}
     scand['isotopeData']['version'] = Cfg.version
     scand['track0']['trigger'] = {'type': TiTs.no_trigger}
+    scand['track0']['scan_trigger'] = {'type': TiTs.no_trigger}
     scand['track0']['pulsePattern'] = {'cmdList': [], 'periodicList': [], 'simpleDict': {}}
     scand['track0']['nOfCompletedSteps'] = 0
     return scand

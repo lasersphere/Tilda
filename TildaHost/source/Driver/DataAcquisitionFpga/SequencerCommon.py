@@ -253,6 +253,39 @@ class Sequencer(FPGAInterfaceHandling):
             self.ReadWrite(self.config.selectTrigger, trigger_dict.get('trigInputChan', 0))
             return self.checkFpgaStatus()
 
+    def set_scan_trigger(self, trigger_dict=None):
+        """
+        sets all parameters related to the scan trigger.
+        :param scan_trigger_type: enum, defined in TriggerTypes.py
+        :param trigger_dict: dict, containing all values needed for this type of trigger
+        :return: True if success
+        """
+        scan_trigger_type = trigger_dict.get('type', TiTs.no_trigger)
+        logging.debug('setting scan trigger type to: ' + str(scan_trigger_type) + ' value: ' + str(scan_trigger_type.value))
+        logging.debug('trigger dict is: ' + str(trigger_dict))
+        self.ReadWrite(self.config.scanTriggerTypes, scan_trigger_type.value)
+        if scan_trigger_type is TiTs.no_trigger:
+            return self.checkFpgaStatus()
+        elif scan_trigger_type is TiTs.single_hit_delay:
+            self.ReadWrite(self.config.selectScanTrigger, trigger_dict.get('trigInputChan', 0))
+            self.ReadWrite(self.config.scanTrigDelay10ns, int(trigger_dict.get('trigDelay10ns', 0)))
+            trig_num = ['either', 'rising', 'falling'].index(trigger_dict.get('trigEdge', 'rising'))
+            logging.debug('triggernum is: %s' % trig_num)
+            self.ReadWrite(self.config.scanTriggerEdge, trig_num)
+            return self.checkFpgaStatus()
+        elif scan_trigger_type is TiTs.single_hit:
+            trig_num = ['either', 'rising', 'falling'].index(trigger_dict.get('trigEdge', 'rising'))
+            logging.debug('triggernum is: %s' % trig_num)
+            self.ReadWrite(self.config.scanTriggerEdge, trig_num)
+            self.ReadWrite(self.config.selectScanTrigger, trigger_dict.get('trigInputChan', 0))
+            return self.checkFpgaStatus()
+        elif scan_trigger_type is TiTs.sweep:
+            trig_num = ['either', 'rising', 'falling'].index(trigger_dict.get('trigEdge', 'rising'))
+            logging.debug('triggernum is: %s' % trig_num)
+            self.ReadWrite(self.config.scanTriggerEdge, trig_num)
+            self.ReadWrite(self.config.selectScanTrigger, trigger_dict.get('trigInputChan', 0))
+            return self.checkFpgaStatus()
+
     def set_0volt_dac_register(self, null_volt=None):
         """
         function to set the 0V DAC register to 0 Volts as gained by the calibration

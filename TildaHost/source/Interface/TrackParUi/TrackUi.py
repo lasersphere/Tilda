@@ -79,13 +79,23 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             self.spinBox_nOfScans.setMaximum(1)
 
         """ Trigger related """
-        self.checkBox.setDisabled(True)
-        self.checkBox.setToolTip('not yet included')
+        self.tabWidget.setCurrentIndex(0)  # Always step trigger as active tab, since this is the standard "trigger"
+        # Step Trigger
+        self.checkBox_stepUseAllTracks.setDisabled(True)
+        self.checkBox_stepUseAllTracks.setToolTip('not yet included')
         self.trigger_widget = None
         self.update_trigger_combob()
         self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {}))
         self.trigger_vert_layout.replaceWidget(self.widget_trigger_place_holder, self.trigger_widget)
         self.comboBox_triggerSelect.currentTextChanged.connect(self.trigger_select)
+        # Scan Trigger
+        self.checkBox_scanUseAllTracks.setDisabled(True)
+        self.checkBox_scanUseAllTracks.setToolTip('not yet included')
+        self.scan_trigger_widget = None
+        self.update_scan_trigger_combob()
+        self.scan_trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('scan_trigger', {}))
+        self.scan_trigger_vert_layout.replaceWidget(self.widget_scan_trigger_place_holder, self.scan_trigger_widget)
+        self.comboBox_scanTriggerSelect.currentTextChanged.connect(self.scan_trigger_select)
 
         """ pulse pattern related """
         self.pulse_pattern_win = None
@@ -208,6 +218,15 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             trig_type = self.buffer_pars.get('trigger', {}).get('type', TiTs.no_trigger)
             self.comboBox_triggerSelect.setCurrentText(trig_type.name)
 
+    def update_scan_trigger_combob(self, default_trig=None):
+        """
+        updates the scan trigger combo box by looking up the members of the enum
+        """
+        self.comboBox_scanTriggerSelect.addItems([tr.name for tr in TiTs])
+        if default_trig is None:
+            trig_type = self.buffer_pars.get('scan_trigger', {}).get('type', TiTs.no_trigger)
+            self.comboBox_scanTriggerSelect.setCurrentText(trig_type.name)
+
     def trigger_select(self, trig_str):
         """
         finds the desired trigger widget and sets it into self.trigger_widget
@@ -218,6 +237,17 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             self.trigger_widget.setParent(None)
         self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {}))
         self.trigger_vert_layout.addWidget(self.trigger_widget)
+
+    def scan_trigger_select(self, trig_str):
+        """
+        finds the desired scan trigger widget and sets it into self.scan_trigger_widget
+        """
+        self.buffer_pars.get('scan_trigger', {})['type'] = getattr(TiTs, trig_str)
+        self.scan_trigger_vert_layout.removeWidget(self.scan_trigger_widget)
+        if self.scan_trigger_widget is not None:
+            self.scan_rigger_widget.setParent(None)
+        self.scan_trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('scan_trigger', {}))
+        self.scan_trigger_vert_layout.addWidget(self.scan_trigger_widget)
 
     """ pulse pattern related """
 
@@ -505,6 +535,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """ closes the window and overwrites the corresponding track in the main """
         self.buffer_pars = SdOp.merge_dicts(self.buffer_pars, self.sequencer_widget.get_seq_pars())
         self.buffer_pars['trigger'] = self.trigger_widget.get_trig_pars()
+        self.buffer_pars['scan_trigger'] = self.scan_trigger_widget.get_trig_pars()
         if Cfg._main_instance is not None:
             Cfg._main_instance.scan_pars[self.active_iso][self.track_name] = deepcopy(self.buffer_pars)
         logging.debug('confirmed track dict: ' + str(self.buffer_pars))

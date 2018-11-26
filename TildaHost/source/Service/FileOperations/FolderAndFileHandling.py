@@ -94,6 +94,7 @@ def save_pipedata_json(pipe_data_dict, ending='.jpipedat'):
         if 'track' in key:
             #  Trigger enum needs to be converted to string
             val['trigger']['type'] = val['trigger']['type'].name
+            val['scan_trigger']['type'] = val['scan_trigger']['type'].name
     save_json_simple(path, pipe_data_dict)
     return path
 
@@ -117,6 +118,7 @@ def load_json(path, convert_trigger=True):
         for key, val in ret.items():
             if 'track' in key:
                 val['trigger']['type'] = TriTyp[val['trigger']['type']]
+                val['scan_trigger']['type'] = TriTyp[val['scan_trigger']['type']]
     return ret
 
 
