@@ -10,7 +10,8 @@ from datetime import datetime
 import os
 
 import numpy as np
-import Tools
+
+import TildaTools
 
 from Measurement.SpecData import SpecData
 
@@ -74,8 +75,8 @@ class TLDImporter(SpecData):
         # for i in range(len(self.x[0])):
         #     scanvolt = self.lineMult * (self.x[0][i]) + self.lineOffset + self.offset
         #     self.x[0][i] = self.accVolt - scanvolt
-        self.x[0] = Tools.line_to_total_volt(self.x[0], self.lineMult, self.lineOffset, self.offset, self.accVolt,
-                                             {'offset': 1.0, 'accVolt': 1.0, 'lineMult': 1.0})
+        self.x[0] = TildaTools.line_to_total_volt(self.x[0], self.lineMult, self.lineOffset, self.offset, self.accVolt,
+                                                  {'offset': 1.0, 'accVolt': 1.0, 'lineMult': 1.0})
         
         con.close()
  
