@@ -240,6 +240,12 @@ class KingFitter(object):
                 plt.plot(x_king, y_king_ghz, 'r', label='King fit', linewidth=2)
 
             if plot_y_mhz:
+                plt.plot(x_king, y_king, 'r', label='King fit', linewidth=2)
+            else:
+                y_king_ghz = [each / 1000 for each in y_king]
+                plt.plot(x_king, y_king_ghz, 'r', label='King fit', linewidth=2)
+
+            if plot_y_mhz:
                plt.errorbar(self.x, self.y, self.yerr, self.xerr, fmt='k.', markersize=10)
             else:  # plot in Gigahertz
                 y_ghz = [each / 1000 for each in self.y]
@@ -248,6 +254,12 @@ class KingFitter(object):
 
             # print('x', self.x, self.xerr)
             # print('y', self.y, self.yerr)
+            print('%s\t%s\t%s\t%s\t%s' % ('x', 'x_err', 'y', 'y_stat_err', 'y_err_total'))
+            for i, x in enumerate(self.x):
+                print('%.5f\t%.5f\t%.5f\t%.5f\t%.5f' % (x, self.xerr[i], self.y[i], self.yerr[i], self.yerr_total[i]))
+            print('%s\t%s' % ('King_fit_x', 'King_fit_y'))
+            print('%.5f\t%.5f' % (x_king[0], y_king[0]))
+            print('%.5f\t%.5f' % (x_king[1], y_king[1]))
 
 
             plt.gcf().set_facecolor('w')
@@ -358,21 +370,30 @@ class KingFitter(object):
         )
                                      for i, j in enumerate(self.isotopeShifts)]
         errs_to_print = [(
-                             self.isotopes[i],
-                             self.chargeradii[i],
-                             self.chargeradiiTotalErrs[i],
-                             abs(self.chargeradiiTotalErrs[i] / self.chargeradii[i]) * 100,
-                             abs(self.isotopeShiftStatErr[i] / self.b),
-                             abs(self.aerr / (self.isotopeRedMasses[i] * self.b)),
-                             abs((self.a / self.isotopeRedMasses[i] - j) * self.berr / np.square(self.b)),
-                             abs((self.a / self.b - self.c) * self.isotopeRedMassesErr[i] / np.square(self.isotopeRedMasses[i])),
+                             self.isotopes[i],  # iso
+                             self.isotopeShifts[i],  # shift
+                             self.isotopeShiftStatErr[i],  # shift_stat_err
+                             abs(self.isotopeShiftStatErr[i] / self.isotopeShifts[i]) * 100,  # rel. shift_stat_err
+                             self.chargeradii[i],  # dr^2
+                             self.chargeradiiTotalErrs[i],  # Delta dr^2
+                             abs(self.chargeradiiTotalErrs[i] / self.chargeradii[i]) * 100,  # rel. Delta dr^2
+                             abs(self.isotopeShiftStatErr[i] / self.b),  # Delta Is
+                             abs(self.aerr / (self.isotopeRedMasses[i] * self.b)),  # Delta K
+                             abs((self.a / self.isotopeRedMasses[i] - j) * self.berr / np.square(self.b)),  # Delta F
+                             abs((self.a / self.b - self.c) * self.isotopeRedMassesErr[i] / np.square(self.isotopeRedMasses[i])),  # Delta M
                          )
             for i, j in enumerate(self.isotopeShifts)
         ]
         if print_results:
-            print('iso\tdr^2\tDelta dr^2\tDelta IS\tDelta K\tDelta F\tDelta M')
+            # print error componenet that are combined to get the total charge radii uncertainty -> Gaussian error prop
+            # e.g. Delta IS -> abs(self.isotopeShiftStatErr[i] / self.b) -> shift_stat_err / F
+            # K -> mass shift factor -> self.a
+            # F -> field shift factor -> self.b
+            # alpha -> x-axis offset -> self.c
+            print('iso\tshift\tshift_stat_err\trel. shift_stat_err\t'
+                  'dr^2\tDelta dr^2\trel. Delta dr^2\tDelta IS\tDelta K\tDelta F\tDelta M')
             for each in errs_to_print:
-                print('%s\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\t%.4f\t%.4f' % each)
+                print('%s\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\t%.2f\t%.8f\t%.8f\t%.8f\t%.3E' % each)
 
         finalVals = {}
         for i,j in enumerate(self.isotopes):
@@ -482,20 +503,19 @@ class KingFitter(object):
             if reset_y_values:
                 self.masses.append(TiTs.select_from_db(self.db, 'mass', 'Isotopes', [['iso'], [i]],
                                                    caller_name=__name__)[0][0])
-                y = [0,0,0]
-                if run == -1:
-                    y = TiTs.select_from_db(self.db, 'val, statErr, systErr', 'Combined',
-                                            [['iso', 'parname'], [i, 'shift']], caller_name=__name__)[0]
-                else:
-                    y = TiTs.select_from_db(self.db, 'val, statErr, systErr', 'Combined',
-                                            [['iso', 'parname', 'run'], [i, 'shift', run]], caller_name=__name__)[0]
-                self.y.append(y[0])
-                if find_slope_with_statistical_error:
-                    self.yerr.append(y[1])  # statistical error
-                    self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
-                else:
-                    self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
-
+            y = [0,0,0]
+            if run == -1:
+                y = TiTs.select_from_db(self.db, 'val, statErr, systErr', 'Combined',
+                                        [['iso', 'parname'], [i, 'shift']], caller_name=__name__)[0]
+            else:
+                y = TiTs.select_from_db(self.db, 'val, statErr, systErr', 'Combined',
+                                        [['iso', 'parname', 'run'], [i, 'shift', run]], caller_name=__name__)[0]
+            self.y.append(y[0])
+            if find_slope_with_statistical_error:
+                self.yerr.append(y[1])  # statistical error
+                self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
+            else:
+                self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total errorself.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
             self.x_origin.append(self.litvals[i][0])
             self.xerr.append(self.litvals[i][1])
 
@@ -511,13 +531,13 @@ class KingFitter(object):
                     else:
                         y = TiTs.select_from_db(self.db, 'val, statErr, systErr', 'Combined',
                                                 [['iso', 'parname', 'run'], [i, 'projected IS', run]], caller_name=__name__)[0]
-                    self.y.append(y[0])
-                    if find_slope_with_statistical_error:
-                        self.yerr.append(y[1])  # statistical error
-                        self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
-                    else:
-                        self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
-
+                self.y.append(y[0])
+                if find_slope_with_statistical_error:
+                    self.yerr.append(y[1])  # statistical error
+                    self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
+                else:
+                    self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
+                    self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
                 self.x_origin.append(self.litvals[i][0])
                 self.xerr.append(self.litvals[i][1])
 

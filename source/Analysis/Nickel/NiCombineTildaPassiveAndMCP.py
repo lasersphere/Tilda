@@ -238,7 +238,7 @@ flat_configs_tipa = {}
 for isotope, flat_conf in sorted(flat_configs.items()):
     flat_configs_tipa[isotope] = []
     for mcp_f in flat_conf:
-        if mcp_f:
+        if mcp_f and not 'release' in mcp_f:
             tipa_meas, tipa_file_n = find_tipa_file_to_mcp_file(mcp_f)
             if tipa_file_n is not None:
                 # tipa_file_n = tipa_file_n.split('\\')[1]

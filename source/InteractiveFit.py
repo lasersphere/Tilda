@@ -84,7 +84,8 @@ class InteractiveFit(object):
                                      data_fmt=data_fmt, x_in_freq=plot_in_freq)
                         self.fitter = SPFitter(spec, meas, st)
                         plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize,
-                                     add_label=' gs+m', plot_side_peaks=False, x_in_freq=plot_in_freq)
+                                     add_label=' gs+m', plot_side_peaks=False, data_fmt=data_fmt,
+                                     x_in_freq=plot_in_freq)
                     else:
                         spec = FullSpec(iso)
                         self.fitter = SPFitter(spec, meas, st)

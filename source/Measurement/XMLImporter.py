@@ -379,7 +379,10 @@ class XMLImporter(SpecData):
         if float(self.version) <= 1.18:
             # only prescan available and only before first track
             # in order to have a value for each track, copy this existing one:
-            dmms_dict_list = [(scandict['measureVoltPars'].get('preScan', {}).get('dmms', {}), {})] * self.nrTracks
+            dmms_dict_list = [
+                                 (scandict.get('measureVoltPars', {}).get('preScan', {}).get('dmms', {}),
+                                  {},
+                                  {})] * self.nrTracks
         else:
             dmms_dict_list = []
             # consist of a tuple of dicts for each track
@@ -579,5 +582,8 @@ class XMLImporter(SpecData):
 # from file:
 # for file_num in range(169, 172):
 if __name__ == '__main__':
-    meas = XMLImporter('E:\\temp2\\data\\137Ba_acol_cs_run511.xml')
+    # meas = XMLImporter('E:\\temp2\\data\\137Ba_acol_cs_run511.xml')
+    meas = XMLImporter(
+        'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel'
+        '\\Measurement_and_Analysis_Simon\\Ni_workspace\\TiPaData\\Ni_tipa_024.xml')
     print(meas.laserFreq)

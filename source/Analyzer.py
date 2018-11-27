@@ -34,7 +34,7 @@ def getFiles(iso, run, db):
 
 def extract(iso, par, run, db, fileList=[], prin=True):
     '''Return a list of values of par of iso, filtered by files in fileList'''
-    print('Extracting', iso, par, )
+    print('Extracting', iso, par, run)
     if iso == 'all':
         fits = TiTs.select_from_db(db, 'file, pars', 'FitRes', [['run'], [run]], 'ORDER BY file',
                                    caller_name=__name__)
@@ -63,7 +63,7 @@ def extract(iso, par, run, db, fileList=[], prin=True):
         if len(fileList):
             for f in fileList:
                 if f not in files:
-                    print('Warning:', f, 'not found!')
+                    print('Warning:', f, 'not found while extracting from db\Files!')
         return vals, errs, date_list, files
     else:
         return None, None, None, None
@@ -275,7 +275,8 @@ def combineShift(iso, run, db, show_plot=False):
     return (shifts, shiftErrors, val, statErr, systErr, rChi)
 
 
-def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minutes=15):
+def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minutes=15,
+                       pic_format='.png', font_size=12):
     """
     takes an Isotope a run and a database and gives the isotopeshift to the reference!
     This will perform a linear fit to the references center positions versus time stamp and
@@ -318,6 +319,7 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
     shifts = []
     shiftErrors = []
     dateIso = []  # dates as string for average plot
+    fileIso = []  # all isotope files
     print(config)
     for block in config:
         block_shifts = []
@@ -345,6 +347,7 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
         iso_dates_datetime_float = [datetime.strptime(each, '%Y-%m-%d %H:%M:%S').timestamp() for each in iso_dates]
         iso_date_float_relative = [each - first_ref for each in iso_dates_datetime_float]
         dateIso += iso_dates
+        fileIso += iso_files
         # first assume a constant slope
         slope = 0
         offset, offset_err, rChi = weightedAverage(ref_centers, ref_errs)
@@ -384,12 +387,13 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
         pic_name = 'shift_%s_%s_' % (iso, run)
         for file in iso_files:
             pic_name += file.split('.')[0] + '_'
-        pic_name = pic_name[:-1] + '.png'
+        pic_name = pic_name[:-1] + pic_format
         file_name = os.path.join(os.path.dirname(db), 'shift_pics', pic_name)
         plt.plot_iso_shift_time_dep(
             ref_dates_date_time, ref_dates_date_time_float, ref_centers, ref_errs, ref,
             iso_dates_datetime, iso_dates_datetime_float, iso_centers, iso_errs, iso,
-            slope, offset, plt_label, (block_shifts, block_shifts_errs), file_name, show_plot=show_plot)
+            slope, offset, plt_label, (block_shifts, block_shifts_errs), file_name, show_plot=show_plot,
+            font_size=font_size)
         shifts += block_shifts
         shiftErrors += block_shifts_errs
     # in the end get the mean value of all shifts:
@@ -407,8 +411,12 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
                 (shifts_weighted_mean, statErr, systErr, rChi, iso, 'shift', run))
     con.commit()
     con.close()
+    print('dates:', dateIso)
     print('shifts:', shifts)
     print('shiftErrors:', shiftErrors)
+    print('date\tfile\tshift / MHz\tshiftError / MHz')
+    for i, sh in enumerate(shifts):
+        print('%s\t%s\t%.4f\t%.4f' % (dateIso[i], fileIso[i], sh, shiftErrors[i]))
     print('Mean of shifts: %.2f(%.0f)[%.0f] MHz' % (shifts_weighted_mean, statErr * 100, systErr * 100))
     print('rChi: %.2f' % rChi)
     combined_plots_dir = os.path.join(os.path.split(db)[0], 'combined_plots')
@@ -428,7 +436,11 @@ def combineShiftOffsetPerBunchDisplay(iso, run, db, show_plot=False):
     """
     takes an Isotope a run and a database and gives offsets per bunch for all
      Isotopes involved in one IsotopeShift value
-        :return: list, (shifts, shiftErrors, shifts_weighted_mean, statErr, systErr, rChi)
+        :return: offsets, offsetErrs, config
+
+        offsets: list, [[ref_offset0, ref_offset1, ... ], [iso_offset0, iso_offset1, ...]]
+        offsetErrs: list, [[ref_offset_err0, ref_offset_err1, ... ], [iso_offset_err0, iso_offset_err1, ...]]
+        config: list, [(ref_file_str0, ref_file_str1, ...), (iso_file_str0, ...), (ref_file_str0, ...)]
     """
     print('Open DB', db)
     # get the shift config for this iso and run:
@@ -549,7 +561,7 @@ def combineShiftOffsetPerBunchDisplay(iso, run, db, show_plot=False):
     #     plt.show(True)
     # plt.clear()
 
-    return offsets, offsetErrors
+    return offsets, offsetErrors, config
 
 
 def straight_func(x, slope, offset):
