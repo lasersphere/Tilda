@@ -1133,18 +1133,32 @@ def calc_db_pars_from_software_gate(softw_gates_single_tr):
     return run_gates_width, del_list, iso_mid_tof
 
 
-def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak, show_plt=True):
+def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak,
+                                             show_plt=True, non_consectutive_time_bins_tolerance=1,
+                                             save_to_path=''):
     """
     This will analyse the time projection of the counts.
     It will get the background, the maximum counts, the timings of the maximum counts
     and where the counts have reached the desired percentage of the maximum peak (above background)
     each value will be given per track and scaler.
-    :param percentage_of_peak:
+    :param spec_data: XMLImporter object, usual xmlobject, t_proj will be handled
+    :param percentage_of_peak: float, percent, percentage of the maximum counts above
+     background for automatic gate determination
+    :param non_consectutive_time_bins_tolerance: int,
+    tolerance how many time bins can be below the threshold before this is counted
+    as a not connected to the area above threshold anymore.
+    :param save_to_path: str, absoulte path were to store the plot as a .png or so
     :return:
     """
     import matplotlib.pyplot as plt
-    fig, axes = plt.subplots(spec_data.nrScalers[0], spec_data.nrTracks)
-    print(axes)
+    fig, axes = plt.subplots(spec_data.nrScalers[0], spec_data.nrTracks, sharex='col',
+                             gridspec_kw={'hspace': 0.,
+                                          'top': 0.95,
+                                          'bottom': 0.05,
+                                          'wspace': 0.7,
+                                          'left': 0.09 / spec_data.nrTracks,
+                                          'right': 0.9 - 0.2 / spec_data.nrTracks},
+                             figsize=(8 * spec_data.nrTracks, 12 * (spec_data.nrScalers[0] / 4)))
     if spec_data.nrTracks == 1:
         axes = [[ax] for ax in axes]
     backgrounds = []
@@ -1158,12 +1172,12 @@ def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak, show
     # spec_data = XMLImporter()
     tr = -1
     for tr_t_proj in spec_data.t_proj:
-        print('tr_tproj', tr_t_proj.shape)
+        # print('tr_tproj', tr_t_proj.shape)
         tr += 1
         sc = -1
         max_counts.append(np.max(tr_t_proj, axis=1))  # for all scalers at once
         max_counts_ind.append(np.argmax(tr_t_proj, axis=1))
-        print(max_counts_ind)
+        # print(max_counts_ind)
         max_counts_times.append(spec_data.t[tr][max_counts_ind[tr]])
         bunch_begin_times += [],
         bunch_end_times += [],
@@ -1180,23 +1194,71 @@ def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak, show
             # print(tr, sc, max(sc_t_proj), sc_t_proj)
             cond_min = (max_counts[tr][sc] - sc_back_mean) * (percentage_of_peak / 100) + sc_back_mean
             indice_above_cond = np.where(sc_t_proj >= cond_min)
-            # print(sc_t_proj[indice_above_cond])
-            # print(spec_data.t[tr][indice_above_cond])
-            bunch_begin_times[tr].append(spec_data.t[tr][indice_above_cond][0])
-            bunch_end_times[tr].append(spec_data.t[tr][indice_above_cond][-1])
-            bunch_lenght_us[tr].append(bunch_end_times[tr][-1] - bunch_begin_times[tr][-1])
-            print(len(axes), tr, sc)
-            pl_sc_tr = axes[sc][tr].plot(spec_data.t[tr], spec_data.t_proj[tr][sc])
-            axes[sc][tr].autoscale(enable=True)
-            axes[sc][tr].axvline(bunch_begin_times[tr][-1], color='g')
-            axes[sc][tr].axvline(bunch_end_times[tr][-1], color='g')
-            axes[sc][tr].axvline(max_counts_times[tr][sc], color='r')
 
-    fig.tight_layout()
+            # find consecutive indices before and after the maximum counts index
+            indice_above_cond_before_max = [val for val in indice_above_cond[0] if val < max_counts_ind[tr][sc]]
+            indice_above_cond_before_max.reverse()
+            start_ind = indice_above_cond_before_max[0]
+            for i, each in enumerate(indice_above_cond_before_max):
+                if i < len(indice_above_cond_before_max) - 1:
+                    if np.isclose(each - 1, indice_above_cond_before_max[i + 1], atol=non_consectutive_time_bins_tolerance):
+                        start_ind = each - 2
+                    else:
+                        # break for loop as soon as indices are not consecutive anymore
+                        break
+            # print(indice_above_cond_before_max)
+            # print('start_ind:', start_ind)
+
+            indice_above_cond_after_max = [val for val in indice_above_cond[0] if val > max_counts_ind[tr][sc]]
+            stopp_ind = indice_above_cond_after_max[0]
+            for i, each in enumerate(indice_above_cond_after_max):
+                if i < len(indice_above_cond_after_max) - 1:
+                    if np.isclose(each + 1, indice_above_cond_after_max[i + 1], atol=non_consectutive_time_bins_tolerance):
+                        stopp_ind = each + 2
+                    else:
+                        # break for loop as soon as indices are not consecutive anymore
+                        break
+            # print(indice_above_cond_after_max)
+            # print('stopp_ind:', stopp_ind)
+
+            # print(spec_data.t[tr][indice_above_cond])
+            bunch_begin_times[tr].append(spec_data.t[tr][start_ind])
+            bunch_end_times[tr].append(spec_data.t[tr][stopp_ind])
+            bunch_lenght_us[tr].append(bunch_end_times[tr][-1] - bunch_begin_times[tr][-1])
+            # print(len(axes), tr, sc)
+            pl_sc_tr = axes[sc][tr].plot(spec_data.t[tr], spec_data.t_proj[tr][sc],
+                                         color='k', label='sc: %s, tr: %s' % (sc, tr), linewidth=1.)
+            axes[sc][tr].autoscale(enable=True)
+            axes[sc][tr].axvline(bunch_begin_times[tr][-1], color='g',
+                                 label='start: %.2f µs' % bunch_begin_times[tr][-1],
+                                 linewidth=1.5)
+            axes[sc][tr].axvline(bunch_end_times[tr][-1], color='b',
+                                 label='stopp: %.2f µs' % bunch_end_times[tr][-1],
+                                 linewidth=1.5)
+            axes[sc][tr].plot([spec_data.t[0][0]], [0], color='w',
+                              label='length: %.2f µs' % bunch_lenght_us[tr][-1])
+            axes[sc][tr].axvline(max_counts_times[tr][sc], color='r',
+                                 label='max_cts: %.2f µs' % max_counts_times[tr][sc],
+                                 linewidth=1.5)
+            axes[sc][tr].axhline(cond_min, color='g',
+                                 # label='%s percent of peak above background' % percentage_of_peak,
+                                 linewidth=0.5, linestyle='--')
+            axes[sc][tr].set_ylim(axes[sc][tr].get_ylim()[0], axes[sc][tr].get_ylim()[1] - 0.5)
+            # in order not to have numbers overlap
+            axes[sc][tr].set_xlabel('time of flight / µs')
+            axes[sc][tr].set_ylabel('counts')
+            axes[sc][tr].legend(loc=(1.01, 0.05))
+
+    fig.set_facecolor('w')
+    fig.suptitle('%s percentage of peak: %.2f%% rebinning: %d ns '
+                 % (spec_data.file, percentage_of_peak, spec_data.softBinWidth_ns[0]), ha='center', va='top')
+
     if show_plt:
         plt.show(block=True)
 
-
+    if save_to_path:
+        print('saving to: %s' % save_to_path)
+        fig.savefig(save_to_path, dpi=150, quality=95, facecolor='w')
     print(max_counts)
     print(backgrounds)
     print(bunch_begin_times)
