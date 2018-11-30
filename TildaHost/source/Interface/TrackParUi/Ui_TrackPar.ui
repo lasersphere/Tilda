@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>413</width>
-    <height>714</height>
+    <height>726</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -66,13 +66,20 @@
          <item>
           <widget class="QTabWidget" name="tabWidget">
            <property name="currentIndex">
-            <number>1</number>
+            <number>0</number>
            </property>
-           <widget class="QWidget" name="tab_step_trigger">
+           <widget class="QWidget" name="tab_trigger">
             <attribute name="title">
-             <string>step Trigger</string>
+             <string>Trigger</string>
             </attribute>
             <layout class="QVBoxLayout" name="verticalLayout_7">
+             <item>
+              <widget class="QLabel" name="label_descriptionTrigger">
+               <property name="text">
+                <string>Standard trigger. Used for cs step-trigger or trs bunch-trigger</string>
+               </property>
+              </widget>
+             </item>
              <item>
               <widget class="QWidget" name="widget_trigger" native="true">
                <property name="sizePolicy">
@@ -91,6 +98,85 @@
                 <item>
                  <layout class="QGridLayout" name="gridLayout">
                   <item row="0" column="0">
+                   <widget class="QLabel" name="label_Trigger">
+                    <property name="text">
+                     <string>trigger:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="0">
+                   <widget class="QComboBox" name="comboBox_triggerSelect">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QCheckBox" name="checkBox_UseAllTracks">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="text">
+                     <string>use for all tracks</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <layout class="QVBoxLayout" name="trigger_vert_layout">
+                  <item>
+                   <widget class="QWidget" name="widget_trigger_place_holder" native="true"/>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_step_trigger">
+            <attribute name="title">
+             <string>step Trigger</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_8">
+             <item>
+              <widget class="QLabel" name="label_descriptionStepTrigger">
+               <property name="text">
+                <string>Advanced trigger. Used for trs step-trigger.</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QWidget" name="widget_step_trigger" native="true">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <layout class="QVBoxLayout" name="verticalLayout_5">
+                <item>
+                 <layout class="QGridLayout" name="gridLayout_6">
+                  <item row="0" column="0">
                    <widget class="QLabel" name="label_stepTrigger">
                     <property name="text">
                      <string>step trigger:</string>
@@ -98,7 +184,7 @@
                    </widget>
                   </item>
                   <item row="1" column="0">
-                   <widget class="QComboBox" name="comboBox_triggerSelect">
+                   <widget class="QComboBox" name="comboBox_stepTriggerSelect">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
                       <horstretch>0</horstretch>
@@ -129,9 +215,9 @@
                  </layout>
                 </item>
                 <item>
-                 <layout class="QVBoxLayout" name="trigger_vert_layout">
+                 <layout class="QVBoxLayout" name="step_trigger_vert_layout">
                   <item>
-                   <widget class="QWidget" name="widget_trigger_place_holder" native="true"/>
+                   <widget class="QWidget" name="widget_step_trigger_place_holder" native="true"/>
                   </item>
                  </layout>
                 </item>
@@ -145,6 +231,13 @@
              <string>scan Trigger</string>
             </attribute>
             <layout class="QVBoxLayout" name="verticalLayout_10">
+             <item>
+              <widget class="QLabel" name="label_9">
+               <property name="text">
+                <string>Advanced trigger. Used for scan-trigger in both cs and trs.</string>
+               </property>
+              </widget>
+             </item>
              <item>
               <widget class="QWidget" name="widget_scan_trigger" native="true">
                <property name="sizePolicy">

@@ -80,14 +80,24 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
         """ Trigger related """
         self.tabWidget.setCurrentIndex(0)  # Always step trigger as active tab, since this is the standard "trigger"
-        # Step Trigger
-        self.checkBox_stepUseAllTracks.setDisabled(True)
-        self.checkBox_stepUseAllTracks.setToolTip('not yet included')
+        # Standard Trigger
+        self.checkBox_UseAllTracks.setDisabled(True)
+        self.checkBox_UseAllTracks.setToolTip('not yet included')
         self.trigger_widget = None
         self.update_trigger_combob()
         self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {}))
         self.trigger_vert_layout.replaceWidget(self.widget_trigger_place_holder, self.trigger_widget)
         self.comboBox_triggerSelect.currentTextChanged.connect(self.trigger_select)
+        # Step Trigger
+        if self.seq_type in ['cs', 'csdummy', 'kepco']:
+            self.tab_step_trigger.setDisabled(True)
+        self.checkBox_stepUseAllTracks.setDisabled(True)
+        self.checkBox_stepUseAllTracks.setToolTip('not yet included')
+        self.step_trigger_widget = None
+        self.update_step_trigger_combob()
+        self.step_trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('step_trigger', {}))
+        self.step_trigger_vert_layout.replaceWidget(self.widget_step_trigger_place_holder, self.step_trigger_widget)
+        self.comboBox_stepTriggerSelect.currentTextChanged.connect(self.step_trigger_select)
         # Scan Trigger
         self.checkBox_scanUseAllTracks.setDisabled(True)
         self.checkBox_scanUseAllTracks.setToolTip('not yet included')
@@ -218,6 +228,15 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             trig_type = self.buffer_pars.get('trigger', {}).get('type', TiTs.no_trigger)
             self.comboBox_triggerSelect.setCurrentText(trig_type.name)
 
+    def update_step_trigger_combob(self, default_trig=None):
+        """
+        updates the step trigger combo box by looking up the members of the enum
+        """
+        self.comboBox_stepTriggerSelect.addItems([tr.name for tr in TiTs])
+        if default_trig is None:
+            trig_type = self.buffer_pars.get('step_trigger', {}).get('type', TiTs.no_trigger)
+            self.comboBox_stepTriggerSelect.setCurrentText(trig_type.name)
+
     def update_scan_trigger_combob(self, default_trig=None):
         """
         updates the scan trigger combo box by looking up the members of the enum
@@ -238,6 +257,17 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {}))
         self.trigger_vert_layout.addWidget(self.trigger_widget)
 
+    def step_trigger_select(self, trig_str):
+        """
+        finds the desired step trigger widget and sets it into self.step_trigger_widget
+        """
+        self.buffer_pars.get('step_trigger', {})['type'] = getattr(TiTs, trig_str)
+        self.step_trigger_vert_layout.removeWidget(self.step_trigger_widget)
+        if self.step_trigger_widget is not None:
+            self.step_trigger_widget.setParent(None)
+        self.step_trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('step_trigger', {}))
+        self.step_trigger_vert_layout.addWidget(self.step_trigger_widget)
+
     def scan_trigger_select(self, trig_str):
         """
         finds the desired scan trigger widget and sets it into self.scan_trigger_widget
@@ -245,7 +275,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.buffer_pars.get('scan_trigger', {})['type'] = getattr(TiTs, trig_str)
         self.scan_trigger_vert_layout.removeWidget(self.scan_trigger_widget)
         if self.scan_trigger_widget is not None:
-            self.scan_rigger_widget.setParent(None)
+            self.scan_trigger_widget.setParent(None)
         self.scan_trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('scan_trigger', {}))
         self.scan_trigger_vert_layout.addWidget(self.scan_trigger_widget)
 

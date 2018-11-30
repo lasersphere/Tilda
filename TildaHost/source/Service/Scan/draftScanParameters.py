@@ -50,7 +50,7 @@ naming convention is type_list.  """
 
 cs_list = ['dwellTime10ns']
 
-trs_list = ['nOfBins', 'nOfBunches', 'softwGates', 'softBinWidth_ns']
+trs_list = ['nOfBins', 'nOfBunches', 'softwGates', 'softBinWidth_ns', 'step_trigger']
 
 kepco_list = []
 
