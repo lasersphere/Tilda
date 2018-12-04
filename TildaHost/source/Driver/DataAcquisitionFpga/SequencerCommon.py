@@ -243,8 +243,8 @@ class Sequencer(FPGAInterfaceHandling):
                               'trigDelay10ns': self.config.scanTrigDelay10ns,
                               'triggerEdge': self.config.scanTriggerEdge,
                               'softwareTrigger': self.config.softwareScanTrigger}
-        trig_fpga_status = False
-        for triggers, trig_dicts in trigger_dict:
+        trig_fpga_status = True
+        for triggers, trig_dicts in trigger_dict.items():
             controls = {}
             if triggers == 'meas_trigger': controls = meas_trigger_controls
             elif triggers == 'step_trigger': controls = step_trigger_controls
