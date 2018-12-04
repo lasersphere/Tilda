@@ -80,12 +80,13 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
         """ Trigger related """
         self.tabWidget.setCurrentIndex(0)  # Always step trigger as active tab, since this is the standard "trigger"
-        # Standard Trigger
+        # Measurement Trigger
         self.checkBox_UseAllTracks.setDisabled(True)
         self.checkBox_UseAllTracks.setToolTip('not yet included')
         self.trigger_widget = None
         self.update_trigger_combob()
-        self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {}))
+        self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {})
+                                                                         .get('meas_trigger', {}))
         self.trigger_vert_layout.replaceWidget(self.widget_trigger_place_holder, self.trigger_widget)
         self.comboBox_triggerSelect.currentTextChanged.connect(self.trigger_select)
         # Step Trigger
@@ -95,7 +96,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.checkBox_stepUseAllTracks.setToolTip('not yet included')
         self.step_trigger_widget = None
         self.update_step_trigger_combob()
-        self.step_trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('step_trigger', {}))
+        self.step_trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {})
+                                                                              .get('step_trigger', {}))
         self.step_trigger_vert_layout.replaceWidget(self.widget_step_trigger_place_holder, self.step_trigger_widget)
         self.comboBox_stepTriggerSelect.currentTextChanged.connect(self.step_trigger_select)
         # Scan Trigger
@@ -103,7 +105,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.checkBox_scanUseAllTracks.setToolTip('not yet included')
         self.scan_trigger_widget = None
         self.update_scan_trigger_combob()
-        self.scan_trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('scan_trigger', {}))
+        self.scan_trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {})
+                                                                              .get('scan_trigger', {}))
         self.scan_trigger_vert_layout.replaceWidget(self.widget_scan_trigger_place_holder, self.scan_trigger_widget)
         self.comboBox_scanTriggerSelect.currentTextChanged.connect(self.scan_trigger_select)
 
@@ -225,7 +228,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """
         self.comboBox_triggerSelect.addItems([tr.name for tr in TiTs])
         if default_trig is None:
-            trig_type = self.buffer_pars.get('trigger', {}).get('type', TiTs.no_trigger)
+            trig_type = self.buffer_pars.get('trigger', {}).get('meas_trigger', {}).get('type', TiTs.no_trigger)
             self.comboBox_triggerSelect.setCurrentText(trig_type.name)
 
     def update_step_trigger_combob(self, default_trig=None):
@@ -234,7 +237,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """
         self.comboBox_stepTriggerSelect.addItems([tr.name for tr in TiTs])
         if default_trig is None:
-            trig_type = self.buffer_pars.get('step_trigger', {}).get('type', TiTs.no_trigger)
+            trig_type = self.buffer_pars.get('trigger', {}).get('step_trigger', {}).get('type', TiTs.no_trigger)
             self.comboBox_stepTriggerSelect.setCurrentText(trig_type.name)
 
     def update_scan_trigger_combob(self, default_trig=None):
@@ -243,40 +246,43 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """
         self.comboBox_scanTriggerSelect.addItems([tr.name for tr in TiTs])
         if default_trig is None:
-            trig_type = self.buffer_pars.get('scan_trigger', {}).get('type', TiTs.no_trigger)
+            trig_type = self.buffer_pars.get('trigger', {}).get('scan_trigger', {}).get('type', TiTs.no_trigger)
             self.comboBox_scanTriggerSelect.setCurrentText(trig_type.name)
 
     def trigger_select(self, trig_str):
         """
         finds the desired trigger widget and sets it into self.trigger_widget
         """
-        self.buffer_pars.get('trigger', {})['type'] = getattr(TiTs, trig_str)
+        self.buffer_pars.get('trigger', {}).get('meas_trigger', {})['type'] = getattr(TiTs, trig_str)
         self.trigger_vert_layout.removeWidget(self.trigger_widget)
         if self.trigger_widget is not None:
             self.trigger_widget.setParent(None)
-        self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {}))
+        self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {})
+                                                                         .get('meas_trigger', {}))
         self.trigger_vert_layout.addWidget(self.trigger_widget)
 
     def step_trigger_select(self, trig_str):
         """
         finds the desired step trigger widget and sets it into self.step_trigger_widget
         """
-        self.buffer_pars.get('step_trigger', {})['type'] = getattr(TiTs, trig_str)
+        self.buffer_pars.get('trigger', {}).get('step_trigger', {})['type'] = getattr(TiTs, trig_str)
         self.step_trigger_vert_layout.removeWidget(self.step_trigger_widget)
         if self.step_trigger_widget is not None:
             self.step_trigger_widget.setParent(None)
-        self.step_trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('step_trigger', {}))
+        self.step_trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {})
+                                                                              .get('step_trigger', {}))
         self.step_trigger_vert_layout.addWidget(self.step_trigger_widget)
 
     def scan_trigger_select(self, trig_str):
         """
         finds the desired scan trigger widget and sets it into self.scan_trigger_widget
         """
-        self.buffer_pars.get('scan_trigger', {})['type'] = getattr(TiTs, trig_str)
+        self.buffer_pars.get('trigger', {}).get('scan_trigger', {})['type'] = getattr(TiTs, trig_str)
         self.scan_trigger_vert_layout.removeWidget(self.scan_trigger_widget)
         if self.scan_trigger_widget is not None:
             self.scan_trigger_widget.setParent(None)
-        self.scan_trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('scan_trigger', {}))
+        self.scan_trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger', {})
+                                                                              .get('scan_trigger', {}))
         self.scan_trigger_vert_layout.addWidget(self.scan_trigger_widget)
 
     """ pulse pattern related """
@@ -564,8 +570,9 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def confirm(self):
         """ closes the window and overwrites the corresponding track in the main """
         self.buffer_pars = SdOp.merge_dicts(self.buffer_pars, self.sequencer_widget.get_seq_pars())
-        self.buffer_pars['trigger'] = self.trigger_widget.get_trig_pars()
-        self.buffer_pars['scan_trigger'] = self.scan_trigger_widget.get_trig_pars()
+        self.buffer_pars['trigger'] = {'meas_trigger': self.trigger_widget.get_trig_pars(),
+                                       'step_trigger': self.step_trigger_widget.get_trig_pars(),
+                                       'scan_trigger': self.scan_trigger_widget.get_trig_pars()}
         if Cfg._main_instance is not None:
             Cfg._main_instance.scan_pars[self.active_iso][self.track_name] = deepcopy(self.buffer_pars)
         logging.debug('confirmed track dict: ' + str(self.buffer_pars))
@@ -576,7 +583,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.close()
 
     def reset_to_default(self):
-        """ will reset all spinboxes to the default value which is stored in teh main. """
+        """ will reset all spinboxes to the default value which is stored in the main. """
         if Cfg._main_instance is not None:
             default_d = deepcopy(Cfg._main_instance.scan_pars[self.active_iso][self.track_name])
         else:

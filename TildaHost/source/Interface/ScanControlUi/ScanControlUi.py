@@ -142,23 +142,15 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
                 for key, val in scan_dict.items():
                     if 'track' in key:
                         if 'trigger' in val:
-                            trig_type_str = val['trigger']['type']
-                            if 'TriggerTypes.' in trig_type_str:  # needed for older versions
-                                trig_type_str = trig_type_str.split('.')[1]
-                            try:
-                                val['trigger']['type'] = getattr(TriggerTypes, trig_type_str)
-                            except Exception as e:
-                                logging.error(
-                                    'error: %s, could not do: getattr(TriggerTypes, %s) ' % (e, val['trigger']['type']))
-                        if 'scan_trigger' in val:
-                            scan_trig_type_str = val['scan_trigger']['type']
-                            if 'TriggerTypes.' in scan_trig_type_str:  # needed for older versions
-                                scan_trig_type_str = scan_trig_type_str.split('.')[1]
-                            try:
-                                val['scan_trigger']['type'] = getattr(TriggerTypes, scan_trig_type_str)
-                            except Exception as e:
-                                logging.error(
-                                    'error: %s, could not do: getattr(TriggerTypes, %s) ' % (e, val['scan_trigger']['type']))
+                            for trig_types, trig_dicts in val['trigger']:
+                                trig_type_str = trig_dicts['type']
+                                if 'TriggerTypes.' in trig_type_str:  # needed for older versions
+                                    trig_type_str = trig_type_str.split('.')[1]
+                                try:
+                                    trig_dicts['type'] = getattr(TriggerTypes, trig_type_str)
+                                except Exception as e:
+                                    logging.error(
+                                        'error: %s, could not do: getattr(TriggerTypes, %s) ' % (e, trig_dicts['type']))
                 self.active_iso = Cfg._main_instance.add_iso_to_scan_pars_no_database(scan_dict)
                 self.update_track_list()
                 self.update_win_title()

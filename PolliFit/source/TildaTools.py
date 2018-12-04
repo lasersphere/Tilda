@@ -192,7 +192,7 @@ def eval_str_vals_in_dict(dicti):
         try:
             dicti[key] = ast.literal_eval(val)
         except Exception as e:
-            if key == 'trigger' or key == 'scan_trigger' or key == 'step_trigger':
+            if key == 'meas_trigger' or key == 'step_trigger' or key == 'scan_trigger':
                 val['type'] = val['type'].replace('TriggerTypes.', '')
                 # val = val.replace("<TriggerTypes.", "\'")
                 # val = val.replace(">", "\'")
@@ -343,7 +343,7 @@ def evaluate_strings_in_dict(dict_to_convert):
                     # needed for data of version 1.08
                     val = val.replace('\\', '\'').replace('TriggerTypes.', '').replace('<', '\'').replace('>', '\'')
                     val = ast.literal_eval(val)
-                if key == 'trigger' or key == 'scan_trigger' or key == 'step_trigger':
+                if key == 'meas_trigger' or key == 'step_trigger' or key == 'scan_trigger':
                     val['type'] = val['type'].replace('TriggerTypes.', '')
                 else:
                     # print('error while converting val with ast.literal_eval: ', e, val, type(val), key)
@@ -665,7 +665,7 @@ def create_t_axis_from_file_dict(scan_dict, with_delay=True, bin_width=10, in_mu
     t_arr = []
     for tr_ind, tr_name in enumerate(get_track_names(scan_dict)):
         if with_delay:
-            delay = scan_dict[tr_name]['trigger'].get('trigDelay10ns', 0) * bin_width
+            delay = scan_dict[tr_name]['trigger'].get('meas_trigger', {}).get('trigDelay10ns', 0) * bin_width
         else:
             delay = 0
         nofbins = scan_dict[tr_name]['nOfBins']
@@ -877,10 +877,15 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
             'nOfBunches': 1,
             'softwGates': check_if_attr_exists(
                 specdata, 'softw_gates', [[] * specdata.nrScalers[tr_ind]] * specdata.nrTracks, [])[tr_ind],
-            'trigger': check_if_attr_exists(specdata, 'trigger', [{'type': 'no_trigger'}] * specdata.nrTracks)[tr_ind],
-            'scan_trigger': check_if_attr_exists(specdata, 'scan_trigger', [{'type': 'no_trigger'}]* specdata.nrTracks)[tr_ind],
-            'step_trigger':
-                check_if_attr_exists(specdata, 'step_trigger', [{'type': 'no_trigger'}] * specdata.nrTracks)[tr_ind],
+            'trigger':
+                {
+                'meas_trigger': check_if_attr_exists(specdata.get('trigger', {}), 'meas_trigger',
+                                                     [{'type': 'no_trigger'}] * specdata.nrTracks)[tr_ind],
+                'scan_trigger': check_if_attr_exists(specdata.get('trigger', {}), 'scan_trigger',
+                                                     [{'type': 'no_trigger'}]* specdata.nrTracks)[tr_ind],
+                'step_trigger': check_if_attr_exists(specdata.get('trigger', {}), 'step_trigger',
+                                                     [{'type': 'no_trigger'}] * specdata.nrTracks)[tr_ind]
+                 },
             'pulsePattern': {'cmdList': [], 'periodicList': [], 'simpleDict': {}},
             'measureVoltPars': specdata.measureVoltPars[tr_ind],
             'triton': specdata.tritonPars[tr_ind]
@@ -1006,10 +1011,15 @@ def save_spec_data(spec_data, scan_dict):
         for track_ind, tr_num in enumerate(track_num_lis):
             track_name = 'track' + str(tr_num)
             # only save name of trigger
-            if not isinstance(scan_dict[track_name]['trigger']['type'], str):
-                scan_dict[track_name]['trigger']['type'] = scan_dict[track_name]['trigger']['type'].name
-            if not isinstance(scan_dict[track_name]['scan_trigger']['type'], str):
-                scan_dict[track_name]['scan_trigger']['type'] = scan_dict[track_name]['scan_trigger']['type'].name
+            if not isinstance(scan_dict[track_name]['trigger'].get('meas_trigger', {}).get('type', {}), str):
+                scan_dict[track_name]['trigger']['meas_trigger']['type'] = \
+                    scan_dict[track_name]['trigger']['meas_trigger']['type'].name
+            if not isinstance(scan_dict[track_name]['trigger'].get('step_trigger', {}).get('type', {}), str):
+                scan_dict[track_name]['trigger']['step_trigger']['type'] = \
+                    scan_dict[track_name]['trigger']['step_trigger']['type'].name
+            if not isinstance(scan_dict[track_name]['trigger'].get('scan_trigger', {}).get('type', {}), str):
+                scan_dict[track_name]['trigger']['scan_trigger']['type'] = \
+                    scan_dict[track_name]['trigger']['scan_trigger']['type'].name
             if time_res:
                 scan_dict[track_name]['softwGates'] = spec_data.softw_gates[track_ind]
                 if version > 1.1:

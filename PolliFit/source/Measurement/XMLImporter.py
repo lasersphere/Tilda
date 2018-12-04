@@ -66,7 +66,6 @@ class XMLImporter(SpecData):
         self.dac_calibration_measurement = False
 
         self.trigger = []  # list of triggers for each track
-        self.scan_trigger = [] # list of scan_triggers for each track
 
         self.offset_by_dev = [{}]  # list (track_indexed) of dicts for a list of measured offset voltages
         #  key is device name value is list, which is split into pre scan and post scan values
@@ -162,8 +161,14 @@ class XMLImporter(SpecData):
 
             dacStepSize18Bit = track_dict['dacStepSize18Bit']
 
-            self.trigger.append(track_dict.get('trigger', None))
-            self.scan_trigger.append((track_dict.get('scan_trigger', None)))
+            if track_dict.get('trigger', {}).get('meas_trigger', None) is not None:
+                self.trigger.append(track_dict.get('trigger', None))
+            else:
+                self.trigger.append({
+                                    'meas_trigger': track_dict.get('trigger', None),
+                                    'step_trigger': track_dict.get('step_trigger', None),
+                                    'scan_trigger': track_dict.get('scan_trigger', None)
+                                    })
 
             self.nrScalers.append(nOfScalers)
             self.stepSize.append(dacStepSize18Bit)

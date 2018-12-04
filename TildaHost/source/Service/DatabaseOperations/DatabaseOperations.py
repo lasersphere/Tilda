@@ -57,7 +57,6 @@ def form_pollifit_db_to_tilda_db(db):
     pulsePattern TEXT,
     triton TEXT,
     outbits TEXT,
-    scanTriggerDict TEXT,
     UNIQUE (iso, type, track)
     )''')
 
@@ -65,7 +64,7 @@ def form_pollifit_db_to_tilda_db(db):
 
 
 def check_for_missing_columns_scan_pars(db):
-    """ will check if all coulums for the scan pars tabel are available and add those which are not """
+    """ will check if all columns for the scan pars table are available and add those which are not """
     target_cols = [
         (1, 'type', 'TEXT'),
         (2, 'track', 'INT'),
@@ -88,8 +87,7 @@ def check_for_missing_columns_scan_pars(db):
         (19, 'measureVoltPars', 'TEXT'),
         (20, 'pulsePattern', 'TEXT'),
         (21, 'triton', 'TEXT'),
-        (22, 'outbits', 'TEXT'),
-        (23, 'scanTriggerDict', 'TEXT')
+        (22, 'outbits', 'TEXT')
     ]
     con = sqlite3.connect(db)
     cur = con.cursor()
@@ -115,11 +113,9 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
         scandict[track_key] = SdOp.init_empty_scan_dict()['track0']
     trackd = scandict[track_key]
     trigger_dict = trackd.get('trigger', {})
-    trig_name = trigger_dict.get('type').name
-    trigger_dict['type'] = trig_name  # string is better for sql sto
-    scan_trigger_dict = trackd.get('scan_trigger', {})
-    scan_trig_name = scan_trigger_dict.get('type').name
-    scan_trigger_dict['type'] = scan_trig_name  # string is better for sql sto
+    for triggers, dicts in trigger_dict.items():
+        trig_name = trigger_dict[triggers].get('type').name
+        trigger_dict[triggers]['type'] = trig_name  # string is better for sql sto
     iso = isod['isotope']
     sctype = isod['type']
     try:
@@ -153,8 +149,7 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
                 laserFreq = ?,
                 pulsePattern = ?,
                 triton = ?,
-                outbits = ?,
-                scanTriggerDict = ?
+                outbits = ?
                 WHERE iso = ? AND type = ? AND track = ?''',
                     (
                         VCon.get_voltage_from_18bit(trackd['dacStartRegister18Bit']),
@@ -177,7 +172,6 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
                         str(trackd['pulsePattern']),
                         str(trackd['triton']),
                         str(trackd['outbits']),
-                        str(scan_trigger_dict),
                         iso, sctype, n_of_track)
                     )
         con.commit()
@@ -297,7 +291,7 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
           postAccOffsetVolt, activePmtList, colDirTrue,
            sequencerDict, waitForKepco1us, waitAfterReset1us,
            triggerDict,
-           measureVoltPars, accVolt, laserFreq, pulsePattern, triton, outbits, scanTriggerDict
+           measureVoltPars, accVolt, laserFreq, pulsePattern, triton, outbits
         FROM ScanPars WHERE iso = ? AND type = ? AND track = ?
         ''', (iso, sctype, tracknum,)
     )
@@ -305,10 +299,6 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
     if data is None:
         return None
     data = list(data)
-    scan_trigger = data.pop(-1) # might not be available for existing isotope_settings
-    scand['track' + str(tracknum)]['scan_trigger'] = ast.literal_eval(scan_trigger) if scan_trigger is not None \
-        else {'type': 'no_trigger'}
-    scand['track' + str(tracknum)]['scan_trigger']['type'] = getattr(TriTypes, scand['track' + str(tracknum)]['scan_trigger']['type'])
     outbits = data.pop(-1)
     scand['track' + str(tracknum)]['outbits'] = ast.literal_eval(outbits) if outbits is not None else {}
     triton = data.pop(-1)
@@ -319,7 +309,11 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
     scand['track' + str(tracknum)]['measureVoltPars'] = SdOp.merge_dicts(
         scand['track' + str(tracknum)]['measureVoltPars'], ast.literal_eval(data.pop(-1)))
     scand['track' + str(tracknum)]['trigger'] = ast.literal_eval(data.pop(-1))
-    scand['track' + str(tracknum)]['trigger']['type'] = getattr(TriTypes, scand['track' + str(tracknum)]['trigger']['type'])
+    if 'type' in scand['track' + str(tracknum)]['trigger']:
+        scand['track' + str(tracknum)]['trigger']['type']= getattr(TriTypes, scand['track' + str(tracknum)]['trigger']['type'])
+    else:
+        for triggers, trig_dicts in scand['track' + str(tracknum)]['trigger'].items():
+            trig_dicts['type'] = getattr(TriTypes, trig_dicts['type'])
     scand['track' + str(tracknum)] = db_track_values_to_trackdict(data, scand['track' + str(tracknum)])
     con.close()
 

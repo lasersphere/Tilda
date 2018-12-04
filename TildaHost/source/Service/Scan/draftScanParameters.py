@@ -42,7 +42,7 @@ MUST be appended with the keys from the corresponding sequencer (see below): """
 
 track0_list = ['dacStepSize18Bit', 'dacStartRegister18Bit', 'nOfSteps', 'nOfScans', 'nOfCompletedSteps',
                'invertScan', 'postAccOffsetVoltControl', 'postAccOffsetVolt', 'waitForKepco1us',
-               'waitAfterReset1us', 'activePmtList', 'colDirTrue', 'workingTime', 'trigger', 'scan_trigger', 'pulsePattern',
+               'waitAfterReset1us', 'activePmtList', 'colDirTrue', 'workingTime', 'trigger', 'pulsePattern',
                'measureVoltPars', 'triton', 'outbits']
 
 """  each sequencer needs its own parameters and therefore, the keys are listed below
