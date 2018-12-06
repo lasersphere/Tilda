@@ -16,12 +16,15 @@ fpga_type = control_cfg['fpga_type']
 fpga_resource = control_cfg['fpga_resource']
 
 '''Bitfile Signature:'''
-bitfileSignatures = {'PXI-7852R': 'A9FB914D11C1403B432A70F3CC22D307'
+bitfileSignatures = {'PXI-7852R': 'A9FB914D11C1403B432A70F3CC22D307',
+                     'PXI-7841R': '8FA65434BD550F91DD225CBF732B47DB'
                      }
 bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
 bitfilePaths = {'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                                       'TildaTarget/bin/PulsePatternGenerator/NiFpga_TiTaProj_COF_PPG_100MHz_V135.lvbitx')
+                                       'TildaTarget/bin/PulsePatternGenerator/NiFpga_TiTaProj_COF_PPG_100MHz_V135.lvbitx'),
+                'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
+                                       'TildaTarget/bin/PulsePatternGenerator/NiFpga_TiTaProj_COF_PPG_100MHz_V135_7841R.lvbitx')
                 }
 bitfilePath = bitfilePaths[fpga_type]
 '''FPGA Resource:'''
