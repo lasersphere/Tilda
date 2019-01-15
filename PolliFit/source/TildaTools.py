@@ -12,6 +12,7 @@ import os
 import sqlite3
 from copy import deepcopy
 from copy import copy
+from scipy.optimize import curve_fit
 
 import numpy as np
 from lxml import etree as ET
@@ -1135,7 +1136,8 @@ def calc_db_pars_from_software_gate(softw_gates_single_tr):
 
 def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak,
                                              show_plt=True, non_consectutive_time_bins_tolerance=1,
-                                             save_to_path=''):
+                                             save_to_path='', time_around_bunch=(-1, -1), fit_gaussian=True,
+                                             additional_time_rChi=0.0):
     """
     This will analyse the time projection of the counts.
     It will get the background, the maximum counts, the timings of the maximum counts
@@ -1148,7 +1150,20 @@ def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak,
     tolerance how many time bins can be below the threshold before this is counted
     as a not connected to the area above threshold anymore.
     :param save_to_path: str, absoulte path were to store the plot as a .png or so
-    :return:
+    :param time_around_bunch: tuple, time in us (before, after) bunch in order to display
+    zoomed in around this time frame, still all plots will share the same x-axis
+    :param fit_gaussian: bool, True in order to fit a gaussian to the time data
+    :param additional_time_rChi: float, time in us that will be added/subtracted to the bunch stop/start time
+    in order to calculate the rChiSq not on the full time projection but only around the interesting time frame.
+    :return: XMLImporter object, ret_dict:
+    ret_dict = {'max_counts': max_counts,  #  track wise, scaler wise each of the following
+                'backgrounds': backgrounds,
+                'bunch_begin_times': bunch_begin_times,
+                'max_counts_times': max_counts_times,
+                'bunch_end_times': bunch_end_times,
+                'bunch_lenght_us': bunch_lenght_us,
+                'gaussian_res': gaussian_results  # list, tr_sc wise [x0, sigma, amp, rchisq}
+                }
     """
     import matplotlib.pyplot as plt
     fig, axes = plt.subplots(spec_data.nrScalers[0], spec_data.nrTracks, sharex='col',
@@ -1157,7 +1172,7 @@ def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak,
                                           'bottom': 0.05,
                                           'wspace': 0.7,
                                           'left': 0.09 / spec_data.nrTracks,
-                                          'right': 0.9 - 0.2 / spec_data.nrTracks},
+                                          'right': 0.9 - 0.25 / spec_data.nrTracks},
                              figsize=(8 * spec_data.nrTracks, 12 * (spec_data.nrScalers[0] / 4)))
     if spec_data.nrTracks == 1:
         axes = [[ax] for ax in axes]
@@ -1168,6 +1183,7 @@ def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak,
     max_counts_ind = []
     bunch_end_times = []
     bunch_lenght_us = []
+    gaussian_results = []
     # from Measurement.XMLImporter import XMLImporter
     # spec_data = XMLImporter()
     tr = -1
@@ -1183,6 +1199,7 @@ def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak,
         bunch_end_times += [],
         bunch_lenght_us += [],
         backgrounds += [],
+        gaussian_results += [],
         for sc_t_proj in tr_t_proj:
             sc += 1
             # background calc
@@ -1247,7 +1264,47 @@ def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak,
             # in order not to have numbers overlap
             axes[sc][tr].set_xlabel('time of flight / µs')
             axes[sc][tr].set_ylabel('counts')
+            if time_around_bunch[0] >= 0:
+                # zoom in around bunch in plot
+                axes[sc][tr].set_xlim(bunch_begin_times[tr][-1] - time_around_bunch[0], axes[sc][tr].get_xlim()[1])
+            if time_around_bunch[1] >= 0:
+                # zoom in around bunch in plot
+                axes[sc][tr].set_xlim(axes[sc][tr].get_xlim()[0], bunch_end_times[tr][-1] + time_around_bunch[1])
+            # now gaussian:
+            if fit_gaussian:
+                # cut time axis to relevant set:
+                bin_width = round(spec_data.t[tr][1] - spec_data.t[tr][0], 2)
+                additional_bins_rChi = additional_time_rChi // bin_width
+                cut_ind_start = int(max(0, start_ind - additional_bins_rChi))
+                cut_ind_stop = int(min(len(spec_data.t[tr]) - 1, stopp_ind + additional_bins_rChi))
+                x_to_fit = spec_data.t[tr][cut_ind_start:cut_ind_stop]
+                y_to_fit = sc_t_proj[cut_ind_start:cut_ind_stop]
+
+                y_data_set = []  # "inverse from projection)
+                for ind, each in enumerate(y_to_fit):
+                    # create inverse to existing histogram
+                    y_data_set += [x_to_fit[ind]] * int(each)
+                mean = np.mean(y_data_set)
+                sigma = np.var(y_data_set)
+                x = spec_data.t[tr]
+                y = sc_t_proj
+                popt, pcov = curve_fit(Physics.gaussian, x, y, p0=[mean, sigma, 1])
+                mean_fit = popt[0]
+                sigma_fit = popt[1]
+                amp_fit = popt[2]
+                residuals = [y_to_fit[i] - Physics.gaussian(t_i, *popt) for i, t_i in enumerate(x_to_fit)]
+                errs = np.sqrt(y_to_fit)
+                errs = [1 if e == 0 else e for e in errs]  # replace errors with 0 by 1
+                numbers_freedom = len(y_to_fit) - 3  # three from gauss
+                rchisq = sum([res ** 2 / e ** 2 for res, e in zip(residuals, errs)]) / numbers_freedom
+                err_fit_pars = [np.sqrt(pcov[j][j]) for j in range(pcov.shape[0])]
+                label_gauss = 'gaussian:\n x0=%.2f(%.0f)us\n sig=%.2f(%.0f)\n rChi²=%.2f' % (
+                    mean_fit, err_fit_pars[0] * 100, sigma_fit, err_fit_pars[1] * 100, rchisq)
+                axes[sc][tr].plot(x_to_fit, Physics.gaussian(x_to_fit, *popt), linewidth=2, color='grey',
+                                  label=label_gauss)
+                gaussian_results[tr].append([[mean_fit, sigma_fit, amp_fit, rchisq], err_fit_pars])
             axes[sc][tr].legend(loc=(1.01, 0.05))
+
 
     fig.set_facecolor('w')
     fig.suptitle('%s percentage of peak: %.2f%% rebinning: %d ns '
@@ -1259,18 +1316,22 @@ def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak,
     if save_to_path:
         print('saving to: %s' % save_to_path)
         fig.savefig(save_to_path, dpi=150, quality=95, facecolor='w')
-    print(max_counts)
-    print(backgrounds)
-    print(bunch_begin_times)
-    print(max_counts_times)
-    print(bunch_end_times)
-    print(bunch_lenght_us)
-
-
-
-
-
-
+    # print(max_counts)
+    # print(backgrounds)
+    # print(bunch_begin_times)
+    # print(max_counts_times)
+    # print(bunch_end_times)
+    # print(bunch_lenght_us)
+    plt.close(fig)
+    ret_dict = {'max_counts': max_counts,
+                'backgrounds': backgrounds,
+                'bunch_begin_times': bunch_begin_times,
+                'max_counts_times': max_counts_times,
+                'bunch_end_times': bunch_end_times,
+                'bunch_lenght_us': bunch_lenght_us,
+                'gaussian_res': gaussian_results
+                }
+    return spec_data, ret_dict
 
 
 def convert_volt_axis_to_freq(x_axis_energy, mass, col, laser_freq, iso_center_freq):

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>413</width>
-    <height>627</height>
+    <height>663</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -162,7 +162,7 @@
             <locale language="English" country="UnitedStates"/>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>1</number>
            </property>
            <widget class="QWidget" name="seqComSet">
             <attribute name="title">
@@ -638,13 +638,13 @@ Voltage:</string>
                 <bool>false</bool>
                </property>
                <property name="decimals">
-                <number>3</number>
+                <number>0</number>
                </property>
                <property name="maximum">
-                <double>4200000.000000000000000</double>
+                <double>4294967295.000000000000000</double>
                </property>
                <property name="singleStep">
-                <double>0.500000000000000</double>
+                <double>10.000000000000000</double>
                </property>
               </widget>
              </item>
@@ -670,13 +670,13 @@ Voltage:</string>
                 <bool>false</bool>
                </property>
                <property name="decimals">
-                <number>3</number>
+                <number>0</number>
                </property>
                <property name="maximum">
-                <double>4200000.000000000000000</double>
+                <double>4294967295.000000000000000</double>
                </property>
                <property name="singleStep">
-                <double>0.500000000000000</double>
+                <double>10.000000000000000</double>
                </property>
               </widget>
              </item>

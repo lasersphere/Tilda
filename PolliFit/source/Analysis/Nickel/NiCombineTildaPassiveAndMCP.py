@@ -90,7 +90,7 @@ def write_mcp_to_tipa(search_tuple):
         return False
 
 
-print([('%03d' % i, '%03d' % (i + 11)) for i in range(37, 53)])
+# print([('%03d' % i, '%03d' % (i + 11)) for i in range(37, 53)])
 # first one always is MCP run number second one always is TiPa run number as stated in the lablog.
 # (mcp_run_num, tipa_run_num)
 search_tuple_list = [('010', '013'), ('011', '014'), ('012', '015'), ('013', '016'), ('014', '017'),
@@ -234,73 +234,73 @@ def find_tipa_file_to_mcp_file(mcp_file_str):
         return None, None
     return None, None
 
-flat_configs_tipa = {}
-for isotope, flat_conf in sorted(flat_configs.items()):
-    flat_configs_tipa[isotope] = []
-    for mcp_f in flat_conf:
-        if mcp_f and not 'release' in mcp_f:
-            tipa_meas, tipa_file_n = find_tipa_file_to_mcp_file(mcp_f)
-            if tipa_file_n is not None:
-                # tipa_file_n = tipa_file_n.split('\\')[1]
-                flat_configs_tipa[isotope] += (tipa_file_n, mcp_f),
-                tipa_file_n = os.path.split(tipa_file_n)[1]
-            print('%s\t%s\t%s' % (isotope, mcp_f, tipa_file_n))
+# flat_configs_tipa = {}
+# for isotope, flat_conf in sorted(flat_configs.items()):
+#     flat_configs_tipa[isotope] = []
+#     for mcp_f in flat_conf:
+#         if mcp_f and not 'release' in mcp_f:
+#             tipa_meas, tipa_file_n = find_tipa_file_to_mcp_file(mcp_f)
+#             if tipa_file_n is not None:
+#                 # tipa_file_n = tipa_file_n.split('\\')[1]
+#                 flat_configs_tipa[isotope] += (tipa_file_n, mcp_f),
+#                 tipa_file_n = os.path.split(tipa_file_n)[1]
+#             print('%s\t%s\t%s' % (isotope, mcp_f, tipa_file_n))
 
 ''' plot the time structure and save it as a .jpg '''
-from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
-from Service.AnalysisAndDataHandling.DisplayData import DisplayData
-
-from PyQt5 import QtWidgets, QtGui
-from Measurement.XMLImporter import XMLImporter
-from PyQt5.QtCore import *
-import time
-
-
-app = QtWidgets.QApplication(sys.argv)
-ui = QtWidgets.QMainWindow()
-label = QtWidgets.QLabel()
-ui.setCentralWidget(label)
-ui.show()
-# copy = flat_configs_tipa
-# flat_configs_tipa = {}
-# flat_configs_tipa['58_Ni'] = copy['58_Ni']
-storage_path = 'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace\\TimeStructureAnalysis'
-
-win = []  # all windows need to be stored when wanting to keep them open.
-# file_names = []
-for iso, files in sorted(flat_configs_tipa.items()):
-    # if iso in ['58_Ni', '59_Ni', '60_Ni', '61_Ni', '62_Ni', '63_Ni',
-    #            '64_Ni', '65_Ni', '66_Ni', '67_Ni', '68_Ni', '70_Ni']:
-    if iso in ['65_Ni']:
-        cur_dir = os.path.join(storage_path, iso)
-        if not os.path.isdir(cur_dir):
-            os.mkdir(cur_dir)
-        # files = [files[-1]]
-        for tipa_f, mcp_f in files:
-            logging.info('working on: %s' % tipa_f)
-            # label.setText('working on: %s' % tipa_f)
-            try:
-                cur_win = TRSLivePlotWindowUi(tipa_f, subscribe_as_live_plot=False, application=app)
-                spec = XMLImporter(tipa_f, softw_gates=(db, runs[0]))
-                spec.softBinWidth_ns = [100]
-                disp_data = DisplayData(tipa_f, cur_win, x_as_volt=True, loaded_spec=spec)
-                cur_win.set_time_range(padding=0.2)
-                win += cur_win,   # if one wants to see all the windows comment this in.
-                f_name = iso + '_real_iso_' + spec.type + '_mcp_file_' + mcp_f.split('.')[0] + '_tipa_file_' + os.path.split(tipa_f)[1]
-                f_name = f_name.split('.')[0]
-                f_name += '.jpg'
-                f_name_full = os.path.join(cur_dir, f_name)
-                # file_names += f_name_full,
-
-                cur_win.export_screen_shot(f_name_full, quality=100)
-                cur_win.close()
-
-            except Exception as e:
-                print(e)
-label.setText('Done!')
-app.deleteLater()
-app.exec_()
-app.closeAllWindows()
+# from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
+# from Service.AnalysisAndDataHandling.DisplayData import DisplayData
+#
+# from PyQt5 import QtWidgets, QtGui
+# from Measurement.XMLImporter import XMLImporter
+# from PyQt5.QtCore import *
+# import time
+#
+#
+# app = QtWidgets.QApplication(sys.argv)
+# ui = QtWidgets.QMainWindow()
+# label = QtWidgets.QLabel()
+# ui.setCentralWidget(label)
+# ui.show()
+# # copy = flat_configs_tipa
+# # flat_configs_tipa = {}
+# # flat_configs_tipa['58_Ni'] = copy['58_Ni']
+# storage_path = 'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace\\TimeStructureAnalysis'
+#
+# win = []  # all windows need to be stored when wanting to keep them open.
+# # file_names = []
+# for iso, files in sorted(flat_configs_tipa.items()):
+#     # if iso in ['58_Ni', '59_Ni', '60_Ni', '61_Ni', '62_Ni', '63_Ni',
+#     #            '64_Ni', '65_Ni', '66_Ni', '67_Ni', '68_Ni', '70_Ni']:
+#     if iso in ['65_Ni']:
+#         cur_dir = os.path.join(storage_path, iso)
+#         if not os.path.isdir(cur_dir):
+#             os.mkdir(cur_dir)
+#         # files = [files[-1]]
+#         for tipa_f, mcp_f in files:
+#             logging.info('working on: %s' % tipa_f)
+#             # label.setText('working on: %s' % tipa_f)
+#             try:
+#                 cur_win = TRSLivePlotWindowUi(tipa_f, subscribe_as_live_plot=False, application=app)
+#                 spec = XMLImporter(tipa_f, softw_gates=(db, runs[0]))
+#                 spec.softBinWidth_ns = [100]
+#                 disp_data = DisplayData(tipa_f, cur_win, x_as_volt=True, loaded_spec=spec)
+#                 cur_win.set_time_range(padding=0.2)
+#                 win += cur_win,   # if one wants to see all the windows comment this in.
+#                 f_name = iso + '_real_iso_' + spec.type + '_mcp_file_' + mcp_f.split('.')[0] + '_tipa_file_' + os.path.split(tipa_f)[1]
+#                 f_name = f_name.split('.')[0]
+#                 f_name += '.jpg'
+#                 f_name_full = os.path.join(cur_dir, f_name)
+#                 # file_names += f_name_full,
+#
+#                 cur_win.export_screen_shot(f_name_full, quality=100)
+#                 cur_win.close()
+#
+#             except Exception as e:
+#                 print(e)
+# label.setText('Done!')
+# app.deleteLater()
+# app.exec_()
+# app.closeAllWindows()
 
 
 ''' direct comparison of files MCP - TIPA ~ 0 in order to have the same counts in both DAQs '''

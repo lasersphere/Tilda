@@ -42,7 +42,7 @@ for each in ni58_files:
     print(meas.t_proj)
     # for i in range(10, 42, 4):
     #     TiTs.calc_bunch_width_relative_to_peak_height(meas, i, show_plt=False)
-    TiTs.calc_bunch_width_relative_to_peak_height(
+    new_meas, ret_dict = TiTs.calc_bunch_width_relative_to_peak_height(
         meas, 25, show_plt=False, non_consectutive_time_bins_tolerance=10,
         save_to_path=os.path.join(time_info_folder, os.path.splitext(meas.file)[0] + '.png'))
 

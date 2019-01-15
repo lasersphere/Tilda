@@ -113,7 +113,7 @@ def gaussian(x, mu, sig, amp):
     :param sig:
     :return:
     """
-    return amp/(sig * math.sqrt(2 * math.pi)) * math.exp(-0.5 * ((x - mu) / sig) ** 2)
+    return amp/(sig * np.sqrt(2 * math.pi)) * np.exp(-0.5 * ((x - mu) / sig) ** 2)
 
 def transit(x, t):
     """
