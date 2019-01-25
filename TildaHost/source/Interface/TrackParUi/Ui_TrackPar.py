@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindowTrackPars(object):
     def setupUi(self, MainWindowTrackPars):
         MainWindowTrackPars.setObjectName("MainWindowTrackPars")
-        MainWindowTrackPars.resize(413, 726)
+        MainWindowTrackPars.resize(413, 745)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -514,7 +514,7 @@ class Ui_MainWindowTrackPars(object):
         MainWindowTrackPars.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindowTrackPars)
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(2)
         self.tabwidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindowTrackPars)
         MainWindowTrackPars.setTabOrder(self.doubleSpinBox_dacStartV, self.doubleSpinBox_dacStopV)
@@ -529,15 +529,15 @@ class Ui_MainWindowTrackPars(object):
     def retranslateUi(self, MainWindowTrackPars):
         _translate = QtCore.QCoreApplication.translate
         MainWindowTrackPars.setWindowTitle(_translate("MainWindowTrackPars", "track parameters"))
-        self.label_descriptionTrigger.setText(_translate("MainWindowTrackPars", "Standard trigger. Used for cs step-trigger or trs bunch-trigger"))
+        self.label_descriptionTrigger.setText(_translate("MainWindowTrackPars", "Standard trigger. Triggers measurements per bunch(TRS) or step(CS)"))
         self.label_Trigger.setText(_translate("MainWindowTrackPars", "trigger:"))
         self.checkBox_UseAllTracks.setText(_translate("MainWindowTrackPars", "use for all tracks"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_trigger), _translate("MainWindowTrackPars", "Trigger"))
-        self.label_descriptionStepTrigger.setText(_translate("MainWindowTrackPars", "Advanced trigger. Used for trs step-trigger."))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_trigger), _translate("MainWindowTrackPars", "meas Trigger"))
+        self.label_descriptionStepTrigger.setText(_translate("MainWindowTrackPars", "Advanced trigger. Used to trigger next step. Usefull for laser scanning!"))
         self.label_stepTrigger.setText(_translate("MainWindowTrackPars", "step trigger:"))
         self.checkBox_stepUseAllTracks.setText(_translate("MainWindowTrackPars", "use for all tracks"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_step_trigger), _translate("MainWindowTrackPars", "step Trigger"))
-        self.label_9.setText(_translate("MainWindowTrackPars", "Advanced trigger. Used for scan-trigger in both cs and trs."))
+        self.label_9.setText(_translate("MainWindowTrackPars", "Advanced trigger. Used to trigger next scan."))
         self.label_scanTrigger.setText(_translate("MainWindowTrackPars", "scan trigger:"))
         self.checkBox_scanUseAllTracks.setText(_translate("MainWindowTrackPars", "use for all tracks"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_scan_trigger), _translate("MainWindowTrackPars", "scan Trigger"))

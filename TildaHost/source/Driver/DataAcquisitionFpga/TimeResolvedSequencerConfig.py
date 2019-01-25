@@ -23,13 +23,13 @@ Using CApiAnalyser.py yields:
 """
 
 '''Bitfile Signature:'''
-bitfileSignatures = {'PXI-7852R': '80B7BCD5E539F37E7F53CE4D2B5B0514',
+bitfileSignatures = {'PXI-7852R': '08557AE0FB8520D28576FA23989A63E2',
                      'PXI-7841R': '30733D581C7AE2660BF873489967793C'
                      }
 bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
 bitfilePaths = {'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                                       'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_230.lvbitx'),
+                                       'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_231.lvbitx'),
                 'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
                                        'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_220_7841.lvbitx')
                 }
@@ -93,6 +93,7 @@ waitForKepcous = {'ref': 0x81B0, 'val': ctypes.c_ulong(), 'ctr': True}
 transferToHost = {'ref': 0, 'val': ctypes.c_ulong(), 'ctr': False}
 '''HostToTargetFifos:'''
 OutbitsCMD = {'ref': 1, 'val': ctypes.c_ulong(), 'ctr': False}
+
 
 """
 Hand filled Values, for example certain values for enums:

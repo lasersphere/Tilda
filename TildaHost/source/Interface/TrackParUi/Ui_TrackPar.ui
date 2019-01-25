@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>413</width>
-    <height>726</height>
+    <height>745</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -66,17 +66,17 @@
          <item>
           <widget class="QTabWidget" name="tabWidget">
            <property name="currentIndex">
-            <number>0</number>
+            <number>2</number>
            </property>
            <widget class="QWidget" name="tab_trigger">
             <attribute name="title">
-             <string>Trigger</string>
+             <string>meas Trigger</string>
             </attribute>
             <layout class="QVBoxLayout" name="verticalLayout_7">
              <item>
               <widget class="QLabel" name="label_descriptionTrigger">
                <property name="text">
-                <string>Standard trigger. Used for cs step-trigger or trs bunch-trigger</string>
+                <string>Standard trigger. Triggers measurements per bunch(TRS) or step(CS)</string>
                </property>
               </widget>
              </item>
@@ -155,7 +155,7 @@
              <item>
               <widget class="QLabel" name="label_descriptionStepTrigger">
                <property name="text">
-                <string>Advanced trigger. Used for trs step-trigger.</string>
+                <string>Advanced trigger. Used to trigger next step. Usefull for laser scanning!</string>
                </property>
               </widget>
              </item>
@@ -234,7 +234,7 @@
              <item>
               <widget class="QLabel" name="label_9">
                <property name="text">
-                <string>Advanced trigger. Used for scan-trigger in both cs and trs.</string>
+                <string>Advanced trigger. Used to trigger next scan.</string>
                </property>
               </widget>
              </item>

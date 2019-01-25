@@ -90,9 +90,9 @@ def merge_extend_dicts(target_dict, new_dict, overwrite=True, force_overwrite=Fa
                 if type(vals) is dict:  # if its a dict then check this again
                     merge_extend_dicts(target_dict[keys], vals, overwrite)
                 elif type(vals) is list:
-                    if force_overwrite: # if overwriting existing lists with empty lists is allowed
+                    if force_overwrite:  # if overwriting existing lists with empty lists is allowed
                         target_dict[keys] = vals
-                    else: # if the new list has actually values in it then we want to overwrite the old values
+                    else:  # if the new list has actually values in it then we want to overwrite the old values
                         if type(target_dict[keys]) is list:
                             if len(vals) > len(target_dict[keys]):
                                 target_dict[keys] = vals
@@ -143,7 +143,7 @@ def deepupdate(target, src):
                 target[k] = deepcopy(v)
             else:
                 target[k] = np.append(target[k], v)
-        #TODO: Elif v is None do nothing? Because it might just replace an empty dict with None
+        # TODO: Elif v is None do nothing? Because it might just replace an empty dict with None
         else:
             target[k] = copy(v)
 
@@ -877,15 +877,10 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
             'nOfBunches': 1,
             'softwGates': check_if_attr_exists(
                 specdata, 'softw_gates', [[] * specdata.nrScalers[tr_ind]] * specdata.nrTracks, [])[tr_ind],
-            'trigger':
-                {
-                'meas_trigger': check_if_attr_exists(specdata.get('trigger', {}), 'meas_trigger',
-                                                     [{'type': 'no_trigger'}] * specdata.nrTracks)[tr_ind],
-                'scan_trigger': check_if_attr_exists(specdata.get('trigger', {}), 'scan_trigger',
-                                                     [{'type': 'no_trigger'}]* specdata.nrTracks)[tr_ind],
-                'step_trigger': check_if_attr_exists(specdata.get('trigger', {}), 'step_trigger',
-                                                     [{'type': 'no_trigger'}] * specdata.nrTracks)[tr_ind]
-                 },
+            'trigger': check_if_attr_exists(
+                specdata, 'trigger', [{'meas_trigger': {'type': 'no_trigger'},
+                                       'step_trigger': None,
+                                       'scan_trigger': None}] * specdata.nrTracks)[tr_ind],
             'pulsePattern': {'cmdList': [], 'periodicList': [], 'simpleDict': {}},
             'measureVoltPars': specdata.measureVoltPars[tr_ind],
             'triton': specdata.tritonPars[tr_ind]
@@ -1105,7 +1100,9 @@ def get_gate_pars_from_db(db, iso, run):
     iso_mid_tof = select_from_db(
         db, 'midTof', 'Isotopes', [['iso'], [iso]],
         caller_name='get_software_gates_from_db in DataBaseOperations.py')
-    if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None or iso_mid_tof[0][0] is None or run_gates_width[0][0] is None or run_gates_delay[0][0] is None: # added 3 cases since iso_mid_tof etc. is usually an array and != none (?)
+    if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None or iso_mid_tof[0][0] is None or \
+            run_gates_width[0][0] is None or run_gates_delay[0][
+        0] is None:  # added 3 cases since iso_mid_tof etc. is usually an array and != none (?)
         return None, None, None, None
     else:
         run_gates_width = run_gates_width[0][0]
@@ -1211,19 +1208,12 @@ def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak, show
     if show_plt:
         plt.show(block=True)
 
-
     print(max_counts)
     print(backgrounds)
     print(bunch_begin_times)
     print(max_counts_times)
     print(bunch_end_times)
     print(bunch_lenght_us)
-
-
-
-
-
-
 
 
 def convert_volt_axis_to_freq(x_axis_energy, mass, col, laser_freq, iso_center_freq):
@@ -1352,22 +1342,24 @@ if __name__ == '__main__':
                     'random1': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
     np1 = np.array([1, 1])
     np2 = np.array([2, 2])
-    dmm_sample_dict0 = {'dummy_somewhere': np1, 'dummy_else' : np2}
-    dmm_sample_dict1 = {'dummy_somewhere': np2, 'dummy_else' : np1, 'more_dummy' : np2}
+    dmm_sample_dict0 = {'dummy_somewhere': np1, 'dummy_else': np2}
+    dmm_sample_dict1 = {'dummy_somewhere': np2, 'dummy_else': np1, 'more_dummy': np2}
     test_d0 = {'lala': [0, 1]}
-    test_d1 = {'lala': [1, 2], 'blub': [5,6]}
+    test_d1 = {'lala': [1, 2], 'blub': [5, 6]}
 
     deepupdate(sample_dict0, sample_dict1)
     deepupdate(sample_dict0, sample_dict2)
     deepupdate(sample_dict0, sample_dict3)
     deepupdate(sample_dict0, sample_dict4)
     deepupdate(sample_dict0, sample_dict5)
-    realdict = {'track0': {'triton': {'duringScan': {'dummyDev': {'random': {'required': -1, 'data': [], 'acquired': 0}, 'calls': {'required': -1, 'data': [3], 'acquired': 1}}}}}}
+    realdict = {'track0': {'triton': {'duringScan': {'dummyDev': {'random': {'required': -1, 'data': [], 'acquired': 0},
+                                                                  'calls': {'required': -1, 'data': [3],
+                                                                            'acquired': 1}}}}}}
     deepupdate(dmm_sample_dict0, dmm_sample_dict1)
     print(dmm_sample_dict0)
     for dev, chs in sample_dict0['track0']['triton']['preScan'].items():
         for ch_name, ch_data in chs.items():
-            #print(ch_data)
+            # print(ch_data)
             ch_data['acquired'] = len(ch_data['data'])
 
-    #print_dict_pretty(sample_dict0)
+    # print_dict_pretty(sample_dict0)
