@@ -90,8 +90,6 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.trigger_vert_layout.replaceWidget(self.widget_trigger_place_holder, self.trigger_widget)
         self.comboBox_triggerSelect.currentTextChanged.connect(self.trigger_select)
         # Step Trigger
-        if self.seq_type in ['cs', 'csdummy', 'kepco']:
-            self.tab_step_trigger.setDisabled(True)
         self.checkBox_stepUseAllTracks.setDisabled(True)
         self.checkBox_stepUseAllTracks.setToolTip('not yet included')
         self.step_trigger_widget = None

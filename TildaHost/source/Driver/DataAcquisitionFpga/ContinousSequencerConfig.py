@@ -16,15 +16,15 @@ fpga_type = data_acq_cfg['fpga_type']
 fpga_resource = data_acq_cfg['fpga_resource']
 
 '''Bitfile Signature:'''
-bitfileSignatures = {'PXI-7852R': '54009A347C6CF0ED7B420076A8636E0E',
+bitfileSignatures = {'PXI-7852R': 'F95EFEBFE0EC07A8748B06836EE9CFCA',
                      'PXI-7841R': 'A7C562E7EF98A7C7A783D9C03235A8AE'
                      }
 bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
 bitfilePaths = {'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV230.lvbitx'),
+                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV231.lvbitx'),
                 'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV230_7841.lvbitx')
+                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV231_7841.lvbitx')
                 }
 bitfilePath = bitfilePaths[fpga_type]
 '''FPGA Resource:'''
@@ -48,9 +48,9 @@ halt = {'ref': 0x81BA, 'val': ctypes.c_bool(), 'ctr': True}
 hostConfirmsHzOffsetIsSet = {'ref': 0x81BE, 'val': ctypes.c_bool(), 'ctr': True}
 invertScan = {'ref': 0x8196, 'val': ctypes.c_bool(), 'ctr': True}
 pause = {'ref': 0x814E, 'val': ctypes.c_bool(), 'ctr': True}
+softwareScanTrigger = {'ref': 0x8126, 'val': ctypes.c_bool(), 'ctr': True}
 softwareStepTrigger = {'ref': 0x8116, 'val': ctypes.c_bool(), 'ctr': True}
 softwareTrigger = {'ref': 0x814A, 'val': ctypes.c_bool(), 'ctr': True}
-softwarescanTrigger = {'ref': 0x8126, 'val': ctypes.c_bool(), 'ctr': True}
 stopVoltMeas = {'ref': 0x8152, 'val': ctypes.c_bool(), 'ctr': True}
 timedOutWhileHandshake = {'ref': 0x81AA, 'val': ctypes.c_bool(), 'ctr': True}
 postAccOffsetVoltControl = {'ref': 0x8172, 'val': ctypes.c_ubyte(), 'ctr': True}
