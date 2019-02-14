@@ -309,8 +309,8 @@ def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), sho
         plt.errorbar(date, cts, yerr=errs, fmt=forms[0], axes=ax)
 
         # plot the mean value and the errorband:
-        err_p = avg + abs(stat_err) + abs(syst_err)
-        err_m = avg - abs(stat_err) - abs(syst_err)
+        err_p = avg + abs(stat_err)  # + abs(syst_err)
+        err_m = avg - abs(stat_err)  # - abs(syst_err)
         err_p_l = np.full((2,), err_p)
         err_m_l = np.full((2,), err_m)
         if len(date) == 1:
@@ -319,7 +319,7 @@ def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), sho
         x = (sorted(date)[0], sorted(date)[-1])
         y = (avg, avg)
         plt.plot(x, y, forms[1],
-                 label='%s: %.5f +/- %.5f' % (ylabel, avg, abs(stat_err) + abs(syst_err)))
+                 label='%s: %.5f +/- %.5f' % (ylabel, avg, abs(stat_err)))  # + abs(syst_err)))
         plt.legend()
         plt.fill_between(x, err_p_l, err_m_l, alpha=0.5)
 
@@ -605,7 +605,8 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
                            literature_run=None, literature_name='lit. values',
                            save_path='', use_syst_err_only=False, comments=None, markers=None, colors=None,
                            legend_loc=2, start_offset=-0.3, use_full_error=True,
-                           lit_color='b', lit_marker='o', fontsize_ticks=12):
+                           lit_color='b', lit_marker='o', fontsize_ticks=12,
+                           force_xlim=False, fig_size=None):
     import Tools
     compl_x = []
     compl_y = []
@@ -635,7 +636,10 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
     offset = start_offset
     offset_per_run = abs(offset) * 2 / (len(runs_to_plot) + lit_exists - 1)
 
-    fig = plt.figure(1, (8, 8))
+    if fig_size:
+        fig = plt.figure(1, fig_size)
+    else:
+        fig = plt.figure(1, (8, 8))
     fig.patch.set_facecolor('w')
     ax = plt.axes([0.15, 0.1, 0.8, 0.75])
 
@@ -651,7 +655,7 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
                             sorted(val_statErr_rChi_shift_dict[each].items())]
                     if err_index > 0:
                         errs = [(int(key_pl2.split('_')[0]), val_pl2[err_index],
-                                 lit_val_statErr_rChi_shift_dict.get(key_pl2, [0, 0])[err_index]) for key_pl2, val_pl2 in
+                                 lit_val_statErr_rChi_shift_dict.get(key_pl2, [0, 0, 0])[err_index]) for key_pl2, val_pl2 in
                                 sorted(val_statErr_rChi_shift_dict[each].items())]
                     else:  # use the full error with gaussian error prop
                         errs = [(int(key_pl2.split('_')[0]),
@@ -659,8 +663,8 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
                                      val_pl2[1] ** 2 + val_pl2[2] ** 2
                                  ),
                                  np.sqrt(
-                                     lit_val_statErr_rChi_shift_dict.get(key_pl2, [0, 0])[1] ** 2 +
-                                     lit_val_statErr_rChi_shift_dict.get(key_pl2, [0, 0])[2] ** 2
+                                     lit_val_statErr_rChi_shift_dict.get(key_pl2, [0, 0, 0])[1] ** 2 +
+                                     lit_val_statErr_rChi_shift_dict.get(key_pl2, [0, 0, 0])[2] ** 2
                                  )
                                  ) for key_pl2, val_pl2
                                 in
@@ -720,8 +724,12 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
     for i, each in enumerate(compl_x):
         print('%.2f\t%.8f\t%.8f' % (each, compl_y[i], compl_y_err[i]))
     plt.margins(0.25)
-    ax.set_ylabel('%s [MHz]' % par)
-    ax.set_xlabel('A')
+    ax.set_ylabel('%s [MHz]' % par, fontdict={'size': fontsize_ticks + 2})
+    ax.set_xlabel('A', fontdict={'size': fontsize_ticks + 2})
+    plt.xticks(fontsize=fontsize_ticks)
+    plt.yticks(fontsize=fontsize_ticks)
+    if force_xlim:
+        ax.set_xlim(force_xlim)
     if save_path:
         d = os.path.dirname(save_path)
         if not os.path.exists(d):
@@ -733,18 +741,24 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
 
 
 def plot_iso_shift_time_dep(
-        ref_dates_date_time, ref_dates_date_time_float, ref_centers, ref_errs, ref,
-        iso_dates_datetime, iso_dates_datetime_float, iso_centers, iso_errs, iso,
+        ref_dates_date_time, ref_dates_date_time_float, ref_date_errs, ref_centers, ref_errs, ref,
+        iso_dates_datetime, iso_dates_datetime_float, iso_date_errs, iso_centers, iso_errs, iso,
         slope, offset, plt_label, shift_result_tuple, file_name='', show_plot=True,
         fig_name='shift', par_name='center [MHz]', font_size=12):
     """ function to plot the isotope shift along with the references versus timestamp of the files """
     fig = plt.figure('%s %s' % (fig_name, iso), figsize=(16, 9))
     fig.set_facecolor('w')
+    ref_date_errs_dt = [datetime.timedelta(seconds=each) for each in ref_date_errs]
+    iso_date_errs_dt = [datetime.timedelta(seconds=each) for each in iso_date_errs]
     main_ax = fig.add_axes([0.1, 0.2, 0.7, 0.6])
     first_ref = np.min(ref_dates_date_time_float)
-    ref_line = main_ax.errorbar(ref_dates_date_time, ref_centers, yerr=ref_errs, fmt='ko', label='ref center %s' % ref)
-    min_t_abs = min(np.min(ref_dates_date_time_float), np.min(iso_dates_datetime_float))
-    max_t_abs = max(np.max(ref_dates_date_time_float), np.max(iso_dates_datetime_float))
+    ref_line = main_ax.errorbar(ref_dates_date_time, ref_centers, yerr=ref_errs,
+                                xerr=ref_date_errs_dt,
+                                fmt='ko', label='ref center %s' % ref)
+    min_t_abs = min(np.min(ref_dates_date_time_float - np.array(ref_date_errs)),
+                    np.min(iso_dates_datetime_float - np.array(iso_date_errs)))
+    max_t_abs = max(np.max(ref_dates_date_time_float + np.array(ref_date_errs)),
+                    np.max(iso_dates_datetime_float + np.array(iso_date_errs)))
     padding = max((max_t_abs - min_t_abs) / 100 * 5, 10)
     fit_plot_data_x_datetime = [datetime.datetime.fromtimestamp(min_t_abs - padding),
                                 datetime.datetime.fromtimestamp(max_t_abs + padding)]
@@ -757,7 +771,9 @@ def plot_iso_shift_time_dep(
     main_ax.set_ylabel('ref %s %s' % (ref, par_name), fontsize=font_size)
     main_ax.tick_params(labelsize=font_size)
     twinx = plt.twinx(main_ax)
-    iso_line = twinx.errorbar(iso_dates_datetime, iso_centers, yerr=iso_errs, fmt='bs', label='center %s' % iso)
+    iso_line = twinx.errorbar(iso_dates_datetime, iso_centers, yerr=iso_errs,
+                              xerr=iso_date_errs_dt,
+                              fmt='bs', label='center %s' % iso)
     twinx.set_ylabel('%s %s' % (iso, par_name), color='b', fontsize=font_size)
     twinx.tick_params('y', colors='b', labelsize=font_size)
     lines = [ref_line, fit_line, iso_line]

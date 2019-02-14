@@ -127,6 +127,7 @@ class KingFitter(object):
         else:
             # errors are systematic since they include the systematics but have been handled statistically
             #  --> be carefull
+            self.yerr_total = self.yerr  # needed for printing of total error below
             (self.a, self.b, self.aerr, self.berr, self.a_b_correlation) = self.fit(run, showplot=self.showing,
                                                                                     print_corr_coeff=print_coeff)
             if print_information:

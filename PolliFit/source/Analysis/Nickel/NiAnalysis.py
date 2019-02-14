@@ -508,13 +508,13 @@ def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes_batch_fit, pars=No
 
 
 files_w_err = isotope_shift_batch_fitting(
-    'wide_gate_asym', 'wide_gate_asym_67_Ni', ['67_Ni'],  # isotopes,
-    pars=['center', 'Al', 'Au', 'Bl', 'Bu'], combine_shift=False, perform_fit=False)
+    'wide_gate_asym', 'wide_gate_asym_67_Ni', ['58_Ni'],  # isotopes,
+    pars=['center', 'Al', 'Au', 'Bl', 'Bu'], combine_shift=True, perform_fit=False)
 print('--------------------------------------------------------------------')
 print('files with error during batchfit: ', (['wide_gate_asym', 'wide_gate_asym_67_Ni'], files_w_err))
 print('--------------------------------------------------------------------')
 
-
+raise Exception
 ''' Divider Ratio Determination '''
 acc_div_start = 1000.05
 offset_prema_div_start = 1000.022

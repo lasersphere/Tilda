@@ -33,6 +33,7 @@ workdir = 'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\' \
 datafolder = os.path.join(workdir, 'sums')
 
 db = os.path.join(workdir, 'Ni_2017.sqlite')
+Tools.add_missing_columns(db)
 
 run_hot_cec = 'AsymVoigtHotCec'
 run_hot_cec_exp = 'VoigtAsy'
@@ -52,7 +53,7 @@ other_run2017 = normal_run if current_run is run_hot_cec else run_hot_cec
 # select if the files need to be fitted or not:
 perform_bacthfit = False
 # same for combining shifts:
-combine_shifts = False
+combine_shifts = True
 save_shift_as_pdf = False
 # ... and the offset:
 combine_offset = False
@@ -60,6 +61,14 @@ combine_offset = False
 combine_final_run = False
 print_moments_latex = True
 combine_final_moments = False
+
+perf_king_fit = False or combine_final_run
+
+plot_comparisons = True
+
+plot_drCh2 = True
+
+plot_A_and_Bs = False
 
 
 # for plotting:
@@ -99,7 +108,8 @@ run_comments = {
     final_2017_run: '2017 Simon'
 }
 
-isotopes = ['%s_Ni' % i for i in range(58, 71 if current_run is normal_run else 65)]
+# isotopes = ['%s_Ni' % i for i in range(58, 64 if current_run is normal_run else 65)]
+isotopes = ['%s_Ni' % i for i in range(58, 71)]
 isotopes.remove('59_Ni')  # not measured in 2017
 isotopes.remove('63_Ni')  # not measured in 2017
 if current_run is normal_run:
@@ -679,16 +689,7 @@ for iso in isotopes:
         if combine_shifts:
             pic_format_ = '.pdf' if save_shift_as_pdf else '.png'
             Analyzer.combineShiftByTime(iso, current_run, db, show_plot=False, pic_format=pic_format_, font_size=18)
-    if iso not in ['59_Ni', '60_Ni', '63_Ni', '69_Ni']:
-        if combine_offset:
-            try:
-                # this does not work for all isotopes
-                offset_dict[iso] = Analyzer.combineShiftOffsetPerBunchDisplay(iso, current_run, db)
-            except Exception as e:
-                print('-----------------------------------------------------------------')
-                print('error: %s  occurred while combining offsets for iso %s' % (e, iso))
-                print('-----------------------------------------------------------------')
-
+raise Exception
 for iso in isotopes:
     if iso != '60_Ni':
         if combine_final_run:
@@ -720,6 +721,8 @@ if data:
         # a = a.replace('.', ',')
         # print(a)
 
+raise Exception
+
 
 ''' compare shifts '''
 
@@ -736,136 +739,175 @@ for iso, val, statErr, systErr, rChi in shifts2016:
     shifts2016_dict[iso] = (val, statErr)
 
 # compare 2016 results
-runs_to_compare = [exp_liang_run16]  #, bradley_2016_3_ev_run]
-MPLPlotter.plot_par_from_combined(db, runs_to_compare,
-                                  isotopes2016, 'shift', show_pl=True,
-                                  plot_runs_seperate=True, literature_run=run2016_final_db,
-                                  literature_name=run_comments[run2016_final_db],
-                                  lit_color=run_colors[run2016_final_db],
-                                  lit_marker=run_markes[run2016_final_db],
-                                  comments=[run_comments[r] for r in runs_to_compare],
-                                  markers=[run_markes[r] for r in runs_to_compare],
-                                  colors=[run_colors[r] for r in runs_to_compare],
-                                  legend_loc=3,
-                                  start_offset=-0.1,
-                                  use_syst_err_only=False,
-                                  use_full_error=False
-                                  )
+store_path_comparison_plots = os.path.join(workdir, 'comparison_plots_2016_vs_2017')
+font_size_plts = 16
+fig_size_plots = (11, 8)
+if plot_comparisons:
+    runs_to_compare = [exp_liang_run16]  #, bradley_2016_3_ev_run]
+    MPLPlotter.plot_par_from_combined(db, runs_to_compare,
+                                      isotopes2016, 'shift', show_pl=True,
+                                      plot_runs_seperate=True, literature_run=run2016_final_db,
+                                      literature_name=run_comments[run2016_final_db],
+                                      lit_color=run_colors[run2016_final_db],
+                                      lit_marker=run_markes[run2016_final_db],
+                                      comments=[run_comments[r] for r in runs_to_compare],
+                                      markers=[run_markes[r] for r in runs_to_compare],
+                                      colors=[run_colors[r] for r in runs_to_compare],
+                                      legend_loc=3,
+                                      start_offset=-0.1,
+                                      use_syst_err_only=False,
+                                      use_full_error=False,
+                                      save_path=os.path.join(store_path_comparison_plots, '2016_Liang_Me.pdf'),
+                                      force_xlim=(57, 71),
+                                      fontsize_ticks=font_size_plts, fig_size=fig_size_plots
+                                      )
+
+    # compare My 2017 results
+    runs_to_compare = [normal_run, run_hot_cec]
+    MPLPlotter.plot_par_from_combined(db, runs_to_compare,
+                                      isotopes, 'shift', show_pl=True,
+                                      plot_runs_seperate=True, literature_run=final_2017_run,
+                                      literature_name=run_comments[final_2017_run],
+                                      lit_color=run_colors[final_2017_run],
+                                      lit_marker=run_markes[final_2017_run],
+                                      comments=[run_comments[r] for r in runs_to_compare],
+                                      markers=[run_markes[r] for r in runs_to_compare],
+                                      colors=[run_colors[r] for r in runs_to_compare],
+                                      legend_loc=3,
+                                      start_offset=-0.1,
+                                      use_syst_err_only=False,
+                                      use_full_error=False,
+                                      save_path=os.path.join(store_path_comparison_plots, '2017_MyRuns.pdf'),
+                                      force_xlim=(57, 65),
+                                      fontsize_ticks=font_size_plts, fig_size=fig_size_plots
+                                      )
+    # compare 2017 results
+    runs_to_compare = [exp_liang_run17]
+    MPLPlotter.plot_par_from_combined(db, runs_to_compare,
+                                      isotopes, 'shift', show_pl=True,
+                                      plot_runs_seperate=True, literature_run=final_2017_run,
+                                      literature_name=run_comments[final_2017_run],
+                                      lit_color=run_colors[final_2017_run],
+                                      lit_marker=run_markes[final_2017_run],
+                                      comments=[run_comments[r] for r in runs_to_compare],
+                                      markers=[run_markes[r] for r in runs_to_compare],
+                                      colors=[run_colors[r] for r in runs_to_compare],
+                                      legend_loc=3,
+                                      start_offset=-0.1,
+                                      use_syst_err_only=False,
+                                      use_full_error=False,
+                                      save_path=os.path.join(store_path_comparison_plots, '2017_Liang_Vs_Me.pdf'),
+                                      force_xlim=(57, 71),
+                                      fontsize_ticks=font_size_plts, fig_size=fig_size_plots
+                                      )
+
+    # compare most of the 2016 / 2017 data relative to 2017 data
+    runs_to_compare = [exp_liang_run17, run2016_final_db, exp_liang_run16, steudel_1980_run]
+    MPLPlotter.plot_par_from_combined(db, runs_to_compare,
+                                      isotopes, 'shift', show_pl=True,
+                                      plot_runs_seperate=True, literature_run=final_2017_run,
+                                      literature_name=run_comments[final_2017_run],
+                                      lit_color=run_colors[final_2017_run],
+                                      lit_marker=run_markes[final_2017_run],
+                                      comments=[run_comments[r] for r in runs_to_compare],
+                                      markers=[run_markes[r] for r in runs_to_compare],
+                                      colors=[run_colors[r] for r in runs_to_compare],
+                                      legend_loc=3,
+                                      start_offset=-0.1,
+                                      use_syst_err_only=False,
+                                      use_full_error=False,
+                                      save_path=os.path.join(store_path_comparison_plots, '2016_2017_all_runs.pdf'),
+                                      force_xlim=(57, 71),
+                                      fontsize_ticks=font_size_plts, fig_size=fig_size_plots
+                                      )
+
+    # compare most of the 2016 / 2017 data relative to 2017 data
+    runs_to_compare = [exp_liang_run17, run2016_final_db, exp_liang_run16] #, steudel_1980_run]
+    MPLPlotter.plot_par_from_combined(db, runs_to_compare,
+                                      isotopes, 'shift', show_pl=True,
+                                      plot_runs_seperate=True, literature_run=final_2017_run,
+                                      literature_name=run_comments[final_2017_run],
+                                      lit_color=run_colors[final_2017_run],
+                                      lit_marker=run_markes[final_2017_run],
+                                      comments=[run_comments[r] for r in runs_to_compare],
+                                      markers=[run_markes[r] for r in runs_to_compare],
+                                      colors=[run_colors[r] for r in runs_to_compare],
+                                      legend_loc=3,
+                                      start_offset=-0.1,
+                                      use_syst_err_only=False,
+                                      use_full_error=False,
+                                      save_path=os.path.join(store_path_comparison_plots, '2016_2017_all_runs_no_Steudel.pdf'),
+                                      force_xlim=(57, 71),
+                                      fontsize_ticks=font_size_plts, fig_size=fig_size_plots
+                                      )
+
+    # compare my results from 2016 relative to 2017 data
+    runs_to_compare = [run2016_final_db]
+    MPLPlotter.plot_par_from_combined(db, runs_to_compare,
+                                      isotopes, 'shift', show_pl=True,
+                                      plot_runs_seperate=True, literature_run=final_2017_run,
+                                      literature_name=run_comments[final_2017_run],
+                                      lit_color=run_colors[final_2017_run],
+                                      lit_marker=run_markes[final_2017_run],
+                                      comments=[run_comments[r] for r in runs_to_compare],
+                                      markers=[run_markes[r] for r in runs_to_compare],
+                                      colors=[run_colors[r] for r in runs_to_compare],
+                                      legend_loc=3,
+                                      start_offset=-0.1,
+                                      use_syst_err_only=False,
+                                      use_full_error=False,
+                                      save_path=os.path.join(store_path_comparison_plots, '2016_2017_my_runs_only.pdf'),
+                                      force_xlim=(57, 71),
+                                      fontsize_ticks=font_size_plts, fig_size=fig_size_plots
+                                      )
 
 
-# compare My 2017 results
-runs_to_compare = [normal_run, run_hot_cec]
-MPLPlotter.plot_par_from_combined(db, runs_to_compare,
-                                  isotopes, 'shift', show_pl=True,
-                                  plot_runs_seperate=True, literature_run=final_2017_run,
-                                  literature_name=run_comments[final_2017_run],
-                                  lit_color=run_colors[final_2017_run],
-                                  lit_marker=run_markes[final_2017_run],
-                                  comments=[run_comments[r] for r in runs_to_compare],
-                                  markers=[run_markes[r] for r in runs_to_compare],
-                                  colors=[run_colors[r] for r in runs_to_compare],
-                                  legend_loc=3,
-                                  start_offset=-0.1,
-                                  use_syst_err_only=False,
-                                  use_full_error=False
-                                  )
-
-# compare 2017 results
-runs_to_compare = [exp_liang_run17]
-MPLPlotter.plot_par_from_combined(db, runs_to_compare,
-                                  isotopes, 'shift', show_pl=True,
-                                  plot_runs_seperate=True, literature_run=final_2017_run,
-                                  literature_name=run_comments[final_2017_run],
-                                  lit_color=run_colors[final_2017_run],
-                                  lit_marker=run_markes[final_2017_run],
-                                  comments=[run_comments[r] for r in runs_to_compare],
-                                  markers=[run_markes[r] for r in runs_to_compare],
-                                  colors=[run_colors[r] for r in runs_to_compare],
-                                  legend_loc=3,
-                                  start_offset=-0.1,
-                                  use_syst_err_only=False,
-                                  use_full_error=False
-                                  )
-
-# compare most of the 2016 / 2017 data relative to 2017 data
-runs_to_compare = [exp_liang_run17, run2016_final_db, exp_liang_run16, steudel_1980_run]
-MPLPlotter.plot_par_from_combined(db, runs_to_compare,
-                                  isotopes, 'shift', show_pl=True,
-                                  plot_runs_seperate=True, literature_run=final_2017_run,
-                                  literature_name=run_comments[final_2017_run],
-                                  lit_color=run_colors[final_2017_run],
-                                  lit_marker=run_markes[final_2017_run],
-                                  comments=[run_comments[r] for r in runs_to_compare],
-                                  markers=[run_markes[r] for r in runs_to_compare],
-                                  colors=[run_colors[r] for r in runs_to_compare],
-                                  legend_loc=3,
-                                  start_offset=-0.1,
-                                  use_syst_err_only=False,
-                                  use_full_error=False
-                                  )
-
-# compare my results from 2016 relative to 2017 data
-runs_to_compare = [run2016_final_db]
-MPLPlotter.plot_par_from_combined(db, runs_to_compare,
-                                  isotopes, 'shift', show_pl=True,
-                                  plot_runs_seperate=True, literature_run=final_2017_run,
-                                  literature_name=run_comments[final_2017_run],
-                                  lit_color=run_colors[final_2017_run],
-                                  lit_marker=run_markes[final_2017_run],
-                                  comments=[run_comments[r] for r in runs_to_compare],
-                                  markers=[run_markes[r] for r in runs_to_compare],
-                                  colors=[run_colors[r] for r in runs_to_compare],
-                                  legend_loc=3,
-                                  start_offset=-0.1,
-                                  use_syst_err_only=False,
-                                  use_full_error=False
-                                  )
-
-
-# compare most of the 2016 / 2017 data relative to 2016 data
-runs_to_compare = [exp_liang_run16, final_2017_run, exp_liang_run17, steudel_1980_run]
-MPLPlotter.plot_par_from_combined(db, runs_to_compare,
-                                  isotopes, 'shift', show_pl=True,
-                                  plot_runs_seperate=True, literature_run=run2016_final_db,
-                                  literature_name=run_comments[run2016_final_db],
-                                  lit_color=run_colors[run2016_final_db],
-                                  lit_marker=run_markes[run2016_final_db],
-                                  comments=[run_comments[r] for r in runs_to_compare],
-                                  markers=[run_markes[r] for r in runs_to_compare],
-                                  colors=[run_colors[r] for r in runs_to_compare],
-                                  legend_loc=3,
-                                  start_offset=-0.1,
-                                  use_syst_err_only=False,
-                                  use_full_error=False
-                                  )
-
-# compare most of the 2016 / 2017 data relative to 2016 data
-runs_to_compare = [final_2017_run]
-MPLPlotter.plot_par_from_combined(db, runs_to_compare,
-                                  isotopes, 'shift', show_pl=True,
-                                  plot_runs_seperate=True, literature_run=run2016_final_db,
-                                  literature_name=run_comments[run2016_final_db],
-                                  lit_color=run_colors[run2016_final_db],
-                                  lit_marker=run_markes[run2016_final_db],
-                                  comments=[run_comments[r] for r in runs_to_compare],
-                                  markers=[run_markes[r] for r in runs_to_compare],
-                                  colors=[run_colors[r] for r in runs_to_compare],
-                                  legend_loc=3,
-                                  start_offset=-0.1,
-                                  use_syst_err_only=False,
-                                  use_full_error=False
-                                  )
+    # # compare most of the 2016 / 2017 data relative to 2016 data
+    # runs_to_compare = [exp_liang_run16, final_2017_run, exp_liang_run17, steudel_1980_run]
+    # MPLPlotter.plot_par_from_combined(db, runs_to_compare,
+    #                                   isotopes, 'shift', show_pl=True,
+    #                                   plot_runs_seperate=True, literature_run=run2016_final_db,
+    #                                   literature_name=run_comments[run2016_final_db],
+    #                                   lit_color=run_colors[run2016_final_db],
+    #                                   lit_marker=run_markes[run2016_final_db],
+    #                                   comments=[run_comments[r] for r in runs_to_compare],
+    #                                   markers=[run_markes[r] for r in runs_to_compare],
+    #                                   colors=[run_colors[r] for r in runs_to_compare],
+    #                                   legend_loc=3,
+    #                                   start_offset=-0.1,
+    #                                   use_syst_err_only=False,
+    #                                   use_full_error=False
+    #                                   )
+    #
+    # # compare most of the 2016 / 2017 data relative to 2016 data
+    # runs_to_compare = [final_2017_run]
+    # MPLPlotter.plot_par_from_combined(db, runs_to_compare,
+    #                                   isotopes, 'shift', show_pl=True,
+    #                                   plot_runs_seperate=True, literature_run=run2016_final_db,
+    #                                   literature_name=run_comments[run2016_final_db],
+    #                                   lit_color=run_colors[run2016_final_db],
+    #                                   lit_marker=run_markes[run2016_final_db],
+    #                                   comments=[run_comments[r] for r in runs_to_compare],
+    #                                   markers=[run_markes[r] for r in runs_to_compare],
+    #                                   colors=[run_colors[r] for r in runs_to_compare],
+    #                                   legend_loc=3,
+    #                                   start_offset=-0.1,
+    #                                   use_syst_err_only=False,
+    #                                   use_full_error=False
+    #                                   )
 
 
 ''' King plot and charge radii '''
 
-king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, font_size=26)
-king.kingFit(alpha=0, findBestAlpha=False, run=current_run, find_slope_with_statistical_error=False)
-king.calcChargeRadii(isotopes=isotopes, run=current_run, plot_evens_seperate=True, print_results=True)
+if perf_king_fit:
+    king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, font_size=26)
+    # king.kingFit(alpha=0, findBestAlpha=False, run=final_2017_run, find_slope_with_statistical_error=False)
+    # king.calcChargeRadii(isotopes=isotopes, run=final_2017_run, plot_evens_seperate=True, print_results=True)
+    #
+    king.kingFit(alpha=365, findBestAlpha=True, run=final_2017_run)
+    radii_alpha = king.calcChargeRadii(isotopes=isotopes, run=final_2017_run, plot_evens_seperate=True, print_results=True)
+    print('radii with alpha', radii_alpha)
 
-king.kingFit(alpha=365, findBestAlpha=True, run=final_2017_run)
-radii_alpha = king.calcChargeRadii(isotopes=isotopes, run=final_2017_run, plot_evens_seperate=True, print_results=True)
-print('radii with alpha', radii_alpha)
 
 ''' compare radii '''
 
@@ -883,17 +925,57 @@ for iso, val, statErr, systErr, rChi in radii2016:
 
 print('shifts from 2016:')
 TiTs.print_dict_pretty(radii2016_dict)
+if plot_drCh2:
+    runs_to_compare = [final_2017_run]  # , run_hot_cec]
+    MPLPlotter.plot_par_from_combined(db, runs_to_compare,
+                                      isotopes, 'delta_r_square', show_pl=True,
+                                      plot_runs_seperate=True, literature_run=run2016_final_db,
+                                      literature_name=run_comments[run2016_final_db],
+                                      use_syst_err_only=True,
+                                      comments=[run_comments[r] for r in runs_to_compare],
+                                      markers=[run_markes[r] for r in runs_to_compare],
+                                      colors=[run_colors[r] for r in runs_to_compare],
+                                      start_offset=-0.05)
 
-runs_to_compare = [final_2017_run]  # , run_hot_cec]
-MPLPlotter.plot_par_from_combined(db, runs_to_compare,
-                                  isotopes, 'delta_r_square', show_pl=True,
-                                  plot_runs_seperate=True, literature_run=run2016_final_db,
-                                  literature_name=run_comments[run2016_final_db],
-                                  use_syst_err_only=True,
-                                  comments=[run_comments[r] for r in runs_to_compare],
-                                  markers=[run_markes[r] for r in runs_to_compare],
-                                  colors=[run_colors[r] for r in runs_to_compare],
-                                  start_offset=-0.05)
+    runs_to_compare = [run2016_final_db, exp_liang_run17, exp_liang_run16]
+    MPLPlotter.plot_par_from_combined(db, runs_to_compare,
+                                      isotopes, 'delta_r_square', show_pl=True,
+                                      plot_runs_seperate=True, literature_run=final_2017_run,
+                                      literature_name=run_comments[final_2017_run],
+                                      lit_color=run_colors[final_2017_run],
+                                      lit_marker=run_markes[final_2017_run],
+                                      use_syst_err_only=True,
+                                      use_full_error=True,
+                                      comments=[run_comments[r] for r in runs_to_compare],
+                                      markers=[run_markes[r] for r in runs_to_compare],
+                                      colors=[run_colors[r] for r in runs_to_compare],
+                                      start_offset=-0.05,
+                                      force_xlim=(57, 71),
+                                      fig_size=fig_size_plots,
+                                      fontsize_ticks=font_size_plts,
+                                      save_path=os.path.join(store_path_comparison_plots,
+                                                             'delta_r_square_all_runs_full_err.pdf')
+                                      )
+
+    runs_to_compare = [exp_liang_run16]
+    MPLPlotter.plot_par_from_combined(db, runs_to_compare,
+                                      isotopes2016, 'delta_r_square', show_pl=True,
+                                      plot_runs_seperate=True, literature_run=run2016_final_db,
+                                      literature_name=run_comments[run2016_final_db],
+                                      lit_color=run_colors[run2016_final_db],
+                                      lit_marker=run_markes[run2016_final_db],
+                                      use_syst_err_only=True,
+                                      use_full_error=True,
+                                      comments=[run_comments[r] for r in runs_to_compare],
+                                      markers=[run_markes[r] for r in runs_to_compare],
+                                      colors=[run_colors[r] for r in runs_to_compare],
+                                      start_offset=-0.05,
+                                      force_xlim=(57, 71),
+                                      fig_size=fig_size_plots,
+                                      fontsize_ticks=font_size_plts,
+                                      save_path=os.path.join(store_path_comparison_plots,
+                                                             '2016_delta_r_square_all_runs_full_err.pdf')
+                                      )
 
 
 ''' A and B factors and moments '''
@@ -1045,35 +1127,35 @@ con.commit()
 con.close()
 
 # odd_isotopes = ['61_Ni', '65_Ni']
+if plot_A_and_Bs:
+    print('---------------------------- plotting A&Bs now ----------------------------')
+    for par in pars:
+        try:
+            runs_to_compare = [final_2017_run]
+            MPLPlotter.plot_par_from_combined(db, runs_to_compare,
+                                              odd_isotopes, par, show_pl=True,
+                                              plot_runs_seperate=True, literature_run=run2016_final_db,
+                                              literature_name=run_comments[run2016_final_db],
+                                              lit_color=run_colors[run2016_final_db],
+                                              lit_marker=run_markes[run2016_final_db],
+                                              markers=[run_markes[r] for r in runs_to_compare],
+                                              colors=[run_colors[r] for r in runs_to_compare],
+                                              comments=[run_comments[r] for r in runs_to_compare],
+                                              start_offset=-0.05)
 
-print('---------------------------- plotting A&Bs now ----------------------------')
-for par in pars:
-    try:
-        runs_to_compare = [final_2017_run]
-        MPLPlotter.plot_par_from_combined(db, runs_to_compare,
-                                          odd_isotopes, par, show_pl=True,
-                                          plot_runs_seperate=True, literature_run=run2016_final_db,
-                                          literature_name=run_comments[run2016_final_db],
-                                          lit_color=run_colors[run2016_final_db],
-                                          lit_marker=run_markes[run2016_final_db],
-                                          markers=[run_markes[r] for r in runs_to_compare],
-                                          colors=[run_colors[r] for r in runs_to_compare],
-                                          comments=[run_comments[r] for r in runs_to_compare],
-                                          start_offset=-0.05)
+            runs_to_compare = [exp_liang_run16, final_2017_run, exp_liang_run17]
+            MPLPlotter.plot_par_from_combined(db, runs_to_compare,
+                                              odd_isotopes, par, show_pl=True,
+                                              plot_runs_seperate=True, literature_run=run2016_final_db,
+                                              literature_name=run_comments[run2016_final_db],
+                                              lit_color=run_colors[run2016_final_db],
+                                              lit_marker=run_markes[run2016_final_db],
+                                              markers=[run_markes[r] for r in runs_to_compare],
+                                              colors=[run_colors[r] for r in runs_to_compare],
+                                              comments=[run_comments[r] for r in runs_to_compare],
+                                              start_offset=-0.05)
 
-        runs_to_compare = [exp_liang_run16, final_2017_run, exp_liang_run17]
-        MPLPlotter.plot_par_from_combined(db, runs_to_compare,
-                                          odd_isotopes, par, show_pl=True,
-                                          plot_runs_seperate=True, literature_run=run2016_final_db,
-                                          literature_name=run_comments[run2016_final_db],
-                                          lit_color=run_colors[run2016_final_db],
-                                          lit_marker=run_markes[run2016_final_db],
-                                          markers=[run_markes[r] for r in runs_to_compare],
-                                          colors=[run_colors[r] for r in runs_to_compare],
-                                          comments=[run_comments[r] for r in runs_to_compare],
-                                          start_offset=-0.05)
-
-        MPLPlotter.clear()
-    except Exception as e:
-        print('error: %s' % e)
+            MPLPlotter.clear()
+        except Exception as e:
+            print('error: %s' % e)
 

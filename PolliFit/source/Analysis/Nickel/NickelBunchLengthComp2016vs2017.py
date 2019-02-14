@@ -5,18 +5,21 @@ Created on 03.12.18
 
 Module Description:  used to find all bunch lengths of the involved files
 and compare these between 2016 and 2017
+results are used in the origin file .../Owncloud/User/Simon/Doktorarbeit/Arbeit/origin/isotope_shifts
+imported there by hand from the Measurement and Analysis folders
+    .../OwnCloud/Projekte/COLLAPS/Nickel/Measurement_and_Analysis_Simon/Ni_workspace/timing_info
+    .../OwnCloud/Projekte/COLLAPS/Nickel/Measurement_and_Analysis_Simon/Ni_workspace2017/Ni_2017/timing_info
 """
 
 import os
 import sys
 import numpy as np
-from scipy import stats as scStats
-from scipy.optimize import curve_fit
 import ast
 from PyQt5 import QtWidgets
 import csv
 import matplotlib.pyplot as plt
 
+import Physics
 import Analyzer as Anal
 import TildaTools as TiTs
 from Measurement.XMLImporter import XMLImporter
@@ -24,12 +27,15 @@ import Service.Formating as Form
 
 ''' settings: '''
 
-create_bunch_len_txt_16 = True  # create text file by reading all data files and interpreting the bunch length
+create_bunch_len_txt_16 = False  # create text file by reading all data files and interpreting the bunch length
+add_time_rchi_16 = 0.0
 create_config_sum_file_16 = False
 create_mean_iso_bun_len_txt_file_16 = False
 plot_time_struct_16 = False  # plot the time projection for scaler 0 for seperate 58 Ni files
-plot_gauss = False
+normalize_on_scans = False  # false is better...
+plot_gauss = True
 create_bunch_len_txt_17 = False
+add_time_rchi_17 = add_time_rchi_16
 create_config_sum_file_17 = False
 create_mean_iso_bun_len_txt_file_17 = False
 
@@ -121,7 +127,7 @@ db2016 = os.path.join(workdir2016, 'Ni_workspace.sqlite')
 runs2016 = ['wide_gate_asym', 'wide_gate_asym_67_Ni']
 final_2016_run = 'wide_gate_asym'
 
-isotopes2016 = ['%s_Ni' % i for i in range(58, 71)]
+isotopes2016 = ['%s_Ni' % i for i in range(58, 71)]  # 58, 71
 isotopes2016.remove('67_Ni')  # not relevant here since no TIPA data was acquired for Nickel 67
 isotopes2016.remove('69_Ni')
 isotopes2016.remove('70_Ni')  # not relevant here since no TIPA data was acquired for Nickel 70
@@ -247,22 +253,37 @@ if create_bunch_len_txt_17:
     # get bunchlength for each files and store it in .txt file in roder nto to always have to import all the files etc.
     with open(txt_file17, 'wb') as f17:
         for iso in isotopes_17:
-            for mcp_file in files_flat_2017[iso]:
-                abs_path = os.path.join(datafolder17, mcp_file)
+            for tilda_file in files_flat_2017[iso]:
+                abs_path = os.path.join(datafolder17, tilda_file)
                 meas = XMLImporter(abs_path)
                 rebinning = 100  # in ns
                 meas = Form.time_rebin_all_spec_data(meas, [rebinning] * meas.nrTracks, -1)
                 meas = TiTs.gate_specdata(meas)
                 new_meas, ret_dict = TiTs.calc_bunch_width_relative_to_peak_height(
                     meas, 25, show_plt=False, non_consectutive_time_bins_tolerance=10,
-                    save_to_path=os.path.join(time_info_folder17, os.path.splitext(meas.file)[0] + '.pdf'),
-                    time_around_bunch=(3.0, 6.0)
+                    save_to_path=[os.path.join(time_info_folder17, os.path.splitext(meas.file)[0] + '.png'),
+                                  os.path.join(time_info_folder17, os.path.splitext(meas.file)[0] + '.pdf')],
+                    time_around_bunch=(3.0, 6.0), additional_time_rChi=add_time_rchi_17
                 )
-                b_lengths = ret_dict['bunch_lenght_us']
-                b_lengths = [item for sublist in b_lengths for item in sublist]
-                mean_b_lengths, err_mean_b_lengths, rChi = Anal.weightedAverage(b_lengths,
-                                                                                [rebinning / 1000] * len(b_lengths))
-                f17.write(bytes('%s\t%.6f\t%.6f\n' % (mcp_file, mean_b_lengths, err_mean_b_lengths), 'UTF-8'))
+                b_lengths = np.mean(ret_dict['bunch_lenght_us'], 0)  # get mean over all tracks for each scaler
+                # b_lengths = [item for sublist in b_lengths for item in sublist]
+                # mean_b_lengths, err_mean_b_lengths, rChi = Anal.weightedAverage(b_lengths,
+                #                                                                 [rebinning / 1000] * len(b_lengths))
+                rel_scaler = 1  # only account sc0 because different scalers show different behaviour
+                b_lengths_relevant_scalers = b_lengths[:rel_scaler]
+                mean_b_lengths, err_mean_b_lengths, rChi = Anal.weightedAverage(
+                    b_lengths_relevant_scalers, [rebinning / 1000] * len(b_lengths_relevant_scalers))
+                gauss_res = ret_dict['gaussian_res']
+                r_chis_file = []
+                for tr_ind, gauss_res_tr in enumerate(gauss_res):
+                    r_chis_file += [],
+                    for gauss_res_tr_sc in gauss_res_tr:
+                        rchisq_tr_sc = gauss_res_tr_sc[0][-1]
+                        r_chis_file[tr_ind] += rchisq_tr_sc,
+                rchisq_mean_sc_wise = np.mean(r_chis_file, 0)  # mean over all track scaler wise
+                rchisq_mean = np.mean(rchisq_mean_sc_wise)
+                f17.write(bytes('%s\t%.6f\t%.6f\t%.2f\n' % (
+                    tilda_file, mean_b_lengths, err_mean_b_lengths, rchisq_mean), 'UTF-8'))
 
     f17.close()
 
@@ -284,13 +305,21 @@ bunch_lenghts_2017_dict = {}  # 'filename': (len_us, err_len_us)
 
 with open(txt_file17, 'r') as f17:
     lines = csv.reader(f17, delimiter='\t')
-    for f, bun_len, err_bun_len in lines:
-        bunch_lenghts_2017_dict[f] = (float(bun_len), float(err_bun_len))
+    for f, bun_len, err_bun_len, rchisq in lines:
+        bunch_lenghts_2017_dict[f] = (float(bun_len), float(err_bun_len), float(rchisq))
 
 # TiTs.print_dict_pretty(bunch_lenghts_2017_dict)
-
+print(bunch_lenghts_2017_dict.keys())
+print(Anal.get_date_date_err_to_files(db17, bunch_lenghts_2017_dict.keys()))
+raise Exception
 
 ''' 2016 '''
+
+all_file_flat_2016 = {iso16: [] for iso16 in isotopes2016}  # sorted by isotope
+all_f = TiTs.select_from_db(db2016, 'file, type', 'Files', addCond='ORDER BY date')
+for f, f_type in all_f:
+    if '.mcp' in f and f_type in isotopes2016:
+        all_file_flat_2016[f_type] += f,
 
 files_flat_2016 = {}  # sorted by isotope
 configs_2016 = {}
@@ -304,13 +333,13 @@ for isotope in isotopes2016:
         files_flat_2016['60_Ni'] = ref_files
 
 files_flat_2016['60_Ni'] = list(sorted(set(files_flat_2016['60_Ni'])))
-# TiTs.print_dict_pretty(files_flat_2016)
+TiTs.print_dict_pretty(files_flat_2016)
 
 from Analysis.Nickel.NiCombineTildaPassiveAndMCP import find_tipa_file_to_mcp_file  # grml does import everything...
 
-print(files_flat_2016['58_Ni'])
-print(files_flat_2016['60_Ni'])
-print(os.path.split(find_tipa_file_to_mcp_file(files_flat_2016['60_Ni'][0])[1])[1])
+# print(files_flat_2016['58_Ni'])
+# print(files_flat_2016['60_Ni'])
+# print(os.path.split(find_tipa_file_to_mcp_file(files_flat_2016['60_Ni'][0])[1])[1])
 
 txt_file16 = os.path.join(time_info_folder2016, 'bunch_lengths_mean.txt')
 
@@ -318,11 +347,12 @@ if create_bunch_len_txt_16:
     # get bunchlength for each files and store it in .txt file in roder nto to always have to import all the files etc.
     with open(txt_file16, 'wb') as f16:
         for iso in isotopes2016:
-            for mcp_file in files_flat_2016[iso]:
+            for mcp_file in all_file_flat_2016[iso]:
                 # abs_path_mcp = os.path.join(datafolder_mcp_2016, each)
                 tipa_file = find_tipa_file_to_mcp_file(mcp_file)[1]
                 print('working on iso: %s mcp_file: %s tipa_file: %s' % (iso, mcp_file, tipa_file))
-                run_num = int(mcp_file.split('.')[0].split('Run')[1])
+                run_num = int(get_file_numbers([mcp_file])[0])
+                # run_num = int(mcp_file.split('.')[0].split('Run')[1])
                 print('mcp run number: %s' % run_num)
                 if tipa_file:
                     tipa_file = os.path.split(tipa_file)[1]
@@ -333,15 +363,20 @@ if create_bunch_len_txt_16:
                     meas = TiTs.gate_specdata(meas)
                     new_meas, ret_dict = TiTs.calc_bunch_width_relative_to_peak_height(
                         meas, 25, show_plt=False, non_consectutive_time_bins_tolerance=10,
-                        save_to_path=os.path.join(
+                        save_to_path=[os.path.join(
                             time_info_folder2016,
                             os.path.splitext(mcp_file)[0] + '_' + os.path.splitext(meas.file)[0] + '.png'),
-                        time_around_bunch=(3.0, 10.0)
+                            os.path.join(
+                                time_info_folder2016,
+                                os.path.splitext(mcp_file)[0] + '_' + os.path.splitext(meas.file)[0] + '.pdf')
+                        ],
+                        time_around_bunch=(3.0, 10.0), additional_time_rChi=add_time_rchi_16
 
                     )
                     b_lengths = np.mean(ret_dict['bunch_lenght_us'], 0)  # get mean over all tracks for each scaler
                     # mean is ok, since all have same error and not weighting is needed.
-                    rel_scaler = 1 if run_num < 107 else 4  # before mcp run 107, only scaler 0 is valid
+                    rel_scaler = 1  # in 2016 only scaler 0 is valid because other pmts show very different behaviour,
+                    #  probably due to some nim cabling
                     b_lengths_relevant_scalers = b_lengths[:rel_scaler]
                     mean_b_lengths, err_mean_b_lengths, rChi = Anal.weightedAverage(
                         b_lengths_relevant_scalers, [rebinning / 1000] * len(b_lengths_relevant_scalers))
@@ -353,18 +388,15 @@ if create_bunch_len_txt_16:
                         for gauss_res_tr_sc in gauss_res_tr:
                             rchisq_tr_sc = gauss_res_tr_sc[0][-1]
                             r_chis_file[tr_ind] += rchisq_tr_sc,
-                    # build mean for relevant scalers...
-                    # TODO
-                    # mcp | tipa | bun_len_mean (rel. scalers) | err_bun_len_mean | rChiSq gauss
-                    # that's enough!
-
-
+                    rchisq_mean_sc_wise = np.mean(r_chis_file, 0)  # mean over all track scaler wise
+                    rchisq_mean = np.mean(rchisq_mean_sc_wise[:rel_scaler])
                 else:
                     mean_b_lengths = 0.0
                     err_mean_b_lengths = 0.0
+                    rchisq_mean = 0.0
                 f16.write(
-                    bytes('%s\t%s\t%.6f\t%.6f\n'
-                          % (mcp_file, tipa_file, mean_b_lengths, err_mean_b_lengths), 'UTF-8'))
+                    bytes('%s\t%s\t%.6f\t%.6f\t%.2f\n'
+                          % (mcp_file, tipa_file, mean_b_lengths, err_mean_b_lengths, rchisq_mean), 'UTF-8'))
 
     f16.close()
 
@@ -372,23 +404,10 @@ bunch_lenghts_2016_dict = {}  # 'filename': (len_us, err_len_us, tipa_f)
 
 with open(txt_file16, 'r') as f16:
     lines = csv.reader(f16, delimiter='\t')
-    for f, tipa_f, bun_len, err_bun_len in lines:
-        bunch_lenghts_2016_dict[f] = (float(bun_len), float(err_bun_len), tipa_f)
+    for f, tipa_f, bun_len, err_bun_len, rchisq_m in lines:
+        bunch_lenghts_2016_dict[f] = (float(bun_len), float(err_bun_len), float(rchisq_m), tipa_f)
 
 TiTs.print_dict_pretty(bunch_lenghts_2016_dict)
-
-
-def gaussian(x, a, x0, sigma):
-    return a * np.exp(-(x - x0) ** 2 / (2 * sigma ** 2))
-
-
-def calc_r_chi_sq(t_proj_dat, residus):
-    errs = np.sqrt(t_proj_dat)
-    errs = [1 if e == 0 else e for e in errs]  # replace errors with 0 by 1
-    numbers_freedom = len(t_proj_dat) - 3  # three from gauss
-    rchisq = sum([res ** 2 / e ** 2 for res, e in zip(residus, errs)]) / numbers_freedom
-    return rchisq
-
 
 if plot_time_struct_16:
     # plot some selected tiome projections for 60ni and 58ni from 2016 to
@@ -398,22 +417,37 @@ if plot_time_struct_16:
                  '58Ni_no_protonTrigger_Run149.mcp',
                  '58Ni_no_protonTrigger_Run210.mcp',
                  '58Ni_no_protonTrigger_Run212.mcp']
-    ni60Files = ['60Ni_no_protonTrigger_Run076.mcp',
-                 '60Ni_no_protonTrigger_Run027.mcp',
+    ni60Files = ['60Ni_no_protonTrigger_Run018.mcp',
+                 '60Ni_no_protonTrigger_Run076.mcp',
+                 # '60Ni_no_protonTrigger_Run027.mcp',  # very similar to 019
                  '60Ni_no_protonTrigger_Run019.mcp',
                  '60Ni_no_protonTrigger_Run035.mcp',
                  '60Ni_no_protonTrigger_Run084.mcp',
                  '60Ni_no_protonTrigger_Run089.mcp']
+    ni61Files_bl0 = [
+        '61Ni_no_protonTrigger_Run014.mcp',
+        '61Ni_no_protonTrigger_Run010.mcp',
+        '61Ni_no_protonTrigger_Run012.mcp']  # no need to show since similar bunch length then 014
+    ni61Files_bl1 = [
+        '61Ni_no_protonTrigger_Run120.mcp',
+        '61Ni_no_protonTrigger_Run121.mcp',
+        '61Ni_no_protonTrigger_Run123.mcp',
+        # '61Ni_no_protonTrigger_Run124.mcp'   # very similar to 123
+    ]  # some heavily overloaded files in 61 Ni
+    ni61Files_all = [
+        '61Ni_no_protonTrigger_Run014.mcp',
+        '61Ni_no_protonTrigger_Run010.mcp',
+        '61Ni_no_protonTrigger_Run012.mcp',
+        '61Ni_no_protonTrigger_Run120.mcp',
+        '61Ni_no_protonTrigger_Run121.mcp',
+        '61Ni_no_protonTrigger_Run123.mcp',
+        # '61Ni_no_protonTrigger_Run124.mcp'
+    ]
     # iso_file_list = [ni58Files]
-    iso_file_list = [ni58Files, ni60Files]
-    isos_name = ['58_Ni', '60_Ni']
-    # 40.0 until 79.9 µs for all files with 100ns binning
-    # 40µs -> 400 bins
-    # 1 bin = 100ns -> 10 bin 1µs
-    # for 58Ni: 53µs - 64µs  130, 130+110=240
-    # for 60Ni: 54µs - 64µs  140, 140+100=240
-    # cutting = [[130, 241], [140, 241]]  # temporal cuts for skew determination
-    cutting = [[0, -1], [0, -1]]  # temporal cuts for skew determination
+    # iso_file_list = [ni58Files, ni60Files]
+    iso_file_list = [ni58Files, ni60Files, ni61Files_bl0, ni61Files_bl1]  #, ni61Files_all]
+    isos_name = ['58_Ni', '60_Ni', '61_Ni_bl0', '61_Ni_bl1', '61_Ni']
+    lims = [(52, 64), (52, 72), (49, 73), (50, 72), (50, 72)]
     for i, file_list in enumerate(iso_file_list):
         fig = plt.figure(1, (16, 16), facecolor='w')
         if plot_gauss:
@@ -425,60 +459,70 @@ if plot_time_struct_16:
         for mcp_file in file_list:
             if bunch_lenghts_2016_dict.get(mcp_file, False):
                 print('working on mcp_file: %s' % mcp_file)
-                b_len, b_len_err, tipa_file = bunch_lenghts_2016_dict[mcp_file]
+                b_len, b_len_err, rchisq_mean, tipa_file = bunch_lenghts_2016_dict[mcp_file]
                 abs_path_tipa = os.path.join(datafolder_tipa_2016, tipa_file)
                 meas = XMLImporter(abs_path_tipa)
                 rebinning = 100  # in ns
                 meas = Form.time_rebin_all_spec_data(meas, [rebinning] * meas.nrTracks, -1)
                 meas = TiTs.gate_specdata(meas)
-                y = meas.t_proj[0][0]  # tr0 sc0
+                if normalize_on_scans or mcp_file in [
+                    '60Ni_no_protonTrigger_Run018.mcp',
+                    '61Ni_no_protonTrigger_Run120.mcp'] or mcp_file in ni61Files_bl0:
+                    num_of_scans = meas.nrScans[0]  # number of scans
+                    if mcp_file == '60Ni_no_protonTrigger_Run018.mcp':
+                        num_of_scans = 2
+                    elif mcp_file == '61Ni_no_protonTrigger_Run120.mcp':
+                        num_of_scans = 1 / 5
+                    elif mcp_file in ni61Files_bl0:
+                        num_of_scans = 100  # too many zeros for plotting
+                    for tr_ind, tr_t_proj in enumerate(meas.t_proj):
+                        for sc_ind, tr_sc_t_proj in enumerate(tr_t_proj):
+                            meas.t_proj[tr_ind][sc_ind] = tr_sc_t_proj / num_of_scans
+                else:
+                    num_of_scans = 1  # number of scans set to one in order not to normalize on number of scans
+                y = meas.t_proj[0][0] / num_of_scans # tr0 sc0
                 x = meas.t[0]
                 # print('file: %s skew: %s' % (mcp_file, scStats.skew(y)))
                 # for rchisq calc only use area around peak
                 new_meas, ret_dict = TiTs.calc_bunch_width_relative_to_peak_height(
                     meas, 25, show_plt=False, non_consectutive_time_bins_tolerance=10,
-                    save_to_path=os.path.join(
-                        time_info_folder2016,
-                        os.path.splitext(mcp_file)[0] + '_' + os.path.splitext(meas.file)[0] + '.png'),
-                    time_around_bunch=(3.0, 10.0), additional_time_rChi=1.0, fit_gaussian=plot_gauss
+                    save_to_path='',  # do not save here
+                    time_around_bunch=(3.0, 10.0), additional_time_rChi=add_time_rchi_16, fit_gaussian=plot_gauss
                 )
                 print('gaussian_res: ', ret_dict.get('gaussian_res'))
-                additional_time = 4  # added/subtracted to stop/start time of bunch
-                tr0_sc0_start_t = ret_dict['bunch_begin_times'][0][0] - additional_time
-                tr0_sc0_stop_t = ret_dict['bunch_end_times'][0][0] + additional_time
-                start_ind = np.where(x < tr0_sc0_start_t)[0][-1]
-                stop_ind = np.where(x > tr0_sc0_stop_t)[0][0]
-                y_cut = y[start_ind:stop_ind]
-                x_cut = x[start_ind:stop_ind]
-
-                # calculate skew
-                y_data_set = []
-                for ind, each in enumerate(y_cut):
-                    # create inverse to existing histogram
-                    y_data_set += [x_cut[ind]] * int(each)
-                mean = np.mean(y_data_set)
-                sigma = np.var(y_data_set)
-                popt, pcov = curve_fit(gaussian, x, y, p0=[1, mean, sigma])
-                residuals = [y_cut[i] - gaussian(t_i, *popt) for i, t_i in enumerate(x_cut)]
-                rchsq = calc_r_chi_sq(y_cut, residuals)
-                skew = scStats.skew(y_data_set)
-                sigma_opt = popt[2]
-                mean_opt = popt[1]
-                # dont know if correct but from R.J. Bardow - Statistics ...
-                sim_skew = 1 / (len(y_data_set) * (sigma_opt ** 3)) * np.sum(
-                    [(each - mean_opt) ** 3 for each in y_data_set])
-                print('skew: ', skew, '  my skew: ', sim_skew)
+                gauss_off_res = ret_dict.get('gaussian_res')[0][0]  # tr0, sc0 for these examples
+                mean_fit = gauss_off_res[0][0]
+                err_mean_fit = gauss_off_res[1][0]
+                sigma_fit = gauss_off_res[0][1]
+                err_sigma_fit = gauss_off_res[1][1]
+                amp_fit = gauss_off_res[0][2]
+                off_fit = gauss_off_res[0][3]
+                rChiSqFit = gauss_off_res[0][4]
+                y_gauss = [Physics.gaussian_offset(x_i, mean_fit, sigma_fit, amp_fit, off_fit) / num_of_scans for x_i in x]
+                residuals = [y[ind] - y_gauss[ind]
+                             for ind, x_i in enumerate(x)]
 
                 mcp_num = get_file_numbers([mcp_file])[0]
                 tipa_num = get_file_numbers([tipa_file], mass_index=None)[0]
                 cur_plt = plt_axes.plot(
                     x, y,
-                    label='bunch length %.2f(%.0f)µs    run%s (tipa%s)\ncenter: %.2f    rChiSq: %.2f'
-                          % (b_len, b_len_err * 100, mcp_num, tipa_num, popt[1], rchsq),
+                    label='bunch length %.2f(%.0f)µs    run%s (tipa%s)\nGaussian: tof: %.2f(%.0f)    rChiSq: %.2f'
+                          % (b_len, b_len_err * 100, mcp_num, tipa_num, mean_fit, err_mean_fit * 100, rChiSqFit),
                     linewidth=2)
                 if plot_gauss:
-                    res_plot = res_axes.plot(x_cut, residuals, linewidth=2, color=cur_plt[-1].get_c())
-                    gauss_plt = plt_axes.plot(x, gaussian(x, *popt), label='', color=cur_plt[-1].get_c(), linewidth=2)
+                    res_plot = res_axes.plot(x, residuals, linewidth=2, color=cur_plt[-1].get_c())
+                    gauss_plt = plt_axes.plot(x, y_gauss,
+                                              label='', color=cur_plt[-1].get_c(), linewidth=2)
+                save_to = os.path.join(time_info_folder2016, '%s.txt' % mcp_file.split('.')[0])
+
+                with open(save_to, 'wb') as f:
+                    f.write(bytes(
+                        '%s\t%s\t%s\t%s\n' % ('t', 'cts', 'gauss', 'residuals'), 'UTF-8'))
+                    for ind, cur_x in enumerate(x):
+                        f.write(bytes(
+                            '%.2f\t%.2f\t%.5f\t%.5f\n' % (cur_x, y[ind], y_gauss[ind], residuals[ind]), 'UTF-8'))
+                f.close()
+
         font_s = 20
         plt_axes.legend(fontsize=font_s)
         [ax.set_xlabel('time of flight / µs', fontsize=font_s) for ax in fig.axes]
@@ -486,10 +530,13 @@ if plot_time_struct_16:
         if plot_gauss:
             res_axes.set_ylabel('residuals', fontsize=font_s)
         [ax.tick_params(axis='both', labelsize=font_s) for ax in fig.axes]
-        [ax.set_xlim(53, 65) for ax in fig.axes]
+        [ax.locator_params(axis='y', nbins=6) for ax in fig.axes]
+        [ax.set_xlim(lims[i][0], lims[i][1]) for ax in fig.axes]
         # plt.show(block=True)
-        store_to = os.path.join(time_info_folder2016, '%s_bunch_length_evolution%s%s.pdf'
-                                % (isos_name[i], '_gauss' if plot_gauss else '', '_pm_%.1f_us' % additional_time))
+        store_to = os.path.join(time_info_folder2016, '%s_bunch_length_evolution%s%s%s.pdf'
+                                % (isos_name[i], '_gauss' if plot_gauss else '',
+                                   '_pm_%d_us' % add_time_rchi_16,
+                                   '_normalized_on_scans' if normalize_on_scans else ''))
         print('saving to: ', store_to)
         fig.savefig(store_to)
         fig.clear()
@@ -503,7 +550,7 @@ combined_dict_mean_16 = {}
 with open(combined_txt_16, 'wb' if create_config_sum_file_16 else 'r') as combf16:
     header = '#A\tfiles(A)\ttipa_files(A)\tbunch_len(us)\tbunch_len_mean(us)\terr_bunch_len_mean(us)\tfiles(60)' \
              '\ttipa_files(60)\tbunch_lens(us)\tbunch_len_mean(us)\terr_bunch_len_mean(us)' \
-             '\tratio A/60\terr_ratio A/60\n'
+             '\tratio A/60\terr_ratio A/60\tshift\terr_Shift\trChiSq\n'
     if create_config_sum_file_16:
         combf16.write(bytes(header, 'UTF-8'))
     for iso in isotopes2016:
@@ -519,7 +566,7 @@ with open(combined_txt_16, 'wb' if create_config_sum_file_16 else 'r') as combf1
             for ref_file in files:
 
                 ref_file_nums = get_file_numbers([ref_file])
-                iso_len, err_iso_len, tipa_file = bunch_lenghts_2016_dict.get(ref_file, (0.0, 0.0, ''))
+                iso_len, err_iso_len, iso_rchisq_m, tipa_file = bunch_lenghts_2016_dict.get(ref_file, (0.0, 0.0, 0.0, ''))
                 if iso_len > 0.0:
                     ref_tipa_file_nums = get_file_numbers([tipa_file], mass_index=None)
 
@@ -535,13 +582,13 @@ with open(combined_txt_16, 'wb' if create_config_sum_file_16 else 'r') as combf1
                     ratio = 1.0
                     err_ratio = 0.0
 
-                    to_print = '%.2f\t%s\t%s\t%s\t%.5f\t%.5f\t%s\t%s\t%s\t%.5f\t%.5f\t%.5f\t%.5f\n' \
+                    to_print = '%.2f\t%s\t%s\t%s\t%.5f\t%.5f\t%s\t%s\t%s\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\n' \
                                % (mass_16,
                                   str(iso_file_nums)[1:-1], str(iso_tipa_file_nums)[1:-1], str(iso_bunch_lens)[1:-1],
                                   iso_bun_len_mean, iso_err_bun_len_mean,
                                   str(ref_file_nums)[1:-1], str(ref_tipa_file_nums)[1:-1], str([iso_len])[1:-1],
                                   iso_len, err_iso_len,
-                                  ratio, err_ratio
+                                  ratio, err_ratio, 0.0, 0.0, iso_rchisq_m
                                   )
                     if create_config_sum_file_16:
                         combf16.write(bytes(to_print, 'UTF-8'))
@@ -556,7 +603,7 @@ with open(combined_txt_16, 'wb' if create_config_sum_file_16 else 'r') as combf1
                 iso_err_bunch_lens = []
                 iso_tipa_files = []
                 for each in iso_f:
-                    iso_len, err_iso_len, tipa_file = bunch_lenghts_2016_dict.get(each, (0.0, 0.0, ''))
+                    iso_len, err_iso_len, iso_rchisq_m, tipa_file = bunch_lenghts_2016_dict.get(each, (0.0, 0.0, 0.0, ''))
                     if iso_len > 0.0:  # some migth not exist, becaue not every .mcp file has tipa file
                         iso_bunch_lens += [iso_len]
                         iso_err_bunch_lens += [err_iso_len]
@@ -577,7 +624,8 @@ with open(combined_txt_16, 'wb' if create_config_sum_file_16 else 'r') as combf1
                 ref_err_bunch_lens = []
                 ref_tipa_files = []
                 for each in refs:
-                    ref_len, err_ref_len, ref_tipa_file = bunch_lenghts_2016_dict.get(each, (0.0, 0.0, ''))
+                    ref_len, err_ref_len, ref_rchisq_m, ref_tipa_file = bunch_lenghts_2016_dict.get(each,
+                                                                                                    (0.0, 0.0, 0.0, ''))
                     if ref_len > 0.0:
                         ref_bunch_lens += [ref_len]
                         ref_err_bunch_lens += [err_ref_len]
@@ -598,13 +646,13 @@ with open(combined_txt_16, 'wb' if create_config_sum_file_16 else 'r') as combf1
                     )
 
                 if any(iso_bunch_lens):
-                    to_print = '%.2f\t%s\t%s\t%s\t%.5f\t%.5f\t%s\t%s\t%s\t%.5f\t%.5f\t%.5f\t%.5f\n' \
+                    to_print = '%.2f\t%s\t%s\t%s\t%.5f\t%.5f\t%s\t%s\t%s\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\n' \
                                % (mass_16,
                                   str(iso_file_nums)[1:-1], str(iso_tipa_file_nums)[1:-1], str(iso_bunch_lens)[1:-1],
                                   iso_bun_len_mean, iso_err_bun_len_mean,
                                   str(ref_file_nums)[1:-1], str(ref_tipa_file_nums)[1:-1], str(ref_bunch_lens)[1:-1],
                                   ref_bun_len_mean, ref_err_bun_len_mean,
-                                  ratio, err_ratio
+                                  ratio, err_ratio, 0.0, 0.0, iso_rchisq_m
                                   )
                     if create_config_sum_file_16:
                         combf16.write(bytes(to_print, 'UTF-8'))
@@ -648,7 +696,7 @@ combined_dict_mean_17 = {}
 with open(combined_txt_17, 'wb' if create_config_sum_file_17 else 'r') as combf17:
     header = '#A\tfiles(A)\tbunch_len(us)\tbunch_len_mean(us)\terr_bunch_len_mean(us)\tfiles(60)' \
              '\tbunch_lens(us)\tbunch_len_mean(us)\terr_bunch_len_mean(us)' \
-             '\tratio A/60\terr_ratio A/60\n'
+             '\tratio A/60\terr_ratio A/60\tshift\terr_Shift\trChiSq\n'
     if create_config_sum_file_17:
         combf17.write(bytes(header, 'UTF-8'))
     for iso in isotopes_17:
@@ -664,7 +712,7 @@ with open(combined_txt_17, 'wb' if create_config_sum_file_17 else 'r') as combf1
             for ref_file in files:
 
                 ref_file_nums = get_file_numbers([ref_file], user_overwrite=overwrites)
-                iso_len, err_iso_len = bunch_lenghts_2017_dict.get(ref_file, (0.0, 0.0))
+                iso_len, err_iso_len, iso_rchisq = bunch_lenghts_2017_dict.get(ref_file, (0.0, 0.0))
                 if iso_len > 0.0:
 
                     iso_file_nums = ref_file_nums
@@ -679,13 +727,13 @@ with open(combined_txt_17, 'wb' if create_config_sum_file_17 else 'r') as combf1
                     ratio = 1.0
                     err_ratio = 0.0
 
-                    to_print = '%.2f\t%s\t%s\t%.5f\t%.5f\t%s\t%s\t%.5f\t%.5f\t%.5f\t%.5f\n' \
+                    to_print = '%.2f\t%s\t%s\t%.5f\t%.5f\t%s\t%s\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\n' \
                                % (mass_17,
                                   str(iso_file_nums)[1:-1], str(iso_bunch_lens)[1:-1],
                                   iso_bun_len_mean, iso_err_bun_len_mean,
                                   str(ref_file_nums)[1:-1], str(ref_bunch_lens)[1:-1],
                                   ref_bun_len_mean, ref_err_bun_len_mean,
-                                  ratio, err_ratio
+                                  ratio, err_ratio, 0.0, 0.0, iso_rchisq
                                   )
                     if create_config_sum_file_17:
                         combf17.write(bytes(to_print, 'UTF-8'))
@@ -698,7 +746,7 @@ with open(combined_txt_17, 'wb' if create_config_sum_file_17 else 'r') as combf1
                 iso_bunch_lens = []
                 iso_err_bunch_lens = []
                 for each in iso_f:
-                    iso_len, err_iso_len = bunch_lenghts_2017_dict.get(each, (0.0, 0.0))
+                    iso_len, err_iso_len, iso_rchisq = bunch_lenghts_2017_dict.get(each, (0.0, 0.0, 0.0))
                     if iso_len > 0.0:  # some migth not exist, becaue not every .mcp file has tipa file
                         iso_bunch_lens += [iso_len]
                         iso_err_bunch_lens += [err_iso_len]
@@ -714,7 +762,7 @@ with open(combined_txt_17, 'wb' if create_config_sum_file_17 else 'r') as combf1
                 ref_err_bunch_lens = []
                 ref_tipa_files = []
                 for each in refs:
-                    ref_len, err_ref_len = bunch_lenghts_2017_dict.get(each, (0.0, 0.0))
+                    ref_len, err_ref_len, ref_rchisq = bunch_lenghts_2017_dict.get(each, (0.0, 0.0, 0.0))
                     if ref_len > 0.0:
                         ref_bunch_lens += [ref_len]
                         ref_err_bunch_lens += [err_ref_len]
@@ -729,13 +777,13 @@ with open(combined_txt_17, 'wb' if create_config_sum_file_17 else 'r') as combf1
                         (iso_bun_len_mean * ref_err_bun_len_mean / ref_bun_len_mean ** 2) ** 2
                     )
 
-                    to_print = '%.2f\t%s\t%s\t%.5f\t%.5f\t%s\t%s\t%.5f\t%.5f\t%.5f\t%.5f\n' \
+                    to_print = '%.2f\t%s\t%s\t%.5f\t%.5f\t%s\t%s\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\n' \
                                % (mass_17,
                                   str(iso_file_nums)[1:-1], str(iso_bunch_lens)[1:-1],
                                   iso_bun_len_mean, iso_err_bun_len_mean,
                                   str(ref_file_nums)[1:-1], str(ref_bunch_lens)[1:-1],
                                   ref_bun_len_mean, ref_err_bun_len_mean,
-                                  ratio, err_ratio
+                                  ratio, err_ratio, 0.0, 0.0, iso_rchisq
                                   )
                     if create_config_sum_file_17:
                         combf17.write(bytes(to_print, 'UTF-8'))

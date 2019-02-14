@@ -1213,24 +1213,27 @@ def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak,
             indice_above_cond = np.where(sc_t_proj >= cond_min)
 
             # find consecutive indices before and after the maximum counts index
-            indice_above_cond_before_max = [val for val in indice_above_cond[0] if val < max_counts_ind[tr][sc]]
+            indice_above_cond_before_max = [val for val in indice_above_cond[0] if val <= max_counts_ind[tr][sc]]
             indice_above_cond_before_max.reverse()
             start_ind = indice_above_cond_before_max[0]
             for i, each in enumerate(indice_above_cond_before_max):
                 if i < len(indice_above_cond_before_max) - 1:
-                    if np.isclose(each - 1, indice_above_cond_before_max[i + 1], atol=non_consectutive_time_bins_tolerance):
+                    if np.isclose(each - 1, indice_above_cond_before_max[i + 1],
+                                  atol=non_consectutive_time_bins_tolerance):
                         start_ind = each - 2
                     else:
                         # break for loop as soon as indices are not consecutive anymore
                         break
             # print(indice_above_cond_before_max)
             # print('start_ind:', start_ind)
-
-            indice_above_cond_after_max = [val for val in indice_above_cond[0] if val > max_counts_ind[tr][sc]]
+            # print(max_counts_ind[tr][sc])
+            # print(indice_above_cond[0])
+            indice_above_cond_after_max = [val for val in indice_above_cond[0] if val >= max_counts_ind[tr][sc]]
             stopp_ind = indice_above_cond_after_max[0]
             for i, each in enumerate(indice_above_cond_after_max):
                 if i < len(indice_above_cond_after_max) - 1:
-                    if np.isclose(each + 1, indice_above_cond_after_max[i + 1], atol=non_consectutive_time_bins_tolerance):
+                    if np.isclose(each + 1, indice_above_cond_after_max[i + 1],
+                                  atol=non_consectutive_time_bins_tolerance):
                         stopp_ind = each + 2
                     else:
                         # break for loop as soon as indices are not consecutive anymore
@@ -1284,28 +1287,37 @@ def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak,
                 for ind, each in enumerate(y_to_fit):
                     # create inverse to existing histogram
                     y_data_set += [x_to_fit[ind]] * int(each)
-                mean = np.mean(y_data_set)
-                sigma = np.var(y_data_set)
+                mean = max_counts_times[tr][sc]
+                sigma = (bunch_end_times[tr][-1] - bunch_begin_times[tr][-1]) / 2.35  # roughly...
+                amp_start = max_counts_ind[tr][sc] * sigma * np.sqrt(2 * np.pi)
                 x = spec_data.t[tr]
                 y = sc_t_proj
-                popt, pcov = curve_fit(Physics.gaussian, x, y, p0=[mean, sigma, 1])
+                popt, pcov = curve_fit(Physics.gaussian_offset, x, y,
+                                       p0=[mean, sigma, amp_start, sc_back_mean],
+                                       bounds=([bunch_begin_times[tr][-1] - bin_width, 0, 0, 0],
+                                               [bunch_end_times[tr][-1], np.inf, np.inf, np.inf])
+                                       )
                 mean_fit = popt[0]
                 sigma_fit = popt[1]
                 amp_fit = popt[2]
-                residuals = [y_to_fit[i] - Physics.gaussian(t_i, *popt) for i, t_i in enumerate(x_to_fit)]
+                off_fit = popt[3]
+                y_gauss = np.array([Physics.gaussian_offset(t_i, *popt) for t_i in x])
+                norm_fact = np.max(y_gauss)
+                y_gauss_norm = y_gauss / norm_fact
+                y_to_fit_norm = y_to_fit / norm_fact
+                residuals = y_to_fit_norm - y_gauss_norm[cut_ind_start:cut_ind_stop]
                 errs = np.sqrt(y_to_fit)
                 errs = [1 if e == 0 else e for e in errs]  # replace errors with 0 by 1
-                numbers_freedom = len(y_to_fit) - 3  # three from gauss
-                rchisq = sum([res ** 2 / e ** 2 for res, e in zip(residuals, errs)]) / numbers_freedom
+                errs_norm = errs / norm_fact
+                numbers_freedom = len(y_to_fit) - 4  # four from gaussian
+                rchisq = sum([res ** 2 / e ** 2 for res, e in zip(residuals, errs_norm)]) / numbers_freedom
                 err_fit_pars = [np.sqrt(pcov[j][j]) for j in range(pcov.shape[0])]
                 label_gauss = 'gaussian:\n x0=%.2f(%.0f)us\n sig=%.2f(%.0f)\n rChi²=%.2f' % (
                     mean_fit, err_fit_pars[0] * 100, sigma_fit, err_fit_pars[1] * 100, rchisq)
-                axes[sc][tr].plot(x_to_fit, Physics.gaussian(x_to_fit, *popt), linewidth=2, color='grey',
+                axes[sc][tr].plot(x_to_fit, Physics.gaussian_offset(x_to_fit, *popt), linewidth=2, color='grey',
                                   label=label_gauss)
-                gaussian_results[tr].append([[mean_fit, sigma_fit, amp_fit, rchisq], err_fit_pars])
+                gaussian_results[tr].append([[mean_fit, sigma_fit, amp_fit, off_fit, rchisq], err_fit_pars])
             axes[sc][tr].legend(loc=(1.01, 0.05))
-
-
     fig.set_facecolor('w')
     fig.suptitle('%s percentage of peak: %.2f%% rebinning: %d ns '
                  % (spec_data.file, percentage_of_peak, spec_data.softBinWidth_ns[0]), ha='center', va='top')
@@ -1314,8 +1326,13 @@ def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak,
         plt.show(block=True)
 
     if save_to_path:
-        print('saving to: %s' % save_to_path)
-        fig.savefig(save_to_path, dpi=150, quality=95, facecolor='w')
+        if isinstance(save_to_path, list):
+            for each_store_loc in save_to_path:
+                print('saving to: %s' % each_store_loc)
+                fig.savefig(each_store_loc, dpi=150, quality=95, facecolor='w')
+        else:
+            print('saving to: %s' % save_to_path)
+            fig.savefig(save_to_path, dpi=150, quality=95, facecolor='w')
     # print(max_counts)
     # print(backgrounds)
     # print(bunch_begin_times)
