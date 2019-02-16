@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>548</width>
-    <height>247</height>
+    <height>252</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -211,6 +211,7 @@
     <addaction name="actionPulse_pattern_generator"/>
     <addaction name="actionPost_acceleration_power_supply_control"/>
     <addaction name="actionDigital_Multimeters"/>
+    <addaction name="actionJob_Stacker"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -384,6 +385,11 @@
   <action name="actionPre_scan_timeout">
    <property name="text">
     <string>pre scan timeout</string>
+   </property>
+  </action>
+  <action name="actionJob_Stacker">
+   <property name="text">
+    <string>Job Stacker</string>
    </property>
   </action>
  </widget>

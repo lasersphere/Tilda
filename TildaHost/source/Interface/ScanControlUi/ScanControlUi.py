@@ -23,7 +23,7 @@ from Interface.TrackParUi.TrackUi import TrackUi
 
 
 class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
-    def __init__(self, main_gui):
+    def __init__(self, main_gui, job_stacker=None):
         """ Non-Modal Main window to control the Scan.
          All Isotope/track/sequencer settings are entered here. """
         super(ScanControlUi, self).__init__()
@@ -37,6 +37,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.last_scan_was_aborted_or_halted = False
 
         self.main_gui = main_gui
+        self.job_stacker_gui = job_stacker
         self.update_win_title()
         self.enable_go(True)
         self.enable_config_actions(False)
@@ -85,6 +86,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
                     else:
                         self.go(False)
                 else:  # all scans are done here or one scan was aborted
+
                     self.spinBox_num_of_reps.setValue(self.num_of_reps)
                     self.go_was_clicked_before = False
                     self.last_scan_was_aborted_or_halted = False  # reset abort variable when last scan was done
@@ -217,17 +219,27 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.setWindowTitle(win_title)
         self.win_title = win_title
 
-    def setup_iso(self):
+    def setup_iso(self, dont_open_setup_win=False, iso=None, seq=None):
         """
         opens a dialog for choosing the isotope. This Dialog is non Modal.
         -> Blocks other executions
+        :param: open_setup_win bool: if true, the new isotope is setup using the SetupIsotopeUi.
+                Otherwise the isotope and sequencer_type must be given
+                iso str: isotope name. Must be given if open_setup_win is False
+                seq str: sequencer type. Must be given if open_setup_win is False
         """
         if self.active_iso:  # first remove the before selected isotope from the scan pars
             self.enable_config_actions(False)
             Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
             self.active_iso = None
         logging.debug('setting up isotope')
-        SetupIsotopeUi(self)
+        if not dont_open_setup_win:
+            SetupIsotopeUi(self)
+        else:
+            try:  # maybe iso or seq are incorrect, then this will fail.
+                self.active_iso = Cfg._main_instance.add_iso_to_scan_pars(iso, seq)
+            except:
+                logging.error('Could not setup isotope. Maybe isotope name or sequencer type are invalid!')
         if self.active_iso:
             self.enable_config_actions(True)
         self.update_track_list()
@@ -287,6 +299,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         """
         unsubscribe from parent gui when closed
         """
+        if self.job_stacker_gui is not None:
+            self.job_stacker_gui.scan_control_ui_closed(self.active_iso, self.spinBox_num_of_reps.value())
         if self.active_iso:
             Cfg._main_instance.abort_scan = True
             Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
