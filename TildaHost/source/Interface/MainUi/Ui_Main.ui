@@ -391,6 +391,12 @@
    <property name="text">
     <string>Job Stacker</string>
    </property>
+   <property name="toolTip">
+    <string>Job Stacker, Ctrl+J</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+J</string>
+   </property>
   </action>
  </widget>
  <resources/>

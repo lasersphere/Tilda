@@ -230,4 +230,6 @@ class Ui_TildaMainWindow(object):
         self.actionShow_scan_finished_win.setText(_translate("TildaMainWindow", "show scan finished win"))
         self.actionPre_scan_timeout.setText(_translate("TildaMainWindow", "pre scan timeout"))
         self.actionJob_Stacker.setText(_translate("TildaMainWindow", "Job Stacker"))
+        self.actionJob_Stacker.setToolTip(_translate("TildaMainWindow", "Job Stacker, Ctrl+J"))
+        self.actionJob_Stacker.setShortcut(_translate("TildaMainWindow", "Ctrl+J"))
 

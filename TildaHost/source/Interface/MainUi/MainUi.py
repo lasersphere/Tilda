@@ -435,6 +435,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         except Exception as e:
             logging.error('error while closing scan progress win:' + str(e))
         try:
+            if self.job_stacker_win is not None:
+                self.job_stacker_win.close()
+        except Exception as e:
+            logging.error('error while closing job stacker win:' + str(e))
+        try:
             if self.simple_counter_gui is not None:
                 self.simple_counter_gui.close()
         except Exception as e:

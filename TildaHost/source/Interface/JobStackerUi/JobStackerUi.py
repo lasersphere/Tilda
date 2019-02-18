@@ -33,7 +33,7 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
         super(JobStackerUi, self).__init__()
 
         self.setupUi(self)
-        self.stored_window_title = 'JobStacker_Test'
+        self.stored_window_title = 'JobStacker'
         self.setWindowTitle(self.stored_window_title)
         self.main_gui = main_gui
 
@@ -43,6 +43,7 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
         self.item_passed_to_scan_ctrl = None
 
         self.running = False
+        self.aborted = False
         self.reps_on_file_to_go = 0
         self.wait_for_next_job = False
         self.main_status_is_idle = True
@@ -150,7 +151,7 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
         """ listens to info from main and changes states """
         # print('----------info from main: %s ---------------' % info_str)
         if info_str == 'scan_complete':
-            print('received scan complete info')
+            logging.debug('job stacker received scan complete info')
             if self.reps_on_file_to_go > 0:
                 print('Repetition on file done, more to come')
             else:
@@ -162,8 +163,10 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
         elif info_str == 'pre_scan_timeout':
             pass
         elif info_str == 'scan_aborted':
-            # TODO: check for remaining scans and start next or finish
-            pass
+            logging.debug('job stacker received scan aborted info')
+            self.reps_on_file_to_go = 0  # abort also aborts all repetitions, so this can be zero now
+            self.wait_for_next_job = True  # abort shouldn't change next job. Maybe user still wants to run it
+            logging.info('Last job aborted in scan control window. Waiting for next job now.')
         elif info_str == 'scan_halted':
             pass
         elif info_str == 'kepco_scan_timedout':
@@ -178,10 +181,8 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
         """
         print('status_update received')
         self.main_status_is_idle = status_dict.get('status', '') == 'idle'
-        print(Cfg._main_instance.jobs_to_do_when_idle_queue)
         if self.main_status_is_idle and self.wait_for_next_job and Cfg._main_instance.jobs_to_do_when_idle_queue == []:
             print('Main is idle, could start over now')
-            #self.main_gui.live_plot_win.destroy()
             self.wait_for_next_job = False
             self.run_next_job()
 
@@ -195,10 +196,16 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
 
             # save current joblist to file before executing
             self.save_to_txt()
-            # store original joblist. Jobs will be removed after execution to show progress...
-            self.job_list_before_execution = self.list_joblist
+            # store original items of joblist. Jobs will be removed after execution to show progress...
+            self.job_list_before_execution = self.cmd_list_from_gui()
 
             # lock user-interface and change run button to abort
+            self.pb_save.setEnabled(False)  # lock all control buttons except run/abort
+            self.pb_load.setEnabled(False)
+            self.pb_repetitions.setEnabled(False)
+            self.pb_del.setEnabled(False)
+            self.pb_add.setEnabled(False)
+            self.list_joblist.setEnabled(False)  # locks the job-list
             self.pb_run.setText('Abort')
             self.pb_run.clicked.disconnect()
             self.pb_run.clicked.connect(self.abort_run)
@@ -209,9 +216,10 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
         if self.scan_ctrl_win is not None:
             self.scan_ctrl_win.close()
             self.scan_ctrl_win = None
-        if item is not None:
+        if item is not None and self.aborted is False:
             # reduce number of repetitions on file by 1
             item_props = item.text().split(' | ')
+            self.label_infostring.setText('Current job: ' + item.text())
             repetitions_before = item_props.pop()
             new_repetitions = int(repetitions_before) - 1
             # store number or repetitions_on_file
@@ -221,8 +229,6 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
                 item.setText(' | '.join(item_props))
             else:
                 self.list_joblist.takeItem(0)
-            print(new_repetitions)
-            print(self.reps_on_file_to_go)
 
 
             self.running = True
@@ -234,18 +240,28 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
             # all jobs are done, revert to normal
             self.running = False
             self.wait_for_next_job = False
+            self.setWindowTitle('Job Stacker')
+            self.label_infostring.setText('Not working on jobs. Click run to start.')
             # restore original joblist
-            self.list_joblist = self.job_list_before_execution
-            # TODO: unlock user-interface change abort back to run
+            self.cmd_list_to_gui(self.job_list_before_execution)
+            # unlock user-interface change abort back to run
+            self.pb_save.setEnabled(True)  # unlock all control buttons except run/abort
+            self.pb_load.setEnabled(True)
+            self.pb_repetitions.setEnabled(True)
+            self.pb_del.setEnabled(True)
+            self.pb_add.setEnabled(True)
+            self.list_joblist.setEnabled(True)  # unlocks the job-list
             self.pb_run.setText('Run')
             self.pb_run.clicked.disconnect()
             self.pb_run.clicked.connect(self.run_next_job)
+            self.pb_run.setEnabled(True)  # in case it was disabled by an abort...
 
     def abort_run(self):
         self.aborted = True
         self.pb_run.setText('Execution will abort after next job!')
         self.pb_run.setEnabled(False)
         logging.info('User aborted execution of job stacker!')
+        self.list_joblist.clear()
 
     def dbl_clicked_item(self):
         '''
@@ -266,9 +282,13 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
 
     def open_scan_ctrl_win(self, item_info=None):
         # disable JobStackerUi window
-        self.setEnabled(False)  # while setting up isotope, no interactions should be made in the JobStackerUi
+        if self.running is False:  # only lock completely during setup. Need abort button when running.
+            self.setEnabled(False)  # while setting up isotope, no interactions should be made in the JobStackerUi
+            self.setWindowTitle('Currently unavailable. ScanControlUi open!')
+        else:
+            self.setWindowTitle('Currently unavailable. Processing jobs!')
         self.stored_window_title = self.windowTitle()  # store current window title
-        self.setWindowTitle('Currently unavailable. ScanControlUi open!')
+
 
         # open scan control window
         if Cfg._main_instance.working_directory is None:
