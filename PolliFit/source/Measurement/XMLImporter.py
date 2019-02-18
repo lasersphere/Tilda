@@ -253,20 +253,24 @@ class XMLImporter(SpecData):
                     err.append(dmm_volt_array[ind] * read_acc + range_acc)
                 self.err.append(err)
 
+        # TODO: For some reason the following code can crash a scan. Happened at my laptop with dummycs. /
+        # Works when disabled...
+        # Reason of crash: self.working_time is None
+        # Changes were made by Simon to have date be determined by mid of file if possible (2/14/2019 3:35PM)
         time_format = '%Y-%m-%d %H:%M:%S'
-        work_time_flat_date_time = [datetime.datetime.strptime(w_time_str , time_format)
-                                    for tr_work_t_list in self.working_time for w_time_str in tr_work_t_list]
-        if len(work_time_flat_date_time) > 1:
-            work_time_flat_date_time_float = [work_t_dt.timestamp() for work_t_dt in work_time_flat_date_time]
-            iso_start_t = np.min(work_time_flat_date_time_float)
-            iso_stop_t = np.max(work_time_flat_date_time_float)
-            diff = iso_stop_t - iso_start_t
-            err_date = diff / 2
-            mid_iso_t = iso_start_t + err_date
-            mid_iso_t_dt = datetime.datetime.fromtimestamp(mid_iso_t)
-            mid_iso_t_dt_str = mid_iso_t_dt.strftime(time_format)
-            self.date = mid_iso_t_dt_str
-            self.date_d = err_date  # in seconds
+        #work_time_flat_date_time = [datetime.datetime.strptime(w_time_str , time_format)
+        #                            for tr_work_t_list in self.working_time for w_time_str in tr_work_t_list]
+        #if len(work_time_flat_date_time) > 1:
+        #    work_time_flat_date_time_float = [work_t_dt.timestamp() for work_t_dt in work_time_flat_date_time]
+        #    iso_start_t = np.min(work_time_flat_date_time_float)
+        #    iso_stop_t = np.max(work_time_flat_date_time_float)
+        #    diff = iso_stop_t - iso_start_t
+        #    err_date = diff / 2
+        #    mid_iso_t = iso_start_t + err_date
+        #    mid_iso_t_dt = datetime.datetime.fromtimestamp(mid_iso_t)
+        #    mid_iso_t_dt_str = mid_iso_t_dt.strftime(time_format)
+        #    self.date = mid_iso_t_dt_str
+        #    self.date_d = err_date  # in seconds
 
         self.laserFreq, self.laserFreq_d = self.get_frequency_measurement(path, self.tritonPars)
         logging.info('%s was successfully imported' % self.file)
