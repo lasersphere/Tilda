@@ -168,7 +168,10 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
             self.wait_for_next_job = True  # abort shouldn't change next job. Maybe user still wants to run it
             logging.info('Last job aborted in scan control window. Waiting for next job now.')
         elif info_str == 'scan_halted':
-            pass
+            logging.debug('job stacker received scan halted info')
+            self.reps_on_file_to_go = 0  # halt also ends all further repetitions, so this can be zero now
+            self.wait_for_next_job = True  # halt shouldn't change next job. Maybe user still wants to run it
+            logging.info('Last job halted in scan control window. Waiting for next job now.')
         elif info_str == 'kepco_scan_timedout':
             # TODO: check for remaining scans and start next or finish
             pass
@@ -320,7 +323,9 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
                 self.item_passed_to_scan_ctrl.setText(new_item_def)
             else:
                 logging.info('No isotope chosen, new entry will not be created.')
-                self.item_passed_to_scan_ctrl.delete()
+                self.list_joblist.setCurrentItem(self.item_passed_to_scan_ctrl)
+                indx = self.list_joblist.currentRow()
+                self.list_joblist.takeItem(indx)
             # change number of reps_as_go#
         self.setWindowTitle(self.stored_window_title)
         self.setEnabled(True)
