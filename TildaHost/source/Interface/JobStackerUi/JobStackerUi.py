@@ -311,7 +311,9 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
         if self.running is False:
             # get isotope and sequencer type from active iso
             if active_iso:
-                iso_str, seq_str = active_iso.split('_')
+                iso_seq_naming = active_iso.split('_')
+                seq_str = iso_seq_naming.pop(-1)
+                iso_str = '_'.join(iso_seq_naming)
                 reps_as_go = num_of_reps
                 num_repeat_job = self.item_passed_to_scan_ctrl.text().split(' | ')[-1]
                 new_item_def = ' | '.join([iso_str, seq_str, str(reps_as_go), num_repeat_job])
