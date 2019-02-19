@@ -151,12 +151,12 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
         """ listens to info from main and changes states """
         # print('----------info from main: %s ---------------' % info_str)
         if info_str == 'scan_complete':
-            logging.debug('job stacker received scan complete info')
+            logging.debug('job stacker received scan complete info.')
             if self.reps_on_file_to_go > 0:
-                print('Repetition on file done, more to come')
+                logging.debug('stand by for repetitions on file. {} more to come'.format(self.reps_on_file_to_go))
             else:
                 self.wait_for_next_job = True
-                print('All repetitions on file done. Wait for next job')
+                logging.debug('All repetitions on file done. Wait for next job')
         elif info_str == 'starting_scan':
             self.reps_on_file_to_go -= 1
             print(self.reps_on_file_to_go)
@@ -173,7 +173,7 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
             self.wait_for_next_job = True  # halt shouldn't change next job. Maybe user still wants to run it
             logging.info('Last job halted in scan control window. Waiting for next job now.')
         elif info_str == 'kepco_scan_timedout':
-            # TODO: check for remaining scans and start next or finish
+            # kepco scans are not tested yet. Should probably do the same as when scan is aborted here?
             pass
 
     def update_status(self, status_dict):
@@ -182,10 +182,9 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
         status_dict keys: ['workdir', 'status', 'database', 'laserfreq', 'accvolt',
          'sequencer_status', 'fpga_status', 'dmm_status']
         """
-        print('status_update received')
         self.main_status_is_idle = status_dict.get('status', '') == 'idle'
         if self.main_status_is_idle and self.wait_for_next_job and Cfg._main_instance.jobs_to_do_when_idle_queue == []:
-            print('Main is idle, could start over now')
+            logging.debug('Main is idle, starting next job now.')
             self.wait_for_next_job = False
             self.run_next_job()
 
@@ -198,7 +197,7 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
             self.subscribe_to_main()  # need updates from scan process
 
             # save current joblist to file before executing
-            self.save_to_txt()
+            # self.save_to_txt()
             # store original items of joblist. Jobs will be removed after execution to show progress...
             self.job_list_before_execution = self.cmd_list_from_gui()
 
@@ -233,14 +232,15 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
             else:
                 self.list_joblist.takeItem(0)
 
-
             self.running = True
             next_item_text = item.text()
             next_item_info = next_item_text.split(' | ')
             self.open_scan_ctrl_win(item_info=next_item_info)
+            logging.info('job stacker is starting next job now.')
             self.scan_ctrl_win.go()
         else:
             # all jobs are done, revert to normal
+            logging.info('job stacker done, reactivating Ui.')
             self.running = False
             self.wait_for_next_job = False
             self.setWindowTitle('Job Stacker')
@@ -292,7 +292,6 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
             self.setWindowTitle('Currently unavailable. Processing jobs!')
         self.stored_window_title = self.windowTitle()  # store current window title
 
-
         # open scan control window
         if Cfg._main_instance.working_directory is None:
             if self.main_gui.choose_working_dir() is None:
@@ -316,7 +315,7 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
             if active_iso:
                 iso_seq_naming = active_iso.split('_')
                 seq_str = iso_seq_naming.pop(-1)
-                iso_str = '_'.join(iso_seq_naming)
+                iso_str = '_'.join(iso_seq_naming)  # isotopes are actually often named with underscores...
                 reps_as_go = num_of_reps
                 num_repeat_job = self.item_passed_to_scan_ctrl.text().split(' | ')[-1]
                 new_item_def = ' | '.join([iso_str, seq_str, str(reps_as_go), num_repeat_job])
