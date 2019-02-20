@@ -294,7 +294,7 @@ def combineShift(iso, run, db, show_plot=False):
 
 
 def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minutes=15,
-                       pic_format='.png', font_size=12, default_date_err_s=15 * 60):
+                       pic_format='.png', font_size=12, default_date_err_s=15 * 60, overwrite_file_num_det={}):
     """
     takes an Isotope a run and a database and gives the isotopeshift to the reference!
     This will perform a linear fit to the references center positions versus time stamp and
@@ -362,6 +362,7 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
         first_ref = np.min(ref_dates_date_time_float)
         ref_dates_float_relative = [each - first_ref for each in ref_dates_date_time_float]
         refs_elapsed_s = np.max(ref_dates_date_time_float) - first_ref
+        ref_file_nums = TiTs.get_file_numbers(ref_files, user_overwrite=overwrite_file_num_det)
 
         iso_centers, iso_errs, iso_dates, iso_files = extract(iso, 'center', run, db, iso_files)
         iso_dates_datetime = [datetime.strptime(each, '%Y-%m-%d %H:%M:%S') for each in iso_dates]
@@ -369,6 +370,8 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
         iso_date_errs = list(list(zip(*get_date_date_err_to_files(db, iso_files)))[2])
         iso_date_errs = [err_found if err_found > 0 else default_date_err_s for err_found in iso_date_errs]
         iso_date_float_relative = [each - first_ref for each in iso_dates_datetime_float]
+        iso_file_nums = TiTs.get_file_numbers(iso_files, user_overwrite=overwrite_file_num_det)
+
         dateIso += iso_dates,
         fileIso += iso_files,
         # first assume a constant slope
@@ -426,14 +429,16 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
             block_shifts_errs += [np.sqrt(iso_errs[i] ** 2 + ref_extrapol_err_cor ** 2)]
 
         # plot and save on disc
-        pic_name = 'shift_%s_%s_' % (iso, run)
-        for file in iso_files:
-            pic_name += file.split('.')[0] + '_'
+        pic_name = 'shift_%s_%s_files_' % (iso, run)
+        for fn in iso_file_nums:
+            pic_name += fn + '_'
         pic_name = pic_name[:-1] + pic_format
         file_name = os.path.join(os.path.dirname(db), 'shift_pics', pic_name)
         plt.plot_iso_shift_time_dep(
-            ref_dates_date_time, ref_dates_date_time_float, ref_date_errs, ref_centers, ref_errs, ref,
-            iso_dates_datetime, iso_dates_datetime_float, iso_date_errs, iso_centers, iso_errs, iso,
+            ref_files, ref_file_nums, ref_dates_date_time, ref_dates_date_time_float,
+            ref_date_errs, ref_centers, ref_errs, ref,
+            iso_files, iso_file_nums, iso_dates_datetime, iso_dates_datetime_float,
+            iso_date_errs, iso_centers, iso_errs, iso,
             slope, offset, plt_label, (block_shifts, block_shifts_errs), file_name, show_plot=show_plot,
             font_size=font_size)
         shifts += block_shifts,
@@ -565,6 +570,7 @@ def combineShiftOffsetPerBunchDisplay(iso, run, db, show_plot=False):
         block_offsets = []
         block_offsets_errs = []
         pre_ref_files, iso_files, post_ref_files = block
+        TiTs.get_file_numbers(iso_files, )
         ref_files = pre_ref_files + post_ref_files
         print('ref_files:')
         for each in ref_files:
@@ -622,8 +628,8 @@ def combineShiftOffsetPerBunchDisplay(iso, run, db, show_plot=False):
         if not os.path.isdir(offset_dir):
             os.mkdir(offset_dir)
         plt.plot_iso_shift_time_dep(
-            ref_dates_date_time, ref_dates_date_time_float, ref_date_errs, ref_offsets, ref_errs, ref,
-            iso_dates_datetime, iso_dates_datetime_float, iso_date_errs, iso_offsets, iso_errs, iso,
+            ref_files, ref_dates_date_time, ref_dates_date_time_float, ref_date_errs, ref_offsets, ref_errs, ref,
+            iso_files, iso_dates_datetime, iso_dates_datetime_float, iso_date_errs, iso_offsets, iso_errs, iso,
             0, offset, plt_label, (block_offsets, block_offsets_errs), file_name, show_plot=show_plot,
             fig_name='offset', par_name='offset'
         )

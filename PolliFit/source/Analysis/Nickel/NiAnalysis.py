@@ -22,6 +22,14 @@ import TildaTools as TiTs
 import Tools
 from KingFitter import KingFitter
 
+''' settings '''
+
+pars_to_combine = None  # ['center', 'Al', 'Au', 'Bl', 'Bu']
+perform_batch_fit = False
+combine_shifts = False
+comb_centers = False
+
+
 ''' working directory: '''
 
 workdir = 'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
@@ -39,6 +47,20 @@ even_isotopes = [iso for iso in isotopes if int(iso[:2]) % 2 == 0]
 stables = ['58_Ni', '60_Ni', '61_Ni', '62_Ni', '64_Ni']
 
 Tools.add_missing_columns(db)
+
+overwrites_for_file_num_determination = {'60_Ni_trs_run113_sum114.xml': ['113+114'],
+                                         '60_Ni_trs_run192_sum193.xml': ['192+193'],
+                                         '60_Ni_trs_run198_sum199_200.xml': ['198+199+200'],
+                                         '60_Ni_trs_run117_sum118.xml': ['117+118'],
+                                         '60_Ni_trs_run122_sum123.xml': ['122+123'],
+                                         '67Ni_no_protonTrigger_3Tracks_Run191.mcp': ['191'],
+                                         '67Ni_sum_Run061_Run062.xml': ['061+062'],
+                                         '67Ni_sum_Run063_Run064_Run065.xml': ['063+064+065'],
+                                         '67_Ni_sum_run243_and_run248.xml': ['243+248'],
+                                         '60_Ni_trs_run239_sum240.xml': ['239+240'],
+                                         '70Ni_protonTrigger_Run248_sum_252_254_259_265.xml': ['248+252+254+259+265'],
+                                         '60_Ni_trs_run266_sum267.xml': ['266+267'],
+                                         '70_Ni_trs_run268_plus_run312.xml': ['268+312']}
 
 ''' Masses '''
 # masses = {
@@ -369,7 +391,8 @@ con.close()
 ''' isotope shift and batch fitting'''
 
 
-def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes_batch_fit, pars=None, combine_shift=True, perform_fit=True):
+def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes_batch_fit, pars=None,
+                                combine_shift=True, perform_fit=True, combine_centers=False):
     """
     get all configs for the used runs and fit those. then combine the reults.
     Be careful with 67Ni here scaler numeration is different.
@@ -486,7 +509,10 @@ def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes_batch_fit, pars=No
                                             combine_from_multipl=0.3893, combine_from_mult_err=0.0006)
 
         if iso != '60_Ni' and combine_shift:
-            Analyzer.combineShiftByTime(iso, run_isos, db, show_plot=False)  # create db entry then add error formulas
+            Analyzer.combineShiftByTime(
+                iso, run_isos, db,
+                show_plot=False, overwrite_file_num_det=overwrites_for_file_num_determination
+            )  # create db entry then add error formulas
             con = sqlite3.connect(db)
             cur = con.cursor()
             cur.execute(''' UPDATE Combined SET statErrForm = ? ''', ('applyChi(err, rChi)',))
@@ -494,10 +520,13 @@ def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes_batch_fit, pars=No
             cur.execute('''UPDATE Combined SET systErrForm = ? WHERE parname = ?''', (syst_error, 'shift'))
             con.commit()
             con.close()
-            Analyzer.combineShiftByTime(iso, run_isos, db, show_plot=False)  # then combine again
-        # now combine the center of all relevant iso files, to have the plot on the harddrive
-        Analyzer.combineRes(iso, 'center', run_isos,
-                            db, only_this_files=all_iso_shift_files_by_iso[run_isos]['isoFiles'][iso])
+            Analyzer.combineShiftByTime(
+                iso, run_isos, db, show_plot=False,
+                overwrite_file_num_det=overwrites_for_file_num_determination)  # then combine again
+        if combine_centers:
+            # now combine the center of all relevant iso files, to have the plot on the harddrive
+            Analyzer.combineRes(iso, 'center', run_isos,
+                                db, only_this_files=all_iso_shift_files_by_iso[run_isos]['isoFiles'][iso])
     done_time = datetime.now()
     elapsed = done_time - st_time
     print('finished bacthfitting at %s after %.1f min' % (done_time, elapsed.seconds / 60))
@@ -508,13 +537,12 @@ def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes_batch_fit, pars=No
 
 
 files_w_err = isotope_shift_batch_fitting(
-    'wide_gate_asym', 'wide_gate_asym_67_Ni', ['58_Ni'],  # isotopes,
-    pars=['center', 'Al', 'Au', 'Bl', 'Bu'], combine_shift=True, perform_fit=False)
+    'wide_gate_asym', 'wide_gate_asym_67_Ni', isotopes,
+    pars=pars_to_combine, combine_shift=combine_shifts, perform_fit=perform_batch_fit, combine_centers=comb_centers)
 print('--------------------------------------------------------------------')
 print('files with error during batchfit: ', (['wide_gate_asym', 'wide_gate_asym_67_Ni'], files_w_err))
 print('--------------------------------------------------------------------')
 
-raise Exception
 ''' Divider Ratio Determination '''
 acc_div_start = 1000.05
 offset_prema_div_start = 1000.022
@@ -565,7 +593,8 @@ def chi_square_finder(acc_dev_list, offset_dev_list, runs):
             # combineRes only when happy with voltdivratio, otherwise no use...
             # [[Analyzer.combineRes(iso, par, run, db) for iso in stables] for par in pars]
             try:
-                shifts = {iso: Analyzer.combineShiftByTime(iso, run_chi_finder, db) for iso in
+                shifts = {iso: Analyzer.combineShiftByTime(
+                    iso, run_chi_finder, db, overwrite_file_num_det=overwrites_for_file_num_determination) for iso in
                           stables if iso not in ['60_Ni']}
             except Exception as e:
                 shifts = {}
@@ -643,7 +672,8 @@ def chisquare_finder_kepco(run_chi_finder, kepco_dif_list):
         isotope_shift_batch_fitting([run_chi_finder], stables)
 
         try:
-            shifts = {iso: Analyzer.combineShiftByTime(iso, run_chi_finder, db) for iso in
+            shifts = {iso: Analyzer.combineShiftByTime(
+                iso, run_chi_finder, db, overwrite_file_num_det=overwrites_for_file_num_determination) for iso in
                       stables if iso not in ['60_Ni']}
         except Exception as e:
             shifts = {}
@@ -1197,7 +1227,7 @@ king.kingFit(alpha=0, findBestAlpha=False, run=run, find_slope_with_statistical_
 king.calcChargeRadii(isotopes=isotopes, run=run, plot_evens_seperate=True)
 
 # king.kingFit(alpha=378, findBestAlpha=True, run=run, find_slope_with_statistical_error=True)
-king.kingFit(alpha=364, findBestAlpha=True, run=run)
+king.kingFit(alpha=361, findBestAlpha=True, run=run)
 radii_alpha = king.calcChargeRadii(isotopes=isotopes, run=run, plot_evens_seperate=True)
 print('radii with alpha', radii_alpha)
 # king.calcChargeRadii(isotopes=isotopes, run=run)

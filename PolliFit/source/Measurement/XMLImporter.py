@@ -253,24 +253,7 @@ class XMLImporter(SpecData):
                     err.append(dmm_volt_array[ind] * read_acc + range_acc)
                 self.err.append(err)
 
-        # TODO: For some reason the following code can crash a scan. Happened at my laptop with dummycs. /
-        # Works when disabled...
-        # Reason of crash: self.working_time is None
-        # Changes were made by Simon to have date be determined by mid of file if possible (2/14/2019 3:35PM)
-        time_format = '%Y-%m-%d %H:%M:%S'
-        #work_time_flat_date_time = [datetime.datetime.strptime(w_time_str , time_format)
-        #                            for tr_work_t_list in self.working_time for w_time_str in tr_work_t_list]
-        #if len(work_time_flat_date_time) > 1:
-        #    work_time_flat_date_time_float = [work_t_dt.timestamp() for work_t_dt in work_time_flat_date_time]
-        #    iso_start_t = np.min(work_time_flat_date_time_float)
-        #    iso_stop_t = np.max(work_time_flat_date_time_float)
-        #    diff = iso_stop_t - iso_start_t
-        #    err_date = diff / 2
-        #    mid_iso_t = iso_start_t + err_date
-        #    mid_iso_t_dt = datetime.datetime.fromtimestamp(mid_iso_t)
-        #    mid_iso_t_dt_str = mid_iso_t_dt.strftime(time_format)
-        #    self.date = mid_iso_t_dt_str
-        #    self.date_d = err_date  # in seconds
+        self.convert_date_to_mid_time()
 
         self.laserFreq, self.laserFreq_d = self.get_frequency_measurement(path, self.tritonPars)
         logging.info('%s was successfully imported' % self.file)
@@ -340,6 +323,7 @@ class XMLImporter(SpecData):
 
     def export(self, db):
         try:
+            self.convert_date_to_mid_time()
             con = sqlite3.connect(db)
             col = 1 if self.col else 0
             with con:
@@ -591,7 +575,39 @@ class XMLImporter(SpecData):
 
         return laser_freq, laser_freq_d
 
+    def convert_date_to_mid_time(self):
+        """
+        try to get the mid time of the file and overwrite self.date with this mid time
+        self.date_d will be half the length of the whole file.
+        If this fails, self.date will not be overwritten and self.date_d will be zero
+        :return: None
+        """
+        work_time_flat_date_time = []
+        time_format = '%Y-%m-%d %H:%M:%S'
 
+        if self.working_time is not None:
+            if None not in self.working_time:
+                # TildaTools.create_scan_dict_from_spec_data initialises
+                # the working_time with a list of [None] * nrTracks
+                try:
+                    work_time_flat_date_time = [datetime.datetime.strptime(w_time_str, time_format)
+                                                for tr_work_t_list in self.working_time
+                                                for w_time_str in tr_work_t_list]
+                except Exception as e:
+                    logging.warning('could not convert the working time time stamps to a common'
+                                    ' mid time in file %s.\nThe working times are: %s'
+                                    '\nerror message is: %s' % (self.file, str(self.working_time), e))
+                if len(work_time_flat_date_time) > 1:
+                    work_time_flat_date_time_float = [work_t_dt.timestamp() for work_t_dt in work_time_flat_date_time]
+                    iso_start_t = np.min(work_time_flat_date_time_float)
+                    iso_stop_t = np.max(work_time_flat_date_time_float)
+                    diff = iso_stop_t - iso_start_t
+                    err_date = diff / 2
+                    mid_iso_t = iso_start_t + err_date
+                    mid_iso_t_dt = datetime.datetime.fromtimestamp(mid_iso_t)
+                    mid_iso_t_dt_str = mid_iso_t_dt.strftime(time_format)
+                    self.date = mid_iso_t_dt_str
+                    self.date_d = err_date  # in seconds
 
 
 

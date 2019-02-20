@@ -741,8 +741,8 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
 
 
 def plot_iso_shift_time_dep(
-        ref_dates_date_time, ref_dates_date_time_float, ref_date_errs, ref_centers, ref_errs, ref,
-        iso_dates_datetime, iso_dates_datetime_float, iso_date_errs, iso_centers, iso_errs, iso,
+        ref_files, ref_file_nums, ref_dates_date_time, ref_dates_date_time_float, ref_date_errs, ref_centers, ref_errs, ref,
+        iso_files, iso_file_nums, iso_dates_datetime, iso_dates_datetime_float, iso_date_errs, iso_centers, iso_errs, iso,
         slope, offset, plt_label, shift_result_tuple, file_name='', show_plot=True,
         fig_name='shift', par_name='center [MHz]', font_size=12):
     """ function to plot the isotope shift along with the references versus timestamp of the files """
@@ -755,6 +755,9 @@ def plot_iso_shift_time_dep(
     ref_line = main_ax.errorbar(ref_dates_date_time, ref_centers, yerr=ref_errs,
                                 xerr=ref_date_errs_dt,
                                 fmt='ko', label='ref center %s' % ref)
+    for i, ref_num in enumerate(ref_file_nums):
+        main_ax.annotate('file' + str(ref_num), (ref_dates_date_time[i] + datetime.timedelta(seconds=10),
+                                              ref_centers[i] + ref_errs[i] / 10), fontsize=font_size)
     min_t_abs = min(np.min(ref_dates_date_time_float - np.array(ref_date_errs)),
                     np.min(iso_dates_datetime_float - np.array(iso_date_errs)))
     max_t_abs = max(np.max(ref_dates_date_time_float + np.array(ref_date_errs)),
@@ -774,12 +777,17 @@ def plot_iso_shift_time_dep(
     iso_line = twinx.errorbar(iso_dates_datetime, iso_centers, yerr=iso_errs,
                               xerr=iso_date_errs_dt,
                               fmt='bs', label='center %s' % iso)
+    for i, iso_num in enumerate(iso_file_nums):
+        twinx.annotate('file' + str(iso_num), (iso_dates_datetime[i] + datetime.timedelta(seconds=10),
+                                                 iso_centers[i] + iso_errs[i] / 10), fontsize=font_size, color='b')
     twinx.set_ylabel('%s %s' % (iso, par_name), color='b', fontsize=font_size)
     twinx.tick_params('y', colors='b', labelsize=font_size)
     lines = [ref_line, fit_line, iso_line]
     # shift_result_tuple should be a tuple of ([shift_run0, shift_run1, ...], [err_shift_run0, err_shift_run1, ...])
-    shift_result_str = 'shift ' + str(
-        ['%.1f +/- %.1f MHz' % (each, shift_result_tuple[1][i]) for i, each in enumerate(shift_result_tuple[0])])
+    shift_result_str = 'shift:\n ' + str(
+        ['file%s: %.1f(%.0f)' % (iso_file_nums[i], each, shift_result_tuple[1][i] * 10) for i, each in enumerate(shift_result_tuple[0])])
+    shift_result_str = shift_result_str[:-2] + ']'
+    shift_result_str = shift_result_str.replace(', ', '\n')
     line_lables = [l.get_label() for l in lines] + [shift_result_str]
     lines += [patches.Rectangle((0, 0), 1, 1, fc="w", fill=False, edgecolor='none', linewidth=0)]
     fig.legend(lines, line_lables, loc='upper center', ncol=2,

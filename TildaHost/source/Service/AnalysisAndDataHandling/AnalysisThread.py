@@ -116,7 +116,7 @@ class AnalysisThread(QThread):
                 self.mutex.unlock()
 
                 st_feed = datetime.now()
-                logging.info('Analyzing now!')
+                # logging.info('Analyzing now!')
                 #  some operations (np.sort, ...) in the pipeline
                 #  might not be able to release its lock during feed
                 # -> GIL will not be able to release the lock of this thread
