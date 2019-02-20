@@ -223,7 +223,8 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
     # print(data[1])
 
     if save_plot and path_clear:
-        p = os.path.join(save_path, os.path.splitext(fit.meas.file)[0] + "_data_" + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
+        p = os.path.join(save_path, os.path.splitext(fit.meas.file)[0] + add_label
+                         + "_data_" + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
         f = open(p, 'w')
         f.write(x + ", Data cts / a.u., Fit residuals cts / a.u., Data uncertainty cts / a.u.\n")
         res = fit.calcRes()
@@ -231,7 +232,9 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
             f.write(str(data[0][i]) + ", " + str(data[1][i]) + ", " + str(res[i]) + ", " + str(data[2][i]) + "\n")
         f.close()
         print("Saved to file ", p)
-        p = os.path.join(save_path, os.path.splitext(fit.meas.file)[0] + "_fit_fullShape_" + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
+        p = os.path.join(
+            save_path, os.path.splitext(fit.meas.file)[0] + add_label
+                       + "_fit_fullShape_" + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
         f = open(p, 'w')
         f.write(x + ", Full fit cts / a.u.\n")
         for i in range(len(plotdat[0])):

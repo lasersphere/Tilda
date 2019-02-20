@@ -39,6 +39,8 @@ class SpecData(object):
         self.laserFreq = 0  # float, fundamental laser frequency in MHz in the laser lab system
         self.col = False  # bool, collinear = True, anticollinear = False
         self.dwell = 0  # float or list of lists, depending on importer
+        self.seq_type = ''  # str where it can be defeinde what type of sequencer was used,
+        #  e.g. trs/cs/kepco/csdummy/trsdummy for xml files
         
         self.offset = None  # float, measured offset pre scan, take mean if multiple ones measured
         self.lineMult = None  # float, applied_voltage = (DAC_voltage * lineMult + lineOffset) * voltDivRatio
