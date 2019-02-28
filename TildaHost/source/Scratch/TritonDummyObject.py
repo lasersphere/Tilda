@@ -256,6 +256,51 @@ class DeviceBase(TritonObject):
         return wrap_lock
 
 
+class DraftDevice(DeviceBase):
+    '''
+    Put a short description of the device here
+    '''
+
+    '''Called when added'''
+
+    def on(self, cfg):
+        '''Setting necessary attributes, interval defaults to 0:'''
+        self.type = 'draftDev'
+        # self.addCfg(['par'])
+        # self.addStg(['par'])
+
+        self.setInterval(1)
+
+        '''Resolving and subscribing to other devices:'''
+        # self.dev = self.resolveName('Name')
+        # self.subscribe(dev)
+
+    '''Called when removed'''
+
+    def off(self):
+        pass
+
+    '''Called regularly, running in separate thread'''
+
+    def periodic(self):
+        # self.send('', value)
+        pass
+
+    '''Called by subscriptors'''
+
+    def receive(self, dev, t, ch, val):
+        pass
+
+    '''Called when settings are loaded, vals contains setting dictionary'''
+
+    def load(self, vals):
+        pass
+
+    '''Send current status on this command'''
+
+    def emit(self):
+        pass
+
 if __name__=='__main__':
     sender = DeviceBase('sender')  # get this from db later in tilda
     receiver = DeviceBase('receiver')  # create this

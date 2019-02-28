@@ -54,17 +54,19 @@ other_run2017 = normal_run if current_run is run_hot_cec else run_hot_cec
 perform_bacthfit = False
 # same for combining shifts:
 combine_shifts = False
-save_shift_as_pdf = False
 # ... and the offset:
 combine_offset = False
 # combine final run values -> joined of hot cec and normal
 combine_final_run = False
+shifts_file_17 = ''  # use '' to not write anything else: 'shifts_2017.txt'
+reset_shifts_file_17 = False
+
 print_moments_latex = False
 combine_final_moments = False
 
-perf_king_fit = False or combine_final_run
+perf_king_fit = False
 
-plot_comparisons = True
+plot_comparisons = False
 
 plot_drCh2 = False
 
@@ -694,19 +696,28 @@ if combine_final_run:
 # con.commit()
 # con.close()
 #
+pic_format_ = ['.pdf', '.png']
 offset_dict = {}
 for iso in isotopes:
     if iso != '60_Ni':
         if combine_shifts:
-            pic_format_ = '.pdf' if save_shift_as_pdf else '.png'
             Analyzer.combineShiftByTime(iso, current_run, db, show_plot=False, pic_format=pic_format_, font_size=18,
                                         overwrite_file_num_det=overwrites_for_file_num_determination)
+
+if reset_shifts_file_17:
+    combined_plots_dir = os.path.join(os.path.split(db)[0], 'combined_plots')
+    file_to_store_to = os.path.join(combined_plots_dir, shifts_file_17)
+    if os.path.isfile(file_to_store_to):
+        os.remove(file_to_store_to)
+
 for iso in isotopes:
     if iso != '60_Ni':
         if combine_final_run:
             print('combining now the runs %s and %s to the final run %s' % (run_hot_cec, normal_run, final_2017_run))
             Analyzer.combineShiftByTime(iso, final_2017_run, db, show_plot=False,
-                                        overwrite_file_num_det=overwrites_for_file_num_determination)
+                                        overwrite_file_num_det=overwrites_for_file_num_determination,
+                                        store_to_file_in_combined_plots=shifts_file_17,
+                                        pic_format=pic_format_)
 
 #
 # print shifts:

@@ -18,6 +18,7 @@ import ast
 from PyQt5 import QtWidgets
 import csv
 import matplotlib.pyplot as plt
+from copy import deepcopy
 
 import Physics
 import Analyzer as Anal
@@ -30,14 +31,14 @@ import Service.Formating as Form
 create_bunch_len_txt_16 = False  # create text file by reading all data files and interpreting the bunch length
 add_time_rchi_16 = 0.0
 create_config_sum_file_16 = False
-create_mean_iso_bun_len_txt_file_16 = False
+create_mean_iso_bun_len_txt_file_16 = True
 plot_time_struct_16 = False  # plot the time projection for scaler 0 for seperate 58 Ni files
 normalize_on_scans = False  # false is better...
 plot_gauss = True
-create_bunch_len_txt_17 = False
+create_bunch_len_txt_17 = False  # really measures the bunch length in each file and stores it.
 add_time_rchi_17 = add_time_rchi_16
 create_config_sum_file_17 = False
-create_mean_iso_bun_len_txt_file_17 = False
+create_mean_iso_bun_len_txt_file_17 = True
 
 ''' working directory: '''
 
@@ -237,16 +238,18 @@ def get_all_files_per_iso(db, iso, run):
 files_flat_2017 = {}  # sorted by isotope
 configs_2017 = {}
 for isotope in isotopes_17:
-    config, iso_files, ref_files = get_all_files_per_iso(db17, isotope, final_2017_run)
-    configs_2017[isotope] = config
-    files_flat_2017[isotope] = iso_files
-    if any(files_flat_2017.get('60_Ni', [])):
-        files_flat_2017['60_Ni'] += ref_files
-    else:
-        files_flat_2017['60_Ni'] = ref_files
+    if isotope != '60_Ni':
+        config, iso_files, ref_files = get_all_files_per_iso(db17, isotope, final_2017_run)
+        configs_2017[isotope] = config
+        files_flat_2017[isotope] = iso_files
+        if any(files_flat_2017.get('60_Ni', [])):
+            files_flat_2017['60_Ni'] += ref_files
+        else:
+            files_flat_2017['60_Ni'] = ref_files
 
-files_flat_2017['60_Ni'] = list(set(files_flat_2017['60_Ni']))
-# TiTs.print_dict_pretty(files_flat_2017)
+files_flat_2017['60_Ni'] = list(sorted(set(files_flat_2017['60_Ni'])))
+print('files_flat_2017')
+TiTs.print_dict_pretty(files_flat_2017)
 txt_file17 = os.path.join(time_info_folder17, 'bunch_lengths_mean.txt')
 
 if create_bunch_len_txt_17:
@@ -311,10 +314,23 @@ with open(txt_file17, 'r') as f17:
 # TiTs.print_dict_pretty(bunch_lenghts_2017_dict)
 print(bunch_lenghts_2017_dict.keys())
 print(Anal.get_date_date_err_to_files(db17, bunch_lenghts_2017_dict.keys()))
-raise Exception
+
+shifts_dict_2017 = {}
+combined_plots_dir17 = os.path.join(os.path.split(db17)[0], 'combined_plots')
+shifts_file17 = os.path.join(combined_plots_dir17, 'shifts_2017.txt')  # needs to be created first
+
+if os.path.isfile(shifts_file17):
+    with open(shifts_file17, 'r') as sh_f17:
+        lines = csv.reader(sh_f17, delimiter='\t')
+        next(lines, None)  # skip header
+        for iso, file, fileNum, shiftFile, shiftFileStatErr, isoMeanShift,\
+            isoMeanShiftStatErr, isoMeanShiftSystErr, isoMeanShiftRChi2 in lines:
+            shifts_dict_2017[file] = (float(shiftFile), float(shiftFileStatErr))
+
+
+
 
 ''' 2016 '''
-
 all_file_flat_2016 = {iso16: [] for iso16 in isotopes2016}  # sorted by isotope
 all_f = TiTs.select_from_db(db2016, 'file, type', 'Files', addCond='ORDER BY date')
 for f, f_type in all_f:
@@ -324,16 +340,17 @@ for f, f_type in all_f:
 files_flat_2016 = {}  # sorted by isotope
 configs_2016 = {}
 for isotope in isotopes2016:
-    config, iso_files, ref_files = get_all_files_per_iso(db2016, isotope, final_2016_run)
-    configs_2016[isotope] = config
-    files_flat_2016[isotope] = iso_files
-    if any(files_flat_2016.get('60_Ni', [])):
-        files_flat_2016['60_Ni'] += ref_files
-    else:
-        files_flat_2016['60_Ni'] = ref_files
+    if isotope != '60_Ni':
+        config, iso_files, ref_files = get_all_files_per_iso(db2016, isotope, final_2016_run)
+        configs_2016[isotope] = config
+        files_flat_2016[isotope] = iso_files
+        if any(files_flat_2016.get('60_Ni', [])):
+            files_flat_2016['60_Ni'] += ref_files
+        else:
+            files_flat_2016['60_Ni'] = ref_files
 
 files_flat_2016['60_Ni'] = list(sorted(set(files_flat_2016['60_Ni'])))
-TiTs.print_dict_pretty(files_flat_2016)
+# TiTs.print_dict_pretty(files_flat_2016)
 
 from Analysis.Nickel.NiCombineTildaPassiveAndMCP import find_tipa_file_to_mcp_file  # grml does import everything...
 
@@ -407,7 +424,21 @@ with open(txt_file16, 'r') as f16:
     for f, tipa_f, bun_len, err_bun_len, rchisq_m in lines:
         bunch_lenghts_2016_dict[f] = (float(bun_len), float(err_bun_len), float(rchisq_m), tipa_f)
 
-TiTs.print_dict_pretty(bunch_lenghts_2016_dict)
+
+shifts_dict_2016 = {}  # 'filename': (shift_MHz, shiftStatErr_MHz)
+combined_plots_dir16 = os.path.join(os.path.split(db2016)[0], 'combined_plots')
+shifts_file16 = os.path.join(combined_plots_dir16, 'shifts_2016.txt')  # needs to be created first
+
+if os.path.isfile(shifts_file16):
+    with open(shifts_file16, 'r') as sh_f16:
+        lines = csv.reader(sh_f16, delimiter='\t')
+        next(lines, None)
+        for iso, file, fileNum, shiftFile, shiftFileStatErr, isoMeanShift,\
+            isoMeanShiftStatErr, isoMeanShiftSystErr, isoMeanShiftRChi2 in lines:
+            shifts_dict_2016[file] = (float(shiftFile), float(shiftFileStatErr))
+
+
+# TiTs.print_dict_pretty(bunch_lenghts_2016_dict)
 
 if plot_time_struct_16:
     # plot some selected tiome projections for 60ni and 58ni from 2016 to
@@ -584,7 +615,7 @@ with open(combined_txt_16, 'wb' if create_config_sum_file_16 else 'r') as combf1
 
                     to_print = '%.2f\t%s\t%s\t%s\t%.5f\t%.5f\t%s\t%s\t%s\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\n' \
                                % (mass_16,
-                                  str(iso_file_nums)[1:-1], str(iso_tipa_file_nums)[1:-1], str(iso_bunch_lens)[1:-1],
+                                  str(iso_file_nums)[1:-1], str(ref_tipa_file_nums)[1:-1], str(iso_bunch_lens)[1:-1],
                                   iso_bun_len_mean, iso_err_bun_len_mean,
                                   str(ref_file_nums)[1:-1], str(ref_tipa_file_nums)[1:-1], str([iso_len])[1:-1],
                                   iso_len, err_iso_len,
@@ -598,69 +629,57 @@ with open(combined_txt_16, 'wb' if create_config_sum_file_16 else 'r') as combf1
                     combined_dict_mean_16[iso][4] += 0.0,  # err ratios
 
         else:
-            for refs_bef, iso_f, refs_after in configs_2016[iso]:
-                iso_bunch_lens = []
-                iso_err_bunch_lens = []
-                iso_tipa_files = []
-                for each in iso_f:
-                    iso_len, err_iso_len, iso_rchisq_m, tipa_file = bunch_lenghts_2016_dict.get(each, (0.0, 0.0, 0.0, ''))
-                    if iso_len > 0.0:  # some migth not exist, becaue not every .mcp file has tipa file
-                        iso_bunch_lens += [iso_len]
-                        iso_err_bunch_lens += [err_iso_len]
-                        iso_tipa_files += [tipa_file]
+            for refs_bef, iso_files, refs_after in configs_2016[iso]:
+                for iso_f in iso_files:  # everything file wise!
+                    iso_len, err_iso_len, iso_rchisq, tipa_f = bunch_lenghts_2016_dict.get(iso_f, (0.0, 0.0, 0.0, ''))
+                    iso_file_shift, iso_file_shift_err = shifts_dict_2016.get(iso_f, (0.0, 0.0))
+                    iso_f_num = get_file_numbers([iso_f], user_overwrite=overwrites)[0]
+                    if tipa_f:
+                        if tipa_f != 'None':
+                            iso_tipa_f_num = get_file_numbers([tipa_f], user_overwrite=overwrites, mass_index=None)[0]
 
-                if any(iso_bunch_lens):
-                    iso_bun_len_mean, iso_err_bun_len_mean, isorChi = Anal.weightedAverage(iso_bunch_lens,
-                                                                                           iso_err_bunch_lens)
-                    iso_file_nums = get_file_numbers(iso_f)
-                    # print(iso_file_num)
+                            refs = refs_bef + refs_after
+                            ref_bunch_lens = []
+                            ref_err_bunch_lens = []
+                            ref_tipa_files = []
+                            for each in refs:
+                                ref_len, err_ref_len, ref_rchisq, tipa_ref_f = bunch_lenghts_2016_dict.get(
+                                    each, (0.0, 0.0, 0.0, ''))
+                                if ref_len > 0.0:
+                                    ref_bunch_lens += [ref_len]
+                                    ref_err_bunch_lens += [err_ref_len]
+                                    ref_tipa_files += [tipa_ref_f]
+                            if any(ref_bunch_lens):
+                                ref_bun_len_mean, ref_err_bun_len_mean, refrChi = Anal.weightedAverage(ref_bunch_lens,
+                                                                                                       ref_err_bunch_lens)
+                                ref_file_nums = get_file_numbers(refs, user_overwrite=overwrites)
+                                ref_tipa_file_nums = get_file_numbers(ref_tipa_files, mass_index=None)
 
-                    iso_tipa_file_nums = get_file_numbers(iso_tipa_files, mass_index=None)
-                    # print(iso_tipa_files)
-                    # print(iso_tipa_file_nums)
+                                ratio = iso_len / ref_bun_len_mean
+                                err_ratio = np.sqrt(
+                                    (err_iso_len / ref_bun_len_mean) ** 2 +
+                                    (iso_len * ref_err_bun_len_mean / ref_bun_len_mean ** 2) ** 2
+                                )
 
-                refs = refs_bef + refs_after
-                ref_bunch_lens = []
-                ref_err_bunch_lens = []
-                ref_tipa_files = []
-                for each in refs:
-                    ref_len, err_ref_len, ref_rchisq_m, ref_tipa_file = bunch_lenghts_2016_dict.get(each,
-                                                                                                    (0.0, 0.0, 0.0, ''))
-                    if ref_len > 0.0:
-                        ref_bunch_lens += [ref_len]
-                        ref_err_bunch_lens += [err_ref_len]
-                        ref_tipa_files += [ref_tipa_file]
-                if any(ref_bunch_lens):
-                    ref_bun_len_mean, ref_err_bun_len_mean, refrChi = Anal.weightedAverage(ref_bunch_lens,
-                                                                                           ref_err_bunch_lens)
-                    ref_file_nums = get_file_numbers(refs)
+                                to_print = '%.2f\t%s\t%s\t%s\t%.5f\t%.5f\t%s\t%s\t%s\t' \
+                                           '%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\n' \
+                                           % (mass_16,
+                                              iso_f_num, iso_tipa_f_num,
+                                              iso_len,
+                                              iso_len, err_iso_len,
+                                              str(ref_file_nums)[1:-1], str(ref_tipa_file_nums)[1:-1],
+                                              str([iso_len])[1:-1],
+                                              iso_len, err_iso_len,
+                                              ratio, err_ratio, iso_file_shift, iso_file_shift_err, iso_rchisq
+                                              )
+                                if create_config_sum_file_16:
+                                    combf16.write(bytes(to_print, 'UTF-8'))
+                                combined_dict_mean_16[iso][1] += iso_len,  # bunch lens
+                                combined_dict_mean_16[iso][2] += err_iso_len,  # err bunch lens
+                                combined_dict_mean_16[iso][3] += ratio,  # ratios
+                                combined_dict_mean_16[iso][4] += err_ratio,  # err ratios
 
-                    ref_tipa_file_nums = get_file_numbers(ref_tipa_files, mass_index=None)
-                    # print(ref_tipa_files)
-                    # print(ref_tipa_file_nums)
 
-                    ratio = iso_bun_len_mean / ref_bun_len_mean
-                    err_ratio = np.sqrt(
-                        (iso_err_bun_len_mean / ref_bun_len_mean) ** 2 +
-                        (iso_bun_len_mean * ref_err_bun_len_mean / ref_bun_len_mean ** 2) ** 2
-                    )
-
-                if any(iso_bunch_lens):
-                    to_print = '%.2f\t%s\t%s\t%s\t%.5f\t%.5f\t%s\t%s\t%s\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\n' \
-                               % (mass_16,
-                                  str(iso_file_nums)[1:-1], str(iso_tipa_file_nums)[1:-1], str(iso_bunch_lens)[1:-1],
-                                  iso_bun_len_mean, iso_err_bun_len_mean,
-                                  str(ref_file_nums)[1:-1], str(ref_tipa_file_nums)[1:-1], str(ref_bunch_lens)[1:-1],
-                                  ref_bun_len_mean, ref_err_bun_len_mean,
-                                  ratio, err_ratio, 0.0, 0.0, iso_rchisq_m
-                                  )
-                    if create_config_sum_file_16:
-                        combf16.write(bytes(to_print, 'UTF-8'))
-
-                    combined_dict_mean_16[iso][1] += iso_bun_len_mean,  # bunch lens
-                    combined_dict_mean_16[iso][2] += iso_err_bun_len_mean,  # err bunch lens
-                    combined_dict_mean_16[iso][3] += ratio,  # ratios
-                    combined_dict_mean_16[iso][4] += err_ratio,  # err ratios
 
 # print('result for combined:')
 # TiTs.print_dict_pretty(combined_dict_mean_16)
@@ -712,7 +731,7 @@ with open(combined_txt_17, 'wb' if create_config_sum_file_17 else 'r') as combf1
             for ref_file in files:
 
                 ref_file_nums = get_file_numbers([ref_file], user_overwrite=overwrites)
-                iso_len, err_iso_len, iso_rchisq = bunch_lenghts_2017_dict.get(ref_file, (0.0, 0.0))
+                iso_len, err_iso_len, iso_rchisq = bunch_lenghts_2017_dict.get(ref_file, (0.0, 0.0, 0.0))
                 if iso_len > 0.0:
 
                     iso_file_nums = ref_file_nums
@@ -742,55 +761,46 @@ with open(combined_txt_17, 'wb' if create_config_sum_file_17 else 'r') as combf1
                     combined_dict_mean_17[iso][3] += ratio,  # ratios
                     combined_dict_mean_17[iso][4] += err_ratio,  # err ratios
         else:
-            for refs_bef, iso_f, refs_after in configs_2017[iso]:
-                iso_bunch_lens = []
-                iso_err_bunch_lens = []
-                for each in iso_f:
-                    iso_len, err_iso_len, iso_rchisq = bunch_lenghts_2017_dict.get(each, (0.0, 0.0, 0.0))
-                    if iso_len > 0.0:  # some migth not exist, becaue not every .mcp file has tipa file
-                        iso_bunch_lens += [iso_len]
-                        iso_err_bunch_lens += [err_iso_len]
+            for refs_bef, iso_files, refs_after in configs_2017[iso]:
+                for iso_f in iso_files:  # everything file wise!
+                    iso_len, err_iso_len, iso_rchisq = bunch_lenghts_2017_dict.get(iso_f, (0.0, 0.0, 0.0))
+                    iso_file_shift, iso_file_shift_err = shifts_dict_2017.get(iso_f, (0.0, 0.0))
+                    iso_f_num = get_file_numbers([iso_f], user_overwrite=overwrites)[0]
 
-                if any(iso_bunch_lens):
-                    iso_bun_len_mean, iso_err_bun_len_mean, isorChi = Anal.weightedAverage(iso_bunch_lens,
-                                                                                           iso_err_bunch_lens)
-                    iso_file_nums = get_file_numbers(iso_f, user_overwrite=overwrites)
-                    # print(iso_file_num)
+                    refs = refs_bef + refs_after
+                    ref_bunch_lens = []
+                    ref_err_bunch_lens = []
+                    ref_tipa_files = []
+                    for each in refs:
+                        ref_len, err_ref_len, ref_rchisq = bunch_lenghts_2017_dict.get(each, (0.0, 0.0, 0.0))
+                        if ref_len > 0.0:
+                            ref_bunch_lens += [ref_len]
+                            ref_err_bunch_lens += [err_ref_len]
+                    if any(ref_bunch_lens):
+                        ref_bun_len_mean, ref_err_bun_len_mean, refrChi = Anal.weightedAverage(ref_bunch_lens,
+                                                                                               ref_err_bunch_lens)
+                        ref_file_nums = get_file_numbers(refs, user_overwrite=overwrites)
 
-                refs = refs_bef + refs_after
-                ref_bunch_lens = []
-                ref_err_bunch_lens = []
-                ref_tipa_files = []
-                for each in refs:
-                    ref_len, err_ref_len, ref_rchisq = bunch_lenghts_2017_dict.get(each, (0.0, 0.0, 0.0))
-                    if ref_len > 0.0:
-                        ref_bunch_lens += [ref_len]
-                        ref_err_bunch_lens += [err_ref_len]
-                if any(ref_bunch_lens):
-                    ref_bun_len_mean, ref_err_bun_len_mean, refrChi = Anal.weightedAverage(ref_bunch_lens,
-                                                                                           ref_err_bunch_lens)
-                    ref_file_nums = get_file_numbers(refs, user_overwrite=overwrites)
+                        ratio = iso_len / ref_bun_len_mean
+                        err_ratio = np.sqrt(
+                            (err_iso_len / ref_bun_len_mean) ** 2 +
+                            (iso_len * ref_err_bun_len_mean / ref_bun_len_mean ** 2) ** 2
+                        )
 
-                    ratio = iso_bun_len_mean / ref_bun_len_mean
-                    err_ratio = np.sqrt(
-                        (iso_err_bun_len_mean / ref_bun_len_mean) ** 2 +
-                        (iso_bun_len_mean * ref_err_bun_len_mean / ref_bun_len_mean ** 2) ** 2
-                    )
-
-                    to_print = '%.2f\t%s\t%s\t%.5f\t%.5f\t%s\t%s\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\n' \
-                               % (mass_17,
-                                  str(iso_file_nums)[1:-1], str(iso_bunch_lens)[1:-1],
-                                  iso_bun_len_mean, iso_err_bun_len_mean,
-                                  str(ref_file_nums)[1:-1], str(ref_bunch_lens)[1:-1],
-                                  ref_bun_len_mean, ref_err_bun_len_mean,
-                                  ratio, err_ratio, 0.0, 0.0, iso_rchisq
-                                  )
-                    if create_config_sum_file_17:
-                        combf17.write(bytes(to_print, 'UTF-8'))
-                    combined_dict_mean_17[iso][1] += iso_bun_len_mean,  # bunch lens
-                    combined_dict_mean_17[iso][2] += iso_err_bun_len_mean,  # err bunch lens
-                    combined_dict_mean_17[iso][3] += ratio,  # ratios
-                    combined_dict_mean_17[iso][4] += err_ratio,  # err ratios
+                        to_print = '%.2f\t%s\t%s\t%.5f\t%.5f\t%s\t%s\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\n' \
+                                   % (mass_17,
+                                      iso_f_num, iso_len,
+                                      iso_len, err_iso_len,
+                                      str(ref_file_nums)[1:-1], str(ref_bunch_lens)[1:-1],
+                                      ref_bun_len_mean, ref_err_bun_len_mean,
+                                      ratio, err_ratio, iso_file_shift, iso_file_shift_err, iso_rchisq
+                                      )
+                        if create_config_sum_file_17:
+                            combf17.write(bytes(to_print, 'UTF-8'))
+                        combined_dict_mean_17[iso][1] += iso_len,  # bunch lens
+                        combined_dict_mean_17[iso][2] += err_iso_len,  # err bunch lens
+                        combined_dict_mean_17[iso][3] += ratio,  # ratios
+                        combined_dict_mean_17[iso][4] += err_ratio,  # err ratios
 
 if create_mean_iso_bun_len_txt_file_17:
     with open(combined_mean_abs_len_txt_17, 'wb') as abs_mean_f17:

@@ -27,7 +27,7 @@ from Driver.TritonListener.TritonObject import TritonObject
 import TildaTools as TiTs
 
 
-class TritonListener(TritonObject):
+class TritonListener(TritonObject, QObject):
     # signal to emit dmm values for live plotting during the pre/post scans.
     # is also used for triton values in TritonListener
     pre_post_meas_data_dict_callback = pyqtSignal(dict)
@@ -194,6 +194,17 @@ class TritonListener(TritonObject):
                 self.unsubscribe(subscribed_dev)
         logging.info('subscribed triton devices after setup: ' + str(list(self._recFrom.keys())))
 
+    def receive(self, dev, t, ch, val):
+        """
+
+        :param dev:
+        :param t:
+        :param ch:
+        :param val:
+        :return:
+        """
+        print(dev, t, ch, val)
+
     def _receive(self, dev, t, ch, val):
         """
         overwrites the _receive class of the TritonObject.
@@ -230,7 +241,8 @@ class TritonListener(TritonObject):
                                 logging.debug('emitting %s, from %s, value is %s'
                                               % ('data_to_pipe_sig',
                                                  'Driver.TritonListener.TritonListener.TritonListener#_receive',
-                                                 str((np.ndarray(0, dtype=np.int32), to_send))))
+                                                 str((np.ndarray(0, dtype=np.int32), to_send))
+                                                 ))
                                 self.data_to_pipe_sig.emit(np.ndarray(0, dtype=np.int32), to_send)
                                 self.last_emit_to_analysis_pipeline_datetime = datetime.now()
                         else:  # in pre and postScan emit received value to callback for live data plotting
@@ -311,6 +323,16 @@ class TritonListener(TritonObject):
 
 
 if __name__ == '__main__':
+
+    class recever_class_dummy(QObject):
+        def __init__(self, sig):
+            super(recever_class_dummy, self).__init__()
+            sig.connect(self.printer)
+
+        def printer(self, nparr, dictio):
+            print(nparr, dictio)
+            logging.info(str(dictio))
+
     app_log = logging.getLogger()
     # app_log.setLevel(getattr(logging, args.log_level))
     app_log.setLevel(logging.DEBUG)
@@ -326,12 +348,22 @@ if __name__ == '__main__':
     app_log.info('Log level set to DEBUG')
 
     trit_lis = TritonListener()
-    # trit_lis.create_dummy_dev()
-    trit_lis.setup_log({'DummyPS': {'current': {'required': 50, 'data': []}}}, 'track0')
+    rec_cl = recever_class_dummy(trit_lis.data_to_pipe_sig)  # why does this not work?? ok needs qapp
+
+    trit_lis.create_dummy_dev()
+    # trit_lis.setup_log({'DummyPS': {'current': {'required': 50, 'data': []}}}, 'track0')
+    trit_lis.setup_log({'dummyDev': {'calls': {'required': -1, 'data': [], 'acquired': 0},
+                                     'random': {'required': -1, 'data': [], 'acquired': 0}}}, 'duringScan', 'track0')
     # trit_lis.setup_log({})
     trit_lis.start_log()
+    trit_lis.send('info', 'test')
     # input('anything to stop')
     # trit_lis.start_log()
-    input('anything to stop')
+    # input('anything to stop')
+    while trit_lis.log['dummyDev']['calls']['acquired'] < 6:
+        # print(trit_lis.log['dummyDev']['calls']['data'])
+        # print(trit_lis.log['dummyDev']['random']['data'])
+        pass
     print(trit_lis.log)
+    TiTs.print_dict_pretty(trit_lis.log)
     trit_lis.off()

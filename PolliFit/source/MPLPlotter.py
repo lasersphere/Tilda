@@ -776,6 +776,9 @@ def plot_iso_shift_time_dep(
     main_ax.xaxis.set_major_formatter(xfmt)
     main_ax.set_ylabel('ref %s %s' % (ref, par_name), fontsize=font_size)
     main_ax.tick_params(labelsize=font_size)
+    main_ax_y_lim_bottom, main_ax_y_lim_top = main_ax.get_ylim()
+    main_ax_range_yaxis = abs(main_ax_y_lim_top - main_ax_y_lim_bottom)
+    main_ax_mid_yaxis = main_ax_y_lim_top - 0.5 * main_ax_range_yaxis
     twinx = plt.twinx(main_ax)
     iso_line = twinx.errorbar(iso_dates_datetime, iso_centers, yerr=iso_errs,
                               xerr=iso_date_errs_dt,
@@ -788,7 +791,8 @@ def plot_iso_shift_time_dep(
     lines = [ref_line, fit_line, iso_line]
     # shift_result_tuple should be a tuple of ([shift_run0, shift_run1, ...], [err_shift_run0, err_shift_run1, ...])
     shift_result_str = 'shift:\n ' + str(
-        ['file%s: %.1f(%.0f)' % (iso_file_nums[i], each, shift_result_tuple[1][i] * 10) for i, each in enumerate(shift_result_tuple[0])])
+        ['file%s: %.1f(%.0f)' % (iso_file_nums[i], each,
+                                 shift_result_tuple[1][i] * 10) for i, each in enumerate(shift_result_tuple[0])])
     shift_result_str = shift_result_str[:-2] + ']'
     shift_result_str = shift_result_str.replace(', ', '\n')
     line_lables = [l.get_label() for l in lines] + [shift_result_str]
@@ -796,6 +800,18 @@ def plot_iso_shift_time_dep(
     fig.legend(lines, line_lables, loc='upper center', ncol=2,
                bbox_to_anchor=(0.1, 0.8, 0.7, 0.2), mode='expand', fontsize=font_size+2, numpoints=1)
     twinx.ticklabel_format(axis='y', useOffset=False)
+    # adapt twinx y-lim to the range of the main_ax to have same scaling! Or the other way round whichever is larger
+    twinx_y_lim_bottom, twinx_y_lim_top = twinx.get_ylim()
+    twinx_yaxis_range = abs(twinx_y_lim_top - twinx_y_lim_bottom)
+    twinx_yaxis_mid = twinx_y_lim_top - 0.5 * twinx_yaxis_range
+    if twinx_yaxis_range < main_ax_range_yaxis:
+        # increase teh y-axis range on the twinx to match the range on the main_ax
+        twinx.set_ylim(bottom=twinx_yaxis_mid - 0.5 * main_ax_range_yaxis,
+                       top=twinx_yaxis_mid + 0.5 * main_ax_range_yaxis)
+    else:
+        # increase the y-axis on the main ax to match the twinx range
+        main_ax.set_ylim(bottom=main_ax_mid_yaxis - 0.5 * twinx_yaxis_range,
+                         top=main_ax_mid_yaxis + 0.5 * twinx_yaxis_range)
     if file_name:
         if not os.path.isdir(os.path.dirname(file_name)):
             os.mkdir(os.path.dirname(file_name))

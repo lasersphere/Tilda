@@ -4,14 +4,17 @@ Created on
 @author: simkaufm
 
 Module Description:  meant to estimate what correction in voltage is needed to apply in 2016 or 2017
+ in order to overlapp both beam times as good as possible.
 """
 
 import os
 import sqlite3
 import numpy as np
+import sys
 
 from matplotlib import pyplot as plt
-from pyqtgraph.Qt import QtCore, QtGui
+from PyQt5 import QtWidgets
+
 import pyqtgraph as pg
 
 
@@ -115,6 +118,8 @@ TildaTools.print_dict_pretty(shifts16)
 # add_voltage = 0  # V
 
 add_voltages = [-15, -10, -5, 0, 5, 10]
+add_voltages_pr_tpl = [val for val in add_voltages for _ in (0, 1)]
+add_voltages_pr = '\t2016 %+.1f\t2016 %+.1f err' * len(add_voltages) % tuple(add_voltages_pr_tpl)
 shifts_add_volt_16 = []
 for ind_add_v, add_voltage in enumerate(add_voltages):
     shifts_add_volt_16 += {},
@@ -139,31 +144,31 @@ for ind_add_v, add_voltage in enumerate(add_voltages):
         y_16[ind_add_v] += shifts_add_volt_16[ind_add_v][iso17] - shifts17[iso17][0],
         y_err_16[ind_add_v] += np.sqrt(shifts16[iso17][1] ** 2 + shifts17[iso17][1] ** 2),
 
-
-print('iso' + '\t%s' * len(add_voltages) % tuple(add_voltages))
+print('# 2016 shifts with additional voltage on the high voltage relative to 2017: ')
+print('#iso\tA\t2017 val\t2017 err' + add_voltages_pr)
 for is_ind, is17 in enumerate(isotopes17):
-    to_pr = is17
+    to_pr = is17 + '\t' + is17[:2] + '\t0\t%.3f' % y_err_17[is_ind]
     for ind_add_v, add_voltage in enumerate(add_voltages):
-        to_pr += '\t%.3f' % y_16[ind_add_v][is_ind]
+        to_pr += '\t%.3f\t%.3f' % (y_16[ind_add_v][is_ind], y_err_16[ind_add_v][is_ind])
     print(to_pr)
 
-# font_s = 18
-# fig = plt.figure(1, (15, 10), facecolor='w')
-# ax = plt.gca()
-# plt.errorbar(x_17, y_17, y_err_17, label='2017 (ref)', marker='o')
-# for ind_add_v, add_voltage in enumerate(add_voltages):
-#     plt.errorbar(x_17, y_16[ind_add_v], y_err_16[ind_add_v], label='2016 %+d V' % add_voltage, marker='d')
-#
-# ax.set_xlim(57.5, 70.5)
-# ax.set_ylim(-39, 39)
-# ax.set_ylabel('shift - 2017shift [MHz]', fontdict={'size': font_s + 2})
-# ax.set_xlabel('A', fontdict={'size': font_s + 2})
-# plt.xticks(np.arange(min(x_17), max(x_17), 1.0), fontsize=font_s)
-# plt.yticks(fontsize=font_s)
-# plt.legend(loc=2, fontsize=font_s + 2, numpoints=1)
-# store_to = os.path.join(workdir17, 'comparison_plots_2016_vs_2017/2016_2017_voltage_16_shifted.pdf')
-# plt.savefig(store_to)
-# plt.show(True)
+font_s = 18
+fig = plt.figure(1, (15, 10), facecolor='w')
+ax = plt.gca()
+plt.errorbar(x_17, y_17, y_err_17, label='2017 (ref)', marker='o')
+for ind_add_v, add_voltage in enumerate(add_voltages):
+    plt.errorbar(x_17, y_16[ind_add_v], y_err_16[ind_add_v], label='2016 %+d V' % add_voltage, marker='d')
+
+ax.set_xlim(57.5, 70.5)
+ax.set_ylim(-39, 39)
+ax.set_ylabel('shift - 2017shift [MHz]', fontdict={'size': font_s + 2})
+ax.set_xlabel('A', fontdict={'size': font_s + 2})
+plt.xticks(np.arange(min(x_17), max(x_17), 1.0), fontsize=font_s)
+plt.yticks(fontsize=font_s)
+plt.legend(loc=2, fontsize=font_s + 2, numpoints=1)
+store_to = os.path.join(workdir17, 'comparison_plots_2016_vs_2017/2016_2017_voltage_16_shifted.pdf')
+plt.savefig(store_to)
+plt.show(True)
 # plot show best results around -5V -> will perform red. chi^2 optimisation for both beam times.
 
 
@@ -255,8 +260,8 @@ def plot_with_add_volt(add_volt_16, add_volt_17):
     plt.show(True)
 
 
-start = -10
-stop = 10.5
+start = -5
+stop = 5.5
 intv = 0.5
 additional_volts_16 = np.arange(start, stop, intv)
 additional_volts_17 = np.arange(start, stop, intv)
@@ -268,57 +273,67 @@ print(minimum, argmin, additional_volts_16[argmin[0][0]], additional_volts_17[ar
 # imv = pg.ImageView()
 # imv.show()
 # pg.show()
-plot_with_add_volt(additional_volts_16[argmin[0][0]], additional_volts_17[argmin[1][0]])
 
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
 
-app = QtGui.QApplication([])
-win = QtGui.QMainWindow()
-win.resize(800, 800)
 
-plt_item = pg.PlotItem()
-imv_widget = pg.ImageView(view=plt_item)
-plt_item.invertY(False)
-plt_item.showAxis('top')
-plt_item.showAxis('right')
-plt_item.showLabel('bottom', False)
-plt_item.showLabel('right', False)
-plt_item.getAxis('right').setStyle(showValues=False)
-plt_item.getAxis('bottom').setStyle(showValues=False)
-plt_item.setLabel('left', 'add_Volt 2017')
-plt_item.setLabel('top', 'add_Volt 2016')
-colors = [
-    (255, 255, 255),
-    (0, 0, 255),
-    (0, 255, 255),
-    (0, 255, 0),
-    (255, 255, 0),
-    (255, 0, 0),
-]
-color = pg.ColorMap(pos=np.linspace(0.0, 1.0, len(colors)), color=colors)
-imv_widget.setColorMap(color)
+def show_2d_plot():
+    app = QtWidgets.QApplication(sys.argv)
+    win = QtWidgets.QMainWindow()
+    win.resize(800, 800)
 
-x_range = (additional_volts_16[0], additional_volts_16[-1])
-x_scale = np.mean(np.ediff1d(additional_volts_16))
-y_range = (np.min(additional_volts_17), np.max(additional_volts_17))
-y_scale = np.mean(np.ediff1d(additional_volts_17))
-plt_item.setAspectLocked(False)
-imv_widget.setImage(chi_sq_result, autoRange=True,
-                    pos=[x_range[0],
-                         y_range[0] - abs(0.5 * y_scale)],
-                    scale=[x_scale, y_scale],
-                    )
-plt_item.setRange(xRange=(additional_volts_16[0], additional_volts_16[-1]),
-                  yRange=(additional_volts_17[0], additional_volts_17[-1]),
-                  padding=0, update=True)
+    plt_item = pg.PlotItem()
+    imv_widget = pg.ImageView(view=plt_item)
+    plt_item.invertY(False)
+    plt_item.showAxis('top')
+    plt_item.showAxis('right')
+    plt_item.showLabel('bottom', False)
+    plt_item.showLabel('right', False)
+    plt_item.getAxis('right').setStyle(showValues=False)
+    plt_item.getAxis('bottom').setStyle(showValues=False)
+    plt_item.setLabel('left', 'add_Volt 2017')
+    plt_item.setLabel('top', 'add_Volt 2016')
+    colors = [
+        (255, 255, 255),
+        (0, 0, 255),
+        (0, 255, 255),
+        (0, 255, 0),
+        (255, 255, 0),
+        (255, 0, 0),
+    ]
+    color = pg.ColorMap(pos=np.linspace(0.0, 1.0, len(colors)), color=colors)
+    imv_widget.setColorMap(color)
+
+    x_range = (additional_volts_16[0], additional_volts_16[-1])
+    x_scale = np.mean(np.ediff1d(additional_volts_16))
+    y_range = (np.min(additional_volts_17), np.max(additional_volts_17))
+    y_scale = np.mean(np.ediff1d(additional_volts_17))
+    plt_item.setAspectLocked(False)
+    imv_widget.setImage(chi_sq_result, autoRange=True,
+                        pos=[x_range[0],
+                             y_range[0] - abs(0.5 * y_scale)],
+                        scale=[x_scale, y_scale],
+                        )
+    plt_item.setRange(xRange=(additional_volts_16[0], additional_volts_16[-1]),
+                      yRange=(additional_volts_17[0], additional_volts_17[-1]),
+                      padding=0, update=True)
 
 
-win.setCentralWidget(imv_widget)
-win.show()
-# input('anything to quit')
+    win.setCentralWidget(imv_widget)
+    win.show()
+    # sys.exit(app.exec_())
+    # app.closeAllWindows()
+    return app, win
+    # input('anything to quit')
 
 if __name__ == '__main__':
-    import sys
-    if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-        QtGui.QApplication.instance().exec_()
+    ap, win = show_2d_plot()
+    test = plot_with_add_volt(additional_volts_16[argmin[0][0]], additional_volts_17[argmin[1][0]])
+    sys.exit(ap.exec())
+    # ap.exec_()
+    # ap.closeAllWindows()
+
+
+        # QtGui.QApplication.instance().exec_()
+

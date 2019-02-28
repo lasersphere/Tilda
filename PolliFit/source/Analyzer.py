@@ -294,7 +294,8 @@ def combineShift(iso, run, db, show_plot=False):
 
 
 def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minutes=15,
-                       pic_format='.png', font_size=12, default_date_err_s=15 * 60, overwrite_file_num_det={}):
+                       pic_format='.png', font_size=12, default_date_err_s=15 * 60, overwrite_file_num_det={},
+                       store_to_file_in_combined_plots=''):
     """
     takes an Isotope a run and a database and gives the isotopeshift to the reference!
     This will perform a linear fit to the references center positions versus time stamp and
@@ -338,6 +339,7 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
     shiftErrors = []
     dateIso = []  # dates as string for average plot
     fileIso = []  # all isotope files
+    all_iso_file_nums = []
     print(config)
     for block in config:
         block_shifts = []
@@ -371,6 +373,7 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
         iso_date_errs = [err_found if err_found > 0 else default_date_err_s for err_found in iso_date_errs]
         iso_date_float_relative = [each - first_ref for each in iso_dates_datetime_float]
         iso_file_nums = TiTs.get_file_numbers(iso_files, user_overwrite=overwrite_file_num_det)
+        all_iso_file_nums += iso_file_nums,
 
         dateIso += iso_dates,
         fileIso += iso_files,
@@ -432,15 +435,27 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
         pic_name = 'shift_%s_%s_files_' % (iso, run)
         for fn in iso_file_nums:
             pic_name += fn + '_'
-        pic_name = pic_name[:-1] + pic_format
-        file_name = os.path.join(os.path.dirname(db), 'shift_pics', pic_name)
-        plt.plot_iso_shift_time_dep(
-            ref_files, ref_file_nums, ref_dates_date_time, ref_dates_date_time_float,
-            ref_date_errs, ref_centers, ref_errs, ref,
-            iso_files, iso_file_nums, iso_dates_datetime, iso_dates_datetime_float,
-            iso_date_errs, iso_centers, iso_errs, iso,
-            slope, offset, plt_label, (block_shifts, block_shifts_errs), file_name, show_plot=show_plot,
-            font_size=font_size)
+        if isinstance(pic_format, list):
+            for pic_form in pic_format:
+                pic_name = pic_name[:-1] + pic_form
+                file_name = os.path.join(os.path.dirname(db), 'shift_pics', pic_name)
+                plt.plot_iso_shift_time_dep(
+                    ref_files, ref_file_nums, ref_dates_date_time, ref_dates_date_time_float,
+                    ref_date_errs, ref_centers, ref_errs, ref,
+                    iso_files, iso_file_nums, iso_dates_datetime, iso_dates_datetime_float,
+                    iso_date_errs, iso_centers, iso_errs, iso,
+                    slope, offset, plt_label, (block_shifts, block_shifts_errs), file_name, show_plot=show_plot,
+                    font_size=font_size)
+        else:
+            pic_name = pic_name[:-1] + pic_format
+            file_name = os.path.join(os.path.dirname(db), 'shift_pics', pic_name)
+            plt.plot_iso_shift_time_dep(
+                ref_files, ref_file_nums, ref_dates_date_time, ref_dates_date_time_float,
+                ref_date_errs, ref_centers, ref_errs, ref,
+                iso_files, iso_file_nums, iso_dates_datetime, iso_dates_datetime_float,
+                iso_date_errs, iso_centers, iso_errs, iso,
+                slope, offset, plt_label, (block_shifts, block_shifts_errs), file_name, show_plot=show_plot,
+                font_size=font_size)
         shifts += block_shifts,
         shiftErrors += block_shifts_errs,
     # in the end get the mean value of all shifts:
@@ -485,6 +500,7 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
     shifts = [item for sublist in shifts for item in sublist]
     shiftErrors = [item for sublist in shiftErrors for item in sublist]
     fileIso = [item for sublist in fileIso for item in sublist]
+    all_iso_file_nums_flat = [item for sublist in all_iso_file_nums for item in sublist]
 
     # weighted average over everything:
     shifts_weighted_mean, err, rChi = weightedAverage(shifts, shiftErrors)
@@ -508,6 +524,22 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
     print('Mean of shifts: %.2f(%.0f)[%.0f] MHz' % (shifts_weighted_mean, statErr * 100, systErr * 100))
     print('rChi: %.2f' % rChi)
     combined_plots_dir = os.path.join(os.path.split(db)[0], 'combined_plots')
+    if not os.path.isdir(combined_plots_dir):
+        os.mkdir(combined_plots_dir)
+    if store_to_file_in_combined_plots:
+        file_to_store_to = os.path.join(combined_plots_dir, store_to_file_in_combined_plots)
+        write_header = not os.path.isfile(file_to_store_to)
+        f_open_append = open(file_to_store_to, 'a+')
+        if write_header:
+            f_open_append.write(
+                '#iso\tfile\tfileNum\tshiftFile\tshiftFileStatErr\tisoMeanShift'
+                '\tisoMeanShiftStatErr\tisoMeanShiftSystErr\tisoMeanShiftRChi2\n')
+        for sh_i, sh in enumerate(shifts):
+            f_open_append.write('%s\t%s\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n'
+                                % (iso, fileIso[sh_i], all_iso_file_nums_flat[sh_i], sh, shiftErrors[sh_i],
+                                   shifts_weighted_mean, statErr, systErr, rChi))
+        f_open_append.close()
+
     avg_fig_name = os.path.join(combined_plots_dir, iso + '_' + run + '_shift.png')
     plotdata = (
         dateIso, shifts, shiftErrors, shifts_weighted_mean,
