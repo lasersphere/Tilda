@@ -10,8 +10,12 @@ import json
 import logging
 import os
 import sqlite3
+import sys
 from copy import deepcopy
 from copy import copy
+
+from PyQt5 import QtWidgets
+from scipy.optimize import curve_fit
 
 import numpy as np
 from lxml import etree as ET
@@ -90,9 +94,9 @@ def merge_extend_dicts(target_dict, new_dict, overwrite=True, force_overwrite=Fa
                 if type(vals) is dict:  # if its a dict then check this again
                     merge_extend_dicts(target_dict[keys], vals, overwrite)
                 elif type(vals) is list:
-                    if force_overwrite:  # if overwriting existing lists with empty lists is allowed
+                    if force_overwrite: # if overwriting existing lists with empty lists is allowed
                         target_dict[keys] = vals
-                    else:  # if the new list has actually values in it then we want to overwrite the old values
+                    else: # if the new list has actually values in it then we want to overwrite the old values
                         if type(target_dict[keys]) is list:
                             if len(vals) > len(target_dict[keys]):
                                 target_dict[keys] = vals
@@ -835,6 +839,7 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
     if database_path is None:  # prefer laserfreq from db, if existant
         laserfreq = specdata.laserFreq  # if existant freq is usually given in 1/cm
     else:
+        # TODO watchout here a doubling is always assumed!
         laserfreq = Physics.wavenumber(get_laserfreq_from_db(database_path, specdata)) / 2
 
     draftIsotopePars = {
@@ -1145,18 +1150,46 @@ def calc_db_pars_from_software_gate(softw_gates_single_tr):
     return run_gates_width, del_list, iso_mid_tof
 
 
-def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak, show_plt=True):
+def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak,
+                                             show_plt=True, non_consectutive_time_bins_tolerance=1,
+                                             save_to_path='', time_around_bunch=(-1, -1), fit_gaussian=True,
+                                             additional_time_rChi=0.0):
     """
     This will analyse the time projection of the counts.
     It will get the background, the maximum counts, the timings of the maximum counts
     and where the counts have reached the desired percentage of the maximum peak (above background)
     each value will be given per track and scaler.
-    :param percentage_of_peak:
-    :return:
+    :param spec_data: XMLImporter object, usual xmlobject, t_proj will be handled
+    :param percentage_of_peak: float, percent, percentage of the maximum counts above
+     background for automatic gate determination
+    :param non_consectutive_time_bins_tolerance: int,
+    tolerance how many time bins can be below the threshold before this is counted
+    as a not connected to the area above threshold anymore.
+    :param save_to_path: str, absoulte path were to store the plot as a .png or so
+    :param time_around_bunch: tuple, time in us (before, after) bunch in order to display
+    zoomed in around this time frame, still all plots will share the same x-axis
+    :param fit_gaussian: bool, True in order to fit a gaussian to the time data
+    :param additional_time_rChi: float, time in us that will be added/subtracted to the bunch stop/start time
+    in order to calculate the rChiSq not on the full time projection but only around the interesting time frame.
+    :return: XMLImporter object, ret_dict:
+    ret_dict = {'max_counts': max_counts,  #  track wise, scaler wise each of the following
+                'backgrounds': backgrounds,
+                'bunch_begin_times': bunch_begin_times,
+                'max_counts_times': max_counts_times,
+                'bunch_end_times': bunch_end_times,
+                'bunch_lenght_us': bunch_lenght_us,
+                'gaussian_res': gaussian_results  # list, tr_sc wise [x0, sigma, amp, rchisq}
+                }
     """
     import matplotlib.pyplot as plt
-    fig, axes = plt.subplots(spec_data.nrScalers[0], spec_data.nrTracks)
-    print(axes)
+    fig, axes = plt.subplots(spec_data.nrScalers[0], spec_data.nrTracks, sharex='col',
+                             gridspec_kw={'hspace': 0.,
+                                          'top': 0.95,
+                                          'bottom': 0.05,
+                                          'wspace': 0.7,
+                                          'left': 0.09 / spec_data.nrTracks,
+                                          'right': 0.9 - 0.25 / spec_data.nrTracks},
+                             figsize=(8 * spec_data.nrTracks, 12 * (spec_data.nrScalers[0] / 4)))
     if spec_data.nrTracks == 1:
         axes = [[ax] for ax in axes]
     backgrounds = []
@@ -1166,21 +1199,23 @@ def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak, show
     max_counts_ind = []
     bunch_end_times = []
     bunch_lenght_us = []
+    gaussian_results = []
     # from Measurement.XMLImporter import XMLImporter
     # spec_data = XMLImporter()
     tr = -1
     for tr_t_proj in spec_data.t_proj:
-        print('tr_tproj', tr_t_proj.shape)
+        # print('tr_tproj', tr_t_proj.shape)
         tr += 1
         sc = -1
         max_counts.append(np.max(tr_t_proj, axis=1))  # for all scalers at once
         max_counts_ind.append(np.argmax(tr_t_proj, axis=1))
-        print(max_counts_ind)
+        # print(max_counts_ind)
         max_counts_times.append(spec_data.t[tr][max_counts_ind[tr]])
         bunch_begin_times += [],
         bunch_end_times += [],
         bunch_lenght_us += [],
         backgrounds += [],
+        gaussian_results += [],
         for sc_t_proj in tr_t_proj:
             sc += 1
             # background calc
@@ -1192,28 +1227,144 @@ def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak, show
             # print(tr, sc, max(sc_t_proj), sc_t_proj)
             cond_min = (max_counts[tr][sc] - sc_back_mean) * (percentage_of_peak / 100) + sc_back_mean
             indice_above_cond = np.where(sc_t_proj >= cond_min)
-            # print(sc_t_proj[indice_above_cond])
-            # print(spec_data.t[tr][indice_above_cond])
-            bunch_begin_times[tr].append(spec_data.t[tr][indice_above_cond][0])
-            bunch_end_times[tr].append(spec_data.t[tr][indice_above_cond][-1])
-            bunch_lenght_us[tr].append(bunch_end_times[tr][-1] - bunch_begin_times[tr][-1])
-            print(len(axes), tr, sc)
-            pl_sc_tr = axes[sc][tr].plot(spec_data.t[tr], spec_data.t_proj[tr][sc])
-            axes[sc][tr].autoscale(enable=True)
-            axes[sc][tr].axvline(bunch_begin_times[tr][-1], color='g')
-            axes[sc][tr].axvline(bunch_end_times[tr][-1], color='g')
-            axes[sc][tr].axvline(max_counts_times[tr][sc], color='r')
 
-    fig.tight_layout()
+            # find consecutive indices before and after the maximum counts index
+            indice_above_cond_before_max = [val for val in indice_above_cond[0] if val <= max_counts_ind[tr][sc]]
+            indice_above_cond_before_max.reverse()
+            start_ind = indice_above_cond_before_max[0]
+            for i, each in enumerate(indice_above_cond_before_max):
+                if i < len(indice_above_cond_before_max) - 1:
+                    if np.isclose(each - 1, indice_above_cond_before_max[i + 1],
+                                  atol=non_consectutive_time_bins_tolerance):
+                        start_ind = each - 2
+                    else:
+                        # break for loop as soon as indices are not consecutive anymore
+                        break
+            # print(indice_above_cond_before_max)
+            # print('start_ind:', start_ind)
+            # print(max_counts_ind[tr][sc])
+            # print(indice_above_cond[0])
+            indice_above_cond_after_max = [val for val in indice_above_cond[0] if val >= max_counts_ind[tr][sc]]
+            stopp_ind = indice_above_cond_after_max[0]
+            for i, each in enumerate(indice_above_cond_after_max):
+                if i < len(indice_above_cond_after_max) - 1:
+                    if np.isclose(each + 1, indice_above_cond_after_max[i + 1],
+                                  atol=non_consectutive_time_bins_tolerance):
+                        stopp_ind = each + 2
+                    else:
+                        # break for loop as soon as indices are not consecutive anymore
+                        break
+            # print(indice_above_cond_after_max)
+            # print('stopp_ind:', stopp_ind)
+
+            # print(spec_data.t[tr][indice_above_cond])
+            bunch_begin_times[tr].append(spec_data.t[tr][start_ind])
+            bunch_end_times[tr].append(spec_data.t[tr][stopp_ind])
+            bunch_lenght_us[tr].append(bunch_end_times[tr][-1] - bunch_begin_times[tr][-1])
+            # print(len(axes), tr, sc)
+            pl_sc_tr = axes[sc][tr].plot(spec_data.t[tr], spec_data.t_proj[tr][sc],
+                                         color='k', label='sc: %s, tr: %s' % (sc, tr), linewidth=1.)
+            axes[sc][tr].autoscale(enable=True)
+            axes[sc][tr].axvline(bunch_begin_times[tr][-1], color='g',
+                                 label='start: %.2f µs' % bunch_begin_times[tr][-1],
+                                 linewidth=1.5)
+            axes[sc][tr].axvline(bunch_end_times[tr][-1], color='b',
+                                 label='stopp: %.2f µs' % bunch_end_times[tr][-1],
+                                 linewidth=1.5)
+            axes[sc][tr].plot([spec_data.t[0][0]], [0], color='w',
+                              label='length: %.2f µs' % bunch_lenght_us[tr][-1])
+            axes[sc][tr].axvline(max_counts_times[tr][sc], color='r',
+                                 label='max_cts: %.2f µs' % max_counts_times[tr][sc],
+                                 linewidth=1.5)
+            axes[sc][tr].axhline(cond_min, color='g',
+                                 # label='%s percent of peak above background' % percentage_of_peak,
+                                 linewidth=0.5, linestyle='--')
+            axes[sc][tr].set_ylim(axes[sc][tr].get_ylim()[0], axes[sc][tr].get_ylim()[1] - 0.5)
+            # in order not to have numbers overlap
+            axes[sc][tr].set_xlabel('time of flight / µs')
+            axes[sc][tr].set_ylabel('counts')
+            if time_around_bunch[0] >= 0:
+                # zoom in around bunch in plot
+                axes[sc][tr].set_xlim(bunch_begin_times[tr][-1] - time_around_bunch[0], axes[sc][tr].get_xlim()[1])
+            if time_around_bunch[1] >= 0:
+                # zoom in around bunch in plot
+                axes[sc][tr].set_xlim(axes[sc][tr].get_xlim()[0], bunch_end_times[tr][-1] + time_around_bunch[1])
+            # now gaussian:
+            if fit_gaussian:
+                # cut time axis to relevant set:
+                bin_width = round(spec_data.t[tr][1] - spec_data.t[tr][0], 2)
+                additional_bins_rChi = additional_time_rChi // bin_width
+                cut_ind_start = int(max(0, start_ind - additional_bins_rChi))
+                cut_ind_stop = int(min(len(spec_data.t[tr]) - 1, stopp_ind + additional_bins_rChi))
+                x_to_fit = spec_data.t[tr][cut_ind_start:cut_ind_stop]
+                y_to_fit = sc_t_proj[cut_ind_start:cut_ind_stop]
+
+                y_data_set = []  # "inverse from projection)
+                for ind, each in enumerate(y_to_fit):
+                    # create inverse to existing histogram
+                    y_data_set += [x_to_fit[ind]] * int(each)
+                mean = max_counts_times[tr][sc]
+                sigma = (bunch_end_times[tr][-1] - bunch_begin_times[tr][-1]) / 2.35  # roughly...
+                amp_start = max_counts_ind[tr][sc] * sigma * np.sqrt(2 * np.pi)
+                x = spec_data.t[tr]
+                y = sc_t_proj
+                popt, pcov = curve_fit(Physics.gaussian_offset, x, y,
+                                       p0=[mean, sigma, amp_start, sc_back_mean],
+                                       bounds=([bunch_begin_times[tr][-1] - bin_width, 0, 0, 0],
+                                               [bunch_end_times[tr][-1], np.inf, np.inf, np.inf])
+                                       )
+                mean_fit = popt[0]
+                sigma_fit = popt[1]
+                amp_fit = popt[2]
+                off_fit = popt[3]
+                y_gauss = np.array([Physics.gaussian_offset(t_i, *popt) for t_i in x])
+                norm_fact = np.max(y_gauss)
+                y_gauss_norm = y_gauss / norm_fact
+                y_to_fit_norm = y_to_fit / norm_fact
+                residuals = y_to_fit_norm - y_gauss_norm[cut_ind_start:cut_ind_stop]
+                errs = np.sqrt(y_to_fit)
+                errs = [1 if e == 0 else e for e in errs]  # replace errors with 0 by 1
+                errs_norm = errs / norm_fact
+                numbers_freedom = len(y_to_fit) - 4  # four from gaussian
+                rchisq = sum([res ** 2 / e ** 2 for res, e in zip(residuals, errs_norm)]) / numbers_freedom
+                err_fit_pars = [np.sqrt(pcov[j][j]) for j in range(pcov.shape[0])]
+                label_gauss = 'gaussian:\n x0=%.2f(%.0f)us\n sig=%.2f(%.0f)\n rChi²=%.2f' % (
+                    mean_fit, err_fit_pars[0] * 100, sigma_fit, err_fit_pars[1] * 100, rchisq)
+                axes[sc][tr].plot(x_to_fit, Physics.gaussian_offset(x_to_fit, *popt), linewidth=2, color='grey',
+                                  label=label_gauss)
+                gaussian_results[tr].append([[mean_fit, sigma_fit, amp_fit, off_fit, rchisq], err_fit_pars])
+            axes[sc][tr].legend(loc=(1.01, 0.05))
+    fig.set_facecolor('w')
+    fig.suptitle('%s percentage of peak: %.2f%% rebinning: %d ns '
+                 % (spec_data.file, percentage_of_peak, spec_data.softBinWidth_ns[0]), ha='center', va='top')
+
     if show_plt:
         plt.show(block=True)
 
-    print(max_counts)
-    print(backgrounds)
-    print(bunch_begin_times)
-    print(max_counts_times)
-    print(bunch_end_times)
-    print(bunch_lenght_us)
+    if save_to_path:
+        if isinstance(save_to_path, list):
+            for each_store_loc in save_to_path:
+                print('saving to: %s' % each_store_loc)
+                fig.savefig(each_store_loc, dpi=150, quality=95, facecolor='w')
+        else:
+            print('saving to: %s' % save_to_path)
+            fig.savefig(save_to_path, dpi=150, quality=95, facecolor='w')
+    # print(max_counts)
+    # print(backgrounds)
+    # print(bunch_begin_times)
+    # print(max_counts_times)
+    # print(bunch_end_times)
+    # print(bunch_lenght_us)
+    plt.close(fig)
+    ret_dict = {'max_counts': max_counts,
+                'backgrounds': backgrounds,
+                'bunch_begin_times': bunch_begin_times,
+                'max_counts_times': max_counts_times,
+                'bunch_end_times': bunch_end_times,
+                'bunch_lenght_us': bunch_lenght_us,
+                'gaussian_res': gaussian_results
+                }
+    return spec_data, ret_dict
 
 
 def convert_volt_axis_to_freq(x_axis_energy, mass, col, laser_freq, iso_center_freq):
@@ -1297,6 +1448,102 @@ def add_header_to23_bit(bit23, firstheader, secondheader, indexheader):
     return result
 
 
+def line_to_total_volt(x, lineMult, lineOffset, offset, accVolt, voltDivRatio, offset_by_dev_mean={}):
+    """
+    Converts an DAC line voltage array x to a total voltage array depending on the conversion coefficients
+    """
+    if isinstance(voltDivRatio['offset'], float):  # just one number
+        scanvolt = (x * lineMult + lineOffset) * voltDivRatio.get('lineMult', voltDivRatio['offset']) \
+                   + offset * voltDivRatio['offset']
+    else: # offset measured by different devices. Offset is then calculated by different voltDivRatio values.
+        vals = list(voltDivRatio['offset'].values())
+        mean_offset_div_ratio = np.mean(vals)
+        # treat each offset with its own divider ratio
+        # x axis is multiplied by mean divider ratio value anyhow, similiar to kepco scans
+
+        mean_offset = np.mean([val * offset_by_dev_mean.get(key, offset) for key, val in voltDivRatio['offset'].items()])
+        scanvolt = (lineMult * x + lineOffset) * voltDivRatio.get('lineMult', mean_offset_div_ratio) + mean_offset
+
+    return accVolt*voltDivRatio['accVolt'] - scanvolt
+
+
+def get_file_number_from_file_str(file_str, mass_index, end_result_len, app=None):
+    numbers = []
+    number_str = ''
+    for i, letter in enumerate(file_str):
+        if letter.isdigit():  # is either 0-9
+            number_str += letter
+        else:  # not a digit
+            if number_str.isdigit():  # convert the consecutive number
+                numbers += [number_str]
+            number_str = ''  # reset number str
+    if isinstance(mass_index, list):
+        # [0] etc. .
+        numbers = [val for n, val in enumerate(numbers) if n not in mass_index]
+    if end_result_len > 0:
+        # user want to check if the correct amount of integers is found
+        if len(numbers) != end_result_len:
+            # does not match, require user input!
+            print('warning: ')
+            print('file', file_str, 'nums', numbers)
+            if app is None:
+                app = QtWidgets.QApplication(sys.argv)
+
+            print('opening dial:')
+            text, ok_pressed = QtWidgets.QInputDialog.getText(None, 'Warning',
+                                                              '%s has more or less than %s numbers: %s \n'
+                                                              ' please write the desired file number(s) here'
+                                                              'still as a list of strings please!:' %
+                                                              (file_str, end_result_len, numbers),
+                                                              QtWidgets.QLineEdit.Normal,
+                                                              str(numbers)
+                                                              )
+            if ok_pressed:
+                try:
+                    numbers = ast.literal_eval(text)
+                except Exception as e:
+                    print('could not convert %s, error is: %s' % (text, e))
+            else:
+                return [], app
+            # make sure it has the right length in the end!
+            if len(numbers) > end_result_len:
+                numbers = numbers[:end_result_len]
+                print('warning, still incorrect amount of numbers! Will use %s fo file: %s' % (numbers, file_str))
+            elif len(numbers) < end_result_len:
+                numbers = numbers * (end_result_len // len(numbers) + 1)
+                numbers = numbers[:end_result_len]
+                print('warning, still incorrect amount of numbers! Will use %s fo file: %s' % (numbers, file_str))
+    return numbers, app
+
+
+def get_file_numbers(file_list, mass_index=[0], end_result_len=1, app=None, user_overwrite={}):
+    """
+    get all file numbers (=conescutive integer numbers)
+    in the filenames that are listed in file_list.
+    :param file_list: list, like  ['62_Ni_trs_run071.xml', ...]
+    :param mass_index: list, indice of all expected mass numbers, that will be removed from the output.
+    if the mass number is wanted -> use mass_index=[-1]
+    for 62_Ni_trs_run071.xml
+     -> mass_index=[0] -> [[71]]
+     -> mass_index=None -> [[62, 71]]
+     :param end_result_len: int, desired amount of numbers to be found, as a cross check.
+     use -1/0 if you don't care
+     :param user_overwrite: dict, key is orig. filenum, value is str that will be put as file_num_str
+     e.g.  {'60_Ni_trs_run113_sum114.xml': ['113+114']}
+     helpful to avoid user input on runtime
+    :return: list of all file numbers each still as string, that might be convertable to int,
+     but can also be something like '123+124' by user choice.
+    """
+    file_nums = []
+    for f in file_list:
+        if f in user_overwrite.keys():
+            file_nums += user_overwrite[f]
+        else:
+            file_num, app = get_file_number_from_file_str(f, mass_index, end_result_len, app)
+            file_nums += file_num
+    return file_nums
+
+
 if __name__ == '__main__':
     # isodi = {'isotope': 'bbb', 'type': 'csdummy'}
     # newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')
@@ -1362,4 +1609,4 @@ if __name__ == '__main__':
             # print(ch_data)
             ch_data['acquired'] = len(ch_data['data'])
 
-    # print_dict_pretty(sample_dict0)
+    #print_dict_pretty(sample_dict0)

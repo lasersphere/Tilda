@@ -6,6 +6,7 @@ Created on 23.08.2016
 '''
 
 import ast
+import os
 import sqlite3
 
 import matplotlib.pyplot as plt
@@ -47,6 +48,10 @@ class KingFitter(object):
         self.isotopeShiftStatErr = []
         self.isotopeShiftSystErr = []
         self.run = []
+
+        self.store_loc = os.path.normpath(os.path.join(os.path.split(db)[0], 'king_fits'))
+        if not os.path.isdir(self.store_loc):
+            os.mkdir(self.store_loc)
 
         try:
             if ref_run == -1:
@@ -127,6 +132,7 @@ class KingFitter(object):
         else:
             # errors are systematic since they include the systematics but have been handled statistically
             #  --> be carefull
+            self.yerr_total = self.yerr  # needed for printing of total error below
             (self.a, self.b, self.aerr, self.berr, self.a_b_correlation) = self.fit(run, showplot=self.showing,
                                                                                     print_corr_coeff=print_coeff)
             if print_information:
@@ -217,81 +223,82 @@ class KingFitter(object):
             totaldiff = diff_x+diff_y
             i+=1
 
+        # plt.subplots_adjust(bottom=0.2)
+        plt.xticks(rotation=0)
+        ax = plt.gca()
+        if plot_y_mhz:
+            ax.set_ylabel(r' $\mu$ $\delta$ $\nu^{60,A}$ / u MHz ', fontsize=font_size)
+        else:
+            ax.set_ylabel(r' $\mu$ $\delta$ $\nu^{60,A}$ / u GHz ', fontsize=font_size)
+        if self.c == 0:
+            ax.set_xlabel(r'$\mu$ $\delta$ $\langle$ r$_c$'+r'$^2$ $\rangle$ $^{60,A}$ / u fm $^2$', fontsize=font_size)
+        else:
+            ax.set_xlabel(r'$\mu$ $\delta$ < r'+r'$^2$ >$^{60,A}$ - $\alpha$ / u fm $^2$', fontsize=font_size)
+        ax.set_xmargin(0.05)
+        x_king = [min(self.x) - abs(min(self.x) - max(self.x)) * 0.2,
+                  max(self.x) + abs(min(self.x) - max(self.x)) * 0.2]
+        y_king = [self.a + self.b * i for i in x_king]
+        if plot_y_mhz:
+            plt.plot(x_king, y_king, 'r', label='King fit', linewidth=2)
+        else:
+            y_king_ghz = [each / 1000 for each in y_king]
+            plt.plot(x_king, y_king_ghz, 'r', label='King fit', linewidth=2)
+
+        if plot_y_mhz:
+           plt.errorbar(self.x, self.y, self.yerr, self.xerr, fmt='k.', markersize=10)
+        else:  # plot in Gigahertz
+            y_ghz = [each / 1000 for each in self.y]
+            y_err_ghz = [each / 1000 for each in self.yerr]
+            plt.errorbar(self.x, y_ghz, y_err_ghz, self.xerr, fmt='k.', markersize=10)
+
+        # print('x', self.x, self.xerr)
+        # print('y', self.y, self.yerr)
+        print('%s\t%s\t%s\t%s\t%s' % ('x', 'x_err', 'y', 'y_stat_err', 'y_err_total'))
+        for i, x in enumerate(self.x):
+            print('%.5f\t%.5f\t%.5f\t%.5f\t%.5f' % (x, self.xerr[i], self.y[i], self.yerr[i], self.yerr_total[i]))
+        print('%s\t%s' % ('King_fit_x', 'King_fit_y'))
+        print('%.5f\t%.5f' % (x_king[0], y_king[0]))
+        print('%.5f\t%.5f' % (x_king[1], y_king[1]))
+
+
+        plt.gcf().set_facecolor('w')
+        plt.legend(fontsize=font_size)
+        plt.xticks(fontsize=font_size)
+        plt.yticks(fontsize=font_size)
+        plt.tight_layout(True)
+        f_name = 'king_fit_alpha_%d' % self.c
         if showplot:
-            plt.subplots_adjust(bottom=0.2)
-            plt.xticks(rotation=0)
-            ax = plt.gca()
-            if plot_y_mhz:
-                ax.set_ylabel(r' $\mu$ $\delta$ $\nu^{60,A}$ / u MHz ', fontsize=font_size)
-            else:
-                ax.set_ylabel(r' $\mu$ $\delta$ $\nu^{60,A}$ / u GHz ', fontsize=font_size)
-            if self.c == 0:
-                ax.set_xlabel(r'$\mu$ $\delta$ $\langle$ r$_c$'+r'$^2$ $\rangle$ $^{60,A}$ / u fm $^2$', fontsize=font_size)
-            else:
-                ax.set_xlabel(r'$\mu$ $\delta$ < r'+r'$^2$ >$^{60,A}$ - $\alpha$ / u fm $^2$', fontsize=font_size)
-            ax.set_xmargin(0.05)
-            x_king = [min(self.x) - abs(min(self.x) - max(self.x)) * 0.2,
-                      max(self.x) + abs(min(self.x) - max(self.x)) * 0.2]
-            y_king = [self.a + self.b * i for i in x_king]
-            if plot_y_mhz:
-                plt.plot(x_king, y_king, 'r', label='King fit', linewidth=2)
-            else:
-                y_king_ghz = [each / 1000 for each in y_king]
-                plt.plot(x_king, y_king_ghz, 'r', label='King fit', linewidth=2)
-
-            if plot_y_mhz:
-                plt.plot(x_king, y_king, 'r', label='King fit', linewidth=2)
-            else:
-                y_king_ghz = [each / 1000 for each in y_king]
-                plt.plot(x_king, y_king_ghz, 'r', label='King fit', linewidth=2)
-
-            if plot_y_mhz:
-               plt.errorbar(self.x, self.y, self.yerr, self.xerr, fmt='k.', markersize=10)
-            else:  # plot in Gigahertz
-                y_ghz = [each / 1000 for each in self.y]
-                y_err_ghz = [each / 1000 for each in self.yerr]
-                plt.errorbar(self.x, y_ghz, y_err_ghz, self.xerr, fmt='k.', markersize=10)
-
-            # print('x', self.x, self.xerr)
-            # print('y', self.y, self.yerr)
-            print('%s\t%s\t%s\t%s\t%s' % ('x', 'x_err', 'y', 'y_stat_err', 'y_err_total'))
-            for i, x in enumerate(self.x):
-                print('%.5f\t%.5f\t%.5f\t%.5f\t%.5f' % (x, self.xerr[i], self.y[i], self.yerr[i], self.yerr_total[i]))
-            print('%s\t%s' % ('King_fit_x', 'King_fit_y'))
-            print('%.5f\t%.5f' % (x_king[0], y_king[0]))
-            print('%.5f\t%.5f' % (x_king[1], y_king[1]))
-
-
-            plt.gcf().set_facecolor('w')
-            plt.legend(fontsize=font_size)
-            plt.xticks(fontsize=font_size)
-            plt.yticks(fontsize=font_size)
+            plt.savefig(os.path.join(self.store_loc, f_name + '.pdf'))
+            plt.savefig(os.path.join(self.store_loc, f_name + '.png'))
             plt.show()
+        plt.gcf().clear()
 
         self.aerr = np.sqrt(sigma_a_square)
         if not bFix:
             self.berr = np.sqrt(sigma_b_square)
-        ''' Not needed to write every result to the database --> moved to kingFit2Lines '''
-        # con = sqlite3.connect(self.db)
-        # cur = con.cursor()
-        # cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'intercept', run))
-        # con.commit()
-        # cur.execute('''UPDATE Combined SET val = ?, systErr = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
-        #              (self.a, self.aerr, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'intercept', run))
-        # con.commit()
-        # cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'slope', run))
-        # con.commit()
-        # cur.execute('''UPDATE Combined SET val = ?, systErr = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
-        #             (self.b, self.berr, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'slope', run))
-        # con.commit()
-        # cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'alpha', run))
-        # con.commit()
-        # cur.execute('''UPDATE Combined SET val = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
-        #             (self.c, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'alpha', run))
-        # con.commit()
-        # con.close()
         if print_corr_coeff:
             print('correlation coefficient of a and b is: %.5f' % a_b_correlation_coeff)
+
+        if showplot:
+            # store results to file when showing the plot
+            # (.fit() is called very often without showing the plot when optimitzing self.c(=alpha))
+            with open(os.path.join(self.store_loc, f_name + '_fit_points' + '.txt'), 'w') as king_f:
+                king_f.write('# intercept: %.3f +/- %.3f\n' % (self.a, self.aerr))
+                king_f.write('# slope: %.3f +/- %.3f\n' % (self.b, self.berr))
+                king_f.write('# correlation: %.3f\n' % (a_b_correlation_coeff))
+                king_f.write('# %s\t%s\t%s\t%s\t%s \n' % ('x', 'x_err', 'y', 'y_stat_err', 'y_err_total'))
+                for i, x in enumerate(self.x):
+                    king_f.write('%.5f\t%.5f\t%.5f\t%.5f\t%.5f\n'
+                                 % (x, self.xerr[i], self.y[i], self.yerr[i], self.yerr_total[i]))
+
+            with open(os.path.join(self.store_loc, f_name + '_fit_data' + '.txt'), 'w') as king_f:
+                king_f.write('# intercept: %.3f +/- %.3f\n' % (self.a, self.aerr))
+                king_f.write('# slope: %.3f +/- %.3f\n' % (self.b, self.berr))
+                king_f.write('# correlation: %.3f\n' % (a_b_correlation_coeff))
+                king_f.write('King_fit_x\tKing_fit_y\n')
+                king_f.write('%.5f\t%.5f\n' % (x_king[0], y_king[0]))
+                king_f.write('%.5f\t%.5f\n' % (x_king[1], y_king[1]))
+
 
         return (self.a, self.b, self.aerr, self.berr, a_b_correlation_coeff)
 
@@ -315,6 +322,7 @@ class KingFitter(object):
         (self.c,) = TiTs.select_from_db(self.db, 'val', 'Combined',
                                                   [['parname', 'run'], ['alpha', run]], caller_name=__name__)[0]
         vals = []
+        f_name = 'charge_radii_alpha_%d' % self.c
         if run == -1:
             vals = TiTs.select_from_db(self.db, 'iso, val, statErr, systErr, run', 'Combined', [['parname'], ['shift']],
                                        caller_name=__name__)
@@ -395,6 +403,12 @@ class KingFitter(object):
             for each in errs_to_print:
                 print('%s\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\t%.2f\t%.8f\t%.8f\t%.8f\t%.3E' % each)
 
+            with open(os.path.join(self.store_loc, f_name + '_vals_errs.txt'), 'w') as ch_err_f:
+                ch_err_f.write('#iso\tshift\tshift_stat_err\trel. shift_stat_err\t'
+                      'dr^2\tDelta dr^2\trel. Delta dr^2\tDelta IS\tDelta K\tDelta F\tDelta M\n')
+                for each in errs_to_print:
+                    ch_err_f.write('%s\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\t%.2f\t%.8f\t%.8f\t%.8f\t%.3E\n' % each)
+
         finalVals = {}
         for i,j in enumerate(self.isotopes):
             finalVals[j] = [self.chargeradii[i], self.chargeradiiTotalErrs[i]]
@@ -410,6 +424,7 @@ class KingFitter(object):
                 con.commit()
                 con.close()
         if self.showing:
+
             font_size = self.fontsize
             finalVals[self.ref] = [0, 0, 0]
             keyVals = sorted(finalVals)
@@ -424,9 +439,13 @@ class KingFitter(object):
                 print('%s\t%.3f(%.0f)\t%.1f' % (i, finalVals[i][0], finalVals[i][1] * 1000,
                                                 finalVals[i][1] / max(abs(finalVals[i][0]), 0.000000000000001) * 100))
                 #print("'"+str(i)+"'", ':[', np.round(finalVals[i][0],3), ','+ str(np.round(np.sqrt(finalVals[i][1]**2 + finalVals[i][2]**2),3))+'],')
+            with open(os.path.join(self.store_loc, f_name + '_plot_vals.txt'), 'w') as plot_f:
+                plot_f.write('#mass\tdRcharge2\terrdRcharge2\n')
+                for x_i, y_i, y_i_err in zip(x, y, yerr):
+                    plot_f.write('%d\t%.5f\t%.5f\n' % (x_i, y_i, y_i_err))
 
-            plt.subplots_adjust(bottom=0.2)
-            plt.xticks(rotation=25)
+            # plt.subplots_adjust(bottom=0.2, left=0.19, right=0.97)
+            plt.xticks(rotation=0)
             ax = plt.gca()
             ax.set_ylabel(r'$\delta$ < r'+r'$^2$ > (fm $^2$) ', fontsize=font_size)
             ax.set_xlabel('A', fontsize=font_size)
@@ -448,6 +467,9 @@ class KingFitter(object):
             plt.gcf().set_facecolor('w')
             plt.xticks(fontsize=font_size)
             plt.yticks(fontsize=font_size)
+            plt.tight_layout(True)
+            plt.savefig(os.path.join(self.store_loc, f_name + '.pdf'))
+            plt.savefig(os.path.join(self.store_loc, f_name + '.png'))
             plt.show()
 
         return finalVals
@@ -516,6 +538,7 @@ class KingFitter(object):
                 self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
             else:
                 self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total errorself.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
+                self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total errorself.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
             self.x_origin.append(self.litvals[i][0])
             self.xerr.append(self.litvals[i][1])
 

@@ -10,11 +10,11 @@ import ast
 import logging
 import os
 import sqlite3
+import datetime
 
 import numpy as np
 
 import Physics
-import Tools
 import TildaTools
 from Measurement.SpecData import SpecData
 
@@ -59,7 +59,9 @@ class XMLImporter(SpecData):
         self.nrTracks = scandict['isotopeData']['nOfTracks']
 
         self.laserFreq, self.laserFreq_d = Physics.freqFromWavenumber(2 * scandict['isotopeData']['laserFreq']), 0.0
-        self.date = scandict['isotopeData']['isotopeStartTime']
+        self.date = scandict['isotopeData']['isotopeStartTime']  # might be overwritten below by the mid time of the iso
+        self.date_d = 0.0  # uncertainty of the date in s might be overwritten
+        # at the end of tracks readout should be file_length / 2
         self.type = scandict['isotopeData']['isotope']
         self.seq_type = scandict['isotopeData']['type']
         self.version = scandict['isotopeData']['version']
@@ -258,6 +260,8 @@ class XMLImporter(SpecData):
                     err.append(dmm_volt_array[ind] * read_acc + range_acc)
                 self.err.append(err)
 
+        self.convert_date_to_mid_time()
+
         self.laserFreq, self.laserFreq_d = self.get_frequency_measurement(path, self.tritonPars)
         logging.info('%s was successfully imported' % self.file)
 
@@ -291,9 +295,9 @@ class XMLImporter(SpecData):
                     logging.info('setting voltage divider ratio to 1 !')
                     self.voltDivRatio = {'offset': 1.0, 'accVolt': 1.0}
                 for tr_ind, track in enumerate(self.x):
-                    self.x[tr_ind] = Tools.line_to_total_volt(self.x[tr_ind], self.lineMult, self.lineOffset,
-                                                              self.offset[tr_ind], self.accVolt, self.voltDivRatio,
-                                                              offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])
+                    self.x[tr_ind] = TildaTools.line_to_total_volt(self.x[tr_ind], self.lineMult, self.lineOffset,
+                                                                   self.offset[tr_ind], self.accVolt, self.voltDivRatio,
+                                                                   offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])
                 self.norming()
                 self.x_units = self.x_units_enums.total_volts
             elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
@@ -326,14 +330,19 @@ class XMLImporter(SpecData):
 
     def export(self, db):
         try:
+            self.convert_date_to_mid_time()
             con = sqlite3.connect(db)
             col = 1 if self.col else 0
             with con:
+                # print('exporting:')
+                # print((self.date, self.type, str(self.offset),
+                #        self.laserFreq, col, self.accVolt, self.laserFreq_d,
+                #        self.file, self.date_d))
                 con.execute('''UPDATE Files SET date = ?, type = ?, offset = ?,
-                                laserFreq = ?, colDirTrue = ?, accVolt = ?, laserFreq_d = ?
+                                laserFreq = ?, colDirTrue = ?, accVolt = ?, laserFreq_d = ?, errDateInS = ?
                                  WHERE file = ?''',
                             (self.date, self.type, str(self.offset),
-                             self.laserFreq, col, self.accVolt, self.laserFreq_d,
+                             self.laserFreq, col, self.accVolt, self.laserFreq_d, self.date_d,
                              self.file))
             con.close()
         except Exception as e:
@@ -573,7 +582,39 @@ class XMLImporter(SpecData):
 
         return laser_freq, laser_freq_d
 
+    def convert_date_to_mid_time(self):
+        """
+        try to get the mid time of the file and overwrite self.date with this mid time
+        self.date_d will be half the length of the whole file.
+        If this fails, self.date will not be overwritten and self.date_d will be zero
+        :return: None
+        """
+        work_time_flat_date_time = []
+        time_format = '%Y-%m-%d %H:%M:%S'
 
+        if self.working_time is not None:
+            if None not in self.working_time:
+                # TildaTools.create_scan_dict_from_spec_data initialises
+                # the working_time with a list of [None] * nrTracks
+                try:
+                    work_time_flat_date_time = [datetime.datetime.strptime(w_time_str, time_format)
+                                                for tr_work_t_list in self.working_time
+                                                for w_time_str in tr_work_t_list]
+                except Exception as e:
+                    logging.warning('could not convert the working time time stamps to a common'
+                                    ' mid time in file %s.\nThe working times are: %s'
+                                    '\nerror message is: %s' % (self.file, str(self.working_time), e))
+                if len(work_time_flat_date_time) > 1:
+                    work_time_flat_date_time_float = [work_t_dt.timestamp() for work_t_dt in work_time_flat_date_time]
+                    iso_start_t = np.min(work_time_flat_date_time_float)
+                    iso_stop_t = np.max(work_time_flat_date_time_float)
+                    diff = iso_stop_t - iso_start_t
+                    err_date = diff / 2
+                    mid_iso_t = iso_start_t + err_date
+                    mid_iso_t_dt = datetime.datetime.fromtimestamp(mid_iso_t)
+                    mid_iso_t_dt_str = mid_iso_t_dt.strftime(time_format)
+                    self.date = mid_iso_t_dt_str
+                    self.date_d = err_date  # in seconds
 
 
 
@@ -592,5 +633,5 @@ if __name__ == '__main__':
     # meas = XMLImporter('E:\\temp2\\data\\137Ba_acol_cs_run511.xml')
     meas = XMLImporter(
         'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel'
-        '\\Measurement_and_Analysis_Simon\\Ni_workspace\\TiPaData\\Ni_tipa_024.xml')
-    print(meas.laserFreq)
+        '\\Measurement_and_Analysis_Simon\\Ni_workspace2017\\Ni_2017\\sums\\70_Ni_trs_run268_plus_run312.xml')
+    print(meas.date, meas.date_d)

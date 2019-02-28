@@ -113,7 +113,37 @@ def gaussian(x, mu, sig, amp):
     :param sig:
     :return:
     """
-    return amp/(sig * math.sqrt(2 * math.pi)) * math.exp(-0.5 * ((x - mu) / sig) ** 2)
+    return amp/(sig * np.sqrt(2 * math.pi)) * np.exp(-0.5 * ((x - mu) / sig) ** 2)
+
+
+def gaussian_offset(x, mu, sig, amp, off):
+    """
+    same as gaussian but adds offset with slope = 0
+    :param x:
+    :param mu:
+    :param sig:
+    :param amp:
+    :param off:
+    :return:
+    """
+    return gaussian(x, mu, sig, amp) + off
+
+
+def asymmetric_gaussian(x, mu, sig, amp, off, skew):
+    """
+    normal distribution exponentially modified
+    :param x:
+    :param mu:
+    :param sig:
+    :param amp:
+    :param off:
+    :param skew:
+    :return:
+    """
+    return amp * skew / 2 * np.exp(
+        skew / 2 * (2 * mu + skew * (sig ** 2) - 2 * x)) * special.erfc(
+        (mu + skew * (sig ** 2) - x) / (np.sqrt(2) * sig)) + off
+
 
 def transit(x, t):
     """

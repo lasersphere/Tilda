@@ -7,13 +7,10 @@ Module Description: Module to compare and store the offsets from 2017 and 2017
 """
 
 import os
-import sys
 import numpy as np
-import ast
-from PyQt5 import QtWidgets
 
 import Analyzer as Anal
-
+from TildaTools import get_file_numbers
 
 ''' working directory: '''
 
@@ -103,82 +100,6 @@ isotopes2016.remove('60_Ni')
 odd_isotopes2016 = [iso for iso in isotopes2016 if int(iso[:2]) % 2]
 
 """ get file numbers: """
-
-
-def get_file_number_from_file_str(file_str, mass_index, end_result_len, app=None):
-    numbers = []
-    number_str = ''
-    for i, letter in enumerate(file_str):
-        if letter.isdigit():  # is either 0-9
-            number_str += letter
-        else:  # not a digit
-            if number_str.isdigit():  # convert the consecutive number
-                numbers += [number_str]
-            number_str = ''  # reset number str
-    if isinstance(mass_index, list):
-        # [0] etc. .
-        numbers = [val for n, val in enumerate(numbers) if n not in mass_index]
-    if end_result_len > 0:
-        # user want to check if the correct amount of integers is found
-        if len(numbers) != end_result_len:
-            # does not match, require user input!
-            print('warning: ')
-            print('file', file_str, 'nums', numbers)
-            if app is None:
-                app = QtWidgets.QApplication(sys.argv)
-
-            print('opening dial:')
-            text, ok_pressed = QtWidgets.QInputDialog.getText(None, 'Warning',
-                                                              '%s has more or less than %s numbers: %s \n'
-                                                              ' please write the desired file number(s) here'
-                                                              'still as a list of strings please!:' %
-                                                              (file_str, end_result_len, numbers),
-                                                              QtWidgets.QLineEdit.Normal,
-                                                              str(numbers)
-                                                              )
-            if ok_pressed:
-                try:
-                    numbers = ast.literal_eval(text)
-                except Exception as e:
-                    print('could not convert %s, error is: %s' % (text, e))
-            # make sure it has the right length in the end!
-            if len(numbers) > end_result_len:
-                numbers = numbers[:end_result_len]
-                print('warning, still incorrect amount of numbers! Will use %s fo file: %s' % (numbers, file_str))
-            elif len(numbers) < end_result_len:
-                numbers = numbers * (end_result_len // len(numbers) + 1)
-                numbers = numbers[:end_result_len]
-                print('warning, still incorrect amount of numbers! Will use %s fo file: %s' % (numbers, file_str))
-    return numbers, app
-
-
-def get_file_numbers(file_list, mass_index=[0], end_result_len=1, app=None, user_overwrite={}):
-    """
-    get all file numbers (=conescutive integer numbers)
-    in the filenames that are listed in file_list.
-    :param file_list: list, like  ['62_Ni_trs_run071.xml', ...]
-    :param mass_index: list, indice of all expected mass numbers, that will be removed from the output.
-    if the mass number is wanted -> use mass_index=[-1]
-    for 62_Ni_trs_run071.xml
-     -> mass_index=[0] -> [[71]]
-     -> mass_index=None -> [[62, 71]]
-     :param end_result_len: int, desired amount of numbers to be found, as a cross check.
-     use -1/0 if you don't care
-     :param user_overwrite: dict, key is orig. filenum, value is str that will be put as file_num_str
-     e.g.  {'60_Ni_trs_run113_sum114.xml': ['113+114']}
-     helpful to avoid user input on runtime
-    :return: list of all file numbers each still as string, that might be convertable to int,
-     but can also be something like '123+124' by user choice.
-    """
-    file_nums = []
-    for f in file_list:
-        if f in user_overwrite.keys():
-            file_nums += user_overwrite[f]
-        else:
-            file_num, app = get_file_number_from_file_str(f, mass_index, end_result_len, app)
-            file_nums += file_num
-    return file_nums
-
 
 """ compare them """
 

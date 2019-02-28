@@ -12,7 +12,8 @@ from datetime import datetime
 
 
 import numpy as np
-import Tools
+
+import TildaTools
 
 from Measurement.SpecData import SpecData
 
@@ -90,8 +91,8 @@ class BeaImporter(SpecData):
             self.voltDivRatio = {'accVolt': 1, 'offset': 1}
             print('using now: %s' % self.voltDivRatio)
         for trackindex, tracks in enumerate(self.x):
-            self.x[trackindex] = Tools.line_to_total_volt(self.x[trackindex], self.lineMult, self.lineOffset,
-                                                          self.offset, self.accVolt, self.voltDivRatio)
+            self.x[trackindex] = TildaTools.line_to_total_volt(self.x[trackindex], self.lineMult, self.lineOffset,
+                                                               self.offset, self.accVolt, self.voltDivRatio)
 
       
     def dimension(self, path):

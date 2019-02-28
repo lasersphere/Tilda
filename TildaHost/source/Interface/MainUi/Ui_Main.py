@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_TildaMainWindow(object):
     def setupUi(self, TildaMainWindow):
         TildaMainWindow.setObjectName("TildaMainWindow")
-        TildaMainWindow.resize(548, 247)
+        TildaMainWindow.resize(548, 252)
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap("../icons/Tilda256.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         TildaMainWindow.setWindowIcon(icon)
@@ -143,6 +143,8 @@ class Ui_TildaMainWindow(object):
         self.actionShow_scan_finished_win.setObjectName("actionShow_scan_finished_win")
         self.actionPre_scan_timeout = QtWidgets.QAction(TildaMainWindow)
         self.actionPre_scan_timeout.setObjectName("actionPre_scan_timeout")
+        self.actionJob_Stacker = QtWidgets.QAction(TildaMainWindow)
+        self.actionJob_Stacker.setObjectName("actionJob_Stacker")
         self.menuTilda_MainWindow.addAction(self.actionWorking_directory)
         self.menuTilda_MainWindow.addAction(self.actionLoad_spectra)
         self.menuView.addAction(self.actionScan_Control)
@@ -152,6 +154,7 @@ class Ui_TildaMainWindow(object):
         self.menuView.addAction(self.actionPulse_pattern_generator)
         self.menuView.addAction(self.actionPost_acceleration_power_supply_control)
         self.menuView.addAction(self.actionDigital_Multimeters)
+        self.menuView.addAction(self.actionJob_Stacker)
         self.menuHelp.addAction(self.actionVersion)
         self.menuConfigure.addAction(self.actionShow_scan_finished_win)
         self.menuConfigure.addAction(self.actionPre_scan_timeout)
@@ -226,4 +229,7 @@ class Ui_TildaMainWindow(object):
         self.actionPulse_pattern_generator.setShortcut(_translate("TildaMainWindow", "Ctrl+G"))
         self.actionShow_scan_finished_win.setText(_translate("TildaMainWindow", "show scan finished win"))
         self.actionPre_scan_timeout.setText(_translate("TildaMainWindow", "pre scan timeout"))
+        self.actionJob_Stacker.setText(_translate("TildaMainWindow", "Job Stacker"))
+        self.actionJob_Stacker.setToolTip(_translate("TildaMainWindow", "Job Stacker, Ctrl+J"))
+        self.actionJob_Stacker.setShortcut(_translate("TildaMainWindow", "Ctrl+J"))
 

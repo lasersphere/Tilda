@@ -151,7 +151,8 @@ if __name__=='__main__':
     triton_obj = TritonObject()
     from Driver.TritonListener.DummyTritonDevice import DummyTritonDevice
     dummy_dev = DummyTritonDevice('dummyDev')
-    triton_obj.subscribe(str(dummy_dev.uri))
+    print('dummy_dev.uri', dummy_dev.uri)
+    triton_obj.subscribe('dummyDev', str(dummy_dev.uri))
     dummy_dev.setInterval(1)
     input('anykey to stop')
     triton_obj._stop()

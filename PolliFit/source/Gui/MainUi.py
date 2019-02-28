@@ -47,7 +47,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.openDb(db_path)
         self.show()
 
-    def openDb(self, db_path = ''):
+    def openDb(self, db_path=''):
         # print(db_path)
         if not os.path.isfile(db_path):
             file, end = QtWidgets.QFileDialog.getSaveFileName(

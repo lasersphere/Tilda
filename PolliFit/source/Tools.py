@@ -94,10 +94,12 @@ def centerPlot(db, isoL, linevar = '', width = 1e6):
     plt.show()
     
 
-def crawl(db, crawl = '.', rec = True):
+def crawl(db, crawl='.', rec=True, add_miss_cols=True):
     '''Crawl the path and add all measurement files to the database, recursively if requested'''
     projectPath, dbname = os.path.split(db)
     print("Crawling", projectPath)
+    if add_miss_cols:
+        add_missing_columns(db)
     oldPath = os.getcwd()
     
     os.chdir(projectPath)
@@ -217,6 +219,7 @@ def createDB(db):
     file TEXT PRIMARY KEY NOT NULL,
     filePath TEXT UNIQUE NOT NULL,
     date DATE,
+    errDateInS FLOAT,
     type TEXT,
     line TEXT,
     offset FLOAT,
@@ -321,18 +324,20 @@ def add_missing_columns(db):
             (0, 'file', 'TEXT', 1, '""', 1),
             (1, 'filePath', 'TEXT', 1, '""', 0),
             (2, 'date', 'DATE', 0, '""', 0),
-            (3, 'type', 'TEXT', 0, '""', 0),
-            (4, 'line', 'TEXT', 0, '""', 0),
-            (5, 'offset', 'FLOAT', 0, '[]', 0),
-            (6, 'accVolt', 'FLOAT', 0, '0', 0),
-            (7, 'laserFreq', 'FLOAT', 0, '0', 0),
-            (8, 'laserFreq_d', 'FLOAT', 0, '0', 0),
-            (9, 'colDirTrue', 'BOOL', 0, 'NULL', 0),
-            (10, 'voltDivRatio', 'TEXT', 0, '""', 0),
-            (11, 'lineMult', 'FLOAT', 0, '0', 0),
-            (12, 'lineOffset', 'FLOAT', 0, '0', 0),
+            (3, 'errDateInS', 'FLOAT', 0, '0', 0),
+            (4, 'type', 'TEXT', 0, '""', 0),
+            (5, 'line', 'TEXT', 0, '""', 0),
+            (6, 'offset', 'FLOAT', 0, '[]', 0),
+            (7, 'accVolt', 'FLOAT', 0, '0', 0),
+            (8, 'laserFreq', 'FLOAT', 0, '0', 0),
+            (9, 'laserFreq_d', 'FLOAT', 0, '0', 0),
+            (10, 'colDirTrue', 'BOOL', 0, 'NULL', 0),
+            (11, 'voltDivRatio', 'TEXT', 0, '""', 0),
+            (12, 'lineMult', 'FLOAT', 0, '0', 0),
+            (13, 'lineOffset', 'FLOAT', 0, '0', 0)
         ]
     }
+    print('adding missing columns to db %s ' % db)
     for table_name, target_cols in cols.items():
         con = sqlite3.connect(db)
         cur = con.cursor()
@@ -341,7 +346,7 @@ def add_missing_columns(db):
         # for each in exist_cols:
         #     print(each, ',')
         cols_name_flat = [each[1] for each in exist_cols]
-        print('flat cols of %s : %s ' % (table_name, cols_name_flat))
+        # print('flat cols of %s : %s ' % (table_name, cols_name_flat))
         for each in target_cols:
             if each[1] not in cols_name_flat:
                 print('column %s in table %s was not yet in db, adding now.' % (each[1], table_name))
@@ -531,21 +536,6 @@ def create_header_list(meas, sc, tr):
     header.append('###### end of header + 1 line column names ######')
     return header
 
-def line_to_total_volt(x, lineMult, lineOffset, offset, accVolt, voltDivRatio, offset_by_dev_mean={}):
-    '''Converts an DAC line voltage array x to a total voltage array depending on the conversion coefficients'''
-    if isinstance(voltDivRatio['offset'], float):  # just one number
-        scanvolt = (x * lineMult + lineOffset) * voltDivRatio.get('lineMult', voltDivRatio['offset']) \
-                   + offset * voltDivRatio['offset']
-    else: # offset measured by different devices. Offset is then calculated by different voltDivRatio values.
-        vals = list(voltDivRatio['offset'].values())
-        mean_offset_div_ratio = np.mean(vals)
-        # treat each offset with its own divider ratio
-        # x axis is multiplied by mean divider ratio value anyhow, similiar to kepco scans
-
-        mean_offset = np.mean([val * offset_by_dev_mean.get(key, offset) for key, val in voltDivRatio['offset'].items()])
-        scanvolt = (lineMult * x + lineOffset) * voltDivRatio.get('lineMult', mean_offset_div_ratio) + mean_offset
-
-    return accVolt*voltDivRatio['accVolt'] - scanvolt
 
 if __name__ == '__main__':
     workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
