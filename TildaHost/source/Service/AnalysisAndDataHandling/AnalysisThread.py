@@ -129,12 +129,12 @@ class AnalysisThread(QThread):
                 if elapsed_feed_ms >= self.max_analysis_time_ms:
                     self.max_analysis_time_ms = elapsed_feed_ms
                     self.max_data_points = eles_to_anal
-                logging.debug('Analyzing %d data points took %.1f ms, total number of analyzed elements %d'
-                              ' maximum analysis time was %.1f ms for %d datapoints. '
-                              'Currently %d datapoints are still in storage and waiting for analysis.'
-                              % (eles_to_anal, elapsed_feed_ms, self.num_of_analysed_elements_total,
-                                 self.max_analysis_time_ms, self.max_data_points,
-                                 data_pts_in_storage))
+                # logging.debug('Analyzing %d data points took %.1f ms, total number of analyzed elements %d'
+                #               ' maximum analysis time was %.1f ms for %d datapoints. '
+                #               'Currently %d datapoints are still in storage and waiting for analysis.'
+                #               % (eles_to_anal, elapsed_feed_ms, self.num_of_analysed_elements_total,
+                #                  self.max_analysis_time_ms, self.max_data_points,
+                #                  data_pts_in_storage))
                 # self.sleep(1)  # simulate feed
                 # print('number of total analysed data: %s ' % self.num_of_analysed_elements_total)
             if any(self.dmm_dict_list) or any(self.dmm_dict_merge) or any(self.triton_dict_merge):

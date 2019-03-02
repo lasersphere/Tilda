@@ -4,7 +4,8 @@ Created on
 @author: simkaufm
 
 Module Description:
-    copied from Triton 27.02.19 Git Revision number: bd4d7fceb11d6338a6ecd9cdd4ec02069b8353c1
+    copied from Triton 01.03.19 Git Revision number: 74e28f9804a8d2a27f2f53aa8c0671cd6dc804e4
+
     If changes are made within Triton maybe a copy is needed again.
     Required modifications for Tilda are marked with a comment  # changed!
 """
@@ -17,18 +18,19 @@ import logging, time
 import Pyro4
 
 from Driver.TritonListener.TritonObject import TritonObject  # changed!
+from Driver.TritonListener.TritonDraftConfig import sqlCfg as sqlConf  # changed!
 
 
 class DeviceBase(TritonObject):
-    """
+    '''
     Base Device class for the Triton control system.
-    """
+    '''
 
-    def __init__(self, name):
+    def __init__(self, name, sql_conf=sqlConf):
         '''
         Set up the device and calls self.on() for device specific construction
         '''
-        super(DeviceBase, self).__init__()
+        super(DeviceBase, self).__init__(sql_conf)
 
         self.name = name
         self._thread = None
@@ -42,7 +44,7 @@ class DeviceBase(TritonObject):
 
         self.dbCur_execute("SELECT deviceType, uri, config FROM devices WHERE deviceName=%s", (self.name,))
 
-        db = self.dbCur_fetchone()
+        db = self.dbCur_fetchone(local_ret_val=(self.type, None, str(self._cfg)))
 
         if db[1] != None:
             logging.warning(self.name + ' already exists! Overwriting.')
@@ -128,6 +130,9 @@ class DeviceBase(TritonObject):
     def connectionLost(self):
         pass
 
+    def return_name(self):
+        return self.name
+
     """Saving settings"""
 
     def saveStg(self, comment=''):
@@ -163,7 +168,7 @@ class DeviceBase(TritonObject):
         '''The periodic logic'''
         while self._interval > 0.0:
             startTime = time.time()
-            self.periodic()
+            self._periodic()
             diff = round(time.time() - startTime, 1)
             logging.debug('processing time: ' + str(diff))
             if diff > self._interval and self._interval != 0:
@@ -172,6 +177,11 @@ class DeviceBase(TritonObject):
             if self._timer.wait(abs(self._interval - diff)):
                 self._timer.clear()
         self._thread = None
+
+    def _periodic(self):
+        """ wrapper for periodic since here maybe default operations
+         before periodic execution will be implemented, see ScanDeviceBase.py """
+        self.periodic()
 
     def setInterval(self, t):
         '''Set the interval. Start or stop periodic thread as necessary'''

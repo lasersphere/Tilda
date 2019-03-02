@@ -27,6 +27,7 @@ import Service.Scan.draftScanParameters as DftScan
 import TildaTools as TiTs
 import XmlOperations as XmlOps
 from Driver.TritonListener.TritonListener import TritonListener as TritonListener
+from Driver.TritonListener.TritonScanDevControl import TritonScanDevControl
 from Service.AnalysisAndDataHandling.AnalysisThread import AnalysisThread as AnalThr
 
 
@@ -66,8 +67,14 @@ class ScanMain(QObject):
         self.ground_warning_win = None
 
         # self.triton_listener = None
-        self.triton_listener = TritonListener()
+        self.triton_listener_name = 'TildaTritonListener'
+        self.triton_listener = TritonListener(self.triton_listener_name)
         self.triton_pre_scan_done = False  # bool to use when pre/during/post scan measurement of triton is completed
+
+        self.triton_scan_controller_name = 'TildaTritonScanControl'
+        self.triton_scan_controller = None
+        self.triton_scan_controller = TritonScanDevControl(self.triton_scan_controller_name)
+        # only initialise on scan?!
 
         # needed to prevent emitting of pyqtsignals every 50 ms
         self.incoming_raw_data_storage = np.zeros(0, dtype=np.int32)
@@ -922,7 +929,7 @@ class ScanMain(QObject):
         logging.debug('preparing TRITON Listener for %s measurement. Config dict is: %s'
                       % (pre_post_scan_str, triton_scan_dict.get(pre_post_scan_str, {})))
         if self.triton_listener is None:
-            self.triton_listener = TritonListener()
+            self.triton_listener = TritonListener(self.triton_listener_name)
         if self.triton_listener.logging:
             self.triton_listener.stop_log()
         self.triton_listener.setup_log(triton_scan_dict.get(pre_post_scan_str, {}), pre_post_scan_str, track_name)
@@ -932,10 +939,10 @@ class ScanMain(QObject):
         remove the triton listener and unsubscribe from devices.
         """
         if self.triton_listener is not None:
-            self.triton_listener.off(stop_dummy_dev)
+            self.triton_listener._stop()
             self.triton_listener = None
         if restart:
-            self.triton_listener = TritonListener()
+            self.triton_listener = TritonListener(self.triton_listener_name)
 
     def abort_triton_log(self):
         """ this just stops the log and leaves the listener alive """

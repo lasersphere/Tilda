@@ -4,11 +4,11 @@ Created on
 @author: simkaufm
 
 Module Description:
+    This module is obsolete and has just been kept for copying to the new TritonListener.py
+
     The idea of this module is to be able to connect to a running Triton device somewhere within the network
     and listen to this device. The module will listen to the device prescan, (during) and after scan.
 
-    Update 01.03.2019:
-        modified TritonListener in order to look exactly like a normal Triton device plus bonus features.
 """
 import ast
 import logging
@@ -25,22 +25,31 @@ from PyQt5.QtCore import QObject, pyqtSignal
 
 import Application.Config as Cfg
 from Driver.TritonListener.DummyTritonDevice import DummyTritonDevice
-from Driver.TritonListener.TritonDeviceBase import DeviceBase
+from Driver.TritonListener.TritonObject import TritonObject
 import TildaTools as TiTs
 
 
-class TritonListener(DeviceBase, QObject):
+class TritonListener(TritonObject, QObject):
     # signal to emit dmm values for live plotting during the pre/post scans.
     # is also used for triton values in TritonListener
     pre_post_meas_data_dict_callback = pyqtSignal(dict)
     # signal to emit data to the pipeLine
     data_to_pipe_sig = pyqtSignal(np.ndarray, dict)
 
-    def on(self, cfg):
+    def __init__(self, name='TritonListener'):
         """
-        setting necessary attributes, cfg comes from db
+        :parameter name: str, name of this class
+        :parameter sql_cfg: dict, dictionary
         """
-        self.type = 'TildaTritonListener'
+        try:
+            from Driver.TritonListener.TritonConfig import sqlCfg, hmacKey
+        except ImportError as e:
+            from Driver.TritonListener.TritonDraftConfig import sqlCfg, hmacKey
+            logging.error('error, while loading Triton config from Driver.TritonListener.TritonConfig : %s'
+                          '\n will use default (Driver.TritonListener.TritonDraftConfig) and dummy mode now!' % e,
+                          exc_info=True)
+        self.setup_pyro(hmacKey)
+        super(TritonListener, self).__init__(name, sqlCfg)
 
         self.dummy_dev = None
 
@@ -59,7 +68,6 @@ class TritonListener(DeviceBase, QObject):
         self.track_name = 'track0'
 
     def create_dummy_dev(self, name='dummyDev'):
-        """ create a dummy device so the listener can connect to it and log it's values """
         self.dummy_dev = DummyTritonDevice(name)
         # self.subscribe(str(self.dummy_dev.uri))
         self.dummy_dev.setInterval(1)
@@ -74,11 +82,23 @@ class TritonListener(DeviceBase, QObject):
         channels = ['calls', 'random']
         logging.debug('getting channels of dev %s' % str(dev))
 
-        if self.db != 'local':
-            self.dbCur_execute('''SELECT devicetypes.channels FROM devices JOIN devicetypes ON
-                    devicetypes.deviceType = devices.deviceType WHERE devices.deviceName = %s''', (str(dev),))
+        try:
+            db = Sql.connect(**self.sql_config)
+            dbCur = db.cursor()
+            logging.info('connecting to db: %s at ip: %s' % (self.sql_config.get('database', 'unknown'),
+                                                             self.sql_config.get('host', 'unknown')))
+        except Exception as e:
+            logging.error('error, TritonObject Could not connect to db, error is: %s' % e)
+            db = None
+            dbCur = None
+
+        if dbCur is not None:
+            dbCur.execute(
+                '''SELECT devicetypes.channels FROM devices JOIN devicetypes ON
+                    devicetypes.deviceType = devices.deviceType WHERE devices.deviceName = %s''',
+                (str(dev),))
             try:
-                ret = self.dbCur_fetchone()
+                ret = dbCur.fetchone()
                 if ret is None:
                     return ['None']
                 channels = ast.literal_eval(ret[0])
@@ -86,6 +106,7 @@ class TritonListener(DeviceBase, QObject):
                 logging.error(
                     'error in converting list of channels %s from dev %s, error message is: %s' % (ret, dev, e),
                     exc_info=True)
+            db.close()
         logging.debug('available channels of dev %s are: %s ' % (str(dev), str(channels)))
         return channels
 
@@ -96,12 +117,21 @@ class TritonListener(DeviceBase, QObject):
         :return: dict, {dev: ['ch1', 'ch2' ...]}
         """
         devs = {}
-
-        if self.db != 'local':
-            self.dbCur_execute('''SELECT deviceName FROM devices WHERE uri IS NOT NULL''', None)
-            res = self.dbCur_fetchall()
+        try:
+            db = Sql.connect(**self.sql_config)
+            dbCur = db.cursor()
+            logging.info('connecting to db: %s at ip: %s' % (self.sql_config.get('database', 'unknown'),
+                                                             self.sql_config.get('host', 'unknown')))
+        except Exception as e:
+            logging.error('error, TritonObject Could not connect to db, error is: %s' % e)
+            db = None
+            dbCur = None
+        if dbCur is not None:
+            dbCur.execute('''SELECT deviceName FROM devices WHERE uri IS NOT NULL''')
+            res = dbCur.fetchall()
             for dev in res:
                 devs[dev[0]] = self.get_channels_of_dev(dev[0])
+            db.close()
         else:
             logging.warning('no db connection, returning local dummyDev!')
             devs['dummyDev'] = self.get_channels_of_dev('dummyDev')
@@ -168,6 +198,17 @@ class TritonListener(DeviceBase, QObject):
 
     def receive(self, dev, t, ch, val):
         """
+
+        :param dev:
+        :param t:
+        :param ch:
+        :param val:
+        :return:
+        """
+        print(dev, t, ch, val)
+
+    def _receive(self, dev, t, ch, val):
+        """
         overwrites the _receive class of the TritonObject.
         Is called by all subscribed devices, when they send a value over pyro.
         :param dev: str, name of dev that is sending
@@ -233,6 +274,9 @@ class TritonListener(DeviceBase, QObject):
         if check_sum == 0:
             logging.info('TritonListener: logging complete')
             self.logging_complete = True
+            # for dev, dev_log in self.log.items():
+            #     for ch, val in dev_log.items():
+            #         val['acquired'] = len(val['data'])
             logging.debug('TritonListener self.log after completion: %s' % str(self.log))
             self.stop_log()
             return True
@@ -243,6 +287,9 @@ class TritonListener(DeviceBase, QObject):
         """ start logging of the desired channels and devs.
          Be sure to setup the log before hand with self.setup_log """
         self.logging_complete = self.log == {}
+        # for dev, dev_dict in self.log.items():
+        #     for ch, ch_dict in dev_dict.items():
+        #         ch_dict['acquired'] = 0
         logging.debug('log before start: %s' % str(self.log))
         self.logging = True
 
@@ -253,10 +300,25 @@ class TritonListener(DeviceBase, QObject):
     def off(self, stop_dummy_dev=True):
         """ unsubscribe from all devs and stop the dummy device if this was started. """
         self.stop_log()
+        self._stop()
         # If there is a dummy_dev stop it, except if we only want to reset the pipeline.
         if self.dummy_dev is not None and stop_dummy_dev:
             self.dummy_dev._stop()
             self.dummy_dev = None
+
+    def setup_pyro(self, hmackey):
+        """
+          Set Pyro variables
+        :param hmackey: bytes, hmackkey, e.g. b'6\x19\n\xad\x909\xda\xea\xb5\xc5]\xbc\xa1m\x863'
+        :return:
+        """
+        Pyro4.config.SERIALIZER = "serpent"
+        Pyro4.config.HMAC_KEY = hmackey
+        Pyro4.config.HOST = socket.gethostbyname(socket.gethostname())
+        # Pyro4.config.SERVERTYPE = 'multiplex'
+        Pyro4.config.SERVERTYPE = 'thread'
+        sys.excepthook = Pyro4.util.excepthook
+        # Pyro4.config.DETAILED_TRACEBACK = True
 
     def get_receivers(self):
         return list(sorted(self._recFrom.keys()))
@@ -287,18 +349,16 @@ if __name__ == '__main__':
     app_log.info('****************************** starting ******************************')
     app_log.info('Log level set to DEBUG')
 
-    trit_lis = TritonListener('TritonListener1', 'local')
+    trit_lis = TritonListener()
     rec_cl = recever_class_dummy(trit_lis.data_to_pipe_sig)  # why does this not work?? ok needs qapp
 
     trit_lis.create_dummy_dev()
     # trit_lis.setup_log({'DummyPS': {'current': {'required': 50, 'data': []}}}, 'track0')
     trit_lis.setup_log({'dummyDev': {'calls': {'required': -1, 'data': [], 'acquired': 0},
                                      'random': {'required': -1, 'data': [], 'acquired': 0}}}, 'duringScan', 'track0')
-    # trit_lis.setup_log({'dummyDev': {'calls': {'required': 5, 'data': [], 'acquired': 0},
-    #                                  'random': {'required': 2, 'data': [], 'acquired': 0}}}, 'preScan', 'track0')
     # trit_lis.setup_log({})
     trit_lis.start_log()
-    trit_lis.send('out', 'test')
+    trit_lis.send('info', 'test')
     # input('anything to stop')
     # trit_lis.start_log()
     # input('anything to stop')
@@ -308,4 +368,4 @@ if __name__ == '__main__':
         pass
     print(trit_lis.log)
     TiTs.print_dict_pretty(trit_lis.log)
-    trit_lis._stop()
+    trit_lis.off()
