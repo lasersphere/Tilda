@@ -57,9 +57,6 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
     # when the scan device has set a new step, it will emit a dictionary
     # dict, see self.receive() -> 'scanProgress'
     scan_dev_has_set_a_new_step_pyqtsig = pyqtSignal(dict)
-    # signal to emit data to the pipeLine
-    # will be overwritten if main exists in self.get_existing_callbacks_from_main()
-    data_to_pipe_sig = pyqtSignal(np.ndarray, dict)
 
     ''' Device standard functions, do not delete! on, off, periodic, receive, load, emit'''
     '''Called when added'''
@@ -89,6 +86,10 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
         self._request_next_step_from_scan_dev = False
 
     '''Called when removed'''
+
+    def deinit_scan_dev(self):
+        """ overwrite from mother class """
+        self._stop()
 
     def off(self):
         """ called on _stop() """
@@ -120,11 +121,14 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
             'stepSize': self.sc_stepsize,
             'stepNums': self.sc_num_of_steps,
             'valsArrrayOneScan': self.sc_one_scan_vals}
-        ch: scanProgress, val: dict, {
+        ch: scanProgress, val: dict,
+            {
             'curStep': self.sc_l_cur_step,
             'curScan': self.sc_l_cur_scan,
+            'percentOfScan': self.sc_l_perc_compl,
             'curStepVal': self.sc_one_scan_vals[self.sc_l_cur_step],
-            'scanStatus': self.scan_status}
+            'scanStatus': self.scan_status
+        }
         ch: devPars, val: dict, {
             'step_size_min_max': (self.dev_min_step_size, self.dev_max_step_size),
             'set_val_min_max': (self.dev_min_val, self.dev_max_val),
@@ -251,8 +255,6 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
         """
         self.scan_prog_dict = scan_progress_dict
         self.scan_dev_has_set_a_new_step_pyqtsig.emit(self.scan_prog_dict)
-        dict_to_pipe = {'scanDev': {'name': self.scan_dev_name, 'scanProgress': self.scan_prog_dict}}
-        self.data_to_pipe_sig.emit(np.zeros(0, dtype=np.int32), dict_to_pipe)
 
     def request_next_step(self):
         """
@@ -312,16 +314,6 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
             'postScanSetPoint': None
         }
         return ret
-
-    ''' pyqtsignal related '''
-    def get_existing_callbacks_from_main(self):
-        """ check wether existing callbacks are still around in the main and then connect to those. """
-        if Cfg._main_instance is not None:
-            logging.info('%s is connecting to existing callbacks in main' % self.name)
-            #TODO still adapt this:
-            # callbacks = Cfg._main_instance.gui_live_plot_subscribe()
-            # self.pre_post_meas_data_dict_callback = callbacks[6]
-            self.data_to_pipe_sig = Cfg._main_instance.scan_main.data_to_pipe_sig  # use this signal!
 
 
 # Testing:

@@ -124,7 +124,8 @@ class ScanDeviceBase(DeviceBase):
             'curStep': self.sc_l_cur_step,
             'curScan': self.sc_l_cur_scan,
             'percentOfScan': self.sc_l_perc_compl,
-            'curStepVal': self.sc_one_scan_vals[self.sc_l_cur_step]
+            'curStepVal': self.sc_one_scan_vals[self.sc_l_cur_step],
+            'scanStatus': self.scan_status
         }
         """
         to_send = {

@@ -106,7 +106,7 @@ draft_scan_device = {
     'stepSize': 10,  # in units of stepUnitName
     'preScanSetPoint': None,  # in units of stepUnitName, choose None if nothing should happen
     'postScanSetPoint': None,  # in units of stepUnitName, choose None if nothing should happen
-    'timeout_s': 0.0  # timeout ins seconds after which step setting is accounted as failure due to timeout,
+    'timeout_s': 0.0  # timeout in seconds after which step setting is accounted as failure due to timeout,
     #  0 for never timing out ?
 }
 

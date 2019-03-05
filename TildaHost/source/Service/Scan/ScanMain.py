@@ -25,9 +25,8 @@ import Driver.PostAcceleration.PostAccelerationMain as PostAcc
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as DftScan
 import TildaTools as TiTs
-import XmlOperations as XmlOps
 from Driver.TritonListener.TritonListener import TritonListener as TritonListener
-from Driver.TritonListener.TritonScanDevControl import TritonScanDevControl
+from Driver.ScanDevice.TritonScanDevControl import TritonScanDevControl
 from Service.AnalysisAndDataHandling.AnalysisThread import AnalysisThread as AnalThr
 from Driver.ScanDevice.BaseTildaScanDeviceControl import BaseTildaScanDeviceControl as BaseScDev
 from Driver.ScanDevice.AD5781ScanDevice import AD5781ScanDev
@@ -101,6 +100,7 @@ class ScanMain(QObject):
         self.ppg_deinit(True)
         self.de_init_dmm('all')
         self.stop_triton_listener()
+        self.scan_dev.deinit_scan_dev()
 
     def prepare_scan(self, scan_dict):  # callback_sig=None):
         """
@@ -128,6 +128,7 @@ class ScanMain(QObject):
     def init_analysis_thread(self, scan_dict, callback_sig=None,
                              live_plot_callback_tuples=None, fit_res_dict_callback=None,
                              scan_complete_callback=None):
+        """ initialise the analysis thread in the first track """
         software_trig = False
         for key, track_dict in scan_dict.items():
             # go through all tracks and see if any steps are software triggered in feedback of dmm.
@@ -172,66 +173,6 @@ class ScanMain(QObject):
         self.prepare_dmms_for_scan(dmm_conf_dict)
         self.prepare_triton_listener_for_scan(triton_dict, pre_post_scan_str, act_track_name)
         time.sleep(0.5)  # allow the device to settle for 500 ms
-
-    def select_scan_dev(self, scan_dict, act_track_name):
-        """
-        Load the control module for the selected scan device according to the
-        scanDevice dict in the current track.
-        :param scan_dict: dict, with all scan pars for the current iso, see Service/Scan/draftScanParameters.py:122
-        :param act_track_name: str, name of the active track -> 'track0'
-        :return: None
-        """
-        scan_dev_dict = scan_dict[act_track_name].get('scanDevice', {})
-        if scan_dev_dict != {}:
-            dev_class = scan_dev_dict.get('devClass', None)
-            if dev_class is not None:
-                if dev_class == 'Triton':
-                    self.scan_dev = self.triton_scan_controller
-                    sc_dev_n = scan_dev_dict.get('name', None)
-                    if sc_dev_n is not None:  # Tilda specific
-                        self.scan_dev.subscribe_to_scan_dev(sc_dev_n)
-                elif dev_class == 'DAC':
-                    self.scan_dev = AD5781ScanDev()
-
-    def prepare_scan_dev_for_scan(self, scan_dict, act_track_name):
-        """
-        prepare the previously selected scan device for the scan
-        :param scan_dict: dict, with all scan pars for the current iso, see Service/Scan/draftScanParameters.py:122
-        :param act_track_name: str, name of the active track -> 'track0'
-        :return: None
-        """
-        scan_dev_dict = scan_dict[act_track_name].get('scanDevice', {})
-        if scan_dev_dict != {}:
-            start = scan_dev_dict.get('start', None)
-            stepsize = scan_dev_dict.get('step', None)
-            num_of_steps = scan_dict[act_track_name].get('nOfSteps', None)
-            num_of_scans = scan_dict[act_track_name].get('nOfScans', None)
-            invert_in_odd_scans = scan_dict[act_track_name].get('invertScan', None)
-            self.scan_dev.setup_scan_in_scan_dev(start, stepsize, num_of_steps, num_of_scans, invert_in_odd_scans)
-
-    def set_scan_dev_to_pre_scan(self, scan_dict, act_track_name, pre_post_scan_str):
-        """
-        set the scan dev which is selected in the scan dict for this track to the desired value
-        :param scan_dict: dict, with all scan pars for the current iso, see Service/Scan/draftScanParameters.py:122
-        :param act_track_name: str, name of the active track -> 'track0'
-        :param pre_post_scan_str: str, either 'preScan' / 'duringScan' / 'postScan'
-        :return: None
-        """
-        scan_dev_dict = scan_dict[act_track_name].get('scanDevice', {})
-        if scan_dev_dict != {}:
-            set_point_key = 'preScanSetPoint' if pre_post_scan_str == 'preScan' else 'postScanSetPoint'
-            set_val = scan_dev_dict.get(set_point_key, None)
-            if set_val is not None:  # will be None for DuringScan
-                self.scan_dev.set_pre_scan_masurement_setpoint(set_val)
-        else:
-            logging.warning('warning, could not find scanDevice dict in'
-                            ' the track pars of %s will not set scan device to anything.' % act_track_name)
-
-    def request_next_step_sc_dev_from_sc_main(self):
-        """ request teh scan dev to set the next step.
-        This will tell the pipeline when it is done via a pyqtsignal """
-        # TODO really to pip?
-        self.scan_dev.request_next_step()
 
     def start_pre_scan_measurement(self, scan_dict, act_track_name, pre_post_scan_meas_str='preScan'):
         """
@@ -345,6 +286,88 @@ class ScanMain(QObject):
             return True
         else:  # not complete and not forced
             return False
+
+    ''' scan device related '''
+    # a scan device is the device which is scanned during the acquisition,
+    #  can be something like a DAC or a Laser, etc.
+    def select_scan_dev(self, scan_dict, act_track_name):
+        """
+        Load the control module for the selected scan device according to the
+        scanDevice dict in the current track.
+        :param scan_dict: dict, with all scan pars for the current iso, see Service/Scan/draftScanParameters.py:122
+        :param act_track_name: str, name of the active track -> 'track0'
+        :return: None
+        """
+        scan_dev_dict = scan_dict[act_track_name].get('scanDevice', {})
+        if scan_dev_dict != {}:
+            dev_class = scan_dev_dict.get('devClass', None)
+            if dev_class is not None:
+                if dev_class == 'Triton':
+                    self.scan_dev = self.triton_scan_controller
+                    sc_dev_n = scan_dev_dict.get('name', None)
+                    if sc_dev_n is not None:  # Tilda specific
+                        self.scan_dev.subscribe_to_scan_dev(sc_dev_n)
+                elif dev_class == 'DAC':
+                    self.scan_dev = AD5781ScanDev()
+            # connect the pyqtsignal for a successful setting of a step
+            # with self.scan_dev_tells_next_step_is_set(...)
+            self.scan_dev.scan_dev_has_set_a_new_step_pyqtsig.connect(self.scan_dev_tells_next_step_is_set)
+
+    def prepare_scan_dev_for_scan(self, scan_dict, act_track_name):
+        """
+        prepare the previously selected scan device for the scan
+        :param scan_dict: dict, with all scan pars for the current iso, see Service/Scan/draftScanParameters.py:122
+        :param act_track_name: str, name of the active track -> 'track0'
+        :return: None
+        """
+        scan_dev_dict = scan_dict[act_track_name].get('scanDevice', {})
+        if scan_dev_dict != {}:
+            start = scan_dev_dict.get('start', None)
+            stepsize = scan_dev_dict.get('step', None)
+            num_of_steps = scan_dict[act_track_name].get('nOfSteps', None)
+            num_of_scans = scan_dict[act_track_name].get('nOfScans', None)
+            invert_in_odd_scans = scan_dict[act_track_name].get('invertScan', None)
+            self.scan_dev.setup_scan_in_scan_dev(start, stepsize, num_of_steps, num_of_scans, invert_in_odd_scans)
+
+    def set_scan_dev_to_pre_scan(self, scan_dict, act_track_name, pre_post_scan_str):
+        """
+        set the scan dev which is selected in the scan dict for this track to the desired value
+        :param scan_dict: dict, with all scan pars for the current iso, see Service/Scan/draftScanParameters.py:122
+        :param act_track_name: str, name of the active track -> 'track0'
+        :param pre_post_scan_str: str, either 'preScan' / 'duringScan' / 'postScan'
+        :return: None
+        """
+        scan_dev_dict = scan_dict[act_track_name].get('scanDevice', {})
+        if scan_dev_dict != {}:
+            set_point_key = 'preScanSetPoint' if pre_post_scan_str == 'preScan' else 'postScanSetPoint'
+            set_val = scan_dev_dict.get(set_point_key, None)
+            if set_val is not None:  # will be None for DuringScan
+                self.scan_dev.set_pre_scan_masurement_setpoint(set_val)
+        else:
+            logging.warning('warning, could not find scanDevice dict in'
+                            ' the track pars of %s will not set scan device to anything.' % act_track_name)
+
+    def request_next_step_sc_dev_from_sc_main(self):
+        """
+        request the scan dev to set the next step.
+        #TODO: Trigger this from the pipeline, when a certain value is sent from the fpga!
+        This will tell the scan_main when it is done via a pyqtsignal -> scan_dev_has_set_a_new_step_pyqtsig
+        """
+        self.scan_dev.request_next_step()
+
+    def scan_dev_tells_next_step_is_set(self, scan_progress_dict):
+        """
+        connected to self.scan_dev.scan_dev_has_set_a_new_step_pyqtsig,
+        which will be emitted when the scan device has set a new step.
+        :param scan_progress_dict: dict,
+            {'curStep': self.sc_l_cur_step,
+            'curScan': self.sc_l_cur_scan,
+            'percentOfScan': self.sc_l_perc_compl,
+            'curStepVal': self.sc_one_scan_vals[self.sc_l_cur_step],
+            'scanStatus': self.scan_status}
+        """
+        # TODO trigger next step on fpga -> really communicate with fpga here!
+        pass
 
     ''' post acceleration related functions: '''
 
@@ -515,28 +538,6 @@ class ScanMain(QObject):
                 # logging.debug('appending: %s' % str(deepcopy(result['newData'])))
                 # just emit it directly again
                 self.data_to_pipe_sig.emit(deepcopy(result.get('newData', None)), {})
-
-            #     self.incoming_raw_data_storage = np.append(self.incoming_raw_data_storage,
-            #                                                deepcopy(result['newData']))
-            # start = datetime.now()
-            # elapsed = start - self.datetime_of_last_raw_data_emit
-            # if elapsed >= self.timedelta_between_raw_data_emits or force_emit:
-            #     # enough time has elapsed that another emit is allowed or the emit was forced,
-            #     # e.g. useful when measurement is stopped.
-            #
-            #     # if None in self.incoming_raw_data_storage:
-            #     #     logging.warning('warning, there is a None value in the storage!!!!')
-            #     logging.debug('emitting %s, from %s, value is %s, force emit is: %s'
-            #                   % ('data_to_pipe_sig',
-            #                      'Service.Scan.ScanMain.ScanMain#read_data',
-            #                      'data, too long to print elements: ' + str(self.incoming_raw_data_storage.size),
-            #                      force_emit))
-            #     self.data_to_pipe_sig.emit(deepcopy(self.incoming_raw_data_storage), {})
-            #     self.incoming_raw_data_storage = np.zeros(0, dtype=np.int32)
-            #     self.datetime_of_last_raw_data_emit = datetime.now()
-            # stop = datetime.now()
-            # logging.debug('feeding of %s elements took: %.1f ms'
-            #               % (result.get('nOfEle'), (stop - start).total_seconds() * 1000))
             return True
         else:
             return False
@@ -607,8 +608,10 @@ class ScanMain(QObject):
     def abort_scan(self):
         """
         aborts the scan directly, will block until scan is aborted on the fpga.
+        will also abort the scan on the scan device
         """
         self.sequencer.abort()
+        self.scan_dev.abort_scan()
 
     def pause_scan(self, pause_bool=None):
         """

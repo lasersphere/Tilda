@@ -28,9 +28,6 @@ class BaseTildaScanDeviceControl(QObject):
     # when the scan device has set a new step, it will emit a dictionary
     # dict, see self.receive() -> 'scanProgress'
     scan_dev_has_set_a_new_step_pyqtsig = pyqtSignal(dict)
-    # signal to emit data to the pipeLine
-    # will be overwritten if main exists in self.get_existing_callbacks_from_main()
-    data_to_pipe_sig = pyqtSignal(np.ndarray, dict)
 
     def __init__(self):
         super(BaseTildaScanDeviceControl, self).__init__()
@@ -79,3 +76,10 @@ class BaseTildaScanDeviceControl(QObject):
         :return: bool, True for success
         """
         return True
+
+    def deinit_scan_dev(self):
+        """
+        dio whatever is needed when deinitialising the scan device
+        :return: None
+        """
+        pass
