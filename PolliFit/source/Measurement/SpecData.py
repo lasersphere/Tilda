@@ -16,7 +16,7 @@ class SpecDataXAxisUnits(Enum):
     total_volts = 'total volts / V'  # from  AccVolt + Offset + line_volt * Kepco (usually after preProc)
     dac_register_bits = 'DAC register bits / a.u.'
     # when calibrating an DAC it might be usefull to have DAC register bits as x axis
-    frequency = 'frequency / MHz'  # for plotting etc.
+    frequency_mhz = 'frequency / MHz'  # for plotting etc.
 
 
 class SpecData(object):
@@ -127,5 +127,5 @@ if __name__ == '__main__':
     test = SpecData()
     print(test.date)
     print(test.x_units.value)
-    test.x_units = test.x_units_enums.frequency
+    test.x_units = test.x_units_enums.frequency_mhz
     print(test.x_units.value)

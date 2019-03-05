@@ -23,6 +23,7 @@ import Tools
 import TildaTools
 import Analyzer
 from DBIsotope import DBIsotope
+import Measurement.MeasLoad as Measl
 
 
 ''' working directory: '''
@@ -51,7 +52,7 @@ acc_volt_17 = 7.98528824855 * 5001.39  # 39937.54079341549  from the mean of all
 
 workdir16 = 'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
 
-datafolder16 = os.path.join(workdir16, 'Ni_April16_mcp')
+datafolder16 = os.path.join(workdir16, 'Ni_April2016_mcp')
 
 db16 = os.path.join(workdir16, 'Ni_workspace.sqlite')
 runs16 = ['wide_gate_asym', 'wide_gate_asym_67_Ni']
@@ -64,6 +65,38 @@ isos16 = {iso: DBIsotope(db16, iso, lineVar='tisa_60_asym_wide') for iso in isot
 line_freq16 = 850343816.10401
 laser_freq16 = 851200725.9994   # all files
 acc_volt_16 = 29.9610343474 * 1000.05  # 29962.53239911737  from the mean of all files in 2016
+
+''' load some sample files '''
+sample_files_16 = [
+    '58Ni_no_protonTrigger_Run028.mcp',
+    '60Ni_no_protonTrigger_Run027.mcp',
+    '66Ni_no_protonTrigger_Run110.mcp',
+    '60Ni_no_protonTrigger_Run097.mcp'
+]
+
+
+for sf16 in sample_files_16:
+    sf16_full = os.path.join(datafolder16, sf16)
+    meas_16 = Measl.load(sf16_full, db16)
+    print(sf16)
+    print('accvolt:', meas_16.accVolt)
+
+sample_files_17 = [
+    '58_Ni_trs_run229.xml',
+    '60_Ni_trs_run225.xml',
+    '66_Ni_trs_run116.xml',
+    '60_Ni_trs_run117.xml'
+]
+
+
+for sf17 in sample_files_17:
+    sf17_full = os.path.join(datafolder17, sf17)
+    meas_17 = Measl.load(sf17_full, db17)
+    print(sf17)
+    print('accvolt:', meas_17.accVolt)
+
+
+raise Exception
 
 
 '''  get shifts '''

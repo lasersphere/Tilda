@@ -29,6 +29,8 @@ import XmlOperations as XmlOps
 from Driver.TritonListener.TritonListener import TritonListener as TritonListener
 from Driver.TritonListener.TritonScanDevControl import TritonScanDevControl
 from Service.AnalysisAndDataHandling.AnalysisThread import AnalysisThread as AnalThr
+from Driver.ScanDevice.BaseTildaScanDeviceControl import BaseTildaScanDeviceControl as BaseScDev
+from Driver.ScanDevice.AD5781ScanDevice import AD5781ScanDev
 
 
 class ScanMain(QObject):
@@ -66,15 +68,20 @@ class ScanMain(QObject):
         self.ground_pin_warned = False
         self.ground_warning_win = None
 
+        # create a triton device for collecting data from other triton devices:
         # self.triton_listener = None
         self.triton_listener_name = 'TildaTritonListener'
         self.triton_listener = TritonListener(self.triton_listener_name)
         self.triton_pre_scan_done = False  # bool to use when pre/during/post scan measurement of triton is completed
 
+        # create a Triton device for controling scans:
         self.triton_scan_controller_name = 'TildaTritonScanControl'
         self.triton_scan_controller = None
         self.triton_scan_controller = TritonScanDevControl(self.triton_scan_controller_name)
         # only initialise on scan?!
+
+        # create a blank scan device -> will be overwritten by something else that can control a scan device
+        self.scan_dev = BaseScDev()
 
         # needed to prevent emitting of pyqtsignals every 50 ms
         self.incoming_raw_data_storage = np.zeros(0, dtype=np.int32)
@@ -154,11 +161,77 @@ class ScanMain(QObject):
         :param pre_post_scan_str: str, either 'preScan' / 'duringScan' / 'postScan'
         :return: None
         """
+        if pre_post_scan_str == 'preScan':
+            self.select_scan_dev(scan_dict, act_track_name)
+            self.prepare_scan_dev_for_scan(scan_dict, act_track_name)
+
+        self.set_scan_dev_to_pre_scan(scan_dict, act_track_name, pre_post_scan_str)
+
         dmm_conf_dict = scan_dict[act_track_name]['measureVoltPars'].get(pre_post_scan_str, {}).get('dmms', {})
         triton_dict = scan_dict[act_track_name].get('triton', {})
         self.prepare_dmms_for_scan(dmm_conf_dict)
         self.prepare_triton_listener_for_scan(triton_dict, pre_post_scan_str, act_track_name)
         time.sleep(0.5)  # allow the device to settle for 500 ms
+
+    def select_scan_dev(self, scan_dict, act_track_name):
+        """
+        Load the control module for the selected scan device according to the
+        scanDevice dict in the current track.
+        :param scan_dict: dict, with all scan pars for the current iso, see Service/Scan/draftScanParameters.py:122
+        :param act_track_name: str, name of the active track -> 'track0'
+        :return: None
+        """
+        scan_dev_dict = scan_dict[act_track_name].get('scanDevice', {})
+        if scan_dev_dict != {}:
+            dev_class = scan_dev_dict.get('devClass', None)
+            if dev_class is not None:
+                if dev_class == 'Triton':
+                    self.scan_dev = self.triton_scan_controller
+                    sc_dev_n = scan_dev_dict.get('name', None)
+                    if sc_dev_n is not None:  # Tilda specific
+                        self.scan_dev.subscribe_to_scan_dev(sc_dev_n)
+                elif dev_class == 'DAC':
+                    self.scan_dev = AD5781ScanDev()
+
+    def prepare_scan_dev_for_scan(self, scan_dict, act_track_name):
+        """
+        prepare the previously selected scan device for the scan
+        :param scan_dict: dict, with all scan pars for the current iso, see Service/Scan/draftScanParameters.py:122
+        :param act_track_name: str, name of the active track -> 'track0'
+        :return: None
+        """
+        scan_dev_dict = scan_dict[act_track_name].get('scanDevice', {})
+        if scan_dev_dict != {}:
+            start = scan_dev_dict.get('start', None)
+            stepsize = scan_dev_dict.get('step', None)
+            num_of_steps = scan_dict[act_track_name].get('nOfSteps', None)
+            num_of_scans = scan_dict[act_track_name].get('nOfScans', None)
+            invert_in_odd_scans = scan_dict[act_track_name].get('invertScan', None)
+            self.scan_dev.setup_scan_in_scan_dev(start, stepsize, num_of_steps, num_of_scans, invert_in_odd_scans)
+
+    def set_scan_dev_to_pre_scan(self, scan_dict, act_track_name, pre_post_scan_str):
+        """
+        set the scan dev which is selected in the scan dict for this track to the desired value
+        :param scan_dict: dict, with all scan pars for the current iso, see Service/Scan/draftScanParameters.py:122
+        :param act_track_name: str, name of the active track -> 'track0'
+        :param pre_post_scan_str: str, either 'preScan' / 'duringScan' / 'postScan'
+        :return: None
+        """
+        scan_dev_dict = scan_dict[act_track_name].get('scanDevice', {})
+        if scan_dev_dict != {}:
+            set_point_key = 'preScanSetPoint' if pre_post_scan_str == 'preScan' else 'postScanSetPoint'
+            set_val = scan_dev_dict.get(set_point_key, None)
+            if set_val is not None:  # will be None for DuringScan
+                self.scan_dev.set_pre_scan_masurement_setpoint(set_val)
+        else:
+            logging.warning('warning, could not find scanDevice dict in'
+                            ' the track pars of %s will not set scan device to anything.' % act_track_name)
+
+    def request_next_step_sc_dev_from_sc_main(self):
+        """ request teh scan dev to set the next step.
+        This will tell the pipeline when it is done via a pyqtsignal """
+        # TODO really to pip?
+        self.scan_dev.request_next_step()
 
     def start_pre_scan_measurement(self, scan_dict, act_track_name, pre_post_scan_meas_str='preScan'):
         """

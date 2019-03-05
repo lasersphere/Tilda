@@ -180,7 +180,7 @@ class DeviceBase(TritonObject):
 
     def _periodic(self):
         """ wrapper for periodic since here maybe default operations
-         before periodic execution will be implemented, see ScanDeviceBase.py """
+         before periodic execution will be implemented, see BaseTildaScanDeviceControl.py """
         self.periodic()
 
     def setInterval(self, t):

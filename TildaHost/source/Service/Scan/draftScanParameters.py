@@ -8,6 +8,7 @@ Module containing the ScanParameters dictionaries as needed for Scanning with th
 """
 from copy import deepcopy
 from datetime import datetime
+from Measurement.SpecData import SpecDataXAxisUnits as Units
 
 """ List of currently supported sequencer types """
 
@@ -40,10 +41,10 @@ triton_list = ['preScan', 'postScan']
 the most information for the sequencer. It contains the following keys and
 MUST be appended with the keys from the corresponding sequencer (see below): """
 
-track0_list = ['dacStepSize18Bit', 'dacStartRegister18Bit', 'nOfSteps', 'nOfScans', 'nOfCompletedSteps',
+track0_list = ['nOfSteps', 'nOfScans', 'nOfCompletedSteps',
                'invertScan', 'postAccOffsetVoltControl', 'postAccOffsetVolt', 'waitForKepco1us',
                'waitAfterReset1us', 'activePmtList', 'colDirTrue', 'workingTime', 'trigger', 'pulsePattern',
-               'measureVoltPars', 'triton', 'outbits']
+               'measureVoltPars', 'triton', 'outbits', 'scanDevice']
 
 """  each sequencer needs its own parameters and therefore, the keys are listed below
 naming convention is type_list.  """
@@ -96,11 +97,22 @@ draft_outbits = {
     'outbit2': [('on', 'step', 1), ('off', 'step', 5)]
 }
 
+draft_scan_device = {
+    'name': 'AD5781_Ser1',
+    'type': 'AD5781',  # what type of device, e.g. AD5781(DAC) / Matisse (laser)
+    'devClass': 'DAC',  # carrier class of the dev, e.g. DAC / Triton
+    'stepUnitName': Units.dac_register_bits.name,  # name if the SpecDataXAxisUnits
+    'start': 2647,  # in units of stepUnitName
+    'stepSize': 10,  # in units of stepUnitName
+    'preScanSetPoint': None,  # in units of stepUnitName, choose None if nothing should happen
+    'postScanSetPoint': None,  # in units of stepUnitName, choose None if nothing should happen
+    'timeout_s': 0.0  # timeout ins seconds after which step setting is accounted as failure due to timeout,
+    #  0 for never timing out ?
+}
+
 draftTrackPars = {
-    'dacStepSize18Bit': 2647,  # form.get_24bit_input_from_voltage(1, False),
-    'dacStartRegister18Bit': 0,  # form.get_24bit_input_from_voltage(-5, False),
-    'nOfSteps': 100,
-    'nOfScans': 2, 'nOfCompletedSteps': 0, 'invertScan': False,
+    'nOfSteps': 100, 'nOfScans': 2,  # also relevant for scan but not specific for the type of scan dev
+    'nOfCompletedSteps': 0, 'invertScan': False,  # also relevant for scan but not specific for the type of scan dev
     'postAccOffsetVoltControl': 0, 'postAccOffsetVolt': 1000,
     'waitForKepco1us': 100,
     'waitAfterReset1us': 500,
@@ -117,7 +129,8 @@ draftTrackPars = {
     'pulsePattern': {'cmdList': ['$time::1.0::1::0', '$time::1.0::0::0']},
     'measureVoltPars': draftMeasureVoltPars,
     'triton': draft_triton_pars,
-    'outbits': draft_outbits
+    'outbits': draft_outbits,
+    'scanDevice': draft_scan_device
 }
 
 draftScanDict = {'isotopeData': draftIsotopePars,

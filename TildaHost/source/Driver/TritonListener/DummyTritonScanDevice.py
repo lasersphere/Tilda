@@ -32,7 +32,8 @@ class DummyScanDevice(ScanDeviceBase):
         self.type = 'DummyScanDevice'
 
         self.per_calls = 0
-        self.start_step_units = self.possible_start_step_unit.frequency
+        self.start_step_units = self.possible_start_step_unit.frequency_mhz
+
         '''Resolving and subscribing to other devices:'''
         # self.dev = self.resolveName('Name')
         # self.subscribe(dev)
@@ -81,3 +82,8 @@ class DummyScanDevice(ScanDeviceBase):
         print('will sleep now for %.2f s' % sleep_t)
         time.sleep(sleep_t)
         print('ok, step is set continue whatever you are doing')
+
+    def set_pre_scan_measurement_setpoint(self, set_val):
+        print('---------------- %s will set now %.2f %s' % (self.name, set_val, self.start_step_units.value))
+        time.sleep(2)
+        print('---------------- %s has set  %.2f %s' % (self.name, set_val, self.start_step_units.value))
