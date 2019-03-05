@@ -354,6 +354,7 @@ class ScanMain(QObject):
         This will tell the scan_main when it is done via a pyqtsignal -> scan_dev_has_set_a_new_step_pyqtsig
         """
         self.scan_dev.request_next_step()
+        # TODO set glob var in fpga to False to arm for next step
 
     def scan_dev_tells_next_step_is_set(self, scan_progress_dict):
         """

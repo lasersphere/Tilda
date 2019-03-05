@@ -100,6 +100,7 @@ def add_missing_voltages(scan_dict):
     :param scan_dict: dict, containing all informations for a scan.
     :return: dict, the updated scan_dict
     """
+    # TODO rewrite to match scanDevice sub dictionary
     for key, sub_dict in scan_dict.items():
         if 'track' in key:
             dac_stop_18bit = VCon.calc_dac_stop_18bit(sub_dict['dacStartRegister18Bit'],
