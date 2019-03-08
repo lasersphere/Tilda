@@ -51,6 +51,41 @@ class NSplit32bData(Node):
         return buf
 
 
+class NSendNextStepRequestViaQtSignal(Node):
+    """
+    Node for sending next step requests in the pipedata via a qt signal
+    input: anything
+    output: same as input minus any next step requests
+    """
+
+    def __init__(self, qt_signal):
+        super(NSendNextStepRequestViaQtSignal, self).__init__()
+        self.type = 'SendNextStepRequestViaQtSignal'
+
+        self.qt_signal = qt_signal
+
+    def processData(self, data, pipeData):
+        request_next_step = Form.add_header_to23_bit(4, 4, 0, 1)  # binary for preparing next step
+        req_list = np.where(data == request_next_step)
+        if req_list.size:
+            # shouldn't be more than one step request but if it is, the user should know
+            if req_list.size > 1:
+                logging.warning('More than one step request was received in data. Number received: {}'
+                                .format(req_list.size))
+            # next step has been requested from fpga. Send signal to pipe if configured.
+            if self.qt_signal is not None:
+                # get number of next step
+                track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
+                compl_steps = pipeData[track_name]['nOfCompletedSteps']
+                next_step_number = compl_steps + 1
+                # send logging debug
+                logging.debug('emitting %s from Node %s, value is %s'
+                              % ('qt_signal', self.type, str(next_step_number)))
+                self.qt_signal.emit(next_step_number)
+        else:
+            return data
+
+
 class NAccumulateSingleScan(Node):
     def __init__(self):
         """

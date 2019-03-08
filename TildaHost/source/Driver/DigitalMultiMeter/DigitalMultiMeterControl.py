@@ -235,8 +235,9 @@ class DMMControl:
                 self.dmm[dmm_name].de_init_dmm()
             self.dmm = {}
             return None
-        self.dmm[dmm_name].de_init_dmm()
-        self.dmm.pop(dmm_name)
+        if self.dmm.get(dmm_name, None) is not None:
+            self.dmm[dmm_name].de_init_dmm()
+            self.dmm.pop(dmm_name)
 
 # if __name__ == "__main__":
 #     inst = DMMControl()

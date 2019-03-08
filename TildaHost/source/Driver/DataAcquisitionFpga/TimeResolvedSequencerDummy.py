@@ -16,6 +16,7 @@ import Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig as TrsCfg
 import Service.Formating as Form
 from Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
 from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
+from Driver.DataAcquisitionFpga.ScanDeviceTypes import ScanDeviceTypes as ScTypes
 
 
 class TimeResolvedSequencer(Sequencer, MeasureVolt):
@@ -30,6 +31,9 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
                                         self.config.fpgaResource, dummy=True)
         self.type = 'trsdummy'
         self.artificial_build_data = []
+        self.scan_dev = 'DAC'  # Can use dummy with an external scan dev
+        self.scan_dev_timeout = 1  # in seconds. Relevant if using external scan dev
+        self.ready_for_step = False  # relevant if using external scan dev
         self.status = TrsCfg.seqStateDict['init']
         self.session = ctypes.c_ulong(0)
         self.status = 0
@@ -58,6 +62,16 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         """
         return 0
 
+    def getInternalDACState(self):
+        """
+        True in dummy mode if scandev is DAC
+        :return: bool: True if DAC available
+        """
+        if self.scan_dev is 'DAC':
+            return True
+        else:
+            return False
+
     '''set Controls'''
 
     def setMCSParameters(self, scanpars, track_name):
@@ -65,6 +79,30 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         always True in dummy Mode
         """
         return True
+
+    def setScanDeviceParameters(self, scanDevDict):
+        """
+        Writes the chosen scanDev type to the FPGA.
+        :param scanDev: str: Currently supported devices are "DAC"(0) and "Triton"(1)
+        :return:
+        """
+        # write scan device class as int to fpga
+        device_type = scanDevDict.get('devClass', 'DAC')
+        self.scan_dev = device_type
+        # write timeout in 10ns units to fpga
+        timeout_s = scanDevDict.get('timeout_s', 1)  # default: 1sec = 100 000 000 * 10ns
+        self.scan_dev_timeout = timeout_s
+
+        return self.checkFpgaStatus()
+
+    def scanDeviceReadyForStep(self, ready_bool):
+        """
+        Sets the "scanDevSet" bool on the FPGA. Should be used to signal when a scan device is ready for the next step.
+        If implemented on the FPGA might also be used to halt the measurement when the scan device is not stable any more.
+        :param ready_bool: bool: True if the scan device is ready for the next step.
+        :return:
+        """
+        self.ready_for_step = ready_bool
 
     def setAllScanParameters(self, scanpars, track_num):
         """
@@ -74,6 +112,8 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         :return: bool, True if successful
         always True in dummy Mode
         """
+        track_name = 'track' + str(track_num)
+        self.setScanDeviceParameters(scanpars[track_name]['scanDevice'])
         return True
 
     def setPostAccelerationControlState(self, desiredState, blocking=True):
@@ -126,7 +166,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         logging.debug('starting to build artificial data for dummy trs for track %s' % track_name)
         logging.debug('num of steps: %s num of bins: %s num of bunches: %s num of scans: %s ' %
                       (trackd['nOfSteps'], trackd['nOfBins'], trackd['nOfBunches'], trackd['nOfScans']))
-        count_in_every_bin = False  # set thsi to True to completly fill the time resolved matrix
+        count_in_every_bin = False  # set this to True to completly fill the time resolved matrix
         one_scan = self.build_one_scan(scanpars, trackd, track_ind, full=count_in_every_bin)
         one_scan_inverted = self.build_one_scan(scanpars, trackd, track_ind, True, full=count_in_every_bin)
         logging.debug('length of one_scan: %d, length of one_scan_inverted: %d'
@@ -197,6 +237,9 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         if full:
             cur_bunch = 0
             while cur_bunch < num_bunches:
+                if self.scan_dev is 'Triton':
+                    # send next step request
+                    cur_step_evts.append(Form.add_header_to23_bit(4, 4, 0, 1))  # means request next step
                 cur_step_evts.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
                 cur_bunc_cur_step_cts = []
                 [[cur_bunc_cur_step_cts.append(Form.add_header_to23_bit(i, scaler03, scaler47, 0))
@@ -217,9 +260,15 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
                 else:  # no scaler entries for all even step numbers
                     cur_bunch = num_bunches
                     for bun in range(cur_bunch):  # add as meany bunch complete infos as needed to complete this step
+                        if self.scan_dev is 'Triton':
+                            # send next step request
+                            cur_step_evts.append(Form.add_header_to23_bit(4, 4, 0, 1))  # means request next step
                         cur_step_evts.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
                     cur_step_evts.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))  # step complete
                 while cur_bunch < num_bunches:  # only for uneven steps
+                    if self.scan_dev is 'Triton':
+                        # send next step request
+                        cur_step_evts.append(Form.add_header_to23_bit(4, 4, 0, 1))  # means request next step
                     cur_step_evts.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
                     time_offset_cur_bunch_cur_step = cur_bunch * cur_step
                     cur_bunc_cur_step_cts = []

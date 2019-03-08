@@ -11,6 +11,7 @@ import time
 import Service.VoltageConversions.VoltageConversions as VCon
 from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
+from Driver.DataAcquisitionFpga.ScanDeviceTypes import  ScanDeviceTypes as ScTypes
 
 
 class Sequencer(FPGAInterfaceHandling):
@@ -69,7 +70,48 @@ class Sequencer(FPGAInterfaceHandling):
         # logging.debug('switchbox, state: %s, desired state: %s, done: %s' % (currentState, desired_state, done))
         return done, currentState, desired_state
 
+    def getInternalDACState(self):
+        """
+        call this to check whether the DAC was successfully initialized by the fpga
+        :return: bool: True if DAC available
+        """
+        return self.ReadWrite(self.config.internalDacAvailable).value
+
     '''writing'''
+
+    def setScanDeviceParameters(self, scanDevDict):
+        """
+        Writes the chosen scanDev type to the FPGA.
+        :param scanDev: str: Currently supported devices are "DAC"(0) and "Triton"(1)
+        :return:
+        """
+        # write scan device class as int to fpga
+        device_type = scanDevDict.get('devClass', 'DAC')
+        device_type_int = getattr(ScTypes, device_type)  # must be int, values defined in ScanDeviceTypes
+        self.ReadWrite(self.config.ScanDevice, device_type_int)
+        # write timeout in 10ns units to fpga
+        timeout_10ns = 100000000 * scanDevDict.get('timeout_s', 1)  # default: 1sec = 100 000 000 * 10ns
+        self.ReadWrite(self.config.scanDevTimeout10ns, timeout_10ns)
+
+        if device_type == 'DAC':
+            # check whether DAC has been initialized successfully on fpga.
+            dac_available = self.getInternalDACState()
+            if not dac_available:
+                # Throw error here for user information.
+                logging.error("Scan device was set to {} but DAC could not be successfully initialized on fpga"
+                              .format(device_type))
+
+        return self.checkFpgaStatus()
+
+
+    def scanDeviceReadyForStep(self, ready_bool):
+        """
+        Sets the "scanDevSet" bool on the FPGA. Should be used to signal when a scan device is ready for the next step.
+        If implemented on the FPGA might also be used to halt the measurement when the scan device is not stable any more.
+        :param ready_bool: bool: True if the scan device is ready for the next step.
+        :return:
+        """
+        self.ReadWrite(self.config.scanDevSet, ready_bool)
 
     def setTrackParameters(self, trackPars):
         """

@@ -25,7 +25,7 @@ class AnalysisThread(QThread):
 
     def __init__(self, scan_dict, callback_sig, live_plot_callback_tuples, fit_res_callback_dict,
                  stop_request_signal, prep_track_in_pipe_signal, new_data_signal, scan_complete_callback,
-                 dac_new_volt_set_callback):
+                 dac_new_volt_set_callback, scan_dev_step_request_callback):
         """
         Analysis thread which will run during scanning and use the Pollifit pipeline to continuously
         analyse the incoming raw data from the FPGA.
@@ -81,7 +81,8 @@ class AnalysisThread(QThread):
         super(AnalysisThread, self).__init__()
         self.pipeline = find_pipe_by_seq_type(scan_dict, callback_sig,
                                               live_plot_callback_tuples, fit_res_callback_dict,
-                                              scan_complete_callback, dac_new_volt_set_callback)
+                                              scan_complete_callback, dac_new_volt_set_callback,
+                                              next_step_request_sig=scan_dev_step_request_callback)
         self.stop_analysis_bool = False
         self.clear_after_finish = False  # boolean that will tell the pipeline to clear(->save)
         #  or not after analysis completion

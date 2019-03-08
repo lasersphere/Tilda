@@ -42,6 +42,9 @@ class ScanMain(QObject):
     # np.ndarray for numpy data, dict for dictionary with dmm readbacks
     # the one you don't need, leave empty (np.ndarray(0, dtype=np.int32) / {})
     data_to_pipe_sig = pyqtSignal(np.ndarray, dict)
+    # signal to receive next step requests from fpga
+    # the number of the step to be set is included in the send
+    scan_dev_step_request_callback = pyqtSignal(int)
     # signal send by the pipeline during a kepco scan, if a new voltage has ben set
     # use this to trigger the dmms if wanted
     dac_new_volt_set_callback = pyqtSignal(int)
@@ -77,6 +80,8 @@ class ScanMain(QObject):
         self.triton_scan_controller_name = 'TildaTritonScanControl'
         self.triton_scan_controller = None
         self.triton_scan_controller = TritonScanDevControl(self.triton_scan_controller_name)
+        # connect to callback
+        self.scan_dev_step_request_callback.connect(self.request_next_step_sc_dev_from_sc_main)
         # only initialise on scan?!
 
         # create a blank scan device -> will be overwritten by something else that can control a scan device
@@ -144,7 +149,7 @@ class ScanMain(QObject):
         self.analysis_thread = AnalThr(
             scan_dict, callback_sig, live_plot_callback_tuples, fit_res_dict_callback,
             self.stop_analysis_sig, self.prep_track_in_pipe_sig, self.data_to_pipe_sig,
-            scan_complete_callback, dac_new_volt_set_callback
+            scan_complete_callback, dac_new_volt_set_callback, self.scan_dev_step_request_callback
         )
 
     def get_existing_callbacks_from_main(self):
@@ -347,14 +352,19 @@ class ScanMain(QObject):
             logging.warning('warning, could not find scanDevice dict in'
                             ' the track pars of %s will not set scan device to anything.' % act_track_name)
 
-    def request_next_step_sc_dev_from_sc_main(self):
+    def request_next_step_sc_dev_from_sc_main(self, step_num):
         """
         request the scan dev to set the next step.
-        #TODO: Trigger this from the pipeline, when a certain value is sent from the fpga!
-        This will tell the scan_main when it is done via a pyqtsignal -> scan_dev_has_set_a_new_step_pyqtsig
+        This is triggered from the pipeline, when a next step request is sent from the fpga!
+        The scan device will tell the scan_main when it is done via a pyqtsignal -> scan_dev_has_set_a_new_step_pyqtsig
         """
+        # set glob var in fpga to False to arm for next step
+        self.sequencer.scanDeviceReadyForStep(False)
+        # request preparation of next step from scan device and pass callback
+        req_time = datetime.now()
         self.scan_dev.request_next_step()
-        # TODO set glob var in fpga to False to arm for next step
+        logging.debug('{}: requested next step from scan device now. Step number is {}'.format(req_time, step_num))
+
 
     def scan_dev_tells_next_step_is_set(self, scan_progress_dict):
         """
@@ -367,8 +377,10 @@ class ScanMain(QObject):
             'curStepVal': self.sc_one_scan_vals[self.sc_l_cur_step],
             'scanStatus': self.scan_status}
         """
-        # TODO trigger next step on fpga -> really communicate with fpga here!
-        pass
+        # trigger next step on fpga -> really communicate with fpga here!
+        set_time = datetime.now()
+        self.sequencer.scanDeviceReadyForStep(True)
+        logging.debug('{}: received step ready signal from scan device. Passed on to sequencer.'.format(set_time))
 
     ''' post acceleration related functions: '''
 
