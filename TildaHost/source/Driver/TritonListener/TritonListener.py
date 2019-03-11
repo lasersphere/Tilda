@@ -255,6 +255,7 @@ class TritonListener(DeviceBase, QObject):
         self.stop_log()
         # If there is a dummy_dev stop it, except if we only want to reset the pipeline.
         if self.dummy_dev is not None and stop_dummy_dev:
+            logging.debug('%s will stop the dummy_dev now!' % self.name)
             self.dummy_dev._stop()
             self.dummy_dev = None
 

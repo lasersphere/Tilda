@@ -271,7 +271,7 @@ TiTs.print_dict_pretty(d_r2_dict_16)
 
 print('------------------ fig:dr2EvolutionFinal ------------------')
 print('# copy to origin')
-print('# iso\tmass\tdr2\tstatErr\tsystErr\tfullErr')
+print('# iso\tmass\tN\tdr2\tstatErr\tsystErr\tfullErr')
 for iso in isotopes16:
     massnum = int(iso[:2])
     d_r2val_17, d_r2val_stat_err_17, d_r2val_syst_err_17, d_r2val_rChi_17 = d_r2_dict_17[final_2017_run].get(
@@ -282,5 +282,30 @@ for iso in isotopes16:
     dr2_final_stat_err = d_r2val_stat_err_16 if iso in ['59_Ni', '63_Ni'] else d_r2val_stat_err_17
     dr2_final_syst_err = d_r2val_syst_err_16 if iso in ['59_Ni', '63_Ni'] else d_r2val_syst_err_17
     dr2_final_full_err = np.sqrt(dr2_final_stat_err ** 2 + dr2_final_syst_err ** 2)
-    print('%s\t%d\t%.5f\t%.5f\t%.5f\t%.5f' % (iso, massnum, dr2_final, dr2_final_stat_err,
+    print('%s\t%d\t%d\t%.5f\t%.5f\t%.5f\t%.5f' % (iso, massnum, massnum - 28, dr2_final, dr2_final_stat_err,
                                               dr2_final_syst_err, dr2_final_full_err))
+
+
+print('------------------ rChiAbsolut for origin ------------------')
+print('# copy to origin')
+print('# iso\tmass\tN\trChAbs\tstatErr\tsystErr\tfullErr')
+for iso in isotopes16:
+    massnum = int(iso[:2])
+    d_r2val_17, d_r2val_stat_err_17, d_r2val_syst_err_17, d_r2val_rChi_17 = d_r2_dict_17[final_2017_run].get(
+        iso, [0., 0., 0., 0.])
+    d_r2val_16, d_r2val_stat_err_16, d_r2val_syst_err_16, d_r2val_rChi_16 = d_r2_dict_16[run2016_final_db].get(
+        iso, [0., 0., 0., 0.])
+    dr2_final = d_r2val_16 if iso in ['59_Ni', '63_Ni'] else d_r2val_17
+    dr2_final_stat_err = d_r2val_stat_err_16 if iso in ['59_Ni', '63_Ni'] else d_r2val_stat_err_17
+    dr2_final_syst_err = d_r2val_syst_err_16 if iso in ['59_Ni', '63_Ni'] else d_r2val_syst_err_17
+    dr2_final_full_err = np.sqrt(dr2_final_stat_err ** 2 + dr2_final_syst_err ** 2)
+
+    neutron_num = massnum - 28
+
+    rch_abs = np.sqrt(lit_radii['60_Ni'][0] ** 2 + dr2_final)
+    rch_abs_full_err = np.sqrt(
+        (0.5 * (lit_radii['60_Ni'][0] ** 2 + dr2_final) ** -0.5 * 2 * lit_radii['60_Ni'][0] * lit_radii['60_Ni'][1]) ** 2 +
+        (0.5 * (lit_radii['60_Ni'][0] ** 2 + dr2_final) ** -0.5 * dr2_final_full_err) ** 2
+    )
+    print('%s\t%d\t%d\t%.5f\t%.5f\t%.5f\t%.5f' % (iso, massnum, neutron_num, rch_abs, dr2_final_stat_err,
+                                              dr2_final_syst_err, rch_abs_full_err))

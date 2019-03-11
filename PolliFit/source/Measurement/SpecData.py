@@ -17,6 +17,7 @@ class SpecDataXAxisUnits(Enum):
     dac_register_bits = 'DAC register bits / a.u.'
     # when calibrating an DAC it might be usefull to have DAC register bits as x axis
     frequency_mhz = 'frequency / MHz'  # for plotting etc.
+    not_defined = 'not defined'  # arbitrary but, maybe useful in rare cases
 
 
 class SpecData(object):

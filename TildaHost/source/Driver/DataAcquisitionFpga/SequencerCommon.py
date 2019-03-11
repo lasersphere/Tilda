@@ -86,20 +86,25 @@ class Sequencer(FPGAInterfaceHandling):
         :return:
         """
         # write scan device class as int to fpga
-        device_type = scanDevDict.get('devClass', 'DAC')
-        device_type_int = getattr(ScTypes, device_type)  # must be int, values defined in ScanDeviceTypes
+        device_class = scanDevDict.get('devClass', 'DAC')
+        device_type_int = getattr(ScTypes, device_class)  # must be int, values defined in ScanDeviceTypes
         self.ReadWrite(self.config.ScanDevice, device_type_int)
         # write timeout in 10ns units to fpga
         timeout_10ns = 100000000 * scanDevDict.get('timeout_s', 1)  # default: 1sec = 100 000 000 * 10ns
         self.ReadWrite(self.config.scanDevTimeout10ns, timeout_10ns)
 
-        if device_type == 'DAC':
+        if device_class == 'DAC':
+            # set the dac values
+            dac18b_stepsize = VCon.get_18bit_stepsize(scanDevDict.get('stepSize', 0.0))
+            dac18b_start = VCon.get_18bit_from_voltage(scanDevDict.get('start', 0.0))
+            self.ReadWrite(self.config.dacStepSize18Bit, dac18b_stepsize)
+            self.ReadWrite(self.config.dacStartRegister18Bit, dac18b_start)
             # check whether DAC has been initialized successfully on fpga.
             dac_available = self.getInternalDACState()
             if not dac_available:
                 # Throw error here for user information.
                 logging.error("Scan device was set to {} but DAC could not be successfully initialized on fpga"
-                              .format(device_type))
+                              .format(device_class))
 
         return self.checkFpgaStatus()
 
@@ -118,8 +123,6 @@ class Sequencer(FPGAInterfaceHandling):
         Writes all values needed for the Sequencer state machine to the fpga ui
         :param trackPars: dictionary, containing all necessary infos for measuring one track. These are:
         VoltOrScaler: bool, determine if the track is a KepcoScan or normal Scaler Scan
-        dacStepSize18Bit: ulong, Stepsize for 18Bit-DAC Steps actually shifted by 2 so its 20 Bit Number
-        dacStartRegister18Bit: ulong, Start Voltage for 18Bit-DAC actually shifted by 2 so its 20 Bit Number
         nOfSteps: long, Number Of Steps for one Track (=Scanregion)
         nOfScans: long, Number of Loops over this Track
         invertScan: bool, if True invert Scandirection on every 2nd Scan
@@ -130,9 +133,6 @@ class Sequencer(FPGAInterfaceHandling):
          before the scalers are activated. Unit is 1us
         :return: True if self.status == self.statusSuccess, else False
         """
-
-        self.ReadWrite(self.config.dacStepSize18Bit, trackPars['dacStepSize18Bit'])
-        self.ReadWrite(self.config.dacStartRegister18Bit, trackPars['dacStartRegister18Bit'])
         self.ReadWrite(self.config.nOfSteps, trackPars['nOfSteps'])
         self.ReadWrite(self.config.nOfScans, trackPars['nOfScans'])
         self.ReadWrite(self.config.invertScan, trackPars['invertScan'])

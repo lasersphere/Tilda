@@ -9,10 +9,20 @@ Module containing the ScanParameters dictionaries as needed for Scanning with th
 from copy import deepcopy
 from datetime import datetime
 from Measurement.SpecData import SpecDataXAxisUnits as Units
+from Driver.DataAcquisitionFpga.ScanDeviceTypes import ScanDeviceTypes as ScTypes
+
 
 """ List of currently supported sequencer types """
 
 sequencer_types_list = ['cs', 'trs', 'csdummy', 'trsdummy', 'kepco']
+
+""" List of currently supported scan device classes """
+
+scan_dev_classes_available = [sc_t.name for sc_t in ScTypes]
+
+""" dict of currently supported DAC types and names """
+
+dac_type_list = ['AD5781']
 
 """ outer most dictionary contains the following keys: """
 
@@ -97,18 +107,25 @@ draft_outbits = {
     'outbit2': [('on', 'step', 1), ('off', 'step', 5)]
 }
 
+# this must always be present by a scan device:
 draft_scan_device = {
     'name': 'AD5781_Ser1',
     'type': 'AD5781',  # what type of device, e.g. AD5781(DAC) / Matisse (laser)
     'devClass': 'DAC',  # carrier class of the dev, e.g. DAC / Triton
-    'stepUnitName': Units.dac_register_bits.name,  # name if the SpecDataXAxisUnits
-    'start': 2647,  # in units of stepUnitName
-    'stepSize': 10,  # in units of stepUnitName
-    'stop': 3000,  # in units of stepUnitName
+    'stepUnitName': Units.line_volts.name,  # name if the SpecDataXAxisUnits
+    'start': 0.0,  # in units of stepUnitName
+    'stepSize': 1.0,  # in units of stepUnitName
+    'stop': 5.0,  # in units of stepUnitName
     'preScanSetPoint': None,  # in units of stepUnitName, choose None if nothing should happen
     'postScanSetPoint': None,  # in units of stepUnitName, choose None if nothing should happen
-    'timeout_s': 10.0  # timeout in seconds after which step setting is accounted as failure due to timeout
+    'timeout_s': 10.0,  # timeout in seconds after which step setting is accounted as failure due to timeout,
+    # set top 0 for never timing out.
+    'setValLimit': (-15.0, 15.0),
+    'stepSizeLimit': (7.628880920000002e-05, 15.0)
 }
+
+scan_dev_keys_list = ['name', 'type', 'devClass', 'stepUnitName', 'start', 'stepSize', 'stop',
+                      'preScanSetPoint', 'postScanSetPoint', 'timeout_s']
 
 draftTrackPars = {
     'nOfSteps': 100, 'nOfScans': 2,  # also relevant for scan but not specific for the type of scan dev

@@ -105,7 +105,12 @@ class ScanMain(QObject):
         self.ppg_deinit(True)
         self.de_init_dmm('all')
         self.stop_triton_listener()
-        self.scan_dev.deinit_scan_dev()
+        self.scan_dev.deinit_scan_dev()  # deinit the current scan dev
+        try:
+            if self.triton_scan_controller is not None and self.triton_scan_controller != self.scan_dev:
+                self.triton_scan_controller.deinit_scan_dev()
+        except Exception as e:
+            logging.error('could not stop TildaTritonScanControl, error is %s' % e, exc_info=True)
 
     def prepare_scan(self, scan_dict):  # callback_sig=None):
         """
@@ -306,17 +311,30 @@ class ScanMain(QObject):
         scan_dev_dict = scan_dict[act_track_name].get('scanDevice', {})
         if scan_dev_dict != {}:
             dev_class = scan_dev_dict.get('devClass', None)
-            if dev_class is not None:
-                if dev_class == 'Triton':
-                    self.scan_dev = self.triton_scan_controller
-                    sc_dev_n = scan_dev_dict.get('name', None)
-                    if sc_dev_n is not None:  # Tilda specific
-                        self.scan_dev.subscribe_to_scan_dev(sc_dev_n)
-                elif dev_class == 'DAC':
-                    self.scan_dev = AD5781ScanDev()
+            sc_dev_n = scan_dev_dict.get('name', None)
+            dev_type = scan_dev_dict.get('type', None)
+            self.select_scan_dev_by_class(dev_class, dev_type, sc_dev_n)
+
             # connect the pyqtsignal for a successful setting of a step
             # with self.scan_dev_tells_next_step_is_set(...)
             self.scan_dev.scan_dev_has_set_a_new_step_pyqtsig.connect(self.scan_dev_tells_next_step_is_set)
+
+    def select_scan_dev_by_class(self, sc_dev_class, dev_type=None, sc_dev_n=None):
+        """
+        select the scan device by the given class
+        :param sc_dev_class: str, class name of the given device
+        :param dev_type: str, dev type of the given device
+        :param sc_dev_n: str, dev name of the given device,
+            for Triton devices: leave None if you do not want to subscribe now.
+        :return:
+        """
+        if sc_dev_class is not None:
+            if sc_dev_class == 'Triton':
+                self.scan_dev = self.triton_scan_controller
+                if sc_dev_n is not None:  # Tilda specific
+                    self.scan_dev.subscribe_to_scan_dev(sc_dev_n)
+            elif sc_dev_class == 'DAC':
+                self.scan_dev = AD5781ScanDev()
 
     def prepare_scan_dev_for_scan(self, scan_dict, act_track_name):
         """
@@ -1100,8 +1118,8 @@ class ScanMain(QObject):
 
 
 
-# if __name__ == "__main__":
-#     scn_main = ScanMain()
+if __name__ == "__main__":
+    scn_main = ScanMain()
 #     dmm_name = scn_main.prepare_dmm('Ni4071', 'PXI1Slot5')
 #     cfg_raw = scn_main.request_config_pars(dmm_name)
 #     cfg = {key: val[-1] for key, val in cfg_raw.items()}

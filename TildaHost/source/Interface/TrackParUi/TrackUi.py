@@ -26,6 +26,8 @@ from Interface.SetVoltageUi.SetVoltageUi import SetVoltageUi
 from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
 from Interface.PreScanConfigUi.PreScanConfigUi import PreScanConfigUi
 from Interface.OutBitsUi.OutBitsUi import OutBitsUi
+from Measurement.SpecData import SpecDataXAxisUnits as Units
+import Service.Scan.draftScanParameters as dft
 
 
 class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
@@ -55,14 +57,25 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.track_number = track_number
         self.main_gui = main_gui
 
+        self._scan_main_for_debugging = None  # one can load a scan_main to this in
+        # order to debug the TrackUi independent
+
         if Cfg._main_instance is not None:
             self.buffer_pars = deepcopy(Cfg._main_instance.scan_pars.get(active_iso_name).get(self.track_name))
         else:
-            import Service.Scan.draftScanParameters as dft
             self.buffer_pars = deepcopy(dft.draftTrackPars)
+            from Service.Scan.ScanMain import ScanMain
+            self._scan_main_for_debugging = ScanMain()
+        # add scan device if not present:
+        if self.buffer_pars.get('scanDevice', None) is None:
+            self.buffer_pars['scanDevice'] = deepcopy(dft.draft_scan_device)
+
         logging.info('%s parameters are: %s ' % (self.track_name, self.buffer_pars))
-        self.buffer_pars['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()  # is needed to be able to fix stop
-        self.dac_stop_bit_user = self.calc_dac_stop_18bit()
+        if self.buffer_pars['scanDevice']['devClass'] == 'DAC':
+            # is needed to be able to fix stop
+            self.scan_dev_stop_by_user = self.calc_scan_dev_stop_val()
+        else:
+            self.scan_dev_stop_by_user = 0
 
         self.track_ui_call_back_signal.connect(self.refresh_pow_sup_readback)
         self.set_volt_win = None
@@ -121,20 +134,34 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.pushButton_con_outbits.clicked.connect(self.open_outbits_win)
         self.outbits_confirmed_signal.connect(self.received_new_outbit_dict)
 
-        """DAC Settings"""
-        self.doubleSpinBox_dacStartV.setRange(-10.5, 10.5)
-        self.doubleSpinBox_dacStartV.valueChanged.connect(self.dac_start_v_set)
+        """Scan dev related top to bottom as in gui """
+        self.comboBox_scanDevClass.addItems(dft.scan_dev_classes_available)
+        self.comboBox_scanDevClass.currentTextChanged.connect(self.scan_dev_class_changed)
+        self.comboBox_scanDev_type.currentTextChanged.connect(self.scan_type_changed)
+        self.comboBox_scanDev_name.currentTextChanged.connect(self.scan_dev_name_changed)
 
-        self.doubleSpinBox_dacStopV.setRange(-10.5, 10.5)
-        self.doubleSpinBox_dacStopV.valueChanged.connect(self.dac_stop_v_set)
+        self.stored_scan_dev_from_init = deepcopy(self.buffer_pars['scanDevice'])
 
-        self.doubleSpinBox_dacStepSizeV.setRange(
-            VCon.get_voltage_from_18bit(-(2 ** 18 - 1)), VCon.get_voltage_from_18bit(2 ** 18 - 1))
-        self.doubleSpinBox_dacStepSizeV.valueChanged.connect(self.dac_step_size_set)
+        # update now:
+        self.scan_dev_class_changed(self.comboBox_scanDevClass.currentText())
+
+        self.doubleSpinBox_scanDev_timeout_s.valueChanged.connect(self.scan_dev_timeout_set)
+        self.doubleSpinBox_scanDev_timeout_s.setRange(0., 21.0)  # 21 s currently limit res is 10ns
+
+        self.doubleSpinBox_scanDevStart.valueChanged.connect(self.scan_dev_start_v_set)
+        self.doubleSpinBox_scanDevStop.valueChanged.connect(self.scan_dev_stop_v_set)
+        self.doubleSpinBox_scanDevStepSize.valueChanged.connect(self.scan_dev_step_size_set)
+        
+        self.doubleSpinBox_scanDevPreScan.valueChanged.connect(self.scan_dev_pre_scan_val_set)
+        self.pushButton_scanDev_pre_sc_copy_from_start.clicked.connect(self.scan_dev_pre_val_copy_clicked)
+        self.checkBox_scanDev_setPreScan.stateChanged.connect(self.scan_dev_pre_scan_set_checkbox_clicked)
+
+        self.doubleSpinBox_scanDevPostScan.valueChanged.connect(self.scan_dev_post_scan_val_set)
+        self.pushButton_scanDev_post_ssc_copy_stop.clicked.connect(self.scan_dev_post_val_copy_clicked)
+        self.checkBox_scanDev_setPostScan.stateChanged.connect(self.scan_dev_post_scan_set_checkbox_clicked)
 
         self.spinBox_nOfSteps.setRange(2, 2 ** 18)
         self.spinBox_nOfSteps.valueChanged.connect(self.n_of_steps_set)
-
         self.spinBox_nOfScans.valueChanged.connect(self.n_of_scans_set)
         self.checkBox_invertScan.stateChanged.connect(self.invert_scan_set)
 
@@ -172,33 +199,50 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         when default val is messed up.
         """
         cb_post_acc_ind_before_load = self.comboBox_postAccOffsetVoltControl.currentIndex()
-        logging.info('setting trackui labels by dict: ', track_dict)
-        func_list = [
-            # (self.doubleSpinBox_dwellTime_ms.setValue,
-            #  self.check_for_none(track_dict.get('dwellTime10ns'), 0) * (10 ** -5)),
-            (self.doubleSpinBox_dacStartV.setValue,
-             VCon.get_voltage_from_18bit(self.check_for_none(track_dict.get('dacStartRegister18Bit'), 0))),
-            (self.doubleSpinBox_dacStopV.setValue,
-             VCon.get_voltage_from_18bit(self.check_for_none(track_dict.get('dacStopRegister18Bit'), 2 ** 18))),
-            (self.doubleSpinBox_dacStepSizeV.setValue,
-             VCon.get_stepsize_in_volt_from_18bit(self.check_for_none(track_dict.get('dacStepSize18Bit'), 0))),
-            (self.spinBox_nOfScans.setValue, self.check_for_none(track_dict.get('nOfScans'), 0)),
-            (self.checkBox_invertScan.setChecked, self.check_for_none(track_dict.get('invertScan'), False)),
-            (self.invert_scan_set, self.check_for_none(track_dict.get('invertScan'), False)),
-            (self.comboBox_postAccOffsetVoltControl.setCurrentIndex,
-             int(self.check_for_none(track_dict.get('postAccOffsetVoltControl'), 0))),
-            (self.doubleSpinBox_postAccOffsetVolt.setValue,
-             self.check_for_none(track_dict.get('postAccOffsetVolt'), 0)),
-            (self.lineEdit_activePmtList.setText,
-             str(self.check_for_none(track_dict.get('activePmtList'), [0]))[1:-1]),
-            (self.checkBox_colDirTrue.setChecked, self.check_for_none(track_dict.get('colDirTrue'), False)),
-            (self.col_dir_true_set, self.check_for_none(track_dict.get('colDirTrue'), False)),
-            (self.doubleSpinBox_waitAfterReset_muS.setValue,
-             self.check_for_none(track_dict.get('waitAfterReset1us'), 0)),
-            (self.doubleSpinBox_waitForKepco_muS.setValue,
-             self.check_for_none(track_dict.get('waitForKepco1us'), 0)),
-            (self.spinBox_nOfSteps.setValue, self.check_for_none(track_dict.get('nOfSteps'), 0))
-        ]
+        logging.info('setting trackui labels by dict: %s' % str(track_dict))
+        scan_dev_dict = track_dict.get('scanDevice', dft.draft_scan_device)
+        logging.debug('scan dev settings in this track dict: %s' % str(track_dict['scanDevice']))
+        try:
+            func_list = [
+                # (self.doubleSpinBox_dwellTime_ms.setValue,
+                #  self.check_for_none(track_dict.get('dwellTime10ns'), 0) * (10 ** -5)),
+                (self.scan_dev_class_changed,
+                 self.check_for_none(scan_dev_dict.get('devClass'), 'DAC')),
+                (self.scan_type_changed,
+                 self.check_for_none(scan_dev_dict.get('type'), 'AD5781')),
+                (self.scan_dev_name_changed,
+                 self.check_for_none(scan_dev_dict.get('name'), '')),
+                (self.scan_dev_timeout_set,
+                 self.check_for_none(scan_dev_dict.get('timeout_s'), 0)),
+                (self.scan_dev_start_v_set,
+                 self.check_for_none(scan_dev_dict.get('start'), 0.1)),
+                (self.scan_dev_stop_v_set,
+                 self.check_for_none(scan_dev_dict.get('stop'), 2 ** 18)),
+                (self.scan_dev_step_size_set,
+                 self.check_for_none(track_dict.get('stepSize'), 0)),
+                (self.scan_dev_pre_scan_val_set,
+                 self.check_for_none(scan_dev_dict.get('preScanSetPoint'), 0)),
+                (self.scan_dev_post_scan_val_set,
+                 self.check_for_none(scan_dev_dict.get('postScanSetPoint'), 0)),
+                (self.spinBox_nOfScans.setValue, self.check_for_none(track_dict.get('nOfScans'), 0)),
+                (self.checkBox_invertScan.setChecked, self.check_for_none(track_dict.get('invertScan'), False)),
+                (self.invert_scan_set, self.check_for_none(track_dict.get('invertScan'), False)),
+                (self.comboBox_postAccOffsetVoltControl.setCurrentIndex,
+                 int(self.check_for_none(track_dict.get('postAccOffsetVoltControl'), 0))),
+                (self.doubleSpinBox_postAccOffsetVolt.setValue,
+                 self.check_for_none(track_dict.get('postAccOffsetVolt'), 0)),
+                (self.lineEdit_activePmtList.setText,
+                 str(self.check_for_none(track_dict.get('activePmtList'), [0]))[1:-1]),
+                (self.checkBox_colDirTrue.setChecked, self.check_for_none(track_dict.get('colDirTrue'), False)),
+                (self.col_dir_true_set, self.check_for_none(track_dict.get('colDirTrue'), False)),
+                (self.doubleSpinBox_waitAfterReset_muS.setValue,
+                 self.check_for_none(track_dict.get('waitAfterReset1us'), 0)),
+                (self.doubleSpinBox_waitForKepco_muS.setValue,
+                 self.check_for_none(track_dict.get('waitForKepco1us'), 0)),
+                (self.spinBox_nOfSteps.setValue, self.check_for_none(track_dict.get('nOfSteps'), 0))
+            ]
+        except Exception as e:
+            logging.error('error while creating function calls in TrackUi: %s' % e, exc_info=True)
         for func in func_list:
             try:
                 func[0](func[1])
@@ -343,43 +387,153 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         gc.collect()
         logging.info('closed outbit win in iso %s for track %s' % (self.active_iso, self.track_name))
 
-    """ from lineedit/spinbox to set value """
-    '''line voltage realted:'''
+    '''scan device related: '''
+    def scan_dev_class_changed(self, scan_dev_class_str):
+        """ the scan dev was changed in the combobox -> fill available types and names """
+        self.comboBox_scanDev_type.clear()
+        self.buffer_pars['scanDevice']['devClass'] = scan_dev_class_str
+        self.comboBox_scanDevClass.blockSignals(True)
+        self.comboBox_scanDevClass.setCurrentText(scan_dev_class_str)
+        self.comboBox_scanDevClass.blockSignals(False)
+        # if no scan_main is around return this:
+        if Cfg._main_instance is not None:
+            Cfg._main_instance.scan_main.select_scan_dev_by_class(scan_dev_class_str)
+            dev_types = Cfg._main_instance.scan_main.scan_dev.available_scan_dev_types()
+        else:
+            self._scan_main_for_debugging.select_scan_dev_by_class(scan_dev_class_str)
+            dev_types = self._scan_main_for_debugging.scan_dev.available_scan_dev_types()
+        if self.stored_scan_dev_from_init['devClass'] == scan_dev_class_str:
+            # the device might not be available
+            st_type = self.stored_scan_dev_from_init['type']
+            if st_type not in dev_types and st_type:
+                dev_types += [st_type]
+        self.comboBox_scanDev_type.addItems(dev_types)
+        self.scan_type_changed(self.comboBox_scanDev_type.currentText())
 
-    def dac_start_v_set(self, start_volt):
+    def scan_type_changed(self, scan_type):
+        """ when the combobox for the scan_dev_type is changed, this is called """
+        self.buffer_pars['scanDevice']['type'] = scan_type
+        self.comboBox_scanDev_type.blockSignals(True)
+        self.comboBox_scanDev_type.setCurrentText(scan_type)
+        self.comboBox_scanDev_type.blockSignals(False)
+        self.comboBox_scanDev_name.clear()
+        if Cfg._main_instance is not None:
+            dev_names = Cfg._main_instance.scan_main.scan_dev.available_scan_dev_names_by_type(scan_type)
+        else:
+            dev_names = self._scan_main_for_debugging.scan_dev.available_scan_dev_names_by_type(scan_type)
+        if self.stored_scan_dev_from_init['devClass'] == self.comboBox_scanDevClass.currentText():
+            if self.stored_scan_dev_from_init['type'] == scan_type:
+                # the device might not be available
+                if self.stored_scan_dev_from_init['name'] not in dev_names:
+                    dev_names += [self.stored_scan_dev_from_init['name']]
+        self.comboBox_scanDev_name.addItems(dev_names)
+        self.scan_dev_name_changed(self.comboBox_scanDev_name.currentText())
+
+    def scan_dev_name_changed(self, sc_dev_name):
+        """
+        call this when the name of the scan device is changed
+        will resolve the chosen devices unit
+        """
+        self.buffer_pars['scanDevice']['name'] = sc_dev_name
+        self.comboBox_scanDev_name.blockSignals(True)
+        self.comboBox_scanDev_name.setCurrentText(sc_dev_name)
+        self.comboBox_scanDev_name.blockSignals(False)
+        # if no scan_main is around return this:
+        if Cfg._main_instance is not None:
+            scan_dev_info = Cfg._main_instance.scan_main.scan_dev.return_scan_dev_info(
+                self.buffer_pars['scanDevice']['type'], sc_dev_name)
+        else:
+            scan_dev_info = self._scan_main_for_debugging.scan_dev.return_scan_dev_info(
+                self.buffer_pars['scanDevice']['type'], sc_dev_name)
+        self.scan_dev_info_changed(scan_dev_info)
+
+    def scan_dev_info_changed(self, scan_dev_info):
+        """
+        The info of the scan device has been returned
+        -> set the units the device has
+        -> set the limitations in start / stop / step
+        -> ignore all other feedback for now. might be helpful what the device has
+        coerced start / stop to later on but ignore for now
+        :param scan_dev_info: dict, see Service/Scan/draftScanParameters.py:111
+        currently:
+        draft_scan_device = {
+            'name': 'AD5781_Ser1',
+            'type': 'AD5781',  # what type of device, e.g. AD5781(DAC) / Matisse (laser)
+            'devClass': 'DAC',  # carrier class of the dev, e.g. DAC / Triton
+            'stepUnitName': Units.line_volts.name,  # name if the SpecDataXAxisUnits
+            'start': 0.0,  # in units of stepUnitName
+            'stepSize': 1.0,  # in units of stepUnitName
+            'stop': 5.0,  # in units of stepUnitName
+            'preScanSetPoint': None,  # in units of stepUnitName, choose None if nothing should happen
+            'postScanSetPoint': None,  # in units of stepUnitName, choose None if nothing should happen
+            'timeout_s': 10.0,  # timeout in seconds after which step setting is accounted as failure due to timeout,
+            # set top 0 for never timing out.
+            'setValLimit': (-10.0, 10.0),
+            'stepSizeLimit': (7.628880920000002e-05, 15.0)
+        }
+        :return: None
+        """
+        unit_name = scan_dev_info.get('stepUnitName', Units.not_defined.name)
+        self.buffer_pars['scanDevice']['stepUnitName'] = unit_name
+        self.label_scanDev_unit.setText(Units[unit_name].value)
+        set_val_limits = scan_dev_info.get('setValLimit', (-15.0, 15.0))
+        self.doubleSpinBox_scanDevPostScan.setRange(*set_val_limits)
+        self.doubleSpinBox_scanDevPreScan.setRange(*set_val_limits)
+        self.doubleSpinBox_scanDevStop.setRange(*set_val_limits)
+        self.doubleSpinBox_scanDevStart.setRange(*set_val_limits)
+        step_limits = scan_dev_info.get('stepSizeLimit', (7.628880920000002e-05, 15.0))
+        self.doubleSpinBox_scanDevStepSize.setRange(*step_limits)
+
+    def scan_dev_timeout_set(self, timeout_s):
+        """ set the timeout in the buffer pars """
+        self.buffer_pars['scanDevice']['timeout_s'] = timeout_s
+        self.doubleSpinBox_scanDev_timeout_s.blockSignals(True)
+        self.doubleSpinBox_scanDev_timeout_s.setValue(timeout_s)
+        self.doubleSpinBox_scanDev_timeout_s.blockSignals(False)
+
+    def scan_dev_start_v_set(self, start_val):
         """ this will write the doublespinbox value to the working dict and set the label
         it will also call recalc_step_stop to adjust the stepsize and then fine tune the stop value """
-        start_18bit = VCon.get_18bit_from_voltage(start_volt)
-        start_volt = VCon.get_voltage_from_18bit(start_18bit)
-        self.buffer_pars['dacStartRegister18Bit'] = start_18bit
-        self.label_dacStartV_set.setText(str(round(start_volt, 8)) + ' | ' + str(start_18bit))
-        self.label_kepco_start.setText(str(round(start_volt * 50, 2)))
-        self.doubleSpinBox_dacStartV.blockSignals(True)
-        self.doubleSpinBox_dacStartV.setValue(start_volt)
-        self.doubleSpinBox_dacStartV.blockSignals(False)
-        dis = self.buffer_pars['dacStopRegister18Bit'] - self.buffer_pars['dacStartRegister18Bit']
-        self.buffer_pars['dacStepSize18Bit'] = int(math.copysign(self.buffer_pars['dacStepSize18Bit'], dis))
+        if self.buffer_pars['scanDevice'].get('devClass', 'DAC') == 'DAC':
+            # calculate everything according to the DAC and keep 18Bits in mind!
+            start_18bit = VCon.get_18bit_from_voltage(start_val)
+            start_val = VCon.get_voltage_from_18bit(start_18bit)  # overwrite start_val with nearest possible val
+            self.label_dacStartV_set.setText(str(round(start_val, 8)) + ' | ' + str(start_18bit))
+            self.label_kepco_start.setText(str(round(start_val * 50, 2)))
+            print('start set', start_val)
+        else:
+            self.label_dacStartV_set.setText('%.8f' % start_val)
+            self.label_kepco_start.setText('')
+        self.doubleSpinBox_scanDevStart.blockSignals(True)
+        self.doubleSpinBox_scanDevStart.setValue(start_val)
+        self.doubleSpinBox_scanDevStart.blockSignals(False)
+        self.buffer_pars['scanDevice']['start'] = start_val  # set start val in units of dev
+        # for other device just set the start and recalc stop + n_of_steps
         self.recalc_n_of_steps_stop()
 
-    def dac_stop_v_set(self, stop_volt):
-        """ this will write the doublespinbox value to the working dict and set the label
-        it will also call recalc_n_of_steps_stop to adjust the number of steps and then fine tune the stop value """
-        self.buffer_pars['dacStopRegister18Bit'] = VCon.get_18bit_from_voltage(stop_volt)
-        self.dac_stop_bit_user = VCon.get_18bit_from_voltage(
-            stop_volt)  # only touch this when double spinbox is touched
-        dis = self.buffer_pars['dacStopRegister18Bit'] - self.buffer_pars['dacStartRegister18Bit']
-        self.buffer_pars['dacStepSize18Bit'] = int(math.copysign(self.buffer_pars['dacStepSize18Bit'], dis))
+    def scan_dev_stop_v_set(self, stop_val):
+        """
+        this will write the doublespinbox value to the working dict and set the label
+        it will also call recalc_n_of_steps_stop to adjust the number of steps and then fine tune the stop value
+        """
+        self.scan_dev_stop_by_user = deepcopy(stop_val)  # only touch this when double spinbox is touched
+        self.buffer_pars['scanDevice']['stop'] = stop_val  # set stop val in units of dev
         self.recalc_n_of_steps_stop()
 
-    def display_stop(self, stop_18bit):
+    def display_stop(self, stop):
         """ function only for displaying the stop value """
-        setval = VCon.get_voltage_from_18bit(stop_18bit)
-        self.buffer_pars['dacStopRegister18Bit'] = stop_18bit
-        self.label_dacStopV_set.setText(str(round(setval, 8)) + ' | ' + str(stop_18bit))
-        self.label_kepco_stop.setText(str(round(setval * 50, 2)))
-        self.doubleSpinBox_dacStopV.blockSignals(True)
-        self.doubleSpinBox_dacStopV.setValue(setval)
-        self.doubleSpinBox_dacStopV.blockSignals(False)
+        if self.buffer_pars['scanDevice'].get('devClass', 'DAC') == 'DAC':
+            stop_18bit = VCon.get_18bit_from_voltage(stop)
+            stop = VCon.get_voltage_from_18bit(stop_18bit)
+            self.label_dacStopV_set.setText(str(round(stop, 8)) + ' | ' + str(stop_18bit))
+            self.label_kepco_stop.setText(str(round(stop * 50, 2)))
+        else:
+            self.label_dacStopV_set.setText('%.8f' % stop)
+            self.label_kepco_stop.setText('')
+        self.doubleSpinBox_scanDevStop.blockSignals(True)
+        self.doubleSpinBox_scanDevStop.setValue(stop)
+        self.doubleSpinBox_scanDevStop.blockSignals(False)
+        self.buffer_pars['scanDevice']['stop'] = stop
 
     def recalc_n_of_steps_stop(self):
         """ start and stop should be more or less constant if the stepsize changes,
@@ -387,10 +541,13 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         after adjusting the number of steps, the stop voltage is fine tuned to the next possible value.
         """
         try:
-            self.display_step_size(self.buffer_pars['dacStepSize18Bit'])
+            self.display_step_size(self.buffer_pars['scanDevice']['stepSize'])
             self.display_n_of_steps(self.calc_n_of_steps())
-            stop = self.calc_dac_stop_18bit()
-            if stop < 0 or stop == self.buffer_pars['dacStartRegister18Bit'] or stop >= 2 ** 18:
+            stop = self.calc_scan_dev_stop_val()
+            stop_eq_start = stop == self.buffer_pars['scanDevice']['start']
+            stop_bel_range = self.buffer_pars['scanDevice']['setValLimit'][0] <= stop
+            stop_above_range = stop >= self.buffer_pars['scanDevice']['setValLimit'][1]
+            if stop_eq_start or stop_above_range or stop_bel_range:
                 return False
             self.display_stop(stop)
             return True
@@ -398,67 +555,174 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             logging.error('the following error occurred while calculating the number of steps:'
                           + str(e))
 
-    def calc_dac_stop_18bit(self):
-        """ calculates the dac stop voltage in 18bit: stop = start + step * steps """
+    def calc_scan_dev_stop_val(self):
+        """ calculates the dac stop value: stop = start + step * (steps-1) """
         try:
-            start = self.check_for_none(self.buffer_pars['dacStartRegister18Bit'], 0)
-            step = self.check_for_none(self.buffer_pars['dacStepSize18Bit'], 1)
-            steps = self.check_for_none(self.buffer_pars['nOfSteps'], 1)
-            stop = VCon.calc_dac_stop_18bit(start, step, steps)
+            start = self.check_for_none(self.buffer_pars['scanDevice'].get('start', None), 0)
+            step = self.check_for_none(self.buffer_pars['scanDevice'].get('stepSize', None), 1)
+            num_of_steps = self.check_for_none(self.buffer_pars['nOfSteps'], 1)
+            stop = start + step * (num_of_steps - 1)
+            if self.buffer_pars['scanDevice'].get('devClass', 'DAC') == 'DAC':
+                start_18b = VCon.get_18bit_from_voltage(start)  # change to bits first
+                step_18bit = VCon.get_18bit_stepsize(step)
+                stop_18bit = VCon.calc_dac_stop_18bit(start_18b, step_18bit, num_of_steps)
+                stop = VCon.get_voltage_from_18bit(stop_18bit)
         except Exception as e:
-            logging.error('following error occurred while calculating the stop voltage:' + str(e))
+            logging.error('following error occurred while calculating the stop value:' + str(e))
             stop = 0
         return stop
 
     def calc_step_size(self):
         """ calculates the stepsize: (stop - start) / nOfSteps  """
         try:
-            start = self.check_for_none(self.buffer_pars.get('dacStartRegister18Bit'), 0)
-            stop = self.dac_stop_bit_user
+            start = self.check_for_none(self.buffer_pars['scanDevice'].get('start'), 0)
+            stop = self.scan_dev_stop_by_user
             steps = self.check_for_none(self.buffer_pars.get('nOfSteps'), 1)
-            stepsize_18bit = VCon.calc_step_size(start, stop, steps)
+            try:
+                dis = stop - start
+                stepsize = dis / (steps - 1)
+            except ZeroDivisionError:
+                stepsize = 0
+            if self.buffer_pars['scanDevice'].get('devClass', 'DAC') == 'DAC':
+                # for DAC bitwise calc!
+                start_18b = VCon.get_18bit_from_voltage(start)  # change to bits first
+                stop_18b = VCon.get_18bit_from_voltage(stop)
+                stepsize_18bit = VCon.calc_step_size(start_18b, stop_18b, steps)  # int calculation
+                stepsize = VCon.get_stepsize_in_volt_from_18bit(stepsize_18bit)  # aaaand back again
         except Exception as e:
             logging.error('following error occurred while calculating the stepsize:' + str(e))
-            stepsize_18bit = 0
-        return stepsize_18bit
+            stepsize = 0
+        return stepsize
+
+    def scan_dev_pre_scan_val_set(self, pre_scan_set_val, blck_chbox_sig=True):
+        """
+        value which will be set before the scan in the prescan measurement
+        it will aslo set teh checkbox next to it!
+        :param pre_scan_set_val: float, unit is same as step etc. 
+                                    use None for not measuring
+        """ 
+        self.buffer_pars['scanDevice']['preScanSetPoint'] = pre_scan_set_val
+        self.checkBox_scanDev_setPreScan.blockSignals(blck_chbox_sig)
+        self.checkBox_scanDev_setPreScan.setChecked(pre_scan_set_val is not None)
+        self.checkBox_scanDev_setPreScan.blockSignals(False)
+
+    def scan_dev_post_scan_val_set(self, post_scan_set_val, blck_chbox_sig=True):
+        """
+        value which will be set before the scan in the postscan measurement
+        :param post_scan_set_val: float, unit is same as step etc.
+                                    use None for not measuring
+        """
+        self.buffer_pars['scanDevice']['postScanSetPoint'] = post_scan_set_val
+        self.checkBox_scanDev_setPostScan.blockSignals(blck_chbox_sig)
+        self.checkBox_scanDev_setPostScan.setChecked(post_scan_set_val is not None)
+        self.checkBox_scanDev_setPostScan.blockSignals(False)
+
+    def scan_dev_pre_val_copy_clicked(self, block_sig=True):
+        """
+        copy the current start value to the pre scan value
+        will also update the doubleSpinbox
+        """
+        new_val = self.doubleSpinBox_scanDevStart.value()
+        self.scan_dev_pre_scan_val_set(new_val, block_sig)
+        self.doubleSpinBox_scanDevPreScan.blockSignals(block_sig)
+        self.doubleSpinBox_scanDevPreScan.setValue(new_val)
+        self.doubleSpinBox_scanDevPreScan.blockSignals(False)
+
+    def scan_dev_post_val_copy_clicked(self, block_sig=True):
+        """  copy the current start value to the post scan value """
+        new_val = self.doubleSpinBox_scanDevStop.value()
+        self.scan_dev_post_scan_val_set(new_val)
+        self.doubleSpinBox_scanDevPostScan.blockSignals(block_sig)
+        self.doubleSpinBox_scanDevPostScan.setValue(new_val)
+        self.doubleSpinBox_scanDevPostScan.blockSignals(False)
+        
+    def scan_dev_pre_scan_set_checkbox_clicked(self, chbox_state, block_signal=True):
+        """
+        set the checkbox
+        :param chbox_state:
+        :return:
+        """
+        self.checkBox_scanDev_setPreScan.setChecked(chbox_state == QtCore.Qt.Checked)
+        self.doubleSpinBox_scanDevPreScan.setEnabled(chbox_state == QtCore.Qt.Checked)
+        self.pushButton_scanDev_pre_sc_copy_from_start.setEnabled(chbox_state == QtCore.Qt.Checked)
+        if chbox_state == QtCore.Qt.Checked:
+            new_val = self.buffer_pars['scanDevice']['preScanSetPoint']
+            new_val = self.doubleSpinBox_scanDevStart.value() if new_val is None else new_val
+            self.doubleSpinBox_scanDevPreScan.blockSignals(block_signal)
+            self.doubleSpinBox_scanDevPreScan.setValue(new_val)
+            self.doubleSpinBox_scanDevPreScan.blockSignals(False)
+    
+    def scan_dev_post_scan_set_checkbox_clicked(self, chbox_state, block_signal=True):
+        """
+        set the checkbox
+        :param chbox_state:
+        :return:
+        """
+        self.checkBox_scanDev_setPostScan.setChecked(chbox_state == QtCore.Qt.Checked)
+        self.doubleSpinBox_scanDevPostScan.setEnabled(chbox_state == QtCore.Qt.Checked)
+        self.pushButton_scanDev_post_ssc_copy_stop.setEnabled(chbox_state == QtCore.Qt.Checked)
+        if chbox_state == QtCore.Qt.Checked:
+            new_val = self.buffer_pars['scanDevice'].get('postScanSetPoint', None)
+            new_val = self.doubleSpinBox_scanDevStart.value() if new_val is None else new_val
+            self.doubleSpinBox_scanDevPostScan.blockSignals(block_signal)
+            self.doubleSpinBox_scanDevPostScan.setValue(new_val)
+            self.doubleSpinBox_scanDevPostScan.blockSignals(False)
 
     def calc_n_of_steps(self):
         """ calculates the number of steps: abs((stop - start) / stepSize) """
         try:
-            start = self.check_for_none(self.buffer_pars.get('dacStartRegister18Bit'), 0)
-            stop = self.dac_stop_bit_user
-            step = self.check_for_none(self.buffer_pars.get('dacStepSize18Bit'), 1)
-            n_of_steps = VCon.calc_n_of_steps(start, stop, step)
+            start = self.check_for_none(self.buffer_pars['scanDevice'].get('start'), 0)
+            stop = self.scan_dev_stop_by_user
+            step_size = self.check_for_none(self.buffer_pars['scanDevice'].get('stepSize'), 1)
+            try:
+                dis = abs(stop - start) + abs(step_size)
+                n_of_steps = dis / abs(step_size)
+            except ZeroDivisionError:
+                n_of_steps = 0
+            if self.buffer_pars['scanDevice'].get('devClass', 'DAC') == 'DAC':
+                # for DAC bitwise calc!
+                start_18b = VCon.get_18bit_from_voltage(start)  # change to bits first
+                stop_18b = VCon.get_18bit_from_voltage(stop)
+                step_size_18b = VCon.get_18bit_stepsize(step_size)
+                n_of_steps = VCon.calc_n_of_steps(start_18b, stop_18b, step_size_18b)
         except Exception as e:
             logging.error('following error occurred while calculating the number of steps:' + str(e))
             n_of_steps = 0
         return n_of_steps  # sign should always be in the stepsize
 
-    def dac_step_size_set(self, step_volt):
+    def scan_dev_step_size_set(self, step_size):
         """ if the stepsize is set, adjust the number of steps to keep start and stop constant"""
-        last_step_18bit = self.buffer_pars['dacStepSize18Bit']
-        step_18bit = VCon.get_18bit_stepsize(step_volt)
-        self.display_step_size(step_18bit)
+        if self.buffer_pars['scanDevice'].get('devClass', 'DAC') == 'DAC':
+            # for DAC bitwise calc!
+            step_18bit = VCon.get_18bit_stepsize(step_size)
+            step_size = VCon.get_stepsize_in_volt_from_18bit(step_18bit)
+        self.display_step_size(step_size)
         if not self.recalc_n_of_steps_stop():  # for invalid stop value, return to last valid value
-            self.display_step_size(last_step_18bit)
+            self.display_step_size(step_size)
             self.recalc_n_of_steps_stop()
 
-    def display_step_size(self, step_18bit):
+    def display_step_size(self, step_size):
         """ stores the stepSize to the working dictionary and displays them """
-        self.buffer_pars['dacStepSize18Bit'] = step_18bit
-        step_volt = VCon.get_stepsize_in_volt_from_18bit(step_18bit)
-        self.label_dacStepSizeV_set.setText(str(round(step_volt, 8)) + ' | ' + str(step_18bit))
-        self.label_kepco_step.setText(str(round(step_volt * 50, 2)))
-        self.doubleSpinBox_dacStepSizeV.blockSignals(True)
-        self.doubleSpinBox_dacStepSizeV.setValue(step_volt)
-        self.doubleSpinBox_dacStepSizeV.blockSignals(False)
+        self.buffer_pars['scanDevice']['stepSize'] = step_size
+        if self.buffer_pars['scanDevice'].get('devClass', 'DAC') == 'DAC':
+            # for DAC bitwise calc!
+            step_18bit = VCon.get_18bit_stepsize(step_size)
+            step_size = VCon.get_stepsize_in_volt_from_18bit(step_18bit)
+            self.label_dacStepSizeV_set.setText(str(round(step_size, 8)) + ' | ' + str(step_18bit))
+            self.label_kepco_step.setText(str(round(step_size * 50, 2)))
+        else:
+            self.label_dacStepSizeV_set.setText('%.8f' % step_size)
+            self.label_kepco_step.setText('')
+        self.doubleSpinBox_scanDevStepSize.blockSignals(True)
+        self.doubleSpinBox_scanDevStepSize.setValue(step_size)
+        self.doubleSpinBox_scanDevStepSize.blockSignals(False)
 
     def n_of_steps_set(self, steps):
         """ displays the number of steps that where set and recalculates the stepSize
          in order to keep start and stop more or less constant """
         self.display_n_of_steps(steps)
         self.display_step_size(self.calc_step_size())
-        self.display_stop(self.calc_dac_stop_18bit())
+        self.display_stop(self.calc_scan_dev_stop_val())
 
     def display_n_of_steps(self, steps):
         """ write the number of steps to the working dictionary and display them """
@@ -585,9 +849,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         if Cfg._main_instance is not None:
             default_d = deepcopy(Cfg._main_instance.scan_pars[self.active_iso][self.track_name])
         else:
-            import Service.Scan.draftScanParameters as dft
             default_d = deepcopy(dft.draftTrackPars)
-        default_d['dacStopRegister18Bit'] = self.calc_dac_stop_18bit()
+        default_d['stop'] = self.calc_scan_dev_stop_val()
         self.set_labels_by_dict(default_d)
 
     def closeEvent(self, event):
@@ -604,6 +867,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             self.pre_post_scan_window.close()
         if self.outbit_win is not None:
             self.outbit_win.close()
+        if self._scan_main_for_debugging is not None:
+            self._scan_main_for_debugging.close_scan_main()
 
     def raise_win_to_front(self, window):
         # this will remove minimized status
@@ -614,7 +879,6 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         window.activateWindow()
 
 
-# aah zu nervig
 if __name__ == '__main__':
     import sys
 
@@ -623,6 +887,15 @@ if __name__ == '__main__':
     app_log = logging.getLogger()
     app_log.setLevel(logging.DEBUG)
     app_log.info('Log level set to ' + 'DEBUG')
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    # ch.setFormatter(log_formatter)
+    app_log.addHandler(ch)
+
+    app_log.info('****************************** starting ******************************')
+    app_log.info('Log level set to DEBUG')
 
     app = QtWidgets.QApplication(sys.argv)
     gui = TrackUi(None, 0, 'lala', None)

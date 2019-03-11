@@ -31,9 +31,45 @@ class BaseTildaScanDeviceControl(QObject):
 
     def __init__(self):
         super(BaseTildaScanDeviceControl, self).__init__()
+        self.possible_units = Units
 
-    def return_scan_dev_info(self):
-        """ return the scan device info """
+    def available_scan_dev_types(self):
+        """
+        return a list of available scan device types for this devClass
+        :return: list of strings with available types
+        """
+        return ['base']
+
+    def available_scan_dev_names_by_type(self, type):
+        """
+        return a list of available scan devices, for the given type of this devClass
+        :param type: str, type of the device (e.g. AD5781 / Matisse)
+        :return: list of strings with available names
+        """
+        return ['base']
+
+    def return_scan_dev_info(self, dev_type=None, dev_name=None):
+        """
+        return the scan device info currently subscribed to
+        or as requested by dev_type + dev_name
+        :return dev_type: str, type of device or None for currently subscribed to
+        :return dev_name: str, name of device for which the values are requested, None for currently subscribed to.
+        :return dict: {
+            'name': 'base',
+            'type': 'base',  # what type of device, e.g. AD5781(DAC) / Matisse (laser)
+            'devClass': 'base',  # carrier class of the dev, e.g. DAC / Triton
+            'stepUnitName': Units.line_volts.name,
+            'start': 0.0,
+            'stop': 0.0,
+            'stepSize': 1.0,
+            'preScanSetPoint': None,  # 0 volts
+            'postScanSetPoint': None,
+            'timeout_s': 10.0,  # timeout in seconds after which step setting is accounted as failure due to timeout,
+            # set top 0 for never timing out.
+            'setValLimit': (-10.0, 10.0),
+            'stepSizeLimit': (7.628880920000002e-05, 15.0)
+        }
+        """
         draft_scan_dev_dict = {
             'name': 'base',
             'type': 'base',  # what type of device, e.g. AD5781(DAC) / Matisse (laser)
@@ -43,7 +79,11 @@ class BaseTildaScanDeviceControl(QObject):
             'stop': 0.0,
             'stepSize': 1.0,
             'preScanSetPoint': None,  # 0 volts
-            'postScanSetPoint': None
+            'postScanSetPoint': None,
+            'timeout_s': 10.0,  # timeout in seconds after which step setting is accounted as failure due to timeout,
+            # set top 0 for never timing out.
+            'setValLimit': (-10.0, 10.0),
+            'stepSizeLimit': (7.628880920000002e-05, 15.0)
         }
         return draft_scan_dev_dict
 
@@ -80,6 +120,13 @@ class BaseTildaScanDeviceControl(QObject):
     def deinit_scan_dev(self):
         """
         dio whatever is needed when deinitialising the scan device
+        :return: None
+        """
+        pass
+
+    def get_existing_callbacks_from_main(self):
+        """
+        get the existing callbacks from the main and overwrite the corresponding pyqsignals if wanted
         :return: None
         """
         pass

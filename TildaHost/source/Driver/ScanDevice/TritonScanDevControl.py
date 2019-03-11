@@ -70,14 +70,16 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
 
         self.dummy_scan_dev = None  # will be initialized if db is set to local
         self.dummy_scan_dev_name = 'DummyScanDev'
+        self.dummy_scan_dev_type = 'DummyScanDevice'
         if self.db == 'local':
             # create a dummy scan dev for testing
             self.create_dummy_scan_dev()
 
         self.scan_dev = None
         self.scan_dev_name = ''
+        self.scan_dev_type = ''
 
-        self.scan_dev_settings = {}  # {'step_size_min_max': (self.dev_min_step_size, self.dev_max_step_size),
+        self.scan_dev_pars = {}  # {'step_size_min_max': (self.dev_min_step_size, self.dev_max_step_size),
         # 'set_val_min_max': (self.dev_min_val, self.dev_max_val), 'unit': self.start_step_units}
         self.scan_pars_set_from_dev = {}  # -> {'unit': self.start_step_units.name, 'start': self.sc_start,
         #  'stop': self.sc_stop, 'stepSize': self.sc_stepsize,
@@ -132,7 +134,7 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
         ch: devPars, val: dict, {
             'step_size_min_max': (self.dev_min_step_size, self.dev_max_step_size),
             'set_val_min_max': (self.dev_min_val, self.dev_max_val),
-            'unit': self.start_step_units}
+            'unitName': self.start_step_units.name}
 
         :param dev: str, dev that has send the following
         :param t: str, timestamp
@@ -162,22 +164,40 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
     ''' comunication with scan dev '''
     ''' find available devs '''
 
-    def get_devs_from_db(self):
+    def available_scan_dev_types(self):
+        """
+        get available device types from the db, if local return dummy type
+        :return: list of strings, ['dev_type1', 'dev_type2', ... ]
+        """
+        dev_types = []
+
+        if self.db != 'local':
+            self.dbCur_execute(self.dbCur_execute("SELECT DeviceType FROM DeviceTypes ORDER BY DeviceType"), None)
+            res = self.dbCur_fetchall()
+            if res is not None:
+                dev_types = res[0]
+        else:
+            logging.warning('no db connection, returning local DummyScanDev!')
+            dev_types = [self.dummy_scan_dev_type, 'Matisse']
+        return dev_types
+
+    def available_scan_dev_names_by_type(self, dev_type):
         """
         return a list with the names of all currently available devices in the db.
         if db is set to local return the name of the DummyScanDev
+        :return: list of strings, ['dev_name1', 'dev_name2', ... ]
         """
-        devs = []
+        dev_names = []
 
         if self.db != 'local':
-            self.dbCur_execute('''SELECT deviceName FROM devices WHERE uri IS NOT NULL''', None)
+            self.dbCur_execute("SELECT deviceName FROM devices WHERE deviceType = %s", (dev_type,))
             res = self.dbCur_fetchall()
             if res is not None:
-                devs = res[0]
+                dev_names = res[0]
         else:
             logging.warning('no db connection, returning local DummyScanDev!')
-            devs = [self.dummy_scan_dev_name]
-        return devs
+            dev_names = [self.dummy_scan_dev_name] if dev_type == self.dummy_scan_dev_type else ['MatisseDummy']
+        return dev_names
 
     def create_dummy_scan_dev(self):
         """ cretae a dummy scan device for testing """
@@ -196,7 +216,11 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
             self.scan_dev = self.subscribe(scan_dev_name)
         else:
             self.scan_dev = self.subscribe(self.dummy_scan_dev_name, self.dummy_scan_dev.uri)
+        if self.scan_dev is None:
+            logging.error('%s was not able to subscribe to the dev %s is it offline? will fail now' % (
+                self.name, scan_dev_name))
         self.scan_dev_name = self.scan_dev.getName()
+        self.scan_dev_type = self.scan_dev.getType()
         self.get_scan_dev_settings()
 
     def unsubscribe_from_scan_device(self):
@@ -204,6 +228,9 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
         self.unsubscribe(self.scan_dev_name)
         self.scan_dev = None
         self.scan_dev_name = ''
+        self.scan_dev_type = ''
+        self.scan_dev_pars = {}
+        self.scan_pars_set_from_dev = {}
 
     def get_scan_dev_settings(self):
         """
@@ -220,9 +247,17 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
         :param dev_pars_dict: dict, see in self.receive() -> 'devPars'
         :return:
         """
-        self.scan_dev_settings = dev_pars_dict
+        self.scan_dev_pars = dev_pars_dict
         TiTs.print_dict_pretty(dev_pars_dict)
-        self.scan_dev_sends_new_settings_pyqtsig.emit(self.scan_dev_settings)
+        self.scan_dev_sends_new_settings_pyqtsig.emit(self.scan_dev_pars)
+
+    def return_stored_dev_pars(self):
+        """
+        return the device parameters of the current scan device.
+        Those should have ben send by the device after subscribing.
+        :return: dict, device parameters, might be empty of not stored yet.
+        """
+        return self.scan_dev_pars
 
     def setup_scan_in_scan_dev(self, start, stepsize, num_of_steps, num_of_scans, invert_in_odd_scans):
         """
@@ -301,19 +336,104 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
             ret = self.scan_dev.set_pre_scan_measurement_setpoint(set_val)
         return ret
 
-    def return_scan_dev_info(self):
-        ret = {
-            'name': self.scan_dev_name,
-            'type': str(self.scan_dev.type),  # what type of device, e.g. AD5781(DAC) / Matisse (laser)
-            'devClass': 'Triton',  # carrier class of the dev, e.g. DAC / Triton
-            'stepUnit': self.scan_dev.start_step_units,
+    def return_scan_dev_info(self, dev_type=None, dev_name=None):
+        """
+        return the scan device info currently subscribed to
+        or as requested by dev_type + dev_name
+        :return dev_type: str, type of device or None for currently subscribed to
+        :return dev_name: str, name of device for which the values are requested, None for currently subscribed to.
+        :return dict: {
+            'name': 'base',
+            'type': 'base',  # what type of device, e.g. AD5781(DAC) / Matisse (laser)
+            'devClass': 'base',  # carrier class of the dev, e.g. DAC / Triton
+            'stepUnitName': Units.line_volts.name,
             'start': 0.0,
             'stop': 0.0,
             'stepSize': 1.0,
             'preScanSetPoint': None,  # 0 volts
-            'postScanSetPoint': None
+            'postScanSetPoint': None,
+            'timeout_s': 10.0,  # timeout in seconds after which step setting is accounted as failure due to timeout,
+            # set top 0 for never timing out.
+            'setValLimit': (-10.0, 10.0),
+            'stepSizeLimit': (7.628880920000002e-05, 15.0)
+        }
+        """
+        if dev_type is None and dev_name is None and self.scan_dev_pars != {}:
+            # is subscribed to a scan_dev return real dev pars, otherwise return from storage
+            dev_type = self.scan_dev_type
+            dev_name = self.scan_dev_name
+            set_val_lims = self.scan_dev_pars['set_val_min_max']
+            step_min_max = self.scan_dev_pars['step_size_min_max']
+            unit_name = self.scan_dev_pars['unitName']
+        else:
+            # get dev pars from storage (maybe db later?)
+            pars_dict_stored = self.scan_dev_pars_storage_by_type(dev_type)
+            set_val_lims = pars_dict_stored['set_val_min_max']
+            step_min_max = pars_dict_stored['step_size_min_max']
+            unit_name = pars_dict_stored['unitName']
+        if self.scan_pars_set_from_dev != {}:
+            #     'start': self.sc_start,
+            #     'stop': self.sc_stop,
+            #     'stepSize': self.sc_stepsize,
+            start = self.scan_pars_set_from_dev['start']
+            stop = self.scan_pars_set_from_dev['stop']
+            stepsize = self.scan_pars_set_from_dev['stepSize']
+        else:
+            start = 0.0
+            stop = 10.0
+            stepsize = 1.0
+
+        ret = {
+            'name': dev_name,
+            'type': dev_type,  # what type of device, e.g. AD5781(DAC) / Matisse (laser)
+            'devClass': 'Triton',  # carrier class of the dev, e.g. DAC / Triton
+            'stepUnitName': unit_name,
+            'start': start,  # not used upstream !?
+            'stop': stop,  # not used upstream !?
+            'stepSize': stepsize,  # not used upstream !?
+            'preScanSetPoint': None,  # not used upstream !?
+            'postScanSetPoint': None,  # not used upstream !?
+            'timeout_s': 10.0,  # timeout in seconds after which step setting is accounted as failure due to timeout,
+            # set top 0 for never timing out.
+            'setValLimit': set_val_lims,
+            'stepSizeLimit': step_min_max
         }
         return ret
+
+    def scan_dev_pars_storage_by_type(self, dev_type):
+        """
+        return device parameters from storage
+        -> useful when not wanting to subscribe to the actual devs
+
+        > keep up to date for desired scan devices :(
+        > maybe get these from database later on?
+
+        :param dev_type: str, type of the dev
+        :return: dict,
+        {'step_size_min_max': (self.dev_min_step_size, self.dev_max_step_size),
+        'set_val_min_max': (self.dev_min_val, self.dev_max_val),
+        'unitName': self.start_step_units.name}}
+        """
+        step_min_max = (- 1 * 10 ** 30, 1 * 10 ** 30)  # default
+        set_val_min_max = (- 1 * 10 ** 30, 1 * 10 ** 30)  # default
+        unit_name = self.possible_units.not_defined.name  # default
+        if dev_type == 'Matisse':
+            # overwrite for matisse
+            step_min_max = (- 1 * 10 ** 30, 1 * 10 ** 30)  # default
+            set_val_min_max = (- 1 * 10 ** 30, 1 * 10 ** 30)  # default
+            unit_name = self.possible_units.frequency_mhz.name
+        elif dev_type == self.dummy_scan_dev_type:
+            step_min_max = (-10.0, 10.0)  # default
+            set_val_min_max = (0.01, 15.0)  # default
+            unit_name = self.possible_units.frequency_mhz.name
+
+        # add more devs by elif
+
+        ret_dict = {
+            'step_size_min_max': step_min_max,
+            'set_val_min_max': set_val_min_max,
+            'unitName': unit_name}
+        return ret_dict
 
 
 # Testing:
@@ -344,7 +464,7 @@ if __name__ == '__main__':
 
     sc_ctrl = TritonScanDevControl('ScanControlTestUnit')
 
-    devs_db = sc_ctrl.get_devs_from_db()
+    devs_db = sc_ctrl.available_scan_dev_types()
     print('available devs in db: ', devs_db)
     sc_ctrl.subscribe_to_scan_dev('')
     sc_ctrl.setup_scan_in_scan_dev(0, 10, 11, 50, False)
