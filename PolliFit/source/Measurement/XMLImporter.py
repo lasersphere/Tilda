@@ -17,6 +17,9 @@ import numpy as np
 import Physics
 import TildaTools
 from Measurement.SpecData import SpecData
+from Service.Scan.draftScanParameters import draft_scan_device
+import Service.VoltageConversions.VoltageConversions as VCon
+
 
 
 class XMLImporter(SpecData):
@@ -130,6 +133,10 @@ class XMLImporter(SpecData):
 
 
             track_dict = scandict[tr_name]
+            scan_dev_dict_tr = track_dict.get('scanDevice', draft_scan_device)
+            self.scan_dev_dict_tr_wise.append(scan_dev_dict_tr)
+            # overwrite with last of tracks, but should be the same unit for all tracks anyhow (hopefully)
+            self.x_units = self.x_units_enums[scan_dev_dict_tr['stepUnitName']]
             self.measureVoltPars.append(track_dict.get('measureVoltPars', {}))
             self.tritonPars.append(track_dict.get('triton', {}))
             self.outbitsPars.append(track_dict.get('outbits', {}))
@@ -161,7 +168,12 @@ class XMLImporter(SpecData):
             self.working_time.append(track_dict['workingTime'])
             self.nrScans.append(track_dict['nOfCompletedSteps'] // nOfsteps)
 
-            dacStepSize18Bit = track_dict['dacStepSize18Bit']
+            dacStepSize18Bit = track_dict.get('dacStepSize18Bit', None)  # leave in for backwards_comp
+            if dacStepSize18Bit is None:
+                step_size = scan_dev_dict_tr.get('start', 0.0)
+            else:
+                step_size = VCon.get_stepsize_in_volt_from_18bit(dacStepSize18Bit)
+            self.stepSize.append(step_size)
 
             if track_dict.get('trigger', {}).get('meas_trigger', None) is not None:
                 self.trigger.append(track_dict.get('trigger', None))
@@ -173,7 +185,6 @@ class XMLImporter(SpecData):
                                     })
 
             self.nrScalers.append(nOfScalers)
-            self.stepSize.append(dacStepSize18Bit)
             self.col = track_dict['colDirTrue']
             if self.seq_type in ['trs', 'tipa', 'trsdummy']:
                 self.softBinWidth_ns.append(track_dict.get('softBinWidth_ns', 10))

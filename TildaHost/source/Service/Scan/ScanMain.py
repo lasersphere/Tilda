@@ -176,7 +176,9 @@ class ScanMain(QObject):
             self.select_scan_dev(scan_dict, act_track_name)
             self.prepare_scan_dev_for_scan(scan_dict, act_track_name)
 
-        self.set_scan_dev_to_pre_scan(scan_dict, act_track_name, pre_post_scan_str)
+        if pre_post_scan_str == 'preScan' or pre_post_scan_str == 'postScan':
+            # do this for both!
+            self.set_scan_dev_to_pre_scan(scan_dict, act_track_name, pre_post_scan_str)
 
         dmm_conf_dict = scan_dict[act_track_name]['measureVoltPars'].get(pre_post_scan_str, {}).get('dmms', {})
         triton_dict = scan_dict[act_track_name].get('triton', {})
@@ -346,7 +348,7 @@ class ScanMain(QObject):
         scan_dev_dict = scan_dict[act_track_name].get('scanDevice', {})
         if scan_dev_dict != {}:
             start = scan_dev_dict.get('start', None)
-            stepsize = scan_dev_dict.get('step', None)
+            stepsize = scan_dev_dict.get('stepSize', None)
             num_of_steps = scan_dict[act_track_name].get('nOfSteps', None)
             num_of_scans = scan_dict[act_track_name].get('nOfScans', None)
             invert_in_odd_scans = scan_dict[act_track_name].get('invertScan', None)
@@ -381,7 +383,7 @@ class ScanMain(QObject):
         # request preparation of next step from scan device and pass callback
         req_time = datetime.now()
         self.scan_dev.request_next_step()
-        logging.debug('{}: requested next step from scan device now. Step number is {}'.format(req_time, step_num))
+        logging.debug('%s: requested next step from scan device now. Step number is %s' % ('scan_main', step_num))
 
 
     def scan_dev_tells_next_step_is_set(self, scan_progress_dict):

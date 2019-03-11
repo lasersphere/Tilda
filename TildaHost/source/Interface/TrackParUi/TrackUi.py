@@ -142,9 +142,6 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
         self.stored_scan_dev_from_init = deepcopy(self.buffer_pars['scanDevice'])
 
-        # update now:
-        self.scan_dev_class_changed(self.comboBox_scanDevClass.currentText())
-
         self.doubleSpinBox_scanDev_timeout_s.valueChanged.connect(self.scan_dev_timeout_set)
         self.doubleSpinBox_scanDev_timeout_s.setRange(0., 21.0)  # 21 s currently limit res is 10ns
 
@@ -221,9 +218,9 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
                 (self.scan_dev_step_size_set,
                  self.check_for_none(track_dict.get('stepSize'), 0)),
                 (self.scan_dev_pre_scan_val_set,
-                 self.check_for_none(scan_dev_dict.get('preScanSetPoint'), 0)),
+                 scan_dev_dict.get('preScanSetPoint')),
                 (self.scan_dev_post_scan_val_set,
-                 self.check_for_none(scan_dev_dict.get('postScanSetPoint'), 0)),
+                 scan_dev_dict.get('postScanSetPoint')),
                 (self.spinBox_nOfScans.setValue, self.check_for_none(track_dict.get('nOfScans'), 0)),
                 (self.checkBox_invertScan.setChecked, self.check_for_none(track_dict.get('invertScan'), False)),
                 (self.invert_scan_set, self.check_for_none(track_dict.get('invertScan'), False)),
@@ -481,8 +478,10 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.doubleSpinBox_scanDevPreScan.setRange(*set_val_limits)
         self.doubleSpinBox_scanDevStop.setRange(*set_val_limits)
         self.doubleSpinBox_scanDevStart.setRange(*set_val_limits)
+        self.buffer_pars['scanDevice']['setValLimit'] = set_val_limits
         step_limits = scan_dev_info.get('stepSizeLimit', (7.628880920000002e-05, 15.0))
         self.doubleSpinBox_scanDevStepSize.setRange(*step_limits)
+        self.buffer_pars['scanDevice']['stepSizeLimit'] = step_limits
 
     def scan_dev_timeout_set(self, timeout_s):
         """ set the timeout in the buffer pars """
@@ -500,7 +499,6 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             start_val = VCon.get_voltage_from_18bit(start_18bit)  # overwrite start_val with nearest possible val
             self.label_dacStartV_set.setText(str(round(start_val, 8)) + ' | ' + str(start_18bit))
             self.label_kepco_start.setText(str(round(start_val * 50, 2)))
-            print('start set', start_val)
         else:
             self.label_dacStartV_set.setText('%.8f' % start_val)
             self.label_kepco_start.setText('')
@@ -545,9 +543,14 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             self.display_n_of_steps(self.calc_n_of_steps())
             stop = self.calc_scan_dev_stop_val()
             stop_eq_start = stop == self.buffer_pars['scanDevice']['start']
-            stop_bel_range = self.buffer_pars['scanDevice']['setValLimit'][0] <= stop
+            stop_bel_range = stop <= self.buffer_pars['scanDevice']['setValLimit'][0]
             stop_above_range = stop >= self.buffer_pars['scanDevice']['setValLimit'][1]
             if stop_eq_start or stop_above_range or stop_bel_range:
+                logging.debug('stop will not properly be displayed,'
+                              ' stop_eq_start = %s stop_above_range = %s  stop_bel_range= %s range: %s' % (
+                    stop_eq_start, stop_above_range,
+                    stop_bel_range, str(self.buffer_pars['scanDevice']['setValLimit'])
+                ))
                 return False
             self.display_stop(stop)
             return True
@@ -594,7 +597,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             stepsize = 0
         return stepsize
 
-    def scan_dev_pre_scan_val_set(self, pre_scan_set_val, blck_chbox_sig=True):
+    def scan_dev_pre_scan_val_set(self, pre_scan_set_val, blck_chbox_sig=False):
         """
         value which will be set before the scan in the prescan measurement
         it will aslo set teh checkbox next to it!
@@ -602,20 +605,26 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
                                     use None for not measuring
         """ 
         self.buffer_pars['scanDevice']['preScanSetPoint'] = pre_scan_set_val
-        self.checkBox_scanDev_setPreScan.blockSignals(blck_chbox_sig)
-        self.checkBox_scanDev_setPreScan.setChecked(pre_scan_set_val is not None)
-        self.checkBox_scanDev_setPreScan.blockSignals(False)
+        ch_state = QtCore.Qt.Checked if pre_scan_set_val is not None else QtCore.Qt.Unchecked
+        self.scan_dev_pre_scan_set_checkbox_clicked(ch_state, block_signal=True)
+        if pre_scan_set_val is not None:
+            self.doubleSpinBox_scanDevPreScan.blockSignals(True)
+            self.doubleSpinBox_scanDevPreScan.setValue(pre_scan_set_val)
+            self.doubleSpinBox_scanDevPreScan.blockSignals(False)
 
-    def scan_dev_post_scan_val_set(self, post_scan_set_val, blck_chbox_sig=True):
+    def scan_dev_post_scan_val_set(self, post_scan_set_val, blck_chbox_sig=False):
         """
         value which will be set before the scan in the postscan measurement
         :param post_scan_set_val: float, unit is same as step etc.
                                     use None for not measuring
         """
         self.buffer_pars['scanDevice']['postScanSetPoint'] = post_scan_set_val
-        self.checkBox_scanDev_setPostScan.blockSignals(blck_chbox_sig)
-        self.checkBox_scanDev_setPostScan.setChecked(post_scan_set_val is not None)
-        self.checkBox_scanDev_setPostScan.blockSignals(False)
+        ch_state = QtCore.Qt.Checked if post_scan_set_val is not None else QtCore.Qt.Unchecked
+        self.scan_dev_post_scan_set_checkbox_clicked(ch_state, block_signal=True)
+        if post_scan_set_val is not None:
+            self.doubleSpinBox_scanDevPostScan.blockSignals(True)
+            self.doubleSpinBox_scanDevPostScan.setValue(post_scan_set_val)
+            self.doubleSpinBox_scanDevPostScan.blockSignals(False)
 
     def scan_dev_pre_val_copy_clicked(self, block_sig=True):
         """
@@ -663,7 +672,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.pushButton_scanDev_post_ssc_copy_stop.setEnabled(chbox_state == QtCore.Qt.Checked)
         if chbox_state == QtCore.Qt.Checked:
             new_val = self.buffer_pars['scanDevice'].get('postScanSetPoint', None)
-            new_val = self.doubleSpinBox_scanDevStart.value() if new_val is None else new_val
+            new_val = self.doubleSpinBox_scanDevStop.value() if new_val is None else new_val
             self.doubleSpinBox_scanDevPostScan.blockSignals(block_signal)
             self.doubleSpinBox_scanDevPostScan.setValue(new_val)
             self.doubleSpinBox_scanDevPostScan.blockSignals(False)

@@ -66,7 +66,7 @@ class NSendNextStepRequestViaQtSignal(Node):
 
     def processData(self, data, pipeData):
         request_next_step = Form.add_header_to23_bit(4, 4, 0, 1)  # binary for preparing next step
-        req_list = np.where(data == request_next_step)
+        req_list = np.where(data == request_next_step)[0]
         if req_list.size:
             # shouldn't be more than one step request but if it is, the user should know
             if req_list.size > 1:

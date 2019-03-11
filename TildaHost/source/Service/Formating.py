@@ -14,6 +14,7 @@ import numpy as np
 import Service.VoltageConversions.VoltageConversions as VCon
 import TildaTools
 from TildaTools import gate_one_track
+from Measurement.SpecData import SpecDataXAxisUnits as Units
 
 
 def split_32b_data(int32b_data):
@@ -106,22 +107,34 @@ def convert_scandict_v104_to_v106(scandict):
 
 def create_x_axis_from_scand_dict(scand, as_voltage=False):
     """
-    uses a track dictionary to create the x axis, starting with dacStartRegister18Bit,
-    length is nOfSteps and stepsize is dacStepSize18Bit
+    uses a track dictionary to create the x axis, starting with a voltage,
+    length is nOfSteps and stepsize is stepsize
     """
     try:
         arr = []
         tracks, track_num_list = TildaTools.get_number_of_tracks_in_scan_dict(scand)
         for tr in track_num_list:
             trackd = scand['track' + str(tr)]
-            dac_start_18bit = trackd['dacStartRegister18Bit']
-            dac_stepsize_18bit = trackd['dacStepSize18Bit']
-            n_of_steps = trackd['nOfSteps']
-            dac_stop_18bit = dac_start_18bit + (dac_stepsize_18bit * n_of_steps)
-            x = np.arange(dac_start_18bit, dac_stop_18bit, dac_stepsize_18bit)
-            if as_voltage:
-                f = np.vectorize(VCon.get_voltage_from_18bit)
-                x = f(x)
+            scan_dev_d = trackd.get('scanDevice', None)
+            if scan_dev_d is None:
+                dac_start_18bit = trackd['dacStartRegister18Bit']  # backwards comp.
+                dac_stepsize_18bit = trackd['dacStepSize18Bit']  # backwards comp.
+                n_of_steps = trackd['nOfSteps']  # backwards comp.
+                dac_stop_18bit = dac_start_18bit + (dac_stepsize_18bit * n_of_steps)  # backwards comp.
+                x = np.arange(dac_start_18bit, dac_stop_18bit, dac_stepsize_18bit)  # backwards comp.
+                if as_voltage:
+                    f = np.vectorize(VCon.get_voltage_from_18bit)  # backwards comp.
+                    x = f(x)
+            else:
+                start = scan_dev_d['start']
+                stop = scan_dev_d['stop']
+                step_size = scan_dev_d['stepSize']
+                unit_name = scan_dev_d['stepUnitName']
+                x = np.arange(start, stop, step_size)
+                if not as_voltage and unit_name == Units.line_volts.name or unit_name == Units.total_volts :
+                    # leave it now like this for kepco scans etc.
+                    f = np.vectorize(VCon.get_18bit_from_voltage)
+                    x = f(x)
             arr.append(x)
         return arr
     except Exception as e:

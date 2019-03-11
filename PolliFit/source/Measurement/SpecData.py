@@ -51,6 +51,8 @@ class SpecData(object):
         self.x_units_enums = SpecDataXAxisUnits  # to choose from
         self.x_units = SpecDataXAxisUnits.line_volts  # unit of the x axis
 
+        self.scan_dev_dict_tr_wise = []  # list of scan_device_dicts holds the info of the used scanning device
+
         #Data is organized as list of tracks containing arrays with information
         self.x = []
         self.cts = []

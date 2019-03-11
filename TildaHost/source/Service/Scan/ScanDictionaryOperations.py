@@ -93,26 +93,6 @@ def get_num_of_steps_in_scan(scan_dict):
     return result, all_steps
 
 
-def add_missing_voltages(scan_dict):
-    """
-    this will calculate 'dacStartVoltage', 'dacStepsizeVoltage', 'dacStopVoltage' and 'dacStartRegister18Bit'
-    for each track and will add this to the given scan_dict
-    :param scan_dict: dict, containing all informations for a scan.
-    :return: dict, the updated scan_dict
-    """
-    # TODO rewrite to match scanDevice sub dictionary
-    for key, sub_dict in scan_dict.items():
-        if 'track' in key:
-            dac_stop_18bit = VCon.calc_dac_stop_18bit(sub_dict['dacStartRegister18Bit'],
-                                                      sub_dict['dacStepSize18Bit'],
-                                                      sub_dict['nOfSteps'])
-            sub_dict.update(dacStartVoltage=VCon.get_voltage_from_18bit(sub_dict['dacStartRegister18Bit']))
-            sub_dict.update(dacStepsizeVoltage=VCon.get_stepsize_in_volt_from_18bit(sub_dict['dacStepSize18Bit']))
-            sub_dict.update(dacStopVoltage=VCon.get_voltage_from_18bit(dac_stop_18bit))
-            sub_dict.update(dacStopRegister18Bit=dac_stop_18bit)
-    return scan_dict
-
-
 def fill_meas_complete_dest(scan_dict):
     """
     this will go through all active dmms, in all tracks for this scan and find out on

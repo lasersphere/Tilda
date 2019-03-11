@@ -9,12 +9,12 @@ Created on '06.08.2015'
 import ast
 import logging
 import sqlite3
+from copy import deepcopy
 
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.VoltageConversions.VoltageConversions as VCon
 import Tools as PolliTools
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TriTypes
-
 
 def createTildaDB(db):
     """
@@ -57,6 +57,7 @@ def form_pollifit_db_to_tilda_db(db):
     pulsePattern TEXT,
     triton TEXT,
     outbits TEXT,
+    scanDevDict TEXT,
     UNIQUE (iso, type, track)
     )''')
 
@@ -87,7 +88,8 @@ def check_for_missing_columns_scan_pars(db):
         (19, 'measureVoltPars', 'TEXT'),
         (20, 'pulsePattern', 'TEXT'),
         (21, 'triton', 'TEXT'),
-        (22, 'outbits', 'TEXT')
+        (22, 'outbits', 'TEXT'),
+        (23, 'scanDevDict', 'TEXT')
     ]
     con = sqlite3.connect(db)
     cur = con.cursor()
@@ -118,11 +120,22 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
         trigger_dict[triggers]['type'] = trig_name  # string is better for sql sto
     iso = isod['isotope']
     sctype = isod['type']
+    dac_start18b = trackd.get('dacStartRegister18Bit', 0)  # backwards comp.
+    dac_step_size18b = trackd.get('dacStepSize18Bit', 0)  # backwards comp.
     try:
-        stop_volt = VCon.get_voltage_from_18bit(
-            trackd['dacStartRegister18Bit'] + trackd['dacStepSize18Bit'] * trackd['nOfSteps'])
+        stop = VCon.get_voltage_from_18bit(
+            dac_start18b + dac_step_size18b * trackd['nOfSteps'])  # backwards comp.
     except TypeError:
-        stop_volt = None
+        stop = None
+    start = VCon.get_voltage_from_18bit(dac_start18b)  # backwards comp.
+    step_size = VCon.get_voltage_from_18bit(dac_step_size18b)  # backwards comp.
+
+    scan_dev_dict = trackd.get('scanDevice', {})
+    if scan_dev_dict != {}:  # overwrite from scandev.
+        start = scan_dev_dict['start']
+        stop = scan_dev_dict['stop']
+        step_size = scan_dev_dict['stepSize']
+
     con = sqlite3.connect(db)
     cur = con.cursor()
     cur.execute(''' SELECT iso FROM ScanPars WHERE iso = ? AND type = ? AND track = ?''', (iso, sctype, n_of_track,))
@@ -149,12 +162,13 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
                 laserFreq = ?,
                 pulsePattern = ?,
                 triton = ?,
-                outbits = ?
+                outbits = ?,
+                scanDevDict = ?
                 WHERE iso = ? AND type = ? AND track = ?''',
                     (
-                        VCon.get_voltage_from_18bit(trackd['dacStartRegister18Bit']),
-                        stop_volt,
-                        VCon.get_stepsize_in_volt_from_18bit(trackd['dacStepSize18Bit']),
+                        start,
+                        stop,
+                        step_size,
                         str(trackd['invertScan']),
                         trackd['nOfSteps'],
                         trackd['nOfScans'],
@@ -172,6 +186,7 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
                         str(trackd['pulsePattern']),
                         str(trackd['triton']),
                         str(trackd['outbits']),
+                        str(scan_dev_dict),
                         iso, sctype, n_of_track)
                     )
         con.commit()
@@ -281,17 +296,18 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
     scand = SdOp.init_empty_scan_dict(sctype)
     scand['isotopeData']['isotope'] = iso
     scand['isotopeData']['type'] = sctype
-    scand['track' + str(tracknum)] = scand.pop('track0')
+    selected_tr_name = 'track' + str(tracknum)
+    scand[selected_tr_name] = scand.pop('track0')
     con = sqlite3.connect(database_path_str)
     cur = con.cursor()
     cur.execute(
         '''
-        SELECT     dacStartVolt, dacStepSizeVolt, invertScan,
+        SELECT  dacStartVolt, dacStepSizeVolt, dacStopVolt, invertScan,
          nOfSteps, nOfScans, postAccOffsetVoltControl,
           postAccOffsetVolt, activePmtList, colDirTrue,
            sequencerDict, waitForKepco1us, waitAfterReset1us,
            triggerDict,
-           measureVoltPars, accVolt, laserFreq, pulsePattern, triton, outbits
+           measureVoltPars, accVolt, laserFreq, pulsePattern, triton, outbits, scanDevDict
         FROM ScanPars WHERE iso = ? AND type = ? AND track = ?
         ''', (iso, sctype, tracknum,)
     )
@@ -299,22 +315,36 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
     if data is None:
         return None
     data = list(data)
+    scan_dev_dict = data.pop(-1)
+    scand[selected_tr_name]['scanDevice'] = ast.literal_eval(scan_dev_dict) if scan_dev_dict is not None else {}
+    dac_start = data.pop(0)  # float
+    dac_stepsize = data.pop(0)  # float
+    dac_stop = data.pop(0)  # float
+    if scand[selected_tr_name]['scanDevice'] == {}:
+        # for backwards compatibility
+        scand[selected_tr_name]['scanDevice'] = deepcopy(SdOp.DftSc.draft_scan_device)
+        scand[selected_tr_name]['scanDevice']['name'] = 'unknown'
+        scand[selected_tr_name]['scanDevice']['start'] = dac_start
+        scand[selected_tr_name]['scanDevice']['stop'] = dac_stop
+        scand[selected_tr_name]['scanDevice']['stepSize'] = dac_stepsize
     outbits = data.pop(-1)
-    scand['track' + str(tracknum)]['outbits'] = ast.literal_eval(outbits) if outbits is not None else {}
+    scand[selected_tr_name]['outbits'] = ast.literal_eval(outbits) if outbits is not None else {}
     triton = data.pop(-1)
-    scand['track' + str(tracknum)]['triton'] = ast.literal_eval(triton) if triton is not None else {}
-    scand['track' + str(tracknum)]['pulsePattern'] = ast.literal_eval(data.pop(-1))
+    scand[selected_tr_name]['triton'] = ast.literal_eval(triton) if triton is not None else {}
+    scand[selected_tr_name]['pulsePattern'] = ast.literal_eval(data.pop(-1))
     scand['isotopeData']['laserFreq'] = data.pop(-1)
     scand['isotopeData']['accVolt'] = data.pop(-1)
-    scand['track' + str(tracknum)]['measureVoltPars'] = SdOp.merge_dicts(
-        scand['track' + str(tracknum)]['measureVoltPars'], ast.literal_eval(data.pop(-1)))
-    scand['track' + str(tracknum)]['trigger'] = ast.literal_eval(data.pop(-1))
-    if 'type' in scand['track' + str(tracknum)]['trigger']:
-        scand['track' + str(tracknum)]['trigger']['type']= getattr(TriTypes, scand['track' + str(tracknum)]['trigger']['type'])
+    scand[selected_tr_name]['measureVoltPars'] = SdOp.merge_dicts(
+        scand[selected_tr_name]['measureVoltPars'], ast.literal_eval(data.pop(-1)))
+    scand[selected_tr_name]['trigger'] = ast.literal_eval(data.pop(-1))
+    if 'type' in scand[selected_tr_name]['trigger']:
+        scand[selected_tr_name]['trigger']['type'] = getattr(
+            TriTypes, scand[selected_tr_name]['trigger']['type'])
     else:
-        for triggers, trig_dicts in scand['track' + str(tracknum)]['trigger'].items():
+        for triggers, trig_dicts in scand[selected_tr_name]['trigger'].items():
             trig_dicts['type'] = getattr(TriTypes, trig_dicts['type'])
-    scand['track' + str(tracknum)] = db_track_values_to_trackdict(data, scand['track' + str(tracknum)])
+    scand[selected_tr_name] = db_track_values_to_trackdict(data, scand[selected_tr_name])
+    print('from db:', scand[selected_tr_name], dac_start, dac_stepsize, dac_stop)
     con.close()
 
     return scand
@@ -327,11 +357,11 @@ def db_track_values_to_trackdict(data, track_dict):
            sequencerDict, waitForKepco1us, waitAfterReset1us,
             accVolt, laserFreq) from the database, this
             converts all values to a useable track dictionary."""
-    dict_keys_list = ['dacStartRegister18Bit', 'dacStepSize18Bit', 'invertScan',
+    dict_keys_list = ['invertScan',
                       'nOfSteps', 'nOfScans', 'postAccOffsetVoltControl',
                       'postAccOffsetVolt', 'activePmtList', 'colDirTrue',
                       'sequencerDict', 'waitForKepco1us', 'waitAfterReset1us']
-    conversion_list = ['VCon.get_18bit_from_voltage(%s)', 'VCon.get_18bit_stepsize(%s)', '%s',
+    conversion_list = ['%s',
                        '%s', '%s', '%s',
                        '%s', '%s', '%s',
                        '%s', '%s', '%s']

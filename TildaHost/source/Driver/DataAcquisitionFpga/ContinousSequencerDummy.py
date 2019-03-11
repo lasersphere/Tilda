@@ -163,9 +163,9 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         """
         track_ind, track_name = scanpars['pipeInternals'].get('activeTrackNumber', (0, 'track0'))
         trackd = scanpars[track_name]
-        x_axis = Form.create_x_axis_from_scand_dict(scanpars)[track_ind]
+        x_axis = Form.create_x_axis_from_scand_dict(scanpars)[track_ind]  # not in dacRgeBit units anymore!
         num_of_steps = trackd['nOfSteps'] * trackd['nOfScans']
-        x_axis = [Form.add_header_to23_bit(x << 2, 3, 0, 1) for x in x_axis]
+        # x_axis = [Form.add_header_to23_bit(x << 2, 3, 0, 1) for x in x_axis]
         complete_lis = []
         scans = 0
         while scans < trackd['nOfScans']:
@@ -173,10 +173,13 @@ class ContinousSequencer(Sequencer, MeasureVolt):
             scans += 1
             j = 0
             while j < trackd['nOfSteps']:
-                if self.scan_dev == 'Triton':
+                # if self.scan_dev == 'Triton':
+                # TODO this seems to be not set correctly. Where si the problem?
+                # self.scan_dev seems still to be DAC !?
                     # simulate next step request
-                    complete_lis.append(Form.add_header_to23_bit(4, 4, 0, 1))  # means request next step
-                complete_lis.append(x_axis[j])
+                complete_lis.append(Form.add_header_to23_bit(4, 4, 0, 1))  # means request next step
+                # complete_lis.append(x_axis[j])  # TODO is it important that this is missing?
+                # Yeah for nOfCompleted Steps
                 j += 1
                 i = 0
                 while i < 8:

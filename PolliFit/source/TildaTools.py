@@ -23,6 +23,7 @@ from lxml import etree as ET
 import Physics
 from XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, \
     xmlAddCompleteTrack, xmlFindOrCreateSubElement, xmlWriteDict
+from Service.VoltageConversions.VoltageConversions import get_18bit_from_voltage
 
 
 def select_from_db(db, vars_select, var_from, var_where=[], addCond='', caller_name='unknown'):
@@ -641,18 +642,29 @@ def gate_zero_free_specdata(spec_data):
 def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
     """
     creates an x axis in units of line volts or in dac registers
+    :param as_voltage: bool, True if this should be returned in the native unit of th scan dev (usually volts)
     """
     x_arr = []
     for tr_ind, tr_name in enumerate(get_track_names(scan_dict)):
         steps = scan_dict[tr_name]['nOfSteps']
-        if as_voltage:
-            start = scan_dict[tr_name]['dacStartVoltage']
-            stop = scan_dict[tr_name]['dacStopVoltage']
-            step = scan_dict[tr_name]['dacStepsizeVoltage']
+        sc_dev_d = scan_dict[tr_name].get('scanDevice', {})
+        if sc_dev_d == {}:
+            if as_voltage:
+                start = scan_dict[tr_name]['dacStartVoltage']  # backwards comp.
+                stop = scan_dict[tr_name]['dacStopVoltage']  # backwards comp.
+                step = scan_dict[tr_name]['dacStepsizeVoltage']  # backwards comp.
+            else:
+                start = scan_dict[tr_name]['dacStartRegister18Bit']  # backwards comp.
+                step = scan_dict[tr_name]['dacStepSize18Bit']  # backwards comp.
+                stop = scan_dict[tr_name].get('dacStopRegister18Bit', start + step * (steps - 1))  # backwards comp.
         else:
-            start = scan_dict[tr_name]['dacStartRegister18Bit']
-            step = scan_dict[tr_name]['dacStepSize18Bit']
-            stop = scan_dict[tr_name].get('dacStopRegister18Bit', start + step * (steps - 1))
+            start = sc_dev_d['start']
+            stop = sc_dev_d['stop']
+            step = sc_dev_d['stepSize']
+            if not as_voltage:  # use dac register
+                start = get_18bit_from_voltage(start)
+                stop = get_18bit_from_voltage(stop)
+
         x_tr, new_step = np.linspace(start, stop, steps, retstep=True)
         # np.testing.assert_allclose(
         #     new_step, step, rtol=1e-5, err_msg='error while creating x axis from file, stepsizes do not match.')
@@ -854,13 +866,7 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
     tracks = {}
     for tr_ind in range(specdata.nrTracks):
         tracks['track%s' % tr_ind] = {
-            'dacStepSize18Bit': check_if_attr_exists(
-                specdata, 'x_dac', specdata.x)[tr_ind][1] - check_if_attr_exists(
-                specdata, 'x_dac', specdata.x)[tr_ind][0],
-            'dacStartRegister18Bit': check_if_attr_exists(specdata, 'x_dac', specdata.x)[tr_ind][-1],
-            'dacStartVoltage': specdata.x[tr_ind][0],
-            'dacStopVoltage': specdata.x[tr_ind][-1],
-            'dacStepsizeVoltage': specdata.x[tr_ind][1] - specdata.x[tr_ind][0],
+            'scanDevice': specdata.scan_dev_dict_tr_wise[tr_ind],
             'nOfSteps': specdata.getNrSteps(tr_ind),
             'nOfScans': specdata.nrScans[tr_ind],
             'nOfCompletedSteps': specdata.nrScans[tr_ind] * specdata.getNrSteps(tr_ind),

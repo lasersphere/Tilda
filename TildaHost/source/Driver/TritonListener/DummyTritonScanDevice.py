@@ -75,15 +75,15 @@ class DummyScanDevice(ScanDeviceBase):
         :param step_num: int, step ind
         :return:
         """
-        print('%s was told to set step number: %d which has a value of %s' % (
+        logging.debug('%s was told to set step number: %d which has a value of %s' % (
             self.name, step_num, self.sc_one_scan_vals[step_num]
         ))
         sleep_t = 1.0
-        print('will sleep now for %.2f s' % sleep_t)
+        logging.debug('will sleep now for %.2f s' % sleep_t)
         time.sleep(sleep_t)
-        print('ok, step is set continue whatever you are doing')
+        logging.debug('ok, step is set continue whatever you are doing')
 
     def set_pre_scan_measurement_setpoint(self, set_val):
-        print('---------------- %s will set now %.2f %s' % (self.name, set_val, self.start_step_units.value))
-        time.sleep(2)
-        print('---------------- %s has set  %.2f %s' % (self.name, set_val, self.start_step_units.value))
+        logging.debug('---------------- %s will set now %.2f %s' % (self.name, set_val, self.start_step_units.value))
+        time.sleep(1)
+        logging.debug('---------------- %s has set  %.2f %s' % (self.name, set_val, self.start_step_units.value))

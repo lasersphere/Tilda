@@ -691,7 +691,7 @@ class Main(QtCore.QObject):
         :return: dict, completed dictionary
         """
         self.scan_pars[iso_name] = SdOp.fill_meas_complete_dest(self.scan_pars[iso_name])
-        self.scan_pars[iso_name] = SdOp.add_missing_voltages(self.scan_pars[iso_name])
+        # self.scan_pars[iso_name] = SdOp.add_missing_voltages(self.scan_pars[iso_name])  not needed anymore
         self.scan_pars[iso_name]['pipeInternals']['workingDirectory'] = self.working_directory
         self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
         self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq

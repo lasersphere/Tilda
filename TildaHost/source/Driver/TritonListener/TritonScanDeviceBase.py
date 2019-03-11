@@ -16,6 +16,7 @@ look for them before overwriting again!
 
 import numpy as np  # np types are not supported by serialisation for pyro4! be Careful!
 import time
+import logging  # changed!
 
 
 from Driver.TritonListener.TritonDeviceBase import DeviceBase  # changed!
@@ -183,6 +184,7 @@ class ScanDeviceBase(DeviceBase):
         """
         if self._progressing_step:
             # currently still setting up a step
+            logging.warning('%s was told to set the next step but is still busy, this step will be ignored! ' % self.name)
             return False
         else:
             invert_pls = self.sc_invert_in_odd_scans and self.sc_l_cur_scan % 2 != 0
@@ -221,6 +223,8 @@ class ScanDeviceBase(DeviceBase):
 
     def _periodic(self):
         """ _periodic will handle setting the actual steps therefore it runs in the thread of the scandevice """
+        logging.debug('%s periodic is runnning,\n %s \n %s \n %s' % (
+            self.name, self._progressing_step, self._abort_scan, self.sc_l_scan_complete))
         if self._progressing_step and not self._abort_scan and not self.sc_l_scan_complete:
             self.set_step_in_dev(self.sc_l_cur_step)  # this might take some time
             self.check_if_scan_complete()
