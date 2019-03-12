@@ -82,8 +82,9 @@ class NSendNextStepRequestViaQtSignal(Node):
                 logging.debug('emitting %s from Node %s, value is %s'
                               % ('qt_signal', self.type, str(next_step_number)))
                 self.qt_signal.emit(next_step_number)
-        else:
-            return data
+
+        # anyhow return data to continue analysis, since no new data will come from a proper fpga anyhow!
+        return data
 
 
 class NAccumulateSingleScan(Node):
@@ -2376,6 +2377,8 @@ class NSendnOfCompletedStepsViaQtSignal(Node):
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         steps_to_emit = pipeData[track_name]['nOfCompletedSteps'] - self.number_of_steps_at_start
+        logging.debug('SendnOfCompletedStepsViaQtSignal wants to send num of steps: %s self.qt_sugnal is %s' %
+                      (steps_to_emit, self.qt_signal))
         if self.qt_signal is not None:
             logging.debug('emitting %s from Node %s, value is %s'
                           % ('qt_signal', self.type, str(steps_to_emit)))

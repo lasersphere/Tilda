@@ -68,7 +68,7 @@ class InfoHandler:
 
         elif payload == 4:  # means preparing next step
             # This will not be handled by InfoHandler but in a separate node.
-            pass
+            return None, step_complete
 
     def sign_for_volt_ind(self, invert_scan):
         even_scan_num = self.total_started_scans % 2 == 0

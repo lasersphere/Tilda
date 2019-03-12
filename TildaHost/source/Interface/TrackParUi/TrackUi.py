@@ -840,7 +840,9 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
 
     def confirm(self):
         """ closes the window and overwrites the corresponding track in the main """
-        self.buffer_pars = SdOp.merge_dicts(self.buffer_pars, self.sequencer_widget.get_seq_pars())
+        start = self.buffer_pars['scanDevice']['start']
+        stop = self.buffer_pars['scanDevice']['stop']
+        self.buffer_pars = SdOp.merge_dicts(self.buffer_pars, self.sequencer_widget.get_seq_pars(start, stop))
         self.buffer_pars['trigger'] = {'meas_trigger': self.trigger_widget.get_trig_pars(),
                                        'step_trigger': self.step_trigger_widget.get_trig_pars(),
                                        'scan_trigger': self.scan_trigger_widget.get_trig_pars()}

@@ -94,6 +94,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         # write timeout in 10ns units to fpga
         timeout_s = scanDevDict.get('timeout_s', 1)  # default: 1sec = 100 000 000 * 10ns
         self.scan_dev_timeout = timeout_s
+        logging.debug('CsDummy: scan_device has ben set to %s, timeout is %s' % (self.scan_dev, self.scan_dev_timeout))
 
         return self.checkFpgaStatus()
 
@@ -163,7 +164,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         """
         track_ind, track_name = scanpars['pipeInternals'].get('activeTrackNumber', (0, 'track0'))
         trackd = scanpars[track_name]
-        x_axis = Form.create_x_axis_from_scand_dict(scanpars)[track_ind]  # not in dacRgeBit units anymore!
+        # x_axis = Form.create_x_axis_from_scand_dict(scanpars)[track_ind]  # not in dacRgeBit units anymore!
         num_of_steps = trackd['nOfSteps'] * trackd['nOfScans']
         # x_axis = [Form.add_header_to23_bit(x << 2, 3, 0, 1) for x in x_axis]
         complete_lis = []
@@ -187,7 +188,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
                     complete_lis.append(Form.add_header_to23_bit(i + j, 2, i, 1))
                     i += 1
                     if i >= 8:
-                        complete_lis.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1)) # step complete
+                        complete_lis.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))  # step complete
         self.artificial_build_data = complete_lis
 
     ''' overwriting interface functions here '''
