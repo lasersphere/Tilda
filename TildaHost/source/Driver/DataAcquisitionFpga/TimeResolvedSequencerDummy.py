@@ -226,8 +226,8 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
                      % (num_bunches, num_bins, num_steps, reps_needed, count_time_dif, max_steps_one_pattern))
 
         # distribute pmts events all over time axis in last step
-        x_axis = Form.create_x_axis_from_scand_dict(scanpars)[track_ind]
-        x_axis = [Form.add_header_to23_bit(x << 2, 3, 0, 1) for x in x_axis]
+        # x_axis = Form.create_x_axis_from_scand_dict(scanpars)[track_ind]  # TODO this will cause problems if not dac
+        # x_axis = [Form.add_header_to23_bit(x << 2, 3, 0, 1) for x in x_axis]  # here float shifting will fail
         one_scan = []  # flat list with all counts and events coming from the "fpga" datastream
         num_of_cts_per_bun_step = []
         one_rep_dac_missing = []  # list [ [one_step], [one_step], ... ]
@@ -287,7 +287,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
                 one_rep_dac_missing.append(cur_step_evts)
 
         for cur_step_one_scan in range(num_steps):
-            one_scan += int(x_axis[cur_step_one_scan]),  # start with dac information
+            # one_scan += int(x_axis[cur_step_one_scan]),  # start with dac information
             one_scan += one_rep_dac_missing[cur_step_one_scan % max_steps_one_pattern]
 
         logging.debug('one scan was created. [(step, bunch, #cts)] were set: %s' % str(num_of_cts_per_bun_step))

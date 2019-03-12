@@ -67,7 +67,14 @@ class TRSWidg(BaseSequencerWidgUi, Ui_TRSWidg):
             logging.debug('you typed something invalid: ' + str(e))
         self.calc_softw_gates_from_gui()
 
-    def calc_softw_gates_from_gui(self):
+    def calc_softw_gates_from_gui(self, start_x=-10, stop_x=10):
+        """
+        calulate the software gates with values from gui
+        will write them to self.buffer_pars['softwGates']
+        :param start_x: float, start value on x-axis for gate
+        :param stop_x: float, stop value on x-axis for gate
+        :return: None
+        """
         delay_list = self.lineEdit.text()
         try:
             delay_list = ast.literal_eval(delay_list)
@@ -77,11 +84,12 @@ class TRSWidg(BaseSequencerWidgUi, Ui_TRSWidg):
                 logging.debug('input is not a list')
         except Exception as e:
             logging.debug('you typed something invalid: ' + str(e))
+
         softw_gates = TiTs.calc_soft_gates_from_db_pars(
             self.doubleSpinBox_gate_width.value(),
             delay_list,
             self.doubleSpinBox_mid_tof.value(),
-            voltage_gates=[-10.0, 10.0]
+            voltage_gates=[start_x, stop_x]
         )
         logging.debug('software gates are: ' + str(softw_gates))
         self.buffer_pars['softwGates'] = softw_gates
@@ -111,3 +119,7 @@ class TRSWidg(BaseSequencerWidgUi, Ui_TRSWidg):
         else:
             lis = [[None]] * len(self.buffer_pars.get('activePmtList', []))
             self.lineEdit.setText(str(lis))
+
+    def get_seq_pars(self, start=-10, stop=10):
+        self.calc_softw_gates_from_gui(start, stop)
+        return self.buffer_pars

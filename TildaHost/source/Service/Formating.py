@@ -131,7 +131,7 @@ def create_x_axis_from_scand_dict(scand, as_voltage=False):
                 step_size = scan_dev_d['stepSize']
                 unit_name = scan_dev_d['stepUnitName']
                 x = np.arange(start, stop, step_size)
-                if not as_voltage and unit_name == Units.line_volts.name or unit_name == Units.total_volts :
+                if not as_voltage and (unit_name == Units.line_volts.name or unit_name == Units.total_volts.name):
                     # leave it now like this for kepco scans etc.
                     f = np.vectorize(VCon.get_18bit_from_voltage)
                     x = f(x)
