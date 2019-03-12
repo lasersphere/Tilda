@@ -8,6 +8,7 @@ Module containing the ScanParameters dictionaries as needed for Scanning with th
 """
 from copy import deepcopy
 from datetime import datetime
+from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
 from Measurement.SpecData import SpecDataXAxisUnits as Units
 from Driver.DataAcquisitionFpga.ScanDeviceTypes import ScanDeviceTypes as ScTypes
 
@@ -128,6 +129,10 @@ draft_scan_device = {
 scan_dev_keys_list = ['name', 'type', 'devClass', 'stepUnitName', 'start', 'stepSize', 'stop',
                       'preScanSetPoint', 'postScanSetPoint', 'timeout_s']
 
+draft_trigger_pars = {'meas_trigger': {'type': getattr(TiTs, 'no_trigger')},
+                      'step_trigger': {'type': getattr(TiTs, 'no_trigger')},
+                      'scan_trigger': {'type': getattr(TiTs, 'no_trigger')}}
+
 draftTrackPars = {
     'nOfSteps': 100, 'nOfScans': 2,  # also relevant for scan but not specific for the type of scan dev
     'nOfCompletedSteps': 0, 'invertScan': False,  # also relevant for scan but not specific for the type of scan dev
@@ -142,8 +147,7 @@ draftTrackPars = {
     'softBinWidth_ns': 100,
     'nOfBunches': 1,
     'softwGates': [[-10, 10, 0, 10000], [-10, 10, 0, 10000]],
-    'trigger': {'type': 'no_trigger'},
-    'scan_trigger': {'type': 'no_trigger'},
+    'trigger': draft_trigger_pars,
     'pulsePattern': {'cmdList': ['$time::1.0::1::0', '$time::1.0::0::0']},
     'measureVoltPars': draftMeasureVoltPars,
     'triton': draft_triton_pars,

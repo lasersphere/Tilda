@@ -92,6 +92,12 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             self.spinBox_nOfScans.setMaximum(1)
 
         """ Trigger related """
+        if self.buffer_pars['trigger'].get('meas_trigger', None) is None:
+            # seems to be an isotope created before the advanced triggers were introduced
+            old_version_trigger = self.buffer_pars['trigger']
+            self.buffer_pars['trigger'] = {'meas_trigger': old_version_trigger,
+                                           'step_trigger': {},
+                                           'scan_trigger': {}}
         self.tabWidget.setCurrentIndex(0)  # Always step trigger as active tab, since this is the standard "trigger"
         # Measurement Trigger
         self.checkBox_UseAllTracks.setDisabled(True)
@@ -292,7 +298,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """
         finds the desired trigger widget and sets it into self.trigger_widget
         """
-        self.buffer_pars.get('trigger', {}).get('meas_trigger', {})['type'] = getattr(TiTs, trig_str)
+        self.buffer_pars['trigger']['meas_trigger']['type'] = getattr(TiTs, trig_str)
         self.trigger_vert_layout.removeWidget(self.trigger_widget)
         if self.trigger_widget is not None:
             self.trigger_widget.setParent(None)
