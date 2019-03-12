@@ -174,10 +174,13 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
         dev_types = []
 
         if self.db != 'local':
-            self.dbCur_execute(self.dbCur_execute("SELECT DeviceType FROM DeviceTypes ORDER BY DeviceType"), None)
+            # self.dbCur_execute(self.dbCur_execute("SELECT DeviceType FROM DeviceTypes ORDER BY DeviceType", None), None)
+            self.dbCur_execute("SELECT DeviceType FROM DeviceTypes ORDER BY DeviceType", None)
             res = self.dbCur_fetchall()
             if res is not None:
-                dev_types = res[0]
+                for dev_tuple in res:
+                    dev_types.append(dev_tuple[0])
+                #dev_types = res[0]
         else:
             logging.warning('no db connection, returning local DummyScanDev!')
             dev_types = [self.dummy_scan_dev_type, 'Matisse']
