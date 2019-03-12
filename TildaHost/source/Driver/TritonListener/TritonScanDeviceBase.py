@@ -25,6 +25,8 @@ from Measurement.SpecData import SpecDataXAxisUnits as Units  # changed!
 
 class ScanDeviceBase(DeviceBase):
     def __init__(self, name, sql_conf):
+        self.type = 'TildaScanDevCtl'  # Specialize device type from 'TritonObject'
+
         self.possible_start_step_unit = Units
 
         """ overwrite in device: """

@@ -72,12 +72,12 @@ class ScanMain(QObject):
 
         # create a triton device for collecting data from other triton devices:
         # self.triton_listener = None
-        self.triton_listener_name = 'TildaTritonListener'
+        self.triton_listener_name = 'TildaTritListen'
         self.triton_listener = TritonListener(self.triton_listener_name)
         self.triton_pre_scan_done = False  # bool to use when pre/during/post scan measurement of triton is completed
 
         # create a Triton device for controling scans:
-        self.triton_scan_controller_name = 'TildaTritonScanControl'
+        self.triton_scan_controller_name = 'TildaScanDevCtl'
         self.triton_scan_controller = None
         self.triton_scan_controller = TritonScanDevControl(self.triton_scan_controller_name)
         # connect to callback

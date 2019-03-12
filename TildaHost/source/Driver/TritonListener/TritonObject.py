@@ -20,7 +20,10 @@ import logging
 import Pyro4
 import mysql.connector as Sql
 
-from Driver.TritonListener.TritonDraftConfig import sqlCfg as sqlConf  # changed!
+try:
+    from Driver.TritonListener.TritonConfig import sqlCfg as sqlConf  # changed!
+except:
+    from Driver.TritonListener.TritonDraftConfig import sqlCfg as sqlConf  # changed!
 
 
 class TritonObject(object):

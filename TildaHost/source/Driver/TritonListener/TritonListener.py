@@ -40,7 +40,7 @@ class TritonListener(DeviceBase, QObject):
         """
         setting necessary attributes, cfg comes from db
         """
-        self.type = 'TildaTritonListener'
+        self.type = 'TildaTritListen'
 
         self.dummy_dev = None
 

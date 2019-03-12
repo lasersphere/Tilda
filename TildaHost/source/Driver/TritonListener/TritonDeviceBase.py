@@ -18,7 +18,11 @@ import logging, time
 import Pyro4
 
 from Driver.TritonListener.TritonObject import TritonObject  # changed!
-from Driver.TritonListener.TritonDraftConfig import sqlCfg as sqlConf  # changed!
+try:
+    from Driver.TritonListener.TritonConfig import sqlCfg as sqlConf  # changed!
+except:
+    from Driver.TritonListener.TritonDraftConfig import sqlCfg as sqlConf  # changed!
+
 
 
 class DeviceBase(TritonObject):
