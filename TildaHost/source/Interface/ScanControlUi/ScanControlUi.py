@@ -86,7 +86,8 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
                     else:
                         self.go(False)
                 else:  # all scans are done here or one scan was aborted
-
+                    if self.job_stacker_gui is not None:
+                        self.job_stacker_gui.wait_for_next_job = True  # gets feedback to job stacker
                     self.spinBox_num_of_reps.setValue(self.num_of_reps)
                     self.go_was_clicked_before = False
                     self.last_scan_was_aborted_or_halted = False  # reset abort variable when last scan was done
@@ -302,7 +303,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         if self.job_stacker_gui is not None:
             self.job_stacker_gui.scan_control_ui_closed(self.active_iso, self.spinBox_num_of_reps.value())
         if self.active_iso:
-            Cfg._main_instance.abort_scan = True
+            Cfg._main_instance.abort_scan = True  # TODO: Is this really wanted???
             Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
         logging.info('closing scan win ' + str(self.win_title))
         self.close_track_wins()
