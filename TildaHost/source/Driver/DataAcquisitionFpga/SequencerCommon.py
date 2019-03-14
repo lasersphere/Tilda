@@ -11,7 +11,7 @@ import time
 import Service.VoltageConversions.VoltageConversions as VCon
 from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
-from Driver.DataAcquisitionFpga.ScanDeviceTypes import  ScanDeviceTypes as ScTypes
+from Driver.DataAcquisitionFpga.ScanDeviceTypes import ScanDeviceTypes as ScTypes
 
 
 class Sequencer(FPGAInterfaceHandling):
@@ -87,8 +87,8 @@ class Sequencer(FPGAInterfaceHandling):
         """
         # write scan device class as int to fpga
         device_class = scanDevDict.get('devClass', 'DAC')
-        device_type_int = getattr(ScTypes, device_class)  # must be int, values defined in ScanDeviceTypes
-        self.ReadWrite(self.config.ScanDevice, device_type_int)
+        device_class = getattr(ScTypes, device_class)  # must be int, values defined in ScanDeviceTypes
+        self.ReadWrite(self.config.ScanDevice, device_class.value)
         # write timeout in 10ns units to fpga
         timeout_10ns = 100000000 * scanDevDict.get('timeout_s', 1)  # default: 1sec = 100 000 000 * 10ns
         self.ReadWrite(self.config.scanDevTimeout10ns, timeout_10ns)
