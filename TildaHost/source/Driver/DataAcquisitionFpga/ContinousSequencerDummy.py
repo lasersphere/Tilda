@@ -17,6 +17,7 @@ import Driver.DataAcquisitionFpga.ContinousSequencerConfig as CsCfg
 import Service.Formating as Form
 from Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
 from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
+from Driver.DataAcquisitionFpga.ScanDeviceTypes import ScanDeviceTypes as ScTypes
 
 
 class ContinousSequencer(Sequencer, MeasureVolt):
@@ -92,8 +93,9 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         :return:
         """
         # write scan device class as int to fpga
-        device_type = scanDevDict.get('devClass', 'DAC')
-        self.scan_dev = device_type
+        device_class = scanDevDict.get('devClass', 'DAC')
+        # device_class = getattr(ScTypes, device_class)  # For Dummy it is easier to keep this as String!
+        self.scan_dev = device_class
         # write timeout in 10ns units to fpga
         timeout_s = scanDevDict.get('timeout_s', 1)  # default: 1sec = 100 000 000 * 10ns
         self.scan_dev_timeout = timeout_s
