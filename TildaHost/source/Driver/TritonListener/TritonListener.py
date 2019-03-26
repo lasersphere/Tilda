@@ -72,6 +72,8 @@ class TritonListener(DeviceBase, QObject):
         """
         ret = ''
         channels = ['calls', 'random']
+        if dev == 'DummyScanDev':
+            channels = ['frequency']
         logging.debug('getting channels of dev %s' % str(dev))
 
         if self.db != 'local':
@@ -105,6 +107,7 @@ class TritonListener(DeviceBase, QObject):
         else:
             logging.warning('no db connection, returning local dummyDev!')
             devs['dummyDev'] = self.get_channels_of_dev('dummyDev')
+            devs['DummyScanDev'] = self.get_channels_of_dev('DummyScanDev')
         return devs
 
     def get_existing_callbacks_from_main(self):
@@ -149,16 +152,28 @@ class TritonListener(DeviceBase, QObject):
 
     def subscribe_to_devs_in_log(self):
         """ subscribe to all devs in the log if not already subscribed to """
+        logging.debug('%s will subscribe to devs in log: %s' % (self.name, str(self.log.keys())))
         existing = list(self._recFrom.keys())
         for dev in self.log.keys():
             if dev not in existing:
-                if dev != 'dummyDev':
-                    self.subscribe(dev)
-                else:  # dummyDev is wanted!
+                if dev == 'dummyDev':  # dummyDev is wanted!
+                    logging.debug('will subscribe to dummyDev')
                     if self.dummy_dev is None:
                         self.create_dummy_dev()
                     # logging.debug('subscribing to uri: %s' % str(self.dummy_dev.uri))
                     self.subscribe('dummyDev', str(self.dummy_dev.uri))
+                elif dev == 'DummyScanDev':
+                    logging.debug('will subscribe to DummyScanDev now')
+                    if Cfg._main_instance is not None:
+                        if Cfg._main_instance.scan_main.triton_scan_controller is not None:
+                            if Cfg._main_instance.scan_main.triton_scan_controller.dummy_scan_dev is None:
+                                Cfg._main_instance.scan_main.triton_scan_controller.create_dummy_scan_dev()
+                            uri_dummy_sc_dev = str(Cfg._main_instance.scan_main.triton_scan_controller.dummy_scan_dev.uri)
+                            print('subscribing to: ', 'DummyScanDev', uri_dummy_sc_dev)
+                            self.subscribe('DummyScanDev', uri_dummy_sc_dev)
+                    logging.debug('successfully subscribed to DummyScanDev')
+                else:
+                    self.subscribe(dev)
         existing2 = list(self._recFrom.keys())
         for subscribed_dev in existing2:  # unsubscribe from all devs which are not in the log
             if subscribed_dev not in self.log.keys():

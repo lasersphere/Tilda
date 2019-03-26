@@ -2584,6 +2584,7 @@ class NFilterDMMDictsAndSave(Node):
             self.incoming_dict_ctr += 1
             # dmm data comes in dicts like {dmm_name:[data]}. triton data comes as {track: {triton:{...}}}
             if 'triton' in data.get(self.active_track_name, {}):
+                # always the full log will be emitted again -> careful not to overwrite
                 self.sort_triton(data)
             else:
                 self.sort_dmms(data)
@@ -2606,7 +2607,24 @@ class NFilterDMMDictsAndSave(Node):
 
     def sort_triton(self, triton_dict):
         # merges the triton dict that was received from the pipeline into the store_data
-        TildaTools.merge_extend_dicts(self.store_data, triton_dict)
+        # {'triton':
+        #           {'duringScan': {'dev_name':
+        #                                      {'ch0': {'data': [ ... ], 'required': -1, 'acquired': 20},
+        #                                       'ch1': {'data': ...}}}}
+        # }}
+        print('received triton dict: ')
+        # TODO comment!
+        # attach the cu
+        # cur_scan_cur_step_tpl = TildaTools.get_scan_step_from_track_dict(self.Pipeline.pipeData[self.active_track_name])
+        # for dev, dev_dict in triton_dict[self.active_track_name]['triton'].get('duringScan', {}).items():
+        #     for ch, ch_dict in dev_dict.items():
+        #         ind_from_storage = deepcopy(self.store_data[self.active_track_name].get('triton', {}).get(
+        #             'duringScan', {}).get(dev, {}).get(ch, {}).get('scanStepIndList', []))
+        #         ch_dict['scanStepIndList'] = ind_from_storage + [cur_scan_cur_step_tpl] * (
+        #                 len(ch_dict['data']) - len(ind_from_storage))
+
+        # TildaTools.print_dict_pretty(triton_dict)
+        TildaTools.merge_extend_dicts(self.store_data, triton_dict)  # overwrites!
 
     def emit_data_signal(self):
         # emits the store data dict for live data plotting

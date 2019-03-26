@@ -1550,6 +1550,22 @@ def get_file_numbers(file_list, mass_index=[0], end_result_len=1, app=None, user
     return file_nums
 
 
+def get_scan_step_from_track_dict(track_dict):
+    """
+    return the current scan and step number from the numberOfcompleted steps
+    :param track_dict: dict, as in Service/Scan/draftScanParameters.py:136
+    :return: tuple, (scan_num, step_num)
+    """
+    nOfSteps = track_dict['nOfSteps']
+    nOfCompletedSteps = track_dict['nOfCompletedSteps']
+    invertScan = track_dict['invertScan']
+    current_scan = nOfCompletedSteps // nOfSteps
+    odd_scan = current_scan % 2
+    completed_steps_in_cur_scan = nOfCompletedSteps % nOfSteps
+    current_step = nOfSteps - completed_steps_in_cur_scan if invertScan and odd_scan else completed_steps_in_cur_scan
+    return current_scan, current_step
+
+
 if __name__ == '__main__':
     # isodi = {'isotope': 'bbb', 'type': 'csdummy'}
     # newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')

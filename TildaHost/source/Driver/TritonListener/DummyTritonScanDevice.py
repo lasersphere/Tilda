@@ -46,6 +46,10 @@ class DummyScanDevice(ScanDeviceBase):
     '''Called regularly, running in separate thread'''
 
     def periodic(self):
+        try:
+            self.send('frequency', self.sc_one_scan_vals[self.sc_l_cur_step])
+        except Exception as e:
+            pass
         pass
 
     '''Called by subscriptors'''
@@ -81,6 +85,7 @@ class DummyScanDevice(ScanDeviceBase):
         sleep_t = 1.0
         logging.debug('will sleep now for %.2f s' % sleep_t)
         time.sleep(sleep_t)
+        self.sc_l_cur_step = step_num
         logging.debug('ok, step is set continue whatever you are doing')
 
     def set_pre_scan_measurement_setpoint(self, set_val):
