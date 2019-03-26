@@ -160,7 +160,7 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
                     spec_to_plot = deepcopy(self.intFit.fitter.meas)
                     x_in_freq = TiTs.convert_fit_volt_axis_to_freq(self.intFit.fitter)
                     spec_to_plot.x = x_in_freq
-                    spec_to_plot.x_units = spec_to_plot.x_units_enums.frequency
+                    spec_to_plot.x_units = spec_to_plot.x_units_enums.frequency_mhz
                     self.main_tilda_gui.load_spectra(file_n, spec_to_plot, sum_sc_tr=self.intFit.fitter.st)  # -> will be loaded to the main of Tilda
                 else:
                     print('get TILDA for full support')
