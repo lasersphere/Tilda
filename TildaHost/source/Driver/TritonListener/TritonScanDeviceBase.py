@@ -225,8 +225,8 @@ class ScanDeviceBase(DeviceBase):
 
     def _periodic(self):
         """ _periodic will handle setting the actual steps therefore it runs in the thread of the scandevice """
-        logging.debug('%s periodic is runnning,\n %s \n %s \n %s' % (
-            self.name, self._progressing_step, self._abort_scan, self.sc_l_scan_complete))
+        # logging.debug('%s periodic is runnning,\n %s \n %s \n %s' % (  # changed !
+        #     self.name, self._progressing_step, self._abort_scan, self.sc_l_scan_complete))
         if self._progressing_step and not self._abort_scan and not self.sc_l_scan_complete:
             self.set_step_in_dev(self.sc_l_cur_step)  # this might take some time
             self.check_if_scan_complete()

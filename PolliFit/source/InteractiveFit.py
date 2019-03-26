@@ -152,7 +152,8 @@ class InteractiveFit(object):
         parsName = self.fitter.npar
         parsValue = self.fitter.par
         parsFix = self.fitter.fix
-        indexCenter = parsName.index('center') # Split at 'center' since this marks the border between "Lines" pars & "Isotopes" pars
+        indexCenter = parsName.index('center')
+        # Split at 'center' since this marks the border between "Lines" pars & "Isotopes" pars
 
         # Save Lines pars (Pars 0 until center)
         shape = dict(zip(parsName[:indexCenter], parsValue[:indexCenter]))

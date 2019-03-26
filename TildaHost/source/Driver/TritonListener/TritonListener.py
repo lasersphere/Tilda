@@ -53,6 +53,11 @@ class TritonListener(DeviceBase, QObject):
         self.last_emit_to_analysis_pipeline_datetime = datetime.now()
         self.time_between_emits_to_pipeline = timedelta(milliseconds=500)
         # limit this to 500 ms in order nto to flush the pipeline with emitted signals
+        self.last_received_times = [None, None]  # datetimes of the last two receive calls, None after start of log
+        self.rcvd_time_deltas_total_s = []  # list of all time differences between two receives in total seconds
+        self.mean_rcvd_time_delta = timedelta(seconds=60).total_seconds()  # mean of the rcvd time deltas in seconds
+        # -> will be adaptet to the mean of the receivced time deltas.
+        self.min_timeout = timedelta(seconds=1).total_seconds()  # allowed minimum timeout
 
         # variables to store the actual track and scan strings for emitting the live data dict
         self.pre_dur_post_str = 'preScan'
@@ -73,7 +78,7 @@ class TritonListener(DeviceBase, QObject):
         ret = ''
         channels = ['calls', 'random']
         if dev == 'DummyScanDev':
-            channels = ['frequency']
+            channels = ['frequency', 'curStep', 'curScan']
         logging.debug('getting channels of dev %s' % str(dev))
 
         if self.db != 'local':
@@ -181,6 +186,11 @@ class TritonListener(DeviceBase, QObject):
                 self.unsubscribe(subscribed_dev)
         logging.info('subscribed triton devices after setup: ' + str(list(self._recFrom.keys())))
 
+    def unsubscribe_from_all(self):
+        """ unsubscribe from all currently subcribed devs used when stopping log """
+        for sub in self._recFrom.copy().keys():
+            self.unsubscribe(sub)
+
     def receive(self, dev, t, ch, val):
         """
         overwrites the _receive class of the TritonObject.
@@ -209,6 +219,12 @@ class TritonListener(DeviceBase, QObject):
                         #     for ch_name, ch_data in chs.items():
                         #         ch_data['acquired'] = len(ch_data['data'])
                         if self.pre_dur_post_str == 'duringScan':
+                            self.last_received_times[0] = deepcopy(self.last_received_times[1])
+                            self.last_received_times[1] = datetime.now()
+                            if self.last_received_times[0] is not None:
+                                self.rcvd_time_deltas_total_s.append(
+                                    (self.last_received_times[1] - self.last_received_times[0]).total_seconds())
+                                self.mean_rcvd_time_delta = np.mean(self.rcvd_time_deltas_total_s)
                             timedelta_since_laste_send = datetime.now() - self.last_emit_to_analysis_pipeline_datetime
                             if timedelta_since_laste_send >= self.time_between_emits_to_pipeline:
                                 # in duringScan emit the received values to the pipe!
@@ -258,16 +274,22 @@ class TritonListener(DeviceBase, QObject):
         """ start logging of the desired channels and devs.
          Be sure to setup the log before hand with self.setup_log """
         self.logging_complete = self.log == {}
+        self.last_received_times = [None, None]
+        self.rcvd_time_deltas_total_s = []
+        self.mean_rcvd_time_delta = timedelta(seconds=60)
+        self.setInterval(0.5)
         logging.debug('log before start: %s' % str(self.log))
         self.logging = True
 
     def stop_log(self):
         """ stop logging, by setting self.logging to False """
         self.logging = False
+        self.setInterval(0)
 
     def off(self, stop_dummy_dev=True):
         """ unsubscribe from all devs and stop the dummy device if this was started. """
         self.stop_log()
+        self.unsubscribe_from_all()
         # If there is a dummy_dev stop it, except if we only want to reset the pipeline.
         if self.dummy_dev is not None and stop_dummy_dev:
             logging.debug('%s will stop the dummy_dev now!' % self.name)
@@ -276,6 +298,20 @@ class TritonListener(DeviceBase, QObject):
 
     def get_receivers(self):
         return list(sorted(self._recFrom.keys()))
+
+    def periodic(self):
+        """ periodic calls -> check when last received... """
+        if self.pre_dur_post_str == 'duringScan':
+            # check when the last time something was received from the subscribed devices.
+            if self.last_received_times[1] is not None:
+                t_since_last_rcv = datetime.now() - self.last_received_times[1]
+                allowed_timeout = max(self.min_timeout, (self.mean_rcvd_time_delta * 10))
+                if t_since_last_rcv.total_seconds() > allowed_timeout:
+                    Cfg._main_instance.send_info('triton_listener_timedout')
+                    logging.warning('TritonListener timed out since it has not received values '
+                                    'for %.3f s while allowed is only %.3f s '
+                                    ' last received at: %s' % (t_since_last_rcv.total_seconds(),
+                                                               allowed_timeout, self.last_received_times[1]))
 
 
 if __name__ == '__main__':
