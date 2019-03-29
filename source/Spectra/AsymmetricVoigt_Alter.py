@@ -7,11 +7,12 @@ Created on 23.02.2017
 import Physics
 
 
-class AsymmetricVoigt(object):
+class AsymmetricVoigt_Alter(object):
     """
     Implementation of a voigt profile object using the Faddeeva function
     overlapped with a second voigt in distance centerAsym and
      relative intensity IntAsym to the main peak
+    Second Voigt has also its own asymSigma and asymGamma
      distance will be assumed to be in eV if the laserFreq is a float.
      if the distance is desired in frequency, use 'laserFreq': None
 
@@ -21,7 +22,7 @@ class AsymmetricVoigt(object):
     Gamma is the half width half maximum
 
     line needs to have:
-    'gau', 'lor', 'centerAsym', 'IntAsym', 'laserFreq', 'col', 'nOfPeaks'
+    'gau', 'lor', 'centerAsym', 'IntAsym', 'asymSigma', 'asymGamma', 'laserFreq', 'col', 'nOfPeaks'
 
     optional:
     'offsetSlope' (for an linear offset added to the voigt)
@@ -31,7 +32,7 @@ class AsymmetricVoigt(object):
     def __init__(self, iso):
         """Initialize"""
         self.iso = iso
-        self.nPar = 7
+        self.nPar = 9
 
         self.norm = 1
         self.asym_norm = 1  # norming facotr for all side peaks
@@ -42,13 +43,15 @@ class AsymmetricVoigt(object):
         self.pGam = 1
         self.p_asym_center = 2  # position of the center of the 2nd voigt -> asymmetric peak
         self.p_asym_int = 3  # position of the relative intensity in the asymmetric peak
-        self.p_n_of_peaks = 4  # position of the number of peaks
-        self.p_laserFreq = 5  # not really a parameter but is needed to calculate the differential doppler factor
+        self.p_asym_sig = 4  # sigma of asymmetric peak
+        self.p_asym_gam = 5  # gamma of asymmetric peak
+        self.p_n_of_peaks = 6  # position of the number of peaks
+        self.p_laserFreq = 7  # not really a parameter but is needed to calculate the differential doppler factor
         #  to determine the distance to the center in eV instead of MHz
-        self.p_col = 6  # needed for eV instead of MHz center dif
+        self.p_col = 8  # needed for eV instead of MHz center dif
         self.recalc([iso.shape.get('gau', iso.shape.get('sigma', 0.0)),
                      iso.shape.get('lor', iso.shape.get('gamma', 0.0)), iso.shape['centerAsym'],
-                     iso.shape['IntAsym'], iso.shape['nOfPeaks'],
+                     iso.shape['IntAsym'], iso.shape['asymSigma'], iso.shape['asymGamma'], iso.shape['nOfPeaks'],
                      iso.shape['laserFreq'], iso.shape['col']]) # .get() structure due to naming difference in .getParNames() and shape['']
 
     def evaluate(self, x, p):
@@ -58,7 +61,7 @@ class AsymmetricVoigt(object):
         for peak_num in range(p[self.p_n_of_peaks]):
             side_peak_freq = p[self.p_asym_center] * self.diff_doppl * (peak_num + 1)
 
-            ret += Physics.voigt(x - side_peak_freq, p[self.pSig], p[self.pGam]) / (self.asym_norm * (2 ** peak_num))
+            ret += Physics.voigt(x - side_peak_freq, p[self.p_asym_sig], p[self.p_asym_gam]) / (self.asym_norm * (2 ** peak_num))
 
         return ret
 
@@ -81,24 +84,26 @@ class AsymmetricVoigt(object):
         self.pGam = pos + 1
         self.p_asym_center = pos + 2
         self.p_asym_int = pos + 3
-        self.p_n_of_peaks = pos + 4
-        self.p_laserFreq = pos + 5
-        self.p_col = pos + 6
+        self.p_asym_sig = pos + 4
+        self.p_asym_gam = pos + 5
+        self.p_n_of_peaks = pos + 6
+        self.p_laserFreq = pos + 7
+        self.p_col = pos + 8
 
         return [self.iso.shape.get('gau', self.iso.shape.get('sigma', 0.0)),
                 self.iso.shape.get('lor', self.iso.shape.get('gamma', 0.0)),
-                self.iso.shape['centerAsym'], self.iso.shape['IntAsym'],
+                self.iso.shape['centerAsym'], self.iso.shape['IntAsym'], self.iso.shape['asymSigma'], self.iso.shape['asymGamma'],
                 self.iso.shape['nOfPeaks'], self.iso.shape['laserFreq'], self.iso.shape['col']] # .get() structure due to naming difference in .getParNames() and shape['']
 
     def getParNames(self):
         """Return list of the parameter names"""
-        return ['sigma', 'gamma', 'centerAsym', 'IntAsym', 'nOfPeaks', 'laserFreq', 'col']
+        return ['sigma', 'gamma', 'centerAsym', 'IntAsym', 'asymSigma', 'asymGamma', 'nOfPeaks', 'laserFreq', 'col']
 
     def getFixed(self):
         """Return list of parmeters with their fixed-status"""
         return [self.iso.fixShape.get('gau', self.iso.fixShape.get('sigma', False)),
                 self.iso.fixShape.get('lor', self.iso.fixShape.get('gamma', False)),
-                self.iso.fixShape['centerAsym'], self.iso.fixShape['IntAsym'],
+                self.iso.fixShape['centerAsym'], self.iso.fixShape['IntAsym'], self.iso.fixShape['asymSigma'], self.iso.fixShape['asymGamma'],
                 self.iso.fixShape['nOfPeaks'], True, True] # .get() structure due to naming difference in .getParNames() and shape['']
 
     def calc_diff_doppl(self, laser_freq, col):

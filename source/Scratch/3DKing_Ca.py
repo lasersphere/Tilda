@@ -4,7 +4,7 @@ from KingFitter import KingFitter
 import random
 from time import clock, strftime, time
 import collections
-from joblib import Parallel, delayed
+# from joblib import Parallel, delayed
 
 start = clock()
 print('Start: ', start)
@@ -31,9 +31,9 @@ print(litvals)
 runs = ['Run0', 'Run2']
 
 alpha = 22
-i_max = 1000 # runs
-int_steps = 1000 #+- interval steps
-max_int = 0.01 # +- maximum interval width around litval
+i_max = 800000 # runs
+int_steps = 50 #+- interval steps
+max_int = 0.005 # +- maximum interval width around litval
 
 
 '''Create protocol files & header lines'''
@@ -96,8 +96,8 @@ def chiSq(modIS1, modIS1_err, modIS2, modIS2_err, modChr, litVals, litVals_err, 
         chi2 = chi2 + ((modIS2[i] - (b2*modChr[i] + a2))/modIS2_err[i])**2
         #print('ch2: ', chi2)
 
-    for i in range(len(modChr)):
-        chi3 = chi3 + (((litVals[i] - alpha) - modChr[i])/litVals_err[i])**2
+    # for i in range(len(modChr)):
+    #     chi3 = chi3 + (((litVals[i] - alpha) - modChr[i])/litVals_err[i])**2
 
     chiSq = chi1 + chi2 + chi3
     # print('Chi1: ', chi1)
@@ -124,9 +124,9 @@ def calc_step(i):
         y_reset = True
     else:
         # varChr = litvals
-        varChr = {'42_Ca': [0.21+max_int/int_steps*random.randint(-int_steps-1, int_steps), .007],
-                  '44_Ca': [0.29+max_int/int_steps*random.randint(-int_steps-1, int_steps), .009],
-                  '48_Ca': [-0.005+max_int/int_steps*random.randint(-int_steps-1, int_steps), .006]
+        varChr = {'42_Ca': [0.2159+max_int/int_steps*random.randint(-int_steps-1, int_steps), .007],
+                  '44_Ca': [0.2823+max_int/int_steps*random.randint(-int_steps-1, int_steps), .009],
+                  '48_Ca': [-0.0039+max_int/int_steps*random.randint(-int_steps-1, int_steps), .006]
                   }
         varChr = collections.OrderedDict(sorted(varChr.items()))
         y_reset=False
@@ -190,14 +190,52 @@ def calc_step(i):
 
     print(i+1, "/", i_max)
 
+def calc_step_alt(a, b, c, i, max):
+    # varChr = litvals
+    varChr = {'42_Ca': [0.216+max_int/int_steps*(a-int_steps), .007],
+              '44_Ca': [0.2824+max_int/int_steps*(b-int_steps), .009],
+              '48_Ca': [-0.0045+max_int/int_steps*(c-int_steps), .006]
+              }
+    varChr = collections.OrderedDict(sorted(varChr.items()))
+    if i == 0:
+        y_reset=True
+    else:
+        y_reset=False
+
+    line1.litvals = varChr
+    line1.reset_y_values = y_reset
+    line1.kingFit(run=runs[0], alpha=alpha, findBestAlpha=False, print_coeff=False, print_information=False, results_to_db=False)
+
+    line2.litvals = varChr
+    line2.reset_y_values = y_reset
+    line2.kingFit(run=runs[1], alpha=alpha, findBestAlpha=False, print_coeff=False, print_information=False, results_to_db=False)
+
+    cSq = chiSq(line1.y, line1.yerr, line2.y, line2.yerr, line1.x, litChr.x, litChr.xerr, line1.a, line1.b, line2.a,
+                    line2.b)
+
+    f_var_all_string = str(i) + ', ' + str(cSq) + ', '
+    for key in litvals.keys():
+        f_var_all_string += str(varChr[key][0]) + ', '
+    f_var_all_string += str(line1.b) + ', ' + str(line1.berr) + ', ' + str(line1.a) + ', ' + str(line1.aerr) + ', ' + str(line1.a_b_correlation) + ', ' + str(line2.b) + ', ' + str(line2.berr) + ', ' + str(line2.a) + ', ' + str(line2.aerr) + ', ' + str(line2.a_b_correlation) + ', ' + str(clock()) + '\n'
+
+    f_var_all.write(f_var_all_string)
+    print(i+1, "/", max)
+
 # Parallel(n_jobs=-1, backend='threading')(delayed(calc_step)(i) for i in range(i_max))
-for i in range(i_max):
-    calc_step(i)
+# for i in range(i_max):
+#     calc_step(i)
 
-    # f_var_best.write(f_var_best_string)
-    # f_proj_best_run0.write(f_proj_best_run0_string)
-    # f_proj_best_run2.write(f_proj_best_run2_string)
 
+counter = 0
+max = ((2*int_steps)+1)**3
+
+for a in range((2*int_steps)+1):
+    for b in range((2*int_steps)+1):
+        for c in range((2*int_steps)+1):
+            calc_step_alt(a, b, c, counter, max)
+            counter += 1
+
+# calc_step_alt(int_steps+1, int_steps+1, int_steps+2, counter, 1)
 
 f_var_all.close()
 # f_var_best.close()

@@ -11,6 +11,7 @@ import functools
 import os
 import sqlite3
 import logging
+import re
 from datetime import datetime
 
 import numpy as np
@@ -216,6 +217,8 @@ def combineShift(iso, run, db, show_plot=False):
     shifts = []
     shiftErrors = []
     dateIso = []
+    becola_files = False  # neccessary to adapt for becola files which are identified by run number rather than date
+    numIso = []  # necessary for BECOLA files from Ni run, since they don't have reliable dates
     for block in config:
         if block[0]:
             preVals, preErrs, date, files = extract(ref, 'center', refRun, db, block[0])
@@ -228,6 +231,12 @@ def combineShift(iso, run, db, show_plot=False):
 
         intVals, intErrs, date, files = extract(iso, 'center', run, db, block[1])
         [dateIso.append(i) for i in date]
+        for f in files:
+            file_name, file_ext = f.split('.', 1)
+            if 'BECOLA' in file_name:  # BECOLA files from nickel analysis have naming scheme 'BECOLA_runno.xml'
+                becola_files = True
+                prefix, iso_num = file_name.split('_', 1)
+                numIso.append(int(iso_num))
 
         if block[2]:
             postVals, postErrs, date, files = extract(ref, 'center', refRun, db, block[2])
@@ -268,8 +277,13 @@ def combineShift(iso, run, db, show_plot=False):
     avg_fig_name = os.path.join(combined_plots_dir, iso + '_' + run + '_shift.png')
     plotdata = (
         dateIso, shifts, shiftErrors, val, statErr, systErr, ('k.', 'r'), False, avg_fig_name, '%s_shift [MHz]' % iso)
+    plotdataFiles = (
+        numIso, shifts, shiftErrors, val, statErr, systErr, ('k.', 'r'), False, avg_fig_name, '%s_shift [MHz]' % iso)
     if show_plot:
-        plt.plotAverage(*plotdata)
+        if becola_files:
+            plt.plotAverageBECOLA(*plotdataFiles)
+        else:
+            plt.plotAverage(*plotdata)
         plt.show(True)
     # plt.clear()
     return (shifts, shiftErrors, val, statErr, systErr, rChi)

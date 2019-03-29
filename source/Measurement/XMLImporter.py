@@ -14,7 +14,6 @@ import sqlite3
 import numpy as np
 
 import Physics
-import Tools
 import TildaTools
 from Measurement.SpecData import SpecData
 
@@ -284,9 +283,9 @@ class XMLImporter(SpecData):
                     logging.info('setting voltage divider ratio to 1 !')
                     self.voltDivRatio = {'offset': 1.0, 'accVolt': 1.0}
                 for tr_ind, track in enumerate(self.x):
-                    self.x[tr_ind] = Tools.line_to_total_volt(self.x[tr_ind], self.lineMult, self.lineOffset,
-                                                              self.offset[tr_ind], self.accVolt, self.voltDivRatio,
-                                                              offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])
+                    self.x[tr_ind] = TildaTools.line_to_total_volt(self.x[tr_ind], self.lineMult, self.lineOffset,
+                                                                   self.offset[tr_ind], self.accVolt, self.voltDivRatio,
+                                                                   offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])
                 self.norming()
                 self.x_units = self.x_units_enums.total_volts
             elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
@@ -525,7 +524,8 @@ class XMLImporter(SpecData):
                 # get the mean value from one comb in this track
                 comb_mean = np.mean(comb_a_col_col_dict.get(col_a_col_key, [0]))
                 comb_err = np.std(comb_a_col_col_dict.get(col_a_col_key, [0]))
-                combs_freq_mean_tr[comb_key] = (comb_mean, comb_err)
+                if not np.isnan(comb_mean):
+                    combs_freq_mean_tr[comb_key] = (comb_mean, comb_err)
             freqs_by_dev.append(combs_freq_mean_tr)
 
             # get the mean of all comb readings for this track:

@@ -117,7 +117,8 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
             print('error: %s while converting your typed value: %s using 0.0 / False instead' % (e, val))
             val = 0.0 if j == 1 else False
         if isinstance(val, float) or isinstance(val, int)\
-                or isinstance(val, bool) or (isinstance(val, list) and j == 2):
+                or isinstance(val, bool) or (isinstance(val, list) and j == 2) \
+                or (isinstance(val, list) and self.parTable.item(i, 0).text() == 'softwGatesDelayList' and j == 1):
             val = val
         else:
             e = 'val is not a float / int / bool / (list and fix)'

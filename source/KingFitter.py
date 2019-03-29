@@ -92,7 +92,7 @@ class KingFitter(object):
             print('condition\t intercept (u MHz)\t err_int\t slope (MHz/fm^2)\t err_slope\t correlation coefficient')
             print("statistical y errors only\t %.0f \t %.0f \t %.3f \t %.3f \t %.4f" % (self.a, self.aerr, self.b, self.berr, self.a_b_correlation))
 
-            # the following fits are performed fit with total error in y
+            # the following fits are performed with total error in y
             self.yerr = self.yerr_total
             # self.xerr = self.xerr_total
 
@@ -254,10 +254,11 @@ class KingFitter(object):
 
             # print('x', self.x, self.xerr)
             # print('y', self.y, self.yerr)
-            print('%s\t%s\t%s\t%s\t%s' % ('x', 'x_err', 'y', 'y_stat_err', 'y_err_total'))
+            print('%s\t%s\t%s\t%s\t%s' % ('x          ', 'x_err       ', 'y         ', 'y_err (in fit)     ', 'y_err_total'))
             for i, x in enumerate(self.x):
                 print('%.5f\t%.5f\t%.5f\t%.5f\t%.5f' % (x, self.xerr[i], self.y[i], self.yerr[i], self.yerr_total[i]))
-            print('%s\t%s' % ('King_fit_x', 'King_fit_y'))
+            print('%s' % ('Fit Line Coordinates (start & end)'))
+            print('%s\t%s' % ('x', 'y'))
             print('%.5f\t%.5f' % (x_king[0], y_king[0]))
             print('%.5f\t%.5f' % (x_king[1], y_king[1]))
 
@@ -481,7 +482,6 @@ class KingFitter(object):
         self.c = best
         print('best alpha is: ', self.c)
 
-
     def calcRedVar(self, run=-1, find_slope_with_statistical_error=False, alpha=0, findBestAlpha=False, reset_y_values=True):
         self.x_origin = []
         self.x = []
@@ -515,7 +515,8 @@ class KingFitter(object):
                 self.yerr.append(y[1])  # statistical error
                 self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
             else:
-                self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total errorself.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
+                self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
+                self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
             self.x_origin.append(self.litvals[i][0])
             self.xerr.append(self.litvals[i][1])
 
@@ -547,8 +548,9 @@ class KingFitter(object):
             self.yerr = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.yerr)]
             self.yerr_total = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.yerr_total)]
 
+        self.xerr = [np.abs(self.redmasses[i] * j) for i, j in enumerate(self.xerr)] # has to be calculated here in order to have the correct uncertainties for the findBestAlpha routine
+
         if self.findBestAlphaTrue:
             self.findBestAlpha(run)
 
         self.x = [self.redmasses[i]*j - self.c for i,j in enumerate(self.x_origin)]
-        self.xerr = [np.abs(self.redmasses[i] * j) for i, j in enumerate(self.xerr)]

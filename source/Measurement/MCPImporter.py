@@ -12,7 +12,8 @@ import sqlite3
 from datetime import datetime
 
 import numpy as np
-import Tools
+
+import TildaTools
 
 from Measurement.SpecData import SpecData
 
@@ -179,9 +180,9 @@ class MCPImporter(SpecData):
                 #                                self.voltDivRatio['offset'].items()])
                 #         scanvolt = (self.lineMult * x + self.lineOffset) * mean_offset_div_ratio + mean_offset
                 #     self.x[trackindex][xindex] = self.accVolt*self.voltDivRatio['accVolt'] - scanvolt
-                self.x[trackindex] = Tools.line_to_total_volt(self.x[trackindex], self.lineMult, self.lineOffset,
-                                                              self.offset, self.accVolt, self.voltDivRatio,
-                                                              offset_by_dev_mean=self.offset_by_dev)
+                self.x[trackindex] = TildaTools.line_to_total_volt(self.x[trackindex], self.lineMult, self.lineOffset,
+                                                                   self.offset, self.accVolt, self.voltDivRatio,
+                                                                   offset_by_dev_mean=self.offset_by_dev)
             '''If the numbers of scans for the tracks are different, it will be normed to the minimal number of scans:'''
             # print(self.x)
             # print(self.cts)

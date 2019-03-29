@@ -22,14 +22,18 @@ def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None, 
     '''Fit fileList with run and write results to db'''
     print("BatchFit started")
     print("Opening DB:", db)
-    
+
+    # change directory into db folder
     oldPath = os.getcwd()
     projectPath, dbname = os.path.split(db)
     os.chdir(projectPath)
-    
+
+    # connect to db and create cursor
     con = sqlite3.connect(dbname)
     cur = con.cursor()
-    
+
+    # extract isoVariant, lineVariant, active scalers and tracks from run in database
+    # store scalers and tracks as non-string tuple of list of numbers and number
     cur.execute('''SELECT isoVar, lineVar, scaler, track FROM Runs WHERE run = ?''', (run,))
     var = cur.fetchall()[0]
     st = (ast.literal_eval(var[2]), ast.literal_eval(var[3]))

@@ -1292,6 +1292,24 @@ def add_header_to23_bit(bit23, firstheader, secondheader, indexheader):
     return result
 
 
+def line_to_total_volt(x, lineMult, lineOffset, offset, accVolt, voltDivRatio, offset_by_dev_mean={}):
+    """
+    Converts an DAC line voltage array x to a total voltage array depending on the conversion coefficients
+    """
+    if isinstance(voltDivRatio['offset'], float):  # just one number
+        scanvolt = (x * lineMult + lineOffset) * voltDivRatio.get('lineMult', voltDivRatio['offset']) \
+                   + offset * voltDivRatio['offset']
+    else: # offset measured by different devices. Offset is then calculated by different voltDivRatio values.
+        vals = list(voltDivRatio['offset'].values())
+        mean_offset_div_ratio = np.mean(vals)
+        # treat each offset with its own divider ratio
+        # x axis is multiplied by mean divider ratio value anyhow, similiar to kepco scans
+
+        mean_offset = np.mean([val * offset_by_dev_mean.get(key, offset) for key, val in voltDivRatio['offset'].items()])
+        scanvolt = (lineMult * x + lineOffset) * voltDivRatio.get('lineMult', mean_offset_div_ratio) + mean_offset
+
+    return accVolt*voltDivRatio['accVolt'] - scanvolt
+
 if __name__ == '__main__':
     # isodi = {'isotope': 'bbb', 'type': 'csdummy'}
     # newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')
@@ -1356,3 +1374,4 @@ if __name__ == '__main__':
             ch_data['acquired'] = len(ch_data['data'])
 
     #print_dict_pretty(sample_dict0)
+

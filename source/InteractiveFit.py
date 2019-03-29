@@ -46,6 +46,7 @@ class InteractiveFit(object):
         
         var = TiTs.select_from_db(db, 'isoVar, lineVar, scaler, track', 'Runs', [['run'], [run]], caller_name=__name__)
         if var:
+            # st: tuple of PMTs and tracks from selected run
             st = (ast.literal_eval(var[0][2]), ast.literal_eval(var[0][3]))
             linevar = var[0][1]
         else:
@@ -53,6 +54,7 @@ class InteractiveFit(object):
         if softw_gates_trs is None:  # # if no software gate provided pass on run and db via software gates
             softw_gates_trs = (db, run)
 
+        # Import Measurement from file using Importer
         meas = MeasLoad.load(path, db, x_as_voltage=x_as_voltage, softw_gates=softw_gates_trs)
         if meas.type == 'Kepco':  # keep this for all other fileformats than .xml
             spec = Straight()
@@ -68,10 +70,11 @@ class InteractiveFit(object):
                     self.fitter = SPFitter(spec, meas, st)
                     plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize, data_fmt=data_fmt)
                 else:
+                    # get isotope information
                     iso = DBIsotope(db, meas.type, lineVar=linevar)
                     if var[0][0] == '_m' or var[0][0] == '_m1' or var[0][0] == '_m2':
                         iso_m = DBIsotope(db, meas.type, var[0][0], var[0][1])
-                        spec = FullSpec(iso, iso_m)
+                        spec = FullSpec(iso, iso_m)  # get the full spectrum function
                         spec_iso = FullSpec(iso)
                         spec_m = FullSpec(iso_m)
                         self.fitter_iso = SPFitter(spec_iso, meas, st)
@@ -91,6 +94,9 @@ class InteractiveFit(object):
                         self.fitter = SPFitter(spec, meas, st)
                         plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize,
                                      data_fmt=data_fmt, x_in_freq=plot_in_freq)
+                    self.num_of_common_vals = self.fitter.spec.shape.nPar + 2  # number of common parameters useful if isotope
+                    #  is being used -> comes from the number of parameters the shape needs
+                    #  e.g. (Voigt:2) + offset + offsetSlope = 4
             except:  # for mcp data etc
                 iso = DBIsotope(db, meas.type, lineVar=linevar)
                 if var[0][0] == '_m':
@@ -115,7 +121,8 @@ class InteractiveFit(object):
                     self.fitter = SPFitter(spec, meas, st)
                     plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize, x_in_freq=plot_in_freq)
                     plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize, data_fmt=data_fmt)
-        self.num_of_common_vals = self.fitter.spec.shape.nPar + 2  # number of common parameters useful if isotope
+        if not isinstance(self.fitter.spec, Straight):
+            self.num_of_common_vals = self.fitter.spec.shape.nPar + 2  # number of common parameters useful if isotope
         #  is being used -> comes from the number of parameters the shape needs
         #  e.g. (Voigt:2) + offset + offsetSlope = 4
         plot.show(block)
@@ -291,4 +298,4 @@ class InteractiveFit(object):
         # print(hfs)
 
 
-
+
