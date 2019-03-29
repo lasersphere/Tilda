@@ -71,9 +71,25 @@ def wavelenFromFreq(frequency):
     ''' Returns the wavelength in nm at a given frequency/MHz '''
     return c / (frequency * 10 ** 6) * 10 ** 9
 
-def diffDoppler(nu_0, volt, m):
+def diffDoppler(nu_0, volt, m, real=False):
     '''returns the differential doppler Factor [MHZ/V]'''
-    return nu_0*qe/np.sqrt(2*qe*volt*m*u*c**2)
+    if real:
+        f_L = nu_0 * (1 + volt * qe / (m * u * c ** 2) * (1 - (1 + 2 * m * u * c ** 2 / (volt * qe)) ** 0.5))
+        du = m * u * c ** 2 * (f_L ** 2 - nu_0 ** 2) / (2 * nu_0 * qe * f_L ** 2) # Real calc. see Diss. K. König
+        dv = -1/du
+    else:
+        dv = nu_0 * qe / np.sqrt(2 * qe * volt * m * u * c ** 2) # old approx.
+
+    return dv
+
+# def diffDoppler(nu_0, volt, m):
+#     '''returns the differential doppler Factor [MHZ/V]'''
+#     return (nu_0/(m*u*c**2))*(qe+((qe*(m*u*c**2 + qe*volt))/((qe*volt*(2*m*u*c**2+qe*volt))**0.5)))
+
+def diffDoppler2(nu_0, volt, m):
+    f_L = nu_0 * (1 + volt * qe / (m * u * c ** 2) * (1 - (1 + 2 * m * u * c ** 2 / (volt * qe))**0.5))
+    du = m * u * c**2 * (f_L**2 - nu_0**2) / (2*nu_0*qe*f_L**2)
+    return -1/du
 
 def relDoppler(laserFreq, v):
     '''Return the doppler shifted frequency of a frame moving with velocity v'''
@@ -94,10 +110,40 @@ def fanoVoigt(x, sig, gam, dispersive):
     return special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).real / (sig * math.sqrt(2 * math.pi)) +\
            dispersive * special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).imag / (sig * math.sqrt(2 * math.pi))
 
+def thermalLorentz(x, loc, gam, xi, colDirTrue, order):
+    '''Lineshape developed in Kretzschmar et al., Appl. Phys. B, 79, 623 (2004)'''
+    lw = gam*2  # linewidth FWHM
+    if colDirTrue:
+        col = 1
+    else:
+        col = -1
 
-def lorentz (x, loc, gam):
+    if order < 0:
+        z0 = np.sqrt((-col*(x - loc) - 1j*lw/2)/(2*xi))
+        return np.imag(np.exp(z0**2)*(1 - special.erf(z0))/z0)/(2*np.sqrt(np.pi)*xi)
+
+    denominator = ((x - loc)**2 + lw**2/4)
+    sum_order = 0
+    if order > 0:
+        sum_order = (col*xi*(x - loc)-3*xi**2)/denominator
+    if order > 1:
+        sum_order += (4*3*xi**2*(x - loc)**2 - col*4*15*xi**3*(x - loc) + 105*xi**4)/(denominator**2)
+    if order > 2:
+        sum_order += (col*8*15*xi**3*(x - loc)**3 - 12*105*xi**4*(x - loc)**2 + col*6*945*xi**5*(x - loc) - 10395*xi**6)\
+            / (denominator**3)
+    if order > 3:
+        sum_order += (16*105*xi**4*(x - loc)**4 - col*32*945*xi**5*(x - loc)**3 + 24*10395*xi**6*(x - loc)**2
+                      - col*8*135135*xi**7*(x - loc) + 2027025*xi**8)/(denominator**4)
+    return lorentz(x, loc, gam, own=True)*(1 + sum_order)
+
+def lorentz(x, loc, gam, own=False):
     '''Lorentzian profile '''
-    return cauchy.pdf(x, loc, gam)
+    if own:
+        lw = gam*2
+        return (2/(math.pi*lw))*((lw**2/4)/((x-loc)**2+(lw**2/4)))
+    else:
+        return cauchy.pdf(x, loc, gam)
+
 
 def lorentzQI (x, loc, loc2, gam):
     '''Quantum interference of lorentzian profile '''

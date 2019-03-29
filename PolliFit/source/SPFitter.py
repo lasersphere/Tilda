@@ -23,12 +23,12 @@ class SPFitter(object):
         self.spec = spec
         self.meas = meas
         self.st = st
-        self.data = meas.getArithSpec(*st)
+        self.data = meas.getArithSpec(*st)  # Returns (array of x-values in Volt, array of cts, array of errors)
 
-        self.par = spec.getPars()
-        self.oldpar = list(self.par)
-        self.fix = spec.getFixed()
-        self.npar = spec.getParNames()
+        self.par = spec.getPars()  # get fit parameters
+        self.oldpar = list(self.par)  # save previously used fit parameters
+        self.fix = spec.getFixed()  # get which parameters are fixes
+        self.npar = spec.getParNames()  # get parameter names
         self.pard = None  # Will contain the parameter errors after fitting
 
         self.difDop = 0  # for conversion to energy
@@ -90,8 +90,8 @@ class SPFitter(object):
         except Exception as e:
             print('error in fit: %s' % e)
         bounds = (boundl, boundu)
-        scipy_version = int(version.version.split('.')[1])
-        if scipy_version >= 17:
+        scipy_version = [int(v) for v in version.version.split('.')]  # changed for version 1.x.x
+        if scipy_version[0] >= 1 or scipy_version[1] >= 17:
             popt, self.pcov = curve_fit(self.evaluateE, self.data[0], self.data[1],
                                         truncp, self.data[2], False, bounds=bounds)
         else:  # bounds not included before version 0.17.0

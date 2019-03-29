@@ -552,7 +552,8 @@ class XMLImporter(SpecData):
                 # get the mean value from one comb in this track
                 comb_mean = np.mean(comb_a_col_col_dict.get(col_a_col_key, [0]))
                 comb_err = np.std(comb_a_col_col_dict.get(col_a_col_key, [0]))
-                combs_freq_mean_tr[comb_key] = (comb_mean, comb_err)
+                if not np.isnan(comb_mean):
+                    combs_freq_mean_tr[comb_key] = (comb_mean, comb_err)
             freqs_by_dev.append(combs_freq_mean_tr)
 
             # get the mean of all comb readings for this track:
