@@ -179,6 +179,16 @@ class InteractiveFitUi(QtWidgets.QWidget, Ui_InteractiveFit):
                 item_row = self.parTable.row(item_found[0])
                 print('item row:', item_found, item_row)
                 self.parTable.item(item_row, 1).setText(str(val))
+                # still need to set it in the fitter:
+                # cannot call self.setPar(...) since otherwise this would cause a loop,
+                # because the tres gui would gate again...
+                if par in parns[:-1]:
+                    # pass on par to the fitter
+                    # do not gate the data since not all pars have been passed on to the fitter yet
+                    self.intFit.fitter.setPar(item_row, val)
+                elif par == parns[-1]:
+                    # now all pars have been passed on to the fitter -> gate the data
+                    self.intFit.setPar(item_row, val)
         self.parTable.blockSignals(False)
 
     def open_softw_gates(self):
