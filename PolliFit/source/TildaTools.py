@@ -511,8 +511,8 @@ def gate_specdata(spec_data, full_x_range=True):
     if full_x_range:
         for tr_ind, gates_tr in enumerate(spec_data.softw_gates):
             for sc_ind in range(spec_data.nrScalers[tr_ind]):
-                spec_data.softw_gates[tr_ind][sc_ind][0] = spec_data.x[tr_ind][0]
-                spec_data.softw_gates[tr_ind][sc_ind][1] = spec_data.x[tr_ind][-1]
+                spec_data.softw_gates[tr_ind][sc_ind][0] = min(spec_data.x[tr_ind][0], spec_data.x[tr_ind][-1])
+                spec_data.softw_gates[tr_ind][sc_ind][1] = max(spec_data.x[tr_ind][0], spec_data.x[tr_ind][-1])
     # get indices of the values first
     compare_arr = [spec_data.x, spec_data.x, spec_data.t, spec_data.t]
     softw_gates_ind = [
