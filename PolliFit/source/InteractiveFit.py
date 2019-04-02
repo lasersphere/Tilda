@@ -32,6 +32,7 @@ class InteractiveFit(object):
         self.save_plot = save_plot
         self.save_path = os.path.join(os.path.normpath(os.path.dirname(db)), "saved_plots")
         self.data_fmt = data_fmt
+        self.run = run
 
         plot.ion()
         if clear_plot:
@@ -151,11 +152,12 @@ class InteractiveFit(object):
         print('interactive fit saved_to:', path)
 
     def parsToDB(self, db):
-
+        #Currently only data for main fit saved. No Isomeres etc.
         parsName = self.fitter.npar
         parsValue = self.fitter.par
         parsFix = self.fitter.fix
         indexCenter = parsName.index('center')
+        indexInt0 = parsName.index('Int0')
         # Split at 'center' since this marks the border between "Lines" pars & "Isotopes" pars
 
         # Save Lines pars (Pars 0 until center)
@@ -164,18 +166,72 @@ class InteractiveFit(object):
         lineVar = self.fitter.spec.iso.lineVar
         lineName = self.fitter.spec.iso.shape['name']
         shape.update({'name': lineName})
-        print(lineName)
-        print(shape, shapeFix, lineVar)
+
+        # Save Isotope data without Int (due to HFS)
+        iso = self.fitter.meas.type
+        isoData = parsValue[indexCenter:indexInt0]
+        isoDataFix = parsFix[indexCenter+1:indexInt0]
+
+        #Save Int
+        relInt = self.fitter.spec.hyper[0].hfInt
+        nrTrans = len(relInt)
+        intData = parsValue[indexInt0:indexInt0+nrTrans]
+        int0 = sum(intData)/sum(relInt)
+
+        # Save softGates
+        gatesName = parsName[-3:]
+        gatesData = parsValue[-3:]
+
         try:
             con = sqlite3.connect(db)
             cur = con.cursor()
-            cur.execute('''UPDATE Lines SET shape = ?, fixShape = ? WHERE lineVar = ?''',
+            # Lines pars:
+            try:
+                cur.execute('''UPDATE Lines SET shape = ?, fixShape = ? WHERE lineVar = ?''',
                         (str(shape), str(shapeFix), str(lineVar)))
-            con.commit()
+                con.commit()
+                print("Saved line pars in Lines!")
+            except Exception as e:
+                print("error: Couldn't save line pars. All values correct?")
+
+            # Isotopes pars:
+            try:
+                cur.execute('''UPDATE Isotopes SET center = ?, Al = ?, Bl = ?, Au = ?, Bu = ?, intScale = ?, fixedAl = ?, fixedBl = ?, fixedAu = ?, fixedBu = ? WHERE iso = ?''',
+                            (isoData[0], isoData[1], isoData[2], isoData[3], isoData[4], int0, isoDataFix[0], isoDataFix[1], isoDataFix[2], isoDataFix[3], iso))
+                con.commit()
+                print("Saved isotope pars in Isotopes!")
+            except Exception as e:
+                print("error: Couldn't save Isotopes pars. All values correct?")
+
+            # Timegate pars (only when available):
+            if gatesName[0] == 'softwGatesWidth':
+                try:
+                    # Save in softwGates
+
+                    # gates_tr0 = TiTs.calc_soft_gates_from_db_pars(self.fitter.par[-3], self.fitter.par[-2],
+                    #                                               self.fitter.par[-1], voltage_gates=[-1000, 1000])
+                    # softw_gate_all_tr = [gates_tr0 for each in self.fitter.meas.cts]
+                    # cur.execute('''UPDATE Runs SET softwGates = ? WHERE run = ?''',
+                    #             (str(softw_gate_all_tr), self.run))
+                    # con.commit()
+
+                    # Save in midTof, softwGateWidth and softwGateDelayList
+                    cur.execute('''UPDATE Runs SET softwGateWidth = ?, softwGateDelayList = ? WHERE run = ?''',
+                                (float(gatesData[0]), str(gatesData[1]), self.run))
+                    con.commit()
+                    cur.execute('''UPDATE Isotopes SET midTof = ? WHERE iso = ?''', (gatesData[2], iso))
+                    con.commit()
+                    print("Saved gate pars in Runs & Isotopes!")
+                except Exception as e:
+                    print("error: Coudln't save softwGates. All values correct?")
+
             con.close()
-            print("Saved pars in Lines!")
+
         except Exception as e:
             print("error: No database connection possible. No line pars have been saved!")
+
+
+
 
     def plot_fit(self, clear_plot, show=True, save_plt=False):
         """

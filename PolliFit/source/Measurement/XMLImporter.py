@@ -213,7 +213,7 @@ class XMLImporter(SpecData):
                             # if the software gates are given as a tuple it should consist of:
                             # (db_str, run_str)
                             new_gates = TildaTools.get_software_gates_from_db(softw_gates[0],
-                                                                              self.type, softw_gates[1])
+                                                                              self.type, softw_gates[1], track=tr_ind)
                             if new_gates is not None:
                                 # when db states -> use file,
                                 # software gates from file will not be overwritten

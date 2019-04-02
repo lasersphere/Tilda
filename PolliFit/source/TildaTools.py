@@ -533,6 +533,9 @@ def gate_specdata(spec_data, full_x_range=True):
             v_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][:, t_min_ind:t_max_ind], axis=1)
             spec_data.t_proj[tr_ind][pmt_ind] = t_proj_res
             spec_data.cts[tr_ind][pmt_ind] = v_proj_res
+            spec_error = deepcopy(v_proj_res) # Errors have to be regated as well
+            spec_error[spec_error < 1] = 1
+            spec_data.err[tr_ind][pmt_ind] = np.sqrt(spec_error)
     return spec_data
 
 
@@ -1086,7 +1089,7 @@ def get_number_of_tracks_in_scan_dict(scan_dict):
     return n_of_tracks, sorted(list_of_track_nums)
 
 
-def get_software_gates_from_db(db, iso, run):
+def get_software_gates_from_db(db, iso, run, track=0):
     """
     get the software gates for a SINGLE TRACK from the database.
     voltages will be gated from -10 to 10 V.
@@ -1097,6 +1100,8 @@ def get_software_gates_from_db(db, iso, run):
     use_db, run_gates_width, run_gates_delay, iso_mid_tof = get_gate_pars_from_db(db, iso, run)
     if use_db == 'file':
         return None
+    if use_db != 'file' and isinstance(ast.literal_eval(use_db[0][0]), list):
+        return ast.literal_eval(use_db[0][0])[track]  # in this case softwGates is the softwGates list
     if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None:
         return None  # return None if failur by getting stuff from db
     else:
