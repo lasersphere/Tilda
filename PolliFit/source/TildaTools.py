@@ -1100,8 +1100,8 @@ def get_software_gates_from_db(db, iso, run, track=0):
     use_db, run_gates_width, run_gates_delay, iso_mid_tof = get_gate_pars_from_db(db, iso, run)
     if use_db == 'file':
         return None
-    if use_db != 'file' and use_db is not None:
-        if isinstance(ast.literal_eval(use_db[0][0]), list): return ast.literal_eval(use_db[0][0])[track]  # in this case softwGates is the softwGates list
+    # if use_db != 'file' and use_db is not None:
+    #     if isinstance(ast.literal_eval(use_db[0][0]), list): return ast.literal_eval(use_db[0][0])[track]  # in this case softwGates is the softwGates list
     if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None:
         return None  # return None if failur by getting stuff from db
     else:
