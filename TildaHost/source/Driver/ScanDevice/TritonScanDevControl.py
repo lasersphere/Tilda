@@ -198,7 +198,8 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
             self.dbCur_execute("SELECT deviceName FROM devices WHERE deviceType = %s", (dev_type,))
             res = self.dbCur_fetchall()
             if res is not None:
-                dev_names = res[0]
+                if len(res):
+                    dev_names = res[0]
         else:
             logging.warning('no db connection, returning local DummyScanDev!')
             dev_names = [self.dummy_scan_dev_name] if dev_type == self.dummy_scan_dev_type else ['MatisseDummy']
@@ -428,6 +429,16 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
             step_min_max = (- 1 * 10 ** 30, 1 * 10 ** 30)  # default
             set_val_min_max = (- 1 * 10 ** 30, 1 * 10 ** 30)  # default
             unit_name = self.possible_units.frequency_mhz.name
+        elif dev_type == 'Matisse_Dummy':
+            # overwrite for matisse
+            step_min_max = (- 1 * 10 ** 30, 1 * 10 ** 30)  # default
+            set_val_min_max = (- 1 * 10 ** 30, 1 * 10 ** 30)  # default
+            unit_name = self.possible_units.frequency_mhz.name
+        elif dev_type == 'Scraper':
+            # overwrite for scraper
+            step_min_max = (0.02, 0.02)  # default
+            set_val_min_max = (0, 150)  # default
+            unit_name = self.possible_units.scraper_mm.name
         elif dev_type == self.dummy_scan_dev_type:
             step_min_max = (-10.0, 10.0)  # default
             set_val_min_max = (0.01, 10000000.0)  # default
