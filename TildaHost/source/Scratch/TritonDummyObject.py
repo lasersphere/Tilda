@@ -211,8 +211,8 @@ class DeviceBase(TritonObject):
             startTime = time.time()
             self.periodic()
             diff = round(time.time() - startTime, 1)
-            logging.debug('processing time: ' + str(diff))
             if diff > self._interval and self._interval != 0:
+                logging.debug('processing time: ' + str(diff))
                 self.send('err', 'processing time is bigger than interval! Setting interval to ' + str(diff))
                 self.setInterval(diff)
             if self._timer.wait(abs(self._interval - diff)):

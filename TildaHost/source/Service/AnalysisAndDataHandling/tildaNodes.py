@@ -2612,10 +2612,13 @@ class NFilterDMMDictsAndSave(Node):
         #                                      {'ch0': {'data': [ ... ], 'required': -1, 'acquired': 20},
         #                                       'ch1': {'data': ...}}}}
         # }}
-        print('received triton dict: ')
-        # TODO comment!
-        # attach the cu
+        # print('received triton dict: ')
+        # # TODO comment! + not sure if this is best way... Maybe time stamp best solution after all?
+        # # attach the current scan and current step for each reading.
+        # # Must read what is stored already in order not to overwrite.
         # cur_scan_cur_step_tpl = TildaTools.get_scan_step_from_track_dict(self.Pipeline.pipeData[self.active_track_name])
+        # # -> this will never really match the step / scan of the emitter :(
+        # # maybe via time stamps?
         # for dev, dev_dict in triton_dict[self.active_track_name]['triton'].get('duringScan', {}).items():
         #     for ch, ch_dict in dev_dict.items():
         #         ind_from_storage = deepcopy(self.store_data[self.active_track_name].get('triton', {}).get(

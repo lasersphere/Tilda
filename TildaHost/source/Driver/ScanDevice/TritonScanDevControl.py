@@ -103,8 +103,8 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
     '''Called regularly, running in separate thread'''
 
     def periodic(self):
-        logging.debug('%s periodic is runnning, requesting step is: %s' % (self.name,
-                                                                           self._request_next_step_from_scan_dev))
+        # logging.debug('%s periodic is runnning, requesting step is: %s' % (self.name,
+        #                                                                    self._request_next_step_from_scan_dev))
         if self._request_next_step_from_scan_dev:
             if self.scan_dev is not None:
                 answ = self.scan_dev.setup_next_step()
@@ -144,7 +144,7 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
         :param val: anything that is serialisable by Pyro4, e.g. dict, list, etc.
         :return:
         """
-        logging.info('%s rcvd: %s' % (self.name, str((dev, t, ch, val))))
+        # logging.info('%s rcvd: %s' % (self.name, str((dev, t, ch, val))))
         if dev == self.scan_dev_name:  # usually anyhow only subscirbed to scan dev
             if ch == 'devPars':
                 self.store_dev_pars(val)

@@ -490,13 +490,14 @@ def gate_one_track(tr_ind, tr_num, scan_dict, data, time_array, volt_array, ret)
     return ret
 
 
-def gate_specdata(spec_data):
+def gate_specdata(spec_data, full_x_range=True):
     """
     function to gate spec_data with the softw_gates list in the spec_data itself.
     gate will be applied on spec_data.time_res and
      the time projection will be written to spec_data.t_proj
      the voltage projection will be written to spec_data.cts
     :param spec_data: spec_data
+    :param full_x_range: bool, True default -> will gate over the full x range
     :return: spec_data
     """
     # logging.debug('gating data now, software gates are: %s' % spec_data.softw_gates)
@@ -507,6 +508,11 @@ def gate_specdata(spec_data):
         if dif > 0:  # not enough gates defined for this track will add now
             for i in range(dif):
                 spec_data.softw_gates[tr_ind].append([float('-inf'), float('inf'), 0, float('inf')])
+    if full_x_range:
+        for tr_ind, gates_tr in enumerate(spec_data.softw_gates):
+            for sc_ind in range(spec_data.nrScalers[tr_ind]):
+                spec_data.softw_gates[tr_ind][sc_ind][0] = spec_data.x[tr_ind][0]
+                spec_data.softw_gates[tr_ind][sc_ind][1] = spec_data.x[tr_ind][-1]
     # get indices of the values first
     compare_arr = [spec_data.x, spec_data.x, spec_data.t, spec_data.t]
     softw_gates_ind = [
@@ -681,7 +687,10 @@ def create_t_axis_from_file_dict(scan_dict, with_delay=True, bin_width=10, in_mu
     t_arr = []
     for tr_ind, tr_name in enumerate(get_track_names(scan_dict)):
         if with_delay:
-            delay = scan_dict[tr_name]['trigger'].get('meas_trigger', {}).get('trigDelay10ns', 0) * bin_width
+            delay = scan_dict[tr_name]['trigger'].get('trigDelay10ns', 0) * bin_width  # for older versions
+            if delay == 0:
+                # newer versions -> get delay from meas trigger
+                delay = scan_dict[tr_name]['trigger'].get('meas_trigger', {}).get('trigDelay10ns', 0) * bin_width
         else:
             delay = 0
         nofbins = scan_dict[tr_name]['nOfBins']

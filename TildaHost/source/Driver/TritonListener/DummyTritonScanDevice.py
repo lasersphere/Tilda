@@ -48,6 +48,8 @@ class DummyScanDevice(ScanDeviceBase):
     def periodic(self):
         try:
             self.send('frequency', self.sc_one_scan_vals[self.sc_l_cur_step])
+            self.send('curStep', self.sc_l_cur_step)
+            self.send('curScan', self.sc_l_cur_scan)
         except Exception as e:
             pass
         pass
@@ -82,10 +84,9 @@ class DummyScanDevice(ScanDeviceBase):
         logging.debug('%s was told to set step number: %d which has a value of %s' % (
             self.name, step_num, self.sc_one_scan_vals[step_num]
         ))
-        sleep_t = 1.0
+        sleep_t = 0.2
         logging.debug('will sleep now for %.2f s' % sleep_t)
         time.sleep(sleep_t)
-        self.sc_l_cur_step = step_num
         logging.debug('ok, step is set continue whatever you are doing')
 
     def set_pre_scan_measurement_setpoint(self, set_val):
