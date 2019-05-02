@@ -78,7 +78,7 @@ def diffDoppler(nu_0, volt, m, charge=1, real=False):
         du = m * u * c ** 2 * (f_L ** 2 - nu_0 ** 2) / (2 * nu_0 * qe * charge * f_L ** 2) # Real calc. see Diss. K. König
         dv = -1/du
     else:
-        dv = nu_0 * qe / np.sqrt(2 * qe * charge * volt * m * u * c ** 2) # old approx.
+        dv = nu_0 * qe * charge / np.sqrt(2 * qe * charge * volt * m * u * c ** 2) # old approx.
 
     return dv
 
