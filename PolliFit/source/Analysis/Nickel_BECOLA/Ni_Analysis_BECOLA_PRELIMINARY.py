@@ -7,7 +7,6 @@ Module Description:  Analysis of the Nickel Data from BECOLA taken on 13.04.-23.
 """
 
 import ast
-import math
 import os
 import sqlite3
 from datetime import datetime
@@ -17,31 +16,53 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
-import Analyzer
 import BatchFit
-import MPLPlotter
 import Physics
-import TildaTools as TiTs
 import Tools
-from KingFitter import KingFitter
 
+from Analysis.Nickel_BECOLA.ExcelWrite import ExcelWriter
+
+# Set working directory and database
 ''' working directory: '''
-workdir = 'C:\\DEVEL\\Analysis\\Ni_Analysis\\XML_Data'
+# workdir = 'C:\\DEVEL\\Analysis\\Ni_Analysis\\XML_Data' # old working directory
+workdir = 'C:\\Users\\admin\\ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\XML_Data'
 ''' data folder '''
 datafolder = os.path.join(workdir, 'Sums')
 ''' database '''
 db = os.path.join(workdir, 'Ni_Becola.sqlite')
 Tools.add_missing_columns(db)
 
-runs = ['CEC_AsymVoigt', 'CEC_AsymVoigt_60', 'CEC_AsymVoigt_56']
-
+# Pick isotopes and group
 isotopes = ['%sNi' % i for i in range(55, 60)]
 isotopes.remove('57Ni')
 isotopes.remove('59Ni')
-
+'''isotope groups'''
 odd_isotopes = [iso for iso in isotopes if int(iso[:2]) % 2]
 even_isotopes = [iso for iso in isotopes if int(iso[:2]) % 2 == 0]
 stables = ['58Ni', '60Ni', '61Ni', '62Ni', '64Ni']
+
+# Name this analysis run
+run_name = 'Voigt'
+
+# create excel workbook to save some results
+excelpath = 'C:\\Users\\admin\\ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\Results\\analysis_scalers.xlsx'
+excel = ExcelWriter(excelpath)
+excel.active_sheet = excel.wb.copy_worksheet(excel.wb['Template'])
+excel.active_sheet.title = run_name
+
+# Select runs; Format: ['run58', 'run60', 'run56']
+# to use a different lineshape you must create a new run under runs and a new linevar under lines and link the two.
+runs = ['CEC_Voigt_58', 'CEC_Voigt_60', 'CEC_Voigt_56']
+excel.active_sheet['B1'] = str(runs)
+
+# Select Scalers
+scalers = '[0]'
+con = sqlite3.connect(db)
+cur = con.cursor()
+cur.execute('''UPDATE Runs SET Scaler = ?''', (scalers,))
+con.commit()
+con.close()
+excel.active_sheet['B2'] = scalers
 
 ''' Masses '''
 # # Reference:   'The Ame2016 atomic mass evaluation: (II). Tables, graphs and references'
@@ -89,6 +110,7 @@ nuclear_spin_and_moments = {
 # KURUCZ database: 352.4535nm, 850344000MHz, 28364.424cm-1
 # Some value I used in the excel sheet: 850347590MHz Don't remember where that came from...
 restframe_trans_freq = 850343800
+excel.active_sheet['B3'] = restframe_trans_freq
 
 ''' literature value IS 60-58'''
 # Reference: ??
@@ -97,7 +119,10 @@ restframe_trans_freq = 850343800
 # Collaps 2016: 510.7(6)[95]MHz
 # Steudel 1980: 0.01694(9) cm-1 corresponds to 507.8(27) MHz
 literature_IS60vs58 = 510.7
+excel.active_sheet['B4'] = literature_IS60vs58
 
+# safe run settings to workbook
+excel.wb.save(excelpath)
 
 ''' Calibration runs '''
 # Pick all 58Ni and 60Ni runs and fit.
@@ -121,13 +146,24 @@ cur.execute(
 files = cur.fetchall()
 con.close()
 # convert into np array
-filelist = [f[0] for f in files]
-filearray = np.array(filelist)
+filelist58 = [f[0] for f in files]
+filearray58 = np.array(filelist58)
+
+# Reset all calibration information so that pre-calib information can be extracted.
+con = sqlite3.connect(db)
+cur = con.cursor()
+# Set type in files back to bare isotopes (56Ni, 58Ni, 60Ni)
+# Set accVolt in files back to nominal 29850
+cur.execute('''UPDATE Files SET accVolt = ?, type = ? WHERE type LIKE '58Ni%' ''', (29850, '58Ni'))
+con.commit()
+con.close()
+
 # do the batchfit for 58Ni
-#BatchFit.batchFit(filearray, db, runs[0], x_as_voltage=True, softw_gates_trs=None, save_file_as='.png')
+BatchFit.batchFit(filearray58, db, runs[0], x_as_voltage=True, softw_gates_trs=None, save_file_as='.png')
 # get fitresults (center) vs run for 58
 all_58_center_MHz = []
-for files in filelist:
+all_58_center_MHz_d = []
+for files in filelist58:
     con = sqlite3.connect(db)
     cur = con.cursor()
     # Get corresponding isotope
@@ -136,13 +172,15 @@ for files in filelist:
     iso_type = cur.fetchall()[0][0]
     # Query fitresults for file and isotope combo
     cur.execute(
-        '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? ''', (files, iso_type))
+        '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? AND run = ?''', (files, iso_type, runs[0]))
     pars = cur.fetchall()
     con.close()
     parsdict = ast.literal_eval(pars[0][0])
     all_58_center_MHz.append(parsdict['center'][0])
+    all_58_center_MHz_d.append(parsdict['center'][1])
+# make list of all Ni58 run numbers from file names in list
 runNos58 = []
-for files in filelist:
+for files in filelist58:
     file_no = int(re.split('[_.]', files)[1])
     runNos58.append(file_no)
 
@@ -155,13 +193,24 @@ cur.execute(
 files = cur.fetchall()
 con.close()
 # convert into np array
-filelist = [f[0] for f in files]
-filearray = np.array(filelist)
-# do the batchfit for 58Ni
-#BatchFit.batchFit(filearray, db, runs[1], x_as_voltage=True, softw_gates_trs=None, save_file_as='.png')
+filelist60 = [f[0] for f in files]
+filearray60 = np.array(filelist60)
+
+# Reset all calibration information so that pre-calib information can be extracted.
+con = sqlite3.connect(db)
+cur = con.cursor()
+# Set type in files back to bare isotopes (56Ni, 58Ni, 60Ni)
+# Set accVolt in files back to nominal 29850
+cur.execute('''UPDATE Files SET accVolt = ?, type = ? WHERE type LIKE '60Ni%' ''', (29850, '60Ni'))
+con.commit()
+con.close()
+
+# do the batchfit for 60Ni
+BatchFit.batchFit(filearray60, db, runs[1], x_as_voltage=True, softw_gates_trs=None, save_file_as='.png')
 # get fitresults (center) vs run for 60
 all_60_center_MHz = []
-for files in filelist:
+all_60_center_MHz_d = []
+for files in filelist60:
     con = sqlite3.connect(db)
     cur = con.cursor()
     # Get corresponding isotope
@@ -170,17 +219,19 @@ for files in filelist:
     iso_type = cur.fetchall()[0][0]
     # Query fitresults for file and isotope combo
     cur.execute(
-        '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? ''', (files, iso_type))
+        '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? AND run = ?''', (files, iso_type, runs[1]))
     pars = cur.fetchall()
     con.close()
     parsdict = ast.literal_eval(pars[0][0])
     all_60_center_MHz.append(parsdict['center'][0]-510)
+    all_60_center_MHz_d.append(parsdict['center'][1])
+# make list of all Ni60 run numbers from file names in list
 runNos60 = []
-for files in filelist:
+for files in filelist60:
     file_no = int(re.split('[_.]', files)[1])
     runNos60.append(file_no)
 
-# plot center frequency in MHz for all 85Ni runs:
+# plot center frequency in MHz for all 58,60Ni runs:
 plt.plot(runNos60, all_60_center_MHz, '--o', color='red', label='60Ni - 510MHz')
 plt.plot(runNos58, all_58_center_MHz, '--o', color='blue', label='58Ni')
 plt.title('Center Frequency FitPar in MHz for all 58,60 Ni Runs')
@@ -190,13 +241,27 @@ plt.legend(loc='best')
 #plt.xticks(range(len(yData)), runNos, rotation=-30)
 plt.show()
 
-##################
+# Plot58 only with errorbars
+plt.errorbar(runNos58, all_58_center_MHz, yerr=all_58_center_MHz_d, label='58Ni')
+plt.title('Center Frequency FitPar in MHz for all 58 Ni Runs')
+plt.xlabel('run numbers')
+plt.ylabel('center fit parameter [MHz]')
+plt.legend(loc='best')
+#plt.xticks(range(len(yData)), runNos, rotation=-30)
+plt.show()
+
+#######################
+# Calibration process #
+#######################
+
 # Calibration sets of 58/60Ni
 calib_tuples = [(6191, 6192), (6207, 6208), (6224, 6225), (6232, 6233), (6242, 6243), (6253, 6254), (6258, 6259),
                 (6269, 6270), (6284, 6285), (6294, 6295), (6301, 6302), (6310, 6311), (6313, 6312), (6323, 6324),
                 (6340, 6342), (6356, 6357), (6362, 6363), (6395, 6396), (6417, 6419), (6467, 6466), (6501, 6502)]
 calib_tuples_with_isoshift = []
 
+# Calculate Isotope shift for all calibration tuples and add to list.
+# also write calibration tuple data to excel
 for tuples in calib_tuples:
     # Get 58Nickel center fit parameter in MHz
     run58 = tuples[0]
@@ -209,11 +274,14 @@ for tuples in calib_tuples:
     iso_type58 = cur.fetchall()[0][0]
     # Query fitresults for file and isotope combo
     cur.execute(
-        '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? ''', (run58file, iso_type58))
+        '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? AND run = ?''', (run58file, iso_type58, runs[0]))
     pars58 = cur.fetchall()
     con.close()
     pars58dict = ast.literal_eval(pars58[0][0])
     center58 = pars58dict['center']
+    if 'Asym' in runs[0]:
+        centerAsym58 = pars58dict['centerAsym']
+        IntAsym58 = pars58dict['IntAsym']
 
     # Get 60Nickel center fit parameter in MHz
     run60 = tuples[1]
@@ -226,17 +294,38 @@ for tuples in calib_tuples:
     iso_type60 = cur.fetchall()[0][0]
     # Query fitresults for file and isotope combo
     cur.execute(
-        '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? ''', (run60file, iso_type60))
+        '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? AND run = ?''', (run60file, iso_type60, runs[1]))
     pars60 = cur.fetchall()
     con.close()
     pars60dict = ast.literal_eval(pars60[0][0])
     center60 = pars60dict['center']
+    if 'Asym' in runs[1]:
+        centerAsym60 = pars60dict['centerAsym']
+        IntAsym60 = pars60dict['IntAsym']
 
     # Calculate isotope shift of 60Ni with respect to 58Ni for this calibration point
     isoShift = center60[0]-center58[0]
-    print('Isotope shift for calibration point with runs {} and {}: {}MHz'.format(tuples[0], tuples[1], isoShift))
+    #print('Isotope shift for calibration point with runs {} and {}: {}MHz'.format(tuples[0], tuples[1], isoShift))
     tuple_with_isoshift = tuples + (isoShift,)
     calib_tuples_with_isoshift.append(tuple_with_isoshift)
+
+    # write calibration tuple info to workbook
+    excel.active_sheet.cell(row=excel.last_row, column=1, value=str(tuples))
+    excel.active_sheet.cell(row=excel.last_row, column=2, value=run58)
+    excel.active_sheet.cell(row=excel.last_row, column=3, value=run60)
+    excel.active_sheet.cell(row=excel.last_row, column=4, value=center58[0])
+    excel.active_sheet.cell(row=excel.last_row, column=5, value=center58[1])
+    excel.active_sheet.cell(row=excel.last_row, column=6, value=center60[0])
+    excel.active_sheet.cell(row=excel.last_row, column=7, value=center60[1])
+    excel.active_sheet.cell(row=excel.last_row, column=8, value=isoShift)
+    if 'Asym' in runs[0]:
+        excel.active_sheet.cell(row=excel.last_row, column=9, value=centerAsym58[0])
+        excel.active_sheet.cell(row=excel.last_row, column=10, value=IntAsym58[0])
+    if 'Asym' in runs[1]:
+        excel.active_sheet.cell(row=excel.last_row, column=11, value=centerAsym60[0])
+        excel.active_sheet.cell(row=excel.last_row, column=12, value=IntAsym60[0])
+    excel.last_row += 1
+excel.wb.save(excelpath)
 
 # plot isotope shift for all calibration points (can be removed later on):
 calib_isoShift_yData = []
@@ -256,6 +345,8 @@ plt.show()
 # Calculate resonance DAC Voltage from the 'center' positions
 calib_tuples_with_isoshift_and_calibrationvoltage = []
 average_calib_voltage = 0
+# Do the voltage calibration for each tuple.
+excel.last_row = 9  # return to start
 for tuples in calib_tuples_with_isoshift:
     # get filenames
     run58, run60, isoShift = tuples
@@ -273,8 +364,13 @@ for tuples in calib_tuples_with_isoshift:
             '''SELECT type, accVolt, laserFreq, colDirTrue FROM Files WHERE file = ? ''', (files,))
         iso, accVolt, laserFreq, colDirTrue = cur.fetchall()[0]
         # Query fitresults for file and isotope combo
+        if files is run58file:
+            # check whether it's a 58 or 60 file to choose the correct run
+            run = runs[0]
+        else:
+            run = runs[1]
         cur.execute(
-            '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? ''', (files, iso))
+            '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? AND run = ?''', (files, iso, run))
         pars = cur.fetchall()
         # get mass
         cur.execute(
@@ -336,7 +432,7 @@ for tuples in calib_tuples_with_isoshift:
     calib_tuples_with_isoshift_and_calibrationvoltage.append(tuple_withcalibvolt)
 
     average_calib_voltage += calibrated_voltage
-    print(calibrated_voltage)
+    #print(calibrated_voltage)
 
     # display calibration graph
     #plt.plot(voltage_list, IS_perVolt_list)
@@ -345,10 +441,12 @@ for tuples in calib_tuples_with_isoshift:
     #plt.xlabel('voltage [V]')
     #plt.ylabel('isotope shift [MHz]')
     #plt.show()
-average_calib_voltage = average_calib_voltage/len(calib_tuples)
 
-print(calib_tuples_with_isoshift_and_calibrationvoltage)
-print(average_calib_voltage)
+    # write calibration voltage to workbook
+    excel.active_sheet.cell(row=excel.last_row, column=14, value=calibrated_voltage)
+    excel.last_row += 1
+excel.wb.save(excelpath)
+average_calib_voltage = average_calib_voltage/len(calib_tuples)
 
 # display all voltage calibrations
 # plot isotope shift for all calibration points (can be removed later on):
@@ -417,11 +515,129 @@ for entries in calib_tuples_with_isoshift_and_calibrationvoltage:
                 new_isopars)
     con.commit()
     con.close()
-
 print('...db update completed!')
 
+#############################
+# Re-fit Ni58 and Ni60 runs #
+#############################
 
-###################
+# do the batchfit for 58Ni
+BatchFit.batchFit(filearray58, db, runs[0], x_as_voltage=True, softw_gates_trs=None, save_file_as='.png')
+# get fitresults (center) vs run for 58
+all_58_center_MHz = []
+all_58_center_MHz_d = []
+for files in filelist58:
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    # Get corresponding isotope
+    cur.execute(
+        '''SELECT type FROM Files WHERE file = ? ''', (files,))
+    iso_type = cur.fetchall()[0][0]
+    # Query fitresults for file and isotope combo
+    cur.execute(
+        '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? AND run = ?''', (files, iso_type, runs[0]))
+    pars = cur.fetchall()
+    con.close()
+    parsdict = ast.literal_eval(pars[0][0])
+    all_58_center_MHz.append(parsdict['center'][0])
+    all_58_center_MHz_d.append(parsdict['center'][1])
+
+# do the batchfit for 60Ni
+BatchFit.batchFit(filearray60, db, runs[1], x_as_voltage=True, softw_gates_trs=None, save_file_as='.png')
+# get fitresults (center) vs run for 60
+all_60_center_MHz = []
+all_60_center_MHz_d = []
+for files in filelist60:
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    # Get corresponding isotope
+    cur.execute(
+        '''SELECT type FROM Files WHERE file = ? ''', (files,))
+    iso_type = cur.fetchall()[0][0]
+    # Query fitresults for file and isotope combo
+    cur.execute(
+        '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? AND run = ?''', (files, iso_type, runs[1]))
+    pars = cur.fetchall()
+    con.close()
+    parsdict = ast.literal_eval(pars[0][0])
+    all_60_center_MHz.append(parsdict['center'][0]-510)
+    all_60_center_MHz_d.append(parsdict['center'][1])
+
+# Calculate Isotope shift for all calibration tuples and add to list.
+# also write calibration tuple data to excel
+excel.last_row = 9  # return to start
+for tuples in calib_tuples:
+    # Get 58Nickel center fit parameter in MHz
+    run58 = tuples[0]
+    run58file = 'BECOLA_'+str(run58)+'.xml'
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    # Get corresponding isotope
+    cur.execute(
+        '''SELECT type FROM Files WHERE file = ? ''', (run58file,))
+    iso_type58 = cur.fetchall()[0][0]
+    # Query fitresults for file and isotope combo
+    cur.execute(
+        '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? AND  run = ?''', (run58file, iso_type58, runs[0]))
+    pars58 = cur.fetchall()
+    con.close()
+    pars58dict = ast.literal_eval(pars58[0][0])
+    center58 = pars58dict['center']
+
+    # Get 60Nickel center fit parameter in MHz
+    run60 = tuples[1]
+    run60file = 'BECOLA_' + str(run60) + '.xml'
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    # Get corresponding isotope
+    cur.execute(
+        '''SELECT type FROM Files WHERE file = ? ''', (run60file,))
+    iso_type60 = cur.fetchall()[0][0]
+    # Query fitresults for file and isotope combo
+    cur.execute(
+        '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? AND run = ?''', (run60file, iso_type60, runs[1]))
+    pars60 = cur.fetchall()
+    con.close()
+    pars60dict = ast.literal_eval(pars60[0][0])
+    center60 = pars60dict['center']
+
+    # Calculate isotope shift of 60Ni with respect to 58Ni for this calibration point
+    isoShift = center60[0]-center58[0]
+
+    # write calibration tuple info to workbook
+    excel.active_sheet.cell(row=excel.last_row, column=15, value=center58[0])
+    excel.active_sheet.cell(row=excel.last_row, column=16, value=center58[1])
+    excel.active_sheet.cell(row=excel.last_row, column=17, value=center60[0])
+    excel.active_sheet.cell(row=excel.last_row, column=18, value=center60[1])
+    excel.active_sheet.cell(row=excel.last_row, column=19, value=isoShift)
+    excel.last_row += 1
+excel.wb.save(excelpath)
+
+# plot center frequency in MHz for all 58,60Ni runs:
+#print(all_58_center_MHz)
+#print(all_60_center_MHz)
+plt.plot(runNos60, all_60_center_MHz, '--o', color='red', label='60Ni - 510MHz')
+plt.plot(runNos58, all_58_center_MHz, '--o', color='blue', label='58Ni')
+plt.title('Center Frequency FitPar in MHz for all 58,60 Ni Runs')
+plt.xlabel('run numbers')
+plt.ylabel('center fit parameter [MHz]')
+plt.legend(loc='best')
+#plt.xticks(range(len(yData)), runNos, rotation=-30)
+plt.show()
+
+# Plot58 only with errorbars
+plt.errorbar(runNos58, all_58_center_MHz, yerr=all_58_center_MHz_d, label='58Ni')
+plt.title('Center Frequency FitPar in MHz for all 58 Ni Runs')
+plt.xlabel('run numbers')
+plt.ylabel('center fit parameter [MHz]')
+plt.legend(loc='best')
+#plt.xticks(range(len(yData)), runNos, rotation=-30)
+plt.show()
+
+#################
+# Ni56 Analysis #
+#################
+
 # select Ni56 files
 con = sqlite3.connect(db)
 cur = con.cursor()
@@ -444,6 +660,8 @@ files56_withReference_tuples_handassigned_V2 = [(6202, (6207, 6208)), (6203, (62
                                              (6211, (6207, 6208)), (6213, (6207, 6208)), (6214, (6207, 6208)),
                                              (6238, (6242, 6243)), (6239, (6242, 6243)), (6240, (6242, 6243)),
                                              (6251, (6253, 6254)), (6252, (6253, 6254))]
+
+# attach calibration to each file
 for files in filearray56:
     # extract file number
     file_no = int(re.split('[_.]',files)[1])
@@ -498,6 +716,14 @@ files56_withReference_tuples = files56_withReference_tuples_handassigned
 # do the batchfit for 56Ni
 BatchFit.batchFit(filearray56, db, runs[2], x_as_voltage=True, softw_gates_trs=None, save_file_as='.png')
 
+# prepare workbook:
+excel.last_row += 1
+excel.active_sheet.cell(row=excel.last_row, column=1, value='Runs56')
+excel.active_sheet.cell(row=excel.last_row, column=2, value='Ref58File')
+excel.active_sheet.cell(row=excel.last_row, column=3, value='56 center fit par')
+excel.active_sheet.cell(row=excel.last_row, column=4, value='56 center fit err')
+excel.active_sheet.cell(row=excel.last_row, column=5, value='IS 56vs58')
+excel.last_row += 1
 # calculate isotope shift between 56file and reference
 files56_withReference_andIsoshift_tuples = []
 for files56 in filearray56:
@@ -512,11 +738,11 @@ for files56 in filearray56:
     iso_type56 = cur.fetchall()[0][0]
     # Query fitresults for file and isotope combo
     cur.execute(
-        '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? ''', (files56, iso_type56))
+        '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? AND run = ?''', (files56, iso_type56, runs[2]))
     pars56 = cur.fetchall()
     con.close()
     pars56dict = ast.literal_eval(pars56[0][0])
-    center56 = pars56dict['center'] # tuple of (center frequency, Uncertainty?, Fixed?)
+    center56 = pars56dict['center']  # tuple of (center frequency, Uncertainty?, Fixed?)
 
     # Get reference 58Nickel center fit parameter in MHz,
     calibration_tuple = ()
@@ -533,24 +759,37 @@ for files56 in filearray56:
     iso_type58 = cur.fetchall()[0][0]
     # Query fitresults for file and isotope combo
     cur.execute(
-        '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? ''', (ref58_file, iso_type58))
+        '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? AND run = ?''', (ref58_file, iso_type58, runs[0]))
     pars58 = cur.fetchall()
     con.close()
+    print(files)
     pars58dict = ast.literal_eval(pars58[0][0])
     center58 = pars58dict['center']
 
     # calculate isotope shift of 56 nickel with reference to 58 nickel
     isoShift56 = center56[0] - center58[0]
-    print('Isotope shift of Ni56 run {} with respect to Ni58 run{} is: {}MHz'.
-          format(file_no, calibration_tuple, isoShift56))
-    files56_withReference_andIsoshift_tuples.append((file_no, calibration_tuple, isoShift56))
+    isoShift56_error = np.sqrt(center56[1]**2 + center58[1]**2)
+    print('Isotope shift of Ni56 run {} with respect to Ni58 run{} is: {}+-{}MHz'.
+          format(file_no, calibration_tuple, isoShift56, isoShift56_error))
+    files56_withReference_andIsoshift_tuples.append((file_no, calibration_tuple, (isoShift56, isoShift56_error)))  #(file_no, claibration_tuple, (isoshift56, errorIS))
+
+    # write to excel workbook
+    excel.active_sheet.cell(row=excel.last_row, column=1, value=file_no)
+    excel.active_sheet.cell(row=excel.last_row, column=2, value=ref58_file)
+    excel.active_sheet.cell(row=excel.last_row, column=3, value=center56[0])
+    excel.active_sheet.cell(row=excel.last_row, column=4, value=center56[1])
+    excel.active_sheet.cell(row=excel.last_row, column=5, value=isoShift56)
+    excel.last_row += 1
+excel.wb.save(excelpath)
 
 
 # plot isotope shift for all 56 nickel runs (can be removed later on):
 ni56_isoShift_yData = []
+ni56_isoShift_yData_d = []
 ni56_point_runNos = []
 for tuples in files56_withReference_andIsoshift_tuples:
-    ni56_isoShift_yData.append(tuples[2])
+    ni56_isoShift_yData.append(tuples[2][0])
+    ni56_isoShift_yData_d.append(tuples[2][1])
     ni56_point_name = str(tuples[0])
     ni56_point_runNos.append(ni56_point_name)
 
@@ -558,9 +797,13 @@ ni56_isoShift_alt_yData = -525.8169055478309, -523.0479365515923, -525.280833826
                           -540.3585627829973, -521.3067663175245, -509.42569032109384, -511.40285471674554,\
                           -511.1400904483909, -508.7950760887162, -511.4211280594908
 
-plt.plot(range(len(ni56_isoShift_yData)), ni56_isoShift_yData, '-o', label='preferred')
-plt.plot(range(len(ni56_isoShift_yData)), ni56_isoShift_alt_yData, 'r-o', label='alternative')
+plt.errorbar(range(len(ni56_isoShift_yData)), ni56_isoShift_yData, yerr=ni56_isoShift_yData_d, label='preferred')
+#plt.plot(range(len(ni56_isoShift_yData)), ni56_isoShift_yData, '-o', label='preferred')
+#plt.plot(range(len(ni56_isoShift_yData)), ni56_isoShift_alt_yData, 'r-o', label='alternative')
 plt.xticks(range(len(ni56_isoShift_yData)), ni56_point_runNos, rotation=-30)
+plt.axis([-0.5, len(ni56_isoShift_yData)-0.5,
+          min(ni56_isoShift_yData)-max(ni56_isoShift_yData_d),
+          max(ni56_isoShift_yData)+max(ni56_isoShift_yData_d)])
 plt.title('Isotope Shift Ni 56-58 for all runs')
 plt.xlabel('Run Number')
 plt.ylabel('Isotope Shift  [MHz]')
