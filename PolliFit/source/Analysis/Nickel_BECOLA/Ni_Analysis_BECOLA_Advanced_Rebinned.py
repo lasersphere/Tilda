@@ -14,6 +14,7 @@ import re
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.dates as mpdate
 from scipy.optimize import curve_fit
 
 import BatchFit
@@ -27,8 +28,11 @@ class NiAnalysis():
 
         # Set working directory and database
         ''' working directory: '''
+        # get user folder to access ownCloud
+        user_home_folder = os.path.expanduser("~")
         # self.workdir = 'C:\\DEVEL\\Analysis\\Ni_Analysis\\XML_Data' # old working directory
-        self.workdir = 'C:\\Users\\admin\\ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\XML_Data'
+        ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\XML_Data'
+        self.workdir = os.path.join(user_home_folder, ownCould_path)
         ''' data folder '''
         self.datafolder = os.path.join(self.workdir, 'SumsRebinned')
         ''' database '''
@@ -48,7 +52,8 @@ class NiAnalysis():
         self.run_name = 'AsymVoigt'
 
         # create excel workbook to save some results
-        self.excelpath = 'C:\\Users\\admin\\ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\Results\\analysis_advanced_rebinned.xlsx'
+        excel_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\Results\\analysis_advanced_rebinned.xlsx'
+        self.excelpath = os.path.join(user_home_folder, excel_path)
         self.excel = ExcelWriter(self.excelpath)
         self.excel.active_sheet = self.excel.wb.copy_worksheet(self.excel.wb['Template'])
         self.excel.active_sheet.title = self.run_name
@@ -137,9 +142,9 @@ class NiAnalysis():
         for scalers in range(3):
             # write scaler to db
             self.update_scalers(scalers)
-            self.filelist58, self.runNos58, self.center_freqs_58, self.center_freqs_58_d = \
+            self.filelist58, self.runNos58, self.center_freqs_58, self.center_freqs_58_d, self.start_times_58 = \
                 self.chooseAndFitRuns('58Ni%', '58Ni', reset=True)
-            self.filelist60, self.runNos60, self.center_freqs_60, self.center_freqs_60_d = \
+            self.filelist60, self.runNos60, self.center_freqs_60, self.center_freqs_60_d, self.start_times_60 = \
                 self.chooseAndFitRuns('60Ni%', '60Ni', reset=True)
             # plot results of first fit
             self.plotCenterFrequencies58and60()
@@ -150,14 +155,19 @@ class NiAnalysis():
                                  (6313, 6312), (6323, 6324), (6340, 6342), (6356, 6357), (6362, 6363), (6395, 6396),
                                  (6418, 6419), (6417, 6419), (6462, 6466), (6467, 6466), (6501, 6502)]
             self.calib_tuples = self.calibrateVoltage(self.calib_tuples)
-            # now tuples contain (58ref, 60ref, isoshift, calVolt, calVoltStatErr, calVoltSystErr)
+            # now tuples contain (58ref, 60ref, isoshift, isoshift_d, calVolt, calVoltStatErr, calVoltSystErr)
 
             # re-fit 58 and 60 Nickel runs for that scaler
-            self.filelist58, self.runNos58, self.center_freqs_58, self.center_freqs_58_d = \
+            self.filelist58, self.runNos58, self.center_freqs_58, self.center_freqs_58_d, self.start_times_58 = \
                 self.chooseAndFitRuns('58Ni%', '58Ni', reset=False)
-            self.filelist60, self.runNos60, self.center_freqs_60, self.center_freqs_60_d = \
+            self.filelist60, self.runNos60, self.center_freqs_60, self.center_freqs_60_d, self.start_times_60 = \
                 self.chooseAndFitRuns('60Ni%', '60Ni', reset=False)
             self.write_second_fit_to_excel(scalers)
+
+            # Todo: Plot calibrations and all other runs on a time axis to assign calibrations!
+            # Should use self.calib_tuples to get 58 and 60 reference files
+            self.assign_calibrations()
+
             # fit 56 nickel runs and calculate Isotop shift
             ni56_point_runNos, ni56_center, ni56_center_d, ni56_isoShift_yData, ni56_isoShift_yData_d, w_avg_56isoshift = self.do_56_Analysis(scalers)
 
@@ -287,6 +297,7 @@ class NiAnalysis():
         # do the batchfit
         BatchFit.batchFit(filearray, self.db, self.runs[run], x_as_voltage=True, softw_gates_trs=None, save_file_as='.png')
         # get fitresults (center) vs run for 58
+        all_rundate = []
         all_center_MHz = []
         all_center_MHz_d = []
         # get fit results
@@ -295,8 +306,10 @@ class NiAnalysis():
             cur = con.cursor()
             # Get corresponding isotope
             cur.execute(
-                '''SELECT type FROM Files WHERE file = ? ''', (files,))
-            iso_type = cur.fetchall()[0][0]
+                '''SELECT date, type FROM Files WHERE file = ? ''', (files,))
+            filefetch = cur.fetchall()
+            iso_type = filefetch[0][0]
+            file_date = filefetch[0][1]
             # Query fitresults for file and isotope combo
             cur.execute(
                 '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? AND run = ?''', (files, iso_type, self.runs[run]))
@@ -308,6 +321,7 @@ class NiAnalysis():
             except Exception as e:
                 # replace with standard value and big error...
                 parsdict = {'center': (-510, 30, False)}  # TODO: use better dummy value (take from all_Center_MHz list)
+            all_rundate.append(file_date)
             all_center_MHz.append(parsdict['center'][0])
             all_center_MHz_d.append(parsdict['center'][1])
         # make list of all run numbers from file names in list
@@ -316,7 +330,7 @@ class NiAnalysis():
             file_no = int(re.split('[_.]', files)[1])
             runNos.append(file_no)
 
-        return filelist, runNos, all_center_MHz, all_center_MHz_d
+        return filelist, runNos, all_center_MHz, all_center_MHz_d, all_rundate
 
     def plotCenterFrequencies58and60(self):
         # plot center frequency in MHz for all 58,60Ni runs:
@@ -786,6 +800,116 @@ class NiAnalysis():
             self.excel.last_row += 1
         self.excel.wb.save(self.excelpath)
 
+    def assign_calibrations(self):
+        '''
+        For now this just plots all calibration pairs on a time-axis with the other files so they can be handassigned.
+        :return:
+        '''
+        calib58_runs = []
+        calib58_dates = []
+        calib60_runs = []
+        calib60_dates = []
+        calib_volts = []
+        calib_volts_d = []
+        file56_runs = []
+        file56_dates = []
+        file55_runs = []
+        file55_dates = []
+        for tuples in self.calib_tuples:
+            runNo58ref, runNo60ref, isoshift, isoShift_d, calVolt, calVoltStatErr, calVoltSystErr = tuples
+            calib58_runs.append(runNo58ref)
+            calib60_runs.append(runNo60ref)
+            calib_volts.append(calVolt)
+            calib_volts_d.append(calVoltStatErr)
+            # get times from database
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            cur.execute(
+                '''SELECT date FROM Files WHERE file LIKE ?''', ('%' + str(runNo58ref) + '%',))
+            fetch = cur.fetchall()
+            run58_date = fetch[0][0]
+            run58_date = datetime.strptime(run58_date,'%Y-%m-%d %H:%M:%S')
+            cur.execute(
+                '''SELECT date FROM Files WHERE file LIKE ?''', ('%' + str(runNo60ref) + '%',))
+            fetch = cur.fetchall()
+            run60_date = fetch[0][0]
+            run60_date = datetime.strptime(run60_date, '%Y-%m-%d %H:%M:%S')
+            con.close()
+            # write times to lists
+            calib58_dates.append(run58_date)
+            calib60_dates.append(run60_date)
+
+        # select Ni56 files
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        cur.execute(
+            '''SELECT file FROM Files WHERE type LIKE '56Ni%' ''')
+        files = cur.fetchall()
+        con.close()
+        # convert into np array
+        self.filelist56 = [f[0] for f in files]
+        self.runNos56 = []
+        for files in self.filelist56:
+            file_no = int(re.split('[_.]', files)[1])
+            self.runNos56.append(file_no)
+        for run56No in self.runNos56:
+            file56_runs.append(run56No)
+            # get times from database
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            cur.execute(
+                '''SELECT date FROM Files WHERE file LIKE ?''', ('%'+ str(run56No) + '%',))
+            run56_date = cur.fetchall()[0][0]
+            run56_date = datetime.strptime(run56_date,  '%Y-%m-%d %H:%M:%S')
+            con.close()
+            # write times to lists
+            file56_dates.append(run56_date)
+
+        # select Ni55 files
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        cur.execute(
+            '''SELECT file FROM Files WHERE type LIKE '55Ni%' ''')
+        files = cur.fetchall()
+        con.close()
+        # convert into np array
+        self.filelist55 = [f[0] for f in files]
+        self.runNos55 = []
+        for files in self.filelist55:
+            file_no = int(re.split('[_.]', files)[1])
+            self.runNos55.append(file_no)
+        for run55No in self.runNos55:
+            file55_runs.append(run55No)
+            # get times from database
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            cur.execute(
+                '''SELECT date FROM Files WHERE file LIKE ?''', ('%' + str(run55No) + '%',))
+            run55_date = cur.fetchall()[0][0]
+            run55_date = datetime.strptime(run55_date, '%Y-%m-%d %H:%M:%S')
+            con.close()
+            # write times to lists
+            file55_dates.append(run55_date)
+
+        run55_mpdate = mpdate.date2num(file55_dates)
+        run56_mpdate = mpdate.date2num(file56_dates)
+        run58_mpdate = mpdate.date2num(calib58_dates)
+        run60_mpdate = mpdate.date2num(calib60_dates)
+
+        plt.plot_date(run60_mpdate, calib60_runs, 'bo')
+        plt.plot_date(run58_mpdate, calib58_runs, 'co')
+        plt.plot_date(run56_mpdate, file56_runs, 'ro')
+        plt.plot_date(run55_mpdate, file55_runs, 'mo')
+        plt.show()
+
+
+        fig, ax = plt.subplots()
+        plt.errorbar(calib58_dates, calib_volts, yerr=calib_volts_d)
+        days_fmt = mpdate.DateFormatter('%d.%B-%H:%M')
+        ax.xaxis.set_major_formatter(days_fmt)
+        plt.xticks(rotation=90)
+        plt.show()
+
     def do_56_Analysis(self, scaler):
         #################
         # Ni56 Analysis #
@@ -799,8 +923,8 @@ class NiAnalysis():
         files = cur.fetchall()
         con.close()
         # convert into np array
-        filelist56 = [f[0] for f in files]
-        filearray56 = np.array(filelist56)
+        self.filelist56 = [f[0] for f in files]
+        filearray56 = np.array(self.filelist56)
 
         # attach the Ni56 runs to some calibration point(s) and adjust voltage plus create new isotope with adjusted center
         files56_withReference_tuples = []  # tuples of (56file, (58reference, 60reference))
@@ -815,6 +939,7 @@ class NiAnalysis():
                                                      (6251, (6253, 6254)), (6252, (6253, 6254))]
 
         # attach calibration to each file
+        # TODO: Make a plot where 56 runs and calibrations are plotted on a time-axis
         for files in filearray56:
             # extract file number
             file_no = int(re.split('[_.]',files)[1])
