@@ -26,13 +26,12 @@ class RunStacker():
         #ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Pd_offline_PIG_MSU\\Analysis\\xml'
         self.workdir = os.path.join(user_home_folder, ownCould_path)
         ''' data folder '''
-        self.datafolder = os.path.join(self.workdir, 'SumsRebinned')
+        self.datafolder = os.path.join(self.workdir, 'Sums')
         ''' database '''
         self.db = os.path.join(self.workdir, 'Ni_Becola.sqlite')
 
-        # TODO: there should definitely be an option to pick files from database (say based on isotope)
         # TODO: also drag&drop would be nice...
-        files = ['BECOLA_6742.xml', 'BECOLA_6744.xml', 'BECOLA_6751.xml', 'BECOLA_6753.xml']  # List of file paths to analyze
+        files = ['BECOLA_6345.xml', 'BECOLA_6353.xml', 'BECOLA_6355.xml']  # List of file paths to analyze
         self.files = []
         for file in files:
             file = os.path.join(self.datafolder, file)
@@ -45,27 +44,45 @@ class RunStacker():
     def loadfiles(self):
         binsize = 3
         norm = True  # normalize? True or False
-        startvoltneg = 250 # negative starting volts (don't use the -)
-        scanrange = 250  # volts scanning up from startvolt
+        startvoltneg = 350  # negative starting volts (don't use the -)
+        scanrange = 450  # volts scanning up from startvolt
         sumcts = np.zeros(scanrange//binsize)  # should contain all the 55 scans so roughly -350 to +100
         addcounter = np.zeros(scanrange//binsize)  # array to keep track of how often data was added to a bin
         sumvolts = np.arange(scanrange//binsize)-startvoltneg/binsize
         for files in self.files:
             filename = re.split('[_.]', files)[-2]
-            spec = XMLImporter(path=files)
+            spec = XMLImporter(path=files,
+                               softw_gates=[[-350, 0, 5.2, 5.4],
+                                            [-350, 0, 5.394, 5.594],
+                                            [-350, 0, 5.465, 5.665]])
+            stepsize = spec.stepSize[0]
+            nOfSteps = spec.getNrSteps(0)
+            scaler0_cts = spec.cts[0][0]
+            scaler1_cts = spec.cts[0][1]
+            scaler2_cts = spec.cts[0][2]
+            scaler_sum_cts = scaler0_cts+scaler1_cts+scaler2_cts
+            voltage_x = spec.x[0]
             if norm:
                 nOfScans = spec.nrScans[0]
+                nOfBunches = spec.nrBunches[0]
+                scaler0_totalcts = sum(scaler0_cts)
+                scaler1_totalcts = sum(scaler1_cts)
+                scaler2_totalcts = sum(scaler2_cts)
+                scaler_sum_totalcts = scaler0_totalcts+scaler1_totalcts+scaler2_totalcts
+                if scaler_sum_totalcts == 0: scaler_sum_totalcts=1
             else:
                 nOfScans = 1
-            scaler0_cts = spec.cts[0][0]
-            voltage_x = spec.x[0]
+                scaler0_totalcts = 1
+                scaler1_totalcts = 1
+                scaler_sum_totalcts = 1
             scaler0_timeproj = spec.t_proj[0][0]
             for datapoint_ind in range(len(voltage_x)):
                 voltind = int(voltage_x[datapoint_ind] + startvoltneg)//binsize
                 if 0 < voltind < len(sumcts):
-                    sumcts[voltind] += scaler0_cts[datapoint_ind]/nOfScans
+                    #sumcts[voltind] += scaler0_cts[datapoint_ind]/nOfScans
+                    sumcts[voltind] += scaler_sum_cts[datapoint_ind]/(nOfScans * nOfBunches)
                     addcounter[voltind] += 1
-            plt.plot(voltage_x, scaler0_cts, drawstyle='steps')
+            plt.plot(voltage_x, scaler0_cts, drawstyle='steps', label=filename)
             #plt.title(filename)
             #plt.show()
             #plt.title(filename)
@@ -90,7 +107,7 @@ class RunStacker():
         for file in filelist:
             fileno = int(re.split('[_.]', file)[1])
             file = os.path.join(self.datafolder, file)
-            if 6468 <= fileno:
+            if 6315 <= fileno <= 6500:
                 self.files.append(file)
 
 
