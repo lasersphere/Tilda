@@ -8,7 +8,7 @@ Created on '26.10.2015'
 import numpy as np
 
 try:
-    import Service.VoltageConversions.DAC_Calibration as DAC_calib
+    import Service.VoltageConversions.DAC_Calibration as AD5781Fit
 except:
     raise Exception(
         '\n------------------------------------------- \n'
@@ -18,26 +18,16 @@ except:
         'TildaHost\\source\\Service\\VoltageConversion\\DacRegisterToVoltageFit.py\n'
         '------------------------------------------- \n'
     )
-if DAC_calib.dac_name == "AD5781_V1":
-    import Service.VoltageConversions.BitConverterAD5781legacy as bitconverter
-elif DAC_calib.dac_name == "AD5791":
-    import Service.VoltageConversions.BitConverterAD5791 as bitconverter
-else:
-    raise Exception(
-        '\n------------------------------------------- \n'
-        'Unknown DAC specified in calibration file!\n'
-        '------------------------------------------- \n')
 
-def get_18bit_from_voltage(voltage, dac_gauge_pars=DAC_calib.dac_gauge_vals, ref_volt_neg=-10, ref_volt_pos=10):
+
+def get_bits_from_voltage(voltage, dac_gauge_pars=AD5781Fit.dac_gauge_vals, ref_volt_neg=-10, ref_volt_pos=10):
     """
     function to return an 18-Bit Integer by putting in a voltage +\-10V in DBL
     :param voltage: dbl, desired Voltage
     :param ref_volt_neg/ref_volt_pos: dbl, value for the neg./pos. reference Voltage for the DAC
     :return: int, 18-Bit Code.
     """
-    return bitconverter.get_bits_from_voltage(voltage, dac_gauge_pars, ref_volt_neg, ref_volt_pos)
-
-    """if voltage is None:
+    if voltage is None:
         return None
     if dac_gauge_pars is None:
         #  function as described in the AD5781 Manual
@@ -48,16 +38,15 @@ def get_18bit_from_voltage(voltage, dac_gauge_pars=DAC_calib.dac_gauge_vals, ref
         b18 = int(round(((voltage - dac_gauge_pars[0])/dac_gauge_pars[1])))
     b18 = max(0, b18)
     b18 = min(b18, (2 ** 18) - 1)
-    return b18"""
+    return b18
 
 
-def get_18bit_stepsize(step_voltage, dac_gauge_pars=DAC_calib.dac_gauge_vals):
+def get_18bit_stepsize(step_voltage, dac_gauge_pars=AD5781Fit.dac_gauge_vals):
     """
     function to get the StepSize in dac register integer form derived from a double Voltage
     :return ~ step_voltage/lsb
     """
-    return bitconverter.get_18bit_stepsize(step_voltage,dac_gauge_pars)
-    '''if step_voltage is None:
+    if step_voltage is None:
         return None
     lsb = 20 / ((2 ** 18) - 1)  # least significant bit in +/-10V 18Bit DAC
     if dac_gauge_pars is not None:
@@ -65,16 +54,15 @@ def get_18bit_stepsize(step_voltage, dac_gauge_pars=DAC_calib.dac_gauge_vals):
     b18 = int(round(step_voltage/lsb))
     b18 = max(-((2 ** 18) - 1), b18)
     b18 = min(b18, (2 ** 18) - 1)
-    return b18'''
+    return b18
 
 
-def get_stepsize_in_volt_from_18bit(voltage_18bit, dac_gauge_pars=DAC_calib.dac_gauge_vals):
+def get_stepsize_in_volt_from_18bit(voltage_18bit, dac_gauge_pars=AD5781Fit.dac_gauge_vals):
     """
     function to calculate the stepsize by a given 18bit dac register difference.
     :return ~ voltage_18b * lsb
     """
-    return bitconverter.get_stepsize_in_volt_from_18bit(voltage_18bit, dac_gauge_pars)
-    '''if voltage_18bit is None:
+    if voltage_18bit is None:
         return None
     voltage_18bit = max(-((2 ** 18) - 1), voltage_18bit)
     voltage_18bit = min(voltage_18bit, (2 ** 18) - 1)
@@ -83,10 +71,10 @@ def get_stepsize_in_volt_from_18bit(voltage_18bit, dac_gauge_pars=DAC_calib.dac_
         lsb = dac_gauge_pars[1]  # lsb = slope from DAC-Scan
     # volt = round(voltage_18bit * lsb, 8)
     volt = voltage_18bit * lsb
-    return volt'''
+    return volt
 
 
-def get_24bit_input_from_voltage(voltage, dac_gauge_pars=DAC_calib.dac_gauge_vals,
+def get_24bit_input_from_voltage(voltage, dac_gauge_pars=AD5781Fit.dac_gauge_vals,
                                  add_reg_add=True, loose_sign=False, ref_volt_neg=-10, ref_volt_pos=10):
     """
     function to return an 24-Bit Integer by putting in a voltage +\-10V in DBL
@@ -94,22 +82,19 @@ def get_24bit_input_from_voltage(voltage, dac_gauge_pars=DAC_calib.dac_gauge_val
     :param ref_volt_neg/ref_volt_pos: dbl, value for the neg./pos. reference Voltage for the DAC
     :return: int, 24-Bit Code.
     """
-    return bitconverter.get_24bit_input_from_voltage(voltage, dac_gauge_pars, add_reg_add, loose_sign, ref_volt_neg, ref_volt_pos)
-    '''
-    b18 = get_18bit_from_voltage(voltage, dac_gauge_pars, ref_volt_neg, ref_volt_pos)
+    b18 = get_bits_from_voltage(voltage, dac_gauge_pars, ref_volt_neg, ref_volt_pos)
     b24 = (int(b18) << 2)
     if add_reg_add:
         # adds the address of the DAC register to the bits
         b24 += int(2 ** 20)
     if loose_sign:
         b24 -= int(2 ** 19)
-    return b24'''
+    return b24
 
 
-def get_voltage_from_18bit(voltage_18bit, dac_gauge_pars=DAC_calib.dac_gauge_vals, ref_volt_neg=-10, ref_volt_pos=10):
+def get_voltage_from_18bit(voltage_18bit, dac_gauge_pars=AD5781Fit.dac_gauge_vals, ref_volt_neg=-10, ref_volt_pos=10):
     """function from the manual of the AD5781"""
-    return bitconverter.get_voltage_from_18bit(voltage_18bit,dac_gauge_pars,ref_volt_neg, ref_volt_pos)
-    '''if voltage_18bit is None:
+    if voltage_18bit is None:
         return None
     voltage_18bit = max(0, voltage_18bit)
     voltage_18bit = min(voltage_18bit, (2 ** 18) - 1)
@@ -121,10 +106,10 @@ def get_voltage_from_18bit(voltage_18bit, dac_gauge_pars=DAC_calib.dac_gauge_val
         # linear function (V = slope * D + offset) with offset and slope from measurement
         voltfloat = voltage_18bit * dac_gauge_pars[1] + dac_gauge_pars[0]
         # voltfloat = round(voltfloat, 8)
-    return voltfloat'''
+    return voltfloat
 
 
-def get_voltage_from_24bit(voltage_24bit, dac_gauge_pars=DAC_calib.dac_gauge_vals,
+def get_voltage_from_24bit(voltage_24bit, dac_gauge_pars=AD5781Fit.dac_gauge_vals,
                            remove_add=True, ref_volt_neg=-10, ref_volt_pos=10):
     """
     function to get the output voltage of the DAC by the corresponding 24-Bit register input
@@ -133,10 +118,9 @@ def get_voltage_from_24bit(voltage_24bit, dac_gauge_pars=DAC_calib.dac_gauge_val
     :param ref_volt_neg/P: dbl, +/- 10 V for the reference Voltage of the DAC
     :return: dbl, Voltage that will be applied.
     """
-    return bitconverter.get_voltage_from_24bit(voltage_24bit,dac_gauge_pars,remove_add,ref_volt_neg,ref_volt_pos)
-    '''v18bit = get_18bit_from_24bit_dac_reg(voltage_24bit, remove_add)
+    v18bit = get_18bit_from_24bit_dac_reg(voltage_24bit, remove_add)
     voltfloat = get_voltage_from_18bit(v18bit, dac_gauge_pars, ref_volt_neg, ref_volt_pos)
-    return voltfloat'''
+    return voltfloat
 
 
 def get_18bit_from_24bit_dac_reg(voltage_24bit, remove_address=True):
@@ -146,11 +130,10 @@ def get_18bit_from_24bit_dac_reg(voltage_24bit, remove_address=True):
     :param remove_address: bool, True if the Registry Address is still included
     :return: int, 18Bit DAC Reg value
     """
-    return bitconverter.get_18bit_from_24bit_dac_reg(voltage_24bit,remove_address)
-    '''if remove_address:
+    if remove_address:
         voltage_24bit -= 2 ** 20
     v18bit = (voltage_24bit >> 2) & ((2 ** 18) - 1)
-    return v18bit'''
+    return v18bit
 
 
 def find_volt_in_array(voltage, volt_array, track_ind):
