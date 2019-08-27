@@ -169,8 +169,10 @@ class XMLImporter(SpecData):
             self.nrScans.append(track_dict['nOfCompletedSteps'] // nOfsteps)
 
             dacStepSize18Bit = track_dict.get('dacStepSize18Bit', None)  # leave in for backwards_comp
-            if dacStepSize18Bit is None:
-                step_size = scan_dev_dict_tr.get('start', 0.0)
+            if dacStepSize18Bit is None or dacStepSize18Bit == {}:  # TODO: not nice...
+                # TODO: copy/paste from laptop. dacStepsizeVoltage is set correctly in file. So why load through 'start'?
+                step_size = track_dict['dacStepsizeVoltage']
+                #step_size = scan_dev_dict_tr.get('start', 0.0)
             else:
                 step_size = VCon.get_stepsize_in_volt_from_18bit(dacStepSize18Bit)
             self.stepSize.append(step_size)
@@ -205,6 +207,10 @@ class XMLImporter(SpecData):
                     zf_data_tr = TildaTools.non_zero_free_to_zero_free([scaler_array])[0]
                     self.time_res_zf.append(zf_data_tr)
 
+                if softw_gates is None:
+                    # TODO: Change copy/paste from laptop. Should be solved elegantly and tested.
+                    # Reason for change: sometimes voltptoj from file is bad and we want a new projection.
+                    softw_gates = track_dict['softwGates']
                 if v_proj is None or t_proj is None or softw_gates is not None:
                     logging.info(' while importing: projections not found,'
                                     ' or software gates set by hand, gating data now.')

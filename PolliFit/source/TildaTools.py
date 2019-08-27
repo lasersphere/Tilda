@@ -665,6 +665,9 @@ def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
             else:
                 start = scan_dict[tr_name]['dacStartRegister18Bit']  # backwards comp.
                 step = scan_dict[tr_name]['dacStepSize18Bit']  # backwards comp.
+                if not step:
+                    # TODO: Quick and Dirty fix for importing BECOLA XML files. Should be solved nicely
+                    step = 1
                 stop = scan_dict[tr_name].get('dacStopRegister18Bit', start + step * (steps - 1))  # backwards comp.
         else:
             start = sc_dev_d['start']

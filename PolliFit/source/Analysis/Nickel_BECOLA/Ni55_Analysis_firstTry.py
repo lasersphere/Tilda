@@ -178,7 +178,7 @@ class NiAnalysis():
             self.write_voltage_to_file(ni55runs)
         # make a quick plot of references and calibrated voltages
         plt.plot(ref_times, ref_volts, 'o')
-        plt.plot(ni55_times, ni55_interpolation, '-x')
+        plt.plot(ni55_times, ni55_interpolation, 'x')
         plt.show()
         # sum all the Nickel 55 runs taking into account the calibration voltage.
         self.addfiles(self.ni55_files)
@@ -241,9 +241,9 @@ class NiAnalysis():
         for files in filelist:
             filepath = os.path.join(self.datafolder, files)
             spec = XMLImporter(path=filepath,
-                               softw_gates=[[-350, 0, 5.2, 5.4],
-                                            [-350, 0, 5.394, 5.594],
-                                            [-350, 0, 5.465, 5.665]])
+                               softw_gates=[[-350, 0, 5.2, 5.26],
+                                            [-350, 0, 5.39, 5.45],
+                                            [-350, 0, 5.47, 5.53]])
             stepsize = spec.stepSize[0]
             nOfSteps = spec.getNrSteps(0)
             scaler0_cts = spec.cts[0][0]
@@ -252,10 +252,10 @@ class NiAnalysis():
             scaler_sum_cts = scaler0_cts+scaler1_cts#+scaler2_cts
             voltage_x = spec.x[0]
             calibration_voltage = self.get_date_and_voltage(files)[1]
-            #voltage_x -= (calibration_voltage - 29850)
+            voltage_x -= (calibration_voltage - 29850)
+            nOfScans = spec.nrScans[0]
+            nOfBunches = spec.nrBunches[0]
             if norm:
-                nOfScans = spec.nrScans[0]
-                nOfBunches = spec.nrBunches[0]
                 scaler0_totalcts = sum(scaler0_cts)
                 scaler1_totalcts = sum(scaler1_cts)
                 scaler2_totalcts = sum(scaler2_cts)
@@ -271,9 +271,9 @@ class NiAnalysis():
                 voltind = int(voltage_x[datapoint_ind] + startvoltneg)//binsize
                 if 0 < voltind < len(sumcts):
                     #sumcts[voltind] += scaler0_cts[datapoint_ind]/nOfScans
-                    sumcts[voltind] += scaler_sum_cts[datapoint_ind]/(nOfScans * nOfBunches)
+                    sumcts[voltind] += scaler1_cts[datapoint_ind]/(nOfScans * nOfBunches)
                     addcounter[voltind] += 1
-            plt.plot(voltage_x, scaler0_cts, drawstyle='steps', label=files)
+            plt.plot(voltage_x, scaler1_cts, drawstyle='steps', label=files)
             #plt.title(filename)
             #plt.show()
             #plt.title(filename)

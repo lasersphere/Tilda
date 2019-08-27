@@ -139,7 +139,7 @@ class NiAnalysis():
         '''
         # Fit again with calibrations. This time each scaler on it's own
         self.results_per_scaler = {'scaler_0': None, 'scaler_1': None, 'scaler_2': None}
-        for scalers in range(3):
+        for scalers in range(2):
             # write scaler to db
             self.update_scalers(scalers)
             self.filelist58, self.runNos58, self.center_freqs_58, self.center_freqs_58_d, self.start_times_58 = \

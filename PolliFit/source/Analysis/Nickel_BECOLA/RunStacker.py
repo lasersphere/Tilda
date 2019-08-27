@@ -26,7 +26,7 @@ class RunStacker():
         #ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Pd_offline_PIG_MSU\\Analysis\\xml'
         self.workdir = os.path.join(user_home_folder, ownCould_path)
         ''' data folder '''
-        self.datafolder = os.path.join(self.workdir, 'Sums')
+        self.datafolder = os.path.join(self.workdir, 'SumsRebinned')
         ''' database '''
         self.db = os.path.join(self.workdir, 'Ni_Becola.sqlite')
 
@@ -52,24 +52,24 @@ class RunStacker():
         for files in self.files:
             filename = re.split('[_.]', files)[-2]
             spec = XMLImporter(path=files,
-                               softw_gates=[[-350, 0, 5.2, 5.4],
-                                            [-350, 0, 5.394, 5.594],
-                                            [-350, 0, 5.465, 5.665]])
+                               softw_gates=[[-350, 0, 5.2, 5.26],
+                                            [-350, 0, 5.39, 5.45],  # first scaler shifted by 1.9 compared to sc0
+                                            [-350, 0, 5.47, 5.53]])  # second scaler shifted by 2.7 compared to sc0
             stepsize = spec.stepSize[0]
             nOfSteps = spec.getNrSteps(0)
             scaler0_cts = spec.cts[0][0]
             scaler1_cts = spec.cts[0][1]
             scaler2_cts = spec.cts[0][2]
-            scaler_sum_cts = scaler0_cts+scaler1_cts+scaler2_cts
+            scaler_sum_cts = scaler0_cts+scaler1_cts#+scaler2_cts
             voltage_x = spec.x[0]
+            nOfScans = spec.nrScans[0]
+            nOfBunches = spec.nrBunches[0]
             if norm:
-                nOfScans = spec.nrScans[0]
-                nOfBunches = spec.nrBunches[0]
                 scaler0_totalcts = sum(scaler0_cts)
                 scaler1_totalcts = sum(scaler1_cts)
                 scaler2_totalcts = sum(scaler2_cts)
-                scaler_sum_totalcts = scaler0_totalcts+scaler1_totalcts+scaler2_totalcts
-                if scaler_sum_totalcts == 0: scaler_sum_totalcts=1
+                scaler_sum_totalcts = scaler0_totalcts+scaler1_totalcts#+scaler2_totalcts
+                if scaler_sum_totalcts == 0: scaler_sum_totalcts = 1
             else:
                 nOfScans = 1
                 scaler0_totalcts = 1
@@ -80,9 +80,9 @@ class RunStacker():
                 voltind = int(voltage_x[datapoint_ind] + startvoltneg)//binsize
                 if 0 < voltind < len(sumcts):
                     #sumcts[voltind] += scaler0_cts[datapoint_ind]/nOfScans
-                    sumcts[voltind] += scaler_sum_cts[datapoint_ind]/(nOfScans * nOfBunches)
+                    sumcts[voltind] += scaler_sum_cts[datapoint_ind]/(nOfScans*nOfBunches)
                     addcounter[voltind] += 1
-            plt.plot(voltage_x, scaler0_cts, drawstyle='steps', label=filename)
+            plt.plot(voltage_x, scaler_sum_cts, drawstyle='steps', label=filename)
             #plt.title(filename)
             #plt.show()
             #plt.title(filename)
