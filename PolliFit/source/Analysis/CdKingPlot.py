@@ -29,7 +29,7 @@ db = os.path.normpath(os.path.join(analysis_folder,
 #            '113_Cd': [-0.1160,.0164],
 #            '116_Cd': [+0.1349,.0174]}
 
-'''performing a King fit analysis with lambda values, but uncertainties taken from Michael's first manuscript version of the charge radii paper'''
+'''performing a King fit analysis with lambda values, and uncertainties taken from Michael's first manuscript version of the charge radii paper'''
 litvals = {'106_Cd': [-0.6712,.0174],
            '108_Cd': [-0.4989,.0174],
            '110_Cd': [-0.3245,.0174],
@@ -127,5 +127,5 @@ if you want to run it, the database CdCombined must be assigned to db
  Run2 = Atom, Deyan 
  '''
 king = KingFitter(db, litvals, showing=True, ref_run='Run0', incl_projected=False)
-king.kingFit(alpha=1000,findBestAlpha=True, find_slope_with_statistical_error=True, run='Run0')
-king.calcChargeRadii(run='Run0', incl_projected=True)
+king.kingFit(alpha=0,findBestAlpha=False, find_slope_with_statistical_error=False, run='Run0')
+king.calcChargeRadii(run='Run0', incl_projected=False)

@@ -25,7 +25,7 @@ class AnalysisThread(QThread):
 
     def __init__(self, scan_dict, callback_sig, live_plot_callback_tuples, fit_res_callback_dict,
                  stop_request_signal, prep_track_in_pipe_signal, new_data_signal, scan_complete_callback,
-                 dac_new_volt_set_callback):
+                 dac_new_volt_set_callback, scan_dev_step_request_callback):
         """
         Analysis thread which will run during scanning and use the Pollifit pipeline to continuously
         analyse the incoming raw data from the FPGA.
@@ -81,7 +81,8 @@ class AnalysisThread(QThread):
         super(AnalysisThread, self).__init__()
         self.pipeline = find_pipe_by_seq_type(scan_dict, callback_sig,
                                               live_plot_callback_tuples, fit_res_callback_dict,
-                                              scan_complete_callback, dac_new_volt_set_callback)
+                                              scan_complete_callback, dac_new_volt_set_callback,
+                                              next_step_request_sig=scan_dev_step_request_callback)
         self.stop_analysis_bool = False
         self.clear_after_finish = False  # boolean that will tell the pipeline to clear(->save)
         #  or not after analysis completion
@@ -116,7 +117,7 @@ class AnalysisThread(QThread):
                 self.mutex.unlock()
 
                 st_feed = datetime.now()
-                logging.info('Analyzing now!')
+                # logging.info('Analyzing now!')
                 #  some operations (np.sort, ...) in the pipeline
                 #  might not be able to release its lock during feed
                 # -> GIL will not be able to release the lock of this thread
@@ -129,12 +130,12 @@ class AnalysisThread(QThread):
                 if elapsed_feed_ms >= self.max_analysis_time_ms:
                     self.max_analysis_time_ms = elapsed_feed_ms
                     self.max_data_points = eles_to_anal
-                logging.debug('Analyzing %d data points took %.1f ms, total number of analyzed elements %d'
-                              ' maximum analysis time was %.1f ms for %d datapoints. '
-                              'Currently %d datapoints are still in storage and waiting for analysis.'
-                              % (eles_to_anal, elapsed_feed_ms, self.num_of_analysed_elements_total,
-                                 self.max_analysis_time_ms, self.max_data_points,
-                                 data_pts_in_storage))
+                # logging.debug('Analyzing %d data points took %.1f ms, total number of analyzed elements %d'
+                #               ' maximum analysis time was %.1f ms for %d datapoints. '
+                #               'Currently %d datapoints are still in storage and waiting for analysis.'
+                #               % (eles_to_anal, elapsed_feed_ms, self.num_of_analysed_elements_total,
+                #                  self.max_analysis_time_ms, self.max_data_points,
+                #                  data_pts_in_storage))
                 # self.sleep(1)  # simulate feed
                 # print('number of total analysed data: %s ' % self.num_of_analysed_elements_total)
             if any(self.dmm_dict_list) or any(self.dmm_dict_merge) or any(self.triton_dict_merge):

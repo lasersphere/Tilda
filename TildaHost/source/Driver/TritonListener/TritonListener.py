@@ -7,6 +7,8 @@ Module Description:
     The idea of this module is to be able to connect to a running Triton device somewhere within the network
     and listen to this device. The module will listen to the device prescan, (during) and after scan.
 
+    Update 01.03.2019:
+        modified TritonListener in order to look exactly like a normal Triton device plus bonus features.
 """
 import ast
 import logging
@@ -23,31 +25,22 @@ from PyQt5.QtCore import QObject, pyqtSignal
 
 import Application.Config as Cfg
 from Driver.TritonListener.DummyTritonDevice import DummyTritonDevice
-from Driver.TritonListener.TritonObject import TritonObject
+from Driver.TritonListener.TritonDeviceBase import DeviceBase
 import TildaTools as TiTs
 
 
-class TritonListener(TritonObject):
+class TritonListener(DeviceBase, QObject):
     # signal to emit dmm values for live plotting during the pre/post scans.
     # is also used for triton values in TritonListener
     pre_post_meas_data_dict_callback = pyqtSignal(dict)
     # signal to emit data to the pipeLine
     data_to_pipe_sig = pyqtSignal(np.ndarray, dict)
 
-    def __init__(self, name='TritonListener'):
+    def on(self, cfg):
         """
-        :parameter name: str, name of this class
-        :parameter sql_cfg: dict, dictionary
+        setting necessary attributes, cfg comes from db
         """
-        try:
-            from Driver.TritonListener.TritonConfig import sqlCfg, hmacKey
-        except ImportError as e:
-            from Driver.TritonListener.TritonDraftConfig import sqlCfg, hmacKey
-            logging.error('error, while loading Triton config from Driver.TritonListener.TritonConfig : %s'
-                          '\n will use default (Driver.TritonListener.TritonDraftConfig) and dummy mode now!' % e,
-                          exc_info=True)
-        self.setup_pyro(hmacKey)
-        super(TritonListener, self).__init__(name, sqlCfg)
+        self.type = 'TildaTritListen'
 
         self.dummy_dev = None
 
@@ -60,12 +53,18 @@ class TritonListener(TritonObject):
         self.last_emit_to_analysis_pipeline_datetime = datetime.now()
         self.time_between_emits_to_pipeline = timedelta(milliseconds=500)
         # limit this to 500 ms in order nto to flush the pipeline with emitted signals
+        self.last_received_times = [None, None]  # datetimes of the last two receive calls, None after start of log
+        self.rcvd_time_deltas_total_s = []  # list of all time differences between two receives in total seconds
+        self.mean_rcvd_time_delta = timedelta(seconds=60).total_seconds()  # mean of the rcvd time deltas in seconds
+        # -> will be adaptet to the mean of the receivced time deltas.
+        self.min_timeout = timedelta(seconds=1).total_seconds()  # allowed minimum timeout
 
         # variables to store the actual track and scan strings for emitting the live data dict
         self.pre_dur_post_str = 'preScan'
         self.track_name = 'track0'
 
     def create_dummy_dev(self, name='dummyDev'):
+        """ create a dummy device so the listener can connect to it and log it's values """
         self.dummy_dev = DummyTritonDevice(name)
         # self.subscribe(str(self.dummy_dev.uri))
         self.dummy_dev.setInterval(1)
@@ -78,25 +77,15 @@ class TritonListener(TritonObject):
         """
         ret = ''
         channels = ['calls', 'random']
+        if dev == 'DummyScanDev':
+            channels = ['frequency', 'curStep', 'curScan']
         logging.debug('getting channels of dev %s' % str(dev))
 
-        try:
-            db = Sql.connect(**self.sql_config)
-            dbCur = db.cursor()
-            logging.info('connecting to db: %s at ip: %s' % (self.sql_config.get('database', 'unknown'),
-                                                             self.sql_config.get('host', 'unknown')))
-        except Exception as e:
-            logging.error('error, TritonObject Could not connect to db, error is: %s' % e)
-            db = None
-            dbCur = None
-
-        if dbCur is not None:
-            dbCur.execute(
-                '''SELECT devicetypes.channels FROM devices JOIN devicetypes ON
-                    devicetypes.deviceType = devices.deviceType WHERE devices.deviceName = %s''',
-                (str(dev),))
+        if self.db != 'local':
+            self.dbCur_execute('''SELECT devicetypes.channels FROM devices JOIN devicetypes ON
+                    devicetypes.deviceType = devices.deviceType WHERE devices.deviceName = %s''', (str(dev),))
             try:
-                ret = dbCur.fetchone()
+                ret = self.dbCur_fetchone()
                 if ret is None:
                     return ['None']
                 channels = ast.literal_eval(ret[0])
@@ -104,7 +93,6 @@ class TritonListener(TritonObject):
                 logging.error(
                     'error in converting list of channels %s from dev %s, error message is: %s' % (ret, dev, e),
                     exc_info=True)
-            db.close()
         logging.debug('available channels of dev %s are: %s ' % (str(dev), str(channels)))
         return channels
 
@@ -115,24 +103,16 @@ class TritonListener(TritonObject):
         :return: dict, {dev: ['ch1', 'ch2' ...]}
         """
         devs = {}
-        try:
-            db = Sql.connect(**self.sql_config)
-            dbCur = db.cursor()
-            logging.info('connecting to db: %s at ip: %s' % (self.sql_config.get('database', 'unknown'),
-                                                             self.sql_config.get('host', 'unknown')))
-        except Exception as e:
-            logging.error('error, TritonObject Could not connect to db, error is: %s' % e)
-            db = None
-            dbCur = None
-        if dbCur is not None:
-            dbCur.execute('''SELECT deviceName FROM devices WHERE uri IS NOT NULL''')
-            res = dbCur.fetchall()
+
+        if self.db != 'local':
+            self.dbCur_execute('''SELECT deviceName FROM devices WHERE uri IS NOT NULL''', None)
+            res = self.dbCur_fetchall()
             for dev in res:
                 devs[dev[0]] = self.get_channels_of_dev(dev[0])
-            db.close()
         else:
             logging.warning('no db connection, returning local dummyDev!')
             devs['dummyDev'] = self.get_channels_of_dev('dummyDev')
+            devs['DummyScanDev'] = self.get_channels_of_dev('DummyScanDev')
         return devs
 
     def get_existing_callbacks_from_main(self):
@@ -177,16 +157,28 @@ class TritonListener(TritonObject):
 
     def subscribe_to_devs_in_log(self):
         """ subscribe to all devs in the log if not already subscribed to """
+        logging.debug('%s will subscribe to devs in log: %s' % (self.name, str(self.log.keys())))
         existing = list(self._recFrom.keys())
         for dev in self.log.keys():
             if dev not in existing:
-                if dev != 'dummyDev':
-                    self.subscribe(dev)
-                else:  # dummyDev is wanted!
+                if dev == 'dummyDev':  # dummyDev is wanted!
+                    logging.debug('will subscribe to dummyDev')
                     if self.dummy_dev is None:
                         self.create_dummy_dev()
                     # logging.debug('subscribing to uri: %s' % str(self.dummy_dev.uri))
                     self.subscribe('dummyDev', str(self.dummy_dev.uri))
+                elif dev == 'DummyScanDev':
+                    logging.debug('will subscribe to DummyScanDev now')
+                    if Cfg._main_instance is not None:
+                        if Cfg._main_instance.scan_main.triton_scan_controller is not None:
+                            if Cfg._main_instance.scan_main.triton_scan_controller.dummy_scan_dev is None:
+                                Cfg._main_instance.scan_main.triton_scan_controller.create_dummy_scan_dev()
+                            uri_dummy_sc_dev = str(Cfg._main_instance.scan_main.triton_scan_controller.dummy_scan_dev.uri)
+                            print('subscribing to: ', 'DummyScanDev', uri_dummy_sc_dev)
+                            self.subscribe('DummyScanDev', uri_dummy_sc_dev)
+                    logging.debug('successfully subscribed to DummyScanDev')
+                else:
+                    self.subscribe(dev)
         existing2 = list(self._recFrom.keys())
         for subscribed_dev in existing2:  # unsubscribe from all devs which are not in the log
             if subscribed_dev not in self.log.keys():
@@ -194,7 +186,12 @@ class TritonListener(TritonObject):
                 self.unsubscribe(subscribed_dev)
         logging.info('subscribed triton devices after setup: ' + str(list(self._recFrom.keys())))
 
-    def _receive(self, dev, t, ch, val):
+    def unsubscribe_from_all(self):
+        """ unsubscribe from all currently subcribed devs used when stopping log """
+        for sub in self._recFrom.copy().keys():
+            self.unsubscribe(sub)
+
+    def receive(self, dev, t, ch, val):
         """
         overwrites the _receive class of the TritonObject.
         Is called by all subscribed devices, when they send a value over pyro.
@@ -222,6 +219,12 @@ class TritonListener(TritonObject):
                         #     for ch_name, ch_data in chs.items():
                         #         ch_data['acquired'] = len(ch_data['data'])
                         if self.pre_dur_post_str == 'duringScan':
+                            self.last_received_times[0] = deepcopy(self.last_received_times[1])
+                            self.last_received_times[1] = datetime.now()
+                            if self.last_received_times[0] is not None:
+                                self.rcvd_time_deltas_total_s.append(
+                                    (self.last_received_times[1] - self.last_received_times[0]).total_seconds())
+                                self.mean_rcvd_time_delta = np.mean(self.rcvd_time_deltas_total_s)
                             timedelta_since_laste_send = datetime.now() - self.last_emit_to_analysis_pipeline_datetime
                             if timedelta_since_laste_send >= self.time_between_emits_to_pipeline:
                                 # in duringScan emit the received values to the pipe!
@@ -230,7 +233,8 @@ class TritonListener(TritonObject):
                                 logging.debug('emitting %s, from %s, value is %s'
                                               % ('data_to_pipe_sig',
                                                  'Driver.TritonListener.TritonListener.TritonListener#_receive',
-                                                 str((np.ndarray(0, dtype=np.int32), to_send))))
+                                                 str((np.ndarray(0, dtype=np.int32), to_send))
+                                                 ))
                                 self.data_to_pipe_sig.emit(np.ndarray(0, dtype=np.int32), to_send)
                                 self.last_emit_to_analysis_pipeline_datetime = datetime.now()
                         else:  # in pre and postScan emit received value to callback for live data plotting
@@ -260,9 +264,6 @@ class TritonListener(TritonObject):
         if check_sum == 0:
             logging.info('TritonListener: logging complete')
             self.logging_complete = True
-            # for dev, dev_log in self.log.items():
-            #     for ch, val in dev_log.items():
-            #         val['acquired'] = len(val['data'])
             logging.debug('TritonListener self.log after completion: %s' % str(self.log))
             self.stop_log()
             return True
@@ -273,44 +274,57 @@ class TritonListener(TritonObject):
         """ start logging of the desired channels and devs.
          Be sure to setup the log before hand with self.setup_log """
         self.logging_complete = self.log == {}
-        # for dev, dev_dict in self.log.items():
-        #     for ch, ch_dict in dev_dict.items():
-        #         ch_dict['acquired'] = 0
+        self.last_received_times = [None, None]
+        self.rcvd_time_deltas_total_s = []
+        self.mean_rcvd_time_delta = timedelta(seconds=60)
+        self.setInterval(0.5)
         logging.debug('log before start: %s' % str(self.log))
         self.logging = True
 
     def stop_log(self):
         """ stop logging, by setting self.logging to False """
         self.logging = False
+        self.setInterval(0)
 
     def off(self, stop_dummy_dev=True):
         """ unsubscribe from all devs and stop the dummy device if this was started. """
         self.stop_log()
-        self._stop()
+        self.unsubscribe_from_all()
         # If there is a dummy_dev stop it, except if we only want to reset the pipeline.
         if self.dummy_dev is not None and stop_dummy_dev:
+            logging.debug('%s will stop the dummy_dev now!' % self.name)
             self.dummy_dev._stop()
             self.dummy_dev = None
-
-    def setup_pyro(self, hmackey):
-        """
-          Set Pyro variables
-        :param hmackey: bytes, hmackkey, e.g. b'6\x19\n\xad\x909\xda\xea\xb5\xc5]\xbc\xa1m\x863'
-        :return:
-        """
-        Pyro4.config.SERIALIZER = "serpent"
-        Pyro4.config.HMAC_KEY = hmackey
-        Pyro4.config.HOST = socket.gethostbyname(socket.gethostname())
-        # Pyro4.config.SERVERTYPE = 'multiplex'
-        Pyro4.config.SERVERTYPE = 'thread'
-        sys.excepthook = Pyro4.util.excepthook
-        # Pyro4.config.DETAILED_TRACEBACK = True
 
     def get_receivers(self):
         return list(sorted(self._recFrom.keys()))
 
+    def periodic(self):
+        """ periodic calls -> check when last received... """
+        if self.pre_dur_post_str == 'duringScan':
+            # check when the last time something was received from the subscribed devices.
+            if self.last_received_times[1] is not None:
+                t_since_last_rcv = datetime.now() - self.last_received_times[1]
+                allowed_timeout = max(self.min_timeout, (self.mean_rcvd_time_delta * 10))
+                if t_since_last_rcv.total_seconds() > allowed_timeout:
+                    Cfg._main_instance.send_info('triton_listener_timedout')
+                    logging.warning('TritonListener timed out since it has not received values '
+                                    'for %.3f s while allowed is only %.3f s '
+                                    ' last received at: %s' % (t_since_last_rcv.total_seconds(),
+                                                               allowed_timeout, self.last_received_times[1]))
+
 
 if __name__ == '__main__':
+
+    class recever_class_dummy(QObject):
+        def __init__(self, sig):
+            super(recever_class_dummy, self).__init__()
+            sig.connect(self.printer)
+
+        def printer(self, nparr, dictio):
+            print(nparr, dictio)
+            logging.info(str(dictio))
+
     app_log = logging.getLogger()
     # app_log.setLevel(getattr(logging, args.log_level))
     app_log.setLevel(logging.DEBUG)
@@ -325,13 +339,25 @@ if __name__ == '__main__':
     app_log.info('****************************** starting ******************************')
     app_log.info('Log level set to DEBUG')
 
-    trit_lis = TritonListener()
-    # trit_lis.create_dummy_dev()
-    trit_lis.setup_log({'DummyPS': {'current': {'required': 50, 'data': []}}}, 'track0')
+    trit_lis = TritonListener('TritonListener1', 'local')
+    rec_cl = recever_class_dummy(trit_lis.data_to_pipe_sig)  # why does this not work?? ok needs qapp
+
+    trit_lis.create_dummy_dev()
+    # trit_lis.setup_log({'DummyPS': {'current': {'required': 50, 'data': []}}}, 'track0')
+    trit_lis.setup_log({'dummyDev': {'calls': {'required': -1, 'data': [], 'acquired': 0},
+                                     'random': {'required': -1, 'data': [], 'acquired': 0}}}, 'duringScan', 'track0')
+    # trit_lis.setup_log({'dummyDev': {'calls': {'required': 5, 'data': [], 'acquired': 0},
+    #                                  'random': {'required': 2, 'data': [], 'acquired': 0}}}, 'preScan', 'track0')
     # trit_lis.setup_log({})
     trit_lis.start_log()
+    trit_lis.send('out', 'test')
     # input('anything to stop')
     # trit_lis.start_log()
-    input('anything to stop')
+    # input('anything to stop')
+    while trit_lis.log['dummyDev']['calls']['acquired'] < 6:
+        # print(trit_lis.log['dummyDev']['calls']['data'])
+        # print(trit_lis.log['dummyDev']['random']['data'])
+        pass
     print(trit_lis.log)
-    trit_lis.off()
+    TiTs.print_dict_pretty(trit_lis.log)
+    trit_lis._stop()

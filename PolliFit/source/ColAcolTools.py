@@ -88,7 +88,7 @@ def absolute_frequency(db, fit1, run1, fit2, run2):
     voltDif = (energCenter1 - energCenter2)
     # print(voltDif)
     voltDif_d = (energCenter1_d ** 2 + energCenter2_d ** 2) ** 0.5
-    diffDoppler = Physics.diffDoppler(refFreq1, (energCenter1+energCenter2)/2, isoMass1)
+    diffDoppler = Physics.diffDoppler(refFreq1, (energCenter1+energCenter2)/2, isoMass1, real=True)
     f_corr = voltDif*diffDoppler
     f_corr_d = diffDoppler*voltDif_d
     # print([f_corr, f_corr_d])
@@ -96,7 +96,7 @@ def absolute_frequency(db, fit1, run1, fit2, run2):
 
     # Photon-Recoil Correction (see Krieger et al. 2017 (ApplPhysB))
     h = 6.626070150 * 10 ** -34  # CODATA17
-    f_recoil = ((h * (laserFreq1 * 10**6) ** 2) / (isoMass1 * Physics.u * Physics.c ** 2))*10**-6
+    f_recoil = ((h * (laserFreq1 * 10**6) ** 2) / (2 * isoMass1 * Physics.u * Physics.c ** 2))*10**-6
 
     # Absolute Frequency
 
@@ -123,7 +123,7 @@ def absolute_frequency(db, fit1, run1, fit2, run2):
     absFreq_d = (error1 ** 2 + error2 ** 2 + error3 ** 2) ** 0.5
 
     print(str(absFreq) + ' +- ' + str(absFreq_d))
-    return [absFreq, absFreq_d, laserFreq1, laserFreq1_d, laserFreq2, laserFreq2_d]
+    return [absFreq, absFreq_d, laserFreq1, laserFreq1_d, laserFreq2, laserFreq2_d, voltDif]
 
 
 def files_to_csv(db, measList, pathOut):
@@ -134,12 +134,12 @@ def files_to_csv(db, measList, pathOut):
     i=1
     print('Absolute transition frequency results: ')
     file = open(pathOut, 'w')
-    file.write('MeasNr, AbsFreq, AbsFreq_d, LaserFreq1, LaserFreq1_d, LaserFreq2, LaserFreq2_d\n')
+    file.write('MeasNr, AbsFreq, AbsFreq_d, LaserFreq1, LaserFreq1_d, LaserFreq2, LaserFreq2_d, U1 - U2\n')
     for pair in measList:
         print('Pair0: ' + str(pair[0]) + 'Pair1: ' + str(pair[1]) + ' Pair2: ' + str(pair[2]) + ' Pair3: ' + str(pair[3]))
         result = absolute_frequency(db, pair[0], pair[1], pair[2], pair[3])
         file.write(str(i) + ', ' + str(result[0]) + ', ' + str(result[1]) + ', ' + str(result[2]) + ', '
-                   + str(result[3]) + ', ' + str(result[4]) + ', ' + str(result[5]) + '\n')
+                   + str(result[3]) + ', ' + str(result[4]) + ', ' + str(result[5]) + ', ' + str(result[6]) + '\n')
         mL.append(i)
         fL.append(result[0])
         fL_d.append(result[1])

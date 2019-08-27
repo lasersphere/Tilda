@@ -25,7 +25,7 @@ class BaseSequencerWidgUi(QtWidgets.QFrame):
         self.connect_labels()
         self.set_vals_by_dict()
 
-    def get_seq_pars(self):
+    def get_seq_pars(self, start=-10, stop=10):
         return self.buffer_pars
 
     """ generic functions to overwrite: """

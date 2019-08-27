@@ -51,6 +51,42 @@ class NSplit32bData(Node):
         return buf
 
 
+class NSendNextStepRequestViaQtSignal(Node):
+    """
+    Node for sending next step requests in the pipedata via a qt signal
+    input: anything
+    output: same as input minus any next step requests
+    """
+
+    def __init__(self, qt_signal):
+        super(NSendNextStepRequestViaQtSignal, self).__init__()
+        self.type = 'SendNextStepRequestViaQtSignal'
+
+        self.qt_signal = qt_signal
+
+    def processData(self, data, pipeData):
+        request_next_step = Form.add_header_to23_bit(4, 4, 0, 1)  # binary for preparing next step
+        req_list = np.where(data == request_next_step)[0]
+        if req_list.size:
+            # shouldn't be more than one step request but if it is, the user should know
+            if req_list.size > 1:
+                logging.warning('More than one step request was received in data. Number received: {}'
+                                .format(req_list.size))
+            # next step has been requested from fpga. Send signal to pipe if configured.
+            if self.qt_signal is not None:
+                # get number of next step
+                track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
+                compl_steps = pipeData[track_name]['nOfCompletedSteps']
+                next_step_number = compl_steps + 1
+                # send logging debug
+                logging.debug('emitting %s from Node %s, value is %s'
+                              % ('qt_signal', self.type, str(next_step_number)))
+                self.qt_signal.emit(next_step_number)
+
+        # anyhow return data to continue analysis, since no new data will come from a proper fpga anyhow!
+        return data
+
+
 class NAccumulateSingleScan(Node):
     def __init__(self):
         """
@@ -2341,6 +2377,8 @@ class NSendnOfCompletedStepsViaQtSignal(Node):
     def processData(self, data, pipeData):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         steps_to_emit = pipeData[track_name]['nOfCompletedSteps'] - self.number_of_steps_at_start
+        logging.debug('SendnOfCompletedStepsViaQtSignal wants to send num of steps: %s self.qt_sugnal is %s' %
+                      (steps_to_emit, self.qt_signal))
         if self.qt_signal is not None:
             logging.debug('emitting %s from Node %s, value is %s'
                           % ('qt_signal', self.type, str(steps_to_emit)))
@@ -2546,6 +2584,7 @@ class NFilterDMMDictsAndSave(Node):
             self.incoming_dict_ctr += 1
             # dmm data comes in dicts like {dmm_name:[data]}. triton data comes as {track: {triton:{...}}}
             if 'triton' in data.get(self.active_track_name, {}):
+                # always the full log will be emitted again -> careful not to overwrite
                 self.sort_triton(data)
             else:
                 self.sort_dmms(data)
@@ -2568,7 +2607,27 @@ class NFilterDMMDictsAndSave(Node):
 
     def sort_triton(self, triton_dict):
         # merges the triton dict that was received from the pipeline into the store_data
-        TildaTools.merge_extend_dicts(self.store_data, triton_dict)
+        # {'triton':
+        #           {'duringScan': {'dev_name':
+        #                                      {'ch0': {'data': [ ... ], 'required': -1, 'acquired': 20},
+        #                                       'ch1': {'data': ...}}}}
+        # }}
+        # print('received triton dict: ')
+        # # TODO comment! + not sure if this is best way... Maybe time stamp best solution after all?
+        # # attach the current scan and current step for each reading.
+        # # Must read what is stored already in order not to overwrite.
+        # cur_scan_cur_step_tpl = TildaTools.get_scan_step_from_track_dict(self.Pipeline.pipeData[self.active_track_name])
+        # # -> this will never really match the step / scan of the emitter :(
+        # # maybe via time stamps?
+        # for dev, dev_dict in triton_dict[self.active_track_name]['triton'].get('duringScan', {}).items():
+        #     for ch, ch_dict in dev_dict.items():
+        #         ind_from_storage = deepcopy(self.store_data[self.active_track_name].get('triton', {}).get(
+        #             'duringScan', {}).get(dev, {}).get(ch, {}).get('scanStepIndList', []))
+        #         ch_dict['scanStepIndList'] = ind_from_storage + [cur_scan_cur_step_tpl] * (
+        #                 len(ch_dict['data']) - len(ind_from_storage))
+
+        # TildaTools.print_dict_pretty(triton_dict)
+        TildaTools.merge_extend_dicts(self.store_data, triton_dict)  # overwrites!
 
     def emit_data_signal(self):
         # emits the store data dict for live data plotting

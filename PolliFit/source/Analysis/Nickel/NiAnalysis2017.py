@@ -53,23 +53,24 @@ other_run2017 = normal_run if current_run is run_hot_cec else run_hot_cec
 # select if the files need to be fitted or not:
 perform_bacthfit = False
 # same for combining shifts:
-combine_shifts = True
-save_shift_as_pdf = False
+combine_shifts = False
 # ... and the offset:
 combine_offset = False
 # combine final run values -> joined of hot cec and normal
 combine_final_run = False
-print_moments_latex = True
+shifts_file_17 = ''  # use '' to not write anything else: 'shifts_2017.txt'
+reset_shifts_file_17 = False
+
+print_moments_latex = False
 combine_final_moments = False
 
-perf_king_fit = False or combine_final_run
+perf_king_fit = False
 
-plot_comparisons = True
+plot_comparisons = False
 
-plot_drCh2 = True
+plot_drCh2 = False
 
 plot_A_and_Bs = False
-
 
 # for plotting:
 run_colors = {
@@ -108,6 +109,20 @@ run_comments = {
     final_2017_run: '2017 Simon'
 }
 
+overwrites_for_file_num_determination = {'60_Ni_trs_run113_sum114.xml': ['113+114'],
+                                         '60_Ni_trs_run192_sum193.xml': ['192+193'],
+                                         '60_Ni_trs_run198_sum199_200.xml': ['198+199+200'],
+                                         '60_Ni_trs_run117_sum118.xml': ['117+118'],
+                                         '60_Ni_trs_run122_sum123.xml': ['122+123'],
+                                         '67Ni_no_protonTrigger_3Tracks_Run191.mcp': ['191'],
+                                         '67Ni_sum_Run061_Run062.xml': ['061+062'],
+                                         '67Ni_sum_Run063_Run064_Run065.xml': ['063+064+065'],
+                                         '67_Ni_sum_run243_and_run248.xml': ['243+248'],
+                                         '60_Ni_trs_run239_sum240.xml': ['239+240'],
+                                         '70Ni_protonTrigger_Run248_sum_252_254_259_265.xml': ['248+252+254+259+265'],
+                                         '60_Ni_trs_run266_sum267.xml': ['266+267'],
+                                         '70_Ni_trs_run268_plus_run312.xml': ['268+312']}
+
 # isotopes = ['%s_Ni' % i for i in range(58, 64 if current_run is normal_run else 65)]
 isotopes = ['%s_Ni' % i for i in range(58, 71)]
 isotopes.remove('59_Ni')  # not measured in 2017
@@ -115,6 +130,12 @@ isotopes.remove('63_Ni')  # not measured in 2017
 if current_run is normal_run:
     isotopes.remove('69_Ni')
 # isotopes = ['58_Ni']
+
+isos_17_hot_cec = ['58_Ni', '61_Ni', '62_Ni', '64_Ni']
+isos_17_hot_cec_odd = ['61_Ni']
+
+isos_17_normal_cec = ['58_Ni', '60_Ni', '61_Ni', '62_Ni', '64_Ni', '65_Ni', '66_Ni', '67_Ni' '68_Ni', '70_Ni']
+isos_17_normal_cec_odd = ['61_Ni', '65_Ni', '67_Ni']
 
 odd_isotopes = [iso for iso in isotopes if int(iso[:2]) % 2]
 even_isotopes = [iso for iso in isotopes if int(iso[:2]) % 2 == 0]
@@ -135,7 +156,6 @@ run2016_final = 'wide_gate_asym'
 isotopes2016 = ['%s_Ni' % i for i in range(58, 71)]
 isotopes2016.remove('69_Ni')
 odd_isotopes2016 = [iso for iso in isotopes2016 if int(iso[:2]) % 2]
-
 
 dif_doppl = Physics.diffDoppler(850344066.10401, 40000, 60)
 print('diff doppler factor 60Ni', dif_doppl)
@@ -183,7 +203,7 @@ print(literature_shifts)
 # con.commit()
 # con.close()
 
-''' write 2016 Results to 2017 db '''
+''' write / copy 2016 Results to 2017 db '''
 shifts_2016 = Tools.extract_from_combined([run2016_final], db2016, isotopes2016, par='shift')[run2016_final]
 delta_r_square_2016 = Tools.extract_from_combined([run2016_final], db2016,
                                                   isotopes2016, par='delta_r_square')[run2016_final]
@@ -253,7 +273,6 @@ for br_run in [bradley_2016_3_ev_run]:
      val, statErr, systErr, rChi) VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
             (iso, 'shift', br_run, '[]', shift, stat_err, 0, 0))
 
-
 con.commit()
 con.close()
 
@@ -294,14 +313,13 @@ lit_radii = lit_radii_calc
 delta_lit_radii = {iso: [
     lit_vals[0] ** 2 - lit_radii['60_Ni'][0] ** 2,
     np.sqrt(lit_vals[1] ** 2 + lit_radii['60_Ni'][1] ** 2)]
-                   for iso, lit_vals in sorted(lit_radii.items())}
+    for iso, lit_vals in sorted(lit_radii.items())}
 delta_lit_radii.pop('60_Ni')
 print(
     'iso\t<r^2>^{1/2}_{0µe}\t\Delta<r^2>^{1/2}_{0µe}\t<r^2>^{1/2}_{0µe}(A-A_{60})\t\Delta <r^2>^{1/2}_{0µe}(A-A_{60})')
 for iso, radi in sorted(lit_radii.items()):
     dif = delta_lit_radii.get(iso, (0, 0))
     print('%s\t%.3f\t%.3f\t%.5f\t%.5f' % (iso, radi[0], radi[1], dif[0], dif[1]))
-
 
 ''' literature moments: '''
 ''' Moments '''
@@ -366,6 +384,7 @@ def quadrupol_moment(b, d_stat_b, d_syst_b, upper=True):
         return q, d_stat_q, d_syst_q, d_total, q_print
     else:
         return 0, 0, 0, 0, '0.000(0)[0]'
+
 
 ''' magnetic moments '''
 # µ = A µ_Ref / A_Ref * I / I_Ref
@@ -442,7 +461,6 @@ mu_list_schmidt = [mu_schmidt(each[2], each[1], False) for each in levels]
 print('level\t\mu(\\nu) / \mu_N')
 for i, each in enumerate(levels):
     print('%s\t%.2f' % (each[0], mu_list_schmidt[i]))
-
 
 ''' Files from db: '''
 # crawl first :(
@@ -530,7 +548,6 @@ print(all_iso_shift_files)
 print('refs:', all_iso_shift_files[final_2017_run]['refs'])
 print(all_iso_shift_files_by_iso[final_2017_run]['refs']['58_Ni'])
 
-
 ''' Kepco Fits:  '''
 # Batchfitting done in gui...
 kepco_res = {}
@@ -561,7 +578,6 @@ kepco_pars = ['m', 'b']
 
 ''' BatchFitting '''
 
-
 run_numbermax = 9999 if current_run is normal_run else 81
 run_number_min = 81 if current_run is normal_run else 0
 
@@ -589,11 +605,9 @@ for iso in isotopes:
                 files_w_err[iso] = files_w_err_iso
                 gc.collect()
 
-
 if perform_bacthfit:
     print('Batchfit finished, files with error: ')
     TiTs.print_dict_pretty(files_w_err)
-
 
 ''' combine hot CEC and normal run '''
 # the fit results from the hot CEC batch fits and the normal run will be renamed to the name of the final run and
@@ -671,7 +685,6 @@ if combine_final_run:
 
     con.close()
 
-
 ''' combine shifts '''
 # PT50 from PTB was measuring the accvoltage, assumed precision 5E-5,
 # JRL-10 (Ser.# 143) was measuring the offset voltage and was assumed again with 1.5E-4
@@ -683,26 +696,35 @@ if combine_final_run:
 # con.commit()
 # con.close()
 #
+pic_format_ = ['.pdf', '.png']
 offset_dict = {}
 for iso in isotopes:
     if iso != '60_Ni':
         if combine_shifts:
-            pic_format_ = '.pdf' if save_shift_as_pdf else '.png'
-            Analyzer.combineShiftByTime(iso, current_run, db, show_plot=False, pic_format=pic_format_, font_size=18)
-raise Exception
+            Analyzer.combineShiftByTime(iso, current_run, db, show_plot=False, pic_format=pic_format_, font_size=18,
+                                        overwrite_file_num_det=overwrites_for_file_num_determination)
+
+if reset_shifts_file_17:
+    combined_plots_dir = os.path.join(os.path.split(db)[0], 'combined_plots')
+    file_to_store_to = os.path.join(combined_plots_dir, shifts_file_17)
+    if os.path.isfile(file_to_store_to):
+        os.remove(file_to_store_to)
+
 for iso in isotopes:
     if iso != '60_Ni':
         if combine_final_run:
             print('combining now the runs %s and %s to the final run %s' % (run_hot_cec, normal_run, final_2017_run))
-            Analyzer.combineShiftByTime(iso, final_2017_run, db, show_plot=False)
-
+            Analyzer.combineShiftByTime(iso, final_2017_run, db, show_plot=False,
+                                        overwrite_file_num_det=overwrites_for_file_num_determination,
+                                        store_to_file_in_combined_plots=shifts_file_17,
+                                        pic_format=pic_format_)
 
 #
 # print shifts:
 con = sqlite3.connect(db)
 cur = con.cursor()
 cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? AND run = ? ORDER BY iso''',
-            ('shift', current_run))
+            ('shift', final_2017_run))
 data = cur.fetchall()
 con.close()
 iso_shift_plot_data_x = []
@@ -721,8 +743,9 @@ if data:
         # a = a.replace('.', ',')
         # print(a)
 
-raise Exception
+Tools.extract_from_combined([run_hot_cec, normal_run, final_2017_run], db, isotopes, par='shift', print_extracted=True)
 
+# raise Exception
 
 ''' compare shifts '''
 
@@ -743,7 +766,7 @@ store_path_comparison_plots = os.path.join(workdir, 'comparison_plots_2016_vs_20
 font_size_plts = 16
 fig_size_plots = (11, 8)
 if plot_comparisons:
-    runs_to_compare = [exp_liang_run16]  #, bradley_2016_3_ev_run]
+    runs_to_compare = [exp_liang_run16]  # , bradley_2016_3_ev_run]
     MPLPlotter.plot_par_from_combined(db, runs_to_compare,
                                       isotopes2016, 'shift', show_pl=True,
                                       plot_runs_seperate=True, literature_run=run2016_final_db,
@@ -822,7 +845,7 @@ if plot_comparisons:
                                       )
 
     # compare most of the 2016 / 2017 data relative to 2017 data
-    runs_to_compare = [exp_liang_run17, run2016_final_db, exp_liang_run16] #, steudel_1980_run]
+    runs_to_compare = [exp_liang_run17, run2016_final_db, exp_liang_run16]  # , steudel_1980_run]
     MPLPlotter.plot_par_from_combined(db, runs_to_compare,
                                       isotopes, 'shift', show_pl=True,
                                       plot_runs_seperate=True, literature_run=final_2017_run,
@@ -836,7 +859,8 @@ if plot_comparisons:
                                       start_offset=-0.1,
                                       use_syst_err_only=False,
                                       use_full_error=False,
-                                      save_path=os.path.join(store_path_comparison_plots, '2016_2017_all_runs_no_Steudel.pdf'),
+                                      save_path=os.path.join(store_path_comparison_plots,
+                                                             '2016_2017_all_runs_no_Steudel.pdf'),
                                       force_xlim=(57, 71),
                                       fontsize_ticks=font_size_plts, fig_size=fig_size_plots
                                       )
@@ -860,7 +884,6 @@ if plot_comparisons:
                                       force_xlim=(57, 71),
                                       fontsize_ticks=font_size_plts, fig_size=fig_size_plots
                                       )
-
 
     # # compare most of the 2016 / 2017 data relative to 2016 data
     # runs_to_compare = [exp_liang_run16, final_2017_run, exp_liang_run17, steudel_1980_run]
@@ -896,18 +919,17 @@ if plot_comparisons:
     #                                   use_full_error=False
     #                                   )
 
-
 ''' King plot and charge radii '''
 
 if perf_king_fit:
     king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, font_size=26)
-    # king.kingFit(alpha=0, findBestAlpha=False, run=final_2017_run, find_slope_with_statistical_error=False)
-    # king.calcChargeRadii(isotopes=isotopes, run=final_2017_run, plot_evens_seperate=True, print_results=True)
+    king.kingFit(alpha=0, findBestAlpha=False, run=final_2017_run, find_slope_with_statistical_error=False)
+    king.calcChargeRadii(isotopes=isotopes, run=final_2017_run, plot_evens_seperate=True, print_results=True)
     #
     king.kingFit(alpha=365, findBestAlpha=True, run=final_2017_run)
-    radii_alpha = king.calcChargeRadii(isotopes=isotopes, run=final_2017_run, plot_evens_seperate=True, print_results=True)
+    radii_alpha = king.calcChargeRadii(isotopes=isotopes, run=final_2017_run, plot_evens_seperate=True,
+                                       print_results=True)
     print('radii with alpha', radii_alpha)
-
 
 ''' compare radii '''
 
@@ -977,7 +999,6 @@ if plot_drCh2:
                                                              '2016_delta_r_square_all_runs_full_err.pdf')
                                       )
 
-
 ''' A and B factors and moments '''
 
 pars = ['Al', 'Au', 'Bl', 'Bu']
@@ -985,13 +1006,23 @@ a_fac_runs = [final_2017_run]
 
 con = sqlite3.connect(db)
 cur = con.cursor()
-cur.execute(''' UPDATE Combined SET statErrForm = ? ''', ('applyChi(err, rChi)', ))  # for stat ERR
+cur.execute(''' UPDATE Combined SET statErrForm = ? ''', ('applyChi(err, rChi)',))  # for stat ERR
 syst_error = str('systE(accVolt_d=%s, offset_d=%s)' % ('5 * 10 ** -5', '1.5 * 10 ** -4'))
 for par in pars:
-    cur.execute('''UPDATE Combined SET systErrForm = ? WHERE parname = ? AND run = ?''', (syst_error, par, a_fac_runs[0]))
+    cur.execute('''UPDATE Combined SET systErrForm = ? WHERE parname = ? AND run = ?''',
+                (syst_error, par, a_fac_runs[0]))
 con.commit()
 con.close()
 #
+
+for iso in isos_17_hot_cec_odd:
+    for par in pars:
+        Analyzer.combineRes(iso, par, run_hot_cec, db)
+
+for iso in isos_17_normal_cec_odd:
+    for par in pars:
+        Analyzer.combineRes(iso, par, normal_run, db)
+
 if combine_final_moments:
     for iso in isotopes:
         if int(iso[:2]) % 2:
@@ -1158,4 +1189,3 @@ if plot_A_and_Bs:
             MPLPlotter.clear()
         except Exception as e:
             print('error: %s' % e)
-

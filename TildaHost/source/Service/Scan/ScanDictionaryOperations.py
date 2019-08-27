@@ -33,7 +33,9 @@ def init_empty_scan_dict(type_str=None, version=None, load_default_vals=False):
         scand['track0']['triton'] = {'preScan': {}, 'postScan': {}, 'duringScan': {}}
         scand['track0']['outbits'] = {}
     scand['isotopeData']['version'] = Cfg.version
-    scand['track0']['trigger'] = {'type': TiTs.no_trigger}
+    scand['track0']['trigger'] = {'meas_trigger': {'type': TiTs.no_trigger},
+                                  'step_trigger': {'type': TiTs.no_trigger},
+                                  'scan_trigger': {'type': TiTs.no_trigger}}
     scand['track0']['pulsePattern'] = {'cmdList': [], 'periodicList': [], 'simpleDict': {}}
     scand['track0']['nOfCompletedSteps'] = 0
     return scand
@@ -89,25 +91,6 @@ def get_num_of_steps_in_scan(scan_dict):
         all_steps += total[2]
         result.append(total)
     return result, all_steps
-
-
-def add_missing_voltages(scan_dict):
-    """
-    this will calculate 'dacStartVoltage', 'dacStepsizeVoltage', 'dacStopVoltage' and 'dacStartRegister18Bit'
-    for each track and will add this to the given scan_dict
-    :param scan_dict: dict, containing all informations for a scan.
-    :return: dict, the updated scan_dict
-    """
-    for key, sub_dict in scan_dict.items():
-        if 'track' in key:
-            dac_stop_18bit = VCon.calc_dac_stop_18bit(sub_dict['dacStartRegister18Bit'],
-                                                      sub_dict['dacStepSize18Bit'],
-                                                      sub_dict['nOfSteps'])
-            sub_dict.update(dacStartVoltage=VCon.get_voltage_from_18bit(sub_dict['dacStartRegister18Bit']))
-            sub_dict.update(dacStepsizeVoltage=VCon.get_stepsize_in_volt_from_18bit(sub_dict['dacStepSize18Bit']))
-            sub_dict.update(dacStopVoltage=VCon.get_voltage_from_18bit(dac_stop_18bit))
-            sub_dict.update(dacStopRegister18Bit=dac_stop_18bit)
-    return scan_dict
 
 
 def fill_meas_complete_dest(scan_dict):

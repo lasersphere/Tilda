@@ -87,6 +87,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt, Outbits):
                     self.setmeasVoltParameters(scanpars[track_name]['measureVoltPars'][pre_post_scan_meas_str]) and
                     self.setTrackParameters(scanpars[track_name]) and
                     self.set_trigger(scanpars[track_name].get('trigger', {})) and
+                    self.setScanDeviceParameters(scanpars[track_name]['scanDevice']) and
                     self.selectKepcoOrScalerScan(scanpars['isotopeData']['type']) and
                     self.set_outbits_cmd(scanpars[track_name]['outbits'], pre_post_scan_meas_str)):
                 return self.checkFpgaStatus()

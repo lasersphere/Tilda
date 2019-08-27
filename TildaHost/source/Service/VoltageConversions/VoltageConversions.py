@@ -195,6 +195,9 @@ def calc_n_of_steps(start, stop, step_size):
     # n_of_steps = min((2 ** 18 - 1), n_of_steps)
     return n_of_steps
 
+if __name__=='__main__':
+    print(get_stepsize_in_volt_from_18bit(1))
+
 # # testing the step_size calculation
 # start = 0
 # stop = 2 ** 18 - 1
@@ -242,3 +245,4 @@ def calc_n_of_steps(start, stop, step_size):
 # plt.legend()
 # # plt.xlabel('step_size_V')
 # plt.show()
+

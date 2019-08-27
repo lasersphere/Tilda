@@ -10,8 +10,11 @@ import json
 import logging
 import os
 import sqlite3
+import sys
 from copy import deepcopy
 from copy import copy
+
+from PyQt5 import QtWidgets
 from scipy.optimize import curve_fit
 
 import numpy as np
@@ -20,6 +23,7 @@ from lxml import etree as ET
 import Physics
 from XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, \
     xmlAddCompleteTrack, xmlFindOrCreateSubElement, xmlWriteDict
+from Service.VoltageConversions.VoltageConversions import get_18bit_from_voltage
 
 
 def select_from_db(db, vars_select, var_from, var_where=[], addCond='', caller_name='unknown'):
@@ -144,7 +148,7 @@ def deepupdate(target, src):
                 target[k] = deepcopy(v)
             else:
                 target[k] = np.append(target[k], v)
-        #TODO: Elif v is None do nothing? Because it might just replace an empty dict with None
+        # TODO: Elif v is None do nothing? Because it might just replace an empty dict with None
         else:
             target[k] = copy(v)
 
@@ -193,7 +197,7 @@ def eval_str_vals_in_dict(dicti):
         try:
             dicti[key] = ast.literal_eval(val)
         except Exception as e:
-            if key == 'trigger':
+            if key == 'meas_trigger' or key == 'step_trigger' or key == 'scan_trigger':
                 val['type'] = val['type'].replace('TriggerTypes.', '')
                 # val = val.replace("<TriggerTypes.", "\'")
                 # val = val.replace(">", "\'")
@@ -344,7 +348,7 @@ def evaluate_strings_in_dict(dict_to_convert):
                     # needed for data of version 1.08
                     val = val.replace('\\', '\'').replace('TriggerTypes.', '').replace('<', '\'').replace('>', '\'')
                     val = ast.literal_eval(val)
-                if key == 'trigger':
+                if key == 'meas_trigger' or key == 'step_trigger' or key == 'scan_trigger':
                     val['type'] = val['type'].replace('TriggerTypes.', '')
                 else:
                     # print('error while converting val with ast.literal_eval: ', e, val, type(val), key)
@@ -486,13 +490,14 @@ def gate_one_track(tr_ind, tr_num, scan_dict, data, time_array, volt_array, ret)
     return ret
 
 
-def gate_specdata(spec_data):
+def gate_specdata(spec_data, full_x_range=True):
     """
     function to gate spec_data with the softw_gates list in the spec_data itself.
     gate will be applied on spec_data.time_res and
      the time projection will be written to spec_data.t_proj
      the voltage projection will be written to spec_data.cts
     :param spec_data: spec_data
+    :param full_x_range: bool, True default -> will gate over the full x range
     :return: spec_data
     """
     # logging.debug('gating data now, software gates are: %s' % spec_data.softw_gates)
@@ -503,6 +508,11 @@ def gate_specdata(spec_data):
         if dif > 0:  # not enough gates defined for this track will add now
             for i in range(dif):
                 spec_data.softw_gates[tr_ind].append([float('-inf'), float('inf'), 0, float('inf')])
+    if full_x_range:
+        for tr_ind, gates_tr in enumerate(spec_data.softw_gates):
+            for sc_ind in range(spec_data.nrScalers[tr_ind]):
+                spec_data.softw_gates[tr_ind][sc_ind][0] = min(spec_data.x[tr_ind][0], spec_data.x[tr_ind][-1])
+                spec_data.softw_gates[tr_ind][sc_ind][1] = max(spec_data.x[tr_ind][0], spec_data.x[tr_ind][-1])
     # get indices of the values first
     compare_arr = [spec_data.x, spec_data.x, spec_data.t, spec_data.t]
     softw_gates_ind = [
@@ -523,6 +533,9 @@ def gate_specdata(spec_data):
             v_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][:, t_min_ind:t_max_ind], axis=1)
             spec_data.t_proj[tr_ind][pmt_ind] = t_proj_res
             spec_data.cts[tr_ind][pmt_ind] = v_proj_res
+            spec_error = deepcopy(v_proj_res) # Errors have to be regated as well
+            spec_error[spec_error < 1] = 1
+            spec_data.err[tr_ind][pmt_ind] = np.sqrt(spec_error)
     return spec_data
 
 
@@ -638,18 +651,29 @@ def gate_zero_free_specdata(spec_data):
 def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
     """
     creates an x axis in units of line volts or in dac registers
+    :param as_voltage: bool, True if this should be returned in the native unit of th scan dev (usually volts)
     """
     x_arr = []
     for tr_ind, tr_name in enumerate(get_track_names(scan_dict)):
         steps = scan_dict[tr_name]['nOfSteps']
-        if as_voltage:
-            start = scan_dict[tr_name]['dacStartVoltage']
-            stop = scan_dict[tr_name]['dacStopVoltage']
-            step = scan_dict[tr_name]['dacStepsizeVoltage']
+        sc_dev_d = scan_dict[tr_name].get('scanDevice', {})
+        if sc_dev_d == {}:
+            if as_voltage:
+                start = scan_dict[tr_name]['dacStartVoltage']  # backwards comp.
+                stop = scan_dict[tr_name]['dacStopVoltage']  # backwards comp.
+                step = scan_dict[tr_name]['dacStepsizeVoltage']  # backwards comp.
+            else:
+                start = scan_dict[tr_name]['dacStartRegister18Bit']  # backwards comp.
+                step = scan_dict[tr_name]['dacStepSize18Bit']  # backwards comp.
+                stop = scan_dict[tr_name].get('dacStopRegister18Bit', start + step * (steps - 1))  # backwards comp.
         else:
-            start = scan_dict[tr_name]['dacStartRegister18Bit']
-            step = scan_dict[tr_name]['dacStepSize18Bit']
-            stop = scan_dict[tr_name].get('dacStopRegister18Bit', start + step * (steps - 1))
+            start = sc_dev_d['start']
+            stop = sc_dev_d['stop']
+            step = sc_dev_d['stepSize']
+            if not as_voltage:  # use dac register
+                start = get_18bit_from_voltage(start)
+                stop = get_18bit_from_voltage(stop)
+
         x_tr, new_step = np.linspace(start, stop, steps, retstep=True)
         # np.testing.assert_allclose(
         #     new_step, step, rtol=1e-5, err_msg='error while creating x axis from file, stepsizes do not match.')
@@ -666,7 +690,10 @@ def create_t_axis_from_file_dict(scan_dict, with_delay=True, bin_width=10, in_mu
     t_arr = []
     for tr_ind, tr_name in enumerate(get_track_names(scan_dict)):
         if with_delay:
-            delay = scan_dict[tr_name]['trigger'].get('trigDelay10ns', 0) * bin_width
+            delay = scan_dict[tr_name]['trigger'].get('trigDelay10ns', 0) * bin_width  # for older versions
+            if delay == 0:
+                # newer versions -> get delay from meas trigger
+                delay = scan_dict[tr_name]['trigger'].get('meas_trigger', {}).get('trigDelay10ns', 0) * bin_width
         else:
             delay = 0
         nofbins = scan_dict[tr_name]['nOfBins']
@@ -836,6 +863,7 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
     if database_path is None:  # prefer laserfreq from db, if existant
         laserfreq = specdata.laserFreq  # if existant freq is usually given in 1/cm
     else:
+        # TODO watchout here a doubling is always assumed!
         laserfreq = Physics.wavenumber(get_laserfreq_from_db(database_path, specdata)) / 2
 
     draftIsotopePars = {
@@ -850,13 +878,7 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
     tracks = {}
     for tr_ind in range(specdata.nrTracks):
         tracks['track%s' % tr_ind] = {
-            'dacStepSize18Bit': check_if_attr_exists(
-                specdata, 'x_dac', specdata.x)[tr_ind][1] - check_if_attr_exists(
-                specdata, 'x_dac', specdata.x)[tr_ind][0],
-            'dacStartRegister18Bit': check_if_attr_exists(specdata, 'x_dac', specdata.x)[tr_ind][-1],
-            'dacStartVoltage': specdata.x[tr_ind][0],
-            'dacStopVoltage': specdata.x[tr_ind][-1],
-            'dacStepsizeVoltage': specdata.x[tr_ind][1] - specdata.x[tr_ind][0],
+            'scanDevice': specdata.scan_dev_dict_tr_wise[tr_ind],
             'nOfSteps': specdata.getNrSteps(tr_ind),
             'nOfScans': specdata.nrScans[tr_ind],
             'nOfCompletedSteps': specdata.nrScans[tr_ind] * specdata.getNrSteps(tr_ind),
@@ -878,7 +900,10 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
             'nOfBunches': 1,
             'softwGates': check_if_attr_exists(
                 specdata, 'softw_gates', [[] * specdata.nrScalers[tr_ind]] * specdata.nrTracks, [])[tr_ind],
-            'trigger': check_if_attr_exists(specdata, 'trigger', [{'type': 'no_trigger'}] * specdata.nrTracks)[tr_ind],
+            'trigger': check_if_attr_exists(
+                specdata, 'trigger', [{'meas_trigger': {'type': 'no_trigger'},
+                                       'step_trigger': None,
+                                       'scan_trigger': None}] * specdata.nrTracks)[tr_ind],
             'pulsePattern': {'cmdList': [], 'periodicList': [], 'simpleDict': {}},
             'measureVoltPars': specdata.measureVoltPars[tr_ind],
             'triton': specdata.tritonPars[tr_ind]
@@ -1004,8 +1029,15 @@ def save_spec_data(spec_data, scan_dict):
         for track_ind, tr_num in enumerate(track_num_lis):
             track_name = 'track' + str(tr_num)
             # only save name of trigger
-            if not isinstance(scan_dict[track_name]['trigger']['type'], str):
-                scan_dict[track_name]['trigger']['type'] = scan_dict[track_name]['trigger']['type'].name
+            if not isinstance(scan_dict[track_name]['trigger'].get('meas_trigger', {}).get('type', {}), str):
+                scan_dict[track_name]['trigger']['meas_trigger']['type'] = \
+                    scan_dict[track_name]['trigger']['meas_trigger']['type'].name
+            if not isinstance(scan_dict[track_name]['trigger'].get('step_trigger', {}).get('type', {}), str):
+                scan_dict[track_name]['trigger']['step_trigger']['type'] = \
+                    scan_dict[track_name]['trigger']['step_trigger']['type'].name
+            if not isinstance(scan_dict[track_name]['trigger'].get('scan_trigger', {}).get('type', {}), str):
+                scan_dict[track_name]['trigger']['scan_trigger']['type'] = \
+                    scan_dict[track_name]['trigger']['scan_trigger']['type'].name
             if time_res:
                 scan_dict[track_name]['softwGates'] = spec_data.softw_gates[track_ind]
                 if version > 1.1:
@@ -1057,7 +1089,7 @@ def get_number_of_tracks_in_scan_dict(scan_dict):
     return n_of_tracks, sorted(list_of_track_nums)
 
 
-def get_software_gates_from_db(db, iso, run):
+def get_software_gates_from_db(db, iso, run, track=0):
     """
     get the software gates for a SINGLE TRACK from the database.
     voltages will be gated from -10 to 10 V.
@@ -1068,6 +1100,8 @@ def get_software_gates_from_db(db, iso, run):
     use_db, run_gates_width, run_gates_delay, iso_mid_tof = get_gate_pars_from_db(db, iso, run)
     if use_db == 'file':
         return None
+    # if use_db != 'file' and use_db is not None:
+    #     if isinstance(ast.literal_eval(use_db[0][0]), list): return ast.literal_eval(use_db[0][0])[track]  # in this case softwGates is the softwGates list
     if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None:
         return None  # return None if failur by getting stuff from db
     else:
@@ -1091,7 +1125,9 @@ def get_gate_pars_from_db(db, iso, run):
     iso_mid_tof = select_from_db(
         db, 'midTof', 'Isotopes', [['iso'], [iso]],
         caller_name='get_software_gates_from_db in DataBaseOperations.py')
-    if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None or iso_mid_tof[0][0] is None or run_gates_width[0][0] is None or run_gates_delay[0][0] is None: # added 3 cases since iso_mid_tof etc. is usually an array and != none (?)
+    if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None or iso_mid_tof[0][0] is None or \
+            run_gates_width[0][0] is None or run_gates_delay[0][
+        0] is None:  # added 3 cases since iso_mid_tof etc. is usually an array and != none (?)
         return None, None, None, None
     else:
         run_gates_width = run_gates_width[0][0]
@@ -1450,6 +1486,100 @@ def line_to_total_volt(x, lineMult, lineOffset, offset, accVolt, voltDivRatio, o
 
     return accVolt*voltDivRatio['accVolt'] - scanvolt
 
+
+def get_file_number_from_file_str(file_str, mass_index, end_result_len, app=None):
+    numbers = []
+    number_str = ''
+    for i, letter in enumerate(file_str):
+        if letter.isdigit():  # is either 0-9
+            number_str += letter
+        else:  # not a digit
+            if number_str.isdigit():  # convert the consecutive number
+                numbers += [number_str]
+            number_str = ''  # reset number str
+    if isinstance(mass_index, list):
+        # [0] etc. .
+        numbers = [val for n, val in enumerate(numbers) if n not in mass_index]
+    if end_result_len > 0:
+        # user want to check if the correct amount of integers is found
+        if len(numbers) != end_result_len:
+            # does not match, require user input!
+            print('warning: ')
+            print('file', file_str, 'nums', numbers)
+            if app is None:
+                app = QtWidgets.QApplication(sys.argv)
+
+            print('opening dial:')
+            text, ok_pressed = QtWidgets.QInputDialog.getText(None, 'Warning',
+                                                              '%s has more or less than %s numbers: %s \n'
+                                                              ' please write the desired file number(s) here'
+                                                              'still as a list of strings please!:' %
+                                                              (file_str, end_result_len, numbers),
+                                                              QtWidgets.QLineEdit.Normal,
+                                                              str(numbers)
+                                                              )
+            if ok_pressed:
+                try:
+                    numbers = ast.literal_eval(text)
+                except Exception as e:
+                    print('could not convert %s, error is: %s' % (text, e))
+            else:
+                return [], app
+            # make sure it has the right length in the end!
+            if len(numbers) > end_result_len:
+                numbers = numbers[:end_result_len]
+                print('warning, still incorrect amount of numbers! Will use %s fo file: %s' % (numbers, file_str))
+            elif len(numbers) < end_result_len:
+                numbers = numbers * (end_result_len // len(numbers) + 1)
+                numbers = numbers[:end_result_len]
+                print('warning, still incorrect amount of numbers! Will use %s fo file: %s' % (numbers, file_str))
+    return numbers, app
+
+
+def get_file_numbers(file_list, mass_index=[0], end_result_len=1, app=None, user_overwrite={}):
+    """
+    get all file numbers (=conescutive integer numbers)
+    in the filenames that are listed in file_list.
+    :param file_list: list, like  ['62_Ni_trs_run071.xml', ...]
+    :param mass_index: list, indice of all expected mass numbers, that will be removed from the output.
+    if the mass number is wanted -> use mass_index=[-1]
+    for 62_Ni_trs_run071.xml
+     -> mass_index=[0] -> [[71]]
+     -> mass_index=None -> [[62, 71]]
+     :param end_result_len: int, desired amount of numbers to be found, as a cross check.
+     use -1/0 if you don't care
+     :param user_overwrite: dict, key is orig. filenum, value is str that will be put as file_num_str
+     e.g.  {'60_Ni_trs_run113_sum114.xml': ['113+114']}
+     helpful to avoid user input on runtime
+    :return: list of all file numbers each still as string, that might be convertable to int,
+     but can also be something like '123+124' by user choice.
+    """
+    file_nums = []
+    for f in file_list:
+        if f in user_overwrite.keys():
+            file_nums += user_overwrite[f]
+        else:
+            file_num, app = get_file_number_from_file_str(f, mass_index, end_result_len, app)
+            file_nums += file_num
+    return file_nums
+
+
+def get_scan_step_from_track_dict(track_dict):
+    """
+    return the current scan and step number from the numberOfcompleted steps
+    :param track_dict: dict, as in Service/Scan/draftScanParameters.py:136
+    :return: tuple, (scan_num, step_num)
+    """
+    nOfSteps = track_dict['nOfSteps']
+    nOfCompletedSteps = track_dict['nOfCompletedSteps']
+    invertScan = track_dict['invertScan']
+    current_scan = nOfCompletedSteps // nOfSteps
+    odd_scan = current_scan % 2
+    completed_steps_in_cur_scan = nOfCompletedSteps % nOfSteps
+    current_step = nOfSteps - completed_steps_in_cur_scan if invertScan and odd_scan else completed_steps_in_cur_scan
+    return current_scan, current_step
+
+
 if __name__ == '__main__':
     # isodi = {'isotope': 'bbb', 'type': 'csdummy'}
     # newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')
@@ -1495,23 +1625,24 @@ if __name__ == '__main__':
                     'random1': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
     np1 = np.array([1, 1])
     np2 = np.array([2, 2])
-    dmm_sample_dict0 = {'dummy_somewhere': np1, 'dummy_else' : np2}
-    dmm_sample_dict1 = {'dummy_somewhere': np2, 'dummy_else' : np1, 'more_dummy' : np2}
+    dmm_sample_dict0 = {'dummy_somewhere': np1, 'dummy_else': np2}
+    dmm_sample_dict1 = {'dummy_somewhere': np2, 'dummy_else': np1, 'more_dummy': np2}
     test_d0 = {'lala': [0, 1]}
-    test_d1 = {'lala': [1, 2], 'blub': [5,6]}
+    test_d1 = {'lala': [1, 2], 'blub': [5, 6]}
 
     deepupdate(sample_dict0, sample_dict1)
     deepupdate(sample_dict0, sample_dict2)
     deepupdate(sample_dict0, sample_dict3)
     deepupdate(sample_dict0, sample_dict4)
     deepupdate(sample_dict0, sample_dict5)
-    realdict = {'track0': {'triton': {'duringScan': {'dummyDev': {'random': {'required': -1, 'data': [], 'acquired': 0}, 'calls': {'required': -1, 'data': [3], 'acquired': 1}}}}}}
+    realdict = {'track0': {'triton': {'duringScan': {'dummyDev': {'random': {'required': -1, 'data': [], 'acquired': 0},
+                                                                  'calls': {'required': -1, 'data': [3],
+                                                                            'acquired': 1}}}}}}
     deepupdate(dmm_sample_dict0, dmm_sample_dict1)
     print(dmm_sample_dict0)
     for dev, chs in sample_dict0['track0']['triton']['preScan'].items():
         for ch_name, ch_data in chs.items():
-            #print(ch_data)
+            # print(ch_data)
             ch_data['acquired'] = len(ch_data['data'])
 
     #print_dict_pretty(sample_dict0)
-

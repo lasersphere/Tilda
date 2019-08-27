@@ -17,6 +17,9 @@ import numpy as np
 import Physics
 import TildaTools
 from Measurement.SpecData import SpecData
+from Service.Scan.draftScanParameters import draft_scan_device
+import Service.VoltageConversions.VoltageConversions as VCon
+
 
 
 class XMLImporter(SpecData):
@@ -130,6 +133,10 @@ class XMLImporter(SpecData):
 
 
             track_dict = scandict[tr_name]
+            scan_dev_dict_tr = track_dict.get('scanDevice', draft_scan_device)
+            self.scan_dev_dict_tr_wise.append(scan_dev_dict_tr)
+            # overwrite with last of tracks, but should be the same unit for all tracks anyhow (hopefully)
+            self.x_units = self.x_units_enums[scan_dev_dict_tr['stepUnitName']]
             self.measureVoltPars.append(track_dict.get('measureVoltPars', {}))
             self.tritonPars.append(track_dict.get('triton', {}))
             self.outbitsPars.append(track_dict.get('outbits', {}))
@@ -161,12 +168,23 @@ class XMLImporter(SpecData):
             self.working_time.append(track_dict['workingTime'])
             self.nrScans.append(track_dict['nOfCompletedSteps'] // nOfsteps)
 
-            dacStepSize18Bit = track_dict['dacStepSize18Bit']
+            dacStepSize18Bit = track_dict.get('dacStepSize18Bit', None)  # leave in for backwards_comp
+            if dacStepSize18Bit is None:
+                step_size = scan_dev_dict_tr.get('start', 0.0)
+            else:
+                step_size = VCon.get_stepsize_in_volt_from_18bit(dacStepSize18Bit)
+            self.stepSize.append(step_size)
 
-            self.trigger.append(track_dict.get('trigger', None))
+            if track_dict.get('trigger', {}).get('meas_trigger', None) is not None:
+                self.trigger.append(track_dict.get('trigger', None))
+            else:
+                self.trigger.append({
+                                    'meas_trigger': track_dict.get('trigger', None),
+                                    'step_trigger': track_dict.get('step_trigger', None),
+                                    'scan_trigger': track_dict.get('scan_trigger', None)
+                                    })
 
             self.nrScalers.append(nOfScalers)
-            self.stepSize.append(dacStepSize18Bit)
             self.col = track_dict['colDirTrue']
             if self.seq_type in ['trs', 'tipa', 'trsdummy']:
                 self.softBinWidth_ns.append(track_dict.get('softBinWidth_ns', 10))
@@ -195,7 +213,7 @@ class XMLImporter(SpecData):
                             # if the software gates are given as a tuple it should consist of:
                             # (db_str, run_str)
                             new_gates = TildaTools.get_software_gates_from_db(softw_gates[0],
-                                                                              self.type, softw_gates[1])
+                                                                              self.type, softw_gates[1], track=tr_ind)
                             if new_gates is not None:
                                 # when db states -> use file,
                                 # software gates from file will not be overwritten
@@ -253,24 +271,7 @@ class XMLImporter(SpecData):
                     err.append(dmm_volt_array[ind] * read_acc + range_acc)
                 self.err.append(err)
 
-        # TODO: For some reason the following code can crash a scan. Happened at my laptop with dummycs. /
-        # Works when disabled...
-        # Reason of crash: self.working_time is None
-        # Changes were made by Simon to have date be determined by mid of file if possible (2/14/2019 3:35PM)
-        time_format = '%Y-%m-%d %H:%M:%S'
-        #work_time_flat_date_time = [datetime.datetime.strptime(w_time_str , time_format)
-        #                            for tr_work_t_list in self.working_time for w_time_str in tr_work_t_list]
-        #if len(work_time_flat_date_time) > 1:
-        #    work_time_flat_date_time_float = [work_t_dt.timestamp() for work_t_dt in work_time_flat_date_time]
-        #    iso_start_t = np.min(work_time_flat_date_time_float)
-        #    iso_stop_t = np.max(work_time_flat_date_time_float)
-        #    diff = iso_stop_t - iso_start_t
-        #    err_date = diff / 2
-        #    mid_iso_t = iso_start_t + err_date
-        #    mid_iso_t_dt = datetime.datetime.fromtimestamp(mid_iso_t)
-        #    mid_iso_t_dt_str = mid_iso_t_dt.strftime(time_format)
-        #    self.date = mid_iso_t_dt_str
-        #    self.date_d = err_date  # in seconds
+        self.convert_date_to_mid_time()
 
         self.laserFreq, self.laserFreq_d = self.get_frequency_measurement(path, self.tritonPars)
         logging.info('%s was successfully imported' % self.file)
@@ -340,6 +341,7 @@ class XMLImporter(SpecData):
 
     def export(self, db):
         try:
+            self.convert_date_to_mid_time()
             con = sqlite3.connect(db)
             col = 1 if self.col else 0
             with con:
@@ -550,7 +552,8 @@ class XMLImporter(SpecData):
                 # get the mean value from one comb in this track
                 comb_mean = np.mean(comb_a_col_col_dict.get(col_a_col_key, [0]))
                 comb_err = np.std(comb_a_col_col_dict.get(col_a_col_key, [0]))
-                combs_freq_mean_tr[comb_key] = (comb_mean, comb_err)
+                if not np.isnan(comb_mean):
+                    combs_freq_mean_tr[comb_key] = (comb_mean, comb_err)
             freqs_by_dev.append(combs_freq_mean_tr)
 
             # get the mean of all comb readings for this track:
@@ -591,7 +594,39 @@ class XMLImporter(SpecData):
 
         return laser_freq, laser_freq_d
 
+    def convert_date_to_mid_time(self):
+        """
+        try to get the mid time of the file and overwrite self.date with this mid time
+        self.date_d will be half the length of the whole file.
+        If this fails, self.date will not be overwritten and self.date_d will be zero
+        :return: None
+        """
+        work_time_flat_date_time = []
+        time_format = '%Y-%m-%d %H:%M:%S'
 
+        if self.working_time is not None:
+            if None not in self.working_time:
+                # TildaTools.create_scan_dict_from_spec_data initialises
+                # the working_time with a list of [None] * nrTracks
+                try:
+                    work_time_flat_date_time = [datetime.datetime.strptime(w_time_str, time_format)
+                                                for tr_work_t_list in self.working_time
+                                                for w_time_str in tr_work_t_list]
+                except Exception as e:
+                    logging.warning('could not convert the working time time stamps to a common'
+                                    ' mid time in file %s.\nThe working times are: %s'
+                                    '\nerror message is: %s' % (self.file, str(self.working_time), e))
+                if len(work_time_flat_date_time) > 1:
+                    work_time_flat_date_time_float = [work_t_dt.timestamp() for work_t_dt in work_time_flat_date_time]
+                    iso_start_t = np.min(work_time_flat_date_time_float)
+                    iso_stop_t = np.max(work_time_flat_date_time_float)
+                    diff = iso_stop_t - iso_start_t
+                    err_date = diff / 2
+                    mid_iso_t = iso_start_t + err_date
+                    mid_iso_t_dt = datetime.datetime.fromtimestamp(mid_iso_t)
+                    mid_iso_t_dt_str = mid_iso_t_dt.strftime(time_format)
+                    self.date = mid_iso_t_dt_str
+                    self.date_d = err_date  # in seconds
 
 
 

@@ -224,7 +224,8 @@ for each in all_files:
 
 def find_tipa_file_to_mcp_file(mcp_file_str):
     # print('finding: ', mcp_file_str)
-    run_str = mcp_file_str.split('.')[0].split('Run')[1]  # '010' etc.
+    # run_str = mcp_file_str.split('.')[0].split('Run')[1]  # '010' etc.
+    run_str = TiTs.get_file_numbers([mcp_file_str])[0]
     try:
         for mcp_run_str, tipa_run_str in search_tuple_list:
             if run_str in mcp_run_str:

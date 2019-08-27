@@ -4,166 +4,113 @@ Created on
 @author: simkaufm
 
 Module Description:
-    Dummy Triton device which can be setup to send values via Pyro4
-    Therefore no database is required. One can connenct to it via its Pyro4 - uri
+    Dummy Triton device useful for testing.
+
+    copied from Triton Base/DraftDeviceTest.py on 01.03.19 git rev. number: 74e28f9804a8d2a27f2f53aa8c0671cd6dc804e4
+
+    If changes are made within Triton maybe a copy is needed again.
+    Required modifications for Tilda are marked with a comment  # changed!
+    look for them before overwriting again!
 """
+
+# python imports here
 import logging
 import random
-import time
-from datetime import datetime
-from functools import wraps
-from threading import Thread, Event, Lock
-
+import sys
 import Pyro4
+import socket
+# other modules here
 
-from Driver.TritonListener.TritonObject import TritonObject
+# own imports here
 
-
-class DummyTritonDevice(TritonObject):
-    """
-    Base Device class for the Triton control system.
-    """
-
-    def __init__(self, name):
-        '''
-        Set up the device and calls self.on() for device specific construction
-        '''
-        super(DummyTritonDevice, self).__init__()
-
-        self.name = name
-        self._thread = None
-        self._timer = Event()
-        self._interval = 0
-        self.i = 0
-
-        self._cfg = ['_interval']
-        self._stg = ['_interval']
-
-        self._sendTo = {}
-
-        self._commitUri(str(self.uri))
-
-        self.lock = Lock()
-        self.locktimeout = 5
-        logging.debug('dummyDev started')
+from Driver.TritonListener.TritonDeviceBase import DeviceBase  # changed!
 
 
-    def _stop(self):
-        """
-        Call self.off() for device specific destruction and afterwards deinitializes the base object
-        """
+# rename class here
+class DummyTritonDevice(DeviceBase):  # changed!
+    '''
+    draft device with minimal functionality
+    '''
 
-        # self._commitUri(None)
-        logging.info('Stopping dummy_dev')
+    '''Called when added'''
 
-        if self._thread is not None:
-            self.setInterval(0)
-        self.send('out', 'Deleted')
+    def on(self, cfg):
+        '''Setting necessary attributes, interval defaults to 0:'''
+        # self.setup_pyro()  # changed!
 
-        TritonObject._stop(self)
+        self.type = 'DummyTritonDevice'
+        # self.addCfg(['par'])
+        # self.addStg(['par'])
 
-    """Publishing"""
+        self.per_calls = 0
+        # self.setInterval(1)
+        '''Resolving and subscribing to other devices:'''
+        # self.dev = self.resolveName('Name')
+        # self.subscribe(dev)
 
-    def _receive(self, dev, t, ch, val):
-        """Called first on receiving, blank wrapper"""
-        if ch == 'out' and val == 'Deleted':
-            logging.debug('Deleting from ' + str(dev))
-            del self._recFrom[dev]
-            self.connectionLost()
-        self.receive(dev, t, ch, val)
+    '''Called when removed'''
 
-    def receive(self, dev, t, ch, val):
-        logging.debug('%s received from dev %s at %s on channel %s : %s' % (self.name, dev, t, ch, val))
-        # pass
-
-    def _emit(self):
-        """Called on new subscriber. Emit the concurrent values."""
-        self.send('interval', self._interval)
-        # self.emit()
-
-    def _addSub(self, uri, ndev):
-        """Add device with uri and name to Subscribers"""
-        dev = Pyro4.Proxy(uri)
-        self._sendTo[ndev] = dev
-        self.send('out', ndev + ' subscribed.')
-        self._emit()
-        logging.debug(self.name + ': Emitting done in _addSub')
-
-    def _remSub(self, ndev):
-        """Remove device with name from subscribers"""
-        if ndev in self._sendTo:
-            del self._sendTo[ndev]
-        self.send('out', ndev + ' unsubscribed.')
-
-    def checkSub(self, sub):
-        """Check whether sub is subscribed"""
-        return self in self._sendTo
-
-    def send(self, ch, val):
-        """Send value on channel, add timestamp and copy to console"""
-        t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        if ch == 'err':
-            logging.error(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
-        elif ch == 'out':
-            logging.info(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
-        # else:
-        #     logging.debug(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
-
-        for sub in self._sendTo.values():
-            sub._receive(self.name, t, ch, val)
-
-    def connectionLost(self):
+    def off(self):
         pass
 
-    """Methods for periodic thread"""
-
-    def _run(self):
-        """The periodic logic"""
-        while self._interval > 0.0:
-            startTime = time.time()
-            self.periodic()
-            diff = round(time.time() - startTime, 1)
-            # logging.debug('processing time: ' + str(diff))
-            if diff > self._interval and self._interval != 0:
-                self.send('err', 'processing time is bigger than interval! Setting interval to ' + str(diff))
-                self.setInterval(diff)
-            if self._timer.wait(abs(self._interval - diff)):
-                self._timer.clear()
-        self._thread = None
+    '''Called regularly, running in separate thread'''
 
     def periodic(self):
-        # print('periodic called')
-        self.send('calls', self.i)
-        self.i += 1
+        self.per_calls += 1
+        self.send('calls', self.per_calls)
         self.send('random', random.random())
+        # self.send('out', self.per_calls)
+        # print('periodicCalls', self.per_calls)
+        # self.send('', value)
+        pass
 
-    def setInterval(self, t):
-        """Set the interval. Start or stop periodic thread as necessary"""
-        self._interval = t
-        if self._thread is not None:
-            self._timer.set()
-        elif self._interval > 0:
-            self._thread = Thread(target=self._run)
-            self._thread.start()
-        self.send("interval", self._interval)
+    '''Called by subscriptors'''
 
-    """Other Stuff"""
+    def receive(self, dev, t, ch, val):
+        logging.info('%s rcvd: %s' % (self.name, str((dev, t, ch, val))))
 
-    def _commitUri(self, uri):
-        """Write the uri into the device table"""
-        logging.info('uri of %s : %s' % (self.name, uri))
+    '''Called when settings are loaded, vals contains setting dictionary'''
 
-    @staticmethod
-    def locked(func):
-        """This is a decorator for simplified usage of the threadlock"""
+    def load(self, vals):
+        pass
 
-        @wraps(func)
-        def wrap_lock(self, *args, **kwargs):
-            if self.lock.acquire(timeout=self.locktimeout):
-                ret = func(self, *args, **kwargs)
-                self.lock.release()
-                return ret
-            else:
-                self.send('err', 'Could not acquire lock in ' + func.__name__ + '!')
+    '''Send current status on this command'''
 
-        return wrap_lock
+    def emit(self):
+        pass
+
+
+if __name__ == '__main__':
+    app_log = logging.getLogger()
+    # app_log.setLevel(getattr(logging, args.log_level))
+    app_log.setLevel(logging.INFO)
+
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    # ch.setFormatter(log_formatter)
+    app_log.addHandler(ch)
+
+    app_log.info('****************************** starting ******************************')
+    app_log.info('Log level set to DEBUG')
+
+    from Driver.TritonListener.TritonDraftConfig import hmacKey
+
+    # Set Pyro variables
+    Pyro4.config.SERIALIZER = "serpent"
+    Pyro4.config.HMAC_KEY = hmacKey
+    Pyro4.config.HOST = socket.gethostbyname(socket.gethostname())
+    # Pyro4.config.SERVERTYPE = 'multiplex'
+    Pyro4.config.SERVERTYPE = 'thread'
+    sys.excepthook = Pyro4.util.excepthook
+    # Pyro4.config.DETAILED_TRACEBACK = True
+    dev1 = DummyTritonDevice('dev1', 'local')
+    dev2 = DummyTritonDevice('dev2', 'local')
+    dev1.setInterval(1)
+    dev2.setInterval(1)
+
+    dev1.subscribe(dev2.name, dev2.uri)
+    input('anything to stop')
+    dev1._stop()
+    dev2._stop()

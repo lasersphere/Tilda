@@ -63,6 +63,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.pulse_pattern_win = None
         self.scan_complete_win = None
         self.show_scan_compl_win = True
+        self.triton_listener_timedout_win = None
 
         self.application = application
 
@@ -169,6 +170,16 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 'the kepco scan finished ramping the voltage,\n'
                 'but not all digital multimeters delivered a reading!\n'
                 'Check your cabling and the timing of the trigger send to the digital multimeters!')
+        elif info_str == 'triton_listener_timedout':
+            if self.triton_listener_timedout_win is None:
+                self.triton_listener_timedout_win = True
+                info = QtWidgets.QMessageBox.information(
+                    self, 'Warning!',
+                    '-------- Warning -------\n '
+                    'Triton Listener did not receive values for some time!\n'
+                    'Check subscriptions and if devices are still running! \n'
+                    '-------- Warning -------\n ')
+                self.triton_listener_timedout_win = None
 
     def unsubscribe_from_main(self):
         """

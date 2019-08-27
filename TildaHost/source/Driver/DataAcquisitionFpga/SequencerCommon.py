@@ -11,6 +11,7 @@ import time
 import Service.VoltageConversions.VoltageConversions as VCon
 from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
+from Driver.DataAcquisitionFpga.ScanDeviceTypes import ScanDeviceTypes as ScTypes
 
 
 class Sequencer(FPGAInterfaceHandling):
@@ -69,15 +70,59 @@ class Sequencer(FPGAInterfaceHandling):
         # logging.debug('switchbox, state: %s, desired state: %s, done: %s' % (currentState, desired_state, done))
         return done, currentState, desired_state
 
+    def getInternalDACState(self):
+        """
+        call this to check whether the DAC was successfully initialized by the fpga
+        :return: bool: True if DAC available
+        """
+        return self.ReadWrite(self.config.internalDacAvailable).value
+
     '''writing'''
+
+    def setScanDeviceParameters(self, scanDevDict):
+        """
+        Writes the chosen scanDev type to the FPGA.
+        :param scanDev: str: Currently supported devices are "DAC"(0) and "Triton"(1)
+        :return:
+        """
+        # write scan device class as int to fpga
+        device_class = scanDevDict.get('devClass', 'DAC')
+        device_class = getattr(ScTypes, device_class)  # must be int, values defined in ScanDeviceTypes
+        self.ReadWrite(self.config.ScanDevice, device_class.value)  # int
+        # write timeout in 10ns units to fpga
+        timeout_10ns = 100000000 * scanDevDict.get('timeout_s', 1)  # default: 1sec = 100 000 000 * 10ns
+        self.ReadWrite(self.config.scanDevTimeout10ns, int(timeout_10ns))  # int
+
+        if device_class == 'DAC':
+            # set the dac values
+            dac18b_stepsize = VCon.get_18bit_stepsize(scanDevDict.get('stepSize', 0.0))
+            dac18b_start = VCon.get_18bit_from_voltage(scanDevDict.get('start', 0.0))
+            self.ReadWrite(self.config.dacStepSize18Bit, dac18b_stepsize)  # long
+            self.ReadWrite(self.config.dacStartRegister18Bit, dac18b_start)  # long
+            # check whether DAC has been initialized successfully on fpga.
+            dac_available = self.getInternalDACState()
+            if not dac_available:
+                # Throw error here for user information.
+                logging.error("Scan device was set to {} but DAC could not be successfully initialized on fpga"
+                              .format(device_class))
+
+        return self.checkFpgaStatus()
+
+
+    def scanDeviceReadyForStep(self, ready_bool):
+        """
+        Sets the "scanDevSet" bool on the FPGA. Should be used to signal when a scan device is ready for the next step.
+        If implemented on the FPGA might also be used to halt the measurement when the scan device is not stable any more.
+        :param ready_bool: bool: True if the scan device is ready for the next step.
+        :return:
+        """
+        self.ReadWrite(self.config.scanDevSet, ready_bool)
 
     def setTrackParameters(self, trackPars):
         """
         Writes all values needed for the Sequencer state machine to the fpga ui
         :param trackPars: dictionary, containing all necessary infos for measuring one track. These are:
         VoltOrScaler: bool, determine if the track is a KepcoScan or normal Scaler Scan
-        dacStepSize18Bit: ulong, Stepsize for 18Bit-DAC Steps actually shifted by 2 so its 20 Bit Number
-        dacStartRegister18Bit: ulong, Start Voltage for 18Bit-DAC actually shifted by 2 so its 20 Bit Number
         nOfSteps: long, Number Of Steps for one Track (=Scanregion)
         nOfScans: long, Number of Loops over this Track
         invertScan: bool, if True invert Scandirection on every 2nd Scan
@@ -88,9 +133,6 @@ class Sequencer(FPGAInterfaceHandling):
          before the scalers are activated. Unit is 1us
         :return: True if self.status == self.statusSuccess, else False
         """
-
-        self.ReadWrite(self.config.dacStepSize18Bit, trackPars['dacStepSize18Bit'])
-        self.ReadWrite(self.config.dacStartRegister18Bit, trackPars['dacStartRegister18Bit'])
         self.ReadWrite(self.config.nOfSteps, trackPars['nOfSteps'])
         self.ReadWrite(self.config.nOfScans, trackPars['nOfScans'])
         self.ReadWrite(self.config.invertScan, trackPars['invertScan'])
@@ -227,31 +269,55 @@ class Sequencer(FPGAInterfaceHandling):
         :param trigger_dict: dict, containing all values needed for this type of trigger
         :return: True if success
         """
-        trigger_type = trigger_dict.get('type', TiTs.no_trigger)
-        logging.debug('setting trigger type to: ' + str(trigger_type) + ' value: ' + str(trigger_type.value))
-        logging.debug('trigger dict is: ' + str(trigger_dict))
-        self.ReadWrite(self.config.triggerTypes, trigger_type.value)
-        if trigger_type is TiTs.no_trigger:
-            return self.checkFpgaStatus()
-        elif trigger_type is TiTs.single_hit_delay:
-            self.ReadWrite(self.config.selectTrigger, trigger_dict.get('trigInputChan', 0))
-            self.ReadWrite(self.config.trigDelay10ns, int(trigger_dict.get('trigDelay10ns', 0)))
-            trig_num = ['either', 'rising', 'falling'].index(trigger_dict.get('trigEdge', 'rising'))
-            logging.debug('triggernum is: %s' % trig_num)
-            self.ReadWrite(self.config.triggerEdge, trig_num)
-            return self.checkFpgaStatus()
-        elif trigger_type is TiTs.single_hit:
-            trig_num = ['either', 'rising', 'falling'].index(trigger_dict.get('trigEdge', 'rising'))
-            logging.debug('triggernum is: %s' % trig_num)
-            self.ReadWrite(self.config.triggerEdge, trig_num)
-            self.ReadWrite(self.config.selectTrigger, trigger_dict.get('trigInputChan', 0))
-            return self.checkFpgaStatus()
-        elif trigger_type is TiTs.sweep:
-            trig_num = ['either', 'rising', 'falling'].index(trigger_dict.get('trigEdge', 'rising'))
-            logging.debug('triggernum is: %s' % trig_num)
-            self.ReadWrite(self.config.triggerEdge, trig_num)
-            self.ReadWrite(self.config.selectTrigger, trigger_dict.get('trigInputChan', 0))
-            return self.checkFpgaStatus()
+        meas_trigger_controls = {'triggerTypes': self.config.triggerTypes,
+                              'selectTrigger': self.config.selectTrigger,
+                              'trigDelay10ns': self.config.trigDelay10ns,
+                              'triggerEdge': self.config.triggerEdge,
+                              'softwareTrigger': self.config.softwareTrigger}
+
+        step_trigger_controls = {'triggerTypes': self.config.stepTriggerTypes,
+                              'selectTrigger': self.config.selectStepTrigger,
+                              'trigDelay10ns': self.config.stepTrigDelay10ns,
+                              'triggerEdge': self.config.stepTriggerEdge,
+                              'softwareTrigger': self.config.softwareStepTrigger}
+        scan_trigger_controls = {'triggerTypes': self.config.scanTriggerTypes,
+                              'selectTrigger': self.config.selectScanTrigger,
+                              'trigDelay10ns': self.config.scanTrigDelay10ns,
+                              'triggerEdge': self.config.scanTriggerEdge,
+                              'softwareTrigger': self.config.softwareScanTrigger}
+        trig_fpga_status = True
+        for triggers, trig_dicts in trigger_dict.items():
+            controls = {}
+            if triggers == 'meas_trigger': controls = meas_trigger_controls
+            elif triggers == 'step_trigger': controls = step_trigger_controls
+            elif triggers == 'scan_trigger': controls = scan_trigger_controls
+
+            trigger_type = trig_dicts.get('type', TiTs.no_trigger)
+            logging.debug('setting trigger type to: ' + str(trigger_type) + ' value: ' + str(trigger_type.value))
+            logging.debug('trigger dict is: ' + str(trig_dicts))
+            self.ReadWrite(controls['triggerTypes'], trigger_type.value)
+            if trigger_type is TiTs.no_trigger:
+                trig_fpga_status = trig_fpga_status and self.checkFpgaStatus()
+            elif trigger_type is TiTs.single_hit_delay:
+                self.ReadWrite(controls['selectTrigger'], trig_dicts.get('trigInputChan', 0))
+                self.ReadWrite(controls['trigDelay10ns'], int(trig_dicts.get('trigDelay10ns', 0)))
+                trig_num = ['either', 'rising', 'falling'].index(trig_dicts.get('trigEdge', 'rising'))
+                logging.debug('triggernum is: %s' % trig_num)
+                self.ReadWrite(controls['triggerEdge'], trig_num)
+                trig_fpga_status = trig_fpga_status and self.checkFpgaStatus()
+            elif trigger_type is TiTs.single_hit:
+                trig_num = ['either', 'rising', 'falling'].index(trig_dicts.get('trigEdge', 'rising'))
+                logging.debug('triggernum is: %s' % trig_num)
+                self.ReadWrite(controls['triggerEdge'], trig_num)
+                self.ReadWrite(controls['selectTrigger'], trig_dicts.get('trigInputChan', 0))
+                trig_fpga_status = trig_fpga_status and self.checkFpgaStatus()
+            elif trigger_type is TiTs.sweep:
+                trig_num = ['either', 'rising', 'falling'].index(trig_dicts.get('trigEdge', 'rising'))
+                logging.debug('triggernum is: %s' % trig_num)
+                self.ReadWrite(controls['triggerEdge'], trig_num)
+                self.ReadWrite(controls['selectTrigger'], trig_dicts.get('trigInputChan', 0))
+                trig_fpga_status = trig_fpga_status and self.checkFpgaStatus()
+        return trig_fpga_status
 
     def set_0volt_dac_register(self, null_volt=None):
         """

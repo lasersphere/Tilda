@@ -24,16 +24,18 @@ from polliPipe.pipeline import Pipeline
 
 def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples,
                           fit_res_callback_dict, scan_complete_callback, dac_new_volt_set_callback,
-                          bunch_start_stop_tr_wise=None):
+                          bunch_start_stop_tr_wise=None, next_step_request_sig=None):
     seq_type = scan_dict['isotopeData']['type']
     if seq_type == 'cs' or seq_type == 'csdummy':
         logging.debug('loading pipeline of type: cs')
-        return CsPipe(scan_dict, callback_sig, live_plot_callbacks=live_plot_callback_tuples)
+        return CsPipe(scan_dict, callback_sig, live_plot_callbacks=live_plot_callback_tuples,
+                      next_step_request_sig=next_step_request_sig)
     elif seq_type == 'trs' or seq_type == 'trsdummy':
         logging.debug('loading pipeline of type: trs')
         return TrsPipe(scan_dict, callback_sig,
                        live_plot_callbacks=live_plot_callback_tuples,
-                       bunch_start_stop_tr_wise=bunch_start_stop_tr_wise)
+                       bunch_start_stop_tr_wise=bunch_start_stop_tr_wise,
+                       next_step_request_sig=next_step_request_sig)
     elif seq_type == 'kepco':
         logging.debug('loading pipeline of type: kepco')
         return kepco_scan_pipe(scan_dict, callback_sig,
@@ -47,7 +49,7 @@ def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples,
 
 
 def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True,
-            live_plot_callbacks=None, bunch_start_stop_tr_wise=None):
+            live_plot_callbacks=None, bunch_start_stop_tr_wise=None, next_step_request_sig=None):
     """
     Pipeline for the dataflow and analysis of one Isotope using the time resolved sequencer.
     Mutliple Tracks are supported.
@@ -67,6 +69,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True,
     # # use the sleep node in order to simulate long processing times in pipeline
     # fast = fast.attach(TN.NSleep(sleeping_time_s=2.0))
     fast = fast.attach(TN.NSaveRawData())
+    fast = fast.attach(TN.NSendNextStepRequestViaQtSignal(next_step_request_sig))
     # fast = fast.attach(TN.NProcessQtGuiEvents())
     fast = fast.attach(TN.NTRSSortRawDatatoArrayFast(bunch_start_stop_tr_wise=bunch_start_stop_tr_wise))
     # fast = fast.attach(TN.NProcessQtGuiEvents())
@@ -93,7 +96,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True,
     return pipe
 
 
-def CsPipe(initialScanPars=None, callback_sig=None, live_plot_callbacks=None):
+def CsPipe(initialScanPars=None, callback_sig=None, live_plot_callbacks=None, next_step_request_sig=None):
     """
     Pipeline for the dataflow and analysis of one Isotope using the continous sequencer.
     always feed raw data.
@@ -118,6 +121,7 @@ def CsPipe(initialScanPars=None, callback_sig=None, live_plot_callbacks=None):
     walk = start.attach(TN.NSaveRawData())
     # walk = start.attach(TN.NSplit32bData())
     #
+    walk = walk.attach(TN.NSendNextStepRequestViaQtSignal(next_step_request_sig))
     walk = walk.attach(TN.NCSSortRawDatatoArray())
     walk = walk.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
 
@@ -135,7 +139,7 @@ def CsPipe(initialScanPars=None, callback_sig=None, live_plot_callbacks=None):
 
 def kepco_scan_pipe(initial_scan_pars, callback_sig=None, as_voltage=False,
                     live_plot_callbacks=None, fit_res_dict_callback=None, scan_complete_callback=None,
-                    dac_new_volt_set_callback=None):
+                    dac_new_volt_set_callback=None, next_step_request_sig=None):
     """
     pipeline for the measurement and analysis of a kepco scan
     raw data and readback from dmm are fed into the pipeline.
@@ -180,7 +184,7 @@ def initPipeData(initialScanPars):
     # trackDict = pipeData['track0']
     # trackDict.update(dacStartVoltage=get_voltage_from_18bit(trackDict['dacStartRegister18Bit']))
     # trackDict.update(dacStopVoltage=get_voltage_from_18bit(
-    #     VCon.calc_dac_stop_18bit(trackDict['dacStartRegister18Bit'],
+    #     VCon.calc_scan_dev_stop_val(trackDict['dacStartRegister18Bit'],
     #                              trackDict['dacStepSize18Bit'],
     #                              trackDict['nOfSteps'])))
 

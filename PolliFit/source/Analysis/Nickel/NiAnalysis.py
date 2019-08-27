@@ -22,6 +22,18 @@ import TildaTools as TiTs
 import Tools
 from KingFitter import KingFitter
 
+''' settings '''
+
+pars_to_combine = None  # ['center', 'Al', 'Au', 'Bl', 'Bu']
+perform_batch_fit = False
+combine_shifts = False
+shifts_file = 'shifts_2016.txt'
+comb_centers = False
+show_moments_etc = True
+perf_king_plot = False
+print_plot_shifts = False
+
+
 ''' working directory: '''
 
 workdir = 'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
@@ -39,6 +51,20 @@ even_isotopes = [iso for iso in isotopes if int(iso[:2]) % 2 == 0]
 stables = ['58_Ni', '60_Ni', '61_Ni', '62_Ni', '64_Ni']
 
 Tools.add_missing_columns(db)
+
+overwrites_for_file_num_determination = {'60_Ni_trs_run113_sum114.xml': ['113+114'],
+                                         '60_Ni_trs_run192_sum193.xml': ['192+193'],
+                                         '60_Ni_trs_run198_sum199_200.xml': ['198+199+200'],
+                                         '60_Ni_trs_run117_sum118.xml': ['117+118'],
+                                         '60_Ni_trs_run122_sum123.xml': ['122+123'],
+                                         '67Ni_no_protonTrigger_3Tracks_Run191.mcp': ['191'],
+                                         '67Ni_sum_Run061_Run062.xml': ['061+062'],
+                                         '67Ni_sum_Run063_Run064_Run065.xml': ['063+064+065'],
+                                         '67_Ni_sum_run243_and_run248.xml': ['243+248'],
+                                         '60_Ni_trs_run239_sum240.xml': ['239+240'],
+                                         '70Ni_protonTrigger_Run248_sum_252_254_259_265.xml': ['248+252+254+259+265'],
+                                         '60_Ni_trs_run266_sum267.xml': ['266+267'],
+                                         '70_Ni_trs_run268_plus_run312.xml': ['268+312']}
 
 ''' Masses '''
 # masses = {
@@ -369,7 +395,9 @@ con.close()
 ''' isotope shift and batch fitting'''
 
 
-def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes_batch_fit, pars=None, combine_shift=True, perform_fit=True):
+def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes_batch_fit, pars=None,
+                                combine_shift=True, perform_fit=True, combine_centers=False,
+                                store_shifts_to=''):
     """
     get all configs for the used runs and fit those. then combine the reults.
     Be careful with 67Ni here scaler numeration is different.
@@ -486,7 +514,10 @@ def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes_batch_fit, pars=No
                                             combine_from_multipl=0.3893, combine_from_mult_err=0.0006)
 
         if iso != '60_Ni' and combine_shift:
-            Analyzer.combineShiftByTime(iso, run_isos, db, show_plot=False)  # create db entry then add error formulas
+            Analyzer.combineShiftByTime(
+                iso, run_isos, db,
+                show_plot=False, overwrite_file_num_det=overwrites_for_file_num_determination
+            )  # create db entry then add error formulas
             con = sqlite3.connect(db)
             cur = con.cursor()
             cur.execute(''' UPDATE Combined SET statErrForm = ? ''', ('applyChi(err, rChi)',))
@@ -494,10 +525,14 @@ def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes_batch_fit, pars=No
             cur.execute('''UPDATE Combined SET systErrForm = ? WHERE parname = ?''', (syst_error, 'shift'))
             con.commit()
             con.close()
-            Analyzer.combineShiftByTime(iso, run_isos, db, show_plot=False)  # then combine again
-        # now combine the center of all relevant iso files, to have the plot on the harddrive
-        Analyzer.combineRes(iso, 'center', run_isos,
-                            db, only_this_files=all_iso_shift_files_by_iso[run_isos]['isoFiles'][iso])
+            Analyzer.combineShiftByTime(
+                iso, run_isos, db, show_plot=False,
+                overwrite_file_num_det=overwrites_for_file_num_determination,
+                store_to_file_in_combined_plots=store_shifts_to)  # then combine again
+        if combine_centers:
+            # now combine the center of all relevant iso files, to have the plot on the harddrive
+            Analyzer.combineRes(iso, 'center', run_isos,
+                                db, only_this_files=all_iso_shift_files_by_iso[run_isos]['isoFiles'][iso])
     done_time = datetime.now()
     elapsed = done_time - st_time
     print('finished bacthfitting at %s after %.1f min' % (done_time, elapsed.seconds / 60))
@@ -508,13 +543,13 @@ def isotope_shift_batch_fitting(run_isos, run_67_ni, isotopes_batch_fit, pars=No
 
 
 files_w_err = isotope_shift_batch_fitting(
-    'wide_gate_asym', 'wide_gate_asym_67_Ni', ['58_Ni'],  # isotopes,
-    pars=['center', 'Al', 'Au', 'Bl', 'Bu'], combine_shift=True, perform_fit=False)
+    'wide_gate_asym', 'wide_gate_asym_67_Ni', isotopes,
+    pars=pars_to_combine, combine_shift=combine_shifts,
+    perform_fit=perform_batch_fit, combine_centers=comb_centers, store_shifts_to=shifts_file)
 print('--------------------------------------------------------------------')
 print('files with error during batchfit: ', (['wide_gate_asym', 'wide_gate_asym_67_Ni'], files_w_err))
 print('--------------------------------------------------------------------')
 
-raise Exception
 ''' Divider Ratio Determination '''
 acc_div_start = 1000.05
 offset_prema_div_start = 1000.022
@@ -565,7 +600,8 @@ def chi_square_finder(acc_dev_list, offset_dev_list, runs):
             # combineRes only when happy with voltdivratio, otherwise no use...
             # [[Analyzer.combineRes(iso, par, run, db) for iso in stables] for par in pars]
             try:
-                shifts = {iso: Analyzer.combineShiftByTime(iso, run_chi_finder, db) for iso in
+                shifts = {iso: Analyzer.combineShiftByTime(
+                    iso, run_chi_finder, db, overwrite_file_num_det=overwrites_for_file_num_determination) for iso in
                           stables if iso not in ['60_Ni']}
             except Exception as e:
                 shifts = {}
@@ -643,7 +679,8 @@ def chisquare_finder_kepco(run_chi_finder, kepco_dif_list):
         isotope_shift_batch_fitting([run_chi_finder], stables)
 
         try:
-            shifts = {iso: Analyzer.combineShiftByTime(iso, run_chi_finder, db) for iso in
+            shifts = {iso: Analyzer.combineShiftByTime(
+                iso, run_chi_finder, db, overwrite_file_num_det=overwrites_for_file_num_determination) for iso in
                       stables if iso not in ['60_Ni']}
         except Exception as e:
             shifts = {}
@@ -739,287 +776,288 @@ def chisquare_finder_kepco(run_chi_finder, kepco_dif_list):
 # print('plotting now')
 
 try:
-    # kepco_dif = [each / 10000 for each in range(-20, -11)]
-    # # best_chi_square = chisquare_finder_kepco('narrow_gate_asym', [0])
-    # best_chi_square = ('???', 0.050415562)
-    # print('best chi square kepco: ', best_chi_square)
-    # print('literature shifts',  literature_shifts)
-    MPLPlotter.plot_par_from_combined(db, ['wide_gate_asym'], list(literature_shifts.keys()), 'shift',
-                                      literature_run='Steudel_1980', plot_runs_seperate=False,
-                                      literature_name='A. Steudel (1980)')
-    # print(isotopes)
+    if show_moments_etc:
+        # kepco_dif = [each / 10000 for each in range(-20, -11)]
+        # # best_chi_square = chisquare_finder_kepco('narrow_gate_asym', [0])
+        # best_chi_square = ('???', 0.050415562)
+        # print('best chi square kepco: ', best_chi_square)
+        # print('literature shifts',  literature_shifts)
+        MPLPlotter.plot_par_from_combined(db, ['wide_gate_asym'], list(literature_shifts.keys()), 'shift',
+                                          literature_run='Steudel_1980', plot_runs_seperate=False,
+                                          literature_name='A. Steudel (1980)')
+        # print(isotopes)
 
-    # print('iso\tshift [MHz]\tstatErr [Mhz]\trChi')
-    # [print('%s\t%s\t%s\t%s' % (key, val[0], val[1], val[2])) for key, val in sorted(files[runs[0]].items())]
+        # print('iso\tshift [MHz]\tstatErr [Mhz]\trChi')
+        # [print('%s\t%s\t%s\t%s' % (key, val[0], val[1], val[2])) for key, val in sorted(files[runs[0]].items())]
 
-    # print('\n\nfor Excel: \n\n')
-    # print('iso\tshift [MHz]\tstatErr [Mhz]\trChi')
-    # for key, val in sorted(files[runs[0]].items()):
-    #     out_str = '%s\t%s\t%s\t%s' % (key, val[0], val[1], val[2])
-    #     out_str = out_str.replace('.', ',')
-    #     print(out_str)
-    print('\n\n\niso\tAu\td_Au\tAl\td_Al\tAu/Al\td_Au/Al')
-    a_fac_runs = ['wide_gate_asym', 'wide_gate_asym_67_Ni']
+        # print('\n\nfor Excel: \n\n')
+        # print('iso\tshift [MHz]\tstatErr [Mhz]\trChi')
+        # for key, val in sorted(files[runs[0]].items()):
+        #     out_str = '%s\t%s\t%s\t%s' % (key, val[0], val[1], val[2])
+        #     out_str = out_str.replace('.', ',')
+        #     print(out_str)
+        print('\n\n\niso\tAu\td_Au\tAl\td_Al\tAu/Al\td_Au/Al')
+        a_fac_runs = ['wide_gate_asym', 'wide_gate_asym_67_Ni']
 
-    al = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Al', print_extracted=False)
-    au = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Au', print_extracted=False)
-    bl = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Bl', print_extracted=False)
-    bu = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Bu', print_extracted=False)
-    ratios = []
-    b_ratios = []
-    d_ratios = []
-    d_b_ratios = []
-    q_moments = []
-    magn_moments = []
-    print('iso\tI\tAu [MHz]\trChi Au\tAl [MHz]\trChi Al\tAu/Al\td_Au/Al'
-          '\tBu [MHz]\trChi Bu\tBl [MHz]\trChi Bl\tBu/Bl\td_Bu/Bl\tQ_l [b] '
-          '\tµ [nm]')
-    for run in a_fac_runs:
-        for iso, a_low in sorted(al[run].items()):
-            mass = int(iso[:2])
-            nucl_spin = 0
-            con = sqlite3.connect(db)
-            cur = con.cursor()
-            cur.execute(''' SELECT I FROM Isotopes WHERE iso = ? ''', (iso,))
-            data = cur.fetchall()
-            con.close()
-            if data:
-                nucl_spin = data[0][0]
-            if a_low[0]:
-                a_up = (0, 0, 0, 0) if au[run][iso] == (None, None, None, None) else au[run][iso]  # when fixed use 0's
-                b_up = (0, 0, 0, 0) if bu[run][iso] == (None, None, None, None) else bu[run][iso]
-                b_low = (0, 0, 0, 0) if bl[run][iso] == (None, None, None, None) else bl[run][iso]
-                ratio = a_up[0] / a_low[0]
-                delta_ratio = np.sqrt(
-                    (a_up[1] / a_low[0]) ** 2 + (a_up[0] * a_low[1] / (a_low[0] ** 2)) ** 2
-                )
-                b_ratio = 0.0
-                delta_b_ratio = 0.0
-
-                b_up = [0.0 if each is None else each for each in b_up]
-                b_low = [0.0 if each is None else each for each in b_low]
-
-                if b_low[0]:
-                    b_ratio = b_up[0] / b_low[0]
-                    delta_b_ratio = np.sqrt(
-                        (b_up[1] / b_low[0]) ** 2 + (b_up[0] * b_low[1] / (b_low[0] ** 2)) ** 2
+        al = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Al', print_extracted=False)
+        au = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Au', print_extracted=False)
+        bl = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Bl', print_extracted=False)
+        bu = Tools.extract_from_combined(a_fac_runs, db, odd_isotopes, par='Bu', print_extracted=False)
+        ratios = []
+        b_ratios = []
+        d_ratios = []
+        d_b_ratios = []
+        q_moments = []
+        magn_moments = []
+        print('iso\tI\tAu [MHz]\trChi Au\tAl [MHz]\trChi Al\tAu/Al\td_Au/Al'
+              '\tBu [MHz]\trChi Bu\tBl [MHz]\trChi Bl\tBu/Bl\td_Bu/Bl\tQ_l [b] '
+              '\tµ [nm]')
+        for run in a_fac_runs:
+            for iso, a_low in sorted(al[run].items()):
+                mass = int(iso[:2])
+                nucl_spin = 0
+                con = sqlite3.connect(db)
+                cur = con.cursor()
+                cur.execute(''' SELECT I FROM Isotopes WHERE iso = ? ''', (iso,))
+                data = cur.fetchall()
+                con.close()
+                if data:
+                    nucl_spin = data[0][0]
+                if a_low[0]:
+                    a_up = (0, 0, 0, 0) if au[run][iso] == (None, None, None, None) else au[run][iso]  # when fixed use 0's
+                    b_up = (0, 0, 0, 0) if bu[run][iso] == (None, None, None, None) else bu[run][iso]
+                    b_low = (0, 0, 0, 0) if bl[run][iso] == (None, None, None, None) else bl[run][iso]
+                    ratio = a_up[0] / a_low[0]
+                    delta_ratio = np.sqrt(
+                        (a_up[1] / a_low[0]) ** 2 + (a_up[0] * a_low[1] / (a_low[0] ** 2)) ** 2
                     )
-                    b_ratios.append(b_ratio)
-                    d_b_ratios.append(delta_b_ratio)
-                ratios.append(ratio)
-                d_ratios.append(delta_ratio)
-                q_from_lower = quadrupol_moment(b_low[0], b_low[1], b_low[2])
-                mu = magnetic_moment(a_low[0], a_low[1], a_low[2], nucl_spin)
-                mu_print = mu[4]
-                print('%s\t%s'
-                      '\t%.2f(%.0f)[%.0f]\t%.2f'
-                      '\t%.2f(%.0f)[%.0f]\t%.2f\t%.3f\t%.3f'
-                      '\t%.2f(%.0f)[%.0f]\t%.2f'
-                      '\t%.2f(%.0f)[%.0f]\t%.2f\t%.3f\t%.3f'
-                      '\t%s'
-                      '\t%s' % (
-                          iso, nucl_spin,
-                          a_up[0], a_up[1] * 100, a_up[2] * 100, a_up[3],
-                          a_low[0], a_low[1] * 100, a_low[2] * 100, a_low[3], ratio, delta_ratio,
-                          b_up[0], b_up[1] * 100, b_up[2] * 100, b_up[3],
-                          b_low[0], b_low[1] * 100, b_low[2] * 100, b_low[3], b_ratio, delta_b_ratio,
-                          q_from_lower[4],
-                          mu_print
-                      ))
-                q_moments.append((mass, nucl_spin, q_from_lower[0], q_from_lower[3]))
-                magn_moments.append((mass, nucl_spin, mu[0], mu[3]))
+                    b_ratio = 0.0
+                    delta_b_ratio = 0.0
 
-    print('magnetic moments: %s ' % magn_moments)
-    # optimize schmidt values:
-    # g_l_0 = 0
-    # g_s_0 = -3.826
-    g_l_0 = 0.125
-    g_s_0 = -2.04
-    g_l_difs = np.arange(-0.01, 0.01, 0.005)
-    g_s_difs = np.arange(-0.01, 0.01, 0.005)
-    chi_squares = [[]]
-    best_chi = [99999999999999, 0, 0]
-    for i, g_l_dif in enumerate(g_l_difs):
-        g_l = g_l_0 + g_l_dif
-        for j, g_s_dif in enumerate(g_s_difs):
-            g_s = g_s_0 + g_s_dif
-            chi_square = 0
-            for magn_i, each in enumerate(magn_moments):
-                if each[1] != 2.5:  # l = 1
-                    l = 1
-                else:
-                    l = 0
-                dif = mu_schmidt(each[1], l, False, g_l=g_l, g_s=g_s) - each[2]
-                d_dif = each[3]
-                chi_square += np.square(dif / d_dif)
-            if chi_square < best_chi[0]:
-                best_chi = chi_square, g_l, g_s
+                    b_up = [0.0 if each is None else each for each in b_up]
+                    b_low = [0.0 if each is None else each for each in b_low]
 
-    print('best chi square: %.3f %.3f %.3f' % best_chi)
-    mu_list_schmidt = [
-        (each[0], each[2], mu_schmidt(each[2], each[1], False, g_l=0, g_s=-2.6782)) for each in levels]
+                    if b_low[0]:
+                        b_ratio = b_up[0] / b_low[0]
+                        delta_b_ratio = np.sqrt(
+                            (b_up[1] / b_low[0]) ** 2 + (b_up[0] * b_low[1] / (b_low[0] ** 2)) ** 2
+                        )
+                        b_ratios.append(b_ratio)
+                        d_b_ratios.append(delta_b_ratio)
+                    ratios.append(ratio)
+                    d_ratios.append(delta_ratio)
+                    q_from_lower = quadrupol_moment(b_low[0], b_low[1], b_low[2])
+                    mu = magnetic_moment(a_low[0], a_low[1], a_low[2], nucl_spin)
+                    mu_print = mu[4]
+                    print('%s\t%s'
+                          '\t%.2f(%.0f)[%.0f]\t%.2f'
+                          '\t%.2f(%.0f)[%.0f]\t%.2f\t%.3f\t%.3f'
+                          '\t%.2f(%.0f)[%.0f]\t%.2f'
+                          '\t%.2f(%.0f)[%.0f]\t%.2f\t%.3f\t%.3f'
+                          '\t%s'
+                          '\t%s' % (
+                              iso, nucl_spin,
+                              a_up[0], a_up[1] * 100, a_up[2] * 100, a_up[3],
+                              a_low[0], a_low[1] * 100, a_low[2] * 100, a_low[3], ratio, delta_ratio,
+                              b_up[0], b_up[1] * 100, b_up[2] * 100, b_up[3],
+                              b_low[0], b_low[1] * 100, b_low[2] * 100, b_low[3], b_ratio, delta_b_ratio,
+                              q_from_lower[4],
+                              mu_print
+                          ))
+                    q_moments.append((mass, nucl_spin, q_from_lower[0], q_from_lower[3]))
+                    magn_moments.append((mass, nucl_spin, mu[0], mu[3]))
 
-    print('level\t\mu(\\nu) / \mu_N')
-    for i, each in enumerate(mu_list_schmidt):
-        print('%s\t%.2f' % (each[0], each[2]))
+        print('magnetic moments: %s ' % magn_moments)
+        # optimize schmidt values:
+        # g_l_0 = 0
+        # g_s_0 = -3.826
+        g_l_0 = 0.125
+        g_s_0 = -2.04
+        g_l_difs = np.arange(-0.01, 0.01, 0.005)
+        g_s_difs = np.arange(-0.01, 0.01, 0.005)
+        chi_squares = [[]]
+        best_chi = [99999999999999, 0, 0]
+        for i, g_l_dif in enumerate(g_l_difs):
+            g_l = g_l_0 + g_l_dif
+            for j, g_s_dif in enumerate(g_s_difs):
+                g_s = g_s_0 + g_s_dif
+                chi_square = 0
+                for magn_i, each in enumerate(magn_moments):
+                    if each[1] != 2.5:  # l = 1
+                        l = 1
+                    else:
+                        l = 0
+                    dif = mu_schmidt(each[1], l, False, g_l=g_l, g_s=g_s) - each[2]
+                    d_dif = each[3]
+                    chi_square += np.square(dif / d_dif)
+                if chi_square < best_chi[0]:
+                    best_chi = chi_square, g_l, g_s
 
-    # plot magnetic moments
-    magn_mom_fig = MPLPlotter.plt.figure(0, facecolor='white')
-    magn_mom_axes = MPLPlotter.plt.axes()
-    magn_mom_axes.margins(0.1, 0.1)
-    magn_mom_axes.set_xlabel('A')
-    magn_mom_axes.set_ylabel('µ [nm]')
-    magn_mom_axes.set_xticks([each[0] for each in magn_moments])
-    magn_mom_by_spin = []
-    colors = ['b', 'g', 'k']
-    markers = ['o', 's', 'D']
-    for i, spin in enumerate([0.5, 1.5, 2.5]):
-        spin_list_x = [mu[0] for mu in magn_moments if mu[1] == spin]
-        spin_list_y = [mu[2] for mu in magn_moments if mu[1] == spin]
-        spin_list_y_err = [mu[3] for mu in magn_moments if mu[1] == spin]
-        if len(spin_list_x):
-            label = 'spin: %s' % spin
-            spin_line, cap_line, barline = MPLPlotter.plt.errorbar(
-                spin_list_x, spin_list_y, spin_list_y_err, axes=magn_mom_axes,
-                linestyle='None', marker=markers[i], label=label, color=colors[i]
-            )
-        lit_spin_list_x = [lit_mu[0] + 0.15 for iso, lit_mu in lit_magnetic_moments.items() if lit_mu[1] == spin]
-        lit_spin_list_y = [lit_mu[2] for iso, lit_mu in lit_magnetic_moments.items() if lit_mu[1] == spin]
-        lit_spin_list_y_err = [lit_mu[3] for iso, lit_mu in lit_magnetic_moments.items() if lit_mu[1] == spin]
-        if len(lit_spin_list_x):
-            label = 'spin: %s (lit.)' % spin
-            lit_spin_line, lit_cap_line, lit_barline = MPLPlotter.plt.errorbar(
-                lit_spin_list_x, lit_spin_list_y, lit_spin_list_y_err, axes=magn_mom_axes,
-                linestyle='None', marker=markers[i], label=label, color=colors[i],
-                markerfacecolor='w', markeredgewidth=1.5, markeredgecolor=colors[i]
-            )
-        # #  display rel. to 0
-        # for j, each in enumerate(lit_spin_list_x):
-        #     same_mass = [mu for mu in magn_moments if mu[0] == each - 0.15]
-        #     if len(same_mass):
-        #         label = 'spin: %s (exp.)' % spin
-        #         MPLPlotter.plt.errorbar(
-        #             same_mass[0][0], 0, same_mass[0][3], axes=magn_mom_axes,
-        #             linestyle='None', marker=markers[i], label=label, color=colors[i]
-        #         )
-        #         label = 'spin: %s (lit.)' % spin
-        #         MPLPlotter.plt.errorbar(
-        #             each, lit_spin_list_y[j] - same_mass[0][2], lit_spin_list_y_err[j], axes=magn_mom_axes,
-        #             linestyle='None', marker=markers[i], label=label, color=colors[i],
-        #             markerfacecolor='w', markeredgewidth=1.5, markeredgecolor=colors[i]
-        #         )
-        #         print(same_mass)
+        print('best chi square: %.3f %.3f %.3f' % best_chi)
+        mu_list_schmidt = [
+            (each[0], each[2], mu_schmidt(each[2], each[1], False, g_l=0, g_s=-2.6782)) for each in levels]
 
-        for each in mu_list_schmidt:
-            if spin == each[1]:
-                hor_line = MPLPlotter.plt.axhline(each[2], label='eff. schmidt: %s' % each[0], color=colors[i])
-    MPLPlotter.plt.legend(loc=2, title='magnetic moments')
-    MPLPlotter.show(True)
+        print('level\t\mu(\\nu) / \mu_N')
+        for i, each in enumerate(mu_list_schmidt):
+            print('%s\t%.2f' % (each[0], each[2]))
 
-    # plot g factor g = µ/I
-    g_fac_fig = MPLPlotter.plt.figure(1, facecolor='white')
-    g_fac_axes = MPLPlotter.plt.axes()
-    g_fac_axes.margins(0.1, 0.1)
-    g_fac_axes.set_xlabel('A')
-    g_fac_axes.set_ylabel('g [nm]')
-    g_fac_axes.set_xticks([each[0] for each in magn_moments])
-    g_fac_by_spin = []
-    colors = ['b', 'g', 'k']
-    markers = ['o', 's', 'D']
-    for i, spin in enumerate([0.5, 1.5, 2.5]):
-        spin_list_x = [mu[0] for mu in magn_moments if mu[1] == spin]
-        spin_list_y = [mu[2] / spin for mu in magn_moments if mu[1] == spin]
-        spin_list_y_err = [mu[3] / spin for mu in magn_moments if mu[1] == spin]
-        if len(spin_list_x):
-            label = 'spin: %s' % spin
-            spin_line, cap_line, barline = MPLPlotter.plt.errorbar(
-                spin_list_x, spin_list_y, spin_list_y_err, axes=g_fac_axes,
-                linestyle='None', marker=markers[i], label=label, color=colors[i]
-            )
-        lit_spin_list_x = [lit_mu[0] + 0.15 for iso, lit_mu in lit_magnetic_moments.items() if lit_mu[1] == spin]
-        lit_spin_list_y = [lit_mu[2] / spin for iso, lit_mu in lit_magnetic_moments.items() if lit_mu[1] == spin]
-        lit_spin_list_y_err = [lit_mu[3] / spin for iso, lit_mu in lit_magnetic_moments.items() if lit_mu[1] == spin]
-        if len(lit_spin_list_x):
-            label = 'spin: %s (lit.)' % spin
-            lit_spin_line, lit_cap_line, lit_barline = MPLPlotter.plt.errorbar(
-                lit_spin_list_x, lit_spin_list_y, lit_spin_list_y_err, axes=g_fac_axes,
-                linestyle='None', marker=markers[i], label=label, color=colors[i],
-                markerfacecolor='w', markeredgewidth=1.5, markeredgecolor=colors[i]
-            )
-        for each in mu_list_schmidt:
-            if spin == each[1]:
-                hor_line = MPLPlotter.plt.axhline(each[2] / spin, label='eff. g: %s' % each[0], color=colors[i])
-    MPLPlotter.plt.legend(loc=2, title='g-factor')
-    MPLPlotter.show(True)
+        # plot magnetic moments
+        magn_mom_fig = MPLPlotter.plt.figure(0, facecolor='white')
+        magn_mom_axes = MPLPlotter.plt.axes()
+        magn_mom_axes.margins(0.1, 0.1)
+        magn_mom_axes.set_xlabel('A')
+        magn_mom_axes.set_ylabel('µ [nm]')
+        magn_mom_axes.set_xticks([each[0] for each in magn_moments])
+        magn_mom_by_spin = []
+        colors = ['b', 'g', 'k']
+        markers = ['o', 's', 'D']
+        for i, spin in enumerate([0.5, 1.5, 2.5]):
+            spin_list_x = [mu[0] for mu in magn_moments if mu[1] == spin]
+            spin_list_y = [mu[2] for mu in magn_moments if mu[1] == spin]
+            spin_list_y_err = [mu[3] for mu in magn_moments if mu[1] == spin]
+            if len(spin_list_x):
+                label = 'spin: %s' % spin
+                spin_line, cap_line, barline = MPLPlotter.plt.errorbar(
+                    spin_list_x, spin_list_y, spin_list_y_err, axes=magn_mom_axes,
+                    linestyle='None', marker=markers[i], label=label, color=colors[i]
+                )
+            lit_spin_list_x = [lit_mu[0] + 0.15 for iso, lit_mu in lit_magnetic_moments.items() if lit_mu[1] == spin]
+            lit_spin_list_y = [lit_mu[2] for iso, lit_mu in lit_magnetic_moments.items() if lit_mu[1] == spin]
+            lit_spin_list_y_err = [lit_mu[3] for iso, lit_mu in lit_magnetic_moments.items() if lit_mu[1] == spin]
+            if len(lit_spin_list_x):
+                label = 'spin: %s (lit.)' % spin
+                lit_spin_line, lit_cap_line, lit_barline = MPLPlotter.plt.errorbar(
+                    lit_spin_list_x, lit_spin_list_y, lit_spin_list_y_err, axes=magn_mom_axes,
+                    linestyle='None', marker=markers[i], label=label, color=colors[i],
+                    markerfacecolor='w', markeredgewidth=1.5, markeredgecolor=colors[i]
+                )
+            # #  display rel. to 0
+            # for j, each in enumerate(lit_spin_list_x):
+            #     same_mass = [mu for mu in magn_moments if mu[0] == each - 0.15]
+            #     if len(same_mass):
+            #         label = 'spin: %s (exp.)' % spin
+            #         MPLPlotter.plt.errorbar(
+            #             same_mass[0][0], 0, same_mass[0][3], axes=magn_mom_axes,
+            #             linestyle='None', marker=markers[i], label=label, color=colors[i]
+            #         )
+            #         label = 'spin: %s (lit.)' % spin
+            #         MPLPlotter.plt.errorbar(
+            #             each, lit_spin_list_y[j] - same_mass[0][2], lit_spin_list_y_err[j], axes=magn_mom_axes,
+            #             linestyle='None', marker=markers[i], label=label, color=colors[i],
+            #             markerfacecolor='w', markeredgewidth=1.5, markeredgecolor=colors[i]
+            #         )
+            #         print(same_mass)
 
-    # plot quadrupole moments
-    q_mom_fig = MPLPlotter.plt.figure(2, facecolor='white')
-    q_mom_axes = MPLPlotter.plt.axes()
-    q_mom_axes.margins(0.1, 0.1)
-    q_mom_axes.set_xlabel('A')
-    q_mom_axes.set_ylabel('Q [b]')
-    q_mom_axes.set_xticks([each[0] for each in q_moments])
-    q_mom_by_spin = []
-    colors = ['g', 'k']
-    markers = ['s', 'D']
-    for i, spin in enumerate([1.5, 2.5]):
-        spin_list_x = [mu[0] for mu in q_moments if mu[1] == spin]
-        spin_list_y = [mu[2] for mu in q_moments if mu[1] == spin]
-        spin_list_y_err = [mu[3] for mu in q_moments if mu[1] == spin]
-        if spin_list_x:
-            label = 'spin: %s' % spin
-            spin_line, cap_line, barline = MPLPlotter.plt.errorbar(
-                spin_list_x, spin_list_y, spin_list_y_err, axes=q_mom_axes,
-                linestyle='None', marker=markers[i], label=label, color=colors[i]
-            )
-        x = []
-        y = []
-        y_err = []
-        for each in lit_q_moments:
-            if spin == each[1]:
-                x.append(each[0])
-                y.append(each[2])
-                y_err.append(each[3])
-        if len(x):
-            label = 'spin: %s (lit.)' % spin
-            spin_line_lit, cap_line_lit, barline_lit = MPLPlotter.plt.errorbar(
-                x, y, y_err, axes=q_mom_axes,
-                linestyle='None', marker=markers[i], label=label, color=colors[i], markerfacecolor='w',
-                markeredgewidth=1.5, markeredgecolor=colors[i]
-            )
-    MPLPlotter.plt.legend(loc=0, title='quadrupole moments')
-    MPLPlotter.show(True)
+            for each in mu_list_schmidt:
+                if spin == each[1]:
+                    hor_line = MPLPlotter.plt.axhline(each[2], label='eff. schmidt: %s' % each[0], color=colors[i])
+        MPLPlotter.plt.legend(loc=2, title='magnetic moments')
+        MPLPlotter.show(True)
 
-    # # Plot A ratios
-    # average, errorprop, rChi = Analyzer.weightedAverage(ratios, d_ratios)
-    # print('\nAverage Au/Al: %.5f +/- %.5f \t rChi: %.5f' % (average, errorprop, rChi))
-    # MPLPlotter.plt.errorbar(range(59, 69, 2), ratios, d_ratios,
-    #                         linestyle='None', marker='o', label=label, color='r')
-    # MPLPlotter.get_current_axes().set_xlabel('mass')
-    # MPLPlotter.get_current_axes().set_ylabel('A_upper/A_lower')
-    # # literature_shifts = {iso: (0, 0) for iso in isotopes}
-    # # plot_par_from_combined(['narrow_gate'], files)
-    # MPLPlotter.get_current_figure().set_facecolor('w')
-    # MPLPlotter.show(True)
-    #
-    # #Plot b ratios
-    # average, errorprop, rChi = Analyzer.weightedAverage(b_ratios, d_b_ratios)
-    # print('\nAverage Bu/Bl: %.5f +/- %.5f \t rChi: %.5f' % (average, errorprop, rChi))
-    # MPLPlotter.plt.errorbar([59, 61, 65], b_ratios, d_b_ratios,
-    #                         linestyle='None', marker='o', label=label, color='r')
-    # MPLPlotter.get_current_axes().set_xlabel('mass')
-    # MPLPlotter.get_current_axes().set_ylabel('B_upper/B_lower')
-    # # literature_shifts = {iso: (0, 0) for iso in isotopes}
-    # # plot_par_from_combined(['narrow_gate'], files)
-    # MPLPlotter.get_current_figure().set_facecolor('w')
-    # MPLPlotter.show(True)
-    # MPLPlotter.plot_par_from_combined(
-    #     db,
-    #     -1, isotopes,
-    #     'Al', plot_runs_seperate=False
-    # )
-    # Tools.extract_from_combined(a_fac_runs, db, isotopes, par='Au', print_extracted=True)
-    pass
+        # plot g factor g = µ/I
+        g_fac_fig = MPLPlotter.plt.figure(1, facecolor='white')
+        g_fac_axes = MPLPlotter.plt.axes()
+        g_fac_axes.margins(0.1, 0.1)
+        g_fac_axes.set_xlabel('A')
+        g_fac_axes.set_ylabel('g [nm]')
+        g_fac_axes.set_xticks([each[0] for each in magn_moments])
+        g_fac_by_spin = []
+        colors = ['b', 'g', 'k']
+        markers = ['o', 's', 'D']
+        for i, spin in enumerate([0.5, 1.5, 2.5]):
+            spin_list_x = [mu[0] for mu in magn_moments if mu[1] == spin]
+            spin_list_y = [mu[2] / spin for mu in magn_moments if mu[1] == spin]
+            spin_list_y_err = [mu[3] / spin for mu in magn_moments if mu[1] == spin]
+            if len(spin_list_x):
+                label = 'spin: %s' % spin
+                spin_line, cap_line, barline = MPLPlotter.plt.errorbar(
+                    spin_list_x, spin_list_y, spin_list_y_err, axes=g_fac_axes,
+                    linestyle='None', marker=markers[i], label=label, color=colors[i]
+                )
+            lit_spin_list_x = [lit_mu[0] + 0.15 for iso, lit_mu in lit_magnetic_moments.items() if lit_mu[1] == spin]
+            lit_spin_list_y = [lit_mu[2] / spin for iso, lit_mu in lit_magnetic_moments.items() if lit_mu[1] == spin]
+            lit_spin_list_y_err = [lit_mu[3] / spin for iso, lit_mu in lit_magnetic_moments.items() if lit_mu[1] == spin]
+            if len(lit_spin_list_x):
+                label = 'spin: %s (lit.)' % spin
+                lit_spin_line, lit_cap_line, lit_barline = MPLPlotter.plt.errorbar(
+                    lit_spin_list_x, lit_spin_list_y, lit_spin_list_y_err, axes=g_fac_axes,
+                    linestyle='None', marker=markers[i], label=label, color=colors[i],
+                    markerfacecolor='w', markeredgewidth=1.5, markeredgecolor=colors[i]
+                )
+            for each in mu_list_schmidt:
+                if spin == each[1]:
+                    hor_line = MPLPlotter.plt.axhline(each[2] / spin, label='eff. g: %s' % each[0], color=colors[i])
+        MPLPlotter.plt.legend(loc=2, title='g-factor')
+        MPLPlotter.show(True)
+
+        # plot quadrupole moments
+        q_mom_fig = MPLPlotter.plt.figure(2, facecolor='white')
+        q_mom_axes = MPLPlotter.plt.axes()
+        q_mom_axes.margins(0.1, 0.1)
+        q_mom_axes.set_xlabel('A')
+        q_mom_axes.set_ylabel('Q [b]')
+        q_mom_axes.set_xticks([each[0] for each in q_moments])
+        q_mom_by_spin = []
+        colors = ['g', 'k']
+        markers = ['s', 'D']
+        for i, spin in enumerate([1.5, 2.5]):
+            spin_list_x = [mu[0] for mu in q_moments if mu[1] == spin]
+            spin_list_y = [mu[2] for mu in q_moments if mu[1] == spin]
+            spin_list_y_err = [mu[3] for mu in q_moments if mu[1] == spin]
+            if spin_list_x:
+                label = 'spin: %s' % spin
+                spin_line, cap_line, barline = MPLPlotter.plt.errorbar(
+                    spin_list_x, spin_list_y, spin_list_y_err, axes=q_mom_axes,
+                    linestyle='None', marker=markers[i], label=label, color=colors[i]
+                )
+            x = []
+            y = []
+            y_err = []
+            for each in lit_q_moments:
+                if spin == each[1]:
+                    x.append(each[0])
+                    y.append(each[2])
+                    y_err.append(each[3])
+            if len(x):
+                label = 'spin: %s (lit.)' % spin
+                spin_line_lit, cap_line_lit, barline_lit = MPLPlotter.plt.errorbar(
+                    x, y, y_err, axes=q_mom_axes,
+                    linestyle='None', marker=markers[i], label=label, color=colors[i], markerfacecolor='w',
+                    markeredgewidth=1.5, markeredgecolor=colors[i]
+                )
+        MPLPlotter.plt.legend(loc=0, title='quadrupole moments')
+        MPLPlotter.show(True)
+
+        # # Plot A ratios
+        # average, errorprop, rChi = Analyzer.weightedAverage(ratios, d_ratios)
+        # print('\nAverage Au/Al: %.5f +/- %.5f \t rChi: %.5f' % (average, errorprop, rChi))
+        # MPLPlotter.plt.errorbar(range(59, 69, 2), ratios, d_ratios,
+        #                         linestyle='None', marker='o', label=label, color='r')
+        # MPLPlotter.get_current_axes().set_xlabel('mass')
+        # MPLPlotter.get_current_axes().set_ylabel('A_upper/A_lower')
+        # # literature_shifts = {iso: (0, 0) for iso in isotopes}
+        # # plot_par_from_combined(['narrow_gate'], files)
+        # MPLPlotter.get_current_figure().set_facecolor('w')
+        # MPLPlotter.show(True)
+        #
+        # #Plot b ratios
+        # average, errorprop, rChi = Analyzer.weightedAverage(b_ratios, d_b_ratios)
+        # print('\nAverage Bu/Bl: %.5f +/- %.5f \t rChi: %.5f' % (average, errorprop, rChi))
+        # MPLPlotter.plt.errorbar([59, 61, 65], b_ratios, d_b_ratios,
+        #                         linestyle='None', marker='o', label=label, color='r')
+        # MPLPlotter.get_current_axes().set_xlabel('mass')
+        # MPLPlotter.get_current_axes().set_ylabel('B_upper/B_lower')
+        # # literature_shifts = {iso: (0, 0) for iso in isotopes}
+        # # plot_par_from_combined(['narrow_gate'], files)
+        # MPLPlotter.get_current_figure().set_facecolor('w')
+        # MPLPlotter.show(True)
+        # MPLPlotter.plot_par_from_combined(
+        #     db,
+        #     -1, isotopes,
+        #     'Al', plot_runs_seperate=False
+        # )
+        # Tools.extract_from_combined(a_fac_runs, db, isotopes, par='Au', print_extracted=True)
+        pass
 except Exception as e:
     print('plotting did not work, error is: %s' % e)
 #
@@ -1185,54 +1223,55 @@ except Exception as e:
 
 ''' King Plot Analysis '''
 run = 'wide_gate_asym'
+if perf_king_plot:
+    # raise (Exception('stopping before king fit'))
+    # delta_lit_radii.pop('62_Ni')  # just to see which point is what
+    king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, font_size=18, ref_run=run)
+    # run = 'narrow_gate_asym'
+    # isotopes = sorted(delta_lit_radii.keys())
+    # print(isotopes)
+    # king.kingFit(alpha=0, findBestAlpha=False, run=run, find_slope_with_statistical_error=True)
+    king.kingFit(alpha=0, findBestAlpha=False, run=run, find_slope_with_statistical_error=False)
+    king.calcChargeRadii(isotopes=isotopes, run=run, plot_evens_seperate=True)
 
-# raise (Exception('stopping before king fit'))
-# delta_lit_radii.pop('62_Ni')  # just to see which point is what
-king = KingFitter(db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, font_size=18, ref_run=run)
-# run = 'narrow_gate_asym'
-# isotopes = sorted(delta_lit_radii.keys())
-# print(isotopes)
-# king.kingFit(alpha=0, findBestAlpha=False, run=run, find_slope_with_statistical_error=True)
-king.kingFit(alpha=0, findBestAlpha=False, run=run, find_slope_with_statistical_error=False)
-king.calcChargeRadii(isotopes=isotopes, run=run, plot_evens_seperate=True)
-
-# king.kingFit(alpha=378, findBestAlpha=True, run=run, find_slope_with_statistical_error=True)
-king.kingFit(alpha=364, findBestAlpha=True, run=run)
-radii_alpha = king.calcChargeRadii(isotopes=isotopes, run=run, plot_evens_seperate=True)
-print('radii with alpha', radii_alpha)
-# king.calcChargeRadii(isotopes=isotopes, run=run)
+    # king.kingFit(alpha=378, findBestAlpha=True, run=run, find_slope_with_statistical_error=True)
+    king.kingFit(alpha=361, findBestAlpha=True, run=run)
+    radii_alpha = king.calcChargeRadii(isotopes=isotopes, run=run, plot_evens_seperate=True)
+    print('radii with alpha', radii_alpha)
+    # king.calcChargeRadii(isotopes=isotopes, run=run)
 #
-# # print / plot isotope shift:
-con = sqlite3.connect(db)
-cur = con.cursor()
-cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? AND run = ? ORDER BY iso''',
-            ('shift', run))
-data = cur.fetchall()
-con.close()
-iso_shift_plot_data_x = []
-iso_shift_plot_data_y = []
-iso_shift_plot_data_err = []
-if data:
-    print(data)
-    print('iso\tshift [MHz]\t(statErr)[systErr]\t Chi^2')
-    for iso in data:
-        iso_shift_plot_data_x.append(int(iso[0][:2]))
-        iso_shift_plot_data_y.append(float(iso[1]))
-        err = np.sqrt(iso[2] ** 2 + iso[3] ** 2)
-        iso_shift_plot_data_err.append(err)
-        radii_iso, radii_iso_err = (radii_alpha.get(iso[0], [0])[0], radii_alpha.get(iso[0], [0, 0])[1])
-        print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))
-        # for latex:
-        # print('$ %s $ & %.1f(%.0f)[%.0f] & %.3f(%.0f) \\\\'
-        #       % (iso[0][:2], iso[1], iso[2] * 10, iso[3] * 10, radii_iso, radii_iso_err * 1000))
-#
-MPLPlotter.plt.figure(facecolor='w')
-fontsize_ticks = 18
-MPLPlotter.plt.errorbar(iso_shift_plot_data_x, iso_shift_plot_data_y, iso_shift_plot_data_err,
-                        marker='o', linestyle='None')
-MPLPlotter.plt.xticks(fontsize=fontsize_ticks)
-MPLPlotter.plt.yticks(fontsize=fontsize_ticks)
-MPLPlotter.plt.margins(0.1)
-MPLPlotter.plt.xlabel('A', fontsize=fontsize_ticks)
-MPLPlotter.plt.ylabel(r'$\delta \nu$ (MHz)', fontsize=fontsize_ticks)
-MPLPlotter.show(True)
+if print_plot_shifts:
+    # # print / plot isotope shift:
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    cur.execute(''' SELECT iso, val, statErr, systErr, rChi From Combined WHERE parname = ? AND run = ? ORDER BY iso''',
+                ('shift', run))
+    data = cur.fetchall()
+    con.close()
+    iso_shift_plot_data_x = []
+    iso_shift_plot_data_y = []
+    iso_shift_plot_data_err = []
+    if data:
+        print(data)
+        print('iso\tshift [MHz]\t(statErr)[systErr]\t Chi^2')
+        for iso in data:
+            iso_shift_plot_data_x.append(int(iso[0][:2]))
+            iso_shift_plot_data_y.append(float(iso[1]))
+            err = np.sqrt(iso[2] ** 2 + iso[3] ** 2)
+            iso_shift_plot_data_err.append(err)
+            radii_iso, radii_iso_err = (radii_alpha.get(iso[0], [0])[0], radii_alpha.get(iso[0], [0, 0])[1])
+            print('%s\t%.1f(%.0f)[%.0f]\t%.3f' % (iso[0], iso[1], iso[2] * 10, iso[3] * 10, iso[4]))
+            # for latex:
+            # print('$ %s $ & %.1f(%.0f)[%.0f] & %.3f(%.0f) \\\\'
+            #       % (iso[0][:2], iso[1], iso[2] * 10, iso[3] * 10, radii_iso, radii_iso_err * 1000))
+    #
+    MPLPlotter.plt.figure(facecolor='w')
+    fontsize_ticks = 18
+    MPLPlotter.plt.errorbar(iso_shift_plot_data_x, iso_shift_plot_data_y, iso_shift_plot_data_err,
+                            marker='o', linestyle='None')
+    MPLPlotter.plt.xticks(fontsize=fontsize_ticks)
+    MPLPlotter.plt.yticks(fontsize=fontsize_ticks)
+    MPLPlotter.plt.margins(0.1)
+    MPLPlotter.plt.xlabel('A', fontsize=fontsize_ticks)
+    MPLPlotter.plt.ylabel(r'$\delta \nu$ (MHz)', fontsize=fontsize_ticks)
+    MPLPlotter.show(True)

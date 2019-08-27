@@ -107,4 +107,4 @@ class AsymmetricVoigt(object):
             center_velocity = Physics.invRelDoppler(laser_freq, self.iso.freq + self.iso.center)
             center_velocity = - center_velocity if col else center_velocity
             center_volts = Physics.relEnergy(center_velocity, self.iso.mass * Physics.u) / Physics.qe
-            self.diff_doppl = Physics.diffDoppler(laser_freq, center_volts, self.iso.mass)
+            self.diff_doppl = Physics.diffDoppler(laser_freq, center_volts, self.iso.mass, real=True)

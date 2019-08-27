@@ -110,6 +110,7 @@ class KingFitter2Lines(object):
         self.y = []             # analog
         self.yerr = []          # analog
         self.yerr_total = []    # analog
+        self.redmasses =[]
 
 
         self.c = alpha
@@ -150,7 +151,7 @@ class KingFitter2Lines(object):
                 else:
                     self.xerr.append(np.sqrt(np.square(x[1])+np.square(x[2])))  # total error
 
-        self.redmasses= [i*self.ref_mass/(i-self.ref_mass) for i in self.masses]
+        self.redmasses = [i*self.ref_mass/(i-self.ref_mass) for i in self.masses]
         self.y = [self.redmasses[i]*j for i,j in enumerate(self.y)]
         self.yerr = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.yerr)]
         self.yerr_total = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.yerr_total)]
