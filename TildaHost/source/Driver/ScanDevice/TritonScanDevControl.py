@@ -64,7 +64,7 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
     def on(self, cfg):
         '''Setting necessary attributes, interval defaults to 0:'''
 
-        self.type = 'TritonScanDevControl'
+        self.type = 'TritonScanDevCtl'
 
         self.get_existing_callbacks_from_main()
 

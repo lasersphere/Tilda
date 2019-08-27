@@ -93,7 +93,7 @@ class Sequencer(FPGAInterfaceHandling):
         timeout_10ns = 100000000 * scanDevDict.get('timeout_s', 1)  # default: 1sec = 100 000 000 * 10ns
         self.ReadWrite(self.config.scanDevTimeout10ns, int(timeout_10ns))  # int
 
-        if device_class == 'DAC':
+        if device_class.name == 'DAC':
             # set the dac values
             dac18b_stepsize = VCon.get_stepsize_in_bits(scanDevDict.get('stepSize', 0.0))
             dac18b_start = VCon.get_bits_from_voltage(scanDevDict.get('start', 0.0))

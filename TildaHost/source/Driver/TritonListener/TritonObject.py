@@ -111,6 +111,7 @@ class TritonObject(object):
             try:
                 var = self.dbCur.fetchone()
                 return var
+                # If this returns 'None' on startup and results in a crash, TildaTritListen might not be in Triton db!
             except:
                 self.db_connect()
                 return self.db.fetchone()
