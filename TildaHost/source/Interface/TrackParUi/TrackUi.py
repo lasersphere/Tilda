@@ -501,8 +501,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         it will also call recalc_step_stop to adjust the stepsize and then fine tune the stop value """
         if self.buffer_pars['scanDevice'].get('devClass', 'DAC') == 'DAC':
             # calculate everything according to the DAC and keep 18Bits in mind!
-            start_18bit = VCon.get_18bit_from_voltage(start_val)
-            start_val = VCon.get_voltage_from_18bit(start_18bit)  # overwrite start_val with nearest possible val
+            start_18bit = VCon.get_bits_from_voltage(start_val)
+            start_val = VCon.get_voltage_from_bits(start_18bit)  # overwrite start_val with nearest possible val
             self.label_dacStartV_set.setText(str(round(start_val, 8)) + ' | ' + str(start_18bit))
             self.label_kepco_start.setText(str(round(start_val * 50, 2)))
         else:
@@ -527,8 +527,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def display_stop(self, stop):
         """ function only for displaying the stop value """
         if self.buffer_pars['scanDevice'].get('devClass', 'DAC') == 'DAC':
-            stop_18bit = VCon.get_18bit_from_voltage(stop)
-            stop = VCon.get_voltage_from_18bit(stop_18bit)
+            stop_18bit = VCon.get_bits_from_voltage(stop)
+            stop = VCon.get_voltage_from_bits(stop_18bit)
             self.label_dacStopV_set.setText(str(round(stop, 8)) + ' | ' + str(stop_18bit))
             self.label_kepco_stop.setText(str(round(stop * 50, 2)))
         else:
@@ -572,10 +572,10 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
             num_of_steps = self.check_for_none(self.buffer_pars['nOfSteps'], 1)
             stop = start + step * (num_of_steps - 1)
             if self.buffer_pars['scanDevice'].get('devClass', 'DAC') == 'DAC':
-                start_18b = VCon.get_18bit_from_voltage(start)  # change to bits first
-                step_18bit = VCon.get_18bit_stepsize(step)
+                start_18b = VCon.get_bits_from_voltage(start)  # change to bits first
+                step_18bit = VCon.get_stepsize_in_bits(step)
                 stop_18bit = VCon.calc_dac_stop_18bit(start_18b, step_18bit, num_of_steps)
-                stop = VCon.get_voltage_from_18bit(stop_18bit)
+                stop = VCon.get_voltage_from_bits(stop_18bit)
         except Exception as e:
             logging.error('following error occurred while calculating the stop value:' + str(e))
             stop = 0
@@ -594,10 +594,10 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
                 stepsize = 0
             if self.buffer_pars['scanDevice'].get('devClass', 'DAC') == 'DAC':
                 # for DAC bitwise calc!
-                start_18b = VCon.get_18bit_from_voltage(start)  # change to bits first
-                stop_18b = VCon.get_18bit_from_voltage(stop)
+                start_18b = VCon.get_bits_from_voltage(start)  # change to bits first
+                stop_18b = VCon.get_bits_from_voltage(stop)
                 stepsize_18bit = VCon.calc_step_size(start_18b, stop_18b, steps)  # int calculation
-                stepsize = VCon.get_stepsize_in_volt_from_18bit(stepsize_18bit)  # aaaand back again
+                stepsize = VCon.get_stepsize_in_volt_from_bits(stepsize_18bit)  # aaaand back again
         except Exception as e:
             logging.error('following error occurred while calculating the stepsize:' + str(e))
             stepsize = 0
@@ -696,9 +696,9 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
                 n_of_steps = 0
             if self.buffer_pars['scanDevice'].get('devClass', 'DAC') == 'DAC':
                 # for DAC bitwise calc!
-                start_18b = VCon.get_18bit_from_voltage(start)  # change to bits first
-                stop_18b = VCon.get_18bit_from_voltage(stop)
-                step_size_18b = VCon.get_18bit_stepsize(step_size)
+                start_18b = VCon.get_bits_from_voltage(start)  # change to bits first
+                stop_18b = VCon.get_bits_from_voltage(stop)
+                step_size_18b = VCon.get_stepsize_in_bits(step_size)
                 n_of_steps = VCon.calc_n_of_steps(start_18b, stop_18b, step_size_18b)
         except Exception as e:
             logging.error('following error occurred while calculating the number of steps:' + str(e))
@@ -709,8 +709,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         """ if the stepsize is set, adjust the number of steps to keep start and stop constant"""
         if self.buffer_pars['scanDevice'].get('devClass', 'DAC') == 'DAC':
             # for DAC bitwise calc!
-            step_18bit = VCon.get_18bit_stepsize(step_size)
-            step_size = VCon.get_stepsize_in_volt_from_18bit(step_18bit)
+            step_18bit = VCon.get_stepsize_in_bits(step_size)
+            step_size = VCon.get_stepsize_in_volt_from_bits(step_18bit)
         self.display_step_size(step_size)
         if not self.recalc_n_of_steps_stop():  # for invalid stop value, return to last valid value
             self.display_step_size(step_size)
@@ -721,8 +721,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.buffer_pars['scanDevice']['stepSize'] = step_size
         if self.buffer_pars['scanDevice'].get('devClass', 'DAC') == 'DAC':
             # for DAC bitwise calc!
-            step_18bit = VCon.get_18bit_stepsize(step_size)
-            step_size = VCon.get_stepsize_in_volt_from_18bit(step_18bit)
+            step_18bit = VCon.get_stepsize_in_bits(step_size)
+            step_size = VCon.get_stepsize_in_volt_from_bits(step_18bit)
             self.label_dacStepSizeV_set.setText(str(round(step_size, 8)) + ' | ' + str(step_18bit))
             self.label_kepco_step.setText(str(round(step_size * 50, 2)))
         else:

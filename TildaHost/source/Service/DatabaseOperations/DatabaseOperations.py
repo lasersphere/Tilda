@@ -123,12 +123,12 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
     dac_start18b = trackd.get('dacStartRegister18Bit', 0)  # backwards comp.
     dac_step_size18b = trackd.get('dacStepSize18Bit', 0)  # backwards comp.
     try:
-        stop = VCon.get_voltage_from_18bit(
+        stop = VCon.get_voltage_from_bits(
             dac_start18b + dac_step_size18b * trackd['nOfSteps'])  # backwards comp.
     except TypeError:
         stop = None
-    start = VCon.get_voltage_from_18bit(dac_start18b)  # backwards comp.
-    step_size = VCon.get_voltage_from_18bit(dac_step_size18b)  # backwards comp.
+    start = VCon.get_voltage_from_bits(dac_start18b)  # backwards comp.
+    step_size = VCon.get_voltage_from_bits(dac_step_size18b)  # backwards comp.
 
     scan_dev_dict = trackd.get('scanDevice', {})
     if scan_dev_dict != {}:  # overwrite from scandev.

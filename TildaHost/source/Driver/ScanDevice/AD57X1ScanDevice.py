@@ -13,9 +13,9 @@ from PyQt5.QtCore import QObject, pyqtSignal
 import Service.VoltageConversions.VoltageConversions as VCon
 
 try:
-    import Service.VoltageConversions.DAC_Calibration as AD5781Fit
+    import Service.VoltageConversions.DAC_Calibration as DAC_Fit
 except:
-    import Service.VoltageConversions.DacRegisterToVoltageFit as AD5781Fit
+    import Service.VoltageConversions.DacRegisterToVoltageFit as DAC_Fit
 
 
 from Measurement.SpecData import SpecDataXAxisUnits as Units
@@ -36,8 +36,8 @@ class AD5781ScanDev(BaseTildaScanDeviceControl):
         -> currently only one dac available.... adapt maybe if needed
         """
         draft_scan_dev_dict = {
-            'name': AD5781Fit.dac_name,
-            'type': 'AD5781_V2',  # what type of device, e.g. AD5781(DAC) / Matisse (laser)
+            'name': 'blablabla', #DAC_Fit.dac_name,
+            'type': 'AD57X1(DAC)',  # what type of device, e.g. AD5781(DAC) / Matisse (laser)
             'devClass': 'DAC',  # carrier class of the dev, e.g. DAC / Triton
             'stepUnitName': Units.line_volts.name,
             'start': 0.0,
@@ -47,8 +47,8 @@ class AD5781ScanDev(BaseTildaScanDeviceControl):
             'postScanSetPoint': None,
             'timeout_s': 10.0,  # timeout in seconds after which step setting is accounted as failure due to timeout,
             # set top 0 for never timing out.
-            'setValLimit': (VCon.get_voltage_from_18bit(0), VCon.get_voltage_from_18bit((2 ** 18) - 1)),
-            'sepSizeLimit': (VCon.get_stepsize_in_volt_from_18bit(1), 15.0)
+            'setValLimit': (VCon.get_voltage_from_bits(0), VCon.get_voltage_from_bits(VCon.get_max_value_in_bits())),
+            'sepSizeLimit': (VCon.get_stepsize_in_volt_from_bits(1), 15.0)
         }
         return draft_scan_dev_dict
 
@@ -59,7 +59,7 @@ class AD5781ScanDev(BaseTildaScanDeviceControl):
         :return: list of strings with available names
         """
         if type == 'AD5781_V2':
-            return [AD5781Fit.dac_name]
+            return [DAC_Fit.dac_name]
         else:
             return []
 

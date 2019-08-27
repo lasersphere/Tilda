@@ -172,7 +172,7 @@ class XMLImporter(SpecData):
             if dacStepSize18Bit is None:
                 step_size = scan_dev_dict_tr.get('start', 0.0)
             else:
-                step_size = VCon.get_stepsize_in_volt_from_18bit(dacStepSize18Bit)
+                step_size = VCon.get_stepsize_in_volt_from_bits(dacStepSize18Bit)
             self.stepSize.append(step_size)
 
             if track_dict.get('trigger', {}).get('meas_trigger', None) is not None:

@@ -29,7 +29,7 @@ from Driver.TritonListener.TritonListener import TritonListener as TritonListene
 from Driver.ScanDevice.TritonScanDevControl import TritonScanDevControl
 from Service.AnalysisAndDataHandling.AnalysisThread import AnalysisThread as AnalThr
 from Driver.ScanDevice.BaseTildaScanDeviceControl import BaseTildaScanDeviceControl as BaseScDev
-from Driver.ScanDevice.AD5781ScanDevice import AD5781ScanDev
+from Driver.ScanDevice.AD57X1ScanDevice import AD5781ScanDev
 
 
 class ScanMain(QObject):

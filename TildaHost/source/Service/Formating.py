@@ -123,7 +123,7 @@ def create_x_axis_from_scand_dict(scand, as_voltage=False):
                 dac_stop_18bit = dac_start_18bit + (dac_stepsize_18bit * n_of_steps)  # backwards comp.
                 x = np.arange(dac_start_18bit, dac_stop_18bit, dac_stepsize_18bit)  # backwards comp.
                 if as_voltage:
-                    f = np.vectorize(VCon.get_voltage_from_18bit)  # backwards comp.
+                    f = np.vectorize(VCon.get_voltage_from_bits)  # backwards comp.
                     x = f(x)
             else:
                 start = scan_dev_d['start']
@@ -133,7 +133,7 @@ def create_x_axis_from_scand_dict(scand, as_voltage=False):
                 x = np.arange(start, stop, step_size)
                 if not as_voltage and (unit_name == Units.line_volts.name or unit_name == Units.total_volts.name):
                     # leave it now like this for kepco scans etc.
-                    f = np.vectorize(VCon.get_18bit_from_voltage)
+                    f = np.vectorize(VCon.get_bits_from_voltage)
                     x = f(x)
             arr.append(x)
         return arr
