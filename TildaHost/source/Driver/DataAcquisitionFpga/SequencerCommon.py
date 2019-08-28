@@ -95,10 +95,10 @@ class Sequencer(FPGAInterfaceHandling):
 
         if device_class.name == 'DAC':
             # set the dac values
-            dac18b_stepsize = VCon.get_stepsize_in_bits(scanDevDict.get('stepSize', 0.0))
-            dac18b_start = VCon.get_bits_from_voltage(scanDevDict.get('start', 0.0))
-            self.ReadWrite(self.config.dacStepSize18Bit, dac18b_stepsize)  # long
-            self.ReadWrite(self.config.dacStartRegister18Bit, dac18b_start)  # long
+            dac20b_stepsize = VCon.get_stepsize_in_bits(scanDevDict.get('stepSize', 0.0))
+            dac20b_start = VCon.get_bits_from_voltage(scanDevDict.get('start', 0.0))
+            self.ReadWrite(self.config.dacStepSize20Bit, dac20b_stepsize)  # long
+            self.ReadWrite(self.config.dacStartRegister20Bit, dac20b_start)  # long
             # check whether DAC has been initialized successfully on fpga.
             dac_available = self.getInternalDACState()
             if not dac_available:

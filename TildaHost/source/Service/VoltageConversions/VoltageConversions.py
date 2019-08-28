@@ -23,7 +23,7 @@ except:
     )
 
 bitconv = BitConverter()# this returns the dummy class which can't do anything, but from which the real implementations are derived.
-if DAC_calib.dac_name == "AD5781_V1":
+if DAC_calib.dac_name.startswith("AD5781"):
     bitconv = AD5781BitConverter()
 elif DAC_calib.dac_name == "AD5791":
     bitconv = AD5791BitConverter()
