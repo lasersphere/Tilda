@@ -23,13 +23,13 @@ Using CApiAnalyser.py yields:
 """
 
 '''Bitfile Signature:'''
-bitfileSignatures = {'PXI-7852R': 'B9B1977010CF61C1E3EB2AD842C5ACF6',
+bitfileSignatures = {'PXI-7852R': '570404AF38BC448E410B52CC8C899484',
                      'PXI-7841R': '30733D581C7AE2660BF873489967793C'
                      }
 bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
 bitfilePaths = {'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                                       'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_243.lvbitx'),
+                                       'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_250.lvbitx'),
                 'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
                                        'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_220_7842.lvbitx')
                 }
@@ -78,8 +78,8 @@ measVoltCompleteDest = {'ref': 0x8166, 'val': ctypes.c_uint(), 'ctr': True}
 scanTriggerTypes = {'ref': 0x8142, 'val': ctypes.c_uint(), 'ctr': True}
 stepTriggerTypes = {'ref': 0x812E, 'val': ctypes.c_uint(), 'ctr': True}
 triggerTypes = {'ref': 0x8176, 'val': ctypes.c_uint(), 'ctr': True}
-dacStartRegister18Bit = {'ref': 0x81D4, 'val': ctypes.c_long(), 'ctr': True}
-dacStepSize18Bit = {'ref': 0x81D8, 'val': ctypes.c_long(), 'ctr': True}
+dacStartRegister20Bit = {'ref': 0x81D4, 'val': ctypes.c_long(), 'ctr': True}
+dacStepSize20Bit = {'ref': 0x81D8, 'val': ctypes.c_long(), 'ctr': True}
 measVoltPulseLength25ns = {'ref': 0x81B8, 'val': ctypes.c_long(), 'ctr': True}
 measVoltTimeout10ns = {'ref': 0x81B4, 'val': ctypes.c_long(), 'ctr': True}
 nOfBunches = {'ref': 0x818C, 'val': ctypes.c_long(), 'ctr': True}
