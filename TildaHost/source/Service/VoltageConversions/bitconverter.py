@@ -33,3 +33,9 @@ class BitConverter:
 
     def get_bits_from_24bit_dac_reg(self,voltage_24bit, remove_address=True):
        return None
+
+    def calc_step_size(self, start, stop, steps):
+       return None
+
+    def calc_n_of_steps(self, start, stop, step_size):
+        return None

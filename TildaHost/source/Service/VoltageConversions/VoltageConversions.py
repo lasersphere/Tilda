@@ -101,7 +101,19 @@ def get_value_bits_from_24bit_dac_reg(voltage_24bit, remove_address=True):
     """
     return bitconv.get_bits_from_24bit_dac_reg(voltage_24bit, remove_address)
 
+def calc_step_size(start, stop, steps):
+    """
+    calculates the stepsize: (stop - start) / nOfSteps
+    :return stepsize_18bit
+    """
+    return bitconv.calc_step_size(start,stop,steps)
 
+
+def calc_n_of_steps(start, stop, step_size):
+    """
+    calculates the number of steps: abs((stop - start) / stepSize)
+    """
+    return bitconv.calc_n_of_steps(start,stop,step_size)
 
 
 
@@ -135,34 +147,6 @@ def calc_dac_stop_18bit(start, step, num_of_steps):
     # stop = min((2 ** 18 - 1), stop)
     return stop
 
-
-def calc_step_size(start, stop, steps):
-    """
-    calculates the stepsize: (stop - start) / nOfSteps
-    :return stepsize_18bit
-    """
-    try:
-        dis = stop - start
-        stepsize_18bit = int(dis / (steps - 1))
-    except ZeroDivisionError:
-        stepsize_18bit = 0
-    # stepsize_18bit = max(-(2 ** 18 - 1), stepsize_18bit)
-    # stepsize_18bit = min((2 ** 18 - 1), stepsize_18bit)
-    return stepsize_18bit
-
-
-def calc_n_of_steps(start, stop, step_size):
-    """
-    calculates the number of steps: abs((stop - start) / stepSize)
-    """
-    try:
-        dis = abs(stop - start) + abs(step_size)
-        n_of_steps = int(dis / abs(step_size))
-    except ZeroDivisionError:
-        n_of_steps = 0
-    # n_of_steps = max(2, n_of_steps)
-    # n_of_steps = min((2 ** 18 - 1), n_of_steps)
-    return n_of_steps
 
 
 if __name__ == '__main__':

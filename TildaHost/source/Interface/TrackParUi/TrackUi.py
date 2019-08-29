@@ -163,7 +163,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.pushButton_scanDev_post_ssc_copy_stop.clicked.connect(self.scan_dev_post_val_copy_clicked)
         self.checkBox_scanDev_setPostScan.stateChanged.connect(self.scan_dev_post_scan_set_checkbox_clicked)
 
-        self.spinBox_nOfSteps.setRange(2, 2 ** 18)
+        self.spinBox_nOfSteps.setRange(2, 2 ** 20)
         self.spinBox_nOfSteps.valueChanged.connect(self.n_of_steps_set)
         self.spinBox_nOfScans.valueChanged.connect(self.n_of_scans_set)
         self.checkBox_invertScan.stateChanged.connect(self.invert_scan_set)
@@ -576,6 +576,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
                 step_18bit = VCon.get_stepsize_in_bits(step)
                 stop_18bit = VCon.calc_dac_stop_18bit(start_18b, step_18bit, num_of_steps)
                 stop = VCon.get_voltage_from_bits(stop_18bit)
+
         except Exception as e:
             logging.error('following error occurred while calculating the stop value:' + str(e))
             stop = 0

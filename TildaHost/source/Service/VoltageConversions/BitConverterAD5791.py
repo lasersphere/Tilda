@@ -122,3 +122,30 @@ class AD5791BitConverter(BitConverter):
             voltage_24bit -= 2 ** 20  # redundant with the next step?
         v20bit = voltage_24bit & ((2 ** 20) - 1)
         return v20bit
+
+    def calc_step_size(self,start, stop, steps):
+        """
+        calculates the stepsize: (stop - start) / nOfSteps
+        :return stepsize_18bit
+        """
+        try:
+            dis = stop - start
+            stepsize_18bit = int(dis / (steps - 1))
+        except ZeroDivisionError:
+            stepsize_18bit = 0
+        # stepsize_18bit = max(-(2 ** 18 - 1), stepsize_18bit)
+        # stepsize_18bit = min((2 ** 18 - 1), stepsize_18bit)
+        return stepsize_18bit
+
+    def calc_n_of_steps(self, start, stop, step_size):
+        """
+        calculates the number of steps: abs((stop - start) / stepSize)
+        """
+        try:
+            dis = abs(stop - start) + abs(step_size)
+            n_of_steps = int(dis / abs(step_size))
+        except ZeroDivisionError:
+            n_of_steps = 0
+        # n_of_steps = max(2, n_of_steps)
+        # n_of_steps = min((2 ** 18 - 1), n_of_steps)
+        return n_of_steps

@@ -36,7 +36,7 @@ class AD5781ScanDev(BaseTildaScanDeviceControl):
         -> currently only one dac available.... adapt maybe if needed
         """
         draft_scan_dev_dict = {
-            'name': 'blablabla', #DAC_Fit.dac_name,
+            'name': DAC_Fit.dac_name,
             'type': 'AD57X1(DAC)',  # what type of device, e.g. AD5781(DAC) / Matisse (laser)
             'devClass': 'DAC',  # carrier class of the dev, e.g. DAC / Triton
             'stepUnitName': Units.line_volts.name,
@@ -48,7 +48,7 @@ class AD5781ScanDev(BaseTildaScanDeviceControl):
             'timeout_s': 10.0,  # timeout in seconds after which step setting is accounted as failure due to timeout,
             # set top 0 for never timing out.
             'setValLimit': (VCon.get_voltage_from_bits(0), VCon.get_voltage_from_bits(VCon.get_max_value_in_bits())),
-            'sepSizeLimit': (VCon.get_stepsize_in_volt_from_bits(1), 15.0)
+            'stepSizeLimit': (VCon.get_stepsize_in_volt_from_bits(1), 15.0)
         }
         return draft_scan_dev_dict
 
@@ -58,14 +58,11 @@ class AD5781ScanDev(BaseTildaScanDeviceControl):
         :param type: str, type of the device (e.g. AD5781 / Matisse)
         :return: list of strings with available names
         """
-        if type == 'AD5781_V2':
-            return [DAC_Fit.dac_name]
-        else:
-            return []
+        return [self.return_scan_dev_info()['name']]
 
     def available_scan_dev_types(self):
         """
         return a list of available scan device types for this devClass
         :return: list of strings with available types
         """
-        return ['AD5781_V2']
+        return [self.return_scan_dev_info()['type']]

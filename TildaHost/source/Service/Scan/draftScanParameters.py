@@ -23,7 +23,7 @@ scan_dev_classes_available = [sc_t.name for sc_t in ScTypes]
 
 """ dict of currently supported DAC types and names """
 
-dac_type_list = ['AD5781']
+dac_type_list = ['AD57X1']
 
 """ outer most dictionary contains the following keys: """
 
