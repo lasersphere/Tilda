@@ -4,6 +4,8 @@ Created on '21.06.2016'
 
 @author:'simkaufm'
 
+This tool can extract the residua in mV from a bunch of dac_calibration runs.
+Please adjust run, isotope, workdir in the first lines according to your runs!
 """
 import os
 
@@ -12,21 +14,19 @@ import matplotlib.pyplot as plt
 import BatchFit
 import Tools
 
-run = 'Run0'
-# run = 'Ni4071_PXI1Slot5'
-# run = 'Voltage'
+run = 'Agilent_3458A'
+isotope = 'AD5791_dac_calibration'
 
-# workdir = 'D:\DACScan_160622'
-workdir = 'R:\Projekte\TRIGA\Measurements and Analysis_Simon\KepcoScans und DAC Scans\AD5781_V2_SER1_160927'
+workdir = 'C:\\Users\\FS_Desk\\ownCloud\\Projekte\\KOALA\\CalibrationAndTests\\DAC_20bit_tests'
 db = workdir + '\\' + os.path.basename(workdir) + '.sqlite'
 print(db, os.path.isfile(db))
 
 # Tools.crawl(db)
 
-files = [Tools.fileList(db, 'AD5781Ser1')]
+files = [Tools.fileList(db, isotope)]
 print(len(files), files[0])
-#
-# run = 'DACReg_DACV2'
+
+
 for i, file_list in enumerate(files):
     # time = times[i]
     # print('Fitting all files for a settel tiem of %s s' % time)

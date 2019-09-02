@@ -29,7 +29,7 @@ from Driver.TritonListener.TritonListener import TritonListener as TritonListene
 from Driver.ScanDevice.TritonScanDevControl import TritonScanDevControl
 from Service.AnalysisAndDataHandling.AnalysisThread import AnalysisThread as AnalThr
 from Driver.ScanDevice.BaseTildaScanDeviceControl import BaseTildaScanDeviceControl as BaseScDev
-from Driver.ScanDevice.AD57X1ScanDevice import AD5781ScanDev
+from Driver.ScanDevice.AD57X1ScanDevice import AD57X1ScanDev
 
 
 class ScanMain(QObject):
@@ -336,7 +336,7 @@ class ScanMain(QObject):
                 if sc_dev_n is not None:  # Tilda specific
                     self.scan_dev.subscribe_to_scan_dev(sc_dev_n)
             elif sc_dev_class == 'DAC':
-                self.scan_dev = AD5781ScanDev()
+                self.scan_dev = AD57X1ScanDev()
 
     def prepare_scan_dev_for_scan(self, scan_dict, act_track_name):
         """

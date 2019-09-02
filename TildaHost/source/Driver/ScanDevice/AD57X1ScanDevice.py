@@ -22,13 +22,13 @@ from Measurement.SpecData import SpecDataXAxisUnits as Units
 from Driver.ScanDevice.BaseTildaScanDeviceControl import BaseTildaScanDeviceControl
 
 
-class AD5781ScanDev(BaseTildaScanDeviceControl):
+class AD57X1ScanDev(BaseTildaScanDeviceControl):
     """
     overwrite all functions if wanted else dummy
     """
 
     def __init__(self):
-        super(AD5781ScanDev, self).__init__()
+        super(AD57X1ScanDev, self).__init__()
 
     def return_scan_dev_info(self, dev_type=None, dev_name=None):
         """
