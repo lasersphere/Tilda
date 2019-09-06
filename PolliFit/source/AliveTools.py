@@ -296,7 +296,7 @@ def get_mass_from_db(dbpath, chosenFiles):
         return [0, 0]
 
 
-def get_center_from_db(dbpath, chosenFiles):
+def get_center_from_db(dbpath, chosenFiles, run):
     """
     this will connect to the database and read the center and stat. error of the fit for the chosenFiles
     :param dbpath: str, path to .slite db
@@ -307,7 +307,7 @@ def get_center_from_db(dbpath, chosenFiles):
         file = chosenFiles  # [0]
         con = sqlite3.connect(dbpath)
         cur = con.cursor()
-        cur.execute('''SELECT pars FROM FitRes WHERE file = ?''', (file,))
+        cur.execute('''SELECT pars FROM FitRes WHERE file = ? AND run = ?''', (file, run))
         val = cur.fetchall()
         valStr = val[0][0]
         valDic = ast.literal_eval(valStr)
@@ -361,7 +361,7 @@ def calculateVoltage(dbpath, chosenFiles, run):
     :param run: str, name of run
     :return: float, volt_Laser
     """
-    center = get_center_from_db(dbpath, chosenFiles)
+    center = get_center_from_db(dbpath, chosenFiles, run)
     laserFreq_d = get_laserFreq_from_db(dbpath, chosenFiles) #Not implemented yet. But should work by only adding it to next 3 lines
 
 

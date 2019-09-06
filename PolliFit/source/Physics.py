@@ -23,6 +23,8 @@ me_u = 5.4857990946e-4;    #electron mass in u
 me_u_d = 2.2e-13;
 qe = 1.602176565e-19;    #electron charge
 qe_d = 3.5e-27;
+h = 6.626070040e-34;    #planck constant
+hbar = h / (2*pi)
 
 
 def relVelocity(e, m):
@@ -93,13 +95,16 @@ def diffDoppler2(nu_0, volt, m):
 
 def relDoppler(laserFreq, v):
     '''Return the doppler shifted frequency of a frame moving with velocity v'''
-    return laserFreq * math.sqrt((c + v) / (c - v))
+    # return laserFreq * math.sqrt((c + v) / (c - v))
+    return laserFreq * (1 - (v/c)**2)**0.5 / (1 - (v/c))
 
 def invRelDoppler(laserFreq, dopplerFreq):
-    '''Return the velocity, under which laserFreq is seen as dopplerFreq'''
+    '''Return the velocity, under which laserFreq is seen as dopplerFreq.
+    Direction information gets lost in inverse function'''
     #rs = (laserFreq/dopplerFreq)**2 '''not right!?'''
-    rs = (dopplerFreq/laserFreq)**2
-    return c*(rs - 1)/(rs + 1)
+    # rs = (dopplerFreq/laserFreq)**2
+    # return c*(rs - 1)/(rs + 1)
+    return c * (laserFreq**2 - dopplerFreq**2) / (laserFreq**2 + dopplerFreq**2)
 
 def voigt(x, sig, gam):
     '''Voigt profile, unnormalized, using the Faddeeva function'''
