@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>872</width>
+    <width>940</width>
     <height>597</height>
    </rect>
   </property>
@@ -157,6 +157,11 @@
          <string>Col./Acol.</string>
         </attribute>
        </widget>
+       <widget class="SimulationUi" name="Simulation_tab">
+        <attribute name="title">
+         <string>Simulation</string>
+        </attribute>
+       </widget>
        <widget class="AsciiConvUi" name="asciiConv_tab">
         <attribute name="title">
          <string>ASCII conv.</string>
@@ -180,7 +185,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>872</width>
+     <width>940</width>
      <height>21</height>
     </rect>
    </property>
@@ -257,6 +262,12 @@
    <class>ColAcolUi</class>
    <extends>QWidget</extends>
    <header>Gui.ColAcolUi</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>SimulationUi</class>
+   <extends>QWidget</extends>
+   <header>Gui.SimulationUi</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

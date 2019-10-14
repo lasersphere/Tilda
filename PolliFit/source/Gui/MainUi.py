@@ -37,6 +37,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.addFiles_tab.conSig(self.dbSig)
         self.asciiConv_tab.conSig(self.dbSig)
         self.ColAcol_tab.conSig(self.dbSig)
+        self.Simulation_tab.conSig(self.dbSig)
         self.bOpenDb.clicked.connect(self.openDb)
         self.pushButton_refresh.clicked.connect(self.re_emit_db_path)
         if overwrite_stdout:

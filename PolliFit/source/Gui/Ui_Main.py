@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(872, 597)
+        MainWindow.resize(940, 597)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
@@ -86,6 +86,9 @@ class Ui_MainWindow(object):
         self.ColAcol_tab = ColAcolUi()
         self.ColAcol_tab.setObjectName("ColAcol_tab")
         self.TabWidget.addTab(self.ColAcol_tab, "")
+        self.Simulation_tab = SimulationUi()
+        self.Simulation_tab.setObjectName("Simulation_tab")
+        self.TabWidget.addTab(self.Simulation_tab, "")
         self.asciiConv_tab = AsciiConvUi()
         self.asciiConv_tab.setObjectName("asciiConv_tab")
         self.TabWidget.addTab(self.asciiConv_tab, "")
@@ -96,7 +99,7 @@ class Ui_MainWindow(object):
         self.verticalLayout.addWidget(self.splitter)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 872, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 940, 21))
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
 
@@ -122,6 +125,7 @@ class Ui_MainWindow(object):
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.addFiles_tab), _translate("MainWindow", "add Files"))
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.Alive_tab), _translate("MainWindow", "Alive"))
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.ColAcol_tab), _translate("MainWindow", "Col./Acol."))
+        self.TabWidget.setTabText(self.TabWidget.indexOf(self.Simulation_tab), _translate("MainWindow", "Simulation"))
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.asciiConv_tab), _translate("MainWindow", "ASCII conv."))
 
 from Gui.AccVoltUi import AccVoltUi
@@ -136,3 +140,4 @@ from Gui.InteractiveFitUi import InteractiveFitUi
 from Gui.IsoshiftUi import IsoshiftUi
 from Gui.KingFitUi import KingFitUi
 from Gui.MomentsUi import MomentsUi
+from Gui.SimulationUi import SimulationUi
