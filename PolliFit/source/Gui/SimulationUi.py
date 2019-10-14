@@ -13,14 +13,9 @@ import os
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui
 
-import AliveTools
-import Physics
-import functools
+import logging
 import TildaTools as TiTs
 import Tools
-import ColAcolTools as cTo
-import Analyzer
-import MPLPlotter as plot
 from Gui.Ui_Simulation import Ui_Simulation
 
 
@@ -75,26 +70,31 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
         acolChecked = self.cAcolFreq.isChecked()
         inFreq = self.cInFreq.isChecked()
 
-        for iso in isotopes[:-1]:
-            if colChecked:
-                Tools.isoPlot(self.dbpath, iso.text(), linevar=linevar, col=True, laserfreq=laserFreqCol, show=False,
-                          as_freq=inFreq)
-
-            if acolChecked:
-                Tools.isoPlot(self.dbpath, iso.text(), linevar=linevar, col=False, laserfreq=laserFreqAcol, show=False,
-                              as_freq=inFreq)
-
-        if colChecked and acolChecked:
-            Tools.isoPlot(self.dbpath, isotopes[-1].text(), linevar=linevar, col=True, laserfreq=laserFreqCol, show=False,
-                          as_freq=inFreq)
-            Tools.isoPlot(self.dbpath, isotopes[-1].text(), linevar=linevar, col=False, laserfreq=laserFreqAcol, show=True,
-                          as_freq=inFreq)
+        if len(isotopes) == 0:
+            logging.error("No isotopes have been selected!")
+        elif colChecked == False and acolChecked == False:
+            logging.error("No direction has been selected!")
+        elif (laserFreqCol <= 0 and colChecked) or (laserFreqAcol <= 0 and acolChecked):
+            logging.error("No propper laserFreq has been entered!")
         else:
-            if colChecked:
-                Tools.isoPlot(self.dbpath, isotopes[-1].text(), linevar=linevar, col=True, laserfreq=laserFreqCol,
-                              show=True,
+            for iso in isotopes[:-1]:
+                if colChecked:
+                    Tools.isoPlot(self.dbpath, iso.text(), linevar=linevar, col=True, laserfreq=laserFreqCol, show=False,
+                                  as_freq=inFreq)
+
+                if acolChecked:
+                    Tools.isoPlot(self.dbpath, iso.text(), linevar=linevar, col=False, laserfreq=laserFreqAcol, show=False,
+                                  as_freq=inFreq)
+
+            if colChecked and acolChecked:
+                Tools.isoPlot(self.dbpath, isotopes[-1].text(), linevar=linevar, col=True, laserfreq=laserFreqCol, show=False,
+                              as_freq=inFreq)
+                Tools.isoPlot(self.dbpath, isotopes[-1].text(), linevar=linevar, col=False, laserfreq=laserFreqAcol, show=True,
                               as_freq=inFreq)
             else:
-                Tools.isoPlot(self.dbpath, isotopes[-1].text(), linevar=linevar, col=False, laserfreq=laserFreqAcol,
-                              show=True,
-                              as_freq=inFreq)
+                if colChecked:
+                    Tools.isoPlot(self.dbpath, isotopes[-1].text(), linevar=linevar, col=True, laserfreq=laserFreqCol,
+                                  show=True, as_freq=inFreq)
+                else:
+                    Tools.isoPlot(self.dbpath, isotopes[-1].text(), linevar=linevar, col=False, laserfreq=laserFreqAcol,
+                                  show=True, as_freq=inFreq)
