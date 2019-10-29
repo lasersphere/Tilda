@@ -13,6 +13,7 @@ import os
 import sqlite3
 from datetime import datetime
 import re
+import logging
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,8 +25,10 @@ import Physics
 import Tools
 
 from Analysis.Nickel_BECOLA.ExcelWrite import ExcelWriter
-
 from Measurement.XMLImporter import XMLImporter
+
+from lxml import etree as ET
+from XmlOperations import xmlWriteDict
 
 class NiAnalysis():
     def __init__(self):
@@ -136,6 +139,12 @@ class NiAnalysis():
         # safe run settings to workbook
         self.excel.wb.save(self.excelpath)
 
+    def run_analysis(self):
+        self.pick_nickel55_runs()
+        #self.get_refs_calibrate_voltage()
+        self.stack_ni55_runs()
+
+    def pick_nickel55_runs(self):
         #######################
         # Pick Nickel 55 runs #
         #######################
@@ -143,17 +152,19 @@ class NiAnalysis():
         self.ni55_files, self.ni55_filenos = self.pickfilesfromdb('%55Ni%', selecttuple=restriction)
         self.ni55_datevoltfile = []  # list of tuples with (date, voltage, file)
         for files in self.ni55_files:
-            ref_date, ref_volt = self.get_date_and_voltage(files)
-            ref_datetime = datetime.strptime(ref_date, '%Y-%m-%d %H:%M:%S')
-            self.ni55_datevoltfile.append((ref_datetime, ref_volt, files))
+            run55_date, run55_volt = self.get_date_and_voltage(files)
+            run55_datetime = datetime.strptime(run55_date, '%Y-%m-%d %H:%M:%S')
+            self.ni55_datevoltfile.append((run55_datetime, run55_volt, files))
         self.ni55_datevoltfile.sort(key=lambda x: x[0])
 
+    def get_refs_calibrate_voltage(self):
         ######################
         # Reference Voltages #
         ######################
         # get 58 Nickel reference runs from database
         self.ni58ref_files, self.ni58ref_filenos = self.pickfilesfromdb('%58Ni_cal%')
         self.ni58ref_points = []  # list of tuples with (date, voltage, file)
+        self.addfiles(self.ni58ref_files, scalers=[0,1,2])
         # extract timestamp and calibrated voltage for each reference point
         for files in self.ni58ref_files:
             ref_date, ref_volt = self.get_date_and_voltage(files)
@@ -180,10 +191,18 @@ class NiAnalysis():
         plt.plot(ref_times, ref_volts, 'o')
         plt.plot(ni55_times, ni55_interpolation, 'x')
         plt.show()
+
+    def stack_ni55_runs(self):
+        ########################
+        # stack nickel 55 runs #
+        ########################
         # sum all the Nickel 55 runs taking into account the calibration voltage.
-        self.addfiles(self.ni55_files)
+        self.time_proj_res_per_scaler = self.stack_time_projections(self.ni55_files)
+        self.addfiles(self.ni55_files, scalers=[0, 1])
 
-
+        #######################
+        # create sum-xml file #
+        #######################
 
     def pickfilesfromdb(self, type, selecttuple=None):
         con = sqlite3.connect(self.db)
@@ -230,61 +249,208 @@ class NiAnalysis():
         con.commit()
         con.close()
 
-    def addfiles(self, filelist):
-        binsize = 3
-        norm = True  # normalize? True or False
-        startvoltneg = 350  # negative starting volts (don't use the -)
-        scanrange = 450  # volts scanning up from startvolt
-        sumcts = np.zeros(scanrange//binsize)  # should contain all the 55 scans so roughly -350 to +100
-        addcounter = np.zeros(scanrange//binsize)  # array to keep track of how often data was added to a bin
-        sumvolts = np.arange(scanrange//binsize)-startvoltneg/binsize
+    def stack_time_projections(self, filelist):
+        sumcts_sc = np.zeros(1024)  # array for one scaler
+        sumcts = np.array([sumcts_sc.copy(), sumcts_sc.copy(), sumcts_sc.copy()])
+        timebins = np.arange(1024)
         for files in filelist:
             filepath = os.path.join(self.datafolder, files)
+            # load the spec data from file
+            spec = XMLImporter(path=filepath)
+            for sc_no in range(3):
+                # sum time projections for each scaler
+                sumcts[sc_no] += spec.t_proj[0][sc_no]
+        logging.info('------- time projection fit results: --------')
+        timeproj_res = {'scaler_0':{}, 'scaler_1':{}, 'scaler_2':{}}
+        for sc_no in range(3):
+            # fit time-projection
+            ampl, sigma, center, offset = self.fit_time_projections(sumcts[sc_no], timebins)
+            plt.plot(timebins, sumcts[sc_no], '.', label='scaler_{}'.format(sc_no))
+            plt.plot(timebins, self.fitfunc(timebins, ampl, sigma, center, offset), '-')
+            logging.info('Scaler_{}: amplitude: {}, sigma: {}, center: {}, offset:{}'
+                         .format(sc_no, ampl, sigma, center, offset))
+            timeproj_res['scaler_{}'.format(sc_no)] = {'sigma': sigma, 'center': center}
+        plt.legend(loc='right')
+        plt.show()
+        return timeproj_res
+
+    def fit_time_projections(self, cts_axis, time_axis):
+        x = time_axis
+        y = cts_axis
+        start_pars = np.array([max(cts_axis), 10, np.where(cts_axis == max(cts_axis))[0], min(cts_axis)])
+
+        ampl, sigma, center, offset = curve_fit(self.fitfunc, x, y, start_pars)[0]
+
+        return ampl, sigma, center, offset
+
+    def fitfunc(self, t, a, s, t0, o):
+        """
+        t: time
+        t0: mid-tof
+        a: cts_max
+        s: sigma
+        o: offset
+        """
+        # Gauss function
+        return o + a * 1/(s*np.sqrt(2*np.pi))*np.exp(-1/2*np.power((t-t0)/s, 2))
+
+    def addfiles(self, filelist, scalers):
+        binsize = 3
+        startvoltneg = 360  # negative starting volts (don't use the -)
+        scanrange = 420  # volts scanning up from startvolt
+        sumcts = np.zeros(scanrange // binsize)  # should contain all the 55 scans so roughly -350 to +100
+        sumabs = sumcts.copy()  # array for the absolute counts per bin. Same dimension as counts of course
+        bgcounter = np.zeros(scanrange // binsize)  # array to keep track of the backgrounds
+        sumvolts = np.arange(scanrange // binsize) - startvoltneg / binsize
+        for files in filelist:
+            filepath = os.path.join(self.datafolder, files)
+            filenumber = re.split('[_.]', files)[-2]
+            # get gates from stacked time projection
+            sc0_res = self.time_proj_res_per_scaler['scaler_0']
+            sc1_res = self.time_proj_res_per_scaler['scaler_1']
+            sc2_res = self.time_proj_res_per_scaler['scaler_2']
+            sig_mult = 2  # gate width in multiple sigma
             spec = XMLImporter(path=filepath,
-                               softw_gates=[[-350, 0, 5.2, 5.26],
-                                            [-350, 0, 5.39, 5.45],
-                                            [-350, 0, 5.47, 5.53]])
+                               softw_gates=[[-350, 0, sc0_res['center']/100 - sc0_res['sigma'] / 100 * sig_mult,
+                                             sc0_res['center']/100 + sc0_res['sigma'] / 100 * sig_mult],
+                                            [-350, 0, sc1_res['center'] / 100 - sc1_res['sigma'] / 100 * sig_mult,
+                                             sc1_res['center'] / 100 + sc1_res['sigma'] / 100 * sig_mult],
+                                            [-350, 0, sc2_res['center'] / 100 - sc2_res['sigma'] / 100 * sig_mult,
+                                             sc2_res['center'] / 100 + sc2_res['sigma'] / 100 * sig_mult]])
+            offst = 100  # background offset in timebins
+            background = XMLImporter(path=filepath,  # sample spec of the same width, clearly separated from the timepeaks
+                                     softw_gates=[[-350, 0, (sc0_res['center']-offst) / 100 - sc0_res['sigma'] / 100 * sig_mult,
+                                                   (sc0_res['center']-offst) / 100 + sc0_res['sigma'] / 100 * sig_mult],
+                                                  [-350, 0, (sc1_res['center']-offst) / 100 - sc1_res['sigma'] / 100 * sig_mult,
+                                                   (sc1_res['center']-offst) / 100 + sc1_res['sigma'] / 100 * sig_mult],
+                                                  [-350, 0, (sc2_res['center']-offst) / 100 - sc2_res['sigma'] / 100 * sig_mult,
+                                                   (sc2_res['center']-offst) / 100 + sc2_res['sigma'] / 100 * sig_mult]])
             stepsize = spec.stepSize[0]
+            if stepsize > 1.1*binsize:
+                logging.warning('Stepsize of file {} larger than specified binsize ({}>{})!'
+                                .format(files, stepsize, binsize))
             nOfSteps = spec.getNrSteps(0)
-            scaler0_cts = spec.cts[0][0]
-            scaler1_cts = spec.cts[0][1]
-            scaler2_cts = spec.cts[0][2]
-            scaler_sum_cts = scaler0_cts+scaler1_cts#+scaler2_cts
-            voltage_x = spec.x[0]
-            calibration_voltage = self.get_date_and_voltage(files)[1]
-            voltage_x -= (calibration_voltage - 29850)
             nOfScans = spec.nrScans[0]
             nOfBunches = spec.nrBunches[0]
-            if norm:
-                scaler0_totalcts = sum(scaler0_cts)
-                scaler1_totalcts = sum(scaler1_cts)
-                scaler2_totalcts = sum(scaler2_cts)
-                scaler_sum_totalcts = scaler0_totalcts+scaler1_totalcts#+scaler2_totalcts
-                if scaler_sum_totalcts == 0: scaler_sum_totalcts=1
-            else:
-                nOfScans = 1
-                scaler0_totalcts = 1
-                scaler1_totalcts = 1
-                scaler_sum_totalcts = 1
-            scaler0_timeproj = spec.t_proj[0][0]
+            voltage_x = spec.x[0]
+            cts_dict = {}
+            for pmts in scalers:
+                cts_dict[str(pmts)] = {'cts':{}, 'bg':{}}
+                cts_dict[str(pmts)]['cts'] = spec.cts[0][pmts]
+                cts_dict[str(pmts)]['bg'] = background.cts[0][pmts]
+            scaler_sum_cts = []
+            bg_sum_cts = []
+            for scnumstr, sc_cts in cts_dict.items():
+                if len(scaler_sum_cts):
+                    scaler_sum_cts += sc_cts['cts']
+                    bg_sum_cts += sc_cts['bg']
+                else:
+                    scaler_sum_cts = sc_cts['cts']
+                    bg_sum_cts = sc_cts['bg']
+            bg_sum_totalcts = sum(bg_sum_cts)
+            if bg_sum_totalcts == 0: bg_sum_totalcts = 1
+
             for datapoint_ind in range(len(voltage_x)):
-                voltind = int(voltage_x[datapoint_ind] + startvoltneg)//binsize
-                if 0 < voltind < len(sumcts):
-                    #sumcts[voltind] += scaler0_cts[datapoint_ind]/nOfScans
-                    sumcts[voltind] += scaler1_cts[datapoint_ind]/(nOfScans * nOfBunches)
-                    addcounter[voltind] += 1
-            plt.plot(voltage_x, scaler1_cts, drawstyle='steps', label=files)
-            #plt.title(filename)
-            #plt.show()
-            #plt.title(filename)
-            #plt.plot(np.arange(len(scaler0_timeproj)), scaler0_timeproj, drawstyle='steps')
-            #plt.show()
+                voltind = int(voltage_x[datapoint_ind] + startvoltneg) // binsize
+                if 0 <= voltind < len(sumabs):
+                    sumabs[voltind] += scaler_sum_cts[datapoint_ind]  # no normalization here
+                    bgcounter[voltind] += bg_sum_totalcts / nOfSteps
+            plt.plot(voltage_x, scaler_sum_cts, drawstyle='steps', label=filenumber)
         plt.show()
-        addcounter = np.where(addcounter == 0, 1, addcounter)  # remove all zeros from counter for division
-        sumcts = sumcts/addcounter
-        plt.plot(sumvolts*binsize, sumcts, drawstyle='steps')
+        sumerr = np.sqrt(sumabs)
+        # prepare sumcts for transfer to xml file
+        zero_ind = np.where(
+            bgcounter == 0)  # find zero-values. Attention! These should only be at start and end, not middle
+        bgcounter = np.delete(bgcounter, zero_ind)
+        sumabs = np.delete(sumabs, zero_ind)
+        sumerr = np.delete(sumerr, zero_ind)
+        sumvolts = np.delete(sumvolts, zero_ind)
+
+        plt.errorbar(sumvolts * binsize, sumabs, yerr=sumerr, fmt='.')
         plt.show()
+        plt.errorbar(sumvolts * binsize, sumabs / bgcounter, yerr=sumerr / bgcounter, fmt='.')
+        plt.show()
+
+        # prepare sumcts for transfer to xml file
+        scale_factor = 10000
+        sumcts = np.array([sumabs / bgcounter * scale_factor]).astype(int)
+        sumerr = np.array([sumerr / bgcounter * scale_factor]).astype(int)
+
+        self.make_sumXML_file(1, -startvoltneg, binsize, len(sumcts[0]), sumcts, sumerr)
+
+    def make_sumXML_file(self, nrScalers, startVolt, stepSizeVolt, nOfSteps, cts_list, err_list=None):
+        ####################################
+        # Prepare dicts for writing to XML #
+        ####################################
+        header_dict = {'type': 'cs',
+                       'isotope': '55Ni',
+                       'isotopeStartTime': '2018-04-13 12:53:06',
+                       'accVolt': 29850,
+                       'laserFreq': 14197.56675,
+                       'nOfTracks': 1,
+                       'version': 99.0}
+
+        track_dict_header = {'trigger': {},  # Need a trigger dict!
+                             'activePmtList': list(range(nrScalers)),  # Must be in form [0,1,2]
+                             'colDirTrue': True,
+                             'dacStartRegister18Bit': 0,
+                             'dacStartVoltage': startVolt,
+                             'dacStepSize18Bit': None,  # old format xml importer checks whether val or None
+                             'dacStepsizeVoltage': stepSizeVolt,
+                             'dacStopRegister18Bit': nOfSteps - 1,  # not real but should do the trick
+                             'dacStopVoltage': float(startVolt) + (
+                                         float(stepSizeVolt) * int(nOfSteps - 1)),
+                             # nOfSteps-1 bc startVolt is the first step
+                             'invertScan': False,
+                             'nOfCompletedSteps': float(int(nOfSteps)),
+                             'nOfScans': 1,
+                             'nOfSteps': nOfSteps,
+                             'postAccOffsetVolt': 0,
+                             'postAccOffsetVoltControl': 0,
+                             'softwGates': [],
+                             # For each Scaler: [DAC_Start_Volt, DAC_Stop_Volt, scaler_delay, softw_Gate_width]
+                             'workingTime': ['2018-04-13 12:53:06', '2018-04-13 12:53:06'],
+                             'waitAfterReset1us': 0,  # looks like I need those for the importer
+                             'waitForKepco1us': 0  # looks like I need this too
+                             }
+        track_dict_data = {
+            'scalerArray_explanation': 'continously acquired data. List of Lists, each list represents the counts of '
+                                       'one scaler as listed in activePmtList.Dimensions are: (len(activePmtList), '
+                                       'nOfSteps), datatype: np.int32',
+            'scalerArray': cts_list}
+        if err_list is not None:
+            track_dict_data['errorArray'] = err_list
+            track_dict_data['errorArray_explanation'] = 'Optional: Non-standard errors. If this was not present, ' \
+                                                        'np.sqrt() would be used for errors during XML import. ' \
+                                                        'List of lists, each list represents the errors of one scaler '\
+                                                        'as listed in activePmtList.Dimensions  are: ' \
+                                                        '(len(activePmtList), nOfSteps), datatype: np.int32'
+
+        # Combine to xml_dict
+        self.xml_dict = {'header': header_dict,
+                         'tracks': {'track0': {'header': track_dict_header,
+                                               'data': track_dict_data
+                                               }
+                                    }
+                         }
+
+        ################
+        # Write to XML #
+        ################
+        xml_name = 'BECOLA_9999' + '.xml'
+        xml_55_sumfile = os.path.join(self.datafolder, xml_name)
+        self.writeXMLfromDict(self.xml_dict, xml_55_sumfile, 'BecolaData')
+
+    def writeXMLfromDict(self, dictionary, filename, tree_name_str):
+        """
+        filename must be in form name.xml
+        """
+        root = ET.Element(tree_name_str)
+        xmlWriteDict(root, dictionary)
+        xml = ET.ElementTree(root)
+        xml.write(filename)
 
 if __name__ == '__main__':
 
     analysis = NiAnalysis()
+    analysis.run_analysis()

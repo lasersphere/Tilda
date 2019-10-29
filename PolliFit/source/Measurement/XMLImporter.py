@@ -248,7 +248,15 @@ class XMLImporter(SpecData):
                 scaler_array = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'scalerArray', cts_shape)
                 self.cts.append(scaler_array)
-                self.err.append(np.sqrt(np.abs(scaler_array)))
+                # maybe the file has non-standard errors. Try to import them. Fail will return NONE:
+                error_array = TildaTools.xml_get_data_from_track(
+                    lxmlEtree, nOfactTrack, 'errorArray', cts_shape)
+                if error_array is not None:
+                    # errors are explicitly given. Use those.
+                    self.err.append(error_array)
+                else:
+                    # if no errors were specified, use standard errors
+                    self.err.append(np.sqrt(np.abs(scaler_array)))
                 self.err[-1][self.err[-1] < 1] = 1  # remove 0's in the error
                 self.dwell.append(track_dict.get('dwellTime10ns'))
 

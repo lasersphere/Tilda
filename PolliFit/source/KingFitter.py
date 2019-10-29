@@ -9,6 +9,9 @@ import ast
 import os
 import sqlite3
 
+from operator import itemgetter
+from itertools import *
+
 import matplotlib.pyplot as plt
 import numpy as np
 import TildaTools as TiTs
@@ -303,7 +306,7 @@ class KingFitter(object):
         return (self.a, self.b, self.aerr, self.berr, a_b_correlation_coeff)
 
     def calcChargeRadii(self, isotopes=[], run=-1, plot_evens_seperate=False, incl_projected=False,
-                        save_in_db=True, print_results=True, print_information=True):
+                        save_in_db=True, print_results=True, print_information=True, dash_missing_data=False):
         if print_information:
             print('calculating the charge radii...')
         self.isotopes = []
@@ -433,7 +436,7 @@ class KingFitter(object):
             yerr = []
             print('iso\t $\delta$ <r$^2$>[fm$^2$]')
             for i in keyVals:
-                x.append(int(str(i).split('_')[0]))
+                x.append(int(''.join(filter(str.isdigit, i))))
                 y.append(finalVals[i][0])
                 yerr.append(finalVals[i][1])
                 print('%s\t%.3f(%.0f)\t%.1f' % (i, finalVals[i][0], finalVals[i][1] * 1000,
@@ -459,9 +462,26 @@ class KingFitter(object):
 
                 plt.errorbar(x_even, y_even, y_even_err, fmt='ro', label='even', linestyle='-')
                 plt.errorbar(x_odd, y_odd, y_odd_err, fmt='r^', label='odd', linestyle='--')
-                plt.legend(loc=2)
+                #plt.legend(loc=2)
+            elif dash_missing_data:
+                # if some isotopes are missing, this dashes the line at these isotopes
+                # has no effect when plot_evens_separate is True
+                split_x_list = []
+                for k, g in groupby(enumerate(x), lambda a: a[0]-a[1]):
+                    split_x_list.append(list(map(itemgetter(1), g)))
+                i = 0
+                for each in split_x_list:
+                    y_vals = y[i:i+len(each)]
+                    yerr_vals = yerr[i:i + len(each)]
+                    plt.errorbar(each, y_vals, yerr_vals, fmt='ro', linestyle='-')
+                    # plot dashed lines between missing values
+                    if len(x) > i+len(each):  # might be last value
+                        x_gap = [x[i+len(each)-1], x[i+len(each)]]
+                        y_gap = [y[i + len(each) - 1], y[i + len(each)]]
+                        plt.plot(x_gap, y_gap, c='r', linestyle='--')
+                    i = i+len(each)
             else:
-                plt.errorbar(x, y, yerr, fmt='k.')
+                plt.errorbar(x, y, yerr, fmt='ro', linestyle='-')
             ax.set_xmargin(0.05)
             plt.margins(0.1)
             plt.gcf().set_facecolor('w')

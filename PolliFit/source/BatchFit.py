@@ -133,6 +133,7 @@ def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=No
 
     fig = os.path.splitext(path)[0] + run + save_file_as
     plot.save(fig)
+    #plot.show()  # If this is un-commented each plot will be shown in batchfit. Only do this for debugging purposes.
     plot.clear()
     
     result = fit.result()

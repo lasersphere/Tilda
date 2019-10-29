@@ -90,23 +90,23 @@ def merge_extend_dicts(target_dict, new_dict, overwrite=True, force_overwrite=Fa
     """
     for keys, vals in new_dict.items():
         if keys in target_dict:  # key exists already
-            is_same = vals == target_dict[keys]
-            if not is_same:  # key exists but vals are different
-                if type(vals) is dict:  # if its a dict then check this again
-                    merge_extend_dicts(target_dict[keys], vals, overwrite)
-                elif type(vals) is list:
-                    if force_overwrite: # if overwriting existing lists with empty lists is allowed
-                        target_dict[keys] = vals
-                    else: # if the new list has actually values in it then we want to overwrite the old values
-                        if type(target_dict[keys]) is list:
-                            if len(vals) > len(target_dict[keys]):
-                                target_dict[keys] = vals
-                        elif len(vals):
+            if type(vals) is dict:  # if its a dict then check this again
+                merge_extend_dicts(target_dict[keys], vals, overwrite, force_overwrite)
+            else:
+                if not vals == target_dict[keys]:  # key exists but vals are different
+                    if type(vals) is list:
+                        if force_overwrite:  # if overwriting existing lists with empty lists is allowed
                             target_dict[keys] = vals
-                else:  # key exists, but vals are different and can't be combined
-                    if overwrite:  # if authorized, overwrite the existing value with the new one
-                        target_dict[keys] = vals
-            # else: key exists and vals are identical - do nothing
+                        else:  # if the new list has actually values in it then we want to overwrite the old values
+                            if type(target_dict[keys]) is list:
+                                if len(vals) > len(target_dict[keys]):
+                                    target_dict[keys] = vals
+                            elif len(vals):
+                                target_dict[keys] = vals
+                    else:  # key exists, but vals are different and can't be combined
+                        if overwrite:  # if authorized, overwrite the existing value with the new one
+                            target_dict[keys] = vals
+                # else: key exists and vals are identical - do nothing
         else:  # key doesn't exist
             target_dict[keys] = new_dict[keys]
 
