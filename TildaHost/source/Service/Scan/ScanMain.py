@@ -379,9 +379,10 @@ class ScanMain(QObject):
         The scan device will tell the scan_main when it is done via a pyqtsignal -> scan_dev_has_set_a_new_step_pyqtsig
         """
         # set glob var in fpga to False to arm for next step
+        # this must be done BEFORE requesting the step, because the FPGA is now waiting for a rising edge.
         self.sequencer.scanDeviceReadyForStep(False)
         # request preparation of next step from scan device and pass callback
-        req_time = datetime.now()
+        # req_time = datetime.now()  # TODO: implement a timeout here? Or a warning for the user when waiting too long?
         self.scan_dev.request_next_step()
         logging.debug('%s: requested next step from scan device now. Step number is %s' % ('scan_main', step_num))
 

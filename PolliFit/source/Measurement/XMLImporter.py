@@ -171,8 +171,8 @@ class XMLImporter(SpecData):
             dacStepSize18Bit = track_dict.get('dacStepSize18Bit', None)  # leave in for backwards_comp
             if dacStepSize18Bit is None or dacStepSize18Bit == {}:  # TODO: not nice...
                 # TODO: copy/paste from laptop. dacStepsizeVoltage is set correctly in file. So why load through 'start'?
-                step_size = track_dict['dacStepsizeVoltage']
-                #step_size = scan_dev_dict_tr.get('start', 0.0)
+                # step_size = track_dict['dacStepsizeVoltage']  # OLD. does not exist in dummy scan dicts (and other??)
+                step_size = scan_dev_dict_tr.get('stepSize', 1)
             else:
                 step_size = VCon.get_stepsize_in_volt_from_18bit(dacStepSize18Bit)
             self.stepSize.append(step_size)

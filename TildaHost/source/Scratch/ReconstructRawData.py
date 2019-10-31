@@ -2,7 +2,7 @@
 Module for reconstructing raw data to an xml file.
 
 This will find all raw data for the selected .xml file (given the "normal" TILDA folder naming)
-and will reconstruct a new xml file by just analysing the raw data agin but only with the selected bunches
+and will reconstruct a new xml file by just analysing the raw data again but only with the selected bunches
 """
 import os
 from datetime import datetime
