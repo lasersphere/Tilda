@@ -8,7 +8,7 @@ Created on '26.10.2015'
 import numpy as np
 from Service.VoltageConversions.bitconverter import BitConverter
 from Service.VoltageConversions.BitConverterAD5791 import AD5791BitConverter
-from Service.VoltageConversions.BitConverterAD5781legacy import AD5781BitConverter
+from Service.VoltageConversions.BitConverterAD5781 import AD5781BitConverter
 
 try:
     import Service.VoltageConversions.DAC_Calibration as DAC_calib
@@ -37,23 +37,34 @@ else:
 def get_max_value_in_bits():
     return bitconv.get_max_value_in_bits()
 
-def get_bits_from_voltage(voltage, dac_gauge_pars=DAC_calib.dac_gauge_vals, ref_volt_neg=-10, ref_volt_pos=10):
+def get_20bits_from_voltage(voltage, dac_gauge_pars=DAC_calib.dac_gauge_vals, ref_volt_neg=-10, ref_volt_pos=10):
+    return bitconv.get_20bits_from_voltage(voltage, dac_gauge_pars, ref_volt_neg, ref_volt_pos)
+
+def get_nbits_from_voltage(voltage, dac_gauge_pars=DAC_calib.dac_gauge_vals, ref_volt_neg=-10, ref_volt_pos=10):
     """
     function to return an 18-Bit Integer by putting in a voltage +\-10V in DBL
     :param voltage: dbl, desired Voltage
     :param ref_volt_neg/ref_volt_pos: dbl, value for the neg./pos. reference Voltage for the DAC
     :return: int, bit Code.
     """
-    return bitconv.get_bits_from_voltage(voltage, dac_gauge_pars, ref_volt_neg, ref_volt_pos)
+    return bitconv.get_nbits_from_voltage(voltage, dac_gauge_pars, ref_volt_neg, ref_volt_pos)
 
 
-def get_stepsize_in_bits(step_voltage, dac_gauge_pars=DAC_calib.dac_gauge_vals):
+def get_nbit_stepsize(step_voltage, dac_gauge_pars=DAC_calib.dac_gauge_vals):
     """
-    function to get the StepSize in dac register integer form derived from a double Voltage
+    function to get the StepSize in bits derived from a double Voltage. Depdending on the DAC this may be a 18 or 20 bit
+    integer
     :return ~ step_voltage/lsb
     """
-    return bitconv.get_stepsize_in_bits(step_voltage, dac_gauge_pars)
+    return bitconv.get_nbit_stepsize(step_voltage, dac_gauge_pars)
 
+
+def get_20bit_stepsize(step_voltage, dac_gauge_pars=DAC_calib.dac_gauge_vals):
+    """
+    function to get the StepSize in (20 bit) dac register integer form derived from a double Voltage
+    :return ~ step_voltage/lsb
+    """
+    return bitconv.get_20bit_stepsize(step_voltage, dac_gauge_pars)
 
 def get_stepsize_in_volt_from_bits(voltage_18bit, dac_gauge_pars=DAC_calib.dac_gauge_vals):
     """

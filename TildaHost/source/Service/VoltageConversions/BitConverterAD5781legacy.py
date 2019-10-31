@@ -14,7 +14,10 @@ class AD5781BitConverter(BitConverter):
     def get_max_value_in_bits(self):
         return ((2 ** 18) - 1) << 2  # could also write 2 ** 20 -1
 
-    def get_bits_from_voltage(self, voltage, dac_gauge_pars, ref_volt_neg=-10, ref_volt_pos=10):
+    def get_20bits_from_voltage(self, voltage, dac_gauge_pars, ref_volt_neg=-10, ref_volt_pos=10):
+        return self.get_nbits_from_voltage(voltage, dac_gauge_pars, ref_volt_neg, ref_volt_pos)
+
+    def get_nbits_from_voltage(self, voltage, dac_gauge_pars, ref_volt_neg=-10, ref_volt_pos=10):
         """
         function to return an 18-Bit Integer by putting in a voltage +\-10V in DBL
         :param voltage: dbl, desired Voltage
@@ -34,7 +37,7 @@ class AD5781BitConverter(BitConverter):
         b18 = min(b18, (2 ** 18) - 1)
         return b18 << 2
 
-    def get_stepsize_in_bits(self, step_voltage, dac_gauge_pars):
+    def get_nbit_stepsize(self, step_voltage, dac_gauge_pars):
         """
         function to get the StepSize in dac register integer form derived from a double Voltage
         :return ~ step_voltage/lsb
@@ -47,7 +50,7 @@ class AD5781BitConverter(BitConverter):
         b18 = int(round(step_voltage / lsb))
         b18 = max(-((2 ** 20) - 1), b18)
         b18 = min(b18, (2 ** 20) - 1)
-        return b18>>2'''
+        return b18<<2'''
 
         if step_voltage is None:
             return None
@@ -58,6 +61,9 @@ class AD5781BitConverter(BitConverter):
         b20 = max(-((2 ** 20) - 1), b20)
         b20 = min(b20, (2 ** 20) - 1)
         return b20
+
+    def get_20bit_stepsize(self, step_voltage, dac_gauge_pars):
+        return self.get_nbit_stepsize(step_voltage, dac_gauge_pars)
 
     def get_stepsize_in_volt_from_bits(self, voltage_20bit, dac_gauge_pars):
         """
@@ -88,7 +94,7 @@ class AD5781BitConverter(BitConverter):
         :param ref_volt_neg/ref_volt_pos: dbl, value for the neg./pos. reference Voltage for the DAC
         :return: int, 24-Bit Code.
         """
-        b20 = self.get_bits_from_voltage(voltage, dac_gauge_pars, ref_volt_neg, ref_volt_pos)
+        b20 = self.get_nbits_from_voltage(voltage, dac_gauge_pars, ref_volt_neg, ref_volt_pos)
         #b24 = (int(b18) << 2)
         if add_reg_add:
             # adds the address of the DAC register to the bits
@@ -138,30 +144,3 @@ class AD5781BitConverter(BitConverter):
             voltage_24bit -= 2 ** 20
         v20bit = voltage_24bit & ((2 ** 20) - 1)
         return v20bit
-
-    def calc_step_size(self, start, stop, steps):
-        """
-        calculates the stepsize: (stop - start) / nOfSteps
-        :return stepsize_18bit
-        """
-        try:
-            dis = stop - start
-            stepsize_18bit = int(dis / (steps - 1))
-        except ZeroDivisionError:
-            stepsize_18bit = 0
-        # stepsize_18bit = max(-(2 ** 18 - 1), stepsize_18bit)
-        # stepsize_18bit = min((2 ** 18 - 1), stepsize_18bit)
-        return stepsize_18bit
-
-    def calc_n_of_steps(self, start, stop, step_size):
-        """
-        calculates the number of steps: abs((stop - start) / stepSize)
-        """
-        try:
-            dis = abs(stop - start) + abs(step_size)
-            n_of_steps = int(dis / abs(step_size))
-        except ZeroDivisionError:
-            n_of_steps = 0
-        # n_of_steps = max(2, n_of_steps)
-        # n_of_steps = min((2 ** 18 - 1), n_of_steps)
-        return n_of_steps

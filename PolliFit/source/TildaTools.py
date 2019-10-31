@@ -23,7 +23,7 @@ from lxml import etree as ET
 import Physics
 from XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, \
     xmlAddCompleteTrack, xmlFindOrCreateSubElement, xmlWriteDict
-from Service.VoltageConversions.VoltageConversions import get_bits_from_voltage
+from Service.VoltageConversions.VoltageConversions import get_nbits_from_voltage
 
 
 def select_from_db(db, vars_select, var_from, var_where=[], addCond='', caller_name='unknown'):
@@ -671,8 +671,8 @@ def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
             stop = sc_dev_d['stop']
             step = sc_dev_d['stepSize']
             if not as_voltage:  # use dac register
-                start = get_bits_from_voltage(start)
-                stop = get_bits_from_voltage(stop)
+                start = get_nbits_from_voltage(start)
+                stop = get_nbits_from_voltage(stop)
 
         x_tr, new_step = np.linspace(start, stop, steps, retstep=True)
         # np.testing.assert_allclose(
