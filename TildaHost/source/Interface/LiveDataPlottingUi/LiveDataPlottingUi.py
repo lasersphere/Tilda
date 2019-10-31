@@ -1054,15 +1054,14 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     ''' rebinning '''
 
     def rebin_data(self, rebin_factor_ns=None):
+        self.spinBox.blockSignals(True)  # block spinBox while executing. Else can crash through double-calls.
         start = datetime.now()
         if rebin_factor_ns is None:
             if self.active_initial_scan_dict is not None:
                 rebin_factor_ns = self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind]
         rebin_factor_ns = rebin_factor_ns // 10 * 10
         self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind] = rebin_factor_ns
-        self.spinBox.blockSignals(True)
         self.spinBox.setValue(rebin_factor_ns)
-        self.spinBox.blockSignals(False)
         logging.debug('rebinning data to bins of  %s' % rebin_factor_ns)
         rebin_track = -1 if self.checkBox.isChecked() else self.tres_sel_tr_ind
         logging.debug('emitting %s, from %s, value is %s'
@@ -1076,6 +1075,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         stop = datetime.now()
         dif = stop - start
         # print('rebinning took: %s' % dif)
+        self.spinBox.blockSignals(False)
 
     def apply_rebin_to_all_checkbox_changed(self, state):
         if state == 2:  # the checkbox is checked
