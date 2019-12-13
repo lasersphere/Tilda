@@ -17,6 +17,10 @@ class SpecDataXAxisUnits(Enum):
     dac_register_bits = 'DAC register bits / a.u.'
     # when calibrating an DAC it might be usefull to have DAC register bits as x axis
     frequency_mhz = 'frequency / MHz'  # for plotting etc.
+    scraper_mm = 'translation / mm'  # for plotting Scraper translation
+    time_mus = 'time / mus'  # for plotting time in mus
+    time_ms = 'time / ms'  # for plotting time in ms
+    time_s = 'time / s'  # for plotting time in s
     not_defined = 'not defined'  # arbitrary but, maybe useful in rare cases
 
 
