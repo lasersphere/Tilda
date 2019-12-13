@@ -16,13 +16,13 @@ fpga_type = data_acq_cfg['fpga_type']
 fpga_resource = data_acq_cfg['fpga_resource']
 
 '''Bitfile Signature:'''
-bitfileSignatures = {'PXI-7852R': 'FD91407A8DDC68F4E1005038480399D6',
+bitfileSignatures = {'PXI-7852R': '5F2FD1677A32BC7D34B93E2B3F5B6763',
                      'PXI-7841R': 'A7C562E7EF98A7C7A783D9C03235A8AE'
                      }
 bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
 bitfilePaths = {'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV242.lvbitx'),
+                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV250.lvbitx'),
                 'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
                                        'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV231_7842.lvbitx')
                 }
@@ -69,8 +69,8 @@ measVoltCompleteDest = {'ref': 0x8166, 'val': ctypes.c_uint(), 'ctr': True}
 scanTriggerTypes = {'ref': 0x8146, 'val': ctypes.c_uint(), 'ctr': True}
 stepTriggerTypes = {'ref': 0x812E, 'val': ctypes.c_uint(), 'ctr': True}
 triggerTypes = {'ref': 0x817A, 'val': ctypes.c_uint(), 'ctr': True}
-dacStartRegister18Bit = {'ref': 0x8198, 'val': ctypes.c_long(), 'ctr': True}
-dacStepSize18Bit = {'ref': 0x8194, 'val': ctypes.c_long(), 'ctr': True}
+dacStartRegister20Bit = {'ref': 0x8198, 'val': ctypes.c_long(), 'ctr': True}
+dacStepSize20Bit = {'ref': 0x8194, 'val': ctypes.c_long(), 'ctr': True}
 measVoltPulseLength25ns = {'ref': 0x81B0, 'val': ctypes.c_long(), 'ctr': True}
 measVoltTimeout10ns = {'ref': 0x81B4, 'val': ctypes.c_long(), 'ctr': True}
 nOfScans = {'ref': 0x81A0, 'val': ctypes.c_long(), 'ctr': True}
