@@ -44,7 +44,7 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
 
         self.running = False
         self.aborted = False
-        self.reps_on_file_to_go = 0
+        # self.reps_on_file_to_go = 0  # not necessary any more
         self.wait_for_next_job = False
         self.main_status_is_idle = True
 
@@ -79,7 +79,7 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
         return items
 
     def add_job(self):
-        self.list_joblist.addItems(['1'])  # 1 is the standard number for repetitions, all other text filled by later
+        self.list_joblist.addItems(['newjob | 1'])  # 1 is the standard number for repetitions, all other text filled by later
         added_item_id = self.list_joblist.count()
         self.item_passed_to_scan_ctrl = self.list_joblist.item(added_item_id-1)
         # open ScanControlUi window
@@ -93,11 +93,14 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
 
     def change_reps_of_selected(self):
         """ for selected items, set number of repetitions to user defined value """
-        self.setEnabled(False)
-        self.repetition_ctrl_win = SelectRepetitionsUi(self)
         items = self.list_joblist.selectedItems()
-        old_reps = items[0].text().split(' | ')[-1]
-        self.repetition_ctrl_win.spinBox_number_reps.setValue(int(old_reps))
+        if items:
+            self.setEnabled(False)
+            self.repetition_ctrl_win = SelectRepetitionsUi(self)
+            old_reps = items[0].text().split(' | ')[-1]
+            self.repetition_ctrl_win.spinBox_number_reps.setValue(int(old_reps))
+        else:
+            logging.warning('Jobstacker: No item selected. Cannot change repetitions.')
 
     ''' saving and loading '''
 
@@ -151,26 +154,21 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
         """ listens to info from main and changes states """
         # print('----------info from main: %s ---------------' % info_str)
         if info_str == 'scan_complete':
-            logging.debug('job stacker received scan complete info')
-            if self.reps_on_file_to_go > 0:
-                print('Repetition on file done, more to come')
-            else:
-                self.wait_for_next_job = True
-                print('All repetitions on file done. Wait for next job')
+            logging.debug('job stacker received scan complete info.')
         elif info_str == 'starting_scan':
-            self.reps_on_file_to_go -= 1
-            print(self.reps_on_file_to_go)
+            pass
         elif info_str == 'pre_scan_timeout':
             pass
         elif info_str == 'scan_aborted':
             logging.debug('job stacker received scan aborted info')
-            self.reps_on_file_to_go = 0  # abort also aborts all repetitions, so this can be zero now
             self.wait_for_next_job = True  # abort shouldn't change next job. Maybe user still wants to run it
             logging.info('Last job aborted in scan control window. Waiting for next job now.')
         elif info_str == 'scan_halted':
-            pass
+            logging.debug('job stacker received scan halted info')
+            self.wait_for_next_job = True  # halt shouldn't change next job. Maybe user still wants to run it
+            logging.info('Last job halted in scan control window. Waiting for next job now.')
         elif info_str == 'kepco_scan_timedout':
-            # TODO: check for remaining scans and start next or finish
+            # kepco scans are not tested yet. Should probably do the same as when scan is aborted here?
             pass
 
     def update_status(self, status_dict):
@@ -179,10 +177,9 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
         status_dict keys: ['workdir', 'status', 'database', 'laserfreq', 'accvolt',
          'sequencer_status', 'fpga_status', 'dmm_status']
         """
-        print('status_update received')
         self.main_status_is_idle = status_dict.get('status', '') == 'idle'
         if self.main_status_is_idle and self.wait_for_next_job and Cfg._main_instance.jobs_to_do_when_idle_queue == []:
-            print('Main is idle, could start over now')
+            logging.debug('Main is idle, starting next job now.')
             self.wait_for_next_job = False
             self.run_next_job()
 
@@ -192,10 +189,11 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
 
     def run_next_job(self):
         if self.running is False:  # only do this on first call
+            self.aborted = False  # maybe previous run was aborted
             self.subscribe_to_main()  # need updates from scan process
 
             # save current joblist to file before executing
-            self.save_to_txt()
+            # self.save_to_txt()
             # store original items of joblist. Jobs will be removed after execution to show progress...
             self.job_list_before_execution = self.cmd_list_from_gui()
 
@@ -223,21 +221,21 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
             repetitions_before = item_props.pop()
             new_repetitions = int(repetitions_before) - 1
             # store number or repetitions_on_file
-            self.reps_on_file_to_go = int(item_props[-1])
             if new_repetitions > 0:
                 item_props += [str(new_repetitions)]
                 item.setText(' | '.join(item_props))
             else:
                 self.list_joblist.takeItem(0)
 
-
             self.running = True
             next_item_text = item.text()
             next_item_info = next_item_text.split(' | ')
             self.open_scan_ctrl_win(item_info=next_item_info)
+            logging.info('job stacker is starting next job now.')
             self.scan_ctrl_win.go()
         else:
             # all jobs are done, revert to normal
+            logging.info('job stacker done, reactivating Ui.')
             self.running = False
             self.wait_for_next_job = False
             self.setWindowTitle('Job Stacker')
@@ -289,7 +287,6 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
             self.setWindowTitle('Currently unavailable. Processing jobs!')
         self.stored_window_title = self.windowTitle()  # store current window title
 
-
         # open scan control window
         if Cfg._main_instance.working_directory is None:
             if self.main_gui.choose_working_dir() is None:
@@ -313,18 +310,21 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
             if active_iso:
                 iso_seq_naming = active_iso.split('_')
                 seq_str = iso_seq_naming.pop(-1)
-                iso_str = '_'.join(iso_seq_naming)
+                iso_str = '_'.join(iso_seq_naming)  # isotopes are actually often named with underscores...
                 reps_as_go = num_of_reps
+                print(self.item_passed_to_scan_ctrl.text())
                 num_repeat_job = self.item_passed_to_scan_ctrl.text().split(' | ')[-1]
                 new_item_def = ' | '.join([iso_str, seq_str, str(reps_as_go), num_repeat_job])
                 self.item_passed_to_scan_ctrl.setText(new_item_def)
             else:
                 logging.info('No isotope chosen, new entry will not be created.')
-                self.item_passed_to_scan_ctrl.delete()
+                self.list_joblist.setCurrentItem(self.item_passed_to_scan_ctrl)
+                indx = self.list_joblist.currentRow()
+                self.list_joblist.takeItem(indx)
             # change number of reps_as_go#
-        self.setWindowTitle(self.stored_window_title)
-        self.setEnabled(True)
-        self.item_passed_to_scan_ctrl = None
+            self.setWindowTitle(self.stored_window_title)
+            self.setEnabled(True)
+            self.item_passed_to_scan_ctrl = None
 
     def repetition_ctrl_closed(self, reps):
         if reps is not None:
