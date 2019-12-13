@@ -181,7 +181,7 @@ class ContinousSequencer(Sequencer, MeasureVolt):
             j = 0
             while j < trackd['nOfSteps']:
                 # simulate next step request
-                if self.scan_dev is not 'DAC':
+                if self.scan_dev != 'DAC':
                     complete_lis.append(Form.add_header_to23_bit(4, 4, 0, 1))  # means request next step
                 # complete_lis.append(x_axis[j])  # TODO is it important that this is missing?
                 # Yeah for nOfCompleted Steps
