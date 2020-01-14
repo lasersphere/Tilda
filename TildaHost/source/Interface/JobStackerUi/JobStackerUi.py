@@ -280,12 +280,13 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
 
     def open_scan_ctrl_win(self, item_info=None):
         # disable JobStackerUi window
+        self.stored_window_title = self.windowTitle()  # store current window title
         if self.running is False:  # only lock completely during setup. Need abort button when running.
             self.setEnabled(False)  # while setting up isotope, no interactions should be made in the JobStackerUi
             self.setWindowTitle('Currently unavailable. ScanControlUi open!')
+            self.label_infostring.setText('Close Scan Control UI to Add Selected Job!')
         else:
             self.setWindowTitle('Currently unavailable. Processing jobs!')
-        self.stored_window_title = self.windowTitle()  # store current window title
 
         # open scan control window
         if Cfg._main_instance.working_directory is None:
@@ -305,7 +306,13 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
         self.scan_ctrl_win.checkBox_reps_as_go.setEnabled(False)
 
     def scan_control_ui_closed(self, active_iso, num_of_reps):
-        if self.running is False:
+        '''
+        When the scan control window is closed, the selected scan settings are added to the job list.
+        :param active_iso: active isotope passed from scanControlUi
+        :param num_of_reps: number of repetitions passed from scanControlUi
+        :return:
+        '''
+        if self.running is False:  # only make changes while jobstacker is in set-up mode
             # get isotope and sequencer type from active iso
             if active_iso:
                 iso_seq_naming = active_iso.split('_')
@@ -323,6 +330,7 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
                 self.list_joblist.takeItem(indx)
             # change number of reps_as_go#
             self.setWindowTitle(self.stored_window_title)
+            self.label_infostring.setText('Not working on jobs. Click run to start.')
             self.setEnabled(True)
             self.item_passed_to_scan_ctrl = None
 

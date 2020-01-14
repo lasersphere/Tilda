@@ -18,14 +18,14 @@ fpga_resource = data_acq_cfg['fpga_resource']
 
 '''Bitfile Signature:'''
 bitfileSignatures = {
-    'PXI-7852R': '2BE2BD956E75A0E9F14F6B1A6761B2FB',
+    'PXI-7852R': 'C2BD7B62D4E20875CAA99C070B9A034C',
     'PXI-7841R': 'E87F746B4D75FAC83D98D9825FB513AE'
                      }
 bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
 bitfilePaths = {
     'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                           'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounterV200.lvbitx'),
+                           'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounterV251.lvbitx'),
     'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
                            'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounter_7841_v200.lvbitx')
                 }

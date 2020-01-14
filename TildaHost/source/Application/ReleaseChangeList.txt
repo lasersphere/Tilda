@@ -3,6 +3,103 @@ Change list between release with the info on fixes, major changes etc. last chan
 to identify links use: (htt...)
 """
 
+***************************************   Changes for version 1.24 ***************************************
+
+Summary (find details below):
+
+TILDA is now also deployed at CRYRING and this brought a couple of big changes. It is now possible to trigger scans,
+steps and bunches separately. Furthermore, TILDA can now work with external scan devices connected through triton instead
+of the internal dac only. That means laser-scanning is now possible! A new Job Stacker Ui extends the automation of long
+scan routines with different isotopes and track settings. The overall stability has been improved.
+
+Added:
+    - Scan Device Selection
+        TILDA is now able to use a whole range of scan devices. On the hardware level (FPGA) we now differentiate
+        between 'internalDAC' and 'externalTriton'. The 'internalDAC' option, is basically the old operation mode for
+        voltage scanning output on the DAC card that's installed in the linedriver crate. The 'externalTriton' mode
+        tells the FPGA to not set any voltage steps but send a 'nextStepRequest' software signal back to TILDA and
+        wait for the 'scanDevSet' global variable to change back to True before continuing with the scan.
+        The 'DAC' and 'Triton' options are then also available as scan device classes in the track pars UI.
+        https://app.asana.com/0/0/1156374973115046/f
+
+    - Advanced Triggering
+        Originally from a Cryring request, we expanded TILDAs trigger capabilities. Previously there was only one trigger,
+        which started the measurements at the lowest level, so basically each bunch (or step when in cs mode). Now there
+        is the option to trigger scans, steps and bunches. All of these are configured in the track settings with the old
+        trigger named 'meas Trigger'. This one is ultimately still responsible for the timing.
+        On the hardware level the new triggers are implemented at the same place as the old one. Scan and step triggers
+        can be activated in any order and once both are high, the measurement trigger is armed.
+        https://app.asana.com/0/0/1156374973115045/f
+        https://app.asana.com/0/10893101573162/921223064715003/f
+
+    - Job Stacker Ui
+        A new 'Job Stacker' Ui is available from the TILDA main menu under 'Tools' or using the shortcut Ctrl+J.
+        The Ui allows to add multiple scans to a list of jobs that will be executed one after the other. Adding a new
+        job is done through the classic 'Scan Control' window where an isotope can be selected, tracks edited and a
+        number of repetitions on file set. Closing the Scan Control window adds the job to the list. Each job can be
+        repeated a couple of times. The final job list can be stored to a text file and loaded back into the job stacker
+        at a later time. Execution is done through the Scan Control windows again automatically. The Job Stacker is
+        really just a helper-UI and only loads predefined scan settings into the control before executing an ergo.
+        https://app.asana.com/0/10893101573162/1109678433755636/f
+
+    - 20 Bit DAC
+        Up to now, only the AD5781 18-Bit DAC was supported by TILDA. For a test with the TREK (x1000) Amplifier we
+        changed TILDA to full 20-Bit compatibility. Depending on the DAC card in use, the interface will allow 18- or
+        20-bit precision. The lower level code however always works with 20-bit now.
+        https://app.asana.com/0/10893101573162/1136324508377297/f
+
+Improved:
+
+    - Rebinning UI interaction
+        New data doesn't overwrite the users input to the spinBox anymore, making it possible to just type the desired
+        value instead of wildly scrolling to it. See also under Fixed.
+        https://app.asana.com/0/10893101573162/697937483809958/f
+
+    - Dummy cs and trs can now pause
+        Pausing a dummy didn't work until now and even threw an error because the function definition from SequencerCommon
+        wasn't overwritten in the dummies. Now the dummies correctly stop emitting data and resume after the pause.
+        Halt in dummy mode however does not finish after the scan but aborts immediately due to how dummy data works.
+        https://app.asana.com/0/10893101573162/1156557152553731/f
+
+    - Continous Sequencer Dummy can now simulate a kepco scan
+        The dummy now checks whether it's a kepco scan and behaves accordingly together with the DMMdummy.
+        In order to get this right, you have to select 'dummy' as your during scan multimeter and make sure measurement
+        compl. dest. as well as trigger source are set to 'software'. This is preconfigured in the 'kepco' settings.
+        During the kepco scan, the dummy-dmm will emit the number of triggers it received and NOT the set voltage, just
+        to make it obvious, that it is not a real measurement. So voltage should equal step number.
+        https://app.asana.com/0/10893101573162/1156776314874473/f
+
+    - Couple of minor pollifit changes
+        * KingFitter.py: Added more prints of results (S.Kaufmann)
+        * InteraciveFit.py: Updated "save pars" (P.Imgram)
+        * Added option charge=1 for diffDoppler() (P.Imgram)
+        * ThermalPseudoVoigt: removed par sigma, improved description (P. Mueller)
+        * Minor adjustments in AliveTools.py - correction of some rel. Doppler (P.Imgram)
+        * Added a simulation tab to mainUi.py (P.Imgram)
+
+Fixed:
+
+    - Crash while rebinning
+        Changing the rebinning during a scan should no longer be able to crash TILDA. New data doesn't mess with the
+        spinBox lock anymore while the user changes the rebinning. Also, a one second time lock now prevents the user
+        from rebinning too often. Compare to 'Improved' as well.
+        https://app.asana.com/0/10893101573162/697937483809958/f
+
+    - Lock of scan settings
+        While scanning you can no longer mess with the settings of the active isotope. You can still view track settings,
+        but not confirm changes, add or remove a track of the currently scanning isotope.
+        https://app.asana.com/0/10893101573162/697937483809958/f
+
+    - Fix limit for wait after reset
+        Changed the doubleSpinBox_waitAfterReset_muS maximum from prev 4200000.0 to 2**32 and removed decimals, one step
+        is 1 because the counter in labview is in us 32bit units...
+        https://app.asana.com/0/10893101573162/984499362106560/f
+
+    - Fixed: Scan not working after Isotope change
+        https://app.asana.com/0/10893101573162/875813760907611/f
+
+
+
 ***************************************   Changes for version 1.23 ***************************************
 
 Summary (find details below):

@@ -309,18 +309,21 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
             self.status = TrsCfg.seqStateDict['error']
         else:
             result['elemRemainInFifo'] = len(self.artificial_build_data)
-            max_read_data = 2000
-            n_of_read_data = 0
-            if result['elemRemainInFifo'] > 0:
-                n_of_read_data = min(max_read_data, result['elemRemainInFifo'])
-                result['newData'] = np.array(self.artificial_build_data[0:n_of_read_data])
-                result['nOfEle'] = n_of_read_data
-                result['elemRemainInFifo'] = len(self.artificial_build_data) - n_of_read_data
-            self.artificial_build_data = self.artificial_build_data[n_of_read_data:]
-            if result['elemRemainInFifo'] == 0:
-                self.status = TrsCfg.seqStateDict['measComplete']
-            elapsed = datetime.now() - st
-            # logging.debug('reading from dummy trs sequencer took %.1f ms ' % (elapsed.total_seconds() * 1000))
+            if self.pause_bool:  # scan is paused, return no data
+                return result
+            else:
+                max_read_data = 2000
+                n_of_read_data = 0
+                if result['elemRemainInFifo'] > 0:
+                    n_of_read_data = min(max_read_data, result['elemRemainInFifo'])
+                    result['newData'] = np.array(self.artificial_build_data[0:n_of_read_data])
+                    result['nOfEle'] = n_of_read_data
+                    result['elemRemainInFifo'] = len(self.artificial_build_data) - n_of_read_data
+                self.artificial_build_data = self.artificial_build_data[n_of_read_data:]
+                if result['elemRemainInFifo'] == 0:
+                    self.status = TrsCfg.seqStateDict['measComplete']
+                elapsed = datetime.now() - st
+                # logging.debug('reading from dummy trs sequencer took %.1f ms ' % (elapsed.total_seconds() * 1000))
         return result
 
     def getSeqState(self):
@@ -331,7 +334,15 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         return True
 
     def halt(self, val):
+        logging.info('Halt in dummy mode will not finish this scan but abort!')
         self.artificial_build_data = []
+        return True
+
+    def pause_scan(self, pause_bool=None):
+        if pause_bool is None:
+            pause_bool = not self.pause_bool
+        logging.info('pausing the dummy, pause is: %s' % pause_bool)
+        self.pause_bool = pause_bool
         return True
 
     def DeInitFpga(self, finalize_com=False):

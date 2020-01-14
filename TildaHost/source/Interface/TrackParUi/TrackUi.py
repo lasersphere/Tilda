@@ -16,6 +16,7 @@ from PyQt5 import QtCore
 from PyQt5 import QtWidgets
 
 import Application.Config as Cfg
+from Application.Main.MainState import MainState
 import Interface.SequencerWidgets.FindDesiredSeqWidg as FindDesiredSeqWidg
 import Interface.TriggerWidgets.FindDesiredTriggerWidg as FindDesiredTriggerWidg
 import Service.Scan.ScanDictionaryOperations as SdOp
@@ -480,6 +481,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         self.buffer_pars['scanDevice']['stepUnitName'] = unit_name
         self.label_scanDev_unit.setText(Units[unit_name].value)
         set_val_limits = scan_dev_info.get('setValLimit', (-15.0, 15.0))
+        set_val_limits = [-lim/abs(lim)*(-abs(lim)//1) for lim in set_val_limits]  # [-9.99, 9.99] should be [-10, 10]
         self.doubleSpinBox_scanDevPostScan.setRange(*set_val_limits)
         self.doubleSpinBox_scanDevPreScan.setRange(*set_val_limits)
         self.doubleSpinBox_scanDevStop.setRange(*set_val_limits)
@@ -861,6 +863,12 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         # logging.debug(
         #     json.dumps(self.buffer_pars['measureVoltPars'], sort_keys=True, indent=4))
         self.close()
+
+    def enable_confirm(self, enable_bool):
+        """ when the current isotope is scanning, it should not be possible to make changes to its tracks """
+        self.pushButton_confirm.setEnabled(enable_bool)
+        if not enable_bool:
+            self.pushButton_confirm.setToolTip('Scanning now!')
 
     def reset_to_default(self):
         """ will reset all spinboxes to the default value which is stored in the main. """

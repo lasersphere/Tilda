@@ -18,11 +18,11 @@ from Service.AnalysisAndDataHandling.tildaPipeline import find_pipe_by_seq_type
 
 # set your file directory here (where the .sqlite db is located)
 # better work on a copy of the whole thing!
-work_dir = 'E:/temp4'
+work_dir = 'E:\\temp4'
 raw_files = os.path.join(work_dir, 'raw')
 sums_dir = os.path.join(work_dir, 'sums')
 filenames = os.listdir(sums_dir)  # just take all files in the sum folder, must be a list!
-filenames = filenames[:1]  # select the files you actually want to analyse, can also be explicit!
+filenames = filenames[:1]  # select the files you actually want to analyse, can also be explicit: ['some_run123.xml']!
 
 #  select which bunches you want to appear in the reconstructed .xml files
 starting_bunch = 0  # start counting by 0 !
@@ -53,23 +53,24 @@ def reconstruct_file_from_raw(file_name, raw_files, workdir, bunch_start_stop_tr
     # raw_files = os.path.join(workdir, 'raw')
     max_element_fed = 10000000
     xml_files = [file_name]
-    go_on = find_go(file_name, workdir)
-    while go_on:
+    go_on = find_go(file_name, workdir)  # Find any files this one was a go_on
+    while go_on:  # and add these to the reconstruction process
         xml_files.insert(0, go_on)
         go_on = find_go(go_on, workdir)
     print('xml_files: ', xml_files)
     raw_files_this_xml = []
     for each in xml_files:
+        # find raw files for this xml
         raw_files_this_xml += [
             os.path.normpath(os.path.join(raw_files, file))
             for file in os.listdir(raw_files) if each.split('.')[0] in file]
-    file_name = xml_files[-1]
+    file_name = xml_files[-1]  # filename dictated by last xml_file in list. Should be the same as the passed file_name
     # print(raw_files_this_xml)
-    pipedata_files = [file for file in raw_files_this_xml if file.endswith('jpipedat')]
+    pipedata_files = [file for file in raw_files_this_xml if file.endswith('jpipedat')]  # list of pipe data files
     print('pipedata files: ')
     for pipedata_file in pipedata_files:
         print('\t', pipedata_file)
-    hdf5_files = [file for file in raw_files_this_xml if file.endswith('hdf5')]
+    hdf5_files = [file for file in raw_files_this_xml if file.endswith('hdf5')]  # list of hdf5 data files
     print('hdf5 files: ')
     for hdf5_file in hdf5_files:
         print('\t', hdf5_file)

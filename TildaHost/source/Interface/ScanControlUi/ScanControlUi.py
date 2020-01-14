@@ -94,7 +94,13 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.actionErgo.setEnabled(enable)
         # go on file can also be done without selecting an isotope before:
         self.actionGo_on_file.setEnabled(enable_bool)
-        self.actionSetup_Isotope.setEnabled(enable_bool)
+        # setup Isotope, add Track and remove Track should only be blocked for the scanning isotope
+        enable_bool_scanning = enable_bool or Cfg._main_instance.scan_progress.get('activeIso', None) != self.active_iso
+        for tracknums, tracks in self.track_wins_dict.items():
+            tracks.enable_confirm(enable_bool_scanning)
+        self.actionAdd_Track.setEnabled(enable_bool_scanning)
+        self.action_remove_track.setEnabled(enable_bool_scanning)
+        self.actionSetup_Isotope.setEnabled(enable_bool_scanning)
 
     def enable_config_actions(self, enable_bool):
         """ this will enable/disable the config elements """
@@ -210,6 +216,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
                 self.track_wins_dict[str(track_number)] = TrackUi(self, track_number, self.active_iso, self.main_gui)
         except Exception as e:
             logging.error('error while opening track window, error is: %s' % e, exc_info=True)
+        Cfg._main_instance.send_state()  # to check whether the opened track is scanning now.
 
     def track_win_closed(self, tracknum_int):
         self.track_wins_dict.pop(str(tracknum_int))

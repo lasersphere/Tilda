@@ -33,6 +33,8 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         self.scan_dev = 'DAC'  # Can use dummy with an external scan dev
         self.scan_dev_timeout = 1  # in seconds. Relevant if using external scan dev
         self.scanDevSet = True  # relevant if using external scan dev
+        self.isKepcoScan = False
+        self.steps = 0  # number of steps requested for this track
         self.next_step_req_time = datetime.now()
         self.status = CsCfg.seqStateDict['init']
         self.session = ctypes.c_ulong(0)
@@ -111,6 +113,9 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         :return:
         """
         self.scanDevSet = ready_bool
+        complete_lis = []
+        complete_lis.append(Form.add_header_to23_bit(0, 3, 0, 1))  # means dac voltage set
+        self.artificial_build_data = complete_lis
 
     def setAllContSeqPars(self, scanpars, track_num):
         """
@@ -121,6 +126,10 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         """
         track_name = 'track' + str(track_num)
         self.setScanDeviceParameters(scanpars[track_name]['scanDevice'])
+        # At this point we could intercept whether this is a kepco scan or normal cs
+        if scanpars['isotopeData']['type'] == 'kepco':
+            logging.info('this is a kepco scan')
+            self.isKepcoScan = True
         return True
 
     def setPostAccelerationControlState(self, desiredState, blocking=True):
@@ -160,7 +169,10 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         logging.debug('measuring track: ' + str(track_num) +
                       '\nscanparameter are:' + str(scanpars))
         self.setAllContSeqPars(scanpars, track_num)
-        self.data_builder(scanpars, track_num)
+        if self.isKepcoScan:
+            self.data_builder_kepco(scanpars)
+        else:
+            self.data_builder(scanpars, track_num)
         return True
 
     def data_builder(self, scanpars, track_num):
@@ -195,6 +207,27 @@ class ContinousSequencer(Sequencer, MeasureVolt):
                         complete_lis.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))  # step complete
         self.artificial_build_data = complete_lis
 
+    def data_builder_kepco(self, scanpars=None):
+        """
+        In a dummy kepco scan we basically just need to emit next step signals and dac voltage set signals
+        This data builder is only called once in the beginning and will therefore only emit the first step infos
+        Everything else is handled by set_stopVoltMeas
+        :param scanpars:
+        :return:
+        """
+        complete_lis = []
+        # first call, store some info from the scan pars!
+        track_ind, track_name = scanpars['pipeInternals'].get('activeTrackNumber', (0, 'track0'))
+        trackd = scanpars[track_name]
+        self.steps = trackd['nOfSteps']  # remember how many steps we shall do
+        complete_lis.append(Form.add_header_to23_bit(2, 4, 0, 1))  # means scan started
+        # simulate next step request
+        #if self.scan_dev != 'DAC':
+        #    complete_lis.append(Form.add_header_to23_bit(4, 4, 0, 1))  # means request next step
+        complete_lis.append(Form.add_header_to23_bit(0, 3, 0, 1))  # means dac voltage set
+        self.artificial_build_data = complete_lis
+
+
     ''' overwriting interface functions here '''
 
     def getData_old(self):
@@ -226,50 +259,65 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         """
         result = {'nOfEle': 0, 'newData': None, 'elemRemainInFifo': 0}
         result['elemRemainInFifo'] = len(self.artificial_build_data)
-        max_read_data = 10
-        datapoints = 0
-        next_step_req_form = Form.add_header_to23_bit(4, 4, 0, 1)  # means request next step
-        if self.scanDevSet:
-            next_step_req_found = False
+        if self.pause_bool:  # scan is paused, return no data
+            return result
         else:
-            # still waiting for next step, don't return new data yet
-            next_step_req_found = True
-        while not next_step_req_found and datapoints < max_read_data:
-            if result['elemRemainInFifo'] > 0:
-                datapoints += 1
-                next_data = self.artificial_build_data[0]
-                if next_data == next_step_req_form:
-                    self.scanDevSet = False
-                    next_step_req_found = True
-                    self.next_step_req_time = datetime.now()
-                # elif self.scan_dev is not 'DAC':
-                #     # check for timeout
-                #     time_since_last_step_request = datetime.now() - self.next_step_req_time
-                #     if time_since_last_step_request.seconds > self.scan_dev_timeout:
-                #         logging.warning('ContSeqDummy detected scanDevice timeout. Sending new data now anyways')
-                #         next_step_req_found = True
-                #         self.next_step_req_time = datetime.now()
-                new_datapoint = np.array(next_data)
-                if result['newData'] is None:
-                    result['newData'] = new_datapoint
-                else:
-                    result['newData'] = np.append(result['newData'], new_datapoint)
-                result['nOfEle'] = datapoints
-                self.artificial_build_data = self.artificial_build_data[1:]
-                result['elemRemainInFifo'] = len(self.artificial_build_data)
-            if result['elemRemainInFifo'] == 0:
-                self.status = CsCfg.seqStateDict['measComplete']
-                max_read_data = 0
-        return result
+            max_read_data = 10
+            datapoints = 0
+            next_step_req_form = Form.add_header_to23_bit(4, 4, 0, 1)  # means request next step
+            if self.scanDevSet:
+                next_step_req_found = False
+            else:
+                # still waiting for next step, don't return new data yet
+                next_step_req_found = True
+            while not next_step_req_found and datapoints < max_read_data:
+                if result['elemRemainInFifo'] > 0:
+                    datapoints += 1
+                    next_data = self.artificial_build_data.pop(0)  # directly take it from data stack, just to be sure
+                    result['elemRemainInFifo'] = len(self.artificial_build_data)
+                    if next_data == next_step_req_form:
+                        self.scanDevSet = False
+                        next_step_req_found = True
+                        self.next_step_req_time = datetime.now()
+                    # elif self.scan_dev is not 'DAC':
+                    #     # check for timeout
+                    #     time_since_last_step_request = datetime.now() - self.next_step_req_time
+                    #     if time_since_last_step_request.seconds > self.scan_dev_timeout:
+                    #         logging.warning('ContSeqDummy detected scanDevice timeout. Sending new data now anyways')
+                    #         next_step_req_found = True
+                    #         self.next_step_req_time = datetime.now()
+                    new_datapoint = np.array(next_data)
+                    if result['newData'] is None:
+                        result['newData'] = new_datapoint
+                    else:
+                        result['newData'] = np.append(result['newData'], new_datapoint)
+                    result['nOfEle'] = datapoints
+                if result['elemRemainInFifo'] == 0:
+                    if not self.isKepcoScan:
+                        # if this is a kepco scan, more dummy data will be generated during the scan
+                        self.status = CsCfg.seqStateDict['measComplete']
+                    max_read_data = 0
+            return result
 
     def getSeqState(self):
         return self.status
 
     def abort(self):
+        self.steps = 0
         self.artificial_build_data = []
         return True
 
     def halt(self, val):
+        logging.info('Halt in dummy mode will not finish this scan but abort!')
+        self.steps = 0
+        self.artificial_build_data = []
+        return True
+
+    def pause_scan(self, pause_bool=None):
+        if pause_bool is None:
+            pause_bool = not self.pause_bool
+        logging.info('pausing the dummy, pause is: %s' % pause_bool)
+        self.pause_bool = pause_bool
         return True
 
     def DeInitFpga(self, finalize_com=False):
@@ -279,6 +327,16 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         return True
 
     def set_stopVoltMeas(self, stop_bool):
+        # Signal from ScanMain, that all dmms have a reading. Means we can simulate step complete and set new voltage.
+        if stop_bool:
+            self.steps -= 1
+            if self.steps == 0:
+                self.artificial_build_data.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))  # step complete
+                self.status = CsCfg.seqStateDict['measComplete']
+            else:
+                logging.debug('ContinousSequencerDummy done building artificial data. Going to measComplete state')
+                self.artificial_build_data.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))  # step complete
+                self.artificial_build_data.append(Form.add_header_to23_bit(0, 3, 0, 1))  # means dac voltage set
         return True
 
     def read_outbits_state(self):

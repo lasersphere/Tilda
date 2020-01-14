@@ -14,7 +14,7 @@ import functools
 import logging
 import time
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import numpy as np
 from PyQt5 import QtWidgets, QtCore, QtGui
@@ -118,7 +118,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.new_track_no_data_yet = False  # set this to true when new track is setup
 
         self.last_gr_update_done_time = datetime.now()
-
+        self.last_rebin_time_stamp = datetime.now()
+        self.allowed_rebin_update_rate = timedelta(milliseconds=1000)
         self.graph_font_size = int(14)
 
         ''' connect callbacks: '''
@@ -519,7 +520,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 update_time_res_spec = self.needed_plot_update_time_ms <= update_time_ms \
                                        or self.calls_since_last_time_res_plot_update > max_calls_without_plot or \
                                        not self.subscribe_as_live_plot
-                # update teh time resolved spec if the last time the plot was faster plotted than 100ms
+                # update the time resolved spec if the last time the plot was faster plotted than 100ms
                 # 150 ms should be ok to update all other plots
                 # anyhow every fifth plot it will force to plot the time res
                 if update_time_res_spec:
@@ -534,9 +535,14 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
                 self.update_all_plots(self.spec_data, update_tres=update_time_res_spec)
                 if self.spec_data.seq_type in self.trs_names_list:
-                    self.spinBox.blockSignals(True)
-                    self.spinBox.setValue(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
-                    self.spinBox.blockSignals(False)
+                    if not self.spinBox.hasFocus():
+                        # only update when user is not entering currently
+                        self.spinBox.blockSignals(True)
+                        # blockSignals is necessary to avoid a loop since spinBox is connected to rebin_data(), which will
+                        # emit a new_gate_or_soft_bin_width signal connected to rcvd_gates_and_rebin() Node that will again
+                        # emit a new_data_callback that brings us back here...
+                        self.spinBox.setValue(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
+                        self.spinBox.blockSignals(False)
                     self.update_gates_list()
                 valid_data = True
                 if valid_data and self.new_track_no_data_yet:  # this means it is first call
@@ -569,9 +575,18 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     ''' updating the plots from specdata '''
 
+    def update_rebin_spinbox_enable(self, force_enable=False, force_disable=False):
+        """ call this to enable the rebinning spinbox automatically after a certain time """
+        st = datetime.now()
+        enable = (st - self.last_rebin_time_stamp) > self.allowed_rebin_update_rate or force_enable
+        enable = enable and not force_disable  # will be always False if force_disable is True
+        self.spinBox.setEnabled(enable)
+        self.tableWidget_gates.setEnabled(enable)
+
     def update_all_plots(self, spec_data, update_tres=True):
         """ wrapper to update all plots """
         try:
+            self.update_rebin_spinbox_enable()
             if spec_data is None and self.spec_data is not None:
                 #  for updating by F5
                 spec_data = self.spec_data
@@ -1054,28 +1069,42 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     ''' rebinning '''
 
     def rebin_data(self, rebin_factor_ns=None):
-        self.spinBox.blockSignals(True)  # block spinBox while executing. Else can crash through double-calls.
+        """
+        request a rebinning from the pipeline,
+        will only request this rebinning if the appropiate
+        amount of time (self.allowed_rebin_update_rate) has passed.
+        """
         start = datetime.now()
-        if rebin_factor_ns is None:
-            if self.active_initial_scan_dict is not None:
-                rebin_factor_ns = self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind]
-        rebin_factor_ns = rebin_factor_ns // 10 * 10
-        self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind] = rebin_factor_ns
-        self.spinBox.setValue(rebin_factor_ns)
-        logging.debug('rebinning data to bins of  %s' % rebin_factor_ns)
-        rebin_track = -1 if self.checkBox.isChecked() else self.tres_sel_tr_ind
-        logging.debug('emitting %s, from %s, value is %s'
-                      % ('new_gate_or_soft_bin_width',
-                         'Interface.LiveDataPlottingUi.LiveDataPlottingUi.TRSLivePlotWindowUi#rebin_data',
-                         str((self.extract_all_gates_from_gui(), rebin_track,
-                              self.spec_data.softBinWidth_ns, False))))
-        self.new_gate_or_soft_bin_width.emit(
-            self.extract_all_gates_from_gui(), rebin_track,
-            self.spec_data.softBinWidth_ns, False)
-        stop = datetime.now()
-        dif = stop - start
-        # print('rebinning took: %s' % dif)
-        self.spinBox.blockSignals(False)
+        if start - self.last_rebin_time_stamp > self.allowed_rebin_update_rate:
+            # only allow update after self.allowed_rebin_update_rate has passed
+            self.last_rebin_time_stamp = start  # set to last time stamp
+            if rebin_factor_ns is None:
+                if self.active_initial_scan_dict is not None:
+                    rebin_factor_ns = self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind]
+            rebin_factor_ns = rebin_factor_ns // 10 * 10
+            self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind] = rebin_factor_ns
+            self.spinBox.blockSignals(True)
+            self.spinBox.setValue(rebin_factor_ns)
+            self.spinBox.blockSignals(False)
+            logging.debug('rebinning data to bins of  %s' % rebin_factor_ns)
+            rebin_track = -1 if self.checkBox.isChecked() else self.tres_sel_tr_ind
+            logging.debug('emitting %s, from %s, value is %s'
+                          % ('new_gate_or_soft_bin_width',
+                             'Interface.LiveDataPlottingUi.LiveDataPlottingUi.TRSLivePlotWindowUi#rebin_data',
+                             str((self.extract_all_gates_from_gui(), rebin_track,
+                                  self.spec_data.softBinWidth_ns, False))))
+            self.update_rebin_spinbox_enable(force_disable=True)  # now disable until enough time has passed.
+            self.new_gate_or_soft_bin_width.emit(
+                self.extract_all_gates_from_gui(), rebin_track,
+                self.spec_data.softBinWidth_ns, False)
+            stop = datetime.now()
+            dif = stop - start
+            # print('rebinning took: %s' % dif)
+        else:
+            logging.warning('tried to rebin, but not enough time has passed since last rebin.'
+                            'time passed: %.1f, minimum time between: %.1f'
+                            % ((start - self.last_rebin_time_stamp).total_seconds(),
+                               self.allowed_rebin_update_rate.total_seconds()))
 
     def apply_rebin_to_all_checkbox_changed(self, state):
         if state == 2:  # the checkbox is checked

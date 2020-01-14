@@ -110,6 +110,7 @@ draft_outbits = {
 
 # this must always be present by a scan device:
 # leave this as it is since this will be called for old track dict which do not have this yet!
+# TODO: Can we change 'type' to the new default 'AD57X1(DAC)' or does that conflict with old track dicts as well?
 draft_scan_device = {
     'name': 'AD5781_Ser1',
     'type': 'AD5781',  # what type of device, e.g. AD5781(DAC) / Matisse (laser)

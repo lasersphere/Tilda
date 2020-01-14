@@ -117,8 +117,17 @@ def load_json(path, convert_trigger=True):
         from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TriTyp
         for key, val in ret.items():
             if 'track' in key:
-                for triggers, trig_dicts in val['trigger']:
-                    trig_dicts['type'] = TriTyp[trig_dicts['type']]
+                if val['trigger'].get('type', None) is not None:
+                    #val['trigger']['type'] = TriTyp[val['trigger']['type']]
+                    # old trigger dict! Convert to new!
+                    from Service.Scan.draftScanParameters import draft_trigger_pars
+                    buff = val['trigger']
+                    buff['type'] = TriTyp[buff['type']]
+                    val['trigger'] = draft_trigger_pars
+                    val['trigger']['meas_trigger'] = buff
+                else:  # already is new trigger dict
+                    for triggers, trig_dicts in val['trigger'].items():
+                        trig_dicts['type'] = TriTyp[trig_dicts['type']]
     return ret
 
 

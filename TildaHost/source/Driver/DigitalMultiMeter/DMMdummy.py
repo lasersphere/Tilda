@@ -41,7 +41,7 @@ class DMMdummyPreConfigs(Enum):
         'triggerCount': 0,
         'sampleCount': 0,
         'autoZero': -1,
-        'triggerSource': 'eins',
+        'triggerSource': 'none',
         'sampleInterval': -1,
         'powerLineFrequency': 50.0,
         'triggerDelay_s': 0,
@@ -58,7 +58,7 @@ class DMMdummyPreConfigs(Enum):
         'triggerCount': 0,
         'sampleCount': 10,
         'autoZero': -1,
-        'triggerSource': 'softw_trigger',
+        'triggerSource': 'none',
         'sampleInterval': -1,
         'powerLineFrequency': 50.0,
         'triggerDelay_s': 0,
@@ -75,12 +75,12 @@ class DMMdummyPreConfigs(Enum):
         'triggerCount': 0,
         'sampleCount': 0,
         'autoZero': -1,
-        'triggerSource': 'softw_trigger',
+        'triggerSource': 'software',
         'sampleInterval': -1,
         'powerLineFrequency': 50.0,
         'triggerDelay_s': 0,
         'triggerSlope': 'rising',
-        'measurementCompleteDestination': 'Con1_DIO30',
+        'measurementCompleteDestination': 'software',
         'highInputResistanceTrue': True,
         'assignment': 'offset',
         'accuracy': (None, None),
@@ -99,6 +99,10 @@ class DMMdummy:
         self.accuracy_range = 10 ** -4
         self.last_fetch_datetime = datetime.datetime.now()
         self.allowed_fetch_time = datetime.timedelta(milliseconds=500)
+
+        # software trigger
+        self.software_triggs_received = 0
+        self.software_triggered_data = []
 
         # default config dictionary for this type of DMM:
         self.pre_configs = DMMdummyPreConfigs
@@ -143,7 +147,9 @@ class DMMdummy:
         pass
 
     def send_software_trigger(self):
-        pass
+        self.software_triggs_received += 1
+        # build dummy data representing the number of software trigger calls!
+        self.software_triggered_data.append(self.software_triggs_received)
 
     ''' Measurement '''
 
@@ -152,20 +158,29 @@ class DMMdummy:
         pass
 
     def fetch_multiple_meas(self, num_to_read, max_time=-1):
-        if num_to_read == -1:
-            num_to_read = 2
-        ret_val = 1
-        elapsed_since_laste_fetch = datetime.datetime.now() - self.last_fetch_datetime
-        if elapsed_since_laste_fetch >= self.allowed_fetch_time:
-            self.last_fetch_datetime = datetime.datetime.now()
-            ret = np.full(num_to_read, ret_val, dtype=np.double)
-            t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            # take last element out of array and make a tuple with timestamp:
-            self.last_readback = (round(ret[-1], 8), t)
+        if self.config_dict['triggerSource'] == 'software':
+            # if the dummy is software triggered, we do not want to return measurements before the trigger!
+            if num_to_read == -1:
+                ret_vals = self.software_triggered_data
+                self.software_triggered_data = []
+            else:
+                ret_vals = self.software_triggered_data[:num_to_read]
+                self.software_triggered_data = self.software_triggered_data[num_to_read:]
+            ret = np.array(ret_vals, dtype=np.double)
         else:
-            ret = np.zeros(0, dtype=np.double)
+            if num_to_read == -1:
+                num_to_read = 2
+            ret_val = 1
+            elapsed_since_laste_fetch = datetime.datetime.now() - self.last_fetch_datetime
+            if elapsed_since_laste_fetch >= self.allowed_fetch_time:
+                self.last_fetch_datetime = datetime.datetime.now()
+                ret = np.full(num_to_read, ret_val, dtype=np.double)
+                t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                # take last element out of array and make a tuple with timestamp:
+                self.last_readback = (round(ret[-1], 8), t)
+            else:
+                ret = np.zeros(0, dtype=np.double)
         return ret
-
 
     def abort_meas(self):
         self.state = 'aborted'
@@ -197,6 +212,8 @@ class DMMdummy:
     ''' loading '''
     def load_from_config_dict(self, config_dict, reset_dev):
         self.config_dict = deepcopy(config_dict)
+        self.software_triggered_data = []
+        self.software_triggs_received = 0
         self.get_accuracy()
         logging.info('dummy dmm named: %s' % self.name)
         logging.info('resetting_dev: %s' % str(reset_dev))
@@ -219,7 +236,7 @@ class DMMdummy:
             'sampleCount': ('#samples', True, int, range(0, 10000, 1), self.config_dict['sampleCount']),
             'autoZero': ('auto zero', True, int, [-1, 0, 1, 2], self.config_dict['autoZero']),
             'triggerSource': ('trigger source', True, str,
-                              ['eins', 'zwei'], self.config_dict['triggerSource']),
+                              ['none', 'software'], self.config_dict['triggerSource']),
             'sampleInterval': ('sample Interval [s]', True, float,
                                [-1.0] + [i / 10 for i in range(0, 1000)], self.config_dict['sampleInterval']),
             'powerLineFrequency': ('power line frequency [Hz]', True, float,
