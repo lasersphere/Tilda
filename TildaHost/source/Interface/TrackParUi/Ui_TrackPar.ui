@@ -334,7 +334,7 @@
       <item>
        <widget class="QPushButton" name="pushButton_conf_pre_post_tr_meas">
         <property name="text">
-         <string>configure pre/post track measurement</string>
+         <string>configure dmm/triton measurements</string>
         </property>
        </widget>
       </item>

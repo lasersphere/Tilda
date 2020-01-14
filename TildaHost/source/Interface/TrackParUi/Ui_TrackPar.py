@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'Ui_TrackPar.ui'
+# Form implementation generated from reading ui file '.\Ui_TrackPar.ui'
 #
 # Created by: PyQt5 UI code generator 5.5
 #
@@ -517,8 +517,8 @@ class Ui_MainWindowTrackPars(object):
         self.doubleSpinBox_waitAfterReset_muS.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.doubleSpinBox_waitAfterReset_muS.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
         self.doubleSpinBox_waitAfterReset_muS.setKeyboardTracking(False)
-        self.doubleSpinBox_waitAfterReset_muS.setDecimals(0)
-        self.doubleSpinBox_waitAfterReset_muS.setMaximum(2 ** 32)
+        self.doubleSpinBox_waitAfterReset_muS.setDecimals(3)
+        self.doubleSpinBox_waitAfterReset_muS.setMaximum(4200000.0)
         self.doubleSpinBox_waitAfterReset_muS.setSingleStep(0.5)
         self.doubleSpinBox_waitAfterReset_muS.setObjectName("doubleSpinBox_waitAfterReset_muS")
         self.gridLayout_5.addWidget(self.doubleSpinBox_waitAfterReset_muS, 2, 1, 1, 1)
@@ -652,7 +652,7 @@ class Ui_MainWindowTrackPars(object):
         self.checkBox_scanUseAllTracks.setText(_translate("MainWindowTrackPars", "use for all tracks"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_scan_trigger), _translate("MainWindowTrackPars", "scan Trigger"))
         self.pushButton_config_pulse_pattern.setText(_translate("MainWindowTrackPars", "configure pulse pattern"))
-        self.pushButton_conf_pre_post_tr_meas.setText(_translate("MainWindowTrackPars", "configure pre/post track measurement"))
+        self.pushButton_conf_pre_post_tr_meas.setText(_translate("MainWindowTrackPars", "configure dmm/triton measurements"))
         self.pushButton_con_outbits.setText(_translate("MainWindowTrackPars", "configure outbits"))
         self.label_5.setText(_translate("MainWindowTrackPars", "Set Value"))
         self.label_7.setText(_translate("MainWindowTrackPars", "DAC * 50"))
