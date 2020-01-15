@@ -88,7 +88,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.active_initial_scan_dict = None  # scan dict which is stored under the active iso name in the main
         self.active_file = None  # str, name of active file
         self.active_iso = None  # str, name of active iso in main
-        self.overall_scan_progress = 0  # float, will be 1 when scan completed updated via scan progress dict from main
+        self.overall_scan_progress = 0  # float, will be 100 when scan completed updated via scan progress dict from main
         self.setupUi(self)
         self.show()
         self.tabWidget.setCurrentIndex(1)  # time resolved
@@ -119,7 +119,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         self.last_gr_update_done_time = datetime.now()
         self.last_rebin_time_stamp = datetime.now()
-        self.allowed_rebin_update_rate = timedelta(milliseconds=1000)
+        self.allowed_rebin_update_rate = timedelta(milliseconds=500)
         self.graph_font_size = int(14)
 
         ''' connect callbacks: '''
@@ -578,6 +578,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def update_rebin_spinbox_enable(self, force_enable=False, force_disable=False):
         """ call this to enable the rebinning spinbox automatically after a certain time """
         st = datetime.now()
+        if self.overall_scan_progress == 100 or self.overall_scan_progress == 0:
+            # scan complete or not started yet, don't restrict rebinning
+            force_enable = True
         enable = (st - self.last_rebin_time_stamp) > self.allowed_rebin_update_rate or force_enable
         enable = enable and not force_disable  # will be always False if force_disable is True
         self.spinBox.setEnabled(enable)
