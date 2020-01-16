@@ -55,6 +55,13 @@ Improved:
         value instead of wildly scrolling to it. See also under Fixed.
         https://app.asana.com/0/10893101573162/697937483809958/f
 
+    - TrackParsUi wide display
+        Since the TrackPars ui did grow a lot over the last time, it often became to big for the screen and thus buttons
+        were out of sight. Now there is a Ui_TrackPar_Wide that splits the track settings into two columns instead of one
+        so it should fit much better on the screens. The old Ui_TrackPar is still there and only the import line in
+        TrackUi.py has to be changed to get it back in case someone really insists on having it.
+        https://app.asana.com/0/10893101573162/1157437526547601/f
+
     - Dummy cs and trs can now pause
         Pausing a dummy didn't work until now and even threw an error because the function definition from SequencerCommon
         wasn't overwritten in the dummies. Now the dummies correctly stop emitting data and resume after the pause.

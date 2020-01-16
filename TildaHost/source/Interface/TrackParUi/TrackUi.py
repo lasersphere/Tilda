@@ -24,7 +24,7 @@ import Service.VoltageConversions.VoltageConversions as VCon
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
 from Interface.PulsePatternUi.PulsePatternUi import PulsePatternUi
 from Interface.SetVoltageUi.SetVoltageUi import SetVoltageUi
-from Interface.TrackParUi.Ui_TrackPar import Ui_MainWindowTrackPars
+from Interface.TrackParUi.Ui_TrackPar_Wide import Ui_MainWindowTrackPars
 from Interface.PreScanConfigUi.PreScanConfigUi import PreScanConfigUi
 from Interface.OutBitsUi.OutBitsUi import OutBitsUi
 from Measurement.SpecData import SpecDataXAxisUnits as Units
