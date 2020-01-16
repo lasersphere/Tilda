@@ -581,6 +581,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         if self.overall_scan_progress == 100 or self.overall_scan_progress == 0:
             # scan complete or not started yet, don't restrict rebinning
             force_enable = True
+            force_disable = False
         enable = (st - self.last_rebin_time_stamp) > self.allowed_rebin_update_rate or force_enable
         enable = enable and not force_disable  # will be always False if force_disable is True
         self.spinBox.setEnabled(enable)
