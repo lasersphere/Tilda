@@ -45,7 +45,9 @@ Added:
     - 20 Bit DAC
         Up to now, only the AD5781 18-Bit DAC was supported by TILDA. For a test with the TREK (x1000) Amplifier we
         changed TILDA to full 20-Bit compatibility. Depending on the DAC card in use, the interface will allow 18- or
-        20-bit precision. The lower level code however always works with 20-bit now.
+        20-bit precision. The calculated number of bits is chosen automatically based on the device name in the DAC
+        calibration file. That means old measurements can be loaded, if the original calibration file is provided with
+        the measurement.
         https://app.asana.com/0/10893101573162/1136324508377297/f
 
 Improved:
