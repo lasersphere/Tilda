@@ -113,9 +113,10 @@ class ContinousSequencer(Sequencer, MeasureVolt):
         :return:
         """
         self.scanDevSet = ready_bool
-        complete_lis = []
-        complete_lis.append(Form.add_header_to23_bit(0, 3, 0, 1))  # means dac voltage set
-        self.artificial_build_data = complete_lis
+        if self.isKepcoScan:
+            complete_lis = []
+            complete_lis.append(Form.add_header_to23_bit(0, 3, 0, 1))  # means dac voltage set
+            self.artificial_build_data = complete_lis
 
     def setAllContSeqPars(self, scanpars, track_num):
         """
