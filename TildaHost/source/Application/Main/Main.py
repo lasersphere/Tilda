@@ -691,7 +691,7 @@ class Main(QtCore.QObject):
         :return: dict, completed dictionary
         """
         self.scan_pars[iso_name] = SdOp.fill_meas_complete_dest(self.scan_pars[iso_name])
-        self.scan_pars[iso_name] = SdOp.add_missing_voltages(self.scan_pars[iso_name])
+        # self.scan_pars[iso_name] = SdOp.add_missing_voltages(self.scan_pars[iso_name])  not needed anymore
         self.scan_pars[iso_name]['pipeInternals']['workingDirectory'] = self.working_directory
         self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
         self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
@@ -1038,8 +1038,12 @@ class Main(QtCore.QObject):
         """
         scand = DbOp.extract_all_tracks_from_db(self.database, iso, seq_type)
         key = iso + '_' + seq_type
-        self.scan_pars[key] = scand
-        logging.debug('scan_pars are: ' + str(self.scan_pars))
+        if self.scan_progress.get('activeIso', 'None') != key:
+            self.scan_pars[key] = scand
+            logging.debug('scan_pars are: ' + str(self.scan_pars))
+        else:
+            # if the isotope is scanning right now, don't mess with the scan_pars!
+            logging.warning('scan_pars not updated because isotope is scanning right now!')
         return key
 
     def add_iso_to_scan_pars_no_database(self, scan_dict):

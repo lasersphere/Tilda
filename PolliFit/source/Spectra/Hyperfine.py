@@ -29,6 +29,7 @@ class Hyperfine(object):
         self.center = iso.center
         
         self.trans = Physics.HFTrans(self.iso.I, self.iso.Jl, self.iso.Ju)
+        self.hfInt = Physics.HFInt(self.iso.I, self.iso.Jl, self.iso.Ju, self.trans)
 
         Au = iso.Au * iso.Al if self.fixA and not self.fixedAu else iso.Au
         Bu = iso.Bu * iso.Bl if self.fixB and not self.fixedBu else iso.Bu

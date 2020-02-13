@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>413</width>
-    <height>627</height>
+    <width>404</width>
+    <height>825</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="windowTitle">
    <string>track parameters</string>
@@ -40,12 +46,9 @@
        </widget>
       </item>
       <item>
-       <widget class="QWidget" name="widget_trigger" native="true">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
+       <widget class="QWidget" name="trigger_tab_widget" native="true">
+        <property name="enabled">
+         <bool>true</bool>
         </property>
         <property name="minimumSize">
          <size>
@@ -53,53 +56,256 @@
           <height>0</height>
          </size>
         </property>
-        <layout class="QVBoxLayout" name="verticalLayout_3">
+        <property name="baseSize">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_6">
          <item>
-          <layout class="QGridLayout" name="gridLayout">
-           <item row="0" column="0">
-            <widget class="QLabel" name="label">
-             <property name="text">
-              <string>trigger:</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0">
-            <widget class="QComboBox" name="comboBox_triggerSelect">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>20</height>
-              </size>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QCheckBox" name="checkBox">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="text">
-              <string>use for all tracks</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item>
-          <layout class="QVBoxLayout" name="trigger_vert_layout">
-           <item>
-            <widget class="QWidget" name="widget_trigger_place_holder" native="true"/>
-           </item>
-          </layout>
+          <widget class="QTabWidget" name="tabWidget">
+           <property name="currentIndex">
+            <number>0</number>
+           </property>
+           <widget class="QWidget" name="tab_trigger">
+            <attribute name="title">
+             <string>meas Trigger</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_7">
+             <item>
+              <widget class="QLabel" name="label_descriptionTrigger">
+               <property name="text">
+                <string>Standard trigger. Triggers measurements per bunch(TRS) or step(CS)</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QWidget" name="widget_trigger" native="true">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <layout class="QVBoxLayout" name="verticalLayout_3">
+                <item>
+                 <layout class="QGridLayout" name="gridLayout">
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="label_Trigger">
+                    <property name="text">
+                     <string>trigger:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="0">
+                   <widget class="QComboBox" name="comboBox_triggerSelect">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QCheckBox" name="checkBox_UseAllTracks">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="text">
+                     <string>use for all tracks</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <layout class="QVBoxLayout" name="trigger_vert_layout">
+                  <item>
+                   <widget class="QWidget" name="widget_trigger_place_holder" native="true"/>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_step_trigger">
+            <attribute name="title">
+             <string>step Trigger</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_8">
+             <item>
+              <widget class="QLabel" name="label_descriptionStepTrigger">
+               <property name="text">
+                <string>Advanced trigger. Used to trigger next step. Usefull for laser scanning!</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QWidget" name="widget_step_trigger" native="true">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <layout class="QVBoxLayout" name="verticalLayout_5">
+                <item>
+                 <layout class="QGridLayout" name="gridLayout_6">
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="label_stepTrigger">
+                    <property name="text">
+                     <string>step trigger:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="0">
+                   <widget class="QComboBox" name="comboBox_stepTriggerSelect">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QCheckBox" name="checkBox_stepUseAllTracks">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="text">
+                     <string>use for all tracks</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <layout class="QVBoxLayout" name="step_trigger_vert_layout">
+                  <item>
+                   <widget class="QWidget" name="widget_step_trigger_place_holder" native="true"/>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_scan_trigger">
+            <attribute name="title">
+             <string>scan Trigger</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_10">
+             <item>
+              <widget class="QLabel" name="label_9">
+               <property name="text">
+                <string>Advanced trigger. Used to trigger next scan.</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QWidget" name="widget_scan_trigger" native="true">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <layout class="QVBoxLayout" name="verticalLayout_9">
+                <item>
+                 <layout class="QGridLayout" name="gridLayout_7">
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="label_scanTrigger">
+                    <property name="text">
+                     <string>scan trigger:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="0">
+                   <widget class="QComboBox" name="comboBox_scanTriggerSelect">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QCheckBox" name="checkBox_scanUseAllTracks">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="text">
+                     <string>use for all tracks</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <layout class="QVBoxLayout" name="scan_trigger_vert_layout">
+                  <item>
+                   <widget class="QWidget" name="widget_scan_trigger_place_holder" native="true"/>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </widget>
          </item>
         </layout>
        </widget>
@@ -128,7 +334,7 @@
       <item>
        <widget class="QPushButton" name="pushButton_conf_pre_post_tr_meas">
         <property name="text">
-         <string>configure pre/post track measurement</string>
+         <string>configure dmm/triton measurements</string>
         </property>
        </widget>
       </item>
@@ -158,6 +364,12 @@
         <layout class="QVBoxLayout" name="verticalLayout_4">
          <item>
           <widget class="QTabWidget" name="tabwidget">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>400</height>
+            </size>
+           </property>
            <property name="locale">
             <locale language="English" country="UnitedStates"/>
            </property>
@@ -169,416 +381,7 @@
              <string>common Sequencer Settings</string>
             </attribute>
             <layout class="QGridLayout" name="gridLayout_4">
-             <item row="10" column="1">
-              <widget class="QLineEdit" name="lineEdit_activePmtList">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="locale">
-                <locale language="English" country="UnitedStates"/>
-               </property>
-               <property name="text">
-                <string/>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-               </property>
-              </widget>
-             </item>
-             <item row="5" column="0">
-              <widget class="QLabel" name="label_nOfScans">
-               <property name="text">
-                <string>number of Scans</string>
-               </property>
-              </widget>
-             </item>
-             <item row="9" column="1">
-              <widget class="QDoubleSpinBox" name="doubleSpinBox_postAccOffsetVolt">
-               <property name="locale">
-                <locale language="English" country="UnitedStates"/>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-               </property>
-               <property name="buttonSymbols">
-                <enum>QAbstractSpinBox::NoButtons</enum>
-               </property>
-               <property name="keyboardTracking">
-                <bool>false</bool>
-               </property>
-               <property name="minimum">
-                <double>-10000.000000000000000</double>
-               </property>
-               <property name="maximum">
-                <double>10000.000000000000000</double>
-               </property>
-              </widget>
-             </item>
-             <item row="6" column="0">
-              <widget class="QLabel" name="label_invertScan">
-               <property name="text">
-                <string>invert scan direction</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="2">
-              <widget class="QLabel" name="label_dacStartV_set">
-               <property name="text">
-                <string>None</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1">
-              <widget class="QDoubleSpinBox" name="doubleSpinBox_dacStartV">
-               <property name="locale">
-                <locale language="English" country="UnitedStates"/>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-               </property>
-               <property name="buttonSymbols">
-                <enum>QAbstractSpinBox::NoButtons</enum>
-               </property>
-               <property name="keyboardTracking">
-                <bool>false</bool>
-               </property>
-               <property name="decimals">
-                <number>8</number>
-               </property>
-               <property name="minimum">
-                <double>-10.000000000000000</double>
-               </property>
-               <property name="maximum">
-                <double>10.000000000000000</double>
-               </property>
-               <property name="singleStep">
-                <double>0.010000000000000</double>
-               </property>
-              </widget>
-             </item>
-             <item row="6" column="1">
-              <widget class="QCheckBox" name="checkBox_invertScan">
-               <property name="text">
-                <string/>
-               </property>
-              </widget>
-             </item>
-             <item row="10" column="0">
-              <widget class="QLabel" name="label_activePmtList">
-               <property name="text">
-                <string>active PMT List</string>
-               </property>
-              </widget>
-             </item>
-             <item row="9" column="0">
-              <widget class="QLabel" name="label_postAccOffsetVolt">
-               <property name="text">
-                <string>post Acceleration 
-power supply voltage [V]</string>
-               </property>
-              </widget>
-             </item>
-             <item row="9" column="2">
-              <widget class="QLabel" name="label_postAccOffsetVolt_set">
-               <property name="text">
-                <string>None</string>
-               </property>
-              </widget>
-             </item>
-             <item row="5" column="1">
-              <widget class="QSpinBox" name="spinBox_nOfScans">
-               <property name="locale">
-                <locale language="English" country="UnitedStates"/>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-               </property>
-               <property name="buttonSymbols">
-                <enum>QAbstractSpinBox::NoButtons</enum>
-               </property>
-               <property name="keyboardTracking">
-                <bool>false</bool>
-               </property>
-               <property name="maximum">
-                <number>10000000</number>
-               </property>
-              </widget>
-             </item>
-             <item row="5" column="2">
-              <widget class="QLabel" name="label_nOfScans_set">
-               <property name="text">
-                <string>None</string>
-               </property>
-              </widget>
-             </item>
-             <item row="11" column="1">
-              <widget class="QCheckBox" name="checkBox_colDirTrue">
-               <property name="text">
-                <string/>
-               </property>
-              </widget>
-             </item>
-             <item row="11" column="0">
-              <widget class="QLabel" name="label_colDirTrue">
-               <property name="text">
-                <string>measured collinear?</string>
-               </property>
-              </widget>
-             </item>
-             <item row="11" column="2">
-              <widget class="QLabel" name="label_colDirTrue_set">
-               <property name="text">
-                <string>None</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="2">
-              <widget class="QLabel" name="label_5">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="text">
-                <string>Set Value</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_dacStartV">
-               <property name="text">
-                <string>DAC start  [V]</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="1">
-              <widget class="QLabel" name="label_4">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="text">
-                <string>User Input</string>
-               </property>
-              </widget>
-             </item>
-             <item row="7" column="0">
-              <widget class="QLabel" name="label_postAccOffsetVoltControl">
-               <property name="text">
-                <string>post Acceleration 
-power supply</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="2">
-              <widget class="QLabel" name="label_dacStopV_set">
-               <property name="text">
-                <string>None</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="label_dacStepSizeV">
-               <property name="text">
-                <string>DAC step size [V]</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="0">
-              <widget class="QLabel" name="label_dacStopV">
-               <property name="text">
-                <string>DAC stop [V]</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="2">
-              <widget class="QLabel" name="label_nOfSteps_set">
-               <property name="text">
-                <string>None</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="1">
-              <widget class="QSpinBox" name="spinBox_nOfSteps">
-               <property name="locale">
-                <locale language="English" country="UnitedStates"/>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-               </property>
-               <property name="buttonSymbols">
-                <enum>QAbstractSpinBox::NoButtons</enum>
-               </property>
-               <property name="keyboardTracking">
-                <bool>false</bool>
-               </property>
-               <property name="maximum">
-                <number>100000000</number>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="2">
-              <widget class="QLabel" name="label_dacStepSizeV_set">
-               <property name="text">
-                <string>None</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="0">
-              <widget class="QLabel" name="label_nOfSteps">
-               <property name="text">
-                <string>number of steps</string>
-               </property>
-              </widget>
-             </item>
-             <item row="10" column="2">
-              <widget class="QLabel" name="label_activePmtList_set">
-               <property name="text">
-                <string>None</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="1">
-              <widget class="QDoubleSpinBox" name="doubleSpinBox_dacStopV">
-               <property name="locale">
-                <locale language="English" country="UnitedStates"/>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-               </property>
-               <property name="buttonSymbols">
-                <enum>QAbstractSpinBox::NoButtons</enum>
-               </property>
-               <property name="keyboardTracking">
-                <bool>false</bool>
-               </property>
-               <property name="decimals">
-                <number>8</number>
-               </property>
-               <property name="minimum">
-                <double>-10.000000000000000</double>
-               </property>
-               <property name="maximum">
-                <double>10.000000000000000</double>
-               </property>
-               <property name="singleStep">
-                <double>0.010000000000000</double>
-               </property>
-              </widget>
-             </item>
-             <item row="6" column="2">
-              <widget class="QLabel" name="label_invertScan_set">
-               <property name="text">
-                <string>None</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="1">
-              <widget class="QDoubleSpinBox" name="doubleSpinBox_dacStepSizeV">
-               <property name="locale">
-                <locale language="English" country="UnitedStates"/>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-               </property>
-               <property name="buttonSymbols">
-                <enum>QAbstractSpinBox::NoButtons</enum>
-               </property>
-               <property name="keyboardTracking">
-                <bool>false</bool>
-               </property>
-               <property name="decimals">
-                <number>8</number>
-               </property>
-               <property name="minimum">
-                <double>-10.000000000000000</double>
-               </property>
-               <property name="maximum">
-                <double>10.000000000000000</double>
-               </property>
-               <property name="singleStep">
-                <double>0.010000000000000</double>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="0">
-              <widget class="QLabel" name="label_3">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="text">
-                <string>Parameter</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="3">
-              <widget class="QLabel" name="label_kepco_start">
-               <property name="text">
-                <string>None</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="3">
-              <widget class="QLabel" name="label_7">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="text">
-                <string>DAC * 50</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="3">
-              <widget class="QLabel" name="label_kepco_stop">
-               <property name="text">
-                <string>None</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="3">
-              <widget class="QLabel" name="label_kepco_step">
-               <property name="text">
-                <string>None</string>
-               </property>
-              </widget>
-             </item>
-             <item row="7" column="1">
-              <widget class="QComboBox" name="comboBox_postAccOffsetVoltControl">
-               <item>
-                <property name="text">
-                 <string>Kepco</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Heinzinger1</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Heinzinger2</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Heinzinger3</string>
-                </property>
-               </item>
-              </widget>
-             </item>
-             <item row="12" column="1">
+             <item row="16" column="1">
               <spacer name="verticalSpacer_2">
                <property name="orientation">
                 <enum>Qt::Vertical</enum>
@@ -594,26 +397,610 @@ power supply</string>
                </property>
               </spacer>
              </item>
-             <item row="9" column="3">
-              <widget class="QPushButton" name="pushButton_postAccOffsetVolt">
-               <property name="text">
-                <string>set volt</string>
+             <item row="2" column="0" rowspan="2" colspan="4">
+              <widget class="QScrollArea" name="scrollArea">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>350</height>
+                </size>
                </property>
-              </widget>
-             </item>
-             <item row="7" column="3">
-              <widget class="QLabel" name="label_postAccOffsetVoltControl_set">
-               <property name="text">
-                <string>None</string>
+               <property name="frameShadow">
+                <enum>QFrame::Raised</enum>
                </property>
-              </widget>
-             </item>
-             <item row="7" column="2">
-              <widget class="QLabel" name="label_11">
-               <property name="text">
-                <string>readback
+               <property name="widgetResizable">
+                <bool>true</bool>
+               </property>
+               <widget class="QWidget" name="scrollAreaWidgetContents_2">
+                <property name="geometry">
+                 <rect>
+                  <x>0</x>
+                  <y>0</y>
+                  <width>410</width>
+                  <height>470</height>
+                 </rect>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_8">
+                 <item row="0" column="2">
+                  <widget class="QLabel" name="label_5">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>Set Value</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="3">
+                  <widget class="QLabel" name="label_7">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>DAC * 50</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLabel" name="label_4">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>User Input</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_3">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="text">
+                    <string>Parameter</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="13" column="2">
+                  <widget class="QLabel" name="label_nOfScans_set">
+                   <property name="text">
+                    <string>None</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="9" column="3">
+                  <widget class="QLabel" name="label_kepco_step">
+                   <property name="text">
+                    <string>None</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="13" column="0">
+                  <widget class="QLabel" name="label_nOfScans">
+                   <property name="text">
+                    <string>number of Scans</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="12" column="1">
+                  <widget class="QSpinBox" name="spinBox_nOfSteps">
+                   <property name="locale">
+                    <locale language="English" country="UnitedStates"/>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="buttonSymbols">
+                    <enum>QAbstractSpinBox::NoButtons</enum>
+                   </property>
+                   <property name="keyboardTracking">
+                    <bool>false</bool>
+                   </property>
+                   <property name="maximum">
+                    <number>100000000</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="12" column="0">
+                  <widget class="QLabel" name="label_nOfSteps">
+                   <property name="text">
+                    <string>number of steps</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="12" column="2">
+                  <widget class="QLabel" name="label_nOfSteps_set">
+                   <property name="text">
+                    <string>None</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="13" column="1">
+                  <widget class="QSpinBox" name="spinBox_nOfScans">
+                   <property name="locale">
+                    <locale language="English" country="UnitedStates"/>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="buttonSymbols">
+                    <enum>QAbstractSpinBox::NoButtons</enum>
+                   </property>
+                   <property name="keyboardTracking">
+                    <bool>false</bool>
+                   </property>
+                   <property name="maximum">
+                    <number>10000000</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="14" column="0">
+                  <widget class="QLabel" name="label_invertScan">
+                   <property name="text">
+                    <string>invert scan direction</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="15" column="2">
+                  <widget class="QLabel" name="label_11">
+                   <property name="text">
+                    <string>readback
 Voltage:</string>
-               </property>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="15" column="1">
+                  <widget class="QComboBox" name="comboBox_postAccOffsetVoltControl">
+                   <item>
+                    <property name="text">
+                     <string>Kepco</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Heinzinger1</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Heinzinger2</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Heinzinger3</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="16" column="0">
+                  <widget class="QLabel" name="label_postAccOffsetVolt">
+                   <property name="text">
+                    <string>post Acceleration 
+power supply voltage [V]</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="14" column="2">
+                  <widget class="QLabel" name="label_invertScan_set">
+                   <property name="text">
+                    <string>None</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="16" column="1">
+                  <widget class="QDoubleSpinBox" name="doubleSpinBox_postAccOffsetVolt">
+                   <property name="locale">
+                    <locale language="English" country="UnitedStates"/>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="buttonSymbols">
+                    <enum>QAbstractSpinBox::NoButtons</enum>
+                   </property>
+                   <property name="keyboardTracking">
+                    <bool>false</bool>
+                   </property>
+                   <property name="minimum">
+                    <double>-10000.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>10000.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="14" column="1">
+                  <widget class="QCheckBox" name="checkBox_invertScan">
+                   <property name="text">
+                    <string/>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="15" column="3">
+                  <widget class="QLabel" name="label_postAccOffsetVoltControl_set">
+                   <property name="text">
+                    <string>None</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="15" column="0">
+                  <widget class="QLabel" name="label_postAccOffsetVoltControl">
+                   <property name="text">
+                    <string>post Acceleration 
+power supply</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="18" column="0">
+                  <widget class="QLabel" name="label_colDirTrue">
+                   <property name="text">
+                    <string>measured collinear?</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="17" column="1">
+                  <widget class="QLineEdit" name="lineEdit_activePmtList">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="locale">
+                    <locale language="English" country="UnitedStates"/>
+                   </property>
+                   <property name="text">
+                    <string/>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="17" column="2">
+                  <widget class="QLabel" name="label_activePmtList_set">
+                   <property name="text">
+                    <string>None</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="16" column="3">
+                  <widget class="QPushButton" name="pushButton_postAccOffsetVolt">
+                   <property name="text">
+                    <string>set volt</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="17" column="0">
+                  <widget class="QLabel" name="label_activePmtList">
+                   <property name="text">
+                    <string>active PMT List</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="18" column="1">
+                  <widget class="QCheckBox" name="checkBox_colDirTrue">
+                   <property name="text">
+                    <string/>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="16" column="2">
+                  <widget class="QLabel" name="label_postAccOffsetVolt_set">
+                   <property name="text">
+                    <string>None</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="18" column="2">
+                  <widget class="QLabel" name="label_colDirTrue_set">
+                   <property name="text">
+                    <string>None</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QComboBox" name="comboBox_scanDevClass"/>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="label_8">
+                   <property name="text">
+                    <string>scan device type</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QComboBox" name="comboBox_scanDev_type"/>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label">
+                   <property name="text">
+                    <string>scan device class</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="7" column="3">
+                  <widget class="QLabel" name="label_kepco_start">
+                   <property name="text">
+                    <string>None</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="7" column="0">
+                  <widget class="QLabel" name="label_dacStartV">
+                   <property name="text">
+                    <string>scan dev start</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QComboBox" name="comboBox_scanDev_name"/>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="label_10">
+                   <property name="text">
+                    <string>scan device name</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="7" column="2">
+                  <widget class="QLabel" name="label_dacStartV_set">
+                   <property name="text">
+                    <string>None</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="0">
+                  <widget class="QLabel" name="label_12">
+                   <property name="text">
+                    <string>scan device timeout [s]</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="7" column="1">
+                  <widget class="QDoubleSpinBox" name="doubleSpinBox_scanDevStart">
+                   <property name="locale">
+                    <locale language="English" country="UnitedStates"/>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="buttonSymbols">
+                    <enum>QAbstractSpinBox::NoButtons</enum>
+                   </property>
+                   <property name="keyboardTracking">
+                    <bool>false</bool>
+                   </property>
+                   <property name="decimals">
+                    <number>8</number>
+                   </property>
+                   <property name="minimum">
+                    <double>-10.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>10.000000000000000</double>
+                   </property>
+                   <property name="singleStep">
+                    <double>0.010000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QDoubleSpinBox" name="doubleSpinBox_scanDev_timeout_s">
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="buttonSymbols">
+                    <enum>QAbstractSpinBox::NoButtons</enum>
+                   </property>
+                   <property name="decimals">
+                    <number>3</number>
+                   </property>
+                   <property name="maximum">
+                    <double>999999999999999983222784.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="8" column="2">
+                  <widget class="QLabel" name="label_dacStopV_set">
+                   <property name="text">
+                    <string>None</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="8" column="1">
+                  <widget class="QDoubleSpinBox" name="doubleSpinBox_scanDevStop">
+                   <property name="locale">
+                    <locale language="English" country="UnitedStates"/>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="buttonSymbols">
+                    <enum>QAbstractSpinBox::NoButtons</enum>
+                   </property>
+                   <property name="keyboardTracking">
+                    <bool>false</bool>
+                   </property>
+                   <property name="decimals">
+                    <number>8</number>
+                   </property>
+                   <property name="minimum">
+                    <double>-10.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>10.000000000000000</double>
+                   </property>
+                   <property name="singleStep">
+                    <double>0.010000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="8" column="0">
+                  <widget class="QLabel" name="label_dacStopV">
+                   <property name="text">
+                    <string>scan dev stop</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="9" column="2">
+                  <widget class="QLabel" name="label_dacStepSizeV_set">
+                   <property name="text">
+                    <string>None</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="9" column="1">
+                  <widget class="QDoubleSpinBox" name="doubleSpinBox_scanDevStepSize">
+                   <property name="locale">
+                    <locale language="English" country="UnitedStates"/>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="buttonSymbols">
+                    <enum>QAbstractSpinBox::NoButtons</enum>
+                   </property>
+                   <property name="keyboardTracking">
+                    <bool>false</bool>
+                   </property>
+                   <property name="decimals">
+                    <number>8</number>
+                   </property>
+                   <property name="minimum">
+                    <double>-10.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>10.000000000000000</double>
+                   </property>
+                   <property name="singleStep">
+                    <double>0.010000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="8" column="3">
+                  <widget class="QLabel" name="label_kepco_stop">
+                   <property name="text">
+                    <string>None</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="9" column="0">
+                  <widget class="QLabel" name="label_dacStepSizeV">
+                   <property name="text">
+                    <string>scan dev step size</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="10" column="1">
+                  <widget class="QDoubleSpinBox" name="doubleSpinBox_scanDevPreScan">
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="buttonSymbols">
+                    <enum>QAbstractSpinBox::NoButtons</enum>
+                   </property>
+                   <property name="decimals">
+                    <number>8</number>
+                   </property>
+                   <property name="minimum">
+                    <double>-100000000000000005366162204393472.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>999999999999999939709166371603178586112.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="10" column="2">
+                  <widget class="QCheckBox" name="checkBox_scanDev_setPreScan">
+                   <property name="text">
+                    <string>Set</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="10" column="3">
+                  <widget class="QPushButton" name="pushButton_scanDev_pre_sc_copy_from_start">
+                   <property name="text">
+                    <string>copy start</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="10" column="0">
+                  <widget class="QLabel" name="label_14">
+                   <property name="text">
+                    <string>scan dev pre scan value</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="11" column="0">
+                  <widget class="QLabel" name="label_15">
+                   <property name="text">
+                    <string>scan dev post scan value</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="11" column="1">
+                  <widget class="QDoubleSpinBox" name="doubleSpinBox_scanDevPostScan">
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="buttonSymbols">
+                    <enum>QAbstractSpinBox::NoButtons</enum>
+                   </property>
+                   <property name="decimals">
+                    <number>8</number>
+                   </property>
+                   <property name="minimum">
+                    <double>-99999999999999991611392.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>99999999999999991433150857216.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="11" column="2">
+                  <widget class="QCheckBox" name="checkBox_scanDev_setPostScan">
+                   <property name="text">
+                    <string>Set</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="11" column="3">
+                  <widget class="QPushButton" name="pushButton_scanDev_post_ssc_copy_stop">
+                   <property name="text">
+                    <string>copy stop</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="label_16">
+                   <property name="text">
+                    <string>scan device unit</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="1">
+                  <widget class="QLabel" name="label_scanDev_unit">
+                   <property name="text">
+                    <string>not defined</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
               </widget>
              </item>
             </layout>
@@ -800,15 +1187,44 @@ Voltage:</string>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <tabstops>
-  <tabstop>doubleSpinBox_dacStartV</tabstop>
-  <tabstop>doubleSpinBox_dacStopV</tabstop>
-  <tabstop>doubleSpinBox_dacStepSizeV</tabstop>
+  <tabstop>tabWidget</tabstop>
+  <tabstop>comboBox_triggerSelect</tabstop>
+  <tabstop>checkBox_UseAllTracks</tabstop>
+  <tabstop>pushButton_config_pulse_pattern</tabstop>
+  <tabstop>pushButton_conf_pre_post_tr_meas</tabstop>
+  <tabstop>pushButton_con_outbits</tabstop>
+  <tabstop>tabwidget</tabstop>
+  <tabstop>scrollArea</tabstop>
+  <tabstop>comboBox_scanDevClass</tabstop>
+  <tabstop>comboBox_scanDev_type</tabstop>
+  <tabstop>comboBox_scanDev_name</tabstop>
+  <tabstop>doubleSpinBox_scanDev_timeout_s</tabstop>
+  <tabstop>doubleSpinBox_scanDevStart</tabstop>
+  <tabstop>doubleSpinBox_scanDevStop</tabstop>
+  <tabstop>doubleSpinBox_scanDevStepSize</tabstop>
+  <tabstop>doubleSpinBox_scanDevPreScan</tabstop>
+  <tabstop>checkBox_scanDev_setPreScan</tabstop>
+  <tabstop>pushButton_scanDev_pre_sc_copy_from_start</tabstop>
+  <tabstop>doubleSpinBox_scanDevPostScan</tabstop>
+  <tabstop>checkBox_scanDev_setPostScan</tabstop>
+  <tabstop>pushButton_scanDev_post_ssc_copy_stop</tabstop>
   <tabstop>spinBox_nOfSteps</tabstop>
   <tabstop>spinBox_nOfScans</tabstop>
   <tabstop>checkBox_invertScan</tabstop>
+  <tabstop>comboBox_postAccOffsetVoltControl</tabstop>
   <tabstop>doubleSpinBox_postAccOffsetVolt</tabstop>
+  <tabstop>pushButton_postAccOffsetVolt</tabstop>
   <tabstop>lineEdit_activePmtList</tabstop>
   <tabstop>checkBox_colDirTrue</tabstop>
+  <tabstop>pushButtonResetToDefault</tabstop>
+  <tabstop>pushButton_confirm</tabstop>
+  <tabstop>pushButton_cancel</tabstop>
+  <tabstop>doubleSpinBox_waitForKepco_muS</tabstop>
+  <tabstop>doubleSpinBox_waitAfterReset_muS</tabstop>
+  <tabstop>checkBox_stepUseAllTracks</tabstop>
+  <tabstop>checkBox_scanUseAllTracks</tabstop>
+  <tabstop>comboBox_stepTriggerSelect</tabstop>
+  <tabstop>comboBox_scanTriggerSelect</tabstop>
  </tabstops>
  <resources/>
  <connections/>

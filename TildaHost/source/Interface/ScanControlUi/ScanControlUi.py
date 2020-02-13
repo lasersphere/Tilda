@@ -23,7 +23,7 @@ from Interface.TrackParUi.TrackUi import TrackUi
 
 
 class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
-    def __init__(self, main_gui):
+    def __init__(self, main_gui, job_stacker=None):
         """ Non-Modal Main window to control the Scan.
          All Isotope/track/sequencer settings are entered here. """
         super(ScanControlUi, self).__init__()
@@ -37,6 +37,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.last_scan_was_aborted_or_halted = False
 
         self.main_gui = main_gui
+        self.job_stacker_gui = job_stacker
         self.update_win_title()
         self.enable_go(True)
         self.enable_config_actions(False)
@@ -85,13 +86,21 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
                     else:
                         self.go(False)
                 else:  # all scans are done here or one scan was aborted
+                    if self.job_stacker_gui is not None:
+                        self.job_stacker_gui.wait_for_next_job = True  # gets feedback to job stacker
                     self.spinBox_num_of_reps.setValue(self.num_of_reps)
                     self.go_was_clicked_before = False
                     self.last_scan_was_aborted_or_halted = False  # reset abort variable when last scan was done
         self.actionErgo.setEnabled(enable)
         # go on file can also be done without selecting an isotope before:
         self.actionGo_on_file.setEnabled(enable_bool)
-        self.actionSetup_Isotope.setEnabled(enable_bool)
+        # setup Isotope, add Track and remove Track should only be blocked for the scanning isotope
+        enable_bool_scanning = enable_bool or Cfg._main_instance.scan_progress.get('activeIso', None) != self.active_iso
+        for tracknums, tracks in self.track_wins_dict.items():
+            tracks.enable_confirm(enable_bool_scanning)
+        self.actionAdd_Track.setEnabled(enable_bool_scanning)
+        self.action_remove_track.setEnabled(enable_bool_scanning)
+        self.actionSetup_Isotope.setEnabled(enable_bool_scanning)
 
     def enable_config_actions(self, enable_bool):
         """ this will enable/disable the config elements """
@@ -142,14 +151,29 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
                 for key, val in scan_dict.items():
                     if 'track' in key:
                         if 'trigger' in val:
-                            trig_type_str = val['trigger']['type']
-                            if 'TriggerTypes.' in trig_type_str:  # needed for older versions
-                                trig_type_str = trig_type_str.split('.')[1]
-                            try:
-                                val['trigger']['type'] = getattr(TriggerTypes, trig_type_str)
-                            except Exception as e:
-                                logging.error(
-                                    'error: %s, could not do: getattr(TriggerTypes, %s) ' % (e, val['trigger']['type']))
+                            if val['trigger'].get('type') is not None:
+                                # old version trigger dict, without steptrigger etc.
+                                trig_type_str = val['trigger']['type']
+                                if 'TriggerTypes.' in trig_type_str:  # needed for older versions
+                                    trig_type_str = trig_type_str.split('.')[1]
+                                try:
+                                    val['trigger']['type'] = getattr(TriggerTypes, trig_type_str)
+                                except Exception as e:
+                                    logging.error(
+                                        'error: %s, could not do: getattr(TriggerTypes, %s) ' % (
+                                        e, val['trigger']['type']))
+                            else:
+                                # new version trigger dict -> {trigger: {stepTrigger: {'type: ...} ... }
+                                for trig_types, trig_dicts in val['trigger'].items():
+                                    trig_type_str = trig_dicts['type']
+                                    if 'TriggerTypes.' in trig_type_str:  # needed for older versions
+                                        trig_type_str = trig_type_str.split('.')[1]
+                                    try:
+                                        trig_dicts['type'] = getattr(TriggerTypes, trig_type_str)
+                                    except Exception as e:
+                                        logging.error(
+                                            'error: %s, could not do: getattr(TriggerTypes, %s) ' % (
+                                                e, trig_dicts['type']))
                 self.active_iso = Cfg._main_instance.add_iso_to_scan_pars_no_database(scan_dict)
                 self.update_track_list()
                 self.update_win_title()
@@ -192,6 +216,7 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
                 self.track_wins_dict[str(track_number)] = TrackUi(self, track_number, self.active_iso, self.main_gui)
         except Exception as e:
             logging.error('error while opening track window, error is: %s' % e, exc_info=True)
+        Cfg._main_instance.send_state()  # to check whether the opened track is scanning now.
 
     def track_win_closed(self, tracknum_int):
         self.track_wins_dict.pop(str(tracknum_int))
@@ -217,17 +242,27 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         self.setWindowTitle(win_title)
         self.win_title = win_title
 
-    def setup_iso(self):
+    def setup_iso(self, dont_open_setup_win=False, iso=None, seq=None):
         """
         opens a dialog for choosing the isotope. This Dialog is non Modal.
         -> Blocks other executions
+        :param: open_setup_win bool: if true, the new isotope is setup using the SetupIsotopeUi.
+                Otherwise the isotope and sequencer_type must be given
+                iso str: isotope name. Must be given if open_setup_win is False
+                seq str: sequencer type. Must be given if open_setup_win is False
         """
         if self.active_iso:  # first remove the before selected isotope from the scan pars
             self.enable_config_actions(False)
             Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
             self.active_iso = None
         logging.debug('setting up isotope')
-        SetupIsotopeUi(self)
+        if not dont_open_setup_win:
+            SetupIsotopeUi(self)
+        else:
+            try:  # maybe iso or seq are incorrect, then this will fail.
+                self.active_iso = Cfg._main_instance.add_iso_to_scan_pars(iso, seq)
+            except:
+                logging.error('Could not setup isotope. Maybe isotope name or sequencer type are invalid!')
         if self.active_iso:
             self.enable_config_actions(True)
         self.update_track_list()
@@ -287,8 +322,10 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         """
         unsubscribe from parent gui when closed
         """
+        if self.job_stacker_gui is not None:
+            self.job_stacker_gui.scan_control_ui_closed(self.active_iso, self.spinBox_num_of_reps.value())
         if self.active_iso:
-            Cfg._main_instance.abort_scan = True
+            Cfg._main_instance.abort_scan = True  # TODO: Is this really wanted???
             Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
         logging.info('closing scan win ' + str(self.win_title))
         self.close_track_wins()

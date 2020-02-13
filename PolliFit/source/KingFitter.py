@@ -6,7 +6,11 @@ Created on 23.08.2016
 '''
 
 import ast
+import os
 import sqlite3
+
+from operator import itemgetter
+from itertools import *
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -37,6 +41,7 @@ class KingFitter(object):
 
         self.litvals = litvals
         self.incl_projected= incl_projected
+        self.reset_y_values = True # can be changed when calcRedVar() may not reset y redMasses (important for 3DKing)
 
         self.isotopes = []
         self.isotopeMasses = []
@@ -46,6 +51,10 @@ class KingFitter(object):
         self.isotopeShiftStatErr = []
         self.isotopeShiftSystErr = []
         self.run = []
+
+        self.store_loc = os.path.normpath(os.path.join(os.path.split(db)[0], 'king_fits'))
+        if not os.path.isdir(self.store_loc):
+            os.mkdir(self.store_loc)
 
         try:
             if ref_run == -1:
@@ -58,15 +67,14 @@ class KingFitter(object):
                                                 [['iso'], [self.ref]], caller_name=__name__)[0][0]
             self.ref_massErr = TiTs.select_from_db(self.db, 'mass_d', 'Isotopes',
                                                 [['iso'], [self.ref]], caller_name=__name__)[0][0]
-            self.ref_massErr = TiTs.select_from_db(self.db, 'mass_d', 'Isotopes',
-                                                [['iso'], [self.ref]], caller_name=__name__)[0][0]
+
         except Exception as e:
             print('error: %s  \n\t-> Kingfitter could not find a reference isotope from'
                   ' Lines in database or mass of this reference Isotope in Isotopes' % e)
 
 
     def kingFit(self, run=-1, alpha=0, findBestAlpha=True, find_slope_with_statistical_error=False,
-                print_coeff=True, print_information=True):
+                print_coeff=True, print_information=True, results_to_db=True):
         '''
         For find_b_with_statistical_error=True:
         performs at first a KingFit with just statistical uncertainty to find out the slope, afterwards
@@ -74,7 +82,7 @@ class KingFitter(object):
         '''
 
         self.calcRedVar(run=run, find_slope_with_statistical_error=find_slope_with_statistical_error,
-                        findBestAlpha=findBestAlpha, alpha=alpha)
+                        findBestAlpha=findBestAlpha, alpha=alpha, reset_y_values=self.reset_y_values)
 
         final_a = final_b = slope_syst_err = intercept_syst_err = slope_stat_err = intercept_stat_err = 0
 
@@ -127,6 +135,7 @@ class KingFitter(object):
         else:
             # errors are systematic since they include the systematics but have been handled statistically
             #  --> be carefull
+            self.yerr_total = self.yerr  # needed for printing of total error below
             (self.a, self.b, self.aerr, self.berr, self.a_b_correlation) = self.fit(run, showplot=self.showing,
                                                                                     print_corr_coeff=print_coeff)
             if print_information:
@@ -140,24 +149,25 @@ class KingFitter(object):
             final_a = self.a
             final_b = self.b
 
-        con = sqlite3.connect(self.db)
-        cur = con.cursor()
-        cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'intercept', run))
-        con.commit()
-        cur.execute('''UPDATE Combined SET val = ?, statErr = ?,  systErr = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
-                     (final_a, intercept_stat_err, intercept_syst_err, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'intercept', run))
-        con.commit()
-        cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'slope', run))
-        con.commit()
-        cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
-                    (final_b, slope_stat_err, slope_syst_err, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'slope', run))
-        con.commit()
-        cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'alpha', run))
-        con.commit()
-        cur.execute('''UPDATE Combined SET val = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
-                    (self.c, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'alpha', run))
-        con.commit()
-        con.close()
+        if results_to_db:
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'intercept', run))
+            con.commit()
+            cur.execute('''UPDATE Combined SET val = ?, statErr = ?,  systErr = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
+                        (final_a, intercept_stat_err, intercept_syst_err, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'intercept', run))
+            con.commit()
+            cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'slope', run))
+            con.commit()
+            cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
+                        (final_b, slope_stat_err, slope_syst_err, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'slope', run))
+            con.commit()
+            cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'alpha', run))
+            con.commit()
+            cur.execute('''UPDATE Combined SET val = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
+                        (self.c, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'alpha', run))
+            con.commit()
+            con.close()
 
     def fit(self, run, showplot=True, bFix=False, plot_y_mhz=None, font_size=None, print_corr_coeff=True):
         if plot_y_mhz is None:
@@ -216,79 +226,87 @@ class KingFitter(object):
             totaldiff = diff_x+diff_y
             i+=1
 
+        # plt.subplots_adjust(bottom=0.2)
+        plt.xticks(rotation=0)
+        ax = plt.gca()
+        if plot_y_mhz:
+            ax.set_ylabel(r' $\mu$ $\delta$ $\nu^{60,A}$ / u MHz ', fontsize=font_size)
+        else:
+            ax.set_ylabel(r' $\mu$ $\delta$ $\nu^{60,A}$ / u GHz ', fontsize=font_size)
+        if self.c == 0:
+            ax.set_xlabel(r'$\mu$ $\delta$ $\langle$ r$_c$'+r'$^2$ $\rangle$ $^{60,A}$ / u fm $^2$', fontsize=font_size)
+        else:
+            ax.set_xlabel(r'$\mu$ $\delta$ < r'+r'$^2$ >$^{60,A}$ - $\alpha$ / u fm $^2$', fontsize=font_size)
+        ax.set_xmargin(0.05)
+        x_king = [min(self.x) - abs(min(self.x) - max(self.x)) * 0.2,
+                  max(self.x) + abs(min(self.x) - max(self.x)) * 0.2]
+        y_king = [self.a + self.b * i for i in x_king]
+        if plot_y_mhz:
+            plt.plot(x_king, y_king, 'r', label='King fit', linewidth=2)
+        else:
+            y_king_ghz = [each / 1000 for each in y_king]
+            plt.plot(x_king, y_king_ghz, 'r', label='King fit', linewidth=2)
+
+        if plot_y_mhz:
+           plt.errorbar(self.x, self.y, self.yerr, self.xerr, fmt='k.', markersize=10)
+        else:  # plot in Gigahertz
+            y_ghz = [each / 1000 for each in self.y]
+            y_err_ghz = [each / 1000 for each in self.yerr]
+            plt.errorbar(self.x, y_ghz, y_err_ghz, self.xerr, fmt='k.', markersize=10)
+
+        # print('x', self.x, self.xerr)
+        # print('y', self.y, self.yerr)
+        print('%s\t%s\t%s\t%s\t%s' % ('x', 'x_err', 'y', 'y_stat_err', 'y_err_total'))
+        for i, x in enumerate(self.x):
+            print('%.5f\t%.5f\t%.5f\t%.5f\t%.5f' % (x, self.xerr[i], self.y[i], self.yerr[i], self.yerr_total[i]))
+        print('%s\t%s' % ('King_fit_x', 'King_fit_y'))
+        print('%.5f\t%.5f' % (x_king[0], y_king[0]))
+        print('%.5f\t%.5f' % (x_king[1], y_king[1]))
+
+
+        plt.gcf().set_facecolor('w')
+        plt.legend(fontsize=font_size)
+        plt.xticks(fontsize=font_size)
+        plt.yticks(fontsize=font_size)
+        plt.tight_layout(True)
+        f_name = 'king_fit_alpha_%d' % self.c
         if showplot:
-            plt.subplots_adjust(bottom=0.2)
-            plt.xticks(rotation=0)
-            ax = plt.gca()
-            if plot_y_mhz:
-                ax.set_ylabel(r' $\mu$ $\delta$ $\nu^{60,A}$ / u MHz ', fontsize=font_size)
-            else:
-                ax.set_ylabel(r' $\mu$ $\delta$ $\nu^{60,A}$ / u GHz ', fontsize=font_size)
-            if self.c == 0:
-                ax.set_xlabel(r'$\mu$ $\delta$ $\langle$ r$_c$'+r'$^2$ $\rangle$ $^{60,A}$ / u fm $^2$', fontsize=font_size)
-            else:
-                ax.set_xlabel(r'$\mu$ $\delta$ < r'+r'$^2$ >$^{60,A}$ - $\alpha$ / u fm $^2$', fontsize=font_size)
-            ax.set_xmargin(0.05)
-            x_king = [min(self.x) - abs(min(self.x) - max(self.x)) * 0.2,
-                      max(self.x) + abs(min(self.x) - max(self.x)) * 0.2]
-            y_king = [self.a + self.b * i for i in x_king]
-            if plot_y_mhz:
-                plt.plot(x_king, y_king, 'r', label='King fit', linewidth=2)
-            else:
-                y_king_ghz = [each / 1000 for each in y_king]
-                plt.plot(x_king, y_king_ghz, 'r', label='King fit', linewidth=2)
-
-            if plot_y_mhz:
-               plt.errorbar(self.x, self.y, self.yerr, self.xerr, fmt='k.', markersize=10)
-            else:  # plot in Gigahertz
-                y_ghz = [each / 1000 for each in self.y]
-                y_err_ghz = [each / 1000 for each in self.yerr]
-                plt.errorbar(self.x, y_ghz, y_err_ghz, self.xerr, fmt='k.', markersize=10)
-
-            # print('x', self.x, self.xerr)
-            # print('y', self.y, self.yerr)
-            print('%s\t%s\t%s\t%s\t%s' % ('x', 'x_err', 'y', 'y_stat_err', 'y_err_total'))
-            for i, x in enumerate(self.x):
-                print('%.5f\t%.5f\t%.5f\t%.5f\t%.5f' % (x, self.xerr[i], self.y[i], self.yerr[i], self.yerr_total[i]))
-            print('%s\t%s' % ('King_fit_x', 'King_fit_y'))
-            print('%.5f\t%.5f' % (x_king[0], y_king[0]))
-            print('%.5f\t%.5f' % (x_king[1], y_king[1]))
-
-            plt.gcf().set_facecolor('w')
-            plt.legend(fontsize=font_size)
-            plt.xticks(fontsize=font_size)
-            plt.yticks(fontsize=font_size)
+            plt.savefig(os.path.join(self.store_loc, f_name + '.pdf'))
+            plt.savefig(os.path.join(self.store_loc, f_name + '.png'))
             plt.show()
+        plt.gcf().clear()
 
         self.aerr = np.sqrt(sigma_a_square)
         if not bFix:
             self.berr = np.sqrt(sigma_b_square)
-        ''' Not needed to write every result to the database --> moved to kingFit2Lines '''
-        # con = sqlite3.connect(self.db)
-        # cur = con.cursor()
-        # cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'intercept', run))
-        # con.commit()
-        # cur.execute('''UPDATE Combined SET val = ?, systErr = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
-        #              (self.a, self.aerr, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'intercept', run))
-        # con.commit()
-        # cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'slope', run))
-        # con.commit()
-        # cur.execute('''UPDATE Combined SET val = ?, systErr = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
-        #             (self.b, self.berr, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'slope', run))
-        # con.commit()
-        # cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', ('kingVal', 'alpha', run))
-        # con.commit()
-        # cur.execute('''UPDATE Combined SET val = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
-        #             (self.c, str(self.litvals)+str(', incl_projected = ')+str(self.incl_projected), 'kingVal', 'alpha', run))
-        # con.commit()
-        # con.close()
         if print_corr_coeff:
             print('correlation coefficient of a and b is: %.5f' % a_b_correlation_coeff)
+
+        if showplot:
+            # store results to file when showing the plot
+            # (.fit() is called very often without showing the plot when optimitzing self.c(=alpha))
+            with open(os.path.join(self.store_loc, f_name + '_fit_points' + '.txt'), 'w') as king_f:
+                king_f.write('# intercept: %.3f +/- %.3f\n' % (self.a, self.aerr))
+                king_f.write('# slope: %.3f +/- %.3f\n' % (self.b, self.berr))
+                king_f.write('# correlation: %.3f\n' % (a_b_correlation_coeff))
+                king_f.write('# %s\t%s\t%s\t%s\t%s \n' % ('x', 'x_err', 'y', 'y_stat_err', 'y_err_total'))
+                for i, x in enumerate(self.x):
+                    king_f.write('%.5f\t%.5f\t%.5f\t%.5f\t%.5f\n'
+                                 % (x, self.xerr[i], self.y[i], self.yerr[i], self.yerr_total[i]))
+
+            with open(os.path.join(self.store_loc, f_name + '_fit_data' + '.txt'), 'w') as king_f:
+                king_f.write('# intercept: %.3f +/- %.3f\n' % (self.a, self.aerr))
+                king_f.write('# slope: %.3f +/- %.3f\n' % (self.b, self.berr))
+                king_f.write('# correlation: %.3f\n' % (a_b_correlation_coeff))
+                king_f.write('King_fit_x\tKing_fit_y\n')
+                king_f.write('%.5f\t%.5f\n' % (x_king[0], y_king[0]))
+                king_f.write('%.5f\t%.5f\n' % (x_king[1], y_king[1]))
+
 
         return (self.a, self.b, self.aerr, self.berr, a_b_correlation_coeff)
 
     def calcChargeRadii(self, isotopes=[], run=-1, plot_evens_seperate=False, incl_projected=False,
-                        save_in_db=True, print_results=True, print_information=True):
+                        save_in_db=True, print_results=True, print_information=True, dash_missing_data=False):
         if print_information:
             print('calculating the charge radii...')
         self.isotopes = []
@@ -307,6 +325,7 @@ class KingFitter(object):
         (self.c,) = TiTs.select_from_db(self.db, 'val', 'Combined',
                                                   [['parname', 'run'], ['alpha', run]], caller_name=__name__)[0]
         vals = []
+        f_name = 'charge_radii_alpha_%d' % self.c
         if run == -1:
             vals = TiTs.select_from_db(self.db, 'iso, val, statErr, systErr, run', 'Combined', [['parname'], ['shift']],
                                        caller_name=__name__)
@@ -362,21 +381,36 @@ class KingFitter(object):
         )
                                      for i, j in enumerate(self.isotopeShifts)]
         errs_to_print = [(
-                             self.isotopes[i],
-                             self.chargeradii[i],
-                             self.chargeradiiTotalErrs[i],
-                             abs(self.chargeradiiTotalErrs[i] / self.chargeradii[i]) * 100,
-                             abs(self.isotopeShiftStatErr[i] / self.b),
-                             abs(self.aerr / (self.isotopeRedMasses[i] * self.b)),
-                             abs((self.a / self.isotopeRedMasses[i] - j) * self.berr / np.square(self.b)),
-                             abs((self.a / self.b - self.c) * self.isotopeRedMassesErr[i] / np.square(self.isotopeRedMasses[i])),
+                             self.isotopes[i],  # iso
+                             self.isotopeShifts[i],  # shift
+                             self.isotopeShiftStatErr[i],  # shift_stat_err
+                             abs(self.isotopeShiftStatErr[i] / self.isotopeShifts[i]) * 100,  # rel. shift_stat_err
+                             self.chargeradii[i],  # dr^2
+                             self.chargeradiiTotalErrs[i],  # Delta dr^2
+                             abs(self.chargeradiiTotalErrs[i] / self.chargeradii[i]) * 100,  # rel. Delta dr^2
+                             abs(self.isotopeShiftStatErr[i] / self.b),  # Delta Is
+                             abs(self.aerr / (self.isotopeRedMasses[i] * self.b)),  # Delta K
+                             abs((self.a / self.isotopeRedMasses[i] - j) * self.berr / np.square(self.b)),  # Delta F
+                             abs((self.a / self.b - self.c) * self.isotopeRedMassesErr[i] / np.square(self.isotopeRedMasses[i])),  # Delta M
                          )
             for i, j in enumerate(self.isotopeShifts)
         ]
         if print_results:
-            print('iso\tdr^2\tDelta dr^2\tDelta IS\tDelta K\tDelta F\tDelta M')
+            # print error componenet that are combined to get the total charge radii uncertainty -> Gaussian error prop
+            # e.g. Delta IS -> abs(self.isotopeShiftStatErr[i] / self.b) -> shift_stat_err / F
+            # K -> mass shift factor -> self.a
+            # F -> field shift factor -> self.b
+            # alpha -> x-axis offset -> self.c
+            print('iso\tshift\tshift_stat_err\trel. shift_stat_err\t'
+                  'dr^2\tDelta dr^2\trel. Delta dr^2\tDelta IS\tDelta K\tDelta F\tDelta M')
             for each in errs_to_print:
-                print('%s\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\t%.4f\t%.4f' % each)
+                print('%s\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\t%.2f\t%.8f\t%.8f\t%.8f\t%.3E' % each)
+
+            with open(os.path.join(self.store_loc, f_name + '_vals_errs.txt'), 'w') as ch_err_f:
+                ch_err_f.write('#iso\tshift\tshift_stat_err\trel. shift_stat_err\t'
+                      'dr^2\tDelta dr^2\trel. Delta dr^2\tDelta IS\tDelta K\tDelta F\tDelta M\n')
+                for each in errs_to_print:
+                    ch_err_f.write('%s\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\t%.2f\t%.8f\t%.8f\t%.8f\t%.3E\n' % each)
 
         finalVals = {}
         for i,j in enumerate(self.isotopes):
@@ -393,6 +427,7 @@ class KingFitter(object):
                 con.commit()
                 con.close()
         if self.showing:
+
             font_size = self.fontsize
             finalVals[self.ref] = [0, 0, 0]
             keyVals = sorted(finalVals)
@@ -401,15 +436,19 @@ class KingFitter(object):
             yerr = []
             print('iso\t $\delta$ <r$^2$>[fm$^2$]')
             for i in keyVals:
-                x.append(int(str(i).split('_')[0]))
+                x.append(int(''.join(filter(str.isdigit, i))))
                 y.append(finalVals[i][0])
                 yerr.append(finalVals[i][1])
                 print('%s\t%.3f(%.0f)\t%.1f' % (i, finalVals[i][0], finalVals[i][1] * 1000,
                                                 finalVals[i][1] / max(abs(finalVals[i][0]), 0.000000000000001) * 100))
                 #print("'"+str(i)+"'", ':[', np.round(finalVals[i][0],3), ','+ str(np.round(np.sqrt(finalVals[i][1]**2 + finalVals[i][2]**2),3))+'],')
+            with open(os.path.join(self.store_loc, f_name + '_plot_vals.txt'), 'w') as plot_f:
+                plot_f.write('#mass\tdRcharge2\terrdRcharge2\n')
+                for x_i, y_i, y_i_err in zip(x, y, yerr):
+                    plot_f.write('%d\t%.5f\t%.5f\n' % (x_i, y_i, y_i_err))
 
-            plt.subplots_adjust(bottom=0.2)
-            plt.xticks(rotation=25)
+            # plt.subplots_adjust(bottom=0.2, left=0.19, right=0.97)
+            plt.xticks(rotation=0)
             ax = plt.gca()
             ax.set_ylabel(r'$\delta$ < r'+r'$^2$ > (fm $^2$) ', fontsize=font_size)
             ax.set_xlabel('A', fontsize=font_size)
@@ -423,14 +462,34 @@ class KingFitter(object):
 
                 plt.errorbar(x_even, y_even, y_even_err, fmt='ro', label='even', linestyle='-')
                 plt.errorbar(x_odd, y_odd, y_odd_err, fmt='r^', label='odd', linestyle='--')
-                plt.legend(loc=2)
+                #plt.legend(loc=2)
+            elif dash_missing_data:
+                # if some isotopes are missing, this dashes the line at these isotopes
+                # has no effect when plot_evens_separate is True
+                split_x_list = []
+                for k, g in groupby(enumerate(x), lambda a: a[0]-a[1]):
+                    split_x_list.append(list(map(itemgetter(1), g)))
+                i = 0
+                for each in split_x_list:
+                    y_vals = y[i:i+len(each)]
+                    yerr_vals = yerr[i:i + len(each)]
+                    plt.errorbar(each, y_vals, yerr_vals, fmt='ro', linestyle='-')
+                    # plot dashed lines between missing values
+                    if len(x) > i+len(each):  # might be last value
+                        x_gap = [x[i+len(each)-1], x[i+len(each)]]
+                        y_gap = [y[i + len(each) - 1], y[i + len(each)]]
+                        plt.plot(x_gap, y_gap, c='r', linestyle='--')
+                    i = i+len(each)
             else:
-                plt.errorbar(x, y, yerr, fmt='k.')
+                plt.errorbar(x, y, yerr, fmt='ro', linestyle='-')
             ax.set_xmargin(0.05)
             plt.margins(0.1)
             plt.gcf().set_facecolor('w')
             plt.xticks(fontsize=font_size)
             plt.yticks(fontsize=font_size)
+            plt.tight_layout(True)
+            plt.savefig(os.path.join(self.store_loc, f_name + '.pdf'))
+            plt.savefig(os.path.join(self.store_loc, f_name + '.png'))
             plt.show()
 
         return finalVals
@@ -465,14 +524,16 @@ class KingFitter(object):
         print('best alpha is: ', self.c)
 
 
-    def calcRedVar(self, run=-1, find_slope_with_statistical_error=False, alpha=0, findBestAlpha=False):
-        self.masses = []
+    def calcRedVar(self, run=-1, find_slope_with_statistical_error=False, alpha=0, findBestAlpha=False, reset_y_values=True):
         self.x_origin = []
         self.x = []
         self.xerr = []
-        self.y = []
-        self.yerr = []
-        self.yerr_total = []
+
+        if reset_y_values: # Added this for 3DKingPlot since y-values and masses do not change, only x-values; saves time
+            self.masses = []
+            self.y = []
+            self.yerr = []
+            self.yerr_total = []
 
         self.c = alpha
         self.findBestAlphaTrue = findBestAlpha
@@ -481,7 +542,8 @@ class KingFitter(object):
             self.litvals = ast.literal_eval(TiTs.select_from_db(self.db, 'config', 'Combined',
                                                [['parname', 'run'], ['slope', run]], caller_name=__name__)[0][0])
         for i in self.litvals.keys():
-            self.masses.append(TiTs.select_from_db(self.db, 'mass', 'Isotopes', [['iso'], [i]],
+            if reset_y_values:
+                self.masses.append(TiTs.select_from_db(self.db, 'mass', 'Isotopes', [['iso'], [i]],
                                                    caller_name=__name__)[0][0])
             y = [0,0,0]
             if run == -1:
@@ -495,21 +557,22 @@ class KingFitter(object):
                 self.yerr.append(y[1])  # statistical error
                 self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
             else:
-                self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
-                self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
+                self.yerr.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total errorself.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
+                self.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total errorself.yerr_total.append(np.sqrt(np.square(y[1])+np.square(y[2])))  # total error
             self.x_origin.append(self.litvals[i][0])
             self.xerr.append(self.litvals[i][1])
 
         if self.incl_projected:
             for i in self.litvals.keys():
-                self.masses.append(TiTs.select_from_db(self.db, 'mass', 'Isotopes', [['iso'], [i]],
-                                                       caller_name=__name__)[0][0])
-                y = [0, 0, 0]
-                if run == -1:
-                    y = TiTs.select_from_db(self.db, 'val, statErr, systErr', 'Combined',
+                if reset_y_values: # Added this for 3DKingPlot since y-values and masses do not change, only x-values; saves time
+                    self.masses.append(TiTs.select_from_db(self.db, 'mass', 'Isotopes', [['iso'], [i]],
+                                                           caller_name=__name__)[0][0])
+                    y = [0, 0, 0]
+                    if run == -1:
+                        y = TiTs.select_from_db(self.db, 'val, statErr, systErr', 'Combined',
                                                 [['iso', 'parname'], [i, 'projected IS']], caller_name=__name__)[0]
-                else:
-                    y = TiTs.select_from_db(self.db, 'val, statErr, systErr', 'Combined',
+                    else:
+                        y = TiTs.select_from_db(self.db, 'val, statErr, systErr', 'Combined',
                                                 [['iso', 'parname', 'run'], [i, 'projected IS', run]], caller_name=__name__)[0]
                 self.y.append(y[0])
                 if find_slope_with_statistical_error:
@@ -521,12 +584,14 @@ class KingFitter(object):
                 self.x_origin.append(self.litvals[i][0])
                 self.xerr.append(self.litvals[i][1])
 
-        self.redmasses= [i*self.ref_mass/(i-self.ref_mass) for i in self.masses]
-        self.y = [self.redmasses[i]*j for i,j in enumerate(self.y)]
-        self.yerr = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.yerr)]
-        self.yerr_total = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.yerr_total)]
-        self.xerr = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.xerr)]
+        if reset_y_values:
+            self.redmasses= [i*self.ref_mass/(i-self.ref_mass) for i in self.masses]
+            self.y = [self.redmasses[i]*j for i,j in enumerate(self.y)]
+            self.yerr = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.yerr)]
+            self.yerr_total = [np.abs(self.redmasses[i]*j) for i, j in enumerate(self.yerr_total)]
 
         if self.findBestAlphaTrue:
             self.findBestAlpha(run)
+
         self.x = [self.redmasses[i]*j - self.c for i,j in enumerate(self.x_origin)]
+        self.xerr = [np.abs(self.redmasses[i] * j) for i, j in enumerate(self.xerr)]

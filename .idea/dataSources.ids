@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<component name="dataSourceStorage">
-  <data-source name="Sqlite (Xerial) - DebugFirstInstallAlive.sqlite" uuid="de96394e-aff0-4916-8061-c3a0c852b24b">
-    <database-info product="" version="" jdbc-version="" driver-name="" driver-version=""/>
-  </data-source>
-  <data-source name="Sqlite (Xerial) - TildaDebug171807.sqlite" uuid="fed93d13-2973-4cbe-a4a9-087b8a14e625">
-    <database-info product="" version="" jdbc-version="" driver-name="" driver-version=""/>
-  </data-source>
-</component>

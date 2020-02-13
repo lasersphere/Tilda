@@ -19,7 +19,8 @@ class KepcoScanWidg(BaseSequencerWidgUi, QtWidgets.QWidget):
         self.setLayout(self.layout)
         self.layout.addWidget(
             QtWidgets.QLabel(
-                'Kepco Scan \n\n\n select dmm settings via scan control window >>> configure voltage measurement'))
+                'Kepco Scan \n\n\n select dmm settings via configure dmm/triton measurements >>> duringScan'))
+        # old: 'Kepco Scan \n\n\n select dmm settings via scan control window >>> configure voltage measurement'
 
         # self.button_for_open_config = QtWidgets.QPushButton('config dmm')
         # self.button_for_open_config.setMaximumSize(100, 50)

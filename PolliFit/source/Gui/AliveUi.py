@@ -41,6 +41,7 @@ class AliveUi(QtWidgets.QWidget, Ui_Alive):
         self.show()
 
     def compareAuto(self):
+        #Not Updated yet
         self.recalc()
 
         plot_data=[]
@@ -78,7 +79,11 @@ class AliveUi(QtWidgets.QWidget, Ui_Alive):
                 ref_time_data = ref_time_data +[AliveTools.get_nameNumber_and_time(element['filename'])[1]]
                 x_data = x_data +[AliveTools.get_nameNumber_and_time(file['filename'])[0]]
                 time_data = time_data +[AliveTools.get_nameNumber_and_time(file['filename'])[1]]
-                offset_volt=offset_volt+[AliveTools.get_offsetVolt_from_db(self.dbpath, file['filename'])]
+                offset_volt=offset_volt+[AliveTools.get_real_offsetVolt_from_db(self.dbpath, file['filename'],
+                                                                                float(self.lDivOffset.text()),
+                                                                                float(self.lAgiGain.text()),
+                                                                                float(self.lDivRatio.text()))]
+
 
 
                 Delta = Delta +[(hv[0] - ref[0])]
@@ -139,41 +144,55 @@ class AliveUi(QtWidgets.QWidget, Ui_Alive):
                     ref_x_data = ref_x_data +[AliveTools.get_nameNumber_and_time(file)[0]]
                     ref_time_data = ref_time_data +[AliveTools.get_nameNumber_and_time(file)[1]]
 
+
                 for file in self.chosenFiles_2:
                     hvVolt = hvVolt + [AliveTools.calculateVoltage(self.dbpath, file, self.run)]
                     x_data = x_data +[AliveTools.get_nameNumber_and_time(file)[0]]
                     time_data = time_data +[AliveTools.get_nameNumber_and_time(file)[1]]
-                    offsetVolt=offsetVolt+[AliveTools.get_offsetVolt_from_db(self.dbpath, file)]
+                    offsetVolt=offsetVolt+[AliveTools.get_real_offsetVolt_from_db(self.dbpath, file,
+                                                                                float(self.lDivOffset.text()),
+                                                                                float(self.lAgiGain.text()),
+                                                                                float(self.lDivRatio.text()))]
 
 
 
-                for a in range(len(refVolt)):
+
+                for a in range(len(hvVolt)):
                     data = []
                     Error=[]
                     ref_xData=[]
                     ref_timeData=[]
+                    mean = []
+                    mean_delta_max = []
+                    mean_delta_min = []
 
-                    for b in range(len(hvVolt)):
-                        Delta = (hvVolt[b][0] - refVolt[a][0])
-                        Delta_max = (hvVolt[b][1] - refVolt[a][2])
-                        Delta_min = (hvVolt[b][2] - refVolt[a][1])
+                    for b in range(len(refVolt)):
+                        Delta = (hvVolt[a][0] - refVolt[b][0])
+                        Delta_max = (hvVolt[a][1] - refVolt[b][2])
+                        Delta_min = (hvVolt[a][2] - refVolt[b][1])
+                        mean = mean + [-Delta] # Wenn mehrere Refs für eine HV MEssung ausgewählt wird, wird nun immer der Mittelwert gebildet
+                        mean_delta_max = mean_delta_max + [-Delta_max]
+                        mean_delta_min = mean_delta_min + [-Delta_min]
+                        ref_xData = ref_xData + [ref_x_data[b]]
+                        ref_timeData = ref_timeData + [ref_time_data[b]]
 
-                        #Delta = (hv_measurement[0] - ref_measurement + hv_measurement[1])/hv_measurement[1]*1000000
-                        data = data + [Delta]
-                        Error=Error+ [[Delta-Delta_min,Delta_max-Delta]]
-                        ref_xData=ref_xData+[ref_x_data[a]]
-                        ref_timeData=ref_timeData+[ref_time_data[a]]
+                    #Delta = (hv_measurement[0] - ref_measurement + hv_measurement[1])/hv_measurement[1]*1000000
+                    data = data + [np.mean(mean)] # Bisher wurde immer betrag der Spannung ausgegeben. Auf Wunsch jetzt negativ
+                    Error=Error+ [[-(np.mean(mean)-np.mean(mean_delta_min)),-(np.mean(mean_delta_max)-np.mean(mean))]]
+
 
                     self.plotdata = self.plotdata + [data]
                     self.Error=self.Error+[Error]
-                    self.offset_volt=self.offset_volt+[offsetVolt]
-                    self.x_data=self.x_data+[x_data]
-                    self.time_data=self.time_data+[time_data]
-                    self.ref_x_data=self.ref_x_data+[ref_xData]
-                    self.ref_time_data=self.ref_time_data+[ref_timeData]
+
+                self.offset_volt = offsetVolt
+                self.x_data = x_data
+                self.time_data = time_data
+                self.ref_x_data = ref_xData
+                self.ref_time_data = ref_timeData
 
 
-                self.saving()
+
+                self.saving_mean()
             else:
                 print('select HV measurement')
         else:
@@ -308,7 +327,7 @@ class AliveUi(QtWidgets.QWidget, Ui_Alive):
 
     def saving(self):
         plot.clear()
-        plot.AlivePlot(self.x_data[0], self.plotdata, self.Error[0], self.ref_x_data)
+        plot.AlivePlot(self.x_data[0], self.plotdata, self.Error[0], self.ref_x_data) # needs changes for new data structure of plotdata and x_data
         plot.show(True)
         #print(self.x_data)
         #print(self.plotdata)
@@ -350,4 +369,54 @@ class AliveUi(QtWidgets.QWidget, Ui_Alive):
                     out_string += '\n'
 
                 out_string += '\n'
+            out_file.write(out_string)
+
+    def saving_mean(self):
+        plot.clear()
+        # plot.AlivePlot(self.x_data[0], self.plotdata, self.Error[0], self.ref_x_data) # needs changes for new data structure of plotdata and x_data
+        # plot.show(True)
+        #print(self.x_data)
+        #print(self.plotdata)
+        #print(self.Error)
+        #print(self.ref_x_data)
+        #print(self.ref_time_data)
+        #print(self.time_data)
+        #print(self.offset_volt)
+
+        #Zeitstempel erzeugen
+        t = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+        ind = self.dbpath.rfind('/')
+        ind_2 = self.dbpath.rfind('.')
+        savePath = self.dbpath[:ind]
+        name = self.dbpath[ind+1:ind_2]
+
+
+        with open(savePath + '/Results_'+name+'_'+t+'.txt', 'w+') as out_file:
+            out_string = 'Div. Offset: ' + str(self.lDivOffset.text()) + '\nDiv. Ratio: ' + str(self.lDivRatio.text()) + '\nGain: ' + str(self.lAgiGain.text()) + '\n'
+            out_string +='number, time, Voltage, neg. Error, pos. Error, HV div. volt, Ref. number, Ref. time, ALIVE - VoltDiv / V, Alive - VoltDiv / ppm \n'
+            for a in range(len(self.plotdata)):
+
+
+                out_string += str(self.x_data[a])
+                out_string += ', '
+                out_string += self.time_data[a]
+                out_string += ', '
+                out_string += str(self.plotdata[a][0])
+                out_string += ', '
+                out_string +=str(-self.Error[a][0][0])
+                out_string += ', '
+                out_string +=str(self.Error[a][0][1])
+                out_string += ', '
+                out_string +=str(self.offset_volt[a])
+                out_string += ', '
+                for x in self.ref_x_data: out_string +=str(x) + '; '
+                out_string += ', '
+                for x in self.ref_time_data: out_string +=str(x) + '; '
+                out_string += ', '
+                out_string += str(self.plotdata[a][0] - self.offset_volt[a])
+                out_string += ', '
+                out_string += str((self.plotdata[a][0] - self.offset_volt[a]) / self.offset_volt[a] * 10 ** 6)
+                out_string += '\n'
+
             out_file.write(out_string)

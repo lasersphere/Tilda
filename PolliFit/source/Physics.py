@@ -23,6 +23,8 @@ me_u = 5.4857990946e-4;    #electron mass in u
 me_u_d = 2.2e-13;
 qe = 1.602176565e-19;    #electron charge
 qe_d = 3.5e-27;
+h = 6.626070040e-34;    #planck constant
+hbar = h / (2*pi)
 
 
 def relVelocity(e, m):
@@ -71,19 +73,38 @@ def wavelenFromFreq(frequency):
     ''' Returns the wavelength in nm at a given frequency/MHz '''
     return c / (frequency * 10 ** 6) * 10 ** 9
 
-def diffDoppler(nu_0, volt, m):
+def diffDoppler(nu_0, volt, m, charge=1, real=False):
     '''returns the differential doppler Factor [MHZ/V]'''
-    return nu_0*qe/np.sqrt(2*qe*volt*m*u*c**2)
+    if real:
+        f_L = nu_0 * (1 + volt * qe * charge / (m * u * c ** 2) * (1 - (1 + 2 * m * u * c ** 2 / (volt * qe * charge)) ** 0.5))
+        du = m * u * c ** 2 * (f_L ** 2 - nu_0 ** 2) / (2 * nu_0 * qe * charge * f_L ** 2) # Real calc. see Diss. K. König
+        dv = -1/du
+    else:
+        dv = nu_0 * qe * charge / np.sqrt(2 * qe * charge * volt * m * u * c ** 2) # old approx.
+
+    return dv
+
+# def diffDoppler(nu_0, volt, m):
+#     '''returns the differential doppler Factor [MHZ/V]'''
+#     return (nu_0/(m*u*c**2))*(qe+((qe*(m*u*c**2 + qe*volt))/((qe*volt*(2*m*u*c**2+qe*volt))**0.5)))
+
+def diffDoppler2(nu_0, volt, m):
+    f_L = nu_0 * (1 + volt * qe / (m * u * c ** 2) * (1 - (1 + 2 * m * u * c ** 2 / (volt * qe))**0.5))
+    du = m * u * c**2 * (f_L**2 - nu_0**2) / (2*nu_0*qe*f_L**2)
+    return -1/du
 
 def relDoppler(laserFreq, v):
     '''Return the doppler shifted frequency of a frame moving with velocity v'''
-    return laserFreq * math.sqrt((c + v) / (c - v))
+    # return laserFreq * math.sqrt((c + v) / (c - v))
+    return laserFreq * (1 - (v/c)**2)**0.5 / (1 - (v/c))
 
 def invRelDoppler(laserFreq, dopplerFreq):
-    '''Return the velocity, under which laserFreq is seen as dopplerFreq'''
+    '''Return the velocity, under which laserFreq is seen as dopplerFreq.
+    Direction information gets lost in inverse function'''
     #rs = (laserFreq/dopplerFreq)**2 '''not right!?'''
-    rs = (dopplerFreq/laserFreq)**2
-    return c*(rs - 1)/(rs + 1)
+    # rs = (dopplerFreq/laserFreq)**2
+    # return c*(rs - 1)/(rs + 1)
+    return c * (laserFreq**2 - dopplerFreq**2) / (laserFreq**2 + dopplerFreq**2)
 
 def voigt(x, sig, gam):
     '''Voigt profile, unnormalized, using the Faddeeva function'''
@@ -94,10 +115,40 @@ def fanoVoigt(x, sig, gam, dispersive):
     return special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).real / (sig * math.sqrt(2 * math.pi)) +\
            dispersive * special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).imag / (sig * math.sqrt(2 * math.pi))
 
+def thermalLorentz(x, loc, gam, xi, colDirTrue, order):
+    '''Lineshape developed in Kretzschmar et al., Appl. Phys. B, 79, 623 (2004)'''
+    lw = gam*2  # linewidth FWHM
+    if colDirTrue:
+        col = 1
+    else:
+        col = -1
 
-def lorentz (x, loc, gam):
+    if order < 0:
+        z0 = np.sqrt((-col*(x - loc) - 1j*lw/2)/(2*xi))
+        return np.imag(np.exp(z0**2)*(1 - special.erf(z0))/z0)/(2*np.sqrt(np.pi)*xi)
+
+    denominator = ((x - loc)**2 + lw**2/4)
+    sum_order = 0
+    if order > 0:
+        sum_order = (col*xi*(x - loc)-3*xi**2)/denominator
+    if order > 1:
+        sum_order += (4*3*xi**2*(x - loc)**2 - col*4*15*xi**3*(x - loc) + 105*xi**4)/(denominator**2)
+    if order > 2:
+        sum_order += (col*8*15*xi**3*(x - loc)**3 - 12*105*xi**4*(x - loc)**2 + col*6*945*xi**5*(x - loc) - 10395*xi**6)\
+            / (denominator**3)
+    if order > 3:
+        sum_order += (16*105*xi**4*(x - loc)**4 - col*32*945*xi**5*(x - loc)**3 + 24*10395*xi**6*(x - loc)**2
+                      - col*8*135135*xi**7*(x - loc) + 2027025*xi**8)/(denominator**4)
+    return lorentz(x, loc, gam, own=True)*(1 + sum_order)
+
+def lorentz(x, loc, gam, own=False):
     '''Lorentzian profile '''
-    return cauchy.pdf(x, loc, gam)
+    if own:
+        lw = gam*2
+        return (2/(math.pi*lw))*((lw**2/4)/((x-loc)**2+(lw**2/4)))
+    else:
+        return cauchy.pdf(x, loc, gam)
+
 
 def lorentzQI (x, loc, loc2, gam):
     '''Quantum interference of lorentzian profile '''
@@ -113,7 +164,51 @@ def gaussian(x, mu, sig, amp):
     :param sig:
     :return:
     """
-    return amp/(sig * math.sqrt(2 * math.pi)) * math.exp(-0.5 * ((x - mu) / sig) ** 2)
+    return amp/(sig * np.sqrt(2 * math.pi)) * np.exp(-0.5 * ((x - mu) / sig) ** 2)
+
+
+def gaussian_offset(x, mu, sig, amp, off):
+    """
+    same as gaussian but adds offset with slope = 0
+    :param x:
+    :param mu:
+    :param sig:
+    :param amp:
+    :param off:
+    :return:
+    """
+    return gaussian(x, mu, sig, amp) + off
+
+
+def asymmetric_gaussian(x, mu, sig, amp, off, skew):
+    """
+    normal distribution exponentially modified
+    :param x:
+    :param mu:
+    :param sig:
+    :param amp:
+    :param off:
+    :param skew:
+    :return:
+    """
+    return amp * skew / 2 * np.exp(
+        skew / 2 * (2 * mu + skew * (sig ** 2) - 2 * x)) * special.erfc(
+        (mu + skew * (sig ** 2) - x) / (np.sqrt(2) * sig)) + off
+
+
+def transit(x, t):
+    """
+    transit broadening function. Demtröder Laserspectroscopy (german) Eq. (3.58).
+    Uses same method as numpy.sinc(x) to calculate x = 0.
+    :param x: frequency
+    :param t: transit time
+    :return:
+    """
+
+    x = np.asanyarray(x)
+    y = 2*np.pi*np.where(x == 0, 1.0e-20, x)*10**6 # from frequency to angular frequency
+    return (np.sin(0.5*t*y))**2/y**2
+
 
 def HFCoeff(I, J, F):
     '''Return the tuple of hyperfine coefficients for A and B-factor for a given quantum state'''

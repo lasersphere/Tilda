@@ -8,6 +8,7 @@ Module Description: short script to extract values from db etc.
 
 from fractions import Fraction
 import Tools
+import TildaTools as TiTs
 import numpy as np
 import os
 import sqlite3
@@ -95,18 +96,21 @@ odd_isotopes = [iso for iso in isotopes if int(iso[:2]) % 2]
 even_isotopes = [iso for iso in isotopes if int(iso[:2]) % 2 == 0]
 stables = ['58_Ni', '60_Ni', '61_Ni', '62_Ni', '64_Ni']
 
+isotopes16 = ['58_Ni', '59_Ni', '60_Ni', '61_Ni', '62_Ni', '63_Ni',
+              '64_Ni', '65_Ni', '66_Ni', '67_Ni', '68_Ni', '70_Ni']
+
 ''' literature radii '''
 
 # from Landolt-Börnstein - Group I Elementary Particles, Nuclei and Atoms, Fricke 2004
 # http://materials.springer.com/lb/docs/sm_lbs_978-3-540-45555-4_30
 # Root mean square nuclear charge radii <r^2>^{1/2}_{0µe}
-# lit_radii = {
-#     '58_Ni': (3.770, 0.004),
-#     '60_Ni': (3.806, 0.002),
-#     '61_Ni': (3.818, 0.003),
-#     '62_Ni': (3.836, 0.003),
-#     '64_Ni': (3.853, 0.003)
-# }   # have ben calculated more accurately below
+lit_radii = {
+    '58_Ni': (3.770, 0.004),
+    '60_Ni': (3.806, 0.002),
+    '61_Ni': (3.818, 0.003),
+    '62_Ni': (3.836, 0.003),
+    '64_Ni': (3.853, 0.003)
+}   # have ben calculated more accurately below
 
 baret_radii_lit = {
     '58_Ni': (4.8386, np.sqrt(0.0009 ** 2 + 0.0019 ** 2)),
@@ -127,7 +131,7 @@ v2_lit = {
 lit_radii_calc = {iso: (val[0] / v2_lit[iso], val[1]) for iso, val in sorted(baret_radii_lit.items())}
 
 # using the more precise values by the self calculated one:
-lit_radii = lit_radii_calc
+# lit_radii = lit_radii_calc
 
 delta_lit_radii = {iso: [
     lit_vals[0] ** 2 - lit_radii['60_Ni'][0] ** 2,
@@ -151,22 +155,25 @@ for iso, radi in sorted(lit_radii.items()):
 
 con = sqlite3.connect(db)
 cur = con.cursor()
-cur.execute(''' SELECT iso, I From main.Isotopes ORDER BY iso''')
+cur.execute(''' SELECT iso, I, mass, mass_d From main.Isotopes ORDER BY iso''')
 spins = cur.fetchall()
 con.close()
 print(spins)
 spins_dict = {}
-for iso, spin in spins:
+masses_dict = {}
+for iso, spin, mass, mass_d in spins:
     if iso in isotopes:
         spins_dict[iso] = spin
+        masses_dict[iso] = (mass, mass_d)
 
 shifts = Tools.extract_from_combined([final_2017_run], db, isotopes, par='shift')
-d_r2_dict = Tools.extract_from_combined([final_2017_run], db, isotopes, par='delta_r_square')
-print(d_r2_dict)
+d_r2_dict_17 = Tools.extract_from_combined([final_2017_run], db, isotopes, par='delta_r_square')
+print(d_r2_dict_17)
 # {run: {iso: [val, statErr, systErr, rChi], iso...}}
 # Header:
-print('\hline \hline'
-      ' A  &'
+print('------------------ tab:isoShiftChargeRadii2017 ------------------')
+print('\hline \hline')
+print(' A  &'
       ' $ I $ &'
       ' $ \delta \\nu_{IS}^{60,A} $ / MHz &'
       ' $ \delta \langle r_c^2\\rangle^{60,A} $ / fm$^2$ &'
@@ -178,12 +185,12 @@ for iso in isotopes:
     spin = str(Fraction(spins_dict[iso]))
     shift, shift_stat_err, shift_syst_err = shifts[final_2017_run].get(iso, [0., 0., 0., 0.])[:-1]
     shift_str = '%.1f(%.0f)[%.0f]' % (shift, shift_stat_err * 10, shift_syst_err * 10)
-    d_r2val, d_r2val_stat_err, d_r2val_syst_err = d_r2_dict[final_2017_run].get(iso, [0., 0., 0., 0.])[:-1]
+    d_r2val, d_r2val_stat_err, d_r2val_syst_err = d_r2_dict_17[final_2017_run].get(iso, [0., 0., 0., 0.])[:-1]
     d_r2val_str = '%.3f(%.0f)' % (d_r2val, d_r2val_syst_err * 1000)
-    fricke_abs, fricke_abs_err = lit_radii_calc.get(iso, [False, False])
-    fricke_abs_radius_str = '%.4f(%.0f)' % (fricke_abs, fricke_abs_err * 10000) if fricke_abs else ''
+    fricke_abs, fricke_abs_err = lit_radii.get(iso, [False, False])
+    fricke_abs_radius_str = '%.3f(%.0f)' % (fricke_abs, fricke_abs_err * 1000) if fricke_abs else ''
     fricke_rel, fricke_rel_err = delta_lit_radii.get(iso, [False, False])
-    fricke_rel_radius_str = '%.4f(%.0f)' % (fricke_rel, fricke_rel_err * 10000) if fricke_rel else ''
+    fricke_rel_radius_str = '%.3f(%.0f)' % (fricke_rel, fricke_rel_err * 1000) if fricke_rel else ''
     print('  %s  &'
           '  %s  &'
           '  %s  &'
@@ -193,17 +200,112 @@ for iso in isotopes:
 print('\hline')
 
 
+au16 = Tools.extract_from_combined([final_2017_run], db, isotopes, par='Au')[final_2017_run]
+al16 = Tools.extract_from_combined([final_2017_run], db, isotopes, par='Al')[final_2017_run]
+bu16 = Tools.extract_from_combined([final_2017_run], db, isotopes, par='Bu')[final_2017_run]
+bl16 = Tools.extract_from_combined([final_2017_run], db, isotopes, par='Bl')[final_2017_run]
+print('------------------ tab:2017AandB ------------------')
+print('\hline \hline')
+print('A & I & $A_u$ / MHz & $A_l$  / MHz & $B_u$  / MHz & $B_l$ / MHz\\\\')
+print('\hline')
+for odd_i in odd_isotopes:
+    massnum = int(odd_i[:2])
+    spin = str(Fraction(spins_dict[odd_i]))
+    au_iso, au_iso_stat_err, au_iso_syst_err, au_iso_rchisq = au16.get(
+        odd_i, (0.0, 0.0, 0.0, 0.0))  # val, statErr, systErr, rChi
+    al_iso, al_iso_stat_err, al_iso_syst_err, al_iso_rchisq = al16.get(
+        odd_i, (0.0, 0.0, 0.0, 0.0))  # val, statErr, systErr, rChi
+    bu_iso, bu_iso_stat_err, bu_iso_syst_err, bu_iso_rchisq = bu16.get(
+        odd_i, (0.0, 0.0, 0.0, 0.0))  # val, statErr, systErr, rChi
+    bl_iso, bl_iso_stat_err, bl_iso_syst_err, bl_iso_rchisq = bl16.get(
+        odd_i, (0.0, 0.0, 0.0, 0.0))  # val, statErr, systErr, rChi
+    a_up_str = '%.1f(%.0f)[%.0f]' % (au_iso, au_iso_stat_err * 10, max(1, au_iso_syst_err * 10))
+    a_l_str = '%.1f(%.0f)[%.0f]' % (al_iso, al_iso_stat_err * 10, max(1, al_iso_syst_err * 10))
+    b_up_str = ''
+    b_l_str = ''
+    if bu_iso > 0:
+        b_l_str = '%.1f(%.0f)[%.0f]' % (bl_iso, bl_iso_stat_err * 10, max(1, bl_iso_syst_err * 10))
+        b_up_str = '%.1f(%.0f)[%.0f]' % (bu_iso, bu_iso_stat_err * 10, max(1, bu_iso_syst_err * 10))
 
-moments = ['iso & I & $A_u$ / MHz & $A_l$  / MHz & $A_u$/$A_l$	& $B_u$  / MHz & $B_l$ / MHz & $B_u$/$B_l$ \\\\',
-           '59 & 3/2 &	-176.07(155)[4] & 	-452.70(112)[10] &	0.389(4) &'
-           '	-31.53(549)[1] & -56.65(682)[1] & 	0.557(118)\\\\',
-           '61 & 3/2 &	-177.15(35)[4] & 	-454.92(26)[10] &	0.389(1) &'
-           '	-51.17(136)[1] & -103.85(171)[2] & 	0.493(015)\\\\',
-           '63 & 1/2 &	351.39(85)[8] & 	904.19(61)[20] &	0.389(1) &'
-           '	0.00(0)[0] & 0.00(0)[0] & 	0.000(000)\\\\',
-           '65 & 5/2 &	107.86(24)[2] & 	276.68(17)[6] &	0.390(1) &'
-           '	-28.71(177)[1] & -60.35(216)[1] & 	0.476(034)\\\\',
-           '67 & 1/2 &	424.00(18)[10] & 	1089.21(35)[25] &	0.389(0) &'
-           '	0.00(0)[0] & 0.00(0)[0] & 	0.000(000)']
-for each in moments:
-    print(each)
+    print('%s & %s & %s & %s & %s & %s\\\\' % (
+        massnum, spin, a_up_str, a_l_str, b_up_str, b_l_str
+    ))
+print('\hline')
+
+shift_68_ni, shift_stat_err_68_ni, shift_syst_err_68_ni = shifts[final_2017_run]['68_Ni'][:-1]
+shift_68_ni_err = np.sqrt(shift_stat_err_68_ni ** 2 + shift_syst_err_68_ni ** 2)
+d_r2_68_ni, d_r2_stat_err_68_ni, d_r2_syst_err_68_ni = d_r2_dict_17[final_2017_run]['68_Ni'][:-1]
+d_r2_68_ni_err = np.sqrt(d_r2_stat_err_68_ni ** 2 + d_r2_syst_err_68_ni ** 2)
+
+mass_68, mass_68_err = masses_dict['68_Ni']
+ref_mass, ref_massErr = masses_dict['60_Ni']
+
+isotopeMasses = [mass_68]
+massErr = [mass_68_err]
+
+#from Kingfitter.py:
+red_mass_68 = [i*ref_mass/(i-ref_mass) for i in isotopeMasses][0]
+        # from error prop:
+red_mass_68_err = [
+    ((iso_m_d * (ref_mass ** 2)) / (iso_m - ref_mass) ** 2) ** 2 +
+    ((ref_massErr * (iso_m ** 2)) / (iso_m - ref_mass) ** 2) ** 2
+    for iso_m, iso_m_d in zip(isotopeMasses, massErr)
+][0]
+print(red_mass_68, red_mass_68_err)
+mod_isotope_shift = red_mass_68 * shift_68_ni
+mod_isotope_shift_err = np.sqrt((shift_68_ni * red_mass_68_err) ** 2 +
+                                (red_mass_68 * shift_68_ni_err) ** 2)
+print('%.3f(%.0f) uGHz' % (mod_isotope_shift * 10 ** -3, mod_isotope_shift_err))
+print(mod_isotope_shift, mod_isotope_shift_err)
+
+mod_d_r2 = red_mass_68 * d_r2_68_ni  # u fm2
+mod_d_r2_err = np.sqrt((d_r2_68_ni * red_mass_68_err) ** 2 +
+                       (red_mass_68 * d_r2_68_ni_err) ** 2)
+
+print('%.3f(%.0f) ufm2' % (mod_d_r2, mod_d_r2_err))
+print(mod_d_r2, mod_d_r2_err)
+
+# make sure this was updated before with NiAnalysis2017.py
+d_r2_dict_16 = Tools.extract_from_combined([run2016_final_db], db, isotopes16, par='delta_r_square')
+TiTs.print_dict_pretty(d_r2_dict_16)
+
+print('------------------ fig:dr2EvolutionFinal ------------------')
+print('# copy to origin')
+print('# iso\tmass\tN\tdr2\tstatErr\tsystErr\tfullErr')
+for iso in isotopes16:
+    massnum = int(iso[:2])
+    d_r2val_17, d_r2val_stat_err_17, d_r2val_syst_err_17, d_r2val_rChi_17 = d_r2_dict_17[final_2017_run].get(
+        iso, [0., 0., 0., 0.])
+    d_r2val_16, d_r2val_stat_err_16, d_r2val_syst_err_16, d_r2val_rChi_16 = d_r2_dict_16[run2016_final_db].get(
+        iso, [0., 0., 0., 0.])
+    dr2_final = d_r2val_16 if iso in ['59_Ni', '63_Ni'] else d_r2val_17
+    dr2_final_stat_err = d_r2val_stat_err_16 if iso in ['59_Ni', '63_Ni'] else d_r2val_stat_err_17
+    dr2_final_syst_err = d_r2val_syst_err_16 if iso in ['59_Ni', '63_Ni'] else d_r2val_syst_err_17
+    dr2_final_full_err = np.sqrt(dr2_final_stat_err ** 2 + dr2_final_syst_err ** 2)
+    print('%s\t%d\t%d\t%.5f\t%.5f\t%.5f\t%.5f' % (iso, massnum, massnum - 28, dr2_final, dr2_final_stat_err,
+                                              dr2_final_syst_err, dr2_final_full_err))
+
+
+print('------------------ rChiAbsolut for origin ------------------')
+print('# copy to origin')
+print('# iso\tmass\tN\trChAbs\tstatErr\tsystErr\tfullErr')
+for iso in isotopes16:
+    massnum = int(iso[:2])
+    d_r2val_17, d_r2val_stat_err_17, d_r2val_syst_err_17, d_r2val_rChi_17 = d_r2_dict_17[final_2017_run].get(
+        iso, [0., 0., 0., 0.])
+    d_r2val_16, d_r2val_stat_err_16, d_r2val_syst_err_16, d_r2val_rChi_16 = d_r2_dict_16[run2016_final_db].get(
+        iso, [0., 0., 0., 0.])
+    dr2_final = d_r2val_16 if iso in ['59_Ni', '63_Ni'] else d_r2val_17
+    dr2_final_stat_err = d_r2val_stat_err_16 if iso in ['59_Ni', '63_Ni'] else d_r2val_stat_err_17
+    dr2_final_syst_err = d_r2val_syst_err_16 if iso in ['59_Ni', '63_Ni'] else d_r2val_syst_err_17
+    dr2_final_full_err = np.sqrt(dr2_final_stat_err ** 2 + dr2_final_syst_err ** 2)
+
+    neutron_num = massnum - 28
+
+    rch_abs = np.sqrt(lit_radii['60_Ni'][0] ** 2 + dr2_final)
+    rch_abs_full_err = np.sqrt(
+        (0.5 * (lit_radii['60_Ni'][0] ** 2 + dr2_final) ** -0.5 * 2 * lit_radii['60_Ni'][0] * lit_radii['60_Ni'][1]) ** 2 +
+        (0.5 * (lit_radii['60_Ni'][0] ** 2 + dr2_final) ** -0.5 * dr2_final_full_err) ** 2
+    )
+    print('%s\t%d\t%d\t%.5f\t%.5f\t%.5f\t%.5f' % (iso, massnum, neutron_num, rch_abs, dr2_final_stat_err,
+                                              dr2_final_syst_err, rch_abs_full_err))

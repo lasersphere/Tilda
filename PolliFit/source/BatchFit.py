@@ -18,18 +18,22 @@ from Spectra.FullSpec import FullSpec
 from Spectra.Straight import Straight
 
 
-def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None):
+def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None, save_file_as='.png'):
     '''Fit fileList with run and write results to db'''
     print("BatchFit started")
     print("Opening DB:", db)
-    
+
+    # change directory into db folder
     oldPath = os.getcwd()
     projectPath, dbname = os.path.split(db)
     os.chdir(projectPath)
-    
+
+    # connect to db and create cursor
     con = sqlite3.connect(dbname)
     cur = con.cursor()
-    
+
+    # extract isoVariant, lineVariant, active scalers and tracks from run in database
+    # store scalers and tracks as non-string tuple of list of numbers and number
     cur.execute('''SELECT isoVar, lineVar, scaler, track FROM Runs WHERE run = ?''', (run,))
     var = cur.fetchall()[0]
     st = (ast.literal_eval(var[2]), ast.literal_eval(var[3]))
@@ -43,7 +47,7 @@ def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None):
     fits = []
     for file in fileList:
         try:
-            fits.append(singleFit(file, st, dbname, run, var, cur, x_as_voltage, softw_gates_trs))
+            fits.append(singleFit(file, st, dbname, run, var, cur, x_as_voltage, softw_gates_trs, save_file_as=save_file_as))
         except:
             errcount += 1
             print("Error working on file", file, ":", sys.exc_info()[1])
@@ -59,7 +63,7 @@ def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None):
     return fits, files_with_error
 
 
-def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=None):
+def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=None, save_file_as='.png'):
     '''Fit st of file, using run. Save result to db and picture of spectrum to folder'''
     fitter_iso = None
     fitter_m = None
@@ -113,7 +117,6 @@ def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=No
     fit.fit()
     
     #Create and save graph
-    fig = os.path.splitext(path)[0] + run + '.png'
     pars = fit.par
     num_of_common_vals = 0
     if not isinstance(spec, Straight):
@@ -127,7 +130,10 @@ def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=No
         plot.plotFit(fit, color='-b', add_label=' gs+m', plot_side_peaks=False)
     else:
         plot.plotFit(fit)
+
+    fig = os.path.splitext(path)[0] + run + save_file_as
     plot.save(fig)
+    #plot.show()  # If this is un-commented each plot will be shown in batchfit. Only do this for debugging purposes.
     plot.clear()
     
     result = fit.result()

@@ -51,7 +51,7 @@ def get_listAll_from_db(dbpath):
 
 def find_ref_files(file,all_Files):
     """
-    this will search for the previous and the next reference measurement for a given HV measurement file
+    this will search for the previous and the next reference measurement for a given HV measurement file.
     :param file: HV measurement file, all_Files: dictionary of all files
     :return: ref_Files
     """
@@ -85,11 +85,12 @@ def get_laserFreq_from_db(dbpath, chosenFiles):
         file = chosenFiles  # [0]
         con = sqlite3.connect(dbpath)
         cur = con.cursor()
-        cur.execute('''SELECT laserFreq FROM Files WHERE file = ?''', (file,))
+        cur.execute('''SELECT laserFreq, laserFreq_d FROM Files WHERE file = ?''', (file,))
         laserfreq = cur.fetchall()
         if laserfreq:
             laserfrequency = laserfreq[0][0]
-            return laserfrequency
+            laserfrequency_d = laserfreq[0][1]
+            return [laserfrequency, laserfrequency_d]
         else:
             return 0.0
 
@@ -190,18 +191,24 @@ def get_nameNumber_and_time(chosenFiles):
     :param chosenFiles: str, name of files
     :return: int, nameNumber
     """
+    #War f�r altes Datenaufnahmesystem geschrieben. Nummer auslesen ist angepasst. Zeit nicht, da automatischer Vergleich eh noch nicht implementiert
     if len(chosenFiles) > 0:
+        fileType=chosenFiles[-4:]
 
-        ind=chosenFiles.find('_')
-        nameNumberString=chosenFiles[ind+10:]
-        ind=nameNumberString.find('_')
-        nameNumber=int(nameNumberString[:ind])
-        date=chosenFiles[:10]
-        date=date.replace('-','.')
-        time=chosenFiles[11:19]
-        time=time.replace('-',':')
-        dateTime=date+' '+time
-
+        if fileType=='.dat':
+            ind=chosenFiles.find('_')
+            nameNumberString=chosenFiles[ind+10:]
+            ind=nameNumberString.find('_')
+            nameNumber=int(nameNumberString[:ind])
+            date=chosenFiles[:10]
+            date=date.replace('-','.')
+            time=chosenFiles[11:19]
+            time=time.replace('-',':')
+            dateTime=date+' '+time
+        elif fileType=='.xml':
+            ind=chosenFiles.find('.xml')
+            nameNumber=int(chosenFiles[ind-3:ind])
+            dateTime=str(0)
         numberAndTime=[nameNumber,dateTime]
 
         return numberAndTime
@@ -224,11 +231,41 @@ def get_offsetVolt_from_db(dbpath, chosenFiles):
         cur = con.cursor()
         cur.execute('''SELECT offset FROM Files WHERE file = ?''', (file,))
         offsetVolt = cur.fetchall()
+        if offsetVolt==[('[0]',)]:
+            offsetVolt=[(0.0,)]
         if offsetVolt:
-            offsetVoltage = offsetVolt[0][0] * offsetVoltRatio
+            offsetVoltage =ast.literal_eval(offsetVolt[0][0])[0] * offsetVoltRatio
         return offsetVoltage
     else:
-        return 0.0
+        return 0.00
+
+
+def get_real_offsetVolt_from_db(dbpath, chosenFiles, measOffset, gain, voltDivRatio):
+    """
+    this will connect to the database and read the offsetVolt for the chosenFiles. Afterwards, the real offset is
+    calculated with the divOffset, gain and divRatio.
+    :param dbpath: str, path to .slite db
+    :param chosenFiles: str, name of files
+    :return: float, offsetVoltage
+    """
+    if len(chosenFiles) > 0:
+        file = chosenFiles  # [0]
+        con = sqlite3.connect(dbpath)
+        cur = con.cursor()
+        cur.execute('''SELECT offset FROM Files WHERE file = ?''', (file,))
+        offsetVolt = cur.fetchall()
+        if offsetVolt==[('[0]',)]:
+            offsetVolt=[(0.0,)]
+        if offsetVolt:
+            print("File: ", file)
+            print("meas: ", ast.literal_eval(offsetVolt[0][0])[0])
+            print("measOffset: ", measOffset)
+            print("gain: ", gain)
+            print("voltDivRatio: ", voltDivRatio)
+            offsetVoltage =(ast.literal_eval(offsetVolt[0][0])[0]-measOffset) * gain * voltDivRatio
+        return offsetVoltage
+    else:
+        return 0.00
 
 
 def get_mass_from_db(dbpath, chosenFiles):
@@ -259,7 +296,7 @@ def get_mass_from_db(dbpath, chosenFiles):
         return [0, 0]
 
 
-def get_center_from_db(dbpath, chosenFiles):
+def get_center_from_db(dbpath, chosenFiles, run):
     """
     this will connect to the database and read the center and stat. error of the fit for the chosenFiles
     :param dbpath: str, path to .slite db
@@ -270,7 +307,7 @@ def get_center_from_db(dbpath, chosenFiles):
         file = chosenFiles  # [0]
         con = sqlite3.connect(dbpath)
         cur = con.cursor()
-        cur.execute('''SELECT pars FROM FitRes WHERE file = ?''', (file,))
+        cur.execute('''SELECT pars FROM FitRes WHERE file = ? AND run = ?''', (file, run))
         val = cur.fetchall()
         valStr = val[0][0]
         valDic = ast.literal_eval(valStr)
@@ -302,11 +339,11 @@ def transformFreqToVolt(dbpath, chosenFiles, run, center):
         f0 = get_transitionFreq_from_db(dbpath, chosenFiles, run)
 
         # Calculation of Kepco Voltage
-        v = Physics.invRelDoppler(fL, f0 + center)
+        v = Physics.invRelDoppler(fL[0], f0 + center)
         voltTotal = mass * speedOfLight ** 2 * ((1 - (v / speedOfLight) ** 2) ** (-1 / 2) - 1) / electronCharge
         voltKepco = voltTotal - abs(accVolt) - abs(offsetVolt)
         # Calculation of total voltage
-        v_Laser = Physics.invRelDoppler(fL, f0)
+        v_Laser = Physics.invRelDoppler(fL[0], f0)
         voltTotal_Laser = mass * speedOfLight ** 2 * (
         (1 - (v_Laser / speedOfLight) ** 2) ** (-1 / 2) - 1) / electronCharge
         volt_Laser = voltTotal_Laser - voltKepco
@@ -324,12 +361,13 @@ def calculateVoltage(dbpath, chosenFiles, run):
     :param run: str, name of run
     :return: float, volt_Laser
     """
-    center = get_center_from_db(dbpath, chosenFiles)
+    center = get_center_from_db(dbpath, chosenFiles, run)
+    laserFreq_d = get_laserFreq_from_db(dbpath, chosenFiles) #Not implemented yet. But should work by only adding it to next 3 lines
+
 
     volt_Laser=transformFreqToVolt(dbpath, chosenFiles, run, center[0])
     volt_Laser_max=transformFreqToVolt(dbpath, chosenFiles, run, center[0]-center[1])
     volt_Laser_min=transformFreqToVolt(dbpath, chosenFiles, run, center[0]+center[1])
-
     voltages=[volt_Laser,volt_Laser_max,volt_Laser_min]
 
     return voltages

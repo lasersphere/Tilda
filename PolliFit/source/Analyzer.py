@@ -11,7 +11,9 @@ import functools
 import os
 import sqlite3
 import logging
+import re
 from datetime import datetime
+from copy import deepcopy
 
 import numpy as np
 from scipy.optimize import curve_fit
@@ -30,6 +32,23 @@ def getFiles(iso, run, db):
     con.close()
 
     return [f[0] for f in e]
+
+
+def get_date_date_err_to_files(db, filelist):
+    """
+    get the date and date err of all files in filelist
+    :param db: str, bs path to sqlite database
+    :param filelist: list, list of strings as listed in table 'Files'
+    :return: list of tuples, [(file, date, errDateInS), ..]
+    """
+    e = []
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    for f in filelist:
+        cur.execute('''SELECT file, date, errDateInS FROM main.Files WHERE file = ?  ''', (f,))
+        e += cur.fetchall()
+    con.close()
+    return e
 
 
 def extract(iso, par, run, db, fileList=[], prin=True):
@@ -67,8 +86,8 @@ def extract(iso, par, run, db, fileList=[], prin=True):
         return vals, errs, date_list, files
     else:
         return None, None, None, None
-    
-    
+
+
 def weightedAverage(vals, errs):
     '''Return (weighted average, propagated error, rChi^2'''
     weights = 1 / np.square(errs)
@@ -216,6 +235,8 @@ def combineShift(iso, run, db, show_plot=False):
     shifts = []
     shiftErrors = []
     dateIso = []
+    becola_files = False  # neccessary to adapt for becola files which are identified by run number rather than date
+    numIso = []  # necessary for BECOLA files from Ni run, since they don't have reliable dates
     for block in config:
         if block[0]:
             preVals, preErrs, date, files = extract(ref, 'center', refRun, db, block[0])
@@ -228,6 +249,12 @@ def combineShift(iso, run, db, show_plot=False):
 
         intVals, intErrs, date, files = extract(iso, 'center', run, db, block[1])
         [dateIso.append(i) for i in date]
+        for f in files:
+            file_name, file_ext = f.split('.', 1)
+            if 'BECOLA' in file_name:  # BECOLA files from nickel analysis have naming scheme 'BECOLA_runno.xml'
+                becola_files = True
+                prefix, iso_num = file_name.split('_', 1)
+                numIso.append(int(iso_num))
 
         if block[2]:
             postVals, postErrs, date, files = extract(ref, 'center', refRun, db, block[2])
@@ -268,15 +295,21 @@ def combineShift(iso, run, db, show_plot=False):
     avg_fig_name = os.path.join(combined_plots_dir, iso + '_' + run + '_shift.png')
     plotdata = (
         dateIso, shifts, shiftErrors, val, statErr, systErr, ('k.', 'r'), False, avg_fig_name, '%s_shift [MHz]' % iso)
+    plotdataFiles = (
+        numIso, shifts, shiftErrors, val, statErr, systErr, ('k.', 'r'), False, avg_fig_name, '%s_shift [MHz]' % iso)
     if show_plot:
-        plt.plotAverage(*plotdata)
+        if becola_files:
+            plt.plotAverageBECOLA(*plotdataFiles)
+        else:
+            plt.plotAverage(*plotdata)
         plt.show(True)
     # plt.clear()
     return (shifts, shiftErrors, val, statErr, systErr, rChi)
 
 
 def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minutes=15,
-                       pic_format='.png', font_size=12):
+                       pic_format='.png', font_size=12, default_date_err_s=15 * 60, overwrite_file_num_det={},
+                       store_to_file_in_combined_plots=''):
     """
     takes an Isotope a run and a database and gives the isotopeshift to the reference!
     This will perform a linear fit to the references center positions versus time stamp and
@@ -320,6 +353,7 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
     shiftErrors = []
     dateIso = []  # dates as string for average plot
     fileIso = []  # all isotope files
+    all_iso_file_nums = []
     print(config)
     for block in config:
         block_shifts = []
@@ -339,23 +373,35 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
         ref_centers, ref_errs, ref_dates, ref_files = extract(ref, 'center', refRun, db, ref_files)
         ref_dates_date_time = [datetime.strptime(each, '%Y-%m-%d %H:%M:%S') for each in ref_dates]
         ref_dates_date_time_float = [datetime.strptime(each, '%Y-%m-%d %H:%M:%S').timestamp() for each in ref_dates]
+        ref_date_errs = list(list(zip(*get_date_date_err_to_files(db, ref_files)))[2])
+        ref_date_errs = [err_found if err_found > 0 else default_date_err_s for err_found in ref_date_errs]
         first_ref = np.min(ref_dates_date_time_float)
         ref_dates_float_relative = [each - first_ref for each in ref_dates_date_time_float]
         refs_elapsed_s = np.max(ref_dates_date_time_float) - first_ref
+        ref_file_nums = TiTs.get_file_numbers(ref_files, user_overwrite=overwrite_file_num_det)
+
         iso_centers, iso_errs, iso_dates, iso_files = extract(iso, 'center', run, db, iso_files)
         iso_dates_datetime = [datetime.strptime(each, '%Y-%m-%d %H:%M:%S') for each in iso_dates]
         iso_dates_datetime_float = [datetime.strptime(each, '%Y-%m-%d %H:%M:%S').timestamp() for each in iso_dates]
+        iso_date_errs = list(list(zip(*get_date_date_err_to_files(db, iso_files)))[2])
+        iso_date_errs = [err_found if err_found > 0 else default_date_err_s for err_found in iso_date_errs]
         iso_date_float_relative = [each - first_ref for each in iso_dates_datetime_float]
-        dateIso += iso_dates
-        fileIso += iso_files
+        iso_file_nums = TiTs.get_file_numbers(iso_files, user_overwrite=overwrite_file_num_det)
+        all_iso_file_nums += iso_file_nums,
+
+        dateIso += iso_dates,
+        fileIso += iso_files,
         # first assume a constant slope
         slope = 0
         offset, offset_err, rChi = weightedAverage(ref_centers, ref_errs)
         plt_label = 'mean val: %.1f +/- %.1f rChi: %.1f' % (offset, offset_err, rChi)
+        cor_sl_off = 0
         if len(ref_files) > 1:
             # fit dates vs center position of refs
             if refs_elapsed_s / 60 > ref_min_spread_time_minutes:
                 # if refs are spread sufficiently in time perform linear fit and overwrite slope etc.
+                # x-error not relevant for fitting since all references
+                # will always take roughly the same time to acquire
                 print('ref dates are: ', ref_dates_float_relative)
                 use_absoult_sigma = len(ref_files) == 2
                 # fit relative to the first reference
@@ -366,8 +412,15 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
                 print(popt, pcov, perr)
                 slope, offset = popt
                 slope_err, offset_err = perr
+                cov_sl_off = pcov[0][1]
+                cor_sl_off = cov_sl_off / (slope_err * offset_err)
+
                 plt_label = 'lin. fit to ref: slope %.1e +/- %.1e\nlin. fit to ref: offset %.1f +/- %.1f' % (
                     slope, slope_err, offset, offset_err)
+                print('optimized parameter from curve fit:')
+                print('slope: ', slope, ' +/- ', slope_err)
+                print('offset: ', offset, ' +/- ', offset_err)
+                print('correlation between slope and offset: ', cor_sl_off)
 
             else:
                 logging.warning('WARNING, while calculating the isotope shift for %s '
@@ -380,23 +433,90 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
             # center of iso - center of ref at this time evaluated from linear fit
             block_shifts += [iso_centers[i] - straight_func(iso_rel_date, slope, offset)]
             # gaussian error prop:
-            ref_extrapol_err = np.sqrt((slope_err * iso_rel_date) ** 2 + offset_err ** 2)
-            block_shifts_errs += [np.sqrt(iso_errs[i] ** 2 + ref_extrapol_err ** 2)]
+            ref_extrapol_err = np.sqrt((slope_err * iso_rel_date) ** 2 +
+                                       offset_err ** 2 +
+                                       (slope * iso_date_errs[i]) ** 2)
+            # now also with correlation term:
+            ref_extrapol_err_cor = np.sqrt((slope_err * iso_rel_date) ** 2 +
+                                           offset_err ** 2 +
+                                           (slope * iso_date_errs[i]) ** 2 +
+                                           2 * (iso_rel_date * slope_err) * offset_err * cor_sl_off)
+            print('iso shift errs, uncorrelated %.3f and correlated %.3f, correlation: %.2f' %
+                  (ref_extrapol_err, ref_extrapol_err_cor, cor_sl_off))
+            block_shifts_errs += [np.sqrt(iso_errs[i] ** 2 + ref_extrapol_err_cor ** 2)]
 
         # plot and save on disc
-        pic_name = 'shift_%s_%s_' % (iso, run)
-        for file in iso_files:
-            pic_name += file.split('.')[0] + '_'
-        pic_name = pic_name[:-1] + pic_format
-        file_name = os.path.join(os.path.dirname(db), 'shift_pics', pic_name)
-        plt.plot_iso_shift_time_dep(
-            ref_dates_date_time, ref_dates_date_time_float, ref_centers, ref_errs, ref,
-            iso_dates_datetime, iso_dates_datetime_float, iso_centers, iso_errs, iso,
-            slope, offset, plt_label, (block_shifts, block_shifts_errs), file_name, show_plot=show_plot,
-            font_size=font_size)
-        shifts += block_shifts
-        shiftErrors += block_shifts_errs
+        pic_name = 'shift_%s_%s_files_' % (iso, run)
+        for fn in iso_file_nums:
+            pic_name += fn + '_'
+        if isinstance(pic_format, list):
+            for pic_form in pic_format:
+                pic_name = pic_name[:-1] + pic_form
+                file_name = os.path.join(os.path.dirname(db), 'shift_pics', pic_name)
+                plt.plot_iso_shift_time_dep(
+                    ref_files, ref_file_nums, ref_dates_date_time, ref_dates_date_time_float,
+                    ref_date_errs, ref_centers, ref_errs, ref,
+                    iso_files, iso_file_nums, iso_dates_datetime, iso_dates_datetime_float,
+                    iso_date_errs, iso_centers, iso_errs, iso,
+                    slope, offset, plt_label, (block_shifts, block_shifts_errs), file_name, show_plot=show_plot,
+                    font_size=font_size)
+        else:
+            pic_name = pic_name[:-1] + pic_format
+            file_name = os.path.join(os.path.dirname(db), 'shift_pics', pic_name)
+            plt.plot_iso_shift_time_dep(
+                ref_files, ref_file_nums, ref_dates_date_time, ref_dates_date_time_float,
+                ref_date_errs, ref_centers, ref_errs, ref,
+                iso_files, iso_file_nums, iso_dates_datetime, iso_dates_datetime_float,
+                iso_date_errs, iso_centers, iso_errs, iso,
+                slope, offset, plt_label, (block_shifts, block_shifts_errs), file_name, show_plot=show_plot,
+                font_size=font_size)
+        shifts += block_shifts,
+        shiftErrors += block_shifts_errs,
     # in the end get the mean value of all shifts:
+    print('dates:', dateIso)
+    print('shifts:', shifts)
+    print('shiftErrors:', shiftErrors)
+    date_isos_blockw = deepcopy(dateIso)
+    shifts_blockw = deepcopy(shifts)
+    shiftErrors_blockw = deepcopy(shiftErrors)
+    file_iso_blockw = deepcopy(fileIso)
+
+    # # blockwise logics:
+    # w_avg_blockwise = []  # will get one tuple for each block of isotope shifts containing:
+    # # (w_avg_block, w_avg_err_block, w_avg_rChi_block, w_avg_appl_chi_err)
+    # stdev_blockwise = []  # will hold the weighted mean and the standard deviation for each block as a tuple of each
+    # # (w_avg_block, w_avg_appl_chi_err, stdev_block, max(stdev_block, w_avg_appl_chi_err))
+    # for files_block, dates_block, shifts_block, shift_errs_block in zip(
+    #         file_iso_blockw, date_isos_blockw, shifts_blockw, shiftErrors_blockw):
+    #     w_avg_block, w_avg_err_block, w_avg_rChi_block = weightedAverage(shifts_block, shift_errs_block)
+    #     w_avg_appl_chi_err = applyChi(w_avg_block, w_avg_rChi_block)
+    #     w_avg_blockwise += (w_avg_block, w_avg_err_block, w_avg_rChi_block, w_avg_appl_chi_err),
+    #
+    #     stdev_block = standard_dev(shifts_block, shift_errs_block, w_avg_block)
+    #     stdev_blockwise += (w_avg_block, w_avg_appl_chi_err, stdev_block, max(stdev_block, w_avg_appl_chi_err)),
+    #
+    # # now calculate the weighted mean of all blocks:
+    # w_avg_blocks_list = list(list(zip(*w_avg_blockwise))[0])  # get a list with all w_avgs from above
+    # w_avg_appl_chi_err_list = list(list(zip(*w_avg_blockwise))[3])  # same with the applied chi err
+    # w_avg_from_blocks, w_avg_err_from_blocks, w_avg_from_blocks_rChi = weightedAverage(
+    #     w_avg_blocks_list, w_avg_appl_chi_err_list)
+    # w_avg_apply_chi_err_from_blocks = applyChi(w_avg_err_from_blocks, w_avg_from_blocks_rChi)
+    #
+    # # now the same with the weights from the standard deviation and error from the stdev:
+    # # get a list with all stdev uncertainties from above:
+    # stdev_max_err_blocks_list = np.array(list(list(zip(*stdev_blockwise))[3]))  # one float for each block
+    # stdev_weights_blocks_list = 1 / np.square(stdev_max_err_blocks_list)
+    # stdev_from_blocks = standard_dev(w_avg_blocks_list, stdev_max_err_blocks_list, w_avg_from_blocks)
+    # w_avg_from_block_stdev_uncert = None  #TODO or not ...
+
+    # for backwards compatibility, flatten everything:
+    dateIso = [item for sublist in dateIso for item in sublist]
+    shifts = [item for sublist in shifts for item in sublist]
+    shiftErrors = [item for sublist in shiftErrors for item in sublist]
+    fileIso = [item for sublist in fileIso for item in sublist]
+    all_iso_file_nums_flat = [item for sublist in all_iso_file_nums for item in sublist]
+
+    # weighted average over everything:
     shifts_weighted_mean, err, rChi = weightedAverage(shifts, shiftErrors)
     systE = functools.partial(shiftErr, iso, run, db)
 
@@ -411,15 +531,29 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
                 (shifts_weighted_mean, statErr, systErr, rChi, iso, 'shift', run))
     con.commit()
     con.close()
-    print('dates:', dateIso)
-    print('shifts:', shifts)
-    print('shiftErrors:', shiftErrors)
+
     print('date\tfile\tshift / MHz\tshiftError / MHz')
     for i, sh in enumerate(shifts):
         print('%s\t%s\t%.4f\t%.4f' % (dateIso[i], fileIso[i], sh, shiftErrors[i]))
     print('Mean of shifts: %.2f(%.0f)[%.0f] MHz' % (shifts_weighted_mean, statErr * 100, systErr * 100))
     print('rChi: %.2f' % rChi)
     combined_plots_dir = os.path.join(os.path.split(db)[0], 'combined_plots')
+    if not os.path.isdir(combined_plots_dir):
+        os.mkdir(combined_plots_dir)
+    if store_to_file_in_combined_plots:
+        file_to_store_to = os.path.join(combined_plots_dir, store_to_file_in_combined_plots)
+        write_header = not os.path.isfile(file_to_store_to)
+        f_open_append = open(file_to_store_to, 'a+')
+        if write_header:
+            f_open_append.write(
+                '#iso\tfile\tfileNum\tshiftFile\tshiftFileStatErr\tisoMeanShift'
+                '\tisoMeanShiftStatErr\tisoMeanShiftSystErr\tisoMeanShiftRChi2\n')
+        for sh_i, sh in enumerate(shifts):
+            f_open_append.write('%s\t%s\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n'
+                                % (iso, fileIso[sh_i], all_iso_file_nums_flat[sh_i], sh, shiftErrors[sh_i],
+                                   shifts_weighted_mean, statErr, systErr, rChi))
+        f_open_append.close()
+
     avg_fig_name = os.path.join(combined_plots_dir, iso + '_' + run + '_shift.png')
     plotdata = (
         dateIso, shifts, shiftErrors, shifts_weighted_mean,
@@ -436,7 +570,11 @@ def combineShiftOffsetPerBunchDisplay(iso, run, db, show_plot=False):
     """
     takes an Isotope a run and a database and gives offsets per bunch for all
      Isotopes involved in one IsotopeShift value
-        :return: list, (shifts, shiftErrors, shifts_weighted_mean, statErr, systErr, rChi)
+        :return: offsets, offsetErrs, config
+
+        offsets: list, [[ref_offset0, ref_offset1, ... ], [iso_offset0, iso_offset1, ...]]
+        offsetErrs: list, [[ref_offset_err0, ref_offset_err1, ... ], [iso_offset_err0, iso_offset_err1, ...]]
+        config: list, [(ref_file_str0, ref_file_str1, ...), (iso_file_str0, ...), (ref_file_str0, ...)]
     """
     print('Open DB', db)
     # get the shift config for this iso and run:
@@ -478,6 +616,7 @@ def combineShiftOffsetPerBunchDisplay(iso, run, db, show_plot=False):
         block_offsets = []
         block_offsets_errs = []
         pre_ref_files, iso_files, post_ref_files = block
+        TiTs.get_file_numbers(iso_files, )
         ref_files = pre_ref_files + post_ref_files
         print('ref_files:')
         for each in ref_files:
@@ -497,6 +636,7 @@ def combineShiftOffsetPerBunchDisplay(iso, run, db, show_plot=False):
             ref_errs[i] = ref_errs[i] / scans / bunches_per_step
         ref_dates_date_time = [datetime.strptime(each, '%Y-%m-%d %H:%M:%S') for each in ref_dates]
         ref_dates_date_time_float = [datetime.strptime(each, '%Y-%m-%d %H:%M:%S').timestamp() for each in ref_dates]
+        ref_date_errs = list(list(zip(*get_date_date_err_to_files(db, ref_files)))[2])
         first_ref = np.min(ref_dates_date_time_float)
         ref_dates_float_relative = [each - first_ref for each in ref_dates_date_time_float]
         refs_elapsed_s = np.max(ref_dates_date_time_float) - first_ref
@@ -514,6 +654,7 @@ def combineShiftOffsetPerBunchDisplay(iso, run, db, show_plot=False):
         iso_dates_datetime = [datetime.strptime(each, '%Y-%m-%d %H:%M:%S') for each in iso_dates]
         iso_dates_datetime_float = [datetime.strptime(each, '%Y-%m-%d %H:%M:%S').timestamp() for each in iso_dates]
         iso_date_float_relative = [each - first_ref for each in iso_dates_datetime_float]
+        iso_date_errs = list(list(zip(*get_date_date_err_to_files(db, iso_files)))[2])
         dateIso += iso_dates
 
         offset, offset_err, rChi = weightedAverage(ref_offsets, ref_errs)
@@ -533,8 +674,8 @@ def combineShiftOffsetPerBunchDisplay(iso, run, db, show_plot=False):
         if not os.path.isdir(offset_dir):
             os.mkdir(offset_dir)
         plt.plot_iso_shift_time_dep(
-            ref_dates_date_time, ref_dates_date_time_float, ref_offsets, ref_errs, ref,
-            iso_dates_datetime, iso_dates_datetime_float, iso_offsets, iso_errs, iso,
+            ref_files, ref_dates_date_time, ref_dates_date_time_float, ref_date_errs, ref_offsets, ref_errs, ref,
+            iso_files, iso_dates_datetime, iso_dates_datetime_float, iso_date_errs, iso_offsets, iso_errs, iso,
             0, offset, plt_label, (block_offsets, block_offsets_errs), file_name, show_plot=show_plot,
             fig_name='offset', par_name='offset'
         )
@@ -557,7 +698,7 @@ def combineShiftOffsetPerBunchDisplay(iso, run, db, show_plot=False):
     #     plt.show(True)
     # plt.clear()
 
-    return offsets, offsetErrors
+    return offsets, offsetErrors, config
 
 
 def straight_func(x, slope, offset):
@@ -568,9 +709,47 @@ def straight_func(x, slope, offset):
     return x * slope + offset
 
 
+def straight_func_vector(slopeOffset, x):
+    """
+    same as straight but only one parameter as vector, required for fitting using odr
+    :param slopeOffset: tuple, (slope_float, offset_float)
+    :param x: float, x value
+    :return: y
+    """
+    slope, offset = slopeOffset
+    return x * slope + offset
+
+
 def applyChi(err, rChi):
     '''Increases error by sqrt(rChi^2) if necessary. Works for several rChi as well'''
     return err * np.max([1, np.sqrt(rChi)])
+
+
+def standard_dev(vals, errs, w_mean=None):
+    """
+    calculate the standard deviation as in sqrt(sum_i^n(x_i-X)^2/(n-1))
+    with x_i being the vals and X the weighted mean.
+    :param vals: list, or numpy array of the values for the standard deviation
+    :param errs: list or numpy array with the uncertainties of the vals,
+    needed to determine weighted mean if not provided
+    :param w_mean: float, (weighted) mean, if not provided will be calculated with vals and errs
+    :return: float, the standard deviation of the vals to the w_mean
+    """
+    if len(vals) > 1:
+        if isinstance(vals, list):
+            vals = np.array(vals)
+        if isinstance(errs, list):
+            errs = np.array(errs)
+        if w_mean is None:
+            # calc w_mean from errs
+            w_mean, w_mean_err, w_mean_rChi = weightedAverage(vals, errs)
+        stdev = np.sqrt((vals - w_mean) ** 2 / (len(vals) - 1))
+        return stdev
+
+    elif len(vals) == 1 and len(errs) == 1:
+        return errs[0]
+    else:
+        return None
 
 
 def gaussProp(*args):
@@ -625,7 +804,7 @@ def shiftErr(iso, run, db, accVolt_d, offset_d, syst=0):
 
     return np.sqrt(np.square(fac * (np.absolute(0.5 * (offset / accVolt + deltaM / mass) * (accVolt_d))
                                     + np.absolute(offset * offset_d / accVolt) + np.absolute(
-        mass_d / mass + massRef_d / massRef)))
+                mass_d / mass + massRef_d / massRef)))
                    + np.square(syst))
 
 
@@ -673,14 +852,14 @@ def avgErr(iso, db, avg, par, accVolt_d, offset_d, syst=0):
         cF = (jU + spin) * (jU + spin + 1) - jU * (jU + 1) - spin * (spin + 1)
         if (spin * jU * (2 * spin - 1) * (2 * jU - 1)) != 0:
             cF_dist = 4 * (3 / 2 * cF * (cF + 1) - 2 * spin * jU * (spin + 1) * (jU + 1)) / (
-                spin * jU * (2 * spin - 1) * (2 * jU - 1))
+                    spin * jU * (2 * spin - 1) * (2 * jU - 1))
         else:
             cF_dist = 1
     elif par == 'Bl':
         cF = (jL + spin) * (jL + spin + 1) - jL * (jL + 1) - spin * (spin + 1)
         if (spin * jL * (2 * spin - 1) * (2 * jL - 1)) != 0:
             cF_dist = 4 * (3 / 2 * cF * (cF + 1) - 2 * spin * jL * (spin + 1) * (jL + 1)) / (
-                spin * jL * (2 * spin - 1) * (2 * jL - 1))
+                    spin * jL * (2 * spin - 1) * (2 * jL - 1))
         else:
             cF_dist = 1
     else:

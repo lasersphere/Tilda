@@ -29,6 +29,7 @@ from Interface.MainUi.Ui_Main import Ui_TildaMainWindow
 from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
 from Interface.PulsePatternUi.PulsePatternUi import PulsePatternUi
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
+from Interface.JobStackerUi.JobStackerUi import JobStackerUi
 from Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 from Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
 from Interface.VersionUi.VersionUi import VersionUi
@@ -51,6 +52,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.act_scan_wins = []  # list of active scan windows
         self.post_acc_win = None  # only one active post acceleration window
         self.scan_progress_win = None
+        self.job_stacker_win = None
         self.simple_counter_gui = None
         self.dmm_live_view_win = None
         self.live_plot_win = None  # one active live plot window for displaying results from pipeline
@@ -61,12 +63,14 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.pulse_pattern_win = None
         self.scan_complete_win = None
         self.show_scan_compl_win = True
+        self.triton_listener_timedout_win = None
 
         self.application = application
 
         self.actionWorking_directory.triggered.connect(self.choose_working_dir)
         self.actionVersion.triggered.connect(self.open_version_win)
         self.actionScan_Control.triggered.connect(self.open_scan_ctrl_win)
+        self.actionJob_Stacker.triggered.connect(self.open_job_stacker_win)  # TODO: define command and add actionItem
         self.actionPost_acceleration_power_supply_control.triggered.connect(self.open_post_acc_win)
         self.actionSimple_Counter.triggered.connect(self.open_simple_counter_win)
         self.actionSet_Laser_Frequency.triggered.connect(self.set_laser_freq)
@@ -166,6 +170,16 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 'the kepco scan finished ramping the voltage,\n'
                 'but not all digital multimeters delivered a reading!\n'
                 'Check your cabling and the timing of the trigger send to the digital multimeters!')
+        elif info_str == 'triton_listener_timedout':
+            if self.triton_listener_timedout_win is None:
+                self.triton_listener_timedout_win = True
+                info = QtWidgets.QMessageBox.information(
+                    self, 'Warning!',
+                    '-------- Warning -------\n '
+                    'Triton Listener did not receive values for some time!\n'
+                    'Check subscriptions and if devices are still running! \n'
+                    '-------- Warning -------\n ')
+                self.triton_listener_timedout_win = None
 
     def unsubscribe_from_main(self):
         """
@@ -282,6 +296,15 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 return None
         self.act_scan_wins.append(ScanControlUi(self))
 
+    def open_job_stacker_win(self):
+        if Cfg._main_instance.working_directory is None:
+            if self.choose_working_dir() is None:
+                return None
+        if self.job_stacker_win is None:
+            self.job_stacker_win = JobStackerUi(self)
+        else:
+            self.raise_win_to_front(self.job_stacker_win)
+
     def open_post_acc_win(self):
         if self.post_acc_win is None:
             self.post_acc_win = PostAccControlUi(self)
@@ -364,6 +387,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def scan_control_win_closed(self, win_ref):
         self.act_scan_wins.remove(win_ref)
 
+    def close_job_stacker_win(self):
+        self.job_stacker_win = None
+
     def close_post_acc_win(self):
         self.post_acc_win = None
 
@@ -419,6 +445,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 self.scan_progress_win.close()
         except Exception as e:
             logging.error('error while closing scan progress win:' + str(e))
+        try:
+            if self.job_stacker_win is not None:
+                self.job_stacker_win.close()
+        except Exception as e:
+            logging.error('error while closing job stacker win:' + str(e))
         try:
             if self.simple_counter_gui is not None:
                 self.simple_counter_gui.close()

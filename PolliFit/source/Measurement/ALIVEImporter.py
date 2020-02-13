@@ -12,6 +12,8 @@ from datetime import datetime
 
 import numpy as np
 
+import TildaTools
+
 from Measurement.SpecData import SpecData
 
 
@@ -108,9 +110,11 @@ class ALIVEImporter(SpecData):
             self.voltDivRatio = {'accVolt': 1, 'offset': 1}
             print('using now: %s' % self.voltDivRatio)
         for trackindex, tracks in enumerate(self.x):
-            for xindex, x in enumerate(tracks):
-                scanvolt = (self.lineMult * x + self.lineOffset + self.offset) * self.voltDivRatio['offset']
-                self.x[trackindex][xindex]= self.accVolt*self.voltDivRatio['accVolt'] - scanvolt
+            # for xindex, x in enumerate(tracks):
+            #     scanvolt = (self.lineMult * x + self.lineOffset + self.offset) * self.voltDivRatio['offset']
+            #     self.x[trackindex][xindex]= self.accVolt*self.voltDivRatio['accVolt'] - scanvolt
+            self.x[trackindex] = TildaTools.line_to_total_volt(self.x[trackindex], self.lineMult, self.lineOffset,
+                                                               self.offset, self.accVolt, self.voltDivRatio)
         print(self.x)
         print(self.cts)
 

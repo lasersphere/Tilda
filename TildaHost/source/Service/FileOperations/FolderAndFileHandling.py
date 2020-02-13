@@ -93,7 +93,8 @@ def save_pipedata_json(pipe_data_dict, ending='.jpipedat'):
     for key, val in pipe_data_dict.items():
         if 'track' in key:
             #  Trigger enum needs to be converted to string
-            val['trigger']['type'] = val['trigger']['type'].name
+            for triggers, trig_dicts in val['trigger'].items():
+                trig_dicts['type'] = trig_dicts['type'].name
     save_json_simple(path, pipe_data_dict)
     return path
 
@@ -116,7 +117,17 @@ def load_json(path, convert_trigger=True):
         from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TriTyp
         for key, val in ret.items():
             if 'track' in key:
-                val['trigger']['type'] = TriTyp[val['trigger']['type']]
+                if val['trigger'].get('type', None) is not None:
+                    #val['trigger']['type'] = TriTyp[val['trigger']['type']]
+                    # old trigger dict! Convert to new!
+                    from Service.Scan.draftScanParameters import draft_trigger_pars
+                    buff = val['trigger']
+                    buff['type'] = TriTyp[buff['type']]
+                    val['trigger'] = draft_trigger_pars
+                    val['trigger']['meas_trigger'] = buff
+                else:  # already is new trigger dict
+                    for triggers, trig_dicts in val['trigger'].items():
+                        trig_dicts['type'] = TriTyp[trig_dicts['type']]
     return ret
 
 

@@ -17,7 +17,7 @@ from Service.Scan.draftScanParameters import draftScanDict
 import Service.AnalysisAndDataHandling.tildaPipeline as TildaPipe
 import Driver.DataAcquisitionFpga.ContinousSequencerConfig as CsCfg
 import Service.Formating as form
-from Service.VoltageConversions.VoltageConversions import get_18bit_from_voltage, get_18bit_stepsize
+from Service.VoltageConversions.VoltageConversions import get_nbits_from_voltage, get_nbit_stepsize
 
 
 logging.basicConfig(level=getattr(logging, 'INFO'), format='%(message)s', stream=sys.stdout)
@@ -31,8 +31,8 @@ scanPars = draftScanDict
 scanPars['isotopeData']['isotope'] = 'Nothing'
 scanPars['pipeInternals']['workingDirectory'] = 'D:\\PulserOfflineTests_150806'
 scanPars['track0']['dwellTime10ns'] = 2000000
-scanPars['track0']['dacStepSize18Bit'] = get_18bit_stepsize(0.02)
-scanPars['track0']['dacStartRegister18Bit'] = get_18bit_from_voltage(-10)
+scanPars['track0']['dacStepSize18Bit'] = get_nbit_stepsize(0.02)
+scanPars['track0']['dacStartRegister18Bit'] = get_nbits_from_voltage(-10)
 scanPars['track0']['postAccOffsetVolt'] = 500
 scanPars['track0']['postAccOffsetVoltControl'] = 2
 scanPars['track0']['nOfSteps'] = 100

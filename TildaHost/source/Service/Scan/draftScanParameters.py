@@ -8,10 +8,22 @@ Module containing the ScanParameters dictionaries as needed for Scanning with th
 """
 from copy import deepcopy
 from datetime import datetime
+from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
+from Measurement.SpecData import SpecDataXAxisUnits as Units
+from Driver.DataAcquisitionFpga.ScanDeviceTypes import ScanDeviceTypes as ScTypes
+
 
 """ List of currently supported sequencer types """
 
 sequencer_types_list = ['cs', 'trs', 'csdummy', 'trsdummy', 'kepco']
+
+""" List of currently supported scan device classes """
+
+scan_dev_classes_available = [sc_t.name for sc_t in ScTypes]
+
+""" dict of currently supported DAC types and names """
+
+dac_type_list = ['AD57X1']
 
 """ outer most dictionary contains the following keys: """
 
@@ -40,17 +52,17 @@ triton_list = ['preScan', 'postScan']
 the most information for the sequencer. It contains the following keys and
 MUST be appended with the keys from the corresponding sequencer (see below): """
 
-track0_list = ['dacStepSize18Bit', 'dacStartRegister18Bit', 'nOfSteps', 'nOfScans', 'nOfCompletedSteps',
+track0_list = ['nOfSteps', 'nOfScans', 'nOfCompletedSteps',
                'invertScan', 'postAccOffsetVoltControl', 'postAccOffsetVolt', 'waitForKepco1us',
                'waitAfterReset1us', 'activePmtList', 'colDirTrue', 'workingTime', 'trigger', 'pulsePattern',
-               'measureVoltPars', 'triton', 'outbits']
+               'measureVoltPars', 'triton', 'outbits', 'scanDevice']
 
 """  each sequencer needs its own parameters and therefore, the keys are listed below
 naming convention is type_list.  """
 
 cs_list = ['dwellTime10ns']
 
-trs_list = ['nOfBins', 'nOfBunches', 'softwGates', 'softBinWidth_ns']
+trs_list = ['nOfBins', 'nOfBunches', 'softwGates', 'softBinWidth_ns', 'step_trigger']
 
 kepco_list = []
 
@@ -96,11 +108,35 @@ draft_outbits = {
     'outbit2': [('on', 'step', 1), ('off', 'step', 5)]
 }
 
+# this must always be present by a scan device:
+# leave this as it is since this will be called for old track dict which do not have this yet!
+# TODO: Can we change 'type' to the new default 'AD57X1(DAC)' or does that conflict with old track dicts as well?
+draft_scan_device = {
+    'name': 'AD5781_Ser1',
+    'type': 'AD5781',  # what type of device, e.g. AD5781(DAC) / Matisse (laser)
+    'devClass': 'DAC',  # carrier class of the dev, e.g. DAC / Triton
+    'stepUnitName': Units.line_volts.name,  # name if the SpecDataXAxisUnits
+    'start': 0.0,  # in units of stepUnitName
+    'stepSize': 1.0,  # in units of stepUnitName
+    'stop': 5.0,  # in units of stepUnitName
+    'preScanSetPoint': None,  # in units of stepUnitName, choose None if nothing should happen
+    'postScanSetPoint': None,  # in units of stepUnitName, choose None if nothing should happen
+    'timeout_s': 10.0,  # timeout in seconds after which step setting is accounted as failure due to timeout,
+    # set top 0 for never timing out.
+    'setValLimit': (-15.0, 15.0),
+    'stepSizeLimit': (7.628880920000002e-05, 15.0)
+}
+
+scan_dev_keys_list = ['name', 'type', 'devClass', 'stepUnitName', 'start', 'stepSize', 'stop',
+                      'preScanSetPoint', 'postScanSetPoint', 'timeout_s']
+
+draft_trigger_pars = {'meas_trigger': {'type': getattr(TiTs, 'no_trigger')},
+                      'step_trigger': {'type': getattr(TiTs, 'no_trigger')},
+                      'scan_trigger': {'type': getattr(TiTs, 'no_trigger')}}
+
 draftTrackPars = {
-    'dacStepSize18Bit': 2647,  # form.get_24bit_input_from_voltage(1, False),
-    'dacStartRegister18Bit': 0,  # form.get_24bit_input_from_voltage(-5, False),
-    'nOfSteps': 100,
-    'nOfScans': 2, 'nOfCompletedSteps': 0, 'invertScan': False,
+    'nOfSteps': 100, 'nOfScans': 2,  # also relevant for scan but not specific for the type of scan dev
+    'nOfCompletedSteps': 0, 'invertScan': False,  # also relevant for scan but not specific for the type of scan dev
     'postAccOffsetVoltControl': 0, 'postAccOffsetVolt': 1000,
     'waitForKepco1us': 100,
     'waitAfterReset1us': 500,
@@ -112,11 +148,12 @@ draftTrackPars = {
     'softBinWidth_ns': 100,
     'nOfBunches': 1,
     'softwGates': [[-10, 10, 0, 10000], [-10, 10, 0, 10000]],
-    'trigger': {'type': 'no_trigger'},
+    'trigger': draft_trigger_pars,
     'pulsePattern': {'cmdList': ['$time::1.0::1::0', '$time::1.0::0::0']},
     'measureVoltPars': draftMeasureVoltPars,
     'triton': draft_triton_pars,
-    'outbits': draft_outbits
+    'outbits': draft_outbits,
+    'scanDevice': draft_scan_device
 }
 
 draftScanDict = {'isotopeData': draftIsotopePars,

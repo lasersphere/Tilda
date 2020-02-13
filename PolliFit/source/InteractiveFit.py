@@ -31,6 +31,8 @@ class InteractiveFit(object):
         self.plot_in_freq = plot_in_freq
         self.save_plot = save_plot
         self.save_path = os.path.join(os.path.normpath(os.path.dirname(db)), "saved_plots")
+        self.data_fmt = data_fmt
+        self.run = run
 
         plot.ion()
         if clear_plot:
@@ -46,6 +48,7 @@ class InteractiveFit(object):
         
         var = TiTs.select_from_db(db, 'isoVar, lineVar, scaler, track', 'Runs', [['run'], [run]], caller_name=__name__)
         if var:
+            # st: tuple of PMTs and tracks from selected run
             st = (ast.literal_eval(var[0][2]), ast.literal_eval(var[0][3]))
             linevar = var[0][1]
         else:
@@ -53,12 +56,12 @@ class InteractiveFit(object):
         if softw_gates_trs is None:  # # if no software gate provided pass on run and db via software gates
             softw_gates_trs = (db, run)
 
+        # Import Measurement from file using Importer
         meas = MeasLoad.load(path, db, x_as_voltage=x_as_voltage, softw_gates=softw_gates_trs)
         if meas.type == 'Kepco':  # keep this for all other fileformats than .xml
             spec = Straight()
             spec.evaluate(meas.x[0][-1], (0, 1))
             self.fitter = SPFitter(spec, meas, st)
-            plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize, data_fmt=data_fmt)
         else:
             try:
                 # if the measurment is an .xml file it will have a self.seq_type
@@ -66,31 +69,20 @@ class InteractiveFit(object):
                     spec = Straight()
                     spec.evaluate(meas.x[0][-1], (0, 1))
                     self.fitter = SPFitter(spec, meas, st)
-                    plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize, data_fmt=data_fmt)
                 else:
+                    # get isotope information
                     iso = DBIsotope(db, meas.type, lineVar=linevar)
-                    if var[0][0] == '_m':
+                    if var[0][0] == '_m' or var[0][0] == '_m1' or var[0][0] == '_m2':
                         iso_m = DBIsotope(db, meas.type, var[0][0], var[0][1])
-                        spec = FullSpec(iso, iso_m)
+                        spec = FullSpec(iso, iso_m)  # get the full spectrum function
                         spec_iso = FullSpec(iso)
                         spec_m = FullSpec(iso_m)
                         self.fitter_iso = SPFitter(spec_iso, meas, st)
                         self.fitter_m = SPFitter(spec_m, meas, st)
-                        plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False,
-                                     fontsize_ticks=self.fontSize, plot_data=False, add_label=' gs',
-                                     data_fmt=data_fmt, x_in_freq=plot_in_freq)
-                        plot.plotFit(self.fitter_m, color='-g', plot_residuals=False,
-                                     fontsize_ticks=self.fontSize, plot_data=False, add_label=' m',
-                                     data_fmt=data_fmt, x_in_freq=plot_in_freq)
                         self.fitter = SPFitter(spec, meas, st)
-                        plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize,
-                                     add_label=' gs+m', plot_side_peaks=False, data_fmt=data_fmt,
-                                     x_in_freq=plot_in_freq)
                     else:
                         spec = FullSpec(iso)
                         self.fitter = SPFitter(spec, meas, st)
-                        plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize,
-                                     data_fmt=data_fmt, x_in_freq=plot_in_freq)
             except:  # for mcp data etc
                 iso = DBIsotope(db, meas.type, lineVar=linevar)
                 if var[0][0] == '_m':
@@ -100,27 +92,19 @@ class InteractiveFit(object):
                     spec_m = FullSpec(iso_m)
                     self.fitter_iso = SPFitter(spec_iso, meas, st)
                     self.fitter_m = SPFitter(spec_m, meas, st)
-                    plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False,
-                                 fontsize_ticks=self.fontSize, plot_data=False, add_label=' gs',
-                                 x_in_freq=plot_in_freq, data_fmt=data_fmt)
-                    plot.plotFit(self.fitter_m, color='-g', plot_residuals=False,
-                                 fontsize_ticks=self.fontSize, plot_data=False, add_label=' m',
-                                 x_in_freq=plot_in_freq, data_fmt=data_fmt)
                     self.fitter = SPFitter(spec, meas, st)
-                    plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize,
-                                 add_label=' gs+m', plot_side_peaks=False,
-                                 x_in_freq=plot_in_freq, data_fmt=data_fmt)
                 else:
                     spec = FullSpec(iso)
                     self.fitter = SPFitter(spec, meas, st)
-                    plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize, x_in_freq=plot_in_freq)
-                    plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize, data_fmt=data_fmt)
-        self.num_of_common_vals = self.fitter.spec.shape.nPar + 2  # number of common parameters useful if isotope
-        #  is being used -> comes from the number of parameters the shape needs
-        #  e.g. (Voigt:2) + offset + offsetSlope = 4
-        plot.show(block)
+        if not isinstance(spec, Straight):
+            self.num_of_common_vals = self.fitter.spec.shape.nPar + 2  # number of common parameters useful if isotope
+            #  is being used -> comes from the number of parameters the shape needs
+            #  e.g. (Voigt:2) + offset + offsetSlope = 4
+        else:
+            self.num_of_common_vals = 2  # offset + slope
         self.printPars()
-        
+        self.plot_fit(True)
+
     def printPars(self):
         print('Current parameters:')
         for n, p, f in zip(self.fitter.npar, self.fitter.par, self.fitter.fix):
@@ -135,47 +119,12 @@ class InteractiveFit(object):
     def fit(self, show=True, clear_plot=True, data_fmt='k.'):
         self.printPars()
         self.fitter.fit()
-        pars = self.fitter.par
-        if clear_plot:
-            plot.clear()
-        if self.fitter_m is not None:
-            self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
-            self.fitter_m.par = pars[0:self.num_of_common_vals] + pars[len(self.fitter_iso.par):]
-            plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False,
-                         fontsize_ticks=self.fontSize, plot_data=False, add_label=' gs',
-                         data_fmt=data_fmt, x_in_freq=self.plot_in_freq,
-                         save_plot=self.save_plot, save_path=self.save_path)
-            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False,
-                         fontsize_ticks=self.fontSize, plot_data=False, add_label=' m',
-                         data_fmt=data_fmt, x_in_freq=self.plot_in_freq,
-                         save_plot=self.save_plot, save_path=self.save_path)
-            plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize,
-                         add_label=' gs+m', plot_side_peaks=False,
-                         data_fmt=data_fmt, x_in_freq=self.plot_in_freq,
-                         save_plot=self.save_plot, save_path=self.save_path)
-        else:
-            plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize,
-                         data_fmt=data_fmt, x_in_freq=self.plot_in_freq,
-                         save_plot=self.save_plot, save_path=self.save_path)
-        plot.show(show)
-        
+        self.plot_fit(clear_plot=clear_plot, show=show, save_plt=self.save_plot)
+
     def reset(self):
         self.fitter.reset()
-        pars = self.fitter.par
-        plot.clear()
-        if self.fitter_m is not None:
-            self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
-            self.fitter_m.par = pars[0:self.num_of_common_vals] + pars[len(self.fitter_iso.par):]
-            plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False,
-                         fontsize_ticks=self.fontSize, plot_data=False, add_label=' gs', x_in_freq=self.plot_in_freq)
-            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False,
-                         fontsize_ticks=self.fontSize, plot_data=False, add_label=' m', x_in_freq=self.plot_in_freq)
-            plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize,
-                         add_label=' gs+m', plot_side_peaks=False, x_in_freq=self.plot_in_freq)
-        else:
-            plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize, x_in_freq=self.plot_in_freq)
-        plot.show()
-        
+        self.plot_fit(True)
+
     def setPar(self, i, par):
         if self.plot_in_freq:
             self.fitter.setPar(i, par)
@@ -188,51 +137,28 @@ class InteractiveFit(object):
             softw_gate_all_tr = [gates_tr0 for each in self.fitter.meas.cts]
             self.fitter.meas.softw_gates = softw_gate_all_tr
             self.fitter.meas = TiTs.gate_specdata(self.fitter.meas)
-        pars = self.fitter.par
-        plot.clear()
-        if self.fitter_m is not None:
-            self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
-            self.fitter_m.par = pars[0:self.num_of_common_vals] + pars[len(self.fitter_iso.par):]
-            plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False,
-                         fontsize_ticks=self.fontSize, plot_data=False, add_label=' gs', x_in_freq=self.plot_in_freq)
-            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False,
-                         fontsize_ticks=self.fontSize, plot_data=False, add_label=' m', x_in_freq=self.plot_in_freq)
-            plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize,
-                         add_label=' gs+m', plot_side_peaks=False, x_in_freq=self.plot_in_freq)
-        else:
-            plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize, x_in_freq=self.plot_in_freq)
-        plot.show()
-        
+
+        self.plot_fit(clear_plot=True)
+
     def setFix(self, i, val):
         self.fitter.setFix(i, val)
     
     def setPars(self, par):
         self.fitter.par = par
-        pars = self.fitter.par
-        plot.clear()
-        if self.fitter_m is not None:
-            self.fitter_iso.par = pars[0:len(self.fitter_iso.par)]
-            self.fitter_m.par = pars[0:self.num_of_common_vals] + pars[len(self.fitter_iso.par):]
-            plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False,
-                         fontsize_ticks=self.fontSize, plot_data=False, add_label=' gs', x_in_freq=self.plot_in_freq)
-            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False,
-                         fontsize_ticks=self.fontSize, plot_data=False, add_label=' m', x_in_freq=self.plot_in_freq)
-            plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize,
-                         add_label=' gs+m', plot_side_peaks=False, x_in_freq=self.plot_in_freq)
-        else:
-            plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize, x_in_freq=self.plot_in_freq)
-        plot.show()
+        self.plot_fit(clear_plot=True)
 
     def save_fig_to(self, path):
         plot.save(path)
         print('interactive fit saved_to:', path)
 
     def parsToDB(self, db):
-
+        #Currently only data for main fit saved. No Isomeres etc.
         parsName = self.fitter.npar
         parsValue = self.fitter.par
         parsFix = self.fitter.fix
-        indexCenter = parsName.index('center') # Split at 'center' since this marks the border between "Lines" pars & "Isotopes" pars
+        indexCenter = parsName.index('center')
+        indexInt0 = parsName.index('Int0')
+        # Split at 'center' since this marks the border between "Lines" pars & "Isotopes" pars
 
         # Save Lines pars (Pars 0 until center)
         shape = dict(zip(parsName[:indexCenter], parsValue[:indexCenter]))
@@ -240,18 +166,115 @@ class InteractiveFit(object):
         lineVar = self.fitter.spec.iso.lineVar
         lineName = self.fitter.spec.iso.shape['name']
         shape.update({'name': lineName})
-        print(lineName)
-        print(shape, shapeFix, lineVar)
+
+        # Save Isotope data without Int (due to HFS)
+        iso = self.fitter.meas.type
+        isoData = parsValue[indexCenter:indexInt0]
+        isoDataFix = parsFix[indexCenter+1:indexInt0]
+
+        #Save Int
+        relInt = self.fitter.spec.hyper[0].hfInt
+        nrTrans = len(relInt)
+        intData = parsValue[indexInt0:indexInt0+nrTrans]
+        int0 = sum(intData)/sum(relInt)
+
+        # Save softGates
+        gatesName = parsName[-3:]
+        gatesData = parsValue[-3:]
+
         try:
             con = sqlite3.connect(db)
             cur = con.cursor()
-            cur.execute('''UPDATE Lines SET shape = ?, fixShape = ? WHERE lineVar = ?''',
+            # Lines pars:
+            try:
+                cur.execute('''UPDATE Lines SET shape = ?, fixShape = ? WHERE lineVar = ?''',
                         (str(shape), str(shapeFix), str(lineVar)))
-            con.commit()
+                con.commit()
+                print("Saved line pars in Lines!")
+            except Exception as e:
+                print("error: Couldn't save line pars. All values correct?")
+
+            # Isotopes pars:
+            try:
+                cur.execute('''UPDATE Isotopes SET center = ?, Al = ?, Bl = ?, Au = ?, Bu = ?, intScale = ?, fixedAl = ?, fixedBl = ?, fixedAu = ?, fixedBu = ? WHERE iso = ?''',
+                            (isoData[0], isoData[1], isoData[2], isoData[3], isoData[4], int0, isoDataFix[0], isoDataFix[1], isoDataFix[2], isoDataFix[3], iso))
+                con.commit()
+                print("Saved isotope pars in Isotopes!")
+            except Exception as e:
+                print("error: Couldn't save Isotopes pars. All values correct?")
+
+            # Timegate pars (only when available):
+            if gatesName[0] == 'softwGatesWidth':
+                try:
+                    # Save in softwGates
+
+                    # gates_tr0 = TiTs.calc_soft_gates_from_db_pars(self.fitter.par[-3], self.fitter.par[-2],
+                    #                                               self.fitter.par[-1], voltage_gates=[-1000, 1000])
+                    # softw_gate_all_tr = [gates_tr0 for each in self.fitter.meas.cts]
+                    # cur.execute('''UPDATE Runs SET softwGates = ? WHERE run = ?''',
+                    #             (str(softw_gate_all_tr), self.run))
+                    # con.commit()
+
+                    # Save in midTof, softwGateWidth and softwGateDelayList
+                    cur.execute('''UPDATE Runs SET softwGateWidth = ?, softwGateDelayList = ? WHERE run = ?''',
+                                (float(gatesData[0]), str(gatesData[1]), self.run))
+                    con.commit()
+                    cur.execute('''UPDATE Isotopes SET midTof = ? WHERE iso = ?''', (gatesData[2], iso))
+                    con.commit()
+                    print("Saved gate pars in Runs & Isotopes!")
+                except Exception as e:
+                    print("error: Coudln't save softwGates. All values correct?")
+
             con.close()
-            print("Saved pars in Lines!")
+
         except Exception as e:
             print("error: No database connection possible. No line pars have been saved!")
+
+
+
+
+    def plot_fit(self, clear_plot, show=True, save_plt=False):
+        """
+        function to encapsulate the plot.plotFit(..) call
+        :param clear_plot: bool, True for clearing plot in advance
+        :param show: bool, default: True, True for showing plot and block
+        :param save_plt: bool, default: False, will store the plot to self.save_path... if wanted
+        :return: None
+        """
+        pars = self.fitter.par
+        save_path = ''
+        if save_plt:
+            save_path = self.save_path
+        if clear_plot:
+            plot.clear()
+        if self.fitter_m is not None:
+            if self.fitter.meas.seq_type == 'trs':  # needed in next step since self.fitter_iso.par has 3 pars for trs meas appended:
+                num_of_trs_pars = 3  # SoftwGatesWidth, SoftwGatesDelayList, midTof
+                trs_pars = pars[-3:]
+            else:
+                num_of_trs_pars = 0
+                trs_pars = []
+            self.fitter_iso.par = pars[0:len(self.fitter_iso.par) - num_of_trs_pars] + trs_pars
+            self.fitter_m.par = pars[0:self.num_of_common_vals] + pars[len(self.fitter_iso.par) - num_of_trs_pars:]
+            plot.plotFit(self.fitter_iso, color='-r', plot_residuals=False,
+                         fontsize_ticks=self.fontSize, plot_data=False, add_label='_gs',
+                         x_in_freq=self.plot_in_freq, data_fmt=self.data_fmt,
+                         save_plot=save_plt, save_path=save_path)
+            plot.plotFit(self.fitter_m, color='-g', plot_residuals=False,
+                         fontsize_ticks=self.fontSize, plot_data=False, add_label='_m',
+                         x_in_freq=self.plot_in_freq, data_fmt=self.data_fmt,
+                         save_plot=save_plt, save_path=save_path)
+            plot.plotFit(self.fitter, color='-b', fontsize_ticks=self.fontSize,
+                         add_label='_gs+m', plot_side_peaks=False,
+                         x_in_freq=self.plot_in_freq, data_fmt=self.data_fmt,
+                         save_plot=save_plt, save_path=save_path)
+        else:
+            plot.plotFit(self.fitter, color='-r', fontsize_ticks=self.fontSize,
+                         x_in_freq=self.plot_in_freq, data_fmt=self.data_fmt,
+                         save_plot=save_plt, save_path=save_path)
+        if show:
+            plot.show(show)
+
 
 
         #Save Isotopes pars (Hyperfine Pars; from center to end of Pars) ;; CURRENTLY NOT INTENDED TO WORK!!

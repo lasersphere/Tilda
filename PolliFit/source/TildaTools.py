@@ -10,8 +10,12 @@ import json
 import logging
 import os
 import sqlite3
+import sys
 from copy import deepcopy
 from copy import copy
+
+from PyQt5 import QtWidgets
+from scipy.optimize import curve_fit
 
 import numpy as np
 from lxml import etree as ET
@@ -19,6 +23,7 @@ from lxml import etree as ET
 import Physics
 from XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, \
     xmlAddCompleteTrack, xmlFindOrCreateSubElement, xmlWriteDict
+from Service.VoltageConversions.VoltageConversions import get_nbits_from_voltage
 
 
 def select_from_db(db, vars_select, var_from, var_where=[], addCond='', caller_name='unknown'):
@@ -85,23 +90,23 @@ def merge_extend_dicts(target_dict, new_dict, overwrite=True, force_overwrite=Fa
     """
     for keys, vals in new_dict.items():
         if keys in target_dict:  # key exists already
-            is_same = vals == target_dict[keys]
-            if not is_same:  # key exists but vals are different
-                if type(vals) is dict:  # if its a dict then check this again
-                    merge_extend_dicts(target_dict[keys], vals, overwrite)
-                elif type(vals) is list:
-                    if force_overwrite: # if overwriting existing lists with empty lists is allowed
-                        target_dict[keys] = vals
-                    else: # if the new list has actually values in it then we want to overwrite the old values
-                        if type(target_dict[keys]) is list:
-                            if len(vals) > len(target_dict[keys]):
-                                target_dict[keys] = vals
-                        elif len(vals):
+            if type(vals) is dict:  # if its a dict then check this again
+                merge_extend_dicts(target_dict[keys], vals, overwrite, force_overwrite)
+            else:
+                if not vals == target_dict[keys]:  # key exists but vals are different
+                    if type(vals) is list:
+                        if force_overwrite:  # if overwriting existing lists with empty lists is allowed
                             target_dict[keys] = vals
-                else:  # key exists, but vals are different and can't be combined
-                    if overwrite:  # if authorized, overwrite the existing value with the new one
-                        target_dict[keys] = vals
-            # else: key exists and vals are identical - do nothing
+                        else:  # if the new list has actually values in it then we want to overwrite the old values
+                            if type(target_dict[keys]) is list:
+                                if len(vals) > len(target_dict[keys]):
+                                    target_dict[keys] = vals
+                            elif len(vals):
+                                target_dict[keys] = vals
+                    else:  # key exists, but vals are different and can't be combined
+                        if overwrite:  # if authorized, overwrite the existing value with the new one
+                            target_dict[keys] = vals
+                # else: key exists and vals are identical - do nothing
         else:  # key doesn't exist
             target_dict[keys] = new_dict[keys]
 
@@ -143,7 +148,7 @@ def deepupdate(target, src):
                 target[k] = deepcopy(v)
             else:
                 target[k] = np.append(target[k], v)
-        #TODO: Elif v is None do nothing? Because it might just replace an empty dict with None
+        # TODO: Elif v is None do nothing? Because it might just replace an empty dict with None
         else:
             target[k] = copy(v)
 
@@ -192,7 +197,7 @@ def eval_str_vals_in_dict(dicti):
         try:
             dicti[key] = ast.literal_eval(val)
         except Exception as e:
-            if key == 'trigger':
+            if key == 'meas_trigger' or key == 'step_trigger' or key == 'scan_trigger':
                 val['type'] = val['type'].replace('TriggerTypes.', '')
                 # val = val.replace("<TriggerTypes.", "\'")
                 # val = val.replace(">", "\'")
@@ -343,7 +348,7 @@ def evaluate_strings_in_dict(dict_to_convert):
                     # needed for data of version 1.08
                     val = val.replace('\\', '\'').replace('TriggerTypes.', '').replace('<', '\'').replace('>', '\'')
                     val = ast.literal_eval(val)
-                if key == 'trigger':
+                if key == 'meas_trigger' or key == 'step_trigger' or key == 'scan_trigger':
                     val['type'] = val['type'].replace('TriggerTypes.', '')
                 else:
                     # print('error while converting val with ast.literal_eval: ', e, val, type(val), key)
@@ -485,13 +490,14 @@ def gate_one_track(tr_ind, tr_num, scan_dict, data, time_array, volt_array, ret)
     return ret
 
 
-def gate_specdata(spec_data):
+def gate_specdata(spec_data, full_x_range=True):
     """
     function to gate spec_data with the softw_gates list in the spec_data itself.
     gate will be applied on spec_data.time_res and
      the time projection will be written to spec_data.t_proj
      the voltage projection will be written to spec_data.cts
     :param spec_data: spec_data
+    :param full_x_range: bool, True default -> will gate over the full x range
     :return: spec_data
     """
     # logging.debug('gating data now, software gates are: %s' % spec_data.softw_gates)
@@ -502,6 +508,11 @@ def gate_specdata(spec_data):
         if dif > 0:  # not enough gates defined for this track will add now
             for i in range(dif):
                 spec_data.softw_gates[tr_ind].append([float('-inf'), float('inf'), 0, float('inf')])
+    if full_x_range:
+        for tr_ind, gates_tr in enumerate(spec_data.softw_gates):
+            for sc_ind in range(spec_data.nrScalers[tr_ind]):
+                spec_data.softw_gates[tr_ind][sc_ind][0] = min(spec_data.x[tr_ind][0], spec_data.x[tr_ind][-1])
+                spec_data.softw_gates[tr_ind][sc_ind][1] = max(spec_data.x[tr_ind][0], spec_data.x[tr_ind][-1])
     # get indices of the values first
     compare_arr = [spec_data.x, spec_data.x, spec_data.t, spec_data.t]
     softw_gates_ind = [
@@ -522,6 +533,9 @@ def gate_specdata(spec_data):
             v_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][:, t_min_ind:t_max_ind], axis=1)
             spec_data.t_proj[tr_ind][pmt_ind] = t_proj_res
             spec_data.cts[tr_ind][pmt_ind] = v_proj_res
+            spec_error = deepcopy(v_proj_res) # Errors have to be regated as well
+            spec_error[spec_error < 1] = 1
+            spec_data.err[tr_ind][pmt_ind] = np.sqrt(spec_error)
     return spec_data
 
 
@@ -637,18 +651,32 @@ def gate_zero_free_specdata(spec_data):
 def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
     """
     creates an x axis in units of line volts or in dac registers
+    :param as_voltage: bool, True if this should be returned in the native unit of th scan dev (usually volts)
     """
     x_arr = []
     for tr_ind, tr_name in enumerate(get_track_names(scan_dict)):
         steps = scan_dict[tr_name]['nOfSteps']
-        if as_voltage:
-            start = scan_dict[tr_name]['dacStartVoltage']
-            stop = scan_dict[tr_name]['dacStopVoltage']
-            step = scan_dict[tr_name]['dacStepsizeVoltage']
+        sc_dev_d = scan_dict[tr_name].get('scanDevice', {})
+        if sc_dev_d == {}:
+            if as_voltage:
+                start = scan_dict[tr_name]['dacStartVoltage']  # backwards comp.
+                stop = scan_dict[tr_name]['dacStopVoltage']  # backwards comp.
+                step = scan_dict[tr_name]['dacStepsizeVoltage']  # backwards comp.
+            else:
+                start = scan_dict[tr_name]['dacStartRegister18Bit']  # backwards comp.
+                step = scan_dict[tr_name]['dacStepSize18Bit']  # backwards comp.
+                if not step:
+                    # TODO: Quick and Dirty fix for importing BECOLA XML files. Should be solved nicely
+                    step = 1
+                stop = scan_dict[tr_name].get('dacStopRegister18Bit', start + step * (steps - 1))  # backwards comp.
         else:
-            start = scan_dict[tr_name]['dacStartRegister18Bit']
-            step = scan_dict[tr_name]['dacStepSize18Bit']
-            stop = scan_dict[tr_name].get('dacStopRegister18Bit', start + step * (steps - 1))
+            start = sc_dev_d['start']
+            stop = sc_dev_d['stop']
+            step = sc_dev_d['stepSize']
+            if not as_voltage:  # use dac register
+                start = get_nbits_from_voltage(start)
+                stop = get_nbits_from_voltage(stop)
+
         x_tr, new_step = np.linspace(start, stop, steps, retstep=True)
         # np.testing.assert_allclose(
         #     new_step, step, rtol=1e-5, err_msg='error while creating x axis from file, stepsizes do not match.')
@@ -665,7 +693,10 @@ def create_t_axis_from_file_dict(scan_dict, with_delay=True, bin_width=10, in_mu
     t_arr = []
     for tr_ind, tr_name in enumerate(get_track_names(scan_dict)):
         if with_delay:
-            delay = scan_dict[tr_name]['trigger'].get('trigDelay10ns', 0) * bin_width
+            delay = scan_dict[tr_name]['trigger'].get('trigDelay10ns', 0) * bin_width  # for older versions
+            if delay == 0:
+                # newer versions -> get delay from meas trigger
+                delay = scan_dict[tr_name]['trigger'].get('meas_trigger', {}).get('trigDelay10ns', 0) * bin_width
         else:
             delay = 0
         nofbins = scan_dict[tr_name]['nOfBins']
@@ -720,6 +751,7 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
     of tuples [(int as multiplikation factor (e.g. +/- 1), specdata which will be added), ..]
     :return: specdata, added file.
     """
+
     added_files = [parent_specdata.file]
     offsets = [parent_specdata.offset]
     accvolts = [parent_specdata.accVolt]
@@ -737,20 +769,16 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
                     for sc_ind, sc in enumerate(tr):
                         parent_specdata.cts[tr_ind][sc_ind] += add_meas[0] * add_meas[1].cts[tr_ind][sc_ind]
                         parent_specdata.cts[tr_ind][sc_ind] = parent_specdata.cts[tr_ind][sc_ind].astype(np.int32)
-                    time_res_zf = check_if_attr_exists(add_meas[1], 'time_res_zf', [[]] * add_meas[1].nrTracks)[tr_ind]
-                    if len(time_res_zf):  # add the time spectrum (zero free) if it exists
-                        appended_arr = np.append(parent_specdata.time_res_zf[tr_ind], time_res_zf)
-                        # sort by 'sc', 'step', 'time' (no cts):
-                        sorted_arr = np.sort(appended_arr, order=['sc', 'step', 'time'])
-                        # find all elements that occur twice:
-                        unique_arr, unique_inds, uniq_cts = np.unique(sorted_arr[['sc', 'step', 'time']],
-                                                                      return_index=True, return_counts=True)
-                        sum_ind = unique_inds[np.where(uniq_cts == 2)]  # only take indexes of double occuring items
-                        # use indices of all twice occuring elements to add the counts of those:
-                        sum_cts = sorted_arr[sum_ind]['cts'] + add_meas[0] * sorted_arr[sum_ind + 1]['cts']
-                        np.put(sorted_arr['cts'], sum_ind, sum_cts)
-                        # delete all remaining items:
-                        parent_specdata.time_res_zf[tr_ind] = np.delete(sorted_arr, sum_ind + 1, axis=0)
+                        # add time_res (with zero) matrices if 'time_res' data exists
+                        #  this is always the case for time resolved data
+                        if check_if_attr_exists(parent_specdata, 'time_res', False) and check_if_attr_exists(
+                                add_meas[1], 'time_res', False):
+                            try:
+                                parent_specdata.time_res[tr_ind][sc_ind] += \
+                                    add_meas[0] * add_meas[1].time_res[tr_ind][sc_ind]
+                            except Exception as e:
+                                print('Timing bins seem not to be the same. '
+                                      'Files can not be added in time domain. Error is: %s' % e)
                 else:
                     print('warning, file: %s does not have the'
                           ' same x-axis as the parent file: %s,'
@@ -763,6 +791,10 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
         # needs to be converted like this:
         parent_specdata.cts[tr_ind] = np.array(parent_specdata.cts[tr_ind])
         # I Don't know why this is not in this format anyhow.
+
+    # create the zero free data from the non zero free
+    parent_specdata.time_res_zf = non_zero_free_to_zero_free(parent_specdata.time_res)
+
     parent_specdata.offset = np.mean(offsets)
     parent_specdata.accVolt = np.mean(accvolts)
     if save_dir:
@@ -834,6 +866,7 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
     if database_path is None:  # prefer laserfreq from db, if existant
         laserfreq = specdata.laserFreq  # if existant freq is usually given in 1/cm
     else:
+        # TODO watchout here a doubling is always assumed!
         laserfreq = Physics.wavenumber(get_laserfreq_from_db(database_path, specdata)) / 2
 
     draftIsotopePars = {
@@ -848,13 +881,7 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
     tracks = {}
     for tr_ind in range(specdata.nrTracks):
         tracks['track%s' % tr_ind] = {
-            'dacStepSize18Bit': check_if_attr_exists(
-                specdata, 'x_dac', specdata.x)[tr_ind][1] - check_if_attr_exists(
-                specdata, 'x_dac', specdata.x)[tr_ind][0],
-            'dacStartRegister18Bit': check_if_attr_exists(specdata, 'x_dac', specdata.x)[tr_ind][-1],
-            'dacStartVoltage': specdata.x[tr_ind][0],
-            'dacStopVoltage': specdata.x[tr_ind][-1],
-            'dacStepsizeVoltage': specdata.x[tr_ind][1] - specdata.x[tr_ind][0],
+            'scanDevice': specdata.scan_dev_dict_tr_wise[tr_ind],
             'nOfSteps': specdata.getNrSteps(tr_ind),
             'nOfScans': specdata.nrScans[tr_ind],
             'nOfCompletedSteps': specdata.nrScans[tr_ind] * specdata.getNrSteps(tr_ind),
@@ -876,7 +903,10 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
             'nOfBunches': 1,
             'softwGates': check_if_attr_exists(
                 specdata, 'softw_gates', [[] * specdata.nrScalers[tr_ind]] * specdata.nrTracks, [])[tr_ind],
-            'trigger': check_if_attr_exists(specdata, 'trigger', [{'type': 'no_trigger'}] * specdata.nrTracks)[tr_ind],
+            'trigger': check_if_attr_exists(
+                specdata, 'trigger', [{'meas_trigger': {'type': 'no_trigger'},
+                                       'step_trigger': None,
+                                       'scan_trigger': None}] * specdata.nrTracks)[tr_ind],
             'pulsePattern': {'cmdList': [], 'periodicList': [], 'simpleDict': {}},
             'measureVoltPars': specdata.measureVoltPars[tr_ind],
             'triton': specdata.tritonPars[tr_ind]
@@ -1002,8 +1032,15 @@ def save_spec_data(spec_data, scan_dict):
         for track_ind, tr_num in enumerate(track_num_lis):
             track_name = 'track' + str(tr_num)
             # only save name of trigger
-            if not isinstance(scan_dict[track_name]['trigger']['type'], str):
-                scan_dict[track_name]['trigger']['type'] = scan_dict[track_name]['trigger']['type'].name
+            if not isinstance(scan_dict[track_name]['trigger'].get('meas_trigger', {}).get('type', {}), str):
+                scan_dict[track_name]['trigger']['meas_trigger']['type'] = \
+                    scan_dict[track_name]['trigger']['meas_trigger']['type'].name
+            if not isinstance(scan_dict[track_name]['trigger'].get('step_trigger', {}).get('type', {}), str):
+                scan_dict[track_name]['trigger']['step_trigger']['type'] = \
+                    scan_dict[track_name]['trigger']['step_trigger']['type'].name
+            if not isinstance(scan_dict[track_name]['trigger'].get('scan_trigger', {}).get('type', {}), str):
+                scan_dict[track_name]['trigger']['scan_trigger']['type'] = \
+                    scan_dict[track_name]['trigger']['scan_trigger']['type'].name
             if time_res:
                 scan_dict[track_name]['softwGates'] = spec_data.softw_gates[track_ind]
                 if version > 1.1:
@@ -1055,7 +1092,7 @@ def get_number_of_tracks_in_scan_dict(scan_dict):
     return n_of_tracks, sorted(list_of_track_nums)
 
 
-def get_software_gates_from_db(db, iso, run):
+def get_software_gates_from_db(db, iso, run, track=0):
     """
     get the software gates for a SINGLE TRACK from the database.
     voltages will be gated from -10 to 10 V.
@@ -1066,6 +1103,8 @@ def get_software_gates_from_db(db, iso, run):
     use_db, run_gates_width, run_gates_delay, iso_mid_tof = get_gate_pars_from_db(db, iso, run)
     if use_db == 'file':
         return None
+    # if use_db != 'file' and use_db is not None:
+    #     if isinstance(ast.literal_eval(use_db[0][0]), list): return ast.literal_eval(use_db[0][0])[track]  # in this case softwGates is the softwGates list
     if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None:
         return None  # return None if failur by getting stuff from db
     else:
@@ -1089,7 +1128,9 @@ def get_gate_pars_from_db(db, iso, run):
     iso_mid_tof = select_from_db(
         db, 'midTof', 'Isotopes', [['iso'], [iso]],
         caller_name='get_software_gates_from_db in DataBaseOperations.py')
-    if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None:
+    if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None or iso_mid_tof[0][0] is None or \
+            run_gates_width[0][0] is None or run_gates_delay[0][
+        0] is None:  # added 3 cases since iso_mid_tof etc. is usually an array and != none (?)
         return None, None, None, None
     else:
         run_gates_width = run_gates_width[0][0]
@@ -1130,6 +1171,223 @@ def calc_db_pars_from_software_gate(softw_gates_single_tr):
             iso_mid_tof = t_min + run_gates_width * 0.5
         del_list.append(t_min + 0.5 * run_gates_width - iso_mid_tof)
     return run_gates_width, del_list, iso_mid_tof
+
+
+def calc_bunch_width_relative_to_peak_height(spec_data, percentage_of_peak,
+                                             show_plt=True, non_consectutive_time_bins_tolerance=1,
+                                             save_to_path='', time_around_bunch=(-1, -1), fit_gaussian=True,
+                                             additional_time_rChi=0.0):
+    """
+    This will analyse the time projection of the counts.
+    It will get the background, the maximum counts, the timings of the maximum counts
+    and where the counts have reached the desired percentage of the maximum peak (above background)
+    each value will be given per track and scaler.
+    :param spec_data: XMLImporter object, usual xmlobject, t_proj will be handled
+    :param percentage_of_peak: float, percent, percentage of the maximum counts above
+     background for automatic gate determination
+    :param non_consectutive_time_bins_tolerance: int,
+    tolerance how many time bins can be below the threshold before this is counted
+    as a not connected to the area above threshold anymore.
+    :param save_to_path: str, absoulte path were to store the plot as a .png or so
+    :param time_around_bunch: tuple, time in us (before, after) bunch in order to display
+    zoomed in around this time frame, still all plots will share the same x-axis
+    :param fit_gaussian: bool, True in order to fit a gaussian to the time data
+    :param additional_time_rChi: float, time in us that will be added/subtracted to the bunch stop/start time
+    in order to calculate the rChiSq not on the full time projection but only around the interesting time frame.
+    :return: XMLImporter object, ret_dict:
+    ret_dict = {'max_counts': max_counts,  #  track wise, scaler wise each of the following
+                'backgrounds': backgrounds,
+                'bunch_begin_times': bunch_begin_times,
+                'max_counts_times': max_counts_times,
+                'bunch_end_times': bunch_end_times,
+                'bunch_lenght_us': bunch_lenght_us,
+                'gaussian_res': gaussian_results  # list, tr_sc wise [x0, sigma, amp, rchisq}
+                }
+    """
+    import matplotlib.pyplot as plt
+    fig, axes = plt.subplots(spec_data.nrScalers[0], spec_data.nrTracks, sharex='col',
+                             gridspec_kw={'hspace': 0.,
+                                          'top': 0.95,
+                                          'bottom': 0.05,
+                                          'wspace': 0.7,
+                                          'left': 0.09 / spec_data.nrTracks,
+                                          'right': 0.9 - 0.25 / spec_data.nrTracks},
+                             figsize=(8 * spec_data.nrTracks, 12 * (spec_data.nrScalers[0] / 4)))
+    if spec_data.nrTracks == 1:
+        axes = [[ax] for ax in axes]
+    backgrounds = []
+    max_counts = []
+    bunch_begin_times = []
+    max_counts_times = []
+    max_counts_ind = []
+    bunch_end_times = []
+    bunch_lenght_us = []
+    gaussian_results = []
+    # from Measurement.XMLImporter import XMLImporter
+    # spec_data = XMLImporter()
+    tr = -1
+    for tr_t_proj in spec_data.t_proj:
+        # print('tr_tproj', tr_t_proj.shape)
+        tr += 1
+        sc = -1
+        max_counts.append(np.max(tr_t_proj, axis=1))  # for all scalers at once
+        max_counts_ind.append(np.argmax(tr_t_proj, axis=1))
+        # print(max_counts_ind)
+        max_counts_times.append(spec_data.t[tr][max_counts_ind[tr]])
+        bunch_begin_times += [],
+        bunch_end_times += [],
+        bunch_lenght_us += [],
+        backgrounds += [],
+        gaussian_results += [],
+        for sc_t_proj in tr_t_proj:
+            sc += 1
+            # background calc
+            smpl_ind = [0, 1, 2, 3, 4, -5, -4, -3, -2, -1]  # explicit indice to sample the background
+            sc_back_sampl = sc_t_proj[smpl_ind]
+            sc_back_mean = np.mean(sc_back_sampl)
+            backgrounds[tr] += sc_back_mean,
+            # print(sc_back_sampl, sc_back_mean)
+            # print(tr, sc, max(sc_t_proj), sc_t_proj)
+            cond_min = (max_counts[tr][sc] - sc_back_mean) * (percentage_of_peak / 100) + sc_back_mean
+            indice_above_cond = np.where(sc_t_proj >= cond_min)
+
+            # find consecutive indices before and after the maximum counts index
+            indice_above_cond_before_max = [val for val in indice_above_cond[0] if val <= max_counts_ind[tr][sc]]
+            indice_above_cond_before_max.reverse()
+            start_ind = indice_above_cond_before_max[0]
+            for i, each in enumerate(indice_above_cond_before_max):
+                if i < len(indice_above_cond_before_max) - 1:
+                    if np.isclose(each - 1, indice_above_cond_before_max[i + 1],
+                                  atol=non_consectutive_time_bins_tolerance):
+                        start_ind = each - 2
+                    else:
+                        # break for loop as soon as indices are not consecutive anymore
+                        break
+            # print(indice_above_cond_before_max)
+            # print('start_ind:', start_ind)
+            # print(max_counts_ind[tr][sc])
+            # print(indice_above_cond[0])
+            indice_above_cond_after_max = [val for val in indice_above_cond[0] if val >= max_counts_ind[tr][sc]]
+            stopp_ind = indice_above_cond_after_max[0]
+            for i, each in enumerate(indice_above_cond_after_max):
+                if i < len(indice_above_cond_after_max) - 1:
+                    if np.isclose(each + 1, indice_above_cond_after_max[i + 1],
+                                  atol=non_consectutive_time_bins_tolerance):
+                        stopp_ind = each + 2
+                    else:
+                        # break for loop as soon as indices are not consecutive anymore
+                        break
+            # print(indice_above_cond_after_max)
+            # print('stopp_ind:', stopp_ind)
+
+            # print(spec_data.t[tr][indice_above_cond])
+            bunch_begin_times[tr].append(spec_data.t[tr][start_ind])
+            bunch_end_times[tr].append(spec_data.t[tr][stopp_ind])
+            bunch_lenght_us[tr].append(bunch_end_times[tr][-1] - bunch_begin_times[tr][-1])
+            # print(len(axes), tr, sc)
+            pl_sc_tr = axes[sc][tr].plot(spec_data.t[tr], spec_data.t_proj[tr][sc],
+                                         color='k', label='sc: %s, tr: %s' % (sc, tr), linewidth=1.)
+            axes[sc][tr].autoscale(enable=True)
+            axes[sc][tr].axvline(bunch_begin_times[tr][-1], color='g',
+                                 label='start: %.2f µs' % bunch_begin_times[tr][-1],
+                                 linewidth=1.5)
+            axes[sc][tr].axvline(bunch_end_times[tr][-1], color='b',
+                                 label='stopp: %.2f µs' % bunch_end_times[tr][-1],
+                                 linewidth=1.5)
+            axes[sc][tr].plot([spec_data.t[0][0]], [0], color='w',
+                              label='length: %.2f µs' % bunch_lenght_us[tr][-1])
+            axes[sc][tr].axvline(max_counts_times[tr][sc], color='r',
+                                 label='max_cts: %.2f µs' % max_counts_times[tr][sc],
+                                 linewidth=1.5)
+            axes[sc][tr].axhline(cond_min, color='g',
+                                 # label='%s percent of peak above background' % percentage_of_peak,
+                                 linewidth=0.5, linestyle='--')
+            axes[sc][tr].set_ylim(axes[sc][tr].get_ylim()[0], axes[sc][tr].get_ylim()[1] - 0.5)
+            # in order not to have numbers overlap
+            axes[sc][tr].set_xlabel('time of flight / µs')
+            axes[sc][tr].set_ylabel('counts')
+            if time_around_bunch[0] >= 0:
+                # zoom in around bunch in plot
+                axes[sc][tr].set_xlim(bunch_begin_times[tr][-1] - time_around_bunch[0], axes[sc][tr].get_xlim()[1])
+            if time_around_bunch[1] >= 0:
+                # zoom in around bunch in plot
+                axes[sc][tr].set_xlim(axes[sc][tr].get_xlim()[0], bunch_end_times[tr][-1] + time_around_bunch[1])
+            # now gaussian:
+            if fit_gaussian:
+                # cut time axis to relevant set:
+                bin_width = round(spec_data.t[tr][1] - spec_data.t[tr][0], 2)
+                additional_bins_rChi = additional_time_rChi // bin_width
+                cut_ind_start = int(max(0, start_ind - additional_bins_rChi))
+                cut_ind_stop = int(min(len(spec_data.t[tr]) - 1, stopp_ind + additional_bins_rChi))
+                x_to_fit = spec_data.t[tr][cut_ind_start:cut_ind_stop]
+                y_to_fit = sc_t_proj[cut_ind_start:cut_ind_stop]
+
+                y_data_set = []  # "inverse from projection)
+                for ind, each in enumerate(y_to_fit):
+                    # create inverse to existing histogram
+                    y_data_set += [x_to_fit[ind]] * int(each)
+                mean = max_counts_times[tr][sc]
+                sigma = (bunch_end_times[tr][-1] - bunch_begin_times[tr][-1]) / 2.35  # roughly...
+                amp_start = max_counts_ind[tr][sc] * sigma * np.sqrt(2 * np.pi)
+                x = spec_data.t[tr]
+                y = sc_t_proj
+                popt, pcov = curve_fit(Physics.gaussian_offset, x, y,
+                                       p0=[mean, sigma, amp_start, sc_back_mean],
+                                       bounds=([bunch_begin_times[tr][-1] - bin_width, 0, 0, 0],
+                                               [bunch_end_times[tr][-1], np.inf, np.inf, np.inf])
+                                       )
+                mean_fit = popt[0]
+                sigma_fit = popt[1]
+                amp_fit = popt[2]
+                off_fit = popt[3]
+                y_gauss = np.array([Physics.gaussian_offset(t_i, *popt) for t_i in x])
+                norm_fact = np.max(y_gauss)
+                y_gauss_norm = y_gauss / norm_fact
+                y_to_fit_norm = y_to_fit / norm_fact
+                residuals = y_to_fit_norm - y_gauss_norm[cut_ind_start:cut_ind_stop]
+                errs = np.sqrt(y_to_fit)
+                errs = [1 if e == 0 else e for e in errs]  # replace errors with 0 by 1
+                errs_norm = errs / norm_fact
+                numbers_freedom = len(y_to_fit) - 4  # four from gaussian
+                rchisq = sum([res ** 2 / e ** 2 for res, e in zip(residuals, errs_norm)]) / numbers_freedom
+                err_fit_pars = [np.sqrt(pcov[j][j]) for j in range(pcov.shape[0])]
+                label_gauss = 'gaussian:\n x0=%.2f(%.0f)us\n sig=%.2f(%.0f)\n rChi²=%.2f' % (
+                    mean_fit, err_fit_pars[0] * 100, sigma_fit, err_fit_pars[1] * 100, rchisq)
+                axes[sc][tr].plot(x_to_fit, Physics.gaussian_offset(x_to_fit, *popt), linewidth=2, color='grey',
+                                  label=label_gauss)
+                gaussian_results[tr].append([[mean_fit, sigma_fit, amp_fit, off_fit, rchisq], err_fit_pars])
+            axes[sc][tr].legend(loc=(1.01, 0.05))
+    fig.set_facecolor('w')
+    fig.suptitle('%s percentage of peak: %.2f%% rebinning: %d ns '
+                 % (spec_data.file, percentage_of_peak, spec_data.softBinWidth_ns[0]), ha='center', va='top')
+
+    if show_plt:
+        plt.show(block=True)
+
+    if save_to_path:
+        if isinstance(save_to_path, list):
+            for each_store_loc in save_to_path:
+                print('saving to: %s' % each_store_loc)
+                fig.savefig(each_store_loc, dpi=150, quality=95, facecolor='w')
+        else:
+            print('saving to: %s' % save_to_path)
+            fig.savefig(save_to_path, dpi=150, quality=95, facecolor='w')
+    # print(max_counts)
+    # print(backgrounds)
+    # print(bunch_begin_times)
+    # print(max_counts_times)
+    # print(bunch_end_times)
+    # print(bunch_lenght_us)
+    plt.close(fig)
+    ret_dict = {'max_counts': max_counts,
+                'backgrounds': backgrounds,
+                'bunch_begin_times': bunch_begin_times,
+                'max_counts_times': max_counts_times,
+                'bunch_end_times': bunch_end_times,
+                'bunch_lenght_us': bunch_lenght_us,
+                'gaussian_res': gaussian_results
+                }
+    return spec_data, ret_dict
 
 
 def convert_volt_axis_to_freq(x_axis_energy, mass, col, laser_freq, iso_center_freq):
@@ -1213,6 +1471,118 @@ def add_header_to23_bit(bit23, firstheader, secondheader, indexheader):
     return result
 
 
+def line_to_total_volt(x, lineMult, lineOffset, offset, accVolt, voltDivRatio, offset_by_dev_mean={}):
+    """
+    Converts an DAC line voltage array x to a total voltage array depending on the conversion coefficients
+    """
+    if isinstance(voltDivRatio['offset'], float):  # just one number
+        scanvolt = (x * lineMult + lineOffset) * voltDivRatio.get('lineMult', voltDivRatio['offset']) \
+                   + offset * voltDivRatio['offset']
+    else: # offset measured by different devices. Offset is then calculated by different voltDivRatio values.
+        vals = list(voltDivRatio['offset'].values())
+        mean_offset_div_ratio = np.mean(vals)
+        # treat each offset with its own divider ratio
+        # x axis is multiplied by mean divider ratio value anyhow, similiar to kepco scans
+
+        mean_offset = np.mean([val * offset_by_dev_mean.get(key, offset) for key, val in voltDivRatio['offset'].items()])
+        scanvolt = (lineMult * x + lineOffset) * voltDivRatio.get('lineMult', mean_offset_div_ratio) + mean_offset
+
+    return accVolt*voltDivRatio['accVolt'] - scanvolt
+
+
+def get_file_number_from_file_str(file_str, mass_index, end_result_len, app=None):
+    numbers = []
+    number_str = ''
+    for i, letter in enumerate(file_str):
+        if letter.isdigit():  # is either 0-9
+            number_str += letter
+        else:  # not a digit
+            if number_str.isdigit():  # convert the consecutive number
+                numbers += [number_str]
+            number_str = ''  # reset number str
+    if isinstance(mass_index, list):
+        # [0] etc. .
+        numbers = [val for n, val in enumerate(numbers) if n not in mass_index]
+    if end_result_len > 0:
+        # user want to check if the correct amount of integers is found
+        if len(numbers) != end_result_len:
+            # does not match, require user input!
+            print('warning: ')
+            print('file', file_str, 'nums', numbers)
+            if app is None:
+                app = QtWidgets.QApplication(sys.argv)
+
+            print('opening dial:')
+            text, ok_pressed = QtWidgets.QInputDialog.getText(None, 'Warning',
+                                                              '%s has more or less than %s numbers: %s \n'
+                                                              ' please write the desired file number(s) here'
+                                                              'still as a list of strings please!:' %
+                                                              (file_str, end_result_len, numbers),
+                                                              QtWidgets.QLineEdit.Normal,
+                                                              str(numbers)
+                                                              )
+            if ok_pressed:
+                try:
+                    numbers = ast.literal_eval(text)
+                except Exception as e:
+                    print('could not convert %s, error is: %s' % (text, e))
+            else:
+                return [], app
+            # make sure it has the right length in the end!
+            if len(numbers) > end_result_len:
+                numbers = numbers[:end_result_len]
+                print('warning, still incorrect amount of numbers! Will use %s fo file: %s' % (numbers, file_str))
+            elif len(numbers) < end_result_len:
+                numbers = numbers * (end_result_len // len(numbers) + 1)
+                numbers = numbers[:end_result_len]
+                print('warning, still incorrect amount of numbers! Will use %s fo file: %s' % (numbers, file_str))
+    return numbers, app
+
+
+def get_file_numbers(file_list, mass_index=[0], end_result_len=1, app=None, user_overwrite={}):
+    """
+    get all file numbers (=conescutive integer numbers)
+    in the filenames that are listed in file_list.
+    :param file_list: list, like  ['62_Ni_trs_run071.xml', ...]
+    :param mass_index: list, indice of all expected mass numbers, that will be removed from the output.
+    if the mass number is wanted -> use mass_index=[-1]
+    for 62_Ni_trs_run071.xml
+     -> mass_index=[0] -> [[71]]
+     -> mass_index=None -> [[62, 71]]
+     :param end_result_len: int, desired amount of numbers to be found, as a cross check.
+     use -1/0 if you don't care
+     :param user_overwrite: dict, key is orig. filenum, value is str that will be put as file_num_str
+     e.g.  {'60_Ni_trs_run113_sum114.xml': ['113+114']}
+     helpful to avoid user input on runtime
+    :return: list of all file numbers each still as string, that might be convertable to int,
+     but can also be something like '123+124' by user choice.
+    """
+    file_nums = []
+    for f in file_list:
+        if f in user_overwrite.keys():
+            file_nums += user_overwrite[f]
+        else:
+            file_num, app = get_file_number_from_file_str(f, mass_index, end_result_len, app)
+            file_nums += file_num
+    return file_nums
+
+
+def get_scan_step_from_track_dict(track_dict):
+    """
+    return the current scan and step number from the numberOfcompleted steps
+    :param track_dict: dict, as in Service/Scan/draftScanParameters.py:136
+    :return: tuple, (scan_num, step_num)
+    """
+    nOfSteps = track_dict['nOfSteps']
+    nOfCompletedSteps = track_dict['nOfCompletedSteps']
+    invertScan = track_dict['invertScan']
+    current_scan = nOfCompletedSteps // nOfSteps
+    odd_scan = current_scan % 2
+    completed_steps_in_cur_scan = nOfCompletedSteps % nOfSteps
+    current_step = nOfSteps - completed_steps_in_cur_scan if invertScan and odd_scan else completed_steps_in_cur_scan
+    return current_scan, current_step
+
+
 if __name__ == '__main__':
     # isodi = {'isotope': 'bbb', 'type': 'csdummy'}
     # newname = nameFileXml(isodi, 'E:\Workspace\AddedTestFiles')
@@ -1258,22 +1628,24 @@ if __name__ == '__main__':
                     'random1': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
     np1 = np.array([1, 1])
     np2 = np.array([2, 2])
-    dmm_sample_dict0 = {'dummy_somewhere': np1, 'dummy_else' : np2}
-    dmm_sample_dict1 = {'dummy_somewhere': np2, 'dummy_else' : np1, 'more_dummy' : np2}
+    dmm_sample_dict0 = {'dummy_somewhere': np1, 'dummy_else': np2}
+    dmm_sample_dict1 = {'dummy_somewhere': np2, 'dummy_else': np1, 'more_dummy': np2}
     test_d0 = {'lala': [0, 1]}
-    test_d1 = {'lala': [1, 2], 'blub': [5,6]}
+    test_d1 = {'lala': [1, 2], 'blub': [5, 6]}
 
     deepupdate(sample_dict0, sample_dict1)
     deepupdate(sample_dict0, sample_dict2)
     deepupdate(sample_dict0, sample_dict3)
     deepupdate(sample_dict0, sample_dict4)
     deepupdate(sample_dict0, sample_dict5)
-    realdict = {'track0': {'triton': {'duringScan': {'dummyDev': {'random': {'required': -1, 'data': [], 'acquired': 0}, 'calls': {'required': -1, 'data': [3], 'acquired': 1}}}}}}
+    realdict = {'track0': {'triton': {'duringScan': {'dummyDev': {'random': {'required': -1, 'data': [], 'acquired': 0},
+                                                                  'calls': {'required': -1, 'data': [3],
+                                                                            'acquired': 1}}}}}}
     deepupdate(dmm_sample_dict0, dmm_sample_dict1)
     print(dmm_sample_dict0)
     for dev, chs in sample_dict0['track0']['triton']['preScan'].items():
         for ch_name, ch_data in chs.items():
-            #print(ch_data)
+            # print(ch_data)
             ch_data['acquired'] = len(ch_data['data'])
 
     #print_dict_pretty(sample_dict0)
