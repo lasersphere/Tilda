@@ -13,24 +13,24 @@ from scipy import special
 from scipy.stats import cauchy
 
 # _d marks uncertainty
-c = 299792458;    #speed of light
-u = 1.660538921e-27;    #atomic mass unit
-u_d = 7.3e-35;    #delta u
-pi = 3.14159265;
-me = 9.10938291e-31;    #electron mass
-me_d = 4e-38;
-me_u = 5.4857990946e-4;    #electron mass in u
-me_u_d = 2.2e-13;
-qe = 1.602176565e-19;    #electron charge
-qe_d = 3.5e-27;
-h = 6.626070040e-34;    #planck constant
+c = 299792458    #speed of light
+u = 1.660538921e-27    #atomic mass unit
+u_d = 7.3e-35    #delta u
+pi = 3.14159265
+me = 9.10938291e-31    #electron mass
+me_d = 4e-38
+me_u = 5.4857990946e-4    #electron mass in u
+me_u_d = 2.2e-13
+qe = 1.602176565e-19    #electron charge
+qe_d = 3.5e-27
+h = 6.626070040e-34    #planck constant
 hbar = h / (2*pi)
 
 
 def relVelocity(e, m):
     '''Return the relativistic velocity of a body with kinetic energy e/J and mass m/kg'''
     mcs = m*c*c
-    return c * math.sqrt(1 - (mcs / (e + mcs))**2)
+    return c * np.sqrt(1 - (mcs / (e + mcs))**2)
 
 
 def relEnergy(v, m):

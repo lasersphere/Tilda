@@ -117,14 +117,14 @@ class FullSpec(object):
     def toPlot(self, p, prec=10000):
         '''Return ([x/Mhz], [y]) values with prec number of points'''
         self.recalc(p)
-        return ([x for x in np.linspace(self.leftEdge(p), self.rightEdge(p), prec)],
-                [self.evaluate(x, p) for x in np.linspace(self.leftEdge(p), self.rightEdge(p), prec)])
+        x = np.linspace(self.leftEdge(p), self.rightEdge(p), prec)
+        return x, self.evaluate(x, p)
       
     def toPlotE(self, freq, col, p, prec=10000):
         '''Return ([x/eV], [y]) values with prec number of points'''
         self.recalc(p)
-        return ([x for x in np.linspace(self.leftEdgeE(freq, p), self.rightEdgeE(freq, p), prec)],
-                [self.evaluateE(x, freq, col, p) for x in np.linspace(self.leftEdgeE(freq, p), self.rightEdgeE(freq, p), prec)])
+        x = np.linspace(self.leftEdgeE(freq, p), self.rightEdgeE(freq, p), prec)
+        return x, self.evaluateE(x, freq, col, p)
 
     def leftEdge(self, p):
         '''Return the left edge of the spectrum in Mhz'''

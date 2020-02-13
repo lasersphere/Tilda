@@ -65,15 +65,16 @@ class SpecData(object):
     def getSingleSpec(self, scaler, track):
         '''Return a tuple with (volt, cts, err) of the specified scaler and track. -1 for all tracks'''
         if track == -1:
-            return ( [i for i in it.chain(*self.x)],
-                     [i for i in it.chain(*(t[scaler] for t in self.cts))],
-                     [i for i in it.chain(*(t[scaler] for t in self.err))] )
+            return (np.array([i for i in it.chain(*self.x)]),
+                    np.array([i for i in it.chain(*(t[scaler] for t in self.cts))]),
+                    np.array([i for i in it.chain(*(t[scaler] for t in self.err))]))
         else:
-            return (self.x[track], self.cts[track][scaler], self.err[track][scaler])
+            return np.array(self.x[track]), np.array(self.cts[track][scaler]), np.array(self.err[track][scaler])
     
     def getArithSpec(self, scaler, track_index):
         '''Same as getSingleSpec, but scaler is of type [+i, -j, +k], resulting in s[i]-s[j]+s[k]'''
         l = self.getNrSteps(track_index)
+        flatx = np.zeros((l,))
         flatc = np.zeros((l,))
         flate = np.zeros((l,))
         if isinstance(self.nrScalers, list):
@@ -103,7 +104,7 @@ class SpecData(object):
         # flatc = flatc[0:cut_lower] + flatc[cut_upper:]
         # flate = flate[0:cut_lower] + flate[cut_upper:]
 
-        return (flatx, flatc, flate)
+        return flatx, flatc, flate
         
     def getNrSteps(self, track):
         if track == -1:

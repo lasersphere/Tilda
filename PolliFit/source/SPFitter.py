@@ -114,7 +114,7 @@ class SPFitter(object):
         
     def calcRchi(self):
         '''Calculate the reduced chi square'''
-        return sum(x**2/e**2 for x, e in zip(self.calcRes(), self.data[2])) / self.calcNdef()
+        return np.sum(self.calcRes()**2/self.data[2]**2)/self.calcNdef()
     
     
     def calcNdef(self):
@@ -122,19 +122,13 @@ class SPFitter(object):
         # if bounds are given instead of boolean, write False to fixed bool list.
         fixed_bool_list = [f if isinstance(f, bool) else False for f in self.fix]
         fixed_sum = sum(fixed_bool_list)
-        return (len(self.data[0]) - (len(self.fix) - fixed_sum))
+        return self.data[0].size - (len(self.fix) - fixed_sum)
     
     
     def calcRes(self):
         '''Calculate the residuals of the current parameter set'''
-        res = np.zeros(len(self.data[0]))
-        
-        valgen = (self.spec.evaluateE(e, self.meas.laserFreq, self.meas.col, self.par) for e in self.data[0])
-        
-        for i, (dat, val) in enumerate(zip(self.data[1], valgen)):
-            res[i] = (dat - val)
-        
-        return res
+        valgen = self.spec.evaluateE(self.data[0], self.meas.laserFreq, self.meas.col, self.par)
+        return self.data[1] - valgen
 
     
     def untrunc(self, p):
@@ -145,6 +139,7 @@ class SPFitter(object):
                 self.par[i] = next(ip)
                 
         return 
+
     
     def evaluate(self, x, *p):
         '''
@@ -157,9 +152,8 @@ class SPFitter(object):
             self.untrunc([i for i in p])
             self.spec.recalc(self.par)
             self.oldp = p
-        
-        return [self.spec.evaluate(sx, self.par) for sx in x]
 
+        self.spec.evaluate(x, self.par)
 
     
     def evaluateE(self, x, *p):
@@ -168,9 +162,9 @@ class SPFitter(object):
             self.untrunc([i for i in p])
             self.spec.recalc(self.par)
             self.oldp = p
-        
-        return [self.spec.evaluateE(sx, self.meas.laserFreq, self.meas.col, self.par) for sx in x]
-        
+
+        return self.spec.evaluateE(x, self.meas.laserFreq, self.meas.col, self.par)
+
 
     def result(self):
         '''Return a list of result-tuples (name, pardict)'''
@@ -239,5 +233,3 @@ class SPFitter(object):
             
     def setFix(self, i, val):
         self.fix[i] = val
-
-        
