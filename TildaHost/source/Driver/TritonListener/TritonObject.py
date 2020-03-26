@@ -7,28 +7,28 @@ Module Description:
     Triton Object copied from TRITON in order to connect to TritonObjects(devices) in Triton.
     If this ever changes within Triton, changes here might be necessary
 
-    Last copied on 01.03.19 trito git rev num: 74e28f9804a8d2a27f2f53aa8c0671cd6dc804e4
+    Last copied on 26.03.2020 to fit new backend
 
     If changes are made within Triton maybe a copy is needed again.
     Required modifications for Tilda are marked with a comment  # changed!
+
+    (ann. Tim Lellinger: ONLY change dependenies, noting else!)
+
 """
 
-from threading import Thread
 from datetime import datetime
-import logging
-
-import Pyro4
 import mysql.connector as Sql
-
-try:
-    from Driver.TritonListener.TritonConfig import sqlCfg as sqlConf  # changed!
-except:
-    from Driver.TritonListener.TritonDraftConfig import sqlCfg as sqlConf  # changed!
+from Driver.TritonListener.TritonConfig import sqlCfg as sqlConf
+import Driver.TritonListener.Backend.udp_server
+import Driver.TritonListener.Backend.tcp_server
+import logging
+import Driver.TritonListener.Backend.hybrid_server
+import Driver.TritonListener.Backend.server_conf
 
 
 class TritonObject(object):
     '''
-    Basic TritonObject with fundamental abilities: Pyro receiving, DB connections, subscribing
+    Basic TritonObject with fundamental abilities: receiving messages, DB connections, subscribing
     '''
 
     def __init__(self, sql_conf=sqlConf):
@@ -36,7 +36,6 @@ class TritonObject(object):
         Constructor
         '''
         super(TritonObject, self).__init__()
-
         self.name = None
         self.type = 'TritonObject'
 
@@ -45,8 +44,20 @@ class TritonObject(object):
         self.db = None  # can be set to 'local' or '' or {} for testing without any database, see below
         self.dbCur = None
         self.db_connect()
+        self.logger = logging.getLogger('TritonLogger')
 
-        self._serve()
+        #start the appropriate server_backend depending on the selection in server_conf
+        if Driver.TritonListener.Backend.server_conf.SERVER_CONF.TRANS_MODE == "UDP":
+            self.server_backend = Driver.TritonListener.Backend.udp_server.TritonServerUDP(self.type, self)
+            self.logger.debug("Backend: TritonServer started in UDP mode!")
+        elif Driver.TritonListener.Backend.server_conf.SERVER_CONF.TRANS_MODE == "HYB":
+            self.server_backend = Driver.TritonListener.Backend.hybrid_server.TritonServerHybrid(self.type, self)
+            self.logger.debug("Backend: TritonServer started in HYBRID mode!")
+        else:
+            self.server_backend = Driver.TritonListener.Backend.tcp_server.TritonServerTCP(self.type, self)
+            self.logger.debug("Backend: TritonServer started in TCP mode!")
+
+        self.uri = self.server_backend.uri
 
     """ encapsule db functionalities to handle connectivity problems and allow to operate without a db """
 
@@ -56,7 +67,7 @@ class TritonObject(object):
                 self.db = Sql.connect(**self.sql_conf)
                 self.dbCur = self.db.cursor()
             except Exception as e:
-                logging.error('could not connect to database %s, error is: %s' % (
+                self.logger.error('could not connect to database %s, error is: %s' % (
                     self.sql_conf.get('database', 'unknown'), e))
                 self.db = None
                 self.dbCur = None
@@ -111,7 +122,6 @@ class TritonObject(object):
             try:
                 var = self.dbCur.fetchone()
                 return var
-                # If this returns 'None' on startup and results in a crash, TildaTritListen might not be in Triton db!
             except:
                 self.db_connect()
                 return self.db.fetchone()
@@ -126,116 +136,98 @@ class TritonObject(object):
                 self.db_connect()
                 self.db.close()
 
-    """ pyro4 thread """
-
     def _stop(self):
-        '''Unsubscribe from all and stop pyro daemon'''
-        logging.debug('Unsubscribing from ' + str(self._recFrom))
+        '''Unsubscribe from all and stop server object'''
+        self.logger.debug('Unsubscribing from ' + str(self._recFrom))
         for dev in self._recFrom.copy().keys():
             self.unsubscribe(dev)
 
-        self._daemon.shutdown()
-        self._daemonT.join()
+        self.server_backend.shutdown()
         self.db_close()
 
-    def _serve(self):
-        '''Start pyro daemon'''
-        self._daemon = Pyro4.Daemon()
-        self.uri = self._daemon.register(self)
-        self._daemonT = Thread(target=self._daemon.requestLoop)
-        self._daemonT.start()
-
     """ who am I ? """
-
     def getName(self):
         return self.name
 
     def getType(self):
         return self.type
 
-    """Methods for subscribing"""
+    # def get_local_py_obj(self): #evtl eine option für Picoscope
+    #     return(self)
 
+    """Methods for subscribing"""
     def subscribe(self, ndev, known_uri=''):
-        """Subscribe to an object using its name"""
-        dev = self.resolveName(ndev, known_uri)
-        if dev != None:
+        """Subscribe to an object using its name and returning at a TritonRemoteObject"""
+        remuri = self.resolveName(ndev, known_uri)
+        remoteobj = None
+        if remuri != None:
             self.send('out', 'Subscribing to ' + ndev)
-            self._recFrom[ndev] = dev
-            dev._addSub(self.uri, self.name)
-            self.send('out', 'Added')
-            dev._pyroRelease()
-            self.send('out', 'Done with subscribe')
+            remoteobj = self.server_backend.subscribeToUri(remuri)
+            if remoteobj != None:
+                self._recFrom[ndev] = remoteobj
+                self.send('out', 'Added')
+                self.send('out', 'Done with subscribe')
+            else:
+                logging.error("Subscribing to device "+ndev+" failed!")
+                self.send('err', 'Could not connect to ' + ndev)
         else:
             self.send('err', 'Could not resolve ' + ndev)
-        return dev
+        return remoteobj
 
+    def start_and_subscribe(self, ndev, known_uri=''):
+        """subscribe to an object using its name, and return a TritonRemoteObject. If the device is not active,
+        start it (on the right TritonMain if specified)"""
+        remuri = self.resolveName(ndev, known_uri)
+        if remuri is None: #??? ob das wohl richtig ist???
+            self.dbCur_execute("SELECT machine FROM devices WHERE deviceName=%s", (ndev,))
+            machine = self.dbCur_fetchall()
+            if machine[0][0] is None: # this means the device can be started on any main, so it will be started locally
+                ip = self.uri[self.uri.index("@")+1:].split(':')[0]
+                # this gets the name of the local TritonMain (assuming it has the same ip)
+                self.dbCur_execute("SELECT deviceName FROM devices WHERE deviceType='TritonMain' AND uri LIKE '%"+ip+"%'",()) # dirty, but works (maybe fails if the machine has multiple network connections)
+            else:
+                self.dbCur_execute("SELECT deviceName FROM devices WHERE deviceType='TritonMain' AND machine=%s", (machine[0][0],))
+            mainName = self.dbCur_fetchall()[0][0]
+            devicemain = self.subscribe(mainName)
+            devicemain.startDev(ndev)
+            self.unsubscribe(mainName)
+        return self.subscribe(ndev, known_uri)
     def unsubscribe(self, ndev):
         """Unsubscribe from an object"""
         self.send('out', 'Unsusbcribing from ' + ndev)
         if ndev in self._recFrom:
             try:
-                self._recFrom[ndev]._remSub(self.name)
+                self.server_backend.unsubscribeFromRemoteObject(self._recFrom[ndev])
                 del self._recFrom[ndev]
             except:
                 self.send('err', 'Could not unsubscribe from ' + str(ndev))
 
-    def send(self, ch, val):
+    def send(self, ch, val): # important note: this will be overwritten in DeviceBase! just ignore it
         """ send ch and val to logging.error (ch='err'), logging.info (ch='out') or logging.debug
          Note: this is not send to any device or so, this is only done in the DeviceBase.py
          """
         t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if ch == 'err':
-            logging.error(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
+            self.logger.error(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
         elif ch == 'out':
-            logging.info(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
+            self.logger.info(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
         else:
-            logging.debug(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
+            self.logger.debug(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
 
-    def errsend(self):
-        """ send last pyro4 traceback error to self.send -> logging.error(...)"""
-        self.send('err', "".join(Pyro4.util.getPyroTraceback()))
-
-    def _receive(self, dev, t, ch, val):
+    def _receive(self, dev, t, ch, val): # important note: this will be overwritten in DeviceBase! just ignore it
         """ just a print here, will be overwritten in DeviceBase.py """
         print(t, dev, ch, val)
 
     def resolveName(self, name, known_uri=''):
         """
-        Resolve a device name to a Proxy using the uri from the database. Return None if not started
+        Resolve a device name to a URI using the uri from the database. Return None if not started
         :param name: str, name of the device which pyro4 uri should be found in the db
         :param known_uri: str, uri can be provided if no database is present.
         """
-        logging.debug('resolve name to database')
+        self.logger.debug('resolve name to database')
         self.db_commit()
-        # logging.debug('commit happend')
+        # self.logger.debug('commit happend')
         self.dbCur_execute("SELECT uri FROM devices WHERE deviceName=%s", (name,))
-        # logging.debug('execute happend')
+        # self.logger.debug('execute happend')
         result = self.dbCur_fetchall(local_ret_val=[(known_uri,)])
-        # logging.debug('fetchall happend')
-        dev = Pyro4.Proxy(result[0][0])
-        return dev
-
-
-if __name__=='__main__':
-    import socket
-    import sys
-
-    hmacKey = b'6\x19\n\xad\x909\xda\xea\xb5\xc5]\xbc\xa1m\x863'
-    # Set Pyro variables
-    Pyro4.config.SERIALIZER = "serpent"
-    Pyro4.config.HMAC_KEY = hmacKey
-    Pyro4.config.HOST = socket.gethostbyname(socket.gethostname())
-    # Pyro4.config.SERVERTYPE = 'multiplex'
-    Pyro4.config.SERVERTYPE = 'thread'
-    sys.excepthook = Pyro4.util.excepthook
-    Pyro4.config.DETAILED_TRACEBACK = True
-
-    triton_obj = TritonObject('local')
-    from Driver.TritonListener.DummyTritonDevice import DummyTritonDevice
-    dummy_dev = DummyTritonDevice('dummyDev', 'local')
-    print('dummy_dev.uri', dummy_dev.uri)
-    triton_obj.subscribe('dummyDev', str(dummy_dev.uri))
-    dummy_dev.setInterval(1)
-    input('anykey to stop')
-    triton_obj._stop()
-    dummy_dev._stop()
+        return result[0][0]
