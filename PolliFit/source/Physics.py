@@ -130,7 +130,7 @@ def thermalLorentz(x, loc, gam, xi, colDirTrue, order):
     denominator = ((x - loc)**2 + lw**2/4)
     sum_order = 0
     if order > 0:
-        sum_order = (col*xi*(x - loc)-3*xi**2)/denominator
+        sum_order = (col*2*xi*(x - loc)-3*xi**2)/denominator
     if order > 1:
         sum_order += (4*3*xi**2*(x - loc)**2 - col*4*15*xi**3*(x - loc) + 105*xi**4)/(denominator**2)
     if order > 2:
