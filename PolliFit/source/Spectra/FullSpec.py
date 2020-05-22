@@ -1,28 +1,29 @@
-'''
+"""
 Created on 25.04.2014
 
-@author: hammen
-'''
+@author: hammen, pamueller (track offsets)
+"""
 
 import importlib
 from itertools import chain
 
 import numpy as np
 
-from Spectra.Hyperfine import Hyperfine
+from Spectra.Hyperfine import Hyperfine, HyperfineN
 from Spectra.AsymmetricVoigt import AsymmetricVoigt
 import Physics
 
 
 class FullSpec(object):
-    '''
-    A full spectrum function consisting of offset + all isotopes in iso with lineshape as declared in iso
-    '''
+    """
+    A full spectrum function consisting of offset + all isotopes in iso with lineshape as declared in iso.
+     Arbitrary many offsets can be defined in sections of the x-axis.
+    """
 
     def __init__(self, iso, iso_m=None):
-        '''
+        """
         Import the shape and initializes reasonable values 
-        '''
+        """
         # for example: iso.shape['name'] = 'Voigt'
         shapemod = importlib.import_module('Spectra.' + iso.shape['name'])
         shape = getattr(shapemod, iso.shape['name'])
@@ -37,16 +38,16 @@ class FullSpec(object):
         miso = iso
         self.hyper = []
         while miso != None:
-            self.hyper.append(Hyperfine(miso, self.shape))
+            self.hyper.append(HyperfineN(miso, self.shape))
             miso = miso.m
         miso_m = iso_m
         while miso_m!=None:
-            self.hyper.append(Hyperfine(miso_m, self.shape))
+            self.hyper.append(HyperfineN(miso_m, self.shape))
             miso_m = miso_m.m
         self.nPar = 2 + self.shape.nPar + sum(hf.nPar for hf in self.hyper)
         
     def evaluate(self, x, p, ih=-1, full=False):
-        '''Return the value of the hyperfine structure at point x / MHz, ih=index hyperfine'''
+        """Return the value of the hyperfine structure at point x / MHz, ih=index hyperfine"""
         if not full and self.cut_x != {}:
             order = np.argsort(x)
             inverse_order = np.array([int(np.where(order == i)[0]) for i in range(order.size)])
@@ -55,7 +56,7 @@ class FullSpec(object):
                               if np.min(x_temp) < self.cut_x[track] else -x_temp.size
                               for track in range(len(self.cut_x.keys()))])
             x_ret = np.split(x_temp, cut_i)
-            ret = np.concatenate([self.evaluate(x_i, p, ih=ih, full=True) + p[eval('self.pOff' + str(track - 1))]
+            ret = np.concatenate([self.evaluate(x_i, p, ih=ih, full=True) + p[getattr(self, 'pOff{}'.format(track - 1))]
                                   if track > 0 else self.evaluate(x_i, p, ih=ih, full=True)
                                   for track, x_i in enumerate(x_ret)])
             return ret[inverse_order]
@@ -65,7 +66,7 @@ class FullSpec(object):
             return p[self.pOff] + x * p[self.p_offset_slope] + self.hyper[ih].evaluate(x, p)
 
     def evaluateE(self, e, freq, col, p, ih=-1):
-        '''Return the value of the hyperfine structure at point e / eV'''
+        """Return the value of the hyperfine structure at point e / eV"""
 
         # used to be like the call in self.evaluate, but calling hf.evaluateE ...
         # since introducing the linear offset this caused problems, so now the frequency is already converted here
@@ -78,7 +79,7 @@ class FullSpec(object):
         return self.evaluate(f, p, ih)
 
     def recalc(self, p):
-        '''Forward recalc to lower objects'''
+        """Forward recalc to lower objects"""
         self.shape.recalc(p)
         for hf in self.hyper:
             hf.recalc(p)
@@ -90,15 +91,17 @@ class FullSpec(object):
             v = Physics.relVelocity(Physics.qe * cut, self.iso.mass * Physics.u)
             v = -v if col else v
             self.cut_x[track] = Physics.relDoppler(freq, v) - self.iso.freq
-            exec('self.pOff{} = {} + {} + 1'.format(track, self.p_offset_slope, track))
+            setattr(self, 'pOff{}'.format(track), 2 + track)
         self.nPar += len(cut_x.keys())
 
     def getPars(self, pos=0):
-        '''Return list of initial parameters and initialize positions'''
+        """Return list of initial parameters and initialize positions"""
         self.pOff = pos
         self.p_offset_slope = pos + 1
+        for track in self.cut_x.keys():
+            setattr(self, 'pOff{}'.format(track), pos + 2 + track)
         ret = [self.iso.shape.get('offset', 0), self.iso.shape.get('offsetSlope', 0)]
-        ret += [self.iso.shape.get('offset' + str(track), 0) for track in self.cut_x.keys()]
+        ret += [self.iso.shape.get('offset{}'.format(track), 0) for track in self.cut_x.keys()]
         pos += len(ret)
         ret += self.shape.getPars(pos)
         pos += self.shape.nPar
@@ -110,18 +113,18 @@ class FullSpec(object):
         return ret
 
     def getParNames(self):
-        '''Return list of the parameter names'''
-        return ['offset', 'offsetSlope'] + ['offset' + str(track) for track in self.cut_x.keys()]\
+        """Return list of the parameter names"""
+        return ['offset', 'offsetSlope'] + ['offset{}'.format(track) for track in self.cut_x.keys()]\
             + self.shape.getParNames() + list(chain(*([hf.getParNames() for hf in self.hyper])))
     
     def getFixed(self):
-        '''Return list of parmeters with their fixed-status'''
+        """Return list of parmeters with their fixed-status"""
         return [self.iso.fixShape.get('offset', False), self.iso.fixShape.get('offsetSlope', True)]\
-            + [self.iso.fixShape.get('offset' + str(track), False) for track in self.cut_x.keys()]\
+            + [self.iso.fixShape.get('offset{}'.format(track), False) for track in self.cut_x.keys()]\
             + self.shape.getFixed() + list(chain(*[hf.getFixed() for hf in self.hyper]))
 
     def parAssign(self):
-        '''Return [(hf.name, parAssign)], where parAssign is a boolean list indicating relevant parameters'''
+        """Return [(hf.name, parAssign)], where parAssign is a boolean list indicating relevant parameters"""
         ret = []
         i = 2 + len(self.cut_x.keys()) + self.shape.nPar  # 2 for offset, offsetSlope
         a = [False] * self.nPar
@@ -139,29 +142,29 @@ class FullSpec(object):
         return ret
     
     def toPlot(self, p, prec=10000):
-        '''Return ([x/Mhz], [y]) values with prec number of points'''
+        """Return ([x/Mhz], [y]) values with prec number of points"""
         self.recalc(p)
         x = np.linspace(self.leftEdge(p), self.rightEdge(p), prec)
         return x, self.evaluate(x, p)
       
     def toPlotE(self, freq, col, p, prec=10000):
-        '''Return ([x/eV], [y]) values with prec number of points'''
+        """Return ([x/eV], [y]) values with prec number of points"""
         self.recalc(p)
         x = np.linspace(self.leftEdgeE(freq, p), self.rightEdgeE(freq, p), prec)
         return x, self.evaluateE(x, freq, col, p)
 
     def leftEdge(self, p):
-        '''Return the left edge of the spectrum in Mhz'''
+        """Return the left edge of the spectrum in Mhz"""
         return min(hf.leftEdge(p) for hf in self.hyper)
 
     def rightEdge(self, p):
-        '''Return the right edge of the spectrum in MHz'''
+        """Return the right edge of the spectrum in MHz"""
         return max(hf.rightEdge(p) for hf in self.hyper)
 
     def leftEdgeE(self, freq, p):
-        '''Return the left edge of the spectrum in eV'''
+        """Return the left edge of the spectrum in eV"""
         return min(hf.leftEdgeE(freq, p) for hf in self.hyper)
 
     def rightEdgeE(self, freq, p):
-        '''Return the right edge of the spectrum in eV'''
+        """Return the right edge of the spectrum in eV"""
         return max(hf.rightEdgeE(freq, p) for hf in self.hyper)

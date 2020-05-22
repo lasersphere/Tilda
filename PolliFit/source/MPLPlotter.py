@@ -133,7 +133,7 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
                     new_par = side_peak.par[i]
                     if par == 'center':   # shift center of this plot
                         new_par += side_peak_freq
-                    elif 'Int' in par:  # calc intensity of this plot
+                    elif 'Int' in par and 'relInt' not in par:  # calc intensity of this plot
                         new_par *= asym_intensity
                     side_peaks_fit.par[side_peaks_fit.npar.index(par)] = new_par
             if x_in_freq:
