@@ -38,7 +38,7 @@ def absolute_frequency(db, fit1, run1, fit2, run2):
     isoMass1_d = float(isotope1[0][1])
     laserFreq1 = float(file1[0][1])
     colDir1 = int(file1[0][2])
-    laserFreq1_d = file1[0][3]
+    laserFreq1_d = float(file1[0][3])
 
     velCenter1 = abs(Physics.invRelDoppler(laserFreq1, relFreq1))  # Velocity
     velCenter1_d = ((2*Physics.c*relFreq1/((1+(relFreq1/laserFreq1)**2)*laserFreq1**2))-(2*Physics.c*relFreq1*(-1+(relFreq1/laserFreq1)**2)/((1+(relFreq1/laserFreq1)**2)**2 * laserFreq1**2)))*relFreq1_d
@@ -70,7 +70,7 @@ def absolute_frequency(db, fit1, run1, fit2, run2):
     isoMass2_d = float(isotope2[0][1])
     laserFreq2 = float(file2[0][1])
     colDir2 = int(file2[0][2])
-    laserFreq2_d = file2[0][3]
+    laserFreq2_d = float(file2[0][3])
 
     velCenter2 = abs(Physics.invRelDoppler(laserFreq2, relFreq2)) #Veolocity
     velCenter2_d = ((2*Physics.c*relFreq2/((1+(relFreq2/laserFreq2)**2)*laserFreq2**2))-(2*Physics.c*relFreq2*(-1+(relFreq2/laserFreq2)**2)/((1+(relFreq2/laserFreq2)**2)**2 * laserFreq2**2)))*relFreq2_d

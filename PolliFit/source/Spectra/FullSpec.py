@@ -32,6 +32,7 @@ class FullSpec(object):
         
         self.pOff = 0
         self.p_offset_slope = 1
+        self.cut_x = {}
         
         miso = iso
         self.hyper = []
@@ -44,14 +45,26 @@ class FullSpec(object):
             miso_m = miso_m.m
         self.nPar = 2 + self.shape.nPar + sum(hf.nPar for hf in self.hyper)
         
-    def evaluate(self, x, p, ih=-1):
+    def evaluate(self, x, p, ih=-1, full=False):
         '''Return the value of the hyperfine structure at point x / MHz, ih=index hyperfine'''
+        if not full and self.cut_x != {}:
+            order = np.argsort(x)
+            inverse_order = np.array([int(np.where(order == i)[0]) for i in range(order.size)])
+            x_temp = x[order]
+            cut_i = np.array([np.argwhere(x_temp < self.cut_x[track]).T[0][-1] + 1
+                              if np.min(x_temp) < self.cut_x[track] else -x_temp.size
+                              for track in range(len(self.cut_x.keys()))])
+            x_ret = np.split(x_temp, cut_i)
+            ret = np.concatenate([self.evaluate(x_i, p, ih=ih, full=True) + p[eval('self.pOff' + str(track - 1))]
+                                  if track > 0 else self.evaluate(x_i, p, ih=ih, full=True)
+                                  for track, x_i in enumerate(x_ret)])
+            return ret[inverse_order]
         if ih == -1:        
             return p[self.pOff] + x * p[self.p_offset_slope] + sum(hf.evaluate(x, p) for hf in self.hyper)
         else:
             return p[self.pOff] + x * p[self.p_offset_slope] + self.hyper[ih].evaluate(x, p)
 
-    def evaluateE(self, e, freq, col, p, ih = -1):
+    def evaluateE(self, e, freq, col, p, ih=-1):
         '''Return the value of the hyperfine structure at point e / eV'''
 
         # used to be like the call in self.evaluate, but calling hf.evaluateE ...
@@ -64,20 +77,29 @@ class FullSpec(object):
 
         return self.evaluate(f, p, ih)
 
-
     def recalc(self, p):
         '''Forward recalc to lower objects'''
         self.shape.recalc(p)
         for hf in self.hyper:
             hf.recalc(p)
-     
+
+    def add_track_offsets(self, cut_x, freq, col):
+        if self.cut_x != {} or cut_x == {}:
+            return
+        for track, cut in cut_x.items():
+            v = Physics.relVelocity(Physics.qe * cut, self.iso.mass * Physics.u)
+            v = -v if col else v
+            self.cut_x[track] = Physics.relDoppler(freq, v) - self.iso.freq
+            exec('self.pOff{} = {} + {} + 1'.format(track, self.p_offset_slope, track))
+        self.nPar += len(cut_x.keys())
+
     def getPars(self, pos=0):
         '''Return list of initial parameters and initialize positions'''
         self.pOff = pos
         self.p_offset_slope = pos + 1
         ret = [self.iso.shape.get('offset', 0), self.iso.shape.get('offsetSlope', 0)]
-        pos += 2
-        
+        ret += [self.iso.shape.get('offset' + str(track), 0) for track in self.cut_x.keys()]
+        pos += len(ret)
         ret += self.shape.getPars(pos)
         pos += self.shape.nPar
 
@@ -89,22 +111,24 @@ class FullSpec(object):
 
     def getParNames(self):
         '''Return list of the parameter names'''
-        return ['offset', 'offsetSlope'] + self.shape.getParNames() + list(chain(*([hf.getParNames() for hf in self.hyper])))
+        return ['offset', 'offsetSlope'] + ['offset' + str(track) for track in self.cut_x.keys()]\
+            + self.shape.getParNames() + list(chain(*([hf.getParNames() for hf in self.hyper])))
     
     def getFixed(self):
         '''Return list of parmeters with their fixed-status'''
-        return [self.iso.fixShape.get('offset', False), self.iso.fixShape.get('offsetSlope', True)] +\
-               self.shape.getFixed() + list(chain(*[hf.getFixed() for hf in self.hyper]))
+        return [self.iso.fixShape.get('offset', False), self.iso.fixShape.get('offsetSlope', True)]\
+            + [self.iso.fixShape.get('offset' + str(track), False) for track in self.cut_x.keys()]\
+            + self.shape.getFixed() + list(chain(*[hf.getFixed() for hf in self.hyper]))
 
     def parAssign(self):
         '''Return [(hf.name, parAssign)], where parAssign is a boolean list indicating relevant parameters'''
         ret = []
-        i = 2 + self.shape.nPar  # 2 for offset, offsetSlope
+        i = 2 + len(self.cut_x.keys()) + self.shape.nPar  # 2 for offset, offsetSlope
         a = [False] * self.nPar
         if isinstance(self.shape, AsymmetricVoigt):
-            a[0:6] = [True] * 6  # 'offset', 'offsetSlope', 'sigma', 'gamma', 'centerAsym', 'IntAsym'
+            a[0:6] = [True] * (6 + len(self.cut_x.keys()))  # 'offset', 'offsetSlope', 'sigma', 'gamma', 'centerAsym', 'IntAsym'
         else:
-            a[0:4] = [True] * 4  # 'offset', 'offsetSlope', 'sigma', 'gamma'  for normal voigt
+            a[0:4] = [True] * (4 + len(self.cut_x.keys()))  # 'offset', 'offsetSlope', 'sigma', 'gamma'  for normal voigt
         for hf in self.hyper:
             assi = list(a)
             assi[i:(i+hf.nPar)] = [True] * hf.nPar

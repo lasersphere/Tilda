@@ -16,14 +16,29 @@ import Physics
 class SPFitter(object):
     '''This class encapsulates the scipi.optimize.curve_fit routine'''
 
-
     def __init__(self, spec, meas, st):
         '''Initialize and prepare'''
         print('Initializing fit of S:', st[0], ', T:', st[1])
         self.spec = spec
         self.meas = meas
         self.st = st
-        self.data = meas.getArithSpec(*st)  # Returns (array of x-values in Volt, array of cts, array of errors)
+        self.data = meas.getArithSpec(*st)  # Returns list of tracks with elements
+        # (array of x-values in Volt, array of cts, array of errors)
+        x_min = np.array([x[0] if x[0] <= x[-1] else x[-1] for x in self.meas.x])
+        x_max = np.array([x[-1] if x[0] <= x[-1] else x[0] for x in self.meas.x])
+        order = np.argsort(x_min)
+        if self.meas.col:
+            order = order[::-1]
+            copy = x_max.copy()
+            x_max = x_min.copy()
+            x_min = copy
+        x_min = x_min[order]
+        x_max = x_max[order]
+        self.cut_x = {i: (x_max[i] + x_min[i + 1]) / 2
+                      for i in range(self.meas.nrTracks - 1) if x_max[i] < x_min[i + 1]}
+        self.spec.add_track_offsets(self.cut_x, self.meas.laserFreq, self.meas.col)
+        # if len(self.cut_x.keys()) != self.meas.nrTracks - 1:
+        #     raise ValueError('There are overlapping tracks in the current spectrum.')
 
         self.par = spec.getPars()  # get fit parameters
         self.oldpar = list(self.par)  # save previously used fit parameters
