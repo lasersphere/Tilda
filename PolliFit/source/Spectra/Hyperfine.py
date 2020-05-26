@@ -1,20 +1,21 @@
-'''
+"""
 Created on 23.03.2014
 
-@author: hammen
-'''
+@author: hammen, pamueller (HyperfineN)
+"""
 
 import Physics
 
+
 class Hyperfine(object):
-    '''
+    """
     A single hyperfine spectrum built from an Isotope object
-    '''
+    """
 
     def __init__(self, iso, shape):
-        '''
+        """
         Initialize values, calculate number of transitions and initial line positions
-        '''
+        """
         print("Creating hyperfine structure for", iso.name)
         self.iso = iso
         self.shape = shape
@@ -46,7 +47,7 @@ class Hyperfine(object):
         self.pIntCross = 5 + len(self.trans)
 
     def evaluate(self, x, p):
-        '''Return the value of the hyperfine structure at point x/MHz'''   
+        """Return the value of the hyperfine structure at point x/MHz"""   
         rx = x - p[self.pCenter]
         if self.iso.shape['name'] != 'LorentzQI':
             return sum(i * self.shape.evaluate(rx - j, p) for i, j in zip(self.intens, self.lineSplit))
@@ -55,7 +56,7 @@ class Hyperfine(object):
                    + sum(i * self.shape.evaluateQI(rx - j, p, j, self.lineSplit) for i, j in zip(self.IntCross, self.lineSplit))
 
     def evaluateE(self, e, freq, col, p):
-        '''Return the value of the hyperfine structure at point e/eV'''
+        """Return the value of the hyperfine structure at point e/eV"""
         v = Physics.relVelocity(Physics.qe * e, self.iso.mass * Physics.u)
         v = -v if col else v
 
@@ -64,7 +65,7 @@ class Hyperfine(object):
         return self.evaluate(f, p)
     
     def recalc(self, p):
-        '''Recalculate upper A and B factors, line splittings and intensities'''
+        """Recalculate upper A and B factors, line splittings and intensities"""
         #Use upper factors as ratio if fixed, else directly
         Au = p[self.pAu] * p[self.pAl] if self.fixA else p[self.pAu]
         Bu = p[self.pBu] * p[self.pBl] if self.fixB else p[self.pBu]
@@ -74,7 +75,7 @@ class Hyperfine(object):
         self.IntCross = self.buildIntCross(p)
 
     def getPars(self, pos=0):
-        '''Return list of initial parameters and initialize positions'''
+        """Return list of initial parameters and initialize positions"""
         self.pCenter = pos
         self.pAl = pos + 1
         self.pBl = pos + 2
@@ -122,7 +123,7 @@ class Hyperfine(object):
                 + ret + self.IntCross)
 
     def getParNames(self):
-        '''Return list of the parameter names'''
+        """Return list of the parameter names"""
         if self.iso.shape['name'] == 'LorentzQI':
             return ['center', 'Al', 'Bl', 'Au', 'Bu'] + ['Int' + str(x) for x in range(len(self.trans))] +\
                    ['IntCross' + str(x) for x in range(len(self.trans))]
@@ -130,12 +131,11 @@ class Hyperfine(object):
             return ['center', 'Al', 'Bl', 'Au', 'Bu'] + ['Int' + str(x) for x in range(len(self.trans))]
     
     def getFixed(self):
-        '''
-        Return list of parmeters with their fixed-status
+        """
+        Return list of parameters with their fixed-status
         par names see: self.getParNames
         ['center', 'Al', 'Bl', 'Au', 'Bu'] + [... int etc. ...]
-
-        '''
+        """
         ret = 4 * [True]
         if self.iso.I > 0.1 and self.iso.Jl > 0.1 and not self.fixedAl:
             # Al
@@ -163,7 +163,8 @@ class Hyperfine(object):
         return [False] + ret + fInt + fCross
     
     def buildInt(self, p):
-        '''If relative intensities are fixed, calculate absolute intensities. Else return relevant parameters directly'''
+        """If relative intensities are fixed, calculate absolute intensities.
+         Else return relevant parameters directly"""
         ret = len(self.trans) * [0]
         for i in range(len(self.trans)):
             if(self.fixInt and i > 0):
@@ -174,7 +175,8 @@ class Hyperfine(object):
         return ret
 
     def buildIntCross(self,p):
-        '''If relative intensities are fixed in LorentzQI shape, calculate absolute intensities. Else return relevant parameters directly'''
+        """If relative intensities are fixed in LorentzQI shape, calculate absolute intensities.
+         Else return relevant parameters directly"""
         if self.iso.shape['name'] == 'LorentzQI':
             ret = len(self.trans) * [0]
             for i in range(len(self.trans)):
@@ -188,17 +190,17 @@ class Hyperfine(object):
         return ret
 
     def leftEdge(self, p):
-        '''Return the left edge of the spectrum in Mhz'''
+        """Return the left edge of the spectrum in Mhz"""
         self.recalc(p)
         return p[self.pCenter] + min(self.lineSplit) + self.shape.leftEdge(p)
     
     def rightEdge(self, p):
-        '''Return the right edge of the spectrum in MHz'''
+        """Return the right edge of the spectrum in MHz"""
         self.recalc(p)
         return p[self.pCenter] + max(self.lineSplit) + self.shape.rightEdge(p)
 
     def leftEdgeE(self, freq, p):
-        '''Return the left edge of the spectrum in eV'''
+        """Return the left edge of the spectrum in eV"""
         self.recalc(p)
         l = p[self.pCenter] + min(self.lineSplit) + self.shape.leftEdge(p) + self.iso.freq
         v = Physics.invRelDoppler(freq, l)
@@ -206,14 +208,103 @@ class Hyperfine(object):
         return (self.iso.mass * Physics.u * v**2)/2 / Physics.qe
     
     def rightEdgeE(self, freq, p):
-        '''Return the right edge of the spectrum in eV'''
+        """Return the right edge of the spectrum in eV"""
         self.recalc(p)
         r = p[self.pCenter] + max(self.lineSplit) + self.shape.rightEdge(p) + self.iso.freq
         v = Physics.invRelDoppler(freq, r)
 
         return (self.iso.mass * Physics.u * v**2)/2 / Physics.qe
-        
 
 
-        
-    
+class HyperfineN(Hyperfine):
+    """
+    A single hyperfine spectrum built from an Isotope object where each fundamental peak itself consists of n peaks,
+     for example due to more than one velocity class. After changing 'nPeaks' the parameters
+     have to be saved to the database and the spectrum reloaded, since changing 'nPeaks' changes the parameter space.
+    """
+
+    def __init__(self, iso, shape):
+        """
+        Initialize values, calculate number of transitions and initial line positions
+        """
+        super().__init__(iso, shape)
+        self.p_n_peaks = 0
+        self.n_peaks = 1
+        self.nParBase = self.nPar + 1
+        self.nPar = self.nParBase
+
+    def set_peaks(self, n):
+        n = 1 if n < 1 else int(n)
+        if n == self.n_peaks:
+            return
+        for i in range(n - 1):
+            setattr(self, 'pRelCenter{}'.format(i), 1 + i)
+            setattr(self, 'pRelInt{}'.format(i), n + i)
+        self.n_peaks = n
+        self.nPar = self.nParBase + 2 * n
+
+    def evaluate(self, x, p):
+        """Return the value of the hyperfine structure at point x/MHz"""
+        center_pars = [0.] + [p[getattr(self, 'pRelCenter{}'.format(i))] for i in range(self.n_peaks - 1)]
+        int_pars = [1.] + [p[getattr(self, 'pRelInt{}'.format(i))] for i in range(self.n_peaks - 1)]
+        return sum(super(HyperfineN, self).evaluate(x - x0, p) * relInt for x0, relInt in zip(center_pars, int_pars))
+
+    def getPars(self, pos=0):
+        """Return list of initial parameters and initialize positions"""
+        self.p_n_peaks = pos
+        self.set_peaks(self.iso.shape.get('nPeaks', 1))
+        super_pars = super().getPars(pos + 1 + 2 * (self.n_peaks - 1))
+        for i in range(self.n_peaks - 1):
+            setattr(self, 'pRelCenter{}'.format(i), pos + 1 + i)
+            setattr(self, 'pRelInt{}'.format(i), pos + self.n_peaks + i)
+        center_pars = [self.iso.shape.get('relCenter{}'.format(i), 0.) for i in range(self.n_peaks - 1)]
+        int_pars = [self.iso.shape.get('relInt{}'.format(i), 1.) for i in range(self.n_peaks - 1)]
+        return [self.n_peaks] + center_pars + int_pars + super_pars
+
+    def getParNames(self):
+        """Return list of the parameter names"""
+        super_par_names = super().getParNames()
+        center_names = ['relCenter{}'.format(i) for i in range(self.n_peaks - 1)]
+        int_names = ['relInt{}'.format(i) for i in range(self.n_peaks - 1)]
+        return ['nPeaks'] + center_names + int_names + super_par_names
+
+    def getFixed(self):
+        """Return list of parameters with their fixed-status"""
+        super_fixed = super().getFixed()
+        center_fixed = [self.iso.fixShape.get('relCenter{}'.format(i), False) for i in range(self.n_peaks - 1)]
+        int_fixed = [self.iso.fixShape.get('relInt{}'.format(i), False) for i in range(self.n_peaks - 1)]
+        return [True] + center_fixed + int_fixed + super_fixed
+
+    def leftEdge(self, p):
+        """Return the left edge of the spectrum in Mhz"""
+        self.recalc(p)
+        center_pars = [p[self.pCenter]] + [p[self.pCenter] + p[getattr(self, 'pRelCenter{}'.format(i))]
+                                           for i in range(self.n_peaks - 1)]
+        return min(center_pars) + min(self.lineSplit) + self.shape.leftEdge(p)
+
+    def rightEdge(self, p):
+        """Return the right edge of the spectrum in MHz"""
+        self.recalc(p)
+        center_pars = [p[self.pCenter]] + [p[self.pCenter] + p[getattr(self, 'pRelCenter{}'.format(i))]
+                                           for i in range(self.n_peaks - 1)]
+        return max(center_pars) + max(self.lineSplit) + self.shape.rightEdge(p)
+
+    def leftEdgeE(self, freq, p):
+        """Return the left edge of the spectrum in eV"""
+        self.recalc(p)
+        center_pars = [p[self.pCenter]] + [p[self.pCenter] + p[getattr(self, 'pRelCenter{}'.format(i))]
+                                           for i in range(self.n_peaks - 1)]
+        l = min(center_pars) + min(self.lineSplit) + self.shape.leftEdge(p) + self.iso.freq
+        v = Physics.invRelDoppler(freq, l)
+
+        return (self.iso.mass * Physics.u * v ** 2) / 2 / Physics.qe
+
+    def rightEdgeE(self, freq, p):
+        """Return the right edge of the spectrum in eV"""
+        self.recalc(p)
+        center_pars = [p[self.pCenter]] + [p[self.pCenter] + p[getattr(self, 'pRelCenter{}'.format(i))]
+                                           for i in range(self.n_peaks - 1)]
+        r = max(center_pars) + max(self.lineSplit) + self.shape.rightEdge(p) + self.iso.freq
+        v = Physics.invRelDoppler(freq, r)
+
+        return (self.iso.mass * Physics.u * v ** 2) / 2 / Physics.qe

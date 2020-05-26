@@ -231,7 +231,7 @@ class MCFitter(object):
                         (self.k[i], 0., self.k_d[i], self.config, self.label, 'intercept', mc_run))
             con.commit()
 
-            cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''',
+            cur.execute('INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)',
                         (self.label, 'slope', mc_run))
             con.commit()
             cur.execute('UPDATE Combined SET val = ?, statErr = ?, systErr = ?, config=? '
@@ -240,7 +240,7 @@ class MCFitter(object):
             con.commit()
 
             if not mark_as_mc:
-                cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''',
+                cur.execute('INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)',
                             (self.label, 'alpha', self.runs[i]))
                 con.commit()
                 cur.execute('UPDATE Combined SET val = ?, config=? WHERE iso = ? AND parname = ? AND run = ?',
@@ -253,7 +253,7 @@ class MCFitter(object):
         cur.execute('INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)',
                     (self.label, 'alpha', mc_runs))
         con.commit()
-        cur.execute('''UPDATE Combined SET val = ?, config=? WHERE iso = ? AND parname = ? AND run = ?''',
+        cur.execute('UPDATE Combined SET val = ?, config=? WHERE iso = ? AND parname = ? AND run = ?',
                     (self.alpha, self.config, self.label, 'alpha', mc_runs))
         con.commit()
         con.close()

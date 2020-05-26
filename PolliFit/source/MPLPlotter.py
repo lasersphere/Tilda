@@ -109,7 +109,7 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
             if par in main_fit.npar:
                 main_fit.par[main_fit.npar.index(par)] = main_peaks.par[i]
         # create a list of side peaks with the pars from the main peak
-        side_peaks = [deepcopy(main_peaks) for i in range(main_peaks.par[main_peaks.npar.index('nOfPeaks')])]
+        side_peaks = [deepcopy(main_peaks) for i in range(main_peaks.par[main_peaks.npar.index('nPeaksAsym')])]
         if x_in_freq:
             main_peaks_plot_data = main_fit.spec.toPlot(main_fit.par)
         else:
@@ -133,7 +133,7 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
                     new_par = side_peak.par[i]
                     if par == 'center':   # shift center of this plot
                         new_par += side_peak_freq
-                    elif 'Int' in par:  # calc intensity of this plot
+                    elif 'Int' in par and 'relInt' not in par:  # calc intensity of this plot
                         new_par *= asym_intensity
                     side_peaks_fit.par[side_peaks_fit.npar.index(par)] = new_par
             if x_in_freq:
