@@ -9,7 +9,7 @@ from itertools import chain
 
 import numpy as np
 
-from Spectra.Hyperfine import Hyperfine, HyperfineN
+from Spectra.Hyperfine import HyperfineN
 from Spectra.AsymmetricVoigt import AsymmetricVoigt
 import Physics
 
@@ -90,8 +90,9 @@ class FullSpec(object):
         for track, cut in cut_x.items():
             v = Physics.relVelocity(Physics.qe * cut, self.iso.mass * Physics.u)
             v = -v if col else v
-            self.cut_x[track] = Physics.relDoppler(freq, v) - self.iso.freq
-            setattr(self, 'pOff{}'.format(track), 2 + track)
+            k = int(max(cut_x.keys())) - track if col else track
+            self.cut_x[k] = Physics.relDoppler(freq, v) - self.iso.freq
+            setattr(self, 'pOff{}'.format(k), 2 + k)
         self.nPar += len(cut_x.keys())
 
     def getPars(self, pos=0):
@@ -101,7 +102,7 @@ class FullSpec(object):
         for track in self.cut_x.keys():
             setattr(self, 'pOff{}'.format(track), pos + 2 + track)
         ret = [self.iso.shape.get('offset', 0), self.iso.shape.get('offsetSlope', 0)]
-        ret += [self.iso.shape.get('offset{}'.format(track), 0) for track in self.cut_x.keys()]
+        ret += [self.iso.shape.get('offset{}'.format(track), 0) for track in range(len(self.cut_x.keys()))]
         pos += len(ret)
         ret += self.shape.getPars(pos)
         pos += self.shape.nPar
@@ -114,13 +115,13 @@ class FullSpec(object):
 
     def getParNames(self):
         """Return list of the parameter names"""
-        return ['offset', 'offsetSlope'] + ['offset{}'.format(track) for track in self.cut_x.keys()]\
+        return ['offset', 'offsetSlope'] + ['offset{}'.format(track) for track in range(len(self.cut_x.keys()))]\
             + self.shape.getParNames() + list(chain(*([hf.getParNames() for hf in self.hyper])))
     
     def getFixed(self):
         """Return list of parmeters with their fixed-status"""
         return [self.iso.fixShape.get('offset', False), self.iso.fixShape.get('offsetSlope', True)]\
-            + [self.iso.fixShape.get('offset{}'.format(track), False) for track in self.cut_x.keys()]\
+            + [self.iso.fixShape.get('offset{}'.format(track), False) for track in range(len(self.cut_x.keys()))]\
             + self.shape.getFixed() + list(chain(*[hf.getFixed() for hf in self.hyper]))
 
     def parAssign(self):
