@@ -37,8 +37,11 @@ def batchFit(fileList, db, run='Run0', x_as_voltage=True, softw_gates_trs=None, 
     cur.execute('''SELECT isoVar, lineVar, scaler, track FROM Runs WHERE run = ?''', (run,))
     var = cur.fetchall()[0]
     st = (ast.literal_eval(var[2]), ast.literal_eval(var[3]))
+    # TODO: The following is very inelegant since we swap None to (db,run) and 'File' to None. Would be better to have None meaning load from file all the time
     if softw_gates_trs is None:  # if no software gate provided pass on run and db via software gates
         softw_gates_trs = (db, run)
+    elif softw_gates_trs is 'File':
+        softw_gates_trs = None  # when passed on with 'None' the gates will be read from file in XMLImporter
 
     print("Go for", run, "with IsoVar = \"" + var[0] + "\" and LineVar = \"" + var[1] + "\"")
     

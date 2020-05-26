@@ -98,13 +98,15 @@ class FullSpec(object):
 
     def parAssign(self):
         '''Return [(hf.name, parAssign)], where parAssign is a boolean list indicating relevant parameters'''
+        # TODO: This is stupid, why would we want to hardcode which parameters are relevant?
+        #  I'd say just output them all! Or is there anything speaking against that? (Felix May2020)
         ret = []
         i = 2 + self.shape.nPar  # 2 for offset, offsetSlope
-        a = [False] * self.nPar
-        if isinstance(self.shape, AsymmetricVoigt):
-            a[0:6] = [True] * 6  # 'offset', 'offsetSlope', 'sigma', 'gamma', 'centerAsym', 'IntAsym'
-        else:
-            a[0:4] = [True] * 4  # 'offset', 'offsetSlope', 'sigma', 'gamma'  for normal voigt
+        a = [True] * self.nPar  # must be False if below code is to be used:
+        # if isinstance(self.shape, AsymmetricVoigt):
+        #     a[0:6] = [True] * 6  # 'offset', 'offsetSlope', 'sigma', 'gamma', 'centerAsym', 'IntAsym'
+        # else:
+        #     a[0:4] = [True] * 4  # 'offset', 'offsetSlope', 'sigma', 'gamma'  for normal voigt
         for hf in self.hyper:
             assi = list(a)
             assi[i:(i+hf.nPar)] = [True] * hf.nPar

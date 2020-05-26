@@ -54,7 +54,8 @@ class InteractiveFit(object):
         else:
             print('Run cannot be selected!')
         if softw_gates_trs is None:  # # if no software gate provided pass on run and db via software gates
-            softw_gates_trs = (db, run)
+            softw_gates_trs = (db, run)  # TODO: Actually, since None is standard for Interactive fit we'll ALWAYS get db gates
+        #softw_gates_trs = None  # TODO: Temporary force load from file
 
         # Import Measurement from file using Importer
         meas = MeasLoad.load(path, db, x_as_voltage=x_as_voltage, softw_gates=softw_gates_trs)
