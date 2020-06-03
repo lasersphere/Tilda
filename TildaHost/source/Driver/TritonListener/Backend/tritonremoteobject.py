@@ -10,6 +10,7 @@ from Driver.TritonListener.Backend.server_conf import SERVER_CONF
 them over the network. Up to this point, other attributes like variables cannot be accessed, because the implementation
 would require changes that impact performance.'''
 
+
 class TritonRemoteObject:
     def __init__(self, server, ip, port):
         self.__server = server

@@ -51,7 +51,7 @@ class TritonServerHybrid(Driver.TritonListener.Backend.tcp_server.TritonServerTC
         s.bind((self.server_address[0], self.UDP_PORT_REC))
         s.settimeout(SERVER_CONF.UDP_TIMEOUT)
         if Driver.TritonListener.Backend.server_conf.SERVER_CONF.ENCRYPTION:
-            fern = Fernet(Driver.TritonListener.Backend.Config.AESKey)
+            fern = Fernet(Driver.TritonListener.TritonConfig.AESKey)
         while self.running:
             try:
                 data, addr = s.recvfrom(SERVER_CONF.UDP_BUFFER_SIZE)
@@ -104,10 +104,9 @@ class TritonServerHybrid(Driver.TritonListener.Backend.tcp_server.TritonServerTC
         self.threadpoolexecutor.shutdown(True)
     def subscribeTo(self, ip, port):
         msg_data = tt.TritonTransmission.serialize([self.server_address[0], self.server_address[1], self.UDP_PORT_REC])
-        try:
-            self.sendrequest(ip, port, msg_bytes=msg_data, msg_type=SERVER_CONF.SUB_REQUEST)
+        if self.sendrequest(ip, port, msg_bytes=msg_data, msg_type=SERVER_CONF.SUB_REQUEST) != None:
             return Driver.TritonListener.Backend.tritonremoteobject.TritonRemoteObject(self, ip, port)
-        except:
+        else:
             self.logger.error("TCP NETWORK ERROR while subscribing: Host "+str(ip)+":"+str(port)+" could not be reached!")
             return None
     def send(self, name, t, ch, val):
@@ -130,7 +129,7 @@ class TritonServerHybrid(Driver.TritonListener.Backend.tcp_server.TritonServerTC
         complmessage = msg_type_bytes + msg_port_bytes + msgid_bytes + msg_bytes
 
         if Driver.TritonListener.Backend.server_conf.SERVER_CONF.ENCRYPTION:
-            f = Fernet(Driver.TritonListener.Backend.Config.AESKey)
+            f = Fernet(Driver.TritonListener.TritonConfig.AESKey)
             complmessage = f.encrypt(bytes(complmessage))
 
         self.sender_sock.sendto(complmessage, (ip, port))

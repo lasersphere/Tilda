@@ -35,7 +35,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             data.extend(bytearray(self.request.recv(SERVER_CONF.TCP_BUFFER_SIZE)))
 
         if Driver.TritonListener.Backend.server_conf.SERVER_CONF.ENCRYPTION:
-            f = Fernet(Driver.TritonListener.Config.AESKey)
+            f = Fernet(Driver.TritonListener.TritonConfig.AESKey)
             data = f.decrypt(bytes(data))
 
         if data[0] == SERVER_CONF.MSG_DATA or data[0] == SERVER_CONF.MSG_REPLY:# these two will return no reply immediatly, the others will first execute, then reply
@@ -137,10 +137,9 @@ class TritonServerTCP(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
     def subscribeTo(self, ip, port):
         msg_data = tt.TritonTransmission.serialize(self.server_address)
-        try:
-            self.sendrequest(ip, port, msg_bytes=msg_data, msg_type=SERVER_CONF.SUB_REQUEST)
+        if self.sendrequest(ip, port, msg_bytes=msg_data, msg_type=SERVER_CONF.SUB_REQUEST) != None:
             return Driver.TritonListener.Backend.tritonremoteobject.TritonRemoteObject(self, ip, port)
-        except:
+        else:
             self.logger.error("TCP NETWORK ERROR while subscribing: Host "+str(ip)+":"+str(port)+" could not be reached!")
             return None
 
@@ -164,28 +163,31 @@ class TritonServerTCP(socketserver.ThreadingMixIn, socketserver.TCPServer):
         message = msg_type.to_bytes(1, byteorder='big', signed=False) + msg_bytes
 
         if Driver.TritonListener.Backend.server_conf.SERVER_CONF.ENCRYPTION:
-            f = Fernet(Driver.TritonListener.Config.AESKey)
+            f = Fernet(Driver.TritonListener.TritonConfig.AESKey)
             message = f.encrypt(message)
 
         msg_len_bytes = len(message).to_bytes(8, byteorder='big', signed=False)
         response = None
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.settimeout(SERVER_CONF.TCP_TIMEOUT)
-            sock.connect((ip, port))
+            try:#TODO: Find a nicer way to catch the timeout of the socket
+                sock.settimeout(SERVER_CONF.TCP_TIMEOUT_CONNECT)
+                sock.connect((ip, port))
+                sock.settimeout(SERVER_CONF.TCP_TIMEOUT_RESPONSE)
+                sock.sendall(msg_len_bytes)
+                sock.sendall(message)
+                resp_len = int.from_bytes(sock.recv(8), byteorder='big', signed=False)
+                if resp_len > 0:
+                    data = bytearray(sock.recv(SERVER_CONF.TCP_BUFFER_SIZE))
+                    # for i in range(0, int(resp_len / SERVER_CONF.TCP_BUFFER_SIZE)+1):
+                    #     data.extend(bytearray(sock.recv(SERVER_CONF.TCP_BUFFER_SIZE)))
+                    while len(data)<resp_len:
+                        data.extend(bytearray(sock.recv(SERVER_CONF.TCP_BUFFER_SIZE)))
+                    if Driver.TritonListener.Backend.server_conf.SERVER_CONF.ENCRYPTION:
+                        data = f.decrypt(bytes(data))
+                    response = tt.TritonTransmission.unserialize(data)
+            except Exception as e:
+                self.logger.error("Error while connecting to device: {}".format(e))
 
-
-            sock.sendall(msg_len_bytes)
-            sock.sendall(message)
-            resp_len = int.from_bytes(sock.recv(8), byteorder='big', signed=False)
-            if resp_len > 0:
-                data = bytearray(sock.recv(SERVER_CONF.TCP_BUFFER_SIZE))
-                # for i in range(0, int(resp_len / SERVER_CONF.TCP_BUFFER_SIZE)+1):
-                #     data.extend(bytearray(sock.recv(SERVER_CONF.TCP_BUFFER_SIZE)))
-                while len(data)<resp_len:
-                    data.extend(bytearray(sock.recv(SERVER_CONF.TCP_BUFFER_SIZE)))
-                if Driver.TritonListener.Backend.server_conf.SERVER_CONF.ENCRYPTION:
-                    data = f.decrypt(bytes(data))
-                response = tt.TritonTransmission.unserialize(data)
         return response
     def shutdown(self):
         socketserver.TCPServer.shutdown(self)

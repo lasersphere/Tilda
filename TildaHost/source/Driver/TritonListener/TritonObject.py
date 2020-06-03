@@ -25,7 +25,6 @@ import logging
 import Driver.TritonListener.Backend.hybrid_server
 import Driver.TritonListener.Backend.server_conf
 
-
 class TritonObject(object):
     '''
     Basic TritonObject with fundamental abilities: receiving messages, DB connections, subscribing
@@ -144,6 +143,7 @@ class TritonObject(object):
 
         self.server_backend.shutdown()
         self.db_close()
+        self.logger.debug('Stopped device: {}'.format(self.name))
 
     """ who am I ? """
     def getName(self):
@@ -174,24 +174,34 @@ class TritonObject(object):
             self.send('err', 'Could not resolve ' + ndev)
         return remoteobj
 
-    def start_and_subscribe(self, ndev, known_uri=''):
+    def start_and_subscribe(self, ndev):
         """subscribe to an object using its name, and return a TritonRemoteObject. If the device is not active,
         start it (on the right TritonMain if specified)"""
-        remuri = self.resolveName(ndev, known_uri)
-        if remuri is None: #??? ob das wohl richtig ist???
-            self.dbCur_execute("SELECT machine FROM devices WHERE deviceName=%s", (ndev,))
-            machine = self.dbCur_fetchall()
-            if machine[0][0] is None: # this means the device can be started on any main, so it will be started locally
-                ip = self.uri[self.uri.index("@")+1:].split(':')[0]
-                # this gets the name of the local TritonMain (assuming it has the same ip)
-                self.dbCur_execute("SELECT deviceName FROM devices WHERE deviceType='TritonMain' AND uri LIKE '%"+ip+"%'",()) # dirty, but works (maybe fails if the machine has multiple network connections)
-            else:
-                self.dbCur_execute("SELECT deviceName FROM devices WHERE deviceType='TritonMain' AND machine=%s", (machine[0][0],))
+        self.dbCur_execute("SELECT actualMain, run_on FROM devices WHERE deviceName=%s", (ndev,)) # gets the actual main the device is alrady running on and a main-name if teh device has to be run on a certain device
+        result_db = self.dbCur_fetchall()
+        res_acmain=result_db[0][0]
+        res_runon=result_db[0][1]
+        print('res_acmain is: {} ; res_runon is: {}'.format(res_acmain,res_runon))
+        if res_acmain is None: #this means the device is not running already
+            self.logger.debug('s_a_s: {} device not running, starting now!'.format(ndev))
+            self.dbCur_execute("SELECT actualMain FROM devices WHERE deviceName=%s", (self.name,)) #gets the local main
             mainName = self.dbCur_fetchall()[0][0]
-            devicemain = self.subscribe(mainName)
-            devicemain.startDev(ndev)
-            self.unsubscribe(mainName)
-        return self.subscribe(ndev, known_uri)
+            print('Main name ist: {}'.format(mainName))
+            if res_runon is None or res_runon in mainName: # this means the device can be started on any main, so it will be started locally or the local main is already the correct main
+                print('device kann unabhängig oder in diesem main gestartet werden: {}'.format(res_runon))
+                pass
+            else:
+                print('Devicemuss auf anderer main gestartet werden')
+                self.dbCur_execute("SELECT deviceName FROM devices WHERE actualMain='running' AND deviceName LIKE %s", (res_runon+'%',)) #in this case one running correct main will be looked up
+                mainName = self.dbCur_fetchall()[0][0]
+            if mainName != None:
+                devicemain = self.subscribe(mainName)
+                devicemain.startDev(ndev)
+                self.unsubscribe(mainName)
+            else:
+                self.logger.warning("Required main {} is not available to start the device. Please start such a main!".format(res_runon))
+        return self.subscribe(ndev)
+
     def unsubscribe(self, ndev):
         """Unsubscribe from an object"""
         self.send('out', 'Unsusbcribing from ' + ndev)
@@ -202,7 +212,7 @@ class TritonObject(object):
             except:
                 self.send('err', 'Could not unsubscribe from ' + str(ndev))
 
-    def send(self, ch, val): # important note: this will be overwritten in DeviceBase! just ignore it
+    def send(self, ch, val): # important note: this will be overwritten in DeviceBase! It is just used for the UIs to log the info
         """ send ch and val to logging.error (ch='err'), logging.info (ch='out') or logging.debug
          Note: this is not send to any device or so, this is only done in the DeviceBase.py
          """
@@ -224,7 +234,7 @@ class TritonObject(object):
         :param name: str, name of the device which pyro4 uri should be found in the db
         :param known_uri: str, uri can be provided if no database is present.
         """
-        self.logger.debug('resolve name to database')
+        self.logger.debug('resolve name {} to database'.format(name))
         self.db_commit()
         # self.logger.debug('commit happend')
         self.dbCur_execute("SELECT uri FROM devices WHERE deviceName=%s", (name,))

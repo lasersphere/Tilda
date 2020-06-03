@@ -6,7 +6,8 @@ class SERVER_CONF:
 
     UDP_BUFFER_SIZE = 4096  # max buffer size (in bytes) before message is split into multiple packets for udp mode
     TCP_BUFFER_SIZE = 1000000  # max size (in bytes) before message is split for tcp mode. This is OS limited, and seems to be arount 1 MB
-    TCP_TIMEOUT = 15 # after this time, the connect() method in sendrequest() will raise a timeout exception. WARNING! At the moment, the socket will time out when a device takes to long to start! Lower with care!
+    TCP_TIMEOUT_CONNECT = 2 # after this time, the connect() method in sendrequest() will raise a timeout exception
+    TCP_TIMEOUT_RESPONSE = 30 #after this time, the sendrequest function will no longer wait for a response from the server
     UDP_TIMEOUT = 0.2  # after this time, the socket will timeout, go through the rest of the loop, and come back
     UDP_TIMEOUT_ACK = 0.2  # timeout in seconds to confirm a message. If no ACK is received before it expires, the message is resent.
     UDP_DUPLIC_TIMEOUT = 60  # this is the time interval in which the system accounts for duplicates.

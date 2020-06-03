@@ -88,7 +88,8 @@ class TritonServerUDP:
         repbytes = Driver.TritonListener.Backend.triton_trans.TritonTransmission.serialize_udp_reply(msgid, reply)
         self.send_msg_to(addr[0], msg_port, repbytes, SERVER_CONF.MSG_REPLY)
         pass
-
+    def _emit(self):
+        pass #placeholder
     def server_module(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.bind((self.myip, self.UDP_PORT_REC))
@@ -196,8 +197,7 @@ class TritonServerUDP:
         print(self.type + ": " + str(t) + ": received a message from '" + str(dev) + "'on channel '" + str(ch) + "' that reads: "+str(len(val)))
         #dummy function again, gets overwritten unless no TritonObject is specified as parent
         pass
-    def _emit(self):
-        pass #placeholder
+
     def send(self, name, t, ch, val):
         self.listlock.acquire()
         sublist = self.send_to_list.copy()
