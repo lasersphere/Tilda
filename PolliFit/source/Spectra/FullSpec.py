@@ -33,7 +33,8 @@ class FullSpec(object):
         
         self.pOff = 0
         self.p_offset_slope = 1
-        self.cut_x = {}
+        self.cut_x = {}  # Dictionary of frequencies to split the x-axis for unique offsets in each track.
+        # The keys determine the order in which the offsets are applied along the x-axis.
 
         miso = iso
         self.hyper = []
@@ -48,18 +49,24 @@ class FullSpec(object):
         
     def evaluate(self, x, p, ih=-1, full=False):
         """Return the value of the hyperfine structure at point x / MHz, ih=index hyperfine"""
-        if not full and self.cut_x != {}:
-            order = np.argsort(x)
-            inverse_order = np.array([int(np.where(order == i)[0]) for i in range(order.size)])
-            x_temp = x[order]
+        if not full and self.cut_x != {}:  # The x-axis is only split if explicitly stated and cuts are available.
+            order = np.argsort(x)  # Find ascending order of x
+            inverse_order = np.array([int(np.where(order == i)[0])
+                                      for i in range(order.size)])  # Invert the order for later.
+            x_temp = x[order]  # Temporarily store a sorted x-axis.
             cut_i = np.array([np.argwhere(x_temp < self.cut_x[track]).T[0][-1] + 1
-                              if np.min(x_temp) < self.cut_x[track] else -x_temp.size
-                              for track in range(len(self.cut_x.keys()))])
-            x_ret = np.split(x_temp, cut_i)
+                              if np.min(x_temp) < self.cut_x[track] else 0
+                              for track in range(len(self.cut_x.keys()))])  # Find the indices where to cut the x-axis.
+            # If every x-value is larger than a position where to cut the x-axis, the index 0 is stored.
+            x_ret = np.split(x_temp, cut_i)  # Split the x-axis at the given indices.
+            # The indices 0 and x_temp.size result in empty arrays in front or behind all x-values, respectively.
             ret = np.concatenate([self.evaluate(x_i, p, ih=ih, full=True) + p[getattr(self, 'pOff{}'.format(track - 1))]
                                   if track > 0 else self.evaluate(x_i, p, ih=ih, full=True)
                                   for track, x_i in enumerate(x_ret)])
-            return ret[inverse_order]
+            # The spectrum is calculated for each interval of the split x-axis
+            # and individual offsets are added relative to the absolute offset of the first interval.
+            # The separate y-values get concatenated to a single array, matching the order of x_temp.
+            return ret[inverse_order]  # The original order of the x-axis is restored for the y-values.
         if ih == -1:        
             return p[self.pOff] + x * p[self.p_offset_slope] + sum(hf.evaluate(x, p) for hf in self.hyper)
         else:
@@ -83,17 +90,6 @@ class FullSpec(object):
         self.shape.recalc(p)
         for hf in self.hyper:
             hf.recalc(p)
-
-    def add_track_offsets(self, cut_x, freq, col):
-        if self.cut_x != {} or cut_x == {}:
-            return
-        for track, cut in cut_x.items():
-            v = Physics.relVelocity(Physics.qe * cut, self.iso.mass * Physics.u)
-            v = -v if col else v
-            k = int(max(cut_x.keys())) - track if col else track
-            self.cut_x[k] = Physics.relDoppler(freq, v) - self.iso.freq
-            setattr(self, 'pOff{}'.format(k), 2 + k)
-        self.nPar += len(cut_x.keys())
 
     def getPars(self, pos=0):
         """Return list of initial parameters and initialize positions"""

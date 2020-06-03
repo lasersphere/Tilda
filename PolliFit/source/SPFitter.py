@@ -24,16 +24,7 @@ class SPFitter(object):
         self.st = st
         self.data = meas.getArithSpec(*st)  # Returns list of tracks with elements
         # (array of x-values in Volt, array of cts, array of errors)
-        x_min = np.array([x[0] if x[0] <= x[-1] else x[-1] for x in self.meas.x])
-        x_max = np.array([x[-1] if x[0] <= x[-1] else x[0] for x in self.meas.x])
-        order = np.argsort(x_min)
-        x_min = x_min[order]
-        x_max = x_max[order]
-        self.cut_x = {i: (x_max[i] + x_min[i + 1]) / 2
-                      for i in range(self.meas.nrTracks - 1) if x_max[i] < x_min[i + 1]}
-        self.spec.add_track_offsets(self.cut_x, self.meas.laserFreq, self.meas.col)
-        # if len(self.cut_x.keys()) != self.meas.nrTracks - 1:
-        #     raise ValueError('There are overlapping tracks in the current spectrum.')
+        self.cut_x = self.add_track_offsets()  # Contains voltages to cut the x-axis for unique offsets in each track.
 
         self.par = spec.getPars()  # get fit parameters
         self.oldpar = list(self.par)  # save previously used fit parameters
@@ -57,6 +48,32 @@ class SPFitter(object):
         self.oldp = None
         self.pcov = None
         self.rchi = None
+
+    def add_track_offsets(self):
+        """ Add an extra offset parameter for each value in cut_x.
+         Voltages are converted to frequencies for FullSpec. """
+        x_min = np.array([x[0] if x[0] <= x[-1] else x[-1] for x in self.meas.x])  # Array of the tracks lowest voltages
+        x_max = np.array(
+            [x[-1] if x[0] <= x[-1] else x[0] for x in self.meas.x])  # Array of the tracks highest voltages
+        order = np.argsort(x_min)  # Find ascending order of the lowest voltages
+        x_min = x_min[order]  # apply order to the lowest voltages
+        x_max = x_max[order]  # apply order to the highest voltages
+        # cut at the mean between a highest voltage and the corresponding lowest voltage of the next track.
+        # Iteration goes over the sorted tracks and only non-overlapping tracks get a unique offset parameter.
+        cut_x = {i: (x_max[i] + x_min[i + 1]) / 2
+                 for i in range(self.meas.nrTracks - 1) if x_max[i] < x_min[i + 1]}
+
+        if self.spec.cut_x != {} or cut_x == {}:
+            return {}
+        for track, cut in cut_x.items():
+            v = Physics.relVelocity(Physics.qe * cut, self.spec.iso.mass * Physics.u)
+            v = -v if self.meas.col else v
+            k = int(max(cut_x.keys())) - track if self.meas.col else track  # Reverse order of the cuts for
+            # collinear spectra to match the peaks of the anticollinear spectra.
+            self.spec.cut_x[k] = Physics.relDoppler(self.meas.laserFreq, v) - self.spec.iso.freq
+            setattr(self.spec, 'pOff{}'.format(k), 2 + k)  # Offset parameters are added to the FullSpec.
+        self.spec.nPar += len(cut_x.keys())
+        return cut_x
 
     def fit(self):
         """
