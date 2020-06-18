@@ -70,6 +70,7 @@ class BECOLAImporter():
 
         self.is_dc_data = False  # Set this to False for time-resolved data!! Also Check standard-gates for trs
         self.divider_ratio = 1000  # must be set according to the voltage divider used to measure dac voltage
+        self.accVolt = 29850  # buncher high voltage potential set for the runs (not noted on a per-file level)
         self.laser_unit = 'THz'  # cm-1 for import from excel. Other option 'THz'. More must be coded
 
         self.month_list = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -504,13 +505,14 @@ class BECOLAImporter():
         ##########################################
         for track in range(self.nrOfTracks):
             this_track_gates = []
-            dac_start = self.dacStartVolt[track]
-            dac_step = self.dacStepSizeVolt[track]
+            dac_start = float(self.dacStartVolt[track])
+            dac_step = float(self.dacStepSizeVolt[track])
+            dac_stop = dac_start + dac_step*int(self.nrOfSteps)
+            v_min = min(dac_start, dac_stop)
+            v_max = max(dac_start, dac_stop)
             for scaler in range(self.nrOfScalers):
                 if self.is_dc_data:
-                    scaler_standard_gates = [float(dac_start),
-                                             float(dac_start)+(float(dac_step)*int(self.nrOfSteps)),
-                                             0, 10.24]  # time gates are in µs and we for simplicity defined 1bin(BECOLA)=10ns
+                    scaler_standard_gates = [v_min, v_max, 0, 10.24]  # time gates are in µs and we for simplicity defined 1bin(BECOLA)=10ns
                     this_track_gates.append(scaler_standard_gates)
                 else:
                     # fitpars, successful = self.fit_time_projection_simplex(scaler)
@@ -519,12 +521,10 @@ class BECOLAImporter():
                         cts_max, FWHM, center, offset = fitpars
                         upper_gate = int(center + abs(FWHM))
                         lower_gate = int(center - abs(FWHM))
-                        scaler_softw_gate = [float(dac_start), float(dac_start)+(float(dac_step)*int(self.nrOfSteps)),\
-                                            lower_gate/100, upper_gate/100]
+                        scaler_softw_gate = [v_min, v_max, lower_gate/100, upper_gate/100]
                         this_track_gates.append(scaler_softw_gate)
                     else:
-                        scaler_standard_gates = [float(dac_start), float(dac_start)+(float(dac_step)*int(self.nrOfSteps)),\
-                                            5.0, 5.8]
+                        scaler_standard_gates = [v_min, v_max, 5.0, 5.8]
                         this_track_gates.append(scaler_standard_gates)
             self.softwGates.append(this_track_gates)
 
@@ -545,7 +545,7 @@ class BECOLAImporter():
         header_dict = {'type': 'trs',
                        'isotope': self.isotope,
                        'isotopeStartTime': file_start_time_str,
-                       'accVolt': 29850,
+                       'accVolt': self.accVolt,
                        'laserFreq': self.laserFreq,  # XMLImporter expects wavenumber
                        'nOfTracks': self.nrOfTracks,
                        'version': 99.0}

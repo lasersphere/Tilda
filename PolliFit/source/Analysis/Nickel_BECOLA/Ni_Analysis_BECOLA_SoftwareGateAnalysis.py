@@ -33,6 +33,7 @@ from lxml import etree as ET
 from XmlOperations import xmlWriteDict
 from Measurement.XMLImporter import XMLImporter
 from KingFitter import KingFitter
+from Analysis.Nickel_BECOLA.FileConversion import DictToXML
 
 class NiAnalysis_softwGates():
     def __init__(self):
@@ -46,7 +47,7 @@ class NiAnalysis_softwGates():
         user_home_folder = os.path.expanduser("~")
         # self.workdir = 'C:\\DEVEL\\Analysis\\Ni_Analysis\\XML_Data' # old working directory
         ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\XML_Data'
-        ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel_offline_Becola20\\XML_Data'  # offline 2020
+        # ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel_offline_Becola20\\XML_Data'  # offline 2020
         self.workdir = os.path.join(user_home_folder, ownCould_path)
         ''' data folder '''
         self.datafolder = os.path.join(self.workdir, 'SumsRebinned')
@@ -71,26 +72,28 @@ class NiAnalysis_softwGates():
         """
         # Select runs; Format: ['run58', 'run60', 'run56']
         # to use a different lineshape you must create a new run under runs and a new linevar under lines and link the two.
-        self.run = 'CEC_AsymVoigt_MSU'
+        self.run = 'AsymmetricVoigt'
         self.timebin_size = 4.8  # length of timegate in 10ns (4.8 = 48ns)
-        self.midtof_orig = {'55Ni': 5.238, '56Ni': 5.28, '58Ni': 5.35, '60Ni': 5.47}
-        self.gatewidth_orig = 0.3
-        self.delaylist_orig = [0, 0.195, 0.26]
+        self.midtof_orig = {'55Ni': 5.237, '56Ni': 5.276, '58Ni': 5.383, '60Ni': 5.408}
+        self.gatewidth_orig = 0.39  # 2*2sigma
+        self.delaylist_orig = [0, 0.195, 0.265]
 
         # fit from scratch or use FitRes db?
         self.do_the_fitting = True  # if False, a .xml file has to be specified in the next variable!
-        self.load_results_from = '2020reworked_2020-05-18_12-21.xml'  # load fit results from this file
+        self.load_results_from = 'SoftwareGateAnalysis_2020-06-10_14-42.xml'  # load fit results from this file
         # print results to results folder? Also show plots?
         self.save_plots_to_file = True  # if False plots will be displayed during the run for closer inspection
         # acceleration set voltage (Buncher potential), negative
         self.accVolt_set = 29850  # omit voltage sign, assumed to be negative
         self.calibration_method = 'absolute'  # can be 'absolute', 'relative' 'combined', 'isoshift' or 'None'
         self.use_handassigned = False  # use hand-assigned calibrations? If false will interpolate on time axis
-        self.accVolt_corrected = (
-        self.accVolt_set, 0)  # Used later for calibration. Might be used her to predefine calib? (abs_volt, err)
-        self.initial_par_guess = {'sigma': (31, False), 'gamma': (20, False),
-                                  'asy': (3, True),  # in case VoigtAsy is used
-                                  'dispersive': (0, False)}  # in case FanoVoigt is used
+        self.accVolt_corrected = (self.accVolt_set, 0)  # Used later for calibration. Might be used her to predefine calib? (abs_volt, err)
+        self.initial_par_guess = {'sigma': (34.5, True), 'gamma': (11.3, True),  #'sigma': (31.7, True), 'gamma': (18.4, True), for VoigtAsy
+                                  'asy': (3.9, False),  # in case VoigtAsy is used
+                                  'dispersive': (-0.04, False),  # in case FanoVoigt is used
+                                  'centerAsym': (-6.4, True), 'nPeaksAsym': (1, True), 'IntAsym': (0.163, [0, 1])
+                                  # in case AsymmetricVoigt is used
+                                  }
         self.isotope_colors = {58: 'black', 60: 'blue', 56: 'green', 55: 'purple'}
         self.scaler_colors = {'scaler_0': 'blue', 'scaler_1': 'green', 'scaler_2': 'red',
                               'scaler_012': 'black', 'scaler_c012': 'pink'}
@@ -122,24 +125,16 @@ class NiAnalysis_softwGates():
                 ### Uncertainties ###
                 All uncertainties that we can quantify and might want to respect
                 """
-        self.accVolt_set_d = 10  # uncertainty of scan volt. Estimated by Miller for Calcium meas.
-        self.wavemeter_wsu30_mhz_d = 3  # Kristians wavemeter paper
+        self.accVolt_set_d = 10  # V. uncertainty of scan volt. Estimated by Miller for Calcium meas.
+        self.wavemeter_wsu30_mhz_d = 3 * 2  # MHz. Kristians wavemeter paper. Factor 2 because of frequency doubling.
+        self.matsuada_volts_d = 0.03  # V. ~standard dev after rebinning TODO: calc real avg over std dev?
+        self.lineshape_d_syst = 1.0  # MHz. Offset between VoigtAsym and AsymmetricVoigt TODO: Can we say which is better?
+        self.bunch_structure_d = 0.2  # MHz. Slope difference between 58&56 VoigtAsy allfix: 20kHz/bin, +-5bin width --> 200kHz TODO: check whether this is good standard value (also for summed)
         self.heliumneon_drift = 0  # TODO: does that influence our measurements? (1 MHz in Kristians calibration)
-        self.matsuada_volts_d = 0.02  # Rebinning and graphical Analysis TODO: get a solid estimate for this value
-        self.laserionoverlap_anglemrad_d = 1  # ideally angle should be 0. Max possible deviation is ~1mrad TODO: check
+        self.laserionoverlap_anglemrad_d = 1  # mrad. ideally angle should be 0. Max possible deviation is ~1mrad TODO: check
         self.laserionoverlap_MHz_d = (self.accVolt_set -  # TODO: This formular should be doublechecked...
                                       np.sqrt(self.accVolt_set ** 2 / (
-                                                  1 + (self.laserionoverlap_anglemrad_d / 1000) ** 2))) * 15
-        self.lineshape_d_syst = 0  # TODO: investigate
-        self.bunch_structure_d = 0  # TODO: investigate
-
-        # TODO: Clarify stat/syst uncertainty definition. For now put all the above in systematics
-        self.all_syst_uncertainties = np.array([self.wavemeter_wsu30_mhz_d,
-                                                self.heliumneon_drift,
-                                                self.matsuada_volts_d,
-                                                self.laserionoverlap_MHz_d,
-                                                self.lineshape_d_syst,
-                                                self.bunch_structure_d])
+                                              1 + (self.laserionoverlap_anglemrad_d / 1000) ** 2))) * 15
 
         ''' Masses '''
         # # Reference:   'The Ame2016 atomic mass evaluation: (II). Tables, graphs and references'
@@ -366,128 +361,209 @@ class NiAnalysis_softwGates():
         The softwGateWidth will be constant and the midTof will be varied slightly
         :return:
         """
+        self.write_to_db_lines(self.run,
+                               sigma=self.initial_par_guess['sigma'],
+                               gamma=self.initial_par_guess['gamma'],
+                               asy=self.initial_par_guess['asy'],
+                               dispersive=self.initial_par_guess['dispersive'],
+                               centerAsym=self.initial_par_guess['centerAsym'],
+                               IntAsym=self.initial_par_guess['IntAsym'],
+                               nPeaksAsym=self.initial_par_guess['nPeaksAsym'])
         # reset isotope type and acc voltage in db
-        iso_list = ['58Ni']
+        iso_list = ['56Ni', '58Ni', '60Ni']
+
+        # use scaler 1 for now. Probably doesn't make a difference
+        scaler = [0, 1, 2]
+        sc_name = self.update_scalers_in_db(scaler)
+
         for pickiso in iso_list:
             self.reset(pickiso+'%', [self.accVolt_set, pickiso])
 
-            # use scaler 1 for now. Probably doesn't make a difference
-            scaler = 0
-            sc_name = self.update_scalers_in_db(scaler)
-
             # filenums = [6251, 6501, 6502]
-            filenums = [9313]  #[9295, 9299, 9303, 9305, 9310]  #[9275, 9281, 9283, 9285]
-            filelist = ['BECOLA_{}.xml'.format(num) for num in filenums]
-            # filelist, filenums = self.pick_files_from_db_by_type_and_num(pickiso)
+            # filenums = [9313]  #[9295, 9299, 9303, 9305, 9310]  #[9275, 9281, 9283, 9285]
+            # filelist = ['BECOLA_{}.xml'.format(num) for num in filenums]
+            filelist, filenums, filedates = self.pick_files_from_db_by_type_and_num(pickiso)  #, selecttuple=(9433, 9440)
             self.results[pickiso] = {'file_numbers': filenums,
                                      'file_names': filelist,
+                                     'file_times': filedates,
                                      'color': self.isotope_colors[int(pickiso[:2])],
                                      sc_name: {}}
+            # set variation parameters
+            delaylist = [0, 0.19, 0.26]
             # midtof_variation = (-0.3, +0.3, 3)  # (relative midtof variation in µs, number of variations inside width)
             # midtof_variation_arr = np.linspace(*midtof_variation)
-            midtof_variation_arr = np.append(-0.01*np.logspace(2, 0, 4, base=2), np.append([0], 0.01*np.logspace(0, 2, 4, base=2)))
+            midtof_variation_arr = np.append(-np.logspace(2, 0, 3, base=2), np.append([0], np.logspace(0, 2, 3, base=2)))  # in time bins
             # gatewidth_variation = (5, 1, 11)
             # gatewidth_variation_arr = np.linspace(*gatewidth_variation)
-            gatewidth_variation_arr = 0.1*np.logspace(0, 6.5, 7, base=2)  # log spaced 0.1 to 6.4 (put 6.5 for 9.1)
-            delaylist = [0, 0.19, 0.26]
+            gatewidth_variation_arr = np.logspace(5, 5.9, 7, base=2)  # 3, 10, 8 for 8-1024 bins # 5, 5.9, 7 for 33-59 / 90-100%
+            close_indx = (np.abs(gatewidth_variation_arr - 40)).argmin()  # index that is closest to analysis gatewidth
+            # possibly reduce fitting width by adding [x:] to gatewidth, midtof and midtof_err
+            fit_start = 0
 
             popt_res = []  # popt results per file
             perr_res = []  # popt results per file
+            toflst_fit_res = []  # midtof results per file
+            toflst_err_res = []  # midtof results per file
+            tofsigma_fit_res = []  # tof sigma results per file
+            tofsigma_err_res = []  # tof sigma uncertainty per file
+            center_fit_res = []  # center fit results per file for midTof=0, width=45bin
+            center_err_res = []  # center fit results per file
+            midtofzero_std = []  # standard deviations for midtof=0 values over gatewidth variation
+            midtofall_std = []  # standard deviations over all midtof and gatewidth variations
+            delay_sc_1 = []
+            delay_sc_1_d = []
+            delay_sc_2 = []
+            delay_sc_2_d = []
 
-            for indx, file in enumerate(filelist):
-                res_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
-                res_d_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
+            if self.do_the_fitting:
+                for indx, file in enumerate(filelist):
+                    res_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
+                    res_d_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
 
-                iso = self.get_iso_for_file(file)
-                for i, midtof in enumerate(midtof_variation_arr):
-                    for j, gatewidth in enumerate(gatewidth_variation_arr):
-                        self.update_gates_in_db(iso, midtof, gatewidth, delaylist)
-                        all_center_MHz, all_center_MHz_fiterrs, all_fitpars = self.fit_files([file])
-                        res_array[i, j] = all_center_MHz[0]
-                        res_d_array[i, j] = all_center_MHz_fiterrs[0]
+                    iso = self.get_iso_for_file(file)
+                    # do tof fitting to find mid-tof for this file. Must be done for scaler 0!!
+                    midtof_fit, midtof_err, sigma, sigma_err = self.find_midtof_for_file(file, scaler=0)
+                    midtof1_fit, midtof1_err, sigma1, sigma1_err = self.find_midtof_for_file(file, scaler=1)
+                    midtof2_fit, midtof2_err, sigma2, sigma2_err = self.find_midtof_for_file(file, scaler=2)
 
-                # weighted average over all midtof variations:
-                for indx, d in np.ndenumerate(res_d_array):
-                    if d == 0:
-                        # something went wrong inm the fit. 0 can not be true.
-                        res_d_array[indx] = 100
-                midTof_wavg = np.average(res_array, axis=0, weights=1/np.square(res_d_array))
-                midTof_wavg_err = np.sqrt(1/np.sum(1/np.square(res_d_array), axis=0))
-                # fit a line to this w_avg data
-                def _line(x, m, b):
-                    return m*x+b
-                p0 = [0, midTof_wavg[0]]
-                popt, pcov = curve_fit(_line, gatewidth_variation_arr, midTof_wavg, p0, sigma=midTof_wavg_err, absolute_sigma=True)
-                perr = np.sqrt(np.diag(pcov))
-                popt_res.append(popt)
-                perr_res.append(perr)
+                    toflst_fit_res.append(midtof_fit)
+                    toflst_err_res.append(midtof_err)
+                    tofsigma_fit_res.append(sigma)
+                    tofsigma_err_res.append(sigma_err)
+                    delay_sc_1.append(midtof1_fit-midtof_fit)
+                    delay_sc_1_d.append(np.sqrt(midtof1_err**2+midtof_err**2))
+                    delay_sc_2.append(midtof2_fit-midtof_fit)
+                    delay_sc_2_d.append(np.sqrt(midtof2_err**2+midtof_err**2))
 
-                # self.plot_and_fit_3darray(res_array, file)
+                    self.midtof_orig[iso] = round(midtof_fit, 2)
+                    # go back to original scaler
+                    sc_name = self.update_scalers_in_db(sc_name)
 
-                if plot:
-                    # BECOLA timebins are not 10ns
-                    midtof = self.timebin_size*midtof_variation_arr
-                    gatew = self.timebin_size*gatewidth_variation_arr
-                    # plot tof variation (not very readable. gatewidth variation is much better!!)
-                    for j, gatewidth in enumerate(gatew):
-                        plt.errorbar(midtof, res_array[:, j], yerr=res_d_array[:, j], label='{:.2f}µs'.format(gatewidth))
-                    plt.title('Variation of mid-tof parameter for {} file {}\n'
-                              'around midTof={:.2f}µs'.format(iso, file, self.midtof_orig[iso]))
-                    plt.xlabel('mid tof [µs]')
-                    plt.ylabel('fit center [MHz]')
-                    plt.margins(0.05)
-                    plt.legend(title='gatewidth', bbox_to_anchor=(1.04, 0.5), loc="center left")
-                    if self.save_plots_to_file:
-                        filename = 'midtof_var_{}_{}'.format(iso, file)
-                        plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
-                    else:
-                        plt.show()
-                    plt.close()
-                    plt.clf()
+                    for i, midtof in enumerate(midtof_variation_arr):
+                        for j, gatewidth in enumerate(gatewidth_variation_arr):
+                            self.update_gates_in_db(iso, midtof/100, gatewidth/100, delaylist)
+                            all_center_MHz, all_center_MHz_fiterrs, all_fitpars = self.fit_files([file])
+                            res_array[i, j] = all_center_MHz[0]
+                            res_d_array[i, j] = all_center_MHz_fiterrs[0]
+                            if midtof == 0 and j == close_indx:  # value most likely used in analysis
+                                # This is the set value. Note it down.
+                                center_fit_res.append(all_center_MHz[0])  # center fit results per file for midTof=0, width=45bin
+                                center_err_res.append(all_center_MHz_fiterrs[0])
 
-                    # plot gatewidth variation
-                    fig, ax = plt.subplots()
-                    for i, tof in enumerate(midtof):
-                        ax.errorbar(np.log(10*gatew)/np.log(2), res_array[i, :], yerr=res_d_array[i, :], label='{:.2f}µs'.format(tof))
-                    # plot weightedavg over midtofs
-                    ax.errorbar(np.log(10 * gatew) / np.log(2), midTof_wavg, yerr=midTof_wavg_err, label='w_avg',
-                                c='k', linestyle='--', linewidth=2.0)
-                    # plot fit of weightedavg over tofs
-                    ax.plot(np.log(10 * gatew) / np.log(2), _line(gatew, *popt), label='w_avg_fit',
-                            c='r', linestyle='--', linewidth=2.0)
-                    plt.title('Variation of gatewidth parameter for {} file {}\n'
-                              'around midTof={:.2f}µs.\n'
-                              'Fitresult: center=({:.2f})*gatewidth+({:.2f})MHz'
-                              .format(iso, file, self.midtof_orig[iso], *popt))
-                    plt.xlabel('gatewidth [µs]')
-                    plt.ylabel('fit center [MHz]')
-                    # plt.xscale('log', basex=1.2)
-                    # plt.xticks(np.log(np.logspace(0, 6, 7, base=2))/np.log(1.2))
-                    import matplotlib.ticker as ticker
-                    ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:.2f}'.format(0.1*2**y)))
-                    plt.margins(0.05)
-                    plt.legend(title='midTof', bbox_to_anchor=(1.04, 0.5), loc="center left")
-                    if self.save_plots_to_file:
-                        filename = 'gatewidth_var_{}_{}'.format(iso, file)
-                        plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
-                    else:
-                        plt.show()
+                    # weighted average over all midtof variations:
+                    for indx, d in np.ndenumerate(res_d_array):
+                        if d == 0:
+                            # something went wrong inm the fit. 0 can not be true.
+                            res_d_array[indx] = 100
+                    midTof_wavg = np.average(res_array, axis=0, weights=1/np.square(res_d_array))
+                    midTof_wavg_err = np.sqrt(1/np.sum(1/np.square(res_d_array), axis=0))
+                    # fit a line to this w_avg data
+                    def _line(x, m, b):
+                        return m*x+b
+                    p0 = [0, midTof_wavg[3]]
 
-                # reset to original values
-                self.update_gates_in_db(iso, 0, self.gatewidth_orig, self.delaylist_orig)
+                    popt, pcov = curve_fit(_line, gatewidth_variation_arr[fit_start:], midTof_wavg[fit_start:],
+                                           p0, sigma=midTof_wavg_err[fit_start:], absolute_sigma=True)
+                    perr = np.sqrt(np.diag(pcov))
+                    popt_res.append(popt)
+                    perr_res.append(perr)
 
-            popt_res = np.array(popt_res)  # popt results per file
-            perr_res = np.array(perr_res)  # popt results per file
-            self.results[pickiso][sc_name] = {'gate_analysis_m': {'vals': popt_res[:, 0],
-                                                                  'd_fit':perr_res[:, 0]},
-                                              'gate_analysis_b': {'vals': popt_res[:, 1],
-                                                                  'd_fit': perr_res[:, 1]}
-                                              }
+                    # calculate standard deviation for mid_tof=0 values along the gatewidth variation range
+                    midtof_zero_indx = np.argwhere(midtof_variation_arr == 0)[0, 0]
+                    st_dev_0 = res_array[midtof_zero_indx, :].std()
+                    midtofzero_std.append(st_dev_0)
+                    # calculate standard deviation over full variation range
+                    st_dev_all = res_array.std()
+                    midtofall_std.append(st_dev_all)
 
-        self.plot_parameter_for_isos_and_scaler(['56Ni', '58Ni', '60Ni'], [sc_name], 'gate_analysis_m', unit='', onlyfiterrs=True)
-        self.plot_parameter_for_isos_and_scaler(['56Ni', '58Ni', '60Ni'], [sc_name], 'gate_analysis_b', onlyfiterrs=True)
+                    if plot:
+                        # give results in time bins since BECOLA doesn't necessarily use 10ns bins
+                        midtof = midtof_variation_arr
+                        gatew = gatewidth_variation_arr
+                        # plot tof variation (not very readable. gatewidth variation is much better!!)
+                        for j, gatewidth in enumerate(gatew):
+                            plt.errorbar(midtof, res_array[:, j], yerr=res_d_array[:, j], label='{:.0f}bins'.format(gatewidth))
+                        plt.title('Variation of mid-tof parameter for {} file {}\n'
+                                  'around midTof=bin{:.0f}'.format(iso, file, 100*self.midtof_orig[iso]))
+                        plt.xlabel('mid tof [bin]')
+                        plt.ylabel('fit center [MHz]')
+                        plt.margins(0.05)
+                        plt.legend(title='gatewidth', bbox_to_anchor=(1.04, 0.5), loc="center left")
+                        if self.save_plots_to_file:
+                            filename = 'midtof_var_{}_{}'.format(iso, file)
+                            plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
+                        else:
+                            plt.show()
+                        plt.close()
+                        plt.clf()
 
+                        # plot gatewidth variation
+                        fig, ax = plt.subplots()
+                        for i, tof in enumerate(midtof):
+                            ax.errorbar(np.log(gatew)/np.log(2), res_array[i, :], yerr=res_d_array[i, :], label='{:.0f}bins'.format(tof))
+                        # plot weightedavg over midtofs
+                        ax.errorbar(np.log(gatew) / np.log(2), midTof_wavg, yerr=midTof_wavg_err, label='w_avg',
+                                    c='k', linestyle='--', linewidth=2.0)
+                        # plot fit of weightedavg over tofs. Possibly reduce plotting range
+                        ax.plot(np.log(gatew[fit_start:]) / np.log(2), _line(gatew[fit_start:], *popt), label='w_avg_fit',
+                                c='r', linestyle='--', linewidth=3.0)
+                        plt.title('{}, file: {}\n'
+                                  'Variation of timegate parameters around midTof=bin{:.0f}.\n'
+                                  'Fitresult: center=({:.0f}({:.0f})kHz/bin)*gatewidth+({:.2f}({:.0f}))MHz'
+                                  .format(iso, file, 100*self.midtof_orig[iso],
+                                          1000*popt[0], 1000*perr[0],
+                                          popt[1], 100*perr[1]))
+                        plt.xlabel('gatewidth [bins]')
+                        plt.ylabel('fit center [MHz]')
+                        # plt.xscale('log', basex=1.2)
+                        # plt.xticks(np.log(np.logspace(0, 6, 7, base=2))/np.log(1.2))
+                        import matplotlib.ticker as ticker
+                        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:.0f}'.format(2**(y))))
+                        plt.margins(0.05)
+                        plt.legend(title='midTof', bbox_to_anchor=(1.04, 0.5), loc="center left")
+                        if self.save_plots_to_file:
+                            filename = 'gatewidth_var_{}_{}'.format(iso, file)
+                            plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
+                        else:
+                            plt.show()
 
+                    # reset to original values
+                    self.update_gates_in_db(iso, 0, self.gatewidth_orig, self.delaylist_orig)
+
+                popt_res = np.array(popt_res)  # popt results per file
+                perr_res = np.array(perr_res)  # popt results per file
+                self.results[pickiso][sc_name] = {'gate_analysis_m': {'vals': list(popt_res[:, 0]),
+                                                                      'd_fit': list(perr_res[:, 0])},
+                                                  'gate_analysis_b': {'vals': list(popt_res[:, 1]),
+                                                                      'd_fit': list(perr_res[:, 1])},
+                                                  'mid_tof': {'vals': toflst_fit_res,
+                                                              'd_fit': toflst_err_res},
+                                                  'sigma_tof': {'vals': tofsigma_fit_res,
+                                                                'd_fit': tofsigma_err_res},
+                                                  'center_fits': {'vals': center_fit_res,
+                                                                  'd_fit': center_err_res,
+                                                                  'd_stat': center_err_res,
+                                                                  'd_syst': midtofzero_std},  # std dev is interesting
+                                                  'bunchwidth_std_0': {'vals': midtofzero_std},
+                                                  'bunchwidth_std_all': {'vals': midtofall_std},
+                                                  'delay_sc1': {'vals': delay_sc_1,
+                                                                'd_fit': delay_sc_1_d},
+                                                  'delay_sc2': {'vals': delay_sc_2,
+                                                                'd_fit': delay_sc_2_d}
+                                                  }
+                self.export_results()
+            else:
+                self.results = self.import_results(self.load_results_from)
+
+        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'gate_analysis_m', unit='kHz/bin', onlyfiterrs=True, overlay=0, factor=1000, digits=1)
+        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'gate_analysis_b', onlyfiterrs=True)
+        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'mid_tof', unit='bins', onlyfiterrs=True, factor=100)
+        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'sigma_tof', unit='bins', onlyfiterrs=True, factor=100)
+        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'center_fits', offset=(500, 0, -500))
+        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'bunchwidth_std_0', onlyfiterrs=True, digits=2)
+        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'bunchwidth_std_all', onlyfiterrs=True, digits=2)
+        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'delay_sc1', onlyfiterrs=True, digits=3)
+        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'delay_sc2', onlyfiterrs=True, digits=3)
 
     ''' db related '''
 
@@ -518,23 +594,26 @@ class NiAnalysis_softwGates():
         con = sqlite3.connect(self.db)
         cur = con.cursor()
         cur.execute(
-            '''SELECT file FROM Files WHERE type LIKE ? ORDER BY date ''', (type,))
+            '''SELECT file, date FROM Files WHERE type LIKE ? ORDER BY date ''', (type,))
         files = cur.fetchall()
         con.close()
         # convert into np array
-        filelist = [f[0] for f in files]
         ret_files = []
         ret_file_nos = []
-        for file in filelist:
+        ret_file_dates = []
+        for file, date in files:
             fileno = int(re.split('[_.]', file)[1])
+            file_date = datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
             if selecttuple is not None:
                 if selecttuple[0] <= fileno <= selecttuple[1]:
                     ret_files.append(file)
                     ret_file_nos.append(fileno)
+                    ret_file_dates.append(file_date)
             else:
                 ret_files.append(file)
                 ret_file_nos.append(fileno)
-        return ret_files, ret_file_nos
+                ret_file_dates.append(file_date)
+        return ret_files, ret_file_nos, ret_file_dates
 
     def adjust_center_ests_db(self):
         """
@@ -607,7 +686,92 @@ class NiAnalysis_softwGates():
         iso = type[0][0]
         return iso
 
+    def write_to_db_lines(self, line, offset=None, sigma=None, gamma=None, asy=None, dispersive=None, centerAsym=None,
+                          IntAsym=None, nPeaksAsym=None):
+        """
+        We might want to adjust some line-parameter before fitting. E.g. to the ones from reference.
+        :param line: lineVar parameter to edit
+        :param offset: new value for the offset parameter
+        :return:
+        """
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        cur.execute('''SELECT * FROM Lines WHERE lineVar = ? ''', (line,))  # get original line to copy from
+        copy_line = cur.fetchall()
+        copy_shape = copy_line[0][6]
+        copy_fixshape = copy_line[0][7]
+        shape_dict = ast.literal_eval(copy_shape)
+        fixshape_dict = ast.literal_eval(copy_fixshape)
+        if offset is not None:
+            shape_dict['offset'] = offset[0]
+            fixshape_dict['offset'] = offset[1]
+        if sigma is not None:
+            shape_dict['sigma'] = sigma[0]
+            fixshape_dict['sigma'] = sigma[1]
+        if gamma is not None:
+            shape_dict['gamma'] = gamma[0]
+            fixshape_dict['gamma'] = gamma[1]
+        if asy is not None and shape_dict.get('asy', None) is not None:  # only for VoigtAsy profiles
+            shape_dict['asy'] = asy[0]
+            fixshape_dict['asy'] = asy[1]
+        if dispersive is not None and shape_dict.get('dispersive', None) is not None:  # only for FanoVoigt profiles
+            shape_dict['dispersive'] = dispersive[0]
+            fixshape_dict['dispersive'] = dispersive[1]
+        if centerAsym is not None and shape_dict.get('centerAsym', None) is not None:  # only for AsymmetricVoigt
+            shape_dict['centerAsym'] = centerAsym[0]
+            fixshape_dict['centerAsym'] = centerAsym[1]
+        if IntAsym is not None and shape_dict.get('IntAsym', None) is not None:  # only for AsymmetricVoigt
+            shape_dict['IntAsym'] = IntAsym[0]
+            fixshape_dict['IntAsym'] = IntAsym[1]
+        if nPeaksAsym is not None and shape_dict.get('nPeaksAsym', None) is not None:  # only for AsymmetricVoigt
+            shape_dict['nPeaksAsym'] = nPeaksAsym[0]
+            fixshape_dict['nPeaksAsym'] = nPeaksAsym[1]
+        copy_line_list = list(copy_line[0])
+        copy_line_list[6] = str(shape_dict)
+        copy_line_list[7] = str(fixshape_dict)
+        line_new = tuple(copy_line_list)
+        cur.execute('''INSERT OR REPLACE INTO Lines VALUES (?,?,?,?,?,?,?,?,?)''', line_new)
+        con.commit()
+        con.close()
+
     ''' analysis related '''
+
+    def find_midtof_for_file(self, file, scaler):
+        # load the spec data from file
+        filepath = os.path.join(self.datafolder, file)
+        spec = XMLImporter(path=filepath)
+        tproj = spec.t_proj[0][scaler]
+        timebins = np.arange(1024)
+        # fit time-projection
+        ampl, sigma, center, offset, center_d, sigma_d = self.fit_time_projections(tproj, timebins)
+        if center_d > 10 or center < 500 or center > 600:
+            # something went wrong while fitting. Maybe this is DC data? Use middle value
+            center = 512
+        midtof_us = center/100
+        midtof_d_us = center_d/100
+        return midtof_us, midtof_d_us, sigma, sigma_d
+
+    def fit_time_projections(self, cts_axis, time_axis):
+        x = time_axis
+        y = cts_axis
+        # estimates:: amplitude: sigma*sqrt(2pi)*(max_y-min_y), sigma=10, center:position of max_y, offset: min_y
+        start_pars = np.array([10*2.51*(max(cts_axis)-min(cts_axis)), 10, np.argwhere(cts_axis == max(cts_axis))[0,0], min(cts_axis)])
+        popt, pcov = curve_fit(self.fitfunc, x, y, start_pars)
+        ampl, sigma, center, offset = popt
+        perr = np.sqrt(np.diag(pcov))
+        return ampl, sigma, center, offset, perr[3], perr[2]
+
+    def fitfunc(self, t, a, s, t0, o):
+        """
+        fitfunction for time projection
+        t: time
+        t0: mid-tof
+        a: cts_max
+        s: sigma
+        o: offset
+        """
+        # Gauss function
+        return o + a * 1/(s*np.sqrt(2*np.pi))*np.exp(-1/2*np.power((t-t0)/s, 2))
 
     def fit_files(self, filelist):
         filearray = np.array(filelist)  # needed for batch fitting
@@ -741,8 +905,10 @@ class NiAnalysis_softwGates():
             #     self.fit_success = e
 
     ''' visualization '''
+
     def plot_parameter_for_isos_and_scaler(self, isotopes, scaler_list, parameter,
-                                           offset=None, overlay=None, unit='MHz', onlyfiterrs=False):
+                                           offset=None, overlay=None, unit='MHz', onlyfiterrs=False,
+                                           digits=1, factor=1, shiftavg=True):
         """
         Make a nice plot of the center fit frequencies with statistical errors for the given isotopes
         For better readability an offset can be specified
@@ -767,32 +933,35 @@ class NiAnalysis_softwGates():
                     # Parameter must be specified as 'all_fitpars:par' with par being the specific parameter to plot
                     fitres_list = self.results[iso][scaler]['all_fitpars']
                     parameter_plot = parameter.split(':')[1]
-                    centers = [i[parameter_plot][0] for i in fitres_list]
-                    centers_d_stat = [i[parameter_plot][1] for i in fitres_list]
-                    centers_d_syst = [0 for i in fitres_list]
+                    centers = factor * np.array([i[parameter_plot][0] for i in fitres_list])
+                    centers_d_stat = factor * np.array([i[parameter_plot][1] for i in fitres_list])
+                    centers_d_syst = factor * np.array([0 for i in fitres_list])
                     # get weighted average
                     wavg, wavg_d, fixed = self.results[iso][scaler]['avg_fitpars'][parameter_plot]
+                    wavg = factor * wavg
+                    wavg_d = factor * wavg_d
                     if fixed == True:
                         wavg_d = '-'
                     else:
                         wavg_d = '{:.0f}'.format(10 * wavg_d)  # times 10 for representation in brackets
                 else:
-                    centers = self.results[iso][scaler][parameter]['vals']
+                    centers = factor * np.array(self.results[iso][scaler][parameter]['vals'])
+                    zero_arr = np.zeros(
+                        len(centers))  # prepare zero array with legth of centers in case no errors are given
                     if onlyfiterrs:
-                        centers_d_stat = self.results[iso][scaler][parameter]['d_fit']
+                        centers_d_stat = factor * np.array(self.results[iso][scaler][parameter].get('d_fit', zero_arr))
                         centers_d_syst = 0
                     else:
-                        centers_d_stat = self.results[iso][scaler][parameter]['d_stat']
-                        centers_d_syst = self.results[iso][scaler][parameter]['d_syst']
+                        centers_d_stat = factor * np.array(self.results[iso][scaler][parameter].get('d_stat', zero_arr))
+                        centers_d_syst = factor * np.array(self.results[iso][scaler][parameter].get('d_syst', zero_arr))
                     # calculate weighted average:
-                    valarr = np.array(centers)
-                    errarr = np.array(centers_d_stat)
-                    if not np.any(errarr == 0) and not np.sum(1/errarr**2) == 0:
-                        weights = 1/errarr**2
-                        wavg, sumw = np.average(valarr, weights=weights, returned=True)
-                        wavg_d = '{:.0f}'.format(10*np.sqrt(1 / sumw))  # times 10 for representation in brackets
+                    if not np.any(centers_d_stat == 0) and not np.sum(1 / centers_d_stat ** 2) == 0:
+                        weights = 1 / centers_d_stat ** 2
+                        wavg, sumw = np.average(centers, weights=weights, returned=True)
+                        wavg_d = '{:.0f}'.format(
+                            10 ** digits * np.sqrt(1 / sumw))  # times 10 for representation in brackets
                     else:  # some values don't have error, just calculate mean instead of weighted avg
-                        wavg = valarr.mean()
+                        wavg = centers.mean()
                         wavg_d = '-'
                 # determine color
                 if len(scaler_list) > 1:
@@ -805,18 +974,18 @@ class NiAnalysis_softwGates():
                     labelstr = iso
                 off = 0
                 if offset is True:
-                    avg_shift = self.results[iso][scaler]['avg_shift_iso-58']
+                    avg_shift = -self.results[iso][scaler]['avg_shift_iso-58'][0]
                     off = round(avg_shift, -1)
-                elif type(offset) is list:
+                elif type(offset) in (list, tuple):
                     # offset might be given manually per isotope
                     off = offset[i]
                 # plot center frequencies in MHz:
                 if off != 0:
-                    plt_label = '{0} {1:.1f}({2}){3} (offset: {4}{5})'\
-                        .format(labelstr, wavg, wavg_d,  unit, off, unit)
+                    plt_label = '{0} {1:.{6:d}f}({2}){3} (offset: {4}{5})' \
+                        .format(labelstr, wavg, wavg_d, unit, off, unit, digits)
                 else:
-                    plt_label = '{0} {1:.1f}({2}){3}'\
-                        .format(labelstr, wavg, wavg_d, unit)
+                    plt_label = '{0} {1:.{4:d}f}({2}){3}' \
+                        .format(labelstr, wavg, wavg_d, unit, digits)
                 plt.plot(x_ax, np.array(centers) + off, '--o', color=col, label=plt_label)
                 # plot error band for statistical errors
                 plt.fill_between(x_ax,
@@ -828,15 +997,16 @@ class NiAnalysis_softwGates():
                                  np.array(centers) + off - centers_d_syst - centers_d_stat,
                                  np.array(centers) + off + centers_d_syst + centers_d_stat,
                                  alpha=0.2, edgecolor=col, facecolor=col)
-                if parameter == 'shifts_iso-58':
+                if parameter == 'shifts_iso-58' and shiftavg:
                     # also plot average isotope shift
-                    avg_shift = self.results[iso][scaler]['avg_shift_iso-58']['val']
-                    avg_shift_d = self.results[iso][scaler]['avg_shift_iso-58']['d_stat']
-                    avg_shift_d_syst = self.results[iso][scaler]['avg_shift_iso-58']['d_syst']
+                    avg_shift = self.results[iso][scaler]['avg_shift_iso-58']['vals'][0]
+                    avg_shift_d = self.results[iso][scaler]['avg_shift_iso-58']['d_stat'][0]
+                    avg_shift_d_syst = self.results[iso][scaler]['avg_shift_iso-58']['d_syst'][0]
                     # plot weighted average as red line
                     plt.plot([x_ax[0], x_ax[-1]], [avg_shift, avg_shift], 'r',
-                             label='{0} avg: {1:.1f}({2:.0f})[{3:.0f}]{4}'
-                             .format(iso, avg_shift, 10*avg_shift_d, 10*avg_shift_d_syst, unit))
+                             label='{0} avg: {1:.{5:d}f}({2:.0f})[{3:.0f}]{4}'
+                             .format(iso, avg_shift, 10 ** digits * avg_shift_d, 10 ** digits * avg_shift_d_syst, unit,
+                                     digits))
                     # plot error of weighted average as red shaded box around that line
                     plt.fill([x_ax[0], x_ax[-1], x_ax[-1], x_ax[0]],
                              [avg_shift - avg_shift_d, avg_shift - avg_shift_d,
@@ -844,14 +1014,12 @@ class NiAnalysis_softwGates():
                              alpha=0.2)
                     # plot systematic error as lighter red shaded box around that line
                     plt.fill([x_ax[0], x_ax[-1], x_ax[-1], x_ax[0]],
-                             [avg_shift - avg_shift_d_syst-avg_shift_d, avg_shift - avg_shift_d_syst-avg_shift_d,
-                              avg_shift + avg_shift_d_syst+avg_shift_d, avg_shift + avg_shift_d_syst+avg_shift_d], 'r',
+                             [avg_shift - avg_shift_d_syst - avg_shift_d, avg_shift - avg_shift_d_syst - avg_shift_d,
+                              avg_shift + avg_shift_d_syst + avg_shift_d, avg_shift + avg_shift_d_syst + avg_shift_d],
+                             'r',
                              alpha=0.1)
-        if overlay:
-            plt.plot(x_ax, overlay, color='red')
-        plt.title('{} in {} for isotopes: {}'.format(parameter, unit, isotopes))
-        plt.ylabel('{} [{}]'.format(parameter, unit))
-        plt.legend(loc='best')
+        if overlay is not None:
+            plt.axhline(y=overlay, color='red')
         if x_type == 'file_times':
             plt.xlabel('date')
             days_fmt = mpdate.DateFormatter('%d.%B')
@@ -859,13 +1027,16 @@ class NiAnalysis_softwGates():
         else:
             plt.xlabel('run numbers')
         plt.xticks(rotation=45)
+        plt.ylabel('{} [{}]'.format(parameter, unit))
         ax.get_yaxis().get_major_formatter().set_useOffset(False)
+        plt.title('{} in {} for isotopes: {}'.format(parameter, unit, isotopes))
+        plt.legend(title='Legend', bbox_to_anchor=(1.04, 0.5), loc="center left")
         plt.margins(0.05)
         if self.save_plots_to_file:
             isonums = []
             for isos in isotopes:
                 if 'cal' in isos:
-                    isonums.append(isos[:2]+'c')
+                    isonums.append(isos[:2] + 'c')
                 else:
                     isonums.append(isos[:2])
             parameter = parameter.replace(':', '_')  # colon is no good filename char
@@ -926,8 +1097,29 @@ class NiAnalysis_softwGates():
                 del res_dict[keys]
         return res_dict
 
+    def write_gates_to_file(self, file, mid_tof, gate_width):
+        # prepare new software gates
+        voltage_gates = [-np.inf, np.inf]
+        del_list = self.delaylist_orig  # scaler delay list
+        softw_gates = []
+        for each_del in del_list:
+            softw_gates.append(
+                [voltage_gates[0], voltage_gates[1],
+                 mid_tof + each_del - 0.5 * gate_width,
+                 mid_tof + each_del + 0.5 * gate_width]
+            )
+        print(softw_gates)
+        # load the spec data from file and already insert new software gates
+        filepath = os.path.join(self.datafolder, file)
+        title, xml_dict = DictToXML.readDictFromXML(filepath)
+        xml_dict['tracks']['track0']['header']['softwGates'] = softw_gates
+
+        # write back to xml file
+        DictToXML.writeXMLfromDict(xml_dict, filepath, title)
+
 
 if __name__ == '__main__':
     analysis = NiAnalysis_softwGates()
     analysis.softw_gate_analysis()
-    analysis.export_results()
+
+
