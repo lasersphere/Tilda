@@ -9,7 +9,7 @@ Module Description:  Analysis of the Nickel Data from BECOLA taken on 13.04.-23.
 import ast
 import os
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import re
 import logging
 
@@ -33,71 +33,81 @@ class NiAnalysis():
     def __init__(self):
         logging.getLogger().setLevel(logging.INFO)
         # Name this analysis run
-        self.run_name = 'mid2020'
+        self.run_name = 'mid2020discuss'
 
-        # Set working directory and database
-        ''' working directory: '''
+        """
+        ############################ Folders and Database !##########################################################
+        Specify where files and db are located, and where results will be saved!
+        """
+        # working directory:
         # get user folder to access ownCloud
         user_home_folder = os.path.expanduser("~")
-        # self.workdir = 'C:\\DEVEL\\Analysis\\Ni_Analysis\\XML_Data' # old working directory
         ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\XML_Data'
         self.workdir = os.path.join(user_home_folder, ownCould_path)
-        ''' data folder '''
+        # data folder
         self.datafolder = os.path.join(self.workdir, 'SumsRebinned')
-        ''' results folder'''
+        # results folder
         analysis_start_time = datetime.now()
         self.results_name = self.run_name + '_' + analysis_start_time.strftime("%Y-%m-%d_%H-%M")
         results_path_ext = 'results\\' + self.results_name + '\\'
         self.resultsdir = os.path.join(self.workdir, results_path_ext)
         os.makedirs(self.resultsdir)
-        ''' database '''
+        # database
         self.db = os.path.join(self.workdir, 'Ni_Becola.sqlite')
         Tools.add_missing_columns(self.db)
-        logging.info('\n'
-                     '########## BECOLA Nickel Analysis Started! ####################################################\n'
-                     '## database is: {0}\n'
-                     '## data folder: {1}\n'
-                     .format(self.db, self.datafolder))
+
 
         """
         ############################Analysis Parameters!##########################################################
         Specify how you want to run this Analysis!
         """
-        # Select runs; Format: ['run58', 'run60', 'run56']
-        # to use a different lineshape you must create a new run under runs and a new linevar under lines and link the two.
-        self.run = 'AsymmetricVoigt'
-
         # fit from scratch or use FitRes db?
-        self.do_the_fitting = False  # if False, an .xml file has to be specified in the next variable!
-        load_results_from = 'mid2020_2020-06-18_14-06.xml'  # load fit results from this file
-        self.get_gate_analysis = True
+        self.do_the_fitting = True  # if False, an .xml file has to be specified in the next variable!
+        load_results_from = 'mid2020discuss_2020-06-25_18-13.xml'  # load fit results from this file
+        self.get_gate_analysis = True  # get information from gate analysis (and use for uncertainties)
         load_gate_analysis_from = 'SoftwareGateAnalysis_2020-06-17_13-13_narrow90p-3sig_AsymmetricVoigt.xml'
-        # print results to results folder? Also show plots?
-        self.save_plots_to_file = True  # if False plots will be displayed during the run for closer inspection
+
+        # line parameters
+        self.run = 'AsymmetricVoigt'  # lineshape from runs and a new lines
+        self.initial_par_guess = {'sigma': (34.5, [0, 50]), 'gamma': (11.3, [0, 40]),
+                                  'asy': (3.9, True),  # in case VoigtAsy is used
+                                  'dispersive': (-0.04, False),  # in case FanoVoigt is used
+                                  'centerAsym': (-6.2, True), 'nPeaksAsym': (1, True), 'IntAsym': (0.052, True)
+                                  # in case AsymmetricVoigt is used
+                                  }
+
         # list of scaler combinations to fit:
         self.scaler_combinations = [[0], [1], [2], [0, 1, 2]]
+
         # determine time gates
         self.tof_mid = {'55Ni': 5.237, '56Ni': 5.276, '58Ni': 5.383, '60Ni': 5.408}  # mid-tof for each isotope (from fitting)
         self.tof_delay = [0, 0.195, 0.265]
         self.tof_sigma = 0.098  # 1 sigma of the tof-peaks from fitting, avg over all scalers 56,58,60 Ni
         self.tof_width_sigma = 2  # how many sigma to use around tof? (1: 68.3% of data, 2: 95.4%, 3: 99.7%)
+
         # acceleration set voltage (Buncher potential), negative
         self.accVolt_set = 29850  # omit voltage sign, assumed to be negative
-        self.calibration_method = 'absolute'  # can be 'absolute', 'relative' 'combined', 'isoshift' or 'None'
-        self.use_handassigned = False  # use hand-assigned calibrations? If false will interpolate on time axis
-        self.KingFactorLit = 'koenig60'  # which king fit factors to use? kaufm60, koenig60,koenig58
-        self.accVolt_corrected = (self.accVolt_set, 0)  # Used later for calibration. Might be used her to predefine calib? (abs_volt, err)
-        self.initial_par_guess = {'sigma': (34.5, [0, 50]), 'gamma': (11.3, [0, 40]),
-                                  'asy': (3.9, False),  # in case VoigtAsy is used
-                                  'dispersive': (-0.04, False),  # in case FanoVoigt is used
-                                  'centerAsym': (-6.2, True), 'nPeaksAsym': (1, True), 'IntAsym': (0.052, True)
-                                  # in case AsymmetricVoigt is used
-                                  }
-        self.isotope_colors = {58: 'black', 60: 'blue', 56: 'green', 55: 'purple'}
-        self.scaler_colors = {'scaler_0': 'blue', 'scaler_1': 'green', 'scaler_2': 'red',
-                              'scaler_012': 'black', 'scaler_12': 'yellow',
-                              'scaler_c012': 'pink', 'scaler_c0': 'purple', 'scaler_c1': 'grey', 'scaler_c2': 'orange'}
 
+        # Determine calibration parameters
+        self.ref_iso = '60Ni'
+        self.calibration_method = 'absolute60'  # can be 'absolute58', 'absolute60' 'absolute' or 'None'
+        self.use_handassigned = False  # use hand-assigned calibrations? If false will interpolate on time axis
+        self.accVolt_corrected = (self.accVolt_set, 0)  # Used later for calibration. Might be used her to predefine calib? (abs_volt, err)
+
+        # Kingfit options
+        self.KingFactorLit = 'Koenig 2020 60ref'  # which king fit factors to use? kaufm60, koenig60,koenig58
+
+        # plot options
+        self.save_plots_to_file = True  # if False plots will be displayed during the run for closer inspection
+        self.isotope_colors = {58: 'k', 60: 'b', 56: 'g', 55: 'm'}
+        self.scaler_colors = {'scaler_0': 'navy', 'scaler_1': 'maroon', 'scaler_2': 'orangered',
+                              'scaler_012': 'fuchsia', 'scaler_12': 'yellow',
+                              'scaler_c012': 'magenta', 'scaler_c0': 'purple', 'scaler_c1': 'grey', 'scaler_c2': 'orange'}
+
+        """
+        ############################ Other presets!##########################################################
+        Not so important stuff
+        """
         # define calibration tuples:
         # do voltage calibration with these calibration pairs.
         self.calib_tuples = [(6191, 6192), (6207, 6208), (6224, 6225), (6232, 6233), (6242, 6243),
@@ -110,7 +120,8 @@ class NiAnalysis():
                                                (6238, (6242, 6243)), (6239, (6242, 6243)), (6240, (6242, 6243)),
                                                (6251, (6253, 6254)), (6252, (6253, 6254))]
 
-        self.analysis_parameters = {'run': self.run,
+        self.analysis_parameters = {'reference_isotope': self.ref_iso,
+                                    'run': self.run,
                                     'first_fit': 'from scratch' if self.do_the_fitting else load_results_from,
                                     'calibration': self.calibration_method,
                                     'use_handassigned': self.use_handassigned,
@@ -140,15 +151,18 @@ class NiAnalysis():
         """
         self.accVolt_set_d = 10  # V. uncertainty of scan volt. Estimated by Miller for Calcium meas.
         self.wavemeter_wsu30_mhz_d = 3*2  # MHz. Kristians wavemeter paper. Factor 2 because of frequency doubling.
-        self.matsuada_volts_d = 0.03  # V. ~standard dev after rebinning TODO: calc real avg over std dev?
-        self.lineshape_d_syst = 1.0  # MHz. Offset between VoigtAsym and AsymmetricVoigt TODO: Can we say which is better?
-        self.bunch_structure_d = 0.2  # MHz. Slope difference between 58&56 VoigtAsy allfix: 20kHz/bin, +-5bin width --> 200kHz TODO: check whether this is good standard value (also for summed)
-        self.heliumneon_drift = 5  # TODO: does that influence our measurements? (1 MHz in Kristians calibration)
-        self.laserionoverlap_anglemrad_d = 1  # mrad. ideally angle should be 0. Max possible deviation is ~1mrad TODO: check
-        self.laserionoverlap_MHz_d = (self.accVolt_set -  # TODO: This formular should be doublechecked...
+        self.matsuada_volts_d = 0.03  # V. ~standard dev after rebinning
+        self.lineshape_d_syst = 1.0  # MHz. Offset between VoigtAsym and AsymmetricVoigt
+        self.bunch_structure_d = 0.2  # MHz. Slope difference between 58&56 VoigtAsy allfix: 20kHz/bin, +-5bin width --> 200kHz
+        self.heliumneon_drift = 5  # MHz. Max drift according to datasheet of the SIOS China2 HeNe. 1h stability ~1MHz. TODO: how is the influence?
+        self.laserionoverlap_anglemrad_d = 1  # mrad. ideally angle should be 0. Max possible deviation is ~1mrad
+        self.laserionoverlap_MHz_d = (self.accVolt_set -  # should turn out to around ~200kHz
                                       np.sqrt(self.accVolt_set ** 2 / (
                                                   1 + (self.laserionoverlap_anglemrad_d / 1000) ** 2))) * 15
 
+        """
+        ### Physics Input ###
+        """
         ''' Masses '''
         # # Reference:   'The Ame2016 atomic mass evaluation: (II). Tables, graphs and references'
         # #               Chinese Physics C Vol.41, No.3 (2017) 030003
@@ -161,14 +175,6 @@ class NiAnalysis():
             '59Ni': (58934345.6, 0.4),
             '60Ni': (59930785.3, 0.4)
         }
-        # # Write masses to self.db:
-        # con = sqlite3.connect(self.db)
-        # cur = con.cursor()
-        # for iso, mass_tupl in masses.items():
-        #     cur.execute('''UPDATE Isotopes SET mass = ?, mass_d = ? WHERE iso = ? ''',
-        #                 (mass_tupl[0] * 10 ** -6, mass_tupl[1] * 10 ** -6, iso))
-        # con.commit()
-        # con.close()
 
         ''' Moments, Spin '''
         # Reference:    "Table of Nuclear Magnetic Dipole and Electric Quadrupole Moments",
@@ -192,45 +198,83 @@ class NiAnalysis():
             '59Ni': (-452.70, 1.1, -176.1, 1.6, 0.389, 0.004, -56.7, 6.8, -31.5, 5.5, 0.556, 0.118),
             '61Ni': (-454.8, 0.4, -176.9, 0.6, 0.389, 0.001, -100.6, 2.8, -49.0, 2.3, 0.487, 0.015)
         }
+
         ''' restframe transition frequency '''
-        # Reference: ??
+        # Reference: Various sources: Use Kristian col/acol
+        # 58:
         # NIST: observed wavelength air 352.454nm corresponds to 850586060MHz
         # upper lvl 28569.203cm-1; lower lvl 204.787cm-1
         # resulting wavenumber 28364.416cm-1 corresponds to 850343800MHz
         # KURUCZ database: 352.4535nm, 850344000MHz, 28364.424cm-1
         # Some value I used in the excel sheet: 850347590MHz Don't remember where that came from...
+        # Kristians col/acol value 2020: 850343678(2)(20) MHz. Still preliminary
+        # 60Ni
         # Kristians col/acol value 2020: 850343673(7) MHz. Still preliminary
-        self.restframe_trans_freq = 850343673.0
-        self.restframe_trans_freq_d = 7.0
+        self.restframe_trans_freq = {'58Ni': (850343678.0, 2.0), '60Ni': (850344183.0, 2.0)}
 
         ''' literature value IS 60-58'''
-        # Reference: ??
-        # isotope shift of Nickel-60 with respect to Nickel-58 (=fNi60-fNi58)
-        # Collaps 2017: 508.2(4)[76] MHz (Simon's PHD thesis)
-        # Collaps 2016: 510.6(6)[95]MHz (Simon's PHD thesis)
-        # Collaps published: 509.1(25)[42] (PRL 124, 132502, 2020)
-        # Steudel 1980: 0.01694(9) cm-1 corresponds to 507.8(27) MHz
-        self.literature_IS60vs58 = 509.1
-        self.literature_IS60vs58_d_stat = 2.5
-        self.literature_IS60vs58_d_syst = 4.2
+        iso_shifts_kaufm = {  # PRL 124, 132502, 2020
+            '58Ni': (-509.1, 2.5 + 4.2),
+            '59Ni': (-214.3, 2.5+2.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
+            '60Ni': (0, 0),
+            '61Ni': (280.8, 2.7 + 2.0),
+            '62Ni': (503.9, 2.5 + 3.9),
+            '63Ni': (784.9,	2.5	+ 5.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
+            '64Ni': (1027.2, 2.5 + 7.7),
+            '65Ni': (1317.5, 2.5 + 9.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
+            '66Ni': (1526.8, 2.5 + 11.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
+            '67Ni': (1796.6, 2.5 + 13.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
+            '68Ni': (1992.3, 2.7 + 14.7),
+            '70Ni': (2377.2, 2.5 + 18.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
+            }
+        iso_shifts_steudel = {  # Z. Physik A - Atoms and Nuclei 296, 189 - 193 (1980)
+            '58Ni': (Physics.freqFromWavenumber(-0.01694),  # 58-60
+                                       Physics.freqFromWavenumber(0.00009)),
+            '60Ni': (0, 0),  # Shifts are given in pairs. Most ref to 60.
+            '61Ni': (Physics.freqFromWavenumber(0.00916),  # 60-61
+                     Physics.freqFromWavenumber(0.00010)),
+            '62Ni': (Physics.freqFromWavenumber(0.01691),  # 60-62
+                     Physics.freqFromWavenumber(0.00012)),
+            '64Ni': (Physics.freqFromWavenumber(0.01691+0.01701),  # 60-62 and 62-64 combined.
+                     Physics.freqFromWavenumber(np.sqrt(0.00012**2+0.00026**2)))}  # Quadr. error prop
+        iso_shifts_koenig = {  # private com. excel sheet mid 2020
+            '58Ni': (self.restframe_trans_freq['58Ni'][0] - self.restframe_trans_freq['60Ni'][0],
+                     np.sqrt(self.restframe_trans_freq['58Ni'][1]**2 + self.restframe_trans_freq['60Ni'][1]**2)),
+            '60Ni': (0, 0),
+            '62Ni': (502.87, 3.43),
+            '64Ni': (1026.14, 3.79)}
+
+        self.iso_shifts_lit = {'Kaufmann 2020 (incl.unbup.!)': {'data': iso_shifts_kaufm, 'color': 'green'},
+                               'Steudel 1980': {'data': iso_shifts_steudel, 'color': 'black'},
+                               'Koenig 2020': {'data': iso_shifts_koenig, 'color': 'blue'}}
+
 
         ''' literature Mass Shift and Field Shift constants '''
-        king_literature = {'kaufm60': {'Alpha': 396, 'F': (-769, 60), 'Kalpha': (948000, 3000)},  # Kaufmann.2020 10.1103/PhysRevLett.124.132502
-                           'koenig60': {'Alpha': 388, 'F': (-761.87, 89.22), 'Kalpha': (953881, 4717)},  # König.2020 private com
-                           'koenig58': {'Alpha': 419, 'F': (-745.27, 96.79), 'Kalpha': (930263, 3009)}  # König.2020 private com
-                           }
+        self.king_literature = {'Kaufmann 2020 60ref': {'data': {'Alpha': 396, 'F': (-769, 60), 'Kalpha': (948000, 3000)},
+                                            'color': 'green'},  # Kaufmann.2020 10.1103/PhysRevLett.124.132502
+                                'Koenig 2020 60ref': {'data': {'Alpha': 388, 'F': (-761.87, 89.22), 'Kalpha': (953881, 4717)},
+                                             'color': 'red'},  # König.2020 private com
+                                'Koenig 2020 58ref': {'data': {'Alpha': 419, 'F': (-745.27, 96.79), 'Kalpha': (930263, 3009)},
+                                              'color': 'black'},  # König.2020 private com
+                                # 'KingCombined60': {'data': {'Alpha': 371, 'F': (-810.58, 77.16), 'Kalpha': (966818, 3503)},
+                                #                    'color': 'blue'}
+                                }
 
-        self.literature_massshift = king_literature[self.KingFactorLit]['Kalpha']  # Mhz u (lit val given in GHz u)(949000, 4000)
-        self.literature_fieldshift = king_literature[self.KingFactorLit]['F']  # MHz/fm^2(-788, 82)
-        self.literature_alpha = king_literature[self.KingFactorLit]['Alpha']  # u fm^2 397
 
         ''' literature radii '''
         delta_rms_kaufm = {'58Ni': (-0.275, 0.007),
+                           '59Ni': (-0.180, 0.008),  # From Nickel_delta_r_square_results.txt(30.04.20), not published!
                            '60Ni': (0, 0),
                            '61Ni': (0.083, 0.005),
                            '62Ni': (0.223, 0.005),
+                           '63Ni': (0.278, 0.007),  # From Nickel_delta_r_square_results.txt(30.04.20), not published!
                            '64Ni': (0.368, 0.009),
-                           '68Ni': (0.620, 0.021)}
+                           '65Ni': (0.386, 0.016),  # From Nickel_delta_r_square_results.txt(30.04.20), not published!
+                           '66Ni': (0.495, 0.015),  # From Nickel_delta_r_square_results.txt(30.04.20), not published!
+                           '67Ni': (0.516, 0.022),  # From Nickel_delta_r_square_results.txt(30.04.20), not published!
+                           '68Ni': (0.620, 0.021),
+                           '70Ni': (0.808, 0.022),  # From Nickel_delta_r_square_results.txt(30.04.20), not published!
+                           }
         delta_rms_steudel = {'58Ni': (-0.218, 0.040),  # 58-60
                              '60Ni': (0, 0),  # Shifts are given in pairs. Most ref to 60.
                              '61Ni': (0.065, 0.017),  # 60-61
@@ -241,9 +285,9 @@ class NiAnalysis():
                              '62Ni': (0.2226, 0.0059),
                              '64Ni': (0.3642, 0.0095)}
 
-        self.delta_rms_lit = {'Kaufmann 2020': delta_rms_kaufm,
-                              'Steudel 1980': delta_rms_steudel,
-                              'Koenig 2020': delta_rms_koenig}
+        self.delta_rms_lit = {'Kaufmann 2020 (incl.unbup.!)': {'data': delta_rms_kaufm, 'color': 'green'},
+                              'Steudel 1980': {'data': delta_rms_steudel, 'color': 'black'},
+                              'Koenig 2020': {'data': delta_rms_koenig, 'color': 'blue'}}
 
         # from Landolt-Börnstein - Group I Elementary Particles, Nuclei and Atoms, Fricke 2004
         # http://materials.springer.com/lb/docs/sm_lbs_978-3-540-45555-4_30
@@ -319,21 +363,17 @@ class NiAnalysis():
         cur.execute('''SELECT * FROM Lines WHERE lineVar = ? ''', (self.line,))  # get original line to copy from
         copy_line = cur.fetchall()
         copy_line_list = list(copy_line[0])
-        copy_line_list[3] = self.restframe_trans_freq
+        copy_line_list[3] = self.restframe_trans_freq[self.ref_iso][0]
         line_new = tuple(copy_line_list)
         cur.execute('''INSERT OR REPLACE INTO Lines VALUES (?,?,?,?,?,?,?,?,?)''', line_new)
         con.commit()
         con.close()
-        # TODO: include uncertainty; write to Lines db
 
         # calculate differential doppler shifts
-        # TODO: Why calculate here with volt+600??
-        self.diff_dopplers = {
-        key: Physics.diffDoppler(self.restframe_trans_freq, self.accVolt_set, self.masses[key][0] / 1e6)
-        for key in self.masses.keys()}
-        self.diff_dopplers2 = {
-            key: Physics.diffDoppler(self.restframe_trans_freq, self.accVolt_set + 1660, self.masses[key][0] / 1e6)
-            for key in self.masses.keys()}
+        self.diff_dopplers = {key: Physics.diffDoppler(self.restframe_trans_freq[self.ref_iso][0],
+                                                       self.accVolt_set,
+                                                       self.masses[key][0] / 1e6)
+                              for key in self.masses.keys()}
         # adjust center fit estimations to accVoltage
         self.adjust_center_ests_db()
 
@@ -341,38 +381,9 @@ class NiAnalysis():
         self.ref_datetime = datetime.strptime('2018-04-13_13:08:55', '%Y-%m-%d_%H:%M:%S')  # run 6191, first 58 we use
 
         # create results dictionary:
-        '''
-        self.results['isotope']
-                        ['file_names']
-                        ['file_numbers']
-                        ['file_times']
-                        ['scaler_no']
-                            ['center_fits']
-                                ['vals']
-                                ['d_stat']
-                                ['d_syst']
-                            ['shifts_iso-58']
-                                ['vals']
-                                ['d_stat']
-                                ['d_syst']
-                            ['avg_shift_iso-58']
-                                ['vals']
-                                ['d_stat']
-                                ['d_syst']
-                            ['acc_volts']
-                                ['vals']
-                                ['d_stat']
-                                ['d_syst']
-                            ['hfs_pars']
-                                ['Al']
-                                ['Au']
-                                ['Bl']
-                                ['Bu']
-                        ['color']
-        '''
         self.results = {}
 
-        # current scaler variable:
+        # Set the scaler variable to a defined starting point:
         self.update_scalers_in_db('012')
 
         # remove bad files from db
@@ -434,7 +445,8 @@ class NiAnalysis():
         """ use single scaler results and combine per file """
         sc_prefix = 'scaler_'
         if calibrated:
-            if not 'sum' in isolist[0]:  # TODO: ugly workaround. Should find a good convention on the c use
+            if not 'sum' in isolist[0]:
+                # For the single-files we use the scalers separate but with combined calibration
                 sc_prefix += 'c'
             isolist = ['{}_cal'.format(i) for i in isolist]
         for iso in isolist:
@@ -507,7 +519,104 @@ class NiAnalysis():
                                              }}
             TiTs.merge_extend_dicts(self.results[iso], combined_dict, overwrite=True, force_overwrite=True)
 
-        self.plot_parameter_for_isos_and_scaler([isolist[1]], ['scaler_c012', 'scaler_012'], 'center_fits')
+            self.plot_parameter_for_isos_and_scaler([iso], ['scaler_c012'], 'center_fits', plotstyle='classic', plotAvg=True)
+
+    def combine_single_scaler_results(self, parameter, isolist, calibrated=False):
+        """ use single scaler results and combine per file """
+        sc_prefix = 'scaler_'
+
+        if calibrated:
+            if not 'sum' in isolist[0]:
+                # For the single-files we use the scalers separate but with combined calibration
+                sc_prefix += 'c'
+            isolist = ['{}_cal'.format(i) for i in isolist]
+
+
+        for iso in isolist:
+            if 'sum' in iso:
+                # for summed isos the accV dict for c012 scaler has not been created yet.
+                accV_dict = self.results[iso]['scaler_012']['acc_volts']
+                isodict = {iso: {'color': self.isotope_colors[int(iso[:2])],
+                                 'scaler_c012': {'acc_volts': accV_dict}
+                                 }}
+                TiTs.merge_extend_dicts(self.results, isodict, overwrite=True, force_overwrite=True)
+
+            # load fit results for all scalers from db
+            iso_r = self.results[iso]
+            file_names = iso_r['file_names']
+            # create list for combined scaler centers and stat errs
+            centers_combined = []
+            centers_combined_d_fit = []
+            centers_combined_d_stat = []
+            centers_combined_d_syst = []
+            for indx in range(len(file_names)):
+                # load all scaler results with fit errors. Only these are important for the combination.
+                val_arr = np.array([iso_r['{}{}'.format(sc_prefix, sc)][parameter]['vals'][indx]
+                                    for sc in range(3)])
+                err_arr = np.array([iso_r['{}{}'.format(sc_prefix, sc)][parameter]['d_fit'][indx]
+                                    for sc in range(3)])
+                stat_arr = np.array([iso_r['{}{}'.format(sc_prefix, sc)][parameter]['d_stat'][indx]
+                                    for sc in range(3)])
+                stat_without_fit = np.sqrt(stat_arr**2 - err_arr**2)
+
+                # calculate weighted average
+                weights = 1 / err_arr ** 2
+                wavg, sumw = np.average(val_arr, weights=weights, returned=True)
+                werr = np.sqrt(1 / sumw)
+                # calculate standard deviation of values
+                std = np.std(val_arr)
+
+                # Append to combined results list. For error use the larger of standard deviation or weighted avg errors
+                centers_combined.append(wavg)
+                d_fit = max(werr, std)
+                centers_combined_d_fit.append(d_fit)
+
+                ''' uncertainties '''
+                # if 'center' in parameter:
+                #     # statistic uncertainties
+                #     # also kind of a fit uncertainty but I'll add it to stat since it's determined with other fits
+                #     if self.get_gate_analysis and not 'sum' in iso:
+                #         gatewidth_std = self.results[iso[:4]]['scaler_012']['bunchwidth_std_all']['vals'][indx]
+                #     else:
+                #         gatewidth_std = self.bunch_structure_d
+                #     # statistic uncertainty
+                #     if calibrated:  # ion energy has been calibrated. Calibration may have a statistic error
+                #         d_ion_energy_stat = self.diff_dopplers[iso[:4]] * \
+                #                             self.results[iso]['scaler_c012']['acc_volts']['d_stat'][indx]
+                #     else:
+                #         d_ion_energy_stat = 0
+                #     d_stat = np.sqrt(d_fit ** 2 + gatewidth_std ** 2 + d_ion_energy_stat ** 2)
+                #     centers_combined_d_stat.append(d_stat)
+                #     # systematic uncertainties
+                #     d_syst = iso_r['{}{}'.format(sc_prefix, 1)][parameter]['d_syst'][indx]  # same for all scalers
+                #     centers_combined_d_syst.append(d_syst)
+
+                # statistic uncertainties
+                stat_add = np.average(stat_without_fit)  # statistics except the fit. Should be same for all sc
+                centers_combined_d_stat.append(np.sqrt(d_fit**2+stat_add**2))
+                # systematic uncertainties
+                d_syst = iso_r['{}{}'.format(sc_prefix, 1)][parameter]['d_syst'][indx]  # same for all scalers
+                centers_combined_d_syst.append(d_syst)
+
+
+            # calculate weighted avg of center fit
+            weights = 1 / np.array(centers_combined_d_stat) ** 2
+            wavg, sumw = np.average(np.array(centers_combined), weights=weights, returned=True)
+            wavg_d = np.sqrt(1 / sumw)
+            # calculate standard deviation of values
+            st_dev = np.array(centers_combined).std()
+            combined_dict = {'scaler_c012': {parameter: {'vals': centers_combined,
+                                                             'd_fit': centers_combined_d_fit,
+                                                             'd_stat': centers_combined_d_stat,
+                                                             'd_syst': centers_combined_d_syst},
+                                             'avg_{}'.format(parameter): {'vals': [wavg],
+                                                                 'd_fit': [wavg_d],
+                                                                 'd_stat': [max(wavg_d, st_dev)],
+                                                                 'd_syst': [centers_combined_d_syst[0]]},
+                                             }}
+            TiTs.merge_extend_dicts(self.results[iso], combined_dict, overwrite=True, force_overwrite=True)
+
+            self.plot_parameter_for_isos_and_scaler([iso], ['scaler_c012'], parameter, plotstyle='classic', plotAvg=True)
 
     def plot_results_of_fit(self, calibrated=False):
         add_sc = []
@@ -515,32 +624,33 @@ class NiAnalysis():
         if calibrated:
             add_sc = ['scaler_c0', 'scaler_c1', 'scaler_c2']
             isolist = ['{}_cal'.format(i) for i in isolist]
+
         # plot iso-results for each scaler combination
         for sc in self.scaler_combinations+['scaler_c012']+add_sc:
             # write the scaler to db for usage
             scaler = self.update_scalers_in_db(sc)
             # plot results of first fit
-            self.plot_parameter_for_isos_and_scaler(isolist, [scaler], 'center_fits', offset=[450, 0, -450])
+            self.plot_parameter_for_isos_and_scaler(isolist, [scaler], 'center_fits', offset=[450, 0, -450], folder='fit_res')
             self.all_centerFreq_to_scanVolt(isolist, [scaler])
-            self.plot_parameter_for_isos_and_scaler(isolist, [scaler], 'center_scanvolt', unit='V')
+            self.plot_parameter_for_isos_and_scaler(isolist, [scaler], 'center_scanvolt', unit='V', folder='fit_res')
             if scaler != 'scaler_c012':  # fitpars don't make sense for the calculated combined scaler
-                self.plot_parameter_for_isos_and_scaler(isolist, [scaler], 'rChi')
+                self.plot_parameter_for_isos_and_scaler(isolist, [scaler], 'rChi', folder='fit_res')
                 self.get_weighted_avg_linepars(isolist, [scaler])
-                self.plot_parameter_for_isos_and_scaler(isolist, [scaler], 'all_fitpars:center', unit='')
+                self.plot_parameter_for_isos_and_scaler(isolist, [scaler], 'all_fitpars:center', unit='', folder='fit_res')
                 for par, vals in self.initial_par_guess.items():
                     used, fixed = self.check_par_in_lineshape(par)
                     if used and not vals[1]==True:  # only plot when used and not fixed
-                        self.plot_parameter_for_isos_and_scaler(isolist, [scaler], 'all_fitpars:{}'.format(par), unit='')
+                        self.plot_parameter_for_isos_and_scaler(isolist, [scaler], 'all_fitpars:{}'.format(par), unit='', folder='fit_res')
 
         # plot all scaler-results for each isotope
         for iso in isolist:
             self.plot_parameter_for_isos_and_scaler([iso], self.scaler_combinations+['scaler_c012']+add_sc,
-                                                    'center_fits', onlyfiterrs=True)
-            self.plot_parameter_for_isos_and_scaler([iso], self.scaler_combinations+add_sc, 'all_fitpars:center')
+                                                    'center_fits', onlyfiterrs=True, folder='fit_res')
+            self.plot_parameter_for_isos_and_scaler([iso], self.scaler_combinations+add_sc, 'all_fitpars:center', folder='fit_res')
             for par, vals in self.initial_par_guess.items():
                 used, fixed = self.check_par_in_lineshape(par)
                 if used and not vals[1]==True:  # only plot when used and not fixed
-                    self.plot_parameter_for_isos_and_scaler([iso], self.scaler_combinations+add_sc, 'all_fitpars:{}'.format(par), unit='')
+                    self.plot_parameter_for_isos_and_scaler([iso], self.scaler_combinations+add_sc, 'all_fitpars:{}'.format(par), unit='', folder='fit_res')
 
     def ion_energy_calibration(self):
         """
@@ -548,6 +658,7 @@ class NiAnalysis():
         Calibration will be done for each scaler and written to results db.
         :return:
         """
+        isolist = ['55Ni', '56Ni', '58Ni', '60Ni']
         for sc in self.scaler_combinations+['scaler_c012']:
             logging.info('\n'
                          '## ion energy calibration started for scaler {}'
@@ -555,50 +666,30 @@ class NiAnalysis():
             # write the scaler to db for usage
             scaler = self.update_scalers_in_db(sc)
 
+            # get the scan voltage from the center fits, that will be useful here
+            self.all_centerFreq_to_scanVolt(isolist, [scaler])
+
             # calculate isotope shift and calibrate voltage
-            if self.use_handassigned:
-                # TODO: calibration must be updated here
-                self.calibrateVoltage(self.calib_tuples)
-                self.assign_calibration_voltage_handassigned('56Ni', '58Ni', scaler, self.files56_handassigned_to_calibs)
-            else:
-                # interpolate between calibration tuples.
-                if self.calibration_method == 'isoshift':  # calibrate vs literature isotope shift
-                    self.accVolt_corrected = self.calibVoltageOffset()  # TODO: This is new, clean up around it...
-                    self.getVoltDeviationToResults('58Ni', allNull=True)
-                    self.getVoltDeviationToResults('60Ni', allNull=True)
-                    self.getVoltDeviationToResults('56Ni', allNull=True)  # never actually used, just for fun
-                    for iso in ['55Ni', '56Ni', '58Ni', '60Ni']:
-                        self.calibVoltageFunct(iso, scaler, use58only=True)
-                elif self.calibration_method == 'combined':  # calibrate vs literature isotope shift + adj. offsets
-                    self.accVolt_corrected = self.calibVoltageOffset()  # TODO: This is new, clean up around it...
-                    self.getVoltDeviationToResults('58Ni')
-                    self.getVoltDeviationToResults('60Ni')
-                    self.getVoltDeviationToResults('56Ni')  # never actually used, just for fun
-                    for iso in ['55Ni', '56Ni', '58Ni', '60Ni']:
-                        self.calibVoltageFunct(iso, scaler, use58only=False)
-                elif self.calibration_method == 'relative':  # calibrate vs relative transition frequency
-                    self.accVolt_corrected = (self.accVolt_set, self.accVolt_set_d)  # no large scale correction
-                    self.getVoltDeviationToResults('58Ni')
-                    self.getVoltDeviationToResults('60Ni')
-                    self.getVoltDeviationToResults('56Ni')  # never actually used, just for fun
-                    for iso in ['55Ni', '56Ni', '58Ni', '60Ni']:
-                        self.calibVoltageFunct(iso, scaler, use58only=False)
-                elif self.calibration_method == 'absolute':  # calibrate vs absolute transition frequency
-                    mean_offset_58 = self.getVoltDeviationFromAbsoluteTransFreq('58Ni')
-                    self.getVoltDeviationToResults('60Ni', offset=mean_offset_58)
-                    self.getVoltDeviationToResults('56Ni', offset=mean_offset_58)  # never actually used, just for fun
-                    for iso in ['55Ni', '56Ni', '58Ni', '60Ni']:
-                        self.calibVoltageFunct(iso, scaler, use58only=True)
-                elif self.calibration_method == 'None':  # No Calibration
-                    self.accVolt_corrected = (self.accVolt_set, self.accVolt_set_d)  # no large scale correction
-                    self.getVoltDeviationToResults('58Ni', allNull=True)
-                    self.getVoltDeviationToResults('60Ni', allNull=True)
-                    self.getVoltDeviationToResults('56Ni', allNull=True)  # never actually used, just for fun
-                    for iso in ['55Ni', '56Ni', '58Ni', '60Ni']:
-                        self.calibVoltageFunct(iso, scaler, use58only=False)
-                self.plot_parameter_for_isos_and_scaler(['56Ni', '58Ni', '60Ni'], [scaler], 'voltage_deviation',
-                                                        unit='V')
-                self.plot_parameter_for_isos_and_scaler(['58Ni_cal'], [scaler], 'acc_volts', unit='V')
+            ''' use interpolation. '''
+            #  Since we effectively calibrate the buncher potential and we expect that to drift.
+            # Meaning we have no influence on it so there's no justification for assigning values to each other...
+            if 'absolute' in self.calibration_method:
+                # use both the 58 and 60 Nickel absolute transition frequencies
+                mean_offset_58 = self.getVoltDeviationFromAbsoluteTransFreq('58Ni')
+                mean_offset_60 = self.getVoltDeviationFromAbsoluteTransFreq('60Ni')
+                mean_offset = ((mean_offset_58[0] + mean_offset_60[0]) / 2, (mean_offset_58[1] + mean_offset_60[1]) / 2)
+                self.getVoltDeviationToResults('56Ni', offset=mean_offset)  # never actually used, just for fun
+                for iso in isolist:
+                    # '58' or '60' in self.calibration_method will lead to only this isotope being used for calibration
+                    self.calibVoltageFunct(iso, scaler, useOnly=self.calibration_method)
+            else:  # No Calibration
+                # for other calibration methods see mid2020 script
+                self.accVolt_corrected = (self.accVolt_set, self.accVolt_set_d)  # no large scale correction
+                self.getVoltDeviationToResults('58Ni', allNull=True)
+                self.getVoltDeviationToResults('60Ni', allNull=True)
+                self.getVoltDeviationToResults('56Ni', allNull=True)  # never actually used, just for fun
+                for iso in isolist:
+                    self.calibVoltageFunct(iso, scaler)
 
     def fitting_calibrated_separate(self):
         """
@@ -615,7 +706,6 @@ class NiAnalysis():
                 for iso in ['58Ni_cal', '60Ni_cal', '56Ni_cal']:
                     # create new isotopes with calibrated voltage applied in db (already exist in self.results)
                     self.write_voltcal_to_db(iso, scaler)
-                    # TODO: I used avg fitpars here before. Don't think I wanna do this after all...
                     # Do a second set of fits for all 56, 58 & 60 runs with calibration applied.
                     filelist, runNo, center_freqs, center_fit_errs, center_freqs_d, center_freqs_d_syst, start_times, fitpars, rChi = \
                         self.chooseAndFitRuns(iso)
@@ -650,6 +740,9 @@ class NiAnalysis():
                                                                       center_freqs_d_syst, fitpars, rChi)
                     TiTs.merge_extend_dicts(self.results[iso][scaler], scaler_dict, overwrite=True, force_overwrite=True)
 
+                self.plot_parameter_for_isos_and_scaler([iso], ['scaler_c0', 'scaler_c1', 'scaler_c2'], 'center_fits',
+                                                        onlyfiterrs=True)
+
             self.export_results()
 
     def extract_isoshifts_from_fitres(self, isolist, refiso, calibrated=False):
@@ -659,7 +752,6 @@ class NiAnalysis():
         """
         if calibrated:
             isolist = ['{}_cal'.format(i) for i in isolist]  #make sure to use the calibrated isos when calibration = True
-        # TODO: rework uncertainties!!
         # calculate isotope shift and calibrate voltage
         for iso in isolist:
             for sc in self.results[iso].keys():
@@ -668,17 +760,12 @@ class NiAnalysis():
                                  '## extracting isotope shifts for scaler {}'.format(sc))
                     # write the scaler to db for usage
                     scaler = self.update_scalers_in_db(sc)
-                    if self.use_handassigned:
-                            self.extract_iso_shift_handassigned(iso, refiso, scaler, self.files56_handassigned_to_calibs, calibrated)
-                            self.plot_parameter_for_isos_and_scaler([iso], [scaler], 'shifts_iso-{}'.format(refiso[:2]))
-                    else:
-                        # interpolate between calibration tuples.
-                        for iso in isolist:
-                            self.extract_iso_shift_interp(iso, refiso, scaler, calibrated)
-                            self.plot_parameter_for_isos_and_scaler([iso], [scaler], 'shifts_iso-{}'.format(refiso[:2]))
-
-        # self.plot_parameter_for_isos_vs_scaler(isolist, self.scaler_combinations + ['scaler_c012'],
-        #                                        'avg_shift_iso-{}'.format(refiso[:2]), offset=True)
+                    # interpolate between calibration tuples.
+                    for iso in isolist:
+                        self.extract_iso_shift_interp(iso, refiso, scaler, calibrated)
+                        # if not scaler == 'scaler_c012':
+                        self.plot_parameter_for_isos_and_scaler([iso], [scaler], 'shift_iso-{}'.format(refiso[:2]),
+                                                                    plotstyle='classic', plotAvg=True, folder='combined')
 
     def create_and_fit_stacked_runs(self, calibrated=False):
         #########################
@@ -721,14 +808,27 @@ class NiAnalysis():
                     # Do a first set of fits for all 58 & 60 runs without any calibration applied.
                     filelist, runNo, center_freqs, center_fit_errs, center_freqs_d, center_freqs_d_syst, start_times, fitpars, rChi = \
                         self.chooseAndFitRuns(iso)
-                    # TODO: copy plot of fit from data to results folder
                     if '55' in iso:
                         # extract additional hfs fit parameters
                         al = self.param_from_fitres_db(filelist[0], iso, self.run, 'Al')
                         au = self.param_from_fitres_db(filelist[0], iso, self.run, 'Au')
                         bl = self.param_from_fitres_db(filelist[0], iso, self.run, 'Bl')
                         bu = self.param_from_fitres_db(filelist[0], iso, self.run, 'Bu')
-                        hfs_dict = {'Al': al, 'Au': au, 'Bl': bl, 'Bu': bu}
+                        if au[2]:  # A ratio fixed
+                            a_rat = au
+                            au = (al[0]*au[0], al[1]*au[0], True)
+                        else:  # A ratio free --> calculate
+                            a_rat = (au[0]/al[0],
+                                     np.sqrt(np.square(au[1] / al[0]) + np.square(au[0] * al[1] / al[0]**2)),
+                                     False)
+                        if bu[2]:  # B ratio fixed
+                            b_rat = bu
+                            bu = (bl[0]*bu[0], bl[1]*bu[0], True)
+                        else:  # B ratio free --> calculate
+                            b_rat = (bu[0]/bl[0],
+                                     np.sqrt(np.square(bu[1] / bl[0]) + np.square(bu[0] * bl[1] / bl[0]**2)),
+                                     False)
+                        hfs_dict = {'Al': al, 'Au': au, 'Arat': a_rat, 'Bl': bl, 'Bu': bu, 'Brat': b_rat}
                     else:
                         hfs_dict = None
                     isodict = {iso:
@@ -744,62 +844,6 @@ class NiAnalysis():
                                }
                     TiTs.merge_extend_dicts(self.results, isodict, overwrite=True, force_overwrite=True)
             self.export_results()
-
-        # plot results of first fit
-        self.plot_parameter_for_isos_vs_scaler(isolist, self.scaler_combinations, 'center_fits', offset=True)
-
-
-
-        # # write final result to database
-        # self.write_shift_to_combined_db('60Ni_sum_cal', self.run,
-        #                                 (isoShift60, isoShift60_d, isoShift60_d_syst),
-        #                                 'BECOLA 2018; 3 scalers combined; calibrated; ni60 runs summed to file: {}'
-        #                                 .format(self.ni55analysis_combined_files[2]))
-        # self.write_shift_to_combined_db('56Ni_sum_cal', self.run,
-        #                                 (isoShift56, isoShift56_d, isoShift56_d_syst),
-        #                                 'BECOLA 2018; 3 scalers combined; calibrated; ni56 runs summed to file: {}'
-        #                                 .format(self.ni55analysis_combined_files[2]))
-        # self.write_shift_to_combined_db('55Ni_sum_cal', self.run,
-        #                                 (isoShift55, isoShift55_d, isoShift55_d_syst),
-        #                                 'BECOLA 2018; 3 scalers combined; calibrated; ni56 runs summed to file: {}'
-        #                                 .format(self.ni55analysis_combined_files[3]))
-        #
-        # self.plot_sum_results()
-        #
-        # # Extract A and B factors and do stuff:
-        # self.ni55_A_B_analysis('55Ni_sum_cal')
-        #
-        # dr55, dr55_d = self.extract_radius_from_factors('55Ni_sum_cal', '58Ni_sum_cal')
-        # print('Ni55 deltar_rms: {}+-{}'.format(dr55, dr55_d))
-        # dr56, dr56_d = self.extract_radius_from_factors('56Ni_sum_cal', '58Ni_sum_cal')
-        # print('Ni56 deltar_rms: {}+-{}'.format(dr56, dr56_d))
-        # dr60, dr60_d = self.extract_radius_from_factors('60Ni_sum_cal', '58Ni_sum_cal')
-        # print('Ni60 deltar_rms: {}+-{}'.format(dr60, dr60_d))
-
-        ####################
-        # Do the king plot #
-        ####################
-        # TODO: Probably need to automate reference run here? But need to adjust value in Collaps results as well...
-        # TODO: Also: Do I want 56/58Ni or 56/58Ni_sum_cal
-        # refrun = self.run
-        # self.perform_king_fit_analysis(self.delta_lit_radii_58,
-        #                                isotopes=['55Ni_sum_cal', '56Ni_sum_cal', '56Ni', '58Ni', '59Ni', '60Ni', '61Ni',
-        #                                          '62Ni', '64Ni'],
-        #                                reference_run=refrun)
-
-        # ###################
-        # # export results  #
-        # ###################
-        # to_file_dict = {}
-        # for keys, vals in self.results.items():
-        #     # xml cannot take numbers as first letter of key
-        #     to_file_dict['i' + keys] = vals
-        # # add analysis parameters
-        # to_file_dict['parameters'] = {'line_profiles': self.run,
-        #                               'calib_assignment': 'handassigned' if self.use_handassigned else 'interpolated'}
-        # dateandtime = datetime.now()
-        # filename = 'results\\' + self.run_name + '_' + dateandtime.strftime("%Y-%m-%d_%H-%M") + '.xml'
-        # self.writeXMLfromDict(to_file_dict, os.path.join(self.workdir, filename), 'BECOLA_Analysis')
 
     def calculate_charge_radii(self, isolist, refiso, calibrated=False):
         """
@@ -832,6 +876,47 @@ class NiAnalysis():
 
         # self.plot_parameter_for_isos_vs_scaler(isolist, self.scaler_combinations + ['scaler_c012'],
         #                                        'avg_delta_rms_iso-{}'.format(refiso[:2]), digits=2)
+
+    def get_final_results(self):
+        """
+        Pick the isotope shifts to use for final results and calculate from there
+        :return:
+        """
+        all_isos = ['55Ni', '56Ni', '58Ni', '60Ni']
+
+        # get final values
+        for iso in all_isos:
+            iso_use = '{}_cal'.format(iso)  # if possible, the single file data should be used!
+            scaler = 'scaler_c012'  # Best approach is to fit each scaler separate and then combine.
+            description_str = 'BECOLA2018. Files and scalers fitted separate, calibrated'
+            if '55' in iso:
+                iso_use = '55Ni_sum_cal'  # for 55Ni, single file data is unuseable. Only summing up yields a spectrum
+                scaler = 'scaler_012'  # We need all the data we can get here, so we sum all scalers before fitting
+                description_str = 'BECOLA2018. Files summed, scalers fitted combined, calibrated'
+
+            iso_dict = self.results[iso_use][scaler]
+            final_vals_iso = {'center_fits':
+                                      {'vals': iso_dict['avg_center_fits']['vals'],
+                                       'd_stat': iso_dict['avg_center_fits']['d_stat'],
+                                       'd_syst': iso_dict['avg_center_fits']['d_syst']},
+                              'shift_iso-{}'.format(self.ref_iso[:2]):
+                                      {'vals': iso_dict['avg_shift_iso-{}'.format(self.ref_iso[:2])]['vals'],
+                                       'd_stat': iso_dict['avg_shift_iso-{}'.format(self.ref_iso[:2])]['d_stat'],
+                                       'd_syst': iso_dict['avg_shift_iso-{}'.format(self.ref_iso[:2])]['d_syst']},
+                              'delta_rms_iso-{}'.format(self.ref_iso[:2]):
+                                      {'vals': iso_dict['avg_delta_rms_iso-{}'.format(self.ref_iso[:2])]['vals'],
+                                       'd_stat': iso_dict['avg_delta_rms_iso-{}'.format(self.ref_iso[:2])]['d_stat'],
+                                       'd_syst': iso_dict['avg_delta_rms_iso-{}'.format(self.ref_iso[:2])]['d_syst']},
+                              }
+
+            self.results[iso]['final'] = final_vals_iso
+
+        # TODO: also get final A, B values and calculate µ, Q
+        self.plot_results_table(ref_iso=self.ref_iso)
+
+        self.export_results()
+
+        self.make_final_plots()
 
     ''' db related '''
     def reset(self, db_like, reset):
@@ -881,7 +966,7 @@ class NiAnalysis():
         copy_isopars = cur.fetchall()
         mass = copy_isopars[0][1]
         center_old = copy_isopars[0][4]
-        center_new = center_old + (self.accVolt_set - acc_volt) * Physics.diffDoppler(self.restframe_trans_freq, acc_volt, mass)
+        center_new = center_old + (self.accVolt_set - acc_volt) * self.diff_dopplers[copy_iso[:4]]
         isopars_lst = list(copy_isopars[0])  # change into list to replace some values
         isopars_lst[0] = iso_new
         isopars_lst[4] = center_new
@@ -959,8 +1044,8 @@ class NiAnalysis():
         """
         con = sqlite3.connect(self.db)
         cur = con.cursor()
-        stand_ests = {'55Ni': -1174, '56Ni': -712, '58Ni': -225, '60Ni': 293}  # values that worked fine for 29850V
-        ref_freq_dev = 850343800 - self.restframe_trans_freq  # stand_ests are for 580343800MHz. Ref freq might be updated
+        stand_ests = {'55Ni': -1060, '56Ni': -712, '58Ni': -225, '60Ni': 293}  # values that worked fine for 29850V
+        ref_freq_dev = 850343800 - self.restframe_trans_freq[self.ref_iso][0]  # stand_ests are for 580343800MHz. Ref freq might be updated
         for iso, mass_tupl in stand_ests.items():
             cur.execute('''UPDATE Isotopes SET center = ? WHERE iso = ? ''',
                         (stand_ests[iso] + ref_freq_dev + (29850 - self.accVolt_set) * self.diff_dopplers[iso], iso))
@@ -1038,6 +1123,9 @@ class NiAnalysis():
             scaler_db_string = '[0,1,2]'
             scaler_name = '012'
         self.scaler_name = 'scaler_{}'.format(scaler_name)
+        if scalers == 'final':
+            # special case! Final is used as a scaler here for plotting...
+            self.scaler_name = scalers
         con = sqlite3.connect(self.db)
         cur = con.cursor()
         cur.execute('''UPDATE Runs SET Scaler = ?''', (scaler_db_string,))
@@ -1160,14 +1248,13 @@ class NiAnalysis():
             except Exception as e:
                 # Fit went wrong!
                 # replace with standard value and big error...
-                parsdict = {'center': (-510, 30, False)}  # TODO: use better dummy value (take from all_Center_MHz list)
+                parsdict = {'center': (-510, 510, False)}
             all_fitpars.append(parsdict)
             all_rundate.append(file_date)
             all_center_MHz.append(parsdict['center'][0])
             all_rChi.append(rChi[0][0])
 
             # === uncertainties ===
-            # TODO: Renew this whole section from scratch!
 
             # == statistic uncertainites (changing on a file-to-file basis):
             # fit uncertainty
@@ -1224,7 +1311,7 @@ class NiAnalysis():
 
         m = db_isopars[0][0]
         nuL = db_laserfreq[0][0]
-        nuoff = self.restframe_trans_freq
+        nuoff = self.restframe_trans_freq[self.ref_iso][0]
 
         velo = Physics.invRelDoppler(nuL, nuoff+deltanu)
         ener = Physics.relEnergy(velo, m*Physics.u)
@@ -1244,22 +1331,21 @@ class NiAnalysis():
         for isostring in iso_list:
             for sc in scaler_list:
                 scaler = self.update_scalers_in_db(sc)
-                center_freq = self.results[isostring][scaler]['center_fits']['vals']
-                # TODO: Check uncertainties here. Most come from calculation of freq and are not in dacVolts!!
-                center_freq_d_fit = self.results[isostring][scaler]['center_fits']['d_fit']
-                #center_freq_dsyst = self.results[isostring][scaler]['center_fits']['d_syst']
+                if self.results[isostring].get(scaler, None) is not None:
+                    center_freq = self.results[isostring][scaler]['center_fits']['vals']
+                    center_freq_d_fit = self.results[isostring][scaler]['center_fits']['d_fit']
 
-                center_volt, center_volt_d, center_volt_dsyst = [], [], []
-                for nu, d in zip(center_freq, center_freq_d_fit):
-                    v, v_d, v_ds = self.centerFreq_to_absVoltage(isostring, nu, d, 0)
-                    center_volt.append(-v+self.accVolt_set)
-                    center_volt_d.append(v_d)
-                    center_volt_dsyst.append(v_ds)
+                    center_volt, center_volt_d, center_volt_dsyst = [], [], []
+                    for nu, d in zip(center_freq, center_freq_d_fit):
+                        v, v_d, v_ds = self.centerFreq_to_absVoltage(isostring, nu, d, 0)
+                        center_volt.append(-v+self.accVolt_set)
+                        center_volt_d.append(v_d)
+                        center_volt_dsyst.append(v_ds)
 
-                voltdict = {'vals': center_volt,
-                            'd_stat': center_volt_d,
-                            'd_syst': center_volt_dsyst}
-                self.results[isostring][scaler]['center_scanvolt'] = voltdict
+                    voltdict = {'vals': center_volt,
+                                'd_stat': center_volt_d,
+                                'd_syst': center_volt_dsyst}
+                    self.results[isostring][scaler]['center_scanvolt'] = voltdict
 
     def get_weighted_avg_linepars(self, iso_list, scaler_list):
         """
@@ -1307,328 +1393,10 @@ class NiAnalysis():
                     fitres_avg[par] = (pars_avg, pars_avg_d, par_fixed)
                 self.results[isostring][scaler]['avg_fitpars'] = fitres_avg
 
-    def assign_calibration_voltage_handassigned(self, isotope, ref_isotope, scaler, assigned):
-        '''
-        :return:
-        '''
-        scaler = self.update_scalers_in_db(scaler)
-        # get reference run times and voltages from database
-        ref_numbers = self.results[ref_isotope]['file_numbers']
-        ref_volts = self.results[ref_isotope][scaler]['acc_volts']['vals']
-        ref_volts_d = self.results[ref_isotope][scaler]['acc_volts']['d_stat']
-        ref_volts_d_syst = self.results[ref_isotope][scaler]['acc_volts']['d_syst']
-
-        # get run times for isotope to be calibrated from database
-        iso_numbers = self.results[isotope]['file_numbers']
-        iso_names = self.results[isotope]['file_names']
-        iso_volts = [29850] * len(iso_numbers)
-        iso_volts_d = [29850] * len(iso_numbers)
-        iso_volts_d_syst = [29850] * len(iso_numbers)
-
-        for tuples in assigned:
-            iso_run_no = tuples[0]
-            ref_run_no = tuples[1][0]
-
-            ref_indx = ref_numbers.index(ref_run_no)
-            volt = ref_volts[ref_indx]
-            volt_d = ref_volts_d[ref_indx]
-            volt_d_syst = ref_volts_d_syst[ref_indx]
-
-            iso_indx = iso_numbers.index(iso_run_no)
-            file = iso_names[iso_indx]
-            iso_volts[iso_indx] = volt
-            iso_volts_d[iso_indx] = volt_d
-            iso_volts_d_syst[iso_indx] = volt_d_syst
-
-            # Update 'Files' in self.db
-            isotope_cal = '{}_cal'.format(isotope)
-            con = sqlite3.connect(self.db)
-            cur = con.cursor()
-            cur.execute('''UPDATE Files SET accVolt = ?, type = ? WHERE file = ? ''',
-                        (volt, '{}_{}'.format(isotope_cal, ref_run_no), file))
-            con.commit()
-            con.close()
-
-            # Create new isotopes in self.db
-            self.create_new_isotope_in_db(isotope, '{}_{}'.format(isotope_cal, ref_run_no), volt)
-
-        # write calibration voltages back into database
-        isotope_cal = '{}_cal'.format(isotope)
-        voltdict = {isotope_cal: {scaler: {'acc_volts': {'vals': iso_volts,
-                                                         'd_stat': iso_volts_d,
-                                                         'd_syst': iso_volts_d_syst
-                                                         }
-                                           }
-                                  }
-                    }
-        TiTs.merge_extend_dicts(self.results, voltdict)
-
-    def calibrateVoltage(self, calibration_tuples):
-        '''
-
-        :param calibration_tuples:
-        :return: calib_tuples_with_isoshift_and_calibrationvoltage:
-                contains a tuple for each calibration point with entries: (58ref, 60ref, isoshift, isoshift_d, calVolt, calVoltStatErr, calVoltSystErr)
-        '''
-        #######################
-        # Calibration process #
-        #######################
-        scaler = self.scaler_name
-
-        # Calibration sets of 58/60Ni
-        calib_tuples = calibration_tuples
-        calib_tuples_with_isoshift = []
-
-        # copy the results dicts and remove all non-calibration values
-        isos = ['58Ni', '60Ni']
-        dicts = [{}, {}]
-        for j in range(2):
-            new_results_dict = self.results[isos[j]]
-            indexlist = [new_results_dict['file_numbers'].index(i[j]) for i in calib_tuples]
-            for keys, vals in new_results_dict.items():
-                if type(vals) is list:
-                    new_results_dict[keys] = [vals[i] for i in indexlist]
-            for keys, vals in new_results_dict[scaler].items():
-                for keys2, vals2 in vals.items():
-                    if type(vals2) is list:
-                        vals[keys2] = [vals2[i] for i in indexlist]
-            dicts[j] = new_results_dict
-        new58_dict = dicts[0]
-        new60_dict = dicts[1]
-
-        # Calculate Isotope shift for all calibration tuples and add to list.
-        for tuples in calib_tuples:
-            # Get 58Nickel center fit parameter in MHz
-            run58 = tuples[0]
-            indx_58 = new58_dict['file_numbers'].index(run58)
-            run58file = 'BECOLA_'+str(run58)+'.xml'
-            center58 = self.param_from_fitres_db(run58file, '58Ni', self.run, 'center')
-            center58_d_syst = new58_dict[scaler]['center_fits']['d_syst'][indx_58]
-
-            # Get 60Nickel center fit parameter in MHz
-            run60 = tuples[1]
-            indx_60 = new60_dict['file_numbers'].index(run60)
-            run60file = 'BECOLA_' + str(run60) + '.xml'
-            center60 = self.param_from_fitres_db(run60file, '60Ni', self.run, 'center')
-            center60_d_syst = new60_dict[scaler]['center_fits']['d_syst'][indx_60]
-
-            # Calculate isotope shift of 60Ni with respect to 58Ni for this calibration point
-            isoShift = center60[0]-center58[0]
-            isoShift_d = np.sqrt(center60[1]**2+center58[1]**2)  # statistical uncertainty from fits
-            isoShift_d_syst = np.sqrt(center58_d_syst ** 2 + center60_d_syst **2)
-            tuple_with_isoshift = tuples + (isoShift, isoShift_d, isoShift_d_syst)
-            calib_tuples_with_isoshift.append(tuple_with_isoshift)
-
-        # write isotope shifts for nickel 60 to dict
-        ni60_shifts = [i[2] for i in calib_tuples_with_isoshift]
-        ni60_shifts_d = [i[3] for i in calib_tuples_with_isoshift]
-        ni60_shifts_d_syst = [i[4] for i in calib_tuples_with_isoshift]
-        new60_dict[scaler]['shifts_iso-58']['vals'] = ni60_shifts
-        new60_dict[scaler]['shifts_iso-58']['d_stat'] = ni60_shifts_d
-        new60_dict[scaler]['shifts_iso-58']['d_syst'] = ni60_shifts_d_syst
-        # TODO: this is no weighted avg. Maybe remove...
-        new60_dict[scaler]['avg_shift_iso-58']['vals'] = [sum(ni60_shifts)/len(ni60_shifts)]
-        # write the new dicts to self.results
-        TiTs.merge_extend_dicts(self.results, {'58Ni_ref': new58_dict}, overwrite=True, force_overwrite=True)
-        TiTs.merge_extend_dicts(self.results, {'60Ni_ref': new60_dict}, overwrite=True, force_overwrite=True)
-
-        # plot isotope shift for all calibration points (can be removed later on):
-        self.plot_parameter_for_isos_and_scaler(['60Ni'], [scaler], 'shifts_iso-58')
-
-        # Calculate resonance DAC Voltage from the 'center' positions
-        calib_tuples_with_isoshift_and_calibrationvoltage = []
-        average_calib_voltage = []
-        # Do the voltage calibration for each tuple.
-        for tuples in calib_tuples_with_isoshift:
-            # get filenames
-            run58, run60, isoShift, isoShift_d, isoShift_d_syst = tuples
-            run58file = 'BECOLA_' + str(run58) + '.xml'
-            run60file = 'BECOLA_' + str(run60) + '.xml'
-            calib_point_dict = {run58file: {},
-                                run60file: {}}
-
-            # calculate centerDAC and get some usefull info
-            for files, dicts in calib_point_dict.items():  # only 2 elements to iterate: 58 and 60
-                con = sqlite3.connect(self.db)
-                cur = con.cursor()
-                # get laser frequency and accelVolt
-                cur.execute(
-                    '''SELECT type, accVolt, laserFreq, colDirTrue FROM Files WHERE file = ? ''', (files,))
-                iso, accVolt, laserFreq, colDirTrue = cur.fetchall()[0]
-                # Query fitresults for file and isotope combo
-                if files is run58file:
-                    # check whether it's a 58 or 60 file to choose the correct run
-                    run = self.run
-                else:
-                    run = self.run
-                cur.execute(
-                    '''SELECT pars FROM FitRes WHERE file = ? AND iso = ? AND run = ?''', (files, iso, run))
-                pars = cur.fetchall()
-                # get mass
-                cur.execute(
-                    '''SELECT mass FROM Isotopes WHERE iso = ? ''', (iso,))
-                isoMass = cur.fetchall()[0][0]
-                con.close()
-
-                # write to dict
-                dicts['filename'] = files
-                dicts['iso'] = iso
-                dicts['accVolt'] = float(accVolt)
-                dicts['laserFreq'] = float(laserFreq)
-                dicts['colDirTrue'] = colDirTrue
-                parsDict = ast.literal_eval(pars[0][0])
-                center = parsDict['center'][0]
-                dicts['center'] = float(center)
-                dicts['isoMass'] = float(isoMass)
-
-                # calculate resonance frequency
-                dicts['resonanceFreq'] = self.restframe_trans_freq + dicts['center']
-                # calculate relative velocity
-                relVelocity = Physics.invRelDoppler(dicts['laserFreq'], dicts['resonanceFreq'])
-                # calculate relativistic energy of the beam particles at resonance freq and thereby resonance Voltage
-                centerE = Physics.relEnergy(relVelocity, dicts['isoMass'] * Physics.u)/Physics.qe
-                # get DAC resonance voltage
-                centerDAC = centerE - dicts['accVolt']  # TODO: can we get an error (statistical) here?
-
-                dicts['centerDAC'] = centerDAC
-
-            # alternative calibration process
-            accVolt = calib_point_dict[run58file]['accVolt']  # should be the same for 58 and 60
-            # Calculate differential Doppler shift for 58 and 60 nickel
-            # TODO: uncertainties on this? Well, the voltage is quite uncertain, but the effect should be minimal
-            diff_Doppler_58 = Physics.diffDoppler(self.restframe_trans_freq, accVolt, 58)
-            diff_Doppler_60 = Physics.diffDoppler(self.restframe_trans_freq, accVolt, 60)
-            # calculate measured isotope shift
-            # TODO: uncertainties? Statistical uncertainty of the resonance frequency fit.
-            # I think it is better to go through centerDAC values in order to incorporate wavemeter uncertainties instead of using 'resonanceFreq' directly.
-            # calculate velocity for 58 and 60
-            velo58sign = -1 if calib_point_dict[run58file]['colDirTrue'] else 1
-            velo58 = velo58sign * Physics.relVelocity((accVolt + calib_point_dict[run58file]['centerDAC'])*Physics.qe,
-                                         calib_point_dict[run58file]['isoMass']*Physics.u)
-            velo60sign = -1 if calib_point_dict[run60file]['colDirTrue'] else 1
-            velo60 = velo60sign * Physics.relVelocity((accVolt + calib_point_dict[run60file]['centerDAC']) * Physics.qe,
-                                         calib_point_dict[run60file]['isoMass']*Physics.u)
-            # calculate resonance frequency for 58 and 60
-            # TODO: The uncertainty here comes from the wavemeter and is systematic. Check that this is correct.
-            f_reso58 = Physics.relDoppler(calib_point_dict[run58file]['laserFreq'], velo58)
-            f_reso58_d = Physics.relDoppler(self.wavemeter_wsu30_mhz_d, velo58)  # will be very close to wavemeter_d
-            f_reso60 = Physics.relDoppler(calib_point_dict[run60file]['laserFreq'], velo60)
-            f_reso60_d = Physics.relDoppler(self.wavemeter_wsu30_mhz_d, velo60)  # will be very close to wavemeter_d
-            # isotope shift from calibration tuple:
-            # calculate isotope shift
-            isoShift = f_reso60 - f_reso58
-            isoShift_d_stat = isoShift_d  # TODO: This should be the statistical part of the uncertainty, coming from the center fit uncertainties
-            # isoShift_d_syst = np.sqrt(np.square(f_reso58_d) + np.square(f_reso60_d))  # TODO: This is a systematic uncertainty from the wavemeter uncertainty
-
-            # calculate calibration Voltage
-            calibrated_voltage = (isoShift-self.literature_IS60vs58)/(diff_Doppler_60-diff_Doppler_58)+accVolt
-            # TODO: Uncertainties are now split into systematic and statistic. Use accordingly!
-            calibrated_voltage_d_stat = np.sqrt(np.square(self.literature_IS60vs58_d_stat / (diff_Doppler_60 - diff_Doppler_58)) +
-                                           np.square(isoShift_d_stat / (diff_Doppler_60 - diff_Doppler_58)))
-            # TODO: For now I'm working with the statistical uncertainty only. But I need to add up the systematics as well.
-            calibrated_voltage_d_syst = np.sqrt(np.square(self.literature_IS60vs58_d_syst /(diff_Doppler_60-diff_Doppler_58)) +
-                                           np.square(isoShift_d_syst / (diff_Doppler_60 - diff_Doppler_58)))
-
-            # create a new tuple with (58ref, 60ref, isoshift, calVolt, calVoltErr)
-            tuple_withcalibvolt = tuples + (calibrated_voltage, calibrated_voltage_d_stat, calibrated_voltage_d_syst)
-            # contains a tuple for each calibration point with entries: (58ref, 60ref, isoshift, isoshift_d, isoshift_d_syst, calVolt, calVoltStatErr, calVoltSystErr)
-            calib_tuples_with_isoshift_and_calibrationvoltage.append(tuple_withcalibvolt)
-
-            average_calib_voltage.append(calibrated_voltage)
-            #print(calibrated_voltage)
-
-            # display calibration graph
-            #plt.plot(voltage_list, IS_perVolt_list)
-            #plt.scatter(calibrated_voltage, m * calibrated_voltage + b)
-            #plt.title('Voltage Calibration for Calibration Tuple [Ni58:{}/Ni60:{}]'.format(run58, run60))
-            #plt.xlabel('voltage [V]')
-            #plt.ylabel('isotope shift [MHz]')
-            #plt.show()
-
-        self.ni56_average_calib_voltage = sum(average_calib_voltage[:7])/len(calib_tuples[:7])  # TODO: lets see how this does to the 56 runs
-
-
-        acc_volt_dict = {'acc_volts': {'vals': [i[5] for i in calib_tuples_with_isoshift_and_calibrationvoltage],
-                                      'd_stat': [i[6] for i in calib_tuples_with_isoshift_and_calibrationvoltage],
-                                      'd_syst': [i[7] for i in calib_tuples_with_isoshift_and_calibrationvoltage]
-                                      }
-                         }
-        calibrations_dict = {'58Ni_ref': {scaler: acc_volt_dict},
-                             '60Ni_ref': {scaler: acc_volt_dict}
-                             }
-        # write to results dict
-        TiTs.merge_extend_dicts(self.results, calibrations_dict, overwrite=True, force_overwrite=True)
-
-        # plot calibration voltages:
-        setvolt = 29850
-        self.plot_parameter_for_isos_and_scaler(['58Ni_ref'], [scaler], 'acc_volts', overlay=setvolt, unit='V')
-
-
-        # Write calibrations to XML database
-        print('Updating self.db with new voltages now...')
-        for entries in calib_tuples_with_isoshift_and_calibrationvoltage:
-            calibration_name = str(entries[0]) + 'w' +  str(entries[1])
-            file58 = 'BECOLA_' + str(entries[0]) + '.xml'
-            file58_newType = '58Ni_cal' + calibration_name
-            file60 = 'BECOLA_' + str(entries[1]) + '.xml'
-            file60_newType = '60Ni_cal' + calibration_name
-            new_voltage = entries[5]
-
-            # Update 'Files' in self.db
-            con = sqlite3.connect(self.db)
-            cur = con.cursor()
-            cur.execute('''UPDATE Files SET accVolt = ?, type = ? WHERE file = ? ''', (new_voltage, file58_newType, file58))
-            cur.execute('''UPDATE Files SET accVolt = ?, type = ? WHERE file = ? ''', (new_voltage, file60_newType, file60))
-            con.commit()
-            con.close()
-
-            # Create new isotopes in self.db
-            self.create_new_isotope_in_db('58Ni', file58_newType, new_voltage)
-            self.create_new_isotope_in_db('60Ni', file60_newType, new_voltage)
-        print('...self.db update completed!')
-
-        return calib_tuples_with_isoshift_and_calibrationvoltage
-
-    def calibVoltageOffset(self):
-        """
-        Do an offset calibration for the acceleration voltage using the literature isotope shift.
-        This will return ONE calibration voltage
-        :return:
-        """
-        # Get shift data from previous fit results
-        file_times = self.results['60Ni']['file_times']
-        isoshift_dict = self.results['60Ni'][self.scaler_name]['shifts_iso-58']
-        shift = isoshift_dict['vals']
-        shift_d = isoshift_dict['d_stat']
-        shift_d_sys = 0.0  #isoshift_dict['d_syst']  # due to voltage uncertainty: the thing we want to correct for! Set 0
-
-        # make floats (seconds relative to reference-time) out of the dates
-        time_floats = list((t - self.ref_datetime).total_seconds() for t in file_times)
-
-        # compare to literature isoshift
-        lit_shift_dev = np.array(shift) - self.literature_IS60vs58
-        lit_shift_dev_d = np.array(shift_d)  # only these errors change on a file-to-file basis!
-        lit_shift_dev_d_sys = np.sqrt(np.array(shift_d_sys).mean()**2 +  # should be constant, taking mean anyway
-                                      (self.literature_IS60vs58_d_stat + self.literature_IS60vs58_d_syst)**2)
-        lit_shift_dev_d_abs = lit_shift_dev_d + lit_shift_dev_d_sys  # TODO: Is this the correct way to take the absolute err?
-
-        # fit a straight line to the deviation
-        # NOTE: One could also include a slope, but with the uncertainties, the error of the slope turns out bigger than the value.
-        def _offset(x, b):
-            return b
-        b_opt = curve_fit(_offset, time_floats, lit_shift_dev, p0=lit_shift_dev[0],
-                          sigma=lit_shift_dev_d, absolute_sigma=True)
-        b_err = np.sqrt(np.diag(b_opt[1]))
-
-        #TODO: might want to bring down the literature IS error across this fit. Will be too small else!!
-        accVolt_corrected = b_opt[0][0] / (self.diff_dopplers['60Ni']-self.diff_dopplers['58Ni'])+self.accVolt_set
-        accVolt_corrected_d = b_err[0] / (self.diff_dopplers['60Ni']-self.diff_dopplers['58Ni'])
-        accVolt_corrected_d_sys = lit_shift_dev_d_sys.mean() / (self.diff_dopplers['60Ni']-self.diff_dopplers['58Ni'])
-        accVolt_corrected_d_total = np.sqrt(accVolt_corrected_d**2+accVolt_corrected_d_sys**2)
-
-        return (accVolt_corrected, accVolt_corrected_d_total)
-
     def getVoltDeviationFromAbsoluteTransFreq(self, iso):
+        #  Relative calibration frequency is the isotope shift. If iso=ref_iso then that should be 0 MHz
+        rel_cal_freq = self.restframe_trans_freq[iso[:4]][0] - self.restframe_trans_freq[self.ref_iso][0]
+
         # Get center dac data from previous fit results
         file_times = self.results[iso]['file_times']
         center_freq_dict = self.results[iso][self.scaler_name]['center_fits']
@@ -1636,13 +1404,13 @@ class NiAnalysis():
         rel_center_d = np.array(center_freq_dict['d_stat'])
         rel_center_d_sys = np.array(center_freq_dict['d_syst'])  # This includes the uncertainty we want to reduce!!!
         rel_center_d_sys = np.sqrt(np.square(rel_center_d_sys)
-                                    - np.square(self.accVolt_set_d * self.diff_dopplers[iso[:4]])
-                                    )  # remove buncher potential uncertainty since we calibrate that now.
+                                   - np.square(self.accVolt_set_d * self.diff_dopplers[iso[:4]])
+                                   )  # remove buncher potential uncertainty since we calibrate that now.
 
-        volt_dev = -rel_center/self.diff_dopplers[iso[:4]]  #(neg) acc.voltages are stored as positive, so we need the -
+        volt_dev = -(rel_center - rel_cal_freq)/self.diff_dopplers[iso[:4]] #(neg) acc.voltages are stored as positive, so we need the -
         volt_dev_d = rel_center_d/self.diff_dopplers[iso[:4]]
         # systematics from absolute center uncertainty:
-        volt_dev_d_sys = np.sqrt(np.square(rel_center_d_sys) + np.square(self.restframe_trans_freq_d)
+        volt_dev_d_sys = np.sqrt(np.square(rel_center_d_sys) + np.square(self.restframe_trans_freq[iso[:4]][1])
                                  )/self.diff_dopplers[iso[:4]]
         # correction dict
         volt_dev_dict = {'vals': volt_dev.tolist(),
@@ -1650,7 +1418,6 @@ class NiAnalysis():
                          'd_syst': volt_dev_d_sys.tolist()}
         self.results[iso][self.scaler_name]['voltage_deviation'] = volt_dev_dict
 
-        # TODO: Maybe weighted average instead of mean here?
         return (volt_dev.mean(), volt_dev_d.mean()+volt_dev_d_sys.mean())
 
     def getVoltDeviationToResults(self, iso, offset=None, allNull=False):
@@ -1676,9 +1443,6 @@ class NiAnalysis():
         scanvolt_dev_d = scanvolt_d  # errors propagate unaltered
         scanvolt_dev_d_sys = scanvolt_d_sys
 
-        # TODO: Only fit uncertainties in scanvolt_d!
-        #  Must include the other uncertainties(wavemeter, ...) here.
-
         # if there is an offset, add it to all values
         if offset is not None:
             scanvolt_dev += offset[0]
@@ -1696,7 +1460,7 @@ class NiAnalysis():
                             'd_syst': scanvolt_dev_d_sys.tolist()}
         self.results[iso][self.scaler_name]['voltage_deviation'] = volt_dev_dict
 
-    def calibVoltageFunct(self, isotope, scaler, use58only=False, userefscaler=False):
+    def calibVoltageFunct(self, isotope, scaler, useOnly=None, userefscaler=False):
         """
         return a voltage calibration based on a datetime object using the offset from literature IS and the deviations
         from constant transition frequency.
@@ -1712,43 +1476,20 @@ class NiAnalysis():
         # get the global voltage offset from isotope shift correction
         volt_offset, volt_offset_d = self.accVolt_corrected
 
-        # get reference run times and voltages from database
+        # get info like run times and voltages from database
+        # For 58Ni reference
         ni58_numbers = self.results['58Ni']['file_numbers']
         dates_58 = self.results['58Ni']['file_times']
         volt58_dev = self.results['58Ni'][scaler]['voltage_deviation']['vals']
         volt58_dev_d = self.results['58Ni'][scaler]['voltage_deviation']['d_stat']
         volt58_dev_d_syst = self.results['58Ni'][scaler]['voltage_deviation']['d_syst']
+        # For 60Ni reference
         ni60_numbers = self.results['60Ni']['file_numbers']
         dates_60 = self.results['60Ni']['file_times']
         volt60_dev = self.results['60Ni'][scaler]['voltage_deviation']['vals']
         volt60_dev_d = self.results['60Ni'][scaler]['voltage_deviation']['d_stat']
         volt60_dev_d_syst = self.results['60Ni'][scaler]['voltage_deviation']['d_syst']
-        ref_dates = []
-        ref_volt_cor = []  # remember: A positive entry means negative deviation, so we can add for correction!
-        ref_volt_cor_d = []
-        ref_volt_cor_d_syst = []
-        for tuples in self.calib_tuples:
-            #TODO: Check how I deal with the calibration tuple assignment in other places of the code!
-            run_no_58 = tuples[0]
-            run_no_60 = tuples[1]
-            ind58 = ni58_numbers.index(run_no_58)
-            ind60 = ni60_numbers.index(run_no_60)
-            # Calculate means and errors
-            if use58only:
-                ref_time = dates_58[ind58]
-                ref_v = volt58_dev[ind58]
-                ref_v_d = volt58_dev_d[ind58]
-                ref_v_d_syst = volt58_dev_d_syst[ind58]
-            else:
-                ref_time = dates_58[ind58]+(dates_60[ind60]-dates_58[ind58])/2
-                ref_v = (volt58_dev[ind58]+volt60_dev[ind60])/2
-                ref_v_d = np.sqrt(np.square(volt58_dev_d[ind58]/2) + np.square(volt60_dev_d[ind60]/2))
-                ref_v_d_syst = np.sqrt(np.square(volt58_dev_d_syst[ind58]/2) + np.square(volt60_dev_d_syst[ind60]/2))
-            # Append to list
-            ref_dates.append(ref_time)
-            ref_volt_cor.append(volt_offset - ref_v)
-            ref_volt_cor_d.append(ref_v_d)
-            ref_volt_cor_d_syst.append(np.sqrt(ref_v_d_syst**2+volt_offset_d**2))
+        # For the isotope to be calibrated
         iso_times = self.results[isotope]['file_times']
         iso_names = self.results[isotope]['file_names']
         iso_numbers = self.results[isotope]['file_numbers']
@@ -1756,17 +1497,37 @@ class NiAnalysis():
 
         # make floats (seconds relative to reference-time) out of the dates
         iso_dates = list((t - self.ref_datetime).total_seconds() for t in iso_times)
-        ref_dates = list((t - self.ref_datetime).total_seconds() for t in ref_dates)
+        ref_58_dates = list((t - self.ref_datetime).total_seconds() for t in dates_58)
+        ref_60_dates = list((t - self.ref_datetime).total_seconds() for t in dates_60)
 
         # use np.interp to assign voltage deviations to the requested run.
-        interpolation = np.interp(iso_dates, ref_dates, ref_volt_cor)
-        interpolation_d = np.interp(iso_dates, ref_dates, ref_volt_cor_d)
-        interpolation_d_syst = np.interp(iso_dates, ref_dates, ref_volt_cor_d_syst)
+        interpolation_58 = np.interp(iso_dates, ref_58_dates, [volt_offset-v for v in volt58_dev])
+        interpolation_58_d = np.interp(iso_dates, ref_58_dates, volt58_dev_d)
+        interpolation_58_d_syst = np.interp(iso_dates, ref_58_dates, volt58_dev_d_syst)
+
+        # use np.interp to assign voltage deviations to the requested run.
+        interpolation_60 = np.interp(iso_dates, ref_60_dates, [volt_offset - v for v in volt60_dev])
+        interpolation_60_d = np.interp(iso_dates, ref_60_dates, volt60_dev_d)
+        interpolation_60_d_syst = np.interp(iso_dates, ref_60_dates, volt60_dev_d_syst)
 
         # calculate the final voltage value combining the interpolated deviation with the overall offset
-        voltcorrect = interpolation
-        voltcorrect_d = interpolation_d  # the overall correction is completely systematic (same for all files)
-        voltcorrect_d_syst = interpolation_d_syst
+        if '58' in useOnly:
+            # use only the 58 Nickel interpolation
+            voltcorrect = interpolation_58
+            voltcorrect_d = interpolation_58_d  # the overall correction is completely systematic (same for all files)
+            voltcorrect_d_syst = interpolation_58_d_syst
+        elif '60' in useOnly:
+            # use only the 60 Nickel interpolation
+            voltcorrect = interpolation_60
+            voltcorrect_d = interpolation_60_d  # the overall correction is completely systematic (same for all files)
+            voltcorrect_d_syst = interpolation_60_d_syst
+        else:  # standard case
+            # combine 58 and 60 Nickel references
+            voltcorrect = (interpolation_58 + interpolation_60)/2
+            sqare_err = 1/2*np.sqrt(interpolation_58_d**2 + interpolation_60_d**2)  # the overall correction is completely systematic (same for all files)
+            voltcorrect_d = np.array([max(abs(interpolation_58[i]-voltcorrect[i]), sqare_err[i])
+                                      for i in range(len(voltcorrect))])
+            voltcorrect_d_syst = (interpolation_58_d_syst + interpolation_60_d_syst)/2  # should be the same anyways
 
         # calculate weighted avg of center fit
         weights = 1 / np.array(voltcorrect_d) ** 2
@@ -1792,40 +1553,62 @@ class NiAnalysis():
                     }
         TiTs.merge_extend_dicts(self.results, voltdict)
 
-        # make a quick plot of references and calibrated voltages
-        fig, ax = plt.subplots()
-        ref_timedeltas = np.array([timedelta(seconds=s) for s in ref_dates])
-        ref_dates = np.array(self.ref_datetime + ref_timedeltas)  # convert back to datetime
-        iso_timedeltas = np.array([timedelta(seconds=s) for s in iso_dates])
-        iso_dates = np.array(self.ref_datetime + iso_timedeltas)  # convert back to datetime
-        ax.plot(ref_dates, np.array(ref_volt_cor), '--o', color='black', label='accVolt_corrected')
-        # plot error band for statistical errors
-        ax.fill_between(ref_dates,
-                         np.array(ref_volt_cor) - ref_volt_cor_d,
-                         np.array(ref_volt_cor) + ref_volt_cor_d,
-                         alpha=0.5, edgecolor='black', facecolor='black')
-        # plot error band for systematic errors on top of statistical errors
-        ax.fill_between(ref_dates,
-                         np.array(ref_volt_cor) - ref_volt_cor_d_syst - ref_volt_cor_d,
-                         np.array(ref_volt_cor) + ref_volt_cor_d_syst + ref_volt_cor_d,
-                         alpha=0.2, edgecolor='black', facecolor='black')
-        # and finally plot the interpolated voltages
-        ax.errorbar(iso_dates, voltcorrect, yerr=voltcorrect_d+voltcorrect_d_syst, marker='s', linestyle='None',
-                    color=iso_color, label='{} interpolated voltage'.format(isotope))
-        # make x-axis dates
-        plt.xlabel('date')
-        days_fmt = mpdate.DateFormatter('%d.%B')
-        ax.xaxis.set_major_formatter(days_fmt)
-        plt.legend(loc='best')
-        plt.xticks(rotation=45)  # rotate date labels 45 deg for better readability
-        plt.margins(0.05)
-        if self.save_plots_to_file:
-            filename = 'voltInterp_' + isotope[:2] + '_sc' + scaler.split('_')[1]
-            plt.savefig(self.resultsdir + filename + '.png')
-        else:
-            plt.show()
-        plt.close()
-        plt.clf()
+        plot_all = True
+
+        if plot_all or scaler == 'scaler_c012':
+            # make a quick plot of references and calibrated voltages
+            fig, ax = plt.subplots()
+
+            ref_58_timedeltas = np.array([timedelta(seconds=s) for s in ref_58_dates])
+            ref_58_dates = np.array(self.ref_datetime + ref_58_timedeltas)  # convert back to datetime
+
+            ref_60_timedeltas = np.array([timedelta(seconds=s) for s in ref_60_dates])
+            ref_60_dates = np.array(self.ref_datetime + ref_60_timedeltas)  # convert back to datetime
+
+            iso_timedeltas = np.array([timedelta(seconds=s) for s in iso_dates])
+            iso_dates = np.array(self.ref_datetime + iso_timedeltas)  # convert back to datetime
+
+            ax.plot(ref_58_dates, volt_offset - np.array(volt58_dev), '--', color='black', label='58Ni reference')
+            ax.plot(ref_60_dates, volt_offset - np.array(volt60_dev), '--', color='blue', label='60Ni reference')
+            # plot error band for statistical errors
+            ax.fill_between(ref_58_dates,
+                             volt_offset - np.array(volt58_dev) - volt58_dev_d,
+                             volt_offset - np.array(volt58_dev) + volt58_dev_d,
+                             alpha=0.5, edgecolor='black', facecolor='black')
+            ax.fill_between(ref_60_dates,
+                            volt_offset - np.array(volt60_dev) - volt60_dev_d,
+                            volt_offset - np.array(volt60_dev) + volt60_dev_d,
+                            alpha=0.5, edgecolor='blue', facecolor='blue')
+            # plot error band for systematic errors on top of statistical errors
+            ax.fill_between(ref_58_dates,
+                             volt_offset - np.array(volt58_dev) - volt58_dev_d_syst - volt58_dev_d,
+                             volt_offset - np.array(volt58_dev) + volt58_dev_d_syst + volt58_dev_d,
+                             alpha=0.2, edgecolor='black', facecolor='black')
+            ax.fill_between(ref_60_dates,
+                            volt_offset - np.array(volt60_dev) - volt60_dev_d_syst - volt60_dev_d,
+                            volt_offset - np.array(volt60_dev) + volt60_dev_d_syst + volt60_dev_d,
+                            alpha=0.2, edgecolor='blue', facecolor='blue')
+            # and finally plot the interpolated voltages
+            ax.errorbar(iso_dates, voltcorrect, yerr=voltcorrect_d+voltcorrect_d_syst, marker='s', linestyle='None',
+                        color=iso_color, label='{} interpolated'.format(isotope))
+            # make x-axis dates
+            plt.xlabel('date')
+            days_fmt = mpdate.DateFormatter('%d.%B')
+            ax.xaxis.set_major_formatter(days_fmt)
+            plt.legend(loc='best')
+            plt.xticks(rotation=45)  # rotate date labels 45 deg for better readability
+            plt.margins(0.05)
+            if self.save_plots_to_file:
+                filename = 'voltInterp_' + isotope[:2] + '_sc' + scaler.split('_')[1]
+                folder = 'calibration\\'
+                plot_folder = self.resultsdir + folder
+                if not os.path.exists(plot_folder):
+                    os.makedirs(plot_folder)
+                plt.savefig(plot_folder + filename + '.png', bbox_inches="tight")
+            else:
+                plt.show()
+            plt.close()
+            plt.clf()
 
     def write_voltcal_to_db(self, iso_cal, scaler):
         """
@@ -1894,7 +1677,7 @@ class NiAnalysis():
         iso_center_d_fit = self.results[isotope][scaler]['center_fits']['d_fit']
         iso_center_d_stat = self.results[isotope][scaler]['center_fits']['d_stat']
         iso_center_d_syst = self.results[isotope][scaler]['center_fits']['d_syst']  # only accVolt, affects both isos
-        if calibrated and not 'sum' in isotope:
+        if calibrated:
             iso_volts = self.results[isotope][scaler]['acc_volts']['vals']
             iso_volts_d_stat = self.results[isotope][scaler]['acc_volts']['d_stat']
             iso_volts_d_syst = self.results[isotope][scaler]['acc_volts']['d_syst']
@@ -1947,8 +1730,8 @@ class NiAnalysis():
 
         # systematic errors:
         ion_energy_d_syst = (np.array(iso_volts_d_syst) + self.matsuada_volts_d) * delta_diff_doppler  # calibration for iso is interpolated from ref, so only that value needs to go in here
-        laser_freq_d_syst = self.wavemeter_wsu30_mhz_d  # relative deviation of the two laser freqs to each other. HeNE drift should cancel for isotope shifts TODO: check!
-        alignment_d_syst = self.laserionoverlap_MHz_d  # TODO: Could be eliminated if there are no changes to ion or laser optics between ref & iso
+        laser_freq_d_syst = self.wavemeter_wsu30_mhz_d  # Laser is changed between isotopes.  TODO: HeNe drift?
+        alignment_d_syst = self.laserionoverlap_MHz_d  # Can't guarantee the alignment is still the same...
 
         iso_shifts_d_syst = np.sqrt(ion_energy_d_syst**2
                                     + laser_freq_d_syst**2
@@ -1962,8 +1745,19 @@ class NiAnalysis():
         # also get the standard deviation. Use this if larger!
         iso_shift_st_dev = np.std(iso_shifts)
 
+        if isotope[:2] == reference[:2]:
+            # This is the reference. Set all values to 0(0)[0]
+            iso_shifts = np.zeros(len(iso_shifts))
+            iso_shifts_d_stat = np.zeros(len(iso_shifts_d_stat))
+            iso_shifts_d_syst = np.zeros(len(iso_shifts_d_syst))
+            iso_shift_avg = 0
+            iso_shift_avg_d = 0
+            iso_shift_st_dev = 0
+            iso_shift_avg_d_syst = 0
+
         # write isoshift to results dict
-        shift_dict = {isotope: {scaler: {'shifts_iso-{}'.format(reference[:2]): {'vals': iso_shifts.tolist(),
+        shift_dict = {isotope: {scaler: {'shift_iso-{}'.format(reference[:2]): {'vals': iso_shifts.tolist(),
+                                                                                'd_fit': iso_shifts_d_fit.tolist(),
                                                                                  'd_stat': iso_shifts_d_stat.tolist(),
                                                                                  'd_syst': iso_shifts_d_syst.tolist()},
                                          'avg_shift_iso-{}'.format(reference[:2]): {'vals': [iso_shift_avg],
@@ -1972,107 +1766,20 @@ class NiAnalysis():
                                          }}}
         TiTs.merge_extend_dicts(self.results, shift_dict, overwrite=True, force_overwrite=True)
 
-    def extract_iso_shift_handassigned(self, isotope, reference, scaler, assigned, calibrated=False):
-        # TODO: lots to do here! Since I changed reference to be a variable, I also need to reflect that in picking from tuples!
-        scaler = self.update_scalers_in_db(scaler)
-        ref = '{}{}'.format(reference[:2], isotope[2:])
-
-        # Get info for isotope of interest
-        iso_files = self.results[isotope]['file_names']
-        iso_numbers = self.results[isotope]['file_numbers']
-        iso_dates = self.results[isotope]['file_times']
-        iso_center = self.results[isotope][scaler]['center_fits']['vals']
-        iso_center_d = self.results[isotope][scaler]['center_fits']['d_stat']
-        iso_center_d_syst = self.results[isotope][scaler]['center_fits']['d_syst']
-        if calibrated:
-            iso_volts = self.results[isotope][scaler]['acc_volts']['vals']
-            iso_volts_d = self.results[isotope][scaler]['acc_volts']['d_stat']
-            iso_volts_d_syst = self.results[isotope][scaler]['acc_volts']['d_syst']
-        else:
-            iso_volts = np.full((len(assigned)), self.accVolt_set)
-            iso_volts_d = np.full((len(assigned)), 0)
-            iso_volts_d_syst = np.full((len(assigned)), 0)
-
-        # Get info for 58 Nickel:
-        ref_dates = self.results[ref]['file_times']
-        ref_numbers = self.results[ref]['file_numbers']
-        ref_center = self.results[ref][scaler]['center_fits']['vals']
-        ref_center_d = self.results[ref][scaler]['center_fits']['d_stat']
-        ref_center_d_syst = self.results[ref][scaler]['center_fits']['d_syst']
-
-        # create new lists that match iso_center lists in length and contain the corresponding 58 centers
-        ref_center_assigned = []
-        ref_center_d_assigned = []
-        ref_center_d_syst_assigned = []
-        iso_center_assigned = []
-        iso_center_d_assigned = []
-        iso_center_d_syst_assigned = []
-
-        for tuples in assigned:
-            if '56' in isotope:
-                iso_run_no = tuples[0]
-            else:  # only makes sense if it is 60 now
-                iso_run_no = tuples[1][1]
-            ref_run_no = tuples[1][0]
-
-            iso_indx = iso_numbers.index(iso_run_no)
-            ref_indx = ref_numbers.index(ref_run_no)
-
-            iso_center_assigned.append(iso_center[iso_indx])
-            iso_center_d_assigned.append(iso_center_d[iso_indx])
-            iso_center_d_syst_assigned.append(iso_center_d_syst[iso_indx])
-
-            ref_center_assigned.append(ref_center[ref_indx])
-            ref_center_d_assigned.append(ref_center_d[ref_indx])
-            ref_center_d_syst_assigned.append(ref_center_d_syst[ref_indx])
-
-        diff_Doppler_ref = Physics.diffDoppler(self.restframe_trans_freq, np.array(iso_volts), int(reference[:2]))
-        diff_Doppler_iso = Physics.diffDoppler(self.restframe_trans_freq, np.array(iso_volts), int(isotope[:2]))
-        delta_diff_doppler = diff_Doppler_iso - diff_Doppler_ref
-
-        # calculate isotope shifts now:
-        iso_shifts = np.array(iso_center_d_assigned) - np.array(ref_center_assigned)
-        iso_shifts_d = np.sqrt(np.array(iso_center_d_assigned) ** 2 + np.array(ref_center_d_assigned) ** 2)
-        iso_shifts_d = np.sqrt(iso_shifts_d ** 2 + (delta_diff_doppler * iso_volts_d) ** 2)
-        # TODO: still need systematic errors
-        iso_shifts_d_syst = np.sqrt(2 * self.wavemeter_wsu30_mhz_d ** 2)
-        # use differential doppler shift with cal voltage uncertainty to get MHz uncertainty:
-        # TODO: do I need the systematic uncertainties of center fit positions here as well?
-        iso_shifts_d_syst = np.sqrt((delta_diff_doppler * iso_volts_d_syst) ** 2 + iso_shifts_d_syst ** 2)
-
-        # calculate an average value using weighted avg
-        weights = 1 / iso_shifts_d ** 2
-        iso_shift_avg = np.sum(weights * iso_shifts) / np.sum(weights)
-        iso_shift_avg_d = np.sqrt(1 / np.sum(weights))
-        # TODO: how to assign systematic uncertainties here? I think I should not weight them...
-        iso_shift_avg_d_syst = sum(iso_shifts_d_syst) / len(iso_shifts_d_syst)
-        #weights_syst = 1/iso_shifts_d_syst ** 2
-        #iso_shift_avg_d_syst = np.sqrt(1 / np.sum(weights_syst))
-
-        # write isoshift to results dict
-        shift_dict = {isotope: {scaler: {'shifts_iso-{}'.format(reference[:2]): {'vals': iso_shifts.tolist(),
-                                                                                 'd_stat': iso_shifts_d.tolist(),
-                                                                                 'd_syst': iso_shifts_d_syst.tolist()},
-                                         'avg_shift_iso-{}'.format(reference[:2]): {'vals': [iso_shift_avg],
-                                                                                    'd_stat': [iso_shift_avg_d],
-                                                                                    'd_syst': [iso_shift_avg_d_syst]}
-                                         }}}
-        TiTs.merge_extend_dicts(self.results, shift_dict, overwrite=True, force_overwrite=True)
-
     def plot_IS_results(self, iso, results_text):
         fig, ax = plt.subplots()
         # Plot Isotope shift iso-58 for all scalers to compare.
         lensc0 = len(self.results[iso]['file_numbers'])
-        plt.errorbar(range(lensc0), self.results[iso]['scaler_0']['shifts_iso-58']['vals'], c='b',
-                     yerr=self.results[iso]['scaler_0']['shifts_iso-58']['d_stat'],
+        plt.errorbar(range(lensc0), self.results[iso]['scaler_0']['shift_iso-58']['vals'], c='b',
+                     yerr=self.results[iso]['scaler_0']['shift_iso-58']['d_stat'],
                      label='scaler 0')
         lensc1 = len(self.results[iso]['file_numbers'])
-        plt.errorbar(range(lensc1), self.results[iso]['scaler_1']['shifts_iso-58']['vals'], c='g',
-                     yerr=self.results[iso]['scaler_1']['shifts_iso-58']['d_stat'],
+        plt.errorbar(range(lensc1), self.results[iso]['scaler_1']['shift_iso-58']['vals'], c='g',
+                     yerr=self.results[iso]['scaler_1']['shift_iso-58']['d_stat'],
                      label='scaler 1')
         lensc2 = len(self.results[iso]['file_numbers'])
-        plt.errorbar(range(lensc2), self.results[iso]['scaler_2']['shifts_iso-58']['vals'], c='r',
-                     yerr=self.results[iso]['scaler_2']['shifts_iso-58']['d_stat'],
+        plt.errorbar(range(lensc2), self.results[iso]['scaler_2']['shift_iso-58']['vals'], c='r',
+                     yerr=self.results[iso]['scaler_2']['shift_iso-58']['d_stat'],
                      label='scaler 2')
         # Plot weighted average and errorband for all scalers
         avg_is = self.results[iso]['scaler_0']['avg_shift_iso-58']['vals'][0]
@@ -2118,7 +1825,7 @@ class NiAnalysis():
         ax.text(0.05, 0.95, results_text, transform=ax.transAxes, fontsize=14,
                 verticalalignment='top', bbox=props)
         if self.save_plots_to_file:
-            filename = 'shifts_iso-58_{}_sc012_overview'.format(iso[:2])
+            filename = 'shift_iso-58_{}_sc012_overview'.format(iso[:2])
             plt.savefig(self.resultsdir + filename + '.png')
         else:
             plt.show()
@@ -2128,7 +1835,6 @@ class NiAnalysis():
     ''' stacking files related: '''
 
     def create_stacked_files(self, calibrated=False):
-        restriction = [6315, 6502]
         if calibrated:
             c = '_cal'
         else:
@@ -2143,7 +1849,7 @@ class NiAnalysis():
         ni56_files, ni56_filenos, ni56_filetimes = self.pick_files_from_db_by_type_and_num('%56Ni%', selecttuple=[0, 6502])
         self.stack_runs('56Ni{}'.format(c), ni56_files, (-34, 14), binsize=1)
         # select and stack nickel 55 runs to new file Sum55_9999.xml
-        ni55_files, ni55_filenos, ni55_filetimes = self.pick_files_from_db_by_type_and_num('%55Ni%', selecttuple=restriction)
+        ni55_files, ni55_filenos, ni55_filetimes = self.pick_files_from_db_by_type_and_num('%55Ni%', selecttuple=[0, 6502])  # 6315
         self.stack_runs('55Ni{}'.format(c), ni55_files, (-263, -30), binsize=3)
 
     def stack_runs(self, isotope, files, volttuple, binsize):
@@ -2182,16 +1888,23 @@ class NiAnalysis():
             logging.info('Scaler_{}: amplitude: {}, sigma: {}, center: {}({}), offset:{}'
                          .format(sc_no, ampl, sigma, center, center_d, offset))
             timeproj_res['scaler_{}'.format(sc_no)] = {'sigma': sigma, 'center': center}
-        plt.title('Stacked time projections for isotope: {}'.format(isotope))
-        plt.legend(title='Scalers', bbox_to_anchor=(1.04, 0.5), loc="center left")
-        plt.margins(0.05)
-        if self.save_plots_to_file:
-            filename = 'timeproject_files' + str(filelist[0]) + 'to' + str(filelist[-1])
-            plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
-        else:
-            plt.show()
-        plt.close()
-        plt.clf()
+
+        plotting = True
+
+        if plotting:
+            plt.title('Stacked time projections for isotope: {}'.format(isotope))
+            plt.legend(title='Scalers', bbox_to_anchor=(1.04, 0.5), loc="center left")
+            plt.margins(0.05)
+            if self.save_plots_to_file:
+                filename = 'timeproject_files' + str(filelist[0]) + 'to' + str(filelist[-1])
+                plot_folder = self.resultsdir + 'summed\\'
+                if not os.path.exists(plot_folder):
+                    os.makedirs(plot_folder)
+                plt.savefig(plot_folder + filename + '_sc0a1a2.png', bbox_inches="tight")
+            else:
+                plt.show()
+            plt.close()
+            plt.clf()
         return timeproj_res
 
     def addfiles(self, iso, filelist, voltrange, binsize):
@@ -2203,24 +1916,24 @@ class NiAnalysis():
         :param binsize:
         :return:
         """
-        # Define the scan voltage range
-        scanrange = voltrange[1]-voltrange[0]  # volts scanning up from startvolt
-
         # create arrays for rebinning the data
         volt_arr = np.arange(start=voltrange[0], stop=voltrange[1], step=binsize)  # array of the voltage steps
-        zeroarr = np.zeros(len(volt_arr))  # should contain all the 55 scans so roughly -350 to +100
-        cts_sum = [zeroarr.copy(), zeroarr.copy(), zeroarr.copy()]  # array for the absolute counts per bin. Same dimension as voltage of course
-        err_sum = [zeroarr.copy(), zeroarr.copy(), zeroarr.copy()]  # we can add the errors from files or calc them new
-        avgbg_sum = [zeroarr.copy(), zeroarr.copy(), zeroarr.copy()]  # array to keep track of the backgrounds
+        zeroarr = np.zeros(len(volt_arr))  # zero array with the same dimension as volt_arr to use as dummy
+        cts_sum = [zeroarr.copy(), zeroarr.copy(), zeroarr.copy()]  # Array for the on-beam counts per bin. One per pmt
+        avgbg_sum = [zeroarr.copy(), zeroarr.copy(), zeroarr.copy()]  # Array to keep track of the background (off-beam)
+        real_volt_arr = zeroarr.copy()  # Array to keep track what the real avg voltage per step is
+        nOfScans_arr = zeroarr.copy()  # Array to keep track how many scans we have on each step
 
-        # import voltage calibrations from combined scaler results on a per-file basis
+        # voltage calibrations could be used to adapt the scan-voltage per file
         if '_cal' in iso:
+            # import voltage calibrations from combined scaler results on a per-file basis
             volt_corrections = self.results[iso]['scaler_c012']['acc_volts']
             filenames = self.results[iso]['file_names']
         else:
+            # or we just use the original (meaning 29850V buncher)
             volt_corrections = None
 
-        # extract data from each file
+        # extract data from each file and sort into binning
         for files in filelist:
             # create filepath for XMLImporter
             filepath = os.path.join(self.datafolder, files)
@@ -2239,7 +1952,7 @@ class NiAnalysis():
                                             [-350, 0,
                                              sc2_res['center']/100 - sc2_res['sigma']/100*sig_mult,
                                              sc2_res['center']/100 + sc2_res['sigma']/100*sig_mult]])
-            offst = 4  # background offset from midTof in multiple of sigma
+            offst = 5  # background offset from midTof in multiple of sigma
             background = XMLImporter(path=filepath,  # sample spec of the same width, clearly separated from the timepeaks
                                      softw_gates=[[-350, 0,
                                                    (sc0_res['center']-offst*sc0_res['sigma'])/100 - sc0_res['sigma']/100*sig_mult,
@@ -2251,8 +1964,9 @@ class NiAnalysis():
                                                    (sc2_res['center']-offst*sc2_res['sigma'])/100 - sc2_res['sigma']/100*sig_mult,
                                                    (sc2_res['center']-offst*sc2_res['sigma'])/100 + sc2_res['sigma']/100*sig_mult]])
             # check the stepsize of the data and return a warning if it's bigger than the binsize
-            stepsize = spec.stepSize[0]
-            nOfSteps = spec.getNrSteps(0)
+            stepsize = spec.stepSize[0]  # for track 0
+            nOfSteps = spec.getNrSteps(0)  # for track 0
+            nOfScans = spec.nrScans[0]  # for track 0
             if stepsize > 1.1*binsize:
                 logging.warning('Stepsize of file {} larger than specified binsize ({}>{})!'
                                 .format(files, stepsize, binsize))
@@ -2272,48 +1986,121 @@ class NiAnalysis():
                 # bin data
                 for step, volt in enumerate(voltage_x):
                     volt_c = volt-volt_cor
+                    bg_avg = bg_sum_totalcts[scaler] / nOfSteps
                     if voltrange[0] <= volt_c <= voltrange[1]:  # only use if inside desired range
                         voltind = (np.abs(volt_arr - volt_c)).argmin()  # find closest index in voltage array
+                        # add data to the arrays
                         cts_sum[scaler][voltind] += spec.cts[0][scaler][step]  # no normalization here
-                        err_sum[scaler][voltind] += spec.err[0][scaler][step]  # just adding, since not same measurement TODO: probably not correct! Should be quadratic and then we can again just use the sqrt of cts
-                        avgbg_sum[scaler][voltind] += bg_sum_totalcts[scaler] / nOfSteps
+                        avgbg_sum[scaler][voltind] += bg_avg  # for keeping track of a total scale
+                        # keep track of nOfScans and real voltage
+                        if real_volt_arr[voltind] == 0:
+                            real_volt_arr[voltind] += volt_c
+                        else:
+                            # else do a weighted average with the nOfScans as weights
+                            real_volt_arr[voltind] = (real_volt_arr[voltind]/nOfScans_arr[voltind]**2
+                                                      + volt_c/nOfScans**2)\
+                                                     / (1/nOfScans_arr[voltind]**2 + 1/nOfScans**2)
+                        nOfScans_arr[voltind] += nOfScans
 
-                # plt.plot(voltage_x, scaler_sum_cts[scaler], drawstyle='steps', label=filenumber)
-        # plt.show()
-        sumerr = [np.sqrt(cts_sum[0]), np.sqrt(cts_sum[1]), np.sqrt(cts_sum[2])]
-        # prepare cts_arr for transfer to xml file
-        zero_ind = np.where(
-            avgbg_sum[0] == 0)  # find zero-values. Attention! These should only be at start and end, not middle
+        # calculate uncertainty for on- and off-beam arrays as sqrt(n)
+        cts_err = [np.sqrt(cts_sum[0]), np.sqrt(cts_sum[1]), np.sqrt(cts_sum[2])]
+        avgbg_err = [np.sqrt(avgbg_sum[0]), np.sqrt(avgbg_sum[1]), np.sqrt(avgbg_sum[2])]
+
+        # make sure there are no zero values in the off-beam array to avoid division-by-zero error.
+        include_indx = nOfScans_arr != 0  # only include values where at least one scan brought data
+        # Atttention! We must not remove values from the middle of the array! This would screw up the pollifit voltage.
+        check_lst = np.split(include_indx, np.where(np.diff(include_indx) == 1)[0] + 1)  # Difference True->False = 1
+        # the check list can't contain more than 3 arrays. These must be [False, True, False]. 2 or 1 array is always ok
+        if len(check_lst) > 3 or (len(check_lst) == 3 and check_lst[1][0] is False):
+            # Seems like we have found non-include values in the middle of our data. This must not be!
+            include_indx = np.full(len(nOfScans_arr), True, dtype=bool)  # Instead, we now include all values.
+            # This will crash the analysis with div0 error soon...that's better than screwing up our data
+            cts_sum = 1/0  # well actually for clarity we can crash it right here!
+            # Hint: if there is supposed to be gaps in the data, start creating different tracks for the xml here!
+
+        # also delete first and last of the remaining values, these can be a little skewed...
         for scaler in range(3):
-            avgbg_sum[scaler] = np.delete(avgbg_sum[scaler], zero_ind)
-            cts_sum[scaler] = np.delete(cts_sum[scaler], zero_ind)
-            err_sum[scaler] = np.delete(err_sum[scaler], zero_ind)
-            sumerr[scaler] = np.delete(sumerr[scaler], zero_ind)
-        volt_arr = np.delete(volt_arr, zero_ind)
+            cts_sum[scaler] = cts_sum[scaler][include_indx][1:-1]
+            cts_err[scaler] = cts_err[scaler][include_indx][1:-1]
+            avgbg_sum[scaler] = avgbg_sum[scaler][include_indx][1:-1]
+            avgbg_err[scaler] = avgbg_err[scaler][include_indx][1:-1]
+        volt_arr = volt_arr[include_indx][1:-1]
+        real_volt_arr = real_volt_arr[include_indx][1:-1]
+        nOfScans_arr = nOfScans_arr[include_indx][1:-1]
 
-        # plt.errorbar(volt_arr, cts_sum[0], yerr=sumerr[0], fmt='.')
-        # plt.show()
-        plt.errorbar(volt_arr, cts_sum[0] / avgbg_sum[0], yerr=sumerr[0] / avgbg_sum[0], fmt='.', label='scaler_0')
-        plt.errorbar(volt_arr, cts_sum[1] / avgbg_sum[1], yerr=sumerr[1] / avgbg_sum[1], fmt='.', label='scaler_1')
-        plt.errorbar(volt_arr, cts_sum[2] / avgbg_sum[2], yerr=sumerr[2] / avgbg_sum[2], fmt='.', label='scaler_2')
-        if self.save_plots_to_file:
-            filename = 'added_' + str(iso) + '_files' + str(filelist[0]) + 'to' + str(filelist[-1])
-            plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
-        else:
-            plt.show()
-        plt.close()
-        plt.clf()
+        # fit a line to the real voltage
+        def _line(x, m, b):
+            return m * x + b
+        # start parameters
+        p0 = [binsize, real_volt_arr[0]]
+        # do the fitting
+        popt, pcov = curve_fit(_line, np.arange(len(real_volt_arr)), real_volt_arr, p0)
+        perr = np.sqrt(np.diag(pcov))  # TODO: use this somewhere?
 
-        # prepare cts_arr for transfer to xml file
-        total_scale_factor = 0  # This might need to be adjusted when changing the number of scalers involved.
-        # replaced scale factor by avgbg_sum.mean()
+        # extract real start volt and stepsize from the calibration:
+        real_start_v = popt[1]
+        real_stepsize_v = popt[0]
+
+        plotting = True
+
+        if plotting:
+            # plot on-beam and off-beam array before any normalization:
+            plt.errorbar(volt_arr, np.sum(np.array(cts_sum), axis=0),
+                         yerr=np.sum(np.array(cts_err), axis=0), fmt='.',
+                         label='on-beam')
+            plt.errorbar(volt_arr, np.sum(np.array(avgbg_sum), axis=0),
+                         yerr=np.sum(np.array(avgbg_err), axis=0), fmt='.',
+                         label='off-beam')
+            if self.save_plots_to_file:
+                filename = 'added_' + str(iso) + '_files' + str(filelist[0]) + 'to' + str(filelist[-1])
+                plot_folder = self.resultsdir + 'summed\\'
+                if not os.path.exists(plot_folder):
+                    os.makedirs(plot_folder)
+                plt.savefig(plot_folder + filename + '_sc0a1a2.png', bbox_inches="tight")
+            else:
+                plt.show()
+            plt.close()
+            plt.clf()
+
+        # Normalize cts_arr and create a final uncertainty array
+        total_scale_factor = 0  # height of the heighest peak for isotope intensity
         for scaler in range(3):
-            scale_factor = avgbg_sum[scaler].mean()
-            cts_sum[scaler] = (cts_sum[scaler] / avgbg_sum[scaler] * scale_factor).astype(int)
-            sumerr[scaler] = (sumerr[scaler] / avgbg_sum[scaler] * scale_factor).astype(int)
+            scale_factor = avgbg_sum[scaler].mean()  # pollifit needs to work with integers
+            cts_sum[scaler] = (cts_sum[scaler]/avgbg_sum[scaler] * scale_factor).astype(int)
+            cts_err[scaler] = (np.sqrt(np.square(cts_err[scaler]/np.square(avgbg_sum[scaler])) +
+                                      np.square(cts_sum[scaler]/np.square(avgbg_sum[scaler])*avgbg_err[scaler])) * scale_factor).astype(int)
             total_scale_factor += (cts_sum[scaler].max() - cts_sum[scaler].min())  # we also need to scale the intensity of the isotope
 
-        self.make_sumXML_file(iso, volt_arr[0], binsize, len(cts_sum[0]), np.array(cts_sum), np.array(sumerr), peakHeight=total_scale_factor)
+        if plotting:
+            # plot the summed up data for each scaler
+            for sc in range(3):
+                plt.errorbar(volt_arr, cts_sum[sc], yerr=cts_err[sc], fmt='.', label='scaler_{}'.format(sc))
+            if self.save_plots_to_file:
+                filename = 'added_' + str(iso) + '_files' + str(filelist[0]) + 'to' + str(filelist[-1])
+                plot_folder = self.resultsdir + 'summed\\'
+                if not os.path.exists(plot_folder):
+                    os.makedirs(plot_folder)
+                plt.savefig(plot_folder + filename + '.png', bbox_inches="tight")
+            else:
+                plt.show()
+            plt.close()
+            plt.clf()
+
+            # plot the summed up data for all scalers combined:
+            plt.errorbar(volt_arr, np.sum(np.array(cts_sum), axis=0),
+                         yerr=np.sum(np.array(cts_err), axis=0), fmt='.k', label='all_scalers')
+            if self.save_plots_to_file:
+                filename = 'added_' + str(iso) + '_files' + str(filelist[0]) + 'to' + str(filelist[-1])
+                plot_folder = self.resultsdir + 'summed\\'
+                if not os.path.exists(plot_folder):
+                    os.makedirs(plot_folder)
+                plt.savefig(plot_folder + filename + '_sc012.png', bbox_inches="tight")
+            else:
+                plt.show()
+            plt.close()
+            plt.clf()
+
+        self.make_sumXML_file(iso, real_start_v, real_stepsize_v, len(cts_sum[0]), np.array(cts_sum), np.array(cts_err), peakHeight=total_scale_factor)
 
     def make_sumXML_file(self, isotope, startVolt, stepSizeVolt, nOfSteps, cts_list, err_list=None, peakHeight=1):
         ####################################
@@ -2423,72 +2210,32 @@ class NiAnalysis():
 
     ''' 55 Nickel related: '''
 
-    def plot_sum_results(self):
-        # Plot Isotope shift 56-58 for all scalers to compare.
-        iso_list = ['55Ni_sum_cal', '56Ni_sum_cal', '58Ni_sum_cal', '60Ni_sum_cal']
-        scaler_list = ['scaler_0', 'scaler_1', 'scaler_2', 'scaler_012']
+    def ni55_A_B_analysis(self, isotope, scaler='scaler_012', calibrated=False):
+        if calibrated:
+            isotope = '{}_cal'.format(isotope)  # make sure to use the calibrated isos
 
-        for scaler in scaler_list:
-            shift_list = []
-            d_stat_list = []
-            for iso in iso_list:
-                iso_col = self.results[iso]['color']
-                shift = self.results[iso][scaler]['shifts_iso-58']['vals']
-                shift_d = self.results[iso][scaler]['shifts_iso-58']['d_stat']
-                shift_d_syst = self.results[iso][scaler]['shifts_iso-58']['d_syst']
-                plt.errorbar([int(iso[:2])], shift, c=iso_col,
-                             yerr=self.results[iso][scaler]['shifts_iso-58']['d_stat'], fmt=' o'
-                             #, label='{0}: {1:.1f}({2:.0f})[{3:.0f}]MHz'.format(iso, shift[0], 10 * shift_d[0], 10 * shift_d_syst[0])
-                             )
-                # Plot weighted average and errorband for all scalers
-                shift_list.append(shift[0])
-                d_stat_list.append(shift_d[0])
-
-            plt.plot([55, 56, 58, 60], shift_list, '--', label = scaler)
-
-        #plt.xticks(range(4), ['55', '56', '58', ], rotation=-30)
-        plt.axis([54.5, 60.5, -1000, 600])
-        plt.title('Isotope Shift Ni 56-58 for all runs')
-        plt.xlabel('Isotope A')
-        plt.ylabel('Isotope Shift  [MHz]')
-        plt.legend(loc='lower right')
-        if self.save_plots_to_file:
-            filename = 'shifts_iso-58_summedAll_overview'
-            plt.savefig(self.resultsdir + filename + '.png')
-        else:
-            plt.show()
-        plt.close()
-        plt.clf()
-
-    def ni55_A_B_analysis(self, isotope):
+        # copy the results dict
         res_dict = self.results[isotope]
+
+        # update the scaler
+        scaler = self.update_scalers_in_db(scaler)
+
         # Get all coefficients from fit results
-        Al = res_dict['scaler_012']['hfs_pars']['Al'][0]
-        Al_d = res_dict['scaler_012']['hfs_pars']['Al'][1]
-        A_rat_fixed = res_dict['scaler_012']['hfs_pars']['Au'][2]
-        if A_rat_fixed:
-            A_rat = res_dict['scaler_012']['hfs_pars']['Au'][0]
-            A_rat_d = 0
-            Au = Al * A_rat
-            Au_d = Al_d * A_rat
-        else:
-            Au = res_dict['scaler_012']['hfs_pars']['Au'][0]
-            Au_d = res_dict['scaler_012']['hfs_pars']['Au'][1]
-            A_rat = Au/Al
-            A_rat_d = np.sqrt(np.square(Au_d/Al)+np.square(Au*Al_d/Al/Al))
-        Bl = res_dict['scaler_012']['hfs_pars']['Bl'][0]
-        Bl_d = res_dict['scaler_012']['hfs_pars']['Bl'][1]
-        B_rat_fixed = res_dict['scaler_012']['hfs_pars']['Bu'][2]
-        if B_rat_fixed:
-            B_rat = res_dict['scaler_012']['hfs_pars']['Bu'][0]
-            B_rat_d = 0
-            Bu = Bl * B_rat
-            Bu_d = Bl_d * B_rat
-        else:
-            Bu = res_dict['scaler_012']['hfs_pars']['Bu'][0]
-            Bu_d = res_dict['scaler_012']['hfs_pars']['Bu'][1]
-            B_rat = Bu/Bl
-            B_rat_d = np.sqrt(np.square(Bu_d/Bl)+np.square(Bu*Bl_d/Bl/Bl))
+        Al = res_dict[scaler]['hfs_pars']['Al'][0]
+        Al_d = res_dict[scaler]['hfs_pars']['Al'][1]
+        Au = res_dict[scaler]['hfs_pars']['Au'][0]
+        Au_d = res_dict[scaler]['hfs_pars']['Au'][1]
+        A_rat = res_dict[scaler]['hfs_pars']['Arat'][0]
+        A_rat_d = res_dict[scaler]['hfs_pars']['Arat'][1]
+        A_rat_fixed = res_dict[scaler]['hfs_pars']['Arat'][2]
+
+        Bl = res_dict[scaler]['hfs_pars']['Bl'][0]
+        Bl_d = res_dict[scaler]['hfs_pars']['Bl'][1]
+        Bu = res_dict[scaler]['hfs_pars']['Bu'][0]
+        Bu_d = res_dict[scaler]['hfs_pars']['Bu'][1]
+        B_rat = res_dict[scaler]['hfs_pars']['Brat'][0]
+        B_rat_d = res_dict[scaler]['hfs_pars']['Brat'][1]
+        B_rat_fixed = res_dict[scaler]['hfs_pars']['Brat'][2]
 
         # calculate µ and Q values
         # reference moments stored in format: (IsoMass_A, IsoSpin_I, IsoDipMom_µ, IsoDipMomErr_µerr, IsoQuadMom_Q, IsoQuadMomErr_Qerr)
@@ -2496,12 +2243,7 @@ class NiAnalysis():
         m_55, I_55, mu_55, mu_55_d, Q_55, Q_55_d = self.nuclear_spin_and_moments['55Ni']
         # reference A and B factors stored in format: (Al, Al_d, Au, Au_d, Arat, Arat_d, Bl, Bl_d, Bu, Bu_d, Brat, Brat_d)
         Al_ref, Al_d_ref, Au_ref, Au_d_ref, Arat_ref, Arat_d_ref, Bl_ref, Bl_d_ref, Bu_ref, Bu_d_ref, Brat_ref, Brat_d_ref = self.reference_A_B_vals['61Ni']
-        # differential hyperfine anomaly (assuming the lit_val for 55 is correct, we can extract the hyperfine anomaly)
-        hfs_anom_55_61 = - Al / Al_ref * I_55 / I_ref * mu_ref/mu_55 + 1
-        hfs_anom_55_61_d = np.sqrt((Al_d / Al_ref*I_55/I_ref*mu_ref/mu_55)**2 +
-                                   (Al_d_ref * Al/Al_ref**2 * I_55/I_ref*mu_ref/mu_55)**2 +
-                                   (mu_ref_d * Al / Al_ref * I_55 / I_ref /mu_55)**2 +
-                                   (mu_55_d * Al / Al_ref * I_55 / I_ref * mu_ref/mu_55**2)**2)
+
         # magnetic dipole moment
         mu_55 = mu_ref * Al/Al_ref * I_55/I_ref
         mu_55_d = np.sqrt((mu_ref_d * Al/Al_ref*I_55/I_ref)**2 + (Al_d * mu_ref/Al_ref*I_55/I_ref)**2 + (Al_d_ref * mu_ref*Al/Al_ref**2*I_55/I_ref)**2)
@@ -2511,108 +2253,177 @@ class NiAnalysis():
         logging.info('\nspectroscopic factors: Al={0:.0f}({1:.0f}), Au={2:.0f}({3:.0f}), Arat={4:.3f}({5:.0f}),'
                      ' Bl={6:.0f}({7:.0f}), Bu={8:.0f}({9:.0f}), Brat={10:.3f}({11:.0f})'
                      .format(Al, Al_d, Au, Au_d, A_rat, A_rat_d*1000, Bl, Bl_d, Bu, Bu_d, B_rat, B_rat_d*1000))
-        logging.info('\nmu55 = {0:.3f}({1:.0f}), Q55 = {2:.3f}({3:.0f}), hfs_anomaly: {4:.4f}({5:.0f})'
-                     .format(mu_55, mu_55_d*1000, Q_55, Q_55_d*1000, hfs_anom_55_61, hfs_anom_55_61_d*10000))
+        logging.info('\nmu55 = {0:.3f}({1:.0f}), Q55 = {2:.3f}({3:.0f})'
+                     .format(mu_55, mu_55_d*1000, Q_55, Q_55_d*1000))
 
-    def ni55_A_B_analysis_all(self, isotope):
-        # TODO: comment difference between this and above
-        res_dict = self.results[isotope]
-        Al = []
-        Al_d = []
-        A_rat_fixed = False
-        Au = []
-        Au_d = []
-        Bl = []
-        Bl_d = []
-        B_rat_fixed = False
-        Bu = []
-        Bu_d = []
-        for key, val in res_dict.items():
-            if 'scaler' in key:
-                # found scaler, use for analysis
-                Al.append(val['hfs_pars']['Al'][0])
-                Al_d.append(val['hfs_pars']['Al'][1])
-                A_rat_fixed = val['hfs_pars']['Au'][2]
-                Au.append(val['hfs_pars']['Au'][0])
-                Au_d.append(val['hfs_pars']['Au'][1])
-                Bl.append(val['hfs_pars']['Bl'][0])
-                Bl_d.append(val['hfs_pars']['Bl'][1])
-                B_rat_fixed = val['hfs_pars']['Bu'][2]
-                Bu.append(val['hfs_pars']['Bu'][0])
-                Bu_d.append(val['hfs_pars']['Bu'][1])
-        Al_avg = np.sum(np.array(Al)*1/np.square(np.array(Al_d)))/np.sum(1/np.square(np.array(Al_d)))
-        Al_avg_d = np.sqrt(np.sum(1/np.square(np.array(Al_d))))
-        if A_rat_fixed:
-            a_rat = Au[0]
-            Au_avg = a_rat * Al_avg
-            Au_avg_d = a_rat * Al_avg_d
-            Au = a_rat * np.array(Al)
-            Au_d = a_rat * np.array(Al_d)
-        else:
-            Au_avg = np.sum(np.array(Au) * 1 / np.square(np.array(Au_d))) / np.sum(1 / np.square(np.array(Au_d)))
-            Au_avg_d = np.sqrt(np.sum(1 / np.square(np.array(Au_d))))
-        Bl_avg = np.sum(np.array(Bl) * 1 / np.square(np.array(Bl_d))) / np.sum(1 / np.square(np.array(Bl_d)))
-        Bl_avg_d = np.sqrt(np.sum(1 / np.square(np.array(Bl_d))))
-        if B_rat_fixed:
-            b_rat = Bu[0]
-            Bu_avg = b_rat * Bl_avg
-            Bu_avg_d = b_rat * Bl_avg_d
-            Bu = b_rat * np.array(Bl)
-            Bu_d = b_rat * np.array(Bl_d)
-        else:
-            Bu_avg = np.sum(np.array(Bu) * 1 / np.square(np.array(Bu_d))) / np.sum(1 / np.square(np.array(Bu_d)))
-            Bu_avg_d = np.sqrt(np.sum(1 / np.square(np.array(Bu_d))))
-
-        # plot results A lower
-        plt.title('A lower')
-        plt.errorbar(range(len(Al)), Al, yerr=Al_d)
-        plt.plot([-1, len(Al)], [Al_avg, Al_avg], c='b')
-        plt.fill([-1, len(Al), len(Al), -1],  # statistical error
-                 [Al_avg - Al_avg_d, Al_avg - Al_avg_d, Al_avg + Al_avg_d, Al_avg + Al_avg_d], 'b', alpha=0.2)
-        plt.show()
-        # plot results A upper
-        plt.title('A upper')
-        plt.errorbar(range(len(Au)), Au, yerr=Au_d, c='r')
-        plt.plot([-1, len(Au)], [Au_avg, Au_avg], c='r')
-        plt.fill([-1, len(Au), len(Au), -1],  # statistical error
-                 [Au_avg - Au_avg_d, Au_avg - Au_avg_d, Au_avg + Au_avg_d, Au_avg + Au_avg_d], 'r', alpha=0.2)
-        plt.show()
-        # plot results B lower
-        plt.title('B lower')
-        plt.errorbar(range(len(Bl)), Bl, yerr=Bl_d)
-        plt.plot([-1, len(Bl)], [Bl_avg, Bl_avg], c='b')
-        plt.fill([-1, len(Bl), len(Al), -1],  # statistical error
-                 [Bl_avg - Bl_avg_d, Bl_avg - Bl_avg_d, Bl_avg + Bl_avg_d, Bl_avg + Bl_avg_d], 'b', alpha=0.2)
-        plt.show()
-        # plot results B upper
-        plt.title('B upper')
-        plt.errorbar(range(len(Bu)), Bu, yerr=Bu_d, c='r')
-        plt.plot([-1, len(Bu)], [Bu_avg, Bu_avg], c='r')
-        plt.fill([-1, len(Bu), len(Bu), -1],  # statistical error
-                 [Bu_avg - Bu_avg_d, Bu_avg - Bu_avg_d, Bu_avg + Bu_avg_d, Bu_avg + Bu_avg_d], 'r', alpha=0.2)
-        plt.show()
-
+        # write to results dict
+        moments_dict = {'mu': {'vals': [mu_55],
+                               'd_stat': [0],
+                               'd_syst': [mu_55_d]},
+                        'Q': {'vals': [Q_55],
+                              'd_stat': [0],
+                              'd_syst': [Q_55_d]}
+                        }
+        self.results[isotope][scaler]['moments'] = moments_dict
 
     ''' King Fit Related '''
 
-    def perform_king_fit_analysis(self, delta_lit_radii, isotopes, reference_run):
-        # raise (Exception('stopping before king fit'))
-        # delta_lit_radii.pop('62_Ni')  # just to see which point is what
+    def perform_king_fit_analysis(self):
+        # Define which isotopes to use
+        isotopes = ['55Ni', '56Ni', '58Ni', '59Ni', '60Ni', '61Ni', '62Ni', '64Ni']
+        delta_lit_radii = self.delta_lit_radii_60
+        reference_run = self.run
+
         king = KingFitter(self.db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, font_size=18, ref_run=reference_run)
-        # run = 'narrow_gate_asym'
-        # isotopes = sorted(delta_lit_radii.keys())
-        # print(isotopes)
-        # king.kingFit(alpha=0, findBestAlpha=False, run=run, find_slope_with_statistical_error=True)
         king.kingFit(alpha=0, findBestAlpha=False, run=reference_run, find_slope_with_statistical_error=False)
         king.calcChargeRadii(isotopes=isotopes, run=reference_run, plot_evens_seperate=False, dash_missing_data=True)
 
-        # king.kingFit(alpha=378, findBestAlpha=True, run=run, find_slope_with_statistical_error=True)
         king.kingFit(alpha=361, findBestAlpha=True, run=reference_run)
         radii_alpha = king.calcChargeRadii(isotopes=isotopes, run=reference_run, plot_evens_seperate=False, dash_missing_data=True)
         print('radii with alpha', radii_alpha)
-        # king.calcChargeRadii(isotopes=isotopes, run=run)
 
-        # TODO: Add to results
+    def compare_king_pars(self):
+        fig, ax = plt.subplots(1)
+
+        x_list = []
+        # calculate mass-scaled delta rms charge radii
+        for iso, radii in self.delta_lit_radii_60.items():
+            delta_rms_radius = radii[0]
+            delta_rms_radius_d = radii[1]
+            m_iso, m_iso_d = self.get_iso_property_from_db('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''',
+                                                           (iso[:4],))
+            m_ref, m_ref_d = self.get_iso_property_from_db('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''',
+                                                           (self.ref_iso[:4],))
+            mu = (m_iso - m_ref) / (m_iso * m_ref)
+            mu_d = np.sqrt(np.square(m_iso_d / m_iso ** 2) + np.square(m_ref_d / m_ref ** 2))
+
+            # add to list of x-values
+            x_list.append(delta_rms_radius/mu)
+        x_arr = np.array(sorted(x_list))
+        x_arr = np.arange(290, 580, 1)
+
+        # get the isotope shifts from our analysis
+        shifts = []
+        thisPoint = None
+        isolist = ['55Ni', '56Ni', '58Ni', '60Ni']
+        isolist.remove(self.ref_iso)
+        for iso in isolist:
+            m_iso, m_iso_d = self.get_iso_property_from_db('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''',
+                                                           (iso[:4],))
+            m_ref, m_ref_d = self.get_iso_property_from_db('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''',
+                                                           (self.ref_iso[:4],))
+            mu = (m_iso - m_ref) / (m_iso * m_ref)
+            mu_d = np.sqrt(np.square(m_iso_d / m_iso ** 2) + np.square(m_ref_d / m_ref ** 2))
+
+            iso_shift = self.results[iso]['final']['shift_iso-{}'.format(self.ref_iso[:2])]['vals'][0]
+            iso_shift_d = self.results[iso]['final']['shift_iso-{}'.format(self.ref_iso[:2])]['d_stat'][0]
+            iso_shift_d_syst = self.results[iso]['final']['shift_iso-{}'.format(self.ref_iso[:2])]['d_syst'][0]
+            shifts.append((iso_shift/mu/1000, iso_shift_d/mu/1000, iso_shift_d_syst/mu/1000, iso))
+
+            if iso in self.delta_lit_radii_60 and not iso == self.ref_iso:
+                delta_rms = self.delta_lit_radii_60[iso]
+                r = delta_rms[0]/mu
+                r_d = np.sqrt((delta_rms[1]/mu)**2 + (delta_rms[0]*mu_d/mu**2)**2)
+                s = iso_shift/mu/1000
+                s_d = np.sqrt(((iso_shift_d+iso_shift_d_syst)/mu/1000)**2 + ((iso_shift)*mu_d/mu**2/1000)**2)
+                thisPoint = (r, r_d, s, s_d)
+
+        # add a band for each of our measured isotope shifts
+        for tuples in shifts:
+            # plot error band for this line
+            plt.axhspan(tuples[0]-tuples[1]-tuples[2], tuples[0]+tuples[1]+tuples[2], facecolor='black', alpha=0.2)
+            ax.annotate(r'$^\mathregular{{{:.0f}}}$Ni'.format(int(tuples[3][:2])), (290, tuples[0]-5))
+
+        def _kingLine(x, k, f, a):
+            return (k + f * (x))/1000  # in GHz
+
+        def _kingLower(x, k, k_d, f, f_d, a):
+            xa = _kingLine(x, k+k_d, f+f_d, a)
+            xb = _kingLine(x, k+k_d, f-f_d, a)
+            xc = _kingLine(x, k-k_d, f+f_d, a)
+            xd = _kingLine(x, k-k_d, f-f_d, a)
+            ret_arr = np.zeros(x.shape)
+            for i in range(len(x)):
+                ret_arr[i] = min(xa[i], xb[i], xc[i], xd[i])
+            return ret_arr
+
+        def _kingUpper(x, k, k_d, f, f_d, a):
+            xa = _kingLine(x, k + k_d, f + f_d, a)
+            xb = _kingLine(x, k + k_d, f - f_d, a)
+            xc = _kingLine(x, k - k_d, f + f_d, a)
+            xd = _kingLine(x, k - k_d, f - f_d, a)
+            ret_arr = np.zeros(x.shape)
+            for i in range(len(x)):
+                ret_arr[i] = max(xa[i], xb[i], xc[i], xd[i])
+            return ret_arr
+
+        annotate_iso = []
+        x_annotate = []
+        y_annotate = []
+        for src, item in self.king_literature.items():
+            # get factors
+            alpha = item['data']['Alpha']
+            F, F_d = item['data']['F']
+            Kalpha, Kalpha_d = item['data']['Kalpha']
+
+            # get a color
+            col = item['color']
+
+            # plot line with errors:
+            plt.plot(x_arr, _kingLine(x_arr-alpha, Kalpha, F, alpha), '--', c=col, lw=2)
+            # plot error band for this line
+            plt.fill_between(x_arr,
+                             _kingLower(x_arr-alpha, Kalpha, Kalpha_d, F, F_d, alpha),
+                             _kingUpper(x_arr-alpha, Kalpha, Kalpha_d, F, F_d, alpha),
+                             alpha=0.4, edgecolor=col, facecolor=col)
+
+            # plot each reference point from this source
+            r_lst = []
+            r_d_lst = []
+            s_lst = []
+            s_d_lst = []
+
+
+            for iso, delta_rms in self.delta_lit_radii_60.items():
+                m_iso, m_iso_d = self.get_iso_property_from_db('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''',
+                                                               (iso[:4],))
+                m_ref, m_ref_d = self.get_iso_property_from_db('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''',
+                                                               (self.ref_iso[:4],))
+                mu = (m_iso - m_ref) / (m_iso * m_ref)
+                mu_d = np.sqrt(np.square(m_iso_d / m_iso ** 2) + np.square(m_ref_d / m_ref ** 2))
+
+                if self.iso_shifts_lit[src[:-6]]['data'].get(iso, None) is not None:
+                    r_lst.append(delta_rms[0] / mu)
+                    r_d_lst.append(np.sqrt((delta_rms[1] / mu) ** 2 + (delta_rms[0] * mu_d / mu ** 2) ** 2))
+                    src_first = ' '.join(src.split()[:2])
+                    s_lst.append(self.iso_shifts_lit[src_first]['data'][iso][0] / mu / 1000)
+                    s_d_lst.append(np.sqrt((self.iso_shifts_lit[src_first]['data'][iso][1] / mu / 1000) ** 2 + (
+                                (self.iso_shifts_lit[src_first]['data'][iso][0]) * mu_d / mu ** 2 / 1000) ** 2))
+                    if not iso in annotate_iso and 'Kauf' in src:
+                        # only use Kaufmann values for the annotation:
+                        annotate_iso.append(iso)
+                        x_annotate.append(delta_rms[0] / mu)
+                        y_annotate.append(self.iso_shifts_lit[src[:-6]]['data'][iso][0] / mu / 1000)
+
+            plt.errorbar(r_lst, s_lst, xerr=r_d_lst, yerr=s_d_lst, fmt='o', c=col, elinewidth=1.5, label=src)
+
+        for i, iso in enumerate(annotate_iso):
+            ax.annotate(r'$^\mathregular{{{:.0f}}}$Ni'.format(int(iso[:2])), (x_annotate[i]+5, y_annotate[i]+5), color='green')
+
+        if thisPoint is not None:
+            plt.errorbar(thisPoint[0], thisPoint[2], xerr=thisPoint[1], yerr=thisPoint[3], fmt='ok', label='This Work', elinewidth=1.5)
+
+        plt.xlabel(r'$\mu^{-1} \delta <r_c^2>$' + ' (u fm)' + r'$^2$')
+        plt.ylabel(r'$\mu^{-1} \delta\nu$' + ' (u GHz)')
+        plt.title('King Plot Comparison')
+        plt.legend(title='Isotope Shift Measurements', numpoints=1, loc="best")
+        plt.margins(0.05)
+        if self.save_plots_to_file:
+            plt.savefig(self.resultsdir + 'compare_kings' + '.png', bbox_inches="tight")
+        else:
+            plt.show()
+        plt.close()
+        plt.clf()
 
     def extract_radius_from_factors(self, iso, ref, scaler=None):
         """
@@ -2630,9 +2441,13 @@ class NiAnalysis():
         mu_d = np.sqrt(np.square(m_iso_d/m_iso**2)+np.square(m_ref_d/m_ref**2))
 
         # get Mass and Field Shift factors:
-        M_alpha, M_alpha_d = self.literature_massshift
-        F, F_d = self.literature_fieldshift
-        alpha = self.literature_alpha
+        if '58' in ref:
+            kingFactorLit = 'Koenig 2020 58ref'
+        else:
+            kingFactorLit = 'Koenig 2020 60ref'
+        M_alpha, M_alpha_d = self.king_literature[kingFactorLit]['data']['Kalpha']  # Mhz u (lit val given in GHz u)(949000, 4000)
+        F, F_d = self.king_literature[kingFactorLit]['data']['F']  # MHz/fm^2(-788, 82)
+        alpha = self.king_literature[kingFactorLit]['data']['Alpha']  # u fm^2 397
 
         # get data and calculate radii
         delta_rms = []
@@ -2640,28 +2455,36 @@ class NiAnalysis():
         if scaler is not None:
             # get per file isoshift
             files = self.results[iso]['file_names']
-            iso_shift = self.results[iso][scaler]['shifts_iso-{}'.format(ref[:2])]['vals']
-            iso_shift_d = self.results[iso][scaler]['shifts_iso-{}'.format(ref[:2])]['d_stat']
-            iso_shift_d_syst = self.results[iso][scaler]['shifts_iso-{}'.format(ref[:2])]['d_syst']
-            for indx, file in enumerate(files):
-                # calculate radius
-                delta_rms.append(mu * ((iso_shift[indx] / mu - M_alpha) / F + alpha))
-                delta_rms_d.append(np.sqrt(np.square(mu_d * (alpha - M_alpha / F))
-                                           + np.square(M_alpha_d * mu / F)
-                                           + np.square(F_d * (iso_shift[indx] - mu * M_alpha) / F ** 2)
-                                           + np.square((iso_shift_d[indx] + iso_shift_d_syst[indx]) / F)
-                                           ))
+            iso_shift = self.results[iso][scaler]['shift_iso-{}'.format(ref[:2])]['vals']
+            iso_shift_d = self.results[iso][scaler]['shift_iso-{}'.format(ref[:2])]['d_stat']
+            iso_shift_d_syst = self.results[iso][scaler]['shift_iso-{}'.format(ref[:2])]['d_syst']
+            if iso[:2] == ref[:2]:
+                # this is the reference! All values zero!
+                for indx, file in enumerate(files):
+                    delta_rms.append(0)
+                    delta_rms_d.append(0)
+                avg_delta_rms = 0
+                avg_delta_rms_d = 0
+            else:
+                for indx, file in enumerate(files):
+                    # calculate radius
+                    delta_rms.append(mu * ((iso_shift[indx] / mu - M_alpha) / F + alpha))
+                    delta_rms_d.append(np.sqrt(np.square(mu_d * (alpha - M_alpha / F))
+                                               + np.square(M_alpha_d * mu / F)
+                                               + np.square(F_d * (iso_shift[indx] - mu * M_alpha) / F ** 2)
+                                               + np.square((iso_shift_d[indx] + iso_shift_d_syst[indx]) / F)
+                                               ))
 
-            # get average isoshift
-            avg_iso_shift = self.results[iso][scaler]['avg_shift_iso-{}'.format(ref[:2])]['vals'][0]
-            avg_iso_shift_d = self.results[iso][scaler]['avg_shift_iso-{}'.format(ref[:2])]['d_stat'][0]
-            avg_iso_shift_d_syst = self.results[iso][scaler]['avg_shift_iso-{}'.format(ref[:2])]['d_syst'][0]
-            # calculate average radius
-            avg_delta_rms = mu * ((avg_iso_shift / mu - M_alpha) / F + alpha)
-            avg_delta_rms_d = np.sqrt(np.square(mu_d * (alpha - M_alpha / F))
-                                      + np.square(M_alpha_d * mu / F)
-                                      + np.square(F_d * (avg_iso_shift - mu * M_alpha) / F ** 2)
-                                      + np.square((avg_iso_shift_d + avg_iso_shift_d_syst) / F))
+                # get average isoshift
+                avg_iso_shift = self.results[iso][scaler]['avg_shift_iso-{}'.format(ref[:2])]['vals'][0]
+                avg_iso_shift_d = self.results[iso][scaler]['avg_shift_iso-{}'.format(ref[:2])]['d_stat'][0]
+                avg_iso_shift_d_syst = self.results[iso][scaler]['avg_shift_iso-{}'.format(ref[:2])]['d_syst'][0]
+                # calculate average radius
+                avg_delta_rms = mu * ((avg_iso_shift / mu - M_alpha) / F + alpha)
+                avg_delta_rms_d = np.sqrt(np.square(mu_d * (alpha - M_alpha / F))
+                                          + np.square(M_alpha_d * mu / F)
+                                          + np.square(F_d * (avg_iso_shift - mu * M_alpha) / F ** 2)
+                                          + np.square((avg_iso_shift_d + avg_iso_shift_d_syst) / F))
 
         else:
             # extract isotope shift from db where no scaler is specified.
@@ -2682,6 +2505,23 @@ class NiAnalysis():
         return delta_rms, delta_rms_d, avg_delta_rms, avg_delta_rms_d
 
     ''' Results and Plotting '''
+
+    def calc_weighted_avg(self, values, uncertainties):
+        x = np.asarray(values)
+        n = x.__len__()
+        x_d = np.asarray(uncertainties)
+        # calculate weights inversely proportional to the square of the uncertainties
+        w = 1/np.square(x_d)
+
+        # calculate weighted average and sum of weights:
+        wavg, sum_of_w = np.average(x, weights=w, returned=True)
+
+        # calculate weighted variance
+        wvar = np.sum(w*np.square(x-wavg))/sum_of_w * n/(n-1)
+        # calculate weighted standard deviations
+        wstd = np.sqrt(wvar/n)
+
+        return wavg, wstd
 
     def make_results_dict_scaler(self,
                                  centers, centers_d_fit, centers_d_stat, center_d_syst, fitpars, rChi, hfs_pars=None):
@@ -2755,7 +2595,7 @@ class NiAnalysis():
 
     def plot_parameter_for_isos_and_scaler(self, isotopes, scaler_list, parameter,
                                            offset=None, overlay=None, unit='MHz', onlyfiterrs=False,
-                                           digits=1 , factor=1, shiftavg=True, plotstyle='band'):
+                                           digits=1 , factor=1, plotAvg=False, plotstyle='band', folder=None):
         """
         Make a nice plot of the center fit frequencies with statistical errors for the given isotopes
         For better readability an offset can be specified
@@ -2771,7 +2611,10 @@ class NiAnalysis():
         scaler_nums = []
         for sc in scaler_list:
             scaler = self.update_scalers_in_db(sc)
-            scaler_nums.append(scaler.split('_')[1])
+            if '_' in scaler:
+                scaler_nums.append(scaler.split('_')[1])
+            else:
+                scaler_nums.append(scaler)
             for i in range(len(isotopes)):
                 iso = isotopes[i]
                 x_ax = self.results[iso][x_type]
@@ -2854,8 +2697,8 @@ class NiAnalysis():
                     #                      np.array(centers) + off - centers_d_syst,
                     #                      np.array(centers) + off + centers_d_syst,
                     #                      alpha=0.2, edgecolor=col, facecolor=col)
-                if 'shifts_iso-' in parameter and shiftavg:
-                    avg_parameter = 'avg_shift_iso-{}'.format(parameter[-2:])
+                if plotAvg:
+                    avg_parameter = 'avg_{}'.format(parameter)
                     # also plot average isotope shift
                     avg_shift = self.results[iso][scaler][avg_parameter]['vals'][0]
                     avg_shift_d = self.results[iso][scaler][avg_parameter]['d_stat'][0]
@@ -2899,8 +2742,16 @@ class NiAnalysis():
                 if 'sum' in isos:
                     summed = 'sum'
             parameter = parameter.replace(':', '_')  # colon is no good filename char
+            if 'final' in scaler_list:
+                parameter = '0_' + parameter
             filename = parameter + '_' + ''.join(isonums) + summed + '_sc' + 'a'.join(scaler_nums)
-            plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
+            path_add = ''
+            if folder is not None:
+                path_add = '{}\\'.format(folder)
+            plot_folder = self.resultsdir + path_add
+            if not os.path.exists(plot_folder):
+                os.makedirs(plot_folder)
+            plt.savefig(plot_folder + filename + '.png', bbox_inches="tight")
         else:
             plt.show()
         plt.close()
@@ -2908,7 +2759,7 @@ class NiAnalysis():
 
     def plot_parameter_for_isos_vs_scaler(self, isotopes, scaler_list, parameter,
                                            offset=None, overlay=None, unit='MHz', onlyfiterrs=False,
-                                          digits=1, factor=1, shiftavg=True):
+                                          digits=1, factor=1, folder=None):
         """
         Make a nice plot of the center fit frequencies with statistical errors for the given isotopes
         For better readability an offset can be specified
@@ -2929,7 +2780,10 @@ class NiAnalysis():
             centers_d_syst = np.zeros(len(scaler_list))
             for indx, sc in enumerate(scaler_list):
                 scaler = self.update_scalers_in_db(sc)
-                scaler_nums.append(scaler.split('_')[1])
+                if '_' in scaler:
+                    scaler_nums.append(scaler.split('_')[1])
+                else:
+                    scaler_nums.append(scaler)
                 if 'all_fitpars' in parameter:
                     # the 'all fitpars is organized a little different.
                     # For each file they are just stored as a dict like in db
@@ -3005,12 +2859,249 @@ class NiAnalysis():
                 if 'sum' in isos:
                     summed = 'sum'
             parameter = parameter.replace(':', '_')  # colon is no good filename char
+            if 'final' in scaler_list:
+                parameter = '0_' + parameter
             filename = parameter + '_' + ''.join(isonums) + summed + '_sc' + 'a'.join(scaler_nums)
-            plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
+            path_add = ''
+            if folder is not None:
+                path_add = '{}\\'.format(folder)
+            plot_folder = self.resultsdir + path_add
+            if not os.path.exists(plot_folder):
+                os.makedirs(plot_folder)
+            plt.savefig(plot_folder + filename + '.png', bbox_inches="tight")
         else:
             plt.show()
         plt.close()
         plt.clf()
+
+    def plot_parameter_for_isos_final(self, isotopes, parameter, overlay=None, unit='MHz', onlyfiterrs=False,
+                                      factor=1, plotstyle='band', folder=None):
+        """
+        Make a nice plot of the center fit frequencies with statistical errors for the given isotopes
+        For better readability an offset can be specified
+        :param isotopes: list of str: names of isotopes as list
+        :param scaler: list of int or str: scaler number as int or in string in format 'scaler_0'
+        :param offset: list or True: optional. If given a list, this list must match the list of isotopes with an offset
+         for each. If TRUE, offset will be extracted from results avg_shift
+        :param plotstyle: str: either 'band' for a band of errors connecting the datapoints or 'classic' for just errorbars
+        :return:
+        """
+        fig, ax = plt.subplots()
+        x_type = 'isotopes'  # alternative: 'file_numbers', 'file_times'
+
+        scaler = 'final'
+
+        x_ax = [int(iso[:2]) for iso in isotopes]
+
+        centers = factor*np.array([self.results[iso][scaler][parameter]['vals'][0] for iso in isotopes])
+        if onlyfiterrs:
+            centers_d_stat = factor*np.array([self.results[iso][scaler][parameter].get('d_fit', [0])[0] for iso in isotopes])
+            centers_d_syst = 0
+        else:
+            centers_d_stat = factor*np.array([self.results[iso][scaler][parameter].get('d_stat', [0])[0] for iso in isotopes])
+            centers_d_syst = factor*np.array([self.results[iso][scaler][parameter].get('d_syst', [0])[0] for iso in isotopes])
+
+        col = 'black'
+
+        if plotstyle == 'band':
+            # plot values as points
+            plt.plot(x_ax, np.array(centers), '--o', color=col)
+            # plot error band for statistical errors
+            plt.fill_between(x_ax,
+                             np.array(centers) - centers_d_stat,
+                             np.array(centers) + centers_d_stat,
+                             alpha=0.5, edgecolor=col, facecolor=col)
+            # plot error band for systematic errors on top of statistical errors
+            plt.fill_between(x_ax,
+                             np.array(centers) - centers_d_syst - centers_d_stat,
+                             np.array(centers) + centers_d_syst + centers_d_stat,
+                             alpha=0.2, edgecolor=col, facecolor=col)
+        else:
+            # plot values as points with statistical errorbars. Dashed line in between
+            plt.errorbar(x_ax, np.array(centers), yerr=np.array(centers_d_stat), fmt='--o', color=col)
+            # plot error band for systematic errors on top of statistical errors
+            # if not np.all(np.asarray(centers_d_syst) == 0):
+            #     plt.fill_between(x_ax,
+            #                      np.array(centers) + off - centers_d_syst,
+            #                      np.array(centers) + off + centers_d_syst,
+            #                      alpha=0.2, edgecolor=col, facecolor=col)
+
+        if overlay is not None:
+            plt.axhline(y=overlay, color='red')
+
+        plt.xlabel('Isotope')
+        plt.xticks(rotation=45)
+        plt.ylabel('{} [{}]'.format(parameter, unit))
+        ax.get_yaxis().get_major_formatter().set_useOffset(False)
+        plt.title('{} in {} for isotopes: {}'.format(parameter, unit, isotopes))
+        plt.legend(title='Legend', bbox_to_anchor=(1.04, 0.5), loc="center left")
+        plt.margins(0.05)
+        if self.save_plots_to_file:
+            parameter = parameter.replace(':', '_')  # colon is no good filename char
+            filename = '0_' + parameter + '_' + ''.join([str(i) for i in x_ax]) + '_final'
+            path_add = ''
+            if folder is not None:
+                path_add = '{}\\'.format(folder)
+            plot_folder = self.resultsdir + path_add
+            if not os.path.exists(plot_folder):
+                os.makedirs(plot_folder)
+            plt.savefig(plot_folder + filename + '.png', bbox_inches="tight")
+        else:
+            plt.show()
+        plt.close()
+        plt.clf()
+
+    ''' Final Plotting '''
+    def make_final_plots(self):
+        # centroid fit results
+        self.plot_centroids(['56Ni_cal', '60Ni', '58Ni_cal', '60Ni_cal'],
+                            ['scaler_0', 'scaler_1', 'scaler_2', 'scaler_c012'],
+                            overlay=None, unit='MHz', onlyfiterrs=False, digits=1, plotAvg=True)
+
+        final_isos = ['55Ni', '56Ni', '58Ni', '60Ni']
+        # isotope shifts
+        self.plot_shifts(final_isos, self.ref_iso, 'final', dash_missing_data=True, tip_scale=250)
+        # radii
+        self.plot_radii(final_isos, self.ref_iso, 'final', dash_missing_data=True)
+
+    def plot_centroids(self, isolist, scaler_list, overlay=None, unit='MHz', onlyfiterrs=False,
+                                           digits=1 , plotAvg=False, plotSyst=False):
+        parameter = 'center_fits'
+        # make one separate plot for each isotope
+        for iso in isolist:
+            fig, ax1 = plt.subplots()
+
+            x_type = 'file_times'  # alternative: 'file_numbers', 'file_times'
+            x_ax = self.results[iso][x_type]
+            file_numbers = self.results[iso]['file_numbers']  # for use as secondary axis
+
+            for sc in scaler_list:
+                scaler = self.update_scalers_in_db(sc)
+
+                # get the values
+                centers = np.array(self.results[iso][scaler][parameter]['vals'])
+                zero_arr = np.zeros(
+                    len(centers))  # prepare zero array with legth of centers in case no errors are given
+                if onlyfiterrs:
+                    centers_d_stat = np.array(self.results[iso][scaler][parameter].get('d_fit', zero_arr))
+                    centers_d_syst = 0
+                else:
+                    centers_d_stat = np.array(self.results[iso][scaler][parameter].get('d_stat', zero_arr))
+                    centers_d_syst = np.array(self.results[iso][scaler][parameter].get('d_syst', zero_arr))
+
+                # calculate weighted average:
+                if not np.any(centers_d_stat == 0) and not np.sum(1 / centers_d_stat ** 2) == 0:
+                    weights = 1 / centers_d_stat ** 2
+                    wavg, sumw = np.average(centers, weights=weights, returned=True)
+                    wavg_d = '{:.0f}'.format(
+                        10 ** digits * np.sqrt(1 / sumw))  # times 10 for representation in brackets
+                else:  # some values don't have error, just calculate mean instead of weighted avg
+                    wavg = centers.mean()
+                    wavg_d = '-'
+
+
+                # determine color by scaler
+                col = self.scaler_colors[scaler]
+                labelstr = 'scaler {}'.format(scaler.split('_')[-1])
+                if scaler == 'scaler_c012':
+                    # for the combined scaler use color determined by isotope
+                    col = self.results[iso]['color']
+                    labelstr = 'wAvg scalers'
+
+                plt_label = '{0} {1:.{4:d}f}({2}){3}' \
+                    .format(labelstr, wavg, wavg_d, unit, digits)
+
+                # Do the plotting
+                if scaler == 'scaler_c012':
+                    # plot values as points
+                    ax1.plot(x_ax, np.array(centers), '--', color=col)
+                    # plot error band for statistical errors
+                    ax1.fill_between(x_ax,
+                                     np.array(centers) - centers_d_stat,
+                                     np.array(centers) + centers_d_stat,
+                                     alpha=0.5, edgecolor=col, facecolor=col,
+                                     label=plt_label)
+                else:
+                    # plot values as dots with statistical errorbars
+                    ax1.errorbar(x_ax, np.array(centers), yerr=np.array(centers_d_stat), fmt='.', color=col,
+                                 label=plt_label)
+
+                # For the combined scaler, also plot the weighted avg over all scalers
+                if scaler == 'scaler_c012' and plotAvg:
+                    avg_parameter = 'avg_{}'.format(parameter)
+                    # also plot average isotope shift
+                    avg_shift = self.results[iso][scaler][avg_parameter]['vals'][0]
+                    avg_shift_d = self.results[iso][scaler][avg_parameter]['d_stat'][0]
+                    avg_shift_d_syst = self.results[iso][scaler][avg_parameter]['d_syst'][0]
+                    # plot weighted average as red line
+                    labelstr = 'wAvg files'
+                    ax1.plot([x_ax[0], x_ax[-1]], [avg_shift, avg_shift], 'red')
+                    # plot error of weighted average as red shaded box around that line
+                    ax1.fill([x_ax[0], x_ax[-1], x_ax[-1], x_ax[0]],
+                             [avg_shift - avg_shift_d, avg_shift - avg_shift_d,
+                              avg_shift + avg_shift_d, avg_shift + avg_shift_d], 'red',
+                             alpha=0.2,
+                             label='{0}: {1:.{5:d}f}({2:.0f})[{3:.0f}]{4}'
+                             .format(labelstr, avg_shift, 10 ** digits * avg_shift_d, 10 ** digits * avg_shift_d_syst,
+                                     unit, digits))
+                    if plotSyst:
+                        # plot systematic error as lighter red shaded box around that line
+                        ax1.fill([x_ax[0], x_ax[-1], x_ax[-1], x_ax[0]],
+                                 [avg_shift - avg_shift_d_syst - avg_shift_d, avg_shift - avg_shift_d_syst - avg_shift_d,
+                                  avg_shift + avg_shift_d_syst + avg_shift_d, avg_shift + avg_shift_d_syst + avg_shift_d],
+                                 'red',
+                                 alpha=0.1)
+
+            # if any overlay was specified, plot as a red line
+            if overlay is not None:
+                plt.axhline(y=overlay, color='red')
+
+            # work on the axes
+            ax1.margins(0.05)
+            if x_type == 'file_times':
+                # create primary axis with the dates
+                hours_fmt = mpdate.DateFormatter('%Hh')
+                ax1.xaxis.set_major_formatter(hours_fmt)
+                # create a days axis
+                ax_day = ax1.twiny()
+                ax_day.xaxis.set_ticks_position("bottom")
+                ax_day.xaxis.set_label_position("bottom")
+                ax_day.spines["bottom"].set_position(("axes", -0.07))  # Offset the days axis below the hours
+                alldates = [datetime(2018, 4, d, 0, 0, 0) for d in range(13, 24, 1)]
+                ax_day.set_xticks(alldates)  # same tick locations
+                ax_day.set_xbound(ax1.get_xbound())
+                days_fmt = mpdate.DateFormatter('%d.%b')
+                ax_day.xaxis.set_major_formatter(days_fmt)
+                ax_day.set_xlabel('date and time')
+                # create a secondary axis with the run numbers
+                ax_num = ax1.twiny()
+                ax_num.set_xlabel('data set numbers')
+                ax_num.set_xticks(x_ax)  # same tick locations
+                ax_num.set_xbound(ax1.get_xbound())  # same axis range
+                ax_num.set_xticklabels(file_numbers, rotation=90)
+            else:
+                plt.xlabel('run number')
+            ax1.set_ylabel('centroid /{}'.format(unit))
+            ax1.get_yaxis().get_major_formatter().set_useOffset(False)
+
+            # create labels and title
+            cal = ''
+            if 'cal' in iso:
+                cal = 'calibrated '
+            title = ax1.set_title('Centroids in {} for all data sets of {}{}'.format(unit, cal, iso[:4]))
+            title.set_y(1.2)
+            fig.subplots_adjust(top=0.85)
+            ax1.legend(title='Scaler', bbox_to_anchor=(1.04, 0.5), loc="center left")
+            if self.save_plots_to_file:
+                parameter = parameter.replace(':', '_')  # colon is no good filename char
+                if 'final' in scaler_list:
+                    parameter = '0_' + parameter
+                filename = parameter + '_' + iso + '_sc0a1a2ac012'
+                plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
+            else:
+                plt.show()
+            plt.close()
+            plt.clf()
 
     def plot_radii(self, isolist, refiso, scaler, plot_evens_seperate=False, dash_missing_data=True, calibrated=False,
                    includelitvals=True):
@@ -3018,36 +3109,45 @@ class NiAnalysis():
             isolist = ['{}_cal'.format(i) for i in isolist]  # make sure to use the calibrated isos
         font_size = 12
         ref_key = refiso[:4]
-        rms_key = 'avg_delta_rms_iso-{}'.format(refiso[:2])
+        if scaler == 'final':
+            rms_key = 'delta_rms_iso-{}'.format(refiso[:2])
+        else:
+            rms_key = 'avg_delta_rms_iso-{}'.format(refiso[:2])
         thisVals = {key: [self.results[key][scaler][rms_key]['vals'][0],
                            self.results[key][scaler][rms_key]['d_syst'][0]]
                      for key in isolist}
         thisVals[refiso] = [0, 0]
         col = ['r', 'b', 'k', 'g']
 
-        dictlist = [thisVals]
-        srclist = ['This Work']
+        data_dict = {'This Work': {'data': thisVals, 'color': 'red'}}
+        src_list = []
+
+        # get the literature values
         if includelitvals:
-            for src, isos in self.delta_rms_lit.items():
-                litvals = TiTs.deepcopy(isos)
-                ref_val = self.delta_rms_lit[src][ref_key]
-                srclist.append(src)
+            for src, vals in self.delta_rms_lit.items():
+                col = vals['color']
+                litvals = TiTs.deepcopy(vals['data'])
+                ref_val = litvals[ref_key]
                 for iso, vals in litvals.items():
-                    litvals[iso] = (vals[0]-ref_val[0], vals[1])
-                dictlist.append(litvals)
-            # TODO: How to deal with different refisos here?
-        for num, finalVals in enumerate(dictlist):
-            keyVals = sorted(finalVals)
+                    litvals[iso] = (vals[0] - ref_val[0], vals[1])
+                data_dict[src] = {'data': litvals, 'color': col}
+                src_list.append(src)
+
+        # sort sources for appearance
+        src_sorted = tuple(['This Work'] + sorted(src_list))
+
+        # start plotting
+        for src in src_sorted:
+            col = data_dict[src]['color']
+            data = data_dict[src]['data']
+            keyVals = sorted(data)
             x = []
             y = []
             yerr = []
-            print('iso\t $\delta$ <r$^2$>[fm$^2$]')
             for i in keyVals:
                 x.append(int(''.join(filter(str.isdigit, i))))
-                y.append(finalVals[i][0])
-                yerr.append(finalVals[i][1])
-                print('%s\t%.3f(%.0f)\t%.1f' % (i, finalVals[i][0], finalVals[i][1] * 1000,
-                                                finalVals[i][1] / max(abs(finalVals[i][0]), 0.000000000000001) * 100))
+                y.append(data[i][0])
+                yerr.append(data[i][1])
 
             plt.xticks(rotation=0)
             ax = plt.gca()
@@ -3061,8 +3161,8 @@ class NiAnalysis():
                 y_even = [each for i, each in enumerate(y) if x[i] % 2 == 0]
                 y_even_err = [each for i, each in enumerate(yerr) if x[i] % 2 == 0]
 
-                plt.errorbar(x_even, y_even, y_even_err, fmt='{}o'.format(col[num]), label='even', linestyle='-')
-                plt.errorbar(x_odd, y_odd, y_odd_err, fmt='{}^'.format(col[num]), label='odd', linestyle='--')
+                plt.errorbar(x_even, y_even, y_even_err, fmt='o', color=col, label='even', linestyle='-')
+                plt.errorbar(x_odd, y_odd, y_odd_err, fmt='^', color=col, label='odd', linestyle='--')
                 # plt.legend(loc=2)
             elif dash_missing_data:
                 # if some isotopes are missing, this dashes the line at these isotopes
@@ -3076,18 +3176,18 @@ class NiAnalysis():
                     y_vals = y[i:i + len(each)]
                     yerr_vals = yerr[i:i + len(each)]
                     if not label_created:  # only create label once
-                        plt.errorbar(each, y_vals, yerr_vals, fmt='{}o'.format(col[num]), linestyle='-', label=srclist[num])
+                        plt.errorbar(each, y_vals, yerr_vals, fmt='o', color=col, linestyle='-', label=src)
                         label_created=True
                     else:
-                        plt.errorbar(each, y_vals, yerr_vals, fmt='{}o'.format(col[num]), linestyle='-')
+                        plt.errorbar(each, y_vals, yerr_vals, fmt='o', color=col, linestyle='-')
                     # plot dashed lines between missing values
                     if len(x) > i + len(each):  # might be last value
                         x_gap = [x[i + len(each) - 1], x[i + len(each)]]
                         y_gap = [y[i + len(each) - 1], y[i + len(each)]]
-                        plt.plot(x_gap, y_gap, c='{}'.format(col[num]), linestyle='--')
+                        plt.plot(x_gap, y_gap, c=col, linestyle='--')
                     i = i + len(each)
             else:
-                plt.errorbar(x, y, yerr, fmt='{}o'.format(col[num]), linestyle='-')
+                plt.errorbar(x, y, yerr, fmt='o', color=col, linestyle='-')
         ax.set_xmargin(0.05)
         plt.legend(loc='lower right')
         plt.margins(0.1)
@@ -3106,6 +3206,140 @@ class NiAnalysis():
                 if 'sum' in isos:
                     summed = 'sum'
             parameter = 'charge_radii_{}ref'.format(ref_key)
+            if scaler == 'final':
+                parameter = '0_' + parameter
+            filename = parameter + '_' + ''.join(isonums) + summed + '_sc' + scaler
+            plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
+        else:
+            plt.show()
+        plt.close()
+        plt.clf()
+
+    def plot_shifts(self, isolist, refiso, scaler, plot_evens_seperate=False, dash_missing_data=True, calibrated=False,
+                   includelitvals=True, tip_scale=0, relative=False):
+        if calibrated:
+            isolist = ['{}_cal'.format(i) for i in isolist]  # make sure to use the calibrated isos
+        font_size = 12
+        ref_key = refiso[:4]
+        if scaler == 'final':
+            rms_key = 'shift_iso-{}'.format(refiso[:2])
+        else:
+            rms_key = 'avg_shift_iso-{}'.format(refiso[:2])
+        thisVals = {key: [self.results[key][scaler][rms_key]['vals'][0],
+                          self.results[key][scaler][rms_key]['d_stat'][0]
+                          + self.results[key][scaler][rms_key]['d_syst'][0]]
+                    for key in isolist}
+        thisVals[refiso] = [0, 0]
+
+        data_dict = {'This Work': {'data': thisVals, 'color': 'red'}}
+        src_list = []
+
+        # get the literature values
+        if includelitvals:
+            for src, vals in self.iso_shifts_lit.items():
+                col = vals['color']
+                litvals = TiTs.deepcopy(vals['data'])
+                ref_val = litvals[ref_key]
+                for iso, vals in litvals.items():
+                    litvals[iso] = (vals[0]-ref_val[0], vals[1])
+                data_dict[src] = {'data': litvals, 'color': col}
+                src_list.append(src)
+
+        # sort sources for appearance
+        src_sorted = tuple(['This Work'] + sorted(src_list))
+
+        # start plotting
+        for src in src_sorted:
+            col = data_dict[src]['color']
+            data = data_dict[src]['data']
+            keyVals = sorted(data)
+            x = []
+            y = []
+            yerr = []
+            for num, i in enumerate(keyVals):
+                isoint = int(''.join(filter(str.isdigit, i)))
+                if relative:
+                    # only really makes sense for consecutive values. Implemented it anyways.
+                    if i != keyVals[-1]:
+                        next = keyVals[num+1]
+                        nextint = int(''.join(filter(str.isdigit, next)))
+                        x.append(isoint)
+                        y.append((data[i][0] - data[next][0])/(nextint-isoint))
+                        yerr.append(np.sqrt(data[i][1]**2 + data[next][1]**2)/(nextint-isoint))
+                else:
+                    x.append(isoint)
+                    y.append(data[i][0] + (60-isoint)*tip_scale)
+                    yerr.append(data[i][1])
+
+            plt.xticks(rotation=0)
+            ax = plt.gca()
+            if tip_scale != 0:
+                tipped = r'$ - {}\cdot(60-$A$)$'.format(tip_scale)
+            else:
+                tipped = ''
+            ax.set_ylabel(r'$\delta$ $\nu$' + tipped + ' (MHz)', fontsize=font_size)
+            if relative:
+                ax.set_ylabel(r'$\delta\nu^{60,A}-\delta\nu^{60,A+1}$' + tipped + ' (MHz)', fontsize=font_size)
+            ax.set_xlabel('A', fontsize=font_size)
+            if plot_evens_seperate:
+                x_odd = [each for each in x if each % 2 != 0]
+                y_odd = [each for i, each in enumerate(y) if x[i] % 2 != 0]
+                y_odd_err = [each for i, each in enumerate(yerr) if x[i] % 2 != 0]
+                x_even = [each for each in x if each % 2 == 0]
+                y_even = [each for i, each in enumerate(y) if x[i] % 2 == 0]
+                y_even_err = [each for i, each in enumerate(yerr) if x[i] % 2 == 0]
+
+                plt.errorbar(x_even, y_even, y_even_err, fmt='o', color=col, label='even', linestyle='-')
+                plt.errorbar(x_odd, y_odd, y_odd_err, fmt='^', color=col, label='odd', linestyle='--')
+                # plt.legend(loc=2)
+            elif dash_missing_data:
+                # if some isotopes are missing, this dashes the line at these isotopes
+                # has no effect when plot_evens_separate is True
+                split_x_list = []
+                for k, g in groupby(enumerate(x), lambda a: a[0] - a[1]):
+                    split_x_list.append(list(map(itemgetter(1), g)))
+                i = 0
+                label_created = False
+                for each in split_x_list:
+                    y_vals = y[i:i + len(each)]
+                    yerr_vals = yerr[i:i + len(each)]
+                    if not label_created:  # only create label once
+                        plt.errorbar(each, y_vals, yerr_vals, fmt='o', color=col, linestyle='-', label=src)
+                        label_created=True
+                    else:
+                        plt.errorbar(each, y_vals, yerr_vals, fmt='o', color=col, linestyle='-')
+                    # plot dashed lines between missing values
+                    if len(x) > i + len(each):  # might be last value
+                        x_gap = [x[i + len(each) - 1], x[i + len(each)]]
+                        y_gap = [y[i + len(each) - 1], y[i + len(each)]]
+                        plt.plot(x_gap, y_gap, c=col, linestyle='--')
+                    i = i + len(each)
+            else:
+                plt.errorbar(x, y, yerr, fmt='o', color=col, linestyle='-')
+        ax.set_xmargin(0.05)
+        plt.legend(loc='lower right')
+        plt.margins(0.1)
+        plt.gcf().set_facecolor('w')
+        plt.xticks(fontsize=font_size)
+        plt.yticks(fontsize=font_size)
+        plt.tight_layout(True)
+        if self.save_plots_to_file:
+            isonums = []
+            summed = ''
+            for isos in isolist:
+                if 'cal' in isos:
+                    isonums.append(isos[:2] + 'c')
+                else:
+                    isonums.append(isos[:2])
+                if 'sum' in isos:
+                    summed = 'sum'
+            parameter = 'iso_shifts_{}ref'.format(ref_key)
+            if tip_scale != 0:
+                parameter += '_tipped'
+            if relative:
+                parameter += 'relative'
+            if scaler == 'final':
+                parameter = '0_' + parameter
             filename = parameter + '_' + ''.join(isonums) + summed + '_sc' + scaler
             plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
         else:
@@ -3133,7 +3367,11 @@ class NiAnalysis():
             for p_num, property in enumerate(header_labels):
                 for vari in ('', '_cal', '_sum_cal'):
                     try:
-                        data_dict = self.results['{}{}'.format(iso, vari)]['scaler_c012'][property]
+                        scaler = 'scaler_c012'
+                        if 'sum' in vari:
+                            # for 55 Nickel the combined scalers is more reliable. Use for all sum
+                            scaler = 'scaler_012'
+                        data_dict = self.results['{}{}'.format(iso, vari)][scaler][property]
                         row_data.append('{:.{}f}({:.0f})[{:.0f}]'.format(data_dict['vals'][0], prop_digits[p_num],
                                                                          data_dict['d_stat'][0]*10**prop_digits[p_num],
                                                                          data_dict['d_syst'][0]*10**prop_digits[p_num]))
@@ -3173,29 +3411,25 @@ if __name__ == '__main__':
     # fitting the first time for extraction of calibration and comparison of uncalibrated data
     analysis.fitting_initial_separate()
     analysis.combine_single_scaler_centers(['56Ni', '58Ni', '60Ni'])
-    analysis.plot_results_of_fit()
-    analysis.extract_isoshifts_from_fitres(['56Ni', '60Ni'], refiso='58Ni')
-    analysis.extract_isoshifts_from_fitres(['56Ni', '58Ni'], refiso='60Ni')
-    analysis.calculate_charge_radii(['56Ni', '60Ni'], refiso='58Ni')
-    analysis.calculate_charge_radii(['56Ni', '58Ni'], refiso='60Ni')
-    analysis.plot_radii(['56Ni', '58Ni'], refiso='60Ni', scaler='scaler_c012')
     analysis.ion_energy_calibration()
     # fitting with calibrated ion energies for final result extraction
     analysis.fitting_calibrated_separate()
-    analysis.combine_single_scaler_centers(['56Ni', '58Ni', '60Ni'], calibrated=True)
+    analysis.combine_single_scaler_results('center_fits', ['56Ni', '58Ni', '60Ni'], calibrated=True)
     analysis.plot_results_of_fit(calibrated=True)
-    analysis.extract_isoshifts_from_fitres(['56Ni', '60Ni'], refiso='58Ni', calibrated=True)
-    analysis.extract_isoshifts_from_fitres(['56Ni', '58Ni'], refiso='60Ni', calibrated=True)
-    analysis.calculate_charge_radii(['56Ni', '60Ni'], refiso='58Ni', calibrated=True)
-    analysis.calculate_charge_radii(['56Ni', '58Ni'], refiso='60Ni', calibrated=True)
+    analysis.extract_isoshifts_from_fitres(['56Ni', '58Ni', '60Ni'], refiso=analysis.ref_iso, calibrated=True)
+    analysis.combine_single_scaler_results('shift_iso-{}'.format(analysis.ref_iso[:2]), ['56Ni', '58Ni', '60Ni'], calibrated=True)
+    analysis.calculate_charge_radii(['56Ni', '58Ni', '60Ni'], refiso=analysis.ref_iso, calibrated=True)
     # stacked run analysis for inclusion of nickel 55
     analysis.create_and_fit_stacked_runs(calibrated=True)
     analysis.combine_single_scaler_centers(['55Ni_sum', '56Ni_sum', '58Ni_sum', '60Ni_sum'], calibrated=True)
-    analysis.extract_isoshifts_from_fitres(['55Ni_sum', '56Ni_sum', '60Ni_sum'], refiso='58Ni_sum', calibrated=True)
-    analysis.extract_isoshifts_from_fitres(['55Ni_sum', '56Ni_sum', '58Ni_sum'], refiso='60Ni_sum', calibrated=True)
-    analysis.calculate_charge_radii(['55Ni_sum', '56Ni_sum', '60Ni_sum'], refiso='58Ni_sum', calibrated=True)
-    analysis.calculate_charge_radii(['55Ni_sum', '56Ni_sum', '58Ni_sum'], refiso='60Ni_sum', calibrated=True)
-    analysis.plot_radii(['55Ni_sum', '56Ni_sum', '60Ni_sum'], refiso='58Ni_sum', scaler='scaler_012', calibrated=True)
-    analysis.plot_radii(['55Ni_sum', '56Ni_sum', '58Ni_sum'], refiso='60Ni_sum', scaler='scaler_012', calibrated=True)
+    analysis.extract_isoshifts_from_fitres(['55Ni_sum', '56Ni_sum', '58Ni_sum', '60Ni_sum'], refiso=analysis.ref_iso, calibrated=True)
+    analysis.calculate_charge_radii(['55Ni_sum', '56Ni_sum', '58Ni_sum', '60Ni_sum'], refiso=analysis.ref_iso, calibrated=True)
+    analysis.plot_radii(['55Ni_sum', '56Ni_sum', '60Ni_sum'], refiso=analysis.ref_iso, scaler='scaler_012', calibrated=True)
+    analysis.ni55_A_B_analysis('55Ni_sum', scaler='scaler_012', calibrated=True)
+    # get the final results
     analysis.export_results()
-    analysis.plot_results_table(ref_iso='60Ni')
+    analysis.get_final_results()
+    analysis.make_final_plots()
+    # analysis.compare_king_pars()
+    # analysis.perform_king_fit_analysis()
+

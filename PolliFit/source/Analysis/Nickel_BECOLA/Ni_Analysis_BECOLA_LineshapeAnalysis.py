@@ -470,7 +470,7 @@ class NiAnalysis_lineshapes():
         """
         con = sqlite3.connect(self.db)
         cur = con.cursor()
-        stand_ests = {'55Ni': -900, '56Ni': -500, '58Ni': -0, '60Ni': 500}  # values that worked fine for 29850V
+        stand_ests = {'55Ni': -1060, '56Ni': -712, '58Ni': -225, '60Ni': 293}  # values that worked fine for 29850V
         ref_freq_dev = 850343673 - self.restframe_trans_freq  # stand_ests are for 580343800MHz. Ref freq might be updated
         for iso, mass_tupl in stand_ests.items():
             cur.execute('''UPDATE Isotopes SET center = ? WHERE iso = ? ''',
@@ -533,13 +533,13 @@ class NiAnalysis_lineshapes():
 
     def sum_file_comparison(self):
         """ the summed up data of all files might be a good candidate to compare the different lineshapes """
-        self.adjust_center_ests_db()
+        # self.adjust_center_ests_db()
 
         runlist = ['Voigt', 'VoigtAsy', 'FanoVoigt', 'AsymmetricVoigt']
         self.initial_par_guess = {'sigma': (31.4, False), 'gamma': (18.4, False),
                                   'asy': (3.9, False),  # in case VoigtAsy is used
                                   'dispersive': (-0.04, False),  # in case FanoVoigt is used
-                                  'centerAsym': (-6.4, True), 'nPeaksAsym': (1, True), 'IntAsym': (0.163, False)
+                                  'centerAsym': (-6.4, True), 'nPeaksAsym': (1, True), 'IntAsym': (0.052, True)
                                   # in case AsymmetricVoigt is used
                                   }
         self.analysis_parameters = {'run': runlist,
