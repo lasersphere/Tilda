@@ -275,22 +275,22 @@ class NiAnalysis_lineshapes():
         """
                 Initialization stuff
                 """
-        # extract line to use and insert restframe transition frequency
-        con = sqlite3.connect(self.db)
-        cur = con.cursor()
-        cur.execute(
-            '''SELECT lineVar FROM Runs WHERE run = ? ''', (self.run,))
-        lineVar = cur.fetchall()
-        self.line = lineVar[0][0]
-        cur.execute('''SELECT * FROM Lines WHERE lineVar = ? ''', (self.line,))  # get original line to copy from
-        copy_line = cur.fetchall()
-        copy_line_list = list(copy_line[0])
-        copy_line_list[3] = self.restframe_trans_freq
-        line_new = tuple(copy_line_list)
-        cur.execute('''INSERT OR REPLACE INTO Lines VALUES (?,?,?,?,?,?,?,?,?)''', line_new)
-        con.commit()
-        con.close()
-        # TODO: include uncertainty; write to Lines db
+        # # extract line to use and insert restframe transition frequency
+        # con = sqlite3.connect(self.db)
+        # cur = con.cursor()
+        # cur.execute(
+        #     '''SELECT lineVar FROM Runs WHERE run = ? ''', (self.run,))
+        # lineVar = cur.fetchall()
+        # self.line = lineVar[0][0]
+        # cur.execute('''SELECT * FROM Lines WHERE lineVar = ? ''', (self.line,))  # get original line to copy from
+        # copy_line = cur.fetchall()
+        # copy_line_list = list(copy_line[0])
+        # copy_line_list[3] = self.restframe_trans_freq
+        # line_new = tuple(copy_line_list)
+        # cur.execute('''INSERT OR REPLACE INTO Lines VALUES (?,?,?,?,?,?,?,?,?)''', line_new)
+        # con.commit()
+        # con.close()
+        # # TODO: include uncertainty; write to Lines db
 
         # calculate differential doppler shifts
         # TODO: Why calculate here with volt+600??
@@ -535,11 +535,12 @@ class NiAnalysis_lineshapes():
         """ the summed up data of all files might be a good candidate to compare the different lineshapes """
         # self.adjust_center_ests_db()
 
-        runlist = ['Voigt', 'VoigtAsy', 'FanoVoigt', 'AsymmetricVoigt']
-        self.initial_par_guess = {'sigma': (31.4, False), 'gamma': (18.4, False),
-                                  'asy': (3.9, False),  # in case VoigtAsy is used
+        runlist = ['Voigt', 'VoigtAsy', 'FanoVoigt']
+        runlist += ['AsymmetricVoigt_{}'.format(num+1) for num in range(9)]
+        self.initial_par_guess = {'sigma': (34.5, [0, 50]), 'gamma': (11.3, [0, 40]),
+                                  'asy': (5.2, [0, 10]),  # in case VoigtAsy is used
                                   'dispersive': (-0.04, False),  # in case FanoVoigt is used
-                                  'centerAsym': (-6.4, True), 'nPeaksAsym': (1, True), 'IntAsym': (0.052, True)
+                                  'centerAsym': (-3, [-10, 0]), 'nPeaksAsym': (1, True), 'IntAsym': (0.052, [0, 0.5])
                                   # in case AsymmetricVoigt is used
                                   }
         self.analysis_parameters = {'run': runlist,
@@ -549,26 +550,38 @@ class NiAnalysis_lineshapes():
                                     'initial_par_guess': self.initial_par_guess
                                     }
 
-        sumfiles = ['Sum55Ni_9999.xml', 'Sum56Ni_9999.xml', 'Sum58Ni_9999.xml', 'Sum60Ni_9999.xml']
+        sumfiles = ['BECOLA_6252.xml', 'BECOLA_6501.xml', 'BECOLA_6502.xml']  # 'Sum55Nic_9999.xml',  #['Sum56Nic_9999.xml', 'Sum58Nic_9999.xml', 'Sum60Nic_9999.xml']
 
         for runs in runlist:
-            self.write_to_db_lines(runs,
+            if 'AsymmetricVoigt' in runs:
+                nSP = (int(runs[-1]), True)
+                dbrun = runs[:-2]
+            else:
+                nSP = self.initial_par_guess['nPeaksAsym']
+                dbrun=runs
+            self.write_to_db_lines(dbrun,
                                    sigma=self.initial_par_guess['sigma'],
                                    gamma=self.initial_par_guess['gamma'],
                                    asy=self.initial_par_guess['asy'],
                                    dispersive=self.initial_par_guess['dispersive'],
                                    centerAsym=self.initial_par_guess['centerAsym'],
                                    IntAsym=self.initial_par_guess['IntAsym'],
-                                   nPeaksAsym=self.initial_par_guess['nPeaksAsym'])
+                                   nPeaksAsym=nSP)
+                                   # nPeaksAsym=self.initial_par_guess['nPeaksAsym'])
 
             isolist, center_MHz, center_MHz_fiterrs, center_MHz_d, center_MHz_d_syst, fitpars, rChi = \
-                self.fitRunsFromList(runs, sumfiles)
+                self.fitRunsFromList(dbrun, sumfiles)
 
+            indx60 = isolist.index('60Ni')  #('60Ni_cal_6502')60Ni_sum_cal
             for indx, iso in enumerate(isolist):
                 iso_dict = {iso: {runs: {'center_fits': {'vals': [center_MHz[indx]],
                                                             'd_fit': [center_MHz_fiterrs[indx]],
                                                             'd_stat': [center_MHz_d[indx]],
                                                             'd_syst': [center_MHz_d_syst[indx]]},
+                                         'shift_iso-60': {'vals': [center_MHz[indx]-center_MHz[indx60]],
+                                                            'd_fit': [np.sqrt(center_MHz_fiterrs[indx]**2+center_MHz_fiterrs[indx60]**2)],
+                                                            'd_stat': [np.sqrt(center_MHz_d[indx]**2+center_MHz_d[indx60]**2)],
+                                                            'd_syst': [np.sqrt(center_MHz_d_syst[indx]**2+center_MHz_d_syst[indx60]**2)]},
                                          'all_fitpars': [fitpars[indx]],
                                          'rChi': {'vals': [rChi[indx]]}},
                                   'color': self.isotope_colors[int(iso[:2])]}}
@@ -582,12 +595,14 @@ class NiAnalysis_lineshapes():
 
         for keys, dicts in self.results.items():
             self.plot_parameter_for_isos_vs_scaler([keys], runlist, 'center_fits', onlyfiterrs=True, stddev=True)
+            self.plot_parameter_for_isos_vs_scaler([keys], runlist, 'shift_iso-60', onlyfiterrs=True, stddev=True)
         self.plot_parameter_for_isos_vs_scaler([k for k in self.results.keys()], runlist, 'rChi', onlyfiterrs=True, overlay=1)
+        self.plot_parameter_for_isos_vs_scaler(['58Ni'], runlist, 'rChi', onlyfiterrs=True, overlay=1)  # '58Ni_sum_cal'
         self.plot_parameter_for_isos_vs_scaler([k for k in self.results.keys()], runlist, 'all_fitpars:sigma', onlyfiterrs=True)
         self.plot_parameter_for_isos_vs_scaler([k for k in self.results.keys()], runlist, 'all_fitpars:gamma', onlyfiterrs=True)
-        self.plot_parameter_for_isos_vs_scaler([k for k in self.results.keys()], ['AsymmetricVoigt'], 'all_fitpars:centerAsym', onlyfiterrs=True)
-        self.plot_parameter_for_isos_vs_scaler([k for k in self.results.keys()], ['AsymmetricVoigt'], 'all_fitpars:IntAsym', onlyfiterrs=True, digits=3)
-        self.plot_parameter_for_isos_vs_scaler([k for k in self.results.keys()], ['VoigtAsy'], 'all_fitpars:asy', onlyfiterrs=True)
+        self.plot_parameter_for_isos_vs_scaler([k for k in self.results.keys()], runlist[3:], 'all_fitpars:centerAsym', onlyfiterrs=True)
+        self.plot_parameter_for_isos_vs_scaler([k for k in self.results.keys()], runlist[3:], 'all_fitpars:IntAsym', onlyfiterrs=True, digits=3)
+        # self.plot_parameter_for_isos_vs_scaler([k for k in self.results.keys()], ['VoigtAsy'], 'all_fitpars:asy', onlyfiterrs=True)
         # self.plot_parameter_for_isos_vs_scaler([k for k in self.results.keys()], ['AsymmetricVoigt'], 'rChi', onlyfiterrs=True, overlay=1)
 
     def fitRunsFromList(self, lineshape, filelist):
@@ -893,7 +908,7 @@ class NiAnalysis_lineshapes():
             plt.axhline(y=overlay, color='red')
 
         plt.xlabel(x_type)
-        plt.xticks(x_ax, scaler_list, rotation=45)
+        plt.xticks(x_ax, scaler_list, rotation=90)
         plt.ylabel('{} [{}]'.format(parameter, unit))
         ax.get_yaxis().get_major_formatter().set_useOffset(False)
         plt.title('{} in {} for isotopes: {}'.format(parameter, unit, isotopes))
