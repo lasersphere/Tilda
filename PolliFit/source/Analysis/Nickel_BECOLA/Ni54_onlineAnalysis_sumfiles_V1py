@@ -33,7 +33,7 @@ class NiAnalysis():
     def __init__(self):
         logging.getLogger().setLevel(logging.INFO)
         # Name this analysis run
-        self.run_name = 'mid2020discuss'
+        self.run_name = 'Ni54_onlineAnalysis'
 
         """
         ############################ Folders and Database !##########################################################
@@ -42,10 +42,10 @@ class NiAnalysis():
         # working directory:
         # get user folder to access ownCloud
         user_home_folder = os.path.expanduser("~")
-        ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\XML_Data'
+        ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel54_online_Becola20\\Analysis\\XML_Data'
         self.workdir = os.path.join(user_home_folder, ownCould_path)
         # data folder
-        self.datafolder = os.path.join(self.workdir, 'SumsRebinned')
+        self.datafolder = os.path.join(self.workdir, 'Sums')
         # results folder
         analysis_start_time = datetime.now()
         self.results_name = self.run_name + '_' + analysis_start_time.strftime("%Y-%m-%d_%H-%M")
@@ -62,9 +62,9 @@ class NiAnalysis():
         Specify how you want to run this Analysis!
         """
         # fit from scratch or use FitRes db?
-        self.do_the_fitting = True  # if False, an .xml file has to be specified in the next variable!
-        load_results_from = 'mid2020discuss_2020-06-30_10-41_std_errors.xml'  # load fit results from this file
-        self.get_gate_analysis = True  # get information from gate analysis (and use for uncertainties)
+        self.do_the_fitting = False  # if False, an .xml file has to be specified in the next variable!
+        load_results_from = 'Ni54_onlineAnalysis_2020-07-12_17-45.xml'  # load fit results from this file
+        self.get_gate_analysis = False  # get information from gate analysis (and use for uncertainties)
         load_gate_analysis_from = 'SoftwareGateAnalysis_2020-06-17_13-13_narrow90p-3sig_AsymmetricVoigt.xml'
 
         # line parameters
@@ -81,13 +81,13 @@ class NiAnalysis():
         self.scaler_combinations = [[0], [1], [2], [0, 1, 2]]
 
         # determine time gates
-        self.tof_mid = {'55Ni': 5.237, '56Ni': 5.276, '58Ni': 5.383, '60Ni': 5.408}  # mid-tof for each isotope (from fitting)
+        self.tof_mid = {'54Ni': 5.200, '55Ni': 5.237, '56Ni': 5.276, '58Ni': 5.383, '60Ni': 5.408}  # mid-tof for each isotope (from fitting)
         self.tof_delay = [0, 0.195, 0.265]
         self.tof_sigma = 0.098  # 1 sigma of the tof-peaks from fitting, avg over all scalers 56,58,60 Ni
         self.tof_width_sigma = 2  # how many sigma to use around tof? (1: 68.3% of data, 2: 95.4%, 3: 99.7%)
 
         # acceleration set voltage (Buncher potential), negative
-        self.accVolt_set = 29850  # omit voltage sign, assumed to be negative
+        self.accVolt_set = 29847  # omit voltage sign, assumed to be negative
 
         # Determine calibration parameters
         self.ref_iso = '60Ni'
@@ -103,7 +103,7 @@ class NiAnalysis():
 
         # plot options
         self.save_plots_to_file = True  # if False plots will be displayed during the run for closer inspection
-        self.isotope_colors = {58: 'k', 60: 'b', 56: 'g', 55: 'm'}
+        self.isotope_colors = {58: 'k', 60: 'b', 56: 'g', 54: 'm'}
         self.scaler_colors = {'scaler_0': 'navy', 'scaler_1': 'maroon', 'scaler_2': 'orangered',
                               'scaler_012': 'fuchsia', 'scaler_12': 'yellow',
                               'scaler_c012': 'magenta', 'scaler_c0': 'purple', 'scaler_c1': 'grey', 'scaler_c2': 'orange'}
@@ -172,6 +172,7 @@ class NiAnalysis():
         # #               Chinese Physics C Vol.41, No.3 (2017) 030003
         # #               Meng Wang, G. Audi, F.G. Kondev, W.J. Huang, S. Naimi, Xing Xu
         self.masses = {
+            '54Ni': (53957833.0, 0.5),
             '55Ni': (54951330.0, 0.8),
             '56Ni': (55942127.9, 0.5),
             '57Ni': (56939791.5, 0.6),
@@ -347,10 +348,9 @@ class NiAnalysis():
             print('%s\t%.3f\t%.3f\t%.5f\t%.5f' % (iso, radi[0], radi[1], dif[0], dif[1]))
 
         # note down laser frequencies:
-        self.laser_freqs = {'55Ni': 851264686.7203143,  # 14197.61675,
-                            '56Ni': 851253864.2125804,  # 14197.38625,
-                            '58Ni': 851238644.9486578,  # 14197.13242,
-                            '60Ni': 851224124.8007469  # 14196.89025
+        self.laser_freqs = {'54Ni': 2*425624179,
+                            '58Ni': 2*425608874,
+                            '60Ni': 2*425601785
                             }
 
     def init_stuff(self):
@@ -425,7 +425,7 @@ class NiAnalysis():
                                        IntAsym=self.initial_par_guess['IntAsym'],
                                        nPeaksAsym=self.initial_par_guess['nPeaksAsym'])
                 # Do a fit of the original data for all even isotopes without any calibration applied.
-                for iso in ['58Ni', '60Ni', '56Ni']:
+                for iso in ['58Ni', '60Ni']:
                     filelist, runNo, center_freqs, center_fit_errs, center_freqs_d, center_freqs_d_syst, start_times, \
                     fitpars, rChi = \
                         self.chooseAndFitRuns(iso, reset=(self.accVolt_set, iso))
@@ -441,7 +441,7 @@ class NiAnalysis():
                                }
                     TiTs.merge_extend_dicts(self.results, isodict, overwrite=True, force_overwrite=True)
             # for 55 Nickel just get the basic file info. Can't fit the single files:
-            self.choose_runs_write_basics_to_results('55Ni')
+            self.choose_runs_write_basics_to_results('54Ni')
             # export the results of initial fitting.
             self.export_results()
 
@@ -613,7 +613,7 @@ class NiAnalysis():
 
     def plot_results_of_fit(self, calibrated=False):
         add_sc = []
-        isolist = ['56Ni', '58Ni', '60Ni']
+        isolist = ['58Ni', '60Ni']
         if calibrated:
             add_sc = ['scaler_c0', 'scaler_c1', 'scaler_c2']
             isolist = ['{}_cal'.format(i) for i in isolist]
@@ -651,7 +651,7 @@ class NiAnalysis():
         Calibration will be done for each scaler and written to results db.
         :return:
         """
-        isolist = ['55Ni', '56Ni', '58Ni', '60Ni']
+        isolist = ['54Ni', '58Ni', '60Ni']
         for sc in self.scaler_combinations+['scaler_c012']:
             logging.info('\n'
                          '## ion energy calibration started for scaler {}'
@@ -671,7 +671,6 @@ class NiAnalysis():
                 mean_offset_58 = self.getVoltDeviationFromAbsoluteTransFreq('58Ni')
                 mean_offset_60 = self.getVoltDeviationFromAbsoluteTransFreq('60Ni')
                 mean_offset = ((mean_offset_58[0] + mean_offset_60[0]) / 2, (mean_offset_58[1] + mean_offset_60[1]) / 2)
-                self.getVoltDeviationToResults('56Ni', offset=mean_offset)  # never actually used, just for fun
                 for iso in isolist:
                     # '58' or '60' in self.calibration_method will lead to only this isotope being used for calibration
                     self.calibVoltageFunct(iso, scaler, useOnly=self.calibration_method)
@@ -680,7 +679,6 @@ class NiAnalysis():
                 self.accVolt_corrected = (self.accVolt_set, self.accVolt_set_d)  # no large scale correction
                 self.getVoltDeviationToResults('58Ni', allNull=True)
                 self.getVoltDeviationToResults('60Ni', allNull=True)
-                self.getVoltDeviationToResults('56Ni', allNull=True)  # never actually used, just for fun
                 for iso in isolist:
                     self.calibVoltageFunct(iso, scaler)
 
@@ -773,14 +771,14 @@ class NiAnalysis():
         # self.run = 'CEC_AsymVoigt'
 
         # combine runs to new 3-scaler files.
-        self.ni55analysis_combined_files = []
+        self.ni_analysis_combined_files = []
         self.create_stacked_files(calibration_per_file)
 
         # update database to use all three scalers for analysis
         self.update_scalers_in_db('0,1,2')  # scalers to be used for combined analysis
 
         # do a batchfit of the newly created files
-        isolist = ['58Ni_sum', '60Ni_sum', '56Ni_sum', '55Ni_sum']
+        isolist = ['58Ni_sum', '60Ni_sum', '54Ni_sum']
         isolist = ['{}_cal'.format(i) for i in isolist]
 
         if self.do_the_fitting:
@@ -1220,8 +1218,7 @@ class NiAnalysis():
                 if not os.path.exists(plot_folder):
                     os.makedirs(plot_folder)
                 # for softw_gates_trs from file use 'File' and from db use None.
-                BatchFit.batchFit(filearray, self.db, self.run, x_as_voltage=True, softw_gates_trs=None, guess_offset=True,
-                                  save_to_folder=plot_folder)
+                BatchFit.batchFit(filearray, self.db, self.run, x_as_voltage=True, softw_gates_trs=None) #, guess_offset=True,save_to_folder=plot_folder)
             filearray = []  # all files fitted. May be filled with files that need a second fit.
             # get fitresults (center) vs run for 58
             all_rundate = []
@@ -1570,8 +1567,16 @@ class NiAnalysis():
                                   'file_numbers': iso_numbers,
                                   'file_times': iso_times,
                                   'color': iso_color
-                                  }
-                    }
+                                  },
+                    isotope: {scaler: {'acc_volts': {'vals': voltcorrect.tolist(),
+                                                         'd_stat': voltcorrect_d.tolist(),
+                                                         'd_syst': voltcorrect_d_syst.tolist()},
+                                           'avg_acc_volts': {'vals': [wavg],
+                                                             'd_fit': [d_fit],
+                                                             'd_stat': [d_fit],
+                                                             'd_syst': [voltcorrect_d_syst[0]]}
+                                           }
+                    }}
         TiTs.merge_extend_dicts(self.results, voltdict)
 
         plot_all = True
@@ -1861,20 +1866,17 @@ class NiAnalysis():
     def create_stacked_files(self, calibration_per_file=False):
 
         # we always want to use the calibrated isotopes as a starting point:
-        c = '_cal'  # since we stack on a scan-volt basis, it does not really matter here
+        c = ''  # since we stack on a scan-volt basis, it does not really matter here
 
         # stack nickel 58 runs to new file Sum58_9999.xml. Only use calibration runs
-        ni58_files, ni58_filenos, ni58_filetimes = self.pick_files_from_db_by_type_and_num('%58Ni%', selecttuple=[0, 6502])
-        self.stack_runs('58Ni{}'.format(c), ni58_files, (-44, 14), binsize=1, bake_in_calib=calibration_per_file)
+        ni58_files, ni58_filenos, ni58_filetimes = self.pick_files_from_db_by_type_and_num('%58Ni%')
+        self.stack_runs('58Ni{}'.format(c), ni58_files, (1300, 1400), binsize=1, bake_in_calib=calibration_per_file)
         # stack nickel 60 runs to new file Sum60_9999.xml. Only use calibration runs
-        ni60_files, ni60_filenos, ni60_filetimes = self.pick_files_from_db_by_type_and_num('%60Ni%', selecttuple=[0, 6502])
-        self.stack_runs('60Ni{}'.format(c), ni60_files, (-100, 30), binsize=1, bake_in_calib=calibration_per_file)
-        # stack nickel 56 runs to new file Sum56_9999.xml
-        ni56_files, ni56_filenos, ni56_filetimes = self.pick_files_from_db_by_type_and_num('%56Ni%', selecttuple=[0, 6502])
-        self.stack_runs('56Ni{}'.format(c), ni56_files, (-100, 30), binsize=1, bake_in_calib=calibration_per_file)
-        # select and stack nickel 55 runs to new file Sum55_9999.xml
-        ni55_files, ni55_filenos, ni55_filetimes = self.pick_files_from_db_by_type_and_num('%55Ni%', selecttuple=[0, 6502])  # 6315
-        self.stack_runs('55Ni{}'.format(c), ni55_files, (-300, 30), binsize=3, bake_in_calib=calibration_per_file)
+        ni60_files, ni60_filenos, ni60_filetimes = self.pick_files_from_db_by_type_and_num('%60Ni%')
+        self.stack_runs('60Ni{}'.format(c), ni60_files, (1300, 1400), binsize=1, bake_in_calib=calibration_per_file)
+        # select and stack nickel 54 runs to new file Sum54_9999.xml
+        ni54_files, ni54_filenos, ni54_filetimes = self.pick_files_from_db_by_type_and_num('%54Ni%')  # 6315
+        self.stack_runs('54Ni{}'.format(c), ni54_files, (1300, 1400), binsize=2, bake_in_calib=calibration_per_file)
 
     def stack_runs(self, isotope, files, volttuple, binsize, bake_in_calib=False):
         ##############
@@ -1957,7 +1959,7 @@ class NiAnalysis():
         else:
             # do not correct voltages. Use global correction instead!
             volt_corrections = None
-            buncher_potential = self.results[iso]['scaler_012']['avg_acc_volts']['vals'][0]  # global calibration through average
+            buncher_potential = self.accVolt_set
 
         # extract data from each file and sort into binning
         for files in filelist:
@@ -1967,6 +1969,10 @@ class NiAnalysis():
             sc0_res = self.time_proj_res_per_scaler['scaler_0']
             sc1_res = self.time_proj_res_per_scaler['scaler_1']
             sc2_res = self.time_proj_res_per_scaler['scaler_2']
+            if '54' in iso:
+                sc0_res = {'center': 516, 'sigma': 10}
+                sc1_res = {'center': 536, 'sigma': 10}
+                sc2_res = {'center': 538, 'sigma': 10}
             sig_mult = self.tof_width_sigma  # how many sigma to include left and right of midtof (1: 68.3% of data, 2: 95.4%, 3: 99.7%)
             spec = XMLImporter(path=filepath,  # import data from XML, gated on the timpeak for each scaler
                                softw_gates=[[-350, 0,
@@ -2205,7 +2211,7 @@ class NiAnalysis():
         xml_name = 'Sum{}{}_9999.xml'.format(iso, bakein)
         xml_filepath = os.path.join(self.datafolder, xml_name)
         self.writeXMLfromDict(xml_dict, xml_filepath, 'BecolaData')
-        self.ni55analysis_combined_files.append(xml_name)
+        self.ni_analysis_combined_files.append(xml_name)
         # add file to database
         con = sqlite3.connect(self.db)
         cur = con.cursor()
@@ -3648,29 +3654,10 @@ if __name__ == '__main__':
 
     analysis = NiAnalysis()
     # fitting the first time for extraction of calibration and comparison of uncalibrated data
-    analysis.fitting_initial_separate()
-    analysis.combine_single_scaler_centers(['56Ni', '58Ni', '60Ni'])
-    analysis.plot_results_of_fit(calibrated=False)
-    analysis.ion_energy_calibration()
-    # fitting with calibrated ion energies for final result extraction
-    analysis.fitting_calibrated_separate()
-    analysis.combine_single_scaler_results('center_fits', ['56Ni', '58Ni', '60Ni'], calibrated=True)
-    analysis.plot_results_of_fit(calibrated=True)
-    analysis.extract_isoshifts_from_fitres(['56Ni', '58Ni', '60Ni'], refiso=analysis.ref_iso, calibrated=True)
-    analysis.combine_single_scaler_results('shift_iso-{}'.format(analysis.ref_iso[:2]), ['56Ni', '58Ni', '60Ni'], calibrated=True)
-    analysis.calculate_charge_radii(['56Ni', '58Ni', '60Ni'], refiso=analysis.ref_iso, calibrated=True)
-    # stacked run analysis for inclusion of nickel 55
-    analysis.create_and_fit_stacked_runs(calibration_per_file=True)
-    analysis.combine_single_scaler_results('center_fits', ['55Ni_sum', '56Ni_sum', '58Ni_sum', '60Ni_sum'], calibrated=True)
-    analysis.extract_isoshifts_from_fitres(['55Ni_sum', '56Ni_sum', '58Ni_sum', '60Ni_sum'], refiso=analysis.ref_iso, calibrated=True)
-    analysis.combine_single_scaler_results('shift_iso-{}'.format(analysis.ref_iso[:2]), ['55Ni_sum', '56Ni_sum', '58Ni_sum', '60Ni_sum'], calibrated=True)
-    analysis.calculate_charge_radii(['55Ni_sum', '56Ni_sum', '58Ni_sum', '60Ni_sum'], refiso=analysis.ref_iso, calibrated=True)
-    analysis.plot_radii_chain(['55Ni_sum', '56Ni_sum', '60Ni_sum'], refiso=analysis.ref_iso, scaler='scaler_012', calibrated=True)
-    analysis.ni55_A_B_analysis('55Ni_sum', scaler='scaler_012', calibrated=True)
-    # get the final results
-    analysis.get_final_results()
-    analysis.make_final_plots()
+    # analysis.fitting_initial_separate()
+    # analysis.combine_single_scaler_centers(['58Ni', '60Ni'])
+    # analysis.plot_results_of_fit(calibrated=False)
+    # analysis.ion_energy_calibration()
+    # stacked run analysis for inclusion of nickel 54
+    analysis.create_and_fit_stacked_runs(calibration_per_file=False)
     analysis.export_results()
-    # analysis.compare_king_pars()
-    # analysis.perform_king_fit_analysis()
-

@@ -320,6 +320,14 @@ class BECOLAImporter():
                     X, Y = np.meshgrid(x, y)
                     Z = self.dac_volt_deviation_arr[track]
 
+                    # find outliers and exclude from fit:
+                    std_multiplier = 3  # How many std from mean is an outlier?
+                    Z_sigma = np.ones(Z.shape)  # good values should have a weight of 1
+                    Z_iterator = np.nditer(Z, flags=['multi_index'])
+                    for each in Z_iterator:
+                        if abs(each - Z.mean()) > std_multiplier * Z.std():
+                            Z_sigma[Z_iterator.multi_index] = np.inf  # exclusion by setting sigma to infinity
+
                     # define fit function (a simple plane)
                     def plane(x, y, mx, my, coff):
                         return x * mx + y * my + coff
@@ -341,7 +349,7 @@ class BECOLAImporter():
                     # make 1-D data (necessary to use curve_fit)
                     xdata = np.vstack((X.ravel(), Y.ravel()))
                     # fit
-                    popt, pcov = curve_fit(_plane, xdata, Z.ravel(), p0)
+                    popt, pcov = curve_fit(_plane, xdata, Z.ravel(), p0, sigma=Z_sigma.ravel())
 
                     # store results
                     offset_adj = popt[1] * self.nrOfScans/2  # average over time dependence

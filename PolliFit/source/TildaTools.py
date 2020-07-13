@@ -350,6 +350,10 @@ def evaluate_strings_in_dict(dict_to_convert):
                     val = ast.literal_eval(val)
                 if key == 'meas_trigger' or key == 'step_trigger' or key == 'scan_trigger':
                     val['type'] = val['type'].replace('TriggerTypes.', '')
+                if 'inf' in val and '[' in val:  # list with 'inf' values. ast.literal_eval can't handle 'inf'
+                    # literal_eval however converts big enough numbers to +-inf
+                    new_val = val.replace('-inf', '-2e400').replace('inf', '2e400').replace('nan', '0')
+                    dict_to_convert[key] = ast.literal_eval(new_val)
                 else:
                     # print('error while converting val with ast.literal_eval: ', e, val, type(val), key)
                     # if it cannot be converted it is propably a string anyhow.
@@ -462,11 +466,14 @@ def gate_one_track(tr_ind, tr_num, scan_dict, data, time_array, volt_array, ret)
             v_min, v_max = sorted((gates_val_list[0], gates_val_list[1]))
             v_min_ind, v_min, vdif = find_closest_value_in_arr(volt_array[tr_ind], v_min)
             v_max_ind, v_max, vdif = find_closest_value_in_arr(volt_array[tr_ind], v_max)
+            # If the scan starts at v_max with negative steps, we would get the indices in the wrong order!
+            v_ind_min = min(v_min_ind, v_max_ind)
+            v_ind_max = max(v_min_ind, v_max_ind)
 
             t_min, t_max = sorted((gates_val_list[2], gates_val_list[3]))
             t_min_ind, t_min, tdif = find_closest_value_in_arr(time_array[tr_ind], t_min)
             t_max_ind, t_max, tdif = find_closest_value_in_arr(time_array[tr_ind], t_max)
-            gates_tr.append([v_min_ind, v_max_ind, t_min_ind, t_max_ind])  # indices in data array
+            gates_tr.append([v_ind_min, v_ind_max, t_min_ind, t_max_ind])  # indices in data array
     except Exception as e:  # if gates_tr are messud up, use full scan range as gates_tr:
         v_min = round(volt_array[tr_ind][0], 5)
         v_max = round(volt_array[tr_ind][-1], 5)
