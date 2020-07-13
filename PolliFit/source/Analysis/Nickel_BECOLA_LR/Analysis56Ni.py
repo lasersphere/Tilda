@@ -122,7 +122,7 @@ class NiAnalysis:
             asy) + " , 'gamma': 20, 'offsetSlope': 0}",))
         con.close()
 
-    def singleCali(self):
+    def singleCaliOnIS(self):
         files = []
         shifts = []
         unc = []
@@ -171,7 +171,68 @@ class NiAnalysis:
 
         return shifts,files, unc
 
-    def calibrate(self):
+    def singleCaliOnAbs(self):
+        files = []
+        abs_frequ = []
+        unc = []
+        files58 = self.getFiles('58Ni')
+        ref_frequ = 0
+        for lv in self.linVars:
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            cur.execute('''SELECT frequency FROM Lines WHERE lineVar = ? ''', (lv,))
+            ref_frequ += cur.fetchall()[0][0]
+            con.close()
+        ref_frequ = ref_frequ / len(self.linVars)
+
+        for f in files58:
+            files.append(int(f[7:11]))
+            print('Calibrating files', f[7:11])
+            center_frequ = []
+            weights = []
+            # Get center
+            for run in self.runs:
+                con = sqlite3.connect(self.db)
+                cur = con.cursor()
+                cur.execute('''SELECT pars FROM FitRes WHERE file = ? AND run = ?''', (f, run,))
+                pars = cur.fetchall()[0][0]
+                con.close()
+                center_frequ.append(ast.literal_eval(pars)['center'][0])
+                weights.append(1 / (ast.literal_eval(pars)['center'][1] ** 2))
+            center_mean = np.average(center_frequ, weights=weights)
+            center = ref_frequ + center_mean
+            abs_frequ.append(ref_frequ + center_mean)
+            unc.append(np.std(center_frequ))
+            print('Absolute center frequency is:', center)
+
+            # Get acceleration voltage
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            cur.execute('''SELECT accVolt FROM Files WHERE file = ?''', (f,))
+            accVolt = cur.fetchall()[0][0]
+            con.close()
+            print('Current acceleration voltage is', accVolt)
+
+            # Open excel
+            # load or create workbook
+            self.lastRow = self.wsCal.max_row
+            self.wsCal.cell(row=self.lastRow+1, column=1, value=str(f))
+            self.wsCal.cell(row=self.lastRow+1, column=2, value=accVolt)
+            self.wsCal.cell(row=self.lastRow+1, column=3, value=center)
+
+            # Calculate differential Doppler shift
+            diffDopp58 = Physics.diffDoppler(center, accVolt, 58)
+
+            # Calculate calibration
+            calVolt = accVolt + (center - 850343678) / diffDopp58
+            print('Calibrated acceleration voltage is', calVolt)
+
+            self.wsCal.cell(row=self.lastRow+1, column=4, value=calVolt)
+            self.wb.save(self.xlsFile)
+        print(abs_frequ, files, unc)
+        return abs_frequ,files, unc
+
+    def calibrateOnIS(self):
 
         # reset
         con = sqlite3.connect(self.db)
@@ -195,7 +256,7 @@ class NiAnalysis:
         filelist60 = self.getFiles('60Ni')
         self.fitAll(filelist60)
 
-        shifts, files, uncert = self.singleCali()
+        shifts, files, uncert = self.singleCaliOnIS()
 
         plt.errorbar(files, shifts, yerr=uncert,fmt = 'bo')
         #plt.plot(files,shifts,'bo')
@@ -221,6 +282,81 @@ class NiAnalysis:
             print('Calibrated isotope shift of File', tup[0], 'is', ishift)
             shifts.append(ishift)
             uncert.append(err)
+        plt.errorbar(files, shifts, yerr=uncert, fmt='bo')
+        #plt.plot(files, shifts, 'bo')
+        plt.title('Calibrated Reference Shift')
+        plt.show()
+
+        # Save calibrated istotope shifts to excel
+        r = 2
+        for s in shifts:
+            self.wsCal.cell(row=r, column=5, value=s)
+            r += 1
+        self.wb.save(self.xlsFile)
+
+    def calibrateOnAbs(self):
+
+        # reset
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        cur.execute('''UPDATE Files SET accVolt = ?''', (29850,))
+        con.commit()
+        con.close()
+
+        # Adjust center in isotopes
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        cur.execute('''UPDATE Isotopes SET center = ? WHERE iso LIKE ?''', (-200, '58Ni',))
+        cur.execute('''UPDATE Isotopes SET center = ? WHERE iso LIKE ?''', (300, '60Ni',))
+        con.commit()
+        con.close()
+
+        filelist58 = self.getFiles('58Ni')
+        print('Files to fit:',filelist58)
+        self.fitAll(filelist58)
+
+        filelist60 = self.getFiles('60Ni')
+        self.fitAll(filelist60)
+
+        center, files, uncert = self.singleCaliOnAbs()
+
+        #plt.errorbar(files, center, yerr=uncert,fmt = 'bo')
+        plt.plot(files,center,'bo')
+        plt.title('Uncalibrated Reference transition')
+        plt.show()
+        print('Uncalibrated Reference absolute transition frequency:', center)
+
+        #Adjust center in isotopes
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        cur.execute('''UPDATE Isotopes SET center = ? WHERE iso LIKE ?''', (-400, '58Ni',))
+        cur.execute('''UPDATE Isotopes SET center = ? WHERE iso LIKE ?''', (100, '60Ni',))
+        con.commit()
+        con.close()
+
+        for tup in self.calTuples:
+            file58 = 'BECOLA_' + str(tup[0]) + '.xml'
+            file60 = 'BECOLA_' + str(tup[1]) + '.xml'
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            cur.execute('''SELECT accVolt FROM Files WHERE file = ?''', (file58,))
+            accVolt = cur.fetchall()[0][0]
+            cur.execute('''UPDATE Files SET accVolt = ? WHERE file = ?''', (accVolt, file60))
+            con.commit()
+            con.close()
+
+        self.fitAll(filelist58)
+        self.fitAll(filelist60)
+        shifts = []
+        uncert = []
+        files = []
+        for tup in self.calTuples:
+            print('Calculating calibrated isotope shift:')
+            ishift, err = self.calIShift(tup)
+            print('Calibrated isotope shift of File', tup[0], 'is', ishift)
+            shifts.append(ishift)
+            uncert.append(err)
+            files.append(tup[0])
         plt.errorbar(files, shifts, yerr=uncert, fmt='bo')
         #plt.plot(files, shifts, 'bo')
         plt.title('Calibrated Reference Shift')
@@ -641,12 +777,12 @@ def Ana56Ni():
     # Calibrate Voltage
     calTuples = [(6191,6192),(6207,6208),(6242,6243),(6253,6254)]
 
-    #calGroups56 = [(6191,6202),(6191,6203),(6191,6204),(6207,6211),(6242,6238),(6242,6239),
-                 #(6242,6240),(6253,6251),(6253,6252)]
-    #systUncert = 2.2
+    calGroups56 = [(6191,6202),(6191,6203),(6191,6204),(6207,6211),(6207,6213),(6207,6214),(6242,6238),(6242,6239),
+                 (6242,6240),(6253,6251),(6253,6252)]
+    systUncert = 2.2
 
-    calGroups56 = [(6242,6238),(6242,6239),(6242,6240),(6253,6251),(6253,6252)]
-    systUncert = 0.4
+    #calGroups56 = [(6242,6238),(6242,6239),(6242,6240),(6253,6251),(6253,6252)]
+    #systUncert = 0.4
 
     #run = 'AsymVoigt0'
     #line = '58_0'
@@ -667,34 +803,34 @@ def Ana56Ni():
         niAna.lineVar = niAna.linVars[i]
         niAna.xlsFile = niAna.workingdir + '\\' + niAna.files[i]
         niAna.createWB()
-        niAna.calibrate()
+        niAna.calibrateOnAbs()
         niAna.assignCal()
 
         # Fit Ni 56
-        filelist56 = niAna.getFiles('56Ni')
-        niAna.fitAll(filelist56)
-        niAna.calc56Ni()
-        niAna.average()
+        #filelist56 = niAna.getFiles('56Ni')
+        #niAna.fitAll(filelist56)
+        #niAna.calc56Ni()
+        #niAna.average()
 
     #meas = list(range(0, 20))
-    meas = list(range(0, 15))
-    print('meas:', len(meas))
-    print('Res:', len(niAna.allRes))
-    weights = []
-    for u in niAna.allUnc:
-        weights.append(1 / u ** 2)
-    waverage = np.average(niAna.allRes, weights=weights)
-    print('Weighted Average:', waverage)
-    sigma = np.std(niAna.allRes)
-    print('Standard deviation:', sigma)
-    plt.errorbar(meas, niAna.allRes, yerr=niAna.allUnc, fmt='bo')
-    plt.plot([0,15],[waverage,waverage], 'r')
-    plt.fill_between([0, 15], waverage - sigma, waverage + sigma, alpha=0.2, linewidth=0,
-                     color='b')
-    plt.fill_between([0, 15], waverage - sigma - niAna.systUncert, waverage + sigma + niAna.systUncert, alpha=0.2, linewidth=0,
-                     color='r')
-    plt.show()
+    #meas = list(range(0, 27))
+    #print('meas:', len(meas))
+    #print('Res:', len(niAna.allRes))
+    #weights = []
+    #for u in niAna.allUnc:
+        #weights.append(1 / u ** 2)
+    #waverage = np.average(niAna.allRes, weights=weights)
+    #print('Weighted Average:', waverage)
+    #sigma = np.std(niAna.allRes)
+    #print('Standard deviation:', sigma)
+    #plt.errorbar(meas, niAna.allRes, yerr=niAna.allUnc, fmt='bo')
+    #plt.plot([0,27],[waverage,waverage], 'r')
+    #plt.fill_between([0, 27], waverage - sigma, waverage + sigma, alpha=0.2, linewidth=0,
+    #                 color='b')
+    #plt.fill_between([0, 27], waverage - sigma - niAna.systUncert, waverage + sigma + niAna.systUncert, alpha=0.2, linewidth=0,
+    #                 color='r')
+    #plt.show()
 
-    niAna.calcR(waverage, sigma)
+    #niAna.calcR(waverage, sigma)
 
 Ana56Ni()

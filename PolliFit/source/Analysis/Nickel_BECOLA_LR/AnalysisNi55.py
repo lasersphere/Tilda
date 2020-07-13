@@ -917,8 +917,8 @@ class NiAnalysis:
                     offset = accV - 29850
                     volcts.append((x - offset, spec.cts[track][s][j], spec.nrScans[track], bg.cts[track][s][j]))
                 #print(max(spec.x[track]) - offset)
-                if max(spec.x[track]) - offset > 0:
-                    print(f)
+                #if max(spec.x[track]) - offset > 0:
+                    #print(f)
                 plt.plot(spec.x[track], spec.cts[track][s])
                 plt.plot(bg.x[track], bg.cts[track][s])
             plt.xlim(-300, 60)
@@ -939,7 +939,7 @@ class NiAnalysis:
             sumb = np.delete(sumb, zInd)
             v = np.delete(v, zInd)
             sc = np.delete(sc, zInd)
-            print(sumc)
+            #print(sumc)
             plt.plot(v, sumc, 'b.')
             plt.title('Calibrated and summed, Sclaer' + str(s))
             plt.show()
@@ -1511,8 +1511,9 @@ def Analyze55Ni():
     niAna.fit_stacked(sym=True)
     center58, sigma58 = niAna.get_ref_center()
     center55, sigma55 = niAna.get_center55()
+    uncert = np.sqrt(np.square(sigma58) + np.square(sigma55))
     print('55Ni center is', center55)
-    print('Isotope shift of 55Ni is', center55 - center58)
+    print('Isotope shift of 55Ni is', center55 - center58, '+/-', uncert)
     niAna.calcQ()
     niAna.calcMu()
 
