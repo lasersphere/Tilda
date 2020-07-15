@@ -20,7 +20,7 @@ class FullSpec(object):
      Arbitrary many offsets can be defined in sections of the x-axis.
     """
 
-    def __init__(self, iso, iso_m=None):
+    def __init__(self, iso, iso_m=None, guess_offset=False):
         """
         Import the shape and initializes reasonable values 
         """
@@ -35,6 +35,8 @@ class FullSpec(object):
         self.p_offset_slope = 1
         self.cut_x = {}  # Dictionary of frequencies to split the x-axis for unique offsets in each track.
         # The keys determine the order in which the offsets are applied along the x-axis.
+
+        self.guess_offset = guess_offset  # either False (offset from line db) or (meas.cts, st) for guessing
 
         miso = iso
         self.hyper = []
@@ -91,20 +93,72 @@ class FullSpec(object):
         for hf in self.hyper:
             hf.recalc(p)
 
+    def guess_offset_par(self, meas_cts_st):
+        """
+        Replaces the offset from lines db with a guess based on the cts data.
+        It seems to be better to overestimate the offset.
+        :param meas_cts: tuple: (SPFitter.meas, SPFitter.st)
+        :return:
+        """
+        meas_cts = meas_cts_st[0]  # list of cts-arrays of shape (nOfPmts, nOfSteps) per track from SPFitter.meas.
+        scalers = meas_cts_st[1][0]  # describing of scalers to be used, e.g.: [1, 2, -4] = scaler 1 + scaler 2 - scaler4
+        tracks = meas_cts_st[1][1]  # tracks to be used; -1 for all tracks
+
+        off_slope_per_tr = np.zeros((len(meas_cts)))
+        for tr, arr in enumerate(meas_cts):
+            if tr == tracks or tracks == -1:
+                off_slope_per_sc = np.zeros((len(scalers)))
+                for pos, sc in enumerate(scalers):
+                    if sc != 0:
+                        sign = np.sign(sc)
+                    else:
+                        sign = 1
+                    cts = meas_cts[tr][sign*sc]  # sign used to make negative scalers positive here
+                    low = cts[0]  # first value in cts
+                    high = cts[-1]  # last value in cts
+                    off_slope_per_sc[pos] = np.array([sign*(low+high)/2])  # include sign of scaler
+                off_slope_per_tr[tr] = np.sum(off_slope_per_sc, axis=0)  # sum over all scalers
+        # use the maximum offset and slope from all tracks as a guess
+        offset = np.max(off_slope_per_tr, axis=0)
+        return offset
+
+    def add_track_offsets(self, cut_x, freq, col):
+        if self.cut_x != {} or cut_x == {}:
+            return
+        for track, cut in cut_x.items():
+            v = Physics.relVelocity(Physics.qe * cut, self.iso.mass * Physics.u)
+            v = -v if col else v
+            k = int(max(cut_x.keys())) - track if col else track
+            self.cut_x[k] = Physics.relDoppler(freq, v) - self.iso.freq
+            setattr(self, 'pOff{}'.format(k), 2 + k)
+        self.nPar += len(cut_x.keys())
+
     def getPars(self, pos=0):
-        """Return list of initial parameters and initialize positions"""
+        """
+        Return list of initial parameters and initialize positions
+        :param pos: parameter position to start from
+        :return: list of initial parameters
+        """
         self.pOff = pos
         self.p_offset_slope = pos + 1
         for track in self.cut_x.keys():
             setattr(self, 'pOff{}'.format(track), pos + 2 + track)
-        ret = [self.iso.shape.get('offset', 0), self.iso.shape.get('offsetSlope', 0)]
+        if self.guess_offset:
+            # must be of shape (meas.cts, st) if not False
+            off = self.guess_offset_par(self.guess_offset)
+            off_scale = off/self.iso.shape.get('offset', 1)  # factor how much we changed the offset vs db value
+            ret = [off, self.iso.shape.get('offsetSlope', 0)]
+        else:
+            # don't guess the offset but load it normally from db
+            off_scale = 1  # no scaling of the db offset
+            ret = [self.iso.shape.get('offset', 0), self.iso.shape.get('offsetSlope', 0)]
         ret += [self.iso.shape.get('offset{}'.format(track), 0) for track in range(len(self.cut_x.keys()))]
         pos += len(ret)
         ret += self.shape.getPars(pos)
         pos += self.shape.nPar
 
         for hf in self.hyper:
-            ret += hf.getPars(pos)
+            ret += hf.getPars(pos, int_f=off_scale)  # scale the intensity by the same factor as the offset
             pos += hf.nPar
             
         return ret

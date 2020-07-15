@@ -21,7 +21,7 @@ class SPFitter(object):
         print('Initializing fit of S:', st[0], ', T:', st[1])
         self.spec = spec
         self.meas = meas
-        self.st = st
+        self.st = st  # (scaler, track) tuple
         self.data = meas.getArithSpec(*st)  # Returns list of tracks with elements
         # (array of x-values in Volt, array of cts, array of errors)
         self.cut_x = self.add_track_offsets()  # Contains voltages to cut the x-axis for unique offsets in each track.
