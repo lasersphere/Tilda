@@ -15,12 +15,13 @@ from XmlOperations import xmlWriteDict
 
 class NiAnalysis:
 
-    def __init__(self, working_dir, db56, line_vars, runs, frequ_60ni, ref_groups, cal_groups):
+    def __init__(self, working_dir, db56, line_vars, runs60, runs55, frequ_60ni, ref_groups, cal_groups):
         self.working_dir = working_dir
         self.db = os.path.join(self.working_dir, db56)
         self.data_path = os.path.join(self.working_dir, 'data')
         self.lineVar = line_vars
-        self.runs = runs
+        self.runs55 = runs55
+        self.runs60 = runs60
         self.frequ_60ni = frequ_60ni
         self.laserFreq55 = 851264686.7203143
         self.ref_groups = ref_groups
@@ -33,6 +34,7 @@ class NiAnalysis:
         cur.execute('''UPDATE Files SET accVolt = ?''', (29850,))
         con.commit()
         con.close()
+        print('---------------------------- Calibration resetted')
 
     def prep(self):
         # calibration of all files and fit of all reference files
@@ -44,7 +46,7 @@ class NiAnalysis:
         print('Fitting files', files)
 
         # fit reference files
-        for run in self.runs:
+        for run in self.runs60:
             self.fit_all(files, run)
 
         # plot uncalibrated center
@@ -53,14 +55,14 @@ class NiAnalysis:
         for f in files:
             file_center = 0
             file_uncert = 0
-            for run in self.runs:
+            for run in self.runs60:
                 con = sqlite3.connect(self.db)
                 cur = con.cursor()
                 cur.execute('''SELECT pars FROM FitRes WHERE file = ? AND run = ?''', (f, run,))
                 center_pars = ast.literal_eval(cur.fetchall()[0][0])['center']
                 file_center += center_pars[0] + self.frequ_60ni
                 file_uncert += center_pars[1] ** 2
-            file_center = file_center / len(self.runs)
+            file_center = file_center / len(self.runs60)
             file_uncert = np.sqrt(file_uncert)
             center.append(file_center)
             uncert.append(file_uncert)
@@ -73,7 +75,7 @@ class NiAnalysis:
         print('-------------------- Calibration done')
 
         # refit
-        for run in self.runs:
+        for run in self.runs60:
             self.fit_all(files, run)
 
         # plot calibrated center
@@ -82,14 +84,14 @@ class NiAnalysis:
         for f in files:
             file_center = 0
             file_uncert = 0
-            for run in self.runs:
+            for run in self.runs60:
                 con = sqlite3.connect(self.db)
                 cur = con.cursor()
                 cur.execute('''SELECT pars FROM FitRes WHERE file = ? AND run = ?''', (f, run,))
                 center_pars = ast.literal_eval(cur.fetchall()[0][0])['center']
                 file_center += center_pars[0] + self.frequ_60ni
                 file_uncert += center_pars[1] ** 2
-            file_center = file_center / len(self.runs)
+            file_center = file_center / len(self.runs60)
             file_uncert = np.sqrt(file_uncert)
             center.append(file_center)
             uncert.append(file_uncert)
@@ -105,6 +107,9 @@ class NiAnalysis:
 
         #Assign calibration
         self.assign_cal()
+
+        files55 = self.get_files('55Ni')
+        self.stack_files(files55)
 
     def fit_all(self, files, run):
         for f in files:
@@ -182,7 +187,7 @@ class NiAnalysis:
         cur.execute('''SELECT shape FROM Lines WHERE refRun LIKE ? ''', (run,))
         shape_dict = ast.literal_eval(cur.fetchall()[0][0])
         shape_dict['offset'] = offset
-        cur.execute('''UPDATE Lines SET shape = ? ''', (str(shape_dict),))
+        cur.execute('''UPDATE Lines SET shape = ? WHERE refRun = ?''', (str(shape_dict), run,))
         con.commit()
         con.close()
         print('Adjusted Offset to ', shape_dict['offset'])
@@ -194,6 +199,8 @@ class NiAnalysis:
         con.commit()
         con.close()
         print('Adjusted Center to', center)
+
+    #TODO Check Calibration!!
 
     def calibrate_all(self):
         files = self.get_files('60Ni')
@@ -210,7 +217,7 @@ class NiAnalysis:
         for f in files:
             center = []
             weights = []
-            for run in self.runs:
+            for run in self.runs60:
                 print('Run:', run)
                 con = sqlite3.connect(self.db)
                 cur = con.cursor()
@@ -284,9 +291,8 @@ class NiAnalysis:
                 print('Voltage updated for file', file55)
 
     def ana_55(self):
-        files55 = self.get_files('55Ni')
-        self.stack_files(files55)
-        self.fit_stacked()
+        for run in self.runs55:
+            self.fit_stacked(run)
 
     def stack_files(self, files):
         scalers = [0, 1, 2]
@@ -333,7 +339,7 @@ class NiAnalysis:
                     accV = cur.fetchall()[0][0]
                     con.close()
                     offset = accV - 29850
-                    volcts.append((x - offset, spec.cts[0][s][j], spec.nrScans[0], bg.cts[0][s][j]))
+                    volcts.append((x + offset, spec.cts[0][s][j], spec.nrScans[0], bg.cts[0][s][j]))
 
             plt.title('Uncalibrated, Scaler ' + str(s))
             plt.show()
@@ -379,7 +385,7 @@ class NiAnalysis:
             # normalize
             sumc_norm = []
             for i, cts in enumerate(sumc):
-                sumc_norm.append(cts / sc[i])
+                sumc_norm.append(int(cts / sc[i] * 1000))
 
             plt.plot(v, sumc_norm, 'b.')
             plt.title('Calibrated, summed and normalized. Scaler' + str(s))
@@ -421,11 +427,11 @@ class NiAnalysis:
                                 'invertScan': False,
                                 'nOfBins': len(voltage[0]),
                                 'nOfCompletedSteps': float(len(voltage[0])),
-                                'nOfScans': 1000,
+                                'nOfScans': 1,
                                 'nOfSteps': len(voltage[0]),
                                 'postAccOffsetVolt': 0,
                                 'postAccOffsetVoltControl': 0,
-                                'softwGates': [[-252, -42, 0, 0.62], [-252, -42, 0, 0.62], [-252, -42, 0, 0.62]],
+                                'softwGates': [[-252, -42, 0, 1], [-252, -42, 0, 1], [-252, -42, 0, 1]],
                                 #'softwGates': [[-252, -42, 0, 0.4], [-252, -42, 0, 0.4], [-252, -42, 0, 0.4]],
                                 # For each Scaler: [DAC_Start_Volt, DAC_Stop_Volt, scaler_delay, softw_Gate_width]
                                 'workingTime': [file_creation_time, file_creation_time],
@@ -456,7 +462,6 @@ class NiAnalysis:
                                             },
                                  }
                       }
-        # TODO get that xml running
 
         root = ET.Element('BecolaData')
 
@@ -478,10 +483,13 @@ class NiAnalysis:
         con.commit()
         con.close()
 
-    def fit_stacked(self, sym=True):
+        stacked = XMLImporter(path=self.working_dir + '\\data\\' + 'BECOLA_Stacked60.xml')
+        print(stacked.x[0])
+
+    def fit_stacked(self, run, sym=True):
         con = sqlite3.connect(self.db)
         cur = con.cursor()
-        cur.execute('''SELECT fixShape from Lines WHERE lineVar = ? ''', ('55_Asy',))
+        cur.execute('''SELECT fixShape from Lines WHERE refRun = ? ''', (run,))
         shape = cur.fetchall()
         shape_dict = ast.literal_eval(shape[0][0])
         con.close()
@@ -492,16 +500,17 @@ class NiAnalysis:
         print(shape_dict['asy'])
         con = sqlite3.connect(self.db)
         cur = con.cursor()
-        cur.execute('''UPDATE Lines SET fixShape = ?''', (str(shape_dict),))
+        cur.execute('''UPDATE Lines SET fixShape = ? WHERE refRun = ?''', (str(shape_dict), run))
         con.commit()
         con.close()
 
-        BatchFit.batchFit(['BECOLA_Stacked60.xml'], self.db, 'AsymVoigt55', x_as_voltage=True,
+
+        BatchFit.batchFit(['BECOLA_Stacked60.xml'], self.db, run, x_as_voltage=True,
                           save_file_as='.png')
 
         con = sqlite3.connect(self.db)
         cur = con.cursor()
-        cur.execute('''SELECT pars From FitRes WHERE run = ?''', ('AsymVoigt55',))
+        cur.execute('''SELECT pars From FitRes WHERE run = ?''', (run,))
         paras = cur.fetchall()
         con.close()
         para_dict = ast.literal_eval(paras[0][0])
@@ -569,7 +578,8 @@ class NiAnalysis:
 working_dir = 'D:\\Daten\\IKP\\Nickel-Auswertung\\Auswertung'
 db = 'Nickel_BECOLA_60Ni-55Ni.sqlite'
 line_vars = ['58_0','58_1','58_2']
-runs = ['AsymVoigt0', 'AsymVoigt1', 'AsymVoigt2']
+runs60 = ['AsymVoigt0', 'AsymVoigt1', 'AsymVoigt2']
+runs55 = ['AsymVoigt55_0', 'AsymVoigt55_1', 'AsymVoigt55_2', 'AsymVoigt55_All']
 frequ_60ni = 850344183
 reference_groups = [(6363, 6362), (6396, 6395), (6419, 6417), (6463, 6462), (6466, 6467), (6502, 6501)]
 calibration_groups = [((6363, 6396), (6369, 6373, 6370, 6375, 6376, 6377, 6378, 6380, 6382, 6383, 6384, 6387, 6391,
@@ -578,7 +588,9 @@ calibration_groups = [((6363, 6396), (6369, 6373, 6370, 6375, 6376, 6377, 6378, 
                       ((6419, 6463), (6428, 6429, 6430, 6431, 6432, 6433, 6434, 6436, 6438, 6440, 6441, 6444, 6445,
                                       6447, 6448)),
                       ((6466, 6502), (6468, 6470, 6471, 6472, 6473, 6478, 6479, 6480, 6493))]
-niAna = NiAnalysis(working_dir, db, line_vars, runs, frequ_60ni, reference_groups, calibration_groups)
+niAna = NiAnalysis(working_dir, db, line_vars, runs60, runs55, frequ_60ni, reference_groups, calibration_groups)
 #niAna.reset()
 #niAna.prep()
 niAna.ana_55()
+
+# TODO find start parameters
