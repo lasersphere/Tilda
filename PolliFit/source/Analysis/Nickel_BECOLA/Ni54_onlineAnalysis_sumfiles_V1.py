@@ -62,7 +62,7 @@ class NiAnalysis():
         Specify how you want to run this Analysis!
         """
         # fit from scratch or use FitRes db?
-        self.do_the_fitting = False  # if False, an .xml file has to be specified in the next variable!
+        self.do_the_fitting = True  # if False, an .xml file has to be specified in the next variable!
         load_results_from = 'Ni54_onlineAnalysis_2020-07-12_17-45.xml'  # load fit results from this file
         self.get_gate_analysis = False  # get information from gate analysis (and use for uncertainties)
         load_gate_analysis_from = 'SoftwareGateAnalysis_2020-06-17_13-13_narrow90p-3sig_AsymmetricVoigt.xml'
@@ -379,7 +379,7 @@ class NiAnalysis():
                                                        self.masses[key][0] / 1e6)
                               for key in self.masses.keys()}
         # adjust center fit estimations to accVoltage
-        self.adjust_center_ests_db()
+        # self.adjust_center_ests_db()
 
         # time reference
         self.ref_datetime = datetime.strptime('2018-04-13_13:08:55', '%Y-%m-%d_%H:%M:%S')  # run 6191, first 58 we use
@@ -1218,7 +1218,7 @@ class NiAnalysis():
                 if not os.path.exists(plot_folder):
                     os.makedirs(plot_folder)
                 # for softw_gates_trs from file use 'File' and from db use None.
-                BatchFit.batchFit(filearray, self.db, self.run, x_as_voltage=True, softw_gates_trs=None) #, guess_offset=True,save_to_folder=plot_folder)
+                BatchFit.batchFit(filearray, self.db, self.run, x_as_voltage=True, softw_gates_trs=None, guess_offset=True,save_to_folder=plot_folder)
             filearray = []  # all files fitted. May be filled with files that need a second fit.
             # get fitresults (center) vs run for 58
             all_rundate = []
@@ -1875,16 +1875,16 @@ class NiAnalysis():
         ni60_files, ni60_filenos, ni60_filetimes = self.pick_files_from_db_by_type_and_num('%60Ni%')
         self.stack_runs('60Ni{}'.format(c), ni60_files, (1300, 1400), binsize=1, bake_in_calib=calibration_per_file)
         # select and stack nickel 54 runs to new file Sum54_9999.xml
-        ni54_files, ni54_filenos, ni54_filetimes = self.pick_files_from_db_by_type_and_num('%54Ni%')  # 6315
-        self.stack_runs('54Ni{}'.format(c), ni54_files, (1300, 1400), binsize=2, bake_in_calib=calibration_per_file)
+        ni54_files, ni54_filenos, ni54_filetimes = self.pick_files_from_db_by_type_and_num('%54Ni%', selecttuple=(10008, 10151))  # 6315 , selecttuple=(10008, 10151)
+        self.stack_runs('54Ni{}'.format(c), ni54_files, (1300, 1400), binsize=1, bake_in_calib=calibration_per_file)
 
     def stack_runs(self, isotope, files, volttuple, binsize, bake_in_calib=False):
         ##############
         # stack runs #
         ##############
         # sum all the isotope runs
-        self.time_proj_res_per_scaler = self.stack_time_projections(isotope, files)
-        self.addfiles(isotope, files, volttuple, binsize, bake_in_calib)
+        # self.time_proj_res_per_scaler = self.stack_time_projections(isotope, files)
+        self.addfiles_trs(isotope, files, volttuple, binsize, bake_in_calib)
 
     def stack_time_projections(self, isotope, filelist):
         zeroarr_sc = np.zeros(1024)  # array for one scaler
@@ -1895,8 +1895,9 @@ class NiAnalysis():
             # load the spec data from file
             spec = XMLImporter(path=filepath)
             for sc_no in range(3):
-                # sum time projections for each scaler
-                zeroarr[sc_no] += spec.t_proj[0][sc_no]
+                for track in range(spec.nrTracks):
+                    # sum time projections for each scaler
+                    zeroarr[sc_no] += spec.t_proj[track][sc_no]
         logging.info('------- time projection fit results: --------')
         timeproj_res = {'scaler_0':{}, 'scaler_1':{}, 'scaler_2':{}}
         for sc_no in range(3):
@@ -1970,9 +1971,9 @@ class NiAnalysis():
             sc1_res = self.time_proj_res_per_scaler['scaler_1']
             sc2_res = self.time_proj_res_per_scaler['scaler_2']
             if '54' in iso:
-                sc0_res = {'center': 516, 'sigma': 10}
-                sc1_res = {'center': 536, 'sigma': 10}
-                sc2_res = {'center': 538, 'sigma': 10}
+                sc0_res = {'center': 517, 'sigma': 3}
+                sc1_res = {'center': 537, 'sigma': 3}
+                sc2_res = {'center': 544, 'sigma': 3}
             sig_mult = self.tof_width_sigma  # how many sigma to include left and right of midtof (1: 68.3% of data, 2: 95.4%, 3: 99.7%)
             spec = XMLImporter(path=filepath,  # import data from XML, gated on the timpeak for each scaler
                                softw_gates=[[-350, 0,
@@ -1995,50 +1996,51 @@ class NiAnalysis():
                                                   [-350, 0,
                                                    (sc2_res['center']-offst*sc2_res['sigma'])/100 - sc2_res['sigma']/100*sig_mult,
                                                    (sc2_res['center']-offst*sc2_res['sigma'])/100 + sc2_res['sigma']/100*sig_mult]])
-            # check the stepsize of the data and return a warning if it's bigger than the binsize
-            stepsize = spec.stepSize[0]  # for track 0
-            nOfSteps = spec.getNrSteps(0)  # for track 0
-            nOfScans = spec.nrScans[0]  # for track 0
-            if stepsize > 1.1*binsize:
-                logging.warning('Stepsize of file {} larger than specified binsize ({}>{})!'
-                                .format(files, stepsize, binsize))
-            # get volt (x) data, cts (y) data and errs
-            voltage_x = spec.x[0]
-            bg_sum_totalcts = [sum(background.cts[0][0]), sum(background.cts[0][1]), sum(background.cts[0][2])]
-            for sc_sums in bg_sum_totalcts:
-                if sc_sums == 0: sc_sums = 1  # cannot have zero values
+            for track in range(spec.nrTracks):
+                # check the stepsize of the data and return a warning if it's bigger than the binsize
+                stepsize = spec.stepSize[track]  # for track 0
+                nOfSteps = spec.getNrSteps(track)  # for track 0
+                nOfScans = spec.nrScans[track]  # for track 0
+                if stepsize > 1.1*binsize:
+                    logging.warning('Stepsize of file {} larger than specified binsize ({}>{})!'
+                                    .format(files, stepsize, binsize))
+                # get volt (x) data, cts (y) data and errs
+                voltage_x = spec.x[track]
+                bg_sum_totalcts = [sum(background.cts[track][0]), sum(background.cts[track][1]), sum(background.cts[track][2])]
+                for sc_sums in bg_sum_totalcts:
+                    if sc_sums == 0: sc_sums = 1  # cannot have zero values
 
-            for scaler in range(3):
-                # apply ion energy correction from calibration
-                volt_cor = 0
-                if volt_corrections is not None:
-                    # get voltage correction for this file
-                    file_index = filenames.index(files)
-                    volt_cor = volt_corrections['vals'][file_index]-self.accVolt_set
-                # bin data
-                for step, volt in enumerate(voltage_x):
-                    volt_c = volt-volt_cor
-                    bg_avg = bg_sum_totalcts[scaler] / nOfSteps
-                    if voltrange[0] <= volt_c <= voltrange[1]:  # only use if inside desired range
-                        voltind = (np.abs(volt_arr - volt_c)).argmin()  # find closest index in voltage array
-                        # add data to the arrays
-                        cts_sum[scaler][voltind] += spec.cts[0][scaler][step]  # no normalization here
+                for scaler in range(3):
+                    # apply ion energy correction from calibration
+                    volt_cor = 0
+                    if volt_corrections is not None:
+                        # get voltage correction for this file
+                        file_index = filenames.index(files)
+                        volt_cor = volt_corrections['vals'][file_index]-self.accVolt_set
+                    # bin data
+                    for step, volt in enumerate(voltage_x):
+                        volt_c = volt-volt_cor
+                        bg_avg = bg_sum_totalcts[scaler] / nOfSteps
+                        if voltrange[0] <= volt_c <= voltrange[1]:  # only use if inside desired range
+                            voltind = (np.abs(volt_arr - volt_c)).argmin()  # find closest index in voltage array
+                            # add data to the arrays
+                            cts_sum[scaler][voltind] += spec.cts[track][scaler][step]  # no normalization here
 
-                        # keep track of nOfScans and real voltage
-                        if scaler == 0:
-                            if real_volt_arr[voltind] == 0:
-                                real_volt_arr[voltind] += volt_c
-                            else:
-                                # else do a weighted average with the nOfScans as weights
-                                # TODO: use bg_avg as weights instead of nOfScans?! Because thats what we use for the normalization as well
-                                real_volt_arr[voltind] = (real_volt_arr[voltind] / avgbg_sum[scaler][voltind] ** 2
-                                                          + volt_c / bg_avg ** 2) \
-                                                         / (1 / avgbg_sum[scaler][voltind] ** 2 + 1 / bg_avg ** 2)
-                                # real_volt_arr[voltind] = (real_volt_arr[voltind]/nOfScans_arr[voltind]**2
-                                #                           + volt_c/nOfScans**2)\
-                                #                          / (1/nOfScans_arr[voltind]**2 + 1/nOfScans**2)
-                        avgbg_sum[scaler][voltind] += bg_avg  # for keeping track of a total scale
-                        nOfScans_arr[voltind] += nOfScans
+                            # keep track of nOfScans and real voltage
+                            if scaler == 0:
+                                if real_volt_arr[voltind] == 0:
+                                    real_volt_arr[voltind] += volt_c
+                                else:
+                                    # else do a weighted average with the nOfScans as weights
+                                    # TODO: use bg_avg as weights instead of nOfScans?! Because thats what we use for the normalization as well
+                                    real_volt_arr[voltind] = (real_volt_arr[voltind] / avgbg_sum[scaler][voltind] ** 2
+                                                              + volt_c / bg_avg ** 2) \
+                                                             / (1 / avgbg_sum[scaler][voltind] ** 2 + 1 / bg_avg ** 2)
+                                    # real_volt_arr[voltind] = (real_volt_arr[voltind]/nOfScans_arr[voltind]**2
+                                    #                           + volt_c/nOfScans**2)\
+                                    #                          / (1/nOfScans_arr[voltind]**2 + 1/nOfScans**2)
+                            avgbg_sum[scaler][voltind] += bg_avg  # for keeping track of a total scale
+                            nOfScans_arr[voltind] += nOfScans
 
         # calculate uncertainty for on- and off-beam arrays as sqrt(n)
         cts_err = [np.sqrt(cts_sum[0]), np.sqrt(cts_sum[1]), np.sqrt(cts_sum[2])]
@@ -2140,6 +2142,283 @@ class NiAnalysis():
 
         self.make_sumXML_file(iso, real_start_v, real_stepsize_v, len(cts_sum[0]), np.array(cts_sum), np.array(cts_err),
                               peakHeight=total_scale_factor, accV=buncher_potential)
+
+    def addfiles_trs(self, iso, filelist, voltrange, binsize, bake_in_calib=False):
+        """
+        Load all files from list and rebin them into voltrange with binsize
+        :param iso:
+        :param filelist:
+        :param voltrange:
+        :param binsize:
+        :return:
+        """
+        # create arrays for rebinning the data
+        nOfTracks = 1  # Just put everything in one track. The other is just artificial anyways (backwards scan)
+        nOfScalers = 3
+        nOfBins = 1024
+        cts_trs_array = np.zeros((nOfTracks, nOfScalers, (voltrange[1]-voltrange[0])/binsize, nOfBins))  # nrOfTracks, nrOfScalers, nrOfSteps, nrOfTimeBins
+        bg_trs_array = cts_trs_array.copy()
+
+        volt_arr = np.arange(start=voltrange[0], stop=voltrange[1], step=binsize)  # array of the voltage steps
+        zeroarr = np.zeros(len(volt_arr))  # zero array with the same dimension as volt_arr to use as dummy
+        real_volt_arr = zeroarr.copy()  # Array to keep track what the real avg voltage per step is
+        nOfScans_arr = zeroarr.copy()  # Array to keep track how many scans we have on each step
+
+        # voltage calibrations could be used to adapt the scan-voltage per file
+        if bake_in_calib:
+            # import voltage calibrations from combined scaler results on a per-file basis
+            volt_corrections = self.results[iso]['scaler_012']['acc_volts']
+            filenames = self.results[iso]['file_names']
+            buncher_potential = self.accVolt_set  # calibrations on a per-file level. Global accVolt is unchanged
+        else:
+            # do not correct voltages. Use global correction instead!
+            volt_corrections = None
+            buncher_potential = self.accVolt_set
+
+        # extract data from each file and sort into binning
+        for files in filelist:
+            # create filepath for XMLImporter
+            filepath = os.path.join(self.datafolder, files)
+            spec = XMLImporter(path=filepath)
+
+            # trs_data = spec.time_res_zf  # time resolved list of pmt events in form of indices, zf is for zero free,
+            trs_data = spec.time_res  # time resolved matrices. Probably much more efficient here than zf. (tracks, scaler, step, bin)
+            #  list contains numpy arrays with structure: ('sc', 'step', 'time', 'cts')
+            #  indices in list correspond to track indices
+
+            for track, trackdata in enumerate(trs_data):
+                # check the stepsize of the data and return a warning if it's bigger than the binsize
+                stepsize = spec.stepSize[track]  # for track 0
+                nOfSteps = spec.getNrSteps(track)  # for track 0
+                nOfScans = spec.nrScans[track]  # for track 0
+                if stepsize > 1.1*binsize:
+                    logging.warning('Stepsize of file {} larger than specified binsize ({}>{})!'
+                                    .format(files, stepsize, binsize))
+                # get volt (x) data, cts (y) data and errs
+                voltage_x = spec.x[track]
+
+                for scaler, scalerdata in enumerate(trackdata):
+                    # take an off-beam background sample
+                    bgrange = int(nOfBins / 3)  # where should the background sample be taken? 0-x
+                    sumcts_offbeam = trackdata[scaler, :, :bgrange].sum()
+                    norm_factor = sumcts_offbeam / bgrange / nOfSteps
+
+                    for step, stepdata in enumerate(scalerdata):
+                        volt = voltage_x[step]
+                        # apply ion energy correction from calibration
+                        volt_cor = 0
+                        if volt_corrections is not None:
+                            # get voltage correction for this file
+                            file_index = filenames.index(files)
+                            volt_cor = volt_corrections['vals'][file_index] - self.accVolt_set
+                        volt_c = volt - volt_cor
+                        if voltrange[0] <= volt_c <= voltrange[1]:  # only use if inside desired range
+                            voltind = (np.abs(volt_arr - volt_c)).argmin()  # find closest index in voltage array
+                            # add data to the arrays
+                            cts_trs_array[0, scaler, voltind, :] += stepdata
+                            bg_trs_array[0, scaler, voltind, :] += np.full(stepdata.shape, norm_factor)
+                            # keep track of nOfScans and real voltage
+                            if scaler == 0:
+                                if real_volt_arr[voltind] == 0:
+                                    real_volt_arr[voltind] += volt_c
+                                else:
+                                    # else do a weighted average with the nOfScans as weights
+                                    real_volt_arr[voltind] = (real_volt_arr[voltind] / nOfScans_arr[voltind] ** 2
+                                                              + volt_c / nOfScans ** 2) \
+                                                             / (1 / nOfScans_arr[voltind] ** 2 + 1 / nOfScans ** 2)
+                            nOfScans_arr[voltind] += nOfScans
+
+
+                # for event in trackdata:
+                #     sc, step, time, cts = event
+                #     volt = voltage_x[step]
+                #
+                #     # apply ion energy correction from calibration
+                #     volt_cor = 0
+                #     if volt_corrections is not None:
+                #         # get voltage correction for this file
+                #         file_index = filenames.index(files)
+                #         volt_cor = volt_corrections['vals'][file_index] - self.accVolt_set
+                #     volt_c = volt - volt_cor
+                #     if voltrange[0] <= volt_c <= voltrange[1]:  # only use if inside desired range
+                #         voltind = (np.abs(volt_arr - volt_c)).argmin()  # find closest index in voltage array
+                #         # add data to the arrays
+                #         cts_trs_array[0, sc, voltind, time] += cts
+                #         # keep track of nOfScans and real voltage
+                #         if sc == 0:
+                #             if real_volt_arr[voltind] == 0:
+                #                 real_volt_arr[voltind] += volt_c
+                #             else:
+                #                 # else do a weighted average with the nOfScans as weights
+                #                 real_volt_arr[voltind] = (real_volt_arr[voltind]/nOfScans_arr[voltind]**2
+                #                                           + volt_c/nOfScans**2)\
+                #                                          / (1/nOfScans_arr[voltind]**2 + 1/nOfScans**2)
+                #         nOfScans_arr[voltind] += nOfScans
+
+        # make sure there are no zero values in the off-beam array to avoid division-by-zero error.
+        include_indx = nOfScans_arr != 0  # only include values where at least one scan brought data
+        # # Attention! We must not remove values from the middle of the array! This would screw up the pollifit voltage.
+        # check_lst = np.split(include_indx, np.where(np.diff(include_indx) == 1)[0] + 1)  # Difference True->False = 1
+        # # the check list can't contain more than 3 arrays. These must be [False, True, False]. 2 or 1 array is always ok
+        # if len(check_lst) > 3 or (len(check_lst) == 3 and check_lst[1][0] is False):
+        #     # Seems like we have found non-include values in the middle of our data. This must not be!
+        #     include_indx = np.full(len(nOfScans_arr), True, dtype=bool)  # Instead, we now include all values.
+        #     # This will crash the analysis with div0 error soon...that's better than screwing up our data
+        #     cts_sum = 1/0  # well actually for clarity we can crash it right here!
+        #     # Hint: if there is supposed to be gaps in the data, start creating different tracks for the xml here!
+
+        # also delete first and last of the remaining values, these can be a little skewed...
+        cts_trs_array = cts_trs_array[:, :, include_indx, :]
+        bg_trs_array = bg_trs_array[:, :, include_indx, :]
+        cts_trs_array = cts_trs_array*bg_trs_array.mean()/bg_trs_array
+        # for scaler in range(3):
+        #     cts_sum[scaler] = cts_sum[scaler][include_indx][1:-1]
+        volt_arr = volt_arr[include_indx]
+        real_volt_arr = real_volt_arr[include_indx]
+        nOfScans_arr = nOfScans_arr[include_indx]
+
+        # fit a line to the real voltage
+        def _line(x, m, b):
+            return m * x + b
+        # start parameters
+        p0 = [binsize, real_volt_arr[0]]
+        # do the fitting
+        popt, pcov = curve_fit(_line, np.arange(len(real_volt_arr)), real_volt_arr, p0)
+        perr = np.sqrt(np.diag(pcov))  # TODO: use this somewhere?
+
+        # extract real start volt and stepsize from the calibration:
+        real_start_v = popt[1]
+        real_stepsize_v = popt[0]
+
+        # go back to xml style data:
+        track_data_list = []
+        for track in range(nOfTracks):
+            data_tuples_list = []
+            for index, cts in np.ndenumerate(cts_trs_array[track]):
+                # Loop over data array and extract index + cts and combine them to a tuple.
+                data_point_tuple = index + (int(cts),)
+                data_tuples_list.append(data_point_tuple)  # append tuple to list
+            dt = [('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')]  # data type for npy array
+            track_data_list.append(
+                np.array(data_tuples_list, dtype=dt))  # convert list to npy array with given data format
+        data_tuples_arr = np.stack(track_data_list)
+        # Create voltage projection
+        track_data_list = []
+        for track in range(nOfTracks):
+            voltage_projections = []
+            for scaler in range(nOfScalers):
+                proj_list = cts_trs_array[track].sum(axis=2)[scaler].tolist()
+                int_proj = [int(i) for i in proj_list]  # Must be an array of integers!
+                voltage_projections.append(int_proj)
+            track_data_list.append(np.array(voltage_projections))  # make array of arrays from list of arrays.
+        voltage_projection_arr = np.stack(track_data_list)
+
+        ###################################
+        # Prepare dicts for writing to XML #
+        ###################################
+        file_creation_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        header_dict = {'type': 'trs',
+                       'isotope': iso,
+                       'isotopeStartTime': file_creation_time,
+                       'accVolt': self.accVolt_set,
+                       'laserFreq': Physics.wavenumber(self.laser_freqs[iso])/2,
+                       'nOfTracks': nOfTracks,
+                       'version': 99.0}
+
+        tracks_dict = {}
+        for tracknum in range(nOfTracks):
+            trackname = 'track{}'.format(tracknum)
+            # track times:
+            track_start_time_str = file_creation_time
+            track_end_time_str = file_creation_time
+            # info for track in header
+            track_dict_header = {'trigger': {},  # Need a trigger dict!
+                                 'activePmtList': list(range(cts_trs_array.shape[1])),  # Must be in form [0,1,2]
+                                 'colDirTrue': True,
+                                 'dacStartRegister18Bit': 0,
+                                 'dacStartVoltage': real_start_v,
+                                 'dacStepSize18Bit': None,  # old format xml importer checks whether val or None
+                                 'dacStepsizeVoltage': real_stepsize_v,
+                                 'dacStopRegister18Bit': cts_trs_array.shape[2] - 1,  # not real but should do the trick
+                                 'dacStopVoltage': float(real_start_v) + (
+                                             float(real_stepsize_v) * int(len(volt_arr) - 1)),
+                                 # nOfSteps-1 bc startVolt is the first step
+                                 'invertScan': False,
+                                 'nOfBins': nOfBins,
+                                 'nOfBunches': 1,  # dummy val
+                                 # at BECOLA this corresponds to number of Sequences (Seqs in excel)
+                                 'nOfCompletedSteps': float(sum(nOfScans_arr)),
+                                 'nOfScans': int(nOfScans_arr.mean()),
+                                 'nOfSteps': cts_trs_array.shape[2],
+                                 'postAccOffsetVolt': 0,
+                                 'postAccOffsetVoltControl': 0,
+                                 'SoftBinWidth_us': 1024,  # shrink later!
+                                 'softwGates': [volt_arr[0], volt_arr[-1], 5.12, 10.24],
+                                 # For each Scaler: [DAC_Start_Volt, DAC_Stop_Volt, scaler_delay, softw_Gate_width]
+                                 'workingTime': [track_start_time_str, track_end_time_str],
+                                 'waitAfterReset1us': 0,  # looks like I need those for the importer
+                                 'waitForKepco1us': 0  # looks like I need this too
+                                 }
+            track_dict_data = {
+                'scalerArray_explanation': 'time resolved data. List of tuples, each tuple consists of: (scaler_number, line_voltage_step_number, time_stamp, number_of_counts), datatype: np.int32',
+                'scalerArray': data_tuples_arr[tracknum]}
+            track_dict_projections = {
+                'voltage_projection_explanation': 'voltage_projection of the time resolved data. List of Lists, each list represents the counts of one scaler as listed in activePmtList.Dimensions are: (len(activePmtList), nOfSteps), datatype: np.int32',
+                'voltage_projection': voltage_projection_arr[tracknum]}
+            tracks_dict[trackname] = {'header': track_dict_header,
+                                      'data': track_dict_data,
+                                      'projections': track_dict_projections}
+
+        # Combine to xml_dict
+        xml_dict = {'header': header_dict,
+                         'tracks': tracks_dict
+                         }
+
+        ################
+        # Write to XML #
+        ################
+        # if not self.excel_extraction_failed:  # actually that is not a big problem in this newer Version...
+        iso = iso[:4]
+        bakein = ''
+        type = '{}_sum_cal'.format(iso)  # we will always use a calibrated sum file
+        if buncher_potential == self.accVolt_set:
+            # calibrations baked in to scan voltage
+            bakein = 'c'
+            type = '{}_sum_cal'.format(iso)
+        xml_name = 'Sum{}{}_9999.xml'.format(iso, bakein)
+        xml_filepath = os.path.join(self.datafolder, xml_name)
+        self.writeXMLfromDict(xml_dict, xml_filepath, 'BecolaData')
+        self.ni_analysis_combined_files.append(xml_name)
+
+        # add file to database
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        cur.execute('''INSERT OR IGNORE INTO Files (file, filePath, date, type) VALUES (?, ?, ?, ?)''',
+                    (xml_name, os.path.relpath(xml_filepath, self.workdir), file_creation_time, type))
+        con.commit()
+        cur.execute(
+            '''UPDATE Files SET offset = ?, accVolt = ?,  laserFreq = ?, laserFreq_d = ?, colDirTrue = ?, 
+            voltDivRatio = ?, lineMult = ?, lineOffset = ?, errDateInS = ? WHERE file = ? ''',
+            (str(nOfTracks*[0]), buncher_potential, self.laser_freqs[iso], 0, True, str({'accVolt': 1.0, 'offset': 1.0}), 1, 0, 1,
+             xml_name))
+        con.commit()
+        # create new isotope
+        cur.execute('''SELECT * FROM Isotopes WHERE iso = ? ''', (iso,))  # get original isotope to copy from
+        mother_isopars = cur.fetchall()
+        isopars_lst = list(mother_isopars[0])  # change into list to replace some values
+        isopars_lst[0] = type
+        # if isopars_lst[3] != 0:
+        #     # spin different from zero, several sidepeaks, adjust scaling!
+        #     peakHeight = peakHeight / 10
+        # bg_estimate = sum(cts_list[:, -1])
+        # isopars_lst[11] = int(peakHeight) / bg_estimate * 1000  # change intensity scaling
+        new_isopars = tuple(isopars_lst)
+        cur.execute('''INSERT OR REPLACE INTO Isotopes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                    new_isopars)
+        con.commit()
+        con.close()
+
+
 
     def make_sumXML_file(self, isotope, startVolt, stepSizeVolt, nOfSteps, cts_list, err_list=None, peakHeight=1, accV=29850):
         ####################################
@@ -3654,10 +3933,10 @@ if __name__ == '__main__':
 
     analysis = NiAnalysis()
     # fitting the first time for extraction of calibration and comparison of uncalibrated data
-    # analysis.fitting_initial_separate()
-    # analysis.combine_single_scaler_centers(['58Ni', '60Ni'])
-    # analysis.plot_results_of_fit(calibrated=False)
-    # analysis.ion_energy_calibration()
+    analysis.fitting_initial_separate()
+    analysis.combine_single_scaler_centers(['58Ni', '60Ni'])
+    analysis.plot_results_of_fit(calibrated=False)
+    analysis.ion_energy_calibration()
     # stacked run analysis for inclusion of nickel 54
-    analysis.create_and_fit_stacked_runs(calibration_per_file=False)
+    analysis.create_and_fit_stacked_runs(calibration_per_file=True)
     analysis.export_results()

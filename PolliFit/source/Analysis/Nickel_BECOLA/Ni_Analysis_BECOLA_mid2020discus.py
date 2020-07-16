@@ -68,7 +68,7 @@ class NiAnalysis():
         load_gate_analysis_from = 'SoftwareGateAnalysis_2020-06-17_13-13_narrow90p-3sig_AsymmetricVoigt.xml'
 
         # line parameters
-        self.run = 'VoigtAsy'  # lineshape from runs and a new lines
+        self.run = 'AsymmetricVoigt'  # lineshape from runs and a new lines
         self.initial_par_guess = {'sigma': (34.0, [10, 40]), 'gamma': (12.0, [0, 30]),
                                   'asy': (3.9, True),  # in case VoigtAsy is used
                                   'dispersive': (-0.04, False),  # in case FanoVoigt is used
@@ -99,7 +99,7 @@ class NiAnalysis():
         self.KingFactorLit = 'Koenig 2020 60ref'  # which king fit factors to use? kaufm60, koenig60,koenig58
 
         # Uncertainy Options
-        self.combined_unc = 'std'  # 'std': most conservative, 'wavg_d': error of the weighted, 'wstd': weighted std
+        self.combined_unc = 'std_avg'  # 'std': most conservative, 'wavg_d': error of the weighted, 'wstd': weighted std, 'std_avg': standarddeviation of the average
 
         # plot options
         self.save_plots_to_file = True  # if False plots will be displayed during the run for closer inspection
@@ -242,6 +242,7 @@ class NiAnalysis():
             '64Ni': (Physics.freqFromWavenumber(0.01691+0.01701),  # 60-62 and 62-64 combined.
                      Physics.freqFromWavenumber(np.sqrt(0.00012**2+0.00026**2)))}  # Quadr. error prop
         iso_shifts_koenig = {  # private com. excel sheet mid 2020
+            '54Ni': (-1385.0-507, 10.0),  # very preliminary from 2020 beamtime
             '58Ni': (self.restframe_trans_freq['58Ni'][0] - self.restframe_trans_freq['60Ni'][0],
                      np.sqrt(self.restframe_trans_freq['58Ni'][1]**2 + self.restframe_trans_freq['60Ni'][1]**2)),
             '60Ni': (0, 0),
@@ -284,10 +285,12 @@ class NiAnalysis():
                              '61Ni': (0.065, 0.017),  # 60-61
                              '62Ni': (0.170, 0.035),  # 60-62
                              '64Ni': (0.280, 0.041)}  # 60-62 and 62-64 combined. Quadratic error prop
-        delta_rms_koenig = {'58Ni': (-0.275, 0.0082),  # private com. excel sheet mid 2020
-                             '60Ni': (0, 0),
-                             '62Ni': (0.2226, 0.0059),
-                             '64Ni': (0.3642, 0.0095)}
+        x, xx, r, rd, = self.extract_radius_from_factors('54Ni', '60Ni', isoshift=iso_shifts_koenig['54Ni'])
+        delta_rms_koenig = {'54Ni': (r, rd),  # very preliminary!
+                            '58Ni': (-0.275, 0.0082),  # private com. excel sheet mid 2020
+                            '60Ni': (0, 0),
+                            '62Ni': (0.2226, 0.0059),
+                            '64Ni': (0.3642, 0.0095)}
 
         self.delta_rms_lit = {'Kaufmann 2020 (incl.unbup.!)': {'data': delta_rms_kaufm, 'color': 'green'},  # (incl.unbup.!)
                               'Steudel 1980': {'data': delta_rms_steudel, 'color': 'black'},
@@ -477,11 +480,13 @@ class NiAnalysis():
                                     for sc in range(3)])
 
                 # calculate weighted average and various error estimates
-                wavg, wavg_d, wstd, std = self.calc_weighted_avg(val_arr, err_arr)
+                wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(val_arr, err_arr)
                 if self.combined_unc == 'wavg_d':
                     d_fit = wavg_d
                 elif self.combined_unc == 'wstd':
                     d_fit = wstd
+                elif self.combined_unc == 'std_avg':
+                    d_fit = std_avg
                 else:
                     d_fit = std
 
@@ -508,11 +513,13 @@ class NiAnalysis():
                 centers_combined_d_syst.append(d_syst)
 
             # calculate weighted avg of center fit and various error estimates
-            wavg, wavg_d, wstd, std = self.calc_weighted_avg(centers_combined, centers_combined_d_stat)
+            wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(centers_combined, centers_combined_d_stat)
             if self.combined_unc == 'wavg_d':
                 d_fit = wavg_d
             elif self.combined_unc == 'wstd':
                 d_fit = wstd
+            elif self.combined_unc == 'std_avg':
+                d_fit = std_avg
             else:
                 d_fit = std
 
@@ -568,11 +575,13 @@ class NiAnalysis():
                 stat_without_fit = np.sqrt(stat_arr**2 - err_arr**2)
 
                 # calculate weighted average and various error estimates
-                wavg, wavg_d, wstd, std = self.calc_weighted_avg(val_arr, err_arr)
+                wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(val_arr, err_arr)
                 if self.combined_unc == 'wavg_d':
                     d_fit = wavg_d
                 elif self.combined_unc == 'wstd':
                     d_fit = wstd
+                elif self.combined_unc == 'std_avg':
+                    d_fit = std_avg
                 else:
                     d_fit = std  # most conservative error
 
@@ -589,12 +598,14 @@ class NiAnalysis():
                 centers_combined_d_syst.append(d_syst)
 
             # calculate weighted avg of center fit and various error estimates
-            wavg, wavg_d, wstd, std = self.calc_weighted_avg(centers_combined, centers_combined_d_stat)
+            wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(centers_combined, centers_combined_d_stat)
 
             if self.combined_unc == 'wavg_d':
                 d_fit = wavg_d
             elif self.combined_unc == 'wstd':
                 d_fit = wstd
+            elif self.combined_unc == 'std_avg':
+                d_fit = std_avg
             else:
                 d_fit = std  # (typically) most conservative estimate
 
@@ -1548,11 +1559,13 @@ class NiAnalysis():
             voltcorrect_d_syst = (interpolation_58_d_syst + interpolation_60_d_syst)/2  # should be the same anyways
 
         # calculate weighted avg of center fit and various error estimates
-        wavg, wavg_d, wstd, std = self.calc_weighted_avg(voltcorrect, voltcorrect_d)
+        wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(voltcorrect, voltcorrect_d)
         if self.combined_unc == 'wavg_d':
             d_fit = wavg_d
         elif self.combined_unc == 'wstd':
             d_fit = wstd
+        elif self.combined_unc == 'std_avg':
+            d_fit = std_avg
         else:
             d_fit = std
 
@@ -1759,11 +1772,13 @@ class NiAnalysis():
                                     + alignment_d_syst**2)
 
         # calculate an average value using weighted avg
-        iso_shift_avg, wavg_d, wstd, std = self.calc_weighted_avg(iso_shifts, iso_center_d_stat)
+        iso_shift_avg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(iso_shifts, iso_center_d_stat)
         if self.combined_unc == 'wavg_d':
             iso_shift_avg_d = wavg_d
         elif self.combined_unc == 'wstd':
             iso_shift_avg_d = wstd
+        elif self.combined_unc == 'std_avg':
+            iso_shift_avg_d = std_avg
         else:
             iso_shift_avg_d = std  # most conservative error
         iso_shift_avg_d_syst = sum(iso_shifts_d_syst)/len(iso_shifts_d_syst)  # should all be the same anyways
@@ -2460,7 +2475,7 @@ class NiAnalysis():
         plt.close()
         plt.clf()
 
-    def extract_radius_from_factors(self, iso, ref, scaler=None):
+    def extract_radius_from_factors(self, iso, ref, scaler=None, isoshift=None):
         """
         Use known fieldshift and massshift parameters to calculate the difference in rms charge radii and then the
         absolute charge radii.
@@ -2490,9 +2505,14 @@ class NiAnalysis():
         if scaler is not None:
             # get per file isoshift
             files = self.results[iso]['file_names']
-            iso_shift = self.results[iso][scaler]['shift_iso-{}'.format(ref[:2])]['vals']
-            iso_shift_d = self.results[iso][scaler]['shift_iso-{}'.format(ref[:2])]['d_stat']
-            iso_shift_d_syst = self.results[iso][scaler]['shift_iso-{}'.format(ref[:2])]['d_syst']
+            if isoshift is not None:
+                iso_shift = isoshift[0]
+                iso_shift_d = isoshift[1]
+                iso_shift_d_syst = 0
+            else:
+                iso_shift = self.results[iso][scaler]['shift_iso-{}'.format(ref[:2])]['vals']
+                iso_shift_d = self.results[iso][scaler]['shift_iso-{}'.format(ref[:2])]['d_stat']
+                iso_shift_d_syst = self.results[iso][scaler]['shift_iso-{}'.format(ref[:2])]['d_syst']
             if iso[:2] == ref[:2]:
                 # this is the reference! All values zero!
                 for indx, file in enumerate(files):
@@ -2523,10 +2543,15 @@ class NiAnalysis():
 
         else:
             # extract isotope shift from db where no scaler is specified.
-            par = 'shift'
-            iso_shift, iso_shift_d, iso_shift_d_syst = self.get_iso_property_from_db(
-                '''SELECT val, statErr, systErr from Combined WHERE iso = ? AND run = ? AND parname = ?''',
-                (iso, self.run, par))
+            if isoshift is not None:
+                iso_shift = isoshift[0]
+                iso_shift_d = isoshift[1]
+                iso_shift_d_syst = 0
+            else:
+                par = 'shift'
+                iso_shift, iso_shift_d, iso_shift_d_syst = self.get_iso_property_from_db(
+                    '''SELECT val, statErr, systErr from Combined WHERE iso = ? AND run = ? AND parname = ?''',
+                    (iso, self.run, par))
             # calculate radius
             avg_delta_rms = mu * ((iso_shift / mu - M_alpha) / F + alpha)
             avg_delta_rms_d = np.sqrt(np.square(mu_d * (alpha - M_alpha / F))
@@ -2557,7 +2582,7 @@ class NiAnalysis():
         else:
             logging.warning('ZERO value in uncertainties found during weighted average calculation. '
                             'Calculating mean and standard deviation instead of weighting!')
-            return x.mean(), x.std(), x.std(), x.std()
+            return x.mean(), x.std(), x.std(), x.std(), x.std()/np.sqrt(n)
 
         if n > 1:  # only makes sense for more than one data point. n=1 will also lead to div0 error
             # calculate weighted average and sum of weights:
@@ -2572,23 +2597,29 @@ class NiAnalysis():
 
             # calculate (non weighted) standard deviations from the weighted mean
             std = np.sqrt(np.sum(np.square(x-wavg))/(n-1))
+            # calculate the standard deviation of the average
+            std_avg = std/np.sqrt(n)
+
         else:  # for only one value, return that value
             wavg = x[0]
             # use the single value uncertainty for all error estimates
             wavg_d = x_d[0]
             wstd = x_d[0]
             std = x_d[0]
+            std_avg = x_d[0]
 
-        return wavg, wavg_d, wstd, std
+        return wavg, wavg_d, wstd, std, std_avg
 
     def make_results_dict_scaler(self,
                                  centers, centers_d_fit, centers_d_stat, center_d_syst, fitpars, rChi, hfs_pars=None):
         # calculate weighted average of center parameter
-        wavg, wavg_d, wstd, std = self.calc_weighted_avg(centers, centers_d_stat)
+        wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(centers, centers_d_stat)
         if self.combined_unc == 'wavg_d':
             d_fit = wavg_d
         elif self.combined_unc == 'wstd':
             d_fit = wstd
+        elif self.combined_unc == 'std_avg':
+            d_fit = std_avg
         else:
             d_fit = std
 
@@ -2707,11 +2738,13 @@ class NiAnalysis():
                     # calculate weighted average:
                     if not np.any(centers_d_stat == 0) and not np.sum(1/centers_d_stat**2) == 0:
                         d = centers.std()
-                        wavg, wavg_d, wstd, std = self.calc_weighted_avg(centers, centers_d_stat)
+                        wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(centers, centers_d_stat)
                         if self.combined_unc == 'wavg_d':
                             d = wavg_d
                         elif self.combined_unc == 'wstd':
                             d = wstd
+                        elif self.combined_unc == 'std_avg':
+                            d = std_avg
                         else:
                             d = std
                         wavg_d = '{:.0f}'.format(10**digits*d)  # times 10 for representation in brackets
@@ -2870,11 +2903,13 @@ class NiAnalysis():
             # calculate weighted average:
             if not np.any(centers_d_stat == 0) and not np.sum(1/centers_d_stat**2) == 0:
                 d = centers.std()
-                wavg, wavg_d, wstd, std = self.calc_weighted_avg(centers, centers_d_stat)
+                wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(centers, centers_d_stat)
                 if self.combined_unc == 'wavg_d':
                     d = wavg_d
                 elif self.combined_unc == 'wstd':
                     d = wstd
+                elif self.combined_unc == 'std_avg':
+                    d = std_avg
                 else:
                     d = std
                 wavg_d = '{:.0f}'.format(10**digits*d)  # times 10 for representation in brackets
@@ -3076,11 +3111,13 @@ class NiAnalysis():
                 # calculate weighted average:
                 if not np.any(centers_d_stat == 0) and not np.sum(1 / centers_d_stat ** 2) == 0:
                     d = centers.std()
-                    wavg, wavg_d, wstd, std = self.calc_weighted_avg(centers, centers_d_stat)
+                    wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(centers, centers_d_stat)
                     if self.combined_unc == 'wavg_d':
                         d = wavg_d
                     elif self.combined_unc == 'wstd':
                         d = wstd
+                    elif self.combined_unc == 'std_avg':
+                        d = std_avg
                     else:
                         d = std
                     wavg_d = '{:.0f}'.format(10 ** digits * d)  # times 10 for representation in brackets
@@ -3223,11 +3260,13 @@ class NiAnalysis():
                 # calculate weighted average:
                 if not np.any(centers_d_stat == 0) and not np.sum(1 / centers_d_stat ** 2) == 0:
                     d = centers.std()
-                    wavg, wavg_d, wstd, std = self.calc_weighted_avg(centers, centers_d_stat)
+                    wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(centers, centers_d_stat)
                     if self.combined_unc == 'wavg_d':
                         d = wavg_d
                     elif self.combined_unc == 'wstd':
                         d = wstd
+                    elif self.combined_unc == 'std_avg':
+                        d = std_avg
                     else:
                         d = std
                     wavg_d = '{:.0f}'.format(10 ** digits * d)  # times 10 for representation in brackets

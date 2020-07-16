@@ -69,8 +69,9 @@ class BECOLAImporter():
         self.path_to_excel = os.getcwd()
 
         self.is_dc_data = False  # Set this to False for time-resolved data!! Also Check standard-gates for trs
-        self.divider_ratio = 1000  # must be set according to the voltage divider used to measure dac voltage
-        self.accVolt = 29850  # buncher high voltage potential set for the runs (not noted on a per-file level)
+        self.divider_ratio = 201.0037  # must be set according to the voltage divider used to measure dac voltage
+        self.accVolt = 29847  # buncher high voltage potential set for the runs (not noted on a per-file level)
+        self.accVolt_dc = 29855  # in case this is a dc run the voltage may differ
         self.laser_unit = 'THz'  # cm-1 for import from excel. Other option 'THz'. More must be coded
 
         self.month_list = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -129,7 +130,7 @@ class BECOLAImporter():
         :return: bool: True or False depending on whether scan satisfies conditions
         """
         # Standard: Include all scans
-        return True
+        return False
 
     def read_ascii(self, path):
         with open(path, 'rb') as f:
@@ -289,8 +290,8 @@ class BECOLAImporter():
                         #   29  [1-D Detector  14]  DBEC:DRVR:CountValues_12, ,
                         #   30  [1-D Detector  15]  DBEC:DRVR:CountValues_13, ,
                         #   31  [1-D Detector  16]  DBEC:DRVR:CountValues_14, ,
-                        if self.scan_condition(int(splt[0])):
-                            scanNumber = int(splt[0])  # starts at 1
+                        scanNumber = int(splt[0])  # starts at 1
+                        if self.scan_condition(scanNumber):
                             trackNum = int(splt[1])-1  # starts at 1, bring to 0,... for arrays
                             index = int(splt[4])
                             stepNum = int(splt[7])
@@ -467,16 +468,18 @@ class BECOLAImporter():
         ########################################
         try:
             exelcuter = BECOLAExelcuter(self.path_to_excel, self.runNo)
-            excel_list = exelcuter.run()
-            excel_run_date, excel_runNo, self.isotope, self.laserFreq, excel_laser_backg, excel_notes, excel_nOfScans, \
-                excel_fill_time_ms, excel_release_time_ms, excel_dacStartVolt, excel_nOfSteps, excel_dacStepSizeVolt,\
-                self.seqs = excel_list
+            excel_list = exelcuter.run(returnlen=15)
+            excel_run_date, excel_runNo, self.isotope, self.laserFreq, excel_laser_backg, excelMode, excel_notes, \
+                excel_nOfScans, excel_dacStartVolt, excel_dacEndVolt, excel_fill_time_ms, excel_release_time_ms, \
+                excel_nOfSteps, excel_dacStepSizeVolt, self.seqs = excel_list
             if excel_nOfSteps is None:
                 excel_nOfSteps = 0
             if excel_nOfScans is None:
                 excel_nOfScans = 0
             if self.laser_unit == 'THz':
                 self.laserFreq = self.laserFreq /299792458*1E10  # THz/(speedOfLight[m/s]/10^7)
+            if 'DC' in excelMode:
+                self.is_dc_data = True
         except Exception as e:
             self.excel_extraction_failed = True
             with open('xml_rebinned/bad_runs.txt', 'a') as bfile:
@@ -553,7 +556,7 @@ class BECOLAImporter():
         header_dict = {'type': 'trs',
                        'isotope': self.isotope,
                        'isotopeStartTime': file_start_time_str,
-                       'accVolt': self.accVolt,
+                       'accVolt': self.accVolt_dc if self.is_dc_data else self.accVolt,
                        'laserFreq': self.laserFreq,  # XMLImporter expects wavenumber
                        'nOfTracks': self.nrOfTracks,
                        'version': 99.0}
