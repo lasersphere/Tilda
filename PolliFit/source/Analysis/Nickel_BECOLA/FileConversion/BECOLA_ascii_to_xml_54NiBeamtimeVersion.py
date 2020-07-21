@@ -129,8 +129,8 @@ class BECOLAImporter():
         :param scan_no: scan number (should start at 1)
         :return: bool: True or False depending on whether scan satisfies conditions
         """
-        # Standard: Include all scans
-        return False
+        # Standard: return True (Include all scans)
+        return True
 
     def read_ascii(self, path):
         with open(path, 'rb') as f:
@@ -478,7 +478,7 @@ class BECOLAImporter():
                 excel_nOfScans = 0
             if self.laser_unit == 'THz':
                 self.laserFreq = self.laserFreq /299792458*1E10  # THz/(speedOfLight[m/s]/10^7)
-            if 'DC' in excelMode:
+            if 'DC' in excelMode or 'dc' in excelMode or 'Dc' in excelMode:
                 self.is_dc_data = True
         except Exception as e:
             self.excel_extraction_failed = True
