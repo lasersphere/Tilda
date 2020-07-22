@@ -390,6 +390,6 @@ frequ_60ni = 850344183
 reference_groups = [(6192, 6191), (6208, 6207), (6243, 6242), (6254, 6253)]
 calibration_groups = [(6192, 6202, 6203, 6204), (6208, 6211, 6213, 6214), (6243, 6238, 6239, 6240), (6254, 6251, 6252)]
 niAna = NiAnalysis(working_dir, db, line_vars, runs, frequ_60ni, reference_groups, calibration_groups)
-niAna.reset()
-niAna.prep()
+#niAna.reset()
+#niAna.prep()
 niAna.calc_56Ni()

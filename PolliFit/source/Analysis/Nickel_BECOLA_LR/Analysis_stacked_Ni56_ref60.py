@@ -1,3 +1,4 @@
+import math
 import os
 import sqlite3
 from matplotlib import pyplot as plt
@@ -15,15 +16,15 @@ from XmlOperations import xmlWriteDict
 
 class NiAnalysis:
 
-    def __init__(self, working_dir, db56, line_vars, runs60, runs55, frequ_60ni, ref_groups, cal_groups):
+    def __init__(self, working_dir, db56, line_vars, runs60, runs56, frequ_60ni, ref_groups, cal_groups):
         self.working_dir = working_dir
         self.db = os.path.join(self.working_dir, db56)
         self.data_path = os.path.join(self.working_dir, 'data')
         self.lineVar = line_vars
-        self.runs55 = runs55
+        self.runs56 = runs56
         self.runs60 = runs60
         self.frequ_60ni = frequ_60ni
-        self.laserFreq55 = 851264686.7203143
+        self.laserFreq56 = 8.5125386721050508 * 10 ** 8
         self.ref_groups = ref_groups
         self.cal_groups = cal_groups
 
@@ -66,7 +67,7 @@ class NiAnalysis:
             file_uncert = np.sqrt(file_uncert)
             center.append(file_center)
             uncert.append(file_uncert)
-        plt.errorbar([6363, 6396, 6419, 6463, 6466, 6502], center, yerr=uncert)
+        plt.errorbar([6192, 6208, 6243, 6254, 6259], center, yerr=uncert)
         plt.title('Center uncalibrated')
         plt.show()
 
@@ -99,17 +100,17 @@ class NiAnalysis:
         for u in uncert:
             weights.append(1 / (u ** 2))
         mean = np.average(center, weights=weights)
-        plt.errorbar([6363, 6396, 6419, 6463, 6466, 6502], center, yerr=uncert)
-        plt.plot([6363, 6502],[mean, mean])
-        plt.plot([6363, 6502], [self.frequ_60ni, self.frequ_60ni])
+        plt.errorbar([6192, 6208, 6243, 6254, 6259], center, yerr=uncert)
+        plt.plot([6192, 6259],[mean, mean], 'r')
+        plt.plot([6192, 6259], [self.frequ_60ni, self.frequ_60ni], 'g')
         plt.title('Center calibrated')
         plt.show()
 
         #Assign calibration
         self.assign_cal()
 
-        files55 = self.get_files('55Ni')
-        self.stack_files(files55)
+        files56 = self.get_files('56Ni')
+        self.stack_files(files56)
 
     def fit_all(self, files, run):
         for f in files:
@@ -200,8 +201,6 @@ class NiAnalysis:
         con.close()
         print('Adjusted Center to', center)
 
-    #TODO Check Calibration!!
-
     def calibrate_all(self):
         files = self.get_files('60Ni')
         ref_frequ = 0
@@ -263,12 +262,12 @@ class NiAnalysis:
         return accVolt + delta_u
 
     def assign_cal(self):
-        # Assign calibration to 55Ni files
+        # Assign calibration to 56Ni files
         for tup in self.cal_groups:
             print('Tuple to assigne to :', tup[1])
             for file in tup[1]:
                 print('File:', file)
-                file55 = 'BECOLA_' + str(file) + '.xml'
+                file56 = 'BECOLA_' + str(file) + '.xml'
                 file600 = 'BECOLA_' + str(tup[0][0]) + '.xml'
                 file601 = 'BECOLA_' + str(tup[0][1]) + '.xml'
 
@@ -281,24 +280,24 @@ class NiAnalysis:
                 cal_volt = (cal_volt + cur.fetchall()[0][0]) / 2
                 con.close()
 
-                # Update 55Ni voltage to calibration
+                # Update 56Ni voltage to calibration
                 con = sqlite3.connect(self.db)
                 cur = con.cursor()
-                cur.execute('''UPDATE Files SET accVolt = ? WHERE file LIKE ?''', (cal_volt, file55,))
+                cur.execute('''UPDATE Files SET accVolt = ? WHERE file LIKE ?''', (cal_volt, file56,))
                 con.commit()
                 con.close()
 
-                print('Voltage updated for file', file55)
+                print('Voltage updated for file', file56)
 
-    def ana_55(self):
-        for run in self.runs55:
+    def ana_56(self):
+        for run in self.runs56:
             self.fit_stacked(run)
 
     def stack_files(self, files):
         scalers = [0, 1, 2]
 
         # prepare arrays, one list for each scaler
-        bin = 3
+        bin = 0.996947492252
         voltage = [[], [], []]
         sumcts = [[], [], []]
         sumbg = [[], [], []]
@@ -314,18 +313,19 @@ class NiAnalysis:
             t_min = (t0 - 2 * t_width) / 100
             t_max = (t0 + 2 * t_width) / 100
             print(t_min, t_max)
+
             # iterate through files and sum up
             volcts = [] # Will be a list of tuples: (DAC, cts, scans, bg)
             for f in files:
                 # spectrum only in the specified time gate
                 spec = XMLImporter(path=self.working_dir + '\\data\\' + str(f),
-                                   softw_gates=[[-350, 0, t_min, t_max], [-350, 0, t_min, t_max],
-                                                [-350, 0, t_min, t_max]])
+                                   softw_gates=[[-35, 15, t_min, t_max], [-35, 15, t_min, t_max],
+                                                [-35, 15, t_min, t_max]])
                 # spectrum of background
-                off = 200
+                off = 100
                 bg = XMLImporter(path=self.working_dir + '\\data\\' + str(f),
-                                 softw_gates=[[-350, 0, t_min + off, t_max + off], [-350, 0, t_min + off, t_max + off],
-                                              [-350, 0, t_min + off, t_max + off]])
+                                 softw_gates=[[-35, 15, t_min + off, t_max + off], [-35, 15, t_min + off, t_max + off],
+                                              [-35, 15, t_min + off, t_max + off]])
 
                 # plot uncalibrated spectrum
                 plt.plot(spec.x[0], spec.cts[0][s])
@@ -339,13 +339,13 @@ class NiAnalysis:
                     accV = cur.fetchall()[0][0]
                     con.close()
                     offset = accV - 29850
-                    volcts.append((x + offset, spec.cts[0][s][j], spec.nrScans[0], bg.cts[0][s][j]))
+                    volcts.append((x - offset, spec.cts[0][s][j], spec.nrScans[0], bg.cts[0][s][j]))
 
             plt.title('Uncalibrated, Scaler ' + str(s))
             plt.show()
 
             # create binned voltage list
-            v = np.arange(-267, -30, bin)
+            v = np.arange(-60, 30, bin)
             sumc = np.zeros(len(v)) # for summed counts
             sumb = np.zeros(len(v)) # for summed background
             sc = np.zeros(len(v))   # for summed scans
@@ -364,7 +364,7 @@ class NiAnalysis:
             v = np.delete(v, zInd)
             sc = np.delete(sc, zInd)
 
-            zInd = np.where(sc < 1500)
+            zInd = np.where(sc < 100)
             sumc = np.delete(sumc, zInd)
             sumb = np.delete(sumb, zInd)
             v = np.delete(v, zInd)
@@ -372,7 +372,7 @@ class NiAnalysis:
 
             # plot summed and calibrated counts and background
             plt.plot(v, sumc, 'b.')
-            plt.plot(v, sumb, 'r.')
+            plt.plot(v, sumb * 10, 'r.')
             plt.plot(v, sc, 'y.')
             plt.title('Calibrated and summed, Sclaer' + str(s))
             plt.show()
@@ -382,10 +382,11 @@ class NiAnalysis:
             for cts in sumc:
                 unc.append(np.sqrt(cts))
 
+            print(sc)
             # normalize
             sumc_norm = []
             for i, cts in enumerate(sumc):
-                sumc_norm.append(int(cts / sc[i] * 1000))
+                sumc_norm.append(int((cts - sumb[i])))
 
             plt.plot(v, sumc_norm, 'b.')
             plt.title('Calibrated, summed and normalized. Scaler' + str(s))
@@ -409,10 +410,10 @@ class NiAnalysis:
         # Create dictionary for xml export
         file_creation_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         header_dict = {'type': 'trs',
-                        'isotope': '55Ni',
+                        'isotope': '56Ni',
                         'isotopeStartTime': file_creation_time,
                         'accVolt': 29850,
-                        'laserFreq': Physics.wavenumber(self.laserFreq55) / 2,
+                        'laserFreq': Physics.wavenumber(self.laserFreq56) / 2,
                         'nOfTracks': 1,
                         'version': 99.0}
         track0_dict_header = {'trigger': {},  # Need a trigger dict!
@@ -431,7 +432,7 @@ class NiAnalysis:
                                 'nOfSteps': len(voltage[0]),
                                 'postAccOffsetVolt': 0,
                                 'postAccOffsetVoltControl': 0,
-                                'softwGates': [[-252, -42, 0, 1], [-252, -42, 0, 1], [-252, -42, 0, 1]],
+                                'softwGates': [[-40, -10, 0, 0.49], [-40, -10, 0, 0.49], [-40, -10, 0, 0.49]],
                                 #'softwGates': [[-252, -42, 0, 0.4], [-252, -42, 0, 0.4], [-252, -42, 0, 0.4]],
                                 # For each Scaler: [DAC_Start_Volt, DAC_Stop_Volt, scaler_delay, softw_Gate_width]
                                 'workingTime': [file_creation_time, file_creation_time],
@@ -467,28 +468,29 @@ class NiAnalysis:
 
         xmlWriteDict(root, dictionary)
         xml = ET.ElementTree(root)
-        xml.write(self.working_dir + '\\data\\BECOLA_Stacked60.xml')
+        xml.write(self.working_dir + '\\data\\BECOLA_Stacked56.xml')
 
         # Add to database
         con = sqlite3.connect(self.db)
         cur = con.cursor()
         cur.execute('''INSERT OR IGNORE INTO Files (file, filePath, date, type) VALUES (?, ?, ?, ?)''',
-                    ('BECOLA_Stacked60.xml', 'data\BECOLA_Stacked60.xml', file_creation_time, '55Ni' + '_sum'))
+                    ('BECOLA_Stacked56.xml', 'data\BECOLA_Stacked56.xml', file_creation_time, '56Ni_sum'))
         con.commit()
         cur.execute(
             '''UPDATE Files SET offset = ?, accVolt = ?,  laserFreq = ?, laserFreq_d = ?, colDirTrue = ?, 
             voltDivRatio = ?, lineMult = ?, lineOffset = ?, errDateInS = ? WHERE file = ? ''',
-            ('[0]', 29850, self.laserFreq55, 0, True, str({'accVolt': 1.0, 'offset': 1.0}), 1, 0,
-             1, 'BECOLA_Stacked60.xml'))
+            ('[0]', 29850, self.laserFreq56, 0, True, str({'accVolt': 1.0, 'offset': 1.0}), 1, 0,
+             1, 'BECOLA_Stacked56.xml'))
         con.commit()
         con.close()
 
-        stacked = XMLImporter(path=self.working_dir + '\\data\\' + 'BECOLA_Stacked60.xml')
+        stacked = XMLImporter(path=self.working_dir + '\\data\\' + 'BECOLA_Stacked56.xml')
         print(stacked.x[0])
 
     def fit_stacked(self, run, sym=True):
         con = sqlite3.connect(self.db)
         cur = con.cursor()
+        print(run)
         cur.execute('''SELECT fixShape from Lines WHERE refRun = ? ''', (run,))
         shape = cur.fetchall()
         shape_dict = ast.literal_eval(shape[0][0])
@@ -505,7 +507,7 @@ class NiAnalysis:
         con.close()
 
 
-        BatchFit.batchFit(['BECOLA_Stacked60.xml'], self.db, run, x_as_voltage=True,
+        BatchFit.batchFit(['BECOLA_Stacked56.xml'], self.db, run, x_as_voltage=True,
                           save_file_as='.png')
 
         con = sqlite3.connect(self.db)
@@ -517,7 +519,7 @@ class NiAnalysis:
         print('Al =', para_dict['Al'], '\nAu =', para_dict['Au'], '\nBl =', para_dict['Bl'], '\nBu =', para_dict['Bu'])
         al = para_dict['Al'][0]
         au = para_dict['Au'][0]
-        print('A relation =', str(au / al))
+        #print('A relation =', str(au / al))
 
     def find_timegates(self, file_list, track, scaler):
         # returns the center of the timegate and sigma
@@ -535,11 +537,12 @@ class NiAnalysis:
 
         # Fit a gaussian function to the time projection
         a, sigma, center, offset = self.fit_time(time, sum_t_proj)
+        print(a, sigma, center, offset)
 
         # Plot counts and fit
         plt.plot(time, sum_t_proj, 'b.')
         plt.title('Scaler' + str(scaler))
-        plt.plot(time, self.gauss(time, a, sigma, center, offset), 'r-')
+        plt.plot(time, self.lorentz(time, a, sigma, center, offset), 'r-')
         plt.axvline(center - 2 * sigma, color='y')
         plt.axvline(center + 2 * sigma, color='y')
         plt.show()
@@ -563,8 +566,10 @@ class NiAnalysis:
         param_bounds = ([0, 0, -np.inf, -np.inf], [np.inf, np.inf, np.inf, np.inf])
 
         # Fitting
-        a, sigma, center, offset = curve_fit(self.gauss, time, cts, start_par, bounds=param_bounds)[0]
-        return a, sigma, center, offset
+        #a, sigma, center, offset = curve_fit(self.gauss, time, cts, start_par, bounds=param_bounds)[0]
+        a, gamma, center, offset = curve_fit(self.lorentz, time, cts, start_par, bounds=param_bounds)[0]
+        #return a, sigma, center, offset
+        return a, gamma, center, offset
 
     def gauss(self, t, a, s , t0, o):
         # prams:    t: time
@@ -574,23 +579,59 @@ class NiAnalysis:
         #           o: offset
         return o + a / np.sqrt(2 * np.pi * s ** 2) * np.exp(-1 / 2 * np.square((t - t0) / s))
 
+    def lorentz(self, x, a, gam, loc, o):
+        lw = gam * 2
+        return o + (a * 2 / (math.pi * lw)) * ((lw ** 2 / 4) / ((x - loc) ** 2 + (lw ** 2 / 4)))
+
+    def center_ref(self,files):
+        centers = []
+        errs = []
+        for run in self.runs60:
+            for f in files:
+                con = sqlite3.connect(self.db)
+                cur = con.cursor()
+                print(f, run)
+                cur.execute('''SELECT pars FROM FitRes WHERE file = ? AND run = ?''', (f, run,))
+                center = ast.literal_eval(cur.fetchall()[0][0])
+                con.close()
+                centers.append(center['center'][0])
+                errs.append(center['center'][1])
+        weights = []
+        for e in errs:
+            weights.append(1 / (e ** 2))
+        center_average = np.average(centers, weights=weights)
+        center_sigma = np.std(centers)
+        return center_average, center_sigma
+
 
 working_dir = 'D:\\Daten\\IKP\\Nickel-Auswertung\\Auswertung'
-db = 'Nickel_BECOLA_60Ni-55Ni.sqlite'
+db = 'Nickel_BECOLA_60Ni-56Ni-stacked.sqlite'
 line_vars = ['58_0','58_1','58_2']
 runs60 = ['AsymVoigt0', 'AsymVoigt1', 'AsymVoigt2']
-runs55 = ['AsymVoigt55_0', 'AsymVoigt55_1', 'AsymVoigt55_2', 'AsymVoigt55_All']
+runs56 = ['AsymVoigt56_0', 'AsymVoigt56_1', 'AsymVoigt56_2', 'AsymVoigt56_All']
 frequ_60ni = 850344183
-reference_groups = [(6363, 6362), (6396, 6395), (6419, 6417), (6463, 6462), (6466, 6467), (6502, 6501)]
-calibration_groups = [((6363, 6396), (6369, 6373, 6370, 6375, 6376, 6377, 6378, 6380, 6382, 6383, 6384, 6387, 6391,
-                                      6392, 6393)),
-                      ((6396, 6419), (6399, 6400, 6401, 6402, 6404, 6405, 6406, 6408, 6410, 6411, 6412)),
-                      ((6419, 6463), (6428, 6429, 6430, 6431, 6432, 6433, 6434, 6436, 6438, 6440, 6441, 6444, 6445,
-                                      6447, 6448)),
-                      ((6466, 6502), (6468, 6470, 6471, 6472, 6473, 6478, 6479, 6480, 6493))]
-niAna = NiAnalysis(working_dir, db, line_vars, runs60, runs55, frequ_60ni, reference_groups, calibration_groups)
-#niAna.reset()
-#niAna.prep()
-niAna.ana_55()
-
+reference_groups = [(6192,6191), (6208, 6207), (6243, 6242), (6254, 6253), (6259, 6253)]
+calibration_groups = [((6192, 6208), (6202, 6203, 6204), (6208, 6243), (6211, 6213, 6214)),
+                      ((6243, 6254), (6238, 6239, 6240)), ((6254, 6259), (6251, 6252))]
+niAna = NiAnalysis(working_dir, db, line_vars, runs60, runs56, frequ_60ni, reference_groups, calibration_groups)
+niAna.reset()
+niAna.prep()
+niAna.ana_56()
+files60 = niAna.get_files('60Ni')
+center60, sigma60 = niAna.center_ref(files60)
+print('Reference center is', center60, '+/-', sigma60)
+file56 = niAna.get_files('56Ni_sum')
+con = sqlite3.connect(niAna.db)
+cur = con.cursor()
+cur.execute('''SELECT pars FROM FitRes WHERE file = ?''', (file56[0],))
+pars = cur.fetchall()
+con.close()
+center56 = []
+weigths56  = []
+for res in pars:
+    center_pars = ast.literal_eval(res[0])
+    center56.append(center_pars['center'][0])
+    weigths56.append(1 / (center_pars['center'][1] ** 2))
+center56 = np.average(center56, weights=weigths56)
+print(center56)
 # TODO find start parameters

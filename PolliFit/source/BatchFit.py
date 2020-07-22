@@ -71,7 +71,6 @@ def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=No
     fitter_iso = None
     fitter_m = None
 
-    print('-----------------------------------')
     print("Fitting", file)
     cur.execute('''SELECT filePath FROM Files WHERE file = ?''', (file,))
     
