@@ -50,7 +50,7 @@ class BECOLAExelcuter():
         # print('Loading files for search...')
         self.load_xlsx_in_dir(self.working_dir)
 
-    def run(self):
+    def run(self, returnlen=None):
         # search all workbooks for a specific run number
         retlist = []
         for workbooks in self.wb_dict:
@@ -59,6 +59,8 @@ class BECOLAExelcuter():
                 retlist = self.extract_row_as_list(colrow_tup[1], self.wb_dict[workbooks].worksheets[0],
                                                    end_by_empty=False)
                 # print(retlist)
+        if returnlen is not None:
+            retlist = retlist[:returnlen]
         return retlist
 
     def load_single_xlsx_file(self, filepath):
@@ -114,7 +116,7 @@ class BECOLAExelcuter():
         else:
             return ret
 
-    def extract_row_as_list(self, row, worksheet, start_par='A', end_par='M', end_by_empty=True):
+    def extract_row_as_list(self, row, worksheet, start_par='A', end_par='X', end_by_empty=True):
         """
         Example: extract_column_as_dict('A', new_wb.worksheets[0], end_par=3)
         :param row: int, Row as int (e.g. '2')

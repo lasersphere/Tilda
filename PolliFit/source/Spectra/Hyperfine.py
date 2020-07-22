@@ -74,8 +74,13 @@ class Hyperfine(object):
         self.intens = self.buildInt(p)
         self.IntCross = self.buildIntCross(p)
 
-    def getPars(self, pos=0):
-        """Return list of initial parameters and initialize positions"""
+    def getPars(self, pos=0, int_f=1):
+        """
+        Return list of initial parameters and initialize positions
+        :param pos:
+        :param int_f: possibility to scale the intensities with a factor (used when offset parameter is guessed)
+        :return:
+        """
         self.pCenter = pos
         self.pAl = pos + 1
         self.pBl = pos + 2
@@ -94,12 +99,12 @@ class Hyperfine(object):
                     div = ret[0]
                     for i in range(0, len(ret)):
                         ret[i] = ret[i] / div
-                    ret[0] *= self.iso.intScale
+                    ret[0] *= self.iso.intScale*int_f
                     self.IntCross = [g * (- 0.2) for g in ret] if self.iso.shape['name'] == 'LorentzQI' else []
                 else:
                     ret = [i / self.iso.relInt[0] for i in self.iso.relInt[:len(self.trans)]]
                     self.IntCross = [i / self.iso.relInt[0] for i in self.iso.relInt[len(self.trans):]]
-                    ret[0] *= self.iso.intScale
+                    ret[0] *= self.iso.intScale*int_f
             else:
                 self.IntCross = []
                 if len(self.iso.relInt) != len(self.trans):
@@ -109,12 +114,12 @@ class Hyperfine(object):
                     div = ret[0]
                     for i in range(0, len(ret)):
                         ret[i] = ret[i]/div
-                    ret[0] *= self.iso.intScale
+                    ret[0] *= self.iso.intScale*int_f
                 else:
                     ret = [i / self.iso.relInt[0] for i in self.iso.relInt]
-                    ret[0] *= self.iso.intScale
+                    ret[0] *= self.iso.intScale*int_f
         else:
-            ret = [self.iso.intScale * x for x in Physics.HFInt(self.iso.I, self.iso.Jl, self.iso.Ju, self.trans)]
+            ret = [self.iso.intScale*int_f * x for x in Physics.HFInt(self.iso.I, self.iso.Jl, self.iso.Ju, self.trans)]
             self.IntCross = [g * (- 0.2) for g in ret] if self.iso.shape['name'] == 'LorentzQI' else []
 
         # faktor -0.2 is the mean ratio to Int
@@ -249,11 +254,11 @@ class HyperfineN(Hyperfine):
         int_pars = [1.] + [p[getattr(self, 'pRelInt{}'.format(i))] for i in range(self.n_peaks - 1)]
         return sum(super(HyperfineN, self).evaluate(x - x0, p) * relInt for x0, relInt in zip(center_pars, int_pars))
 
-    def getPars(self, pos=0):
+    def getPars(self, pos=0, int_f=1):
         """Return list of initial parameters and initialize positions"""
         self.p_n_peaks = pos
         self.set_peaks(self.iso.shape.get('nPeaks', 1))
-        super_pars = super().getPars(pos + 1 + 2 * (self.n_peaks - 1))
+        super_pars = super().getPars(pos + 1 + 2 * (self.n_peaks - 1), int_f)
         for i in range(self.n_peaks - 1):
             setattr(self, 'pRelCenter{}'.format(i), pos + 1 + i)
             setattr(self, 'pRelInt{}'.format(i), pos + self.n_peaks + i)
