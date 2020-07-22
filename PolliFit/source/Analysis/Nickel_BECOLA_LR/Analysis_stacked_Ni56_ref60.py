@@ -291,7 +291,7 @@ class NiAnalysis:
 
     def ana_56(self):
         for run in self.runs56:
-            self.fit_stacked(run)
+            self.fit_stacked(run, sym= False)
 
     def stack_files(self, files):
         scalers = [0, 1, 2]
@@ -322,7 +322,7 @@ class NiAnalysis:
                                    softw_gates=[[-35, 15, t_min, t_max], [-35, 15, t_min, t_max],
                                                 [-35, 15, t_min, t_max]])
                 # spectrum of background
-                off = 100
+                off = 1
                 bg = XMLImporter(path=self.working_dir + '\\data\\' + str(f),
                                  softw_gates=[[-35, 15, t_min + off, t_max + off], [-35, 15, t_min + off, t_max + off],
                                               [-35, 15, t_min + off, t_max + off]])
@@ -338,7 +338,7 @@ class NiAnalysis:
                     cur.execute('''SELECT accVolt from Files WHERE file  = ?''', (f,))
                     accV = cur.fetchall()[0][0]
                     con.close()
-                    offset = accV - 29850
+                    offset = (accV - 29850)
                     volcts.append((x - offset, spec.cts[0][s][j], spec.nrScans[0], bg.cts[0][s][j]))
 
             plt.title('Uncalibrated, Scaler ' + str(s))
@@ -372,7 +372,7 @@ class NiAnalysis:
 
             # plot summed and calibrated counts and background
             plt.plot(v, sumc, 'b.')
-            plt.plot(v, sumb * 10, 'r.')
+            plt.plot(v, sumb, 'r.')
             plt.plot(v, sc, 'y.')
             plt.title('Calibrated and summed, Sclaer' + str(s))
             plt.show()
@@ -382,11 +382,10 @@ class NiAnalysis:
             for cts in sumc:
                 unc.append(np.sqrt(cts))
 
-            print(sc)
             # normalize
             sumc_norm = []
             for i, cts in enumerate(sumc):
-                sumc_norm.append(int((cts - sumb[i])))
+                sumc_norm.append(int((cts) / sumb[i] * np.mean(sumb)))
 
             plt.plot(v, sumc_norm, 'b.')
             plt.title('Calibrated, summed and normalized. Scaler' + str(s))
@@ -432,7 +431,7 @@ class NiAnalysis:
                                 'nOfSteps': len(voltage[0]),
                                 'postAccOffsetVolt': 0,
                                 'postAccOffsetVoltControl': 0,
-                                'softwGates': [[-40, -10, 0, 0.49], [-40, -10, 0, 0.49], [-40, -10, 0, 0.49]],
+                                'softwGates': [[-40, -10, 0, timestep], [-40, -10, 0, timestep], [-40, -10, 0, timestep]],
                                 #'softwGates': [[-252, -42, 0, 0.4], [-252, -42, 0, 0.4], [-252, -42, 0, 0.4]],
                                 # For each Scaler: [DAC_Start_Volt, DAC_Stop_Volt, scaler_delay, softw_Gate_width]
                                 'workingTime': [file_creation_time, file_creation_time],
@@ -485,7 +484,6 @@ class NiAnalysis:
         con.close()
 
         stacked = XMLImporter(path=self.working_dir + '\\data\\' + 'BECOLA_Stacked56.xml')
-        print(stacked.x[0])
 
     def fit_stacked(self, run, sym=True):
         con = sqlite3.connect(self.db)
@@ -498,7 +496,7 @@ class NiAnalysis:
         if sym:
             shape_dict['asy'] = True
         else:
-            shape_dict['asy'] = False
+            shape_dict['asy'] = [0,30]
         print(shape_dict['asy'])
         con = sqlite3.connect(self.db)
         cur = con.cursor()
@@ -634,4 +632,4 @@ for res in pars:
     weigths56.append(1 / (center_pars['center'][1] ** 2))
 center56 = np.average(center56, weights=weigths56)
 print(center56)
-# TODO find start parameters
+# TODO assign corrected normalisation to 55Ni
