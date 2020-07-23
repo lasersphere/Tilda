@@ -630,6 +630,7 @@ for res in pars:
     center_pars = ast.literal_eval(res[0])
     center56.append(center_pars['center'][0])
     weigths56.append(1 / (center_pars['center'][1] ** 2))
-center56 = np.average(center56, weights=weigths56)
-print(center56)
+mean_center56 = np.average(center56, weights=weigths56)
+print(mean_center56, '+/-', np.std(center56))
+
 # TODO assign corrected normalisation to 55Ni
