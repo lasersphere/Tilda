@@ -51,6 +51,9 @@ class FullSpec(object):
         
     def evaluate(self, x, p, ih=-1, full=False):
         """Return the value of the hyperfine structure at point x / MHz, ih=index hyperfine"""
+        x = np.asarray(x)
+        if x.size == 0:
+            return np.array([])
         if not full and self.cut_x != {}:  # The x-axis is only split if explicitly stated and cuts are available.
             order = np.argsort(x)  # Find ascending order of x
             inverse_order = np.array([int(np.where(order == i)[0])

@@ -40,7 +40,7 @@ class LorentzQI(object):
             if self.iso.Ju != 0.5:
                 pjc = pj - 2 if pj%3 == 2 else pj + 1
 
-                return Physics.lorentzQI(x, 0, lineSplit[pjc] - lineSplit[pj], p[self.pGam]) / self.norm
+                return Physics.lorentzQI(x, 0, lineSplit[pjc] - lineSplit[pj], p[self.pGam]) / self.norm / 2
 
             else:
                 print('Evaluation for Ju = 0,5 is not implemented!')
