@@ -54,22 +54,24 @@ class NiAnalysis:
         center = []
         uncert = []
         for f in files:
-            file_center = 0
-            file_uncert = 0
+            file_center = []
+            weights = []
             for run in self.runsRef:
                 con = sqlite3.connect(self.db)
                 cur = con.cursor()
                 cur.execute('''SELECT pars FROM FitRes WHERE file = ? AND run = ?''', (f, run,))
                 center_pars = ast.literal_eval(cur.fetchall()[0][0])['center']
-                file_center += center_pars[0] + self.frequ_60ni
-                file_uncert += center_pars[1] ** 2
-            file_center = file_center / len(self.runsRef)
-            file_uncert = np.sqrt(file_uncert)
-            center.append(file_center)
+                file_center.append(center_pars[0] + self.frequ_60ni)
+                print('file:', f, ':', center_pars)
+                weights.append(1 / (center_pars[1] ** 2))
+            mean_file_center = np.average(file_center, weights=weights)
+            file_uncert = np.std(file_center)
+            center.append(mean_file_center)
             uncert.append(file_uncert)
         plt.errorbar([6192, 6208, 6243, 6254, 6259], center, yerr=uncert)
         plt.title('Center uncalibrated')
         plt.show()
+        print('Uncalibrated centers:', center)
 
         # Calibrate on absolute transition frequency of 60Ni
         self.calibrate_all()
@@ -83,18 +85,19 @@ class NiAnalysis:
         center = []
         uncert = []
         for f in files:
-            file_center = 0
-            file_uncert = 0
+            file_center = []
+            weights = []
             for run in self.runsRef:
                 con = sqlite3.connect(self.db)
                 cur = con.cursor()
                 cur.execute('''SELECT pars FROM FitRes WHERE file = ? AND run = ?''', (f, run,))
                 center_pars = ast.literal_eval(cur.fetchall()[0][0])['center']
-                file_center += center_pars[0] + self.frequ_60ni
-                file_uncert += center_pars[1] ** 2
-            file_center = file_center / len(self.runsRef)
-            file_uncert = np.sqrt(file_uncert)
-            center.append(file_center)
+                file_center.append(center_pars[0] + self.frequ_60ni)
+                print('file:', f, ':', center_pars)
+                weights.append(1 / (center_pars[1] ** 2))
+            mean_file_center = np.average(file_center, weights=weights)
+            file_uncert = np.std(file_center)
+            center.append(mean_file_center)
             uncert.append(file_uncert)
         weights = []
         for u in uncert:
@@ -105,41 +108,7 @@ class NiAnalysis:
         plt.plot([6192, 6259], [self.frequ_60ni, self.frequ_60ni], 'g')
         plt.title('Center calibrated')
         plt.show()
-
-        # Calibrate on absolute transition frequency of 60Ni
-        self.calibrate_all()
-        print('-------------------- Calibration done')
-
-        # refit
-        for run in self.runsRef:
-            self.fit_all(files, run)
-
-        # plot calibrated center
-        center = []
-        uncert = []
-        for f in files:
-            file_center = 0
-            file_uncert = 0
-            for run in self.runsRef:
-                con = sqlite3.connect(self.db)
-                cur = con.cursor()
-                cur.execute('''SELECT pars FROM FitRes WHERE file = ? AND run = ?''', (f, run,))
-                center_pars = ast.literal_eval(cur.fetchall()[0][0])['center']
-                file_center += center_pars[0] + self.frequ_60ni
-                file_uncert += center_pars[1] ** 2
-            file_center = file_center / len(self.runsRef)
-            file_uncert = np.sqrt(file_uncert)
-            center.append(file_center)
-            uncert.append(file_uncert)
-        weights = []
-        for u in uncert:
-            weights.append(1 / (u ** 2))
-        mean = np.average(center, weights=weights)
-        plt.errorbar([6192, 6208, 6243, 6254, 6259], center, yerr=uncert)
-        plt.plot([6192, 6259], [mean, mean], 'r')
-        plt.plot([6192, 6259], [self.frequ_60ni, self.frequ_60ni], 'g')
-        plt.title('Center calibrated')
-        plt.show()
+        print('calibrated centers:', center)
 
         #Assign calibration
         #self.assign_cal()
@@ -264,6 +233,7 @@ class NiAnalysis:
             abs_frequ = np.average(center, weights=weights) + ref_frequ
             abs_frequs.append(abs_frequ)
             unc.append(np.std(center))
+            print('Absolute frequency befor calibration:', abs_frequ)
             accVolt = self.calibrate(f, abs_frequ)
 
             # write calibrated Voltage to database
@@ -291,9 +261,11 @@ class NiAnalysis:
         accVolt = cur.fetchall()[0][0]
         con.close()
         diffDopp60 = Physics.diffDoppler(frequ, accVolt, 60)
+        print('differential doppler shift:', diffDopp60)
 
         # Calculate calibration
         delta_u = delta_frequ / diffDopp60
+        print('Delta voltage:', delta_u)
         return accVolt + delta_u
 
     def assign_cal(self):
@@ -357,7 +329,7 @@ class NiAnalysis:
                                    softw_gates=[[-35, 15, t_min, t_max], [-35, 15, t_min, t_max],
                                                 [-35, 15, t_min, t_max]])
                 # spectrum of background
-                off = 1
+                off = 3
                 bg = XMLImporter(path=self.working_dir + '\\data\\' + str(f),
                                  softw_gates=[[-35, 15, t_min + off, t_max + off], [-35, 15, t_min + off, t_max + off],
                                               [-35, 15, t_min + off, t_max + off]])
