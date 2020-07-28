@@ -326,9 +326,16 @@ class NiAnalysis:
                 # spectrum of background
                 off = 2
                 bg = XMLImporter(path=self.working_dir + '\\data\\' + str(f),
-                                 softw_gates=[[-350, 0, t_min + off, t_max + off], [-350, 0, t_min + off, t_max + off],
-                                              [-350, 0, t_min + off, t_max + off]])
-
+                                 softw_gates=[[-350, 0, 0.5, 4], [-350, 0, 0.5, 4],
+                                              [-350, 0, 0.5, 4]])
+                # normalization of background to number of bins
+                print('no normalization:', bg.cts[0][s])
+                print(t_width)
+                norm_factor = 2 * t_width / 100 / 3.5
+                print('Normalization factor:', norm_factor)
+                for i, c in enumerate(bg.cts[0][s]):
+                    bg.cts[0][s][i] = c * norm_factor
+                print('After normalization:', bg.cts[0][s])
                 # plot uncalibrated spectrum
                 plt.plot(spec.x[0], spec.cts[0][s])
                 plt.plot(bg.x[0], bg.cts[0][s]-100)
@@ -612,8 +619,8 @@ calibration_groups = [((6363, 6396), (6369, 6373, 6370, 6375, 6376, 6377, 6378, 
                                       6447, 6448)),
                       ((6466, 6502), (6468, 6470, 6471, 6472, 6473, 6478, 6479, 6480, 6493))]
 niAna = NiAnalysis(working_dir, db, line_vars, runs60, runs55, frequ_60ni, reference_groups, calibration_groups)
-niAna.reset()
-niAna.prep()
+#niAna.reset()
+#niAna.prep()
 niAna.ana_55()
 files55 = niAna.get_files('60Ni')
 center55, sigma55 = niAna.center_ref(files55)

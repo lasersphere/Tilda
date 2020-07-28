@@ -328,9 +328,16 @@ class NiAnalysis:
                 # spectrum of background
                 off = 1
                 bg = XMLImporter(path=self.working_dir + '\\data\\' + str(f),
-                                 softw_gates=[[-35, 15, t_min + off, t_max + off], [-35, 15, t_min + off, t_max + off],
-                                              [-35, 15, t_min + off, t_max + off]])
-
+                                 softw_gates=[[-35, 15, 0.5, 4], [-35, 15, 0.5, 4],
+                                              [-35, 15, 0.5, 4]])
+                # normalization of background to number of bins
+                print('no normalization:', bg.cts[0][s])
+                print(t_width)
+                norm_factor = 2 * t_width / 100 / 3.5
+                print('Normalization factor:', norm_factor)
+                for i, c in enumerate(bg.cts[0][s]):
+                    bg.cts[0][s][i] = c * norm_factor
+                print('After normalization:', bg.cts[0][s])
                 # plot uncalibrated spectrum
                 plt.plot(spec.x[0], spec.cts[0][s])
                 plt.plot(bg.x[0], bg.cts[0][s])
