@@ -25,6 +25,7 @@ qe = 1.602176565e-19    #electron charge
 qe_d = 3.5e-27
 h = 6.626070040e-34    #planck constant
 hbar = h / (2*pi)
+LEMNISCATE = 2.6220575543
 
 
 def relVelocity(e, m):
@@ -114,6 +115,27 @@ def fanoVoigt(x, sig, gam, dispersive):
     '''Fano Voigt profile, unnormalized, using the Faddeeva function and their imaginary part'''
     return special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).real / (sig * math.sqrt(2 * math.pi)) +\
            dispersive * special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).imag / (sig * math.sqrt(2 * math.pi))
+
+def source_energy_pdf(x, x0, sigma, xi, collinear=True):
+    ''' PDF of rest frame frequencies after acceleration of thermally and normally distributed kinetic energies. '''
+    pm = 1. if collinear else -1.
+    x = np.asarray(x)
+    sig = (sigma / (2. * xi)) ** 2
+    norm = np.exp(-0.5 * sig) / (sigma * np.sqrt(2. * np.pi))
+    mu = -pm * (x - x0) / (2. * xi) - sig
+    nonzero = mu.astype(bool)
+    mu = mu[nonzero]
+    b_arg = mu ** 2 / (4. * sig)
+    main = np.full(x.shape, np.sqrt(LEMNISCATE * np.sqrt(sig / np.pi)))
+    main_nonzero = np.empty_like(x[nonzero], dtype=float)
+    mask = mu < 0.
+
+    main_nonzero[mask] = np.sqrt(-0.5 * mu[mask] / np.pi) * np.exp(-mu[mask]) \
+        * np.exp(-b_arg[mask]) * special.kv(0.25, b_arg[mask])
+    main_nonzero[~mask] = 0.5 * np.sqrt(mu[~mask] * np.pi) * np.exp(-mu[~mask]) \
+        * (special.ive(0.25, b_arg[~mask]) + special.ive(-0.25, b_arg[~mask]))
+    main[nonzero] = main_nonzero
+    return main * norm
 
 def thermalLorentz(x, loc, gam, xi, colDirTrue, order):
     '''Lineshape developed in Kretzschmar et al., Appl. Phys. B, 79, 623 (2004)'''
