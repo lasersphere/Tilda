@@ -400,8 +400,11 @@ def xml_get_data_from_track(
             data_numpy = numpy_array_from_string(dataText, data_shape, datatytpe)
             return data_numpy
         except Exception as e:
-            print('error while searching ' + str(data_type) + ' in track' + str(n_of_track) + ' in ' + str(root_ele))
-            print('error is: ', e)
+            if 'error' in data_type:
+                logging.info('No specific errors defined in file. Using standard errors.')
+            else:
+                logging.error('error while searching ' + str(data_type) + ' in track' + str(n_of_track) + ' in ' + str(root_ele))
+                logging.error('error is: ', e)
             return None
 
 
@@ -440,7 +443,7 @@ def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
     return scan_dict, xml_etree
 
 
-def gate_one_track(tr_ind, tr_num, scan_dict, data, time_array, volt_array, ret):
+def gate_one_track(tr_ind, tr_num, scan_dict, data, time_array, volt_array, ret, data_is_errors=False):
     """
     Function to gate all data of one track by applying the software gates given
      in scan_dict[tr_name]['softwGates'] as a list of all pmts
@@ -487,10 +490,17 @@ def gate_one_track(tr_ind, tr_num, scan_dict, data, time_array, volt_array, ret)
     finally:
         for pmt_ind, pmt_gate in enumerate(gates_tr):
             try:
-                t_proj_xdata = np.sum(data[tr_ind][pmt_ind][pmt_gate[0]:pmt_gate[1] + 1, :], axis=0)
-                v_proj_ydata = np.sum(data[tr_ind][pmt_ind][:, pmt_gate[2]:pmt_gate[3] + 1], axis=1)
-                v_proj_tr[pmt_ind] = v_proj_ydata
-                t_proj_tr[pmt_ind] = t_proj_xdata
+                if data_is_errors:
+                    # sum in quadrature
+                    t_proj_xdata = np.sqrt(np.sum(np.square(data[tr_ind][pmt_ind][pmt_gate[0]:pmt_gate[1] + 1, :]), axis=0))
+                    v_proj_ydata = np.sqrt(np.sum(np.square(data[tr_ind][pmt_ind][:, pmt_gate[2]:pmt_gate[3] + 1]), axis=1))
+                    v_proj_tr[pmt_ind] = v_proj_ydata
+                    t_proj_tr[pmt_ind] = t_proj_xdata
+                else:
+                    t_proj_xdata = np.sum(data[tr_ind][pmt_ind][pmt_gate[0]:pmt_gate[1] + 1, :], axis=0)
+                    v_proj_ydata = np.sum(data[tr_ind][pmt_ind][:, pmt_gate[2]:pmt_gate[3] + 1], axis=1)
+                    v_proj_tr[pmt_ind] = v_proj_ydata
+                    t_proj_tr[pmt_ind] = t_proj_xdata
             except Exception as e:
                 print('bla: ', e)
         ret.append([v_proj_tr, t_proj_tr])
@@ -540,9 +550,15 @@ def gate_specdata(spec_data, full_x_range=True):
             v_proj_res = np.sum(spec_data.time_res[tr_ind][pmt_ind][:, t_min_ind:t_max_ind], axis=1)
             spec_data.t_proj[tr_ind][pmt_ind] = t_proj_res
             spec_data.cts[tr_ind][pmt_ind] = v_proj_res
-            spec_error = deepcopy(v_proj_res) # Errors have to be regated as well
-            spec_error[spec_error < 1] = 1
-            spec_data.err[tr_ind][pmt_ind] = np.sqrt(spec_error)
+            if spec_data.time_res_err:
+                # specific errors available!
+                spec_error = np.sqrt(np.sum(np.square(spec_data.time_res_err[tr_ind][pmt_ind][:, t_min_ind:t_max_ind]), axis=1))
+                spec_error[spec_error < 1] = 1
+                spec_data.err[tr_ind][pmt_ind] = spec_error
+            else:
+                spec_error = deepcopy(v_proj_res) # Errors have to be regated as well
+                spec_error[spec_error < 1] = 1
+                spec_data.err[tr_ind][pmt_ind] = np.sqrt(spec_error)
     return spec_data
 
 

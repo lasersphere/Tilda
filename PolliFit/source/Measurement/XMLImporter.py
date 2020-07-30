@@ -109,6 +109,10 @@ class XMLImporter(SpecData):
         #  list contains numpy arrays with structure: ('sc', 'step', 'time', 'cts')
         #  indices in list correspond to track indices
 
+        # in some special cases (e.g. combined data) errors might need to be given externally
+        self.time_res_err = []  # non-standard error time resolved matrices only for time resolved measurements
+        self.time_res_zf_err = []  # time resolved list of non-standard errors in form of indices, zf is for zero free,
+
         self.stepSize = []
         self.col = False  # should also be a list for multiple tracks
         self.dwell = []
@@ -130,7 +134,6 @@ class XMLImporter(SpecData):
         self.outbitsPars = []
         ''' operations on each track: '''
         for tr_ind, tr_name in enumerate(TildaTools.get_track_names(scandict)):
-
 
             track_dict = scandict[tr_name]
             scan_dev_dict_tr = track_dict.get('scanDevice', draft_scan_device)
@@ -188,15 +191,21 @@ class XMLImporter(SpecData):
 
             self.nrScalers.append(nOfScalers)
             self.col = track_dict['colDirTrue']
+
             if self.seq_type in ['trs', 'tipa', 'trsdummy']:
                 self.softBinWidth_ns.append(track_dict.get('softBinWidth_ns', 10))
                 self.t = TildaTools.create_t_axis_from_file_dict(scandict, with_delay=True)  # force 10 ns resolution
                 cts_shape.append((nOfScalers, nOfsteps, nOfBins))
                 scaler_array = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'scalerArray', cts_shape[tr_ind])
+                # maybe the file has non-standard errors. Try to import them. Fail will return NONE:
+                error_array = TildaTools.xml_get_data_from_track(
+                    lxmlEtree, nOfactTrack, 'errorArray', cts_shape[tr_ind])
+
                 v_proj = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'voltage_projection', (nOfScalers, nOfsteps),
                     direct_parent_ele_str='projections')
+
                 t_proj = None
                 if isinstance(scaler_array[0], np.void):  # this is zero free data
                     self.time_res_zf.append(scaler_array)
@@ -206,6 +215,16 @@ class XMLImporter(SpecData):
                     self.time_res.append(scaler_array)
                     zf_data_tr = TildaTools.non_zero_free_to_zero_free([scaler_array])[0]
                     self.time_res_zf.append(zf_data_tr)
+                if error_array is not None:
+                    if isinstance(error_array[0], np.void):  # this is zero free data
+                        self.time_res_zf_err.append(error_array)
+                        time_res_err_classical_tr = TildaTools.zero_free_to_non_zero_free(self.time_res_zf_err,
+                                                                                          cts_shape)[tr_ind]
+                        self.time_res_err.append(time_res_err_classical_tr)
+                    else:  # classic full matrix array
+                        self.time_res_err.append(error_array)
+                        zf_err_tr = TildaTools.non_zero_free_to_zero_free([error_array])[0]
+                        self.time_res_zf_err.append(zf_err_tr)
 
                 if softw_gates is None:
                     # TODO: Change copy/paste from laptop. Should be solved elegantly and tested.
@@ -236,7 +255,16 @@ class XMLImporter(SpecData):
                     v_proj, t_proj = TildaTools.gate_one_track(
                         tr_ind, nOfactTrack, scandict, self.time_res, self.t, self.x, [])[0]
                 self.cts.append(v_proj)
-                self.err.append(np.sqrt(v_proj))
+
+                if error_array is not None:
+                    # errors are explicitly given. Use those.
+                    # first gate the errors
+                    v_proj_err, t_proj_err = TildaTools.gate_one_track(
+                        tr_ind, nOfactTrack, scandict, self.time_res_err, self.t, self.x, [], data_is_errors=True)[0]
+                    self.err.append(v_proj_err)
+                else:
+                    # if no errors were specified, use standard errors
+                    self.err.append(np.sqrt(v_proj))
                 self.err[-1][self.err[-1] < 1] = 1  # remove 0's in the error
                 self.t_proj.append(t_proj)
                 self.softw_gates.append(track_dict['softwGates'])
