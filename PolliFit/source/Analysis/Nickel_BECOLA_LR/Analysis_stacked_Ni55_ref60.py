@@ -294,7 +294,7 @@ class NiAnalysis:
 
     def ana_55(self):
         for run in self.runs55:
-            self.fit_stacked(run)
+            self.fit_stacked(run, sym=False)
 
     def stack_files(self, files):
         scalers = [0, 1, 2]
@@ -324,7 +324,6 @@ class NiAnalysis:
                                    softw_gates=[[-350, 0, t_min, t_max], [-350, 0, t_min, t_max],
                                                 [-350, 0, t_min, t_max]])
                 # spectrum of background
-                off = 2
                 bg = XMLImporter(path=self.working_dir + '\\data\\' + str(f),
                                  softw_gates=[[-350, 0, 0.5, 4], [-350, 0, 0.5, 4],
                                               [-350, 0, 0.5, 4]])
@@ -619,8 +618,10 @@ calibration_groups = [((6363, 6396), (6369, 6373, 6370, 6375, 6376, 6377, 6378, 
                                       6447, 6448)),
                       ((6466, 6502), (6468, 6470, 6471, 6472, 6473, 6478, 6479, 6480, 6493))]
 niAna = NiAnalysis(working_dir, db, line_vars, runs60, runs55, frequ_60ni, reference_groups, calibration_groups)
-#niAna.reset()
-#niAna.prep()
+niAna.reset()
+niAna.prep()
+#files55 = niAna.get_files('55Ni')
+#niAna.stack_files(files55)
 niAna.ana_55()
 files55 = niAna.get_files('60Ni')
 center55, sigma55 = niAna.center_ref(files55)

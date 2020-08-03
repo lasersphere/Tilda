@@ -350,6 +350,11 @@ class NiAnalysis:
                     accV = cur.fetchall()[0][0]
                     con.close()
                     offset = (accV - 29850)
+                    print(min(spec.x[0]))
+                    print(accV)
+                    print(offset)
+                    print(x)
+                    print(x-offset)
                     volcts.append((x - offset, spec.cts[0][s][j], spec.nrScans[0], bg.cts[0][s][j]))
 
             plt.title('Uncalibrated, Scaler ' + str(s))
@@ -620,7 +625,7 @@ runs60 = ['AsymVoigt0', 'AsymVoigt1', 'AsymVoigt2']
 runs56 = ['AsymVoigt56_0', 'AsymVoigt56_1', 'AsymVoigt56_2', 'AsymVoigt56_All']
 frequ_60ni = 850344183
 reference_groups = [(6192,6191), (6208, 6207), (6243, 6242), (6254, 6253), (6259, 6253)]
-calibration_groups = [((6192, 6208), (6202, 6203, 6204), (6208, 6243), (6211, 6213, 6214)),
+calibration_groups = [((6192, 6208), (6202, 6203, 6204)), ((6208, 6243), (6211, 6213, 6214)),
                       ((6243, 6254), (6238, 6239, 6240)), ((6254, 6259), (6251, 6252))]
 niAna = NiAnalysis(working_dir, db, line_vars, runs60, runs56, frequ_60ni, reference_groups, calibration_groups)
 niAna.reset()
