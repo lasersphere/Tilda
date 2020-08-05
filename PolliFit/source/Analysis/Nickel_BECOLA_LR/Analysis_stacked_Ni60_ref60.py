@@ -510,7 +510,6 @@ class NiAnalysis:
             shape_dict['asy'] = True
         else:
             shape_dict['asy'] = [0,30]
-        print(shape_dict['asy'])
         con = sqlite3.connect(self.db)
         cur = con.cursor()
         cur.execute('''UPDATE Lines SET fixShape = ? WHERE refRun = ?''', (str(shape_dict), run))
@@ -619,14 +618,15 @@ working_dir = 'D:\\Daten\\IKP\\Nickel-Auswertung\\Auswertung'
 db = 'Nickel_BECOLA_60Ni-60Ni-stacked.sqlite'
 line_vars = ['58_0','58_1','58_2']
 runsRef = ['AsymVoigt0', 'AsymVoigt1', 'AsymVoigt2']
-runs60 = ['AsymVoigt56_0', 'AsymVoigt56_1', 'AsymVoigt56_2', 'AsymVoigt56_All']
+#runs60 = ['AsymVoigt56_0', 'AsymVoigt56_1', 'AsymVoigt56_2', 'AsymVoigt56_All']
+runs60 = ['sidePVoigt55_0', 'sidePVoigt55_1', 'sidePVoigt55_2', 'sidePVoigt55_All']
 frequ_60ni = 850344183
 reference_groups = [(6192,6191), (6208, 6207), (6243, 6242), (6254, 6253), (6259, 6253)]
 calibration_groups = [((6192, 6192), (6192), (6208, 6208), (6208)), ((6243, 6243), (6243)), ((6254, 6254), (6254)),
                       ((6259, 6259), (6259))]
 niAna = NiAnalysis(working_dir, db, line_vars, runsRef, runs60, frequ_60ni, reference_groups, calibration_groups)
-niAna.reset()
-niAna.prep()
+#niAna.reset()
+#niAna.prep()
 niAna.ana_60()
 filesRef = niAna.get_files('60Ni')
 centerRef, sigmaRef = niAna.center_ref(filesRef)

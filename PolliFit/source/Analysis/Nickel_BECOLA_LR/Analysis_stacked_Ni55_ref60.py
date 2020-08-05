@@ -315,7 +315,6 @@ class NiAnalysis:
             t0, t_width = self.find_timegates(files, 0, s)
             t_min = (t0 - t_width) / 100
             t_max = (t0 + t_width) / 100
-            print(t_min, t_max)
             # iterate through files and sum up
             volcts = [] # Will be a list of tuples: (DAC, cts, scans, bg)
             for f in files:
@@ -328,13 +327,10 @@ class NiAnalysis:
                                  softw_gates=[[-350, 0, 0.5, 4], [-350, 0, 0.5, 4],
                                               [-350, 0, 0.5, 4]])
                 # normalization of background to number of bins
-                print('no normalization:', bg.cts[0][s])
-                print(t_width)
+
                 norm_factor = 2 * t_width / 100 / 3.5
-                print('Normalization factor:', norm_factor)
                 for i, c in enumerate(bg.cts[0][s]):
                     bg.cts[0][s][i] = c * norm_factor
-                print('After normalization:', bg.cts[0][s])
                 # plot uncalibrated spectrum
                 plt.plot(spec.x[0], spec.cts[0][s])
                 plt.plot(bg.x[0], bg.cts[0][s]-100)
@@ -407,13 +403,16 @@ class NiAnalysis:
             scans[s] = sc
             err[s] = unc
 
+        print('Voltage:', voltage)
+        print('SUMCTs', sumcts)
         # prepare scaler array for xml-file
         scaler_array = []
         for s in scalers:
             timestep = 0
             for i, c in enumerate(sumcts[s]):
-                scaler_array.append((s, i, timestep, c))
-                timestep += 1
+                scaler_array.append((s, int((voltage[s][i]-voltage[s][0]) / bin), int((voltage[s][i]-voltage[s][0]) / bin), c))
+                timestep += int((voltage[s][i]-voltage[s][0]) / bin)
+        print('ScalerArray', scaler_array)
 
         # Create dictionary for xml export
         file_creation_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -609,6 +608,7 @@ db = 'Nickel_BECOLA_60Ni-55Ni.sqlite'
 line_vars = ['58_0','58_1','58_2']
 runs60 = ['AsymVoigt0', 'AsymVoigt1', 'AsymVoigt2']
 runs55 = ['AsymVoigt55_0', 'AsymVoigt55_1', 'AsymVoigt55_2', 'AsymVoigt55_All']
+#runs55 = ['sidePVoigt55_0', 'sidePVoigt55_1', 'sidePVoigt55_2', 'sidePVoigt55_All']
 frequ_60ni = 850344183
 reference_groups = [(6363, 6362), (6396, 6395), (6419, 6417), (6463, 6462), (6466, 6467), (6502, 6501)]
 calibration_groups = [((6363, 6396), (6369, 6373, 6370, 6375, 6376, 6377, 6378, 6380, 6382, 6383, 6384, 6387, 6391,
@@ -620,8 +620,6 @@ calibration_groups = [((6363, 6396), (6369, 6373, 6370, 6375, 6376, 6377, 6378, 
 niAna = NiAnalysis(working_dir, db, line_vars, runs60, runs55, frequ_60ni, reference_groups, calibration_groups)
 niAna.reset()
 niAna.prep()
-#files55 = niAna.get_files('55Ni')
-#niAna.stack_files(files55)
 niAna.ana_55()
 files55 = niAna.get_files('60Ni')
 center55, sigma55 = niAna.center_ref(files55)
