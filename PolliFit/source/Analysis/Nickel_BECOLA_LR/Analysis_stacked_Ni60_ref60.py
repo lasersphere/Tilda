@@ -298,7 +298,7 @@ class NiAnalysis:
 
     def ana_60(self):
         for run in self.runs60:
-            self.fit_stacked(run, sym= False)
+            self.fit_stacked(run, sym= True)
 
     def stack_files(self, files):
         scalers = [0, 1, 2]
@@ -614,19 +614,64 @@ class NiAnalysis:
         return center_average, center_sigma
 
 
+def get_asy_fac(list, dir, datab):
+    asy = []
+    weights = []
+    for f in list:
+        file = 'BECOLA_' + str(f) + '.xml'
+        print(file)
+        con = sqlite3.connect(os.path.join(dir, datab))
+        cur = con.cursor()
+        cur.execute('''SELECT pars FROM FitRes WHERE file = ?''', (file,))
+        pars = ast.literal_eval(cur.fetchall()[0][0])
+        print(pars)
+        asy.append(pars['asy'][0])
+        weights.append(1 / (pars['asy'][1] ** 2))
+        con.close()
+    mean_asy = np.average(asy, weights=weights)
+    print('Mean asymmetry factor:', mean_asy)
+    return mean_asy
+
+def set_asy(asy, dir, datab):
+    con = sqlite3.connect(os.path.join(dir, datab))
+    cur = con.cursor()
+    cur.execute('''SELECT lineVar FROM Lines''')
+    lines = cur.fetchall()
+    cur.execute('''SELECT shape FROM Lines''')
+    shapes = cur.fetchall()
+    cur.execute('''SELECT fixShape FROM Lines''')
+    fix_shapes = cur.fetchall()
+    con.close()
+    print(lines, shapes)
+    for i, line in enumerate(lines):
+        shape = ast.literal_eval(shapes[i][0])
+        shape['asy'] = asy
+        fix_shape = ast.literal_eval(fix_shapes[i][0])
+        fix_shape['asy'] = True
+        con = sqlite3.connect(os.path.join(dir, datab))
+        cur = con.cursor()
+        cur.execute('''UPDATE Lines SET shape = ? WHERE lineVar = ?''', (str(shape), line[0],))
+        cur.execute('''UPDATE Lines SET fixShape = ? WHERE lineVar = ?''', (str(fix_shape), line[0]))
+        con.commit()
+        con.close()
+
+
+
 working_dir = 'D:\\Daten\\IKP\\Nickel-Auswertung\\Auswertung'
 db = 'Nickel_BECOLA_60Ni-60Ni-stacked.sqlite'
 line_vars = ['58_0','58_1','58_2']
 runsRef = ['AsymVoigt0', 'AsymVoigt1', 'AsymVoigt2']
-#runs60 = ['AsymVoigt56_0', 'AsymVoigt56_1', 'AsymVoigt56_2', 'AsymVoigt56_All']
-runs60 = ['sidePVoigt55_0', 'sidePVoigt55_1', 'sidePVoigt55_2', 'sidePVoigt55_All']
+runs60 = ['AsymVoigt56_0', 'AsymVoigt56_1', 'AsymVoigt56_2', 'AsymVoigt56_All']
+#runs60 = ['sidePVoigt55_0', 'sidePVoigt55_1', 'sidePVoigt55_2', 'sidePVoigt55_All']
 frequ_60ni = 850344183
 reference_groups = [(6192,6191), (6208, 6207), (6243, 6242), (6254, 6253), (6259, 6253)]
 calibration_groups = [((6192, 6192), (6192), (6208, 6208), (6208)), ((6243, 6243), (6243)), ((6254, 6254), (6254)),
                       ((6259, 6259), (6259))]
 niAna = NiAnalysis(working_dir, db, line_vars, runsRef, runs60, frequ_60ni, reference_groups, calibration_groups)
-#niAna.reset()
-#niAna.prep()
+niAna.reset()
+niAna.prep()
+asy = get_asy_fac([6192, 6208, 6243, 6254, 6259], working_dir, db)
+set_asy(asy, working_dir, db)
 niAna.ana_60()
 filesRef = niAna.get_files('60Ni')
 centerRef, sigmaRef = niAna.center_ref(filesRef)

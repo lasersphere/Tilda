@@ -406,13 +406,27 @@ class NiAnalysis:
         print('Voltage:', voltage)
         print('SUMCTs', sumcts)
         # prepare scaler array for xml-file
-        scaler_array = []
+        scaler_array0 = []
+        sumcts0 = [[],[],[]]
+        scaler_array1 = []
+        sumcts1 = [[],[],[]]
+        scaler_array2 = []
+        sumcts2 = [[],[],[]]
         for s in scalers:
-            timestep = 0
             for i, c in enumerate(sumcts[s]):
-                scaler_array.append((s, int((voltage[s][i]-voltage[s][0]) / bin), int((voltage[s][i]-voltage[s][0]) / bin), c))
-                timestep += int((voltage[s][i]-voltage[s][0]) / bin)
-        print('ScalerArray', scaler_array)
+                if voltage[s][i] < -150:
+                    scaler_array0.append((s, int((voltage[s][i] + 252) / bin), int((voltage[s][i] + 252) / bin), c))
+                    timestep0 = int((voltage[s][i] + 252) / bin + 1)
+                    sumcts0[s].append(c)
+                elif voltage[s][i] < -80:
+                    scaler_array1.append((s, int((voltage[s][i] + 147) / bin), int((voltage[s][i] + 147) / bin), c))
+                    timestep1 = int((voltage[s][i] + 147) / bin + 1)
+                    sumcts1[s].append(c)
+                else:
+                    scaler_array2.append((s, int((voltage[s][i] + 66) / bin), int((voltage[s][i] + 66) / bin), c))
+                    timestep2 = int((voltage[s][i] + 66) / bin + 1)
+                    sumcts2[s].append(c)
+        print('ScalerArray', scaler_array0, scaler_array1, scaler_array2)
 
         # Create dictionary for xml export
         file_creation_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -421,7 +435,7 @@ class NiAnalysis:
                         'isotopeStartTime': file_creation_time,
                         'accVolt': 29850,
                         'laserFreq': Physics.wavenumber(self.laserFreq55) / 2,
-                        'nOfTracks': 1,
+                        'nOfTracks': 3,
                         'version': 99.0}
         track0_dict_header = {'trigger': {},  # Need a trigger dict!
                                 'activePmtList': [0, 1, 2],  # Must be in form [0,1,2]
@@ -430,16 +444,16 @@ class NiAnalysis:
                                 'dacStartVoltage': voltage[0][0],
                                 'dacStepSize18Bit': None,  # old format xml importer checks whether val or None
                                 'dacStepsizeVoltage': bin,
-                                'dacStopRegister18Bit': len(voltage[0]) - 1,  # not real but should do the trick
-                                'dacStopVoltage': voltage[0][-1],
+                                'dacStopRegister18Bit': int(len(scaler_array0) / 3 - 1),  # not real but should do the trick
+                                'dacStopVoltage': -153,
                                 'invertScan': False,
-                                'nOfBins': len(voltage[0]),
-                                'nOfCompletedSteps': float(len(voltage[0])),
+                                'nOfBins': 34,
+                                'nOfCompletedSteps': 34.0,
                                 'nOfScans': 1,
-                                'nOfSteps': len(voltage[0]),
+                                'nOfSteps': 34,
                                 'postAccOffsetVolt': 0,
                                 'postAccOffsetVoltControl': 0,
-                                'softwGates': [[-252, -42, 0, timestep], [-252, -42, 0, timestep], [-252, -42, 0, timestep]],
+                                'softwGates': [[-252, -153, 0, timestep0], [-252, -153, 0, timestep0], [-252, -153, 0, timestep0]],
                                 #'softwGates': [[-252, -42, 0, 0.4], [-252, -42, 0, 0.4], [-252, -42, 0, 0.4]],
                                 # For each Scaler: [DAC_Start_Volt, DAC_Stop_Volt, scaler_delay, softw_Gate_width]
                                 'workingTime': [file_creation_time, file_creation_time],
@@ -447,8 +461,9 @@ class NiAnalysis:
                                 'waitForKepco1us': 0  # looks like I need this too
                                 }
         data = '['
-        for i, s in enumerate(scaler_array):
-            data = data + str(scaler_array[i]) + ' '
+        for i, s in enumerate(scaler_array0):
+
+            data = data + str(scaler_array0[i]) + ' '
         data = data[:len(data) - 1]
         data = data + ']'
         track0_dict_data = {
@@ -457,7 +472,89 @@ class NiAnalysis:
                                        'nOfSteps), datatype: np.int32',
             'scalerArray': data}
 
-        track0_vol_proj = {'voltage_projection': np.array(sumcts),
+        track0_vol_proj = {'voltage_projection': np.array(sumcts0),
+                           'voltage_projection_explanation': 'voltage_projection of the time resolved data. List of '
+                                                             'Lists, each list represents the counts of one scaler as '
+                                                             'listed in activePmtList.Dimensions are: '
+                                                             '(len(activePmtList), nOfSteps), datatype: np.int32'}
+
+        track1_dict_header = {'trigger': {},  # Need a trigger dict!
+                              'activePmtList': [0, 1, 2],  # Must be in form [0,1,2]
+                              'colDirTrue': True,
+                              'dacStartRegister18Bit': 0,
+                              'dacStartVoltage': -147,
+                              'dacStepSize18Bit': None,  # old format xml importer checks whether val or None
+                              'dacStepsizeVoltage': bin,
+                              'dacStopRegister18Bit': 19,  # not real but should do the trick
+                              'dacStopVoltage': -90,
+                              'invertScan': False,
+                              'nOfBins': 20,
+                              'nOfCompletedSteps': 20,
+                              'nOfScans': 1,
+                              'nOfSteps': 20,
+                              'postAccOffsetVolt': 0,
+                              'postAccOffsetVoltControl': 0,
+                              'softwGates': [[-147, -90, 0, 20], [-147, -90, 0, 20],
+                                             [-147, -90, 0, 20]],
+                              # 'softwGates': [[-252, -42, 0, 0.4], [-252, -42, 0, 0.4], [-252, -42, 0, 0.4]],
+                              # For each Scaler: [DAC_Start_Volt, DAC_Stop_Volt, scaler_delay, softw_Gate_width]
+                              'workingTime': [file_creation_time, file_creation_time],
+                              'waitAfterReset1us': 0,  # looks like I need those for the importer
+                              'waitForKepco1us': 0  # looks like I need this too
+                              }
+        data = '['
+        for i, s in enumerate(scaler_array1):
+            data = data + str(scaler_array1[i]) + ' '
+        data = data[:len(data) - 1]
+        data = data + ']'
+        track1_dict_data = {
+            'scalerArray_explanation': 'continously acquired data. List of Lists, each list represents the counts of '
+                                       'one scaler as listed in activePmtList.Dimensions are: (len(activePmtList), '
+                                       'nOfSteps), datatype: np.int32',
+            'scalerArray': data}
+
+        track1_vol_proj = {'voltage_projection': np.array(sumcts1),
+                           'voltage_projection_explanation': 'voltage_projection of the time resolved data. List of '
+                                                             'Lists, each list represents the counts of one scaler as '
+                                                             'listed in activePmtList.Dimensions are: '
+                                                             '(len(activePmtList), nOfSteps), datatype: np.int32'}
+
+        track2_dict_header = {'trigger': {},  # Need a trigger dict!
+                              'activePmtList': [0, 1, 2],  # Must be in form [0,1,2]
+                              'colDirTrue': True,
+                              'dacStartRegister18Bit': 0,
+                              'dacStartVoltage': -66,
+                              'dacStepSize18Bit': None,  # old format xml importer checks whether val or None
+                              'dacStepsizeVoltage': bin,
+                              'dacStopRegister18Bit': 8,  # not real but should do the trick
+                              'dacStopVoltage': -42,
+                              'invertScan': False,
+                              'nOfBins': 9,
+                              'nOfCompletedSteps': 9,
+                              'nOfScans': 1,
+                              'nOfSteps': 9,
+                              'postAccOffsetVolt': 0,
+                              'postAccOffsetVoltControl': 0,
+                              'softwGates': [[-66, -42, 0, 9], [-66, -42, 0, 9],
+                                             [-66, -42, 0, 9]],
+                              # 'softwGates': [[-252, -42, 0, 0.4], [-252, -42, 0, 0.4], [-252, -42, 0, 0.4]],
+                              # For each Scaler: [DAC_Start_Volt, DAC_Stop_Volt, scaler_delay, softw_Gate_width]
+                              'workingTime': [file_creation_time, file_creation_time],
+                              'waitAfterReset1us': 0,  # looks like I need those for the importer
+                              'waitForKepco1us': 0  # looks like I need this too
+                              }
+        data = '['
+        for i, s in enumerate(scaler_array2):
+            data = data + str(scaler_array2[i]) + ' '
+        data = data[:len(data) - 1]
+        data = data + ']'
+        track2_dict_data = {
+            'scalerArray_explanation': 'continously acquired data. List of Lists, each list represents the counts of '
+                                       'one scaler as listed in activePmtList.Dimensions are: (len(activePmtList), '
+                                       'nOfSteps), datatype: np.int32',
+            'scalerArray': data}
+
+        track2_vol_proj = {'voltage_projection': np.array(sumcts2),
                            'voltage_projection_explanation': 'voltage_projection of the time resolved data. List of '
                                                              'Lists, each list represents the counts of one scaler as '
                                                              'listed in activePmtList.Dimensions are: '
@@ -468,6 +565,12 @@ class NiAnalysis:
                                             'data': track0_dict_data,
                                             'projections': track0_vol_proj
                                             },
+                                 'track1': {'header': track1_dict_header,
+                                            'data': track1_dict_data,
+                                            'projections': track1_vol_proj},
+                                 'track2': {'header': track2_dict_header,
+                                            'data': track2_dict_data,
+                                            'projections': track2_vol_proj}
                                  }
                       }
 
@@ -486,13 +589,18 @@ class NiAnalysis:
         cur.execute(
             '''UPDATE Files SET offset = ?, accVolt = ?,  laserFreq = ?, laserFreq_d = ?, colDirTrue = ?, 
             voltDivRatio = ?, lineMult = ?, lineOffset = ?, errDateInS = ? WHERE file = ? ''',
-            ('[0]', 29850, self.laserFreq55, 0, True, str({'accVolt': 1.0, 'offset': 1.0}), 1, 0,
+            ('[0,0,0]', 29850, self.laserFreq55, 0, True, str({'accVolt': 1.0, 'offset': 1.0}), 1, 0,
              1, 'BECOLA_Stacked55.xml'))
         con.commit()
         con.close()
 
         stacked = XMLImporter(path=self.working_dir + '\\data\\' + 'BECOLA_Stacked55.xml')
         print(stacked.x[0])
+        print(stacked.cts[0][0])
+        print(stacked.x[1])
+        print(stacked.cts[1][0])
+        print(stacked.x[2])
+        print(stacked.cts[2][0])
 
     def fit_stacked(self, run, sym=True):
         con = sqlite3.connect(self.db)

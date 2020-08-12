@@ -348,6 +348,8 @@ class XMLImporter(SpecData):
                     logging.info('setting voltage divider ratio to 1 !')
                     self.voltDivRatio = {'offset': 1.0, 'accVolt': 1.0}
                 for tr_ind, track in enumerate(self.x):
+                    print('trind:', tr_ind)
+                    print('offset:', self.offset)
                     self.x[tr_ind] = TildaTools.line_to_total_volt(self.x[tr_ind], self.lineMult, self.lineOffset,
                                                                    self.offset[tr_ind], self.accVolt, self.voltDivRatio,
                                                                    offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])

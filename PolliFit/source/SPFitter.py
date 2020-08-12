@@ -83,11 +83,10 @@ class SPFitter(object):
         As curve_fit can't fix parameters, they are manually truncated and reinjected
         Curve_fit expects standard deviations as weights
         """
+
         print("Starting fit")
         self.data = self.meas.getArithSpec(*self.st)  # needed if data was regated in between.
-
         self.oldpar = list(self.par)
-
         truncp = [p for p, f in zip(self.par, self.fix) if not f or isinstance(f, list)]
         boundl = ()
         boundu = ()
