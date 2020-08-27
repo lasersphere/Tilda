@@ -43,7 +43,7 @@ class NiAnalysis():
         # get user folder to access ownCloud
         user_home_folder = os.path.expanduser("~")
         # ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel54_online_Becola20\\Analysis\\XML_Data'
-        ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel54_postbeamtime_Becola20\\Analysis\\bunched'
+        # ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel54_postbeamtime_Becola20\\Analysis\\bunched'
         ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\XML_Data'  # online 2018
         self.workdir = os.path.join(user_home_folder, ownCould_path)
         # data folder
@@ -66,14 +66,16 @@ class NiAnalysis():
         # fit from scratch or use FitRes db?
         self.do_the_fitting = True  # if False, an .xml file has to be specified in the next variable!
         load_results_from = 'Ni54_onlineAnalysis_2020-07-12_17-45.xml'  # load fit results from this file
-        self.get_gate_analysis = False  # get information from gate analysis (and use for uncertainties)
-        self.get_individual_gates = False
+        self.get_gate_analysis = True  # get information from gate analysis (and use for uncertainties)
+        self.get_individual_gates = True
         load_gate_analysis_from = 'SoftwareGateAnalysis_2020-07-28_23-30.xml'
 
         # Isotopes
         self.isotopes_single = ['56Ni', '58Ni', '60Ni']  # data is good enough for single file fitting
         self.isotopes_summed = ['55Ni']  # data must be summed in order to be fittable
         self.all_isotopes = self.isotopes_single + self.isotopes_summed
+        self.binsize = {'55Ni': 3, '56Ni': 1, '58Ni': 1, '60Ni': 1}  # if not specified, 1 will be used
+        self.scanrange = {'55Ni': (-300, 30), '56Ni': (-150, 80), '58Ni': (-44, 14), '60Ni': (-100, 30)}  # if not specified, (-2000, 2000) will be used
 
         # line parameters
         self.run = 'VoigtAsy'  # lineshape from runs and a new lines
@@ -102,7 +104,7 @@ class NiAnalysis():
                         '64Ni': 5.65}  # mid-tof for each isotope (from fitting) 38, 47
         self.tof_delay = {'55Ni': [0, 0.186, 0.257], '56Ni': [0, 0.189, 0.260], '58Ni': [0, 0.194, 0.267],
                           '60Ni': [0, 0.199, 0.273], '62Ni': [0, 0.204, 0.279], '64Ni': [0, 0.209, 0.285]}
-        self.tof_sigma = {'55Ni': 0.04, '56Ni': 0.012, '58Ni': 0.012, '60Ni': 0.012, '62Ni': 0.06,
+        self.tof_sigma = {'55Ni': 0.040, '56Ni': 0.052, '58Ni': 0.075, '60Ni': 0.06, '62Ni': 0.06,
                           '64Ni': 0.06}  # 1 sigma of the tof-peaks from fitting, avg over all scalers 56,58,60 Ni
         self.tof_width_sigma = 1.63  # how many sigma to use around tof? (1: 68.3% of data, 2: 95.4%, 3: 99.7%)
 
@@ -121,7 +123,7 @@ class NiAnalysis():
 
         # Determine calibration parameters
         self.ref_iso = '60Ni'
-        self.calibration_method = 'absolute60'  # can be 'absolute58', 'absolute60' 'absolute' or 'None'
+        self.calibration_method = 'absolute60_global'  # can be 'absolute58', 'absolute60' 'absolute' or 'None'
         self.use_handassigned = False  # use hand-assigned calibrations? If false will interpolate on time axis
         self.accVolt_corrected = (self.accVolt_set, 0)  # Used later for calibration. Might be used her to predefine calib? (abs_volt, err)
 
@@ -131,7 +133,7 @@ class NiAnalysis():
         self.KingFactorLit = 'Koenig 2020 60ref'  # which king fit factors to use? kaufm60, koenig60,koenig58
 
         # Uncertainy Options
-        self.combined_unc = 'std'  # 'std': most conservative, 'wavg_d': error of the weighted, 'wstd': weighted std
+        self.combined_unc = 'std_avg'  # 'std': most conservative, 'wavg_d': error of the weighted, 'wstd': weighted std, 'std_avg': standarddeviation of the average
 
         """
         ############################ Other presets!##########################################################
@@ -504,15 +506,14 @@ class NiAnalysis():
                                     for sc in range(3)])
 
                 # calculate weighted average and various error estimates
-                wavg, wavg_d, wstd, std = self.calc_weighted_avg(val_arr, err_arr)
-                if self.combined_unc == 'wavg_d':
-                    d_fit = wavg_d
-                elif self.combined_unc == 'wstd':
-                    d_fit = wstd
-                else:
-                    d_fit = std
+                wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(val_arr, err_arr)
 
-                # Append to combined results list. For error use the larger of standard deviation or weighted avg errors
+                # for combining scalers, always use the standard deviation -
+                # - most conservative
+                # - we strictly speaking have 3 different measurements, not 3 repetitions of the same measurement.
+                d_fit = max(wavg_d, std)
+
+                # Append to combined results list.
                 centers_combined.append(wavg)
                 centers_combined_d_fit.append(d_fit)
 
@@ -534,12 +535,14 @@ class NiAnalysis():
                 d_syst = iso_r['{}{}'.format(sc_prefix, 1)]['center_fits']['d_syst'][indx]  # same for all scalers
                 centers_combined_d_syst.append(d_syst)
 
-            # calculate weighted avg of center fit and various error estimates
-            wavg, wavg_d, wstd, std = self.calc_weighted_avg(centers_combined, centers_combined_d_stat)
+            # calculate weighted avg of center fit and various error estimates over all files
+            wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(centers_combined, centers_combined_d_stat)
             if self.combined_unc == 'wavg_d':
                 d_fit = wavg_d
             elif self.combined_unc == 'wstd':
                 d_fit = wstd
+            elif self.combined_unc == 'std_avg':
+                d_fit = std_avg
             else:
                 d_fit = std
 
@@ -603,15 +606,14 @@ class NiAnalysis():
                 stat_without_fit = np.sqrt(stat_arr**2 - err_arr**2)
 
                 # calculate weighted average and various error estimates
-                wavg, wavg_d, wstd, std = self.calc_weighted_avg(val_arr, err_arr)
-                if self.combined_unc == 'wavg_d':
-                    d_fit = wavg_d
-                elif self.combined_unc == 'wstd':
-                    d_fit = wstd
-                else:
-                    d_fit = std  # most conservative error
+                wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(val_arr, err_arr)
 
-                # Append to combined results list. For error use the larger of standard deviation or weighted avg errors
+                # for combining scalers, always use the standard deviation
+                # - most conservative
+                # - we strictly speaking have 3 different measurements, not 3 repetitions of the same measurement.
+                d_fit = max(wavg_d, std)
+
+                # Append to combined results list.
                 centers_combined.append(wavg)
                 centers_combined_d_fit.append(d_fit)
 
@@ -623,13 +625,15 @@ class NiAnalysis():
                 d_syst = iso_r['{}{}'.format(sc_prefix, 1)][parameter]['d_syst'][indx]  # same for all scalers
                 centers_combined_d_syst.append(d_syst)
 
-            # calculate weighted avg of center fit and various error estimates
-            wavg, wavg_d, wstd, std = self.calc_weighted_avg(centers_combined, centers_combined_d_stat)
+            # calculate weighted avg of center fit and various error estimates over all files
+            wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(centers_combined, centers_combined_d_stat)
 
             if self.combined_unc == 'wavg_d':
                 d_fit = wavg_d
             elif self.combined_unc == 'wstd':
                 d_fit = wstd
+            elif self.combined_unc == 'std_avg':
+                d_fit = std_avg
             else:
                 d_fit = std  # (typically) most conservative estimate
 
@@ -708,14 +712,20 @@ class NiAnalysis():
                 mean_offset = ((mean_offset_58[0] + mean_offset_60[0]) / 2, (mean_offset_58[1] + mean_offset_60[1]) / 2)
                 for iso in isolist:
                     # '58' or '60' in self.calibration_method will lead to only this isotope being used for calibration
-                    self.calibVoltageFunct(iso, scaler, useOnly=self.calibration_method)
+                    if 'global' in self.calibration_method:
+                        self.calibVoltageFunct_global(iso, scaler, useOnly=self.calibration_method)
+                    else:
+                        self.calibVoltageFunct(iso, scaler, useOnly=self.calibration_method)
             else:  # No Calibration
                 # for other calibration methods see mid2020 script
                 self.accVolt_corrected = (self.accVolt_set, self.accVolt_set_d)  # no large scale correction
                 for iso in self.isotopes_single:
                     self.getVoltDeviationToResults(iso, allNull=True)
                 for iso in isolist:
-                    self.calibVoltageFunct(iso, scaler)
+                    if 'global' in self.calibration_method:
+                        self.calibVoltageFunct_global(iso, scaler)
+                    else:
+                        self.calibVoltageFunct(iso, scaler)
 
     def fitting_calibrated_separate(self):
         """
@@ -1693,7 +1703,11 @@ class NiAnalysis():
         """
         return a voltage calibration based on a datetime object using the offset from literature IS and the deviations
         from constant transition frequency.
-        :param datetime_obj:
+        :param isotope:
+        :param scaler:
+        :param useOnly:
+        :param userefscaler:
+        :param useglobal:
         :return:
         """
         scaler = self.update_scalers_in_db(scaler)
@@ -1806,11 +1820,177 @@ class NiAnalysis():
             voltcorrect_d_syst = (interpolation_58_d_syst + interpolation_60_d_syst)/2  # should be the same anyways
 
         # calculate weighted avg of center fit and various error estimates
-        wavg, wavg_d, wstd, std = self.calc_weighted_avg(voltcorrect, voltcorrect_d)
+        wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(voltcorrect, voltcorrect_d)
         if self.combined_unc == 'wavg_d':
             d_fit = wavg_d
         elif self.combined_unc == 'wstd':
             d_fit = wstd
+        elif self.combined_unc == 'std_avg':
+            d_fit = std_avg
+        else:
+            d_fit = std
+
+        # write calibration voltages back into database
+        isotope_cal = '{}_cal'.format(isotope)
+        voltdict = {isotope_cal: {scaler: {'acc_volts': {'vals': voltcorrect.tolist(),
+                                                         'd_stat': voltcorrect_d.tolist(),
+                                                         'd_syst': voltcorrect_d_syst.tolist()},
+                                           'avg_acc_volts': {'vals': [wavg],
+                                                             'd_fit': [d_fit],
+                                                             'd_stat': [d_fit],
+                                                             'd_syst': [voltcorrect_d_syst[0]]}
+                                           },
+                                  'file_names': iso_names,
+                                  'file_numbers': iso_numbers.tolist(),
+                                  'file_times': iso_times,
+                                  'color': iso_color
+                                  },
+                    isotope: {scaler: {'acc_volts': {'vals': voltcorrect.tolist(),
+                                                         'd_stat': voltcorrect_d.tolist(),
+                                                         'd_syst': voltcorrect_d_syst.tolist()},
+                                           'avg_acc_volts': {'vals': [wavg],
+                                                             'd_fit': [d_fit],
+                                                             'd_stat': [d_fit],
+                                                             'd_syst': [voltcorrect_d_syst[0]]}
+                                           }
+                    }}
+        TiTs.merge_extend_dicts(self.results, voltdict)
+
+        plot_all = True
+
+        if plot_all or scaler == 'scaler_c012':
+            # make a quick plot of references and calibrated voltages
+            fig, ax = plt.subplots()
+
+            ref_58_timedeltas = np.array([timedelta(seconds=s) for s in ref_58_dates])
+            ref_58_dates = np.array(self.ref_datetime + ref_58_timedeltas)  # convert back to datetime
+
+            ref_60_timedeltas = np.array([timedelta(seconds=s) for s in ref_60_dates])
+            ref_60_dates = np.array(self.ref_datetime + ref_60_timedeltas)  # convert back to datetime
+
+            iso_timedeltas = np.array([timedelta(seconds=s) for s in iso_dates])
+            iso_dates = np.array(self.ref_datetime + iso_timedeltas)  # convert back to datetime
+
+            ax.plot(ref_58_dates, volt_offset - np.array(volt58_dev), '--', color='black', label='58Ni reference')
+            ax.plot(ref_60_dates, volt_offset - np.array(volt60_dev), '--', color='blue', label='60Ni reference')
+            # plot error band for statistical errors
+            ax.fill_between(ref_58_dates,
+                             volt_offset - np.array(volt58_dev) - volt58_dev_d,
+                             volt_offset - np.array(volt58_dev) + volt58_dev_d,
+                             alpha=0.5, edgecolor='black', facecolor='black')
+            ax.fill_between(ref_60_dates,
+                            volt_offset - np.array(volt60_dev) - volt60_dev_d,
+                            volt_offset - np.array(volt60_dev) + volt60_dev_d,
+                            alpha=0.5, edgecolor='blue', facecolor='blue')
+            # plot error band for systematic errors on top of statistical errors
+            ax.fill_between(ref_58_dates,
+                             volt_offset - np.array(volt58_dev) - volt58_dev_d_syst - volt58_dev_d,
+                             volt_offset - np.array(volt58_dev) + volt58_dev_d_syst + volt58_dev_d,
+                             alpha=0.2, edgecolor='black', facecolor='black')
+            ax.fill_between(ref_60_dates,
+                            volt_offset - np.array(volt60_dev) - volt60_dev_d_syst - volt60_dev_d,
+                            volt_offset - np.array(volt60_dev) + volt60_dev_d_syst + volt60_dev_d,
+                            alpha=0.2, edgecolor='blue', facecolor='blue')
+            # and finally plot the interpolated voltages
+            ax.errorbar(iso_dates, voltcorrect, yerr=voltcorrect_d+voltcorrect_d_syst, marker='s', linestyle='None',
+                        color=iso_color, label='{} interpolated'.format(isotope))
+            # make x-axis dates
+            plt.xlabel('date')
+            days_fmt = mpdate.DateFormatter('%d.%B')
+            ax.xaxis.set_major_formatter(days_fmt)
+            plt.legend(loc='best')
+            plt.xticks(rotation=45)  # rotate date labels 45 deg for better readability
+            plt.margins(0.05)
+            if self.save_plots_to_file:
+                filename = 'voltInterp_' + isotope[:2] + '_sc' + scaler.split('_')[1]
+                folder = 'calibration\\'
+                plot_folder = self.resultsdir + folder
+                if not os.path.exists(plot_folder):
+                    os.makedirs(plot_folder)
+                plt.savefig(plot_folder + filename + '.png', bbox_inches="tight")
+            else:
+                plt.show()
+            plt.close()
+            plt.clf()
+
+    def calibVoltageFunct_global(self, isotope, scaler, useOnly=None):
+        """
+        return a voltage calibration based on a datetime object using the offset from literature IS and the deviations
+        from constant transition frequency.
+        :param isotope:
+        :param scaler:
+        :param useOnly:
+        :param userefscaler:
+        :param useglobal:
+        :return:
+        """
+        scaler = self.update_scalers_in_db(scaler)
+
+        # get the global voltage offset from isotope shift correction
+        volt_offset, volt_offset_d = self.accVolt_corrected
+
+        # get info like run times and voltages from database
+        # For 58Ni reference
+        ni58_numbers = np.array(self.results['58Ni']['file_numbers'])
+        dates_58 = self.results['58Ni']['file_times']
+        volt58_dev = self.results['58Ni'][scaler]['voltage_deviation']['vals']
+        volt58_dev_d = self.results['58Ni'][scaler]['voltage_deviation']['d_stat']
+        volt58_dev_d_syst = self.results['58Ni'][scaler]['voltage_deviation']['d_syst']
+        # For 60Ni reference
+        ni60_numbers = np.array(self.results['60Ni']['file_numbers'])
+        dates_60 = self.results['60Ni']['file_times']
+        volt60_dev = self.results['60Ni'][scaler]['voltage_deviation']['vals']
+        volt60_dev_d = self.results['60Ni'][scaler]['voltage_deviation']['d_stat']
+        volt60_dev_d_syst = self.results['60Ni'][scaler]['voltage_deviation']['d_syst']
+        # For the isotope to be calibrated
+        iso_times = self.results[isotope]['file_times']
+        iso_names = self.results[isotope]['file_names']
+        iso_numbers = np.array(self.results[isotope]['file_numbers'])
+        iso_color = self.results[isotope]['color']
+
+        # make floats (seconds relative to reference-time) out of the dates
+        iso_dates = list((t - self.ref_datetime).total_seconds() for t in iso_times)
+        ref_58_dates = list((t - self.ref_datetime).total_seconds() for t in dates_58)
+        ref_60_dates = list((t - self.ref_datetime).total_seconds() for t in dates_60)
+
+        # fit a constant to the calibrated voltages
+        def const_off(x, voff):
+            return voff
+        if '58' in useOnly:
+            # use only the 58 Nickel interpolation
+            x = ref_58_dates
+            y = volt_offset - np.array(volt58_dev)
+            y_err = volt58_dev_d
+            d_syst = volt58_dev_d_syst
+        elif '60' in useOnly:
+            # use only the 60 Nickel interpolation
+            x = ref_60_dates
+            y = volt_offset - np.array(volt60_dev)
+            y_err = volt60_dev_d
+            d_syst = volt60_dev_d_syst
+        else:  # standard case
+            # combine 58 and 60 Nickel references
+            x = np.append(ref_58_dates, ref_60_dates)
+            y = volt_offset - np.append(volt58_dev, volt60_dev)
+            y_err = np.append(volt58_dev_d, volt60_dev_d)
+
+            d_syst = max(volt58_dev_d_syst, volt60_dev_d_syst)
+
+        popt, pcov = curve_fit(const_off, x, y, y[0], sigma=y_err, absolute_sigma=True)
+        perr = np.sqrt(np.diag(pcov))
+
+        voltcorrect = np.full(iso_numbers.shape, popt[0])
+        voltcorrect_d = np.full(iso_numbers.shape, perr[0])
+        voltcorrect_d_syst = np.full(iso_numbers.shape, d_syst[0])
+
+        # calculate weighted avg of center fit and various error estimates
+        wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(voltcorrect, voltcorrect_d)
+        if self.combined_unc == 'wavg_d':
+            d_fit = wavg_d
+        elif self.combined_unc == 'wstd':
+            d_fit = wstd
+        elif self.combined_unc == 'std_avg':
+            d_fit = std_avg
         else:
             d_fit = std
 
@@ -2049,11 +2229,13 @@ class NiAnalysis():
                                     + alignment_d_syst**2)
 
         # calculate an average value using weighted avg
-        iso_shift_avg, wavg_d, wstd, std = self.calc_weighted_avg(iso_shifts, iso_center_d_stat)
+        iso_shift_avg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(iso_shifts, iso_center_d_stat)
         if self.combined_unc == 'wavg_d':
             iso_shift_avg_d = wavg_d
         elif self.combined_unc == 'wstd':
             iso_shift_avg_d = wstd
+        elif self.combined_unc == 'std_avg':
+            iso_shift_avg_d = std_avg
         else:
             iso_shift_avg_d = std  # most conservative error
         iso_shift_avg_d_syst = sum(iso_shifts_d_syst)/len(iso_shifts_d_syst)  # should all be the same anyways
@@ -2155,8 +2337,10 @@ class NiAnalysis():
 
         # stack nickel 58 runs to new file Sum58_9999.xml. Only use calibration runs
         for iso in self.all_isotopes:
+            bin = self.binsize.get(iso, 1)
+            range = self.scanrange.get(iso, (-2000, 2000))
             files_to_stack, file_nos, file_times = self.pick_files_from_db_by_type_and_num('%{}%'.format(iso))
-            self.stack_runs('{}{}'.format(iso, c), files_to_stack, (-2000, 2000), binsize=1, bake_in_calib=calibration_per_file)
+            self.stack_runs('{}{}'.format(iso, c), files_to_stack, range, binsize=bin, bake_in_calib=calibration_per_file)
         # ni58_files, ni58_filenos, ni58_filetimes = self.pick_files_from_db_by_type_and_num('%58Ni%')
         # self.stack_runs('58Ni{}'.format(c), ni58_files, (1300, 1400), binsize=1, bake_in_calib=calibration_per_file)
         # # stack nickel 60 runs to new file Sum60_9999.xml. Only use calibration runs
@@ -2469,7 +2653,7 @@ class NiAnalysis():
 
         file_creation_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         header_dict = {'type': 'trs',
-                       'isotope': type,
+                       'isotope': iso,
                        'isotopeStartTime': file_creation_time,
                        'accVolt': self.accVolt_set,
                        'laserFreq': Physics.wavenumber(self.laser_freqs[iso[:4]]/2),  # doubling factor
@@ -2990,42 +3174,48 @@ class NiAnalysis():
         x_d = np.asarray(uncertainties)
         # calculate weights inversely proportional to the square of the uncertainties
         if not any(x_d == 0):
-            w = 1/np.square(x_d)
+            w = 1 / np.square(x_d)
         else:
             logging.warning('ZERO value in uncertainties found during weighted average calculation. '
                             'Calculating mean and standard deviation instead of weighting!')
-            return x.mean(), x.std(), x.std(), x.std()
+            return x.mean(), x.std(), x.std(), x.std(), x.std() / np.sqrt(n)
 
         if n > 1:  # only makes sense for more than one data point. n=1 will also lead to div0 error
             # calculate weighted average and sum of weights:
-            wavg = np.sum(x*w)/np.sum(w)  # (Bevington 4.17)
+            wavg = np.sum(x * w) / np.sum(w)  # (Bevington 4.17)
             # calculate the uncertainty of the weighted mean
-            wavg_d = np.sqrt(1/np.sum(w))  # (Bevington 4.19)
+            wavg_d = np.sqrt(1 / np.sum(w))  # (Bevington 4.19)
 
             # calculate weighted average variance
-            wvar = np.sum(w*np.square(x-wavg))/np.sum(w) * n/(n-1)  # (Bevington 4.22)
+            wvar = np.sum(w * np.square(x - wavg)) / np.sum(w) * n / (n - 1)  # (Bevington 4.22)
             # calculate weighted standard deviations
-            wstd = np.sqrt(wvar/n)  # (Bevington 4.23)
+            wstd = np.sqrt(wvar / n)  # (Bevington 4.23)
 
             # calculate (non weighted) standard deviations from the weighted mean
-            std = np.sqrt(np.sum(np.square(x-wavg))/(n-1))
+            std = np.sqrt(np.sum(np.square(x - wavg)) / (n - 1))
+            # calculate the standard deviation of the average
+            std_avg = std / np.sqrt(n)
+
         else:  # for only one value, return that value
             wavg = x[0]
             # use the single value uncertainty for all error estimates
             wavg_d = x_d[0]
             wstd = x_d[0]
             std = x_d[0]
+            std_avg = x_d[0]
 
-        return wavg, wavg_d, wstd, std
+        return wavg, wavg_d, wstd, std, std_avg
 
     def make_results_dict_scaler(self,
                                  centers, centers_d_fit, centers_d_stat, center_d_syst, fitpars, rChi, hfs_pars=None):
         # calculate weighted average of center parameter
-        wavg, wavg_d, wstd, std = self.calc_weighted_avg(centers, centers_d_stat)
+        wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(centers, centers_d_stat)
         if self.combined_unc == 'wavg_d':
             d_fit = wavg_d
         elif self.combined_unc == 'wstd':
             d_fit = wstd
+        elif self.combined_unc == 'std_avg':
+            d_fit = std_avg
         else:
             d_fit = std
 
@@ -3144,11 +3334,13 @@ class NiAnalysis():
                     # calculate weighted average:
                     if not np.any(centers_d_stat == 0) and not np.sum(1/centers_d_stat**2) == 0:
                         d = centers.std()
-                        wavg, wavg_d, wstd, std = self.calc_weighted_avg(centers, centers_d_stat)
+                        wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(centers, centers_d_stat)
                         if self.combined_unc == 'wavg_d':
                             d = wavg_d
                         elif self.combined_unc == 'wstd':
                             d = wstd
+                        elif self.combined_unc == 'std_avg':
+                            d = std_avg
                         else:
                             d = std
                         wavg_d = '{:.0f}'.format(10**digits*d)  # times 10 for representation in brackets
@@ -3307,11 +3499,13 @@ class NiAnalysis():
             # calculate weighted average:
             if not np.any(centers_d_stat == 0) and not np.sum(1/centers_d_stat**2) == 0:
                 d = centers.std()
-                wavg, wavg_d, wstd, std = self.calc_weighted_avg(centers, centers_d_stat)
+                wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(centers, centers_d_stat)
                 if self.combined_unc == 'wavg_d':
                     d = wavg_d
                 elif self.combined_unc == 'wstd':
                     d = wstd
+                elif self.combined_unc == 'std_avg':
+                    d = std_avg
                 else:
                     d = std
                 wavg_d = '{:.0f}'.format(10**digits*d)  # times 10 for representation in brackets
@@ -3516,11 +3710,13 @@ class NiAnalysis():
                 # calculate weighted average:
                 if not np.any(centers_d_stat == 0) and not np.sum(1 / centers_d_stat ** 2) == 0:
                     d = centers.std()
-                    wavg, wavg_d, wstd, std = self.calc_weighted_avg(centers, centers_d_stat)
+                    wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(centers, centers_d_stat)
                     if self.combined_unc == 'wavg_d':
                         d = wavg_d
                     elif self.combined_unc == 'wstd':
                         d = wstd
+                    elif self.combined_unc == 'std_avg':
+                        d = std_avg
                     else:
                         d = std
                     wavg_d = '{:.0f}'.format(10 ** digits * d)  # times 10 for representation in brackets
@@ -3663,11 +3859,13 @@ class NiAnalysis():
                 # calculate weighted average:
                 if not np.any(centers_d_stat == 0) and not np.sum(1 / centers_d_stat ** 2) == 0:
                     d = centers.std()
-                    wavg, wavg_d, wstd, std = self.calc_weighted_avg(centers, centers_d_stat)
+                    wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(centers, centers_d_stat)
                     if self.combined_unc == 'wavg_d':
                         d = wavg_d
                     elif self.combined_unc == 'wstd':
                         d = wstd
+                    elif self.combined_unc == 'std_avg':
+                        d = std_avg
                     else:
                         d = std
                     wavg_d = '{:.0f}'.format(10 ** digits * d)  # times 10 for representation in brackets

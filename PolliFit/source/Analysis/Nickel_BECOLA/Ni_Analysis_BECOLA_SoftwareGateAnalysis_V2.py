@@ -52,7 +52,7 @@ class NiAnalysis_softwGates():
                         #'Nickel54_online_Becola20\\Analysis\\XML_Data'
         self.workdir = os.path.join(user_home_folder, ownCould_path)
         # data folder
-        self.datafolder = os.path.join(self.workdir, 'Bunched')
+        self.datafolder = os.path.join(self.workdir, '2018')
         # results folder
         analysis_start_time = datetime.now()
         self.results_name = self.run_name + '_' + analysis_start_time.strftime("%Y-%m-%d_%H-%M")
@@ -433,6 +433,7 @@ class NiAnalysis_softwGates():
         # define which files to run the analysis on:
         # file_list = ['BECOLA_10165.xml']  #, 'BECOLA_10166.xml', 'BECOLA_10182.xml', 'BECOLA_10169.xml', 'BECOLA_10170.xml']
         file_list, file_nos, file_times = self.pick_files_from_db_by_type_and_num('%%')
+        file_list = ['Sum58Nic_9999.xml','Sum60Nic_9999.xml','Sum56Nic_9999.xml','Sum55Nic_9999.xml']
 
 
         for file in file_list:

@@ -75,7 +75,7 @@ class NiAnalysis_softwGates():
         # Select runs; Format: ['run58', 'run60', 'run56']
         # to use a different lineshape you must create a new run under runs and a new linevar under lines and link the two.
         self.run = 'AsymmetricVoigt'
-        self.tof_mid = {'55Ni': 5.24, '56Ni': 5.28, '58Ni': 5.36, '60Ni': 5.47, '62Ni': 5.59, '64Ni': 5.68}  # mid-tof for each isotope (from fitting) 38, 47
+        self.tof_mid = {'55Ni': 5.23, '56Ni': 5.28, '58Ni': 5.36, '60Ni': 5.48, '62Ni': 5.59, '64Ni': 5.68}  # mid-tof for each isotope (from fitting) 38, 47
         self.tof_delay = {'55Ni': [0, 0.186, 0.257], '56Ni': [0, 0.189, 0.260], '58Ni': [0, 0.194, 0.267],
                           '60Ni': [0, 0.199, 0.273], '62Ni': [0, 0.204, 0.279], '64Ni': [0, 0.209, 0.285]}
         self.tof_sigma = {'55Ni': 0.04, '56Ni': 0.10, '58Ni': 0.089, '60Ni': 0.064, '62Ni': 0.053, '64Ni': 0.049}  # 1 sigma of the tof-peaks from fitting, avg over all scalers 56,58,60 Ni
@@ -93,10 +93,10 @@ class NiAnalysis_softwGates():
         self.calibration_method = 'absolute'  # can be 'absolute', 'relative' 'combined', 'isoshift' or 'None'
         self.use_handassigned = False  # use hand-assigned calibrations? If false will interpolate on time axis
         self.accVolt_corrected = (self.accVolt_set, 0)  # Used later for calibration. Might be used her to predefine calib? (abs_volt, err)
-        self.initial_par_guess = {'sigma': (34, True), 'gamma': (12, True),  #'sigma': (31.7, True), 'gamma': (18.4, True), for VoigtAsy
+        self.initial_par_guess = {'sigma': (34, False), 'gamma': (12, True),  #'sigma': (31.7, True), 'gamma': (18.4, True), for VoigtAsy
                                   'asy': (3.9, True),  # in case VoigtAsy is used
                                   'dispersive': (-0.04, False),  # in case FanoVoigt is used
-                                  'centerAsym': (-6.2, True), 'nPeaksAsym': (1, True), 'IntAsym': (0.052, True)
+                                  'centerAsym': (-5.78, True), 'nPeaksAsym': (1, True), 'IntAsym': (0.07, True)
                                   # in case AsymmetricVoigt is used
                                   }
         self.isotope_colors = {60: 'b', 58: 'k', 56: 'g', 55: 'c', 54: 'm', 62: 'purple', 64: 'orange'}
@@ -375,7 +375,7 @@ class NiAnalysis_softwGates():
                                IntAsym=self.initial_par_guess['IntAsym'],
                                nPeaksAsym=self.initial_par_guess['nPeaksAsym'])
         # reset isotope type and acc voltage in db
-        iso_list = ['56Ni', '58Ni', '60Ni']  # ['56Ni', '58Ni', '60Ni']
+        iso_list = ['56Ni', '58Ni', '60Ni', '55Ni']  # ['56Ni', '58Ni', '60Ni']
 
         # use scaler 1 for now. Probably doesn't make a difference
         scaler = [0]
@@ -388,8 +388,8 @@ class NiAnalysis_softwGates():
             # filenums = [9313]  #[9295, 9299, 9303, 9305, 9310]  #[9275, 9281, 9283, 9285]
             # filelist = ['BECOLA_{}.xml'.format(num) for num in filenums]
             filelist, filenums, filedates = self.pick_files_from_db_by_type_and_num(pickiso)  #, selecttuple=(9433, 9440)
-            # filelist = ['Sum58Nic_9999.xml']
-            # filenums = [9999]
+            filelist = ['Sum{}c_9999.xml'.format(pickiso)]
+            filenums = [9999]
             filedates = [datetime.strptime('2020-07-20 12:24:31', '%Y-%m-%d %H:%M:%S')]
             self.results[pickiso] = {'file_numbers': filenums,
                                      'file_names': filelist,
