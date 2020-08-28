@@ -69,6 +69,7 @@ class NiAnalysis:
             uncert.append(file_uncert)
         plt.errorbar([6363, 6396, 6419, 6463, 6466, 6502], center, yerr=uncert)
         plt.title('Center uncalibrated')
+        plt.ylabel('transition frequency in MHz')
         plt.show()
         print('Uncalibrated centers:', center)
 
@@ -106,6 +107,7 @@ class NiAnalysis:
         plt.plot([6363, 6502], [mean, mean], 'r')
         plt.plot([6363, 6502], [self.frequ_60ni, self.frequ_60ni], 'g')
         plt.title('Center calibrated')
+        plt.ylabel('transition frequency in MHz')
         plt.show()
         print('calibrated centers:', center)
 
@@ -313,8 +315,11 @@ class NiAnalysis:
 
             # find time gates
             t0, t_width = self.find_timegates(files, 0, s)
-            t_min = (t0 - t_width) / 100
-            t_max = (t0 + t_width) / 100
+            print('mid of time:', t0)
+            print('time gate width:', 2 * t_width)
+            t_min = (t0 - 0.5 * t_width) / 100
+            t_max = (t0 + 0.5 * t_width) / 100
+
             # iterate through files and sum up
             volcts = [] # Will be a list of tuples: (DAC, cts, scans, bg)
             for f in files:

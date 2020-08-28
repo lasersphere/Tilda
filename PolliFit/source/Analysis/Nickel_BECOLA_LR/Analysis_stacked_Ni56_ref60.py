@@ -295,7 +295,7 @@ class NiAnalysis:
 
     def ana_56(self):
         for run in self.runs56:
-            self.fit_stacked(run, sym= False)
+            self.fit_stacked(run, sym= True)
 
     def stack_files(self, files):
         scalers = [0, 1, 2]
