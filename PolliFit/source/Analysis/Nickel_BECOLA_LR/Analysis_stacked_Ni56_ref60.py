@@ -29,6 +29,7 @@ class NiAnalysis:
         self.cal_groups = cal_groups
 
     def reset(self):
+        self.reset_fixShape()
         # reset calibration
         con = sqlite3.connect(self.db)
         cur = con.cursor()
@@ -36,6 +37,18 @@ class NiAnalysis:
         con.commit()
         con.close()
         print('---------------------------- Calibration resetted')
+
+    def reset_fixShape(self):
+        # Reset FixShape
+        for run in self.runs60:
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            cur.execute('''SELECT fixShape FROM Lines WHERE refRun = ?''', (run,))
+            fixShape = ast.literal_eval(cur.fetchall()[0][0])
+            fixShape['asy'] = [0, 20]
+            cur.execute('''UPDATE Lines SET fixShape = ? WHERE refRun = ?''', (str(fixShape), run,))
+            con.commit()
+            con.close()
 
     def prep(self):
         # calibration of all files and fit of all reference files
@@ -45,6 +58,14 @@ class NiAnalysis:
         for tup in self.ref_groups:
             files.append('BECOLA_' + str(tup[0]) + '.xml')
         print('Fitting files', files)
+
+        # fit reference files
+        for run in self.runs60:
+            self.fit_all(files, run)
+
+        self.plot_asy(files)
+
+        self.assign_asy()
 
         # fit reference files
         for run in self.runs60:
@@ -116,27 +137,79 @@ class NiAnalysis:
         files56 = self.get_files('56Ni')
         self.stack_files(files56)
 
+    def plot_asy(self, files):
+        for run in self.runs60:
+            asy = []
+            err = []
+            weight = []
+            for f in files:
+                con = sqlite3.connect(self.db)
+                cur = con.cursor()
+                cur.execute('''SELECT pars FROM FitRes WHERE file = ? AND run = ?''', (f, run,))
+                pars = ast.literal_eval(cur.fetchall()[0][0])
+                con.close()
+                asy.append(pars['asy'][0])
+                err.append(pars['asy'][1])
+                weight.append(1 / (pars['asy'][1] ** 2))
+            mean = np.average(asy, weights=weight)
+            plt.errorbar(list(range(0, len(asy))), asy, yerr=err, fmt='b.')
+            plt.plot([0, len(asy)-1], [mean, mean], 'r-')
+            plt.title('Asymmetry factors')
+            plt.show()
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            cur.execute('''SELECT shape FROM Lines WHERE refRun = ?''', (run,))
+            shape = ast.literal_eval(cur.fetchall()[0][0])
+            cur.execute('''SELECT fixShape FROM Lines WHERE refRun = ?''', (run,))
+            fix = ast.literal_eval(cur.fetchall()[0][0])
+            shape['asy'] = mean
+            fix['asy'] = True
+            cur.execute('''UPDATE Lines SET shape = ? WHERE refRun = ?''', (str(shape), run,))
+            cur.execute('''UPDATE Lines SET fixShape = ? WHERE refRun = ?''', (str(fix), run,))
+            con.commit()
+            con.close()
+            print(shape, fix)
+
+    def assign_asy(self):
+        for i,run in enumerate(self.runs56):
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            cur.execute('''SELECT shape FROM Lines WHERE refRun = ?''', (run,))
+            pars56 = ast.literal_eval(cur.fetchall()[0][0])
+            cur.execute('''SELECT shape FROM Lines WHERE refRun = ?''', (self.runs60[i],))
+            pars60 = ast.literal_eval(cur.fetchall()[0][0])
+            print(pars56)
+            pars56['asy'] = pars60['asy']
+            print(pars56)
+            cur.execute('''UPDATE Lines SET shape = ? WHERE refRun = ?''', (str(pars56), run,))
+            cur.execute('''SELECT fixShape FROM Lines WHERE refRun = ?''', (run,))
+            fix = ast.literal_eval(cur.fetchall()[0][0])
+            fix['asy'] = True
+            cur.execute('''UPDATE Lines Set fixShape = ? WHERE refRun = ?''', (str(fix), run,))
+            con.commit()
+            con.close()
+
     def fit_all(self, files, run):
         for f in files:
-            for tup in self.ref_groups:
-                if 'BECOLA_' + str(tup[1]) + '.xml' == f:
-                    file60 = 'BECOLA_' + str(tup[0]) + '.xml'
-                    con = sqlite3.connect(self.db)
-                    cur = con.cursor()
-                    cur.execute('''SELECT pars from FitRes WHERE file = ? AND run = ?''', (file60, run))
-                    pars = ast.literal_eval(cur.fetchall()[0][0])
-                    asy = pars['asy'][0]
-                    cur.execute('''SELECT shape FROM Lines WHERE refRun = ?''', (run,))
-                    setpars = ast.literal_eval(cur.fetchall()[0][0])
-                    setpars['asy'] = asy
-                    cur.execute('''UPDATE Lines SET shape = ? WHERE refRun = ?''', (str(setpars), run,))
-                    cur.execute('''SELECT fixShape FROM Lines WHERE refRun = ?''', (run,))
-                    fixShape = ast.literal_eval(cur.fetchall()[0][0])
-                    fixShape['asy'] = True
-                    cur.execute('''UPDATE Lines SET fixShape = ? WHERE refRun = ?''',(str(fixShape), run,))
-                    con.commit()
-                    con.close()
-                    print('The Asymmetry Factor of file', file60, ' and run', run, 'is', asy)
+            #for tup in self.ref_groups:
+                #if 'BECOLA_' + str(tup[1]) + '.xml' == f:
+                    #file60 = 'BECOLA_' + str(tup[0]) + '.xml'
+                    #con = sqlite3.connect(self.db)
+                    #cur = con.cursor()
+                    #cur.execute('''SELECT pars from FitRes WHERE file = ? AND run = ?''', (file60, run))
+                    #pars = ast.literal_eval(cur.fetchall()[0][0])
+                    #asy = pars['asy'][0]
+                    #cur.execute('''SELECT shape FROM Lines WHERE refRun = ?''', (run,))
+                    #setpars = ast.literal_eval(cur.fetchall()[0][0])
+                    #setpars['asy'] = asy
+                    #cur.execute('''UPDATE Lines SET shape = ? WHERE refRun = ?''', (str(setpars), run,))
+                    #cur.execute('''SELECT fixShape FROM Lines WHERE refRun = ?''', (run,))
+                    #fixShape = ast.literal_eval(cur.fetchall()[0][0])
+                    #fixShape['asy'] = True
+                    #cur.execute('''UPDATE Lines SET fixShape = ? WHERE refRun = ?''',(str(fixShape), run,))
+                    #con.commit()
+                    #con.close()
+                    #print('The Asymmetry Factor of file', file60, ' and run', run, 'is', asy)
 
             # Guess offset
             spec = XMLImporter(path=os.path.join(self.data_path, f))
@@ -177,14 +250,6 @@ class NiAnalysis:
             # Fit
             print('Run to fit with:', run)
             BatchFit.batchFit(np.array([f]), self.db, run)
-
-            # Reset FixShape
-            cur.execute('''SELECT fixShape FROM Lines WHERE refRun = ?''', (run,))
-            fixShape = ast.literal_eval(cur.fetchall()[0][0])
-            fixShape['asy'] = [0, 20]
-            cur.execute('''UPDATE Lines SET fixShape = ? WHERE refRun = ?''', (str(fixShape), run,))
-            con.commit()
-            con.close()
 
     def adj_offset(self, offset, run):
         con = sqlite3.connect(self.db)
@@ -295,7 +360,7 @@ class NiAnalysis:
 
     def ana_56(self):
         for run in self.runs56:
-            self.fit_stacked(run, sym= True)
+            self.fit_stacked(run, sym= False)
 
     def stack_files(self, files):
         scalers = [0, 1, 2]
@@ -390,6 +455,8 @@ class NiAnalysis:
             plt.plot(v, sumc, 'b.')
             plt.plot(v, sumb, 'r.')
             plt.plot(v, sc, 'y.')
+            plt.xlabel('DAC-Voltage in V')
+            plt.ylabel('counts')
             plt.title('Calibrated and summed, Sclaer' + str(s))
             plt.show()
 
@@ -404,6 +471,8 @@ class NiAnalysis:
                 sumc_norm.append(int((cts) / sumb[i] * np.mean(sumb)))
 
             plt.plot(v, sumc_norm, 'b.')
+            plt.xlabel('DAC-Voltage in V')
+            plt.ylabel('Counts')
             plt.title('Calibrated, summed and normalized. Scaler' + str(s))
             plt.show()
 
@@ -556,6 +625,8 @@ class NiAnalysis:
         # Plot counts and fit
         plt.plot(time, sum_t_proj, 'b.')
         plt.title('Scaler' + str(scaler))
+        plt.xlabel('time in bins')
+        plt.ylabel('counts')
         plt.plot(time, self.lorentz(time, a, sigma, center, offset), 'r-')
         plt.axvline(center - sigma, color='y')
         plt.axvline(center + sigma, color='y')
@@ -617,20 +688,46 @@ class NiAnalysis:
         center_sigma = np.std(centers)
         return center_average, center_sigma
 
+    def calc_iso(self, ref):
+        nmb = list(range(0, 3))
+        center = []
+        err = []
+        weights = []
+        for run in self.runs56:
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            cur.execute('''SELECT pars FROM FitRes WHERE run = ?''', (run,))
+            pars = ast.literal_eval(cur.fetchall()[0][0])
+            con.close()
+            center.append(pars['center'][0]-ref)
+            err.append(pars['center'][1])
+            weights.append(1 / (pars['center'][1] ** 2))
+        mean = np.average(center, weights=weights)
+        std = np.std(center)
+        #plt.figure(figsize=(1, 1))
+        plt.errorbar(nmb, center, yerr=err, fmt='b.')
+        plt.plot([0, nmb[-1]], [mean, mean], 'r-')
+        plt.fill_between([0, nmb[-1]], mean - std, mean + std, alpha=0.2, linewidth=0, color='r')
+        plt.title('Isotope shift 56Ni')
+        plt.ylabel('MHz')
+        print('Isotope shift:')
+        print(mean)
+        print(std)
+        plt.show()
 
 working_dir = 'D:\\Daten\\IKP\\Nickel-Auswertung\\Auswertung'
 db = 'Nickel_BECOLA_60Ni-56Ni-stacked.sqlite'
 line_vars = ['58_0','58_1','58_2']
 runs60 = ['AsymVoigt0', 'AsymVoigt1', 'AsymVoigt2']
-runs56 = ['AsymVoigt56_0', 'AsymVoigt56_1', 'AsymVoigt56_2', 'AsymVoigt56_All']
+runs56 = ['AsymVoigt56_0', 'AsymVoigt56_1', 'AsymVoigt56_2']
 frequ_60ni = 850344183
 reference_groups = [(6192,6191), (6208, 6207), (6243, 6242), (6254, 6253), (6259, 6253)]
 calibration_groups = [((6192, 6208), (6202, 6203, 6204)), ((6208, 6243), (6211, 6213, 6214)),
                       ((6243, 6254), (6238, 6239, 6240)), ((6254, 6259), (6251, 6252))]
 niAna = NiAnalysis(working_dir, db, line_vars, runs60, runs56, frequ_60ni, reference_groups, calibration_groups)
-niAna.reset()
-niAna.prep()
-niAna.ana_56()
+#niAna.reset()
+#niAna.prep()
+#niAna.ana_56()
 files60 = niAna.get_files('60Ni')
 center60, sigma60 = niAna.center_ref(files60)
 print('Reference center is', center60, '+/-', sigma60)
@@ -648,5 +745,4 @@ for res in pars:
     weigths56.append(1 / (center_pars['center'][1] ** 2))
 mean_center56 = np.average(center56, weights=weigths56)
 print(mean_center56, '+/-', np.std(center56))
-
-# TODO assign corrected normalisation to 55Ni
+niAna.calc_iso(center60)
