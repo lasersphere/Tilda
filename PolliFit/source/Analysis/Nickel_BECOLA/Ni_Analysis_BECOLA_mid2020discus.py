@@ -64,7 +64,7 @@ class NiAnalysis():
         # fit from scratch or use FitRes db?
         self.do_the_fitting = True  # if False, an .xml file has to be specified in the next variable!
         load_results_from = 'mid2020discuss_2020-07-16_17-09.xml'  # load fit results from this file
-        self.get_gate_analysis = True  # get information from gate analysis (and use for uncertainties)
+        self.get_gate_analysis = False  # get information from gate analysis (and use for uncertainties)
         load_gate_analysis_from = 'SoftwareGateAnalysis_2020-06-17_13-13_narrow90p-3sig_AsymmetricVoigt.xml'
 
         # line parameters

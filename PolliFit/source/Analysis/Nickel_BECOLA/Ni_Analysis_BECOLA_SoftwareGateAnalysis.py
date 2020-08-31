@@ -375,22 +375,22 @@ class NiAnalysis_softwGates():
                                IntAsym=self.initial_par_guess['IntAsym'],
                                nPeaksAsym=self.initial_par_guess['nPeaksAsym'])
         # reset isotope type and acc voltage in db
-        iso_list = ['56Ni', '58Ni', '60Ni', '55Ni']  # ['56Ni', '58Ni', '60Ni']
+        iso_list = ['56Ni', '58Ni', '60Ni', '55Ni_sum_cal']  # ['56Ni', '58Ni', '60Ni']
 
         # use scaler 1 for now. Probably doesn't make a difference
         scaler = [0]
         sc_name = self.update_scalers_in_db(scaler)
 
         for pickiso in iso_list:
-            self.reset(pickiso+'%', [self.accVolt_set, pickiso])
+            # self.reset(pickiso+'%', [self.accVolt_set, pickiso])
 
             # filenums = [6251, 6501, 6502]
             # filenums = [9313]  #[9295, 9299, 9303, 9305, 9310]  #[9275, 9281, 9283, 9285]
             # filelist = ['BECOLA_{}.xml'.format(num) for num in filenums]
             filelist, filenums, filedates = self.pick_files_from_db_by_type_and_num(pickiso)  #, selecttuple=(9433, 9440)
-            filelist = ['Sum{}c_9999.xml'.format(pickiso)]
-            filenums = [9999]
-            filedates = [datetime.strptime('2020-07-20 12:24:31', '%Y-%m-%d %H:%M:%S')]
+            # filelist = ['Sum{}c_9999.xml'.format(pickiso)]
+            # filenums = [9999]
+            # filedates = [datetime.strptime('2020-07-20 12:24:31', '%Y-%m-%d %H:%M:%S')]
             self.results[pickiso] = {'file_numbers': filenums,
                                      'file_names': filelist,
                                      'file_times': filedates,
@@ -435,15 +435,15 @@ class NiAnalysis_softwGates():
 
                     iso = self.get_iso_for_file(file)[:4]
 
-                    if 'Sum' in file:
-                        stand_ests = {'55Ni': -1500, '56Ni': -1000, '58Ni': -500, '60Ni': 0, '62Ni': 450, '64Ni': 1000}  # values that worked fine for 29850V
-                    else:
-                        stand_ests = {'55Ni': -1600, '56Ni': -1100, '58Ni': -600, '60Ni': 0, '62Ni': 470, '64Ni': 1000}
-                    con = sqlite3.connect(self.db)
-                    cur = con.cursor()
-                    cur.execute('''UPDATE Isotopes SET center = ? WHERE iso = ? ''', (stand_ests[iso], iso))
-                    con.commit()
-                    con.close()
+                    # if 'Sum' in file:
+                    #     stand_ests = {'55Ni': -1500, '56Ni': -1000, '58Ni': -500, '60Ni': 0, '62Ni': 450, '64Ni': 1000}  # values that worked fine for 29850V
+                    # else:
+                    #     stand_ests = {'55Ni': -1600, '56Ni': -1100, '58Ni': -600, '60Ni': 0, '62Ni': 470, '64Ni': 1000}
+                    # con = sqlite3.connect(self.db)
+                    # cur = con.cursor()
+                    # cur.execute('''UPDATE Isotopes SET center = ? WHERE iso = ? ''', (stand_ests[iso], iso))
+                    # con.commit()
+                    # con.close()
 
                     # do tof fitting to find mid-tof for this file. Must be done for scaler 0!!
                     midtof_fit, midtof_err, sigma, sigma_err = self.find_midtof_for_file(file, scaler=0)
@@ -555,7 +555,7 @@ class NiAnalysis_softwGates():
                         #                    SNR_array[1, :] - SNR_d_array[1, :],
                         #                    SNR_array[1, :] + SNR_d_array[1, :],
                         #                    alpha=0.5, edgecolor='red', facecolor='red')
-                        axSNR.plot(np.log(gatew) / np.log(2), SNR_array[1, :], label='SNR', c='r', linestyle='-',
+                        axSNR.plot(np.log(gatew) / np.log(2), SNR_array[round(len(midtof_variation_arr)/2), :], label='SNR', c='r', linestyle='-',
                                    linewidth=3.0)
                         axSNR.tick_params(axis='y', labelcolor='red')
 
@@ -618,7 +618,7 @@ class NiAnalysis_softwGates():
                         ax.set_yticklabels(['{:.0f}'.format(m) for m in midtof_variation_arr])
                         cbar = fig.colorbar(im, orientation='horizontal')
                         cbar.set_label('SNR')
-                        plt.setp(ax.get_xticklabels(), rotation=90, ha="center", rotation_mode="anchor")
+                        plt.setp(ax.get_xticklabels(), rotation=90, ha="center", va='top', rotation_mode="default")
                         if self.save_plots_to_file:
                             filename = 'SNR-heatmap_{}_{}'.format(iso, file)
                             plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
