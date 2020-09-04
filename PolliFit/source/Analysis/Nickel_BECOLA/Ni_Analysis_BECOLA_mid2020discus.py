@@ -64,11 +64,11 @@ class NiAnalysis():
         # fit from scratch or use FitRes db?
         self.do_the_fitting = True  # if False, an .xml file has to be specified in the next variable!
         load_results_from = 'mid2020discuss_2020-07-16_17-09.xml'  # load fit results from this file
-        self.get_gate_analysis = True  # get information from gate analysis (and use for uncertainties)
+        self.get_gate_analysis = False  # get information from gate analysis (and use for uncertainties)
         load_gate_analysis_from = 'SoftwareGateAnalysis_2020-06-17_13-13_narrow90p-3sig_AsymmetricVoigt.xml'
 
         # line parameters
-        self.run = 'VoigtAsy'  # lineshape from runs and a new lines
+        self.run = 'AsymmetricVoigt'  # lineshape from runs and a new lines
         self.initial_par_guess = {'sigma': (34.0, False), 'gamma': (12.0, False),
                                   'asy': (3.9, True),  # in case VoigtAsy is used
                                   'dispersive': (-0.04, False),  # in case FanoVoigt is used
@@ -2672,7 +2672,7 @@ class NiAnalysis():
 
         file_creation_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         header_dict = {'type': 'trs',
-                       'isotope': type,
+                       'isotope': iso,
                        'isotopeStartTime': file_creation_time,
                        'accVolt': self.accVolt_set,
                        'laserFreq': Physics.wavenumber(self.laser_freqs[iso[:4]]/2),
