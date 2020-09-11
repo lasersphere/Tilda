@@ -74,11 +74,11 @@ class NiAnalysis_softwGates():
         """
         # Select runs; Format: ['run58', 'run60', 'run56']
         # to use a different lineshape you must create a new run under runs and a new linevar under lines and link the two.
-        self.run = 'AsymmetricVoigt'
-        self.tof_mid = {'55Ni': 5.23, '56Ni': 5.28, '58Ni': 5.36, '60Ni': 5.48, '62Ni': 5.59, '64Ni': 5.68}  # mid-tof for each isotope (from fitting) 38, 47
-        self.tof_delay = {'55Ni': [0, 0.186, 0.257], '56Ni': [0, 0.189, 0.260], '58Ni': [0, 0.194, 0.267],
+        self.run = 'VoigtAsy'
+        self.tof_mid = {'54Ni': 5.19, '55Ni': 5.23, '56Ni': 5.28, '58Ni': 5.36, '60Ni': 5.47, '62Ni': 5.59, '64Ni': 5.68}  # mid-tof for each isotope (from fitting) 38, 47
+        self.tof_delay = {'54Ni': [0, 0.184, 0.254], '55Ni': [0, 0.186, 0.257], '56Ni': [0, 0.189, 0.260], '58Ni': [0, 0.194, 0.267],
                           '60Ni': [0, 0.199, 0.273], '62Ni': [0, 0.204, 0.279], '64Ni': [0, 0.209, 0.285]}
-        self.tof_sigma = {'55Ni': 0.04, '56Ni': 0.10, '58Ni': 0.089, '60Ni': 0.064, '62Ni': 0.053, '64Ni': 0.049}  # 1 sigma of the tof-peaks from fitting, avg over all scalers 56,58,60 Ni
+        self.tof_sigma = {'54Ni': 0.037, '55Ni': 0.04, '56Ni': 0.10, '58Ni': 0.089, '60Ni': 0.064, '62Ni': 0.053, '64Ni': 0.049}  # 1 sigma of the tof-peaks from fitting, avg over all scalers 56,58,60 Ni
         self.tof_width_sigma = 1.63  # how many sigma to use around tof? (1: 68.3% of data, 2: 95.4%, 3: 99.7%)
 
         self.timebin_size = 4.8  # length of timegate in 10ns (4.8 = 48ns)
@@ -375,10 +375,10 @@ class NiAnalysis_softwGates():
                                IntAsym=self.initial_par_guess['IntAsym'],
                                nPeaksAsym=self.initial_par_guess['nPeaksAsym'])
         # reset isotope type and acc voltage in db
-        iso_list = ['56Ni', '58Ni', '60Ni', '55Ni_sum_cal']  # ['56Ni', '58Ni', '60Ni']
+        iso_list = ['54Ni', '55Ni', '56Ni', '58Ni', '60Ni']  # ['56Ni', '58Ni', '60Ni']
 
         # use scaler 1 for now. Probably doesn't make a difference
-        scaler = [0]
+        scaler = 'scaler_01'
         sc_name = self.update_scalers_in_db(scaler)
 
         for pickiso in iso_list:
@@ -387,7 +387,10 @@ class NiAnalysis_softwGates():
             # filenums = [6251, 6501, 6502]
             # filenums = [9313]  #[9295, 9299, 9303, 9305, 9310]  #[9275, 9281, 9283, 9285]
             # filelist = ['BECOLA_{}.xml'.format(num) for num in filenums]
-            filelist, filenums, filedates = self.pick_files_from_db_by_type_and_num(pickiso)  #, selecttuple=(9433, 9440)
+            select = None
+            # if '55' in pickiso:
+            select = (9999, 9999)  # only sumfile
+            filelist, filenums, filedates = self.pick_files_from_db_by_type_and_num(pickiso, selecttuple=select)
             # filelist = ['Sum{}c_9999.xml'.format(pickiso)]
             # filenums = [9999]
             # filedates = [datetime.strptime('2020-07-20 12:24:31', '%Y-%m-%d %H:%M:%S')]
@@ -398,7 +401,7 @@ class NiAnalysis_softwGates():
                                      sc_name: {}}
             # set variation parameters
             delaylist = self.tof_delay[pickiso[:4]]
-            midtof_variation = (-4, +4, 9)  # (relative midtof variation in µs, number of variations inside width)
+            midtof_variation = (-5, +5, 9)  # (relative midtof variation in µs, number of variations inside width)
             midtof_variation_arr = np.linspace(*midtof_variation)
             # midtof_variation_arr = np.append(-np.logspace(1, 0, 7, base=2), np.append([0], np.logspace(0, 1, 7, base=2)))  # in time bins
             # gatewidth_variation = (5, 1, 11)

@@ -443,7 +443,7 @@ def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
     return scan_dict, xml_etree
 
 
-def gate_one_track(tr_ind, tr_num, scan_dict, data, time_array, volt_array, ret, data_is_errors=False):
+def gate_one_track(tr_ind, tr_num, scan_dict, data, time_array, volt_array, ret):
     """
     Function to gate all data of one track by applying the software gates given
      in scan_dict[tr_name]['softwGates'] as a list of all pmts
@@ -490,19 +490,12 @@ def gate_one_track(tr_ind, tr_num, scan_dict, data, time_array, volt_array, ret,
     finally:
         for pmt_ind, pmt_gate in enumerate(gates_tr):
             try:
-                if data_is_errors:
-                    # sum in quadrature
-                    t_proj_xdata = np.sqrt(np.sum(np.square(data[tr_ind][pmt_ind][pmt_gate[0]:pmt_gate[1] + 1, :]), axis=0))
-                    v_proj_ydata = np.sqrt(np.sum(np.square(data[tr_ind][pmt_ind][:, pmt_gate[2]:pmt_gate[3] + 1]), axis=1))
-                    v_proj_tr[pmt_ind] = v_proj_ydata
-                    t_proj_tr[pmt_ind] = t_proj_xdata
-                else:
-                    t_proj_xdata = np.sum(data[tr_ind][pmt_ind][pmt_gate[0]:pmt_gate[1] + 1, :], axis=0)
-                    v_proj_ydata = np.sum(data[tr_ind][pmt_ind][:, pmt_gate[2]:pmt_gate[3] + 1], axis=1)
-                    v_proj_tr[pmt_ind] = v_proj_ydata
-                    t_proj_tr[pmt_ind] = t_proj_xdata
+                t_proj_xdata = np.sum(data[tr_ind][pmt_ind][pmt_gate[0]:pmt_gate[1] + 1, :], axis=0)
+                v_proj_ydata = np.sum(data[tr_ind][pmt_ind][:, pmt_gate[2]:pmt_gate[3] + 1], axis=1)
+                v_proj_tr[pmt_ind] = v_proj_ydata
+                t_proj_tr[pmt_ind] = t_proj_xdata
             except Exception as e:
-                print('bla: ', e)
+                print('error while extracting projections: ', e)
         ret.append([v_proj_tr, t_proj_tr])
     return ret
 

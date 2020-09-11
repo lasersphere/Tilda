@@ -245,7 +245,7 @@ class NiAnalysis():
             '64Ni': (Physics.freqFromWavenumber(0.01691+0.01701),  # 60-62 and 62-64 combined.
                      Physics.freqFromWavenumber(np.sqrt(0.00012**2+0.00026**2)))}  # Quadr. error prop
         iso_shifts_koenig = {  # private com. excel sheet mid 2020
-            '54Ni': (-1385.0-507, 10.0),  # very preliminary from 2020 beamtime
+            '54Ni': (-1922, 10.0),  # very preliminary from 2020 beamtime -1922
             '58Ni': (self.restframe_trans_freq['58Ni'][0] - self.restframe_trans_freq['60Ni'][0],
                      np.sqrt(self.restframe_trans_freq['58Ni'][1]**2 + self.restframe_trans_freq['60Ni'][1]**2)),
             '60Ni': (0, 0),
