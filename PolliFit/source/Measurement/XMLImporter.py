@@ -260,8 +260,9 @@ class XMLImporter(SpecData):
                     # errors are explicitly given. Use those.
                     # first gate the errors
                     v_proj_err, t_proj_err = TildaTools.gate_one_track(
-                        tr_ind, nOfactTrack, scandict, self.time_res_err, self.t, self.x, [], data_is_errors=True)[0]
-                    self.err.append(v_proj_err)
+                        tr_ind, nOfactTrack, scandict, np.square(self.time_res_err), self.t, self.x, [])[0]
+                    # square errors first, then sum along the projection, now take the sqrt again.
+                    self.err.append(np.sqrt(v_proj_err))
                 else:
                     # if no errors were specified, use standard errors
                     self.err.append(np.sqrt(v_proj))
