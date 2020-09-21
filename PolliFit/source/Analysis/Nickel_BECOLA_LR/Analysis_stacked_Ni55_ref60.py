@@ -88,7 +88,7 @@ class NiAnalysis:
             file_uncert = np.std(file_center)
             center.append(mean_file_center)
             uncert.append(file_uncert)
-        plt.errorbar([6363, 6396, 6419, 6463, 6466, 6502], center, yerr=uncert)
+        plt.errorbar([6324, 6363, 6396, 6419, 6463, 6466, 6502], center, yerr=uncert)
         plt.title('Center uncalibrated')
         plt.ylabel('transition frequency in MHz')
         plt.show()
@@ -124,7 +124,7 @@ class NiAnalysis:
         for u in uncert:
             weights.append(1 / (u ** 2))
         mean = np.average(center, weights=weights)
-        plt.errorbar([6363, 6396, 6419, 6463, 6466, 6502], center, yerr=uncert)
+        plt.errorbar([6324, 6363, 6396, 6419, 6463, 6466, 6502], center, yerr=uncert)
         plt.plot([6363, 6502], [mean, mean], 'r')
         plt.plot([6363, 6502], [self.frequ_60ni, self.frequ_60ni], 'g')
         plt.title('Center calibrated')
@@ -445,6 +445,7 @@ class NiAnalysis:
             v = np.delete(v, zInd)
             sc = np.delete(sc, zInd)
 
+            print('Steps:', v)
             # plot summed and calibrated counts and background
 
             plt.plot(v, sumc, 'b.')
@@ -795,8 +796,9 @@ runs60 = ['AsymVoigt0', 'AsymVoigt1', 'AsymVoigt2', 'AsymVoigtAll']
 runs55 = ['AsymVoigt55_0', 'AsymVoigt55_1', 'AsymVoigt55_2', 'AsymVoigt55_All']
 #runs55 = ['sidePVoigt55_0', 'sidePVoigt55_1', 'sidePVoigt55_2', 'sidePVoigt55_All']
 frequ_60ni = 850344183
-reference_groups = [(6363, 6362), (6396, 6395), (6419, 6417), (6463, 6462), (6466, 6467), (6502, 6501)]
-calibration_groups = [((6363, 6396), (6369, 6373, 6370, 6375, 6376, 6377, 6378, 6380, 6382, 6383, 6384, 6387, 6391,
+reference_groups = [(6324, 6323), (6363, 6362), (6396, 6395), (6419, 6417), (6463, 6462), (6466, 6467), (6502, 6501)]
+calibration_groups = [((6324, 6342), (6333, 6334)),
+                      ((6363, 6396), (6369, 6373, 6370, 6375, 6376, 6377, 6378, 6380, 6382, 6383, 6384, 6387, 6391,
                                       6392, 6393)),
                       ((6396, 6419), (6399, 6400, 6401, 6402, 6404, 6405, 6406, 6408, 6410, 6411, 6412)),
                       ((6419, 6463), (6428, 6429, 6430, 6431, 6432, 6433, 6434, 6436, 6438, 6440, 6441, 6444, 6445,

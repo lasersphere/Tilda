@@ -481,26 +481,6 @@ class NiAnalysis:
                 sumb.append(tup[3])
                 sc.append(1)
 
-            # iterate through collected voltage and counts (all files included)
-            #for tup in volcts:
-                #for j, item in enumerate(v):    # find correct bin and add to counts, scans, background
-                    #if item - bin / 2 < tup[0] <= item + bin / 2:
-                        #sumc[j] += tup[1]
-                        #sc[j] += tup[2]
-                        #sumb[j] += tup[3]
-            # find indices with zero background and remove from lists
-            #zInd = np.where(sumb == 0)
-            #sumc = np.delete(sumc, zInd)
-            #sumb = np.delete(sumb, zInd)
-            #v = np.delete(v, zInd)
-            #sc = np.delete(sc, zInd)
-
-            #zInd = np.where(sc < 100)
-            #sumc = np.delete(sumc, zInd)
-            #sumb = np.delete(sumb, zInd)
-            #v = np.delete(v, zInd)
-            #sc = np.delete(sc, zInd)
-
             # plot summed and calibrated counts and background
             plt.plot(v, sumc, 'b.')
             plt.plot(v, sumb, 'r.')
