@@ -260,7 +260,7 @@ class XMLImporter(SpecData):
                     # errors are explicitly given. Use those.
                     # first gate the errors
                     v_proj_err, t_proj_err = TildaTools.gate_one_track(
-                        tr_ind, nOfactTrack, scandict, np.square(self.time_res_err), self.t, self.x, [])[0]
+                        tr_ind, nOfactTrack, scandict, [np.square(tr_arr) for tr_arr in self.time_res_err], self.t, self.x, [])[0]
                     # square errors first, then sum along the projection, now take the sqrt again.
                     self.err.append(np.sqrt(v_proj_err))
                 else:
@@ -354,7 +354,7 @@ class XMLImporter(SpecData):
                     self.x[tr_ind] = TildaTools.line_to_total_volt(self.x[tr_ind], self.lineMult, self.lineOffset,
                                                                    self.offset[tr_ind], self.accVolt, self.voltDivRatio,
                                                                    offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])
-                self.norming()
+                self.norming()  # TODO: Do we always want this? No norming is done when regating from trs plot. Make consistent and maybe include to global options?
                 self.x_units = self.x_units_enums.total_volts
             elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
                 db_ret = TildaTools.select_from_db(db, 'offset', 'Files', [['file'], [self.file]])

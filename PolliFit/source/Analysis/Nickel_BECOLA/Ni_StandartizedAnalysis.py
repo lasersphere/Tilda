@@ -65,10 +65,11 @@ class NiAnalysis():
         """
         # fit from scratch or use FitRes db?
         self.do_the_fitting = True  # if False, an .xml file has to be specified in the next variable!
-        self.load_prev_results = True
-        load_results_from = 'Ni_StandartizedAnalysis_2020-09-04_16-19.xml'  # load fit results from this file
+        self.load_prev_results = False
+        load_results_from = 'Ni_StandartizedAnalysis_2020-09-18_13-36.xml'  # load fit results from this file
         self.load_gate_analysis = True
-        self.use_individual_gates = False
+        self.use_individual_gates = True
+        self.optimizeSNRorSIGMA = 'SIGMA'  # 'SNR' (uses optimal gatewidth for maximum SNR)  or 'SIGMA' (scales that timegate to be self.tof_width_sigma * sigma).
         load_gate_analysis_from = 'SoftwareGateAnalysis_2020-08-27_13-30_allUpdated.xml'
 
         # Isotopes
@@ -78,7 +79,7 @@ class NiAnalysis():
         # isotope settings for summed file analysis
         self.binsize = {'54Ni': 1, '55Ni': 3, '56Ni': 1, '58Ni': 1, '60Ni': 1, '62Ni': 3, '64Ni': 3}  # if not specified, 1 will be used
         self.scanrange = {'55Ni': (-331, -31), '56Ni': (-150, 80), '58Ni': (-44, 14), '60Ni': (-100, 30)}  # if not specified, (-2000, 2000) will be used
-        self.filerange = {} #{'55Ni': (6315, 9000)}  # if not specified, all files will be used
+        self.filerange = {'55Ni': [(6315, 6500)]} #{'55Ni': [(6315, 6331), (6369, 6383), (6384, 6452), (6468, 6478),  (6480, 6500)]}  # if not specified, all files will be used
 
         # line parameters
         self.run = 'AsymmetricVoigt'  # lineshape from runs and a new lines
@@ -108,14 +109,15 @@ class NiAnalysis():
                           '60Ni': [0, 0.199, 0.273], '62Ni': [0, 0.204, 0.279], '64Ni': [0, 0.209, 0.285]}
         # self.tof_sigma = {'55Ni': 0.037, '56Ni': 0.091, '58Ni': 0.075, '60Ni': 0.069, '62Ni': 0.06,
         #                   '64Ni': 0.06}  # 1 sigma of the tof-peaks from fitting, avg over all scalers 56,58,60 Ni
-        self.tof_sigma = {'54Ni': 0.037, '55Ni': 0.037, '56Ni': 0.13, '58Ni': 0.13, '60Ni': 0.13, '62Ni': 0.138,
+        self.tof_sigma = {'54Ni': 0.037, '55Ni': 0.04, '56Ni': 0.10, '58Ni': 0.10, '60Ni': 0.10, '62Ni': 0.138,
                           '64Ni': 0.138}  # 1 sigma of the tof-peaks from fitting, avg over all scalers 56,58,60 Ni
-        self.tof_width_sigma = 1.63  # how many sigma to use around tof? (1: 68.3% of data, 2: 95.4%, 3: 99.7%)
+        self.tof_width_sigma = 2  # how many sigma to use around tof? (1: 68.3% of data, 2: 95.4%, 3: 99.7%)
+        self.bestSNRtoSIGMAratio = 1.5  # imperically determined sigma width for SNR optimization.
 
         # calculate absolute gatewidths based on this
-        abs_gatewidth = self.tof_sigma.copy()
-        for key, val in abs_gatewidth.items():
-            abs_gatewidth[key] = 2*self.tof_width_sigma*val
+        self.abs_gatewidth = self.tof_sigma.copy()
+        for key, val in self.abs_gatewidth.items():
+            self.abs_gatewidth[key] = 2*self.tof_width_sigma*val
 
         # acceleration set voltage (Buncher potential), negative
         self.accVolt_set = 29850  # omit voltage sign, assumed to be negative TODO: Should be from files
@@ -153,7 +155,7 @@ class NiAnalysis():
                                     'gate_global_presets':
                                         {'midtof': str(self.tof_mid),
                                          'tof_sc_delay': str(self.tof_delay),
-                                         'gatewidth': str(abs_gatewidth)
+                                         'gatewidth': str(self.abs_gatewidth)
                                          },
                                     'reference_isotope': self.ref_iso,
                                     'calibration_method': self.calibration_method,
@@ -173,13 +175,13 @@ class NiAnalysis():
                 All uncertainties that we can quantify and might want to respect
                 """
         self.accVolt_set_d = 10  # V. uncertainty of scan volt. Estimated by Miller for Calcium meas.
-        self.wavemeter_wsu30_mhz_d = 3 * 2  # MHz. Kristians wavemeter paper. Factor 2 because of frequency doubling.
+        self.wavemeter_wsu30_mhz_d = 1 * 2  # MHz. Kristians wavemeter paper. Factor 2 because of frequency doubling.
         self.matsuada_volts_d = 0.03  # V. ~standard dev after rebinning
-        self.lineshape_d_syst = 1.0  # MHz. Offset between VoigtAsym and AsymmetricVoigt
+        self.lineshape_d_syst = 1.0  # MHz. Offset between VoigtAsym and AsymmetricVoigt  --> only used for centroid, not IS
         self.softw_gate_d_syst = 0.0  # TODO: make this a gatewidth systematic uncertainty based on differences in final results. Check for both center & shifts!!
-        self.heliumneon_drift = 5  # MHz. Max drift according to datasheet of the SIOS China2 HeNe. 1h stability ~1MHz. TODO: how is the influence?
-        self.laserionoverlap_anglemrad_d = 1  # mrad. ideally angle should be 0. Max possible deviation is ~1mrad
-        self.laserionoverlap_MHz_d = (self.accVolt_set -  # should turn out to around ~200kHz
+        self.heliumneon_drift = 1  # MHz. According to datasheet of the SIOS China2 HeNe: 1h stability ~1MHz. Max drift ~5MHz TODO: how is the influence?
+        self.laserionoverlap_anglemrad_d = 2  # mrad. ideally angle should be 0. Max possible deviation is ~1mrad
+        self.laserionoverlap_MHz_d = (self.accVolt_set -  # should turn out to around ~800kHz
                                       np.sqrt(self.accVolt_set ** 2 / (
                                               1 + (self.laserionoverlap_anglemrad_d / 1000) ** 2))) * 15
 
@@ -272,7 +274,7 @@ class NiAnalysis():
             '64Ni': (Physics.freqFromWavenumber(0.01691 + 0.01701),  # 60-62 and 62-64 combined.
                      Physics.freqFromWavenumber(np.sqrt(0.00012 ** 2 + 0.00026 ** 2)))}  # Quadr. error prop
         iso_shifts_koenig = {  # private com. excel sheet mid 2020
-            '54Ni': (-1922, 10.0),  # very preliminary from 2020 beamtime -1922
+            '54Ni': (-1912.1, 7.3),  # preliminary from 2020 beamtime -1912.12(7.32) from Meeting 17.09.20
             '58Ni': (self.restframe_trans_freq['58Ni'][0] - self.restframe_trans_freq['60Ni'][0],
                      np.sqrt(self.restframe_trans_freq['58Ni'][1] ** 2 + self.restframe_trans_freq['60Ni'][1] ** 2)),
             '60Ni': (0, 0),
@@ -412,13 +414,16 @@ class NiAnalysis():
         # remove bad files from db
         con = sqlite3.connect(self.db)  # connect to db
         cur = con.cursor()
-        with open(os.path.join(self.datafolder, 'badruns.txt'), 'r') as bad:  # all runs to be excluded from analysis
-            for line in bad:  # each line contains just the run number of a bad run. Reasons see separate excel.
-                splt = line.split()  # get only the file-number in a list with len=1, removes the linebreak
-                filename = 'BECOLA_{}.xml'.format(splt[0])  # create filename from filenumber
-                cur.execute(
-                    '''DELETE FROM Files WHERE file = ? ''', (filename,))  # delete row of specified file
-                con.commit()  # commit changes to db
+        try:
+            with open(os.path.join(self.datafolder, 'badruns.txt'), 'r') as bad:  # all runs to be excluded from analysis
+                for line in bad:  # each line contains just the run number of a bad run. Reasons see separate excel.
+                    splt = line.split()  # get only the file-number in a list with len=1, removes the linebreak
+                    filename = 'BECOLA_{}.xml'.format(splt[0])  # create filename from filenumber
+                    cur.execute(
+                        '''DELETE FROM Files WHERE file = ? ''', (filename,))  # delete row of specified file
+                    con.commit()  # commit changes to db
+        except:
+            logging.warning('badruns.txt not found. Make sure no unwanted files are included!')
         cur.execute(
             '''DELETE FROM Files WHERE file LIKE ? ''', ('Sum%',))  # Also delete sum files from last run!
         con.commit()  # commit changes to db
@@ -607,11 +612,13 @@ class NiAnalysis():
 
                 # calculate weighted average and various error estimates
                 wavg, wavg_d, wstd, std, std_avg = self.calc_weighted_avg(val_arr, err_arr)
+                # get the fit error for all 3 scalers combined.
+                err_sc012 = iso_r['scaler_012'][parameter]['d_fit'][indx]
 
-                # for combining scalers, always use the standard deviation
+                # for combining scalers, use the largest of std, wavg_d, err_sc012
                 # - most conservative
                 # - we strictly speaking have 3 different measurements, not 3 repetitions of the same measurement.
-                d_fit = max(wavg_d, std)
+                d_fit = max(wavg_d, std, err_sc012)
 
                 # Append to combined results list.
                 centers_combined.append(wavg)
@@ -720,8 +727,8 @@ class NiAnalysis():
                     self.update_scalers_in_db('scaler_012')  # self.scaler_name defines scaler used in calibration
                 # get deviations from both the 58 and 60 Nickel absolute transition frequencies
                 # These deviations will be used for the calibration!
-                mean_offset_58 = self.getVoltDeviationFromAbsoluteTransFreq('58Ni')
-                mean_offset_60 = self.getVoltDeviationFromAbsoluteTransFreq('60Ni')
+                mean_offset_58 = self.getVoltDeviationFromAbsoluteTransFreq('58Ni', scaler_to_cal=scaler_to_be_calib)
+                mean_offset_60 = self.getVoltDeviationFromAbsoluteTransFreq('60Ni', scaler_to_cal=scaler_to_be_calib)
                 mean_offset = ((mean_offset_58[0] + mean_offset_60[0]) / 2, (mean_offset_58[1] + mean_offset_60[1]) / 2)
                 for iso in isolist:
                     # '58' or '60' in self.calibration_method will lead to only this isotope being used for calibration
@@ -823,7 +830,10 @@ class NiAnalysis():
 
         # do a batchfit of the newly created files
         isolist = self.all_isotopes
-        isolist = ['{}_sum_cal'.format(i) for i in isolist]
+        if calibration_per_file is None:
+            isolist = ['{}_sum'.format(i) for i in isolist]
+        else:
+            isolist = ['{}_sum_cal'.format(i) for i in isolist]
 
         if self.do_the_fitting:
             for iso in isolist:
@@ -957,6 +967,54 @@ class NiAnalysis():
         # self.export_results()
 
         self.make_final_plots()
+
+        '''---final--'''
+        print('{:.1f}\t{:.0f}'.format(
+            self.results['58Ni']['final']['shift_iso-{}'.format(self.ref_iso[:2])]['vals'][0],
+            10*self.results['58Ni']['final']['shift_iso-{}'.format(self.ref_iso[:2])]['d_stat'][0]))
+        print('{:.1f}\t{:.0f}'.format(
+            self.results['56Ni']['final']['shift_iso-{}'.format(self.ref_iso[:2])]['vals'][0],
+            10*self.results['56Ni']['final']['shift_iso-{}'.format(self.ref_iso[:2])]['d_stat'][0]))
+        print('{:.1f}\t{:.0f}'.format(
+            self.results['55Ni']['final']['shift_iso-{}'.format(self.ref_iso[:2])]['vals'][0],
+            10*self.results['55Ni']['final']['shift_iso-{}'.format(self.ref_iso[:2])]['d_stat'][0]))
+        print('{:.0f}\t{:.0f}'.format(
+            self.results['55Ni_sum_cal']['scaler_012']['hfs_pars']['Al'][0],
+            self.results['55Ni_sum_cal']['scaler_012']['hfs_pars']['Al'][1]))
+        print('{:.0f}\t{:.0f}'.format(
+            self.results['55Ni_sum_cal']['scaler_012']['hfs_pars']['Au'][0],
+            self.results['55Ni_sum_cal']['scaler_012']['hfs_pars']['Au'][1]))
+        print('{:.0f}\t{:.0f}'.format(
+            self.results['55Ni_sum_cal']['scaler_012']['hfs_pars']['Bl'][0],
+            self.results['55Ni_sum_cal']['scaler_012']['hfs_pars']['Bl'][1]))
+        '''----58----'''
+        print('{:.1f}\t{:.0f}'.format(
+            self.results['58Ni_cal']['scaler_012']['avg_shift_iso-{}'.format(self.ref_iso[:2])]['vals'][0],
+            10*self.results['58Ni_cal']['scaler_012']['avg_shift_iso-{}'.format(self.ref_iso[:2])]['d_stat'][0]))
+        print('{:.1f}\t{:.0f}'.format(
+            self.results['58Ni_sum_cal']['scaler_c012']['avg_shift_iso-{}'.format(self.ref_iso[:2])]['vals'][0],
+            10*self.results['58Ni_sum_cal']['scaler_c012']['avg_shift_iso-{}'.format(self.ref_iso[:2])]['d_stat'][0]))
+        print('{:.1f}\t{:.0f}'.format(
+            self.results['58Ni_sum_cal']['scaler_012']['avg_shift_iso-{}'.format(self.ref_iso[:2])]['vals'][0],
+            10*self.results['58Ni_sum_cal']['scaler_012']['avg_shift_iso-{}'.format(self.ref_iso[:2])]['d_stat'][0]))
+        '''----56----'''
+        print('{:.1f}\t{:.0f}'.format(
+            self.results['56Ni_cal']['scaler_012']['avg_shift_iso-{}'.format(self.ref_iso[:2])]['vals'][0],
+            10*self.results['56Ni_cal']['scaler_012']['avg_shift_iso-{}'.format(self.ref_iso[:2])]['d_stat'][0]))
+        print('{:.1f}\t{:.0f}'.format(
+            self.results['56Ni_sum_cal']['scaler_c012']['avg_shift_iso-{}'.format(self.ref_iso[:2])]['vals'][0],
+            10*self.results['56Ni_sum_cal']['scaler_c012']['avg_shift_iso-{}'.format(self.ref_iso[:2])]['d_stat'][0]))
+        print('{:.1f}\t{:.0f}'.format(
+            self.results['56Ni_sum_cal']['scaler_012']['avg_shift_iso-{}'.format(self.ref_iso[:2])]['vals'][0],
+            10*self.results['56Ni_sum_cal']['scaler_012']['avg_shift_iso-{}'.format(self.ref_iso[:2])]['d_stat'][0]))
+        '''----60----'''
+        print('{:.1f}\t{:.0f}'.format(
+            self.results['60Ni_sum_cal']['scaler_c012']['avg_center_fits']['vals'][0],
+            10*self.results['60Ni_sum_cal']['scaler_c012']['avg_center_fits']['d_stat'][0]))
+        print('{:.1f}\t{:.0f}'.format(
+            self.results['60Ni_sum_cal']['scaler_012']['avg_center_fits']['vals'][0],
+            10*self.results['60Ni_sum_cal']['scaler_012']['avg_center_fits']['d_stat'][0]))
+
 
     ''' db related '''
     def reset(self, db_like, reset):
@@ -1133,7 +1191,12 @@ class NiAnalysis():
             fileno = int(re.split('[_.]', file)[1])
             file_date = datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
             if selecttuple is not None:
-                if selecttuple[0] <= fileno <= selecttuple[1]:
+                if isinstance(selecttuple, tuple):
+                    selecttuple = [selecttuple]
+                select = []
+                for tup in selecttuple:
+                    select += range(tup[0], tup[1]+1, 1)
+                if fileno in select:
                     ret_files.append(file)
                     ret_file_nos.append(fileno)
                     ret_file_dates.append(file_date)
@@ -1287,9 +1350,12 @@ class NiAnalysis():
                             # get gates from gate-analysis
                             try:
                                 indx = self.gate_analysis_res[t_gate_iso]['file_names'].index(file)
-                                maxSNR_gate = self.gate_analysis_res[t_gate_iso]['scaler_012']['bestSNR_gatewidth']['vals'][indx]  # in bins!!
-                                maxSNR_midtof = self.gate_analysis_res[t_gate_iso]['scaler_012']['bestSNR_midtof']['vals'][indx]  # in bins!!
-                                self.update_gates_in_db(t_gate_iso, gatewidth=maxSNR_gate/100, midtof=maxSNR_midtof/100)
+                                gate = self.gate_analysis_res[t_gate_iso]['scaler_012']['bestSNR_gatewidth']['vals'][indx]/100  # in bins!! divide by 100
+                                if self.optimizeSNRorSIGMA == 'SIGMA':
+                                    gate = gate / self.bestSNRtoSIGMAratio * self.tof_width_sigma
+                                # midtof from SNR should always be reliable!
+                                midtof = self.gate_analysis_res[t_gate_iso]['scaler_012']['bestSNR_midtof']['vals'][indx]/100  # in bins!! divide by 100
+                                self.update_gates_in_db(t_gate_iso, gatewidth=gate, midtof=midtof)
                             except:
                                 # use standard gates if something went wrong
                                 logging.warning('individual timegate not found for iso: {} file: {}'
@@ -1358,9 +1424,14 @@ class NiAnalysis():
                             # get gates from gate-analysis
                             try:
                                 indx = self.gate_analysis_res[t_gate_iso]['file_names'].index(file)
-                                maxSNR_gate = self.gate_analysis_res[t_gate_iso]['scaler_012']['bestSNR_gatewidth']['vals'][indx]  # in bins!!
-                                maxSNR_midtof = self.gate_analysis_res[t_gate_iso]['scaler_012']['bestSNR_midtof']['vals'][indx]  # in bins!!
-                                self.update_gates_in_db(t_gate_iso, gatewidth=maxSNR_gate/100, midtof=maxSNR_midtof/100)
+                                gate = self.gate_analysis_res[t_gate_iso]['scaler_012']['bestSNR_gatewidth']['vals'][
+                                           indx] / 100  # in bins!! divide by 100
+                                if self.optimizeSNRorSIGMA == 'SIGMA':
+                                    gate = gate / self.bestSNRtoSIGMAratio * self.tof_width_sigma
+                                # midtof from SNR should always be reliable!
+                                midtof = self.gate_analysis_res[t_gate_iso]['scaler_012']['bestSNR_midtof']['vals'][
+                                             indx] / 100  # in bins!! divide by 100
+                                self.update_gates_in_db(t_gate_iso, gatewidth=gate, midtof=midtof)
                             except:
                                 # use standard gates if something went wrong
                                 logging.warning('individual timegate not found for iso: {} file: {}'
@@ -1602,40 +1673,48 @@ class NiAnalysis():
                 fitres_list = self.results[isostring][scaler]['all_fitpars']
                 fitres_avg = {}  # empty dict for storing avgs
                 for par, vals in fitres_list[0].items():  # just take the first file to get to the pars. Same for all files...
+                    # get parameter values for each file.
                     par_vals = np.array([i[par][0] for i in fitres_list])
                     par_errs = np.array([i[par][1] for i in fitres_list])
-                    par_fixed = vals[2]
+                    par_fixed = [i[par][2] for i in fitres_list]
+                    # check the fixed settings in initial par guess. If it's not in initial pars, take status from fitres
+                    initial_fixed = self.initial_par_guess.get(par, (vals[0], vals[2]))[1]
 
-                    if not par_fixed:  # averaging only makes sense for non-fixed parameters
+                    if not initial_fixed:  # averaging only makes sense for non-fixed parameters
                         weights = 1 / par_errs ** 2
                         pars_avg = np.sum(weights * par_vals) / np.sum(weights)
                         pars_avg_d = np.sqrt(1 / np.sum(weights))
-                    elif type(par_fixed) == list:  # bound parameters. Take care of values close to bounds
-                        low_bound, up_bound = par_fixed
-                        hit_bounds_indices = []
+                    elif type(initial_fixed) == list:  # bound parameters. Take care of values close to bounds
+                        low_bound, up_bound = initial_fixed
+                        discard_indices = []
                         for indx, val in enumerate(par_vals):
-                            if val-low_bound < (up_bound-low_bound)/1000 or up_bound-val < (up_bound-low_bound)/1000:
-                                hit_bounds_indices.append(indx)
-                        if len(hit_bounds_indices) < len(par_vals):  # not all values hit the bounds
+                            if type(par_fixed[indx]) != list:
+                                # the parameter did not converge during fitting and has been fixed in the process
+                                discard_indices.append(indx)
+                            elif val-low_bound < (up_bound-low_bound)/1000 or up_bound-val < (up_bound-low_bound)/1000:
+                                # if the fit result is within 0.1percent of boundary this is probably bad as well
+                                discard_indices.append(indx)
+                        if len(discard_indices) < len(par_vals):  # not all values hit the bounds
                             # delete the ones that hit the bounds; only use others for average
-                            par_vals = np.delete(par_vals, hit_bounds_indices)
-                            par_errs = np.delete(par_errs, hit_bounds_indices)
+                            par_vals = np.delete(par_vals, discard_indices)
+                            par_errs = np.delete(par_errs, discard_indices)
                             # now do the weighted average
                             weights = 1 / par_errs ** 2
                             pars_avg = np.sum(weights * par_vals) / np.sum(weights)
                             pars_avg_d = np.sqrt(1 / np.sum(weights))
                         else:  # all values hit the bounds
-                            weights = 1 / par_errs ** 2
-                            pars_avg = np.sum(weights * par_vals) / np.sum(weights)
-                            pars_avg_d = np.sqrt(1 / np.sum(weights))
+                            pars_avg = np.mean(par_vals)  # should be the same anyways
+                            pars_avg_d = np.mean(par_errs)  # will all be 0
                     else:
                         pars_avg = vals[0]
                         pars_avg_d = vals[1]
 
-                    fitres_avg[par] = (pars_avg, pars_avg_d, par_fixed)
+                    fitres_avg[par] = (pars_avg, pars_avg_d, initial_fixed)
                 self.results[isostring][scaler]['avg_fitpars'] = fitres_avg
 
-    def getVoltDeviationFromAbsoluteTransFreq(self, iso):
+    def getVoltDeviationFromAbsoluteTransFreq(self, iso, scaler_to_cal=None):
+        if scaler_to_cal is None:
+            scaler_to_cal = self.scaler_name
         #  Relative calibration frequency is the isotope shift. If iso=ref_iso then that should be 0 MHz
         rel_cal_freq = self.restframe_trans_freq[iso[:4]][0] - self.restframe_trans_freq[self.ref_iso][0]
 
@@ -2556,6 +2635,376 @@ class NiAnalysis():
 
 
         # make sure there are no zero values in the off-beam array to avoid division-by-zero error.
+        include_indx = nOfScans_arr > 0*max(nOfScans_arr)  # only include values where at least one scan brought data
+        # # Attention! We must not remove values from the middle of the array! This would screw up the pollifit voltage.
+        where = np.sort(np.append(np.where(np.logical_and(abs(np.diff(real_volt_arr-volt_arr)) >= 0.05, abs(np.diff(real_volt_arr)) != 0))[0] + 1, np.where(np.diff(include_indx) == 1)[0] + 1))
+        # where = np.where(np.diff(include_indx) == 1)[0] + 1
+        check_lst = np.split(include_indx, where)  # Difference True->False = 1
+        cts_tracks = np.split(cts_trs_array, where, axis=2)
+        bg_tracks = np.split(bg_trs_array, where, axis=2)
+        volt_tracks = np.split(volt_arr, where)
+        realvolt_tracks = np.split(real_volt_arr, where)
+        nOfScan_tracks = np.split(nOfScans_arr, where)
+        use_indx = []
+        # for indx, subarr in enumerate(cts_tracks):
+        #     if subarr.any() != 0:
+        #         use_indx.append(indx)
+        for indx, subarr in enumerate(check_lst):
+            if subarr.any() and len(subarr) > 2:
+                use_indx.append(indx)
+        nOfTracks = len(use_indx)
+
+        # also delete first and last of the remaining values, these can be a little skewed... (insert 1:-1 in position 2)
+        tr_cts_trs = [cts_tracks[i][0][:, :, :] for i in use_indx]
+        tr_bg_trs = [bg_tracks[i][0][:, :, :] for i in use_indx]
+        tr_volt = [volt_tracks[i][:] for i in use_indx]
+        tr_real_volt = [realvolt_tracks[i][:] for i in use_indx]
+        tr_nOfScans = [nOfScan_tracks[i][:] for i in use_indx]
+
+        normalize = True
+        tr_err_trs = []
+        real_start_v = []
+        real_stepsize_v = []
+        # get avg bg levels per scaler for normalization:
+        # bg levels per scaler for calibration:
+        A0 = np.mean([arr[0, :, :].mean() for arr in tr_bg_trs])
+        A1 = np.mean([arr[1, :, :].mean() for arr in tr_bg_trs])
+        A2 = np.mean([arr[2, :, :].mean() for arr in tr_bg_trs])
+        for tr in range(nOfTracks):
+            if normalize:
+                # A0 = tr_bg_trs[tr][0, :, :].mean()
+                # A1 = tr_bg_trs[tr][1, :, :].mean()
+                # A2 = tr_bg_trs[tr][2, :, :].mean()
+                sc_shape = tr_bg_trs[tr].shape[1:]
+                # before normalization, calculate the errors
+                err_trs_array = np.sqrt(np.square(np.sqrt(tr_cts_trs[tr]) / tr_bg_trs[tr]) +
+                                        np.square(tr_cts_trs[tr] / np.square(tr_bg_trs[tr]) * np.sqrt(tr_bg_trs[tr]))) \
+                                * np.array([np.full(sc_shape, A0),
+                                            np.full(sc_shape, A1),
+                                            np.full(sc_shape, A2)])  # bg_trs_array.mean()  # scale factor bg_mean to reduce int rounding errors
+                # now normalize
+                tr_cts_trs[tr] = tr_cts_trs[tr] / tr_bg_trs[tr] * np.array([np.full(sc_shape, A0),
+                                                                            np.full(sc_shape, A1),
+                                                                            np.full(sc_shape, A2)]) # bg_trs_array.mean() # scale factor bg_mean to reduce int rounding errors
+
+                # tr_cts_trs[tr] = tr_cts_trs[tr] / tr_nOfScans[tr][:, np.newaxis]*tr_nOfScans[tr].mean()
+                # tr_bg_trs[tr] = tr_bg_trs[tr] / tr_nOfScans[tr][:, np.newaxis]*tr_nOfScans[tr].mean()
+                # tr_cts_trs[tr] = (tr_cts_trs[tr] - tr_bg_trs[tr]) #+ np.array([np.full(sc_shape, A0), np.full(sc_shape, A1), np.full(sc_shape, A2)])
+
+            else:
+                err_trs_array = np.sqrt(tr_cts_trs[tr])
+            tr_err_trs.append(err_trs_array)
+
+
+            # fit a line to the real voltage
+            def _line(x, m, b):
+                return m * x + b
+            # start parameters
+            p0 = [binsize, tr_real_volt[tr][0]]
+            # do the fitting
+            popt, pcov = curve_fit(_line, np.arange(len(tr_real_volt[tr])), tr_real_volt[tr], p0)
+            perr = np.sqrt(np.diag(pcov))  # TODO: use this somewhere?
+
+            # extract real start volt and stepsize from the calibration:
+            real_start_v.append(popt[1])
+            real_stepsize_v.append(popt[0])
+
+            # plot the voltage calibration:
+            plt.plot(tr_volt[tr], tr_real_volt[tr] - tr_volt[tr], 'go')
+            # plt.plot(np.arange(len(tr_real_volt[tr])), tr_volt[tr], 'k-')
+            plt.plot(tr_volt[tr], _line(np.arange(len(tr_real_volt[tr])), popt[0], popt[1]) - tr_volt[tr], 'r--')
+        if self.save_plots_to_file:
+            filename = 'sumfile_voltage_{}_{}tracks'.format(str(iso), str(nOfTracks))
+            folder = 'summed'
+            path_add = '{}\\'.format(folder)
+            plot_folder = self.resultsdir + path_add
+            if not os.path.exists(plot_folder):
+                os.makedirs(plot_folder)
+            plt.savefig(plot_folder + filename + '.png', bbox_inches="tight")
+        else:
+            plt.show()
+        plt.close()
+        plt.clf()
+
+        # go back to xml style data:
+        track_data_list = []
+        track_err_list = []
+        for track in range(nOfTracks):
+            data_tuples_list = []
+            for index, cts in np.ndenumerate(tr_cts_trs[track]):
+                # Loop over data array and extract index + cts and combine them to a tuple.
+                data_point_tuple = index + (int(round(cts)),)
+                data_tuples_list.append(data_point_tuple)  # append tuple to list
+            dt = [('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')]  # data type for npy array
+            track_data_list.append(
+                np.array(data_tuples_list, dtype=dt))  # convert list to npy array with given data format
+            # same for the errors:
+            err_tuples_list = []
+            for index, cts in np.ndenumerate(tr_err_trs[track]):
+                # Loop over error array and extract index + cts and combine them to a tuple.
+                err_point_tuple = index + (int(round(cts)),)
+                err_tuples_list.append(err_point_tuple)  # append tuple to list
+            track_err_list.append(
+                np.array(err_tuples_list, dtype=dt))  # convert list to npy array with given data format
+        data_tuples_arr = [np.stack(ls) for ls in track_data_list]
+        err_tuples_arr = [np.stack(ls) for ls in track_err_list]
+        # Create voltage projection
+        track_data_list = []
+        for track in range(nOfTracks):
+            voltage_projections = []
+            for scaler in range(nOfScalers):
+                proj_list = tr_cts_trs[track].sum(axis=2)[scaler].tolist()
+                int_proj = [int(i) for i in proj_list]  # Must be an array of integers!
+                voltage_projections.append(int_proj)
+            track_data_list.append(np.array(voltage_projections))  # make array of arrays from list of arrays.
+        voltage_projection_arr = [np.stack(ls) for ls in track_data_list]
+
+        ###################################
+        # Prepare dicts for writing to XML #
+        ###################################
+        iso = iso[:4]
+        bakein = ''
+        type = '{}_sum'.format(iso)  # no calibration applied during sumfile generation
+        if buncher_potential == self.accVolt_set and volt_corrections is not None:
+            # calibrations baked in to scan voltage
+            bakein = 'c'
+            type = '{}_sum_cal'.format(iso)
+        elif buncher_potential != self.accVolt_set:
+            # buncher potential adjusted
+            bakein = 'b'
+            type = '{}_sum_cal'.format(iso)
+
+        file_creation_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        header_dict = {'type': 'trs',
+                       'isotope': iso,
+                       'isotopeStartTime': file_creation_time,
+                       'accVolt': buncher_potential,
+                       'laserFreq': Physics.wavenumber(self.laser_freqs[iso[:4]]/2),  # doubling factor
+                       'nOfTracks': nOfTracks,
+                       'version': 99.0}
+
+        tracks_dict = {}
+        # preparations:
+        gate_start = self.tof_mid[iso] - self.abs_gatewidth[iso] / 2
+        gate_stop = self.tof_mid[iso] + self.abs_gatewidth[iso] / 2
+        for tracknum in range(nOfTracks):
+            trackname = 'track{}'.format(tracknum)
+            # track times:
+            track_start_time_str = file_creation_time
+            track_end_time_str = file_creation_time
+            # info for track in header
+            track_dict_header = {'trigger': {},  # Need a trigger dict!
+                                 'activePmtList': list(range(tr_cts_trs[tracknum].shape[0])),  # Must be in form [0,1,2]
+                                 'colDirTrue': True,
+                                 'dacStartRegister18Bit': 0,
+                                 'dacStartVoltage': real_start_v[tracknum],
+                                 'dacStepSize18Bit': None,  # old format xml importer checks whether val or None
+                                 'dacStepsizeVoltage': real_stepsize_v[tracknum],
+                                 'dacStopRegister18Bit': tr_cts_trs[tracknum].shape[1] - 1,  # not real but should do the trick
+                                 'dacStopVoltage': float(real_start_v[tracknum]) + (
+                                             float(real_stepsize_v[tracknum]) * int(len(tr_real_volt[tracknum]) - 1)),
+                                 # nOfSteps-1 bc startVolt is the first step
+                                 'invertScan': False,
+                                 'nOfBins': nOfBins,
+                                 'nOfBunches': 1,  # dummy val
+                                 # at BECOLA this corresponds to number of Sequences (Seqs in excel)
+                                 'nOfCompletedSteps': float(sum(np.mean(nsctr) for nsctr in tr_nOfScans))*tr_cts_trs[tracknum].shape[1],  # not right but necessary to get same nOfScans in Interactive fit
+                                 'nOfScans': int(tr_nOfScans[tracknum].mean()),
+                                 'nOfSteps': tr_cts_trs[tracknum].shape[1],  # together with nOfCompletedSteps typically used for calculation of nOfScans
+                                 'postAccOffsetVolt': 0,
+                                 'postAccOffsetVoltControl': 0,
+                                 'SoftBinWidth_us': 1024,  # shrink later!
+                                 'softwGates': [[tr_real_volt[tracknum][0], tr_real_volt[tracknum][-1],
+                                                 gate_start, gate_stop],  # one for each scaler
+                                                [tr_real_volt[tracknum][0], tr_real_volt[tracknum][-1],
+                                                 gate_start + self.tof_delay[iso][1], gate_stop + self.tof_delay[iso][1]],  # sc1
+                                                [tr_real_volt[tracknum][0], tr_real_volt[tracknum][-1],
+                                                 gate_start + self.tof_delay[iso][2], gate_stop + self.tof_delay[iso][2]]],  # sc2
+                                 'workingTime': [track_start_time_str, track_end_time_str],
+                                 'waitAfterReset1us': 0,  # looks like I need those for the importer
+                                 'waitForKepco1us': 0  # looks like I need this too
+                                 }
+
+            track_dict_data = {
+                'scalerArray_explanation': 'time resolved data. '
+                                           'List of tuples, each tuple consists of: '
+                                           '(scaler_number, line_voltage_step_number, time_stamp, number_of_counts), datatype: np.int32',
+                'scalerArray': data_tuples_arr[tracknum],
+                'errorArray': err_tuples_arr[tracknum],
+                'errorArray_explanation': 'Optional: Non-standard errors. If this was not present, '
+                                          'np.sqrt() would be used for errors during XML import.'
+                                          'List of tuples, each tuple consists of: '
+                                          '(scaler_number, line_voltage_step_number, time_stamp, number_of_counts), datatype: np.int32'}
+            track_dict_projections = {
+                'voltage_projection_explanation': 'voltage_projection of the time resolved data. List of Lists, each list represents the counts of one scaler as listed in activePmtList.Dimensions are: (len(activePmtList), nOfSteps), datatype: np.int32',
+                'voltage_projection': voltage_projection_arr[tracknum]}
+            tracks_dict[trackname] = {'header': track_dict_header,
+                                      'data': track_dict_data,
+                                      'projections': track_dict_projections}
+
+        # Combine to xml_dict
+        xml_dict = {'header': header_dict,
+                         'tracks': tracks_dict
+                         }
+
+        ################
+        # Write to XML #
+        ################
+        # if not self.excel_extraction_failed:  # actually that is not a big problem in this newer Version...
+        xml_name = 'Sum{}{}_9999.xml'.format(iso, bakein)
+        xml_filepath = os.path.join(self.datafolder, xml_name)
+        self.writeXMLfromDict(xml_dict, xml_filepath, 'BecolaData')
+        self.ni_analysis_combined_files.append(xml_name)
+
+        # add file to database
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        cur.execute('''INSERT OR IGNORE INTO Files (file, filePath, date, type) VALUES (?, ?, ?, ?)''',
+                    (xml_name, os.path.relpath(xml_filepath, self.workdir), file_creation_time, type))
+        con.commit()
+        cur.execute(
+            '''UPDATE Files SET offset = ?, accVolt = ?,  laserFreq = ?, laserFreq_d = ?, colDirTrue = ?, 
+            voltDivRatio = ?, lineMult = ?, lineOffset = ?, errDateInS = ? WHERE file = ? ''',
+            (str(nOfTracks*[0]), buncher_potential, self.laser_freqs[iso[:4]], 0, True, str({'accVolt': 1.0, 'offset': 1.0}), 1, 0, 1,
+             xml_name))
+        con.commit()
+        # create new isotope
+        cur.execute('''SELECT * FROM Isotopes WHERE iso = ? ''', (iso,))  # get original isotope to copy from
+        mother_isopars = cur.fetchall()
+        isopars_lst = list(mother_isopars[0])  # change into list to replace some values
+        isopars_lst[0] = type
+        # if isopars_lst[3] != 0:
+        #     # spin different from zero, several sidepeaks, adjust scaling!
+        #     peakHeight = peakHeight / 10
+        # bg_estimate = sum(cts_list[:, -1])
+        # isopars_lst[11] = int(peakHeight) / bg_estimate * 1000  # change intensity scaling
+        new_isopars = tuple(isopars_lst)
+        cur.execute('''INSERT OR REPLACE INTO Isotopes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                    new_isopars)
+        con.commit()
+        con.close()
+
+    def addfiles_trs_old(self, iso, filelist, voltrange, binsize, bake_in_calib=False):
+        """
+        Load all files from list and rebin them into voltrange with binsize
+        :param iso:
+        :param filelist:
+        :param voltrange:
+        :param binsize:
+        :return:
+        """
+        # create arrays for rebinning the data
+        nOfTracks = 1  # Just put everything in one track. The other is just artificial anyways (backwards scan)
+        nOfScalers = 3
+        nOfBins = 1024
+        cts_trs_array = np.zeros((nOfTracks, nOfScalers, (voltrange[1]-voltrange[0])/binsize, nOfBins))  # nrOfTracks, nrOfScalers, nrOfSteps, nrOfTimeBins
+        bg_trs_array = cts_trs_array.copy()
+
+        volt_arr = np.arange(start=voltrange[0], stop=voltrange[1], step=binsize)  # array of the voltage steps
+        zeroarr = np.zeros(len(volt_arr))  # zero array with the same dimension as volt_arr to use as dummy
+        real_volt_arr = zeroarr.copy()  # Array to keep track what the real avg voltage per step is
+        nOfScans_arr = zeroarr.copy()  # Array to keep track how many scans we have on each step
+
+        # voltage calibrations could be used to adapt the scan-voltage per file
+        volt_corrections = None
+        filenames = None
+        if bake_in_calib == 'perScAndFile':
+            # import voltage calibrations from combined scaler results on a per-file basis
+            # TODO: If we use corrections per scaler we would ideally need voltage axes per scaler but that's not possible
+            volt_corrections = [self.results[iso]['scaler_0']['acc_volts'],
+                                self.results[iso]['scaler_1']['acc_volts'],
+                                self.results[iso]['scaler_2']['acc_volts']]
+            filenames = self.results[iso]['file_names']
+            buncher_potential = self.accVolt_set  # calibrations on a per-file level. Global accVolt is unchanged
+        elif bake_in_calib == 'allScPerFile':
+            # import voltage calibrations from combined scaler results on a per-file basis
+            volt_corrections = [self.results[iso]['scaler_012']['acc_volts'],
+                                self.results[iso]['scaler_012']['acc_volts'],
+                                self.results[iso]['scaler_012']['acc_volts']]
+            filenames = self.results[iso]['file_names']
+            buncher_potential = self.accVolt_set  # calibrations on a per-file level. Global accVolt is unchanged
+        elif bake_in_calib == 'globalVal':
+            # import voltage calibrations from combined scaler results on a per-file basis
+            buncher_potential = self.results[iso]['scaler_012']['avg_acc_volts']['vals'][0]  # Global accVolt correction
+        else:
+            # do not correct voltages.
+            buncher_potential = self.accVolt_set
+
+        # extract data from each file and sort into binning
+        for files in filelist:
+            # create filepath for XMLImporter
+            filepath = os.path.join(self.datafolder, files)
+            spec = XMLImporter(path=filepath)
+
+            # get laser frequency:
+            laser = spec.laserFreq
+            correct_laser = None
+            if laser != self.laser_freqs[iso[:4]]:
+                logging.warning('!!!\n'
+                                'Different laser frequencies detected during file summation!\n'
+                                'Will try to adapt center voltages using differential Dopplershift!\n'
+                                '!!!')
+                correct_laser = True
+
+            # trs_data = spec.time_res_zf  # time resolved list of pmt events in form of indices, zf is for zero free,
+            trs_data = spec.time_res  # time resolved matrices. Probably much more efficient here than zf. (tracks, scaler, step, bin)
+            #  list contains numpy arrays with structure: ('sc', 'step', 'time', 'cts')
+            #  indices in list correspond to track indices
+
+            for track, trackdata in enumerate(trs_data):
+                # check the stepsize of the data and return a warning if it's bigger than the binsize
+                stepsize = spec.stepSize[track]  # for track 0
+                nOfSteps = spec.getNrSteps(track)  # for track 0
+                nOfScans = spec.nrScans[track]  # for track 0
+                if stepsize > 1.1*binsize:
+                    logging.warning('Stepsize of file {} larger than specified binsize ({}>{})!'
+                                    .format(files, stepsize, binsize))
+                # get volt (x) data, cts (y) data and errs
+                voltage_x = spec.x[track]
+
+                for scaler, scalerdata in enumerate(trackdata):
+                    # take an off-beam background sample
+                    bgrange = int(nOfBins / 3)  # where should the background sample be taken? 0-x
+                    sumcts_offbeam = trackdata[scaler, :, :bgrange].sum()
+                    norm_factor = sumcts_offbeam / nOfSteps / bgrange
+
+                    for step, stepdata in enumerate(scalerdata):
+                        # # take an off-beam background sample
+                        # bgrange = int(nOfBins / 3)  # where should the background sample be taken? 0-x
+                        # sumcts_offbeam = trackdata[scaler, step, :bgrange].sum()
+                        # norm_factor = sumcts_offbeam / bgrange
+                        # get the voltage for this step fro file
+                        volt = voltage_x[step]
+                        # apply ion energy correction from calibration
+                        volt_cor = 0
+                        if volt_corrections is not None:
+                            # get voltage correction for this file
+                            file_index = filenames.index(files)
+                            volt_cor += volt_corrections[scaler]['vals'][file_index] - self.accVolt_set
+                        if correct_laser is not None:
+                            stepF = self.absVoltage_to_centerFreq(iso, self.accVolt_set - volt + volt_cor, laserfreq=laser, collinear=True)
+                            stepV = self.centerFreq_to_absVoltage(iso, stepF, 0, 0, laserfreq=self.laser_freqs[iso[:4]])
+                            volt_c = -stepV[0] + self.accVolt_set
+                        else:
+                            volt_c = volt - volt_cor
+                        if voltrange[0] <= volt_c <= voltrange[1]:  # only use if inside desired range
+                            voltind = (np.abs(volt_arr - volt_c)).argmin()  # find closest index in voltage array
+                            # add data to the arrays
+                            cts_trs_array[0, scaler, voltind, :] += stepdata
+                            bg_trs_array[0, scaler, voltind, :] += np.full(stepdata.shape, norm_factor)
+                            # keep track of nOfScans and real voltage
+                            # if scaler == 0:  # TODO: this screwed up the voltage if we use calibrations per scaler
+                            if real_volt_arr[voltind] == 0:
+                                real_volt_arr[voltind] += volt_c
+                            else:
+                                # else do a weighted average with the nOfScans as weights
+                                avg_volt = (real_volt_arr[voltind] * nOfScans_arr[voltind] + volt_c * nOfScans)\
+                                           / (nOfScans_arr[voltind] + nOfScans)
+                                real_volt_arr[voltind] = avg_volt
+                            nOfScans_arr[voltind] += nOfScans
+
+
+        # make sure there are no zero values in the off-beam array to avoid division-by-zero error.
         include_indx = nOfScans_arr != 0  # only include values where at least one scan brought data
         # # Attention! We must not remove values from the middle of the array! This would screw up the pollifit voltage.
         # check_lst = np.split(include_indx, np.where(np.diff(include_indx) == 1)[0] + 1)  # Difference True->False = 1
@@ -2604,9 +3053,9 @@ class NiAnalysis():
 
         # for scaler in range(3):
         #     cts_sum[scaler] = cts_sum[scaler][include_indx][1:-1]
-        volt_arr = volt_arr[include_indx]
-        real_volt_arr = real_volt_arr[include_indx]
-        nOfScans_arr = nOfScans_arr[include_indx]
+        volt_arr = volt_arr[include_indx][1:-1]
+        real_volt_arr = real_volt_arr[include_indx][1:-1]
+        nOfScans_arr = nOfScans_arr[include_indx][1:-1]
 
         v = real_volt_arr[31]
         c0 = cts_trs_array[0, 0, 30, 547]
@@ -2770,7 +3219,7 @@ class NiAnalysis():
                     (xml_name, os.path.relpath(xml_filepath, self.workdir), file_creation_time, type))
         con.commit()
         cur.execute(
-            '''UPDATE Files SET offset = ?, accVolt = ?,  laserFreq = ?, laserFreq_d = ?, colDirTrue = ?, 
+            '''UPDATE Files SET offset = ?, accVolt = ?,  laserFreq = ?, laserFreq_d = ?, colDirTrue = ?,
             voltDivRatio = ?, lineMult = ?, lineOffset = ?, errDateInS = ? WHERE file = ? ''',
             (str(nOfTracks*[0]), buncher_potential, self.laser_freqs[iso[:4]], 0, True, str({'accVolt': 1.0, 'offset': 1.0}), 1, 0, 1,
              xml_name))
@@ -4386,18 +4835,18 @@ if __name__ == '__main__':
 
     analysis = NiAnalysis()
     # fitting the first time for extraction of calibration and comparison of uncalibrated data
-    # analysis.fitting_initial_separate()
-    # # analysis.combine_single_scaler_centers()
-    # analysis.combine_single_scaler_results('center_fits', calibrated=False)
-    # analysis.plot_results_of_fit(calibrated=False)
-    # analysis.ion_energy_calibration()
-    # # fitting with calibrated ion energies for final result extraction
-    # analysis.fitting_calibrated_separate()
-    # analysis.combine_single_scaler_results('center_fits', calibrated=True)
-    # analysis.plot_results_of_fit(calibrated=True)
-    # analysis.extract_isoshifts_from_fitres(refiso=analysis.ref_iso, calibrated=True)
-    # analysis.combine_single_scaler_results('shift_iso-{}'.format(analysis.ref_iso[:2]), calibrated=True)
-    # analysis.calculate_charge_radii(refiso=analysis.ref_iso, calibrated=True)
+    analysis.fitting_initial_separate()
+    # analysis.combine_single_scaler_centers()
+    analysis.combine_single_scaler_results('center_fits', calibrated=False)
+    analysis.plot_results_of_fit(calibrated=False)
+    analysis.ion_energy_calibration()
+    # fitting with calibrated ion energies for final result extraction
+    analysis.fitting_calibrated_separate()
+    analysis.combine_single_scaler_results('center_fits', calibrated=True)
+    analysis.plot_results_of_fit(calibrated=True)
+    analysis.extract_isoshifts_from_fitres(refiso=analysis.ref_iso, calibrated=True)
+    analysis.combine_single_scaler_results('shift_iso-{}'.format(analysis.ref_iso[:2]), calibrated=True)
+    analysis.calculate_charge_radii(refiso=analysis.ref_iso, calibrated=True)
     # stacked run analysis for inclusion of nickel 54
     analysis.create_and_fit_stacked_runs(calibration_per_file='perScAndFile')  # perScAndFile, allScPerFile, globalVal, None
     analysis.combine_single_scaler_results('center_fits', calibrated=True, summed=True)
@@ -4406,5 +4855,5 @@ if __name__ == '__main__':
     analysis.calculate_charge_radii(refiso=analysis.ref_iso, calibrated=True, summed=True)
     analysis.ni55_A_B_analysis('55Ni_sum', scaler='scaler_012', calibrated=True)
     # final plots
-    # analysis.get_final_results()
+    analysis.get_final_results()
     analysis.export_results()

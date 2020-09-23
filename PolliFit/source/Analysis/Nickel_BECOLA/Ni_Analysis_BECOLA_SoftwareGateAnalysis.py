@@ -84,8 +84,8 @@ class NiAnalysis_softwGates():
         self.timebin_size = 4.8  # length of timegate in 10ns (4.8 = 48ns)
 
         # fit from scratch or use FitRes db?
-        self.do_the_fitting = True  # if False, a .xml file has to be specified in the next variable!
-        self.load_results_from = 'SoftwareGateAnalysis_2020-07-28_20-10.xml'  # load fit results from this file
+        self.do_the_fitting = False  # if False, a .xml file has to be specified in the next variable!
+        self.load_results_from = 'SoftwareGateAnalysis_2020-08-27_13-30_allUpdated.xml'  # load fit results from this file
         # print results to results folder? Also show plots?
         self.save_plots_to_file = True  # if False plots will be displayed during the run for closer inspection
         # acceleration set voltage (Buncher potential), negative
@@ -375,11 +375,12 @@ class NiAnalysis_softwGates():
                                IntAsym=self.initial_par_guess['IntAsym'],
                                nPeaksAsym=self.initial_par_guess['nPeaksAsym'])
         # reset isotope type and acc voltage in db
-        iso_list = ['54Ni', '55Ni', '56Ni', '58Ni', '60Ni']  # ['56Ni', '58Ni', '60Ni']
+        iso_list = ['55Ni_sum_cal', '56Ni', '58Ni', '60Ni']  # ['56Ni', '58Ni', '60Ni']
 
         # use scaler 1 for now. Probably doesn't make a difference
-        scaler = 'scaler_01'
+        scaler = 'scaler_012'
         sc_name = self.update_scalers_in_db(scaler)
+
 
         for pickiso in iso_list:
             # self.reset(pickiso+'%', [self.accVolt_set, pickiso])
@@ -388,8 +389,8 @@ class NiAnalysis_softwGates():
             # filenums = [9313]  #[9295, 9299, 9303, 9305, 9310]  #[9275, 9281, 9283, 9285]
             # filelist = ['BECOLA_{}.xml'.format(num) for num in filenums]
             select = None
-            # if '55' in pickiso:
-            select = (9999, 9999)  # only sumfile
+            if '55' in pickiso:
+                select = (9999, 9999)  # only sumfile
             filelist, filenums, filedates = self.pick_files_from_db_by_type_and_num(pickiso, selecttuple=select)
             # filelist = ['Sum{}c_9999.xml'.format(pickiso)]
             # filenums = [9999]
@@ -401,12 +402,12 @@ class NiAnalysis_softwGates():
                                      sc_name: {}}
             # set variation parameters
             delaylist = self.tof_delay[pickiso[:4]]
-            midtof_variation = (-5, +5, 9)  # (relative midtof variation in µs, number of variations inside width)
+            midtof_variation = (-3, +3, 9)  # (relative midtof variation in µs, number of variations inside width)
             midtof_variation_arr = np.linspace(*midtof_variation)
             # midtof_variation_arr = np.append(-np.logspace(1, 0, 7, base=2), np.append([0], np.logspace(0, 1, 7, base=2)))  # in time bins
             # gatewidth_variation = (5, 1, 11)
             # gatewidth_variation_arr = np.linspace(*gatewidth_variation)
-            gatewidth_variation_arr = np.logspace(3, 6, 31, base=2)  # 3, 10, 8 for 8-1024 bins # 5, 5.9, 7 for 33-59 / 90-100%
+            gatewidth_variation_arr = np.logspace(3, 10, 15, base=2)  # 3, 6, 31 || 3, 10, 8 for 8-1024 bins # 5, 5.9, 7 for 33-59 / 90-100%
             close_indx = (np.abs(gatewidth_variation_arr - 200*self.tof_width_sigma*self.tof_sigma[pickiso[:4]])).argmin()  # index that is closest to analysis gatewidth
             # possibly reduce fitting width by adding [x:] to gatewidth, midtof and midtof_err
             fit_start = 0
@@ -636,6 +637,7 @@ class NiAnalysis_softwGates():
 
                 popt_res = np.array(popt_res)  # popt results per file
                 perr_res = np.array(perr_res)  # popt results per file
+                SNRtoSIGMA = np.array(gatewidth_SNR_perFile)/np.array(tofsigma_fit_res)/100
                 self.results[pickiso][sc_name] = {'gate_analysis_m': {'vals': list(popt_res[:, 0]),
                                                                       'd_fit': list(perr_res[:, 0])},
                                                   'gate_analysis_b': {'vals': list(popt_res[:, 1]),
@@ -652,11 +654,17 @@ class NiAnalysis_softwGates():
                                                   'bunchwidth_std_all': {'vals': midtofall_std},
                                                   'maxSNR': {'vals': SNR_max_perFile},
                                                   'bestSNR_midtof': {'vals': mid_tof_SNR_perFile},
-                                                  'bestSNR_gatewidth': {'vals': gatewidth_SNR_perFile}
+                                                  'bestSNR_gatewidth': {'vals': gatewidth_SNR_perFile},
+                                                  'bestSNRtoSIGMAratio': {'vals': SNRtoSIGMA}
                                                   }
                 self.export_results()
             else:
-                self.results = self.import_results(self.load_results_from)
+                results_import = self.import_results(self.load_results_from)
+                self.results[pickiso] = results_import[pickiso]
+                bestSNR = np.array(self.results[pickiso][sc_name]['bestSNR_gatewidth']['vals'])
+                sigma_tof = 100 * np.array(self.results[pickiso][sc_name]['sigma_tof']['vals'])
+                ratio = bestSNR / 2 / sigma_tof
+                self.results[pickiso][sc_name]['bestSNRtoSIGMAratio'] = {'vals': ratio}
 
         self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'gate_analysis_m', unit='kHz/bin', onlyfiterrs=True, overlay=0, factor=1000, digits=1)
         self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'gate_analysis_b', onlyfiterrs=True)
@@ -668,6 +676,7 @@ class NiAnalysis_softwGates():
         self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'maxSNR', onlyfiterrs=True, digits=0)
         self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'bestSNR_midtof', onlyfiterrs=True, digits=0)
         self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'bestSNR_gatewidth', onlyfiterrs=True, digits=1)
+        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'bestSNRtoSIGMAratio', unit='', onlyfiterrs=True, digits=2)
 
     ''' db related '''
 
