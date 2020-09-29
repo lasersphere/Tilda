@@ -294,8 +294,8 @@ class NiAnalysis:
         for run in self.runs60:
             self.fit_all(self.get_files('60Ni'), run)
         self.calibrate_all_ref()
-        for run in self.runs60:
-            self.fit_all(self.get_files('60Ni'), run)
+        plt.show()
+
         # TODO: Reihnfolge
         # TODO: refit nach asym??
 
@@ -346,8 +346,8 @@ class NiAnalysis:
 
 
 
-# working_dir = 'D:\\Daten\\IKP\\Nickel-Auswertung\\Auswertung' # Path Laptop
-working_dir = 'C:\\Users\\Laura Renth\\ownCloud\\User\\Laura\\Nickelauswertung' # Path IKP
+working_dir = 'D:\\Owncloud\\User\\Laura\\Nickelauswertung' # Path Laptop
+#working_dir = 'C:\\Users\\Laura Renth\\ownCloud\\User\\Laura\\Nickelauswertung' # Path IKP
 db = 'Nickel_BECOLA_60Ni.sqlite'
 
 niAna = NiAnalysis(working_dir, db)
