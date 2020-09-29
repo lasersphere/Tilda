@@ -19,22 +19,42 @@ from openpyxl import Workbook, load_workbook
 class NiAnalysis:
 
     def __init__(self, working_dir, db60):
+        ### working_dir: path of working directory where to save files
+        ### db: path of database
+        ### data_path: path where to find xml data files
+        ### line_var: line variables to use for fitting
+        ### runs60: runs to use for fitting
+        ### frequ_60ni: literature value of 60Ni transition frequency (Kristian)
+        ### laser_freq60: laser frequency for 60ni measurements
+        ### wb: excel workbook containing "good" files
         self.working_dir = working_dir
         self.db = os.path.join(self.working_dir, db60)
         self.data_path = os.path.join(self.working_dir, 'data')
-        self.lineVar = ['refLine_0', 'refLine_1', 'refLine_2']
+        self.line_var = ['refLine_0', 'refLine_1', 'refLine_2']
         self.runs60 = ['AsymVoigt0', 'AsymVoigt1', 'AsymVoigt2']
         self.frequ_60ni = 850344183
-        self.laserFreq60 = 851224124.8007469
+        self.laser_freq60 = 851224124.8007469
         self.wb = load_workbook(os.path.join(self.data_path, 'Files.xlsx'))
 
-        # Calibration
+        ### for Calibration
+        ### times: list of datetimes
+        ### volts: list of calibrated voltages
         self.times = []
         self.volts = []
 
-    def reset(self):    # resets the data base
+    def reset(self):
+        ### resets the data base
+
         #reset fixed shapes
-        self.reset_fixShape()
+        for run in self.runs60:
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            cur.execute('''SELECT fixShape FROM Lines WHERE refRun = ?''', (run,))
+            fixShape = ast.literal_eval(cur.fetchall()[0][0])
+            fixShape['asy'] = [0, 20]
+            cur.execute('''UPDATE Lines SET fixShape = ? WHERE refRun = ?''', (str(fixShape), run,))
+            con.commit()
+            con.close()
 
         # reset calibration
         con = sqlite3.connect(self.db)
@@ -52,19 +72,10 @@ class NiAnalysis:
         con.close()
         print('FitRes cleared')
 
-    def reset_fixShape(self):
-        # Reset FixShape
-        for run in self.runs60:
-            con = sqlite3.connect(self.db)
-            cur = con.cursor()
-            cur.execute('''SELECT fixShape FROM Lines WHERE refRun = ?''', (run,))
-            fixShape = ast.literal_eval(cur.fetchall()[0][0])
-            fixShape['asy'] = [0, 20]
-            cur.execute('''UPDATE Lines SET fixShape = ? WHERE refRun = ?''', (str(fixShape), run,))
-            con.commit()
-            con.close()
-
     def prepFileList(self):
+        ### prepares the files database based on the excle workbook
+
+        # create list of "good" files
         ws = self.wb['Tabelle1']
         cells = []
         for i, row in enumerate(ws.rows):
@@ -72,6 +83,8 @@ class NiAnalysis:
             for cell in row:
                 cells[i].append(cell.value)
         cells.pop(0)
+
+        # delete "bad" files from database
         con = sqlite3.connect(self.db)
         cur = con.cursor()
         cur.execute('''SELECT file FROM Files''')
@@ -91,6 +104,10 @@ class NiAnalysis:
         print('Removed bad files')
 
     def fit_all(self, files, run):
+        ### fits all files
+        ### files: list of files to be fitted
+        ### run: run to use for fitting
+
         for f in files:
             # Guess offset
             spec = XMLImporter(path=os.path.join(self.data_path, f))
@@ -126,10 +143,14 @@ class NiAnalysis:
             BatchFit.batchFit(np.array([f]), self.db, run)
 
     def adj_offset(self, offset, run):
+        ### sets offset in database
+        ### offset: value to set the offset to
+        ### run: run of which the offset is to be adjusted
+
         con = sqlite3.connect(self.db)
         cur = con.cursor()
         cur.execute('''SELECT shape FROM Lines WHERE refRun LIKE ? ''', (run,))
-        shape_dict = ast.literal_eval(cur.fetchall()[0][0])
+        shape_dict = ast.literal_eval(cur.fetchall()[0][0]) # create dictionary
         shape_dict['offset'] = offset
         cur.execute('''UPDATE Lines SET shape = ? WHERE refRun = ?''', (str(shape_dict), run,))
         con.commit()
@@ -137,6 +158,10 @@ class NiAnalysis:
         print('Adjusted Offset to ', shape_dict['offset'])
 
     def adj_center(self, center, iso):
+        ### sets center in database
+        ### center: value to set the center to
+        ### iso: istope of which the center is to be adjsued
+
         con = sqlite3.connect(self.db)
         cur = con.cursor()
         cur.execute('''UPDATE Isotopes SET center = ? WHERE iso = ?''', (center, iso,))
@@ -145,20 +170,17 @@ class NiAnalysis:
         print('Adjusted Center to', center)
 
     def initialize(self):
-        con = sqlite3.connect(self.db)
-        cur = con.cursor()
-        cur.execute('''SELECT file FROM Files WHERE type=?''', ('60Ni',))
-        fetch = cur.fetchall()
-        con.close()
-        files = []
-        for f in fetch:
-            files.append(f[0])
+        ### first fit of reference measurements (60Ni)
+
+        files = self.get_files('60Ni')
         for run in self.runs60:
             self.fit_all(files, run)
-        plt.plot([1,1], [1,1])
+        plt.plot([1,1], [1,1])  # without this, some pyplot error is thrown...
         plt.show()
 
     def asymmetry(self):
+        ### find fix asymmetry parameter
+
         con = sqlite3.connect(self.db)
         cur = con.cursor()
         files = self.get_files('60Ni')
@@ -166,12 +188,16 @@ class NiAnalysis:
             asy = []
             unc = []
             weights = []
+
+            # collect asymmetry parameter for each file
             for f in files:
                 cur.execute('''SELECT pars FROM FitRes WHERE file = ? AND run = ?''', (f, run,))
-                pars = ast.literal_eval(cur.fetchall()[0][0])['asy']
+                pars = ast.literal_eval(cur.fetchall()[0][0])['asy']    # create dictionary
                 asy.append(pars[0])
                 unc.append(pars[1])
                 weights.append(1 / (pars[1] ** 2))
+
+            # calculate weighted mean of all parameters
             mean = np.average(asy, weights=weights)
             std = np.std(asy)
             plt.errorbar(list(range(0, len(asy))), asy, yerr=unc)
@@ -181,12 +207,12 @@ class NiAnalysis:
             plt.xlabel('Messungen')
             plt.ylabel('Asymmetry factor')
             plt.show()
-            con = sqlite3.connect(self.db)
-            cur = con.cursor()
+
+            # set asymmetry parameter to mean and fix it
             cur.execute('''SELECT shape FROM Lines WHERE refRun = ?''', (run,))
-            shape = ast.literal_eval(cur.fetchall()[0][0])
+            shape = ast.literal_eval(cur.fetchall()[0][0])  # create dictionary
             cur.execute('''SELECT fixShape FROM Lines WHERE refRun = ?''', (run,))
-            fix = ast.literal_eval(cur.fetchall()[0][0])
+            fix = ast.literal_eval(cur.fetchall()[0][0])    # create dictionary
             shape['asy'] = mean
             fix['asy'] = True
             cur.execute('''UPDATE Lines SET shape = ? WHERE refRun = ?''', (str(shape), run,))
@@ -195,6 +221,9 @@ class NiAnalysis:
         con.close()
 
     def get_files(self, isotope):
+        ### return list of all files in database of one isotope
+        ### isotope: istope of which to get the files of
+
         con = sqlite3.connect(self.db)
         cur = con.cursor()
         cur.execute('''SELECT file FROM Files WHERE type LIKE ? ''', (isotope,))
@@ -202,7 +231,9 @@ class NiAnalysis:
         con.close()
         return [f[0] for f in files]
 
-    def calibrate_all_ref(self):    # Calibrate DAC voltage
+    def calibrate_all_ref(self):
+        ### Calibrate DAC voltage of all refernce files on transition frequency of 60Ni (Kristian)
+
         files = self.get_files('60Ni')
         con = sqlite3.connect(self.db)
         cur = con.cursor()
@@ -212,11 +243,15 @@ class NiAnalysis:
             center = []
             errs = []
             weights = []
+
+            # each file has fit results for 3 different runs (3 scalers)
             for result in pars:
                 dic = ast.literal_eval(result[0])
                 center.append(dic['center'][0])
                 errs.append(dic['center'][1])
                 weights.append(1 / (dic['center'][1] ** 2))
+
+            # use mean of 3 scalers for calibration of each file
             mean = np.average(center, weights=weights)
             acc_volt = self.calibrate(f, mean)
             cur.execute('''UPDATE Files Set accVolt = ? WHERE file = ?''', (acc_volt, f,))
@@ -225,6 +260,9 @@ class NiAnalysis:
         self.plot_calibration()
 
     def calibrate(self, file, delta_frequ):
+        ### returns calibrated voltage of a single reference file based on the mean fitresult of the center - parameter
+        ### file: file to calibrate
+        ### delta_frequ: difference of fitted frequence and literature value
 
         # Calculate differential Doppler shift
         con = sqlite3.connect(self.db)
@@ -233,7 +271,6 @@ class NiAnalysis:
         accVolt = cur.fetchall()[0][0]
         con.close()
         diffDopp60 = Physics.diffDoppler(delta_frequ + self.frequ_60ni, accVolt, 60)
-        print('differential doppler shift:', diffDopp60)
 
         # Calculate calibration
         delta_u = delta_frequ / diffDopp60
@@ -241,6 +278,8 @@ class NiAnalysis:
         return accVolt + delta_u
 
     def plot_calibration(self):
+        ### plots calibrated voltage of all reference files in the database over the time
+
         files = self.get_files('60Ni')
         file_times = []
         voltages = []
@@ -252,7 +291,7 @@ class NiAnalysis:
             cur.execute('''SELECT accVolt FROM Files WHERE file = ?''', (f,))
             acc_vol = cur.fetchall()[0][0]
             con.close()
-            file_times.append(datetime.strptime(date, '%Y-%m-%d %H:%M:%S'))
+            file_times.append(datetime.strptime(date, '%Y-%m-%d %H:%M:%S')) # convert string to datetime
             voltages.append(acc_vol)
         self.times = file_times
         self.volts = voltages
@@ -264,10 +303,15 @@ class NiAnalysis:
         plt.ylabel('Voltage in V')
 
     def calibrate_all(self, files):
+        ### use calibration of reference measurements for calibration of all files
+        ### files: files to use calibration on
+
         times = []
         volts = []
         con = sqlite3.connect(self.db)
         cur = con.cursor()
+
+        # select time stamp of file and use interpolation to find calibrated voltage
         for f in files:
             cur.execute('''SELECT date FROM Files WHERE file = ?''', (f,))
             time = datetime.strptime(cur.fetchall()[0][0], '%Y-%m-%d %H:%M:%S')
@@ -289,24 +333,39 @@ class NiAnalysis:
         plt.show()
 
     def calib_procedure(self, isotope):
-        self.calibrate_all_ref()
-        self.calibrate_all(niAna.get_files(isotope))
-        for run in self.runs60:
-            self.fit_all(self.get_files('60Ni'), run)
-        self.calibrate_all_ref()
+        ### the whole procedure of calibration
+        ### isotpe: isotpe to use the calibration on
+
+        plt.plot([1, 1], [1, 1])    # without this, some pyplot error is thrown...
         plt.show()
 
-        # TODO: Reihnfolge
-        # TODO: refit nach asym??
+        # calibration of reference files
+        self.calibrate_all_ref()
 
-    def lin_func(self, x, y0, m):
-        return y0 + m * x
-
-    def analyse(self):
+        # refit with new voltage
         for run in self.runs60:
             self.fit_all(self.get_files('60Ni'), run)
-            self.fit_all(self.get_files('58Ni'), run)
-            #continue
+        plt.plot([1, 1], [1, 1])    # without this, some pyplot error is thrown...
+        plt.show()
+
+        # calibration of reference files (second time for higher accurancy)
+        self.calibrate_all_ref()
+
+        # calibrate all other files
+        self.calibrate_all(niAna.get_files(isotope))
+
+    def lin_func(self, x, y0, m):
+        ### linear function
+
+        return y0 + m * x
+
+    def analyse(self, isotope):
+        ### analysis procedure
+
+        # analysis of 60Ni and 58Ni
+        for run in self.runs60:
+            self.fit_all(self.get_files(isotope), run)
+            #self.fit_all(self.get_files('58Ni'), run)
         con = sqlite3.connect(self.db)
         cur = con.cursor()
         files = self.get_files('60Ni')
@@ -329,7 +388,7 @@ class NiAnalysis:
             date = datetime.strptime(cur.fetchall()[0][0], '%Y-%m-%d %H:%M:%S')
             times.append(date)
         con.close()
-        plt.plot([1, 1], [1, 1])
+        plt.plot([1, 1], [1, 1])    # without this, some pyplot error is thrown...
         plt.show()
         upper = []
         lower = []
@@ -340,14 +399,14 @@ class NiAnalysis:
         plt.plot_date(times, centers, fmt = 'bx', linestyle='-', )
         plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
         plt.fill_between(times, upper, lower, alpha=0.2)
-        plt.title('Center frequency after calibration')
+        plt.title('Center frequency of ' + isotope)
         plt.ylabel('Frequency in MHz')
         plt.show()
 
 
 
-working_dir = 'D:\\Owncloud\\User\\Laura\\Nickelauswertung' # Path Laptop
-#working_dir = 'C:\\Users\\Laura Renth\\ownCloud\\User\\Laura\\Nickelauswertung' # Path IKP
+#working_dir = 'D:\\Owncloud\\User\\Laura\\Nickelauswertung' # Path Laptop
+working_dir = 'C:\\Users\\Laura Renth\\ownCloud\\User\\Laura\\Nickelauswertung' # Path IKP
 db = 'Nickel_BECOLA_60Ni.sqlite'
 
 niAna = NiAnalysis(working_dir, db)
@@ -355,7 +414,9 @@ niAna.reset()
 niAna.prepFileList()
 niAna.initialize()
 niAna.asymmetry()
+for run in niAna.runs60:
+    niAna.fit_all(niAna.get_files('60Ni'), run)
 niAna.calib_procedure('58Ni')
-niAna.analyse()
+niAna.analyse('60Ni')
 
 
