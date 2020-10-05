@@ -3,7 +3,7 @@ import importlib
 import math
 import os
 import sqlite3
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 import ast
 import numpy as np
 from Measurement.XMLImporter import XMLImporter
@@ -33,15 +33,22 @@ class NiAnalysis:
         self.data_path = os.path.join(self.working_dir, 'data')
         self.line_var = ['refLine_0', 'refLine_1', 'refLine_2']
         self.runs60 = ['AsymVoigt0', 'AsymVoigt1', 'AsymVoigt2']
+        self.tg0 = []
+        self.tg1 = []
+        self.tg2 = []
         self.frequ_60ni = 850344183
         self.laser_freq60 = 851224124.8007469
         self.wb = load_workbook(os.path.join(self.data_path, 'Files.xlsx'))
-        self.results = Workbook()
+        try:
+            self.results = load_workbook(os.path.join(self.working_dir, 'results\\Isotope_shifts.xlsx'))
+        except:
+            self.results = Workbook()
         self.worksheet = self.results.active
         self.worksheet['A1'] = 'Isotope'
         self.worksheet['B1'] = 'isotope shift'
         self.worksheet['C1'] = 'statistic uncertainty'
         self.worksheet['D1'] = 'method'
+        self.worksheet['E1'] = 'date and time'
 
         # for Calibration
         # times: list of datetimes
@@ -49,6 +56,20 @@ class NiAnalysis:
         self.times = []
         self.volts = []
         self.fig, self.ax = plt.subplots()
+
+    def start_all(self):
+        self.reset()
+        self.prep_file_list()
+        self.initialize()
+        self.asymmetry()
+        for run in self.runs60:
+            self.fit_all(niAna.get_files('60Ni'), run)
+        self.calib_procedure()
+
+    def ana_individual(self):
+        self.isotope_shift('58Ni')
+        self.isotope_shift('56Ni')
+        self.results.save(os.path.join(self.working_dir, 'results\\Isotope_shifts.xlsx'))
 
     def reset(self):
         # resets the data base
@@ -148,6 +169,9 @@ class NiAnalysis:
             self.adj_center(center, iso)
 
             # Fit
+            print(self.tg0)
+            print(self.tg1)
+            print(self.tg2)
             BatchFit.batchFit(np.array([f]), self.db, run)
 
     def adj_offset(self, offset, run):
@@ -181,7 +205,31 @@ class NiAnalysis:
         # first fit of reference measurements (60Ni)
 
         files = self.get_files('60Ni')
+
+        # find software gates:
+        self.set_timegates(files)
+
         for run in self.runs60:
+            con = sqlite3.connect(self.db)
+            cur = con.cursor()
+            if '0' in run:
+                t_mid = self.tg0[0] + (self.tg0[1] - self.tg0[0]) / 2
+                cur.execute('''UPDATE Isotopes SET midTof = ? WHERE iso = ?''', (t_mid, '60Ni',))
+                cur.execute('''UPDATE Runs SET softwGateWidth = ? WHERE run = ?''',
+                            (self.tg0[1] - self.tg0[0], 'AsymVoigt0'))
+            elif '1' in run:
+                t_mid = self.tg1[0] + (self.tg1[1] - self.tg1[0]) / 2
+                cur.execute('''UPDATE Isotopes SET midTof = ? WHERE iso = ?''', (t_mid, '60Ni',))
+                cur.execute('''UPDATE Runs SET softwGateWidth = ? WHERE run = ?''',
+                            (self.tg1[1] - self.tg1[0], 'AsymVoigt1'))
+            else:
+                t_mid = self.tg2[0] + (self.tg2[1] - self.tg2[0]) / 2
+                cur.execute('''UPDATE Isotopes SET midTof = ? WHERE iso = ?''', (t_mid, '60Ni',))
+                cur.execute('''UPDATE Runs SET softwGateWidth = ? WHERE run = ?''',
+                            (self.tg2[1] - self.tg2[0], 'AsymVoigt2'))
+            con.commit()
+            con.close()
+
             self.fit_all(files, run)
         plt.close()  # without this, some pyplot error is thrown...
 
@@ -198,6 +246,7 @@ class NiAnalysis:
 
             # collect asymmetry parameter for each file
             for f in files:
+                print(f)
                 cur.execute('''SELECT pars FROM FitRes WHERE file = ? AND run = ?''', (f, run,))
                 pars = ast.literal_eval(cur.fetchall()[0][0])['asy']    # create dictionary
                 asy.append(pars[0])
@@ -217,7 +266,7 @@ class NiAnalysis:
             ax.set_xlabel('Messungen')
             ax.set_ylabel('Asymmetry factor')
             ax.text(20, 13, str(mean))
-            fig.show()  # show plot
+            #fig.show()  # show plot
             fig.savefig(os.path.join(self.working_dir, 'asymmetry\\Scaler_' + str(run) + '.png'))  # save plot
             plt.close()
 
@@ -317,7 +366,7 @@ class NiAnalysis:
         self.ax.set_title('Calibrated Voltage')
         self.ax.set_ylabel('Voltage in V')
 
-    def calibrate_all(self, files):
+    def calibrate_all(self, files, color):
         # use calibration of reference measurements for calibration of all files
         # files: files to use calibration on
 
@@ -344,11 +393,11 @@ class NiAnalysis:
                     break
         con.commit()
         con.close()
-        self.ax.plot_date(times, volts, fmt='rx')
-        self.fig.show()
+        self.ax.plot_date(times, volts, fmt=color)
+        #self.fig.show()
         self.fig.savefig(os.path.join(self.working_dir, 'calibration\\Voltagecalibration.png'))
 
-    def calib_procedure(self, isotope):
+    def calib_procedure(self):
         # the whole procedure of calibration
         # isotpe: isotpe to use the calibration on
 
@@ -366,7 +415,13 @@ class NiAnalysis:
         self.calibrate_all_ref()
 
         # calibrate all other files
-        self.calibrate_all(niAna.get_files(isotope))
+        self.calibrate_all(niAna.get_files('58Ni'), 'rx')
+        self.calibrate_all(niAna.get_files('56Ni'), 'yx')
+        self.calibrate_all(niAna.get_files('55Ni'), 'gx')
+
+        # refit reference files
+        for run in self.runs60:
+            self.fit_all(self.get_files('60Ni'), run)
 
     @staticmethod
     def lin_func(x, y0, m):
@@ -377,11 +432,37 @@ class NiAnalysis:
     def center(self, isotope):
         # analysis procedure plots results of each file and returns the weighted mean and standard deviation of all
 
-        for run in self.runs60:
-            self.fit_all(self.get_files(isotope), run)
+        files = self.get_files(isotope)
+
+        # if isotope is not reference, fit first. Reference is already fitted
+        if isotope != '60Ni':
+
+            # find software gates:
+            self.set_timegates(files)
+
+            for run in self.runs60:
+                con = sqlite3.connect(self.db)
+                cur = con.cursor()
+                if '0' in run:
+                    t_mid = self.tg0[0] + (self.tg0[1] - self.tg0[0]) / 2
+                    cur.execute('''UPDATE Isotopes SET midTof = ? WHERE iso = ?''', (t_mid, isotope,))
+                    cur.execute('''UPDATE Runs SET softwGateWidth = ? WHERE run = ?''',
+                                (self.tg0[1] - self.tg0[0], 'AsymVoigt0'))
+                elif '1' in run:
+                    t_mid = self.tg1[0] + (self.tg1[1] - self.tg1[0]) / 2
+                    cur.execute('''UPDATE Isotopes SET midTof = ? WHERE iso = ?''', (t_mid, isotope,))
+                    cur.execute('''UPDATE Runs SET softwGateWidth = ? WHERE run = ?''',
+                                (self.tg1[1] - self.tg1[0], 'AsymVoigt1'))
+                else:
+                    t_mid = self.tg2[0] + (self.tg2[1] - self.tg2[0]) / 2
+                    cur.execute('''UPDATE Isotopes SET midTof = ? WHERE iso = ?''', (t_mid, isotope,))
+                    cur.execute('''UPDATE Runs SET softwGateWidth = ? WHERE run = ?''',
+                                (self.tg2[1] - self.tg2[0], 'AsymVoigt2'))
+                con.commit()
+                con.close()
+                self.fit_all(files, run)
         con = sqlite3.connect(self.db)
         cur = con.cursor()
-        files = self.get_files(isotope)
         times = []
         centers = []
         errs = []
@@ -403,9 +484,9 @@ class NiAnalysis:
             date = datetime.strptime(cur.fetchall()[0][0], '%Y-%m-%d %H:%M:%S')
             times.append(date)
         con.close()
-        plt.close()    # without this, some pyplot error is thrown...
-        upper = []
-        lower = []
+        plt.close()  # without this, some pyplot error is thrown...
+        upper = []  # for plotting
+        lower = []  # for plotting
         for i, c in enumerate(centers):
             upper.append(c + errs[i])
             lower.append(c - errs[i])
@@ -415,17 +496,363 @@ class NiAnalysis:
         ax.fill_between(times, upper, lower, alpha=0.2)
         ax.set_title('Center frequency of ' + isotope)
         ax.set_ylabel('Frequency in MHz')
-        fig.show()
+        #fig.show()
         fig.savefig(os.path.join(self.working_dir, 'center\\'+ isotope + '.png'))
-        return np.average(centers, weights=errs), np.std(centers)
+        return np.average(centers, weights=errs), np.std(centers)  # mean of all files is returned
 
     def isotope_shift(self, isotope):
+        # calculate isotope shift of isotope using fitted centers
+        # isotope: isotope to calculate the isotope shift of
+
         ref_center, ref_unc = self.center('60Ni')
         iso_center, iso_unc = self.center(isotope)
         isotope_shift = iso_center - ref_center
         ishift_unc = np.sqrt(np.square(iso_unc) + np.square(ref_unc))
-        self.worksheet.append([isotope, isotope_shift, ishift_unc])
+        self.worksheet.append([isotope, isotope_shift, ishift_unc, 'individual',
+                               datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
         print(isotope_shift, ishift_unc)
+
+    def t_proj(self, file, scaler):
+        # returns the timeprojection of file as a list
+        # file: file to return the timeprojection of
+        # scaler: scaler to return the timeprojection of
+        spec = XMLImporter(path=os.path.join(self.working_dir, 'data\\' + file))
+        return spec.t_proj[0][scaler]
+
+    def gauss(self, time, cts, sigma, t_mid, off):
+        # returns a gaussian
+
+        return off + cts / np.sqrt(2 * np.pi * sigma ** 2) * np.exp(-1 / 2 * np.square((time - t_mid) / sigma))
+
+    def lorentz(self, time, cts, gamma, t_mid, off):
+        # returns a lorentzian
+
+        lw = gamma * 2
+        return off + (cts * 2 / (math.pi * lw)) * ((lw ** 2 / 4) / ((time - t_mid) ** 2 + (lw ** 2 / 4)))
+
+    def fit_time(self, time, cts):
+        # fits a gaussian or lorentzian to a time projection
+        # time: time axis
+        # cts: list of counts
+
+        # guess Start parameters and set amplitude and sigma positive
+        # amplitude as max(cts), gamma as 10, center as position of max(cts), offset as mean of first and last cts
+        start_par = np.array([max(cts), 10, time[cts.index(max(cts))], (time[0] + time[-1]) / 2])
+        param_bounds = ([0, 0, -np.inf, -np.inf], [np.inf, np.inf, np.inf, np.inf])
+
+        # Fitting
+        # gauss
+        # a, sigma, center, offset = curve_fit(self.gauss, time, cts, start_par, bounds=param_bounds)[0]
+        # return a, sigma, center, offset
+        #lorentzian
+        a, gamma, center, offset = curve_fit(self.lorentz, time, cts, start_par, bounds=param_bounds)[0]
+        return a, gamma, center, offset
+
+    def find_timegates(self, files, scaler):
+        # returns center and width of timegate
+        # files: list of files to use for timegate determination
+        # scaler: scaler to use for timegate determination
+
+        # create a list to store counts for each timestep in
+        t_proj = np.zeros(1024)
+
+        # sum up counts for each timestep of all files
+        for f in files:
+            # for each element of t_proj: add counts of file to t_proj
+            t_proj = list(map(add, t_proj, self.t_proj(f, scaler)))
+
+        # create list of timesteps for fitting and plotting
+        time = list(range(0, len(t_proj)))
+
+        # fit a gaussian or lorentzian
+        a, sigma, center, offset = self.fit_time(time, t_proj)
+
+        # Plot counts and fit and a 1-sigma timegate
+        fig, ax = plt.subplots()
+        ax.plot(time, t_proj, 'b.')
+        ax.set_title('Scaler' + str(scaler))
+        ax.plot(time, self.lorentz(time, a, sigma, center, offset), 'r-')
+        ax.axvline(center - 1 * sigma, color='y')
+        ax.axvline(center + 1 * sigma, color='y')
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        cur.execute('''SELECT type FROM Files WHERE file = ?''', (files[0],))
+        isotope = cur.fetchall()[0][0]
+        con.close()
+        fig.savefig(os.path.join(self.working_dir, 't_proj\\' + isotope + str(scaler) + '.png'))
+        #fig.show()
+        return center, sigma
+
+    def set_timegates(self, files):
+
+        # find software gates:
+        for s in [0, 1, 2]:
+            t_mid, t_width = self.find_timegates(files, s)
+            multiple = 1
+            t_min = (t_mid - multiple * t_width) / 100  # divide by 100 to convert bins to microseconds
+            t_max = (t_mid + multiple * t_width) / 100  # divide by 100 to convert bins to microseconds
+            print(t_min, t_max)
+            if s == 0:
+                self.tg0 = [t_min, t_max]
+            if s == 1:
+                self.tg1 = [t_min, t_max]
+            if s == 2:
+                self.tg2 = [t_min, t_max]
+
+    def stack_files(self, isotope):
+        files = self.get_files(isotope)
+        scalers = [0, 1, 2]
+
+        sumcts = [[], [], []]
+        voltage = [[], [], []]
+        binsizes = []
+
+        # iterate through scalers:
+        for s in scalers:
+            print('Scaler', s)
+
+            # find and set timegates
+            t_mid, t_width = self.find_timegates(files, s)
+            multiple = 1
+            t_min = (t_mid - multiple * t_width) / 100  # divide by 100 to convert bins to microseconds
+            t_max = (t_mid + multiple * t_width) / 100  # divide by 100 to convert bins to microseconds
+
+            fig, ax = plt.subplots()
+            volt_cts = [] # Will be a list of tuples: (DAC - offset, cts, bg)
+
+            # iterate through files to sum up counts in timegate
+            for f in files:
+                # spectrum only in the specified time gate
+                spec = XMLImporter(path=self.working_dir + '\\data\\' + str(f),
+                                   softw_gates=[[-35, 15, t_min, t_max], [-35, 15, t_min, t_max],
+                                                [-35, 15, t_min, t_max]])
+                # spectrum of background
+                bg = XMLImporter(path=self.working_dir + '\\data\\' + str(f),
+                                 softw_gates=[[-35, 15, 0.5, 4], [-35, 15, 0.5, 4],
+                                              [-35, 15, 0.5, 4]])
+
+                #normalization of background to number of bins
+                norm_factor = 2 * multiple * t_width / 100 / 3.5  # 2 * multiple is the total timegate width
+                for i, c in enumerate(bg.cts[0][s]):
+                    bg.cts[0][s][i] = c * norm_factor
+
+                # use calibration
+                for j, x in enumerate(spec.x[0]):
+                    con = sqlite3.connect(self.db)
+                    cur = con.cursor()
+                    cur.execute('''SELECT accVolt from Files WHERE file  = ?''', (f,))
+                    accV = cur.fetchall()[0][0]
+                    con.close()
+                    offset = (accV - 29850)
+                    volt_cts.append((x - offset, spec.cts[0][s][j], bg.cts[0][s][j]))
+
+                # plot uncalibrated spectrum
+                ax.plot(spec.x[0], spec.cts[0][s])
+                ax.plot(bg.x[0], bg.cts[0][s])
+            ax.set_title(isotope + ' Scaler ' + str(s) + ': raw data')
+            ax.set_xlabel('DAC Voltage in V')
+            ax.set_ylabel('Counts')
+            fig.savefig(os.path.join(self.working_dir, 'raw_spectra\\' + isotope + str(s) + '.png'))
+            #fig.show()
+
+            volt_cts.sort()
+
+            # find all entries belonging to one voltage bin and sum up the counts and background
+            voltages = []
+            weights = []
+            c_sum = 0
+            b_sum = 0
+            binned_volt_cts = []
+            v_min = volt_cts[0][0]
+            for tup in volt_cts:
+                if tup[0] < v_min + 1:
+                    voltages.append(tup[0])
+                    weights.append(tup[1])
+                    c_sum += tup[1]
+                    b_sum += tup[2]
+                else:
+                    v_min = tup[0]
+                    binned_volt_cts.append((np.average(voltages, weights=weights), c_sum, b_sum))
+                    voltages = [tup[0]]
+                    weights = [tup[1]]
+                    c_sum = tup[1]
+                    b_sum = tup[2]
+
+            # Plot voltage bins:
+            # create voltage axis:
+            voltages = []
+            for tup in binned_volt_cts:
+                voltages.append(tup[0])
+            # create step axis
+            steps = list(range(0, len(voltages)))
+            # plot
+            fig, ax = plt.subplots()
+            ax.plot(steps, voltages, 'b.')
+            ax.set_xlabel('step')
+            ax.set_ylabel('Voltage in V')
+            ax.set_title('DAC voltage bins')
+
+            # find linear fit. slope is the binsize
+            model = np.polyfit(steps, voltages, 1)
+            predict = np.poly1d(model)
+            binsizes.append(model[0])
+            voltages = predict(steps)
+            ax.plot(steps, voltages, 'r-')
+            fig.savefig(os.path.join(self.working_dir, 'voltage_steps\\' + isotope + str(s) + '.png'))
+            #fig.show()
+
+            # assign new voltage bins
+            for i, tup in enumerate(binned_volt_cts):
+                binned_volt_cts[i] = (predict(i), tup[1], tup[2])
+
+            # plot calibrated and summed data
+            # create counts axis
+            c_sum = [tup[1] for tup in binned_volt_cts]
+            b_sum = [tup[2] for tup in binned_volt_cts]
+            # plot
+            fig, ax = plt.subplots()
+            ax.plot(voltages, c_sum, 'b.')
+            ax.plot(voltages, b_sum, ' r.')
+            ax.set_title('Calibrated and summed Spectrum of ' + isotope + ', Scaler ' + str(s))
+            ax.set_xlabel('DAC Voltage in V')
+            ax.set_ylabel('Counts')
+            fig.savefig(os.path.join(self.working_dir, 'spectra\\calibrated\\' + isotope + str(s) + '.png'))
+            #fig.show()
+
+            # calculate statistic uncertainty
+            unc = []
+            for cts in c_sum:
+                unc.append(np.sqrt(cts))
+
+            # normalize
+            c_sum_norm = []
+            unc_norm = []
+            for i, cts in enumerate(c_sum):
+                c_sum_norm.append(int((cts) / b_sum[i] * np.mean(b_sum)))
+                unc_norm.append(int((unc[i] / b_sum[i] * np.mean(b_sum))))
+            # plot normalized spectrum
+            fig, ax = plt.subplots()
+            ax.errorbar(voltages, c_sum_norm, yerr=unc_norm, fmt='b.')
+            ax.set_title('Calibrated, summed and normalized. Scaler' + str(s))
+            ax.set_xlabel('DAC Voltage in V')
+            ax.set_ylabel('Counts')
+            fig.savefig(os.path.join(self.working_dir, 'spectra\\normalized\\' + isotope + str(s) + '.png'))
+
+            # assign
+            sumcts[s] = c_sum_norm
+            voltage[s] = voltages
+
+        # creating file:
+
+        # calculate mean binsize:
+        binsize = np.average(binsizes)
+
+        # prepare scaler array for xml-file
+        scaler_array = []
+        for s in scalers:
+            timestep = 0
+            for i, c in enumerate(sumcts[s]):
+                scaler_array.append((s, i, timestep, c))
+                timestep += 1
+        print(scaler_array)
+
+        # Create dictionary for xml export
+        file_creation_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        header_dict = {'type': 'trs',
+                       'isotope': isotope,
+                       'isotopeStartTime': file_creation_time,
+                       'accVolt': 29850,
+                       'laserFreq': Physics.wavenumber(self.laser_freq60) / 2,
+                       'nOfTracks': 1,
+                       'version': 99.0}
+        track0_dict_header = {'trigger': {},  # Need a trigger dict!
+                              'activePmtList': [0, 1, 2],  # Must be in form [0,1,2]
+                              'colDirTrue': True,
+                              'dacStartRegister18Bit': 0,
+                              'dacStartVoltage': voltage[0][0],
+                              'dacStepSize18Bit': None,  # old format xml importer checks whether val or None
+                              'dacStepsizeVoltage': binsize,
+                              'dacStopRegister18Bit': len(voltage[0]) - 1,  # not real but should do the trick
+                              'dacStopVoltage': voltage[0][-1],
+                              'invertScan': False,
+                              'nOfBins': len(voltage[0]),
+                              'nOfCompletedSteps': float(len(voltage[0])),
+                              'nOfScans': 1,
+                              'nOfSteps': len(voltage[0]),
+                              'postAccOffsetVolt': 0,
+                              'postAccOffsetVoltControl': 0,
+                              'softwGates': [[-40, -10, 0, timestep], [-40, -10, 0, timestep], [-40, -10, 0, timestep]],
+                              # 'softwGates': [[-252, -42, 0, 0.4], [-252, -42, 0, 0.4], [-252, -42, 0, 0.4]],
+                              # For each Scaler: [DAC_Start_Volt, DAC_Stop_Volt, scaler_delay, softw_Gate_width]
+                              'workingTime': [file_creation_time, file_creation_time],
+                              'waitAfterReset1us': 0,  # looks like I need those for the importer
+                              'waitForKepco1us': 0  # looks like I need this too
+                              }
+        data = '['
+        for i, s in enumerate(scaler_array):
+            data = data + str(scaler_array[i]) + ' '
+        data = data[:len(data) - 1]
+        data = data + ']'
+        track0_dict_data = {
+            'scalerArray_explanation': 'continously acquired data. List of Lists, each list represents the counts of '
+                                       'one scaler as listed in activePmtList.Dimensions are: (len(activePmtList), '
+                                       'nOfSteps), datatype: np.int32',
+            'scalerArray': data}
+        track0_vol_proj = {'voltage_projection': np.array(sumcts),
+                           'voltage_projection_explanation': 'voltage_projection of the time resolved data. List of '
+                                                             'Lists, each list represents the counts of one scaler as '
+                                                             'listed in activePmtList.Dimensions are: '
+                                                             '(len(activePmtList), nOfSteps), datatype: np.int32'}
+        dictionary = {'header': header_dict,
+                      'tracks': {'track0': {'header': track0_dict_header,
+                                            'data': track0_dict_data,
+                                            'projections': track0_vol_proj
+                                            },
+                                 }
+                      }
+
+        # Write xml-file
+        root = et.Element('BecolaData')
+
+        xmlWriteDict(root, dictionary)
+        xml = et.ElementTree(root)
+        xml.write(self.working_dir + '\\data\\BECOLA_Stacked' + isotope + '.xml')
+
+        # Add to database
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        cur.execute('''INSERT OR IGNORE INTO Files (file, filePath, date, type) VALUES (?, ?, ?, ?)''',
+                    ('BECOLA_Stacked' + isotope + '.xml', 'data\BECOLA_Stacked' + isotope + '.xml',
+                     file_creation_time, '60Ni_sum'))
+        cur.execute('''UPDATE Files SET offset = ?, accVolt = ?,  laserFreq = ?, laserFreq_d = ?, colDirTrue = ?, 
+            voltDivRatio = ?, lineMult = ?, lineOffset = ?, errDateInS = ? WHERE file = ? ''',
+            ('[0]', 29850, self.laser_freq60, 0, True, str({'accVolt': 1.0, 'offset': 1.0}), 1, 0,
+             1, 'BECOLA_Stacked' + isotope + '.xml'))
+        con.commit()
+        con.close()
+
+    def fit_stacked(self, isotope, run, sym=True):
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        print(run)
+        cur.execute('''SELECT fixShape from Lines WHERE refRun = ? ''', (run,))
+        shape = cur.fetchall()
+        shape_dict = ast.literal_eval(shape[0][0])
+        con.close()
+        if sym:
+            shape_dict['asy'] = True
+        else:
+            shape_dict['asy'] = [0,30]
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        cur.execute('''UPDATE Lines SET fixShape = ? WHERE refRun = ?''', (str(shape_dict), run))
+        con.commit()
+        con.close()
+
+
+        BatchFit.batchFit(['BECOLA_Stacked' + isotope + '.xml'], self.db, run, x_as_voltage=True,
+                          save_file_as='.png')
+
 
 
 # workingDir = 'D:\\Owncloud\\User\\Laura\\Nickelauswertung'  # Path Laptop
@@ -433,14 +860,9 @@ workingDir = 'C:\\Users\\Laura Renth\\ownCloud\\User\\Laura\\Nickelauswertung'  
 db = 'Nickel_BECOLA_60Ni.sqlite'
 
 niAna = NiAnalysis(workingDir, db)
-#niAna.reset()
-#niAna.prep_file_list()
-#niAna.initialize()
-#niAna.asymmetry()
-#for r in niAna.runs60:
-    #niAna.fit_all(niAna.get_files('60Ni'), r)
-#niAna.calib_procedure('58Ni')
-niAna.isotope_shift('58Ni')
-row = niAna.worksheet.max_row
-niAna.\
-results.save(os.path.join(workingDir, 'results\\Isotope_shifts.xlsx'))
+#niAna.start_all()
+#niAna.ana_individual()
+#niAna.stack_files('60Ni')
+
+# TODO Check summed file in TILDA
+niAna.fit_stacked('60Ni', niAna.runs60[0])
