@@ -1,5 +1,4 @@
 import matplotlib.dates as dates
-import importlib
 import math
 import os
 import sqlite3
@@ -23,25 +22,30 @@ class NiAnalysis:
         # working_dir: path of working directory where to save files
         # db: path of database
         # data_path: path where to find xml data files
-        # line_var: line variables to use for fitting
-        # runs60: runs to use for fitting
+        # indiv_line_var: line variables to use for fitting
+        # indiv_runs60: runs to use for fitting
         # frequ_60ni: literature value of 60Ni transition frequency (Kristian)
         # laser_freq60: laser frequency for 60ni measurements
         # wb: excel workbook containing "good" files
         self.working_dir = working_dir
         self.db = os.path.join(self.working_dir, db60)
         self.data_path = os.path.join(self.working_dir, 'data')
-        self.line_var = ['refLine_0', 'refLine_1', 'refLine_2']
-        self.runs60 = ['AsymVoigt0', 'AsymVoigt1', 'AsymVoigt2']
+        self.indiv_line_var = ['refLine_0', 'refLine_1', 'refLine_2']
+        self.indiv_runs60 = ['AsymVoigt0', 'AsymVoigt1', 'AsymVoigt2']
+        self.sum_runs60 = ['AsymVoigtSum0', 'AsymVoigtSum1', 'AsymVoigtSum2']
+        self.sum_runs55 = ['AsymVoigt55_0', 'AsymVoigt55_1', 'AsymVoigt55_2', 'AsymVoigt55_All']
         self.tg0 = []
         self.tg1 = []
         self.tg2 = []
         self.frequ_60ni = 850344183
         self.laser_freq60 = 851224124.8007469
+        self.laser_freq58 = 851238644.9486578
+        self.laser_freq56 = 851253865.030196
+        self.laser_freq55 = 851264686.7203143
         self.wb = load_workbook(os.path.join(self.data_path, 'Files.xlsx'))
         try:
             self.results = load_workbook(os.path.join(self.working_dir, 'results\\Isotope_shifts.xlsx'))
-        except:
+        except FileNotFoundError:
             self.results = Workbook()
         self.worksheet = self.results.active
         self.worksheet['A1'] = 'Isotope'
@@ -62,7 +66,7 @@ class NiAnalysis:
         self.prep_file_list()
         self.initialize()
         self.asymmetry()
-        for run in self.runs60:
+        for run in self.indiv_runs60:
             self.fit_all(niAna.get_files('60Ni'), run)
         self.calib_procedure()
 
@@ -75,7 +79,7 @@ class NiAnalysis:
         # resets the data base
 
         # reset fixed shapes
-        for run in self.runs60:
+        for run in self.indiv_runs60:
             con = sqlite3.connect(self.db)
             cur = con.cursor()
             cur.execute('''SELECT fixShape FROM Lines WHERE refRun = ?''', (run,))
@@ -168,10 +172,6 @@ class NiAnalysis:
             center = center_frequ - 500
             self.adj_center(center, iso)
 
-            # Fit
-            print(self.tg0)
-            print(self.tg1)
-            print(self.tg2)
             BatchFit.batchFit(np.array([f]), self.db, run)
 
     def adj_offset(self, offset, run):
@@ -209,7 +209,7 @@ class NiAnalysis:
         # find software gates:
         self.set_timegates(files)
 
-        for run in self.runs60:
+        for run in self.indiv_runs60:
             con = sqlite3.connect(self.db)
             cur = con.cursor()
             if '0' in run:
@@ -239,7 +239,7 @@ class NiAnalysis:
         con = sqlite3.connect(self.db)
         cur = con.cursor()
         files = self.get_files('60Ni')
-        for run in self.runs60:
+        for run in self.indiv_runs60:
             asy = []
             unc = []
             weights = []
@@ -336,7 +336,6 @@ class NiAnalysis:
 
         # Calculate calibration
         delta_u = delta_frequ / diff_dopp60
-        print('Delta voltage:', delta_u)
         return acc_volt + delta_u
 
     def plot_calibration(self):
@@ -385,12 +384,17 @@ class NiAnalysis:
                 cur.execute('''UPDATE Files SET accVolt = ? WHERE file = ?''', (self.volts[0], f,))
                 continue
             for i, t in enumerate(self.times):
-                if t <= time < self.times[i + 1]:
-                    y0, m = curve_fit(self.lin_func, dates.date2num(self.times[i:i+2]), self.volts[i:i+2])[0]
-                    new_volt = y0 + m * dates.date2num(time)
-                    volts.append(new_volt)
-                    cur.execute('''UPDATE Files SET accVolt = ? WHERE file = ?''', (new_volt, f,))
-                    break
+                if i < len(self.times) - 1:
+                    if t <= time < self.times[i + 1]:
+                        y0, m = curve_fit(self.lin_func, dates.date2num(self.times[i:i+2]), self.volts[i:i+2])[0]
+                        new_volt = y0 + m * dates.date2num(time)
+                        volts.append(new_volt)
+                        cur.execute('''UPDATE Files SET accVolt = ? WHERE file = ?''', (new_volt, f,))
+                        break
+                else:
+                    if t <= time:
+                        volts.append(self.volts[-1])
+                        cur.execute('''UPDATE Files SET accVolt = ? WHERE file = ?''', (self.volts[-1], f,))
         con.commit()
         con.close()
         self.ax.plot_date(times, volts, fmt=color)
@@ -407,7 +411,7 @@ class NiAnalysis:
         self.calibrate_all_ref()
 
         # refit with new voltage
-        for run in self.runs60:
+        for run in self.indiv_runs60:
             self.fit_all(self.get_files('60Ni'), run)
         plt.close()  # without this, some pyplot error is thrown...
 
@@ -420,7 +424,7 @@ class NiAnalysis:
         self.calibrate_all(niAna.get_files('55Ni'), 'gx')
 
         # refit reference files
-        for run in self.runs60:
+        for run in self.indiv_runs60:
             self.fit_all(self.get_files('60Ni'), run)
 
     @staticmethod
@@ -440,7 +444,7 @@ class NiAnalysis:
             # find software gates:
             self.set_timegates(files)
 
-            for run in self.runs60:
+            for run in self.indiv_runs60:
                 con = sqlite3.connect(self.db)
                 cur = con.cursor()
                 if '0' in run:
@@ -519,12 +523,14 @@ class NiAnalysis:
         spec = XMLImporter(path=os.path.join(self.working_dir, 'data\\' + file))
         return spec.t_proj[0][scaler]
 
-    def gauss(self, time, cts, sigma, t_mid, off):
+    @staticmethod
+    def gauss(time, cts, sigma, t_mid, off):
         # returns a gaussian
 
         return off + cts / np.sqrt(2 * np.pi * sigma ** 2) * np.exp(-1 / 2 * np.square((time - t_mid) / sigma))
 
-    def lorentz(self, time, cts, gamma, t_mid, off):
+    @staticmethod
+    def lorentz(time, cts, gamma, t_mid, off):
         # returns a lorentzian
 
         lw = gamma * 2
@@ -557,6 +563,7 @@ class NiAnalysis:
         t_proj = np.zeros(1024)
 
         # sum up counts for each timestep of all files
+
         for f in files:
             # for each element of t_proj: add counts of file to t_proj
             t_proj = list(map(add, t_proj, self.t_proj(f, scaler)))
@@ -580,18 +587,18 @@ class NiAnalysis:
         isotope = cur.fetchall()[0][0]
         con.close()
         fig.savefig(os.path.join(self.working_dir, 't_proj\\' + isotope + str(scaler) + '.png'))
-        #fig.show()
         return center, sigma
 
     def set_timegates(self, files):
 
+        print('Setting timegates to:')
         # find software gates:
         for s in [0, 1, 2]:
             t_mid, t_width = self.find_timegates(files, s)
             multiple = 1
             t_min = (t_mid - multiple * t_width) / 100  # divide by 100 to convert bins to microseconds
             t_max = (t_mid + multiple * t_width) / 100  # divide by 100 to convert bins to microseconds
-            print(t_min, t_max)
+            print('Scaler', s, ':', t_min, t_max)
             if s == 0:
                 self.tg0 = [t_min, t_max]
             if s == 1:
@@ -600,6 +607,7 @@ class NiAnalysis:
                 self.tg2 = [t_min, t_max]
 
     def stack_files(self, isotope):
+        print('Stacking files of isotope', isotope)
         files = self.get_files(isotope)
         scalers = [0, 1, 2]
 
@@ -609,11 +617,9 @@ class NiAnalysis:
 
         # iterate through scalers:
         for s in scalers:
-            print('Scaler', s)
-
             # find and set timegates
             t_mid, t_width = self.find_timegates(files, s)
-            multiple = 1
+            multiple = 2
             t_min = (t_mid - multiple * t_width) / 100  # divide by 100 to convert bins to microseconds
             t_max = (t_mid + multiple * t_width) / 100  # divide by 100 to convert bins to microseconds
 
@@ -647,8 +653,10 @@ class NiAnalysis:
                     volt_cts.append((x - offset, spec.cts[0][s][j], bg.cts[0][s][j]))
 
                 # plot uncalibrated spectrum
+                plt.close('all')
                 ax.plot(spec.x[0], spec.cts[0][s])
                 ax.plot(bg.x[0], bg.cts[0][s])
+                fig.show()
             ax.set_title(isotope + ' Scaler ' + str(s) + ': raw data')
             ax.set_xlabel('DAC Voltage in V')
             ax.set_ylabel('Counts')
@@ -665,18 +673,23 @@ class NiAnalysis:
             binned_volt_cts = []
             v_min = volt_cts[0][0]
             for tup in volt_cts:
-                if tup[0] < v_min + 1:
+                if tup[0] < v_min + 0.9:
                     voltages.append(tup[0])
                     weights.append(tup[1])
                     c_sum += tup[1]
                     b_sum += tup[2]
                 else:
                     v_min = tup[0]
-                    binned_volt_cts.append((np.average(voltages, weights=weights), c_sum, b_sum))
-                    voltages = [tup[0]]
-                    weights = [tup[1]]
-                    c_sum = tup[1]
-                    b_sum = tup[2]
+                    if weights == [0]:
+                        binned_volt_cts.append((voltages[0], c_sum, b_sum))
+                    elif weights == []:
+                        continue
+                    else:
+                        binned_volt_cts.append((np.average(voltages, weights=weights), c_sum, b_sum))
+                    voltages = []
+                    weights = []
+                    c_sum = 0
+                    b_sum = 0
 
             # Plot voltage bins:
             # create voltage axis:
@@ -702,8 +715,28 @@ class NiAnalysis:
             #fig.show()
 
             # assign new voltage bins
+            #binned_volt_cts_0 = []
             for i, tup in enumerate(binned_volt_cts):
                 binned_volt_cts[i] = (predict(i), tup[1], tup[2])
+                #binned_volt_cts_0.append((predict(i), tup[1], tup[2]))
+
+            #i = 0
+            #j = 0
+            #voltages = []
+            #binned_volt_cts = []
+            #for tup in binned_volt_cts_0:
+                #i += 1
+                #if i == 1:
+                    #v = tup[0]
+                    #binned_volt_cts.append(tup)
+                    #voltages.append(v)
+                #else:
+                    #binned_volt_cts[j] = (v, binned_volt_cts[j][1] + tup[1], binned_volt_cts[j][2] + tup[2])
+                #if i == 2:
+                    #j += 1
+                    #i = 0
+
+            #print(voltages)
 
             # plot calibrated and summed data
             # create counts axis
@@ -728,8 +761,12 @@ class NiAnalysis:
             c_sum_norm = []
             unc_norm = []
             for i, cts in enumerate(c_sum):
-                c_sum_norm.append(int((cts) / b_sum[i] * np.mean(b_sum)))
-                unc_norm.append(int((unc[i] / b_sum[i] * np.mean(b_sum))))
+                if b_sum[i] == 0:
+                    c_sum_norm.append(0)
+                    unc_norm.append(0)
+                else:
+                    c_sum_norm.append(int((cts) / b_sum[i] * np.mean(b_sum)))
+                    unc_norm.append(int((unc[i] / b_sum[i] * np.mean(b_sum))))
             # plot normalized spectrum
             fig, ax = plt.subplots()
             ax.errorbar(voltages, c_sum_norm, yerr=unc_norm, fmt='b.')
@@ -739,6 +776,8 @@ class NiAnalysis:
             fig.savefig(os.path.join(self.working_dir, 'spectra\\normalized\\' + isotope + str(s) + '.png'))
 
             # assign
+            c_sum_norm = c_sum_norm[:-5]
+            voltages = voltages[:-5]
             sumcts[s] = c_sum_norm
             voltage[s] = voltages
 
@@ -754,15 +793,22 @@ class NiAnalysis:
             for i, c in enumerate(sumcts[s]):
                 scaler_array.append((s, i, timestep, c))
                 timestep += 1
-        print(scaler_array)
 
         # Create dictionary for xml export
+        if isotope == '60Ni':
+            laser_freq = self.laser_freq60
+        elif isotope == '58Ni':
+            laser_freq = self.laser_freq58
+        elif isotope == '56Ni':
+            laser_freq = self.laser_freq56
+        elif isotope == '55Ni':
+            laser_freq = self.laser_freq55
         file_creation_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         header_dict = {'type': 'trs',
-                       'isotope': isotope,
+                       'isotope': isotope + '_sum',
                        'isotopeStartTime': file_creation_time,
                        'accVolt': 29850,
-                       'laserFreq': Physics.wavenumber(self.laser_freq60) / 2,
+                       'laserFreq': Physics.wavenumber(laser_freq) / 2,
                        'nOfTracks': 1,
                        'version': 99.0}
         track0_dict_header = {'trigger': {},  # Need a trigger dict!
@@ -823,10 +869,10 @@ class NiAnalysis:
         cur = con.cursor()
         cur.execute('''INSERT OR IGNORE INTO Files (file, filePath, date, type) VALUES (?, ?, ?, ?)''',
                     ('BECOLA_Stacked' + isotope + '.xml', 'data\BECOLA_Stacked' + isotope + '.xml',
-                     file_creation_time, '60Ni_sum'))
+                     file_creation_time, isotope + '_sum'))
         cur.execute('''UPDATE Files SET offset = ?, accVolt = ?,  laserFreq = ?, laserFreq_d = ?, colDirTrue = ?, 
             voltDivRatio = ?, lineMult = ?, lineOffset = ?, errDateInS = ? WHERE file = ? ''',
-            ('[0]', 29850, self.laser_freq60, 0, True, str({'accVolt': 1.0, 'offset': 1.0}), 1, 0,
+            ('[0]', 29850, laser_freq, 0, True, str({'accVolt': 1.0, 'offset': 1.0}), 1, 0,
              1, 'BECOLA_Stacked' + isotope + '.xml'))
         con.commit()
         con.close()
@@ -853,6 +899,42 @@ class NiAnalysis:
         BatchFit.batchFit(['BECOLA_Stacked' + isotope + '.xml'], self.db, run, x_as_voltage=True,
                           save_file_as='.png')
 
+    def center_stacked(self, isotope):
+        self.stack_files(isotope)
+        runs = self.sum_runs60
+        if isotope == '55Ni':
+            runs = self.sum_runs55
+        for run in runs:
+            self.fit_stacked(isotope, run)
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        cur.execute('''SELECT pars FROM FitRes WHERE iso = ?''', (isotope + '_sum',))
+        pars = cur.fetchall()
+        results = []
+        weihgts = []
+        # there are three results for each file (three scalers)
+        for run in pars:
+            results.append(ast.literal_eval(run[0])['center'][0])
+            weihgts.append(1 / (ast.literal_eval(run[0])['center'][1] ** 2))
+        # take mean of the three scalers
+        mean = np.average(results, weights=weihgts)
+        std = np.std(results)
+        return mean, std
+
+    def isotope_shift_stacked(self, isotope):
+        # calculate isotope shift of isotope using fitted centers of stacked file
+        # isotope: isotope to calculate the isotope shift of
+
+        ref_center, ref_unc = self.center_stacked('60Ni')
+        plt.close('all')
+        iso_center, iso_unc = self.center_stacked(isotope)
+
+        isotope_shift = iso_center - ref_center
+        ishift_unc = np.sqrt(np.square(iso_unc) + np.square(ref_unc))
+        self.worksheet.append([isotope, isotope_shift, ishift_unc, 'stacked',
+                               datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
+        print(isotope_shift, ishift_unc)
+
 
 
 # workingDir = 'D:\\Owncloud\\User\\Laura\\Nickelauswertung'  # Path Laptop
@@ -860,9 +942,8 @@ workingDir = 'C:\\Users\\Laura Renth\\ownCloud\\User\\Laura\\Nickelauswertung'  
 db = 'Nickel_BECOLA_60Ni.sqlite'
 
 niAna = NiAnalysis(workingDir, db)
-#niAna.start_all()
+niAna.start_all()
 #niAna.ana_individual()
-#niAna.stack_files('60Ni')
 
-# TODO Check summed file in TILDA
-niAna.fit_stacked('60Ni', niAna.runs60[0])
+niAna.isotope_shift_stacked('55Ni')
+niAna.results.save(os.path.join(niAna.working_dir, 'results\\Isotope_shifts.xlsx'))
