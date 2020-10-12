@@ -299,6 +299,7 @@ class NiAnalysis:
         files = self.get_files('60Ni')
         con = sqlite3.connect(self.db)
         cur = con.cursor()
+        tuples = []
         for f in files:
             cur.execute('''SELECT pars FROM FitRes WHERE file = ?''', (f,))
             pars = cur. fetchall()
@@ -342,6 +343,9 @@ class NiAnalysis:
         # plots calibrated voltage of all reference files in the database over the time
 
         files = self.get_files('60Ni')
+
+        files.sort()
+
         file_times = []
         voltages = []
         for f in files:
@@ -656,7 +660,6 @@ class NiAnalysis:
                 plt.close('all')
                 ax.plot(spec.x[0], spec.cts[0][s])
                 ax.plot(bg.x[0], bg.cts[0][s])
-                fig.show()
             ax.set_title(isotope + ' Scaler ' + str(s) + ': raw data')
             ax.set_xlabel('DAC Voltage in V')
             ax.set_ylabel('Counts')
@@ -712,31 +715,29 @@ class NiAnalysis:
             voltages = predict(steps)
             ax.plot(steps, voltages, 'r-')
             fig.savefig(os.path.join(self.working_dir, 'voltage_steps\\' + isotope + str(s) + '.png'))
-            #fig.show()
+            plt.close()
 
             # assign new voltage bins
-            #binned_volt_cts_0 = []
+            binned_volt_cts_0 = []
             for i, tup in enumerate(binned_volt_cts):
-                binned_volt_cts[i] = (predict(i), tup[1], tup[2])
-                #binned_volt_cts_0.append((predict(i), tup[1], tup[2]))
+                #binned_volt_cts[i] = (predict(i), tup[1], tup[2])
+                binned_volt_cts_0.append((predict(i), tup[1], tup[2]))
 
-            #i = 0
-            #j = 0
-            #voltages = []
-            #binned_volt_cts = []
-            #for tup in binned_volt_cts_0:
-                #i += 1
-                #if i == 1:
-                    #v = tup[0]
-                    #binned_volt_cts.append(tup)
-                    #voltages.append(v)
-                #else:
-                    #binned_volt_cts[j] = (v, binned_volt_cts[j][1] + tup[1], binned_volt_cts[j][2] + tup[2])
-                #if i == 2:
-                    #j += 1
-                    #i = 0
-
-            #print(voltages)
+            i = 0
+            j = 0
+            voltages = []
+            binned_volt_cts = []
+            for tup in binned_volt_cts_0:
+                i += 1
+                if i == 1:
+                    v = tup[0]
+                    binned_volt_cts.append(tup)
+                    voltages.append(v)
+                else:
+                    binned_volt_cts[j] = (v, binned_volt_cts[j][1] + tup[1], binned_volt_cts[j][2] + tup[2])
+                if i == 2:
+                    j += 1
+                    i = 0
 
             # plot calibrated and summed data
             # create counts axis
@@ -784,7 +785,7 @@ class NiAnalysis:
         # creating file:
 
         # calculate mean binsize:
-        binsize = np.average(binsizes)
+        binsize = np.average(binsizes) * 2
 
         # prepare scaler array for xml-file
         scaler_array = []
@@ -942,7 +943,7 @@ workingDir = 'C:\\Users\\Laura Renth\\ownCloud\\User\\Laura\\Nickelauswertung'  
 db = 'Nickel_BECOLA_60Ni.sqlite'
 
 niAna = NiAnalysis(workingDir, db)
-niAna.start_all()
+#niAna.start_all()
 #niAna.ana_individual()
 
 niAna.isotope_shift_stacked('55Ni')
