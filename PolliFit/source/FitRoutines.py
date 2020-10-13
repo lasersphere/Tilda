@@ -3,10 +3,11 @@ Created on 09.09.2020
 
 @author: pamueller
 
-TODO: Change documentation to indicate arbitrary fitting routines.
-A script containing a class around, as well as, the "pure" fitting algorithm described in
-['Unified equations for the slope, intercept, and standard errors of the best straight line',
- York et al., American Journal of Physics 72, 367 (2004)].
+A script containing arbitrary fitting routines. Currently implemented
+
+linear regression algorithms:
+    - york(); [York et al., Am. J. Phys. 72, 367 (2004)]
+
 """
 
 import numpy as np
@@ -27,18 +28,22 @@ def straight(x, a, b):
 def weight(sigma):
     """
     :param sigma: The 1-sigma uncertainty.
-    :returns: The weight corresponding to the 1-sigma uncertainty 'sigma'
+    :returns: The weight corresponding to the 1-sigma uncertainty 'sigma'.
     """
     return 1. / sigma ** 2
 
 
 def york(x, y, sigma_x=None, sigma_y=None, corr=None, iter_max=200, report=True, show=False):
     """
+    A linear regression algorithm to find the best straight line, given normally distributed errors for x and y
+     and correlation coefficients between errors in x and y. The algorithm is described in
+     ['Unified equations for the slope, intercept, and standard errors of the best straight line',
+     York et al., American Journal of Physics 72, 367 (2004)]. See the comments to compare the individual steps.
     :param x: The x data.
     :param y: The y data.
     :param sigma_x: The 1-sigma uncertainty of the x data.
     :param sigma_y: The 1-sigma uncertainty of the y data.
-    :param corr: The correlation coefficients between the x and y data.
+    :param corr: The correlation coefficients between errors in 'x' and 'y'.
     :param iter_max: The maximum number of iterations to find the best slope.
     :param report: Whether to print the result of the fit.
     :param show: Whether to plot the fit result.
@@ -120,7 +125,7 @@ def york_alpha(x, y, sigma_x=None, sigma_y=None, corr=None, alpha=0., find_alpha
     :param y: The y data.
     :param sigma_x: The 1-sigma uncertainty of the x data.
     :param sigma_y: The 1-sigma uncertainty of the y data.
-    :param corr: The correlation coefficients between the x and y data.
+    :param corr: The correlation coefficients between errors in 'x' and 'y'.
     :param alpha: An x-axis offset to reduce the correlation coefficient between the y-intercept and the slope.
     :param find_alpha: Whether to search for the best 'alpha'. Uses the given 'alpha' as a starting point.
      May not give the desired result if 'alpha' was initialized to far from its optimal value.

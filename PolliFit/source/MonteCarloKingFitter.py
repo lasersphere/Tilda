@@ -97,9 +97,10 @@ def product_pdf(z, pdf_1=st.norm.pdf, pdf_2=st.norm.pdf, loc_1=0., scale_1=1., l
 
 
 def calc_mass_factor(am, am_d, ref_am, ref_am_d):
-    mu = am*ref_am/(am - ref_am)
-    mu_d = np.square(-ref_am**2/((am - ref_am)**2)*am_d)
-    mu_d += np.square(am**2/((am - ref_am)**2)*ref_am_d)
+    mu = (am + m_e_u[0]) * ref_am / (am - ref_am)
+    mu_d = np.square(-(ref_am + m_e_u[0]) * ref_am / ((am - ref_am) ** 2) * am_d)
+    mu_d += np.square((am + m_e_u[0]) * am / ((am - ref_am) ** 2) * ref_am_d)
+    mu_d += np.square(ref_am / (am - ref_am) * m_e_u[2])
     return [mu, np.sqrt(mu_d)]
 
 
@@ -130,7 +131,7 @@ def y_ell(y, alpha, rho):
 
 
 class MCFitter(object):
-    def __init__(self, db, runs=None, ref_run=-1, subtract_electrons=0.):
+    def __init__(self, db, runs=None, ref_run=-1, subtract_electrons=0., add_ionization_energy=0.):
         self.db = db
         self.runs = runs
         if self.runs is None:
@@ -138,6 +139,7 @@ class MCFitter(object):
         self.n_dim = len(self.runs)
         self.ref_run = ref_run
         self.subtract_electrons = subtract_electrons
+        self.add_ionization_energy = add_ionization_energy
         self.n_sample = 1000000
         self.label = 'val'
         self.config = ''
@@ -152,11 +154,12 @@ class MCFitter(object):
                 self.iso_ref = TiTs.select_from_db(self.db, 'reference', 'Lines',
                                                    [['refRun'], [ref_run]], caller_name=__name__)[0][0]
             self.mass_ref = TiTs.select_from_db(self.db, 'mass', 'Isotopes',
-                                                [['iso'], [self.iso_ref]], caller_name=__name__)[0][0]\
-                - self.subtract_electrons * m_e_u[0]
-            self.mass_ref_d = np.sqrt(TiTs.select_from_db(self.db, 'mass_d', 'Isotopes',
-                                                          [['iso'], [self.iso_ref]], caller_name=__name__)[0][0]**2
-                                      + (self.subtract_electrons * m_e_u[2])**2)
+                                                [['iso'], [self.iso_ref]], caller_name=__name__)[0][0]
+            self.mass_ref -= self.subtract_electrons * m_e_u[0]
+            self.mass_ref += self.add_ionization_energy * sc.e / (sc.atomic_mass * sc.c ** 2)
+            self.mass_ref_d = TiTs.select_from_db(self.db, 'mass_d', 'Isotopes',
+                                                  [['iso'], [self.iso_ref]], caller_name=__name__)[0][0]
+            self.mass_ref_d = np.sqrt(self.mass_ref_d ** 2 + (self.subtract_electrons * m_e_u[2]) ** 2)
         except Exception as e:
             print('error: %s  \n\t-> Kingfitter could not find a reference isotope from'
                   ' Lines in database or mass of this reference Isotope in Isotopes' % e)
@@ -543,8 +546,9 @@ class MCFitter(object):
 
 
 class KingFitter(MCFitter):
-    def __init__(self, db, runs=None, ref_run=-1, litvals=None, subtract_electrons=0.):
-        super().__init__(db, runs=runs, ref_run=ref_run, subtract_electrons=subtract_electrons)
+    def __init__(self, db, runs=None, ref_run=-1, litvals=None, subtract_electrons=0., add_ionization_energy=0.):
+        super().__init__(db, runs=runs, ref_run=ref_run, subtract_electrons=subtract_electrons,
+                         add_ionization_energy=add_ionization_energy)
         self.n_dim = len(self.runs) + 1
         self.litvals = litvals
         if self.litvals is None:
@@ -567,10 +571,12 @@ class KingFitter(MCFitter):
         self.delta_r = np.array(self.delta_r)
 
         self.masses = {iso: [TiTs.select_from_db(self.db, 'mass', 'Isotopes', [['iso'], [iso]],
-                                                 caller_name=__name__)[0][0] - self.subtract_electrons * m_e_u[0],
+                                                 caller_name=__name__)[0][0]
+                             - self.subtract_electrons * m_e_u[0]
+                             + self.add_ionization_energy * sc.e / (sc.atomic_mass * sc.c ** 2),
                              np.sqrt(TiTs.select_from_db(self.db, 'mass_d', 'Isotopes', [['iso'], [iso]],
-                                                         caller_name=__name__)[0][0]**2
-                                     + (self.subtract_electrons * m_e_u[2])**2)]
+                                                         caller_name=__name__)[0][0] ** 2
+                                     + (self.subtract_electrons * m_e_u[2]) ** 2)]
                        for iso in self.isotopes}
 
         self.mass_factors = {iso: calc_mass_factor(self.masses[iso][0], self.masses[iso][1],
@@ -691,8 +697,10 @@ class KingFitter(MCFitter):
 
 
 class KingFitterRatio(MCFitter):
-    def __init__(self, db, runs=None, ref_run=-1, isotopes=None, x_run=-1, subtract_electrons=0.):
-        super().__init__(db, runs=runs, ref_run=ref_run, subtract_electrons=subtract_electrons)
+    def __init__(self, db, runs=None, ref_run=-1, isotopes=None, x_run=-1, subtract_electrons=0.,
+                 add_ionization_energy=0.):
+        super().__init__(db, runs=runs, ref_run=ref_run, subtract_electrons=subtract_electrons,
+                         add_ionization_energy=add_ionization_energy)
         self.alpha_step = 2000.
         self.isotopes = isotopes
         if self.isotopes is None:
@@ -708,7 +716,9 @@ class KingFitterRatio(MCFitter):
         self.runs.append(self.x_run)
 
         self.masses = {iso: [TiTs.select_from_db(self.db, 'mass', 'Isotopes', [['iso'], [iso]],
-                                                 caller_name=__name__)[0][0] - self.subtract_electrons * m_e_u[0],
+                                                 caller_name=__name__)[0][0]
+                             - self.subtract_electrons * m_e_u[0]
+                             + self.add_ionization_energy * sc.e / (sc.atomic_mass * sc.c ** 2),
                              np.sqrt(TiTs.select_from_db(self.db, 'mass_d', 'Isotopes', [['iso'], [iso]],
                                                          caller_name=__name__)[0][0] ** 2
                                      + (self.subtract_electrons * m_e_u[2]) ** 2)]
