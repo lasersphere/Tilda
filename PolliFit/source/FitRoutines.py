@@ -83,7 +83,7 @@ def york(x, y, sigma_x=None, sigma_y=None, corr=None, iter_max=200, report=True,
         x_bar, y_bar = np.average(x, weights=mod_w), np.average(y, weights=mod_w)  # (4)
         u = x - x_bar
         v = y - y_bar
-        beta = mod_w * (u / w_x + v * b_init / w_y - straight(u, v, b_init) * corr / alpha)
+        beta = mod_w * (u / w_y + v * b_init / w_x - straight(u, v, b_init) * corr / alpha)
         b = np.sum(mod_w * beta * v) / np.sum(mod_w * beta * u)  # (5)
         tol = abs((b - b_init) / b)
         n += 1  # (6)
