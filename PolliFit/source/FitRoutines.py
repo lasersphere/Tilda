@@ -25,12 +25,47 @@ def straight(x, a, b):
     return a + b * x
 
 
+def straight_std(x, sigma_a, sigma_b, corr_ab):
+    """
+    :param x: The x values.
+    :param sigma_a: The standard deviation of the y-intercept.
+    :param sigma_b: The standard deviation of the slope.
+    :param corr_ab: The correlation coefficient between the slope and y-intercept.
+    :returns: The standard deviation of a straight line where the x values do not have uncertainties.
+    """
+    return np.sqrt(sigma_a ** 2 + (x * sigma_b) ** 2 + 2 * x * sigma_a * sigma_b * corr_ab)
+
+
+def straight_x_std(x, b, sigma_x, sigma_a, sigma_b, corr_ab):
+    """
+    :param x: The x values.
+    :param b: The slope.
+    :param sigma_x: The standard deviation of the x values.
+    :param sigma_a: The standard deviation of the y-intercept.
+    :param sigma_b: The standard deviation of the slope.
+    :param corr_ab: The correlation coefficient between the slope and y-intercept.
+    :returns: The standard deviation of a straight line where all input values have uncertainties.
+    """
+    return np.sqrt(sigma_a ** 2 + (x * sigma_b) ** 2 + 2 * x * sigma_a * sigma_b * corr_ab
+                   + (b * sigma_x) ** 2 + (sigma_b * sigma_x) ** 2)
+
+
 def weight(sigma):
     """
     :param sigma: The 1-sigma uncertainty.
     :returns: The weight corresponding to the 1-sigma uncertainty 'sigma'.
     """
     return 1. / sigma ** 2
+
+
+def floor_log10(x):
+    """
+    :param x: Scalar values.
+    :returns: The closest integer values to the logarithm with basis 10 of the absolute value of 'x' that are smaller.
+    """
+    if x == 0:
+        return 0
+    return int(np.floor(np.log10(np.abs(x))))
 
 
 def york(x, y, sigma_x=None, sigma_y=None, corr=None, iter_max=200, report=True, show=False):
@@ -108,8 +143,8 @@ def york(x, y, sigma_x=None, sigma_y=None, corr=None, iter_max=200, report=True,
         plt.ylabel('y')
         plt.errorbar(x, y, xerr=sigma_x, yerr=sigma_y, fmt='k.', label='Data')
         plt.plot(x_cont, straight(x_cont, a, b), 'b-', label='Fit')
-        y_min = np.min(np.array([straight(x_cont, a, b - sigma_b), straight(x_cont, a, b + sigma_b)]), axis=0)
-        y_max = np.max(np.array([straight(x_cont, a, b - sigma_b), straight(x_cont, a, b + sigma_b)]), axis=0)
+        y_min = straight(x_cont, a, b) - straight_std(x_cont, sigma_a, sigma_b, corr_ab)
+        y_max = straight(x_cont, a, b) + straight_std(x_cont, sigma_a, sigma_b, corr_ab)
         plt.fill_between(x_cont, y_min, y_max, color='b', alpha=0.3, antialiased=True)
         plt.legend(loc='best', numpoints=1)
         plt.show()
@@ -128,16 +163,18 @@ def york_alpha(x, y, sigma_x=None, sigma_y=None, corr=None, alpha=0., find_alpha
     :param corr: The correlation coefficients between errors in 'x' and 'y'.
     :param alpha: An x-axis offset to reduce the correlation coefficient between the y-intercept and the slope.
     :param find_alpha: Whether to search for the best 'alpha'. Uses the given 'alpha' as a starting point.
-     May not give the desired result if 'alpha' was initialized to far from its optimal value.
+     May not give the desired result if 'alpha' was initialized too far from its optimal value.
     :param iter_max: The maximum number of iterations to find the best slope.
     :param report: Whether to print the result of the fit.
     :param show: Whether to plot the fit result.
     :returns: a, b, sigma_a, sigma_b, corr_ab, alpha. The best y-intercept and slope,
      their respective 1-sigma uncertainties, their correlation coefficient and the used alpha.
     """
+    n = floor_log10(alpha)
+
     def cost(x0):
         _, _, _, _, c = york(x - x0[0], y, sigma_x=sigma_x, sigma_y=sigma_y, corr=corr, report=False)
-        return c ** 2
+        return c ** 2 * 10. ** (n + 1)
 
     if find_alpha:
         alpha = minimize(cost, np.array([alpha])).x[0]
@@ -147,18 +184,3 @@ def york_alpha(x, y, sigma_x=None, sigma_y=None, corr=None, alpha=0., find_alpha
     if report:
         print('alpha: {}'.format(alpha))
     return a, b, sigma_a, sigma_b, corr_ab, alpha
-
-
-def test_york():
-    """
-    A small test of the fit with and without alpha.
-    :returns: None.
-    """
-    x = np.linspace(90., 91., 1001)
-    y = straight(x, -1., 2.)
-    sigma_x = np.random.normal(loc=0.01, scale=0.002, size=1001)
-    sigma_y = np.random.normal(loc=0.01, scale=0.002, size=1001)
-    x = np.array([np.random.normal(loc=x_i, scale=s_x) for x_i, s_x in zip(x, sigma_x)])
-    y = np.array([np.random.normal(loc=y_i, scale=s_y) for y_i, s_y in zip(y, sigma_y)])
-    york(x, y, sigma_x=sigma_x, sigma_y=sigma_y, show=True)
-    york_alpha(x, y, sigma_x=sigma_x, sigma_y=sigma_y, alpha=87., show=True)
