@@ -32,7 +32,7 @@ class KingFitter(object):
     """
 
     def __init__(self, db, litvals=None, showing=True, plot_y_mhz=True, font_size=12, ref_run=-1, incl_projected=False,
-                 subtract_electrons=0., add_ionization_energy=0.):
+                 subtract_electrons=0., add_ionization_energy=0., plot_folder=None):
         """
         Import the litvals and initializes a KingFit, run can be specified, for run==-1 any shift results are chosen
         """
@@ -61,7 +61,10 @@ class KingFitter(object):
         self.isotopeShiftSystErr = []
         self.run = []
 
-        self.store_loc = os.path.normpath(os.path.join(os.path.split(db)[0], 'king_fits'))
+        if plot_folder is None:
+            self.store_loc = os.path.normpath(os.path.join(os.path.split(db)[0], 'king_fits'))
+        else:
+            self.store_loc = plot_folder
         if not os.path.isdir(self.store_loc):
             os.mkdir(self.store_loc)
 
@@ -454,8 +457,8 @@ class KingFitter(object):
                    (self.chargeradii[i], 0, self.chargeradiiTotalErrs[i], j, 'delta_r_square', self.run[i]))
                 con.commit()
                 con.close()
-        if self.showing:
 
+        if self.showing:
             font_size = self.fontsize
             finalVals[self.ref] = [0, 0, 0]
             keyVals = sorted(finalVals)
@@ -625,8 +628,9 @@ class KingFitter(object):
             self.yerr = [np.abs(self.redmasses[i] * j) for i, j in enumerate(self.yerr)]
             self.yerr_total = [np.abs(self.redmasses[i] * j) for i, j in enumerate(self.yerr_total)]
 
+        # the x-errors are only dependent on the reduced masses and thus constant for all alpha:
+        self.xerr = [np.abs(self.redmasses[i] * j) for i, j in enumerate(self.xerr)]
         if self.findBestAlphaTrue:
             self.findBestAlpha(run)
-
+        # now also calculate the final x in dependence of the best alpha
         self.x = [self.redmasses[i] * j - self.c for i, j in enumerate(self.x_origin)]
-        self.xerr = [np.abs(self.redmasses[i] * j) for i, j in enumerate(self.xerr)]
