@@ -2093,6 +2093,7 @@ class NTRSSortRawDatatoArrayFast(Node):
                 # dac_set_ind = np.where(self.stored_data & dac_int_key == dac_int_key)[0]  # info not needed mostly
                 # create a list with all timestamps
                 pmt_events_time = self.stored_data[pmt_events_ind] & (2 ** 23 - 1)  # get only the time stamp
+                # (bitwise AND operator comparison to 1 for all 23 digits of timestamp and 0 for all higher digits)
                 # create a list with all scaler numbers
                 pmt_events_scaler = self.stored_data[
                                         pmt_events_ind] >> 24  # get the header where the pmt info is stored.

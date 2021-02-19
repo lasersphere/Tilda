@@ -477,7 +477,7 @@ class BECOLAImporter():
             if excel_nOfScans is None:
                 excel_nOfScans = 0
             if self.laser_unit == 'THz':
-                self.laserFreq = self.laserFreq /299792458*1E10  # THz/(speedOfLight[m/s]/10^7)
+                self.laserFreq = self.laserFreq / 299792458 * 1E10  # Freq[THz]*1E12 Hz/THz/(speedOfLight[m/s]*100 cm/m)
             if 'DC' in excelMode or 'dc' in excelMode or 'Dc' in excelMode:
                 self.is_dc_data = True
         except Exception as e:

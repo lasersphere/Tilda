@@ -74,7 +74,7 @@ class NiAnalysis_softwGates():
         """
         # Select runs; Format: ['run58', 'run60', 'run56']
         # to use a different lineshape you must create a new run under runs and a new linevar under lines and link the two.
-        self.run = 'VoigtAsy'
+        self.run = 'AsymmetricVoigt'
         self.tof_mid = {'54Ni': 5.19, '55Ni': 5.23, '56Ni': 5.28, '58Ni': 5.36, '60Ni': 5.47, '62Ni': 5.59, '64Ni': 5.68}  # mid-tof for each isotope (from fitting) 38, 47
         self.tof_delay = {'54Ni': [0, 0.184, 0.254], '55Ni': [0, 0.186, 0.257], '56Ni': [0, 0.189, 0.260], '58Ni': [0, 0.194, 0.267],
                           '60Ni': [0, 0.199, 0.273], '62Ni': [0, 0.204, 0.279], '64Ni': [0, 0.209, 0.285]}
@@ -84,7 +84,7 @@ class NiAnalysis_softwGates():
         self.timebin_size = 4.8  # length of timegate in 10ns (4.8 = 48ns)
 
         # fit from scratch or use FitRes db?
-        self.do_the_fitting = False  # if False, a .xml file has to be specified in the next variable!
+        self.do_the_fitting = True  # if False, a .xml file has to be specified in the next variable!
         self.load_results_from = 'SoftwareGateAnalysis_2020-08-27_13-30_allUpdated.xml'  # load fit results from this file
         # print results to results folder? Also show plots?
         self.save_plots_to_file = True  # if False plots will be displayed during the run for closer inspection
@@ -93,10 +93,10 @@ class NiAnalysis_softwGates():
         self.calibration_method = 'absolute'  # can be 'absolute', 'relative' 'combined', 'isoshift' or 'None'
         self.use_handassigned = False  # use hand-assigned calibrations? If false will interpolate on time axis
         self.accVolt_corrected = (self.accVolt_set, 0)  # Used later for calibration. Might be used her to predefine calib? (abs_volt, err)
-        self.initial_par_guess = {'sigma': (34, False), 'gamma': (12, True),  #'sigma': (31.7, True), 'gamma': (18.4, True), for VoigtAsy
+        self.initial_par_guess = {'sigma': (34, True), 'gamma': (12, True),  #'sigma': (31.7, True), 'gamma': (18.4, True), for VoigtAsy
                                   'asy': (3.9, True),  # in case VoigtAsy is used
                                   'dispersive': (-0.04, False),  # in case FanoVoigt is used
-                                  'centerAsym': (-5.78, True), 'nPeaksAsym': (1, True), 'IntAsym': (0.07, True)
+                                  'centerAsym': (-6, True), 'nPeaksAsym': (1, True), 'IntAsym': (0.057, True)
                                   # in case AsymmetricVoigt is used
                                   }
         self.isotope_colors = {60: 'b', 58: 'k', 56: 'g', 55: 'c', 54: 'm', 62: 'purple', 64: 'orange'}
@@ -375,7 +375,7 @@ class NiAnalysis_softwGates():
                                IntAsym=self.initial_par_guess['IntAsym'],
                                nPeaksAsym=self.initial_par_guess['nPeaksAsym'])
         # reset isotope type and acc voltage in db
-        iso_list = ['55Ni_sum_cal', '56Ni', '58Ni', '60Ni']  # ['56Ni', '58Ni', '60Ni']
+        iso_list = ['56Ni', '58Ni', '60Ni']  # ['55Ni_sum_cal', '56Ni', '58Ni', '60Ni']
 
         # use scaler 1 for now. Probably doesn't make a difference
         scaler = 'scaler_012'
@@ -407,7 +407,7 @@ class NiAnalysis_softwGates():
             # midtof_variation_arr = np.append(-np.logspace(1, 0, 7, base=2), np.append([0], np.logspace(0, 1, 7, base=2)))  # in time bins
             # gatewidth_variation = (5, 1, 11)
             # gatewidth_variation_arr = np.linspace(*gatewidth_variation)
-            gatewidth_variation_arr = np.logspace(3, 10, 15, base=2)  # 3, 6, 31 || 3, 10, 8 for 8-1024 bins # 5, 5.9, 7 for 33-59 / 90-100%
+            gatewidth_variation_arr = np.logspace(3, 6, 31, base=2)  # 3, 6, 31 || 3, 10, 8 for 8-1024 bins # 5, 5.9, 7 for 33-59 / 90-100%
             close_indx = (np.abs(gatewidth_variation_arr - 200*self.tof_width_sigma*self.tof_sigma[pickiso[:4]])).argmin()  # index that is closest to analysis gatewidth
             # possibly reduce fitting width by adding [x:] to gatewidth, midtof and midtof_err
             fit_start = 0

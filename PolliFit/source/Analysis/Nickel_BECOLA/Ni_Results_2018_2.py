@@ -28,13 +28,13 @@ from lxml import etree as ET
 from XmlOperations import xmlWriteDict
 from Measurement.XMLImporter import XMLImporter
 from KingFitter import KingFitter
-#from MonteCarloKingFitter import MCFitter, KingFitter
+from MonteCarloKingFitter import KingFitter as MCKingFitter
 
 class NiAnalysis():
     def __init__(self):
         logging.getLogger().setLevel(logging.INFO)
         # Name this analysis run
-        self.run_name = 'Ni_Results_2018'
+        self.run_name = 'Ni_Results2_2018'
 
         """
         ############################ Folders and Database !##########################################################
@@ -43,12 +43,8 @@ class NiAnalysis():
         # working directory:
         # get user folder to access ownCloud
         user_home_folder = os.path.expanduser("~")
-        # ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel54_online_Becola20\\Analysis\\XML_Data'
-        # ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel54_postbeamtime_Becola20\\Analysis\\bunched'
         ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\XML_Data'  # online 2018
         self.workdir = os.path.join(user_home_folder, ownCould_path)
-        # data folder
-        self.datafolder = os.path.join(self.workdir, 'SumsRebinned')
         # results folder
         analysis_start_time = datetime.now()
         self.results_name = self.run_name + '_' + analysis_start_time.strftime("%Y-%m-%d_%H-%M")
@@ -68,38 +64,29 @@ class NiAnalysis():
         self.load_prev_results = False
         load_results_from = 'Ni_StandartizedAnalysis_2020-09-18_13-36.xml'  # load fit results from this file
 
-        # Isotopes
+        # Isotopes this experiment
         self.isotopes_single = ['56Ni', '58Ni', '60Ni']  # data is good enough for single file fitting
         self.isotopes_summed = ['55Ni']  # data must be summed in order to be fittable
         self.all_isotopes = self.isotopes_single + self.isotopes_summed
         self.nOfElectrons = 28.  # for mass-scaling factor nuclear mass calculation
         self.ionizationEnergy = 41356  # in keV from NIST Ionization Energy data for very precise nuclear mass determination
 
+        # line parameters
+        self.run = 'AsymmetricVoigt'  # lineshape from runs and a new lines
+
         # plot options
-        self.save_plots_to_file = False  # if False plots will be displayed during the run for closer inspection
+        self.save_plots_to_file = True  # if False plots will be displayed during the run for closer inspection
         self.isotope_colors = {60: 'b', 58: 'k', 56: 'g', 55: 'c', 54: 'm', 62: 'purple', 64: 'orange'}
         self.scaler_colors = {'scaler_0': 'navy', 'scaler_1': 'maroon', 'scaler_2': 'orangered',
                               'scaler_012': 'orange', 'scaler_12': 'yellow',
                               'scaler_c012': 'magenta', 'scaler_c0': 'purple', 'scaler_c1': 'grey', 'scaler_c2': 'fuchsia'}
 
-        # note down main laser frequencies. These will be used for the summed files. Otherwise from file:
-        self.laser_freqs = {'54Ni': 851248358.0,  # 425,624179 * 2
-                            '55Ni': 851264686.7203143,  # 14197,56675,
-                            '56Ni': 851253864.2125804,  # 14197.38625,
-                            '58Ni': 851238644.9486578,  # 14197.13242,
-                            '60Ni': 851224124.8007469,  # 14196.89025
-                            '62Ni': 851209466,
-                            '64Ni': 851196350
-                            }
-
-        # mean calibrated ion energy
-        self.accVolt_set = 29850
-
-        # Determine calibration parameters
+        # Reference Isotope
         self.ref_iso = '60Ni'
 
         # Kingfit options
-        self.KingFactorLit = 'Koenig 2020 60ref'  # which king fit factors to use? kaufm60, koenig60,koenig58
+        self.isoshifts_for_king = 'Offline 2020'  # Name of set of isotope shift measurements to be used for King Plot
+        self.KingFactorLit = 'Offline 2020 60ref'  # King fit factors to use if no own plot. kaufm60, koenig60,koenig58
 
         """
         ############################ Physics and uncertainties! ########################################################
@@ -179,72 +166,81 @@ class NiAnalysis():
 
         ''' literature value IS 60-58'''
         iso_shifts_kaufm = {  # PRL 124, 132502, 2020
-            '58Ni': (-509.1, 2.5 + 4.2),
-            # '59Ni': (-214.3, 2.5 + 2.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
-            '60Ni': (0, 0),
-            '61Ni': (280.8, 2.7 + 2.0),
-            '62Ni': (503.9, 2.5 + 3.9),
-            # '63Ni': (784.9, 2.5 + 5.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
-            '64Ni': (1027.2, 2.5 + 7.7),
-            # '65Ni': (1317.5, 2.5 + 9.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
-            # '66Ni': (1526.8, 2.5 + 11.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
-            # '67Ni': (1796.6, 2.5 + 13.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
-            # '68Ni': (1992.3, 2.7 + 14.7),
-            # '70Ni': (2377.2, 2.5 + 18.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
+            '58Ni': (-509.1, 2.5, 4.2),
+            # '59Ni': (-214.3, 2.5, 2.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
+            '60Ni': (0, 0, 0),
+            '61Ni': (280.8, 2.7, 2.0),
+            '62Ni': (503.9, 2.5, 3.9),
+            # '63Ni': (784.9, 2.5, 5.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
+            '64Ni': (1027.2, 2.5, 7.7),
+            # '65Ni': (1317.5, 2.5, 9.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
+            # '66Ni': (1526.8, 2.5, 11.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
+            # '67Ni': (1796.6, 2.5, 13.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
+            # '68Ni': (1992.3, 2.7, 14.7),
+            # '70Ni': (2377.2, 2.5, 18.0),  # From Simons Nickel_shift_results.txt(30.04.20), not published yet
         }
         iso_shifts_steudel = {  # Z. Physik A - Atoms and Nuclei 296, 189 - 193 (1980)
             '58Ni': (Physics.freqFromWavenumber(-0.01694),  # 58-60
-                     Physics.freqFromWavenumber(0.00009)),
-            '60Ni': (0, 0),  # Shifts are given in pairs. Most ref to 60.
+                     Physics.freqFromWavenumber(0.00009),
+                     0),
+            '60Ni': (0, 0, 0),  # Shifts are given in pairs. Most ref to 60.
             '61Ni': (Physics.freqFromWavenumber(0.00916),  # 60-61
-                     Physics.freqFromWavenumber(0.00010)),
+                     Physics.freqFromWavenumber(0.00010),
+                     0),
             '62Ni': (Physics.freqFromWavenumber(0.01691),  # 60-62
-                     Physics.freqFromWavenumber(0.00012)),
+                     Physics.freqFromWavenumber(0.00012),
+                     0),
             '64Ni': (Physics.freqFromWavenumber(0.01691 + 0.01701),  # 60-62 and 62-64 combined.
-                     Physics.freqFromWavenumber(np.sqrt(0.00012 ** 2 + 0.00026 ** 2)))}  # Quadr. error prop
-        iso_shifts_koenig = {  # private com. excel sheet mid 2020
-            # '54Ni': (-1917.4, 7.6),  # preliminary from 2020 beamtime -1912.12(7.32) from Meeting 17.09.20
-            '58Ni': (-506.7, 2.31),
-            '60Ni': (0, 0),
-            '62Ni': (504.4, 3.19),
-            '64Ni': (1028.2, 3.00)}
+                     Physics.freqFromWavenumber(np.sqrt(0.00012 ** 2 + 0.00026 ** 2)),  # Quadr. error prop
+                     0)}
 
-        iso_shifts_thisWork = {
-            '55Ni': (-1433.6, 22.2, 2.8),
-            '56Ni': (-1002.7, 1.9, 2.8),
-            '58Ni': (-501.7, 1.6, 2.8),
-            '60Ni': (0, 0)}
+        ''' BECOLA value IS 60-58'''
+        iso_shifts_offline = {  # KingFit/offline paper Vers. 04.02.2021
+            '58Ni': (-506.4, 1.9, 0),
+            '60Ni': (0, 0, 0),
+            '62Ni': (504.4, 2.7, 0),
+            '64Ni': (1028.2, 2.6, 0)}
 
-        self.iso_shifts_becola = { # best values from all BECOLA measurements
-            '54Ni': (-1917.4, 7.6),
-            '55Ni': (-1431.6, 16.5, 2.0),
-            '56Ni': (-1001.6, 2.3, 2.0),
+        iso_shifts_offline_58 = {  # KingFit/offline paper Vers. 04.02.2021
+            '58Ni': (0, 0, 0),
+            '60Ni': (506.4, 1.9, 0),
+            '62Ni': (1010.6, 2.4, 0),
+            '64Ni': (1534.3, 2.6, 0)}
+
+        iso_shifts_54online = {  # from beamtime 2020 Kristian, private com.
+            '54Ni': (-1917.4, 7.6, 0),
             '58Ni': (self.restframe_trans_freq['58Ni'][0] - self.restframe_trans_freq['60Ni'][0],
                      np.sqrt(self.restframe_trans_freq['58Ni'][1] ** 2 + self.restframe_trans_freq['60Ni'][1] ** 2)),
-            '60Ni': (0, 0),
-            '62Ni': (502.87, 3.43),
-            '64Ni': (1026.14, 3.79)}
+            '60Ni': (0, 0, 0)}
 
-        self.iso_shifts_lit = {'Kaufmann 2020': {'data': iso_shifts_kaufm, 'color': 'green'},
-                               # (incl.unbup.!)
-                               'Steudel 1980': {'data': iso_shifts_steudel, 'color': 'black'},
-                               'Koenig 2020': {'data': iso_shifts_koenig, 'color': 'blue'}}
-        self.iso_shifts_thisWork = {'This Work': {'data': iso_shifts_thisWork, 'color': 'green'}}
+        iso_shifts = {  # TODO: Option to load from results?
+            '55Ni': (-1433.0, 17.1, 3.3),
+            '56Ni': (-1003.6, 1.8, 2.8),
+            '58Ni': (-501.7, 0.3, 2.8),
+            '60Ni': (0, 0, 0)}
+
+        self.iso_shifts = {'Kaufmann 2020': {'data': iso_shifts_kaufm, 'color': 'green'},  # (incl.unbup.!)
+                           'Steudel 1980': {'data': iso_shifts_steudel, 'color': 'cyan'},
+                           'Offline 2020': {'data': iso_shifts_offline, 'color': 'blue'},
+                           'Online 2020': {'data': iso_shifts_54online, 'color': 'red'},
+                           'This Work': {'data': iso_shifts, 'color': 'red'}}
 
         ''' literature Mass Shift and Field Shift constants '''
         self.king_literature = {
             'Kaufmann 2020 60ref': {'data': {'Alpha': 396, 'F': (-769, 60), 'Kalpha': (948000, 3000)},
                                     'color': 'green'},  # Kaufmann.2020 10.1103/PhysRevLett.124.132502
-            'Kaufmann2017 60ref': {'data': {'Alpha': 360, 'F': (-715, 68), 'Kalpha': (975000, 2000)},
-                                    'color': 'green'},  # Kaufmann.2020 10.1103/PhysRevLett.124.132502
-            'Collaps 60ref': {'data': {'Alpha': 397, 'F': (-788, 82), 'Kalpha': (949000, 4000)},
-                                    'color': 'green'},  # Kaufmann.2020 10.1103/PhysRevLett.124.132502
-            'Koenig 2020 60ref': {'data': {'Alpha': 388, 'F': (-804, 66), 'Kalpha': (954000, 3500)},
-                                  'color': 'red'},  # König.2020 private com {'Alpha': 388, 'F': (-761.87, 89.22), 'Kalpha': (953881, 4717)}
-            'Koenig 2020 58ref': {'data': {'Alpha': 419, 'F': (-745.27, 96.79), 'Kalpha': (930263, 3009)},
-                                  'color': 'black'},  # König.2020 private com
-            # 'KingCombined60': {'data': {'Alpha': 371, 'F': (-810.58, 77.16), 'Kalpha': (966818, 3503)},
-            #                    'color': 'blue'}
+            # 'Kaufmann 2017 60ref': {'data': {'Alpha': 360, 'F': (-715, 68), 'Kalpha': (975000, 2000)},
+            #                         'color': 'green'},  # Kaufmann.2020 10.1103/PhysRevLett.124.132502
+            # 'Collaps Pub 60ref': {'data': {'Alpha': 397, 'F': (-788, 82), 'Kalpha': (949000, 4000)},
+            #                         'color': 'green'},  # Kaufmann.2020 10.1103/PhysRevLett.124.132502
+            'Steudel 1980 60ref': {'data': {'Alpha': 0, 'F': (-721, 82), 'Kalpha': (1215000, 3600)},
+                                    'color': 'cyan'},  # Fricke
+            'Offline 2020 60ref': {'data': {'Alpha': 388, 'F': (-804, 66), 'Kalpha': (954000, 3500)},
+                                  'color': 'red'},  # KingFit/offline paper Vers. 04.02.2021
+            'Offline 2020 58ref': {'data': {'Alpha': 417, 'F': (-767, 70), 'Kalpha': (929800, 2200)},
+                                  'color': 'blue'},  # KingFit/offline paper Vers. 04.02.2021
+            'Offline 2020 ladder': {'data': {'Alpha': 406, 'F': (-765, 58), 'Kalpha': (938300, 4700)},
+                                'color': 'blue'}  # KingFit/offline paper Vers. 04.02.2021
             }
 
         ''' literature radii '''
@@ -266,25 +262,19 @@ class NiAnalysis():
                              '61Ni': (0.065, 0.017),  # 60-61
                              '62Ni': (0.170, 0.035),  # 60-62
                              '64Ni': (0.280, 0.041)}  # 60-62 and 62-64 combined. Quadratic error prop
-        if iso_shifts_koenig.get('54Ni', None) is not None:
-            x, xx, r, rd, e_is, e_fs, e_ms = self.extract_radius_from_factors('54Ni', '60Ni', isoshift=iso_shifts_koenig['54Ni'], printErrCont=True)
+
         delta_rms_koenig = {#'54Ni': (r, rd),  # very preliminary!
                             '58Ni': (-0.275, 0.0082),  # private com. excel sheet mid 2020
                             '60Ni': (0, 0),
                             '62Ni': (0.2226, 0.0059),
                             '64Ni': (0.3642, 0.0095)}
 
-        delta_rms_thisWork = {
-            '55Ni': self.extract_radius_from_factors('55Ni', '60Ni', isoshift=iso_shifts_thisWork['55Ni'], printErrCont=True)[2:],
-            '56Ni': self.extract_radius_from_factors('56Ni', '60Ni', isoshift=iso_shifts_thisWork['56Ni'], printErrCont=True)[2:],
-            '58Ni': self.extract_radius_from_factors('58Ni', '60Ni', isoshift=iso_shifts_thisWork['58Ni'], printErrCont=True)[2:],
-            '60Ni': (0, 0)}
 
         self.delta_rms_lit = {'Kaufmann 2020': {'data': delta_rms_kaufm, 'color': 'green'},
                               # (incl.unbup.!)
                               'Steudel 1980': {'data': delta_rms_steudel, 'color': 'black'},
                               'Koenig 2020': {'data': delta_rms_koenig, 'color': 'blue'}}
-        self.delta_rms_thisWork = {'This Work': {'data': delta_rms_thisWork, 'color': 'green'}}
+        self.delta_rms_thisWork = {'This Work': {'data': {}, 'color': 'green'}}
 
         # from Landolt-Börnstein - Group I Elementary Particles, Nuclei and Atoms, Fricke 2004
         # http://materials.springer.com/lb/docs/sm_lbs_978-3-540-45555-4_30
@@ -358,11 +348,6 @@ class NiAnalysis():
         """
         ##################### other initializations ##################################################################
         """
-        # calculate differential doppler shifts
-        self.diff_dopplers = {key: Physics.diffDoppler(self.restframe_trans_freq[self.ref_iso][0],
-                                                       self.accVolt_set,
-                                                       self.masses[key][0] / 1e6)
-                              for key in self.masses.keys()}
         # adjust center fit estimations to accVoltage
         # self.adjust_center_ests_db()
 
@@ -382,40 +367,6 @@ class NiAnalysis():
             self.import_results(load_results_from)
 
 
-    def plot_results_of_fit(self, calibrated=False):
-        add_sc = []
-        isolist = self.isotopes_single
-        if calibrated:
-            add_sc = []  # ['scaler_c0', 'scaler_c1', 'scaler_c2'] !! not used any more !!
-            isolist = ['{}_cal'.format(i) for i in isolist]
-
-        # plot iso-results for each scaler combination
-        for sc in self.scaler_combinations+['scaler_c012']+add_sc:
-            # write the scaler to db for usage
-            scaler = self.update_scalers_in_db(sc)
-            # plot results of first fit
-            self.plot_parameter_for_isos_and_scaler(isolist, [scaler], 'center_fits', folder='fit_res')
-            self.all_centerFreq_to_scanVolt(isolist, [scaler])
-            self.plot_parameter_for_isos_and_scaler(isolist, [scaler], 'center_scanvolt', unit='V', folder='fit_res')
-            if scaler != 'scaler_c012':  # fitpars don't make sense for the calculated combined scaler
-                self.plot_parameter_for_isos_and_scaler(isolist, [scaler], 'rChi', folder='fit_res')
-                self.get_weighted_avg_linepars(isolist, [scaler])
-                self.plot_parameter_for_isos_and_scaler(isolist, [scaler], 'all_fitpars:center', unit='', folder='fit_res')
-                for par, vals in self.initial_par_guess.items():
-                    used, fixed = self.check_par_in_lineshape(par)
-                    if used and not vals[1]==True:  # only plot when used and not fixed
-                        self.plot_parameter_for_isos_and_scaler(isolist, [scaler], 'all_fitpars:{}'.format(par), unit='', folder='fit_res')
-
-        # plot all scaler-results for each isotope
-        for iso in isolist:
-            self.plot_parameter_for_isos_and_scaler([iso], self.scaler_combinations+['scaler_c012']+add_sc,
-                                                    'center_fits', onlyfiterrs=True, folder='fit_res')
-            self.plot_parameter_for_isos_and_scaler([iso], self.scaler_combinations+add_sc, 'all_fitpars:center', folder='fit_res')
-            for par, vals in self.initial_par_guess.items():
-                used, fixed = self.check_par_in_lineshape(par)
-                if used and not vals[1]==True:  # only plot when used and not fixed
-                    self.plot_parameter_for_isos_and_scaler([iso], self.scaler_combinations+add_sc, 'all_fitpars:{}'.format(par), unit='', folder='fit_res')
-
     def calculate_charge_radii(self, refiso, isolist=None, calibrated=False, summed=False):
         """
         Charge radii extraction.
@@ -431,7 +382,9 @@ class NiAnalysis():
                     # write the scaler to db for usage
                     scaler = self.update_scalers_in_db(sc)
 
-                    delta_rms, delta_rms_d, avg_delta_rms, avg_delta_rms_d, e_is, e_fs, e_ms = self.extract_radius_from_factors(iso, refiso, scaler)
+                    delta_rms, delta_rms_d, delta_rms_d_syst, \
+                    avg_delta_rms, avg_delta_rms_d, avg_delta_rms_d_syst,\
+                    e_is, e_fs, e_ms = self.extract_radius_from_factors(iso, refiso, scaler)
                     zeros = np.zeros(len(delta_rms)).tolist()
                     # write isoshift to results dict
                     delta_rms_dict = {iso: {scaler: {'delta_rms_iso-{}'.format(refiso[:2]): {'vals': delta_rms,
@@ -457,10 +410,10 @@ class NiAnalysis():
         # get final values
         for iso in all_isos:
             final_vals_iso = {'shift_iso-{}'.format(self.ref_iso[:2]):
-                                      {'vals': [self.iso_shifts_thisWork['This Work']['data'][iso][0]],
-                                       'd_stat': [self.iso_shifts_thisWork['This Work']['data'][iso][1]],
-                                       'd_syst': [self.iso_shifts_thisWork['This Work']['data'][iso][2]]
-                                       if len(self.iso_shifts_thisWork['This Work']['data'][iso]) > 2 else [0]},
+                                      {'vals': [self.iso_shifts['This Work']['data'][iso][0]],
+                                       'd_stat': [self.iso_shifts['This Work']['data'][iso][1]],
+                                       'd_syst': [self.iso_shifts['This Work']['data'][iso][2]]
+                                       if len(self.iso_shifts['This Work']['data'][iso]) > 2 else [0]},
                               'delta_rms_iso-{}'.format(self.ref_iso[:2]):
                                   {'vals': [self.delta_rms_thisWork['This Work']['data'][iso][0]],
                                    'd_stat': [self.delta_rms_thisWork['This Work']['data'][iso][1]],
@@ -482,10 +435,10 @@ class NiAnalysis():
         # also add 54 Nickel to results
         # self.results['54Ni'] = {'final':
         #                            {'shift_iso-{}'.format(self.ref_iso[:2]):
-        #                                 {'vals': [self.iso_shifts_lit['Koenig 2020']['data']['54Ni'][0]],
-        #                                  'd_stat': [self.iso_shifts_lit['Koenig 2020']['data']['54Ni'][1]],
-        #                                  'd_syst': [self.iso_shifts_lit['Koenig 2020']['data']['54Ni'][2]]
-        #                                  if len(self.iso_shifts_lit['Koenig 2020']['data']['54Ni']) > 2 else [0]},
+        #                                 {'vals': [self.iso_shifts['Koenig 2020']['data']['54Ni'][0]],
+        #                                  'd_stat': [self.iso_shifts['Koenig 2020']['data']['54Ni'][1]],
+        #                                  'd_syst': [self.iso_shifts['Koenig 2020']['data']['54Ni'][2]]
+        #                                  if len(self.iso_shifts['Koenig 2020']['data']['54Ni']) > 2 else [0]},
         #                             'delta_rms_iso-{}'.format(self.ref_iso[:2]):
         #                                 {'vals': [self.delta_rms_lit['Koenig 2020']['data']['54Ni'][0]],
         #                                  'd_stat': [self.delta_rms_lit['Koenig 2020']['data']['54Ni'][1]],
@@ -510,7 +463,8 @@ class NiAnalysis():
         vary_rms = []
         vary_rms_d = []
         for i in vary_is:
-            r, r_d,  e_is, e_fs, e_ms = self.extract_radius_from_factors('54Ni', '60Ni', isoshift=(i, result_is_d))[2:]
+            r, r_d, r_d_syst,\
+            e_is, e_fs, e_ms = self.extract_radius_from_factors('54Ni', '60Ni', isoshift=(i, result_is_d))[2:]
             vary_rms.append(r)
             vary_rms_d.append(r_d)
 
@@ -552,29 +506,6 @@ class NiAnalysis():
         else:
             return ret
 
-    def create_new_isotope_in_db(self, copy_iso, iso_new, acc_volt):
-        """
-        creates a new isotope of type 'iso_new' based on a copy of 'copy_iso'.
-        :param copy_iso: str: the isotope to copy
-        :param iso_new: str: name of the new isotope. Must be unique.
-        :param acc_volt: int: acceleration voltage to be used. Used to calculate new center fit parameter.
-        :return:
-        """
-        con = sqlite3.connect(self.db)
-        cur = con.cursor()
-        cur.execute('''SELECT * FROM Isotopes WHERE iso = ? ''', (copy_iso,))  # get original isotope to copy from
-        copy_isopars = cur.fetchall()
-        mass = copy_isopars[0][1]
-        center_old = copy_isopars[0][4]
-        center_new = center_old + (self.accVolt_set - acc_volt) * self.diff_dopplers[copy_iso[:4]]
-        isopars_lst = list(copy_isopars[0])  # change into list to replace some values
-        isopars_lst[0] = iso_new
-        isopars_lst[4] = center_new
-        isopars_new = tuple(isopars_lst)
-        cur.execute('''INSERT OR REPLACE INTO Isotopes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
-                    isopars_new)
-        con.commit()
-        con.close()
 
     def write_to_db_lines(self, line, offset=None, sigma=None, gamma=None, asy=None, dispersive=None, centerAsym=None,
                           IntAsym=None, nPeaksAsym=None):
@@ -637,20 +568,6 @@ class NiAnalysis():
 
         return shape_dict.get(par, False), fixshape_dict.get(par, False)
 
-    def adjust_center_ests_db(self):
-        """
-        Write new center fit estimations for the standard isotopes into the db. use self.accVolt_set as reference
-        :return:
-        """
-        con = sqlite3.connect(self.db)
-        cur = con.cursor()
-        stand_ests = {'55Ni': -1060, '56Ni': -712, '58Ni': -225, '60Ni': 293}  # values that worked fine for 29850V
-        ref_freq_dev = 850343800 - self.restframe_trans_freq[self.ref_iso][0]  # stand_ests are for 580343800MHz. Ref freq might be updated
-        for iso, mass_tupl in stand_ests.items():
-            cur.execute('''UPDATE Isotopes SET center = ? WHERE iso = ? ''',
-                        (stand_ests[iso] + ref_freq_dev + (29850 - self.accVolt_set) * self.diff_dopplers[iso], iso))
-        con.commit()
-        con.close()
 
     def write_shift_to_combined_db(self, iso, run, shift_w_errs, config_str):
         """
@@ -846,31 +763,6 @@ class NiAnalysis():
 
         return nucenter
 
-    def all_centerFreq_to_scanVolt(self, iso_list, scaler_list):
-        """
-        Converts all center frequencies of an isotope into scanVoltage values.
-        :param iso_list: List of isotopes as named in results dict
-        :return:
-        """
-        for isostring in iso_list:
-            for sc in scaler_list:
-                scaler = self.update_scalers_in_db(sc)
-                if self.results[isostring].get(scaler, None) is not None:
-                    center_freq = self.results[isostring][scaler]['center_fits']['vals']
-                    center_freq_d_fit = self.results[isostring][scaler]['center_fits']['d_fit']
-
-                    center_volt, center_volt_d, center_volt_dsyst = [], [], []
-                    for nu, d in zip(center_freq, center_freq_d_fit):
-                        v, v_d, v_ds = self.centerFreq_to_absVoltage(isostring, nu, d, 0)
-                        center_volt.append(-v+self.accVolt_set)
-                        center_volt_d.append(v_d)
-                        center_volt_dsyst.append(v_ds)
-
-                    voltdict = {'vals': center_volt,
-                                'd_stat': center_volt_d,
-                                'd_syst': center_volt_dsyst}
-                    self.results[isostring][scaler]['center_scanvolt'] = voltdict
-
     ''' isoshift related: '''
 
     def plot_IS_results(self, iso, results_text):
@@ -1012,104 +904,83 @@ class NiAnalysis():
 
     def perform_king_fit_analysis(self):
         # Define which isotopes to use
-        isotopes = ['58Ni', '60Ni', '61Ni' '62Ni', '64Ni']
 
+        # TODO: Reference isotope is assumed to always be 60Ni for now!
         delta_lit_radii = self.delta_lit_radii_60
-
-        # delta_lit_radii = {  # private com. Kristian slack end 2020
-        #     '60Ni': [0.27312644, 0.0048],
-        #     '62Ni': [0.49975693, 0.0048],
-        #     '64Ni': [0.63624467, 0.0048]}
-
-        # delta_lit_radii = {  # KingFit paper Version 28.01.2021
-        #     '58Ni': [-0.2731, 0.0048],
-        #     '62Ni': [0.2266, 0.0048],
-        #     '64Ni': [0.3631, 0.0048]}
-
-        reference_run = 'collaps2017_ref60'
-
         # which isotope shift data to use?
-        stableshifts = {  # Simon PhD 2017
-            '58Ni': (-508.2, 0.4, 7.6),
-            '60Ni': (0., 0., 0.),
-            '61Ni': (278.3, 1.0, 3.2),
-            '62Ni': (502.8, 0.3, 2.1),
-            '64Ni': (1025.9, 0.4, 1.7)}
-        # stableshifts = {  # Kaufmann et al 2020
-        #     '58Ni': (-509.1, 2.5, 4.2),
-        #     '60Ni': (0., 0., 0.),
-        #     '61Ni': (280.8, 2.7, 2.0),
-        #     '62Ni': (503.9, 2.5, 3.9),
-        #     '64Ni': (1027.2, 2.5, 7.7)}
+        iso_shifts = self.iso_shifts[self.isoshifts_for_king]['data']
 
-        # reference_run = 'offline2020_ref58'
-        # reference_run = 'AsymmetricVoigt'
-        # delta_lit_radii = self.delta_lit_radii_58
-        # delta_lit_radii.pop('61Ni')
-        # stableshifts = {  # private com. Kristian slack end 2020
-        #     '58Ni': (0, 0, 0),
-        #     '60Ni': (506.26, 2.33, 0),
-        #     '62Ni': (1010.64, 2.42, 0),
-        #     '64Ni': (1534.30, 2.57, 0)}
-        # stableshifts = {  # private com. Kristian KingFit Paper Version 20.01.2021
-        #     '58Ni': (-506.4, 1.9, 0),
-        #     '60Ni': (0, 0, 0),
-        #     '62Ni': (504.4, 2.7, 0),
-        #     '64Ni': (1028.2, 2.6, 0)}
+        # make sure shifts and radii contain same isotopes!
+        remove_isos = set()
+        remove_isos |= delta_lit_radii.keys() - iso_shifts.keys()
+        remove_isos |= iso_shifts.keys() - delta_lit_radii.keys()
 
-        for iso, vals in stableshifts.items():
-            self.write_shift_to_combined_db(iso, reference_run, vals, 'Simon 60')
+        for iso in remove_isos:
+            iso_shifts.pop(iso, None)
+            delta_lit_radii.pop(iso, None)
 
+        reference_run = self.run
+
+        # describe the values used.
+        config_str = 'BECOLA offline data Nickel from KingPlot paper'
+
+        # write these to results for use
+        for iso, vals in iso_shifts.items():
+            self.write_shift_to_combined_db(iso, reference_run, vals, config_str)
+
+        # define the output folder (will be created by king plotter if not existent)
+        plot_specifier = 'KingPlots\\'
+        plot_folder = os.path.join(self.resultsdir, plot_specifier)
 
         king = KingFitter(self.db, showing=True, litvals=delta_lit_radii, plot_y_mhz=False, font_size=18,
                           ref_run=reference_run,
-                          subtract_electrons=self.nOfElectrons, add_ionization_energy=self.ionizationEnergy)
-        king.kingFit(alpha=360, findBestAlpha=False, run=reference_run)
-        # king.calcChargeRadii(isotopes=isotopes, run=reference_run, plot_evens_seperate=False, dash_missing_data=True)
+                          subtract_electrons=self.nOfElectrons, add_ionization_energy=self.ionizationEnergy,
+                          plot_folder=plot_folder, popup=False)
+        king.kingFit(alpha=0, findBestAlpha=False, run=reference_run)
         king.kingFit(alpha=350, findBestAlpha=True, run=reference_run)
+        # king.calcChargeRadii(isotopes=isotopes, run=reference_run, plot_evens_seperate=False, dash_missing_data=True)
 
         this_result = {'Alpha': king.c, 'F': (king.b, king.berr), 'Kalpha': (king.a, king.aerr)}
-        self.king_literature['This Work 60ref'] = {'data': this_result, 'color': 'red'}
+        self.king_literature['This Work {}ref'.format(self.ref_iso[:2])] = {'data': this_result, 'color': 'red'}
 
         print(self.extract_radius_from_factors('55Ni', '60Ni',
                                                isoshift=(-1433.6, 22.2, 2.8),
                                                printErrCont=True,
                                                kingFactorLit='This Work 60ref'))
-        print(self.extract_radius_from_factors('55Ni', '60Ni',
-                                               isoshift=(-1433.6, 22.2, 2.8),
-                                               printErrCont=True,
-                                               kingFactorLit='Collaps 60ref'))
-        print(self.extract_radius_from_factors('68Ni', '60Ni',
-                                               isoshift=(1992.3, 2.7, 14.7),
-                                               printErrCont=True,
-                                               kingFactorLit='This Work 60ref'))
-        print(self.extract_radius_from_factors('68Ni', '60Ni',
-                                               isoshift=(1992.3, 2.7, 14.7),
-                                               printErrCont=True,
-                                               kingFactorLit='Collaps 60ref'))
-
 
     def perform_montecarlo_king_fit_analysis(self):
         # Define which isotopes to use
-        isotopes = ['58Ni', '60Ni', '62Ni', '64Ni']
-        delta_lit_radii = {  # private com. Kristian slack end 2020
-            '60Ni': [0.27312644, 0.0048],
-            '62Ni': [0.49975693, 0.0048],
-            '64Ni': [0.63624467, 0.0048]}
 
-        reference_run = 'offline2020_ref58'
-
+        # TODO: Reference isotope is assumed to always be 60Ni for now!
+        delta_lit_radii = self.delta_lit_radii_60
         # which isotope shift data to use?
-        stableshifts = {  # private com. Kristian slack end 2020
-            '58Ni': (0, 0),
-            '60Ni': (506.26, 2.33),
-            '62Ni': (1010.64, 2.42),
-            '64Ni': (1534.30, 2.57)}
-        for iso, vals in stableshifts.items():
-            self.write_shift_to_combined_db(iso, reference_run, (vals[0], vals[1], 0), 'private com. slack end 2020')
+        iso_shifts = self.iso_shifts[self.isoshifts_for_king]['data']
 
-        king = KingFitter(self.db, litvals=delta_lit_radii, runs=[reference_run], ref_run=reference_run,
-                          subtract_electrons=self.nOfElectrons, add_ionization_energy=self.ionizationEnergy)
+        # make sure shifts and radii contain same isotopes!
+        remove_isos = set()
+        remove_isos |= delta_lit_radii.keys() - iso_shifts.keys()
+        remove_isos |= iso_shifts.keys() - delta_lit_radii.keys()
+
+        for iso in remove_isos:
+            iso_shifts.pop(iso, None)
+            delta_lit_radii.pop(iso, None)
+
+        reference_run = self.run
+
+        # describe the values used.
+        config_str = 'BECOLA offline data Nickel from KingPlot paper'
+
+        # write these to results for use
+        for iso, vals in iso_shifts.items():
+            self.write_shift_to_combined_db(iso, reference_run, vals, config_str)
+
+        # define the output folder (will be created by king plotter if not existent)
+        plot_specifier = 'KingPlots\\'
+        plot_folder = os.path.join(self.resultsdir, plot_specifier)
+
+        king = MCKingFitter(self.db, litvals=delta_lit_radii, runs=[reference_run], ref_run=reference_run,
+                            subtract_electrons=self.nOfElectrons, add_ionization_energy=self.ionizationEnergy,
+                            plot_folder=plot_folder, popup=False)
         king.king_fit(alpha=0, find_best_alpha=False)
         #king.calcChargeRadii(isotopes=isotopes, run=reference_run, plot_evens_seperate=False, dash_missing_data=True)
 
@@ -1139,10 +1010,11 @@ class NiAnalysis():
 
         # get the isotope shifts from our analysis
         shifts = []
-        thisPoint = None
-        isolist = ['55Ni', '56Ni', '58Ni', '60Ni']  #['54Ni', '55Ni', '56Ni', '58Ni', '60Ni']
+        thisPoints = []
+        isolist = self.all_isotopes
         isolist.remove(self.ref_iso)
         for iso in isolist:
+            # get masses and calculate mass-factor
             m_iso, m_iso_d = self.get_iso_property_from_db('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''',
                                                            (iso[:4],))
             m_ref, m_ref_d = self.get_iso_property_from_db('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''',
@@ -1150,18 +1022,18 @@ class NiAnalysis():
             mu = (m_iso - m_ref) / (m_iso * m_ref)
             mu_d = np.sqrt(np.square(m_iso_d / m_iso ** 2) + np.square(m_ref_d / m_ref ** 2))
 
-            iso_shift = self.results[iso]['final']['shift_iso-{}'.format(self.ref_iso[:2])]['vals'][0]
-            iso_shift_d = self.results[iso]['final']['shift_iso-{}'.format(self.ref_iso[:2])]['d_stat'][0]
-            iso_shift_d_syst = self.results[iso]['final']['shift_iso-{}'.format(self.ref_iso[:2])]['d_syst'][0]
-            shifts.append((iso_shift/mu/1000, iso_shift_d/mu/1000, iso_shift_d_syst/mu/1000, iso))
+            # get isotope shifts
+            iso_shift, iso_shift_d, iso_shift_d_syst = self.iso_shifts['This Work']['data'][iso]
+            shifts.append((iso_shift/mu/1000, iso_shift_d/mu/1000, iso_shift_d_syst/mu/1000, iso))  # div by 1k for Ghz
 
+            # for isotopes that do have a literature radius, get that radius in case we want to plot it as a point
             if iso in self.delta_lit_radii_60 and not iso == self.ref_iso:
                 delta_rms = self.delta_lit_radii_60[iso]
                 r = delta_rms[0]/mu
                 r_d = np.sqrt((delta_rms[1]/mu)**2 + (delta_rms[0]*mu_d/mu**2)**2)
                 s = iso_shift/mu/1000
                 s_d = np.sqrt(((iso_shift_d+iso_shift_d_syst)/mu/1000)**2 + ((iso_shift)*mu_d/mu**2/1000)**2)
-                thisPoint = (r, r_d, s, s_d)
+                thisPoints.append((r, r_d, s, s_d))
 
         # add a band for each of our measured isotope shifts
         for tuples in shifts:
@@ -1169,6 +1041,7 @@ class NiAnalysis():
             plt.axhspan(tuples[0]-tuples[1]-tuples[2], tuples[0]+tuples[1]+tuples[2], facecolor='black', alpha=0.2)
             ax.annotate(r'$^\mathregular{{{:.0f}}}$Ni'.format(int(tuples[3][:2])), (240, tuples[0]-5))
 
+        # Define functions for Kingplot and uncertainty lines
         def _kingLine(x, k, f, a):
             return (k + f * (x))/1000  # in GHz
 
@@ -1195,8 +1068,9 @@ class NiAnalysis():
         annotate_iso = []
         x_annotate = []
         y_annotate = []
+        # get literature factors
         for src, item in self.king_literature.items():
-            if self.ref_iso[:2] in src:  # only use literature with the same reference isotope
+            if self.ref_iso[:2] in src and src != 'This Work':  # only use literature with the same reference isotope
                 # get factors
                 alpha = item['data']['Alpha']
                 F, F_d = item['data']['F']
@@ -1228,26 +1102,30 @@ class NiAnalysis():
                     mu = (m_iso - m_ref) / (m_iso * m_ref)
                     mu_d = np.sqrt(np.square(m_iso_d / m_iso ** 2) + np.square(m_ref_d / m_ref ** 2))
 
-                    if self.iso_shifts_lit[src[:-6]]['data'].get(iso, None) is not None:
+                    src_first = ' '.join(src.split()[:2])
+                    if self.iso_shifts[src_first]['data'].get(iso, None) is not None:
                         r_lst.append(delta_rms[0] / mu)
                         r_d_lst.append(np.sqrt((delta_rms[1] / mu) ** 2 + (delta_rms[0] * mu_d / mu ** 2) ** 2))
-                        src_first = ' '.join(src.split()[:2])
-                        s_lst.append(self.iso_shifts_lit[src_first]['data'][iso][0] / mu / 1000)
-                        s_d_lst.append(np.sqrt((self.iso_shifts_lit[src_first]['data'][iso][1] / mu / 1000) ** 2 + (
-                                    (self.iso_shifts_lit[src_first]['data'][iso][0]) * mu_d / mu ** 2 / 1000) ** 2))
+                        s_lst.append(self.iso_shifts[src_first]['data'][iso][0] / mu / 1000)
+                        s_d_lst.append(np.sqrt((self.iso_shifts[src_first]['data'][iso][1] / mu / 1000) ** 2 + (
+                                    (self.iso_shifts[src_first]['data'][iso][0]) * mu_d / mu ** 2 / 1000) ** 2))
                         if not iso in annotate_iso and 'Kauf' in src:
                             # only use Kaufmann values for the annotation:
                             annotate_iso.append(iso)
                             x_annotate.append(delta_rms[0] / mu)
-                            y_annotate.append(self.iso_shifts_lit[src[:-6]]['data'][iso][0] / mu / 1000)
+                            y_annotate.append(self.iso_shifts[src[:-6]]['data'][iso][0] / mu / 1000)
 
                 plt.errorbar(r_lst, s_lst, xerr=r_d_lst, yerr=s_d_lst, fmt='o', c=col, elinewidth=1.5, label=src[:-6])
 
+        # annotate the isotopes by name (e.g. 58Ni)
         for i, iso in enumerate(annotate_iso):
             ax.annotate(r'$^\mathregular{{{:.0f}}}$Ni'.format(int(iso[:2])), (x_annotate[i]+5, y_annotate[i]+5), color='green')
 
-        if thisPoint is not None:
-            plt.errorbar(thisPoint[0], thisPoint[2], xerr=thisPoint[1], yerr=thisPoint[3], fmt='ok', label='This Work', elinewidth=1.5)
+        # plot points measured in this experiment
+        if thisPoints is not None:
+            for thisPoint in thisPoints:
+                plt.errorbar(thisPoint[0], thisPoint[2], xerr=thisPoint[1], yerr=thisPoint[3],
+                             fmt='ok', label='This Work', elinewidth=1.5)
 
         plt.xlabel(r'$\mu^{-1} \delta <r_c^2>$' + ' (u fm)' + r'$^2$')
         plt.ylabel(r'$\mu^{-1} \delta\nu$' + ' (u GHz)')
@@ -1260,6 +1138,24 @@ class NiAnalysis():
             plt.show()
         plt.close()
         plt.clf()
+
+    def extract_diff_radii_for_isotopes(self):
+        """
+        Encapsules the extract_radius_from_factors function for all isotopes measured. Stores trhe results.
+        :return:
+        """
+        for iso in self.all_isotopes:
+            # get the isotope shift
+            isoshift = self.iso_shifts['This Work']['data'][iso]
+
+            avg_delta_rms, avg_delta_rms_d, avg_delta_rms_d_syst, \
+            IS_cont, IS_cont_syst, F_cont, M_cont = \
+                self.extract_radius_from_factors(iso, self.ref_iso, isoshift=isoshift, kingFactorLit='This Work 60ref')[3:]
+
+            self.delta_rms_thisWork['This Work']['data'][iso] = (avg_delta_rms, avg_delta_rms_d, avg_delta_rms_d_syst)
+
+        print(self.delta_rms_thisWork['This Work']['data'])
+
 
     def extract_radius_from_factors(self, iso, ref, scaler=None, isoshift=None, printErrCont=False, kingFactorLit=None):
         """
@@ -1293,17 +1189,42 @@ class NiAnalysis():
                 kingFactorLit = 'Koenig 2020 58ref'
             else:
                 kingFactorLit = 'Koenig 2020 60ref'
-        M_alpha, M_alpha_d = self.king_literature[kingFactorLit]['data'][
-            'Kalpha']  # Mhz u (lit val given in GHz u)(949000, 4000)
+        M_alpha, M_alpha_d = self.king_literature[kingFactorLit]['data']['Kalpha']  # Mhz u (lit val given in GHz u)(949000, 4000)
         F, F_d = self.king_literature[kingFactorLit]['data']['F']  # MHz/fm^2(-788, 82)
         alpha = self.king_literature[kingFactorLit]['data']['Alpha']  # u fm^2 397
 
         # get data and calculate radii
         delta_rms = []
-        delta_rms_d = []
+        delta_rms_d = []  # uncertainties that will only affect a single isotope
+        delta_rms_d_syst = []  # uncertainties that affect all isotopes in a systematic fashion
         IS_cont = 0
         F_cont = 0
         M_cont = 0
+
+        def calc_diff_rad(dnu, dnu_d, dnu_d_syst):
+            """
+            Radius calculation will be used multiple times below. Thus encapsuled here.
+            :return:
+            """
+            # calculate radius
+            dr = mu * ((dnu / mu - M_alpha) / F + alpha)
+
+            # uncertainty contributions:
+            mu_err = mu_d * (alpha - M_alpha / F)
+            M_err = M_alpha_d * mu / F  # contribution of the mass-shift factor uncertainty
+            F_err = F_d * (dnu - mu * M_alpha) / F ** 2  # contribution of the field-shift factor uncertainty
+            dnu_d_err = dnu_d / F  # individual contribution of the isoshift value
+            dnu_d_syst_err = dnu_d_syst / F  # systematic contribution of the isoshift value
+
+            # combine uncertainties:
+            dr_d = dnu_d_err
+            dr_d_syst = np.sqrt(np.square(mu_err)
+                                + np.square(M_err)
+                                + np.square(F_err)
+                                + np.square(dnu_d_syst_err)
+                                )
+            return dr, dr_d, dr_d_syst, mu_err, M_err, F_err, dnu_d_err, dnu_d_syst_err
+
         if scaler is not None:
             # get per file isoshift
             files = self.results[iso]['file_names']
@@ -1318,42 +1239,33 @@ class NiAnalysis():
             if iso[:2] == ref[:2]:
                 # this is the reference! All values zero!
                 for indx, file in enumerate(files):
-                    delta_rms.append(0)
-                    delta_rms_d.append(0)
-                avg_delta_rms = 0
-                avg_delta_rms_d = 0
+                    delta_rms.append(0.)
+                    delta_rms_d.append(0.)
+                    delta_rms_d_syst.append(0.)
+                avg_delta_rms = 0.
+                avg_delta_rms_d = 0.
+                avg_delta_rms_d_syst = 0.
             else:
                 for indx, file in enumerate(files):
                     # calculate radius
-                    delta_rms.append(mu * ((iso_shift[indx] / mu - M_alpha) / F + alpha))
-                    # uncertainty contributions:
-                    mu_cont = mu_d * (alpha - M_alpha / F)
-                    M_cont = M_alpha_d * mu / F  # contribution of the mass-shift factor uncertainty
-                    F_cont = F_d * (iso_shift[indx] - mu * M_alpha) / F ** 2  # contribution of the field-shift factor uncertainty
-                    IS_cont = np.sqrt(iso_shift_d[indx] ** 2 + iso_shift_d_syst[indx] ** 2) / F  # contribution of the isoshift value
-                    # combine all:
-                    delta_rms_d.append(np.sqrt(np.square(mu_cont)
-                                               + np.square(M_cont)
-                                               + np.square(F_cont)
-                                               + np.square(IS_cont)
-                                               ))
+                    d_rms, d_rms_d, d_rms_d_syst,\
+                    mu_cont, M_cont, F_cont, IS_cont, IS_cont_syst \
+                        = calc_diff_rad(iso_shift[indx], iso_shift_d[indx], iso_shift_d_syst[indx])
+
+                    delta_rms.append(d_rms)
+                    delta_rms_d.append(d_rms_d)
+                    delta_rms_d_syst.append(d_rms_d_syst)
 
                 # get average isoshift
                 avg_iso_shift = self.results[iso][scaler]['avg_shift_iso-{}'.format(ref[:2])]['vals'][0]
                 avg_iso_shift_d = self.results[iso][scaler]['avg_shift_iso-{}'.format(ref[:2])]['d_stat'][0]
                 avg_iso_shift_d_syst = self.results[iso][scaler]['avg_shift_iso-{}'.format(ref[:2])]['d_syst'][0]
-                # calculate average radius
-                avg_delta_rms = mu * ((avg_iso_shift / mu - M_alpha) / F + alpha)
-                # uncertainty contributions:
-                mu_cont = mu_d * (alpha - M_alpha / F)
-                M_cont = M_alpha_d * mu / F  # contribution of the mass-shift factor uncertainty
-                F_cont = F_d * (iso_shift - mu * M_alpha) / F ** 2  # contribution of the field-shift factor uncertainty
-                IS_cont = np.sqrt(iso_shift_d ** 2 + iso_shift_d_syst ** 2) / F  # contribution of the isoshift value
-                # combine all:
-                avg_delta_rms_d = np.sqrt(np.square(mu_cont)
-                                          + np.square(M_cont)
-                                          + np.square(F_cont)
-                                          + np.square(IS_cont))
+
+                # calculate radius
+                avg_delta_rms, avg_delta_rms_d, avg_delta_rms_d_syst, \
+                mu_cont, M_cont, F_cont, IS_cont, IS_cont_syst \
+                    = calc_diff_rad(avg_iso_shift, avg_iso_shift_d, avg_iso_shift_d_syst)
+
 
         else:
             # use given shift or extract isotope shift from db where no scaler is specified.
@@ -1366,33 +1278,27 @@ class NiAnalysis():
                 iso_shift, iso_shift_d, iso_shift_d_syst = self.get_iso_property_from_db(
                     '''SELECT val, statErr, systErr from Combined WHERE iso = ? AND run = ? AND parname = ?''',
                     (iso, self.run, par))
+
             # calculate radius
-            avg_delta_rms = mu * ((iso_shift / mu - M_alpha) / F + alpha)
-            # uncertainty contributions:
-            mu_cont = mu_d * (alpha - M_alpha / F)
-            M_cont = M_alpha_d * mu / F  # contribution of the mass-shift factor uncertainty
-            F_cont = F_d * (iso_shift - mu * M_alpha) / F ** 2  # contribution of the field-shift factor uncertainty
-            IS_cont = np.sqrt(iso_shift_d**2 + iso_shift_d_syst**2) / F  # contribution of the isoshift value
-            # combine all:
-            avg_delta_rms_d = np.sqrt(np.square(mu_cont)
-                                      + np.square(M_cont)
-                                      + np.square(F_cont)
-                                      + np.square(IS_cont))
+            avg_delta_rms, avg_delta_rms_d, avg_delta_rms_d_syst, \
+            mu_cont, M_cont, F_cont, IS_cont, IS_cont_syst \
+                = calc_diff_rad(iso_shift, iso_shift_d, iso_shift_d_syst)
+
             if printErrCont:
                 print('Isotope: {}\n'
-                      'Delta_nu: {:.1f}({:.0f})MHz\n'
-                      'Delta_rms: {:.3f}({:.0f})fm\n'
+                      'Delta_nu: {:.1f}({:.0f})[{:.0f}]MHz\n'
+                      'Delta_rms: {:.3f}({:.0f})[{:.0f}]fm\n'
                       'reduced mass: {:.4f}\n'
                       'error contributions:\n'
                       '\tmu: {:.4f}\n'
                       '\tM: {:.4f}\n'
                       '\tF: {:.4f}\n'
-                      '\tIS: {:.4f}\n'
+                      '\tIS: {:.4f}[{:.4f}]\n'
                       .format(iso,
-                              iso_shift, 10*(iso_shift_d + iso_shift_d_syst),
-                              avg_delta_rms, 1000*avg_delta_rms_d,
+                              iso_shift, 10*iso_shift_d, 10*iso_shift_d_syst,
+                              avg_delta_rms, 1000**avg_delta_rms_d, 1000*avg_delta_rms_d_syst,
                               mu,
-                              mu_cont, M_cont, F_cont, IS_cont))
+                              mu_cont, M_cont, F_cont, IS_cont, IS_cont_syst))
                 print('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t'
                       .format(iso, mu,
                               iso_shift, (iso_shift_d + iso_shift_d_syst),
@@ -1401,8 +1307,11 @@ class NiAnalysis():
             # list of delta_rms's doesn't make much sense... Return one anyways
             delta_rms.append(avg_delta_rms)
             delta_rms_d.append(avg_delta_rms_d)
+            delta_rms_d_syst.append(avg_delta_rms_d_syst)
 
-        return delta_rms, delta_rms_d, avg_delta_rms, avg_delta_rms_d, IS_cont, F_cont, M_cont
+        return delta_rms, delta_rms_d, delta_rms_d_syst, \
+               avg_delta_rms, avg_delta_rms_d, avg_delta_rms_d_syst, \
+               IS_cont, IS_cont_syst, F_cont, M_cont
 
     def ni55_A_B_analysis(self, isotope, scaler='scaler_012', calibrated=False):
         if calibrated:
@@ -2392,7 +2301,7 @@ class NiAnalysis():
 
         for keys, vals in becola_isoshift.items():
             becola_radii[keys] = self.extract_radius_from_factors(keys, ref_key, isoshift=vals, printErrCont=True)[2:]
-            # delta_rms, delta_rms_d, IS_cont, F_cont, M_cont
+            # delta_rms, delta_rms_d, delta_rms_d_syst, IS_cont, IS_cont_syst, F_cont, M_cont
 
         col = ['r', 'b', 'k', 'g']
 
@@ -2424,8 +2333,8 @@ class NiAnalysis():
         for i in keyVals:
             x.append(int(''.join(filter(str.isdigit, i))))
             y.append(data[i][0])
-            yerr.append(data[i][2])  # take only IS contribution here
-            ytiltshift.append(np.sqrt(data[i][3]**2 + data[i][4]**2))  # Fieldshift-Factor, Massshift-Factor uncertainty
+            yerr.append(np.sqrt(np.square(data[i][3])+np.square(data[i][4])))  # take only IS contributions here
+            ytiltshift.append(np.sqrt(np.square(data[i][5])+np.square(data[i][6])))  # Fieldshift-Factor, Massshift-Factor uncertainty
 
         plt.xticks(rotation=0)
         ax = plt.gca()
@@ -2568,8 +2477,8 @@ class NiAnalysis():
         becola_abs_radii = {}
 
         for keys, vals in becola_isoshift.items():
-            # delta_rms, delta_rms_d, IS_cont, F_cont, M_cont
-            r, r_d, r_dis, r_df, r_dm = self.extract_radius_from_factors(keys, ref_key, isoshift=vals, printErrCont=True)[2:]
+            # delta_rms, delta_rms_d, delta_rms_d_syst, IS_cont, IS_cont_sys, F_cont, M_cont
+            r, r_d, r_dis, r_diso, r_diso_s, r_df, r_dm = self.extract_radius_from_factors(keys, ref_key, isoshift=vals, printErrCont=True)[2:]
             becola_delta_radii[keys] = r, r_d, r_dis, r_df, r_dm
             # calculate absolute radius
             rabs = np.sqrt(ref_abs_radius[0]**2 + r)
@@ -2745,7 +2654,7 @@ class NiAnalysis():
 
         # get the literature values
         if includelitvals:
-            for src, vals in self.iso_shifts_lit.items():
+            for src, vals in self.iso_shifts.items():
                 col = vals['color']
                 litvals = TiTs.deepcopy(vals['data'])
                 ref_val = litvals[ref_key]
@@ -2919,15 +2828,12 @@ if __name__ == '__main__':
     analysis = NiAnalysis()
     # Make our own King Fit!
     analysis.perform_king_fit_analysis()
+    analysis.perform_montecarlo_king_fit_analysis()
+    analysis.compare_king_pars()
+
+    # Extract the differential charge radii
+    analysis.extract_diff_radii_for_isotopes()
 
     # final plots
     # analysis.get_final_results()
     # analysis.export_results()
-
-    print(analysis.extract_radius_from_factors('68Ni', '60Ni', isoshift=(1990.4, 0.9, 7.3),
-                                                 printErrCont=True, kingFactorLit='Kaufmann2017 60ref'))
-    print(analysis.extract_radius_from_factors('68Ni', '60Ni', isoshift=(1992.3, 2.7, 14.7),
-                                                 printErrCont=True, kingFactorLit='Collaps 60ref'))
-
-    print(analysis.extract_radius_from_factors('58Ni', '60Ni', isoshift=(-506.4, 1.9),
-                                               printErrCont=True, kingFactorLit='Koenig 2020 60ref'))

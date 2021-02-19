@@ -22,6 +22,7 @@ Note that with 32-bit Python the number of samples cannot be much larger than 1,
 """
 
 import ast
+import os
 import sqlite3
 import numpy as np
 import scipy.constants as sc
@@ -131,7 +132,8 @@ def y_ell(y, alpha, rho):
 
 
 class MCFitter(object):
-    def __init__(self, db, runs=None, ref_run=-1, subtract_electrons=0., add_ionization_energy=0.):
+    def __init__(self, db, runs=None, ref_run=-1, subtract_electrons=0., add_ionization_energy=0., plot_folder=None,
+                 popup=True):
         self.db = db
         self.runs = runs
         if self.runs is None:
@@ -146,6 +148,13 @@ class MCFitter(object):
         self.xlabel = 'x-axis'
         self.unit_factors = {'MHz': 1., 'GHz': 1e-3}
         self.fontsize = 12
+
+        self.popup = popup  # Set to false to disable plt.show
+        self.store_loc = None  # For now only to store the Graphs if a plot folder is specified.
+        if plot_folder is not None:
+            self.store_loc = plot_folder
+            if not os.path.isdir(self.store_loc):
+                os.mkdir(self.store_loc)
 
         try:
             if ref_run == -1:
@@ -188,6 +197,8 @@ class MCFitter(object):
         self.alpha = 0.
         self.alpha_k = 0.
         self.alpha_step = 1.
+
+        self.correlation_best = 1.
 
         self.fixed_axis = 0
 
@@ -373,28 +384,28 @@ class MCFitter(object):
         print('Best fixed axis: ' + str(axis_best))
         print('Best acceptance: ' + str(np.around(100*acceptance_best/n_sample, decimals=2)) + ' %')
 
+    def correlation(self, alpha_opt, n_sample, norm):
+        self.apply_alpha(alpha_opt)
+        f_alpha, k_alpha, _, accepted_alpha = self.get_collinear_points(n_sample)
+        f_accepted = f_alpha[accepted_alpha, :]
+        k_accepted = k_alpha[accepted_alpha, :]
+        corrcoef = np.corrcoef(f_accepted.T, y=k_accepted.T, ddof=1)
+        return np.sum(np.abs(corrcoef[(self.n_dim - 1):, :(self.n_dim - 1)]))/norm
+
     def find_best_alpha(self, alpha, n_sample, show=True):
         print('\nSearching best alpha to reduce the correlation between F and K ...')
         norm = (self.n_dim - 1)**2
-
-        def correlation(alpha_opt):
-            self.apply_alpha(alpha_opt)
-            f_alpha, k_alpha, _, accepted_alpha = self.get_collinear_points(n_sample)
-            f_accepted = f_alpha[accepted_alpha, :]
-            k_accepted = k_alpha[accepted_alpha, :]
-            corrcoef = np.corrcoef(f_accepted.T, y=k_accepted.T, ddof=1)
-            return np.sum(np.abs(corrcoef[(self.n_dim - 1):, :(self.n_dim - 1)]))/norm
 
         print('\nalpha: ' + str(alpha))
         alpha_best = alpha
         alpha_list = [alpha, ]
         alpha_found = False
-        correlation_best = correlation(alpha_best)
+        correlation_best = self.correlation(alpha_best, n_sample, norm)
         corr_list = [correlation_best, ]
         print('mean correlation: ' + str(np.around(correlation_best, decimals=3)))
         while not alpha_found:
             print('\nalpha: ' + str(self.alpha + self.alpha_step))
-            corr = correlation(self.alpha + self.alpha_step)
+            corr = self.correlation(self.alpha + self.alpha_step, n_sample, norm)
             print('Mean correlation: ' + str(np.around(corr, decimals=3)))
             if corr < correlation_best:
                 correlation_best = corr
@@ -409,13 +420,21 @@ class MCFitter(object):
                     alpha_found = True
         self.alpha_step = np.abs(self.alpha_step)
 
+        self.correlation_best = correlation_best
+
         print('\nBest alpha: ' + str(alpha_best))
         print('Best mean correlation (F, K): ' + str(np.around(correlation_best, decimals=3)))
         if show:
             plt.xlabel(r'$\alpha_\mathrm{best}')
             plt.ylabel('mean correlation (F, K)')
             plt.plot(alpha_list, corr_list)
-            plt.show()
+            if self.store_loc is not None:
+                f_name = 'MC_king_fit_alpha_%d_find_alpha' % self.alpha
+                plt.savefig(os.path.join(self.store_loc, f_name + '.pdf'))
+                plt.savefig(os.path.join(self.store_loc, f_name + '.png'))
+            if self.popup:
+                plt.show()
+            plt.gcf().clear()
         return alpha_best
 
     def plot_results(self, mod_iso_shift_scale):
@@ -430,6 +449,7 @@ class MCFitter(object):
             self.alpha_k = self.find_best_alpha(alpha, n_sample)
         else:
             self.alpha_k = alpha
+            self.correlation_best = self.correlation(alpha, n_sample, (self.n_dim - 1)**2)
 
         self.apply_alpha(self.alpha_k)
 
@@ -539,16 +559,22 @@ class MCFitter(object):
         plt.margins(0.1)
         plt.gcf().set_facecolor('w')
         plt.tight_layout(True)
-        plt.show()
+        if self.store_loc is not None:
+            f_name = 'MC_king_fit_alpha_%d_calc_x' % self.alpha
+            plt.savefig(os.path.join(self.store_loc, f_name + '.pdf'))
+            plt.savefig(os.path.join(self.store_loc, f_name + '.png'))
+        if self.popup:
+            plt.show()
         plt.gcf().clear()
 
         return x_ret
 
 
 class KingFitter(MCFitter):
-    def __init__(self, db, runs=None, ref_run=-1, litvals=None, subtract_electrons=0., add_ionization_energy=0.):
+    def __init__(self, db, runs=None, ref_run=-1, litvals=None, subtract_electrons=0., add_ionization_energy=0.,
+                 plot_folder=None, popup=False):
         super().__init__(db, runs=runs, ref_run=ref_run, subtract_electrons=subtract_electrons,
-                         add_ionization_energy=add_ionization_energy)
+                         add_ionization_energy=add_ionization_energy, plot_folder=plot_folder, popup=popup)
         self.n_dim = len(self.runs) + 1
         self.litvals = litvals
         if self.litvals is None:
@@ -648,7 +674,7 @@ class KingFitter(MCFitter):
             plt.plot(self.mean[:, -1] - self.alpha_k, self.mean[:, i]*y_s, 'ko', label='Data')
             print('\ndr²-{} correlation of:'.format(self.runs[i]))
             for j, iso in enumerate(self.isotopes):
-                plt.text(self.p[j, -1] - self.alpha_k, (self.p[j, i] + np.max(self.std[:, i])*5)*y_s, iso)
+                plt.text(self.p[j, -1] - self.alpha_k, (self.p[j, i] + np.max(self.std[:, i])*3)*y_s, iso)
 
                 shift_x = st.norm.rvs(loc=self.mean0[j, -1], scale=self.std0[j, -1], size=self.n_sample)
                 shift = st.norm.rvs(loc=self.mean0[j, i], scale=self.std0[j, i], size=self.n_sample) * y_s
@@ -673,7 +699,24 @@ class KingFitter(MCFitter):
             plt.margins(0.1)
             plt.gcf().set_facecolor('w')
             plt.tight_layout(True)
-            plt.show()
+
+            if self.store_loc is not None:
+                f_name = 'MC_king_fit_alpha_%d' % self.alpha
+                plt.savefig(os.path.join(self.store_loc, f_name + '.pdf'))
+                plt.savefig(os.path.join(self.store_loc, f_name + '.png'))
+
+                # store results to file when showing the plot
+                # (.fit() is called very often without showing the plot when optimitzing self.c(=alpha))
+                with open(os.path.join(self.store_loc, f_name + '_fit_points' + '.txt'), 'w') as king_f:
+                    king_f.write('# intercept: %.3f +/- %.3f\n' % (self.k[i], self.k_d[i]))
+                    king_f.write('# slope: %.3f +/- %.3f\n' % (self.f[i], self.f_d[i]))
+                    king_f.write('# correlation: %.3f\n' % self.correlation_best)
+                    king_f.write('# %s\t%s\t%s\t%s\t%s \n' % ('x', 'x_err', 'y', 'y_stat_err', 'y_err_total'))
+                    for num, x in enumerate(self.mean[:, -1] - self.alpha_k):
+                        king_f.write('%.5f\t%.5f\t%.5f\t%.5f\t%.5f\n'
+                                     % (x, self.std[num, -1], self.mean[num, i]*y_s, self.std[num, i] * y_s, self.std[num, i] * y_s))
+            if self.popup:
+                plt.show()
             plt.gcf().clear()
 
         a = self.mass_numbers.astype(int)
@@ -692,7 +735,13 @@ class KingFitter(MCFitter):
         plt.margins(0.1)
         plt.gcf().set_facecolor('w')
         plt.tight_layout(True)
-        plt.show()
+
+        if self.store_loc is not None:
+            f_name = 'MC_king_fit_alpha_%d_radii' % self.alpha
+            plt.savefig(os.path.join(self.store_loc, f_name + '.pdf'))
+            plt.savefig(os.path.join(self.store_loc, f_name + '.png'))
+        if self.popup:
+            plt.show()
         plt.gcf().clear()
 
 
@@ -835,5 +884,11 @@ class KingFitterRatio(MCFitter):
             plt.margins(0.1)
             plt.gcf().set_facecolor('w')
             plt.tight_layout(True)
-            plt.show()
+
+            if self.store_loc is not None:
+                f_name = 'MC_king_fit_alpha_%d' % self.alpha
+                plt.savefig(os.path.join(self.store_loc, f_name + '.pdf'))
+                plt.savefig(os.path.join(self.store_loc, f_name + '.png'))
+            if self.popup:
+                plt.show()
             plt.gcf().clear()

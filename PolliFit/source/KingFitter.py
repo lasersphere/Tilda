@@ -32,11 +32,12 @@ class KingFitter(object):
     """
 
     def __init__(self, db, litvals=None, showing=True, plot_y_mhz=True, font_size=12, ref_run=-1, incl_projected=False,
-                 subtract_electrons=0., add_ionization_energy=0., plot_folder=None):
+                 subtract_electrons=0., add_ionization_energy=0., plot_folder=None, popup=True):
         """
         Import the litvals and initializes a KingFit, run can be specified, for run==-1 any shift results are chosen
         """
         self.showing = showing
+        self.popup = popup  # While showing is used to suppress plot during find best alpha, this directly cuts plt.show
         self.fontsize = font_size  # fontsize used in plots
         self.plot_y_mhz = plot_y_mhz  # use False to plot y axis in gigahertz
         self.db = db
@@ -302,7 +303,8 @@ class KingFitter(object):
         if showplot:
             plt.savefig(os.path.join(self.store_loc, f_name + '.pdf'))
             plt.savefig(os.path.join(self.store_loc, f_name + '.png'))
-            plt.show()
+            if self.popup:
+                plt.show()
         plt.gcf().clear()
 
         self.aerr = np.sqrt(sigma_a_square)
@@ -522,7 +524,8 @@ class KingFitter(object):
             plt.tight_layout(True)
             plt.savefig(os.path.join(self.store_loc, f_name + '.pdf'))
             plt.savefig(os.path.join(self.store_loc, f_name + '.png'))
-            plt.show()
+            if self.popup:
+                plt.show()
 
         return finalVals
 
