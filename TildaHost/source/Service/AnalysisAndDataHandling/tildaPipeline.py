@@ -24,7 +24,7 @@ from polliPipe.pipeline import Pipeline
 
 def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples,
                           fit_res_callback_dict, scan_complete_callback, dac_new_volt_set_callback,
-                          bunch_start_stop_tr_wise=None, next_step_request_sig=None):
+                          scan_start_stop_tr_wise=None, bunch_start_stop_tr_wise=None, next_step_request_sig=None):
     seq_type = scan_dict['isotopeData']['type']
     if seq_type == 'cs' or seq_type == 'csdummy':
         logging.debug('loading pipeline of type: cs')
@@ -34,6 +34,7 @@ def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples,
         logging.debug('loading pipeline of type: trs')
         return TrsPipe(scan_dict, callback_sig,
                        live_plot_callbacks=live_plot_callback_tuples,
+                       scan_start_stop_tr_wise=scan_start_stop_tr_wise,
                        bunch_start_stop_tr_wise=bunch_start_stop_tr_wise,
                        next_step_request_sig=next_step_request_sig)
     elif seq_type == 'kepco':
@@ -49,7 +50,7 @@ def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples,
 
 
 def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True,
-            live_plot_callbacks=None, bunch_start_stop_tr_wise=None, next_step_request_sig=None):
+            live_plot_callbacks=None, scan_start_stop_tr_wise=None, bunch_start_stop_tr_wise=None, next_step_request_sig=None):
     """
     Pipeline for the dataflow and analysis of one Isotope using the time resolved sequencer.
     Mutliple Tracks are supported.
@@ -71,7 +72,8 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True,
     fast = fast.attach(TN.NSaveRawData())
     fast = fast.attach(TN.NSendNextStepRequestViaQtSignal(next_step_request_sig))
     # fast = fast.attach(TN.NProcessQtGuiEvents())
-    fast = fast.attach(TN.NTRSSortRawDatatoArrayFast(bunch_start_stop_tr_wise=bunch_start_stop_tr_wise))
+    fast = fast.attach(TN.NTRSSortRawDatatoArrayFast(scan_start_stop_tr_wise=scan_start_stop_tr_wise,
+                                                     bunch_start_stop_tr_wise=bunch_start_stop_tr_wise))
     # fast = fast.attach(TN.NProcessQtGuiEvents())
     fast = fast.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
     # fast = fast.attach(SN.NPrint())

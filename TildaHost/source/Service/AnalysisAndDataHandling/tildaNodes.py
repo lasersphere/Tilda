@@ -70,6 +70,7 @@ class NSendNextStepRequestViaQtSignal(Node):
         if req_list.size:
             # shouldn't be more than one step request but if it is, the user should know
             if req_list.size > 1:
+                # This can/will happen when you reconstruct raw data...
                 logging.warning('More than one step request was received in data. Number received: {}'
                                 .format(req_list.size))
             # next step has been requested from fpga. Send signal to pipe if configured.
@@ -1957,7 +1958,7 @@ class NCS2SpecData(Node):
 
 
 class NTRSSortRawDatatoArrayFast(Node):
-    def __init__(self, bunch_start_stop_tr_wise=None):
+    def __init__(self, scan_start_stop_tr_wise=None, bunch_start_stop_tr_wise=None):
         """
         Node for sorting the raw data to the corresponding scaler, step and timestamp.
         No Value will be emitted twice.
@@ -1973,8 +1974,11 @@ class NTRSSortRawDatatoArrayFast(Node):
         self.total_num_of_started_scans = None
         self.completed_steps_this_track = None
         self.bunch_start_stop_tr_wise = bunch_start_stop_tr_wise  # list of of tuples of (start, stop) indices
+        self.scan_start_stop_tr_wise = scan_start_stop_tr_wise  # list of of tuples of (start, stop) indices
         #  which bunches should be used for each track
         self.bunch_start_stop_cur_tr = (0, -1)
+        #  which scans should be used for each track
+        self.scan_start_stop_cur_tr = (0, -1)
 
         # could be shrinked to active pmts only to speed things up
 
@@ -1990,6 +1994,8 @@ class NTRSSortRawDatatoArrayFast(Node):
             'nOfCompletedSteps'] = self.completed_steps_this_track  # make sure this exists
         if self.bunch_start_stop_tr_wise is not None:
             self.bunch_start_stop_cur_tr = self.bunch_start_stop_tr_wise[track_ind]
+        if self.scan_start_stop_tr_wise is not None:
+            self.scan_start_stop_cur_tr = self.scan_start_stop_tr_wise[track_ind]
 
     def processData(self, data, pipeData):
         self.stored_data = np.append(self.stored_data, data)
@@ -1999,7 +2005,7 @@ class NTRSSortRawDatatoArrayFast(Node):
         new_bunch = Form.add_header_to23_bit(3, 4, 0, 1)  # binary for new bunch
         dac_int_key = 2 ** 29 + 2 ** 28 + 2 ** 23  # binary key for an dac element
         header_index = 2 ** 23  # binary for the headerelement
-        step_complete_ind_list = np.where(self.stored_data == step_complete)[0]
+        step_complete_ind_list = np.where(self.stored_data == step_complete)[0]  # indices of step complete data items
         if step_complete_ind_list.size:  # only work with complete steps.
             start_sort = datetime.now()
             # print(unique_arr)
@@ -2013,7 +2019,7 @@ class NTRSSortRawDatatoArrayFast(Node):
             bunch_allowed_ind_flat = np.zeros(0, dtype=np.int32)
             if self.bunch_start_stop_tr_wise is not None:
                 # step is complete, so all bunches must be in.
-                num_of_bunches = np.where(new_bunch_ind_list < step_complete_ind_list[0])[0].size
+                num_of_bunches = np.where(new_bunch_ind_list < step_complete_ind_list[0])[0].size # num bunches / step
                 # allowed bunch indices in self.stored data
                 # stopp_ind_... is already not valid data anymore.
                 # [[start_ind_step0, stopp_ind_step0], [start_ind_step1, stopp_ind_step1], ....]
@@ -2041,8 +2047,43 @@ class NTRSSortRawDatatoArrayFast(Node):
                     # this can than be compared with the indices of the pmt see some lines down.
                     bunch_allowed_ind_flat = np.append(bunch_allowed_ind_flat,
                                                        np.arange(start_ind, stopp_ind, dtype=np.int32))
+
+            scan_allowed_ind_flat = np.zeros(0, dtype=np.int32)
+            # Is there any scan condition limiting the number of scans to include?
+            if self.scan_start_stop_tr_wise is not None:
+                start_s = self.scan_start_stop_cur_tr[0]
+                if self.scan_start_stop_cur_tr[1] == -1:
+                    stop_s = np.inf  # -1 means until last scan!
+                else:
+                    stop_s = self.scan_start_stop_cur_tr[1] + 1  # because the following will be exclusive for this bunch
+                # user wants scans until scan 8 (start counting from 0) so scan9 is the first to exclude.
+                scans_before_this = self.total_num_of_started_scans  # scans that have already been started before
+                # pick the scans that are allowed:
+
+                if scans_before_this:
+                    this_data_scan_nums = np.arange(scans_before_this - 1,
+                                                    scans_before_this + scan_started_ind_list.size)
+                    # if 3 scans (0,1,2) were started before this data chunk and this contains 3 more then they are (3,4,5)
+                    scan_in_this_ind_list = np.append(0, scan_started_ind_list)
+                else:
+                    # only for the first scan
+                    this_data_scan_nums = np.arange(0, scan_started_ind_list.size)
+                    scan_in_this_ind_list = scan_started_ind_list
+
+                # which indices are this?
+                allowed_indices = scan_in_this_ind_list[np.where((start_s <= this_data_scan_nums)
+                                                                 & (this_data_scan_nums <= stop_s))[0]]
+
+                if not allowed_indices.size:
+                    scan_allowed_ind_flat = np.arange(step_complete_ind_list[-1], step_complete_ind_list[-1]+1)  # allow none
+                elif allowed_indices.size == this_data_scan_nums.size:
+                    scan_allowed_ind_flat = np.arange(0, step_complete_ind_list[-1])  # allow all
+                else:
+                    scan_allowed_ind_flat = np.arange(allowed_indices[0], allowed_indices[-1]+1)
+
             # account only started scans until the last step complete element was registered
             if scan_started_ind_list.size:
+                # Check whether any scan was started before the first step_complete item
                 scan_start_before_step_comp = scan_started_ind_list[0] < step_complete_ind_list[0]
                 if scan_start_before_step_comp:
                     # if the first scan_started_index is smaller than the first step_complete_ind_list
@@ -2050,6 +2091,7 @@ class NTRSSortRawDatatoArrayFast(Node):
                     self.total_num_of_started_scans += 1
                     # logging.debug('a scan was started before a step was completed, number of started scans is: %s'
                     #               % self.total_num_of_started_scans)
+
             x_one_scan = np.arange(0, pipeData[track_name]['nOfSteps'])
             # "x-axis" for one scan in terms of x-step-indices
             # make it also for two scans and invert on second rep if needed.
@@ -2083,6 +2125,9 @@ class NTRSSortRawDatatoArrayFast(Node):
             if pmt_events_ind.size:
                 # cut pmt events which are not still in a completed step:
                 pmt_events_ind = pmt_events_ind[pmt_events_ind < pmt_steps.size]
+                if scan_allowed_ind_flat.size:
+                    # if only certain scans are allowed, use only the allowed indices.
+                    pmt_events_ind = np.intersect1d(pmt_events_ind, scan_allowed_ind_flat)
                 if bunch_allowed_ind_flat.size:
                     # if only certain bunches are allowed, use only the allowed indices.
                     pmt_events_ind = np.intersect1d(pmt_events_ind, bunch_allowed_ind_flat)
