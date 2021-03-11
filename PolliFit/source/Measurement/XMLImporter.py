@@ -244,14 +244,19 @@ class XMLImporter(SpecData):
                                 # software gates from file will not be overwritten
                                 scandict[tr_name]['softwGates'] = new_gates
                         else:
-                            if isinstance(softw_gates[tr_ind][0], list):
-                                # software gates are defined for each track individually
-                                scandict[tr_name]['softwGates'] = softw_gates[tr_ind]
-                            else:
-                                # software gates are only defined for one track
-                                # -> one dimension less than for all tracks.
-                                # -> need to be copied for the others
+                            try:  # for more than three tracks, list index can go out off range
+                                if isinstance(softw_gates[tr_ind][0], list):
+                                    # software gates are defined for each track individually
+                                    scandict[tr_name]['softwGates'] = softw_gates[tr_ind]
+                                else:
+                                    # software gates are only defined for one track
+                                    # -> one dimension less than for all tracks.
+                                    # -> need to be copied for the others
+                                    scandict[tr_name]['softwGates'] = softw_gates
+                            except IndexError:
+                                # index error means its not per track!
                                 scandict[tr_name]['softwGates'] = softw_gates
+
                     v_proj, t_proj = TildaTools.gate_one_track(
                         tr_ind, nOfactTrack, scandict, self.time_res, self.t, self.x, [])[0]
                 self.cts.append(v_proj)

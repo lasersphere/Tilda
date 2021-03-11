@@ -19,11 +19,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mpdate
 
-from mpl_toolkits.mplot3d.axes3d import get_test_data
-# This import registers the 3D projection, but is otherwise unused.
+# This import registers the 3D projection, but is otherwise unused. Don't remove it!
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 
 from scipy.optimize import curve_fit
+from scipy import special
 
 import BatchFit
 import Physics
@@ -32,7 +32,6 @@ import TildaTools as TiTs
 from lxml import etree as ET
 from XmlOperations import xmlWriteDict
 from Measurement.XMLImporter import XMLImporter
-from KingFitter import KingFitter
 from Analysis.Nickel_BECOLA.FileConversion import DictToXML
 
 class NiAnalysis_softwGates():
@@ -47,7 +46,7 @@ class NiAnalysis_softwGates():
         user_home_folder = os.path.expanduser("~")
         # self.workdir = 'C:\\DEVEL\\Analysis\\Ni_Analysis\\XML_Data' # old working directory
         ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\XML_Data'  # online 2018 data
-        # ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel_offline_Becola20\\XML_Data'  # offline 2020
+        ownCould_path = 'C:\\Users\\somme\\ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\tof_analysis'  # offline 2020
         # ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel54_online_Becola20\\Analysis\\XML_Data'  # online 2020
         # ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel54_postbeamtime_Becola20\\Analysis\\bunched'  # post beamtime 2020
         self.workdir = os.path.join(user_home_folder, ownCould_path)
@@ -60,7 +59,7 @@ class NiAnalysis_softwGates():
         self.resultsdir = os.path.join(self.workdir, results_path_ext)
         os.mkdir(self.resultsdir)
         ''' database '''
-        self.db = os.path.join(self.workdir, 'Ni_Becola.sqlite')
+        self.db = os.path.join(self.workdir, 'Ni_Becola_tof.sqlite')
         Tools.add_missing_columns(self.db)
         logging.info('\n'
                      '########## BECOLA Nickel Analysis Started! ####################################################\n'
@@ -72,14 +71,20 @@ class NiAnalysis_softwGates():
         ############################Analysis Parameters!##########################################################
         Specify how you want to run this Analysis!
         """
+        # Isotopes
+        self.isotopes_stable = ['58Ni', '60Ni', '61Ni', '62Ni', '64Ni']
+
         # Select runs; Format: ['run58', 'run60', 'run56']
         # to use a different lineshape you must create a new run under runs and a new linevar under lines and link the two.
         self.run = 'AsymmetricVoigt'
         self.tof_mid = {'54Ni': 5.19, '55Ni': 5.23, '56Ni': 5.28, '58Ni': 5.36, '60Ni': 5.47, '62Ni': 5.59, '64Ni': 5.68}  # mid-tof for each isotope (from fitting) 38, 47
+        self.tof_mid = {'54Ni': 5.21, '55Ni': 5.23, '56Ni': 5.28, '58Ni': 5.36, '60Ni': 5.47, '62Ni': 5.57, '64Ni': 5.66}  # mid-tof for each isotope (from fitting) 38, 47
         self.tof_delay = {'54Ni': [0, 0.184, 0.254], '55Ni': [0, 0.186, 0.257], '56Ni': [0, 0.189, 0.260], '58Ni': [0, 0.194, 0.267],
                           '60Ni': [0, 0.199, 0.273], '62Ni': [0, 0.204, 0.279], '64Ni': [0, 0.209, 0.285]}
         self.tof_sigma = {'54Ni': 0.037, '55Ni': 0.04, '56Ni': 0.10, '58Ni': 0.089, '60Ni': 0.064, '62Ni': 0.053, '64Ni': 0.049}  # 1 sigma of the tof-peaks from fitting, avg over all scalers 56,58,60 Ni
-        self.tof_width_sigma = 1.63  # how many sigma to use around tof? (1: 68.3% of data, 2: 95.4%, 3: 99.7%)
+        self.tof_sigma = {'54Ni': 0.034, '55Ni': 0.04, '56Ni': 0.10, '58Ni': 0.076, '60Ni': 0.074, '62Ni': 0.076,
+                          '64Ni': 0.064}  # Analysis values
+        self.tof_width_sigma = 3  # how many sigma to use around tof? (1: 68.3% of data, 2: 95.4%, 3: 99.7%)
 
         self.timebin_size = 4.8  # length of timegate in 10ns (4.8 = 48ns)
 
@@ -275,32 +280,12 @@ class NiAnalysis_softwGates():
 
     def init_stuff(self):
         """
-                Initialization stuff
-                """
-        # # extract line to use and insert restframe transition frequency
-        # con = sqlite3.connect(self.db)
-        # cur = con.cursor()
-        # cur.execute(
-        #     '''SELECT lineVar FROM Runs WHERE run = ? ''', (self.run,))
-        # lineVar = cur.fetchall()
-        # self.line = lineVar[0][0]
-        # cur.execute('''SELECT * FROM Lines WHERE lineVar = ? ''', (self.line,))  # get original line to copy from
-        # copy_line = cur.fetchall()
-        # copy_line_list = list(copy_line[0])
-        # copy_line_list[3] = self.restframe_trans_freq
-        # line_new = tuple(copy_line_list)
-        # cur.execute('''INSERT OR REPLACE INTO Lines VALUES (?,?,?,?,?,?,?,?,?)''', line_new)
-        # con.commit()
-        # con.close()
-        # # TODO: include uncertainty; write to Lines db
-
+        Initialization stuff
+        """
         # calculate differential doppler shifts
         # TODO: Why calculate here with volt+600??
         self.diff_dopplers = {
-        key: Physics.diffDoppler(self.restframe_trans_freq, self.accVolt_set, self.masses[key][0] / 1e6)
-        for key in self.masses.keys()}
-        self.diff_dopplers2 = {
-            key: Physics.diffDoppler(self.restframe_trans_freq, self.accVolt_set + 1660, self.masses[key][0] / 1e6)
+            key: Physics.diffDoppler(self.restframe_trans_freq, self.accVolt_set, self.masses[key][0] / 1e6)
             for key in self.masses.keys()}
         # adjust center fit estimations to accVoltage
         # self.adjust_center_ests_db()
@@ -375,308 +360,497 @@ class NiAnalysis_softwGates():
                                IntAsym=self.initial_par_guess['IntAsym'],
                                nPeaksAsym=self.initial_par_guess['nPeaksAsym'])
         # reset isotope type and acc voltage in db
-        iso_list = ['56Ni', '58Ni', '60Ni']  # ['55Ni_sum_cal', '56Ni', '58Ni', '60Ni']
+        iso_list = ['64Ni', '62Ni', '54Ni', '58Ni', '60Ni', '55Ni', '56Ni']  # ['55Ni_sum_cal', '56Ni', '58Ni', '60Ni']
 
-        # use scaler 1 for now. Probably doesn't make a difference
-        scaler = 'scaler_012'
-        sc_name = self.update_scalers_in_db(scaler)
+        # use scaler 0 for now. Probably doesn't make a difference
+        scaler_list = ['scaler_012'] #['scaler_0', 'scaler_1', 'scaler_2', 'scaler_012']  # try to put combined scalers last!
 
-
-        for pickiso in iso_list:
-            # self.reset(pickiso+'%', [self.accVolt_set, pickiso])
-
-            # filenums = [6251, 6501, 6502]
+        for iso in iso_list:
+            pickiso = iso+'%'
+            ''' define manual file selection '''
+            # self.reset(pickiso+'%', [self.accVolt_set, pickiso])  # This resets the isotope and accVolt in db!
             # filenums = [9313]  #[9295, 9299, 9303, 9305, 9310]  #[9275, 9281, 9283, 9285]
             # filelist = ['BECOLA_{}.xml'.format(num) for num in filenums]
-            select = None
+            # filedates = []
+
+            ''' define automatic file selection '''
+            select = (9999, 9999)
             if '55' in pickiso:
                 select = (9999, 9999)  # only sumfile
             filelist, filenums, filedates = self.pick_files_from_db_by_type_and_num(pickiso, selecttuple=select)
-            # filelist = ['Sum{}c_9999.xml'.format(pickiso)]
-            # filenums = [9999]
-            # filedates = [datetime.strptime('2020-07-20 12:24:31', '%Y-%m-%d %H:%M:%S')]
-            self.results[pickiso] = {'file_numbers': filenums,
-                                     'file_names': filelist,
-                                     'file_times': filedates,
-                                     'color': self.isotope_colors[int(pickiso[:2])],
-                                     sc_name: {}}
-            # set variation parameters
-            delaylist = self.tof_delay[pickiso[:4]]
-            midtof_variation = (-3, +3, 9)  # (relative midtof variation in µs, number of variations inside width)
+
+            self.results[iso] = {'file_numbers': filenums,
+                                 'file_names': filelist,
+                                 'file_times': filedates,
+                                 'color': self.isotope_colors[int(iso[:2])]
+                                 }
+
+            ''' define variation parameters '''
+            midtof_variation = (-5, +5, 11)  # (relative midtof variation in bins, number of variations inside width) (-5, +5, 11)
             midtof_variation_arr = np.linspace(*midtof_variation)
-            # midtof_variation_arr = np.append(-np.logspace(1, 0, 7, base=2), np.append([0], np.logspace(0, 1, 7, base=2)))  # in time bins
-            # gatewidth_variation = (5, 1, 11)
-            # gatewidth_variation_arr = np.linspace(*gatewidth_variation)
-            gatewidth_variation_arr = np.logspace(3, 6, 31, base=2)  # 3, 6, 31 || 3, 10, 8 for 8-1024 bins # 5, 5.9, 7 for 33-59 / 90-100%
-            close_indx = (np.abs(gatewidth_variation_arr - 200*self.tof_width_sigma*self.tof_sigma[pickiso[:4]])).argmin()  # index that is closest to analysis gatewidth
+
+            gatewidth_variation_arr = np.logspace(2, 6, 41, base=2)  # 3, 6, 31 || 3, 10, 8 for 8-1024 bins # 5, 5.9, 7 for 33-59 / 90-100%
+            scale = 40/(6-2)
+
+            close_indx = (np.abs(gatewidth_variation_arr - 200*self.tof_width_sigma*self.tof_sigma[iso])).argmin()  # index that is closest to analysis gatewidth
             # possibly reduce fitting width by adding [x:] to gatewidth, midtof and midtof_err
             fit_start = 0
 
-            popt_res = []  # popt results per file
-            perr_res = []  # popt results per file
-            toflst_fit_res = []  # midtof results per file
-            toflst_err_res = []  # midtof results per file
-            tofsigma_fit_res = []  # tof sigma results per file
-            tofsigma_err_res = []  # tof sigma uncertainty per file
-            center_fit_res = []  # center fit results per file for midTof=0, width=45bin
-            center_err_res = []  # center fit results per file
-            midtofzero_std = []  # standard deviations for midtof=0 values over gatewidth variation
-            midtofall_std = []  # standard deviations over all midtof and gatewidth variations
-            delay_sc_1 = []
-            delay_sc_1_d = []
-            delay_sc_2 = []
-            delay_sc_2_d = []
-            SNR_max_perFile = []  # maximum SNR over all mid/width variations
-            mid_tof_SNR_perFile = []  # ideal mid-tof per file according to SNR analysis
-            gatewidth_SNR_perFile = []  # ideal gatewidth per file according to SNR analysis
+            for scaler in scaler_list:
+                sc_name = self.update_scalers_in_db(scaler)
+                try:
+                    sc_num = ast.literal_eval(sc_name.split('_')[-1])
+                    single_sc = True
+                except:
+                    single_sc = False
+                    sc_num = sc_name.split('_')[-1]
+                    if sc_num == '012':
+                        try:
+                            # try to get the new recommended scaler delays from the previous analysis
+                            sc0_mid = self.results[iso]['scaler_0']['recommended_mid_SNR']['vals'][0]
+                            sc1_mid = self.results[iso]['scaler_1']['recommended_mid_SNR']['vals'][0]
+                            sc2_mid = self.results[iso]['scaler_2']['recommended_mid_SNR']['vals'][0]
+                            new_delaylist = [0, (sc1_mid-sc0_mid)/100, (sc2_mid-sc0_mid)/100]
+                            self.tof_delay[iso] = new_delaylist
+                            self.results[iso]['recommended_delay_SNR'] = new_delaylist
+                        except:
+                            # probably no full analysis done before.
+                            print('ATTENTION: Could not adapt delay list to new values!')
+                self.results[iso][sc_name] = {'full_data': {'xax': np.log(gatewidth_variation_arr) / np.log(2)}}
 
-            if self.do_the_fitting:
-                for indx, file in enumerate(filelist):
-                    res_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
-                    res_d_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
-                    SNR_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
-                    SNR_d_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
+                # delaylist = self.tof_delay[iso[:4]]  # get delay per scaler from init
 
-                    iso = self.get_iso_for_file(file)[:4]
+                popt_res = []  # popt results per file
+                perr_res = []  # popt results per file
+                mid_TOF_perFile = []  # midtof results per file
+                mid_d_TOF_perFile = []  # midtof results per file
+                sigma_TOF_perFile = []  # tof sigma results per file
+                sigma_d_TOF_perFile = []  # tof sigma uncertainty per file
+                center_fit_res = []  # center fit results per file for midTof=0, width=45bin
+                center_err_res = []  # center fit results per file
+                midtofzero_std = []  # standard deviations for midtof=0 values over gatewidth variation
+                midtofall_std = []  # standard deviations over all midtof and gatewidth variations
 
-                    # if 'Sum' in file:
-                    #     stand_ests = {'55Ni': -1500, '56Ni': -1000, '58Ni': -500, '60Ni': 0, '62Ni': 450, '64Ni': 1000}  # values that worked fine for 29850V
-                    # else:
-                    #     stand_ests = {'55Ni': -1600, '56Ni': -1100, '58Ni': -600, '60Ni': 0, '62Ni': 470, '64Ni': 1000}
-                    # con = sqlite3.connect(self.db)
-                    # cur = con.cursor()
-                    # cur.execute('''UPDATE Isotopes SET center = ? WHERE iso = ? ''', (stand_ests[iso], iso))
-                    # con.commit()
-                    # con.close()
+                SNR_max_perFile = []  # maximum SNR over all mid/width variations
+                SNR_fitPars_perFile = []  # full fit results
+                SNR_fitErrs_perFile = []
+                mid_SNR_perFile = []  # ideal mid-tof per file according to SNR analysis
+                mid_d_SNR_perFile = []
+                sigma_SNR_perFile = []  # ideal gatewidth per file according to SNR analysis
+                sigma_d_SNR_perFile = []
 
-                    # do tof fitting to find mid-tof for this file. Must be done for scaler 0!!
-                    midtof_fit, midtof_err, sigma, sigma_err = self.find_midtof_for_file(file, scaler=0)
-                    midtof1_fit, midtof1_err, sigma1, sigma1_err = self.find_midtof_for_file(file, scaler=1)
-                    midtof2_fit, midtof2_err, sigma2, sigma2_err = self.find_midtof_for_file(file, scaler=2)
+                if self.do_the_fitting:
 
-                    toflst_fit_res.append(midtof_fit)
-                    toflst_err_res.append(midtof_err)
-                    tofsigma_fit_res.append(sigma/100)
-                    tofsigma_err_res.append(sigma_err/100)
-                    # delay_sc_1.append(midtof1_fit-midtof_fit)
-                    # delay_sc_1_d.append(np.sqrt(midtof1_err**2+midtof_err**2))
-                    # delay_sc_2.append(midtof2_fit-midtof_fit)
-                    # delay_sc_2_d.append(np.sqrt(midtof2_err**2+midtof_err**2))
+                    for indx, file in enumerate(filelist):
+                        res_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
+                        res_d_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
+                        SNR_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
+                        SNR_d_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
 
-                    # self.midtof_orig[iso] = round(midtof_fit, 2) # These are not very good estimates!
-                    # go back to original scaler
-                    sc_name = self.update_scalers_in_db(sc_name)
+                        # f_iso = self.get_iso_for_file(file)[:4]  # TODO: This seems to be right even though I thought it should be the real file iso...
 
-                    for i, midtof in enumerate(midtof_variation_arr):
-                        for j, gatewidth in enumerate(gatewidth_variation_arr):
-                            self.update_gates_in_db(iso, midtof/100, gatewidth/100, delaylist)
-                            all_center_MHz, all_center_MHz_fiterrs, all_fitpars = self.fit_files([file])
-                            if all_center_MHz_fiterrs[0] > 5:
-                                print('ERROR: width: ' + str(gatewidth) + ', mid: ' + str(midtof))
-                            res_array[i, j] = all_center_MHz[0]
-                            res_d_array[i, j] = all_center_MHz_fiterrs[0]
-                            Int0 = all_fitpars[0]['Int0'][0]
-                            Int0_d = all_fitpars[0]['Int0'][1]
-                            bg = all_fitpars[0]['offset'][0]
-                            bg_d = all_fitpars[0]['offset'][1]
-                            SNR_array[i, j] = Int0 / np.sqrt(bg)
-                            SNR_d_array[i, j] = np.sqrt(np.square(Int0_d / bg) + np.square(Int0 / bg ** 2 * bg_d))
-                            if midtof == 0:
-                                if j == close_indx:  # value most likely used in analysis
-                                    # This is the set value. Note it down.
-                                    center_fit_res.append(all_center_MHz[0])  # center fit results per file for midTof=0, width=45bin
-                                    center_err_res.append(all_center_MHz_fiterrs[0])
+                        # Do tof fitting to find mid-tof for this file. Doesn't shift scalers when multiple are used!
+                        midtof_fit, midtof_err, sigma, sigma_err = self.find_midtof_for_file(file, scaler=sc_name)
 
-                    # weighted average over all midtof variations:
-                    for indx, d in np.ndenumerate(res_d_array):
-                        if d == 0:
-                            # something went wrong inm the fit. 0 can not be true.
-                            res_d_array[indx] = 100
-                    midTof_wavg = np.average(res_array, axis=0, weights=1/np.square(res_d_array))
-                    midTof_wavg_err = np.sqrt(1/np.sum(1/np.square(res_d_array), axis=0))
-                    # fit a line to this w_avg data
-                    def _line(x, m, b):
-                        return m*x+b
-                    p0 = [0, midTof_wavg[0]]
+                        mid_TOF_perFile.append(midtof_fit)
+                        mid_d_TOF_perFile.append(midtof_err)
+                        sigma_TOF_perFile.append(sigma)
+                        sigma_d_TOF_perFile.append(sigma_err)
 
-                    popt, pcov = curve_fit(_line, gatewidth_variation_arr[fit_start:], midTof_wavg[fit_start:],
-                                           p0, sigma=midTof_wavg_err[fit_start:], absolute_sigma=True)
-                    perr = np.sqrt(np.diag(pcov))
-                    popt_res.append(popt)
-                    perr_res.append(perr)
+                        # go back to original scaler
+                        sc_name = self.update_scalers_in_db(sc_name)
 
-                    # calculate standard deviation for mid_tof=0 values along the gatewidth variation range
-                    midtof_zero_indx = np.argwhere(midtof_variation_arr == 0)[0, 0]
-                    st_dev_0 = res_array[midtof_zero_indx, :].std()
-                    midtofzero_std.append(st_dev_0)
-                    # calculate standard deviation over full variation range
-                    st_dev_all = res_array.std()
-                    midtofall_std.append(st_dev_all)
+                        for i, midtof in enumerate(midtof_variation_arr):
+                            for j, gatewidth in enumerate(gatewidth_variation_arr):
+                                # set new gate parameters
+                                self.update_gates_in_db(iso, midtof/100, gatewidth/100, self.tof_delay[iso[:4]])
+                                # do the fitting
+                                all_center_MHz, all_center_MHz_fiterrs, all_fitpars = self.fit_files([file])
+                                if all_center_MHz_fiterrs[0] > 5:  # fit error unexpectedly large
+                                    print('ERROR: width: ' + str(gatewidth) + ', mid: ' + str(midtof))
+                                # store fit results
+                                res_array[i, j] = all_center_MHz[0]
+                                res_d_array[i, j] = all_center_MHz_fiterrs[0]
+                                Int0 = all_fitpars[0]['Int0'][0]
+                                Int0_d = all_fitpars[0]['Int0'][1]
+                                bg = all_fitpars[0]['offset'][0]
+                                bg_d = all_fitpars[0]['offset'][1]
+                                # calculate and store SNR and its uncertainty
+                                SNR_array[i, j] = Int0 / np.sqrt(bg)
+                                SNR_d_array[i, j] = np.sqrt(np.square(Int0_d / bg) + np.square(Int0 / bg ** 2 * bg_d))
+                                if midtof == 0:
+                                    if j == close_indx:  # value most likely used in analysis
+                                        # This is the set value. Note it down.
+                                        center_fit_res.append(all_center_MHz[0])  # center fit results per file for midTof=0, width=45bin
+                                        center_err_res.append(all_center_MHz_fiterrs[0])
 
-                    if plot:
-                        # give results in time bins since BECOLA doesn't necessarily use 10ns bins
-                        midtof = midtof_variation_arr
-                        gatew = gatewidth_variation_arr
-                        # plot tof variation (not very readable. gatewidth variation is much better!!)
-                        # for j, gatewidth in enumerate(gatew):
-                        #     plt.errorbar(midtof, res_array[:, j], yerr=res_d_array[:, j], label='{:.0f}bins'.format(gatewidth))
-                        # plt.title('Variation of mid-tof parameter for {} file {}\n'
-                        #           'around midTof=bin{:.0f}'.format(iso, file, 100*self.tof_mid[iso]))
-                        # plt.xlabel('mid tof [bin]')
-                        # plt.ylabel('fit center [MHz]')
-                        # plt.margins(0.05)
-                        # plt.legend(title='gatewidth', bbox_to_anchor=(1.04, 0.5), loc="center left")
-                        # if self.save_plots_to_file:
-                        #     filename = 'midtof_var_{}_{}'.format(iso, file)
-                        #     plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
-                        # else:
-                        #     plt.show()
-                        # plt.close()
-                        # plt.clf()
+                        ''' store full data for midtof and SNR'''
+                        self.results[iso][sc_name]['full_data'][file] = {'centroid': {},
+                                                                         'SNR': {}}
+                        for i, tof in enumerate(midtof_variation_arr):
+                            # store center fit results in dependence of tof and gate (relative to probable analysis value)
+                            self.results[iso][sc_name]['full_data'][file]['centroid']['tof_{}'.format(tof)] = {
+                                'vals': (res_array[i, :] - center_fit_res[-1]).tolist(),
+                                'd_stat': (res_d_array[i, :]).tolist()}
+                            # store SNR in dependence of tof and gate
+                            self.results[iso][sc_name]['full_data'][file]['SNR']['tof_{}'.format(tof)] = {
+                                'vals': (SNR_array[i, :]).tolist(),
+                                'd_stat': (SNR_d_array[i, :]).tolist()}
 
-                        # plot gatewidth variation
-                        fig, ax = plt.subplots()
-                        for i, tof in enumerate(midtof):
-                            if tof == 0:
-                                ax.errorbar(np.log(gatew)/np.log(2), res_array[i, :]-center_fit_res[-1], yerr=res_d_array[i, :], c='k', linewidth=2.0, label='{:.0f}bins'.format(tof))
+                        ''' Fit a line to the mid-tof=0 centroids '''
+                        # weighted average over all midtof variations:
+                        for indx, d in np.ndenumerate(res_d_array):
+                            if d == 0:
+                                # something went wrong inm the fit. 0 can not be true.
+                                res_d_array[indx] = 100
+                        midTof_wavg = np.average(res_array, axis=0, weights=1/np.square(res_d_array))
+                        midTof_wavg_err = np.sqrt(1/np.sum(1/np.square(res_d_array), axis=0))
+                        # fit a line to this w_avg data
+                        def _line(x, m, b):
+                            return m*x+b
+                        p0 = [0, midTof_wavg[0]]  # initial guess
+                        popt, pcov = curve_fit(_line, gatewidth_variation_arr[fit_start:], midTof_wavg[fit_start:],
+                                               p0, sigma=midTof_wavg_err[fit_start:], absolute_sigma=True)
+                        perr = np.sqrt(np.diag(pcov))
+                        popt_res.append(popt)
+                        perr_res.append(perr)
+
+                        # calculate standard deviation for mid_tof=0 values along the gatewidth variation range
+                        midtof_zero_indx = np.argwhere(midtof_variation_arr == 0)[0, 0]
+                        st_dev_0 = res_array[midtof_zero_indx, :].std()
+                        midtofzero_std.append(st_dev_0)
+                        # calculate standard deviation over full variation range
+                        st_dev_all = res_array.std()
+                        midtofall_std.append(st_dev_all)
+
+                        ''' Find best mid-tof and gatewidth from SNR '''
+                        """
+                        From the following model it can actually be derived, that the best gatewidth is always
+                        optimal_w ~= 2.8*sigma
+                        The gatewidth is no parameter in the analysis, just the sigma. 
+                        If we have the correct mid-tof (x0=0) and the time-gate is symmetric around this, then the gaussian
+                        reduces to: A*e^(-0.5(x/sigma)^2) 
+                        and the integral of that from -w/2 to w/2 is (see WolframAlpha):
+                        I = A*sigma*sqrt(2pi) * erf(w/(2sqrt(2)*sigma))
+                        For the SNR we divide that by the background that also scales with the gate width w:
+                        bg = w*B
+                        Remember the SNR = I/sqrt(bg) and lets set B=1 and then we can write:
+                        SNR = A*sigma*sqrt(2pi) * erf(w/(2*sqrt(2)*s))/sqrt(w)) 
+                        and we can see that that function has a maximum in w around 2.8 sigma independent of A
+                        """
+                        # get the maximum SNR
+                        SNR_max = np.amax(SNR_array)
+
+                        def SNR_model(x, y, SNRmax, mid, tof_sigma, beamb):
+                            """
+                            Assuming the ion bunch is gauss-shaped in the time domain, the signal-to-noise ratio should
+                            be defined through the integral over the gaussian and the (constant) background
+                            :param x: the x-position on the plotwindow/meshgrid
+                            :param y: the y-position on the plotwindow/meshgrid
+                            :param SNRmax: The maximum SNR. Scales the height but doesn't influence the positon
+                            :param mid: the real mid-tof correction to the assumed value
+                            :param tof_sigma: the real tof-sigma. This determines most of the SNR analysis
+                            :return: SNR, depending on gate choice
+                            """
+                            # beamb = 10
+                            # give x and y a real meaning:
+                            width = gatewidth_variation_arr[x]  # the x-parameter is the gatewidth defined by log array
+                            tof_off = midtof_variation_arr[y]  # the y parameter is the tof-variation. We assume midtof=0
+                            # Integrate the gaussian from midtof+y-x/2 to midtof+y+x/2
+                            # The integral is defined through imaginary errorfunction erf
+                            intensity = np.sqrt(np.pi/2)*tof_sigma * (
+                                    special.erf((tof_off - mid + width / 2) / (np.sqrt(2) * tof_sigma))
+                                    - special.erf((tof_off - mid - width / 2) / (np.sqrt(2) * tof_sigma)))
+                            intensity = intensity / (2.10177*tof_sigma)  # scaling for int=1 at 2.8 sigma
+                            background = width / (2.8*tof_sigma)  # scales linear by width. scaling for bg=1 at 2.8 sigma
+                            # In reality, the background will not be linear but have a beam induced straylight component
+                            if iso in self.isotopes_stable:
+                                # beam bg of stable isotopes will be dominated by 58Ni
+                                mid_58 = 100*self.tof_mid['58Ni'] - (100*self.tof_mid[iso] + mid)
+                                sigma_58 = 100*self.tof_sigma['58Ni']
+                                bg_stray = beamb * np.sqrt(np.pi / 2) * sigma_58 * (
+                                        special.erf((tof_off - mid_58 + width / 2) / (np.sqrt(2) * sigma_58))
+                                        - special.erf((tof_off - mid_58 - width / 2) / (np.sqrt(2) * sigma_58)))\
+                                           /(2.10177*sigma_58)
+                                # 60Ni contribution is next. Scaled by natural abundance ratio
+                                mid_60 = 100 * self.tof_mid['60Ni'] - (100 * self.tof_mid[iso] + mid)
+                                sigma_60 = 100 * self.tof_sigma['60Ni']
+                                bg_stray += 26/68 * beamb * np.sqrt(np.pi / 2) * sigma_60 * (
+                                        special.erf((tof_off - mid_60 + width / 2) / (np.sqrt(2) * sigma_60))
+                                        - special.erf((tof_off - mid_60 - width / 2) / (np.sqrt(2) * sigma_60))) \
+                                           / (2.10177 * sigma_60)
                             else:
-                                ax.plot(np.log(gatew)/np.log(2), res_array[i, :]-center_fit_res[-1], label='{:.0f}bins'.format(tof))
-                        # plot weightedavg over midtofs
-                        # ax.errorbar(np.log(gatew) / np.log(2), midTof_wavg-center_fit_res[-1], yerr=midTof_wavg_err, label='w_avg',
-                        #             c='k', linestyle='--', linewidth=2.0)
-                        # plot fit of weightedavg over tofs. Possibly reduce plotting range
-                        ax.plot(np.log(gatew[fit_start:]) / np.log(2), _line(gatew[fit_start:], *popt)-center_fit_res[-1], label='w_avg_fit',
-                                c='k', linestyle='--', linewidth=3.0)
-                        ax.axvline(x=np.log(200*self.tof_width_sigma*self.tof_sigma[iso])/np.log(2), color='red')
-                        ax.tick_params(axis='y', labelcolor='k')
-                        ax.set_ylabel('fit center [MHz] rel. to analysis value', color='k')
-                        ax.set_xlabel('gatewidth [bins]')
+                                # beam background for radioactive isotopes is small to negligible compared to laser bg
+                                bg_stray = 0
+                                beamb = 0
+                                # if we wanna try anyways then the beam bg is of course only the radioactive isotope
+                                # mid_bb = mid
+                                # sigma_bb = tof_sigma
+                                # bg_stray = beamb * np.sqrt(np.pi/2)*sigma_bb * (  # scaling of 2.7 has been extracted from time-res data
+                                #         special.erf((tof_off - mid_bb + width / 2) / (np.sqrt(2) * sigma_bb))
+                                #         - special.erf((tof_off - mid_bb - width / 2) / (np.sqrt(2) * sigma_bb)))
+                                # bg_stray = bg_stray / (2.10177*sigma_bb)  # scaling for bg_stray = beamb at 2.8 sigma
+                            background = (background + bg_stray)/(1+beamb)
 
-                        # plot SNR error band
-                        axSNR = ax.twinx()
-                        axSNR.set_ylabel('SNR', color='red')  # we already handled the x-label with ax1
-                        # axSNR.fill_between(np.log(gatew) / np.log(2),
-                        #                    SNR_array[1, :] - SNR_d_array[1, :],
-                        #                    SNR_array[1, :] + SNR_d_array[1, :],
-                        #                    alpha=0.5, edgecolor='red', facecolor='red')
-                        axSNR.plot(np.log(gatew) / np.log(2), SNR_array[round(len(midtof_variation_arr)/2), :], label='SNR', c='r', linestyle='-',
-                                   linewidth=3.0)
-                        axSNR.tick_params(axis='y', labelcolor='red')
+                            # norm = np.sqrt(2.8*tof_sigma)/(2.10177*tof_sigma)
+                            norm = 1
+                            # return the signal to noise calculated from this
+                            return SNRmax * norm * intensity / np.sqrt(background)
 
-                        plt.title('{}, file: {}\n'
-                                  'Variation of timegate parameters around midTof=bin{:.0f}.\n'
-                                  'Fitresult: center=({:.0f}({:.0f})kHz/bin)*gatewidth+({:.2f}({:.0f}))MHz'
-                                  .format(iso, file, 100*self.tof_mid[iso],
-                                          1000*popt[0], 1000*perr[0],
-                                          popt[1], 100*perr[1]))
-                        # plt.xscale('log', basex=1.2)
-                        # plt.xticks(np.log(np.logspace(0, 6, 7, base=2))/np.log(1.2))
-                        import matplotlib.ticker as ticker
-                        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:.0f}'.format(2**(y))))
-                        plt.margins(0.05)
-                        ax.legend(title='midTof', bbox_to_anchor=(1.1, 0.5), loc="center left")
-                        if self.save_plots_to_file:
-                            filename = 'gatewidth_var_{}_{}'.format(iso, file)
-                            plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
-                        else:
-                            plt.show()
-                        plt.close()
-                        plt.clf()
+                        def _SNR_model(M, *args):
+                            """
+                            2D function generating a 3D plane
+                            :param M: xdata parameter, 2-dimensional array of x and y values
+                            :param args: slope and offset passed to plane function
+                            :return: array of z-values
+                            """
+                            x, y = M  # x: gatewidth, y: midtof
+                            arr = np.zeros(x.shape)
+                            arr += SNR_model(x, y, *args)
+                            return arr
 
-                        x = np.arange(SNR_array.shape[1])  # midtof_variation_arr
-                        y = np.arange(SNR_array.shape[0])  # gatewidth_variation_arr
+                        x = np.arange(SNR_array.shape[1])  # gatewidth_variation_arr
+                        y = np.arange(SNR_array.shape[0])  # midtof_variation_arr
                         X, Y = np.meshgrid(x, y)
                         Z = SNR_array
 
-                        fig = plt.figure()
-                        ax = fig.add_subplot(111, projection='3d')
-                        surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap='hot')
-                        fig.colorbar(surf)
-                        plt.xlabel('mid-tof')
-                        plt.ylabel('gate width')
-                        if self.save_plots_to_file:
-                            filename = 'SNR-3D_{}_{}'.format(iso, file)
-                            plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
-                        else:
-                            plt.show()
-                        plt.close()
-                        plt.clf()
+                        # initial guess and bounds
+                        # make sure initial guess does not violate bounds
+                        initial_guess = [max(SNR_max, 0.001), 0, np.median(gatewidth_variation_arr) / 2.8, 1]
+                        # Let's assume the best SNR is inside the parameter space
+                        bounds = ([0.00001, 10 * midtof_variation_arr[0], gatewidth_variation_arr[0] / 2.8, 0],
+                                  [np.inf, 10 * midtof_variation_arr[-1], gatewidth_variation_arr[-1] / 2.8, np.inf])
+                        # make 1-D data (necessary to use curve_fit)
+                        xdata = np.vstack((X.ravel(), Y.ravel()))
+                        popt_SNR, pcov_SNR = curve_fit(_SNR_model, xdata, SNR_array.ravel(), p0=initial_guess,
+                                                       sigma=SNR_d_array.ravel(), absolute_sigma=True, bounds=bounds)  # TODO: absolute_sigma=True gives pretty big mid uncerty for 55Ni (5.8). Better with False?
+                        perr_SNR = np.sqrt(np.diag(pcov_SNR))
 
-                        fig, ax = plt.subplots()
-                        im = ax.imshow(SNR_array, cmap='hot', interpolation='nearest')
-                        SNR_max = np.amax(SNR_array)
+                        SNR_fitPars_perFile.append(popt_SNR.tolist())
+                        SNR_fitErrs_perFile.append(perr_SNR.tolist())
+
+                        mid_SNR_perFile.append(self.tof_mid[iso]*100+popt_SNR[1])
+                        mid_d_SNR_perFile.append(perr[1])
+                        sigma_SNR_perFile.append(popt_SNR[2])
+                        sigma_d_SNR_perFile.append(perr_SNR[2])
+                        print(popt_SNR)
+                        print(perr_SNR)
+
+                        # write some more stuff down
                         SNR_max_perFile.append((SNR_max))
                         SNR_max_indx = np.where(SNR_array == SNR_max)
                         mMax = midtof_variation_arr[SNR_max_indx[0][0]]
-                        mid_tof_SNR_perFile.append(100*self.tof_mid[iso]+mMax)
+                        # mid_SNR_perFile.append(100 * self.tof_mid[iso] + mMax)
                         gMax = gatewidth_variation_arr[SNR_max_indx[1][0]]
-                        gatewidth_SNR_perFile.append(gMax)
-                        plt.title('Signal-To-Noise Analysis for run{} [{}]\n'
-                                  'Maximum SNR is {:.2f} for midtof: {:.0f} and gatewidth: {:.1f}'
-                                  .format(file, iso, SNR_max, mMax, gMax))
-                        ax.set_xlabel('gate width')
-                        ax.set_ylabel('mid-tof')
-                        ax.set_xticks(np.arange(len(gatewidth_variation_arr)))
-                        ax.set_yticks(np.arange(len(midtof_variation_arr)))
-                        ax.set_xticklabels(['{:.1f}'.format(m) for m in gatewidth_variation_arr])
-                        ax.set_yticklabels(['{:.0f}'.format(m) for m in midtof_variation_arr])
-                        cbar = fig.colorbar(im, orientation='horizontal')
-                        cbar.set_label('SNR')
-                        plt.setp(ax.get_xticklabels(), rotation=90, ha="center", va='top', rotation_mode="default")
-                        if self.save_plots_to_file:
-                            filename = 'SNR-heatmap_{}_{}'.format(iso, file)
-                            plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
-                        else:
-                            plt.show()
-                        plt.close()
-                        plt.clf()
+                        # sigma_SNR_perFile.append(gMax)
 
+                        if plot:
+                            gatew = gatewidth_variation_arr  # we'll need this often now.
 
-                    # reset to original values
-                    self.update_gates_in_db(iso, 0, 2*self.tof_sigma[iso]*self.tof_width_sigma, self.tof_delay[iso])
+                            # plot gatewidth variation
+                            fig, ax = plt.subplots()
+                            for i, tof in enumerate(midtof_variation_arr):
+                                if tof == 0:
+                                    ax.errorbar(np.log(gatew)/np.log(2), res_array[i, :]-center_fit_res[-1], yerr=res_d_array[i, :], c='k', linewidth=2.0, label='{:.0f}bins'.format(tof))
+                                else:
+                                    ax.plot(np.log(gatew)/np.log(2), res_array[i, :]-center_fit_res[-1], label='{:.0f}bins'.format(tof))
+                            # plot weightedavg over midtofs
+                            # ax.errorbar(np.log(gatew) / np.log(2), midTof_wavg-center_fit_res[-1], yerr=midTof_wavg_err, label='w_avg',
+                            #             c='k', linestyle='--', linewidth=2.0)
+                            # plot fit of weightedavg over tofs. Possibly reduce plotting range
+                            ax.plot(np.log(gatew[fit_start:]) / np.log(2), _line(gatew[fit_start:], *popt)-center_fit_res[-1], label='w_avg_fit',
+                                    c='k', linestyle='--', linewidth=3.0)
+                            ax.axvline(x=np.log(gatew[close_indx])/np.log(2), color='red')
+                            ax.tick_params(axis='y', labelcolor='k')
+                            ax.set_ylabel('fit center [MHz] rel. to analysis value', color='k')
+                            ax.set_xlabel('gatewidth [bins]')
 
-                popt_res = np.array(popt_res)  # popt results per file
-                perr_res = np.array(perr_res)  # popt results per file
-                SNRtoSIGMA = np.array(gatewidth_SNR_perFile)/np.array(tofsigma_fit_res)/100
-                self.results[pickiso][sc_name] = {'gate_analysis_m': {'vals': list(popt_res[:, 0]),
-                                                                      'd_fit': list(perr_res[:, 0])},
-                                                  'gate_analysis_b': {'vals': list(popt_res[:, 1]),
-                                                                      'd_fit': list(perr_res[:, 1])},
-                                                  'mid_tof': {'vals': toflst_fit_res,
-                                                              'd_fit': toflst_err_res},
-                                                  'sigma_tof': {'vals': tofsigma_fit_res,
-                                                                'd_fit': tofsigma_err_res},
-                                                  'center_fits': {'vals': center_fit_res,
-                                                                  'd_fit': center_err_res,
-                                                                  'd_stat': center_err_res,
-                                                                  'd_syst': midtofzero_std},  # std dev is interesting
-                                                  'bunchwidth_std_0': {'vals': midtofzero_std},
-                                                  'bunchwidth_std_all': {'vals': midtofall_std},
-                                                  'maxSNR': {'vals': SNR_max_perFile},
-                                                  'bestSNR_midtof': {'vals': mid_tof_SNR_perFile},
-                                                  'bestSNR_gatewidth': {'vals': gatewidth_SNR_perFile},
-                                                  'bestSNRtoSIGMAratio': {'vals': SNRtoSIGMA}
-                                                  }
-                self.export_results()
-            else:
-                results_import = self.import_results(self.load_results_from)
-                self.results[pickiso] = results_import[pickiso]
-                bestSNR = np.array(self.results[pickiso][sc_name]['bestSNR_gatewidth']['vals'])
-                sigma_tof = 100 * np.array(self.results[pickiso][sc_name]['sigma_tof']['vals'])
-                ratio = bestSNR / 2 / sigma_tof
-                self.results[pickiso][sc_name]['bestSNRtoSIGMAratio'] = {'vals': ratio}
+                            # plot SNR error band
+                            axSNR = ax.twinx()
+                            axSNR.set_ylabel('SNR', color='red')  # we already handled the x-label with ax1
+                            # Do the plotting. Errors are typically very very small
+                            axSNR.plot(np.log(gatew) / np.log(2), SNR_array[round(len(midtof_variation_arr)/2), :], label='SNR', c='r', linestyle='-',
+                                       linewidth=3.0)
+                            axSNR.tick_params(axis='y', labelcolor='red')
+
+                            plt.title('{}, file: {}\n'
+                                      'Variation of timegate parameters around midTof=bin{:.0f}.\n'
+                                      'Fitresult: center=({:.0f}({:.0f})kHz/bin)*gatewidth+({:.2f}({:.0f}))MHz'
+                                      .format(iso, file, 100*self.tof_mid[iso],
+                                              1000*popt[0], 1000*perr[0],
+                                              popt[1], 100*perr[1]))
+                            # work on the ticks
+                            import matplotlib.ticker as ticker
+                            ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:.0f}'.format(2**(y))))
+                            plt.margins(0.05)
+                            ax.legend(title='midTof', bbox_to_anchor=(1.1, 0.5), loc="center left")
+                            if self.save_plots_to_file:
+                                filename = 'gatewidth_var_{}_{}_sc{}'.format(iso, file, sc_num)
+                                plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
+                            else:
+                                plt.show()
+                            plt.close()
+                            plt.clf()
+
+                            ''' 3-D surface plot of the SNR analysis '''
+                            fig = plt.figure()
+                            ax = fig.add_subplot(111, projection='3d')
+                            surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap='hot')
+                            fig.colorbar(surf)
+                            plt.xlabel('mid-tof')
+                            plt.ylabel('gate width')
+                            if self.save_plots_to_file:
+                                filename = 'SNR-3D_{}_{}_sc{}'.format(iso, file, sc_num)
+                                plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
+                            else:
+                                plt.show()
+                            plt.close()
+                            plt.clf()
+
+                            ''' 2-D imshow plot of the SNR analysis together with the fit '''
+                            fig, ax = plt.subplots()
+                            # print the SNR values
+                            im = ax.imshow(SNR_array, cmap='hot', interpolation='nearest')
+                            # print the contours
+                            ax.contour(X, Y, SNR_model(X, Y, *popt_SNR), 8, colors='b')
+                            xerr = [[-scale * (np.log(popt_SNR[2] * 2.8 - perr_SNR[2]) / np.log(2) - 2)
+                                     + scale * (np.log(popt_SNR[2] * 2.8) / np.log(2) - 2)],
+                                    [scale * (np.log(popt_SNR[2] * 2.8 + perr_SNR[2]) / np.log(2) - 2)
+                                     - scale * (np.log(popt_SNR[2] * 2.8) / np.log(2) - 2)]]
+                            ax.errorbar(x=scale * (np.log(popt_SNR[2] * 2.8) / np.log(2) - 2),
+                                        y=popt_SNR[1] - midtof_variation_arr[0],  # -global_guess[iso]
+                                        xerr=xerr, yerr=perr_SNR[1], color='b', markersize=5)
+                            # set title and stuff
+                            plt.title('Signal-To-Noise Analysis for run{} [{}]\n'
+                                      'Maximum SNR is {:.2f} for midtof: {:.0f} and gatewidth: {:.1f}'
+                                      .format(file, iso, SNR_max, mMax, gMax))
+                            ax.set_xlabel('gate width')
+                            ax.set_ylabel('mid-tof')
+                            ax.set_xticks(np.arange(len(gatewidth_variation_arr)))
+                            ax.set_yticks(np.arange(len(midtof_variation_arr)))
+                            ax.set_xticklabels(['{:.1f}'.format(m) for m in gatewidth_variation_arr])
+                            ax.set_yticklabels(['{:.0f}'.format(m) for m in midtof_variation_arr])
+                            cbar = fig.colorbar(im, orientation='horizontal')
+                            cbar.set_label('SNR')
+                            plt.setp(ax.get_xticklabels(), rotation=90, ha="center", va='top', rotation_mode="default")
+                            if self.save_plots_to_file:
+                                filename = 'SNR-heatmap_{}_{}_sc{}'.format(iso, file, sc_num)
+                                plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
+                            else:
+                                plt.show()
+                            plt.close()
+                            plt.clf()
+
+                        # reset to original values
+                        self.update_gates_in_db(iso, 0, 2*self.tof_sigma[iso]*self.tof_width_sigma, self.tof_delay[iso])
+
+                    ''' Calculations for this isotope over all files '''
+                    popt_res = np.array(popt_res)  # popt results per file
+                    perr_res = np.array(perr_res)  # popt results per file
+                    # Calculate the relation between the two sigmas determined by SNR analysis and tof-fit analysis
+                    sigma_SNRvsTOF = np.array(sigma_SNR_perFile)/np.array(sigma_TOF_perFile)
+                    # Calculate the best overall mid and sigma for this isotope
+                    # First for SNR analysis
+                    mid_wavg, mid_wavg_d, mid_wstd, mid_std, mid_std_avg = self.calc_weighted_avg(mid_SNR_perFile,
+                                                                                                  mid_d_SNR_perFile)
+                    sigma_wavg, sigma_wavg_d, sigma_wstd, sigma_std, sigma_std_avg = self.calc_weighted_avg(sigma_SNR_perFile,
+                                                                                                       sigma_d_SNR_perFile)
+                    if single_sc:
+                        # Analysis was done with single scaler and the scaler delay. Adjust recommended val by this
+                        mid_wavg += 100*self.tof_delay[iso[:4]][sc_num]
+                    best_mid_SNR = (mid_wavg, max(mid_wavg_d, mid_wstd, mid_std, mid_std_avg))
+                    best_sigma_SNR = (sigma_wavg, max(sigma_wavg_d, sigma_wstd, sigma_std, sigma_std_avg))
+                    # now for fitTOF analysis
+                    midt_wavg, midt_wavg_d, midt_wstd, midt_std, midt_std_avg = self.calc_weighted_avg(mid_TOF_perFile,
+                                                                                                  mid_d_TOF_perFile)
+                    sigmat_wavg, sigmat_wavg_d, sigmat_wstd, sigmat_std, sigmat_std_avg = self.calc_weighted_avg(sigma_TOF_perFile,
+                                                                                                       sigma_d_TOF_perFile)
+                    best_mid_TOF = (midt_wavg, max(midt_wavg_d, midt_wstd, midt_std, midt_std_avg))
+                    best_sigma_TOF = (sigmat_wavg, max(sigmat_wavg_d, sigmat_wstd, sigmat_std, sigmat_std_avg))
+
+                    ''' compile a dictionary of the results '''
+                    results_iso_scaler_new_content = {'recommended_mid_SNR': {'vals': [best_mid_SNR[0]],
+                                                                          'd_fit': [best_mid_SNR[1]]},
+                                                      'recommended_sigma_SNR': {'vals': [best_sigma_SNR[0]],
+                                                                          'd_fit': [best_sigma_SNR[1]]},
+                                                      'recommended_mid_TOF': {'vals': [best_mid_TOF[0]],
+                                                                              'd_fit': [best_mid_TOF[1]]},
+                                                      'recommended_sigma_TOF': {'vals': [best_sigma_TOF[0]],
+                                                                               'd_fit': [best_sigma_TOF[1]]},
+                                                      'gate_analysis_m': {'vals': list(popt_res[:, 0]),
+                                                                          'd_fit': list(perr_res[:, 0])},
+                                                      'gate_analysis_b': {'vals': list(popt_res[:, 1]),
+                                                                          'd_fit': list(perr_res[:, 1])},
+                                                      'fitTOF_mid': {'vals': mid_TOF_perFile,
+                                                                  'd_fit': mid_d_TOF_perFile},
+                                                      'fitTOF_sigma': {'vals': sigma_TOF_perFile,
+                                                                    'd_fit': sigma_d_TOF_perFile},
+                                                      'center_fits': {'vals': center_fit_res,
+                                                                      'd_fit': center_err_res,
+                                                                      'd_stat': center_err_res,
+                                                                      'd_syst': midtofzero_std},  # std dev is interesting
+                                                      'bunchwidth_std_0': {'vals': midtofzero_std},
+                                                      'bunchwidth_std_all': {'vals': midtofall_std},
+                                                      'maxSNR': {'vals': SNR_max_perFile},
+                                                      'bestSNR_mid': {'vals': mid_SNR_perFile,
+                                                                         'd_fit': mid_d_SNR_perFile},
+                                                      'bestSNR_sigma': {'vals': sigma_SNR_perFile,
+                                                                            'd_fit': sigma_d_SNR_perFile},
+                                                      'SigmaRatio_SNRvsTOF': {'vals': sigma_SNRvsTOF},
+                                                      'SNR_fit': {'vals': SNR_fitPars_perFile,
+                                                                          'd_fit': SNR_fitErrs_perFile}
+                                                      }
+                    TiTs.merge_extend_dicts(self.results[iso][sc_name], results_iso_scaler_new_content,
+                                            overwrite=True, force_overwrite=True)  # Merge dicts. Prefer new content
+
+                    self.export_results()
+                else:
+                    results_import = self.import_results(self.load_results_from)
+                    self.results[iso] = results_import[iso]
+                    bestSNR = np.array(self.results[iso][sc_name]['bestSNR_sigma']['vals'])
+                    sigma_tof = 100 * np.array(self.results[iso][sc_name]['fitTOF_sigma']['vals'])
+                    ratio = bestSNR / 2 / sigma_tof
+                    self.results[pickiso][sc_name]['SigmaRatio_SNRvsTOF'] = {'vals': ratio}
+
+        ''' comparisons across all isotopes '''
+        mid_SNR = []
+        mid_d_SNR = []
+        mid_TOF = []
+        mid_d_TOF = []
+        for iso in sorted(iso_list):
+            mid_SNR.append(self.results[iso][sc_name]['recommended_mid_SNR']['vals'][0])
+            mid_d_SNR.append(self.results[iso][sc_name]['recommended_mid_SNR']['d_fit'][0])
+            mid_TOF.append(self.results[iso][sc_name]['recommended_mid_TOF']['vals'][0])
+            mid_d_TOF.append(self.results[iso][sc_name]['recommended_mid_TOF']['d_fit'][0])
+        # create the plot
+        fig, ax = plt.subplots()
+        plt.errorbar(range(iso_list.__len__()), mid_SNR, mid_d_SNR, color='g')
+        plt.errorbar(range(iso_list.__len__()), mid_TOF, mid_d_TOF, color='b')
+        # make x-axis nice
+        ax.set_xlabel('Isotope')
+        ax.set_xticks(range(iso_list.__len__()))
+        ax.set_xticklabels(iso_list)
+        ax.set_xlim((-0.5, iso_list.__len__()-0.5))
+        if self.save_plots_to_file:
+            filename = 'mid_comparison_all_isos'
+            plt.savefig(self.resultsdir + filename + '.png', bbox_inches="tight")
+        else:
+            plt.show()
+        plt.close()
+        plt.clf()
+
 
         self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'gate_analysis_m', unit='kHz/bin', onlyfiterrs=True, overlay=0, factor=1000, digits=1)
         self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'gate_analysis_b', onlyfiterrs=True)
-        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'mid_tof', unit='bins', onlyfiterrs=True, factor=100)
-        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'sigma_tof', unit='bins', onlyfiterrs=True, factor=100)
+        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'fitTOF_mid', unit='bins', onlyfiterrs=True)
+        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'fitTOF_sigma', unit='bins', onlyfiterrs=True)
         self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'center_fits')
         self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'bunchwidth_std_0', onlyfiterrs=True, digits=2)
         self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'bunchwidth_std_all', onlyfiterrs=True, digits=2)
         self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'maxSNR', onlyfiterrs=True, digits=0)
-        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'bestSNR_midtof', onlyfiterrs=True, digits=0)
-        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'bestSNR_gatewidth', onlyfiterrs=True, digits=1)
-        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'bestSNRtoSIGMAratio', unit='', onlyfiterrs=True, digits=2)
+        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'bestSNR_mid', onlyfiterrs=True, digits=1)
+        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'bestSNR_sigma', onlyfiterrs=True, digits=1)
+        self.plot_parameter_for_isos_and_scaler(iso_list, [sc_name], 'SigmaRatio_SNRvsTOF', unit='', onlyfiterrs=True, digits=2)
 
     ''' db related '''
 
@@ -770,12 +944,12 @@ class NiAnalysis_softwGates():
     def update_gates_in_db(self, iso, midtof_var, gatewidth, delaylist):
         '''
         Write all parameters relevant for the software gate position into the database
-        :param midtof: float: center of software gate in µs
+        :param midtof_var: float: center of software gate in µs
         :param gatewidth: float: width of software gate in µs
         :param delaylist: list of floats: list of delays in midtof for scalers 0,1,2
         :return:
         '''
-        midtof = self.tof_mid[iso]+midtof_var
+        midtof = self.tof_mid[iso[:4]]+midtof_var
         con = sqlite3.connect(self.db)
         cur = con.cursor()
         cur.execute('''UPDATE Runs SET softwGateWidth = ? WHERE run = ?''', (gatewidth, self.run))
@@ -849,30 +1023,48 @@ class NiAnalysis_softwGates():
 
     ''' analysis related '''
 
-    def find_midtof_for_file(self, file, scaler):
+    def find_midtof_for_file(self, file, scaler=None):
+        if scaler is None:
+            # load from self.scaler name
+            scaler = self.scaler_name
+        else:
+            scaler = self.update_scalers_in_db(scaler)
+        try:
+            sc_num = ast.literal_eval(scaler.split('_')[-1])
+        except:
+            # This seems to be more than one scaler. Just use scaler 0 for the fitting bc annything else doesn't make much sense...
+            sc_num = 0
         # load the spec data from file
         filepath = os.path.join(self.datafolder, file)
         spec = XMLImporter(path=filepath)
-        tproj = spec.t_proj[0][scaler]
+
+        # one of the three scalers is explicitly given.
+        tproj = np.array(spec.t_proj).sum(axis=0)[sc_num]  # sum over all tracks!
         timebins = np.arange(1024)
         # fit time-projection
         ampl, sigma, center, offset, center_d, sigma_d = self.fit_time_projections(tproj, timebins)
-        if center_d > 10 or center < 500 or center > 600:
+        if center_d > 30 or center < 500 or center > 600:
             # something went wrong while fitting. Maybe this is DC data? Use middle value
             center = 512
-        midtof_us = center/100
-        midtof_d_us = center_d/100
-        return midtof_us, midtof_d_us, sigma, sigma_d
+        midtof_bins = center
+        midtof_d_bins = center_d
+        return midtof_bins, midtof_d_bins, sigma, sigma_d
 
     def fit_time_projections(self, cts_axis, time_axis):
         x = time_axis
         y = cts_axis
         # estimates:: amplitude: sigma*sqrt(2pi)*(max_y-min_y), sigma=10, center:position of max_y, offset: min_y
-        start_pars = np.array([10*2.51*(max(cts_axis)-min(cts_axis)), 10, np.argwhere(cts_axis == max(cts_axis))[0,0], min(cts_axis)])
+        bg_est = np.mean(cts_axis[0:300])
+        # mid_est = np.argwhere(cts_axis == max(cts_axis))[0,0]
+        mid_est = 540
+        start_pars = np.array([10*2.51*(max(cts_axis)-bg_est), 10, mid_est, bg_est])
         popt, pcov = curve_fit(self.fitfunc, x, y, start_pars)
         ampl, sigma, center, offset = popt
         perr = np.sqrt(np.diag(pcov))
-        return ampl, sigma, center, offset, perr[3], perr[2]
+        # plt.errorbar(x, y, np.sqrt(y))
+        # plt.plot(x, self.fitfunc(x, *popt))
+        # plt.show()
+        return ampl, sigma, center, offset, perr[2], perr[1]
 
     def fitfunc(self, t, a, s, t0, o):
         """
@@ -1016,6 +1208,50 @@ class NiAnalysis_softwGates():
             #     self.standard_v_dev = -1
             #     self.volt_correct = (1, 1)
             #     self.fit_success = e
+
+    def calc_weighted_avg(self, values, uncertainties):
+        """
+        Based on 'Bevington - Data Reduction and Error Analysis for the Physical Sciences'
+        :param values:
+        :param uncertainties:
+        :return:
+        """
+        x = np.asarray(values)
+        n = x.__len__()
+        x_d = np.asarray(uncertainties)
+        # calculate weights inversely proportional to the square of the uncertainties
+        if not any(x_d == 0):
+            w = 1 / np.square(x_d)
+        else:
+            logging.warning('ZERO value in uncertainties found during weighted average calculation. '
+                            'Calculating mean and standard deviation instead of weighting!')
+            return x.mean(), x.std(), x.std(), x.std(), x.std() / np.sqrt(n)
+
+        if n > 1:  # only makes sense for more than one data point. n=1 will also lead to div0 error
+            # calculate weighted average and sum of weights:
+            wavg = np.sum(x * w) / np.sum(w)  # (Bevington 4.17)
+            # calculate the uncertainty of the weighted mean
+            wavg_d = np.sqrt(1 / np.sum(w))  # (Bevington 4.19)
+
+            # calculate weighted average variance
+            wvar = np.sum(w * np.square(x - wavg)) / np.sum(w) * n / (n - 1)  # (Bevington 4.22)
+            # calculate weighted standard deviations
+            wstd = np.sqrt(wvar / n)  # (Bevington 4.23)
+
+            # calculate (non weighted) standard deviations from the weighted mean
+            std = np.sqrt(np.sum(np.square(x - wavg)) / (n - 1))
+            # calculate the standard deviation of the average
+            std_avg = std / np.sqrt(n)
+
+        else:  # for only one value, return that value
+            wavg = x[0]
+            # use the single value uncertainty for all error estimates
+            wavg_d = x_d[0]
+            wstd = x_d[0]
+            std = x_d[0]
+            std_avg = x_d[0]
+
+        return wavg, wavg_d, wstd, std, std_avg
 
     ''' visualization '''
 

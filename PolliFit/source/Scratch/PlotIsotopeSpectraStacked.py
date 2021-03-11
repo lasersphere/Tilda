@@ -98,7 +98,7 @@ class PlotIsoSpectraStacked:
                                gridspec_kw=gs_kw)  # gridspec to arrange the subplots
 
         # define output size of figure
-        width, height = 0.5, 0.5  # relative to page width defined in init above.
+        width, height = 0.7, 0.8  # relative to page width defined in init above.
         f.set_size_inches((self.w_in * width, self.h_in * height))
 
         for num, iso in enumerate(sorted(iso_list)):
@@ -117,8 +117,8 @@ class PlotIsoSpectraStacked:
             x_fit = x_fit / 1000  # original input is in MHz so scale this to GHz. For MHz replace with /1
 
             ''' Do the plotting '''
-            axes[num].errorbar(x, cts, cts_err, label=iso, **self.data_style)  # plot data with errorbars
-            axes[num].plot(x_fit, fit, **self.fit_style)  # plot fit
+            axes[num].errorbar(x, cts, cts_err, label='data', **self.data_style)  # plot data with errorbars
+            axes[num].plot(x_fit, fit, label='fit', **self.fit_style)  # plot fit
             # Place isotope name in top left corner
             axes[num].text(0.05, 0.9, iso,  # position settings are kind of arbitrary. See what works best for you.
                            horizontalalignment='left', verticalalignment='top',
@@ -140,8 +140,12 @@ class PlotIsoSpectraStacked:
                 log10(abs(axrange // (n_ticks))))))  # A lot of rounding to get some reasonable spacing with nice numbers
             newspacing = ceil(
                 newspacing / significant_num) * significant_num  # adapt spacing to the above set significant number if it is below.
-            newmin = round(yti.min(), -int(floor(log10(abs(yti.min())))) + 1)  # A starting value for the lowest tick
-            newmin = round(newmin, -int(log10(significant_num)))  # again adapt to significant number
+            if yti.min() > 0:  # log10 doesnt't work for 0 of course
+                newmin = round(yti.min(),
+                               -int(floor(log10(abs(yti.min())))) + 1)  # A starting value for the lowest tick
+                newmin = round(newmin, -int(log10(significant_num)))  # again adapt to significant number
+            else:  # if yti.min=0, then the axis should start at 0
+                newmin = 0
             newticks = np.arange(newmin, yti.max(), newspacing)
             # set the new labels
             axes[ax].set_yticks(newticks)
@@ -153,6 +157,9 @@ class PlotIsoSpectraStacked:
         # set x-axis
         axes[-1].set_xlabel('relative frequency / {}'.format(x_unit))
         # axes[-1].set_xticks([-1000, -700, -500, -300, -100])  # for custom ticks
+
+        # set label
+        axes[0].legend(bbox_to_anchor=(0.5, 1.3), loc='center', ncol=2)
 
         plt.savefig(folder + 'all_iso_spectra.png', dpi=self.dpi, bbox_inches='tight')
         plt.close()

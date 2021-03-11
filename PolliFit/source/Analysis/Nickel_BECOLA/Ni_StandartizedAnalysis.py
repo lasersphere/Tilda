@@ -43,12 +43,12 @@ class NiAnalysis():
         # working directory:
         # get user folder to access ownCloud
         user_home_folder = os.path.expanduser("~")
-        # ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel54_online_Becola20\\Analysis\\XML_Data'
+        ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel54_online_Becola20\\Analysis\\XML_Data'
         # ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel54_postbeamtime_Becola20\\Analysis\\bunched'
-        ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\XML_Data'  # online 2018
+        # ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\XML_Data'  # online 2018
         self.workdir = os.path.join(user_home_folder, ownCould_path)
         # data folder
-        self.datafolder = os.path.join(self.workdir, 'SumsRebinned')
+        self.datafolder = os.path.join(self.workdir, 'Sums')  #Rebinned
         # results folder
         analysis_start_time = datetime.now()
         self.results_name = self.run_name + '_' + analysis_start_time.strftime("%Y-%m-%d_%H-%M")
@@ -59,7 +59,6 @@ class NiAnalysis():
         self.db = os.path.join(self.workdir, 'Ni_Becola.sqlite')
         Tools.add_missing_columns(self.db)
 
-
         """
         ############################Analysis Parameters!##########################################################
         Specify how you want to run this Analysis!
@@ -68,14 +67,13 @@ class NiAnalysis():
         self.do_the_fitting = True  # if False, an .xml file has to be specified in the next variable!
         self.load_prev_results = False
         load_results_from = 'Ni_StandartizedAnalysis_2021-01-15_16-38.xml'  # load fit results from this file
-        self.load_gate_analysis = True
-        self.use_individual_gates = True
-        self.optimizeSNRorSIGMA = 'SIGMA'  # 'SNR' (uses optimal gatewidth for maximum SNR)  or 'SIGMA' (scales that timegate to be self.tof_width_sigma * sigma).
-        load_gate_analysis_from = 'SoftwareGateAnalysis_2021-01-08_12-26_AsymVoigtAllBound_Sc012.xml'
+        self.load_gate_analysis = False
+        self.use_individual_gates = False
+        load_gate_analysis_from = 'SoftwareGateAnalysis_2021-03-04_20-56_allIso_allSc.xml'
 
         # Isotopes
-        self.isotopes_single = ['56Ni', '58Ni', '60Ni']  # data is good enough for single file fitting
-        self.isotopes_summed = ['55Ni']  # data must be summed in order to be fittable
+        self.isotopes_single = ['58Ni', '60Ni']  #['56Ni', '58Ni', '60Ni']  # data is good enough for single file fitting
+        self.isotopes_summed = ['54Ni']  #['55Ni']  # data must be summed in order to be fittable
         self.all_isotopes = self.isotopes_single + self.isotopes_summed
         self.nOfElectrons = 28  # for mass-scaling factor calculation
         self.ionization_energy = 41356  # in keV from NIST Ionization Energy data for very precise nuclear mass determination
@@ -115,8 +113,8 @@ class NiAnalysis():
         #                   '64Ni': 0.06}  # 1 sigma of the tof-peaks from fitting, avg over all scalers 56,58,60 Ni
         self.tof_sigma = {'54Ni': 0.037, '55Ni': 0.04, '56Ni': 0.10, '58Ni': 0.10, '60Ni': 0.10, '62Ni': 0.138,
                           '64Ni': 0.138}  # 1 sigma of the tof-peaks from fitting, avg over all scalers 56,58,60 Ni
-        self.tof_width_sigma = 2  # how many sigma to use around tof? (1: 68.3% of data, 2: 95.4%, 3: 99.7%)
-        self.bestSNRtoSIGMAratio = 1.18  # imperically determined sigma width for SNR optimization:1.5. (FWHM=1.18Sigma)
+        self.tof_width_sigma = 2*2  # how many sigma to use around tof? (2*1: 68.3% of data, 2*2: 95.4%, 2*3: 99.7%)
+        # Best width is 2*1.4*sigma. Empirically determined sigma width for SNR optimization:1.5. (FWHM=1.18Sigma)
 
         # calculate absolute gatewidths based on this
         self.abs_gatewidth = self.tof_sigma.copy()
@@ -124,7 +122,7 @@ class NiAnalysis():
             self.abs_gatewidth[key] = 2*self.tof_width_sigma*val
 
         # acceleration set voltage (Buncher potential), negative
-        self.accVolt_set = 29850  # omit voltage sign, assumed to be negative TODO: Should be from files
+        self.accVolt_set = 29847  #29850  # omit voltage sign, assumed to be negative TODO: Should be from files
 
         # note down main laser frequencies. These will be used for the summed files. Otherwise from file:
         self.laser_freqs = {'54Ni': 851248358.0,  # 425,624179 * 2
@@ -139,8 +137,8 @@ class NiAnalysis():
         # Determine calibration parameters
         self.ref_iso = '60Ni'
         self.calibration_method = 'absolute60'  # can be 'absolute58', 'absolute60' 'absolute' or 'None'
-        self.cal_files_individual = False  # if True, each file will calibrated individually
-        self.cal_scaler_individual = False  # if True, each scaler will be calibrated separately
+        self.cal_files_individual = True  # if True, each file will calibrated individually
+        self.cal_scaler_individual = True  # if True, each scaler will be calibrated separately
         self.accVolt_corrected = (self.accVolt_set, 0)  # Used later for calibration. Might be used her to predefine calib? (abs_volt, err)
 
         self.do_not_cross = []# [10159, 10178]  # list of run numbers after which systematics change considerably. Interpolation across these is not a good idea for example
@@ -1322,7 +1320,7 @@ class NiAnalysis():
         t_gate_iso = iso[:4]
         self.update_gates_in_db(t_gate_iso,
                                 self.tof_mid[t_gate_iso],
-                                2 * self.tof_width_sigma * self.tof_sigma[t_gate_iso],
+                                self.tof_width_sigma * self.tof_sigma[t_gate_iso],
                                 self.tof_delay[t_gate_iso])
 
         # create a dictionary for the results
@@ -1353,21 +1351,16 @@ class NiAnalysis():
                     if self.use_individual_gates:
                         # gates set for files on an individual basis:
                         for file in filearray:
-                            # get gates from gate-analysis
+                            # get gate parameters from gate-analysis
                             try:
-                                indx = self.gate_analysis_res[t_gate_iso]['file_names'].index(file)
-                                gate = self.gate_analysis_res[t_gate_iso]['scaler_012']['bestSNR_gatewidth']['vals'][indx]/100  # in bins!! divide by 100
-                                if self.optimizeSNRorSIGMA == 'SIGMA':
-                                    gate = gate / self.bestSNRtoSIGMAratio * self.tof_width_sigma
-                                # midtof from SNR should always be reliable!
-                                midtof = self.gate_analysis_res[t_gate_iso]['scaler_012']['bestSNR_midtof']['vals'][indx]/100  # in bins!! divide by 100
-                                self.update_gates_in_db(t_gate_iso, gatewidth=gate, midtof=midtof)
+                                # Try this. Maybe the gate analysis is not available?
+                                self.get_gate_analysis_results(t_gate_iso, file)
                             except:
                                 # use standard gates if something went wrong
                                 logging.warning('individual timegate not found for iso: {} file: {}'
                                                 .format(t_gate_iso, file))
                                 self.update_gates_in_db(t_gate_iso,
-                                                        gatewidth=2 * self.tof_width_sigma * self.tof_sigma[t_gate_iso],
+                                                        gatewidth=self.tof_width_sigma * self.tof_sigma[t_gate_iso],
                                                         midtof=self.tof_mid[t_gate_iso])
                             BatchFit.batchFit(np.array([file]), self.db, self.run, x_as_voltage=True, softw_gates_trs=None,
                                               guess_offset=True,
@@ -1427,23 +1420,16 @@ class NiAnalysis():
                         if not os.path.exists(plot_folder):
                             os.makedirs(plot_folder)
                         if self.use_individual_gates:
-                            # get gates from gate-analysis
+                            # get gate parameters from gate-analysis
                             try:
-                                indx = self.gate_analysis_res[t_gate_iso]['file_names'].index(file)
-                                gate = self.gate_analysis_res[t_gate_iso]['scaler_012']['bestSNR_gatewidth']['vals'][
-                                           indx] / 100  # in bins!! divide by 100
-                                if self.optimizeSNRorSIGMA == 'SIGMA':
-                                    gate = gate / self.bestSNRtoSIGMAratio * self.tof_width_sigma
-                                # midtof from SNR should always be reliable!
-                                midtof = self.gate_analysis_res[t_gate_iso]['scaler_012']['bestSNR_midtof']['vals'][
-                                             indx] / 100  # in bins!! divide by 100
-                                self.update_gates_in_db(t_gate_iso, gatewidth=gate, midtof=midtof)
+                                # Try this. Maybe the gate analysis is not available?
+                                self.get_gate_analysis_results(t_gate_iso, file)
                             except:
                                 # use standard gates if something went wrong
                                 logging.warning('individual timegate not found for iso: {} file: {}'
                                                 .format(t_gate_iso, file))
                                 self.update_gates_in_db(t_gate_iso,
-                                                        gatewidth=2 * self.tof_width_sigma * self.tof_sigma[t_gate_iso],
+                                                        gatewidth=self.tof_width_sigma * self.tof_sigma[t_gate_iso],
                                                         midtof=self.tof_mid[t_gate_iso])
                         # for softw_gates_trs from file use 'File' and from db use None.
                         BatchFit.batchFit(np.array([file]), self.db, self.run, x_as_voltage=True, softw_gates_trs=None,
@@ -1581,8 +1567,8 @@ class NiAnalysis():
         all_fitpars = [fileresults_dict[f]['fitpars'] for f in filelist]
 
         if self.use_individual_gates:
-            # reset gates
-            self.update_gates_in_db(t_gate_iso, gatewidth=2 * self.tof_width_sigma * self.tof_sigma[t_gate_iso])
+            # reset gates to standard
+            self.update_gates_in_db(t_gate_iso, gatewidth=self.tof_width_sigma * self.tof_sigma[t_gate_iso])
 
         return filelist, runNos, all_center_MHz, all_center_MHz_fiterrs, all_center_MHz_d, all_center_MHz_d_syst, all_rundate, all_fitpars, all_rChi
 
@@ -2605,7 +2591,7 @@ class NiAnalysis():
         t_gate_iso = iso[:4]
         self.update_gates_in_db(t_gate_iso,
                                 self.tof_mid[t_gate_iso],
-                                2 * self.tof_width_sigma * self.tof_sigma[t_gate_iso],
+                                self.tof_width_sigma * self.tof_sigma[t_gate_iso],
                                 self.tof_delay[t_gate_iso])
 
         # extract data from each file and sort into binning
@@ -2614,23 +2600,16 @@ class NiAnalysis():
             # Set gates in db if individual:
             if self.use_individual_gates:
                 # gates set for files on an individual basis:
-                # get gates from gate-analysis
+                # get gate parameters from gate-analysis
                 try:
-                    indx = self.gate_analysis_res[t_gate_iso]['file_names'].index(files)
-                    gate = self.gate_analysis_res[t_gate_iso]['scaler_012']['bestSNR_gatewidth']['vals'][
-                               indx] / 100  # in bins!! divide by 100
-                    if self.optimizeSNRorSIGMA == 'SIGMA':
-                        gate = gate / self.bestSNRtoSIGMAratio * self.tof_width_sigma
-                    # midtof from SNR should always be reliable!
-                    midtof = self.gate_analysis_res[t_gate_iso]['scaler_012']['bestSNR_midtof']['vals'][
-                                 indx] / 100  # in bins!! divide by 100
-                    self.update_gates_in_db(t_gate_iso, gatewidth=gate, midtof=midtof)
+                    # Try this. Maybe the gate analysis is not available?
+                    self.get_gate_analysis_results(t_gate_iso, files)
                 except:
                     # use standard gates if something went wrong
                     logging.warning('individual timegate not found for iso: {} file: {}'
                                     .format(t_gate_iso, files))
                     self.update_gates_in_db(t_gate_iso,
-                                            gatewidth=2 * self.tof_width_sigma * self.tof_sigma[t_gate_iso],
+                                            gatewidth=self.tof_width_sigma * self.tof_sigma[t_gate_iso],
                                             midtof=self.tof_mid[t_gate_iso])
             # create filepath for XMLImporter
             filepath = os.path.join(self.datafolder, files)
@@ -4003,6 +3982,25 @@ class NiAnalysis():
         else:
             TiTs.merge_extend_dicts(self.results, res_dict, overwrite=True, force_overwrite=True)  # Merge dicts. Prefer new content
 
+    def get_gate_analysis_results(self, iso, file):
+        """
+        Extract the best gate parameters for this file and isotope from the separate time-gate analysis.
+        Then set it directly to the database.
+        :param iso:
+        :param file:
+        :return:
+        """
+        # Get the file index for extraction of the rest
+        f_indx = self.gate_analysis_res[iso]['file_names'].index(file)
+        # get mid, sigma and delay for this file/iso from SNR analysis
+        sigma = self.gate_analysis_res[iso]['scaler_012']['bestSNR_sigma']['vals'][f_indx] / 100  # given in bins!! divide by 100
+        mid = self.gate_analysis_res[iso]['scaler_012']['bestSNR_mid']['vals'][f_indx] / 100
+        delay = self.gate_analysis_res[iso]['recommended_delay_SNR']
+        # calculate the gatewidth
+        gate = sigma*self.tof_width_sigma
+        # set the new agtes in db
+        self.update_gates_in_db(iso, gatewidth=gate, midtof=mid, delaylist=delay)
+
     def plot_parameter_for_isos_and_scaler(self, isotopes, scaler_list, parameter,
                                            offset=None, overlay=None, unit='MHz', onlyfiterrs=False,
                                            digits=1 , factor=1, plotAvg=False, plotstyle='band', folder=None):
@@ -5023,7 +5021,7 @@ if __name__ == '__main__':
     analysis.extract_isoshifts_from_fitres(refiso=analysis.ref_iso, calibrated=True, summed=True)
     analysis.combine_single_scaler_results('shift_iso-{}'.format(analysis.ref_iso[:2]), calibrated=True, summed=True)
     analysis.calculate_charge_radii(refiso=analysis.ref_iso, calibrated=True, summed=True)
-    analysis.ni55_A_B_analysis('55Ni_sum', scaler='scaler_012', calibrated=True)
+    # analysis.ni55_A_B_analysis('55Ni_sum', scaler='scaler_012', calibrated=True)
     # final plots
     analysis.get_final_results()
     analysis.export_results()
