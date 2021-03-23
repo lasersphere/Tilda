@@ -81,7 +81,7 @@ class NiAnalysis():
         # isotope settings for summed file analysis
         self.binsize = {'54Ni': 1, '55Ni': 3, '56Ni': 1, '58Ni': 1, '60Ni': 1, '62Ni': 3, '64Ni': 3}  # if not specified, 1 will be used
         self.scanrange = {'55Ni': (-331, -31), '56Ni': (-150, 80), '58Ni': (-44, 14), '60Ni': (-100, 30)}  # if not specified, (-2000, 2000) will be used
-        self.filerange = {}#{'55Ni': [(6315, 6500)]} #{'55Ni': [(6315, 6331), (6369, 6383), (6384, 6452), (6468, 6478),  (6480, 6500)]}  # if not specified, all files will be used
+        self.filerange = {} #{'55Ni': (6315, 9000)}  # if not specified, all files will be used
 
         # line parameters
         self.run = 'AsymmetricVoigt'  # lineshape from runs and a new lines
@@ -3179,6 +3179,7 @@ class NiAnalysis():
         # extract real start volt and stepsize from the calibration:
         real_start_v = popt[1]
         real_stepsize_v = popt[0]
+        real_stop_v = float(real_start_v) + (float(real_stepsize_v) * int(len(volt_arr) - 1))
 
         # plot the voltage calibration:
         # plt.plot(np.arange(len(real_volt_arr)), real_volt_arr, 'go')
@@ -3244,6 +3245,9 @@ class NiAnalysis():
                        'version': 99.0}
 
         tracks_dict = {}
+        # preparations:
+        gate_start = self.tof_mid[iso]-self.abs_gatewidth[iso]/2
+        gate_stop = self.tof_mid[iso]+self.abs_gatewidth[iso]/2
         for tracknum in range(nOfTracks):
             trackname = 'track{}'.format(tracknum)
             # track times:
@@ -3258,8 +3262,7 @@ class NiAnalysis():
                                  'dacStepSize18Bit': None,  # old format xml importer checks whether val or None
                                  'dacStepsizeVoltage': real_stepsize_v,
                                  'dacStopRegister18Bit': cts_trs_array.shape[2] - 1,  # not real but should do the trick
-                                 'dacStopVoltage': float(real_start_v) + (
-                                             float(real_stepsize_v) * int(len(volt_arr) - 1)),
+                                 'dacStopVoltage': real_stop_v,
                                  # nOfSteps-1 bc startVolt is the first step
                                  'invertScan': False,
                                  'nOfBins': nOfBins,
@@ -3271,9 +3274,11 @@ class NiAnalysis():
                                  'postAccOffsetVolt': 0,
                                  'postAccOffsetVoltControl': 0,
                                  'SoftBinWidth_us': 1024,  # shrink later!
-                                 'softwGates': [[volt_arr[0], volt_arr[-1], 5.12, 10.24],  # one for each scaler
-                                                [volt_arr[0], volt_arr[-1], 5.12, 10.24],
-                                                [volt_arr[0], volt_arr[-1], 5.12, 10.24]],
+                                 # TODO: use best estimates for real gates (based on init settings)
+                                 'softwGates': [
+                                     [real_start_v, real_stop_v, gate_start, gate_stop],  # sc0
+                                     [real_start_v, real_stop_v, gate_start + self.tof_delay[iso][1], gate_stop + self.tof_delay[iso][1]], # sc1
+                                     [real_start_v, real_stop_v, gate_start + self.tof_delay[iso][2], gate_stop + self.tof_delay[iso][2]]], # sc2
                                  # For each Scaler: [DAC_Start_Volt, DAC_Stop_Volt, scaler_delay, softw_Gate_width]
                                  'workingTime': [track_start_time_str, track_end_time_str],
                                  'waitAfterReset1us': 0,  # looks like I need those for the importer
@@ -4998,6 +5003,31 @@ class NiAnalysis():
         with open(self.resultsdir + '0_results_table.txt', 'a+') as rt:  # open summary file in append mode and create if it doesn't exist
             rt.write(tableprint)
 
+    def show_all_isotopes_with_centroids(self):
+        isos = self.all_isotopes
+        filelist, filenums, filetimes = self.pick_files_from_db_by_type_and_num('%sum%')
+
+        # create the subplot grid
+        fig, ax = plt.subplots(len(filelist), sharex='col', sharey='row', squeeze=True)
+
+        # extract data plot from each file
+        for num, files in enumerate(sorted(filelist)):
+            # create filepath for XMLImporter
+            filepath = os.path.join(self.datafolder, files)
+            spec = XMLImporter(path=filepath)
+            iso = spec.type[:4]
+            laser = spec.laserFreq
+
+            x_volt = np.array(spec.x[0])  # track 0
+            x_MHz = self.absVoltage_to_centerFreq(iso, self.accVolt_set-x_volt, laserfreq=laser)
+            y_cts = spec.cts[0].sum(axis=0)  #track 0, sum along pmt axis
+            y_err = spec.err[0].sum(axis=0)  #track 0, sum along pmt axis
+
+            # ax[num].step(x_MHz, y_cts)
+            ax[num].errorbar(x_MHz, y_cts, yerr=y_err, fmt='k.')
+
+        plt.show()
+
 
 if __name__ == '__main__':
 
@@ -5025,3 +5055,4 @@ if __name__ == '__main__':
     # final plots
     analysis.get_final_results()
     analysis.export_results()
+    analysis.show_all_isotopes_with_centroids()
