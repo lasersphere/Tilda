@@ -18,15 +18,19 @@ from Service.AnalysisAndDataHandling.tildaPipeline import find_pipe_by_seq_type
 
 # set your file directory here (where the .sqlite db is located)
 # better work on a copy of the whole thing!
-work_dir = 'C:\\Work\\DEVEL\\TestData\\ReconstructRawData'
+work_dir = 'C:\\Work\\DEVEL\\TestData\\CryringHighCountrates\\2021_ScanTests'
 raw_files = os.path.join(work_dir, 'raw')
 sums_dir = os.path.join(work_dir, 'sums')
-filenames = os.listdir(sums_dir)  # just take all files in the sum folder, must be a list!
-filenames = filenames[:1]  # select the files you actually want to analyse, can also be explicit: ['some_run123.xml']!
+filenames = os.listdir(sums_dir)  # just take all files in the sum folder, must be a list! You can manipulate the list in the next line.
+# filenames = ['24Mg_Anticollinear_trs_run157.xml']  # select the files you actually want to analyse, can be explicit: ['some_run123.xml'] or based on filelist, e.g. filenames[:1] or just comment out. !
 
+# select which pmt's you want to include. Set None for original settings
+# (TILDA actually always records data from all 8 PMTs at the FPGA. The ones not selected are discarded in software)
+change_to_these_pmts = [0, 1, 2, 3, 4, 5, 6, 7]
 #  select which scans you want to appear in the reconstructed .xml files
+# to get all scans set starting_scan=0, stop_scan=-1
 starting_scan = 0  # start counting by 0 !
-stop_scan = 300  # start counting by 0 !
+stop_scan = -1  # start counting by 0 !
 
 #  select which bunches you want to appear in the reconstructed .xml files
 starting_bunch = 0  # start counting by 0 !
@@ -103,6 +107,11 @@ def reconstruct_file_from_raw(file_name, raw_files, workdir, scan_start_stop_tr_
     scan_dict['isotopeData']['isotopeStartTime'] = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
     new_file_name = TiTs.createXmlFileOneIsotope(scan_dict, filename=new_file_name)
     scan_dict['pipeInternals']['activeXmlFilePath'] = new_file_name
+
+    for key, dict in scan_dict.items():
+        if 'track' in key:
+            if change_to_these_pmts is not None:
+                scan_dict[key]['activePmtList'] = change_to_these_pmts
 
     pipe = find_pipe_by_seq_type(scan_dict,
                                  callback_sig=None,

@@ -2009,8 +2009,8 @@ class NTRSSortRawDatatoArrayFast(Node):
         if step_complete_ind_list.size:  # only work with complete steps.
             start_sort = datetime.now()
             # print(unique_arr)
-            # create on eleemnt with [(0,0,0,0)] in order to send through pipeline, when no counts where in step!
-            new_unique_arr = np.zeros(1, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
+            # create one element with [(0,0,0,0)] in order to send through pipeline, when no counts where in step!
+            new_scno_arr = np.zeros(1, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')]) # for later use
             pipeData[track_name]['nOfCompletedSteps'] += step_complete_ind_list.size
             scan_start_before_step_comp = False
             scan_started_ind_list = np.where(self.stored_data[:step_complete_ind_list[-1]] == scan_started)[0]
@@ -2149,20 +2149,24 @@ class NTRSSortRawDatatoArrayFast(Node):
                 #  this is fixed below
                 new_arr['step'] = pmt_steps  # how to do this without for loop? pmt_evt_ind < step ...
                 new_arr['time'] = pmt_events_time
-                # create a unique array, so all double occurences of the given data are counted
-                unique_arr, cts = np.unique(new_arr, return_counts=True)
-                # ... and put into cts in the unique array:
-                unique_arr['cts'] = cts
 
-                # check for events with multiple pmts fired at once (only for active pmts):
+                # Make sure all events are counted for all scalers where they occurred
+                # e.g. '129' corresponds to pmt0(1) and pmt7(128)have fired
+                # Here also all pmt's that are not in self.comp_list get discared!
                 for act_pmt in self.comp_list:
                     # create new array with all elements where this pmt was active:
-                    if np.where(unique_arr['sc'] & act_pmt)[0].size:
-                        ith_pmt_hit_list = unique_arr[np.where(unique_arr['sc'] & act_pmt)]
+                    if np.where(new_arr['sc'] & act_pmt)[0].size:
+                        ith_pmt_hit_list = new_arr[np.where(new_arr['sc'] & act_pmt)]
                         if ith_pmt_hit_list['step'].size:  # cannot do any for full list, must select step or so
                             ith_pmt_hit_list['sc'] = int(np.log2(act_pmt))
-                            new_unique_arr = np.append(new_unique_arr, ith_pmt_hit_list)
+                            new_scno_arr = np.append(new_scno_arr, ith_pmt_hit_list)
                             # print(new_unique_arr)
+
+                # create a unique array, so all double occurences of the given data are counted
+                new_unique_arr, cts = np.unique(new_scno_arr, return_counts=True)
+                # ... and put into cts in the unique array:
+                new_unique_arr['cts'] = cts
+
             add_sc = scan_started_ind_list.size - 1 if scan_start_before_step_comp else scan_started_ind_list.size
             self.total_num_of_started_scans += add_sc  # num of scan start inf elements in list, -1 if already above +1
             self.curVoltIndex = next_volt_step_ind
