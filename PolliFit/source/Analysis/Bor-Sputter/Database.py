@@ -1,9 +1,13 @@
 import os
 import sqlite3
 from openpyxl import Workbook, load_workbook
+import Physics
 
 
-workingdir = 'C:\\Users\\Laura Renth\\Desktop\\Daten\\Promotion\\Bor\\Sputter source\\2021-03-Data' #working dir IKP
+###### Filling database with files, adding correct voltage, laser freqeuncy and isotope. Needs an excel file with information ######
+
+#workingdir = 'C:\\Users\\Laura Renth\\Desktop\\Daten\\Promotion\\Bor\\Sputter source\\2021-03-Data' #working dir IKP
+workingdir = 'C:\\Users\\Laura Renth\\ownCloud\\User\\Laura\\2021-03-Data'  #working dir IKP Owncloud
 db = os.path.join(workingdir, 'B-_Auswertung.sqlite')
 files = []  #list of all files
 
@@ -44,13 +48,32 @@ con = sqlite3.connect(db)
 cur = con.cursor()
 cur.execute('''SELECT file FROM FILES''',)
 dbFiles = cur.fetchall()    #list of all files in data base
-print(dbFiles)
-con.commit()
 
 for file in dbFiles:
     for row in ws.values:
         if row[0] == file[0][:-4]:
             cur.execute('''UPDATE Files SET accVolt = ? WHERE file = ?''', (row[7], file[0],))
-            cur.execute('''UPDATE Files SET laserFreq = ? WHERE file = ?''', (row[3], file[0],))
+            cur.execute('''UPDATE Files SET laserFreq = ? WHERE file = ?''', (row[3]*4, file[0],))
 con.commit()
 con.close()
+
+### correct the isotope name
+con = sqlite3.connect(db)
+cur = con. cursor()
+for file in dbFiles:
+    cur.execute('''SELECT type FROM FILES WHERE file = ?''', (file[0],))
+    type = cur.fetchall()[0][0]
+    if type =='11B_D2':
+        type = '11B'
+        line = 'D2'
+    elif type == '10B_D2':
+        type = '10B'
+        line = 'D2'
+    else:
+        line = 'D1'
+    cur.execute('''UPDATE Files SET type = ? WHERE file = ?''', (type, file[0],))
+    cur.execute('''UPDATE Files SET line = ? WHERE file = ?''', (line, file[0],))
+con.commit()
+con.close()
+
+print(Physics.relDoppler(4*299412500,-562017))

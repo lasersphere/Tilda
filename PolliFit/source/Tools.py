@@ -43,7 +43,9 @@ def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=Non
         # convert center frequency to energy
         freq_center = iso.center + iso.freq
         vel_center = Physics.invRelDoppler(laserfreq, freq_center)  # velocity
+        print('vel_center: ', vel_center)
         energ_center = (iso.mass * Physics.u * vel_center ** 2) / 2 / Physics.qe
+        print('energy: ', energ_center)
         center_str = '%.1f eV' % energ_center
         center_color = plt.gca().get_lines()[-1].get_color()
         plt.axvline(x=energ_center, color=center_color, linestyle='--', label='%s center: %s' % (iso_name, center_str))
