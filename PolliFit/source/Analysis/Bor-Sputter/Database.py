@@ -7,7 +7,8 @@ import Physics
 ###### Filling database with files, adding correct voltage, laser freqeuncy and isotope. Needs an excel file with information ######
 
 #workingdir = 'C:\\Users\\Laura Renth\\Desktop\\Daten\\Promotion\\Bor\\Sputter source\\2021-03-Data' #working dir IKP
-workingdir = 'C:\\Users\\Laura Renth\\ownCloud\\User\\Laura\\2021-03-Data'  #working dir IKP Owncloud
+#workingdir = 'C:\\Users\\Laura Renth\\ownCloud\\User\\Laura\\2021-03-Data'  #working dir IKP Owncloud
+workingdir = 'D:\\Owncloud\\User\\Laura\\KOALA\\2021-03-Data'  #working dir hp Owncloud
 db = os.path.join(workingdir, 'B-_Auswertung.sqlite')
 files = []  #list of all files
 
@@ -64,14 +65,11 @@ for file in dbFiles:
     cur.execute('''SELECT type FROM FILES WHERE file = ?''', (file[0],))
     type = cur.fetchall()[0][0]
     if type =='11B_D2':
-        type = '11B'
         line = 'D2'
     elif type == '10B_D2':
-        type = '10B'
         line = 'D2'
     else:
         line = 'D1'
-    cur.execute('''UPDATE Files SET type = ? WHERE file = ?''', (type, file[0],))
     cur.execute('''UPDATE Files SET line = ? WHERE file = ?''', (line, file[0],))
 con.commit()
 con.close()
