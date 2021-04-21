@@ -16,8 +16,8 @@ class FindTG:
 
     def __init__(self):
         #workingdir = 'C:\\Users\\Laura Renth\\Desktop\\Daten\\Promotion\\Bor\\Sputter source\\2021-03-Data' #working dir IKP
-        #self.workingdir = 'C:\\Users\\Laura Renth\\ownCloud\\User\\Laura\\KOALA\\2021-03-Data'  #working dir IKP Owncloud
-        self.workingdir = 'D:\\ownCloud\\User\\Laura\\KOALA\\2021-03-Data'  # working dir hp Owncloud
+        self.workingdir = 'C:\\Users\\Laura Renth\\ownCloud\\User\\Laura\\KOALA\\2021-03-Data'  #working dir IKP Owncloud
+        #self.workingdir = 'D:\\ownCloud\\User\\Laura\\KOALA\\2021-03-Data'  # working dir hp Owncloud
         self.db = os.path.join(self.workingdir, 'B-_Auswertung.sqlite')
 
         # isotope and run to investigate
@@ -40,7 +40,7 @@ class FindTG:
         self.prepDB()
 
         # set files to fit
-        cur.execute('''SELECT file FROM Files WHERE line = ? and type = ?''', (self.line, self.isotope,))
+        cur.execute('''SELECT file FROM Files WHERE line = ? and type = ? and accVolt = ?''', (self.line, self.isotope, 18000,))
         paras = cur.fetchall()
         con.close()
         self.files = []
@@ -244,14 +244,14 @@ class FindTG:
         except:
             print('File not Found')
             return
-        bestTG = (ws.cell('A2').value, ws.cell('B2').value)
-        bestSNR = ws.cell('C2').value
+        bestTG = (ws.cell(row=2, column = 1).value, ws.cell(row=2, column=2).value)
+        bestSNR = ws.cell(row=2, column=3).value
         for row in ws.rows:
             print(row)
             print(row[2].value)
             if isinstance(row[2].value, str):
                 pass
-            elif (abs(row[2].value) > abs(bestSNR) and abs(row[2].value) < 10):
+            elif (abs(row[2].value) > abs(bestSNR) and abs(row[2].value) < 6):  #
                 bestSNR = row[2].value
                 bestTG = (row[0].value, row[1].value)
         print('Best TG is: ', bestTG, 'with SNR:', bestSNR)

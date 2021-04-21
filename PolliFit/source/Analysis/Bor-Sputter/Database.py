@@ -7,8 +7,8 @@ import Physics
 ###### Filling database with files, adding correct voltage, laser freqeuncy and isotope. Needs an excel file with information ######
 
 #workingdir = 'C:\\Users\\Laura Renth\\Desktop\\Daten\\Promotion\\Bor\\Sputter source\\2021-03-Data' #working dir IKP
-#workingdir = 'C:\\Users\\Laura Renth\\ownCloud\\User\\Laura\\2021-03-Data'  #working dir IKP Owncloud
-workingdir = 'D:\\Owncloud\\User\\Laura\\KOALA\\2021-03-Data'  #working dir hp Owncloud
+workingdir = 'C:\\Users\\Laura Renth\\ownCloud\\User\\Laura\\KOALA\\2021-03-Data'  #working dir IKP Owncloud
+#workingdir = 'D:\\Owncloud\\User\\Laura\\KOALA\\2021-03-Data'  #working dir hp Owncloud
 db = os.path.join(workingdir, 'B-_Auswertung.sqlite')
 files = []  #list of all files
 
@@ -26,7 +26,7 @@ print(files)
 ### remove Files from database
 con = sqlite3.connect(db)
 cur = con.cursor()
-cur.execute('''SELECT file FROM FILES''',)
+cur.execute('''SELECT file FROM FILES''')
 dbFiles = cur.fetchall()    #list of all files in data base
 print(dbFiles)
 con.commit()
