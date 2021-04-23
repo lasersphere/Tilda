@@ -2010,7 +2010,7 @@ class NTRSSortRawDatatoArrayFast(Node):
             start_sort = datetime.now()
             # print(unique_arr)
             # create one element with [(0,0,0,0)] in order to send through pipeline, when no counts where in step!
-            new_scno_arr = np.zeros(1, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')]) # for later use
+            new_unique_arr = np.zeros(1, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'), ('cts', 'u4')])
             pipeData[track_name]['nOfCompletedSteps'] += step_complete_ind_list.size
             scan_start_before_step_comp = False
             scan_started_ind_list = np.where(self.stored_data[:step_complete_ind_list[-1]] == scan_started)[0]
@@ -2153,6 +2153,8 @@ class NTRSSortRawDatatoArrayFast(Node):
                 # Make sure all events are counted for all scalers where they occurred
                 # e.g. '129' corresponds to pmt0(1) and pmt7(128)have fired
                 # Here also all pmt's that are not in self.comp_list get discared!
+                new_scno_arr = np.zeros(1, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'),
+                                                  ('cts', 'u4')])
                 for act_pmt in self.comp_list:
                     # create new array with all elements where this pmt was active:
                     if np.where(new_arr['sc'] & act_pmt)[0].size:

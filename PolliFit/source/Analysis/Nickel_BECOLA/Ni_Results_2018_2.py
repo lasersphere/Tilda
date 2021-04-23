@@ -55,19 +55,21 @@ class NiAnalysis():
         self.db = os.path.join(self.workdir, 'Ni_Becola.sqlite')
         Tools.add_missing_columns(self.db)
 
-
         """
         ############################Analysis Parameters!##########################################################
         Specify how you want to run this Analysis!
         """
         # fit from scratch or use FitRes db?
-        self.load_prev_results = False
-        load_results_from = 'Ni_StandartizedAnalysis_2020-09-18_13-36.xml'  # load fit results from this file
+        self.load_prev_results = True
+        load_results_from = 'Ni_StandartizedAnalysis_2021-04-01_16-23_FINAL.xml'  # load fit results from this file
+        self.load_gate_analysis = True
+        load_gate_analysis_from = 'SoftwareGateAnalysis_2021-04-01_12-02_sc012_all2018_FINAL.xml'
 
         # Isotopes this experiment
         self.isotopes_single = ['56Ni', '58Ni', '60Ni']  # data is good enough for single file fitting
         self.isotopes_summed = ['55Ni']  # data must be summed in order to be fittable
         self.all_isotopes = self.isotopes_single + self.isotopes_summed
+        self.other_BEC_isotopes = ['54Ni', '58Ni', '62Ni', '64Ni']  # other isotopes with BECOLA isoshifts
         self.nOfElectrons = 28.  # for mass-scaling factor nuclear mass calculation
         self.ionizationEnergy = 41356  # in keV from NIST Ionization Energy data for very precise nuclear mass determination
 
@@ -86,7 +88,24 @@ class NiAnalysis():
 
         # Kingfit options
         self.isoshifts_for_king = 'Offline 2020'  # Name of set of isotope shift measurements to be used for King Plot
-        self.KingFactorLit = 'Offline 2020 60ref'  # King fit factors to use if no own plot. kaufm60, koenig60,koenig58
+        self.KingFactorLit = 'This Work 60ref'  # 'Offline 2020 60ref'  # King fit factors to use if no own plot. kaufm60, koenig60,koenig58
+
+        # create results dictionary:
+        self.results = {}
+        self.gate_analysis_res = {}
+        self.analysis_parameters = None
+
+        # Set the scaler variable to a defined starting point:
+        self.update_scalers_in_db('012')
+
+        # import results
+        # import results
+        if self.load_gate_analysis:
+            # import the results from a previous run gate analysis to get a per-file estimate on those errors
+            self.import_results(load_gate_analysis_from, is_gate_analysis=True)
+        if self.load_prev_results:
+            # import the results from a previous run as sepcified in load_results_from
+            self.import_results(load_results_from)
 
         """
         ############################ Physics and uncertainties! ########################################################
@@ -130,7 +149,7 @@ class NiAnalysis():
         self.nuclear_spin_and_moments = {
             '55Ni': (55, -7 / 2, -0.98, 0.03, 0, 0),
             '57Ni': (57, -3 / 2, -0.7975, 0.0014, 0, 0),
-            '61Ni': (61, -3 / 2, -0.75002, 0.00004, 0.162, 0.015)
+            '61Ni': (61, -3 / 2, -0.74965, 0.00005, 0.162, 0.015)  # recommended (-0.74965, 0.00005) or compiled (-0.75002, 0.00004) value?
             # even isotopes 56, 58, 60 Ni have Spin 0 and since they are all even-even nucleons also the moments are zero
         }
 
@@ -138,8 +157,9 @@ class NiAnalysis():
         # Reference: COLLAPS 2016
         # Format: {'xxNi' : (Al, Al_d, Au, Au_d, Arat, Arat_d, Bl, Bl_d, Bu, Bu_d, Brat, Brat_d)}
         self.reference_A_B_vals = {
+            # Kaufmann PhD Thesis, final hyperfine parameters (table 5.9)
             '59Ni': (-452.70, 1.1, -176.1, 1.6, 0.389, 0.004, -56.7, 6.8, -31.5, 5.5, 0.556, 0.118),
-            '61Ni': (-454.8, 0.4, -176.9, 0.6, 0.389, 0.001, -100.6, 2.8, -49.0, 2.3, 0.487, 0.015)
+            '61Ni': (-455.0, 0.3, -177.2, 0.4, 0.389, 0.001, -103.3, 1.7, -51.5, 1.6, 0.499, 0.017)
         }
         self.thisWork_A_B_vals = {
             '55Ni': (-452.70, 1.1,
@@ -196,10 +216,10 @@ class NiAnalysis():
 
         ''' BECOLA value IS 60-58'''
         iso_shifts_offline = {  # KingFit/offline paper Vers. 04.02.2021
-            '58Ni': (-506.4, 1.9, 0),
+            '58Ni': (-506.3, 1.1, 2.3),
             '60Ni': (0, 0, 0),
-            '62Ni': (504.4, 2.7, 0),
-            '64Ni': (1028.2, 2.6, 0)}
+            '62Ni': (504.4, 1.7, 2.7),
+            '64Ni': (1028.2, 1.5, 2.6)}
 
         iso_shifts_offline_58 = {  # KingFit/offline paper Vers. 04.02.2021
             '58Ni': (0, 0, 0),
@@ -208,15 +228,26 @@ class NiAnalysis():
             '64Ni': (1534.3, 2.6, 0)}
 
         iso_shifts_54online = {  # from beamtime 2020 Kristian, private com.
-            '54Ni': (-1917.4, 7.6, 0),
+            '54Ni': (-1919.7, 7.6, 2.2),
             '58Ni': (self.restframe_trans_freq['58Ni'][0] - self.restframe_trans_freq['60Ni'][0],
                      np.sqrt(self.restframe_trans_freq['58Ni'][1] ** 2 + self.restframe_trans_freq['60Ni'][1] ** 2)),
             '60Ni': (0, 0, 0)}
 
-        iso_shifts = {  # TODO: Option to load from results?
-            '55Ni': (-1433.0, 17.1, 3.3),
-            '56Ni': (-1003.6, 1.8, 2.8),
-            '58Ni': (-501.7, 0.3, 2.8),
+        iso_shifts = {  # pre-filled values
+            '55Ni': (-1433.1, 16.8, 3.5),
+            '56Ni': (-1003.3, 2.1, 3.5),
+            '58Ni': (-501.7, 0.4, 3.5),
+            '60Ni': (0, 0, 0)}
+
+        if self.load_prev_results:
+            res_55 = self.results['55Ni']['final']['shift_iso-{}'.format(self.ref_iso[:2])]
+            res_56 = self.results['56Ni']['final']['shift_iso-{}'.format(self.ref_iso[:2])]
+            res_58 = self.results['58Ni']['final']['shift_iso-{}'.format(self.ref_iso[:2])]
+
+            iso_shifts = {  # overwrite with loaded results
+            '55Ni': (res_55['vals'][0], res_55['d_stat'][0], res_55['d_syst'][0]),
+            '56Ni': (res_56['vals'][0], res_56['d_stat'][0], res_56['d_syst'][0]),
+            '58Ni': (res_58['vals'][0], res_58['d_stat'][0], res_58['d_syst'][0]),
             '60Ni': (0, 0, 0)}
 
         self.iso_shifts = {'Kaufmann 2020': {'data': iso_shifts_kaufm, 'color': 'green'},  # (incl.unbup.!)
@@ -274,7 +305,6 @@ class NiAnalysis():
                               # (incl.unbup.!)
                               'Steudel 1980': {'data': delta_rms_steudel, 'color': 'black'},
                               'Koenig 2020': {'data': delta_rms_koenig, 'color': 'blue'}}
-        self.delta_rms_thisWork = {'This Work': {'data': {}, 'color': 'green'}}
 
         # from Landolt-Börnstein - Group I Elementary Particles, Nuclei and Atoms, Fricke 2004
         # http://materials.springer.com/lb/docs/sm_lbs_978-3-540-45555-4_30
@@ -353,124 +383,6 @@ class NiAnalysis():
 
         # define a global time reference
         self.ref_datetime = datetime.strptime('2018-04-13_13:08:55', '%Y-%m-%d_%H:%M:%S')  # run 6191, first 58 we use
-
-        # create results dictionary:
-        self.results = {}
-        self.gate_analysis_res = {}
-
-        # Set the scaler variable to a defined starting point:
-        self.update_scalers_in_db('012')
-
-        # import results
-        if self.load_prev_results:
-            # import the results from a previous run as sepcified in load_results_from
-            self.import_results(load_results_from)
-
-
-    def calculate_charge_radii(self, refiso, isolist=None, calibrated=False, summed=False):
-        """
-        Charge radii extraction.
-        :return:
-        """
-
-
-        for iso in isolist:
-            for sc in self.results[iso].keys():
-                if 'scaler' in sc:  # is a scaler key
-                    logging.info('\n'
-                                 '## calculating charge radii for scaler {}'.format(sc))
-                    # write the scaler to db for usage
-                    scaler = self.update_scalers_in_db(sc)
-
-                    delta_rms, delta_rms_d, delta_rms_d_syst, \
-                    avg_delta_rms, avg_delta_rms_d, avg_delta_rms_d_syst,\
-                    e_is, e_fs, e_ms = self.extract_radius_from_factors(iso, refiso, scaler)
-                    zeros = np.zeros(len(delta_rms)).tolist()
-                    # write isoshift to results dict
-                    delta_rms_dict = {iso: {scaler: {'delta_rms_iso-{}'.format(refiso[:2]): {'vals': delta_rms,
-                                                                                             'd_stat': zeros,  # TODO: Count as syst or stat?
-                                                                                             'd_syst': delta_rms_d},
-                                                     'avg_delta_rms_iso-{}'.format(refiso[:2]): {'vals': [avg_delta_rms],
-                                                                                                 'd_stat': [0],
-                                                                                                 'd_syst': [avg_delta_rms_d]}
-                                                     }}}
-                    TiTs.merge_extend_dicts(self.results, delta_rms_dict, overwrite=True, force_overwrite=True)
-            #self.plot_parameter_for_isos_and_scaler(isolist, [sc], 'delta_rms_iso-{}'.format(refiso[:2]), digits=2)
-
-        # self.plot_parameter_for_isos_vs_scaler(isolist, self.scaler_combinations + ['scaler_c012'],
-        #                                        'avg_delta_rms_iso-{}'.format(refiso[:2]), digits=2)
-
-    def get_final_results(self):
-        """
-        Pick the isotope shifts to use for final results and calculate from there
-        :return:
-        """
-        all_isos = self.all_isotopes
-
-        # get final values
-        for iso in all_isos:
-            final_vals_iso = {'shift_iso-{}'.format(self.ref_iso[:2]):
-                                      {'vals': [self.iso_shifts['This Work']['data'][iso][0]],
-                                       'd_stat': [self.iso_shifts['This Work']['data'][iso][1]],
-                                       'd_syst': [self.iso_shifts['This Work']['data'][iso][2]]
-                                       if len(self.iso_shifts['This Work']['data'][iso]) > 2 else [0]},
-                              'delta_rms_iso-{}'.format(self.ref_iso[:2]):
-                                  {'vals': [self.delta_rms_thisWork['This Work']['data'][iso][0]],
-                                   'd_stat': [self.delta_rms_thisWork['This Work']['data'][iso][1]],
-                                   'd_syst': [self.delta_rms_thisWork['This Work']['data'][iso][2]]
-                                   if len(self.delta_rms_thisWork['This Work']['data'][iso]) > 2 else [0]}
-                              }
-            if '55' in iso:
-                # Also get finals HFS-pars
-                Al, Al_d, Au, Au_d, Arat, Arat_d, Bl, Bl_d, Bu, Bu_d, Brat, Brat_d = self.thisWork_A_B_vals[iso]
-                final_vals_iso['hfs-pars'] = {'Al': {'vals': [Al], 'd_stat': [Al_d], 'd_syst': [0]},
-                                              'Au': {'vals': [Au], 'd_stat': [Au_d], 'd_syst': [0]},
-                                              'Arat': {'vals': [Arat], 'd_stat': [Arat_d], 'd_syst': [0]},
-                                              'Bl': {'vals': [Bl], 'd_stat': [Bl_d], 'd_syst': [0]},
-                                              'Bu': {'vals': [Bu], 'd_stat': [Bu_d], 'd_syst': [0]},
-                                              'Brat': {'vals': [Brat], 'd_stat': [Brat_d], 'd_syst': [0]}}
-            if not self.results.get(iso, False):
-                self.results[iso] = {}
-            self.results[iso]['final'] = final_vals_iso
-        # also add 54 Nickel to results
-        # self.results['54Ni'] = {'final':
-        #                            {'shift_iso-{}'.format(self.ref_iso[:2]):
-        #                                 {'vals': [self.iso_shifts['Koenig 2020']['data']['54Ni'][0]],
-        #                                  'd_stat': [self.iso_shifts['Koenig 2020']['data']['54Ni'][1]],
-        #                                  'd_syst': [self.iso_shifts['Koenig 2020']['data']['54Ni'][2]]
-        #                                  if len(self.iso_shifts['Koenig 2020']['data']['54Ni']) > 2 else [0]},
-        #                             'delta_rms_iso-{}'.format(self.ref_iso[:2]):
-        #                                 {'vals': [self.delta_rms_lit['Koenig 2020']['data']['54Ni'][0]],
-        #                                  'd_stat': [self.delta_rms_lit['Koenig 2020']['data']['54Ni'][1]],
-        #                                  'd_syst': [self.delta_rms_lit['Koenig 2020']['data']['54Ni'][2]]
-        #                                  if len(self.delta_rms_lit['Koenig 2020']['data']['54Ni']) > 2 else [0]}
-        #                             }
-        #                        }
-
-        # TODO: calculate µ, Q
-
-        self.make_final_plots()
-        self.compare_king_pars()
-
-        # vary Isotope shift by X MHz and observe the sensitivity on the radii
-        iso = '55Ni'
-        v_range = 10  # Variation in +-MHz around the final value
-        result_is = self.results[iso]['final']['shift_iso-{}'.format(self.ref_iso[:2])]['vals'][0]
-        result_is_d = self.results[iso]['final']['shift_iso-{}'.format(self.ref_iso[:2])]['d_stat'][0]\
-                      + self.results[iso]['final']['shift_iso-{}'.format(self.ref_iso[:2])]['d_syst'][0]
-        # create variation array
-        vary_is = np.array([result_is+v for v in range(-v_range, v_range, 1)])
-        vary_rms = []
-        vary_rms_d = []
-        for i in vary_is:
-            r, r_d, r_d_syst,\
-            e_is, e_fs, e_ms = self.extract_radius_from_factors('54Ni', '60Ni', isoshift=(i, result_is_d))[2:]
-            vary_rms.append(r)
-            vary_rms_d.append(r_d)
-
-        plt.errorbar(vary_is, vary_rms, vary_rms_d)
-        plt.show()
-
 
     ''' db related '''
     def reset(self, db_like, reset):
@@ -844,32 +756,39 @@ class NiAnalysis():
 
     ''' 55 Nickel related: '''
 
-    def ni55_A_B_analysis(self, isotope, scaler='scaler_012', calibrated=False):
-        if calibrated:
-            isotope = '{}_cal'.format(isotope)  # make sure to use the calibrated isos
+    def ni55_A_B_analysis(self):
+        """
+        Get A and B factors from analysis and calculate µ and Q's
+        :return:
+        """
+        isotope = '55Ni'
+        scaler = 'final'
 
         # copy the results dict
         res_dict = self.results[isotope]
-
-        # update the scaler
-        scaler = self.update_scalers_in_db(scaler)
+        gate_analysis = self.gate_analysis_res[isotope]
 
         # Get all coefficients from fit results
-        Al = res_dict[scaler]['hfs_pars']['Al'][0]
-        Al_d = res_dict[scaler]['hfs_pars']['Al'][1]
-        Au = res_dict[scaler]['hfs_pars']['Au'][0]
-        Au_d = res_dict[scaler]['hfs_pars']['Au'][1]
-        A_rat = res_dict[scaler]['hfs_pars']['Arat'][0]
-        A_rat_d = res_dict[scaler]['hfs_pars']['Arat'][1]
-        A_rat_fixed = res_dict[scaler]['hfs_pars']['Arat'][2]
+        Al, Al_d, Al_fix = res_dict[scaler]['hfs_pars']['Al']
+        Al_d_syst = gate_analysis['scaler_012']['Alo_bunchwidth_std_0_1to3Sig']['vals'][0]  # std when varying gate size
+        Al_d = np.sqrt(Al_d**2 + Al_d_syst**2)  # combine the two uncertainties
+        self.results[isotope][scaler]['hfs_pars']['Al'] = (Al, Al_d, Al_fix)
+        Au, Au_d, Au_fix = res_dict[scaler]['hfs_pars']['Au']
+        Au_d_syst = gate_analysis['scaler_012']['Aup_bunchwidth_std_0_1to3Sig']['vals'][0]  # std when varying gate size
+        Au_d = np.sqrt(Au_d ** 2 + Au_d_syst ** 2)  # combine the two uncertainties
+        self.results[isotope][scaler]['hfs_pars']['Au'] = (Au, Au_d, Au_fix)
+        # Calculate A-ratio here
+        A_rat, A_rat_d, A_rat_fixed = res_dict[scaler]['hfs_pars']['Arat']
+        if not A_rat_fixed:
+            A_rat = Au / Al
+            A_rat_d = np.sqrt(np.square(Au_d / Al) + np.square(Au * Al_d / Al**2))
+        # Write new calculated into results dict
+        self.results[isotope][scaler]['hfs_pars']['Arat'] = (A_rat, A_rat_d, A_rat_fixed)
 
-        Bl = res_dict[scaler]['hfs_pars']['Bl'][0]
-        Bl_d = res_dict[scaler]['hfs_pars']['Bl'][1]
-        Bu = res_dict[scaler]['hfs_pars']['Bu'][0]
-        Bu_d = res_dict[scaler]['hfs_pars']['Bu'][1]
-        B_rat = res_dict[scaler]['hfs_pars']['Brat'][0]
-        B_rat_d = res_dict[scaler]['hfs_pars']['Brat'][1]
-        B_rat_fixed = res_dict[scaler]['hfs_pars']['Brat'][2]
+
+        Bl, Bl_d, Bl_fix = res_dict[scaler]['hfs_pars']['Bl']
+        Bu, Bu_d, Bu_fix = res_dict[scaler]['hfs_pars']['Bu']
+        B_rat, B_rat_d, B_rat_fix = res_dict[scaler]['hfs_pars']['Brat']
 
         # calculate µ and Q values
         # reference moments stored in format: (IsoMass_A, IsoSpin_I, IsoDipMom_µ, IsoDipMomErr_µerr, IsoQuadMom_Q, IsoQuadMomErr_Qerr)
@@ -879,10 +798,30 @@ class NiAnalysis():
         Al_ref, Al_d_ref, Au_ref, Au_d_ref, Arat_ref, Arat_d_ref, Bl_ref, Bl_d_ref, Bu_ref, Bu_d_ref, Brat_ref, Brat_d_ref = self.reference_A_B_vals['61Ni']
 
         # magnetic dipole moment
-        mu_55 = mu_ref * Al/Al_ref * I_55/I_ref
-        mu_55_d = np.sqrt((mu_ref_d * Al/Al_ref*I_55/I_ref)**2 + (Al_d * mu_ref/Al_ref*I_55/I_ref)**2 + (Al_d_ref * mu_ref*Al/Al_ref**2*I_55/I_ref)**2)
+        # can use Al and Au!
+        mu_55_l = mu_ref * Al/Al_ref * I_55/I_ref
+        mu_55_l_d = np.sqrt((mu_ref_d * Al/Al_ref*I_55/I_ref)**2
+                            + (Al_d * mu_ref/Al_ref*I_55/I_ref)**2
+                            + (Al_d_ref * mu_ref*Al/Al_ref**2*I_55/I_ref)**2)
+        mu_55_u = mu_ref * Au / Au_ref * I_55 / I_ref
+        mu_55_u_d = np.sqrt((mu_ref_d * Au / Au_ref * I_55 / I_ref) ** 2
+                            + (Au_d * mu_ref / Au_ref * I_55 / I_ref) ** 2
+                            + (Au_d_ref * mu_ref * Au / Au_ref ** 2 * I_55 / I_ref) ** 2)
+        print('mu55_lo: {:.3f}+-{:.3f}, mu55_up: {:.3f}+-{:.3f}'.format(mu_55_l, mu_55_l_d, mu_55_u, mu_55_u_d))
+        # combine values from Au and Al
+        mu_wavg, mu_wavg_d, mu_wstd, mu_std, mu_std_avg = self.calc_weighted_avg([mu_55_l, mu_55_u], [mu_55_l_d, mu_55_u_d])
+        mu_55 = mu_wavg
+        mu_55_d = max(mu_wavg_d, mu_wstd, mu_std, mu_std_avg)
+
+        # Calculate Spin expectation value see [Berryman.2009]
+        mu_55_Cobalt = 4.822
+        mu_55_d_Cobalt = 0.003
+        s_exp = (mu_55 + mu_55_Cobalt + I_55)/(2.793-1.913-0.5)
+        s_exp_d = np.sqrt((mu_55_d/(2.793-1.913-0.5))**2 + (mu_55_d_Cobalt/(2.793-1.913-0.5))**2)
+
         # electric quadrupole moment
         Q_55 = Q_ref * Bl/Bl_ref
+        Q_55_max = Q_ref * Bl_d / Bl_ref
         Q_55_d = np.sqrt((Q_ref_d*Bl/Bl_ref)**2 + (Bl_d*Q_ref/Bl_ref)**2 + (Bl_d_ref*Bl*Q_ref/Bl_ref**2)**2)
         logging.info('\nspectroscopic factors: Al={0:.0f}({1:.0f}), Au={2:.0f}({3:.0f}), Arat={4:.3f}({5:.0f}),'
                      ' Bl={6:.0f}({7:.0f}), Bu={8:.0f}({9:.0f}), Brat={10:.3f}({11:.0f})'
@@ -891,12 +830,19 @@ class NiAnalysis():
                      .format(mu_55, mu_55_d*1000, Q_55, Q_55_d*1000))
 
         # write to results dict
-        moments_dict = {'mu': {'vals': [mu_55],
-                               'd_stat': [0],
-                               'd_syst': [mu_55_d]},
+        moments_dict = {'mu': {'vals': [mu_55_l, mu_55_u],
+                               'd_stat': [mu_55_l_d, mu_55_u_d],
+                               'd_syst': [0, 0]},
+                        'mu_avg': {'vals': [mu_55],
+                                   'd_stat': [mu_55_d],
+                                   'd_syst': [0]},
                         'Q': {'vals': [Q_55],
-                              'd_stat': [0],
-                              'd_syst': [Q_55_d]}
+                              'd_stat': [Q_55_d],
+                              'd_syst': [0],
+                              'max_est': [Q_55_max]},
+                        's_exp': {'vals': [s_exp],
+                                  'd_stat': [s_exp_d],
+                                  'd_syst': [0]}
                         }
         self.results[isotope][scaler]['moments'] = moments_dict
 
@@ -943,7 +889,7 @@ class NiAnalysis():
         this_result = {'Alpha': king.c, 'F': (king.b, king.berr), 'Kalpha': (king.a, king.aerr)}
         self.king_literature['This Work {}ref'.format(self.ref_iso[:2])] = {'data': this_result, 'color': 'red'}
 
-        print(self.extract_radius_from_factors('55Ni', '60Ni',
+        print(self.extract_diffradius_from_factors('55Ni', '60Ni',
                                                isoshift=(-1433.6, 22.2, 2.8),
                                                printErrCont=True,
                                                kingFactorLit='This Work 60ref'))
@@ -1139,9 +1085,9 @@ class NiAnalysis():
         plt.close()
         plt.clf()
 
-    def extract_diff_radii_for_isotopes(self):
+    def extract_radii_for_isotopes(self):
         """
-        Encapsules the extract_radius_from_factors function for all isotopes measured. Stores trhe results.
+        Encapsules the extract_diffradius_from_factors function for all isotopes measured. Stores the results.
         :return:
         """
         for iso in self.all_isotopes:
@@ -1150,14 +1096,49 @@ class NiAnalysis():
 
             avg_delta_rms, avg_delta_rms_d, avg_delta_rms_d_syst, \
             IS_cont, IS_cont_syst, F_cont, M_cont = \
-                self.extract_radius_from_factors(iso, self.ref_iso, isoshift=isoshift, kingFactorLit='This Work 60ref')[3:]
+                self.extract_diffradius_from_factors(iso, self.ref_iso, isoshift=isoshift,
+                                                     kingFactorLit=self.KingFactorLit,
+                                                     printErrCont=True)[3:]
 
-            self.delta_rms_thisWork['This Work']['data'][iso] = (avg_delta_rms, avg_delta_rms_d, avg_delta_rms_d_syst)
+            self.results[iso]['final']['delta_ms_iso-60'] = {'vals': [avg_delta_rms],
+                                                              'd_stat': [avg_delta_rms_d],
+                                                              'd_syst': [avg_delta_rms_d_syst]}
 
-        print(self.delta_rms_thisWork['This Work']['data'])
+            # now get the absolute radii
+            r, rd, rdsys = self.calc_abs_radius((avg_delta_rms, avg_delta_rms_d, avg_delta_rms_d_syst), self.ref_iso)
+            self.results[iso]['final']['abs_radii'] = {'vals': [r],
+                                                       'd_stat': [rd],
+                                                       'd_syst': [rdsys]}
 
+        for iso in self.other_BEC_isotopes:
+            # get the isotope shift
+            try:
+                isoshift = self.iso_shifts['Offline 2020']['data'][iso]
+            except:
+                isoshift = self.iso_shifts['Online 2020']['data'][iso]
 
-    def extract_radius_from_factors(self, iso, ref, scaler=None, isoshift=None, printErrCont=False, kingFactorLit=None):
+            avg_delta_rms, avg_delta_rms_d, avg_delta_rms_d_syst, \
+            IS_cont, IS_cont_syst, F_cont, M_cont = \
+                self.extract_diffradius_from_factors(iso, self.ref_iso, isoshift=isoshift,
+                                                     kingFactorLit=self.KingFactorLit,
+                                                     printErrCont=True)[3:]
+
+            # create in final results if not exists:
+            isob = iso + 'Bec'
+            if self.results.get(isob, None) is None:
+                self.results[isob] = {'final': {}}
+
+            self.results[isob]['final']['delta_ms_iso-60'] = {'vals': [avg_delta_rms],
+                                                              'd_stat': [avg_delta_rms_d],
+                                                              'd_syst': [avg_delta_rms_d_syst]}
+
+            # now get the absolute radii
+            r, rd, rdsys = self.calc_abs_radius((avg_delta_rms, avg_delta_rms_d, avg_delta_rms_d_syst), self.ref_iso)
+            self.results[isob]['final']['abs_radii'] = {'vals': [r],
+                                                       'd_stat': [rd],
+                                                       'd_syst': [rdsys]}
+
+    def extract_diffradius_from_factors(self, iso, ref, scaler=None, isoshift=None, printErrCont=False, kingFactorLit=None):
         """
         Use known fieldshift and massshift parameters to calculate the difference in rms charge radii and then the
         absolute charge radii.
@@ -1168,7 +1149,7 @@ class NiAnalysis():
         """
         if iso == ref:
             # isotope equals reference. return 0
-            return 0, 0, 0, 0, 0, 0, 0
+            return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
         # get the masses and calculate mu
         m_iso, m_iso_d = self.get_iso_property_from_db('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''',
                                                        (iso[:4],))
@@ -1180,7 +1161,7 @@ class NiAnalysis():
         m_iso = m_iso - Z*Physics.me_u + self.ionizationEnergy*Physics.qe/(Physics.u*Physics.c**2)
         m_ref = m_ref - Z*Physics.me_u + self.ionizationEnergy*Physics.qe/(Physics.u*Physics.c**2)
         # now the mass-scaling factor can be calculated
-        mu = (m_iso - m_ref) / (m_iso * m_ref)
+        mu = (m_iso - m_ref) / ((m_iso + Physics.me_u) * (m_ref + Physics.me_u))
         mu_d = np.sqrt(np.square(m_iso_d / m_iso ** 2) + np.square(m_ref_d / m_ref ** 2))
 
         # get Mass and Field Shift factors:
@@ -1206,8 +1187,8 @@ class NiAnalysis():
             Radius calculation will be used multiple times below. Thus encapsuled here.
             :return:
             """
-            # calculate radius
-            dr = mu * ((dnu / mu - M_alpha) / F + alpha)
+            # calculate differential mean square radius
+            dr2 = mu * ((dnu / mu - M_alpha) / F + alpha)
 
             # uncertainty contributions:
             mu_err = mu_d * (alpha - M_alpha / F)
@@ -1217,13 +1198,13 @@ class NiAnalysis():
             dnu_d_syst_err = dnu_d_syst / F  # systematic contribution of the isoshift value
 
             # combine uncertainties:
-            dr_d = dnu_d_err
-            dr_d_syst = np.sqrt(np.square(mu_err)
+            dr2_d = abs(dnu_d_err)
+            dr2_d_syst = np.sqrt(np.square(mu_err)
                                 + np.square(M_err)
                                 + np.square(F_err)
                                 + np.square(dnu_d_syst_err)
                                 )
-            return dr, dr_d, dr_d_syst, mu_err, M_err, F_err, dnu_d_err, dnu_d_syst_err
+            return dr2, dr2_d, dr2_d_syst, mu_err, M_err, F_err, dnu_d_err, dnu_d_syst_err
 
         if scaler is not None:
             # get per file isoshift
@@ -1296,7 +1277,7 @@ class NiAnalysis():
                       '\tIS: {:.4f}[{:.4f}]\n'
                       .format(iso,
                               iso_shift, 10*iso_shift_d, 10*iso_shift_d_syst,
-                              avg_delta_rms, 1000**avg_delta_rms_d, 1000*avg_delta_rms_d_syst,
+                              avg_delta_rms, 1000*avg_delta_rms_d, 1000*avg_delta_rms_d_syst,
                               mu,
                               mu_cont, M_cont, F_cont, IS_cont, IS_cont_syst))
                 print('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t'
@@ -1313,61 +1294,22 @@ class NiAnalysis():
                avg_delta_rms, avg_delta_rms_d, avg_delta_rms_d_syst, \
                IS_cont, IS_cont_syst, F_cont, M_cont
 
-    def ni55_A_B_analysis(self, isotope, scaler='scaler_012', calibrated=False):
-        if calibrated:
-            isotope = '{}_cal'.format(isotope)  # make sure to use the calibrated isos
+    def calc_abs_radius(self, diff_rad_tuple, ref):
+        """
 
-        # copy the results dict
-        res_dict = self.results[isotope]
+        :param diff_rad_tuple:
+        :param ref:
+        :return:
+        """
+        deltar, deltar_d, deltar_dsys = diff_rad_tuple
+        ref_r, ref_r_d = self.lit_radii_calc[ref]
 
-        # update the scaler
-        scaler = self.update_scalers_in_db(scaler)
+        abs_r = np.sqrt(np.square(ref_r) + deltar)
+        abs_r_d = 1/abs_r * deltar_d/2
 
-        # Get all coefficients from fit results
-        Al = res_dict[scaler]['hfs_pars']['Al'][0]
-        Al_d = res_dict[scaler]['hfs_pars']['Al'][1]
-        Au = res_dict[scaler]['hfs_pars']['Au'][0]
-        Au_d = res_dict[scaler]['hfs_pars']['Au'][1]
-        A_rat = res_dict[scaler]['hfs_pars']['Arat'][0]
-        A_rat_d = res_dict[scaler]['hfs_pars']['Arat'][1]
-        A_rat_fixed = res_dict[scaler]['hfs_pars']['Arat'][2]
+        abs_r_dsys = 1/abs_r * np.sqrt(np.square(ref_r*ref_r_d) + np.square(deltar_dsys/2))
 
-        Bl = res_dict[scaler]['hfs_pars']['Bl'][0]
-        Bl_d = res_dict[scaler]['hfs_pars']['Bl'][1]
-        Bu = res_dict[scaler]['hfs_pars']['Bu'][0]
-        Bu_d = res_dict[scaler]['hfs_pars']['Bu'][1]
-        B_rat = res_dict[scaler]['hfs_pars']['Brat'][0]
-        B_rat_d = res_dict[scaler]['hfs_pars']['Brat'][1]
-        B_rat_fixed = res_dict[scaler]['hfs_pars']['Brat'][2]
-
-        # calculate µ and Q values
-        # reference moments stored in format: (IsoMass_A, IsoSpin_I, IsoDipMom_µ, IsoDipMomErr_µerr, IsoQuadMom_Q, IsoQuadMomErr_Qerr)
-        m_ref, I_ref, mu_ref, mu_ref_d, Q_ref, Q_ref_d = self.nuclear_spin_and_moments['61Ni']
-        m_55, I_55, mu_55, mu_55_d, Q_55, Q_55_d = self.nuclear_spin_and_moments['55Ni']
-        # reference A and B factors stored in format: (Al, Al_d, Au, Au_d, Arat, Arat_d, Bl, Bl_d, Bu, Bu_d, Brat, Brat_d)
-        Al_ref, Al_d_ref, Au_ref, Au_d_ref, Arat_ref, Arat_d_ref, Bl_ref, Bl_d_ref, Bu_ref, Bu_d_ref, Brat_ref, Brat_d_ref = self.reference_A_B_vals['61Ni']
-
-        # magnetic dipole moment
-        mu_55 = mu_ref * Al/Al_ref * I_55/I_ref
-        mu_55_d = np.sqrt((mu_ref_d * Al/Al_ref*I_55/I_ref)**2 + (Al_d * mu_ref/Al_ref*I_55/I_ref)**2 + (Al_d_ref * mu_ref*Al/Al_ref**2*I_55/I_ref)**2)
-        # electric quadrupole moment
-        Q_55 = Q_ref * Bl/Bl_ref
-        Q_55_d = np.sqrt((Q_ref_d*Bl/Bl_ref)**2 + (Bl_d*Q_ref/Bl_ref)**2 + (Bl_d_ref*Bl*Q_ref/Bl_ref**2)**2)
-        logging.info('\nspectroscopic factors: Al={0:.0f}({1:.0f}), Au={2:.0f}({3:.0f}), Arat={4:.3f}({5:.0f}),'
-                     ' Bl={6:.0f}({7:.0f}), Bu={8:.0f}({9:.0f}), Brat={10:.3f}({11:.0f})'
-                     .format(Al, Al_d, Au, Au_d, A_rat, A_rat_d*1000, Bl, Bl_d, Bu, Bu_d, B_rat, B_rat_d*1000))
-        logging.info('\nmu55 = {0:.3f}({1:.0f}), Q55 = {2:.3f}({3:.0f})'
-                     .format(mu_55, mu_55_d*1000, Q_55, Q_55_d*1000))
-
-        # write to results dict
-        moments_dict = {'mu': {'vals': [mu_55],
-                               'd_stat': [0],
-                               'd_syst': [mu_55_d]},
-                        'Q': {'vals': [Q_55],
-                              'd_stat': [0],
-                              'd_syst': [Q_55_d]}
-                        }
-        self.results[isotope][scaler]['moments'] = moments_dict
+        return abs_r, abs_r_d, abs_r_dsys
 
     ''' Results and Plotting '''
 
@@ -1454,17 +1396,19 @@ class NiAnalysis():
         # export results  #
         ###################
         to_file_dict = {}
-        # if there are analysis parameters stored, delete them. Will be written new.
-        try:
-            del to_file_dict['analysis_parameters']
-        except:
-            pass
+
         # iterate over copy of self.results (so we don't work on the original in case it's still needed)
         copydict = TiTs.deepcopy(self.results)
+        # if there are analysis parameters stored, delete them. Will be written new.
+        try:
+            del copydict['analysis_parameters']
+        except:
+            pass
         for keys, vals in copydict.items():
             # xml cannot take numbers as first letter of key
-            if not type(vals['file_times'][0]) == type('string'):
-                vals['file_times'] = [datetime.strftime(t, '%Y-%m-%d %H:%M:%S') for t in vals['file_times']]
+            if vals.get('file_times', False):
+                if not type(vals['file_times'][0]) == type('string'):
+                    vals['file_times'] = [datetime.strftime(t, '%Y-%m-%d %H:%M:%S') for t in vals['file_times']]
             to_file_dict['i' + keys] = vals
         # add analysis parameters
         to_file_dict['analysis_parameters'] = self.analysis_parameters
@@ -1480,7 +1424,15 @@ class NiAnalysis():
         # evaluate strings in dict
         res_dict = TiTs.evaluate_strings_in_dict(res_dict)
         # remove 'analysis_paramters' from dict
-        del res_dict['analysis_parameters']
+        if self.analysis_parameters is None and not is_gate_analysis:
+            gate = res_dict['analysis_parameters']['gate_global_presets']
+            self.analysis_parameters = res_dict['analysis_parameters']
+            self.analysis_parameters['gate_global_presets'] = {'midtof': str(gate['midtof']),
+                                                               'tof_sc_delay': str(gate['tof_sc_delay']),
+                                                               'gatewidth': str(gate['gatewidth'])
+                                                               }
+        else:
+            del res_dict['analysis_parameters']
         # stored dict has 'i' in front of isotopes. Remove that again!
         for keys, vals in res_dict.items():
             # xml cannot take numbers as first letter of key but dicts can
@@ -1874,9 +1826,9 @@ class NiAnalysis():
         shiftslist_cal = isolist_cal.copy()
         shiftslist_cal.remove('{}_cal'.format(self.ref_iso))
 
-        final_isos = self.all_isotopes
+        final_isos = self.all_isotopes + ['{}Bec'.format(i) for i in self.other_BEC_isotopes]
         # isotope shifts
-        self.plot_shifts_chain(final_isos, self.ref_iso, 'final', dash_missing_data=True, tip_scale=250)
+        # self.plot_shifts_chain(final_isos, self.ref_iso, 'final', dash_missing_data=True, tip_scale=250)
         # radii
         self.plot_radii_chain(final_isos, self.ref_iso, 'final', dash_missing_data=True)
         self.plot_radii_chain_errorband(final_isos, self.ref_iso, 'final', dash_missing_data=True)
@@ -2185,9 +2137,9 @@ class NiAnalysis():
         font_size = 12
         ref_key = refiso[:4]
         if scaler == 'final':
-            rms_key = 'delta_rms_iso-{}'.format(refiso[:2])
+            rms_key = 'delta_ms_iso-{}'.format(refiso[:2])
         else:
-            rms_key = 'avg_delta_rms_iso-{}'.format(refiso[:2])
+            rms_key = 'avg_delta_ms_iso-{}'.format(refiso[:2])
         thisVals = {key: [self.results[key][scaler][rms_key]['vals'][0],
                            self.results[key][scaler][rms_key]['d_stat'][0]]
                      for key in isolist}
@@ -2295,17 +2247,16 @@ class NiAnalysis():
         font_size = 12
         ref_key = refiso[:4]
 
-        # Use combined BECOLA values here:
-        becola_isoshift = self.iso_shifts_becola
-        becola_radii = {}
+        prop_key = 'delta_ms_iso-{}'.format(ref_key[:2])
 
-        for keys, vals in becola_isoshift.items():
-            becola_radii[keys] = self.extract_radius_from_factors(keys, ref_key, isoshift=vals, printErrCont=True)[2:]
-            # delta_rms, delta_rms_d, delta_rms_d_syst, IS_cont, IS_cont_syst, F_cont, M_cont
+        thisVals = {key: [self.results[key][scaler][prop_key]['vals'][0],
+                          self.results[key][scaler][prop_key]['d_stat'][0],
+                          self.results[key][scaler][prop_key]['d_syst'][0]]
+                    for key in isolist}
 
         col = ['r', 'b', 'k', 'g']
 
-        data_dict = {'BECOLA': {'data': becola_radii, 'color': 'red'}}
+        data_dict = {'BECOLA': {'data': thisVals, 'color': 'red'}}
         src_list = []
 
         # get the literature values
@@ -2329,12 +2280,11 @@ class NiAnalysis():
         y = []
         yerr = []
         ytiltshift = []
-        yshift = []
         for i in keyVals:
             x.append(int(''.join(filter(str.isdigit, i))))
             y.append(data[i][0])
-            yerr.append(np.sqrt(np.square(data[i][3])+np.square(data[i][4])))  # take only IS contributions here
-            ytiltshift.append(np.sqrt(np.square(data[i][5])+np.square(data[i][6])))  # Fieldshift-Factor, Massshift-Factor uncertainty
+            yerr.append(data[i][1])  # take only IS contributions here
+            ytiltshift.append(data[i][2])  # Fieldshift-Factor, Massshift-Factor uncertainty
 
         plt.xticks(rotation=0)
         ax = plt.gca()
@@ -2471,27 +2421,19 @@ class NiAnalysis():
         lit_abs_radii = self.lit_radii_calc
         ref_abs_radius = lit_abs_radii[ref_key]
 
-        # Use combined BECOLA values here:
-        becola_isoshift = self.iso_shifts_becola
-        becola_delta_radii = {}
-        becola_abs_radii = {}
+        prop_key = 'abs_radii'
 
-        for keys, vals in becola_isoshift.items():
-            # delta_rms, delta_rms_d, delta_rms_d_syst, IS_cont, IS_cont_sys, F_cont, M_cont
-            r, r_d, r_dis, r_diso, r_diso_s, r_df, r_dm = self.extract_radius_from_factors(keys, ref_key, isoshift=vals, printErrCont=True)[2:]
-            becola_delta_radii[keys] = r, r_d, r_dis, r_df, r_dm
-            # calculate absolute radius
-            rabs = np.sqrt(ref_abs_radius[0]**2 + r)
-            rabs_d_is = r_dis/2/rabs
-            rabs_d_syst = np.sqrt((ref_abs_radius[0]/rabs*ref_abs_radius[1])**2
-                                  + (np.sqrt(r_df**2+r_dm**2)/2/rabs)**2)
+        thisVals = {key: [self.results[key][scaler][prop_key]['vals'][0],
+                          self.results[key][scaler][prop_key]['d_stat'][0],
+                          self.results[key][scaler][prop_key]['d_syst'][0]]
+                    for key in isolist}
 
-            becola_abs_radii[keys] = rabs, rabs_d_is, rabs_d_syst
+        col = ['r', 'b', 'k', 'g']
 
-        print(becola_abs_radii)
-
-        data_dict = {'BECOLA': {'data': becola_abs_radii, 'color': 'red'},
+        data_dict = {'BECOLA': {'data': thisVals, 'color': 'red'},
                      'Fricke': {'data': lit_abs_radii, 'color': 'black'}}
+
+        src_list = []
 
         # plot BECOLA values
         src = 'BECOLA'
@@ -2607,7 +2549,7 @@ class NiAnalysis():
         else:
             plt.errorbar(x, y, yerr, fmt='o', color=col, linestyle='-')
 
-
+        plt.ylim(3.7, 3.9)
         ax.set_xmargin(0.05)
         plt.legend(loc='lower right')
         plt.margins(0.1)
@@ -2832,8 +2774,11 @@ if __name__ == '__main__':
     analysis.compare_king_pars()
 
     # Extract the differential charge radii
-    analysis.extract_diff_radii_for_isotopes()
+    analysis.extract_radii_for_isotopes()
+
+    # Extract mu, Q
+    analysis.ni55_A_B_analysis()
 
     # final plots
-    # analysis.get_final_results()
-    # analysis.export_results()
+    analysis.make_final_plots()
+    analysis.export_results()

@@ -12,6 +12,7 @@ from glob import glob
 from datetime import datetime, timedelta
 import logging
 import re
+import operator  # used for sorting legends
 
 from math import ceil, floor, log10
 import pandas as pd
@@ -19,11 +20,16 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+import matplotlib.font_manager as font_manager
 from mpl_toolkits.mplot3d import Axes3D, proj3d
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from itertools import *
+from operator import itemgetter
 
 from scipy.optimize import curve_fit
+from scipy import odr
 from scipy import interpolate
+import scipy.constants as sc
 
 from Measurement.XMLImporter import XMLImporter
 import TildaTools as TiTs
@@ -39,13 +45,24 @@ class PlotThesisGraphics:
         """ Colors """
         # Define global color names TODO: Fill and propagate
         self.black = (0, 0, 0)
+        self.grey = (181/255, 181/255, 181/255) # 40% grey
+        self.dark_blue = (36/255, 53/255, 114/255)  # TUD1d
         self.blue = (0/255, 131/255, 204/255)  # TUD2b
         self.green = (153/255, 192/255, 0/255)  # TUD4b
+        self.dark_green = (0/255, 113/255, 94/255)  # TUD3d
+        self.yellow = (253/255, 202/255, 0/255)  # TUD6b
         self.orange = (245/255, 163/255, 0/255)  # TUD7b
+        self.dark_orange = (190/255, 111/255, 0/255)  # TUD7d
         self.red = (230/255, 0/255, 26/255)  # TUD9b
+        self.dark_red = (156/255, 28/255, 38/255)  # TUD9d
         self.purple = (114/255, 16/255, 133/255)  # TUD11b
+        self.dark_purple = (76 / 255, 34 / 255, 106 / 255)  # TUD11d
 
-        self.pmt_colors = {'scaler_0': self.blue, 'scaler_1': self.orange, 'scaler_2': self.purple, 'scaler_c012': self.red}
+        self.colorlist = [self.black, self.blue, self.green, self.orange, self.red, self.purple,
+                          self.dark_blue, self.dark_green, self.yellow, self.dark_purple]
+        self.markerlist = ['s', '<', 'D', 'v', 'p', '>', '*', '^']
+
+        self.pmt_colors = {'scaler_0': self.blue, 'scaler_1': self.dark_orange, 'scaler_2': self.purple, 'scaler_c012': self.red}
         self.isotope_colors = {'60Ni': self.blue, '58Ni': self.black, '56Ni': self.green, '55Ni': self.orange, '54Ni': self.orange, '62Ni': self.purple, '64Ni': self.purple}
 
         # Define Color map
@@ -63,13 +80,17 @@ class PlotThesisGraphics:
         self.custom_cmap = mpl.colors.LinearSegmentedColormap('my_colormap', c_dict, 1024)
 
         # Define a color gradient with negative values blue, 0 black and positive values green
-        self.colorgradient = {-3: (36/255, 53/255, 114/255),
-                              -2: (0/255, 78/255, 115/255),
-                              -1: (0/255, 114/255, 94/255),
+        self.colorgradient = {-5: (36/255, 53/255, 114/255),  # TUD1d
+                              -4: (0/255, 78/255, 115/255),  # TUD2d
+                              -3: (0/255, 104/255, 157/255),  # TUD2c
+                              -2: (0/255, 131/255, 204/255),  # TUD2b
+                              -1: (0/255, 156/255, 218/255),  # TUD2a
                               0: (0, 0, 0),
-                              1: (106/255, 139/255, 55/255),
-                              2: (153/255, 166/255, 4/255),
-                              3: (174/255, 142/255, 0/255)
+                              1: (175/255, 204/255, 80/255),  # TUD4a
+                              2: (153/255, 192/255, 0/255),  # TUD4b
+                              3: (127/255, 171/255, 22/255),  # TUD4c
+                              4: (106/255, 139/255, 55/255),  # TUD4d
+                              5: (0/255, 113/255, 94/255)  # TUD3d
                               }
 
         """ Global Style Settings """
@@ -79,7 +100,10 @@ class PlotThesisGraphics:
                      'weight': 'normal',
                      'stretch': 'ultra-condensed',
                      'size': 11}  # wie in Arbeit
+
         mpl.rc('font', **font_plot)
+        # mpl.rcParams['mathtext.fontset'] = 'custom'
+        # mpl.rcParams['mathtext.rm'] = 'STIXGeneral'
         mpl.rc('lines', linewidth=1)
 
         self.text_style = {'family': 'sans-serif',
@@ -136,6 +160,7 @@ class PlotThesisGraphics:
         f.set_size_inches((self.w_in * width, self.h_in * height))
 
         # First Col: Voigt
+        rChiVoigt = 2.18
         x_0, cts_0, res_0, cts_err_0 = np.loadtxt(
             glob(os.path.join(folder, 'Voigt\\BECOLA_6501_data__*'))[0],
             delimiter=', ', skiprows=1, unpack=True)
@@ -143,11 +168,13 @@ class PlotThesisGraphics:
             glob(os.path.join(folder, 'Voigt\\BECOLA_6501_fit_fullShape__*'))[0],
             delimiter=', ', skiprows=1, unpack=True)
         axes[0, 0].errorbar(x_0, cts_0, cts_err_0, **self.data_style)  # data
+        axes[0, 0].annotate(r'$\chi^2_\mathrm{{red}}={:.2f}$'.format(rChiVoigt), (-950, 7000))
         axes[0, 0].plot(x_fit_0, fit_0, **self.fit_style)  # fit
         axes[1, 0].errorbar(x_0, res_0, cts_err_0, **self.data_style)  # residuals
         axes[0, 0].set_title('Voigt')
 
         # Second Col: SatVoigt
+        rChiSatVoigt = 0.92
         x_1, cts_1, res_1, cts_err_1 = np.loadtxt(glob(os.path.join(folder, 'SatVoigt\\BECOLA_6501_data__*'))[0],
                                           delimiter=', ', skiprows=1, unpack=True)
         x_fit_1, fit_1 = np.loadtxt(glob(os.path.join(folder, 'SatVoigt\\BECOLA_6501_fit_fullShape__*'))[0],
@@ -157,6 +184,7 @@ class PlotThesisGraphics:
         x_sp_1, sp_1 = np.loadtxt(glob(os.path.join(folder, 'SatVoigt\\BECOLA_6501_fit_sidePeak0__*'))[0],
                                 delimiter=', ', skiprows=1, unpack=True)
         axes[0, 1].errorbar(x_1, cts_1, cts_err_1, label='data', **self.data_style)  # data
+        axes[0, 1].annotate(r'$\chi^2_\mathrm{{red}}={:.2f}$'.format(rChiSatVoigt), (-950, 7000))
         da, la = axes[0, 1].get_legend_handles_labels()
         fi = axes[0, 1].plot(x_fit_1, fit_1, label='fit', **self.fit_style)  # fit
         mp = axes[0, 1].plot(x_mp_1, mp_1, label='main peak', **self.ch_dict(self.fit_style, {'linestyle': '--'}))  # mainPeak
@@ -166,6 +194,7 @@ class PlotThesisGraphics:
         axes[0, 1].set_title('SatVoigt')
 
         # Third Col: ExpVoigt
+        rChiExpVoigt = 1.25
         x_2, cts_2, res_2, cts_err_2 = np.loadtxt(
             glob(os.path.join(folder, 'ExpVoigt\\BECOLA_6501_data__*'))[0],
             delimiter=', ', skiprows=1, unpack=True)
@@ -173,6 +202,7 @@ class PlotThesisGraphics:
             glob(os.path.join(folder, 'ExpVoigt\\BECOLA_6501_fit_fullShape__*'))[0],
             delimiter=', ', skiprows=1, unpack=True)
         axes[0, 2].errorbar(x_2, cts_2, cts_err_2, **self.data_style)  # data
+        axes[0, 2].annotate(r'$\chi^2_\mathrm{{red}}={:.2f}$'.format(rChiExpVoigt), (-950, 7000))
         axes[0, 2].plot(x_fit_2, fit_2, **self.fit_style)  # fit
         axes[1, 2].errorbar(x_2, res_2, cts_err_2, **self.data_style)  # residuals
         axes[0, 2].set_title('ExpVoigt')
@@ -236,8 +266,8 @@ class PlotThesisGraphics:
         file = 'BECOLA_6501.xml'
 
         # Import Measurement from file using Importer
-        midtof = 5.36
-        gatewidth = 0.24
+        midtof = 5.3615
+        gatewidth = 0.07648*2*2  # sigma*2*numberOfSigmas
 
         xml = XMLImporter(os.path.join(folder, file), x_as_volt=True,
                         softw_gates=[[-100, 100, midtof-gatewidth/2, midtof+gatewidth/2],
@@ -250,6 +280,7 @@ class PlotThesisGraphics:
         v_proj = xml.cts[0]
         v_proj_err = xml.err[0]
         x_axis = -np.array(xml.x[0]) + xml.accVolt
+        step_width = xml.stepSize[0] * xml.lineMult
         # Get sizes of arrays
         scal_data_size, x_data_size, t_data_size = np.shape(trs)
         # create mesh for time-resolved plot
@@ -296,7 +327,8 @@ class PlotThesisGraphics:
         ax_col.set_ylabel('cts/arb.u.')
 
         # create Voltage projection
-        ax_vpr.errorbar(x_axis, v_proj[0], v_proj_err[0], **self.data_style)  # x_step_projection_sc0
+        # ax_vpr.errorbar(x_axis, v_proj[0], v_proj_err[0], **self.data_style)  # x_step_projection_sc0
+        ax_vpr.bar(x_axis, v_proj[0], width=step_width, color=self.grey, edgecolor=self.grey)
         ax_vpr.axes.tick_params(axis='x', direction='in',
                                 top=True, bottom=True,
                                 labeltop=False, labelbottom=False)
@@ -307,7 +339,8 @@ class PlotThesisGraphics:
         ax_vpr.set_ylabel('cts/arb.u.')
 
         # create time projection
-        ax_tpr.errorbar(t_proj[0], np.arange(t_data_size), xerr=t_proj_err[0], **self.data_style)  # y_time_projection_sc0
+        # ax_tpr.errorbar(t_proj[0], np.arange(t_data_size), xerr=t_proj_err[0], **self.data_style)  # y_time_projection_sc0
+        ax_tpr.barh(np.arange(t_data_size), t_proj[0], height=1, color=self.grey, edgecolor=self.grey)
         ax_tpr.axes.tick_params(axis='x', direction='out',
                                 top=False, bottom=True, labeltop=False, labelbottom=True)
         plt.setp(ax_tpr.get_xticklabels(), rotation=-90)
@@ -416,8 +449,11 @@ class PlotThesisGraphics:
                                      hatch='/', edgecolor=col,
                                      label=plt_label)
                 else:
+                    # define a very small offset to the time axis for scalers 0, 2 so its better visible
+                    x_off = (int(scaler[-1])-1) * timedelta(0, 600)  # (days, seconds)
+                    x_ax_off = [t+x_off for t in x_ax]
                     # plot values as dots with statistical errorbars
-                    ax1.errorbar(x_ax, np.array(centers), yerr=np.array(centers_d_stat), label=plt_label,
+                    ax1.errorbar(x_ax_off, np.array(centers), yerr=np.array(centers_d_stat), label=plt_label,
                                  **self.ch_dict(self.data_style, {'color': col, 'markeredgecolor': col,
                                                                   'markersize': 4, 'capsize': 4}))
 
@@ -436,22 +472,18 @@ class PlotThesisGraphics:
                     # plot label without number:
                     plt_label = labelstr
 
-                    ax1.plot([x_ax[0], x_ax[-1]], [avg_shift, avg_shift], 'red')
+                    ax1.axhline(y=avg_shift, color=self.red)
                     # plot error of weighted average as red shaded box around that line
-                    ax1.fill([x_ax[0], x_ax[-1], x_ax[-1], x_ax[0]],
-                             [avg_shift - avg_shift_d, avg_shift - avg_shift_d,
-                              avg_shift + avg_shift_d, avg_shift + avg_shift_d], 'red',
-                             alpha=0.4,
-                             label=plt_label)
+                    ax1.axhspan(ymin=avg_shift - avg_shift_d, ymax=avg_shift + avg_shift_d,
+                                color=self.red,
+                                alpha=0.4,
+                                label=plt_label)
 
                     # plot systematic error as lighter red shaded box around that line
-                    ax1.fill([x_ax[0], x_ax[-1], x_ax[-1], x_ax[0]],
-                             [avg_shift - avg_shift_d_syst - avg_shift_d,
-                              avg_shift - avg_shift_d_syst - avg_shift_d,
-                              avg_shift + avg_shift_d_syst + avg_shift_d,
-                              avg_shift + avg_shift_d_syst + avg_shift_d],
-                             'red',
-                             alpha=0.2)
+                    ax1.axhspan(ymin=avg_shift - avg_shift_d_syst - avg_shift_d,
+                                ymax=avg_shift + avg_shift_d_syst + avg_shift_d,
+                                color=self.red,
+                                alpha=0.2)
 
 
             # work on the axes
@@ -588,45 +620,55 @@ class PlotThesisGraphics:
         fig.set_size_inches((self.w_in * width, self.h_in * height))
 
         # Define which Isotope(s) to plot
-        isolist = ['56Ni_cal']
-        scaler = 'scaler_c012'
-        parameter = 'shift_iso-{}'.format('60')
+        iso = '58Ni'
+        file = 'BECOLA_6501.xml'   # '60Ni_cal_6502.xml'
+        scaler = 'scaler_012'
+        include_devs = [-2.0, -1.0, 1.0, 2.0]  # midtof = 0 will be plotted separately
 
         # get data from results file
-        load_results_from = glob(os.path.join(folder, 'SoftwareGateAnalysis_*'))[0]
+        load_results_from = glob(os.path.join(folder, '*all2018_FINAL*'))[0]
         results = self.import_results(load_results_from)
         # get the x-axis  --> its actually the powers of two of the gatewidth (2**x)
-        xax = results['60Ni_cal_6502']['scaler_012']['full_data']['xax']
+        xax = results[iso][scaler]['full_data']['xax']
         xax = TiTs.numpy_array_from_string(xax, -1, datatytpe=np.float)  # convert str to np.array
+        # get the recommended sigma for this file
+        f_indx = results[iso]['file_names'].index(file)
+        rec_sigma = results[iso][scaler]['bestSNR_sigma']['vals'][f_indx]
         # get the SNR results
-        SNR = results['60Ni_cal_6502']['scaler_012']['full_data']['SNR']['vals']
-        SNR_d = results['60Ni_cal_6502']['scaler_012']['full_data']['SNR']['d_stat']
-        SNR = TiTs.numpy_array_from_string(SNR, -1, datatytpe=np.float)  # convert str to np.array
-        SNR_d = TiTs.numpy_array_from_string(SNR_d, -1, datatytpe=np.float)  # convert str to np.array
+        SNR = results[iso][scaler]['full_data'][file]['SNR']['tof_0.0']['vals']
+        SNR_d = results[iso][scaler]['full_data'][file]['SNR']['tof_0.0']['d_stat']
+        # SNR = TiTs.numpy_array_from_string(SNR, -1, datatytpe=np.float)  # convert str to np.array
+        # SNR_d = TiTs.numpy_array_from_string(SNR_d, -1, datatytpe=np.float)  # convert str to np.array
         # get the center fit results
         tof_dict = {}
-        for key, item in results['60Ni_cal_6502']['scaler_012']['full_data']['tof'].items():
+        for key, item in results[iso][scaler]['full_data'][file]['centroid'].items():
             newkey = float(key.split('_')[-1])
-            newvals = TiTs.numpy_array_from_string(item['vals'], -1, datatytpe=np.float)  # convert str to np.array
-            new_d = TiTs.numpy_array_from_string(item['d_stat'], -1, datatytpe=np.float)  # convert str to np.array
+            newvals = item['vals']
+            new_d = item['d_stat']
+            # newvals = TiTs.numpy_array_from_string(item['vals'], -1, datatytpe=np.float)  # convert str to np.array
+            # new_d = TiTs.numpy_array_from_string(item['d_stat'], -1, datatytpe=np.float)  # convert str to np.array
             tof_dict[newkey] = {'vals': newvals, 'd_stat': new_d}
 
         ''' plotting '''
         # plot the midtof data
         for key, item in sorted(tof_dict.items()):
-            y = item['vals']
-            y_d = item['d_stat']
-            col = self.colorgradient[int(key)]
-            ax1.plot(xax, y, **self.ch_dict(self.fit_style, {'linewidth': 2, 'color': col}))
-            ax1.fill_between(xax, y - y_d, y + y_d, label='{0:{1}.0f} bin'.format(key, '+' if key else ' '),
-                             alpha=0.4, facecolor=col, edgecolor='none',
-                             )
+            if key in include_devs:  # midtof = 0 will be plotted separately
+                y = np.array(item['vals'])
+                y_d = np.array(item['d_stat'])
+                col = self.colorgradient[int(key)]
+                ax1.plot(xax, y, zorder=2, **self.ch_dict(self.fit_style, {'linewidth': 2, 'color': col}))
+                ax1.fill_between(xax, y - y_d, y + y_d, label='{0:{1}.0f} bin'.format(key, '+' if key else ' '),
+                                 alpha=0.4, facecolor=col, edgecolor='none', zorder=1
+                                 )
+        ax1.errorbar(xax, tof_dict[0.0]['vals'], tof_dict[0.0]['d_stat'], label='0 bin', zorder=3,
+                     **self.ch_dict(self.data_style,
+                                    {'markersize': 4, 'linestyle': '-', 'linewidth': 2, 'capsize': 5, 'capthick': 2}))
 
         # plot the gatewidth used in file
         # ax.axvline(x=np.log(200 * self.tof_width_sigma * self.tof_sigma[iso]) / np.log(2), color='red')
         ax1.tick_params(axis='y', labelcolor='k')
         ax1.set_ylabel('fit centroid rel. to analysis value / MHz', color='k')
-        ax1.set_xlabel('gatewidth [bins]')
+        ax1.set_xlabel('gate size [bins]')
 
         # plot SNR error band
         axSNR = ax1.twinx()
@@ -634,13 +676,14 @@ class PlotThesisGraphics:
         axSNR.plot(xax, SNR, label='SNR', **self.ch_dict(self.fit_style, {'linewidth': 2}))
         axSNR.tick_params(axis='y', labelcolor='red')
 
+        axSNR.axvline(x=np.log(rec_sigma*2*2)/np.log(2), color=self.red, linestyle='--')
+
         import matplotlib.ticker as ticker
         # convert the x-axis to real gate widths (2**x):
         ax1.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x_b2, _: '{:.0f}'.format(2 ** x_b2)))
         plt.margins(0.05)
         ax1.legend(title='Offset of midTof parameter relativ to analysis value', bbox_to_anchor=(0.5, 1.2),
-                   loc="center", ncol=7, columnspacing=0.7, handletextpad=0.1)
-
+                   loc="center", ncol=6, columnspacing=0.7, handletextpad=0.1)
 
         plt.savefig(folder + 'gatewidth.png', dpi=self.dpi, bbox_inches='tight')
         plt.close()
@@ -654,11 +697,11 @@ class PlotThesisGraphics:
         folder = os.path.join(self.fig_dir, 'Nickel\\Analysis\\Gates\\')
 
         # get data from results file
-        load_results_from = glob(os.path.join(folder, 'SoftwareGateAnalysis_*'))[0]
+        load_results_from = glob(os.path.join(folder, '*FINAL*'))[0]  #AllIsoInclOffline
         results = self.import_results(load_results_from)
 
         # Define isotopes
-        iso_list = ['54Ni', '55Ni', '56Ni', '58Ni', '60Ni', '62Ni', '64Ni',]
+        iso_list = ['56Ni', '58Ni', '60Ni']  #['54Ni', '55Ni', '56Ni', '58Ni', '60Ni', '62Ni', '64Ni',]  #['56Ni', '58Ni', '60Ni']  #
         file_name_ex = ['Sum54Nic_9999.xml', 'Sum55Nic_9999.xml', 'Sum56Nic_9999.xml',
                         'Sum58Nic_9999.xml', 'Sum60Nic_9999.xml', 'Sum62Nic_9999.xml', 'Sum64Nic_9999.xml']  # file_name of example file for each isotope
         global_guess = {'54Ni': 5.19, '55Ni': 5.23, '56Ni': 5.28, '58Ni': 5.36, '60Ni': 5.47, '62Ni': 5.59, '64Ni': 5.68}
@@ -669,199 +712,217 @@ class PlotThesisGraphics:
         midTOF_per_iso = []
         midTOF_d_per_iso = []
 
+        remove_isos = []
         for num, iso in enumerate(iso_list):
-            base_dir = results[iso][scaler]
-            file = file_name_ex[num]
-            file_indx = results[iso]['file_names'].index(file)
-            # get the x-axis  --> its actually the powers of two of the gatewidth (2**x)
-            xax = base_dir['full_data']['xax']
-            xax = TiTs.numpy_array_from_string(xax, -1, datatytpe=np.float)  # convert str to np.array
-            gatewidth_variation_arr = np.array([2**x_b2 for x_b2 in xax])
-            # get the gate results
-            midtof_var = []
-            SNR_arr = []
-            SNR_d_arr = []
-            Centr_arr = []
-            Centr_d_arr = []
-            for m_key, vals in base_dir['full_data'][file]['SNR'].items():
-                m_v = ast.literal_eval(m_key[4:])
-                midtof_var.append(m_v)
-            midtof_variation_arr = np.array(sorted(midtof_var))
-            for m in midtof_variation_arr:
-                m_key = 'tof_{:.1f}'.format(m)
-                # get the results from the SNR analysis
-                SNR = base_dir['full_data'][file]['SNR'][m_key]['vals']
-                SNR_d = base_dir['full_data'][file]['SNR'][m_key]['d_stat']
-                SNR_arr.append(np.array(SNR))  # convert to np.array
-                SNR_d_arr.append(np.array(SNR_d))  # convert to np.array
-                # get the results from the SNR analysis
-                Centr = base_dir['full_data'][file]['centroid'][m_key]['vals']
-                Centr_d = base_dir['full_data'][file]['centroid'][m_key]['d_stat']
-                Centr_arr.append(np.array(Centr))  # convert str to np.array
-                Centr_d_arr.append(np.array(Centr_d))  # convert str to np.array
-            # make proper 2-D arrays from the data lists again
-            SNR_arr = np.array(SNR_arr)
-            SNR_d_arr = np.array(SNR_d_arr)
-            Centr_arr = np.array(Centr_arr)
-            Centr_d_arr = np.array(Centr_d_arr)
-            # Get the analysis values for this file
-            rec_mid_SNR = (base_dir['bestSNR_mid']['vals'][file_indx], base_dir['bestSNR_mid']['d_fit'][file_indx])
-            rec_sig_SNR = (base_dir['bestSNR_sigma']['vals'][file_indx], base_dir['bestSNR_sigma']['d_fit'][file_indx])
-            rec_mid_TOF = (base_dir['fitTOF_mid']['vals'][file_indx], base_dir['fitTOF_mid']['d_fit'][file_indx])
-            rec_sig_TOF = (base_dir['fitTOF_sigma']['vals'][file_indx], base_dir['fitTOF_sigma']['d_fit'][file_indx])
-            #
-            midSNR_per_iso.append(rec_mid_SNR[0])
-            midSNR_d_per_iso.append(rec_mid_SNR[1])
-            midTOF_per_iso.append(rec_mid_TOF[0])
-            midTOF_d_per_iso.append(rec_mid_TOF[1])
-            #
-            fit_pars = base_dir['SNR_fit']['vals'][file_indx]
-            fit_errs = base_dir['SNR_fit']['d_fit'][file_indx]
+            if iso in results.keys():
+                base_dir = results[iso][scaler]
+                file = 'Sum{}c_9999.xml'.format(iso)  #file_name_ex[num]
+                file_indx = results[iso]['file_names'].index(file)
+                # get the x-axis  --> its actually the powers of two of the gatewidth (2**x)
+                xax = base_dir['full_data']['xax']
+                xax = TiTs.numpy_array_from_string(xax, -1, datatytpe=np.float)  # convert str to np.array
+                gatewidth_variation_arr = np.array([2**x_b2 for x_b2 in xax])
+                # get the gate results
+                midtof_var = []
+                SNR_arr = []
+                SNR_d_arr = []
+                Centr_arr = []
+                Centr_d_arr = []
+                for m_key, vals in base_dir['full_data'][file]['SNR'].items():
+                    m_v = ast.literal_eval(m_key[4:])
+                    midtof_var.append(m_v)
+                midtof_variation_arr = np.array(sorted(midtof_var))
+                for m in midtof_variation_arr:
+                    m_key = 'tof_{:.1f}'.format(m)
+                    # get the results from the SNR analysis
+                    SNR = base_dir['full_data'][file]['SNR'][m_key]['vals']
+                    SNR_d = base_dir['full_data'][file]['SNR'][m_key]['d_stat']
+                    SNR_arr.append(np.array(SNR))  # convert to np.array
+                    SNR_d_arr.append(np.array(SNR_d))  # convert to np.array
+                    # get the results from the SNR analysis
+                    Centr = base_dir['full_data'][file]['centroid'][m_key]['vals']
+                    Centr_d = base_dir['full_data'][file]['centroid'][m_key]['d_stat']
+                    Centr_arr.append(np.array(Centr))  # convert str to np.array
+                    Centr_d_arr.append(np.array(Centr_d))  # convert str to np.array
+                # make proper 2-D arrays from the data lists again
+                SNR_arr = np.array(SNR_arr)
+                SNR_d_arr = np.array(SNR_d_arr)
+                Centr_arr = np.array(Centr_arr)
+                Centr_d_arr = np.array(Centr_d_arr)
 
-            # def SNR_model(x, y, SNRmax, mid, tof_sigma):
-            #     """
-            #     Assuming the ion bunch is gauss-shaped in the time domain, the signal-to-noise ratio should
-            #     be defined through the integral over the gaussian and the (constant) background
-            #     :param x: the x-position on the plotwindow/meshgrid
-            #     :param y: the y-position on the plotwindow/meshgrid
-            #     :param SNRmax: The maximum SNR. Scales the height but doesn't influence the positon
-            #     :param mid: the real mid-tof correction to the assumed value
-            #     :param tof_sigma: the real tof-sigma. This determines most of the SNR analysis
-            #     :return: SNR, depending on gate choice
-            #     """
-            #     from scipy import special
-            #     # give x and y a real meaning:
-            #     width = gatewidth_variation_arr[x]  # the x-parameter is the gatewidth defined by log array
-            #     tof_off = midtof_variation_arr[y]  # the y parameter is the tof-variation. We assume midtof=0
-            #     # Integrate the gaussian from midtof+y-x/2 to midtof+y+x/2
-            #     # The integral is defined through imaginary errorfunction erf
-            #     intensity = np.sqrt(np.pi / 2) * tof_sigma * (
-            #             special.erf((tof_off + width / 2 - mid) / (np.sqrt(2) * tof_sigma))
-            #             - special.erf((tof_off - width / 2 - mid) / (np.sqrt(2) * tof_sigma)))
-            #     intensity = intensity / (2.10177 * tof_sigma)  # scaling for int=1 at 2.8 sigma
-            #     background = width / 2.8 * tof_sigma  # scales linear by width. scaling for bg=1 at 2.8 sigma
-            #     # In reality, the background will not be linear but have a beam induced straylight component
-            #     # if iso in self.isotopes_stable and '58' not in iso:
-            #     #     # beam bg of stable isotopes will be dominated by 58Ni
-            #     #     mid_bb = self.tof_mid['58Ni']-self.tof_mid[iso]+tof_off
-            #     # else:
-            #     #     # beam background will be dominated by the resonance isotope
-            #     #     mid_bb = mid
-            #     # bg_stray = beamb * np.sqrt(np.pi/2)*tof_sigma * (  # scaling of 2.7 has been extracted from time-res data
-            #     #         special.erf((tof_off + width / 2 - mid_bb) / (np.sqrt(2) * tof_sigma))
-            #     #         - special.erf((tof_off - width / 2 - mid_bb) / (np.sqrt(2) * tof_sigma)))
-            #     # bg_stray = bg_stray / 2.10177*tof_sigma  # scaling for bg_stray = beamb at 2.8 sigma
-            #     # background = (background + bg_stray)/(1+beamb)
-            #
-            #     # return the signal to noise calculated from this
-            #     return SNRmax * intensity / np.sqrt(background)
+                # Get the analysis values for this file
+                # rec_mid_SNR = (base_dir['bestSNR_mid']['vals'][file_indx], base_dir['bestSNR_mid']['d_fit'][file_indx])
+                # rec_sig_SNR = (base_dir['bestSNR_sigma']['vals'][file_indx], base_dir['bestSNR_sigma']['d_fit'][file_indx])
+                # rec_mid_TOF = (base_dir['fitTOF_mid']['vals'][file_indx], base_dir['fitTOF_mid']['d_fit'][file_indx])
+                # rec_sig_TOF = (base_dir['fitTOF_sigma']['vals'][file_indx], base_dir['fitTOF_sigma']['d_fit'][file_indx])
+                # Get the recommended values for this isotope
+                rec_mid_SNR = (base_dir['recommended_mid_SNR']['vals'][0],
+                               base_dir['recommended_mid_SNR']['d_fit'][0])
+                rec_sig_SNR = (base_dir['recommended_sigma_SNR']['vals'][0],
+                               base_dir['recommended_sigma_SNR']['d_fit'][0])
+                rec_mid_TOF = (base_dir['recommended_mid_TOF']['vals'][0],
+                               base_dir['recommended_mid_TOF']['d_fit'][0])
+                rec_sig_TOF = (base_dir['recommended_sigma_TOF']['vals'][0],
+                               base_dir['recommended_sigma_TOF']['d_fit'][0])
+                midSNR_per_iso.append(rec_mid_SNR[0])
+                midSNR_d_per_iso.append(rec_mid_SNR[1])
+                midTOF_per_iso.append(rec_mid_TOF[0])
+                midTOF_d_per_iso.append(rec_mid_TOF[1])
+                #
+                fit_pars = base_dir['SNR_fit']['vals'][file_indx]
+                fit_errs = base_dir['SNR_fit']['d_fit'][file_indx]
 
-            def SNR_model(x, y, SNRmax, mid, tof_sigma, beamb):
-                """
-                Assuming the ion bunch is gauss-shaped in the time domain, the signal-to-noise ratio should
-                be defined through the integral over the gaussian and the (constant) background
-                :param x: the x-position on the plotwindow/meshgrid
-                :param y: the y-position on the plotwindow/meshgrid
-                :param SNRmax: The maximum SNR. Scales the height but doesn't influence the positon
-                :param mid: the real mid-tof correction to the assumed value
-                :param tof_sigma: the real tof-sigma. This determines most of the SNR analysis
-                :return: SNR, depending on gate choice
-                """
-                from scipy import special
-                # give x and y a real meaning:
-                width = gatewidth_variation_arr[x]  # the x-parameter is the gatewidth defined by log array
-                tof_off = midtof_variation_arr[y]  # the y parameter is the tof-variation. We assume midtof=0
-                # Integrate the gaussian from midtof+y-x/2 to midtof+y+x/2
-                # The integral is defined through imaginary errorfunction erf
-                intensity = np.sqrt(np.pi / 2) * tof_sigma * (
-                        special.erf((tof_off - mid + width / 2) / (np.sqrt(2) * tof_sigma))
-                        - special.erf((tof_off - mid - width / 2) / (np.sqrt(2) * tof_sigma)))
-                intensity = intensity / (2.10177 * tof_sigma)  # scaling for int=1 at 2.8 sigma
-                background = width / (2.8 * tof_sigma)  # scales linear by width. scaling for bg=1 at 2.8 sigma
-                # In reality, the background will not be linear but have a beam induced straylight component
-                if iso in ['58Ni', '60Ni', '62Ni', '64Ni']:
-                    # beam bg of stable isotopes will be dominated by 58Ni
-                    mid_58 = 100 * global_guess['58Ni'] - (100 * global_guess[iso] + mid)
-                    sigma_58 = 100 * 0.078
-                    bg_stray = beamb * np.sqrt(np.pi / 2) * sigma_58 * (
-                            special.erf((tof_off - mid_58 + width / 2) / (np.sqrt(2) * sigma_58))
-                            - special.erf((tof_off - mid_58 - width / 2) / (np.sqrt(2) * sigma_58))) \
-                               / (2.10177 * sigma_58)
-                    # 60Ni contribution is next. Scaled by natural abundance ratio
-                    mid_60 = 100 * global_guess['60Ni'] - (100 * global_guess[iso] + mid)
-                    sigma_60 = 100 * 0.074
-                    bg_stray += 26 / 68 * beamb * np.sqrt(np.pi / 2) * sigma_60 * (
-                            special.erf((tof_off - mid_60 + width / 2) / (np.sqrt(2) * sigma_60))
-                            - special.erf((tof_off - mid_60 - width / 2) / (np.sqrt(2) * sigma_60))) \
-                                / (2.10177 * sigma_60)
-                else:
-                    # beam background for radioactive isotopes is small to negligible compared to laser bg
-                    bg_stray = 0
-                    beamb = 0
-                    # if we wanna try anyways then the beam bg is of course only the radioactive isotope
-                    # mid_bb = mid
-                    # sigma_bb = tof_sigma
-                    # bg_stray = beamb * np.sqrt(np.pi/2)*sigma_bb * (  # scaling of 2.7 has been extracted from time-res data
-                    #         special.erf((tof_off - mid_bb + width / 2) / (np.sqrt(2) * sigma_bb))
-                    #         - special.erf((tof_off - mid_bb - width / 2) / (np.sqrt(2) * sigma_bb)))
-                    # bg_stray = bg_stray / (2.10177*sigma_bb)  # scaling for bg_stray = beamb at 2.8 sigma
-                background = (background + bg_stray) / (1 + beamb)
+                # def SNR_model(x, y, SNRmax, mid, tof_sigma):
+                #     """
+                #     Assuming the ion bunch is gauss-shaped in the time domain, the signal-to-noise ratio should
+                #     be defined through the integral over the gaussian and the (constant) background
+                #     :param x: the x-position on the plotwindow/meshgrid
+                #     :param y: the y-position on the plotwindow/meshgrid
+                #     :param SNRmax: The maximum SNR. Scales the height but doesn't influence the positon
+                #     :param mid: the real mid-tof correction to the assumed value
+                #     :param tof_sigma: the real tof-sigma. This determines most of the SNR analysis
+                #     :return: SNR, depending on gate choice
+                #     """
+                #     from scipy import special
+                #     # give x and y a real meaning:
+                #     width = gatewidth_variation_arr[x]  # the x-parameter is the gatewidth defined by log array
+                #     tof_off = midtof_variation_arr[y]  # the y parameter is the tof-variation. We assume midtof=0
+                #     # Integrate the gaussian from midtof+y-x/2 to midtof+y+x/2
+                #     # The integral is defined through imaginary errorfunction erf
+                #     intensity = np.sqrt(np.pi / 2) * tof_sigma * (
+                #             special.erf((tof_off + width / 2 - mid) / (np.sqrt(2) * tof_sigma))
+                #             - special.erf((tof_off - width / 2 - mid) / (np.sqrt(2) * tof_sigma)))
+                #     intensity = intensity / (2.10177 * tof_sigma)  # scaling for int=1 at 2.8 sigma
+                #     background = width / 2.8 * tof_sigma  # scales linear by width. scaling for bg=1 at 2.8 sigma
+                #     # In reality, the background will not be linear but have a beam induced straylight component
+                #     # if iso in self.isotopes_stable and '58' not in iso:
+                #     #     # beam bg of stable isotopes will be dominated by 58Ni
+                #     #     mid_bb = self.tof_mid['58Ni']-self.tof_mid[iso]+tof_off
+                #     # else:
+                #     #     # beam background will be dominated by the resonance isotope
+                #     #     mid_bb = mid
+                #     # bg_stray = beamb * np.sqrt(np.pi/2)*tof_sigma * (  # scaling of 2.7 has been extracted from time-res data
+                #     #         special.erf((tof_off + width / 2 - mid_bb) / (np.sqrt(2) * tof_sigma))
+                #     #         - special.erf((tof_off - width / 2 - mid_bb) / (np.sqrt(2) * tof_sigma)))
+                #     # bg_stray = bg_stray / 2.10177*tof_sigma  # scaling for bg_stray = beamb at 2.8 sigma
+                #     # background = (background + bg_stray)/(1+beamb)
+                #
+                #     # return the signal to noise calculated from this
+                #     return SNRmax * intensity / np.sqrt(background)
 
-                # norm = np.sqrt(2.8*tof_sigma)/(2.10177*tof_sigma)
-                norm = 1
-                # return the signal to noise calculated from this
-                return SNRmax * norm * intensity / np.sqrt(background)
+                def SNR_model(x, y, SNRmax, mid, tof_sigma, beamb):
+                    """
+                    Assuming the ion bunch is gauss-shaped in the time domain, the signal-to-noise ratio should
+                    be defined through the integral over the gaussian and the (constant) background
+                    :param x: the x-position on the plotwindow/meshgrid
+                    :param y: the y-position on the plotwindow/meshgrid
+                    :param SNRmax: The maximum SNR. Scales the height but doesn't influence the positon
+                    :param mid: the real mid-tof correction to the assumed value
+                    :param tof_sigma: the real tof-sigma. This determines most of the SNR analysis
+                    :return: SNR, depending on gate choice
+                    """
+                    from scipy import special
+                    # give x and y a real meaning:
+                    width = gatewidth_variation_arr[x]  # the x-parameter is the gatewidth defined by log array
+                    tof_off = midtof_variation_arr[y]  # the y parameter is the tof-variation. We assume midtof=0
+                    # Integrate the gaussian from midtof+y-x/2 to midtof+y+x/2
+                    # The integral is defined through imaginary errorfunction erf
+                    intensity = np.sqrt(np.pi / 2) * tof_sigma * (
+                            special.erf((tof_off - mid + width / 2) / (np.sqrt(2) * tof_sigma))
+                            - special.erf((tof_off - mid - width / 2) / (np.sqrt(2) * tof_sigma)))
+                    intensity = intensity / (2.10177 * tof_sigma)  # scaling for int=1 at 2.8 sigma
+                    background = width / (2.8 * tof_sigma)  # scales linear by width. scaling for bg=1 at 2.8 sigma
+                    # In reality, the background will not be linear but have a beam induced straylight component
+                    if iso in ['58Ni', '60Ni', '62Ni', '64Ni']:
+                        # beam bg of stable isotopes will be dominated by 58Ni
+                        mid_58 = 100 * global_guess['58Ni'] - (100 * global_guess[iso] + mid)
+                        sigma_58 = 100 * 0.078
+                        bg_stray = beamb * np.sqrt(np.pi / 2) * sigma_58 * (
+                                special.erf((tof_off - mid_58 + width / 2) / (np.sqrt(2) * sigma_58))
+                                - special.erf((tof_off - mid_58 - width / 2) / (np.sqrt(2) * sigma_58))) \
+                                   / (2.10177 * sigma_58)
+                        # 60Ni contribution is next. Scaled by natural abundance ratio
+                        mid_60 = 100 * global_guess['60Ni'] - (100 * global_guess[iso] + mid)
+                        sigma_60 = 100 * 0.074
+                        bg_stray += 26 / 68 * beamb * np.sqrt(np.pi / 2) * sigma_60 * (
+                                special.erf((tof_off - mid_60 + width / 2) / (np.sqrt(2) * sigma_60))
+                                - special.erf((tof_off - mid_60 - width / 2) / (np.sqrt(2) * sigma_60))) \
+                                    / (2.10177 * sigma_60)
+                    else:
+                        # beam background for radioactive isotopes is small to negligible compared to laser bg
+                        bg_stray = 0
+                        beamb = 0
+                        # if we wanna try anyways then the beam bg is of course only the radioactive isotope
+                        # mid_bb = mid
+                        # sigma_bb = tof_sigma
+                        # bg_stray = beamb * np.sqrt(np.pi/2)*sigma_bb * (  # scaling of 2.7 has been extracted from time-res data
+                        #         special.erf((tof_off - mid_bb + width / 2) / (np.sqrt(2) * sigma_bb))
+                        #         - special.erf((tof_off - mid_bb - width / 2) / (np.sqrt(2) * sigma_bb)))
+                        # bg_stray = bg_stray / (2.10177*sigma_bb)  # scaling for bg_stray = beamb at 2.8 sigma
+                    background = (background + bg_stray) / (1 + beamb)
 
-            ''' do all the plotting for this isotope'''
-            f, ax = plt.subplots()
-            # define output size of figure
-            width, height = 1, 0.6
-            f.set_size_inches((self.w_in * width, self.h_in * height))
+                    # norm = np.sqrt(2.8*tof_sigma)/(2.10177*tof_sigma)
+                    norm = 1
+                    # return the signal to noise calculated from this
+                    return SNRmax * norm * intensity / np.sqrt(background)
 
-            x = np.arange(gatewidth_variation_arr.shape[0])  # gatewidth_variation_arr
-            y = np.arange(midtof_variation_arr.shape[0])  # midtof_variation_arr
-            X, Y = np.meshgrid(x, y)
-            # print the SNR values
-            im = ax.imshow(SNR_arr, cmap=self.custom_cmap, interpolation='nearest')  #'nearest'
-            pars = fit_pars
-            # pars = [np.amax(SNR_arr), rec_mid_SNR[0]-global_guess[iso], rec_sig_SNR[0], 5]
-            ax.contour(X, Y, SNR_model(X, Y, *pars), 15, colors='w', antialiased=True)
-            # TODO: log scale the y errors
-            scale = 10
-            # xerr = [[-scale*(np.log(rec_sig_SNR[0]*2.8-rec_sig_SNR[1])/np.log(2)-2)
-            #          +scale*(np.log(rec_sig_SNR[0]*2.8)/np.log(2)-2)],
-            #         [scale*(np.log(rec_sig_SNR[0]*2.8+rec_sig_SNR[1])/np.log(2)-2)
-            #          -scale*(np.log(rec_sig_SNR[0]*2.8)/np.log(2)-2)]]
-            xerr = [[-scale * (np.log(fit_pars[2] * 2.8 - fit_errs[2]) / np.log(2) - 2)
-                     + scale * (np.log(fit_pars[2] * 2.8) / np.log(2) - 2)],
-                    [scale * (np.log(fit_pars[2] * 2.8 + fit_errs[2]) / np.log(2) - 2)
-                     - scale * (np.log(fit_pars[2] * 2.8) / np.log(2) - 2)]]
-            ax.errorbar(x=scale*(np.log(fit_pars[2]*2.8)/np.log(2)-2),
-                        y=fit_pars[1]-midtof_variation_arr[0],  #-global_guess[iso]
-                        xerr=xerr, yerr=fit_errs[1], **self.ch_dict(self.data_style,
-                                                                                 {'color': 'w', 'markersize': 5}))
+                ''' do all the plotting for this isotope'''
+                f, ax = plt.subplots()
+                # define output size of figure
+                width, height = 1, 0.6
+                f.set_size_inches((self.w_in * width, self.h_in * height))
 
-            ax.set_xlabel('gate width / bins')
-            ax.set_ylabel('gate center / bins')
-            x_tick_pos = [0, 10, 20, 30, 40]
-            ax.set_xticks(x_tick_pos)
-            ax.set_xticklabels(['{:.0f}'.format(gatewidth_variation_arr[m]) for m in x_tick_pos])
-            # ax.set_xticks(np.arange(41))
-            # ax.set_xticklabels(['{:.1f}'.format(m) for m in np.logspace(2, 6, 41, base=2)])
-            plt.setp(ax.get_xticklabels(), rotation=0, ha="center", va='top', rotation_mode="default")  # in case rotate
-            y_tick_pos = [1, 3, 5, 7, 9]
-            ax.set_yticks(y_tick_pos)
-            ax.set_yticklabels(['{:.0f}'.format(midtof_variation_arr[m]+100*global_guess[iso]) for m in y_tick_pos])
+                x = np.arange(gatewidth_variation_arr.shape[0])  # gatewidth_variation_arr
+                y = np.arange(midtof_variation_arr.shape[0])  # midtof_variation_arr
+                X, Y = np.meshgrid(x, y)
+                # print the SNR values
+                im = ax.imshow(SNR_arr, cmap=self.custom_cmap, interpolation='nearest')  #'nearest'
+                pars = fit_pars
+                # pars = [np.amax(SNR_arr), rec_mid_SNR[0]-global_guess[iso], rec_sig_SNR[0], 5]
+                ax.contour(X, Y, SNR_model(X, Y, *pars), 15, colors='w', antialiased=True)
+                # TODO: log scale the y errors
+                scale = 34/(6-2.6)  # 10
+                # xerr = [[-scale*(np.log(rec_sig_SNR[0]*2.8-rec_sig_SNR[1])/np.log(2)-2)
+                #          +scale*(np.log(rec_sig_SNR[0]*2.8)/np.log(2)-2)],
+                #         [scale*(np.log(rec_sig_SNR[0]*2.8+rec_sig_SNR[1])/np.log(2)-2)
+                #          -scale*(np.log(rec_sig_SNR[0]*2.8)/np.log(2)-2)]]
+                xerr = [[-scale * (np.log(fit_pars[2] * 2.8 - fit_errs[2]) / np.log(2) - 2)
+                         + scale * (np.log(fit_pars[2] * 2.8) / np.log(2) - 2)],
+                        [scale * (np.log(fit_pars[2] * 2.8 + fit_errs[2]) / np.log(2) - 2)
+                         - scale * (np.log(fit_pars[2] * 2.8) / np.log(2) - 2)]]
+                # ax.errorbar(x=scale*(np.log(fit_pars[2]*2.8)/np.log(2)-2),
+                #             y=fit_pars[1]-midtof_variation_arr[0],  #-global_guess[iso]
+                #             xerr=xerr, yerr=fit_errs[1], **self.ch_dict(self.data_style,
+                #                                                                      {'color': 'w', 'markersize': 5}))
+                ax.axhline(fit_pars[1]-midtof_variation_arr[0], color='w', lw=2, ls='--')
 
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="5%", pad=0.05)
-            cbar = f.colorbar(im, cax=cax)
-            cbar.set_label('signal-to-noise ratio')
+                ax.set_xlabel('gate size / bins')
+                ax.set_ylabel('gate center / bins')
+                x_tick_pos = [4, 14, 24, 34]
+                ax.set_xticks(x_tick_pos)
+                ax.set_xticklabels(['{:.0f}'.format(gatewidth_variation_arr[m]) for m in x_tick_pos])
+                # ax.set_xticks(np.arange(41))
+                # ax.set_xticklabels(['{:.1f}'.format(m) for m in np.logspace(2, 6, 41, base=2)])
+                plt.setp(ax.get_xticklabels(), rotation=0, ha="center", va='top', rotation_mode="default")  # in case rotate
+                y_tick_pos = [1, 3, 5, 7, 9]
+                ax.set_yticks(y_tick_pos)
+                ax.set_yticklabels(['{:.0f}'.format(midtof_variation_arr[m]+100*global_guess[iso]) for m in y_tick_pos])
 
-            plt.savefig(folder + '{}_SNR.png'.format(iso), dpi=self.dpi, bbox_inches='tight')
-            plt.close()
-            plt.clf()
+                divider = make_axes_locatable(ax)
+                cax = divider.append_axes("right", size="5%", pad=0.05)
+                cbar = f.colorbar(im, cax=cax)
+                cbar.set_label('signal-to-noise ratio')
 
+                plt.savefig(folder + '{}_SNR.png'.format(iso), dpi=self.dpi, bbox_inches='tight')
+                plt.close()
+                plt.clf()
+            else:
+                # isotope not in SNR analysis
+                remove_isos.append(iso)
+
+        # remove all isotopes that were not in analysis
+        for isotope in remove_isos:
+            iso_list.remove(isotope)
         # Now plot the mid gate parameter
         f, ax = plt.subplots()
         # define output size of figure
@@ -874,8 +935,8 @@ class PlotThesisGraphics:
         ax.errorbar(iso_ax, midTOF_per_iso, yerr=midTOF_d_per_iso, label='TOF fitting',
                     **self.ch_dict(self.data_style, {'color': self.blue, 'markersize': 4, 'capsize': 4}))
         # do a linear regression
-        m, b = self.lin_regression(iso_ax, midSNR_per_iso, (1, 0))
-        ax.plot(iso_ax, self._line(iso_ax, m, b), label='linear regression', **self.fit_style)  #label='mid-tof={:.1f}\u00B7A+{:.1f}bins'.format(m, b)
+        m, b = self.lin_regression(np.sqrt(iso_ax), midSNR_per_iso, (1, 0))
+        ax.plot(iso_ax, self._line(np.sqrt(iso_ax), m, b), label='fit', **self.fit_style)  #label='mid-tof={:.1f}\u00B7A+{:.1f}bins'.format(m, b)
 
         ax.set_xlim((iso_ax[0]-0.5, iso_ax[-1]+0.5))
         ax.set_xticks(iso_ax)
@@ -889,7 +950,6 @@ class PlotThesisGraphics:
         plt.savefig(folder + 'gate_center.png', dpi=self.dpi, bbox_inches='tight')
         plt.close()
         plt.clf()
-
 
     def all_spectra(self):
         """
@@ -913,7 +973,7 @@ class PlotThesisGraphics:
                                gridspec_kw=gs_kw)
 
         # define output size of figure
-        width, height = 0.5, 0.5
+        width, height = 0.6, 0.55
         f.set_size_inches((self.w_in * width, self.h_in * height))
 
         for num, iso in enumerate(sorted(iso_list)):
@@ -997,6 +1057,47 @@ class PlotThesisGraphics:
         f.tight_layout(pad=0)
 
         plt.savefig(folder + 'all_spectra.png', dpi=self.dpi, bbox_inches='tight')
+        plt.close()
+        plt.clf()
+
+        # Do another Plot for Nickel 55 only
+        # Create plots for all three lineshapes
+        widths = [1]
+        heights = [1, 0.4]
+        gs_kw = dict(width_ratios=widths, height_ratios=heights)
+        f, axes = plt.subplots(nrows=2, ncols=1, sharex=True, sharey='row', gridspec_kw=gs_kw)
+        # define output size of figure
+        width, height = 0.6, 0.3
+        f.set_size_inches((self.w_in * width, self.h_in * height))
+
+        # sorted and enumerated list to put each isotope at the right location
+        x, cts, res, cts_err = np.loadtxt(
+            glob(os.path.join(folder, '*55*data*'))[0],  # name of isotope must be in filename
+            delimiter=', ', skiprows=1, unpack=True)
+        x_fit, fit = np.loadtxt(
+            glob(os.path.join(folder, '*55*fullShape*'))[0],  # name of isotope must be in filename
+            delimiter=', ', skiprows=1, unpack=True)
+
+        axes[0].errorbar(x, cts, cts_err, **self.data_style)  # data
+        axes[0].plot(x_fit, fit, **self.fit_style)  # fit
+        axes[1].errorbar(x, res, cts_err, **self.data_style)  # residuals
+        axes[0].set_title('Nickel 55 Summed Data Spectrum')
+
+        # set axes:
+        axes[0].set_ylabel('cts/ arb.u.')
+        axes[0].set_yticks([11000, 11500, 12000, 12500, 13000])
+        axes[0].set_ylim((10900, 13200))
+        axes[0].set_yticklabels(['11.0k', '11.5k', '12.0k', '12.5k', '13.0k'])
+        axes[1].set_ylabel('res/ arb.u.')
+        axes[1].set_yticks([-500, 0, 500])
+        axes[1].set_xlabel(r'Frequency relative to $\nu_0^{60}$ / '+'{}'.format(x_unit))
+        axes[1].set_xlim((-2500, 1200))
+        axes[1].set_xticks([-2000, -1000, 0, 1000])
+
+        # make tight spacing between subplots
+        f.tight_layout(pad=0)
+
+        plt.savefig(folder + 'Ni55_spectrum.png', dpi=self.dpi, bbox_inches='tight')
         plt.close()
         plt.clf()
 
@@ -1107,6 +1208,325 @@ class PlotThesisGraphics:
         ax2.tick_params(axis='y', labelcolor=self.red, color=self.red, which='both')
 
         plt.savefig(folder + 'E2.png', dpi=self.dpi, bbox_inches='tight')
+        plt.close()
+        plt.clf()
+
+    def a_ratio_comparison(self):
+        """
+
+        :return:
+        """
+        # Specify in which folder input and output should be found
+        folder = os.path.join(self.fig_dir, 'Nickel\\Analysis\\ARatio\\')
+
+        fig, ax1 = plt.subplots()
+        ax2 = ax1.twinx()  # create second axis on top of first
+        # define output size of figure
+        width, height = 1, 0.3
+        fig.set_size_inches((self.w_in * width, self.h_in * height))
+
+        ''' import the data '''
+        data = pd.read_csv(glob(os.path.join(folder, 'data*'))[0], delimiter='\t', index_col=0)
+
+        ''' fill datasets '''
+        spins = []
+        center = []
+        center_errs = []
+        A_rat = []
+        A_rat_errs = []
+
+        for index, row in data.iterrows():
+            spins.append(index)
+            ''' center values '''
+            c = row['Center']
+            ce, ce_d, *_ = re.split('[()]', c)
+            if '.' in ce:
+                sign_digit = len(ce.split('.')[1])  # get the significant digits of the value
+            else:
+                sign_digit = 0
+            center.append(float(ce))
+            center_errs.append(float(ce_d)/10**sign_digit)
+            ''' A ratios '''
+            ar = row['A_ratio']
+            ara, ara_d, *_ = re.split('[()]', ar)
+            if '.' in ara:
+                sign_digit = len(ara.split('.')[1])  # get the significant digits of the value
+            else:
+                sign_digit = 0
+            A_rat.append(float(ara))
+            A_rat_errs.append(float(ara_d) / 10 ** sign_digit)
+
+        spins = np.array(spins)
+        center = np.array(center)
+        center_errs = np.array(center_errs)
+        A_rat = np.array(A_rat)
+        A_rat_errs = np.array(A_rat_errs)
+
+        ''' plot the data '''
+        ax1.errorbar(spins-0.05, A_rat, yerr=A_rat_errs,   # shift x-axis by a tiny bit to the left
+                     **self.ch_dict(self.data_style,
+                                    {'color': self.blue, 'markeredgecolor': self.blue,
+                                     'markersize': 5, 'linestyle': '', 'capsize': 5}))
+        ax2.errorbar(spins+0.05, center, yerr=center_errs,  # shift x-axis by a tiny bit to the right
+                     **self.ch_dict(self.data_style,
+                                    {'color': self.red, 'markeredgecolor': self.red,
+                                     'markersize': 3, 'linestyle': '', 'capsize': 3}))
+        ''' plot the literature value '''
+        lit_a_rat = 0.389
+        lit_a_rat_d = 0.001
+        #ax1.axhline(lit_a_rat, color=self.blue)
+        ax1.axhspan(ymin=lit_a_rat-lit_a_rat_d, ymax=lit_a_rat+lit_a_rat_d, color=self.blue, alpha=0.5, linewidth=0)
+        # ax1.errorbar(7/2, lit_a_rat, lit_a_rat_d, **self.ch_dict(self.data_style,
+        #                             {'color': self.orange, 'markeredgecolor': self.orange,
+        #                              'markersize': 6, 'linestyle': '-', 'capsize': 6}))
+
+        ''' Style the axes '''
+        # work on x axis
+        ax1.axes.tick_params(axis='x', direction='in',
+                             bottom=True, top=True, labelbottom=True, labeltop=False)
+        ax1.set_xlabel('nuclear spin')
+        #ax1.set_xlim()
+        ax1.set_xticks(spins)
+        ax1.set_xticklabels(["{:.0f}/2".format(2*s) for s in spins])
+        # work on y axis
+        ax1.set_ylabel('A-ratio', color=self.blue)
+        ax1.set_yticks([0.30, 0.32, 0.34, 0.36, 0.38, 0.40, 0.42, 0.44, 0.46,  0.48,  0.50])
+        ax1.set_ylim((0.30, 0.51))
+        ax1.tick_params(axis='y', labelcolor=self.blue, color=self.blue, which='both')
+
+        ax2.set_ylabel('centroid / MHz', color=self.red)
+        ax2.set_ylim((-2100, -500))
+        ax2.tick_params(axis='y', labelcolor=self.red, color=self.red, which='both')
+
+        plt.savefig(folder + 'Aratio_compare.png', dpi=self.dpi, bbox_inches='tight')
+        plt.close()
+        plt.clf()
+
+    def pumping_simulation(self):
+        """
+        :return:
+        """
+        # Specify in which folder input and output should be found
+        folder = os.path.join(self.fig_dir, 'Nickel\\Analysis\\Pumping\\')
+
+        fig, ax1 = plt.subplots()
+        # define output size of figure
+        width, height = 1, 0.3
+        fig.set_size_inches((self.w_in * width, self.h_in * height))
+
+        ''' import the data '''
+        data = np.loadtxt(glob(os.path.join(folder, 'data*'))[0], delimiter='\t', unpack=True)
+
+        ''' fill datasets '''
+        peak_14 = data[0]  # 11/2-->13/2
+        obs_14 = (1, 0)
+        peak_13 = data[2]  # 11/2-->11/2
+        obs_13 = (1.93, 0.64)
+        peak_12 = data[1]  # 9/2-->11/2
+        obs_12 = (0.91, 0.24)
+        peak_10 = data[4]  # 9/2-->9/2
+        obs_10 = (1.07, 0.41)
+        peak_9 = data[3]  # 7/2-->9/2
+        obs_9 = (0.96, 0.25)
+        number_ex = np.arange(len(peak_14))
+
+        ''' plot '''
+        # ax1.plot(number_ex, peak_14, color=self.purple, )  #**self.ch_dict(self.point_style, {'color': self.purple}))
+        # ax1.axhspan(obs_14[0]-obs_14[1], obs_14[0]+obs_14[1], alpha=0.2, color=self.purple)
+        ax1.plot(number_ex, peak_13, color=self.purple, lw=2, label=r'$\mathrm{11/2\to 11/2}$')  #**self.ch_dict(self.point_style, {'color': self.black}))
+        ax1.axhspan(obs_13[0]-obs_13[1], obs_13[0]+obs_13[1], alpha=0.1, color=self.purple, hatch='.', fill=True, lw=.9)
+        ax1.axhline(obs_13[0], color=self.purple, ls='--')
+        ax1.plot(number_ex, peak_12, color=self.orange, lw=2, label=r'$\mathrm{9/2\to 11/2}$')  #**self.ch_dict(self.point_style, {'color': self.orange}))
+        ax1.axhspan(obs_12[0]-obs_12[1], obs_12[0]+obs_12[1], alpha=0.1, color=self.orange, hatch='*', fill=True, lw=.9)
+        ax1.axhline(obs_12[0], color=self.orange, ls='--')
+        ax1.plot(number_ex, peak_10, color=self.blue, lw=2, label=r'$\mathrm{9/2\to 9/2}$')  #**self.ch_dict(self.point_style, {'color': self.blue}))
+        ax1.axhspan(obs_10[0]-obs_10[1], obs_10[0]+obs_10[1], alpha=0.1, color=self.blue, hatch='|', fill=True, lw=.9)
+        ax1.axhline(obs_10[0], color=self.blue, ls='--')
+        ax1.plot(number_ex, peak_9, color=self.dark_green, lw=2, label=r'$\mathrm{7/2\to 9/2}$')  #**self.ch_dict(self.point_style, {'color': self.green}))
+        ax1.axhspan(obs_9[0]-obs_9[1], obs_9[0]+obs_9[1], alpha=0.1, color=self.dark_green, hatch='/', fill=True, lw=.9)
+        ax1.axhline(obs_9[0], color=self.dark_green, ls='--')
+
+        ''' axes '''
+        ax1.set_xlabel('number of excitations')
+        ax1.set_ylabel('intensity relative to theory')
+
+        ax1.legend(bbox_to_anchor=(0.5, 1.1), loc="center", ncol=4, columnspacing=1.2, handletextpad=0.4) #, prop=self.unic)  # title='Scaler', columnspacing=0.5,
+
+        plt.savefig(folder + 'pumping.png', dpi=self.dpi, bbox_inches='tight')
+        plt.close()
+        plt.clf()
+
+    def ce_population(self):
+        """
+
+        :return:
+        """
+        # Specify in which folder input and output should be found
+        folder = os.path.join(self.fig_dir, 'ChargeExchange\\Population\\')
+
+        fig, ax1 = plt.subplots()
+        ax2 = ax1.twinx()  # create second axis on top of first
+        # define output size of figure
+        width, height = 1, 0.3
+        fig.set_size_inches((self.w_in * width, self.h_in * height))
+
+        ''' import the data '''
+        data = np.loadtxt(glob(os.path.join(folder, 'Ni_on_Na*'))[0], delimiter=',', skiprows=1)
+        bare_cs = np.loadtxt(glob(os.path.join(folder, 'barecs*'))[0], delimiter=',')
+
+        en = data[:, 0]
+        cs = data[:, 1]
+        ip = data[:, 2]
+        fp = data[:, 3]
+
+        ax2.plot(bare_cs[:, 0], bare_cs[:, 1], **self.fit_style)
+
+        markerline_ini, stemlines_ini, baseline_ini = ax1.stem(en, ip, label='initial')
+        plt.setp(baseline_ini, 'color', self.black)
+        plt.setp(markerline_ini, 'color', self.blue)
+        plt.setp(stemlines_ini, 'color', self.blue)
+        markerline_fin, stemlines_fin, baseline_fin = ax1.stem(en, fp, '--', label='final')
+        plt.setp(baseline_fin, 'color', self.black)
+        plt.setp(markerline_fin, 'color', self.green)
+        plt.setp(stemlines_fin, 'color', self.green)
+
+        ax1.set_xlim((-0.1, 5))
+        ax1.set_xlabel('level energy / eV')
+
+        ax1.set_ylabel('level population / %')
+        ax2.set_ylabel('bare cross section / $10^{-15}$cm$^2$', color=self.red)
+        ax2.tick_params(axis='y', labelcolor=self.red, color=self.red, which='both')
+        ax2.set_ylim((0, 10))
+
+        ax1.legend()
+
+        plt.savefig(folder + 'population.png', dpi=self.dpi, bbox_inches='tight')
+        plt.close()
+        plt.clf()
+
+    def ce_simulation(self):
+        """
+
+        :return:
+        """
+        # Specify in which folder input and output should be found
+        folder = os.path.join(self.fig_dir, 'ChargeExchange\\Simulation\\')
+
+        fig, ax1 = plt.subplots()
+        ax2 = ax1.twinx()  # create second axis on top of first
+        # define output size of figure
+        width, height = 1, 0.4
+        fig.set_size_inches((self.w_in * width, self.h_in * height))
+
+        ''' import the data '''
+        react = 'pH'  # 'NiNa
+        data_prob = np.loadtxt(glob(os.path.join(folder, '{}_prob*'.format(react)))[0], delimiter='\t')
+        data_cs = np.loadtxt(glob(os.path.join(folder, '{}_cs*'.format(react)))[0], delimiter='\t')
+
+        log_x1 = data_prob[:, 0]
+        d1 = data_prob[:, 1]
+        log_x2 = data_cs[:, 0]
+        d2 = data_cs[:, 1]
+
+        ax1.plot(log_x1, d1*100, **self.ch_dict(self.fit_style, {'color': self.blue}))
+        ax2.plot(log_x2, d2*10**15, **self.ch_dict(self.fit_style, {'color': self.red}))
+        b1_abs=0
+        if react == 'pH':
+            b1_abs = 2.90221*10**-8
+            b1 = np.log(b1_abs)
+            b0 = np.log(10**-10)
+            rectp = mpl.patches.Rectangle((b0, 0), width=b1-b0, height=50,
+                                          color=self.blue, linestyle='--', fill=False, lw=2)
+            # ax1.axhspan(0, 50, xmin=b2, xmax=np.log(b1))  # 0, np.log(b1)
+            ax1.add_patch(rectp)
+
+            # now plot the integration over the approximation
+            ax2.plot(log_x1,
+                     np.where(log_x1 < np.log(b1_abs),  np.pi/2*np.exp(log_x1)**2*10**15, np.pi/2*b1_abs**2*10**15),
+                     c=self.red, ls=':', lw=2)
+
+        ax1.set_xlabel('impact parameter b / cm')
+        ax1.set_xticks(np.log([10**-9, 10**-8, b1_abs, 10**-7, 10**-6]))
+        ax1.set_xticks(np.log([n*10**-9 for n in range(9)]
+                              + [n*10**-8 for n in range(9)]
+                              + [n*10**-7 for n in range(9)]), minor=True)
+        ax1.set_xticklabels([r'$10^{-9}$', '$10^{-8}$', 'b$_1$', '$10^{-7}$', '$10^{-6}$'])
+        ax1.set_xlim((np.log(10**-9), np.log(10**-6)))
+
+        ax1.set_ylabel('electron transfer probability / %', color=self.blue)
+        ax1.tick_params(axis='y', labelcolor=self.blue, color=self.blue, which='both')
+        ax1.set_ylim((0, 100))
+        ax2.set_ylabel('bare cross section / $10^{-15}$cm$^2$', color=self.red)
+        ax2.tick_params(axis='y', labelcolor=self.red, color=self.red, which='both')
+
+        plt.savefig(folder + 'simulation.png', dpi=self.dpi, bbox_inches='tight')
+        plt.close()
+        plt.clf()
+
+    def ce_efficiency(self):
+        """
+
+        :return:
+        """
+        # Specify in which folder input and output should be found
+        folder = os.path.join(self.fig_dir, 'ChargeExchange\\Neutralization\\')
+
+        fig, ax1 = plt.subplots()
+        # define output size of figure
+        width, height = 0.4, 0.3
+        fig.set_size_inches((self.w_in * width, self.h_in * height))
+
+        ''' import the data '''
+        data = np.loadtxt(glob(os.path.join(folder, 'data*'))[0], delimiter='\t')
+
+        temp = data[:, 0]
+        n_eff = data[:, 5]
+
+        def neutr_eff(T, a):
+            # as done in Klose.2012 with data from Haynes.2013
+            T = T+273  # in Kelvin
+            A = 8.489
+            B = -7813
+            C = -0.8253
+            return (1-np.exp(-10**(5.006+A+B/T+C*np.log(T))*a))*100
+
+        def neutr_eff_odr(beta, T):
+            # as done in Klose.2012 with data from Haynes.2013
+            T = T+273  # in Kelvin
+            A = 8.489
+            B = -7813
+            C = -0.8253
+            return (1-np.exp(-10**(5.006+A+B/T+C*np.log(T))*beta))*100
+
+        popt, pcov = curve_fit(neutr_eff, temp, n_eff)  # uncertainties?
+        perr = np.sqrt(np.diag(pcov))
+
+        # fit_dat = odr.RealData(temp, n_eff, sx=np.full(temp.shape, 10), sy=np.array([0.1,0.1,10,10,10,10, 10]))
+        # fit_mod = odr.Model(neutr_eff_odr)
+        # fit_odr = odr.ODR(fit_dat, fit_mod, [6])
+        # fit_odr.set_job(fit_type=0)
+        # output = fit_odr.run()
+        # print(output.beta, output.sd_beta)
+        # popt = output.beta
+        # perr = output.sd_beta
+
+        pltrange = 700
+
+        ax1.plot(np.arange(pltrange), neutr_eff(np.arange(pltrange), popt[0]), color=self.blue)
+        ax1.fill_between(np.arange(pltrange),
+                         neutr_eff(np.arange(pltrange), popt[0]-3*perr[0]),
+                         neutr_eff(np.arange(pltrange), popt[0]+3*perr[0]),
+                         alpha=0.2, color=self.blue)
+        ax1.plot(temp, n_eff, **self.ch_dict(self.point_style, {'color': self.red, 'markersize': 6}))
+
+        ax1.set_xlabel('temperature / °C')
+        ax1.set_xlim(300, pltrange)
+        plt.setp(ax1.get_xticklabels(), rotation=90)
+
+        ax1.set_ylabel('charge exchange efficiency / %')
+        ax1.set_ylim((0, 100))
+
+        plt.savefig(folder + 'neutralization.png', dpi=self.dpi, bbox_inches='tight')
         plt.close()
         plt.clf()
 
@@ -1243,6 +1663,243 @@ class PlotThesisGraphics:
         plt.close()
         plt.clf()
 
+    def time_res_atoms(self):
+        """
+        Plot time resolved data from one run as an example
+        :return:
+        """
+        folder = os.path.join(self.fig_dir, 'ChargeExchange\\Resonances\\')
+        file = 'Ca_Ion2020_trs_run203.xml'
+
+        # Import Measurement from file using Importer
+        midtof = 20.5
+        gatewidth = 5
+        t_axis_offset = 0  # 18 offset to scale to compare with different time plots
+        t_plotrange = (18, 28)
+        x_plotrange = (-85, -5)
+
+        xml = XMLImporter(os.path.join(folder, file), x_as_volt=True,
+                          softw_gates=[[-5000, 1000, midtof - gatewidth / 2, midtof + gatewidth / 2],
+                                       [-5000, 1000, midtof - gatewidth / 2, midtof + gatewidth / 2]])
+        xml.preProc(os.path.join(folder, 'Ca_CEC_collected.sqlite'))
+        trs = xml.time_res[0]  # array of dimensions tracks, pmts, steps, bins
+        t_proj = xml.t_proj[0]
+        t_proj_err = np.sqrt(t_proj)
+        v_proj = xml.cts[0]
+        v_proj_err = xml.err[0]
+        x_axis = -np.array(xml.x[0]) + xml.accVolt
+        t_axis = xml.t[0]-t_axis_offset
+        step_width = xml.stepSize[0]*xml.lineMult
+        # Get sizes of arrays
+        scal_data_size, x_data_size, t_data_size = np.shape(trs)
+        # create mesh for time-resolved plot
+        X, Y = np.meshgrid(np.arange(x_data_size), np.arange(t_data_size))
+        # cts data is stored in data_array. Either per scaler [ScalerNo, Y, X]
+        Z = trs[0][X, Y]
+        # Z = data_arr.sum(axis=0)[X, Y]  # or summed for all scalers
+
+        # Create plots for trs and projections
+        f = plt.figure()
+        widths = [0.05, 1]
+        heights = [0.4, 1]
+        spec = mpl.gridspec.GridSpec(nrows=2, ncols=2,
+                                     width_ratios=widths, height_ratios=heights,
+                                     wspace=0.03, hspace=0.05)
+
+        ax_col = f.add_subplot(spec[1, 0])
+        ax_trs = f.add_subplot(spec[1, 1])
+        # ax_tpr = f.add_subplot(spec[1, 2], sharey=ax_trs)
+        ax_vpr = f.add_subplot(spec[0, 1], sharex=ax_trs)
+
+        # define output size of figure
+        width, height = 1, 0.3
+        # f.set_dpi(300.)
+        f.set_size_inches((self.w_in * width, self.h_in * height))
+
+        # create timeresolved plot
+        im = ax_trs.pcolormesh(x_axis, t_axis, Z, cmap=self.custom_cmap)
+        # im = ax_trs.imshow(Z, cmap=custom_cmap, interpolation='none', aspect='auto')  # cmap=pyl.cm.RdBu
+        # work on x axis
+        ax_trs.xaxis.set_ticks_position('top')
+        ax_trs.axes.tick_params(axis='x', direction='out',
+                                bottom=True, top=False, labelbottom=True, labeltop=False)
+        ax_trs.set_xlabel('DAC scan voltage/ V')
+        ax_trs.set_xlim(x_plotrange)  # (x_axis[0], x_axis[-1])
+        # work on y axis
+        ax_trs.set_ylim(t_plotrange)
+        ax_trs.set_ylabel('time / µs')
+        ax_trs.yaxis.set_label_position('right')
+        ax_trs.axes.tick_params(axis='y', direction='out',
+                                left=False, right=True, labelleft=False, labelright=True)
+        f.colorbar(im, cax=ax_col)  # create plot legend
+        ax_col.axes.tick_params(axis='y', direction='in',
+                                left=True, right=True, labelleft=True, labelright=False)
+        ax_col.yaxis.set_label_position('left')
+        ax_col.set_ylabel('cts/arb.u.')
+
+        # create Voltage projection
+        # ax_vpr.errorbar(x_axis, v_proj[0], v_proj_err[0], **self.data_style)  # x_step_projection_sc0
+        ax_vpr.bar(x_axis, v_proj[0], width=step_width, color=self.grey, edgecolor=self.grey)
+        ax_vpr.axes.tick_params(axis='x', direction='in',
+                                top=True, bottom=True,
+                                labeltop=False, labelbottom=False)
+        ax_vpr.axes.tick_params(axis='y', direction='in',
+                                left=True, right=False, labelleft=True)
+        ax_vpr.set_ylim((3900, 6100))
+        ax_vpr.set_yticks([4000, 5000, 6000])
+        ax_vpr.set_yticklabels(['4k', '5k', '6k'])
+        ax_vpr.set_ylabel('cts/arb.u.')
+
+        # create time projection
+        # ax_tpr.errorbar(t_proj[0], t_axis, xerr=t_proj_err[0],
+        #                 **self.data_style)  # y_time_projection_sc0
+        # ax_tpr.axes.tick_params(axis='x', direction='out',
+        #                         top=False, bottom=True, labeltop=False, labelbottom=True)
+        # plt.setp(ax_tpr.get_xticklabels(), rotation=-90)
+        # ax_tpr.axes.tick_params(axis='y', direction='in',
+        #                         left=True, right=True, labelleft=False, labelright=True)
+        # # ax_tpr.set_xticks([1000, 2000, 3000])
+        # # ax_tpr.set_xticklabels(['1k', '2k', '3k'])
+        # ax_tpr.set_xlabel('cts/arb.u.')
+        # ax_tpr.yaxis.set_label_position('right')
+        # ax_tpr.set_ylabel('time/bins')
+
+        # add horizontal lines for timegates
+
+        ax_trs.axhline((midtof - gatewidth / 2)-t_axis_offset, **self.ch_dict(self.fit_style, {'ls': '--', 'lw': 4}))
+        # ax_tpr.axhline((midtof - gatewidth / 2)-t_axis_offset, **self.fit_style)
+        ax_trs.axhline((midtof + gatewidth / 2)-t_axis_offset, **self.ch_dict(self.fit_style, {'ls': '--', 'lw': 4}))
+        # ax_tpr.axhline((midtof + gatewidth / 2)-t_axis_offset, **self.fit_style)
+
+        # add the TILDA logo top right corner
+        # logo = mpl.image.imread(os.path.join(folder, 'Tilda256.png'))
+        # ax_log = f.add_subplot(spec[0, 2])
+        # ax_log.axis('off')
+        # ax_log.imshow(logo)
+
+        # f.tight_layout()
+        plt.savefig(folder + 'TRS_atoms.png', dpi=self.dpi, bbox_inches='tight')
+        plt.close()
+        plt.clf()
+
+    def time_res_ions(self):
+        """
+        Plot time resolved data from one run as an example
+        :return:
+        """
+        folder = os.path.join(self.fig_dir, 'ChargeExchange\\Resonances\\')
+        file = 'Ca_Ion_DecNoonRes_trs_run055.xml'
+        # file = '40Ca_la_trs_run605.xml'
+
+        # Import Measurement from file using Importer
+        midtof = 210  #215
+        gatewidth = 30
+        t_axis_offset = 0  # 190
+        t_plotrange = (190, 225)
+        x_plotrange = (-60, 0)
+
+        xml = XMLImporter(os.path.join(folder, file), x_as_volt=True,
+                          softw_gates=[[-500, 500, midtof - gatewidth / 2, midtof + gatewidth / 2],
+                                       [-500, 500, midtof - gatewidth / 2, midtof + gatewidth / 2]])
+        xml.preProc(os.path.join(folder, 'Ca_CEC_collected.sqlite'))
+        trs = xml.time_res[0]  # array of dimensions tracks, pmts, steps, bins
+        t_proj = xml.t_proj[0]
+        t_proj_err = np.sqrt(t_proj)
+        v_proj = xml.cts[0]
+        v_proj_err = xml.err[0]
+        x_axis = -np.array(xml.x[0]) + xml.accVolt
+        t_axis = xml.t[0] - t_axis_offset
+        step_width = xml.stepSize[0] * 50
+        # Get sizes of arrays
+        scal_data_size, x_data_size, t_data_size = np.shape(trs)
+        # create mesh for time-resolved plot
+        X, Y = np.meshgrid(np.arange(x_data_size), np.arange(t_data_size))
+        # cts data is stored in data_array. Either per scaler [ScalerNo, Y, X]
+        Z = trs[0][X, Y]
+        # Z = data_arr.sum(axis=0)[X, Y]  # or summed for all scalers
+
+        # Create plots for trs and projections
+        f = plt.figure()
+        widths = [0.05, 1]
+        heights = [0.4, 1]
+        spec = mpl.gridspec.GridSpec(nrows=2, ncols=2,
+                                     width_ratios=widths, height_ratios=heights,
+                                     wspace=0.03, hspace=0.05)
+
+        ax_col = f.add_subplot(spec[1, 0])
+        ax_trs = f.add_subplot(spec[1, 1])
+        # ax_tpr = f.add_subplot(spec[1, 2], sharey=ax_trs)
+        ax_vpr = f.add_subplot(spec[0, 1], sharex=ax_trs)
+
+        # define output size of figure
+        width, height = 1, 0.3
+        # f.set_dpi(300.)
+        f.set_size_inches((self.w_in * width, self.h_in * height))
+
+        # create timeresolved plot
+        im = ax_trs.pcolormesh(x_axis, t_axis, Z, cmap=self.custom_cmap)
+        # im = ax_trs.imshow(Z, cmap=custom_cmap, interpolation='none', aspect='auto')  # cmap=pyl.cm.RdBu
+        # work on x axis
+        ax_trs.xaxis.set_ticks_position('top')
+        ax_trs.axes.tick_params(axis='x', direction='out',
+                                bottom=True, top=False, labelbottom=True, labeltop=False)
+        ax_trs.set_xlabel('DAC scan voltage/ V')
+        ax_trs.set_xlim(x_plotrange)  # (x_axis[0], x_axis[-1])
+        # work on y axis
+        ax_trs.set_ylim(t_plotrange)
+        ax_trs.set_ylabel('time / µs')
+        ax_trs.yaxis.set_label_position('right')
+        ax_trs.axes.tick_params(axis='y', direction='out',
+                                left=False, right=True, labelleft=False, labelright=True)
+        f.colorbar(im, cax=ax_col)  # create plot legend
+        ax_col.axes.tick_params(axis='y', direction='in',
+                                left=True, right=True, labelleft=True, labelright=False)
+        ax_col.yaxis.set_label_position('left')
+        ax_col.set_ylabel('cts/arb.u.')
+
+        # create Voltage projection
+        # ax_vpr.errorbar(x_axis, v_proj[0], v_proj_err[0], **self.data_style)  # x_step_projection_sc0
+        ax_vpr.bar(x_axis, v_proj[0], width=step_width, color=self.grey, edgecolor=self.grey)
+        ax_vpr.axes.tick_params(axis='x', direction='in',
+                                top=True, bottom=True,
+                                labeltop=False, labelbottom=False)
+        ax_vpr.axes.tick_params(axis='y', direction='in',
+                                left=True, right=False, labelleft=True)
+        ax_vpr.set_ylim((4500, 20500))
+        ax_vpr.set_yticks([5000, 10000, 15000, 20000])
+        ax_vpr.set_yticklabels(['5k', '10k', '15k', '20k'])
+        ax_vpr.set_ylabel('cts/arb.u.')
+
+        # create time projection
+        # ax_tpr.errorbar(t_proj[0], t_axis, xerr=t_proj_err[0],
+        #                 **self.data_style)  # y_time_projection_sc0
+        # ax_tpr.axes.tick_params(axis='x', direction='out',
+        #                         top=False, bottom=True, labeltop=False, labelbottom=True)
+        # plt.setp(ax_tpr.get_xticklabels(), rotation=-90)
+        # ax_tpr.axes.tick_params(axis='y', direction='in',
+        #                         left=True, right=True, labelleft=False, labelright=True)
+        # # ax_tpr.set_xticks([1000, 2000, 3000])
+        # # ax_tpr.set_xticklabels(['1k', '2k', '3k'])
+        # ax_tpr.set_xlabel('cts/arb.u.')
+        # ax_tpr.yaxis.set_label_position('right')
+        # ax_tpr.set_ylabel('time/bins')
+
+        # add horizontal lines for timegates
+        ax_trs.axhline((midtof - gatewidth / 2) - t_axis_offset, **self.ch_dict(self.fit_style, {'ls': '--', 'lw': 4}))
+        # ax_tpr.axhline((midtof - gatewidth / 2)-t_axis_offset, **self.fit_style)
+        ax_trs.axhline((midtof + gatewidth / 2) - t_axis_offset, **self.ch_dict(self.fit_style, {'ls': '--', 'lw': 4}))
+        # ax_tpr.axhline((midtof + gatewidth / 2)-t_axis_offset, **self.fit_style)
+
+        # add the TILDA logo top right corner
+        # logo = mpl.image.imread(os.path.join(folder, 'Tilda256.png'))
+        # ax_log = f.add_subplot(spec[0, 2])
+        # ax_log.axis('off')
+        # ax_log.imshow(logo)
+
+        # f.tight_layout()
+        plt.savefig(folder + 'TRS_ions.png', dpi=self.dpi, bbox_inches='tight')
+        plt.close()
+        plt.clf()
 
     def draw_table_of_nuclides(self):
         # Define width and height
@@ -1279,6 +1936,1045 @@ class PlotThesisGraphics:
         ax.set_axis_off()
 
         plt.show()
+
+    def plot_king_plot(self):
+        folder = os.path.join(self.fig_dir, 'Nickel\\Analysis\\KingPlot\\')
+
+        fig, ax = plt.subplots(1)
+        # define output size of figure
+        width, height = 1, 0.4
+        # f.set_dpi(300.)
+        fig.set_size_inches((self.w_in * width, self.h_in * height))
+
+        x_list = []  # list of reduced masses (x-axis)
+
+        ''' import the data '''
+        nOfElectrons = 28.  # for mass-scaling factor nuclear mass calculation
+        ionizationEnergy = 41356  # in keV from NIST Ionization Energy data for very precise nuclear mass determination
+
+        king_dict = {'COLLAPS(c)':{'F': {}, 'K': {}, 'Alpha': {}, 'color': self.red},
+                     'BECOLA': {'F': {}, 'K': {}, 'Alpha': {}, 'color': self.blue},}
+
+        king_data = pd.read_csv(glob(os.path.join(folder, 'KingLit*'))[0], delimiter='\t',
+                           index_col=0, skiprows=[])
+        iso_data = pd.read_csv(glob(os.path.join(folder, 'IsoData*'))[0], delimiter='\t',
+                           index_col=0, skiprows=[])
+
+        m_list = []
+        m_d_list = []
+        r_list = []
+        r_d_list = []
+
+        # calculate mass-scaled delta rms charge radii
+        for indx, row in iso_data.iterrows():
+            # get masses and errors
+            m_inp = row['mass']
+            m, m_d, *_ = re.split('[()]', m_inp)
+            sign_digit = len(m.split('.')[1])  # get the significant digits of the value
+            m_list.append(float(m)  # make nuclear mass
+                          - nOfElectrons * sc.physical_constants['electron mass in u'][0]
+                          + ionizationEnergy * sc.e / (sc.atomic_mass * sc.c ** 2))
+            m_d_list.append(float(m_d) / 10 ** sign_digit)
+            # get radius
+            r_inp = row['delta_rad_FRI']
+            if r_inp != '--':
+                # get radii and error
+                r, r_d, *_ = re.split('[()]', r_inp)
+                sign_digit = len(r.split('.')[1])  # get the significant digits of the value
+                r_list.append(float(r))
+                r_d_list.append(float(r_d) / 10 ** sign_digit)
+            else:
+                r_list.append('--')
+                r_d_list.append('--')
+
+        iso_data['m'] = m_list
+        iso_data['m_d'] = m_d_list
+        iso_data['r'] = r_list
+        iso_data['r_d'] = r_d_list
+
+        mu_list = []
+        mu_d_list = []
+        for iso, row in iso_data.iterrows():
+            m_iso = row['m']
+            m_iso_d = row['m_d']
+            m_ref = iso_data.loc['60Ni', 'm']
+            m_ref_d = iso_data.loc['60Ni', 'm_d']
+
+            mu = (m_iso - m_ref) / (m_iso * m_ref)
+            mu_d = np.sqrt(np.square(m_iso_d / m_iso ** 2) + np.square(m_ref_d / m_ref ** 2))
+
+            # add to list of x-values
+            mu_list.append(mu)
+            mu_d_list.append(mu_d)
+        iso_data['mu'] = mu_list
+        iso_data['mu_d'] = mu_d_list
+
+        # make x-axis or iterate over items again?
+
+
+        x_plotrange = (240, 580)
+        x_arr = np.arange(x_plotrange[0], x_plotrange[1], 1)
+
+        # get the isotope shifts from our analysis
+        shifts = []
+        thisPoint = None
+        isolist = ['55Ni', '56Ni', '58Ni', '60Ni']  # ['54Ni', '55Ni', '56Ni', '58Ni', '60Ni']
+        # isolist.remove(self.ref_iso)
+        # for iso in isolist:
+        #     m_iso, m_iso_d = self.get_iso_property_from_db('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''',
+        #                                                    (iso[:4],))
+        #     m_ref, m_ref_d = self.get_iso_property_from_db('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''',
+        #                                                    (self.ref_iso[:4],))
+        #     mu = (m_iso - m_ref) / (m_iso * m_ref)
+        #     mu_d = np.sqrt(np.square(m_iso_d / m_iso ** 2) + np.square(m_ref_d / m_ref ** 2))
+        #
+        #     iso_shift = self.results[iso]['final']['shift_iso-{}'.format(self.ref_iso[:2])]['vals'][0]
+        #     iso_shift_d = self.results[iso]['final']['shift_iso-{}'.format(self.ref_iso[:2])]['d_stat'][0]
+        #     iso_shift_d_syst = self.results[iso]['final']['shift_iso-{}'.format(self.ref_iso[:2])]['d_syst'][0]
+        #     shifts.append((iso_shift / mu / 1000, iso_shift_d / mu / 1000, iso_shift_d_syst / mu / 1000, iso))
+        #
+        #     if iso in self.delta_lit_radii_60 and not iso == self.ref_iso:
+        #         delta_rms = self.delta_lit_radii_60[iso]
+        #         r = delta_rms[0] / mu
+        #         r_d = np.sqrt((delta_rms[1] / mu) ** 2 + (delta_rms[0] * mu_d / mu ** 2) ** 2)
+        #         s = iso_shift / mu / 1000
+        #         s_d = np.sqrt(
+        #             ((iso_shift_d + iso_shift_d_syst) / mu / 1000) ** 2 + ((iso_shift) * mu_d / mu ** 2 / 1000) ** 2)
+        #         thisPoint = (r, r_d, s, s_d)
+
+        # add a band for each of our online measured isotope shifts
+        for indx, row in iso_data.iterrows():
+            # get radius
+            rad_inp = row['iso_shift_ONL']
+            if rad_inp != '--':
+                r, r_d, *_ = re.split('[()]', rad_inp)
+                sign_digit = len(r.split('.')[1])  # get the significant digits of the value
+                isomu = float(r) / iso_data.loc[indx, 'mu'] / 1000  # in GHz
+                isomu_d = float(r_d) / 10 ** sign_digit / iso_data.loc[indx, 'mu'] / 1000  # in GHz
+                # plot error band for this line
+                plt.axhspan(isomu - isomu_d,
+                            isomu + isomu_d,
+                            facecolor='black', alpha=0.2)
+                ax.annotate(r'$^\mathregular{{{}}}$Ni'.format(indx[:2]), (x_plotrange[0]+5, isomu - 5))
+
+        def _kingLine(x, k, f, a):
+            return (k + f * (x)) / 1000  # in GHz
+
+        def _kingLower(x, k, k_d, f, f_d, a):
+            xa = _kingLine(x, k + k_d, f + f_d, a)
+            xb = _kingLine(x, k + k_d, f - f_d, a)
+            xc = _kingLine(x, k - k_d, f + f_d, a)
+            xd = _kingLine(x, k - k_d, f - f_d, a)
+            ret_arr = np.zeros(x.shape)
+            for i in range(len(x)):
+                ret_arr[i] = min(xa[i], xb[i], xc[i], xd[i])
+            return ret_arr
+
+        def _kingUpper(x, k, k_d, f, f_d, a):
+            xa = _kingLine(x, k + k_d, f + f_d, a)
+            xb = _kingLine(x, k + k_d, f - f_d, a)
+            xc = _kingLine(x, k - k_d, f + f_d, a)
+            xd = _kingLine(x, k - k_d, f - f_d, a)
+            ret_arr = np.zeros(x.shape)
+            for i in range(len(x)):
+                ret_arr[i] = max(xa[i], xb[i], xc[i], xd[i])
+            return ret_arr
+
+        annotate_iso = []
+        x_annotate = []
+        y_annotate = []
+
+        # for src, item in king_dict.items():
+        for src in ['COLLAPS(c)', 'BECOLA']:
+            item = king_dict[src]
+            # get F
+            f_inp = king_data.loc[src, 'F']
+            f, f_d, *_ = re.split('[()]', f_inp)
+            if '.' in f:
+                sign_digit = len(f.split('.')[1])  # get the significant digits of the value
+            else:
+                sign_digit = 0
+            king_dict[src]['F']['val'] = float(f)
+            king_dict[src]['F']['d'] = float(f_d) / 10 ** sign_digit
+            # get Kalpha
+            k_inp = king_data.loc[src, 'Kalpha']
+            k, k_d, *_ = re.split('[()]', k_inp)
+            if '.' in k:
+                sign_digit = len(k.split('.')[1])  # get the significant digits of the value
+            else:
+                sign_digit = 0
+            king_dict[src]['K']['val'] = 1000*float(k)
+            king_dict[src]['K']['d'] = 1000*float(k_d) / 10 ** sign_digit
+            # get Alpha
+            a_inp = king_data.loc[src, 'Alpha']
+            king_dict[src]['Alpha']['val'] = float(a_inp)
+
+
+            # get factors
+            alpha = king_dict[src]['Alpha']['val']
+            F, F_d = king_dict[src]['F']['val'], king_dict[src]['F']['d']
+            Kalpha, Kalpha_d = king_dict[src]['K']['val'], king_dict[src]['K']['d']
+
+            # get a color
+            col = item['color']
+
+            # plot line with errors:
+            plt.plot(x_arr, _kingLine(x_arr - alpha, Kalpha, F, alpha), '--', c=col, lw=2)
+            # plot error band for this line
+            plt.fill_between(x_arr,
+                             _kingLower(x_arr - alpha, Kalpha, Kalpha_d, F, F_d, alpha),
+                             _kingUpper(x_arr - alpha, Kalpha, Kalpha_d, F, F_d, alpha),
+                             alpha=0.3, edgecolor=col, facecolor=col)
+
+            # plot each reference point from this source
+            r_lst = []
+            r_d_lst = []
+            s_lst = []
+            s_d_lst = []
+
+            for iso, row in iso_data.iterrows():
+                # get isoshift
+                iso_inp = row['iso_shift_{}'.format(src[:3])]
+                if iso_inp != '--':
+                    isos, isos_d, *_ = re.split('[()]', iso_inp)
+                    sign_digit = len(isos.split('.')[1])  # get the significant digits of the value
+                    isomu = float(isos) / iso_data.loc[iso, 'mu'] / 1000  # in GHz
+                    isomu_d = float(isos_d) / 10 ** sign_digit / iso_data.loc[iso, 'mu'] / 1000  # in GHz
+                    # add to plot items
+                    s_lst.append(isomu)
+                    s_d_lst.append(isomu_d)
+
+                    # get radii
+                    r = row['r']
+                    r_d = row['r_d']
+                    rmu = float(r) / iso_data.loc[iso, 'mu']
+                    rmu_d = float(r_d) / iso_data.loc[iso, 'mu']
+                    # add to plot items
+                    r_lst.append(rmu)
+                    r_d_lst.append(rmu_d)
+
+                    if 'COLLAPS' in src:
+                        # only use Kaufmann values for the annotation:
+                        annotate_iso.append(iso)
+                        x_annotate.append(rmu)
+                        y_annotate.append(isomu)
+
+            plt.errorbar(r_lst, s_lst, xerr=r_d_lst, yerr=s_d_lst, fmt='o', c=col, elinewidth=1.5, label=src)
+
+        for i, iso in enumerate(annotate_iso):
+            ax.annotate(r'$^\mathregular{{{:.0f}}}$Ni'.format(int(iso[:2])), (x_annotate[i] + 5, y_annotate[i] + 5),
+                        color=self.black)
+
+        if thisPoint is not None:
+            plt.errorbar(thisPoint[0], thisPoint[2], xerr=thisPoint[1], yerr=thisPoint[3], fmt='ok', label='This Work',
+                         elinewidth=1.5)
+
+        ax.set_xlim(x_plotrange)
+        ax.set_xlabel(r'$\mu^{-1} \delta \langle r_c^2 \rangle \mathregular{\,/(u\/fm)^2}$')
+
+        ax.set_ylim((780, 1090))
+        ax.set_ylabel(r'$\mu^{-1} \delta\nu\/\mathregular{/(u\,GHz)}$')
+        # plt.title('King Plot Comparison')
+        plt.legend(title='King Plot Data', numpoints=1, loc="best")
+        plt.margins(0.05)
+
+        plt.savefig(folder + 'compare_kings' + '.png', dpi=self.dpi, bbox_inches='tight')
+        plt.close()
+        plt.clf()
+
+    def deltarad_chain_errorband(self, dash_missing_data=True):
+        # define folder
+        folder = os.path.join(self.fig_dir, 'Nickel\\Discussion\\dR2_NickelChain\\')
+
+        fig, ax = plt.subplots(1)
+        # define output size of figure
+        width, height = 0.8, 0.4
+        # f.set_dpi(300.)
+        fig.set_size_inches((self.w_in * width, self.h_in * height))
+
+        # get data from results file
+        load_results_from = glob(os.path.join(folder, 'Ni_Results2_*'))[0]
+        results = self.import_results(load_results_from)
+
+
+        isolist = ['54NiBec', '55Ni', '56Ni', '58Ni', '60Ni', '62NiBec', '64NiBec']  # BECOLA isotopes
+        # TODO: 58 and 60 from this or from Offline?
+        refiso = '60Ni'
+        ref_key = refiso[:4]
+        prop_key = 'delta_ms_iso-{}'.format(ref_key[:2])
+
+        thisVals = {key: [results[key]['final'][prop_key]['vals'][0],
+                          results[key]['final'][prop_key]['d_stat'][0],
+                          results[key]['final'][prop_key]['d_syst'][0]]
+                    for key in isolist}
+
+        data_dict = {'BECOLA (Exp)': {'data': thisVals, 'color': self.black}}
+
+        # plot BECOLA values
+        src = 'BECOLA (Exp)'
+        col = data_dict[src]['color']
+        data = data_dict[src]['data']
+        keyVals = sorted(data)
+        x = []
+        y = []
+        yerr = []
+        ytiltshift = []
+        for i in keyVals:
+            x.append(int(''.join(filter(str.isdigit, i))))
+            y.append(data[i][0])
+            yerr.append(data[i][1])  # take only IS contributions here
+            ytiltshift.append(data[i][2])  # Fieldshift-Factor, Massshift-Factor uncertainty
+
+        # plt.xticks(rotation=0)
+        # ax = plt.gca()
+        ax.set_ylabel(r'$\mathbf{\delta \langle r^2 \rangle}\mathregular{\//fm^2}$')
+        ax.set_xlabel('A')
+
+        if dash_missing_data:
+            # if some isotopes are missing, this dashes the line at these isotopes
+            # has no effect when plot_evens_separate is True
+            split_x_list = []
+            for k, g in groupby(enumerate(x), lambda a: a[0] - a[1]):
+                split_x_list.append(list(map(itemgetter(1), g)))
+            i = 0
+            label_created = False
+            for each in split_x_list:
+                y_vals = y[i:i + len(each)]
+                yerr_vals = yerr[i:i + len(each)]
+                if not label_created:  # only create label once
+                    plt.errorbar(each, y_vals, yerr_vals, fmt='o', color=col, linestyle='-', label=src)
+                    label_created=True
+                else:
+                    plt.errorbar(each, y_vals, yerr_vals, fmt='o', color=col, linestyle='-')
+                # plot dashed lines between missing values
+                if len(x) > i + len(each):  # might be last value
+                    x_gap = [x[i + len(each) - 1], x[i + len(each)]]
+                    y_gap = [y[i + len(each) - 1], y[i + len(each)]]
+                    plt.plot(x_gap, y_gap, c=col, linestyle='--')
+                i = i + len(each)
+        else:
+            plt.errorbar(x, y, yerr, fmt='o', color=col, linestyle='-')
+        # plot errorband
+        ax.fill_between(x,
+                         np.array(y) - np.array(ytiltshift),
+                         np.array(y) + np.array(ytiltshift),
+                         alpha=0.5, edgecolor=col, facecolor=col)
+
+        # plot theory values
+        theory_sets = glob(os.path.join(folder, 'data_*'))
+        offsets = [0, 0.05, -0.05, 0.1, -0.1, 0.15, -0.15]
+        colornum = 1
+        markernum = 0
+        for num, th in enumerate(theory_sets):
+            file = th.split('\\')[-1]
+            name = file[5:-4]  # remove data_ and .txt
+            name = name.replace('slash', '/')
+
+            data = pd.read_csv(th, delimiter=' ', index_col=0, skiprows=[])
+
+            isos = []
+            vals = []
+            unc_up = []
+            unc_down = []
+            for i, row in data.iterrows():
+                isos.append(i+offsets[num])
+                vals.append(row['val'])
+                if 'unc_up' in row:
+                    unc_up.append(row['unc_up'])
+                    unc_down.append(row['unc_down'])
+                elif 'unc' in row:
+                    unc_up.append(row['unc'])
+                    unc_down.append(row['unc'])
+                else:
+                    unc_up = None
+
+            if unc_up is not None:
+                ax.errorbar(isos, vals, yerr=(unc_down, unc_up), label=name, marker=self.markerlist[markernum],
+                             linestyle='', color=self.colorlist[colornum])
+            else:  # no uncertainties given
+                ax.plot(isos, vals, label=name, marker=self.markerlist[markernum], linestyle='',
+                         color=self.colorlist[colornum])
+            colornum += 1
+            markernum += 1
+
+
+        ax.set_xmargin(0.05)
+        # ax.set_xlim((53, 64.5))
+        # ax.set_ylim((-0.8, 0.9))
+
+        # sort legend alphabetically but keep experiment on top
+        handles, labels = ax.get_legend_handles_labels()
+        expi = [labels.index(i) for i in labels if
+                'Exp' in i]  # first get experiment value(s), so we can put them at the top.
+        handles_print = [handles.pop(i) for i in expi]
+        labels_print = [labels.pop(i) for i in expi]
+        hl = sorted(zip(handles, labels),
+                    key=operator.itemgetter(1))
+        handles_sort, labels_sort = zip(*hl)
+        handles_print += handles_sort
+        labels_print += labels_sort
+        plt.legend(handles_print, labels_print, bbox_to_anchor=(0.0, 1.0), loc='upper left', ncol=1)
+
+        plt.margins(0.1)
+
+        plt.tight_layout(True)
+        plt.savefig(folder + 'delta_radii_all' + '.png', dpi=self.dpi, bbox_inches='tight')
+
+        ax.set_xlim((53, 64.5))
+        ax.set_ylim((-0.8, 0.9))
+        plt.savefig(folder + 'delta_radii' + '.png', dpi=self.dpi, bbox_inches='tight')
+
+        plt.close()
+        plt.clf()
+
+    def absradii_chain_errorband(self, dash_missing_data=True):
+        # define folder
+        folder = os.path.join(self.fig_dir, 'Nickel\\Discussion\\R_NickelChain\\')
+
+        fig, ax = plt.subplots(1)
+        # define output size of figure
+        width, height = 0.45, 0.3
+        # f.set_dpi(300.)
+        fig.set_size_inches((self.w_in * width, self.h_in * height))
+
+        # get data from results file
+        load_results_from = glob(os.path.join(folder, 'Ni_Results2_*'))[0]
+        results = self.import_results(load_results_from)
+
+        isolist = ['54NiBec', '55Ni', '56Ni', '58Ni', '62NiBec', '64NiBec']  # BECOLA isotopes
+        # TODO: 58 and 60 from this or from Offline?
+        refiso = '60Ni'
+        ref_key = refiso[:4]
+        prop_key = 'abs_radii'
+
+        thisVals = {key: [results[key]['final'][prop_key]['vals'][0],
+                          results[key]['final'][prop_key]['d_stat'][0],
+                          results[key]['final'][prop_key]['d_syst'][0]]
+                    for key in isolist}
+
+        data_dict = {'BECOLA (Exp)': {'data': thisVals, 'color': self.black}}
+
+        # plot BECOLA values
+        src = 'BECOLA (Exp)'
+        col = data_dict[src]['color']
+        data = data_dict[src]['data']
+        keyVals = sorted(data)
+        x = []
+        y = []
+        yerr = []
+        ytiltshift = []
+        for i in keyVals:
+            x.append(int(''.join(filter(str.isdigit, i))))
+            y.append(data[i][0])
+            yerr.append(data[i][1])  # take only IS contributions here
+            ytiltshift.append(data[i][2])  # Fieldshift-Factor, Massshift-Factor uncertainty
+
+        plt.xticks(rotation=0)
+        ax = plt.gca()
+        ax.set_ylabel(r'R$\mathregular{_c\//fm}$')
+        ax.set_xlabel('A')
+
+        if dash_missing_data:
+            # if some isotopes are missing, this dashes the line at these isotopes
+            # has no effect when plot_evens_separate is True
+            split_x_list = []
+            for k, g in groupby(enumerate(x), lambda a: a[0] - a[1]):
+                split_x_list.append(list(map(itemgetter(1), g)))
+            i = 0
+            label_created = False
+            for each in split_x_list:
+                y_vals = y[i:i + len(each)]
+                yerr_vals = yerr[i:i + len(each)]
+                if not label_created:  # only create label once
+                    plt.errorbar(each, y_vals, yerr_vals, fmt='o', color=col, linestyle='-', label=src)
+                    label_created = True
+                else:
+                    plt.errorbar(each, y_vals, yerr_vals, fmt='o', color=col, linestyle='-')
+                # plot dashed lines between missing values
+                if len(x) > i + len(each):  # might be last value
+                    x_gap = [x[i + len(each) - 1], x[i + len(each)]]
+                    y_gap = [y[i + len(each) - 1], y[i + len(each)]]
+                    plt.plot(x_gap, y_gap, c=col, linestyle='--')
+                i = i + len(each)
+        else:
+            plt.errorbar(x, y, yerr, fmt='o', color=col, linestyle='-')
+        # plot errorband
+        plt.fill_between(x,
+                         np.array(y) - np.array(ytiltshift),
+                         np.array(y) + np.array(ytiltshift),
+                         alpha=0.5, edgecolor=col, facecolor=col)
+
+        # plot theory values
+        theory_sets = glob(os.path.join(folder, 'data_*'))
+        offsets = [0.05, -0.05, 0.1, -0.1, 0.15, -0.15]
+        colornum = 1
+        markernum = 0
+        for num, th in enumerate(theory_sets):
+            file = th.split('\\')[-1]
+            name = file[5:-4]  # remove data_ and .txt
+            name = name.replace('slash', '/')
+
+            data = pd.read_csv(th, delimiter=' ', index_col=0, skiprows=[])
+
+            isos = []
+            vals = []
+            unc_up = []
+            unc_down = []
+            for i, row in data.iterrows():
+                isos.append(i + offsets[num])
+                vals.append(row['val'])
+                if 'unc_up' in row:
+                    unc_up.append(row['unc_up'])
+                    unc_down.append(row['unc_down'])
+                elif 'unc' in row:
+                    unc_up.append(row['unc'])
+                    unc_down.append(row['unc'])
+                else:
+                    unc_up = None
+
+            if unc_up is not None:
+                plt.errorbar(isos, vals, yerr=(unc_down, unc_up), label=name, marker=self.markerlist[markernum],
+                             linestyle='', color=self.colorlist[colornum])
+            else:  # no uncertainties given
+                plt.plot(isos, vals, label=name, marker=self.markerlist[markernum], linestyle='',
+                         color=self.colorlist[colornum])
+
+            colornum += 1
+            markernum += 1
+
+        # Radii by P.G.Reinhardt
+        # Fy_isofit = np.array([3.7178, 3.7097, ])  # 3.7116, 3.6998, 3.6996, 3.7144, 3.7331, 3.7395, 3.7516, 3.7751, 3.8185, 3.8278, 3.8599, 3.8651, 3.8935, 3.8975, 3.9231, 3.9253, 3.9470])  #])  #
+        # xFy_isofit = np.array([24, 25, ])  # 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42])
+        # xFy_isofit = np.array(xFy_isofit) + 28
+        # plt.plot(xFy_isofit, Fy_isofit, c='g', marker='*', markersize=8, linestyle='', linewidth=3, label='Fayans (P.-G. R.)')
+        #
+        # SVmin = np.array([3.8196, 3.8022, 3.7844, 3.7762, 3.7745, 3.7683, ])  # 3.7657, 3.7752, 3.7668, 3.7743, 3.7783, 3.7872, 3.7947, 3.8114, 3.8173, 3.8294, 3.8409, 3.8528, 3.8637, 3.8753, 3.8857, 3.8971, 3.9040])
+        # xSVmin = np.array([20, 21, 22, 23, 24, 25, ])  # 26, 27,  28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42])
+        # xSVmin = np.array(xSVmin) + 28
+        # plt.plot(xSVmin, SVmin, c='r', marker='p', markersize=5, linestyle='', linewidth=3, label='Skyrme SVmin (P.-G. R.)')
+
+        # IMSRG = np.array([3.7923, 3.8122, 3.83758, 3.853517, 3.875522, 3.88883,
+        #                   3.909071, 3.920739, 3.940103, 3.9507136])
+        # xIMSRG = np.array([28, 29, 30, 31, 32, 33, 34, 35, 36, 37])
+        # xIMSRG = np.array(xIMSRG) + 28
+        # plt.plot(xIMSRG, IMSRG, c='orange', marker='s', linewidth=3, label='IM-SRG',
+        #          markersize=6)  # TODO: Which potential?!
+
+        ax.set_xmargin(0.05)
+        # ax.set_xlim((53, 64.5))
+        # ax.set_ylim((3.5, 4))
+
+        # sort legend alphabetically but keep experiment on top
+        handles, labels = ax.get_legend_handles_labels()
+        expi = [labels.index(i) for i in labels if
+                'Exp' in i]  # first get experiment value(s), so we can put them at the top.
+        handles_print = [handles.pop(i) for i in expi]
+        labels_print = [labels.pop(i) for i in expi]
+        hl = sorted(zip(handles, labels),
+                    key=operator.itemgetter(1))
+        handles_sort, labels_sort = zip(*hl)
+        handles_print += handles_sort
+        labels_print += labels_sort
+        plt.legend(handles_print, labels_print, bbox_to_anchor=(0.5, 1.0), loc='lower center', ncol=1)
+        plt.margins(0.1)
+        plt.gcf().set_facecolor('w')
+
+        # plt.tight_layout(True)
+        # plt.savefig(folder + 'abs_radii_all' + '.png', dpi=self.dpi, bbox_inches='tight')
+
+        ax.set_xlim((53.5, 64.5))
+        ax.set_ylim((3.5, 3.9))
+        plt.savefig(folder + 'abs_radii' + '.png', dpi=self.dpi, bbox_inches='tight')
+        plt.close()
+        plt.clf()
+
+    def absradii_chain_errorband_all(self):
+        # define folder
+        folder = os.path.join(self.fig_dir, 'Nickel\\Discussion\\R_NickelChain\\')
+
+        fig, ax = plt.subplots(1)
+        # define output size of figure
+        width, height = 0.8, 0.4
+        # f.set_dpi(300.)
+        fig.set_size_inches((self.w_in * width, self.h_in * height))
+
+        # exp values
+        exp_sets = glob(os.path.join(folder, 'exp_*'))
+        for num, exp in enumerate(exp_sets):
+            file = exp.split('\\')[-1]
+            exp_name = file.split('_')[-1][:-4]  # remove data_ and .txt
+            exp_name = exp_name.replace('slash', '/')
+
+            data = pd.read_csv(exp, delimiter=' ', index_col=0, skiprows=[])
+
+            isos = []
+            vals = []
+            unc_up = []
+            unc_down = []
+            for i, row in data.iterrows():
+                isos.append(i)
+                vals.append(row['val'])
+                if 'unc_up' in row:
+                    unc_up.append(row['unc_up'])
+                    unc_down.append(row['unc_down'])
+                elif 'unc' in row:
+                    unc_up.append(row['unc'])
+                    unc_down.append(row['unc'])
+                else:
+                    unc_up = None
+
+            if unc_up is not None:
+                plt.errorbar(isos, vals, yerr=(unc_down, unc_up), label=exp_name, marker='*', markersize=10,
+                             linestyle='-', color=self.black, zorder=10)
+            else:  # no uncertainties given
+                plt.plot(isos, vals, label=exp_name, marker='*', markersize=10, linestyle='-', color=self.black, zorder=10)
+
+
+        # plot theory values
+        theory_sets = glob(os.path.join(folder, 'data_*'))
+        offsets = [0, 0.05, -0.05, 0.1, -0.1, 0.15, -0.15]
+        colornum = 1
+        markernum = 0
+        for num, th in enumerate(theory_sets):
+            file = th.split('\\')[-1]
+            name = file[5:-4]  # remove data_ and .txt
+            name = name.replace('slash', '/')
+
+            data = pd.read_csv(th, delimiter=' ', index_col=0, skiprows=[])
+
+            isos = []
+            vals = []
+            unc_up = []
+            unc_down = []
+            for i, row in data.iterrows():
+                isos.append(i + offsets[num])
+                vals.append(row['val'])
+                if 'unc_up' in row:
+                    unc_up.append(row['unc_up'])
+                    unc_down.append(row['unc_down'])
+                elif 'unc' in row:
+                    unc_up.append(row['unc'])
+                    unc_down.append(row['unc'])
+                else:
+                    unc_up = None
+
+            if unc_up is not None:
+                plt.errorbar(isos, vals, yerr=(unc_down, unc_up), label=name, marker=self.markerlist[markernum],
+                             linestyle='', color=self.colorlist[colornum])
+            else:  # no uncertainties given
+                plt.plot(isos, vals, label=name, marker=self.markerlist[markernum], linestyle='',
+                             color=self.colorlist[colornum])
+
+            colornum += 1
+            markernum += 1
+
+        ax.set_ylabel(r'R$\mathregular{_c\//fm}$')
+        ax.set_xlabel('A')
+        ax.set_xmargin(0.05)
+        ax.set_xlim((53.5, 70.5))
+        ax.set_ylim((3.5, 4))
+        # sort legend alphabetically but keep experiment on top
+        handles, labels = ax.get_legend_handles_labels()
+        expi = [labels.index(i) for i in labels if 'Exp' in i]  # first get experiment value(s), so we can put them at the top.
+        handles_print = [handles.pop(i) for i in expi]
+        labels_print = [labels.pop(i) for i in expi]
+        hl = sorted(zip(handles, labels),
+                    key=operator.itemgetter(1))
+        handles_sort, labels_sort = zip(*hl)
+        handles_print += handles_sort
+        labels_print += labels_sort
+        plt.legend(handles_print, labels_print, bbox_to_anchor=(0, 0.7), loc='lower left', ncol=1)
+        plt.margins(0.1)
+        plt.gcf().set_facecolor('w')
+
+        plt.tight_layout(True)
+        plt.savefig(folder + 'abs_radii_all' + '.png', dpi=self.dpi, bbox_inches='tight')
+
+        plt.close()
+        plt.clf()
+
+    def absradii_neighborhood(self):
+        # define folder
+        folder = os.path.join(self.fig_dir, 'Nickel\\Discussion\\R_Elements\\')
+
+        fig = plt.figure()
+        ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
+        ax2 = fig.add_axes([0.09, 0.51, 0.33, 0.4])  # add a secondary inlet axis
+        # define output size of figure
+        width, height = 0.9, 0.45
+        # f.set_dpi(300.)
+        fig.set_size_inches((self.w_in * width, self.h_in * height))
+
+        # plot theory values
+        theory_sets = glob(os.path.join(folder, 'data_*'))
+        colornum = 0
+        for num, th in enumerate(theory_sets):
+            file = th.split('\\')[-1]
+            pre, Z, name = file.split('_')
+            name = name[:-4]  # .txt
+
+            data = pd.read_csv(th, delimiter='\t', index_col=0, skiprows=[0])
+
+            isos = []
+            vals = []
+            refval = 0
+            refunc = 0
+            unc = []
+            for i, row in data.iterrows():
+                if '(m)' in name:
+                    i = i[:-1]
+                    marker = 's'
+                else:
+                    marker = 'o'
+                N = int(i) - int(Z)
+                if N == 28:
+                    refval = float(row['val'])
+                    refunc = float(row['unc'])
+                isos.append(N)
+                vals.append(row['val'])
+                unc.append(row['unc'])
+
+            p = ax.errorbar(isos, vals, yerr=unc, label=r'{0}$_\mathregular{{{1}}}$'.format(name, Z,),
+                            marker=marker, linestyle='-', color=self.colorlist[colornum])
+            colornum += 1
+            if refval:
+                thiscol = p[0].get_color()
+                power = 2  # set to 2 for differential ms charge radii
+                vals = np.array(vals)**power-refval**power
+                unc = np.sqrt(np.square(2*vals*unc) + np.square(2*refval*refunc))
+                ax2.errorbar(isos, vals, yerr=unc, label=r'{0}$_\mathregular{{{1}}}$'.format(name, Z,),
+                             marker=marker, markersize=5, linestyle='-', color=thiscol)
+
+        ax.axvline(20, color=self.grey, linestyle='--')
+        ax.axvline(28, color=self.grey, linestyle='--')
+        ax.axvline(40, color=self.grey, linestyle='--')
+        ax2.axvline(28, color=self.grey, linestyle='--')
+
+        ax.set_ylabel(r'R$\mathregular{_c\//fm}$')
+        ax.yaxis.set_label_position('right')
+        ax.set_xlabel('N')
+        # ax.set_xmargin(0.05)
+        ax.set_xticks([16, 20, 24, 28, 32, 36, 40])
+        ax.set_xlim((12, 42.5))
+        ax.set_ylim((3.3, 3.95))
+        ax.axes.tick_params(axis='y', direction='in', left=True, right=True, labelleft=False, labelright=True)
+
+        ax2.set_xlabel('N')
+        ax2.xaxis.set_label_position('top')
+        ax2.set_ylabel(r'$\mathbf{\delta \langle r^2 \rangle}\mathregular{\//fm^2}$')
+        ax2.yaxis.set_label_position('left')
+        ax2.set_xticks([26, 28, 30])
+        ax2.set_xlim((25.5, 30.5))
+        ax2.set_ylim((-0.1, 0.4))
+        ax2.axes.tick_params(axis='x', direction='in', bottom=True, top=True, labelbottom=False, labeltop=True)
+        ax2.axes.tick_params(axis='y', direction='in', left=True, right=True, labelleft=True, labelright=False)
+
+        # reverse legend order then plot
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles[::-1], labels[::-1], bbox_to_anchor=(1, 0), loc='lower right', ncol=1)
+        # plt.margins(0.1)
+        # plt.gcf().set_facecolor('w')
+
+        # plt.tight_layout(True)
+        plt.savefig(folder + 'abs_radii_neighborhood' + '.png', dpi=self.dpi, bbox_inches='tight')
+        plt.close()
+        plt.clf()
+
+    def absrad56(self):
+        # define folder
+        folder = os.path.join(self.fig_dir, 'Nickel\\Discussion\\R_Nickel56\\')
+
+        # get data from results file
+        load_results_from = glob(os.path.join(folder, 'Ni_Results2_*'))[0]
+        results = self.import_results(load_results_from)
+
+        isolist = ['56Ni']  # BECOLA isotopes
+        # TODO: 58 and 60 from this or from Offline?
+        refiso = '60Ni'
+        ref_key = refiso[:4]
+        prop_key = 'abs_radii'
+
+        thisVals = {key: [results[key]['final'][prop_key]['vals'][0],
+                          results[key]['final'][prop_key]['d_stat'][0],
+                          results[key]['final'][prop_key]['d_syst'][0]]
+                    for key in isolist}
+
+        data_dict = {'BECOLA': {'data': thisVals, 'color': self.red}}
+
+        # get BECOLA values
+        src = 'BECOLA'
+        col = data_dict[src]['color']
+        data = data_dict[src]['data']
+        keyVals = sorted(data)
+        x = []
+        y = []
+        yerr = []
+        ytiltshift = []
+        for i in keyVals:
+            x.append(int(''.join(filter(str.isdigit, i))))
+            y.append(data[i][0])
+            yerr.append(data[i][1])  # take only IS contributions here
+            ytiltshift.append(data[i][2])  # Fieldshift-Factor, Massshift-Factor uncertainty
+
+        # get theory values
+        theory_sets = glob(os.path.join(folder, '*56Ni_*'))
+
+        # Create plots for each dataset
+        f, axes = plt.subplots(nrows=1, ncols=len(theory_sets), sharex=False, sharey='row')
+        f.subplots_adjust(wspace=0, hspace=0)
+
+        # define output size of figure
+        width, height = 1, 0.4
+        # f.set_dpi(300.)
+        f.set_size_inches((self.w_in * width, self.h_in * height))
+
+        for num, th in enumerate(theory_sets):
+            # create temporary variables
+            theo_vals = []
+            theo_unc = []
+            theo_label = []
+            # get name
+            file = th.split('\\')[-1]
+            name = file.split('_')[-1][:-4]  # remove data_ and .txt
+            name = name.replace('slash', '/')
+            name = name.replace('lambda', '$\Lambda$')
+
+            data = pd.read_csv(th, delimiter='&', index_col=0, skiprows=[0])
+
+            was_point_proton = False
+            def calc_rch_from_rpp(rpp, rpp_d):
+                # calculation from Kaufmann et al. 2020
+                rp2 = 0.7080  # rms charge radius proton /fm^2
+                rn2 = -0.117  # rms charge radius neutron /fm^2
+                relDarFol = 0.033  # relativistic Darwin-Foldy correction /fm^2
+                # corSO = 0.13469  # spin-orbit correction /fm^2 (from Horowitz, Piekarewicz; PRC 86, 045503 (2012))
+                # corSO = 0.0591  # extracted from Sonia Baccas calculations on NNLOsat
+                corSO = 0
+                rch = np.sqrt(float(rpp) ** 2 + rp2 + (28 / 28) * rn2 + relDarFol + corSO)
+                # TODO: Should do similar calculation for uncertainties
+                rch_d = float(rpp_d)
+                return rch, rch_d
+
+            for i, row in data.iterrows():
+                theo_label.append(i)
+                val_and_unc = row[' r_ch(delta)']
+                if val_and_unc == ' -':
+                    # no charge radius given. Try proton radius
+                    val_and_unc = row[' rms_p(delta) ']
+                    v_pro, v_pro_d, *_ = re.split('[()]', val_and_unc)
+                    # convert to charge radius
+                    val, unc = calc_rch_from_rpp(v_pro, v_pro_d)
+                    was_point_proton = True
+                else:
+                    val, unc, *_ = re.split('[()]', val_and_unc)
+
+                theo_vals.append(float(val))
+                theo_unc.append(float(unc))
+
+            if was_point_proton:
+                name = '{}*'.format(name)  # add a star to indicate that it was calulated from point proton radius
+
+            # Try to also import 68Ni results for comparison.
+            try:
+                # For these calculations from Bacca we also have values for Nickel 68
+                # import them because I want to discuss trends.
+                theory_68 = glob(os.path.join(folder, '68Ni_{}.txt'.format(name)))[0]
+                data_68 = pd.read_csv(theory_68, delimiter='&', index_col=0, skiprows=[0])
+                theo_vals_68 = []
+                theo_unc_68 = []
+                for i, row in data_68.iterrows():
+                    val_and_unc = row[' r_ch(delta)']
+                    if val_and_unc == ' -':
+                        # no charge radius given. Try proton radius
+                        val_and_unc = row[' rms_p(delta) ']
+                        v_pro, v_pro_d, *_ = re.split('[()]', val_and_unc)
+                        # convert to charge radius
+                        val, unc = calc_rch_from_rpp(v_pro, v_pro_d)
+                    else:
+                        val, unc, *_ = re.split('[()]', val_and_unc)
+
+                    theo_vals_68.append(float(val))
+                    theo_unc_68.append(float(unc))
+                # now plot
+                axes[num].errorbar(np.arange(theo_label.__len__())+0.1, theo_vals_68, yerr=theo_unc_68,
+                                   marker='s', linestyle='', color=self.dark_orange)
+                # make band with experimental nickel 68 value
+                rc68 = 3.887, 0.003  # from Kaufmann.2020
+                axes[num].axhspan(rc68[0] - rc68[1], rc68[0] + rc68[1], color=self.orange)
+            except:
+                print('No 68Ni values found for {}'.format(name))
+
+            axes[num].errorbar(range(theo_label.__len__()), theo_vals, yerr=theo_unc, fmt='o', linestyle='', color=self.blue)
+            axes[num].set_xticks(range(theo_label.__len__()))
+            axes[num].set_xticklabels(theo_label, rotation=90)
+            axes[num].set_xlim((-0.5, len(theo_label)-0.5))
+            axes[num].set_xlabel(r'{}'.format(name))
+
+            # TODO: Make band with experimental value instead
+            axes[num].axhspan(y[0] - yerr[0] - ytiltshift[0], y[0] + yerr[0] + ytiltshift[0], color=col)
+
+        axes[0].set_ylabel(r'R$_c$' + '(fm)')
+
+        # make legend
+        red_line = mpl.lines.Line2D([], [], color=self.red, marker='', linewidth='2', label='Exp 56Ni')
+        blue_dot = axes[0].errorbar([], [], [], color=self.blue, marker='o', markersize='5', linestyle='', label=r'Theory $^{56}$Ni')
+        da1, la1 = axes[0].get_legend_handles_labels()
+        orange_line = mpl.lines.Line2D([], [], color=self.orange, marker='', linewidth='2', label='Exp 68Ni')
+        orange_square = axes[1].errorbar([], [], [], color=self.dark_orange, marker='s', markersize='5', linestyle='', label=r'Theory $^{68}$Ni')
+        da2, la2 = axes[1].get_legend_handles_labels()
+        axes[-1].legend(handles=[red_line, da1[0][0], orange_line, da2[0][0]], labels=[r'Exp $^{56}$Ni', la1[0], R'Exp $^{68}$Ni', la2[0]],
+                   bbox_to_anchor=(1.1, 1.05), loc='lower right', ncol=4)
+
+        plt.savefig(folder + 'abs_radius_56' + '.png', dpi=self.dpi, bbox_inches='tight')
+        plt.close()
+        plt.clf()
+
+    def mu_nickel55(self):
+        """
+
+        :return:
+        """
+        # define folder
+        folder = os.path.join(self.fig_dir, 'Nickel\\Discussion\\mu_Nickel55\\')
+
+        # get data from results file
+        load_results_from = glob(os.path.join(folder, 'Ni_Results2_*'))[0]
+        results = self.import_results(load_results_from)
+
+        isolist = ['55Ni']  # BECOLA isotopes
+
+        thisVals = {key: [results[key]['final']['moments']['mu_avg']['vals'][0],
+                          results[key]['final']['moments']['mu_avg']['d_stat'][0],
+                          results[key]['final']['moments']['mu_avg']['d_syst'][0]]
+                    for key in isolist}
+
+        data_dict = {'BECOLA': {'data': thisVals, 'color': self.red}}
+
+        # get BECOLA values
+        src = 'BECOLA'
+        col = data_dict[src]['color']
+        data = data_dict[src]['data']
+        keyVals = sorted(data)
+        x = []
+        y = []
+        yerr = []
+        ysyst = []
+        for i in keyVals:
+            x.append(int(''.join(filter(str.isdigit, i))))
+            y.append(data[i][0])
+            yerr.append(data[i][1])
+            ysyst.append(data[i][2])
+
+        # get theory values
+        theory_sets = glob(os.path.join(folder, '*Nickel_*'))
+
+        # Create plots for each dataset
+        f, axes = plt.subplots(nrows=1, ncols=len(theory_sets), sharex=False, sharey='row')
+        f.subplots_adjust(wspace=0, hspace=0)
+
+        # define output size of figure
+        width, height = 1, 0.4
+        # f.set_dpi(300.)
+        f.set_size_inches((self.w_in * width, self.h_in * height))
+
+        for num, th in enumerate(theory_sets):
+            # create temporary variables
+            theo_vals = []
+            theo_unc = []
+            theo_label = []
+            # get name
+            file = th.split('\\')[-1]
+            name = file.split('_')[-1][:-4]  # remove Nickel_ and .txt
+            name = name.replace('slash', '/')
+            name = name.replace('lambda', '$\Lambda$')
+
+            data = pd.read_csv(th, delimiter='&', index_col=0, skiprows=[0])
+
+            for i, row in data.iterrows():
+                theo_label.append(i)
+                val_and_unc = row[' mu']
+                if isinstance(val_and_unc, float):
+                    # no uncertainty given
+                    val = val_and_unc
+                    unc = 0
+                elif isinstance(val_and_unc, str) and '(' in val_and_unc:
+                    val, unc, *_ = re.split('[()]', val_and_unc)
+
+
+                theo_vals.append(float(val))
+                theo_unc.append(float(unc))
+
+
+
+            # Try to also import cobalt results for comparison.
+            try:
+                theory_Cobalt = glob(os.path.join(folder, '*Cobalt_{}.txt'.format(name)))[0]
+                data_Cobalt = pd.read_csv(theory_Cobalt, delimiter='&', index_col=0, skiprows=[0])
+                theo_vals_Cobalt = []
+                theo_unc_Cobalt = []
+                for i, row in data_Cobalt.iterrows():
+                    val_and_unc_Co = row[' mu']
+                    if isinstance(val_and_unc_Co, float):
+                        # no uncertainty given
+                        valCo = val_and_unc_Co
+                        uncCo = 0
+                    elif isinstance(val_and_unc_Co, str) and '(' in val_and_unc_Co:
+                        valCo, uncCo, *_ = re.split('[()]', val_and_unc_Co)
+                    else:
+                        valCo = np.nan
+                        uncCo = np.nan
+
+                    theo_vals_Cobalt.append(float(valCo))
+                    theo_unc_Cobalt.append(float(uncCo))
+
+                # create twin axis
+                ax_Co = axes[num].twinx()
+                ax_Co.errorbar(np.arange(theo_label.__len__())+0.1, theo_vals_Cobalt, yerr=theo_unc_Cobalt,
+                                   marker='s', linestyle='', color=self.dark_orange)
+                # make band with experimental nickel 68 value
+                muCobalt = 4.822, 0.003  # from Callaghan.1973
+                ax_Co.axhspan(muCobalt[0] - muCobalt[1], muCobalt[0] + muCobalt[1], color=self.orange)
+                ax_Co.set_ylim((4.5, 5.7))
+                ax_Co.axes.tick_params(axis='y', direction='in', left=False, right=True, labelleft=False, labelright=False)
+            except:
+                print('No Cobalt values found for {}'.format(name))
+
+            if 'Experiment' in name:
+                color = self.red
+            else:
+                color = self.blue
+            axes[num].errorbar(range(theo_label.__len__()), theo_vals, yerr=theo_unc, fmt='o', linestyle='', color=color)
+            axes[num].set_xticks(range(theo_label.__len__()))
+            axes[num].set_xticklabels(theo_label, rotation=90)
+            axes[num].set_xlim((-0.5, len(theo_label) - 0.5))
+            axes[num].set_xlabel(r'{}'.format(name))
+            axes[num].axes.tick_params(axis='y', direction='in', left=True, right=False)
+
+            # Make band with experimental value
+            axes[num].axhspan(y[0] - yerr[0] - ysyst[0], y[0] + yerr[0] + ysyst[0], color=col)
+
+        axes[0].set_ylabel(r'$\mu(^{55}$Ni$) \mu_N$')
+        axes[0].set_ylim((-1.95, -0.75))
+
+        # create twin axis
+        ax_Co = axes[-1].twinx()
+        ax_Co.set_ylim((4.5, 5.7))
+        ax_Co.axes.tick_params(axis='y', direction='in', left=False, right=True, labelleft=False, labelright=True, labelcolor=self.dark_orange)
+        ax_Co.set_ylabel(r'$\mu(^{55}$Co$) \mu_N$', color=self.dark_orange)
+
+        # make legend
+        red_line = mpl.lines.Line2D([], [], color=self.red, marker='', linewidth='2', label='Exp 56Ni')
+        blue_dot = axes[0].errorbar([], [], [], color=self.blue, marker='o', markersize='5', linestyle='', label=r'Theory $^{55}$Ni')
+        da1, la1 = axes[0].get_legend_handles_labels()
+        orange_line = mpl.lines.Line2D([], [], color=self.orange, marker='', linewidth='2', label='Exp 68Ni')
+        orange_square = axes[1].errorbar([], [], [], color=self.dark_orange, marker='s', markersize='5', linestyle='', label=r'Theory $^{55}$Co')
+        da2, la2 = axes[1].get_legend_handles_labels()
+        axes[-1].legend(handles=[red_line, da1[0][0], orange_line, da2[0][0]], labels=[r'Exp $^{55}$Ni', la1[0], R'Exp $^{55}$Co', la2[0]],
+                        bbox_to_anchor=(1.1, 1.05), loc='lower right', ncol=4)
+
+        plt.savefig(folder + 'mu_55' + '.png', dpi=self.dpi, bbox_inches='tight')
+        plt.close()
+        plt.clf()
 
     """ Helper Functions """
     def ch_dict(self, orig, changes):
@@ -1370,7 +3066,8 @@ class PlotThesisGraphics:
         for keys, vals in res_dict.items():
             # xml cannot take numbers as first letter of key but dicts can
             if keys[0] == 'i':
-                vals['file_times'] = [datetime.strptime(t, '%Y-%m-%d %H:%M:%S') for t in vals['file_times']]
+                if vals.get('file_times', None) is not None:
+                    vals['file_times'] = [datetime.strptime(t, '%Y-%m-%d %H:%M:%S') for t in vals['file_times']]
                 res_dict[keys[1:]] = vals
                 del res_dict[keys]
 
@@ -1381,16 +3078,39 @@ if __name__ == '__main__':
 
     graphs = PlotThesisGraphics()
 
-    graphs.SNR_analysis()
-    # graphs.voltage_deviations()
+    # ''' Theory '''
     # graphs.level2plus_be2()
-    # graphs.all_spectra()
+
+    ''' Charge Exchange '''
+    # graphs.ce_efficiency()
+    # graphs.ce_simulation()
+    # graphs.ce_population()
+    # graphs.time_res_atoms()
+    # graphs.time_res_ions()  # takes a looong time!
+
+    # ''' Experiment '''
+    #
+    # ''' Analysis '''
     # graphs.gatewidth()
+    # graphs.lineshape_compare()
+    # graphs.pumping_simulation()
+    # graphs.a_ratio_comparison()
+    # graphs.SNR_analysis()
+    # graphs.voltage_deviations()
+    # graphs.all_spectra()
     # graphs.calibration()
     # graphs.isotope_shifts()
     # graphs.timeres_plot()
-    # graphs.lineshape_compare()
     # graphs.tof_determination()
+    # graphs.plot_king_plot()
+
+    ''' Discussion '''
+    graphs.absradii_chain_errorband_all()
+    graphs.absradii_neighborhood()
+    graphs.deltarad_chain_errorband()
+    graphs.absradii_chain_errorband()
+    graphs.absrad56()
+    graphs.mu_nickel55()
 
 
 

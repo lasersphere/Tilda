@@ -46,7 +46,7 @@ class NiAnalysis_softwGates():
         user_home_folder = os.path.expanduser("~")
         # self.workdir = 'C:\\DEVEL\\Analysis\\Ni_Analysis\\XML_Data' # old working directory
         ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\XML_Data'  # online 2018 data
-        ownCould_path = 'C:\\Users\\somme\\ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\tof_analysis'  # offline 2020
+        # ownCould_path = 'C:\\Users\\somme\\ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\tof_analysis'  # offline 2020
         # ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel54_online_Becola20\\Analysis\\XML_Data'  # online 2020
         # ownCould_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel54_postbeamtime_Becola20\\Analysis\\bunched'  # post beamtime 2020
         self.workdir = os.path.join(user_home_folder, ownCould_path)
@@ -59,7 +59,7 @@ class NiAnalysis_softwGates():
         self.resultsdir = os.path.join(self.workdir, results_path_ext)
         os.mkdir(self.resultsdir)
         ''' database '''
-        self.db = os.path.join(self.workdir, 'Ni_Becola_tof.sqlite')
+        self.db = os.path.join(self.workdir, 'Ni_Becola.sqlite')
         Tools.add_missing_columns(self.db)
         logging.info('\n'
                      '########## BECOLA Nickel Analysis Started! ####################################################\n'
@@ -360,7 +360,7 @@ class NiAnalysis_softwGates():
                                IntAsym=self.initial_par_guess['IntAsym'],
                                nPeaksAsym=self.initial_par_guess['nPeaksAsym'])
         # reset isotope type and acc voltage in db
-        iso_list = ['64Ni', '62Ni', '54Ni', '58Ni', '60Ni', '55Ni', '56Ni']  # ['55Ni_sum_cal', '56Ni', '58Ni', '60Ni']
+        iso_list = ['55Ni', '60Ni', '58Ni', '56Ni']  # ['55Ni_sum_cal', '56Ni', '58Ni', '60Ni'] '64Ni', '62Ni', '54Ni',
 
         # use scaler 0 for now. Probably doesn't make a difference
         scaler_list = ['scaler_012'] #['scaler_0', 'scaler_1', 'scaler_2', 'scaler_012']  # try to put combined scalers last!
@@ -374,7 +374,7 @@ class NiAnalysis_softwGates():
             # filedates = []
 
             ''' define automatic file selection '''
-            select = (9999, 9999)
+            select = None
             if '55' in pickiso:
                 select = (9999, 9999)  # only sumfile
             filelist, filenums, filedates = self.pick_files_from_db_by_type_and_num(pickiso, selecttuple=select)
@@ -389,8 +389,8 @@ class NiAnalysis_softwGates():
             midtof_variation = (-5, +5, 11)  # (relative midtof variation in bins, number of variations inside width) (-5, +5, 11)
             midtof_variation_arr = np.linspace(*midtof_variation)
 
-            gatewidth_variation_arr = np.logspace(2, 6, 41, base=2)  # 3, 6, 31 || 3, 10, 8 for 8-1024 bins # 5, 5.9, 7 for 33-59 / 90-100%
-            scale = 40/(6-2)
+            gatewidth_variation_arr = np.logspace(2.6, 6, 35, base=2)  #2, 6, 41 || 3, 6, 31 || 3, 10, 8 for 8-1024 bins # 5, 5.9, 7 for 33-59 / 90-100%
+            scale = 34/(6-2.6)
 
             close_indx = (np.abs(gatewidth_variation_arr - 200*self.tof_width_sigma*self.tof_sigma[iso])).argmin()  # index that is closest to analysis gatewidth
             # possibly reduce fitting width by adding [x:] to gatewidth, midtof and midtof_err
@@ -429,7 +429,10 @@ class NiAnalysis_softwGates():
                 center_fit_res = []  # center fit results per file for midTof=0, width=45bin
                 center_err_res = []  # center fit results per file
                 midtofzero_std = []  # standard deviations for midtof=0 values over gatewidth variation
+                midtofzero_gate1to3sig_std = []  # std for midtof=0 from gate = +-1Sigma to +-3Sigma
                 midtofall_std = []  # standard deviations over all midtof and gatewidth variations
+                Al_midtofzero_gate1to3sig_std = []  # Alo std for midtof=0 from gate = +-1Sigma to +-3Sigma
+                Au_midtofzero_gate1to3sig_std = []  # Aup std for midtof=0 from gate = +-1Sigma to +-3Sigma
 
                 SNR_max_perFile = []  # maximum SNR over all mid/width variations
                 SNR_fitPars_perFile = []  # full fit results
@@ -446,6 +449,11 @@ class NiAnalysis_softwGates():
                         res_d_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
                         SNR_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
                         SNR_d_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
+                        # Also get A parameters for Nickel 55
+                        Al_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
+                        Al_d_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
+                        Au_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
+                        Au_d_array = np.zeros((midtof_variation_arr.shape[0], gatewidth_variation_arr.shape[0]))
 
                         # f_iso = self.get_iso_for_file(file)[:4]  # TODO: This seems to be right even though I thought it should be the real file iso...
 
@@ -475,6 +483,12 @@ class NiAnalysis_softwGates():
                                 Int0_d = all_fitpars[0]['Int0'][1]
                                 bg = all_fitpars[0]['offset'][0]
                                 bg_d = all_fitpars[0]['offset'][1]
+                                # A parameters of Nickel 55 are also interesting
+                                if '55' in iso:
+                                    Al_array[i, j] = all_fitpars[0]['Al'][0]
+                                    Al_d_array[i, j] = all_fitpars[0]['Al'][1]
+                                    Au_array[i, j] = all_fitpars[0]['Au'][0]
+                                    Au_d_array[i, j] = all_fitpars[0]['Au'][1]
                                 # calculate and store SNR and its uncertainty
                                 SNR_array[i, j] = Int0 / np.sqrt(bg)
                                 SNR_d_array[i, j] = np.sqrt(np.square(Int0_d / bg) + np.square(Int0 / bg ** 2 * bg_d))
@@ -514,14 +528,6 @@ class NiAnalysis_softwGates():
                         perr = np.sqrt(np.diag(pcov))
                         popt_res.append(popt)
                         perr_res.append(perr)
-
-                        # calculate standard deviation for mid_tof=0 values along the gatewidth variation range
-                        midtof_zero_indx = np.argwhere(midtof_variation_arr == 0)[0, 0]
-                        st_dev_0 = res_array[midtof_zero_indx, :].std()
-                        midtofzero_std.append(st_dev_0)
-                        # calculate standard deviation over full variation range
-                        st_dev_all = res_array.std()
-                        midtofall_std.append(st_dev_all)
 
                         ''' Find best mid-tof and gatewidth from SNR '''
                         """
@@ -633,8 +639,6 @@ class NiAnalysis_softwGates():
                         mid_d_SNR_perFile.append(perr[1])
                         sigma_SNR_perFile.append(popt_SNR[2])
                         sigma_d_SNR_perFile.append(perr_SNR[2])
-                        print(popt_SNR)
-                        print(perr_SNR)
 
                         # write some more stuff down
                         SNR_max_perFile.append((SNR_max))
@@ -643,6 +647,28 @@ class NiAnalysis_softwGates():
                         # mid_SNR_perFile.append(100 * self.tof_mid[iso] + mMax)
                         gMax = gatewidth_variation_arr[SNR_max_indx[1][0]]
                         # sigma_SNR_perFile.append(gMax)
+
+                        # calculate standard deviation for mid_tof=0 values along the gatewidth variation range
+                        midtof_zero_indx = np.argwhere(midtof_variation_arr == 0)[0, 0]
+                        st_dev_0 = res_array[midtof_zero_indx, :].std()
+                        midtofzero_std.append(st_dev_0)
+                        # calculate standard deviation over full variation range
+                        st_dev_all = res_array.std()
+                        midtofall_std.append(st_dev_all)
+                        # calculate standard deviation only within 1sigma - 3 sigma withs
+                        gatewidth1Sigma = 2*1*popt_SNR[2]
+                        where1Sigma = (np.abs(gatewidth_variation_arr - gatewidth1Sigma)).argmin()  # gate indx closest to 1sigma
+                        gatewidth3Sigma = 2*3*popt_SNR[2]
+                        where3Sigma = (np.abs(gatewidth_variation_arr - gatewidth3Sigma)).argmin()  # gate indx closest to 3sigma
+                        st_dev_1to3sigma = res_array[midtof_zero_indx, where1Sigma:where3Sigma].std()
+                        midtofzero_gate1to3sig_std.append(st_dev_1to3sigma)
+
+                        # Also calculate std for A parameters
+                        Al_st_dev_1to3sigma = Al_array[midtof_zero_indx, where1Sigma:where3Sigma].std()
+                        Al_midtofzero_gate1to3sig_std.append(Al_st_dev_1to3sigma)
+                        Au_st_dev_1to3sigma = Al_array[midtof_zero_indx, where1Sigma:where3Sigma].std()
+                        Au_midtofzero_gate1to3sig_std.append(Au_st_dev_1to3sigma)
+
 
                         if plot:
                             gatew = gatewidth_variation_arr  # we'll need this often now.
@@ -660,7 +686,8 @@ class NiAnalysis_softwGates():
                             # plot fit of weightedavg over tofs. Possibly reduce plotting range
                             ax.plot(np.log(gatew[fit_start:]) / np.log(2), _line(gatew[fit_start:], *popt)-center_fit_res[-1], label='w_avg_fit',
                                     c='k', linestyle='--', linewidth=3.0)
-                            ax.axvline(x=np.log(gatew[close_indx])/np.log(2), color='red')
+                            # vertical line for probable analysis value
+                            ax.axvline(x=np.log(2*2*popt_SNR[2])/np.log(2), color='red')
                             ax.tick_params(axis='y', labelcolor='k')
                             ax.set_ylabel('fit center [MHz] rel. to analysis value', color='k')
                             ax.set_xlabel('gatewidth [bins]')
@@ -790,7 +817,10 @@ class NiAnalysis_softwGates():
                                                                       'd_stat': center_err_res,
                                                                       'd_syst': midtofzero_std},  # std dev is interesting
                                                       'bunchwidth_std_0': {'vals': midtofzero_std},
+                                                      'bunchwidth_std_0_1to3Sig': {'vals': midtofzero_gate1to3sig_std},
                                                       'bunchwidth_std_all': {'vals': midtofall_std},
+                                                      'Alo_bunchwidth_std_0_1to3Sig': {'vals': Al_midtofzero_gate1to3sig_std},
+                                                      'Aup_bunchwidth_std_0_1to3Sig': {'vals': Au_midtofzero_gate1to3sig_std},
                                                       'maxSNR': {'vals': SNR_max_perFile},
                                                       'bestSNR_mid': {'vals': mid_SNR_perFile,
                                                                          'd_fit': mid_d_SNR_perFile},

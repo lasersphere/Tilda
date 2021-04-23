@@ -322,17 +322,17 @@ class NiAnalysis():
         lit_radii = self.lit_radii_calc
 
         # The following errors are (with a correct propagation) based on Fricke barrett radii errors
-        self.delta_lit_radii_60 = {iso: [
-            lit_vals[0] ** 2 - lit_radii['60Ni'][0] ** 2,
-            2 * np.sqrt((lit_vals[0]*lit_vals[1]) ** 2 + (lit_radii['60Ni'][0] * lit_radii['60Ni'][1]) ** 2)]
-            for iso, lit_vals in sorted(lit_radii.items())}
-        self.delta_lit_radii_60.pop('60Ni')
-
-        self.delta_lit_radii_58 = {iso: [
-            lit_vals[0] ** 2 - lit_radii['58Ni'][0] ** 2,
-            2 * np.sqrt((lit_vals[0]*lit_vals[1]) ** 2 + (lit_radii['58Ni'][0] * lit_radii['58Ni'][1]) ** 2)]
-            for iso, lit_vals in sorted(lit_radii.items())}
-        self.delta_lit_radii_58.pop('58Ni')
+        # self.delta_lit_radii_60 = {iso: [
+        #     lit_vals[0] ** 2 - lit_radii['60Ni'][0] ** 2,
+        #     2 * np.sqrt((lit_vals[0]*lit_vals[1]) ** 2 + (lit_radii['60Ni'][0] * lit_radii['60Ni'][1]) ** 2)]
+        #     for iso, lit_vals in sorted(lit_radii.items())}
+        # self.delta_lit_radii_60.pop('60Ni')
+        #
+        # self.delta_lit_radii_58 = {iso: [
+        #     lit_vals[0] ** 2 - lit_radii['58Ni'][0] ** 2,
+        #     2 * np.sqrt((lit_vals[0]*lit_vals[1]) ** 2 + (lit_radii['58Ni'][0] * lit_radii['58Ni'][1]) ** 2)]
+        #     for iso, lit_vals in sorted(lit_radii.items())}
+        # self.delta_lit_radii_58.pop('58Ni')
 
         # A better error estimation can be gained from the Fricke differences of Barrett radii! (See our King paper)
         delta_diff_barrett_radii_lit = {  # error is determined by largest contribution
@@ -2921,7 +2921,7 @@ if __name__ == '__main__':
     analysis.perform_king_fit_analysis()
 
     # final plots
-    # analysis.get_final_results()
+    analysis.get_final_results()
     # analysis.export_results()
 
     print(analysis.extract_radius_from_factors('68Ni', '60Ni', isoshift=(1990.4, 0.9, 7.3),

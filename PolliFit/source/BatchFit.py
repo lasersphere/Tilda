@@ -140,6 +140,9 @@ def singleFit(file, st, db, run, var, cur, x_as_voltage=True, softw_gates_trs=No
     if save_to_folder is not None:
         # specific target folder given. use this.
         fig = save_to_folder + os.path.splitext(os.path.split(path)[1])[0] + run + save_file_as
+        # if folder does not exist, create:
+        if not os.path.isdir(save_to_folder):
+            os.mkdir(save_to_folder)
     else:
         fig = os.path.splitext(path)[0] + run + save_file_as
     plot.save(fig)

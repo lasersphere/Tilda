@@ -156,6 +156,8 @@ class Hyperfine(object):
             ret[3] = False
          
         fInt = [False] + (len(self.trans) - 1)*[True] if self.fixInt else len(self.trans)*[False]
+        # Check whether any IntX pars were set to fix in the lines db fixShape dictionary?
+        fInt = [self.iso.fixShape.get('Int{}'.format(i), fInt[i]) for i in range(len(self.trans))]
 
         if self.iso.shape['name'] == 'LorentzQI':
             if self.fixInt:
