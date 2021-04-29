@@ -68,6 +68,40 @@ def floor_log10(x):
     return int(np.floor(np.log10(np.abs(x))))
 
 
+def ellipse2d(x, y, scale_x, scale_y, phi, corr):
+    """
+    :param x: The x-component of the position of the ellipse.
+    :param y: The y-component of the position of the ellipse.
+    :param scale_x: The amplitude of the x-component.
+    :param scale_y: The amplitude of the y-component.
+    :param phi: The angle between the vector to the point on the ellipse and the x-axis.
+    :param corr: The correlation coefficient between the x and y data.
+    :returns: A point on an ellipse in 2d-space with amplitudes 'x', 'y'
+     and correlation 'corr' between x- and y-component.
+    """
+    x, y, scale_x, scale_y, corr = np.asarray(x), np.asarray(y), \
+        np.asarray(scale_x), np.asarray(scale_y), np.asarray(corr)
+    return x + scale_x * np.cos(phi), y + scale_y * (corr * np.cos(phi) + np.sqrt(1 - corr ** 2) * np.sin(phi))
+
+
+def draw_sigma2d(x, y, sigma_x, sigma_y, corr, n, **kwargs):
+    """
+    :param x: The x data.
+    :param y: The y data.
+    :param sigma_x: The 1-sigma uncertainties of the x data.
+    :param sigma_y: The 1-sigma uncertainties of the y data.
+    :param corr: The correlation coefficients between the x and y data.
+    :param n: The maximum sigma region to draw
+    :param kwargs: Additional keyword arguments are passed to plt.plot().
+    :returns: None. Draws the sigma-bounds of the given data points (x, y) until the n-sigma region.
+    """
+    phi = np.arange(0., 2 * np.pi, 0.001)
+    for x_i, y_i, s_x, s_y, r in zip(x, y, sigma_x, sigma_y, corr):
+        for i in range(1, n + 1, 1):
+            _x, _y = ellipse2d(x_i, y_i, i * s_x, i * s_y, phi, r)
+            plt.plot(_x, _y, 'k-', **kwargs)
+
+
 def york(x, y, sigma_x=None, sigma_y=None, corr=None, iter_max=200, report=True, show=False):
     """
     A linear regression algorithm to find the best straight line, given normally distributed errors for x and y
@@ -79,6 +113,7 @@ def york(x, y, sigma_x=None, sigma_y=None, corr=None, iter_max=200, report=True,
     :param sigma_x: The 1-sigma uncertainty of the x data.
     :param sigma_y: The 1-sigma uncertainty of the y data.
     :param corr: The correlation coefficients between errors in 'x' and 'y'.
+     If not None, The errorbars are circles indicating the 2-dimensional 1-sigma region.
     :param iter_max: The maximum number of iterations to find the best slope.
     :param report: Whether to print the result of the fit.
     :param show: Whether to plot the fit result.
@@ -94,7 +129,9 @@ def york(x, y, sigma_x=None, sigma_y=None, corr=None, iter_max=200, report=True,
         sigma_y = np.full_like(y, 1.)
         if report:
             print('\nNo uncertainties for \'y\' were given. Assuming \'sigma_y\'=1.')
+    sigma_2d = True
     if corr is None:
+        sigma_2d = False
         corr = 0.
     sigma_x, sigma_y, corr = np.asarray(sigma_x), np.asarray(sigma_y), np.asarray(corr)
 
@@ -141,7 +178,11 @@ def york(x, y, sigma_x=None, sigma_y=None, corr=None, iter_max=200, report=True,
         x_cont = np.linspace(np.min(x) - 0.1 * (np.max(x) - np.min(x)), np.max(x) + 0.1 * (np.max(x) - np.min(x)), 1001)
         plt.xlabel('x')
         plt.ylabel('y')
-        plt.errorbar(x, y, xerr=sigma_x, yerr=sigma_y, fmt='k.', label='Data')
+        if sigma_2d:
+            plt.plot(x, y, 'k.', label='Data')
+            draw_sigma2d(x, y, sigma_x, sigma_y, corr, n=1)
+        else:
+            plt.errorbar(x, y, xerr=sigma_x, yerr=sigma_y, fmt='k.', label='Data')
         plt.plot(x_cont, straight(x_cont, a, b), 'b-', label='Fit')
         y_min = straight(x_cont, a, b) - straight_std(x_cont, sigma_a, sigma_b, corr_ab)
         y_max = straight(x_cont, a, b) + straight_std(x_cont, sigma_a, sigma_b, corr_ab)
