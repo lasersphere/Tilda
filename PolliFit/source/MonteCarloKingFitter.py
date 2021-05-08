@@ -572,7 +572,7 @@ class MCFitter(object):
 
 class KingFitter(MCFitter):
     def __init__(self, db, runs=None, ref_run=-1, litvals=None, subtract_electrons=0., add_ionization_energy=0.,
-                 plot_folder=None, popup=False):
+                 plot_folder=None, popup=True):
         super().__init__(db, runs=runs, ref_run=ref_run, subtract_electrons=subtract_electrons,
                          add_ionization_energy=add_ionization_energy, plot_folder=plot_folder, popup=popup)
         self.n_dim = len(self.runs) + 1
@@ -714,7 +714,8 @@ class KingFitter(MCFitter):
                     king_f.write('# %s\t%s\t%s\t%s\t%s \n' % ('x', 'x_err', 'y', 'y_stat_err', 'y_err_total'))
                     for num, x in enumerate(self.mean[:, -1] - self.alpha_k):
                         king_f.write('%.5f\t%.5f\t%.5f\t%.5f\t%.5f\n'
-                                     % (x, self.std[num, -1], self.mean[num, i]*y_s, self.std[num, i] * y_s, self.std[num, i] * y_s))
+                                     % (x, self.std[num, -1], self.mean[num, i] * y_s,
+                                        self.std[num, i] * y_s, self.std[num, i] * y_s))
             if self.popup:
                 plt.show()
             plt.gcf().clear()
