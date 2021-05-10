@@ -57,4 +57,3 @@ class Ui_VoltMeasConfMainWin(object):
         self.label_measVoltPulseLength_mu_s.setText(_translate("VoltMeasConfMainWin", "Pulse length for voltage measurement request"))
         self.label_measVoltPulseLength_mu_s_set.setText(_translate("VoltMeasConfMainWin", "0"))
         self.label_measVoltTimeout_mu_s.setText(_translate("VoltMeasConfMainWin", "timeout for voltage measurement"))
-

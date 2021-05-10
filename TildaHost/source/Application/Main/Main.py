@@ -9,6 +9,7 @@ Created on '30.09.2015'
 import ast
 import logging
 import os
+import sys
 import gc
 from copy import deepcopy
 from datetime import datetime
@@ -29,6 +30,8 @@ from Application.Main.MainState import MainState
 from Service.AnalysisAndDataHandling.DisplayData import DisplayData
 from Service.Scan.ScanMain import ScanMain
 from Service.SimpleCounter.SimpleCounter import SimpleCounterControl
+from Application.Options import Options
+import configparser
 
 
 class Main(QtCore.QObject):
@@ -84,7 +87,16 @@ class Main(QtCore.QObject):
         self.measure_voltage_pars = Dft.draftMeasureVoltPars
         # dict containing all parameters for the voltage measurement.
         # default is: draftMeasureVoltPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100}
-        self.laserfreq = 0  # laser frequency in cm-1
+        self.local_options = Options()  # object to save all local options in
+        self.ini_file_path = os.path.join(os.path.dirname(sys.argv[0]), 'Application/options.ini')  # path of ini-file
+
+        if os.path.isfile(self.ini_file_path):  # check if ini-file already exists
+            self.read_ini() # load the file
+        else:
+            self.create_standard_ini()  # create a standard ini
+            self.read_ini() # load the file
+
+        self.laserfreq = self.calc_freq()  # laser frequency in cm-1
         self.acc_voltage = 0  # acceleration voltage of the source in volts
         self.simple_counter_inst = None
         self.cmd_queue = None
@@ -147,6 +159,39 @@ class Main(QtCore.QObject):
 
         self.application = None  # store the current application in here,
         # useful when wanting to force event processing by calling self.application.processEvents()
+
+    def create_standard_ini(self):
+        """
+        creates a standard ini-file with standard options
+        """
+        config = configparser.ConfigParser()
+        config['FREQUENCY'] = {'freq_dic': {'freq1': 300000000}, 'arithmetic': '4 * freq1'}  # set frequency options
+
+        with open(self.ini_file_path, 'w') as optionsfile:
+            config.write(optionsfile)
+        print('Created a standard options.ini')
+
+    def read_ini(self):
+        """
+        Read option.ini and save them to the options object.
+        """
+        config = configparser.ConfigParser()
+        config.sections()
+
+        config.read(self.ini_file_path) # read options.ini
+        print('Loading options.ini')
+
+        self.local_options.freq_dict = ast.literal_eval(config['FREQUENCY']['freq_dic'])  # save frequencies to options object
+        self.local_options.freq_arith = config['FREQUENCY']['arithmetic']   # save arithmetic to options object
+
+    def calc_freq(self):
+        """
+        calculates the frequency from options
+        :return: total frequency for spectroscopy
+        """
+        frequencies = self.local_options.freq_dict
+        return eval(self.local_options.freq_arith, frequencies)
+
 
     """ cyclic function """
 
@@ -407,6 +452,7 @@ class Main(QtCore.QObject):
             logging.warning('automatic start of power supplies not included yet.')
         laser_freq = self.autostart_dict.get('laserFreq', False)
         if laser_freq:
+            # TODO : check if / how to be replaced
             self.laser_freq_changed(float(laser_freq))
         acc_volt = self.autostart_dict.get('accVolt', False)
         if acc_volt:
@@ -460,6 +506,8 @@ class Main(QtCore.QObject):
         scan_d['isotopeData']['nOfTracks'] = tracks
 
     def laser_freq_changed(self, laser_freq):
+
+        # TODO : neede with new frequency determination?
         """
         store the laser frequency in self.laserfreq and send the new status dict to subscribed GUIs.
         :param laser_freq: dbl, in cm-1

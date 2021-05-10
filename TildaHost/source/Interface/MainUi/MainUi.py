@@ -73,7 +73,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionJob_Stacker.triggered.connect(self.open_job_stacker_win)  # TODO: define command and add actionItem
         self.actionPost_acceleration_power_supply_control.triggered.connect(self.open_post_acc_win)
         self.actionSimple_Counter.triggered.connect(self.open_simple_counter_win)
-        self.actionSet_Laser_Frequency.triggered.connect(self.set_laser_freq)
+        self.actionSet_Laser_Frequency.triggered.connect(self.set_laser_freq)   # TODO: replace GUI
         self.actionSet_acceleration_voltage.triggered.connect(self.set_acc_volt)
         self.actionLoad_spectra.triggered.connect(self.load_spectra)
         self.actionDigital_Multimeters.triggered.connect(self.open_dmm_live_view_win)
@@ -105,7 +105,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.choose_working_dir()
 
     def laser_freq_dbl_click(self, event):
-        self.set_laser_freq()
+        self.set_laser_freq()   # TODO: Replace with new GUI
 
     def acc_volt_dbl_click(self, event):
         self.set_acc_volt()
@@ -219,6 +219,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         return Cfg._main_instance.work_dir_changed(workdir)
 
     def set_laser_freq(self):
+        # TODO: check if / how to be replaced
         laser_freq, ok = QtWidgets.QInputDialog.getDouble(self, 'Laser', 'laser wavenumber [cm-1]',
                                                           0, 0, 9999999,
                                                           5)
