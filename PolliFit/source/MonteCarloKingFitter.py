@@ -359,7 +359,7 @@ class MCFitter(object):
         self.cov = self.cov[order, :, :]
         return order
 
-    def find_best_order(self, n_sample=10000):
+    def find_best_order(self, n_sample=100000):
         print('\nSearching most efficient isotope order and fixed axis to constrain straight lines ...')
         border_isotopes = [[iso_0, iso_1] for i, iso_0 in enumerate(self.isotopes) for iso_1 in self.isotopes[(i+1):]]
         iso_orders = [[iso_b[0], ] + [iso for iso in self.isotopes if iso not in iso_b] + [iso_b[1], ]
@@ -368,9 +368,9 @@ class MCFitter(object):
         axis_best = self.fixed_axis
         acceptance_best = 0
         for iso_order in iso_orders:
+            self.switch_order(iso_order)
             for i in range(self.n_dim):
                 print('\nIsotope order: ' + str(iso_order) + ', fixed axis: ' + str(i))
-                self.switch_order(iso_order)
                 self.fixed_axis = i
                 _, _, _, accepted = self.get_collinear_points(n_sample)
                 acceptance = accepted.size
@@ -381,6 +381,25 @@ class MCFitter(object):
         self.order_best = order_best
         self.fixed_axis = axis_best
         print('\nBest isotope order: ' + str(order_best))
+        print('Best fixed axis: ' + str(axis_best))
+        print('Best acceptance: ' + str(np.around(100*acceptance_best/n_sample, decimals=2)) + ' %')
+
+    def find_fixed_axis(self, iso_order, n_sample=100000):
+        print('\nSearching most efficient fixed axis to constrain straight lines ...')
+        self.order_best = iso_order
+        self.switch_order(iso_order)
+        acceptance_best = 0
+        axis_best = self.fixed_axis
+        for i in range(self.n_dim):
+            print('\nIsotope order: ' + str(self.order_best) + ', fixed axis: ' + str(i))
+            self.fixed_axis = i
+            _, _, _, accepted = self.get_collinear_points(n_sample)
+            acceptance = accepted.size
+            if acceptance > acceptance_best:
+                acceptance_best = acceptance
+                axis_best = i
+        self.fixed_axis = axis_best
+        print('\nChosen isotope order: ' + str(self.order_best))
         print('Best fixed axis: ' + str(axis_best))
         print('Best acceptance: ' + str(np.around(100*acceptance_best/n_sample, decimals=2)) + ' %')
 
@@ -444,6 +463,8 @@ class MCFitter(object):
                  mark_as_mc=True, show=True, mod_iso_shift_scale='GHz'):
         if isotope_order is None:
             self.find_best_order()
+        else:
+            self.find_fixed_axis(isotope_order)
         self.switch_order(self.order_best)
         if find_best_alpha:
             self.alpha_k = self.find_best_alpha(alpha, n_sample)
@@ -558,7 +579,7 @@ class MCFitter(object):
         plt.legend(numpoints=1, loc='best', fontsize=self.fontsize)
         plt.margins(0.1)
         plt.gcf().set_facecolor('w')
-        plt.tight_layout(True)
+        plt.tight_layout()
         if self.store_loc is not None:
             f_name = 'MC_king_fit_alpha_%d_calc_x' % self.alpha
             plt.savefig(os.path.join(self.store_loc, f_name + '.pdf'))
@@ -698,7 +719,7 @@ class KingFitter(MCFitter):
             plt.legend(handles[::-1], labels[::-1], numpoints=1, loc='best', fontsize=self.fontsize)
             plt.margins(0.1)
             plt.gcf().set_facecolor('w')
-            plt.tight_layout(True)
+            plt.tight_layout()
 
             if self.store_loc is not None:
                 f_name = 'MC_king_fit_alpha_%d' % self.alpha
@@ -735,7 +756,7 @@ class KingFitter(MCFitter):
         plt.legend(numpoints=1, loc='best', fontsize=self.fontsize)
         plt.margins(0.1)
         plt.gcf().set_facecolor('w')
-        plt.tight_layout(True)
+        plt.tight_layout()
 
         if self.store_loc is not None:
             f_name = 'MC_king_fit_alpha_%d_radii' % self.alpha
@@ -884,7 +905,7 @@ class KingFitterRatio(MCFitter):
             plt.legend(handles[::-1], labels[::-1], numpoints=1, loc='best', fontsize=self.fontsize)
             plt.margins(0.1)
             plt.gcf().set_facecolor('w')
-            plt.tight_layout(True)
+            plt.tight_layout()
 
             if self.store_loc is not None:
                 f_name = 'MC_king_fit_alpha_%d' % self.alpha
