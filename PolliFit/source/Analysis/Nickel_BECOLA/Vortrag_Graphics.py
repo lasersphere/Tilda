@@ -41,7 +41,7 @@ class PlotThesisGraphics:
         user_home_folder = os.path.expanduser("~")  # get user folder to access ownCloud
         owncould_path = 'ownCloud\\User\\Felix\\IKP411_Dokumente\\BeiträgePosterVorträge\\PhDThesis\\Grafiken\\'
         self.fig_dir = os.path.join(user_home_folder, owncould_path)
-        self.ffe = '.pdf'  # file format ending
+        self.ffe = '.png'  # file format ending
 
         """ Colors """
         # Define global color names TODO: Fill and propagate
@@ -996,17 +996,17 @@ class PlotThesisGraphics:
             isoshift = isoshift/1000
 
             # now plot
-            cen_art = axes[num].axes.axvline(x=isoshift, label='centroid', linestyle='--', color=self.blue, lw=2)
-            dat_art = axes[num].errorbar(x, cts, cts_err, label='data', **self.data_style)  # data
-            fit_art = axes[num].plot(x_fit, fit, label='fit', **self.fit_style)  # fit
+            cen_art = axes[num].axes.axvline(x=isoshift, label='Schwerpunkt', linestyle='--', color=self.blue, lw=2)
+            dat_art = axes[num].errorbar(x, cts, cts_err, label='Datenpunkte', **self.data_style)  # data
+            fit_art = axes[num].plot(x_fit, fit, label='Fit', **self.fit_style)  # fit
             # create legend
             # axes[num].legend((dat_art, fit_art, cen_art), ('data', 'fit', 'centroid'),
             #                  bbox_to_anchor=(0.5, 1.3), loc='center', ncol=3)
             # Place isotope name in top right corner
-            axes[num].text(0.85, 0.9, iso,
+            axes[num].text(0.85, 0.9, r'$^{{{0}}}$Ni'.format(iso[:2]),
                            horizontalalignment='left', verticalalignment='top',
                            transform=axes[num].transAxes,
-                           **self.ch_dict(self.text_style, {'size': 11})
+                           **self.ch_dict(self.text_style, {'size': 14})
                            )
 
         custom_ticks = False
@@ -1037,14 +1037,14 @@ class PlotThesisGraphics:
                                           labelleft=True, labelright=False)  # no ticklabels anywhere. Because they look cluttered
         else:
             # set y-axes:
-            f.text(-0.08, 0.5, 'Counts / arb.u.', ha='center', va='center',
+            f.text(-0.08, 0.5, 'Ereignisse (willkürliche Einheit)', ha='center', va='center',
                    rotation='vertical')  # common label for all y-axes
             for ax in range(len(iso_list)):
                 axes[ax].axes.tick_params(axis='y', direction='in',
                                           left=True, right=True,  # ticks left and right
                                           labelleft=False, labelright=False)  # no ticklabels anywhere. Because they look cluttered
         # set x-axis
-        axes[-1].set_xlabel(r'Frequency relative to $\nu_0^{60}$ / '+'{}'.format(x_unit))
+        axes[-1].set_xlabel(r'Frequenz relativ zu $\nu_0^{60}$ / '+'{}'.format(x_unit))
         axes[-1].set_xlim(-2.5, 1.5)
         axes[-1].set_xticks([-2, -1, 0, 1])  # for custom ticks
         for ax in range(len(iso_list)):
@@ -1113,8 +1113,10 @@ class PlotThesisGraphics:
         folder = os.path.join(self.fig_dir, 'Nickel\\General\\LevelE_BE2\\')
 
         fig, ax1 = plt.subplots()
-        ax2 = ax1.twinx()  # create second axis on top of first
-        ax2.set_yscale("log")
+        plot_secondary_ax = True
+        if plot_secondary_ax:
+            ax2 = ax1.twinx()  # create second axis on top of first
+            ax2.set_yscale("log")
         # define output size of figure
         width, height = 1, 0.3
         fig.set_size_inches((self.w_in * width, self.h_in * height))
@@ -1173,10 +1175,12 @@ class PlotThesisGraphics:
                         be2_errs_min.append(float(be2_d)/10**sign_digit)
                         be2_errs_plu.append(float(be2_d)/10**sign_digit)
                     masses_be2.append(mass)
+        ''' Do the plotting '''
         ax1.bar(masses_e2p, e2plus_data, **self.bar_style)
-        ax2.errorbar(masses_be2, be2_data, [be2_errs_min, be2_errs_plu],
-                     **self.ch_dict(self.data_style,
-                                    {'color': self.red, 'markeredgecolor': self.red,
+        if plot_secondary_ax:
+            ax2.errorbar(masses_be2, be2_data, [be2_errs_min, be2_errs_plu],
+                         **self.ch_dict(self.data_style,
+                                        {'color': self.red, 'markeredgecolor': self.red,
                                      'markersize': 3, 'linestyle': '-', 'capsize': 3}))
 
         ''' Style the axes '''
@@ -1202,15 +1206,19 @@ class PlotThesisGraphics:
         ax1.annotate(s='', xy=(39, 100), xytext=(49, 100),
                      arrowprops=dict(arrowstyle='<->', lw=1.5))
         # work on y axis
-        ax1.set_ylabel('2+ Energy Level / keV', color=self.blue)
+        ax1.set_ylabel('E(2+) / keV', color=self.blue)
         ax1.tick_params(axis='y', labelcolor=self.blue, color=self.blue, which='both')
         ax1.set_ylim((0, 4500))
         ax1.set_yticks([0, 1000, 2000, 3000, 4000])
-        ax2.set_ylabel('B(E2) / (e$^2$b$^2$)', color=self.red)
-        ax2.set_ylim((0.005, 0.12))
-        ax2.tick_params(axis='y', labelcolor=self.red, color=self.red, which='both')
+        if plot_secondary_ax:
+            ax2.set_ylabel('B(E2) / (e$^2$b$^2$)', color=self.red)
+            ax2.set_ylim((0.005, 0.12))
+            ax2.tick_params(axis='y', labelcolor=self.red, color=self.red, which='both')
 
-        plt.savefig(folder + 'E2' + self.ffe, dpi=self.dpi, bbox_inches='tight')
+        pltname = 'E2'
+        if plot_secondary_ax:
+            pltname += '_BE2'
+        plt.savefig(folder + pltname + self.ffe, dpi=self.dpi, bbox_inches='tight')
         plt.close()
         plt.clf()
 
@@ -1996,6 +2004,7 @@ class PlotThesisGraphics:
         nOfElectrons = 28.  # for mass-scaling factor nuclear mass calculation
         ionizationEnergy = 41356  # in keV from NIST Ionization Energy data for very precise nuclear mass determination
 
+        plot_these = ['BECOLA']
         king_dict = {'COLLAPS': {'F': {}, 'K': {}, 'Alpha': {}, 'color': self.red},
                      'BECOLA': {'F': {}, 'K': {}, 'Alpha': {}, 'color': self.blue},}
 
@@ -2129,7 +2138,7 @@ class PlotThesisGraphics:
         y_annotate = []
 
         # for src, item in king_dict.items():
-        for src in ['COLLAPS', 'BECOLA']:
+        for src in plot_these:
             item = king_dict[src]
             # get F
             f_inp = king_data.loc[src, 'F']
@@ -2163,7 +2172,7 @@ class PlotThesisGraphics:
             col = item['color']
 
             # plot line with errors:
-            plt.plot(x_arr, _kingLine(x_arr - alpha, Kalpha, F, alpha), '--', c=col, lw=2)
+            plt.plot(x_arr, _kingLine(x_arr - alpha, Kalpha, F, alpha), '--', c=col, lw=2, label='Geradenanpassung')
             # plot error band for this line
             plt.fill_between(x_arr,
                              _kingLower(x_arr - alpha, Kalpha, Kalpha_d, F, F_d, alpha),
@@ -2197,13 +2206,13 @@ class PlotThesisGraphics:
                     r_lst.append(rmu)
                     r_d_lst.append(rmu_d)
 
-                    if 'COLLAPS' in src:
+                    if 'COLLAPS' in src or len(plot_these) == 1:
                         # only use Kaufmann values for the annotation:
                         annotate_iso.append(iso)
                         x_annotate.append(rmu)
                         y_annotate.append(isomu)
 
-            plt.errorbar(r_lst, s_lst, xerr=r_d_lst, yerr=s_d_lst, fmt='o', c=col, elinewidth=1.5, label=src)
+            plt.errorbar(r_lst, s_lst, xerr=r_d_lst, yerr=s_d_lst, fmt='o', c=self.red, elinewidth=1.5, label='Offline Daten')
 
         for i, iso in enumerate(annotate_iso):
             ax.annotate(r'$^\mathregular{{{:.0f}}}$Ni'.format(int(iso[:2])), (x_annotate[i] + 5, y_annotate[i] + 5),
@@ -2219,7 +2228,7 @@ class PlotThesisGraphics:
         ax.set_ylim((780, 1090))
         ax.set_ylabel(r'$\mu^{-1} \delta\nu\/\mathregular{/(u\,GHz)}$')
         # plt.title('King Plot Comparison')
-        plt.legend(title='King Plot Data', numpoints=1, loc="best")
+        plt.legend(title='King Plot:', numpoints=1, loc="upper right")
         plt.margins(0.05)
 
         plt.savefig(folder + 'compare_kings' + self.ffe, dpi=self.dpi, bbox_inches='tight')
@@ -2538,7 +2547,7 @@ class PlotThesisGraphics:
 
         fig, ax = plt.subplots(1)
         # define output size of figure
-        width, height = 0.8, 0.4
+        width, height = 0.7, 0.4
         # f.set_dpi(300.)
         fig.set_size_inches((self.w_in * width, self.h_in * height))
 
@@ -2627,7 +2636,7 @@ class PlotThesisGraphics:
         handles_sort, labels_sort = zip(*hl)
         handles_print += handles_sort
         labels_print += labels_sort
-        plt.legend(handles_print, labels_print, bbox_to_anchor=(0, 0.7), loc='lower left', ncol=1)
+        plt.legend(handles_print, labels_print, bbox_to_anchor=(1, -0.10), loc='lower left', ncol=1)
         plt.margins(0.1)
         plt.gcf().set_facecolor('w')
 
@@ -2643,9 +2652,11 @@ class PlotThesisGraphics:
 
         fig = plt.figure()
         ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
-        ax2 = fig.add_axes([0.09, 0.51, 0.33, 0.4])  # add a secondary inlet axis
+        add_second_axis = False
+        if add_second_axis:
+            ax2 = fig.add_axes([0.09, 0.51, 0.33, 0.4])  # add a secondary inlet axis
         # define output size of figure
-        width, height = 0.9, 0.45
+        width, height = 1., 0.50
         # f.set_dpi(300.)
         fig.set_size_inches((self.w_in * width, self.h_in * height))
 
@@ -2692,32 +2703,44 @@ class PlotThesisGraphics:
                 power = 2  # set to 2 for differential ms charge radii
                 vals = np.array(vals)**power-refval**power
                 unc = np.sqrt(np.square(2*vals*unc) + np.square(2*refval*refunc))
-                ax2.errorbar(isos, vals, yerr=unc, label=r'{0}$_\mathregular{{{1}}}$'.format(name, Z,),
+                if add_second_axis:
+                    ax2.errorbar(isos, vals, yerr=unc, label=r'{0}$_\mathregular{{{1}}}$'.format(name, Z,),
                              marker=mark, markersize=5, linestyle='-', color=thiscol)
 
         ax.axvline(20, color=self.grey, linestyle='--')
         ax.axvline(28, color=self.grey, linestyle='--')
         ax.axvline(40, color=self.grey, linestyle='--')
-        ax2.axvline(28, color=self.grey, linestyle='--')
+        if add_second_axis:
+            ax2.axvline(28, color=self.grey, linestyle='--')
 
-        ax.set_ylabel(r'R$\mathregular{_c\//fm}$')
-        ax.yaxis.set_label_position('right')
+        ylabeltext = r'R$\mathregular{_c\//fm}$'
+        if add_second_axis:
+            textalign = 'center'
+            ax.text(x=10, y=3.4, s=ylabeltext,
+                    horizontalalignment='center', verticalalignment=textalign, rotation='vertical',
+                    **self.ch_dict(self.text_style, {'size': 11}))
+        else:
+            ax.set_ylabel(ylabeltext)
+            ax.yaxis.set_label_position('left')
         ax.set_xlabel('N')
         # ax.set_xmargin(0.05)
         ax.set_xticks([16, 20, 24, 28, 32, 36, 40])
-        ax.set_xlim((12, 42.5))
-        ax.set_ylim((3.3, 3.95))
-        ax.axes.tick_params(axis='y', direction='in', left=True, right=True, labelleft=False, labelright=True)
+        ax.set_xlim((23.5, 42.5))  # 12
+        ax.set_ylim((3.4, 3.95))  # 3.3
+        if add_second_axis:
+            ax.set_yticks([3.3, 3.4, 3.5, 3.6])
+        ax.axes.tick_params(axis='y', direction='in', left=True, right=True, labelleft=True, labelright=False)
 
-        ax2.set_xlabel('N')
-        ax2.xaxis.set_label_position('top')
-        ax2.set_ylabel(r'$\mathbf{\delta \langle r^2 \rangle}\mathregular{\//fm^2}$')
-        ax2.yaxis.set_label_position('left')
-        ax2.set_xticks([26, 28, 30])
-        ax2.set_xlim((25.5, 30.5))
-        ax2.set_ylim((-0.1, 0.4))
-        ax2.axes.tick_params(axis='x', direction='in', bottom=True, top=True, labelbottom=False, labeltop=True)
-        ax2.axes.tick_params(axis='y', direction='in', left=True, right=True, labelleft=True, labelright=False)
+        if add_second_axis:
+            ax2.set_xlabel('N')
+            ax2.xaxis.set_label_position('top')
+            ax2.set_ylabel(r'$\mathbf{\delta \langle r^2 \rangle}\mathregular{\//fm^2}$')
+            ax2.yaxis.set_label_position('left')
+            ax2.set_xticks([26, 28, 30])
+            ax2.set_xlim((25.5, 30.5))
+            ax2.set_ylim((-0.1, 0.4))
+            ax2.axes.tick_params(axis='x', direction='in', bottom=True, top=True, labelbottom=False, labeltop=True)
+            ax2.axes.tick_params(axis='y', direction='in', left=True, right=True, labelleft=True, labelright=False)
 
         # reverse legend order then plot
         handles, labels = ax.get_legend_handles_labels()
@@ -2726,7 +2749,68 @@ class PlotThesisGraphics:
         # plt.gcf().set_facecolor('w')
 
         # plt.tight_layout(True)
-        plt.savefig(folder + 'abs_radii_neighborhood' + self.ffe, dpi=self.dpi, bbox_inches='tight')
+        filename = 'abs_radii_neighborhood'
+        if not add_second_axis:
+            filename += '_noInsert'
+        plt.savefig(folder + filename + self.ffe, dpi=self.dpi, bbox_inches='tight')
+        plt.close()
+        plt.clf()
+
+    def absradii_ni_only(self):
+        # define folder
+        folder = os.path.join(self.fig_dir, 'Nickel\\Discussion\\R_NickelChain\\')
+
+        fig, ax = plt.subplots(1)
+        # define output size of figure
+        width, height = 0.7, 0.2
+        # f.set_dpi(300.)
+        fig.set_size_inches((self.w_in * width, self.h_in * height))
+
+        # exp values
+        exp_sets = glob(os.path.join(folder, 'exp_*'))
+        for num, exp in enumerate(exp_sets):
+            file = exp.split('\\')[-1]
+            exp_name = file.split('_')[-1][:-4]  # remove data_ and .txt
+            exp_name = exp_name.replace('slash', '/')
+
+            data = pd.read_csv(exp, delimiter=' ', index_col=0, skiprows=[])
+
+            isos = []
+            vals = []
+            unc_up = []
+            unc_down = []
+            for i, row in data.iterrows():
+                isos.append(i)
+                vals.append(row['val'])
+                if 'unc_up' in row:
+                    unc_up.append(row['unc_up'])
+                    unc_down.append(row['unc_down'])
+                elif 'unc' in row:
+                    unc_up.append(row['unc'])
+                    unc_down.append(row['unc'])
+                else:
+                    unc_up = None
+
+            plt.errorbar(isos, vals, unc_up, fmt='o', color=self.red, linestyle='-')
+            # plot errorband
+            plt.fill_between(isos,
+                             np.array(vals) - np.array(unc_up),
+                             np.array(vals) + np.array(unc_up),
+                             alpha=0.5, edgecolor=self.red, facecolor=self.red)
+
+
+        ax.set_ylabel(r'$R\mathregular{_c\//fm}$')
+        ax.set_xlabel('A')
+        ax.set_xmargin(0.05)
+        ax.set_xlim((53.5, 70.5))
+        ax.set_ylim((3.68, 3.92))
+
+        plt.margins(0.1)
+        plt.gcf().set_facecolor('w')
+
+        plt.tight_layout(True)
+        plt.savefig(folder + 'abs_radii_Ni' + self.ffe, dpi=self.dpi, bbox_inches='tight')
+
         plt.close()
         plt.clf()
 
@@ -2774,7 +2858,7 @@ class PlotThesisGraphics:
         f.subplots_adjust(wspace=0, hspace=0)
 
         # define output size of figure
-        width, height = 1.0, 0.5
+        width, height = 1.0, 0.4
         # f.set_dpi(300.)
         f.set_size_inches((self.w_in * width, self.h_in * height))
 
@@ -2873,16 +2957,16 @@ class PlotThesisGraphics:
         axes[0].set_ylim((3.07, 4.11))
 
         # make legend
-        red_line = mpl.lines.Line2D([], [], color=self.red, marker='', linewidth='2', label='Exp 56Ni')
-        blue_dot = axes[0].errorbar([], [], [], color=self.blue, marker='o', markersize='5', linestyle='', label=r'Theory $^{56}$Ni')
+        red_line = mpl.lines.Line2D([], [], color=self.red, marker='', linewidth='2', label='Experiment 56Ni')
+        blue_dot = axes[0].errorbar([], [], [], color=self.blue, marker='o', markersize='5', linestyle='', label=r'Theorie $^{56}$Ni')
         da1, la1 = axes[0].get_legend_handles_labels()
-        orange_line = mpl.lines.Line2D([], [], color=self.orange, marker='', linewidth='2', label='Exp 68Ni')
-        orange_square = axes[1].errorbar([], [], [], color=self.dark_orange, marker='s', markersize='5', linestyle='', label=r'Theory $^{68}$Ni')
+        orange_line = mpl.lines.Line2D([], [], color=self.orange, marker='', linewidth='2', label='Experiment 68Ni')
+        orange_square = axes[1].errorbar([], [], [], color=self.dark_orange, marker='s', markersize='5', linestyle='', label=r'Theorie $^{68}$Ni')
         da2, la2 = axes[1].get_legend_handles_labels()
-        axes[-1].legend(handles=[red_line, da1[0][0], orange_line, da2[0][0]], labels=[r'Exp $^{56}$Ni', la1[0], R'Exp $^{68}$Ni', la2[0]],
-                   bbox_to_anchor=(1.1, 1.05), loc='lower right', ncol=4)
+        axes[-1].legend(handles=[red_line, da1[0][0], orange_line, da2[0][0]], labels=[r'Experiment $^{56}$Ni', la1[0], R'Experiment $^{68}$Ni', la2[0]],
+                   bbox_to_anchor=(1, 1), loc='upper left', ncol=1)
 
-        plt.savefig(folder + 'abs_radius_56' + '.pdf', dpi=self.dpi, bbox_inches='tight')
+        plt.savefig(folder + 'abs_radius_56' + '.png', dpi=self.dpi, bbox_inches='tight')
         plt.close()
         plt.clf()
 
@@ -2892,7 +2976,7 @@ class PlotThesisGraphics:
 
         fig, ax = plt.subplots(1)
         # define output size of figure
-        width, height = 0.35, 0.3
+        width, height = 0.5, 0.3
         # f.set_dpi(300.)
         fig.set_size_inches((self.w_in * width, self.h_in * height))
 
@@ -3124,7 +3208,7 @@ class PlotThesisGraphics:
             # Make band with experimental value
             axes[num].axhspan(y[0] - yerr[0] - ysyst[0], y[0] + yerr[0] + ysyst[0], color=col)
 
-        axes[0].set_ylabel(r'$\mu(^{55}$Ni$) \mu_N$')
+        axes[0].set_ylabel(r'$\mu(^{55}$Ni$) /\mu_N$')
         axes[0].set_ylim((-1.95, -0.75))
 
         # create twin axis
@@ -3134,14 +3218,14 @@ class PlotThesisGraphics:
         ax_Co.set_ylabel(r'$\mu(^{55}$Co$) \mu_N$', color=self.dark_orange)
 
         # make legend
-        red_line = mpl.lines.Line2D([], [], color=self.red, marker='', linewidth='2', label='Exp 56Ni')
-        blue_dot = axes[0].errorbar([], [], [], color=self.blue, marker='o', markersize='5', linestyle='', label=r'Theory $^{55}$Ni')
+        red_line = mpl.lines.Line2D([], [], color=self.red, marker='', linewidth='2', label='Experiment 56Ni')
+        blue_dot = axes[0].errorbar([], [], [], color=self.blue, marker='o', markersize='5', linestyle='', label=r'Theorie $^{55}$Ni')
         da1, la1 = axes[0].get_legend_handles_labels()
-        orange_line = mpl.lines.Line2D([], [], color=self.orange, marker='', linewidth='2', label='Exp 68Ni')
-        orange_square = axes[1].errorbar([], [], [], color=self.dark_orange, marker='s', markersize='5', linestyle='', label=r'Theory $^{55}$Co')
+        orange_line = mpl.lines.Line2D([], [], color=self.orange, marker='', linewidth='2', label='Experiment 68Ni')
+        orange_square = axes[1].errorbar([], [], [], color=self.dark_orange, marker='s', markersize='5', linestyle='', label=r'Theorie $^{55}$Co')
         da2, la2 = axes[1].get_legend_handles_labels()
-        axes[-1].legend(handles=[red_line, da1[0][0], orange_line, da2[0][0]], labels=[r'Exp $^{55}$Ni', la1[0], R'Exp $^{55}$Co', la2[0]],
-                        bbox_to_anchor=(1.1, 1.05), loc='lower right', ncol=4)
+        axes[-1].legend(handles=[red_line, da1[0][0], orange_line, da2[0][0]], labels=[r'Experiment $^{55}$Ni', la1[0], R'Experiment $^{55}$Co', la2[0]],
+                        bbox_to_anchor=(1.5, 1.05), loc='upper left', ncol=1)
 
         plt.savefig(folder + 'mu_55' + self.ffe, dpi=self.dpi, bbox_inches='tight')
         plt.close()
@@ -3366,7 +3450,7 @@ if __name__ == '__main__':
     # graphs.time_res_ions()  # takes a looong time!
     #
     # ''' Experiment '''
-    # graphs.level2plus_be2()
+    graphs.level2plus_be2()
     #
     # ''' Analysis '''
     # graphs.gatewidth()
@@ -3381,16 +3465,17 @@ if __name__ == '__main__':
     # graphs.timeres_plot()
     # graphs.tof_determination()
     # graphs.plot_king_plot()
+    # graphs.absradii_ni_only()
     #
     # ''' Discussion '''
     # graphs.Q_nickel55()
-    graphs.absradii_chain_errorband_all()
-    # graphs.absradii_neighborhood()
+    # graphs.absradii_chain_errorband_all()
+    graphs.absradii_neighborhood()
     # graphs.deltarad_chain_errorband()
-    graphs.absradii_chain_errorband()
-    graphs.three_point_indicator()
-    # graphs.absrad56()
-    # graphs.mu_nickel55()
+    # graphs.absradii_chain_errorband()
+    # graphs.three_point_indicator()
+    graphs.absrad56()
+    graphs.mu_nickel55()
 
 
 

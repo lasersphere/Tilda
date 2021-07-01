@@ -2267,7 +2267,7 @@ class NiAnalysis():
                 gatewidth_d_stat = []
                 for file in iso_files:
                     gate_indx = self.gate_analysis_res[isotope[:4]]['file_names'].index(file)
-                    gatewidth_d_stat.append(self.gate_analysis_res[isotope[:4]]['scaler_012']['bunchwidth_std_0']['vals'][gate_indx])
+                    gatewidth_d_stat.append(self.gate_analysis_res[isotope[:4]]['scaler_012']['bunchwidth_std_0_1to3Sig']['vals'][gate_indx])
                 gatewidth_d_stat = np.array(gatewidth_d_stat)
             except:
                 gatewidth_d_stat = self.softw_gate_d_syst

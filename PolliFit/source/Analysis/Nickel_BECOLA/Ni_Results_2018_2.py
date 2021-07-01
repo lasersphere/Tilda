@@ -61,7 +61,7 @@ class NiAnalysis():
         """
         # fit from scratch or use FitRes db?
         self.load_prev_results = True
-        load_results_from = 'Ni_StandartizedAnalysis_2021-04-01_16-23_FINAL.xml'  # load fit results from this file
+        load_results_from = 'Ni_StandartizedAnalysis_2021-04-28_15-21.xml'  # load fit results from this file
         self.load_gate_analysis = True
         load_gate_analysis_from = 'SoftwareGateAnalysis_2021-04-01_12-02_sc012_all2018_FINAL.xml'
 
