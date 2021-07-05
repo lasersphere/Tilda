@@ -17,8 +17,6 @@ A parameter alpha, which shifts the single x-axis of the fit, can be specified
 
 Note that with 32-bit Python the number of samples cannot be much larger than 1,000,000.
  Always check the number of ACCEPTED samples.
-
-
 """
 
 import ast
@@ -31,7 +29,7 @@ import scipy.integrate as si
 import matplotlib.pyplot as plt
 
 import TildaTools as TiTs
-
+import FitRoutines as Fr
 
 m_e_u = sc.physical_constants['electron mass in u']
 
@@ -684,13 +682,16 @@ class KingFitter(MCFitter):
         else:
             mod_iso_shift_scale, y_s = 'GHz', self.unit_factors['GHz']
         phi = np.arange(0., 2*np.pi, 0.001)
+        c_ab = self.correlation_coefficient()
         for i in range(self.n_dim - 1):
             x_cont = np.linspace(self.p[0, -1] - 0.1*(self.p[-1, -1] - self.p[0, -1]),
                                  self.p[-1, -1] + 0.1*(self.p[-1, -1] - self.p[0, -1]), 2)
             x_cont -= self.alpha_k
-            plt.plot(x_cont, straight(x_cont, self.f[i] - self.f_d[i], self.k[i])*y_s, 'b-',
+            plt.plot(x_cont, straight(x_cont, self.f[i], self.k[i])*y_s
+                     - Fr.straight_std(x_cont, self.k_d[i], self.f_d[i], c_ab[i, (self.n_dim - 1) + i])*y_s, 'b-',
                      label='Slope uncertainty')
-            plt.plot(x_cont, straight(x_cont, self.f[i] + self.f_d[i], self.k[i])*y_s, 'b-')
+            plt.plot(x_cont, straight(x_cont, self.f[i], self.k[i])*y_s
+                     + Fr.straight_std(x_cont, self.k_d[i], self.f_d[i], c_ab[i, (self.n_dim - 1) + i])*y_s, 'b-')
             plt.plot(x_cont, straight(x_cont, self.f[i], self.k[i])*y_s, 'r-', label='King fit')
             plt.plot(self.mean[:, -1] - self.alpha_k, self.mean[:, i]*y_s, 'ko', label='Data')
             print('\ndr²-{} correlation of:'.format(self.runs[i]))
@@ -860,14 +861,17 @@ class KingFitterRatio(MCFitter):
         else:
             mod_iso_shift_scale, y_s = 'GHz', self.unit_factors['GHz']
         phi = np.arange(0., 2*np.pi, 0.001)
+        c_ab = self.correlation_coefficient()
         for i in range(self.n_dim - 1):
             x_cont = np.linspace(self.p[0, -1] - 0.1*(self.p[-1, -1] - self.p[0, -1]),
                                  self.p[-1, -1] + 0.1*(self.p[-1, -1] - self.p[0, -1]), 2)
             x_cont -= self.alpha_k
             x_plot = np.multiply(x_cont, y_s)
-            plt.plot(x_plot, straight(x_cont, self.f[i] - self.f_d[i], self.k[i])*y_s, 'b-',
+            plt.plot(x_plot, straight(x_cont, self.f[i], self.k[i])*y_s
+                     - Fr.straight_std(x_cont, self.k_d[i], self.f_d[i], c_ab[i, (self.n_dim - 1) + i])*y_s, 'b-',
                      label='Slope uncertainty')
-            plt.plot(x_plot, straight(x_cont, self.f[i] + self.f_d[i], self.k[i])*y_s, 'b-')
+            plt.plot(x_plot, straight(x_cont, self.f[i], self.k[i])*y_s
+                     + Fr.straight_std(x_cont, self.k_d[i], self.f_d[i], c_ab[i, (self.n_dim - 1) + i])*y_s, 'b-')
             plt.plot(x_plot, straight(x_cont, self.f[i], self.k[i])*y_s, 'r-', label='King fit')
             plt.plot((self.mean[:, -1] - self.alpha_k)*y_s, self.mean[:, i]*y_s, 'ko', label='Data')
             print('\n{}-{} correlation of:'.format(self.x_run, self.runs[i]))
