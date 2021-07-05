@@ -685,7 +685,7 @@ class KingFitter(MCFitter):
         c_ab = self.correlation_coefficient()
         for i in range(self.n_dim - 1):
             x_cont = np.linspace(self.p[0, -1] - 0.1*(self.p[-1, -1] - self.p[0, -1]),
-                                 self.p[-1, -1] + 0.1*(self.p[-1, -1] - self.p[0, -1]), 2)
+                                 self.p[-1, -1] + 0.1*(self.p[-1, -1] - self.p[0, -1]), 1001)
             x_cont -= self.alpha_k
             plt.plot(x_cont, straight(x_cont, self.f[i], self.k[i])*y_s
                      - Fr.straight_std(x_cont, self.k_d[i], self.f_d[i], c_ab[i, (self.n_dim - 1) + i])*y_s, 'b-',
@@ -864,7 +864,7 @@ class KingFitterRatio(MCFitter):
         c_ab = self.correlation_coefficient()
         for i in range(self.n_dim - 1):
             x_cont = np.linspace(self.p[0, -1] - 0.1*(self.p[-1, -1] - self.p[0, -1]),
-                                 self.p[-1, -1] + 0.1*(self.p[-1, -1] - self.p[0, -1]), 2)
+                                 self.p[-1, -1] + 0.1*(self.p[-1, -1] - self.p[0, -1]), 1001)
             x_cont -= self.alpha_k
             x_plot = np.multiply(x_cont, y_s)
             plt.plot(x_plot, straight(x_cont, self.f[i], self.k[i])*y_s
