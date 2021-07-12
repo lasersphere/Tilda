@@ -976,7 +976,7 @@ class PlotThesisGraphics:
                                gridspec_kw=gs_kw)
 
         # define output size of figure
-        width, height = 0.5, 0.4
+        width, height = 0.6, 0.5
         f.set_size_inches((self.w_in * width, self.h_in * height))
 
         for num, iso in enumerate(sorted(iso_list)):
@@ -1003,7 +1003,7 @@ class PlotThesisGraphics:
             # axes[num].legend((dat_art, fit_art, cen_art), ('data', 'fit', 'centroid'),
             #                  bbox_to_anchor=(0.5, 1.3), loc='center', ncol=3)
             # Place isotope name in top right corner
-            axes[num].text(0.85, 0.9, r'$^{{{0}}}$Ni'.format(iso[:2]),
+            axes[num].text(0.8, 0.9, r'$^{{{0}}}$Ni'.format(iso[:2]),
                            horizontalalignment='left', verticalalignment='top',
                            transform=axes[num].transAxes,
                            **self.ch_dict(self.text_style, {'size': 14})
@@ -1045,7 +1045,7 @@ class PlotThesisGraphics:
                                           labelleft=False, labelright=False)  # no ticklabels anywhere. Because they look cluttered
         # set x-axis
         axes[-1].set_xlabel(r'Frequency relative to $\nu_0^{60}$ / '+'{}'.format(x_unit))
-        axes[-1].set_xlim(-2.5, 1.5)
+        axes[-1].set_xlim(-2.25, 1.05)
         axes[-1].set_xticks([-2, -1, 0, 1])  # for custom ticks
         for ax in range(len(iso_list)):
             axes[ax].axes.tick_params(axis='x', top=False, bottom=True)
@@ -3210,22 +3210,22 @@ class PlotThesisGraphics:
             axes[num].axhspan(y[0] - yerr[0] - ysyst[0], y[0] + yerr[0] + ysyst[0], color=col)
 
         axes[0].set_ylabel(r'$\mu(^{55}$Ni$) /\mu_N$')
-        axes[0].set_ylim((-1.95, -0.75))
+        # axes[0].set_ylim((-1.95, -0.75))
 
         # create twin axis
-        ax_Co = axes[-1].twinx()
-        ax_Co.set_ylim((4.5, 5.7))
-        ax_Co.axes.tick_params(axis='y', direction='in', left=False, right=True, labelleft=False, labelright=True, labelcolor=self.dark_orange)
-        ax_Co.set_ylabel(r'$\mu(^{55}$Co$) \mu_N$', color=self.dark_orange)
+        # ax_Co = axes[-1].twinx()
+        # ax_Co.set_ylim((4.5, 5.7))
+        # ax_Co.axes.tick_params(axis='y', direction='in', left=False, right=True, labelleft=False, labelright=True, labelcolor=self.dark_orange)
+        # ax_Co.set_ylabel(r'$\mu(^{55}$Co$) \mu_N$', color=self.dark_orange)
 
         # make legend
         red_line = mpl.lines.Line2D([], [], color=self.red, marker='', linewidth='2', label='Experiment 56Ni')
-        blue_dot = axes[0].errorbar([], [], [], color=self.blue, marker='o', markersize='5', linestyle='', label=r'Theorie $^{55}$Ni')
+        blue_dot = axes[0].errorbar([], [], [], color=self.blue, marker='o', markersize='5', linestyle='', label=r'Theory $^{55}$Ni')
         da1, la1 = axes[0].get_legend_handles_labels()
-        orange_line = mpl.lines.Line2D([], [], color=self.orange, marker='', linewidth='2', label='Experiment 68Ni')
-        orange_square = axes[1].errorbar([], [], [], color=self.dark_orange, marker='s', markersize='5', linestyle='', label=r'Theorie $^{55}$Co')
-        da2, la2 = axes[1].get_legend_handles_labels()
-        axes[-1].legend(handles=[red_line, da1[0][0], orange_line, da2[0][0]], labels=[r'Experiment $^{55}$Ni', la1[0], R'Experiment $^{55}$Co', la2[0]],
+        # orange_line = mpl.lines.Line2D([], [], color=self.orange, marker='', linewidth='2', label='Experiment 68Ni')
+        # orange_square = axes[1].errorbar([], [], [], color=self.dark_orange, marker='s', markersize='5', linestyle='', label=r'Theorie $^{55}$Co')
+        # da2, la2 = axes[1].get_legend_handles_labels()
+        axes[-1].legend(handles=[red_line, da1[0][0]], labels=[r'Laserspec. $^{55}$Ni', la1[0]],  # , orange_line, da2[0][0] ... , R'Experiment $^{55}$Co', la2[0]
                         bbox_to_anchor=(1.5, 1.05), loc='upper left', ncol=1)
 
         plt.savefig(folder + 'mu_55' + self.ffe, dpi=self.dpi, bbox_inches='tight')
@@ -3324,7 +3324,7 @@ class PlotThesisGraphics:
             # also add zero line
             axes[num].axhline(0, color=self.black)
 
-        axes[0].set_ylabel(r'$\mathregular{Q(^{55}Ni) \//fm^2}$')
+        axes[0].set_ylabel(r'$\mathregular{Q(^{55}Ni) \//efm^2}$')
 
 
         # make legend
@@ -3460,7 +3460,7 @@ if __name__ == '__main__':
     # graphs.a_ratio_comparison()
     # graphs.SNR_analysis()
     # graphs.voltage_deviations()
-    # graphs.all_spectra()
+    graphs.all_spectra()
     # graphs.calibration()
     # graphs.isotope_shifts()
     # graphs.timeres_plot()
@@ -3469,14 +3469,14 @@ if __name__ == '__main__':
     # graphs.absradii_ni_only()
     #
     # ''' Discussion '''
-    # graphs.Q_nickel55()
+    graphs.Q_nickel55()
     # graphs.absradii_chain_errorband_all()
     # graphs.absradii_neighborhood()
-    graphs.deltarad_chain_errorband()
-    graphs.absradii_chain_errorband()
-    graphs.three_point_indicator()
+    # graphs.deltarad_chain_errorband()
+    # graphs.absradii_chain_errorband()
+    # graphs.three_point_indicator()
     # graphs.absrad56()
-    # graphs.mu_nickel55()
+    graphs.mu_nickel55()
 
 
 
