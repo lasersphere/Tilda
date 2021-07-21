@@ -110,7 +110,7 @@ class Agilent(QThread):
         self.last_readback_len = 0  # is used to not emit a measurement twice.
         self.connection_type = None  # either 'socket' or 'serial'
         self.connection = None  # storage for the connection to the device either serial or ethernet
-        self.sleepAfterSend_ethernet = 0.05  # time the program blocks before trying to read back.
+        self.sleepAfterSend_ethernet = 0.5  # time the program blocks before trying to read back.
         self.sleepAfterSend_serial = 0.5  # time the program blocks before trying to read back.
         self.buffersize = 1024
         self.con_end_of_trans = b'\r\n'
