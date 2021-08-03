@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'Ui_Main.ui'
 #
-# Created by: PyQt5 UI code generator 5.5
+# Created by: PyQt5 UI code generator 5.5.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -232,4 +232,14 @@ class Ui_TildaMainWindow(object):
         self.actionJob_Stacker.setText(_translate("TildaMainWindow", "Job Stacker"))
         self.actionJob_Stacker.setToolTip(_translate("TildaMainWindow", "Job Stacker, Ctrl+J"))
         self.actionJob_Stacker.setShortcut(_translate("TildaMainWindow", "Ctrl+J"))
+
+
+if __name__ == "__main__":
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    TildaMainWindow = QtWidgets.QMainWindow()
+    ui = Ui_TildaMainWindow()
+    ui.setupUi(TildaMainWindow)
+    TildaMainWindow.show()
+    sys.exit(app.exec_())
 

@@ -24,4 +24,4 @@ class Options:
         :param arith: string containing arithmetic to calculate total frequency
         """
         self.freq_dict = dic
-        self.freq_dict = arith
+        self.freq_arith = arith

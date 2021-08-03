@@ -186,7 +186,7 @@ class Main(QtCore.QObject):
 
     def calc_freq(self):
         """
-        calculates the frequency from options
+        calculates the frequency from options.ini
         :return: total frequency for spectroscopy
         """
         frequencies = self.local_options.freq_dict
