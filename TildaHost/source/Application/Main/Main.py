@@ -26,6 +26,7 @@ import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as Dft
 from Measurement.XMLImporter import XMLImporter
 import TildaTools
+import Physics
 from Application.Main.MainState import MainState
 from Service.AnalysisAndDataHandling.DisplayData import DisplayData
 from Service.Scan.ScanMain import ScanMain
@@ -191,7 +192,8 @@ class Main(QtCore.QObject):
         :return: total frequency for spectroscopy
         """
         frequencies = self.local_options.freq_dict
-        return eval(self.local_options.freq_arith, frequencies)
+        freq_MHz = eval(self.local_options.freq_arith, frequencies)
+        return Physics.wavelenFromFreq(freq_MHz)
 
 
     """ cyclic function """
