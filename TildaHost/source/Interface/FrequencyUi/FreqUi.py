@@ -54,7 +54,7 @@ class FreqUi(QtWidgets.QMainWindow, Ui_Frequency):
         self.open_add_freq_win()
         if self.new_freq_name != None and self.new_freq_name != '': # if new frequency added in the dialog, add to
                                                                     # listview
-            self.list_frequencies.addItems([self.new_freq_name + ': ' + self.freq_list[self.new_freq_name]])
+            self.list_frequencies.addItems([self.new_freq_name + ': ' + str(self.freq_list[self.new_freq_name])])
         else:
             pass
 

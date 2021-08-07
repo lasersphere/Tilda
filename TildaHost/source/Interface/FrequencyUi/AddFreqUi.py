@@ -48,7 +48,7 @@ class AddFreqUi(QtWidgets.QDialog, Ui_Add_Freq):
         freq_val = self.le_value.text()
         try:
             interger = int(freq_val)
-            self.parent_ui.freq_list[freq_name] = freq_val
+            self.parent_ui.freq_list[freq_name] = interger
             self.parent_ui.new_freq_name = freq_name
             print('added new Frequency')
             self.close()
