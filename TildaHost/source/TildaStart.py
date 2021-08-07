@@ -83,6 +83,7 @@ def main():
 
     # starting the main loop and storing the instance in Cfg.main_instance
     Cfg._main_instance = Main()
+    options = Cfg._main_instance.local_options
 
     start_gui()
 

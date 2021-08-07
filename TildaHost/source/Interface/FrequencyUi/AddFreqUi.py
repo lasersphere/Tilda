@@ -1,8 +1,8 @@
 """
 
-Created on '14.02.2019'
+Created on '07.08.2021'
 
-@author:'fsommer'
+@author:'lrenth'
 
 """
 
@@ -26,23 +26,34 @@ from Interface.FrequencyUi.Ui_Add_Freq import Ui_Add_Freq
 
 class AddFreqUi(QtWidgets.QDialog, Ui_Add_Freq):
     """
-    Modal Dialog
+    Dialog asking for a frequency name and frequency value in MHz
     """
-    #main_ui_status_call_back_signal = QtCore.pyqtSignal(dict)
-
-    def __init__(self, freq_win):
+    def __init__(self, freq_win, name, value):
         super(AddFreqUi, self).__init__()
-
         self.setupUi(self)
-        #self.stored_window_title = 'AddFrequency'
-        #self.setWindowTitle(self.stored_window_title)
-        #self.main_gui = main_gui
-        #self.main = Cfg._main_instance
-        #self.freq_win = freq_win
+        self.parent_ui = freq_win
 
-        ''' Windows '''
+        """Buttons"""
+        self.pb_add.clicked.connect(self.add)
+        self.pb_cancel.clicked.connect(self.cancel)
 
-        self.add_freq_win = None
+        """Line Edit"""
+        self.le_name.setText(name)
+        self.le_value.setText(value)
 
         self.exec_()
 
+    def add(self):
+        freq_name = self.le_name.text()
+        freq_val = self.le_value.text()
+        try:
+            interger = int(freq_val)
+            self.parent_ui.freq_list[freq_name] = freq_val
+            self.parent_ui.new_freq_name = freq_name
+            print('added new Frequency')
+            self.close()
+        except ValueError:
+            print('Frequency value needs to be an Integer!')
+
+    def cancel(self):
+        self.close()

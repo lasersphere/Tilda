@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'Ui_Frequency.ui'
 #
-# Created by: PyQt5 UI code generator 5.5.1
+# Created by: PyQt5 UI code generator 5.5
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -32,9 +32,6 @@ class Ui_Frequency(object):
         self.horizontalLayout = QtWidgets.QHBoxLayout(self.horizontalLayoutWidget)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.list_frequencies = QtWidgets.QListWidget(self.horizontalLayoutWidget)
-        self.list_frequencies.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
-        self.list_frequencies.setDefaultDropAction(QtCore.Qt.MoveAction)
-        self.list_frequencies.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.list_frequencies.setObjectName("list_frequencies")
         self.horizontalLayout.addWidget(self.list_frequencies)
         self.verticalLayout = QtWidgets.QVBoxLayout()

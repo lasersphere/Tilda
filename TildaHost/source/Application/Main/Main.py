@@ -97,6 +97,7 @@ class Main(QtCore.QObject):
             self.read_ini() # load the file
 
         self.laserfreq = self.calc_freq()  # laser frequency in cm-1
+        self.local_options.freq_dict.pop('__builtins__')    # TODO: find out, why this happens???
         self.acc_voltage = 0  # acceleration voltage of the source in volts
         self.simple_counter_inst = None
         self.cmd_queue = None
@@ -506,8 +507,6 @@ class Main(QtCore.QObject):
         scan_d['isotopeData']['nOfTracks'] = tracks
 
     def laser_freq_changed(self, laser_freq):
-
-        # TODO : neede with new frequency determination?
         """
         store the laser frequency in self.laserfreq and send the new status dict to subscribed GUIs.
         :param laser_freq: dbl, in cm-1
