@@ -141,7 +141,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                             functools.partial(self.update_all_plots, None, True))
         QtWidgets.QShortcut(QtGui.QKeySequence("CTRL+S"), self, self.export_screen_shot)
 
-        ''' sum related '''
+        ''' sum related ''' #TODO anpassen
         self.add_sum_plot()
         self.sum_x, self.sum_y, self.sum_err = None, None, None  # storage of the sum plotting values
 
@@ -809,6 +809,50 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         # synchronize both comboboxes
         self.comboBox_sum_all_pmts.setCurrentIndex(index)
         self.comboBox_select_sum_for_pmts.setCurrentIndex(index)
+
+    # TODO rename and with this replace the old function.
+    def sum_scaler_lineedit_changed_new(self, text):
+        """
+        this will check if the input text in the line edit will result a correct mathematical operation
+        +, -, *, /, ** are allowed operators
+        :param text:str, in the form of "s0 + s1" or "s3 - ( s2 + s1 )" (need blanks inbetween!)
+        :return:
+        """
+        input_list = text.split()   # separate numbers, variables and operators
+        operators = ['+', '-', '*', '/', '(', ')', '**']    # allowed operators
+        input_operators = []
+        input_numbers = []
+        input_vars = []
+        for each in input_list: # sort by number, variable, operator
+            if each in operators:
+                input_operators.append(each)
+            else:
+                try:
+                    float(each)
+                    input_numbers.append(each)
+                except ValueError:
+                    input_vars.append(each)
+        ''' check if variables are ok '''
+        vars = []   # allowed variables
+        i = 0
+        while i < 5:    # TODO: replace by self.spec_data.nrScalers[0]
+            vars.append('s'+ str(i))
+            i += 1
+
+        try:
+            for each in input_vars: # check if input vars ok
+                if each not in vars:
+                    raise Exception("Invalid Variable")
+                # ToDo check if parantheses are closed ? needed?
+
+        except Exception as e:
+            logging.error('error on changing line edit of summed scalers in liveplotterui: %s' % e, exc_info=True)
+
+
+
+        print(input_operators)
+        print(input_numbers)
+        print(input_vars)
 
     def sum_scaler_lineedit_changed(self, text):
         """
