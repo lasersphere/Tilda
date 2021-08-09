@@ -70,8 +70,33 @@ class SpecData(object):
                     np.array([i for i in it.chain(*(t[scaler] for t in self.err))]))
         else:
             return np.array(self.x[track]), np.array(self.cts[track][scaler]), np.array(self.err[track][scaler])
-    
-    def getArithSpec(self, scaler, track_index):
+
+    # TODO def new function to calc total spec. Input: function and track_index Return tuple with (volt, cts, err)
+    def calcSpec(self, function, track_index, vars):
+        print('Start calcSpec')
+        ''' storage for (volt, counts, err) '''
+        l = self.getNrSteps(track_index)
+        flatx = np.zeros((l,))
+        flatc = np.zeros((l,))
+        flate = np.zeros((l,))
+        ''' nrScalers holds, how many scalers are used'''
+        if isinstance(self.nrScalers, list):
+            if track_index == -1:
+                nrScalers = self.nrScalers[0]
+            else:
+                nrScalers = self.nrScalers[track_index]
+        else:
+            nrScalers = self.nrScalers
+        var_mapping = {}
+        for var in vars:
+            scaler = 's' + str(var[1])
+            s = int(var[1])
+            var_mapping[scaler] = s
+        print(var_mapping)
+        flatx, c, e =
+        return 1, 2, 3
+
+    def getArithSpec(self, scaler, track_index):    #TODO new arith
         '''Same as getSingleSpec, but scaler is of type [+i, -j, +k], resulting in s[i]-s[j]+s[k]'''
         l = self.getNrSteps(track_index)
         flatx = np.zeros((l,))
@@ -88,7 +113,7 @@ class SpecData(object):
         for s in scaler:
             s = int(s)
             if nrScalers >= np.abs(s):
-                flatx, c, e = self.getSingleSpec(abs(s), track_index)
+                flatx, c, e = self.getSingleSpec(abs(s), track_index)   #TODO use this scheme to calc total spec
                 flatc = flatc + np.copysign(np.ones_like(c), s) * c
                 flate = flate + np.square(e)
             else:

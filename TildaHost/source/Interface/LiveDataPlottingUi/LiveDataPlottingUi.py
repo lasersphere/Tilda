@@ -163,7 +163,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.comboBox_select_sum_for_pmts.currentIndexChanged.connect(self.sum_scaler_changed)
         self.comboBox_select_sum_for_pmts.currentIndexChanged.emit(0)
 
-        self.lineEdit_arith_scaler_input.textEdited.connect(self.sum_scaler_lineedit_changed)
+        self.lineEdit_arith_scaler_input.textEdited.connect(self.sum_scaler_lineedit_changed_new)
 
         ''' time resolved related: '''
         self.add_time_resolved_plot()
@@ -630,6 +630,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         finally:
             self.updating_plot = False
 
+    #TODO new update sum plot:
+    def update_sum_plot_arith(self, spec_data, func, vars):
+        print(func)
+        self.sum_x, self.sum_y, self.sum_err = spec_data.calcSpec(func, self.sum_track, vars)
+
     def update_sum_plot(self, spec_data):
         """ update the sum plot and store the values in self.sum_x, self.sum_y, self.sum_err"""
         if self.sum_scaler is not None:
@@ -811,7 +816,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.comboBox_select_sum_for_pmts.setCurrentIndex(index)
 
     # TODO rename and with this replace the old function.
-    def sum_scaler_lineedit_changed_new(self, text):
+    def sum_scaler_lineedit_changed_new(self, text):    #TODO: delete text
         """
         this will check if the input text in the line edit will result a correct mathematical operation
         +, -, *, /, ** are allowed operators
@@ -835,24 +840,25 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         ''' check if variables are ok '''
         vars = []   # allowed variables
         i = 0
-        while i < 5:    # TODO: replace by self.spec_data.nrScalers[0]
+        while i < self.spec_data.nrScalers[0]:
             vars.append('s'+ str(i))
             i += 1
-
+        print('Allowed Variables: ', vars)
         try:
             for each in input_vars: # check if input vars ok
                 if each not in vars:
-                    raise Exception("Invalid Variable")
+                    raise Exception("Invalid Syntax")
+            self.update_sum_plot_arith(self.spec_data, text, input_vars)
                 # ToDo check if parantheses are closed ? needed?
 
         except Exception as e:
             logging.error('error on changing line edit of summed scalers in liveplotterui: %s' % e, exc_info=True)
-
-
+            self.sum_scaler_lineedit_changed(text)
 
         print(input_operators)
         print(input_numbers)
         print(input_vars)
+
 
     def sum_scaler_lineedit_changed(self, text):
         """
@@ -1457,7 +1463,7 @@ if __name__ == "__main__":
     app_log.info('****************************** starting ******************************')
     app_log.info('Log level set to DEBUG')
 
-    test_file = 'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\' \
+    test_file = 'D:\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\' \
                 'Measurement_and_Analysis_Simon\\Ni_workspace2017\\Ni_2017\\sums\\60_Ni_trs_run114.xml'
 
     app = QtWidgets.QApplication(sys.argv)
