@@ -71,7 +71,6 @@ class SpecData(object):
         else:
             return np.array(self.x[track]), np.array(self.cts[track][scaler]), np.array(self.err[track][scaler])
 
-    # TODO def new function to calc total spec. Input: function and track_index Return tuple with (volt, cts, err)
     def calcSpec(self, function, track_index, vars):
         print('Start calcSpec')
         ''' storage for (volt, counts, err) '''
@@ -88,13 +87,16 @@ class SpecData(object):
         else:
             nrScalers = self.nrScalers
         var_mapping = {}
-        for var in vars:
-            scaler = 's' + str(var[1])
-            s = int(var[1])
-            var_mapping[scaler] = s
-        print(var_mapping)
-        flatx, c, e =
-        return 1, 2, 3
+        var_map_cts = {}
+        for var in vars:    # go through used variables
+            pmt = 's' + str(var[1]) # create PMT - name (e. g. s1, s3, ...)
+            v = int(var[1])
+            var_mapping[pmt] = v
+            flatx, var_map_cts[pmt], e = self.getSingleSpec(abs(v), track_index)
+            flate = flate + np.sqrt(e)
+            flatc = eval(function, var_map_cts)
+            flate = np.sqrt(flate)
+        return flatx, np.array(flatc), flate
 
     def getArithSpec(self, scaler, track_index):    #TODO new arith
         '''Same as getSingleSpec, but scaler is of type [+i, -j, +k], resulting in s[i]-s[j]+s[k]'''

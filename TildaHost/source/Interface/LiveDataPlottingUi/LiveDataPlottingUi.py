@@ -197,7 +197,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.comboBox_sum_all_pmts.currentIndexChanged.connect(self.sum_scaler_changed)
         self.comboBox_sum_all_pmts.currentIndexChanged.emit(0)
 
-        self.lineEdit_sum_all_pmts.textEdited.connect(self.sum_scaler_lineedit_changed)
+        self.lineEdit_sum_all_pmts.textEdited.connect(self.sum_scaler_lineedit_changed_new) # TODO adjust
 
         ''' setup window size: '''
         w = 1024
@@ -630,10 +630,20 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         finally:
             self.updating_plot = False
 
-    #TODO new update sum plot:
     def update_sum_plot_arith(self, spec_data, func, vars):
+        """ update the sum plot according to users function and store the values in self.sum_x, self.sum_y, self.sum_err"""
         print(func)
         self.sum_x, self.sum_y, self.sum_err = spec_data.calcSpec(func, self.sum_track, vars)
+        if self.sum_plt_data is None:
+            self.sum_plt_data = self.sum_plt_itm.plot(
+                self.convert_xaxis_for_step_mode(self.sum_x), self.sum_y, stepMode=True, pen='k')
+            if self.subscribe_as_live_plot:
+                self.sum_current_step_line = Pg.create_infinite_line(self.spec_data.x[self.tres_sel_tr_ind][0],
+                                                                     pen='r')
+                self.sum_plt_itm.addItem(self.sum_current_step_line, ignoreBounds=True)
+        else:
+            self.sum_plt_data.setData(self.convert_xaxis_for_step_mode(self.sum_x), self.sum_y, stepMode=True)
+        self.sum_plt_itm.setLabel('bottom', spec_data.x_units.value)
 
     def update_sum_plot(self, spec_data):
         """ update the sum plot and store the values in self.sum_x, self.sum_y, self.sum_err"""
@@ -713,7 +723,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             logging.error('error in LiveDataPlotting, while setting the gates this happened: %s ' % e, exc_info=True)
         pass
 
-    def update_projections(self, spec_data):
+    def update_projections_arith(self, spec_data, func, vars):
         """
         update the projections, if no plot has been done yet, create plotdata items for every plot
         """
@@ -724,7 +734,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 v_proj_x = spec_data.x[self.tres_sel_tr_ind]
                 v_proj_y = spec_data.cts[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
                 gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
-                sum_x, sum_y, sum_err = spec_data.getArithSpec(self.sum_scaler, self.tres_sel_tr_ind)
+                sum_x, sum_y, sum_err = spec_data.calcSpec(func, self.sum_track, vars)
 
                 if self.t_proj_plt is None:
                     self.t_proj_plt = self.t_proj_plt_itm.plot(t_proj_x, t_proj_y, pen='k')
@@ -763,7 +773,57 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         except Exception as e:
             logging.error('error, while plotting projection, this happened: %s' % e, exc_info=True)
 
-    def update_all_pmts_plot(self, spec_data, autorange_pls=True):
+    def update_projections(self, spec_data):
+        """
+        update the projections, if no plot has been done yet, create plotdata items for every plot
+        """
+        try:
+            if self.sum_scaler is not None:
+                t_proj_x = spec_data.t_proj[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
+                t_proj_y = spec_data.t[self.tres_sel_tr_ind]
+                v_proj_x = spec_data.x[self.tres_sel_tr_ind]
+                v_proj_y = spec_data.cts[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
+                gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
+                sum_x, sum_y, sum_err = spec_data.getArithSpec(self.sum_scaler, self.tres_sel_tr_ind)   # TODO replace by calc
+
+                if self.t_proj_plt is None:
+                    self.t_proj_plt = self.t_proj_plt_itm.plot(t_proj_x, t_proj_y, pen='k')
+                    self.sum_proj_plt_data = self.sum_proj_plt_itm.plot(
+                        self.convert_xaxis_for_step_mode(sum_x), sum_y, pen='b', stepMode=True)
+                    # self.v_proj_plt = Pg.create_plot_data_item(
+                    #     self.convert_xaxis_for_step_mode(v_proj_x), v_proj_y, pen='k', stepMode=True)
+                    self.v_proj_plt = self.v_proj_pltitem.plot(
+                        self.convert_xaxis_for_step_mode(v_proj_x), v_proj_y, pen='k', stepMode=True)
+                    self.v_proj_pltitem.vb.addItem(self.v_proj_plt)
+
+                    if self.subscribe_as_live_plot:
+                        self.current_step_line = Pg.create_infinite_line(self.spec_data.x[self.tres_sel_tr_ind][0],
+                                                                         pen='r')
+                        self.sum_proj_plt_itm.addItem(self.current_step_line, ignoreBounds=True)
+
+                    self.v_min_line = Pg.create_infinite_line(gates[0])
+                    self.v_max_line = Pg.create_infinite_line(gates[1])
+                    self.t_min_line = Pg.create_infinite_line(gates[2], angle=0)
+                    self.t_max_line = Pg.create_infinite_line(gates[3], angle=0)
+
+                    self.sum_proj_plt_itm.addItem(self.v_min_line)
+                    self.sum_proj_plt_itm.addItem(self.v_max_line)
+                    self.t_proj_plt_itm.addItem(self.t_min_line)
+                    self.t_proj_plt_itm.addItem(self.t_max_line)
+                else:
+                    self.t_proj_plt.setData(t_proj_x, t_proj_y)
+                    self.sum_proj_plt_data.setData(self.convert_xaxis_for_step_mode(sum_x), sum_y, stepMode=True)
+                    self.v_proj_plt.setData(self.convert_xaxis_for_step_mode(v_proj_x), v_proj_y, stepMode=True)
+                    self.v_min_line.setValue(gates[0])
+                    self.v_max_line.setValue(gates[1])
+                    self.t_min_line.setValue(gates[2])
+                    self.t_max_line.setValue(gates[3])
+                self.sum_proj_plt_itm.setLabel('bottom', spec_data.x_units.value)
+
+        except Exception as e:
+            logging.error('error, while plotting projection, this happened: %s' % e, exc_info=True)
+
+    def update_all_pmts_plot(self, spec_data, autorange_pls=True, due_to_change = False, func = None, vars = None):
         if self.all_pmts_widg_plt_item_list is None:
             if spec_data.seq_type not in self.trs_names_list:
                 self.tabWidget.setCurrentIndex(2)
@@ -775,9 +835,13 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             if self.sum_sc_tr_external is not None:
                 self.set_tr_sel_by_index(self.sum_track)
             self.comboBox_all_pmts_sel_tr.blockSignals(False)
-
             self.add_all_pmt_plot()
-        Pg.plot_all_sc(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr, stepMode=True)
+        if due_to_change:
+            Pg.plot_all_sc_new(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr, func,
+                               vars, stepMode=True) # if line edit changed, calc new plot
+        else:
+            Pg.plot_all_sc(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr,
+                           stepMode=True)   # just update
         if autorange_pls:
             [each['pltItem'].autoRange() for each in self.all_pmts_widg_plt_item_list]
             self.all_pmts_widg_plt_item_list[-1]['pltItem'].setLabel('bottom', spec_data.x_units.value)
@@ -800,8 +864,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 else:
                     self.sum_scaler = [0]
                 self.sum_track = -1
-                self.lineEdit_arith_scaler_input.setText(str(self.sum_scaler))
-                self.lineEdit_sum_all_pmts.setText(str(self.sum_scaler))
+                self.lineEdit_arith_scaler_input.setText(str(self.sum_scaler))  # TODO change
+                self.lineEdit_sum_all_pmts.setText(str(self.sum_scaler))    # TODO change
             else:
                 logging.info('liveplotterui: but specdata is None, so line edit is not set.')
             self.lineEdit_arith_scaler_input.setDisabled(True)
@@ -812,22 +876,24 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.lineEdit_sum_all_pmts.setDisabled(False)
 
         # synchronize both comboboxes
-        self.comboBox_sum_all_pmts.setCurrentIndex(index)
-        self.comboBox_select_sum_for_pmts.setCurrentIndex(index)
+        self.comboBox_sum_all_pmts.setCurrentIndex(index)   # TODO change so that displays correct
+        self.comboBox_select_sum_for_pmts.setCurrentIndex(index)    # TODO change so that displays correct
 
-    # TODO rename and with this replace the old function.
-    def sum_scaler_lineedit_changed_new(self, text):    #TODO: delete text
+    def sum_scaler_lineedit_changed_new(self, text):
         """
         this will check if the input text in the line edit will result a correct mathematical operation
         +, -, *, /, ** are allowed operators
         :param text:str, in the form of "s0 + s1" or "s3 - ( s2 + s1 )" (need blanks inbetween!)
         :return:
         """
+        curs_pos_sum = self.lineEdit_arith_scaler_input.cursorPosition()
+        curs_pos_all_pmts = self.lineEdit_sum_all_pmts.cursorPosition()
         input_list = text.split()   # separate numbers, variables and operators
         operators = ['+', '-', '*', '/', '(', ')', '**']    # allowed operators
         input_operators = []
         input_numbers = []
         input_vars = []
+        indList = []
         for each in input_list: # sort by number, variable, operator
             if each in operators:
                 input_operators.append(each)
@@ -848,8 +914,16 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             for each in input_vars: # check if input vars ok
                 if each not in vars:
                     raise Exception("Invalid Syntax")
+            for var in input_vars:
+                indList.append(int(var[1]))
             self.update_sum_plot_arith(self.spec_data, text, input_vars)
-                # ToDo check if parantheses are closed ? needed?
+            self.update_projections_arith(self.spec_data, text, input_vars)
+            if self.all_pmts_widg_plt_item_list is not None:
+                self.all_pmts_widg_plt_item_list[-1]['indList'] = indList
+                self.update_all_pmts_plot(self.spec_data, due_to_change=True, func=text, vars=var)
+            self.lineEdit_sum_all_pmts.setText(text)
+            self.lineEdit_arith_scaler_input.setText(text)
+
 
         except Exception as e:
             logging.error('error on changing line edit of summed scalers in liveplotterui: %s' % e, exc_info=True)
