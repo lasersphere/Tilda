@@ -24,7 +24,7 @@ from Spectra.FullSpec import FullSpec
 
 
 def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=None,
-            col=None, saving=False, show=True, isom_name=None, prec=10000, clear=False):
+            col=None, saving=False, show=True, isom_name=None, prec=10000, clear=False, x_transform=None, x_label=None):
     '''plot isotope iso'''
     iso = DBIsotope(db, iso_name, isovar, linevar)
     
@@ -32,19 +32,33 @@ def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=Non
     
     print(spec.getPars())
     if as_freq:
-        plot.plot(spec.toPlot(spec.getPars(), prec=prec))
+        x, y = spec.toPlot(spec.getPars(), prec=prec)
+        x_c = iso.center
+        if x_transform is not None:
+            x = x_transform(x)
+            x_c = x_transform(iso.center)
+        plot.plot((x, y))
+        if x_label is not None:
+            plot.get_current_axes().set_xlabel(x_label)
         center_str = '%.1f MHz' % iso.center
         center_color = plt.gca().get_lines()[-1].get_color()
-        plt.axvline(x=iso.center, color=center_color, linestyle='--', label='%s center: %s' % (iso_name, center_str))
+        plt.axvline(x=x_c, color=center_color, linestyle='--', label='%s center: %s' % (iso_name, center_str))
 
     else:
-        plot.plot(spec.toPlotE(laserfreq, col, spec.getPars()))
-        plot.get_current_axes().set_xlabel('Energy [eV]')
         # convert center frequency to energy
         freq_center = iso.center + iso.freq
         vel_center = Physics.invRelDoppler(laserfreq, freq_center)  # velocity
         print('vel_center: ', vel_center)
         energ_center = (iso.mass * Physics.u * vel_center ** 2) / 2 / Physics.qe
+        x, y = spec.toPlotE(laserfreq, col, spec.getPars())
+        if x_transform is not None:
+            energ_center = x_transform(energ_center)
+            x = x_transform(x)
+        plot.plot((x, y))
+        if x_label is None:
+            plot.get_current_axes().set_xlabel('Energy [eV]')
+        else:
+            plot.get_current_axes().set_xlabel(x_label)
         print('energy: ', energ_center)
         center_str = '%.1f eV' % energ_center
         center_color = plt.gca().get_lines()[-1].get_color()
@@ -52,7 +66,8 @@ def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=Non
 
     plt.gca().get_lines()[-2].set_label(iso_name)
     plt.gcf().set_facecolor('w')
-    plt.legend()
+    plt.legend(bbox_to_anchor=(1.04, 1), loc='upper left')
+    plt.tight_layout(rect=[0, 0, 0.75, 1])
     if isom_name:
         isoPlot(db, isom_name, isovar, linevar, as_freq, laserfreq, col, saving, show)
     else:
