@@ -147,15 +147,11 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
 
 def plot_all_sc_new(list_of_widgets_etc, spec_data, tr, func, vars, stepMode=False):
     # print('plotting all pmts in %s' % list_of_widgets_etc)
-    print(list_of_widgets_etc[-1])
-    for val in list_of_widgets_etc[:-1]:
-        print('listOfWidgets-------------------------------------------------', val)
+    for val in list_of_widgets_etc:
         sc = val['indList']
         plt_data_itm = val['pltDataItem']
         print('Calc x, y, z for all plots')
-        x, y, err = spec_data.calcSpec(sc, func, tr, vars)
-        print(x)
-        print(y)
+        x, y, err = spec_data.calcSpec(func, tr, sc)
         #x, y, err = spec_data.getArithSpec(sc, tr)  # TODO replace by calcSpec
         if stepMode:
             x = convert_xaxis_for_step_mode(deepcopy(x))
@@ -164,9 +160,7 @@ def plot_all_sc_new(list_of_widgets_etc, spec_data, tr, func, vars, stepMode=Fal
 
 def plot_all_sc(list_of_widgets_etc, spec_data, tr, stepMode=False):
     # print('plotting all pmts in %s' % list_of_widgets_etc)
-    print('-----------list -------------', list_of_widgets_etc)
     for val in list_of_widgets_etc:
-        print('-------------------------------------------------------')
         sc = val['indList']
         plt_data_itm = val['pltDataItem']
         x, y, err = spec_data.getArithSpec(sc, tr)

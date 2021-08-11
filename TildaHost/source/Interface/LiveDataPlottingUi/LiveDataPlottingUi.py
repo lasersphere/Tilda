@@ -920,7 +920,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.update_projections_arith(self.spec_data, text, input_vars)
             if self.all_pmts_widg_plt_item_list is not None:
                 self.all_pmts_widg_plt_item_list[-1]['indList'] = indList
-                self.update_all_pmts_plot(self.spec_data, due_to_change=True, func=text, vars=var)
+                self.update_all_pmts_plot(self.spec_data, due_to_change=True, func=text, vars=vars)
             self.lineEdit_sum_all_pmts.setText(text)
             self.lineEdit_arith_scaler_input.setText(text)
 

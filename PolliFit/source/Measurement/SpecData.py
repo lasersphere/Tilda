@@ -88,14 +88,21 @@ class SpecData(object):
             nrScalers = self.nrScalers
         var_mapping = {}
         var_map_cts = {}
-        for var in vars:    # go through used variables
-            pmt = 's' + str(var[1]) # create PMT - name (e. g. s1, s3, ...)
-            v = int(var[1])
+        if len(vars) >= 2:
+            for var in vars:    # go through used variables
+                pmt = 's' + str(var[1]) # create PMT - name (e. g. s1, s3, ...)
+                v = int(var[1])
+                var_mapping[pmt] = v
+                flatx, var_map_cts[pmt], e = self.getSingleSpec(abs(v), track_index)
+                flate = flate + np.sqrt(e)
+        else:
+            pmt = vars[0]
+            v = int(vars[0][1])
             var_mapping[pmt] = v
             flatx, var_map_cts[pmt], e = self.getSingleSpec(abs(v), track_index)
             flate = flate + np.sqrt(e)
-            flatc = eval(function, var_map_cts)
-            flate = np.sqrt(flate)
+        flatc = eval(function, var_map_cts)
+        flate = np.sqrt(flate)
         return flatx, np.array(flatc), flate
 
     def getArithSpec(self, scaler, track_index):    #TODO new arith
