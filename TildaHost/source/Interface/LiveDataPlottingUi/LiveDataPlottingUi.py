@@ -633,7 +633,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def update_sum_plot_arith(self, spec_data, func, vars):
         """ update the sum plot according to users function and store the values in self.sum_x, self.sum_y, self.sum_err"""
         print(func)
-        self.sum_x, self.sum_y, self.sum_err = spec_data.calcSpec(func, self.sum_track, vars)
+        self.sum_x, self.sum_y, self.sum_err = spec_data.calcSpec(func, self.sum_track, vars, eval_on=True)
         if self.sum_plt_data is None:
             self.sum_plt_data = self.sum_plt_itm.plot(
                 self.convert_xaxis_for_step_mode(self.sum_x), self.sum_y, stepMode=True, pen='k')
@@ -923,7 +923,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.update_all_pmts_plot(self.spec_data, due_to_change=True, func=text, vars=vars)
             self.lineEdit_sum_all_pmts.setText(text)
             self.lineEdit_arith_scaler_input.setText(text)
-
 
         except Exception as e:
             logging.error('error on changing line edit of summed scalers in liveplotterui: %s' % e, exc_info=True)

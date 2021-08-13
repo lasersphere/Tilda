@@ -71,7 +71,7 @@ class SpecData(object):
         else:
             return np.array(self.x[track]), np.array(self.cts[track][scaler]), np.array(self.err[track][scaler])
 
-    def calcSpec(self, function, track_index, vars):
+    def calcSpec(self, function, track_index, vars, eval_on=True):
         print('Start calcSpec')
         ''' storage for (volt, counts, err) '''
         l = self.getNrSteps(track_index)
@@ -88,22 +88,29 @@ class SpecData(object):
             nrScalers = self.nrScalers
         var_mapping = {}
         var_map_cts = {}
-        if len(vars) >= 2:
-            for var in vars:    # go through used variables
-                pmt = 's' + str(var[1]) # create PMT - name (e. g. s1, s3, ...)
-                v = int(var[1])
+        if len(vars) == 0:
+            raise  Exception('No scaler used')
+        elif eval_on:
+        #elif len(vars) >= 2 or vars[0] == function or function[0] in ['+', '-']:
+            for v in vars:    # go through used variables
+                if isinstance(v, str):
+                    pmt = v
+                else:
+                    pmt = 's' + str(v) # create PMT - name (e. g. s1, s3, ...)
+                v = int(pmt[1])
                 var_mapping[pmt] = v
                 flatx, var_map_cts[pmt], e = self.getSingleSpec(abs(v), track_index)
                 flate = flate + np.sqrt(e)
+            flatc = eval(function, var_map_cts)
+            flate = np.sqrt(flate)
         else:
             pmt = vars[0]
-            v = int(vars[0][1])
+            v = int(vars[0])
             var_mapping[pmt] = v
             flatx, var_map_cts[pmt], e = self.getSingleSpec(abs(v), track_index)
             flate = flate + np.sqrt(e)
-        flatc = eval(function, var_map_cts)
-        flate = np.sqrt(flate)
-        return flatx, np.array(flatc), flate
+            flatc = var_map_cts[pmt]
+        return flatx, flatc, flate
 
     def getArithSpec(self, scaler, track_index):    #TODO new arith
         '''Same as getSingleSpec, but scaler is of type [+i, -j, +k], resulting in s[i]-s[j]+s[k]'''
