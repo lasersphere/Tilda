@@ -72,8 +72,18 @@ def main():
     app_log.info('Log level set to ' + args.log_level)
 
     # get details on current version
-    Cfg.branch = subprocess.check_output(['git', 'symbolic-ref', '--short', 'HEAD']).decode('utf-8').replace('\n', '')  # get the current branch
-    Cfg.commit = subprocess.check_output(['git', 'describe', '--always']).decode('utf-8').replace('\n', '')  # will get uniquely abbreviated commit object
+    try:
+        # get the current branch
+        branch = subprocess.check_output(['git', 'symbolic-ref', '--short', 'HEAD']).decode('utf-8').replace('\n', '')
+        # get uniquely abbreviated commit object (or commit tag)
+        commit = subprocess.check_output(['git', 'describe', '--always']).decode('utf-8').replace('\n', '')
+        # update info in config
+        Cfg.branch = branch
+        Cfg.commit = commit
+        # display info for user
+        app_log.info('Detected branch: {}, commit: {}'.format(branch, commit))
+    except Exception as e:
+        app_log.warning('Could not detect git branch and commit. Error: {}'.format(e))
 
     # starting the main loop and storing the instance in Cfg.main_instance
     Cfg._main_instance = Main()
