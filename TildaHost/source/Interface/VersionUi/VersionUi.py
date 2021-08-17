@@ -22,6 +22,8 @@ class VersionUi(QtWidgets.QDialog, Ui_Version):
 
         self.labelDate.setText(tildaCfg.versiondate)
         self.labelVersion.setText(tildaCfg.version)
+        self.labelBranch.setText(tildaCfg.branch)
+        self.labelCommit.setText(tildaCfg.commit)
 
         self.pushButton_whatsNew.clicked.connect(self.open_change_log)
 

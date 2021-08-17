@@ -16,7 +16,7 @@ import zmq
 from Scratch.ZeroMQClientTest import ZeroMqClient
 from matplotlib import pyplot as plt
 
-connection_ip = '192.168.0.150'
+connection_ip = '192.168.0.45'
 connection_port = 5555
 performance_loops = 10
 
@@ -95,3 +95,9 @@ class ZeroMqClientTester(unittest.TestCase):
 
         plt.plot(durations)
         plt.show()
+
+
+if __name__ == '__main__':
+
+    tester = ZeroMqClientTester()
+    tester.test_send_message()

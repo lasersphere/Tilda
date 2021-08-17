@@ -10,6 +10,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import sys
 import os
+import subprocess
 
 import matplotlib
 
@@ -69,6 +70,10 @@ def main():
 
     app_log.info('****************************** starting ******************************')
     app_log.info('Log level set to ' + args.log_level)
+
+    # get details on current version
+    Cfg.branch = subprocess.check_output(['git', 'symbolic-ref', '--short', 'HEAD']).decode('utf-8').replace('\n', '')  # get the current branch
+    Cfg.commit = subprocess.check_output(['git', 'describe', '--always']).decode('utf-8').replace('\n', '')  # will get uniquely abbreviated commit object
 
     # starting the main loop and storing the instance in Cfg.main_instance
     Cfg._main_instance = Main()

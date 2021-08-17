@@ -1611,6 +1611,10 @@ if __name__ == '__main__':
     # print(nameFileXml(isodict, 'E:\\temp2'))
     # ret = get_all_tracks_of_xml_in_one_dict('E:\\temp2\\sums\\notrit_csdummy_run1546.xml')
     # print(ret['track0']['triton'])
+    sample_arr = np.array([1,2,3,4])
+    
+
+
     sample_dict0 = {'track0':
         {'triton':
             {'preScan':

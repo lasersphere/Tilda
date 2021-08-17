@@ -11,6 +11,8 @@ File for global Configs of Tilda
 
 version = '1.24'
 versiondate = '13.02.2020'
+branch = 'not found'  # will be filled dynamically
+commit = 'not found'  # will be filled dynamically
 approved_by = 'Felix Sommer fsommer@ikp.tu-darmstadt.de'
 _main_instance = None
 # _main_instance is a global variable to store the main instance and make it accessible from everywhere.
