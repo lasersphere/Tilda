@@ -17,8 +17,6 @@ Module Description:
 import logging
 import random
 import sys
-import Pyro4
-import socket
 # other modules here
 
 # own imports here
@@ -95,16 +93,6 @@ if __name__ == '__main__':
     app_log.info('****************************** starting ******************************')
     app_log.info('Log level set to DEBUG')
 
-    from Driver.TritonListener.TritonDraftConfig import hmacKey
-
-    # Set Pyro variables
-    Pyro4.config.SERIALIZER = "serpent"
-    # Pyro4.config.HMAC_KEY = hmacKey
-    Pyro4.config.HOST = socket.gethostbyname(socket.gethostname())
-    # Pyro4.config.SERVERTYPE = 'multiplex'
-    Pyro4.config.SERVERTYPE = 'thread'
-    sys.excepthook = Pyro4.util.excepthook
-    # Pyro4.config.DETAILED_TRACEBACK = True
     dev1 = DummyTritonDevice('dev1', 'local')
     dev2 = DummyTritonDevice('dev2', 'local')
     dev1.setInterval(1)

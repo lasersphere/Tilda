@@ -22,7 +22,6 @@ class FpgaTest():
     measState = TrsCfg.seqStateDict['measureTrack']
 
     def __init__(self):
-        # self.outfile = 'D:\\Workspace\\PyCharm\\Tilda\\TildaHost\\source\\Scratch\\exampleTRSRawData.py'
         self.trs = TimeResolvedSequencer()
         self.finalData = []
         self.pipe = TrsPipe(draftScan.draftScanDict)

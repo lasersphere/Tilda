@@ -14,7 +14,7 @@ look for them before overwriting again!
 
 """
 
-import numpy as np  # np types are not supported by serialisation for pyro4! be Careful!
+import numpy as np
 import time
 import logging  # changed!
 
@@ -339,6 +339,4 @@ class ScanDeviceBase(DeviceBase):
     def _finish_step_data_taking(self):
         self.measure_meta_data = False
         self.fill_scan_data()
-
-
 

@@ -9,21 +9,11 @@ Module Description:
         Details see in class below
 """
 
-import ast
 import time
 import logging
-import socket
 import sys
-from copy import deepcopy
-from datetime import datetime
-from datetime import timedelta
+from PyQt5.QtCore import pyqtSignal
 
-import Pyro4
-import mysql.connector as Sql
-import numpy as np
-from PyQt5.QtCore import QObject, pyqtSignal
-
-import Application.Config as Cfg
 from Driver.TritonListener.DummyTritonScanDevice import DummyScanDevice
 from Driver.TritonListener.TritonDeviceBase import DeviceBase
 import TildaTools as TiTs
@@ -141,7 +131,7 @@ class TritonScanDevControl(DeviceBase, BaseTildaScanDeviceControl):
         :param dev: str, dev that has send the following
         :param t: str, timestamp
         :param ch: str, channel of the device
-        :param val: anything that is serialisable by Pyro4, e.g. dict, list, etc.
+        :param val: anything that is serialisable, e.g. dict, list, etc.
         :return:
         """
         # logging.info('%s rcvd: %s' % (self.name, str((dev, t, ch, val))))
@@ -469,15 +459,6 @@ if __name__ == '__main__':
     app_log.info('****************************** starting ******************************')
     app_log.info('Log level set to DEBUG')
 
-    from Driver.TritonListener.TritonDraftConfig import hmacKey
-
-    # Set Pyro variables
-    Pyro4.config.SERIALIZER = "serpent"
-    Pyro4.config.HMAC_KEY = hmacKey
-    Pyro4.config.HOST = socket.gethostbyname(socket.gethostname())
-    # Pyro4.config.SERVERTYPE = 'multiplex'
-    Pyro4.config.SERVERTYPE = 'thread'
-    sys.excepthook = Pyro4.util.excepthook
 
     sc_ctrl = TritonScanDevControl('ScanControlTestUnit')
 

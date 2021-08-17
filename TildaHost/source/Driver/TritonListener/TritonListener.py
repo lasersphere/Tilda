@@ -12,14 +12,11 @@ Module Description:
 """
 import ast
 import logging
-import socket
 import sys
 from copy import deepcopy
 from datetime import datetime
 from datetime import timedelta
 
-import Pyro4
-import mysql.connector as Sql
 import numpy as np
 from PyQt5.QtCore import QObject, pyqtSignal
 
