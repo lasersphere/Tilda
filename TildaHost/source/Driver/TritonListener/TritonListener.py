@@ -162,7 +162,7 @@ class TritonListener(DeviceBase, QObject):
         for dev in self.log.keys():
             if dev not in existing:
                 if dev == 'dummyDev':  # dummyDev is wanted!
-                    logging.debug('will subscribe to dummyDev')
+                    logging.debug('will NOT subscribe to dummyDev')
                     if self.dummy_dev is None:
                         self.create_dummy_dev()
                     # logging.debug('subscribing to uri: %s' % str(self.dummy_dev.uri))
