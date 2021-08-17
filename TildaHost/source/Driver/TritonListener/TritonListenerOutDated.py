@@ -29,6 +29,7 @@ from Driver.TritonListener.TritonObject import TritonObject
 import TildaTools as TiTs
 
 
+# TODO: Remove completely, outdated...
 class TritonListener(TritonObject, QObject):
     # signal to emit dmm values for live plotting during the pre/post scans.
     # is also used for triton values in TritonListener

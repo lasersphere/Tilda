@@ -223,7 +223,7 @@ def save_xml(root_Ele, path, pretty=True):
     Convert a Root lxml Element into an ElementTree and save it to a file
     """
     logging.debug('saving .xml file: %s' % path)
-    np.set_printoptions(threshold=np.nan)
+    np.set_printoptions(threshold=sys.maxsize)
     tree = ET.ElementTree(root_Ele)
     tree.write(path, pretty_print=pretty)
 

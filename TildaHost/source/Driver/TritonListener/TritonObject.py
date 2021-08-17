@@ -127,7 +127,7 @@ class TritonObject(object):
                 self.db.close()
 
     """ pyro4 thread """
-
+    # TODO: Remove pyro, replace with new...
     def _stop(self):
         '''Unsubscribe from all and stop pyro daemon'''
         logging.debug('Unsubscribing from ' + str(self._recFrom))

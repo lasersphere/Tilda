@@ -2349,6 +2349,8 @@ class PlotThesisGraphics:
                          color=self.colorlist[colornum])
             colornum += 1
             markernum += 1
+            if markernum == self.markerlist.__len__():
+                markernum = 0
 
 
         ax.set_xmargin(0.05)
@@ -2386,7 +2388,7 @@ class PlotThesisGraphics:
 
         fig, ax = plt.subplots(1)
         # define output size of figure
-        width, height = 0.45, 0.3
+        width, height = 0.6, 0.3
         # f.set_dpi(300.)
         fig.set_size_inches((self.w_in * width, self.h_in * height))
 
@@ -2459,7 +2461,7 @@ class PlotThesisGraphics:
 
         # plot theory values
         theory_sets = glob(os.path.join(folder, 'data_*'))
-        offsets = [0.05, -0.05, 0.1, -0.1, 0.15, -0.15, 0.2, -0.2]
+        offsets = [0.02, -0.02, 0.04, -0.04, 0.05, 0.1, -0.05, -0.1, 0.06, -0.06 ,0.06, -0.06, 0.1, -0.1, 0.15, -0.15, 0.2, -0.2]
         colornum = 1
         markernum = 0
         for num, th in enumerate(theory_sets):
@@ -2474,8 +2476,8 @@ class PlotThesisGraphics:
             unc_up = []
             unc_down = []
             for i, row in data.iterrows():
-                # isos.append(i + offsets[num])
-                isos.append(i)
+                isos.append(i + offsets[num])
+                # isos.append(i)
                 vals.append(row['val'])
                 if 'unc_up' in row:
                     unc_up.append(row['unc_up'])
@@ -2494,7 +2496,12 @@ class PlotThesisGraphics:
                          color=self.colorlist[colornum])
 
             colornum += 1
+            if colornum == self.colorlist.__len__():
+                colornum = 0
             markernum += 1
+            if markernum == self.markerlist.__len__():
+                markernum = 0
+
 
         # Radii by P.G.Reinhardt
         # Fy_isofit = np.array([3.7178, 3.7097, ])  # 3.7116, 3.6998, 3.6996, 3.7144, 3.7331, 3.7395, 3.7516, 3.7751, 3.8185, 3.8278, 3.8599, 3.8651, 3.8935, 3.8975, 3.9231, 3.9253, 3.9470])  #])  #
@@ -2548,45 +2555,112 @@ class PlotThesisGraphics:
 
         fig, ax = plt.subplots(1)
         # define output size of figure
-        width, height = 0.7, 0.4
+        width, height = 1.2, 0.4
         # f.set_dpi(300.)
         fig.set_size_inches((self.w_in * width, self.h_in * height))
 
-        # exp values
-        exp_sets = glob(os.path.join(folder, 'exp_*'))
-        for num, exp in enumerate(exp_sets):
-            file = exp.split('\\')[-1]
-            exp_name = file.split('_')[-1][:-4]  # remove data_ and .txt
-            exp_name = exp_name.replace('slash', '/')
+        # get data from results file
+        load_results_from = glob(os.path.join(folder, 'Ni_Results2_*'))[0]
+        results = self.import_results(load_results_from)
 
-            data = pd.read_csv(exp, delimiter=' ', index_col=0, skiprows=[])
+        isolist = ['54NiBec', '55Ni', '56Ni', '58Ni', '62NiBec', '64NiBec']  # BECOLA isotopes
+        # TODO: 58 and 60 from this or from Offline?
+        refiso = '60Ni'
+        ref_key = refiso[:4]
+        prop_key = 'abs_radii'
 
-            isos = []
-            vals = []
-            unc_up = []
-            unc_down = []
-            for i, row in data.iterrows():
-                isos.append(i)
-                vals.append(row['val'])
-                if 'unc_up' in row:
-                    unc_up.append(row['unc_up'])
-                    unc_down.append(row['unc_down'])
-                elif 'unc' in row:
-                    unc_up.append(row['unc'])
-                    unc_down.append(row['unc'])
-                else:
-                    unc_up = None
+        thisVals = {key: [results[key]['final'][prop_key]['vals'][0],
+                          results[key]['final'][prop_key]['d_stat'][0],
+                          results[key]['final'][prop_key]['d_syst'][0]]
+                    for key in isolist}
 
-            if unc_up is not None:
-                plt.errorbar(isos, vals, yerr=(unc_down, unc_up), label=exp_name, marker='*', markersize=10,
-                             linestyle='-', color=self.black, zorder=10)
-            else:  # no uncertainties given
-                plt.plot(isos, vals, label=exp_name, marker='*', markersize=10, linestyle='-', color=self.black, zorder=10)
+        data_dict = {'BECOLA (Exp)': {'data': thisVals, 'color': self.black}}
+
+        # plot BECOLA values
+        src = 'BECOLA (Exp)'
+        col = data_dict[src]['color']
+        data = data_dict[src]['data']
+        keyVals = sorted(data)
+        x = []
+        y = []
+        yerr = []
+        ytiltshift = []
+        for i in keyVals:
+            x.append(int(''.join(filter(str.isdigit, i))))
+            y.append(data[i][0])
+            yerr.append(data[i][1])  # take only IS contributions here
+            ytiltshift.append(data[i][2])  # Fieldshift-Factor, Massshift-Factor uncertainty
+
+        plt.xticks(rotation=0)
+        ax = plt.gca()
+        ax.set_ylabel(r'$R\mathregular{_c\//fm}$')
+        ax.set_xlabel('A')
+
+        # if dash_missing_data:
+        #     # if some isotopes are missing, this dashes the line at these isotopes
+        #     # has no effect when plot_evens_separate is True
+        #     split_x_list = []
+        #     for k, g in groupby(enumerate(x), lambda a: a[0] - a[1]):
+        #         split_x_list.append(list(map(itemgetter(1), g)))
+        #     i = 0
+        #     label_created = False
+        #     for each in split_x_list:
+        #         y_vals = y[i:i + len(each)]
+        #         yerr_vals = yerr[i:i + len(each)]
+        #         if not label_created:  # only create label once
+        #             plt.errorbar(each, y_vals, yerr_vals, fmt='o', color=col, linestyle='-', label=src)
+        #             label_created = True
+        #         else:
+        #             plt.errorbar(each, y_vals, yerr_vals, fmt='o', color=col, linestyle='-')
+        #         # plot dashed lines between missing values
+        #         if len(x) > i + len(each):  # might be last value
+        #             x_gap = [x[i + len(each) - 1], x[i + len(each)]]
+        #             y_gap = [y[i + len(each) - 1], y[i + len(each)]]
+        #             plt.plot(x_gap, y_gap, c=col, linestyle='--')
+        #         i = i + len(each)
+        # else:
+        #     plt.errorbar(x, y, yerr, fmt='o', color=col, linestyle='-')
+        # plot errorband
+        plt.fill_between(x,
+                         np.array(y) - np.array(ytiltshift),
+                         np.array(y) + np.array(ytiltshift),
+                         alpha=0.5, edgecolor=col, facecolor=col, label=src)
+
+        # # exp values
+        # exp_sets = glob(os.path.join(folder, 'exp_*'))
+        # for num, exp in enumerate(exp_sets):
+        #     file = exp.split('\\')[-1]
+        #     exp_name = file.split('_')[-1][:-4]  # remove data_ and .txt
+        #     exp_name = exp_name.replace('slash', '/')
+        #
+        #     data = pd.read_csv(exp, delimiter=' ', index_col=0, skiprows=[])
+        #
+        #     isos = []
+        #     vals = []
+        #     unc_up = []
+        #     unc_down = []
+        #     for i, row in data.iterrows():
+        #         isos.append(i)
+        #         vals.append(row['val'])
+        #         if 'unc_up' in row:
+        #             unc_up.append(row['unc_up'])
+        #             unc_down.append(row['unc_down'])
+        #         elif 'unc' in row:
+        #             unc_up.append(row['unc'])
+        #             unc_down.append(row['unc'])
+        #         else:
+        #             unc_up = None
+        #
+        #     if unc_up is not None:
+        #         plt.errorbar(isos, vals, yerr=(unc_down, unc_up), label=exp_name, marker='*', markersize=10,
+        #                      linestyle='-', color=self.black, zorder=10)
+        #     else:  # no uncertainties given
+        #         plt.plot(isos, vals, label=exp_name, marker='*', markersize=10, linestyle='-', color=self.black, zorder=10)
 
 
         # plot theory values
         theory_sets = glob(os.path.join(folder, 'data_*'))
-        offsets = [0, 0.05, -0.05, 0.1, -0.1, 0.15, -0.15]
+        offsets = [0, 0.05, -0.05, 0.1, -0.1, 0.15, -0.15, 0.01, -0.01, 0.02, -0.02, 0.03, -0.03]
         colornum = 1
         markernum = 0
         for num, th in enumerate(theory_sets):
@@ -2620,13 +2694,17 @@ class PlotThesisGraphics:
                              color=self.colorlist[colornum])
 
             colornum += 1
+            if colornum == self.colorlist.__len__():
+                colornum = 0
             markernum += 1
+            if markernum == self.markerlist.__len__():
+                markernum = 0
 
         ax.set_ylabel(r'$R\mathregular{_c\//fm}$')
         ax.set_xlabel('A')
         ax.set_xmargin(0.05)
-        ax.set_xlim((53.5, 70.5))
-        ax.set_ylim((3.5, 4))
+        ax.set_xlim((53.5, 64.5))
+        ax.set_ylim((3.5, 3.9))
         # sort legend alphabetically but keep experiment on top
         handles, labels = ax.get_legend_handles_labels()
         expi = [labels.index(i) for i in labels if 'Exp' in i]  # first get experiment value(s), so we can put them at the top.
@@ -2637,11 +2715,11 @@ class PlotThesisGraphics:
         handles_sort, labels_sort = zip(*hl)
         handles_print += handles_sort
         labels_print += labels_sort
-        plt.legend(handles_print, labels_print, bbox_to_anchor=(1, -0.10), loc='lower left', ncol=1)
+        plt.legend(handles_print, labels_print, bbox_to_anchor=(1, 0.5), loc='center left', ncol=1)
         plt.margins(0.1)
         plt.gcf().set_facecolor('w')
 
-        plt.tight_layout(True)
+        plt.tight_layout(pad=False)
         plt.savefig(folder + 'abs_radii_all' + self.ffe, dpi=self.dpi, bbox_inches='tight')
 
         plt.close()
@@ -2697,6 +2775,8 @@ class PlotThesisGraphics:
             p = ax.errorbar(isos, vals, yerr=unc, label=r'$_\mathregular{{{1}}}${0}'.format(name, Z,),
                             marker=mark, linestyle='-', color=col)
             colornum += 1
+            if colornum == self.colorlist.__len__():
+                colornum = 0
             if self.colorlist[colornum] == self.red:
                 colornum += 1
             if refval:
@@ -2885,14 +2965,20 @@ class PlotThesisGraphics:
             def calc_rch_from_rpp(rpp, rpp_d):
                 # calculation from Kaufmann et al. 2020
                 rp2 = 0.7080  # rms charge radius proton /fm^2
+                rp2_d = 0.0032
                 rn2 = -0.106  # rms charge radius neutron /fm^2 (from Filin et al., PRL 124, 082501 (2020))
+                rn2_d = 0.007
                 relDarFol = 0.033  # relativistic Darwin-Foldy correction /fm^2
+                relDarFol_d = 0
                 # corSO = 0.13469  # spin-orbit correction /fm^2 (from Horowitz, Piekarewicz; PRC 86, 045503 (2012))
                 # corSO = 0.0591  # extracted from Sonia Baccas calculations on NNLOsat
                 corSO = 0
+                corSO_d = 0
                 rch = np.sqrt(float(rpp) ** 2 + rp2 + (28 / 28) * rn2 + relDarFol + corSO)
                 # TODO: Should do similar calculation for uncertainties
-                rch_d = float(rpp_d)
+                # error of rch**2 is a little more straight forward:
+                rch2_d = np.sqrt((2*float(rpp)*float(rpp_d))**2 + rp2_d**2 + rn2_d**2 + relDarFol_d**2 + corSO_d**2)
+                rch_d = rch2_d/rch  # now error of sqrt(A) where A=rch**2
                 return rch, rch_d
 
             for i, row in data.iterrows():
@@ -3008,6 +3094,7 @@ class PlotThesisGraphics:
         # plot theory values
         theory_sets = glob(os.path.join(folder, 'data_*'))
         colornum = 1
+        x_pos = 0
         for num, th in enumerate(theory_sets):
             file = th.split('\\')[-1]
             name = file[5:-4]  # remove data_ and .txt
@@ -3019,7 +3106,7 @@ class PlotThesisGraphics:
                 tpi = calc_tpi(data.loc[58, 'val'], data.loc[56, 'val'], data.loc[54, 'val'])
                 three_p_i += [tpi]
                 source += [name]
-                ax.bar(colornum, tpi, align='center', color=self.colorlist[colornum])
+                ax.bar(x_pos, tpi, align='center', color=self.colorlist[colornum])
                 textpos = tpi/2
                 textcol = 'w'
                 textalign = 'center'
@@ -3027,32 +3114,62 @@ class PlotThesisGraphics:
                     textpos = tpi+0.001
                     textcol = self.black
                     textalign = 'bottom'
-                ax.text(colornum, textpos, name,
+                ax.text(x_pos, textpos, name,
                            horizontalalignment='center', verticalalignment=textalign, rotation='vertical', color=textcol, fontweight='bold',
                            **self.ch_dict(self.text_style, {'size': 11})
                            )
+                x_pos += 1
             except:
                 try:
-                    tpi = calc_tpi(data.loc[59, 'val'], data.loc[57, 'val'], data.loc[55, 'val'])
-                    three_p_i += [tpi]
-                    source += [name+'(odd)']  # denote that this was done on the odd
-                    ax.bar(colornum, tpi, align='center', color=self.colorlist[colornum])
-                    textpos = tpi / 2
-                    textcol = 'w'
-                    textalign = 'center'
-                    if tpi < 0.015:
-                        textpos = tpi + 0.001
-                        textcol = self.black
-                        textalign = 'bottom'
-                    ax.text(colornum, textpos, name+r'$^\bigstar$',
-                            horizontalalignment='center', verticalalignment=textalign, rotation='vertical',
-                            color=textcol, fontweight='bold',
-                            **self.ch_dict(self.text_style, {'size': 11})
-                            )
+                    if 'pf)' in name:
+                        # below and above the shell closure we were using different valence spaces...
+                        file_pf5g9 = file.replace('pf).txt', 'pf5g9*')
+                        theory_pf5g9 = glob(os.path.join(folder, file_pf5g9))
+                        data_pf5g9 = pd.read_csv(theory_pf5g9[0], delimiter=' ', index_col=0, skiprows=[])
+                        tpi = calc_tpi(data_pf5g9.loc[58, 'val'],
+                                       0.5*(data.loc[56, 'val']+data_pf5g9.loc[56, 'val']),
+                                       data.loc[54, 'val'])
+                        three_p_i += [tpi]
+                        source += [name+'(cross)']  # denote that this was done across valence spaces
+                        ax.bar(x_pos, tpi, align='center', color=self.colorlist[colornum])
+                        textpos = tpi / 2
+                        textcol = 'w'
+                        textalign = 'center'
+                        if tpi < 0.015:
+                            textpos = tpi + 0.001
+                            textcol = self.black
+                            textalign = 'bottom'
+                        ax.text(x_pos, textpos, name.replace(' pf', '')+r'$^\bigstar$',
+                                horizontalalignment='center', verticalalignment=textalign, rotation='vertical',
+                                color=textcol, fontweight='bold',
+                                **self.ch_dict(self.text_style, {'size': 11})
+                                )
+                        x_pos += 1
                 except:
-                    pass
+                    # try:  # as a last resort, use 59-57-55
+                    #     tpi = calc_tpi(data.loc[59, 'val'], data.loc[57, 'val'], data.loc[55, 'val'])
+                    #     three_p_i += [tpi]
+                    #     source += [name+'(odd)']  # denote that this was done on the odd
+                    #     ax.bar(x_pos, tpi, align='center', color=self.colorlist[colornum])
+                    #     textpos = tpi / 2
+                    #     textcol = 'w'
+                    #     textalign = 'center'
+                    #     if tpi < 0.015:
+                    #         textpos = tpi + 0.001
+                    #         textcol = self.black
+                    #         textalign = 'bottom'
+                    #     ax.text(x_pos, textpos, name+r'$^\bigstar$',
+                    #             horizontalalignment='center', verticalalignment=textalign, rotation='vertical',
+                    #             color=textcol, fontweight='bold',
+                    #             **self.ch_dict(self.text_style, {'size': 11})
+                    #             )
+                    #     x_pos += 1
+                    # except:
+                    print('Could not calculate 3-point indicator for {}'.format(th))
 
-            colornum +=1
+            colornum += 1
+            if colornum == self.colorlist.__len__():
+                colornum = 0
 
         # ax.bar(np.arange(len(source)), three_p_i, align='center')
 
@@ -3426,15 +3543,16 @@ class PlotThesisGraphics:
         # # remove 'analysis_paramters' from dict
         # del res_dict['analysis_parameters']
         # stored dict has 'i' in front of isotopes. Remove that again!
+        res_dict_new = res_dict.copy()
         for keys, vals in res_dict.items():
             # xml cannot take numbers as first letter of key but dicts can
             if keys[0] == 'i':
                 if vals.get('file_times', None) is not None:
                     vals['file_times'] = [datetime.strptime(t, '%Y-%m-%d %H:%M:%S') for t in vals['file_times']]
-                res_dict[keys[1:]] = vals
-                del res_dict[keys]
+                res_dict_new[keys[1:]] = vals
+                del res_dict_new[keys]
 
-        return res_dict
+        return res_dict_new
 
 
 if __name__ == '__main__':
@@ -3460,7 +3578,7 @@ if __name__ == '__main__':
     # graphs.a_ratio_comparison()
     # graphs.SNR_analysis()
     # graphs.voltage_deviations()
-    graphs.all_spectra()
+    # graphs.all_spectra()
     # graphs.calibration()
     # graphs.isotope_shifts()
     # graphs.timeres_plot()
@@ -3469,14 +3587,14 @@ if __name__ == '__main__':
     # graphs.absradii_ni_only()
     #
     # ''' Discussion '''
-    graphs.Q_nickel55()
-    # graphs.absradii_chain_errorband_all()
+    # graphs.Q_nickel55()
+    graphs.absradii_chain_errorband_all()
     # graphs.absradii_neighborhood()
     # graphs.deltarad_chain_errorband()
-    # graphs.absradii_chain_errorband()
-    # graphs.three_point_indicator()
+    graphs.absradii_chain_errorband()
+    graphs.three_point_indicator()
     # graphs.absrad56()
-    graphs.mu_nickel55()
+    # graphs.mu_nickel55()
 
 
 

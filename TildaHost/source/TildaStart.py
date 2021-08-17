@@ -11,7 +11,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import sys
 import os
-import Pyro4
+import Pyro4  # TODO: Remove, outdated...
 import socket
 
 import matplotlib
@@ -23,6 +23,7 @@ sys.path.append('..\\..\\PolliFit\\source')
 from Application.Main.Main import Main
 import Application.Config as Cfg
 
+# TODO: Remove, outdated...
 try:
     from Driver.TritonListener.TritonConfig import hmacKey
 except ImportError as e:
@@ -79,7 +80,7 @@ def main():
     app_log.info('****************************** starting ******************************')
     app_log.info('Log level set to ' + args.log_level)
 
-    setup_pyro()
+    # setup_pyro()  # TODO: Remove, outdated...
 
     # starting the main loop and storing the instance in Cfg.main_instance
     Cfg._main_instance = Main()
@@ -89,9 +90,9 @@ def main():
 
 def setup_pyro():
     """ configure Pyro4 which is needed wehn connecting to Triton devices """
-
+    # TODO: Remove, outdated...
     Pyro4.config.SERIALIZER = "serpent"
-    Pyro4.config.HMAC_KEY = hmacKey
+    #Pyro4.config.HMAC_KEY = hmacKey
     Pyro4.config.HOST = socket.gethostbyname(socket.gethostname())
     # Pyro4.config.SERVERTYPE = 'multiplex'
     Pyro4.config.SERVERTYPE = 'thread'

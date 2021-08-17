@@ -9,7 +9,6 @@ see there on how to test etc.
 
 """
 
-import Pyro4
 import sys
 import socket
 import logging

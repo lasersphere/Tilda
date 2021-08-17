@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
     # Set Pyro variables
     Pyro4.config.SERIALIZER = "serpent"
-    Pyro4.config.HMAC_KEY = hmacKey
+    # Pyro4.config.HMAC_KEY = hmacKey
     Pyro4.config.HOST = socket.gethostbyname(socket.gethostname())
     # Pyro4.config.SERVERTYPE = 'multiplex'
     Pyro4.config.SERVERTYPE = 'thread'

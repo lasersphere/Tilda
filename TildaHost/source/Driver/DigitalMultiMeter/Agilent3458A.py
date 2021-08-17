@@ -16,7 +16,7 @@ from enum import Enum
 from copy import deepcopy
 
 import numpy as np
-import visa
+import pyvisa as visa
 from PyQt5.QtCore import QThread, QMutex
 
 

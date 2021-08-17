@@ -41,7 +41,7 @@ class DeviceBase(TritonObject):
         self._timer = Event()
         self._interval = 0
 
-        self._cfg = ['_interval']
+        self._cfg = {}
         self._stg = ['_interval']
 
         self._sendTo = {}

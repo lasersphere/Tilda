@@ -84,6 +84,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
         """ connect double clicks on labels:"""
         self.label_workdir_set.mouseDoubleClickEvent = self.workdir_dbl_click
+        self.label_workdir_set.setToolTip(self.workdir_dbl_click.__doc__)
         self.label_laser_freq_set.mouseDoubleClickEvent = self.laser_freq_dbl_click
         self.label_acc_volt_set.mouseDoubleClickEvent = self.acc_volt_dbl_click
         self.label_8.mouseDoubleClickEvent = self.dmm_setup_dbl_click
@@ -91,6 +92,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
         """ connect buttons """
         self.pushButton_open_dir.clicked.connect(self.open_dir)
+        self.pushButton_open_dir.setToolTip(self.open_dir.__doc__)
 
         """ add shortcuts """
         QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+T"), self, self.start_tetris)
@@ -102,6 +104,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     ''' connected actions '''
     def workdir_dbl_click(self, event):
+        """
+        Doubleclick to open a file browser to select/change the TILDA working directory.
+        """
         self.choose_working_dir()
 
     def laser_freq_dbl_click(self, event):
@@ -359,6 +364,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         window.activateWindow()
 
     def open_dir(self):
+        """
+        Click to open the current TILDA working directory in the OS filesystem.
+        """
         path = deepcopy(Cfg._main_instance.working_directory)
         if path:
             if platform.system() == "Windows":
@@ -402,7 +410,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def close_live_plot_win(self):
         del self.live_plot_win
         self.live_plot_win = None
-        gc.collect()
+        #gc.collect()
 
         for scan_ctrl_win in self.act_scan_wins:
             scan_ctrl_win.enable_reopen_plot_win()
@@ -417,7 +425,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             Cfg._main_instance.close_spectra_in_main(file)
 
         del self.file_plot_wins[file]
-        gc.collect()
+        #gc.collect()
         logging.debug('remaining file plot wins are: ' + str(self.file_plot_wins))
 
     def close_pulse_pattern_win(self):
