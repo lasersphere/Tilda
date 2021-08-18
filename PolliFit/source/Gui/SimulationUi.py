@@ -5,14 +5,7 @@ Created on 17.10.2017
 edited by P. Mueller
 """
 
-import ast
-import copy
-import sqlite3
-from datetime import datetime
-import os
-
-import numpy as np
-from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5 import QtWidgets, QtGui
 
 import logging
 import TildaTools as TiTs
@@ -22,11 +15,14 @@ from DBIsotope import DBIsotope
 from Gui.Ui_Simulation import Ui_Simulation
 
 
+# noinspection PyPep8Naming
 class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
     def __init__(self):
         super(SimulationUi, self).__init__()
         self.setupUi(self)
         self.dbpath = None
+        self.iso = None
+        self.set_colors()
         self.refresh()
 
         self.cAmplifier.stateChanged[int].connect(self.toggle_amplifier)
@@ -44,6 +40,25 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
         self.dIsoAmp.valueChanged[float].connect(self.calcVolt)
 
         self.pShow.clicked.connect(self.showSpec)
+
+    def set_colors(self):
+        col_palette = self.dColFreq.palette()
+        col_palette.setColor(QtGui.QPalette.Text, QtGui.QColor(0, 0, 255))
+        self.dColFreq.setPalette(col_palette)
+        self.dColFreq.update()
+        col_palette = self.cColFreq.palette()
+        col_palette.setColor(QtGui.QPalette.WindowText, QtGui.QColor(0, 0, 255))
+        self.cColFreq.setPalette(col_palette)
+        self.cColFreq.update()
+
+        col_palette = self.dAcolFreq.palette()
+        col_palette.setColor(QtGui.QPalette.Text, QtGui.QColor(255, 0, 0))
+        self.dAcolFreq.setPalette(col_palette)
+        self.dAcolFreq.update()
+        col_palette = self.cAcolFreq.palette()
+        col_palette.setColor(QtGui.QPalette.WindowText, QtGui.QColor(255, 0, 0))
+        self.cAcolFreq.setPalette(col_palette)
+        self.cAcolFreq.update()
 
     def conSig(self, dbSig):
         dbSig.connect(self.dbChange)
@@ -116,10 +131,10 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
             iso_name = self.comboIso.currentText()
             if iso_name is None:
                 return
-            iso = DBIsotope(self.dbpath, iso_name, lineVar=linevar)
-            v = Physics.relVelocity(u * Physics.qe, iso.mass * Physics.u)
-            self.dColFreq.setValue(Physics.relDoppler(iso.center + iso.freq, v))
-            self.dAcolFreq.setValue(Physics.relDoppler(iso.center + iso.freq, -v))
+            self.iso = DBIsotope(self.dbpath, iso_name, lineVar=linevar)
+            v = Physics.relVelocity(u * Physics.qe * self.iso.q, self.iso.mass * Physics.u)
+            self.dColFreq.setValue(Physics.relDoppler(self.iso.center + self.iso.freq, v))
+            self.dAcolFreq.setValue(Physics.relDoppler(self.iso.center + self.iso.freq, -v))
 
     def calcVolt(self, val):
         sender = self.sender()
@@ -134,7 +149,7 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
         if self.cInFreq.isChecked() or not self.cAmplifier.isChecked():
             return lambda x: x
         else:
-            return lambda x: -(x - self.dAccVolt.value() + self.dAmpOff.value()) / self.dAmpSlope.value()
+            return lambda x: -(x / self.iso.q - self.dAccVolt.value() + self.dAmpOff.value()) / self.dAmpSlope.value()
 
     def showSpec(self):
         isotopes = self.listIsotopes.selectedItems()
@@ -157,21 +172,27 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
             for iso in isotopes[:-1]:
                 if colChecked:
                     Tools.isoPlot(self.dbpath, iso.text(), linevar=linevar, col=True, laserfreq=laserFreqCol,
-                                  show=False, as_freq=inFreq, x_transform=x_transform, x_label=x_label)
+                                  show=False, as_freq=inFreq, x_transform=x_transform, x_label=x_label,
+                                  norm=self.cNorm.isChecked())
 
                 if acolChecked:
                     Tools.isoPlot(self.dbpath, iso.text(), linevar=linevar, col=False, laserfreq=laserFreqAcol,
-                                  show=False, as_freq=inFreq, x_transform=x_transform, x_label=x_label)
+                                  show=False, as_freq=inFreq, x_transform=x_transform, x_label=x_label,
+                                  norm=self.cNorm.isChecked())
 
             if colChecked and acolChecked:
                 Tools.isoPlot(self.dbpath, isotopes[-1].text(), linevar=linevar, col=True, laserfreq=laserFreqCol,
-                              show=False, as_freq=inFreq, x_transform=x_transform, x_label=x_label)
+                              show=False, as_freq=inFreq, x_transform=x_transform, x_label=x_label,
+                              norm=self.cNorm.isChecked())
                 Tools.isoPlot(self.dbpath, isotopes[-1].text(), linevar=linevar, col=False, laserfreq=laserFreqAcol,
-                              show=True, as_freq=inFreq, x_transform=x_transform, x_label=x_label)
+                              show=True, as_freq=inFreq, x_transform=x_transform, x_label=x_label,
+                              norm=self.cNorm.isChecked())
             else:
                 if colChecked:
                     Tools.isoPlot(self.dbpath, isotopes[-1].text(), linevar=linevar, col=True, laserfreq=laserFreqCol,
-                                  show=True, as_freq=inFreq, x_transform=x_transform, x_label=x_label)
+                                  show=True, as_freq=inFreq, x_transform=x_transform, x_label=x_label,
+                                  norm=self.cNorm.isChecked())
                 else:
                     Tools.isoPlot(self.dbpath, isotopes[-1].text(), linevar=linevar, col=False, laserfreq=laserFreqAcol,
-                                  show=True, as_freq=inFreq, x_transform=x_transform, x_label=x_label)
+                                  show=True, as_freq=inFreq, x_transform=x_transform, x_label=x_label,
+                                  norm=self.cNorm.isChecked())
