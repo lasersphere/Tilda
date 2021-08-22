@@ -116,6 +116,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.tres_plt_item = None
         self.spec_data = None  # spec_data to work on.
         self.new_track_no_data_yet = False  # set this to true when new track is setup
+        self.users_arithmetic = None    #TODO set default to sum of all scalers
 
         self.last_gr_update_done_time = datetime.now()
         self.last_rebin_time_stamp = datetime.now()
@@ -141,11 +142,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                             functools.partial(self.update_all_plots, None, True))
         QtWidgets.QShortcut(QtGui.QKeySequence("CTRL+S"), self, self.export_screen_shot)
 
-        ''' sum related ''' #TODO anpassen
+        ''' sum related '''
         self.add_sum_plot()
         self.sum_x, self.sum_y, self.sum_err = None, None, None  # storage of the sum plotting values
 
-        self.sum_scaler = [0]  # list of scalers to add
+        self.sum_scaler = [0]  # list of scalers to evaluate with each other
         self.sum_track = -1  # int, for selecting the track which will be added. -1 for all
         self.sum_sc_tr_external = sum_sc_tr
         if self.sum_sc_tr_external is not None:
@@ -165,7 +166,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         self.lineEdit_arith_scaler_input.textEdited.connect(self.sum_scaler_lineedit_changed_new)
 
-        ''' time resolved related: '''
+        ''' time resolved related: '''  # TODO if timegate change, sum not correct anymore
         self.add_time_resolved_plot()
         self.tres_sel_tr_ind = 0  # int, index of currently observed track in time resolved spectra
         self.tres_sel_tr_name = 'track0'  # str, name of track
@@ -197,7 +198,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.comboBox_sum_all_pmts.currentIndexChanged.connect(self.sum_scaler_changed)
         self.comboBox_sum_all_pmts.currentIndexChanged.emit(0)
 
-        self.lineEdit_sum_all_pmts.textEdited.connect(self.sum_scaler_lineedit_changed_new) # TODO adjust
+        self.lineEdit_sum_all_pmts.textEdited.connect(self.sum_scaler_lineedit_changed_new)
 
         ''' setup window size: '''
         w = 1024
@@ -533,7 +534,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                                        self.calls_since_last_time_res_plot_update, max_calls_without_plot))
                     self.calls_since_last_time_res_plot_update += 1
 
-                self.update_all_plots(self.spec_data, update_tres=update_time_res_spec)
+                self.update_all_plots(self.spec_data, update_tres=update_time_res_spec) #TODO pass funciton
                 if self.spec_data.seq_type in self.trs_names_list:
                     if not self.spinBox.hasFocus():
                         # only update when user is not entering currently
@@ -596,7 +597,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 spec_data = self.spec_data
             logging.debug('updating all plots with %s %s' % (str(spec_data), str(update_tres)))
             self.updating_plot = True
-            self.update_sum_plot(spec_data)
+            self.update_sum_plot(spec_data)     #TODO: replacement with arith nötig
             if spec_data.seq_type in self.trs_names_list:
                 if update_tres:
                     self.update_tres_plot(spec_data)
@@ -621,6 +622,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     text_y_pos = tres_cur_range[1][1] + (tres_cur_range[1][1] - tres_cur_range[1][0]) / 100
                     logging.debug('writing offline message to position: x = %s, \t y = %s' % (text_x_pos, text_y_pos))
                     self.tres_offline_txt_itm.setPos(text_x_pos, text_y_pos)
+                #self.update_projections_arith(spec_data, self.users_arithmetic['function'], self.users_arithmetic['vars'])
                 self.update_projections(spec_data)
             self.update_all_pmts_plot(spec_data)
             if self.application is not None:
@@ -631,9 +633,15 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.updating_plot = False
 
     def update_sum_plot_arith(self, spec_data, func, vars):
-        """ update the sum plot according to users function and store the values in self.sum_x, self.sum_y, self.sum_err"""
-        print(func)
-        self.sum_x, self.sum_y, self.sum_err = spec_data.calcSpec(func, self.sum_track, vars, eval_on=True)
+        """
+        update the arithmetic plot according to users function and store the values in self.sum_x, self.sum_y,
+        self.sum_err
+        :param spec_data:SpecData, data of spectrum for all scaler, tracks
+        :param func:text, useres input function
+        :param vars:list of int (scaler indices), used variables in function
+        """
+
+        self.sum_x, self.sum_y, self.sum_err = spec_data.calcSpec(func, self.sum_track, vars, eval_on=True) # calculate
         if self.sum_plt_data is None:
             self.sum_plt_data = self.sum_plt_itm.plot(
                 self.convert_xaxis_for_step_mode(self.sum_x), self.sum_y, stepMode=True, pen='k')
@@ -723,9 +731,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             logging.error('error in LiveDataPlotting, while setting the gates this happened: %s ' % e, exc_info=True)
         pass
 
-    def update_projections_arith(self, spec_data, func, vars):
+    def update_projections_arith(self, spec_data, func, vars):  # TODO timegate don't work yet
         """
         update the projections, if no plot has been done yet, create plotdata items for every plot
+        :param spec_data: spec_data:SpecData, data of spectrum for all scaler, tracks
+        :param func:text, useres input function
+        :param vars:list of int (scaler indices), used variables in function
         """
         try:
             if self.sum_scaler is not None:
@@ -734,7 +745,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 v_proj_x = spec_data.x[self.tres_sel_tr_ind]
                 v_proj_y = spec_data.cts[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
                 gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
-                sum_x, sum_y, sum_err = spec_data.calcSpec(func, self.sum_track, vars)
+                sum_x, sum_y, sum_err = spec_data.calcSpec(func, self.sum_track, vars)  # calculate arithmetic spectrum
 
                 if self.t_proj_plt is None:
                     self.t_proj_plt = self.t_proj_plt_itm.plot(t_proj_x, t_proj_y, pen='k')
@@ -824,6 +835,14 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             logging.error('error, while plotting projection, this happened: %s' % e, exc_info=True)
 
     def update_all_pmts_plot(self, spec_data, autorange_pls=True, due_to_change = False, func = None, vars = None):
+        """
+        update all pmt plots
+        :param spec_data:SpecData, data of spectra of all pmts and all tracks
+        :param autorange_pls:boolean
+        :param due_to_change:boolean, true, if lineEdit was changed # TODO: change variables name, as this only says, if old or new version of lineEdit sum is used
+        :param func:str, users function from lineEdit
+        :param vars:list of int, indices of used variables in unseres function
+        """
         if self.all_pmts_widg_plt_item_list is None:
             if spec_data.seq_type not in self.trs_names_list:
                 self.tabWidget.setCurrentIndex(2)
@@ -836,12 +855,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.set_tr_sel_by_index(self.sum_track)
             self.comboBox_all_pmts_sel_tr.blockSignals(False)
             self.add_all_pmt_plot()
-        if due_to_change:
+        if due_to_change:   # if lineEdit for function was changed
             Pg.plot_all_sc_new(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr, func,
                                vars, stepMode=True) # if line edit changed, calc new plot
         else:
             Pg.plot_all_sc(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr,
-                           stepMode=True)   # just update
+                           stepMode=True)   # use old version
         if autorange_pls:
             [each['pltItem'].autoRange() for each in self.all_pmts_widg_plt_item_list]
             self.all_pmts_widg_plt_item_list[-1]['pltItem'].setLabel('bottom', spec_data.x_units.value)
@@ -881,56 +900,57 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def sum_scaler_lineedit_changed_new(self, text):
         """
-        this will check if the input text in the line edit will result a correct mathematical operation
+        this will check if the input text in the line edit will result in a correct mathematical operation
         +, -, *, /, ** are allowed operators
-        :param text:str, in the form of "s0 + s1" or "s3 - ( s2 + s1 )" (need blanks inbetween!)
+        :param text:str, in the form of "s0 + s1" or "s3 / ( s2 + s1 )" (need blanks inbetween!)
         :return:
         """
-        curs_pos_sum = self.lineEdit_arith_scaler_input.cursorPosition()
-        curs_pos_all_pmts = self.lineEdit_sum_all_pmts.cursorPosition()
-        input_list = text.split()   # separate numbers, variables and operators
+        #curs_pos_sum = self.lineEdit_arith_scaler_input.cursorPosition()
+        #curs_pos_all_pmts = self.lineEdit_sum_all_pmts.cursorPosition()
+        input_list = text.split()   # separate numbers, variables and operators from the textEdit
         operators = ['+', '-', '*', '/', '(', ')', '**']    # allowed operators
-        input_operators = []
-        input_numbers = []
-        input_vars = []
-        indList = []
-        for each in input_list: # sort by number, variable, operator
-            if each in operators:
+        input_operators = []    # list of operators used in lineEdit
+        input_numbers = []  # list of numbers used in lineEdit
+        input_vars = [] # list of variables used in lineEdit (anything that is neither operator nor number)
+        indList = []    # list of indices representing used variables
+
+        ''' sort text from textEdit by number, variable, operator '''
+        for each in input_list:
+            if each in operators:   # operator
                 input_operators.append(each)
             else:
-                try:
+                try:    # number
                     float(each)
                     input_numbers.append(each)
-                except ValueError:
+                except ValueError:  # variable
                     input_vars.append(each)
+
         ''' check if variables are ok '''
         vars = []   # allowed variables
         i = 0
-        while i < self.spec_data.nrScalers[0]:
+        while i < self.spec_data.nrScalers[0]:  # up to max number of used scalers
             vars.append('s'+ str(i))
             i += 1
-        print('Allowed Variables: ', vars)
         try:
             for each in input_vars: # check if input vars ok
                 if each not in vars:
-                    raise Exception("Invalid Syntax")
-            for var in input_vars:
+                    raise Exception('Invalid Variables. Allowed variables are', vars)
+            for var in input_vars:  # fill index list with used variable indices
                 indList.append(int(var[1]))
+            self.users_arithmetic = {'function': text, 'vars': input_vars}
+
+            ''' update views '''
             self.update_sum_plot_arith(self.spec_data, text, input_vars)
             self.update_projections_arith(self.spec_data, text, input_vars)
             if self.all_pmts_widg_plt_item_list is not None:
-                self.all_pmts_widg_plt_item_list[-1]['indList'] = indList
+                self.all_pmts_widg_plt_item_list[-1]['indList'] = indList   # set indList of the arithmetic item
                 self.update_all_pmts_plot(self.spec_data, due_to_change=True, func=text, vars=vars)
             self.lineEdit_sum_all_pmts.setText(text)
             self.lineEdit_arith_scaler_input.setText(text)
 
         except Exception as e:
-            logging.error('error on changing line edit of summed scalers in liveplotterui: %s' % e, exc_info=True)
-            self.sum_scaler_lineedit_changed(text)
-
-        print(input_operators)
-        print(input_numbers)
-        print(input_vars)
+            #logging.error('error on changing line edit of summed scalers in liveplotterui: %s' % e, exc_info=True)
+            self.sum_scaler_lineedit_changed(text)  # try old version of the sum function
 
 
     def sum_scaler_lineedit_changed(self, text):
@@ -952,6 +972,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.sum_scaler = hopefully_list
                     self.label_arith_scaler_set.setText(str(hopefully_list))
                     self.update_sum_plot(self.spec_data)
+                    #self.update_sum_plot_arith(self.spec_data, self.users_arithmetic['function'], self.users_arithmetic['vars'])
                     if self.spec_data.seq_type in self.trs_names_list:
                         self.update_projections(self.spec_data)
                     if self.all_pmts_widg_plt_item_list is not None:
@@ -1003,7 +1024,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     ''' table operations: '''
 
     def handle_gate_table_change(self, item):
-        # print('item was changed: ', item.row(), item.column(), item.text())
+        print('item was changed: ', item.row(), item.column(), item.text())
         gate_columns = range(2, 6)
         if item.column() in gate_columns:  # this means a gate value was changed.
             sel_items = self.tableWidget_gates.selectedItems()
@@ -1189,7 +1210,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.get_existing_callbacks_from_main()
         self.save_callback.connect(self.save)
         self.new_track_callback.connect(self.setup_new_track)
-        self.new_data_callback.connect(self.new_data)
+        self.new_data_callback.connect(self.new_data)   # TODO pass func
         self.fit_results_dict_callback.connect(self.rcvd_fit_res_dict)
         self.pre_post_meas_data_dict_callback.connect(self.rebuild_pre_post_meas_gui)
 
