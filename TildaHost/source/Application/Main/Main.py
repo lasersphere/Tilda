@@ -32,7 +32,6 @@ from Service.AnalysisAndDataHandling.DisplayData import DisplayData
 from Service.Scan.ScanMain import ScanMain
 from Service.SimpleCounter.SimpleCounter import SimpleCounterControl
 from Application.Options import Options
-import configparser
 
 
 class Main(QtCore.QObject):
@@ -88,17 +87,12 @@ class Main(QtCore.QObject):
         self.measure_voltage_pars = Dft.draftMeasureVoltPars
         # dict containing all parameters for the voltage measurement.
         # default is: draftMeasureVoltPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100}
-        self.local_options = Options()  # object to save all local options in
-        self.ini_file_path = os.path.join(os.path.dirname(sys.argv[0]), 'Application/options.ini')  # path of ini-file
 
-        if os.path.isfile(self.ini_file_path):  # check if ini-file already exists
-            self.read_ini() # load the file
-        else:
-            self.create_standard_ini()  # create a standard ini
-            self.read_ini() # load the file
+        self.ini_file_path = os.path.join(os.path.dirname(sys.argv[0]), 'Application/options.yaml')  # path of ini-file
+        self.local_options = Options(self.ini_file_path)  # object to save all local options in
+        self.load_options()
 
         self.laserfreq = self.calc_freq()  # laser frequency in cm-1
-        self.local_options.freq_dict.pop('__builtins__')    # TODO: find out, why this happens???
         self.acc_voltage = 0  # acceleration voltage of the source in volts
         self.simple_counter_inst = None
         self.cmd_queue = None
@@ -161,40 +155,6 @@ class Main(QtCore.QObject):
 
         self.application = None  # store the current application in here,
         # useful when wanting to force event processing by calling self.application.processEvents()
-
-    def create_standard_ini(self):
-        """
-        creates a standard ini-file with standard options
-        """
-        config = configparser.ConfigParser()
-        config['FREQUENCY'] = {'freq_dic': {'freq1': 300000000}, 'arithmetic': '4 * freq1'}  # set frequency options
-
-        with open(self.ini_file_path, 'w') as optionsfile:
-            config.write(optionsfile)
-        print('Created a standard options.ini')
-
-    def read_ini(self):
-        """
-        Read option.ini and save them to the options object.
-        """
-        config = configparser.ConfigParser()
-        config.sections()
-
-        config.read(self.ini_file_path) # read options.ini
-        print('Loading options.ini')
-
-        self.local_options.freq_dict = ast.literal_eval(config['FREQUENCY']['freq_dic'])  # save frequencies to options object
-        self.local_options.freq_arith = config['FREQUENCY']['arithmetic']   # save arithmetic to options object
-
-    def calc_freq(self):
-        """
-        calculates the frequency from options.ini
-        :return: total frequency for spectroscopy
-        """
-        frequencies = self.local_options.freq_dict
-        freq_MHz = eval(self.local_options.freq_arith, frequencies)
-        return Physics.wavelenFromFreq(freq_MHz)
-
 
     """ cyclic function """
 
@@ -470,6 +430,27 @@ class Main(QtCore.QObject):
         self.autostart_dict['preScanTimeoutS'] = timeout_s
         FileHandl.write_to_auto_start_xml_file(self.autostart_dict)
 
+    """ options related functions """
+
+    def load_options(self):
+        """
+        Get local options from .ini file. If none exists yet, a new one will be created.
+        """
+        self.local_options.load_from_file()
+
+    def save_options(self):
+        """
+        Save the options object (and possible updates that were made to it) to options.ini file.
+        """
+        self.local_options.save_to_file()
+
+    def calc_freq(self):
+        """
+        calculates the frequency from options.ini
+        :return: total frequency for spectroscopy
+        """
+        return self.local_options.get_abs_freq()
+
     """ operations on self.scan_pars dictionary """
 
     def remove_track_from_scan_pars(self, iso, track):
@@ -515,6 +496,7 @@ class Main(QtCore.QObject):
         """
         self.laserfreq = laser_freq
         self.autostart_dict['laserFreq'] = laser_freq
+        logging.info('Laser frequency was set to: {} cm-1'.format(laser_freq))
         FileHandl.write_to_auto_start_xml_file(self.autostart_dict)
         self.send_state()
 
@@ -1148,7 +1130,6 @@ class Main(QtCore.QObject):
                                 elif entries == 'acquired':
                                     ch_dicts[entries] = 0
         logging.info('removed %s old dmm or triton data entries' % is_there_something_to_remove)
-
 
     def save_scan_par_to_db(self, iso):
         """

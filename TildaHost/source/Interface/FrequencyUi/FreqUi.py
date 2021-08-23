@@ -22,10 +22,11 @@ class FreqUi(QtWidgets.QMainWindow, Ui_Frequency):
 
     def __init__(self, main_gui):
         super(FreqUi, self).__init__()
-        self.options = Cfg._main_instance.local_options # need current options to fill in line edits
-        self.freq_list = self.options.freq_dict # dictionary with frequency names and values in MHz
+        self.options = Cfg._main_instance.local_options  # need current options to fill in line edits
+        # dictionary with frequency names and values in MHz and arithmetic to calculate total frequency:
+        self.freq_dict, self.freq_arith = self.options.get_freq_settings()
+        # dictionary with frequency names and values in MHz
         self.new_freq_name = None   # name of newly added frequency
-        self.freq_arith = self.options.freq_arith   # arithmetic to calculate total frequency
 
         self.setupUi(self)
         self.stored_window_title = 'Frequency'
@@ -38,9 +39,9 @@ class FreqUi(QtWidgets.QMainWindow, Ui_Frequency):
         self.pb_edit.clicked.connect(self.edit_freq)
 
         '''Update List view'''
-        for name in self.freq_list: # fill in all frequencies used in current options
-            print(str(self.freq_list[name]))
-            self.list_frequencies.addItems([name + ': ' + str(self.freq_list[name])])
+        for name, value in self.freq_dict.items():  # fill in all frequencies used in current options
+            #print(str(self.freq_list[name]))
+            self.list_frequencies.addItems(['{}: {}'.format(name, value)])
 
         '''Update Line Edit'''
         self.le_arit.setText(self.freq_arith)   # fill in current arithmetic from options
@@ -52,9 +53,8 @@ class FreqUi(QtWidgets.QMainWindow, Ui_Frequency):
         opens dialog to add a new frequency which is then presented in the listview
         """
         self.open_add_freq_win()
-        if self.new_freq_name != None and self.new_freq_name != '': # if new frequency added in the dialog, add to
-                                                                    # listview
-            self.list_frequencies.addItems([self.new_freq_name + ': ' + str(self.freq_list[self.new_freq_name])])
+        if self.new_freq_name is not None:  # if new frequency added in the dialog, add to listview
+            self.list_frequencies.addItems([self.new_freq_name + ': ' + str(self.freq_dict[self.new_freq_name])])
         else:
             pass
 
@@ -63,16 +63,9 @@ class FreqUi(QtWidgets.QMainWindow, Ui_Frequency):
         if an item is selected, remove this from the listview and from the frequency dictionary.
         """
         item = self.list_frequencies.currentItem()
-        name = ''
         try:
-            sep = item.text().index(':')
-            i = 0
-            while i < sep:  # create key
-                name += item.text()[i]
-                i += 1
-
-            self.freq_list.pop(name)  # remove from frequency dictionary
-
+            name, value = item.text().split(': ')
+            self.freq_dict.pop(name)  # remove from frequency dictionary
             self.list_frequencies.takeItem(self.list_frequencies.row(item))  # update listview
         except ValueError:
             print('ValueError')
@@ -81,30 +74,19 @@ class FreqUi(QtWidgets.QMainWindow, Ui_Frequency):
         """
         opens dialog to edit the selected frequency which is then presented in the listview and updated in dictionary
         """
+        # TODO: make sure that when name is edited, the old name disappears from freq_dict as well
         item = self.list_frequencies.currentItem()
-        name = ''
-        value = ''
         try:
-            sep = item.text().index(':')
-            length = len(item.text())
-            i = 0
-            while i < sep:  # create key
-                name += item.text()[i]
-                i += 1
-            i += 1
-            while i < length:   # get value
-                value += item.text()[i]
-                i += 1
+            name, value = item.text().split(': ')
 
             self.open_add_freq_win(freq_name=name, freq_val=value)  # open window to edit
-            if self.new_freq_name != '':  # if frequency added in the dialog, add to listview
+            if self.new_freq_name is not None:  # if frequency added in the dialog, add to listview
                 self.list_frequencies.takeItem(self.list_frequencies.row(item))
-                self.list_frequencies.addItems([self.new_freq_name + ': ' + self.freq_list[self.new_freq_name]])
+                self.list_frequencies.addItems(['{}: {}'.format(self.new_freq_name, self.freq_dict[self.new_freq_name])])
             else:
                 pass
         except ValueError:
             print('ValueError')
-
 
     def accept(self):
         """
@@ -116,7 +98,6 @@ class FreqUi(QtWidgets.QMainWindow, Ui_Frequency):
         """
         self.set_arith()
         self.update_options()
-        self.update_ini()
         self.closeEvent()
 
     def reject(self):
@@ -139,21 +120,8 @@ class FreqUi(QtWidgets.QMainWindow, Ui_Frequency):
         """
         update the options object in main instance to new frequency settings
         """
-        Cfg._main_instance.local_options.freq_dict = self.freq_list
-        Cfg._main_instance.local_options.freq_arith = self.freq_arith
-
-    def update_ini(self):
-        """
-        creates a updated ini-file with updated options
-        """
-        config = configparser.ConfigParser()
-        config.sections()
-        config.read(Cfg._main_instance.ini_file_path)  # read options.ini
-        print(self.freq_arith)
-        config['FREQUENCY'] = {'freq_dic': str(self.freq_list), 'arithmetic': self.freq_arith}  # set frequency options
-        with open(Cfg._main_instance.ini_file_path, 'w') as optionsfile:    # rewrite ini-File
-            config.write(optionsfile)
-        print('Updated options.ini')
+        Cfg._main_instance.local_options.set_freq(self.freq_dict, self.freq_arith)
+        Cfg._main_instance.save_options()  # save to local options file
 
     def set_arith(self):
         """

@@ -405,9 +405,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.act_scan_wins.remove(win_ref)
 
     def close_freq_win(self):
-
-        Cfg._main_instance.laser_freq_changed(Cfg._main_instance.calc_freq())
-        Cfg._main_instance.local_options.freq_dict.pop('__builtins__') # TODO: why this??
+        new_laser_freq = Cfg._main_instance.calc_freq()
+        Cfg._main_instance.laser_freq_changed(new_laser_freq)
         self.freq_win = None
 
     def close_job_stacker_win(self):
