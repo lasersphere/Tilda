@@ -92,7 +92,7 @@ class SpecData(object):
             raise  Exception('No scaler used')
         elif eval_on:   # check if evaluation needed
             for v in vars:    # go through used variables
-                if isinstance(v, str):
+                if isinstance(v, str):  # create PMT - name (e. g. s1, s3, ...)
                     pmt = v
                 else:
                     pmt = 's' + str(v) # create PMT - name (e. g. s1, s3, ...)
