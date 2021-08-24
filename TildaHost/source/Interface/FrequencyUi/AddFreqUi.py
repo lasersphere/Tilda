@@ -49,6 +49,10 @@ class AddFreqUi(QtWidgets.QDialog, Ui_Add_Freq):
         freq_val = self.le_value.text()
         try:
             interger = int(freq_val)
+            try:
+                self.parent_ui.freq_dict.pop(self.original_name)  # remove old freq name from dictionary
+            except AttributeError:
+                logging.info('No Attribute %s, skip pop' % self.original_name)
             self.parent_ui.freq_dict[freq_name] = interger
             self.parent_ui.new_freq_name = freq_name
             print('added new Frequency')

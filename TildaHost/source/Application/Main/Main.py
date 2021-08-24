@@ -415,7 +415,6 @@ class Main(QtCore.QObject):
             logging.warning('automatic start of power supplies not included yet.')
         laser_freq = self.autostart_dict.get('laserFreq', False)
         if laser_freq:
-            # TODO : check if / how to be replaced
             self.laser_freq_changed(float(laser_freq))
         acc_volt = self.autostart_dict.get('accVolt', False)
         if acc_volt:

@@ -74,14 +74,14 @@ class FreqUi(QtWidgets.QMainWindow, Ui_Frequency):
         """
         opens dialog to edit the selected frequency which is then presented in the listview and updated in dictionary
         """
-        # TODO: make sure that when name is edited, the old name disappears from freq_dict as well
         item = self.list_frequencies.currentItem()
         try:
             name, value = item.text().split(': ')
 
             self.open_add_freq_win(freq_name=name, freq_val=value)  # open window to edit
             if self.new_freq_name is not None:  # if frequency added in the dialog, add to listview
-                self.list_frequencies.takeItem(self.list_frequencies.row(item))
+
+                self.list_frequencies.takeItem(self.list_frequencies.row(item)) # remove old from listview
                 self.list_frequencies.addItems(['{}: {}'.format(self.new_freq_name, self.freq_dict[self.new_freq_name])])
             else:
                 pass

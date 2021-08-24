@@ -20,70 +20,39 @@ class Options:
     """
 
     def __init__(self, file_path):
-        self.format = 'YAML'  # Options 'YAML', 'INI'  # TODO: Just for testing our options. Finally choose one!
-        # define path to local options.ini
+        #self.format = 'YAML'  # Options 'YAML', 'INI'
+        # define path to local options.yaml
         self.options_file_path = file_path
+        path, ext = file_path.split('.')
+        self.default_file = path + '_default.' + ext
 
-        # TODO: We could do it like below or we could create an actual options_template file...
-        # create dictionary with sections
-        self.config_dict = dict(FREQUENCY={},)
-        # populate sections and set standard values
-        self.config_dict['FREQUENCY']['freq_dict'] = {'freq1': 374440780}  # dictionary of all (Matisse) frequencies
-        self.config_dict['FREQUENCY']['arithmetic'] = '4 * freq1'  # string for arithmetic function to calc frequencies from dictionary
-
-    def load_from_file(self):
+    def load_from_file(self, default=False):
         """
-        Read option.ini and save them to the options object.
-        If no options.ini exists create one with the standard values defined in __init__()
+        Read option.yaml and save them to the options object.
+        If no options.yaml exists create one with the standard values defined in options_default.yaml
         """
-        # TODO: Decide for one format and keep it!
-        if self.format == 'YAML':
-            if os.path.isfile(self.options_file_path):  # check if ini-file already exists
-                # read options.ini
-                logging.info('loading local TILDA settings from options.ini')
-                self.config_dict = yaml.safe_load(open(self.options_file_path))
-            else:  # file does not exist yet, create new one and warn user.
-                logging.warning('No options.ini found, creating a new one with default values.')
-                self.save_to_file()
-
-        elif self.format == 'INI':
-            config = configparser.ConfigParser()
-            config.sections()
-            if os.path.isfile(self.options_file_path):  # check if ini-file already exists
-                # read options.ini
-                logging.info('loading local TILDA settings from options.ini')
-                config.read(self.options_file_path)
-                # convert to config_dict
-                for section in config.sections():
-                    for key, val in config.items(section):
-                        if "{" in val:
-                            self.config_dict[section][key] = ast.literal_eval(val)
-                        else:
-                            self.config_dict[section][key] = val
-            else:  # .ini does not exist yet, create new one and warn user.
-                logging.warning('No options.ini found, creating a new one with default values.')
-                self.save_to_file()
+        if default: # read default options
+            logging.info('loading default TILDA settings from options_default.yaml')
+            self.config_dict = yaml.safe_load(open(self.default_file))
+        elif os.path.isfile(self.options_file_path):  # check if yaml-file already exists
+            # read options.yaml
+            logging.info('loading local TILDA settings from options.yaml')
+            self.config_dict = yaml.safe_load(open(self.options_file_path))
+        else:  # file does not exist yet, create new one and warn user.
+            logging.warning('No options.yaml found, creating a new one with default values.')
+            self.load_from_file(default=True)   # load default options
+            self.save_to_file()
 
     def save_to_file(self):
         """
-        Save this Options instance to the local ini file.
+        Save this Options instance to the local yaml file.
         :return:
         """
-        if self.format == 'YAML':
-            stream = open(self.options_file_path, 'w')
-            yaml.dump(self.config_dict, stream, default_flow_style=False)
-            # default_flow_style=False: Always use block style instead of flow style
-            stream.close()
-            logging.info('Updated options.ini')
-
-        elif self.format == 'INI':
-            config = configparser.ConfigParser()
-            for section, settings in self.config_dict.items():
-                # convert dictionary to config item
-                config[section] = settings
-            with open(self.options_file_path, 'w') as optionsfile:  # rewrite ini-File
-                config.write(optionsfile)
-            logging.info('Updated options.ini')
+        stream = open(self.options_file_path, 'w')
+        yaml.dump(self.config_dict, stream, default_flow_style=False)
+        # default_flow_style=False: Always use block style instead of flow style
+        stream.close()
+        logging.info('Updated options.yaml')
 
     def set_freq(self, dic, arith):
         """
