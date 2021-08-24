@@ -24,6 +24,7 @@ import MPLPlotter as MPlPlotter
 from Gui.MainUi import MainUi as PolliMainUi
 from Interface.DialogsUi.ScanCompleteDialUi import ScanCompleteDialUi
 from Interface.DmmUi.DmmUi import DmmLiveViewUi
+from Interface.FrequencyUi.FreqUi import FreqUi
 from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
 from Interface.MainUi.Ui_Main import Ui_TildaMainWindow
 from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
@@ -53,6 +54,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.post_acc_win = None  # only one active post acceleration window
         self.scan_progress_win = None
         self.job_stacker_win = None
+        self.freq_win = None
         self.simple_counter_gui = None
         self.dmm_live_view_win = None
         self.live_plot_win = None  # one active live plot window for displaying results from pipeline
@@ -73,7 +75,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionJob_Stacker.triggered.connect(self.open_job_stacker_win)  # TODO: define command and add actionItem
         self.actionPost_acceleration_power_supply_control.triggered.connect(self.open_post_acc_win)
         self.actionSimple_Counter.triggered.connect(self.open_simple_counter_win)
-        self.actionSet_Laser_Frequency.triggered.connect(self.set_laser_freq)
+        #self.actionSet_Laser_Frequency.triggered.connect(self.set_laser_freq)   # old version of frequency settings
+        self.actionSet_Laser_Frequency.triggered.connect(self.open_freq_win)
         self.actionSet_acceleration_voltage.triggered.connect(self.set_acc_volt)
         self.actionLoad_spectra.triggered.connect(self.load_spectra)
         self.actionDigital_Multimeters.triggered.connect(self.open_dmm_live_view_win)
@@ -81,6 +84,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionPulse_pattern_generator.triggered.connect(self.open_pulse_pattern_win)
         self.actionShow_scan_finished_win.triggered.connect(self.show_scan_finished_change)
         self.actionPre_scan_timeout.triggered.connect(self.set_pre_scan_timeout)
+
 
         """ connect double clicks on labels:"""
         self.label_workdir_set.mouseDoubleClickEvent = self.workdir_dbl_click
@@ -110,7 +114,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.choose_working_dir()
 
     def laser_freq_dbl_click(self, event):
-        self.set_laser_freq()
+        #self.set_laser_freq()   # old version
+        self.open_freq_win()
 
     def acc_volt_dbl_click(self, event):
         self.set_acc_volt()
@@ -223,12 +228,17 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             'choose working directory', start_path)
         return Cfg._main_instance.work_dir_changed(workdir)
 
-    def set_laser_freq(self):
-        laser_freq, ok = QtWidgets.QInputDialog.getDouble(self, 'Laser', 'laser wavenumber [cm-1]',
-                                                          0, 0, 9999999,
-                                                          5)
-        if ok:
-            Cfg._main_instance.laser_freq_changed(laser_freq)
+
+    # def set_laser_freq(self):
+    #     """
+    #     not needed anymore, replaced by open freq win
+    #     :return:
+    #     """
+    #     laser_freq, ok = QtWidgets.QInputDialog.getDouble(self, 'Laser', 'laser wavenumber [cm-1]',
+    #                                                       0, 0, 9999999,
+    #                                                       5)
+    #     if ok:
+    #         Cfg._main_instance.laser_freq_changed(laser_freq)
 
     def set_acc_volt(self):
         acc_volt, ok = QtWidgets.QInputDialog.getDouble(self, 'Acceleration Voltage', 'acceleration voltage [V]',
@@ -292,6 +302,13 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionShow_scan_finished_win.setChecked(show_win_bool)
 
     ''' open windows'''
+
+    def open_freq_win(self):
+        if self.freq_win is None:
+            self.freq_win = FreqUi(self)
+        else:
+            self.raise_win_to_front(self.freq_win)
+
     def open_version_win(self):
         VersionUi()
 
@@ -395,6 +412,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def scan_control_win_closed(self, win_ref):
         self.act_scan_wins.remove(win_ref)
 
+    def close_freq_win(self):
+        new_laser_freq = Cfg._main_instance.calc_freq()
+        Cfg._main_instance.laser_freq_changed(new_laser_freq)
+        self.freq_win = None
+
     def close_job_stacker_win(self):
         self.job_stacker_win = None
 
@@ -453,6 +475,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 self.scan_progress_win.close()
         except Exception as e:
             logging.error('error while closing scan progress win:' + str(e))
+        try:
+            if self.freq_win is not None:
+                self.freq_win.close()
+        except Exception as e:
+            logging.error('error while closing frequency win:' + str(e))
         try:
             if self.job_stacker_win is not None:
                 self.job_stacker_win.close()
