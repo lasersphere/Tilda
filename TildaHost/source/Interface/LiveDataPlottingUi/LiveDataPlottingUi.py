@@ -631,9 +631,18 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.updating_plot = False
 
     def update_sum_plot_arith(self, spec_data, func, vars):
-        """ update the sum plot according to users function and store the values in self.sum_x, self.sum_y, self.sum_err"""
-        print(func)
+        """
+        update the sum plot according to users function and store the values in self.sum_x, self.sum_y, self.sum_err
+        :param
+        spec_data: SpecData, spectrum to be used
+        func: str, users function
+        vars: list of str, users vars
+        """
+
+        ''' calculate arithmetic spectrum '''
         self.sum_x, self.sum_y, self.sum_err = spec_data.calcSpec(func, self.sum_track, vars, eval_on=True)
+
+        ''' update plot '''
         if self.sum_plt_data is None:
             self.sum_plt_data = self.sum_plt_itm.plot(
                 self.convert_xaxis_for_step_mode(self.sum_x), self.sum_y, stepMode=True, pen='k')
@@ -824,6 +833,14 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             logging.error('error, while plotting projection, this happened: %s' % e, exc_info=True)
 
     def update_all_pmts_plot(self, spec_data, autorange_pls=True, due_to_change = False, func = None, vars = None):
+        """
+        updates the all pmts tab
+        :param spec_data: SpecData, used spectrum
+        :param autorange_pls:
+        :param due_to_change: boolen, updated needed due to change?
+        :param func: str, users function
+        :param vars: list of str, users variables
+        """
         if self.all_pmts_widg_plt_item_list is None:
             if spec_data.seq_type not in self.trs_names_list:
                 self.tabWidget.setCurrentIndex(2)
@@ -836,7 +853,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.set_tr_sel_by_index(self.sum_track)
             self.comboBox_all_pmts_sel_tr.blockSignals(False)
             self.add_all_pmt_plot()
-        if due_to_change:
+        if due_to_change:   # if due to change calculate new arithmetic plot
             Pg.plot_all_sc_new(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr, func,
                                vars, stepMode=True) # if line edit changed, calc new plot
         else:
@@ -881,7 +898,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def sum_scaler_lineedit_changed_new(self, text):
         """
-        this will check if the input text in the line edit will result a correct mathematical operation
         +, -, *, /, ** are allowed operators
         :param text:str, in the form of "s0 + s1" or "s3 - ( s2 + s1 )" (need blanks inbetween!)
         :return:
@@ -894,7 +910,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         input_numbers = []
         input_vars = []
         indList = []
-        for each in input_list: # sort by number, variable, operator
+
+        '''sort by number, variable, operator'''
+        for each in input_list:
             if each in operators:
                 input_operators.append(each)
             else:
@@ -903,18 +921,18 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     input_numbers.append(each)
                 except ValueError:
                     input_vars.append(each)
+
         ''' check if variables are ok '''
         vars = []   # allowed variables
         i = 0
         while i < self.spec_data.nrScalers[0]:
             vars.append('s'+ str(i))
             i += 1
-        print('Allowed Variables: ', vars)
         try:
             for each in input_vars: # check if input vars ok
                 if each not in vars:
-                    raise Exception("Invalid Syntax")
-            for var in input_vars:
+                    raise Exception("Invalid Syntax: only %s are allowed variable names" % vars)
+            for var in input_vars:  # create index list
                 indList.append(int(var[1]))
             self.update_sum_plot_arith(self.spec_data, text, input_vars)
             self.update_projections_arith(self.spec_data, text, input_vars)
@@ -925,13 +943,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.lineEdit_arith_scaler_input.setText(text)
 
         except Exception as e:
-            logging.error('error on changing line edit of summed scalers in liveplotterui: %s' % e, exc_info=True)
+            logging.info('using list version to calculate the sum-Plot')
             self.sum_scaler_lineedit_changed(text)
-
-        print(input_operators)
-        print(input_numbers)
-        print(input_vars)
-
 
     def sum_scaler_lineedit_changed(self, text):
         """
@@ -1536,7 +1549,7 @@ if __name__ == "__main__":
     app_log.info('****************************** starting ******************************')
     app_log.info('Log level set to DEBUG')
 
-    test_file = 'D:\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\' \
+    test_file = 'C:\\Users\\Laura Renth\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\' \
                 'Measurement_and_Analysis_Simon\\Ni_workspace2017\\Ni_2017\\sums\\60_Ni_trs_run114.xml'
 
     app = QtWidgets.QApplication(sys.argv)
