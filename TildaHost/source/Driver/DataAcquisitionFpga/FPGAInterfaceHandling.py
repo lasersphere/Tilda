@@ -263,10 +263,12 @@ class FPGAInterfaceHandling():
         remaining_empty_elements_in_fifo = ctypes.c_ulong()
         num_of_eles = len(data)
         data_pointer = data.ctypes.data_as(ctypes.POINTER(ctypes.c_uint32))
+        infinite_timeout = ctypes.c_uint32(0xFFFFFFFF)
         self.NiFpgaUniversalInterfaceDll.NiFpga_WriteFifoU32(self.session,
                                                              fiforef,
                                                              data_pointer,
                                                              num_of_eles,
+                                                             infinite_timeout,
                                                              ctypes.byref(remaining_empty_elements_in_fifo))
         return remaining_empty_elements_in_fifo
 
