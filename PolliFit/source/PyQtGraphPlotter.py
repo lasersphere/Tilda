@@ -162,7 +162,8 @@ def plot_all_sc_new(list_of_widgets_etc, spec_data, tr, func, vars, stepMode=Fal
         if val['name'] == 'sum':
             eval_on = True  # only for this plot an evaluation is needed
 
-        x, y, err = spec_data.calcSpec(func, tr, sc, eval_on)   # calc arithmetic plot
+        #x, y, err = spec_data.calcSpec(func, tr, sc, eval_on)   # calc arithmetic plot
+        x, y, err = spec_data.getArithSpecNew(sc, tr, func, eval_on=eval_on)
 
         if stepMode:
             x = convert_xaxis_for_step_mode(deepcopy(x))
@@ -175,7 +176,7 @@ def plot_all_sc(list_of_widgets_etc, spec_data, tr, stepMode=False):
         sc = val['indList']
         plt_data_itm = val['pltDataItem']
         x, y, err = spec_data.getArithSpec(sc, tr)
-        #x, y, err = spec_data.getArithSpec(sc, tr)  # TODO replace by calcSpec
+        #x, y, err = spec_data.getArithSpec(sc, tr)
         if stepMode:
             x = convert_xaxis_for_step_mode(deepcopy(x))
         plt_data_itm.setData(x, y, stepMode=stepMode)

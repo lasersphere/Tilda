@@ -146,14 +146,17 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.sum_x, self.sum_y, self.sum_err = None, None, None  # storage of the sum plotting values
 
         self.sum_scaler = [0]  # list of scalers to evaluate with each other
+        self.function = str(self.sum_scaler)   # function to calculate the sum plot from
         self.sum_track = -1  # int, for selecting the track which will be added. -1 for all
         self.sum_sc_tr_external = sum_sc_tr
         if self.sum_sc_tr_external is not None:
             # overwrite with external
             self.sum_scaler = self.sum_sc_tr_external[0]
+            self.function = str(self.sum_scaler)
             self.sum_track = self.sum_sc_tr_external[1]
             self.lineEdit_arith_scaler_input.setText(str(self.sum_scaler))
             self.lineEdit_sum_all_pmts.setText(str(self.sum_scaler))
+
 
         self.current_step_line = None  # line to display which step is active.(used in projection)
         self.sum_current_step_line = None  # same for sum
@@ -640,7 +643,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
 
         ''' calculate arithmetic spectrum '''
-        self.sum_x, self.sum_y, self.sum_err = spec_data.calcSpec(func, self.sum_track, vars, eval_on=True)
+        #self.sum_x, self.sum_y, self.sum_err = spec_data.calcSpec(func, self.sum_track, vars, eval_on=True)
+        self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpecNew(self.sum_scaler, self.sum_track, self.function)
 
         ''' update plot '''
         if self.sum_plt_data is None:
@@ -657,7 +661,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def update_sum_plot(self, spec_data):
         """ update the sum plot and store the values in self.sum_x, self.sum_y, self.sum_err"""
         if self.sum_scaler is not None:
-            self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpec(self.sum_scaler, self.sum_track)
+            #self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpec(self.sum_scaler, self.sum_track)
+            self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpecNew(self.sum_scaler, self.sum_track, self.function)
             if self.sum_plt_data is None:
                 self.sum_plt_data = self.sum_plt_itm.plot(
                     self.convert_xaxis_for_step_mode(self.sum_x), self.sum_y, stepMode=True, pen='k')
@@ -746,7 +751,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 v_proj_x = spec_data.x[self.tres_sel_tr_ind]
                 v_proj_y = spec_data.cts[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
                 gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
-                sum_x, sum_y, sum_err = spec_data.calcSpec(func, self.sum_track, vars)
+                #sum_x, sum_y, sum_err = spec_data.calcSpec(func, self.sum_track, vars)
+                sum_x, sum_y, sum_err = spec_data.getArithSpecNew(self.sum_scaler, self.sum_track, self.function)
 
                 if self.t_proj_plt is None:
                     self.t_proj_plt = self.t_proj_plt_itm.plot(t_proj_x, t_proj_y, pen='k')
@@ -796,7 +802,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 v_proj_x = spec_data.x[self.tres_sel_tr_ind]
                 v_proj_y = spec_data.cts[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
                 gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
-                sum_x, sum_y, sum_err = spec_data.getArithSpec(self.sum_scaler, self.tres_sel_tr_ind)   # TODO replace by calc
+                #sum_x, sum_y, sum_err = spec_data.getArithSpec(self.sum_scaler, self.tres_sel_tr_ind)
+                sum_x, sum_y, sum_err = spec_data.getArithSpecNew(self.sum_scaler, self.tres_sel_tr_ind, self.function)
 
                 if self.t_proj_plt is None:
                     self.t_proj_plt = self.t_proj_plt_itm.plot(t_proj_x, t_proj_y, pen='k')
@@ -835,7 +842,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         except Exception as e:
             logging.error('error, while plotting projection, this happened: %s' % e, exc_info=True)
 
-    def update_all_pmts_plot(self, spec_data, autorange_pls=True, due_to_change = False, func = None, vars = None):
+    def update_all_pmts_plot(self, spec_data, autorange_pls=True, due_to_change = True, func = None, vars = None):
         """
         updates the all pmts tab
         :param spec_data: SpecData, used spectrum
@@ -936,14 +943,18 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     raise Exception("Invalid Syntax: only %s are allowed variable names" % vars)
             for var in input_vars:  # create index list
                 indList.append(int(var[1]))
-            self.update_sum_plot_arith(self.spec_data, text, input_vars)
-            self.update_projections_arith(self.spec_data, text, input_vars)
-            if self.all_pmts_widg_plt_item_list is not None:
-                self.all_pmts_widg_plt_item_list[-1]['indList'] = indList
-                self.update_all_pmts_plot(self.spec_data, due_to_change=True, func=text, vars=vars)
-            self.lineEdit_sum_all_pmts.setText(text)
-            self.lineEdit_arith_scaler_input.setText(text)
 
+            isinteger = len(indList) > 0
+            if isinteger:
+                self.sum_scaler = indList
+                self.function = text
+                self.update_sum_plot_arith(self.spec_data, text, input_vars)
+                self.update_projections_arith(self.spec_data, text, input_vars)
+                if self.all_pmts_widg_plt_item_list is not None:
+                    self.all_pmts_widg_plt_item_list[-1]['indList'] = indList
+                    self.update_all_pmts_plot(self.spec_data, due_to_change=True, func=text, vars=vars)
+                self.lineEdit_sum_all_pmts.setText(text)
+                self.lineEdit_arith_scaler_input.setText(text)
         except Exception as e:
             logging.info('using list version to calculate the sum-Plot')
             self.sum_scaler_lineedit_changed(text)
