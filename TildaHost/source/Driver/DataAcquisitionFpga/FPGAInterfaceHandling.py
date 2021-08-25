@@ -39,7 +39,7 @@ class FPGAInterfaceHandling():
             self.dmaReadTimeout = 1  # timeout to read from Dma Queue in ms
             self.NiFpgaUniversalInterfaceDll = ctypes.CDLL(
                 path.join(path.dirname(__file__), pardir, pardir, pardir,
-                          'binary\\NiFpgaUniversalInterfaceDll.dll'))
+                          'binary\\NiFpgaUniversalInterfaceDll_x64.dll'))
             self.NiFpgaUniversalInterfaceDll.NiFpga_ReadFifoU32.argtypes = [
                 ctypes.c_ulong, ctypes.c_ulong, np.ctypeslib.ndpointer(np.uint32, flags="C_CONTIGUOUS"),
                 ctypes.c_ulong, ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong)
