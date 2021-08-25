@@ -1,0 +1,4 @@
+FREQUENCY:
+  arithmetic: 4 * freq1
+  freq_dict:
+    freq1: 100000
