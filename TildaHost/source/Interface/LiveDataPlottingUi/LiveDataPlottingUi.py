@@ -737,7 +737,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             logging.error('error in LiveDataPlotting, while setting the gates this happened: %s ' % e, exc_info=True)
         pass
 
-    def update_projections_arith(self, spec_data, func, vars):
+    def update_projections_arith(self, spec_data, func):
         """
         update the projections, if no plot has been done yet, create plotdata items for every plot
         :param spec_data: spec_data:SpecData, data of spectrum for all scaler, tracks
@@ -842,7 +842,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         except Exception as e:
             logging.error('error, while plotting projection, this happened: %s' % e, exc_info=True)
 
-    def update_all_pmts_plot(self, spec_data, autorange_pls=True, due_to_change = True, func = None, vars = None):
+    def update_all_pmts_plot(self, spec_data, autorange_pls=True, due_to_change = False, func = None, vars = None):
         """
         updates the all pmts tab
         :param spec_data: SpecData, used spectrum
@@ -914,50 +914,61 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         curs_pos_sum = self.lineEdit_arith_scaler_input.cursorPosition()
         curs_pos_all_pmts = self.lineEdit_sum_all_pmts.cursorPosition()
-        input_list = text.split()   # separate numbers, variables and operators
-        operators = ['+', '-', '*', '/', '(', ')', '**']    # allowed operators
-        input_operators = []
-        input_numbers = []
-        input_vars = []
+
         indList = []
 
-        '''sort by number, variable, operator'''
-        for each in input_list:
-            if each in operators:
-                input_operators.append(each)
-            else:
-                try:
-                    float(each)
-                    input_numbers.append(each)
-                except ValueError:
-                    input_vars.append(each)
-        ''' check if variables are ok '''
-        vars = []   # allowed variables
-        i = 0
-        while i < self.spec_data.nrScalers[0]:
-            vars.append('s'+ str(i))
-            i += 1
-        try:
-            for each in input_vars: # check if input vars ok
-                if each not in vars:
-                    raise Exception("Invalid Syntax: only %s are allowed variable names" % vars)
-            for var in input_vars:  # create index list
-                indList.append(int(var[1]))
+        if text[0] != '[':
+            input_list = text.split()   # separate numbers, variables and operators
+            operators = ['+', '-', '*', '/', '(', ')', '**']    # allowed operators
+            input_operators = []
+            input_numbers = []
+            input_vars = []
 
+            '''sort by number, variable, operator'''
+            for each in input_list:
+                if each in operators:
+                    input_operators.append(each)
+                else:
+                    try:
+                        float(each)
+                        input_numbers.append(each)
+                    except ValueError:
+                        input_vars.append(each)
+                    ''' check if variables are ok '''
+                    vars = []   # allowed variables
+                    i = 0
+                    while i < self.spec_data.nrScalers[0]:
+                        vars.append('s'+ str(i))
+                        i += 1
+                    try:
+                        for each in input_vars: # check if input vars ok
+                            if each not in vars:
+                                raise Exception("Invalid Syntax: only %s are allowed variable names" % vars)
+                        for var in input_vars:  # create index list
+                            indList.append(int(var[1]))
+                    except Exception as e:
+                        logging.info('Error %s' % e)
+        else:
+            try:
+                indList = ast.literal_eval(text)
+            except Exception as e:
+                logging.error('error on changing line edit of summed scalers in liveplotterui: %s' % e, exc_info=True)
+        try:
             isinteger = len(indList) > 0
             if isinteger:
                 self.sum_scaler = indList
                 self.function = text
-                self.update_sum_plot_arith(self.spec_data, text, input_vars)
-                self.update_projections_arith(self.spec_data, text, input_vars)
+                #self.update_sum_plot_arith(self.spec_data, text, input_vars)
+                self.update_sum_plot(self.spec_data)
+                self.update_projections_arith(self.spec_data, text)
                 if self.all_pmts_widg_plt_item_list is not None:
                     self.all_pmts_widg_plt_item_list[-1]['indList'] = indList
-                    self.update_all_pmts_plot(self.spec_data, due_to_change=True, func=text, vars=vars)
+                    self.update_all_pmts_plot(self.spec_data, due_to_change=True, func=text)
                 self.lineEdit_sum_all_pmts.setText(text)
                 self.lineEdit_arith_scaler_input.setText(text)
         except Exception as e:
-            logging.info('using list version to calculate the sum-Plot')
-            self.sum_scaler_lineedit_changed(text)
+            logging.info('incorrect arithmetic function')
+            #self.sum_scaler_lineedit_changed(text)
 
     def sum_scaler_lineedit_changed(self, text):
         """
