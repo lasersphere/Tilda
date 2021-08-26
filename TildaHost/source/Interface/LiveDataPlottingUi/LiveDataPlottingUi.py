@@ -146,7 +146,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.sum_x, self.sum_y, self.sum_err = None, None, None  # storage of the sum plotting values
 
         self.sum_scaler = [0]  # list of scalers to evaluate with each other
-        self.function = str(self.sum_scaler)   # function to calculate the sum plot from
+        self.function = None
+        #self.function = str(self.sum_scaler)   # function to calculate the sum plot from
         self.sum_track = -1  # int, for selecting the track which will be added. -1 for all
         self.sum_sc_tr_external = sum_sc_tr
         if self.sum_sc_tr_external is not None:
@@ -551,6 +552,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 if valid_data and self.new_track_no_data_yet:  # this means it is first call
                     # refresh the line edit by calling this here:
                     self.sum_scaler_changed(self.comboBox_sum_all_pmts.currentIndex())
+                    if self.function == None:
+                        self.function = str(self.sum_scaler)
 
                     self.new_track_no_data_yet = False
 
@@ -737,6 +740,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             logging.error('error in LiveDataPlotting, while setting the gates this happened: %s ' % e, exc_info=True)
         pass
 
+    # This function can probably be removed
     def update_projections_arith(self, spec_data, func):
         """
         update the projections, if no plot has been done yet, create plotdata items for every plot
@@ -960,7 +964,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.function = text
                 #self.update_sum_plot_arith(self.spec_data, text, input_vars)
                 self.update_sum_plot(self.spec_data)
-                self.update_projections_arith(self.spec_data, text)
+                self.update_projections(self.spec_data)
                 if self.all_pmts_widg_plt_item_list is not None:
                     self.all_pmts_widg_plt_item_list[-1]['indList'] = indList
                     self.update_all_pmts_plot(self.spec_data, due_to_change=True, func=text)
@@ -970,6 +974,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             logging.info('incorrect arithmetic function')
             #self.sum_scaler_lineedit_changed(text)
 
+    # This function can probably be removed
     def sum_scaler_lineedit_changed(self, text):
         """
         this will check if the input text in the line edit will result is a list
