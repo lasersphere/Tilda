@@ -86,7 +86,7 @@ class SpecData(object):
         flatc = np.zeros((l,))  # counts
         flate = np.zeros((l,))  # uncertainties
 
-        if function[0] == '[' or not eval_on:  # check if list or function mode
+        if function[0] == '[' or not eval_on or function == None:  # check if list or function mode and if first time
 
             ''' list mode'''
 

@@ -145,7 +145,7 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
     return return_list
 
 
-def plot_all_sc_new(list_of_widgets_etc, spec_data, tr, func, vars, stepMode=False):
+def plot_all_sc_new(list_of_widgets_etc, spec_data, tr, func, stepMode=False):
     """
     create plots in the all pmts tab
     :param list_of_widgets_etc: list of widgest, containig widgets to be plotted

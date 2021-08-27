@@ -870,11 +870,13 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.add_all_pmt_plot()
         if not self.plots_not_updated_since_window_created: # if update neede, due to incoming data or
                                                             # parameter changes
-            Pg.plot_all_sc_new(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr, self.function,
-                               vars, stepMode=True)
+            Pg.plot_all_sc_new(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr,
+                               self.function, stepMode=True)
         else:   # if window ist opened for the first time
-            Pg.plot_all_sc(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr,
-                           stepMode=True)
+            Pg.plot_all_sc_new(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr,
+                               self.function, stepMode=True)
+            #Pg.plot_all_sc(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr,
+                           #stepMode=True)
         if autorange_pls:
             [each['pltItem'].autoRange() for each in self.all_pmts_widg_plt_item_list]
             self.all_pmts_widg_plt_item_list[-1]['pltItem'].setLabel('bottom', spec_data.x_units.value)
