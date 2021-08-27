@@ -73,12 +73,12 @@ class SpecData(object):
 
     def getArithSpecNew(self, scaler, track_index, function, eval_on=True):
         """
-                calculates the arithmetic spectrum from the users function
-                :param scaler: list of scalers used for the arithmetic
-                :param track_index: list of int, defining used tracks, -1 for all
-                :param function: str, users function
-                :param eval_on: boolean, defines if evaluation is needed
-                :return: 3 ndarrays, dac-voltage, evaluated counts, evaluated errors(only for simple sum or div functions)
+        calculates the arithmetic spectrum from the users function
+        :param scaler: list of scalers used for the arithmetic
+        :param track_index: list of int, defining used tracks, -1 for all
+        :param function: str, users function
+        :param eval_on: boolean, defines if evaluation is needed
+        :return: 3 ndarrays, dac-voltage, evaluated counts, evaluated errors(only for simple sum or div functions)
         """
         ''' storage for (volt, err) '''
         l = self.getNrSteps(track_index)
@@ -86,7 +86,7 @@ class SpecData(object):
         flatc = np.zeros((l,))  # counts
         flate = np.zeros((l,))  # uncertainties
 
-        if function[0] == '[' or not eval_on or function == None:  # check if list or function mode and if first time
+        if function[0] == '[' or not eval_on or function == None:  # check if list mode and if first time
 
             ''' list mode'''
 
@@ -99,7 +99,7 @@ class SpecData(object):
             else:
                 nrScalers = self.nrScalers
 
-            ''' go throug all scalers used for sum '''
+            ''' go throug all scalers used for sum and add counts up'''
             for s in scaler:
                 s = int(s)
                 if nrScalers >= np.abs(s):  # check if scaler exists
@@ -113,68 +113,19 @@ class SpecData(object):
 
             ''' function mode '''
 
-            #var_mapping = {}
-            var_map_cts = {}    # dict mapping variables to array with counts
+            var_map_cts = {}    # dict, mapping variables to related array with counts
             if len(scaler) == 0:
                 raise  Exception('No scaler used')
-        #elif eval_on:   # check if evaluation needed
             for v in scaler:    # go through used variables
-                pmt = 's' + str(v) # create PMT - name (e. g. s1, s3, ...)
-                #var_mapping[pmt] = v
+                pmt = 's' + str(v)  # create PMT - name (e. g. s1, s3, ...)
                 flatx, var_map_cts[pmt], e = self.getSingleSpec(abs(v), track_index)    # get voltage, counts and err
                 flate = flate + np.square(e)  # sum squared errors of each scaler used
-            flatc = eval(function, var_map_cts) # evaluation
+            flatc = eval(function, var_map_cts) # evaluation of counts
             flate = np.sqrt(flate)
-        #else:   #no evaluation needed, just take single spectrum
-            #pmt = vars[0]
-            #v = int(vars[0])
-            #var_mapping[pmt] = v
-            #flatx, var_map_cts[pmt], e = self.getSingleSpec(abs(v), track_index)
-            #flate = flate + np.sqrt(e)
-            #flatc = var_map_cts[pmt]
 
         return flatx, flatc, flate
 
-    def calcSpec(self, function, track_index, vars, eval_on=True):
-        """
-        calculates the arithmetic spectrum from the users function
-        :param function: str, users function
-        :param track_index: list of int, defining used tracks, -1 for all
-        :param vars: list of str, users variables
-        :param eval_on: boolean, defines if evaluation is needed
-        :return: 3 ndarrays, dac-voltage, evaluated counts, evaluated errors(only for simple sum or div functions)
-        """
-
-        ''' storage for (volt, err) '''
-        l = self.getNrSteps(track_index)
-        flatx = np.zeros((l,))
-        flate = np.zeros((l,))
-
-        var_mapping = {}
-        var_map_cts = {}    # dict mapping variables to array with counts
-        if len(vars) == 0:
-            raise  Exception('No scaler used')
-        elif eval_on:   # check if evaluation needed
-            for v in vars:    # go through used variables
-                if isinstance(v, str):  # create PMT - name (e. g. s1, s3, ...)
-                    pmt = v
-                else:
-                    pmt = 's' + str(v) # create PMT - name (e. g. s1, s3, ...)
-                v = int(pmt[1])
-                var_mapping[pmt] = v
-                flatx, var_map_cts[pmt], e = self.getSingleSpec(abs(v), track_index)    # get voltage, counts and err
-                flate = flate + np.square(e)  # sum squared errors of each scaler used
-            flatc = eval(function, var_map_cts) # evaluation
-            flate = np.sqrt(flate)
-        else:   #no evaluation needed, just take single spectrum
-            pmt = vars[0]
-            v = int(vars[0])
-            var_mapping[pmt] = v
-            flatx, var_map_cts[pmt], e = self.getSingleSpec(abs(v), track_index)    # TODO geht besser
-            flate = flate + np.sqrt(e)
-            flatc = var_map_cts[pmt]
-        return flatx, flatc, flate
-
+    # TODO: check (22) cases, where this old version is used, if it also works with the new version.
     def getArithSpec(self, scaler, track_index):    #TODO new arith
         '''Same as getSingleSpec, but scaler is of type [+i, -j, +k], resulting in s[i]-s[j]+s[k]'''
         l = self.getNrSteps(track_index)
