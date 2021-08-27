@@ -145,15 +145,19 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.add_sum_plot()
         self.sum_x, self.sum_y, self.sum_err = None, None, None  # storage of the sum plotting values
 
-        self.sum_scaler = [0]  # list of scalers to add
+        self.sum_scaler = [0]  # list of scalers to evaluate with each other
+        self.function = None    # str: function defined by the user to calculate the sum plot from. either list of int
+                                # e. g. '[0, 1]' or sth like '5 * s1 - ( s0 + s1 )'
         self.sum_track = -1  # int, for selecting the track which will be added. -1 for all
         self.sum_sc_tr_external = sum_sc_tr
         if self.sum_sc_tr_external is not None:
             # overwrite with external
             self.sum_scaler = self.sum_sc_tr_external[0]
+            self.function = str(self.sum_scaler)
             self.sum_track = self.sum_sc_tr_external[1]
             self.lineEdit_arith_scaler_input.setText(str(self.sum_scaler))
             self.lineEdit_sum_all_pmts.setText(str(self.sum_scaler))
+
 
         self.current_step_line = None  # line to display which step is active.(used in projection)
         self.sum_current_step_line = None  # same for sum
@@ -164,8 +168,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.comboBox_select_sum_for_pmts.currentIndexChanged.emit(0)
 
         self.lineEdit_arith_scaler_input.textEdited.connect(self.sum_scaler_lineedit_changed)
+        self.lineEdit_arith_scaler_input.setToolTip(self.sum_scaler_lineedit_changed.__doc__)
 
-        ''' time resolved related: '''
+        ''' time resolved related: '''  # TODO if timegate change, sum not correct anymore
         self.add_time_resolved_plot()
         self.tres_sel_tr_ind = 0  # int, index of currently observed track in time resolved spectra
         self.tres_sel_tr_name = 'track0'  # str, name of track
@@ -198,6 +203,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.comboBox_sum_all_pmts.currentIndexChanged.emit(0)
 
         self.lineEdit_sum_all_pmts.textEdited.connect(self.sum_scaler_lineedit_changed)
+        self.lineEdit_sum_all_pmts.setToolTip(self.sum_scaler_lineedit_changed.__doc__)
 
         ''' setup window size: '''
         w = 1024
@@ -548,6 +554,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 if valid_data and self.new_track_no_data_yet:  # this means it is first call
                     # refresh the line edit by calling this here:
                     self.sum_scaler_changed(self.comboBox_sum_all_pmts.currentIndex())
+                    if self.function == None:
+                        self.function = str(self.sum_scaler)    # update to default function (list of all scalers)
 
                     self.new_track_no_data_yet = False
 
@@ -631,9 +639,14 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.updating_plot = False
 
     def update_sum_plot(self, spec_data):
-        """ update the sum plot and store the values in self.sum_x, self.sum_y, self.sum_err"""
+        """
+        update the sum plot and store the values in self.sum_x, self.sum_y, self.sum_err
+        :param spec_data: SpecData, spectrum to plot
+        :return:
+        """
         if self.sum_scaler is not None:
-            self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpec(self.sum_scaler, self.sum_track)
+            self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpecNew(self.sum_scaler,
+                                                                             self.sum_track, self.function)
             if self.sum_plt_data is None:
                 self.sum_plt_data = self.sum_plt_itm.plot(
                     self.convert_xaxis_for_step_mode(self.sum_x), self.sum_y, stepMode=True, pen='k')
@@ -711,6 +724,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def update_projections(self, spec_data):
         """
         update the projections, if no plot has been done yet, create plotdata items for every plot
+        :param spec_data: SpecData, spectrum to plot
         """
         try:
             if self.sum_scaler is not None:
@@ -719,7 +733,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 v_proj_x = spec_data.x[self.tres_sel_tr_ind]
                 v_proj_y = spec_data.cts[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
                 gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
-                sum_x, sum_y, sum_err = spec_data.getArithSpec(self.sum_scaler, self.tres_sel_tr_ind)
+                sum_x, sum_y, sum_err = spec_data.getArithSpecNew(self.sum_scaler, self.tres_sel_tr_ind, self.function)
 
                 if self.t_proj_plt is None:
                     self.t_proj_plt = self.t_proj_plt_itm.plot(t_proj_x, t_proj_y, pen='k')
@@ -759,6 +773,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             logging.error('error, while plotting projection, this happened: %s' % e, exc_info=True)
 
     def update_all_pmts_plot(self, spec_data, autorange_pls=True):
+        """
+        updates the all pmts tab
+        :param spec_data: SpecData, used spectrum
+        :param autorange_pls:
+        """
         if self.all_pmts_widg_plt_item_list is None:
             if spec_data.seq_type not in self.trs_names_list:
                 self.tabWidget.setCurrentIndex(2)
@@ -770,9 +789,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             if self.sum_sc_tr_external is not None:
                 self.set_tr_sel_by_index(self.sum_track)
             self.comboBox_all_pmts_sel_tr.blockSignals(False)
-
             self.add_all_pmt_plot()
-        Pg.plot_all_sc(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr, stepMode=True)
+
+        Pg.plot_all_sc_new(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr,
+                           self.function, stepMode=True)
+
         if autorange_pls:
             [each['pltItem'].autoRange() for each in self.all_pmts_widg_plt_item_list]
             self.all_pmts_widg_plt_item_list[-1]['pltItem'].setLabel('bottom', spec_data.x_units.value)
@@ -795,8 +816,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 else:
                     self.sum_scaler = [0]
                 self.sum_track = -1
-                self.lineEdit_arith_scaler_input.setText(str(self.sum_scaler))
-                self.lineEdit_sum_all_pmts.setText(str(self.sum_scaler))
+                self.lineEdit_arith_scaler_input.setText(str(self.sum_scaler))  # TODO change
+                self.lineEdit_sum_all_pmts.setText(str(self.sum_scaler))    # TODO change
             else:
                 logging.info('liveplotterui: but specdata is None, so line edit is not set.')
             self.lineEdit_arith_scaler_input.setDisabled(True)
@@ -812,36 +833,67 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def sum_scaler_lineedit_changed(self, text):
         """
-        this will check if the input text in the line edit will result is a list
-         and only contain valid scaler entries.
-        :param text:str, in the form of type [+i, -j, +k], resulting in s[i]-s[j]+s[k]
-        :return:
+        define your own function in the form of "s0 + s1" or "s3 / ( s2 + s1 )"
+        (need blanks inbetween!)
+        +, -, *, /, ** are allowed operators
+        "[0, 1, 2]" gives sum of scaler 0, 1 and 2
         """
+
+        ''' process user input '''
+        indList = []    # indList for list_of_widgest sum-widget and self.sum_scaler
+
+        if text[0] != '[':  # if user input is not a list of scalers
+            input_list = text.split()   # separate numbers, variables and operators
+            operators = ['+', '-', '*', '/', '(', ')', '**']    # allowed operators
+            input_numbers = []
+            input_vars = []
+
+            '''sort by number, variable, operator'''
+            for each in input_list:
+                if each in operators:   # check if operator
+                    pass
+                else:
+                    try:
+                        float(each) # check if number
+                        input_numbers.append(each)
+                    except ValueError:
+                        input_vars.append(each) # declare as variable
+
+                    ''' check if variables are ok '''
+                    vars = []   # allowed variables
+                    i = 0
+                    while i < self.spec_data.nrScalers[0]:
+                        vars.append('s'+ str(i))
+                        i += 1
+                    try:
+                        for each in input_vars: # check if input vars ok
+                            if each not in vars:
+                                raise Exception("Invalid Syntax: only %s are allowed variable names" % vars)
+                        for var in input_vars:  # create index list
+                            indList.append(int(var[1]))
+                    except Exception as e:
+                        logging.info('Error %s' % e)
+        else:   # if user input is a list of scalers
+            try:
+                indList = ast.literal_eval(text)
+            except Exception as e:
+                logging.error('error on changing line edit of summed scalers in liveplotterui: %s' % e, exc_info=True)
+
+        ''' update plots '''
         try:
-            curs_pos_sum = self.lineEdit_arith_scaler_input.cursorPosition()
-            curs_pos_all_pmts = self.lineEdit_sum_all_pmts.cursorPosition()
-            hopefully_list = ast.literal_eval(text)
-            if isinstance(hopefully_list, list):
-                isinteger = len(hopefully_list) > 0
-                for scaler in hopefully_list:
-                    isinteger = isinteger and isinstance(scaler, int) and abs(scaler) < self.spec_data.nrScalers[0]
-                if isinteger:
-                    self.sum_scaler = hopefully_list
-                    self.label_arith_scaler_set.setText(str(hopefully_list))
-                    self.update_sum_plot(self.spec_data)
-                    if self.spec_data.seq_type in self.trs_names_list:
-                        self.update_projections(self.spec_data)
-                    if self.all_pmts_widg_plt_item_list is not None:
-                        self.all_pmts_widg_plt_item_list[-1]['indList'] = hopefully_list
-                        self.update_all_pmts_plot(self.spec_data)
-                    self.lineEdit_sum_all_pmts.setText(text)
-                    self.lineEdit_arith_scaler_input.setText(text)
-                    if curs_pos_sum:
-                        self.lineEdit_arith_scaler_input.setCursorPosition(curs_pos_sum)
-                    if curs_pos_all_pmts:
-                        self.lineEdit_sum_all_pmts.setCursorPosition(curs_pos_all_pmts)
+            isinteger = len(indList) > 0
+            if isinteger:
+                self.sum_scaler = indList
+                self.function = text
+                self.update_sum_plot(self.spec_data)
+                self.update_projections(self.spec_data)
+                if self.all_pmts_widg_plt_item_list is not None:
+                    self.all_pmts_widg_plt_item_list[-1]['indList'] = indList
+                    self.update_all_pmts_plot(self.spec_data)
+                self.lineEdit_sum_all_pmts.setText(text)
+                self.lineEdit_arith_scaler_input.setText(text)
         except Exception as e:
-            logging.error('error on changing line edit of summed scalers in liveplotterui: %s' % e, exc_info=True)
+            logging.info('incorrect user input for function')
 
     def cb_all_pmts_sel_tr_changed(self, text):
         """ handle changes in the combobox in the all pmts tab """
@@ -1413,7 +1465,7 @@ if __name__ == "__main__":
     app_log.info('****************************** starting ******************************')
     app_log.info('Log level set to DEBUG')
 
-    test_file = 'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\' \
+    test_file = 'C:\\Users\\Laura Renth\\OwnCloud\\Projekte\\COLLAPS\\Nickel\\' \
                 'Measurement_and_Analysis_Simon\\Ni_workspace2017\\Ni_2017\\sums\\60_Ni_trs_run114.xml'
 
     app = QtWidgets.QApplication(sys.argv)

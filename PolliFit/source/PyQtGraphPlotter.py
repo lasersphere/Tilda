@@ -145,12 +145,38 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
     return return_list
 
 
+def plot_all_sc_new(list_of_widgets_etc, spec_data, tr, func, stepMode=False):
+    """
+    create plots in the all pmts tab
+    :param list_of_widgets_etc: list of widgest, containig widgets to be plotted
+    :param spec_data: SpecDat, used spectrum
+    :param tr: list of int, used tracks, -1 for all
+    :param func: str, users function
+    :param vars: list of str, users variables
+    :param stepMode:
+    """
+    for val in list_of_widgets_etc:
+        sc = val['indList'] # which scalers are needed for this plot?
+        plt_data_itm = val['pltDataItem']   # data needed for this plot
+        eval_on = False
+        if val['name'] == 'sum':
+            eval_on = True  # only for this plot an evaluation is needed
+
+        #x, y, err = spec_data.calcSpec(func, tr, sc, eval_on)   # calc arithmetic plot
+        x, y, err = spec_data.getArithSpecNew(sc, tr, func, eval_on=eval_on)
+
+        if stepMode:
+            x = convert_xaxis_for_step_mode(deepcopy(x))
+
+        plt_data_itm.setData(x, y, stepMode=stepMode)
+
 def plot_all_sc(list_of_widgets_etc, spec_data, tr, stepMode=False):
     # print('plotting all pmts in %s' % list_of_widgets_etc)
     for val in list_of_widgets_etc:
         sc = val['indList']
         plt_data_itm = val['pltDataItem']
         x, y, err = spec_data.getArithSpec(sc, tr)
+        #x, y, err = spec_data.getArithSpec(sc, tr)
         if stepMode:
             x = convert_xaxis_for_step_mode(deepcopy(x))
         plt_data_itm.setData(x, y, stepMode=stepMode)
