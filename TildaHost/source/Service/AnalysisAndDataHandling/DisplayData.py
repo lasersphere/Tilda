@@ -30,6 +30,7 @@ class DisplayData:
         self.select_pipe()
         self.feed_loaded_spec(self.spec)
         self.gui.gate_data(None, True)
+        self.gui.plots_not_updated_since_window_created = False
 
     def load_spectra(self, file, loaded_spec=None):
         self.file = file

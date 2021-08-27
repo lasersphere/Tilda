@@ -80,6 +80,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """
         super(TRSLivePlotWindowUi, self).__init__(parent=parent)
 
+        self.plots_not_updated_since_window_created = True
         self.t_proj_plt = None
         self.last_event = None
         self.pipedata_dict = None  # dict, containing all infos from the pipeline, will be passed
@@ -867,12 +868,13 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.set_tr_sel_by_index(self.sum_track)
             self.comboBox_all_pmts_sel_tr.blockSignals(False)
             self.add_all_pmt_plot()
-        if due_to_change:   # if due to change calculate new arithmetic plot
-            Pg.plot_all_sc_new(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr, func,
-                               vars, stepMode=True) # if line edit changed, calc new plot
-        else:
+        if not self.plots_not_updated_since_window_created: # if update neede, due to incoming data or
+                                                            # parameter changes
+            Pg.plot_all_sc_new(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr, self.function,
+                               vars, stepMode=True)
+        else:   # if window ist opened for the first time
             Pg.plot_all_sc(self.all_pmts_widg_plt_item_list, spec_data, self.all_pmts_sel_tr,
-                           stepMode=True)   # use old version
+                           stepMode=True)
         if autorange_pls:
             [each['pltItem'].autoRange() for each in self.all_pmts_widg_plt_item_list]
             self.all_pmts_widg_plt_item_list[-1]['pltItem'].setLabel('bottom', spec_data.x_units.value)
@@ -1229,6 +1231,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.progress_callback.connect(self.handle_progress_dict)
             # overwrite gui callbacks with callbacks from main
             self.get_existing_callbacks_from_main()
+            self.plots_not_updated_since_window_created = False
         self.save_callback.connect(self.save)
         self.new_track_callback.connect(self.setup_new_track)
         self.new_data_callback.connect(self.new_data)
