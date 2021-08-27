@@ -168,6 +168,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.comboBox_select_sum_for_pmts.currentIndexChanged.emit(0)
 
         self.lineEdit_arith_scaler_input.textEdited.connect(self.sum_scaler_lineedit_changed)
+        self.lineEdit_arith_scaler_input.setToolTip(self.sum_scaler_lineedit_changed.__doc__)
 
         ''' time resolved related: '''  # TODO if timegate change, sum not correct anymore
         self.add_time_resolved_plot()
@@ -202,6 +203,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.comboBox_sum_all_pmts.currentIndexChanged.emit(0)
 
         self.lineEdit_sum_all_pmts.textEdited.connect(self.sum_scaler_lineedit_changed)
+        self.lineEdit_sum_all_pmts.setToolTip(self.sum_scaler_lineedit_changed.__doc__)
 
         ''' setup window size: '''
         w = 1024
@@ -831,9 +833,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
     def sum_scaler_lineedit_changed(self, text):
         """
+        define your own function in the form of "s0 + s1" or "s3 / ( s2 + s1 )"
+        (need blanks inbetween!)
         +, -, *, /, ** are allowed operators
-        :param text:str, in the form of "s0 + s1" or "s3 / ( s2 + s1 )" (need blanks inbetween!)
-        :return:
+        "[0, 1, 2]" gives sum of scaler 0, 1 and 2
         """
 
         ''' process user input '''
