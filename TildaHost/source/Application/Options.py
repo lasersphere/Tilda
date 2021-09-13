@@ -31,7 +31,7 @@ class Options:
         Read option.yaml and save them to the options object.
         If no options.yaml exists create one with the standard values defined in options_default.yaml
         """
-        if default: # read default options
+        if default:  # read default options
             logging.info('loading default TILDA settings from options_default.yaml')
             self.config_dict = yaml.safe_load(open(self.default_file))
         elif os.path.isfile(self.options_file_path):  # check if yaml-file already exists
