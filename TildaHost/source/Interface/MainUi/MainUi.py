@@ -431,6 +431,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def close_job_stacker_win(self):
         self.job_stacker_win = None
 
+    def close_options_win(self):
+        self.options_win = None
+
     def close_post_acc_win(self):
         self.post_acc_win = None
 
