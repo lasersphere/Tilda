@@ -450,6 +450,14 @@ class Main(QtCore.QObject):
         """
         return self.local_options.get_abs_freq()
 
+    def get_option(self, option_to_get):
+        """
+        Return a requested option
+        :param option_to_get: str: Category:Option e.g.: "SOUND:is_on"
+        :return: the stored setting
+        """
+        return self.local_options.get_setting(option_to_get)
+
     """ operations on self.scan_pars dictionary """
 
     def remove_track_from_scan_pars(self, iso, track):

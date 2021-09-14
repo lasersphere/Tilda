@@ -41,7 +41,7 @@ class PlotThesisGraphics:
         user_home_folder = os.path.expanduser("~")  # get user folder to access ownCloud
         owncould_path = 'ownCloud\\User\\Felix\\IKP411_Dokumente\\BeiträgePosterVorträge\\PhDThesis\\Grafiken\\'
         self.fig_dir = os.path.join(user_home_folder, owncould_path)
-        self.ffe = '.pdf'  # file format ending
+        self.ffe = '.png'  # file format ending
 
         """ Colors """
         # Define global color names TODO: Fill and propagate
@@ -1994,7 +1994,7 @@ class PlotThesisGraphics:
 
         fig, ax = plt.subplots(1)
         # define output size of figure
-        width, height = 1, 0.4
+        width, height = 1, 0.3
         # f.set_dpi(300.)
         fig.set_size_inches((self.w_in * width, self.h_in * height))
 
@@ -2172,7 +2172,7 @@ class PlotThesisGraphics:
             col = item['color']
 
             # plot line with errors:
-            plt.plot(x_arr, _kingLine(x_arr - alpha, Kalpha, F, alpha), '--', c=col, lw=2, label='Geradenanpassung')
+            plt.plot(x_arr, _kingLine(x_arr - alpha, Kalpha, F, alpha), '--', c=col, lw=2, label='Linear fit')
             # plot error band for this line
             plt.fill_between(x_arr,
                              _kingLower(x_arr - alpha, Kalpha, Kalpha_d, F, F_d, alpha),
@@ -2212,7 +2212,7 @@ class PlotThesisGraphics:
                         x_annotate.append(rmu)
                         y_annotate.append(isomu)
 
-            plt.errorbar(r_lst, s_lst, xerr=r_d_lst, yerr=s_d_lst, fmt='o', c=self.red, elinewidth=1.5, label='Offline Daten')
+            plt.errorbar(r_lst, s_lst, xerr=r_d_lst, yerr=s_d_lst, fmt='o', c=self.red, elinewidth=1.5, label='Offline data')
 
         for i, iso in enumerate(annotate_iso):
             ax.annotate(r'$^\mathregular{{{:.0f}}}$Ni'.format(int(iso[:2])), (x_annotate[i] + 5, y_annotate[i] + 5),
@@ -2457,11 +2457,12 @@ class PlotThesisGraphics:
         plt.fill_between(x,
                          np.array(y) - np.array(ytiltshift),
                          np.array(y) + np.array(ytiltshift),
-                         alpha=0.5, edgecolor=col, facecolor=col, label=src)
+                         alpha=0.5, edgecolor=None, facecolor=col, label=src)
 
         # plot theory values
         theory_sets = glob(os.path.join(folder, 'data_*'))
         offsets = [0.02, -0.02, 0.04, -0.04, 0.05, 0.1, -0.05, -0.1, 0.06, -0.06 ,0.06, -0.06, 0.1, -0.1, 0.15, -0.15, 0.2, -0.2]
+        offsets = [0.04, -0.04, 0.08, -0.08, 0.12, -0.12, 0.16, -0.16]
         colornum = 1
         markernum = 0
         for num, th in enumerate(theory_sets):
@@ -2544,7 +2545,7 @@ class PlotThesisGraphics:
         # plt.savefig(folder + 'abs_radii_all' + self.ffe, dpi=self.dpi, bbox_inches='tight')
 
         ax.set_xlim((53.5, 60.5))
-        ax.set_ylim((3.65, 3.85))
+        ax.set_ylim((3.605, 3.88))
         plt.savefig(folder + 'abs_radii' + self.ffe, dpi=self.dpi, bbox_inches='tight')
         plt.close()
         plt.clf()
@@ -3082,14 +3083,17 @@ class PlotThesisGraphics:
         data_dict = {'BECOLA (Exp)': {'data': thisVals, 'color': self.black}}
 
         # collect three point indicators
-        source = []  # lists to gather the results
+        source = []  # lists to gather the result names
+        x_pos_list = []
         three_p_i = []  # lists to gather the results
+        three_p_i_dup = []  # lists to gather the upper uncertainties
+        three_p_i_dlo = []  # lists to gather the lower uncertainties
 
         def calc_tpi(rplu2, r, rmin2):
             return 0.5*(rplu2 - 2*r + rmin2)
 
         def calc_tpi_d(rplu2_d, r_d, rmin2_d):
-            return np.sqrt(rplu2_d**2 + (2*r_d)**2 + rmin2_d**2)
+            return np.sqrt((0.5*rplu2_d)**2 + r_d**2 + (0.5*rmin2_d)**2)
 
         # plot theory values
         theory_sets = glob(os.path.join(folder, 'data_*'))
@@ -3105,7 +3109,17 @@ class PlotThesisGraphics:
             try:  # will fail if one of the values is missing
                 tpi = calc_tpi(data.loc[58, 'val'], data.loc[56, 'val'], data.loc[54, 'val'])
                 three_p_i += [tpi]
+                try:
+                    tpi_d_up = calc_tpi_d(data.loc[58, 'unc_up'], data.loc[56, 'unc_up'], data.loc[54, 'unc_up'])
+                    tpi_d_down = calc_tpi_d(data.loc[58, 'unc_down'], data.loc[56, 'unc_down'], data.loc[54, 'unc_down'])
+                    three_p_i_dup += [tpi_d_up]
+                    three_p_i_dlo += [tpi_d_down]
+                except:
+                    tpi_d = calc_tpi_d(data.loc[58, 'unc'], data.loc[56, 'unc'], data.loc[54, 'unc'])
+                    three_p_i_dup += [tpi_d]
+                    three_p_i_dlo += [tpi_d]
                 source += [name]
+                x_pos_list += [x_pos]
                 ax.bar(x_pos, tpi, align='center', color=self.colorlist[colornum])
                 textpos = tpi/2
                 textcol = 'w'
@@ -3130,7 +3144,23 @@ class PlotThesisGraphics:
                                        0.5*(data.loc[56, 'val']+data_pf5g9.loc[56, 'val']),
                                        data.loc[54, 'val'])
                         three_p_i += [tpi]
+                        try:
+                            tpi_d_up = calc_tpi_d(data_pf5g9.loc[58, 'unc_up'],
+                                                  0.5*(data.loc[56, 'unc_up']+data_pf5g9.loc[56, 'unc_up']),
+                                                  data.loc[54, 'unc_up'])
+                            tpi_d_down = calc_tpi_d(data_pf5g9.loc[58, 'unc_down'],
+                                                    0.5*(data.loc[56, 'unc_down']+data_pf5g9.loc[56, 'unc_down']),
+                                                    data.loc[54, 'unc_down'])
+                            three_p_i_dup += [tpi_d_up]
+                            three_p_i_dlo += [tpi_d_down]
+                        except:
+                            tpi_d = calc_tpi_d(data_pf5g9.loc[58, 'unc'],
+                                               0.5*(data.loc[56, 'unc']+data_pf5g9.loc[56, 'unc']),
+                                               data.loc[54, 'unc'])
+                            three_p_i_dup += [tpi_d]
+                            three_p_i_dlo += [tpi_d]
                         source += [name+'(cross)']  # denote that this was done across valence spaces
+                        x_pos_list += [x_pos]
                         ax.bar(x_pos, tpi, align='center', color=self.colorlist[colornum])
                         textpos = tpi / 2
                         textcol = 'w'
@@ -3175,8 +3205,8 @@ class PlotThesisGraphics:
 
         # add for experiment
         tpi_exp = calc_tpi(thisVals['58Ni'][0], thisVals['56Ni'][0], thisVals['54NiBec'][0])
-        tpi_exp_d = calc_tpi(thisVals['58Ni'][1], thisVals['56Ni'][1], thisVals['54NiBec'][1])
-        tpi_exp_d_syst = calc_tpi(thisVals['58Ni'][1], thisVals['56Ni'][1], thisVals['54NiBec'][1])
+        tpi_exp_d = calc_tpi_d(thisVals['58Ni'][1], thisVals['56Ni'][1], thisVals['54NiBec'][1])
+        tpi_exp_d_syst = calc_tpi_d(thisVals['58Ni'][1], thisVals['56Ni'][1], thisVals['54NiBec'][1])
         tpi_exp_dtot = np.sqrt(tpi_exp_d**2+tpi_exp_d_syst**2)
 
         # ax.axhline(tpi_exp, color=self.black)
@@ -3186,6 +3216,7 @@ class PlotThesisGraphics:
                 color=self.grey, fontweight='bold',
                 **self.ch_dict(self.text_style, {'size': 13})
                 )
+        ax.errorbar(x_pos_list, three_p_i, [three_p_i_dlo, three_p_i_dup])
 
         ax.set_xticks([])
         ax.axes.tick_params(axis='y', direction='out', right=False)
@@ -3194,6 +3225,10 @@ class PlotThesisGraphics:
         plt.savefig(folder + 'three_point_ind' + self.ffe, dpi=self.dpi, bbox_inches='tight')
         plt.close()
         plt.clf()
+
+        plt.axhspan(tpi_exp-tpi_exp_dtot, tpi_exp+tpi_exp_dtot, color=self.grey)
+        plt.errorbar(x_pos_list, three_p_i, [three_p_i_dlo, three_p_i_dup])
+        plt.show()
 
     def mu_nickel55(self):
         """
@@ -3588,10 +3623,10 @@ if __name__ == '__main__':
     #
     # ''' Discussion '''
     # graphs.Q_nickel55()
-    graphs.absradii_chain_errorband_all()
+    # graphs.absradii_chain_errorband_all()
     # graphs.absradii_neighborhood()
     # graphs.deltarad_chain_errorband()
-    graphs.absradii_chain_errorband()
+    # graphs.absradii_chain_errorband()
     graphs.three_point_indicator()
     # graphs.absrad56()
     # graphs.mu_nickel55()

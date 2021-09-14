@@ -15,7 +15,7 @@ from Interface.DialogsUi.Ui_ScanCompleteDial import Ui_ScanComplete
 
 
 class ScanCompleteDialUi(QtWidgets.QDialog, Ui_ScanComplete):
-    def __init__(self, main_gui):
+    def __init__(self, main_gui, sound_on, path='default'):
         self.main_gui = main_gui
         super(ScanCompleteDialUi, self).__init__(main_gui)
         self.setupUi(self)
@@ -23,6 +23,13 @@ class ScanCompleteDialUi(QtWidgets.QDialog, Ui_ScanComplete):
 
         self.checkBox.stateChanged.connect(self.cb_clicked)
         self.pushButton.clicked.connect(self.close)
+        self.sound_on = sound_on
+        if os.path.isfile(path):
+            self.sound_folder = path
+        else:
+            # use default folder
+            self.sound_folder = os.path.join(os.path.dirname(__file__), os.pardir, 'Sounds')
+
         self.music_is_playing = False
 
         self.play_music()
@@ -34,19 +41,19 @@ class ScanCompleteDialUi(QtWidgets.QDialog, Ui_ScanComplete):
             self.main_gui.show_scan_finished_change(True)
 
     def play_music(self):
-        if 'Win' in platform.system():
+        if self.sound_on and 'Win' in platform.system():
             import winsound
 
             if self.music_is_playing:
                 winsound.PlaySound(None, 0)
             else:
                 winsound.PlaySound(
-                    os.path.join(os.path.dirname(__file__), os.pardir, 'Sounds', self.get_random_sound()),
+                    os.path.join(self.sound_folder, self.get_random_sound()),
                     winsound.SND_ASYNC)
             self.music_is_playing = not self.music_is_playing
 
     def get_random_sound(self):
-        sound_path = os.path.join(os.path.dirname(__file__), os.pardir, 'Sounds')
+        sound_path = self.sound_folder
         sounds = os.listdir(sound_path)
         return random.choice(sounds)
 

@@ -4,6 +4,10 @@ Created on '10.05.2021'
 
 @author:'lrenth'
 
+An instance of the Options class will be stored to Main.py > self.local_options
+So if you want to read or change options access it through Cfg._main_instance.local_options
+Main.py also offers some often used wrapper functions (save, load,...)
+
 """
 
 import os
@@ -21,6 +25,7 @@ class Options:
 
     def __init__(self, file_path):
         #self.format = 'YAML'  # Options 'YAML', 'INI'
+        self.config_dict = {}
         # define path to local options.yaml
         self.options_file_path = file_path
         path, ext = file_path.split('.')
@@ -54,6 +59,19 @@ class Options:
         stream.close()
         logging.info('Updated options.yaml')
 
+    def get_setting(self, option_to_get):
+        """
+        Return a requested option
+        :param option_to_get: str: Category:Option e.g.: "SOUND:is_on"
+        :return: the stored setting
+        """
+        path_to_option = option_to_get.split(':')
+        setting = self.config_dict
+        for step in path_to_option:
+            setting = setting[step]
+        return setting
+
+    ''' FREQUENCY RELATED '''
     def set_freq(self, dic, arith):
         """
         :param dic: dictionary of frequencies
@@ -76,3 +94,9 @@ class Options:
                         {'__builtins__': None},
                         self.config_dict['FREQUENCY']['freq_dict'])
         return Physics.wavenumber(freq_MHz)  # Main takes frequency in cm-1
+
+    def switch_sound_on_off(self, sound_is_on):
+        self.config_dict['SOUND']['on'] = sound_is_on
+
+    def set_sound_folder(self, path):
+        self.config_dict['SOUND']['folder'] = path
