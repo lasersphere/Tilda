@@ -71,6 +71,24 @@ class Options:
             setting = setting[step]
         return setting
 
+    def set_setting(self, option_to_set, value_to_set):
+        """
+
+        :param option_to_set:
+        :param value_to_set:
+        :return:
+        """
+        path_to_option = option_to_set.split(':')
+        setting = self.config_dict
+        for step in path_to_option:
+            if step == path_to_option[-1]:
+                # we're there, set the value
+                setting[step] = value_to_set
+            else:
+                # not there yet, go deeper
+                setting = setting[step]
+
+
     ''' FREQUENCY RELATED '''
     def set_freq(self, dic, arith):
         """

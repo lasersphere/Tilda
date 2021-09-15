@@ -431,11 +431,11 @@ class Main(QtCore.QObject):
 
     """ options related functions """
 
-    def load_options(self):
+    def load_options(self, reset_to_default=False):
         """
         Get local options from .ini file. If none exists yet, a new one will be created.
         """
-        self.local_options.load_from_file()
+        self.local_options.load_from_file(default=reset_to_default)
 
     def save_options(self):
         """
@@ -457,6 +457,15 @@ class Main(QtCore.QObject):
         :return: the stored setting
         """
         return self.local_options.get_setting(option_to_get)
+
+    def set_option(self, option_to_get, value_to_set):
+        """
+        Change the desired option to the given value
+        :param option_to_get:
+        :param value_to_set:
+        :return:
+        """
+        self.local_options.set_setting(option_to_get, value_to_set)
 
     """ operations on self.scan_pars dictionary """
 

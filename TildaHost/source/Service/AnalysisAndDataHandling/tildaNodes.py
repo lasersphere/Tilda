@@ -2017,15 +2017,16 @@ class NTRSSortRawDatatoArrayFast(Node):
             # only completed steps! -> all bunches are included, no need to store which one was last worked on
             new_bunch_ind_list = np.where(self.stored_data[:step_complete_ind_list[-1]] == new_bunch)[0]
             bunch_allowed_ind_flat = np.zeros(0, dtype=np.int32)
+            # Is there any bunch condition limiting the number of scans to include?
             if self.bunch_start_stop_tr_wise is not None:
                 # step is complete, so all bunches must be in.
-                num_of_bunches = np.where(new_bunch_ind_list < step_complete_ind_list[0])[0].size # num bunches / step
+                num_of_bunches = np.where(new_bunch_ind_list < step_complete_ind_list[0])[0].size  # num bunches / step
                 # allowed bunch indices in self.stored data
                 # stopp_ind_... is already not valid data anymore.
                 # [[start_ind_step0, stopp_ind_step0], [start_ind_step1, stopp_ind_step1], ....]
                 start_b = self.bunch_start_stop_cur_tr[0]
                 stop_b = self.bunch_start_stop_cur_tr[1] + 1  # because the following will be exclusive for this bunch
-                # user wants bunches until bunch 8 (start counting from 0) so bunch9 is the first to exclude.
+                # e.g. user wants bunches until bunch 8 (start counting from 0) so bunch9 is the first to exclude.
 
                 # print(start_b, stop_b)
                 sliced_bunch_start_ind_list = new_bunch_ind_list[start_b::num_of_bunches]
@@ -2038,7 +2039,7 @@ class NTRSSortRawDatatoArrayFast(Node):
                 sliced_bunch_ind_list = np.append(sliced_bunch_start_ind_list,
                                                   sliced_bunch_stopp_ind_list).reshape(2, step_complete_ind_list.size).T
                 for start_ind, stopp_ind in sliced_bunch_ind_list:
-                    # create a flat array, that holda all allowed indices in self.stored_data,
+                    # create a flat array, that holds all allowed indices in self.stored_data,
                     # between the allowed bunch numbers
                     # e.g. it was
                     # [[start_ind_step0, stopp_ind_step0], [start_ind_step1, stopp_ind_step1], ....]
