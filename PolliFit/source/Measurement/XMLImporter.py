@@ -694,6 +694,6 @@ class XMLImporter(SpecData):
 if __name__ == '__main__':
     # meas = XMLImporter('E:\\temp2\\data\\137Ba_acol_cs_run511.xml')
     meas = XMLImporter(
-        'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel'
+        'C:\\Users\\Laura Renth\\OwnCloud\\Projekte\\COLLAPS\\Nickel'
         '\\Measurement_and_Analysis_Simon\\Ni_workspace2017\\Ni_2017\\sums\\70_Ni_trs_run268_plus_run312.xml')
     print(meas.date, meas.date_d)

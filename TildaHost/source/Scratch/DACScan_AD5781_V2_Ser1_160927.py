@@ -34,7 +34,7 @@ for i, file_list in enumerate(files):
 
     # plot all residuals:
     for i, fit in enumerate(fits):
-        data = fit.meas.getArithSpec(*fit.st)
+        data = fit.meas.getArithSpec(*fit.st)    # New not tested yet...
         res = fit.calcRes() * 1000  # go to mV
         plt.plot(data[0], res, label=fit.meas.file)
     plt.ylabel('residuum [mV]')

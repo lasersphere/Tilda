@@ -235,7 +235,7 @@ for file in filenames:
                     elapsed_rec = datetime.now() - st_rec
                     elapsed_list_tot_sec[file] += elapsed_rec.total_seconds(),
                     print('reconstruction done after %.3f s' % elapsed_rec.total_seconds())
-                    y_axis = max(XMLImporter(new_file).getArithSpec([0], -1)[1])
+                    y_axis = max(XMLImporter(new_file).getArithSpec([0], -1)[1]) # New not tested yet...
                     y_axis_files[file] += y_axis,
                     reconstructed_files.append(new_file)
                     not_equal_files.append(compare_xml(sums_dir+'\\'+file, [new_file]))

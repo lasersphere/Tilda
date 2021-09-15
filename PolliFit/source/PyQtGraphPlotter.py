@@ -163,7 +163,7 @@ def plot_all_sc_new(list_of_widgets_etc, spec_data, tr, func, stepMode=False):
             eval_on = True  # only for this plot an evaluation is needed
 
         #x, y, err = spec_data.calcSpec(func, tr, sc, eval_on)   # calc arithmetic plot
-        x, y, err = spec_data.getArithSpecNew(sc, tr, func, eval_on=eval_on)
+        x, y, err = spec_data.getArithSpec(sc, tr, func, eval_on=eval_on)
 
         if stepMode:
             x = convert_xaxis_for_step_mode(deepcopy(x))

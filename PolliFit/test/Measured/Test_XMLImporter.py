@@ -41,7 +41,7 @@ class Test_XMLImporter(unittest.TestCase):
                        29498.70905])]
         np.testing.assert_allclose(f.x, x, rtol=1e-9)
         np.testing.assert_allclose(f.getSingleSpec(0, -1)[0], x[0], rtol=1e-9)
-        np.testing.assert_allclose(f.getArithSpec([0], -1)[0], x[0], rtol=1e-9)
+        np.testing.assert_allclose(f.getArithSpec([0], -1)[0], x[0], rtol=1e-9)  # New not tested yet...
 
     def test_x_trs(self):
         f = XMLImporter('../Project/Data/testTildaTrs.xml')
@@ -49,7 +49,7 @@ class Test_XMLImporter(unittest.TestCase):
         x = [[30499.66005, 30374.6782, 30249.69635, 30124.7145, 29999.73265]]
         np.testing.assert_allclose(f.x, x, rtol=1e-9)
         np.testing.assert_allclose(f.getSingleSpec(0, -1)[0], x[0], rtol=1e-9)
-        np.testing.assert_allclose(f.getArithSpec([0], -1)[0], x[0], rtol=1e-9)
+        np.testing.assert_allclose(f.getArithSpec([0], -1)[0], x[0], rtol=1e-9)  # New not tested yet...
 
     def test_y_cs(self):
         f = XMLImporter('../Project/Data/testTildaCs.xml')
@@ -57,7 +57,7 @@ class Test_XMLImporter(unittest.TestCase):
         y = [[np.arange(1, 22, 1), np.arange(2, 23, 1), np.arange(3, 24, 1)]]
         np.testing.assert_array_equal(f.cts, y)
         np.testing.assert_array_equal(f.getSingleSpec(0, 0)[1], y[0][0])
-        np.testing.assert_array_equal(f.getArithSpec([0], 0)[1], y[0][0])
+        np.testing.assert_array_equal(f.getArithSpec([0], 0)[1], y[0][0])    # New not tested yet...
 
     def test_y_trs(self):
         f = XMLImporter('../Project/Data/testTildaTrs.xml')
@@ -65,7 +65,7 @@ class Test_XMLImporter(unittest.TestCase):
         y = [np.full((4, 5), 250)]
         np.testing.assert_array_equal(f.cts, y)
         np.testing.assert_array_equal(f.getSingleSpec(0, 0)[1], y[0][0])
-        np.testing.assert_array_equal(f.getArithSpec([0], 0)[1], y[0][0])
+        np.testing.assert_array_equal(f.getArithSpec([0], 0)[1], y[0][0])    # New not tested yet...
 
     def test_t_trs(self):
         f = XMLImporter('../Project/Data/testTildaTrs.xml')
@@ -103,7 +103,7 @@ class Test_XMLImporter(unittest.TestCase):
         err = np.sqrt([[np.arange(1, 22, 1), np.arange(2, 23, 1), np.arange(3, 24, 1)]])
         np.testing.assert_array_equal(f.err, err)
         np.testing.assert_array_equal(f.getSingleSpec(0, -1)[2], err[0][0])
-        np.testing.assert_array_equal(f.getArithSpec([0], -1)[2], err[0][0])
+        np.testing.assert_array_equal(f.getArithSpec([0], -1)[2], err[0][0]) # New not tested yet...
 
     def test_err_trs(self):
         f = XMLImporter('../Project/Data/testTildaTrs.xml')
@@ -111,7 +111,7 @@ class Test_XMLImporter(unittest.TestCase):
         err = np.sqrt([np.full((4, 5), 250)])
         np.testing.assert_array_equal(f.err, err)
         np.testing.assert_array_equal(f.getSingleSpec(0, -1)[2], err[0][0])
-        np.testing.assert_array_equal(f.getArithSpec([0], -1)[2], err[0][0])
+        np.testing.assert_array_equal(f.getArithSpec([0], -1)[2], err[0][0]) # New not tested yet...
 
     def test_fit_cs(self):
         f = XMLImporter('../Project/Data/testTildaCs.xml')

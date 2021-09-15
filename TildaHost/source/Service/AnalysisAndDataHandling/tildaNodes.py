@@ -1063,7 +1063,7 @@ class NSingleSpecFromSpecData(Node):
 
     def processData(self, spec_data_instance, pipeData):
         ret = []
-        x, y, err = spec_data_instance.getArithSpec(self.scalers, self.track)
+        x, y, err = spec_data_instance.getArithSpec(self.scalers, self.track)    # New not tested yet...
         ret.append((np.array(x), y))
         return ret
 
@@ -1085,7 +1085,7 @@ class NMultiSpecFromSpecData(Node):
     def processData(self, spec_data_instance, pipeData):
         ret = []
         for sc in self.scalers:
-            x, y, err = spec_data_instance.getArithSpec(sc, -1)
+            x, y, err = spec_data_instance.getArithSpec(sc, -1)  # New not tested yet...
             ret.append((np.array(x), y))
         return ret
 

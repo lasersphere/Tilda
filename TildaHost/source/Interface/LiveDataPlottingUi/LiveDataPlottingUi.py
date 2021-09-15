@@ -645,7 +645,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         :return:
         """
         if self.sum_scaler is not None:
-            self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpecNew(self.sum_scaler,
+            self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpec(self.sum_scaler,
                                                                              self.sum_track, self.function)
             if self.sum_plt_data is None:
                 self.sum_plt_data = self.sum_plt_itm.plot(
@@ -733,7 +733,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 v_proj_x = spec_data.x[self.tres_sel_tr_ind]
                 v_proj_y = spec_data.cts[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
                 gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
-                sum_x, sum_y, sum_err = spec_data.getArithSpecNew(self.sum_scaler, self.tres_sel_tr_ind, self.function)
+                sum_x, sum_y, sum_err = spec_data.getArithSpec(self.sum_scaler, self.tres_sel_tr_ind, self.function)
 
                 if self.t_proj_plt is None:
                     self.t_proj_plt = self.t_proj_plt_itm.plot(t_proj_x, t_proj_y, pen='k')
