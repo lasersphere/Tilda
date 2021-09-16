@@ -295,7 +295,7 @@ class Ui_MainWindow_LiveDataPlotting(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow_LiveDataPlotting.setWindowTitle(_translate("MainWindow_LiveDataPlotting", "MainWindow"))
         self.label.setText(_translate("MainWindow_LiveDataPlotting", "sum over:"))
-        self.label_arith_scaler_set.setText(_translate("MainWindow_LiveDataPlotting", "TextLabel"))
+        self.label_arith_scaler_set.setText(_translate("MainWindow_LiveDataPlotting", "functions"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_sum), _translate("MainWindow_LiveDataPlotting", "sum"))
         self.pushButton_save_after_scan.setText(_translate("MainWindow_LiveDataPlotting", "Save again after scan"))
         self.label_4.setText(_translate("MainWindow_LiveDataPlotting", "rebinning [ns]"))

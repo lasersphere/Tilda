@@ -6,3 +6,6 @@ FREQUENCY:
 SOUND:
   is_on: True
   folder: default
+
+FUNCTIONS:
+  0: [0]

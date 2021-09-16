@@ -88,6 +88,15 @@ class Options:
                 # not there yet, go deeper
                 setting = setting[step]
 
+    '''PRESETS RELATED'''
+    def get_functions(self):
+        dict_of_func = self.config_dict['FUNCTIONS']
+        return dict_of_func
+
+    def add_function(self, function):
+        dict_of_func = self.config_dict['FUNCTIONS']
+        dict_of_func[len(dict_of_func)] = function
+        self.set_setting('FUNCTIONS', dict_of_func)
 
     ''' FREQUENCY RELATED '''
     def set_freq(self, dic, arith):
