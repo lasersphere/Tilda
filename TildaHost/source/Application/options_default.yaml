@@ -23,3 +23,6 @@ POLLIFIT:
 
 FUNCTIONS:
   0: '[0]'
+
+SPECIAL:
+  roc_mode: False

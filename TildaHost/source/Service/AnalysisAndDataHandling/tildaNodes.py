@@ -18,6 +18,8 @@ from PyQt5 import QtCore
 import MPLPlotter
 import Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
 import Service.FileOperations.FolderAndFileHandling as Filehandle
+import Service.VoltageConversions.DAC_Calibration as DACCalib
+
 import Service.Formating as Form
 import TildaTools
 from Measurement.SpecData import SpecData
@@ -29,7 +31,72 @@ from Spectra.Straight import Straight
 from XmlOperations import xmlAddCompleteTrack
 from polliPipe.node import Node
 
+import ctypes
+
 """ multipurpose Nodes: """
+
+class NROCTrigger(Node):
+    def __init__(self):
+        super(NROCTrigger,self).__init__()
+        self.type = 'NROCTrigger'
+        self.PicoROCdll = ctypes.CDLL('C:\\Users\\collaps\\PycharmProjects\\Tilda\\TildaHost\\source\\Service\\AnalysisAndDataHandling\\PicoROC\\PicoROCdll\\PicoROCdll.dll')
+        self.PicoROCdll.attachSharedMemory()
+        self.PicoROCdll.stepScan.restype = None
+        self.PicoROCdll.startScan.restype = None
+        self.PicoROCdll.startScan.argtypes = [ctypes.c_int, ctypes.c_double, ctypes.c_int, ctypes.c_char_p]
+        self.PicoROCdll.stepScan.argtypes = [ctypes.c_int, ctypes.c_double, ctypes.c_int]
+
+    def start(self):
+        self.isthisthefirststep = True
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        compl_steps = self.Pipeline.pipeData[track_name]['nOfCompletedSteps']
+        steps = self.Pipeline.pipeData[track_name]['nOfSteps']
+        self.invertscan = self.Pipeline.pipeData[track_name]['invertScan']
+
+        self.stepindexoffset = 0 #Marks programm doesn't know tracks, so in order to give him a nice index accross tracks, this offset will be added to the scan index.
+        for i in range(track_ind,0,-1):
+            self.stepindexoffset+=self.Pipeline.pipeData["track"+str(i)]['nOfSteps']
+        self.stepcounter = 0
+
+
+
+    def processData(self, data, pipeData):
+        for element32 in data:
+            header_index = (element32 >> (23)) & 1
+            if header_index:
+                fheader = element32 >> 28
+                if fheader == Progs.dac.value:
+                    voltbit = (element32 & ((2 ** 20) - 1))>>2
+                    volt = int(voltbit)*DACCalib.slope+DACCalib.offset
+
+                    track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
+                    steps = pipeData[track_name]['nOfSteps']
+                    scans = self.stepcounter // steps
+
+                    if self.invertscan:
+                        stepindex = self.stepcounter % (2*steps)
+                        if stepindex >= steps:
+                            stepindex = steps - (stepindex-steps) - 1
+                    else:
+                        stepindex = self.stepcounter % steps + self.stepindexoffset
+
+                    if self.isthisthefirststep:
+                        tildafilename = pipeData['pipeInternals']['activeXmlFilePath']
+                        tildafilename = os.path.split(tildafilename)[1][:-4]
+                        tildaencodedfilename = tildafilename.encode('utf-8')
+                        self.PicoROCdll.startScan(stepindex, volt, scans, tildaencodedfilename)
+                        self.isthisthefirststep = False
+                    else:
+                        self.PicoROCdll.stepScan(stepindex, volt, scans)
+
+                    print("NROCTrigger: step index " + str(stepindex) + " of scan " + str(scans) + ", voltage:" + str(volt))
+                    self.stepcounter+=1;
+
+        return data
+    def stop(self):
+        self.PicoROCdll.stopScan()
+    def __del__(self):
+        self.PicoROCdll.detachSharedMemory()
 
 
 class NSplit32bData(Node):

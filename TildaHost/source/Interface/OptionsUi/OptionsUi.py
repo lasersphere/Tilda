@@ -71,6 +71,10 @@ class OptionsUi(QtWidgets.QDialog, Ui_Dialog_Options):
         self.checkBox_guessOffset.setChecked(self.get_setting_from_options('POLLIFIT:guess_offset'))
         self.checkBox_guessOffset.clicked.connect(
             lambda: self.toggle_option(self.checkBox_guessOffset, 'POLLIFIT:guess_offset'))
+        # SPECIAL
+        self.checkBox_enableRoc.setChecked(self.get_setting_from_options('SPECIAL:roc_mode'))
+        self.checkBox_enableRoc.clicked.connect(
+            lambda: self.toggle_option(self.checkBox_enableRoc, 'SPECIAL:roc_mode'))
 
 
     ''' general '''
