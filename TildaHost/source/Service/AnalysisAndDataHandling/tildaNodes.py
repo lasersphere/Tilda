@@ -2339,7 +2339,7 @@ class NTRSSumFastArraysSpecData(Node):
         start_sum = datetime.now()
         dimensions = [self.spec_data.get_scaler_step_and_bin_num(track_ind)]
         # convert zero free to non zero free, for faster summing!
-        zero_data = TildaTools.zero_free_to_non_zero_free([data], dimensions)
+        zero_data = TildaTools.zero_free_to_non_zero_free([data], dimensions)  #TODO: here we ran into a Memory Error
         self.spec_data.time_res[track_ind] += zero_data[0]  # add it to existing, by just adding the two matrices
 
         # zero_free data is not needed afterwards -> only create it on saving

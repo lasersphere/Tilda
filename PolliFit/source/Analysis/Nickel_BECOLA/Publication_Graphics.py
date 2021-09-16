@@ -2462,7 +2462,7 @@ class PlotThesisGraphics:
         # plot theory values
         theory_sets = glob(os.path.join(folder, 'data_*'))
         offsets = [0.02, -0.02, 0.04, -0.04, 0.05, 0.1, -0.05, -0.1, 0.06, -0.06 ,0.06, -0.06, 0.1, -0.1, 0.15, -0.15, 0.2, -0.2]
-        offsets = [0.04, -0.04, 0.08, -0.08, 0.12, -0.12, 0.16, -0.16]
+        # offsets = [0.04, -0.04, 0.08, -0.08, 0.12, -0.12, 0.16, -0.16]
         colornum = 1
         markernum = 0
         for num, th in enumerate(theory_sets):
@@ -2625,7 +2625,7 @@ class PlotThesisGraphics:
         plt.fill_between(x,
                          np.array(y) - np.array(ytiltshift),
                          np.array(y) + np.array(ytiltshift),
-                         alpha=0.5, edgecolor=col, facecolor=col, label=src)
+                         alpha=0.5, facecolor=col, label=src)
 
         # # exp values
         # exp_sets = glob(os.path.join(folder, 'exp_*'))
@@ -2661,8 +2661,10 @@ class PlotThesisGraphics:
 
         # plot theory values
         theory_sets = glob(os.path.join(folder, 'data_*'))
-        offsets = [0, 0.05, -0.05, 0.1, -0.1, 0.15, -0.15, 0.01, -0.01, 0.02, -0.02, 0.03, -0.03]
+        offsets = [0.05, -0.05, 0.0, 0.1, 0.0, 0.0, -0.15, -0.15, 0.01, -0.01, 0.02, -0.02, 0.03, -0.03]
         colornum = 1
+        colorlist = [self.black, self.blue, self.green, self.orange, self.red, self.purple, self.purple,
+                     self.dark_green, self.dark_green, self.dark_blue, self.dark_blue]
         markernum = 0
         for num, th in enumerate(theory_sets):
             file = th.split('\\')[-1]
@@ -2689,13 +2691,13 @@ class PlotThesisGraphics:
 
             if unc_up is not None:
                 plt.errorbar(isos, vals, yerr=(unc_down, unc_up), label=name, marker=self.markerlist[markernum],
-                             linestyle='', color=self.colorlist[colornum])
+                             linestyle='', color=colorlist[colornum])
             else:  # no uncertainties given
                 plt.plot(isos, vals, label=name, marker=self.markerlist[markernum], linestyle='',
-                             color=self.colorlist[colornum])
+                             color=colorlist[colornum])
 
             colornum += 1
-            if colornum == self.colorlist.__len__():
+            if colornum == colorlist.__len__():
                 colornum = 0
             markernum += 1
             if markernum == self.markerlist.__len__():
@@ -3230,6 +3232,55 @@ class PlotThesisGraphics:
         plt.errorbar(x_pos_list, three_p_i, [three_p_i_dlo, three_p_i_dup])
         plt.show()
 
+    def three_point_indicator_hardcoded(self):
+        """
+        Version where the datapoints are given directly.
+        """
+        ''' DATA (NAME, VALUE, ERROR-, ERROR+, color)'''
+        data_exp = ('Experiment', 0.03045, 0.00259, 0.00259, self.grey)
+        data_svmin = ('DFT SVmin', 0.00520, 0.00938, 0.00621, self.green)
+        data_fayans = ('DFT Fayans', 0.02275, 0.00672, 0.02756, self.blue)
+        data_em1820 = ('VS-IMSRG EM1.8/2.0', 0.02420, 0.00011, 0.00011, self.purple)
+
+        all_theo_data = [data_svmin, data_fayans, data_em1820]
+
+        ''' PREPARE PLOT '''
+        folder = os.path.join(self.fig_dir, 'Nickel\\Discussion\\3PointIndicator\\')
+        fig, ax = plt.subplots(1)
+        # define output size of figure
+        width, height = 0.5, 0.4
+        # f.set_dpi(300.)
+        fig.set_size_inches((self.w_in * width, self.h_in * height))
+
+        ''' PLOT '''
+        # Experimental value as a band
+        ax.axhspan(data_exp[1]-data_exp[2], data_exp[1]+data_exp[3], color=data_exp[4])
+        ax.text(-0.4, data_exp[1], data_exp[0],
+                horizontalalignment='left', verticalalignment='center', rotation='horizontal',
+                color=self.black, fontweight='bold',
+                **self.ch_dict(self.text_style, {'size': 13})
+                )
+        # Theory values as errorbars
+        for num, data_set in enumerate(all_theo_data):
+            ax.errorbar(num, data_set[1], [[data_set[2]], [data_set[3]]],
+                        **self.ch_dict(self.data_style, {'color': data_set[4]}))
+            ax.text(num+0.1, data_set[1], data_set[0],
+                    horizontalalignment='left', verticalalignment='center', rotation='vertical',
+                    color=data_set[4], fontweight='bold',
+                    **self.ch_dict(self.text_style, {'size': 13})
+                    )
+        # horizontal line at zero
+        ax.axhline(y=0, color=self.grey, ls='--')
+
+        ax.set_xticks([])
+        ax.axes.tick_params(axis='y', direction='out', right=False)
+        ax.set_ylabel(r'$\Delta_{2n}^{(3)}R_\mathregular{c}$ /fm')
+        ax.set_xlim([-0.5, len(all_theo_data)-0.5])
+
+        plt.savefig(folder + 'three_point_ind_hardcode' + self.ffe, dpi=self.dpi, bbox_inches='tight')
+        plt.close()
+        plt.clf()
+
     def mu_nickel55(self):
         """
 
@@ -3623,13 +3674,14 @@ if __name__ == '__main__':
     #
     # ''' Discussion '''
     # graphs.Q_nickel55()
-    # graphs.absradii_chain_errorband_all()
+    graphs.absradii_chain_errorband_all()
     # graphs.absradii_neighborhood()
     # graphs.deltarad_chain_errorband()
-    # graphs.absradii_chain_errorband()
-    graphs.three_point_indicator()
+    graphs.absradii_chain_errorband()
+    # graphs.three_point_indicator()
+    graphs.three_point_indicator_hardcoded()
     # graphs.absrad56()
-    # graphs.mu_nickel55()
+    graphs.mu_nickel55()
 
 
 

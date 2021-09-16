@@ -85,7 +85,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionDigital_Multimeters.triggered.connect(self.open_dmm_live_view_win)
         self.actionPolliFit.triggered.connect(self.open_pollifit_win)
         self.actionPulse_pattern_generator.triggered.connect(self.open_pulse_pattern_win)
-        self.actionShow_scan_finished_win.triggered.connect(self.show_scan_finished_change)
         self.actionPre_scan_timeout.triggered.connect(self.set_pre_scan_timeout)
 
 
@@ -301,8 +300,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     ''' configure '''
     def show_scan_finished_change(self, show_win_bool):
+        # toggled from options window
         self.show_scan_compl_win = show_win_bool
-        self.actionShow_scan_finished_win.setChecked(show_win_bool)
 
     ''' open windows'''
 

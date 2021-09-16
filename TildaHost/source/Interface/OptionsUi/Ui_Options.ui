@@ -7,11 +7,14 @@
     <x>0</x>
     <y>0</y>
     <width>555</width>
-    <height>501</height>
+    <height>568</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>TILDA Options</string>
+  </property>
+  <property name="modal">
+   <bool>false</bool>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -25,6 +28,59 @@
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
+        <widget class="QGroupBox" name="groupBox_preScan">
+         <property name="title">
+          <string>PRE SCAN</string>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <widget class="QLabel" name="label">
+            <property name="toolTip">
+             <string>The pre scan timeout is the maximum time for any pre scan measurement. If not all measurements are completed within this time, the measurement is started anyhow.</string>
+            </property>
+            <property name="text">
+             <string>Configure pre scan timeout:</string>
+            </property>
+            <property name="scaledContents">
+             <bool>false</bool>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDoubleSpinBox" name="doubleSpinBox_preScanTimeout">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="toolTip">
+             <string>The pre scan timeout is the maximum time for any pre scan measurement. If not all measurements are completed within this time, the measurement is started anyhow.</string>
+            </property>
+            <property name="suffix">
+             <string> s</string>
+            </property>
+            <property name="decimals">
+             <number>1</number>
+            </property>
+            <property name="minimum">
+             <double>0.000000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>1000.000000000000000</double>
+            </property>
+            <property name="value">
+             <double>60.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <widget class="QGroupBox" name="groupBox_Connect">
          <property name="title">
           <string>CONNECT</string>
@@ -33,7 +89,7 @@
           <item>
            <widget class="QCommandLinkButton" name="link_openFpgaConfig">
             <property name="text">
-             <string>...\TildaHost\source\Driver\DataAcquisitionFpga\fpga_config.xml</string>
+             <string>...\Driver\DataAcquisitionFpga\fpga_config.xml</string>
             </property>
             <property name="description">
              <string>Open fpga config to change the FPGA configuration for this system</string>
@@ -50,7 +106,7 @@
           <item>
            <widget class="QCommandLinkButton" name="link_openTritonConfig">
             <property name="text">
-             <string>...\TildaHost\source\Driver\TritonListener\TritonConfig.py</string>
+             <string>...\Driver\TritonListener\TritonConfig.py</string>
             </property>
             <property name="description">
              <string>Open config file to change the Triton configuration</string>
@@ -68,11 +124,30 @@
         </widget>
        </item>
        <item>
-        <widget class="QGroupBox" name="groupBox_Sound">
+        <widget class="QGroupBox" name="groupBox_scanFinished">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="autoFillBackground">
+          <bool>false</bool>
+         </property>
          <property name="title">
-          <string>SOUND</string>
+          <string>SCAN FINISHED WINDOW</string>
+         </property>
+         <property name="flat">
+          <bool>false</bool>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_3">
+          <item>
+           <widget class="QLabel" name="label_scanFinishedWin">
+            <property name="text">
+             <string>Show the green scan finished window aftger a successfull scan.</string>
+            </property>
+           </widget>
+          </item>
           <item>
            <widget class="QCheckBox" name="checkBox_playSound">
             <property name="text">
@@ -83,7 +158,7 @@
           <item>
            <widget class="QCommandLinkButton" name="link_openSoundsFolder">
             <property name="text">
-             <string>...\TildaHost\source\Interface\Sounds</string>
+             <string>...\Interface\Sounds</string>
             </property>
             <property name="description">
              <string>Go to Folder to add or remove sounds from the random rotation.</string>
@@ -119,6 +194,87 @@
       <attribute name="title">
        <string>PolliFit</string>
       </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_6">
+       <item>
+        <widget class="QCheckBox" name="checkBox_guessOffset">
+         <property name="text">
+          <string>Guess Offset</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_special">
+      <attribute name="title">
+       <string>Special</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_5">
+       <item>
+        <widget class="QCheckBox" name="checkBox_enableRoc">
+         <property name="text">
+          <string>Enable ROC Analysis Pipeline</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <item>
+          <widget class="QSpinBox" name="spinBox_xmlResolution">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="suffix">
+            <string> ns</string>
+           </property>
+           <property name="prefix">
+            <string/>
+           </property>
+           <property name="minimum">
+            <number>10</number>
+           </property>
+           <property name="maximum">
+            <number>100000</number>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_2">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="text">
+            <string>Maximum xml-resolution (raw data always 10ns)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkBox_autoResolution">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="toolTip">
+            <string>Let TILDA estimate the array size and limit the resolution accordingly to avoid MEMORY erros. </string>
+           </property>
+           <property name="text">
+            <string>Adapt Automatically</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
      </widget>
     </widget>
    </item>
