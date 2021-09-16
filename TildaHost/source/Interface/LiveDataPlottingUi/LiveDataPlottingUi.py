@@ -174,7 +174,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         try:
             self.comboBox_sum_tr.addItems(self.func_list)
         except Exception as e:
-            self.comboBox_sum_tr.addItems(['[0]'])
+            self.comboBox_sum_tr.addItems(self.sum_scaler)
         self.comboBox_sum_tr.currentIndexChanged.connect(self.function_chosen)
 
         ''' time resolved related: '''  # TODO if timegate change, sum not correct anymore
@@ -563,6 +563,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.sum_scaler_changed(self.comboBox_sum_all_pmts.currentIndex())
                     if self.function == None:
                         self.function = str(self.sum_scaler)    # update to default function (list of all scalers)
+                        self.add_func_to_options()
 
                     self.new_track_no_data_yet = False
 
@@ -909,7 +910,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             if isinteger:
                 self.sum_scaler = indList
                 self.function = text
-                self.add_func_to_options()
                 self.update_sum_plot(self.spec_data)
                 self.update_projections(self.spec_data)
                 if self.all_pmts_widg_plt_item_list is not None:
@@ -917,6 +917,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.update_all_pmts_plot(self.spec_data)
                 self.lineEdit_sum_all_pmts.setText(text)
                 self.lineEdit_arith_scaler_input.setText(text)
+                self.add_func_to_options()
+                #self.set_preset_function_menue(text)
         except Exception as e:
             logging.info('incorrect user input for function')
 
@@ -924,13 +926,15 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         func_new = True
         functions = Cfg._main_instance.local_options.get_functions()
         for key, value in functions.items():
-            if value == self.function:
+            if value.strip() == self.function.strip():
                 func_new = False
+                self.comboBox_sum_tr.setCurrentIndex(key)
         if func_new:
             self.func_list.append(self.function)
             self.comboBox_sum_tr.addItems([self.function])
             Cfg._main_instance.local_options.add_function(self.function)
             Cfg._main_instance.save_options()
+            self.comboBox_sum_tr.setCurrentIndex(len(functions))
 
     def cb_all_pmts_sel_tr_changed(self, text):
         """ handle changes in the combobox in the all pmts tab """
