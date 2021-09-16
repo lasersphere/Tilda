@@ -22,7 +22,10 @@ class SPFitter(object):
         self.spec = spec
         self.meas = meas
         self.st = st  # (scaler, track) tuple
+
         self.data = meas.getArithSpec(*st)  # Returns list of tracks with elements
+
+        #self.data = meas.getArithSpec(*st)  # Returns list of tracks with elements
         # (array of x-values in Volt, array of cts, array of errors)
         self.cut_x = self.add_track_offsets()  # Contains voltages to cut the x-axis for unique offsets in each track.
 

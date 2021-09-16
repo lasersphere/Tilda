@@ -27,6 +27,7 @@ from Interface.DmmUi.DmmUi import DmmLiveViewUi
 from Interface.FrequencyUi.FreqUi import FreqUi
 from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
 from Interface.MainUi.Ui_Main import Ui_TildaMainWindow
+from Interface.OptionsUi.OptionsUi import OptionsUi
 from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
 from Interface.PulsePatternUi.PulsePatternUi import PulsePatternUi
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
@@ -60,6 +61,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.live_plot_win = None  # one active live plot window for displaying results from pipeline
         self.file_plot_wins = {}  # dict of active plot windows only for displaying from file.
         self.pollifit_win = None
+        self.options_win = None
         self.tetris = None  # pssst dont tell
         self.snake = None
         self.pulse_pattern_win = None
@@ -75,6 +77,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionJob_Stacker.triggered.connect(self.open_job_stacker_win)  # TODO: define command and add actionItem
         self.actionPost_acceleration_power_supply_control.triggered.connect(self.open_post_acc_win)
         self.actionSimple_Counter.triggered.connect(self.open_simple_counter_win)
+        self.actionoptions.triggered.connect(self.open_options_win)
         #self.actionSet_Laser_Frequency.triggered.connect(self.set_laser_freq)   # old version of frequency settings
         self.actionSet_Laser_Frequency.triggered.connect(self.open_freq_win)
         self.actionSet_acceleration_voltage.triggered.connect(self.set_acc_volt)
@@ -82,7 +85,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionDigital_Multimeters.triggered.connect(self.open_dmm_live_view_win)
         self.actionPolliFit.triggered.connect(self.open_pollifit_win)
         self.actionPulse_pattern_generator.triggered.connect(self.open_pulse_pattern_win)
-        self.actionShow_scan_finished_win.triggered.connect(self.show_scan_finished_change)
         self.actionPre_scan_timeout.triggered.connect(self.set_pre_scan_timeout)
 
 
@@ -298,87 +300,10 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     ''' configure '''
     def show_scan_finished_change(self, show_win_bool):
+        # toggled from options window
         self.show_scan_compl_win = show_win_bool
-        self.actionShow_scan_finished_win.setChecked(show_win_bool)
 
     ''' open windows'''
-
-    def open_freq_win(self):
-        if self.freq_win is None:
-            self.freq_win = FreqUi(self)
-        else:
-            self.raise_win_to_front(self.freq_win)
-
-    def open_version_win(self):
-        VersionUi()
-
-    def open_scan_ctrl_win(self):
-        if Cfg._main_instance.working_directory is None:
-            if self.choose_working_dir() is None:
-                return None
-        self.act_scan_wins.append(ScanControlUi(self))
-
-    def open_job_stacker_win(self):
-        if Cfg._main_instance.working_directory is None:
-            if self.choose_working_dir() is None:
-                return None
-        if self.job_stacker_win is None:
-            self.job_stacker_win = JobStackerUi(self)
-        else:
-            self.raise_win_to_front(self.job_stacker_win)
-
-    def open_post_acc_win(self):
-        if self.post_acc_win is None:
-            self.post_acc_win = PostAccControlUi(self)
-        else:
-            self.raise_win_to_front(self.post_acc_win)
-
-    def open_simple_counter_win(self):
-        sc_dial = SimpleCounterDialogUi()  # blocking!
-        if sc_dial.start:
-            self.simple_counter_gui = SimpleCounterRunningUi(self, sc_dial.act_pmts, sc_dial.datapoints)
-            # Cfg._main_instance.start_simple_counter(sc_dial.act_pmts, sc_dial.datapoints)
-
-    def open_dmm_live_view_win(self):
-        if self.dmm_live_view_win is None:
-            self.dmm_live_view_win = DmmLiveViewUi(self)
-        else:
-            self.raise_win_to_front(self.dmm_live_view_win)
-
-    def open_live_plot_win(self):
-        if self.live_plot_win is None:
-            self.live_plot_win = TRSLivePlotWindowUi(application=self.application)
-            self.live_plot_win.destroyed.connect(self.close_live_plot_win)
-        else:
-            self.raise_win_to_front(self.live_plot_win)
-            self.live_plot_win.reset()
-
-    def open_file_plot_win(self, file, sum_sc_tr=None):
-        self.file_plot_wins[file] = TRSLivePlotWindowUi(full_file_path=file,
-                                                        subscribe_as_live_plot=False,
-                                                        sum_sc_tr=sum_sc_tr,
-                                                        application=self.application)
-        self.file_plot_wins[file].destroyed.connect(functools.partial(self.close_file_plot_win, file))
-
-    def open_pollifit_win(self):
-        if self.pollifit_win is None:
-            db = Cfg._main_instance.database
-            if db is None:
-                if self.choose_working_dir():
-                    db = Cfg._main_instance.database
-                else:
-                    db = ''
-            self.pollifit_win = PolliMainUi(db, self, overwrite_stdout=False)
-        else:
-            self.raise_win_to_front(self.pollifit_win)
-
-    def raise_win_to_front(self, window):
-        # this will remove minimized status
-        # and restore window with keeping maximized/normal state
-        window.setWindowState(window.windowState() & ~QtCore.Qt.WindowMinimized | QtCore.Qt.WindowActive)
-
-        # this will activate the window
-        window.activateWindow()
 
     def open_dir(self):
         """
@@ -396,6 +321,66 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             self.choose_working_dir()
             self.open_dir()
 
+    def open_dmm_live_view_win(self):
+        if self.dmm_live_view_win is None:
+            self.dmm_live_view_win = DmmLiveViewUi(self)
+        else:
+            self.raise_win_to_front(self.dmm_live_view_win)
+
+    def open_file_plot_win(self, file, sum_sc_tr=None):
+        self.file_plot_wins[file] = TRSLivePlotWindowUi(full_file_path=file,
+                                                        subscribe_as_live_plot=False,
+                                                        sum_sc_tr=sum_sc_tr,
+                                                        application=self.application)
+        self.file_plot_wins[file].destroyed.connect(functools.partial(self.close_file_plot_win, file))
+
+    def open_freq_win(self):
+        if self.freq_win is None:
+            self.freq_win = FreqUi(self)
+        else:
+            self.raise_win_to_front(self.freq_win)
+
+    def open_live_plot_win(self):
+        if self.live_plot_win is None:
+            self.live_plot_win = TRSLivePlotWindowUi(application=self.application)
+            self.live_plot_win.destroyed.connect(self.close_live_plot_win)
+        else:
+            self.raise_win_to_front(self.live_plot_win)
+            self.live_plot_win.reset()
+
+    def open_job_stacker_win(self):
+        if Cfg._main_instance.working_directory is None:
+            if self.choose_working_dir() is None:
+                return None
+        if self.job_stacker_win is None:
+            self.job_stacker_win = JobStackerUi(self)
+        else:
+            self.raise_win_to_front(self.job_stacker_win)
+
+    def open_options_win(self):
+        if self.options_win is None:
+            self.options_win = OptionsUi(self)
+        else:
+            self.raise_win_to_front(self.options_win)
+
+    def open_pollifit_win(self):
+        if self.pollifit_win is None:
+            db = Cfg._main_instance.database
+            if db is None:
+                if self.choose_working_dir():
+                    db = Cfg._main_instance.database
+                else:
+                    db = ''
+            self.pollifit_win = PolliMainUi(db, self, overwrite_stdout=False)
+        else:
+            self.raise_win_to_front(self.pollifit_win)
+
+    def open_post_acc_win(self):
+        if self.post_acc_win is None:
+            self.post_acc_win = PostAccControlUi(self)
+        else:
+            self.raise_win_to_front(self.post_acc_win)
+
     def open_pulse_pattern_win(self):
         if self.pulse_pattern_win is None:
             self.pulse_pattern_win = PulsePatternUi(None, '', self)
@@ -405,8 +390,33 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def open_scan_complete_win(self):
         if self.show_scan_compl_win:
             if self.scan_complete_win is None:
-                self.scan_complete_win = ScanCompleteDialUi(self)
+                play_sound = Cfg._main_instance.get_option('SOUND:is_on')
+                sound_folder = Cfg._main_instance.get_option('SOUND:folder')
+                self.scan_complete_win = ScanCompleteDialUi(self, play_sound, sound_folder)
             self.raise_win_to_front(self.scan_complete_win)
+
+    def open_scan_ctrl_win(self):
+        if Cfg._main_instance.working_directory is None:
+            if self.choose_working_dir() is None:
+                return None
+        self.act_scan_wins.append(ScanControlUi(self))
+
+    def open_simple_counter_win(self):
+        sc_dial = SimpleCounterDialogUi()  # blocking!
+        if sc_dial.start:
+            self.simple_counter_gui = SimpleCounterRunningUi(self, sc_dial.act_pmts, sc_dial.datapoints)
+            # Cfg._main_instance.start_simple_counter(sc_dial.act_pmts, sc_dial.datapoints)
+
+    def open_version_win(self):
+        VersionUi()
+
+    def raise_win_to_front(self, window):
+        # this will remove minimized status
+        # and restore window with keeping maximized/normal state
+        window.setWindowState(window.windowState() & ~QtCore.Qt.WindowMinimized | QtCore.Qt.WindowActive)
+
+        # this will activate the window
+        window.activateWindow()
 
     ''' close windows '''
     def scan_control_win_closed(self, win_ref):
@@ -419,6 +429,9 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     def close_job_stacker_win(self):
         self.job_stacker_win = None
+
+    def close_options_win(self):
+        self.options_win = None
 
     def close_post_acc_win(self):
         self.post_acc_win = None

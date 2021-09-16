@@ -71,7 +71,7 @@ class SpecData(object):
         else:
             return np.array(self.x[track]), np.array(self.cts[track][scaler]), np.array(self.err[track][scaler])
 
-    def getArithSpecNew(self, scaler, track_index, function, eval_on=True):
+    def getArithSpec(self, scaler, track_index, function = None, eval_on=True):
         """
         calculates the arithmetic spectrum from the users function
         :param scaler: list of scalers used for the arithmetic
@@ -85,6 +85,9 @@ class SpecData(object):
         flatx = np.zeros((l,))  # voltage
         flatc = np.zeros((l,))  # counts
         flate = np.zeros((l,))  # uncertainties
+
+        if function == None:
+            function = '[' + ''.join(str(e) for e in scaler) + ']'
 
         if function[0] == '[' or not eval_on or function == None:  # check if list mode and if first time
 
@@ -125,7 +128,9 @@ class SpecData(object):
 
         return flatx, flatc, flate
 
-    # TODO: check (22) cases, where this old version is used, if it also works with the new version.
+    """Old version of get ArithSpec:"""
+
+    """
     def getArithSpec(self, scaler, track_index):    #TODO new arith
         '''Same as getSingleSpec, but scaler is of type [+i, -j, +k], resulting in s[i]-s[j]+s[k]'''
         l = self.getNrSteps(track_index)
@@ -160,7 +165,8 @@ class SpecData(object):
         # flate = flate[0:cut_lower] + flate[cut_upper:]
 
         return flatx, flatc, flate
-        
+    """
+
     def getNrSteps(self, track):
         if track == -1:
             return sum(map(len, self.x))

@@ -18,6 +18,8 @@ from PyQt5 import QtCore
 import MPLPlotter
 import Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
 import Service.FileOperations.FolderAndFileHandling as Filehandle
+import Service.VoltageConversions.DAC_Calibration as DACCalib
+
 import Service.Formating as Form
 import TildaTools
 from Measurement.SpecData import SpecData
@@ -29,7 +31,72 @@ from Spectra.Straight import Straight
 from XmlOperations import xmlAddCompleteTrack
 from polliPipe.node import Node
 
+import ctypes
+
 """ multipurpose Nodes: """
+
+class NROCTrigger(Node):
+    def __init__(self):
+        super(NROCTrigger,self).__init__()
+        self.type = 'NROCTrigger'
+        self.PicoROCdll = ctypes.CDLL('C:\\Users\\collaps\\PycharmProjects\\Tilda\\TildaHost\\source\\Service\\AnalysisAndDataHandling\\PicoROC\\PicoROCdll\\PicoROCdll.dll')
+        self.PicoROCdll.attachSharedMemory()
+        self.PicoROCdll.stepScan.restype = None
+        self.PicoROCdll.startScan.restype = None
+        self.PicoROCdll.startScan.argtypes = [ctypes.c_int, ctypes.c_double, ctypes.c_int, ctypes.c_char_p]
+        self.PicoROCdll.stepScan.argtypes = [ctypes.c_int, ctypes.c_double, ctypes.c_int]
+
+    def start(self):
+        self.isthisthefirststep = True
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        compl_steps = self.Pipeline.pipeData[track_name]['nOfCompletedSteps']
+        steps = self.Pipeline.pipeData[track_name]['nOfSteps']
+        self.invertscan = self.Pipeline.pipeData[track_name]['invertScan']
+
+        self.stepindexoffset = 0 #Marks programm doesn't know tracks, so in order to give him a nice index accross tracks, this offset will be added to the scan index.
+        for i in range(track_ind,0,-1):
+            self.stepindexoffset+=self.Pipeline.pipeData["track"+str(i)]['nOfSteps']
+        self.stepcounter = 0
+
+
+
+    def processData(self, data, pipeData):
+        for element32 in data:
+            header_index = (element32 >> (23)) & 1
+            if header_index:
+                fheader = element32 >> 28
+                if fheader == Progs.dac.value:
+                    voltbit = (element32 & ((2 ** 20) - 1))>>2
+                    volt = int(voltbit)*DACCalib.slope+DACCalib.offset
+
+                    track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
+                    steps = pipeData[track_name]['nOfSteps']
+                    scans = self.stepcounter // steps
+
+                    if self.invertscan:
+                        stepindex = self.stepcounter % (2*steps)
+                        if stepindex >= steps:
+                            stepindex = steps - (stepindex-steps) - 1
+                    else:
+                        stepindex = self.stepcounter % steps + self.stepindexoffset
+
+                    if self.isthisthefirststep:
+                        tildafilename = pipeData['pipeInternals']['activeXmlFilePath']
+                        tildafilename = os.path.split(tildafilename)[1][:-4]
+                        tildaencodedfilename = tildafilename.encode('utf-8')
+                        self.PicoROCdll.startScan(stepindex, volt, scans, tildaencodedfilename)
+                        self.isthisthefirststep = False
+                    else:
+                        self.PicoROCdll.stepScan(stepindex, volt, scans)
+
+                    print("NROCTrigger: step index " + str(stepindex) + " of scan " + str(scans) + ", voltage:" + str(volt))
+                    self.stepcounter+=1;
+
+        return data
+    def stop(self):
+        self.PicoROCdll.stopScan()
+    def __del__(self):
+        self.PicoROCdll.detachSharedMemory()
 
 
 class NSplit32bData(Node):
@@ -1063,7 +1130,7 @@ class NSingleSpecFromSpecData(Node):
 
     def processData(self, spec_data_instance, pipeData):
         ret = []
-        x, y, err = spec_data_instance.getArithSpec(self.scalers, self.track)
+        x, y, err = spec_data_instance.getArithSpec(self.scalers, self.track)    # New not tested yet...
         ret.append((np.array(x), y))
         return ret
 
@@ -1085,7 +1152,7 @@ class NMultiSpecFromSpecData(Node):
     def processData(self, spec_data_instance, pipeData):
         ret = []
         for sc in self.scalers:
-            x, y, err = spec_data_instance.getArithSpec(sc, -1)
+            x, y, err = spec_data_instance.getArithSpec(sc, -1)  # New not tested yet...
             ret.append((np.array(x), y))
         return ret
 
@@ -2017,15 +2084,16 @@ class NTRSSortRawDatatoArrayFast(Node):
             # only completed steps! -> all bunches are included, no need to store which one was last worked on
             new_bunch_ind_list = np.where(self.stored_data[:step_complete_ind_list[-1]] == new_bunch)[0]
             bunch_allowed_ind_flat = np.zeros(0, dtype=np.int32)
+            # Is there any bunch condition limiting the number of scans to include?
             if self.bunch_start_stop_tr_wise is not None:
                 # step is complete, so all bunches must be in.
-                num_of_bunches = np.where(new_bunch_ind_list < step_complete_ind_list[0])[0].size # num bunches / step
+                num_of_bunches = np.where(new_bunch_ind_list < step_complete_ind_list[0])[0].size  # num bunches / step
                 # allowed bunch indices in self.stored data
                 # stopp_ind_... is already not valid data anymore.
                 # [[start_ind_step0, stopp_ind_step0], [start_ind_step1, stopp_ind_step1], ....]
                 start_b = self.bunch_start_stop_cur_tr[0]
                 stop_b = self.bunch_start_stop_cur_tr[1] + 1  # because the following will be exclusive for this bunch
-                # user wants bunches until bunch 8 (start counting from 0) so bunch9 is the first to exclude.
+                # e.g. user wants bunches until bunch 8 (start counting from 0) so bunch9 is the first to exclude.
 
                 # print(start_b, stop_b)
                 sliced_bunch_start_ind_list = new_bunch_ind_list[start_b::num_of_bunches]
@@ -2038,7 +2106,7 @@ class NTRSSortRawDatatoArrayFast(Node):
                 sliced_bunch_ind_list = np.append(sliced_bunch_start_ind_list,
                                                   sliced_bunch_stopp_ind_list).reshape(2, step_complete_ind_list.size).T
                 for start_ind, stopp_ind in sliced_bunch_ind_list:
-                    # create a flat array, that holda all allowed indices in self.stored_data,
+                    # create a flat array, that holds all allowed indices in self.stored_data,
                     # between the allowed bunch numbers
                     # e.g. it was
                     # [[start_ind_step0, stopp_ind_step0], [start_ind_step1, stopp_ind_step1], ....]
@@ -2338,7 +2406,7 @@ class NTRSSumFastArraysSpecData(Node):
         start_sum = datetime.now()
         dimensions = [self.spec_data.get_scaler_step_and_bin_num(track_ind)]
         # convert zero free to non zero free, for faster summing!
-        zero_data = TildaTools.zero_free_to_non_zero_free([data], dimensions)
+        zero_data = TildaTools.zero_free_to_non_zero_free([data], dimensions)  #TODO: here we ran into a Memory Error
         self.spec_data.time_res[track_ind] += zero_data[0]  # add it to existing, by just adding the two matrices
 
         # zero_free data is not needed afterwards -> only create it on saving

@@ -17,6 +17,8 @@ import TildaTools
 import polliPipe.simpleNodes as SN
 from polliPipe.node import Node
 
+import Application.Config as Cfg
+
 # import PyQtGraphPlotter
 
 from polliPipe.pipeline import Pipeline
@@ -67,6 +69,8 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True,
 
     # alternative pipeline:
     fast = start.attach(TN.NFilterDMMDictsAndSave(live_plot_callbacks[4]))  # Replaced former NFilterDMMDicts AndSave
+    #fast = fast.attach(TN.NROCTrigger())
+
     # # use the sleep node in order to simulate long processing times in pipeline
     # fast = fast.attach(TN.NSleep(sleeping_time_s=2.0))
     fast = fast.attach(TN.NSaveRawData())
@@ -109,6 +113,8 @@ def CsPipe(initialScanPars=None, callback_sig=None, live_plot_callbacks=None, ne
 
     pipe = Pipeline(start)
     # start = start.attach(SN.NPrint())
+    if Cfg._main_instance.get_option('SPECIAL:roc_mode'):
+        start = start.attach(TN.NROCTrigger())
     start = start.attach(TN.NFilterDMMDictsAndSave(live_plot_callbacks[4]))  # Replaced former NFilterDMMDicts
 
     maintenance = start.attach(TN.NMPLCloseFigOnInit())

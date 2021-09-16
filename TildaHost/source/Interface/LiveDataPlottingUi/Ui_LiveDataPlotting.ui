@@ -501,7 +501,15 @@
     <property name="title">
      <string>edit</string>
     </property>
+    <widget class="QMenu" name="menucombine">
+     <property name="title">
+      <string>combine PMTs to</string>
+     </property>
+     <addaction name="actionsum"/>
+     <addaction name="actionasymmetry"/>
+    </widget>
     <addaction name="actionGraph_font_size"/>
+    <addaction name="menucombine"/>
    </widget>
    <addaction name="menuView"/>
    <addaction name="menuEdit"/>
@@ -514,6 +522,25 @@
   <action name="actionGraph_font_size">
    <property name="text">
     <string>graph font size</string>
+   </property>
+  </action>
+  <action name="actionsum">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>sum</string>
+   </property>
+  </action>
+  <action name="actionasymmetry">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>asymmetry</string>
    </property>
   </action>
  </widget>

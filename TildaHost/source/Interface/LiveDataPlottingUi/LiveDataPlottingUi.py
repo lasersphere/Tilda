@@ -170,6 +170,13 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.lineEdit_arith_scaler_input.textEdited.connect(self.sum_scaler_lineedit_changed)
         self.lineEdit_arith_scaler_input.setToolTip(self.sum_scaler_lineedit_changed.__doc__)
 
+        self.func_list = self.get_functions()
+        try:
+            self.comboBox_sum_tr.addItems(self.func_list)
+        except Exception as e:
+            self.comboBox_sum_tr.addItems(self.sum_scaler)
+        self.comboBox_sum_tr.currentIndexChanged.connect(self.function_chosen)
+
         ''' time resolved related: '''  # TODO if timegate change, sum not correct anymore
         self.add_time_resolved_plot()
         self.tres_sel_tr_ind = 0  # int, index of currently observed track in time resolved spectra
@@ -556,6 +563,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.sum_scaler_changed(self.comboBox_sum_all_pmts.currentIndex())
                     if self.function == None:
                         self.function = str(self.sum_scaler)    # update to default function (list of all scalers)
+                        self.add_func_to_options()
 
                     self.new_track_no_data_yet = False
 
@@ -645,7 +653,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         :return:
         """
         if self.sum_scaler is not None:
-            self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpecNew(self.sum_scaler,
+            self.sum_x, self.sum_y, self.sum_err = spec_data.getArithSpec(self.sum_scaler,
                                                                              self.sum_track, self.function)
             if self.sum_plt_data is None:
                 self.sum_plt_data = self.sum_plt_itm.plot(
@@ -733,7 +741,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 v_proj_x = spec_data.x[self.tres_sel_tr_ind]
                 v_proj_y = spec_data.cts[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
                 gates = self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind]
-                sum_x, sum_y, sum_err = spec_data.getArithSpecNew(self.sum_scaler, self.tres_sel_tr_ind, self.function)
+                sum_x, sum_y, sum_err = spec_data.getArithSpec(self.sum_scaler, self.tres_sel_tr_ind, self.function)
 
                 if self.t_proj_plt is None:
                     self.t_proj_plt = self.t_proj_plt_itm.plot(t_proj_x, t_proj_y, pen='k')
@@ -831,6 +839,23 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.comboBox_sum_all_pmts.setCurrentIndex(index)
         self.comboBox_select_sum_for_pmts.setCurrentIndex(index)
 
+    def get_functions(self):
+        func_dict = Cfg._main_instance.local_options.get_functions()
+        func_list = []
+        for key, value in func_dict.items():
+            func_list.append(value)
+        return func_list
+
+    def function_chosen(self):
+        index = self.comboBox_sum_tr.currentIndex()
+        try:
+            functions = self.get_functions()
+            self.sum_scaler_lineedit_changed(functions[index])
+            self.comboBox_select_sum_for_pmts.setCurrentIndex(1)
+        except Exception as e:
+            logging.error('no such function in options')
+
+
     def sum_scaler_lineedit_changed(self, text):
         """
         define your own function in the form of "s0 + s1" or "s3 / ( s2 + s1 )"
@@ -892,8 +917,24 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.update_all_pmts_plot(self.spec_data)
                 self.lineEdit_sum_all_pmts.setText(text)
                 self.lineEdit_arith_scaler_input.setText(text)
+                self.add_func_to_options()
+                #self.set_preset_function_menue(text)
         except Exception as e:
             logging.info('incorrect user input for function')
+
+    def add_func_to_options(self):
+        func_new = True
+        functions = Cfg._main_instance.local_options.get_functions()
+        for key, value in functions.items():
+            if value.strip() == self.function.strip():
+                func_new = False
+                self.comboBox_sum_tr.setCurrentIndex(key)
+        if func_new:
+            self.func_list.append(self.function)
+            self.comboBox_sum_tr.addItems([self.function])
+            Cfg._main_instance.local_options.add_function(self.function)
+            Cfg._main_instance.save_options()
+            self.comboBox_sum_tr.setCurrentIndex(len(functions))
 
     def cb_all_pmts_sel_tr_changed(self, text):
         """ handle changes in the combobox in the all pmts tab """

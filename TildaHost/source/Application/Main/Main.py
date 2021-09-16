@@ -88,17 +88,17 @@ class Main(QtCore.QObject):
         # dict containing all parameters for the voltage measurement.
         # default is: draftMeasureVoltPars = {'measVoltPulseLength25ns': 400, 'measVoltTimeout10ns': 100}
 
-        self.ini_file_path = os.path.join(os.path.dirname(sys.argv[0]), 'Application/options.yaml')  # path of ini-file
-        self.local_options = Options(self.ini_file_path)  # object to save all local options in
-        self.load_options()
+        self.options_file_path = os.path.join(os.path.dirname(sys.argv[0]), 'Application/options.yaml')
+        self.local_options = Options(self.options_file_path)  # object to save all local options in
 
-        self.laserfreq = self.calc_freq()  # laser frequency in cm-1
+        self.laserfreq = 0  # laser frequency in cm-1; first set in load_options
         self.acc_voltage = 0  # acceleration voltage of the source in volts
         self.simple_counter_inst = None
         self.cmd_queue = None
         self.jobs_to_do_when_idle_queue = []
         self.autostart_dict = {}  # dict containing all infos from the autostart.xml file keys are: workingDir,
         # autostartDevices: {dmms: {name: address}, powersupplies: {name:address}}
+        # TODO: Replace autostart_dict with options or keep parallel?
 
         # dict of pyqtSignals(dict) for sending the status of the power supply to the correspnding gui
         self.power_sup_stat_callback_signals = {}
@@ -152,6 +152,7 @@ class Main(QtCore.QObject):
 
         self.set_state(MainState.idle)
         self.autostart()
+        self.load_options()  # TODO: distinguish between options and autostart!
 
         self.application = None  # store the current application in here,
         # useful when wanting to force event processing by calling self.application.processEvents()
@@ -425,17 +426,27 @@ class Main(QtCore.QObject):
     def pre_scan_timeout_changed(self, timeout_s):
         """ changes the pre scan timeout which is used to cap
          the pre scan measurement if nto enough values come in etc. """
+        # TODO: load from options!
         self.pre_scan_measurement_timeout_s = timedelta(seconds=timeout_s)
         self.autostart_dict['preScanTimeoutS'] = timeout_s
         FileHandl.write_to_auto_start_xml_file(self.autostart_dict)
 
     """ options related functions """
 
-    def load_options(self):
+    def load_options(self, reset_to_default=False):
         """
         Get local options from .ini file. If none exists yet, a new one will be created.
         """
-        self.local_options.load_from_file()
+        self.local_options.load_from_file(default=reset_to_default)
+        # TODO: change variables in main that are linked to options! For example the following:
+        self.laserfreq = self.calc_freq()  # laser frequency in cm-1
+        # self.acc_voltage = 0  # acceleration voltage of the source in volts
+        # self.main_ui_status_call_back_signal_timedelta_between_emits = timedelta(milliseconds=500)
+        # self.pre_scan_measurement_timeout_s = timedelta(seconds=60)
+        # self.dmm_periodic_reading_interval = timedelta(seconds=5)
+        # self.dmm_periodic_reading_interval_during_scan = timedelta(seconds=1)
+        # self.kepco_meas_done_max_wait_for_dmm_meas = timedelta(seconds=5)
+        # self.triton_reading_interval = timedelta(milliseconds=100)
 
     def save_options(self):
         """
@@ -449,6 +460,23 @@ class Main(QtCore.QObject):
         :return: total frequency for spectroscopy
         """
         return self.local_options.get_abs_freq()
+
+    def get_option(self, option_to_get):
+        """
+        Return a requested option
+        :param option_to_get: str: Category:Option e.g.: "SOUND:is_on"
+        :return: the stored setting
+        """
+        return self.local_options.get_setting(option_to_get)
+
+    def set_option(self, option_to_get, value_to_set):
+        """
+        Change the desired option to the given value
+        :param option_to_get:
+        :param value_to_set:
+        :return:
+        """
+        self.local_options.set_setting(option_to_get, value_to_set)
 
     """ operations on self.scan_pars dictionary """
 

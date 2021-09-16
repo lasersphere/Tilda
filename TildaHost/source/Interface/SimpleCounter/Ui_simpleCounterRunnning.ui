@@ -101,6 +101,9 @@
           <property name="keyboardTracking">
            <bool>false</bool>
           </property>
+          <property name="decimals">
+           <number>3</number>
+          </property>
           <property name="minimum">
            <double>-10.000000000000000</double>
           </property>
@@ -108,7 +111,7 @@
            <double>10.000000000000000</double>
           </property>
           <property name="singleStep">
-           <double>0.010000000000000</double>
+           <double>0.001000000000000</double>
           </property>
          </widget>
         </item>

@@ -43,7 +43,7 @@ fitter = SPFitter(spec, fpga_meas, [[0], -1])
 fitter.fit()
 plotdat = fitter.spec.toPlotE(0, 0, fitter.par)
 fpga_residuals = fitter.calcRes() * 1000  # in mV
-fpga_x, fpga_y, fpga_y_err = fitter.meas.getArithSpec([0], -1)
+fpga_x, fpga_y, fpga_y_err = fitter.meas.getArithSpec([0], -1)   # New not tested yet...
 
 
 ''' AD5781 File '''
@@ -60,7 +60,7 @@ ad_fitter = SPFitter(ad_spec, ad_meas, [[0], -1])
 ad_fitter.fit()
 ad_plotdat = ad_fitter.spec.toPlotE(0, 0, ad_fitter.par)
 ad_residuals = ad_fitter.calcRes() * 1000  # in mV
-ad_x, ad_y, ad_y_err = ad_fitter.meas.getArithSpec([0], -1)
+ad_x, ad_y, ad_y_err = ad_fitter.meas.getArithSpec([0], -1)  # New not tested yet...
 
 
 ''' the plot: '''
