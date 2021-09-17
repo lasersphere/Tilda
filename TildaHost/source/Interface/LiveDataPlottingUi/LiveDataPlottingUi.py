@@ -613,6 +613,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             logging.debug('updating all plots with %s %s' % (str(spec_data), str(update_tres)))
             self.updating_plot = True
             self.update_sum_plot(spec_data)
+            for num, track in enumerate(self.spec_data.cts):
+                # np.nan seems to be making trouble with plotting since we changed to python 3.9
+                self.spec_data.cts[num] = np.nan_to_num(track)
             if spec_data.seq_type in self.trs_names_list:
                 if update_tres:
                     self.update_tres_plot(spec_data)
