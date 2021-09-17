@@ -3412,6 +3412,11 @@ class PlotThesisGraphics:
             # Make band with experimental value
             axes[num].axhspan(y[0] - yerr[0] - ysyst[0], y[0] + yerr[0] + ysyst[0], color=col)
 
+        # Plot the single particle Schmidt Value as dotted Line
+        schmidt_07gs = -1.339
+        for ax in axes:
+            ax.axhline(y=schmidt_07gs, color=self.grey, ls='--')
+
         axes[0].set_ylabel(r'$\mu(^{55}$Ni$) /\mu_N$')
         # axes[0].set_ylim((-1.95, -0.75))
 
@@ -3424,12 +3429,13 @@ class PlotThesisGraphics:
         # make legend
         red_line = mpl.lines.Line2D([], [], color=self.red, marker='', linewidth='2', label='Experiment 56Ni')
         blue_dot = axes[0].errorbar([], [], [], color=self.blue, marker='o', markersize='5', linestyle='', label=r'Theory $^{55}$Ni')
+        grey_line = mpl.lines.Line2D([], [], color=self.grey, ls='--', marker='', linewidth='1', label='Schmidt ($0.7g_s$)')
         da1, la1 = axes[0].get_legend_handles_labels()
         # orange_line = mpl.lines.Line2D([], [], color=self.orange, marker='', linewidth='2', label='Experiment 68Ni')
         # orange_square = axes[1].errorbar([], [], [], color=self.dark_orange, marker='s', markersize='5', linestyle='', label=r'Theorie $^{55}$Co')
         # da2, la2 = axes[1].get_legend_handles_labels()
-        axes[-1].legend(handles=[red_line, da1[0][0]], labels=[r'Laserspec. $^{55}$Ni', la1[0]],  # , orange_line, da2[0][0] ... , R'Experiment $^{55}$Co', la2[0]
-                        bbox_to_anchor=(1.5, 1.05), loc='upper left', ncol=1)
+        f.legend(handles=[red_line, da1[0][0], grey_line], labels=[r'Laserspec. $^{55}$Ni', la1[0], 'Schmidt ($0.7g_s$)'],  # , orange_line, da2[0][0] ... , R'Experiment $^{55}$Co', la2[0]
+                        bbox_to_anchor=(0.15, 0.85), loc='upper left', ncol=1, framealpha=1)
 
         plt.savefig(folder + 'mu_55' + self.ffe, dpi=self.dpi, bbox_inches='tight')
         plt.close()

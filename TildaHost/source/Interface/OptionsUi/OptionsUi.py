@@ -51,6 +51,10 @@ class OptionsUi(QtWidgets.QDialog, Ui_Dialog_Options):
         self.link_openTritonConfig.setText(self.create_folder_str(self.get_setting_from_options('TRITON:config_file')))
         self.link_openTritonConfig.clicked.connect(lambda: self.open_file_or_folder(self.link_openTritonConfig.text()))
 
+        self.spinBox_tritonReadInterval.setValue(self.get_setting_from_options('TRITON:read_interval_ms'))
+        self.spinBox_tritonReadInterval.valueChanged.connect(
+            lambda: self.change_set_value(self.spinBox_tritonReadInterval, 'TRITON:read_interval_ms'))
+
         self.checkBox_disableTritonLink.setChecked(self.get_setting_from_options('TRITON:is_local'))
         self.checkBox_disableTritonLink.clicked.connect(
             lambda: self.toggle_option(self.checkBox_disableTritonLink, 'TRITON:is_local'))
@@ -68,10 +72,12 @@ class OptionsUi(QtWidgets.QDialog, Ui_Dialog_Options):
         self.pushButton_chooseSoundsFolder.clicked.connect(
             lambda: self.choose_folder(self.pushButton_chooseSoundsFolder, 'SOUND:folder'))
 
+        # POLLIFIT TAB
         self.checkBox_guessOffset.setChecked(self.get_setting_from_options('POLLIFIT:guess_offset'))
         self.checkBox_guessOffset.clicked.connect(
             lambda: self.toggle_option(self.checkBox_guessOffset, 'POLLIFIT:guess_offset'))
-        # SPECIAL
+
+        # SPECIAL TAB
         self.checkBox_enableRoc.setChecked(self.get_setting_from_options('SPECIAL:roc_mode'))
         self.checkBox_enableRoc.clicked.connect(
             lambda: self.toggle_option(self.checkBox_enableRoc, 'SPECIAL:roc_mode'))
@@ -95,19 +101,17 @@ class OptionsUi(QtWidgets.QDialog, Ui_Dialog_Options):
         dial = QtWidgets.QMessageBox(self)
         dial.setIcon(QtWidgets.QMessageBox.Warning)
         dial.setDefaultButton(QtWidgets.QMessageBox.No)
-        dial.setText("This is a message box")
-        dial.setInformativeText("This is additional information")
-        dial.setWindowTitle("MessageBox demo")
-        dial.setDetailedText("The details are as follows:")
-        dial.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
-
+        dial.setText("Do you really want to reset all options to their default setting?")
+        dial.setInformativeText("All current settings will be overwritten once you 'Save All'!")
+        dial.setWindowTitle("WARNING")
+        dial.setDetailedText("Will load all options from 'options_default.yaml' as if this were a fresh install.\n"
+                             "If you are unsure, store a copy of your current options.yaml file.")
+        dial.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.Cancel)
+        # Get the return value from the QMessagebBox:
         ret = dial.exec_()
-        # ret = QtWidgets.QMessageBox.question(dial, 'Reset Options',
-        #                                     'Do you really want to reset all options to their default?\n'
-        #                                     'Local changes will be overwritten once you click "Save all"!'
-        #                                     )
-        if ret==QtWidgets.QMessageBox.Yes:
+        if ret == QtWidgets.QMessageBox.Yes:
             self.main.load_options(reset_to_default=True)
+            self.setup_all_options()
 
     ''' options related '''
     def get_setting_from_options(self, setting_address):

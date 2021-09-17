@@ -66,7 +66,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.snake = None
         self.pulse_pattern_win = None
         self.scan_complete_win = None
-        self.show_scan_compl_win = True
+        # self.show_scan_compl_win = True  # TODO: Could use this for a session-long disable. Else just delete
         self.triton_listener_timedout_win = None
 
         self.application = application
@@ -85,7 +85,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionDigital_Multimeters.triggered.connect(self.open_dmm_live_view_win)
         self.actionPolliFit.triggered.connect(self.open_pollifit_win)
         self.actionPulse_pattern_generator.triggered.connect(self.open_pulse_pattern_win)
-        self.actionPre_scan_timeout.triggered.connect(self.set_pre_scan_timeout)
 
 
         """ connect double clicks on labels:"""
@@ -266,17 +265,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 else:
                     self.raise_win_to_front(self.file_plot_wins[file])
 
-    def set_pre_scan_timeout(self):
-        """ set the pre_scan timeout """
-        par = QtWidgets.QInputDialog(self)
-        timeout_s, ok = QtWidgets.QInputDialog.getDouble(
-            par, 'configure pre scan timeout',
-            'The pre scan timeout is the maximum time for any pre scan measurement.\n'
-            'If not all measurements are completed within this time, the measurement is started anyhow.',
-            Cfg._main_instance.pre_scan_measurement_timeout_s.seconds)
-        if ok:
-            Cfg._main_instance.pre_scan_timeout_changed(timeout_s)
-
     ''' formatting '''
 
     def make_dmm_status_nice(self, status_dict):
@@ -300,8 +288,10 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     ''' configure '''
     def show_scan_finished_change(self, show_win_bool):
-        # toggled from options window
-        self.show_scan_compl_win = show_win_bool
+        """
+        Activated from the ScanCompleteWin --> Change option
+        """
+        Cfg._main_instance.set_option('SCAN:show_scan_finished', show_win_bool)
 
     ''' open windows'''
 
@@ -388,7 +378,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             self.raise_win_to_front(self.pulse_pattern_win)
 
     def open_scan_complete_win(self):
-        if self.show_scan_compl_win:
+        if Cfg._main_instance.get_option('SCAN:show_scan_finished'):
             if self.scan_complete_win is None:
                 play_sound = Cfg._main_instance.get_option('SOUND:is_on')
                 sound_folder = Cfg._main_instance.get_option('SOUND:folder')

@@ -162,8 +162,6 @@ class Ui_TildaMainWindow(object):
         self.menuView.addAction(self.actionJob_Stacker)
         self.menuHelp.addAction(self.actionVersion)
         self.menuConfigure.addAction(self.actionoptions)
-        self.menuConfigure.addAction(self.actionShow_scan_finished_win)
-        self.menuConfigure.addAction(self.actionPre_scan_timeout)
         self.menuAnalysis.addAction(self.actionPolliFit)
         self.menubar.addAction(self.menuTilda_MainWindow.menuAction())
         self.menubar.addAction(self.menuView.menuAction())
