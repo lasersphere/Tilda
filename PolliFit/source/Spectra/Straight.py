@@ -24,6 +24,9 @@ class Straight(object):
         if self.x_max is None:
             self.x_min = np.min(x)
             self.x_max = np.max(x)
+        else:
+            self.x_min = np.min([np.min(x), self.x_min])
+            self.x_max = np.min([np.max(x), self.x_max])
         return p[self.pb] + x * p[self.pm]
     
     def evaluateE(self, e, freq, col, p):
@@ -59,4 +62,5 @@ class Straight(object):
         :returns: (x in V, y in V) values with 'prec' number of points.
         """
         x = np.linspace(self.leftEdge(), self.rightEdge(), prec)
+        print('VALUES: ', x, self.evaluate(x, p))
         return x, self.evaluate(x, p)
