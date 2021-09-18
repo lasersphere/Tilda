@@ -66,7 +66,7 @@ class SPFitter(object):
         cut_x = {i: (x_max[i] + x_min[i + 1]) / 2
                  for i in range(self.meas.nrTracks - 1) if x_max[i] < x_min[i + 1]}
 
-        if self.spec.cut_x != {} or cut_x == {}:
+        if not hasattr(self.spec, 'cut_x') or self.spec.cut_x != {} or cut_x == {}:
             return {}
         for track, cut in cut_x.items():
             v = Physics.relVelocity(Physics.qe * cut, self.spec.iso.mass * Physics.u)
