@@ -22,7 +22,8 @@ FPGA:
 POLLIFIT:
   guess_offset: False
 
-FUNCTIONS: {}
+FUNCTIONS:
+  {}
 
 SPECIAL:
   roc_mode: False
