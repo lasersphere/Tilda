@@ -19,7 +19,6 @@ class Straight(object):
         self.pm = 1
         self.x_min = None
         self.x_max = None
-        self.cut_x = {}
 
     def evaluate(self, x, p):
         if self.x_max is None:
