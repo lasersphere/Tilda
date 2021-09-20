@@ -9,6 +9,7 @@ Created on '06.08.2021'
 from PyQt5 import QtWidgets, QtCore, QtGui
 import Application.Config as Cfg
 import configparser
+import Physics
 
 from Interface.FrequencyUi.Ui_Frequency import Ui_Frequency
 from Interface.FrequencyUi.AddFreqUi import AddFreqUi
@@ -46,6 +47,10 @@ class FreqUi(QtWidgets.QMainWindow, Ui_Frequency):
         '''Update Line Edit'''
         self.le_arit.setText(self.freq_arith)   # fill in current arithmetic from options
 
+        ''' Give feedback on arithmetic '''
+        self.check_arith()  # check once on setup
+        self.le_arit.editingFinished.connect(self.check_arith)  # and then on each change
+
         self.show()
 
     def add_freq(self):
@@ -55,6 +60,7 @@ class FreqUi(QtWidgets.QMainWindow, Ui_Frequency):
         self.open_add_freq_win()
         if self.new_freq_name is not None:  # if new frequency added in the dialog, add to listview
             self.list_frequencies.addItems([self.new_freq_name + ': ' + str(self.freq_dict[self.new_freq_name])])
+            self.check_arith()
         else:
             pass
 
@@ -67,6 +73,7 @@ class FreqUi(QtWidgets.QMainWindow, Ui_Frequency):
             name, value = item.text().split(': ')
             self.freq_dict.pop(name)  # remove from frequency dictionary
             self.list_frequencies.takeItem(self.list_frequencies.row(item))  # update listview
+            self.check_arith()
         except ValueError:
             print('ValueError')
 
@@ -83,6 +90,7 @@ class FreqUi(QtWidgets.QMainWindow, Ui_Frequency):
 
                 self.list_frequencies.takeItem(self.list_frequencies.row(item)) # remove old from listview
                 self.list_frequencies.addItems(['{}: {}'.format(self.new_freq_name, self.freq_dict[self.new_freq_name])])
+                self.check_arith()
             else:
                 pass
         except ValueError:
@@ -128,3 +136,19 @@ class FreqUi(QtWidgets.QMainWindow, Ui_Frequency):
         get arithmetic from line input
         """
         self.freq_arith = self.le_arit.text()
+
+    def check_arith(self):
+        """
+        Will try to calculate the frequency.
+        If successful, then the result will be displayed, if not, a wrning is displayed.
+        """
+        try:
+            freq_MHz = eval(self.le_arit.text(),
+                            {'__builtins__': None},
+                            self.freq_dict)
+            freq_wavenum = Physics.wavenumber(freq_MHz)  # Main takes frequency in cm-1
+            freq_nm = Physics.wavelenFromFreq(freq_MHz)
+
+            self.label_2.setText("Current: {:.0f} MHz, {:.4f} cm-1, {:.4f} nm".format(freq_MHz, freq_wavenum, freq_nm))
+        except Exception as e:
+            self.label_2.setText("Given Frequency names must correspond to the name used in the arithmetic.")
