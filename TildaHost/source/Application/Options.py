@@ -48,6 +48,29 @@ class Options:
             self.load_from_file(default=True)   # load default options
             self.save_to_file()
 
+    def load_specific_from_file(self, setting_to_load, default=False):
+        """
+        Read a specific setting from option.yaml and save it to the options dictionary.
+        Will mostly be used if get_setting fails (typically when a new setting has been added since options.yaml was
+        created from default)
+        :param setting_to_load: str: path to the setting. E.g.: CATEGORY:SUBCATEGORY:Setting
+        :param default: Load from options_default.yaml instead of options.yaml -- After loading save options.yaml
+        """
+        if default:  # read default options
+            logging.info('loading setting {} from options_default.yaml'.format(setting_to_load))
+            temp_dict = yaml.safe_load(open(self.default_file))
+            set_val = self.get_setting(setting_to_load, use_this_dict=temp_dict)
+            self.set_setting(setting_to_load, set_val)
+            self.save_to_file()  # save changes back to local options
+        elif os.path.isfile(self.options_file_path):  # check if yaml-file already exists
+            # read options.yaml
+            logging.info('loading setting {} from options.yaml'.format(setting_to_load))
+            temp_dict = yaml.safe_load(open(self.options_file_path))
+            set_val = self.get_setting(setting_to_load, use_this_dict=temp_dict)
+            self.set_setting(setting_to_load, set_val)
+        else:
+            self.load_specific_from_file(setting_to_load, default=True)
+
     def save_to_file(self):
         """
         Save this Options instance to the local yaml file.
@@ -59,17 +82,27 @@ class Options:
         stream.close()
         logging.info('Updated options.yaml')
 
-    def get_setting(self, option_to_get):
+    def get_setting(self, option_to_get, use_this_dict=None):
         """
         Return a requested option
         :param option_to_get: str: Category:Option e.g.: "SOUND:is_on"
+        :param use_this_dict: dict: given dictionary that should be used instead of self.config_dict
         :return: the stored setting
         """
         path_to_option = option_to_get.split(':')
-        setting = self.config_dict
-        for step in path_to_option:
-            setting = setting[step]
-        return setting
+        if use_this_dict is not None:
+            setting = use_this_dict
+        else:
+            setting = self.config_dict
+        try:
+            for step in path_to_option:
+                setting = setting[step]
+            return setting
+        except Exception as e:
+            logging.warning('No setting found in local options for: {}. Loading default setting for this value now!'
+                            .format(option_to_get))
+            self.load_specific_from_file(option_to_get, default=True)
+            return self.get_setting(option_to_get)
 
     def set_setting(self, option_to_set, value_to_set):
         """
@@ -81,11 +114,16 @@ class Options:
         path_to_option = option_to_set.split(':')
         setting = self.config_dict
         for step in path_to_option:
-            if step == path_to_option[-1]:
-                # we're there, set the value
-                setting[step] = value_to_set
-            else:
-                # not there yet, go deeper
+            try:
+                if step == path_to_option[-1]:
+                    # we're there, set the value
+                    setting[step] = value_to_set
+                else:
+                    # not there yet, go deeper
+                    setting = setting[step]
+            except Exception as e:
+                # Path does not exist in dictionary, create it
+                setting[step] = {}
                 setting = setting[step]
 
     '''PRESETS RELATED'''
