@@ -306,7 +306,7 @@ class XMLImporter(SpecData):
                 self.active_pmt_list = [dmm_names]
                 cts_shape = (self.nrScalers[0], nOfsteps)
                 dmm_volt_array = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape, np.float, default_val=np.nan)
+                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape, np.float, default_val=np.nan)  #TODO: np.nan might be causing problems!
                 self.cts.append(dmm_volt_array)
                 err = []
                 for ind, dmm_name in enumerate(dmm_names):

@@ -410,7 +410,8 @@ class Main(QtCore.QObject):
                       (e, dmms_dict), exc_info=True)
         pre_scan_timeout = self.autostart_dict.get('preScanTimeoutS', None)
         if pre_scan_timeout is not None:
-            self.pre_scan_timeout_changed(float(pre_scan_timeout))
+            pass  # moved to options! TODO: Remove here!
+            # self.pre_scan_timeout_changed(float(pre_scan_timeout))
         power_sup_dict = self.autostart_dict.get('autostartDevices', {}).get('powersupplies', False)
         if power_sup_dict:
             logging.warning('automatic start of power supplies not included yet.')
@@ -428,6 +429,8 @@ class Main(QtCore.QObject):
          the pre scan measurement if nto enough values come in etc. """
         # TODO: load from options!
         self.pre_scan_measurement_timeout_s = timedelta(seconds=timeout_s)
+        self.set_option('SCAN:pre_scan_timeout', timeout_s)
+        self.save_options()
         self.autostart_dict['preScanTimeoutS'] = timeout_s
         FileHandl.write_to_auto_start_xml_file(self.autostart_dict)
 
@@ -442,11 +445,11 @@ class Main(QtCore.QObject):
         self.laserfreq = self.calc_freq()  # laser frequency in cm-1
         # self.acc_voltage = 0  # acceleration voltage of the source in volts
         # self.main_ui_status_call_back_signal_timedelta_between_emits = timedelta(milliseconds=500)
-        # self.pre_scan_measurement_timeout_s = timedelta(seconds=60)
+        self.pre_scan_timeout_changed(self.get_option('SCAN:pre_scan_timeout'))
         # self.dmm_periodic_reading_interval = timedelta(seconds=5)
         # self.dmm_periodic_reading_interval_during_scan = timedelta(seconds=1)
         # self.kepco_meas_done_max_wait_for_dmm_meas = timedelta(seconds=5)
-        # self.triton_reading_interval = timedelta(milliseconds=100)
+        self.triton_reading_interval = timedelta(milliseconds=self.get_option('TRITON:read_interval_ms'))
 
     def save_options(self):
         """

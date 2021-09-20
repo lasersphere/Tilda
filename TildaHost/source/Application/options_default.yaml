@@ -14,6 +14,7 @@ SOUND:
 TRITON:
   is_local: False
   config_file: "...\\Driver\\TritonListener\\TritonConfig.py"
+  read_interval_ms: 100
 
 FPGA:
   config_file: "...\\Driver\\DataAcquisitionFpga\\fpga_config.xml"
@@ -21,8 +22,7 @@ FPGA:
 POLLIFIT:
   guess_offset: False
 
-FUNCTIONS:
-  0: '[0]'
+FUNCTIONS: {}
 
 SPECIAL:
   roc_mode: False

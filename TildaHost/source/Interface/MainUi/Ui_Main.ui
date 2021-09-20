@@ -224,8 +224,6 @@
      <string>Configure</string>
     </property>
     <addaction name="actionoptions"/>
-    <addaction name="actionShow_scan_finished_win"/>
-    <addaction name="actionPre_scan_timeout"/>
    </widget>
    <widget class="QMenu" name="menuAnalysis">
     <property name="title">
