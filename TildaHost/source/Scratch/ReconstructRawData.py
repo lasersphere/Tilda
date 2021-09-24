@@ -5,6 +5,7 @@ This will find all raw data for the selected .xml file (given the "normal" TILDA
 and will reconstruct a new xml file by just analysing the raw data again but only with the selected bunches
 """
 import os
+import sys
 from datetime import datetime
 import json
 from PyQt5 import QtCore
@@ -12,6 +13,7 @@ import XmlOperations as XmlOps
 import TildaTools as TiTs
 from Measurement.XMLImporter import XMLImporter
 import numpy as np
+import logging
 
 import Service.FileOperations.FolderAndFileHandling as FilesHandl
 from Service.AnalysisAndDataHandling.tildaPipeline import find_pipe_by_seq_type
@@ -19,10 +21,12 @@ from Service.AnalysisAndDataHandling.tildaPipeline import find_pipe_by_seq_type
 # set your file directory here (where the .sqlite db is located)
 # better work on a copy of the whole thing!
 work_dir = 'C:\\Work\\DEVEL\\TestData\\CryringHighCountrates\\2021_ScanTests'
+work_dir = 'C:\\Work\\DEVEL\\TestData\\ReconstructRawData'
 raw_files = os.path.join(work_dir, 'raw')
 sums_dir = os.path.join(work_dir, 'sums')
 filenames = os.listdir(sums_dir)  # just take all files in the sum folder, must be a list! You can manipulate the list in the next line.
-# filenames = ['24Mg_Anticollinear_trs_run157.xml']  # select the files you actually want to analyse, can be explicit: ['some_run123.xml'] or based on filelist, e.g. filenames[:1] or just comment out. !
+filenames = ['24Mg_Anticollinear_trs_run157.xml']  # select the files you actually want to analyse, can be explicit: ['some_run123.xml'] or based on filelist, e.g. filenames[:1] or just comment out. !
+filenames = ['10B_D2_trs_run317.xml']
 
 # select which pmt's you want to include. Set None for original settings
 # (TILDA actually always records data from all 8 PMTs at the FPGA. The ones not selected are discarded in software)
@@ -141,10 +145,10 @@ def reconstruct_file_from_raw(file_name, raw_files, workdir, scan_start_stop_tr_
                 pipe.feed(data[i:data.size])
 
         save_start = datetime.now()
-        # print('done loading raw data saving now. ', save_start)
+        logging.debug('done loading raw data saving now. {}'.format(save_start))
         pipe.save()
         save_done = datetime.now()
-        # print('saving took: ', save_done - save_start)
+        logging.debug('saving took: {}'.format(save_done - save_start))
         root = TiTs.load_xml(new_file_name)
         header = XmlOps.xmlFindOrCreateSubElement(root, 'header')
         XmlOps.xmlFindOrCreateSubElement(header, 'isotopeStartTime',
@@ -181,6 +185,27 @@ def compare_xml(sample_file, compare_files):
     return not_equal
 
 
+def initialize_logging(log_level="INFO"):
+    # setup logging
+    # logging.basicConfig(level=getattr(logging, args.log_level), format='%(message)s', stream=sys.stdout)
+    # logging.info('Log level set to ' + args.log_level)
+
+    log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(module)s %(funcName)s(%(lineno)d) %(message)s')
+
+    app_log = logging.getLogger()
+    # app_log.setLevel(getattr(logging, args.log_level))
+    app_log.setLevel(logging.DEBUG)
+
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(getattr(logging, log_level))
+    # ch.setFormatter(formatter)
+    ch.setFormatter(log_formatter)
+    app_log.addHandler(ch)
+
+    app_log.info('****************************** starting ******************************')
+    app_log.info('Log level set to ' + log_level)
+
+
 reconstructed_files = []
 not_equal_files = []
 not_eq_ct = 0
@@ -193,6 +218,8 @@ elapsed_list_tot_sec = {}
 scan_start_stop_tr_wise = {}
 bunch_start_stop_tr_wise = {}
 y_axis_files = {}
+
+initialize_logging('DEBUG')
 
 for file in filenames:
     print('------------- working on: %s ----------' % file)

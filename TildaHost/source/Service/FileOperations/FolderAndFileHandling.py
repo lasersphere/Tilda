@@ -163,7 +163,8 @@ def save_hdf5(path, data, set_name='raw_data'):
 def load_hdf5(path):
     """ load data from an hdf5 file -> returns the data, e.g. numpy array """
     f_load = h5py.File(path, 'r')
-    ret = f_load['raw_data'].value
+    ret = f_load['raw_data'][()]
+    # ret = f_load['raw_data'].value  # dataset.value property is deprecated since h5py 2.1!
     f_load.close()
     return ret
 
