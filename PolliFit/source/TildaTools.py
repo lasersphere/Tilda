@@ -1019,11 +1019,13 @@ def nameFileXml(isodict, path):
     return newpath
 
 
-def save_spec_data(spec_data, scan_dict):
+def save_spec_data(spec_data, scan_dict, time_stamp_ns=False):
     """
     this will write the necessary values of the spec_data to an already existing xml file
     :param scan_dict: dict, containing all scan informations
     :param spec_data: spec_data, as a result from XmlImporter()
+    :param time_stamp_ns: bool, True if the spec_data should be saved with a timestamp in ns
+        (is necessary when storing binned data)
     :return:
     """
     try:
@@ -1033,6 +1035,10 @@ def save_spec_data(spec_data, scan_dict):
 
         # be sure that zero free data is created for storing in the file!
         spec_data.time_res_zf = non_zero_free_to_zero_free(spec_data.time_res)
+        if time_stamp_ns:
+            # convert the time_stamp into ns instead of coordinates
+            for tr_ind, tr_data in enumerate(spec_data.time_res_zf):
+                spec_data.time_res_zf[tr_ind]['time'] *= spec_data.softBinWidth_ns[tr_ind] // 10
 
         try:
             if version > 1.1:
