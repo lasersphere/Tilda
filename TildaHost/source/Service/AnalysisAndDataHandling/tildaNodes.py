@@ -2221,7 +2221,7 @@ class NTRSSortRawDatatoArrayFast(Node):
                 # Make sure all events are counted for all scalers where they occurred
                 # e.g. '129' corresponds to pmt0(1) and pmt7(128)have fired
                 # Here also all pmt's that are not in self.comp_list get discared!
-                new_scno_arr = np.zeros(1, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'),
+                new_scno_arr = np.zeros(0, dtype=[('sc', 'u2'), ('step', 'u4'), ('time', 'u4'),
                                                   ('cts', 'u4')])
                 for act_pmt in self.comp_list:
                     # create new array with all elements where this pmt was active:
