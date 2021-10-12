@@ -33,7 +33,8 @@ def isoPlot(db, iso_name, isovar='', linevar='', as_freq=True, laserfreq=None, c
     
     print(spec.getPars())
     if as_freq:
-        x, y = spec.toPlot(spec.getPars(), prec=prec)
+        p = spec.getPars()
+        x, y = spec.toPlot(p, prec=prec)
         x_c = iso.center
         if x_transform is not None:
             x = x_transform(x)
@@ -53,7 +54,8 @@ def isoPlot(db, iso_name, isovar='', linevar='', as_freq=True, laserfreq=None, c
         freq_center = iso.center + iso.freq
         vel_center = Physics.invRelDoppler(laserfreq, freq_center)  # velocity
         print('vel_center: ', vel_center)
-        energ_center = (iso.mass * Physics.u * vel_center ** 2) / 2 / Physics.qe
+        energ_center = Physics.relEnergy(vel_center, iso.mass * Physics.u) / Physics.qe
+        # energ_center = (iso.mass * Physics.u * vel_center ** 2) / 2 / Physics.qe
         x, y = spec.toPlotE(laserfreq, col, spec.getPars())
         if x_transform is not None:
             energ_center = x_transform(energ_center)
@@ -66,7 +68,7 @@ def isoPlot(db, iso_name, isovar='', linevar='', as_freq=True, laserfreq=None, c
         else:
             Plot.get_current_axes().set_xlabel(x_label)
         print('energy: ', energ_center)
-        center_str = '{:.1f} {}V'.format(energ_center, '' if '[V]' in Plot.get_current_axes()
+        center_str = '{:.3f} {}V'.format(energ_center, '' if '[V]' in Plot.get_current_axes()
                                          .xaxis.get_label().get_text() else 'e')
         center_color = plt.gca().get_lines()[-1].get_color()
         plt.axvline(x=energ_center, color=center_color, linestyle='--')
@@ -74,7 +76,8 @@ def isoPlot(db, iso_name, isovar='', linevar='', as_freq=True, laserfreq=None, c
 
     if norm:
         Plot.get_current_axes().set_ylabel('Intensity [%]')
-    plt.gca().get_lines()[-2].set_label(r'{} $\rightarrow$ {}'.format(iso_name, center_str))
+    plt.gca().get_lines()[-2].set_label(r'{} ({}) $\rightarrow$ {}'
+                                        .format(iso_name, 'col' if col else 'acol', center_str))
     plt.gcf().set_facecolor('w')
     plt.legend(bbox_to_anchor=(1.04, 1), loc='upper left')
     plt.tight_layout(rect=[0., 0., 0.75, 1.]) if sys.version_info[0] == 3 and sys.version_info[1] < 6 \

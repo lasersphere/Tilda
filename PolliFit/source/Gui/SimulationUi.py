@@ -22,7 +22,6 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
         self.setupUi(self)
         self.dbpath = None
         self.iso = None
-        self.set_colors()
         self.refresh()
 
         self.cAmplifier.stateChanged[int].connect(self.toggle_amplifier)
@@ -39,26 +38,13 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
         self.dIso.valueChanged.connect(self.calcFreq)
         self.dIsoAmp.valueChanged[float].connect(self.calcVolt)
 
+        self.cInFreq.stateChanged[int].connect(self.toggle_units)
+        self.sCharge.valueChanged[int].connect(self.toggle_charge_state)
+
         self.pShow.clicked.connect(self.showSpec)
 
-    def set_colors(self):
-        col_palette = self.dColFreq.palette()
-        col_palette.setColor(QtGui.QPalette.Text, QtGui.QColor(0, 0, 255))
-        self.dColFreq.setPalette(col_palette)
-        self.dColFreq.update()
-        col_palette = self.cColFreq.palette()
-        col_palette.setColor(QtGui.QPalette.WindowText, QtGui.QColor(0, 0, 255))
-        self.cColFreq.setPalette(col_palette)
-        self.cColFreq.update()
-
-        col_palette = self.dAcolFreq.palette()
-        col_palette.setColor(QtGui.QPalette.Text, QtGui.QColor(255, 0, 0))
-        self.dAcolFreq.setPalette(col_palette)
-        self.dAcolFreq.update()
-        col_palette = self.cAcolFreq.palette()
-        col_palette.setColor(QtGui.QPalette.WindowText, QtGui.QColor(255, 0, 0))
-        self.cAcolFreq.setPalette(col_palette)
-        self.cAcolFreq.update()
+        self.enable_iso_gui(False)
+        self.enable_amplifier_gui(False)
 
     def conSig(self, dbSig):
         dbSig.connect(self.dbChange)
@@ -92,37 +78,64 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
             for i, each in enumerate(r):
                 self.coLineVar.insertItem(i, each[0])
         self.coLineVar.blockSignals(False)
-
+    
+    def enable_iso_gui(self, enable):
+        self.comboIso.setEnabled(enable)
+        self.label_7.setEnabled(enable)
+        self.dIso.setEnabled(enable)
+        if self.cAmplifier.isChecked():
+            self.dIsoAmp.setEnabled(enable)
+        else:
+            self.sCharge.setEnabled(enable)
+    
     def toggle_iso(self, state):
         if state == 0:
             self.dColFreq.setReadOnly(False)
             self.dAcolFreq.setReadOnly(False)
-            self.dIso.setReadOnly(True)
-            self.dIsoAmp.setReadOnly(True)
+            self.enable_iso_gui(False)
         if state == 2:
             self.dColFreq.setReadOnly(True)
             self.dAcolFreq.setReadOnly(True)
-            self.dIso.setReadOnly(False)
-            if self.cAmplifier.isChecked():
-                self.dIsoAmp.setReadOnly(False)
+            self.enable_iso_gui(True)
             self.calcFreq()
 
     def update_dIsoAmp(self):
         self.dIso.valueChanged.emit(self.dIso.value())
 
+    def enable_amplifier_gui(self, enable):
+        self.dAmpSlope.setEnabled(enable)
+        self.dAmpOff.setEnabled(enable)
+        self.dAccVolt.setEnabled(enable)
+        self.label_4.setEnabled(enable)
+        self.label_5.setEnabled(enable)
+        self.label_8.setEnabled(enable)
+        self.label_9.setEnabled(enable)
+        if self.cIso.isChecked():
+            self.dIsoAmp.setEnabled(enable)
+            self.update_dIsoAmp()
+        else:
+            self.sCharge.setEnabled(enable)
+
     def toggle_amplifier(self, state):
+        self.toggle_units(self.cInFreq.checkState())
         if state == 0:
-            self.dIsoAmp.setReadOnly(True)
-            self.dAmpSlope.setReadOnly(True)
-            self.dAmpOff.setReadOnly(True)
-            self.dAccVolt.setReadOnly(True)
+            self.enable_amplifier_gui(False)
         if state == 2:
-            self.dAmpSlope.setReadOnly(False)
-            self.dAmpOff.setReadOnly(False)
-            self.dAccVolt.setReadOnly(False)
-            if self.cIso.isChecked():
-                self.dIsoAmp.setReadOnly(False)
-                self.update_dIsoAmp()
+            self.enable_amplifier_gui(True)
+
+    def toggle_units(self, state):
+        if state == 2:
+            self.label_13.setText('[MHz]')
+        else:
+            self.label_13.setText('[V]' if self.cAmplifier.isChecked() else '[eV]')
+
+    def toggle_charge_state(self):
+        if self.cIso.isChecked():
+            self.calcFreq()
+            if self.sCharge.value() == 0:
+                self.label_12.setText('Voltage has no effect on neutral atoms.')
+            else:
+                self.label_12.setText('')
 
     def calcFreq(self):
         linevar = self.coLineVar.currentText()
@@ -132,7 +145,7 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
             if iso_name is None:
                 return
             self.iso = DBIsotope(self.dbpath, iso_name, lineVar=linevar)
-            v = Physics.relVelocity(u * Physics.qe * self.iso.q, self.iso.mass * Physics.u)
+            v = Physics.relVelocity(u * Physics.qe * self.sCharge.value(), self.iso.mass * Physics.u)
             self.dColFreq.setValue(Physics.relDoppler(self.iso.center + self.iso.freq, v))
             self.dAcolFreq.setValue(Physics.relDoppler(self.iso.center + self.iso.freq, -v))
 
@@ -149,7 +162,8 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
         if self.cInFreq.isChecked() or not self.cAmplifier.isChecked():
             return lambda x: x
         else:
-            return lambda x: -(x / self.iso.q - self.dAccVolt.value() + self.dAmpOff.value()) / self.dAmpSlope.value()
+            return lambda x: -(x / self.sCharge.value() - self.dAccVolt.value() + self.dAmpOff.value()) \
+                             / self.dAmpSlope.value()
 
     def showSpec(self):
         isotopes = self.listIsotopes.selectedItems()
@@ -160,7 +174,7 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
         acolChecked = self.cAcolFreq.isChecked()
         inFreq = self.cInFreq.isChecked()
         x_transform = self.get_x_transform()
-        x_label = 'Amplifier voltage [V]' if self.cAmplifier.isChecked() and not self.cInFreq.isChecked() else None
+        x_label = 'Amplifier voltage [V]' if self.cAmplifier.isChecked() and not inFreq else None
 
         if len(isotopes) == 0:
             logging.error("No isotopes have been selected!")
