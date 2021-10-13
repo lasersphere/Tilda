@@ -5,9 +5,13 @@ Created on 17.10.2017
 edited by P. Mueller
 """
 
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtCore, QtWidgets
 
 import logging
+from importlib import import_module
+from operator import attrgetter
+import ast
+import sqlite3
 import TildaTools as TiTs
 import Tools
 import Physics
@@ -22,7 +26,10 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
         self.setupUi(self)
         self.dbpath = None
         self.iso = None
+        self.line = None
         self.refresh()
+
+        self.coLineVar.currentIndexChanged.connect(self.load_parameters)
 
         self.cAmplifier.stateChanged[int].connect(self.toggle_amplifier)
         self.dAmpSlope.valueChanged.connect(self.calcFreq)
@@ -42,6 +49,9 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
         self.sCharge.valueChanged[int].connect(self.toggle_charge_state)
 
         self.pShow.clicked.connect(self.showSpec)
+
+        self.cAutosave.stateChanged[int].connect(self.toggle_autosave)
+        self.bSavePars.clicked.connect(self.save_parameters)
 
         self.enable_iso_gui(False)
         self.enable_amplifier_gui(False)
@@ -78,6 +88,58 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
             for i, each in enumerate(r):
                 self.coLineVar.insertItem(i, each[0])
         self.coLineVar.blockSignals(False)
+        self.load_parameters()
+
+    def load_parameters(self):
+        line = self.coLineVar.currentText()
+        iso = self.comboIso.currentText()
+        if line and iso:
+            self.iso = DBIsotope(self.dbpath, iso, lineVar=line)
+            self.line = self.iso.shape['name']
+            model = import_module('Spectra.{}'.format(self.line))
+            spec = attrgetter(self.line)(model)(self.iso)
+            # spec = HyperfineN(iso, spec)
+            par_names = spec.getParNames()
+            pars = spec.getPars()
+            self.parTable.blockSignals(True)
+            self.parTable.setRowCount(len(par_names))
+            for i, (n, p) in enumerate(zip(par_names, pars)):
+                # self.parTable.insertRow(i)
+
+                w = QtWidgets.QTableWidgetItem(n)
+                w.setFlags(QtCore.Qt.ItemIsEnabled)
+                self.parTable.setItem(i, 0, w)
+
+                w = QtWidgets.QTableWidgetItem(str(p))
+                w.setFlags(QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsEditable)
+
+                self.parTable.setItem(i, 1, w)
+            self.parTable.blockSignals(False)
+
+    def save_parameters(self):
+        shape = ast.literal_eval(TiTs.select_from_db(
+            self.dbpath, 'shape', 'Lines', [['lineVar'], [self.iso.lineVar]])[0][0])
+        shape.update({self.parTable.item(i, 0).text(): ast.literal_eval(self.parTable.item(i, 1).text())
+                      for i in range(self.parTable.rowCount())})
+        shape.update({'name': self.line})
+        con = sqlite3.connect(self.dbpath)
+        cur = con.cursor()
+        try:
+            cur.execute('UPDATE Lines SET shape = ? WHERE lineVar = ?', (str(shape), self.iso.lineVar))
+            con.commit()
+            print('Saved line pars in Lines!')
+        except sqlite3.Error:
+            print('error: Couldn\'t save line pars. All values correct?')
+        con.close()
+
+    def toggle_autosave(self, state):
+        if state == 0:
+            self.bSavePars.setEnabled(True)
+            self.parTable.itemChanged.disconnect(self.save_parameters)
+        if state == 2:
+            self.bSavePars.setEnabled(False)
+            self.save_parameters()
+            self.parTable.itemChanged.connect(self.save_parameters)
     
     def enable_iso_gui(self, enable):
         self.comboIso.setEnabled(enable)
@@ -127,7 +189,7 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
         if state == 2:
             self.label_13.setText('[MHz]')
         else:
-            self.label_13.setText('[V]' if self.cAmplifier.isChecked() else '[eV]')
+            self.label_13.setText('[V]')
 
     def toggle_charge_state(self):
         if self.cIso.isChecked():
@@ -159,8 +221,10 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
                 self.dIso.setValue(self.dAccVolt.value() - self.dAmpSlope.value() * val - self.dAmpOff.value())
 
     def get_x_transform(self):
-        if self.cInFreq.isChecked() or not self.cAmplifier.isChecked():
+        if self.cInFreq.isChecked():
             return lambda x: x
+        elif not self.cAmplifier.isChecked():
+            return lambda x: x / self.sCharge.value()
         else:
             return lambda x: -(x / self.sCharge.value() - self.dAccVolt.value() + self.dAmpOff.value()) \
                              / self.dAmpSlope.value()
@@ -174,14 +238,19 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
         acolChecked = self.cAcolFreq.isChecked()
         inFreq = self.cInFreq.isChecked()
         x_transform = self.get_x_transform()
-        x_label = 'Amplifier voltage [V]' if self.cAmplifier.isChecked() and not inFreq else None
+        x_label = None
+        if not inFreq:
+            if self.cAmplifier.isChecked():
+                x_label = 'Amplifier voltage [V]'
+            else:
+                x_label = 'Acceleration voltage [V]'
 
         if len(isotopes) == 0:
-            logging.error("No isotopes have been selected!")
+            logging.error('No isotopes have been selected!')
         elif not colChecked and not acolChecked:
-            logging.error("No direction has been selected!")
+            logging.error('No direction has been selected!')
         elif (laserFreqCol <= 0 and colChecked) or (laserFreqAcol <= 0 and acolChecked):
-            logging.error("No propper laserFreq has been entered!")
+            logging.error('No proper laserFreq has been entered!')
         else:
             for iso in isotopes[:-1]:
                 if colChecked:
