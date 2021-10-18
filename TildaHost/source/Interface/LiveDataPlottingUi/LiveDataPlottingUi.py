@@ -468,6 +468,19 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     def t_proj_y_range_changed(self, vb, ymin_ymax):
         self.tres_plt_item.setYRange(ymin_ymax[0], ymin_ymax[1], padding=0)
 
+    def rebinning_spin_box_check_and_set(self, val_to_set=None, block=False):
+        # Make sure the user cannot rebin below the xml_resolution or in non-integer multiples of the xml_res
+        xml_resolution = self.spec_data.xml_resolution_ns
+        if val_to_set is None:  # get from UI
+            val_to_set = self.spinBox.value()
+        val_to_set = TiTs.check_software_gate_validity(val_to_set, xml_resolution)
+        self.spinBox.blockSignals(block)  # block signal if wanted
+        self.spinBox.setValue(val_to_set)
+        self.spinBox.blockSignals(False)  # unblock again
+        self.spinBox.setMinimum(xml_resolution)
+        self.spinBox.setSingleStep(xml_resolution)
+        return val_to_set
+
     def add_all_pmt_plot(self):
         """
         add a plot for each scaler on the tab 'all pmts'.
@@ -640,6 +653,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 st = datetime.now()
                 valid_data = False
                 self.spec_data = deepcopy(spec_data)
+                # Make sure the user cannot rebin below the xml_resolution or in non-integer multiples of the xml_res
 
                 update_time_ms = self.allowed_update_time_ms
                 max_calls_without_plot = 5
@@ -664,12 +678,11 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 if self.spec_data.seq_type in self.trs_names_list:
                     if not self.spinBox.hasFocus():
                         # only update when user is not entering currently
-                        self.spinBox.blockSignals(True)
-                        # blockSignals is necessary to avoid a loop since spinBox is connected to rebin_data(),
-                        # which will emit a new_gate_or_soft_bin_width signal connected to rcvd_gates_and_rebin() Node
-                        # that will again emit a new_data_callback that brings us back here...
-                        self.spinBox.setValue(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
-                        self.spinBox.blockSignals(False)
+                        # blockSignals is necessary to avoid a loop since spinBox is connected to rebin_data(), which will
+                        # emit a new_gate_or_soft_bin_width signal connected to rcvd_gates_and_rebin() Node that will again
+                        # emit a new_data_callback that brings us back here...
+                        self.rebinning_spin_box_check_and_set(block=True,
+                                                              val_to_set=self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
                     self.update_gates_list()
                 valid_data = True
                 if valid_data and self.new_track_no_data_yet:  # this means it is first call
@@ -804,10 +817,14 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             x_range = (x_copy[0], x_copy[-1])
             x_scale = np.mean(np.ediff1d(spec_data.x[self.tres_sel_tr_ind]))
             y_range = (np.min(spec_data.t[self.tres_sel_tr_ind]), np.max(spec_data.t[self.tres_sel_tr_ind]))
-            y_scale = np.mean(np.ediff1d(spec_data.t[self.tres_sel_tr_ind]))
+            if y_range[0] == y_range[-1]:
+                # rebinning was chosen so big that only one value is left
+                y_scale = self.spec_data.softBinWidth_ns[0]/1000  # use softBinWidth_ns and convert to µs
+            else:
+                y_scale = np.mean(np.ediff1d(spec_data.t[self.tres_sel_tr_ind]))
             self.tres_widg.setImage(spec_data.time_res[self.tres_sel_tr_ind][self.tres_sel_sc_ind],
                                     pos=[x_range[0],
-                                         y_range[0] - abs(0.5 * y_scale)],
+                                         y_range[0]],  # - abs(0.5 * y_scale)], Shifting doesn't make sense...(FS)
                                     scale=[x_scale, y_scale],
                                     autoRange=False)
             self.tres_plt_item.setAspectLocked(False)
@@ -817,8 +834,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.tres_plt_item.setAspectLocked(False)
                 self.tres_plt_item.setRange(xRange=x_range, yRange=y_range, padding=0.05)
                 self.setup_range_please = False
-            self.tres_roi.setPos((gates[0], gates[2]), finish=False)
-            self.tres_roi.setSize((abs(gates[0] - gates[1]), abs(gates[2] - gates[3])), finish=False)
+            self.tres_roi.setPos((gates[0],
+                                  gates[2]
+                                  ), finish=False)
+            self.tres_roi.setSize((abs(gates[0] - gates[1]),
+                                   abs(gates[2] - gates[3] - abs(y_scale))  # Now gate visually encloses all data
+                                   ), finish=False)
         except Exception as e:
             logging.error('error, while plotting time resolved, this happened: %s ' % e, exc_info=True)
 
@@ -846,6 +867,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             x_max, t_max = self.tres_roi.size()
             x_max += x_min
             t_max += t_min
+            t_max -= 0.5*abs(self.spec_data.softBinWidth_ns[0]/1000)  # because we increased the gate visual in update_tres_plot
             gates_list = [x_min, x_max, t_min, t_max]
             # print(datetime.datetime.now().strftime('%H:%M:%S'), ' gate select yields:', gates_list)
             self.spec_data.softw_gates[self.tres_sel_tr_ind][self.tres_sel_sc_ind] = gates_list
@@ -1332,11 +1354,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             if rebin_factor_ns is None:
                 if self.active_initial_scan_dict is not None:
                     rebin_factor_ns = self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind]
-            rebin_factor_ns = rebin_factor_ns // 10 * 10
+            # rebin_factor_ns = rebin_factor_ns // 10 * 10
+            rebin_factor_ns = self.rebinning_spin_box_check_and_set(rebin_factor_ns, block=True)
             self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind] = rebin_factor_ns
-            self.spinBox.blockSignals(True)
-            self.spinBox.setValue(rebin_factor_ns)
-            self.spinBox.blockSignals(False)
+
             logging.debug('rebinning data to bins of  %s' % rebin_factor_ns)
             rebin_track = -1 if self.checkBox.isChecked() else self.tres_sel_tr_ind
             logging.debug('emitting %s, from %s, value is %s'

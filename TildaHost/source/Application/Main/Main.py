@@ -17,7 +17,7 @@ from datetime import timedelta
 
 from PyQt5 import QtCore
 from PyQt5.QtGui import QCursor
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QMessageBox
 
 import Application.Config as Cfg
 import Service.DatabaseOperations.DatabaseOperations as DbOp
@@ -114,6 +114,7 @@ class Main(QtCore.QObject):
         #  and which are emitted from the pipeline. Therefore those must be available when initialising the pipeline.
 
         self.scan_main = ScanMain()
+        self.show_resolution_warning = True  # Warn the user, if the xml resolution has been reduced
         self.iso_scan_process = None
         self.scan_pars = {}  # {iso0: scan_dict, iso1: scan_dict} -> iso is unique
         self.scan_progress = {}  # {activeIso: str, activeTrackNum: int, completedTracks: list, nOfCompletedSteps: int}
@@ -760,6 +761,9 @@ class Main(QtCore.QObject):
         self.scan_pars[iso_name]['isotopeData']['version'] = Cfg.version
         self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
         self.scan_pars[iso_name]['isotopeData']['accVolt'] = self.acc_voltage
+        # force a reduced xml-resolution if this is desired
+        self.set_xml_resolution(iso_name)
+
         for key, track_d in self.scan_pars[iso_name].items():
             #  fill empty triton/SQL dicts to each track if there is not one already
             if 'track' in key:
@@ -814,6 +818,41 @@ class Main(QtCore.QObject):
         """
         self.scan_prog_call_back_sig_gui = None
 
+    def set_xml_resolution(self, isotope):
+        """
+        Check the local options to see, whether the user wants a reduced resolution in the xml file (better performance)
+        If so, change that in the scan dict!
+        For continuedAquisitionOnFile (go on file) the resolution of the previous file will be used.
+        """
+        if self.scan_pars[isotope]['isotopeData'].get('continuedAcquisitonOnFile', None) is not None:
+            pass
+        else:
+            xml_res = self.local_options.get_setting('SPECIAL:xml_resolution_ns')//10*10  # should be multiples of 10ns
+            if xml_res < 10:
+                xml_res = 10  # 10ns is the raw resolution. No smaller values possible
+            elif xml_res > 10 and self.show_resolution_warning:
+                dial = QMessageBox()
+                dial.setIcon(QMessageBox.Information)
+                dial.setText("The xml-file resolution has been reduced to {}ns.".format(xml_res))
+                dial.setInformativeText("The full 10ns resolution will only be available in the raw data.")
+                dial.setDetailedText("OK to start the scan anyways.\n\n"
+                                     "IGNORE to suppress this warning until TILDA is restarted and start the scan "
+                                     "anyways.\n\n"
+                                     "ABORT to change the resolution in TILDA options.")
+                dial.setWindowTitle("INFO: Reduced Resolution")
+                dial.setStandardButtons(QMessageBox.Ok | QMessageBox.Abort | QMessageBox.Ignore)
+                dial.setDefaultButton(QMessageBox.Ok)
+                # Get the return value from the QMessagebBox:
+                ret = dial.exec_()
+                if ret == QMessageBox.Abort:
+                    self.abort_scan = True
+                elif ret == QMessageBox.Ignore:
+                    # Do not show this message again
+                    self.show_resolution_warning = False
+                else:
+                    pass
+            self.scan_pars[isotope]['isotopeData']['xmlResolutionNanosec'] = xml_res
+
     def _load_track(self):
         """
         called via state 'load_track'
@@ -831,6 +870,7 @@ class Main(QtCore.QObject):
 
         is_this_first_track = len(self.scan_progress['completedTracks']) == 0
         if is_this_first_track:  # initialise the pipeline on first track
+            # initialize the analysis thread
             self.scan_main.init_analysis_thread(
                 self.scan_pars[iso_name], self.scan_prog_call_back_sig_pipeline,
                 live_plot_callback_tuples=(self.new_data_callback, self.new_track_callback,
