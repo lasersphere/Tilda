@@ -27,3 +27,4 @@ FUNCTIONS:
 
 SPECIAL:
   roc_mode: False
+  xml_resolution_ns: 10

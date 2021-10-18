@@ -8,6 +8,7 @@ Created on '20.05.2015'
 
 import logging
 import os
+import time
 from datetime import datetime
 
 import matplotlib.pyplot as plt
@@ -63,6 +64,8 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True,
     start = Node()
 
     pipe = Pipeline(start)
+    initialScanPars['last_timing'] = time.perf_counter()
+    logging.timing('TIMING: Wrote initial time to pipeData.')
 
     pipe.pipeData = initPipeData(initialScanPars)
     # walk = start.attach(SN.NPrint())
@@ -73,16 +76,22 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True,
 
     # # use the sleep node in order to simulate long processing times in pipeline
     # fast = fast.attach(TN.NSleep(sleeping_time_s=2.0))
+    fast = fast.attach(TN.NPipeTimer('FilterDMMDicts'))
     fast = fast.attach(TN.NSaveRawData())
+    fast = fast.attach(TN.NPipeTimer('SaveRaw'))
     fast = fast.attach(TN.NSendNextStepRequestViaQtSignal(next_step_request_sig))
+    fast = fast.attach(TN.NTRSReduceTimeResolution(initialScanPars))
+    fast = fast.attach(TN.NPipeTimer('ReduceTimeRes'))
     # fast = fast.attach(TN.NProcessQtGuiEvents())
     fast = fast.attach(TN.NTRSSortRawDatatoArrayFast(scan_start_stop_tr_wise=scan_start_stop_tr_wise,
                                                      bunch_start_stop_tr_wise=bunch_start_stop_tr_wise))
+    fast = fast.attach(TN.NPipeTimer('SortRawData'))
     # fast = fast.attach(TN.NProcessQtGuiEvents())
     fast = fast.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
     # fast = fast.attach(SN.NPrint())
     # old = fast.attach(TN.NTRSSumFastArrays())  # outdated
     fast_spec = fast.attach(TN.NTRSSumFastArraysSpecData(x_as_voltage=x_as_voltage))
+    fast = fast.attach(TN.NPipeTimer('SumFastArray'))
     # fast = fast.attach(TN.NProcessQtGuiEvents())
 
     # fast = fast.attach(SN.NPrint())
@@ -93,6 +102,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True,
     # fast_spec = fast_spec.attach(TN.NProcessQtGuiEvents())
     # fast_spec = fast_spec.attach(SN.NPrint())
     fast_spec = fast_spec.attach(TN.NMPLImagePlotAndSaveSpecData(0, *live_plot_callbacks))
+    fast = fast.attach(TN.NPipeTimer('ImagePlotAndSave'))
     # fast_spec = fast_spec.attach(TN.NProcessQtGuiEvents())
 
     # fast_spec = fast_spec.attach(TN.NSaveSpecData())

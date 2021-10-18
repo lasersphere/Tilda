@@ -9,7 +9,9 @@ import logging
 import os
 import sqlite3
 import time
+import timeit
 from copy import deepcopy
+import pickle
 from datetime import datetime, timedelta
 
 import numpy as np
@@ -20,6 +22,7 @@ import Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
 import Service.FileOperations.FolderAndFileHandling as Filehandle
 import Service.VoltageConversions.DAC_Calibration as DACCalib
 
+import Application.Config as Cfg
 import Service.Formating as Form
 import TildaTools
 from Measurement.SpecData import SpecData
@@ -34,6 +37,7 @@ from polliPipe.node import Node
 import ctypes
 
 """ multipurpose Nodes: """
+
 
 class NROCTrigger(Node):
     def __init__(self):
@@ -367,6 +371,29 @@ class NSleep(Node):
         time.sleep(self.sleeping_time_s)
         logging.info('analysis waking up now, and continuing to work.')
         return data
+
+
+class NPipeTimer(Node):
+    """
+    Node for logging the timing during pipeline execution
+    """
+    def __init__(self, ident_str):
+        super(NPipeTimer, self).__init__()
+        self.identifier = ident_str
+        self.last_t = time.perf_counter()
+
+    def processData(self, data, pipeData):
+        process_t = time.perf_counter()
+        timedelta_s = process_t - pipeData['last_timing']
+        pipeData['last_timing'] = process_t
+        logging.timing('PROCESSING: {:.9f} sec passed. LASTJOB: {}.'.format(timedelta_s, self.identifier))
+        return data
+
+    def save(self):
+        process_t = time.perf_counter()
+        timedelta_s = process_t - self.last_t
+        logging.timing('SAVING: {:.9f} sec passed. LASTJOB: {}.'.format(timedelta_s, self.identifier))
+
 
 
 """ saving """
@@ -1158,10 +1185,11 @@ class NMultiSpecFromSpecData(Node):
 
 
 class NMPLImagePlotSpecData(Node):
+    # TODO: DEPRECATED?! ONly used in one test_pipe...
     def __init__(self, pmt_num):
         """
         plotting node, for plotting the image data of one track and one pmt
-        also the projections inside teh gates are displayed.
+        also the projections inside the gates are displayed.
         """
         super(NMPLImagePlotSpecData, self).__init__()
         self.type = 'MPLImagePlotSpecData'
@@ -1470,6 +1498,14 @@ class NMPLImagePlotSpecData(Node):
 
 
 class NMPLImagePlotAndSaveSpecData(Node):
+    """
+    Class for rebinning and plotting the data on the go.
+    On start: emits a new_track_callback
+    During processData: the node copies the data that's running through the pipeline into a self.stored_data (just to
+    have a copy of the original) and then rebins the data and sends a new_data_callback.
+    On stop: adds the working time to pipeData
+    On save: Does a last rebinning and then stores the data to an existing xml file
+    """
     def __init__(self, pmt_num, new_data_callback, new_track_callback,
                  save_request, gates_and_rebin_signal, pre_post_meas_data_dict_callback,
                  needed_plotting_time_ms_callback, save_data=True):
@@ -1498,6 +1534,7 @@ class NMPLImagePlotAndSaveSpecData(Node):
             needed_plotting_time_ms_callback.connect(self.rcvd_needed_plotting_time_ms)
 
     def start(self):
+        # TIMING Analysis: negligible
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
         if self.new_track_callback is not None:
             logging.debug('emitting %s from Node %s, value is %s'
@@ -1506,6 +1543,8 @@ class NMPLImagePlotAndSaveSpecData(Node):
             self.new_track_callback.emit(((track_ind, track_name), (int(self.selected_pmt), self.selected_pmt)))
 
     def processData(self, data, pipeData):
+        # TIMING Analysis: critical
+        start_t = time.perf_counter()
         if not pipeData.get('isotopeData', False):  # only create on first call mainly used in display data pipe
             # print('scan dict was not created yet, creating now!')
             path = pipeData['pipeInternals']['activeXmlFilePath']
@@ -1519,7 +1558,8 @@ class NMPLImagePlotAndSaveSpecData(Node):
             # print('time since last emit of data: %s ' % dif)
             if dif > self.adapted_min_time_between_emits:
                 self.last_emit_time = now
-                self.rebin_and_gate_new_data(deepcopy(data))
+                self.rebin_and_gate_new_data(deepcopy(data))  # TODO:TIMING deepcopy is time-consuming!
+        logging.timing('took {} sec for {} to process_data'.format(time.perf_counter() - start_t, self.type))
         return data
 
     def clear(self):
@@ -1562,14 +1602,16 @@ class NMPLImagePlotAndSaveSpecData(Node):
         """ gates all data with the given list of gates, returns gated specdata. """
         if softw_gates_for_all_tr is not None:
             specdata.softw_gates = softw_gates_for_all_tr
-        return TildaTools.gate_specdata(specdata)
+        ret = TildaTools.gate_specdata(specdata)  # TODO: TIMING gate_specdata is very timeconsuming
+        return ret
 
     def rebin_data(self, specdata, track_ind, software_bin_width=None):
         """ will rebin the data for track of track_ind with the given software_bin_width returns rebinned specdata """
         self.rebin_track_ind = track_ind
         if software_bin_width is None:
             software_bin_width = specdata.softBinWidth_ns
-        return Form.time_rebin_all_spec_data(specdata, software_bin_width, self.rebin_track_ind)
+        ret = Form.time_rebin_all_spec_data(specdata, software_bin_width, self.rebin_track_ind)  # TODO: TIMING rebin_all_spec_data is very timeconsuming
+        return ret
 
     def rcvd_needed_plotting_time_ms(self, needed_plotting_time_ms):
         """
@@ -2065,6 +2107,7 @@ class NTRSSortRawDatatoArrayFast(Node):
             self.scan_start_stop_cur_tr = self.scan_start_stop_tr_wise[track_ind]
 
     def processData(self, data, pipeData):
+        # TODO: TIMING: Slow (up to ~4sec for 10ms trs_dummy) and doesn't scale very well with reduced resolution
         self.stored_data = np.append(self.stored_data, data)
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         step_complete = Form.add_header_to23_bit(1, 4, 0, 1)  # binary for step complete
@@ -2233,7 +2276,7 @@ class NTRSSortRawDatatoArrayFast(Node):
                             # print(new_unique_arr)
 
                 # create a unique array, so all double occurences of the given data are counted
-                new_unique_arr, cts = np.unique(new_scno_arr, return_counts=True)
+                new_unique_arr, cts = np.unique(new_scno_arr, return_counts=True)  # TODO: TIMING this can take a few seconds for big data
                 # ... and put into cts in the unique array:
                 new_unique_arr['cts'] = cts
 
@@ -2397,6 +2440,7 @@ class NTRSSumFastArraysSpecData(Node):
             self.spec_data = XMLImporter(file_path, self.x_as_voltage, self.Pipeline.pipeData)
 
     def processData(self, data, pipeData):
+        # TODO: TIMING is time consuming, but scales well with xml-resolution
         # sc,step,time not in list -> append
         # else: sum cts, each not unique element can only be there twice!
         # -> one from before storage, one from new incoming.
@@ -2465,6 +2509,36 @@ class NTRSRebinAllData(Node):
     def processData(self, data, pipeData):
         return Form.time_rebin_all_data(data, pipeData)
 
+
+class NTRSReduceTimeResolution(Node):
+    """
+    This Node will rebin the incoming data which means that the timing resolution is reduced by
+    combining time bins within a given time window. The time window is set via the 'softBinWidth_ns'
+    item in each track dictionary.
+    jnput: raw data after save
+    output: raw data with reduced resolution
+    """
+
+    def __init__(self, scan_pars):
+        super(NTRSReduceTimeResolution, self).__init__()
+        self.type = 'TRSRebinAllData'
+        self.new_resolution_ns = int(scan_pars['isotopeData'].get('xmlResolutionNanosec', 10))
+        self.resolution_divider = self.new_resolution_ns/10
+
+    def processData(self, data, pipeData):
+        if self.new_resolution_ns > 10:  # only do something if the resolution was changed
+            # check where the 23rd bit ("Headerindex") is 0 --> only true for Timestamps
+            # pmt_events_ind = np.where(not (data & (1 << 23)))[0]
+            header_index = 2 ** 23  # binary for the headerelement
+            pmt_events_ind = np.where(data & header_index == 0)[0]  # indices of all pmt events (for trs)
+            if pmt_events_ind.size:
+                for indx in pmt_events_ind:
+                    timestamp = data[indx] & (2 ** 23 - 1)  # get only the time stamp
+                    timestamp_new = int(timestamp//self.resolution_divider)  # divide by factor new_res/10
+                    data[indx] = data[indx]-timestamp+timestamp_new  # remove old timestamp and add new TODO: faster with bit operation?
+        else:
+            pass
+        return data
 
 """ QT Signal Nodes """
 

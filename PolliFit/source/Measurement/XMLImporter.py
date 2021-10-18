@@ -76,8 +76,9 @@ class XMLImporter(SpecData):
         #  key is device name value is list, which is split into pre scan and post scan values
 
         if 'AD5781' in self.type or 'ad5781' in self.type or 'dac_calibration' in self.type:
-            logging.warning('--------------------------WARNING----------------------------------\n'
-                            'XMLIMporter assumes this a calibration measurement of the DAC,\n'
+            logging.warning('\n'
+                            '--------------------------WARNING----------------------------------\n'
+                            'XMLImporter assumes this a calibration measurement of the DAC,\n'
                             ' therefore the x-axis will be set to units of DAC registers.\n'
                             'key words therefore are: AD5781, ad5781, dac_calibration\n'
                             'do not use those for the isotope name if you do not want this!\n'
@@ -109,6 +110,17 @@ class XMLImporter(SpecData):
         #  list contains numpy arrays with structure: ('sc', 'step', 'time', 'cts')
         #  indices in list correspond to track indices
 
+        self.xml_resolution_ns = 10  # 10ns is the raw data resolution
+        if scandict['isotopeData'].get('xmlResolutionNanosec', None) is not None:
+            self.xml_resolution_ns = int(scandict['isotopeData']['xmlResolutionNanosec'])
+            if self.xml_resolution_ns > 10:
+                logging.warning('\n'
+                                '------------------------------------WARNING--------------------------------------\n'
+                                'XMLImporter found a reduced time-resolution in the scandict for this measurement:\n'
+                                'the time-resolution of the XML file will be less than the raw-resolution of 10ns!\n'
+                                'If this is not your desire, please revert to the full 10ns time-resolution in the\n'
+                                'options dialog of TILDA! \n'
+                                '------------------------------------WARNING--------------------------------------\n')
         # in some special cases (e.g. combined data) errors might need to be given externally
         self.time_res_err = []  # non-standard error time resolved matrices only for time resolved measurements
         self.time_res_zf_err = []  # time resolved list of non-standard errors in form of indices, zf is for zero free,
@@ -148,6 +160,7 @@ class XMLImporter(SpecData):
             nOfactTrack = int(tr_name[5:])
             nOfsteps = track_dict['nOfSteps']
             nOfBins = track_dict.get('nOfBins')
+            nOfBins_xml = nOfBins // int(self.xml_resolution_ns/10)
             nOfScalers = len(track_dict['activePmtList'])
             self.nrBunches += track_dict.get('nOfBunches', 1),
             self.active_pmt_list.append(track_dict['activePmtList'])
@@ -194,8 +207,9 @@ class XMLImporter(SpecData):
 
             if self.seq_type in ['trs', 'tipa', 'trsdummy']:
                 self.softBinWidth_ns.append(track_dict.get('softBinWidth_ns', 10))
-                self.t = TildaTools.create_t_axis_from_file_dict(scandict, with_delay=True)  # force 10 ns resolution
-                cts_shape.append((nOfScalers, nOfsteps, nOfBins))
+                self.t = TildaTools.create_t_axis_from_file_dict(scandict,
+                                                                 with_delay=True, bin_width=self.xml_resolution_ns)  # force 10 ns resolution
+                cts_shape.append((nOfScalers, nOfsteps, nOfBins_xml))
                 scaler_array = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'scalerArray', cts_shape[tr_ind])
                 # maybe the file has non-standard errors. Try to import them. Fail will return NONE:

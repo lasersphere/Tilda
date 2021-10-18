@@ -82,6 +82,10 @@ class OptionsUi(QtWidgets.QDialog, Ui_Dialog_Options):
         self.checkBox_enableRoc.clicked.connect(
             lambda: self.toggle_option(self.checkBox_enableRoc, 'SPECIAL:roc_mode'))
 
+        self.spinBox_xmlResolution.setValue(self.get_setting_from_options('SPECIAL:xml_resolution_ns'))
+        self.spinBox_xmlResolution.editingFinished.connect(
+            lambda: self.change_set_value(self.spinBox_xmlResolution, 'SPECIAL:xml_resolution_ns'))
+
 
     ''' general '''
 

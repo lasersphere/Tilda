@@ -20,7 +20,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="tab_generalSettings">
       <attribute name="title">
@@ -289,7 +289,7 @@
          <item>
           <widget class="QSpinBox" name="spinBox_xmlResolution">
            <property name="enabled">
-            <bool>false</bool>
+            <bool>true</bool>
            </property>
            <property name="sizePolicy">
             <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
@@ -309,12 +309,15 @@
            <property name="maximum">
             <number>100000</number>
            </property>
+           <property name="singleStep">
+            <number>10</number>
+           </property>
           </widget>
          </item>
          <item>
           <widget class="QLabel" name="label_2">
            <property name="enabled">
-            <bool>false</bool>
+            <bool>true</bool>
            </property>
            <property name="text">
             <string>Maximum xml-resolution (raw data always 10ns)</string>

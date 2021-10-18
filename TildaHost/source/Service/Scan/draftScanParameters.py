@@ -75,6 +75,7 @@ trsdummy_list = trs_list
 draftIsotopePars = {
     'version': '1.06', 'type': 'trs', 'isotope': '40_Ca',
     'nOfTracks': 1, 'accVolt': 9999.8,
+    'xmlResolutionNanosec': 10,
     'laserFreq': 12568.766,
     'isotopeStartTime': datetime.today().strftime('%Y-%m-%d %H:%M:%S')
 }
