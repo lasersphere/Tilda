@@ -3,6 +3,54 @@ Change list between release with the info on fixes, major changes etc. last chan
 to identify links use: (htt...)
 """
 
+***************************************   Changes for version 1.25 ***************************************
+
+Summary (find details below):
+
+TILDA
+Added:
+    - Replace PYRO4 (Tilda with new TRITON)
+        * Added new backend and updated TritonObject and DeviceBase to the new version of Triton. Pre/Post scan
+          measurements already work, ScanDevice couldn't be tested yet. (776d7004)
+        * Updated the Triton Backend classes, TritonObject, TritonDeviceBase and TritonScanDeviceBase to the latest
+          version from the new Triton master branch. Changes are completely untested so far, so don't merge into release
+          or master just yet. (7059c1bb)
+        * Some cleanup to remove all the Pyro references in TildaStart etc.
+        https://app.asana.com/0/10893101573162/1200969717497502/f
+
+POLLIFIT
+Added:
+    - Monte-Carlo King-Fit
+        Added a multidimensional Monte-Carlo King-Fit module based on the algorithm described in the supplement of
+        [Gebert et al., Phys. Rev. Lett. 115, 053003 (2015)] and the existing KingFitter module.
+        * Both, Field-shift factors (differences of mean square charge radii) and ratios (isotope shifts) can be
+          determined using the KingFitter or the KingFitterRatio class, respectively.
+        * An arbitrary number n of electronic transitions can be used to perform the King-Fit.
+        * This results in an (n+1)-dimensional fit for the KingFitter class and an n-dimensional fit for the
+          KingFitterRatio class.
+        * The fit considers the correlations between the axes due to their common dependence on the isotope masses.
+          This becomes extremely important if the relative uncertainties of the masses are larger than those of the
+          isotope shifts or charge radii.
+
+    - Offsets for non-overlapping tracks
+        * FullSpec:
+          - Individual offsets are assigned to each additional non-overlapping track if there is more than one track.
+          - The offset parameters have to be added via the "add_track_offsets" method which expects a dictionary of
+            voltages to cut the x-axis as well as the laser frequency and the col/acol information of the current file.
+        * SPFitter:
+          - The information where to cut the x-axis for the track offsets is extracted here and handed over to the
+            FullSpec on initialization via the "add_track_offsets" method.
+          - A line was added which raises an error if tracks are overlapping each other since this could lead to ambiguous
+            x-values. However, it was commented out to for now to not prevent plotting of the spectrum.
+        * ColAcolTools: Added type casting to float in two lines.
+        * MonteCarloKingFitter: Removed redundant quotes.
+
+Improved:
+    - minor changes
+        * Methods in SpecData.py, SPFitter.py, FullSpec.py and Physics.py do fully utilize numpy arrays during fitting.
+          https://app.asana.com/0/10893101573162/1200969717497500/f
+        * Added a missing factor 2 in the calculation of the first order of the "thermalLorentz" method.
+
 ***************************************   Changes for version 1.24 ***************************************
 
 Summary (find details below):
