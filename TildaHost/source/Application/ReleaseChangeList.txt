@@ -3,6 +3,212 @@ Change list between release with the info on fixes, major changes etc. last chan
 to identify links use: (htt...)
 """
 
+***************************************   Changes for version 1.25 ***************************************
+
+Summary (find details below):
+Tilda is now updated to the newer Python version and works with new TRITON. An Options menue is now used to define
+local options for measurements. The ROC21 version has been merged to the release.
+
+TILDA
+Added:
+    - Replace PYRO4 (Tilda with new TRITON)
+        * Added new backend and updated TritonObject and DeviceBase to the new version of Triton. Pre/Post scan
+          measurements already work, ScanDevice couldn't be tested yet. (776d7004)
+        * Updated the Triton Backend classes, TritonObject, TritonDeviceBase and TritonScanDeviceBase to the latest
+          version from the new Triton master branch. Changes are completely untested so far, so don't merge into release
+          or master just yet. (7059c1bb)
+        * Some cleanup to remove all the Pyro references in TildaStart etc.
+        https://app.asana.com/0/10893101573162/1200969717497502/f
+
+    -  Option to pass individual errors in trs-files
+        must be named 'errorArray' in xml and have the same format as 'scalerArray'.
+
+    - Options Menue
+        'Options' tab in the main menu where basic settings can be defined. For example an option to completely disable
+        all triton functionality in cases where no triton is used or the new 'guess_offset' function of Pollifit.
+          * Added the class Options for storing local settings.
+          * Added an optioin GUI
+        Main.py:
+          * created options-object
+          * use ini file for loading and storing options
+          * new function "create_stnadard_ini()"
+          * new function "read_ini"
+
+    - Frequency Multiplicator
+        The laser frequency can now be user-defined in the options menue. The laser freqency is now calculated from the
+        users input and the users input is written to the options.ini. For further processes theuse laserfreq from is
+        taken from the options class
+          * added a Frequency UI
+          * new function "calc_freq"
+          * added a default option.yaml file
+
+    - ROC21 version
+
+Improved:
+    - The Ui_TrackPar had gone pretty big, so an alternative 2-column design that should be a little better to use was
+      created
+
+    - Updates to ReconstructRawData
+        allows to filter by scan numbers
+          * Now allows to specify start/stop SCANS as well as bunches.
+          * Only works with TRS data so far! No CS! (Could be implemented though)
+          * No advanced combination sets as with bunches
+        This required some changes to Tilda Nodes as well:
+          * There is a scan_start_stop_tr_wise parameter which defaults to None
+          * If None, everything should be the same as before!
+          * Else the pipe discards all pmt events which don't match scan bounds.
+
+    - Update to newer python Version
+
+    - 'Help' Tab
+        Version Info now also displays current branch and commit.
+
+    - Sum window
+        Now user specific math operation with different scalers in "sum" window additionally to the usual summing of
+        all scalers can be defined and used. Often used functions are saved in the options file and can be chosen
+        in a dropdown menue
+        Changes have been done to:
+          * SpecData: getArithSpec, getSingleSpec
+          * LiveDataPlottingUi: line_edit_changed, update_projections_arith, new_data, self.function (added)
+          * PyQtGraphPlotter: plot_all_sc, update_sum_plot, update_sum_plot_arith
+
+Fixed:
+    - 'lost' counts
+        Now the events are first separated into the individual pmt's including multi-fire cases and only afterwards the
+        unique np.arrays are created.
+        Old raw data can be re-analyzed with the new pipeline to reconstruct the real data. A small update to
+        'ReconstructRawData.py' is included (Better cocumentation + Option to change the list of active PMTs).
+
+POLLIFIT
+Added:
+    - Monte-Carlo King-Fit
+        Added a multidimensional Monte-Carlo King-Fit module based on the algorithm described in the supplement of
+        [Gebert et al., Phys. Rev. Lett. 115, 053003 (2015)] and the existing KingFitter module.
+        * Both, Field-shift factors (differences of mean square charge radii) and ratios (isotope shifts) can be
+          determined using the KingFitter or the KingFitterRatio class, respectively.
+        * An arbitrary number n of electronic transitions can be used to perform the King-Fit.
+        * This results in an (n+1)-dimensional fit for the KingFitter class and an n-dimensional fit for the
+          KingFitterRatio class.
+        * The fit considers the correlations between the axes due to their common dependence on the isotope masses.
+          This becomes extremely important if the relative uncertainties of the masses are larger than those of the
+          isotope shifts or charge radii.
+
+    - Offsets for non-overlapping tracks
+        * FullSpec:
+          - Individual offsets are assigned to each additional non-overlapping track if there is more than one track.
+          - The offset parameters have to be added via the "add_track_offsets" method which expects a dictionary of
+            voltages to cut the x-axis as well as the laser frequency and the col/acol information of the current file.
+        * SPFitter:
+          - The information where to cut the x-axis for the track offsets is extracted here and handed over to the
+            FullSpec on initialization via the "add_track_offsets" method.
+          - A line was added which raises an error if tracks are overlapping each other since this could lead to
+            ambiguous x-values. However, it was commented out to for now to not prevent plotting of the spectrum.
+        * ColAcolTools: Added type casting to float in two lines.
+        * MonteCarloKingFitter: Removed redundant quotes.
+
+    - class HyperfineN as a subclass to Hyperfine
+        creates the specified number of number of peaks instead of a single one.
+        Each additional peak comes with two parameters for its position and intensity relative to the first peak.
+        Note that after changing 'nPeaks', the parameters have to be saved to the database and the spectrum has to be
+        reloaded, since changing 'nPeaks' changes the parameter space.
+        * FullSpec:
+          - Replaced Hyperfine by HyperfineN.
+          - replaced exec() and eval() by setattr() and getattr(), respectively.
+        * MPLPlotter:
+          - added an if-query to not wrongly rescale the satellite peaks of the AsymmetricVoigt in the additional peaks
+            from HyperfineN.
+
+    - AsymmetricVoigt
+        * Changed the label of the "number of peaks"-parameter from 'nOfPeaks' to 'nPeaksAsym' to make this
+          shape-specific parameter stand out from the general "number of peaks"-parameter 'nPeaks' from the HyperfineN
+          class.
+        * Databases with the previous label are still loaded correctly. The new label is used when saving the parameters
+          to database. Databases with the new label require this update to be used with PolliFit.
+
+    - new parameter "guess_offset"
+        guess_offset in FullSpec.py allows to guess the offset parameter based on the actual counts. Must be activated
+        as an option in batchFit or interactiveFit. Default is off (as it always was)
+
+    - new option "safe_to_folder"
+        can be set in batchFit and allows manual change of the output folder for the fit .png's. Default is None (use
+        data folder, typically 'Sums')
+
+    -  New spectra "ThermalVoigt" and "ThermalGradientVoigt"
+        * FullSpec.py:
+          In evaluate(), x is cast to an array and before further code is executed, an empty array is returned if x is
+          empty.
+        * Physics.py:
+          - Added the first lemniscate constant (pi * G where G is Gauss's constant).
+          - Added a PDF (source_energy_pdf) which lives in the frequency space of accelerated ions. It describes the
+            distribution of ions which initially had thermally and normal distributed kinetic energies along the
+            acceleration axis. Mathematically, this is a convolution of a chi-squared distributed random variable with
+            one degree of freedom and a normal distribution. Energies approximately transform linearly to frequencies.
+        * LorentzQI.py:
+          Added a factor 0.5 to the interference term which is also missing in the paper
+          [Brown et al., Phys. Rev. A 87, 032504 (2013)].
+        * ThermalPseudoVoigt.py:
+          Removed the second peak, since n extra peaks are available now for arbitrary Spectra.
+        * ThermalVoigt.py:
+          A new spectrum which is physically analog to the ThermalPseudoVoigt. Instead of a linear combination the
+          thermalLorentz function is numerically convoluted with a Gauss distribution.
+        * ThermalGradientVoigt.py:
+          A new spectrum which is physically analog to the ThermalPseudoVoigt and ThermalVoigt. This spectrum is much
+          more robust, however, might have longer fitting times than the ThermalVoigt spectrum. It is a numerical
+          convolution of the 'source_energy_pdf' with a Lorentz profile. It does not fail if the compression/xi
+          parameter is too high or too low.
+
+    - 'FitRoutines.py' script
+        to PolliFit which contains different fitting routines.
+        At the moment only the the algorithm from [York et al., American Journal of Physics 72, 367 (2004)] is
+        implemented, however, the script is set up to contain arbitrary fitting routines.
+
+    - relative peak intensities
+        can now be set fixed/free in the db. you can now manually add, e.g. {..., 'Int5': False} to leave only the
+        intensity of peak number five free (maybe you only measured a few peaks)
+
+Improved:
+
+    - minor changes in Pollift
+        * Methods in SpecData.py, SPFitter.py, FullSpec.py and Physics.py do fully utilize numpy arrays during fitting.
+          https://app.asana.com/0/10893101573162/1200969717497500/f
+        * Added a missing factor 2 in the calculation of the first order of the "thermalLorentz" method.
+        * All parameters are written to the db fitResults
+        * KingFitter now correctly uses the x-error when finding best alpha + A custom plot folder can now be specified
+          when creating the KingFitter
+        * in Kingplots popup graphics can be suppressed now. Default: popup=True
+        * MC King fitter moved correlation() to class function to allow fix alpha
+        * MC King fitter can now save graphics as file to folder
+        * BatchFit.py will now create the save-to folder if it does not exist
+
+    - Expanded the Simulation tab of PolliFit
+        now laser frequencies are calculated on-the-fly by setting a voltage for a specific isotope.
+          - DBIsotope:
+            * A parameter 'q' was added which holds the charge state. The charge state was already used to reduce the
+              mass of the isotope by subtracting the respective number of electron masses and now is also used in the
+              Simulation tab of PolliFit.
+          - Tools.plotIso:
+            * The 'norm' parameter was added to norm the maximum y value to 100 (%).
+            * The redundancy of the legend was reduced.
+            * Plotting Voltages instead of eV is correctly displayed in the legend now.
+          - Spectra.Voigt:
+            * An 'fwhm' function was added to return the full width at half maximum of the Voigt profile.
+            * The functions 'leftEdge' and 'rightEdge' were adjusted using the new 'fwhm' function.
+            * The line with 'p_offset_slope' was removed from the 'getPars' function. This parameter is handled in
+              'FullSpec'.
+          - Lorentz:
+            * The left- and rightEdge were adjusted to 5 times the fwhm.
+          - Simulation tab:
+            * Added the option to set equal intensities for all isotopes.
+            * The charge state of the isotopes is considered when using the amplifier now.
+            * The two laser frequency inputs were colorized.
+            * The Simulation tab allows the user to choose the charge state of an atom when scanned now.
+            * The x-axis units are displayed in the window now.
+            * The checkboxes correctly enable and disable interfering options now.
+            * Added a parameter table for the lineshapes to the Simulation tab.
+            * Changed all non-frequency x-axis units to Volts.
+
+
+
 ***************************************   Changes for version 1.24 ***************************************
 
 Summary (find details below):
