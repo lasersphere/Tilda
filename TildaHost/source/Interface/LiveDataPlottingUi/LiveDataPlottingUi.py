@@ -1338,6 +1338,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.sum_scaler = None
         self.sum_track = None
         self.add_sum_plot()
+        self.comboBox_select_sum_for_pmts.currentIndexChanged.emit(0)
 
     def reset_t_res_plot(self):
         """
