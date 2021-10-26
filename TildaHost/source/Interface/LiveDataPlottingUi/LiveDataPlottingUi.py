@@ -845,6 +845,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.comboBox_select_sum_for_pmts.setCurrentIndex(index)
 
     def get_functions(self):
+        func_dict = Cfg._main_instance.get_option('FUNCTIONS')
         func_dict = Cfg._main_instance.local_options.get_functions()
         func_list = []
         for key, value in func_dict.items():
