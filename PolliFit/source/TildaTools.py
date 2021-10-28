@@ -584,6 +584,7 @@ def zero_free_to_non_zero_free(zf_time_res_arr, dims_sc_step_time_list):
                 [(n_of_scalers_tr, n_of_steps_tr, n_of_bins_tr), ...]
 
     """
+    # TODO: can tun into big Matrix issues here. Check maxsize and split into multiple?
     new_time_res = [np.zeros(dims_sc_step_time_list[tr_ind], dtype=np.int32)
                     for tr_ind, tr in enumerate(dims_sc_step_time_list)]
 

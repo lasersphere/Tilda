@@ -1641,15 +1641,211 @@ class NMPLImagePlotAndSaveSpecData(Node):
         #               % (softw_gates_for_all_tr, rebin_track_ind, softBinWidth_ns))
         if self.rebinned_data is not None:
 
-            self.mutex.lock()  # can be called form other track, so mute it.
+            self.mutex.lock()  # can be called from other track, so mute it.
             changed = force_both
             if self.rebinned_data.seq_type in self.trs_names_list:
                 if softBinWidth_ns != self.rebinned_data.softBinWidth_ns or changed:
                     # always rebin from stored data otherwise going back to higher res does not work!
                     self.rebinned_data = self.rebin_data(self.stored_data, rebin_track_ind, softBinWidth_ns)
+                    logging.timing('Done self.rebin_data()')
                     changed = True  # after rebinning also gate again
                 if softw_gates_for_all_tr != self.rebinned_data.softw_gates or changed:
                     self.rebinned_data = self.gate_data(self.rebinned_data, softw_gates_for_all_tr)
+                    logging.timing('Done self.gate_data()')
+                    changed = True
+            if changed:
+                try:
+                    if self.new_data_callback is not None:
+                        logging.debug('emitting %s from Node %s, value is %s'
+                                      % ('new_data_callback', self.type, 'self.rebinned_data'))
+                        self.new_data_callback.emit(self.rebinned_data)
+                except Exception as e:
+                    pass
+                    # sometimes new_data_callback migth have ben deleted already here.
+                    # This happens when closing an offline plot window.
+                    # logging.error('error while receiving gates in NMPLImagePlotAndSaveSpecData, error is: %s' % e,
+                    #               exc_info=True)
+            else:
+                logging.debug('did not emit, because gates/rebinning was not changed.')
+            self.mutex.unlock()
+        else:
+            logging.debug('could not rebin, self.rebinned data is None')
+
+    def rebin_and_gate_new_data(self, newdata):
+        """ this will force a rebin and gate followed by a send of the self.rebinned_data """
+        try:
+            if newdata is not None:
+                self.mutex.lock()
+                if self.rebinned_data is None:  # do not overwrite before getting the previous settings
+                    self.rebinned_data = newdata
+                gates = deepcopy(self.rebinned_data.softw_gates)  # store previous set gates!
+                binwidth = deepcopy(self.rebinned_data.softBinWidth_ns)  # .. and binwidth
+                self.rebinned_data = newdata
+                self.mutex.unlock()
+                self.rcvd_gates_and_rebin(gates, self.rebin_track_ind, binwidth, True)
+        except Exception as e:
+            logging.error(
+                'while rebinning new data in %s.rebin_and_gate_new_data() the following error occurred: %s'
+                % (self.type, e)
+            )
+            self.mutex.unlock()
+
+
+class NMPLImagePlotAndSaveSpecDataFast(Node):
+    """
+    Class for rebinning and plotting the data on the go.
+    On start: emits a new_track_callback
+    During processData: the node copies the data that's running through the pipeline into a self.stored_data (just to
+    have a copy of the original) and then rebins the data and sends a new_data_callback.
+    On stop: adds the working time to pipeData
+    On save: Does a last rebinning and then stores the data to an existing xml file
+    """
+    def __init__(self, pmt_num, new_data_callback, new_track_callback,
+                 save_request, gates_and_rebin_signal, pre_post_meas_data_dict_callback,
+                 needed_plotting_time_ms_callback, save_data=True):
+        super(NMPLImagePlotAndSaveSpecDataFast, self).__init__()
+        self.type = 'MPLImagePlotAndSaveSpecDataFast'
+        self.selected_pmt = pmt_num  # for now pmt name should be pmt_ind
+        self.stored_data = None  # specdata, full resolution
+        self.rebinned_data = None  # specdata, rebinned
+        self.rebin_track_ind = -1  # index which track should be rebinned -1 for all
+        self.trs_names_list = ['trs', 'trsdummy', 'tipa']  # in order to deny rebinning, for other than that
+        self.save_data = save_data
+
+        self.new_data_callback = new_data_callback
+        self.new_track_callback = new_track_callback
+        min_time_ms = 250.0
+        self.min_time_between_emits = timedelta(milliseconds=min_time_ms)  # fixed!
+        self.adapted_min_time_between_emits = timedelta(milliseconds=min_time_ms) # can be changed when gui takes longer to plot
+        # just be sure it emits on first call (important for loading etc.):
+        self.last_emit_time = datetime.now() - self.min_time_between_emits - self.min_time_between_emits
+        self.mutex = QtCore.QMutex()  # for blocking of other threads
+        if gates_and_rebin_signal is not None:
+            gates_and_rebin_signal.connect(self.rcvd_gates_and_rebin)
+        if save_request is not None:
+            save_request.connect(self.save)
+        if needed_plotting_time_ms_callback is not None:
+            needed_plotting_time_ms_callback.connect(self.rcvd_needed_plotting_time_ms)
+
+    def start(self):
+        # TIMING Analysis: negligible
+        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+        if self.new_track_callback is not None:
+            logging.debug('emitting %s from Node %s, value is %s'
+                          % ('new_track_callback', self.type,
+                             str(((track_ind, track_name), (int(self.selected_pmt), self.selected_pmt)))))
+            self.new_track_callback.emit(((track_ind, track_name), (int(self.selected_pmt), self.selected_pmt)))
+
+    def processData(self, data, pipeData):
+        # TIMING Analysis: critical
+        start_t = time.perf_counter()
+        if not pipeData.get('isotopeData', False):  # only create on first call mainly used in display data pipe
+            # print('scan dict was not created yet, creating now!')
+            path = pipeData['pipeInternals']['activeXmlFilePath']
+            new_scan_dict = TildaTools.create_scan_dict_from_spec_data(data, path)
+            # print('new_scan_dict is:', new_scan_dict)
+            self.Pipeline.pipeData = new_scan_dict
+        self.stored_data = data  # always leave original data untouched
+        if self.new_data_callback is not None:
+            now = datetime.now()
+            dif = (now - self.last_emit_time)
+            # print('time since last emit of data: %s ' % dif)
+            if dif > self.adapted_min_time_between_emits:
+                self.last_emit_time = now
+                self.rebin_and_gate_new_data(deepcopy(data))  # TODO:TIMING deepcopy is time-consuming!
+        logging.timing('took {} sec for {} to process_data'.format(time.perf_counter() - start_t, self.type))
+        return data
+
+    def clear(self):
+        # make sure it is emitted in the end again!
+        # if self.save_data:
+        #     self.save()
+        del self.stored_data
+        del self.rebinned_data
+        self.stored_data = None
+        self.rebinned_data = None
+        # pass
+
+    def stop(self):
+        try:
+            logging.info('pipeline was stopped')
+            # if self.stored_data is not None:
+            self.rebin_and_gate_new_data(self.stored_data)
+            track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
+            self.Pipeline.pipeData[track_name] = Form.add_working_time_to_track_dict(
+                self.Pipeline.pipeData[track_name])
+            logging.debug('working time has ben set to: %s ' % str(self.Pipeline.pipeData[track_name]['workingTime']))
+        except Exception as e:
+            logging.warning('pipeline was stopped, but Node %s could not execute stop(),'
+                            ' maybe no data was incoming yet? Error was: %s' % (self.type, e))
+
+    def save(self):
+        try:
+            self.rebin_and_gate_new_data(self.stored_data)
+            if self.stored_data is not None:  # maybe abort was pressed before any data was collected.
+                if self.rebinned_data.seq_type in self.trs_names_list:
+                    # copy gates from gui values and gate
+                    self.stored_data.softw_gates = deepcopy(self.rebinned_data.softw_gates)
+                    self.stored_data = TildaTools.gate_specdata(self.stored_data)
+                TildaTools.save_spec_data(self.stored_data, self.Pipeline.pipeData)
+        except Exception as e:
+            logging.warning('pipeline was stopped, but Node %s could not execute save(),'
+                            ' maybe no data was incoming yet? Error was: %s' % (self.type, e))
+
+    def gate_data(self, specdata, softw_gates_for_all_tr=None):
+        """ gates all data with the given list of gates, returns gated specdata. """
+        if softw_gates_for_all_tr is not None:
+            specdata.softw_gates = softw_gates_for_all_tr
+        ret = TildaTools.gate_specdata(specdata)  # TODO: TIMING gate_specdata is very timeconsuming
+        return ret
+
+    def rebin_data(self, specdata, track_ind, software_bin_width=None):
+        """ will rebin the data for track of track_ind with the given software_bin_width returns rebinned specdata """
+        self.rebin_track_ind = track_ind
+        if software_bin_width is None:
+            software_bin_width = specdata.softBinWidth_ns
+        ret = Form.time_rebin_all_spec_data(specdata, software_bin_width, self.rebin_track_ind)  # TODO: TIMING rebin_all_spec_data is very timeconsuming
+        return ret
+
+    def rcvd_needed_plotting_time_ms(self, needed_plotting_time_ms):
+        """
+        when the liveplot takes quite some time to update,
+        the analysis thread must be stopped from constantly pushing its values to the plotting window.
+        It will only change the plotting time if it increases.
+        :param needed_plotting_time_ms: float, time in ms the gui needed to plot
+        :return:
+        """
+        pass
+        # this is not necessary anymore because this was taken into account in the GUI itself.
+        # current_time_emits_ms = self.min_time_between_emits.total_seconds() * 1000
+        # new_time_between_emits_ms = max(self.min_time_between_emits.total_seconds() * 1000, needed_plotting_time_ms)
+        # if new_time_between_emits_ms >= current_time_emits_ms:
+        #     logging.debug('Updating time between plot is now: %.1f ms but would'
+        #                   ' actually be: %.1f ms and plot needed: %.1f ms'
+        #                   % (self.adapted_min_time_between_emits.total_seconds() * 1000,
+        #                      new_time_between_emits_ms, needed_plotting_time_ms))
+        # self.adapted_min_time_between_emits = timedelta(milliseconds=new_time_between_emits_ms)
+
+    def rcvd_gates_and_rebin(self, softw_gates_for_all_tr, rebin_track_ind, softBinWidth_ns,
+                             force_both=False):
+        """ when receiving new gates/bin width, this is called and will rebin and
+        then gate the data if there is a change in one of those.
+        The new data will be send afterwards. """
+        # logging.debug('received gates: %s tr_ind: %s bin_width_ns: %s'
+        #               % (softw_gates_for_all_tr, rebin_track_ind, softBinWidth_ns))
+        if self.rebinned_data is not None:
+
+            self.mutex.lock()  # can be called from other track, so mute it.
+            changed = force_both
+            if self.rebinned_data.seq_type in self.trs_names_list:
+                if softBinWidth_ns != self.rebinned_data.softBinWidth_ns or changed:
+                    # always rebin from stored data otherwise going back to higher res does not work!
+                    self.rebinned_data = self.rebin_data(self.stored_data, rebin_track_ind, softBinWidth_ns)
+                    logging.timing('Done self.rebin_data()')
+                    changed = True  # after rebinning also gate again
+                if softw_gates_for_all_tr != self.rebinned_data.softw_gates or changed:
+                    self.rebinned_data = self.gate_data(self.rebinned_data, softw_gates_for_all_tr)
+                    logging.timing('Done self.gate_data()')
                     changed = True
             if changed:
                 try:
@@ -2450,8 +2646,15 @@ class NTRSSumFastArraysSpecData(Node):
         start_sum = datetime.now()
         dimensions = [self.spec_data.get_scaler_step_and_bin_num(track_ind)]
         # convert zero free to non zero free, for faster summing!
-        zero_data = TildaTools.zero_free_to_non_zero_free([data], dimensions)  #TODO: here we ran into a Memory Error
+        zero_data = TildaTools.zero_free_to_non_zero_free([data], dimensions)  # [(pmt, steps, bins)] TODO: here we ran into a Memory Error
         self.spec_data.time_res[track_ind] += zero_data[0]  # add it to existing, by just adding the two matrices
+
+        # TODO: use software gates here?
+        t_proj = np.sum(zero_data[0][:, :, :], 1)  # sum over all steps (axis 1)
+        x_proj = np.sum(zero_data[0][:, :, :], 2)  # sum over all bins
+        # TODO: Could add these to self.spec_data.cts[tr][pmt] and self.spec_data.t_proj[tr][pmt]
+        self.spec_data.cts[track_ind] += x_proj
+        self.spec_data.t_proj[track_ind] += t_proj
 
         # zero_free data is not needed afterwards -> only create it on saving
         # now create a zero free array again from the whole matrix
