@@ -45,6 +45,8 @@ c_complex_p = ctypes.POINTER(c_complex)
 
 dll_path = os.path.dirname(os.path.realpath(__file__))  # The path to this files directory.
 dll_name = 'TildaDllExample.dll'
+if ctypes.sizeof(ctypes.c_void_p) == 4:  # Check for 32-bit architecture.
+    dll_name = dll_name[:-4] + '_x86.dll'
 dll = ctypes.CDLL(os.path.join(dll_path, dll_name))
 
 
