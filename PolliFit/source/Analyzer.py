@@ -1,17 +1,17 @@
-'''
+"""
 Created on 21.05.2014
 
 @author: hammen, gorges
 
-The Analyzer can extract() parameters from fit results, combineRes() to get weighted averages and combineShift() to calculate isotope shifts.
-'''
+The Analyzer can extract() parameters from fit results, combineRes() to get weighted averages
+and combineShift() to calculate isotope shifts.
+"""
 
 import ast
 import functools
 import os
 import sqlite3
 import logging
-import re
 from datetime import datetime
 from copy import deepcopy
 
@@ -27,7 +27,7 @@ import Measurement.MeasLoad as Loader
 def getFiles(iso, run, db):
     con = sqlite3.connect(db)
     cur = con.cursor()
-    cur.execute('''SELECT file, pars FROM FitRes WHERE iso = ? AND run = ? ORDER BY file ''', (iso, run))
+    cur.execute('SELECT file, pars FROM FitRes WHERE iso = ? AND run = ? ORDER BY file ', (iso, run))
     e = cur.fetchall()
     con.close()
 
@@ -45,14 +45,16 @@ def get_date_date_err_to_files(db, filelist):
     con = sqlite3.connect(db)
     cur = con.cursor()
     for f in filelist:
-        cur.execute('''SELECT file, date, errDateInS FROM main.Files WHERE file = ?  ''', (f,))
+        cur.execute('SELECT file, date, errDateInS FROM main.Files WHERE file = ?  ', (f,))
         e += cur.fetchall()
     con.close()
     return e
 
 
-def extract(iso, par, run, db, fileList=[], prin=True):
-    '''Return a list of values of par of iso, filtered by files in fileList'''
+def extract(iso, par, run, db, fileList=None, prin=True):
+    """
+    Return a list of values of par of iso, filtered by files in fileList
+    """
     print('Extracting', iso, par, run)
     if iso == 'all':
         fits = TiTs.select_from_db(db, 'file, pars', 'FitRes', [['run'], [run]], 'ORDER BY file',
@@ -61,7 +63,7 @@ def extract(iso, par, run, db, fileList=[], prin=True):
         fits = TiTs.select_from_db(db, 'file, pars', 'FitRes', [['iso', 'run'], [iso, run]], 'ORDER BY file',
                                    caller_name=__name__)
     if fits is not None:
-        if len(fileList):
+        if fileList is not None:
             fits = [f for f in fits if f[0] in fileList]
         fitres = [eval(f[1]) for f in fits]
         files = [f[0] for f in fits]
@@ -79,57 +81,93 @@ def extract(iso, par, run, db, fileList=[], prin=True):
             if prin:
                 print(date, '\t', f, '\t', v, '\t', e)
 
-        if len(fileList):
+        if fileList is not None:
             for f in fileList:
                 if f not in files:
-                    print('Warning:', f, 'not found while extracting from db\Files!')
+                    print('Warning:', f, r'not found while extracting from db\Files!')
         return vals, errs, date_list, files
     else:
         return None, None, None, None
 
 
 def weightedAverage(vals, errs):
-    '''Return (weighted average, propagated error, rChi^2'''
-    weights = 1 / np.square(errs)
-    # print(weights)
-    average = sum(vals * weights) / sum(weights)
-    errorprop = np.sqrt(1 / sum(weights))  # was: 1 / sum(weights)
-    if (len(vals) == 1):
-        rChi = 0
+    """
+    Calculates the weighted average, its standard error and the reduced chi-square.
+
+    :param vals: The values of which the weighted average is calculated.
+    :param errs: The standard errors of the values. If None, the standard deviation of the values is estimated
+     and used as their error. Note that this is the unweighted average with estimated errors.
+    :return: The weighted average, its standard error and the reduced chi-square.
+    """
+    if errs is None:
+        return average(vals, None)
+    _vals, _errs = np.asarray(vals), np.asarray(errs)
+
+    weights = 1 / _errs ** 2
+    _average = np.sum(_vals * weights) / np.sum(weights)
+    _av_err = np.sqrt(1 / np.sum(weights))
+    if _vals.size == 1:
+        r_chi = 0
     else:
-        rChi = 1 / (len(vals) - 1) * sum(np.square(vals - average) * weights)
+        r_chi = np.sum((_vals - _average) ** 2 * weights) / (_vals.size - 1)
+    return _average, _av_err, r_chi
 
-    return (average, errorprop, rChi)
 
+def average(vals, errs=None):
+    """
+    Calculates the average, its standard error and the reduced chi-square.
 
-def average(vals, errs):
-    average = sum(vals) / len(vals)
-    errorprop = np.sqrt(sum(np.square(errs))) / len(vals)
-
-    if len(vals) == 1:
-        rChi = 0
+    :param vals: The values of which the average is calculated.
+    :param errs: The standard errors of the values. If None, the standard deviation of the values is estimated
+     and used as their error. Note that if errs is None, the reduced chi-square will always be 1.
+    :return: The average, its standard error and the reduced chi-square.
+    """
+    _vals = np.asarray(vals)
+    if errs is None:
+        _errs = np.full(_vals.shape, np.std(_vals, ddof=1))
     else:
-        # rChi = 0
-        chiSum = 0
-        for i in range(0, len(vals), 1):
-            chiSum += np.square(vals[i] - average) * np.square(errs[i])
-        rChi = 1 / (len(vals) - 1) * chiSum
-    return (average, errorprop, rChi)
+        _errs = np.asarray(errs)
+
+    _average = np.sum(_vals) / _vals.size
+    _av_err = np.sqrt(np.sum(_errs ** 2)) / _vals.size
+
+    if _vals.size == 1:
+        r_chi = 0
+    else:
+        r_chi = np.sum(((_vals - _average) / _errs) ** 2) / (_vals.size - 1)
+    return _average, _av_err, r_chi
 
 
 def combineRes(iso, par, run, db, weighted=True, print_extracted=True,
-               show_plot=False, only_this_files=[], write_to_db=True,
-               combine_from_par='', combine_from_multipl=1.0, combine_from_mult_err=0.0):
-    '''
-    Calculate weighted average of par using the configuration specified in the db
-    :rtype : object
-    '''
+               show_plot=False, only_this_files=None, write_to_db=True,
+               combine_from_par='', combine_from_multipl=1.0, combine_from_mult_err=0.0, estimate_err=False):
+    """
+    Calculate weighted average of par using the configuration specified in the db.
+
+    :param iso:
+    :param par:
+    :param run:
+    :param db:
+    :param weighted:
+    :param print_extracted:
+    :param show_plot:
+    :param only_this_files:
+    :param write_to_db:
+    :param combine_from_par:
+    :param combine_from_multipl:
+    :param combine_from_mult_err:
+    :param estimate_err: Whether to estimate the error of the average solely from the given values.
+     This only works for the unweighted average.
+
+    :rtype: tuple.
+    :return: Tuple of results.
+    """
     print('Open DB', db)
 
     con = sqlite3.connect(db)
     cur = con.cursor()
 
-    cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)''', (iso, par, run))
+    cur.execute('INSERT OR IGNORE INTO Combined (iso, parname, run) VALUES (?, ?, ?)', (iso, par, run))
     con.commit()
     if iso == 'all':
         r = TiTs.select_from_db(db, 'config, statErrForm, systErrForm', 'Combined',
@@ -146,7 +184,7 @@ def combineRes(iso, par, run, db, weighted=True, print_extracted=True,
         return [None] * 6
     config = ast.literal_eval(config)
 
-    if len(only_this_files):
+    if only_this_files is not None:
         config = only_this_files
 
     if combine_from_par == '':
@@ -164,9 +202,9 @@ def combineRes(iso, par, run, db, weighted=True, print_extracted=True,
 
     print(files)
     if weighted:
-        avg, err, rChi = weightedAverage(vals, errs)
+        avg, err, rChi = weightedAverage(vals, None if estimate_err else errs)
     else:
-        avg, err, rChi = average(vals, errs)
+        avg, err, rChi = average(vals, None if estimate_err else errs)
     print('rChi is: ', rChi, 'err is: ', err)
 
     systE = functools.partial(avgErr, iso, db, avg, par)
@@ -182,8 +220,8 @@ def combineRes(iso, par, run, db, weighted=True, print_extracted=True,
     if write_to_db:
         con = sqlite3.connect(db)
         cur = con.cursor()
-        cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
-            WHERE iso = ? AND parname = ? AND run = ?''', (avg, statErr, systErr, rChi, iso, par, run))
+        cur.execute('UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?'
+                    'WHERE iso = ? AND parname = ? AND run = ?', (avg, statErr, systErr, rChi, iso, par, run))
         con.commit()
     con.close()
     plt.clear()
@@ -216,7 +254,8 @@ def combineShift(iso, run, db, show_plot=False):
     (config, statErrForm, systErrForm) = TiTs.select_from_db(db, 'config, statErrForm, systErrForm', 'Combined',
                                                              [['iso', 'parname', 'run'], [iso, 'shift', run]],
                                                              caller_name=__name__)[0]
-    '''config needs to have this shape:
+    """
+    config needs to have this shape:
     [
     (['dataREF1.*','dataREF2.*',...],
     ['dataINTERESTING1.*','dataINT2.*',...],
@@ -224,7 +263,7 @@ def combineShift(iso, run, db, show_plot=False):
     ([...],[...],[...]),
     ...
     ]
-    '''
+    """
     config = ast.literal_eval(config)
     print('Combining', iso, 'shift')
 
@@ -284,8 +323,8 @@ def combineShift(iso, run, db, show_plot=False):
     systErr = eval(systErrForm)
     con = sqlite3.connect(db)
     cur = con.cursor()
-    cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
-        WHERE iso = ? AND parname = ? AND run = ?''', (val, statErr, systErr, rChi, iso, 'shift', run))
+    cur.execute('UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?'
+        'WHERE iso = ? AND parname = ? AND run = ?', (val, statErr, systErr, rChi, iso, 'shift', run))
     con.commit()
     con.close()
     print('shifts:', shifts)
@@ -308,7 +347,7 @@ def combineShift(iso, run, db, show_plot=False):
 
 
 def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minutes=15,
-                       pic_format='.png', font_size=12, default_date_err_s=15 * 60, overwrite_file_num_det={},
+                       pic_format='.png', font_size=12, default_date_err_s=15 * 60, overwrite_file_num_det=None,
                        store_to_file_in_combined_plots=''):
     """
     takes an Isotope a run and a database and gives the isotopeshift to the reference!
@@ -326,7 +365,8 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
         (config, statErrForm, systErrForm) = conf_staterrform_systerrform[0]
     else:
         return [None] * 6
-    '''config needs to have this shape:
+    """
+    config needs to have this shape:
     [
     (['dataREF1.*','dataREF2.*',...],
     ['dataINTERESTING1.*','dataINT2.*',...],
@@ -334,7 +374,7 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
     ([...],[...],[...]),
     ...
     ]
-    '''
+    """
     config = ast.literal_eval(config)
     print('Combining', iso, 'shift')
     print('config is:')
@@ -526,8 +566,8 @@ def combineShiftByTime(iso, run, db, show_plot=False, ref_min_spread_time_minute
     systErr = eval(systErrForm)
     con = sqlite3.connect(db)
     cur = con.cursor()
-    cur.execute('''UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?
-            WHERE iso = ? AND parname = ? AND run = ?''',
+    cur.execute('UPDATE Combined SET val = ?, statErr = ?, systErr = ?, rChi = ?'
+                'WHERE iso = ? AND parname = ? AND run = ?',
                 (shifts_weighted_mean, statErr, systErr, rChi, iso, 'shift', run))
     con.commit()
     con.close()
@@ -585,7 +625,8 @@ def combineShiftOffsetPerBunchDisplay(iso, run, db, show_plot=False):
         (config, statErrForm, systErrForm) = conf_staterrform_systerrform[0]
     else:
         return [None] * 6
-    '''config needs to have this shape:
+    """
+    'config needs to have this shape:
     [
     (['dataREF1.*','dataREF2.*',...],
     ['dataINTERESTING1.*','dataINT2.*',...],
@@ -593,7 +634,7 @@ def combineShiftOffsetPerBunchDisplay(iso, run, db, show_plot=False):
     ([...],[...],[...]),
     ...
     ]
-    '''
+    """
     config = ast.literal_eval(config)
     print('Combining', iso, 'shift')
     print('config is:')
@@ -673,12 +714,11 @@ def combineShiftOffsetPerBunchDisplay(iso, run, db, show_plot=False):
         offset_dir = os.path.dirname(file_name)
         if not os.path.isdir(offset_dir):
             os.mkdir(offset_dir)
-        plt.plot_iso_shift_time_dep(
-            ref_files, ref_dates_date_time, ref_dates_date_time_float, ref_date_errs, ref_offsets, ref_errs, ref,
-            iso_files, iso_dates_datetime, iso_dates_datetime_float, iso_date_errs, iso_offsets, iso_errs, iso,
-            0, offset, plt_label, (block_offsets, block_offsets_errs), file_name, show_plot=show_plot,
-            fig_name='offset', par_name='offset'
-        )
+        plt.plot_iso_shift_time_dep(ref_files, ref_dates_date_time, ref_dates_date_time_float, ref_date_errs,
+                                    ref_offsets, ref_errs, ref, iso_files, iso_dates_datetime, iso_dates_datetime_float,
+                                    iso_date_errs, iso_offsets, iso_errs, iso, 0, offset, plt_label,
+                                    (block_offsets, block_offsets_errs), file_name, show_plot=show_plot,
+                                    fig_name='offset', par_name='offset')
         offsets += [[ref_offsets, block_offsets]]
         offsetErrors += [[ref_errs, block_offsets_errs]]
     # in the end get the mean value of all offsets:
@@ -721,7 +761,7 @@ def straight_func_vector(slopeOffset, x):
 
 
 def applyChi(err, rChi):
-    '''Increases error by sqrt(rChi^2) if necessary. Works for several rChi as well'''
+    'Increases error by sqrt(rChi^2) if necessary. Works for several rChi as well'
     return err * np.max([1, np.sqrt(rChi)])
 
 
@@ -753,7 +793,7 @@ def standard_dev(vals, errs, w_mean=None):
 
 
 def gaussProp(*args):
-    '''Calculate sqrt of squared sum of args, as in gaussian error propagation'''
+    'Calculate sqrt of squared sum of args, as in gaussian error propagation'
     return np.sqrt(sum(x ** 2 for x in args))
 
 
@@ -762,16 +802,15 @@ def shiftErr(iso, run, db, accVolt_d, offset_d, syst=0):
         iso = str(iso)[:-2]
     con = sqlite3.connect(db)
     cur = con.cursor()
-    cur.execute(
-        '''SELECT Lines.reference, lines.frequency FROM Runs JOIN Lines ON Runs.lineVar = Lines.lineVar WHERE Runs.run = ?''',
-        (run,))
+    cur.execute('SELECT Lines.reference, lines.frequency FROM Runs JOIN Lines ON Runs.lineVar = Lines.lineVar '
+                'WHERE Runs.run = ?', (run,))
     (ref, nu0) = cur.fetchall()[0]
-    cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (iso,))
+    cur.execute('SELECT mass, mass_d FROM Isotopes WHERE iso = ?', (iso,))
     (mass, mass_d) = cur.fetchall()[0]
-    cur.execute('''SELECT mass, mass_d FROM Isotopes WHERE iso = ?''', (ref,))
+    cur.execute('SELECT mass, mass_d FROM Isotopes WHERE iso = ?', (ref,))
     (massRef, massRef_d) = cur.fetchall()[0]
     deltaM = np.absolute(mass - massRef)
-    cur.execute('''SELECT offset, accVolt, voltDivRatio FROM Files WHERE type = ?''', (iso,))
+    cur.execute('SELECT offset, accVolt, voltDivRatio FROM Files WHERE type = ?', (iso,))
     (offset, accVolt, voltDivRatio) = cur.fetchall()[0]
     voltDivRatio = ast.literal_eval(voltDivRatio)
     if isinstance(voltDivRatio['offset'], float):
@@ -784,7 +823,7 @@ def shiftErr(iso, run, db, accVolt_d, offset_d, syst=0):
             # offset will be list for each track
             offset = np.mean(offset)
     offset = np.abs(offset) * mean_offset_div_ratio
-    cur.execute('''SELECT offset FROM Files WHERE type = ?''', (ref,))
+    cur.execute('SELECT offset FROM Files WHERE type = ?', (ref,))
     (refOffset,) = cur.fetchall()[0]
     if isinstance(refOffset, str):
         refOffset = ast.literal_eval(refOffset)
@@ -812,13 +851,13 @@ def avgErr(iso, db, avg, par, accVolt_d, offset_d, syst=0):
     print('Building AverageError...')
     con = sqlite3.connect(db)
     cur = con.cursor()
-    cur.execute('''SELECT frequency FROM Lines''')
+    cur.execute('SELECT frequency FROM Lines')
     (nu0) = cur.fetchall()[0][0]
-    cur.execute('''SELECT mass, mass_d, I FROM Isotopes WHERE iso = ?''', (iso,))
+    cur.execute('SELECT mass, mass_d, I FROM Isotopes WHERE iso = ?', (iso,))
     (mass, mass_d, spin) = cur.fetchall()[0]
     if str(iso)[-1] == 'm' and str(iso)[-2] == '_':
         iso = str(iso)[:-2]
-    cur.execute('''SELECT offset, accVolt, voltDivRatio FROM Files WHERE type = ?''', (iso,))
+    cur.execute('SELECT offset, accVolt, voltDivRatio FROM Files WHERE type = ?', (iso,))
     (offset, accVolt, voltDivRatio) = cur.fetchall()[0]
     voltDivRatio = ast.literal_eval(voltDivRatio)
     if isinstance(voltDivRatio['offset'], float):
@@ -830,18 +869,18 @@ def avgErr(iso, db, avg, par, accVolt_d, offset_d, syst=0):
         if isinstance(offset, list):
             offset = np.mean(offset)
 
-    cur.execute('''SELECT Jl, Ju FROM Lines''')
+    cur.execute('SELECT Jl, Ju FROM Lines')
     (jL, jU) = cur.fetchall()[0]
     accVolt = accVolt * voltDivRatio['accVolt'] - offset * mean_offset_div_ratio
     cF = 1
     cF_dist = 1
-    '''
+    """
     for the A- and B-Factor, the (energy-) distance of the peaks
     can be calculated with the help of the Casimir Factor:
     C_F = F(F+1)-j(j+1)-I(I+1).
     This distance can be converted into an offset voltage
     so we can use the same error formula as for the isotope shift.
-    '''
+    """
     if par == 'Au':
         cF = (jU + spin) * (jU + spin + 1) - jU * (jU + 1) - spin * (spin + 1)
         cF_dist = cF * 2

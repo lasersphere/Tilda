@@ -1,8 +1,8 @@
-'''
+"""
 Created on 29.07.2016
 
 @author: chgorges
-'''
+"""
 
 import ast
 import copy
@@ -14,7 +14,7 @@ from PyQt5 import QtWidgets, QtCore
 import TildaTools as TiTs
 
 import Analyzer
-import MPLPlotter as plot
+import MPLPlotter as Plot
 from Gui.Ui_Isoshift import Ui_Isoshift
 
 
@@ -32,7 +32,7 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
         self.fileList.itemChanged.connect(self.recalc)
         self.bsave.clicked.connect(self.saving)
 
-        #self.referenceList = []
+        # self.referenceList = []
 
         self.dbpath = None
         self.cfg = []
@@ -40,6 +40,7 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
         self.referenceDates = []
 
         self.show()
+        self.setEnabled(False)
 
     def conSig(self, dbSig):
         dbSig.connect(self.dbChange)
@@ -73,7 +74,7 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
                                                       caller_name=__name__)[0])
 
             r = TiTs.select_from_db(self.dbpath, 'config, statErrForm, systErrForm', 'Combined',
-                                    [['iso', 'parname', 'run'],[self.iso, 'shift', self.run]], caller_name=__name__)
+                                    [['iso', 'parname', 'run'], [self.iso, 'shift', self.run]], caller_name=__name__)
 
             select = [True] * len(self.files)
             self.statErrForm = 0
@@ -84,7 +85,7 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
                 self.cfg = ast.literal_eval(r[0][0])
                 cfg_files = [each[1][0] for each in self.cfg]
                 for i, f in enumerate(self.files):
-                    if self.cfg == []:
+                    if not self.cfg:
                         select[i] = False
                     elif f not in cfg_files:
                         select[i] = False
@@ -124,10 +125,10 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
             print('config for isotope shift is: %s' % config)
             con = sqlite3.connect(self.dbpath)
             cur = con.cursor()
-            cur.execute('''INSERT OR IGNORE INTO Combined (iso, parname, run, config) VALUES (?, ?, ?, ?)''',
+            cur.execute('INSERT OR IGNORE INTO Combined (iso, parname, run, config) VALUES (?, ?, ?, ?)',
                         (self.iso, 'shift', self.run, str(config)))
             con.commit()
-            cur.execute('''UPDATE Combined SET config = ? WHERE iso = ? AND parname = ? AND run = ?''',
+            cur.execute('UPDATE Combined SET config = ? WHERE iso = ? AND parname = ? AND run = ?',
                         (str(config), self.iso, 'shift', self.run))
             con.commit()
             con.close()
@@ -140,7 +141,7 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
 
     def saving(self):
         if self.iso:
-            plot.close_all_figs()
+            Plot.close_all_figs()
             Analyzer.combineShift(self.iso, self.run, self.dbpath, show_plot=True)
         else:
             print('nothing to save!!!')
@@ -183,7 +184,7 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
         date = time.mktime(date)
         files_in_cfg = [each_block[1][0] for each_block in self.cfg]
         if file in files_in_cfg:
-            # if fiule already in config, do not alter the cfg, just return it.
+            # if file already in config, do not alter the cfg, just return it.
             found_at = files_in_cfg.index(file)
             return self.cfg[found_at]
         datesafter = {}
@@ -212,7 +213,7 @@ class IsoshiftUi(QtWidgets.QWidget, Ui_Isoshift):
             elif j == after:
                 indexAfter = ref_date
         if beforekey == -1 or beforekey > newer_ref_factor * afterkey:
-            # if no reference found before or reference is more than 5 times older than refence after,
+            # if no reference found before or reference is more than 5 times older than reference after,
             # do not take a file before and vice versa
             fileBefore = []
             fileAfter = [self.referenceList[indexAfter]]

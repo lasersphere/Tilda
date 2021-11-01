@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'Ui_Alive.ui'
+# Form implementation generated from reading ui file 'E:\Users\Patrick\Documents\Python Projects\Tilda\PolliFit\source\Gui\Ui_Alive.ui'
 #
-# Created by: PyQt5 UI code generator 5.5
+# Created by: PyQt5 UI code generator 5.13.2
 #
 # WARNING! All changes made in this file will be lost!
 
+
 from PyQt5 import QtCore, QtGui, QtWidgets
+
 
 class Ui_Alive(object):
     def setupUi(self, Alive):
@@ -37,28 +39,43 @@ class Ui_Alive(object):
         self.label = QtWidgets.QLabel(Alive)
         self.label.setObjectName("label")
         self.formLayout_2.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label)
-        self.lDivOffset = QtWidgets.QLineEdit(Alive)
-        self.lDivOffset.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
-        self.lDivOffset.setObjectName("lDivOffset")
-        self.formLayout_2.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.lDivOffset)
         self.label_2 = QtWidgets.QLabel(Alive)
         self.label_2.setObjectName("label_2")
         self.formLayout_2.setWidget(4, QtWidgets.QFormLayout.LabelRole, self.label_2)
-        self.lDivRatio = QtWidgets.QLineEdit(Alive)
-        self.lDivRatio.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
-        self.lDivRatio.setObjectName("lDivRatio")
-        self.formLayout_2.setWidget(4, QtWidgets.QFormLayout.FieldRole, self.lDivRatio)
         self.label_4 = QtWidgets.QLabel(Alive)
         self.label_4.setObjectName("label_4")
         self.formLayout_2.setWidget(5, QtWidgets.QFormLayout.LabelRole, self.label_4)
-        self.lAgiGain = QtWidgets.QLineEdit(Alive)
+        self.lDivOffset = QtWidgets.QDoubleSpinBox(Alive)
+        self.lDivOffset.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
+        self.lDivOffset.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.lDivOffset.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+        self.lDivOffset.setCorrectionMode(QtWidgets.QAbstractSpinBox.CorrectToNearestValue)
+        self.lDivOffset.setDecimals(8)
+        self.lDivOffset.setObjectName("lDivOffset")
+        self.formLayout_2.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.lDivOffset)
+        self.lDivRatio = QtWidgets.QDoubleSpinBox(Alive)
+        self.lDivRatio.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
+        self.lDivRatio.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.lDivRatio.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+        self.lDivRatio.setCorrectionMode(QtWidgets.QAbstractSpinBox.CorrectToNearestValue)
+        self.lDivRatio.setMinimum(-99999999.0)
+        self.lDivRatio.setMaximum(99999999.0)
+        self.lDivRatio.setProperty("value", 10000.0)
+        self.lDivRatio.setObjectName("lDivRatio")
+        self.formLayout_2.setWidget(4, QtWidgets.QFormLayout.FieldRole, self.lDivRatio)
+        self.lAgiGain = QtWidgets.QDoubleSpinBox(Alive)
+        self.lAgiGain.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.lAgiGain.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.lAgiGain.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+        self.lAgiGain.setCorrectionMode(QtWidgets.QAbstractSpinBox.CorrectToNearestValue)
+        self.lAgiGain.setDecimals(8)
+        self.lAgiGain.setMinimum(-99999999.0)
+        self.lAgiGain.setMaximum(99999999.0)
+        self.lAgiGain.setSingleStep(0.0)
+        self.lAgiGain.setProperty("value", 0.999995)
         self.lAgiGain.setObjectName("lAgiGain")
         self.formLayout_2.setWidget(5, QtWidgets.QFormLayout.FieldRole, self.lAgiGain)
         self.verticalLayout.addLayout(self.formLayout_2)
-        self.pB_compareAuto = QtWidgets.QPushButton(Alive)
-        self.pB_compareAuto.setObjectName("pB_compareAuto")
-        self.verticalLayout.addWidget(self.pB_compareAuto)
         self.label_8 = QtWidgets.QLabel(Alive)
         self.label_8.setObjectName("label_8")
         self.verticalLayout.addWidget(self.label_8)
@@ -73,6 +90,9 @@ class Ui_Alive(object):
         self.fileList_2.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
         self.fileList_2.setObjectName("fileList_2")
         self.verticalLayout.addWidget(self.fileList_2)
+        self.pB_compareAuto = QtWidgets.QPushButton(Alive)
+        self.pB_compareAuto.setObjectName("pB_compareAuto")
+        self.verticalLayout.addWidget(self.pB_compareAuto)
         self.pB_compareIndividual = QtWidgets.QPushButton(Alive)
         self.pB_compareIndividual.setObjectName("pB_compareIndividual")
         self.verticalLayout.addWidget(self.pB_compareIndividual)
@@ -86,14 +106,11 @@ class Ui_Alive(object):
         self.label_7.setText(_translate("Alive", "Select Run"))
         self.label_5.setText(_translate("Alive", "Define Reference Measurement"))
         self.label_6.setText(_translate("Alive", "Define HV Measurement"))
-        self.label.setText(_translate("Alive", "Divider Offset / V"))
-        self.lDivOffset.setText(_translate("Alive", "0"))
+        self.label.setText(_translate("Alive", "Divider Offset"))
         self.label_2.setText(_translate("Alive", "Divider Ratio"))
-        self.lDivRatio.setText(_translate("Alive", "10000.0"))
         self.label_4.setText(_translate("Alive", "Agilent Gain"))
-        self.lAgiGain.setText(_translate("Alive", "0.999995"))
-        self.pB_compareAuto.setText(_translate("Alive", "compare with next/previous reference"))
+        self.lDivOffset.setSuffix(_translate("Alive", " V"))
         self.label_8.setText(_translate("Alive", "select reference measurements"))
         self.label_9.setText(_translate("Alive", "select HV measurements"))
+        self.pB_compareAuto.setText(_translate("Alive", "compare \"time-ordered\""))
         self.pB_compareIndividual.setText(_translate("Alive", "compare with \"mean of references\""))
-

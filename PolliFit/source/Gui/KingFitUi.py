@@ -1,10 +1,8 @@
-'''
+"""
 Created on 05.10.2016
 
 @author: chgorges
-'''
-
-import sqlite3
+"""
 
 from PyQt5 import QtWidgets, QtCore
 
@@ -14,7 +12,6 @@ import TildaTools as TiTs
 
 
 class KingFitUi(QtWidgets.QWidget, Ui_KingFitter):
-
 
     def __init__(self):
         super(KingFitUi, self).__init__()
@@ -30,29 +27,29 @@ class KingFitUi(QtWidgets.QWidget, Ui_KingFitter):
 
         self.select_all_state = True
 
-
         self.run = -1
         self.isotopes = []
         self.dbpath = None
 
         self.show()
+        self.setEnabled(False)
     
     def conSig(self, dbSig):
         dbSig.connect(self.dbChange)
-    
-        
+
     def loadIsos(self):
         self.isoList.clear()
         self.isotopes = []
         if self.run == -1:
             isoiter = TiTs.select_from_db(self.dbpath, 'DISTINCT iso', 'Combined',
-                                         [['parname'], ['shift']], 'ORDER BY iso', caller_name=__name__)
+                                          [['parname'], ['shift']], 'ORDER BY iso', caller_name=__name__)
             if isoiter is not None:
                 for e in isoiter:
                     self.isotopes.append(e[0])
         else:
             isoiter = TiTs.select_from_db(self.dbpath, 'DISTINCT iso', 'Combined',
-                                         [['parname', 'run'], ['shift', self.run]], 'ORDER BY iso', caller_name=__name__)
+                                          [['parname', 'run'], ['shift', self.run]], 'ORDER BY iso',
+                                          caller_name=__name__)
             if isoiter is not None:
                 for e in isoiter:
                     self.isotopes.append(e[0])
@@ -68,7 +65,6 @@ class KingFitUi(QtWidgets.QWidget, Ui_KingFitter):
             self.isoList.addItem(w)
 
         self.isoList.blockSignals(False)
-
 
     def loadRuns(self):
         self.runSelect.clear()
@@ -117,5 +113,5 @@ class KingFitUi(QtWidgets.QWidget, Ui_KingFitter):
 
     def dbChange(self, dbpath):
         self.dbpath = dbpath
-        self.king = KingFitter(dbpath,showing=True)
+        self.king = KingFitter(dbpath, showing=True)
         self.loadRuns()

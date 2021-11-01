@@ -15,10 +15,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.dates import DateFormatter
 from matplotlib.lines import Line2D
-from matplotlib.widgets import Button
-from matplotlib.widgets import RadioButtons
-from matplotlib.widgets import RectangleSelector
-from matplotlib.widgets import Slider
+from matplotlib.widgets import Button, RadioButtons, RectangleSelector, Slider
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from Spectra.AsymmetricVoigt import AsymmetricVoigt
 from SPFitter import SPFitter
@@ -26,9 +23,9 @@ from Spectra.FullSpec import FullSpec
 from copy import deepcopy
 
 import Physics
-import random
 
 matplotlib.use('Qt5Agg')
+
 
 def colAcolPlot(x_data, plotdata, error):
     plt.errorbar(x_data, plotdata, yerr=error, fmt='o', linestyle='-')
@@ -36,22 +33,18 @@ def colAcolPlot(x_data, plotdata, error):
     plt.xlabel('measurement number')
     plt.axis([0, len(plotdata)+1, min(plotdata)-max(error)*1.2, max(plotdata)+max(error)*1.2])
 
-def AlivePlot(x_data, plotdata, error, refData):
 
-    arr = np.asarray
-    y_err = arr(error).T
-    n=0
-    for data in plotdata:
-
-        plt.errorbar(x_data, data, yerr=y_err, fmt='o', linestyle ='-', label=refData[n][0])
-        n=n+1
-        #plt.errorbar(x_data, data, fmt='o', linestyle ='-')
-    #plt.ylabel('relative discrepancy [ppm]')
-    plt.ylabel('voltage [V]')
-    plt.xlabel('measurement number')
-    #Ab hier zum Plotten der Legende
-    legend=plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.1),
-          ncol=3, fancybox=True, shadow=True)
+def AlivePlot(x_data, plotdata, error):
+    for n, (x, data, err) in enumerate(zip(x_data, plotdata, error)):
+        y_err = np.asarray(err).T
+        plt.errorbar(x, data, yerr=y_err, fmt='o', linestyle='-', label='{}. order'.format(n))
+        # plt.errorbar(x_data, data, fmt='o', linestyle ='-')
+    # plt.ylabel('relative discrepancy [ppm]')
+    plt.ylabel('Voltage [V]')
+    plt.xlabel('Measurement number')
+    # Ab hier zum Plotten der Legende
+    legend = plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.1),
+                        ncol=3, fancybox=True, shadow=True)
     frame = legend.get_frame()
     frame.set_facecolor('0.90')
     for label in legend.get_texts():
@@ -149,8 +142,9 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
 
     # save plot data as ASCII
     path_clear = False
+    x = ''
     if save_plot:
-        x = "Relative frequency / MHz" if x_in_freq else "Ion kinetic energy / eV"
+        x = 'Relative frequency / MHz' if x_in_freq else 'Ion kinetic energy / eV'
         if not os.path.exists(save_path):
             try:
                 os.makedirs(save_path)
@@ -159,7 +153,6 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
                 print('saving directory has not been created. Writing permission in DB directory? error msg: %s' % e)
         else:
             path_clear = True
-
 
     ax1 = plt.axes([0.15, 0.35, 0.8, 0.50])
     data_line = None
@@ -177,13 +170,14 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
                                  color=main_plot_color, label='main peak' + add_label, linestyle=':')
             side_peak_lines += side_peak[0],
             if save_plot and path_clear:
-                p = os.path.join(save_path, os.path.splitext(fit.meas.file)[0] + "_fit_mainPeak_" + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
+                p = os.path.join(save_path, os.path.splitext(fit.meas.file)[0] + '_fit_mainPeak_'
+                                 + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
                 f = open(p, 'w')
-                f.write(x + ", Main Peak cts / a.u.\n")
+                f.write(x + ', Main Peak cts / a.u.\n')
                 for i in range(len(main_peaks_plot_data[0])):
                     f.write(str(main_peaks_plot_data[0][i]) + ", " + str(main_peaks_plot_data[1][i]) + "\n")
                 f.close()
-                print("Saved to file ", p)
+                print('Saved to file ', p)
         for side_peak_num, side_peaks_plot_data in enumerate(all_side_peaks_plot_data):
             # plot side peaks dashed / dashdot alternating with number of side peaks in same color as main peak
             line_style = '--' if side_peak_num % 2 == 0 else '-.'
@@ -192,7 +186,8 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
                                  label='satellite peak #%d' % (side_peak_num + 1) + add_label)
             side_peak_lines += side_peak[0],
             if save_plot and path_clear:
-                p = os.path.join(save_path, os.path.splitext(fit.meas.file)[0] + "_fit_sidePeak" + str(side_peak_num) + "_" + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
+                p = os.path.join(save_path, os.path.splitext(fit.meas.file)[0] + "_fit_sidePeak" + str(side_peak_num)
+                                 + "_" + datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt'))
                 f = open(p, 'w')
                 f.write(x + ", SidePeak " + str(side_peak_num) + " cts / a.u.\n")
                 for i in range(len(side_peaks_plot_data[0])):
@@ -295,6 +290,7 @@ def plotMoments(cts, q=True,fontsize_ticks=10):
 def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), showing = False, save_path='', ylabel=''):
     # avg, stat_err, sys_err = Analyzer.combineRes(iso, par, run, db, print_extracted=False)
     # val, errs, date = Analyzer.extract(iso, par, run, db, prin=False)
+    ax = None
     try:
         fig = plt.figure(1, (8, 8))
         fig.patch.set_facecolor('white')
@@ -338,6 +334,7 @@ def plotAverage(date, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), sho
         print('error while plotting average: %s' % e)
     return ax
 
+
 def plotAverageBECOLA(filenum, cts, errs, avg, stat_err, syst_err, forms=('k.', 'r'), showing = False, save_path='', ylabel=''):
     """
     Alternative plotAverage function for BECOLA data from Nickel runs. x-Axis is in run numbers rather than date
@@ -345,6 +342,7 @@ def plotAverageBECOLA(filenum, cts, errs, avg, stat_err, syst_err, forms=('k.', 
     """
     # avg, stat_err, sys_err = Analyzer.combineRes(iso, par, run, db, print_extracted=False)
     # val, errs, date = Analyzer.extract(iso, par, run, db, prin=False)
+    ax = None
     try:
         fig = plt.figure(1, (8, 8))
         fig.patch.set_facecolor('white')
@@ -381,7 +379,6 @@ def plotAverageBECOLA(filenum, cts, errs, avg, stat_err, syst_err, forms=('k.', 
     except Exception as e:
         print('error while plotting average: %s' % e)
     return ax
-
 
 
 def show(block=True):
@@ -699,24 +696,19 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
                     # key of isotope should begin with mass number followed by '_' and isotope name
                     # vals [(mass_int, exp_value_float, lit_val_float), ...]
                     vals = [(int(key_pl.split('_')[0]), val_pl[0],
-                             lit_val_statErr_rChi_shift_dict.get(key_pl, [0])[0]) for key_pl, val_pl in
-                            sorted(val_statErr_rChi_shift_dict[each].items())]
+                             lit_val_statErr_rChi_shift_dict.get(key_pl, [0])[0])
+                            for key_pl, val_pl in sorted(val_statErr_rChi_shift_dict[each].items())]
                     if err_index > 0:
                         errs = [(int(key_pl2.split('_')[0]), val_pl2[err_index],
-                                 lit_val_statErr_rChi_shift_dict.get(key_pl2, [0, 0, 0])[err_index]) for key_pl2, val_pl2 in
-                                sorted(val_statErr_rChi_shift_dict[each].items())]
+                                 lit_val_statErr_rChi_shift_dict.get(key_pl2, [0, 0, 0])[err_index])
+                                for key_pl2, val_pl2 in sorted(val_statErr_rChi_shift_dict[each].items())]
                     else:  # use the full error with gaussian error prop
                         errs = [(int(key_pl2.split('_')[0]),
-                                 np.sqrt(
-                                     val_pl2[1] ** 2 + val_pl2[2] ** 2
-                                 ),
-                                 np.sqrt(
-                                     lit_val_statErr_rChi_shift_dict.get(key_pl2, [0, 0, 0])[1] ** 2 +
-                                     lit_val_statErr_rChi_shift_dict.get(key_pl2, [0, 0, 0])[2] ** 2
-                                 )
-                                 ) for key_pl2, val_pl2
-                                in
-                                sorted(val_statErr_rChi_shift_dict[each].items())]
+                                 np.sqrt(val_pl2[1] ** 2 + val_pl2[2] ** 2),
+                                 np.sqrt(lit_val_statErr_rChi_shift_dict.get(key_pl2, [0, 0, 0])[1] ** 2
+                                         + lit_val_statErr_rChi_shift_dict.get(key_pl2, [0, 0, 0])[2] ** 2))
+                                for key_pl2, val_pl2 in sorted(val_statErr_rChi_shift_dict[each].items())]
+
                     x = [valo[0] + offset for valo in vals]
                     # exp_y = [val[1] for val in vals]
                     # exp_y_err = [val[1] for val in errs]
@@ -725,7 +717,7 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
                     # lit_y_err = [val[2] for val in errs]
                     exp_y = [valo[1] - valo[2] for valo in vals]
                     exp_y_err = [valo[1] for valo in errs]
-                    lit_y = [0 for valo in vals]
+                    lit_y = [0 for _ in vals]
                     lit_y_err = [valo[2] for valo in errs]
                 else:
                     x_y_err = [(int(iso[:2]), val[0], np.sqrt(val[1] ** 2 + val[2] ** 2))
@@ -788,11 +780,11 @@ def plot_par_from_combined(db, runs_to_plot, isotopes,
     return compl_x, compl_y, compl_y_err
 
 
-def plot_iso_shift_time_dep(
-        ref_files, ref_file_nums, ref_dates_date_time, ref_dates_date_time_float, ref_date_errs, ref_centers, ref_errs, ref,
-        iso_files, iso_file_nums, iso_dates_datetime, iso_dates_datetime_float, iso_date_errs, iso_centers, iso_errs, iso,
-        slope, offset, plt_label, shift_result_tuple, file_name='', show_plot=True,
-        fig_name='shift', par_name='center [MHz]', font_size=12):
+def plot_iso_shift_time_dep(ref_files, ref_file_nums, ref_dates_date_time, ref_dates_date_time_float, ref_date_errs,
+                            ref_centers, ref_errs, ref, iso_files, iso_file_nums, iso_dates_datetime,
+                            iso_dates_datetime_float, iso_date_errs, iso_centers, iso_errs, iso, slope, offset,
+                            plt_label, shift_result_tuple, file_name='', show_plot=True, fig_name='shift',
+                            par_name='center [MHz]', font_size=12):
     """ function to plot the isotope shift along with the references versus timestamp of the files """
     fig = plt.figure('%s %s' % (fig_name, iso), figsize=(16, 9))
     fig.set_facecolor('w')
@@ -805,7 +797,7 @@ def plot_iso_shift_time_dep(
                                 fmt='ko', label='ref center %s' % ref)
     for i, ref_num in enumerate(ref_file_nums):
         main_ax.annotate('file' + str(ref_num), (ref_dates_date_time[i] + datetime.timedelta(seconds=10),
-                                              ref_centers[i] + ref_errs[i] / 10), fontsize=font_size)
+                                                 ref_centers[i] + ref_errs[i] / 10), fontsize=font_size)
     min_t_abs = min(np.min(ref_dates_date_time_float - np.array(ref_date_errs)),
                     np.min(iso_dates_datetime_float - np.array(iso_date_errs)))
     max_t_abs = max(np.max(ref_dates_date_time_float + np.array(ref_date_errs)),
@@ -830,7 +822,7 @@ def plot_iso_shift_time_dep(
                               fmt='bs', label='center %s' % iso)
     for i, iso_num in enumerate(iso_file_nums):
         twinx.annotate('file' + str(iso_num), (iso_dates_datetime[i] + datetime.timedelta(seconds=10),
-                                                 iso_centers[i] + iso_errs[i] / 10), fontsize=font_size, color='b')
+                                               iso_centers[i] + iso_errs[i] / 10), fontsize=font_size, color='b')
     twinx.set_ylabel('%s %s' % (iso, par_name), color='b', fontsize=font_size)
     twinx.tick_params('y', colors='b', labelsize=font_size)
     lines = [ref_line, fit_line, iso_line]
@@ -840,7 +832,7 @@ def plot_iso_shift_time_dep(
                                  shift_result_tuple[1][i] * 10) for i, each in enumerate(shift_result_tuple[0])])
     shift_result_str = shift_result_str[:-2] + ']'
     shift_result_str = shift_result_str.replace(', ', '\n')
-    line_lables = [l.get_label() for l in lines] + [shift_result_str]
+    line_lables = [ll.get_label() for ll in lines] + [shift_result_str]
     lines += [patches.Rectangle((0, 0), 1, 1, fc="w", fill=False, edgecolor='none', linewidth=0)]
     fig.legend(lines, line_lables, loc='upper center', ncol=2,
                bbox_to_anchor=(0.1, 0.8, 0.7, 0.2), mode='expand', fontsize=font_size+2, numpoints=1)
