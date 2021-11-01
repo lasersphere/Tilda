@@ -837,6 +837,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.lineEdit_arith_scaler_input.setDisabled(True)
             self.lineEdit_sum_all_pmts.setDisabled(True)
         elif index == 1:  # manual
+            if self.spec_data is not None:
+                if self.spec_data.seq_type != 'kepco':
+                    if self.sum_scaler == None:
+                        self.sum_scaler_lineedit_changed(self.function)
+                if self.sum_track == None:
+                    self.sum_track = -1
             self.lineEdit_arith_scaler_input.setDisabled(False)
             self.lineEdit_sum_all_pmts.setDisabled(False)
 
@@ -1343,7 +1349,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.sum_scaler = None
         self.sum_track = None
         self.add_sum_plot()
-        self.comboBox_select_sum_for_pmts.currentIndexChanged.emit(0)
+        self.comboBox_select_sum_for_pmts.currentIndexChanged.emit(self.comboBox_select_sum_for_pmts.currentIndex())
 
     def reset_t_res_plot(self):
         """
