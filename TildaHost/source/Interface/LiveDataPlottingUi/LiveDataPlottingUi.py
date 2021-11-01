@@ -785,7 +785,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         except Exception as e:
             logging.error('error, while plotting projection, this happened: %s' % e, exc_info=True)
 
-    def update_all_pmts_plot(self, spec_data, autorange_pls=True):
+    def update_all_pmts_plot(self, spec_data, autorange_pls=False):
         """
         updates the all pmts tab
         :param spec_data: SpecData, used spectrum
