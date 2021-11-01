@@ -1,15 +1,16 @@
-'''
+"""
 Created on 06.06.2014
 
 @author: hammen
-'''
+"""
+
 import os.path
 import sys
 from datetime import datetime
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 
-import MPLPlotter as plot
+import MPLPlotter as Plot
 import Tools
 from Gui.Ui_Main import Ui_MainWindow
 
@@ -38,22 +39,23 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.asciiConv_tab.conSig(self.dbSig)
         self.ColAcol_tab.conSig(self.dbSig)
         self.Simulation_tab.conSig(self.dbSig)
-        self.bOpenDb.clicked.connect(self.openDb)
+        self.bOpenDb.clicked.connect(self.open_db)
         self.pushButton_refresh.clicked.connect(self.re_emit_db_path)
         if overwrite_stdout:
             sys.stdout = EmitStream(textWritten=self.out)
         else:  # do not display the output box if it is not used -> size = 0
             self.splitter.setSizes([self.size().height(), 0])
 
-        self.openDb(db_path)
+        self.dbPath = ''
+        self.open_db(db_path)
         self.show()
 
-    def openDb(self, db_path=''):
+    def open_db(self, db_path=''):
         # print(db_path)
         if not os.path.isfile(db_path):
             file, end = QtWidgets.QFileDialog.getSaveFileName(
                 parent=self, caption='Choose Database', directory='', filter='*.sqlite',
-                options = QtWidgets.QFileDialog.DontConfirmOverwrite)
+                options=QtWidgets.QFileDialog.DontConfirmOverwrite)
         else:
             file = db_path
         if file == '':
@@ -76,7 +78,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.dbSig.emit(self.dbPath)
 
     def out(self, text):
-        if text and text != '\n' and text !=' ':
+        if text and text != '\n' and text != ' ':
             date = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
             text = '%s\t%s' % (date, text)
             self.oOut.appendPlainText(text)
@@ -87,7 +89,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def closeEvent(self, *args, **kwargs):
         sys.stdout = sys.__stdout__
-        plot.close_all_figs()
+        Plot.close_all_figs()
         if self.parent_win is not None:
             self.parent_win.close_pollifit_win()
 

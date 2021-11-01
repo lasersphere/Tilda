@@ -21,7 +21,6 @@ from Service.Scan.draftScanParameters import draft_scan_device
 import Service.VoltageConversions.VoltageConversions as VCon
 
 
-
 class XMLImporter(SpecData):
     """
     This Module Reads the .xml files or reads from a given scan_dictionary.
@@ -173,7 +172,8 @@ class XMLImporter(SpecData):
 
             dacStepSize18Bit = track_dict.get('dacStepSize18Bit', None)  # leave in for backwards_comp
             if dacStepSize18Bit is None or dacStepSize18Bit == {}:  # TODO: not nice...
-                # TODO: copy/paste from laptop. dacStepsizeVoltage is set correctly in file. So why load through 'start'?
+                # TODO: copy/paste from laptop. dacStepsizeVoltage is set correctly in file.
+                #  So why load through 'start'?
                 # step_size = track_dict['dacStepsizeVoltage']  # OLD. does not exist in dummy scan dicts (and other??)
                 step_size = scan_dev_dict_tr.get('stepSize', 1)
             else:
@@ -232,7 +232,7 @@ class XMLImporter(SpecData):
                     softw_gates = track_dict['softwGates']
                 if v_proj is None or t_proj is None or softw_gates is not None:
                     logging.info(' while importing: projections not found,'
-                                    ' or software gates set by hand, gating data now.')
+                                 ' or software gates set by hand, gating data now.')
                     if softw_gates is not None:
                         if isinstance(softw_gates, tuple):
                             # if the software gates are given as a tuple it should consist of:
@@ -306,7 +306,8 @@ class XMLImporter(SpecData):
                 self.active_pmt_list = [dmm_names]
                 cts_shape = (self.nrScalers[0], nOfsteps)
                 dmm_volt_array = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape, np.float, default_val=np.nan)  #TODO: np.nan might be causing problems!
+                    lxmlEtree, nOfactTrack, 'scalerArray', cts_shape, np.float, default_val=np.nan)
+                # TODO: np.nan might be causing problems!
                 self.cts.append(dmm_volt_array)
                 err = []
                 for ind, dmm_name in enumerate(dmm_names):
@@ -359,7 +360,9 @@ class XMLImporter(SpecData):
                     self.x[tr_ind] = TildaTools.line_to_total_volt(self.x[tr_ind], self.lineMult, self.lineOffset,
                                                                    self.offset[tr_ind], self.accVolt, self.voltDivRatio,
                                                                    offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])
-                self.norming()  # TODO: Do we always want this? No norming is done when regating from trs plot. Make consistent and maybe include to global options?
+                self.norming()
+                # TODO: Do we always want this? No norming is done when regating from trs plot.
+                #  Make consistent and maybe include to global options?
                 self.x_units = self.x_units_enums.total_volts
             elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
                 db_ret = TildaTools.select_from_db(db, 'offset', 'Files', [['file'], [self.file]])
@@ -479,6 +482,11 @@ class XMLImporter(SpecData):
 
         # check if any measurement was taken at all
         measurement_taken = any([any(each[0]) or any(each[1]) or any(each[2]) for each in dmms_dict_list])
+        if measurement_taken:
+            measurement_taken = any([v == assignment for track_tuple in dmms_dict_list
+                                     for predurpost_dict in track_tuple for dmm_dict in predurpost_dict.values()
+                                     for k, v in dmm_dict.items() if k == 'assignment'])
+        # now includes an assignment check.
 
         if measurement_taken:
             # at least in one track the offset/accvolt voltage was measured
@@ -677,8 +685,6 @@ class XMLImporter(SpecData):
                     mid_iso_t_dt_str = mid_iso_t_dt.strftime(time_format)
                     self.date = mid_iso_t_dt_str
                     self.date_d = err_date  # in seconds
-
-
 
 
 # import Service.Scan.draftScanParameters as dft

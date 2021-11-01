@@ -105,7 +105,7 @@ class SpecData(object):
             ''' go throug all scalers used for sum and add counts up'''
             for s in scaler:
                 s = int(s)
-                if nrScalers >= np.abs(s):  # check if scaler exists
+                if nrScalers > np.abs(s):  # check if scaler exists
                     flatx, c, e = self.getSingleSpec(abs(s), track_index)
                     flatc = flatc + np.copysign(np.ones_like(c), s) * c
                     flate = flate + np.square(e)

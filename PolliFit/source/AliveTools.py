@@ -6,16 +6,12 @@ Created on
 
 """
 import ast
-import logging
-import os
 import sqlite3
-from copy import deepcopy
 import Physics
 import datetime
-import numpy as np
 
 
-def get_listAll_from_db(dbpath):
+def get_list_all_from_db(dbpath):
     """
     this will connect to the database and read all times, numbers and isotopes. Returns a list with all filenames and a
     list with the filenames of only HV measurements. Both list are sorted by time
@@ -24,54 +20,47 @@ def get_listAll_from_db(dbpath):
     """
     con = sqlite3.connect(dbpath)
     cur = con.cursor()
-    cur.execute('''SELECT file, type FROM Files''')
-    list = cur.fetchall()
-    listAll=[]
+    cur.execute('SELECT file, date, type FROM Files')
+    _list = cur.fetchall()
+    list_all = []
 
-    for file in list:
-        chosenFiles=file[0]
-        ind=chosenFiles.find('_')
-        nameNumberString=chosenFiles[ind+10:]
-        ind=nameNumberString.find('_')
-        nameNumber=int(nameNumberString[:ind])
-        dateTime=chosenFiles[:19]
-        listAll=listAll+[{'date':dateTime,'number':nameNumber,'type':file[1],'filename':file[0]}]
-
-    listAll.sort(key=lambda x: datetime.datetime.strptime(x['date'], '%Y-%m-%d_%H-%M-%S'))
-
-    listHV=[]
-    for file in listAll:
-        if 'ref' not in file['type']:
-            listHV=listHV+[file]
-
-    lists=[listAll, listHV]
-    return lists
+    for file in _list:
+        chosen_files = file[0]
+        i = chosen_files.find('_run') + 4
+        f = chosen_files[i:].find('.') + i
+        name_number = int(chosen_files[i:f])
+        date_time = file[1]
+        list_all = list_all + [{'date': date_time, 'number': name_number, 'type': file[2], 'filename': file[0]}]
+        if any(v is None for k, v in list_all[-1].items()):
+            print('Incomplete file information in database for file {}'.format(file))
+            list_all = list_all[:-1]
+    list_all.sort(key=lambda x: datetime.datetime.strptime(x['date'], '%Y-%m-%d %H:%M:%S'))
+    return list_all
 
 
-
-def find_ref_files(file,all_Files):
+def find_ref_files(file, all_files, ref_str):
     """
     this will search for the previous and the next reference measurement for a given HV measurement file.
-    :param file: HV measurement file, all_Files: dictionary of all files
-    :return: ref_Files
+    :param file: HV measurement file.
+    :param all_files: A list of all files.
+    :param ref_str: The reference str.
+    :return: ref_files.
     """
-    i=0
-    j=0
-    ref_Files=[]
-    for element in all_Files:
+    i = 0
+    j = 0
+    ref_files = []
+    for element in all_files:
         if element == file:
-            i=1
+            i = 1
 
-        if 'ref' in element['type']:
-            if i==0:
-                ref_Files = [element]
-            if i==1:
-                if j==0:
-                    ref_Files = ref_Files+[element]
-                    j=1
-
-    return (ref_Files)
-
+        if ref_str in element['type']:
+            if i == 0:
+                ref_files = [element]
+            if i == 1:
+                if j == 0:
+                    ref_files = ref_files + [element]
+                    j = 1
+    return ref_files
 
 
 def get_laserFreq_from_db(dbpath, chosenFiles):
@@ -123,8 +112,8 @@ def get_transitionFreq_from_db(dbpath, chosenFiles, run):
     :param run: str, run
     :return: float, transitionFrequency
     """
-    if len(chosenFiles)>0:
-        type = get_isotopeType_from_db(dbpath,chosenFiles)
+    if len(chosenFiles) > 0:
+        type = get_isotopeType_from_db(dbpath, chosenFiles)
         con = sqlite3.connect(dbpath)
         cur = con.cursor()
         cur.execute('''SELECT frequency FROM Lines WHERE reference = ? AND refRun =?''', (type, run))
@@ -136,7 +125,6 @@ def get_transitionFreq_from_db(dbpath, chosenFiles, run):
             raise Exception('error, transition frequency not found in Lines reference:%s, refRun: %s' % (type, run))
     else:
         return 0.0
-
 
 
 def get_voltDivRatio_from_db(dbpath, chosenFiles):
@@ -191,25 +179,26 @@ def get_nameNumber_and_time(chosenFiles):
     :param chosenFiles: str, name of files
     :return: int, nameNumber
     """
-    #War f�r altes Datenaufnahmesystem geschrieben. Nummer auslesen ist angepasst. Zeit nicht, da automatischer Vergleich eh noch nicht implementiert
+    # War für altes Datenaufnahmesystem geschrieben. Nummer auslesen ist angepasst.
+    # Zeit nicht, da automatischer Vergleich eh noch nicht implementiert
     if len(chosenFiles) > 0:
-        fileType=chosenFiles[-4:]
+        fileType = chosenFiles[-4:]
 
-        if fileType=='.dat':
-            ind=chosenFiles.find('_')
-            nameNumberString=chosenFiles[ind+10:]
-            ind=nameNumberString.find('_')
-            nameNumber=int(nameNumberString[:ind])
-            date=chosenFiles[:10]
-            date=date.replace('-','.')
-            time=chosenFiles[11:19]
-            time=time.replace('-',':')
-            dateTime=date+' '+time
-        elif fileType=='.xml':
-            ind=chosenFiles.find('.xml')
-            nameNumber=int(chosenFiles[ind-3:ind])
-            dateTime=str(0)
-        numberAndTime=[nameNumber,dateTime]
+        if fileType == '.dat':
+            ind = chosenFiles.find('_')
+            nameNumberString = chosenFiles[ind + 10:]
+            ind = nameNumberString.find('_')
+            nameNumber = int(nameNumberString[:ind])
+            date = chosenFiles[:10]
+            date = date.replace('-', '.')
+            time = chosenFiles[11:19]
+            time = time.replace('-', ':')
+            dateTime = date + ' ' + time
+        elif fileType == '.xml':
+            ind = chosenFiles.find('.xml')
+            nameNumber = int(chosenFiles[ind - 3:ind])
+            dateTime = str(0)
+        numberAndTime = [nameNumber, dateTime]
 
         return numberAndTime
     else:
@@ -231,10 +220,10 @@ def get_offsetVolt_from_db(dbpath, chosenFiles):
         cur = con.cursor()
         cur.execute('''SELECT offset FROM Files WHERE file = ?''', (file,))
         offsetVolt = cur.fetchall()
-        if offsetVolt==[('[0]',)]:
-            offsetVolt=[(0.0,)]
+        if offsetVolt == [('[0]',)]:
+            offsetVolt = [(0.0,)]
         if offsetVolt:
-            offsetVoltage =ast.literal_eval(offsetVolt[0][0])[0] * offsetVoltRatio
+            offsetVoltage = ast.literal_eval(offsetVolt[0][0])[0] * offsetVoltRatio
         return offsetVoltage
     else:
         return 0.00
@@ -254,15 +243,15 @@ def get_real_offsetVolt_from_db(dbpath, chosenFiles, measOffset, gain, voltDivRa
         cur = con.cursor()
         cur.execute('''SELECT offset FROM Files WHERE file = ?''', (file,))
         offsetVolt = cur.fetchall()
-        if offsetVolt==[('[0]',)]:
-            offsetVolt=[(0.0,)]
+        if offsetVolt == [('[0]',)]:
+            offsetVolt = [(0.0,)]
         if offsetVolt:
             print("File: ", file)
             print("meas: ", ast.literal_eval(offsetVolt[0][0])[0])
             print("measOffset: ", measOffset)
             print("gain: ", gain)
             print("voltDivRatio: ", voltDivRatio)
-            offsetVoltage =(ast.literal_eval(offsetVolt[0][0])[0]-measOffset) * gain * voltDivRatio
+            offsetVoltage = (ast.literal_eval(offsetVolt[0][0])[0] - measOffset) * gain * voltDivRatio
         return offsetVoltage
     else:
         return 0.00
@@ -326,12 +315,10 @@ def transformFreqToVolt(dbpath, chosenFiles, run, center):
     :return: float, volt_Laser
     """
     if len(chosenFiles) > 0:
-
         speedOfLight = Physics.c
         electronCharge = Physics.qe
         atomicMassUnit = Physics.u
         fL = get_laserFreq_from_db(dbpath, chosenFiles)
-
 
         mass = get_mass_from_db(dbpath, chosenFiles)[0] * atomicMassUnit
         accVolt = get_accVolt_from_db(dbpath, chosenFiles)
@@ -345,13 +332,13 @@ def transformFreqToVolt(dbpath, chosenFiles, run, center):
         # Calculation of total voltage
         v_Laser = Physics.invRelDoppler(fL[0], f0)
         voltTotal_Laser = mass * speedOfLight ** 2 * (
-        (1 - (v_Laser / speedOfLight) ** 2) ** (-1 / 2) - 1) / electronCharge
+                (1 - (v_Laser / speedOfLight) ** 2) ** (-1 / 2) - 1) / electronCharge
         volt_Laser = voltTotal_Laser - voltKepco
-
 
         return volt_Laser
     else:
         return 0.0
+
 
 def calculateVoltage(dbpath, chosenFiles, run):
     """
@@ -362,27 +349,28 @@ def calculateVoltage(dbpath, chosenFiles, run):
     :return: float, volt_Laser
     """
     center = get_center_from_db(dbpath, chosenFiles, run)
-    laserFreq_d = get_laserFreq_from_db(dbpath, chosenFiles) #Not implemented yet. But should work by only adding it to next 3 lines
+    laserFreq_d = get_laserFreq_from_db(dbpath, chosenFiles)
+    # Not implemented yet. But should work by only adding it to next 3 lines
 
-
-    volt_Laser=transformFreqToVolt(dbpath, chosenFiles, run, center[0])
-    volt_Laser_max=transformFreqToVolt(dbpath, chosenFiles, run, center[0]-center[1])
-    volt_Laser_min=transformFreqToVolt(dbpath, chosenFiles, run, center[0]+center[1])
-    voltages=[volt_Laser,volt_Laser_max,volt_Laser_min]
+    volt_Laser = transformFreqToVolt(dbpath, chosenFiles, run, center[0])
+    volt_Laser_max = transformFreqToVolt(dbpath, chosenFiles, run, center[0] - center[1])
+    volt_Laser_min = transformFreqToVolt(dbpath, chosenFiles, run, center[0] + center[1])
+    voltages = [volt_Laser, volt_Laser_max, volt_Laser_min]
 
     return voltages
 
-def changeListFormat(list):
-        list1=[]
-        list2=[]
 
-        for data in list:
-            if len(data)==2:
-                list1=list1+[data[0]]
-                list2=list2+[data[1]]
-            if len(data)==1:
-                list1=list1+[data[0]]
-                list2=list2+[]
-        plotdata=[list1,list2]
+def changeListFormat(_list):
+    list1 = []
+    list2 = []
 
-        return plotdata
+    for data in _list:
+        if len(data) == 2:
+            list1 = list1 + [data[0]]
+            list2 = list2 + [data[1]]
+        if len(data) == 1:
+            list1 = list1 + [data[0]]
+            list2 = list2 + []
+    plotdata = [list1, list2]
+
+    return plotdata

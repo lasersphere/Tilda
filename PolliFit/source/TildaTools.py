@@ -18,7 +18,7 @@ from PyQt5 import QtWidgets
 from scipy.optimize import curve_fit
 
 import numpy as np
-from lxml import etree as ET
+from lxml import etree as et
 
 import Physics
 from XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, \
@@ -26,22 +26,26 @@ from XmlOperations import xmlCreateIsotope, xml_add_meas_volt_pars, \
 from Service.VoltageConversions.VoltageConversions import get_nbits_from_voltage
 
 
-def select_from_db(db, vars_select, var_from, var_where=[], addCond='', caller_name='unknown'):
+def select_from_db(db, vars_select, var_from, var_where=None, addCond='', caller_name='unknown'):
     """
-    connects to database and finds attributes vars_select (string) in table var_from (string)
-    with the extra condition
-    varwhere[0][i] == varwhere[1][i] (so varwhere = [list, list] is a list...)
-    addCond -> e.g. 'ORDER BY date'
-    will convert to:
+    Connects to database 'db' and finds attributes 'vars_select' (string) in table 'var_from' (string).
+    The command will convert be
+     'SELECT vars_select FROM var_from WHERE varwhere[0][i] == varwhere[1][i] ... addCond'.
+    
+    :param db: The database (str).
+    :param vars_select: The variables to select (str), e.g. vars_select='mass, mass_d'.
+    :param var_from: The table to select the variables from (str), e.g. 'Isotopes'.
+    :param var_where: Conditions to filter the selected entries ([list, list] -> var_where[0][i]
+    == var_where[1][i] for all i), e.g. [['I'], [1.5]] to select isotopes with nuclear spin I==1.5.
+    :param addCond: An additional condition (str), e.g. 'ORDER BY date'.
+    :param caller_name: The name of the function calling 'select_from_db' (str). For debugging purposes.
 
-        SELECT vars_select FROM var_from WHERE varwhere[0][i] == varwhere[1][i] ... addCond
-
-    :return
-        None, if failure,
-        list, with of tuples with values if success [(vars_select0, vars_select1...), (...)]
+    :return: None, if failure else list of tuples with values [(vars_select0, vars_select1...), (...)].
     """
     sql_cmd = ''
     con = None
+    if var_where is None:
+        var_where = []
     try:
         con = sqlite3.connect(db)
         cur = con.cursor()
@@ -53,10 +57,10 @@ def select_from_db(db, vars_select, var_from, var_where=[], addCond='', caller_n
             for i, j in enumerate(var_where[0]):
                 where = where + ' and ' + j + ' = ?'
                 list_where_is.append(var_where[1][i])
-            sql_cmd = str('''SELECT %s FROM %s WHERE %s %s''' % (vars_select, var_from, where, addCond))
+            sql_cmd = str('SELECT %s FROM %s WHERE %s %s' % (vars_select, var_from, where, addCond))
             cur.execute(sql_cmd, tuple(list_where_is))
         else:
-            sql_cmd = str('''SELECT %s FROM %s %s''' % (vars_select, var_from, addCond))
+            sql_cmd = str('SELECT %s FROM %s %s' % (vars_select, var_from, addCond))
             cur.execute(sql_cmd, ())
         var = cur.fetchall()
         if var:
@@ -212,8 +216,8 @@ def load_xml(filename):
     loads an .xml file and returns it as an lxml.etree.Element
     :return:lxml.etree.Element, Element of loaded File
     """
-    parser = ET.XMLParser(huge_tree=True)
-    tree = ET.parse(filename, parser)
+    parser = et.XMLParser(huge_tree=True)
+    tree = et.parse(filename, parser)
     elem = tree.getroot()
     return elem
 
@@ -224,7 +228,7 @@ def save_xml(root_Ele, path, pretty=True):
     """
     logging.debug('saving .xml file: %s' % path)
     np.set_printoptions(threshold=sys.maxsize)
-    tree = ET.ElementTree(root_Ele)
+    tree = et.ElementTree(root_Ele)
     tree.write(path, pretty_print=pretty)
 
 
@@ -365,14 +369,16 @@ def evaluate_strings_in_dict(dict_to_convert):
     return dict_to_convert
 
 
-def replace_none_vals_in_dict(dict_to_check, replace_val={}):
+def replace_none_vals_in_dict(dict_to_check, replace_val=None):
     """
     this will iterate through the given dict, wich can be nested and
     replace all values that are None with the given replace val.
-    :param dict_to_check: dict, can be nested
-    :param replace_val: anything
-    :return: dict without None vals
+    :param dict_to_check: dict, can be nested.
+    :param replace_val: anything.
+    :return: dict without None vals.
     """
+    if replace_val is None:
+        replace_val = {}
     for key, val in dict_to_check.items():
         if isinstance(dict_to_check[key], dict):
             dict_to_check[key] = replace_none_vals_in_dict(dict_to_check[key], replace_val)
@@ -403,7 +409,8 @@ def xml_get_data_from_track(
             if 'error' in data_type:
                 logging.info('No specific errors defined in file. Using standard errors.')
             else:
-                logging.error('error while searching ' + str(data_type) + ' in track' + str(n_of_track) + ' in ' + str(root_ele))
+                logging.error('error while searching ' + str(data_type) + ' in track'
+                              + str(n_of_track) + ' in ' + str(root_ele))
                 logging.error('error is: ', e)
             return None
 
@@ -757,8 +764,9 @@ def get_laserfreq_from_db(db, measurement):
 
 def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=None):
     """
-    this will add or subtract the counts in the specdata object to the given parent specdata.
+    This will add or subtract the counts in the specdata object to the given parent specdata.
     Will only do that, if the x-axis are equal within 10 ** -5
+
     :param db: str, path of sqlite database
     :param filename: str, new filename for the added files, leave blank for automatically
     :param save_dir: str, path of the dir where to save the new file, leave blank for not saving.
@@ -811,7 +819,7 @@ def add_specdata(parent_specdata, add_spec_list, save_dir='', filename='', db=No
     # create the zero free data from the non zero free
     parent_specdata.time_res_zf = non_zero_free_to_zero_free(parent_specdata.time_res)
 
-    parent_specdata.offset = np.mean(offsets)
+    parent_specdata.offset = np.mean(offsets, axis=0).tolist()  # Take the mean for each track.
     parent_specdata.accVolt = np.mean(accvolts)
     if save_dir:
         if not os.path.isdir(save_dir):
@@ -882,7 +890,7 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
     if database_path is None:  # prefer laserfreq from db, if existant
         laserfreq = specdata.laserFreq  # if existant freq is usually given in 1/cm
     else:
-        # TODO watchout here a doubling is always assumed!
+        # TODO watch out, here a doubling is always assumed!
         laserfreq = Physics.wavenumber(get_laserfreq_from_db(database_path, specdata)) / 2
 
     draftIsotopePars = {
@@ -1126,7 +1134,8 @@ def get_software_gates_from_db(db, iso, run, track=0):
     if use_db == 'file':
         return None
     # if use_db != 'file' and use_db is not None:
-    #     if isinstance(ast.literal_eval(use_db[0][0]), list): return ast.literal_eval(use_db[0][0])[track]  # in this case softwGates is the softwGates list
+    #     if isinstance(ast.literal_eval(use_db[0][0]), list): return ast.literal_eval(use_db[0][0])[track]
+    # in this case softwGates is the softwGates list
     if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None:
         return None  # return None if failur by getting stuff from db
     else:
@@ -1162,7 +1171,7 @@ def get_gate_pars_from_db(db, iso, run):
         return use_db, run_gates_width, del_list, iso_mid_tof
 
 
-def calc_soft_gates_from_db_pars(run_gates_width, del_list, iso_mid_tof, voltage_gates=[-np.inf, np.inf]):
+def calc_soft_gates_from_db_pars(run_gates_width, del_list, iso_mid_tof, voltage_gates=None):
     """
     calc the software gates for a SINGLE TRACK from the given pars.
     voltages will be gated from -10 to 10 V.
@@ -1171,6 +1180,8 @@ def calc_soft_gates_from_db_pars(run_gates_width, del_list, iso_mid_tof, voltage
     stopp_gate_sc0 = mid_tof + delay_sc0 + 0.5 * width
     """
     # gates should be applied for all voltages/frequencies
+    if voltage_gates is None:
+        voltage_gates = [-np.inf, np.inf]
     softw_gates_db = []
     for each_del in del_list:
         softw_gates_db.append(
@@ -1440,9 +1451,9 @@ def convert_fit_volt_axis_to_freq(fit):
     return x_axis_in_freq
 
 
-def print_dict_pretty(dict):
+def print_dict_pretty(a):
     """ module for pretty printing a dictionary """
-    print(json.dumps(dict, sort_keys=True, indent=4))
+    print(json.dumps(a, sort_keys=True, indent=4))
 
 
 def translate_raw_data(raw_data):
@@ -1493,10 +1504,12 @@ def add_header_to23_bit(bit23, firstheader, secondheader, indexheader):
     return result
 
 
-def line_to_total_volt(x, lineMult, lineOffset, offset, accVolt, voltDivRatio, offset_by_dev_mean={}):
+def line_to_total_volt(x, lineMult, lineOffset, offset, accVolt, voltDivRatio, offset_by_dev_mean=None):
     """
     Converts an DAC line voltage array x to a total voltage array depending on the conversion coefficients
     """
+    if offset_by_dev_mean is None:
+        offset_by_dev_mean = {}
     if isinstance(voltDivRatio['offset'], float):  # just one number
         scanvolt = (x * lineMult + lineOffset) * voltDivRatio.get('lineMult', voltDivRatio['offset']) \
                    + offset * voltDivRatio['offset']
@@ -1561,25 +1574,28 @@ def get_file_number_from_file_str(file_str, mass_index, end_result_len, app=None
     return numbers, app
 
 
-def get_file_numbers(file_list, mass_index=[0], end_result_len=1, app=None, user_overwrite={}):
+def get_file_numbers(file_list, mass_index=[0], end_result_len=1, app=None, user_overwrite=None):
     """
-    get all file numbers (=conescutive integer numbers)
+    get all file numbers (=consecutive integer numbers)
     in the filenames that are listed in file_list.
     :param file_list: list, like  ['62_Ni_trs_run071.xml', ...]
-    :param mass_index: list, indice of all expected mass numbers, that will be removed from the output.
+    :param mass_index: list, indices of all expected mass numbers, that will be removed from the output.
     if the mass number is wanted -> use mass_index=[-1]
     for 62_Ni_trs_run071.xml
      -> mass_index=[0] -> [[71]]
      -> mass_index=None -> [[62, 71]]
-     :param end_result_len: int, desired amount of numbers to be found, as a cross check.
+    :param end_result_len: int, desired amount of numbers to be found, as a cross check.
      use -1/0 if you don't care
-     :param user_overwrite: dict, key is orig. filenum, value is str that will be put as file_num_str
+    :param app: None.
+    :param user_overwrite: dict, key is orig. filenum, value is str that will be put as file_num_str
      e.g.  {'60_Ni_trs_run113_sum114.xml': ['113+114']}
      helpful to avoid user input on runtime
     :return: list of all file numbers each still as string, that might be convertable to int,
      but can also be something like '123+124' by user choice.
     """
     file_nums = []
+    if user_overwrite is None:
+        user_overwrite = {}
     for f in file_list:
         if f in user_overwrite.keys():
             file_nums += user_overwrite[f]
@@ -1617,41 +1633,35 @@ if __name__ == '__main__':
     # print(nameFileXml(isodict, 'E:\\temp2'))
     # ret = get_all_tracks_of_xml_in_one_dict('E:\\temp2\\sums\\notrit_csdummy_run1546.xml')
     # print(ret['track0']['triton'])
-    sample_arr = np.array([1,2,3,4])
-    
-
+    sample_arr = np.array([1, 2, 3, 4])
 
     sample_dict0 = {'track0':
-        {'triton':
-            {'preScan':
-                {'dummyDev': {
-                    'calls': {'required': 2, 'data': [0, 1], 'acquired': 2},
-                    'random': {'required': 4, 'data': [0, 1, 2, 3], 'acquired': 4}}}}}}
+                    {'triton':
+                     {'preScan':
+                      {'dummyDev': {'calls': {'required': 2, 'data': [0, 1], 'acquired': 2},
+                                    'random': {'required': 4, 'data': [0, 1, 2, 3], 'acquired': 4}}}}}}
     sample_dict1 = {'track0':
-        {'triton':
-            {'preScan':
-                {'dummyDev': {
-                    'calls': {'required': 2, 'data': [2], 'acquired': 1},
-                    'random': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
+                    {'triton':
+                     {'preScan':
+                      {'dummyDev': {'calls': {'required': 2, 'data': [2], 'acquired': 1},
+                                    'random': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
     sample_dict2 = {}
     sample_dict3 = {'track0':
-        {'triton':
-            {'preScan':
-                {'dummyDev2': {
-                    'calls': {'required': 2, 'data': [2], 'acquired': 1},
-                    'random': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
+                    {'triton':
+                     {'preScan':
+                      {'dummyDev2': {'calls': {'required': 2, 'data': [2], 'acquired': 1},
+                                     'random': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
     sample_dict4 = {'track0':
-        {'triton':
-            {'preScan':
-                {'dummyDev': {
-                    'calls1': {'required': 2, 'data': [2], 'acquired': 1},
-                    'random1': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
+                    {'triton':
+                     {'preScan':
+                      {'dummyDev': {'calls1': {'required': 2, 'data': [2], 'acquired': 1},
+                                    'random1': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
     sample_dict5 = {'track0':
-        {'triton':
-            {'postScan':
-                {'dummyDev': {
-                    'calls1': {'required': 2, 'data': [2], 'acquired': 1},
-                    'random1': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
+                    {'triton':
+                     {'postScan':
+                      {'dummyDev':
+                       {'calls1': {'required': 2, 'data': [2], 'acquired': 1},
+                        'random1': {'required': 4, 'data': [4, 5, 6], 'acquired': 3}}}}}}
     np1 = np.array([1, 1])
     np2 = np.array([2, 2])
     dmm_sample_dict0 = {'dummy_somewhere': np1, 'dummy_else': np2}
@@ -1673,5 +1683,4 @@ if __name__ == '__main__':
         for ch_name, ch_data in chs.items():
             # print(ch_data)
             ch_data['acquired'] = len(ch_data['data'])
-
-    #print_dict_pretty(sample_dict0)
+    # print_dict_pretty(sample_dict0)
