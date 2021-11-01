@@ -831,16 +831,20 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.sum_track = -1
                 self.lineEdit_arith_scaler_input.setText(str(self.sum_scaler))  # TODO change
                 self.lineEdit_sum_all_pmts.setText(str(self.sum_scaler))    # TODO change
+                self.function = str(self.sum_scaler)
             else:
                 logging.info('liveplotterui: but specdata is None, so line edit is not set.')
             self.lineEdit_arith_scaler_input.setDisabled(True)
             self.lineEdit_sum_all_pmts.setDisabled(True)
         elif index == 1:  # manual
-            # self.sum_scaler = self.valid_scaler_input
             self.lineEdit_arith_scaler_input.setDisabled(False)
             self.lineEdit_sum_all_pmts.setDisabled(False)
 
-        # synchronize both comboboxes
+        # synchronize all comboboxes
+        try:
+            self.add_func_to_options()
+        except Exception as e:
+            logging.error('No function defined yet')
         self.comboBox_sum_all_pmts.setCurrentIndex(index)
         self.comboBox_select_sum_for_pmts.setCurrentIndex(index)
 
