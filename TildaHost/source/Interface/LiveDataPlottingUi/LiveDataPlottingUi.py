@@ -452,7 +452,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             logging.info(
                 'liveplot window received new track with updating index in comboBox_all_pmts_sel_tr to %s'
                 % self.tres_sel_tr_ind)
-            self.comboBox_all_pmts_sel_tr.setCurrentIndex(self.tres_sel_tr_ind)
+            #self.comboBox_all_pmts_sel_tr.setCurrentIndex(self.tres_sel_tr_ind)    # if uncommented: track in
+                                                                                    # all-pmts-tab set to current track
         self.tres_sel_sc_ind, self.tres_sel_sc_name = rcv_tpl[1]
         self.new_track_no_data_yet = True
         self.setup_range_please = True
