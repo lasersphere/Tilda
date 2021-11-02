@@ -961,6 +961,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.all_pmts_sel_tr = tr_ind
         if self.spec_data is not None and self.all_pmts_widg_plt_item_list is not None:
             self.update_all_pmts_plot(self.spec_data, autorange_pls=True)
+            [each['pltItem'].enableAutoRange(each['pltItem'].getViewBox().XYAxes) for each in
+             self.all_pmts_widg_plt_item_list]
 
     def set_tr_sel_by_index(self, tr_ind):
         new_ind = tr_ind != self.all_pmts_sel_tr
