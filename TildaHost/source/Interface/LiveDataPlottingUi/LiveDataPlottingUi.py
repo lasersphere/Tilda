@@ -614,7 +614,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 spec_data = self.spec_data
             logging.debug('updating all plots with %s %s' % (str(spec_data), str(update_tres)))
             self.updating_plot = True
-            self.update_sum_plot(spec_data)
+            try:
+                self.update_sum_plot(spec_data)
+            except SyntaxError:
+                logging.info('Your user function is invalid.')
             if '0.11' in pg.__version__:
                 for num, track in enumerate(self.spec_data.cts):
                     # np.nan seems to be making trouble with plotting for pyqtgraph version 0.11.x TODO: Remove at some point?
@@ -644,7 +647,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     logging.debug('writing offline message to position: x = %s, \t y = %s' % (text_x_pos, text_y_pos))
                     self.tres_offline_txt_itm.setPos(text_x_pos, text_y_pos)
                 self.update_projections(spec_data)
-            self.update_all_pmts_plot(spec_data)
+            try:
+                self.update_all_pmts_plot(spec_data)
+            except SyntaxError:
+                logging.info('Your user function is invaldi.')
             if self.application is not None:
                 self.application.processEvents()
         except Exception as e:
@@ -783,8 +789,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.t_max_line.setValue(gates[3])
                 self.sum_proj_plt_itm.setLabel('bottom', spec_data.x_units.value)
 
-        except Exception as e:
-            logging.error('error, while plotting projection, this happened: %s' % e, exc_info=True)
+        except SyntaxError:
+            logging.info('Your user function is invalid')
 
     def update_all_pmts_plot(self, spec_data, autorange_pls=False):
         """
