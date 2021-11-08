@@ -932,8 +932,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 if self.all_pmts_widg_plt_item_list is not None:
                     self.all_pmts_widg_plt_item_list[-1]['indList'] = indList
                     self.update_all_pmts_plot(self.spec_data)
+                cursor_all_pmts = self.lineEdit_sum_all_pmts.cursorPostion()
+                cursor_sum = self.lineEdit_arith_scaler_input.cursorPosition()
                 self.lineEdit_sum_all_pmts.setText(text)
                 self.lineEdit_arith_scaler_input.setText(text)
+                self.lineEdit_sum_all_pmts.setCursorPosition(cursor_all_pmts)
+                self.lineEdit_sum_all_pmts.setCursorPosition(cursor_sum)
                 self.add_func_to_options()
                 #self.set_preset_function_menue(text)
         except Exception as e:
