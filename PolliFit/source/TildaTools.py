@@ -1160,13 +1160,13 @@ def get_gate_pars_from_db(db, iso, run):
         db, 'midTof', 'Isotopes', [['iso'], [iso]],
         caller_name='get_software_gates_from_db in DataBaseOperations.py')
     if iso_mid_tof is None or run_gates_width is None or run_gates_delay is None or iso_mid_tof[0][0] is None or \
-            run_gates_width[0][0] is None or run_gates_delay[0][
-        0] is None:  # added 3 cases since iso_mid_tof etc. is usually an array and != none (?)
+            run_gates_width[0][0] is None or run_gates_delay[0][0] is None:
+        # added 3 cases since iso_mid_tof etc. is usually an array and != none (?)
         return None, None, None, None
     else:
-        run_gates_width = run_gates_width[0][0]
+        run_gates_width = float(run_gates_width[0][0])
         run_gates_delay = run_gates_delay[0][0]
-        iso_mid_tof = iso_mid_tof[0][0]
+        iso_mid_tof = float(iso_mid_tof[0][0])
         del_list = ast.literal_eval(run_gates_delay)
         return use_db, run_gates_width, del_list, iso_mid_tof
 
