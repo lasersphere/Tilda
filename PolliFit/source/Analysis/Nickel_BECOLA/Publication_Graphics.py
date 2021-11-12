@@ -3237,12 +3237,18 @@ class PlotThesisGraphics:
         Version where the datapoints are given directly.
         """
         ''' DATA (NAME, VALUE, ERROR-, ERROR+, color)'''
-        data_exp = ('Experiment', 0.03045, 0.00259, 0.00259, self.grey)
+        data_exp = ('Exp', 0.03045, 0.00259, 0.00259, self.grey)
         data_svmin = ('DFT SVmin', 0.00520, 0.00938, 0.00621, self.green)
         data_fayans = ('DFT Fayans', 0.02275, 0.00672, 0.02756, self.blue)
         data_em1820 = ('VS-IMSRG EM1.8/2.0', 0.02420, 0.00011, 0.00011, self.purple)
+        data_imsrg = ('mRef-IMSRG/NCSM(N4LO\')', 0.022455, 0.006675, 0.006675, self.orange)
+        data_imsrg4 = ('N4LO\'', 0.022455, 0.006675, 0.006675, self.orange)
+        data_imsrg3 = ('N3LO', 0.006675, 0.006675, 0.006675, self.dark_orange)
+        data_imsrg2 = ('N2LO', 0.016111, 0.013039, 0.013039, self.red)
+        data_imsrg1 = ('NLO', 0.036244, 0.04257, 0.04257, self.dark_red)
 
-        all_theo_data = [data_svmin, data_fayans, data_em1820]
+        all_theo_data = [data_svmin, data_fayans, data_em1820, data_imsrg]
+        all_theo_data = [data_imsrg1, data_imsrg2, data_imsrg3, data_imsrg4]
 
         ''' PREPARE PLOT '''
         folder = os.path.join(self.fig_dir, 'Nickel\\Discussion\\3PointIndicator\\')
@@ -3255,7 +3261,7 @@ class PlotThesisGraphics:
         ''' PLOT '''
         # Experimental value as a band
         ax.axhspan(data_exp[1]-data_exp[2], data_exp[1]+data_exp[3], color=data_exp[4])
-        ax.text(-0.4, data_exp[1], data_exp[0],
+        ax.text(-1.4, data_exp[1], data_exp[0],
                 horizontalalignment='left', verticalalignment='center', rotation='horizontal',
                 color=self.black, fontweight='bold',
                 **self.ch_dict(self.text_style, {'size': 13})
@@ -3275,7 +3281,7 @@ class PlotThesisGraphics:
         ax.set_xticks([])
         ax.axes.tick_params(axis='y', direction='out', right=False)
         ax.set_ylabel(r'$\Delta_{2n}^{(3)}R_\mathregular{c}$ /fm')
-        ax.set_xlim([-0.5, len(all_theo_data)-0.5])
+        ax.set_xlim([-1.5, len(all_theo_data)-0.5])
 
         plt.savefig(folder + 'three_point_ind_hardcode' + self.ffe, dpi=self.dpi, bbox_inches='tight')
         plt.close()
@@ -3684,7 +3690,7 @@ if __name__ == '__main__':
     # graphs.absradii_neighborhood()
     # graphs.deltarad_chain_errorband()
     graphs.absradii_chain_errorband()
-    # graphs.three_point_indicator()
+    graphs.three_point_indicator()
     graphs.three_point_indicator_hardcoded()
     # graphs.absrad56()
     graphs.mu_nickel55()
