@@ -178,15 +178,17 @@ def lorentzQI (x, loc, loc2, gam):
 
     return 2 * cross.real
 
+
 def gaussian(x, mu, sig, amp):
     """
     gaussian function
     :param x:
     :param mu:
     :param sig:
+    :param amp:
     :return:
     """
-    return amp/(sig * np.sqrt(2 * math.pi)) * np.exp(-0.5 * ((x - mu) / sig) ** 2)
+    return amp / (sig * np.sqrt(2 * np.pi)) * np.exp(-0.5 * ((x - mu) / sig) ** 2)
 
 
 def gaussian_offset(x, mu, sig, amp, off):

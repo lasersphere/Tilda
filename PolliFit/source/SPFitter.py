@@ -14,18 +14,16 @@ import Physics
 
 
 class SPFitter(object):
-    """This class encapsulates the scipy.optimize.curve_fit routine"""
+    """ This class encapsulates the scipy.optimize.curve_fit routine """
 
     def __init__(self, spec, meas, st):
-        """Initialize and prepare"""
+        """ Initialize and prepare """
         print('Initializing fit of S:', st[0], ', T:', st[1])
         self.spec = spec
         self.meas = meas
         self.st = st  # (scaler, track) tuple
 
         self.data = meas.getArithSpec(*st)  # Returns list of tracks with elements
-
-        #self.data = meas.getArithSpec(*st)  # Returns list of tracks with elements
         # (array of x-values in Volt, array of cts, array of errors)
         self.cut_x = self.add_track_offsets()  # Contains voltages to cut the x-axis for unique offsets in each track.
 
@@ -47,6 +45,7 @@ class SPFitter(object):
             self.npar += 'softwGatesWidth', 'softwGatesDelayList', 'midTof'
         except Exception as e:
             # fail on purpose, just to check if software gates exist
+            print(repr(e))
             pass
         self.oldp = None
         self.pcov = None
@@ -139,27 +138,23 @@ class SPFitter(object):
 
         for n, x, e in zip(self.npar, self.par, self.pard):
             print(str(n) + '\t' + str(x) + '\t' + '+-' + '\t' + str(e))
-   
-        
+
     def calcRchi(self):
         """Calculate the reduced chi square"""
         return np.sum(self.calcRes()**2/self.data[2]**2)/self.calcNdef()
-    
-    
+
     def calcNdef(self):
         """Calculate number of degrees of freedom"""
         # if bounds are given instead of boolean, write False to fixed bool list.
         fixed_bool_list = [f if isinstance(f, bool) else False for f in self.fix]
         fixed_sum = sum(fixed_bool_list)
         return self.data[0].size - (len(self.fix) - fixed_sum)
-    
-    
+
     def calcRes(self):
         """Calculate the residuals of the current parameter set"""
         valgen = self.spec.evaluateE(self.data[0], self.meas.laserFreq, self.meas.col, self.par)
         return self.data[1] - valgen
 
-    
     def untrunc(self, p):
         """Copy the free parameters to their places in the full parameter set"""
         ip = iter(p)
@@ -169,7 +164,6 @@ class SPFitter(object):
                 
         return 
 
-    
     def evaluate(self, x, *p):
         """
         Encapsulate evaluate of spec
@@ -183,7 +177,6 @@ class SPFitter(object):
             self.oldp = p
 
         self.spec.evaluate(x, self.par)
-
     
     def evaluateE(self, x, *p):
         """Encapsulate evaluateE of spec"""
@@ -193,7 +186,6 @@ class SPFitter(object):
             self.oldp = p
 
         return self.spec.evaluateE(x, self.meas.laserFreq, self.meas.col, self.par)
-
 
     def result(self):
         """Return a list of result-tuples (name, pardict)"""
@@ -208,7 +200,6 @@ class SPFitter(object):
             ret.append((name, pardict, fix))
             
         return ret
-
 
     def parsToE(self):
         p = self.par[:]
@@ -237,8 +228,7 @@ class SPFitter(object):
     def reset(self):
         """Reset parameters to the values before optimization"""
         self.par = list(self.oldpar)
-        
-    
+
     def setPar(self, i, par):
         """Set parameter with name to value par"""
         self.par[i] = par
@@ -259,6 +249,5 @@ class SPFitter(object):
         else:
             self.setPar(i, par)
 
-            
     def setFix(self, i, val):
         self.fix[i] = val

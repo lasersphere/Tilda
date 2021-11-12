@@ -1,17 +1,17 @@
-'''
+"""
 Created on 06.06.2014
 
 @author: hammen, chgorges
-'''
+"""
 
 import datetime
 import os
-import sqlite3
+import numpy as np
 
 from PyQt5 import QtWidgets, QtCore
 
 import Analyzer
-import MPLPlotter as plot
+import MPLPlotter as Plot
 from Gui.Ui_AccVolt import Ui_AccVolt
 import TildaTools as TiTs
 
@@ -32,7 +32,6 @@ class AccVoltUi(QtWidgets.QWidget, Ui_AccVolt):
         self.dateTimeEdit_end.dateTimeChanged.connect(self.average_acc_volt)
         self.dateTimeEdit_start.dateTimeChanged.connect(self.average_acc_volt)
 
-
         self.dbpath = None
 
         self.show()
@@ -43,16 +42,17 @@ class AccVoltUi(QtWidgets.QWidget, Ui_AccVolt):
     def plot_and_save(self):
         dates, accVolts, err_accVolts, avg, avg_err = self.average_acc_volt()
         # print('avg, avg_err, rchi', avg, avg_err, rchi)
-        filename = 'accVolt_from_%s_to_%s.png' % (dates[0], dates[-1])
-        filename = filename.replace(':', '_').replace(' ', '_')
-        path = os.path.join(os.path.split(self.dbpath)[0], 'combined_plots', filename)
-        try:
-            plot.close_all_figs()
-            plot.plotAverage(dates, accVolts, err_accVolts, avg, avg_err, 0,
-                             showing=True, ylabel='accVolt [V]', save_path=path)
-            self.lineEdit_savedto.setText(path)
-        except Exception as e:
-            print(e)
+        if dates:
+            filename = 'accVolt_from_%s_to_%s.png' % (dates[0], dates[-1])
+            filename = filename.replace(':', '_').replace(' ', '_')
+            path = os.path.join(os.path.split(self.dbpath)[0], 'combined_plots', filename)
+            try:
+                Plot.close_all_figs()
+                Plot.plotAverage(dates, accVolts, err_accVolts, avg, avg_err, 0,
+                                 showing=True, ylabel='accVolt [V]', save_path=path)
+                self.lineEdit_savedto.setText(path)
+            except Exception as e:
+                print(e)
 
     def dbChange(self, dbpath):
         self.dbpath = dbpath
@@ -80,19 +80,19 @@ class AccVoltUi(QtWidgets.QWidget, Ui_AccVolt):
 
     def average_acc_volt(self):
         dates, accVolts = self.get_date_and_acc_volt(False)
-        if any(dates):
-            err_accVolts = [accVolt * self.read_error for accVolt in accVolts]
+        err_accVolts = [accVolt * self.read_error for accVolt in accVolts]
+        avg, avg_err, rchi = np.nan, np.nan, np.nan
+        if dates:
             avg, avg_err, rchi = Analyzer.weightedAverage(accVolts, err_accVolts)
             self.lineEdit_avg.setText(str(avg))
             self.lineEdit_rChi2.setText(str(rchi))
             self.lineEdit_statErr.setText(str(avg_err))
-            return dates, accVolts, err_accVolts, avg, avg_err
+        return dates, accVolts, err_accVolts, avg, avg_err
 
     def read_error_changed(self, text):
         try:
             read = float(text)
             self.read_error = read
             self.average_acc_volt()
-        except Exception as e:
-            print('this is not a float')
-
+        except TypeError as e:
+            print(repr(e))
