@@ -3238,22 +3238,27 @@ class PlotThesisGraphics:
         """
         ''' DATA (NAME, VALUE, ERROR-, ERROR+, color)'''
         data_exp = ('Exp', 0.03045, 0.00259, 0.00259, self.grey)
+        data_exp_pp = ('Exp', 0.0312, 0.00259, 0.00259, self.grey)
         data_svmin = ('DFT SVmin', 0.00520, 0.00938, 0.00621, self.green)
         data_fayans = ('DFT Fayans', 0.02275, 0.00672, 0.02756, self.blue)
         data_em1820 = ('VS-IMSRG EM1.8/2.0', 0.02420, 0.00011, 0.00011, self.purple)
         data_imsrg = ('mRef-IMSRG/NCSM(N4LO\')', 0.022455, 0.006675, 0.006675, self.orange)
         data_imsrg4 = ('N4LO\'', 0.022455, 0.006675, 0.006675, self.orange)
-        data_imsrg3 = ('N3LO', 0.006675, 0.006675, 0.006675, self.dark_orange)
+        data_imsrg3 = ('N3LO', 0.017078, 0.006675, 0.006675, self.dark_orange)
         data_imsrg2 = ('N2LO', 0.016111, 0.013039, 0.013039, self.red)
         data_imsrg1 = ('NLO', 0.036244, 0.04257, 0.04257, self.dark_red)
-        data_imsrg4_d = ('N4LO\'', 0.017, 0.012, 0.012, self.orange)
-        data_imsrg3_d = ('N3LO', 0.018, 0.012, 0.012, self.dark_orange)
-        data_imsrg2_d = ('N2LO', 0.016, 0.012, 0.012, self.red)
-        data_imsrg1_d = ('NLO', 0.037, 0.040, 0.040, self.dark_red)
+        data_imsrg4_pp = ('N4LO\'', 0.02300, 0.0067, 0.0067, self.orange)
+        data_imsrg3_pp = ('N3LO', 0.01750, 0.0067, 0.0067, self.dark_orange)
+        data_imsrg2_pp = ('N2LO', 0.01650, 0.0133, 0.0133, self.red)
+        data_imsrg1_pp = ('NLO', 0.0375, 0.044, 0.044, self.dark_red)
+        data_imsrg4_pp_d = ('N4LO\'', 0.023, 0.012, 0.012, self.orange)
+        data_imsrg3_pp_d = ('N3LO', 0.018, 0.012, 0.012, self.dark_orange)
+        data_imsrg2_pp_d = ('N2LO', 0.016, 0.012, 0.012, self.red)
+        data_imsrg1_pp_d = ('NLO', 0.037, 0.040, 0.040, self.dark_red)
 
         # all_theo_data = [data_svmin, data_fayans, data_em1820, data_imsrg]
-        all_theo_data = [data_imsrg1, data_imsrg2, data_imsrg3, data_imsrg4,
-                         data_imsrg1_d, data_imsrg2_d, data_imsrg3_d, data_imsrg4_d]
+        all_theo_data = [data_imsrg1_pp, data_imsrg2_pp, data_imsrg3_pp, data_imsrg4_pp,
+                         data_imsrg1_pp_d, data_imsrg2_pp_d, data_imsrg3_pp_d, data_imsrg4_pp_d]
 
         ''' PREPARE PLOT '''
         folder = os.path.join(self.fig_dir, 'Nickel\\Discussion\\3PointIndicator\\')
