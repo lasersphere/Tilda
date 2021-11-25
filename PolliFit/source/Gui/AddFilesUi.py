@@ -44,7 +44,6 @@ class AddFilesUi(QtWidgets.QWidget, Ui_AddFiles):
         QtWidgets.QShortcut(QtGui.QKeySequence("+"), self, functools.partial(self.add_substract_file, 1))
         QtWidgets.QShortcut(QtGui.QKeySequence("-"), self, functools.partial(self.add_substract_file, -1))
 
-
         self.dbpath = None
         
         self.show()
@@ -132,11 +131,11 @@ class AddFilesUi(QtWidgets.QWidget, Ui_AddFiles):
     def save(self):
         start_path = os.path.join(os.path.dirname(self.dbpath), self.host_file[:-4] + '_sum')
         path, ending = QtWidgets.QFileDialog.getSaveFileName(
-            QtWidgets.QFileDialog(), 'save files as .xml file to', start_path,
-            '*.xml')
+            QtWidgets.QFileDialog(), 'save files as .xml file to', start_path, '*.xml')
         save_dir, file = os.path.split(path)
-        spec, files, save_name = TiTs.add_specdata(self.host_file_meas, self.files_to_add, save_dir, file, self.dbpath)
-        self.label_last_saved.setText(os.path.join(save_dir, save_name))
+        if file != '':
+            spec, files, save_name = TiTs.add_specdata(self.host_file_meas, self.files_to_add, save_dir, file, self.dbpath)
+            self.label_last_saved.setText(os.path.join(save_dir, save_name))
 
     def get_full_file_path(self, file):
         data = TiTs.select_from_db(self.dbpath, 'filePath', 'Files', [['file'], [file]], caller_name=__name__)

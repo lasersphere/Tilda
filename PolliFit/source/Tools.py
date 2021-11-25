@@ -501,18 +501,28 @@ def extract_file_as_ascii(db, file, sc, tr, x_in_freq=False, line_var='', save_t
     if save_to == '':  # automatic determination and store in Ascii_files relative to db
         save_to = os.path.join(os.path.dirname(db), 'Ascii_files', os.path.split(file)[1].split('.')[0] + '.txt')
     meas = Meas.load(file_path, db, raw=not x_in_freq, softw_gates=softw_gates)
+    # sc = [each for each in sc if all(abs(each) < nr_sc for nr_sc in meas.nrScalers)]
     # i want an arith spec for each pmt here:
     arith_spec = [meas.getArithSpec([abs(each)], tr) for each in sc]
     if x_in_freq:
         iso = DBIsotope(db, meas.type, lineVar=line_var)
-        if iso is not None:
-            for i, e in enumerate(arith_spec[0][0]):  # transfer to frequency
+        if hasattr(iso, 'mass') and hasattr(iso, 'freq'):
+            try:
+                for i, e in enumerate(arith_spec[0][0]):  # transfer to frequency
 
-                v = Physics.relVelocity(Physics.qe * e, iso.mass * Physics.u)
-                v = -v if meas.col else v
+                    v = Physics.relVelocity(Physics.qe * e, iso.mass * Physics.u)
+                    v = -v if meas.col else v
 
-                f = Physics.relDoppler(meas.laserFreq, v) - iso.freq
-                arith_spec[0][0][i] = f
+                    f = Physics.relDoppler(meas.laserFreq, v) - iso.freq
+                    arith_spec[0][0][i] = f
+            except TypeError as e:
+                print('TypeError during voltage-to-frequency conversion:\n{}\n'
+                      'Please check the database entries.'.format(repr(e)))
+                return save_to
+        else:
+            print('Chosen isotope or line not available in the database '
+                  '-> voltages cannot be converted into frequencies.\nNo file will be created.')
+            return save_to
 
     if not os.path.exists(os.path.dirname(save_to)):
         os.mkdir(os.path.dirname(save_to))
@@ -560,6 +570,8 @@ def create_header_list(meas, sc, tr):
     header += 'number of scans: %s' % meas.nrScans,
     if tilda_file:
         ret = meas.get_scaler_step_and_bin_num(tr)
+        if not isinstance(ret, list):
+            ret = [ret]
         n_of_scalers_tr, n_of_steps_tr, n_of_bins_tr = zip(*ret)
         header += 'number of steps: %s' % str(n_of_steps_tr),
     else:

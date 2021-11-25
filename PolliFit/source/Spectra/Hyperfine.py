@@ -20,6 +20,8 @@ class Hyperfine(object):
         self.iso = iso
         self.shape = shape
 
+        if not hasattr(iso, 'fixArat'):
+            raise ValueError('No such isotope: {}'.format(iso.name))
         self.fixA = iso.fixArat
         self.fixB = iso.fixBrat
         self.fixedAl = iso.fixedAl

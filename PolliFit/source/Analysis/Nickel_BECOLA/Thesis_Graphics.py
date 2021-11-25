@@ -2800,14 +2800,22 @@ class PlotThesisGraphics:
             def calc_rch_from_rpp(rpp, rpp_d):
                 # calculation from Kaufmann et al. 2020
                 rp2 = 0.7080  # rms charge radius proton /fm^2
+                rp2_d = 0.0032
                 rn2 = -0.106  # rms charge radius neutron /fm^2 (from Filin et al., PRL 124, 082501 (2020))
+                rn2_d = 0.007
                 relDarFol = 0.033  # relativistic Darwin-Foldy correction /fm^2
+                relDarFol_d = 0
                 # corSO = 0.13469  # spin-orbit correction /fm^2 (from Horowitz, Piekarewicz; PRC 86, 045503 (2012))
                 # corSO = 0.0591  # extracted from Sonia Baccas calculations on NNLOsat
                 corSO = 0
+                corSO_d = 0
                 rch = np.sqrt(float(rpp) ** 2 + rp2 + (28 / 28) * rn2 + relDarFol + corSO)
-                # TODO: Should do similar calculation for uncertainties
-                rch_d = float(rpp_d)
+                # UPDATE: proper error calculation:
+                # error of rch**2 is a little more straight forward:
+                rch2_d = np.sqrt((2*float(rpp)*float(rpp_d))**2 + rp2_d**2 + rn2_d**2 + relDarFol_d**2 + corSO_d**2)
+                rch_d = rch2_d/(2*rch)  # now error of sqrt(A) where A=rch**2 --> A_d/(2*sqrt(A))
+                # previous:
+                # rch_d = float(rpp_d)
                 return rch, rch_d
 
             for i, row in data.iterrows():
@@ -2852,7 +2860,7 @@ class PlotThesisGraphics:
                     theo_unc_68.append(float(unc))
                 # now plot
                 axes[num].errorbar(np.arange(theo_label.__len__())+0.1, theo_vals_68, yerr=theo_unc_68, marker='s',
-                                   linestyle='', color=self.dark_orange, capsize=cs, elinewidth=1.5, capthick=1.5)
+                                   linestyle='', color=self.dark_orange, mec=self.black, capsize=cs, elinewidth=1.5, capthick=1.5)
                 # make band with experimental nickel 68 value
                 rc68 = 3.887, 0.003  # from Kaufmann.2020
                 axes[num].axhspan(rc68[0] - rc68[1], rc68[0] + rc68[1], color=self.orange)
@@ -2860,11 +2868,14 @@ class PlotThesisGraphics:
                 print('No 68Ni values found for {}'.format(name))
 
             axes[num].errorbar(range(theo_label.__len__()), theo_vals, yerr=theo_unc, fmt='o', linestyle='',
-                               color=self.blue, capsize=cs, elinewidth=1.5, capthick=1.5)
+                               color=self.blue, capsize=cs, elinewidth=1.5, capthick=1.5, mec=self.black)
             axes[num].set_xticks(range(theo_label.__len__()))
             axes[num].set_xticklabels(theo_label, rotation=90)
             axes[num].set_xlim((-0.5, len(theo_label)-0.5))
             axes[num].set_xlabel(r'{}'.format(name))
+
+            axes[num].axes.tick_params(axis='x', direction='in', bottom=True, top=True)
+            axes[num].axes.tick_params(axis='y', direction='in', left=True, right=True)
 
             # TODO: Make band with experimental value instead
             axes[num].axhspan(y[0] - yerr[0] - ytiltshift[0], y[0] + yerr[0] + ytiltshift[0], color=col)
@@ -2880,7 +2891,7 @@ class PlotThesisGraphics:
         orange_square = axes[1].errorbar([], [], [], color=self.dark_orange, marker='s', markersize='5', linestyle='', label=r'Theory $^{68}$Ni')
         da2, la2 = axes[1].get_legend_handles_labels()
         axes[-1].legend(handles=[red_line, da1[0][0], orange_line, da2[0][0]], labels=[r'Exp $^{56}$Ni', la1[0], R'Exp $^{68}$Ni', la2[0]],
-                   bbox_to_anchor=(1.1, 1.05), loc='lower right', ncol=4)
+                   bbox_to_anchor=(0.7, 1.02), loc='lower right', ncol=4, edgecolor=self.black, fancybox=False)
 
         plt.savefig(folder + 'abs_radius_56' + '.pdf', dpi=self.dpi, bbox_inches='tight')
         plt.close()
@@ -3341,15 +3352,16 @@ class PlotThesisGraphics:
         # # remove 'analysis_paramters' from dict
         # del res_dict['analysis_parameters']
         # stored dict has 'i' in front of isotopes. Remove that again!
+        res_dict_new = res_dict.copy()
         for keys, vals in res_dict.items():
             # xml cannot take numbers as first letter of key but dicts can
             if keys[0] == 'i':
                 if vals.get('file_times', None) is not None:
                     vals['file_times'] = [datetime.strptime(t, '%Y-%m-%d %H:%M:%S') for t in vals['file_times']]
-                res_dict[keys[1:]] = vals
-                del res_dict[keys]
+                res_dict_new[keys[1:]] = vals
+                del res_dict_new[keys]
 
-        return res_dict
+        return res_dict_new
 
 
 if __name__ == '__main__':
@@ -3384,12 +3396,12 @@ if __name__ == '__main__':
     #
     # ''' Discussion '''
     # graphs.Q_nickel55()
-    graphs.absradii_chain_errorband_all()
+    # graphs.absradii_chain_errorband_all()
     # graphs.absradii_neighborhood()
     # graphs.deltarad_chain_errorband()
-    graphs.absradii_chain_errorband()
-    graphs.three_point_indicator()
-    # graphs.absrad56()
+    # graphs.absradii_chain_errorband()
+    # graphs.three_point_indicator()
+    graphs.absrad56()
     # graphs.mu_nickel55()
 
 

@@ -452,7 +452,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             logging.info(
                 'liveplot window received new track with updating index in comboBox_all_pmts_sel_tr to %s'
                 % self.tres_sel_tr_ind)
-            self.comboBox_all_pmts_sel_tr.setCurrentIndex(self.tres_sel_tr_ind)
+            #self.comboBox_all_pmts_sel_tr.setCurrentIndex(self.tres_sel_tr_ind)    # if uncommented: track in
+                                                                                    # all-pmts-tab set to current track
         self.tres_sel_sc_ind, self.tres_sel_sc_name = rcv_tpl[1]
         self.new_track_no_data_yet = True
         self.setup_range_please = True
@@ -613,7 +614,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 spec_data = self.spec_data
             logging.debug('updating all plots with %s %s' % (str(spec_data), str(update_tres)))
             self.updating_plot = True
-            self.update_sum_plot(spec_data)
+            try:
+                self.update_sum_plot(spec_data)
+            except SyntaxError:
+                logging.info('Your user function is invalid.')
             if '0.11' in pg.__version__:
                 for num, track in enumerate(self.spec_data.cts):
                     # np.nan seems to be making trouble with plotting for pyqtgraph version 0.11.x TODO: Remove at some point?
@@ -643,7 +647,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     logging.debug('writing offline message to position: x = %s, \t y = %s' % (text_x_pos, text_y_pos))
                     self.tres_offline_txt_itm.setPos(text_x_pos, text_y_pos)
                 self.update_projections(spec_data)
-            self.update_all_pmts_plot(spec_data)
+            try:
+                self.update_all_pmts_plot(spec_data)
+            except SyntaxError:
+                logging.info('Your user function is invaldi.')
             if self.application is not None:
                 self.application.processEvents()
         except Exception as e:
@@ -782,10 +789,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.t_max_line.setValue(gates[3])
                 self.sum_proj_plt_itm.setLabel('bottom', spec_data.x_units.value)
 
-        except Exception as e:
-            logging.error('error, while plotting projection, this happened: %s' % e, exc_info=True)
+        except SyntaxError:
+            logging.info('Your user function is invalid')
 
-    def update_all_pmts_plot(self, spec_data, autorange_pls=True):
+    def update_all_pmts_plot(self, spec_data, autorange_pls=False):
         """
         updates the all pmts tab
         :param spec_data: SpecData, used spectrum
@@ -831,20 +838,31 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 self.sum_track = -1
                 self.lineEdit_arith_scaler_input.setText(str(self.sum_scaler))  # TODO change
                 self.lineEdit_sum_all_pmts.setText(str(self.sum_scaler))    # TODO change
+                self.function = str(self.sum_scaler)
             else:
                 logging.info('liveplotterui: but specdata is None, so line edit is not set.')
             self.lineEdit_arith_scaler_input.setDisabled(True)
             self.lineEdit_sum_all_pmts.setDisabled(True)
         elif index == 1:  # manual
-            # self.sum_scaler = self.valid_scaler_input
+            if self.spec_data is not None:
+                if self.spec_data.seq_type != 'kepco':
+                    if self.sum_scaler == None:
+                        self.sum_scaler_lineedit_changed(self.function)
+                if self.sum_track == None:
+                    self.sum_track = -1
             self.lineEdit_arith_scaler_input.setDisabled(False)
             self.lineEdit_sum_all_pmts.setDisabled(False)
 
-        # synchronize both comboboxes
+        # synchronize all comboboxes
+        try:
+            self.add_func_to_options()
+        except Exception as e:
+            logging.error('No function defined yet')
         self.comboBox_sum_all_pmts.setCurrentIndex(index)
         self.comboBox_select_sum_for_pmts.setCurrentIndex(index)
 
     def get_functions(self):
+        func_dict = Cfg._main_instance.get_option('FUNCTIONS')
         func_dict = Cfg._main_instance.local_options.get_functions()
         func_list = []
         for key, value in func_dict.items():
@@ -920,8 +938,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 if self.all_pmts_widg_plt_item_list is not None:
                     self.all_pmts_widg_plt_item_list[-1]['indList'] = indList
                     self.update_all_pmts_plot(self.spec_data)
+                cursor_all_pmts = self.lineEdit_sum_all_pmts.cursorPostion()
+                cursor_sum = self.lineEdit_arith_scaler_input.cursorPosition()
                 self.lineEdit_sum_all_pmts.setText(text)
                 self.lineEdit_arith_scaler_input.setText(text)
+                self.lineEdit_sum_all_pmts.setCursorPosition(cursor_all_pmts)
+                self.lineEdit_sum_all_pmts.setCursorPosition(cursor_sum)
                 self.add_func_to_options()
                 #self.set_preset_function_menue(text)
         except Exception as e:
@@ -950,6 +972,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.all_pmts_sel_tr = tr_ind
         if self.spec_data is not None and self.all_pmts_widg_plt_item_list is not None:
             self.update_all_pmts_plot(self.spec_data, autorange_pls=True)
+            [each['pltItem'].enableAutoRange(each['pltItem'].getViewBox().XYAxes) for each in
+             self.all_pmts_widg_plt_item_list]
 
     def set_tr_sel_by_index(self, tr_ind):
         new_ind = tr_ind != self.all_pmts_sel_tr
@@ -1338,6 +1362,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.sum_scaler = None
         self.sum_track = None
         self.add_sum_plot()
+        self.comboBox_select_sum_for_pmts.currentIndexChanged.emit(self.comboBox_select_sum_for_pmts.currentIndex())
 
     def reset_t_res_plot(self):
         """

@@ -4,6 +4,7 @@ Created on 29.03.2014
 @author: hammen
 '''
 import itertools as it
+import logging
 from datetime import datetime
 
 import numpy as np
@@ -105,7 +106,7 @@ class SpecData(object):
             ''' go throug all scalers used for sum and add counts up'''
             for s in scaler:
                 s = int(s)
-                if nrScalers >= np.abs(s):  # check if scaler exists
+                if nrScalers > np.abs(s):  # check if scaler exists
                     flatx, c, e = self.getSingleSpec(abs(s), track_index)
                     flatc = flatc + np.copysign(np.ones_like(c), s) * c
                     flate = flate + np.square(e)
@@ -122,6 +123,7 @@ class SpecData(object):
             for v in scaler:    # go through used variables
                 pmt = 's' + str(v)  # create PMT - name (e. g. s1, s3, ...)
                 flatx, var_map_cts[pmt], e = self.getSingleSpec(abs(v), track_index)    # get voltage, counts and err
+                var_map_cts[pmt].dtype='int32'
                 flate = flate + np.square(e)  # sum squared errors of each scaler used
             flatc = eval(function, var_map_cts) # evaluation of counts
             flate = np.sqrt(flate)

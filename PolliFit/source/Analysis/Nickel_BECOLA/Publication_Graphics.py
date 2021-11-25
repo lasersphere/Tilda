@@ -2556,7 +2556,7 @@ class PlotThesisGraphics:
 
         fig, ax = plt.subplots(1)
         # define output size of figure
-        width, height = 1.2, 0.4
+        width, height = 1, 0.4 #1.2, 0.4
         # f.set_dpi(300.)
         fig.set_size_inches((self.w_in * width, self.h_in * height))
 
@@ -2706,7 +2706,7 @@ class PlotThesisGraphics:
         ax.set_ylabel(r'$R\mathregular{_c\//fm}$')
         ax.set_xlabel('A')
         ax.set_xmargin(0.05)
-        ax.set_xlim((53.5, 64.5))
+        ax.set_xlim((53.5, 59 )) #64.5))
         ax.set_ylim((3.5, 3.9))
         # sort legend alphabetically but keep experiment on top
         handles, labels = ax.get_legend_handles_labels()
@@ -2981,7 +2981,7 @@ class PlotThesisGraphics:
                 # TODO: Should do similar calculation for uncertainties
                 # error of rch**2 is a little more straight forward:
                 rch2_d = np.sqrt((2*float(rpp)*float(rpp_d))**2 + rp2_d**2 + rn2_d**2 + relDarFol_d**2 + corSO_d**2)
-                rch_d = rch2_d/rch  # now error of sqrt(A) where A=rch**2
+                rch_d = rch2_d/(2*rch)  # now error of sqrt(A) where A=rch**2 --> A_d/(2*sqrt(A))
                 return rch, rch_d
 
             for i, row in data.iterrows():
@@ -3237,12 +3237,23 @@ class PlotThesisGraphics:
         Version where the datapoints are given directly.
         """
         ''' DATA (NAME, VALUE, ERROR-, ERROR+, color)'''
-        data_exp = ('Experiment', 0.03045, 0.00259, 0.00259, self.grey)
+        data_exp = ('Exp', 0.03045, 0.00259, 0.00259, self.grey)
         data_svmin = ('DFT SVmin', 0.00520, 0.00938, 0.00621, self.green)
         data_fayans = ('DFT Fayans', 0.02275, 0.00672, 0.02756, self.blue)
         data_em1820 = ('VS-IMSRG EM1.8/2.0', 0.02420, 0.00011, 0.00011, self.purple)
+        data_imsrg = ('mRef-IMSRG/NCSM(N4LO\')', 0.022455, 0.006675, 0.006675, self.orange)
+        data_imsrg4 = ('N4LO\'', 0.022455, 0.006675, 0.006675, self.orange)
+        data_imsrg3 = ('N3LO', 0.006675, 0.006675, 0.006675, self.dark_orange)
+        data_imsrg2 = ('N2LO', 0.016111, 0.013039, 0.013039, self.red)
+        data_imsrg1 = ('NLO', 0.036244, 0.04257, 0.04257, self.dark_red)
+        data_imsrg4_d = ('N4LO\'', 0.017, 0.012, 0.012, self.orange)
+        data_imsrg3_d = ('N3LO', 0.018, 0.012, 0.012, self.dark_orange)
+        data_imsrg2_d = ('N2LO', 0.016, 0.012, 0.012, self.red)
+        data_imsrg1_d = ('NLO', 0.037, 0.040, 0.040, self.dark_red)
 
-        all_theo_data = [data_svmin, data_fayans, data_em1820]
+        # all_theo_data = [data_svmin, data_fayans, data_em1820, data_imsrg]
+        all_theo_data = [data_imsrg1, data_imsrg2, data_imsrg3, data_imsrg4,
+                         data_imsrg1_d, data_imsrg2_d, data_imsrg3_d, data_imsrg4_d]
 
         ''' PREPARE PLOT '''
         folder = os.path.join(self.fig_dir, 'Nickel\\Discussion\\3PointIndicator\\')
@@ -3255,7 +3266,7 @@ class PlotThesisGraphics:
         ''' PLOT '''
         # Experimental value as a band
         ax.axhspan(data_exp[1]-data_exp[2], data_exp[1]+data_exp[3], color=data_exp[4])
-        ax.text(-0.4, data_exp[1], data_exp[0],
+        ax.text(-1.4, data_exp[1], data_exp[0],
                 horizontalalignment='left', verticalalignment='center', rotation='horizontal',
                 color=self.black, fontweight='bold',
                 **self.ch_dict(self.text_style, {'size': 13})
@@ -3275,7 +3286,7 @@ class PlotThesisGraphics:
         ax.set_xticks([])
         ax.axes.tick_params(axis='y', direction='out', right=False)
         ax.set_ylabel(r'$\Delta_{2n}^{(3)}R_\mathregular{c}$ /fm')
-        ax.set_xlim([-0.5, len(all_theo_data)-0.5])
+        ax.set_xlim([-1.5, len(all_theo_data)-0.5])
 
         plt.savefig(folder + 'three_point_ind_hardcode' + self.ffe, dpi=self.dpi, bbox_inches='tight')
         plt.close()
@@ -3684,9 +3695,9 @@ if __name__ == '__main__':
     # graphs.absradii_neighborhood()
     # graphs.deltarad_chain_errorband()
     graphs.absradii_chain_errorband()
-    # graphs.three_point_indicator()
+    graphs.three_point_indicator()
     graphs.three_point_indicator_hardcoded()
-    # graphs.absrad56()
+    graphs.absrad56()
     graphs.mu_nickel55()
 
 

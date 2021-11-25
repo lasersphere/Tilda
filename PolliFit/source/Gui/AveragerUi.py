@@ -1,12 +1,11 @@
-'''
+"""
 Created on 06.06.2014
 
 @author: hammen, chgorges
-'''
+"""
 
 import ast
 import copy
-import sqlite3
 
 import numpy as np
 from PyQt5 import QtWidgets, QtCore
@@ -18,7 +17,6 @@ import TildaTools as TiTs
 
 class AveragerUi(QtWidgets.QWidget, Ui_Averager):
 
-
     def __init__(self):
         super(AveragerUi, self).__init__()
         self.setupUi(self)
@@ -27,6 +25,8 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
         self.isoSelect.currentIndexChanged.connect(self.loadParams)
         self.parameter.currentIndexChanged.connect(self.loadFiles)
         self.fileList.itemChanged.connect(self.recalc)
+        self.cWeighted.stateChanged.connect(self.recalc)
+        self.cEstimated.stateChanged.connect(self.recalc)
         self.bsave.clicked.connect(self.saving)
         self.pushButton_select_all.clicked.connect(self.select_all)
 
@@ -68,7 +68,7 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
                 r = TiTs.select_from_db(self.dbpath, 'pars', 'FitRes', [['run'], [runselect]], caller_name=__name__)
             else:
                 r = TiTs.select_from_db(self.dbpath, 'pars', 'FitRes', [['run', 'iso'],
-                                [runselect, isoSelect]], caller_name=__name__)
+                                        [runselect, isoSelect]], caller_name=__name__)
 
         if r is not None:
             r = r[0]
@@ -94,7 +94,7 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
                                         caller_name=__name__)
             else:
                 r = TiTs.select_from_db(self.dbpath, 'config, statErrForm, systErrForm', 'Combined',
-                                    [['iso', 'parname', 'run'], [self.iso, self.par, self.run]], caller_name=__name__)
+                                        [['iso', 'parname', 'run'], [self.iso, self.par, self.run]], caller_name=__name__)
             select = [True] * len(self.files)
             if r is not None:
                 cfg = ast.literal_eval(r[0][0])
@@ -152,8 +152,9 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
             print('self.chosenFiles: ', self.chosenFiles)
             if len(self.chosenFiles) > 0:
                 self.val, self.err, self.systeErr, self.redChi, plotdata, ax = Analyzer.combineRes(
-                    self.iso, self.par, self.run, self.dbpath,
-                    show_plot=False, only_this_files=self.chosenFiles, write_to_db=False)
+                    self.iso, self.par, self.run, self.dbpath, weighted=bool(self.cWeighted.checkState()),
+                    show_plot=False, only_this_files=self.chosenFiles, write_to_db=False,
+                    estimate_err=bool(self.cEstimated.checkState()))
                 print('values: ', self.val, self.err, self.systeErr, self.redChi, plotdata, ax)
         self.result.setText(str(self.val))
         self.rChi.setText(str(self.redChi))
@@ -162,8 +163,9 @@ class AveragerUi(QtWidgets.QWidget, Ui_Averager):
 
     def saving(self):
         if len(self.chosenFiles):
-            Analyzer.combineRes(self.iso, self.par, self.run, self.dbpath,
-                                show_plot=True, only_this_files=self.chosenFiles)
+            Analyzer.combineRes(self.iso, self.par, self.run, self.dbpath, weighted=bool(self.cWeighted.checkState()),
+                                show_plot=True, only_this_files=self.chosenFiles,
+                                estimate_err=bool(self.cEstimated.checkState()))
         else:
             print('nothing to save!!!')
 

@@ -9,6 +9,8 @@ Created on '20.08.2015'
 import functools
 import logging
 import sys
+
+from PyQt5 import QtGui
 from copy import deepcopy
 
 import numpy as np
@@ -214,8 +216,17 @@ def create_proxy(signal, slot, rate_limit=60):
     return proxy
 
 
+
 def create_roi(pos, size):
-    roi = pg.ROI(pos, size, pen=0.5)
+    roi = pg.ROI(pos, size, pen=pg.mkPen('k', width=1.5))
+    roi.handlePen = QtGui.QPen(QtGui.QColor(255, 0, 200))
+    def hoverColor():
+        # Generate the pen color for this ROI when the mouse is hovering over it
+        if roi.mouseHovering:
+            return pg.fn.mkPen(255, 0, 200, width=2)
+        else:
+            return roi.pen
+    roi._makePen=hoverColor
     ## handles scaling horizontally around center
     roi.addScaleHandle([1, 0.5], [0.5, 0.5])
     roi.addScaleHandle([0, 0.5], [0.5, 0.5])
