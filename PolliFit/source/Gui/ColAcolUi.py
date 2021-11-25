@@ -63,9 +63,9 @@ class ColAcolUi(QtWidgets.QWidget, Ui_ColAcol):
         r = TiTs.select_from_db(self.dbpath, 'DISTINCT iso', 'FitRes', [], 'ORDER BY iso', caller_name=__name__)
         if r is not None:
             for i, each in enumerate(r):
-                if each[0].find('_col') is not -1 or each[0].find('Col') is not -1:
+                if each[0].find('_col') != -1 or each[0].find('Col') != -1:
                     self.coColIso.insertItem(i, each[0])
-                elif each[0].find('_acol') is not -1 or each[0].find('Acol') is not -1:
+                elif each[0].find('_acol') != -1 or each[0].find('Acol') != -1:
                     self.coAcolIso.insertItem(i, each[0])
                 else:
                     self.coAcolIso.insertItem(i, each[0])
