@@ -12,9 +12,12 @@ from PyQt5 import QtWidgets, QtGui
 from Interface.SimpleCounter.Ui_Simp_Count_Dial import Ui_Dialog_simpleCounterControl
 import Application.Config as Cfg
 import ast
+from copy import deepcopy
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
 import Interface.TriggerWidgets.FindDesiredTriggerWidg as FindDesiredTriggerWidg
-#import Interface.SimpleCounter.no_TG_widget as no_tg_widget
+from Interface.SimpleCounter.NoTGWidgUi import NoTGWidg
+from Interface.SimpleCounter.TGWidgUi import TGWidg
+import Service.Scan.draftScanParameters as dft
 
 
 class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
@@ -24,8 +27,9 @@ class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
         self.start = False
         self.act_pmts = []
         self.datapoints = 0
-        self.buffer_pars = {'type': TiTs.no_trigger}
+        self.buffer_pars = {'trigger': {'meas_trigger': {'type': TiTs.no_trigger}}}
         self.trigger_widget = None
+        self.tg_widget = None
 
         self.setupUi(self)
 
@@ -38,12 +42,14 @@ class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
         ''' default vals: '''
         self.lineEdit_act_pmts.setText('0, 1, 2, 3')
         self.spinBox_plotpoints.setValue(600)
-        self.comboBox_triggerSelect.addItems(tr.name for tr in TiTs)
+
         trig_type = TiTs.no_trigger
         self.comboBox_triggerSelect.setCurrentText(trig_type.name)
-        self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars)
+        self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger',{}).get('meas_trigger',{}))
         self.verticalLayout_trigger.replaceWidget(self.widget_trigger_place_holder, self.trigger_widget)
-        #self.verticalLayout.replaceWidget(self.widget_timeGate_place_holder,)
+        self.tg_widget = NoTGWidg()
+        self.verticalLayout_4.replaceWidget(self.widget_timeGate_place_holder, self.tg_widget)
+        self.comboBox_triggerSelect.addItems(tr.name for tr in TiTs)
 
         self.exec_()
 
@@ -72,12 +78,21 @@ class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
         """
         finds the desired trigger widget and sets it into self.trigger_widget
         """
-        self.buffer_pars['type'] = getattr(TiTs, trig_str)
+        self.buffer_pars['trigger']['meas_trigger']['type'] = getattr(TiTs, trig_str)
         self.verticalLayout_trigger.removeWidget(self.trigger_widget)
 
         if self.trigger_widget is not None:
             self.trigger_widget.setParent(None)
-        self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars)
+        self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger',{}).get('meas_trigger', {}))
         self.verticalLayout_trigger.addWidget(self.trigger_widget)
 
+        self.verticalLayout_4.removeWidget(self.tg_widget)
+        if self.tg_widget is not None:
+            self.tg_widget.setParent(None)
+        if self.buffer_pars['trigger']['meas_trigger']['type'] in [TiTs.single_hit_delay, TiTs.single_hit]:
+            self.tg_widget = TGWidg(self.buffer_pars.get('tg', {}))
+            self.verticalLayout_4.addWidget(self.tg_widget)
+        else:
+            self.tg_widget = NoTGWidg()
+            self.verticalLayout_4.addWidget(self.tg_widget)
 

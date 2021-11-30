@@ -62,6 +62,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         # order to debug the TrackUi independent
 
         if Cfg._main_instance is not None:
+            print(Cfg._main_instance.scan_pars)
             self.buffer_pars = deepcopy(Cfg._main_instance.scan_pars.get(active_iso_name).get(self.track_name))
         else:
             self.buffer_pars = deepcopy(dft.draftTrackPars)
