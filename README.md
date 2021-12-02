@@ -2,7 +2,7 @@
 The data-acquisition software TILDA and the data-analysis tools of Pollifit together provide 10ns-timed experiment 
 control and a framework to load, view and analyze the corresponding data from Collinear Laser Spectroscopy (CLS) 
 experiments. The code is written and maintained by members of the LaserSpHERe group.
----
+
 ## Content
 1. [General](#data-acquisition-and-data-analysis-software-for-collinear-laser-spectroscopy)
    * [License](#license)
@@ -44,7 +44,6 @@ of Simon Kaufmann.
 
 Finally, all python code should be properly annotated.
 
----
 # TILDA
 TILDA is a software for the control and data-acquisition of CLS experiments. It provides a complex user interface that 
 gives control over settings for a measurement and also provides a display of the measurement itself in (almost) 
@@ -62,7 +61,6 @@ pulse-pattern-generator (PPG) and enables the creation of advanced timing patter
 
 Dummy devices are available for all three measurement modes and allow testing of the program without FPGA hardware.
 
----
 # Pollifit
 Pollifit provides the backbone for data- and file-handling as well as for data-analysis of CLS measurements. 
 It is used within TILDA but also works as a stand-alone program. A SQLite database for each measurement campaign is 
