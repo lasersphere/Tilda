@@ -21,7 +21,6 @@ from Service.Scan.draftScanParameters import draft_scan_device
 import Service.VoltageConversions.VoltageConversions as VCon
 
 
-
 class XMLImporter(SpecData):
     """
     This Module Reads the .xml files or reads from a given scan_dictionary.
@@ -109,6 +108,10 @@ class XMLImporter(SpecData):
         #  list contains numpy arrays with structure: ('sc', 'step', 'time', 'cts')
         #  indices in list correspond to track indices
 
+        # in some special cases (e.g. combined data) errors might need to be given externally
+        self.time_res_err = []  # non-standard error time resolved matrices only for time resolved measurements
+        self.time_res_zf_err = []  # time resolved list of non-standard errors in form of indices, zf is for zero free,
+
         self.stepSize = []
         self.col = False  # should also be a list for multiple tracks
         self.dwell = []
@@ -130,7 +133,6 @@ class XMLImporter(SpecData):
         self.outbitsPars = []
         ''' operations on each track: '''
         for tr_ind, tr_name in enumerate(TildaTools.get_track_names(scandict)):
-
 
             track_dict = scandict[tr_name]
             scan_dev_dict_tr = track_dict.get('scanDevice', draft_scan_device)
@@ -170,7 +172,8 @@ class XMLImporter(SpecData):
 
             dacStepSize18Bit = track_dict.get('dacStepSize18Bit', None)  # leave in for backwards_comp
             if dacStepSize18Bit is None or dacStepSize18Bit == {}:  # TODO: not nice...
-                # TODO: copy/paste from laptop. dacStepsizeVoltage is set correctly in file. So why load through 'start'?
+                # TODO: copy/paste from laptop. dacStepsizeVoltage is set correctly in file.
+                #  So why load through 'start'?
                 # step_size = track_dict['dacStepsizeVoltage']  # OLD. does not exist in dummy scan dicts (and other??)
                 step_size = scan_dev_dict_tr.get('stepSize', 1)
             else:
@@ -188,15 +191,21 @@ class XMLImporter(SpecData):
 
             self.nrScalers.append(nOfScalers)
             self.col = track_dict['colDirTrue']
+
             if self.seq_type in ['trs', 'tipa', 'trsdummy']:
                 self.softBinWidth_ns.append(track_dict.get('softBinWidth_ns', 10))
                 self.t = TildaTools.create_t_axis_from_file_dict(scandict, with_delay=True)  # force 10 ns resolution
                 cts_shape.append((nOfScalers, nOfsteps, nOfBins))
                 scaler_array = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'scalerArray', cts_shape[tr_ind])
+                # maybe the file has non-standard errors. Try to import them. Fail will return NONE:
+                error_array = TildaTools.xml_get_data_from_track(
+                    lxmlEtree, nOfactTrack, 'errorArray', cts_shape[tr_ind])
+
                 v_proj = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'voltage_projection', (nOfScalers, nOfsteps),
                     direct_parent_ele_str='projections')
+
                 t_proj = None
                 if isinstance(scaler_array[0], np.void):  # this is zero free data
                     self.time_res_zf.append(scaler_array)
@@ -206,6 +215,16 @@ class XMLImporter(SpecData):
                     self.time_res.append(scaler_array)
                     zf_data_tr = TildaTools.non_zero_free_to_zero_free([scaler_array])[0]
                     self.time_res_zf.append(zf_data_tr)
+                if error_array is not None:
+                    if isinstance(error_array[0], np.void):  # this is zero free data
+                        self.time_res_zf_err.append(error_array)
+                        time_res_err_classical_tr = TildaTools.zero_free_to_non_zero_free(self.time_res_zf_err,
+                                                                                          cts_shape)[tr_ind]
+                        self.time_res_err.append(time_res_err_classical_tr)
+                    else:  # classic full matrix array
+                        self.time_res_err.append(error_array)
+                        zf_err_tr = TildaTools.non_zero_free_to_zero_free([error_array])[0]
+                        self.time_res_zf_err.append(zf_err_tr)
 
                 if softw_gates is None:
                     # TODO: Change copy/paste from laptop. Should be solved elegantly and tested.
@@ -213,7 +232,7 @@ class XMLImporter(SpecData):
                     softw_gates = track_dict['softwGates']
                 if v_proj is None or t_proj is None or softw_gates is not None:
                     logging.info(' while importing: projections not found,'
-                                    ' or software gates set by hand, gating data now.')
+                                 ' or software gates set by hand, gating data now.')
                     if softw_gates is not None:
                         if isinstance(softw_gates, tuple):
                             # if the software gates are given as a tuple it should consist of:
@@ -225,18 +244,33 @@ class XMLImporter(SpecData):
                                 # software gates from file will not be overwritten
                                 scandict[tr_name]['softwGates'] = new_gates
                         else:
-                            if isinstance(softw_gates[tr_ind][0], list):
-                                # software gates are defined for each track individually
-                                scandict[tr_name]['softwGates'] = softw_gates[tr_ind]
-                            else:
-                                # software gates are only defined for one track
-                                # -> one dimension less than for all tracks.
-                                # -> need to be copied for the others
+                            try:  # for more than three tracks, list index can go out off range
+                                if isinstance(softw_gates[tr_ind][0], list):
+                                    # software gates are defined for each track individually
+                                    scandict[tr_name]['softwGates'] = softw_gates[tr_ind]
+                                else:
+                                    # software gates are only defined for one track
+                                    # -> one dimension less than for all tracks.
+                                    # -> need to be copied for the others
+                                    scandict[tr_name]['softwGates'] = softw_gates
+                            except IndexError:
+                                # index error means its not per track!
                                 scandict[tr_name]['softwGates'] = softw_gates
+
                     v_proj, t_proj = TildaTools.gate_one_track(
                         tr_ind, nOfactTrack, scandict, self.time_res, self.t, self.x, [])[0]
                 self.cts.append(v_proj)
-                self.err.append(np.sqrt(v_proj))
+
+                if error_array is not None:
+                    # errors are explicitly given. Use those.
+                    # first gate the errors
+                    v_proj_err, t_proj_err = TildaTools.gate_one_track(
+                        tr_ind, nOfactTrack, scandict, [np.square(tr_arr) for tr_arr in self.time_res_err], self.t, self.x, [])[0]
+                    # square errors first, then sum along the projection, now take the sqrt again.
+                    self.err.append(np.sqrt(v_proj_err))
+                else:
+                    # if no errors were specified, use standard errors
+                    self.err.append(np.sqrt(v_proj))
                 self.err[-1][self.err[-1] < 1] = 1  # remove 0's in the error
                 self.t_proj.append(t_proj)
                 self.softw_gates.append(track_dict['softwGates'])
@@ -273,6 +307,7 @@ class XMLImporter(SpecData):
                 cts_shape = (self.nrScalers[0], nOfsteps)
                 dmm_volt_array = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'scalerArray', cts_shape, np.float, default_val=np.nan)
+                # TODO: np.nan might be causing problems!
                 self.cts.append(dmm_volt_array)
                 err = []
                 for ind, dmm_name in enumerate(dmm_names):
@@ -320,10 +355,14 @@ class XMLImporter(SpecData):
                     logging.info('setting voltage divider ratio to 1 !')
                     self.voltDivRatio = {'offset': 1.0, 'accVolt': 1.0}
                 for tr_ind, track in enumerate(self.x):
+                    print('trind:', tr_ind)
+                    print('offset:', self.offset)
                     self.x[tr_ind] = TildaTools.line_to_total_volt(self.x[tr_ind], self.lineMult, self.lineOffset,
                                                                    self.offset[tr_ind], self.accVolt, self.voltDivRatio,
                                                                    offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])
                 self.norming()
+                # TODO: Do we always want this? No norming is done when regating from trs plot.
+                #  Make consistent and maybe include to global options?
                 self.x_units = self.x_units_enums.total_volts
             elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
                 db_ret = TildaTools.select_from_db(db, 'offset', 'Files', [['file'], [self.file]])
@@ -443,6 +482,11 @@ class XMLImporter(SpecData):
 
         # check if any measurement was taken at all
         measurement_taken = any([any(each[0]) or any(each[1]) or any(each[2]) for each in dmms_dict_list])
+        if measurement_taken:
+            measurement_taken = any([v == assignment for track_tuple in dmms_dict_list
+                                     for predurpost_dict in track_tuple for dmm_dict in predurpost_dict.values()
+                                     for k, v in dmm_dict.items() if k == 'assignment'])
+        # now includes an assignment check.
 
         if measurement_taken:
             # at least in one track the offset/accvolt voltage was measured
@@ -643,8 +687,6 @@ class XMLImporter(SpecData):
                     self.date_d = err_date  # in seconds
 
 
-
-
 # import Service.Scan.draftScanParameters as dft
 # import Service.Formating as Form
 # test = XMLImporter(None, False, dft.draftScanDict)
@@ -658,6 +700,6 @@ class XMLImporter(SpecData):
 if __name__ == '__main__':
     # meas = XMLImporter('E:\\temp2\\data\\137Ba_acol_cs_run511.xml')
     meas = XMLImporter(
-        'E:\\Workspace\\OwnCloud\\Projekte\\COLLAPS\\Nickel'
+        'C:\\Users\\Laura Renth\\OwnCloud\\Projekte\\COLLAPS\\Nickel'
         '\\Measurement_and_Analysis_Simon\\Ni_workspace2017\\Ni_2017\\sums\\70_Ni_trs_run268_plus_run312.xml')
     print(meas.date, meas.date_d)

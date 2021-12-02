@@ -17,7 +17,7 @@ def ret_seq_instance_of_type(seq_type):
         try:
             from Driver.DataAcquisitionFpga.ContinousSequencer import ContinousSequencer as Cs
             return Cs()
-        except Exception:
+        except Exception as e:
             reply = QtWidgets.QMessageBox.warning(
                 QtWidgets.QWidget(),
                 'Hardware not found!',

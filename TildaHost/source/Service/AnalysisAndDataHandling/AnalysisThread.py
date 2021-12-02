@@ -163,11 +163,13 @@ class AnalysisThread(QThread):
             # this means saving! -> finish analysis of all stored elements,
             # before clearing the pipe!
             logging.info('will save now!')
+            start_time = datetime.now()
             try:
                 self.pipeline.save()
             except Exception as e:
                 logging.error('while saving the error in pipeline.save() occurred: %s' % e, exc_info=True)
-            logging.info('Saving completed!')
+            end_time = datetime.now()
+            logging.info('Saving completed! Saving took: {}'.format(end_time-start_time))
             # self.sleep(5)  # simulate saving
         # print('done with analysis')
         self.stop_analysis_bool = False

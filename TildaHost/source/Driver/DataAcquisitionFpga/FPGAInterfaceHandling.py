@@ -15,6 +15,7 @@ http://zone.ni.com/reference/en-XX/help/372928G-01/TOC2.htm
 The docs are mostly copied from the NiFPGA.h file
 """
 
+import sys
 import ctypes
 import logging
 import os
@@ -37,9 +38,14 @@ class FPGAInterfaceHandling():
         self.pause_bool = False
         if not dummy:
             self.dmaReadTimeout = 1  # timeout to read from Dma Queue in ms
-            self.NiFpgaUniversalInterfaceDll = ctypes.CDLL(
-                path.join(path.dirname(__file__), pardir, pardir, pardir,
-                          'binary\\NiFpgaUniversalInterfaceDll.dll'))
+            is_64bit = sys.maxsize > 2**32  # Note: more reliable than platform.architecture() on macOS (and possibly other)
+            if is_64bit:  # 64bit system needs the 64bit compiled dll
+                dll_path = path.join(path.dirname(__file__), pardir, pardir, pardir,
+                                     'binary\\NiFpgaUniversalInterfaceDll_x64.dll')
+            else:
+                dll_path = path.join(path.dirname(__file__), pardir, pardir, pardir,
+                                     'binary\\NiFpgaUniversalInterfaceDll.dll')
+            self.NiFpgaUniversalInterfaceDll = ctypes.CDLL(dll_path)
             self.NiFpgaUniversalInterfaceDll.NiFpga_ReadFifoU32.argtypes = [
                 ctypes.c_ulong, ctypes.c_ulong, np.ctypeslib.ndpointer(np.uint32, flags="C_CONTIGUOUS"),
                 ctypes.c_ulong, ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong)
@@ -263,10 +269,12 @@ class FPGAInterfaceHandling():
         remaining_empty_elements_in_fifo = ctypes.c_ulong()
         num_of_eles = len(data)
         data_pointer = data.ctypes.data_as(ctypes.POINTER(ctypes.c_uint32))
+        infinite_timeout = ctypes.c_uint32(0xFFFFFFFF)
         self.NiFpgaUniversalInterfaceDll.NiFpga_WriteFifoU32(self.session,
                                                              fiforef,
                                                              data_pointer,
                                                              num_of_eles,
+                                                             infinite_timeout,
                                                              ctypes.byref(remaining_empty_elements_in_fifo))
         return remaining_empty_elements_in_fifo
 

@@ -32,10 +32,6 @@ print('Hello Vera!')
 # buf.fill(0)
 # print(buf)
 
-# file = 'D:\\Workspace\\PyCharm\\Tilda\\TildaHost\\source\\Scratch\\exampleTRSRawData.py'
-# data = pickle.load(open(file, 'rb'))
-# print(data)
-
 print(format(48, '08b'))
 
 #old main stuff:

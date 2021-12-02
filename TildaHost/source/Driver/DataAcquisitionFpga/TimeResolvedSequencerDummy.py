@@ -67,7 +67,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         True in dummy mode if scandev is DAC
         :return: bool: True if DAC available
         """
-        if self.scan_dev is 'DAC':
+        if self.scan_dev == 'DAC':
             return True
         else:
             return False
@@ -237,7 +237,7 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
         if full:
             cur_bunch = 0
             while cur_bunch < num_bunches:
-                if self.scan_dev is 'Triton':
+                if self.scan_dev == 'Triton':
                     # send next step request
                     cur_step_evts.append(Form.add_header_to23_bit(4, 4, 0, 1))  # means request next step
                 cur_step_evts.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
@@ -260,13 +260,13 @@ class TimeResolvedSequencer(Sequencer, MeasureVolt):
                 else:  # no scaler entries for all even step numbers
                     cur_bunch = num_bunches
                     for bun in range(cur_bunch):  # add as meany bunch complete infos as needed to complete this step
-                        if self.scan_dev is 'Triton':
+                        if self.scan_dev == 'Triton':
                             # send next step request
                             cur_step_evts.append(Form.add_header_to23_bit(4, 4, 0, 1))  # means request next step
                         cur_step_evts.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch
                     cur_step_evts.append(Form.add_header_to23_bit(1, int(b'0100', 2), 0, 1))  # step complete
                 while cur_bunch < num_bunches:  # only for uneven steps
-                    if self.scan_dev is 'Triton':
+                    if self.scan_dev == 'Triton':
                         # send next step request
                         cur_step_evts.append(Form.add_header_to23_bit(4, 4, 0, 1))  # means request next step
                     cur_step_evts.append(Form.add_header_to23_bit(3, 4, 0, 1))  # means new bunch

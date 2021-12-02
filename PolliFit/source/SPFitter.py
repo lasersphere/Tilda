@@ -1,8 +1,8 @@
-'''
+"""
 Created on 02.05.2014
 
 @author: hammen
-'''
+"""
 
 import numpy as np
 from scipy.optimize import curve_fit
@@ -14,16 +14,18 @@ import Physics
 
 
 class SPFitter(object):
-    '''This class encapsulates the scipi.optimize.curve_fit routine'''
-
+    """ This class encapsulates the scipy.optimize.curve_fit routine """
 
     def __init__(self, spec, meas, st):
-        '''Initialize and prepare'''
+        """ Initialize and prepare """
         print('Initializing fit of S:', st[0], ', T:', st[1])
         self.spec = spec
         self.meas = meas
-        self.st = st
-        self.data = meas.getArithSpec(*st)  # Returns (array of x-values in Volt, array of cts, array of errors)
+        self.st = st  # (scaler, track) tuple
+
+        self.data = meas.getArithSpec(*st)  # Returns list of tracks with elements
+        # (array of x-values in Volt, array of cts, array of errors)
+        self.cut_x = self.add_track_offsets()  # Contains voltages to cut the x-axis for unique offsets in each track.
 
         self.par = spec.getPars()  # get fit parameters
         self.oldpar = list(self.par)  # save previously used fit parameters
@@ -43,24 +45,50 @@ class SPFitter(object):
             self.npar += 'softwGatesWidth', 'softwGatesDelayList', 'midTof'
         except Exception as e:
             # fail on purpose, just to check if software gates exist
+            print(repr(e))
             pass
         self.oldp = None
         self.pcov = None
         self.rchi = None
 
+    def add_track_offsets(self):
+        """ Add an extra offset parameter for each value in cut_x.
+         Voltages are converted to frequencies for FullSpec. """
+        x_min = np.array([x[0] if x[0] <= x[-1] else x[-1] for x in self.meas.x])  # Array of the tracks lowest voltages
+        x_max = np.array(
+            [x[-1] if x[0] <= x[-1] else x[0] for x in self.meas.x])  # Array of the tracks highest voltages
+        order = np.argsort(x_min)  # Find ascending order of the lowest voltages
+        x_min = x_min[order]  # apply order to the lowest voltages
+        x_max = x_max[order]  # apply order to the highest voltages
+        # cut at the mean between a highest voltage and the corresponding lowest voltage of the next track.
+        # Iteration goes over the sorted tracks and only non-overlapping tracks get a unique offset parameter.
+        cut_x = {i: (x_max[i] + x_min[i + 1]) / 2
+                 for i in range(self.meas.nrTracks - 1) if x_max[i] < x_min[i + 1]}
+
+        if not hasattr(self.spec, 'cut_x') or self.spec.cut_x != {} or cut_x == {}:
+            return {}
+        for track, cut in cut_x.items():
+            v = Physics.relVelocity(Physics.qe * cut, self.spec.iso.mass * Physics.u)
+            v = -v if self.meas.col else v
+            k = int(max(cut_x.keys())) - track if self.meas.col else track  # Reverse order of the cuts for
+            # collinear spectra to match the peaks of the anticollinear spectra.
+            self.spec.cut_x[k] = Physics.relDoppler(self.meas.laserFreq, v) - self.spec.iso.freq
+            setattr(self.spec, 'pOff{}'.format(k), 2 + k)  # Offset parameters are added to the FullSpec.
+        self.spec.nPar += len(cut_x.keys())
+        return cut_x
+
     def fit(self):
-        '''
+        """
         Fit the free parameters of spec to data
         
         Calls evaluateE of spec
         As curve_fit can't fix parameters, they are manually truncated and reinjected
         Curve_fit expects standard deviations as weights
-        '''
+        """
+
         print("Starting fit")
         self.data = self.meas.getArithSpec(*self.st)  # needed if data was regated in between.
-
         self.oldpar = list(self.par)
-
         truncp = [p for p, f in zip(self.par, self.fix) if not f or isinstance(f, list)]
         boundl = ()
         boundu = ()
@@ -110,70 +138,57 @@ class SPFitter(object):
 
         for n, x, e in zip(self.npar, self.par, self.pard):
             print(str(n) + '\t' + str(x) + '\t' + '+-' + '\t' + str(e))
-   
-        
+
     def calcRchi(self):
-        '''Calculate the reduced chi square'''
-        return sum(x**2/e**2 for x, e in zip(self.calcRes(), self.data[2])) / self.calcNdef()
-    
-    
+        """Calculate the reduced chi square"""
+        return np.sum(self.calcRes()**2/self.data[2]**2)/self.calcNdef()
+
     def calcNdef(self):
-        '''Calculate number of degrees of freedom'''
+        """Calculate number of degrees of freedom"""
         # if bounds are given instead of boolean, write False to fixed bool list.
         fixed_bool_list = [f if isinstance(f, bool) else False for f in self.fix]
         fixed_sum = sum(fixed_bool_list)
-        return (len(self.data[0]) - (len(self.fix) - fixed_sum))
-    
-    
-    def calcRes(self):
-        '''Calculate the residuals of the current parameter set'''
-        res = np.zeros(len(self.data[0]))
-        
-        valgen = (self.spec.evaluateE(e, self.meas.laserFreq, self.meas.col, self.par) for e in self.data[0])
-        
-        for i, (dat, val) in enumerate(zip(self.data[1], valgen)):
-            res[i] = (dat - val)
-        
-        return res
+        return self.data[0].size - (len(self.fix) - fixed_sum)
 
-    
+    def calcRes(self):
+        """Calculate the residuals of the current parameter set"""
+        valgen = self.spec.evaluateE(self.data[0], self.meas.laserFreq, self.meas.col, self.par)
+        return self.data[1] - valgen
+
     def untrunc(self, p):
-        '''Copy the free parameters to their places in the full parameter set'''
+        """Copy the free parameters to their places in the full parameter set"""
         ip = iter(p)
         for i, f in enumerate(self.fix):
             if not f or isinstance(f, list):
                 self.par[i] = next(ip)
                 
         return 
-    
+
     def evaluate(self, x, *p):
-        '''
+        """
         Encapsulate evaluate of spec
         
         Call recalc on parameter change
         Unpack the array of x-values curve_fit tends to call and return the list of results
-        '''
+        """
         if p != self.oldp:
             self.untrunc([i for i in p])
             self.spec.recalc(self.par)
             self.oldp = p
-        
-        return [self.spec.evaluate(sx, self.par) for sx in x]
 
-
+        self.spec.evaluate(x, self.par)
     
     def evaluateE(self, x, *p):
-        '''Encapsulate evaluateE of spec'''
+        """Encapsulate evaluateE of spec"""
         if p != self.oldp:
             self.untrunc([i for i in p])
             self.spec.recalc(self.par)
             self.oldp = p
-        
-        return [self.spec.evaluateE(sx, self.meas.laserFreq, self.meas.col, self.par) for sx in x]
-        
+
+        return self.spec.evaluateE(x, self.meas.laserFreq, self.meas.col, self.par)
 
     def result(self):
-        '''Return a list of result-tuples (name, pardict)'''
+        """Return a list of result-tuples (name, pardict)"""
         ret =  []
         for p in self.spec.parAssign():
             name = p[0]
@@ -185,7 +200,6 @@ class SPFitter(object):
             ret.append((name, pardict, fix))
             
         return ret
-
 
     def parsToE(self):
         p = self.par[:]
@@ -212,12 +226,11 @@ class SPFitter(object):
         return zip(self.npar, p, f)
             
     def reset(self):
-        '''Reset parameters to the values before optimization'''
+        """Reset parameters to the values before optimization"""
         self.par = list(self.oldpar)
-        
-    
+
     def setPar(self, i, par):
-        '''Set parameter with name to value par'''
+        """Set parameter with name to value par"""
         self.par[i] = par
 
     def setParE(self, i, par):
@@ -236,8 +249,5 @@ class SPFitter(object):
         else:
             self.setPar(i, par)
 
-            
     def setFix(self, i, val):
         self.fix[i] = val
-
-        

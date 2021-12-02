@@ -33,14 +33,14 @@ class RunStacker():
         ''' database '''
         self.db = os.path.join(self.workdir, 'Ni_Becola.sqlite')
 
-        # TODO: also drag&drop would be nice...
-        files = ['Sum55Ni_9999.xml', 'Sum56Ni_9999.xml', 'Sum58Ni_9999.xml', 'Sum60Ni_9999.xml']  # List of file paths to analyze
-        self.files = []
-        for file in files:
-            file = os.path.join(self.datafolder, file)
-            self.files.append(file)
+        # # TODO: also drag&drop would be nice...
+        # files = ['Sum55Ni_9999.xml', 'Sum56Ni_9999.xml', 'Sum58Ni_9999.xml', 'Sum60Ni_9999.xml']  # List of file paths to analyze
+        # self.files = []
+        # for file in files:
+        #     file = os.path.join(self.datafolder, file)
+        #     self.files.append(file)
 
-        # self.pickfilesfromdb('%55Ni%', bounds=(6315, 6502))
+        self.pickfilesfromdb('%56Ni%')  #'%55Ni%', bounds=(6315, 6502)
 
         self.loadfiles()
 

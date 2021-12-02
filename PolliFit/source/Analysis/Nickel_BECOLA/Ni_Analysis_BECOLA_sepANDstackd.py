@@ -59,10 +59,11 @@ class NiAnalysis():
         self.stables = ['58Ni', '60Ni', '61Ni', '62Ni', '64Ni']
 
         # Name this analysis run
-        self.run_name = 'AsymVoigt'
+        self.run_name = 'CEC_AsymVoigt_MSU'
 
         # create excel workbook to save some results
-        excel_path = 'ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\Results\\analysis_prefinal.xlsx'
+        path_results = 'ownCloud\\User\\Felix\\Measurements\\Nickel_online_Becola\\Analysis\\Results'
+        excel_path = os.path.join(path_results, 'analysis_prefinal.xlsx')
         self.excelpath = os.path.join(user_home_folder, excel_path)
         self.excel = ExcelWriter(self.excelpath)
         self.excel.active_sheet = self.excel.wb.copy_worksheet(self.excel.wb['Template'])
@@ -70,7 +71,7 @@ class NiAnalysis():
 
         # Select runs; Format: ['run58', 'run60', 'run56']
         # to use a different lineshape you must create a new run under runs and a new linevar under lines and link the two.
-        self.runs = ['CEC_Voigt', 'CEC_Voigt', 'CEC_Voigt', 'CEC_Voigt']
+        self.runs = ['CEC_AsymVoigt_MSU', 'CEC_AsymVoigt_MSU', 'CEC_AsymVoigt_MSU', 'CEC_AsymVoigt_MSU']
         self.excel.active_sheet['B1'] = str(self.runs)
 
         """ 
@@ -140,10 +141,11 @@ class NiAnalysis():
         # isotope shift of Nickel-60 with respect to Nickel-58 (=fNi60-fNi58)
         # Collaps 2017: 508.2(4)[76] MHz (Simon's PHD thesis)
         # Collaps 2016: 510.6(6)[95]MHz (Simon's PHD thesis)
+        # Collaps combined: 509.4(2)[42] (28.01.20, Version a)
         # Steudel 1980: 0.01694(9) cm-1 corresponds to 507.8(27) MHz
-        self.literature_IS60vs58 = 510.6
-        self.literature_IS60vs58_d_stat = 0.6
-        self.literature_IS60vs58_d_syst = 9.5
+        self.literature_IS60vs58 = 509.4
+        self.literature_IS60vs58_d_stat = 0.2
+        self.literature_IS60vs58_d_syst = 4.2
         self.excel.active_sheet['B4'] = self.literature_IS60vs58
 
         ''' literature radii '''
@@ -206,6 +208,9 @@ class NiAnalysis():
                             '60Ni': 851224124.8007469   # 14196.89025
                             }
 
+        # acceleration set voltage (Buncher potential), negative
+        self.accVolt_set = 29883  # omit voltage sign, assumed to be negative
+
         # create results dictionary:
         '''
         self.results['isotope']
@@ -245,7 +250,7 @@ class NiAnalysis():
                              (6253, 6254), (6258, 6259), (6269, 6270), (6284, 6285), (6294, 6295), (6301, 6302),
                              (6310, 6311), (6323, 6324), (6340, 6342), (6362, 6363), (6395, 6396),
                              (6418, 6419), (6467, 6466), (6501, 6502)]
-        self.use_handassigned = False  # use hand-assigned calibrations? If false will iterpolate
+        self.use_handassigned = True  # use hand-assigned calibrations? If false will interpolate on time axis
         self.excel.active_sheet['K3'] = self.use_handassigned
         # current scaler variable:
         self.scalers = '[0,1,2]'
@@ -294,7 +299,7 @@ class NiAnalysis():
             for iso in ['58Ni', '60Ni', '56Ni']:
                 # Do a first set of fits for all 58 & 60 runs without any calibration applied.
                 filelist, runNo, center_freqs, center_freqs_d, center_freqs_d_syst, start_times = \
-                    self.chooseAndFitRuns(iso+'%', reset=(29850, iso))
+                    self.chooseAndFitRuns(iso+'%', reset=(self.accVolt_set, iso))
                 zero_list = [0]*len(filelist)
                 isodict = {iso:
                                {'file_names': filelist,
@@ -310,8 +315,12 @@ class NiAnalysis():
                 TiTs.merge_extend_dicts(self.results, isodict, overwrite=True, force_overwrite=True)
             # plot results of first fit
             self.plot_parameter_for_isos_and_scaler(['58Ni', '60Ni', '56Ni'], [scalers], 'center_fits', offset=[0, -450, 450])
+            self.all_centerFreq_to_scanVolt('58Ni', [scalers])
+            self.all_centerFreq_to_scanVolt('60Ni', [scalers])
+            self.all_centerFreq_to_scanVolt('56Ni', [scalers])
+            self.plot_parameter_for_isos_and_scaler(['58Ni', '60Ni', '56Ni'], [scalers], 'center_scanvolt')
 
-            self.calibrateVoltage(self.calib_tuples)
+            # self.calibrateVoltage(self.calib_tuples)
             # now tuples contain (58ref, 60ref, isoshift, isoshift_d, isoshift_d_syst, calVolt, calVoltStatErr, calVoltSystErr)
 
             # attach the Ni56 runs to some calibration point(s) and adjust voltage plus create new isotope with adjusted center
@@ -323,13 +332,29 @@ class NiAnalysis():
                                                          (6239, (6242, 6243)),
                                                          (6240, (6242, 6243)), (6251, (6253, 6254)),
                                                          (6252, (6253, 6254))]
+            files56_withReference_tuples_handassigned = [(6202, (6191, 6192)), (6203, (6191, 6192)),
+                                                         (6204, (6191, 6192)), (6211, (6207, 6208)),
+                                                         (6213, (6207, 6208)),
+                                                         (6214, (6207, 6208)), (6238, (6242, 6243)),
+                                                         (6239, (6242, 6243)),
+                                                         (6240, (6242, 6243)), (6251, (6253, 6254)),
+                                                         (6252, (6253, 6254))]
+
+            # calculate isotope shift
             if self.use_handassigned:
+                self.extract_iso_shift_handassigned('56Ni', scalers, files56_withReference_tuples_handassigned, calibrated=False)
+                self.plot_parameter_for_isos_and_scaler(['56Ni'], [scalers], 'shifts_iso-58')
+                self.calibrateVoltage(self.calib_tuples)
                 self.assign_calibration_voltage_handassigned('56Ni', '58Ni', scalers, files56_withReference_tuples_handassigned)
             else:
+                self.extract_iso_shift_interp('56Ni', scalers, calibrated=False)
+                self.plot_parameter_for_isos_and_scaler(['56Ni'], [scalers], 'shifts_iso-58')
+                self.calibrateVoltage(self.calib_tuples)
                 self.assign_calibration_voltages_interpolation('56Ni', '58Ni_ref', scalers)
 
             for iso in ['58Ni_cal', '60Ni_cal', '56Ni_cal']:
                 # Do a second set of fits for all 56, 58 & 60 runs with calibration applied.
+                # TODO: I should start fixing parameters like asymmetry for all runs within one calibration point (at least)
                 filelist, runNo, center_freqs, center_freqs_d, center_freqs_d_syst, start_times = \
                     self.chooseAndFitRuns(iso+'%')
                 zero_list = [0]*len(filelist)
@@ -458,6 +483,7 @@ class NiAnalysis():
                            }
                 TiTs.merge_extend_dicts(self.results, isodict, overwrite=True, force_overwrite=True)
         # plot results of first fit
+        # TODO: Add possibility to plot data plus fit (like in pollifit)
         self.plot_parameter_for_isos_and_scaler(['58Ni_sum', '60Ni_sum', '56Ni_sum', '55Ni_sum'], ['scaler_012'], 'center_fits')
         self.plot_parameter_for_isos_and_scaler(['58Ni_sum', '60Ni_sum', '56Ni_sum', '55Ni_sum'], ['scaler_0'], 'center_fits')
 
@@ -576,19 +602,30 @@ class NiAnalysis():
         # Extract A and B factors and do stuff:
         self.ni55_A_B_analysis('55Ni_sum_cal')
 
-        to_file_dict = {}
-        for keys, vals in self.results.items():
-            # xml cannot take numbers as first letter of key
-            to_file_dict['i'+keys] = vals
-        self.writeXMLfromDict(to_file_dict, os.path.join(self.workdir, 'results.xml'), 'BECOLA_Analysis')
-
         ####################
         # Do the king plot #
         ####################
+        # TODO: Probably need to automate reference run here? But need to adjust value in Collaps results as well...
+        # TODO: Also: Do I want 56/58Ni or 56/58Ni_sum_cal
+        refrun = self.runs[0]
         self.perform_king_fit_analysis(self.delta_lit_radii_58,
                                        isotopes=['55Ni_sum_cal', '56Ni_sum_cal', '56Ni', '58Ni', '59Ni', '60Ni', '61Ni',
                                                  '62Ni', '64Ni'],
-                                       reference_run='CEC_AsymVoigt')
+                                       reference_run=refrun)
+
+        # ###################
+        # # export results  #
+        # ###################
+        # to_file_dict = {}
+        # for keys, vals in self.results.items():
+        #     # xml cannot take numbers as first letter of key
+        #     to_file_dict['i' + keys] = vals
+        # # add analysis parameters
+        # to_file_dict['parameters'] = {'line_profiles': self.runs,
+        #                               'calib_assignment': 'handassigned' if self.use_handassigned else 'interpolated'}
+        # dateandtime = datetime.now()
+        # filename = 'results\\' + self.run_name + '_' + dateandtime.strftime("%Y-%m-%d_%H-%M") + '.xml'
+        # self.writeXMLfromDict(to_file_dict, os.path.join(self.workdir, filename), 'BECOLA_Analysis')
 
     ''' db related '''
 
@@ -613,6 +650,28 @@ class NiAnalysis():
         isopars_new = tuple(isopars_lst)
         cur.execute('''INSERT OR REPLACE INTO Isotopes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
                     isopars_new)
+        con.commit()
+        con.close()
+
+    def write_offset_to_db_lines(self, line, offset):
+        """
+        Since the offset can differ significantly between the isotopes, especially with the stacked runs,
+        we might want to adjust that line-parameter before fitting!
+        :param line: lineVar parameter to edit
+        :param offset: new value for the offset parameter
+        :return:
+        """
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        cur.execute('''SELECT * FROM Lines WHERE lineVar = ? ''', (line,))  # get original line to copy from
+        copy_line = cur.fetchall()
+        copy_shape = copy_line[0][6]
+        shape_dict = ast.literal_eval(copy_shape)
+        shape_dict['offset'] = offset
+        copy_line_list = list(copy_line[0])
+        copy_line_list[6] = str(shape_dict)
+        line_new = tuple(copy_line_list)
+        cur.execute('''INSERT OR REPLACE INTO Lines VALUES (?,?,?,?,?,?,?,?,?)''', line_new)
         con.commit()
         con.close()
 
@@ -730,6 +789,21 @@ class NiAnalysis():
             ret_dict['hfs_pars'] = hfs_pars
         return ret_dict
 
+    def export_results(self):
+        ###################
+        # export results  #
+        ###################
+        to_file_dict = {}
+        for keys, vals in self.results.items():
+            # xml cannot take numbers as first letter of key
+            to_file_dict['i' + keys] = vals
+        # add analysis parameters
+        to_file_dict['parameters'] = {'line_profiles': self.runs,
+                                      'calib_assignment': 'handassigned' if self.use_handassigned else 'interpolated'}
+        dateandtime = datetime.now()
+        filename = 'results\\' + self.run_name + '_' + dateandtime.strftime("%Y-%m-%d_%H-%M") + '.xml'
+        self.writeXMLfromDict(to_file_dict, os.path.join(self.workdir, filename), 'BECOLA_Analysis')
+
     def write_into_self_results_scaler(self, isotope, scaler, key, dict_insert):
         isotope_dict = self.results[isotope][scaler]
         def loop_dict(target_dict, k, insert):
@@ -742,7 +816,6 @@ class NiAnalysis():
         loop_dict(isotope_dict, key, dict_insert)
         # write to results dict
         TiTs.merge_extend_dicts(self.results, {isotope: {scaler: isotope_dict}}, overwrite=True, force_overwrite=True)
-
 
     def chooseAndFitRuns(self, db_like, reset=None):
         '''
@@ -781,12 +854,35 @@ class NiAnalysis():
             con.close()
 
         # see what run to use
-        if '58' in db_like:
-            run = 0
-        elif '60' in db_like:
-            run = 1
+        # Adapt also offset parameter in lines database based on isotope!
+        bg_dict = {'single': {'56': 700, '58': 2500, '60': 8000},
+                   'sum': {'55': 12000, '56': 6000, '58': 45000, '60': 105000}}
+        run = 0
+        line_offset = 0
+        if 'sum' in db_like:
+            if '58' in db_like:
+                run = 0
+                line_offset = bg_dict['sum']['58']
+            elif '60' in db_like:
+                run = 1
+                line_offset = bg_dict['sum']['60']
+            elif '56' in db_like:
+                run = 2
+                line_offset = bg_dict['sum']['56']
+            elif '55' in db_like:
+                run = 2
+                line_offset = bg_dict['sum']['55']
         else:
-            run = 2
+            if '58' in db_like:
+                run = 0
+                line_offset = bg_dict['single']['58']
+            elif '60' in db_like:
+                run = 1
+                line_offset = bg_dict['single']['60']
+            elif '56' in db_like:
+                run = 2
+                line_offset = bg_dict['single']['56']
+        self.write_offset_to_db_lines(self.runs[0], line_offset)
         # do the batchfit
         BatchFit.batchFit(filearray, self.db, self.runs[run], x_as_voltage=True, softw_gates_trs=None, save_file_as='.png')
         # get fitresults (center) vs run for 58
@@ -827,6 +923,63 @@ class NiAnalysis():
             all_center_MHz_d_syst.append(d_syst)
 
         return filelist, runNos, all_center_MHz, all_center_MHz_d, all_center_MHz_d_syst, all_rundate
+
+    def centerFreq_to_absVoltage(self, isostring, deltanu, nu_d, nu_dsyst):
+        """
+        Converts the center frequency parameter into a scan voltage again
+        :return:
+        """
+        # get mass from database
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        # Query isotope parameters for isotope
+        cur.execute(
+            '''SELECT mass FROM Isotopes WHERE iso = ? ''', (isostring, ))
+        db_isopars = cur.fetchall()
+        # Query laser frequency for isotope
+        cur.execute(
+            '''SELECT laserFreq FROM Files WHERE type = ? ''', (isostring, ))
+        db_laserfreq = cur.fetchall()
+        con.close()
+
+        m = db_isopars[0][0]
+        nuL = db_laserfreq[0][0]
+        nuoff = self.restframe_trans_freq
+
+        velo = Physics.invRelDoppler(nuL, nuoff+deltanu)
+        ener = Physics.relEnergy(velo, m*Physics.u)
+        volt = ener/Physics.qe  # convert energy to voltage
+
+        diffdopp = Physics.diffDoppler(nuoff + deltanu, volt, m)
+        d = nu_d/diffdopp
+        d_syst = nu_dsyst/diffdopp
+        return volt, d, d_syst
+
+    def all_centerFreq_to_scanVolt(self, isostring, scaler_list):
+        """
+        Converts all center frequencies of an isotope into scanVoltage values.
+        :param isostring: Isotope as used in results dict
+        :return:
+        """
+        for num in range(len(scaler_list)):
+            scaler = scaler_list[num]
+            if type(scaler) is int:
+                scaler = 'scaler_{}'.format(scaler)
+            center_freq = self.results[isostring][scaler]['center_fits']['vals']
+            center_freq_d = self.results[isostring][scaler]['center_fits']['d_stat']
+            center_freq_dsyst = self.results[isostring][scaler]['center_fits']['d_syst']
+
+            center_volt, center_volt_d, center_volt_dsyst = [], [], []
+            for nu, d, dsys in zip(center_freq, center_freq_d, center_freq_dsyst):
+                v, v_d, v_ds = self.centerFreq_to_absVoltage(isostring, nu, d, dsys)
+                center_volt.append(v-self.accVolt_set)
+                center_volt_d.append(v_d)
+                center_volt_dsyst.append(v_ds)
+
+            voltdict = {'vals': center_volt,
+                        'd_stat': center_volt_d,
+                        'd_syst': center_volt_dsyst}
+            self.results[isostring][scaler]['center_scanvolt'] = voltdict
 
     def plot_parameter_for_isos_and_scaler(self, isotopes, scaler_list, parameter, offset=None, overlay=None):
         """
@@ -1332,25 +1485,36 @@ class NiAnalysis():
 
     ''' Nickel 56 related functions: '''
 
-    def extract_iso_shift_interp(self, isotope, scaler):
+    def extract_iso_shift_interp(self, isotope, scaler, calibrated=True):
         if type(scaler) is int:
             scaler = 'scaler_{}'.format(scaler)
+        if calibrated:
+            iso58 = '58Ni_cal'
+        else:
+            iso58 = '58Ni'
 
         # Get info for isotope of interest
         iso_files = self.results[isotope]['file_names']
+        iso_numbers = self.results[isotope]['file_numbers']
         iso_dates = self.results[isotope]['file_times']
-        iso_volts = self.results[isotope][scaler]['acc_volts']['vals']
-        iso_volts_d = self.results[isotope][scaler]['acc_volts']['d_stat']
-        iso_volts_d_syst = self.results[isotope][scaler]['acc_volts']['d_syst']
         iso_center = self.results[isotope][scaler]['center_fits']['vals']
         iso_center_d = self.results[isotope][scaler]['center_fits']['d_stat']
         iso_center_d_syst = self.results[isotope][scaler]['center_fits']['d_syst']
+        if calibrated:
+            iso_volts = self.results[isotope][scaler]['acc_volts']['vals']
+            iso_volts_d = self.results[isotope][scaler]['acc_volts']['d_stat']
+            iso_volts_d_syst = self.results[isotope][scaler]['acc_volts']['d_syst']
+        else:
+            iso_volts = np.full((len(iso_numbers)), 29850)
+            iso_volts_d = np.full((len(iso_numbers)), 0)
+            iso_volts_d_syst = np.full((len(iso_numbers)), 0)
 
         # Get info for 58 Nickel:
-        ni58_dates = self.results['58Ni_cal']['file_times']
-        ni58_center = self.results['58Ni_cal'][scaler]['center_fits']['vals']
-        ni58_center_d = self.results['58Ni_cal'][scaler]['center_fits']['d_stat']
-        ni58_center_d_syst = self.results['58Ni_cal'][scaler]['center_fits']['d_syst']
+        ni58_dates = self.results[iso58]['file_times']
+        ni58_numbers = self.results[iso58]['file_numbers']
+        ni58_center = self.results[iso58][scaler]['center_fits']['vals']
+        ni58_center_d = self.results[iso58][scaler]['center_fits']['d_stat']
+        ni58_center_d_syst = self.results[iso58][scaler]['center_fits']['d_syst']
 
         # TODO: isotope shift is not trivial, since the combination of 2 runs is not clear anymore.
         # I'll do an interpolation here as well...
@@ -1395,27 +1559,37 @@ class NiAnalysis():
         TiTs.merge_extend_dicts(self.results, shift_dict, overwrite=True, force_overwrite=True)
         # TODO: Would it make sense to calculate back to the center DAC here, and go manually to frequency again in order to include uncertainties like voltage?
 
-    def extract_iso_shift_handassigned(self, isotope, scaler, assigned):
+    def extract_iso_shift_handassigned(self, isotope, scaler, assigned, calibrated=True):
         if type(scaler) is int:
             scaler = 'scaler_{}'.format(scaler)
+        if calibrated:
+            iso58 = '58Ni_cal'
+        else:
+            iso58 = '58Ni'
 
         # Get info for isotope of interest
         iso_files = self.results[isotope]['file_names']
         iso_numbers = self.results[isotope]['file_numbers']
         iso_dates = self.results[isotope]['file_times']
-        iso_volts = self.results[isotope][scaler]['acc_volts']['vals']
-        iso_volts_d = self.results[isotope][scaler]['acc_volts']['d_stat']
-        iso_volts_d_syst = self.results[isotope][scaler]['acc_volts']['d_syst']
         iso_center = self.results[isotope][scaler]['center_fits']['vals']
         iso_center_d = self.results[isotope][scaler]['center_fits']['d_stat']
         iso_center_d_syst = self.results[isotope][scaler]['center_fits']['d_syst']
+        if calibrated:
+            iso_volts = self.results[isotope][scaler]['acc_volts']['vals']
+            iso_volts_d = self.results[isotope][scaler]['acc_volts']['d_stat']
+            iso_volts_d_syst = self.results[isotope][scaler]['acc_volts']['d_syst']
+        else:
+            iso_volts = np.full((len(iso_numbers)), 29850)
+            iso_volts_d = np.full((len(iso_numbers)), 0)
+            iso_volts_d_syst = np.full((len(iso_numbers)), 0)
 
         # Get info for 58 Nickel:
-        ni58_dates = self.results['58Ni_cal']['file_times']
-        ni58_numbers = self.results['58Ni_cal']['file_numbers']
-        ni58_center = self.results['58Ni_cal'][scaler]['center_fits']['vals']
-        ni58_center_d = self.results['58Ni_cal'][scaler]['center_fits']['d_stat']
-        ni58_center_d_syst = self.results['58Ni_cal'][scaler]['center_fits']['d_syst']
+        ni58_dates = self.results[iso58]['file_times']
+        ni58_numbers = self.results[iso58]['file_numbers']
+        ni58_center = self.results[iso58][scaler]['center_fits']['vals']
+        ni58_center_d = self.results[iso58][scaler]['center_fits']['d_stat']
+        ni58_center_d_syst = self.results[iso58][scaler]['center_fits']['d_syst']
+
         # create new lists that match iso_center lists in length and contain the corresponding 58 centers
         ni58_center_assigned = []
         ni58_center_d_assigned = []
@@ -1815,6 +1989,7 @@ class NiAnalysis():
 
     def fitfunc(self, t, a, s, t0, o):
         """
+        fitfunction for time projection
         t: time
         t0: mid-tof
         a: cts_max
@@ -1929,7 +2104,7 @@ class NiAnalysis():
                                              sc1_res['center'] / 100 + sc1_res['sigma'] / 100 * sig_mult],
                                             [-350, 0, sc2_res['center'] / 100 - sc2_res['sigma'] / 100 * sig_mult,
                                              sc2_res['center'] / 100 + sc2_res['sigma'] / 100 * sig_mult]])
-            offst = 100  # background offset in timebins
+            offst = 100  # background offset in timebins TODO: Maybe use multiple of sigma here?
             background = XMLImporter(path=filepath,  # sample spec of the same width, clearly separated from the timepeaks
                                      softw_gates=[[-350, 0, (sc0_res['center']-offst) / 100 - sc0_res['sigma'] / 100 * sig_mult,
                                                    (sc0_res['center']-offst) / 100 + sc0_res['sigma'] / 100 * sig_mult],
@@ -1989,14 +2164,17 @@ class NiAnalysis():
         plt.show()
 
         # prepare sumcts for transfer to xml file
-        scale_factor = 3000  # This might need to be adjusted when changing the number of scalers involved.
+        total_scale_factor = 0  # This might need to be adjusted when changing the number of scalers involved.
+        # replaced scale factor by bgcounter.mean()
         for scaler in range(3):
+            scale_factor = bgcounter[scaler].mean()
             sumabs[scaler] = (sumabs[scaler] / bgcounter[scaler] * scale_factor).astype(int)
             sumerr[scaler] = (sumerr[scaler] / bgcounter[scaler] * scale_factor).astype(int)
+            total_scale_factor += (sumabs[scaler].max() - sumabs[scaler].min())  # we also need to scale the intensity of the isotope
 
-        self.make_sumXML_file(iso, sumvolts[0]*binsize, binsize, len(sumabs[0]), np.array(sumabs), np.array(sumerr))
+        self.make_sumXML_file(iso, sumvolts[0]*binsize, binsize, len(sumabs[0]), np.array(sumabs), np.array(sumerr), scale_factor=total_scale_factor)
 
-    def make_sumXML_file(self, isotope, startVolt, stepSizeVolt, nOfSteps, cts_list, err_list=None):
+    def make_sumXML_file(self, isotope, startVolt, stepSizeVolt, nOfSteps, cts_list, err_list=None, scale_factor=1):
         ####################################
         # Prepare dicts for writing to XML #
         ####################################
@@ -2077,6 +2255,10 @@ class NiAnalysis():
         mother_isopars = cur.fetchall()
         isopars_lst = list(mother_isopars[0])  # change into list to replace some values
         isopars_lst[0] = isotope+'_sum'
+        if isopars_lst[3] != 0:
+            # spin different from zero, several sidepeaks, adjust scaling!
+            scale_factor = scale_factor/10
+        isopars_lst[11] = int(scale_factor)  # change intensity scaling
         new_isopars = tuple(isopars_lst)
         cur.execute('''INSERT OR REPLACE INTO Isotopes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
                     new_isopars)
@@ -2233,6 +2415,7 @@ class NiAnalysis():
                      .format(mu_55, mu_55_d*1000, Q_55, Q_55_d*1000, hfs_anom_55_61, hfs_anom_55_61_d*10000))
 
     def ni55_A_B_analysis_all(self, isotope):
+        # TODO: comment difference between this and above
         res_dict = self.results[isotope]
         Al = []
         Al_d = []
@@ -2329,9 +2512,13 @@ class NiAnalysis():
         print('radii with alpha', radii_alpha)
         # king.calcChargeRadii(isotopes=isotopes, run=run)
 
+        # TODO: Add to results
+
 
 if __name__ == '__main__':
 
     analysis = NiAnalysis()
+    analysis.centerFreq_to_absVoltage('60Ni', 0,1,2)
     analysis.separate_runs_analysis()
     analysis.stacked_runs_analysis()
+    analysis.export_results()

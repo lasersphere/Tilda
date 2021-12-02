@@ -13,24 +13,25 @@ from scipy import special
 from scipy.stats import cauchy
 
 # _d marks uncertainty
-c = 299792458;    #speed of light
-u = 1.660538921e-27;    #atomic mass unit
-u_d = 7.3e-35;    #delta u
-pi = 3.14159265;
-me = 9.10938291e-31;    #electron mass
-me_d = 4e-38;
-me_u = 5.4857990946e-4;    #electron mass in u
-me_u_d = 2.2e-13;
-qe = 1.602176565e-19;    #electron charge
-qe_d = 3.5e-27;
-h = 6.626070040e-34;    #planck constant
+c = 299792458    #speed of light
+u = 1.660538921e-27    #atomic mass unit
+u_d = 7.3e-35    #delta u
+pi = 3.14159265
+me = 9.10938291e-31    #electron mass
+me_d = 4e-38
+me_u = 5.4857990946e-4    #electron mass in u
+me_u_d = 2.2e-13
+qe = 1.602176565e-19    #electron charge
+qe_d = 3.5e-27
+h = 6.626070040e-34    #planck constant
 hbar = h / (2*pi)
+LEMNISCATE = 2.6220575543
 
 
 def relVelocity(e, m):
     '''Return the relativistic velocity of a body with kinetic energy e/J and mass m/kg'''
     mcs = m*c*c
-    return c * math.sqrt(1 - (mcs / (e + mcs))**2)
+    return c * np.sqrt(1 - (mcs / (e + mcs))**2)
 
 
 def relEnergy(v, m):
@@ -115,6 +116,27 @@ def fanoVoigt(x, sig, gam, dispersive):
     return special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).real / (sig * math.sqrt(2 * math.pi)) +\
            dispersive * special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).imag / (sig * math.sqrt(2 * math.pi))
 
+def source_energy_pdf(x, x0, sigma, xi, collinear=True):
+    ''' PDF of rest frame frequencies after acceleration of thermally and normally distributed kinetic energies. '''
+    pm = 1. if collinear else -1.
+    x = np.asarray(x)
+    sig = (sigma / (2. * xi)) ** 2
+    norm = np.exp(-0.5 * sig) / (sigma * np.sqrt(2. * np.pi))
+    mu = -pm * (x - x0) / (2. * xi) - sig
+    nonzero = mu.astype(bool)
+    mu = mu[nonzero]
+    b_arg = mu ** 2 / (4. * sig)
+    main = np.full(x.shape, np.sqrt(LEMNISCATE * np.sqrt(sig / np.pi)))
+    main_nonzero = np.empty_like(x[nonzero], dtype=float)
+    mask = mu < 0.
+
+    main_nonzero[mask] = np.sqrt(-0.5 * mu[mask] / np.pi) * np.exp(-mu[mask]) \
+        * np.exp(-b_arg[mask]) * special.kv(0.25, b_arg[mask])
+    main_nonzero[~mask] = 0.5 * np.sqrt(mu[~mask] * np.pi) * np.exp(-mu[~mask]) \
+        * (special.ive(0.25, b_arg[~mask]) + special.ive(-0.25, b_arg[~mask]))
+    main[nonzero] = main_nonzero
+    return main * norm
+
 def thermalLorentz(x, loc, gam, xi, colDirTrue, order):
     '''Lineshape developed in Kretzschmar et al., Appl. Phys. B, 79, 623 (2004)'''
     lw = gam*2  # linewidth FWHM
@@ -130,7 +152,7 @@ def thermalLorentz(x, loc, gam, xi, colDirTrue, order):
     denominator = ((x - loc)**2 + lw**2/4)
     sum_order = 0
     if order > 0:
-        sum_order = (col*xi*(x - loc)-3*xi**2)/denominator
+        sum_order = (col*2*xi*(x - loc)-3*xi**2)/denominator
     if order > 1:
         sum_order += (4*3*xi**2*(x - loc)**2 - col*4*15*xi**3*(x - loc) + 105*xi**4)/(denominator**2)
     if order > 2:
@@ -156,15 +178,17 @@ def lorentzQI (x, loc, loc2, gam):
 
     return 2 * cross.real
 
+
 def gaussian(x, mu, sig, amp):
     """
     gaussian function
     :param x:
     :param mu:
     :param sig:
+    :param amp:
     :return:
     """
-    return amp/(sig * np.sqrt(2 * math.pi)) * np.exp(-0.5 * ((x - mu) / sig) ** 2)
+    return amp / (sig * np.sqrt(2 * np.pi)) * np.exp(-0.5 * ((x - mu) / sig) ** 2)
 
 
 def gaussian_offset(x, mu, sig, amp, off):

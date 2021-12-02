@@ -24,7 +24,7 @@ from Spectra.Straight import Straight
 class InteractiveFit(object):
     def __init__(self, file, db, run, block=True, x_as_voltage=True,
                  softw_gates_trs=None, fontSize=10, clear_plot=True, data_fmt='k.',
-                 plot_in_freq=True, save_plot=False):
+                 plot_in_freq=True, save_plot=False, guess_offset=True):
         self.fitter_iso = None
         self.fitter_m = None
         self.fontSize =fontSize
@@ -54,10 +54,13 @@ class InteractiveFit(object):
         else:
             print('Run cannot be selected!')
         if softw_gates_trs is None:  # # if no software gate provided pass on run and db via software gates
-            softw_gates_trs = (db, run)
+            softw_gates_trs = (db, run)  # TODO: Actually, since None is standard for Interactive fit we'll ALWAYS get db gates
+        #softw_gates_trs = None  # TODO: Temporary force load from file
 
         # Import Measurement from file using Importer
         meas = MeasLoad.load(path, db, x_as_voltage=x_as_voltage, softw_gates=softw_gates_trs)
+        if guess_offset:
+            guess_offset = (meas.cts, st)
         if meas.type == 'Kepco':  # keep this for all other fileformats than .xml
             spec = Straight()
             spec.evaluate(meas.x[0][-1], (0, 1))
@@ -74,27 +77,27 @@ class InteractiveFit(object):
                     iso = DBIsotope(db, meas.type, lineVar=linevar)
                     if var[0][0] == '_m' or var[0][0] == '_m1' or var[0][0] == '_m2':
                         iso_m = DBIsotope(db, meas.type, var[0][0], var[0][1])
-                        spec = FullSpec(iso, iso_m)  # get the full spectrum function
-                        spec_iso = FullSpec(iso)
-                        spec_m = FullSpec(iso_m)
+                        spec = FullSpec(iso, iso_m, guess_offset=guess_offset)  # get the full spectrum function
+                        spec_iso = FullSpec(iso, guess_offset=guess_offset)
+                        spec_m = FullSpec(iso_m, guess_offset=guess_offset)
                         self.fitter_iso = SPFitter(spec_iso, meas, st)
                         self.fitter_m = SPFitter(spec_m, meas, st)
                         self.fitter = SPFitter(spec, meas, st)
                     else:
-                        spec = FullSpec(iso)
+                        spec = FullSpec(iso, guess_offset=guess_offset)
                         self.fitter = SPFitter(spec, meas, st)
             except:  # for mcp data etc
                 iso = DBIsotope(db, meas.type, lineVar=linevar)
                 if var[0][0] == '_m':
                     iso_m = DBIsotope(db, meas.type, var[0][0], var[0][1])
-                    spec = FullSpec(iso, iso_m)
-                    spec_iso = FullSpec(iso)
-                    spec_m = FullSpec(iso_m)
+                    spec = FullSpec(iso, iso_m, guess_offset=guess_offset)
+                    spec_iso = FullSpec(iso, guess_offset=guess_offset)
+                    spec_m = FullSpec(iso_m, guess_offset=guess_offset)
                     self.fitter_iso = SPFitter(spec_iso, meas, st)
                     self.fitter_m = SPFitter(spec_m, meas, st)
                     self.fitter = SPFitter(spec, meas, st)
                 else:
-                    spec = FullSpec(iso)
+                    spec = FullSpec(iso, guess_offset=guess_offset)
                     self.fitter = SPFitter(spec, meas, st)
         if not isinstance(spec, Straight):
             self.num_of_common_vals = self.fitter.spec.shape.nPar + 2  # number of common parameters useful if isotope

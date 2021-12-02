@@ -37,5 +37,5 @@ def fix_dir(path):
         split_file_into_tracks(path, f)
 
 
-fix_dir("C:\\Users\\pimgram\\IKP ownCloud\\Projekte\\KOALA\\Calcium\\Auswertung_Laborbuch\\D2\\30\\data")
+fix_dir("C:\\Users\\Laura Renth\\Desktop\\Daten\\masterthesis\\ISLA\\Messungen\\Calcium\\Daten\\col\\data205-214 44Ca mit Blende")
 # fix_dir('C:\\Users\\Patrick\\ownCloud\\Projekte\\KOALA\\Calcium\\Auswertung_Laborbuch\\D1\\43\\data')

@@ -21,7 +21,7 @@ class AsymmetricVoigt(object):
     Gamma is the half width half maximum
 
     line needs to have:
-    'gau', 'lor', 'centerAsym', 'IntAsym', 'laserFreq', 'col', 'nOfPeaks'
+    'gau', 'lor', 'centerAsym', 'IntAsym', 'laserFreq', 'col', 'nPeaksAsym'
 
     optional:
     'offsetSlope' (for an linear offset added to the voigt)
@@ -48,7 +48,7 @@ class AsymmetricVoigt(object):
         self.p_col = 6  # needed for eV instead of MHz center dif
         self.recalc([iso.shape.get('gau', iso.shape.get('sigma', 0.0)),
                      iso.shape.get('lor', iso.shape.get('gamma', 0.0)), iso.shape['centerAsym'],
-                     iso.shape['IntAsym'], iso.shape['nOfPeaks'],
+                     iso.shape['IntAsym'], iso.shape.get('nOfPeaks', self.iso.shape.get('nPeaksAsym')),
                      iso.shape['laserFreq'], iso.shape['col']]) # .get() structure due to naming difference in .getParNames() and shape['']
 
     def evaluate(self, x, p):
@@ -88,18 +88,19 @@ class AsymmetricVoigt(object):
         return [self.iso.shape.get('gau', self.iso.shape.get('sigma', 0.0)),
                 self.iso.shape.get('lor', self.iso.shape.get('gamma', 0.0)),
                 self.iso.shape['centerAsym'], self.iso.shape['IntAsym'],
-                self.iso.shape['nOfPeaks'], self.iso.shape['laserFreq'], self.iso.shape['col']] # .get() structure due to naming difference in .getParNames() and shape['']
+                self.iso.shape.get('nOfPeaks', self.iso.shape.get('nPeaksAsym')),
+                self.iso.shape['laserFreq'], self.iso.shape['col']] # .get() structure due to naming difference in .getParNames() and shape['']
 
     def getParNames(self):
         """Return list of the parameter names"""
-        return ['sigma', 'gamma', 'centerAsym', 'IntAsym', 'nOfPeaks', 'laserFreq', 'col']
+        return ['sigma', 'gamma', 'centerAsym', 'IntAsym', 'nPeaksAsym', 'laserFreq', 'col']
 
     def getFixed(self):
         """Return list of parmeters with their fixed-status"""
         return [self.iso.fixShape.get('gau', self.iso.fixShape.get('sigma', False)),
                 self.iso.fixShape.get('lor', self.iso.fixShape.get('gamma', False)),
                 self.iso.fixShape['centerAsym'], self.iso.fixShape['IntAsym'],
-                self.iso.fixShape['nOfPeaks'], True, True] # .get() structure due to naming difference in .getParNames() and shape['']
+                self.iso.fixShape.get('nOfPeaks', self.iso.fixShape.get('nPeaksAsym')), True, True]  # .get() structure due to naming difference in .getParNames() and shape['']
 
     def calc_diff_doppl(self, laser_freq, col):
         """ calculate the differential doppler factor for this shape and store it in self.diff_doppl """

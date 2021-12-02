@@ -6,13 +6,11 @@ Created on '07.05.2015'
 
 """
 import argparse
-import functools
 import logging
 from logging.handlers import RotatingFileHandler
 import sys
 import os
-import Pyro4
-import socket
+import subprocess
 
 import matplotlib
 
@@ -23,12 +21,6 @@ sys.path.append('..\\..\\PolliFit\\source')
 from Application.Main.Main import Main
 import Application.Config as Cfg
 
-try:
-    from Driver.TritonListener.TritonConfig import hmacKey
-except ImportError as e:
-    from Driver.TritonListener.TritonDraftConfig import hmacKey
-    print('warning, while loading hmacKey from Driver.TritonListener.TritonConfig : %s'
-          '\n will use default (Driver.TritonListener.TritonDraftConfig) and dummy mode now!' % e)
 
 _cyclic_interval_ms = 50
 
@@ -79,24 +71,24 @@ def main():
     app_log.info('****************************** starting ******************************')
     app_log.info('Log level set to ' + args.log_level)
 
-    setup_pyro()
+    # get details on current version
+    try:
+        # get the current branch
+        branch = subprocess.check_output(['git', 'symbolic-ref', '--short', 'HEAD']).decode('utf-8').replace('\n', '')
+        # get uniquely abbreviated commit object (or commit tag)
+        commit = subprocess.check_output(['git', 'describe', '--always']).decode('utf-8').replace('\n', '')
+        # update info in config
+        Cfg.branch = branch
+        Cfg.commit = commit
+        # display info for user
+        app_log.info('Detected branch: {}, commit: {}'.format(branch, commit))
+    except Exception as e:
+        app_log.warning('Could not detect git branch and commit. Error: {}'.format(e))
 
     # starting the main loop and storing the instance in Cfg.main_instance
     Cfg._main_instance = Main()
 
     start_gui()
-
-
-def setup_pyro():
-    """ configure Pyro4 which is needed wehn connecting to Triton devices """
-
-    Pyro4.config.SERIALIZER = "serpent"
-    Pyro4.config.HMAC_KEY = hmacKey
-    Pyro4.config.HOST = socket.gethostbyname(socket.gethostname())
-    # Pyro4.config.SERVERTYPE = 'multiplex'
-    Pyro4.config.SERVERTYPE = 'thread'
-    sys.excepthook = Pyro4.util.excepthook
-    # Pyro4.config.DETAILED_TRACEBACK = True
 
 
 def start_gui():

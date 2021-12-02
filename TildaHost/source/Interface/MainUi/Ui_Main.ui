@@ -223,8 +223,7 @@
     <property name="title">
      <string>Configure</string>
     </property>
-    <addaction name="actionShow_scan_finished_win"/>
-    <addaction name="actionPre_scan_timeout"/>
+    <addaction name="actionoptions"/>
    </widget>
    <widget class="QMenu" name="menuAnalysis">
     <property name="title">
@@ -396,6 +395,11 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+J</string>
+   </property>
+  </action>
+  <action name="actionoptions">
+   <property name="text">
+    <string>Options</string>
    </property>
   </action>
  </widget>

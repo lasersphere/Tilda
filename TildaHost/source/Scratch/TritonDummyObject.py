@@ -6,50 +6,65 @@ create a local Device (-> no db connection!) and have it send stuff periodically
 
 '''
 
-'''
-Created on 01.10.2013
+# TODO: Just copy pasted some stuff from TritonObject with new Triton. Not tested in any way. Maybe need to write new...
 
-@author: hammen
-'''
-
-import Pyro4
-
+from datetime import datetime
+import mysql.connector as Sql
+from Driver.TritonListener.TritonConfig import sqlCfg as sqlConf
+import Driver.TritonListener.Backend.udp_server
+import Driver.TritonListener.Backend.tcp_server
+import logging
+import Driver.TritonListener.Backend.hybrid_server
+import Driver.TritonListener.Backend.server_conf
 
 class TritonObject(object):
-    '''
+    """
     Basic TritonObject with fundamental abilities: Pyro receiving, DB connections, subscribing
-    '''
+    """
 
-    def __init__(self):
-        '''
+    def __init__(self, sql_conf='local'):
+        """
         Constructor
-        '''
+        """
         super(TritonObject, self).__init__()
-
         self.name = None
         self.type = 'TritonObject'
 
         self._recFrom = {}
-        self.db = ''
+        self.sql_conf = 'local'
+        self.db = 'local'  # can be set to 'local' or '' or {} for testing without any database, see below
         self.dbCur = None
+        self.db_connect()
+        self.logger = logging.getLogger('TritonLogger')
 
-        self._serve()
+        # start the appropriate server_backend depending on the selection in server_conf
+        if Driver.TritonListener.Backend.server_conf.SERVER_CONF.TRANS_MODE == "UDP":
+            self.server_backend = Driver.TritonListener.Backend.udp_server.TritonServerUDP(self.type, self)
+            self.logger.debug("Backend: TritonServer started in UDP mode!")
+        elif Driver.TritonListener.Backend.server_conf.SERVER_CONF.TRANS_MODE == "HYB":
+            self.server_backend = Driver.TritonListener.Backend.hybrid_server.TritonServerHybrid(self.type, self)
+            self.logger.debug("Backend: TritonServer started in HYBRID mode!")
+        else:
+            self.server_backend = Driver.TritonListener.Backend.tcp_server.TritonServerTCP(self.type, self)
+            self.logger.debug("Backend: TritonServer started in TCP mode!")
+
+        self.uri = self.server_backend.uri
+
+    def db_connect(self):
+        pass
+
+    def db_close(self):
+        pass
 
     def _stop(self):
-        '''Unsubscribe from all and stop pyro daemon'''
-        logging.debug('Unsubscribing from ' + str(self._recFrom))
+        """ Unsubscribe from all and stop server object """
+        self.logger.debug('Unsubscribing from ' + str(self._recFrom))
         for dev in self._recFrom.copy().keys():
             self.unsubscribe(dev)
 
-        self._daemon.shutdown()
-        self._daemonT.join()
-
-    def _serve(self):
-        '''Start pyro daemon'''
-        self._daemon = Pyro4.Daemon()
-        self.uri = self._daemon.register(self)
-        self._daemonT = Thread(target=self._daemon.requestLoop)
-        self._daemonT.start()
+        self.server_backend.shutdown()
+        self.db_close()
+        self.logger.debug('Stopped device: {}'.format(self.name))
 
     def getName(self):
         return self.name
@@ -58,50 +73,54 @@ class TritonObject(object):
         return self.type
 
     """Methods for subscribing"""
-
-    def subscribe(self, ndev):
-        """Subscribe to an object using its name"""
-        dev = self.resolveName(ndev)
-        if dev != None:
+    def subscribe(self, ndev, known_uri=''):
+        """Subscribe to an object using its name and returning at a TritonRemoteObject"""
+        remuri = self.resolveName(ndev, known_uri)
+        remoteobj = None
+        if remuri != None:
             self.send('out', 'Subscribing to ' + ndev)
-            self._recFrom[ndev] = dev
-            dev._addSub(self.uri, self.name)
-            self.send('out', 'Added')
-            dev._pyroRelease()
-            self.send('out', 'Done with subscribe')
+            remoteobj = self.server_backend.subscribeToUri(remuri)
+            if remoteobj != None:
+                self._recFrom[ndev] = remoteobj
+                self.send('out', 'Added')
+                self.send('out', 'Done with subscribe')
+            else:
+                logging.error("Subscribing to device "+ndev+" failed!")
+                self.send('err', 'Could not connect to ' + ndev)
         else:
             self.send('err', 'Could not resolve ' + ndev)
-        return dev
+        return remoteobj
 
-    def unsubscribe(self, ndev):
-        """Unsubscribe from an object"""
-        self.send('out', 'Unsusbcribing from ' + ndev)
-        if ndev in self._recFrom:
-            try:
-                self._recFrom[ndev]._remSub(self.name)
-                del self._recFrom[ndev]
-            except:
-                self.send('err', 'Could not unsubscribe from ' + str(ndev))
 
-    def send(self, ch, val):
+    def send(self, ch, val): # important note: this will be overwritten in DeviceBase! It is just used for the UIs to log the info
+        """ send ch and val to logging.error (ch='err'), logging.info (ch='out') or logging.debug
+         Note: this is not send to any device or so, this is only done in the DeviceBase.py
+         """
         t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if ch == 'err':
-            logging.error(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
+            self.logger.error(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
         elif ch == 'out':
-            logging.info(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
+            self.logger.info(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
         else:
-            logging.debug(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
+            self.logger.debug(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
 
-    def errsend(self):
-        self.send('err', "".join(Pyro4.util.getPyroTraceback()))
+    def _receive(self, dev, t, ch, val): # important note: this will be overwritten in DeviceBase! just ignore it
+        """ just a print here, will be overwritten in DeviceBase.py """
+        print(t, dev, ch, val)
 
-    def _receive(self, dev, t, ch, val):
-        print(self.name, t, dev, ch, val)
-
-    def resolveName(self, uri):
-        """Resolve a device name to a Proxy using the uri from the database. Return None if not started"""
-        dev = Pyro4.Proxy(uri)
-        return dev
+    def resolveName(self, name, known_uri=''):
+        """
+        Resolve a device name to a URI using the uri from the database. Return None if not started
+        :param name: str, name of the device which pyro4 uri should be found in the db
+        :param known_uri: str, uri can be provided if no database is present.
+        """
+        self.logger.debug('resolve name {} to database'.format(name))
+        self.db_commit()
+        # self.logger.debug('commit happend')
+        self.dbCur_execute("SELECT uri FROM devices WHERE deviceName=%s", (name,))
+        # self.logger.debug('execute happend')
+        result = self.dbCur_fetchall(local_ret_val=[(known_uri,)])
+        return result[0][0]
 
 
 from functools import wraps
@@ -171,7 +190,7 @@ class DeviceBase(TritonObject):
 
     def _addSub(self, uri, ndev):
         '''Add device with uri and name to Subscribers'''
-        dev = Pyro4.Proxy(uri)
+        dev = None # Pyro4.Proxy(uri)
         self._sendTo[ndev] = dev
         self.send('out', ndev + ' subscribed.')
         self._emit()

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>403</width>
+    <height>306</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -30,6 +30,20 @@
        </property>
       </widget>
      </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_7">
+       <property name="text">
+        <string>selected output:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLabel" name="label_current_output">
+       <property name="text">
+        <string>None</string>
+       </property>
+      </widget>
+     </item>
      <item row="3" column="0">
       <widget class="QLabel" name="label_6">
        <property name="text">
@@ -47,18 +61,12 @@
        </property>
       </widget>
      </item>
-     <item row="4" column="1">
-      <widget class="QLineEdit" name="lineEdit_scalers"/>
-     </item>
      <item row="5" column="0">
       <widget class="QLabel" name="label_3">
        <property name="text">
-        <string>tracks:</string>
+        <string>track index:</string>
        </property>
       </widget>
-     </item>
-     <item row="5" column="1">
-      <widget class="QLineEdit" name="lineEdit_tracks"/>
      </item>
      <item row="6" column="0">
       <widget class="QLabel" name="label_2">
@@ -67,18 +75,12 @@
        </property>
       </widget>
      </item>
-     <item row="6" column="1">
-      <widget class="QLineEdit" name="lineEdit_softw_gates"/>
-     </item>
      <item row="7" column="0">
       <widget class="QLabel" name="label_4">
        <property name="text">
         <string>lineVar:</string>
        </property>
       </widget>
-     </item>
-     <item row="7" column="1">
-      <widget class="QLineEdit" name="lineEdit_lineVar"/>
      </item>
      <item row="8" column="0">
       <widget class="QLabel" name="label_5">
@@ -94,19 +96,82 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_7">
-       <property name="text">
-        <string>selected output:</string>
-       </property>
-      </widget>
+     <item row="5" column="1">
+      <layout class="QHBoxLayout" name="hor_track_layout" stretch="1,0">
+       <item>
+        <widget class="QSpinBox" name="lineEdit_tracks">
+         <property name="buttonSymbols">
+          <enum>QAbstractSpinBox::NoButtons</enum>
+         </property>
+         <property name="correctionMode">
+          <enum>QAbstractSpinBox::CorrectToNearestValue</enum>
+         </property>
+         <property name="minimum">
+          <number>-1</number>
+         </property>
+         <property name="value">
+          <number>-1</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="info_tracks">
+         <property name="text">
+          <string>Set to -1 to use all tracks</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
-     <item row="2" column="1">
-      <widget class="QLabel" name="label_current_output">
-       <property name="text">
-        <string>None</string>
-       </property>
-      </widget>
+     <item row="6" column="1">
+      <layout class="QHBoxLayout" name="hor_softw_gates_layout" stretch="1,0">
+       <item>
+        <widget class="QLineEdit" name="lineEdit_softw_gates"/>
+       </item>
+       <item>
+        <widget class="QLabel" name="info_softw_gates">
+         <property name="text">
+          <string>shape: (track, scaler, gates)</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item row="7" column="1">
+      <widget class="QComboBox" name="lineEdit_lineVar"/>
+     </item>
+     <item row="4" column="1">
+      <layout class="QHBoxLayout" name="hor_scalers_layout" stretch="1,0,0">
+       <item>
+        <widget class="QLineEdit" name="lineEdit_scalers"/>
+       </item>
+       <item>
+        <widget class="QPushButton" name="sc_minus">
+         <property name="maximumSize">
+          <size>
+           <width>60</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>-</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="sc_plus">
+         <property name="maximumSize">
+          <size>
+           <width>60</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>+</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
     </layout>
    </item>

@@ -24,8 +24,10 @@ import MPLPlotter as MPlPlotter
 from Gui.MainUi import MainUi as PolliMainUi
 from Interface.DialogsUi.ScanCompleteDialUi import ScanCompleteDialUi
 from Interface.DmmUi.DmmUi import DmmLiveViewUi
+from Interface.FrequencyUi.FreqUi import FreqUi
 from Interface.LiveDataPlottingUi.LiveDataPlottingUi import TRSLivePlotWindowUi
 from Interface.MainUi.Ui_Main import Ui_TildaMainWindow
+from Interface.OptionsUi.OptionsUi import OptionsUi
 from Interface.PostAccControlUi.PostAccControlUi import PostAccControlUi
 from Interface.PulsePatternUi.PulsePatternUi import PulsePatternUi
 from Interface.ScanControlUi.ScanControlUi import ScanControlUi
@@ -53,16 +55,18 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.post_acc_win = None  # only one active post acceleration window
         self.scan_progress_win = None
         self.job_stacker_win = None
+        self.freq_win = None
         self.simple_counter_gui = None
         self.dmm_live_view_win = None
         self.live_plot_win = None  # one active live plot window for displaying results from pipeline
         self.file_plot_wins = {}  # dict of active plot windows only for displaying from file.
         self.pollifit_win = None
+        self.options_win = None
         self.tetris = None  # pssst dont tell
         self.snake = None
         self.pulse_pattern_win = None
         self.scan_complete_win = None
-        self.show_scan_compl_win = True
+        # self.show_scan_compl_win = True  # TODO: Could use this for a session-long disable. Else just delete
         self.triton_listener_timedout_win = None
 
         self.application = application
@@ -73,17 +77,19 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionJob_Stacker.triggered.connect(self.open_job_stacker_win)  # TODO: define command and add actionItem
         self.actionPost_acceleration_power_supply_control.triggered.connect(self.open_post_acc_win)
         self.actionSimple_Counter.triggered.connect(self.open_simple_counter_win)
-        self.actionSet_Laser_Frequency.triggered.connect(self.set_laser_freq)
+        self.actionoptions.triggered.connect(self.open_options_win)
+        #self.actionSet_Laser_Frequency.triggered.connect(self.set_laser_freq)   # old version of frequency settings
+        self.actionSet_Laser_Frequency.triggered.connect(self.open_freq_win)
         self.actionSet_acceleration_voltage.triggered.connect(self.set_acc_volt)
         self.actionLoad_spectra.triggered.connect(self.load_spectra)
         self.actionDigital_Multimeters.triggered.connect(self.open_dmm_live_view_win)
         self.actionPolliFit.triggered.connect(self.open_pollifit_win)
         self.actionPulse_pattern_generator.triggered.connect(self.open_pulse_pattern_win)
-        self.actionShow_scan_finished_win.triggered.connect(self.show_scan_finished_change)
-        self.actionPre_scan_timeout.triggered.connect(self.set_pre_scan_timeout)
+
 
         """ connect double clicks on labels:"""
         self.label_workdir_set.mouseDoubleClickEvent = self.workdir_dbl_click
+        self.label_workdir_set.setToolTip(self.workdir_dbl_click.__doc__)
         self.label_laser_freq_set.mouseDoubleClickEvent = self.laser_freq_dbl_click
         self.label_acc_volt_set.mouseDoubleClickEvent = self.acc_volt_dbl_click
         self.label_8.mouseDoubleClickEvent = self.dmm_setup_dbl_click
@@ -91,6 +97,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
         """ connect buttons """
         self.pushButton_open_dir.clicked.connect(self.open_dir)
+        self.pushButton_open_dir.setToolTip(self.open_dir.__doc__)
 
         """ add shortcuts """
         QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+T"), self, self.start_tetris)
@@ -102,10 +109,14 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     ''' connected actions '''
     def workdir_dbl_click(self, event):
+        """
+        Doubleclick to open a file browser to select/change the TILDA working directory.
+        """
         self.choose_working_dir()
 
     def laser_freq_dbl_click(self, event):
-        self.set_laser_freq()
+        #self.set_laser_freq()   # old version
+        self.open_freq_win()
 
     def acc_volt_dbl_click(self, event):
         self.set_acc_volt()
@@ -197,7 +208,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.label_workdir_set.setText(str(status_dict.get('workdir', '')))
         self.label_main_status.setText(str(status_dict.get('status', '')))
         self.label_database.setText(str(status_dict.get('database', '')))
-        self.label_laser_freq_set.setText(str(status_dict.get('laserfreq', '')))
+        self.label_laser_freq_set.setText("{:.5f}".format(status_dict.get('laserfreq', '')))
         self.label_acc_volt_set.setText(str(status_dict.get('accvolt', '')))
         self.label_fpga_state_set.setText(str(status_dict.get('fpga_status', '')))
         self.label_sequencer_status_set.setText(str(status_dict.get('sequencer_status', '')))
@@ -218,12 +229,17 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             'choose working directory', start_path)
         return Cfg._main_instance.work_dir_changed(workdir)
 
-    def set_laser_freq(self):
-        laser_freq, ok = QtWidgets.QInputDialog.getDouble(self, 'Laser', 'laser wavenumber [cm-1]',
-                                                          0, 0, 9999999,
-                                                          5)
-        if ok:
-            Cfg._main_instance.laser_freq_changed(laser_freq)
+
+    # def set_laser_freq(self):
+    #     """
+    #     not needed anymore, replaced by open freq win
+    #     :return:
+    #     """
+    #     laser_freq, ok = QtWidgets.QInputDialog.getDouble(self, 'Laser', 'laser wavenumber [cm-1]',
+    #                                                       0, 0, 9999999,
+    #                                                       5)
+    #     if ok:
+    #         Cfg._main_instance.laser_freq_changed(laser_freq)
 
     def set_acc_volt(self):
         acc_volt, ok = QtWidgets.QInputDialog.getDouble(self, 'Acceleration Voltage', 'acceleration voltage [V]',
@@ -249,17 +265,6 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 else:
                     self.raise_win_to_front(self.file_plot_wins[file])
 
-    def set_pre_scan_timeout(self):
-        """ set the pre_scan timeout """
-        par = QtWidgets.QInputDialog(self)
-        timeout_s, ok = QtWidgets.QInputDialog.getDouble(
-            par, 'configure pre scan timeout',
-            'The pre scan timeout is the maximum time for any pre scan measurement.\n'
-            'If not all measurements are completed within this time, the measurement is started anyhow.',
-            Cfg._main_instance.pre_scan_measurement_timeout_s.seconds)
-        if ok:
-            Cfg._main_instance.pre_scan_timeout_changed(timeout_s)
-
     ''' formatting '''
 
     def make_dmm_status_nice(self, status_dict):
@@ -283,18 +288,55 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
 
     ''' configure '''
     def show_scan_finished_change(self, show_win_bool):
-        self.show_scan_compl_win = show_win_bool
-        self.actionShow_scan_finished_win.setChecked(show_win_bool)
+        """
+        Activated from the ScanCompleteWin --> Change option
+        """
+        Cfg._main_instance.set_option('SCAN:show_scan_finished', show_win_bool)
 
     ''' open windows'''
-    def open_version_win(self):
-        VersionUi()
 
-    def open_scan_ctrl_win(self):
-        if Cfg._main_instance.working_directory is None:
-            if self.choose_working_dir() is None:
-                return None
-        self.act_scan_wins.append(ScanControlUi(self))
+    def open_dir(self):
+        """
+        Click to open the current TILDA working directory in the OS filesystem.
+        """
+        path = deepcopy(Cfg._main_instance.working_directory)
+        if path:
+            if platform.system() == "Windows":
+                os.startfile(path)
+            elif platform.system() == "Darwin":
+                subprocess.Popen(["open", path])
+            else:
+                subprocess.Popen(["xdg-open", path])
+        else:
+            self.choose_working_dir()
+            self.open_dir()
+
+    def open_dmm_live_view_win(self):
+        if self.dmm_live_view_win is None:
+            self.dmm_live_view_win = DmmLiveViewUi(self)
+        else:
+            self.raise_win_to_front(self.dmm_live_view_win)
+
+    def open_file_plot_win(self, file, sum_sc_tr=None):
+        self.file_plot_wins[file] = TRSLivePlotWindowUi(full_file_path=file,
+                                                        subscribe_as_live_plot=False,
+                                                        sum_sc_tr=sum_sc_tr,
+                                                        application=self.application)
+        self.file_plot_wins[file].destroyed.connect(functools.partial(self.close_file_plot_win, file))
+
+    def open_freq_win(self):
+        if self.freq_win is None:
+            self.freq_win = FreqUi(self)
+        else:
+            self.raise_win_to_front(self.freq_win)
+
+    def open_live_plot_win(self):
+        if self.live_plot_win is None:
+            self.live_plot_win = TRSLivePlotWindowUi(application=self.application)
+            self.live_plot_win.destroyed.connect(self.close_live_plot_win)
+        else:
+            self.raise_win_to_front(self.live_plot_win)
+            self.live_plot_win.reset()
 
     def open_job_stacker_win(self):
         if Cfg._main_instance.working_directory is None:
@@ -305,38 +347,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         else:
             self.raise_win_to_front(self.job_stacker_win)
 
-    def open_post_acc_win(self):
-        if self.post_acc_win is None:
-            self.post_acc_win = PostAccControlUi(self)
+    def open_options_win(self):
+        if self.options_win is None:
+            self.options_win = OptionsUi(self)
         else:
-            self.raise_win_to_front(self.post_acc_win)
-
-    def open_simple_counter_win(self):
-        sc_dial = SimpleCounterDialogUi()  # blocking!
-        if sc_dial.start:
-            self.simple_counter_gui = SimpleCounterRunningUi(self, sc_dial.act_pmts, sc_dial.datapoints)
-            # Cfg._main_instance.start_simple_counter(sc_dial.act_pmts, sc_dial.datapoints)
-
-    def open_dmm_live_view_win(self):
-        if self.dmm_live_view_win is None:
-            self.dmm_live_view_win = DmmLiveViewUi(self)
-        else:
-            self.raise_win_to_front(self.dmm_live_view_win)
-
-    def open_live_plot_win(self):
-        if self.live_plot_win is None:
-            self.live_plot_win = TRSLivePlotWindowUi(application=self.application)
-            self.live_plot_win.destroyed.connect(self.close_live_plot_win)
-        else:
-            self.raise_win_to_front(self.live_plot_win)
-            self.live_plot_win.reset()
-
-    def open_file_plot_win(self, file, sum_sc_tr=None):
-        self.file_plot_wins[file] = TRSLivePlotWindowUi(full_file_path=file,
-                                                        subscribe_as_live_plot=False,
-                                                        sum_sc_tr=sum_sc_tr,
-                                                        application=self.application)
-        self.file_plot_wins[file].destroyed.connect(functools.partial(self.close_file_plot_win, file))
+            self.raise_win_to_front(self.options_win)
 
     def open_pollifit_win(self):
         if self.pollifit_win is None:
@@ -350,26 +365,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         else:
             self.raise_win_to_front(self.pollifit_win)
 
-    def raise_win_to_front(self, window):
-        # this will remove minimized status
-        # and restore window with keeping maximized/normal state
-        window.setWindowState(window.windowState() & ~QtCore.Qt.WindowMinimized | QtCore.Qt.WindowActive)
-
-        # this will activate the window
-        window.activateWindow()
-
-    def open_dir(self):
-        path = deepcopy(Cfg._main_instance.working_directory)
-        if path:
-            if platform.system() == "Windows":
-                os.startfile(path)
-            elif platform.system() == "Darwin":
-                subprocess.Popen(["open", path])
-            else:
-                subprocess.Popen(["xdg-open", path])
+    def open_post_acc_win(self):
+        if self.post_acc_win is None:
+            self.post_acc_win = PostAccControlUi(self)
         else:
-            self.choose_working_dir()
-            self.open_dir()
+            self.raise_win_to_front(self.post_acc_win)
 
     def open_pulse_pattern_win(self):
         if self.pulse_pattern_win is None:
@@ -378,17 +378,50 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             self.raise_win_to_front(self.pulse_pattern_win)
 
     def open_scan_complete_win(self):
-        if self.show_scan_compl_win:
+        if Cfg._main_instance.get_option('SCAN:show_scan_finished'):
             if self.scan_complete_win is None:
-                self.scan_complete_win = ScanCompleteDialUi(self)
+                play_sound = Cfg._main_instance.get_option('SOUND:is_on')
+                sound_folder = Cfg._main_instance.get_option('SOUND:folder')
+                self.scan_complete_win = ScanCompleteDialUi(self, play_sound, sound_folder)
             self.raise_win_to_front(self.scan_complete_win)
+
+    def open_scan_ctrl_win(self):
+        if Cfg._main_instance.working_directory is None:
+            if self.choose_working_dir() is None:
+                return None
+        self.act_scan_wins.append(ScanControlUi(self))
+
+    def open_simple_counter_win(self):
+        sc_dial = SimpleCounterDialogUi()  # blocking!
+        if sc_dial.start:
+            self.simple_counter_gui = SimpleCounterRunningUi(self, sc_dial.act_pmts, sc_dial.datapoints)
+            # Cfg._main_instance.start_simple_counter(sc_dial.act_pmts, sc_dial.datapoints)
+
+    def open_version_win(self):
+        VersionUi()
+
+    def raise_win_to_front(self, window):
+        # this will remove minimized status
+        # and restore window with keeping maximized/normal state
+        window.setWindowState(window.windowState() & ~QtCore.Qt.WindowMinimized | QtCore.Qt.WindowActive)
+
+        # this will activate the window
+        window.activateWindow()
 
     ''' close windows '''
     def scan_control_win_closed(self, win_ref):
         self.act_scan_wins.remove(win_ref)
 
+    def close_freq_win(self):
+        new_laser_freq = Cfg._main_instance.calc_freq()
+        Cfg._main_instance.laser_freq_changed(new_laser_freq)
+        self.freq_win = None
+
     def close_job_stacker_win(self):
         self.job_stacker_win = None
+
+    def close_options_win(self):
+        self.options_win = None
 
     def close_post_acc_win(self):
         self.post_acc_win = None
@@ -402,7 +435,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
     def close_live_plot_win(self):
         del self.live_plot_win
         self.live_plot_win = None
-        gc.collect()
+        #gc.collect()
 
         for scan_ctrl_win in self.act_scan_wins:
             scan_ctrl_win.enable_reopen_plot_win()
@@ -417,7 +450,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             Cfg._main_instance.close_spectra_in_main(file)
 
         del self.file_plot_wins[file]
-        gc.collect()
+        #gc.collect()
         logging.debug('remaining file plot wins are: ' + str(self.file_plot_wins))
 
     def close_pulse_pattern_win(self):
@@ -445,6 +478,11 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 self.scan_progress_win.close()
         except Exception as e:
             logging.error('error while closing scan progress win:' + str(e))
+        try:
+            if self.freq_win is not None:
+                self.freq_win.close()
+        except Exception as e:
+            logging.error('error while closing frequency win:' + str(e))
         try:
             if self.job_stacker_win is not None:
                 self.job_stacker_win.close()

@@ -1,8 +1,8 @@
-'''
+"""
 Created on 25.04.2014
 
 @author: hammen
-'''
+"""
 
 import Physics
 import TildaTools as TiTS
@@ -11,21 +11,22 @@ import sqlite3
 
 
 class DBIsotope(object):
-    '''
+    """
     A sqlite database driven version fo the isotope object
-    '''
+    """
 
-    def __init__(self, db, iso, isovar = '', lineVar = ''):
-        '''Load relevant values of isotope name from database file'''
+    def __init__(self, db, iso, isovar='', lineVar=''):
+        """ Load relevant values of isotope name from database file """
         print('iso: ' + str(iso))
         print('isovar: ' + str(isovar))
-        print("Loading", lineVar, "line of", iso + isovar)
-        #sqlite3.register_converter("BOOL", lambda v: bool(int(v)))
+        print('Loading', lineVar, 'line of', iso + isovar)
+        # sqlite3.register_converter("BOOL", lambda v: bool(int(v)))
         data = TiTS.select_from_db(db, 'reference, frequency, Jl, Ju, shape, fixShape, charge', 'Lines',
-                                   [['lineVar'], [lineVar]], caller_name=__name__)[0]
-        if not data:
-            print("No such line: " + lineVar)
+                                   [['lineVar'], [lineVar]], caller_name=__name__)
+        if data is None or not data:
+            print('No such line: ' + lineVar)
         else:
+            data = data[0]
             self.name = iso + isovar
             self.isovar = isovar
             self.lineVar = lineVar
@@ -35,17 +36,20 @@ class DBIsotope(object):
             self.Ju = data[3]
             self.shape = eval(data[4])
             self.fixShape = eval(data[5])
-            elmass = data[6] * Physics.me_u
+            self.q = data[6]
             print('loaded :', self.name)
 
-        data = TiTS.select_from_db(db,
-                                   'mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, fixedBrat, intScale,'
+        data = TiTS.select_from_db(db, 'mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, fixedBrat, intScale,'
                                    ' fixedInt, relInt, m, fixedAl, fixedBl, fixedAu, fixedBu', 'Isotopes',
-                                   [['iso'], [iso + isovar]], caller_name=__name__)[0]
-        if not data:
-            print("No such isotope: " + iso + isovar)
+                                   [['iso'], [iso + isovar]], caller_name=__name__)
+        if data is None or not data:
+            print('No such isotope: ' + iso + isovar)
         else:
-            self.mass = data[0] - elmass
+            data = data[0]
+            if hasattr(self, 'q'):
+                self.mass = data[0] - self.q * Physics.me_u
+            else:
+                self.mass = data[0]
             self.mass_d = data[1]
             self.I = data[2]
             self.center = data[3]

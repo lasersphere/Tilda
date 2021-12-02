@@ -136,7 +136,7 @@ class DmmLiveViewUi(QtWidgets.QMainWindow, Ui_MainWindow):
         # self.choose_dmm_wid.pushButton_initialize.setEnabled(enable_bool)
         # self.tabWidget.setTabsClosable(enable_bool)
         for dmm_name, val_lists in self.tabs.items():
-            if dmm_name is not 'tab0':
+            if dmm_name != 'tab0':
                 widget = val_lists[-1]
                 widget.enable_communication(enable_bool)
 

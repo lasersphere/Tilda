@@ -17,6 +17,8 @@ import TildaTools
 import polliPipe.simpleNodes as SN
 from polliPipe.node import Node
 
+import Application.Config as Cfg
+
 # import PyQtGraphPlotter
 
 from polliPipe.pipeline import Pipeline
@@ -24,7 +26,7 @@ from polliPipe.pipeline import Pipeline
 
 def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples,
                           fit_res_callback_dict, scan_complete_callback, dac_new_volt_set_callback,
-                          bunch_start_stop_tr_wise=None, next_step_request_sig=None):
+                          scan_start_stop_tr_wise=None, bunch_start_stop_tr_wise=None, next_step_request_sig=None):
     seq_type = scan_dict['isotopeData']['type']
     if seq_type == 'cs' or seq_type == 'csdummy':
         logging.debug('loading pipeline of type: cs')
@@ -34,6 +36,7 @@ def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples,
         logging.debug('loading pipeline of type: trs')
         return TrsPipe(scan_dict, callback_sig,
                        live_plot_callbacks=live_plot_callback_tuples,
+                       scan_start_stop_tr_wise=scan_start_stop_tr_wise,
                        bunch_start_stop_tr_wise=bunch_start_stop_tr_wise,
                        next_step_request_sig=next_step_request_sig)
     elif seq_type == 'kepco':
@@ -49,7 +52,7 @@ def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples,
 
 
 def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True,
-            live_plot_callbacks=None, bunch_start_stop_tr_wise=None, next_step_request_sig=None):
+            live_plot_callbacks=None, scan_start_stop_tr_wise=None, bunch_start_stop_tr_wise=None, next_step_request_sig=None):
     """
     Pipeline for the dataflow and analysis of one Isotope using the time resolved sequencer.
     Mutliple Tracks are supported.
@@ -66,12 +69,15 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True,
 
     # alternative pipeline:
     fast = start.attach(TN.NFilterDMMDictsAndSave(live_plot_callbacks[4]))  # Replaced former NFilterDMMDicts AndSave
+    #fast = fast.attach(TN.NROCTrigger())
+
     # # use the sleep node in order to simulate long processing times in pipeline
     # fast = fast.attach(TN.NSleep(sleeping_time_s=2.0))
     fast = fast.attach(TN.NSaveRawData())
     fast = fast.attach(TN.NSendNextStepRequestViaQtSignal(next_step_request_sig))
     # fast = fast.attach(TN.NProcessQtGuiEvents())
-    fast = fast.attach(TN.NTRSSortRawDatatoArrayFast(bunch_start_stop_tr_wise=bunch_start_stop_tr_wise))
+    fast = fast.attach(TN.NTRSSortRawDatatoArrayFast(scan_start_stop_tr_wise=scan_start_stop_tr_wise,
+                                                     bunch_start_stop_tr_wise=bunch_start_stop_tr_wise))
     # fast = fast.attach(TN.NProcessQtGuiEvents())
     fast = fast.attach(TN.NSendnOfCompletedStepsViaQtSignal(callback_sig))
     # fast = fast.attach(SN.NPrint())
@@ -107,6 +113,8 @@ def CsPipe(initialScanPars=None, callback_sig=None, live_plot_callbacks=None, ne
 
     pipe = Pipeline(start)
     # start = start.attach(SN.NPrint())
+    if Cfg._main_instance.get_option('SPECIAL:roc_mode'):
+        start = start.attach(TN.NROCTrigger())
     start = start.attach(TN.NFilterDMMDictsAndSave(live_plot_callbacks[4]))  # Replaced former NFilterDMMDicts
 
     maintenance = start.attach(TN.NMPLCloseFigOnInit())
@@ -116,7 +124,7 @@ def CsPipe(initialScanPars=None, callback_sig=None, live_plot_callbacks=None, ne
 
     filen = os.path.split(pipe.pipeData['pipeInternals']['activeXmlFilePath'])[1]
     window_title = 'plot ' + filen
-    fig.canvas.set_window_title(window_title)
+    fig.canvas.set_window_title(window_title)  # TODO: The set_window_title function was deprecated in Matplotlib 3.4 and will be removed two minor releases later. Use manager.set_window_title or GUI-specific methods instead.
 
     walk = start.attach(TN.NSaveRawData())
     # walk = start.attach(TN.NSplit32bData())

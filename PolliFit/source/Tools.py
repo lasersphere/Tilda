@@ -1,4 +1,4 @@
-'''
+"""
 Created on 21.05.2014
 
 @author: hammen
@@ -7,7 +7,8 @@ The Tools module contains simple helper methods like createDB() to create a new 
 right structure, isoPlot() to plot the spectrum of an isotope and centerplot() to plot acceleration
 voltages depending on laser frequencies.
 
-'''
+"""
+
 import os
 import sqlite3
 import sys
@@ -16,43 +17,74 @@ import traceback
 import matplotlib.pyplot as plt
 import numpy as np
 
-import MPLPlotter as plot
+import MPLPlotter as Plot
 import Measurement.MeasLoad as Meas
 import Physics as Physics
 from DBIsotope import DBIsotope
 from Spectra.FullSpec import FullSpec
 
 
-def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=None,
-            col=None, saving=False, show=True, isom_name=None, prec=10000, clear=False):
-    '''plot isotope iso'''
+def isoPlot(db, iso_name, isovar='', linevar='', as_freq=True, laserfreq=None, col=None, saving=False, show=True,
+            isom_name=None, prec=10000, clear=False, x_transform=None, x_label=None, norm=False):
+    """ Plot isotope iso """
     iso = DBIsotope(db, iso_name, isovar, linevar)
     
     spec = FullSpec(iso)
     
     print(spec.getPars())
     if as_freq:
-        plot.plot(spec.toPlot(spec.getPars(), prec=prec))
+        p = spec.getPars()
+        x, y = spec.toPlot(p, prec=prec)
+        x_c = iso.center
+        if x_transform is not None:
+            x = x_transform(x)
+            x_c = x_transform(iso.center)
+        if norm:
+            y *= 100 / np.max(y)
+        Plot.plot((x, y))
+        if x_label is not None:
+            Plot.get_current_axes().set_xlabel(x_label)
         center_str = '%.1f MHz' % iso.center
         center_color = plt.gca().get_lines()[-1].get_color()
-        plt.axvline(x=iso.center, color=center_color, linestyle='--', label='%s center: %s' % (iso_name, center_str))
+        plt.axvline(x=x_c, color=center_color, linestyle='--')
+        # , label='%s center: %s' % (iso_name, center_str))  Removed because it was kind of redundant.
 
     else:
-        plot.plot(spec.toPlotE(laserfreq, col, spec.getPars()))
-        plot.get_current_axes().set_xlabel('Energy [eV]')
         # convert center frequency to energy
         freq_center = iso.center + iso.freq
         vel_center = Physics.invRelDoppler(laserfreq, freq_center)  # velocity
-        energ_center = (iso.mass * Physics.u * vel_center ** 2) / 2 / Physics.qe
-        center_str = '%.1f eV' % energ_center
+        print('vel_center: ', vel_center)
+        energ_center = Physics.relEnergy(vel_center, iso.mass * Physics.u) / Physics.qe
+        # energ_center = (iso.mass * Physics.u * vel_center ** 2) / 2 / Physics.qe
+        x, y = spec.toPlotE(laserfreq, col, spec.getPars())
+        if x_transform is not None:
+            energ_center = x_transform(energ_center)
+            x = x_transform(x)
+        if norm:
+            y *= 100 / np.max(y)
+        Plot.plot((x, y))
+        if x_label is None:
+            Plot.get_current_axes().set_xlabel('Energy [eV]')
+        else:
+            Plot.get_current_axes().set_xlabel(x_label)
+        print('energy: ', energ_center)
+        center_str = '{:.3f} {}V'.format(energ_center, '' if '[V]' in Plot.get_current_axes()
+                                         .xaxis.get_label().get_text() else 'e')
         center_color = plt.gca().get_lines()[-1].get_color()
-        plt.axvline(x=energ_center, color=center_color, linestyle='--', label='%s center: %s' % (iso_name, center_str))
+        plt.axvline(x=energ_center, color=center_color, linestyle='--')
+        # , label='%s center: %s' % (iso_name, center_str))  Removed because it was kind of redundant.
 
-    plt.gca().get_lines()[-2].set_label(iso_name)
+    if norm:
+        Plot.get_current_axes().set_ylabel('Intensity [%]')
+    plt.gca().get_lines()[-2].set_label(r'{} ({}) $\rightarrow$ {}'
+                                        .format(iso_name, 'col' if col else 'acol', center_str))
     plt.gcf().set_facecolor('w')
-    plt.legend()
+    plt.legend(bbox_to_anchor=(1.04, 1), loc='upper left')
+    plt.tight_layout(rect=[0., 0., 0.75, 1.]) if sys.version_info[0] == 3 and sys.version_info[1] < 6 \
+        else plt.tight_layout()
     if isom_name:
-        isoPlot(db, isom_name, isovar, linevar, as_freq, laserfreq, col, saving, show)
+        isoPlot(db, isom_name, isovar, linevar, as_freq, laserfreq, col, saving, show,
+                x_transform=x_transform, x_label=x_label)
     else:
         if saving:
             db_dir = os.path.dirname(db)
@@ -60,15 +92,18 @@ def isoPlot(db, iso_name, isovar = '', linevar = '', as_freq=True, laserfreq=Non
             if not os.path.isdir(path):
                 os.mkdir(path)
             file_path = os.path.join(path, iso_name + '.png')
-            plot.save(file_path)
+            Plot.save(file_path)
         if show:
-            plot.show()
+            Plot.show()
         if clear:
-            plot.clear()
+            Plot.clear()
 
 
-def centerPlot(db, isoL, linevar = '', width = 1e6):
-    '''Plot kinetic energy / eV, under which isotopes in isoL are on resonace depending on laser frequency up to width MHz away'''
+def centerPlot(db, isoL, linevar='', width=1e6):
+    """
+    Plot kinetic energy / eV, under which isotopes in isoL are on resonace
+    depending on laser frequency up to width MHz away
+    """
     isos = [DBIsotope(db, iso, '', linevar) for iso in isoL]
     
     res = 100
@@ -89,13 +124,13 @@ def centerPlot(db, isoL, linevar = '', width = 1e6):
     plt.legend()
     plt.xlabel("Laser wavenumber / cm^-1")
     plt.ylabel("Ion energy on resonance / eV")
-    plt.axvline(Physics.wavenumber(isos[0].freq), 0, 20000, color = 'k')
+    plt.axvline(Physics.wavenumber(isos[0].freq), 0, 20000, color='k')
     plt.gca().get_xaxis().get_major_formatter().set_useOffset(False)
     plt.show()
     
 
 def crawl(db, crawl='.', rec=True, add_miss_cols=True):
-    '''Crawl the path and add all measurement files to the database, recursively if requested'''
+    """ Crawl the path and add all measurement files to the database, recursively if requested """
     projectPath, dbname = os.path.split(db)
     print("Crawling", projectPath)
     if add_miss_cols:
@@ -160,7 +195,7 @@ def _insertIso(db, iso, mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat,
 
 
 def fileList(db, type):
-    '''Return a list of files with type'''
+    """Return a list of files with type"""
     con = sqlite3.connect(db)
     cur = con.cursor()
     
@@ -171,11 +206,11 @@ def fileList(db, type):
 
 
 def createDB(db):
-    '''Initialize a new database. Does not alter existing tables.'''
+    """Initialize a new database. Does not alter existing tables."""
     print('Initializing database:', db)
     con = sqlite3.connect(db)
     
-    #Isotopes
+    # Isotopes
     con.execute('''CREATE TABLE IF NOT EXISTS Isotopes (
     iso TEXT PRIMARY KEY  NOT NULL,
     mass FLOAT,
@@ -199,7 +234,7 @@ def createDB(db):
     fixedBu BOOL DEFAULT 0
     )''')
     
-    #Lines
+    # Lines
     con.execute('''CREATE TABLE IF NOT EXISTS Lines (
     lineVar TEXT PRIMARY KEY  NOT NULL ,
     reference TEXT,
@@ -214,7 +249,7 @@ def createDB(db):
     FOREIGN KEY (refRun) REFERENCES Runs (run)
     )''')
     
-    #Files
+    # Files
     con.execute('''CREATE TABLE IF NOT EXISTS Files (
     file TEXT PRIMARY KEY NOT NULL,
     filePath TEXT UNIQUE NOT NULL,
@@ -234,7 +269,7 @@ def createDB(db):
     FOREIGN KEY (line) REFERENCES Lines (line)
     )''')
     
-    #Runs
+    # Runs
     con.execute('''CREATE TABLE IF NOT EXISTS Runs (
     run TEXT PRIMARY KEY NOT NULL,
     lineVar TEXT DEFAULT "",
@@ -251,7 +286,7 @@ def createDB(db):
     #     con.execute('''INSERT OR IGNORE INTO Runs VALUES ("Run0", "", "", "[0]", "-1")''')  # for older db versions
 
     
-    #Fit results
+    # Fit results
     con.execute('''CREATE TABLE IF NOT EXISTS FitRes (
     file TEXT NOT NULL,
     iso TEXT NOT NULL,
@@ -263,7 +298,7 @@ def createDB(db):
     FOREIGN KEY (run) REFERENCES Runs (run)
     )''')
     
-    #Combined results (averaged from fit)
+    # Combined results (averaged from fit)
     con.execute('''CREATE TABLE IF NOT EXISTS Combined (
     iso TEXT NOT NULL,
     parname TEXT,
@@ -358,11 +393,13 @@ def add_missing_columns(db):
 
 def extract_from_combined(runs_list, db, isotopes=None, par='shift', print_extracted=False):
     """
-    will extract the results stored in Combined for the given parameter ('shift', 'center' etc.)
-    :param runs_list: list, of strings with the name of the runs that should be extracted
-    :param isotopes: list, of strings, with the isotopes that should be extracted
-    :param par: str, parameter name, that should be extracted
-    :return: dict, {'run_name': {'iso_name_1': (run, val, statErr, systErr, rChi), ...}}
+    Will extract the results stored in Combined for the given parameter ('shift', 'center' etc.).
+
+    :param runs_list: list, of strings with the name of the runs that should be extracted.
+    :param isotopes: list, of strings, with the isotopes that should be extracted.
+    :param par: str, parameter name, that should be extracted.
+    :param print_extracted: Whether to print the extracted information.
+    :return: dict, {'run_name': {'iso_name_1': (run, val, statErr, systErr, rChi), ...}}.
     """
     result_dict = {}
     if runs_list == -1:
@@ -464,18 +501,28 @@ def extract_file_as_ascii(db, file, sc, tr, x_in_freq=False, line_var='', save_t
     if save_to == '':  # automatic determination and store in Ascii_files relative to db
         save_to = os.path.join(os.path.dirname(db), 'Ascii_files', os.path.split(file)[1].split('.')[0] + '.txt')
     meas = Meas.load(file_path, db, raw=not x_in_freq, softw_gates=softw_gates)
+    # sc = [each for each in sc if all(abs(each) < nr_sc for nr_sc in meas.nrScalers)]
     # i want an arith spec for each pmt here:
     arith_spec = [meas.getArithSpec([abs(each)], tr) for each in sc]
     if x_in_freq:
         iso = DBIsotope(db, meas.type, lineVar=line_var)
-        if iso is not None:
-            for i, e in enumerate(arith_spec[0][0]):  # transfer to frequency
+        if hasattr(iso, 'mass') and hasattr(iso, 'freq'):
+            try:
+                for i, e in enumerate(arith_spec[0][0]):  # transfer to frequency
 
-                v = Physics.relVelocity(Physics.qe * e, iso.mass * Physics.u)
-                v = -v if meas.col else v
+                    v = Physics.relVelocity(Physics.qe * e, iso.mass * Physics.u)
+                    v = -v if meas.col else v
 
-                f = Physics.relDoppler(meas.laserFreq, v) - iso.freq
-                arith_spec[0][0][i] = f
+                    f = Physics.relDoppler(meas.laserFreq, v) - iso.freq
+                    arith_spec[0][0][i] = f
+            except TypeError as e:
+                print('TypeError during voltage-to-frequency conversion:\n{}\n'
+                      'Please check the database entries.'.format(repr(e)))
+                return save_to
+        else:
+            print('Chosen isotope or line not available in the database '
+                  '-> voltages cannot be converted into frequencies.\nNo file will be created.')
+            return save_to
 
     if not os.path.exists(os.path.dirname(save_to)):
         os.mkdir(os.path.dirname(save_to))
@@ -523,6 +570,8 @@ def create_header_list(meas, sc, tr):
     header += 'number of scans: %s' % meas.nrScans,
     if tilda_file:
         ret = meas.get_scaler_step_and_bin_num(tr)
+        if not isinstance(ret, list):
+            ret = [ret]
         n_of_scalers_tr, n_of_steps_tr, n_of_bins_tr = zip(*ret)
         header += 'number of steps: %s' % str(n_of_steps_tr),
     else:
@@ -539,7 +588,7 @@ def create_header_list(meas, sc, tr):
 
 if __name__ == '__main__':
     workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
-    db = os.path.join(workdir, 'Ni_workspace.sqlite')
+    db_0 = os.path.join(workdir, 'Ni_workspace.sqlite')
     # save_to = os.path.join(workdir, 'Ascii_files', 'test.txt')
     # # files = ['Ni_April2016_mcp\\58Ni_no_protonTrigger_Run210.mcp',
     # #          'Ni_April2016_mcp\\59Ni_no_protonTrigger_Run113.mcp',
@@ -561,4 +610,4 @@ if __name__ == '__main__':
     # for file in files:
     #     extract_file_as_ascii(db, file, [4, 5, 6, 7],
     #                           -1, line_var='tisa_60_asym_wide', x_in_freq=False)
-    add_missing_columns(db)
+    add_missing_columns(db_0)
