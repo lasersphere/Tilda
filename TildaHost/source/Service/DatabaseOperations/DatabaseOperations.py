@@ -266,7 +266,7 @@ fixedArat, fixedBrat, intScale, fixedInt, relInt, m, midTof) VALUES (?,?,?,?,?,?
 
 def add_new_iso(db, iso, seq_type, exisiting_iso=None):
     """ write an empty isotope dictionary of a given scantype to the database """
-    if iso is '':
+    if iso == '':
         return None
     if iso in check_for_existing_isos(db, seq_type):
         logging.info('isotope ' + iso + ' (' + seq_type + ')' + ' already created, will not be added')
