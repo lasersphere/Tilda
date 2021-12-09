@@ -100,7 +100,7 @@ class PlotThesisGraphics:
                      'sans-serif': 'Verdana',
                      'weight': 'normal',
                      'stretch': 'ultra-condensed',
-                     'size': 11}  # wie in Arbeit
+                     'size': 8}  # wie in Arbeit
 
         mpl.rc('font', **font_plot)
         # mpl.rcParams['mathtext.fontset'] = 'custom'
@@ -108,7 +108,7 @@ class PlotThesisGraphics:
         mpl.rc('lines', linewidth=1)
 
         self.text_style = {'family': 'sans-serif',
-                           'size': 20.,
+                           'size': 8.,
                            }
 
         self.point_style = {'linestyle': '',
@@ -134,7 +134,7 @@ class PlotThesisGraphics:
 
         scl = 25.4  # Scale Factor. Adapt to fit purpose  17 25.4
         w_a4_in = 210/scl  # A4 format pagewidth in inch
-        w_rat = 0.85  # Textwidth used within A4 ~70%
+        w_rat = 0.45  # Textwidth used within A4 ~70%
         self.w_in = w_a4_in * w_rat
 
         h_a4_in = 297/scl  # A4 format pageheight in inch
@@ -976,7 +976,7 @@ class PlotThesisGraphics:
                                gridspec_kw=gs_kw)
 
         # define output size of figure
-        width, height = 0.6, 0.5
+        width, height = 0.9, 0.4
         f.set_size_inches((self.w_in * width, self.h_in * height))
 
         for num, iso in enumerate(sorted(iso_list)):
@@ -2388,7 +2388,7 @@ class PlotThesisGraphics:
 
         fig, ax = plt.subplots(1)
         # define output size of figure
-        width, height = 0.6, 0.3
+        width, height = 1, 0.3
         # f.set_dpi(300.)
         fig.set_size_inches((self.w_in * width, self.h_in * height))
 
@@ -2409,66 +2409,27 @@ class PlotThesisGraphics:
 
         data_dict = {'BECOLA (Exp)': {'data': thisVals, 'color': self.black}}
 
-        # plot BECOLA values
-        src = 'BECOLA (Exp)'
-        col = data_dict[src]['color']
-        data = data_dict[src]['data']
-        keyVals = sorted(data)
-        x = []
-        y = []
-        yerr = []
-        ytiltshift = []
-        for i in keyVals:
-            x.append(int(''.join(filter(str.isdigit, i))))
-            y.append(data[i][0])
-            yerr.append(data[i][1])  # take only IS contributions here
-            ytiltshift.append(data[i][2])  # Fieldshift-Factor, Massshift-Factor uncertainty
-
-        plt.xticks(rotation=0)
-        ax = plt.gca()
-        ax.set_ylabel(r'$R\mathregular{_c\//fm}$')
-        ax.set_xlabel('A')
-
-        # if dash_missing_data:
-        #     # if some isotopes are missing, this dashes the line at these isotopes
-        #     # has no effect when plot_evens_separate is True
-        #     split_x_list = []
-        #     for k, g in groupby(enumerate(x), lambda a: a[0] - a[1]):
-        #         split_x_list.append(list(map(itemgetter(1), g)))
-        #     i = 0
-        #     label_created = False
-        #     for each in split_x_list:
-        #         y_vals = y[i:i + len(each)]
-        #         yerr_vals = yerr[i:i + len(each)]
-        #         if not label_created:  # only create label once
-        #             plt.errorbar(each, y_vals, yerr_vals, fmt='o', color=col, linestyle='-', label=src)
-        #             label_created = True
-        #         else:
-        #             plt.errorbar(each, y_vals, yerr_vals, fmt='o', color=col, linestyle='-')
-        #         # plot dashed lines between missing values
-        #         if len(x) > i + len(each):  # might be last value
-        #             x_gap = [x[i + len(each) - 1], x[i + len(each)]]
-        #             y_gap = [y[i + len(each) - 1], y[i + len(each)]]
-        #             plt.plot(x_gap, y_gap, c=col, linestyle='--')
-        #         i = i + len(each)
-        # else:
-        #     plt.errorbar(x, y, yerr, fmt='o', color=col, linestyle='-')
-        # plot errorband
-        plt.fill_between(x,
-                         np.array(y) - np.array(ytiltshift),
-                         np.array(y) + np.array(ytiltshift),
-                         alpha=0.5, edgecolor=None, facecolor=col, label=src)
-
         # plot theory values
         theory_sets = glob(os.path.join(folder, 'data_*'))
         offsets = [0.02, -0.02, 0.04, -0.04, 0.05, 0.1, -0.05, -0.1, 0.06, -0.06 ,0.06, -0.06, 0.1, -0.1, 0.15, -0.15, 0.2, -0.2]
-        # offsets = [0.04, -0.04, 0.08, -0.08, 0.12, -0.12, 0.16, -0.16]
-        colornum = 1
-        markernum = 0
+        offsets = [0.04, -0.04, -0.08, 0.02, 0.12, -0.02, -0.16, 0.16]
+        markerlist = ['*', 'X',
+                      '^', 'v', '>',
+                      'p', 'h', '8']
+        colorlist = [self.blue, self.blue,
+                     self.orange, self.orange, self.orange,
+                     self.green, self.green, self.green,
+                     self.purple, self.purple, self.purple,
+                     self.orange, self.red, self.purple,
+                     self.dark_blue, self.dark_green, self.yellow, self.dark_purple]
+
         for num, th in enumerate(theory_sets):
             file = th.split('\\')[-1]
             name = file[5:-4]  # remove data_ and .txt
             name = name.replace('slash', '/')
+            name = name.replace('sat', '_{sat}')
+            name = name.replace('go', '_{go}')
+            name = name.replace(' ', '\/')
 
             data = pd.read_csv(th, delimiter=' ', index_col=0, skiprows=[])
 
@@ -2490,18 +2451,37 @@ class PlotThesisGraphics:
                     unc_up = None
 
             if unc_up is not None:
-                plt.errorbar(isos, vals, yerr=(unc_down, unc_up), label=name, marker=self.markerlist[markernum],
-                             linestyle='', color=self.colorlist[colornum])
+                plt.errorbar(isos, vals, yerr=(unc_down, unc_up), label=r'$%s$' % name, marker=markerlist[num],
+                             linestyle='', color=colorlist[num])
             else:  # no uncertainties given
-                plt.plot(isos, vals, label=name, marker=self.markerlist[markernum], linestyle='',
-                         color=self.colorlist[colornum])
+                plt.plot(isos, vals, label=r'$%s$' % name, marker=markerlist[num], linestyle='',
+                         color=colorlist[num])
 
-            colornum += 1
-            if colornum == self.colorlist.__len__():
-                colornum = 0
-            markernum += 1
-            if markernum == self.markerlist.__len__():
-                markernum = 0
+        # plot BECOLA values
+        src = 'BECOLA (Exp)'
+        col = data_dict[src]['color']
+        data = data_dict[src]['data']
+        keyVals = sorted(data)
+        x = []
+        y = []
+        yerr = []
+        ytiltshift = []
+        for i in keyVals:
+            x.append(int(''.join(filter(str.isdigit, i))))
+            y.append(data[i][0])
+            yerr.append(data[i][1])  # take only IS contributions here
+            ytiltshift.append(data[i][2])  # Fieldshift-Factor, Massshift-Factor uncertainty
+
+        plt.xticks(rotation=0)
+        ax = plt.gca()
+        ax.set_ylabel(r'$R\mathregular{_c\//fm}$')
+        ax.set_xlabel('A')
+
+        # plot errorband
+        plt.fill_between(x,
+                         np.array(y) - np.array(ytiltshift),
+                         np.array(y) + np.array(ytiltshift),
+                         alpha=0.5, edgecolor=None, facecolor=col, label=src)
 
 
         # Radii by P.G.Reinhardt
@@ -2537,7 +2517,9 @@ class PlotThesisGraphics:
         handles_sort, labels_sort = zip(*hl)
         handles_print += handles_sort
         labels_print += labels_sort
-        plt.legend(handles_print, labels_print, bbox_to_anchor=(1.0, 0.5), loc='center left', ncol=1)
+        #plt.legend(handles_print, labels_print, bbox_to_anchor=(1.0, 0.5), loc='center left', ncol=1)
+        plt.legend(handles_print, labels_print, bbox_to_anchor=(0.5, 1.0), loc='lower center', ncol=3, fontsize='small',
+                   fancybox=False, edgecolor=self.black)
         plt.margins(0.1)
         plt.gcf().set_facecolor('w')
 
@@ -2545,7 +2527,7 @@ class PlotThesisGraphics:
         # plt.savefig(folder + 'abs_radii_all' + self.ffe, dpi=self.dpi, bbox_inches='tight')
 
         ax.set_xlim((53.5, 60.5))
-        ax.set_ylim((3.605, 3.88))
+        ax.set_ylim((3.6, 3.88))
         plt.savefig(folder + 'abs_radii' + self.ffe, dpi=self.dpi, bbox_inches='tight')
         plt.close()
         plt.clf()
@@ -3256,15 +3238,15 @@ class PlotThesisGraphics:
         data_imsrg2_pp_d = ('N2LO', 0.016, 0.012, 0.012, self.red)
         data_imsrg1_pp_d = ('NLO', 0.037, 0.040, 0.040, self.dark_red)
 
-        # all_theo_data = [data_svmin, data_fayans, data_em1820, data_imsrg]
-        all_theo_data = [data_imsrg1_pp, data_imsrg2_pp, data_imsrg3_pp, data_imsrg4_pp,
-                         data_imsrg1_pp_d, data_imsrg2_pp_d, data_imsrg3_pp_d, data_imsrg4_pp_d]
+        all_theo_data = [data_svmin, data_fayans, data_em1820, data_imsrg]
+        # all_theo_data = [data_imsrg1_pp, data_imsrg2_pp, data_imsrg3_pp, data_imsrg4_pp,
+        #                  data_imsrg1_pp_d, data_imsrg2_pp_d, data_imsrg3_pp_d, data_imsrg4_pp_d]
 
         ''' PREPARE PLOT '''
         folder = os.path.join(self.fig_dir, 'Nickel\\Discussion\\3PointIndicator\\')
         fig, ax = plt.subplots(1)
         # define output size of figure
-        width, height = 0.5, 0.4
+        width, height = 1, 0.25
         # f.set_dpi(300.)
         fig.set_size_inches((self.w_in * width, self.h_in * height))
 
@@ -3274,7 +3256,7 @@ class PlotThesisGraphics:
         ax.text(-1.4, data_exp[1], data_exp[0],
                 horizontalalignment='left', verticalalignment='center', rotation='horizontal',
                 color=self.black, fontweight='bold',
-                **self.ch_dict(self.text_style, {'size': 13})
+                **self.text_style
                 )
         # Theory values as errorbars
         for num, data_set in enumerate(all_theo_data):
@@ -3283,7 +3265,7 @@ class PlotThesisGraphics:
             ax.text(num+0.1, data_set[1], data_set[0],
                     horizontalalignment='left', verticalalignment='center', rotation='vertical',
                     color=data_set[4], fontweight='bold',
-                    **self.ch_dict(self.text_style, {'size': 13})
+                    **self.text_style
                     )
         # horizontal line at zero
         ax.axhline(y=0, color=self.grey, ls='--')
@@ -3341,7 +3323,7 @@ class PlotThesisGraphics:
         f.subplots_adjust(wspace=0, hspace=0)
 
         # define output size of figure
-        width, height = 1, 0.4
+        width, height = 1, 0.25
         # f.set_dpi(300.)
         f.set_size_inches((self.w_in * width, self.h_in * height))
 
@@ -3418,9 +3400,9 @@ class PlotThesisGraphics:
             if np.any(theo_unc):
                 cs = 4
             axes[num].errorbar(range(theo_label.__len__()), theo_vals, yerr=theo_unc, fmt='o', linestyle='', color=color,
-                               capsize=cs, elinewidth=1.5, capthick=1.5)
+                               capsize=cs, elinewidth=1.5, capthick=1.5, markersize=3.5)
             axes[num].set_xticks(range(theo_label.__len__()))
-            axes[num].set_xticklabels(theo_label, rotation=90)
+            axes[num].set_xticklabels(theo_label, rotation=90, va='top')
             axes[num].set_xlim((-0.5, len(theo_label) - 0.5))
             axes[num].set_xlabel(r'{}'.format(name))
             axes[num].axes.tick_params(axis='y', direction='in', left=True, right=False)
@@ -3686,7 +3668,7 @@ if __name__ == '__main__':
     # graphs.a_ratio_comparison()
     # graphs.SNR_analysis()
     # graphs.voltage_deviations()
-    # graphs.all_spectra()
+    graphs.all_spectra()
     # graphs.calibration()
     # graphs.isotope_shifts()
     # graphs.timeres_plot()
