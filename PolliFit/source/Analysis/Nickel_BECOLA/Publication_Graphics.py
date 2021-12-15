@@ -46,7 +46,8 @@ class PlotThesisGraphics:
         """ Colors """
         # Define global color names TODO: Fill and propagate
         self.black = (0, 0, 0)
-        self.grey = (181/255, 181/255, 181/255) # 40% grey
+        self.dark_grey = (83/255, 83/255, 83/255) # 80% grey 0d
+        self.grey = (181/255, 181/255, 181/255) # 40% grey 0b
         self.dark_blue = (36/255, 53/255, 114/255)  # TUD1d
         self.blue = (0/255, 131/255, 204/255)  # TUD2b
         self.green = (153/255, 192/255, 0/255)  # TUD4b
@@ -3219,11 +3220,17 @@ class PlotThesisGraphics:
         Version where the datapoints are given directly.
         """
         ''' DATA (NAME, VALUE, ERROR-, ERROR+, color)'''
-        data_exp = ('Exp', 0.03045, 0.00259, 0.00259, self.grey)
-        data_exp_pp = ('Exp', 0.0312, 0.00259, 0.00259, self.grey)
+        data_exp = ('Ni', 0.03045, 0.00259, 0.00259, self.grey)
+        data_exp_pp = ('Nipp', 0.0312, 0.00259, 0.00259, self.grey)
+        data_exp_K = ('K', 0.0308, 0.0036, 0.0036, self.dark_grey)  # err based on dR^2 Kreim2014; err absRad: 0.0160
+        data_exp_Ca = ('Ca', 0.0296, 0.00184, 0.00184, self.dark_grey)  # err from dR^2 GarciaRuiz2016; err absRad: 0.0128
+        data_exp_Mn = ('Mn', 0.0430, 0.0044, 0.0044, self.dark_grey)  # err from dR^2 Heylen2016; err absRad: 0.0059
+        data_exp_Fe = ('Fe', 0.0403, 0.0050, 0.0050, self.dark_grey)  # err from dR^2 Minamisono2016; err absRad: 0.0055
         data_svmin = ('DFT SVmin', 0.00520, 0.00938, 0.00621, self.green)
         data_fayans = ('DFT Fayans', 0.02275, 0.00672, 0.02756, self.blue)
-        data_em1820 = ('VS-IMSRG EM1.8/2.0', 0.02420, 0.00011, 0.00011, self.purple)
+        data_em1820 = ('VS-IMSRG EM1.8/2.0', 0.02402, 0.000113, 0.000113, self.purple)
+        data_n2losat = ('VS-IMSRG N2LOsat', 0.02520, 0.00061, 0.00061, self.dark_purple)  # from the email
+        data_n2losat = ('VS-IMSRG N2LOsat', 0.02397, 0.0135, 0.0135, self.dark_purple)  # from the datapoints
         data_imsrg = ('mRef-IMSRG/NCSM(N4LO\')', 0.022455, 0.006675, 0.006675, self.orange)
         data_imsrg4 = ('N4LO\'', 0.022455, 0.006675, 0.006675, self.orange)
         data_imsrg3 = ('N3LO', 0.017078, 0.006675, 0.006675, self.dark_orange)
@@ -3238,7 +3245,8 @@ class PlotThesisGraphics:
         data_imsrg2_pp_d = ('N2LO', 0.016, 0.012, 0.012, self.red)
         data_imsrg1_pp_d = ('NLO', 0.037, 0.040, 0.040, self.dark_red)
 
-        all_theo_data = [data_svmin, data_fayans, data_em1820, data_imsrg]
+        other_exp_data = [data_exp_K, data_exp_Ca, data_exp_Mn, data_exp_Fe]
+        all_theo_data = [data_svmin, data_fayans, data_em1820, data_n2losat, data_imsrg]
         # all_theo_data = [data_imsrg1_pp, data_imsrg2_pp, data_imsrg3_pp, data_imsrg4_pp,
         #                  data_imsrg1_pp_d, data_imsrg2_pp_d, data_imsrg3_pp_d, data_imsrg4_pp_d]
 
@@ -3258,11 +3266,20 @@ class PlotThesisGraphics:
                 color=self.black, fontweight='bold',
                 **self.text_style
                 )
+        # Plot experimental values for other elements
+        for num, el in enumerate(other_exp_data):
+            ax.errorbar(-0.3*(num+1), el[1], [[el[2]], [el[3]]],
+                        **self.ch_dict(self.data_style, {'color': el[4]}))
+            ax.text(-0.3*(num+0.9), el[1], el[0],
+                    horizontalalignment='left', verticalalignment='center', rotation='vertical',
+                    color=el[4], fontweight='bold',
+                    **self.text_style
+                    )
         # Theory values as errorbars
         for num, data_set in enumerate(all_theo_data):
-            ax.errorbar(num, data_set[1], [[data_set[2]], [data_set[3]]],
+            ax.errorbar(1*num, data_set[1], [[data_set[2]], [data_set[3]]],
                         **self.ch_dict(self.data_style, {'color': data_set[4]}))
-            ax.text(num+0.1, data_set[1], data_set[0],
+            ax.text(1*(num+0.1), data_set[1], data_set[0],
                     horizontalalignment='left', verticalalignment='center', rotation='vertical',
                     color=data_set[4], fontweight='bold',
                     **self.text_style
