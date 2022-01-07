@@ -2426,7 +2426,7 @@ class PlotThesisGraphics:
 
         for num, th in enumerate(theory_sets):
             file = th.split('\\')[-1]
-            name = file[5:-4]  # remove data_ and .txt
+            name = file[5:-6]  # remove data_ and .txt
             name = name.replace('slash', '/')
             name = name.replace('sat', '_{sat}')
             name = name.replace('go', '_{go}')
@@ -2651,7 +2651,7 @@ class PlotThesisGraphics:
         markernum = 0
         for num, th in enumerate(theory_sets):
             file = th.split('\\')[-1]
-            name = file[5:-4]  # remove data_ and .txt
+            name = file[5:-6]  # remove data_ and .txt
             name = name.replace('slash', '/')
 
             data = pd.read_csv(th, delimiter=' ', index_col=0, skiprows=[])
@@ -2708,6 +2708,273 @@ class PlotThesisGraphics:
         plt.tight_layout(pad=False)
         plt.savefig(folder + 'abs_radii_all' + self.ffe, dpi=self.dpi, bbox_inches='tight')
 
+        plt.close()
+        plt.clf()
+
+    def absradii_chain_errorband_split(self, dash_missing_data=False):
+        # define folder
+        folder = os.path.join(self.fig_dir, 'Nickel\\Discussion\\R_NickelChain\\')
+
+        # Create subplots
+        fig, (ax0, ax1) = plt.subplots(nrows=1, ncols=2, sharex=False, sharey='row',
+                                       gridspec_kw={'width_ratios': [2, 1]})
+        fig.subplots_adjust(wspace=0, hspace=0)
+
+        # define output size of figure
+        width, height = 1.2, 0.3
+        # f.set_dpi(300.)
+        fig.set_size_inches((self.w_in * width, self.h_in * height))
+
+        # get data from results file
+        load_results_from = glob(os.path.join(folder, 'Ni_Results2_*'))[0]
+        results = self.import_results(load_results_from)
+
+        isolist = ['54NiBec', '55Ni', '56Ni', '58Ni']  # BECOLA isotopes , '62NiBec', '64NiBec'
+        # TODO: 58 and 60 from this or from Offline?
+        refiso = '60Ni'
+        prop_key = 'abs_radii'
+
+        thisVals = {key: [results[key]['final'][prop_key]['vals'][0],
+                          results[key]['final'][prop_key]['d_stat'][0],
+                          results[key]['final'][prop_key]['d_syst'][0]]
+                    for key in isolist}
+        # thisVals[refiso] = [3.8058, 0, 0.0017]  # Reference value from literature
+        collapsVals = {'58Ni': [3.770, 0, 0.002],
+                       '59Ni': [3.782, 0, 0.002],
+                       '60Ni': [3.806, 0, 0.002],
+                       '61Ni': [3.817, 0, 0.002]}
+
+        data_dict = {'BECOLA (Exp)': {'data': thisVals, 'color': self.black},
+                     'COLLAPS (Exp)':  {'data': collapsVals, 'color': self.red}}
+
+        # plot theory values
+        best_theory_sets = glob(os.path.join(folder, 'data_*_0*'))
+        all_theory_sets = glob(os.path.join(folder, 'data_*'))
+        offsets = [-0.15, -0.1, -0.05, 0, 0.05, 0.1, 0.15]
+        markerlist = ['o', 'P',
+                      '^', 'v', '>',
+                      's', 'D', 'h']
+        ms = 4  # marker size
+        colorlist = [self.blue, self.blue,
+                     self.orange, self.orange, self.orange,
+                     self.green, self.green, self.green,
+                     self.purple, self.purple, self.purple,
+                     self.orange, self.red, self.purple,
+                     self.dark_blue, self.dark_green, self.yellow, self.dark_purple]
+
+        # PLot Theory
+        for num, th in enumerate(all_theory_sets):
+            file = th.split('\\')[-1]
+            is_best = file[-5] == '0'
+            name = file[5:-6]  # remove data_ and _0.txt
+            name = name.replace('slash', '/')
+            name = name.replace('sat', '_{sat}')
+            name = name.replace('go', '_{go}')
+            name = name.replace("'", '^\prime')
+            name = name.replace('(', '($')
+            name = name.replace(')', '$)')
+
+            data = pd.read_csv(th, delimiter=' ', index_col=0, skiprows=[])
+
+            isos = []
+            vals = []
+            unc_up = []
+            unc_down = []
+            for i, row in data.iterrows():
+                isos.append(i + offsets[num])
+                # isos.append(i)
+                vals.append(row['val'])
+                if 'unc_up' in row:
+                    unc_up.append(row['unc_up'])
+                    unc_down.append(row['unc_down'])
+                elif 'unc' in row:
+                    unc_up.append(row['unc'])
+                    unc_down.append(row['unc'])
+                else:
+                    unc_up = None
+
+            if unc_up is not None:
+                if is_best:
+                    ax0.errorbar(isos, vals, yerr=(unc_down, unc_up), label=r'%s' % name,
+                                 marker=markerlist[num], markersize=ms,
+                                 linestyle='', color=colorlist[num])
+                # plot nickel 56 for all:
+                try:
+                    where56 = isos.index(56 + offsets[num])
+                    ax1.errorbar([56 + offsets[num]], [vals[where56]], yerr=([unc_down[where56]], [unc_up[where56]]),
+                                 label=r'%s' % name, marker=markerlist[num],  markersize=ms,
+                                 linestyle='', color=colorlist[num])
+                except ValueError as verr:
+                    print('56Ni not found for {}'.format(name,))
+            else:  # no uncertainties given
+                ax0.plot(isos, vals, label=r'%s' % name, marker=markerlist[num],  markersize=ms,
+                         linestyle='', color=colorlist[num])
+
+        # plot BECOLA values ########################################
+        src = 'BECOLA (Exp)'
+        col = data_dict[src]['color']
+        data = data_dict[src]['data']
+        keyVals = sorted(data)
+        x = []
+        y = []
+        yerr = []
+        ytiltshift = []
+        i56 = 0
+        for i in keyVals:
+            as_int = int(''.join(filter(str.isdigit, i)))
+            x.append(as_int)
+            y.append(data[i][0])
+            yerr.append(data[i][1])  # take only IS contributions here
+            ytiltshift.append(data[i][2])  # Fieldshift-Factor, Massshift-Factor uncertainty
+
+            if as_int == 56:
+                i56 = i
+
+        if dash_missing_data:
+            # if some isotopes are missing, this dashes the line at these isotopes
+            split_x_list = []
+            for k, g in groupby(enumerate(x), lambda a: a[0] - a[1]):
+                split_x_list.append(list(map(itemgetter(1), g)))
+            i = 0
+            label_created = False
+            for each in split_x_list:
+                y_vals = y[i:i + len(each)]
+                yerr_vals = yerr[i:i + len(each)]
+                ytiltshift_vals = ytiltshift[i:i + len(each)]
+                if not label_created:  # only create label once
+                    ax0.fill_between(each,
+                                         np.array(y_vals) - np.array(ytiltshift_vals),
+                                         np.array(y_vals) + np.array(ytiltshift_vals),
+                                         alpha=0.5, edgecolor=None, facecolor=col, label=src)
+                    label_created = True
+                else:
+                    ax0.fill_between(each,
+                                         np.array(y_vals) - np.array(ytiltshift_vals),
+                                         np.array(y_vals) + np.array(ytiltshift_vals),
+                                         alpha=0.5, edgecolor=None, facecolor=col)
+                # plot dashed lines between missing values
+                if len(x) > i + len(each):  # might be last value
+                    x_gap = [x[i + len(each) - 1], x[i + len(each)]]
+                    y_gap = [y[i + len(each) - 1], y[i + len(each)]]
+                    ax0.plot(x_gap, y_gap, c=col, linestyle='--', alpha=0.5, linewidth=1.5)
+                i = i + len(each)
+        else:
+            # plot errorband
+            ax0.fill_between(x,
+                             np.array(y) - np.array(ytiltshift),
+                             np.array(y) + np.array(ytiltshift),
+                             alpha=0.5, edgecolor=None, facecolor=col, label=src)
+        # always plot data with stat errorbars
+        ax0.errorbar(x, y, np.array(yerr)+np.array(ytiltshift), ls='', c=col, elinewidth=2)
+
+        # Also print errorband of 56 Ni in second axis
+        ax1.axhspan(data[i56][0]-data[i56][1]-data[i56][2], data[i56][0]+data[i56][1]+data[i56][2],
+                    alpha=0.5, edgecolor=None, facecolor=col)  # , label=src)
+
+        # plot COLLAPS values ######################################
+        src = 'COLLAPS (Exp)'
+        col = data_dict[src]['color']
+        data = data_dict[src]['data']
+        keyVals = sorted(data)
+        x = []
+        y = []
+        yerr = []
+        ytiltshift = []
+        for i in keyVals:
+            as_int = int(''.join(filter(str.isdigit, i)))
+            x.append(as_int)
+            y.append(data[i][0])
+            yerr.append(data[i][1])  # take only IS contributions here
+            ytiltshift.append(data[i][2])  # Fieldshift-Factor, Massshift-Factor uncertainty
+
+        if dash_missing_data:
+            # if some isotopes are missing, this dashes the line at these isotopes
+            split_x_list = []
+            for k, g in groupby(enumerate(x), lambda a: a[0] - a[1]):
+                split_x_list.append(list(map(itemgetter(1), g)))
+            i = 0
+            label_created = False
+            for each in split_x_list:
+                y_vals = y[i:i + len(each)]
+                yerr_vals = yerr[i:i + len(each)]
+                ytiltshift_vals = ytiltshift[i:i + len(each)]
+                if not label_created:  # only create label once
+                    ax0.fill_between(each,
+                                     np.array(y_vals) - np.array(ytiltshift_vals),
+                                     np.array(y_vals) + np.array(ytiltshift_vals),
+                                     alpha=0.5, edgecolor=None, facecolor=col, label=src)
+                    label_created = True
+                else:
+                    ax0.fill_between(each,
+                                     np.array(y_vals) - np.array(ytiltshift_vals),
+                                     np.array(y_vals) + np.array(ytiltshift_vals),
+                                     alpha=0.5, edgecolor=None, facecolor=col)
+                # plot dashed lines between missing values
+                if len(x) > i + len(each):  # might be last value
+                    x_gap = [x[i + len(each) - 1], x[i + len(each)]]
+                    y_gap = [y[i + len(each) - 1], y[i + len(each)]]
+                    ax0.plot(x_gap, y_gap, c=col, linestyle='--', alpha=0.5, linewidth=1.5)
+                i = i + len(each)
+        else:
+            # plot errorband
+            ax0.fill_between(x,
+                             np.array(y) - np.array(ytiltshift),
+                             np.array(y) + np.array(ytiltshift),
+                             alpha=0.5, edgecolor=None, facecolor=col, label=src)
+
+        # Finally also note the reference value ##################
+        ref60 = 3.8059
+        ref60d = 0.0017
+        ax0.plot(60, ref60, marker='*', markersize=4, markerfacecolor=self.black, markeredgecolor=self.black)
+
+        # Set style and legend ###################################
+
+        plt.xticks(rotation=0)
+        ax0.set_ylabel(r'$R\mathregular{_{ch}\/(fm)}$')
+        ax0.set_xlabel('A')
+
+        # add alibi COLLAPS and BECOLA to ax1 so it shows up in the legend
+        # ax1.fill_between([0, 1], 3.6, 3.7, alpha=0.5, edgecolor=None, facecolor=self.red, label='COLLAPS (Exp)')
+        ax1.plot([0,1], [3.6, 3.7],
+                 lw=4, color=(127/255, 127/255, 127/255),
+                 marker='|', markersize=5, markerfacecolor=self.black, markeredgecolor=self.black,
+                 label='BECOLA (Exp)')
+        ax1.plot([0,1], [3.6, 3.7],
+                 lw=4, color=self.red, alpha=0.5,
+                 label='COLLAPS (Exp)')
+        # ax1.plot(0, ref60, ls='', marker='*', markersize=5, markerfacecolor=self.black, markeredgecolor=self.black,
+        #          label='Reference (Exp)')
+
+        # sort legend alphabetically but keep experiment on top
+        handles, labels = ax1.get_legend_handles_labels()
+        expi = [labels.index(i) for i in labels if
+                'Exp' in i]  # first get experiment value(s), so we can put them at the top.
+        exp_handles_print = [handles.pop(i) for i in sorted(expi, reverse=True)][::-1]
+        exp_labels_print = [labels.pop(i) for i in sorted(expi, reverse=True)][::-1]
+        # hl = sorted(zip(handles, labels), key=operator.itemgetter(1))
+        # handles, labels = zip(*hl)
+        handles = exp_handles_print + [h for h in handles]
+        labels = exp_labels_print + [l for l in labels]
+        #plt.legend(handles_print, labels_print, bbox_to_anchor=(1.0, 0.5), loc='center left', ncol=1)
+        ax1.legend(handles, labels, bbox_to_anchor=(1.03, 1.0), loc='lower right', ncol=3, fontsize='small',
+                   fancybox=False, edgecolor=self.black)
+        # ax0.margins(0.1)
+        plt.gcf().set_facecolor('w')
+
+        # plt.tight_layout(True)
+        # plt.savefig(folder + 'abs_radii_all' + self.ffe, dpi=self.dpi, bbox_inches='tight')
+
+
+        ax1.set_xticks([56])
+        ax1.set_xticklabels([r'Detail: $^{56}$Ni'])
+        # ax1.set_xlabel('Detail')
+        ax1.axes.tick_params(axis='y', direction='in', left=True, right=False)
+
+        ax0.set_xlim((53.5, 60.5))
+        ax0.set_ylim((3.60, 3.84))
+        ax1.set_xlim((56+1.5*offsets[0], 56+1.5*offsets[-1]))
+        ax1.set_ylim((3.60, 3.84))
+        plt.savefig(folder + 'abs_radii_split' + self.ffe, dpi=self.dpi, bbox_inches='tight')
         plt.close()
         plt.clf()
 
@@ -3220,18 +3487,17 @@ class PlotThesisGraphics:
         Version where the datapoints are given directly.
         """
         ''' DATA (NAME, VALUE, ERROR-, ERROR+, color)'''
-        data_exp = ('Ni', 0.03045, 0.00259, 0.00259, self.grey)
+        data_exp = ('Ni', 0.03045, 0.00259, 0.00259, self.black)
         data_exp_pp = ('Nipp', 0.0312, 0.00259, 0.00259, self.grey)
-        data_exp_K = ('K', 0.0308, 0.0036, 0.0036, self.dark_grey)  # err based on dR^2 Kreim2014; err absRad: 0.0160
-        data_exp_Ca = ('Ca', 0.0296, 0.00184, 0.00184, self.dark_grey)  # err from dR^2 GarciaRuiz2016; err absRad: 0.0128
-        data_exp_Mn = ('Mn', 0.0430, 0.0044, 0.0044, self.dark_grey)  # err from dR^2 Heylen2016; err absRad: 0.0059
-        data_exp_Fe = ('Fe', 0.0403, 0.0050, 0.0050, self.dark_grey)  # err from dR^2 Minamisono2016; err absRad: 0.0055
-        data_svmin = ('DFT SVmin', 0.00520, 0.00938, 0.00621, self.green)
-        data_fayans = ('DFT Fayans', 0.02275, 0.00672, 0.02756, self.blue)
-        data_em1820 = ('VS-IMSRG EM1.8/2.0', 0.02402, 0.000113, 0.000113, self.purple)
-        data_n2losat = ('VS-IMSRG N2LOsat', 0.02520, 0.00061, 0.00061, self.dark_purple)  # from the email
-        data_n2losat = ('VS-IMSRG N2LOsat', 0.02397, 0.0135, 0.0135, self.dark_purple)  # from the datapoints
-        data_imsrg = ('mRef-IMSRG/NCSM(N4LO\')', 0.022455, 0.006675, 0.006675, self.orange)
+        data_exp_K = ('K', 0.0308, 0.0036, 0.0036, self.black)  # err based on dR^2 Kreim2014; err absRad: 0.0160
+        data_exp_Ca = ('Ca', 0.0296, 0.00184, 0.00184, self.black)  # err from dR^2 GarciaRuiz2016; err absRad: 0.0128
+        data_exp_Mn = ('Mn', 0.0430, 0.0044, 0.0044, self.black)  # err from dR^2 Heylen2016; err absRad: 0.0059
+        data_exp_Fe = ('Fe', 0.0403, 0.0050, 0.0050, self.black)  # err from dR^2 Minamisono2016; err absRad: 0.0055
+        data_svmin = (r'DFT($SVmin$)', 0.00520, 0.00938, 0.00621, self.green)
+        data_fayans = (r'DFT($Fayans$)', 0.02275, 0.00672, 0.02756, self.blue)
+        data_em1820 = (r'VS-IMSRG($EM1.8/2.0$)', 0.02402, 0.000113, 0.000113, self.purple)
+        data_n2losat = (r'VS-IMSRG($N2LO_{sat}$)', 0.017861, 0.005842451, 0.005842451, self.dark_purple)  # pf-only 2022
+        data_imsrg = (r'IM-NCSM($N4LO^\prime$)', 0.022455, 0.006675, 0.006675, self.orange)
         data_imsrg4 = ('N4LO\'', 0.022455, 0.006675, 0.006675, self.orange)
         data_imsrg3 = ('N3LO', 0.017078, 0.006675, 0.006675, self.dark_orange)
         data_imsrg2 = ('N2LO', 0.016111, 0.013039, 0.013039, self.red)
@@ -3245,8 +3511,8 @@ class PlotThesisGraphics:
         data_imsrg2_pp_d = ('N2LO', 0.016, 0.012, 0.012, self.red)
         data_imsrg1_pp_d = ('NLO', 0.037, 0.040, 0.040, self.dark_red)
 
-        other_exp_data = [data_exp_K, data_exp_Ca, data_exp_Mn, data_exp_Fe]
-        all_theo_data = [data_svmin, data_fayans, data_em1820, data_n2losat, data_imsrg]
+        exp_data = [data_exp, data_exp_Fe, data_exp_Mn, data_exp_Ca, data_exp_K]
+        all_theo_data = [data_fayans, data_n2losat, data_imsrg]  #data_svmin,
         # all_theo_data = [data_imsrg1_pp, data_imsrg2_pp, data_imsrg3_pp, data_imsrg4_pp,
         #                  data_imsrg1_pp_d, data_imsrg2_pp_d, data_imsrg3_pp_d, data_imsrg4_pp_d]
 
@@ -3260,26 +3526,42 @@ class PlotThesisGraphics:
 
         ''' PLOT '''
         # Experimental value as a band
-        ax.axhspan(data_exp[1]-data_exp[2], data_exp[1]+data_exp[3], color=data_exp[4])
-        ax.text(-1.4, data_exp[1], data_exp[0],
+        # ax.axhspan(ymin=data_exp[1]-data_exp[2], ymax=data_exp[1]+data_exp[3],
+        #            xmin=0.2, xmax=1,
+        #            color=self.grey)
+        ax.add_patch(Rectangle((0, data_exp[1]-data_exp[2]), 10, data_exp[2]+data_exp[3], color=self.grey))
+        # ax.text(-1.4, data_exp[1], data_exp[0],
+        #         horizontalalignment='left', verticalalignment='center', rotation='horizontal',
+        #         color=self.black, fontweight='bold',
+        #         **self.text_style
+        #         )
+        ax.text(-0.5*len(exp_data)+0.1, 0.05, "Experiment (N=28)",
                 horizontalalignment='left', verticalalignment='center', rotation='horizontal',
                 color=self.black, fontweight='bold',
                 **self.text_style
                 )
-        # Plot experimental values for other elements
-        for num, el in enumerate(other_exp_data):
-            ax.errorbar(-0.3*(num+1), el[1], [[el[2]], [el[3]]],
+        ax.text(0.5*len(all_theo_data)+0.4, 0.05, "Theory (Ni)",
+                horizontalalignment='right', verticalalignment='center', rotation='horizontal',
+                color=self.black, fontweight='bold',
+                **self.text_style
+                )
+
+        # Plot experimental values for all elements with errorbars
+        for num, el in enumerate(exp_data):
+            ax.errorbar(0.5*(-num), el[1], [[el[2]], [el[3]]],
                         **self.ch_dict(self.data_style, {'color': el[4]}))
-            ax.text(-0.3*(num+0.9), el[1], el[0],
+            ax.text(0.5*(-num-0.5), el[1], el[0],
                     horizontalalignment='left', verticalalignment='center', rotation='vertical',
                     color=el[4], fontweight='bold',
                     **self.text_style
                     )
+        ax.axvline(x=0.25, color=self.black)
+
         # Theory values as errorbars
         for num, data_set in enumerate(all_theo_data):
-            ax.errorbar(1*num, data_set[1], [[data_set[2]], [data_set[3]]],
+            ax.errorbar(0.5*(num+1), data_set[1], [[data_set[2]], [data_set[3]]],
                         **self.ch_dict(self.data_style, {'color': data_set[4]}))
-            ax.text(1*(num+0.1), data_set[1], data_set[0],
+            ax.text(0.5*(num+1.2), data_set[1], data_set[0],
                     horizontalalignment='left', verticalalignment='center', rotation='vertical',
                     color=data_set[4], fontweight='bold',
                     **self.text_style
@@ -3289,8 +3571,8 @@ class PlotThesisGraphics:
 
         ax.set_xticks([])
         ax.axes.tick_params(axis='y', direction='out', right=False)
-        ax.set_ylabel(r'$\Delta_{2n}^{(3)}R_\mathregular{c}$ /fm')
-        ax.set_xlim([-1.5, len(all_theo_data)-0.5])
+        ax.set_ylabel(r'$\Delta_{2n}^{(3)}R_\mathregular{ch}$ (fm)')
+        ax.set_xlim([-0.5*len(exp_data), 0.5*len(all_theo_data)+0.5])
 
         plt.savefig(folder + 'three_point_ind_hardcode' + self.ffe, dpi=self.dpi, bbox_inches='tight')
         plt.close()
@@ -3695,14 +3977,15 @@ if __name__ == '__main__':
     #
     # ''' Discussion '''
     # graphs.Q_nickel55()
-    graphs.absradii_chain_errorband_all()
+    # graphs.absradii_chain_errorband_all()
     # graphs.absradii_neighborhood()
     # graphs.deltarad_chain_errorband()
-    graphs.absradii_chain_errorband()
-    graphs.three_point_indicator()
+    # graphs.absradii_chain_errorband()
+    graphs.absradii_chain_errorband_split(dash_missing_data=True)
+    # graphs.three_point_indicator()
     graphs.three_point_indicator_hardcoded()
-    graphs.absrad56()
-    graphs.mu_nickel55()
+    # graphs.absrad56()
+    # graphs.mu_nickel55()
 
 
 
