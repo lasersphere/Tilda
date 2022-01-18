@@ -94,6 +94,7 @@ class Main(QtCore.QObject):
         self.laserfreq = 0  # laser frequency in cm-1; first set in load_options
         self.acc_voltage = 0  # acceleration voltage of the source in volts
         self.simple_counter_inst = None
+        self.cnt_pars = {}
         self.cmd_queue = None
         self.jobs_to_do_when_idle_queue = []
         self.autostart_dict = {}  # dict containing all infos from the autostart.xml file keys are: workingDir,
