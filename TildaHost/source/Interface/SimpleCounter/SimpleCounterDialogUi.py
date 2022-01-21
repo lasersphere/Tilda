@@ -9,6 +9,7 @@ Description: Dialog to control the Simple Counter while this is running.
 
 from PyQt5 import QtWidgets, QtGui
 
+import logging
 from Interface.SimpleCounter.Ui_Simp_Count_Dial import Ui_Dialog_simpleCounterControl
 import Application.Config as Cfg
 import ast
@@ -17,7 +18,7 @@ from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
 import Interface.TriggerWidgets.FindDesiredTriggerWidg as FindDesiredTriggerWidg
 from Interface.SimpleCounter.NoTGWidgUi import NoTGWidg
 from Interface.SimpleCounter.TGWidgUi import TGWidg
-import Service.Scan.draftScanParameters as dft
+import Service.SimpleCounter.draftCntParameters as dft
 
 
 class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
@@ -27,7 +28,16 @@ class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
         self.start = False
         self.act_pmts = []
         self.datapoints = 0
-        self.buffer_pars = {'trigger': {'meas_trigger': {'type': TiTs.no_trigger}}}
+        if Cfg._main_instance is not None:
+            print(Cfg._main_instance.cnt_pars)
+            self.buffer_pars = deepcopy(Cfg._main_instance.cnt_pars)
+        else:
+            self.buffer_pars = deepcopy(dft.draftCntPars)
+        if self.buffer_pars.get('trigger', None) is None:
+            self.buffer_pars = deepcopy(dft.draftCntPars)
+
+        logging.info('parameters are: %s ' % (self.buffer_pars))
+        #self.buffer_pars = {'trigger': {'meas_trigger': {'type': TiTs.no_trigger}}, 'tg': {'gate_width': 0, 'mid_tof': 0}}
         self.trigger_widget = None
         self.tg_widget = None
 
@@ -54,6 +64,9 @@ class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
         self.exec_()
 
     def ok(self):
+        if Cfg._main_instance is not None:
+            Cfg._main_instance.cnt_pars = deepcopy(self.buffer_pars)
+        logging.info('confirmed cnt dict: %s ' % (self.buffer_pars))
         self.start = True
 
     def cancel(self):
@@ -90,7 +103,7 @@ class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
         if self.tg_widget is not None:
             self.tg_widget.setParent(None)
         if self.buffer_pars['trigger']['meas_trigger']['type'] in [TiTs.single_hit_delay, TiTs.single_hit]:
-            self.tg_widget = TGWidg(self.buffer_pars.get('tg', {}))
+            self.tg_widget = TGWidg(self.buffer_pars.get('trigger', {}).get('tg', {}))
             self.verticalLayout_4.addWidget(self.tg_widget)
         else:
             self.tg_widget = NoTGWidg()

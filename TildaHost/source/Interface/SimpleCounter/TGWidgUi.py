@@ -18,7 +18,23 @@ class TGWidg(QtWidgets.QFrame, Ui_timeGating):
             tg_dict = {}
         self.buffer_pars = tg_dict
 
-        #self.lineEdit_mid_tof.textChanged.connect(self.mid_tof_set)
+        self.lineEdit_mid_tof.textChanged.connect(self.mid_tof_set)
+        self.lineEdit_gate_width.textChanged.connect(self.gate_width_set)
+
+        self.set_vals_by_dict()
+
+    def set_vals_by_dict(self):
+        #hier Einträge setzten+
+        mid_tof = str(self.buffer_pars['mid_tof'])
+        self.label_mid_tof.setText(mid_tof)
+        gate_width = str(self.buffer_pars['gate_width'])
+        self.label_gate_width.setText(gate_width)
 
     def mid_tof_set(self, value):
-        self.buffer_pars['tg']['mid_tof'] = value
+        self.buffer_pars['mid_tof']=value
+
+    def gate_width_set(self, value):
+        self.buffer_pars['gate_width']=value
+
+    def get_tg_pars(self):  #TODO: irgendwo muss das aufgerufen werden, damit die buffer pars an den simplecounter gehen
+        return self.buffer_pars

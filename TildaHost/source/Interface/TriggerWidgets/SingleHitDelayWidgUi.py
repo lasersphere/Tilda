@@ -53,6 +53,7 @@ class SingelHitDelay(BaseTriggerWidgUi, Ui_single_hit_delay_widg):
         self.buffer_pars['trigEdge'] = edge_str
         self.label_selected_trigger_edge.setText(edge_str)
 
+
     def trig_delay_set(self, val):
         self.buffer_pars['trigDelay10ns'] = int(val * (10 ** 2))
         self.label_trigDelay_mus_set.setText(str(val))
