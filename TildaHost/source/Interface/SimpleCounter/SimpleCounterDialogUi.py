@@ -37,7 +37,7 @@ class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
             self.buffer_pars = deepcopy(dft.draftCntPars)
 
         logging.info('parameters are: %s ' % (self.buffer_pars))
-        #self.buffer_pars = {'trigger': {'meas_trigger': {'type': TiTs.no_trigger}}, 'tg': {'gate_width': 0, 'mid_tof': 0}}
+
         self.trigger_widget = None
         self.tg_widget = None
 
@@ -53,13 +53,15 @@ class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
         self.lineEdit_act_pmts.setText('0, 1, 2, 3')
         self.spinBox_plotpoints.setValue(600)
 
-        trig_type = TiTs.no_trigger
-        self.comboBox_triggerSelect.setCurrentText(trig_type.name)
-        self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger',{}).get('meas_trigger',{}))
+        trig_type = self.buffer_pars['trigger']['meas_trigger']['type']
+
+        #self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger',{}).get('meas_trigger',{}))
         self.verticalLayout_trigger.replaceWidget(self.widget_trigger_place_holder, self.trigger_widget)
         self.tg_widget = NoTGWidg()
         self.verticalLayout_4.replaceWidget(self.widget_timeGate_place_holder, self.tg_widget)
         self.comboBox_triggerSelect.addItems(tr.name for tr in TiTs)
+        self.comboBox_triggerSelect.setCurrentText(trig_type.name)
+        self.trigger_select(trig_type.name)
 
         self.exec_()
 
@@ -103,7 +105,7 @@ class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
         if self.tg_widget is not None:
             self.tg_widget.setParent(None)
         if self.buffer_pars['trigger']['meas_trigger']['type'] in [TiTs.single_hit_delay, TiTs.single_hit]:
-            self.tg_widget = TGWidg(self.buffer_pars.get('trigger', {}).get('tg', {}))
+            self.tg_widget = TGWidg(self.buffer_pars)
             self.verticalLayout_4.addWidget(self.tg_widget)
         else:
             self.tg_widget = NoTGWidg()

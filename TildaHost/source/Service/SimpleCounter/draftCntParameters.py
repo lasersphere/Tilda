@@ -13,10 +13,7 @@ draftCntPars = {
     'trigger': {
         'meas_trigger': {
             'type': TiTs.no_trigger
-        },
-        'tg': {
-            'gate_width': 0,
-            'mid_tof': 0
         }
-    }
+    },
+    'nOfBins': 1000,
 }

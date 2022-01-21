@@ -24,17 +24,27 @@ class TGWidg(QtWidgets.QFrame, Ui_timeGating):
         self.set_vals_by_dict()
 
     def set_vals_by_dict(self):
-        #hier Einträge setzten+
-        mid_tof = str(self.buffer_pars['mid_tof'])
+        #hier Einträge setzten
+        try:
+            gate_width=self.buffer_pars['nOfBins']/100
+        except:
+            gate_width = 10
+            self.buffer_pars['nOfBins'] = gate_width * 100
+        try:
+            mid_tof = self.buffer_pars['trigger']['meas_trigger']['trigDelay10ns']/100 + gate_width/2
+        except:
+            mid_tof = gate_width/2
+            self.buffer_pars['trigger']['meas_trigger']['trigDelay10ns'] = str(gate_width / 2 * 100)
+        gate_width = str(gate_width)
+        mid_tof = str(mid_tof)
         self.label_mid_tof.setText(mid_tof)
-        gate_width = str(self.buffer_pars['gate_width'])
         self.label_gate_width.setText(gate_width)
 
     def mid_tof_set(self, value):
-        self.buffer_pars['mid_tof']=value
+        self.buffer_pars['trigger']['meas_trigger']['trigDelay10ns'] = int(value) * 100 - int(self.buffer_pars['nOfBins']) / 2
 
     def gate_width_set(self, value):
-        self.buffer_pars['gate_width']=value
+        self.buffer_pars['nOfBins'] = int(value) * 100
 
     def get_tg_pars(self):  #TODO: irgendwo muss das aufgerufen werden, damit die buffer pars an den simplecounter gehen
         return self.buffer_pars
