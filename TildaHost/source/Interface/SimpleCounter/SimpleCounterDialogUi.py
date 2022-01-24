@@ -74,6 +74,17 @@ class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
     def cancel(self):
         self.start = False
 
+    def update_trigg_menue(self):
+        logging.info('Sth changed')
+        self.trigger_widget.set_vals_by_dict()
+
+        #self.verticalLayout_trigger.removeWidget(self.trigger_widget)
+
+        #if self.trigger_widget is not None:
+            #self.trigger_widget.setParent(None)
+        #self.trigger_widget = FindDesiredTriggerWidg.find_trigger_widget(self.buffer_pars.get('trigger',{}).get('meas_trigger', {}))
+        #self.verticalLayout_trigger.addWidget(self.trigger_widget)
+
     def set_act_pmts(self, lis_str):
         """ convert input line to list and set the label """
         if type(lis_str) == str:
@@ -106,6 +117,8 @@ class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
             self.tg_widget.setParent(None)
         if self.buffer_pars['trigger']['meas_trigger']['type'] in [TiTs.single_hit_delay, TiTs.single_hit]:
             self.tg_widget = TGWidg(self.buffer_pars)
+            self.tg_widget.lineEdit_mid_tof.textChanged.connect(self.update_trigg_menue)
+            self.tg_widget.lineEdit_gate_width.textChanged.connect(self.update_trigg_menue)
             self.verticalLayout_4.addWidget(self.tg_widget)
         else:
             self.tg_widget = NoTGWidg()

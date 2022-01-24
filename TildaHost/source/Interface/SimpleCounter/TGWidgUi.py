@@ -6,6 +6,7 @@ Created on 2021-11-30
 Module Description:
 """
 
+import logging
 from Interface.SimpleCounter.Ui_timeGating import Ui_timeGating
 from PyQt5 import QtWidgets
 
@@ -35,16 +36,21 @@ class TGWidg(QtWidgets.QFrame, Ui_timeGating):
         except:
             mid_tof = gate_width/2
             self.buffer_pars['trigger']['meas_trigger']['trigDelay10ns'] = str(gate_width / 2 * 100)
-        gate_width = str(gate_width)
-        mid_tof = str(mid_tof)
-        self.label_mid_tof.setText(mid_tof)
-        self.label_gate_width.setText(gate_width)
+        self.label_mid_tof.setText(str(mid_tof))
+        self.label_gate_width.setText(str(gate_width))
 
     def mid_tof_set(self, value):
-        self.buffer_pars['trigger']['meas_trigger']['trigDelay10ns'] = int(value) * 100 - int(self.buffer_pars['nOfBins']) / 2
+        try:
+            self.buffer_pars['trigger']['meas_trigger']['trigDelay10ns'] = int(value) * 100 - int(self.buffer_pars['nOfBins']) / 2
+            self.set_vals_by_dict()
+        except:
+            logging.info('Wrong input for ToF')
 
     def gate_width_set(self, value):
+        mid_tof = (int(self.buffer_pars['trigger']['meas_trigger']['trigDelay10ns']) + int(self.buffer_pars['nOfBins']) / 2) /100
         self.buffer_pars['nOfBins'] = int(value) * 100
+        self.buffer_pars['trigger']['meas_trigger']['trigDelay10ns'] = (mid_tof - int(value) / 2) * 100
+        self.set_vals_by_dict()
 
     def get_tg_pars(self):  #TODO: irgendwo muss das aufgerufen werden, damit die buffer pars an den simplecounter gehen
         return self.buffer_pars
