@@ -59,9 +59,9 @@ class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
         self.tg_widget = NoTGWidg()
         self.verticalLayout_trigger.replaceWidget(self.widget_trigger_place_holder, self.trigger_widget)    # trigger
         self.verticalLayout_4.replaceWidget(self.widget_timeGate_place_holder, self.tg_widget)  # time gate
-        self.comboBox_triggerSelect.addItems(tr.name for tr in TiTs)    # add trigger types to trigger menue
-        self.comboBox_triggerSelect.setCurrentText(self.buffer_pars['trigger']['meas_trigger']['type'].name)    # set
-        # trigger to last used trigger
+        self.comboBox_triggerSelect.addItems(tr.name for tr in TiTs if
+                                             tr.name == 'no_trigger' or tr.name == 'single_hit_delay')    # add trigger
+                                                                                                # types to trigger menue
 
         self.exec_()
 
