@@ -932,6 +932,10 @@ class Main(QtCore.QObject):
 
     """ simple counter """
 
+    def add_seqType_to_cnt_pars(self, seq_type):
+        self.cnt_pars['cntData'] = seq_type
+        logging.debug('cnt_pars are:' +  str(self.cnt_pars))
+
     def start_simple_counter(self, act_pmt_list, datapoints, callback_sig, sample_interval):
         self.set_state(MainState.starting_simple_counter,
                        (act_pmt_list, datapoints, callback_sig, sample_interval), only_if_idle=True)
@@ -940,6 +944,8 @@ class Main(QtCore.QObject):
         if self.scan_main.sequencer is not None:
             self.scan_main.deinit_fpga()
         self.simple_counter_inst = SimpleCounterControl(act_pmt_list, datapoints, callback_sig, sample_interval)
+
+        #TODO here you have to start the simple counter and send the trigger parameters to the fpga
         ret = self.simple_counter_inst.run()
         if ret:
             pass

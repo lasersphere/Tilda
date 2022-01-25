@@ -26,7 +26,7 @@ class SimpleCounterControl:
         self.sc = None
         # must start reading immediately because otherwise fpga overfills buffer
 
-    def run(self):
+    def run(self):  #Todo: anpassen, sodass Trigger-Parameter auf FPGA geladen werden
         """
         start the simple counter bitfile on the fpga
         """

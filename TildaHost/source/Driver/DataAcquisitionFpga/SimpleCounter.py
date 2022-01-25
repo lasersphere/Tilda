@@ -11,11 +11,12 @@ Module Description: Driver Interface for the Simple Counter bitfile,
 from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 import Driver.DataAcquisitionFpga.SimpleCounterConfig as ScCfg
 import Service.VoltageConversions.VoltageConversions as VCon
+from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
 
 import time
 
 
-class SimpleCounter(FPGAInterfaceHandling):
+class SimpleCounter(Sequencer):
     def __init__(self):
         self.type = 'sc'
         bit_path = ScCfg.bitfilePath
@@ -67,3 +68,10 @@ class SimpleCounter(FPGAInterfaceHandling):
             if val == post_acc_state:
                 post_acc_name = key
         return post_acc_state, post_acc_name
+
+    def set_all_simpCnt_parameters(self, cntpars):
+        """
+        all parameters needed for the simple counting are set here
+        """
+        self.set_trigger(cntpars.get('trigger', {}))
+        pass

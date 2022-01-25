@@ -33,9 +33,9 @@ class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
         if Cfg._main_instance is not None:
             self.buffer_pars = deepcopy(Cfg._main_instance.cnt_pars)
         else:
-            self.buffer_pars = deepcopy(dft.draftCntPars)
+            self.buffer_pars = deepcopy(dft.draftTimingPars)
         if self.buffer_pars.get('trigger', None) is None:
-            self.buffer_pars = deepcopy(dft.draftCntPars)
+            self.buffer_pars = deepcopy(dft.draftTimingPars)
         logging.info('parameters are: %s ' % (self.buffer_pars))
 
         ''' setup gui and widgets'''
@@ -70,7 +70,8 @@ class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
         if ok button is pressed, the buffer parameters are given to the main instance and the measurement is started
         """
         if Cfg._main_instance is not None:
-            Cfg._main_instance.cnt_pars = deepcopy(self.buffer_pars)
+            Cfg._main_instance.add_seqType_to_cnt_pars('smplCnt')
+            Cfg._main_instance.cnt_pars['timing'] = deepcopy(self.buffer_pars)
         logging.info('confirmed cnt dict: %s ' % (self.buffer_pars))
         self.start = True
 
