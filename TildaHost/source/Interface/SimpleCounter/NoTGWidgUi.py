@@ -3,7 +3,7 @@ Created on 2021-11-30
 
 @author: lrenth
 
-Module Description:
+Module Description: empty widget as a place holder if no time gate is needed
 """
 
 from Interface.SimpleCounter.Ui_no_TG import Ui_no_tg_widg
