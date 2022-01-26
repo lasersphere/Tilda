@@ -78,8 +78,8 @@ class SimpleCounter(Sequencer):
         """
         all parameters needed for the simple counting are set here
         """
-        self.set_trigger(cntpars.get('trigger', {}))
-        pass
+        self.set_trigger(cntpars.get('timing', {}).get('trigger', {}))
+        return self.checkFpgaStatus()
 
     ''' performe measurement '''
     def measure(self, cnt_pars):
