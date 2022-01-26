@@ -13,6 +13,8 @@ from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandli
 import Driver.DataAcquisitionFpga.SimpleCounterConfig as ScCfg
 import Service.VoltageConversions.VoltageConversions as VCon
 from Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
+from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
+
 
 import time
 
@@ -108,22 +110,12 @@ class SimpleCounter(Sequencer):
                               'triggerEdge': self.config.triggerEdge,
                               'softwareTrigger': self.config.softwareTrigger}
 
-        step_trigger_controls = {'triggerTypes': self.config.stepTriggerTypes,
-                              'selectTrigger': self.config.selectStepTrigger,
-                              'trigDelay10ns': self.config.stepTrigDelay10ns,
-                              'triggerEdge': self.config.stepTriggerEdge,
-                              'softwareTrigger': self.config.softwareStepTrigger}
-        scan_trigger_controls = {'triggerTypes': self.config.scanTriggerTypes,
-                              'selectTrigger': self.config.selectScanTrigger,
-                              'trigDelay10ns': self.config.scanTrigDelay10ns,
-                              'triggerEdge': self.config.scanTriggerEdge,
-                              'softwareTrigger': self.config.softwareScanTrigger}
         trig_fpga_status = True
         for triggers, trig_dicts in trigger_dict.items():
             controls = {}
             if triggers == 'meas_trigger': controls = meas_trigger_controls
-            elif triggers == 'step_trigger': controls = step_trigger_controls
-            elif triggers == 'scan_trigger': controls = scan_trigger_controls
+            #elif triggers == 'step_trigger': controls = step_trigger_controls
+            #elif triggers == 'scan_trigger': controls = scan_trigger_controls
 
             trigger_type = trig_dicts.get('type', TiTs.no_trigger)
             logging.debug('setting trigger type to: ' + str(trigger_type) + ' value: ' + str(trigger_type.value))
@@ -137,17 +129,5 @@ class SimpleCounter(Sequencer):
                 trig_num = ['either', 'rising', 'falling'].index(trig_dicts.get('trigEdge', 'rising'))
                 logging.debug('triggernum is: %s' % trig_num)
                 self.ReadWrite(controls['triggerEdge'], trig_num)
-                trig_fpga_status = trig_fpga_status and self.checkFpgaStatus()
-            elif trigger_type is TiTs.single_hit:
-                trig_num = ['either', 'rising', 'falling'].index(trig_dicts.get('trigEdge', 'rising'))
-                logging.debug('triggernum is: %s' % trig_num)
-                self.ReadWrite(controls['triggerEdge'], trig_num)
-                self.ReadWrite(controls['selectTrigger'], trig_dicts.get('trigInputChan', 0))
-                trig_fpga_status = trig_fpga_status and self.checkFpgaStatus()
-            elif trigger_type is TiTs.sweep:
-                trig_num = ['either', 'rising', 'falling'].index(trig_dicts.get('trigEdge', 'rising'))
-                logging.debug('triggernum is: %s' % trig_num)
-                self.ReadWrite(controls['triggerEdge'], trig_num)
-                self.ReadWrite(controls['selectTrigger'], trig_dicts.get('trigInputChan', 0))
                 trig_fpga_status = trig_fpga_status and self.checkFpgaStatus()
         return trig_fpga_status
