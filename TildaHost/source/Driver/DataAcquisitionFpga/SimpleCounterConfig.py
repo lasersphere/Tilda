@@ -56,3 +56,5 @@ transferToHostReqEle = 50000
 
 dacState = {'init': 0, 'idle': 1, 'setVolt': 2, 'error': 3}
 postAccOffsetVoltStateDict = {'Kepco': 0, 'Heinzinger1': 1, 'Heinzinger2': 2, 'Heinzinger3': 3, 'loading': 4}
+
+seq_type = 'smplCnt'

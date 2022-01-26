@@ -34,8 +34,10 @@ class SimpleCounterDialogUi(QtWidgets.QDialog, Ui_Dialog_simpleCounterControl):
             self.buffer_pars = deepcopy(Cfg._main_instance.cnt_pars)
         else:
             self.buffer_pars = deepcopy(dft.draftTimingPars)
-        if self.buffer_pars.get('trigger', None) is None:
+        if self.buffer_pars.get('timing', None) is None:
             self.buffer_pars = deepcopy(dft.draftTimingPars)
+        else:
+            self.buffer_pars = self.buffer_pars['timing']
         logging.info('parameters are: %s ' % (self.buffer_pars))
 
         ''' setup gui and widgets'''

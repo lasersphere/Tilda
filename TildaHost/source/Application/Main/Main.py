@@ -943,17 +943,19 @@ class Main(QtCore.QObject):
     def _start_simple_counter(self, act_pmt_list, datapoints, callback_sig, sample_interval):
         if self.scan_main.sequencer is not None:
             self.scan_main.deinit_fpga()
+        ''' create Simple Counter instance'''
         self.simple_counter_inst = SimpleCounterControl(act_pmt_list, datapoints, callback_sig, sample_interval)
-
-        #TODO here you have to start the simple counter and send the trigger parameters to the fpga
-        ret = self.simple_counter_inst.run()
-        if ret:
-            pass
+        start_ok = False
+        if self.simple_counter_inst.prepare_cnt():  # find and prepare FPGA
+            start_ok = self.simple_counter_inst.run(self.cnt_pars)   # send trigger pars to FPGA and start simple coutner
         else:
-            logging.warning('while starting the simple counter bitfile, something did not work.'
-                            ' Don\'t worry, starting DUMMY Simple Counter now.')
             self.simple_counter_inst.run_dummy()
-        self.set_state(MainState.simple_counter_running)
+            start_ok = True
+        if start_ok:
+            self.set_state(MainState.simple_counter_running)
+        else:
+            logging.error('Could not start simple counter')
+            self.set_state(MainState.error)
 
     def _read_data_simple_counter(self):
         self.simple_counter_inst.read_data()

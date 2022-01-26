@@ -26,14 +26,35 @@ class SimpleCounterControl:
         self.sc = None
         # must start reading immediately because otherwise fpga overfills buffer
 
-    def run(self):  #Todo: anpassen, sodass Trigger-Parameter auf FPGA geladen werden
+    def prepare_cnt(self):
+        """
+        Function to prepare the simple counting.
+        This loads the bitfile to the FPGA
+        :return:
+        """
+        # deinitialize FPGA
+        if self.sc is not None:
+            self.sc.DeInitFpga()
+            self.sc = None
+        logging.debug('loading sequencer of type: smplCnt')
+        try:
+            self.sc = SimpleCounter()
+            logging.info('started sequencer of type: smplCnt')
+            return True
+        except:
+            logging.warning('while starting the simple counter bitfile, something did not work.'
+                            ' Don\'t worry, starting DUMMY Simple Counter now.')
+            return False
+
+
+    def run(self, cnt_pars):  #Todo: anpassen, sodass Trigger-Parameter auf FPGA geladen werden
         """
         start the simple counter bitfile on the fpga
         """
-        try:
-            self.sc = SimpleCounter()  # does not go automatically to dummy mode if hardware is not installed.
+        start_ok = self.sc.measure(cnt_pars) # load parameters on fpga
+        if start_ok:
             return True
-        except Exception as e:
+        else:
             logging.error('error: could not start simple counter, error is: %s ' % e, exc_info=True)
             return False
 

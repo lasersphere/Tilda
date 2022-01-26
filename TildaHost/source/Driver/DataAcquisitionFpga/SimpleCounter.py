@@ -7,6 +7,7 @@ Module Description: Driver Interface for the Simple Counter bitfile,
  which should read all 8 PMTs with a dwelltime of 200 ms and
  should send all countervalues to the host via DMAQueue
 """
+import logging
 
 from Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 import Driver.DataAcquisitionFpga.SimpleCounterConfig as ScCfg
@@ -19,10 +20,12 @@ import time
 class SimpleCounter(Sequencer):
     def __init__(self):
         self.type = 'sc'
-        bit_path = ScCfg.bitfilePath
-        bit_sig = ScCfg.bitfileSignature
-        res = ScCfg.fpgaResource
-        super(SimpleCounter, self).__init__(bit_path, bit_sig, res)
+        self.config = ScCfg
+        bit_path = self.config.bitfilePath
+        bit_sig = self.config.bitfileSignature
+        res = self.config.fpgaResource
+        super(Sequencer, self).__init__(bit_path, bit_sig, res)
+        #super(SimpleCounter, self).__init__(bit_path, bit_sig, res)
         self.conf_host_buf(ScCfg.transferToHostReqEle)
 
     def conf_host_buf(self, num_of_request_ele):
@@ -75,3 +78,18 @@ class SimpleCounter(Sequencer):
         """
         self.set_trigger(cntpars.get('trigger', {}))
         pass
+
+    ''' performe measurement '''
+    def measure(self, cnt_pars):
+        """
+        set all counting parameters on the FPGA and go into counting state.
+        FPGA will then measure counts independently from host until host says stop
+        In parallel, host has to read the data from the host sided buffer in parallel.
+        :param cnt_pars: dict: trigger parameters
+        :return: bool: True if successfully changed State
+        """
+        if self.set_all_simpCnt_parameters(cnt_pars):
+            #return self.changeSeqState(self.config.seqStateDict['measureTrack'])
+            return True
+        else:
+            logging.DEBUG('trigger values for simple counter could not be set')
