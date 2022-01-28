@@ -25,7 +25,7 @@ bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
 bitfilePaths = {
     'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                           'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounterV253.lvbitx'),
+                           'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounterV254.lvbitx'),
     'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
                            'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounter_7841_v200.lvbitx')
                 }

@@ -79,6 +79,7 @@ class SimpleCounter(Sequencer):
         all parameters needed for the simple counting are set here
         """
         self.set_trigger(cntpars.get('timing', {}).get('trigger', {}))
+        #TODO: hier muss jetzt das Startsignal an den FPGA übergeben werden.
         return self.checkFpgaStatus()
 
     ''' performe measurement '''
@@ -96,7 +97,6 @@ class SimpleCounter(Sequencer):
         else:
             logging.DEBUG('trigger values for simple counter could not be set')
 
-    #TODO: adjust this function to existing attributes in SimpleCounterConfig
     def set_trigger(self, trigger_dict=None):
         """
         sets all parameters related to the trigger.

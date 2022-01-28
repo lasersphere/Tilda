@@ -47,7 +47,7 @@ class SimpleCounterControl:
             return False
 
 
-    def run(self, cnt_pars):  #Todo: anpassen, sodass Trigger-Parameter auf FPGA geladen werden
+    def run(self, cnt_pars):
         """
         start the simple counter bitfile on the fpga
         """

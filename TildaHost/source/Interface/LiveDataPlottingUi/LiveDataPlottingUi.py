@@ -39,7 +39,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
     # when the pipeline wants to save, this is emitted and it send the pipeData as a dict
     save_callback = QtCore.pyqtSignal(dict)
 
-    # TODO comment
     pre_post_meas_data_dict_callback = QtCore.pyqtSignal(dict)
 
     # dict, fit result plot data callback
@@ -836,8 +835,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 else:
                     self.sum_scaler = [0]
                 self.sum_track = -1
-                self.lineEdit_arith_scaler_input.setText(str(self.sum_scaler))  # TODO change
-                self.lineEdit_sum_all_pmts.setText(str(self.sum_scaler))    # TODO change
+                self.lineEdit_arith_scaler_input.setText(str(self.sum_scaler))
+                self.lineEdit_sum_all_pmts.setText(str(self.sum_scaler))
                 self.function = str(self.sum_scaler)
             else:
                 logging.info('liveplotterui: but specdata is None, so line edit is not set.')
