@@ -79,7 +79,6 @@ class SimpleCounter(Sequencer):
         all parameters needed for the simple counting are set here
         """
         self.set_trigger(cntpars.get('timing', {}).get('trigger', {}))
-        #TODO: hier muss jetzt das Startsignal an den FPGA übergeben werden.
         return self.checkFpgaStatus()
 
     ''' performe measurement '''
@@ -92,10 +91,12 @@ class SimpleCounter(Sequencer):
         :return: bool: True if successfully changed State
         """
         if self.set_all_simpCnt_parameters(cnt_pars):
-            #return self.changeSeqState(self.config.seqStateDict['measureTrack'])
-            return True
+            if self.set_start():
+                return True
+            else:
+                logging.DEBUG('trigger values for simple counter could not be set')
         else:
-            logging.DEBUG('trigger values for simple counter could not be set')
+            logging.DEBUG('Start signal could not be sent to fpga')
 
     def set_trigger(self, trigger_dict=None):
         """
@@ -135,7 +136,7 @@ class SimpleCounter(Sequencer):
     def set_start(self):
         """
         sends start signal to the FPGA to start the SimpleCounter measurement
-        :return:
+        :return: True if self.status == self.statusSuccess, else False
         """
-        dict = {'ref': self.config.}
-        self.ReadWrite()
+        self.ReadWrite(self.config.StartSignal, True)
+        return self.checkFpgaStatus()
