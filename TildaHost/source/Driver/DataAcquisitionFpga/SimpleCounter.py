@@ -78,6 +78,7 @@ class SimpleCounter(Sequencer):
         """
         all parameters needed for the simple counting are set here
         """
+        self.set_dwell_time(cntpars.get('timing', {}).get('nOfBins', None))
         self.set_trigger(cntpars.get('timing', {}).get('trigger', {}))
         return self.checkFpgaStatus()
 
@@ -97,6 +98,10 @@ class SimpleCounter(Sequencer):
                 logging.DEBUG('trigger values for simple counter could not be set')
         else:
             logging.DEBUG('Start signal could not be sent to fpga')
+
+    def set_dwell_time(self, dtime=None):
+        self.ReadWrite(self.config.dwellTime10ns, dtime)
+        return self.checkFpgaStatus()
 
     def set_trigger(self, trigger_dict=None):
         """
