@@ -33,19 +33,20 @@ bitfilePath = bitfilePaths[fpga_type]
 '''FPGA Resource:'''
 fpgaResource = fpga_resource
 '''Indicators:'''
-postAccOffsetVoltState = {'ref': 0x813A, 'val': ctypes.c_ubyte(), 'ctr': False}
-DacState = {'ref': 0x8126, 'val': ctypes.c_uint(), 'ctr': False}
-actDACRegister = {'ref': 0x8128, 'val': ctypes.c_ulong(), 'ctr': False}
+postAccOffsetVoltState = {'ref': 0x813E, 'val': ctypes.c_ubyte(), 'ctr': False}
+DacState = {'ref': 0x812A, 'val': ctypes.c_uint(), 'ctr': False}
+actDACRegister = {'ref': 0x812C, 'val': ctypes.c_ulong(), 'ctr': False}
 '''Controls:'''
-softwareTrigger = {'ref': 0x8116, 'val': ctypes.c_bool(), 'ctr': True}
-postAccOffsetVoltControl = {'ref': 0x8136, 'val': ctypes.c_ubyte(), 'ctr': True}
-selectTrigger = {'ref': 0x8122, 'val': ctypes.c_ubyte(), 'ctr': True}
-triggerEdge = {'ref': 0x811A, 'val': ctypes.c_ubyte(), 'ctr': True}
-DacStateCmdByHost = {'ref': 0x8132, 'val': ctypes.c_uint(), 'ctr': True}
+StartSignal = {'ref': 0x8112, 'val': ctypes.c_bool(), 'ctr': True}
+softwareTrigger = {'ref': 0x811A, 'val': ctypes.c_bool(), 'ctr': True}
+postAccOffsetVoltControl = {'ref': 0x813A, 'val': ctypes.c_ubyte(), 'ctr': True}
+selectTrigger = {'ref': 0x8126, 'val': ctypes.c_ubyte(), 'ctr': True}
+triggerEdge = {'ref': 0x811E, 'val': ctypes.c_ubyte(), 'ctr': True}
+DacStateCmdByHost = {'ref': 0x8136, 'val': ctypes.c_uint(), 'ctr': True}
 triggerTypes = {'ref': 0x810E, 'val': ctypes.c_uint(), 'ctr': True}
-dwellTime10ns = {'ref': 0x8110, 'val': ctypes.c_ulong(), 'ctr': True}
-setDACRegister = {'ref': 0x812C, 'val': ctypes.c_ulong(), 'ctr': True}
-trigDelay10ns = {'ref': 0x811C, 'val': ctypes.c_ulong(), 'ctr': True}
+dwellTime10ns = {'ref': 0x8114, 'val': ctypes.c_ulong(), 'ctr': True}
+setDACRegister = {'ref': 0x8130, 'val': ctypes.c_ulong(), 'ctr': True}
+trigDelay10ns = {'ref': 0x8120, 'val': ctypes.c_ulong(), 'ctr': True}
 '''TargetToHostFifos:'''
 transferToHost = {'ref': 0, 'val': ctypes.c_ulong(), 'ctr': False}
 '''HostToTargetFifos:'''

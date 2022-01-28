@@ -131,3 +131,11 @@ class SimpleCounter(Sequencer):
                 self.ReadWrite(controls['triggerEdge'], trig_num)
                 trig_fpga_status = trig_fpga_status and self.checkFpgaStatus()
         return trig_fpga_status
+
+    def set_start(self):
+        """
+        sends start signal to the FPGA to start the SimpleCounter measurement
+        :return:
+        """
+        dict = {'ref': self.config.}
+        self.ReadWrite()
