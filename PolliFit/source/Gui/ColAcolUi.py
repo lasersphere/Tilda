@@ -127,7 +127,7 @@ class ColAcolUi(QtWidgets.QWidget, Ui_ColAcol):
         self.lCol.clear()
         db = self.dbpath
         r_acol = TiTs.select_from_db(db, 'file', 'FitRes', [['iso', 'run'], [str(self.coAcolIso.currentText()),
-                                                                                  str(self.coAcolRun.currentText())]],
+                                                                             str(self.coAcolRun.currentText())]],
                                      'ORDER BY file', caller_name=__name__)
         r_col = TiTs.select_from_db(db, 'file', 'FitRes', [['iso', 'run'], [str(self.coColIso.currentText()),
                                                                             str(self.coColRun.currentText())]],
@@ -136,12 +136,16 @@ class ColAcolUi(QtWidgets.QWidget, Ui_ColAcol):
         if r_acol is not None:
             for each in r_acol:
                 # self.addToAll(each[0] + " - Run: " + each[1])
-                self.addToAcol(each[0])
+                col = TiTs.select_from_db(db, 'colDirTrue', 'Files', [['file'], [each[0]]], caller_name=__name__)[0][0]
+                if not col:
+                    self.addToAcol(each[0])
 
         if r_col is not None:
             for each in r_col:
                 # self.addToAll(each[0] + " - Run: " + each[1])
-                self.addToCol(each[0])
+                col = TiTs.select_from_db(db, 'colDirTrue', 'Files', [['file'], [each[0]]], caller_name=__name__)[0][0]
+                if col:
+                    self.addToCol(each[0])
 
     def remove(self):
         for index in range(self.lCol.count()):
