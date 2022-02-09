@@ -2026,7 +2026,7 @@ class NCS2SpecData(Node):
         steps = pipeData[track_name]['nOfSteps']
         self.spec_data.nrLoops[track_ind] = csteps // steps + 1
         if pipeData[track_name]['invertScan']:
-            self.spec_data.nrSteps[track_ind] = max([steps - csteps % steps + 1, 0])
+            self.spec_data.nrSteps[track_ind] = max([steps - (csteps % steps) + 1, 0])
         else:
             self.spec_data.nrSteps[track_ind] = min([csteps % steps + 1, steps])
         return self.spec_data

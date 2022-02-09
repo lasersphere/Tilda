@@ -173,10 +173,22 @@ class SpecData(object):
     #     return flatx, flatc, flate
 
     def get_cts_per_scan(self, track_index, flatc, flate):
-        scan = self.nrLoops[track_index]
-        step = self.nrSteps[track_index]
-        norm = np.full_like(flatc, scan, dtype=float)
-        norm[step:] = scan - 1 if scan > 1 else 1
+        if track_index == -1:
+            norm = np.ones_like(flatc, dtype=float)
+            i0 = 0
+            for t in range(self.nrTracks):
+                nt = self.getNrSteps(t)
+                scan = self.nrLoops[t]
+                step = self.nrSteps[t]
+                _norm = np.full(nt, scan, dtype=float)
+                _norm[step:] = scan - 1 if scan > 1 else 1
+                norm[i0:(i0 + nt)] = _norm
+                i0 += nt
+        else:
+            scan = self.nrLoops[track_index]
+            step = self.nrSteps[track_index]
+            norm = np.full_like(flatc, scan, dtype=float)
+            norm[step:] = scan - 1 if scan > 1 else 1
         return flatc / norm, flate / norm
 
     def getNrSteps(self, track):

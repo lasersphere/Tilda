@@ -170,7 +170,7 @@ class XMLImporter(SpecData):
 
             self.working_time.append(track_dict['workingTime'])
             self.nrScans.append(track_dict['nOfCompletedSteps'] // nOfsteps)
-            self.nrLoops.append(self.nrScans[-1])
+            self.nrLoops.append(max([self.nrScans[-1], 1]))
 
             dacStepSize18Bit = track_dict.get('dacStepSize18Bit', None)  # leave in for backwards_comp
             if dacStepSize18Bit is None or dacStepSize18Bit == {}:  # TODO: not nice...
