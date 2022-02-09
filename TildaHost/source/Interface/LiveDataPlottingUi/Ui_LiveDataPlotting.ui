@@ -501,13 +501,6 @@
     <property name="title">
      <string>edit</string>
     </property>
-    <widget class="QMenu" name="menucombine">
-     <property name="title">
-      <string>combine PMTs to</string>
-     </property>
-     <addaction name="actionsum"/>
-     <addaction name="actionasymmetry"/>
-    </widget>
     <widget class="QMenu" name="menunorm">
      <property name="title">
       <string>norm PMTs to</string>
@@ -516,7 +509,6 @@
      <addaction name="actionscans"/>
     </widget>
     <addaction name="actionGraph_font_size"/>
-    <addaction name="menucombine"/>
     <addaction name="menunorm"/>
     <addaction name="actionshow_bins"/>
    </widget>

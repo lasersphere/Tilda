@@ -248,7 +248,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.actionscans.triggered.connect(self.toggle_norm_menu)
 
         ''' preset bin/error bar mode for all graphs '''
-        self.stepMode = True
+        self.stepMode = self.actionshow_bins.isChecked()
         self.actionshow_bins.triggered.connect(self.update_show_bins)
 
         ''' update sum  '''

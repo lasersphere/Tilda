@@ -48,6 +48,7 @@ class SpecData(object):
         self.dwell = 0  # float or list of lists, depending on importer
         self.seq_type = ''  # str where it can be defeinde what type of sequencer was used,
         #  e.g. trs/cs/kepco/csdummy/trsdummy for xml files
+        self.invert_scan = []
         self.norm_mode = '1'
 
         self.offset = None  # float, measured offset pre scan, take mean if multiple ones measured
@@ -174,22 +175,29 @@ class SpecData(object):
 
     def get_cts_per_scan(self, track_index, flatc, flate):
         if track_index == -1:
-            norm = np.ones_like(flatc, dtype=float)
             i0 = 0
             for t in range(self.nrTracks):
                 nt = self.getNrSteps(t)
                 scan = self.nrLoops[t]
                 step = self.nrSteps[t]
                 _norm = np.full(nt, scan, dtype=float)
-                _norm[step:] = scan - 1 if scan > 1 else 1
-                norm[i0:(i0 + nt)] = _norm
+                if self.invert_scan[t] and scan % 2 == 0:
+                    _norm[:step] = scan - 1 if scan > 1 else 1
+                else:
+                    _norm[step:] = scan - 1 if scan > 1 else 1
+                flatc[i0:(i0 + nt)] /= _norm
+                flate[i0:(i0 + nt)] /= _norm
                 i0 += nt
+            return flatc, flate
         else:
             scan = self.nrLoops[track_index]
             step = self.nrSteps[track_index]
             norm = np.full_like(flatc, scan, dtype=float)
-            norm[step:] = scan - 1 if scan > 1 else 1
-        return flatc / norm, flate / norm
+            if self.invert_scan[track_index] and scan % 2 == 0:
+                norm[:step] = scan - 1 if scan > 1 else 1
+            else:
+                norm[step:] = scan - 1 if scan > 1 else 1
+            return flatc / norm, flate / norm
 
     def getNrSteps(self, track):
         if track == -1:

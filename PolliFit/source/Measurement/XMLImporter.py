@@ -119,7 +119,6 @@ class XMLImporter(SpecData):
         self.track_names = TildaTools.get_track_names(scandict)
         logging.debug('track_names are: %s ' % self.track_names)
         self.softBinWidth_ns = []
-        self.invert_scan = []
         self.post_acc_offset_volt_control = []  # which heinzinger / Fluke
         self.wait_for_kepco_1us = []
         self.wait_after_reset_1us = []

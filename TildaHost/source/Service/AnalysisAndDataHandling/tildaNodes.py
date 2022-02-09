@@ -2024,11 +2024,12 @@ class NCS2SpecData(Node):
         track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
         csteps = pipeData[track_name]['nOfCompletedSteps']
         steps = pipeData[track_name]['nOfSteps']
-        self.spec_data.nrLoops[track_ind] = csteps // steps + 1
-        if pipeData[track_name]['invertScan']:
-            self.spec_data.nrSteps[track_ind] = max([steps - (csteps % steps) + 1, 0])
+        scans = csteps // steps + 1
+        self.spec_data.nrLoops[track_ind] = scans
+        if pipeData[track_name]['invertScan'] and scans % 2 == 0:
+            self.spec_data.nrSteps[track_ind] = max([steps - (csteps % steps), 0])  # - 1: Correct for some delay!?
         else:
-            self.spec_data.nrSteps[track_ind] = min([csteps % steps + 1, steps])
+            self.spec_data.nrSteps[track_ind] = min([csteps % steps, steps])  # + 1: Correct for some delay!?
         return self.spec_data
 
     def clear(self):
@@ -2433,11 +2434,12 @@ class NTRSSumFastArraysSpecData(Node):
 
         csteps = pipeData[track_name]['nOfCompletedSteps']
         steps = pipeData[track_name]['nOfSteps']
-        self.spec_data.nrLoops[track_ind] = csteps // steps + 1
-        if pipeData[track_name]['invertScan']:
-            self.spec_data.nrSteps[track_ind] = max([steps - csteps % steps + 1, 0])
+        scans = csteps // steps + 1
+        self.spec_data.nrLoops[track_ind] = scans
+        if pipeData[track_name]['invertScan'] and scans % 2 == 0:
+            self.spec_data.nrSteps[track_ind] = max([steps - (csteps % steps), 0])
         else:
-            self.spec_data.nrSteps[track_ind] = min([csteps % steps + 1, steps])
+            self.spec_data.nrSteps[track_ind] = min([csteps % steps, steps])
         return self.spec_data
 
     def clear(self):
