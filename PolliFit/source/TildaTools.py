@@ -387,23 +387,30 @@ def replace_none_vals_in_dict(dict_to_check, replace_val=None):
     return dict_to_check
 
 
-def xml_get_data_from_track(
-        root_ele, n_of_track, data_type, data_shape, datatytpe=np.int32, direct_parent_ele_str='data', default_val=0):
+def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape, np_type=np.int32,
+                            direct_parent_ele_str='data', default_val=0, create_if_no_root_ele=True):
     """
-    Get Data From Track
+    Get Data From Track.
+
     :param root_ele:  lxml.etree.Element, root of the xml tree
     :param n_of_track: int, which Track should be written to
     :param data_type: str, valid: 'setOffset, 'measuredOffset', 'dwellTime10ns', 'nOfmeasuredSteps',
-     'nOfclompetedLoops', 'voltArray', 'timeArray', 'scalerArray'
-    :return: Text
+     'nOfclompetedLoops', 'voltArray', 'timeArray', 'scalerArray', 'errorArray'
+    :param data_shape:
+    :param np_type:
+    :param direct_parent_ele_str:
+    :param default_val:
+    :param create_if_no_root_ele: Whether to return a default data array (True) or None (False)
+     when there is no data available.
+    :return: A numpy array or None.
     """
-    if root_ele is None:  # return an
-        return np.full(data_shape, default_val, dtype=datatytpe)
+    if root_ele is None:
+        return np.full(data_shape, default_val, dtype=np_type) if create_if_no_root_ele else None
     else:
         try:
             actTrack = root_ele.find('tracks').find('track' + str(n_of_track)).find(direct_parent_ele_str)
             dataText = actTrack.find(str(data_type)).text
-            data_numpy = numpy_array_from_string(dataText, data_shape, datatytpe)
+            data_numpy = numpy_array_from_string(dataText, data_shape, np_type)
             return data_numpy
         except Exception as e:
             if 'error' in data_type:
@@ -412,7 +419,7 @@ def xml_get_data_from_track(
                 logging.error('error while searching ' + str(data_type) + ' in track'
                               + str(n_of_track) + ' in ' + str(root_ele))
                 logging.error('error is: ', e)
-            return None
+            return np.full(data_shape, default_val, dtype=np_type) if create_if_no_root_ele else None
 
 
 def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
@@ -556,7 +563,7 @@ def gate_specdata(spec_data, full_x_range=True):
                 spec_error[spec_error < 1] = 1
                 spec_data.err[tr_ind][pmt_ind] = spec_error
             else:
-                spec_error = deepcopy(v_proj_res) # Errors have to be regated as well
+                spec_error = deepcopy(v_proj_res)  # Errors have to be regated as well
                 spec_error[spec_error < 1] = 1
                 spec_data.err[tr_ind][pmt_ind] = np.sqrt(spec_error)
     return spec_data

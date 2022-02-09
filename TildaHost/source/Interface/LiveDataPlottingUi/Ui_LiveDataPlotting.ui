@@ -21,7 +21,7 @@
        <locale language="English" country="UnitedStates"/>
       </property>
       <property name="currentIndex">
-       <number>3</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tab_sum">
        <attribute name="title">
@@ -508,8 +508,17 @@
      <addaction name="actionsum"/>
      <addaction name="actionasymmetry"/>
     </widget>
+    <widget class="QMenu" name="menunorm">
+     <property name="title">
+      <string>norm PMTs to</string>
+     </property>
+     <addaction name="actionidentity"/>
+     <addaction name="actionscans"/>
+    </widget>
     <addaction name="actionGraph_font_size"/>
     <addaction name="menucombine"/>
+    <addaction name="menunorm"/>
+    <addaction name="actionshow_bins"/>
    </widget>
    <addaction name="menuView"/>
    <addaction name="menuEdit"/>
@@ -541,6 +550,36 @@
    </property>
    <property name="text">
     <string>asymmetry</string>
+   </property>
+  </action>
+  <action name="actionscans">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string># scans</string>
+   </property>
+  </action>
+  <action name="actionidentity">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>identity</string>
+   </property>
+  </action>
+  <action name="actionshow_bins">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>show bins</string>
    </property>
   </action>
  </widget>
