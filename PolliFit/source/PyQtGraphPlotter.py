@@ -24,6 +24,12 @@ pg.setConfigOption('foreground', 'k')
 # brush_k = pg.mkBrush(0, 0, 0, 255)
 # brush_b = pg.mkBrush(0, 0, 255, 255)
 
+track_colors = ['k', 'r', 'y', 'g', 'c', 'b', 'm']
+
+
+def get_track_color(track_index):
+    return track_colors[track_index % len(track_colors)]
+
 
 def plot_x_y(x, y):
     """
