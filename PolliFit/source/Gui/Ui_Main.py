@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'Ui_Main.ui'
+# Form implementation generated from reading ui file 'E:\Users\Patrick\Documents\Python Projects\Tilda\PolliFit\source\Gui\Ui_Main.ui'
 #
-# Created by: PyQt5 UI code generator 5.5
+# Created by: PyQt5 UI code generator 5.13.2
 #
 # WARNING! All changes made in this file will be lost!
 
+
 from PyQt5 import QtCore, QtGui, QtWidgets
+
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -62,6 +64,10 @@ class Ui_MainWindow(object):
         self.batchfit = BatchfitterUi()
         self.batchfit.setObjectName("batchfit")
         self.TabWidget.addTab(self.batchfit, "")
+        self.spectrafit = SpectraFitUi()
+        self.spectrafit.setStyleSheet("")
+        self.spectrafit.setObjectName("spectrafit")
+        self.TabWidget.addTab(self.spectrafit, "")
         self.averager = AveragerUi()
         self.averager.setObjectName("averager")
         self.TabWidget.addTab(self.averager, "")
@@ -117,6 +123,7 @@ class Ui_MainWindow(object):
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.crawler), _translate("MainWindow", "Crawler"))
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.intfit), _translate("MainWindow", "Interactive Fit"))
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.batchfit), _translate("MainWindow", "Batch Fit"))
+        self.TabWidget.setTabText(self.TabWidget.indexOf(self.spectrafit), _translate("MainWindow", "Spectra Fit"))
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.averager), _translate("MainWindow", "Averager"))
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.isoshift), _translate("MainWindow", "Isotope shift"))
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.accVolt_tab), _translate("MainWindow", "AccVolt"))
@@ -127,7 +134,6 @@ class Ui_MainWindow(object):
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.ColAcol_tab), _translate("MainWindow", "Col./Acol."))
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.Simulation_tab), _translate("MainWindow", "Simulation"))
         self.TabWidget.setTabText(self.TabWidget.indexOf(self.asciiConv_tab), _translate("MainWindow", "ASCII conv."))
-
 from Gui.AccVoltUi import AccVoltUi
 from Gui.AddFilesUi import AddFilesUi
 from Gui.AliveUi import AliveUi
@@ -141,3 +147,4 @@ from Gui.IsoshiftUi import IsoshiftUi
 from Gui.KingFitUi import KingFitUi
 from Gui.MomentsUi import MomentsUi
 from Gui.SimulationUi import SimulationUi
+from Gui.SpectraFitUi import SpectraFitUi
