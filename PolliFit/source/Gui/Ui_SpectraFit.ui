@@ -25,12 +25,19 @@
         <widget class="QComboBox" name="c_iso"/>
        </item>
        <item>
-        <widget class="QComboBox" name="c_line"/>
+        <widget class="QComboBox" name="c_line">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>
      <item>
       <widget class="QListWidget" name="list_files">
+       <property name="selectionMode">
+        <enum>QAbstractItemView::MultiSelection</enum>
+       </property>
        <property name="selectionBehavior">
         <enum>QAbstractItemView::SelectRows</enum>
        </property>
@@ -40,6 +47,12 @@
       <layout class="QHBoxLayout" name="hor_file_options">
        <item>
         <widget class="QPushButton" name="b_select_all">
+         <property name="maximumSize">
+          <size>
+           <width>50</width>
+           <height>16777215</height>
+          </size>
+         </property>
          <property name="text">
           <string>all</string>
          </property>
@@ -47,8 +60,27 @@
        </item>
        <item>
         <widget class="QPushButton" name="b_select_col">
+         <property name="maximumSize">
+          <size>
+           <width>50</width>
+           <height>16777215</height>
+          </size>
+         </property>
          <property name="text">
-          <string>collinear</string>
+          <string>col</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="b_select_acol">
+         <property name="maximumSize">
+          <size>
+           <width>50</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>acol</string>
          </property>
         </widget>
        </item>
@@ -57,15 +89,24 @@
          <property name="enabled">
           <bool>false</bool>
          </property>
+         <property name="maximumSize">
+          <size>
+           <width>50</width>
+           <height>16777215</height>
+          </size>
+         </property>
          <property name="text">
-          <string>favorites</string>
+          <string>fav</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QCheckBox" name="c_multi">
+        <widget class="QCheckBox" name="check_multi">
          <property name="text">
           <string>multi</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -76,7 +117,10 @@
    <item>
     <layout class="QVBoxLayout" name="vert_parameters">
      <item>
-      <widget class="QTableWidget" name="table_parameters">
+      <widget class="QTableWidget" name="tab_pars">
+       <property name="selectionMode">
+        <enum>QAbstractItemView::NoSelection</enum>
+       </property>
        <column>
         <property name="text">
          <string>Parameter</string>
@@ -186,6 +230,9 @@
            <property name="text">
             <string/>
            </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item>
@@ -208,6 +255,9 @@
         <widget class="QCheckBox" name="check_guess_offset">
          <property name="text">
           <string>guess offset</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
