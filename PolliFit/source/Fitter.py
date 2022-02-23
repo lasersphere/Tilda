@@ -6,11 +6,16 @@ Created on 20.02.2022
 
 
 class Fitter:
-    def __init__(self):
-        self.names = []
-        self.vals = []
-        self.fixes = []
-        self.links = []
+    def __init__(self, model, meas, st):
+        self.model = model
+
+    def __call__(self, *args, **kwargs):
+        """
+        :param args: Additional arguments.
+        :param kwargs: Additional keyword arguments.
+        :returns: popt, pcov. Optimized parameters and an estimated of the covariances if possible. Compare 'curve_fit'.
+        """
+        pass
 
     def set_par(self, i, val):
         self.vals[i] = val

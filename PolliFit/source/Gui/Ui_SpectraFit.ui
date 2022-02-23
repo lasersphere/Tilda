@@ -187,13 +187,30 @@
      </item>
      <item>
       <layout class="QGridLayout" name="grid_options">
-       <item row="2" column="1">
+       <item row="4" column="1">
+        <widget class="QCheckBox" name="check_save_ascii">
+         <property name="text">
+          <string>save ASCII</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
         <widget class="QCheckBox" name="check_hf_mixing">
          <property name="enabled">
           <bool>false</bool>
          </property>
          <property name="text">
           <string>HF mixing</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QCheckBox" name="check_guess_offset">
+         <property name="text">
+          <string>guess offset</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -206,14 +223,7 @@
          </item>
         </widget>
        </item>
-       <item row="3" column="1">
-        <widget class="QCheckBox" name="check_save_ascii">
-         <property name="text">
-          <string>save ASCII</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
+       <item row="3" column="0">
         <widget class="QCheckBox" name="check_qi">
          <property name="enabled">
           <bool>false</bool>
@@ -244,27 +254,24 @@
          </item>
         </layout>
        </item>
-       <item row="3" column="0">
+       <item row="4" column="0">
         <widget class="QCheckBox" name="check_save_to_db">
          <property name="text">
           <string>save to db</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="0">
-        <widget class="QCheckBox" name="check_guess_offset">
+       <item row="2" column="1">
+        <widget class="QCheckBox" name="check_linked">
          <property name="text">
-          <string>guess offset</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
+          <string>linked</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="1">
+       <item row="2" column="0">
         <widget class="QCheckBox" name="check_sum">
          <property name="text">
-          <string>sum</string>
+          <string>summed</string>
          </property>
         </widget>
        </item>

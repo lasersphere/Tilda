@@ -8,6 +8,7 @@ import sqlite3
 
 import TildaTools as TiTs
 from Fitter import Fitter
+import Model as Mod
 
 
 class SpectraFit:
@@ -23,6 +24,8 @@ class SpectraFit:
         self.fmt = fmt
         self.font_size = font_size
 
+
+        self.model = Mod.Model()
         self.fitter = Fitter()
 
     def print_pars(self):
@@ -41,6 +44,7 @@ class SpectraFit:
             self.fitter.set_par(i, val)
         else:
             self.fitter.set_par_e(i, val)
+
         # if self.fitter.npar[i] in ['softwGatesWidth', 'softwGatesDelayList', 'midTof']:
         #     # one of the gate parameter was changed -> gate data again
         #     # then data needs also to be gated again.
