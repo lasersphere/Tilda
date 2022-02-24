@@ -161,7 +161,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     """ Parameters """
 
     def gen_spectra_fit(self):
-        files = [f.text for f in self.list_files.selectedItems()]
+        files = [f.text() for f in self.list_files.selectedItems()]
         kwargs = dict(guess_offset=self.check_guess_offset.isChecked(),
                       x_as_freq=self.check_x_as_freq.isChecked(),
                       save_ascii=self.check_save_ascii.isChecked(),
@@ -174,11 +174,11 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.spectra_fit = self.gen_spectra_fit()
 
         self.tab_pars.blockSignals(True)
-        self.tab_pars.setRowCount(len(self.spectra_fit.fitter.vals))
+        self.tab_pars.setRowCount(len(self.spectra_fit.fitter.model.names))
         if self.check_x_as_freq.isChecked():
             pars = self.spectra_fit.get_pars()
         else:
-            pars = self.spectra_fit.get_pars_e()
+            pars = self.spectra_fit.get_pars()  # TODO get_pars_e()
 
         for i, (name, val, fix, link) in enumerate(pars):
             w = QtWidgets.QTableWidgetItem(name)

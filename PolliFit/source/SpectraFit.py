@@ -4,11 +4,15 @@ Created on 18.02.2022
 @author: Patrick Mueller
 """
 
-import sqlite3
+import os
+import ast
+import numpy as np
 
 import TildaTools as TiTs
-from Fitter import Fitter
-import Model as Mod
+from DBIsotope import DBIsotope
+import Measurement.MeasLoad as MeasLoad
+from Fitter import ModelFitter
+import Models.Model as Mod
 
 
 class SpectraFit:
@@ -24,46 +28,64 @@ class SpectraFit:
         self.fmt = fmt
         self.font_size = font_size
 
+        self.file_types = ['.xml']
 
-        self.model = Mod.Model()
-        self.fitter = Fitter()
+        self.fitter = None
+        self.gen_fitter()
+        
+    def load_filepaths(self):
+        file_paths = []
+        for file in self.files:
+            var = TiTs.select_from_db(self.db, 'filePath', 'Files', [['file'], [file]], caller_name=__name__)
+            if var:
+                file_paths.append(os.path.join(os.path.dirname(self.db), var[0][0]))
+            else:
+                print(str(file) + ' not found in DB.')
+                
+        print('\nFile paths:')
+        for i, path in enumerate(file_paths):
+            print('{}: {}'.format(str(i).zfill(int(np.log10(len(file_paths)))), path))
+        return file_paths
+
+    def gen_definition(self):
+        definition = None
+        return Mod.Definition([definition, ] * len(self.files))
+
+    def gen_fitter(self):
+        var = TiTs.select_from_db(self.db, 'isoVar, lineVar, scaler, track', 'Runs', [['run'], [self.run]],
+                                  caller_name=__name__)
+        if var:
+            # st: tuple of PMTs and tracks from selected run
+            st = (ast.literal_eval(var[0][2]), ast.literal_eval(var[0][3]))
+            linevar = var[0][1]
+        else:
+            raise ValueError('Run \'{}\' cannot be selected.'.format(self.run))
+        softw_gates_trs = (self.db, self.run)  # TODO: Get trs gates from parameter list instead of DB.
+        # softw_gates_trs = None  # TODO: Temporary force load from file
+
+        models = []
+        meas = []
+        for path in self.load_filepaths():
+            meas.append(MeasLoad.load(path, self.db, softw_gates=softw_gates_trs))
+            if isinstance(meas[-1], MeasLoad.XMLImporter):
+                if meas[-1].seq_type == 'kepco':
+                    models.append(Mod.Offset(offsets=[1]))
+                else:
+                    # iso = DBIsotope(self.db, meas.type, lineVar=linevar)
+                    models.append(Mod.Offset(model=Mod.NPeak(model=Mod.Lorentz(), n_peaks=1), offsets=[1]))
+                    # TODO Replace working minimal example.
+            else:
+                raise ValueError('File type not supported. The supported types are {}.'.format(self.file_types))
+        model = models[0]  # TODO Replace with Linked- or Summed-Model.
+        self.fitter = ModelFitter(model, meas, st)
 
     def print_pars(self):
         print('Current parameters:')
-        for pars in zip(self.fitter.names, self.fitter.vals, self.fitter.fixes, self.fitter.links):
+        for pars in self.get_pars():
             print('\t'.join([str(p) for p in pars]))
 
     def get_pars(self):
-        return zip(self.fitter.names, self.fitter.vals, self.fitter.fixes, self.fitter.links)
-
-    def get_pars_e(self):
-        return self.fitter.pars_to_e()
-
-    def set_par(self, i, val):
-        if self.x_as_freq:
-            self.fitter.set_par(i, val)
-        else:
-            self.fitter.set_par_e(i, val)
-
-        # if self.fitter.npar[i] in ['softwGatesWidth', 'softwGatesDelayList', 'midTof']:
-        #     # one of the gate parameter was changed -> gate data again
-        #     # then data needs also to be gated again.
-        #     gates_tr0 = TiTs.calc_soft_gates_from_db_pars(self.fitter.par[-3], self.fitter.par[-2], self.fitter.par[-1])
-        #     softw_gate_all_tr = [gates_tr0 for each in self.fitter.meas.cts]
-        #     self.fitter.meas.softw_gates = softw_gate_all_tr
-        #     self.fitter.meas = TiTs.gate_specdata(self.fitter.meas) TODO
-
-        self.plot()
-
-    def set_fix(self, i, fix):
-        self.fitter.set_fix(i, fix)
-
-    def set_link(self, i, link):
-        self.fitter.set_link(i, link)
-
-    def reset(self):
-        self.fitter.reset()
-        self.plot()
+        return self.fitter.get_pars()
 
     def save_pars(self):
         pass
@@ -149,3 +171,9 @@ class SpectraFit:
     def plot(self):
         if not self.show:
             return
+
+    """ Prints """
+    def print_files(self):
+        print('\nFile paths:')
+        for i, file in enumerate(self.files):
+            print('{}: {}'.format(str(i).zfill(int(np.log10(len(self.files)))), file))
