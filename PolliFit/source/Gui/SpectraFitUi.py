@@ -4,8 +4,8 @@ Created on 18.02.2022
 @author: Patrick Mueller
 """
 
-import os
 import ast
+
 from PyQt5 import QtWidgets
 
 from Gui.Ui_SpectraFit import Ui_SpectraFit
@@ -46,6 +46,8 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.check_multi.stateChanged.connect(self.multi)
 
         # Parameters.
+        self.tab_pars.cellChanged.connect(self.set_par)
+
         self.b_load_pars.clicked.connect(self.load_pars)
         self.b_reset_pars.clicked.connect(self.reset_pars)
         self.b_save_pars.clicked.connect(self.save_pars)
@@ -195,6 +197,9 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             self.tab_pars.setItem(i, 3, w)
         self.tab_pars.blockSignals(False)
 
+        if self.check_auto.isChecked():
+            self.plot()
+
     def reset_pars(self):
         self.spectra_fit.reset()
         self.load_pars()
@@ -218,7 +223,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                 e, type(val), val))
             val = 0. if j == 1 else False
         if j == 1:
-            self.spectra_fit.set_par(i, val)
+            self.spectra_fit.set_val(i, val)
             # if self.spectra_fit.fitter.npar[i] in ['softwGatesWidth', 'softwGatesDelayList', 'midTof']:
             #     if self.main_tilda_gui:
             #         cur_itm = self.fileList.currentItem()
@@ -235,6 +240,11 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             self.spectra_fit.set_fix(i, val)
         else:
             self.spectra_fit.set_link(i, val)
-        self.parTable.blockSignals(True)
-        self.parTable.item(i, j).setText(str(val))
-        self.parTable.blockSignals(False)
+        self.tab_pars.blockSignals(True)
+        self.tab_pars.item(i, j).setText(str(val))
+        self.tab_pars.blockSignals(False)
+        if self.check_auto.isChecked():
+            self.plot()
+
+    def plot(self):
+        self.spectra_fit.plot(clear=True, show=True)

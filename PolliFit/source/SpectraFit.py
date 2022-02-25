@@ -6,13 +6,16 @@ Created on 18.02.2022
 
 import os
 import ast
+
+import matplotlib.pyplot as plt
 import numpy as np
 
 import TildaTools as TiTs
+import MPLPlotter as Plot
 from DBIsotope import DBIsotope
 import Measurement.MeasLoad as MeasLoad
 from Fitter import ModelFitter
-import Models.Model as Mod
+import Models.Spectrum as Mod
 
 
 class SpectraFit:
@@ -65,19 +68,20 @@ class SpectraFit:
 
         models = []
         meas = []
+        iso = []
         for path in self.load_filepaths():
             meas.append(MeasLoad.load(path, self.db, softw_gates=softw_gates_trs))
             if isinstance(meas[-1], MeasLoad.XMLImporter):
                 if meas[-1].seq_type == 'kepco':
                     models.append(Mod.Offset(offsets=[1]))
                 else:
-                    # iso = DBIsotope(self.db, meas.type, lineVar=linevar)
+                    iso.append(DBIsotope(self.db, meas[-1].type, lineVar=linevar))
                     models.append(Mod.Offset(model=Mod.NPeak(model=Mod.Lorentz(), n_peaks=1), offsets=[1]))
-                    # TODO Replace working minimal example.
+                    # TODO Replace working minimal example with final implementation.
             else:
                 raise ValueError('File type not supported. The supported types are {}.'.format(self.file_types))
-        model = models[0]  # TODO Replace with Linked- or Summed-Model.
-        self.fitter = ModelFitter(model, meas, st)
+        model = models[0]  # TODO Replace for multi file support.
+        self.fitter = ModelFitter(model, meas, st, iso)
 
     def print_pars(self):
         print('Current parameters:')
@@ -86,6 +90,15 @@ class SpectraFit:
 
     def get_pars(self):
         return self.fitter.get_pars()
+
+    def set_val(self, i, val):
+        self.fitter.model.vals[i] = val
+
+    def set_fix(self, i, fix):
+        self.fitter.model.fixes[i] = fix
+
+    def set_link(self, i, link):
+        self.fitter.model.links[i] = link
 
     def save_pars(self):
         pass
@@ -168,12 +181,24 @@ class SpectraFit:
         # except Exception as e:
         #     print("error: No database connection possible. No line pars have been saved!")
 
-    def plot(self):
-        if not self.show:
-            return
+    def plot(self, clear=True, show=True):
+        if clear:
+            Plot.clear()
+
+        Plot.plot_model_fit(self.fitter)
+
+        if show:
+            Plot.show(show)
 
     """ Prints """
     def print_files(self):
         print('\nFile paths:')
         for i, file in enumerate(self.files):
             print('{}: {}'.format(str(i).zfill(int(np.log10(len(self.files)))), file))
+
+
+if __name__ == '__main__':
+    # import matplotlib
+    # matplotlib.use('Qt5Agg')
+    plt.plot([0, 1], [1, 0])
+    plt.show()

@@ -4,8 +4,8 @@ Created on 21.02.2022
 @author: Patrick Mueller
 """
 
+
 import numpy as np
-import Physics as Ph
 
 
 def args_ordered(args, order):
@@ -46,6 +46,9 @@ class Model:
         self.vals.append(val)
         self.fixes.append(fix)
         self.links.append(link)
+
+        self.p[name] = self._index
+
         self._index += 1
         self._size += 1
 
@@ -65,16 +68,30 @@ class Model:
         self._model = value
         if self._model is None:
             self.names, self.vals, self.fixes, self.links = [], [], [], []
+            self.p = {}
             self._index = 0
             self._size = 0
         else:
             self.names, self.vals, self.fixes, self.links = \
                 self._model.names, self._model.vals, self._model.fixes, self._model.links
+            self.p = self._model.p
             self._index = len(self._model.names)
             self._size = len(self._model.names)
 
     def get_pars(self):
         return zip(self.names, self.vals, self.fixes, self.links)
+
+    def norm(self):
+        return self(0)
+
+    def min(self):
+        return 0. if self.model is None else self.model.min()
+
+    def max(self):
+        return 0. if self.model is None else self.model.max()
+
+    def x(self):
+        return np.linspace(self.min(), self.max(), 1001, dtype=float)
 
 
 class EmptyModel(Model):
@@ -85,19 +102,10 @@ class EmptyModel(Model):
         return np.zeros_like(x)
 
 
-class Lorentz(Model):
-    def __init__(self):
-        super().__init__(model=None)
-        self._add_arg('Gamma', 1., False, False)
-
-    def __call__(self, x, *args, **kwargs):
-        return Ph.lorentz(x, 0, args[0] / 2, own=False)
-
-
 class NPeak(Model):
     def __init__(self, model, n_peaks=1):
         super().__init__(model=model)
-        self.n_peaks = n_peaks
+        self.n_peaks = int(n_peaks)
         for n in range(self.n_peaks):
             self._add_arg('center{}'.format(n if n > 0 else ''), 0., False, False)
             self._add_arg('Int{}'.format(n), 1., False, False)
@@ -107,13 +115,21 @@ class NPeak(Model):
                        * self.model(x - args[self.model.size + 2 * n], *args[:self.model.size])
                        for n in range(self.n_peaks)], axis=0)
 
+    def min(self):
+        min_center = np.min([self.vals[self.p['center{}'.format(n if n > 0 else '')]] for n in range(self.n_peaks)])
+        return min_center + self.model.min()
+
+    def max(self):
+        max_center = np.max([self.vals[self.p['center{}'.format(n if n > 0 else '')]] for n in range(self.n_peaks)])
+        return max_center + self.model.max()
+
 
 class Offset(Model):
     def __init__(self, model=None, x_cuts=None, offsets=None):
         super().__init__(model=model)
-        self.x_cuts = x_cuts
-        if self.x_cuts is None:
-            self.x_cuts = []
+        if x_cuts is None:
+            x_cuts = []
+        self.x_cuts = sorted(x_cuts)
         self.offsets = offsets
         if self.offsets is None:
             self.offsets = [0]
@@ -122,7 +138,8 @@ class Offset(Model):
                              ' and contain the maximum considered polynomial order for each slice.')
 
         self.offset_map = []
-        self.offset_slices = []
+        self.offset_masks = []
+        self.update_on_call = True
 
         self.gen_offset_map()
 
@@ -132,8 +149,12 @@ class Offset(Model):
         return self.model(x, *args[:self.model.size]) + self._offset(x, *args)
 
     def _offset(self, x, *args):
-        return np.concatenate([poly(x[s], *args_ordered(args, self.offset_map[i]))
-                               for i, s in enumerate(self.offset_slices)], axis=0)
+        if self.update_on_call:
+            self.gen_offset_masks(x)
+        ret = np.zeros_like(x)
+        for i, mask in enumerate(self.offset_masks):
+            ret[mask] = poly(x[mask], *args_ordered(args, self.offset_map[i]))
+        return ret
 
     def gen_offset_map(self):
         self.offset_map = []
@@ -145,14 +166,12 @@ class Offset(Model):
 
     """ Preprocessing """
 
-    def gen_offset_slices(self, x):
-        self.offset_slices = []
-        i0, i1 = 0, 0
+    def gen_offset_masks(self, x):
+        self.offset_masks = []
+        x_cut = -np.inf
         for x_cut in self.x_cuts:
-            i1 = np.searchsorted(x >= x_cut, True)
-            self.offset_slices.append(slice(i0, i1, 1))
-            i0 = i1
-        self.offset_slices.append(slice(i0, None, 1))
+            self.offset_masks.append(x < x_cut)
+        self.offset_masks.append(x >= x_cut)
 
 
 # class Linked(Model):

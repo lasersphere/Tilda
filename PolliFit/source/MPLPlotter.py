@@ -249,6 +249,40 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
                fontsize=fontsize_ticks+2, numpoints=1)
 
 
+def plot_model_fit(fitter):
+    fig = plt.figure(num=1, figsize=(8, 8))
+    fig.subplots_adjust(wspace=0, hspace=0)
+    ax = fig.add_subplot(4, 1, (1, 3))
+
+    data = [meas.getArithSpec(*fitter.st) for meas in fitter.meas]
+    data = data[0]  # TODO Replace for multi file support.
+    iso = fitter.iso[0]  # TODO Replace for multi file support.
+
+    x = data[0]
+    y = data[1]
+    yerr = data[2]
+
+    v = Physics.relVelocity(Physics.qe * x, iso.mass * Physics.u)
+    v = -v if fitter.meas[0].col else v
+
+    x = Physics.relDoppler(fitter.meas[0].laserFreq, v) - iso.freq
+    
+    y_res = fitter.model(x, *fitter.model.vals) - y
+
+    x_cont = fitter.model.x()
+    y_cont = fitter.model(x_cont, *fitter.model.vals)
+
+    plt.errorbar(x, y, yerr=yerr, fmt='k.', label='Data')
+    plt.plot(x_cont, y_cont, 'r-', label='Fit')
+    plt.legend()
+
+    fig.add_subplot(4, 1, 4, sharex=ax)
+    plt.errorbar(x, y_res, yerr=yerr, fmt='k.')
+
+    plt.xlabel('x')
+    plt.ylabel('Intensity (counts)')
+
+
 def plotMoments(cts, q=True,fontsize_ticks=10):
     if q:
         fig = plt.figure(1, (8, 6))
