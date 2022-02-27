@@ -6,7 +6,7 @@ Created on 18.02.2022
 
 import ast
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtCore
 
 from Gui.Ui_SpectraFit import Ui_SpectraFit
 from SpectraFit import SpectraFit
@@ -24,6 +24,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.items_acol = []
 
         self.spectra_fit = None
+        self.fig = None
 
         self.connect()
         self.show()
@@ -53,6 +54,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.b_save_pars.clicked.connect(self.save_pars)
 
         # Fit.
+        self.b_fit.clicked.connect(self.fit)
 
     def conSig(self, dbSig):
         dbSig.connect(self.dbChange)
@@ -157,7 +159,10 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         else:
             self.list_files.clearSelection()
             self.list_files.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
-            self.list_files.currentItem().setSelected(True)
+            item = self.list_files.currentItem()
+            if item is None:
+                item = self.list_files.item(0)
+            item.setSelected(True)
         self.list_files.setFocus()
 
     """ Parameters """
@@ -169,7 +174,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                       save_ascii=self.check_save_ascii.isChecked(),
                       show=self.check_auto.isChecked(),
                       fmt=self.edit_fmt.text(),
-                      font_size=self.s_fontsize.value())
+                      fontsize=self.s_fontsize.value())
         return SpectraFit(files, self.dbpath, self.c_run.currentText(), **kwargs)
 
     def load_pars(self):
@@ -184,7 +189,8 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
         for i, (name, val, fix, link) in enumerate(pars):
             w = QtWidgets.QTableWidgetItem(name)
-            # w.setFlags(QtCore.Qt.ItemIsEnabled)
+            # noinspection PyUnresolvedReferences
+            w.setFlags(w.flags() & ~QtCore.Qt.ItemIsEditable)
             self.tab_pars.setItem(i, 0, w)
 
             w = QtWidgets.QTableWidgetItem(str(val))
@@ -197,6 +203,15 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             self.tab_pars.setItem(i, 3, w)
         self.tab_pars.blockSignals(False)
 
+        if self.check_auto.isChecked():
+            self.plot()
+
+    def update_vals(self):
+        self.tab_pars.blockSignals(True)
+        for i, val in enumerate(self.spectra_fit.fitter.model.vals):
+            w = QtWidgets.QTableWidgetItem(str(val))
+            self.tab_pars.setItem(i, 1, w)
+        self.tab_pars.blockSignals(False)
         if self.check_auto.isChecked():
             self.plot()
 
@@ -246,5 +261,14 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         if self.check_auto.isChecked():
             self.plot()
 
+    """ Options """
+
     def plot(self):
         self.spectra_fit.plot(clear=True, show=True)
+
+    """ Fit """
+
+    def fit(self):
+        self.spectra_fit.fit()
+        self.update_vals()
+

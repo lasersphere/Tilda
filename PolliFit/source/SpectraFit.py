@@ -7,20 +7,19 @@ Created on 18.02.2022
 import os
 import ast
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 import TildaTools as TiTs
 import MPLPlotter as Plot
 from DBIsotope import DBIsotope
 import Measurement.MeasLoad as MeasLoad
-from Fitter import ModelFitter
+from Fitter import Fitter
 import Models.Spectrum as Mod
 
 
 class SpectraFit:
     def __init__(self, files, db, run, guess_offset=True, x_as_freq=True, save_ascii=False,
-                 show=True, fmt='k.', font_size=10):
+                 show=True, fmt='k.', fontsize=10):
         self.files = files
         self.db = db
         self.run = run
@@ -29,7 +28,7 @@ class SpectraFit:
         self.save_ascii = save_ascii
         self.show = show
         self.fmt = fmt
-        self.font_size = font_size
+        self.fontsize = fontsize
 
         self.file_types = ['.xml']
 
@@ -54,6 +53,10 @@ class SpectraFit:
         definition = None
         return Mod.Definition([definition, ] * len(self.files))
 
+    def gen_model(self):
+        # TODO Replace working minimal example with final implementation.
+        return Mod.Offset(model=Mod.NPeak(model=Mod.Lorentz(), n_peaks=1), offsets=[1])
+
     def gen_fitter(self):
         var = TiTs.select_from_db(self.db, 'isoVar, lineVar, scaler, track', 'Runs', [['run'], [self.run]],
                                   caller_name=__name__)
@@ -76,17 +79,14 @@ class SpectraFit:
                     models.append(Mod.Offset(offsets=[1]))
                 else:
                     iso.append(DBIsotope(self.db, meas[-1].type, lineVar=linevar))
-                    models.append(Mod.Offset(model=Mod.NPeak(model=Mod.Lorentz(), n_peaks=1), offsets=[1]))
-                    # TODO Replace working minimal example with final implementation.
+                    models.append(self.gen_model())
             else:
                 raise ValueError('File type not supported. The supported types are {}.'.format(self.file_types))
         model = models[0]  # TODO Replace for multi file support.
-        self.fitter = ModelFitter(model, meas, st, iso)
+        self.fitter = Fitter(model, meas, st, iso)
 
-    def print_pars(self):
-        print('Current parameters:')
-        for pars in self.get_pars():
-            print('\t'.join([str(p) for p in pars]))
+    def fit(self):
+        return self.fitter.fit()
 
     def get_pars(self):
         return self.fitter.get_pars()
@@ -181,24 +181,24 @@ class SpectraFit:
         # except Exception as e:
         #     print("error: No database connection possible. No line pars have been saved!")
 
-    def plot(self, clear=True, show=True):
+    def plot(self, clear=True, show=False):
         if clear:
             Plot.clear()
 
-        Plot.plot_model_fit(self.fitter)
+        fig = Plot.plot_model_fit(self.fitter, fontsize=self.fontsize)
 
         if show:
-            Plot.show(show)
+            Plot.show(True)
+            fig.canvas.draw()
 
     """ Prints """
+
+    def print_pars(self):
+        print('Current parameters:')
+        for pars in self.get_pars():
+            print('\t'.join([str(p) for p in pars]))
+
     def print_files(self):
         print('\nFile paths:')
         for i, file in enumerate(self.files):
             print('{}: {}'.format(str(i).zfill(int(np.log10(len(self.files)))), file))
-
-
-if __name__ == '__main__':
-    # import matplotlib
-    # matplotlib.use('Qt5Agg')
-    plt.plot([0, 1], [1, 0])
-    plt.show()

@@ -249,10 +249,9 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
                fontsize=fontsize_ticks+2, numpoints=1)
 
 
-def plot_model_fit(fitter):
-    fig = plt.figure(num=1, figsize=(8, 8))
-    fig.subplots_adjust(wspace=0, hspace=0)
-    ax = fig.add_subplot(4, 1, (1, 3))
+def plot_model_fit(fitter, fontsize=10):
+    # fig.subplots_adjust(wspace=0, hspace=0)
+    # ax = fig.add_subplot(4, 1, (1, 3))
 
     data = [meas.getArithSpec(*fitter.st) for meas in fitter.meas]
     data = data[0]  # TODO Replace for multi file support.
@@ -272,15 +271,46 @@ def plot_model_fit(fitter):
     x_cont = fitter.model.x()
     y_cont = fitter.model(x_cont, *fitter.model.vals)
 
-    plt.errorbar(x, y, yerr=yerr, fmt='k.', label='Data')
-    plt.plot(x_cont, y_cont, 'r-', label='Fit')
-    plt.legend()
+    fig = plt.figure(num=1, figsize=(8, 8))
+    ax1 = plt.axes([0.15, 0.35, 0.8, 0.50])
+    ax1.get_xaxis().get_major_formatter().set_useOffset(False)
+    ax1.set_ylabel('Intensity (counts)', fontsize=fontsize)
+    
+    plot_data = ax1.errorbar(x, y, yerr=yerr, fmt='k.', label='Data')
+    plot_fit = ax1.plot(x_cont, y_cont, 'r-', label='Fit')
 
-    fig.add_subplot(4, 1, 4, sharex=ax)
-    plt.errorbar(x, y_res, yerr=yerr, fmt='k.')
+    # ax1.set_xticks(fontsize=fontsize)
+    # ax1.set_yticks(fontsize=fontsize)
+    ax1.tick_params(labelsize=fontsize)
+    
+    ax2 = plt.axes([0.15, 0.1, 0.8, 0.2], sharex=ax1)
+    plot_res = ax2.errorbar(x, y_res, yerr=yerr, fmt='k.')
+    ax2.get_xaxis().get_major_formatter().set_useOffset(False)
+    ax2.locator_params(axis='y', nbins=5)
 
-    plt.xlabel('x')
-    plt.ylabel('Intensity (counts)')
+    plt.xlabel('relative frequency (MHz)', fontsize=fontsize, labelpad=fontsize / 2)
+    plt.ylabel('residuals (counts)', fontsize=fontsize)
+
+    # if x_in_freq:
+    #     plt.xlabel('relative frequency / MHz', fontsize=fontsize, labelpad=fontsize / 2)
+    # elif kepco:
+    #     plt.xlabel('Line Voltage / V', fontsize=fontsize, labelpad=fontsize)
+    # else:
+    #     plt.xlabel('Ion kinetic energy / eV', fontsize=fontsize)
+    # print(plotdat[0][-2000:-100])
+    # print(plotdat[1][-2000:-100])
+    # np.set_printoptions(threshold=2000)
+    # print(data[1])
+
+    # ax2.set_xticks(fontsize=fontsize)
+    # ax2.set_yticks(fontsize=fontsize)
+    ax2.tick_params(labelsize=fontsize)
+
+    lines = [plot_data, plot_fit[0]]
+    labels = [each.get_label() for each in lines]
+    fig.legend(lines, labels, loc='upper center', ncol=2, bbox_to_anchor=(0.15, 0.8, 0.8, 0.2), mode='expand',
+               fontsize=fontsize + 2, numpoints=1)
+    return fig
 
 
 def plotMoments(cts, q=True,fontsize_ticks=10):

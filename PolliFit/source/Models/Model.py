@@ -4,7 +4,6 @@ Created on 21.02.2022
 @author: Patrick Mueller
 """
 
-
 import numpy as np
 
 
@@ -80,6 +79,10 @@ class Model:
 
     def get_pars(self):
         return zip(self.names, self.vals, self.fixes, self.links)
+
+    def set_vals(self, vals):
+        for i in range(len(self.vals)):
+            self.vals[i] = vals[i]
 
     def norm(self):
         return self(0)

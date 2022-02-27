@@ -171,7 +171,7 @@
     </layout>
    </item>
    <item>
-    <layout class="QVBoxLayout" name="vert_control" stretch="1,0,0,0,0,0">
+    <layout class="QVBoxLayout" name="vert_control" stretch="1,0,0,0,0,0,0,0,0,0,0,0">
      <item>
       <spacer name="vert_space_control">
        <property name="orientation">
@@ -186,15 +186,52 @@
       </spacer>
      </item>
      <item>
-      <layout class="QGridLayout" name="grid_options">
-       <item row="4" column="1">
-        <widget class="QCheckBox" name="check_save_ascii">
+      <widget class="Line" name="line_model">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="l_model_options">
+       <property name="font">
+        <font>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Model options</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <layout class="QGridLayout" name="grid_model">
+       <item row="0" column="0">
+        <widget class="QCheckBox" name="check_sum">
          <property name="text">
-          <string>save ASCII</string>
+          <string>summed</string>
          </property>
         </widget>
        </item>
-       <item row="3" column="1">
+       <item row="1" column="0">
+        <widget class="QCheckBox" name="check_qi">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>QI</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QCheckBox" name="check_linked">
+         <property name="text">
+          <string>linked</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
         <widget class="QCheckBox" name="check_hf_mixing">
          <property name="enabled">
           <bool>false</bool>
@@ -204,16 +241,61 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="0">
-        <widget class="QCheckBox" name="check_guess_offset">
+       <item row="2" column="0">
+        <layout class="QHBoxLayout" name="hor_npeaks">
+         <item>
+          <widget class="QSpinBox" name="s_npeaks">
+           <property name="maximumSize">
+            <size>
+             <width>40</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="l_npeaks">
+           <property name="text">
+            <string># peaks</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="2" column="1">
+        <widget class="QCheckBox" name="check_oofset_per_track">
          <property name="text">
-          <string>guess offset</string>
+          <string>offset per track</string>
          </property>
          <property name="checked">
           <bool>true</bool>
          </property>
         </widget>
        </item>
+      </layout>
+     </item>
+     <item>
+      <widget class="Line" name="line_fit">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="l_fit_options">
+       <property name="font">
+        <font>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Fit options</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <layout class="QGridLayout" name="grid_fit" columnstretch="1,1">
        <item row="0" column="1">
         <widget class="QComboBox" name="c_routine">
          <item>
@@ -223,15 +305,8 @@
          </item>
         </widget>
        </item>
-       <item row="3" column="0">
-        <widget class="QCheckBox" name="check_qi">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>QI</string>
-         </property>
-        </widget>
+       <item row="2" column="0">
+        <widget class="QLineEdit" name="edit_arithmetics"/>
        </item>
        <item row="0" column="0">
         <layout class="QHBoxLayout" name="hor_chi2" stretch="0,1">
@@ -254,24 +329,34 @@
          </item>
         </layout>
        </item>
-       <item row="4" column="0">
+       <item row="1" column="0">
+        <widget class="QCheckBox" name="check_guess_offset">
+         <property name="text">
+          <string>guess offset</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QLabel" name="l_arithmetics">
+         <property name="text">
+          <string>arithmetics</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
         <widget class="QCheckBox" name="check_save_to_db">
          <property name="text">
           <string>save to db</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
-        <widget class="QCheckBox" name="check_linked">
+       <item row="3" column="1">
+        <widget class="QCheckBox" name="check_save_ascii">
          <property name="text">
-          <string>linked</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QCheckBox" name="check_sum">
-         <property name="text">
-          <string>summed</string>
+          <string>save ASCII</string>
          </property>
         </widget>
        </item>
@@ -281,6 +366,19 @@
       <widget class="Line" name="line_plot">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="l_plot_options">
+       <property name="font">
+        <font>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Plot options</string>
        </property>
       </widget>
      </item>
@@ -315,10 +413,13 @@
          <property name="text">
           <string>x as freq.</string>
          </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item row="0" column="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,1">
+        <layout class="QHBoxLayout" name="hor_fontsize" stretch="0,1">
          <item>
           <widget class="QSpinBox" name="s_fontsize">
            <property name="minimum">
@@ -330,7 +431,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QLabel" name="label">
+          <widget class="QLabel" name="l_fontsize">
            <property name="text">
             <string>font size</string>
            </property>
@@ -339,7 +440,7 @@
         </layout>
        </item>
        <item row="0" column="1">
-        <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <layout class="QHBoxLayout" name="hor_fmt">
          <item>
           <widget class="QLineEdit" name="edit_fmt">
            <property name="maximumSize">
@@ -365,27 +466,40 @@
       </layout>
      </item>
      <item>
-      <widget class="Line" name="line_control">
+      <widget class="Line" name="line_action">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
       </widget>
      </item>
      <item>
-      <layout class="QGridLayout" name="grid_actions">
-       <item row="1" column="0">
+      <layout class="QGridLayout" name="grid_action">
+       <item row="2" column="0">
         <widget class="QPushButton" name="b_fit">
          <property name="text">
           <string>fit</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="0">
+       <item row="1" column="0">
         <widget class="QProgressBar" name="progress_fit">
          <property name="value">
           <number>100</number>
          </property>
         </widget>
+       </item>
+       <item row="0" column="0">
+        <spacer name="vert_space_action">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </item>
