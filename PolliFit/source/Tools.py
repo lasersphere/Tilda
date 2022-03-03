@@ -24,6 +24,32 @@ from DBIsotope import DBIsotope
 from Spectra.FullSpec import FullSpec
 
 
+class COLORS:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+def print_colored(specifier, *values, **kwargs):
+    """
+    Print with the specified color.
+
+    :param specifier: str of the color name defined in the COLORS class.
+    :param values: The values to print.
+    :param kwargs: See print().
+    :returns: None.
+    """
+    _c = eval('COLORS.{}'.format(specifier.upper()))
+    _values = (_c, ) + values + (COLORS.ENDC, )
+    print('{}{}{}'.format(*_values), **kwargs)
+
+
 def isoPlot(db, iso_name, isovar='', linevar='', as_freq=True, laserfreq=None, col=None, saving=False, show=True,
             isom_name=None, prec=10000, clear=False, x_transform=None, x_label=None, norm=False):
     """ Plot isotope iso """

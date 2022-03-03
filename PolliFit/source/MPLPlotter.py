@@ -249,62 +249,39 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
                fontsize=fontsize_ticks+2, numpoints=1)
 
 
-def plot_model_fit(fitter, fontsize=10):
-    # fig.subplots_adjust(wspace=0, hspace=0)
-    # ax = fig.add_subplot(4, 1, (1, 3))
-
-    data = [meas.getArithSpec(*fitter.st) for meas in fitter.meas]
-    data = data[0]  # TODO Replace for multi file support.
-    iso = fitter.iso[0]  # TODO Replace for multi file support.
-
-    x = data[0]
-    y = data[1]
-    yerr = data[2]
-
-    v = Physics.relVelocity(Physics.qe * x, iso.mass * Physics.u)
-    v = -v if fitter.meas[0].col else v
-
-    x = Physics.relDoppler(fitter.meas[0].laserFreq, v) - iso.freq
-    
-    y_res = fitter.model(x, *fitter.model.vals) - y
-
-    x_cont = fitter.model.x()
-    y_cont = fitter.model(x_cont, *fitter.model.vals)
-
+def plot_model_fit(fitter, index, x_as_freq=True, fmt='k.', fontsize=10):
     fig = plt.figure(num=1, figsize=(8, 8))
     ax1 = plt.axes([0.15, 0.35, 0.8, 0.50])
-    ax1.get_xaxis().get_major_formatter().set_useOffset(False)
-    ax1.set_ylabel('Intensity (counts)', fontsize=fontsize)
-    
-    plot_data = ax1.errorbar(x, y, yerr=yerr, fmt='k.', label='Data')
-    plot_fit = ax1.plot(x_cont, y_cont, 'r-', label='Fit')
-
-    # ax1.set_xticks(fontsize=fontsize)
-    # ax1.set_yticks(fontsize=fontsize)
-    ax1.tick_params(labelsize=fontsize)
-    
     ax2 = plt.axes([0.15, 0.1, 0.8, 0.2], sharex=ax1)
-    plot_res = ax2.errorbar(x, y_res, yerr=yerr, fmt='k.')
+
+    ax1.tick_params(labelsize=fontsize)
+    ax2.tick_params(labelsize=fontsize)
+    ax1.get_xaxis().get_major_formatter().set_useOffset(False)
     ax2.get_xaxis().get_major_formatter().set_useOffset(False)
     ax2.locator_params(axis='y', nbins=5)
 
-    plt.xlabel('relative frequency (MHz)', fontsize=fontsize, labelpad=fontsize / 2)
-    plt.ylabel('residuals (counts)', fontsize=fontsize)
+    if fitter.kepco:
+        ax2.set_xlabel('line voltage (V)', fontsize=fontsize, labelpad=fontsize / 2)
+    elif x_as_freq:
+        ax2.set_xlabel('relative frequency (MHz)', fontsize=fontsize, labelpad=fontsize / 2)
+    else:
+        ax2.set_xlabel('voltage (kV)', fontsize=fontsize, labelpad=fontsize / 2)
+    ax1.set_ylabel('intensity (counts)', fontsize=fontsize)
+    ax2.set_ylabel('residuals (counts)', fontsize=fontsize)
+    
+    model = fitter.models[index]
+    
+    x_cont = model.x()
+    y_cont = model(x_cont, *model.vals)
 
-    # if x_in_freq:
-    #     plt.xlabel('relative frequency / MHz', fontsize=fontsize, labelpad=fontsize / 2)
-    # elif kepco:
-    #     plt.xlabel('Line Voltage / V', fontsize=fontsize, labelpad=fontsize)
-    # else:
-    #     plt.xlabel('Ion kinetic energy / eV', fontsize=fontsize)
-    # print(plotdat[0][-2000:-100])
-    # print(plotdat[1][-2000:-100])
-    # np.set_printoptions(threshold=2000)
-    # print(data[1])
-
-    # ax2.set_xticks(fontsize=fontsize)
-    # ax2.set_yticks(fontsize=fontsize)
-    ax2.tick_params(labelsize=fontsize)
+    # for x_volt, x, y, yerr in zip(fitter.x_volt, fitter.x, fitter.y, fitter.yerr):
+    x_volt, x, y, yerr = fitter.x_volt[index], fitter.x[index], fitter.y[index], fitter.yerr[index]
+    y_res = model(x, *model.vals) - y
+    if not fitter.kepco:
+        x_volt *= 1e-3
+    plot_data = ax1.errorbar(x if x_as_freq else x_volt, y, yerr=yerr, fmt=fmt, label='Data')
+    plot_fit = ax1.plot(x_cont, y_cont, 'r-', label='Fit')
+    ax2.errorbar(x, y_res, yerr=yerr, fmt=fmt, label='Residuals')
 
     lines = [plot_data, plot_fit[0]]
     labels = [each.get_label() for each in lines]

@@ -84,8 +84,8 @@ class Model:
         for i in range(len(self.vals)):
             self.vals[i] = vals[i]
 
-    def norm(self):
-        return self(0)
+    def norm(self, *args, **kwargs):
+        return self(0, *args, **kwargs)
 
     def min(self):
         return 0. if self.model is None else self.model.min()

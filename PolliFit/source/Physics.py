@@ -117,6 +117,23 @@ def invRelDoppler(laserFreq, dopplerFreq):
     return c * (laserFreq**2 - dopplerFreq**2) / (laserFreq**2 + dopplerFreq**2)
 
 
+def volt_to_rel_freq(volt, charge, mass, f_laser, f_0, col):
+    """
+
+    :param volt: The total acceleration voltage (V).
+    :param charge: The charge of the particle (e).
+    :param mass: The mass of the particle (u).
+    :param f_laser: The laser frequency (arb. units).
+    :param f_0: The reference frequency in the rest frame of the particle.
+    :param col: Whether the lasers are aligned in collinear or anticollinear geometry.
+    :returns: The doppler shifted frequency of the laser in the rest frame of a particle
+     accelerated with 'volt' relative to a reference frequency 'f_0'.
+    """
+    pm = -1 if col else 1
+    v = pm * relVelocity(qe * charge * volt, mass * u)
+    return relDoppler(f_laser, v) - f_0
+
+
 def voigt(x, sig, gam):
     """ Voigt profile, unnormalized, using the Faddeeva function """
     return special.wofz((x + 1j * gam) / (sig * np.sqrt(2))).real / (sig * np.sqrt(2 * np.pi))
@@ -263,7 +280,7 @@ def sixJ(j1, j2, j3, J1, J2, J3):
     ret = 0
     for i in range(int(round(max(max(j1 + j2 + j3, j1 + J2 + J3), max(J1 + j2 + J3, J1 + J2 + j3)))),
                    int(round(min(min(j1 + j2 + J1 + J2, j2 + j3 + J2 + J3), j3 + j1 + J3 + J1) + 1))):
-        ret = (ret + pow(-1, i) * math.factorial(i + 1.)
+        ret = (ret + pow(-1, i) * math.factorial(i + 1)
                / math.factorial(round(i - j1 - j2 - j3))
                / math.factorial(round(i - j1 - J2 - J3))
                / math.factorial(round(i - J1 - j2 - J3))
@@ -279,7 +296,7 @@ def threeJ(j1, m1, j2, m2, j3, m3):
     """ 3-J symbol used for Racah coefficients """
     # print('3-J symbol used for Racah coefficients')
     ret = 0
-    for i in range(round(max(max(0., j2 - j3 - m1), m2 + j1 - j3)),
+    for i in range(round(max(max(0, j2 - j3 - m1), m2 + j1 - j3)),
                    round(min(min(j1 + j2 - j3, j1 - m1), j2 + m2) + 1)):
         ret = (ret + pow(-1., i) / math.factorial(i) / math.factorial(round(j3 - j2 + i + m1)) / math.factorial(
             round(j3 - j1 + i - m2))

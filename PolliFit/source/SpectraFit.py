@@ -6,7 +6,7 @@ Created on 18.02.2022
 
 import os
 import ast
-
+import sqlite3
 import numpy as np
 
 import TildaTools as TiTs
@@ -14,26 +14,44 @@ import MPLPlotter as Plot
 from DBIsotope import DBIsotope
 import Measurement.MeasLoad as MeasLoad
 from Fitter import Fitter
-import Models.Spectrum as Mod
+import Models.Collection as Mod
 
 
 class SpectraFit:
-    def __init__(self, files, db, run, guess_offset=True, x_as_freq=True, save_ascii=False,
-                 show=True, fmt='k.', fontsize=10):
-        self.files = files
+    def __init__(self, db, files, runs, configs,
+                 routine='curve_fit', absolute_sigma=False, guess_offset=True, arithmetics='',
+                 summed=False, linked=False, save_to_db=False, save_ascii=False, x_as_freq=True, fmt='.k', fontsize=10):
         self.db = db
-        self.run = run
+        self.files = files
+        self.runs = runs
+        self.configs = configs
+        self.index_config = 0
+
+        self.routine = routine
+        self.absolute_sigma = absolute_sigma
         self.guess_offset = guess_offset
+        self.arithmetics = arithmetics
+        self.summed = summed
+        self.linked = linked
+        self.save_to_db = save_to_db
+
         self.x_as_freq = x_as_freq
         self.save_ascii = save_ascii
-        self.show = show
         self.fmt = fmt
         self.fontsize = fontsize
 
         self.file_types = ['.xml']
 
+        self.reset_model = None
         self.fitter = None
         self.gen_fitter()
+
+    def _execute(self, command, *args):
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        cur.execute(command, *args)
+        con.commit()
+        con.close()
         
     def load_filepaths(self):
         file_paths = []
@@ -49,143 +67,130 @@ class SpectraFit:
             print('{}: {}'.format(str(i).zfill(int(np.log10(len(file_paths)))), path))
         return file_paths
 
-    def gen_definition(self):
-        definition = None
-        return Mod.Definition([definition, ] * len(self.files))
+    def gen_model(self, config):
+        spec_model = eval('Mod.{}()'.format(config['lineshape']))
+        split_model = Mod.gen_splitter_model(config)(spec_model)
+        npeaks_model = Mod.NPeak(model=split_model, n_peaks=config['npeaks'])
+        offset = config['offset_order']
+        return Mod.Offset(model=npeaks_model, offsets=offset)
 
-    def gen_model(self):
-        # TODO Replace working minimal example with final implementation.
-        return Mod.Offset(model=Mod.NPeak(model=Mod.Lorentz(), n_peaks=1), offsets=[1])
+    def gen_config(self):
+        return dict(routine=self.routine, absolute_sigma=self.absolute_sigma, guess_offset=self.guess_offset,
+                    arithmetics=self.arithmetics, summed=self.summed, linked=self.linked)
 
     def gen_fitter(self):
-        var = TiTs.select_from_db(self.db, 'isoVar, lineVar, scaler, track', 'Runs', [['run'], [self.run]],
-                                  caller_name=__name__)
-        if var:
-            # st: tuple of PMTs and tracks from selected run
-            st = (ast.literal_eval(var[0][2]), ast.literal_eval(var[0][3]))
-            linevar = var[0][1]
-        else:
-            raise ValueError('Run \'{}\' cannot be selected.'.format(self.run))
-        softw_gates_trs = (self.db, self.run)  # TODO: Get trs gates from parameter list instead of DB.
-        # softw_gates_trs = None  # TODO: Temporary force load from file
+        if not self.files:
+            self.fitter = None
+            return
 
-        models = []
-        meas = []
-        iso = []
-        for path in self.load_filepaths():
+        models, meas, st, iso = [], [], [], []
+        for path, run, config in zip(self.load_filepaths(), self.runs, self.configs):
+            var = TiTs.select_from_db(self.db, 'isoVar, lineVar, scaler, track', 'Runs', [['run'], [run]],
+                                      caller_name=__name__)
+            if var:
+                # st: tuple of PMTs and tracks from selected run
+                st.append((ast.literal_eval(var[0][2]), ast.literal_eval(var[0][3])))
+                linevar = var[0][1]
+            else:
+                raise ValueError('Run \'{}\' cannot be selected.'.format(run))
+            softw_gates_trs = (self.db, run)  # TODO: Get trs gates from parameter list instead of DB.
+            # softw_gates_trs = None  # TODO: Temporary force load from file
+
             meas.append(MeasLoad.load(path, self.db, softw_gates=softw_gates_trs))
             if isinstance(meas[-1], MeasLoad.XMLImporter):
                 if meas[-1].seq_type == 'kepco':
                     models.append(Mod.Offset(offsets=[1]))
                 else:
                     iso.append(DBIsotope(self.db, meas[-1].type, lineVar=linevar))
-                    models.append(self.gen_model())
+                    models.append(self.gen_model(config))
             else:
                 raise ValueError('File type not supported. The supported types are {}.'.format(self.file_types))
-        model = models[0]  # TODO Replace for multi file support.
-        self.fitter = Fitter(model, meas, st, iso)
+
+        self.fitter = Fitter(models, meas, st, iso, self.gen_config())
+        self.load_pars()
+        self.reset_model = [p for p in models[self.index_config].get_pars()]
 
     def fit(self):
-        return self.fitter.fit()
+        if self.fitter is None:
+            return
+        popt, pcov, info = self.fitter.fit()
+        if self.save_to_db:
+            self.save_fits(popt, pcov, info)
+        return popt, pcov, info
 
-    def get_pars(self):
-        return self.fitter.get_pars()
+    def get_pars(self, i):
+        return self.fitter.get_pars(i)
 
-    def set_val(self, i, val):
-        self.fitter.model.vals[i] = val
+    def set_val(self, i, j, val):
+        self.fitter.set_val(i, j, val)
 
-    def set_fix(self, i, fix):
-        self.fitter.model.fixes[i] = fix
+    def set_fix(self, i, j, fix):
+        self.fitter.set_fix(i, j, fix)
 
-    def set_link(self, i, link):
-        self.fitter.model.links[i] = link
+    def set_link(self, i, j, link):
+        self.fitter.set_link(i, j, link)
+
+    def reset(self):
+        if self.reset_model is None:
+            return
+        for j, (_, val, fix, link) in enumerate(self.reset_model):
+            self.set_val(self.index_config, j, val)
+            self.set_fix(self.index_config, j, fix)
+            self.set_link(self.index_config, j, link)
+
+    def _pars_from_db(self, file, run):
+        pars = TiTs.select_from_db(self.db, 'pars', 'FitPars', [['file', 'run'], [file, run]], caller_name=__name__)
+        if pars is None:
+            pars = TiTs.select_from_db(self.db, 'pars', 'FitPars', [['run'], [run]], caller_name=__name__)
+            if pars is None:
+
+                return {}
+        pars = ast.literal_eval(pars[0][0])
+        return pars
+
+    def load_pars(self):
+        self._execute('CREATE TABLE IF NOT EXISTS '
+                      '"FitPars"("file" TEXT, "run" TEXT, "config" TEXT, "pars" TEXT, PRIMARY KEY("file", "run"))')
+        for i, (file, run) in enumerate(zip(self.files, self.runs)):
+            pars = self._pars_from_db(file, run)
+            for j, (name, val, fix, link) in enumerate(self.get_pars(i)):
+                par = pars.get(name, (val, fix, link))
+                self.set_val(i, j, par[0])
+                self.set_fix(i, j, par[1])
+                self.set_link(i, j, par[2])
 
     def save_pars(self):
-        pass
-        # # Currently, only data for main fit is saved. No isomeres etc.
-        # names = self.fitter.npar
-        # vals = self.fitter.par
-        # fixes = self.fitter.fix
-        # links = self.fitter.link
-        # i_center = names.index('center')
-        # i_int0 = names.index('Int0')
-        # # Split at 'center' since this marks the border between "Lines" pars & "Isotopes" pars
-        #
-        # # Save Lines pars (Pars 0 until center)
-        # shape_vals = dict(zip(names[:i_center], vals[:i_center]))
-        # shape_fixes = dict(zip(names[:i_center], fixes[:i_center]))
-        # line_var = self.fitter.spec.iso.lineVar
-        # line_name = self.fitter.spec.iso.shape['name']
-        # shape_vals.update({'name': line_name})
-        #
-        # # Save Isotope data without Int (due to HFS)
-        # iso = self.fitter.meas.type
-        # isoData = vals[i_center:i_int0]
-        # isoDataFix = fixes[(i_center + 1):i_int0]
-        #
-        # # Save Int
-        # relInt = self.fitter.spec.hyper[0].hfInt
-        # nrTrans = len(relInt)
-        # intData = vals[i_int0:i_int0 + nrTrans]
-        # int0 = sum(intData)/sum(relInt)
-        #
-        # # Save softGates
-        # gatesName = names[-3:]
-        # gatesData = vals[-3:]
-        #
-        # try:
-        #     con = sqlite3.connect(self.db)
-        #     cur = con.cursor()
-        #     # Lines pars:
-        #     try:
-        #         cur.execute('''UPDATE Lines SET shape = ?, fixShape = ? WHERE lineVar = ?''',
-        #                 (str(shape), str(shapeFix), str(lineVar)))
-        #         con.commit()
-        #         print("Saved line pars in Lines!")
-        #     except Exception as e:
-        #         print("error: Couldn't save line pars. All values correct?")
-        #
-        #     # Isotopes pars:
-        #     try:
-        #         cur.execute('''UPDATE Isotopes SET center = ?, Al = ?, Bl = ?, Au = ?, Bu = ?, intScale = ?, fixedAl = ?, fixedBl = ?, fixedAu = ?, fixedBu = ? WHERE iso = ?''',
-        #                     (isoData[0], isoData[1], isoData[2], isoData[3], isoData[4], int0, isoDataFix[0], isoDataFix[1], isoDataFix[2], isoDataFix[3], iso))
-        #         con.commit()
-        #         print("Saved isotope pars in Isotopes!")
-        #     except Exception as e:
-        #         print("error: Couldn't save Isotopes pars. All values correct?")
-        #
-        #     # Timegate pars (only when available):
-        #     if gatesName[0] == 'softwGatesWidth':
-        #         try:
-        #             # Save in softwGates
-        #
-        #             # gates_tr0 = TiTs.calc_soft_gates_from_db_pars(self.fitter.par[-3], self.fitter.par[-2],
-        #             #                                               self.fitter.par[-1], voltage_gates=[-1000, 1000])
-        #             # softw_gate_all_tr = [gates_tr0 for each in self.fitter.meas.cts]
-        #             # cur.execute('''UPDATE Runs SET softwGates = ? WHERE run = ?''',
-        #             #             (str(softw_gate_all_tr), self.run))
-        #             # con.commit()
-        #
-        #             # Save in midTof, softwGateWidth and softwGateDelayList
-        #             cur.execute('''UPDATE Runs SET softwGateWidth = ?, softwGateDelayList = ? WHERE run = ?''',
-        #                         (float(gatesData[0]), str(gatesData[1]), self.run))
-        #             con.commit()
-        #             cur.execute('''UPDATE Isotopes SET midTof = ? WHERE iso = ?''', (gatesData[2], iso))
-        #             con.commit()
-        #             print("Saved gate pars in Runs & Isotopes!")
-        #         except Exception as e:
-        #             print("error: Coudln't save softwGates. All values correct?")
-        #
-        #     con.close()
-        #
-        # except Exception as e:
-        #     print("error: No database connection possible. No line pars have been saved!")
+        self._execute('CREATE TABLE IF NOT EXISTS '
+                      '"FitPars"("file" TEXT, "run" TEXT, "config" TEXT, "pars" TEXT, PRIMARY KEY("file", "run"))')
+        for i, (file, run, config) in enumerate(zip(self.files, self.runs, self.configs)):
+            new_pars = {name: (val, fix, link) for (name, val, fix, link) in self.get_pars(i)}
+            pars = TiTs.select_from_db(self.db, 'pars', 'FitPars', [['file', 'run'], [file, run]], caller_name=__name__)
+            pars = {} if pars is None else ast.literal_eval(pars[0][0])
+            new_pars = {**pars, **new_pars}
+            self._execute('INSERT OR REPLACE INTO FitPars (file, run, config, pars) VALUES (?, ?, ?, ?)',
+                          (file, run, str(config), str(new_pars)))
+
+    def save_fits(self, popt, pcov, info):
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        for i, (file, run) in enumerate(zip(self.files, self.runs)):
+            if i in info['errs']:
+                continue
+            pars = {self.fitter.models[i].names[j]: (pt, np.sqrt(pc[j]), self.fitter.models[i].fixes[j])
+                    for j, (pt, pc) in enumerate(zip(popt[i], pcov[i]))}
+            cur.execute('INSERT OR REPLACE INTO FitRes (file, iso, run, rChi, pars) '
+                        'VALUES (?, ?, ?, ?, ?)', (file, self.fitter.iso[i].name, run, info['chi2'][i], str(pars)))
+        con.commit()
+        con.close()
 
     def plot(self, clear=True, show=False):
+        if self.fitter is None:
+            return
         if clear:
             Plot.clear()
 
-        fig = Plot.plot_model_fit(self.fitter, fontsize=self.fontsize)
+        fig = Plot.plot_model_fit(self.fitter, self.index_config,
+                                  x_as_freq=self.x_as_freq, fmt=self.fmt, fontsize=self.fontsize)
 
         if show:
             Plot.show(True)
@@ -195,8 +200,10 @@ class SpectraFit:
 
     def print_pars(self):
         print('Current parameters:')
-        for pars in self.get_pars():
-            print('\t'.join([str(p) for p in pars]))
+        for i, file in enumerate(self.files):
+            print('File: {}'.format(file))
+            for pars in self.get_pars(i):
+                print('\t'.join([str(p) for p in pars]))
 
     def print_files(self):
         print('\nFile paths:')

@@ -223,7 +223,7 @@ def create_roi(pos, size):
     def hoverColor():
         # Generate the pen color for this ROI when the mouse is hovering over it
         if roi.mouseHovering:
-            return pg.fn.mkPen(255, 0, 200, width=2)
+            return pg.mkPen(255, 0, 200, width=2)
         else:
             return roi.pen
     roi._makePen=hoverColor
