@@ -204,7 +204,7 @@ class TritonObject(object):
 
     def unsubscribe(self, ndev):
         """Unsubscribe from an object"""
-        self.send('out', 'Unsusbcribing from ' + ndev)
+        self.send('out', 'Unsubscribing from ' + ndev)
         if ndev in self._recFrom:
             try:
                 self.server_backend.unsubscribeFromRemoteObject(self._recFrom[ndev])

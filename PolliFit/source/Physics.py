@@ -114,12 +114,11 @@ def invRelDoppler(laserFreq, dopplerFreq):
     # rs = (laserFreq/dopplerFreq)**2 """not right!?"""
     # rs = (dopplerFreq/laserFreq)**2
     # return c*(rs - 1)/(rs + 1)
-    return c * (laserFreq**2 - dopplerFreq**2) / (laserFreq**2 + dopplerFreq**2)
+    return c * (laserFreq ** 2 - dopplerFreq ** 2) / (laserFreq ** 2 + dopplerFreq ** 2)
 
 
 def volt_to_rel_freq(volt, charge, mass, f_laser, f_0, col):
     """
-
     :param volt: The total acceleration voltage (V).
     :param charge: The charge of the particle (e).
     :param mass: The mass of the particle (u).
@@ -132,6 +131,22 @@ def volt_to_rel_freq(volt, charge, mass, f_laser, f_0, col):
     pm = -1 if col else 1
     v = pm * relVelocity(qe * charge * volt, mass * u)
     return relDoppler(f_laser, v) - f_0
+
+
+def rel_freq_to_volt(rel_freq, charge, mass, f_laser, f_0, col):
+    """
+    :param rel_freq: The relative frequency in the rest frame of a particle (MHz).
+    :param charge: The charge of the particle (e).
+    :param mass: The mass of the particle (u).
+    :param f_laser: The laser frequency (arb. units).
+    :param f_0: The reference frequency in the rest frame of the particle.
+    :param col: Whether the lasers are aligned in collinear or anticollinear geometry.
+    :returns: The total acceleration voltages which shift the laser frequency to 'rel_freq',
+     the frequencies relative to 'f_0'.
+    """
+    pm = 1 if col else -1
+    v = pm * invRelDoppler(f_laser, rel_freq + f_0)
+    return relEnergy(v, mass * u) / (charge * qe)
 
 
 def voigt(x, sig, gam):
@@ -238,11 +253,11 @@ def transit(x, t):
 def HFCoeff(I, J, F):
     """ Return the tuple of hyperfine coefficients for A and B-factor for a given quantum state """
     # print('Return the tuple of hyperfine coefficients for A and B-factor for I = ', I, ' J = ', J, ' F = ', F)
-    C = 0.0 if I == 0 else (F * (F + 1) - I * (I + 1) - J * (J + 1))
+    C = 0. if I == 0 or J == 0 else (F * (F + 1) - I * (I + 1) - J * (J + 1))
     coA = 0.5 * C
 
     # catch case of low spins
-    coB = 0.0 if I < 0.9 or J < 0.9 \
+    coB = 0. if I < 0.9 or J < 0.9 \
         else (0.75 * C * (C + 1) - J * (J + 1) * I * (I + 1)) / (2 * I * (2 * I - 1) * J * (2 * J - 1))
 
     return coA, coB
@@ -260,6 +275,11 @@ def HFTrans(I, Jl, Ju):
             if abs(Fl - Fu) == 1 or (Fl - Fu == 0 and Fl != 0 and Fu != 0)]
 
 
+def HFShift(Al, Bl, Au, Bu, coAl, coBl, coAu, coBu):
+    """ Calculate line shift from (Al, Bl, Au, Bu) and (coAl, coBl, coAu, coBu) """
+    return Au * coAu + Bu * coBu - Al * coAl - Bl * coBl
+
+
 def HFLineSplit(Al, Bl, Au, Bu, transitions):
     """ Calculate line splittings from (Au, Bu, Al, Bl) and list of transitions (see calcHFTrans) """
     return [Au * coAu + Bu * coBu - Al * coAl - Bl * coBl
@@ -268,9 +288,9 @@ def HFLineSplit(Al, Bl, Au, Bu, transitions):
 
 def HFInt(I, Jl, Ju, transitions):
     """ Calculate relative line intensities """
-    print('Calculate relative line intensities for I, Jl, Ju, transitions ', I, Jl, Ju, transitions)
+    # print('Calculate relative line intensities for I, Jl, Ju, transitions ', I, Jl, Ju, transitions)
     res = [(2 * Fu + 1) * (2 * Fl + 1) * (sixJ(Jl, Fl, I, Fu, Ju, 1) ** 2) for Fl, Fu, *r in transitions]
-    print('result is: %s' % [round(each, 3) for each in res])
+    # print('result is: %s' % [round(each, 3) for each in res])
     return res
 
 

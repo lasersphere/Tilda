@@ -4,8 +4,6 @@ Created on 20.02.2022
 @author: Patrick Mueller
 """
 
-
-import os
 import numpy as np
 import Physics as Ph
 
@@ -21,6 +19,7 @@ class Fitter:
         :param meas: A list of SpecData objects.
         :param st: A list of scaler and track info.
         :param iso: A list of isotopes used for the axis conversion of each SpecData object.
+        :param config: A dictionary with information for the fit.
         """
         self.models = models
         self.meas = meas
@@ -28,8 +27,6 @@ class Fitter:
         self.iso = iso
         self.config = config
         self.size = len(self.meas)
-
-        self.kepco = False
 
         self.routines = {'curve_fit', }
 
@@ -41,28 +38,18 @@ class Fitter:
         return self.models[i].get_pars()
 
     def set_val(self, i, j, val):
-        self.models[i].vals[j] = val
+        self.models[i].set_val(j, val)
 
     def set_fix(self, i, j, fix):
-        self.models[i].fixes[j] = fix
+        self.models[i].set_fix(j, fix)
 
     def set_link(self, i, j, link):
-        self.models[i].links[j] = link
+        self.models[i].set_link(j, link)
 
-    def _transform_y(self, y):
-        """
-        :param y: The y data.
-        :returns: The y data as defined by the Fitter object.
-        """
-        return y
-
-    def _transform_yerr(self, y, yerr):
-        """
-        :param y: The y data.
-        :param yerr: The uncertainties in the y-axis.
-        :returns: The uncertainties as defined by the Fitter object.
-        """
-        return np.sqrt(y)
+    def get_meas_x_in_freq(self, i):
+        meas, iso = self.meas[i], self.iso[i]
+        return [[Ph.volt_to_rel_freq(x, iso.q, iso.mass, meas.laserFreq, iso.freq, meas.col)
+                 for x in x_track] for x_track in meas.x]
 
     def gen_data(self):
         """
@@ -74,9 +61,37 @@ class Fitter:
             data = meas.getArithSpec(*st, function=None, eval_on=True)
             self.sizes.append(data[0].size)
             self.x_volt.append(data[0])
-            self.x.append(Ph.volt_to_rel_freq(data[0], iso.q, iso.mass, meas.laserFreq, iso.freq, meas.col))
-            self.y.append(self._transform_y(data[1]))
-            self.yerr.append(self._transform_yerr(data[1], data[2]))
+            self.y.append(data[1])
+            if meas.seq_type == 'kepco':
+                self.x.append(data[0])
+                self.yerr.append(data[2])
+            else:
+                self.x.append(Ph.volt_to_rel_freq(data[0], iso.q, iso.mass, meas.laserFreq, iso.freq, meas.col))
+                self.yerr.append(np.sqrt(data[1]))
+        if all(model.type == 'Offset' for model in self.models):
+            self.gen_x_cuts()
+
+    def gen_x_cuts(self):
+        for model, meas, iso, x in zip(self.models, self.meas, self.iso, self.x):
+            if not model.x_cuts:
+                model.gen_offset_masks(x)
+                continue
+            x_min = np.array([_x[0] if _x[0] <= _x[-1] else _x[-1] for _x in meas.x])
+            # Array of the tracks lowest voltages
+            x_max = np.array([_x[-1] if _x[0] <= _x[-1] else _x[0] for _x in meas.x])
+            # Array of the tracks highest voltages
+            order = np.argsort(x_min)  # Find ascending order of the lowest voltages
+            x_min = x_min[order]  # apply order to the lowest voltages
+            x_max = x_max[order]  # apply order to the highest voltages
+            # cut at the mean between the highest voltage and the corresponding lowest voltage of the next track.
+            # Iteration goes over the sorted tracks and only non-overlapping tracks get a unique offset parameter.
+            x_cuts = [0.5 * float(x_max[i] + x_min[i + 1]) for i in range(len(model.x_cuts))]
+            if any(x0 > x1 for x0, x1 in zip(x_cuts[:-1], x_cuts[1:])):
+                print_colored('WARNING', 'Tracks are overlapping in file {}.'
+                                         ' Cannot use \'offset per track\' option'.format(meas.file))
+                continue
+            x_cuts = [Ph.volt_to_rel_freq(_x, iso.q, iso.mass, meas.laserFreq, iso.freq, meas.col) for _x in x_cuts]
+            model.set_x_cuts(x_cuts)
 
     def get_routine(self):
         if self.config['routine'] not in self.routines:
@@ -122,8 +137,17 @@ class Fitter:
         popt, pcov = [], []
         for i, (model, x, y, yerr) in enumerate(zip(self.models, self.x, self.y, self.yerr)):
             try:
-                pt, pc = routine(model, x, y, p0=model.vals, p0_fixed=model.fixes, sigma=yerr,
-                                 absolute_sigma=self.config['absolute_sigma'], report=False)
+                if model.error:
+                    raise ValueError(model.error)
+                if model.type == 'Offset':
+                    model.update_on_call = False
+                    model.gen_offset_masks(x)
+                    if self.config['guess_offset']:
+                        model.guess_offset(x, y)
+                fixed, bounds = model.fit_prepare()
+                pt, pc = routine(model, x, y, p0=model.vals, p0_fixed=fixed, sigma=yerr,
+                                 absolute_sigma=self.config['absolute_sigma'], bounds=bounds, report=False)
+                pt = model.update_args(*pt)
                 chi2.append(self.reduced_chi2(i))
                 for name, val, err in zip(model.names, pt, np.sqrt(np.diag(pc))):
                     print('{}: {} +/- {}'.format(name, val, err))
@@ -143,6 +167,8 @@ class Fitter:
                 chi2.append(0.)
                 popt.append(np.array(model.vals))
                 pcov.append(np.zeros((popt[-1].size, popt[-1].size)))
+            if model.type == 'Offset':
+                model.update_on_call = True
         color = 'OKGREEN'
         if len(warn) > 0:
             color = 'WARNING'

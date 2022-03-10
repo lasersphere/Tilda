@@ -17,6 +17,7 @@ from matplotlib.dates import DateFormatter
 from matplotlib.lines import Line2D
 from matplotlib.widgets import Button, RadioButtons, RectangleSelector, Slider
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 from Spectra.AsymmetricVoigt import AsymmetricVoigt
 from SPFitter import SPFitter
 from Spectra.FullSpec import FullSpec
@@ -249,7 +250,7 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
                fontsize=fontsize_ticks+2, numpoints=1)
 
 
-def plot_model_fit(fitter, index, x_as_freq=True, fmt='k.', fontsize=10):
+def plot_model_fit(fitter, index, x_as_freq=True, save_path='', fmt='k.', fontsize=10):
     fig = plt.figure(num=1, figsize=(8, 8))
     ax1 = plt.axes([0.15, 0.35, 0.8, 0.50])
     ax2 = plt.axes([0.15, 0.1, 0.8, 0.2], sharex=ax1)
@@ -259,35 +260,60 @@ def plot_model_fit(fitter, index, x_as_freq=True, fmt='k.', fontsize=10):
     ax1.get_xaxis().get_major_formatter().set_useOffset(False)
     ax2.get_xaxis().get_major_formatter().set_useOffset(False)
     ax2.locator_params(axis='y', nbins=5)
-
-    if fitter.kepco:
-        ax2.set_xlabel('line voltage (V)', fontsize=fontsize, labelpad=fontsize / 2)
-    elif x_as_freq:
-        ax2.set_xlabel('relative frequency (MHz)', fontsize=fontsize, labelpad=fontsize / 2)
-    else:
-        ax2.set_xlabel('voltage (kV)', fontsize=fontsize, labelpad=fontsize / 2)
-    ax1.set_ylabel('intensity (counts)', fontsize=fontsize)
-    ax2.set_ylabel('residuals (counts)', fontsize=fontsize)
     
     model = fitter.models[index]
     
-    x_cont = model.x()
-    y_cont = model(x_cont, *model.vals)
+    x_fit = model.x()
+    y_fit = model(x_fit, *model.vals)
 
     # for x_volt, x, y, yerr in zip(fitter.x_volt, fitter.x, fitter.y, fitter.yerr):
     x_volt, x, y, yerr = fitter.x_volt[index], fitter.x[index], fitter.y[index], fitter.yerr[index]
     y_res = model(x, *model.vals) - y
-    if not fitter.kepco:
-        x_volt *= 1e-3
-    plot_data = ax1.errorbar(x if x_as_freq else x_volt, y, yerr=yerr, fmt=fmt, label='Data')
-    plot_fit = ax1.plot(x_cont, y_cont, 'r-', label='Fit')
-    ax2.errorbar(x, y_res, yerr=yerr, fmt=fmt, label='Residuals')
+
+    _x = x
+    if fitter.meas[index].seq_type == 'kepco':
+        _x = x_volt
+        ax2.set_xlabel('line voltage (V)', fontsize=fontsize, labelpad=fontsize / 2)
+    elif x_as_freq:
+        ax2.set_xlabel('relative frequency (MHz)', fontsize=fontsize, labelpad=fontsize / 2)
+    else:
+        x_fit = Physics.rel_freq_to_volt(x_fit, fitter.iso[index].q, fitter.iso[index].mass,
+                                         fitter.meas[index].laserFreq, fitter.iso[index].freq, fitter.meas[index].col)
+        _x = x_volt
+        ax2.set_xlabel('voltage (V)'.format(fitter.meas[index].accVolt), fontsize=fontsize, labelpad=fontsize / 2)
+    ax1.set_ylabel('intensity (counts)', fontsize=fontsize)
+    ax2.set_ylabel('residuals (counts)', fontsize=fontsize)
+
+    plot_data = ax1.errorbar(_x, y, yerr=yerr, fmt=fmt, label=fitter.meas[index].file)
+    plot_fit = ax1.plot(x_fit, y_fit, 'r-', label='Fit')
+    ax2.errorbar(_x, y_res, yerr=yerr, fmt=fmt, label='Residuals')
 
     lines = [plot_data, plot_fit[0]]
     labels = [each.get_label() for each in lines]
     fig.legend(lines, labels, loc='upper center', ncol=2, bbox_to_anchor=(0.15, 0.8, 0.8, 0.2), mode='expand',
                fontsize=fontsize + 2, numpoints=1)
+    if save_path:
+        save_plot_as_ascii(_x, y, y_res, yerr, x_fit, y_fit,
+                           save_path=save_path, filename=fitter.meas[index].file, xlabel=ax2.get_xlabel())
     return fig
+
+
+def save_plot_as_ascii(x, y, y_res, yerr, x_fit, y_fit, save_path='C:\\', filename='', xlabel=''):
+    if not os.path.exists(save_path):
+        try:
+            os.makedirs(save_path)
+        except Exception as e:
+            print('Saving directory has not been created. Writing permission in DB directory?\nerror msg: %s' % e)
+            return
+
+    f = os.path.join(save_path, '{}_data_{}'.format(
+        os.path.splitext(filename)[0], datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt')))
+    np.savetxt(f, np.array([x, y, y_res, yerr]).T, delimiter=', ',
+               header='{}, data intensity (counts), fit residuals (counts), data uncertainty (counts)'.format(xlabel))
+    f = os.path.join(save_path, '{}_fit_{}'.format(
+        os.path.splitext(filename)[0], datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt')))
+    np.savetxt(f, np.array([x_fit, y_fit]).T, delimiter=', ', header='{}, fit intensity (counts)'.format(xlabel))
+    print('Saved plot as ASCII files in {}.'.format(save_path))
 
 
 def plotMoments(cts, q=True,fontsize_ticks=10):

@@ -612,6 +612,34 @@ def create_header_list(meas, sc, tr):
     return header
 
 
+def merge_intervals(intervals):
+    """
+    :param intervals: An iterable of intervals.
+     An interval i is itself an iterable of two scalar values. If i[1] < i[0], the interval is reversed.
+    :returns: An iterable of non-overlapping intervals.
+    """
+    inter = np.asarray(intervals)
+    inter = np.array([i if i[0] <= i[1] else i[::-1] for i in inter])
+    sort = np.argsort(inter[:, 0])
+    inter = inter[sort, :]
+    new_inter = []
+    n = 0
+    m = inter.shape[0]
+    while n < inter.shape[0] - 1:
+        end = inter[n, 1]
+        for m, i in enumerate(inter[(n+1):, :]):
+            if not end < i[0]:
+                end = np.max([end, i[1]])
+            else:
+                break
+        new_inter.append([inter[n, 0], end])
+        n += m + 1
+    if inter.shape[0] == 1 or inter[-1, 0] > inter[-2, 1]:
+        new_inter.append(inter[-1, :])
+    new_inter = np.asarray(new_inter)
+    return new_inter
+
+
 if __name__ == '__main__':
     workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
     db_0 = os.path.join(workdir, 'Ni_workspace.sqlite')

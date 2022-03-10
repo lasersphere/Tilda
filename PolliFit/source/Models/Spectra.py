@@ -17,9 +17,14 @@ SPECTRA = ['Gauss', 'Lorentz', 'Voigt']
 class Spectrum(Model):
     def __init__(self):
         super().__init__(model=None)
+        self.type = 'Spectrum'
 
-    def __call__(self, x, *args, **kwargs):
+    def evaluate(self, x, *args, **kwargs):
         return np.zeros_like(x)
+
+    @property
+    def dx(self):
+        return self.fwhm() * 1e-2
 
     def fwhm(self):
         return 1.
@@ -34,9 +39,10 @@ class Spectrum(Model):
 class Lorentz(Spectrum):
     def __init__(self):
         super().__init__()
+        self.type = 'Lorentz'
         self._add_arg('Gamma', 1., False, False)
 
-    def __call__(self, x, *args, **kwargs):
+    def evaluate(self, x, *args, **kwargs):
         scale = 0.5 * args[0]
         return np.pi * scale * cauchy.pdf(x, loc=0, scale=scale)
 
@@ -47,9 +53,10 @@ class Lorentz(Spectrum):
 class Gauss(Spectrum):
     def __init__(self):
         super().__init__()
+        self.type = 'Gauss'
         self._add_arg('sigma', 1., False, False)
 
-    def __call__(self, x, *args, **kwargs):
+    def evaluate(self, x, *args, **kwargs):
         return np.sqrt(2 * np.pi) * args[0] * norm.pdf(x, loc=0, scale=args[0])
 
     def fwhm(self):
@@ -59,13 +66,14 @@ class Gauss(Spectrum):
 class Voigt(Spectrum):
     def __init__(self):
         super().__init__()
+        self.type = 'Voigt'
         self._add_arg('Gamma', 1., False, False)
         self._add_arg('sigma', 1., False, False)
 
-    def __call__(self, x, *args, **kwargs):
+    def evaluate(self, x, *args, **kwargs):
         # z = (x + 1j * args[0] / 2.) / (np.sqrt(2.) * args[1])
         # return np.real(wofz(z)) / (args[1] * np.sqrt(2. * np.pi))
-        return voigt_profile(x, args[1], 0.5 * args[0])
+        return voigt_profile(x, args[1], 0.5 * args[0]) / voigt_profile(0, args[1], 0.5 * args[0])
 
     def fwhm(self):
         f_l = self.vals[self.p['Gamma']]
