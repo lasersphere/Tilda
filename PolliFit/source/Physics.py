@@ -250,34 +250,70 @@ def transit(x, t):
     return (np.sin(0.5 * t * y)) ** 2 / y ** 2
 
 
-def HFCoeff(I, J, F):
+def HFCoeff(I, J, F, old=True):
     """ Return the tuple of hyperfine coefficients for A and B-factor for a given quantum state """
-    # print('Return the tuple of hyperfine coefficients for A and B-factor for I = ', I, ' J = ', J, ' F = ', F)
-    C = 0. if I == 0 or J == 0 else (F * (F + 1) - I * (I + 1) - J * (J + 1))
-    coA = 0.5 * C
+    if old:
+        C = 0. if I < 0.5 or J < 0.5 else (F * (F + 1) - I * (I + 1) - J * (J + 1))
+        coA = 0.5 * C
 
-    # catch case of low spins
-    coB = 0. if I < 0.9 or J < 0.9 \
-        else (0.75 * C * (C + 1) - J * (J + 1) * I * (I + 1)) / (2 * I * (2 * I - 1) * J * (2 * J - 1))
+        coB = 0. if I < 1 or J < 1 else (0.75 * C * (C + 1) - J * (J + 1) * I * (I + 1)) \
+            / (2 * I * (2 * I - 1) * J * (2 * J - 1))
 
-    return coA, coB
+        return coA, coB
+
+    # Functions using the new version should be able to handle an arbitrary amount of coefficients.
+    # First three orders are taken from https://journals.aps.org/pra/abstract/10.1103/PhysRevA.103.032826.
+    if I < 0.5 or J < 0.5:
+        return tuple()
+
+    # Magnetic dipole, the corresponding hyperfine constant is A = mu / (IJ) * <T_1>.
+    K = F * (F + 1) - I * (I + 1) - J * (J + 1)
+    coA = 0.5 * K
+    if I < 1 or J < 1:
+        return coA,
+
+    # Electric quadrupole, the corresponding hyperfine constant is B = 2eQ * <T_2>.
+    coB = (0.75 * K * (K + 1) - J * (J + 1) * I * (I + 1)) / (2 * I * (2 * I - 1) * J * (2 * J - 1))
+    if I < 1.5 or J < 1.5:
+        return coA, coB
+
+    # Magnetic octupole, the corresponding hyperfine constant is C = -Omega * <T_3>.
+    coC = K ** 3 + 4 * K ** 2 + 0.8 * K * (-3 * I * (I + 1) * J * (J + 1) + I * (I + 1) + J * (J + 1) + 3) \
+        - 4 * I * (I + 1) * J * (J + 1)
+    coC /= I * (I - 1) * (2 * I - 1) * J * (J - 1) * (2 * J - 1)
+    coC *= 1.25
+    if I < 2 or J < 2:
+        return coA, coB, coC
+    return coA, coB, coC  # Highest implemented order.
 
 
-def HFTrans(I, Jl, Ju):
+def HFTrans(I, Jl, Ju, old=True):
     """
     Calculate all allowed hyperfine transitions and their hyperfine coefficients.
     Returns (Fl, Fu, coAl, coBl, coAu, coBu)
     """
     # print('calculating the hyperfine transitions and hyperfine coeffients')
-    return [(Fl, Fu) + HFCoeff(I, Jl, Fl) + HFCoeff(I, Ju, Fu)
+    if old:
+        return [(Fl, Fu) + HFCoeff(I, Jl, Fl) + HFCoeff(I, Ju, Fu)
+                for Fl in np.arange(abs(I - Jl), (I + Jl + 0.5))
+                for Fu in np.arange(abs(I - Ju), (I + Ju + 0.5))
+                if abs(Fl - Fu) == 1 or (Fl - Fu == 0 and Fl != 0 and Fu != 0)]
+    return [[(Fl, Fu), HFCoeff(I, Jl, Fl, old=False), HFCoeff(I, Ju, Fu, old=False)]
             for Fl in np.arange(abs(I - Jl), (I + Jl + 0.5))
             for Fu in np.arange(abs(I - Ju), (I + Ju + 0.5))
             if abs(Fl - Fu) == 1 or (Fl - Fu == 0 and Fl != 0 and Fu != 0)]
 
 
-def HFShift(Al, Bl, Au, Bu, coAl, coBl, coAu, coBu):
-    """ Calculate line shift from (Al, Bl, Au, Bu) and (coAl, coBl, coAu, coBu) """
-    return Au * coAu + Bu * coBu - Al * coAl - Bl * coBl
+def HFShift(hyper_l, hyper_u, coeff_l, coeff_u):
+    """
+    :param hyper_l: The hyperfine structure constants of the lower state (Al, Bl, Cl, ...).
+    :param hyper_u: The hyperfine structure constants of the upper state (Au, Bu, Cu, ...).
+    :param coeff_l: The coefficients of the lower state to be multiplied by the constants (coAl, coBl, coCl, ...).
+    :param coeff_u: The coefficients of the lower state to be multiplied by the constants (coAu, coBu, coCu, ...).
+    :returns: The hyperfine structure shift of an optical transition.
+    """
+    return sum(const * coeff for const, coeff in zip(hyper_u, coeff_u)) \
+        - sum(const * coeff for const, coeff in zip(hyper_l, coeff_l))
 
 
 def HFLineSplit(Al, Bl, Au, Bu, transitions):
@@ -286,12 +322,15 @@ def HFLineSplit(Al, Bl, Au, Bu, transitions):
             for x, y, coAl, coBl, coAu, coBu in transitions]
 
 
-def HFInt(I, Jl, Ju, transitions):
+def HFInt(I, Jl, Ju, transitions, old=True):
     """ Calculate relative line intensities """
-    # print('Calculate relative line intensities for I, Jl, Ju, transitions ', I, Jl, Ju, transitions)
-    res = [(2 * Fu + 1) * (2 * Fl + 1) * (sixJ(Jl, Fl, I, Fu, Ju, 1) ** 2) for Fl, Fu, *r in transitions]
-    # print('result is: %s' % [round(each, 3) for each in res])
-    return res
+    if old:
+        # print('Calculate relative line intensities for I, Jl, Ju, transitions ', I, Jl, Ju, transitions)
+        res = [(2 * Fu + 1) * (2 * Fl + 1) * (sixJ(Jl, Fl, I, Fu, Ju, 1) ** 2) for Fl, Fu, *r in transitions]
+        # print('result is: %s' % [round(each, 3) for each in res])
+        return res
+    return [np.around((2 * Fu + 1) * (2 * Fl + 1) * (sixJ(Jl, Fl, I, Fu, Ju, 1) ** 2), decimals=9)
+            for (Fl, Fu), *r in transitions]
 
 
 def sixJ(j1, j2, j3, J1, J2, J3):

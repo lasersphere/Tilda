@@ -10,6 +10,7 @@ import Physics as Ph
 # noinspection PyUnresolvedReferences
 from FitRoutines import curve_fit
 from Tools import print_colored
+from Models.Collection import Linked
 
 
 class Fitter:
@@ -147,20 +148,20 @@ class Fitter:
                 fixed, bounds = model.fit_prepare()
                 pt, pc = routine(model, x, y, p0=model.vals, p0_fixed=fixed, sigma=yerr,
                                  absolute_sigma=self.config['absolute_sigma'], bounds=bounds, report=False)
-                pt = model.update_args(*pt)
-                chi2.append(self.reduced_chi2(i))
+                pt = np.array(model.update_args(pt))
+                model.set_vals(pt, force=True)
+                chi2.append(self.reduced_chi2(i))  # Calculate chi2 after the vals are set.
                 for name, val, err in zip(model.names, pt, np.sqrt(np.diag(pc))):
                     print('{}: {} +/- {}'.format(name, val, err))
                 print('Red. chi2: {}'.format(chi2[-1]))
                 popt.append(pt)
                 pcov.append(pc)
-                model.set_vals(pt)
                 if np.any(np.isinf(pc)):
                     warn.append(i)
                     print_colored('WARNING', 'Failed to estimate uncertainties for file number {}.'.format(i + 1))
                 else:
                     print_colored('OKGREEN', 'Successfully fitted file number {}.'.format(i + 1))
-            except ValueError as e:
+            except (ValueError, RuntimeError) as e:
                 print_colored('FAIL', 'Error while fitting file number {}: {}.'.format(i + 1, e))
                 warn.append(i)
                 errs.append(i)
@@ -168,7 +169,7 @@ class Fitter:
                 popt.append(np.array(model.vals))
                 pcov.append(np.zeros((popt[-1].size, popt[-1].size)))
             if model.type == 'Offset':
-                model.update_on_call = True
+                model.update_on_call = True  # Reset the offset model to be updated on call.
         color = 'OKGREEN'
         if len(warn) > 0:
             color = 'WARNING'
@@ -182,7 +183,57 @@ class Fitter:
         return None, None, {}
 
     def fit_linked(self):
-        return None, None, {}
+        """
+        Fit all SpecData objects simultaneously.
+
+        :returns: popt, pcov, info.
+        """
+        routine = self.get_routine()
+        model = Linked(self.models)
+        warn = []
+        errs = []
+        y, yerr = np.concatenate(self.y, axis=0), np.concatenate(self.yerr, axis=0)
+        try:
+            if model.error:
+                raise ValueError(model.error)
+            for _model, _x, _y in zip(self.models, self.x, self.y):
+                # Handle offsets for all linked models.
+                if _model.type == 'Offset':
+                    _model.update_on_call = False
+                    _model.gen_offset_masks(_x)
+                    if self.config['guess_offset']:
+                        _model.guess_offset(_x, _y)
+            model.inherit_vals()  # Inherit values of the linked models afterwards.
+            fixed, bounds = model.fit_prepare()
+            pt, pc = routine(model, self.x, y, p0=model.vals, p0_fixed=fixed, sigma=yerr,
+                             absolute_sigma=self.config['absolute_sigma'], bounds=bounds, report=False)
+            pt = np.array(model.update_args(pt))
+            model.set_vals(pt, force=True)  # Set the vals of the model (auto sets the vals of the linked models).
+            chi2 = self.reduced_chi2()  # Calculate chi2 after the vals are set.
+            for name, val, err in zip(model.names, pt, np.sqrt(np.diag(pc))):
+                print('{}: {} +/- {}'.format(name, val, err))
+            for i, _chi2 in enumerate(chi2):
+                print('{} Red. chi2: {}'.format(str(i).zfill(int(np.log10(self.size))), _chi2))
+            popt = [pt[_slice] for _slice in model.slices]
+            pcov = [pc[_slice, _slice] for _slice in model.slices]
+        except (ValueError, RuntimeError) as e:
+            print_colored('FAIL', 'Error while fitting linked files: {}.'.format(e))
+            warn = list(range(self.size))  # Issue warnings for all files.
+            errs = list(range(self.size))
+            chi2 = [0., ] * self.size
+            popt = [np.array(model.vals) for model in self.models]
+            pcov = [np.zeros((popt[-1].size, popt[-1].size)) for _ in self.models]
+        for _model in self.models:
+            if _model.type == 'Offset':
+                _model.update_on_call = True  # Reset all offset models to be updated on call.
+        if len(warn) == len(errs) == 0:
+            print_colored('OKGREEN', 'Linked fit completed, success.')
+        elif len(errs) > 0:
+            print_colored('FAIL', 'Linked fit completed, failed.')
+        elif len(warn) > 0:
+            print_colored('WARNING', 'Linked fit completed, warning.')
+        info = dict(warn=warn, errs=errs, chi2=chi2)
+        return popt, pcov, info
 
     def fit(self):
         """

@@ -69,11 +69,13 @@ class SpectraFit:
         return file_paths
 
     def gen_model(self, config, iso):
-        spec_model = eval('Mod.{}()'.format(config['lineshape']))
-        splitters, args = Mod.gen_splitter_models(config, iso)
-        split_models = [splitter(spec_model, *_args) for splitter, _args in zip(splitters, args)]
-        self.splitter_models += split_models
-        npeaks_model = Mod.NPeak(model=self.splitter_models[-1], n_peaks=config['npeaks'])
+        splitter, args = Mod.gen_splitter_models(config, iso)
+        splitter_model = Mod.SplitterSummed([
+            splitter(eval('Mod.{}()'.format(config['lineshape'])), *_args) for _args in args])
+        self.splitter_models.append(splitter_model)
+        npeaks_model = Mod.NPeak(model=splitter_model, n_peaks=config['npeaks'])
+        if config['convolve'] != 'None':
+            npeaks_model = eval('Mod.{}Convolved'.format(config['convolve']))(model=npeaks_model)
         offset = config['offset_order']
         x_cuts = None
         if config['offset_per_track']:
@@ -158,6 +160,7 @@ class SpectraFit:
                 self.set_val(i, j, val)
                 self.set_fix(i, j, fix)
                 self.set_link(i, j, link)
+            self.fitter.models[i].update()
 
     def load_trs(self, file, run, from_file=False):
         if from_file:
@@ -194,6 +197,7 @@ class SpectraFit:
                 self.set_val(i, j, par[0])
                 self.set_fix(i, j, par[1])
                 self.set_link(i, j, par[2])
+            self.fitter.models[i].update()
 
     def save_pars(self):
         self._execute('CREATE TABLE IF NOT EXISTS "FitPars"("file" TEXT, "run" TEXT, "softw_gates" TEXT, "config" TEXT,'

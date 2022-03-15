@@ -17,7 +17,8 @@ from matplotlib.axes._base import _process_plot_format
 from Gui.Ui_SpectraFit import Ui_SpectraFit
 from Gui.TRSConfigUi import TRSConfigUi
 from SpectraFit import SpectraFit
-from Models.Spectra import SPECTRA
+from Models.Spectrum import SPECTRA
+from Models.Convolved import CONVOLVE
 import TildaTools as TiTs
 
 
@@ -31,6 +32,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.setupUi(self)
         self.trs_config_ui = None
         self.load_lineshapes()
+        self.load_convolves()
         self.main_tilda_gui = None
         self.dbpath = None
         self.items_col = []
@@ -77,6 +79,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
         # Model
         self.c_lineshape.currentIndexChanged.connect(self.set_lineshape)
+        self.c_convolve.currentIndexChanged.connect(self.set_convolve)
         self.s_npeaks.valueChanged.connect(self.set_npeaks)
         self.check_offset_per_track.stateChanged.connect(self.toggle_offset_per_track)
         self.edit_offset_order.editingFinished.connect(self.set_offset_order)
@@ -139,6 +142,11 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         for i, spec in enumerate(SPECTRA):
             self.c_lineshape.insertItem(i, spec)
         self.c_lineshape.setCurrentText('Voigt')
+
+    def load_convolves(self):
+        for i, spec in enumerate(CONVOLVE):
+            self.c_convolve.insertItem(i, spec)
+        self.c_convolve.setCurrentText('None')
 
     def set_run(self):
         pass
@@ -260,6 +268,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     def _gen_configs(self, files, runs):
         configs = []
         current_config = dict(lineshape=self.c_lineshape.currentText(),
+                              convolve=self.c_convolve.currentText(),
                               npeaks=self.s_npeaks.value(),
                               offset_per_track=self.check_offset_per_track.isChecked(),
                               offset_order=ast.literal_eval(self.edit_offset_order.text()),
@@ -276,6 +285,8 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                 config = {**current_config, **ast.literal_eval(config[0][0])}
                 if config['lineshape'] not in SPECTRA:
                     config['lineshape'] = 'Voigt'
+                if config['convolve'] not in CONVOLVE:
+                    config['convolve'] = 'None'
             configs.append(config)
         if configs:
             self.set_model_gui(configs[self.index_load])
@@ -300,7 +311,6 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
     def load_pars(self):
         self.spectra_fit = self.gen_spectra_fit()
-        self.set_offset_order()  # Call once to make the length of the list equal to the number of tracks.
         self.update_pars()
 
     def update_pars(self):
@@ -374,7 +384,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                         [ast.literal_eval(self.tab_pars.item(_i, _j).text()) for _j in range(1, 4)]
                         for _i in range(self.tab_pars.rowCount())}
             pars = [tab_dict.get(name, [val, fix, link]) for name, val, fix, link in model.get_pars()]
-            model.set_pars(pars)
+            model.set_pars(pars, force=True)
 
     def reset_pars(self):
         self.spectra_fit.reset()
@@ -385,9 +395,13 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
     def set_par_multi(self, i, j):
         self.tab_pars.blockSignals(True)
+        text = self.tab_pars.item(i, j).text()
         for item in self.tab_pars.selectedItems():
-            item.setText(self.tab_pars.item(i, j).text())
+            item.setText(text)
             self._set_par(item.row(), item.column())
+        for model in self.spectra_fit.fitter.models:
+            model.update()
+        self.update_vals()
         self.tab_pars.blockSignals(False)
         self.plot_auto()
 
@@ -411,6 +425,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
     def set_model_gui(self, config):
         self.c_lineshape.setCurrentText(config['lineshape'])
+        self.c_convolve.setCurrentText(config['convolve'])
         self.s_npeaks.setValue(config['npeaks'])
         self.check_offset_per_track.setChecked(config['offset_per_track'])
         self.edit_offset_order.setText(str(config['offset_order']))
@@ -420,6 +435,10 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     def set_lineshape(self):
         for config in self.spectra_fit.configs:
             config['lineshape'] = self.c_lineshape.currentText()
+
+    def set_convolve(self):
+        for config in self.spectra_fit.configs:
+            config['convolve'] = self.c_convolve.currentText()
 
     def set_npeaks(self):
         for config in self.spectra_fit.configs:
@@ -444,7 +463,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                     _offset_order = offset_order[:(n_tracks - size)]
                 config['offset_order'] = [order for order in _offset_order]
             self.edit_offset_order.setText(str(self.spectra_fit.configs[self.index_config]['offset_order']))
-        except (ValueError, TypeError, SyntaxError):
+        except (ValueError, TypeError, SyntaxError, IndexError):
             try:
                 self.edit_offset_order.setText(str(self.spectra_fit.configs[self.index_config]['offset_order']))
             except IndexError:
@@ -548,7 +567,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         pass
 
     def toogle_linked(self):
-        pass
+        self.spectra_fit.linked = self.check_linked.isChecked()
 
     def toggle_save_to_db(self):
         state = self.check_save_to_db.isChecked()

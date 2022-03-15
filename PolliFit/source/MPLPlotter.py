@@ -18,8 +18,8 @@ from matplotlib.lines import Line2D
 from matplotlib.widgets import Button, RadioButtons, RectangleSelector, Slider
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from Spectra.AsymmetricVoigt import AsymmetricVoigt
 from SPFitter import SPFitter
+from Spectra.AsymmetricVoigt import AsymmetricVoigt
 from Spectra.FullSpec import FullSpec
 from copy import deepcopy
 

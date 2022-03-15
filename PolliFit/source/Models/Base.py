@@ -9,6 +9,9 @@ import numpy as np
 import Tools
 
 
+np_version = np.version.version.split('.')
+
+
 def args_ordered(args, order):
     return [args[i] for i in order]
 
@@ -23,7 +26,7 @@ class Model:
         self.type = 'Model'
 
     def __call__(self, x, *args, **kwargs):
-        return self.evaluate(x, *self.update_args(*args), **kwargs)
+        return self.evaluate(x, *self.update_args(args), **kwargs)
     
     def evaluate(self, x, *args, **kwargs):  # Reimplement this function in subclasses (not evaluate).
         pass
@@ -85,30 +88,38 @@ class Model:
     def get_pars(self):
         return zip(self.names, self.vals, self.fixes, self.links)
 
-    def set_pars(self, pars):
-        for i in range(len(self.vals)):
-            self.vals[i] = pars[i][0]
-            self.fixes[i] = pars[i][1]
-            self.links[i] = pars[i][2]
+    def set_pars(self, pars, force=False):
+        for i, p in enumerate(pars):
+            self.set_val(i, p[0], force=force)
+            self.set_fix(i, p[1], force=force)
+            self.set_link(i, p[2], force=force)
 
-    def set_vals(self, vals):
-        for i in range(len(self.vals)):
-            self.vals[i] = vals[i]
+    def set_vals(self, vals, force=False):
+        for i, val in enumerate(vals):
+            self.set_val(i, val, force=force)
 
-    def set_fixes(self, fixes):
-        for i in range(len(self.fixes)):
-            self.fixes[i] = fixes[i]
+    def set_fixes(self, fixes, force=False):
+        for i, fix in enumerate(fixes):
+            self.set_fix(i, fix, force=force)
 
-    def set_links(self, links):
-        for i in range(len(self.links)):
-            self.links[i] = links[i]
+    def set_links(self, links, force=False):
+        for i, link in enumerate(links):
+            self.set_link(i, link, force=force)
     
-    def set_val(self, i, val):
-        if isinstance(val, int) or isinstance(val, float):
-            self.vals[i] = val
-            self.set_vals(self.update_args(*self.vals))
+    def set_val(self, i, val, force=False):
+        if force or isinstance(val, int) or isinstance(val, float):
+            if self.model is None:
+                self.vals[i] = val
+            else:
+                self.model.set_val(i, val, force=True)  # Set val for all sub-models
+                # to ensure set_val is called for a ListedModel if one is part of the sub-models.
+                # This is only needed for the vals since these may be predicted by the specific model.
+                # Everything else is handled by the top-model.
     
-    def set_fix(self, i, fix):
+    def set_fix(self, i, fix, force=False):
+        if force:
+            self.fixes[i] = fix
+            return
         if isinstance(fix, int) or isinstance(fix, float):
             fix = bool(fix)
             expr = 'args[{}]'.format(i)
@@ -137,15 +148,24 @@ class Model:
         self.expressions[i] = compile(expr, '<string>', 'eval', optimize=2)  # Compile beforehand to save time.
         self.fixes[i] = fix
         try:
-            self.set_vals(self.update_args(*self.vals))
+            self.update_args(self.vals)
         except RecursionError as e:
             print('Expressions form a loop. Got a {}.'.format(repr(e)))
             self.expressions[i] = temp_expr
             self.fixes[i] = temp_fix
     
-    def set_link(self, i, link):
+    def set_link(self, i, link, force=False):
+        if force:
+            self.links[i] = link
+            return
         if isinstance(link, int) or isinstance(link, float):
             self.links[i] = bool(link)
+
+    def update_args(self, args):
+        return tuple(eval(expr, {}, {'self': self, 'args': args}) for expr in self.expressions)
+
+    def update(self):
+        self.set_vals(self.update_args(self.vals), force=True)
 
     def norm(self, *args, **kwargs):
         return self(0, *args, **kwargs)
@@ -189,9 +209,6 @@ class Model:
             bounds = (b_lower, b_upper)
         return fixed, bounds
 
-    def update_args(self, *args):
-        return tuple(eval(expr, {}, {'self': self, 'args': args}) for expr in self.expressions)
-
 
 class Empty(Model):
     def __init__(self):
@@ -208,8 +225,8 @@ class NPeak(Model):
         self.type = 'NPeak'
         self.n_peaks = int(n_peaks)
         for n in range(self.n_peaks):
-            self._add_arg('center{}'.format(n if n > 0 else ''), 0., False, False)
-            self._add_arg('Int{}'.format(n), 1., n == 0, False)
+            self._add_arg('x{}'.format(n), 0., False, False)
+            self._add_arg('p{}'.format(n), 1., False, False)
 
     def evaluate(self, x, *args, **kwargs):
         return np.sum([args[self.model.size + 2 * n + 1]
@@ -217,11 +234,11 @@ class NPeak(Model):
                        for n in range(self.n_peaks)], axis=0)
 
     def min(self):
-        min_center = min(self.vals[self.p['center{}'.format(n if n > 0 else '')]] for n in range(self.n_peaks))
+        min_center = min(self.vals[self.p['x{}'.format(n)]] for n in range(self.n_peaks))
         return min_center + self.model.min()
 
     def max(self):
-        max_center = max(self.vals[self.p['center{}'.format(n if n > 0 else '')]] for n in range(self.n_peaks))
+        max_center = max(self.vals[self.p['x{}'.format(n)]] for n in range(self.n_peaks))
         return max_center + self.model.max()
 
     def intervals(self):
@@ -328,52 +345,105 @@ class Amplifier(Model):
         return self._max
 
 
-# class Linked(Model):
-#     def __init__(self, model, definition):
-#         super().__init__(model=model)
-#         self.definition = definition
-#
-#         self.signal_map = []
-#
-#     """ Calculation """
-#
-#     def evaluate(self, x, *args, **kwargs):
-#         return np.array([self.definition.spec[i](x[i], *args_ordered(args, self.signal_map[i]), **kwargs)
-#                          + self._offset(x, i, args) for i in range(self._size)], dtype=float)
-#
-#     def _offset(self, x, i, *args):
-#         return np.concatenate(tuple(poly(x[i][s], *args_ordered(args, self.offset_map[i][j]))
-#                                     for j, s in enumerate(self.offset_slices[i])), axis=0)
-#
-#     """ Model definition """
-#
-#     def dim(self):
-#         """
-#         :returns: The number of xy-axes required as input.
-#         """
-#         return 1
-#
-#     @property
-#     def definition(self):
-#         return self._definition
-#
-#     @definition.setter
-#     def definition(self, value):
-#         """
-#         :param value: The new definition of the model.
-#         :returns: None.
-#         """
-#         if not isinstance(value, Definition):
-#             raise TypeError('The definition of a model must be a \'Definition\' object')
-#         self._definition = value
-#         self._size = self._definition.size
-#         self._index = 0
-#         self.names, self.vals, self.fixes, self.links = [], [], [], []
-#
-#     def gen_signal_map(self):
-#         for i, spec in enumerate(self._definition.spec):
-#             self.signal_map.append([])
-#             for name, val, fix, link in zip(spec.names, spec.vals, spec.fixes, spec.links):
-#                 self._add_arg('{}__{}'.format(name, i), val, fix, link)
-#                 self.signal_map[-1].append(self._index)
-#                 self._index += 1
+class Listed(Model):
+    def __init__(self, models, labels=None):
+        super().__init__(model=None)
+        self.type = 'Listed'
+
+        self.models = models  # models is just a reference to a list defined somewhere else.
+        self.labels = labels
+        if self.labels is None:
+            if len(self.models) == 1:
+                self.labels = ['', ]
+            else:
+                self.labels = ['__{}'.format(i) for i in range(len(self.models))]
+
+        self.slices = []
+        self.model_map = []
+        self.index_map = []
+        for i, (model, label) in enumerate(zip(self.models, self.labels)):
+            self.slices.append(slice(self._index, self._index + model.size, 1))
+            for j, (name, val, fix, link) in enumerate(model.get_pars()):
+                self.model_map.append(i)
+                self.index_map.append(j)
+                self._add_arg('{}{}'.format(name, label), val, fix, link)
+
+    def set_val(self, i, val, force=False):
+        super().set_val(i, val, force=force)
+        if i < len(self.model_map):
+            self.models[self.model_map[i]].set_val(self.index_map[i], self.vals[i], force=True)
+
+    def set_fix(self, i, fix, force=False):
+        super().set_fix(i, fix, force=force)
+        if i < len(self.model_map):
+            self.models[self.model_map[i]].set_fix(self.index_map[i], self.fixes[i], force=True)
+
+    def set_link(self, i, link, force=False):
+        super().set_link(i, link, force=force)
+        if i < len(self.model_map):
+            self.models[self.model_map[i]].set_link(self.index_map[i], self.links[i], force=True)
+
+    def inherit_vals(self):
+        self.set_vals([val for model in self.models for val in model.vals], force=True)
+
+    def inherit_fixes(self):
+        self.set_fixes([fix for model in self.models for fix in model.fixes], force=True)
+
+    def inherit_links(self):
+        self.set_links([link for model in self.models for link in model.links], force=True)
+
+
+class Summed(Listed):
+    def __init__(self, models, labels=None):
+        super().__init__(models, labels=labels)
+        self.type = 'Summed'
+
+        self.indices_add = []
+        for n, (model, label) in enumerate(zip(self.models, self.labels)):
+            self.indices_add.append([self._index, self._index + 1])
+            self._add_arg('center{}'.format(label), 0., n == 0, False)
+            self._add_arg('int{}'.format(label), 1., True, False)
+
+    def evaluate(self, x, *args, **kwargs):
+        return np.sum([args[i[1]] * model.evaluate(x - args[i[0]], *args[_slice], **kwargs)
+                       for model, _slice, i in zip(self.models, self.slices, self.indices_add)], axis=0)
+
+    @property
+    def dx(self):
+        return min(model.dx for model in self.models)
+
+    def min(self):
+        return min(model.min() for model in self.models)
+
+    def max(self):
+        return max(model.max() for model in self.models)
+
+    def intervals(self):
+        return Tools.merge_intervals([[i[0] + self.vals[j[0]], i[1] + self.vals[j[0]]]
+                                      for model, j in zip(self.models, self.indices_add) for i in model.intervals()])
+
+
+class Linked(Listed):
+    def __init__(self, models):
+        super().__init__(models, labels=None)
+        self.type = 'Linked'
+
+        for i, (name, val, fix, link) in enumerate(self.get_pars()):
+            if isinstance(fix, str):
+                self.set_fix(i, '{}__{}'.format(fix, self.model_map[i]))
+            if link and not fix:
+                _name = name[:name.rfind('__')]
+                for j, model in enumerate(self.models):
+                    if j < self.model_map[i] and _name in model.names:
+                        self.set_fix(i, '{}__{}'.format(_name, j))
+                        break
+
+    def evaluate(self, x, *args, **kwargs):
+        return np.concatenate(tuple(model.evaluate(_x, *args[_slice], **kwargs)
+                                    for model, _slice, _x in zip(self.models, self.slices, x)), axis=0)
+
+    def set_fix(self, i, fix, force=False):
+        super(Listed, self).set_fix(i, fix, force=force)
+
+    def set_link(self, i, link, force=False):
+        super(Listed, self).set_link(i, link, force=force)
