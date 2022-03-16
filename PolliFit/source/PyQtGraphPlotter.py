@@ -274,8 +274,8 @@ def create_axisitem(orientation):
     return pg.AxisItem(orientation)
 
 
-def create_error_item():  # x, y, pen='b'):
-    return pg.ErrorBarItem(x=[], y=[])  # x=x, y=y, pen=pen)
+def create_error_item():
+    return pg.ErrorBarItem(x=[], y=[])
 
 
 def image(data):

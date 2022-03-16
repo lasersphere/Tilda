@@ -325,6 +325,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """ sum plot on the sum tab """
         self.sum_wid, self.sum_plt_itm = Pg.create_x_y_widget()
         self.err_sum_plt_item = Pg.create_error_item()
+        if not self.actionshow_bins.isChecked():  # Add errorbar plot if self.actionshow_bins is already unchecked.
+            self.stepMode = False
+            self.sum_plt_itm.addItem(self.err_sum_plt_item)
         self.sum_plot_layout = QtWidgets.QVBoxLayout()
         self.sum_plot_layout.addWidget(self.sum_wid)
         self.widget_inner_sum_plot.setLayout(self.sum_plot_layout)
@@ -344,8 +347,14 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.sum_proj_wid, self.sum_proj_plt_itm = Pg.create_x_y_widget(do_not_show_label=['top'], y_label='sum')
         self.sum_proj_plt_itm.showAxis('right')
         self.err_sum_proj_plt_item = Pg.create_error_item()
+        if not self.actionshow_bins.isChecked():  # Add errorbar plot if self.actionshow_bins is already unchecked.
+            self.stepMode = False
+            self.sum_proj_plt_itm.addItem(self.err_sum_proj_plt_item)
         self.v_proj_pltitem = Pg.create_plotitem()
         self.err_v_proj_plt_item = Pg.create_error_item()
+        if not self.actionshow_bins.isChecked():  # Add errorbar plot if self.actionshow_bins is already unchecked.
+            self.stepMode = False
+            self.v_proj_pltitem.addItem(self.err_v_proj_plt_item)
         # self.sum_proj_plt_itm.scene().addItem(self.v_proj_pltitem.vb)
         self.sum_proj_plt_itm.scene().addItem(self.v_proj_pltitem.vb)
         # self.sum_proj_plt_itm.scene().addItem(self.err_v_proj_plt_item.getViewBox())
@@ -435,6 +444,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.mouse_moved, max_rate, plot_sum=self.spec_data.seq_type != 'kepco',
             inf_line=self.subscribe_as_live_plot
         )
+        if not self.actionshow_bins.isChecked():  # Add errorbar plot if self.actionshow_bins is already unchecked.
+            self.stepMode = False
+            for p in self.all_pmts_widg_plt_item_list:
+                p['pltItem'].addItem(p['pltErrItem'])
         self.widget_all_pmts_plot.setLayout(self.all_pmts_plot_layout)
 
     def mouse_moved(self, viewbox, trs, evt):
@@ -554,6 +567,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.sum_plt_itm.removeItem(self.err_sum_plt_item)
             self.sum_proj_plt_itm.removeItem(self.err_sum_proj_plt_item)
             self.v_proj_pltitem.removeItem(self.err_v_proj_plt_item)
+            if self.all_pmts_widg_plt_item_list is None:
+                return
             for p in self.all_pmts_widg_plt_item_list:
                 p['pltItem'].removeItem(p['pltErrItem'])
         else:
@@ -561,6 +576,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.sum_plt_itm.addItem(self.err_sum_plt_item)
             self.sum_proj_plt_itm.addItem(self.err_sum_proj_plt_item)
             self.v_proj_pltitem.addItem(self.err_v_proj_plt_item)
+            if self.all_pmts_widg_plt_item_list is None:
+                return
             for p in self.all_pmts_widg_plt_item_list:
                 p['pltItem'].addItem(p['pltErrItem'])
 
