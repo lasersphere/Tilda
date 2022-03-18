@@ -7,7 +7,7 @@ Created on 14.03.2022
 # from scipy.integrate import quad
 
 from Models.Base import *
-from Models.Spectrum import Gauss, Lorentz, GaussChi2
+from Models.Spectrum import Gauss, Lorentz, GaussChi2, source_energy_pdf
 
 
 CONVOLVE = ['None', 'Gauss', 'Lorentz', 'GaussChi2']
@@ -71,12 +71,22 @@ class GaussConvolved(Convolved):
     def __init__(self, model):
         super().__init__(model_0=model, model_1=Gauss())
 
+    def evaluate(self, x, *args, **kwargs):  # Normalize the kernel function of the convolution to its integral.
+        return super().evaluate(x, *args, **kwargs) / (np.sqrt(2 * np.pi) * args[self.i_1])
+
 
 class LorentzConvolved(Convolved):
     def __init__(self, model):
         super().__init__(model_0=model, model_1=Lorentz())
 
+    def evaluate(self, x, *args, **kwargs):  # Normalize the kernel function of the convolution to its integral.
+        return super().evaluate(x, *args, **kwargs) / (0.5 * np.pi * args[self.i_1])
+
 
 class GaussChi2Convolved(Convolved):
     def __init__(self, model):
         super().__init__(model_0=model, model_1=GaussChi2())
+
+    def evaluate(self, x, *args, **kwargs):  # Normalize the kernel function of the convolution to its integral.
+        return super().evaluate(x, *args, **kwargs) \
+            * source_energy_pdf(0, 0, args[self.i_1], args[self.i_1 + 1], collinear=True)

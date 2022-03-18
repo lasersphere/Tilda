@@ -44,7 +44,7 @@ class Lorentz(Spectrum):
 
         self._add_arg('Gamma', 1., False, False)
 
-    def evaluate(self, x, *args, **kwargs):
+    def evaluate(self, x, *args, **kwargs):  # Normalize to the maximum.
         scale = 0.5 * args[0]
         return np.pi * scale * cauchy.pdf(x, loc=0, scale=scale)
 
@@ -65,7 +65,7 @@ class Gauss(Spectrum):
 
         self._add_arg('sigma', 1., False, False)
 
-    def evaluate(self, x, *args, **kwargs):
+    def evaluate(self, x, *args, **kwargs):  # Normalize to the maximum.
         return np.sqrt(2 * np.pi) * args[0] * norm.pdf(x, loc=0, scale=args[0])
 
     def fwhm(self):
@@ -86,7 +86,7 @@ class Voigt(Spectrum):
         self._add_arg('Gamma', 1., False, False)
         self._add_arg('sigma', 1., False, False)
 
-    def evaluate(self, x, *args, **kwargs):
+    def evaluate(self, x, *args, **kwargs):  # Normalize to the maximum.
         return voigt_profile(x, args[1], 0.5 * args[0]) / voigt_profile(0, args[1], 0.5 * args[0])
 
     def fwhm(self):
@@ -95,11 +95,20 @@ class Voigt(Spectrum):
         return abs(0.5346 * f_l + np.sqrt(0.2166 * f_l ** 2 + f_g ** 2))
 
 
-def _gauss_chi2_limits(sigma, xi, a, b, c, d):
-    return a * sigma ** b + c * xi ** d
+def _gauss_chi2_taylor_fwhm(sigma, xi):
+    a = [2.70991004e+00, 2.31314470e-01, -8.11610976e-02, -1.48897229e-02, 1.11677618e-01,  # order 1, 2
+         8.06412708e-03, -6.59788156e-04, -1.06067275e-02, 1.47400503e-03]  # order 3
+    return a[0] * sigma + a[1] * xi + (a[2] * sigma ** 2 + a[3] * xi ** 2 + a[4] * sigma * xi) / 2 \
+        + (a[5] * sigma ** 3 + a[6] * xi ** 3 + a[7] * sigma ** 2 * xi + a[8] * sigma * xi ** 2) / 6
 
 
-class GaussChi2(Spectrum):  # TODO: The bounds of GaussChi2 are not fitting very well for xi < sigma yet.
+def _gauss_chi2_fwhm(sigma, xi):
+    x = (sigma, xi)
+    a, b, c = (1.39048239, 0.49098627, 0.61375536)
+    return a * x[0] * (np.arctan(b * (np.abs(x[1] / x[0]) ** c - 1)) + np.arctan(b)) + np.sqrt(8 * np.log(2)) * x[0]
+
+
+class GaussChi2(Spectrum):  # TODO: The fwhm of GaussChi2 is fitting quiet good now, but could be improved further.
     def __init__(self):
         super().__init__()
         self.type = 'GaussBoltzmann'
@@ -107,35 +116,28 @@ class GaussChi2(Spectrum):  # TODO: The bounds of GaussChi2 are not fitting very
         self._add_arg('sigma', 1., False, False)
         self._add_arg('xi', 1., False, False)
 
-    def evaluate(self, x, *args, **kwargs):
-        return source_energy_pdf(x, 0, args[0], args[1], collinear=True)
+    def evaluate(self, x, *args, **kwargs):  # Maximum unknown, normalize to 0 position, f(0) ~> 0.8 * max(f(x)).
+        return source_energy_pdf(x, 0, args[0], args[1], collinear=True) \
+            / source_energy_pdf(0, 0, args[0], args[1], collinear=True)
 
     def fwhm(self):
+        sigma = np.abs(self.vals[self.p['sigma']])
         xi = np.abs(self.vals[self.p['xi']])
-        sigma = self.vals[self.p['sigma']]
         if xi == 0:
             return np.sqrt(8 * np.log(2)) * sigma
-        a, b, c, d = (1.83242409, 1.18078908, 0.20052479, 1.37141081)
-        return _gauss_chi2_limits(sigma, xi, a, b, c, d)
+        return _gauss_chi2_fwhm(sigma, xi)
+        # return _gauss_chi2_taylor_fwhm(sigma, xi)
 
     def min(self):
-        # return -5 * np.sqrt(8 * np.log(2)) * self.vals[self.p['sigma']]
-        xi = np.abs(self.vals[self.p['xi']])
-        sigma = self.vals[self.p['sigma']]
-        if xi == 0:
-            return -2.5 * np.sqrt(8 * np.log(2)) * sigma
-        a, b, c, d = (13.06659493, -0.80613167, -26.2198051, 0.75698759)
-        if self.vals[self.p['xi']] < 0:
-            a, b, c, d = (-3.77923609, 0.98956488, -3.54807923, -0.65252397)
-        return _gauss_chi2_limits(sigma, xi, a, b, c, d)
+        sigma = np.abs(self.vals[self.p['sigma']])
+        xi = self.vals[self.p['xi']]
+        if xi < 0:
+            return -5 * np.sqrt(2 * np.log(2)) * sigma
+        return -5 * (np.sqrt(2 * np.log(2)) * sigma + xi)
 
     def max(self):
-        # return 5 * np.sqrt(8 * np.log(2)) * self.vals[self.p['sigma']]
-        xi = np.abs(self.vals[self.p['xi']])
-        sigma = self.vals[self.p['sigma']]
-        if xi == 0:
-            return 2.5 * np.sqrt(8 * np.log(2)) * sigma
-        a, b, c, d = (-13.06659493, -0.80613167, 26.2198051, 0.75698759)
-        if self.vals[self.p['xi']] > 0:
-            a, b, c, d = (3.77923609, 0.98956488, 3.54807923, -0.65252397)
-        return _gauss_chi2_limits(sigma, xi, a, b, c, d)
+        sigma = np.abs(self.vals[self.p['sigma']])
+        xi = self.vals[self.p['xi']]
+        if xi > 0:
+            return 5 * np.sqrt(2 * np.log(2)) * sigma
+        return 5 * (np.sqrt(2 * np.log(2)) * sigma - xi)

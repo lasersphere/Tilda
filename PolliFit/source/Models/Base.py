@@ -167,9 +167,6 @@ class Model:
     def update(self):
         self.set_vals(self.update_args(self.vals), force=True)
 
-    def norm(self, *args, **kwargs):
-        return self(0, *args, **kwargs)
-
     def min(self):
         return -1. if self.model is None else self.model.min()
 
