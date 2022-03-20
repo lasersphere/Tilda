@@ -194,7 +194,6 @@ class Ui_SpectraFit(object):
         self.check_guess_offset.setObjectName("check_guess_offset")
         self.grid_fit.addWidget(self.check_guess_offset, 1, 0, 1, 1)
         self.edit_arithmetics = QtWidgets.QLineEdit(SpectraFit)
-        self.edit_arithmetics.setEnabled(False)
         self.edit_arithmetics.setObjectName("edit_arithmetics")
         self.grid_fit.addWidget(self.edit_arithmetics, 2, 0, 1, 1)
         self.c_routine = QtWidgets.QComboBox(SpectraFit)

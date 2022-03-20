@@ -1,15 +1,15 @@
-'''
+"""
 Created on 29.03.2014
 
 @author: hammen
-'''
+"""
+
 import itertools as it
-import logging
 from datetime import datetime
 
 import numpy as np
 
-from enum import Enum, unique
+from enum import Enum
 
 
 class SpecDataXAxisUnits(Enum):
@@ -26,14 +26,11 @@ class SpecDataXAxisUnits(Enum):
 
 
 class SpecData(object):
-    '''
-    This object contains a general spectrum with multiple tracks and multiple scalers
-    '''
+    """
+    This object contains a general spectrum with multiple tracks and multiple scalers.
+    """
 
     def __init__(self):
-        '''
-        Constructor
-        '''
         self.path = None  # str, path of the file
         self.type = None  # str, isotope name
         self.line = None  # str, lineVar
@@ -58,13 +55,13 @@ class SpecData(object):
 
         self.scan_dev_dict_tr_wise = []  # list of scan_device_dicts holds the info of the used scanning device
 
-        #Data is organized as list of tracks containing arrays with information
+        # Data is organized as list of tracks containing arrays with information
         self.x = []
         self.cts = []
         self.err = []
 
     def getSingleSpec(self, scaler, track):
-        '''Return a tuple with (volt, cts, err) of the specified scaler and track. -1 for all tracks'''
+        """ Return a tuple with (volt, cts, err) of the specified scaler and track. -1 for all tracks """
         if track == -1:
             return (np.array([i for i in it.chain(*self.x)]),
                     np.array([i for i in it.chain(*(t[scaler] for t in self.cts))]),
@@ -72,7 +69,7 @@ class SpecData(object):
         else:
             return np.array(self.x[track]), np.array(self.cts[track][scaler]), np.array(self.err[track][scaler])
 
-    def getArithSpec(self, scaler, track_index, function = None, eval_on=True):
+    def getArithSpec(self, scaler, track_index, function=None, eval_on=True):
         """
         calculates the arithmetic spectrum from the users function
         :param scaler: list of scalers used for the arithmetic
@@ -82,16 +79,15 @@ class SpecData(object):
         :return: 3 ndarrays, dac-voltage, evaluated counts, evaluated errors(only for simple sum or div functions)
         """
         ''' storage for (volt, err) '''
-        l = self.getNrSteps(track_index)
-        flatx = np.zeros((l,))  # voltage
-        flatc = np.zeros((l,))  # counts
-        flate = np.zeros((l,))  # uncertainties
+        n = self.getNrSteps(track_index)
+        flatx = np.zeros((n,))  # voltage
+        flatc = np.zeros((n,))  # counts
+        flate = np.zeros((n,))  # uncertainties
 
-        if function == None:
+        if function is None:
             function = '[' + ''.join(str(e) for e in scaler) + ']'
 
-        if function[0] == '[' or not eval_on or function == None:  # check if list mode and if first time
-
+        if not eval_on or function is None or function[0] == '[':  # check if list mode and if first time
             ''' list mode'''
 
             ''' get maximum number of scalers '''
@@ -114,18 +110,17 @@ class SpecData(object):
                     pass
             flate = np.sqrt(flate)
         else:
-
             ''' function mode '''
 
             var_map_cts = {}    # dict, mapping variables to related array with counts
             if len(scaler) == 0:
-                raise  Exception('No scaler used')
+                raise Exception('No scaler used')
             for v in scaler:    # go through used variables
                 pmt = 's' + str(v)  # create PMT - name (e. g. s1, s3, ...)
-                flatx, var_map_cts[pmt], e = self.getSingleSpec(abs(v), track_index)    # get voltage, counts and err
-                var_map_cts[pmt].dtype='int32'
-                flate = flate + np.square(e)  # sum squared errors of each scaler used
-            flatc = eval(function, var_map_cts) # evaluation of counts
+                (flatx, var_map_cts[pmt], e) = self.getSingleSpec(abs(v), track_index)    # get voltage, counts and err
+                var_map_cts[pmt] = var_map_cts[pmt].astype(int)  # TODO: Is this really necessary?
+                flate = flate + np.square(e)  # sum squared errors of each scaler used TODO: Estimate correct error?
+            flatc = eval(function, var_map_cts)  # evaluation of counts
             flate = np.sqrt(flate)
 
         return flatx, flatc, flate
@@ -176,22 +171,22 @@ class SpecData(object):
             return len(self.x[track])
 
     def _normalizeTracks(self):
-        '''Check whether a different number of loops was used for the different tracks and correct'''
+        """ Check whether a different number of loops was used for the different tracks and correct """
         maxLoops = max(self.nrLoops)
         for i in range(0, self.nrTracks):
             if self.nrLoops[i] < maxLoops:
                 self._multScalerCounts(i, maxLoops / self.nrLoops[i])
     
     def _multScalerCounts(self, scaler, mult):
-        '''Multiply counts and error of a specific scaler by mult, according to error propagation'''
+        """ Multiply counts and error of a specific scaler by mult, according to error propagation """
         self.cts[scaler] *= mult
         self.err[scaler] *= mult
         
     def deadtimeCorrect(self, scaler, track):
         for i, cts in enumerate(self.cts[track][scaler]):
-            self.cts[track][scaler][i] = (cts*(self.nrLoops[track]*self.dwell)) / (
-                1-(cts*(self.nrLoops[track]*self.dwell))*1.65e-8
-            )/((self.nrLoops[track]*self.dwell))
+            self.cts[track][scaler][i] = (cts * (self.nrLoops[track] * self.dwell)) / (
+                1 - (cts * (self.nrLoops[track]*self.dwell)) * 1.65e-8
+            ) / (self.nrLoops[track] * self.dwell)
         
 
 if __name__ == '__main__':

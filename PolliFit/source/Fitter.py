@@ -5,10 +5,11 @@ Created on 20.02.2022
 """
 
 import numpy as np
-import Physics as Ph
+import itertools as it
 
 # noinspection PyUnresolvedReferences
 from FitRoutines import curve_fit
+import Physics as Ph
 from Tools import print_colored
 from Models.Collection import Linked
 
@@ -28,6 +29,8 @@ class Fitter:
         self.iso = iso
         self.config = config
         self.size = len(self.meas)
+        self.n_scaler = min(min(meas.nrScalers if isinstance(meas.nrScalers, list) else [meas.nrScalers])
+                            for meas in self.meas)  # The minimum number of scalers for all files and tracks.
 
         self.routines = {'curve_fit', }
 
@@ -52,6 +55,27 @@ class Fitter:
         return [[Ph.volt_to_rel_freq(x, iso.q, iso.mass, meas.laserFreq, iso.freq, meas.col)
                  for x in x_track] for x_track in meas.x]
 
+    def _gen_yerr(self, meas, st, data, n=10000):
+        """
+        This should only be called for real spectra once per meas in 'gen_data'.
+
+        :param meas: A spec_data object.
+        :param st: The scaler and track info.
+        :param data: The data as returned by spec_data.getArithSpec.
+        :param n: The number of samples to estimate the uncertainties in the 'function' mode.
+        :returns: None.
+        """
+        if self.config['arithmetics'] is None or 's' not in self.config['arithmetics']:
+            self.yerr.append(np.sqrt(data[1]))
+        else:
+            if st[1] == -1:
+                cts = [np.array([i for i in it.chain(*(t[scaler] for t in meas.cts))]) for scaler in st[0]]
+            else:
+                cts = [np.array(meas.cts[st[1]][scaler]) for scaler in st[0]]
+            y_samples = {'s{}'.format(i): np.random.normal(loc=cts[i], scale=np.sqrt(cts[i]), size=(n, cts[i].size))
+                         for i in range(self.n_scaler) if 's{}'.format(i) in self.config['arithmetics']}
+            self.yerr.append(np.std(eval(self.config['arithmetics'], y_samples), axis=0, ddof=1))
+
     def gen_data(self):
         """
         :returns: x_volt, x, y, yerr. The combined sorted data of the given measurements and fitting options.
@@ -59,7 +83,7 @@ class Fitter:
         self.sizes = []
         self.x_volt, self.x, self.y, self.yerr = [], [], [], []
         for meas, st, iso in zip(self.meas, self.st, self.iso):
-            data = meas.getArithSpec(*st, function=None, eval_on=True)
+            data = meas.getArithSpec(*st, function=self.config['arithmetics'], eval_on=True)
             self.sizes.append(data[0].size)
             self.x_volt.append(data[0])
             self.y.append(data[1])
@@ -68,7 +92,7 @@ class Fitter:
                 self.yerr.append(data[2])
             else:
                 self.x.append(Ph.volt_to_rel_freq(data[0], iso.q, iso.mass, meas.laserFreq, iso.freq, meas.col))
-                self.yerr.append(np.sqrt(data[1]))
+                self._gen_yerr(meas, st, data)
         if all(model.type == 'Offset' for model in self.models):
             self.gen_x_cuts()
 

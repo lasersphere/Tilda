@@ -102,8 +102,10 @@ class SpectraFit:
                                       caller_name=__name__)
             if var:
                 # st: tuple of PMTs and tracks from selected run
-                st.append((ast.literal_eval(var[0][2]), ast.literal_eval(var[0][3])))
+                st.append([ast.literal_eval(var[0][2]), ast.literal_eval(var[0][3])])
                 linevar = var[0][1]
+                if self.arithmetics is not None and self.arithmetics[0] == '[':
+                    st[-1][0] = eval(self.arithmetics)
             else:
                 raise ValueError('Run \'{}\' cannot be selected.'.format(run))
             softw_gates = self.load_trs(file, run)
@@ -122,6 +124,18 @@ class SpectraFit:
         self.fitter = Fitter(models, meas, st, iso, self.gen_config())
         self.load_pars()
         self.reset_model = [[p for p in model.get_pars()] for model in models]
+
+    def reset_st(self):
+        st = []
+        for run in self.runs:
+            var = TiTs.select_from_db(self.db, 'isoVar, lineVar, scaler, track', 'Runs', [['run'], [run]],
+                                      caller_name=__name__)
+            if var:
+                # st: tuple of PMTs and tracks from selected run
+                st.append([ast.literal_eval(var[0][2]), ast.literal_eval(var[0][3])])
+            else:
+                raise ValueError('Run \'{}\' cannot be selected.'.format(run))
+        self.fitter.st = st
 
     def set_softw_gates(self, i, softw_gates, tr_ind):
         if tr_ind == -1:

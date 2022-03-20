@@ -297,10 +297,11 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         files = [f.text() for f in self.list_files.selectedItems()]
         runs = [self.c_run.currentText() for _ in self.list_files.selectedItems()]
         configs = self._gen_configs(files, runs)
+        arithmetics = self.edit_arithmetics.text().strip().lower()
         kwargs = dict(routine=self.c_routine.currentText(),
                       absolute_sigma=not self.check_chi2.isChecked(),
                       guess_offset=self.check_guess_offset.isChecked(),
-                      arithmetics=self.edit_arithmetics.text(),
+                      arithmetics=arithmetics if arithmetics else None,
                       summed=self.check_summed.isChecked(),
                       linked=self.check_linked.isChecked(),
                       save_to_db=self.check_save_to_db.isChecked(),
@@ -492,9 +493,64 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
     def toggle_guess_offset(self):
         self.spectra_fit.guess_offset = self.check_guess_offset.isChecked()
+    
+    def _set_scaler(self, scaler):
+        if scaler is None:
+            self.spectra_fit.reset_st()
+            return
+        for i in range(len(self.spectra_fit.fitter.st)):
+            self.spectra_fit.fitter.st[i][0] = scaler
+
+    def _set_arithmetics(self, arithmetics):
+        self.edit_arithmetics.blockSignals(True)
+        self.edit_arithmetics.setText(arithmetics)
+        if arithmetics == self.spectra_fit.fitter.config['arithmetics']:
+            self.edit_arithmetics.blockSignals(False)
+            return
+        if arithmetics == '':
+            arithmetics = None
+        self.spectra_fit.arithmetics = arithmetics
+        self.spectra_fit.fitter.config['arithmetics'] = arithmetics
+        self.spectra_fit.fitter.gen_data()
+        self.edit_arithmetics.blockSignals(False)
 
     def set_arithmetics(self):
-        pass
+        if self.spectra_fit.fitter is None:
+            self._set_arithmetics(self.spectra_fit.arithmetics)
+            return
+        arithmetics = self.edit_arithmetics.text().strip().lower()
+        if arithmetics == '':
+            self._set_scaler(None)
+            self._set_arithmetics('')
+            self.plot_auto()
+            return
+        n = self.spectra_fit.fitter.n_scaler  # Only allow arithmetics with scalers that exist for all files and tracks.
+        
+        if arithmetics[0] == '[':  # Bracket mode (sum of specified scalers).
+            if arithmetics[-1] != ']':
+                arithmetics += ']'
+            try:
+                scaler = sorted(set(eval(arithmetics)))
+                while scaler and scaler[-1] >= n:
+                    scaler.pop(-1)
+                if scaler:
+                    self._set_scaler(scaler)
+                    self._set_arithmetics(str(scaler))
+                    self.plot_auto()
+                else:
+                    self._set_arithmetics(self.spectra_fit.arithmetics)
+            except (ValueError, SyntaxError):
+                self._set_arithmetics(self.spectra_fit.arithmetics)
+            return
+        
+        variables = {'s{}'.format(i): 4.2 for i in range(n)}
+        try:  # Function mode (Specify scaler as variable s#).
+            eval(arithmetics, variables)
+            self._set_scaler(None)
+            self._set_arithmetics(arithmetics)
+            self.plot_auto()
+        except (ValueError, TypeError, SyntaxError, NameError):
+            self._set_arithmetics(self.spectra_fit.arithmetics)
 
     def open_trs(self):
         if self.spectra_fit.fitter is None:
