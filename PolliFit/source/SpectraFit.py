@@ -19,7 +19,7 @@ import Models.Collection as Mod
 
 class SpectraFit:
     def __init__(self, db, files, runs, configs, index_config,
-                 routine='curve_fit', absolute_sigma=False, guess_offset=True, arithmetics='',
+                 routine='curve_fit', absolute_sigma=False, guess_offset=True, arithmetics=None,
                  summed=False, linked=False, save_to_db=False, x_as_freq=True, fmt='.k', fontsize=10):
         self.db = db
         self.files = files
@@ -100,14 +100,10 @@ class SpectraFit:
         for path, file, run, config in zip(self.load_filepaths(), self.files, self.runs, self.configs):
             var = TiTs.select_from_db(self.db, 'isoVar, lineVar, scaler, track', 'Runs', [['run'], [run]],
                                       caller_name=__name__)
-            if var:
-                # st: tuple of PMTs and tracks from selected run
-                st.append([ast.literal_eval(var[0][2]), ast.literal_eval(var[0][3])])
-                linevar = var[0][1]
-                if self.arithmetics is not None and self.arithmetics[0] == '[':
-                    st[-1][0] = eval(self.arithmetics)
-            else:
+            if not var:
                 raise ValueError('Run \'{}\' cannot be selected.'.format(run))
+
+            linevar = var[0][1]
             softw_gates = self.load_trs(file, run)
 
             meas.append(MeasLoad.load(path, self.db, softw_gates=softw_gates))
@@ -121,21 +117,48 @@ class SpectraFit:
             else:
                 raise ValueError('File type not supported. The supported types are {}.'.format(self.file_types))
 
+            # st: tuple of PMTs and tracks from selected run
+            st_str = [var[0][2], var[0][3]]
+            n_scaler = min(meas[-1].nrScalers if isinstance(meas[-1].nrScalers, list) else [meas[-1].nrScalers])
+            self.arithmetics = st_str[0].strip().lower()
+            try:
+                eval(self.arithmetics, {'s{}'.format(i): 4.2 for i in range(n_scaler)})
+            except (ValueError, TypeError, SyntaxError, NameError) as e:
+                raise ValueError('Run \'{}\' cannot be selected, due to {}.'.format(run, repr(e)))
+            if 's' in self.arithmetics:
+                st.append([[i for i in range(n_scaler)], ast.literal_eval(st_str[1])])
+            else:
+                st.append([ast.literal_eval(s) for s in st_str])
+
         self.fitter = Fitter(models, meas, st, iso, self.gen_config())
         self.load_pars()
         self.reset_model = [[p for p in model.get_pars()] for model in models]
 
     def reset_st(self):
         st = []
-        for run in self.runs:
+        arithmetics = None
+        for run, meas in zip(self.runs, self.fitter.meas):
             var = TiTs.select_from_db(self.db, 'isoVar, lineVar, scaler, track', 'Runs', [['run'], [run]],
                                       caller_name=__name__)
-            if var:
-                # st: tuple of PMTs and tracks from selected run
-                st.append([ast.literal_eval(var[0][2]), ast.literal_eval(var[0][3])])
-            else:
+            if not var:
                 raise ValueError('Run \'{}\' cannot be selected.'.format(run))
-        self.fitter.st = st
+            # st: tuple of PMTs and tracks from selected run
+            st_str = [var[0][2], var[0][3]]
+            n_scaler = min(meas.nrScalers if isinstance(meas.nrScalers, list) else [meas.nrScalers])
+            arithmetics = st_str[0].strip().lower()
+            try:
+                eval(arithmetics, {'s{}'.format(i): 4.2 for i in range(n_scaler)})
+            except (ValueError, TypeError, SyntaxError, NameError) as e:
+                raise ValueError('Run \'{}\' cannot be selected,'
+                                 ' due to error in \'scaler\' column: {}.'.format(run, repr(e)))
+            if 's' in arithmetics:
+                st.append([[i for i in range(n_scaler)], ast.literal_eval(st_str[1])])
+            else:
+                st.append([ast.literal_eval(s) for s in st_str])
+        self.arithmetics = arithmetics
+        if self.fitter is not None:
+            self.fitter.config['arithmetics'] = arithmetics
+            self.fitter.st = st
 
     def set_softw_gates(self, i, softw_gates, tr_ind):
         if tr_ind == -1:

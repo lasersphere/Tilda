@@ -92,6 +92,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.c_routine.currentIndexChanged.connect(self.set_routine)
         self.check_guess_offset.stateChanged.connect(self.toggle_guess_offset)
         self.edit_arithmetics.editingFinished.connect(self.set_arithmetics)
+        self.check_arithmetics.stateChanged.connect(self.toggle_arithmetics)
         self.b_trsplot.clicked.connect(self.open_trsplot)
         self.check_summed.stateChanged.connect(self.toogle_summed)
         self.check_linked.stateChanged.connect(self.toogle_linked)
@@ -310,11 +311,15 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                       fontsize=self.s_fontsize.value())
         return SpectraFit(self.dbpath, files, runs, configs, self.index_load, **kwargs)
 
-    def load_pars(self):
+    def load_pars(self, suppress_plot=False):
         self.spectra_fit = self.gen_spectra_fit()
-        self.update_pars()
+        if self.check_arithmetics.isChecked():
+            self.update_arithmetics()
+        else:
+            self.set_arithmetics(suppress_plot=True)
+        self.update_pars(suppress_plot=suppress_plot)
 
-    def update_pars(self):
+    def update_pars(self, suppress_plot=False):
         if not self.list_files.selectedItems():
             return
         self.tab_pars.blockSignals(True)
@@ -339,22 +344,22 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             w = QtWidgets.QTableWidgetItem(str(link))
             self.tab_pars.setItem(i, 3, w)
         self.tab_pars.blockSignals(False)
-        self.plot_auto()
+        self.plot_auto(suppress_plot)
 
-    def update_vals(self):  # Call only if table signals are blocked.
+    def update_vals(self, suppress_plot=False):  # Call only if table signals are blocked.
         for i, val in enumerate(self.spectra_fit.fitter.models[self.index_config].vals):
             self.tab_pars.item(i, 1).setText(str(val))
-        self.plot_auto()
+        self.plot_auto(suppress_plot)
 
-    def update_fixes(self):  # Call only if table signals are blocked.
+    def update_fixes(self, suppress_plot=False):  # Call only if table signals are blocked.
         for i, fix in enumerate(self.spectra_fit.fitter.models[self.index_config].fixes):
             self.tab_pars.item(i, 2).setText(str(fix))
-        self.plot_auto()
+        self.plot_auto(suppress_plot)
 
-    def update_links(self):  # Call only if table signals are blocked.
+    def update_links(self, suppress_plot=False):  # Call only if table signals are blocked.
         for i, link in enumerate(self.spectra_fit.fitter.models[self.index_config].links):
             self.tab_pars.item(i, 3).setText(str(link))
-        self.plot_auto()
+        self.plot_auto(suppress_plot)
 
     def display_index_load(self):
         items = [self.list_files.findItems(file, QtCore.Qt.MatchFlag.MatchExactly)[0]
@@ -394,7 +399,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     def save_pars(self):
         self.spectra_fit.save_pars()
 
-    def set_par_multi(self, i, j):
+    def set_par_multi(self, i, j, suppress_plot=False):
         self.tab_pars.blockSignals(True)
         text = self.tab_pars.item(i, j).text()
         for item in self.tab_pars.selectedItems():
@@ -404,7 +409,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             model.update()
         self.update_vals()
         self.tab_pars.blockSignals(False)
-        self.plot_auto()
+        self.plot_auto(suppress_plot)
 
     def _set_par(self, i, j):  # Call only if table signals are blocked.
         set_x = [self.spectra_fit.set_val, self.spectra_fit.set_fix, self.spectra_fit.set_link][j - 1]
@@ -504,25 +509,27 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     def _set_arithmetics(self, arithmetics):
         self.edit_arithmetics.blockSignals(True)
         self.edit_arithmetics.setText(arithmetics)
-        if arithmetics == self.spectra_fit.fitter.config['arithmetics']:
-            self.edit_arithmetics.blockSignals(False)
-            return
         if arithmetics == '':
-            arithmetics = None
+            arithmetics = self.spectra_fit.arithmetics
+            self.edit_arithmetics.setText(arithmetics)
         self.spectra_fit.arithmetics = arithmetics
         self.spectra_fit.fitter.config['arithmetics'] = arithmetics
         self.spectra_fit.fitter.gen_data()
         self.edit_arithmetics.blockSignals(False)
 
-    def set_arithmetics(self):
+    def set_arithmetics(self, suppress_plot=False):
         if self.spectra_fit.fitter is None:
-            self._set_arithmetics(self.spectra_fit.arithmetics)
+            self.edit_arithmetics.blockSignals(True)
+            self.edit_arithmetics.setText('')
+            self.edit_arithmetics.blockSignals(False)
             return
         arithmetics = self.edit_arithmetics.text().strip().lower()
+        if arithmetics == self.spectra_fit.fitter.config['arithmetics']:
+            return
         if arithmetics == '':
             self._set_scaler(None)
             self._set_arithmetics('')
-            self.plot_auto()
+            self.plot_auto(suppress_plot)
             return
         n = self.spectra_fit.fitter.n_scaler  # Only allow arithmetics with scalers that exist for all files and tracks.
         
@@ -536,21 +543,37 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                 if scaler:
                     self._set_scaler(scaler)
                     self._set_arithmetics(str(scaler))
-                    self.plot_auto()
+                    self.plot_auto(suppress_plot)
                 else:
                     self._set_arithmetics(self.spectra_fit.arithmetics)
             except (ValueError, SyntaxError):
                 self._set_arithmetics(self.spectra_fit.arithmetics)
             return
-        
+
         variables = {'s{}'.format(i): 4.2 for i in range(n)}
         try:  # Function mode (Specify scaler as variable s#).
             eval(arithmetics, variables)
-            self._set_scaler(None)
+            self._set_scaler(list(i for i in range(n)))
             self._set_arithmetics(arithmetics)
-            self.plot_auto()
+            self.plot_auto(suppress_plot)
         except (ValueError, TypeError, SyntaxError, NameError):
             self._set_arithmetics(self.spectra_fit.arithmetics)
+
+    def update_arithmetics(self):
+        self.edit_arithmetics.blockSignals(True)
+        self.edit_arithmetics.setText(self.spectra_fit.arithmetics)
+        self.edit_arithmetics.blockSignals(False)
+
+    def toggle_arithmetics(self):
+        if self.check_arithmetics.isChecked():
+            arithmetics = self.edit_arithmetics.text().strip().lower()
+            self._set_scaler(None)
+            self._set_arithmetics('')
+            self.edit_arithmetics.setReadOnly(True)
+            if arithmetics != self.spectra_fit.arithmetics:
+                self.plot_auto()
+        else:
+            self.edit_arithmetics.setReadOnly(False)
 
     def open_trs(self):
         if self.spectra_fit.fitter is None:
@@ -562,9 +585,9 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             lambda gates=self.trs_config_ui.softw_gates: self.set_softw_gates(gates, -1))
         self.trs_config_ui.show()
 
-    def set_softw_gates(self, softw_gates, tr_ind):
+    def set_softw_gates(self, softw_gates, tr_ind, suppress_plot=False):
         self.spectra_fit.set_softw_gates(self.index_config, softw_gates, tr_ind)
-        self.plot_auto()
+        self.plot_auto(suppress_plot)
 
     # noinspection PyUnusedLocal
     def softw_gates_from_time_res_plot(self, softw_g, tr_ind, soft_b_width, plot_bool):
@@ -631,27 +654,27 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
     """ Plot """
 
-    def toggle_xlabel(self):
+    def toggle_xlabel(self, suppress_plot=False):
         self.spectra_fit.x_as_freq = self.check_x_as_freq.isChecked()
-        self.plot_auto()
+        self.plot_auto(suppress_plot)
 
-    def set_fmt(self):
+    def set_fmt(self, suppress_plot=False):
         try:
             fmt = self.edit_fmt.text()
             _process_plot_format(fmt)
             self.spectra_fit.fmt = fmt
-            self.plot_auto()
+            self.plot_auto(suppress_plot)
         except ValueError:
             self.edit_fmt.setText(self.spectra_fit.fmt)
 
-    def set_fontsize(self):
+    def set_fontsize(self, suppress_plot=False):
         fontsize = self.s_fontsize.value()
         if fontsize != self.spectra_fit.fontsize:
             self.spectra_fit.fontsize = fontsize
-        self.plot_auto()
+        self.plot_auto(suppress_plot)
 
-    def plot_auto(self):
-        if self.check_auto.isChecked():
+    def plot_auto(self, suppress=False):
+        if not suppress and self.check_auto.isChecked():
             self.plot()
 
     def plot(self):

@@ -816,8 +816,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         if autorange_pls:
             [each['pltItem'].autoRange() for each in self.all_pmts_widg_plt_item_list]
-            self.all_pmts_widg_plt_item_list[-1]['pltItem'].setLabel('bottom', spec_data.x_units.value)
-            self.all_pmts_widg_plt_item_list[0]['pltItem'].setLabel('top', spec_data.x_units.value)
+        self.all_pmts_widg_plt_item_list[-1]['pltItem'].setLabel('bottom', spec_data.x_units.value)
+        self.all_pmts_widg_plt_item_list[0]['pltItem'].setLabel('top', spec_data.x_units.value)
 
     ''' buttons, comboboxes and listwidgets: '''
 
