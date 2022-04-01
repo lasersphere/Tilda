@@ -41,14 +41,15 @@ def absolute_frequency(db, fit1, run1, fit2, run2):
     laserFreq1_d = float(file1[0][3])
 
     velCenter1 = abs(Physics.invRelDoppler(laserFreq1, relFreq1))  # Velocity
-    velCenter1_d = ((2*Physics.c*relFreq1/((1+(relFreq1/laserFreq1)**2)*laserFreq1**2))-(2*Physics.c*relFreq1*(-1+(relFreq1/laserFreq1)**2)/((1+(relFreq1/laserFreq1)**2)**2 * laserFreq1**2)))*relFreq1_d
+    # velCenter1_d = ((2*Physics.c*relFreq1/((1+(relFreq1/laserFreq1)**2)*laserFreq1**2))-(2*Physics.c*relFreq1*(-1+(relFreq1/laserFreq1)**2)/((1+(relFreq1/laserFreq1)**2)**2 * laserFreq1**2)))*relFreq1_d
+    velCenter1_d = (4*Physics.c * laserFreq1 * relFreq1/(laserFreq1**2 + relFreq1**2)**2)*(laserFreq1**2 * relFreq1_d**2 + relFreq1**2 * laserFreq1_d)**0.5
     #energCenter1 = (isoMass1 * Physics.u * velCenter1 ** 2) / 2 / Physics.qe
     energCenter1 = Physics.relEnergy(velCenter1, isoMass1*Physics.u) / Physics.qe
     #energCenter1_d = ((isoMass1 * Physics.u * velCenter1 / Physics.qe * velCenter1_d)**2 + (velCenter1 ** 2 / 2 / Physics.qe * isoMass1_d * Physics.u)**2)**0.5
-    energCenter1_d = ((isoMass1 * Physics.u * velCenter1 * velCenter1_d / (
-    1 - (velCenter1 / Physics.c) ** 2) ** 1.5 /Physics.qe) ** 2 + (isoMass1_d * Physics.u * Physics.c ** 2 * (
-    1 / (1 - (velCenter1 / Physics.c) ** 2) ** 0.5 - 1) / Physics.qe) ** 2) ** 0.5
-
+    # energCenter1_d = ((isoMass1 * Physics.u * velCenter1 * velCenter1_d / (
+    # 1 - (velCenter1 / Physics.c) ** 2) ** 1.5 /Physics.qe) ** 2 + (isoMass1_d * Physics.u * Physics.c ** 2 * (
+    # 1 / (1 - (velCenter1 / Physics.c) ** 2) ** 0.5 - 1) / Physics.qe) ** 2) ** 0.5
+    energCenter1_d = ((velCenter1_d**2 * (isoMass1*Physics.u)**2 * velCenter1**2 / (Physics.qe**2 * (1 - velCenter1**2/Physics.c**2)**3)) + (Physics.c**4 * (isoMass1_d*Physics.u)**2 / Physics.qe**2 * (-1 + (1/(1- velCenter1**2/Physics.c**2)**0.5))**2))**0.5
     #print([energCenter1, energCenter1_d])
 
     #Fit2 processing
@@ -73,13 +74,15 @@ def absolute_frequency(db, fit1, run1, fit2, run2):
     laserFreq2_d = float(file2[0][3])
 
     velCenter2 = abs(Physics.invRelDoppler(laserFreq2, relFreq2)) #Veolocity
-    velCenter2_d = ((2*Physics.c*relFreq2/((1+(relFreq2/laserFreq2)**2)*laserFreq2**2))-(2*Physics.c*relFreq2*(-1+(relFreq2/laserFreq2)**2)/((1+(relFreq2/laserFreq2)**2)**2 * laserFreq2**2)))*relFreq2_d
+    #velCenter2_d = ((2*Physics.c*relFreq2/((1+(relFreq2/laserFreq2)**2)*laserFreq2**2))-(2*Physics.c*relFreq2*(-1+(relFreq2/laserFreq2)**2)/((1+(relFreq2/laserFreq2)**2)**2 * laserFreq2**2)))*relFreq2_d
+    velCenter2_d = (4*Physics.c * laserFreq2 * relFreq2/(laserFreq2**2 + relFreq2**2)**2)*(laserFreq2**2 * relFreq2_d**2 + relFreq2**2 * laserFreq2_d)**0.5
     #energCenter2 = (isoMass2 * Physics.u * velCenter2 ** 2) / 2 / Physics.qe
     energCenter2 = Physics.relEnergy(velCenter2, isoMass2*Physics.u) / Physics.qe
     #energCenter2_d = ((isoMass2 * Physics.u * velCenter2 / Physics.qe * velCenter2_d) ** 2 + (velCenter2 ** 2 / 2 / Physics.qe * isoMass2_d * Physics.u) ** 2) ** 0.5
-    energCenter2_d = ((isoMass2 * Physics.u * velCenter2 * velCenter2_d / (
-    1 - (velCenter2 / Physics.c) ** 2) ** 1.5 / Physics.qe) ** 2 + (isoMass2_d * Physics.u * Physics.c ** 2 * (
-    1 / (1 - (velCenter2 / Physics.c) ** 2) ** 0.5 - 1) / Physics.qe) ** 2) ** 0.5
+    # energCenter2_d = ((isoMass2 * Physics.u * velCenter2 * velCenter2_d / (
+    # 1 - (velCenter2 / Physics.c) ** 2) ** 1.5 / Physics.qe) ** 2 + (isoMass2_d * Physics.u * Physics.c ** 2 * (
+    # 1 / (1 - (velCenter2 / Physics.c) ** 2) ** 0.5 - 1) / Physics.qe) ** 2) ** 0.5
+    energCenter2_d = ((velCenter2_d**2 * (isoMass2*Physics.u)**2 * velCenter2**2 / (Physics.qe**2 * (1 - velCenter2**2/Physics.c**2)**3)) + (Physics.c**4 * (isoMass2_d*Physics.u)**2 / Physics.qe**2 * (-1 + (1/(1- velCenter2**2/Physics.c**2)**0.5))**2))**0.5
 
     #print([energCenter2, energCenter1_d])
 
@@ -123,7 +126,7 @@ def absolute_frequency(db, fit1, run1, fit2, run2):
     absFreq_d = (error1 ** 2 + error2 ** 2 + error3 ** 2) ** 0.5
 
     print(str(absFreq) + ' +- ' + str(absFreq_d))
-    return [absFreq, absFreq_d, laserFreq1, laserFreq1_d, laserFreq2, laserFreq2_d, voltDif]
+    return [absFreq, absFreq_d, laserFreq1, laserFreq1_d, laserFreq2, laserFreq2_d, voltDif, voltDif_d, isoMass1, isoMass1_d]
 
 
 def files_to_csv(db, measList, pathOut):
@@ -134,12 +137,12 @@ def files_to_csv(db, measList, pathOut):
     i=1
     print('Absolute transition frequency results: ')
     file = open(pathOut, 'w')
-    file.write('MeasNr, AbsFreq, AbsFreq_d, LaserFreq1, LaserFreq1_d, LaserFreq2, LaserFreq2_d, U1 - U2\n')
+    file.write('MeasNr, AbsFreq, AbsFreq_d, LaserFreq1, LaserFreq1_d, LaserFreq2, LaserFreq2_d, U1 - U2, U1 - U2_d, Isotope Mass, Isotope Mass_d\n')
     for pair in measList:
         print('Pair0: ' + str(pair[0]) + 'Pair1: ' + str(pair[1]) + ' Pair2: ' + str(pair[2]) + ' Pair3: ' + str(pair[3]))
         result = absolute_frequency(db, pair[0], pair[1], pair[2], pair[3])
         file.write(str(i) + ', ' + str(result[0]) + ', ' + str(result[1]) + ', ' + str(result[2]) + ', '
-                   + str(result[3]) + ', ' + str(result[4]) + ', ' + str(result[5]) + ', ' + str(result[6]) + '\n')
+                   + str(result[3]) + ', ' + str(result[4]) + ', ' + str(result[5]) + ', ' + str(result[6]) + ', ' + str(result[7]) + ', ' + str(result[8]) + ', ' + str(result[9]) + '\n')
         mL.append(i)
         fL.append(result[0])
         fL_d.append(result[1])
