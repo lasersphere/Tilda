@@ -614,10 +614,15 @@ def import_masses(db, element, a=None):
 
     con = sqlite3.connect(db)
     cur = con.cursor()
+    cur.execute('SELECT iso FROM Isotopes')
+    isotopes = cur.fetchall()
+    isotopes = [i[0] for i in isotopes]
     for el, _a, m, m_d in zip(elements, mass_numbers, masses, masses_d):
         if element == el and a[0] <= _a <= a[1]:
+            if '{}{}'.format(_a, el) in isotopes:
+                continue
             print('{}{}'.format(_a, el), m, m_d)
-            cur.execute('INSERT OR REPLACE INTO Isotopes (iso, mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, '
+            cur.execute('INSERT INTO Isotopes (iso, mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, '
                         'fixedBrat, intScale, fixedInt, midTof, fixedAl, fixedBl, fixedAu, fixedBu) VALUES ({})'
                         .format(', '.join(['?'] * 18)), ['{}{}'.format(_a, el), m, m_d] + iso_info)
     con.commit()
