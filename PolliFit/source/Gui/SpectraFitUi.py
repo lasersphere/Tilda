@@ -318,6 +318,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         else:
             self.set_arithmetics(suppress_plot=True)
         self.update_pars(suppress_plot=suppress_plot)
+        self.edit_offset_order.setText(str(self.spectra_fit.configs[self.index_config]['offset_order']))
 
     def update_pars(self, suppress_plot=False):
         if not self.list_files.selectedItems():
@@ -464,7 +465,10 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                 if size == 0:
                     _offset_order = [0, ] * n_tracks
                 elif size < n_tracks:
-                    _offset_order = offset_order + [max(offset_order), ] * (n_tracks - size)
+                    if size < len(config['offset_order']):
+                        _offset_order = offset_order + config['offset_order'][size:]
+                    else:
+                        _offset_order = offset_order + [max(offset_order), ] * (n_tracks - size)
                 elif size > n_tracks:
                     _offset_order = offset_order[:(n_tracks - size)]
                 config['offset_order'] = [order for order in _offset_order]

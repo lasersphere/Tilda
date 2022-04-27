@@ -105,17 +105,7 @@ class SpectraFit:
 
             linevar = var[0][1]
             softw_gates = self.load_trs(file, run)
-
             meas.append(MeasLoad.load(path, self.db, softw_gates=softw_gates))
-            if isinstance(meas[-1], MeasLoad.XMLImporter):
-                if meas[-1].seq_type == 'kepco':
-                    iso.append(None)
-                    models.append(Mod.Amplifier(order=config['offset_order'][0]))
-                else:
-                    iso.append(DBIsotope(self.db, meas[-1].type, lineVar=linevar))
-                    models.append(self.gen_model(config, iso[-1]))
-            else:
-                raise ValueError('File type not supported. The supported types are {}.'.format(self.file_types))
 
             # st: tuple of PMTs and tracks from selected run
             st_str = [var[0][2], var[0][3]]
@@ -129,6 +119,23 @@ class SpectraFit:
                 st.append([[i for i in range(n_scaler)], ast.literal_eval(st_str[1])])
             else:
                 st.append([ast.literal_eval(s) for s in st_str])
+
+            size = len(config['offset_order'])
+            n_tracks = len(meas[-1].x)
+            if size < n_tracks:
+                config['offset_order'] = config['offset_order'] + [max(config['offset_order']), ] * (n_tracks - size)
+            elif size > n_tracks:
+                config['offset_order'] = config['offset_order'][:(n_tracks - size)]
+
+            if isinstance(meas[-1], MeasLoad.XMLImporter):
+                if meas[-1].seq_type == 'kepco':
+                    iso.append(None)
+                    models.append(Mod.Amplifier(order=config['offset_order'][0]))
+                else:
+                    iso.append(DBIsotope(self.db, meas[-1].type, lineVar=linevar))
+                    models.append(self.gen_model(config, iso[-1]))
+            else:
+                raise ValueError('File type not supported. The supported types are {}.'.format(self.file_types))
 
         self.fitter = Fitter(models, meas, st, iso, self.gen_config())
         self.load_pars()
