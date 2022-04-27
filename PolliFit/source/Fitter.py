@@ -14,6 +14,21 @@ from Tools import print_colored
 from Models.Collection import Linked
 
 
+class Xlist:  # Custom list to trick 'curve_fit' for linked fitting of files with different x-axis sizes.
+    def __init__(self, x):
+        self.x = x
+
+    def __iter__(self):
+        for _x in self.x:
+            yield _x
+
+    def __getitem__(self, key):
+        return self.x[key]
+
+    def __setitem__(self, key, value):
+        self.x[key] = value
+
+
 class Fitter:
     def __init__(self, models, meas, st, iso, config):
         """
@@ -229,7 +244,8 @@ class Fitter:
                         _model.guess_offset(_x, _y)
             model.inherit_vals()  # Inherit values of the linked models afterwards.
             fixed, bounds = model.fit_prepare()
-            pt, pc = routine(model, self.x, y, p0=model.vals, p0_fixed=fixed, sigma=yerr,
+            # curve_fit wants to convert lists and tuples to arrays -> Use custom list type.
+            pt, pc = routine(model, Xlist(self.x), y, p0=model.vals, p0_fixed=fixed, sigma=yerr,
                              absolute_sigma=self.config['absolute_sigma'], bounds=bounds, report=False)
             pt = np.array(model.update_args(pt))
             model.set_vals(pt, force=True)  # Set the vals of the model (auto sets the vals of the linked models).
