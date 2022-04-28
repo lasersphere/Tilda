@@ -101,7 +101,8 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.b_save_ascii.clicked.connect(self.save_ascii)
 
         # Plot.
-        self.check_x_as_freq.stateChanged.connect(self.toggle_xlabel)
+        self.check_x_as_freq.stateChanged.connect(
+            lambda state, _suppress=False: self.toggle_xlabel(suppress_plot=_suppress))
         self.edit_fmt.editingFinished.connect(self.set_fmt)
         self.s_fontsize.editingFinished.connect(self.set_fontsize)
         self.b_plot.clicked.connect(self.plot)
@@ -199,7 +200,9 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         #     self.index_load = 0
 
     def mark_loaded(self, items):
-        self.list_files.item(self.index_marked).setForeground(QtCore.Qt.GlobalColor.black)
+        item = self.list_files.item(self.index_marked)
+        if item is not None:
+            item.setForeground(QtCore.Qt.GlobalColor.black)
         items[self.index_load].setForeground(QtCore.Qt.GlobalColor.blue)
         self.index_marked = self.list_files.row(items[self.index_load])
         model_file = items[self.index_load].text()
@@ -387,12 +390,17 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.index_load = (self.index_config + 1) % len(self.spectra_fit.configs)
         self.display_index_load()
 
+    def _parse_fix(self, i, j):
+        try:
+            return ast.literal_eval(self.tab_pars.item(i, j).text())
+        except SyntaxError:
+            return self.tab_pars.item(i, j).text()
+
     def copy_pars(self):
         if self.spectra_fit.fitter is None:
             return
         for i, model in enumerate(self.spectra_fit.fitter.models):
-            tab_dict = {self.tab_pars.item(_i, 0).text():
-                        [ast.literal_eval(self.tab_pars.item(_i, _j).text()) for _j in range(1, 4)]
+            tab_dict = {self.tab_pars.item(_i, 0).text(): [self._parse_fix(_i, _j) for _j in range(1, 4)]
                         for _i in range(self.tab_pars.rowCount())}
             pars = [tab_dict.get(name, [val, fix, link]) for name, val, fix, link in model.get_pars()]
             model.set_pars(pars, force=True)
