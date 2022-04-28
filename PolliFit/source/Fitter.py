@@ -6,6 +6,7 @@ Created on 20.02.2022
 
 import numpy as np
 import itertools as it
+from PyQt5.QtCore import QObject, pyqtSignal
 
 # noinspection PyUnresolvedReferences
 from FitRoutines import curve_fit
@@ -29,7 +30,10 @@ class Xlist:  # Custom list to trick 'curve_fit' for linked fitting of files wit
         self.x[key] = value
 
 
-class Fitter:
+class Fitter(QObject):
+
+    finished = pyqtSignal()
+
     def __init__(self, models, meas, st, iso, config):
         """
         :param models: A list of models.
@@ -38,6 +42,7 @@ class Fitter:
         :param iso: A list of isotopes used for the axis conversion of each SpecData object.
         :param config: A dictionary with information for the fit.
         """
+        super().__init__()
         self.models = models
         self.meas = meas
         self.st = st
@@ -51,6 +56,7 @@ class Fitter:
 
         self.sizes = []
         self.x_volt, self.x, self.y, self.yerr = [], [], [], []
+        self.popt, self.pcov, self.info = [], [], []
         self.gen_data()
 
     def get_pars(self, i):
@@ -286,4 +292,5 @@ class Fitter:
             popt, pcov, info = self.fit_linked()
         else:
             popt, pcov, info = self.fit_batch()
-        return popt, pcov, info
+        self.popt, self.pcov, self.info = popt, pcov, info
+        self.finished.emit()

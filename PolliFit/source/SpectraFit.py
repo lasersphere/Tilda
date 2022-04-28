@@ -179,7 +179,11 @@ class SpectraFit:
         if self.fitter is None:
             return
         self.fitter.config = self.gen_config()
-        popt, pcov, info = self.fitter.fit()
+        self.fitter.fit()
+        return self.finish_fit()
+
+    def finish_fit(self):
+        popt, pcov, info = self.fitter.popt, self.fitter.pcov, self.fitter.info
         if self.save_to_db:
             self.save_fits(popt, pcov, info)
         return popt, pcov, info

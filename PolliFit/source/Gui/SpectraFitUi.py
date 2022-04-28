@@ -43,6 +43,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.index_marked = 0
         self.fig = None
         self.spectra_fit = None
+        self.thread = QtCore.QThread()
 
         self.connect()
         self.show()
@@ -107,7 +108,8 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.b_trs.clicked.connect(self.open_trs)
 
         # Action (Fit).
-        self.b_fit.clicked.connect(self.fit)
+        # self.b_fit.clicked.connect(self.fit)
+        self.b_fit.clicked.connect(self.fit_threaded)
 
     def conSig(self, dbSig):
         dbSig.connect(self.dbChange)
@@ -312,6 +314,8 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         return SpectraFit(self.dbpath, files, runs, configs, self.index_load, **kwargs)
 
     def load_pars(self, suppress_plot=False):
+        if not self.list_files.selectedItems():
+            return
         self.spectra_fit = self.gen_spectra_fit()
         if self.check_arithmetics.isChecked():
             self.update_arithmetics()
@@ -690,9 +694,43 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     """ Action (Fit)"""
 
     def fit(self):
+        self.mark_loaded(self.list_files.selectedItems())
         _, _, info = self.spectra_fit.fit()
         self.tab_pars.blockSignals(True)
         self.update_vals()
         self.tab_pars.blockSignals(False)
         self.mark_warn(info['warn'])
         self.mark_errs(info['errs'])
+
+    def fit_threaded(self):
+        self.mark_loaded(self.list_files.selectedItems())
+        if self.spectra_fit.fitter is None:
+            return
+        self.spectra_fit.fitter.config = self.spectra_fit.gen_config()
+
+        self.spectra_fit.fitter.moveToThread(self.thread)
+        self.spectra_fit.fitter.finished.connect(self.thread.quit)
+        self.thread.started.connect(self.spectra_fit.fitter.fit)
+        self.thread.finished.connect(self.finish_fit)
+
+        self.enable_gui(False)
+        self.thread.start()
+
+    def finish_fit(self):
+        _, _, info = self.spectra_fit.finish_fit()
+
+        self.tab_pars.blockSignals(True)
+        self.update_vals()
+        self.tab_pars.blockSignals(False)
+        self.mark_warn(info['warn'])
+        self.mark_errs(info['errs'])
+        self.enable_gui(True)
+
+    def enable_gui(self, a0):
+        self.vert_files.setEnabled(a0)
+        self.vert_parameters.setEnabled(a0)
+        self.grid_model.setEnabled(a0)
+        self.grid_fit.setEnabled(a0)
+        self.grid_plot.setEnabled(a0)
+        self.b_fit.setEnabled(a0)
+        self.b_abort.setEnabled(not a0)
