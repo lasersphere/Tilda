@@ -240,11 +240,18 @@ class SpectraFit:
                       ' "pars" TEXT, PRIMARY KEY("file", "run"))')
         for i, (file, run) in enumerate(zip(self.files, self.runs)):
             pars = self._pars_from_db(file, run)
+            reload_fix = []
             for j, (name, val, fix, link) in enumerate(self.get_pars(i)):
                 par = pars.get(name, (val, fix, link))
                 self.set_val(i, j, par[0])
-                self.set_fix(i, j, par[1])
+                try:
+                    self.set_fix(i, j, par[1])
+                except ZeroDivisionError:
+                    reload_fix.append((j, par[1]))
+                    self.set_fix(i, j, True)
                 self.set_link(i, j, par[2])
+            for j, fix in reload_fix:
+                self.set_fix(i, j, fix)
             self.fitter.models[i].update()
 
     def save_pars(self):
