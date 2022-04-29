@@ -16,6 +16,18 @@
   <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,1,0">
    <item>
     <widget class="QWidget" name="vert_files" native="true">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>250</width>
+       <height>16777215</height>
+      </size>
+     </property>
      <layout class="QVBoxLayout" name="vert_files_layout" stretch="0,1,0">
       <property name="leftMargin">
        <number>0</number>
@@ -41,8 +53,11 @@
       </item>
       <item>
        <widget class="QListWidget" name="list_files">
-        <property name="sizeAdjustPolicy">
-         <enum>QAbstractScrollArea::AdjustToContents</enum>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="selectionMode">
          <enum>QAbstractItemView::ExtendedSelection</enum>
@@ -105,6 +120,18 @@
    </item>
    <item>
     <widget class="QWidget" name="vert_parameters" native="true">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>420</width>
+       <height>0</height>
+      </size>
+     </property>
      <layout class="QVBoxLayout" name="vert_parameters_layout" stretch="1,0">
       <property name="leftMargin">
        <number>0</number>
@@ -120,6 +147,18 @@
       </property>
       <item>
        <widget class="QTableWidget" name="tab_pars">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>420</width>
+          <height>0</height>
+         </size>
+        </property>
         <property name="selectionMode">
          <enum>QAbstractItemView::ExtendedSelection</enum>
         </property>
@@ -208,9 +247,42 @@
    </item>
    <item>
     <widget class="QWidget" name="vert_control" native="true">
-     <layout class="QVBoxLayout" name="vert_control_layout">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>300</width>
+       <height>0</height>
+      </size>
+     </property>
+     <layout class="QVBoxLayout" name="vert_control_layout" stretch="1,0">
+      <property name="spacing">
+       <number>6</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
       <item>
        <widget class="QScrollArea" name="scroll_area">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="minimumSize">
          <size>
           <width>300</width>
@@ -232,7 +304,7 @@
            <x>0</x>
            <y>0</y>
            <width>281</width>
-           <height>558</height>
+           <height>562</height>
           </rect>
          </property>
          <layout class="QVBoxLayout" name="vert_options_layout">
@@ -422,7 +494,7 @@
           </item>
           <item>
            <widget class="QWidget" name="grid_fit" native="true">
-            <layout class="QGridLayout" name="grid_fit_layout" columnstretch="1,0">
+            <layout class="QGridLayout" name="grid_fit_layout" columnstretch="1,1">
              <item row="5" column="0">
               <widget class="QCheckBox" name="check_save_to_db">
                <property name="text">
@@ -700,6 +772,18 @@
       <item>
        <widget class="QWidget" name="grid_action" native="true">
         <layout class="QGridLayout" name="grid_action_layout">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
          <item row="1" column="0">
           <widget class="QProgressBar" name="progress_fit">
            <property name="enabled">
