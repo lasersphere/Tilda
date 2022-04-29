@@ -741,4 +741,6 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.grid_fit.setEnabled(a0)
         self.grid_plot.setEnabled(a0)
         self.b_fit.setEnabled(a0)
-        self.b_abort.setEnabled(not a0)
+        # self.b_abort.setEnabled(not a0)
+        #  TODO: abort during fit. This may be difficult to implement cleanly
+        #   since curve_fit actually does not allow intervention.

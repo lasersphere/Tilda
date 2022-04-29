@@ -5,6 +5,7 @@ Created on 29.04.2014
 '''
 import datetime
 import os
+import string
 
 import matplotlib
 import matplotlib.figure as Figure
@@ -250,7 +251,8 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
                fontsize=fontsize_ticks+2, numpoints=1)
 
 
-def plot_model_fit(fitter, index, x_as_freq=True, save_path='', fmt='k.', fontsize=10):
+def plot_model_fit(fitter, index, x_as_freq=True, plot_summands=True, plot_npeaks=True, save_path='', fmt='k.',
+                   fontsize=10):
     fig = plt.figure(num=1, figsize=(8, 8))
     ax1 = plt.axes([0.15, 0.35, 0.8, 0.50])
     ax2 = plt.axes([0.15, 0.1, 0.8, 0.2], sharex=ax1)
@@ -285,10 +287,29 @@ def plot_model_fit(fitter, index, x_as_freq=True, save_path='', fmt='k.', fontsi
     ax2.set_ylabel('residuals (counts)', fontsize=fontsize)
 
     plot_data = ax1.errorbar(_x, y, yerr=yerr, fmt=fmt, label=fitter.meas[index].file)
-    plot_fit = ax1.plot(x_fit, y_fit, 'r-', label='Fit')
+    plot_fit = ax1.plot(x_fit, y_fit, '-C0', label='Full fit')
+
+    vals = [val for val in model.vals]
+    if plot_npeaks:  # TODO: Implement display of side peaks.
+        pass
+
+    plot_sum = []
+    # plot_n = []
+    if plot_summands:
+        sum_pars = [name.replace('center', 'int') for name in model.names if 'center(' in name]
+        # n_pars = [name for name in model.names if name[0] == 'p' and name[1] in string.digits]
+        for i, par in enumerate(sum_pars):
+            for _par in sum_pars:
+                if _par != par:
+                    vals[model.names.index(_par)] = 0.
+            label = par[(par.find('(')+1):par.find(')')]
+            plot_sum.append(ax1.plot(x_fit, model(x_fit, *vals), '-C{}'.format(i % 9 + 1), label=label)[0])
+            for _par in sum_pars:
+                vals[model.names.index(_par)] = model.vals[model.names.index(_par)]
+
     ax2.errorbar(_x, y_res, yerr=yerr, fmt=fmt, label='Residuals')
 
-    lines = [plot_data, plot_fit[0]]
+    lines = [plot_data, plot_fit[0], *plot_sum]
     labels = [each.get_label() for each in lines]
     fig.legend(lines, labels, loc='upper center', ncol=2, bbox_to_anchor=(0.15, 0.8, 0.8, 0.2), mode='expand',
                fontsize=fontsize + 2, numpoints=1)
