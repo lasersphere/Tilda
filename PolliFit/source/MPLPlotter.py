@@ -251,8 +251,8 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
                fontsize=fontsize_ticks+2, numpoints=1)
 
 
-def plot_model_fit(fitter, index, x_as_freq=True, plot_summands=True, plot_npeaks=True, save_path='', fmt='k.',
-                   fontsize=10):
+def plot_model_fit(fitter, index, x_as_freq=True, plot_summands=True, plot_npeaks=True, ascii_path='', plot_path='',
+                   fig_save_format='png', fmt='.k', fontsize=10):
     fig = plt.figure(num=1, figsize=(8, 8))
     ax1 = plt.axes([0.15, 0.35, 0.8, 0.50])
     ax2 = plt.axes([0.15, 0.1, 0.8, 0.2], sharex=ax1)
@@ -293,6 +293,7 @@ def plot_model_fit(fitter, index, x_as_freq=True, plot_summands=True, plot_npeak
     if plot_npeaks:  # TODO: Implement display of side peaks.
         pass
 
+    y_fit_extra = []
     plot_sum = []
     # plot_n = []
     if plot_summands:
@@ -303,7 +304,8 @@ def plot_model_fit(fitter, index, x_as_freq=True, plot_summands=True, plot_npeak
                 if _par != par:
                     vals[model.names.index(_par)] = 0.
             label = par[(par.find('(')+1):par.find(')')]
-            plot_sum.append(ax1.plot(x_fit, model(x_fit, *vals), '-C{}'.format(i % 9 + 1), label=label)[0])
+            y_fit_extra.append(model(x_fit, *vals))
+            plot_sum.append(ax1.plot(x_fit, y_fit_extra[-1], '-C{}'.format(i % 9 + 1), label=label)[0])
             for _par in sum_pars:
                 vals[model.names.index(_par)] = model.vals[model.names.index(_par)]
 
@@ -313,13 +315,18 @@ def plot_model_fit(fitter, index, x_as_freq=True, plot_summands=True, plot_npeak
     labels = [each.get_label() for each in lines]
     fig.legend(lines, labels, loc='upper center', ncol=2, bbox_to_anchor=(0.15, 0.8, 0.8, 0.2), mode='expand',
                fontsize=fontsize + 2, numpoints=1)
-    if save_path:
-        save_plot_as_ascii(_x, y, y_res, yerr, x_fit, y_fit,
-                           save_path=save_path, filename=fitter.meas[index].file, xlabel=ax2.get_xlabel())
+    if ascii_path:
+        save_plot_as_ascii(_x, y, y_res, yerr, x_fit, y_fit, *y_fit_extra,
+                           save_path=ascii_path, filename=fitter.meas[index].file, xlabel=ax2.get_xlabel())
+    if plot_path:
+        if fig_save_format[0] == '.':
+            fig_save_format = fig_save_format[1:]
+        f = os.path.join(plot_path, '{}.{}'.format(os.path.splitext(fitter.meas[index].file)[0], fig_save_format))
+        fig.savefig(f)
     return fig
 
 
-def save_plot_as_ascii(x, y, y_res, yerr, x_fit, y_fit, save_path='C:\\', filename='', xlabel=''):
+def save_plot_as_ascii(x, y, y_res, yerr, x_fit, y_fit, *y_fit_extra, save_path='C:\\', filename='', xlabel=''):
     if not os.path.exists(save_path):
         try:
             os.makedirs(save_path)
@@ -333,7 +340,8 @@ def save_plot_as_ascii(x, y, y_res, yerr, x_fit, y_fit, save_path='C:\\', filena
                header='{}, data intensity (counts), fit residuals (counts), data uncertainty (counts)'.format(xlabel))
     f = os.path.join(save_path, '{}_fit_{}'.format(
         os.path.splitext(filename)[0], datetime.datetime.today().strftime('_%Y-%m-%d_%H-%M-%S.txt')))
-    np.savetxt(f, np.array([x_fit, y_fit]).T, delimiter=', ', header='{}, fit intensity (counts)'.format(xlabel))
+    np.savetxt(f, np.array([x_fit, y_fit, *y_fit_extra]).T,
+               delimiter=', ', header='{}, fit intensity (counts)'.format(xlabel))
     print('Saved plot as ASCII files in {}.'.format(save_path))
 
 

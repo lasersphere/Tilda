@@ -20,12 +20,15 @@ import Models.Collection as Mod
 class SpectraFit:
     def __init__(self, db, files, runs, configs, index_config,
                  routine='curve_fit', absolute_sigma=False, guess_offset=True, arithmetics=None,
-                 summed=False, linked=False, save_to_db=False, x_as_freq=True, fmt='.k', fontsize=10):
+                 summed=False, linked=False, save_to_db=False, x_as_freq=True,
+                 fig_save_format='.png', fmt='.k', fontsize=10):
         self.db = db
         self.files = files
         self.runs = runs
         self.configs = configs
         self.index_config = index_config
+
+        self.file_paths = self.load_filepaths()
 
         self.routine = routine
         self.absolute_sigma = absolute_sigma
@@ -36,11 +39,13 @@ class SpectraFit:
         self.save_to_db = save_to_db
 
         self.x_as_freq = x_as_freq
+        self.fig_save_format = fig_save_format
         self.fmt = fmt
         self.fontsize = fontsize
 
         self.file_types = {'.xml'}
-        self.save_path = os.path.join(os.path.normpath(os.path.dirname(self.db)), 'saved_plots')
+        self.ascii_path = os.path.join(os.path.normpath(os.path.dirname(self.db)), 'saved_plots')
+        self.plot_path = os.path.join(os.path.normpath(os.path.dirname(self.db)), 'saved_plots')
 
         self.splitter_models = []
         self.reset_model = None
@@ -97,7 +102,7 @@ class SpectraFit:
 
         self.splitter_models = []
         models, meas, st, iso = [], [], [], []
-        for path, file, run, config in zip(self.load_filepaths(), self.files, self.runs, self.configs):
+        for path, file, run, config in zip(self.file_paths, self.files, self.runs, self.configs):
             var = TiTs.select_from_db(self.db, 'isoVar, lineVar, scaler, track', 'Runs', [['run'], [run]],
                                       caller_name=__name__)
             if not var:
@@ -185,7 +190,9 @@ class SpectraFit:
     def finish_fit(self):
         popt, pcov, info = self.fitter.popt, self.fitter.pcov, self.fitter.info
         if self.save_to_db:
-            self.save_fits(popt, pcov, info)
+            self.save_fits_to_db(popt, pcov, info)
+        # if self.save_figure:
+        #     self.save_fits_as_fig(popt, pcov, info)
         return popt, pcov, info
 
     def get_pars(self, i):
@@ -269,7 +276,7 @@ class SpectraFit:
             self._execute('INSERT OR REPLACE INTO FitPars (file, run, softw_gates, config, pars)'
                           ' VALUES (?, ?, ?, ?, ?)', (file, run, softw_gates, str(config), str(new_pars)))
 
-    def save_fits(self, popt, pcov, info):
+    def save_fits_to_db(self, popt, pcov, info):
         con = sqlite3.connect(self.db)
         cur = con.cursor()
         for i, (file, run) in enumerate(zip(self.files, self.runs)):
@@ -282,13 +289,14 @@ class SpectraFit:
         con.commit()
         con.close()
 
-    def plot(self, clear=True, show=False, save_path=''):
+    def plot(self, index=None, clear=True, show=False, ascii_path='', plot_path=''):
         if self.fitter is None:
             return
         if clear:
             Plot.clear()
 
-        fig = Plot.plot_model_fit(self.fitter, self.index_config, x_as_freq=self.x_as_freq, save_path=save_path,
+        fig = Plot.plot_model_fit(self.fitter, self.index_config if index is None else index, x_as_freq=self.x_as_freq,
+                                  ascii_path=ascii_path, plot_path=plot_path, fig_save_format=self.fig_save_format,
                                   fmt=self.fmt, fontsize=self.fontsize)
 
         if show:

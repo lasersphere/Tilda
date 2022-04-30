@@ -95,10 +95,10 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.edit_arithmetics.editingFinished.connect(self.set_arithmetics)
         self.check_arithmetics.stateChanged.connect(self.toggle_arithmetics)
         self.b_trsplot.clicked.connect(self.open_trsplot)
+        self.b_trs.clicked.connect(self.open_trs)
         self.check_summed.stateChanged.connect(self.toogle_summed)
         self.check_linked.stateChanged.connect(self.toogle_linked)
         self.check_save_to_db.stateChanged.connect(self.toggle_save_to_db)
-        self.b_save_ascii.clicked.connect(self.save_ascii)
 
         # Plot.
         self.check_x_as_freq.stateChanged.connect(
@@ -106,7 +106,9 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.edit_fmt.editingFinished.connect(self.set_fmt)
         self.s_fontsize.editingFinished.connect(self.set_fontsize)
         self.b_plot.clicked.connect(self.plot)
-        self.b_trs.clicked.connect(self.open_trs)
+        self.b_save_ascii.clicked.connect(self.save_ascii)
+        self.b_save_figure.clicked.connect(self.save_plot)
+        self.c_fig.currentIndexChanged.connect(self.set_fig_save_format)
 
         # Action (Fit).
         # self.b_fit.clicked.connect(self.fit)
@@ -203,12 +205,13 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         item = self.list_files.item(self.index_marked)
         if item is not None:
             item.setForeground(QtCore.Qt.GlobalColor.black)
-        items[self.index_load].setForeground(QtCore.Qt.GlobalColor.blue)
-        self.index_marked = self.list_files.row(items[self.index_load])
-        model_file = items[self.index_load].text()
-        self.l_model_file.setText(model_file)
-        self.index_config = self.index_load
-        self.spectra_fit.index_config = self.index_load
+        if items:
+            items[self.index_load].setForeground(QtCore.Qt.GlobalColor.blue)
+            self.index_marked = self.list_files.row(items[self.index_load])
+            model_file = items[self.index_load].text()
+            self.l_model_file.setText(model_file)
+            self.index_config = self.index_load
+            self.spectra_fit.index_config = self.index_load
 
     def mark_warn(self, warn):
         for i in warn:
@@ -300,6 +303,11 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         return configs
 
     def gen_spectra_fit(self):
+        if self.spectra_fit is not None:
+            if self.spectra_fit.fitter is not None:
+                self.spectra_fit.fitter.deleteLater()  # Make sure the QObject, which lives in another thread,
+                # is deleted before creating a new one.
+
         files = [f.text() for f in self.list_files.selectedItems()]
         runs = [self.c_run.currentText() for _ in self.list_files.selectedItems()]
         configs = self._gen_configs(files, runs)
@@ -311,7 +319,9 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                       summed=self.check_summed.isChecked(),
                       linked=self.check_linked.isChecked(),
                       save_to_db=self.check_save_to_db.isChecked(),
+                      save_figure=self.check_save_figure.isChecked(),
                       x_as_freq=self.check_x_as_freq.isChecked(),
+                      fig_save_format=self.c_fig.currentText(),
                       fmt=self.edit_fmt.text(),
                       fontsize=self.s_fontsize.value())
         return SpectraFit(self.dbpath, files, runs, configs, self.index_load, **kwargs)
@@ -665,8 +675,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.spectra_fit.linked = self.check_linked.isChecked()
 
     def toggle_save_to_db(self):
-        state = self.check_save_to_db.isChecked()
-        self.spectra_fit.save_to_db = state
+        self.spectra_fit.save_to_db = self.check_save_to_db.isChecked()
 
     """ Plot """
 
@@ -697,7 +706,13 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.spectra_fit.plot(clear=True, show=True)
 
     def save_ascii(self):
-        self.spectra_fit.plot(save_path=self.spectra_fit.save_path)
+        self.spectra_fit.plot(ascii_path=self.spectra_fit.ascii_path)
+
+    def save_plot(self):
+        self.spectra_fit.plot(plot_path=self.spectra_fit.plot_path)
+
+    def set_fig_save_format(self):
+        self.spectra_fit.fig_save_format = self.c_fig.currentText()
 
     """ Action (Fit)"""
 
@@ -716,22 +731,29 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             return
         self.spectra_fit.fitter.config = self.spectra_fit.gen_config()
 
-        self.spectra_fit.fitter.moveToThread(self.thread)
-        self.spectra_fit.fitter.finished.connect(self.thread.quit)
-        self.thread.started.connect(self.spectra_fit.fitter.fit)
-        self.thread.finished.connect(self.finish_fit)
+        if self.thread is not self.spectra_fit.fitter.thread():
+            self.spectra_fit.fitter.moveToThread(self.thread)
+            self.spectra_fit.fitter.finished.connect(self.thread.quit)
+            self.thread.started.connect(self.spectra_fit.fitter.fit)
+            self.thread.finished.connect(self.finish_fit)
 
         self.enable_gui(False)
         self.thread.start()
 
     def finish_fit(self):
+        self.thread.wait()
+
         _, _, info = self.spectra_fit.finish_fit()
 
         self.tab_pars.blockSignals(True)
-        self.update_vals()
+        self.update_vals(suppress_plot=True)
         self.tab_pars.blockSignals(False)
         self.mark_warn(info['warn'])
         self.mark_errs(info['errs'])
+        if self.check_save_figure.isChecked():
+            for i, path in enumerate(self.spectra_fit.file_paths):
+                self.spectra_fit.plot(index=i, clear=True, show=False, plot_path=os.path.split(path)[0])
+        self.plot_auto(suppress=False)
         self.enable_gui(True)
 
     def enable_gui(self, a0):
