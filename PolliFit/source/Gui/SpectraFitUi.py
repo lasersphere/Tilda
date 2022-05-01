@@ -319,7 +319,6 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                       summed=self.check_summed.isChecked(),
                       linked=self.check_linked.isChecked(),
                       save_to_db=self.check_save_to_db.isChecked(),
-                      save_figure=self.check_save_figure.isChecked(),
                       x_as_freq=self.check_x_as_freq.isChecked(),
                       fig_save_format=self.c_fig.currentText(),
                       fmt=self.edit_fmt.text(),
