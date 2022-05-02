@@ -305,6 +305,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     def gen_spectra_fit(self):
         if self.spectra_fit is not None:
             if self.spectra_fit.fitter is not None:
+                self.thread.disconnect()  # Disconnect thread from the old fitter.
                 self.spectra_fit.fitter.deleteLater()  # Make sure the QObject, which lives in another thread,
                 # is deleted before creating a new one.
 
