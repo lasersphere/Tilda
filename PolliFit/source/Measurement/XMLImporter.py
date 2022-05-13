@@ -119,7 +119,6 @@ class XMLImporter(SpecData):
         self.track_names = TildaTools.get_track_names(scandict)
         logging.debug('track_names are: %s ' % self.track_names)
         self.softBinWidth_ns = []
-        self.invert_scan = []
         self.post_acc_offset_volt_control = []  # which heinzinger / Fluke
         self.wait_for_kepco_1us = []
         self.wait_after_reset_1us = []
@@ -146,6 +145,7 @@ class XMLImporter(SpecData):
 
             nOfactTrack = int(tr_name[5:])
             nOfsteps = track_dict['nOfSteps']
+            self.nrSteps.append(nOfsteps)
             nOfBins = track_dict.get('nOfBins')
             nOfScalers = len(track_dict['activePmtList'])
             self.nrBunches += track_dict.get('nOfBunches', 1),
@@ -169,6 +169,7 @@ class XMLImporter(SpecData):
 
             self.working_time.append(track_dict['workingTime'])
             self.nrScans.append(track_dict['nOfCompletedSteps'] // nOfsteps)
+            self.nrLoops.append(max([self.nrScans[-1], 1]))
 
             dacStepSize18Bit = track_dict.get('dacStepSize18Bit', None)  # leave in for backwards_comp
             if dacStepSize18Bit is None or dacStepSize18Bit == {}:  # TODO: not nice...
@@ -200,7 +201,7 @@ class XMLImporter(SpecData):
                     lxmlEtree, nOfactTrack, 'scalerArray', cts_shape[tr_ind])
                 # maybe the file has non-standard errors. Try to import them. Fail will return NONE:
                 error_array = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'errorArray', cts_shape[tr_ind])
+                    lxmlEtree, nOfactTrack, 'errorArray', cts_shape[tr_ind], create_if_no_root_ele=False)
 
                 v_proj = TildaTools.xml_get_data_from_track(
                     lxmlEtree, nOfactTrack, 'voltage_projection', (nOfScalers, nOfsteps),
@@ -284,13 +285,13 @@ class XMLImporter(SpecData):
                 self.cts.append(scaler_array)
                 # maybe the file has non-standard errors. Try to import them. Fail will return NONE:
                 error_array = TildaTools.xml_get_data_from_track(
-                    lxmlEtree, nOfactTrack, 'errorArray', cts_shape)
-                if error_array is not None:
-                    # errors are explicitly given. Use those.
-                    self.err.append(error_array)
-                else:
+                    lxmlEtree, nOfactTrack, 'errorArray', cts_shape, create_if_no_root_ele=False)
+                if error_array is None:
                     # if no errors were specified, use standard errors
                     self.err.append(np.sqrt(np.abs(scaler_array)))
+                else:
+                    # errors are explicitly given. Use those.
+                    self.err.append(error_array)
                 self.err[-1][self.err[-1] < 1] = 1  # remove 0's in the error
                 self.dwell.append(track_dict.get('dwellTime10ns'))
 

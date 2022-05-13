@@ -586,9 +586,71 @@ def create_header_list(meas, sc, tr):
     return header
 
 
+def import_masses(db, element, a=None):
+    elements = []
+    mass_numbers = []
+    masses = []
+    masses_d = []
+
+    with open('masses.txt', 'r') as file:
+        for i in range(36):
+            file.readline()
+        for line in file:
+            el = line[20:24].strip()
+            try:
+                _a = int(line[16:19])
+                m = float(line[106:124].strip().replace('#', '').replace('.', '').replace(' ', '.'))
+                m_d = float(line[124:].strip().replace('#', '')) * 1e-6
+            except ValueError:
+                continue
+            elements.append(el)
+            mass_numbers.append(_a)
+            masses.append(m)
+            masses_d.append(m_d)
+
+    if a is None:
+        a = [0, 300]
+    iso_info = [0., 0., 0., 0., 0., 0., 0, 0, 1.0, 0, 10., 0, 0, 0, 0, ]
+
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    cur.execute('SELECT iso FROM Isotopes')
+    isotopes = cur.fetchall()
+    isotopes = [i[0] for i in isotopes]
+    for el, _a, m, m_d in zip(elements, mass_numbers, masses, masses_d):
+        if element == el and a[0] <= _a <= a[1]:
+            if '{}{}'.format(_a, el) in isotopes:
+                continue
+            print('{}{}'.format(_a, el), m, m_d)
+            cur.execute('INSERT INTO Isotopes (iso, mass, mass_d, I, center, Al, Bl, Au, Bu, fixedArat, '
+                        'fixedBrat, intScale, fixedInt, midTof, fixedAl, fixedBl, fixedAu, fixedBu) VALUES ({})'
+                        .format(', '.join(['?'] * 18)), ['{}{}'.format(_a, el), m, m_d] + iso_info)
+    con.commit()
+    con.close()
+
+
+def copy_scan_pars_for_all_isotopes(db, iso):
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    cur.execute('SELECT * FROM ScanPars')
+    columns = [d[0] for d in cur.description]
+    cur.execute('SELECT iso FROM Isotopes')
+    isotopes = cur.fetchall()
+    isotopes = [i[0] for i in isotopes]
+    cur.execute('SELECT iso FROM ScanPars')
+    existing_iso = cur.fetchall()
+    existing_iso = [i[0] for i in existing_iso]
+    for _iso in isotopes:
+        if _iso not in existing_iso:
+            cur.execute('INSERT INTO ScanPars ({}) SELECT ?, {} FROM ScanPars WHERE iso = ?'
+                        .format(', '.join(columns), ', '.join(columns[1:])), (_iso, iso))
+    con.commit()
+    con.close()
+
+
 if __name__ == '__main__':
-    workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
-    db_0 = os.path.join(workdir, 'Ni_workspace.sqlite')
+    # workdir = 'R:\\Projekte\\COLLAPS\\Nickel\\Measurement_and_Analysis_Simon\\Ni_workspace'
+    # db_0 = os.path.join(workdir, 'Ni_workspace.sqlite')
     # save_to = os.path.join(workdir, 'Ascii_files', 'test.txt')
     # # files = ['Ni_April2016_mcp\\58Ni_no_protonTrigger_Run210.mcp',
     # #          'Ni_April2016_mcp\\59Ni_no_protonTrigger_Run113.mcp',
@@ -610,4 +672,7 @@ if __name__ == '__main__':
     # for file in files:
     #     extract_file_as_ascii(db, file, [4, 5, 6, 7],
     #                           -1, line_var='tisa_60_asym_wide', x_in_freq=False)
-    add_missing_columns(db_0)
+    # add_missing_columns(db_0)
+
+    import_masses(r'D:\Users\Patrick\Dokumente\Auswertungen\Te\Te - Kopie.sqlite', 'Te')
+    # copy_scan_pars_for_all_isotopes(r'D:\Users\Patrick\Dokumente\Auswertungen\Te\Te - Kopie.sqlite', '130Te')

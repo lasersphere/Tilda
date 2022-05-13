@@ -21,6 +21,15 @@ import pyqtgraph as pg
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
 
+# brush_k = pg.mkBrush(0, 0, 0, 255)
+# brush_b = pg.mkBrush(0, 0, 255, 255)
+
+track_colors = ['k', 'r', 'y', 'g', 'c', 'b', 'm']
+
+
+def get_track_color(track_index):
+    return track_colors[track_index % len(track_colors)]
+
 
 def plot_x_y(x, y):
     """
@@ -40,6 +49,49 @@ def plot_spec_data(spec_data, sc, tr, plot_item=None, pen='k'):
         return plot_x_y(x, y)
     else:
         plot_item.plot(x, y, pen=pen)
+
+
+def plot_std(x, y, err, std_plt, err_plt, stepMode=True, color='k'):
+    """
+    Create and plot new plotData in a standard pyqtgraph x-y-plot.
+
+    :param x: The x values.
+    :param y: The y values.
+    :param err: The y uncertainties.
+    :param std_plt: The plot item for the values.
+    :param err_plt: The plot item for the uncertainties.
+    :param stepMode: Whether to plot bins (without uncertainties) or points with error bars.
+    :param color: The color of the data.
+    :return: None.
+    """
+    if stepMode:
+        std_data = std_plt.plot(convert_xaxis_for_step_mode(x), y, stepMode=True, symbol=None, pen=color)
+        err_plt.setData(x=[], y=[], height=None)
+    else:
+        std_data = std_plt.plot(x, y, stepMode=False, symbol='o', pen=None, symbolBrush=pg.mkBrush(color), symbolSize=5)
+        err_plt.setData(x=x, y=y, height=2 * err, beam=(x[1] - x[0]) / 2, pen=color)
+    return std_data
+
+
+def set_data_std(x, y, err, std_plt, err_plt, stepMode=True, color='k'):
+    """
+    Set new data in a standard pyqtgraph x-y-plot.
+
+    :param x: The x values.
+    :param y: The y values.
+    :param err: The y uncertainties.
+    :param std_plt: The plot item for the values.
+    :param err_plt: The plot item for the uncertainties.
+    :param stepMode: Whether to plot bins (without uncertainties) or points with error bars.
+    :param color: The color of the data.
+    :return: None.
+    """
+    if stepMode:
+        std_plt.setData(convert_xaxis_for_step_mode(x), y, stepMode=True, symbol=None, pen=color)
+        err_plt.setData(x=[], y=[], height=None)
+    else:
+        std_plt.setData(x, y, stepMode=False, symbol='o', pen=None, symbolBrush=pg.mkBrush(color), symbolSize=5)
+        err_plt.setData(x=x, y=y, height=2 * err, beam=(x[1] - x[0]) / 2, pen=color)
 
 
 def create_image_view(x_label='line voltage', y_label='time / µs'):
@@ -67,7 +119,9 @@ def create_image_view(x_label='line voltage', y_label='time / µs'):
     return imv_widget, plt_item
 
 
-def create_x_y_widget(do_not_show_label=['top', 'right'], x_label='line voltage', y_label='cts'):
+def create_x_y_widget(do_not_show_label=None, x_label='line voltage', y_label='cts'):
+    if do_not_show_label is None:
+        do_not_show_label = ['top', 'right']
     widg = pg.PlotWidget()
     plt_item = widg.getPlotItem()
     plt_item.showAxis('top')
@@ -84,11 +138,16 @@ def create_x_y_widget(do_not_show_label=['top', 'right'], x_label='line voltage'
 
 def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rate, plot_sum=True, inf_line=True):
     """
+
     this will add a pyqtgraph widget for each scaler and an additional one for the sum to the target layout.
     :param target_layout: QtLayout, here the widgets will be added
     :param pmt_list: list, containing the indices/numbers of the scalers, use specdata.active_pmt_list[tr]
+    :param slot_for_mouse_move:
+    :param max_rate:
+    :param plot_sum:
+    :param inf_line:
     :return: list, of dicts, {'widget', 'proxy', 'vertLine', 'indList', 'pltDataItem', 'name', 'pltItem', 'fitLine'}
-     with sum at the last position
+     with sum at the last position.
     """
     return_list = []
     max_rate = max_rate
@@ -100,6 +159,7 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
         plt_proxy = create_proxy(signal=plt_item.scene().sigMouseMoved,
                                  slot=functools.partial(slot_for_mouse_move, plt_item.vb, False),
                                  rate_limit=max_rate)
+        err_plt_item = create_error_item()
         if sc_ind:  # link to the plot before in list, not in first index(=0) of course
             plt_item.vb.setXLink(return_list[-1]['pltItem'].getViewBox())
         plt_data_item = plt_item.plot(pen='k')
@@ -115,6 +175,7 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
             'proxy': plt_proxy,
             'vertLine': plt_inf_line,
             'pltItem': plt_item,
+            'pltErrItem': err_plt_item,
             'pltDataItem': plt_data_item,
             'fitLine': None
         }
@@ -125,6 +186,7 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
         sum_proxy = create_proxy(signal=sum_plt_item.scene().sigMouseMoved,
                                  slot=functools.partial(slot_for_mouse_move, sum_plt_item.vb, False),
                                  rate_limit=max_rate)
+        err_sum_plt_item = create_error_item()
         sum_plt_data_item = sum_plt_item.plot(pen='b')
         if inf_line:
             sum_inf_line = create_infinite_line(0, pen='r')
@@ -140,6 +202,7 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
             'proxy': sum_proxy,
             'vertLine': sum_inf_line,
             'pltItem': sum_plt_item,
+            'pltErrItem': err_sum_plt_item,
             'pltDataItem': sum_plt_data_item,
             'fitLine': None
         }
@@ -147,38 +210,42 @@ def create_plot_for_all_sc(target_layout, pmt_list, slot_for_mouse_move, max_rat
     return return_list
 
 
-def plot_all_sc_new(list_of_widgets_etc, spec_data, tr, func, stepMode=False):
+def plot_all_sc_new(list_of_widgets_etc, spec_data, tr, func, stepMode=True):
     """
     create plots in the all pmts tab
     :param list_of_widgets_etc: list of widgest, containig widgets to be plotted
     :param spec_data: SpecDat, used spectrum
     :param tr: list of int, used tracks, -1 for all
     :param func: str, users function
-    :param vars: list of str, users variables
-    :param stepMode:
+    :param stepMode: Whether to plot bins (without uncertainties) or points with error bars.
     """
     for val in list_of_widgets_etc:
-        sc = val['indList'] # which scalers are needed for this plot?
-        plt_data_itm = val['pltDataItem']   # data needed for this plot
+        sc = val['indList']  # which scalers are needed for this plot?
+        plt_data_itm = val['pltDataItem']  # data needed for this plot
+        plt_err_itm = val['pltErrItem']  # error item needed for this plot
         eval_on = False
+        color = 'k'
         if val['name'] == 'sum':
             eval_on = True  # only for this plot an evaluation is needed
+            color = 'b'
 
-        #x, y, err = spec_data.calcSpec(func, tr, sc, eval_on)   # calc arithmetic plot
+        # x, y, err = spec_data.calcSpec(func, tr, sc, eval_on)   # calc arithmetic plot
         x, y, err = spec_data.getArithSpec(sc, tr, func, eval_on=eval_on)
 
-        if stepMode:
-            x = convert_xaxis_for_step_mode(deepcopy(x))
+        set_data_std(x, y, err, plt_data_itm, plt_err_itm, stepMode=stepMode, color=color)
 
-        plt_data_itm.setData(x, y, stepMode=stepMode)
+        # if stepMode:
+        #     x = convert_xaxis_for_step_mode(deepcopy(x))
+        # plt_data_itm.setData(x, y, stepMode=stepMode)
 
-def plot_all_sc(list_of_widgets_etc, spec_data, tr, stepMode=False):
+
+def plot_all_sc(list_of_widgets_etc, spec_data, tr, stepMode=True):
     # print('plotting all pmts in %s' % list_of_widgets_etc)
     for val in list_of_widgets_etc:
         sc = val['indList']
         plt_data_itm = val['pltDataItem']
         x, y, err = spec_data.getArithSpec(sc, tr)
-        #x, y, err = spec_data.getArithSpec(sc, tr)
+        # x, y, err = spec_data.getArithSpec(sc, tr)
         if stepMode:
             x = convert_xaxis_for_step_mode(deepcopy(x))
         plt_data_itm.setData(x, y, stepMode=stepMode)
@@ -207,6 +274,10 @@ def create_axisitem(orientation):
     return pg.AxisItem(orientation)
 
 
+def create_error_item():
+    return pg.ErrorBarItem(x=[], y=[])
+
+
 def image(data):
     return pg.image(data)
 
@@ -216,26 +287,26 @@ def create_proxy(signal, slot, rate_limit=60):
     return proxy
 
 
-
 def create_roi(pos, size):
     roi = pg.ROI(pos, size, pen=pg.mkPen('k', width=1.5))
     roi.handlePen = QtGui.QPen(QtGui.QColor(255, 0, 200))
+
     def hoverColor():
         # Generate the pen color for this ROI when the mouse is hovering over it
         if roi.mouseHovering:
-            return pg.fn.mkPen(255, 0, 200, width=2)
+            return pg.mkPen(255, 0, 200, width=2)
         else:
             return roi.pen
-    roi._makePen=hoverColor
-    ## handles scaling horizontally around center
+    roi._makePen = hoverColor
+    # handles scaling horizontally around center
     roi.addScaleHandle([1, 0.5], [0.5, 0.5])
     roi.addScaleHandle([0, 0.5], [0.5, 0.5])
 
-    ## handles scaling vertically from opposite edge
+    # handles scaling vertically from opposite edge
     roi.addScaleHandle([0.5, 0], [0.5, 1])
     roi.addScaleHandle([0.5, 1], [0.5, 0])
 
-    ## handles scaling both vertically and horizontally
+    # handles scaling both vertically and horizontally
     roi.addScaleHandle([1, 1], [0, 0])
     roi.addScaleHandle([0, 0], [1, 1])
     return roi
@@ -275,7 +346,7 @@ class MyPolyLineRoi(pg.PolyLineROI):
           Maybe change this to a clever way in the future """
         return False
 
-    def segmentClicked(self, segment, ev=None, pos=None):  ## pos should be in this item's coordinate system
+    def segmentClicked(self, segment, ev=None, pos=None):  # pos should be in this item's coordinate system
         """ do not add a handle on clicking on the line """
         pass
 
@@ -293,9 +364,10 @@ class MyPolyLineRoi(pg.PolyLineROI):
 #     pg.plot(x=[0, 1, 2], y=[1, 3, 0])
 #     status = app.exec_()
 #     sys.exit(status)
-from PyQt5 import QtWidgets
+
 
 if __name__ == '__main__':
+    from PyQt5 import QtWidgets
     app = QtWidgets.QApplication(sys.argv)
     start_examples()
     status = app.exec_()

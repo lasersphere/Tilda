@@ -35,9 +35,10 @@ import ctypes
 
 """ multipurpose Nodes: """
 
+
 class NROCTrigger(Node):
     def __init__(self):
-        super(NROCTrigger,self).__init__()
+        super(NROCTrigger, self).__init__()
         self.type = 'NROCTrigger'
         self.PicoROCdll = ctypes.CDLL('C:\\Users\\collaps\\PycharmProjects\\Tilda\\TildaHost\\source\\Service\\AnalysisAndDataHandling\\PicoROC\\PicoROCdll\\PicoROCdll.dll')
         self.PicoROCdll.attachSharedMemory()
@@ -53,20 +54,18 @@ class NROCTrigger(Node):
         steps = self.Pipeline.pipeData[track_name]['nOfSteps']
         self.invertscan = self.Pipeline.pipeData[track_name]['invertScan']
 
-        self.stepindexoffset = 0 #Marks programm doesn't know tracks, so in order to give him a nice index accross tracks, this offset will be added to the scan index.
-        for i in range(track_ind,0,-1):
-            self.stepindexoffset+=self.Pipeline.pipeData["track"+str(i)]['nOfSteps']
+        self.stepindexoffset = 0  # Marks programm doesn't know tracks, so in order to give him a nice index accross tracks, this offset will be added to the scan index.
+        for i in range(track_ind, 0, -1):
+            self.stepindexoffset += self.Pipeline.pipeData["track"+str(i)]['nOfSteps']
         self.stepcounter = 0
-
-
 
     def processData(self, data, pipeData):
         for element32 in data:
-            header_index = (element32 >> (23)) & 1
+            header_index = (element32 >> 23) & 1
             if header_index:
                 fheader = element32 >> 28
                 if fheader == Progs.dac.value:
-                    voltbit = (element32 & ((2 ** 20) - 1))>>2
+                    voltbit = (element32 & ((2 ** 20) - 1)) >> 2
                     volt = int(voltbit)*DACCalib.slope+DACCalib.offset
 
                     track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
@@ -90,11 +89,13 @@ class NROCTrigger(Node):
                         self.PicoROCdll.stepScan(stepindex, volt, scans)
 
                     print("NROCTrigger: step index " + str(stepindex) + " of scan " + str(scans) + ", voltage:" + str(volt))
-                    self.stepcounter+=1;
+                    self.stepcounter += 1
 
         return data
+
     def stop(self):
         self.PicoROCdll.stopScan()
+
     def __del__(self):
         self.PicoROCdll.detachSharedMemory()
 
@@ -1092,6 +1093,8 @@ class NSingleArrayToSpecData(Node):
         tracks, tr_num_list = TildaTools.get_number_of_tracks_in_scan_dict(self.Pipeline.pipeData)
         self.spec_data.nrLoops = [self.Pipeline.pipeData['track' + str(tr_num)]['nOfScans']
                                   for tr_num in tr_num_list]
+        self.spec_data.nrSteps = [self.Pipeline.pipeData['track' + str(tr_num)]['nOfSteps']
+                                  for tr_num in tr_num_list]
         self.spec_data.nrTracks = tracks
         self.spec_data.accVolt = [self.Pipeline.pipeData['track' + str(tr_num)]['postAccOffsetVolt']
                                   for tr_num in tr_num_list]
@@ -1106,6 +1109,7 @@ class NSingleArrayToSpecData(Node):
         track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
         self.spec_data.nrScalers = len(self.Pipeline.pipeData[track_name]['activePmtList'])
         self.spec_data.cts = data
+        self.spec_data.err = [np.sqrt(d) for d in data]
         return self.spec_data
 
     def clear(self):
@@ -2015,6 +2019,17 @@ class NCS2SpecData(Node):
 
     def processData(self, data, pipeData):
         self.spec_data.cts = data
+        self.spec_data.err = [np.sqrt(d) for d in data]
+
+        track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
+        csteps = pipeData[track_name]['nOfCompletedSteps']
+        steps = pipeData[track_name]['nOfSteps']
+        scans = csteps // steps + 1
+        self.spec_data.nrLoops[track_ind] = scans
+        if pipeData[track_name]['invertScan'] and scans % 2 == 0:
+            self.spec_data.nrSteps[track_ind] = max([steps - (csteps % steps), 0])  # - 1: Correct for some delay!?
+        else:
+            self.spec_data.nrSteps[track_ind] = min([csteps % steps, steps])  # + 1: Correct for some delay!?
         return self.spec_data
 
     def clear(self):
@@ -2406,7 +2421,7 @@ class NTRSSumFastArraysSpecData(Node):
         start_sum = datetime.now()
         dimensions = [self.spec_data.get_scaler_step_and_bin_num(track_ind)]
         # convert zero free to non zero free, for faster summing!
-        zero_data = TildaTools.zero_free_to_non_zero_free([data], dimensions)  #TODO: here we ran into a Memory Error
+        zero_data = TildaTools.zero_free_to_non_zero_free([data], dimensions)  # TODO: here we ran into a Memory Error
         self.spec_data.time_res[track_ind] += zero_data[0]  # add it to existing, by just adding the two matrices
 
         # zero_free data is not needed afterwards -> only create it on saving
@@ -2416,6 +2431,15 @@ class NTRSSumFastArraysSpecData(Node):
 
         elapsed_sum = datetime.now() - start_sum
         logging.debug('summing data in %s took %.3f s' % (self.type, elapsed_sum.total_seconds()))
+
+        csteps = pipeData[track_name]['nOfCompletedSteps']
+        steps = pipeData[track_name]['nOfSteps']
+        scans = csteps // steps + 1
+        self.spec_data.nrLoops[track_ind] = scans
+        if pipeData[track_name]['invertScan'] and scans % 2 == 0:
+            self.spec_data.nrSteps[track_ind] = max([steps - (csteps % steps), 0])
+        else:
+            self.spec_data.nrSteps[track_ind] = min([csteps % steps, steps])
         return self.spec_data
 
     def clear(self):
@@ -2778,4 +2802,3 @@ class NFilterDMMDictsAndSave(Node):
         except Exception as e:
             logging.warning('pipeline was stopped, but Node %s could not execute save(),'
                             ' maybe no data was incoming yet? Error was: %s' % (self.type, e))
-
