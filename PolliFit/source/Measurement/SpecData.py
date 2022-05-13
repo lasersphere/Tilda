@@ -4,12 +4,11 @@ Created on 29.03.2014
 @author: hammen
 """
 import itertools as it
-import logging
 from datetime import datetime
 
 import numpy as np
 
-from enum import Enum, unique
+from enum import Enum
 
 
 class SpecDataXAxisUnits(Enum):
@@ -138,7 +137,7 @@ class SpecData(object):
 
     """ Old version of get ArithSpec: """
 
-    # def getArithSpec(self, scaler, track_index):    #TODO new arith
+    # def getArithSpec(self, scaler, track_index):
     #     """Same as getSingleSpec, but scaler is of type [+i, -j, +k], resulting in s[i]-s[j]+s[k]"""
     #     l = self.getNrSteps(track_index)
     #     flatx = np.zeros((l,))
@@ -175,29 +174,35 @@ class SpecData(object):
 
     def get_cts_per_scan(self, track_index, flatc, flate):
         if track_index == -1:
-            i0 = 0
+            i = 0
             for t in range(self.nrTracks):
                 nt = self.getNrSteps(t)
                 scan = self.nrLoops[t]
                 step = self.nrSteps[t]
-                _norm = np.full(nt, scan, dtype=float)
+                s0, n0 = slice(i, i + step, 1), scan
+                s1, n1 = slice(i + step, i + nt, 1), scan - 1 if scan > 1 else 1
                 if self.invert_scan[t] and scan % 2 == 0:
-                    _norm[:step] = scan - 1 if scan > 1 else 1
-                else:
-                    _norm[step:] = scan - 1 if scan > 1 else 1
-                flatc[i0:(i0 + nt)] /= _norm
-                flate[i0:(i0 + nt)] /= _norm
-                i0 += nt
+                    n0 -= 1
+                    n1 += 1
+                flatc[s0] /= n0
+                flatc[s1] /= n1
+                flate[s0] /= n0
+                flate[s1] /= n1
+                i += nt
             return flatc, flate
         else:
             scan = self.nrLoops[track_index]
             step = self.nrSteps[track_index]
-            norm = np.full_like(flatc, scan, dtype=float)
+            s0, n0 = slice(0, step, 1), scan
+            s1, n1 = slice(step, None, 1), scan - 1 if scan > 1 else 1
             if self.invert_scan[track_index] and scan % 2 == 0:
-                norm[:step] = scan - 1 if scan > 1 else 1
-            else:
-                norm[step:] = scan - 1 if scan > 1 else 1
-            return flatc / norm, flate / norm
+                n0 -= 1
+                n1 += 1
+            flatc[s0] /= n0
+            flatc[s1] /= n1
+            flate[s0] /= n0
+            flate[s1] /= n1
+            return flatc, flate
 
     def getNrSteps(self, track):
         if track == -1:

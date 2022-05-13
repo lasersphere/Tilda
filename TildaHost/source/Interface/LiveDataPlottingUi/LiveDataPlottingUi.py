@@ -543,7 +543,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 a.setChecked(False)
         action.toggle()
         self.update_spec_data_norm()
-        self.update_all_plots(self.spec_data)
 
     def update_spec_data_norm(self):
         """
