@@ -273,9 +273,13 @@ def plot_model_fit(fitter, index, x_as_freq=True, plot_summands=True, plot_npeak
     y_res = model(x, *model.vals) - y
 
     _x = x
+    ax1.set_ylabel('intensity (counts)', fontsize=fontsize)
+    ax2.set_ylabel('residuals (counts)', fontsize=fontsize)
     if fitter.meas[index].seq_type == 'kepco':
         _x = x_volt
         ax2.set_xlabel('line voltage (V)', fontsize=fontsize, labelpad=fontsize / 2)
+        ax1.set_ylabel('voltage (V)', fontsize=fontsize)
+        ax2.set_ylabel('residuals (V)', fontsize=fontsize)
     elif x_as_freq:
         ax2.set_xlabel('relative frequency (MHz)', fontsize=fontsize, labelpad=fontsize / 2)
     else:
@@ -283,8 +287,6 @@ def plot_model_fit(fitter, index, x_as_freq=True, plot_summands=True, plot_npeak
                                          fitter.meas[index].laserFreq, fitter.iso[index].freq, fitter.meas[index].col)
         _x = x_volt
         ax2.set_xlabel('voltage (V)'.format(fitter.meas[index].accVolt), fontsize=fontsize, labelpad=fontsize / 2)
-    ax1.set_ylabel('intensity (counts)', fontsize=fontsize)
-    ax2.set_ylabel('residuals (counts)', fontsize=fontsize)
 
     plot_data = ax1.errorbar(_x, y, yerr=yerr, fmt=fmt, label=fitter.meas[index].file)
     plot_fit = ax1.plot(x_fit, y_fit, '-C0', label='Full fit')
