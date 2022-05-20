@@ -112,7 +112,10 @@ class Fitter(QObject):
                 self.x.append(data[0])
                 self.yerr.append(data[2])
             else:
-                self.x.append(Ph.volt_to_rel_freq(data[0], iso.q, iso.mass, meas.laserFreq, iso.freq, meas.col))
+                if 'CounterDrift' in meas.scan_dev_dict_tr_wise[0]['name']:
+                    self.x.append(Ph.volt_to_rel_freq(meas.accVolt, iso.q, iso.mass, data[0], iso.freq, meas.col))
+                else:
+                    self.x.append(Ph.volt_to_rel_freq(data[0], iso.q, iso.mass, meas.laserFreq, iso.freq, meas.col))
                 self._gen_yerr(meas, st, data)
         if all(model.type == 'Offset' for model in self.models):
             self.gen_x_cuts()

@@ -354,16 +354,21 @@ class XMLImporter(SpecData):
                     logging.error('error, converting voltage divider ratio from db, error is: ' + str(e), exc_info=True)
                     logging.info('setting voltage divider ratio to 1 !')
                     self.voltDivRatio = {'offset': 1.0, 'accVolt': 1.0}
-                for tr_ind, track in enumerate(self.x):
-                    print('trind:', tr_ind)
-                    print('offset:', self.offset)
-                    self.x[tr_ind] = TildaTools.line_to_total_volt(self.x[tr_ind], self.lineMult, self.lineOffset,
-                                                                   self.offset[tr_ind], self.accVolt, self.voltDivRatio,
-                                                                   offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])
-                self.norming()
-                # TODO: Do we always want this? No norming is done when regating from trs plot.
-                #  Make consistent and maybe include to global options?
-                self.x_units = self.x_units_enums.total_volts
+                if 'CounterDrift' in self.scan_dev_dict_tr_wise[0]['name']:
+                    for tr_ind, track in enumerate(self.x):
+                        self.x[tr_ind] = track * self.lineMult + self.lineOffset
+                    self.x_units = self.x_units_enums.frequency_mhz
+                else:
+                    for tr_ind, track in enumerate(self.x):
+                        print('trind:', tr_ind)
+                        print('offset:', self.offset)
+                        self.x[tr_ind] = TildaTools.line_to_total_volt(self.x[tr_ind], self.lineMult, self.lineOffset,
+                                                                       self.offset[tr_ind], self.accVolt, self.voltDivRatio,
+                                                                       offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])
+                    self.norming()
+                    # TODO: Do we always want this? No norming is done when regating from trs plot.
+                    #  Make consistent and maybe include to global options?
+                    self.x_units = self.x_units_enums.total_volts
             elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
                 db_ret = TildaTools.select_from_db(db, 'offset', 'Files', [['file'], [self.file]])
                 # cur.execute('''SELECT offset FROM Files WHERE file = ?''', (self.file,))
