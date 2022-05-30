@@ -19,7 +19,7 @@ import Models.Collection as Mod
 
 class SpectraFit:
     def __init__(self, db, files, runs, configs, index_config,
-                 routine='curve_fit', absolute_sigma=False, guess_offset=True, arithmetics=None,
+                 routine='curve_fit', absolute_sigma=False, est_covMC=False, MC_sample_num=100, guess_offset=True, arithmetics=None,
                  summed=False, linked=False, save_to_db=False, x_as_freq=True,
                  fig_save_format='.png', fmt='.k', fontsize=10):
         self.db = db
@@ -32,6 +32,8 @@ class SpectraFit:
 
         self.routine = routine
         self.absolute_sigma = absolute_sigma
+        self.est_covMC = est_covMC
+        self.MC_sample_num = MC_sample_num
         self.guess_offset = guess_offset
         self.arithmetics = arithmetics
         self.summed = summed
@@ -92,7 +94,7 @@ class SpectraFit:
         return offset_model
 
     def gen_config(self):
-        return dict(routine=self.routine, absolute_sigma=self.absolute_sigma, guess_offset=self.guess_offset,
+        return dict(routine=self.routine, absolute_sigma=self.absolute_sigma, est_covMC=self.est_covMC, MC_sample_num=self.MC_sample_num, guess_offset=self.guess_offset,
                     arithmetics=self.arithmetics, summed=self.summed, linked=self.linked)
 
     def gen_fitter(self):
