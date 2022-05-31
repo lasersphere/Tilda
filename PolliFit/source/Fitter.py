@@ -11,7 +11,7 @@ from PyQt5.QtCore import QObject, pyqtSignal
 # noinspection PyUnresolvedReferences
 from FitRoutines import curve_fit
 import Physics as Ph
-from Tools import print_colored
+from Tools import print_colored, print_cov
 from Models.Collection import Linked
 
 
@@ -194,61 +194,29 @@ class Fitter(QObject):
                     if self.config['guess_offset']:
                         model.guess_offset(x, y)
                 fixed, bounds = model.fit_prepare()
-                #
-                if self.config['est_covMC']:
-                    N=100
-                    try:
-                        N=int(self.config['MC_sample_num'])
-                    except:
-                        print("Number of MC-samples could not be loaded as integer, default value is 100")
-                        N=100
-                    print("Number of samples for MC-Simulation:", N)
-                    ps = []
-                    y_samples = np.random.multivariate_normal(y, np.diag(yerr ** 2), N-1)
-                    for s_num in range(0, N):
-
-                        if s_num == 0:
-                            y_sample = y
-                        else:
-                            y_sample = y_samples[s_num-1, :]
-
-                        print("Plotting Sample", s_num, "/", N)
-                        pt, pc = routine(model, x, y_sample, p0=model.vals, p0_fixed=fixed, sigma=yerr,
-                                         absolute_sigma=self.config['absolute_sigma'], bounds=bounds, report=False,
-                                         maxfev=10**4)
-                        if s_num == 0:
-                            for k in range(0, len(pt)):
-                                ps.append([])
-
-                        for k in range(0, len(pt)):
-                            ps[k].append(pt[k])
-
-                        model.set_vals(pt, force=True)
-
-                    ps_arr = np.array(ps)
-                    p_cov = np.cov(ps_arr, rowvar=True)
-                    p_std = np.sqrt(np.diag(p_cov))
-                    p_mean = []
-                    for k in range(0, len(pt)):
-                        p_mean.append(np.mean(ps_arr[k]))
-                    #print("Fitparameter: \n", p_mean)
-                    #print("Standardabweichungen: \n", p_std)
-                    print("Cov. Matrix: \n", p_cov)
-
-                    pt = p_mean
-                    pc = p_cov
+                if self.config['cov_mc']:
+                    print('-----------------MC-----------------')
+                    y_samples = np.random.normal(y, yerr, size=(self.config['samples_mc'], y.size))
+                    ps = np.array([routine(model, x, y_sample, p0=model.vals, p0_fixed=fixed, sigma=yerr,
+                                           absolute_sigma=self.config['absolute_sigma'], bounds=bounds, report=False,
+                                           maxfev=10000)[0] for y_sample in y_samples], dtype=float)
+                    pt = np.mean(ps, axis=0)
+                    pc = np.zeros((pt.size, pt.size))
+                    indices = np.array([i for i, fix in enumerate(model.fixes) if not fix])
+                    mask = (indices[:, None], indices)
+                    pc[mask] = np.cov(ps[:, indices], rowvar=False)
                     pt = np.array(model.update_args(pt))
-
                 else:
                     pt, pc = routine(model, x, y, p0=model.vals, p0_fixed=fixed, sigma=yerr,
                                      absolute_sigma=self.config['absolute_sigma'], bounds=bounds, report=False,
-                                     maxfev=10**4)
+                                     maxfev=10000)
                     pt = np.array(model.update_args(pt))
-                #
                 model.set_vals(pt, force=True)
                 chi2.append(self.reduced_chi2(i))  # Calculate chi2 after the vals are set.
                 for name, val, err in zip(model.names, pt, np.sqrt(np.diag(pc))):
                     print('{}: {} +/- {}'.format(name, val, err))
+                print('Cov. Matrix:')
+                print_cov(pc, normalize=True, decimals=2)
                 print('Red. chi2: {}'.format(chi2[-1]))
                 popt.append(pt)
                 pcov.append(pc)

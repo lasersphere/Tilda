@@ -91,9 +91,9 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         # Fit.
         self.check_chi2.stateChanged.connect(self.toggle_chi2)
         self.c_routine.currentIndexChanged.connect(self.set_routine)
-        self.check_est_covMC.stateChanged.connect(self.toggle_est_covMC)
-        self.spinBox_MCsamples.valueChanged.connect(self.set_MCsamples)
         self.check_guess_offset.stateChanged.connect(self.toggle_guess_offset)
+        self.check_cov_mc.stateChanged.connect(self.toggle_cov_mc)
+        self.s_samples_mc.valueChanged.connect(self.set_samples_mc)
         self.edit_arithmetics.editingFinished.connect(self.set_arithmetics)
         self.check_arithmetics.stateChanged.connect(self.toggle_arithmetics)
         self.b_trsplot.clicked.connect(self.open_trsplot)
@@ -320,9 +320,9 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         arithmetics = self.edit_arithmetics.text().strip().lower()
         kwargs = dict(routine=self.c_routine.currentText(),
                       absolute_sigma=not self.check_chi2.isChecked(),
-                      est_covMC=self.check_est_covMC.isChecked(),
-                      MC_sample_num=self.spinBox_MCsamples.value(),
                       guess_offset=self.check_guess_offset.isChecked(),
+                      cov_mc=self.check_cov_mc.isChecked(),
+                      samples_mc=self.s_samples_mc.value(),
                       arithmetics=arithmetics if arithmetics else None,
                       summed=self.check_summed.isChecked(),
                       linked=self.check_linked.isChecked(),
@@ -529,17 +529,14 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     def set_routine(self):
         self.spectra_fit.routine = self.c_routine.currentText()
 
-    def toggle_est_covMC(self):
-        self.spectra_fit.est_covMC = self.check_guess_offset.isChecked()
-
-    def set_MCsamples(self):
-        try:
-            self.spectra_fit.MC_sample_num = int(self.spinBox_MCsamples.value())
-        except:
-            print("Number of samples has to be integer")
-
     def toggle_guess_offset(self):
         self.spectra_fit.guess_offset = self.check_guess_offset.isChecked()
+
+    def toggle_cov_mc(self):
+        self.spectra_fit.cov_mc = self.check_cov_mc.isChecked()
+
+    def set_samples_mc(self):
+        self.spectra_fit.samples_mc = self.s_samples_mc.value()
     
     def _set_scaler(self, scaler):
         if scaler is None:

@@ -36,18 +36,47 @@ class COLORS:
     UNDERLINE = '\033[4m'
 
 
-def print_colored(specifier, *values, **kwargs):
+def get_rgb(r, g, b):
+    return '\033[38;2;{};{};{}m'.format(r, g, b)
+
+
+def map_corr_coeff_to_color(val):
+    if val < -1 or val > 1:
+        raise ValueError('The correlation coefficient must be in [-1, 1].')
+    g = int(round(val * 127 + 127, 0))
+    return 255 - g, g, 0
+
+
+def print_colored(specifier, *values, returned=False, **kwargs):
     """
     Print with the specified color.
 
-    :param specifier: str of the color name defined in the COLORS class.
+    :param specifier: str of the color name defined in the COLORS class or an RGB-value.
     :param values: The values to print.
+    :param returned: Return the str instead of printing it.
     :param kwargs: See print().
     :returns: None.
     """
-    _c = eval('COLORS.{}'.format(specifier.upper()))
+    if isinstance(specifier, str):
+        _c = eval('COLORS.{}'.format(specifier.upper()))
+    else:
+        _c = get_rgb(*specifier)
     _values = (_c, ) + values + (COLORS.ENDC, )
+    if returned:
+        return '{}{}{}'.format(*_values)
     print('{}{}{}'.format(*_values), **kwargs)
+
+
+def print_cov(cov, normalize=False, decimals=2):
+    if normalize:
+        norm = np.sqrt(np.diag(cov)[:, None] * np.diag(cov))
+        nonzero = norm != 0
+        cov[nonzero] /= norm[nonzero]
+    cov = np.around(cov + 0., decimals=decimals)
+    for i, row in enumerate(cov):
+        print('{}:   {}'.format(i, '   '.join('{}{}{}'.format(get_rgb(*map_corr_coeff_to_color(val)),
+                                                             '{:1.2f}'.format(val).rjust(decimals + 3), COLORS.ENDC)
+                                             for val in row)))
 
 
 def isoPlot(db, iso_name, isovar='', linevar='', as_freq=True, laserfreq=None, col=None, saving=False, show=True,
