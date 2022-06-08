@@ -13,8 +13,15 @@ import TildaTools as TiTs
 import MPLPlotter as Plot
 from DBIsotope import DBIsotope
 import Measurement.MeasLoad as MeasLoad
-from Fitter import Fitter
+from Fitter import Fitter, print_colored
 import Models.Collection as Mod
+
+
+def execute(cur, command, *args):
+    try:
+        cur.execute(command, *args)
+    except sqlite3.OperationalError as e:
+        print_colored('FAIL', repr(e))
 
 
 class SpectraFit:
@@ -25,7 +32,7 @@ class SpectraFit:
                  fig_save_format='.png', fmt='.k', fontsize=10):
         self.db = db
         self.files = files
-        self.runs = runs
+        self.runs = runs  # TODO: Use only a single run per instance.
         self.configs = configs
         self.index_config = index_config
 
@@ -58,7 +65,7 @@ class SpectraFit:
     def _execute(self, command, *args):
         con = sqlite3.connect(self.db)
         cur = con.cursor()
-        cur.execute(command, *args)
+        execute(cur, command, *args)
         con.commit()
         con.close()
         
@@ -146,7 +153,7 @@ class SpectraFit:
             else:
                 raise ValueError('File type not supported. The supported types are {}.'.format(self.file_types))
 
-        self.fitter = Fitter(models, meas, st, iso, self.gen_config())
+        self.fitter = Fitter(models, meas, st, iso, self.gen_config(), run=self.runs[0])
         self.load_pars()
         self.reset_model = [[p for p in model.get_pars()] for model in models]
 
@@ -266,8 +273,10 @@ class SpectraFit:
             self.fitter.models[i].update()
 
     def save_pars(self):
-        self._execute('CREATE TABLE IF NOT EXISTS "FitPars"("file" TEXT, "run" TEXT, "softw_gates" TEXT, "config" TEXT,'
-                      ' "pars" TEXT, PRIMARY KEY("file", "run"))')
+        con = sqlite3.connect(self.db)
+        cur = con.cursor()
+        execute(cur, 'CREATE TABLE IF NOT EXISTS "FitPars"("file" TEXT, "run" TEXT, "softw_gates" TEXT, "config" TEXT,'
+                     ' "pars" TEXT, PRIMARY KEY("file", "run"))')
         for i, (file, run, config) in enumerate(zip(self.files, self.runs, self.configs)):
             new_pars = {name: (val, fix, link) for (name, val, fix, link) in self.get_pars(i)}
             pars = TiTs.select_from_db(self.db, 'pars', 'FitPars', [['file', 'run'], [file, run]], caller_name=__name__)
@@ -277,8 +286,10 @@ class SpectraFit:
             if 'inf' in softw_gates:
                 self.set_softw_gates(i, self.fitter.meas[i].softw_gates, -1)
                 softw_gates = str(self.fitter.meas[i].softw_gates)
-            self._execute('INSERT OR REPLACE INTO FitPars (file, run, softw_gates, config, pars)'
-                          ' VALUES (?, ?, ?, ?, ?)', (file, run, softw_gates, str(config), str(new_pars)))
+            execute(cur, 'INSERT OR REPLACE INTO FitPars (file, run, softw_gates, config, pars)'
+                         ' VALUES (?, ?, ?, ?, ?)', (file, run, softw_gates, str(config), str(new_pars)))
+        con.commit()
+        con.close()
 
     def save_fits_to_db(self, popt, pcov, info):
         con = sqlite3.connect(self.db)
@@ -288,8 +299,8 @@ class SpectraFit:
                 continue
             pars = {self.fitter.models[i].names[j]: (pt, np.sqrt(pc[j]), self.fitter.models[i].fixes[j])
                     for j, (pt, pc) in enumerate(zip(popt[i], pcov[i]))}
-            cur.execute('INSERT OR REPLACE INTO FitRes (file, iso, run, rChi, pars) '
-                        'VALUES (?, ?, ?, ?, ?)', (file, self.fitter.iso[i].name, run, info['chi2'][i], str(pars)))
+            execute(cur, 'INSERT OR REPLACE INTO FitRes (file, iso, run, rChi, pars) '
+                         'VALUES (?, ?, ?, ?, ?)', (file, self.fitter.iso[i].name, run, info['chi2'][i], str(pars)))
         con.commit()
         con.close()
 

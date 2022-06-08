@@ -4,6 +4,7 @@ Created on 20.02.2022
 @author: Patrick Mueller
 """
 
+import os
 import numpy as np
 import itertools as it
 from PyQt5.QtCore import QObject, pyqtSignal
@@ -34,13 +35,14 @@ class Fitter(QObject):
 
     finished = pyqtSignal()
 
-    def __init__(self, models, meas, st, iso, config):
+    def __init__(self, models, meas, st, iso, config=None, run=None):
         """
         :param models: A list of models.
         :param meas: A list of SpecData objects.
         :param st: A list of scaler and track info.
         :param iso: A list of isotopes used for the axis conversion of each SpecData object.
         :param config: A dictionary with information for the fit.
+        :param run: The run of the fitter. This is just used as an info. The default value is ''.
         """
         super().__init__()
         self.models = models
@@ -48,6 +50,11 @@ class Fitter(QObject):
         self.st = st
         self.iso = iso
         self.config = config
+        if self.config is None:
+            self.config = dict(routine='curve_fit', absolute_sigma=False, guess_offset=True,
+                               cov_mc=False, samples_mc=100, arithmetics=None,
+                               summed=False, linked=False)
+        self.run = '' if run is None else run
         self.size = len(self.meas)
         self.n_scaler = min(min(meas.nrScalers if isinstance(meas.nrScalers, list) else [meas.nrScalers])
                             for meas in self.meas)  # The minimum number of scalers for all files and tracks.
@@ -95,6 +102,7 @@ class Fitter(QObject):
                 cts = [np.array(meas.cts[st[1]][scaler]) for scaler in st[0]]
             y_samples = {'s{}'.format(i): np.random.normal(loc=cts[i], scale=np.sqrt(cts[i]), size=(n, cts[i].size))
                          for i in range(self.n_scaler) if 's{}'.format(i) in self.config['arithmetics']}
+            # noinspection PyTypeChecker
             self.yerr.append(np.std(eval(self.config['arithmetics'], y_samples), axis=0, ddof=1))
 
     def gen_data(self):
@@ -184,7 +192,7 @@ class Fitter(QObject):
         errs = []
         chi2 = []
         popt, pcov = [], []
-        for i, (model, x, y, yerr) in enumerate(zip(self.models, self.x, self.y, self.yerr)):
+        for i, (meas, model, x, y, yerr) in enumerate(zip(self.meas, self.models, self.x, self.y, self.yerr)):
             try:
                 if model.error:
                     raise ValueError(model.error)
@@ -195,7 +203,6 @@ class Fitter(QObject):
                         model.guess_offset(x, y)
                 fixed, bounds = model.fit_prepare()
                 if self.config['cov_mc']:
-                    print('-----------------MC-----------------')
                     y_samples = np.random.normal(y, yerr, size=(self.config['samples_mc'], y.size))
                     ps = np.array([routine(model, x, y_sample, p0=model.vals, p0_fixed=fixed, sigma=yerr,
                                            absolute_sigma=self.config['absolute_sigma'], bounds=bounds, report=False,
@@ -213,11 +220,16 @@ class Fitter(QObject):
                     pt = np.array(model.update_args(pt))
                 model.set_vals(pt, force=True)
                 chi2.append(self.reduced_chi2(i))  # Calculate chi2 after the vals are set.
-                for name, val, err in zip(model.names, pt, np.sqrt(np.diag(pc))):
-                    print('{}: {} +/- {}'.format(name, val, err))
-                print('Cov. Matrix:')
+
+                print_colored('HEADER', '\nFit of file \'{}\':'.format(os.path.splitext(meas.file)[0]))
+                digits = int(np.floor(np.log10(np.abs(model.size)))) + 1
+                print('Optimized parameters:')
+                for j, (name, val, err) in enumerate(zip(model.names, pt, np.sqrt(np.diag(pc)))):
+                    print('{}:   {} = {} +/- {}'.format(str(j).zfill(digits), name, val, err))
+                print('\nCov. Matrix:')
                 print_cov(pc, normalize=True, decimals=2)
-                print('Red. chi2: {}'.format(chi2[-1]))
+                print('\nRed. chi2 = {}'.format(np.around(chi2[-1], decimals=2)))
+
                 popt.append(pt)
                 pcov.append(pc)
                 if np.any(np.isinf(pc)):
@@ -239,7 +251,7 @@ class Fitter(QObject):
             color = 'WARNING'
         if len(errs) > 0:
             color = 'FAIL'
-        print_colored(color, 'Fits completed, success in {} / {}.'.format(self.size - len(warn), self.size))
+        print_colored(color, '\nFits completed, success in {} / {}.'.format(self.size - len(warn), self.size))
         info = dict(warn=warn, errs=errs, chi2=chi2)
         return popt, pcov, info
 
@@ -275,10 +287,18 @@ class Fitter(QObject):
             pt = np.array(model.update_args(pt))
             model.set_vals(pt, force=True)  # Set the vals of the model (auto sets the vals of the linked models).
             chi2 = self.reduced_chi2()  # Calculate chi2 after the vals are set.
-            for name, val, err in zip(model.names, pt, np.sqrt(np.diag(pc))):
-                print('{}: {} +/- {}'.format(name, val, err))
+
+            print_colored('HEADER', '\nLinked fit of files {}'
+                          .format([os.path.splitext(meas.file)[0] for meas in self.meas]))
+            digits = int(np.floor(np.log10(np.abs(model.size)))) + 1
+            for i, (name, val, err) in enumerate(zip(model.names, pt, np.sqrt(np.diag(pc)))):
+                print('{}:   {} = {} +/- {}'.format(str(i).zfill(digits), name, val, err))
+            print('\nCov. Matrix:')
+            print_cov(pc, normalize=True, decimals=2)
+            print('\nRed. chi2:')
             for i, _chi2 in enumerate(chi2):
-                print('{} Red. chi2: {}'.format(str(i).zfill(int(np.log10(self.size))), _chi2))
+                print('{}:   {}'.format(str(i).zfill(int(np.log10(self.size))), np.around(_chi2, decimals=2)))
+
             popt = [pt[_slice] for _slice in model.slices]
             pcov = [pc[_slice, _slice] for _slice in model.slices]
         except (ValueError, RuntimeError) as e:
@@ -292,11 +312,11 @@ class Fitter(QObject):
             if _model.type == 'Offset':
                 _model.update_on_call = True  # Reset all offset models to be updated on call.
         if len(warn) == len(errs) == 0:
-            print_colored('OKGREEN', 'Linked fit completed, success.')
+            print_colored('OKGREEN', '\nLinked fit completed, success.')
         elif len(errs) > 0:
-            print_colored('FAIL', 'Linked fit completed, failed.')
+            print_colored('FAIL', '\nLinked fit completed, failed.')
         elif len(warn) > 0:
-            print_colored('WARNING', 'Linked fit completed, warning.')
+            print_colored('WARNING', '\nLinked fit completed, warning.')
         info = dict(warn=warn, errs=errs, chi2=chi2)
         return popt, pcov, info
 

@@ -299,7 +299,7 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>406</width>
+            <width>409</width>
             <height>45</height>
            </rect>
           </property>
@@ -515,7 +515,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-14</y>
             <width>281</width>
             <height>516</height>
            </rect>
@@ -891,6 +891,9 @@
                <layout class="QHBoxLayout" name="hor_samples" stretch="1,0">
                 <item>
                  <widget class="QSpinBox" name="s_samples_mc">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
                   <property name="minimum">
                    <number>100</number>
                   </property>
@@ -904,6 +907,9 @@
                 </item>
                 <item>
                  <widget class="QLabel" name="l_samples_mc">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
                   <property name="text">
                    <string># samples</string>
                   </property>

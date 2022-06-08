@@ -101,6 +101,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.check_summed.stateChanged.connect(self.toogle_summed)
         self.check_linked.stateChanged.connect(self.toogle_linked)
         self.check_save_to_db.stateChanged.connect(self.toggle_save_to_db)
+        # self.check_save_figure.stateChanged.connect(self.toggle_save_figure)
 
         # Plot.
         self.check_x_as_freq.stateChanged.connect(
@@ -534,6 +535,12 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
     def toggle_cov_mc(self):
         self.spectra_fit.cov_mc = self.check_cov_mc.isChecked()
+        if self.check_cov_mc.isChecked():
+            self.s_samples_mc.setEnabled(True)
+            self.l_samples_mc.setEnabled(True)
+        else:
+            self.s_samples_mc.setEnabled(False)
+            self.l_samples_mc.setEnabled(False)
 
     def set_samples_mc(self):
         self.spectra_fit.samples_mc = self.s_samples_mc.value()
@@ -686,6 +693,12 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
     def toogle_linked(self):
         self.spectra_fit.linked = self.check_linked.isChecked()
+        if self.check_linked.isChecked():
+            if self.check_cov_mc.isChecked():
+                self.check_cov_mc.setChecked(False)
+            self.check_cov_mc.setEnabled(False)
+        else:
+            self.check_cov_mc.setEnabled(True)
 
     def toggle_save_to_db(self):
         self.spectra_fit.save_to_db = self.check_save_to_db.isChecked()

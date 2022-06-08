@@ -73,10 +73,11 @@ def print_cov(cov, normalize=False, decimals=2):
         nonzero = norm != 0
         cov[nonzero] /= norm[nonzero]
     cov = np.around(cov + 0., decimals=decimals)
+    digits = int(np.floor(np.log10(np.abs(cov.shape[0])))) + 1
     for i, row in enumerate(cov):
-        print('{}:   {}'.format(i, '   '.join('{}{}{}'.format(get_rgb(*map_corr_coeff_to_color(val)),
-                                                             '{:1.2f}'.format(val).rjust(decimals + 3), COLORS.ENDC)
-                                             for val in row)))
+        print('{}:   {}'.format(str(i).zfill(digits), '   '.join(
+            '{}{}{}'.format(get_rgb(*map_corr_coeff_to_color(val)),
+                            '{:1.2f}'.format(val).rjust(decimals + 3), COLORS.ENDC) for val in row)))
 
 
 def isoPlot(db, iso_name, isovar='', linevar='', as_freq=True, laserfreq=None, col=None, saving=False, show=True,
