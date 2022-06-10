@@ -68,6 +68,7 @@ def print_colored(specifier, *values, returned=False, **kwargs):
 
 
 def print_cov(cov, normalize=False, decimals=2):
+    cov = np.array(cov, dtype=float)
     if normalize:
         norm = np.sqrt(np.diag(cov)[:, None] * np.diag(cov))
         nonzero = norm != 0
