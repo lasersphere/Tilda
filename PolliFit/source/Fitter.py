@@ -121,9 +121,17 @@ class Fitter(QObject):
                 self.yerr.append(data[2])
             else:
                 if 'CounterDrift' in meas.scan_dev_dict_tr_wise[0]['name']:
-                    self.x.append(Ph.volt_to_rel_freq(meas.accVolt, iso.q, iso.mass, data[0], iso.freq, meas.col))
+                    volt = meas.accVolt
+                    laser_freq = data[0]
                 else:
-                    self.x.append(Ph.volt_to_rel_freq(data[0], iso.q, iso.mass, meas.laserFreq, iso.freq, meas.col))
+                    volt = data[0]
+                    laser_freq = meas.laserFreq
+
+                if self.config['x_axis'] in ['ion frequencies', 'lab frequencies']:
+                    self.x.append(Ph.volt_to_rel_freq(volt, iso.q, iso.mass, laser_freq, iso.freq, meas.col,
+                                                      lab_frame=self.config['x_axis'] == 'lab frequencies'))
+                else:  # TODO: Implement DAC voltages.
+                    pass
                 self._gen_yerr(meas, st, data)
         if all(model.type == 'Offset' for model in self.models):
             self.gen_x_cuts()

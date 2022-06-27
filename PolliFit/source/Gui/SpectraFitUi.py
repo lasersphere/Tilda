@@ -89,8 +89,10 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.b_racah.clicked.connect(self.set_racah)
 
         # Fit.
-        self.check_chi2.stateChanged.connect(self.toggle_chi2)
+        self.c_xaxis.currentIndexChanged.connect(
+            lambda index, _suppress=False: self.set_x_axis(suppress_plot=_suppress))
         self.c_routine.currentIndexChanged.connect(self.set_routine)
+        self.check_chi2.stateChanged.connect(self.toggle_chi2)
         self.check_guess_offset.stateChanged.connect(self.toggle_guess_offset)
         self.check_cov_mc.stateChanged.connect(self.toggle_cov_mc)
         self.s_samples_mc.valueChanged.connect(self.set_samples_mc)
@@ -319,7 +321,8 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         runs = [self.c_run.currentText() for _ in self.list_files.selectedItems()]
         configs = self._gen_configs(files, runs)
         arithmetics = self.edit_arithmetics.text().strip().lower()
-        kwargs = dict(routine=self.c_routine.currentText(),
+        kwargs = dict(x_axis=self.c_xaxis.currentText(),
+                      routine=self.c_routine.currentText(),
                       absolute_sigma=not self.check_chi2.isChecked(),
                       guess_offset=self.check_guess_offset.isChecked(),
                       cov_mc=self.check_cov_mc.isChecked(),
@@ -526,6 +529,16 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
     def toggle_chi2(self):
         self.spectra_fit.absolute_sigma = not self.check_chi2.isChecked()
+
+    def set_x_axis(self, suppress_plot=False):
+        # TODO: Implement DAC voltages as x-axis, replace plot option.
+        if self.c_xaxis.currentText() == 'DAC volt (TODO)':
+            self.c_xaxis.blockSignals(True)
+            self.c_xaxis.setCurrentText(self.spectra_fit.x_axis)
+            self.c_xaxis.blockSignals(False)
+            return
+        self.spectra_fit = self.gen_spectra_fit()
+        self.plot_auto(suppress_plot)
 
     def set_routine(self):
         self.spectra_fit.routine = self.c_routine.currentText()

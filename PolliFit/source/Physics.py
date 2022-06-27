@@ -117,7 +117,7 @@ def invRelDoppler(laserFreq, dopplerFreq):
     return c * (laserFreq ** 2 - dopplerFreq ** 2) / (laserFreq ** 2 + dopplerFreq ** 2)
 
 
-def volt_to_rel_freq(volt, charge, mass, f_laser, f_0, col):
+def volt_to_rel_freq(volt, charge, mass, f_laser, f_0, col, lab_frame=False):
     """
     :param volt: The total acceleration voltage (V).
     :param charge: The charge of the particle (e).
@@ -125,11 +125,14 @@ def volt_to_rel_freq(volt, charge, mass, f_laser, f_0, col):
     :param f_laser: The laser frequency (arb. units).
     :param f_0: The reference frequency in the rest frame of the particle.
     :param col: Whether the lasers are aligned in collinear or anticollinear geometry.
+    :param lab_frame: Return the frequencies in the rest-frame of the ion (False) or the laboratory frame (True).
     :returns: The doppler shifted frequency of the laser in the rest frame of a particle
      accelerated with 'volt' relative to a reference frequency 'f_0'.
     """
     pm = -1 if col else 1
     v = pm * relVelocity(qe * charge * volt, mass * u)
+    if lab_frame:
+        return f_laser - relDoppler(f_0, -v)
     return relDoppler(f_laser, v) - f_0
 
 
