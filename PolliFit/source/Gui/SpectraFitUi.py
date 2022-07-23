@@ -16,6 +16,7 @@ from matplotlib.axes._base import _process_plot_format
 
 from Gui.Ui_SpectraFit import Ui_SpectraFit
 from Gui.TRSConfigUi import TRSConfigUi
+from Gui.HFMixingConfigUi import HFMixingConfigUi
 from SpectraFit import SpectraFit
 from Models.Spectrum import SPECTRA
 from Models.Convolved import CONVOLVE
@@ -31,6 +32,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         super(SpectraFitUi, self).__init__()
         self.setupUi(self)
         self.trs_config_ui = None
+        self.hf_mixing_config_ui = None
         self.load_lineshapes()
         self.load_convolves()
         self.main_tilda_gui = None
@@ -86,6 +88,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.edit_offset_order.editingFinished.connect(self.set_offset_order)
         self.check_qi.stateChanged.connect(self.toogle_qi)
         self.check_hf_mixing.stateChanged.connect(self.toogle_hf_mixing)
+        self.b_hf_mixing.clicked.connect(self.open_hf_mixing)
         self.b_racah.clicked.connect(self.set_racah)
 
         # Fit.
@@ -519,6 +522,15 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     def toogle_hf_mixing(self):
         for config in self.spectra_fit.configs:
             config['hf_mixing'] = self.check_hf_mixing.isChecked()
+
+    def open_hf_mixing(self):
+        if self.spectra_fit.fitter is None:
+            return
+        if self.hf_mixing_config_ui is not None:
+            self.hf_mixing_config_ui.deleteLater()
+        self.hf_mixing_config_ui = HFMixingConfigUi(self.dbpath, self.spectra_fit.fitter.iso[0],
+                                                    self.spectra_fit.configs[0])
+        self.hf_mixing_config_ui.show()
 
     def set_racah(self):
         for splitter_model in self.spectra_fit.splitter_models:

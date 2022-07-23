@@ -299,7 +299,7 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>409</width>
+            <width>408</width>
             <height>45</height>
            </rect>
           </property>
@@ -516,8 +516,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>281</width>
-            <height>518</height>
+            <width>283</width>
+            <height>526</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="vert_options_layout" stretch="1,0,0,0,1,0,0,0,1,0,0,0,1">
@@ -605,16 +605,6 @@
               <item row="1" column="1">
                <widget class="QComboBox" name="c_lineshape"/>
               </item>
-              <item row="4" column="1">
-               <widget class="QCheckBox" name="check_hf_mixing">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
-                <property name="text">
-                 <string>HF mixing</string>
-                </property>
-               </widget>
-              </item>
               <item row="3" column="1">
                <layout class="QHBoxLayout" name="hott_offset_order">
                 <item>
@@ -692,6 +682,24 @@
                  <string>Convolve with</string>
                 </property>
                </widget>
+              </item>
+              <item row="4" column="1">
+               <layout class="QHBoxLayout" name="hor_hf_mixing">
+                <item>
+                 <widget class="QCheckBox" name="check_hf_mixing">
+                  <property name="text">
+                   <string>HF mixing</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="b_hf_mixing">
+                  <property name="text">
+                   <string>config ...</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </item>
              </layout>
             </widget>
