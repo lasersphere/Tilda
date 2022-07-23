@@ -31,6 +31,11 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
 
         self.coLineVar.currentIndexChanged.connect(self.load_parameters)
 
+        self.line_col_arith.textChanged.connect(self.set_freq_arith)
+        self.line_acol_arith.textChanged.connect(self.set_freq_arith)
+        self.dColFreq.valueChanged.connect(self.set_freq_arith)
+        self.dAcolFreq.valueChanged.connect(self.set_freq_arith)
+
         self.cAmplifier.stateChanged[int].connect(self.toggle_amplifier)
         self.dAmpSlope.valueChanged.connect(self.calcFreq)
         self.dAmpOff.valueChanged.connect(self.calcFreq)
@@ -140,6 +145,20 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
             self.bSavePars.setEnabled(False)
             self.save_parameters()
             self.parTable.itemChanged.connect(self.save_parameters)
+
+    def set_freq_arith(self):
+        arithmetics = self.line_col_arith.text()
+        variables = {'f': self.dColFreq.value()}
+        try:
+            self.dColFreqArith.setValue(eval(arithmetics, variables))
+        except (ValueError, TypeError, SyntaxError, NameError):
+            pass
+        arithmetics = self.line_acol_arith.text()
+        variables = {'f': self.dAcolFreq.value()}
+        try:
+            self.dAcolFreqArith.setValue(eval(arithmetics, variables))
+        except (ValueError, TypeError, SyntaxError, NameError):
+            pass
     
     def enable_iso_gui(self, enable):
         self.comboIso.setEnabled(enable)
@@ -154,10 +173,14 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
         if state == 0:
             self.dColFreq.setReadOnly(False)
             self.dAcolFreq.setReadOnly(False)
+            self.cColArith.setEnabled(True)
+            self.cAcolArith.setEnabled(True)
             self.enable_iso_gui(False)
         if state == 2:
             self.dColFreq.setReadOnly(True)
             self.dAcolFreq.setReadOnly(True)
+            self.cColArith.setEnabled(False)
+            self.cAcolArith.setEnabled(False)
             self.enable_iso_gui(True)
             self.calcFreq()
 
@@ -232,10 +255,14 @@ class SimulationUi(QtWidgets.QWidget, Ui_Simulation):
     def showSpec(self):
         isotopes = self.listIsotopes.selectedItems()
         linevar = self.coLineVar.currentText()
-        laserFreqCol = self.dColFreq.value()
-        laserFreqAcol = self.dAcolFreq.value()
         colChecked = self.cColFreq.isChecked()
         acolChecked = self.cAcolFreq.isChecked()
+        laserFreqCol = self.dColFreq.value()
+        laserFreqAcol = self.dAcolFreq.value()
+        if self.cColArith.isEnabled() and self.cColArith.isChecked():
+            laserFreqCol = self.dColFreqArith.value()
+        if self.cAcolArith.isEnabled() and self.cAcolArith.isChecked():
+            laserFreqAcol = self.dAcolFreqArith.value()
         inFreq = self.cInFreq.isChecked()
         x_transform = self.get_x_transform()
         x_label = None
