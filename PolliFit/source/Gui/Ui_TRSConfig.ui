@@ -23,7 +23,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Time-Resolved Spectra Configuration</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,1,0">
    <property name="spacing">

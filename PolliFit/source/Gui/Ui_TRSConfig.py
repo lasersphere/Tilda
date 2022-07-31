@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'E:\Users\Patrick Müller\Documents\Python Projects\Tilda\PolliFit\source\Gui\Ui_TRSConfig.ui'
+# Form implementation generated from reading ui file 'E:\Users\Patrick\Documents\Python Projects\Tilda\PolliFit\source\Gui\Ui_TRSConfig.ui'
 #
 # Created by: PyQt5 UI code generator 5.14.1
 #
@@ -55,7 +55,7 @@ class Ui_TRSConfig(object):
 
     def retranslateUi(self, TRSConfig):
         _translate = QtCore.QCoreApplication.translate
-        TRSConfig.setWindowTitle(_translate("TRSConfig", "Dialog"))
+        TRSConfig.setWindowTitle(_translate("TRSConfig", "Time-Resolved Spectra Configuration"))
         self.l_info.setText(_translate("TRSConfig", "Software gates <nobr>[t<sub>min</sub> , t<sub>max</sub>] (&mu;s)</nobr>"))
         self.b_ok.setText(_translate("TRSConfig", "OK"))
         self.b_cancel.setText(_translate("TRSConfig", "Cancel"))

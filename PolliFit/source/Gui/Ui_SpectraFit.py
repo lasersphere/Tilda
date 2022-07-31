@@ -271,6 +271,7 @@ class Ui_SpectraFit(object):
         self.hor_hf_mixing = QtWidgets.QHBoxLayout()
         self.hor_hf_mixing.setObjectName("hor_hf_mixing")
         self.check_hf_mixing = QtWidgets.QCheckBox(self.grid_model)
+        self.check_hf_mixing.setEnabled(False)
         self.check_hf_mixing.setObjectName("check_hf_mixing")
         self.hor_hf_mixing.addWidget(self.check_hf_mixing)
         self.b_hf_mixing = QtWidgets.QPushButton(self.grid_model)

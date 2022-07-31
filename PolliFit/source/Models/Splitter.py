@@ -11,12 +11,12 @@ from Models.Base import *
 
 
 def gen_splitter_model(config, iso):
-    if config['qi'] and config['hf_mixing']:
+    if config['qi'] and (config['hf_config']['enabled_l'] or config['hf_config']['enabled_u']):
         pass
     elif config['qi']:
         pass
-    elif config['hf_mixing']:
-        return HyperfineMixed, (iso.I, iso.Jl, iso.Ju, iso.name)
+    elif config['hf_config']['enabled_l'] or config['hf_config']['enabled_u']:
+        return HyperfineMixed, (iso.I, iso.Jl, iso.Ju, iso.name, config['hf_config'])
     else:
         return Hyperfine, (iso.I, iso.Jl, iso.Ju, iso.name)
     raise ValueError('Specified splitter model not available.')
@@ -114,19 +114,26 @@ class Hyperfine(Splitter):
 
 
 class HyperfineMixed(Splitter):
-    def __init__(self, model, i, j_l, j_u, name):
+    def __init__(self, model, i, j_l, j_u, name, config):
         super().__init__(model, i, j_l, j_u, name)
-        self.type = 'Hyperfine'
+        self.type = 'HyperfineMixed'
+        self.config = config
 
         self.transitions = Ph.HFTrans(self.i, self.j_l, self.j_u, old=False)
         self.racah_intensities = Ph.HFInt(self.i, self.j_l, self.j_u, self.transitions, old=False)
 
         self.n_l = len(self.transitions[0][1])
         self.n_u = len(self.transitions[0][2])
-        for i in range(self.n_l):
-            self._add_arg('{}l'.format(ascii_uppercase[i]), 0., False, False)
-        for i in range(self.n_u):
-            self._add_arg('{}u'.format(ascii_uppercase[i]), 0., False, False)
+        if config['enabled_l']:
+            self._add_arg('Al', 0., False, False)
+        else:
+            for i in range(self.n_l):
+                self._add_arg('{}l'.format(ascii_uppercase[i]), 0., False, False)
+        if config['enabled_u']:
+            self._add_arg('Au', 0., False, False)
+        else:
+            for i in range(self.n_u):
+                self._add_arg('{}u'.format(ascii_uppercase[i]), 0., False, False)
 
         for i, (t, intensity) in enumerate(zip(self.transitions, self.racah_intensities)):
             self.racah_indices.append(self._index)

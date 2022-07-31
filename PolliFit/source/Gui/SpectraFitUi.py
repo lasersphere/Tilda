@@ -31,6 +31,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     def __init__(self):
         super(SpectraFitUi, self).__init__()
         self.setupUi(self)
+
         self.trs_config_ui = None
         self.hf_mixing_config_ui = None
         self.load_lineshapes()
@@ -87,7 +88,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.check_offset_per_track.stateChanged.connect(self.toggle_offset_per_track)
         self.edit_offset_order.editingFinished.connect(self.set_offset_order)
         self.check_qi.stateChanged.connect(self.toogle_qi)
-        self.check_hf_mixing.stateChanged.connect(self.toogle_hf_mixing)
+        # self.check_hf_mixing.stateChanged.connect(self.toogle_hf_mixing)
         self.b_hf_mixing.clicked.connect(self.open_hf_mixing)
         self.b_racah.clicked.connect(self.set_racah)
 
@@ -284,13 +285,15 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
     def _gen_configs(self, files, runs):
         configs = []
+        hf_config = dict(enabled_l=False, enabled_u=False,
+                         Jl=[0.5, ], Ju=[0.5, ], Tl=[[1.]], Tu=[[1.]])
         current_config = dict(lineshape=self.c_lineshape.currentText(),
                               convolve=self.c_convolve.currentText(),
                               npeaks=self.s_npeaks.value(),
                               offset_per_track=self.check_offset_per_track.isChecked(),
                               offset_order=ast.literal_eval(self.edit_offset_order.text()),
                               qi=self.check_qi.isChecked(),
-                              hf_mixing=self.check_hf_mixing.isChecked())
+                              hf_config=hf_config)
         for file, run in zip(files, runs):
             config = TiTs.select_from_db(self.dbpath, 'config', 'FitPars', [['file', 'run'], [file, run]],
                                          caller_name=__name__)
@@ -473,7 +476,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.check_offset_per_track.setChecked(config['offset_per_track'])
         self.edit_offset_order.setText(str(config['offset_order']))
         self.check_qi.setChecked(config['qi'])
-        self.check_hf_mixing.setChecked(config['hf_mixing'])
+        self.check_hf_mixing.setChecked(config['hf_config']['enabled_l'] or config['hf_config']['enabled_u'])
 
     def set_lineshape(self):
         for config in self.spectra_fit.configs:
@@ -520,17 +523,25 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             config['qi'] = self.check_qi.isChecked()
 
     def toogle_hf_mixing(self):
-        for config in self.spectra_fit.configs:
-            config['hf_mixing'] = self.check_hf_mixing.isChecked()
+        # for config in self.spectra_fit.configs:
+        #     config['hf_mixing'] = self.check_hf_mixing.isChecked()
+        pass
 
     def open_hf_mixing(self):
         if self.spectra_fit.fitter is None:
             return
         if self.hf_mixing_config_ui is not None:
             self.hf_mixing_config_ui.deleteLater()
-        self.hf_mixing_config_ui = HFMixingConfigUi(self.dbpath, self.spectra_fit.fitter.iso[0],
-                                                    self.spectra_fit.configs[0])
+        self.hf_mixing_config_ui = HFMixingConfigUi(self.spectra_fit.fitter.iso[self.index_config],
+                                                    self.spectra_fit.configs[self.index_config]['hf_config'])
+        self.hf_mixing_config_ui.close_signal.connect(self.set_hf_config)
         self.hf_mixing_config_ui.show()
+
+    def set_hf_config(self):
+        hf_config = deepcopy(self.hf_mixing_config_ui.config)
+        self.check_hf_mixing.setChecked(hf_config['enabled_l'] or hf_config['enabled_u'])
+        for config in self.spectra_fit.configs:
+            config['hf_config'] = hf_config
 
     def set_racah(self):
         for splitter_model in self.spectra_fit.splitter_models:
