@@ -133,7 +133,7 @@
      <property name="enabled">
       <bool>false</bool>
      </property>
-     <layout class="QHBoxLayout" name="hor_config_g" stretch="0,1">
+     <layout class="QHBoxLayout" name="hor_config_g" stretch="0,1,0">
       <property name="leftMargin">
        <number>0</number>
       </property>
@@ -253,7 +253,7 @@
         </row>
         <column>
          <property name="text">
-          <string>0</string>
+          <string>0.5</string>
          </property>
         </column>
         <item row="0" column="0">
@@ -261,6 +261,20 @@
           <string>1</string>
          </property>
         </item>
+       </widget>
+      </item>
+      <item>
+       <widget class="QTableWidget" name="tab_fs_g">
+        <row>
+         <property name="text">
+          <string>0.5</string>
+         </property>
+        </row>
+        <column>
+         <property name="text">
+          <string>FS splitting (MHz)</string>
+         </property>
+        </column>
        </widget>
       </item>
      </layout>
@@ -348,7 +362,7 @@
      <property name="enabled">
       <bool>false</bool>
      </property>
-     <layout class="QHBoxLayout" name="hor_config_e" stretch="0,1">
+     <layout class="QHBoxLayout" name="hor_config_e" stretch="0,1,0">
       <property name="leftMargin">
        <number>0</number>
       </property>
@@ -463,12 +477,12 @@
        <widget class="QTableWidget" name="tab_e">
         <row>
          <property name="text">
-          <string>0</string>
+          <string>0.5</string>
          </property>
         </row>
         <column>
          <property name="text">
-          <string>0</string>
+          <string>0.5</string>
          </property>
         </column>
         <item row="0" column="0">
@@ -476,6 +490,20 @@
           <string>1</string>
          </property>
         </item>
+       </widget>
+      </item>
+      <item>
+       <widget class="QTableWidget" name="tab_fs_e">
+        <row>
+         <property name="text">
+          <string>0.5</string>
+         </property>
+        </row>
+        <column>
+         <property name="text">
+          <string>FS splitting (MHz)</string>
+         </property>
+        </column>
        </widget>
       </item>
      </layout>

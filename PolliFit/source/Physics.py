@@ -319,6 +319,23 @@ def HFShift(hyper_l, hyper_u, coeff_l, coeff_u):
         - sum(const * coeff for const, coeff in zip(hyper_l, coeff_l))
 
 
+def _HFShiftMixed(hyper, coeff, t):
+    w, _ = np.linalg.eigh(hyper * coeff * t)
+    return w[0]
+
+
+def HFShiftMixed(hyper_l, hyper_u, coeff_l, coeff_u, t_l, t_u):
+    if t_l is None:
+        lower = sum(const * coeff for const, coeff in zip(hyper_l, coeff_l))
+    else:
+        lower = _HFShiftMixed(hyper_l[0], coeff_l[0], t_l)
+    if t_u is None:
+        upper = sum(const * coeff for const, coeff in zip(hyper_u, coeff_u))
+    else:
+        upper = _HFShiftMixed(hyper_u[0], coeff_u[0], t_u)
+    return upper - lower
+
+
 def HFLineSplit(Al, Bl, Au, Bu, transitions):
     """ Calculate line splittings from (Au, Bu, Al, Bl) and list of transitions (see calcHFTrans) """
     return [Au * coAu + Bu * coBu - Al * coAl - Bl * coBl

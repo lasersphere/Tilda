@@ -285,8 +285,8 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
     def _gen_configs(self, files, runs):
         configs = []
-        hf_config = dict(enabled_l=False, enabled_u=False,
-                         Jl=[0.5, ], Ju=[0.5, ], Tl=[[1.]], Tu=[[1.]])
+        hf_config = dict(enabled_l=False, enabled_u=False, Jl=[0.5, ], Ju=[0.5, ],
+                         Tl=[[1.]], Tu=[[1.]], fl=[[0.]], fu=[[0.]])
         current_config = dict(lineshape=self.c_lineshape.currentText(),
                               convolve=self.c_convolve.currentText(),
                               npeaks=self.s_npeaks.value(),
@@ -307,6 +307,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                     config['lineshape'] = 'Voigt'
                 if config['convolve'] not in CONVOLVE:
                     config['convolve'] = 'None'
+                config['hf_config'] = {**hf_config, **config['hf_config']}
             configs.append(config)
         if configs:
             self.set_model_gui(configs[self.index_load])
