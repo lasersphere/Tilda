@@ -252,7 +252,7 @@ def plotFit(fit, color='-r', x_in_freq=True, plot_residuals=True, fontsize_ticks
 
 
 def plot_model_fit(fitter, index, x_as_freq=True, plot_summands=True, plot_npeaks=True, plot_fit_uncertainty=True,
-                   ascii_path='', plot_path='', fig_save_format='png', fmt='.k', fontsize=10):
+                   ascii_path='', plot_path='', fig_save_format='png', zoom_data=False, fmt='.k', fontsize=10):
     fig = plt.figure(num=1, figsize=(8, 8))  # TODO: Fix figure resizing with large legends.
     ax1 = plt.axes([0.15, 0.35, 0.8, 0.50])
     ax2 = plt.axes([0.15, 0.1, 0.8, 0.2], sharex=ax1)
@@ -267,12 +267,13 @@ def plot_model_fit(fitter, index, x_as_freq=True, plot_summands=True, plot_npeak
     vals = [val for val in model.vals]
     fixes = [fix for fix in model.fixes]
     model.set_fixes([False for _ in fixes])  # Reset after side peaks are created.
-    
-    x_fit = model.x()
-    y_fit = model(x_fit, *model.vals)
 
     x_volt, x, y, yerr = fitter.x_volt[index], fitter.x[index], fitter.y[index], fitter.yerr[index]
     y_res = model(x, *model.vals) - y
+
+    x0 = [np.min(x), np.max(x)]
+    x_fit = np.linspace(x0[0], x0[1], int((x0[1] - x0[0]) / model.dx)) if zoom_data else model.x()
+    y_fit = model(x_fit, *model.vals)
 
     # if plot_fit_uncertainty:
     #     np.random.multivariate_normal(model.vals, fitter.pcov,)

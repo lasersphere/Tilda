@@ -299,7 +299,7 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>408</width>
+            <width>405</width>
             <height>45</height>
            </rect>
           </property>
@@ -515,8 +515,8 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>283</width>
+            <y>-161</y>
+            <width>289</width>
             <height>526</height>
            </rect>
           </property>
@@ -1125,6 +1125,13 @@
                  </widget>
                 </item>
                </layout>
+              </item>
+              <item row="0" column="1">
+               <widget class="QCheckBox" name="check_zoom_data">
+                <property name="text">
+                 <string>zoom data</string>
+                </property>
+               </widget>
               </item>
              </layout>
             </widget>

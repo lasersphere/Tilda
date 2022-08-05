@@ -112,12 +112,14 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         # Plot.
         self.check_x_as_freq.stateChanged.connect(
             lambda state, _suppress=False: self.toggle_xlabel(suppress_plot=_suppress))
-        self.edit_fmt.editingFinished.connect(self.set_fmt)
-        self.s_fontsize.editingFinished.connect(self.set_fontsize)
         self.b_plot.clicked.connect(self.plot)
         self.b_save_ascii.clicked.connect(self.save_ascii)
         self.b_save_figure.clicked.connect(self.save_plot)
         self.c_fig.currentIndexChanged.connect(self.set_fig_save_format)
+        self.check_zoom_data.stateChanged.connect(
+            lambda state, _suppress=False: self.set_zoom_data(suppress_plot=_suppress))
+        self.edit_fmt.editingFinished.connect(self.set_fmt)
+        self.s_fontsize.editingFinished.connect(self.set_fontsize)
 
         # Action (Fit).
         # self.b_fit.clicked.connect(self.fit)
@@ -286,7 +288,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     def _gen_configs(self, files, runs):
         configs = []
         hf_config = dict(enabled_l=False, enabled_u=False, Jl=[0.5, ], Ju=[0.5, ],
-                         Tl=[[1.]], Tu=[[1.]], fl=[[0.]], fu=[[0.]])
+                         Tl=[[1.]], Tu=[[1.]], fl=[[0.]], fu=[[0.]], mu=0.)
         current_config = dict(lineshape=self.c_lineshape.currentText(),
                               convolve=self.c_convolve.currentText(),
                               npeaks=self.s_npeaks.value(),
@@ -746,21 +748,6 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.spectra_fit.x_as_freq = self.check_x_as_freq.isChecked()
         self.plot_auto(suppress_plot)
 
-    def set_fmt(self, suppress_plot=False):
-        try:
-            fmt = self.edit_fmt.text()
-            _process_plot_format(fmt)
-            self.spectra_fit.fmt = fmt
-            self.plot_auto(suppress_plot)
-        except ValueError:
-            self.edit_fmt.setText(self.spectra_fit.fmt)
-
-    def set_fontsize(self, suppress_plot=False):
-        fontsize = self.s_fontsize.value()
-        if fontsize != self.spectra_fit.fontsize:
-            self.spectra_fit.fontsize = fontsize
-        self.plot_auto(suppress_plot)
-
     def plot_auto(self, suppress=False):
         if not suppress and self.check_auto.isChecked():
             self.plot()
@@ -776,6 +763,25 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
     def set_fig_save_format(self):
         self.spectra_fit.fig_save_format = self.c_fig.currentText()
+
+    def set_zoom_data(self, suppress_plot=False):
+        self.spectra_fit.zoom_data = self.check_zoom_data.isChecked()
+        self.plot_auto(suppress_plot)
+
+    def set_fmt(self, suppress_plot=False):
+        try:
+            fmt = self.edit_fmt.text()
+            _process_plot_format(fmt)
+            self.spectra_fit.fmt = fmt
+            self.plot_auto(suppress_plot)
+        except ValueError:
+            self.edit_fmt.setText(self.spectra_fit.fmt)
+
+    def set_fontsize(self, suppress_plot=False):
+        fontsize = self.s_fontsize.value()
+        if fontsize != self.spectra_fit.fontsize:
+            self.spectra_fit.fontsize = fontsize
+        self.plot_auto(suppress_plot)
 
     """ Action (Fit)"""
 

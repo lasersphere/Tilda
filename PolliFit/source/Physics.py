@@ -253,6 +253,11 @@ def transit(x, t):
     return (np.sin(0.5 * t * y)) ** 2 / y ** 2
 
 
+def getF(I, J):
+    I, J = np.array(I, float).flatten(), np.array(J, float).flatten()
+    return sorted(set(f + abs(i - j) for i in I for j in J for f in range(int(i + j - abs(i - j) + 1))))
+
+
 def HFCoeff(I, J, F, old=True):
     """ Return the tuple of hyperfine coefficients for A and B-factor for a given quantum state """
     if old:
@@ -353,22 +358,30 @@ def HFInt(I, Jl, Ju, transitions, old=True):
             for (Fl, Fu), *r in transitions]
 
 
+def a(I, Jl, Ju, Fl, Fu):  # from pycol
+    return np.around((2 * Fl + 1) * (2 * Fu + 1) * (2 * Ju + 1) / (3 * (2 * Jl + 1) * (2 * I + 1)) \
+                     * sixJ(Jl, Fl, I, Fu, Ju, 1) ** 2, decimals=9)
+
+
 def sixJ(j1, j2, j3, J1, J2, J3):
     """ 6-J symbol used for Racah coefficients """
     # print('6-J symbol used for Racah coefficients, j1, j2, j3, J1, J2, J3: ', j1, j2, j3, J1, J2, J3)
     ret = 0
-    for i in range(int(round(max(max(j1 + j2 + j3, j1 + J2 + J3), max(J1 + j2 + J3, J1 + J2 + j3)))),
-                   int(round(min(min(j1 + j2 + J1 + J2, j2 + j3 + J2 + J3), j3 + j1 + J3 + J1) + 1))):
-        ret = (ret + pow(-1, i) * math.factorial(i + 1)
-               / math.factorial(round(i - j1 - j2 - j3))
-               / math.factorial(round(i - j1 - J2 - J3))
-               / math.factorial(round(i - J1 - j2 - J3))
-               / math.factorial(round(i - J1 - J2 - j3))
-               / math.factorial(round(j1 + j2 + J1 + J2 - i))
-               / math.factorial(round(j2 + j3 + J2 + J3 - i))
-               / math.factorial(round(j3 + j1 + J3 + J1 - i)))
-
-    return math.sqrt(deltaJ(j1, j2, j3) * deltaJ(j1, J2, J3) * deltaJ(J1, j2, J3) * deltaJ(J1, J2, j3)) * ret
+    try:
+        for i in range(int(round(max(max(j1 + j2 + j3, j1 + J2 + J3), max(J1 + j2 + J3, J1 + J2 + j3)))),
+                       int(round(min(min(j1 + j2 + J1 + J2, j2 + j3 + J2 + J3), j3 + j1 + J3 + J1) + 1))):
+            ret = (ret + pow(-1, i) * math.factorial(i + 1)
+                   / math.factorial(round(i - j1 - j2 - j3))
+                   / math.factorial(round(i - j1 - J2 - J3))
+                   / math.factorial(round(i - J1 - j2 - J3))
+                   / math.factorial(round(i - J1 - J2 - j3))
+                   / math.factorial(round(j1 + j2 + J1 + J2 - i))
+                   / math.factorial(round(j2 + j3 + J2 + J3 - i))
+                   / math.factorial(round(j3 + j1 + J3 + J1 - i)))
+        ret *= math.sqrt(deltaJ(j1, j2, j3) * deltaJ(j1, J2, J3) * deltaJ(J1, j2, J3) * deltaJ(J1, J2, j3))
+    except ValueError:
+        return 0.
+    return ret
 
 
 def threeJ(j1, m1, j2, m2, j3, m3):

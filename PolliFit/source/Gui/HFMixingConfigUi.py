@@ -41,7 +41,7 @@ class HFMixingConfigUi(QtWidgets.QWidget, Ui_HFMixingConfig):
 
         if config is None:
             self.config = dict(enabled_l=False, enabled_u=False, Jl=[self.iso.Jl, ], Ju=[self.iso.Ju, ],
-                               Tl=[[1.]], Tu=[[1.]], fl=[[0.]], fu=[[0.]])
+                               Tl=[[1.]], Tu=[[1.]], fl=[[0.]], fu=[[0.]], mu=0.)
         else:
             self.config = deepcopy(config)
         self.j_g = [self.iso.Jl]
@@ -72,6 +72,9 @@ class HFMixingConfigUi(QtWidgets.QWidget, Ui_HFMixingConfig):
         self.tab_e.cellChanged[int, int].connect(self.cast_cell_e)
 
         self.load_config()
+
+    def apply_mu(self):
+        self.config['mu'] = self.d_mu.value()
         
     def cast_fs_g(self, i, j):
         self.tab_fs_g.blockSignals(True)
@@ -158,6 +161,8 @@ class HFMixingConfigUi(QtWidgets.QWidget, Ui_HFMixingConfig):
         self.tab_fs_e.blockSignals(False)
 
     def load_config(self):
+        self.d_I.setValue(self.iso.I)
+        self.d_mu.setValue(self.config['mu'])
         self.load_config_g()
         self.load_config_e()
 
@@ -257,6 +262,7 @@ class HFMixingConfigUi(QtWidgets.QWidget, Ui_HFMixingConfig):
         self.close()
 
     def apply(self):
+        self.apply_mu()
         self.apply_g()
         self.apply_e()
 

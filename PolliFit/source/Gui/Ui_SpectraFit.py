@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'E:\Users\Patrick\Documents\Python Projects\Tilda\PolliFit\source\Gui\Ui_SpectraFit.ui'
 #
-# Created by: PyQt5 UI code generator 5.14.1
+# Created by: PyQt5 UI code generator 5.13.2
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -130,7 +130,7 @@ class Ui_SpectraFit(object):
         self.scroll_parameters.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
         self.scroll_parameters.setObjectName("scroll_parameters")
         self.hor_parameters = QtWidgets.QWidget()
-        self.hor_parameters.setGeometry(QtCore.QRect(0, 0, 408, 45))
+        self.hor_parameters.setGeometry(QtCore.QRect(0, 0, 405, 45))
         self.hor_parameters.setObjectName("hor_parameters")
         self.hor_parameters_layout = QtWidgets.QHBoxLayout(self.hor_parameters)
         self.hor_parameters_layout.setContentsMargins(6, 6, 6, 6)
@@ -194,7 +194,7 @@ class Ui_SpectraFit(object):
         self.scroll_xontrol.setAlignment(QtCore.Qt.AlignCenter)
         self.scroll_xontrol.setObjectName("scroll_xontrol")
         self.vert_options = QtWidgets.QWidget()
-        self.vert_options.setGeometry(QtCore.QRect(0, 0, 283, 526))
+        self.vert_options.setGeometry(QtCore.QRect(0, -161, 289, 526))
         self.vert_options.setObjectName("vert_options")
         self.vert_options_layout = QtWidgets.QVBoxLayout(self.vert_options)
         self.vert_options_layout.setContentsMargins(6, 6, 6, 6)
@@ -470,6 +470,9 @@ class Ui_SpectraFit(object):
         self.c_fig.addItem("")
         self.hor_save_fig.addWidget(self.c_fig)
         self.grid_plot_layout.addLayout(self.hor_save_fig, 2, 2, 1, 1)
+        self.check_zoom_data = QtWidgets.QCheckBox(self.grid_plot)
+        self.check_zoom_data.setObjectName("check_zoom_data")
+        self.grid_plot_layout.addWidget(self.check_zoom_data, 0, 1, 1, 1)
         self.grid_plot_layout.setColumnStretch(0, 1)
         self.grid_plot_layout.setColumnStretch(1, 1)
         self.grid_plot_layout.setColumnStretch(2, 1)
@@ -594,5 +597,6 @@ class Ui_SpectraFit(object):
         self.l_as.setText(_translate("SpectraFit", "as"))
         self.c_fig.setItemText(0, _translate("SpectraFit", ".png"))
         self.c_fig.setItemText(1, _translate("SpectraFit", ".pdf"))
+        self.check_zoom_data.setText(_translate("SpectraFit", "zoom data"))
         self.b_fit.setText(_translate("SpectraFit", "fit"))
         self.b_abort.setText(_translate("SpectraFit", "abort"))

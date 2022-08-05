@@ -115,87 +115,99 @@ class Hyperfine(Splitter):
 
 
 class HyperfineMixed(Splitter):
+    """
+    Hyperfine-mixing model based on https://doi.org/10.1103/PhysRevA.55.2728 [1].
+    """
     def __init__(self, model, i, j_l, j_u, name, config):
         super().__init__(model, i, j_l, j_u, name)
         self.type = 'HyperfineMixed'
         self.config = config
+        self.states = ['l', 'u']
+        to_mhz = 13074.70
 
-        self.transitions = Ph.HFTrans(self.i, self.j_l, self.j_u, old=False)
-        self.racah_intensities = Ph.HFInt(self.i, self.j_l, self.j_u, self.transitions, old=False)
+        self.enabled = {s: self.config['enabled_{}'.format(s)] for s in self.states}
 
-        self.T_l = None
-        self.f_l = None
-        self.W_l = None
-        self.n_l = len(self.transitions[0][1])
-        if self.config['enabled_l']:
-            self.T_l = np.array(self.config['Tl'])
-            self.f_l = np.array(self.config['fl']).flatten()
-            self.f_l -= self.f_l[0]
-            for i, jl in enumerate(self.config['Jl']):
-                self._add_arg('FS_l{}({})'.format(i, jl), 0., False, False)
-            self.n_l = len(self.config['Jl'] - 1)
-            self.W_l = [np.array([[(-1) ** (self.i + ji + f[0]) * Ph.sixJ(self.i, ji, f[0], jj, self.i, 1)
-                                   for jj in self.config['Jl']] for ji in self.config['Jl']]) * self.T_l
-                        for f, *r in self.transitions]
-        else:
-            for i in range(self.n_l):
-                self._add_arg('{}l'.format(ascii_uppercase[i]), 0., False, False)
+        self.J = {s: np.array(self.config['J{}'.format(s)]) for s in self.states}
 
-        self.T_u = None
-        self.f_u = None
-        self.j_lists = None
-        self.n_u = len(self.transitions[0][2])
-        if self.config['enabled_u']:
-            self.T_u = np.array(self.config['Tu'])
-            self.f_u = np.array(self.config['fu']).flatten()
-            self.f_u -= self.f_u[0]
-            for i, ju in enumerate(self.config['Ju']):
-                self._add_arg('FS_u{}({})'.format(i, ju), 0., False, False)
-            self.n_u = len(self.config['Ju'])
-            self.j_lists = [np.array([i for i, j in enumerate(self.config['Ju'])
-                                      if np.abs(self.i - j) - 0.1 < f[1] < self.i + j + 0.1])
-                            for f, *r in self.transitions]
-            self.W_u = [np.array([[(-1) ** (self.i + self.config['Ju'][i] + f[1])
-                                   * Ph.sixJ(self.i, self.config['Ju'][i], f[1], self.config['Ju'][j], self.i, 1)
-                                   for j in j_list] for i in j_list]) * self.T_u[j_list] * self.config['mu']
-                        for j_list, (f, *r) in zip(self.j_lists, self.transitions)]
-        else:
-            for i in range(self.n_u):
-                self._add_arg('{}u'.format(ascii_uppercase[i]), 0., False, False)
+        self.F = {s: Ph.getF(self.i, self.J[s]) for s in self.states}
+
+        self.T = {s: np.array(self.config['T{}'.format(s)], dtype=float) * to_mhz for s in self.states}
+
+        self.M = 0. if self.i == 0 else np.sqrt((2 * self.i + 1) * (self.i + 1) / self.i) * self.config['mu']
+
+        self.fs = {s: np.array(self.config['f{}'.format(s)]).flatten() for s in self.states}
+
+        self.mask_J = {s: [np.array([i for i, j in enumerate(self.config['J{}'.format(s)])
+                                     if abs(self.i - j) - 0.1 < f < self.i + j + 0.1], dtype=int) for f in self.F[s]]
+                       for s in self.states}
+
+        self.W = {s: [np.array([[(-1) ** (self.i + self.J[s][i] + f)
+                                 * Ph.sixJ(self.i, self.J[s][i], f, self.J[s][j], self.i, 1)
+                                for j in self.mask_J[s][k]] for i in self.mask_J[s][k]], dtype=float)
+                      * self.T[s][np.ix_(self.mask_J[s][k], self.mask_J[s][k])] * self.M
+                      for k, f in enumerate(self.F[s])] for s in self.states}  # Eq. (2.5) in [1].
+
+        self.transitions = [[(_m0, _m1), (self.J['l'][_m0], self.J['u'][_m1]), (f0, f1),
+                             Ph.HFCoeff(self.i, self.J['l'][_m0], f0, old=False),
+                             Ph.HFCoeff(self.i, self.J['u'][_m1], f1, old=False)]
+                            for i, (m0, f0) in enumerate(zip(self.mask_J['l'], self.F['l']))
+                            for j, (m1, f1) in enumerate(zip(self.mask_J['u'], self.F['u']))
+                            for _m0 in m0 for _m1 in m1
+                            if abs(f1 - f0) < 1.1 and abs(self.J['u'][_m1] - self.J['l'][_m0]) < 1.1]
+
+        self.wt_map = {s: np.array([[(1 - 2 * int(s == 'l')) * int(t[0][s == 'u'] == _m and t[2][s == 'u'] == f)
+                                     for m, f in zip(self.mask_J[s], self.F[s]) for _m in m]
+                                    for t in self.transitions], dtype=float) for s in self.states}
+
+        self.racah_intensities = [Ph.a(self.i, t[1][0], t[1][1], t[2][0], t[2][1]) for t in self.transitions]
+
+        self.order = {s: [int(min((j // 0.5, self.i // 0.5))) for j in self.J[s]] for s in self.states}
+
+        self.hf_args_map = [[] for _ in self.transitions]
+        for s in self.states:
+            if self.enabled[s] and self.i > 0:
+                for i, j in enumerate(self.J[s]):
+                    self._add_arg('FS_{}{}({})'.format(s, i, j), self.fs[s][i], i == 0, False)
+            else:
+                for i, j in enumerate(self.J[s]):
+                    for k in range(self.order[s][i]):
+                        for t, m in zip(self.transitions, self.hf_args_map):
+                            if t[0][int(s == 'u')] == i:
+                                m.append(self._index)
+                        self._add_arg('{}_{}{}({})'.format(ascii_uppercase[k], s, i, j), 0., False, False)
 
         for i, (t, intensity) in enumerate(zip(self.transitions, self.racah_intensities)):
             self.racah_indices.append(self._index)
-            self._add_arg('int({}, {})'.format(t[0][0], t[0][1]), intensity, i == 0, False)
+            self._add_arg('int{}([{}, {}] -> [{}, {}])'.format(i, t[1][0], t[1][1], t[2][0], t[2][1]),
+                          intensity, i == 0, False)
+
+    def x0(self, *args):
+        x0 = np.zeros(len(self.transitions))
+        for s in self.states:
+            if self.enabled[s]:
+                _x0 = [np.diag([args[self.p['FS_{}{}({})'.format(s, _m, self.J[s][_m])]] for _m in m]) + w
+                       for m, w in zip(self.mask_J[s], self.W[s])]
+                _x0 = np.concatenate(tuple(np.linalg.eigh(w)[0] for w in _x0))
+                _x0 = self.wt_map[s] @ _x0
+            else:
+                _x0 = np.array([sum(args[i] * coeff for i, coeff in zip(m, t[3 + int(s == 'u')]))
+                                for m, t in zip(self.hf_args_map, self.transitions)])
+            x0 += _x0
+        return x0
 
     def evaluate(self, x, *args, **kwargs):
-        np.zeros_like(x)
-        # if self.config['enabled_u']:
-        #     x_u = [np.diag([0.] + [args[self.model.size + self.n_l + i] for i in j_list]) + w
-        #            for j_list, w in (self.j_lists, self.W_u)]
-        #     x_u = [np.linalg.eigh(w) for w in x_u]
-        # else:
-        #     const_u = tuple(args[self.model.size + self.n_l + i] for i in range(self.n_u))
-        #     x_u = [Ph.HFShift([], const_u, [], t[2]) for t in self.transitions]
-        #
-        # const_l = tuple(args[self.model.size + i] for i in range(self.n_l))
-        # return np.sum([args[i] * self.model.evaluate(x - (_x_u - _x_l), *args, **kwargs)
-        #                for i, _x_l, _x_u in zip(self.racah_indices, x_l, x_u)], axis=0)
+        return np.sum([args[i] * self.model.evaluate(x - _x0, *args, **kwargs)
+                       for i, _x0 in zip(self.racah_indices, self.x0(*args))], axis=0)
 
     def min(self):
-        const_l = tuple(self.vals[self.model.size + i] for i in range(self.n_l))
-        const_u = tuple(self.vals[self.model.size + self.n_l + i] for i in range(self.n_u))
-        return self.model.min() + min(Ph.HFShift(const_l, const_u, t[1], t[2]) for t in self.transitions)
+        return self.model.min() + np.min(self.x0(*self.vals))
 
     def max(self):
-        const_l = tuple(self.vals[self.model.size + i] for i in range(self.n_l))
-        const_u = tuple(self.vals[self.model.size + self.n_l + i] for i in range(self.n_u))
-        return self.model.max() + max(Ph.HFShift(const_l, const_u, t[1], t[2]) for t in self.transitions)
+        return self.model.max() + np.max(self.x0(*self.vals))
 
     def intervals(self):
-        const_l = tuple(self.vals[self.model.size + i] for i in range(self.n_l))
-        const_u = tuple(self.vals[self.model.size + self.n_l + i] for i in range(self.n_u))
-        shifts = [Ph.HFShift(const_l, const_u, t[1], t[2]) for t in self.transitions]
-        return Tools.merge_intervals([[self.model.min() + shift, self.model.max() + shift] for shift in shifts])
+        return Tools.merge_intervals([[self.model.min() + _x0, self.model.max() + _x0]
+                                      for _x0 in self.x0(*self.vals)])
 
     def racah(self):
         for i, intensity in zip(self.racah_indices, self.racah_intensities):

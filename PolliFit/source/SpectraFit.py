@@ -29,7 +29,7 @@ class SpectraFit:
                  x_axis='ion frequencies', routine='curve_fit', absolute_sigma=False, guess_offset=True,
                  cov_mc=False, samples_mc=100, arithmetics=None,
                  summed=False, linked=False, save_to_db=False, x_as_freq=True,
-                 fig_save_format='.png', fmt='.k', fontsize=10):
+                 fig_save_format='.png', zoom_data=False, fmt='.k', fontsize=10):
         self.db = db
         self.files = files
         self.runs = runs  # TODO: Use only a single run per instance.
@@ -51,6 +51,7 @@ class SpectraFit:
 
         self.x_as_freq = x_as_freq
         self.fig_save_format = fig_save_format
+        self.zoom_data = zoom_data
         self.fmt = fmt
         self.fontsize = fontsize
 
@@ -313,7 +314,7 @@ class SpectraFit:
 
         fig = Plot.plot_model_fit(self.fitter, self.index_config if index is None else index, x_as_freq=self.x_as_freq,
                                   ascii_path=ascii_path, plot_path=plot_path, fig_save_format=self.fig_save_format,
-                                  fmt=self.fmt, fontsize=self.fontsize)
+                                  zoom_data=self.zoom_data, fmt=self.fmt, fontsize=self.fontsize)
 
         if show:
             Plot.show(True)
