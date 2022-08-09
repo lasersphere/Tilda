@@ -152,7 +152,7 @@ class HFMixingConfigUi(QtWidgets.QWidget, Ui_HFMixingConfig):
         self.line_j_e.setText(str(self.config['Ju']))
         self.apply_line_j_e()
         set_table(self.tab_e, self.config['Tu'])
-        set_table(self.tab_fs_g, self.config['fu'])
+        set_table(self.tab_fs_e, self.config['fu'])
         self.t_e = get_table(self.tab_e)
         self.f_e = get_table(self.tab_fs_e)
         if self.config['enabled_u']:
