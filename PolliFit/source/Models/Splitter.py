@@ -145,7 +145,7 @@ class HyperfineMixed(Splitter):
                                  * Ph.sixJ(self.i, self.J[s][i], f, self.J[s][j], self.i, 1)
                                 for j in self.mask_J[s][k]] for i in self.mask_J[s][k]], dtype=float)
                       * self.T[s][np.ix_(self.mask_J[s][k], self.mask_J[s][k])] * self.M
-                      for k, f in enumerate(self.F[s])] for s in self.states}  # Eq. (2.5) in [1].
+                      for k, f in enumerate(self.F[s])] for s in self.states}  # Eq. (2.5) in [1] without diagonal.
 
         self.transitions = [[(_m0, _m1), (self.J['l'][_m0], self.J['u'][_m1]), (f0, f1),
                              Ph.HFCoeff(self.i, self.J['l'][_m0], f0, old=False),
@@ -155,7 +155,8 @@ class HyperfineMixed(Splitter):
                             for _m0 in m0 for _m1 in m1
                             if abs(f1 - f0) < 1.1 and abs(self.J['u'][_m1] - self.J['l'][_m0]) < 1.1]
 
-        self.wt_map = {s: np.array([[(1 - 2 * int(s == 'l')) * int(t[0][s == 'u'] == _m and t[2][s == 'u'] == f)
+        self.wt_map = {s: np.array([[(1 - 2 * int(s == 'l')) * int(t[0][int(s == 'u')] == _m
+                                                                   and t[2][int(s == 'u')] == f)
                                      for m, f in zip(self.mask_J[s], self.F[s]) for _m in m]
                                     for t in self.transitions], dtype=float) for s in self.states}
 
@@ -178,21 +179,32 @@ class HyperfineMixed(Splitter):
 
         for i, (t, intensity) in enumerate(zip(self.transitions, self.racah_intensities)):
             self.racah_indices.append(self._index)
-            self._add_arg('int{}([{}, {}] -> [{}, {}])'.format(i, t[1][0], t[1][1], t[2][0], t[2][1]),
+            self._add_arg('int{}([{}, {}] -> [{}, {}])'.format(i, t[1][0], t[2][0], t[1][1], t[2][1]),
                           intensity, i == 0, False)
 
     def x0(self, *args):
         x0 = np.zeros(len(self.transitions))
         for s in self.states:
             if self.enabled[s]:
-                _x0 = [np.diag([args[self.p['FS_{}{}({})'.format(s, _m, self.J[s][_m])]] for _m in m]) + w
+                _x0 = [np.linalg.eigh(  # Eigenvalues and eigenvectors of Eq. (2.5) in [1].
+                    np.diag([args[self.p['FS_{}{}({})'.format(s, _m, self.J[s][_m])]] for _m in m]) + w)
                        for m, w in zip(self.mask_J[s], self.W[s])]
-                _x0 = np.concatenate(tuple(np.linalg.eigh(w)[0] for w in _x0))
+                # Eigenvalues are returned in ascending order! Sort based on eigenvectors.
+                # Invert order
+                # a =               [a, b, c]
+                # order =           [2, 0, 1]
+                # desired a =       [b, c, a]
+                # required order =  [1, 2, 0]
+                orders = [np.argmax(np.abs(w[1]), axis=0) for w in _x0]
+                orders = [np.array([j for i in range(order.size) for j, o in enumerate(order) if i == o])
+                          for w, order in zip(_x0, orders)]
+                _x0 = np.concatenate(tuple(w[0][order] for w, order in zip(_x0, orders)))
                 _x0 = self.wt_map[s] @ _x0
             else:
                 _x0 = np.array([sum(args[i] * coeff for i, coeff in zip(m, t[3 + int(s == 'u')]))
                                 for m, t in zip(self.hf_args_map, self.transitions)])
             x0 += _x0
+        # print(f'[{", ".join([str(_x0) for _x0 in x0])}]')
         return x0
 
     def evaluate(self, x, *args, **kwargs):
