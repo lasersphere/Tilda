@@ -203,6 +203,7 @@ class HyperfineMixed(Splitter):
             else:
                 _x0 = np.array([sum(args[i] * coeff for i, coeff in zip(m, t[3 + int(s == 'u')]))
                                 for m, t in zip(self.hf_args_map, self.transitions)])
+                _x0 *= (1 - 2 * int(s == 'l'))
             x0 += _x0
         # print(f'[{", ".join([str(_x0) for _x0 in x0])}]')
         return x0
