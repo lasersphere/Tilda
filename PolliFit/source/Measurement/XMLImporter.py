@@ -573,9 +573,8 @@ class XMLImporter(SpecData):
 
             for key, val_dict in pre_scan_dict.items():
                 if 'Comb' in key:
-                    freq_comb_data_tr[key] = {}
-                    freq_comb_data_tr[key]['aCol'] = val_dict.get('comb_freq_acol', {}).get('data', [])
-                    freq_comb_data_tr[key]['col'] = val_dict.get('comb_freq_col', {}).get('data', [])
+                    freq_comb_data_tr[key] = []
+                    freq_comb_data_tr[key] = val_dict.get('laser_freq_mult', {}).get('data', [])
 
             # now check during scan and append values to existing list or create new
 
@@ -583,13 +582,13 @@ class XMLImporter(SpecData):
                 if 'Comb' in key:
                     if not freq_comb_data_tr.get(key, {}):
                         # no measurement was done pre scan for this comb, create empty dict.
-                        freq_comb_data_tr[key] = {}
-                    for col_a_col_key in ['aCol', 'col']:
-                        if not len(freq_comb_data_tr[key].get(col_a_col_key, [])):
-                            # the key was not existing yet, create or overwrite empty list
-                            freq_comb_data_tr[key][col_a_col_key] = []
-                    freq_comb_data_tr[key]['aCol'] += val_dict.get('comb_freq_acol', {}).get('data', [])
-                    freq_comb_data_tr[key]['col'] += val_dict.get('comb_freq_col', {}).get('data', [])
+                        freq_comb_data_tr[key] = []
+                    # for col_a_col_key in ['aCol', 'col']:
+                    #     if not len(freq_comb_data_tr[key].get(col_a_col_key, [])):
+                    #         # the key was not existing yet, create or overwrite empty list
+                    #         freq_comb_data_tr[key][col_a_col_key] = []
+                    freq_comb_data_tr[key] += val_dict.get('laser_freq_mult', {}).get('data', [])
+
                     # freq_comb_data_tr[key]['col'] = [x+203 for x in freq_comb_data_tr[key]['col']]# 203 MHz just due to AOM, REMOVE AFTERWARDS; NO PUSH!!
                     # print("freq_comb_data_tr[key]['col']: ", freq_comb_data_tr[key]['col'])
 
@@ -599,25 +598,20 @@ class XMLImporter(SpecData):
                 if 'Comb' in key:
                     if not freq_comb_data_tr.get(key, {}):
                         # no measurement was done before for this comb, create empty dict.
-                        freq_comb_data_tr[key] = {}
-                    for col_a_col_key in ['aCol', 'col']:
-                        if not len(freq_comb_data_tr[key].get(col_a_col_key, [])):
-                            # the key was not existing yet, create or overwrite empty list
-                            freq_comb_data_tr[key][col_a_col_key] = []
-                    freq_comb_data_tr[key]['aCol'] += val_dict.get('comb_freq_acol', {}).get('data', [])
-                    freq_comb_data_tr[key]['col'] += val_dict.get('comb_freq_col', {}).get('data', [])
+                        freq_comb_data_tr[key] = []
+                    # for col_a_col_key in ['aCol', 'col']:
+                    #     if not len(freq_comb_data_tr[key].get(col_a_col_key, [])):
+                    #         # the key was not existing yet, create or overwrite empty list
+                    #         freq_comb_data_tr[key][col_a_col_key] = []
+                    freq_comb_data_tr[key] += val_dict.get('laser_freq_mult', {}).get('data', [])
+                    # freq_comb_data_tr[key]['col'] += val_dict.get('comb_freq_col', {}).get('data', [])
 
             # now take the mean value for this track:
             combs_freq_mean_tr = {}  # list for the mean value of all combs that have a reading for this track
             for comb_key, comb_a_col_col_dict in freq_comb_data_tr.items():
-                # im interested in col/aCol frequency reading:
-                col_a_col_key = 'col' if self.col else 'aCol'
-                # get the mean value from one comb in this track
-                freq = comb_a_col_col_dict.get(col_a_col_key, [])
-                if freq:
-                    comb_mean = np.mean(freq)
-                    comb_err = np.std(freq)
-                    # if not np.isnan(comb_mean):
+                comb_mean = np.mean(comb_a_col_col_dict)
+                comb_err = np.std(comb_a_col_col_dict)
+                if not np.isnan(comb_mean):
                     combs_freq_mean_tr[comb_key] = (comb_mean, comb_err)
             freqs_by_dev.append(combs_freq_mean_tr)
 
@@ -643,8 +637,8 @@ class XMLImporter(SpecData):
                 if each > 0.0:
                     valid_freq_meas.append(each)
                     valid_freq_meas_errs.append(freq_err_list[i])
-            laser_freq = (np.mean(valid_freq_meas) / 1000000)  # in MHz
-            laser_freq_d = np.mean(valid_freq_meas_errs) / 1000000  # in MHz
+            laser_freq = (np.mean(valid_freq_meas))  # in MHz
+            laser_freq_d = np.mean(valid_freq_meas_errs)  # in MHz
             logging.debug('getting frequency from path: %s' % path)
             (dir, file) = os.path.split(path)
             (filename, end) = os.path.splitext(file)
