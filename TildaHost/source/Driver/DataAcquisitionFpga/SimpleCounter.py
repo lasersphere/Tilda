@@ -114,8 +114,7 @@ class SimpleCounter(Sequencer):
                               'selectTrigger': self.config.selectTrigger,
                               'trigDelay10ns': self.config.trigDelay10ns,
                               'triggerEdge': self.config.triggerEdge,
-                              'softwareTrigger': self.config.softwareTrigger,
-                              'dwellTime10ns': self.config.dwellTime10ns}
+                              'softwareTrigger': self.config.softwareTrigger}
 
         trig_fpga_status = True
         for triggers, trig_dicts in trigger_dict.items():
@@ -136,7 +135,6 @@ class SimpleCounter(Sequencer):
                 trig_num = ['either', 'rising', 'falling'].index(trig_dicts.get('trigEdge', 'rising'))
                 logging.debug('triggernum is: %s' % trig_num)
                 self.ReadWrite(controls['triggerEdge'], trig_num)
-                self.ReadWrite(controls['dwellTime10ns'], 20000)
                 trig_fpga_status = trig_fpga_status and self.checkFpgaStatus()
         return trig_fpga_status
 

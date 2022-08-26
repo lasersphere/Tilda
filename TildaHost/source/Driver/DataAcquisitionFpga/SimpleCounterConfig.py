@@ -18,20 +18,20 @@ fpga_resource = data_acq_cfg['fpga_resource']
 
 '''Bitfile Signature:'''
 bitfileSignatures = {
-    'PXI-7852R': 'C2105F6862AC5608FFE4B53B62D561B4',
+    'PXI-7852R': 'B8777090FCB3E03824FD57E461B8B0E4',
     'PXI-7841R': 'E87F746B4D75FAC83D98D9825FB513AE'
                      }
 bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
 bitfilePaths = {
     'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                           'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounterV262.lvbitx'),
+                           'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounterV260.lvbitx'),
     'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
                            'TildaTarget/bin/SimpleCounter/NiFpga_SimpleCounter_7841_v200.lvbitx')
                 }
 bitfilePath = bitfilePaths[fpga_type]
 '''FPGA Resource:'''
-fpgaResource = 'Rio1'
+fpgaResource = fpga_resource
 '''Indicators:'''
 postAccOffsetVoltState = {'ref': 0x813E, 'val': ctypes.c_ubyte(), 'ctr': False}
 DacState = {'ref': 0x812A, 'val': ctypes.c_uint(), 'ctr': False}
