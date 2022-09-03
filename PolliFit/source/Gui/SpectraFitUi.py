@@ -247,7 +247,8 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             if selected is None:
                 selected = True
                 selected_items = self.list_files.selectedItems()
-                if len(selected_items) > 0 and all(item is selected_items[i] for i, item in enumerate(items)):
+                if len(selected_items) > 0 and len(selected_items) == len(items) \
+                        and all(item is selected_items[i] for i, item in enumerate(items)):
                     selected = False
             self.list_files.clearSelection()
             for item in items:
