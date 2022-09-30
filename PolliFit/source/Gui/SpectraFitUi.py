@@ -104,6 +104,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.check_arithmetics.stateChanged.connect(self.toggle_arithmetics)
         self.b_trsplot.clicked.connect(self.open_trsplot)
         self.b_trs.clicked.connect(self.open_trs)
+        self.b_adjust.clicked.connect(self.adjust_uf0)
         self.check_summed.stateChanged.connect(self.toogle_summed)
         self.check_linked.stateChanged.connect(self.toogle_linked)
         self.check_save_to_db.stateChanged.connect(self.toggle_save_to_db)
@@ -727,6 +728,9 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             # bool: plot bool to force a plotting even if nothing has changed.
             # new_gate_or_soft_bin_width = QtCore.pyqtSignal(list, int, list, bool)
             f_win.new_gate_or_soft_bin_width.connect(self.softw_gates_from_time_res_plot)
+
+    def adjust_uf0(self):
+        self.spectra_fit.adjust_uf0(self.check_iterate.isChecked(), self.d_volt.value(), self.d_mhz.value())
 
     def toogle_summed(self):
         pass

@@ -208,6 +208,9 @@ class SpectraFit:
         #     self.save_fits_as_fig(popt, pcov, info)
         return popt, pcov, info
 
+    def adjust_uf0(self, iterate, d_volt, d_mhz):
+        pass
+
     def get_pars(self, i):
         return self.fitter.get_pars(i)
 

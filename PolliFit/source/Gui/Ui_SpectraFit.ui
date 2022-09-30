@@ -13,6 +13,9 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
+  <property name="locale">
+   <locale language="English" country="Europe"/>
+  </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QSplitter" name="splitter">
@@ -515,9 +518,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-161</y>
+            <y>-90</y>
             <width>289</width>
-            <height>526</height>
+            <height>557</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="vert_options_layout" stretch="1,0,0,0,1,0,0,0,1,0,0,0,1">
@@ -755,6 +758,13 @@
               <property name="bottomMargin">
                <number>0</number>
               </property>
+              <item row="7" column="0">
+               <widget class="QCheckBox" name="check_save_to_db">
+                <property name="text">
+                 <string>save to db</string>
+                </property>
+               </widget>
+              </item>
               <item row="1" column="1">
                <layout class="QHBoxLayout" name="hor_chi2" stretch="0,1">
                 <item>
@@ -775,6 +785,116 @@
                  </widget>
                 </item>
                </layout>
+              </item>
+              <item row="4" column="0">
+               <layout class="QHBoxLayout" name="hor_trs">
+                <item>
+                 <widget class="QLabel" name="l_trs">
+                  <property name="text">
+                   <string>TRS</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="b_trs">
+                  <property name="text">
+                   <string>config ...</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item row="3" column="0">
+               <widget class="QLineEdit" name="edit_arithmetics"/>
+              </item>
+              <item row="2" column="0">
+               <widget class="QCheckBox" name="check_cov_mc">
+                <property name="text">
+                 <string>cov. from Monte-Carlo</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QComboBox" name="c_routine">
+                <item>
+                 <property name="text">
+                  <string>curve_fit</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="6" column="0">
+               <widget class="QCheckBox" name="check_summed">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
+                <property name="text">
+                 <string>summed</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <layout class="QHBoxLayout" name="hor_xaxis" stretch="0,1">
+                <item>
+                 <widget class="QLabel" name="l_xaxis">
+                  <property name="text">
+                   <string>x-axis</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="c_xaxis">
+                  <property name="currentIndex">
+                   <number>0</number>
+                  </property>
+                  <item>
+                   <property name="text">
+                    <string>ion frequencies</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>lab frequencies</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>DAC volt (TODO)</string>
+                   </property>
+                  </item>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item row="4" column="1">
+               <layout class="QHBoxLayout" name="hor_trsplot" stretch="0,1">
+                <item>
+                 <widget class="QLabel" name="l_trsplot">
+                  <property name="font">
+                   <font>
+                    <pointsize>12</pointsize>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>&lt;nobr&gt;&amp;larr;&lt;/nobr&gt;</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="b_trsplot">
+                  <property name="text">
+                   <string>open trs plot</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item row="6" column="1">
+               <widget class="QCheckBox" name="check_linked">
+                <property name="text">
+                 <string>linked</string>
+                </property>
+               </widget>
               </item>
               <item row="2" column="1">
                <layout class="QHBoxLayout" name="hor_samples" stretch="1,0">
@@ -806,65 +926,6 @@
                 </item>
                </layout>
               </item>
-              <item row="4" column="1">
-               <layout class="QHBoxLayout" name="hor_trsplot" stretch="0,1">
-                <item>
-                 <widget class="QLabel" name="l_trsplot">
-                  <property name="font">
-                   <font>
-                    <pointsize>12</pointsize>
-                   </font>
-                  </property>
-                  <property name="text">
-                   <string>&lt;nobr&gt;&amp;larr;&lt;/nobr&gt;</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="b_trsplot">
-                  <property name="text">
-                   <string>open trs plot</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </item>
-              <item row="0" column="1">
-               <widget class="QComboBox" name="c_routine">
-                <item>
-                 <property name="text">
-                  <string>curve_fit</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
-              <item row="6" column="0">
-               <widget class="QCheckBox" name="check_save_to_db">
-                <property name="text">
-                 <string>save to db</string>
-                </property>
-               </widget>
-              </item>
-              <item row="5" column="0">
-               <widget class="QCheckBox" name="check_summed">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
-                <property name="text">
-                 <string>summed</string>
-                </property>
-               </widget>
-              </item>
-              <item row="6" column="1">
-               <widget class="QCheckBox" name="check_save_figure">
-                <property name="text">
-                 <string>save figure</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="0">
-               <widget class="QLineEdit" name="edit_arithmetics"/>
-              </item>
               <item row="1" column="0">
                <widget class="QCheckBox" name="check_guess_offset">
                 <property name="text">
@@ -875,37 +936,12 @@
                 </property>
                </widget>
               </item>
-              <item row="5" column="1">
-               <widget class="QCheckBox" name="check_linked">
+              <item row="7" column="1">
+               <widget class="QCheckBox" name="check_save_figure">
                 <property name="text">
-                 <string>linked</string>
+                 <string>save figure</string>
                 </property>
                </widget>
-              </item>
-              <item row="2" column="0">
-               <widget class="QCheckBox" name="check_cov_mc">
-                <property name="text">
-                 <string>cov. from Monte-Carlo</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="0">
-               <layout class="QHBoxLayout" name="hor_trs">
-                <item>
-                 <widget class="QLabel" name="l_trs">
-                  <property name="text">
-                   <string>TRS</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="b_trs">
-                  <property name="text">
-                   <string>config ...</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
               </item>
               <item row="3" column="1">
                <layout class="QHBoxLayout" name="hor_arithmetics">
@@ -928,35 +964,91 @@
                 </item>
                </layout>
               </item>
-              <item row="0" column="0">
-               <layout class="QHBoxLayout" name="hor_xaxis" stretch="0,1">
+              <item row="5" column="0">
+               <layout class="QHBoxLayout" name="hor_adjust" stretch="1,0">
+                <property name="spacing">
+                 <number>3</number>
+                </property>
                 <item>
-                 <widget class="QLabel" name="l_xaxis">
+                 <widget class="QPushButton" name="b_adjust">
                   <property name="text">
-                   <string>x-axis</string>
+                   <string>adjust U/f0</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="c_xaxis">
-                  <property name="currentIndex">
-                   <number>0</number>
+                 <widget class="QCheckBox" name="check_iterate">
+                  <property name="text">
+                   <string>iterate</string>
                   </property>
-                  <item>
-                   <property name="text">
-                    <string>ion frequencies</string>
-                   </property>
-                  </item>
-                  <item>
-                   <property name="text">
-                    <string>lab frequencies</string>
-                   </property>
-                  </item>
-                  <item>
-                   <property name="text">
-                    <string>DAC volt (TODO)</string>
-                   </property>
-                  </item>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item row="5" column="1">
+               <layout class="QHBoxLayout" name="hor_iterate" stretch="0,1,0,1">
+                <property name="spacing">
+                 <number>3</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="l_iterate">
+                  <property name="text">
+                   <string>&lt;</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="d_volt">
+                  <property name="buttonSymbols">
+                   <enum>QAbstractSpinBox::NoButtons</enum>
+                  </property>
+                  <property name="correctionMode">
+                   <enum>QAbstractSpinBox::CorrectToNearestValue</enum>
+                  </property>
+                  <property name="suffix">
+                   <string> V</string>
+                  </property>
+                  <property name="decimals">
+                   <number>3</number>
+                  </property>
+                  <property name="minimum">
+                   <double>0.001000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>9.999000000000001</double>
+                  </property>
+                  <property name="value">
+                   <double>1.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label">
+                  <property name="text">
+                   <string>&amp;</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="d_mhz">
+                  <property name="buttonSymbols">
+                   <enum>QAbstractSpinBox::NoButtons</enum>
+                  </property>
+                  <property name="suffix">
+                   <string> MHz</string>
+                  </property>
+                  <property name="decimals">
+                   <number>3</number>
+                  </property>
+                  <property name="minimum">
+                   <double>0.001000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>9.999000000000001</double>
+                  </property>
+                  <property name="value">
+                   <double>1.000000000000000</double>
+                  </property>
                  </widget>
                 </item>
                </layout>

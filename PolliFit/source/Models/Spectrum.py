@@ -106,7 +106,8 @@ class VoigtDerivative(Spectrum):
 
     def evaluate(self, x, *args, **kwargs):  # Normalize to the maximum. (Pos of min/max to be determined).
         z = (x + 1j * 0.5 * args[0]) / (np.sqrt(2) * args[1])
-        return -(z * wofz(z)).real / (np.sqrt(np.pi) * args[1] ** 2) / voigt_profile(0, args[1], 0.5 * args[0])
+        fwhm = abs(0.5346 * args[0] + np.sqrt(0.2166 * args[0] ** 2 + args[1] ** 2))  # for normalization
+        return -(z * wofz(z)).real / (np.sqrt(np.pi) * args[1] ** 2) / voigt_profile(0, args[1], 0.5 * args[0]) * fwhm
 
     def fwhm(self):
         f_l = self.vals[self.p['Gamma']]

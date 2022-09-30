@@ -5,7 +5,6 @@ Created on 02.03.2022
 """
 
 from string import ascii_uppercase
-import numpy as np
 
 import Physics as Ph
 from Models.Base import *
