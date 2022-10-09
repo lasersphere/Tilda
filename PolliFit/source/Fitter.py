@@ -5,7 +5,10 @@ Created on 20.02.2022
 """
 
 import os
+
 import numpy as np
+import sqlite3
+import scipy.stats as st
 import itertools as it
 from PyQt5.QtCore import QObject, pyqtSignal
 
@@ -14,6 +17,11 @@ from FitRoutines import curve_fit
 import Physics as Ph
 from Tools import print_colored, print_cov
 from Models.Collection import Linked
+
+
+COL_ACOL_CONFIG = {'enabled': False, 'rule': 'acca / caac', 'parameter': 'center',
+                   'iterate': 3, 'volt': 1., 'mhz': 1., 'save_voltage': True, 'mc': False, 'mc_size': 100000,
+                   'show_results': False, 'save_results': True, 'file': 'ColAcol_{db}_{run}.txt'}
 
 
 class Xlist:  # Custom list to trick 'curve_fit' for linked fitting of files with different x-axis sizes.
@@ -53,7 +61,7 @@ class Fitter(QObject):
         if self.config is None:
             self.config = dict(routine='curve_fit', absolute_sigma=False, guess_offset=True,
                                cov_mc=False, samples_mc=100, arithmetics=None,
-                               summed=False, linked=False)
+                               summed=False, linked=False, col_acol_config=COL_ACOL_CONFIG)
         self.run = '' if run is None else run
         self.size = len(self.meas)
         self.n_scaler = min(min(meas.nrScalers if isinstance(meas.nrScalers, list) else [meas.nrScalers])
@@ -328,16 +336,240 @@ class Fitter(QObject):
         info = dict(warn=warn, errs=errs, chi2=chi2)
         return popt, pcov, info
 
-    def fit(self):
+    def _check_col_acol(self):
+        rule = self.config['col_acol_config']['rule']
+        false_flag = False
+        if rule == 'acca / caac':
+            col = -1
+            index = 0
+            for meas in self.meas:
+                if index % 2 == 1 and meas.col == col:
+                    false_flag = True
+                    break
+                elif index == 2 and meas.col != col:
+                    false_flag = True
+                    break
+                col = meas.col
+                index = (index + 1) % 4
+            if index != 0:
+                false_flag = True
+        elif rule == 'free':
+            size_col = len([0 for meas in self.meas if meas.col])
+            size_acol = len([0 for meas in self.meas if not meas.col])
+            if not size_col == size_acol or size_col + size_acol == len(self.meas):
+                false_flag = True
+        else:
+            size_col = len([0 for meas in self.meas if meas.col])
+            size_acol = len([0 for meas in self.meas if not meas.col])
+            if size_col == 0 or size_acol == 0:
+                false_flag = True
+        if false_flag:
+            print_colored('WARNING', 'Col/Acol rule \'{}\' not fulfilled. Stopping fit.'.format(rule))
+            return False
+        return True
+
+    def _gen_col_acol(self):
+        rule = self.config['col_acol_config']['rule']
+        if rule == 'acca / caac' or rule == 'free':
+            return [[i, ] for i, meas in enumerate(self.meas) if meas.col], \
+                [[i, ] for i, meas in enumerate(self.meas) if not meas.col]
+        else:
+            return [[i for i, meas in enumerate(self.meas) if meas.col], ], \
+                [[i for i, meas in enumerate(self.meas) if not meas.col], ]
+
+    def _average_col_acol(self, c_a):
+        par = self.config['col_acol_config']['parameter']
+        p = self.models
+        if len(c_a) == 1:
+            i = c_a[0]
+            p = self.models[i].p[par]
+            return (self.popt[i][p], np.sqrt(np.diag(self.pcov[i])[p])), \
+                (self.meas[i].laserFreq, self.meas[i].laserFreq_d)
+        f_ion, f_laser = [], []
+        w_ion, w_laser = [], []
+        for i in c_a:
+            f_ion.append(self.popt[i][p])
+            w_ion.append(1 / np.diag(self.pcov[i])[p])
+            f_laser.append(self.meas[i].laserFreq)
+            w_laser.append(1 / self.meas[i].laserFreq_d ** 2)
+        f_ion, w_ion = np.average(f_ion, weights=w_ion, returned=True)
+        f_ion = [f_ion, np.sqrt(1 / w_ion)]
+        f_laser, w_laser = np.average(f_laser, weights=w_laser, returned=True)
+        f_laser = [f_laser, np.sqrt(1 / w_laser)]
+        return f_ion, f_laser
+
+    def _calc_abs_freq(self, c, a):
+        if self.config['x_axis'] != 'ion frequencies':
+            raise NotImplementedError('Col/Acol fit is only implemented for ion frequencies x-axis.')
+        q = self.iso[c[0]].q
+        mass = [self.iso[c[0]].mass, self.iso[c[0]].mass_d]
+        freq = self.iso[c[0]].freq
+        f_ion_c, f_laser_c = self._average_col_acol(c)
+        f_ion_a, f_laser_a = self._average_col_acol(a)
+
+        if self.config['col_acol_config']['mc']:
+            size = self.config['col_acol_config']['mc_size']
+            mass_sample = st.norm.rvs(loc=mass[0], scale=mass[1], size=size)
+            f_ion_c_sample = st.norm.rvs(loc=f_ion_c[0], scale=f_ion_c[1], size=size)
+            f_laser_c_sample = st.norm.rvs(loc=f_laser_c[0], scale=f_laser_c[1], size=size)
+            f_ion_a_sample = st.norm.rvs(loc=f_ion_a[0], scale=f_ion_a[1], size=size)
+            f_laser_a_sample = st.norm.rvs(loc=f_laser_a[0], scale=f_laser_a[1], size=size)
+
+            # For u, the exact laser freq and mass that was previously used
+            # for the transformation has to be used, not the samples.
+            u_c = Ph.rel_freq_to_volt(f_ion_c_sample, q, mass[0], f_laser_c[0], freq, True)
+            u_a = Ph.rel_freq_to_volt(f_ion_a_sample, q, mass[0], f_laser_a[0], freq, True)
+            u = 0.5 * (u_c + u_a)
+            du = 0.5 * (u_c - u_a)
+
+            df = f_ion_c_sample - f_ion_a_sample
+            f = Ph.col_acol_ec_ea(f_laser_c_sample, f_laser_a_sample, u_c * q, u_a * q, mass_sample)
+
+            df = [np.mean(df), np.std(df, ddof=1)]
+            f = [np.mean(f), np.std(f, ddof=1)]
+            u = [np.mean(u), np.std(u, ddof=1)]
+            du = [np.mean(du), np.std(du, ddof=1)]
+        else:
+            u_c = [Ph.rel_freq_to_volt(f_ion_c[0], q, mass[0], f_laser_c[0], freq, True),
+                   Ph.rel_freq_to_volt_d(f_ion_c[0], f_ion_c[1], q, mass[0], f_laser_c[0], freq)]
+            u_a = [Ph.rel_freq_to_volt(f_ion_a[0], q, mass[0], f_laser_a[0], freq, True),
+                   Ph.rel_freq_to_volt_d(f_ion_a[0], f_ion_a[1], q, mass[0], f_laser_a[0], freq)]
+
+            u_d = 0.5 * np.sqrt(u_c[1] ** 2 + u_a[1] ** 2)
+            u = [0.5 * (u_c[0] + u_a[0]), u_d]
+            du = [0.5 * (u_c[0] - u_a[0]), u_d]
+
+            df = [f_ion_c[0] - f_ion_a[0], np.sqrt(f_ion_c[1] ** 2 + f_ion_a[1] ** 2)]
+            f = [Ph.col_acol_ec_ea(f_laser_c[0], f_laser_a[0], u_c[0] * q, u_a[0] * q, mass[0]),
+                 Ph.col_acol_ec_ea_d(f_laser_c[0], f_laser_c[1], f_laser_a[0], f_laser_a[1],
+                                     u_c[0] * q, u_c[1] * q, u_a[0] * q, u_a[1] * q, mass[0], mass[1])]
+
+        return {'MeasNr': None, 'AbsFreq': f[0], 'AbsFreq_d': f[1], 'LaserFreqCol': f_laser_c[0],
+                'LaserFreqCol_d': f_laser_c[1], 'LaserFreqAcol': f_laser_a[0], 'LaserFreqAcol_d': f_laser_a[1],
+                'UCol': u_c[0], 'UCol_d': u_c[1], 'UAcol': u_a[0], 'UAcol_d': u_a[1],
+                'U': u[0], 'U_d': u[1], 'dU': du[0], 'dU_d': du[1], 'df': df[0], 'df_d': df[1]}
+
+    def _calc_col_acol(self, col, acol):
+        results = []
+        for i, (c, a) in enumerate(zip(col, acol)):
+            result = self._calc_abs_freq(c, a)
+            result['MeasNr'] = i + 1
+            results.append(result)
+        return results
+
+    def _optimize_acc_volt(self, results, col, acol):
+        par = self.config['col_acol_config']['parameter']
+        con = sqlite3.connect(self.iso[0].db)
+        for r, c, a in zip(results, col, acol):
+            q = self.iso[c[0]].q
+            df = r['df'] / 2
+            du_c = df / Ph.doppler_e_d(r['AbsFreq'], 0., r['UCol'] * q, q,
+                                       self.iso[c[0]].mass, 0., 0., rest_frame=True)
+            du_a = df / Ph.doppler_e_d(r['AbsFreq'], 0., r['UAcol'] * q, q,
+                                       self.iso[c[0]].mass, 0., np.pi, rest_frame=True)
+            du = np.mean([du_c, du_a])
+
+            for _c in c:
+                for tr_ind, track in enumerate(self.meas[_c].x):
+                    self.models[_c].vals[self.models[_c].p[par]] -= df
+                    self.meas[_c].accVolt += du
+                    self.meas[_c].x[tr_ind] += du
+                    if self.config['col_acol_config']['save_voltage']:
+                        with con:
+                            con.execute('UPDATE Files SET accVolt = ? WHERE file = ?',
+                                        (self.meas[_c].accVolt, self.meas[_c].file))
+            
+            for _a in a:
+                for tr_ind, track in enumerate(self.meas[_a].x):
+                    self.models[_a].vals[self.models[_a].p[par]] += df
+                    self.meas[_a].accVolt += du
+                    self.meas[_a].x[tr_ind] += du
+                    if self.config['col_acol_config']['save_voltage']:
+                        with con:
+                            con.execute('UPDATE Files SET accVolt = ? WHERE file = ?',
+                                        (self.meas[_a].accVolt, self.meas[_a].file))
+
+        con.close()
+        self.gen_data()
+
+    def save_col_acol(self, results):
+        header_list = ['MeasNr', 'AbsFreq', 'AbsFreq_d', 'LaserFreqCol', 'LaserFreqCol_d',
+                       'LaserFreqAcol', 'LaserFreqAcol_d', 'UCol', 'UCol_d', 'UAcol', 'UAcol_d',
+                       'U', 'U_d', 'dU', 'dU_d', 'df', 'df_d']
+
+        f = np.array([r['AbsFreq'] for r in results])
+        df = np.array([r['AbsFreq_d'] for r in results])
+
+        av = np.around(np.average(f), decimals=3)
+        av_d = np.around(np.std(f, ddof=1) / np.sqrt(f.size), decimals=3)
+
+        wav, wav_d = np.average(f, weights=1 / df ** 2, returned=True)
+        wav, wav_d = np.around(wav, decimals=3), np.around(np.sqrt(1 / wav_d), decimals=3)
+
+        med = np.around(np.median(f), decimals=3)
+        med_0 = np.around(med - np.percentile(f, 15.8655254), decimals=3)
+        med_1 = np.around(np.percentile(f, 84.1344746) - med, decimals=3)
+
+        if self.config['col_acol_config']['show_results']:
+            pass
+
+        if self.config['col_acol_config']['save_results']:
+            db = os.path.split(self.iso[0].db)[1]
+            db = db[:-(db[::-1].find('.') + 1)]
+            filename = self.config['col_acol_config']['file'].replace('{db}', db).replace('{run}', self.run)
+            with open(os.path.join(os.path.dirname(self.iso[0].db), filename), 'w') as file:
+                file.write('# {}\n'.format(', '.join(header_list)))
+                for r in results:
+                    file.write('{}\n'.format(', '.join([str(np.around(r[h], decimals=3)) for h in header_list])))
+                file.write('#\n# average: {} +/- {} MHz\n'.format(av, av_d))
+                file.write('# weighted average: {} +/- {} MHz\n'.format(wav, wav_d))
+                file.write('# median: {} +{} / -{} MHz'.format(med, med_1, med_0))
+            # plt.savefig()
+
+    def fit_col_acol(self):
+        if not self._check_col_acol():
+            warn = list(range(self.size))  # Issue warnings for all files.
+            errs = list(range(self.size))
+            chi2 = [0., ] * self.size
+            popt = [np.array(model.vals) for model in self.models]
+            pcov = [np.zeros((popt[-1].size, popt[-1].size)) for _ in self.models]
+            return popt, pcov, dict(warn=warn, errs=errs, chi2=chi2)
+
+        iterate = self.config['col_acol_config']['iterate']
+        volt = self.config['col_acol_config']['volt']
+        mhz = self.config['col_acol_config']['mhz']
+
+        col, acol = self._gen_col_acol()
+
+        self._fit()
+        results = self._calc_col_acol(col, acol)
+        i = 0
+        while (abs(max(r['df'] for r in results)) > mhz) and i < iterate:
+            self._optimize_acc_volt(results, col, acol)
+            self._fit()
+            results = self._calc_col_acol(col, acol)
+            i += 1
+
+        self.save_col_acol(results)
+
+    def _fit(self):
         """
         :returns: popt, pcov. The optimal parameters and their covariance matrix.
         :raises ValueError: If 'routine' is not in {'curve_fit', }.
         """
         if self.config['summed']:
-            popt, pcov, info = self.fit_summed()
+            self.popt, self.pcov, self.info = self.fit_summed()
         elif self.config['linked']:
-            popt, pcov, info = self.fit_linked()
+            self.popt, self.pcov, self.info = self.fit_linked()
         else:
-            popt, pcov, info = self.fit_batch()
-        self.popt, self.pcov, self.info = popt, pcov, info
+            self.popt, self.pcov, self.info = self.fit_batch()
+
+    def fit(self):
+        """
+        :raises ValueError: If 'routine' is not in {'curve_fit', }.
+        """
+        if self.config['col_acol_config']['enabled']:
+            self.fit_col_acol()
+        else:
+            self._fit()
         self.finished.emit()

@@ -28,7 +28,7 @@ class SpectraFit:
     def __init__(self, db, files, runs, configs, index_config,
                  x_axis='ion frequencies', routine='curve_fit', absolute_sigma=False, guess_offset=True,
                  cov_mc=False, samples_mc=100, arithmetics=None,
-                 summed=False, linked=False, save_to_db=False, x_as_freq=True,
+                 summed=False, linked=False, col_acol_config=None, save_to_db=False, x_as_freq=True,
                  fig_save_format='.png', zoom_data=False, fmt='.k', fontsize=10):
         self.db = db
         self.files = files
@@ -47,6 +47,7 @@ class SpectraFit:
         self.arithmetics = arithmetics
         self.summed = summed
         self.linked = linked
+        self.col_acol_config = col_acol_config
         self.save_to_db = save_to_db
 
         self.x_as_freq = x_as_freq
@@ -106,7 +107,8 @@ class SpectraFit:
     def gen_config(self):
         return dict(x_axis=self.x_axis, routine=self.routine, absolute_sigma=self.absolute_sigma,
                     guess_offset=self.guess_offset, cov_mc=self.cov_mc, samples_mc=self.samples_mc,
-                    arithmetics=self.arithmetics, summed=self.summed, linked=self.linked)
+                    arithmetics=self.arithmetics, summed=self.summed, linked=self.linked,
+                    col_acol_config=self.col_acol_config)
 
     def gen_fitter(self):
         if not self.files:
@@ -207,9 +209,6 @@ class SpectraFit:
         # if self.save_figure:
         #     self.save_fits_as_fig(popt, pcov, info)
         return popt, pcov, info
-
-    def adjust_uf0(self, iterate, d_volt, d_mhz):
-        pass
 
     def get_pars(self, i):
         return self.fitter.get_pars(i)

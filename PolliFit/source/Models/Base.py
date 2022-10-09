@@ -222,8 +222,8 @@ class NPeak(Model):
         self.type = 'NPeak'
         self.n_peaks = int(n_peaks)
         for n in range(self.n_peaks):
-            self._add_arg('x{}'.format(n), 0., False, False)
-            self._add_arg('p{}'.format(n), 1., False, False)
+            self._add_arg('x{}'.format(n), 0., n == 0, False)
+            self._add_arg('p{}'.format(n), 1., n == 0, False)
 
     def evaluate(self, x, *args, **kwargs):
         return np.sum([args[self.model.size + 2 * n + 1]
@@ -398,8 +398,8 @@ class Summed(Listed):
         self.indices_add = []
         for n, (model, label) in enumerate(zip(self.models, self.labels)):
             self.indices_add.append([self._index, self._index + 1])
-            self._add_arg('center{}'.format(label), 0., n == 0, False)
-            self._add_arg('int{}'.format(label), 1., True, False)
+            self._add_arg('center{}'.format(label), 0., False, False)
+            self._add_arg('int{}'.format(label), 1., False, False)
 
     def evaluate(self, x, *args, **kwargs):
         return np.sum([args[i[1]] * model.evaluate(x - args[i[0]], *args[_slice], **kwargs)

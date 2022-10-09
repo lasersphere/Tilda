@@ -9,23 +9,200 @@ A collection of physical constants and formulas
 import math
 
 import numpy as np
+import scipy.constants as sc
 from scipy import special
 from scipy.stats import cauchy, norm
 
-# _d marks uncertainty
-c = 299792458  # speed of light
-u = 1.660538921e-27  # atomic mass unit
-u_d = 7.3e-35  # delta u
-pi = 3.14159265
-me = 9.10938291e-31  # electron mass
-me_d = 4e-38
-me_u = 5.4857990946e-4  # electron mass in u
-me_u_d = 2.2e-13
-qe = 1.602176565e-19  # electron charge
-qe_d = 3.5e-27
-h = 6.626070040e-34  # planck constant
-hbar = h / (2 * np.pi)
+# _d marks uncertainty, commented values are the previously used hardcoded values.
+c = sc.c  # 299792458  # speed of light
+u = sc.physical_constants['atomic mass constant'][0]  # 1.660538921e-27  # atomic mass unit
+u_d = sc.physical_constants['atomic mass constant'][2]  # 7.3e-35  # delta u
+pi = np.pi  # 3.14159265
+me = sc.physical_constants['electron mass'][0]  # 9.10938291e-31  # electron mass
+me_d = sc.physical_constants['electron mass'][2]  # 4e-38
+me_u = sc.physical_constants['electron mass in u'][0]  # 5.4857990946e-4  # electron mass in u
+me_u_d = sc.physical_constants['electron mass in u'][2]  # 2.2e-13
+qe = sc.physical_constants['elementary charge'][0]  # 1.602176565e-19  # electron charge
+qe_d = sc.physical_constants['elementary charge'][2]  # 3.5e-27
+h = sc.h  # 6.626070040e-34  # planck constant
+hbar = sc.hbar
 LEMNISCATE = 2.6220575543
+
+
+def gamma_v(v):
+    """
+    :param v: The velocity of the particle (m/s).
+    :returns: The time-dilation factor gamma.
+    """
+    return 1 / np.sqrt(1 - (v / c) ** 2)
+
+
+def gamma_e(e, m):
+    """
+    :param e: The kinetic energy of the particle (eV).
+    :param m: The mass of the particle (u).
+    :returns: The time-dilation factor gamma.
+    """
+    return 1 + e * qe / (m * u * c ** 2)
+
+
+def gamma_e_d(e, e_d, m, m_d):
+    """
+    :param e: The kinetic energy of the particle (eV).
+    :param e_d: The uncertainty of the kinetic energy of the particle (eV).
+    :param m: The mass of the particle (u).
+    :param m_d: The uncertainty of the mass of the particle (u).
+    :returns: The uncertainty of the time-dilation factor gamma.
+    """
+    return np.sqrt((e_d * qe / (m * u * c ** 2)) ** 2 + (m_d * e * qe / (m ** 2 * u * c ** 2)) ** 2)
+
+
+def beta_e(e, m):  # == relVelocity(e, m) / c
+    """
+    :param e: The kinetic energy of the particle (eV).
+    :param m: The mass of the particle (u).
+    :returns: The relative velocity beta.
+    """
+    return np.sqrt(1 - 1 / gamma_e(e, m) ** 2)
+
+
+def beta_gamma(gamma):
+    """
+    :param gamma: The time-dilation factor gamma.
+    :returns: The relative velocity beta.
+    """
+    return np.sqrt(1 - 1 / gamma ** 2)
+
+
+def beta_gamma_d(gamma, gamma_d):
+    """
+    :param gamma: The time-dilation factor gamma.
+    :param gamma_d: The uncertainty of the time-dilation factor gamma.
+    :returns: The relative velocity beta.
+    """
+    return gamma_d / (beta_gamma(gamma) * gamma ** 3)
+
+
+def recoil(freq, m):
+    """
+    :param freq: The frequency of the laser in the rest-frame of the particle (MHz).
+    :param m: The mass of the particle (u).
+    :returns: The frequency equivalent of the energy of a photon with frequency 'freq'
+     which is converted into kinetic energy upon absorption by a particle with mass 'm' (MHz).
+    """
+    return h * freq ** 2 / (2 * m * u * c ** 2) * 1e6
+
+
+def doppler_e(f, e, m, alpha, rest_frame=True):
+    """
+    :param f: The frequency of a photon in the lab-frame (rest_frame=True)
+     or in the rest-frame (rest_frame=False) (arb. units)
+    :param e: The kinetic energy of the particle (eV).
+    :param m: The mass of the particle (u).
+    :param alpha: The angle between the wave-vector of the photon
+     and the velocity vector of the particle in the lab-frame (rad).
+    :param rest_frame: Whether the frequency is shifted into the rest-frame of the particle.
+    :returns: The Doppler-shifted frequency.
+    """
+    gamma = gamma_e(e, m)
+    if rest_frame:
+        return f * gamma * (1 - np.cos(alpha) * beta_gamma(gamma))
+    return f / gamma * (1 - np.cos(alpha) * beta_gamma(gamma))
+
+
+def doppler_e_d(f, f_d, e, e_d, m, m_d, alpha, rest_frame=True):
+    gamma = gamma_e(e, m)
+    gamma_d = gamma_e_d(e, e_d, m, m_d)
+    beta_d = beta_gamma_d(gamma, 1)
+    val = doppler_e(f, e, m, alpha, rest_frame=True)
+    val_gamma = val / gamma - f * gamma * np.cos(alpha) * beta_d
+    if rest_frame:
+        return np.sqrt((f_d * val / f) ** 2 + (val_gamma * gamma_d) ** 2)
+    return np.sqrt((f_d * val / f) ** 2 + (f ** 2 / val ** 2 * val_gamma * gamma_d) ** 2)
+
+
+def col_acol_ec_ea(f_laser_c, f_laser_a, e_c, e_a, m):
+    """
+    :param f_laser_c: The frequency of the collinear photon in the lab-frame (MHz).
+    :param f_laser_a: The frequency of the anti-collinear photon in the lab-frame (MHz).
+    :param e_c: The kinetic energy of the particle interacting with the collinear photon (eV).
+    :param e_a: The kinetic energy of the particle interacting with the anti-collinear photon (eV).
+    :param m: The mass of the particle (u).
+    :returns: The frequency equivalent of the energy absorbed by a particle with mass 'm' (MHz).
+    """
+    f_c = doppler_e(f_laser_c, e_c, m, alpha=0, rest_frame=True)
+    f_a = doppler_e(f_laser_a, e_a, m, alpha=np.pi, rest_frame=True)
+    f = np.sqrt(f_c * f_a)
+    return f - recoil(f, m)
+
+
+def col_acol_ec_ea_d(f_laser_c, f_laser_c_d, f_laser_a, f_laser_a_d, e_c, e_c_d, e_a, e_a_d, m, m_d):
+    """
+    :param f_laser_c: The frequency of the collinear photon in the lab-frame (MHz).
+    :param f_laser_c_d: The uncertainty of the frequency of the collinear photon in the lab-frame (MHz).
+    :param f_laser_a: The frequency of the anti-collinear photon in the lab-frame (MHz).
+    :param f_laser_a_d: The uncertainty of the frequency of the anti-collinear photon in the lab-frame (MHz).
+    :param e_c: The kinetic energy of the particle interacting with the collinear photon (eV).
+    :param e_c_d: The uncertainty of the kinetic energy of the particle interacting with the collinear photon (eV).
+    :param e_a: The kinetic energy of the particle interacting with the anti-collinear photon (eV).
+    :param e_a_d: The uncertainty of the kinetic energy of the particle interacting with the anti-collinear photon (eV).
+    :param m: The mass of the particle (u).
+    :param m_d: The uncertainty of the mass of the particle (u).
+    :returns: The uncertainty of the frequency equivalent of the energy absorbed by a particle with mass 'm',
+     neglecting the uncertainty of the photon recoil (MHz).
+    """
+    f_c = doppler_e(f_laser_c, e_c, m, alpha=0, rest_frame=True)
+    f_c_d = doppler_e_d(f_laser_c, f_laser_c_d, e_c, e_c_d, m, m_d, alpha=0, rest_frame=True)
+    f_c_md = doppler_e_d(f_laser_c, 0, e_c, 0, m, m_d, alpha=0, rest_frame=True)
+
+    f_a = doppler_e(f_laser_a, e_a, m, alpha=np.pi, rest_frame=True)
+    f_a_d = doppler_e_d(f_laser_a, f_laser_a_d, e_a, e_a_d, m, m_d, alpha=np.pi, rest_frame=True)
+    f_a_md = doppler_e_d(f_laser_a, 0, e_a, 0, m, m_d, alpha=np.pi, rest_frame=True)
+
+    f = np.sqrt(f_c * f_a)
+    return np.sqrt((f_a * f_c_d) ** 2 + (f_c * f_a_d) ** 2 - 2 * f_c * f_a * f_c_md * f_a_md) / (2 * f)
+
+
+def volt_to_rel_freq(volt, charge, mass, f_laser, f_0, col, lab_frame=False):
+    """
+    :param volt: The total acceleration voltage (V).
+    :param charge: The charge of the particle (e).
+    :param mass: The mass of the particle (u).
+    :param f_laser: The laser frequency (arb. units).
+    :param f_0: The reference frequency in the rest frame of the particle.
+    :param col: Whether the lasers are aligned in collinear or anticollinear geometry.
+    :param lab_frame: Return the frequencies in the rest-frame of the ion (False) or the laboratory frame (True).
+    :returns: The doppler shifted frequency of the laser in the rest frame of a particle
+     accelerated with 'volt' relative to a reference frequency 'f_0'.
+    """
+    pm = -1 if col else 1
+    v = pm * relVelocity(qe * charge * volt, mass * u)
+    if lab_frame:
+        return f_laser - relDoppler(f_0, -v)
+    return relDoppler(f_laser, v) - f_0
+
+
+def rel_freq_to_volt(rel_freq, charge, mass, f_laser, f_0, col):
+    """
+    :param rel_freq: The relative frequency in the rest frame of a particle (MHz).
+    :param charge: The charge of the particle (e).
+    :param mass: The mass of the particle (u).
+    :param f_laser: The laser frequency (arb. units).
+    :param f_0: The reference frequency in the rest frame of the particle.
+    :param col: Whether the lasers are aligned in collinear or anticollinear geometry.
+    :returns: The total acceleration voltages which shift the laser frequency to 'rel_freq',
+     the frequencies relative to 'f_0'.
+    """
+    pm = 1 if col else -1
+    v = pm * invRelDoppler(f_laser, rel_freq + f_0)
+    return relEnergy(v, mass * u) / (charge * qe)
+
+
+def rel_freq_to_volt_d(rel_freq, rel_freq_d, charge, mass, f_laser, f_0):
+    freq = rel_freq + f_0
+    v = np.abs(invRelDoppler(f_laser, freq))
+    return 4 * mass * u * c / (charge * qe) * gamma_v(v) ** 3 * v \
+        * freq * f_laser ** 2 * rel_freq_d / (freq ** 2 + f_laser ** 2) ** 2
 
 
 def relVelocity(e, m):
@@ -115,41 +292,6 @@ def invRelDoppler(laserFreq, dopplerFreq):
     # rs = (dopplerFreq/laserFreq)**2
     # return c*(rs - 1)/(rs + 1)
     return c * (laserFreq ** 2 - dopplerFreq ** 2) / (laserFreq ** 2 + dopplerFreq ** 2)
-
-
-def volt_to_rel_freq(volt, charge, mass, f_laser, f_0, col, lab_frame=False):
-    """
-    :param volt: The total acceleration voltage (V).
-    :param charge: The charge of the particle (e).
-    :param mass: The mass of the particle (u).
-    :param f_laser: The laser frequency (arb. units).
-    :param f_0: The reference frequency in the rest frame of the particle.
-    :param col: Whether the lasers are aligned in collinear or anticollinear geometry.
-    :param lab_frame: Return the frequencies in the rest-frame of the ion (False) or the laboratory frame (True).
-    :returns: The doppler shifted frequency of the laser in the rest frame of a particle
-     accelerated with 'volt' relative to a reference frequency 'f_0'.
-    """
-    pm = -1 if col else 1
-    v = pm * relVelocity(qe * charge * volt, mass * u)
-    if lab_frame:
-        return f_laser - relDoppler(f_0, -v)
-    return relDoppler(f_laser, v) - f_0
-
-
-def rel_freq_to_volt(rel_freq, charge, mass, f_laser, f_0, col):
-    """
-    :param rel_freq: The relative frequency in the rest frame of a particle (MHz).
-    :param charge: The charge of the particle (e).
-    :param mass: The mass of the particle (u).
-    :param f_laser: The laser frequency (arb. units).
-    :param f_0: The reference frequency in the rest frame of the particle.
-    :param col: Whether the lasers are aligned in collinear or anticollinear geometry.
-    :returns: The total acceleration voltages which shift the laser frequency to 'rel_freq',
-     the frequencies relative to 'f_0'.
-    """
-    pm = 1 if col else -1
-    v = pm * invRelDoppler(f_laser, rel_freq + f_0)
-    return relEnergy(v, mass * u) / (charge * qe)
 
 
 def voigt(x, sig, gam):

@@ -16,8 +16,10 @@ from matplotlib.axes._base import _process_plot_format
 
 from Gui.Ui_SpectraFit import Ui_SpectraFit
 from Gui.TRSConfigUi import TRSConfigUi
+from Gui.ColAcolConfigUi import ColAcolConfigUi
 from Gui.HFMixingConfigUi import HFMixingConfigUi
 from SpectraFit import SpectraFit
+from Fitter import COL_ACOL_CONFIG
 from Models.Spectrum import SPECTRA
 from Models.Convolved import CONVOLVE
 import TildaTools as TiTs
@@ -32,8 +34,10 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         super(SpectraFitUi, self).__init__()
         self.setupUi(self)
 
-        self.trs_config_ui = None
         self.hf_mixing_config_ui = None
+        self.trs_config_ui = None
+        self.col_acol_config_ui = None
+        self.col_acol_config = deepcopy(COL_ACOL_CONFIG)
         self.load_lineshapes()
         self.load_convolves()
         self.main_tilda_gui = None
@@ -104,9 +108,10 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.check_arithmetics.stateChanged.connect(self.toggle_arithmetics)
         self.b_trsplot.clicked.connect(self.open_trsplot)
         self.b_trs.clicked.connect(self.open_trs)
-        self.b_adjust.clicked.connect(self.adjust_uf0)
         self.check_summed.stateChanged.connect(self.toogle_summed)
         self.check_linked.stateChanged.connect(self.toogle_linked)
+        self.b_col_acol.clicked.connect(self.open_col_acol)
+        self.check_col_acol.stateChanged.connect(self.toggle_col_acol)
         self.check_save_to_db.stateChanged.connect(self.toggle_save_to_db)
         # self.check_save_figure.stateChanged.connect(self.toggle_save_figure)
 
@@ -235,6 +240,11 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             items = self.list_files.findItems(self.spectra_fit.files[i], QtCore.Qt.MatchFlag.MatchExactly)
             items[0].setForeground(QtCore.Qt.GlobalColor.red)
 
+    def get_selected_items(self):
+        items = [self.list_files.item(i) for i in range(self.list_files.count())]
+        selected = self.list_files.selectedItems()
+        return sorted(selected, key=lambda item: items.index(item))
+
     def select_from_list(self, items, selected=None):
         """
         :param items: The set of items to select.
@@ -247,7 +257,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         if self.check_multi.isChecked():  # If multi selection is enabled, (de-)select all items of the set.
             if selected is None:
                 selected = True
-                selected_items = self.list_files.selectedItems()
+                selected_items = self.get_selected_items()
                 if len(selected_items) > 0 and len(selected_items) == len(items) \
                         and all(item is selected_items[i] for i, item in enumerate(items)):
                     selected = False
@@ -315,7 +325,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             configs.append(config)
         if configs:
             self.set_model_gui(configs[self.index_load])
-            self.mark_loaded(self.list_files.selectedItems())
+            self.mark_loaded(self.get_selected_items())
         return configs
 
     def gen_spectra_fit(self):
@@ -328,7 +338,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                 self.spectra_fit.fitter.deleteLater()  # Make sure the QObject, which lives in another thread,
                 # is deleted before creating a new one.
 
-        files = [f.text() for f in self.list_files.selectedItems()]
+        files = [f.text() for f in self.get_selected_items()]
         runs = [self.c_run.currentText() for _ in self.list_files.selectedItems()]
         configs = self._gen_configs(files, runs)
         arithmetics = self.edit_arithmetics.text().strip().lower()
@@ -341,6 +351,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                       arithmetics=arithmetics if arithmetics else None,
                       summed=self.check_summed.isChecked(),
                       linked=self.check_linked.isChecked(),
+                      col_acol_config=self.col_acol_config,
                       save_to_db=self.check_save_to_db.isChecked(),
                       x_as_freq=self.check_x_as_freq.isChecked(),
                       fig_save_format=self.c_fig.currentText(),
@@ -673,8 +684,9 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.trs_config_ui.show()
 
     def set_softw_gates(self, softw_gates, tr_ind, suppress_plot=False):
-        self.spectra_fit.set_softw_gates(self.index_config, softw_gates, tr_ind)
-        self.plot_auto(suppress_plot)
+        if softw_gates:
+            self.spectra_fit.set_softw_gates(self.index_config, softw_gates, tr_ind)
+            self.plot_auto(suppress_plot)
 
     # noinspection PyUnusedLocal
     def softw_gates_from_time_res_plot(self, softw_g, tr_ind, soft_b_width, plot_bool):
@@ -729,9 +741,6 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             # new_gate_or_soft_bin_width = QtCore.pyqtSignal(list, int, list, bool)
             f_win.new_gate_or_soft_bin_width.connect(self.softw_gates_from_time_res_plot)
 
-    def adjust_uf0(self):
-        self.spectra_fit.adjust_uf0(self.check_iterate.isChecked(), self.d_volt.value(), self.d_mhz.value())
-
     def toogle_summed(self):
         pass
 
@@ -743,6 +752,22 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             self.check_cov_mc.setEnabled(False)
         else:
             self.check_cov_mc.setEnabled(True)
+
+    def toggle_col_acol(self):
+        self.col_acol_config['enabled'] = self.check_col_acol.isChecked()
+
+    def open_col_acol(self):
+        if self.col_acol_config_ui is not None:
+            self.col_acol_config_ui.deleteLater()
+        parameters = list(self.tab_pars.item(i, 0).text() for i in range(self.tab_pars.rowCount()))
+        self.col_acol_config_ui = ColAcolConfigUi(parameters, self.col_acol_config)
+        self.col_acol_config_ui.gate_signal.connect(
+            lambda config=self.col_acol_config_ui.col_acol_config: self.set_col_acol_config(config))
+        self.col_acol_config_ui.show()
+
+    def set_col_acol_config(self, config):
+        for k, v in config.items():
+            self.col_acol_config[k] = v
 
     def toggle_save_to_db(self):
         self.spectra_fit.save_to_db = self.check_save_to_db.isChecked()
@@ -791,7 +816,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
     """ Action (Fit)"""
 
     def fit(self):
-        self.mark_loaded(self.list_files.selectedItems())
+        self.mark_loaded(self.get_selected_items())
         _, _, info = self.spectra_fit.fit()
         self.tab_pars.blockSignals(True)
         self.update_vals()
@@ -800,7 +825,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.mark_errs(info['errs'])
 
     def fit_threaded(self):
-        self.mark_loaded(self.list_files.selectedItems())
+        self.mark_loaded(self.get_selected_items())
         if self.spectra_fit.fitter is None:
             return
         self.spectra_fit.fitter.config = self.spectra_fit.gen_config()
