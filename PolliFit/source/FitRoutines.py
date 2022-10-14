@@ -15,6 +15,15 @@ import scipy.optimize as so
 import matplotlib.pyplot as plt
 
 
+def const(_, a):
+    """
+    :param _: The x values.
+    :param a: The constant.
+    :returns: a.
+    """
+    return a
+
+
 def straight(x, a, b):
     """
     :param x: The x values.

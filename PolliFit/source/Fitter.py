@@ -13,7 +13,7 @@ import itertools as it
 from PyQt5.QtCore import QObject, pyqtSignal
 
 # noinspection PyUnresolvedReferences
-from FitRoutines import curve_fit
+from FitRoutines import curve_fit, const
 import Physics as Ph
 from Tools import print_colored, print_cov
 from Models.Collection import Linked
@@ -500,15 +500,18 @@ class Fitter(QObject):
         f = np.array([r['AbsFreq'] for r in results])
         df = np.array([r['AbsFreq_d'] for r in results])
 
+        med = np.around(np.median(f), decimals=3)
+        med_0 = np.around(med - np.percentile(f, 15.8655254), decimals=3)
+        med_1 = np.around(np.percentile(f, 84.1344746) - med, decimals=3)
+
         av = np.around(np.average(f), decimals=3)
         av_d = np.around(np.std(f, ddof=1) / np.sqrt(f.size), decimals=3)
 
         wav, wav_d = np.average(f, weights=1 / df ** 2, returned=True)
         wav, wav_d = np.around(wav, decimals=3), np.around(np.sqrt(1 / wav_d), decimals=3)
 
-        med = np.around(np.median(f), decimals=3)
-        med_0 = np.around(med - np.percentile(f, 15.8655254), decimals=3)
-        med_1 = np.around(np.percentile(f, 84.1344746) - med, decimals=3)
+        popt, pcov = curve_fit(const, np.linspace(-1, 1, f.size), f, p0=[wav], sigma=df, absolute_sigma=False)
+        fit, fit_d = popt[0], np.sqrt(np.diag(pcov)[0])
 
         if self.config['col_acol_config']['show_results']:
             pass
@@ -517,13 +520,16 @@ class Fitter(QObject):
             db = os.path.split(self.iso[0].db)[1]
             db = db[:-(db[::-1].find('.') + 1)]
             filename = self.config['col_acol_config']['file'].replace('{db}', db).replace('{run}', self.run)
+            files = [meas.file for meas in self.meas]
             with open(os.path.join(os.path.dirname(self.iso[0].db), filename), 'w') as file:
+                file.write('# {}\n'.format(repr(files)))
                 file.write('# {}\n'.format(', '.join(header_list)))
                 for r in results:
                     file.write('{}\n'.format(', '.join([str(np.around(r[h], decimals=3)) for h in header_list])))
+                file.write('# median: {} +{} / -{} MHz'.format(med, med_1, med_0))
                 file.write('#\n# average: {} +/- {} MHz\n'.format(av, av_d))
                 file.write('# weighted average: {} +/- {} MHz\n'.format(wav, wav_d))
-                file.write('# median: {} +{} / -{} MHz'.format(med, med_1, med_0))
+                file.write('# const fit: {} +/- {} MHz\n'.format(fit, fit_d))
             # plt.savefig()
 
     def fit_col_acol(self):
@@ -540,6 +546,9 @@ class Fitter(QObject):
         mhz = self.config['col_acol_config']['mhz']
 
         col, acol = self._gen_col_acol()
+
+        # for x, y, model in zip(self.x, self.y, self.models):
+        #     model.set_val(model.p[self.config['col_acol_config']['parameter']], x[np.argmax(y)])
 
         self._fit()
         results = self._calc_col_acol(col, acol)
