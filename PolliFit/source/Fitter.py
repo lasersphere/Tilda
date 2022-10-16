@@ -511,7 +511,9 @@ class Fitter(QObject):
         wav, wav_d = np.around(wav, decimals=3), np.around(np.sqrt(1 / wav_d), decimals=3)
 
         popt, pcov = curve_fit(const, np.linspace(-1, 1, f.size), f, p0=[wav], sigma=df, absolute_sigma=False)
-        fit, fit_d = popt[0], np.sqrt(np.diag(pcov)[0])
+        fit, fit_d = np.around(popt[0], decimals=3), np.around(np.sqrt(np.diag(pcov)[0]), decimals=3)
+
+        f0, f0_d = fit, np.max([av_d, wav_d, fit_d])
 
         if self.config['col_acol_config']['show_results']:
             pass
@@ -526,11 +528,11 @@ class Fitter(QObject):
                 file.write('# {}\n'.format(', '.join(header_list)))
                 for r in results:
                     file.write('{}\n'.format(', '.join([str(np.around(r[h], decimals=3)) for h in header_list])))
-                file.write('# median: {} +{} / -{} MHz'.format(med, med_1, med_0))
-                file.write('#\n# average: {} +/- {} MHz\n'.format(av, av_d))
+                file.write('#\n# median: {} +{} / -{} MHz\n'.format(med, med_1, med_0))
+                file.write('# average: {} +/- {} MHz\n'.format(av, av_d))
                 file.write('# weighted average: {} +/- {} MHz\n'.format(wav, wav_d))
                 file.write('# const fit: {} +/- {} MHz\n'.format(fit, fit_d))
-            # plt.savefig()
+                file.write('# f0: {} +/- {} MHz'.format(f0, f0_d))
 
     def fit_col_acol(self):
         if not self._check_col_acol():
