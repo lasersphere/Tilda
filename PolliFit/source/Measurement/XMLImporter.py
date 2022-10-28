@@ -545,6 +545,8 @@ class XMLImporter(SpecData):
 
     def get_frequency_measurement(self, path, scan_triton_dict):
         """
+        TODO: Method is statistically not exact if more than one comb reading is used
+         for a single track (mean of means).
         It is assumed the frequency has been measured before and/or after first measurement track since
         frequency measurements per track like [f1, f2, ..] is not (yet) supported.
         The frequency measurement is measured by Triton device FrequencyComb1 and/or FrequencyComb2. The first found
@@ -609,8 +611,9 @@ class XMLImporter(SpecData):
             # now take the mean value for this track:
             combs_freq_mean_tr = {}  # list for the mean value of all combs that have a reading for this track
             for comb_key, comb_a_col_col_dict in freq_comb_data_tr.items():
-                comb_mean = np.mean(comb_a_col_col_dict)
-                comb_err = np.std(comb_a_col_col_dict)
+                vals = [val for val in comb_a_col_col_dict if val > 0]
+                comb_mean = np.mean(vals)
+                comb_err = np.std(vals)
                 if not np.isnan(comb_mean):
                     combs_freq_mean_tr[comb_key] = (comb_mean, comb_err)
             freqs_by_dev.append(combs_freq_mean_tr)
