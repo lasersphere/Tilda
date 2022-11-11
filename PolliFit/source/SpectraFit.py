@@ -248,12 +248,47 @@ class SpectraFit:
             print('softw_gates could not be loaded from FitPars, loading from selected run.')
         return softw_gates
 
+    def _pars_from_legacy_db(self, file, run):
+        iso = TiTs.select_from_db(self.db, 'type', 'Files', [['file'], [file]], caller_name=__name__)
+        if iso is None:
+            return {}
+        iso = iso[0][0]
+        line = TiTs.select_from_db(self.db, 'lineVar', 'Runs', [['run'], [run]], caller_name=__name__)
+        if line is None:
+            return {}
+        line = line[0][0]
+        pars = TiTs.select_from_db(self.db, 'shape, fixShape', 'Lines', [['lineVar'], [line]], caller_name=__name__)
+        fixes = ast.literal_eval(pars[0][1])
+        pars = ast.literal_eval(pars[0][0])
+        pars = {par: (val, fixes.get(par, False), False) for par, val in pars.items()}
+        columns = ['center', 'Al', 'Bl', 'Au', 'Bu', 'fixedArat', 'fixedBrat', 'm',
+                   'fixedAl', 'fixedBl', 'fixedAu', 'fixedBu']
+
+        m_flag = False
+        while iso is not None:
+            pars_iso = TiTs.select_from_db(self.db, ', '.join(columns), 'Isotopes',
+                                           [['iso'], [iso]], caller_name=__name__)
+            pars_iso = {par: pars_iso[0][i] for i, par in enumerate(columns)}
+            m = pars_iso['m']
+            names = ['center', 'Al', 'Bl', 'Au', 'Bu']
+            if m is not None or m_flag:
+                m_flag = True
+                names = ['{}({})'.format(par, iso) for par in names]
+            pars = {**pars, **{par: (pars_iso.get(par, pars_iso[par[:par.find('(')]]),
+                               pars_iso.get('fixed{}'.format(par[:2]), False), False) for par in names}}
+            if pars_iso['fixedArat']:
+                pars[names[3]] = '{} * {}'.format(pars_iso['fixedArat'], names[1])
+            if pars_iso['fixedBrat']:
+                pars[names[4]] = '{} * {}'.format(pars_iso['fixedBrat'], names[2])
+            iso = m
+        return pars
+
     def _pars_from_db(self, file, run):
         pars = TiTs.select_from_db(self.db, 'pars', 'FitPars', [['file', 'run'], [file, run]], caller_name=__name__)
         if pars is None:
             pars = TiTs.select_from_db(self.db, 'pars', 'FitPars', [['run'], [run]], caller_name=__name__)
             if pars is None:
-                return {}
+                return self._pars_from_legacy_db(file, run)
         pars = ast.literal_eval(pars[0][0])
         return pars
 
