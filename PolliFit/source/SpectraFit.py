@@ -250,7 +250,7 @@ class SpectraFit:
 
     def _pars_from_legacy_db(self, file, run):
         iso = TiTs.select_from_db(self.db, 'type', 'Files', [['file'], [file]], caller_name=__name__)
-        if iso is None:
+        if iso is None or not iso:
             return {}
         iso = iso[0][0]
         line = TiTs.select_from_db(self.db, 'lineVar', 'Runs', [['run'], [run]], caller_name=__name__)
@@ -265,7 +265,7 @@ class SpectraFit:
                    'fixedAl', 'fixedBl', 'fixedAu', 'fixedBu']
 
         m_flag = False
-        while iso is not None:
+        while iso is not None and iso:
             pars_iso = TiTs.select_from_db(self.db, ', '.join(columns), 'Isotopes',
                                            [['iso'], [iso]], caller_name=__name__)
             pars_iso = {par: pars_iso[0][i] for i, par in enumerate(columns)}
