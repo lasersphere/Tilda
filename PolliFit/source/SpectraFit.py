@@ -24,6 +24,13 @@ def execute(cur, command, *args):
         print_colored('FAIL', repr(e))
 
 
+def _get_iso_par_from_dict(par_dict, par):
+    try:
+        return par_dict[par]
+    except KeyError:
+        return par_dict[par[:par.find('(')]]
+
+
 class SpectraFit:
     def __init__(self, db, files, runs, configs, index_config,
                  x_axis='ion frequencies', routine='curve_fit', absolute_sigma=False, guess_offset=True,
@@ -274,8 +281,9 @@ class SpectraFit:
             if m is not None or m_flag:
                 m_flag = True
                 names = ['{}({})'.format(par, iso) for par in names]
-            pars = {**pars, **{par: (pars_iso.get(par, pars_iso[par[:par.find('(')]]),
-                               pars_iso.get('fixed{}'.format(par[:2]), False), False) for par in names}}
+            _pars = {par: (_get_iso_par_from_dict(pars_iso, par),
+                     pars_iso.get('fixed{}'.format(par[:2]), False), False) for par in names}
+            pars = {**pars, **_pars}
             if pars_iso['fixedArat']:
                 pars[names[3]] = '{} * {}'.format(pars_iso['fixedArat'], names[1])
             if pars_iso['fixedBrat']:
@@ -287,6 +295,8 @@ class SpectraFit:
         pars = TiTs.select_from_db(self.db, 'pars', 'FitPars', [['file', 'run'], [file, run]], caller_name=__name__)
         if pars is None:
             pars = TiTs.select_from_db(self.db, 'pars', 'FitPars', [['run'], [run]], caller_name=__name__)
+            # if pars is None:
+            #     pars = TiTs.select_from_db(self.db, 'pars', 'FitPars', [['file'], [file]], caller_name=__name__)
             if pars is None:
                 return self._pars_from_legacy_db(file, run)
         pars = ast.literal_eval(pars[0][0])
