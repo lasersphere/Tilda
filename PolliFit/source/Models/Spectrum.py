@@ -13,7 +13,7 @@ from Models.Base import Model
 
 
 # The names of the spectra. Includes all spectra that appear in the GUI.
-SPECTRA = ['Gauss', 'Lorentz', 'Voigt', 'VoigtDerivative', 'GaussChi2']
+SPECTRA = ['Gauss', 'Lorentz', 'Voigt', 'VoigtDerivative', 'VoigtCEC', 'GaussChi2']
 
 
 class Spectrum(Model):
@@ -108,6 +108,27 @@ class VoigtDerivative(Spectrum):
         z = (x + 1j * 0.5 * args[0]) / (np.sqrt(2) * args[1])
         fwhm = abs(0.5346 * args[0] + np.sqrt(0.2166 * args[0] ** 2 + args[1] ** 2))  # for normalization
         return -(z * wofz(z)).real / (np.sqrt(np.pi) * args[1] ** 2) / voigt_profile(0, args[1], 0.5 * args[0]) * fwhm
+
+    def fwhm(self):
+        f_l = self.vals[self.p['Gamma']]
+        f_g = np.sqrt(8 * np.log(2)) * self.vals[self.p['sigma']]
+        return abs(0.5346 * f_l + np.sqrt(0.2166 * f_l ** 2 + f_g ** 2))
+
+
+class VoigtCEC(Spectrum):
+    def __init__(self):
+        super().__init__()
+        self.type = 'VoigtCEC'
+
+        self._add_arg('Gamma', 1., False, False)
+        self._add_arg('sigma', 1., False, False)
+        self._add_arg('shift', 0., False, False)
+        self._add_arg('ratio', 0., False, False)
+        self._add_arg('n', 0, True, False)
+
+    def evaluate(self, x, *args, **kwargs):  # Normalize to the maximum.
+        return np.sum([args[3] ** i * voigt_profile(x - i * args[2], args[1], 0.5 * args[0])
+                       for i in range(int(args[4]) + 1)], axis=0) / voigt_profile(0, args[1], 0.5 * args[0])
 
     def fwhm(self):
         f_l = self.vals[self.p['Gamma']]
