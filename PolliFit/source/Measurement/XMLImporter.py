@@ -60,7 +60,7 @@ class XMLImporter(SpecData):
 
         self.nrTracks = scandict['isotopeData']['nOfTracks']
 
-        self.laserFreq, self.laserFreq_d = Physics.freqFromWavenumber(2 * scandict['isotopeData']['laserFreq']), 0.0
+        self.laserFreq, self.laserFreq_d = Physics.freqFromWavenumber(scandict['isotopeData']['laserFreq']), 0.0
         self.date = scandict['isotopeData']['isotopeStartTime']  # might be overwritten below by the mid time of the iso
         self.date_d = 0.0  # uncertainty of the date in s might be overwritten
         # at the end of tracks readout should be file_length / 2

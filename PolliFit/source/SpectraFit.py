@@ -275,6 +275,8 @@ class SpectraFit:
         while iso is not None and iso:
             pars_iso = TiTs.select_from_db(self.db, ', '.join(columns), 'Isotopes',
                                            [['iso'], [iso]], caller_name=__name__)
+            if pars_iso is None:
+                return {}
             pars_iso = {par: pars_iso[0][i] for i, par in enumerate(columns)}
             m = pars_iso['m']
             names = ['center', 'Al', 'Bl', 'Au', 'Bu']
