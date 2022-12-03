@@ -5,7 +5,6 @@ Created on 20.02.2022
 """
 
 import os
-
 import numpy as np
 import sqlite3
 import scipy.stats as st
@@ -60,7 +59,7 @@ class Fitter(QObject):
         self.config = config
         if self.config is None:
             self.config = dict(routine='curve_fit', absolute_sigma=False, guess_offset=True,
-                               cov_mc=False, samples_mc=100, arithmetics=None,
+                               cov_mc=False, samples_mc=100, arithmetics=None, save_to_disk=False,
                                summed=False, linked=False, col_acol_config=COL_ACOL_CONFIG)
         self.run = '' if run is None else run
         self.size = len(self.meas)
@@ -71,7 +70,7 @@ class Fitter(QObject):
 
         self.sizes = []
         self.x_volt, self.x, self.y, self.yerr = [], [], [], []
-        self.popt, self.pcov, self.info = [], [], []
+        self.popt, self.pcov, self.info = [], [], {}
         self.gen_data()
 
     def get_pars(self, i):
@@ -336,6 +335,9 @@ class Fitter(QObject):
         info = dict(warn=warn, errs=errs, chi2=chi2)
         return popt, pcov, info
 
+    def save_linked_fit(self):
+        pass
+
     def _check_col_acol(self):
         rule = self.config['col_acol_config']['rule']
         false_flag = False
@@ -515,24 +517,20 @@ class Fitter(QObject):
 
         f0, f0_d = fit, np.max([av_d, wav_d, fit_d])
 
-        if self.config['col_acol_config']['show_results']:
-            pass
-
-        if self.config['col_acol_config']['save_results']:
-            db = os.path.split(self.iso[0].db)[1]
-            db = db[:-(db[::-1].find('.') + 1)]
-            filename = self.config['col_acol_config']['file'].replace('{db}', db).replace('{run}', self.run)
-            files = [meas.file for meas in self.meas]
-            with open(os.path.join(os.path.dirname(self.iso[0].db), filename), 'w') as file:
-                file.write('# {}\n'.format(repr(files)))
-                file.write('# {}\n'.format(', '.join(header_list)))
-                for r in results:
-                    file.write('{}\n'.format(', '.join([str(np.around(r[h], decimals=3)) for h in header_list])))
-                file.write('#\n# median: {} +{} / -{} MHz\n'.format(med, med_1, med_0))
-                file.write('# average: {} +/- {} MHz\n'.format(av, av_d))
-                file.write('# weighted average: {} +/- {} MHz\n'.format(wav, wav_d))
-                file.write('# const fit: {} +/- {} MHz\n'.format(fit, fit_d))
-                file.write('# f0: {} +/- {} MHz'.format(f0, f0_d))
+        db = os.path.split(self.iso[0].db)[1]
+        db = db[:-(db[::-1].find('.') + 1)]
+        filename = self.config['col_acol_config']['file'].replace('{db}', db).replace('{run}', self.run)
+        files = [meas.file for meas in self.meas]
+        with open(os.path.join(os.path.dirname(self.iso[0].db), filename), 'w') as file:
+            file.write('# {}\n'.format(repr(files)))
+            file.write('# {}\n'.format(', '.join(header_list)))
+            for r in results:
+                file.write('{}\n'.format(', '.join([str(np.around(r[h], decimals=3)) for h in header_list])))
+            file.write('#\n# median: {} +{} / -{} MHz\n'.format(med, med_1, med_0))
+            file.write('# average: {} +/- {} MHz\n'.format(av, av_d))
+            file.write('# weighted average: {} +/- {} MHz\n'.format(wav, wav_d))
+            file.write('# const fit: {} +/- {} MHz\n'.format(fit, fit_d))
+            file.write('# f0: {} +/- {} MHz'.format(f0, f0_d))
 
     def fit_col_acol(self):
         if not self._check_col_acol():
@@ -561,7 +559,36 @@ class Fitter(QObject):
             results = self._calc_col_acol(col, acol)
             i += 1
 
-        self.save_col_acol(results)
+        if self.config['col_acol_config']['save_results']:
+            self.save_col_acol(results)
+
+    def save_fit(self):
+        db = os.path.split(self.iso[0].db)[1]
+        db = db[:-(db[::-1].find('.') + 1)]
+        path = os.path.join(os.path.dirname(self.iso[0].db), 'fit_results')
+        if not os.path.exists(path):
+            try:
+                os.makedirs(path)
+            except Exception as e:
+                print('Saving directory has not been created. Writing permission in DB directory?\n'
+                      'Error msg: {}'.format(e))
+                return
+        files = [os.path.splitext(meas.file)[0] for meas in self.meas]
+        for file, model, _popt, _pcov, chi2 in zip(files, self.models, self.popt, self.pcov, self.info['chi2']):
+            with open(os.path.join(path, '{}_{}_{}_fit.txt'.format(db, file, self.run)), 'w') as f:
+                f.write('# File: \'{}\'\n'.format(file))
+                f.write('# Run: \'{}\'\n'.format(self.run))
+                model_description = model.description
+                if self.config['linked']:
+                    model_description = 'Linked[0].{}'.format(model_description)
+                f.write('# Model: {}\n'.format(model_description))
+                f.write('# Red. chi2: {}\n# \n'.format(np.around(chi2, decimals=2)))
+                f.write('# Index, Parameter, Value, Uncertainty, Fixed, Linked\n')
+                for i, (name, val, unc, fixed, linked) in enumerate(
+                        zip(model.names, _popt, np.sqrt(np.diag(_pcov)), model.fixes, model.links)):
+                    f.write('{}, \'{}\', {}, {}, {}, {}\n'.format(
+                        i, name, val, unc, fixed, linked if self.config['linked'] else False))
+            np.save(os.path.join(path, '{}_{}_{}_cov'.format(db, file, self.run)), _pcov)
 
     def _fit(self):
         """
@@ -583,4 +610,6 @@ class Fitter(QObject):
             self.fit_col_acol()
         else:
             self._fit()
+        if self.config['save_to_disk']:
+            self.save_fit()
         self.finished.emit()

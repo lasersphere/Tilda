@@ -34,7 +34,7 @@ def _get_iso_par_from_dict(par_dict, par):
 class SpectraFit:
     def __init__(self, db, files, runs, configs, index_config,
                  x_axis='ion frequencies', routine='curve_fit', absolute_sigma=False, guess_offset=True,
-                 cov_mc=False, samples_mc=100, arithmetics=None,
+                 cov_mc=False, samples_mc=100, arithmetics=None, save_to_disk=False,
                  summed=False, linked=False, col_acol_config=None, save_to_db=False, x_as_freq=True,
                  fig_save_format='.png', zoom_data=False, fmt='.k', fontsize=10):
         self.db = db
@@ -52,6 +52,7 @@ class SpectraFit:
         self.samples_mc = samples_mc
         self.guess_offset = guess_offset
         self.arithmetics = arithmetics
+        self.save_to_disk = save_to_disk
         self.summed = summed
         self.linked = linked
         self.col_acol_config = col_acol_config
@@ -114,8 +115,8 @@ class SpectraFit:
     def gen_config(self):
         return dict(x_axis=self.x_axis, routine=self.routine, absolute_sigma=self.absolute_sigma,
                     guess_offset=self.guess_offset, cov_mc=self.cov_mc, samples_mc=self.samples_mc,
-                    arithmetics=self.arithmetics, summed=self.summed, linked=self.linked,
-                    col_acol_config=self.col_acol_config)
+                    arithmetics=self.arithmetics, save_to_disk=self.save_to_disk,
+                    summed=self.summed, linked=self.linked, col_acol_config=self.col_acol_config)
 
     def gen_fitter(self):
         if not self.files:

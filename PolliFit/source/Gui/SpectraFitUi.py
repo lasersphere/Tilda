@@ -113,6 +113,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.b_col_acol.clicked.connect(self.open_col_acol)
         self.check_col_acol.stateChanged.connect(self.toggle_col_acol)
         self.check_save_to_db.stateChanged.connect(self.toggle_save_to_db)
+        self.check_save_to_disk.stateChanged.connect(self.toggle_save_to_disk)
         # self.check_save_figure.stateChanged.connect(self.toggle_save_figure)
 
         # Plot.
@@ -771,6 +772,9 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
 
     def toggle_save_to_db(self):
         self.spectra_fit.save_to_db = self.check_save_to_db.isChecked()
+
+    def toggle_save_to_disk(self):
+        self.spectra_fit.save_to_disk = self.check_save_to_disk.isChecked()
 
     """ Plot """
 

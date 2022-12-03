@@ -44,6 +44,19 @@ class Model:
         self._size += 1
 
     @property
+    def description(self):
+        label = ''
+        super_model = self
+        while super_model is not None:
+            if isinstance(super_model, Listed):
+                label += super_model.type + '[0].'
+                super_model = super_model.models[0]
+            else:
+                label += super_model.type + '.'
+                super_model = super_model.model
+        return label[:-1]
+
+    @property
     def size(self):
         """
         :returns: The number of parameters required by the model.
