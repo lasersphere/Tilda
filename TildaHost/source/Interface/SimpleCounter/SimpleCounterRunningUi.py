@@ -20,11 +20,15 @@ from Interface.SimpleCounter.Ui_simpleCounterRunnning import Ui_SimpleCounterRun
 
 
 LCD_COUNTER = False
-MAGNITUDE = ['', '', ' K', ' M', ' B']
+COUNTER_FMT = ['{:1.2f}', '{:2.1f}', '{:3.0f}', ]
+MAGNITUDE = ['  ', ' K', ' M', ' B', ' T', ' Q']
 FONT_FAMILY = 'Century Gothic'
+I = 3
+J = 0
+cts = [99, 999, 99999, 9999999999999999]
 
 
-def gen_counter(parent):
+def gen_counter_sb(parent):
     if LCD_COUNTER:
         widg = QtWidgets.QLCDNumber(parent)
         widg.setDigitCount(6)
@@ -33,6 +37,7 @@ def gen_counter(parent):
     widg = QtWidgets.QSpinBox(parent)
     widg.setReadOnly(True)
     font = QtGui.QFont(FONT_FAMILY)
+    # font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
     widg.setFont(font)
     widg.setMinimum(0)
     widg.setMaximum(int(1e9))
@@ -40,6 +45,23 @@ def gen_counter(parent):
     widg.setSuffix(MAGNITUDE[0])
     widg.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
     widg.setGroupSeparatorShown(False)
+    widg.setFrame(False)
+    widg.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+    return widg
+
+
+def gen_counter(parent):
+    if LCD_COUNTER:
+        widg = QtWidgets.QLCDNumber(parent)
+        widg.setDigitCount(6)
+        widg.display(0)
+        return widg
+    widg = QtWidgets.QLineEdit(parent)
+    widg.setReadOnly(True)
+    font = QtGui.QFont(FONT_FAMILY)
+    # font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
+    widg.setFont(font)
+    widg.setText(COUNTER_FMT[0].format(0, ' '))
     widg.setFrame(False)
     widg.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
     return widg
@@ -130,17 +152,19 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
                     self.update_plot(i, self.x_data[i], self.y_data[i])
 
     def update_counter(self, i, last_second_sum):
-        if LCD_COUNTER:
-            self.elements[i]['widg'].display(last_second_sum)
-            return
+        # last_second_sum = cts[i]
         el = self.elements[i]['widg']
+        if LCD_COUNTER:
+            el.display(last_second_sum)
+            return
+        modulo = 2
         digits = int(np.floor(np.log10(np.abs(last_second_sum))).astype(int))
-        digits = digits // 3
-        el.setSuffix(MAGNITUDE[digits])
-        val = last_second_sum
-        if digits > 1:
-            val *= 1e-3 ** (digits - 1)
-        el.setValue(int(val + 0.5))
+        if digits > 2:
+            modulo = digits % 3
+            digits += 1
+            last_second_sum *= 1e-3 ** (digits // 3)
+        n_str = COUNTER_FMT[modulo].format(last_second_sum)[:4].rstrip('.').rjust(4)
+        el.setText('{}{}'.format(n_str, MAGNITUDE[digits // 3]))
 
     def update_plot(self, indic, xdata, ydata):
         plt_data_item = self.elements[indic].get('plotDataItem', None)
@@ -186,7 +210,7 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
             el = pl_dict['widg']
             font = el.font()
             metric = QtGui.QFontMetrics(font)
-            scale = min([scale, 0.95 * el.width() / metric.horizontalAdvance(el.lineEdit().text())])
+            scale = min([scale, 0.95 * el.width() / metric.horizontalAdvance(el.text())])
             scale = min([scale, 0.95 * el.height() / metric.height()])
         font.setPointSize(scale * font.pointSize())
         for pl_dict in self.elements:
@@ -210,6 +234,7 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
                 label = QtWidgets.QLabel(splitter)
                 label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
                 font = QtGui.QFont(FONT_FAMILY)
+                # font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
                 font.setPointSize(48)
                 label.setFont(font)
                 label.setObjectName(label_name)
