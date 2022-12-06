@@ -48,10 +48,18 @@
        <item>
         <layout class="QHBoxLayout" name="hor_run_select" stretch="1,1">
          <item>
-          <widget class="QComboBox" name="c_run"/>
+          <widget class="QComboBox" name="c_run">
+           <property name="toolTip">
+            <string>Choose a run.</string>
+           </property>
+          </widget>
          </item>
          <item>
-          <widget class="QComboBox" name="c_iso"/>
+          <widget class="QComboBox" name="c_iso">
+           <property name="toolTip">
+            <string>Choose an isotope.</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </item>
@@ -118,6 +126,9 @@
                <height>26</height>
               </size>
              </property>
+             <property name="toolTip">
+              <string>Select/Deselect all files.</string>
+             </property>
              <property name="text">
               <string>all</string>
              </property>
@@ -137,6 +148,9 @@
                <height>26</height>
               </size>
              </property>
+             <property name="toolTip">
+              <string>Select/Deselect all collinear files.</string>
+             </property>
              <property name="text">
               <string>col</string>
              </property>
@@ -155,6 +169,9 @@
                <width>50</width>
                <height>26</height>
               </size>
+             </property>
+             <property name="toolTip">
+              <string>Select/Deselect all anti-collinear files.</string>
              </property>
              <property name="text">
               <string>acol</string>
@@ -198,6 +215,9 @@
            </item>
            <item>
             <widget class="QCheckBox" name="check_multi">
+             <property name="toolTip">
+              <string>Enable/Disable multiselection.</string>
+             </property>
              <property name="text">
               <string>multi</string>
              </property>
@@ -333,6 +353,9 @@
                <height>26</height>
               </size>
              </property>
+             <property name="toolTip">
+              <string>Load all selected files and display the parameters and plot of the first file in the list.</string>
+             </property>
              <property name="text">
               <string>load</string>
              </property>
@@ -351,6 +374,9 @@
                <width>60</width>
                <height>26</height>
               </size>
+             </property>
+             <property name="toolTip">
+              <string>Save the parameter tables of all selected files to the database.</string>
              </property>
              <property name="text">
               <string>save</string>
@@ -384,6 +410,9 @@
                <height>26</height>
               </size>
              </property>
+             <property name="toolTip">
+              <string>Display the parameters and plot of the previous selected file.</string>
+             </property>
              <property name="text">
               <string>&lt;</string>
              </property>
@@ -402,6 +431,9 @@
                <width>40</width>
                <height>26</height>
               </size>
+             </property>
+             <property name="toolTip">
+              <string>Display the parameters and plot of the next selected file.</string>
              </property>
              <property name="text">
               <string>&gt;</string>
@@ -435,6 +467,9 @@
                <height>26</height>
               </size>
              </property>
+             <property name="toolTip">
+              <string>Copy the content of the current table to the tables of the other files.</string>
+             </property>
              <property name="text">
               <string>copy</string>
              </property>
@@ -453,6 +488,9 @@
                <width>60</width>
                <height>26</height>
               </size>
+             </property>
+             <property name="toolTip">
+              <string>Reset the tables of all selected files to the state of the last save.</string>
              </property>
              <property name="text">
               <string>reset</string>
@@ -518,7 +556,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-157</y>
+            <y>-131</y>
             <width>283</width>
             <height>580</height>
            </rect>
@@ -600,13 +638,20 @@
               </property>
               <item row="3" column="0">
                <widget class="QCheckBox" name="check_offset_per_track">
+                <property name="toolTip">
+                 <string>Enable individual offsets for each track.</string>
+                </property>
                 <property name="text">
                  <string>offset per track</string>
                 </property>
                </widget>
               </item>
               <item row="1" column="1">
-               <widget class="QComboBox" name="c_lineshape"/>
+               <widget class="QComboBox" name="c_lineshape">
+                <property name="toolTip">
+                 <string>Choose a lineshape.</string>
+                </property>
+               </widget>
               </item>
               <item row="3" column="1">
                <layout class="QHBoxLayout" name="hott_offset_order">
@@ -617,6 +662,9 @@
                     <width>100</width>
                     <height>16777215</height>
                    </size>
+                  </property>
+                  <property name="toolTip">
+                   <string>Choose the highest orders of the offset parameters track-wise. E. g. [2, 1] means quadratic in track 0 and linear in track 1.</string>
                   </property>
                   <property name="text">
                    <string>[0]</string>
@@ -634,6 +682,9 @@
               </item>
               <item row="5" column="1">
                <widget class="QPushButton" name="b_racah">
+                <property name="toolTip">
+                 <string>Set the hyperfine peak intensities to the theoretical values.</string>
+                </property>
                 <property name="text">
                  <string>Racah intensities</string>
                 </property>
@@ -643,6 +694,9 @@
                <widget class="QCheckBox" name="check_qi">
                 <property name="enabled">
                  <bool>false</bool>
+                </property>
+                <property name="toolTip">
+                 <string>Consider quantum interference.</string>
                 </property>
                 <property name="text">
                  <string>QI</string>
@@ -658,6 +712,9 @@
                     <width>40</width>
                     <height>16777215</height>
                    </size>
+                  </property>
+                  <property name="toolTip">
+                   <string>Choose the multiplicity of the model.</string>
                   </property>
                   <property name="minimum">
                    <number>1</number>
@@ -677,7 +734,11 @@
                </layout>
               </item>
               <item row="2" column="1">
-               <widget class="QComboBox" name="c_convolve"/>
+               <widget class="QComboBox" name="c_convolve">
+                <property name="toolTip">
+                 <string>Choose a second lineshape to be convolved with the first.</string>
+                </property>
+               </widget>
               </item>
               <item row="2" column="0">
                <widget class="QLabel" name="l_convolve">
@@ -693,6 +754,9 @@
                   <property name="enabled">
                    <bool>false</bool>
                   </property>
+                  <property name="toolTip">
+                   <string>Enable HF mixing (Open config ...).</string>
+                  </property>
                   <property name="text">
                    <string>HF mixing</string>
                   </property>
@@ -700,6 +764,9 @@
                 </item>
                 <item>
                  <widget class="QPushButton" name="b_hf_mixing">
+                  <property name="toolTip">
+                   <string>Configure the model for hyperfine mixing.</string>
+                  </property>
                   <property name="text">
                    <string>config ...</string>
                   </property>
@@ -760,6 +827,9 @@
               </property>
               <item row="0" column="1">
                <widget class="QComboBox" name="c_routine">
+                <property name="toolTip">
+                 <string>Choose the fit routine.</string>
+                </property>
                 <item>
                  <property name="text">
                   <string>curve_fit</string>
@@ -778,6 +848,9 @@
                 </item>
                 <item>
                  <widget class="QPushButton" name="b_trs">
+                  <property name="toolTip">
+                   <string>Configure the time-gates directly without opening the Tilda plot (Only applied to active file).</string>
+                  </property>
                   <property name="text">
                    <string>config ...</string>
                   </property>
@@ -787,6 +860,9 @@
               </item>
               <item row="2" column="0">
                <widget class="QCheckBox" name="check_cov_mc">
+                <property name="toolTip">
+                 <string>Calculate the covariance matrix from Monte-Carlo sampling of the data.</string>
+                </property>
                 <property name="text">
                  <string>cov. from Monte-Carlo</string>
                 </property>
@@ -794,6 +870,9 @@
               </item>
               <item row="8" column="1">
                <widget class="QCheckBox" name="check_save_figure">
+                <property name="toolTip">
+                 <string>Save a plot of the fit to the data for each fitted file.</string>
+                </property>
                 <property name="text">
                  <string>save figure</string>
                 </property>
@@ -811,6 +890,9 @@
               </item>
               <item row="8" column="0">
                <widget class="QCheckBox" name="check_save_to_db">
+                <property name="toolTip">
+                 <string>Save fit results to the database.</string>
+                </property>
                 <property name="text">
                  <string>save to db</string>
                 </property>
@@ -857,6 +939,9 @@
                 </item>
                 <item>
                  <widget class="QCheckBox" name="check_arithmetics">
+                  <property name="toolTip">
+                   <string>Use the expression specified for the selected run in the database.</string>
+                  </property>
                   <property name="text">
                    <string>db</string>
                   </property>
@@ -874,6 +959,9 @@
                 </property>
                 <item>
                  <widget class="QCheckBox" name="check_col_acol">
+                  <property name="toolTip">
+                   <string>Extract absolute transition frequencies by fitting collinear and anti-collinear files.</string>
+                  </property>
                   <property name="text">
                    <string>col/acol</string>
                   </property>
@@ -881,6 +969,9 @@
                 </item>
                 <item>
                  <widget class="QPushButton" name="b_col_acol">
+                  <property name="toolTip">
+                   <string>Configure the col/acol fit routine.</string>
+                  </property>
                   <property name="text">
                    <string>config ...</string>
                   </property>
@@ -890,6 +981,9 @@
               </item>
               <item row="1" column="0">
                <widget class="QCheckBox" name="check_guess_offset">
+                <property name="toolTip">
+                 <string>Guess initial 1. and 2. order offset parameters upon fitting.</string>
+                </property>
                 <property name="text">
                  <string>guess offset</string>
                 </property>
@@ -914,6 +1008,9 @@
                 </item>
                 <item>
                  <widget class="QPushButton" name="b_trsplot">
+                  <property name="toolTip">
+                   <string>Open the TRS plot to configure the time-gates (Only applied to active file).</string>
+                  </property>
                   <property name="text">
                    <string>open trs plot</string>
                   </property>
@@ -935,6 +1032,9 @@
                 </item>
                 <item>
                  <widget class="QLabel" name="l_chi2">
+                  <property name="toolTip">
+                   <string>Scale the covariance matrix for &lt;nobr&gt;&amp;chi; &lt;sup&gt;2&lt;/sup&gt; = 1&lt;/nobr&gt;.</string>
+                  </property>
                   <property name="text">
                    <string>&lt;nobr&gt;&amp;Delta; for &amp;chi; &lt;sup&gt;2&lt;/sup&gt; = 1&lt;/nobr&gt;</string>
                   </property>
@@ -953,6 +1053,9 @@
                 </item>
                 <item>
                  <widget class="QComboBox" name="c_xaxis">
+                  <property name="toolTip">
+                   <string>Choose the x-axis</string>
+                  </property>
                   <property name="currentIndex">
                    <number>0</number>
                   </property>
@@ -976,10 +1079,17 @@
                </layout>
               </item>
               <item row="3" column="0">
-               <widget class="QLineEdit" name="edit_arithmetics"/>
+               <widget class="QLineEdit" name="edit_arithmetics">
+                <property name="toolTip">
+                 <string>Combine the scalers into a sum via a list of indices or into a arithmetic expression via the variables &lt;i&gt;s0&lt;/i&gt;, &lt;i&gt;s1&lt;/i&gt;, ... .</string>
+                </property>
+               </widget>
               </item>
               <item row="6" column="1">
                <widget class="QCheckBox" name="check_linked">
+                <property name="toolTip">
+                 <string>Use linked fitting.</string>
+                </property>
                 <property name="text">
                  <string>linked</string>
                 </property>
@@ -1000,6 +1110,9 @@
               </item>
               <item row="7" column="1">
                <widget class="QCheckBox" name="check_save_to_disk">
+                <property name="toolTip">
+                 <string>Save fit results to the disk.</string>
+                </property>
                 <property name="text">
                  <string>save to disk</string>
                 </property>
@@ -1066,6 +1179,9 @@
                     <height>16777215</height>
                    </size>
                   </property>
+                  <property name="toolTip">
+                   <string>Choose the errorbar style and color.</string>
+                  </property>
                   <property name="text">
                    <string>.k</string>
                   </property>
@@ -1082,6 +1198,9 @@
               </item>
               <item row="1" column="0">
                <widget class="QPushButton" name="b_plot">
+                <property name="toolTip">
+                 <string>Show/update plot.</string>
+                </property>
                 <property name="text">
                  <string>plot</string>
                 </property>
@@ -1089,6 +1208,9 @@
               </item>
               <item row="0" column="0">
                <widget class="QCheckBox" name="check_x_as_freq">
+                <property name="toolTip">
+                 <string>Display the x-axis in frequencies or voltages (Only changes plot).</string>
+                </property>
                 <property name="text">
                  <string>x as freq.</string>
                 </property>
@@ -1099,6 +1221,9 @@
               </item>
               <item row="1" column="1">
                <widget class="QCheckBox" name="check_auto">
+                <property name="toolTip">
+                 <string>Auto-update plot.</string>
+                </property>
                 <property name="text">
                  <string>auto</string>
                 </property>
@@ -1130,6 +1255,9 @@
               </item>
               <item row="2" column="0">
                <widget class="QPushButton" name="b_save_ascii">
+                <property name="toolTip">
+                 <string>Save the current plot as an ASCII file.</string>
+                </property>
                 <property name="text">
                  <string>save ASCII</string>
                 </property>
@@ -1137,6 +1265,9 @@
               </item>
               <item row="2" column="1">
                <widget class="QPushButton" name="b_save_figure">
+                <property name="toolTip">
+                 <string>Save the current plot as an image.</string>
+                </property>
                 <property name="text">
                  <string>save figure</string>
                 </property>
@@ -1172,6 +1303,9 @@
               </item>
               <item row="0" column="1">
                <widget class="QCheckBox" name="check_zoom_data">
+                <property name="toolTip">
+                 <string>Zoom the plot window to the data.</string>
+                </property>
                 <property name="text">
                  <string>zoom data</string>
                 </property>
@@ -1283,6 +1417,9 @@
                  <width>16777215</width>
                  <height>26</height>
                 </size>
+               </property>
+               <property name="toolTip">
+                <string>Start the fit with the selected model and fit options.</string>
                </property>
                <property name="text">
                 <string>fit</string>

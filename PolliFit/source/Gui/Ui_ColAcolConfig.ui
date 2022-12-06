@@ -100,7 +100,11 @@
       </widget>
      </item>
      <item>
-      <widget class="QComboBox" name="c_parameter"/>
+      <widget class="QComboBox" name="c_parameter">
+       <property name="toolTip">
+        <string>Parameter treated as the resonance position relative to the 'frequency' specified in the 'Lines' table of the database.</string>
+       </property>
+      </widget>
      </item>
      <item>
       <spacer name="hspace_parameter">
@@ -136,6 +140,9 @@
          <width>40</width>
          <height>0</height>
         </size>
+       </property>
+       <property name="toolTip">
+        <string>Number of maximum iterations.</string>
        </property>
        <property name="maximum">
         <number>9</number>
@@ -195,6 +202,9 @@
      </item>
      <item>
       <widget class="QDoubleSpinBox" name="d_mhz">
+       <property name="toolTip">
+        <string>Iterate until col/acol resonances are below specified value apart from each other.</string>
+       </property>
        <property name="buttonSymbols">
         <enum>QAbstractSpinBox::NoButtons</enum>
        </property>
@@ -224,6 +234,9 @@
     <layout class="QHBoxLayout" name="hor_mc">
      <item>
       <widget class="QCheckBox" name="check_mc">
+       <property name="toolTip">
+        <string>Use Monte-Carlo sampling to determine the uncertainties of absolute transition frequencies.</string>
+       </property>
        <property name="text">
         <string>MC uncertainties?</string>
        </property>
@@ -231,6 +244,9 @@
      </item>
      <item>
       <widget class="QSpinBox" name="s_mc">
+       <property name="toolTip">
+        <string>The number of samples.</string>
+       </property>
        <property name="correctionMode">
         <enum>QAbstractSpinBox::CorrectToNearestValue</enum>
        </property>
