@@ -30,6 +30,8 @@ class MainUi(QtWidgets.QMainWindow, Ui_MainWindow):
         self.intfit.con_main_tilda_gui(self.parent_win)
         self.averager.conSig(self.dbSig)
         self.batchfit.conSig(self.dbSig)
+        self.spectrafit.conSig(self.dbSig)
+        self.spectrafit.con_main_tilda_gui(self.parent_win)
         self.isoshift.conSig(self.dbSig)
         self.kingfit.conSig(self.dbSig)
         self.moments.conSig(self.dbSig)

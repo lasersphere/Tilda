@@ -60,7 +60,7 @@ class XMLImporter(SpecData):
 
         self.nrTracks = scandict['isotopeData']['nOfTracks']
 
-        self.laserFreq, self.laserFreq_d = Physics.freqFromWavenumber(2 * scandict['isotopeData']['laserFreq']), 0.0
+        self.laserFreq, self.laserFreq_d = Physics.freqFromWavenumber(scandict['isotopeData']['laserFreq']), 0.0
         self.date = scandict['isotopeData']['isotopeStartTime']  # might be overwritten below by the mid time of the iso
         self.date_d = 0.0  # uncertainty of the date in s might be overwritten
         # at the end of tracks readout should be file_length / 2
@@ -355,16 +355,21 @@ class XMLImporter(SpecData):
                     logging.error('error, converting voltage divider ratio from db, error is: ' + str(e), exc_info=True)
                     logging.info('setting voltage divider ratio to 1 !')
                     self.voltDivRatio = {'offset': 1.0, 'accVolt': 1.0}
-                for tr_ind, track in enumerate(self.x):
-                    print('trind:', tr_ind)
-                    print('offset:', self.offset)
-                    self.x[tr_ind] = TildaTools.line_to_total_volt(self.x[tr_ind], self.lineMult, self.lineOffset,
-                                                                   self.offset[tr_ind], self.accVolt, self.voltDivRatio,
-                                                                   offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])
-                self.norming()
-                # TODO: Do we always want this? No norming is done when regating from trs plot.
-                #  Make consistent and maybe include to global options?
-                self.x_units = self.x_units_enums.total_volts
+                if 'CounterDrift' in self.scan_dev_dict_tr_wise[0]['name']:
+                    for tr_ind, track in enumerate(self.x):
+                        self.x[tr_ind] = track * self.lineMult + self.lineOffset
+                    self.x_units = self.x_units_enums.frequency_mhz
+                else:
+                    for tr_ind, track in enumerate(self.x):
+                        print('trind:', tr_ind)
+                        print('offset:', self.offset)
+                        self.x[tr_ind] = TildaTools.line_to_total_volt(self.x[tr_ind], self.lineMult, self.lineOffset,
+                                                                       self.offset[tr_ind], self.accVolt, self.voltDivRatio,
+                                                                       offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])
+                    self.norming()
+                    # TODO: Do we always want this? No norming is done when regating from trs plot.
+                    #  Make consistent and maybe include to global options?
+                    self.x_units = self.x_units_enums.total_volts
             elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
                 db_ret = TildaTools.select_from_db(db, 'offset', 'Files', [['file'], [self.file]])
                 # cur.execute('''SELECT offset FROM Files WHERE file = ?''', (self.file,))
@@ -541,6 +546,8 @@ class XMLImporter(SpecData):
 
     def get_frequency_measurement(self, path, scan_triton_dict):
         """
+        TODO: Method is statistically not exact if more than one comb reading is used
+         for a single track (mean of means).
         It is assumed the frequency has been measured before and/or after first measurement track since
         frequency measurements per track like [f1, f2, ..] is not (yet) supported.
         The frequency measurement is measured by Triton device FrequencyComb1 and/or FrequencyComb2. The first found
@@ -605,8 +612,9 @@ class XMLImporter(SpecData):
             # now take the mean value for this track:
             combs_freq_mean_tr = {}  # list for the mean value of all combs that have a reading for this track
             for comb_key, comb_a_col_col_dict in freq_comb_data_tr.items():
-                comb_mean = np.mean(comb_a_col_col_dict)
-                comb_err = np.std(comb_a_col_col_dict)
+                vals = [val for val in comb_a_col_col_dict if val > 0]
+                comb_mean = np.mean(vals)
+                comb_err = np.std(vals)
                 if not np.isnan(comb_mean):
                     combs_freq_mean_tr[comb_key] = (comb_mean, comb_err)
             freqs_by_dev.append(combs_freq_mean_tr)

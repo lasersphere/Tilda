@@ -3,6 +3,7 @@ Created on 29.03.2014
 
 @author: hammen
 """
+
 import itertools as it
 from datetime import datetime
 
@@ -26,13 +27,10 @@ class SpecDataXAxisUnits(Enum):
 
 class SpecData(object):
     """
-    This object contains a general spectrum with multiple tracks and multiple scalers
+    This object contains a general spectrum with multiple tracks and multiple scalers.
     """
 
     def __init__(self):
-        """
-        Constructor
-        """
         self.path = None  # str, path of the file
         self.type = None  # str, isotope name
         self.line = None  # str, lineVar
@@ -83,20 +81,17 @@ class SpecData(object):
         :param eval_on: boolean, defines if evaluation is needed
         :return: 3 ndarrays, dac-voltage, evaluated counts, evaluated errors(only for simple sum or div functions)
         """
-        """ storage for (volt, err) """
-
-        l = self.getNrSteps(track_index)
-        flatx = np.zeros((l,))  # voltage
-        flatc = np.zeros((l,))  # counts
-        flate = np.zeros((l,))  # uncertainties
+        # storage for (volt, err)
+        n = self.getNrSteps(track_index)
+        flatx = np.zeros((n,))  # voltage
+        flatc = np.zeros((n,))  # counts
+        flate = np.zeros((n,))  # uncertainties
 
         if function is None:
             function = '[' + ''.join(str(e) for e in scaler) + ']'
 
-        if function[0] == '[' or not eval_on or function is None:  # check if list mode and if first time
-
-            """ list mode"""
-
+        if not eval_on or function is None or function[0] == '[':  # check if list mode and if first time
+            # list mode
             """ get maximum number of scalers """
             if isinstance(self.nrScalers, list):
                 if track_index == -1:
@@ -117,17 +112,16 @@ class SpecData(object):
                     pass
             flate = np.sqrt(flate)
         else:
-
-            """ function mode """
+            # function mode
 
             var_map_cts = {}    # dict, mapping variables to related array with counts
             if len(scaler) == 0:
                 raise Exception('No scaler used')
             for v in scaler:    # go through used variables
                 pmt = 's' + str(v)  # create PMT - name (e. g. s1, s3, ...)
-                flatx, var_map_cts[pmt], e = self.getSingleSpec(abs(v), track_index)    # get voltage, counts and err
-                var_map_cts[pmt].dtype = 'int32'
-                flate = flate + np.square(e)  # sum squared errors of each scaler used
+                (flatx, var_map_cts[pmt], e) = self.getSingleSpec(abs(v), track_index)    # get voltage, counts and err
+                var_map_cts[pmt] = var_map_cts[pmt].astype(int)  # TODO: Is this really necessary?
+                flate = flate + np.square(e)  # sum squared errors of each scaler used TODO: Estimate correct error?
             flatc = eval(function, var_map_cts)  # evaluation of counts
             flate = np.sqrt(flate)
 
@@ -136,7 +130,6 @@ class SpecData(object):
         return flatx, flatc, flate
 
     """ Old version of get ArithSpec: """
-
     # def getArithSpec(self, scaler, track_index):
     #     """Same as getSingleSpec, but scaler is of type [+i, -j, +k], resulting in s[i]-s[j]+s[k]"""
     #     l = self.getNrSteps(track_index)

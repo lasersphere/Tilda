@@ -11,8 +11,17 @@ linear regression algorithms:
 """
 
 import numpy as np
-from scipy.optimize import curve_fit, minimize
+import scipy.optimize as so
 import matplotlib.pyplot as plt
+
+
+def const(_, a):
+    """
+    :param _: The x values.
+    :param a: The constant.
+    :returns: a.
+    """
+    return a
 
 
 def straight(x, a, b):
@@ -135,8 +144,7 @@ def york(x, y, sigma_x=None, sigma_y=None, corr=None, iter_max=200, report=True,
         corr = 0.
     sigma_x, sigma_y, corr = np.asarray(sigma_x), np.asarray(sigma_y), np.asarray(corr)
 
-    # noinspection PyTypeChecker
-    p_opt, _ = curve_fit(straight, x, y, p0=[0., 1.], sigma=sigma_y)  # (1)  # Update scipy to remove PyCharm warning.
+    p_opt, _ = so.curve_fit(straight, x, y, p0=[0., 1.], sigma=sigma_y)
     b_init = p_opt[1]
     b = b_init
 
@@ -218,10 +226,65 @@ def york_alpha(x, y, sigma_x=None, sigma_y=None, corr=None, alpha=0., find_alpha
         return c ** 2 * 10. ** (n + 1)
 
     if find_alpha:
-        alpha = minimize(cost, np.array([alpha])).x[0]
+        alpha = so.minimize(cost, np.array([alpha])).x[0]
 
     a, b, sigma_a, sigma_b, corr_ab =\
         york(x - alpha, y, sigma_x=sigma_x, sigma_y=sigma_y, corr=corr, iter_max=iter_max, report=report, show=show)
     if report:
         print('alpha: {}'.format(alpha))
     return a, b, sigma_a, sigma_b, corr_ab, alpha
+
+
+def curve_fit(f, x, y, p0=None, p0_fixed=None, sigma=None, absolute_sigma=False, check_finite=True,
+              bounds=(-np.inf, np.inf), method=None, jac=None, report=False, **kwargs):
+    """
+    :param f: The model function to fit to the data.
+    :param x: The x data.
+    :param y: The y data.
+    :param p0: A numpy array or an Iterable of the initial guesses for the parameters.
+     Must have at least the same length as the minimum number of parameters required by the function 'f'.
+     If 'p0' is None, 1 is taken as an initial guess for all non-keyword parameters.
+    :param p0_fixed: A numpy array or an Iterable of bool values specifying, whether to fix a parameter.
+     Must have the same length as p0.
+    :param sigma: The 1-sigma uncertainty of the y data.
+    :param absolute_sigma: See scipy.optimize.curve_fit.
+    :param check_finite: See scipy.optimize.curve_fit.
+    :param bounds: See scipy.optimize.curve_fit.
+    :param method: See scipy.optimize.curve_fit.
+    :param jac: See scipy.optimize.curve_fit.
+    :param report: Whether to print the result of the fit.
+    :param kwargs: See scipy.optimize.curve_fit.
+    :returns: popt, pcov. The optimal parameters and their covariance matrix.
+    """
+    if p0_fixed is None or all(not p for p in p0_fixed):
+        popt, pcov = so.curve_fit(f, x, y, p0=p0, sigma=sigma, absolute_sigma=absolute_sigma,
+                                  check_finite=check_finite, bounds=bounds, method=method, jac=jac, **kwargs)
+    elif p0 is None:
+        raise ValueError('Please specify the initial parameters when any of the parameters shall be fixed.')
+    else:
+        p0, p0_fixed = np.asarray(p0), np.asarray(p0_fixed).astype(bool)
+        if p0_fixed.shape != p0.shape:
+            raise ValueError('\'p0_fixed\' must have the same shape as \'p0\'.')
+        _p0 = p0[~p0_fixed]
+        _bounds = (np.asarray(bounds[0]), np.asarray(bounds[1]))
+        if len(_bounds[0].shape) > 0 and _bounds[0].size == p0.size:
+            _bounds = (_bounds[0][~p0_fixed], _bounds[1][~p0_fixed])
+
+        def _f(_x, *args):
+            _args = p0
+            _args[~p0_fixed] = np.asarray(args)
+            return f(_x, *_args)
+
+        popt, pcov = np.ones_like(p0, dtype=float), np.zeros((p0.size, p0.size), dtype=float)
+        pcov_mask = ~(np.expand_dims(p0_fixed, axis=1) + np.expand_dims(p0_fixed, axis=0))
+        popt[p0_fixed] = p0[p0_fixed]
+        _popt, _pcov = so.curve_fit(_f, x, y, p0=_p0, sigma=sigma, absolute_sigma=absolute_sigma,
+                                    check_finite=check_finite, bounds=_bounds, method=method, jac=jac, **kwargs)
+        popt[~p0_fixed] = _popt
+        pcov[pcov_mask] = _pcov.flatten()
+
+    if report:
+        print('curve_fit result:')
+        for i, (val, err) in enumerate(zip(popt, np.sqrt(np.diag(pcov)))):
+            print('{}: {} +/- {}'.format(i, val, err))
+    return popt, pcov

@@ -24,6 +24,63 @@ from DBIsotope import DBIsotope
 from Spectra.FullSpec import FullSpec
 
 
+class COLORS:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+def get_rgb(r, g, b):
+    return '\033[38;2;{};{};{}m'.format(r, g, b)
+
+
+def map_corr_coeff_to_color(val):
+    if val < -1 or val > 1:
+        raise ValueError('The correlation coefficient must be in [-1, 1].')
+    g = int(round(val * 127 + 127, 0))
+    return 255 - g, g, 0
+
+
+def print_colored(specifier, *values, returned=False, **kwargs):
+    """
+    Print with the specified color.
+
+    :param specifier: str of the color name defined in the COLORS class or an RGB-value.
+    :param values: The values to print.
+    :param returned: Return the str instead of printing it.
+    :param kwargs: See print().
+    :returns: None.
+    """
+    if isinstance(specifier, str):
+        _c = eval('COLORS.{}'.format(specifier.upper()))
+    else:
+        _c = get_rgb(*specifier)
+    _values = (_c, ) + values + (COLORS.ENDC, )
+    if returned:
+        return '{}{}{}'.format(*_values)
+    print('{}{}{}'.format(*_values), **kwargs)
+
+
+def print_cov(cov, normalize=False, decimals=2):
+    cov = np.array(cov, dtype=float)
+    if normalize:
+        norm = np.sqrt(np.diag(cov)[:, None] * np.diag(cov))
+        nonzero = norm != 0
+        cov[nonzero] /= norm[nonzero]
+    cov = np.around(cov + 0., decimals=decimals)
+    digits = int(np.floor(np.log10(np.abs(cov.shape[0])))) + 1
+    for i, row in enumerate(cov):
+        print('{}:   {}'.format(str(i).zfill(digits), '   '.join(
+            '{}{}{}'.format(get_rgb(*map_corr_coeff_to_color(val)),
+                            '{:1.2f}'.format(val).rjust(decimals + 3), COLORS.ENDC) for val in row)))
+
+
 def isoPlot(db, iso_name, isovar='', linevar='', as_freq=True, laserfreq=None, col=None, saving=False, show=True,
             isom_name=None, prec=10000, clear=False, x_transform=None, x_label=None, norm=False):
     """ Plot isotope iso """
@@ -646,6 +703,34 @@ def copy_scan_pars_for_all_isotopes(db, iso):
                         .format(', '.join(columns), ', '.join(columns[1:])), (_iso, iso))
     con.commit()
     con.close()
+
+
+def merge_intervals(intervals):
+    """
+    :param intervals: An iterable of intervals.
+     An interval i is itself an iterable of two scalar values. If i[1] < i[0], the interval is reversed.
+    :returns: An iterable of non-overlapping intervals.
+    """
+    inter = np.asarray(intervals)
+    inter = np.array([i if i[0] <= i[1] else i[::-1] for i in inter])
+    sort = np.argsort(inter[:, 0])
+    inter = inter[sort, :]
+    new_inter = []
+    n = 0
+    m = inter.shape[0]
+    while n < inter.shape[0] - 1:
+        end = inter[n, 1]
+        for m, i in enumerate(inter[(n+1):, :]):
+            if not end < i[0]:
+                end = np.max([end, i[1]])
+            else:
+                break
+        new_inter.append([inter[n, 0], end])
+        n += m + 1
+    if inter.shape[0] == 1 or inter[-1, 0] > inter[-2, 1]:
+        new_inter.append(inter[-1, :])
+    new_inter = np.asarray(new_inter)
+    return new_inter
 
 
 if __name__ == '__main__':

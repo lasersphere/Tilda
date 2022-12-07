@@ -75,7 +75,6 @@ class ThermalGradientVoigt(object):
     
     def recalc(self, p):
         """ Recalculate the norm factor """
-        self.norm = 1.
         self.norm = float(self.evaluate(np.zeros(1), p))
     
     def leftEdge(self, p):

@@ -1,48 +1,225 @@
-'''
+"""
 Created on 23.03.2014
 
 @author: hammen
 
 A collection of physical constants and formulas
-'''
+"""
 
 import math
 
 import numpy as np
+import scipy.constants as sc
 from scipy import special
-from scipy.stats import cauchy
+from scipy.stats import cauchy, norm
 
-# _d marks uncertainty
-c = 299792458    #speed of light
-u = 1.660538921e-27    #atomic mass unit
-u_d = 7.3e-35    #delta u
-pi = 3.14159265
-me = 9.10938291e-31    #electron mass
-me_d = 4e-38
-me_u = 5.4857990946e-4    #electron mass in u
-me_u_d = 2.2e-13
-qe = 1.602176565e-19    #electron charge
-qe_d = 3.5e-27
-h = 6.626070040e-34    #planck constant
-hbar = h / (2*pi)
+# _d marks uncertainty, commented values are the previously used hardcoded values.
+c = sc.c  # 299792458  # speed of light
+u = sc.physical_constants['atomic mass constant'][0]  # 1.660538921e-27  # atomic mass unit
+u_d = sc.physical_constants['atomic mass constant'][2]  # 7.3e-35  # delta u
+pi = np.pi  # 3.14159265
+me = sc.physical_constants['electron mass'][0]  # 9.10938291e-31  # electron mass
+me_d = sc.physical_constants['electron mass'][2]  # 4e-38
+me_u = sc.physical_constants['electron mass in u'][0]  # 5.4857990946e-4  # electron mass in u
+me_u_d = sc.physical_constants['electron mass in u'][2]  # 2.2e-13
+qe = sc.physical_constants['elementary charge'][0]  # 1.602176565e-19  # electron charge
+qe_d = sc.physical_constants['elementary charge'][2]  # 3.5e-27
+h = sc.h  # 6.626070040e-34  # planck constant
+hbar = sc.hbar
 LEMNISCATE = 2.6220575543
 
 
+def gamma_v(v):
+    """
+    :param v: The velocity of the particle (m/s).
+    :returns: The time-dilation factor gamma.
+    """
+    return 1 / np.sqrt(1 - (v / c) ** 2)
+
+
+def gamma_e(e, m):
+    """
+    :param e: The kinetic energy of the particle (eV).
+    :param m: The mass of the particle (u).
+    :returns: The time-dilation factor gamma.
+    """
+    return 1 + e * qe / (m * u * c ** 2)
+
+
+def gamma_e_d(e, e_d, m, m_d):
+    """
+    :param e: The kinetic energy of the particle (eV).
+    :param e_d: The uncertainty of the kinetic energy of the particle (eV).
+    :param m: The mass of the particle (u).
+    :param m_d: The uncertainty of the mass of the particle (u).
+    :returns: The uncertainty of the time-dilation factor gamma.
+    """
+    return np.sqrt((e_d * qe / (m * u * c ** 2)) ** 2 + (m_d * e * qe / (m ** 2 * u * c ** 2)) ** 2)
+
+
+def beta_e(e, m):  # == relVelocity(e, m) / c
+    """
+    :param e: The kinetic energy of the particle (eV).
+    :param m: The mass of the particle (u).
+    :returns: The relative velocity beta.
+    """
+    return np.sqrt(1 - 1 / gamma_e(e, m) ** 2)
+
+
+def beta_gamma(gamma):
+    """
+    :param gamma: The time-dilation factor gamma.
+    :returns: The relative velocity beta.
+    """
+    return np.sqrt(1 - 1 / gamma ** 2)
+
+
+def beta_gamma_d(gamma, gamma_d):
+    """
+    :param gamma: The time-dilation factor gamma.
+    :param gamma_d: The uncertainty of the time-dilation factor gamma.
+    :returns: The relative velocity beta.
+    """
+    return gamma_d / (beta_gamma(gamma) * gamma ** 3)
+
+
+def recoil(freq, m):
+    """
+    :param freq: The frequency of the laser in the rest-frame of the particle (MHz).
+    :param m: The mass of the particle (u).
+    :returns: The frequency equivalent of the energy of a photon with frequency 'freq'
+     which is converted into kinetic energy upon absorption by a particle with mass 'm' (MHz).
+    """
+    return h * freq ** 2 / (2 * m * u * c ** 2) * 1e6
+
+
+def doppler_e(f, e, m, alpha, rest_frame=True):
+    """
+    :param f: The frequency of a photon in the lab-frame (rest_frame=True)
+     or in the rest-frame (rest_frame=False) (arb. units)
+    :param e: The kinetic energy of the particle (eV).
+    :param m: The mass of the particle (u).
+    :param alpha: The angle between the wave-vector of the photon
+     and the velocity vector of the particle in the lab-frame (rad).
+    :param rest_frame: Whether the frequency is shifted into the rest-frame of the particle.
+    :returns: The Doppler-shifted frequency.
+    """
+    gamma = gamma_e(e, m)
+    if rest_frame:
+        return f * gamma * (1 - np.cos(alpha) * beta_gamma(gamma))
+    return f / gamma * (1 - np.cos(alpha) * beta_gamma(gamma))
+
+
+def doppler_e_d(f, f_d, e, e_d, m, m_d, alpha, rest_frame=True):
+    gamma = gamma_e(e, m)
+    gamma_d = gamma_e_d(e, e_d, m, m_d)
+    beta_d = beta_gamma_d(gamma, 1)
+    val = doppler_e(f, e, m, alpha, rest_frame=True)
+    val_gamma = val / gamma - f * gamma * np.cos(alpha) * beta_d
+    if rest_frame:
+        return np.sqrt((f_d * val / f) ** 2 + (val_gamma * gamma_d) ** 2)
+    return np.sqrt((f_d * val / f) ** 2 + (f ** 2 / val ** 2 * val_gamma * gamma_d) ** 2)
+
+
+def col_acol_ec_ea(f_laser_c, f_laser_a, e_c, e_a, m):
+    """
+    :param f_laser_c: The frequency of the collinear photon in the lab-frame (MHz).
+    :param f_laser_a: The frequency of the anti-collinear photon in the lab-frame (MHz).
+    :param e_c: The kinetic energy of the particle interacting with the collinear photon (eV).
+    :param e_a: The kinetic energy of the particle interacting with the anti-collinear photon (eV).
+    :param m: The mass of the particle (u).
+    :returns: The frequency equivalent of the energy absorbed by a particle with mass 'm' (MHz).
+    """
+    f_c = doppler_e(f_laser_c, e_c, m, alpha=0, rest_frame=True)
+    f_a = doppler_e(f_laser_a, e_a, m, alpha=np.pi, rest_frame=True)
+    f = np.sqrt(f_c * f_a)
+    return f - recoil(f, m)
+
+
+def col_acol_ec_ea_d(f_laser_c, f_laser_c_d, f_laser_a, f_laser_a_d, e_c, e_c_d, e_a, e_a_d, m, m_d):
+    """
+    :param f_laser_c: The frequency of the collinear photon in the lab-frame (MHz).
+    :param f_laser_c_d: The uncertainty of the frequency of the collinear photon in the lab-frame (MHz).
+    :param f_laser_a: The frequency of the anti-collinear photon in the lab-frame (MHz).
+    :param f_laser_a_d: The uncertainty of the frequency of the anti-collinear photon in the lab-frame (MHz).
+    :param e_c: The kinetic energy of the particle interacting with the collinear photon (eV).
+    :param e_c_d: The uncertainty of the kinetic energy of the particle interacting with the collinear photon (eV).
+    :param e_a: The kinetic energy of the particle interacting with the anti-collinear photon (eV).
+    :param e_a_d: The uncertainty of the kinetic energy of the particle interacting with the anti-collinear photon (eV).
+    :param m: The mass of the particle (u).
+    :param m_d: The uncertainty of the mass of the particle (u).
+    :returns: The uncertainty of the frequency equivalent of the energy absorbed by a particle with mass 'm',
+     neglecting the uncertainty of the photon recoil (MHz).
+    """
+    f_c = doppler_e(f_laser_c, e_c, m, alpha=0, rest_frame=True)
+    f_c_d = doppler_e_d(f_laser_c, f_laser_c_d, e_c, e_c_d, m, m_d, alpha=0, rest_frame=True)
+    f_c_md = doppler_e_d(f_laser_c, 0, e_c, 0, m, m_d, alpha=0, rest_frame=True)
+
+    f_a = doppler_e(f_laser_a, e_a, m, alpha=np.pi, rest_frame=True)
+    f_a_d = doppler_e_d(f_laser_a, f_laser_a_d, e_a, e_a_d, m, m_d, alpha=np.pi, rest_frame=True)
+    f_a_md = doppler_e_d(f_laser_a, 0, e_a, 0, m, m_d, alpha=np.pi, rest_frame=True)
+
+    f = np.sqrt(f_c * f_a)
+    return np.sqrt((f_a * f_c_d) ** 2 + (f_c * f_a_d) ** 2 - 2 * f_c * f_a * f_c_md * f_a_md) / (2 * f)
+
+
+def volt_to_rel_freq(volt, charge, mass, f_laser, f_0, col, lab_frame=False):
+    """
+    :param volt: The total acceleration voltage (V).
+    :param charge: The charge of the particle (e).
+    :param mass: The mass of the particle (u).
+    :param f_laser: The laser frequency (arb. units).
+    :param f_0: The reference frequency in the rest frame of the particle.
+    :param col: Whether the lasers are aligned in collinear or anticollinear geometry.
+    :param lab_frame: Return the frequencies in the rest-frame of the ion (False) or the laboratory frame (True).
+    :returns: The doppler shifted frequency of the laser in the rest frame of a particle
+     accelerated with 'volt' relative to a reference frequency 'f_0'.
+    """
+    pm = -1 if col else 1
+    v = pm * relVelocity(qe * charge * volt, mass * u)
+    if lab_frame:
+        return f_laser - relDoppler(f_0, -v)
+    return relDoppler(f_laser, v) - f_0
+
+
+def rel_freq_to_volt(rel_freq, charge, mass, f_laser, f_0, col):
+    """
+    :param rel_freq: The relative frequency in the rest frame of a particle (MHz).
+    :param charge: The charge of the particle (e).
+    :param mass: The mass of the particle (u).
+    :param f_laser: The laser frequency (arb. units).
+    :param f_0: The reference frequency in the rest frame of the particle.
+    :param col: Whether the lasers are aligned in collinear or anticollinear geometry.
+    :returns: The total acceleration voltages which shift the laser frequency to 'rel_freq',
+     the frequencies relative to 'f_0'.
+    """
+    pm = 1 if col else -1
+    v = pm * invRelDoppler(f_laser, rel_freq + f_0)
+    return relEnergy(v, mass * u) / (charge * qe)
+
+
+def rel_freq_to_volt_d(rel_freq, rel_freq_d, charge, mass, f_laser, f_0):
+    freq = rel_freq + f_0
+    v = np.abs(invRelDoppler(f_laser, freq))
+    return 4 * mass * u * c / (charge * qe) * gamma_v(v) ** 3 * v \
+        * freq * f_laser ** 2 * rel_freq_d / (freq ** 2 + f_laser ** 2) ** 2
+
+
 def relVelocity(e, m):
-    '''Return the relativistic velocity of a body with kinetic energy e/J and mass m/kg'''
-    mcs = m*c*c
-    return c * np.sqrt(1 - (mcs / (e + mcs))**2)
+    """ Return the relativistic velocity of a body with kinetic energy e/J and mass m/kg """
+    mcs = m * c * c
+    return c * np.sqrt(1 - (mcs / (e + mcs)) ** 2)
 
 
 def relEnergy(v, m):
-    """ return the relativistic energy of a body moving with velocity v/m/s and mass m/kg """
+    """ Return the relativistic energy of a body moving with velocity v/m/s and mass m/kg """
     mcs = m * c * c
     gamma = 1 / np.sqrt(1 - (v / c) ** 2)
     return mcs * (gamma - 1)
 
 
 def addEnergyToFrequencyPoint(freq, energy, iso, laser_freq, col):
-    """ Returns the frequency /MHz shifted by an energy /eV of the isotop. laser_Freq / MHZ, col / bool """
+    """ Returns the frequency /MHz shifted by an energy /eV of the isotope. laser_Freq /MHZ, col /bool """
     try:
         velocity = invRelDoppler(laser_freq, freq + iso.freq)
         total_e = relEnergy(velocity, iso.mass * u)
@@ -58,70 +235,82 @@ def addEnergyToFrequencyPoint(freq, energy, iso, laser_freq, col):
         shifted_f = freq
     return shifted_f
 
+
 def wavenumber(frequency):
-    '''Returns the wavenumber/1/cm at a given frequency/MHz'''
-    return 10**4* frequency / c
+    """ Returns the wavenumber /cm-1 at a given frequency /MHz """
+    return frequency / c * 1e4
+
 
 def freqFromWavenumber(wavenumber):
-    '''Returns the frequency/MHz at a given wavenumber/1/cm'''
-    return wavenumber * c / 10**4
+    """ Returns the frequency /MHz at a given wavenumber /cm-1 """
+    return wavenumber * c * 1e-4
+
 
 def freqFromWavelength(wavelength):
-    ''' Returns the frequency/MHz at a given wavelength/nm '''
+    """ Returns the frequency /MHz at a given wavelength /nm """
     return c / (wavelength * 10 ** -9) * 10 ** -6
 
+
 def wavelenFromFreq(frequency):
-    ''' Returns the wavelength in nm at a given frequency/MHz '''
+    """ Returns the wavelength /nm at a given frequency /MHz """
     return c / (frequency * 10 ** 6) * 10 ** 9
 
-def diffDoppler(nu_0, volt, m, charge=1, real=False):
-    '''returns the differential doppler Factor [MHZ/V]'''
-    if real:
-        f_L = nu_0 * (1 + volt * qe * charge / (m * u * c ** 2) * (1 - (1 + 2 * m * u * c ** 2 / (volt * qe * charge)) ** 0.5))
-        du = m * u * c ** 2 * (f_L ** 2 - nu_0 ** 2) / (2 * nu_0 * qe * charge * f_L ** 2) # Real calc. see Diss. K. König
-        dv = -1/du
-    else:
-        dv = nu_0 * qe * charge / np.sqrt(2 * qe * charge * volt * m * u * c ** 2) # old approx.
+
+def diffDoppler(nu_0, volt, m, charge=1, real=False):  # TODO Simplify / delete old?
+    """ returns the differential doppler Factor [MHZ/V] """
+    if real:  # Real calc. see Diss. K. König
+        f_L = nu_0 * (1 + volt * qe * charge / (m * u * c ** 2)
+                      * (1 - np.sqrt(1 + 2 * m * u * c ** 2 / (volt * qe * charge))))
+        du = m * u * c ** 2 * (f_L ** 2 - nu_0 ** 2) / (2 * nu_0 * qe * charge * f_L ** 2)
+        dv = -1 / du
+    else:  # old approx.
+        dv = nu_0 * qe * charge / np.sqrt(2 * qe * charge * volt * m * u * c ** 2)
 
     return dv
 
 # def diffDoppler(nu_0, volt, m):
-#     '''returns the differential doppler Factor [MHZ/V]'''
+#     """returns the differential doppler Factor [MHZ/V]"""
 #     return (nu_0/(m*u*c**2))*(qe+((qe*(m*u*c**2 + qe*volt))/((qe*volt*(2*m*u*c**2+qe*volt))**0.5)))
 
-def diffDoppler2(nu_0, volt, m):
+
+def diffDoppler2(nu_0, volt, m):  # TODO: ?
     f_L = nu_0 * (1 + volt * qe / (m * u * c ** 2) * (1 - (1 + 2 * m * u * c ** 2 / (volt * qe))**0.5))
     du = m * u * c**2 * (f_L**2 - nu_0**2) / (2*nu_0*qe*f_L**2)
     return -1/du
 
+
 def relDoppler(laserFreq, v):
-    '''Return the doppler shifted frequency of a frame moving with velocity v'''
-    # return laserFreq * math.sqrt((c + v) / (c - v))
-    return laserFreq * (1 - (v/c)**2)**0.5 / (1 - (v/c))
+    """ Return the doppler shifted frequency of a frame moving with velocity v """
+    # return laserFreq * np.sqrt((c + v) / (c - v))
+    return laserFreq * np.sqrt(1 - (v / c) ** 2) / (1 - (v / c))
+
 
 def invRelDoppler(laserFreq, dopplerFreq):
-    '''Return the velocity, under which laserFreq is seen as dopplerFreq.
-    Direction information gets lost in inverse function'''
-    #rs = (laserFreq/dopplerFreq)**2 '''not right!?'''
+    """ Return the velocity, under which laserFreq is seen as dopplerFreq.
+    Direction information gets lost in inverse function """
+    # rs = (laserFreq/dopplerFreq)**2 """not right!?"""
     # rs = (dopplerFreq/laserFreq)**2
     # return c*(rs - 1)/(rs + 1)
-    return c * (laserFreq**2 - dopplerFreq**2) / (laserFreq**2 + dopplerFreq**2)
+    return c * (laserFreq ** 2 - dopplerFreq ** 2) / (laserFreq ** 2 + dopplerFreq ** 2)
+
 
 def voigt(x, sig, gam):
-    '''Voigt profile, unnormalized, using the Faddeeva function'''
-    return special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).real / (sig * math.sqrt(2 * math.pi))
+    """ Voigt profile, unnormalized, using the Faddeeva function """
+    return special.wofz((x + 1j * gam) / (sig * np.sqrt(2))).real / (sig * np.sqrt(2 * np.pi))
+
 
 def fanoVoigt(x, sig, gam, dispersive):
-    '''Fano Voigt profile, unnormalized, using the Faddeeva function and their imaginary part'''
-    return special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).real / (sig * math.sqrt(2 * math.pi)) +\
-           dispersive * special.wofz((x + 1j * gam)/(sig * math.sqrt(2))).imag / (sig * math.sqrt(2 * math.pi))
+    """ Fano Voigt profile, unnormalized, using the Faddeeva function and their imaginary part """
+    return special.wofz((x + 1j * gam) / (sig * np.sqrt(2))).real / (sig * np.sqrt(2 * np.pi)) \
+        + dispersive * special.wofz((x + 1j * gam) / (sig * np.sqrt(2))).imag / (sig * np.sqrt(2 * np.pi))
+
 
 def source_energy_pdf(x, x0, sigma, xi, collinear=True):
-    ''' PDF of rest frame frequencies after acceleration of thermally and normally distributed kinetic energies. '''
+    """ PDF of rest frame frequencies after acceleration of thermally and normally distributed kinetic energies. """
     pm = 1. if collinear else -1.
     x = np.asarray(x)
     sig = (sigma / (2. * xi)) ** 2
-    norm = np.exp(-0.5 * sig) / (sigma * np.sqrt(2. * np.pi))
+    _norm = np.exp(-0.5 * sig) / (sigma * np.sqrt(2. * np.pi))
     mu = -pm * (x - x0) / (2. * xi) - sig
     nonzero = mu.astype(bool)
     mu = mu[nonzero]
@@ -135,86 +324,59 @@ def source_energy_pdf(x, x0, sigma, xi, collinear=True):
     main_nonzero[~mask] = 0.5 * np.sqrt(mu[~mask] * np.pi) * np.exp(-mu[~mask]) \
         * (special.ive(0.25, b_arg[~mask]) + special.ive(-0.25, b_arg[~mask]))
     main[nonzero] = main_nonzero
-    return main * norm
+    return main * _norm
+
 
 def thermalLorentz(x, loc, gam, xi, colDirTrue, order):
-    '''Lineshape developed in Kretzschmar et al., Appl. Phys. B, 79, 623 (2004)'''
-    lw = gam*2  # linewidth FWHM
-    if colDirTrue:
-        col = 1
-    else:
-        col = -1
+    """ Lineshape developed in Kretzschmar et al., Appl. Phys. B, 79, 623 (2004) """
+    lw = 2 * gam  # linewidth FWHM
+    col = 1 if colDirTrue else -1
 
     if order < 0:
-        z0 = np.sqrt((-col*(x - loc) - 1j*lw/2)/(2*xi))
-        return np.imag(np.exp(z0**2)*(1 - special.erf(z0))/z0)/(2*np.sqrt(np.pi)*xi)
+        z0 = np.sqrt((-col * (x - loc) - 1j * lw / 2) / (2 * xi))
+        return np.imag(np.exp(z0 ** 2) * (1 - special.erf(z0)) / z0) / (2 * np.sqrt(np.pi) * xi)
 
-    denominator = ((x - loc)**2 + lw**2/4)
+    denominator = ((x - loc) ** 2 + lw ** 2 / 4)
     sum_order = 0
     if order > 0:
-        sum_order = (col*2*xi*(x - loc)-3*xi**2)/denominator
+        sum_order = (col * 2 * xi * (x - loc) - 3 * xi ** 2) / denominator
     if order > 1:
-        sum_order += (4*3*xi**2*(x - loc)**2 - col*4*15*xi**3*(x - loc) + 105*xi**4)/(denominator**2)
+        sum_order += (4 * 3 * xi ** 2 * (x - loc) ** 2 - col * 4 * 15 * xi ** 3 * (x - loc) + 105 * xi ** 4) / (
+                    denominator ** 2)
     if order > 2:
-        sum_order += (col*8*15*xi**3*(x - loc)**3 - 12*105*xi**4*(x - loc)**2 + col*6*945*xi**5*(x - loc) - 10395*xi**6)\
-            / (denominator**3)
+        sum_order += (col * 8 * 15 * xi ** 3 * (x - loc) ** 3 - 12 * 105 * xi ** 4 * (
+                    x - loc) ** 2 + col * 6 * 945 * xi ** 5 * (x - loc) - 10395 * xi ** 6) / (denominator ** 3)
     if order > 3:
-        sum_order += (16*105*xi**4*(x - loc)**4 - col*32*945*xi**5*(x - loc)**3 + 24*10395*xi**6*(x - loc)**2
-                      - col*8*135135*xi**7*(x - loc) + 2027025*xi**8)/(denominator**4)
-    return lorentz(x, loc, gam, own=True)*(1 + sum_order)
-
-def lorentz(x, loc, gam, own=False):
-    '''Lorentzian profile '''
-    if own:
-        lw = gam*2
-        return (2/(math.pi*lw))*((lw**2/4)/((x-loc)**2+(lw**2/4)))
-    else:
-        return cauchy.pdf(x, loc, gam)
+        sum_order += (16 * 105 * xi ** 4 * (x - loc) ** 4 - col * 32 * 945 * xi ** 5 * (
+                    x - loc) ** 3 + 24 * 10395 * xi ** 6 * (x - loc) ** 2
+                      - col * 8 * 135135 * xi ** 7 * (x - loc) + 2027025 * xi ** 8) / (denominator ** 4)
+    return lorentz(x, loc, gam) * (1 + sum_order)
 
 
-def lorentzQI (x, loc, loc2, gam):
-    '''Quantum interference of lorentzian profile '''
-    cross = gam / math.pi / ((x-loc + 1j*gam)*(x-loc2 - 1j*gam))
+def lorentz(x, loc, gam):
+    """ Lorentzian profile """
+    return cauchy.pdf(x, loc, gam)
 
+
+def lorentzQI(x, loc, loc2, gam):
+    """ Quantum interference of lorentzian profile """
+    cross = gam / np.pi / ((x - loc + 1j * gam) * (x - loc2 - 1j * gam))
     return 2 * cross.real
 
 
 def gaussian(x, mu, sig, amp):
-    """
-    gaussian function
-    :param x:
-    :param mu:
-    :param sig:
-    :param amp:
-    :return:
-    """
-    return amp / (sig * np.sqrt(2 * np.pi)) * np.exp(-0.5 * ((x - mu) / sig) ** 2)
+    """ gaussian function """
+    # return amp / (sig * np.sqrt(2 * np.pi)) * np.exp(-0.5 * ((x - mu) / sig) ** 2)
+    return amp * norm.pdf(x, mu, sig)
 
 
 def gaussian_offset(x, mu, sig, amp, off):
-    """
-    same as gaussian but adds offset with slope = 0
-    :param x:
-    :param mu:
-    :param sig:
-    :param amp:
-    :param off:
-    :return:
-    """
+    """ same as gaussian but adds offset with slope = 0 """
     return gaussian(x, mu, sig, amp) + off
 
 
 def asymmetric_gaussian(x, mu, sig, amp, off, skew):
-    """
-    normal distribution exponentially modified
-    :param x:
-    :param mu:
-    :param sig:
-    :param amp:
-    :param off:
-    :param skew:
-    :return:
-    """
+    """ normal distribution exponentially modified """
     return amp * skew / 2 * np.exp(
         skew / 2 * (2 * mu + skew * (sig ** 2) - 2 * x)) * special.erfc(
         (mu + skew * (sig ** 2) - x) / (np.sqrt(2) * sig)) + off
@@ -222,94 +384,191 @@ def asymmetric_gaussian(x, mu, sig, amp, off, skew):
 
 def transit(x, t):
     """
-    transit broadening function. Demtröder Laserspectroscopy (german) Eq. (3.58).
+    Transit broadening function. Demtroeder Laserspectroscopy (german) Eq. (3.58).
     Uses same method as numpy.sinc(x) to calculate x = 0.
     :param x: frequency
     :param t: transit time
-    :return:
+    :returns: The transit broadened peak profile.
     """
-
     x = np.asanyarray(x)
-    y = 2*np.pi*np.where(x == 0, 1.0e-20, x)*10**6 # from frequency to angular frequency
-    return (np.sin(0.5*t*y))**2/y**2
+    y = 2 * np.pi * np.where(x == 0, 1.0e-20, x) * 1e6  # from frequency to angular frequency
+    return (np.sin(0.5 * t * y)) ** 2 / y ** 2
 
 
-def HFCoeff(I, J, F):
-    '''Return the tuple of hyperfine coefficients for A and B-factor for a given quantum state'''
-    #print('Return the tuple of hyperfine coefficients for A and B-factor for I = ', I, ' J = ', J, ' F = ', F)
-    C = 0.0 if I == 0 else (F*(F+1) - I*(I+1) - J*(J+1))
-    coA = 0.5 * C
-    
-    #catch case of low spins
-    coB = 0.0 if I < 0.9 or J < 0.9 else (0.75 * C*(C+1) - J*(J+1)*I*(I+1)) / (2*I*(2*I-1)*J*(2*J-1))
-                                                 
-    return (coA, coB)
+def getF(I, J):
+    I, J = np.array(I, float).flatten(), np.array(J, float).flatten()
+    return sorted(set(f + abs(i - j) for i in I for j in J for f in range(int(i + j - abs(i - j) + 1))))
 
-def HFTrans(I, Jl, Ju):
-    '''Calculate all allowed hyperfine transitions and their hyperfine coefficients. Returns (Fl, Fu, coAl, coBl, coAu, coBu)''' 
-    #print('calculating the hyperfine transitions and hyperfine coeffients')
-    return [(Fl, Fu) + HFCoeff(I, Jl, Fl) + HFCoeff(I, Ju, Fu)
-                        for Fl in np.arange(abs(I - Jl), (I + Jl + 0.5))
-                        for Fu in np.arange(abs(I - Ju), (I + Ju + 0.5)) if abs(Fl - Fu) == 1 or (Fl - Fu == 0 and Fl != 0 and Fu != 0)]
+
+def HFCoeff(I, J, F, old=True):
+    """ Return the tuple of hyperfine coefficients for A and B-factor for a given quantum state """
+    if old:
+        C = 0. if I < 0.5 or J < 0.5 else (F * (F + 1) - I * (I + 1) - J * (J + 1))
+        coA = 0.5 * C
+
+        coB = 0. if I < 1 or J < 1 else (0.75 * C * (C + 1) - J * (J + 1) * I * (I + 1)) \
+            / (2 * I * (2 * I - 1) * J * (2 * J - 1))
+
+        return coA, coB
+
+    # Functions using the new version should be able to handle an arbitrary amount of coefficients.
+    # First three orders are taken from https://journals.aps.org/pra/abstract/10.1103/PhysRevA.103.032826.
+    if I < 0.5 or J < 0.5:
+        return tuple()
+
+    # Magnetic dipole, the corresponding hyperfine constant is A = mu / (IJ) * <T_1>.
+    K = F * (F + 1) - I * (I + 1) - J * (J + 1)
+    coA = 0.5 * K
+    if I < 1 or J < 1:
+        return coA,
+
+    # Electric quadrupole, the corresponding hyperfine constant is B = 2eQ * <T_2>.
+    coB = (0.75 * K * (K + 1) - J * (J + 1) * I * (I + 1)) / (2 * I * (2 * I - 1) * J * (2 * J - 1))
+    if I < 1.5 or J < 1.5:
+        return coA, coB
+
+    # Magnetic octupole, the corresponding hyperfine constant is C = -Omega * <T_3>.
+    coC = K ** 3 + 4 * K ** 2 + 0.8 * K * (-3 * I * (I + 1) * J * (J + 1) + I * (I + 1) + J * (J + 1) + 3) \
+        - 4 * I * (I + 1) * J * (J + 1)
+    coC /= I * (I - 1) * (2 * I - 1) * J * (J - 1) * (2 * J - 1)
+    coC *= 1.25
+    if I < 2 or J < 2:
+        return coA, coB, coC
+    return coA, coB, coC  # Highest implemented order.
+
+
+def HFTrans(I, Jl, Ju, old=True):
+    """
+    Calculate all allowed hyperfine transitions and their hyperfine coefficients.
+    Returns (Fl, Fu, coAl, coBl, coAu, coBu)
+    """
+    # print('calculating the hyperfine transitions and hyperfine coeffients')
+    if old:
+        return [(Fl, Fu) + HFCoeff(I, Jl, Fl) + HFCoeff(I, Ju, Fu)
+                for Fl in np.arange(abs(I - Jl), (I + Jl + 0.5))
+                for Fu in np.arange(abs(I - Ju), (I + Ju + 0.5))
+                if abs(Fl - Fu) == 1 or (Fl - Fu == 0 and Fl != 0 and Fu != 0)]
+    return [[(Fl, Fu), HFCoeff(I, Jl, Fl, old=False), HFCoeff(I, Ju, Fu, old=False)]
+            for Fl in np.arange(abs(I - Jl), (I + Jl + 0.5))
+            for Fu in np.arange(abs(I - Ju), (I + Ju + 0.5))
+            if abs(Fl - Fu) == 1 or (Fl - Fu == 0 and Fl != 0 and Fu != 0)]
+
+
+def HFShift(hyper_l, hyper_u, coeff_l, coeff_u):
+    """
+    :param hyper_l: The hyperfine structure constants of the lower state (Al, Bl, Cl, ...).
+    :param hyper_u: The hyperfine structure constants of the upper state (Au, Bu, Cu, ...).
+    :param coeff_l: The coefficients of the lower state to be multiplied by the constants (coAl, coBl, coCl, ...).
+    :param coeff_u: The coefficients of the lower state to be multiplied by the constants (coAu, coBu, coCu, ...).
+    :returns: The hyperfine structure shift of an optical transition.
+    """
+    return sum(const * coeff for const, coeff in zip(hyper_u, coeff_u)) \
+        - sum(const * coeff for const, coeff in zip(hyper_l, coeff_l))
+
+
+def _HFShiftMixed(hyper, coeff, t):
+    w, _ = np.linalg.eigh(hyper * coeff * t)
+    return w[0]
+
+
+def HFShiftMixed(hyper_l, hyper_u, coeff_l, coeff_u, t_l, t_u):
+    if t_l is None:
+        lower = sum(const * coeff for const, coeff in zip(hyper_l, coeff_l))
+    else:
+        lower = _HFShiftMixed(hyper_l[0], coeff_l[0], t_l)
+    if t_u is None:
+        upper = sum(const * coeff for const, coeff in zip(hyper_u, coeff_u))
+    else:
+        upper = _HFShiftMixed(hyper_u[0], coeff_u[0], t_u)
+    return upper - lower
+
 
 def HFLineSplit(Al, Bl, Au, Bu, transitions):
-    '''Calculate line splittings from (Au, Bu, Al, Bl) and list of transitions (see calcHFTrans)'''
+    """ Calculate line splittings from (Au, Bu, Al, Bl) and list of transitions (see calcHFTrans) """
     return [Au * coAu + Bu * coBu - Al * coAl - Bl * coBl
-                    for x, y, coAl, coBl, coAu, coBu in transitions]
+            for x, y, coAl, coBl, coAu, coBu in transitions]
 
-def HFInt(I, Jl, Ju, transitions):
-    '''Calculate relative line intensities'''
-    print('Calculate relative line intensities for I, Jl, Ju, transitions ',I, Jl, Ju, transitions)
-    res = [(2*Fu+1)*(2*Fl+1)*(sixJ(Jl, Fl, I, Fu, Ju, 1)**2) for Fl, Fu, *r in transitions]
-    print('result is: %s' % [round(each, 3) for each in res])
-    return res
+
+def HFInt(I, Jl, Ju, transitions, old=True):
+    """ Calculate relative line intensities """
+    if old:
+        # print('Calculate relative line intensities for I, Jl, Ju, transitions ', I, Jl, Ju, transitions)
+        res = [(2 * Fu + 1) * (2 * Fl + 1) * (sixJ(Jl, Fl, I, Fu, Ju, 1) ** 2) for Fl, Fu, *r in transitions]
+        # print('result is: %s' % [round(each, 3) for each in res])
+        return res
+    return [np.around((2 * Fu + 1) * (2 * Fl + 1) * (sixJ(Jl, Fl, I, Fu, Ju, 1) ** 2), decimals=9)
+            for (Fl, Fu), *r in transitions]
+
+
+def a(I, Jl, Ju, Fl, Fu):  # from pycol
+    return np.around((2 * Fl + 1) * (2 * Fu + 1) * (2 * Ju + 1) / (3 * (2 * Jl + 1) * (2 * I + 1)) \
+                     * sixJ(Jl, Fl, I, Fu, Ju, 1) ** 2, decimals=9)
+
 
 def sixJ(j1, j2, j3, J1, J2, J3):
-    '''6-J symbol used for Racah coefficients'''
-    #print('6-J symbol used for Racah coefficients, j1, j2, j3, J1, J2, J3: ', j1, j2, j3, J1, J2, J3)
+    """ 6-J symbol used for Racah coefficients """
+    # print('6-J symbol used for Racah coefficients, j1, j2, j3, J1, J2, J3: ', j1, j2, j3, J1, J2, J3)
     ret = 0
-    for i in range(int(round(max(max(j1+j2+j3,j1+J2+J3),max(J1+j2+J3,J1+J2+j3)))),
-                   int(round(min(min(j1+j2+J1+J2,j2+j3+J2+J3),j3+j1+J3+J1) + 1))):
-        ret= (ret + pow(-1,i) * math.factorial(i+1.)
-            /math.factorial(round(i-j1-j2-j3))
-            /math.factorial(round(i-j1-J2-J3))
-            /math.factorial(round(i-J1-j2-J3))
-            /math.factorial(round(i-J1-J2-j3))
-            /math.factorial(round(j1+j2+J1+J2-i))
-            /math.factorial(round(j2+j3+J2+J3-i))
-            /math.factorial(round(j3+j1+J3+J1-i)) )
-        
-    return math.sqrt(deltaJ(j1,j2,j3)*deltaJ(j1,J2,J3)*deltaJ(J1,j2,J3)*deltaJ(J1,J2,j3))*ret
-        
+    try:
+        for i in range(int(round(max(max(j1 + j2 + j3, j1 + J2 + J3), max(J1 + j2 + J3, J1 + J2 + j3)))),
+                       int(round(min(min(j1 + j2 + J1 + J2, j2 + j3 + J2 + J3), j3 + j1 + J3 + J1) + 1))):
+            ret = (ret + pow(-1, i) * math.factorial(i + 1)
+                   / math.factorial(round(i - j1 - j2 - j3))
+                   / math.factorial(round(i - j1 - J2 - J3))
+                   / math.factorial(round(i - J1 - j2 - J3))
+                   / math.factorial(round(i - J1 - J2 - j3))
+                   / math.factorial(round(j1 + j2 + J1 + J2 - i))
+                   / math.factorial(round(j2 + j3 + J2 + J3 - i))
+                   / math.factorial(round(j3 + j1 + J3 + J1 - i)))
+        ret *= math.sqrt(deltaJ(j1, j2, j3) * deltaJ(j1, J2, J3) * deltaJ(J1, j2, J3) * deltaJ(J1, J2, j3))
+    except ValueError:
+        return 0.
+    return ret
+
+
 def threeJ(j1, m1, j2, m2, j3, m3):
-    '''3-J symbol used for Racah coefficients'''
-    #print('3-J symbol used for Racah coefficients')
-    ret=0;
-    for i in range(round(max(max(0.,j2-j3-m1), m2+j1-j3)),
-                    round(min(min(j1+j2-j3,j1-m1),j2+m2) + 1)):
+    """ 3-J symbol used for Racah coefficients """
+    # print('3-J symbol used for Racah coefficients')
+    ret = 0
+    for i in range(round(max(max(0, j2 - j3 - m1), m2 + j1 - j3)),
+                   round(min(min(j1 + j2 - j3, j1 - m1), j2 + m2) + 1)):
+        ret = (ret + pow(-1., i) / math.factorial(i) / math.factorial(round(j3 - j2 + i + m1)) / math.factorial(
+            round(j3 - j1 + i - m2))
+               / math.factorial(round(j1 + j2 - j3 - i)) / math.factorial(round(j1 - i - m1)) / math.factorial(
+                    round(j2 - i + m2)))
 
-        ret = (ret+pow(-1.,i)/math.factorial(i) / math.factorial(round(j3-j2+i+m1)) / math.factorial(round(j3-j1+i-m2))
-            /math.factorial(round(j1+j2-j3-i)) / math.factorial(round(j1-i-m1)) / math.factorial(round(j2-i+m2)) )
-    
-    return (pow(-1.,round(j1-j2-m3)) * math.sqrt(deltaJ(round(j1,j2,j3)) * math.factorial(round(j1+m1)) * math.factorial(round(j1-m1))
-        *math.factorial(round(j2+m2))*math.factorial(round(j2-m2))*math.factorial(round(j3+m3))*math.factorial(round(j3-m3)))*ret)
-    
+    return (pow(-1., round(j1 - j2 - m3)) * math.sqrt(
+        deltaJ(j1, j2, j3) * math.factorial(round(j1 + m1)) * math.factorial(round(j1 - m1))
+        * math.factorial(round(j2 + m2)) * math.factorial(round(j2 - m2)) * math.factorial(
+            round(j3 + m3)) * math.factorial(round(j3 - m3))) * ret)
+
+
 def deltaJ(j1, j2, j3):    
-    '''Delta-symbol used for Racah coefficients'''
-    #print('Delta-symbol used for Racah coefficients, j1, j2, j3: ', j1, j2, j3)
-    return math.factorial(round(j1+j2-j3))*math.factorial(round(j1-j2+j3))*math.factorial(round(-j1+j2+j3))/math.factorial(round(j1+j2+j3+1))
+    """ Delta-symbol used for Racah coefficients """
+    # print('Delta-symbol used for Racah coefficients, j1, j2, j3: ', j1, j2, j3)
+    return math.factorial(round(j1 + j2 - j3)) * math.factorial(round(j1 - j2 + j3)) * math.factorial(
+        round(-j1 + j2 + j3)) / math.factorial(round(j1 + j2 + j3 + 1))
 
-def shiftFreqToVoltage(m,nuOff,deltaNu,nuL):
-    '''Returns the Voltage for a given frequency shift. ([m]=u, All frequencies need to be given in the same unit!)'''
-    return m*u*c**2/(2*qe)*((nuOff+deltaNu)/nuL)**2
+
+"""
+|  not in use  |
+|  erroneous   |
+v    rework    v
+"""
+
+def shiftFreqToVoltage(m, nuOff, deltaNu, nuL):
+    """ Returns the Voltage for a given frequency shift. ([m]=u, All frequencies need to be given in the same unit!) """
+    return m * u * c ** 2 / (2 * qe) * ((nuOff + deltaNu) / nuL) ** 2
+
 
 def dopplerAngle(nu, v, angle):
-    '''Returns the frequency at a given angle (in rad) and velocity'''
-    return nu*np.sqrt(1-v**2/c**2)/(1-v/c*np.cos(angle))
+    """ Returns the frequency at a given angle (in rad) and velocity """
+    return nu * np.sqrt(1 - v ** 2 / c ** 2) / (1 - v / c * np.cos(angle))
 
-def getLineStrength(k_s, eps_L, F_i , F_apos , F_f, J, Japos, I):
-    '''Returns f(\vec(kappa_s), \vec(epsilon_L), F_i, F') '''
-    Fi = F_i 
+
+def getLineStrength(k_s, eps_L, F_i, F_apos, F_f, J, Japos, I):
+    """ Returns f(\vec(kappa_s), \vec(epsilon_L), F_i, F') """
+    Fi = F_i
     Fapos = F_apos
     epsL = eps_L
     ks = k_s
@@ -320,66 +579,80 @@ def getLineStrength(k_s, eps_L, F_i , F_apos , F_f, J, Japos, I):
         mf = Ff
         while mf >= -Ff:
             mi = Fi
-            while mi >=-Fi:
-                Cs = Cs + np.abs(C_if(Fapos, Fi, mi, Ff, mf, epsS, epsL, J, Japos, I))**2
-                mi = mi-1
-            mf = mf -1
-        Ff = Ff -1
-    return 3/(2*g_T(F_i)) * Cs
+            while mi >= -Fi:
+                Cs = Cs + np.abs(C_if(Fapos, Fi, mi, Ff, mf, epsS, epsL, J, Japos, I)) ** 2
+                mi = mi - 1
+            mf = mf - 1
+        Ff = Ff - 1
+    return 3 / (2 * g_T(F_i)) * Cs
 
-'''helpfunctions'''
+
+""" helper functions """
+
+
 def g_T(F_i):
     gT = 0
     while F_i > 0:
-        gT = gT + 2*F_i + 1
+        gT = gT + 2 * F_i + 1
         F_i = F_i - 1
     print('gT: ' + str(gT))
     return gT
 
+
 def C_if(Fapos, Fi, Ff, epsS, epsL, J, Japos, I):
     mapos = -Fapos
-    c = 0
+    ret = 0
     while mapos <= Fapos:
         mi = -Fi
         while mi <= Fi:
             mf = -Ff
             while mf <= Ff:
-                c = c + A(epsS, Fapos, mapos, Ff, mf, J, Japos, I) * A(epsL, Fapos, mapos, Fi, mi, J, Japos, I)  
-                mf +=1
+                ret = ret + A(epsS, Fapos, mapos, Ff, mf, J, Japos, I) * A(epsL, Fapos, mapos, Fi, mi, J, Japos, I)
+                mf += 1
             mi += 1
         mapos += 1
-    #print('Calculating C_i->f, result: ' + str(c))
-    return c
+    # print('Calculating C_i->f, result: ' + str(ret))
+    return ret
+
 
 def A(eps, Fapos, mapos, F, m, J, Japos, I):
-    A = 0
-    c = 0
+    ret = 0
     q = int(mapos - m)
-    A = np.sqrt(2*Japos+1)/np.sqrt(2*Fapos+1)* CGK(F, m, 1, q, Fapos, mapos) * sqrtF(F, Fapos, J, Japos, I)
-    if A != 0 and q in [1,2,3]:
-        c = eps[q-1] * A
-        # print('calculating A, result: '  + str(c))
-    return c
+    A = np.sqrt(2 * Japos + 1) / np.sqrt(2 * Fapos + 1) * CGK(F, m, 1, q, Fapos, mapos) * sqrtF(F, Fapos, J, Japos, I)
+    if A != 0 and q in [1, 2, 3]:
+        ret = eps[q - 1] * A
+        # print('calculating A, result: '  + str(ret))
+    return ret
+
 
 def CGK(j1, m1, j2, m2, J, M):
-    '''returns Clebsch Gordan Coefficient for <j1 m1 ; j2 m2 | J M>'''
-    if M != m1+m2 or j1+j2 < J or j1 - j2 > J or j2 - j1 > J:
+    """ returns Clebsch Gordan Coefficient for <j1 m1 ; j2 m2 | J M> """
+    if M != m1 + m2 or j1 + j2 < J or j1 - j2 > J or j2 - j1 > J:
         return 0
     n = 0
     sumn = 0
-    while (j1 + j2 - J - n) >= 0 and (j1 - m1 - n) >=0 and (j2+m2-n)>=0 and J - j2 + m1 + n >=0 and J - j1 - m2 + n >=0:
-        sumn = sumn + ((-1)**n * np.sqrt(math.factorial(j1 + m2) * math.factorial(j1 - m1) * math.factorial(j2 + m2) * math.factorial(j2 - m2) * math.factorial(J + M) * math.factorial(J - M)) /
-                         ( math.factorial(n) * math.factorial(j1 + j2 - J - n) * math.factorial(j1 - m1 - n) * math.factorial(j2 + m2 - n) * math.factorial(J - j2 + m1 + n) * math.factorial(J - j1 - m2 + n) ) )
+    while (j1 + j2 - J - n) >= 0 and (j1 - m1 - n) >= 0 and (
+            j2 + m2 - n) >= 0 and J - j2 + m1 + n >= 0 and J - j1 - m2 + n >= 0:
+        sumn = sumn + ((-1) ** n * np.sqrt(
+            math.factorial(j1 + m2) * math.factorial(j1 - m1) * math.factorial(j2 + m2) * math.factorial(
+                j2 - m2) * math.factorial(J + M) * math.factorial(J - M)) /
+                       (math.factorial(n) * math.factorial(j1 + j2 - J - n) * math.factorial(
+                           j1 - m1 - n) * math.factorial(j2 + m2 - n) * math.factorial(
+                           J - j2 + m1 + n) * math.factorial(J - j1 - m2 + n)))
         n += 1
-    #print(str(j1 + j2 - J) + '  ' +  str(j1 + j2 - J) + '  ' +  str(j1 - j2 + J) + '  ' +  str(J + j2 - j1) + '  ' +  str(j1 + j2 + J + 1))
-    c = np.sqrt((2 * J + 1) * math.factorial(j1 + j2 - J) * math.factorial(j1 - j2 + J) * math.factorial(J + j2 - j1) / math.factorial(j1 + j2 + J + 1)) * sumn 
-    #print('Calculating CGK for' + str(j1) + ',' + str(m1) + ','  + str(j2) + ',' + str(m2) + ',' + str(J) + ',' + str(M) +', result: ' + str(c))
-    return c
+    # print(str(j1 + j2 - J) + '  ' + str(j1 + j2 - J) + '  ' + str(j1 - j2 + J)
+    #       + '  ' + str(J + j2 - j1) + '  ' + str(j1 + j2 + J + 1))
+    ret = np.sqrt((2 * J + 1) * math.factorial(j1 + j2 - J) * math.factorial(j1 - j2 + J) * math.factorial(
+        J + j2 - j1) / math.factorial(j1 + j2 + J + 1)) * sumn
+    # print('Calculating CGK for' + str(j1) + ',' + str(m1) + ',' + str(j2) + ',' + str(m2) 
+    #       + ',' + str(J) + ',' + str(M) + ', result: ' + str(c))
+    return ret
+
 
 def sqrtF(F, Fapos, Japos, J, I):
     p = (F + I + 1 + Japos)
-    #print('SqrtF of: ' +str(F) + str(Fapos) + str(Japos) + str(J) + str(I))
-    c = (-1)**p * np.sqrt(2 * F + 1) * np.sqrt(2*Fapos + 1) * sixJ(Japos, J, 1, F, Fapos, I)
-#     if c != 0:
-#         print('Calculating sqrtF, result: ' + str(c) )
-    return c
+    # print('SqrtF of: ' +str(F) + str(Fapos) + str(Japos) + str(J) + str(I))
+    ret = (-1) ** p * np.sqrt(2 * F + 1) * np.sqrt(2 * Fapos + 1) * sixJ(Japos, J, 1, F, Fapos, I)
+    # if ret != 0:
+    #     print('Calculating sqrtF, result: ' + str(ret))
+    return ret

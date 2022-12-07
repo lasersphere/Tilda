@@ -21,6 +21,7 @@ class DBIsotope(object):
         print('isovar: ' + str(isovar))
         print('Loading', lineVar, 'line of', iso + isovar)
         # sqlite3.register_converter("BOOL", lambda v: bool(int(v)))
+        self.db = db
         data = TiTS.select_from_db(db, 'reference, frequency, Jl, Ju, shape, fixShape, charge', 'Lines',
                                    [['lineVar'], [lineVar]], caller_name=__name__)
         if data is None or not data:
