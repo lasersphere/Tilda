@@ -363,12 +363,15 @@ class XMLImporter(SpecData):
                     for tr_ind, track in enumerate(self.x):
                         print('trind:', tr_ind)
                         print('offset:', self.offset)
-                        self.x[tr_ind] = TildaTools.line_to_total_volt(self.x[tr_ind], self.lineMult, self.lineOffset,
-                                                                       self.offset[tr_ind], self.accVolt, self.voltDivRatio,
-                                                                       offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])
-                    self.norming()
+                        self.x[tr_ind] = TildaTools.line_to_total_volt(
+                            self.x[tr_ind], self.lineMult, self.lineOffset, self.offset[tr_ind], self.accVolt,
+                            self.voltDivRatio, offset_by_dev_mean=self.offset_by_dev_mean[tr_ind])
+
+                    # self.norming()
                     # TODO: Do we always want this? No norming is done when regating from trs plot.
                     #  Make consistent and maybe include to global options?
+                    #  EDIT: Normalization to the number of scans is included in SpectraFit now.
+                    #  The 'norming' function modifies the signal to background ratios which is not nice in my opinion.
                     self.x_units = self.x_units_enums.total_volts
             elif self.seq_type == 'kepco':  # correct kepco scans by the measured offset before the scan.
                 db_ret = TildaTools.select_from_db(db, 'offset', 'Files', [['file'], [self.file]])

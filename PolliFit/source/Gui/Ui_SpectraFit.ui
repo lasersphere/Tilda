@@ -556,7 +556,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-131</y>
+            <y>-189</y>
             <width>283</width>
             <height>580</height>
            </rect>
@@ -1097,14 +1097,8 @@
               </item>
               <item row="5" column="0">
                <widget class="QCheckBox" name="check_norm_scans">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
                 <property name="text">
                  <string>normalize to # scans</string>
-                </property>
-                <property name="checked">
-                 <bool>false</bool>
                 </property>
                </widget>
               </item>

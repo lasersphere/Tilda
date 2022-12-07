@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'E:\Users\Patrick\Documents\Python Projects\Tilda\PolliFit\source\Gui\Ui_SpectraFit.ui'
+# Form implementation generated from reading ui file 'E:\Users\Patrick\Documents\Python Projects\TildaDevel\PolliFit\source\Gui\Ui_SpectraFit.ui'
 #
 # Created by: PyQt5 UI code generator 5.14.1
 #
@@ -195,7 +195,7 @@ class Ui_SpectraFit(object):
         self.scroll_xontrol.setAlignment(QtCore.Qt.AlignCenter)
         self.scroll_xontrol.setObjectName("scroll_xontrol")
         self.vert_options = QtWidgets.QWidget()
-        self.vert_options.setGeometry(QtCore.QRect(0, -131, 283, 580))
+        self.vert_options.setGeometry(QtCore.QRect(0, -189, 283, 580))
         self.vert_options.setObjectName("vert_options")
         self.vert_options_layout = QtWidgets.QVBoxLayout(self.vert_options)
         self.vert_options_layout.setContentsMargins(6, 6, 6, 6)
@@ -411,8 +411,6 @@ class Ui_SpectraFit(object):
         self.check_linked.setObjectName("check_linked")
         self.grid_fit_layout.addWidget(self.check_linked, 6, 1, 1, 1)
         self.check_norm_scans = QtWidgets.QCheckBox(self.grid_fit)
-        self.check_norm_scans.setEnabled(False)
-        self.check_norm_scans.setChecked(False)
         self.check_norm_scans.setObjectName("check_norm_scans")
         self.grid_fit_layout.addWidget(self.check_norm_scans, 5, 0, 1, 1)
         self.check_save_to_disk = QtWidgets.QCheckBox(self.grid_fit)

@@ -120,7 +120,7 @@ class SpecData(object):
             for v in scaler:    # go through used variables
                 pmt = 's' + str(v)  # create PMT - name (e. g. s1, s3, ...)
                 (flatx, var_map_cts[pmt], e) = self.getSingleSpec(abs(v), track_index)    # get voltage, counts and err
-                var_map_cts[pmt] = var_map_cts[pmt].astype(int)  # TODO: Is this really necessary?
+                # var_map_cts[pmt] = var_map_cts[pmt].astype(int)  # TODO: Is this really necessary?
                 flate = flate + np.square(e)  # sum squared errors of each scaler used TODO: Estimate correct error?
             flatc = eval(function, var_map_cts)  # evaluation of counts
             flate = np.sqrt(flate)

@@ -43,7 +43,7 @@ def _get_iso_par_from_dict(par_dict, par):
 class SpectraFit:
     def __init__(self, db, files, runs, configs, index_config,
                  x_axis='ion frequencies', routine='curve_fit', absolute_sigma=False, guess_offset=True,
-                 cov_mc=False, samples_mc=100, arithmetics=None, save_to_disk=False,
+                 cov_mc=False, samples_mc=100, arithmetics=None, save_to_disk=False, norm_scans=True,
                  summed=False, linked=False, col_acol_config=None, save_to_db=False, x_as_freq=True,
                  fig_save_format='.png', zoom_data=False, fmt='.k', fontsize=10):
         self.db = db
@@ -62,6 +62,7 @@ class SpectraFit:
         self.guess_offset = guess_offset
         self.arithmetics = arithmetics
         self.save_to_disk = save_to_disk
+        self.norm_scans = norm_scans
         self.summed = summed
         self.linked = linked
         self.col_acol_config = col_acol_config
@@ -124,7 +125,7 @@ class SpectraFit:
     def gen_config(self):
         return dict(x_axis=self.x_axis, routine=self.routine, absolute_sigma=self.absolute_sigma,
                     guess_offset=self.guess_offset, cov_mc=self.cov_mc, samples_mc=self.samples_mc,
-                    arithmetics=self.arithmetics, save_to_disk=self.save_to_disk,
+                    arithmetics=self.arithmetics, save_to_disk=self.save_to_disk, norm_scans=self.norm_scans,
                     summed=self.summed, linked=self.linked, col_acol_config=self.col_acol_config)
 
     def gen_fitter(self):
@@ -207,11 +208,15 @@ class SpectraFit:
     def set_softw_gates(self, i, softw_gates):
         if i is None:
             for j in range(len(self.fitter.meas)):
-                self.fitter.meas[j].softw_gates = softw_gates
+                self.fitter.meas[j].softw_gates = softw_gates[:len(self.fitter.meas[j].softw_gates)]
                 self.fitter.meas[j] = TiTs.gate_specdata(self.fitter.meas[j])
         else:
             self.fitter.meas[i].softw_gates = softw_gates
             self.fitter.meas[i] = TiTs.gate_specdata(self.fitter.meas[i])
+        self.fitter.gen_data()
+
+    def set_norm_scans(self):
+        self.fitter.config['norm_scans'] = self.norm_scans
         self.fitter.gen_data()
 
     def fit(self):
@@ -255,14 +260,26 @@ class SpectraFit:
         if from_file:
             return None
         softw_gates = (self.db, run)
+        iso = TiTs.select_from_db(self.db, 'type', 'Files', [['file'], [file]], caller_name=__name__)
         pars = TiTs.select_from_db(self.db, 'softw_gates', 'FitPars', [['file', 'run'], [file, run]],
                                    caller_name=__name__)
+        index = 0
         if pars is None:
-            pars = TiTs.select_from_db(self.db, 'softw_gates', 'FitPars', [['run'], [run]], caller_name=__name__)
-            if pars is None:
+            load_from_isotopes = True
+            pars = TiTs.select_from_db(self.db, 'file, softw_gates', 'FitPars', [['run'], [run]], caller_name=__name__)
+            if iso is not None and pars is not None:
+                for i, par in enumerate(pars):
+                    _iso = TiTs.select_from_db(self.db, 'type', 'Files', [['file'], [par[0]]], caller_name=__name__)
+                    if iso is None:
+                        continue
+                    if _iso[0][0] == iso:
+                        index = i
+                        load_from_isotopes = False
+                        break
+            if load_from_isotopes:
                 return softw_gates
         try:
-            softw_gates = ast.literal_eval(pars[0][0])
+            softw_gates = ast.literal_eval(pars[index][-1])
         except ValueError:
             print('softw_gates could not be loaded from FitPars, loading from selected run.')
         return softw_gates
@@ -308,14 +325,27 @@ class SpectraFit:
         return pars
 
     def _pars_from_db(self, file, run):
+        iso = TiTs.select_from_db(self.db, 'type', 'Files', [['file'], [file]], caller_name=__name__)
         pars = TiTs.select_from_db(self.db, 'pars', 'FitPars', [['file', 'run'], [file, run]], caller_name=__name__)
+        index = 0
         if pars is None:
-            pars = TiTs.select_from_db(self.db, 'pars', 'FitPars', [['run'], [run]], caller_name=__name__)
+            load_from_isotopes = True
+            pars = TiTs.select_from_db(self.db, 'file, pars', 'FitPars', [['run'], [run]], caller_name=__name__)
+            if iso is not None and pars is not None:
+                for i, par in enumerate(pars):
+                    _iso = TiTs.select_from_db(self.db, 'type', 'Files', [['file'], [par[0]]], caller_name=__name__)
+                    if iso is None:
+                        continue
+                    if _iso[0][0] == iso[0][0]:
+                        index = i
+                        load_from_isotopes = False
+                        break
+
             # if pars is None:
             #     pars = TiTs.select_from_db(self.db, 'pars', 'FitPars', [['file'], [file]], caller_name=__name__)
-            if pars is None:
+            if load_from_isotopes:
                 return self._pars_from_legacy_db(file, run)
-        pars = ast.literal_eval(pars[0][0])
+        pars = ast.literal_eval(pars[index][-1])
         return pars
 
     def load_pars(self):

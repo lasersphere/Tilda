@@ -108,6 +108,8 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         self.check_arithmetics.stateChanged.connect(self.toggle_arithmetics)
         self.b_trsplot.clicked.connect(self.open_trsplot)
         self.b_trs.clicked.connect(self.open_trs)
+        self.check_norm_scans.stateChanged.connect(
+            lambda state, _suppress=False: self.toggle_norm_scans(suppress_plot=_suppress))
         self.check_summed.stateChanged.connect(self.toogle_summed)
         self.check_linked.stateChanged.connect(self.toogle_linked)
         self.b_col_acol.clicked.connect(self.open_col_acol)
@@ -350,12 +352,14 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
                       cov_mc=self.check_cov_mc.isChecked(),
                       samples_mc=self.s_samples_mc.value(),
                       arithmetics=arithmetics if arithmetics else None,
+                      norm_scans=self.check_norm_scans.isChecked(),
                       summed=self.check_summed.isChecked(),
                       linked=self.check_linked.isChecked(),
                       col_acol_config=self.col_acol_config,
                       save_to_db=self.check_save_to_db.isChecked(),
                       x_as_freq=self.check_x_as_freq.isChecked(),
                       fig_save_format=self.c_fig.currentText(),
+                      zoom_data=self.check_zoom_data.isChecked(),
                       fmt=self.edit_fmt.text(),
                       fontsize=self.s_fontsize.value())
         return SpectraFit(self.dbpath, files, runs, configs, self.index_load, **kwargs)
@@ -742,6 +746,11 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             # bool: plot bool to force a plotting even if nothing has changed.
             # new_gate_or_soft_bin_width = QtCore.pyqtSignal(list, int, list, bool)
             f_win.new_gate_or_soft_bin_width.connect(self.softw_gates_from_time_res_plot)
+
+    def toggle_norm_scans(self, suppress_plot=False):
+        self.spectra_fit.norm_scans = self.check_norm_scans.isChecked()
+        self.spectra_fit.set_norm_scans()
+        self.plot_auto(suppress_plot)
 
     def toogle_summed(self):
         pass

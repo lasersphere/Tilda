@@ -7,7 +7,7 @@ Created on 20.02.2022
 import os
 import numpy as np
 import sqlite3
-import scipy.stats as st
+from scipy.stats import norm
 import itertools as it
 from PyQt5.QtCore import QObject, pyqtSignal
 
@@ -59,7 +59,7 @@ class Fitter(QObject):
         self.config = config
         if self.config is None:
             self.config = dict(routine='curve_fit', absolute_sigma=False, guess_offset=True,
-                               cov_mc=False, samples_mc=100, arithmetics=None, save_to_disk=False,
+                               cov_mc=False, samples_mc=100, arithmetics='', save_to_disk=False, norm_scans=False,
                                summed=False, linked=False, col_acol_config=COL_ACOL_CONFIG)
         self.run = '' if run is None else run
         self.size = len(self.meas)
@@ -90,6 +90,39 @@ class Fitter(QObject):
         return [[Ph.volt_to_rel_freq(x, iso.q, iso.mass, meas.laserFreq, iso.freq, meas.col)
                  for x in x_track] for x_track in meas.x]
 
+    def _gen_yyerr(self, meas, st, n=10000):
+        """
+        This should only be called for real spectra once per meas in 'gen_data'.
+
+        :param meas: A spec_data object.
+        :param st: The scaler and track info.
+        :param data: The data as returned by spec_data.getArithSpec.
+        :param n: The number of samples to estimate the uncertainties in the 'function' mode.
+        :returns: None.
+        """
+        cts = [np.array(t, dtype=float) / n_scans if self.config['norm_scans']
+               else np.array(t, dtype=float) for t, n_scans in zip(meas.cts, meas.nrScans)]
+        cts = np.concatenate(cts, axis=1)
+
+        cts_d = [np.sqrt(np.array(t, dtype=float)) / n_scans if self.config['norm_scans']
+                 else np.sqrt(np.array(t, dtype=float)) for t, n_scans in zip(meas.cts, meas.nrScans)]
+        cts_d = np.concatenate(cts_d, axis=1)
+
+        if not self.config['arithmetics']:
+            self.config['arithmetics'] = '[{}]'.format(', '.join(st[0]))
+        if self.config['arithmetics'][0] == '[':
+            indexes = np.array(eval(self.config['arithmetics']), dtype=int)
+            self.y.append(np.sum(cts[indexes], axis=0))
+            self.yerr.append(np.sqrt(np.sum(cts_d[indexes, :] ** 2, axis=0)))
+        else:
+            y_mean = {'s{}'.format(i): cts[i] for i in range(self.n_scaler)
+                      if 's{}'.format(i) in self.config['arithmetics']}
+            y_samples = {'s{}'.format(i): norm.rvs(loc=cts[i], scale=cts_d[i], size=(n, cts[i].size))
+                         for i in range(self.n_scaler) if 's{}'.format(i) in self.config['arithmetics']}
+            # noinspection PyTypeChecker
+            self.y.append(eval(self.config['arithmetics'], y_mean))
+            self.yerr.append(np.std(eval(self.config['arithmetics'], y_samples), axis=0, ddof=1))
+
     def _gen_yerr(self, meas, st, data, n=10000):
         """
         This should only be called for real spectra once per meas in 'gen_data'.
@@ -107,7 +140,7 @@ class Fitter(QObject):
                 cts = [np.array([i for i in it.chain(*(t[scaler] for t in meas.cts))]) for scaler in st[0]]
             else:
                 cts = [np.array(meas.cts[st[1]][scaler]) for scaler in st[0]]
-            y_samples = {'s{}'.format(i): np.random.normal(loc=cts[i], scale=np.sqrt(cts[i]), size=(n, cts[i].size))
+            y_samples = {'s{}'.format(i): norm.rvs(loc=cts[i], scale=np.sqrt(cts[i]), size=(n, cts[i].size))
                          for i in range(self.n_scaler) if 's{}'.format(i) in self.config['arithmetics']}
             # noinspection PyTypeChecker
             self.yerr.append(np.std(eval(self.config['arithmetics'], y_samples), axis=0, ddof=1))
@@ -122,9 +155,9 @@ class Fitter(QObject):
             data = meas.getArithSpec(*st, function=self.config['arithmetics'], eval_on=True)
             self.sizes.append(data[0].size)
             self.x_volt.append(data[0])
-            self.y.append(data[1])
             if meas.seq_type == 'kepco':
                 self.x.append(data[0])
+                self.y.append(data[1])
                 self.yerr.append(data[2])
             else:
                 if 'CounterDrift' in meas.scan_dev_dict_tr_wise[0]['name']:
@@ -139,7 +172,8 @@ class Fitter(QObject):
                                                       lab_frame=self.config['x_axis'] == 'lab frequencies'))
                 else:  # TODO: Implement DAC voltages.
                     pass
-                self._gen_yerr(meas, st, data)
+                self._gen_yyerr(meas, st)
+                # self._gen_yerr(meas, st, data)
         if all(model.type == 'Offset' for model in self.models):
             self.gen_x_cuts()
 
@@ -411,11 +445,11 @@ class Fitter(QObject):
 
         if self.config['col_acol_config']['mc']:
             size = self.config['col_acol_config']['mc_size']
-            mass_sample = st.norm.rvs(loc=mass[0], scale=mass[1], size=size)
-            f_ion_c_sample = st.norm.rvs(loc=f_ion_c[0], scale=f_ion_c[1], size=size)
-            f_laser_c_sample = st.norm.rvs(loc=f_laser_c[0], scale=f_laser_c[1], size=size)
-            f_ion_a_sample = st.norm.rvs(loc=f_ion_a[0], scale=f_ion_a[1], size=size)
-            f_laser_a_sample = st.norm.rvs(loc=f_laser_a[0], scale=f_laser_a[1], size=size)
+            mass_sample = norm.rvs(loc=mass[0], scale=mass[1], size=size)
+            f_ion_c_sample = norm.rvs(loc=f_ion_c[0], scale=f_ion_c[1], size=size)
+            f_laser_c_sample = norm.rvs(loc=f_laser_c[0], scale=f_laser_c[1], size=size)
+            f_ion_a_sample = norm.rvs(loc=f_ion_a[0], scale=f_ion_a[1], size=size)
+            f_laser_a_sample = norm.rvs(loc=f_laser_a[0], scale=f_laser_a[1], size=size)
 
             # For u, the exact laser freq and mass that was previously used
             # for the transformation has to be used, not the samples.
