@@ -681,12 +681,13 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
             self.trs_config_ui.deleteLater()
         self.trs_config_ui = TRSConfigUi(self.spectra_fit.fitter.meas[self.index_config].softw_gates)
         self.trs_config_ui.gate_signal.connect(
-            lambda gates=self.trs_config_ui.softw_gates: self.set_softw_gates(gates, -1))
+            lambda gates=self.trs_config_ui.softw_gates: self.set_softw_gates(gates))
         self.trs_config_ui.show()
 
-    def set_softw_gates(self, softw_gates, tr_ind, suppress_plot=False):
+    def set_softw_gates(self, softw_gates, suppress_plot=False):
         if softw_gates:
-            self.spectra_fit.set_softw_gates(self.index_config, softw_gates, tr_ind)
+            # self.spectra_fit.set_softw_gates(self.index_config, softw_gates, tr_ind)
+            self.spectra_fit.set_softw_gates(None, softw_gates)
             self.plot_auto(suppress_plot)
 
     # noinspection PyUnusedLocal
@@ -700,7 +701,7 @@ class SpectraFitUi(QtWidgets.QWidget, Ui_SpectraFit):
         :param soft_b_width: list: software bin width in ns for each track
         :param plot_bool: bool: plot bool to force a plotting even if nothing has changed.
         """
-        self.set_softw_gates(softw_g, tr_ind)
+        self.set_softw_gates(softw_g)
 
     def open_trsplot(self):
         if self.spectra_fit.fitter is None:

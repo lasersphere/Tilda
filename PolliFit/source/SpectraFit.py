@@ -17,6 +17,15 @@ from Fitter import Fitter, print_colored
 import Models.Collection as Mod
 
 
+LEGACY_PARS = {'lor': 'Gamma', 'gamma': 'Gamma', 'gau': 'sigma'}
+
+
+def _legacy_par_to_par(par):
+    if par in list(LEGACY_PARS.keys()):
+        return LEGACY_PARS[par]
+    return par
+
+
 def execute(cur, command, *args):
     try:
         cur.execute(command, *args)
@@ -195,12 +204,14 @@ class SpectraFit:
             self.fitter.config['arithmetics'] = arithmetics
             self.fitter.st = st
 
-    def set_softw_gates(self, i, softw_gates, tr_ind):
-        if tr_ind == -1:
-            self.fitter.meas[i].softw_gates = softw_gates
+    def set_softw_gates(self, i, softw_gates):
+        if i is None:
+            for j in range(len(self.fitter.meas)):
+                self.fitter.meas[j].softw_gates = softw_gates
+                self.fitter.meas[j] = TiTs.gate_specdata(self.fitter.meas[j])
         else:
-            self.fitter.meas[i].softw_gates[tr_ind] = softw_gates[tr_ind]
-        self.fitter.meas[i] = TiTs.gate_specdata(self.fitter.meas[i])
+            self.fitter.meas[i].softw_gates = softw_gates
+            self.fitter.meas[i] = TiTs.gate_specdata(self.fitter.meas[i])
         self.fitter.gen_data()
 
     def fit(self):
@@ -268,7 +279,9 @@ class SpectraFit:
         pars = TiTs.select_from_db(self.db, 'shape, fixShape', 'Lines', [['lineVar'], [line]], caller_name=__name__)
         fixes = ast.literal_eval(pars[0][1])
         pars = ast.literal_eval(pars[0][0])
-        pars = {par: (val, fixes.get(par, False), False) for par, val in pars.items()}
+        pars = {_legacy_par_to_par(par): (val, fixes.get(par, False), False) for par, val in pars.items()}
+        if 'Gamma' in list(pars.keys()):
+            pars['Gamma'] = (2 * pars['Gamma'][0], *pars['Gamma'][1:])
         columns = ['center', 'Al', 'Bl', 'Au', 'Bu', 'fixedArat', 'fixedBrat', 'm',
                    'fixedAl', 'fixedBl', 'fixedAu', 'fixedBu']
 
@@ -288,9 +301,9 @@ class SpectraFit:
                      pars_iso.get('fixed{}'.format(par[:2]), False), False) for par in names}
             pars = {**pars, **_pars}
             if pars_iso['fixedArat']:
-                pars[names[3]] = '{} * {}'.format(pars_iso['fixedArat'], names[1])
+                pars[names[3]] = (0., '{} * {}'.format(pars_iso[names[3]], names[1]), False)
             if pars_iso['fixedBrat']:
-                pars[names[4]] = '{} * {}'.format(pars_iso['fixedBrat'], names[2])
+                pars[names[4]] = (0., '{} * {}'.format(pars_iso[names[4]], names[2]), False)
             iso = m
         return pars
 
@@ -336,7 +349,7 @@ class SpectraFit:
             new_pars = {**pars, **new_pars}
             softw_gates = str(self.fitter.meas[i].softw_gates)
             if 'inf' in softw_gates:
-                self.set_softw_gates(i, self.fitter.meas[i].softw_gates, -1)
+                self.set_softw_gates(i, self.fitter.meas[i].softw_gates)
                 softw_gates = str(self.fitter.meas[i].softw_gates)
             execute(cur, 'INSERT OR REPLACE INTO FitPars (file, run, softw_gates, config, pars)'
                          ' VALUES (?, ?, ?, ?, ?)', (file, run, softw_gates, str(config), str(new_pars)))

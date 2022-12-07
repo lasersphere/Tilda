@@ -78,13 +78,13 @@ class Hyperfine(Splitter):
         self.n_l = len(self.transitions[0][1])
         self.n_u = len(self.transitions[0][2])
         for i in range(self.n_l):
-            self._add_arg('{}l'.format(ascii_uppercase[i]), 0., False, False)
+            self._add_arg('{}l'.format(ascii_uppercase[i]), 0., True, False)
         for i in range(self.n_u):
-            self._add_arg('{}u'.format(ascii_uppercase[i]), 0., False, False)
+            self._add_arg('{}u'.format(ascii_uppercase[i]), 0., True, False)
 
         for i, (t, intensity) in enumerate(zip(self.transitions, self.racah_intensities)):
             self.racah_indices.append(self._index)
-            self._add_arg('int({}, {})'.format(t[0][0], t[0][1]), intensity, i == 0, False)
+            self._add_arg('int({}, {})'.format(t[0][0], t[0][1]), intensity, True, False)
 
     def evaluate(self, x, *args, **kwargs):
         const_l = tuple(args[self.model.size + i] for i in range(self.n_l))

@@ -62,6 +62,5 @@ def load(file, db, raw=False, x_as_voltage=True, softw_gates=None):
         return None
 
 
-
 def check(end):
     return end in ['.txt', '.tld', '.xml', '.mcp', '.dat', '.bea', '.sp']
