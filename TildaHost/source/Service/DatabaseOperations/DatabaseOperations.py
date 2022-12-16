@@ -16,6 +16,7 @@ import Service.VoltageConversions.VoltageConversions as VCon
 import Tools as PolliTools
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TriTypes
 
+
 def createTildaDB(db):
     """
     will create an sqlite db suited for Tilda.
@@ -67,29 +68,31 @@ def form_pollifit_db_to_tilda_db(db):
 def check_for_missing_columns_scan_pars(db):
     """ will check if all columns for the scan pars table are available and add those which are not """
     target_cols = [
-        (1, 'type', 'TEXT'),
-        (2, 'track', 'INT'),
-        (3, 'accVolt', 'FLOAT'),
-        (4, 'laserFreq', 'FLOAT'),
-        (5, 'dacStartVolt', 'FLOAT'),
-        (6, 'dacStopVolt', 'FLOAT'),
-        (7, 'dacStepSizeVolt', 'FLOAT'),
-        (8, 'invertScan', 'TEXT'),
-        (9, 'nOfSteps', 'INT'),
-        (10, 'nOfScans', 'INT'),
-        (11, 'postAccOffsetVoltControl', 'INT'),
-        (12, 'postAccOffsetVolt', 'FLOAT'),
-        (13, 'activePmtList', 'TEXT'),
-        (14, 'colDirTrue', 'TEXT'),
-        (15, 'sequencerDict', 'TEXT'),
-        (16, 'triggerDict', 'TEXT'),
-        (17, 'waitForKepco1us', 'INT'),
-        (18, 'waitAfterReset1us', 'INT'),
-        (19, 'measureVoltPars', 'TEXT'),
-        (20, 'pulsePattern', 'TEXT'),
-        (21, 'triton', 'TEXT'),
-        (22, 'outbits', 'TEXT'),
-        (23, 'scanDevDict', 'TEXT')
+        (1, 'iso', 'TEXT NOT NULL'),
+        (2, 'type', 'TEXT NOT NULL'),
+        (3, 'track', 'INT'),
+        (4, 'accVolt', 'FLOAT'),
+        (5, 'laserFreq', 'FLOAT'),
+        (6, 'dacStartVolt', 'FLOAT'),
+        (7, 'dacStopVolt', 'FLOAT'),
+        (8, 'dacStepSizeVolt', 'FLOAT'),
+        (9, 'invertScan', 'TEXT'),
+        (10, 'nOfSteps', 'INT'),
+        (11, 'nOfScans', 'INT'),
+        (12, 'postAccOffsetVoltControl', 'INT'),
+        (13, 'postAccOffsetVolt', 'FLOAT'),
+        (14, 'activePmtList', 'TEXT'),
+        (15, 'colDirTrue', 'TEXT'),
+        (16, 'sequencerDict', 'TEXT'),
+        (17, 'triggerDict', 'TEXT'),
+        (18, 'waitForKepco1us', 'INT'),
+        (19, 'waitAfterReset1us', 'INT'),
+        (20, 'measureVoltPars', 'TEXT'),
+        (21, 'pulsePattern', 'TEXT'),
+        (22, 'triton', 'TEXT'),
+        (23, 'outbits', 'TEXT'),
+        (24, 'scanDevDict', 'TEXT'),
+        (25, 'sql', 'TEXT')
     ]
     con = sqlite3.connect(db)
     cur = con.cursor()
@@ -162,6 +165,7 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
                 laserFreq = ?,
                 pulsePattern = ?,
                 triton = ?,
+                sql = ?,
                 outbits = ?,
                 scanDevDict = ?
                 WHERE iso = ? AND type = ? AND track = ?''',
@@ -185,6 +189,7 @@ def add_scan_dict_to_db(db, scandict, n_of_track, track_key='track0', overwrite=
                         isod['laserFreq'],
                         str(trackd['pulsePattern']),
                         str(trackd['triton']),
+                        str(trackd['sql']),
                         str(trackd['outbits']),
                         str(scan_dev_dict),
                         iso, sctype, n_of_track)

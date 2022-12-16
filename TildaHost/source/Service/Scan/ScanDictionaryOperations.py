@@ -31,6 +31,7 @@ def init_empty_scan_dict(type_str=None, version=None, load_default_vals=False):
     else:
         scand['track0']['measureVoltPars'] = {'preScan': {}, 'postScan': {}, 'duringScan': {}}
         scand['track0']['triton'] = {'preScan': {}, 'postScan': {}, 'duringScan': {}}
+        scand['track0']['sql'] = {'preScan': {}, 'postScan': {}, 'duringScan': {}}
         scand['track0']['outbits'] = {}
     scand['isotopeData']['version'] = Cfg.version
     scand['track0']['trigger'] = {'meas_trigger': {'type': TiTs.no_trigger},

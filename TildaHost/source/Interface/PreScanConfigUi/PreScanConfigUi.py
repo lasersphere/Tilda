@@ -63,6 +63,12 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         self.listWidget_devices.itemClicked.connect(self.dev_selection_changed)
         self.tableWidget_channels.itemClicked.connect(self.check_any_ch_active)
         self.checkBox_triton_measure.stateChanged.connect(self.triton_measure_checkbox_changed)
+        self.check_sql_measure.stateChanged.connect(self.sql_measure_checkbox_changed)
+
+        # SQL related
+        self.sql_scan_dict = self.get_sql_scan_pars()
+        self.sql_scan_dict_backup = deepcopy(self.sql_scan_dict)  # to keep any data stored in the channels
+        self.setup_sql_channels()
 
         # digital multimeter related
         self.current_meas_volt_settings = {}  # storage for current settings, this holds pre/post/during dicts
@@ -193,6 +199,27 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         self.tabWidget.setEnabled(state == 2)
         self.doubleSpinBox_measVoltPulseLength_mu_s.setEnabled(state == 2)
         self.doubleSpinBox_measVoltTimeout_mu_s_set.setEnabled(state == 2)
+
+    def sql_measure_checkbox_changed(self, state):
+        """
+        Enable/Disable scroll widget. Stop recording the selected data.
+        disable the main widget and leaves empty dict at:
+             {'triton': {self.pre_or_during_scan_str: {} ... }
+         if unchecked.
+         If Checked it will load from backupt and force the gui to stay enabled
+        """
+        if state == 2:  # now checked
+            self.sql_scan_dict[self.pre_or_during_scan_str] = deepcopy(self.sql_scan_dict_backup.get(
+                self.pre_or_during_scan_str, {}))
+        else:  # now unchecked
+            # self.check_any_ch_active()  # get current channel selection
+            # store in backup
+            self.sql_scan_dict_backup[self.pre_or_during_scan_str] = deepcopy(
+                self.sql_scan_dict[self.pre_or_during_scan_str])
+            #  clear current settins
+            self.sql_scan_dict[self.pre_or_during_scan_str] = {}
+        # setup gui according to the settings now.
+        # self.setup_triton_devs(state == 2)  # force measure if true
 
     ''' voltage related, mostly copied from DmmUi.py '''
 
@@ -446,7 +473,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         meas_volt_dict['switchBoxSettleTimeS'] = self.doubleSpinBox_wait_after_switchbox.value()
         return meas_volt_dict
 
-    ''' triton related '''
+    """ triton related """
 
     def setup_triton_devs(self, force_measure=False):
         """
@@ -669,6 +696,24 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         triton_dict = self.triton_scan_dict[
             self.pre_or_during_scan_str] if self.checkBox_triton_measure.isChecked() else {}
         return triton_dict
+
+    """ SQL related """
+
+    def setup_sql_channels(self):
+        pass
+
+    def get_sql_scan_pars(self):
+        """
+        Get the SQL part of the scan dict for one track in the main or return default.
+        
+        :returns: dict, for SQL scan parameters, pre / during / post scan.
+        """
+        default_ret = {'preScan': {}, 'duringScan': {}, 'postScan': {}}
+        try:
+            sql_dict = Cfg._main_instance.scan_pars[self.active_iso][self.act_track_name].get('sql', {})
+        except AttributeError:  # if no main available ( gui test etc.)
+            sql_dict = default_ret
+        return sql_dict
 
 
 if __name__ == '__main__':

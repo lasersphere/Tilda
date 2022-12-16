@@ -223,7 +223,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         ''' vertical splitter between tres and v_proj/sum_proj: '''
         self.splitter_4.setSizes([h // 2, h // 2])
         ''' horizontal splitter between v_proj and the display widget: '''
-        self.splitter_3.setSizes([w * 55 // 100, w * 42.5 // 100])
+        self.splitter_3.setSizes([w * 55 // 100, int(w * 42.5 // 100)])
         ''' vertical splitter between all pmts plot and x/y coords widg '''
         self.splitter_allpmts.setSizes([h * 9 // 10, h * 1 // 10])
 

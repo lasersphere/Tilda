@@ -758,10 +758,12 @@ class Main(QtCore.QObject):
         self.scan_pars[iso_name]['isotopeData']['laserFreq'] = self.laserfreq
         self.scan_pars[iso_name]['isotopeData']['accVolt'] = self.acc_voltage
         for key, track_d in self.scan_pars[iso_name].items():
-            #  fill empty triton dicts to each track if there is not one already
+            #  fill empty triton/SQL dicts to each track if there is not one already
             if 'track' in key:
                 if self.scan_pars[iso_name][key].get('triton', None) is None:
                     self.scan_pars[iso_name][key]['triton'] = {}
+                if self.scan_pars[iso_name][key].get('sql', None) is None:
+                    self.scan_pars[iso_name][key]['sql'] = {}
         if self.scan_pars[iso_name]['isotopeData']['type'] == 'kepco':
             track_num, list_of_tracknums = TildaTools.get_number_of_tracks_in_scan_dict(self.scan_pars[iso_name])
             if track_num > 1:
