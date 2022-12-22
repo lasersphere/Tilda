@@ -16,6 +16,7 @@ from datetime import timedelta
 
 import Application.Config as Cfg
 from Interface.PreScanConfigUi.Ui_PreScanMain import Ui_PreScanMainWin
+from Interface.PreScanConfigUi.SQLObservableUi import SQLObservableUi
 from Interface.DmmUi.ChooseDmmWidget import ChooseDmmWidget
 from Interface.DmmUi.DMMWidgets import Ni4071Widg
 
@@ -66,9 +67,12 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         self.check_sql_measure.stateChanged.connect(self.sql_measure_checkbox_changed)
 
         # SQL related
+        self.observables_measure = []
         self.sql_scan_dict = self.get_sql_scan_pars()
         self.sql_scan_dict_backup = deepcopy(self.sql_scan_dict)  # to keep any data stored in the channels
         self.setup_sql_channels()
+
+        self.b_add_measure.clicked.connect(self.add_observable)
 
         # digital multimeter related
         self.current_meas_volt_settings = {}  # storage for current settings, this holds pre/post/during dicts
@@ -698,6 +702,12 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         return triton_dict
 
     """ SQL related """
+
+    def add_observable(self):
+        self.observables_measure.append(SQLObservableUi(self))
+        self.scroll_widget_measure.layout().insertWidget(
+            self.scroll_widget_measure.layout().count() - 2, self.observables_measure[-1])
+        self.observables_measure[-1].show()
 
     def setup_sql_channels(self):
         pass
