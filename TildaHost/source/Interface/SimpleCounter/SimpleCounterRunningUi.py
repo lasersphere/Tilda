@@ -70,23 +70,51 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
             # Else zero values will appear and mess up the axis scaling.
             new_data = False
             for i, j in enumerate(scaler_liste[0]):
-                last_second_sum = np.sum(j)
-                number_of_new_data_points = scaler_liste[1][i]
-                if number_of_new_data_points:
-                    new_data = True
-                    self.elements[i]['widg'].display(last_second_sum)
-                    self.y_data[i][-1] = last_second_sum
-                    self.x_data[i] += number_of_new_data_points * self.sample_interval
-                    self.x_data[i][-1] = 0  # always zero at time 0
-                    self.update_plot(i, self.x_data[i], self.y_data[i])
-            if self.x_data.shape[1] == self.datapoints:#
-                # Once full array size is reached we can proceed with normal data handling below
-                self.arrayFull = True
-            elif new_data:
-                # Increase array size by 1 adding zeros to the end.
-                # These will be overwritten in the next call and therefore never be displayed in the scaler.
-                self.x_data = np.concatenate((self.x_data, np.zeros((len(self.act_pmts), 1))), axis=1)
-                self.y_data = np.concatenate((self.y_data, np.zeros((len(self.act_pmts), 1))), axis=1)
+                if i ==1 and len(self.x_data[i]) >len(j)+1:
+                    for sc, a in enumerate(scaler_liste[0][1:]):
+                        while self.y_data[sc+1][0] != 0:
+                            self.y_data[sc+1] = np.roll(self.y_data[sc+1], -1)
+                            self.x_data[sc+1] = np.roll(self.x_data[sc+1], -1)
+                        self.y_data[sc+1] = np.roll(self.y_data[sc+1], -1)
+                        self.x_data[sc+1] = np.roll(self.x_data[sc+1], -1)
+                for ct in j:
+                    last200ms = ct
+                    number_of_new_data_points = scaler_liste[1][i]/10
+                #last_second_sum = np.sum(j)
+                #number_of_new_data_points = scaler_liste[1][i]
+                    if number_of_new_data_points:
+                        new_data = True
+                        #self.elements[i]['widg'].display(last_second_sum)
+                        self.elements[i]['widg'].display(last200ms)
+                        self.y_data[i][-1] = last200ms
+                        #self.y_data[i][-1] = last_second_sum
+                        self.x_data[i] += number_of_new_data_points * self.sample_interval
+                        self.x_data[i][-1] = 0  # always zero at time 0
+                        self.update_plot(i, self.x_data[i], self.y_data[i])
+                        if self.x_data.shape[1] > 1:
+                            if self.x_data[i][0] == self.x_data[i][1] or (i>0 and self.x_data[i][0] % 1 == 0 and self.x_data[i][0] != 0):
+                                new_data = False
+                            #elif i == 0 and len(self.x_data[i]) >len(j):
+                                #for sc, a in enumerate(scaler_liste[0][1:]):
+                                    #self.y_data[sc+1] = np.roll(self.y_data[sc+1], -1)
+                                    #self.x_data[sc+1] = np.roll(self.x_data[sc+1], -1)
+                    if self.x_data.shape[1] == self.datapoints:#
+                        # Once full array size is reached we can proceed with normal data handling below
+                        self.arrayFull = True
+                    elif new_data:
+                        # Increase array size by 1 adding zeros to the end.
+                        # These will be overwritten in the next call and therefore never be displayed in the scaler.
+                        self.x_data = np.concatenate((self.x_data, np.zeros((len(self.act_pmts), 1))), axis=1)
+                        self.y_data = np.concatenate((self.y_data, np.zeros((len(self.act_pmts), 1))), axis=1)
+                    else:
+                        self.y_data[i] = np.roll(self.y_data[i], -1)
+                        self.x_data[i] = np.roll(self.x_data[i], -1)
+                        self.x_data[i][-1] = 0
+                #if i == len(scaler_liste[0])-1:
+                    #self.x_data = np.array([self.x_data[0][:-1], self.x_data[1][:-1], self.x_data[2][:-1], self.x_data[3][:-1]])
+                    #self.y_data = np.array([self.y_data[0][:-1], self.y_data[1][:-1], self.y_data[2][:-1], self.y_data[3][:-1]])
+
+
         else:
             for i, j in enumerate(scaler_liste[0]):
                 last_second_sum = np.sum(j)
