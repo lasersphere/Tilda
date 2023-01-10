@@ -212,7 +212,7 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
             metric = QtGui.QFontMetrics(font)
             scale = min([scale, 0.95 * el.width() / metric.horizontalAdvance(el.text())])
             scale = min([scale, 0.95 * el.height() / metric.height()])
-        font.setPointSize(scale * font.pointSize())
+        font.setPointSize(int(scale * font.pointSize()))
         for pl_dict in self.elements:
             pl_dict['widg'].setFont(font)
 
