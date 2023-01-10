@@ -123,6 +123,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
                 self.triton_scan_dict[self.pre_or_during_scan_str] = self.get_current_triton_settings() \
                     if self.checkBox_triton_measure.isChecked() else {}
                 self.parent_ui.buffer_pars['triton'] = self.triton_scan_dict
+                self.parent_ui.buffer_pars['sql'] = self.sql_scan_dict
                 Cfg._main_instance.pre_scan_timeout_changed(self.doubleSpinBox_timeout_pre_scan_s.value())
                 # logging.info('set values to: ', Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'])
 
@@ -718,7 +719,10 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         
         :returns: dict, for SQL scan parameters, pre / during / post scan.
         """
-        default_ret = {'preScan': {}, 'duringScan': {}, 'postScan': {}}
+        default_ret = {'preScan': {'ch0': {'required': 10, 'acquired': 0, 'data': []}},
+                       'duringScan': {},
+                       'postScan': {}}
+        return default_ret
         try:
             sql_dict = Cfg._main_instance.scan_pars[self.active_iso][self.act_track_name].get('sql', {})
         except AttributeError:  # if no main available ( gui test etc.)

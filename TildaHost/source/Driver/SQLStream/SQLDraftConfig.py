@@ -9,9 +9,9 @@ Copy and rename to SQLConfig.py in this folder to get complete SQL stream suppor
 
 sqlCfg = 'local'  # use this for testing without a db!
 
-# sqlCfg = {
-#     'user': 'root',
-#     'password': 'testtest',
-#     'host': 'localhost',
-#     'database': 'tl_db',
-# }
+sqlCfg = {
+    'user': 'root',
+    'password': 'root',
+    'host': 'localhost',
+    'database': 'tildatest',
+}

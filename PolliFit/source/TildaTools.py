@@ -338,6 +338,30 @@ def save_triton_to_xml(file, tr_name, triton_dict, pre_during_post_scan_str='pre
             save_xml(root, file)
 
 
+def save_sql_to_xml(file, tr_name, sql_dict, pre_during_post_scan_str='preScan'):
+    """
+    will save the sql stream log to the given xml file.
+
+    :param file: str, path of the xml file
+    :param tr_name: str, track name
+    :param sql_dict: dict, {'ch1': {'required': 2, 'data': [], 'acquired': 0}, ...}
+    :param pre_during_post_scan_str: str, preScan / duringScan / postScan
+    :return: None
+    """
+    if file:
+        if sql_dict:
+            logging.info('sql stream %s log complete, saving to: %s' % (pre_during_post_scan_str, file))
+            logging.debug('saving directly to xml file: ' + str(sql_dict))
+            root = load_xml(file)
+            tracks = xmlFindOrCreateSubElement(root, 'tracks')
+            track = xmlFindOrCreateSubElement(tracks, tr_name)
+            track_header = xmlFindOrCreateSubElement(track, 'header')
+            sql_ele = xmlFindOrCreateSubElement(track_header, 'sql')
+            pre_ele = xmlFindOrCreateSubElement(sql_ele, pre_during_post_scan_str)
+            xmlWriteDict(pre_ele, sql_dict)
+            save_xml(root, file)
+
+
 def evaluate_strings_in_dict(dict_to_convert):
     """
     function which will convert all values inside a dict using ast.literal_eval -> '1.0' -> 1.0 etc..
