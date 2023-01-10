@@ -157,6 +157,9 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
         if LCD_COUNTER:
             el.display(last_second_sum)
             return
+        if last_second_sum == 0:
+            el.setText('   0  ')
+            return
         modulo = 2
         digits = int(np.floor(np.log10(np.abs(last_second_sum))).astype(int))
         if digits > 2:
