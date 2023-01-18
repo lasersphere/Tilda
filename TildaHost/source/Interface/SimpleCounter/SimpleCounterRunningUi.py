@@ -25,7 +25,9 @@ MAGNITUDE = ['  ', ' K', ' M', ' B', ' T', ' Q']
 FONT_FAMILY = 'Century Gothic'
 I = 3
 J = 0
-cts = [99, 999, 99999, 9999999999999999]
+# cts = np.array([999, 9999, 99999, 999999])  #
+# cts = np.array([999998, 999999, 1000000, 1000001])  # For testing.
+# cts = np.array([666, 6666, 66666, 666666])  #
 
 
 def gen_counter_sb(parent):
@@ -161,10 +163,9 @@ class SimpleCounterRunningUi(QtWidgets.QMainWindow, Ui_SimpleCounterRunning):
             el.setText('   0  ')
             return
         modulo = 2
-        digits = int(np.floor(np.log10(np.abs(last_second_sum))).astype(int))
+        digits = int(np.floor(np.log10(np.abs(last_second_sum))))
         if digits > 2:
             modulo = digits % 3
-            digits += 1
             last_second_sum *= 1e-3 ** (digits // 3)
         n_str = COUNTER_FMT[modulo].format(last_second_sum)[:4].rstrip('.').rjust(4)
         el.setText('{}{}'.format(n_str, MAGNITUDE[digits // 3]))
