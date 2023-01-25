@@ -516,8 +516,12 @@ class ScanMain(QObject):
         # start triton log for during scan if required
         triton_dict_pre_scan = scan_dict[act_track_name].get('triton', {}).get('duringScan', {})
         triton_dict_is_none = triton_dict_pre_scan is None or triton_dict_pre_scan == {}
+        sql_dict_pre_scan = scan_dict[act_track_name].get('sql', {}).get('duringScan', {})
+        sql_dict_is_none = sql_dict_pre_scan is None or sql_dict_pre_scan == {}
         if not triton_dict_is_none:
             self.start_triton_log()
+        if not sql_dict_is_none:
+            self.start_sql_log()
         return start_ok
 
     def set_post_acc_switch_box(self, scan_dict, track_num, desired_state=None):
@@ -635,6 +639,7 @@ class ScanMain(QObject):
         """
         read = self.read_data(force_emit=True)  # read data one last time
         self.abort_triton_log()
+        self.abort_sql_log()
         self.ppg_stop()
         if read:
             logging.info('while stopping measurement, some data was still read.')
@@ -1214,6 +1219,12 @@ class ScanMain(QObject):
         sql_dict = self.get_sql_log_data()
         # The save process is moved to TildaTools for better accessibility
         TiTs.save_sql_to_xml(file, tr_name, sql_dict, pre_during_post_scan_str=pre_during_post_scan_str)
+
+    def get_available_sql_channels(self):
+        if self.sql_stream is not None:
+            return self.sql_stream.get_channels_from_db()
+        else:
+            return {}
 
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@ from threading import Thread
 from PyQt5.QtCore import QObject, pyqtSignal
 
 import Application.Config as Cfg
-from Driver.SQLStream.SQLConfig import SQL_CFG
+from Driver.SQLStream.SQLConfig import SQL_CFG, EXCLUDE_CHANNELS
 
 
 class SQLStream(QObject):
@@ -48,14 +48,13 @@ class SQLStream(QObject):
         self.logging_complete = True
         self.log = {}
         self.back_up_log = deepcopy(self.log)
+        self.ch_id = {}
 
         self.last_emit_to_analysis_pipeline_datetime = datetime.now()
         self.time_between_emits_to_pipeline = timedelta(milliseconds=500)
         self.last_received_times = [datetime.now(), datetime.now()]
         self.rcvd_time_deltas_total_s = []
         self.mean_rcvd_time_delta = timedelta(seconds=60).total_seconds()
-
-        self.registered_channels = {}
 
     """ Encapsulate db functionalities to handle connectivity problems and allow to operate without a db. """
 
@@ -137,6 +136,25 @@ class SQLStream(QObject):
                     self.sql_cfg.get('database', 'unknown'), e))
                 self.db_connect()
                 self.db.close()
+
+    def get_channels_from_db(self):
+        """
+        return a list of all available channels.
+        :return: dict, {dev: ['ch1', 'ch2' ...]}
+        """
+        channels = []
+        if self.db != 'local':
+            self.db_execute('SHOW TABLES', None)
+            # self.db_execute('SELECT deviceName FROM devices WHERE uri IS NOT NULL', None)
+            tables = self.db_fetchall()
+            for t in tables:
+                self.db_execute('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE'
+                                ' TABLE_SCHEMA = %s AND TABLE_NAME = %s', (self.sql_cfg['database'], t[0]))
+                sub_channels = ['{}.{}'.format(t[0], c[0]) for c in self.db_fetchall() if c[0] not in EXCLUDE_CHANNELS]
+                channels += sub_channels
+        else:
+            logging.warning('No db connection.')
+        return channels
     
     """ Implementation of the periodic readout. """
 
@@ -161,7 +179,12 @@ class SQLStream(QObject):
                         or self.log[ch]['required'] == -1 and self.pre_dur_post_str == 'duringScan':
 
                     # --- fetch ---
-                    data = [np.random.random()]
+                    # data = [np.random.random()]
+                    t, c = ch.split('.')
+                    self.db_execute('SELECT ID, {} FROM {} WHERE ID > {}'.format(c, t, self.ch_id[ch]), None)
+                    data = self.db_fetchall()
+                    self.ch_id[ch] = data[-1][0]
+                    data = [d[1] for d in data]
                     # --- fetch ---
 
                     self.log[ch]['data'] += data
@@ -199,6 +222,7 @@ class SQLStream(QObject):
         elif t > 0:
             self._interval = t
             self._thread = Thread(target=self._run)
+            print(111111111111111111)
             self._thread.start()
 
     """ Configure Tilda signals. """
@@ -229,19 +253,21 @@ class SQLStream(QObject):
 
         if log is None or log == {}:
             self.log = {}
+            self.ch_id = {}
             self.logging_complete = True  # do not log
             self.back_up_log = deepcopy(self.log)  # store backup log, because work is done in self.log
         else:
             self.log = log
             self.logging_complete = False
             self.back_up_log = deepcopy(self.log)  # store backup log, because work is done in self.log
-            self.registered_channels = {k for k in self.log.keys()}  # for testing
-            if len(self.registered_channels):
+            self.ch_id = {ch: -1 for ch in self.log.keys()}
+            if self.log:
                 self.logging_complete = False
             else:
                 # could not resolve names etc. do not log!
                 self.logging_complete = True
                 self.log = {}
+                self.ch_id = {}
                 self.back_up_log = deepcopy(self.log)  # store backup log, because work is done in self.log
 
     def check_log_complete(self):

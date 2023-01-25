@@ -312,7 +312,7 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
           postAccOffsetVolt, activePmtList, colDirTrue,
            sequencerDict, waitForKepco1us, waitAfterReset1us,
            triggerDict,
-           measureVoltPars, accVolt, laserFreq, pulsePattern, triton, outbits, scanDevDict
+           measureVoltPars, accVolt, laserFreq, pulsePattern, triton, outbits, scanDevDict, sql
         FROM ScanPars WHERE iso = ? AND type = ? AND track = ?
         ''', (iso, sctype, tracknum,)
     )
@@ -320,6 +320,8 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
     if data is None:
         return None
     data = list(data)
+    sql = data.pop(-1)
+    scand[selected_tr_name]['sql'] = ast.literal_eval(sql) if sql is not None else {}
     scan_dev_dict = data.pop(-1)
     scand[selected_tr_name]['scanDevice'] = ast.literal_eval(scan_dev_dict) if scan_dev_dict is not None else {}
     dac_start = data.pop(0)  # float
