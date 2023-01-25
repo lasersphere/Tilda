@@ -72,7 +72,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         self.sql_scan_dict_backup = deepcopy(self.sql_scan_dict)  # to keep any data stored in the channels
         self.setup_sql_channels()
 
-        self.b_add_measure.clicked.connect(self.add_observable)
+        # self.b_add_measure.clicked.connect(self.add_observable)
 
         # digital multimeter related
         self.current_meas_volt_settings = {}  # storage for current settings, this holds pre/post/during dicts
@@ -704,14 +704,14 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
 
     """ SQL related """
 
-    def add_observable(self):
-        self.observables_measure.append(SQLObservableUi(self))
-        self.scroll_widget_measure.layout().insertWidget(
-            self.scroll_widget_measure.layout().count() - 2, self.observables_measure[-1])
-        self.observables_measure[-1].show()
+    # def add_observable(self):
+    #     self.observables_measure.append(SQLObservableUi(self))
+    #     self.scroll_widget_measure.layout().insertWidget(
+    #         self.scroll_widget_measure.layout().count() - 2, self.observables_measure[-1])
+    #     self.observables_measure[-1].show()
 
     def setup_sql_channels(self):
-        pass
+        self.list_table.addItems([])
 
     def get_sql_scan_pars(self):
         """
@@ -722,7 +722,6 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         default_ret = {'preScan': {'ch0': {'required': 10, 'acquired': 0, 'data': []}},
                        'duringScan': {},
                        'postScan': {}}
-        return default_ret
         try:
             sql_dict = Cfg._main_instance.scan_pars[self.active_iso][self.act_track_name].get('sql', {})
         except AttributeError:  # if no main available ( gui test etc.)

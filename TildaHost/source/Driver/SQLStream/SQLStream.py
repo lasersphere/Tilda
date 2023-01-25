@@ -137,6 +137,23 @@ class SQLStream(QObject):
                     self.sql_cfg.get('database', 'unknown'), e))
                 self.db_connect()
                 self.db.close()
+
+    def get_channels_from_db(self):
+        """
+        return a dict with all databases and their columns as a list.
+        if no db is available return dummy dev
+        :return: dict, {dev: ['ch1', 'ch2' ...]}
+        """
+        devs = {}
+
+        if self.db != 'local':
+            self.db_execute('SELECT deviceName FROM devices WHERE uri IS NOT NULL', None)
+            res = self.dbCur_fetchall()
+            for dev in res:
+                devs[dev[0]] = self.get_channels_of_dev(dev[0])
+        else:
+            logging.warning('No db connection.')
+        return {}
     
     """ Implementation of the periodic readout. """
 

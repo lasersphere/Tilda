@@ -183,118 +183,59 @@
        <attribute name="title">
         <string>SQL</string>
        </attribute>
-       <layout class="QVBoxLayout" name="verticalLayout_7" stretch="0,1,0,0,1">
+       <layout class="QVBoxLayout" name="verticalLayout_7" stretch="0,0,0,0">
         <item>
-         <widget class="QCheckBox" name="check_sql_measure">
-          <property name="text">
-           <string>measure</string>
-          </property>
-         </widget>
+         <layout class="QHBoxLayout" name="hor_db_measure" stretch="0,1,0,0">
+          <item>
+           <widget class="QCheckBox" name="check_sql_measure">
+            <property name="text">
+             <string>measure</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_3">
+            <property name="text">
+             <string>Interval</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDoubleSpinBox" name="d_interval">
+            <property name="suffix">
+             <string> s</string>
+            </property>
+            <property name="decimals">
+             <number>1</number>
+            </property>
+            <property name="minimum">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>100.000000000000000</double>
+            </property>
+            <property name="value">
+             <double>1.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </item>
         <item>
-         <widget class="QScrollArea" name="scroll_measure">
-          <property name="widgetResizable">
-           <bool>true</bool>
-          </property>
-          <widget class="QWidget" name="scroll_widget_measure">
-           <property name="geometry">
-            <rect>
-             <x>0</x>
-             <y>0</y>
-             <width>354</width>
-             <height>170</height>
-            </rect>
-           </property>
-           <layout class="QVBoxLayout" name="verticalLayout_8" stretch="0,0,1">
-            <item>
-             <layout class="QGridLayout" name="grid_db_measure" columnstretch="1,1,0">
-              <item row="0" column="0">
-               <widget class="QLabel" name="label_db_measure">
-                <property name="text">
-                 <string>Database</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="2">
-               <spacer name="hspace_x_measure">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeType">
-                 <enum>QSizePolicy::Fixed</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>50</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item row="1" column="0">
-               <widget class="QComboBox" name="combo_db_measure"/>
-              </item>
-              <item row="1" column="1">
-               <spacer name="hspace_db_measure">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>40</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="hor_add" stretch="0,1">
-              <item>
-               <widget class="QPushButton" name="b_add_measure">
-                <property name="maximumSize">
-                 <size>
-                  <width>50</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>+</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="hspace_add_measure">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>40</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <spacer name="vspace_measure">
-              <property name="orientation">
-               <enum>Qt::Vertical</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>20</width>
-                <height>40</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
-           </layout>
-          </widget>
-         </widget>
+         <widget class="QListWidget" name="list_table"/>
         </item>
         <item>
          <widget class="Line" name="line">
@@ -304,116 +245,28 @@
          </widget>
         </item>
         <item>
-         <widget class="QCheckBox" name="check_sql_send">
-          <property name="text">
-           <string>send run info</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QScrollArea" name="scroll_send">
-          <property name="widgetResizable">
-           <bool>true</bool>
-          </property>
-          <widget class="QWidget" name="scroll_widget_send">
-           <property name="geometry">
-            <rect>
-             <x>0</x>
-             <y>0</y>
-             <width>354</width>
-             <height>169</height>
-            </rect>
-           </property>
-           <layout class="QVBoxLayout" name="verticalLayout_9">
-            <item>
-             <layout class="QGridLayout" name="grid_db_send" columnstretch="1,1,0">
-              <item row="0" column="0">
-               <widget class="QLabel" name="label_db_send">
-                <property name="text">
-                 <string>Database</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="2">
-               <spacer name="hspace_x_send">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeType">
-                 <enum>QSizePolicy::Fixed</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>50</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item row="1" column="0">
-               <widget class="QComboBox" name="combo_db_send"/>
-              </item>
-              <item row="1" column="1">
-               <spacer name="hspace_db_send">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>40</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,1">
-              <item>
-               <widget class="QPushButton" name="b_add_send">
-                <property name="maximumSize">
-                 <size>
-                  <width>50</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>+</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="hspace_add_send">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>40</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <spacer name="vspace_send">
-              <property name="orientation">
-               <enum>Qt::Vertical</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>20</width>
-                <height>40</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
-           </layout>
-          </widget>
-         </widget>
+         <layout class="QHBoxLayout" name="hor_db_send" stretch="0,1">
+          <item>
+           <widget class="QCheckBox" name="check_sql_send">
+            <property name="text">
+             <string>send run info</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
         </item>
        </layout>
       </widget>

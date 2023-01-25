@@ -1215,6 +1215,12 @@ class ScanMain(QObject):
         # The save process is moved to TildaTools for better accessibility
         TiTs.save_sql_to_xml(file, tr_name, sql_dict, pre_during_post_scan_str=pre_during_post_scan_str)
 
+    def get_available_sql_channels(self):
+        if self.sql_stream is not None:
+            return self.sql_stream.get_channels_from_db()
+        else:
+            return {}
+
 
 if __name__ == "__main__":
     scn_main = ScanMain()
