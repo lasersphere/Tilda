@@ -722,7 +722,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         try:
             channels = Cfg._main_instance.scan_main.get_available_sql_channels()
         except AttributeError:  # if no main available ( gui test etc.)
-            channels = ['dev0.ch0', 'dev0.ch1', 'dev1.ch0']
+            channels = ['dev0:ch0', 'dev0:ch1', 'dev1:ch0']
         return channels
 
     def enable_sql_widgets(self, enable_bool):

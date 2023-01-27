@@ -49,6 +49,7 @@ class SQLStream(QObject):
         self.log = {}
         self.back_up_log = deepcopy(self.log)
         self.ch_id = {}
+        self.ch_time = {}
 
         self.last_emit_to_analysis_pipeline_datetime = datetime.now()
         self.time_between_emits_to_pipeline = timedelta(milliseconds=500)
@@ -150,7 +151,7 @@ class SQLStream(QObject):
             for t in tables:
                 self.db_execute('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE'
                                 ' TABLE_SCHEMA = %s AND TABLE_NAME = %s', (self.sql_cfg['database'], t[0]))
-                sub_channels = ['{}.{}'.format(t[0], c[0]) for c in self.db_fetchall() if c[0] not in EXCLUDE_CHANNELS]
+                sub_channels = ['{}:{}'.format(t[0], c[0]) for c in self.db_fetchall() if c[0] not in EXCLUDE_CHANNELS]
                 channels += sub_channels
         else:
             logging.warning('No db connection.')
@@ -176,19 +177,29 @@ class SQLStream(QObject):
             for ch in self.log.keys():
                 acq_on_log_start = self.back_up_log[ch]['acquired']
                 if self.log[ch]['required'] + acq_on_log_start > self.log[ch]['acquired'] \
-                        or self.log[ch]['required'] == -1 and self.pre_dur_post_str == 'duringScan':
+                        or (self.log[ch]['required'] == -1 and self.pre_dur_post_str == 'duringScan'):
 
                     # --- fetch ---
                     # data = [np.random.random()]
-                    t, c = ch.split('.')
-                    self.db_execute('SELECT ID, {} FROM {} WHERE ID > {}'.format(c, t, self.ch_id[ch]), None)
+                    t, c = ch.split(':')
+                    self.db_execute('SELECT ID, unix_time, {} FROM {} WHERE ID > {} AND unix_time > {}'
+                                    .format(c, t, self.ch_id[ch], self.ch_time[ch]), None)
                     data = self.db_fetchall()
-                    self.ch_id[ch] = data[-1][0]
-                    data = [d[1] for d in data]
-                    # --- fetch ---
+                    self.db_commit()
+                    if data:
+                        self.ch_id[ch] = data[-1][0]
+                        self.ch_time[ch] = data[-1][1]
+                        data = [d[2] for d in data]
+                        # --- fetch ---
 
-                    self.log[ch]['data'] += data
-                    self.log[ch]['acquired'] += len(data)
+                        self.log[ch]['data'] += data
+                        self.log[ch]['acquired'] += len(data)
+
+                        if self.log[ch]['required'] > 0:
+                            dif = self.log[ch]['acquired'] - acq_on_log_start - self.log[ch]['required']
+                            if dif > 0:
+                                self.log[ch]['data'] = self.log[ch]['data'][:-dif]
+                                self.log[ch]['acquired'] = self.log[ch]['required'] + acq_on_log_start
 
                     sql_live_data_dict = {self.track_name: {'sql': {self.pre_dur_post_str: self.log}}}
                     # now update the 'acquired' number for each channel and dev
@@ -222,7 +233,6 @@ class SQLStream(QObject):
         elif t > 0:
             self._interval = t
             self._thread = Thread(target=self._run)
-            print(111111111111111111)
             self._thread.start()
 
     """ Configure Tilda signals. """
@@ -254,6 +264,7 @@ class SQLStream(QObject):
         if log is None or log == {}:
             self.log = {}
             self.ch_id = {}
+            self.ch_time = {}
             self.logging_complete = True  # do not log
             self.back_up_log = deepcopy(self.log)  # store backup log, because work is done in self.log
         else:
@@ -261,6 +272,7 @@ class SQLStream(QObject):
             self.logging_complete = False
             self.back_up_log = deepcopy(self.log)  # store backup log, because work is done in self.log
             self.ch_id = {ch: -1 for ch in self.log.keys()}
+            self.ch_time = {ch: time.time() for ch in self.log.keys()}
             if self.log:
                 self.logging_complete = False
             else:
@@ -268,6 +280,7 @@ class SQLStream(QObject):
                 self.logging_complete = True
                 self.log = {}
                 self.ch_id = {}
+                self.ch_time = {}
                 self.back_up_log = deepcopy(self.log)  # store backup log, because work is done in self.log
 
     def check_log_complete(self):
@@ -331,3 +344,17 @@ class SQLStream(QObject):
             else:
                 pass
         return wrap_waiting
+
+
+if __name__ == '__main__':
+    sql_stream = SQLStream()
+    log = {'preScan': {'hv_34401a:hv_readout': {'required': 5, 'acquired': 0, 'data': []},
+                       'wm:wm_readout': {'required': 16, 'acquired': 0, 'data': []}},
+           'duringScan': {'hv_34401a:hv_readout': {'required': -1, 'acquired': 0, 'data': []},
+                          'wm:wm_readout': {'required': 10, 'acquired': 0, 'data': []}},
+           'postScan': {}}
+    sql_stream.setup_log(log['duringScan'], 'duringScan', 'track0')
+    sql_stream.logging_enabled = True
+    print(sql_stream.log)
+    sql_stream._acquire()
+    print(sql_stream.log)

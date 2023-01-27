@@ -24,3 +24,5 @@ SQL_CFG = {
 #     'host': '146.139.144.78',  # 192.168.108.1
 #     'database': 'laspec_data',
 # }
+
+EXCLUDE_CHANNELS = {'ID', 'unix_time'}
