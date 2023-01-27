@@ -67,7 +67,7 @@ class SQLStream(QObject):
             except Exception as e:
                 self.logger.error('could not connect to database %s, error is: %s' % (
                     self.sql_cfg.get('database', 'unknown'), e))
-                self.db = None
+                self.db = 'local'
                 self.db_cur = None
         elif isinstance(self.sql_cfg, str) or self.sql_cfg == {}:
             # if the sql_cfg is a string or an empty dict, it will be assumed that no db connection is wanted
@@ -161,6 +161,8 @@ class SQLStream(QObject):
 
     def _run(self):
         """ The periodic logic """
+        self.ch_id = {ch: -1 for ch in self.log.keys()}  # Reset ID before the first data acquisition.
+        self.ch_time = {ch: time.time() for ch in self.log.keys()}  # Reset time before the first data acquisition.
         while self._interval > 0:
             t0 = time.time()
             self._acquire()  # Process new data.
@@ -248,12 +250,8 @@ class SQLStream(QObject):
 
     def setup_log(self, log, pre_dur_post_str, track_name):
         """
-        setup the log and subscribe to all required devices
-        the log is a dict containing the devs which should be logged and
-        the channels as a dict with the number of required values:
-
-            {'ch1': {'required': 2, 'data': [], 'acquired': 0}, ...}
-
+        set up the log. The log is a dict containing the channels as a dict with the number of required values:
+         {'ch1': {'required': 2, 'data': [], 'acquired': 0}, ...}
         """
         # connect to the callback for live data plotting so the log can be emitted as well
         self.get_existing_callbacks_from_main()
@@ -269,10 +267,10 @@ class SQLStream(QObject):
             self.back_up_log = deepcopy(self.log)  # store backup log, because work is done in self.log
         else:
             self.log = log
-            self.logging_complete = False
-            self.back_up_log = deepcopy(self.log)  # store backup log, because work is done in self.log
             self.ch_id = {ch: -1 for ch in self.log.keys()}
             self.ch_time = {ch: time.time() for ch in self.log.keys()}
+            self.logging_complete = False
+            self.back_up_log = deepcopy(self.log)  # store backup log, because work is done in self.log
             if self.log:
                 self.logging_complete = False
             else:

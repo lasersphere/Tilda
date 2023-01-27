@@ -91,7 +91,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         self.tabWidget.setTabText(0, 'choose dmm')
         self.tabs['tab0'][1] = QtWidgets.QVBoxLayout(self.tabs['tab0'][0])
         self.init_dmm_clicked_callback.connect(self.initialize_dmm)
-        #self.check_for_already_active_dmms()
+        # self.check_for_already_active_dmms()
 
         self.choose_dmm_wid = ChooseDmmWidget(self.init_dmm_clicked_callback, self.dmm_types)
         self.tabs['tab0'][2] = self.tabs['tab0'][1].addWidget(self.choose_dmm_wid)

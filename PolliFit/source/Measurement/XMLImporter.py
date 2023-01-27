@@ -129,6 +129,7 @@ class XMLImporter(SpecData):
         cts_shape = []
         self.measureVoltPars = []
         self.tritonPars = []
+        self.sqlPars = []
         self.outbitsPars = []
         ''' operations on each track: '''
         for tr_ind, tr_name in enumerate(TildaTools.get_track_names(scandict)):
@@ -140,6 +141,7 @@ class XMLImporter(SpecData):
             self.x_units = self.x_units_enums[scan_dev_dict_tr['stepUnitName']]
             self.measureVoltPars.append(track_dict.get('measureVoltPars', {}))
             self.tritonPars.append(track_dict.get('triton', {}))
+            self.sqlPars.append(track_dict.get('sql', {}))
             self.outbitsPars.append(track_dict.get('outbits', {}))
             self.col = track_dict['colDirTrue']
 

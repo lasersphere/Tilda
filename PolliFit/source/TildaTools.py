@@ -964,7 +964,8 @@ def create_scan_dict_from_spec_data(specdata, desired_xml_saving_path, database_
                                        'scan_trigger': None}] * specdata.nrTracks)[tr_ind],
             'pulsePattern': {'cmdList': [], 'periodicList': [], 'simpleDict': {}},
             'measureVoltPars': specdata.measureVoltPars[tr_ind],
-            'triton': specdata.tritonPars[tr_ind]
+            'triton': specdata.tritonPars[tr_ind],
+            'sql': specdata.sqlPars[tr_ind]
         }
     draftMeasureVoltPars_singl = {'measVoltPulseLength25ns': -1, 'measVoltTimeout10ns': -1,
                                   'dmms': {}, 'switchBoxSettleTimeS': -1}
