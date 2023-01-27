@@ -24,7 +24,7 @@
     <item>
      <widget class="QTabWidget" name="mainTabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="volt_tab">
        <attribute name="title">
@@ -67,7 +67,7 @@
              <locale language="English" country="UnitedStates"/>
             </property>
             <property name="text">
-             <string>Pulse length for voltage measurement request / µs</string>
+             <string>Pulse length for voltage measurement request / &lt;span&gt;&amp;mu;s&lt;/span&gt;</string>
             </property>
            </widget>
           </item>
@@ -176,6 +176,117 @@
            </layout>
           </widget>
          </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="sql_tab">
+       <attribute name="title">
+        <string>SQL</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_7" stretch="0,0,0,0">
+        <item>
+         <layout class="QHBoxLayout" name="hor_db_measure" stretch="0,1,0,0">
+          <item>
+           <widget class="QCheckBox" name="check_sql_measure">
+            <property name="text">
+             <string>measure</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_3">
+            <property name="text">
+             <string>Interval</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDoubleSpinBox" name="d_interval">
+            <property name="suffix">
+             <string> s</string>
+            </property>
+            <property name="decimals">
+             <number>1</number>
+            </property>
+            <property name="minimum">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>100.000000000000000</double>
+            </property>
+            <property name="value">
+             <double>1.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QTableWidget" name="table_sql">
+          <property name="sortingEnabled">
+           <bool>true</bool>
+          </property>
+          <property name="columnCount">
+           <number>2</number>
+          </property>
+          <column>
+           <property name="text">
+            <string>channel</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string># of samples</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+        <item>
+         <widget class="Line" name="line">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="hor_db_send" stretch="0,1">
+          <item>
+           <widget class="QCheckBox" name="check_sql_send">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>send run info</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
         </item>
        </layout>
       </widget>

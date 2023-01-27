@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'Ui_PreScanMain.ui'
+# Form implementation generated from reading ui file 'E:\Users\Patrick\Documents\Python Projects\Tilda\TildaHost\source\Interface\PreScanConfigUi\Ui_PreScanMain.ui'
 #
-# Created by: PyQt5 UI code generator 5.5
+# Created by: PyQt5 UI code generator 5.14.1
 #
 # WARNING! All changes made in this file will be lost!
 
+
 from PyQt5 import QtCore, QtGui, QtWidgets
+
 
 class Ui_PreScanMainWin(object):
     def setupUi(self, PreScanMainWin):
@@ -82,6 +84,7 @@ class Ui_PreScanMainWin(object):
         self.verticalLayoutWidget = QtWidgets.QWidget(self.splitter)
         self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
         self.verticalLayout_5 = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
+        self.verticalLayout_5.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout_5.setObjectName("verticalLayout_5")
         self.label = QtWidgets.QLabel(self.verticalLayoutWidget)
         self.label.setObjectName("label")
@@ -97,6 +100,7 @@ class Ui_PreScanMainWin(object):
         self.verticalLayoutWidget_2 = QtWidgets.QWidget(self.splitter)
         self.verticalLayoutWidget_2.setObjectName("verticalLayoutWidget_2")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.verticalLayoutWidget_2)
+        self.verticalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
         self.label_channels = QtWidgets.QLabel(self.verticalLayoutWidget_2)
         self.label_channels.setObjectName("label_channels")
@@ -108,6 +112,54 @@ class Ui_PreScanMainWin(object):
         self.verticalLayout_4.addWidget(self.tableWidget_channels)
         self.verticalLayout_6.addWidget(self.splitter)
         self.mainTabWidget.addTab(self.triton_tab, "")
+        self.sql_tab = QtWidgets.QWidget()
+        self.sql_tab.setObjectName("sql_tab")
+        self.verticalLayout_7 = QtWidgets.QVBoxLayout(self.sql_tab)
+        self.verticalLayout_7.setObjectName("verticalLayout_7")
+        self.hor_db_measure = QtWidgets.QHBoxLayout()
+        self.hor_db_measure.setObjectName("hor_db_measure")
+        self.check_sql_measure = QtWidgets.QCheckBox(self.sql_tab)
+        self.check_sql_measure.setObjectName("check_sql_measure")
+        self.hor_db_measure.addWidget(self.check_sql_measure)
+        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.hor_db_measure.addItem(spacerItem)
+        self.label_3 = QtWidgets.QLabel(self.sql_tab)
+        self.label_3.setObjectName("label_3")
+        self.hor_db_measure.addWidget(self.label_3)
+        self.d_interval = QtWidgets.QDoubleSpinBox(self.sql_tab)
+        self.d_interval.setDecimals(1)
+        self.d_interval.setMinimum(0.1)
+        self.d_interval.setMaximum(100.0)
+        self.d_interval.setProperty("value", 1.0)
+        self.d_interval.setObjectName("d_interval")
+        self.hor_db_measure.addWidget(self.d_interval)
+        self.hor_db_measure.setStretch(1, 1)
+        self.verticalLayout_7.addLayout(self.hor_db_measure)
+        self.table_sql = QtWidgets.QTableWidget(self.sql_tab)
+        self.table_sql.setColumnCount(2)
+        self.table_sql.setObjectName("table_sql")
+        self.table_sql.setRowCount(0)
+        item = QtWidgets.QTableWidgetItem()
+        self.table_sql.setHorizontalHeaderItem(0, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.table_sql.setHorizontalHeaderItem(1, item)
+        self.verticalLayout_7.addWidget(self.table_sql)
+        self.line = QtWidgets.QFrame(self.sql_tab)
+        self.line.setFrameShape(QtWidgets.QFrame.HLine)
+        self.line.setFrameShadow(QtWidgets.QFrame.Sunken)
+        self.line.setObjectName("line")
+        self.verticalLayout_7.addWidget(self.line)
+        self.hor_db_send = QtWidgets.QHBoxLayout()
+        self.hor_db_send.setObjectName("hor_db_send")
+        self.check_sql_send = QtWidgets.QCheckBox(self.sql_tab)
+        self.check_sql_send.setEnabled(False)
+        self.check_sql_send.setObjectName("check_sql_send")
+        self.hor_db_send.addWidget(self.check_sql_send)
+        spacerItem1 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.hor_db_send.addItem(spacerItem1)
+        self.hor_db_send.setStretch(1, 1)
+        self.verticalLayout_7.addLayout(self.hor_db_send)
+        self.mainTabWidget.addTab(self.sql_tab, "")
         self.verticalLayout.addWidget(self.mainTabWidget)
         self.formLayout_2 = QtWidgets.QFormLayout()
         self.formLayout_2.setObjectName("formLayout_2")
@@ -146,7 +198,7 @@ class Ui_PreScanMainWin(object):
         PreScanMainWin.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(PreScanMainWin)
-        self.mainTabWidget.setCurrentIndex(0)
+        self.mainTabWidget.setCurrentIndex(2)
         self.tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(PreScanMainWin)
 
@@ -155,13 +207,22 @@ class Ui_PreScanMainWin(object):
         PreScanMainWin.setWindowTitle(_translate("PreScanMainWin", "MainWindow"))
         self.checkBox_voltage_measure.setText(_translate("PreScanMainWin", "measure"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_0), _translate("PreScanMainWin", "Tab 1"))
-        self.label_measVoltPulseLength_mu_s.setText(_translate("PreScanMainWin", "Pulse length for voltage measurement request / µs"))
+        self.label_measVoltPulseLength_mu_s.setText(_translate("PreScanMainWin", "Pulse length for voltage measurement request / <span>&mu;s</span>"))
         self.label_measVoltTimeout_mu_s.setText(_translate("PreScanMainWin", "timeout for voltage measurement / ms"))
         self.mainTabWidget.setTabText(self.mainTabWidget.indexOf(self.volt_tab), _translate("PreScanMainWin", "voltage meas."))
         self.checkBox_triton_measure.setText(_translate("PreScanMainWin", "measure"))
         self.label.setText(_translate("PreScanMainWin", "devices"))
         self.label_channels.setText(_translate("PreScanMainWin", "channels"))
         self.mainTabWidget.setTabText(self.mainTabWidget.indexOf(self.triton_tab), _translate("PreScanMainWin", "triton"))
+        self.check_sql_measure.setText(_translate("PreScanMainWin", "measure"))
+        self.label_3.setText(_translate("PreScanMainWin", "Interval"))
+        self.d_interval.setSuffix(_translate("PreScanMainWin", " s"))
+        self.table_sql.setSortingEnabled(True)
+        item = self.table_sql.horizontalHeaderItem(0)
+        item.setText(_translate("PreScanMainWin", "channel"))
+        item = self.table_sql.horizontalHeaderItem(1)
+        item.setText(_translate("PreScanMainWin", "# of samples"))
+        self.check_sql_send.setText(_translate("PreScanMainWin", "send run info"))
+        self.mainTabWidget.setTabText(self.mainTabWidget.indexOf(self.sql_tab), _translate("PreScanMainWin", "SQL"))
         self.label_wait_after_switchbox.setText(_translate("PreScanMainWin", "wait after switchbox changed / s"))
         self.label_2.setText(_translate("PreScanMainWin", "timeout for pre scan measurement / s:"))
-

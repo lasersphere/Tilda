@@ -90,8 +90,8 @@ class AnalysisThread(QThread):
         self.num_of_max_eles_to_analyse_per_feed = 100000
         self.raw_data_storage = np.zeros(0, dtype=np.int32)
         self.dmm_dict_list = []
-        self.dmm_dict_merge = {} # replaces dmm_dict_list in order to avoid building a huge list
-        self.triton_dict_merge = {} # same for triton dicts
+        self.dmm_dict_merge = {}  # replaces dmm_dict_list in order to avoid building a huge list
+        self.triton_dict_merge = {}  # same for triton dicts
         self.mutex = QMutex()
 
         self.max_analysis_time_ms = 0.0
@@ -217,7 +217,7 @@ class AnalysisThread(QThread):
             current_track = self.pipeline.pipeData['pipeInternals']['activeTrackNumber'][1]
             if current_track in dmm_dict:
                 # it is a triton dict
-                logging.debug('merging triton dict %s into %s.' %(dmm_dict, self.triton_dict_merge))
+                logging.debug('merging triton dict %s into %s.' % (dmm_dict, self.triton_dict_merge))
                 TiTs.merge_extend_dicts(self.triton_dict_merge, dmm_dict)  # this will take care of the multiple emits.
                 logging.debug('merge result is: %s ' % self.triton_dict_merge)
             else:
@@ -251,6 +251,7 @@ class TestReceiver(QObject):
 
     def display(self, event):
         print(event)
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

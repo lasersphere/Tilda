@@ -16,6 +16,7 @@ from datetime import timedelta
 
 import Application.Config as Cfg
 from Interface.PreScanConfigUi.Ui_PreScanMain import Ui_PreScanMainWin
+from Interface.PreScanConfigUi.SQLObservableUi import SQLObservableUi
 from Interface.DmmUi.ChooseDmmWidget import ChooseDmmWidget
 from Interface.DmmUi.DMMWidgets import Ni4071Widg
 
@@ -63,6 +64,17 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         self.listWidget_devices.itemClicked.connect(self.dev_selection_changed)
         self.tableWidget_channels.itemClicked.connect(self.check_any_ch_active)
         self.checkBox_triton_measure.stateChanged.connect(self.triton_measure_checkbox_changed)
+
+        # SQL related
+        self.observables_measure = []
+        self.sql_scan_dict = self.get_sql_scan_pars()
+        self.sql_scan_dict_backup = deepcopy(self.sql_scan_dict)  # to keep any data stored in the channels
+        self.active_channels = None
+        self.setup_sql_channels()
+
+        # self.b_add_measure.clicked.connect(self.add_observable)
+        self.check_sql_measure.stateChanged.connect(self.sql_measure_checkbox_changed)
+        self.table_sql.itemChanged[QtWidgets.QTableWidgetItem].connect(self.sql_process_row)
 
         # digital multimeter related
         self.current_meas_volt_settings = {}  # storage for current settings, this holds pre/post/during dicts
@@ -112,7 +124,10 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
                 # read latest triton settings from gui:
                 self.triton_scan_dict[self.pre_or_during_scan_str] = self.get_current_triton_settings() \
                     if self.checkBox_triton_measure.isChecked() else {}
+                self.sql_scan_dict[self.pre_or_during_scan_str] = self.get_current_sql_settings() \
+                    if self.check_sql_measure.isChecked() else {}
                 self.parent_ui.buffer_pars['triton'] = self.triton_scan_dict
+                self.parent_ui.buffer_pars['sql'] = self.sql_scan_dict
                 Cfg._main_instance.pre_scan_timeout_changed(self.doubleSpinBox_timeout_pre_scan_s.value())
                 # logging.info('set values to: ', Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'])
 
@@ -138,6 +153,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         # store values from current setting first!
         self.current_meas_volt_settings[self.pre_or_during_scan_str] = self.get_current_meas_volt_pars()
         self.triton_scan_dict[self.pre_or_during_scan_str] = self.get_current_triton_settings()
+        self.sql_scan_dict[self.pre_or_during_scan_str] = self.get_current_sql_settings()
         if not closing_widget: #Do this only when switching between tabs
             # remove all tabs to load them new from config
             while self.tabs.__len__() > 1:
@@ -156,6 +172,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
             else self.current_meas_volt_settings
         self.setup_volt_meas_from_main(existing_config)
         self.setup_triton_devs()
+        self.setup_sql_channels()
 
     def enable_triton_widgets(self, enable_bool):
         """
@@ -193,6 +210,27 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         self.tabWidget.setEnabled(state == 2)
         self.doubleSpinBox_measVoltPulseLength_mu_s.setEnabled(state == 2)
         self.doubleSpinBox_measVoltTimeout_mu_s_set.setEnabled(state == 2)
+
+    def sql_measure_checkbox_changed(self, state):
+        """
+        Enable/Disable scroll widget. Stop recording the selected data.
+        disable the main widget and leaves empty dict at:
+             {'triton': {self.pre_or_during_scan_str: {} ... }
+         if unchecked.
+         If Checked it will load from backupt and force the gui to stay enabled
+        """
+        if state == 2:  # now checked
+            self.sql_scan_dict[self.pre_or_during_scan_str] = deepcopy(self.sql_scan_dict_backup.get(
+                self.pre_or_during_scan_str, {}))
+        else:  # now unchecked
+            # self.check_any_ch_active()  # get current channel selection
+            # store in backup
+            self.sql_scan_dict_backup[self.pre_or_during_scan_str] = deepcopy(
+                self.sql_scan_dict[self.pre_or_during_scan_str])
+            #  clear current settins
+            self.sql_scan_dict[self.pre_or_during_scan_str] = {}
+        # setup gui according to the settings now.
+        self.setup_sql_channels(state == 2)  # force measure if true
 
     ''' voltage related, mostly copied from DmmUi.py '''
 
@@ -236,6 +274,8 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
             self.voltage_checkbox_changed(2)
             self.checkBox_triton_measure.setChecked(True)
             self.enable_triton_widgets(True)
+            self.check_sql_measure.setChecked(True)
+            self.enable_sql_widgets(True)
 
     def tab_wants_to_be_closed(self, *args):
         """
@@ -446,7 +486,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         meas_volt_dict['switchBoxSettleTimeS'] = self.doubleSpinBox_wait_after_switchbox.value()
         return meas_volt_dict
 
-    ''' triton related '''
+    """ triton related """
 
     def setup_triton_devs(self, force_measure=False):
         """
@@ -669,6 +709,127 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
         triton_dict = self.triton_scan_dict[
             self.pre_or_during_scan_str] if self.checkBox_triton_measure.isChecked() else {}
         return triton_dict
+
+    """ SQL related """
+
+    # def add_observable(self):
+    #     self.observables_measure.append(SQLObservableUi(self))
+    #     self.scroll_widget_measure.layout().insertWidget(
+    #         self.scroll_widget_measure.layout().count() - 2, self.observables_measure[-1])
+    #     self.observables_measure[-1].show()
+
+    def get_sql_channels_from_main(self):
+        try:
+            channels = Cfg._main_instance.scan_main.get_available_sql_channels()
+        except AttributeError:  # if no main available ( gui test etc.)
+            channels = ['dev0:ch0', 'dev0:ch1', 'dev1:ch0']
+        return channels
+
+    def enable_sql_widgets(self, enable_bool):
+        self.table_sql.setEnabled(enable_bool)
+
+    def setup_sql_channels(self, force_measure=False):
+        self.table_sql.blockSignals(True)
+        self.table_sql.setRowCount(0)
+        active_channels = self.get_sql_channels_from_main()
+        sql_pre_post_sc_dict = self.sql_scan_dict.get(self.pre_or_during_scan_str, {})
+        measure = (sql_pre_post_sc_dict is not None and sql_pre_post_sc_dict != {}) or force_measure
+        self.check_sql_measure.blockSignals(True)
+        self.check_sql_measure.setChecked(measure)
+        self.check_sql_measure.blockSignals(False)
+        self.enable_sql_widgets(measure)
+        if measure:
+            # list all active devices:
+            for i, ch in enumerate(active_channels):
+                self.table_sql.insertRow(i)
+                ch_item = QtWidgets.QTableWidgetItem(ch)
+                ch_item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+                ch_item.setCheckState(QtCore.Qt.Unchecked)
+                req_item = QtWidgets.QTableWidgetItem('1')
+                # req_item.setFlags(QtCore.Qt.ItemIsEditable)
+                if ch in sql_pre_post_sc_dict.keys():
+                    ch_item.setCheckState(QtCore.Qt.Checked)
+                    req_item.setText(str(sql_pre_post_sc_dict[ch]['required']))
+                # check all selected channels in the settings
+                self.table_sql.setItem(i, 0, ch_item)
+                self.table_sql.setItem(i, 1, req_item)
+            # also show not available devices which are still in the scan pars:
+            i0 = self.table_sql.rowCount()
+            for i, (ch, req_dict) in enumerate(sql_pre_post_sc_dict.items()):
+                if ch not in active_channels:
+                    self.table_sql.insertRow(i0 + i)
+                    ch_item = QtWidgets.QTableWidgetItem(ch)
+                    ch_item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+                    ch_item.setCheckState(QtCore.Qt.Checked)
+                    ch_item.setBackground(QtCore.Qt.red)
+                    ch_item.setToolTip('offline')
+                    ch_item.setCheckState(QtCore.Qt.Checked)
+                    req_item = QtWidgets.QTableWidgetItem('1')
+                    req_item.setBackground(QtCore.Qt.red)
+                    req_item.setToolTip('offline')
+                    # req_item.setFlags(QtCore.Qt.ItemIsEditable)
+                    req_item.setText(str(sql_pre_post_sc_dict[ch]['required']))
+                    self.table_sql.setItem(i0 + i, 0, ch_item)
+                    self.table_sql.setItem(i0 + i, 1, req_item)
+        self.active_channels = active_channels
+        self.table_sql.blockSignals(False)
+        return active_channels
+
+    def get_sql_scan_pars(self):
+        """
+        Get the SQL part of the scan dict for one track in the main or return default.
+        
+        :returns: dict, for SQL scan parameters, pre / during / post scan.
+        """
+        default_ret = {'preScan': {'ch0': {'required': 10, 'acquired': 0, 'data': []}},
+                       'duringScan': {},
+                       'postScan': {}}
+        try:
+            sql_dict = Cfg._main_instance.scan_pars[self.active_iso][self.act_track_name].get('sql', {})
+        except AttributeError:  # if no main available ( gui test etc.)
+            sql_dict = default_ret
+        return sql_dict
+
+    def get_selected_sql_channels(self):
+        """
+        get the selected channels which are currently displayed.
+        Note: This overrides the 'data' list, but one cannot access this gui for a go on a file, so this is ok.
+        :return: dict, {'ch1': {'required': .. , 'acquired': 0, 'data': []}, ...}
+        """
+        ret = {}
+        for i in range(self.table_sql.rowCount()):
+            ch_item = self.table_sql.item(i, 0)
+            req_item = self.table_sql.item(i, 1)
+            if ch_item.checkState() == 2:
+                ret[ch_item.text()] = {'required': int(req_item.text()), 'acquired': 0, 'data': []}
+        return ret
+
+    def sql_process_row(self, item):
+        if item.column() == 0:
+            self.sql_scan_dict[self.pre_or_during_scan_str][item.text()] = \
+                {'required': int(self.table_sql.item(item.row(), 1).text()), 'acquired': 0, 'data': []}
+        else:
+            text = item.text()
+            try:
+                val = int(text)
+            except ValueError:
+                val = 1
+            if val < 0:
+                val = -1
+            item.setText(str(val))
+
+    def check_any_sql_channel_active(self):
+        channels = self.get_selected_sql_channels()
+        if channels:
+            self.sql_scan_dict[self.pre_or_during_scan_str] = channels
+
+    def get_current_sql_settings(self):
+        """ return the current sql dict, which is updated constantly when user clicks on something. """
+        # force update of self.sql_scan_dict[self.pre_or_during_scan_str] from gui:
+        self.check_any_sql_channel_active()
+        # now check if this should be measured anyhow:
+        sql_dict = self.sql_scan_dict[self.pre_or_during_scan_str] if self.check_sql_measure.isChecked() else {}
+        return sql_dict
 
 
 if __name__ == '__main__':

@@ -25,7 +25,8 @@ import Driver.PostAcceleration.PostAccelerationMain as PostAcc
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.Scan.draftScanParameters as DftScan
 import TildaTools as TiTs
-from Driver.TritonListener.TritonListener import TritonListener as TritonListener
+from Driver.TritonListener.TritonListener import TritonListener
+from Driver.SQLStream.SQLStream import SQLStream
 from Driver.ScanDevice.TritonScanDevControl import TritonScanDevControl
 from Service.AnalysisAndDataHandling.AnalysisThread import AnalysisThread as AnalThr
 from Driver.ScanDevice.BaseTildaScanDeviceControl import BaseTildaScanDeviceControl as BaseScDev
@@ -75,6 +76,10 @@ class ScanMain(QObject):
         self.triton_listener_name = 'TildaTritListen'
         self.triton_listener = TritonListener(self.triton_listener_name)
         self.triton_pre_scan_done = False  # bool to use when pre/during/post scan measurement of triton is completed
+
+        # create an SQLStream object for collecting data from a db.
+        self.sql_stream = SQLStream()
+        self.sql_pre_scan_done = False  # bool to use when pre/during/post scan measurement of triton is completed
 
         # create a Triton device for controling scans:
         self.triton_scan_controller_name = 'TildaScanDevCtl'
@@ -182,14 +187,16 @@ class ScanMain(QObject):
 
         dmm_conf_dict = scan_dict[act_track_name]['measureVoltPars'].get(pre_post_scan_str, {}).get('dmms', {})
         triton_dict = scan_dict[act_track_name].get('triton', {})
+        sql_dict = scan_dict[act_track_name].get('sql', {})
         self.prepare_dmms_for_scan(dmm_conf_dict)
         self.prepare_triton_listener_for_scan(triton_dict, pre_post_scan_str, act_track_name)
+        self.prepare_sql_stream_for_scan(sql_dict, pre_post_scan_str, act_track_name)
         time.sleep(0.5)  # allow the device to settle for 500 ms
 
     def start_pre_scan_measurement(self, scan_dict, act_track_name, pre_post_scan_meas_str='preScan'):
         """
         Start the prescan Measurement of the Offset Voltage etc.
-        using one or more digital Multimeters and Triton devices.
+        using one or more digital Multimeters, Triton devices or an SQL stream.
             -> 0 V are applied from the DAC and the corrsponding post acceleration device (Fluke Heinzinger)
             is connected to the beamline
         :param scan_dict: dictionary, containing all scanparameters
@@ -205,8 +212,10 @@ class ScanMain(QObject):
         dmms_dict_is_none = dmms_dict_pre_scan is None or dmms_dict_pre_scan == {}
         triton_dict_pre_scan = scan_dict[act_track_name].get('triton', {}).get(pre_post_scan_meas_str, {})
         triton_dict_is_none = triton_dict_pre_scan is None or triton_dict_pre_scan == {}
-        if dmms_dict_is_none and triton_dict_is_none:
-            # return false if no measurement is wanted due to no existing dicts in triton / dmms
+        sql_dict_pre_scan = scan_dict[act_track_name].get('sql', {}).get(pre_post_scan_meas_str, {})
+        sql_dict_is_none = sql_dict_pre_scan is None or sql_dict_pre_scan == {}
+        if dmms_dict_is_none and triton_dict_is_none and sql_dict_is_none:
+            # return false if no measurement is wanted due to no existing dicts in dmms / triton / SQL.
             return False
         else:
             if 'continuedAcquisitonOnFile' not in scan_dict['isotopeData']:  # -> ergo
@@ -219,6 +228,9 @@ class ScanMain(QObject):
                 for dev, dev_ch_dict in triton_dict_pre_scan.items():
                     for ch_name, ch_dict in dev_ch_dict.items():
                         ch_dict['data'] = []
+                # and SQL
+                for ch_name, ch_dict in sql_dict_pre_scan.items():
+                    ch_dict['data'] = []
             track_num = int(act_track_name[5:])
             self.fpga_start_offset_measurement(scan_dict, track_num,
                                                pre_post_scan_meas_str)  # will be the first track in list.
@@ -226,8 +238,11 @@ class ScanMain(QObject):
                 self.digital_multi_meter.software_trigger_dmm('all')  # send a software trigger to all dmms
             if not triton_dict_is_none:
                 self.start_triton_log()
+            if not sql_dict_is_none:
+                self.start_sql_log()
             self.dmm_pre_scan_done = dmms_dict_is_none
             self.triton_pre_scan_done = triton_dict_is_none
+            self.sql_pre_scan_done = sql_dict_is_none
             return True
 
     def prescan_measurement(self, scan_dict, dmm_reading, pre_during_post_scan_str, tr_name, force_save_continue=False):
@@ -243,7 +258,10 @@ class ScanMain(QObject):
         if not self.triton_pre_scan_done:  # when complete, do not check again (otherwise it saves again.)
             self.triton_pre_scan_done = self.check_triton_log_complete(scan_dict, pre_during_post_scan_str,
                                                                        tr_name, force_save_continue=force_save_continue)
-        if self.dmm_pre_scan_done and self.triton_pre_scan_done:
+        if not self.sql_pre_scan_done:  # when complete, do not check again (otherwise it saves again.)
+            self.sql_pre_scan_done = self.check_sql_log_complete(scan_dict, pre_during_post_scan_str,
+                                                                 tr_name, force_save_continue=force_save_continue)
+        if self.dmm_pre_scan_done and self.triton_pre_scan_done and self.sql_pre_scan_done:
             return True
         else:
             return False
@@ -498,8 +516,12 @@ class ScanMain(QObject):
         # start triton log for during scan if required
         triton_dict_pre_scan = scan_dict[act_track_name].get('triton', {}).get('duringScan', {})
         triton_dict_is_none = triton_dict_pre_scan is None or triton_dict_pre_scan == {}
+        sql_dict_pre_scan = scan_dict[act_track_name].get('sql', {}).get('duringScan', {})
+        sql_dict_is_none = sql_dict_pre_scan is None or sql_dict_pre_scan == {}
         if not triton_dict_is_none:
             self.start_triton_log()
+        if not sql_dict_is_none:
+            self.start_sql_log()
         return start_ok
 
     def set_post_acc_switch_box(self, scan_dict, track_num, desired_state=None):
@@ -617,6 +639,7 @@ class ScanMain(QObject):
         """
         read = self.read_data(force_emit=True)  # read data one last time
         self.abort_triton_log()
+        self.abort_sql_log()
         self.ppg_stop()
         if read:
             logging.info('while stopping measurement, some data was still read.')
@@ -1024,7 +1047,7 @@ class ScanMain(QObject):
     def ppg_state_callback_disconnect(self):
         self.pulse_pattern_gen.disconnect_to_state_changed_signal()
 
-    ''' Triton related '''
+    """ Triton related """
 
     def prepare_triton_listener_for_scan(self, triton_scan_dict, pre_post_scan_str='preScan', track_name='track0'):
         """
@@ -1060,7 +1083,7 @@ class ScanMain(QObject):
             self.triton_listener.stop_log()
 
     def start_triton_log(self):
-        """ must have ben setup first """
+        """ must have been set up first """
         if self.triton_listener is not None:
             self.triton_listener.start_log()
 
@@ -1119,6 +1142,89 @@ class ScanMain(QObject):
         else:
             return self.triton_listener.get_receivers()
 
+    """ SQLStream related """
+
+    def prepare_sql_stream_for_scan(self, sql_scan_dict, pre_post_scan_str='preScan', track_name='track0'):
+        """
+        set up the sql stream if it has not been set up yet.
+
+        :param sql_scan_dict: dict of dicts, e.g.:
+        {'prescan': {'ch1': {'data': [], 'required': 2, 'acquired': 0},
+                     'ch2': {'data': [], 'required': 5, 'acquired': 0}},
+         'postscan': {...}}
+        :param pre_post_scan_str: str, preScan / duringScan / postScan.
+        :param track_name: str, Name of the track.
+        :return: None
+        """
+        logging.debug('preparing sql stream for %s measurement. Config dict is: %s'
+                      % (pre_post_scan_str, sql_scan_dict.get(pre_post_scan_str, {})))
+        if self.sql_stream is None:
+            self.sql_stream = SQLStream()
+        if self.sql_stream.logging_enabled:
+            self.sql_stream.stop_log()
+        self.sql_stream.setup_log(sql_scan_dict.get(pre_post_scan_str, {}), pre_post_scan_str, track_name)
+
+    def stop_sql_stream(self, restart=False):
+        """
+        remove the sql listener and unsubscribe from devices.
+        """
+        if self.sql_stream is not None:
+            self.sql_stream.stop_log()
+            self.sql_stream = None
+        if restart:
+            self.sql_stream = SQLStream()
+
+    def abort_sql_log(self):
+        """ this just stops the log and leaves the sql stream alive """
+        if self.sql_stream is not None:
+            self.sql_stream.stop_log()
+
+    def start_sql_log(self):
+        """ must have been set up first """
+        if self.sql_stream is not None:
+            self.sql_stream.start_log()
+
+    def check_sql_log_complete(self, scan_dict, pre_during_post_scan_str, tr_name, force_save_continue=False):
+        """ check if the sql logger completed """
+        if self.sql_stream is not None:
+            if self.sql_stream.logging_complete or force_save_continue:
+                self.save_sql_log(scan_dict, tr_name, pre_during_post_scan_str)
+                if self.sql_stream.logging_enabled:
+                    self.abort_sql_log()
+                return True
+            else:
+                return False
+        else:
+            logging.warning('sql log not existing')
+            return True
+
+    def get_sql_log_data(self):
+        """
+        get the data in the sql log
+        :return: dict, {'ch1': {'required': 2, 'data': [], 'acquired': 0}, ...}
+        """
+        if self.sql_stream is not None:
+            return self.sql_stream.log
+        else:
+            return {}
+
+    def save_sql_log(self, scan_dict, tr_name, pre_during_post_scan_str='preScan'):
+        """
+        save the currently logged data to the file defined in the scan pars
+        :param scan_dict: dict, the usual scan dict, see  Service/Scan/draftScanParameters.py
+        :param tr_name: Name of the track.
+        :param pre_during_post_scan_str: str, preScan / duringScan / postScan.
+        """
+        file = scan_dict['pipeInternals']['activeXmlFilePath']
+        sql_dict = self.get_sql_log_data()
+        # The save process is moved to TildaTools for better accessibility
+        TiTs.save_sql_to_xml(file, tr_name, sql_dict, pre_during_post_scan_str=pre_during_post_scan_str)
+
+    def get_available_sql_channels(self):
+        if self.sql_stream is not None:
+            return self.sql_stream.get_channels_from_db()
+        else:
+            return {}
 
 
 if __name__ == "__main__":

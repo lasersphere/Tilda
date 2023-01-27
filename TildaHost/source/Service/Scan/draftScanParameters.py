@@ -44,8 +44,9 @@ pipeInternals_list = ['curVoltInd', 'activeTrackNumber', 'workingDirectory', 'ac
 measureVoltPars_list = ['preScan', 'duringScan', 'postScan']
 # measureVoltPars_list = ['measVoltPulseLength25ns', 'measVoltTimeout10ns']
 
-""" list of default triton pars: """
-triton_list = ['preScan', 'postScan']
+""" list of default triton/SQL pars: """
+triton_list = ['preScan', 'duringScan', 'postScan']
+sql_list = ['preScan', 'duringScan', 'postScan']
 
 
 """ the track0 dictionary is only used by one track but therefore beholds
@@ -55,7 +56,7 @@ MUST be appended with the keys from the corresponding sequencer (see below): """
 track0_list = ['nOfSteps', 'nOfScans', 'nOfCompletedSteps',
                'invertScan', 'postAccOffsetVoltControl', 'postAccOffsetVolt', 'waitForKepco1us',
                'waitAfterReset1us', 'activePmtList', 'colDirTrue', 'workingTime', 'trigger', 'pulsePattern',
-               'measureVoltPars', 'triton', 'outbits', 'scanDevice']
+               'measureVoltPars', 'triton', 'sql', 'outbits', 'scanDevice']
 
 """  each sequencer needs its own parameters and therefore, the keys are listed below
 naming convention is type_list.  """
@@ -100,6 +101,12 @@ draft_triton_pars = {
     'preScan': deepcopy(draft_triton_pars_singl),
     'postScan': deepcopy(draft_triton_pars_singl),
 
+}
+
+draft_sql_pars = {
+    'preScan': {},
+    'duringScan': {},
+    'postScan': {},
 }
 
 draft_outbits = {
@@ -152,14 +159,16 @@ draftTrackPars = {
     'pulsePattern': {'cmdList': ['$time::1.0::1::0', '$time::1.0::0::0']},
     'measureVoltPars': draftMeasureVoltPars,
     'triton': draft_triton_pars,
+    'sql': draft_sql_pars,
     'outbits': draft_outbits,
     'scanDevice': draft_scan_device
 }
 
-draftScanDict = {'isotopeData': draftIsotopePars,
-                 'track0': draftTrackPars,
-                 'pipeInternals': draftPipeInternals,
-                 }
+draftScanDict = {
+    'isotopeData': draftIsotopePars,
+    'track0': draftTrackPars,
+    'pipeInternals': draftPipeInternals
+}
 
 # for the time resolved sequencer us this:
 # draftTrackPars = {'MCSSelectTrigger': 0, 'delayticks': 0, 'nOfBins': 10000, 'nOfBunches': 1,

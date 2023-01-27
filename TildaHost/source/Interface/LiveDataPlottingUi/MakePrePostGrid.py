@@ -34,12 +34,14 @@ class PrePostGridWidget(QtWidgets.QWidget):
         self.gridLayout_devices.setContentsMargins(0, -1, -1, -1)
 
         self.dmm_widget_dicts = {}  # dict to store the created widgets
-
         self.dmm_dict = self.track_data_dict.get('measureVoltPars', {}).get(pre_dur_post_str, {}).get('dmms', {})
 
         self.triton_widget_dicts = {}  # dict to store the created widgets
         # each triton dev has channels therefore key is "dev_plus_channel_name" = dev + ':' + channel
         self.triton_dict = self.track_data_dict.get('triton', {}).get(pre_dur_post_str, {})
+        
+        self.sql_widget_dicts = {}  # dict to store the created widgets
+        self.sql_dict = self.track_data_dict.get('sql', {}).get(pre_dur_post_str, {})
 
         self.index = 0
 
@@ -186,6 +188,21 @@ class PrePostGridWidget(QtWidgets.QWidget):
                 self.update_dev_from_dict(self.triton_widget_dicts[dev_plus_channel_name], dev_plus_channel_name,
                                           self.triton_dict[dev][channel], first_call=first_call)
 
+        self.sql_dict = self.track_data_dict.get('sql', {}).get(pre_dur_post_str, {})
+        for channel in sorted(self.sql_dict.keys()):
+            if channel not in self.sql_widget_dicts:
+                # create if not existing.
+                check_box, name_label, data_label, progress_bar = self.setup_device_grid(
+                    self.index, channel, self.sql_dict[channel], first_call=first_call)
+                self.sql_widget_dicts[channel] = {'plotCb': check_box,
+                                                  'nameLabel': name_label,
+                                                  'dataLabel': data_label,
+                                                  'progressBar': progress_bar,
+                                                  'index': deepcopy(self.index)
+                                                  }
+                self.index += 1
+            self.update_dev_from_dict(self.sql_widget_dicts[channel], channel,
+                                      self.sql_dict[channel], first_call=first_call)
 
     def check_box_clicked(self, *args):
         """ connect to this function when a checkbox was clicked and pass on to the parent """
