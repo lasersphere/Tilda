@@ -273,7 +273,7 @@ class TritonListener(DeviceBase, QObject):
         self.logging_complete = self.log == {}
         self.last_received_times = [None, None]
         self.rcvd_time_deltas_total_s = []
-        self.mean_rcvd_time_delta = timedelta(seconds=60)
+        self.mean_rcvd_time_delta = timedelta(seconds=60).total_seconds()
         self.setInterval(0.5)
         logging.debug('log before start: %s' % str(self.log))
         self.logging = True

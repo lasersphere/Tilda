@@ -48,19 +48,20 @@ class PrePostGridWidget(QtWidgets.QWidget):
         self.completed_scans_on_first_call = 0
         self.update_data(pre_dur_post_str, pre_post_meas_dict_this_track, first_call=True)
 
-    def setup_device_grid(self, index, device_name, device_dict, first_call=False):
+    def setup_device_grid(self, index, device_name, device_dict, device_type, first_call=False):
         """
         create one line for one dev containing:
         qCheckBox (plot or not) | QLabel (name of dev) | QTextEdit
         :param index:
         :param device_name:
         :param device_dict:
+        :param device_type: One of {'measureVoltPars', 'triton', 'sql'}.
         :return:
         """
         # insert check box
         cb_plot_dev = QtWidgets.QCheckBox(self)
         self.gridLayout_devices.addWidget(cb_plot_dev, index, 0, 1, 1)
-        cb_plot_dev.clicked.connect(functools.partial(self.check_box_clicked, device_name))
+        cb_plot_dev.clicked.connect(functools.partial(self.check_box_clicked, device_name, device_type))
         # set name of device
         label_name_dev = QtWidgets.QLabel(self)
         self.gridLayout_devices.addWidget(label_name_dev, index, 1, 1, 1)
@@ -160,7 +161,7 @@ class PrePostGridWidget(QtWidgets.QWidget):
         for dmm in sorted(self.dmm_dict.keys()):  # sorting is always preferable when displaying
             if dmm not in self.dmm_widget_dicts.keys():  # add dmm, was not existing yet
                 check_box, name_label, data_label, progress_bar = self.setup_device_grid(
-                    self.index, dmm, self.dmm_dict[dmm], first_call=first_call)
+                    self.index, dmm, self.dmm_dict[dmm], 'measureVoltPars', first_call=first_call)
                 self.dmm_widget_dicts[dmm] = {'plotCb': check_box,
                                               'nameLabel': name_label,
                                               'dataLabel': data_label,
@@ -177,7 +178,8 @@ class PrePostGridWidget(QtWidgets.QWidget):
                 if dev_plus_channel_name not in self.triton_widget_dicts:
                     # create if not existing.
                     check_box, name_label, data_label, progress_bar = self.setup_device_grid(
-                        self.index, dev_plus_channel_name, self.triton_dict[dev][channel], first_call=first_call)
+                        self.index, dev_plus_channel_name, self.triton_dict[dev][channel], 'triton',
+                        first_call=first_call)
                     self.triton_widget_dicts[dev_plus_channel_name] = {'plotCb': check_box,
                                                                        'nameLabel': name_label,
                                                                        'dataLabel': data_label,
@@ -193,7 +195,7 @@ class PrePostGridWidget(QtWidgets.QWidget):
             if channel not in self.sql_widget_dicts:
                 # create if not existing.
                 check_box, name_label, data_label, progress_bar = self.setup_device_grid(
-                    self.index, channel, self.sql_dict[channel], first_call=first_call)
+                    self.index, channel, self.sql_dict[channel], 'sql', first_call=first_call)
                 self.sql_widget_dicts[channel] = {'plotCb': check_box,
                                                   'nameLabel': name_label,
                                                   'dataLabel': data_label,

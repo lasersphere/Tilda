@@ -2727,7 +2727,7 @@ class NFilterDMMDictsAndSave(Node):
         if isinstance(data, dict):
             self.incoming_dict_ctr += 1
             # dmm data comes in dicts like {dmm_name:[data]}. triton data comes as {track: {triton:{...}}}
-            if 'triton' in data.get(self.active_track_name, {}):
+            if 'triton' in data.get(self.active_track_name, {}) or 'sql' in data.get(self.active_track_name, {}):
                 # always the full log will be emitted again -> careful not to overwrite
                 self.sort_triton(data)
             else:
@@ -2797,6 +2797,8 @@ class NFilterDMMDictsAndSave(Node):
                         self.store_data[key]['measureVoltPars']['duringScan'])
                     self.Pipeline.pipeData[key]['triton']['duringScan'] = deepcopy(
                         self.store_data[key]['triton'].get('duringScan', {}))
+                    self.Pipeline.pipeData[key]['sql']['duringScan'] = deepcopy(
+                        self.store_data[key]['sql'].get('duringScan', {}))
                 # print('triton dict on save in pipeline:')
                 # TildaTools.print_dict_pretty(self.Pipeline.pipeData[key]['triton']['duringScan'])
         except Exception as e:

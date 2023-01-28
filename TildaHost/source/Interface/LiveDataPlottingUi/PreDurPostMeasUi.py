@@ -122,19 +122,18 @@ class PrePostTabWidget(QtWidgets.QTabWidget):
         for tr_name, plot_widget_tr in self.plot_dict.items():
             plot_widget_tr.update_plot_windows()
 
-
     def plot_checkbox_clicked(self, *args):
         """ when a plot yes/no check box was clicked in one of the devices,
          this function will be called and can pass on the new info to the plotwidget.
         *args will be a tuple, ((dev_name_str, cb_True/False_bool), pre_post_during_scan_str, track_name_str) for example:
          (('dev0:ch0', False), 'duringScan', 'track0')
         """
-        (dev_name, checkbox_bool), pre_post_during_str, tr_name = args
+        (dev_name, dev_type, checkbox_bool), pre_post_during_str, tr_name = args
         logging.debug('plot cb licked, args: %s' % str(args))
         if checkbox_bool:
             self.plot_dict[tr_name].create_plot_window(args)
         else:
-            self.plot_dict[tr_name].hide_plot_window(pre_post_during_str+' - '+dev_name)
+            self.plot_dict[tr_name].hide_plot_window(pre_post_during_str + ' - ' + dev_name)
 
 
 

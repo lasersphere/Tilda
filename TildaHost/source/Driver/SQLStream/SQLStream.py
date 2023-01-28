@@ -151,7 +151,7 @@ class SQLStream(QObject):
             for t in tables:
                 self.db_execute('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE'
                                 ' TABLE_SCHEMA = %s AND TABLE_NAME = %s', (self.sql_cfg['database'], t[0]))
-                sub_channels = ['{}:{}'.format(t[0], c[0]) for c in self.db_fetchall() if c[0] not in EXCLUDE_CHANNELS]
+                sub_channels = ['{}.{}'.format(t[0], c[0]) for c in self.db_fetchall() if c[0] not in EXCLUDE_CHANNELS]
                 channels += sub_channels
         else:
             logging.warning('No db connection.')
@@ -183,7 +183,7 @@ class SQLStream(QObject):
 
                     # --- fetch ---
                     # data = [np.random.random()]
-                    t, c = ch.split(':')
+                    t, c = ch.split('.')
                     self.db_execute('SELECT ID, unix_time, {} FROM {} WHERE ID > {} AND unix_time > {}'
                                     .format(c, t, self.ch_id[ch], self.ch_time[ch]), None)
                     data = self.db_fetchall()
@@ -191,7 +191,7 @@ class SQLStream(QObject):
                     if data:
                         self.ch_id[ch] = data[-1][0]
                         self.ch_time[ch] = data[-1][1]
-                        data = [d[2] for d in data]
+                        data = [d[2] for d in data if d is not None]
                         # --- fetch ---
 
                         self.log[ch]['data'] += data
@@ -203,28 +203,28 @@ class SQLStream(QObject):
                                 self.log[ch]['data'] = self.log[ch]['data'][:-dif]
                                 self.log[ch]['acquired'] = self.log[ch]['required'] + acq_on_log_start
 
-                    sql_live_data_dict = {self.track_name: {'sql': {self.pre_dur_post_str: self.log}}}
-                    # now update the 'acquired' number for each channel and dev
-                    # for dev, chs in self.triton_live_data_dict[
-                    #     self.track_name]['triton'][self.pre_dur_post_str].items():
-                    #     for ch_name, ch_data in chs.items():
-                    #         ch_data['acquired'] = len(ch_data['data'])
-                    if self.pre_dur_post_str == 'duringScan':
-                        self.last_received_times[0] = deepcopy(self.last_received_times[1])
-                        self.last_received_times[1] = datetime.now()
-                        if self.last_received_times[0] is not None:
-                            self.rcvd_time_deltas_total_s.append(
-                                (self.last_received_times[1] - self.last_received_times[0]).total_seconds())
-                            self.mean_rcvd_time_delta = np.mean(self.rcvd_time_deltas_total_s)
-                        timedelta_since_laste_send = datetime.now() - self.last_emit_to_analysis_pipeline_datetime
-                        if timedelta_since_laste_send >= self.time_between_emits_to_pipeline:
-                            # in duringScan emit the received values to the pipe!
-                            to_send = deepcopy(sql_live_data_dict)
-                            self.data_to_pipe_sig.emit(np.ndarray(0, dtype=np.int32), to_send)
-                            self.last_emit_to_analysis_pipeline_datetime = datetime.now()
+            sql_live_data_dict = {self.track_name: {'sql': {self.pre_dur_post_str: self.log}}}
+            # now update the 'acquired' number for each channel and dev
+            # for dev, chs in self.triton_live_data_dict[
+            #     self.track_name]['triton'][self.pre_dur_post_str].items():
+            #     for ch_name, ch_data in chs.items():
+            #         ch_data['acquired'] = len(ch_data['data'])
+            if self.pre_dur_post_str == 'duringScan':
+                self.last_received_times[0] = deepcopy(self.last_received_times[1])
+                self.last_received_times[1] = datetime.now()
+                if self.last_received_times[0] is not None:
+                    self.rcvd_time_deltas_total_s.append(
+                        (self.last_received_times[1] - self.last_received_times[0]).total_seconds())
+                    self.mean_rcvd_time_delta = np.mean(self.rcvd_time_deltas_total_s)
+                timedelta_since_last_send = datetime.now() - self.last_emit_to_analysis_pipeline_datetime
+                if timedelta_since_last_send >= self.time_between_emits_to_pipeline:
+                    # in duringScan emit the received values to the pipe!
+                    to_send = deepcopy(sql_live_data_dict)
+                    self.data_to_pipe_sig.emit(np.ndarray(0, dtype=np.int32), to_send)
+                    self.last_emit_to_analysis_pipeline_datetime = datetime.now()
 
-                    else:  # in pre and postScan emit received value to callback for live data plotting
-                        self.pre_post_meas_data_dict_callback.emit(deepcopy(sql_live_data_dict))
+            else:  # in pre and postScan emit received value to callback for live data plotting
+                self.pre_post_meas_data_dict_callback.emit(deepcopy(sql_live_data_dict))
             self.check_log_complete()
 
     def set_interval(self, t):
