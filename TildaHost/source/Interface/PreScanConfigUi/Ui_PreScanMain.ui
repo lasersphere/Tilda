@@ -222,13 +222,13 @@
              <number>1</number>
             </property>
             <property name="minimum">
-             <double>0.100000000000000</double>
+             <double>0.500000000000000</double>
             </property>
             <property name="maximum">
              <double>100.000000000000000</double>
             </property>
             <property name="value">
-             <double>1.000000000000000</double>
+             <double>0.500000000000000</double>
             </property>
            </widget>
           </item>
@@ -262,7 +262,7 @@
          </widget>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="hor_db_send" stretch="0,1">
+         <layout class="QHBoxLayout" name="hor_db_send" stretch="0,0">
           <item>
            <widget class="QCheckBox" name="check_sql_send">
             <property name="enabled">

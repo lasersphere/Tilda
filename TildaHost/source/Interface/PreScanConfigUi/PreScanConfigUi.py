@@ -67,6 +67,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
 
         # SQL related
         self.observables_measure = []
+        self.d_interval.setValue(Cfg._main_instance.sql_interval)
         self.sql_scan_dict = self.get_sql_scan_pars()
         self.sql_scan_dict_backup = deepcopy(self.sql_scan_dict)  # to keep any data stored in the channels
         self.active_channels = None
@@ -129,6 +130,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
                 self.parent_ui.buffer_pars['triton'] = self.triton_scan_dict
                 self.parent_ui.buffer_pars['sql'] = self.sql_scan_dict
                 Cfg._main_instance.pre_scan_timeout_changed(self.doubleSpinBox_timeout_pre_scan_s.value())
+                Cfg._main_instance.sql_set_interval(self.d_interval.value())
                 # logging.info('set values to: ', Cfg._main_instance.scan_pars[self.active_iso]['measureVoltPars'])
 
             self.close()

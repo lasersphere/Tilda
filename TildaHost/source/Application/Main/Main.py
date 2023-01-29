@@ -148,6 +148,8 @@ class Main(QtCore.QObject):
         # store last reading time of the subscribed triton device names in order not to read every 50ms
         self.triton_reading_interval = timedelta(milliseconds=100)
 
+        self.sql_interval = 0.5  # seconds
+
         self.displayed_data = {}  # dict of all displayed files. complete filename is key.
 
         self.set_state(MainState.idle)
@@ -446,6 +448,7 @@ class Main(QtCore.QObject):
         # self.acc_voltage = 0  # acceleration voltage of the source in volts
         # self.main_ui_status_call_back_signal_timedelta_between_emits = timedelta(milliseconds=500)
         self.pre_scan_timeout_changed(self.get_option('SCAN:pre_scan_timeout'))
+        # self.sql_set_interval(self.get_option('SQL:interval_s'))
         # self.dmm_periodic_reading_interval = timedelta(seconds=5)
         # self.dmm_periodic_reading_interval_during_scan = timedelta(seconds=1)
         # self.kepco_meas_done_max_wait_for_dmm_meas = timedelta(seconds=5)
@@ -726,7 +729,7 @@ class Main(QtCore.QObject):
                     if pre_post_scan_str == 'postScan':
                         # if this was a post scan measurement, scan is complete -> set switch box
                         self.set_state(MainState.setting_switch_box, (True, None, scan_complete))  # scan_complete=True
-                        # after this has ben completed, it will go to idle
+                        # after this has been completed, it will go to idle
                     else:
                         # otherwise prepare devices (Triton, dmms, ...) for during scan measurement and
                         self.set_state(MainState.load_track)
@@ -1161,6 +1164,10 @@ class Main(QtCore.QObject):
                                     ch_dicts[entries] = []
                                 elif entries == 'acquired':
                                     ch_dicts[entries] = 0
+                for predurpos, predurpos_dict in self.scan_pars[iso][keys].get('sql', {}).items():
+                    for channels, ch_dicts in predurpos_dict.items():
+                        ch_dicts['data'] = []
+                        ch_dicts['acquired'] = 0
         logging.info('removed %s old dmm or triton data entries' % is_there_something_to_remove)
 
     def save_scan_par_to_db(self, iso):
@@ -1354,8 +1361,7 @@ class Main(QtCore.QObject):
         self.scan_main.ppg_state_callback_disconnect()
         logging.debug('ppg qtsygnal callback disconnected')
 
-
-    ''' triton related'''
+    ''' triton related '''
 
     def get_triton_log(self, reading_interval=timedelta(seconds=0.0)):
         """
@@ -1378,6 +1384,13 @@ class Main(QtCore.QObject):
         self.scan_main.stop_triton_listener(stop_dummy_dev=False, restart=True)
         self.set_state(MainState.idle)
 
+    ''' SQL related '''
+
+    def sql_set_interval(self, interval):
+        # self.set_option('SQL:interval_s', interval)
+        # self.save_options()
+        self.sql_interval = interval
+        self.scan_main.sql_stream.interval = interval
 
     ''' send information / warnings to gui or so '''
 

@@ -8,7 +8,7 @@ Specify server in SQLConfig.py.
 """
 
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 from copy import deepcopy
 import numpy as np
@@ -22,7 +22,7 @@ from Driver.SQLStream.SQLConfig import SQL_CFG, EXCLUDE_CHANNELS
 
 
 class SQLStream(QObject):
-    # signal to emit dmm values for live plotting during the pre/post scans.
+    # signal to emit dmm values for live plotting during the pre-/postScan.
     # is also used for sql values in SQLStream.
     pre_post_meas_data_dict_callback = pyqtSignal(dict)
     # signal to emit data to the pipeLine
@@ -34,7 +34,7 @@ class SQLStream(QObject):
         self.logger = logging.getLogger('SQLLogger')
 
         self.sql_cfg = sql_cfg
-        self.db = None  # can be set to 'local' or '' or {} for testing without any database, see below
+        self.db = None
         self.db_cur = None
         self.db_connect()
         
@@ -51,23 +51,20 @@ class SQLStream(QObject):
         self.ch_id = {}
         self.ch_time = {}
 
+        self.interval = 0.5
         self.last_emit_to_analysis_pipeline_datetime = datetime.now()
-        self.time_between_emits_to_pipeline = timedelta(milliseconds=500)
-        self.last_received_times = [datetime.now(), datetime.now()]
-        self.rcvd_time_deltas_total_s = []
-        self.mean_rcvd_time_delta = timedelta(seconds=60).total_seconds()
 
     """ Encapsulate db functionalities to handle connectivity problems and allow to operate without a db. """
 
     def db_connect(self):
         if isinstance(self.sql_cfg, dict):
             try:
-                self.db = sql.connect(**self.sql_cfg)
+                self.db = sql.connect(**self.sql_cfg, connect_timeout=1)
                 self.db_cur = self.db.cursor()
             except Exception as e:
                 self.logger.error('could not connect to database %s, error is: %s' % (
                     self.sql_cfg.get('database', 'unknown'), e))
-                self.db = 'local'
+                self.db = None
                 self.db_cur = None
         elif isinstance(self.sql_cfg, str) or self.sql_cfg == {}:
             # if the sql_cfg is a string or an empty dict, it will be assumed that no db connection is wanted
@@ -76,7 +73,7 @@ class SQLStream(QObject):
             self.db_cur = None
 
     def db_execute(self, var1, var2):
-        if self.db != 'local':
+        if self.db is not None and self.db != 'local':
             try:
                 self.db_cur.execute(var1, var2)
             except Exception as e:
@@ -86,7 +83,7 @@ class SQLStream(QObject):
                 self.db_cur.execute(var1, var2)
 
     def db_commit(self):
-        if self.db != 'local':
+        if self.db is not None and self.db != 'local':
             try:
                 self.db.commit()
             except Exception as e:
@@ -96,7 +93,7 @@ class SQLStream(QObject):
                 self.db.commit()
 
     def db_fetchall(self, local_ret_val=None):
-        if self.db != 'local':
+        if self.db is not None and self.db != 'local':
             try:
                 var = self.db_cur.fetchall()
                 return var
@@ -116,7 +113,7 @@ class SQLStream(QObject):
         :param local_ret_val: value, default None can be used for testing without db
         :return:
         """
-        if self.db != 'local':
+        if self.db is not None and self.db != 'local':
             try:
                 var = self.db_cur.fetchone()
                 return var
@@ -129,7 +126,7 @@ class SQLStream(QObject):
             return local_ret_val
 
     def db_close(self):
-        if self.db != 'local':
+        if self.db is not None and self.db != 'local':
             try:
                 self.db.close()
             except Exception as e:
@@ -144,7 +141,7 @@ class SQLStream(QObject):
         :return: dict, {dev: ['ch1', 'ch2' ...]}
         """
         channels = []
-        if self.db != 'local':
+        if self.db is not None and self.db != 'local':
             self.db_execute('SHOW TABLES', None)
             # self.db_execute('SELECT deviceName FROM devices WHERE uri IS NOT NULL', None)
             tables = self.db_fetchall()
@@ -156,6 +153,9 @@ class SQLStream(QObject):
         else:
             logging.warning('No db connection.')
         return channels
+
+    def write_run_to_db(self):
+        pass
     
     """ Implementation of the periodic readout. """
 
@@ -176,23 +176,22 @@ class SQLStream(QObject):
     def _acquire(self):
         """ Called in self._run(), acquires and processes the data from the db. """
         if self.logging_enabled:
+            self.new_data_flag = False
             for ch in self.log.keys():
                 acq_on_log_start = self.back_up_log[ch]['acquired']
                 if self.log[ch]['required'] + acq_on_log_start > self.log[ch]['acquired'] \
                         or (self.log[ch]['required'] == -1 and self.pre_dur_post_str == 'duringScan'):
 
-                    # --- fetch ---
-                    # data = [np.random.random()]
                     t, c = ch.split('.')
                     self.db_execute('SELECT ID, unix_time, {} FROM {} WHERE ID > {} AND unix_time > {}'
                                     .format(c, t, self.ch_id[ch], self.ch_time[ch]), None)
                     data = self.db_fetchall()
                     self.db_commit()
                     if data:
+                        self.new_data_flag = True
                         self.ch_id[ch] = data[-1][0]
                         self.ch_time[ch] = data[-1][1]
                         data = [d[2] for d in data if d is not None]
-                        # --- fetch ---
 
                         self.log[ch]['data'] += data
                         self.log[ch]['acquired'] += len(data)
@@ -204,27 +203,13 @@ class SQLStream(QObject):
                                 self.log[ch]['acquired'] = self.log[ch]['required'] + acq_on_log_start
 
             sql_live_data_dict = {self.track_name: {'sql': {self.pre_dur_post_str: self.log}}}
-            # now update the 'acquired' number for each channel and dev
-            # for dev, chs in self.triton_live_data_dict[
-            #     self.track_name]['triton'][self.pre_dur_post_str].items():
-            #     for ch_name, ch_data in chs.items():
-            #         ch_data['acquired'] = len(ch_data['data'])
-            if self.pre_dur_post_str == 'duringScan':
-                self.last_received_times[0] = deepcopy(self.last_received_times[1])
-                self.last_received_times[1] = datetime.now()
-                if self.last_received_times[0] is not None:
-                    self.rcvd_time_deltas_total_s.append(
-                        (self.last_received_times[1] - self.last_received_times[0]).total_seconds())
-                    self.mean_rcvd_time_delta = np.mean(self.rcvd_time_deltas_total_s)
-                timedelta_since_last_send = datetime.now() - self.last_emit_to_analysis_pipeline_datetime
-                if timedelta_since_last_send >= self.time_between_emits_to_pipeline:
-                    # in duringScan emit the received values to the pipe!
+            if self.new_data_flag:  # Only update if data comes in.
+                if self.pre_dur_post_str == 'duringScan':
                     to_send = deepcopy(sql_live_data_dict)
                     self.data_to_pipe_sig.emit(np.ndarray(0, dtype=np.int32), to_send)
-                    self.last_emit_to_analysis_pipeline_datetime = datetime.now()
-
-            else:  # in pre and postScan emit received value to callback for live data plotting
-                self.pre_post_meas_data_dict_callback.emit(deepcopy(sql_live_data_dict))
+                else:  # in pre and postScan emit received value to callback for live data plotting
+                    self.pre_post_meas_data_dict_callback.emit(deepcopy(sql_live_data_dict))
+                self.last_emit_to_analysis_pipeline_datetime = datetime.now()
             self.check_log_complete()
 
     def set_interval(self, t):
@@ -305,10 +290,11 @@ class SQLStream(QObject):
     def start_log(self):
         """ start logging of the desired channels. Be sure to set up the log beforehand with self.setup_log """
         self.logging_complete = self.log == {}
-        self.last_received_times = [None, None]
-        self.rcvd_time_deltas_total_s = []
-        self.mean_rcvd_time_delta = timedelta(seconds=60)
-        self.set_interval(0.5)
+        self.last_emit_to_analysis_pipeline_datetime = datetime.now()
+        if self.db is None:
+            self.logging_complete = True
+            return
+        self.set_interval(self.interval)
         self.logging_enabled = True
 
     def stop_log(self):
@@ -346,12 +332,12 @@ class SQLStream(QObject):
 
 if __name__ == '__main__':
     sql_stream = SQLStream()
-    log = {'preScan': {'hv_34401a:hv_readout': {'required': 5, 'acquired': 0, 'data': []},
+    LOG = {'preScan': {'hv_34401a:hv_readout': {'required': 5, 'acquired': 0, 'data': []},
                        'wm:wm_readout': {'required': 16, 'acquired': 0, 'data': []}},
            'duringScan': {'hv_34401a:hv_readout': {'required': -1, 'acquired': 0, 'data': []},
                           'wm:wm_readout': {'required': 10, 'acquired': 0, 'data': []}},
            'postScan': {}}
-    sql_stream.setup_log(log['duringScan'], 'duringScan', 'track0')
+    sql_stream.setup_log(LOG['duringScan'], 'duringScan', 'track0')
     sql_stream.logging_enabled = True
     print(sql_stream.log)
     sql_stream._acquire()

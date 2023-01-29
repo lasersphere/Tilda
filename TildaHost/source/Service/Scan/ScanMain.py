@@ -79,7 +79,7 @@ class ScanMain(QObject):
 
         # create an SQLStream object for collecting data from a db.
         self.sql_stream = SQLStream()
-        self.sql_pre_scan_done = False  # bool to use when pre/during/post scan measurement of triton is completed
+        self.sql_pre_scan_done = False  # bool to use when pre/during/post scan measurement of sql stream is completed
 
         # create a Triton device for controling scans:
         self.triton_scan_controller_name = 'TildaScanDevCtl'
@@ -134,6 +134,7 @@ class ScanMain(QObject):
         scan_dict['isotopeData']['isotopeStartTime'] = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
         xml_file_name = TiTs.createXmlFileOneIsotope(scan_dict)
         scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
+        self.sql_stream.write_run_to_db()
 
         logging.info('preparing isotope: ' + scan_dict['isotopeData']['isotope'] +
                      ' of type: ' + scan_dict['isotopeData']['type'])
@@ -207,8 +208,8 @@ class ScanMain(QObject):
         # get the existing liveplotting callback from the main
         self.get_existing_callbacks_from_main()
 
-        dmms_dict_pre_scan = scan_dict[act_track_name]['measureVoltPars'].get(pre_post_scan_meas_str, {}).get('dmms',
-                                                                                                              None)
+        dmms_dict_pre_scan = scan_dict[act_track_name]['measureVoltPars'] \
+            .get(pre_post_scan_meas_str, {}).get('dmms', None)
         dmms_dict_is_none = dmms_dict_pre_scan is None or dmms_dict_pre_scan == {}
         triton_dict_pre_scan = scan_dict[act_track_name].get('triton', {}).get(pre_post_scan_meas_str, {})
         triton_dict_is_none = triton_dict_pre_scan is None or triton_dict_pre_scan == {}
@@ -218,19 +219,20 @@ class ScanMain(QObject):
             # return false if no measurement is wanted due to no existing dicts in dmms / triton / SQL.
             return False
         else:
-            if 'continuedAcquisitonOnFile' not in scan_dict['isotopeData']:  # -> ergo
-                # also delete any prescan reading there might be. for an ergo, keep them for a go
-                for dmm_name, pre_scan_dict in dmms_dict_pre_scan.items():
-                    # print('prescandict is: ', pre_scan_dict)
-                    pre_scan_dict['readings'] = []
-                    # print('set readings of %s to []' % dmm_name)
-                # also for triton:
-                for dev, dev_ch_dict in triton_dict_pre_scan.items():
-                    for ch_name, ch_dict in dev_ch_dict.items():
-                        ch_dict['data'] = []
-                # and SQL
-                for ch_name, ch_dict in sql_dict_pre_scan.items():
-                    ch_dict['data'] = []
+            # TODO: Does this even have any effect? -> I commented it out for now (PM).
+            # if 'continuedAcquisitonOnFile' not in scan_dict['isotopeData']:  # -> ergo
+            #     # also delete any prescan reading there might be. for an ergo, keep them for a go
+            #     for dmm_name, pre_scan_dict in dmms_dict_pre_scan.items():
+            #         # print('prescandict is: ', pre_scan_dict)
+            #         pre_scan_dict['readings'] = []
+            #         # print('set readings of %s to []' % dmm_name)
+            #     # also for triton:
+            #     for dev, dev_ch_dict in triton_dict_pre_scan.items():
+            #         for ch_name, ch_dict in dev_ch_dict.items():
+            #             ch_dict['data'] = []
+            #     # and SQL
+            #     for ch_name, ch_dict in sql_dict_pre_scan.items():
+            #         ch_dict['data'] = []
             track_num = int(act_track_name[5:])
             self.fpga_start_offset_measurement(scan_dict, track_num,
                                                pre_post_scan_meas_str)  # will be the first track in list.
@@ -288,7 +290,7 @@ class ScanMain(QObject):
                         samples = dmms_dict_pre_scan[dmm_name]['sampleCount']
                         acquired_samples = dmms_dict_pre_scan[dmm_name]['acquiredPreScan']
                         still_to_acquire = max(0, samples - acquired_samples)
-                        if len(volt_read) > still_to_acquire:  # to much data, need to shrink this
+                        if len(volt_read) > still_to_acquire:  # too much data, need to shrink this
                             volt_read = volt_read[0:still_to_acquire]
                         dmms_dict_pre_scan[dmm_name]['readings'] += list(volt_read)
                         dmms_dict_pre_scan[dmm_name]['acquiredPreScan'] += len(volt_read)
@@ -403,7 +405,6 @@ class ScanMain(QObject):
         # req_time = datetime.now()  # TODO: implement a timeout here? Or a warning for the user when waiting too long?
         self.scan_dev.request_next_step()
         logging.debug('%s: requested next step from scan device now. Step number is %s' % ('scan_main', step_num))
-
 
     def scan_dev_tells_next_step_is_set(self, scan_progress_dict):
         """
