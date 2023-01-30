@@ -130,11 +130,13 @@ class ScanMain(QObject):
         # self.analysis_thread should exist!
         self.analysis_thread = None
 
+        t = datetime.today()
+        unix_time = time.mktime(t.timetuple())
         scan_dict['pipeInternals']['curVoltInd'] = 0
-        scan_dict['isotopeData']['isotopeStartTime'] = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+        scan_dict['isotopeData']['isotopeStartTime'] = t.strftime('%Y-%m-%d %H:%M:%S')
         xml_file_name = TiTs.createXmlFileOneIsotope(scan_dict)
         scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
-        self.sql_stream.write_run_to_db()
+        self.sql_stream.write_run_to_db(unix_time, xml_file_name)
 
         logging.info('preparing isotope: ' + scan_dict['isotopeData']['isotope'] +
                      ' of type: ' + scan_dict['isotopeData']['type'])
@@ -642,6 +644,8 @@ class ScanMain(QObject):
         self.abort_triton_log()
         self.abort_sql_log()
         self.ppg_stop()
+        status = 'aborted' if Cfg._main_instance.abort_scan else 'completed'
+        self.sql_stream.conclude_run_in_db(time.mktime(datetime.today().timetuple()), status)
         if read:
             logging.info('while stopping measurement, some data was still read.')
         if complete_stop:  # only touch dmms in the end of the whole scan

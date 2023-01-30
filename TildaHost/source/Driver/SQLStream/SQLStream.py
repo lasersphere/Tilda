@@ -18,7 +18,7 @@ from threading import Thread
 from PyQt5.QtCore import QObject, pyqtSignal
 
 import Application.Config as Cfg
-from Driver.SQLStream.SQLConfig import SQL_CFG, EXCLUDE_CHANNELS
+from Driver.SQLStream.SQLConfig import SQL_CFG, EXCLUDE_CHANNELS, TILDA_RUNS, EXCLUDE_TABLES
 
 
 class SQLStream(QObject):
@@ -37,6 +37,7 @@ class SQLStream(QObject):
         self.db = None
         self.db_cur = None
         self.db_connect()
+        self.run_id = -1
         
         self._thread = None
         self._interval = 0
@@ -144,18 +145,44 @@ class SQLStream(QObject):
         if self.db is not None and self.db != 'local':
             self.db_execute('SHOW TABLES', None)
             # self.db_execute('SELECT deviceName FROM devices WHERE uri IS NOT NULL', None)
-            tables = self.db_fetchall()
+            tables = [t[0] for t in self.db_fetchall() if t[0] not in EXCLUDE_TABLES]
             for t in tables:
                 self.db_execute('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE'
-                                ' TABLE_SCHEMA = %s AND TABLE_NAME = %s', (self.sql_cfg['database'], t[0]))
-                sub_channels = ['{}.{}'.format(t[0], c[0]) for c in self.db_fetchall() if c[0] not in EXCLUDE_CHANNELS]
+                                ' TABLE_SCHEMA = %s AND TABLE_NAME = %s', (self.sql_cfg['database'], t))
+                sub_channels = ['{}.{}'.format(t, c[0]) for c in self.db_fetchall() if c[0] not in EXCLUDE_CHANNELS]
                 channels += sub_channels
         else:
             logging.warning('No db connection.')
         return channels
 
-    def write_run_to_db(self):
-        pass
+    def write_run_to_db(self, unix_time, xml_file):
+        if self.db is not None and self.db != 'local':
+            self.db_execute('SHOW TABLES', None)
+            tables = {t[0] for t in self.db_fetchall()}
+            if 'tilda_runs' not in tables:
+                s = 'CREATE TABLE tilda_runs ({})'.format(', '.join(TILDA_RUNS))
+                self.db_execute(s, None)
+                self.db_commit()
+            self.db_execute('INSERT INTO tilda_runs (unix_time, xml_file, status) VALUES (%s, %s, %s)',
+                            (str(unix_time), xml_file, 'running'))
+            self.db_commit()
+            self.db_execute('SELECT ID FROM tilda_runs WHERE xml_file = %s AND unix_time > %s',
+                            (xml_file, str(unix_time - 1)))
+            run_id = self.db_fetchall()
+            self.run_id = -1 if run_id is None else int(run_id[-1][0])
+            self.db_commit()
+
+    def update_run_status_in_db(self, status):
+        if self.db is not None and self.db != 'local':
+            self.db_execute('UPDATE tilda_runs status = %s WHERE ID = %s',
+                            (status, str(self.run_id)))
+            self.db_commit()
+
+    def conclude_run_in_db(self, unix_time_stop, status):
+        if self.db is not None and self.db != 'local':
+            self.db_execute('UPDATE tilda_runs SET unix_time_stop = %s, status = %s WHERE ID = %s',
+                            (str(unix_time_stop), status, str(self.run_id)))
+            self.db_commit()
     
     """ Implementation of the periodic readout. """
 
