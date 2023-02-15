@@ -816,7 +816,7 @@ class PreScanConfigUi(QtWidgets.QMainWindow, Ui_PreScanMainWin):
                 val = int(text)
             except ValueError:
                 val = 1
-            if val < 0:
+            if val < 0 and self.pre_or_during_scan_str == 'duringScan':
                 val = -1
             item.setText(str(val))
 

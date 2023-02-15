@@ -206,28 +206,43 @@ class SQLStream(QObject):
             self.new_data_flag = False
             for ch in self.log.keys():
                 acq_on_log_start = self.back_up_log[ch]['acquired']
-                if self.log[ch]['required'] + acq_on_log_start > self.log[ch]['acquired'] \
+                data = []
+                if (self.log[ch]['required'] > 0 and
+                    self.log[ch]['required'] + acq_on_log_start > self.log[ch]['acquired']) \
                         or (self.log[ch]['required'] == -1 and self.pre_dur_post_str == 'duringScan'):
-
                     t, c = ch.split('.')
                     self.db_execute('SELECT ID, unix_time, {} FROM {} WHERE ID > {} AND unix_time > {}'
                                     .format(c, t, self.ch_id[ch], self.ch_time[ch]), None)
                     data = self.db_fetchall()
                     self.db_commit()
-                    if data:
-                        self.new_data_flag = True
-                        self.ch_id[ch] = data[-1][0]
-                        self.ch_time[ch] = data[-1][1]
-                        data = [d[2] for d in data if d is not None]
 
-                        self.log[ch]['data'] += data
-                        self.log[ch]['acquired'] += len(data)
+                elif (self.log[ch]['required'] < 0
+                      and -self.log[ch]['required'] + acq_on_log_start > self.log[ch]['acquired']
+                      and self.pre_dur_post_str != 'duringScan'):
+                    t, c = ch.split('.')
+                    self.db_execute('SELECT ID, unix_time, {} FROM {} ORDER BY ID DESC'
+                                    .format(c, t), None)
+                    _data = self.db_fetchall()
+                    n = 0
+                    while _data and -self.log[ch]['required'] + acq_on_log_start > self.log[ch]['acquired'] + n:
+                        data.append(_data.pop(0))
+                        n += 1
+                    self.db_commit()
 
-                        if self.log[ch]['required'] > 0:
-                            dif = self.log[ch]['acquired'] - acq_on_log_start - self.log[ch]['required']
-                            if dif > 0:
-                                self.log[ch]['data'] = self.log[ch]['data'][:-dif]
-                                self.log[ch]['acquired'] = self.log[ch]['required'] + acq_on_log_start
+                if data:
+                    self.new_data_flag = True
+                    self.ch_id[ch] = data[-1][0]
+                    self.ch_time[ch] = data[-1][1]
+                    data = [d[2] for d in data if d is not None]
+
+                    self.log[ch]['data'] += data
+                    self.log[ch]['acquired'] += len(data)
+
+                    if self.log[ch]['required'] > 0:
+                        dif = self.log[ch]['acquired'] - acq_on_log_start - self.log[ch]['required']
+                        if dif > 0:
+                            self.log[ch]['data'] = self.log[ch]['data'][:-dif]
+                            self.log[ch]['acquired'] = self.log[ch]['required'] + acq_on_log_start
 
             sql_live_data_dict = {self.track_name: {'sql': {self.pre_dur_post_str: self.log}}}
             if self.new_data_flag:  # Only update if data comes in.
