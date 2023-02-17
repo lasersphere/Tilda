@@ -496,6 +496,8 @@
      <string>view</string>
     </property>
     <addaction name="actionProgress"/>
+    <addaction name="action_screenshot"/>
+    <addaction name="action_screenshot_all"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
     <property name="title">
@@ -572,6 +574,22 @@
    </property>
    <property name="text">
     <string>show bins</string>
+   </property>
+  </action>
+  <action name="action_screenshot">
+   <property name="text">
+    <string>screenshot</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+C</string>
+   </property>
+  </action>
+  <action name="action_screenshot_all">
+   <property name="text">
+    <string>screenshot all</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+C</string>
    </property>
   </action>
  </widget>

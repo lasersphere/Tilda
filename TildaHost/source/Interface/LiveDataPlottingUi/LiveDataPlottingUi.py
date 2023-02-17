@@ -140,7 +140,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                             functools.partial(self.raise_graph_fontsize, False))
         QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_F5), self,
                             functools.partial(self.update_all_plots, None, True))
-        QtWidgets.QShortcut(QtGui.QKeySequence("CTRL+S"), self, self.export_screen_shot)
+        QtWidgets.QShortcut(QtGui.QKeySequence("CTRL+S"), self, self.export_screen_shot)  # Deprecated
 
         ''' sum related '''
         self.add_sum_plot()
@@ -238,6 +238,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         self.show_progress_shortcut.activated.connect(self.show_progress)
         self.actionProgress.triggered.connect(self.show_progress)
+
+        ''' screenshot related '''
+        self.action_screenshot.triggered.connect(self.screenshot)
+        self.action_screenshot_all.triggered.connect(self.screenshot_all)
 
         ''' font size graphs '''
         self.actionGraph_font_size.triggered.connect(self.get_graph_fontsize)
@@ -1481,7 +1485,67 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             self.pre_post_tab_widget = None  # Make sure it's None so its in a definite state
             self.mutex.unlock()  # Release the widget for other function calls.
 
-    def export_screen_shot(self, storage_path='', quality=100):
+    ''' screenshot related '''
+
+    @staticmethod
+    def _image_to_clipboard(image):
+        mime_data = QtCore.QMimeData()
+        mime_data.setImageData(image)
+
+        QtGui.QGuiApplication.clipboard().setMimeData(mime_data)
+
+    @staticmethod
+    def _screenshot_widget(widget):
+        QtGui.QPainter(widget).end()
+        pixmap = QtGui.QPixmap(widget.size())
+        widget.render(pixmap)
+        return pixmap.toImage()
+
+    def screenshot(self):
+        image = self._screenshot_widget(self)
+        self._image_to_clipboard(image)
+
+    def screenshot_all(self):
+        # Screenshot all tabs
+        index = self.tabWidget.currentIndex()
+        images = []
+        for i in range(self.tabWidget.count()):
+            self.tabWidget.setCurrentIndex(i)
+            images.append(self._screenshot_widget(self.tabWidget.widget(i)))
+        self.tabWidget.setCurrentIndex(index)
+
+        # Screenshot progress window
+        p_width, p_height = 0, 0
+        if self.actionProgress.isChecked():
+            p_image = self._screenshot_widget(self.widget_progress)
+            p_width, p_height = p_image.width(), p_image.height()
+
+        # Create composite image
+        c_image = images[index]
+        width = c_image.width()
+        height = c_image.height()
+        image = QtGui.QImage(2 * width + p_width, 2 * height, c_image.format())
+
+        # Paint new image
+        painter = QtGui.QPainter(image)
+        x_pos = [0, 1, 0, 1]
+        y_pos = [0, 0, 1, 1]
+        for x, y, _image in zip(x_pos, y_pos, images):
+            painter.drawImage(x * width, y * height, _image)
+
+        # Add progress window
+        if self.actionProgress.isChecked():
+            p_image = self._screenshot_widget(self.widget_progress)
+            painter.drawImage(2 * x_pos[-1] * width, y_pos[0], p_image)
+            color = self.palette().color(self.backgroundRole())
+            painter.setPen(color)
+            painter.setBrush(color)
+            painter.drawRect(2 * x_pos[-1] * width, p_height, p_width, 2 * height - p_height)
+
+        painter.end()
+        self._image_to_clipboard(image)
+
+    def export_screen_shot(self, storage_path='', quality=100):  # deprecated
         """
         function to export a screenshot fo the full window.
         and export all currently shown plots of the time resolved tab
