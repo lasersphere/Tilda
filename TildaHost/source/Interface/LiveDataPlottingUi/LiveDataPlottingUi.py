@@ -1502,10 +1502,39 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         return pixmap.toImage()
 
     def screenshot(self):
-        image = self._screenshot_widget(self)
+        # Screenshot current view
+        c_image = self._screenshot_widget(self)
+
+        # Prepare run info
+        run_info = self.windowTitle()
+        run_height = 20
+
+        # Create composite image
+        image = QtGui.QImage(c_image.width(), c_image.height() + run_height, c_image.format())
+        painter = QtGui.QPainter(image)
+
+        # Add run info
+        white = QtGui.QColor('white')
+        painter.setPen(white)
+        painter.setBrush(white)
+        painter.drawRect(0, 0, image.width(), run_height)
+        painter.setPen(QtGui.QColor('black'))
+        font = QtGui.QFont()
+        font.setPixelSize(16)
+        painter.setFont(font)
+        painter.drawText(5, run_height - 5, run_info)
+
+        # Add image
+        painter.drawImage(0, run_height, c_image)
+
+        painter.end()  # Important!
         self._image_to_clipboard(image)
 
     def screenshot_all(self):
+        # Prepare run info
+        run_info = self.windowTitle()
+        run_height = 20
+
         # Screenshot all tabs
         index = self.tabWidget.currentIndex()
         images = []
@@ -1524,25 +1553,36 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         c_image = images[index]
         width = c_image.width()
         height = c_image.height()
-        image = QtGui.QImage(2 * width + p_width, 2 * height, c_image.format())
-
-        # Paint new image
+        image = QtGui.QImage(2 * width + p_width, 2 * height + run_height, c_image.format())
         painter = QtGui.QPainter(image)
+
+        # Add run info
+        white = QtGui.QColor('white')
+        painter.setPen(white)
+        painter.setBrush(white)
+        painter.drawRect(0, 0, image.width(), run_height)
+        painter.setPen(QtGui.QColor('black'))
+        font = QtGui.QFont()
+        font.setPixelSize(16)
+        painter.setFont(font)
+        painter.drawText(5, run_height - 5, run_info)
+
+        # Add images
         x_pos = [0, 1, 0, 1]
         y_pos = [0, 0, 1, 1]
         for x, y, _image in zip(x_pos, y_pos, images):
-            painter.drawImage(x * width, y * height, _image)
+            painter.drawImage(x * width, y * height + run_height, _image)
 
         # Add progress window
         if self.actionProgress.isChecked():
             p_image = self._screenshot_widget(self.widget_progress)
-            painter.drawImage(2 * x_pos[-1] * width, y_pos[0], p_image)
-            color = self.palette().color(self.backgroundRole())
-            painter.setPen(color)
-            painter.setBrush(color)
-            painter.drawRect(2 * x_pos[-1] * width, p_height, p_width, 2 * height - p_height)
+            painter.drawImage(2 * x_pos[-1] * width, y_pos[0] + run_height, p_image)
+            grey = self.palette().color(self.backgroundRole())
+            painter.setPen(grey)
+            painter.setBrush(grey)
+            painter.drawRect(2 * x_pos[-1] * width, p_height + run_height, p_width, image.height() - p_height)
 
-        painter.end()
+        painter.end()  # Important!
         self._image_to_clipboard(image)
 
     def export_screen_shot(self, storage_path='', quality=100):  # deprecated
