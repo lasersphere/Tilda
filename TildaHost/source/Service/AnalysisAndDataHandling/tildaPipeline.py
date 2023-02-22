@@ -124,7 +124,7 @@ def CsPipe(initialScanPars=None, callback_sig=None, live_plot_callbacks=None, ne
 
     filen = os.path.split(pipe.pipeData['pipeInternals']['activeXmlFilePath'])[1]
     window_title = 'plot ' + filen
-    fig.canvas.set_window_title(window_title)  # TODO: The set_window_title function was deprecated in Matplotlib 3.4 and will be removed two minor releases later. Use manager.set_window_title or GUI-specific methods instead.
+    fig.canvas.manager.set_window_title(window_title)
 
     walk = start.attach(TN.NSaveRawData())
     # walk = start.attach(TN.NSplit32bData())

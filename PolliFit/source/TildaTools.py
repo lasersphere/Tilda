@@ -1130,8 +1130,8 @@ def save_spec_data(spec_data, scan_dict, time_stamp_ns=False):
                              os.path.basename(existing_xml_fil_path)))
             # if file is in same folder as db, replace this folder with a dot
             db_dir_name = os.path.split(scan_dict['pipeInternals']['workingDirectory'])[1]
-            relative_filename = relative_filename.replace(
-                db_dir_name, '.')
+            if db_dir_name == os.path.split(relative_filename)[0]:
+                relative_filename = relative_filename.replace(db_dir_name, '.')
             from Tools import _insertFile
             logging.debug('will insert file: %s to database: %s' % (relative_filename, db))
             _insertFile(relative_filename, db)

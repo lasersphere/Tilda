@@ -21,7 +21,7 @@
        <locale language="English" country="UnitedStates"/>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="tab_sum">
        <attribute name="title">
@@ -305,12 +305,12 @@
            </column>
            <column>
             <property name="text">
-             <string>t_min [µs]</string>
+             <string>t_min [us]</string>
             </property>
            </column>
            <column>
             <property name="text">
-             <string>t_max [µs]</string>
+             <string>t_max [us]</string>
             </property>
            </column>
            <column>
@@ -495,31 +495,32 @@
     <property name="title">
      <string>view</string>
     </property>
-    <addaction name="actionProgress"/>
-    <addaction name="action_screenshot"/>
-    <addaction name="action_screenshot_all"/>
-   </widget>
-   <widget class="QMenu" name="menuEdit">
-    <property name="title">
-     <string>edit</string>
-    </property>
     <widget class="QMenu" name="menunorm">
      <property name="title">
-      <string>norm PMTs to</string>
+      <string>normalize</string>
      </property>
      <addaction name="actionidentity"/>
      <addaction name="actionscans"/>
     </widget>
+    <addaction name="action_update"/>
+    <addaction name="separator"/>
+    <addaction name="action_screenshot"/>
+    <addaction name="action_screenshot_all"/>
+    <addaction name="separator"/>
+    <addaction name="actionProgress"/>
     <addaction name="actionGraph_font_size"/>
+    <addaction name="separator"/>
     <addaction name="menunorm"/>
     <addaction name="actionshow_bins"/>
    </widget>
    <addaction name="menuView"/>
-   <addaction name="menuEdit"/>
   </widget>
   <action name="actionProgress">
    <property name="text">
     <string>progress</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+P</string>
    </property>
   </action>
   <action name="actionGraph_font_size">
@@ -575,6 +576,9 @@
    <property name="text">
     <string>show bins</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+B</string>
+   </property>
   </action>
   <action name="action_screenshot">
    <property name="text">
@@ -590,6 +594,19 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+C</string>
+   </property>
+  </action>
+  <action name="action_update">
+   <property name="text">
+    <string>update</string>
+   </property>
+   <property name="shortcut">
+    <string>F5</string>
+   </property>
+  </action>
+  <action name="actionasd">
+   <property name="text">
+    <string>asd</string>
    </property>
   </action>
  </widget>

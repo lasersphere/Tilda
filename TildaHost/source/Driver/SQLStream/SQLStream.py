@@ -144,7 +144,6 @@ class SQLStream(QObject):
         channels = []
         if self.db is not None and self.db != 'local':
             self.db_execute('SHOW TABLES', None)
-            # self.db_execute('SELECT deviceName FROM devices WHERE uri IS NOT NULL', None)
             tables = [t[0] for t in self.db_fetchall() if t[0] not in EXCLUDE_TABLES]
             for t in tables:
                 self.db_execute('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE'
@@ -169,7 +168,7 @@ class SQLStream(QObject):
             self.db_execute('SELECT ID FROM tilda_runs WHERE xml_file = %s AND unix_time > %s',
                             (xml_file, str(unix_time - 1)))
             run_id = self.db_fetchall()
-            self.run_id = -1 if run_id is None else int(run_id[-1][0])
+            self.run_id = int(run_id[-1][0]) if run_id else -1
             self.db_commit()
 
     def update_run_status_in_db(self, status):
@@ -220,8 +219,8 @@ class SQLStream(QObject):
                       and -self.log[ch]['required'] + acq_on_log_start > self.log[ch]['acquired']
                       and self.pre_dur_post_str != 'duringScan'):
                     t, c = ch.split('.')
-                    self.db_execute('SELECT ID, unix_time, {} FROM {} ORDER BY ID DESC'
-                                    .format(c, t), None)
+                    self.db_execute('SELECT ID, unix_time, {} FROM {} ORDER BY ID DESC LIMIT {}'
+                                    .format(c, t, -self.log[ch]['required']), None)
                     _data = self.db_fetchall()
                     n = 0
                     while _data and -self.log[ch]['required'] + acq_on_log_start > self.log[ch]['acquired'] + n:

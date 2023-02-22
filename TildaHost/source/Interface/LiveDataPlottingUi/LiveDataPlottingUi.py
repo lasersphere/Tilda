@@ -92,6 +92,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.overall_scan_progress = 0  # float, will be 100 when scan completed updated via scan progress dict from main
         self.setupUi(self)
         self.show()
+        self.tableWidget_gates.horizontalHeaderItem(4).setText('t_min [µs]')
+        self.tableWidget_gates.horizontalHeaderItem(5).setText('t_max [µs]')
         self.tabWidget.setCurrentIndex(1)  # time resolved
         self.setWindowTitle('plot win:     ' + full_file_path)
         self.dockWidget.setWindowTitle('progress: %s' % self.active_file)
@@ -134,12 +136,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.subscribe_to_main()
 
         ''' key press '''
+        self.actionGraph_font_size.setText(self.actionGraph_font_size.text() + '\tUp, Down')
         QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Up), self,
                             functools.partial(self.raise_graph_fontsize, True))
         QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Down), self,
                             functools.partial(self.raise_graph_fontsize, False))
-        QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_F5), self,
-                            functools.partial(self.update_all_plots, None, True))
+        self.action_update.triggered.connect(functools.partial(self.update_all_plots, None, True))
         QtWidgets.QShortcut(QtGui.QKeySequence("CTRL+S"), self, self.export_screen_shot)  # Deprecated
 
         ''' sum related '''
@@ -233,10 +235,6 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         self.actionProgress.setCheckable(True)
         self.actionProgress.setChecked(self.subscribe_as_live_plot)
-
-        self.show_progress_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_P), self)
-
-        self.show_progress_shortcut.activated.connect(self.show_progress)
         self.actionProgress.triggered.connect(self.show_progress)
 
         ''' screenshot related '''
@@ -250,6 +248,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.scan_prog_array = None
         self.actionidentity.triggered.connect(self.toggle_norm_menu)
         self.actionscans.triggered.connect(self.toggle_norm_menu)
+        QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+N'), self, functools.partial(self.next_norm, True))
+        QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+Shift+N'), self, functools.partial(self.next_norm, False))
+        self.menunorm.setTitle(self.menunorm.title() + '\tCtrl+N  ')
 
         ''' preset bin/error bar mode for all graphs '''
         self.stepMode = self.actionshow_bins.isChecked()
@@ -539,6 +540,13 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         else:  # decrease
             self.graph_font_size -= 1
         self.change_font_size_all_graphs(self.graph_font_size)
+
+    def next_norm(self, _next):
+        actions = self.menunorm.actions() if _next else self.menunorm.actions()[::-1]
+        for i, a in enumerate(actions):
+            if a.isChecked():
+                actions[(i + 1) % len(actions)].trigger()
+                return
 
     def toggle_norm_menu(self):
         action = self.sender()

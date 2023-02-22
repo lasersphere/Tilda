@@ -2026,7 +2026,8 @@ class NCS2SpecData(Node):
         steps = pipeData[track_name]['nOfSteps']
         scans = csteps // steps + 1
         self.spec_data.nrLoops[track_ind] = scans
-        if pipeData[track_name]['invertScan'] and scans % 2 == 0:
+        mod = (scans - 1) % pipeData[track_name]['nOfScans'] + 1
+        if pipeData[track_name]['invertScan'] and mod % 2 == 0:
             self.spec_data.nrSteps[track_ind] = max([steps - (csteps % steps), 0])  # - 1: Correct for some delay!?
         else:
             self.spec_data.nrSteps[track_ind] = min([csteps % steps, steps])  # + 1: Correct for some delay!?
@@ -2436,7 +2437,8 @@ class NTRSSumFastArraysSpecData(Node):
         steps = pipeData[track_name]['nOfSteps']
         scans = csteps // steps + 1
         self.spec_data.nrLoops[track_ind] = scans
-        if pipeData[track_name]['invertScan'] and scans % 2 == 0:
+        mod = (scans - 1) % pipeData[track_name]['nOfScans'] + 1
+        if pipeData[track_name]['invertScan'] and mod % 2 == 0:
             self.spec_data.nrSteps[track_ind] = max([steps - (csteps % steps), 0])
         else:
             self.spec_data.nrSteps[track_ind] = min([csteps % steps, steps])

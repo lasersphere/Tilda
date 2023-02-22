@@ -98,9 +98,11 @@ draft_triton_pars_singl = {'dummyDev': {
     'random': {'required': 4, 'data': [], 'acquired': 0}}}
 
 draft_triton_pars = {
-    'preScan': deepcopy(draft_triton_pars_singl),
-    'postScan': deepcopy(draft_triton_pars_singl),
-
+    # 'preScan': deepcopy(draft_triton_pars_singl),
+    # 'postScan': deepcopy(draft_triton_pars_singl),
+    'preScan': {},
+    'duringScan': {},
+    'postScan': {},
 }
 
 draft_sql_pars = {

@@ -37,7 +37,8 @@ class SpecData(object):
         self.date = datetime.today().strftime('%Y-%m-%d %H:%M:%S')  #
         self.nrTracks = 1  # int, number of tracks in scan.
         self.nrScalers = []  # list, len = nrTracks, holds the number of scaler for each track
-        self.nrLoops = []  # list of integers, len=nrTracks, holds how often the track was repeated (live).
+        self.nrScans = []  # list of integers, len=nrTracks, holds how often the track was repeated (live).
+        self.nrLoops = []  # list of integers, len=nrTracks, holds how often the track was repeated (live, incl. reps.).
         self.nrSteps = []  # list of integers, len=nrTracks, holds how many steps are completed for each track (live).
         self.accVolt = None  # float, acceleration voltage of the ions
         self.laserFreq = 0  # float, fundamental laser frequency in MHz in the laser lab system
@@ -174,7 +175,7 @@ class SpecData(object):
                 step = self.nrSteps[t]
                 s0, n0 = slice(i, i + step, 1), scan
                 s1, n1 = slice(i + step, i + nt, 1), scan - 1 if scan > 1 else 1
-                if self.invert_scan[t] and scan % 2 == 0:
+                if self.invert_scan[t] and (scan - self.nrScans[t]) % 2 == 0:
                     n0 -= 1
                     n1 += 1
                 flatc[s0] /= n0
@@ -188,7 +189,7 @@ class SpecData(object):
             step = self.nrSteps[track_index]
             s0, n0 = slice(0, step, 1), scan
             s1, n1 = slice(step, None, 1), scan - 1 if scan > 1 else 1
-            if self.invert_scan[track_index] and scan % 2 == 0:
+            if self.invert_scan[track_index] and (scan - self.nrScans[track_index]) % 2 == 0:
                 n0 -= 1
                 n1 += 1
             flatc[s0] /= n0
