@@ -614,7 +614,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
                                     use None for not measuring
         """ 
         self.buffer_pars['scanDevice']['preScanSetPoint'] = pre_scan_set_val
-        ch_state = QtCore.Qt.Checked if pre_scan_set_val is not None else QtCore.Qt.Unchecked
+        ch_state = QtCore.Qt.CheckState.Checked if pre_scan_set_val is not None else QtCore.Qt.CheckState.Unchecked
         self.scan_dev_pre_scan_set_checkbox_clicked(ch_state, block_signal=True)
         if pre_scan_set_val is not None:
             self.doubleSpinBox_scanDevPreScan.blockSignals(True)
@@ -628,7 +628,7 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
                                     use None for not measuring
         """
         self.buffer_pars['scanDevice']['postScanSetPoint'] = post_scan_set_val
-        ch_state = QtCore.Qt.Checked if post_scan_set_val is not None else QtCore.Qt.Unchecked
+        ch_state = QtCore.Qt.CheckState.Checked if post_scan_set_val is not None else QtCore.Qt.CheckState.Unchecked
         self.scan_dev_post_scan_set_checkbox_clicked(ch_state, block_signal=True)
         if post_scan_set_val is not None:
             self.doubleSpinBox_scanDevPostScan.blockSignals(True)
@@ -660,15 +660,18 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         :param chbox_state:
         :return:
         """
-        self.checkBox_scanDev_setPreScan.setChecked(chbox_state == QtCore.Qt.Checked)
-        self.doubleSpinBox_scanDevPreScan.setEnabled(chbox_state == QtCore.Qt.Checked)
-        self.pushButton_scanDev_pre_sc_copy_from_start.setEnabled(chbox_state == QtCore.Qt.Checked)
-        if chbox_state == QtCore.Qt.Checked:
-            new_val = self.buffer_pars['scanDevice']['preScanSetPoint']
+        self.checkBox_scanDev_setPreScan.setChecked(chbox_state == QtCore.Qt.CheckState.Checked)
+        self.doubleSpinBox_scanDevPreScan.setEnabled(chbox_state == QtCore.Qt.CheckState.Checked)
+        self.pushButton_scanDev_pre_sc_copy_from_start.setEnabled(chbox_state == QtCore.Qt.CheckState.Checked)
+        if chbox_state == QtCore.Qt.CheckState.Checked:
+            new_val = self.buffer_pars['scanDevice'].get('preScanSetPoint', None)
             new_val = self.doubleSpinBox_scanDevStart.value() if new_val is None else new_val
             self.doubleSpinBox_scanDevPreScan.blockSignals(block_signal)
             self.doubleSpinBox_scanDevPreScan.setValue(new_val)
             self.doubleSpinBox_scanDevPreScan.blockSignals(False)
+            self.buffer_pars['scanDevice']['preScanSetPoint'] = new_val
+        else:
+            self.buffer_pars['scanDevice']['preScanSetPoint'] = None
     
     def scan_dev_post_scan_set_checkbox_clicked(self, chbox_state, block_signal=True):
         """
@@ -676,15 +679,18 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
         :param chbox_state:
         :return:
         """
-        self.checkBox_scanDev_setPostScan.setChecked(chbox_state == QtCore.Qt.Checked)
-        self.doubleSpinBox_scanDevPostScan.setEnabled(chbox_state == QtCore.Qt.Checked)
-        self.pushButton_scanDev_post_ssc_copy_stop.setEnabled(chbox_state == QtCore.Qt.Checked)
-        if chbox_state == QtCore.Qt.Checked:
+        self.checkBox_scanDev_setPostScan.setChecked(chbox_state == QtCore.Qt.CheckState.Checked)
+        self.doubleSpinBox_scanDevPostScan.setEnabled(chbox_state == QtCore.Qt.CheckState.Checked)
+        self.pushButton_scanDev_post_ssc_copy_stop.setEnabled(chbox_state == QtCore.Qt.CheckState.Checked)
+        if chbox_state == QtCore.Qt.CheckState.Checked:
             new_val = self.buffer_pars['scanDevice'].get('postScanSetPoint', None)
             new_val = self.doubleSpinBox_scanDevStop.value() if new_val is None else new_val
             self.doubleSpinBox_scanDevPostScan.blockSignals(block_signal)
             self.doubleSpinBox_scanDevPostScan.setValue(new_val)
             self.doubleSpinBox_scanDevPostScan.blockSignals(False)
+            self.buffer_pars['scanDevice']['PostScanSetPoint'] = new_val
+        else:
+            self.buffer_pars['scanDevice']['PostScanSetPoint'] = None
 
     def calc_n_of_steps(self):
         """ calculates the number of steps: abs((stop - start) / stepSize) """

@@ -14,6 +14,7 @@ from copy import deepcopy
 import Service.Scan.ScanDictionaryOperations as SdOp
 import Service.VoltageConversions.VoltageConversions as VCon
 import Tools as PolliTools
+from TildaTools import clean_pre_post_scan_set_point_in_scan_dict
 from Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TriTypes
 
 
@@ -324,6 +325,7 @@ def extract_track_dict_from_db(database_path_str, iso, sctype, tracknum):
     scand[selected_tr_name]['sql'] = ast.literal_eval(sql) if sql is not None else {}
     scan_dev_dict = data.pop(-1)
     scand[selected_tr_name]['scanDevice'] = ast.literal_eval(scan_dev_dict) if scan_dev_dict is not None else {}
+    scand[selected_tr_name] = clean_pre_post_scan_set_point_in_scan_dict(scand[selected_tr_name])
     dac_start = data.pop(0)  # float
     dac_stepsize = data.pop(0)  # float
     dac_stop = data.pop(0)  # float

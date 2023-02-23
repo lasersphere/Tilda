@@ -97,7 +97,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.tabWidget.setCurrentIndex(1)  # time resolved
         self.setWindowTitle('plot win:     ' + full_file_path)
         self.dockWidget.setWindowTitle('progress: %s' % self.active_file)
-        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)  # necessary for not keeping it in memory
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)  # necessary for not keeping it in memory
 
         # application can be given from top in order to force processing events
         self.application = application
@@ -137,12 +137,12 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         ''' key press '''
         self.actionGraph_font_size.setText(self.actionGraph_font_size.text() + '\tUp, Down')
-        QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Up), self,
+        QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key.Key_Up), self,
                             functools.partial(self.raise_graph_fontsize, True))
-        QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Down), self,
+        QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key.Key_Down), self,
                             functools.partial(self.raise_graph_fontsize, False))
         self.action_update.triggered.connect(functools.partial(self.update_all_plots, None, True))
-        QtWidgets.QShortcut(QtGui.QKeySequence("CTRL+S"), self, self.export_screen_shot)  # Deprecated
+        # QtWidgets.QShortcut(QtGui.QKeySequence("CTRL+S"), self, self.export_screen_shot)  # Deprecated
 
         ''' sum related '''
         self.add_sum_plot()
@@ -238,8 +238,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         self.actionProgress.triggered.connect(self.show_progress)
 
         ''' screenshot related '''
-        self.action_screenshot.triggered.connect(self.screenshot)
-        self.action_screenshot_all.triggered.connect(self.screenshot_all)
+        self.action_screenshot_to_clipboard.triggered.connect(self.screenshot_to_clipboard)
+        self.action_screenshot_all_to_clipboard.triggered.connect(self.screenshot_all_to_clipboard)
+        self.action_screenshot_to_file.triggered.connect(self.screenshot_to_file)
+        self.action_screenshot_all_to_file.triggered.connect(self.screenshot_all_to_file)
 
         ''' font size graphs '''
         self.actionGraph_font_size.triggered.connect(self.get_graph_fontsize)
@@ -283,7 +285,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         window_title = self.tabWidget.tabText(index)
         if index != -1:  # only if double click was on a tab header
             self.tabWidget.removeTab(index)
-            widget.setWindowFlags(QtCore.Qt.Window)
+            widget.setWindowFlags(QtCore.Qt.WindowType.Window)
             widget.setWindowTitle(window_title)
             # widget.setParent(None)  # necessary to make the new window independent from the old one
             widget.show()
@@ -308,7 +310,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         :param widget: the widget to be re-attached
         """
         if self.tabWidget.indexOf(widget) == -1:  # for whatever reason the widget might be inside the tabWidget already
-            widget.setWindowFlags(QtCore.Qt.Widget)
+            widget.setWindowFlags(QtCore.Qt.WindowType.Widget)
             # widget.setParent(self.tabWidget.widget(0).parent())  # parent was removed during detaching
 
             self.tabWidget.insertTab(widget.index, widget, widget.windowTitle())
@@ -513,16 +515,14 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         for plot in plots:
             for ax in ['left', 'bottom', 'top', 'right']:
                 axis = plot.getAxis(ax)
-                axis.tickFont = font
-                axis.setStyle(tickTextOffset=int(font_size - 5))
+                axis.setStyle(tickFont=font, tickTextOffset=int(font_size - 5))
                 axis.label.setFont(font)
 
         if self.tres_offline_txt_itm is not None:
             self.tres_offline_txt_itm.setFont(font)
 
         axis = self.tres_widg.getHistogramWidget().axis
-        axis.tickFont = font
-        axis.setStyle(tickTextOffset=int(font_size - 5))
+        axis.setStyle(tickFont=font, tickTextOffset=int(font_size - 5))
         axis.label.setFont(font)
         self.label_x_coord.setFont(font)
         self.label_2.setFont(font)
@@ -611,8 +611,8 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 update_time_ms = self.allowed_update_time_ms
                 max_calls_without_plot = 5
                 update_time_res_spec = self.needed_plot_update_time_ms <= update_time_ms \
-                                       or self.calls_since_last_time_res_plot_update > max_calls_without_plot or \
-                                       not self.subscribe_as_live_plot
+                    or self.calls_since_last_time_res_plot_update > max_calls_without_plot \
+                    or not self.subscribe_as_live_plot
                 # update the time resolved spec if the last time the plot was faster plotted than 100ms
                 # 150 ms should be ok to update all other plots
                 # anyhow every fifth plot it will force to plot the time res
@@ -632,9 +632,9 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     if not self.spinBox.hasFocus():
                         # only update when user is not entering currently
                         self.spinBox.blockSignals(True)
-                        # blockSignals is necessary to avoid a loop since spinBox is connected to rebin_data(), which will
-                        # emit a new_gate_or_soft_bin_width signal connected to rcvd_gates_and_rebin() Node that will again
-                        # emit a new_data_callback that brings us back here...
+                        # blockSignals is necessary to avoid a loop since spinBox is connected to rebin_data(),
+                        # which will emit a new_gate_or_soft_bin_width signal connected to rcvd_gates_and_rebin() Node
+                        # that will again emit a new_data_callback that brings us back here...
                         self.spinBox.setValue(self.spec_data.softBinWidth_ns[self.tres_sel_tr_ind])
                         self.spinBox.blockSignals(False)
                     self.update_gates_list()
@@ -642,7 +642,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 if valid_data and self.new_track_no_data_yet:  # this means it is first call
                     # refresh the line edit by calling this here:
                     self.sum_scaler_changed(self.comboBox_sum_all_pmts.currentIndex())
-                    if self.function == None:
+                    if self.function is None:
                         self.function = str(self.sum_scaler)    # update to default function (list of all scalers)
                         self.add_func_to_options()
 
@@ -1100,22 +1100,28 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                 return None
             if len(sel_items):
                 self.tableWidget_gates.blockSignals(True)
+                self.new_data_callback.disconnect(self.new_data)
+                # This method finishes and, therefore, unblocks the tableWidget before all the updated data
+                # from gating is sent. If the user clicked on the table in that period, Tilda would crash
+                # without raising any Exception. By blocking new-data callbacks during gating, this is prevented.
+
                 for each in sel_items:
                     sel_tr = int(self.tableWidget_gates.item(each.row(), 0).text()[5:])
                     sel_sc = int(self.tableWidget_gates.item(each.row(), 1).text())
                     gate_ind = each.column() - 2
                     self.spec_data.softw_gates[sel_tr][sel_sc][gate_ind] = new_val
                     self.gate_data(self.spec_data)
+                self.new_data_callback.connect(self.new_data)
                 self.tableWidget_gates.blockSignals(False)
 
     def handle_item_clicked(self, item):
         """ this will select which track and scaler one is viewing. """
         if item.column() == self.tableWidget_gates.columnCount() - 1:
-            if item.checkState() == QtCore.Qt.Checked:
+            if item.checkState() == QtCore.Qt.CheckState.Checked:
                 currently_selected = self.find_one_scaler_track(self.tres_sel_tr_name, self.tres_sel_sc_ind)
                 if currently_selected.row() != item.row():
                     curr_checkb_item = self.tableWidget_gates.item(currently_selected.row(), 6)
-                    curr_checkb_item.setCheckState(QtCore.Qt.Unchecked)
+                    curr_checkb_item.setCheckState(QtCore.Qt.CheckState.Unchecked)
                     self.tres_sel_tr_ind = int(self.tableWidget_gates.item(item.row(), 0).text()[5:])
                     self.tres_sel_tr_name = self.tableWidget_gates.item(item.row(), 0).text()
                     self.tres_sel_sc_ind = int(self.tableWidget_gates.item(item.row(), 1).text())
@@ -1125,17 +1131,17 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     self.update_projections(self.spec_data)
                     # else:
                     #     item.setCheckState(QtCore.Qt.Checked)
-        currently_selected = self.find_one_scaler_track(self.tres_sel_tr_name, self.tres_sel_sc_ind)
-        curr_checkb_item = self.tableWidget_gates.item(currently_selected.row(), 6)
-        curr_checkb_item.setCheckState(QtCore.Qt.Checked)
+            currently_selected = self.find_one_scaler_track(self.tres_sel_tr_name, self.tres_sel_sc_ind)
+            curr_checkb_item = self.tableWidget_gates.item(currently_selected.row(), 6)
+            curr_checkb_item.setCheckState(QtCore.Qt.CheckState.Checked)
 
     def select_scaler_tr(self, tr_name, sc_ind):
         for row in range(self.tableWidget_gates.rowCount()):
             curr_checkb_item = self.tableWidget_gates.item(row, 6)
-            curr_checkb_item.setCheckState(QtCore.Qt.Unchecked)
+            curr_checkb_item.setCheckState(QtCore.Qt.CheckState.Unchecked)
         currently_selected = self.find_one_scaler_track(tr_name, sc_ind)
         curr_checkb_item = self.tableWidget_gates.item(currently_selected.row(), 6)
-        curr_checkb_item.setCheckState(QtCore.Qt.Checked)
+        curr_checkb_item.setCheckState(QtCore.Qt.CheckState.Checked)
 
     def update_gates_list(self):
         """
@@ -1152,22 +1158,22 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                         row_ind = pmt_ind + offset
                         self.tableWidget_gates.insertRow(row_ind)
                         tr_item = QtWidgets.QTableWidgetItem(tr_name)
-                        tr_item.setFlags(QtCore.Qt.ItemIsSelectable)
+                        tr_item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable)
                         self.tableWidget_gates.setItem(row_ind, 0, tr_item)
                         pmt_item = QtWidgets.QTableWidgetItem()
-                        pmt_item.setData(QtCore.Qt.DisplayRole, pmt_name)
-                        pmt_item.setFlags(QtCore.Qt.ItemIsSelectable)
+                        pmt_item.setData(QtCore.Qt.ItemDataRole.DisplayRole, pmt_name)
+                        pmt_item.setFlags(QtCore.Qt.ItemFlag.ItemIsSelectable)
                         self.tableWidget_gates.setItem(row_ind, 1, pmt_item)
                         checkbox_item = QtWidgets.QTableWidgetItem()
-                        checkbox_item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-                        state = QtCore.Qt.Unchecked
+                        checkbox_item.setFlags(QtCore.Qt.ItemFlag.ItemIsUserCheckable | QtCore.Qt.ItemFlag.ItemIsEnabled)
+                        state = QtCore.Qt.CheckState.Unchecked
                         if self.tres_sel_tr_name == tr_name and self.tres_sel_sc_ind == pmt_ind:
-                            state = QtCore.Qt.Checked
+                            state = QtCore.Qt.CheckState.Checked
                         checkbox_item.setCheckState(state)
                         self.tableWidget_gates.setItem(row_ind, self.tableWidget_gates.columnCount() - 1, checkbox_item)
                         for i, gate in enumerate(self.spec_data.softw_gates[tr_ind][pmt_ind]):
                             gate_item = QtWidgets.QTableWidgetItem()
-                            gate_item.setData(QtCore.Qt.EditRole, gate)
+                            gate_item.setData(QtCore.Qt.ItemDataRole.EditRole, gate)
                             self.tableWidget_gates.setItem(row_ind, 2 + i, gate_item)
                             # print('this was set: ', tr_name, pmt_ind)
             self.tableWidget_gates.blockSignals(False)
@@ -1192,7 +1198,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             row = item.row()
             for i in range(2, self.tableWidget_gates.columnCount() - 1):
                 val = liste[i - 2]
-                self.tableWidget_gates.item(row, i).setData(QtCore.Qt.EditRole, str(round(val, 2)))
+                self.tableWidget_gates.item(row, i).setData(QtCore.Qt.ItemDataRole.EditRole, str(round(val, 2)))
 
     def write_all_gates_to_table(self, spec_data):
         self.tableWidget_gates.blockSignals(True)
@@ -1211,10 +1217,10 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         :return: item
         """
         result = None
-        tr_found = self.tableWidget_gates.findItems(tr, QtCore.Qt.MatchExactly)
+        tr_found = self.tableWidget_gates.findItems(tr, QtCore.Qt.MatchFlag.MatchExactly)
         if any(tr_found):
             tr_row_lis = [item.row() for item in tr_found]
-            pmt_found = self.tableWidget_gates.findItems(str(sc), QtCore.Qt.MatchExactly)
+            pmt_found = self.tableWidget_gates.findItems(str(sc), QtCore.Qt.MatchFlag.MatchExactly)
             for item in pmt_found:
                 if item.row() in tr_row_lis and item.column() == 1:
                     result = item
@@ -1502,6 +1508,20 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
 
         QtGui.QGuiApplication.clipboard().setMimeData(mime_data)
 
+    def _image_to_file(self, image):
+        dialog = QtWidgets.QFileDialog(self)
+        if self.full_file_path:
+            init_filter = self.full_file_path.rsplit('.')[0] + '.png'
+        elif self.active_file:
+            init_filter = self.active_file.rsplit('.')[0] + '.png'
+        else:
+            init_filter = '.png'
+        filepath, _ = QtWidgets.QFileDialog.getSaveFileName(
+            dialog, 'Save screenshot as', init_filter, 'Image (*.png *.jpg *.bmp)')
+        if not filepath:
+            return
+        image.save(filepath, quality=100)
+
     @staticmethod
     def _screenshot_widget(widget):
         QtGui.QPainter(widget).end()
@@ -1536,7 +1556,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         painter.drawImage(0, run_height, c_image)
 
         painter.end()  # Important!
-        self._image_to_clipboard(image)
+        return image
 
     def screenshot_all(self):
         # Prepare run info
@@ -1591,7 +1611,23 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
             painter.drawRect(2 * x_pos[-1] * width, p_height + run_height, p_width, image.height() - p_height)
 
         painter.end()  # Important!
+        return image
+
+    def screenshot_to_clipboard(self):
+        image = self.screenshot()
         self._image_to_clipboard(image)
+
+    def screenshot_all_to_clipboard(self):
+        image = self.screenshot_all()
+        self._image_to_clipboard(image)
+
+    def screenshot_to_file(self):
+        image = self.screenshot()
+        self._image_to_file(image)
+
+    def screenshot_all_to_file(self):
+        image = self.screenshot_all()
+        self._image_to_file(image)
 
     def export_screen_shot(self, storage_path='', quality=100):  # deprecated
         """

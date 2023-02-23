@@ -411,6 +411,16 @@ def replace_none_vals_in_dict(dict_to_check, replace_val=None):
     return dict_to_check
 
 
+def clean_pre_post_scan_set_point_in_scan_dict(scan_dict):
+    scan_device = scan_dict.get('scanDevice', {})
+    if scan_device:
+        if scan_device.get('preScanSetPoint', {}) == {}:
+            scan_dict['scanDevice']['preScanSetPoint'] = None
+        if scan_device.get('postScanSetPoint', {}) == {}:
+            scan_dict['scanDevice']['postScanSetPoint'] = None
+    return scan_dict
+
+
 def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape, np_type=np.int32,
                             direct_parent_ele_str='data', default_val=0, create_if_no_root_ele=True):
     """
@@ -457,6 +467,7 @@ def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
     xml_etree = load_xml(xml_file_name)
     trackdict = get_all_tracks_of_xml_in_one_dict(xml_file_name)
     scan_dict = merge_dicts(scan_dict, trackdict)
+    scan_dict = {k: clean_pre_post_scan_set_point_in_scan_dict(_scan_dict) for k, _scan_dict in scan_dict.items()}
     isotopedict = xml_get_dict_from_ele(xml_etree)[1]['header']
     for key, val in isotopedict.items():
         if key in ['accVolt', 'laserFreq', 'nOfTracks']:

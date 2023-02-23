@@ -504,8 +504,10 @@
     </widget>
     <addaction name="action_update"/>
     <addaction name="separator"/>
-    <addaction name="action_screenshot"/>
-    <addaction name="action_screenshot_all"/>
+    <addaction name="action_screenshot_to_clipboard"/>
+    <addaction name="action_screenshot_all_to_clipboard"/>
+    <addaction name="action_screenshot_to_file"/>
+    <addaction name="action_screenshot_all_to_file"/>
     <addaction name="separator"/>
     <addaction name="actionProgress"/>
     <addaction name="actionGraph_font_size"/>
@@ -580,7 +582,7 @@
     <string>Ctrl+B</string>
    </property>
   </action>
-  <action name="action_screenshot">
+  <action name="action_screenshot_to_clipboard">
    <property name="text">
     <string>screenshot</string>
    </property>
@@ -588,7 +590,7 @@
     <string>Ctrl+C</string>
    </property>
   </action>
-  <action name="action_screenshot_all">
+  <action name="action_screenshot_all_to_clipboard">
    <property name="text">
     <string>screenshot all</string>
    </property>
@@ -607,6 +609,22 @@
   <action name="actionasd">
    <property name="text">
     <string>asd</string>
+   </property>
+  </action>
+  <action name="action_screenshot_to_file">
+   <property name="text">
+    <string>save screenshot</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="action_screenshot_all_to_file">
+   <property name="text">
+    <string>save screenshot all</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+S</string>
    </property>
   </action>
  </widget>
