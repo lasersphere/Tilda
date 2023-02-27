@@ -1111,6 +1111,7 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
                     gate_ind = each.column() - 2
                     self.spec_data.softw_gates[sel_tr][sel_sc][gate_ind] = new_val
                     self.gate_data(self.spec_data)
+                self.new_data(self.spec_data)
                 self.new_data_callback.connect(self.new_data)
                 self.tableWidget_gates.blockSignals(False)
 
