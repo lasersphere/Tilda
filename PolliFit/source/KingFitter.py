@@ -298,7 +298,7 @@ class KingFitter(object):
         plt.legend(fontsize=font_size)
         plt.xticks(fontsize=font_size)
         plt.yticks(fontsize=font_size)
-        plt.tight_layout(True)
+        plt.tight_layout()
         f_name = 'king_fit_alpha_%d' % self.c
         if showplot:
             plt.savefig(os.path.join(self.store_loc, f_name + '.pdf'))
@@ -521,7 +521,7 @@ class KingFitter(object):
             plt.gcf().set_facecolor('w')
             plt.xticks(fontsize=font_size)
             plt.yticks(fontsize=font_size)
-            plt.tight_layout(True)
+            plt.tight_layout()
             plt.savefig(os.path.join(self.store_loc, f_name + '.pdf'))
             plt.savefig(os.path.join(self.store_loc, f_name + '.png'))
             if self.popup:

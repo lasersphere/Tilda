@@ -324,9 +324,9 @@ class ScanControlUi(QtWidgets.QMainWindow, Ui_MainWindowScanControl):
         """
         if self.job_stacker_gui is not None:
             self.job_stacker_gui.scan_control_ui_closed(self.active_iso, self.spinBox_num_of_reps.value())
-        if self.active_iso:
-            Cfg._main_instance.abort_scan = True  # TODO: Is this really wanted???
-            Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
+        # if self.active_iso:  # TODO: Is this really wanted??? Edit: Rather not.
+        #     Cfg._main_instance.abort_scan = True
+        #     Cfg._main_instance.remove_iso_from_scan_pars(self.active_iso)
         logging.info('closing scan win ' + str(self.win_title))
         self.close_track_wins()
         self.main_gui.scan_control_win_closed(self)

@@ -51,6 +51,7 @@ class SQLStream(QObject):
         self.back_up_log = deepcopy(self.log)
         self.ch_id = {}
         self.ch_time = {}
+        self.paused = False
 
         self.interval = 0.5
         self.last_emit_to_analysis_pipeline_datetime = datetime.now()
@@ -203,48 +204,54 @@ class SQLStream(QObject):
         """ Called in self._run(), acquires and processes the data from the db. """
         if self.logging_enabled:
             self.new_data_flag = False
-            for ch in self.log.keys():
-                acq_on_log_start = self.back_up_log[ch]['acquired']
-                data = []
-                if (self.log[ch]['required'] > 0 and
-                    self.log[ch]['required'] + acq_on_log_start > self.log[ch]['acquired']) \
-                        or (self.log[ch]['required'] == -1 and self.pre_dur_post_str == 'duringScan'):
-                    t, c = ch.split('.')
-                    self.db_execute('SELECT ID, unix_time, {} FROM {} WHERE ID > {} AND unix_time > {}'
-                                    .format(c, t, self.ch_id[ch], self.ch_time[ch]), None)
-                    data = self.db_fetchall()
-                    self.db_commit()
+            if Cfg._main_instance.scan_main.sequencer.pause_bool:
+                self.paused = True
+            else:
+                if self.paused:
+                    self.paused = False
+                    self.ch_time = {ch: time.time() for ch in self.ch_time.keys()}
+                for ch in self.log.keys():
+                    acq_on_log_start = self.back_up_log[ch]['acquired']
+                    data = []
+                    if (self.log[ch]['required'] > 0 and
+                        self.log[ch]['required'] + acq_on_log_start > self.log[ch]['acquired']) \
+                            or (self.log[ch]['required'] == -1 and self.pre_dur_post_str == 'duringScan'):
+                        t, c = ch.split('.')
+                        self.db_execute('SELECT ID, unix_time, {} FROM {} WHERE ID > {} AND unix_time > {}'
+                                        .format(c, t, self.ch_id[ch], self.ch_time[ch]), None)
+                        data = self.db_fetchall()
+                        self.db_commit()
 
-                elif (self.log[ch]['required'] < 0
-                      and -self.log[ch]['required'] + acq_on_log_start > self.log[ch]['acquired']
-                      and self.pre_dur_post_str != 'duringScan'):
-                    t, c = ch.split('.')
-                    self.db_execute('SELECT ID, unix_time, {} FROM {} ORDER BY ID DESC LIMIT {}'
-                                    .format(c, t, -self.log[ch]['required']), None)
-                    _data = self.db_fetchall()
-                    n = 0
-                    while _data and -self.log[ch]['required'] + acq_on_log_start > self.log[ch]['acquired'] + n:
-                        data.append(_data.pop(0))
-                        n += 1
-                    self.db_commit()
+                    elif (self.log[ch]['required'] < 0
+                          and -self.log[ch]['required'] + acq_on_log_start > self.log[ch]['acquired']
+                          and self.pre_dur_post_str != 'duringScan'):
+                        t, c = ch.split('.')
+                        self.db_execute('SELECT ID, unix_time, {} FROM {} ORDER BY ID DESC LIMIT {}'
+                                        .format(c, t, -self.log[ch]['required']), None)
+                        _data = self.db_fetchall()
+                        n = 0
+                        while _data and -self.log[ch]['required'] + acq_on_log_start > self.log[ch]['acquired'] + n:
+                            data.append(_data.pop(0))
+                            n += 1
+                        self.db_commit()
 
-                if data:
-                    self.new_data_flag = True
-                    self.ch_id[ch] = data[-1][0]
-                    self.ch_time[ch] = data[-1][1]
-                    data = [d[2] for d in data if d is not None]
+                    if data:
+                        self.new_data_flag = True
+                        self.ch_id[ch] = data[-1][0]
+                        self.ch_time[ch] = data[-1][1]
+                        data = [d[2] for d in data if d is not None]
 
-                    self.log[ch]['data'] += data
-                    self.log[ch]['acquired'] += len(data)
+                        self.log[ch]['data'] += data
+                        self.log[ch]['acquired'] += len(data)
 
-                    if self.log[ch]['required'] > 0:
-                        dif = self.log[ch]['acquired'] - acq_on_log_start - self.log[ch]['required']
-                        if dif > 0:
-                            self.log[ch]['data'] = self.log[ch]['data'][:-dif]
-                            self.log[ch]['acquired'] = self.log[ch]['required'] + acq_on_log_start
+                        if self.log[ch]['required'] > 0:
+                            dif = self.log[ch]['acquired'] - acq_on_log_start - self.log[ch]['required']
+                            if dif > 0:
+                                self.log[ch]['data'] = self.log[ch]['data'][:-dif]
+                                self.log[ch]['acquired'] = self.log[ch]['required'] + acq_on_log_start
 
-            sql_live_data_dict = {self.track_name: {'sql': {self.pre_dur_post_str: self.log}}}
             if self.new_data_flag:  # Only update if data comes in.
+                sql_live_data_dict = {self.track_name: {'sql': {self.pre_dur_post_str: self.log}}}
                 if self.pre_dur_post_str == 'duringScan':
                     to_send = deepcopy(sql_live_data_dict)
                     self.data_to_pipe_sig.emit(np.ndarray(0, dtype=np.int32), to_send)

@@ -198,7 +198,7 @@ class TritonListener(DeviceBase, QObject):
         :param val: anything, value that was send from the device
         :return:
         """
-        if self.logging:
+        if self.logging and not Cfg._main_instance.scan_main.sequencer.pause_bool:
             if dev in self.log.keys():
                 if ch in self.log[dev].keys():
                     acq_on_log_start = self.back_up_log[dev][ch]['acquired']

@@ -66,6 +66,7 @@ class ScanMain(QObject):
         self.digital_multi_meter = DmmCtrl.DMMControl()
         self.dac_new_volt_set_callback.connect(self.rcvd_dac_new_voltage_during_kepco_scan)
         self.dmm_pre_scan_done = False  # bool to use when pre/during/post scan measurement of dmms is completed
+        self.dmm_feed_pipe = True
 
         self.pulse_pattern_gen = None
         self.ground_pin_warned = False
@@ -846,6 +847,7 @@ class ScanMain(QObject):
         logging.debug('preparing dmms for scan. Config dict is: %s' % dmms_conf_dict)
         active_dmms = self.get_active_dmms()
         logging.debug('active dmms: %s' % list(active_dmms.keys()))
+        self.dmm_feed_pipe = True if dmms_conf_dict or self.sequencer.type == 'kepco' else False
         for dmm_name, dmm_conf_dict in dmms_conf_dict.items():
             dmms_conf_dict[dmm_name]['acquiredPreScan'] = 0  # reset the acquired samples
             if dmm_name not in active_dmms:
@@ -884,13 +886,13 @@ class ScanMain(QObject):
             for dmm_name, val in ret.items():
                 if val is not None:
                     worth_feeding = True
-            if self.analysis_thread is not None and worth_feeding:
+            if self.analysis_thread is not None and worth_feeding and not self.sequencer.pause_bool:
                 logging.debug('emitting %s, from %s, value is %s'
                               % ('data_to_pipe_sig',
                                  'Service.Scan.ScanMain.ScanMain#read_multimeter',
                                  str((np.zeros(0, dtype=np.int32), ret))))
                 self.data_to_pipe_sig.emit(np.zeros(0, dtype=np.int32), ret)
-                self.check_ground_pin_warn_user(ret)
+                self.check_ground_pin_warn_user(ret)  # Add this to options if needed.
 
         return ret
 

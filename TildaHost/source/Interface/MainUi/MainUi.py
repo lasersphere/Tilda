@@ -182,7 +182,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
                 'but not all digital multimeters delivered a reading!\n'
                 'Check your cabling and the timing of the trigger send to the digital multimeters!')
         elif info_str == 'triton_listener_timedout':
-            if self.triton_listener_timedout_win is None:
+            if self.triton_listener_timedout_win is None and not Cfg._main_instance.scan_main.sequencer.pause_bool:
                 self.triton_listener_timedout_win = True
                 info = QtWidgets.QMessageBox.information(
                     self, 'Warning!',

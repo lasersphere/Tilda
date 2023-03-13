@@ -17,6 +17,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 
 import numpy as np
+from FitRoutines import curve_fit
 from PyQt5 import QtWidgets, QtCore, QtGui
 import pyqtgraph as pg
 
@@ -27,6 +28,8 @@ from Interface.LiveDataPlottingUi.Ui_LiveDataPlotting import Ui_MainWindow_LiveD
 from Interface.ScanProgressUi.ScanProgressUi import ScanProgressUi
 from Measurement.XMLImporter import XMLImporter
 import TildaTools as TiTs
+from Models.Base import NPeak, Offset
+from Models.Spectrum import Voigt
 
 
 class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting):
@@ -178,6 +181,30 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         except Exception as e:
             self.comboBox_sum_tr.addItems(self.sum_scaler)
         self.comboBox_sum_tr.currentIndexChanged.connect(self.function_chosen)
+
+        ''' fit related '''
+
+        self.action_fit.triggered.connect(self.fit_spectrum)
+        self.fit_config = {'model': Offset(NPeak(Voigt()))}
+
+        self.action_fit_cursor.triggered.connect(self.toggle_fit_cursor)
+        self.sum_wid.scene().sigMouseClicked.connect(self.set_cursor)
+        self.cursor_xy_set = False
+        self.cursor_xy = (0., 0.)
+
+        self.action_fit_auto.triggered.connect(self.toggle_fit_auto)
+
+        for a in self.menu_track.actions():
+            a.triggered.connect(self.toggle_tracks)
+        QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+T'), self, functools.partial(self.next_track, True))
+        QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+Shift+T'), self, functools.partial(self.next_track, False))
+        self.menu_track.setTitle(self.menu_track.title() + '\tCtrl+T  ')
+
+        QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+L'), self, functools.partial(self.next_lineshape, True))
+        QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+Shift+L'), self, functools.partial(self.next_lineshape, False))
+        self.menu_lineshape.setTitle(self.menunorm.title() + '\tCtrl+L  ')
+
+        self.action_fit_config.triggered.connect(self.open_fit_config)
 
         ''' time resolved related: '''  # TODO if timegate change, sum not correct anymore
         self.add_time_resolved_plot()
@@ -332,9 +359,15 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         """ sum plot on the sum tab """
         self.sum_wid, self.sum_plt_itm = Pg.create_x_y_widget()
         self.err_sum_plt_item = Pg.create_error_item()
+        self.fit_data_item = Pg.create_plot_data_item(
+            [], [], Pg.create_pen('b', width=2), stepMode=False)
+        self.fit_cursor_item = Pg.create_plot_data_item(
+            [], [], Pg.create_pen('r', width=2), stepMode=False)
         if not self.actionshow_bins.isChecked():  # Add errorbar plot if self.actionshow_bins is already unchecked.
             self.stepMode = False
             self.sum_plt_itm.addItem(self.err_sum_plt_item)
+        self.sum_plt_itm.addItem(self.fit_data_item)
+        self.sum_plt_itm.addItem(self.fit_cursor_item)
         self.sum_plot_layout = QtWidgets.QVBoxLayout()
         self.sum_plot_layout.addWidget(self.sum_wid)
         self.widget_inner_sum_plot.setLayout(self.sum_plot_layout)
@@ -1423,6 +1456,113 @@ class TRSLivePlotWindowUi(QtWidgets.QMainWindow, Ui_MainWindow_LiveDataPlotting)
         txt.setPos(*anchor)
         plt_item.addItem(txt)
         plot_dict['fitText'] = txt
+
+    def fit_spectrum(self):
+        self.sum_x, self.sum_y, self.sum_err = self.spec_data.getArithSpec(
+            self.sum_scaler, self.sum_track, self.function)
+
+        if not self.cursor_xy_set:
+            self.set_cursor_xy(np.mean(self.sum_x), self.sum_y[0])
+        model = self.fit_config['model']
+        fixed, bounds = model.fit_prepare()
+        fixed = [False for _ in fixed]
+        try:
+            popt, pcov = curve_fit(model, self.sum_x, self.sum_y, p0=model.vals, p0_fixed=fixed, sigma=self.sum_err,
+                                   bounds=bounds, report=False, maxfev=1000)
+        except (ValueError, RuntimeError):
+            popt, pcov = np.array(model.vals, dtype=float), np.zeros((model.size, model.size), dtype=float)
+
+        model.set_vals(popt)
+        self.display_fit(model, popt, pcov)
+
+    def display_fit(self, model, popt, pcov):
+        x = np.arange(self.sum_x[0], self.sum_x[-1], model.dx)
+        self.fit_data_item.setData(x, model(x, *popt))
+
+    def toggle_fit_cursor(self):
+        if self.action_fit_cursor.isChecked():
+            cur = QtGui.QCursor(QtCore.Qt.CursorShape.CrossCursor)
+        else:
+            cur = QtGui.QCursor(QtCore.Qt.CursorShape.ArrowCursor)
+        self.setCursor(cur)
+        if self.action_fit_cursor.isChecked():
+            self.fit_cursor_item.setOpacity(1)
+        else:
+            self.fit_cursor_item.setOpacity(0)
+
+    def set_cursor_xy(self, x, y):
+        # x_lims, y_lims = self.sum_plt_itm.vb.state['viewRange']
+        # dx, dy = (x_lims[1] - x_lims[0]) / 20, (y_lims[1] - y_lims[0]) / 20
+        self.cursor_xy_set = True
+        self.cursor_xy = (x, y)
+        model = self.fit_config['model']
+        spectrum = model.model.model
+        model.set_val(model.p['x0'], x)
+        model.gen_offset_masks(self.sum_x)
+        model.guess_offset(self.sum_x, self.sum_y)
+        model.set_val(model.p['p0'], np.max(self.sum_y) - model.vals[model.p['off0e0']])
+        dx = 0.2 * (np.max(self.sum_x) - np.min(self.sum_x))
+        if spectrum.type in {'Lorentz', 'Voigt'}:
+            model.set_val(model.p['Gamma'], dx)
+        if spectrum.type in {'Gauss', 'Voigt'}:
+            model.set_val(model.p['sigma'], dx / np.sqrt(8 * np.log(2)))
+            if spectrum.type == 'Voigt':
+                fwhm = spectrum.fwhm()
+                model.set_val(model.p['Gamma'], model.vals[model.p['Gamma']] * dx / fwhm)
+                model.set_val(model.p['sigma'], model.vals[model.p['sigma']] * dx / fwhm)
+
+        x = np.arange(self.sum_x[0], self.sum_x[-1], model.dx)
+        self.cursor_data = (x, model(x, *model.vals))
+        if self.action_fit_cursor.isChecked():
+            self.fit_cursor_item.setData(*self.cursor_data)
+
+    def set_cursor(self, event):
+        if not self.action_fit_cursor.isChecked():
+            return
+        mouse_point = self.sum_plt_itm.vb.mapSceneToView(event._scenePos)
+        self.set_cursor_xy(mouse_point.x(), mouse_point.y())
+
+    def toggle_fit_auto(self):
+        pass
+
+    def open_fit_config(self):
+        pass
+
+    def next_track(self, _next):
+        actions = self.menu_track.actions() if _next else self.menu_track.actions()[::-1]
+        for i, a in enumerate(actions):
+            if a.isChecked():
+                actions[(i + 1) % len(actions)].trigger()
+                return
+
+    def toggle_tracks(self):
+        action = self.sender()
+        if action.isChecked():
+            for a in self.menu_track.actions():
+                a.setChecked(False)
+        action.toggle()
+
+    def set_lineshape(self, shape):
+        self.fit_config['model'] = Offset(NPeak(eval(shape)()))
+        if self.cursor_xy_set:
+            self.set_cursor_xy(*self.cursor_xy)
+        else:
+            self.set_cursor_xy(np.mean(self.sum_x), self.sum_y[0])
+
+    def next_lineshape(self, _next):
+        actions = self.menu_lineshape.actions() if _next else self.menu_lineshape.actions()[::-1]
+        for i, a in enumerate(actions):
+            if a.isChecked():
+                actions[(i + 1) % len(actions)].trigger()
+                return
+
+    def toggle_lineshape(self):
+        action = self.sender()
+        if action.isChecked():
+            for a in self.menu_lineshape.actions():
+                a.setChecked(False)
+        action.toggle()
+        self.set_lineshape(action.text())
 
     def reset_all_pmt_plots(self):
         """

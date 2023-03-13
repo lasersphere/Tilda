@@ -220,7 +220,7 @@ class Main(QtCore.QObject):
                 act_seq_type = self.scan_pars.get(act_iso, {}).get('isotopeData', {}).get('type', 'kepco')
                 if act_seq_type == 'kepco':
                     dmm_readinterval = timedelta(seconds=0.1)
-            self.read_dmms(feed_to_pipe=True, reading_interval=dmm_readinterval)
+            self.read_dmms(feed_to_pipe=self.scan_main.dmm_feed_pipe, reading_interval=dmm_readinterval)
             self._scanning()
             self.get_fpga_and_seq_state()
         elif self.m_state[0] is MainState.saving:

@@ -166,37 +166,39 @@ class SpecData(object):
     #
     #     return flatx, flatc, flate
 
+    def _get_cts_per_scan(self, i, track_index, flatc, flate):
+        """
+        :param i: The starting index of the given track in the data array.
+        :param track_index: The index of the track.
+        :param flatc: The array of counts.
+        :param flate: The array of uncertainties.
+        :returns: The normalized arrays flatc, flate.
+        """
+        nt = self.getNrSteps(track_index)
+        scan = self.nrLoops[track_index]
+        step = self.nrSteps[track_index]
+        mod = (scan - 1) % self.nrScans[track_index] + 1 if self.nrScans[track_index] > 0 else scan
+        if self.invert_scan[track_index] and mod % 2 == 0:
+            s0, n0 = slice(i, i + nt - step, 1), scan - 1
+            s1, n1 = slice(i + nt - step, i + nt, 1), scan if scan > 1 else 1
+        else:
+            s0, n0 = slice(i, i + step, 1), scan
+            s1, n1 = slice(i + step, i + nt, 1), scan - 1 if scan > 1 else 1
+        flatc[s0] /= n0
+        flatc[s1] /= n1
+        flate[s0] /= n0
+        flate[s1] /= n1
+
     def get_cts_per_scan(self, track_index, flatc, flate):
         if track_index == -1:
             i = 0
             for t in range(self.nrTracks):
-                nt = self.getNrSteps(t)
-                scan = self.nrLoops[t]
-                step = self.nrSteps[t]
-                s0, n0 = slice(i, i + step, 1), scan
-                s1, n1 = slice(i + step, i + nt, 1), scan - 1 if scan > 1 else 1
-                if self.invert_scan[t] and (scan - self.nrScans[t]) % 2 == 0:
-                    n0 -= 1
-                    n1 += 1
-                flatc[s0] /= n0
-                flatc[s1] /= n1
-                flate[s0] /= n0
-                flate[s1] /= n1
-                i += nt
+                self._get_cts_per_scan(i, t, flatc, flate)
+                i += self.getNrSteps(t)
             return flatc, flate
         else:
-            scan = self.nrLoops[track_index]
-            step = self.nrSteps[track_index]
-            s0, n0 = slice(0, step, 1), scan
-            s1, n1 = slice(step, None, 1), scan - 1 if scan > 1 else 1
-            if self.invert_scan[track_index] and (scan - self.nrScans[track_index]) % 2 == 0:
-                n0 -= 1
-                n1 += 1
-            flatc[s0] /= n0
-            flatc[s1] /= n1
-            flate[s0] /= n0
-            flate[s1] /= n1
-            return flatc, flate
+            self._get_cts_per_scan(0, track_index, flatc, flate)
+        return flatc, flate
 
     def getNrSteps(self, track):
         if track == -1:
