@@ -1,7 +1,9 @@
 """
-Change list between release with the info on fixes, major changes etc. last changes always on top.
-to identify links use: (htt...)
+Change list between releases with the info on fixes, major changes etc., last changes always on top.
+To identify links use: (htt...)
 """
+
+
 
 ***************************************   Changes for version 1.25 ***************************************
 
@@ -419,6 +421,3 @@ Fixed:
 
 
 ***********************************************************************************************************************
-
-
-

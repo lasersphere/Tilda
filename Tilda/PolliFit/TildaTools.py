@@ -5,6 +5,7 @@ Created on
 
 Module Description: Tools related closely to Tilda
 """
+
 import ast
 import json
 import logging
@@ -20,7 +21,6 @@ from PyQt5 import QtWidgets
 
 import Tilda.PolliFit.Physics as Physics
 from Tilda.PolliFit.XmlOperations import xmlCreateIsotope, xmlAddCompleteTrack, xmlFindOrCreateSubElement, xmlWriteDict
-from Tilda.Service.VoltageConversions.VoltageConversions import get_nbits_from_voltage
 
 
 def select_from_db(db, vars_select, var_from, var_where=None, addCond='', caller_name='unknown'):
@@ -712,9 +712,12 @@ def gate_zero_free_specdata(spec_data):
 
 def create_x_axis_from_file_dict(scan_dict, as_voltage=True):
     """
-    creates an x axis in units of line volts or in dac registers
+    creates an x-axis in units of line volts or in dac registers
     :param as_voltage: bool, True if this should be returned in the native unit of th scan dev (usually volts)
     """
+    # import at this point to prevent from importing before Cfg.config_dir is set.
+    from Tilda.Service.VoltageConversions.VoltageConversions import get_nbits_from_voltage
+
     x_arr = []
     for tr_ind, tr_name in enumerate(get_track_names(scan_dict)):
         steps = scan_dict[tr_name]['nOfSteps']

@@ -156,19 +156,19 @@ class OptionsUi(QtWidgets.QDialog, Ui_Dialog_Options):
             folder = folder.replace(source_path, '...')
         return folder
 
-    def get_folder_from_str(self, passed_str):
+    @staticmethod
+    def get_folder_from_str(passed_str):
         """
         Convert the given string to a good folder path
         :param passed_str:
         :return:
         """
-        source_path = os.path.abspath(os.curdir)  # TILDA source directory
         if os.path.exists(passed_str):
             path = passed_str
         elif '...' in passed_str:
-            path = passed_str.replace('...', source_path)
+            path = passed_str.replace('...', Cfg.config_dir)
         else:
-            path = source_path
+            path = Cfg.config_dir
         return path
 
     def open_file_or_folder(self, path_to):

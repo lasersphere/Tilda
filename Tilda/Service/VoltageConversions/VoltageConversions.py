@@ -5,25 +5,29 @@ Created on '26.10.2015'
 @author:'simkaufm'
 
 """
+
+import os
 import numpy as np
 
+import Tilda.Application.Config
 from Tilda.Service.VoltageConversions.bitconverter import BitConverter
 from Tilda.Service.VoltageConversions.BitConverterAD5791 import AD5791BitConverter
 from Tilda.Service.VoltageConversions.BitConverterAD5781 import AD5781BitConverter
 
 try:
-    import Tilda.Service.VoltageConversions.DAC_Calibration as DAC_calib
-except:
-    raise Exception(
+    from Tilda.Application.Importer import DAC_Calibration as DAC_calib
+except (FileNotFoundError, ImportError):
+    raise ImportError(
         '\n------------------------------------------- \n'
-        'No DAC calibration file found on your local harddrive found at:\n'
-        'Tilda\\source\\Service\\VoltageConversion\\DAC_Calibration.py.py\n'
-        'please calibrate your DAC and create a calibration file as described as in:\n'
-        'Tilda\\source\\Service\\VoltageConversion\\DacRegisterToVoltageFit.py\n'
+        'No DAC calibration file found on your local harddrive at:\n'
+        f'{os.path.join(Tilda.Application.Config.config_dir, "Service", "VoltageConversions", "DAC_Calibration.py")}\n'
+        'please calibrate your DAC and create a calibration file as described in:\n'
+        'Tilda\\Service\\VoltageConversion\\DacRegisterToVoltageFit.py\n'
         '------------------------------------------- \n'
     )
 
-bitconv = BitConverter()# this returns the dummy class which can't do anything, but from which the real implementations are derived.
+# this returns the dummy class which can't do anything, but from which the real implementations are derived.
+bitconv = BitConverter()
 if DAC_calib.dac_name.startswith("AD5781"):
     bitconv = AD5781BitConverter()
 elif DAC_calib.dac_name == "AD5791":
@@ -38,8 +42,10 @@ else:
 def get_max_value_in_bits():
     return bitconv.get_max_value_in_bits()
 
+
 def get_20bits_from_voltage(voltage, dac_gauge_pars=DAC_calib.dac_gauge_vals, ref_volt_neg=-10, ref_volt_pos=10):
     return bitconv.get_20bits_from_voltage(voltage, dac_gauge_pars, ref_volt_neg, ref_volt_pos)
+
 
 def get_nbits_from_voltage(voltage, dac_gauge_pars=DAC_calib.dac_gauge_vals, ref_volt_neg=-10, ref_volt_pos=10):
     """
@@ -66,6 +72,7 @@ def get_20bit_stepsize(step_voltage, dac_gauge_pars=DAC_calib.dac_gauge_vals):
     :return ~ step_voltage/lsb
     """
     return bitconv.get_20bit_stepsize(step_voltage, dac_gauge_pars)
+
 
 def get_stepsize_in_volt_from_bits(voltage_18bit, dac_gauge_pars=DAC_calib.dac_gauge_vals):
     """
@@ -113,6 +120,7 @@ def get_value_bits_from_24bit_dac_reg(voltage_24bit, remove_address=True):
     """
     return bitconv.get_bits_from_24bit_dac_reg(voltage_24bit, remove_address)
 
+
 def calc_step_size(start, stop, steps):
     """
     calculates the stepsize: (stop - start) / nOfSteps
@@ -126,7 +134,6 @@ def calc_n_of_steps(start, stop, step_size):
     calculates the number of steps: abs((stop - start) / stepSize)
     """
     return bitconv.calc_n_of_steps(start,stop,step_size)
-
 
 
 def find_volt_in_array(voltage, volt_array, track_ind):
@@ -158,7 +165,6 @@ def calc_dac_stop_18bit(start, step, num_of_steps):
     # stop = max(0, stop)
     # stop = min((2 ** 18 - 1), stop)
     return stop
-
 
 
 if __name__ == '__main__':

@@ -1,8 +1,8 @@
-'''
+"""
 Created on 06.06.2014
 
 @author: hammen
-'''
+"""
 
 import os
 import sqlite3
@@ -14,8 +14,6 @@ from Tilda.PolliFit.Gui.Ui_Crawler import Ui_Crawler
 
 
 class CrawlerUi(QtWidgets.QWidget, Ui_Crawler):
-
-
 
     def __init__(self):
         super(CrawlerUi, self).__init__()
@@ -34,7 +32,7 @@ class CrawlerUi(QtWidgets.QWidget, Ui_Crawler):
     
     def crawl(self):
         t = self.path.text()
-        path = t if t is not '' else '.'
+        path = t if t != '' else '.'
         Tools.crawl(self.dbpath, path, self.recursive.isChecked())
         if self.lineEdit_sql_cmd.text():
             con = sqlite3.connect(self.dbpath)
@@ -73,5 +71,3 @@ class CrawlerUi(QtWidgets.QWidget, Ui_Crawler):
             text_file = open(path, 'r')
             self.lineEdit_sql_cmd.setText(text_file.readline())
             text_file.close()
-
-

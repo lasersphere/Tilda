@@ -7,13 +7,7 @@ Module Description:  for now, dummy class functionality will be left at the fpga
 """
 
 import Tilda.Service.VoltageConversions.VoltageConversions as VCon
-
-try:
-    import Tilda.Service.VoltageConversions.DAC_Calibration as DAC_Fit
-except:
-    import Tilda.Service.VoltageConversions.DacRegisterToVoltageFit as DAC_Fit
-
-
+from Tilda.Application.Importer import DAC_Calibration
 from Tilda.PolliFit.Measurement.SpecData import SpecDataXAxisUnits as Units
 from Tilda.Driver.ScanDevice.BaseTildaScanDeviceControl import BaseTildaScanDeviceControl
 
@@ -32,7 +26,7 @@ class AD57X1ScanDev(BaseTildaScanDeviceControl):
         -> currently only one dac available.... adapt maybe if needed
         """
         draft_scan_dev_dict = {
-            'name': DAC_Fit.dac_name,
+            'name': DAC_Calibration.dac_name,
             'type': 'AD57X1(DAC)',  # what type of device, e.g. AD5781(DAC) / Matisse (laser)
             'devClass': 'DAC',  # carrier class of the dev, e.g. DAC / Triton
             'stepUnitName': Units.line_volts.name,

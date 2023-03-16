@@ -18,7 +18,7 @@ from threading import Thread
 from PyQt5.QtCore import QObject, pyqtSignal
 
 import Tilda.Application.Config as Cfg
-from Tilda.Driver.SQLStream.SQLConfig import SQL_CFG, EXCLUDE_CHANNELS, TILDA_RUNS, EXCLUDE_TABLES
+from Tilda.Application.Importer import SQLConfig
 
 
 class SQLStream(QObject):
@@ -28,7 +28,7 @@ class SQLStream(QObject):
     # signal to emit data to the pipeLine
     data_to_pipe_sig = pyqtSignal(np.ndarray, dict)
 
-    def __init__(self, sql_cfg=SQL_CFG):
+    def __init__(self, sql_cfg=SQLConfig.SQL_CFG):
         super().__init__()
         
         self.logger = logging.getLogger('SQLLogger')
@@ -106,7 +106,7 @@ class SQLStream(QObject):
                 return self.db.fetchall()
         else:
             if local_ret_val is None:
-                local_ret_val = [(None,)]
+                local_ret_val = []
             return local_ret_val
 
     def db_fetchone(self, local_ret_val=None):
@@ -145,11 +145,12 @@ class SQLStream(QObject):
         channels = []
         if self.db is not None and self.db != 'local':
             self.db_execute('SHOW TABLES', None)
-            tables = [t[0] for t in self.db_fetchall() if t[0] not in EXCLUDE_TABLES]
+            tables = [t[0] for t in self.db_fetchall() if t[0] not in SQLConfig.EXCLUDE_TABLES]
             for t in tables:
                 self.db_execute('SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE'
                                 ' TABLE_SCHEMA = %s AND TABLE_NAME = %s', (self.sql_cfg['database'], t))
-                sub_channels = ['{}.{}'.format(t, c[0]) for c in self.db_fetchall() if c[0] not in EXCLUDE_CHANNELS]
+                sub_channels = ['{}.{}'.format(t, c[0]) for c in self.db_fetchall()
+                                if c[0] not in SQLConfig.EXCLUDE_CHANNELS]
                 channels += sub_channels
         else:
             logging.warning('No db connection.')
@@ -160,7 +161,7 @@ class SQLStream(QObject):
             self.db_execute('SHOW TABLES', None)
             tables = {t[0] for t in self.db_fetchall()}
             if 'tilda_runs' not in tables:
-                s = 'CREATE TABLE tilda_runs ({})'.format(', '.join(TILDA_RUNS))
+                s = 'CREATE TABLE tilda_runs ({})'.format(', '.join(SQLConfig.TILDA_RUNS))
                 self.db_execute(s, None)
                 self.db_commit()
             self.db_execute('INSERT INTO tilda_runs (unix_time, xml_file, status) VALUES (%s, %s, %s)',

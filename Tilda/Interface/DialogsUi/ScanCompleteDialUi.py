@@ -24,7 +24,7 @@ class ScanCompleteDialUi(QtWidgets.QDialog, Ui_ScanComplete):
         self.checkBox.stateChanged.connect(self.cb_clicked)
         self.pushButton.clicked.connect(self.close)
         self.sound_on = sound_on
-        if os.path.isfile(path):
+        if os.path.isdir(path):
             self.sound_folder = path
         else:
             # use default folder
@@ -53,8 +53,9 @@ class ScanCompleteDialUi(QtWidgets.QDialog, Ui_ScanComplete):
             self.music_is_playing = not self.music_is_playing
 
     def get_random_sound(self):
-        sound_path = self.sound_folder
-        sounds = os.listdir(sound_path)
+        sounds = [f for f in os.listdir(self.sound_folder) if f.endswith('.wav')]
+        if not sounds:
+            return ''
         return random.choice(sounds)
 
     def closeEvent(self, *args, **kwargs):
@@ -63,9 +64,3 @@ class ScanCompleteDialUi(QtWidgets.QDialog, Ui_ScanComplete):
         if self.main_gui is not None:
             # tell main window that this window is closed.
             self.main_gui.close_scan_complete_win()
-
-
-
-
-
-

@@ -15,20 +15,21 @@ from datetime import datetime
 import time
 
 from Tilda.Driver.TritonListener.TritonObject import TritonObject
-from Tilda.Driver.TritonListener.TritonConfig import sqlCfg as sqlConf
+from Tilda.Application.Importer import TritonConfig
 
 
 class DeviceBase(TritonObject):
-    '''
+    """
     Base Device class for the Triton control system.
-    '''
+    """
 
-    def __init__(self, name, sql_conf=sqlConf):
-        '''
+    def __init__(self, name, sql_conf=TritonConfig.sqlCfg):
+        """
         Set up the device and calls self.on() for device specific construction
-        '''
+        """
         super(DeviceBase, self).__init__(sql_conf)
-        self.adjustinterval = True #if this is set to false, the set interval will not change if the device is too slow
+        # if this is set to false, the set interval will not change if the device is too slow
+        self.adjustinterval = True
         self.name = name
         self._thread = None
         self._timer = Event()
@@ -41,7 +42,7 @@ class DeviceBase(TritonObject):
 
         db = self.dbCur_fetchone(local_ret_val=(self.type, None, str(self._cfg)))
 
-        if db[1] != None:
+        if db[1] is not None:
             self.logger.warning(self.name + ' already exists! Overwriting.')
 
         self._commitUri(str(self.uri))
@@ -59,21 +60,20 @@ class DeviceBase(TritonObject):
         self.locktimeout = 5
         self.initialized = False
 
-        if devices != None and db[0]!= 'TritonMain':
+        if devices is not None and db[0] != 'TritonMain':
             for dev in devices:
                 self.start_and_subscribe(dev)
 
         try:
             self.on(cfg)
         except Exception as exc:
-            self.logger.error('Error starting on func in dev: {} error: {}'.format(self.name,str(exc)))
+            self.logger.error('Error starting on func in dev: {} error: {}'.format(self.name, str(exc)))
             raise
 
-
     def _stop(self):
-        '''
+        """
         Call self.off() for device specific destruction and afterwards deinitializes the base object
-        '''
+        """
         if self._thread is not None:
             self.setInterval(0)
             self._thread.join()
@@ -82,7 +82,7 @@ class DeviceBase(TritonObject):
         try:
             self.off()
         except Exception as exc:
-            self.logger.error('Error in off func in dev: {} error: {}'.format(self.name,str(exc)))
+            self.logger.error('Error in off func in dev: {} error: {}'.format(self.name, str(exc)))
 
         self._commitUri(None)
 
@@ -91,7 +91,7 @@ class DeviceBase(TritonObject):
     """Publishing"""
 
     def _receive(self, dev, t, ch, val):
-        '''Called first on receiving, blank wrapper'''
+        """Called first on receiving, blank wrapper"""
         if ch == 'out' and val == 'Deleted':
             self.logger.debug('Deleting from ' + str(dev))
             del self._recFrom[dev]
@@ -99,12 +99,12 @@ class DeviceBase(TritonObject):
         self.receive(dev, t, ch, val)
 
     def _emit(self):
-        '''Called on new subscriber. Emit the concurrent values.'''
+        """Called on new subscriber. Emit the concurrent values."""
         self.send('interval', self._interval)
         self.emit()
 
     def send(self, ch, val):
-        '''Send value on channel, add timestamp and copy to console'''
+        """Send value on channel, add timestamp and copy to console"""
         t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if ch == 'err':
             self.logger.error(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
@@ -126,7 +126,7 @@ class DeviceBase(TritonObject):
     """Saving settings"""
 
     def saveStg(self, comment=''):
-        '''Write settings in settings table'''
+        """Write settings in settings table"""
         stg = repr({val: getattr(self, val) for val in self._stg})
         self.dbCur_execute("INSERT INTO settings (device, date, comment, settings) VALUES (%s, %s, %s, %s)",
                            (self.name, datetime.now(), comment, stg))
@@ -134,7 +134,7 @@ class DeviceBase(TritonObject):
         self.send('out', "Saved Setting " + comment + ": " + stg)
 
     def loadStg(self, stgID):
-        '''Load settings with ID from settings table'''
+        """Load settings with ID from settings table"""
         # self.logger.debug('saving settings start:')
         self.dbCur_execute("SELECT settings FROM settings WHERE ID=%s", (stgID,))
         # self.logger.debug('execute happend')
@@ -146,19 +146,19 @@ class DeviceBase(TritonObject):
         self.load(stg)
 
     def addStg(self, stg):
-        '''Used for setting configuration'''
+        """Used for setting configuration"""
         self._stg.extend(stg)
 
     """Methods for periodic thread"""
 
     def _run(self):
-        '''The periodic logic'''
+        """The periodic logic"""
         while self._interval > 0.0:
             startTime = time.time()
             self._periodic()
             diff = time.time() - startTime
             self.logger.debug('processing time: ' + str(diff))
-            if diff > self._interval and self._interval != 0 and self.adjustinterval:
+            if diff > self._interval != 0 and self.adjustinterval:
                 self.send('err', 'processing time is bigger than interval! Setting interval to ' + str(diff))
                 self.setInterval(diff)
             # if self._timer.wait(abs(self._interval - diff)):#???
@@ -174,14 +174,15 @@ class DeviceBase(TritonObject):
         self.periodic()
 
     def setInterval(self, t):
-        '''Set the interval. Start or stop periodic thread as necessary'''
+        """Set the interval. Start or stop periodic thread as necessary"""
         try:
             tn=float(t)
         except Exception as e:
             self.logger.debug('error in setInterval in Device Base: {} \t devicetype: {}'.format(e, self.type))
             return()
 
-        if self._thread is not None and self._interval>0: #set interval was changed so the pericodic can be restarted
+        # set interval was changed so the pericodic can be restarted
+        if self._thread is not None and self._interval > 0:
             self._interval = tn
             self._timer.set()
         elif tn > 0:
@@ -193,7 +194,7 @@ class DeviceBase(TritonObject):
     """Other Stuff"""
 
     def _commitUri(self, uri):
-        '''Write the uri into the device table'''
+        """Write the uri into the device table"""
         # self.logger.debug('comitting URI to dab')
         self.dbCur_execute("UPDATE devices SET uri=%s WHERE deviceName=%s", (uri, self.name))
         # self.logger.debug('execute happend')
@@ -224,3 +225,21 @@ class DeviceBase(TritonObject):
             else:
                 pass
         return wrap_waiting
+
+    def on(self, cfg):
+        pass
+
+    def off(self):
+        pass
+
+    def load(self, stg):
+        pass
+
+    def emit(self):
+        pass
+
+    def receive(self, dev, t, ch, val):
+        pass
+
+    def periodic(self):
+        pass

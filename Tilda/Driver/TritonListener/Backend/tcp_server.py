@@ -8,7 +8,8 @@ import Tilda.Driver.TritonListener.Backend.triton_trans as tt
 import Tilda.Driver.TritonListener.Backend.tritonremoteobject
 import logging
 import uuid
-import Tilda.Driver.TritonListener.TritonConfig
+
+from Tilda.Application.Importer import TritonConfig
 
 # if encryption is not enabled, the package is not required to be installed.
 if Tilda.Driver.TritonListener.Backend.server_conf.SERVER_CONF.ENCRYPTION:
@@ -37,7 +38,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             data.extend(bytearray(self.request.recv(SERVER_CONF.TCP_BUFFER_SIZE)))
 
         if Tilda.Driver.TritonListener.Backend.server_conf.SERVER_CONF.ENCRYPTION:
-            f = Fernet(Tilda.Driver.TritonListener.TritonConfig.AESKey)
+            f = Fernet(TritonConfig.AESKey)
             data = f.decrypt(bytes(data))
 
         if data[0] == SERVER_CONF.MSG_DATA or data[0] == SERVER_CONF.MSG_REPLY:# these two will return no reply immediatly, the others will first execute, then reply
@@ -165,7 +166,7 @@ class TritonServerTCP(socketserver.ThreadingMixIn, socketserver.TCPServer):
         message = msg_type.to_bytes(1, byteorder='big', signed=False) + msg_bytes
 
         if Tilda.Driver.TritonListener.Backend.server_conf.SERVER_CONF.ENCRYPTION:
-            f = Fernet(Tilda.Driver.TritonListener.TritonConfig.AESKey)
+            f = Fernet(TritonConfig.AESKey)
             message = f.encrypt(message)
 
         msg_len_bytes = len(message).to_bytes(8, byteorder='big', signed=False)

@@ -3,8 +3,8 @@ Created on
 
 @author: simkaufm
 
-Module Description: Draft config for TRITON
-create a TritionConfig.py in this folder if you want complete Triton support
+Module Description: Config for TRITON.
+Fill in sqlCfg dictionary in this file to get complete Triton support.
 """
 
 # TODO: Offer Options local, newTriton, ZeroMQ?

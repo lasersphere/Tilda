@@ -16,15 +16,15 @@ look for them before overwriting again!
 
 import numpy as np
 import time
-import logging  # changed!
+import logging
 
-from Tilda.Driver.TritonListener.TritonConfig import sqlCfg as sqlConf
-from Tilda.Driver.TritonListener.TritonDeviceBase import DeviceBase  # changed!
-from Tilda.PolliFit.Measurement.SpecData import SpecDataXAxisUnits as Units  # changed!
+from Tilda.Application.Importer import TritonConfig
+from Tilda.Driver.TritonListener.TritonDeviceBase import DeviceBase
+from Tilda.PolliFit.Measurement.SpecData import SpecDataXAxisUnits as Units
 
 
 class ScanDeviceBase(DeviceBase):
-    def __init__(self, name, sql_conf=sqlConf):
+    def __init__(self, name, sql_conf=TritonConfig.sqlCfg):
         self.possible_start_step_unit = Units
 
         """ overwrite in device: """
@@ -43,7 +43,7 @@ class ScanDeviceBase(DeviceBase):
         self.sc_num_of_steps = 0  # int, number of steps per scan
         self.sc_num_of_scans = 0  # int, number of scans
         self.sc_invert_in_odd_scans = False  # bool, True -> invert after step complete
-        self.sc_one_scan_vals = np.zeros(0, dtype=np.float)  # numpy array which holds all values which will
+        self.sc_one_scan_vals = np.zeros(0, dtype=float)  # numpy array which holds all values which will
         #  be set by the device for one scan
         self._progressing_step = False
         self.scan_statii = {
@@ -325,13 +325,13 @@ class ScanDeviceBase(DeviceBase):
         print('Filling dict for scan {} at step {}'.format(self.sc_l_cur_scan, self.sc_l_cur_step))
         for device in self.DataBuffer.keys():
             for channel in self.DataBuffer[device].keys():
-                if self.DataBuffer[device][channel] != []:
+                if self.DataBuffer[device][channel]:
                     if type(self.DataBuffer[device][channel][0]) in [float, int]:
                         if self.sc_l_cur_scan not in self.Data[device][channel].keys():
                             self.Data[device][channel][self.sc_l_cur_scan] = dict()
                         self.Data[device][channel][self.sc_l_cur_scan].update(
                             {self.sc_l_cur_step: self.DataBuffer[device][channel]})
-                    elif self.DataBuffer[device][channel] == []:
+                    elif not self.DataBuffer[device][channel]:
                         self.Data[device][channel][self.sc_l_cur_scan].update(
                             {self.sc_l_cur_step: [-1 / 3]})
                 self.DataBuffer[device][channel] = list()
@@ -339,4 +339,3 @@ class ScanDeviceBase(DeviceBase):
     def _finish_step_data_taking(self):
         self.measure_meta_data = False
         self.fill_scan_data()
-

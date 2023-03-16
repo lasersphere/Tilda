@@ -15,8 +15,8 @@ import logging
 
 from PyQt5 import QtCore
 
-import Tilda.Service.AnalysisAndDataHandling.tildaPipeline as TP
-from Tilda.PolliFit.Measurement import XMLImporter as XmlImp
+import Tilda.Service.AnalysisAndDataHandling.tildaPipeline as Tp
+from Tilda.PolliFit.Measurement.XMLImporter import XMLImporter as XmlImp
 
 
 class DisplayData:
@@ -40,7 +40,7 @@ class DisplayData:
 
     def select_pipe(self):
         callbacks = (None, None, None) if self.gui is None else self.gui.callbacks
-        self.pipe = TP.time_resolved_display(self.file, callbacks)
+        self.pipe = Tp.time_resolved_display(self.file, callbacks)
         self.pipe.start()
         logging.info('pipeline started to display %s ' % self.file)
 
@@ -60,7 +60,8 @@ class DisplayData:
         window = self.gui
         # this will remove minimized status
         # and restore window with keeping maximized/normal state
-        window.setWindowState(window.windowState() & ~QtCore.Qt.WindowMinimized | QtCore.Qt.WindowActive)
+        window.setWindowState(
+            window.windowState() & ~QtCore.Qt.WindowState.WindowMinimized | QtCore.Qt.WindowState.WindowActive)
 
         # this will activate the window
         window.activateWindow()
@@ -73,7 +74,6 @@ class DisplayData:
         # self.pipe = None
         # self.spec = None
         logging.info('closed Displaydata of file %s' % self.file)
-
 
 
 # path = 'E:\\lala\\sums\\dummy_trsdummy_008.xml'

@@ -17,8 +17,8 @@ Module Description:
 """
 
 from datetime import datetime
-import mysql.connector as Sql
-from Tilda.Driver.TritonListener.TritonConfig import sqlCfg as sqlConf
+import mysql.connector as sql
+from Tilda.Application.Importer import TritonConfig
 import Tilda.Driver.TritonListener.Backend.udp_server
 import Tilda.Driver.TritonListener.Backend.tcp_server
 import logging
@@ -27,14 +27,14 @@ import Tilda.Driver.TritonListener.Backend.server_conf
 
 
 class TritonObject(object):
-    '''
+    """
     Basic TritonObject with fundamental abilities: receiving messages, DB connections, subscribing
-    '''
+    """
 
-    def __init__(self, sql_conf=sqlConf):
-        '''
+    def __init__(self, sql_conf=TritonConfig.sqlCfg):
+        """
         Constructor
-        '''
+        """
         super(TritonObject, self).__init__()
         self.name = None
         self.type = 'TritonObject'
@@ -46,7 +46,7 @@ class TritonObject(object):
         self.db_connect()
         self.logger = logging.getLogger('TritonLogger')
 
-        #start the appropriate server_backend depending on the selection in server_conf
+        # start the appropriate server_backend depending on the selection in server_conf
         if Tilda.Driver.TritonListener.Backend.server_conf.SERVER_CONF.TRANS_MODE == "UDP":
             self.server_backend = Tilda.Driver.TritonListener.Backend.udp_server.TritonServerUDP(self.type, self)
             self.logger.debug("Backend: TritonServer started in UDP mode!")
@@ -64,7 +64,7 @@ class TritonObject(object):
     def db_connect(self):
         if isinstance(self.sql_conf, dict):
             try:
-                self.db = Sql.connect(**self.sql_conf)
+                self.db = sql.connect(**self.sql_conf)
                 self.dbCur = self.db.cursor()
             except Exception as e:
                 self.logger.error('could not connect to database %s, error is: %s' % (
@@ -137,7 +137,7 @@ class TritonObject(object):
                 self.db.close()
 
     def _stop(self):
-        '''Unsubscribe from all and stop server object'''
+        """ Unsubscribe from all and stop server object """
         self.logger.debug('Unsubscribing from ' + str(self._recFrom))
         for dev in self._recFrom.copy().keys():
             self.unsubscribe(dev)
@@ -147,6 +147,7 @@ class TritonObject(object):
         self.logger.debug('Stopped device: {}'.format(self.name))
 
     """ who am I ? """
+
     def getName(self):
         return self.name
 
@@ -157,50 +158,62 @@ class TritonObject(object):
     #     return(self)
 
     """Methods for subscribing"""
+
     def subscribe(self, ndev, known_uri=''):
         """Subscribe to an object using its name and returning at a TritonRemoteObject"""
         remuri = self.resolveName(ndev, known_uri)
         remoteobj = None
-        if remuri != None:
+        if remuri is not None:
             self.send('out', 'Subscribing to ' + ndev)
             remoteobj = self.server_backend.subscribeToUri(remuri)
-            if remoteobj != None:
+            if remoteobj is not None:
                 self._recFrom[ndev] = remoteobj
                 self.send('out', 'Added')
                 self.send('out', 'Done with subscribe')
             else:
-                logging.error("Subscribing to device "+ndev+" failed!")
+                logging.error("Subscribing to device " + ndev + " failed!")
                 self.send('err', 'Could not connect to ' + ndev)
         else:
             self.send('err', 'Could not resolve ' + ndev)
         return remoteobj
 
     def start_and_subscribe(self, ndev):
-        """subscribe to an object using its name, and return a TritonRemoteObject. If the device is not active,
-        start it (on the right TritonMain if specified)"""
-        self.dbCur_execute("SELECT actualMain, run_on FROM devices WHERE deviceName=%s", (ndev,)) # gets the actual main the device is alrady running on and a main-name if teh device has to be run on a certain device
+        """
+        Subscribe to an object using its name, and return a TritonRemoteObject. If the device is not active,
+        start it (on the right TritonMain if specified)
+        """
+
+        # gets the actual main the device is alrady running on
+        # and a main-name if teh device has to be run on a certain device
+        self.dbCur_execute("SELECT actualMain, run_on FROM devices WHERE deviceName=%s", (ndev,))
         result_db = self.dbCur_fetchall()
-        res_acmain=result_db[0][0]
-        res_runon=result_db[0][1]
-        print('res_acmain is: {} ; res_runon is: {}'.format(res_acmain,res_runon))
-        if res_acmain is None: #this means the device is not running already
+        res_acmain = result_db[0][0]
+        res_runon = result_db[0][1]
+        print('res_acmain is: {} ; res_runon is: {}'.format(res_acmain, res_runon))
+        if res_acmain is None:  # this means the device is not running already
             self.logger.debug('s_a_s: {} device not running, starting now!'.format(ndev))
-            self.dbCur_execute("SELECT actualMain FROM devices WHERE deviceName=%s", (self.name,)) #gets the local main
+            self.dbCur_execute("SELECT actualMain FROM devices WHERE deviceName=%s",
+                               (self.name,))  # gets the local main
             mainName = self.dbCur_fetchall()[0][0]
             print('Main name ist: {}'.format(mainName))
-            if res_runon is None or res_runon in mainName: # this means the device can be started on any main, so it will be started locally or the local main is already the correct main
+            if res_runon is None or res_runon in mainName:
+                # this means the device can be started on any main,
+                # so it will be started locally or the local main is already the correct main
                 print('device kann unabhängig oder in diesem main gestartet werden: {}'.format(res_runon))
                 pass
             else:
                 print('Devicemuss auf anderer main gestartet werden')
-                self.dbCur_execute("SELECT deviceName FROM devices WHERE actualMain='running' AND deviceName LIKE %s", (res_runon+'%',)) #in this case one running correct main will be looked up
+                self.dbCur_execute("SELECT deviceName FROM devices WHERE actualMain='running' AND deviceName LIKE %s",
+                                   (res_runon + '%',))  # in this case one running correct main will be looked up
                 mainName = self.dbCur_fetchall()[0][0]
-            if mainName != None:
+            if mainName is not None:
                 devicemain = self.subscribe(mainName)
                 devicemain.startDev(ndev)
                 self.unsubscribe(mainName)
             else:
-                self.logger.warning("Required main {} is not available to start the device. Please start such a main!".format(res_runon))
+                self.logger.warning(
+                    "Required main {} is not available to start the device. Please start such a main!".format(
+                        res_runon))
         return self.subscribe(ndev)
 
     def unsubscribe(self, ndev):
@@ -213,10 +226,12 @@ class TritonObject(object):
             except:
                 self.send('err', 'Could not unsubscribe from ' + str(ndev))
 
-    def send(self, ch, val): # important note: this will be overwritten in DeviceBase! It is just used for the UIs to log the info
-        """ send ch and val to logging.error (ch='err'), logging.info (ch='out') or logging.debug
-         Note: this is not send to any device or so, this is only done in the DeviceBase.py
-         """
+    def send(self, ch, val):
+        #
+        """
+        Send ch and val to logging.error (ch='err'), logging.info (ch='out') or logging.debug
+        Note: This will be overwritten in DeviceBase! It is just used for the UIs to log the info.
+        """
         t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if ch == 'err':
             self.logger.error(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
@@ -225,7 +240,7 @@ class TritonObject(object):
         else:
             self.logger.debug(t + ' ' + self.name + ' ' + ch + ": \t" + str(val))
 
-    def _receive(self, dev, t, ch, val): # important note: this will be overwritten in DeviceBase! just ignore it
+    def _receive(self, dev, t, ch, val):  # important note: this will be overwritten in DeviceBase! just ignore it
         """ just a print here, will be overwritten in DeviceBase.py """
         print(t, dev, ch, val)
 

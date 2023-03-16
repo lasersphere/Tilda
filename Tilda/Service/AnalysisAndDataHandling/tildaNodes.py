@@ -17,7 +17,7 @@ from PyQt5 import QtCore
 
 import Tilda.Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
 import Tilda.Service.FileOperations.FolderAndFileHandling as Filehandle
-import Tilda.Service.VoltageConversions.DAC_Calibration as DACCalib
+from Tilda.Application.Importer import DAC_Calibration as DACCalib
 
 import Tilda.Service.Formating as Form
 from Tilda.PolliFit import TildaTools, MPLPlotter

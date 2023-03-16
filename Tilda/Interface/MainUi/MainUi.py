@@ -381,6 +381,7 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
             if self.scan_complete_win is None:
                 play_sound = Cfg._main_instance.get_option('SOUND:is_on')
                 sound_folder = Cfg._main_instance.get_option('SOUND:folder')
+                sound_folder = OptionsUi.get_folder_from_str(sound_folder)
                 self.scan_complete_win = ScanCompleteDialUi(self, play_sound, sound_folder)
             self.raise_win_to_front(self.scan_complete_win)
 

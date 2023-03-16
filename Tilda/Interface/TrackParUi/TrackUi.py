@@ -5,6 +5,7 @@ Created on '29.09.2015'
 @author:'simkaufm'
 
 """
+
 import ast
 import logging
 import os
@@ -15,10 +16,11 @@ from PyQt5 import QtCore
 from PyQt5 import QtWidgets
 
 import Tilda.Application.Config as Cfg
-from Tilda import Interface as FindDesiredSeqWidg, Interface as FindDesiredTriggerWidg
 import Tilda.Service.Scan.ScanDictionaryOperations as SdOp
 import Tilda.Service.VoltageConversions.VoltageConversions as VCon
 from Tilda.Driver.DataAcquisitionFpga.TriggerTypes import TriggerTypes as TiTs
+from Tilda.Interface.TriggerWidgets import FindDesiredTriggerWidg
+from Tilda.Interface.SequencerWidgets import FindDesiredSeqWidg
 from Tilda.Interface.PulsePatternUi.PulsePatternUi import PulsePatternUi
 from Tilda.Interface.SetVoltageUi.SetVoltageUi import SetVoltageUi
 from Tilda.Interface.TrackParUi.Ui_TrackPar_Wide import Ui_MainWindowTrackPars
@@ -902,7 +904,8 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def raise_win_to_front(self, window):
         # this will remove minimized status
         # and restore window with keeping maximized/normal state
-        window.setWindowState(window.windowState() & ~QtCore.Qt.WindowMinimized | QtCore.Qt.WindowActive)
+        window.setWindowState(
+            window.windowState() & ~QtCore.Qt.WindowState.WindowMinimized | QtCore.Qt.WindowState.WindowActive)
 
         # this will activate the window
         window.activateWindow()

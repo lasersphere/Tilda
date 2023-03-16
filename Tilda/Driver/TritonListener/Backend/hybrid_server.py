@@ -8,24 +8,26 @@ It therefore should reach both transmission speeds in the order of 70 MB/s, as w
 (depending on the network connection of course)
 """
 
+import os
 import concurrent.futures
 import threading
 import socket
+import uuid
+import time
+import logging
+from importlib import import_module
 
-from Tilda.Driver.TritonListener import TritonConfig
+import Tilda.Application.Config as Cfg
 import Tilda.Driver.TritonListener.Backend.tcp_server
 import Tilda.Driver.TritonListener.Backend.udp_server
 from Tilda.Driver.TritonListener.Backend.server_conf import SERVER_CONF
 import Tilda.Driver.TritonListener.Backend.triton_trans as tt
 from Tilda.Driver.TritonListener.Backend.tritonremoteobject import TritonRemoteObject
+from Tilda.Application.Importer import TritonConfig
 
 # if encryption is not enabled, the package is not required to be installed.
 if Tilda.Driver.TritonListener.Backend.server_conf.SERVER_CONF.ENCRYPTION:
     from cryptography.fernet import Fernet
-
-import uuid
-import time
-import logging
 
 
 class TritonServerHybrid(Tilda.Driver.TritonListener.Backend.tcp_server.TritonServerTCP):

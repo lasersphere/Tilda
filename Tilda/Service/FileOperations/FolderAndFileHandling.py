@@ -5,6 +5,7 @@ Created on '07.05.2015'
 @author:'simkaufm'
 
 """
+
 import logging
 import os
 import shutil
@@ -33,7 +34,7 @@ def check_config_dir(path):
 
 def get_default_config_dir():
     """
-    :returns: The absolute path to the "Tilda config folder."
+    :returns: The default absolute path to the Tilda config folder.
     """
     csidl_personal = 5  # My Documents
     shgfp_type_current = 0  # Get current, not default value
@@ -46,13 +47,11 @@ def get_default_config_dir():
 def make_config_dir(path):
     """
     Creates the config directory and its default content.
-    The 'autostart.xml' and 'fpga_config.xml' are created in their respective module.
+    The 'options.yaml', 'autostart.xml' and 'fpga_config.xml' are created in their respective module.
 
     :param path: The path to the config dir.
     :returns: None.
     """
-    # if os.path.isdir(path):
-    #     return
     Path(path).mkdir(parents=True, exist_ok=True)
     Path(os.path.join(path, 'Logs')).mkdir(parents=True, exist_ok=True)
     Path(os.path.join(path, 'PolliFit')).mkdir(parents=True, exist_ok=True)
@@ -60,9 +59,18 @@ def make_config_dir(path):
     Path(os.path.join(path, 'Driver', 'SQLStream')).mkdir(parents=True, exist_ok=True)
     Path(os.path.join(path, 'Driver', 'TritonListener')).mkdir(parents=True, exist_ok=True)
     Path(os.path.join(path, 'Service', 'VoltageConversions')).mkdir(parents=True, exist_ok=True)
+    Path(os.path.join(path, 'Interface', 'Sounds')).mkdir(parents=True, exist_ok=True)
+
     tilda_dir = findTildaFolder()
-    shutil.copy(os.path.join(tilda_dir, 'Service', 'VoltageConversions', 'DacRegisterToVoltageFit.py'),
-                os.path.join(path, 'Service', 'VoltageConversions', 'DAC_Calibration.py'))
+    if not os.path.isfile(os.path.join(path, 'Driver', 'SQLStream', 'SQLConfig.py')):
+        shutil.copy(os.path.join(tilda_dir, 'Driver', 'SQLStream', 'SQLDraftConfig.py'),
+                    os.path.join(path, 'Driver', 'SQLStream', 'SQLConfig.py'))
+    if not os.path.isfile(os.path.join(path, 'Driver', 'TritonListener', 'TritonConfig.py')):
+        shutil.copy(os.path.join(tilda_dir, 'Driver', 'TritonListener', 'TritonDraftConfig.py'),
+                    os.path.join(path, 'Driver', 'TritonListener', 'TritonConfig.py'))
+    if not os.path.isfile(os.path.join(path, 'Service', 'VoltageConversions', 'DAC_Calibration.py')):
+        shutil.copy(os.path.join(tilda_dir, 'Service', 'VoltageConversions', 'DacRegisterToVoltageFit.py'),
+                    os.path.join(path, 'Service', 'VoltageConversions', 'DAC_Calibration.py'))
 
 
 def findTildaFolder(path=os.path.dirname(os.path.abspath(__file__))):

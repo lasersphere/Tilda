@@ -1,19 +1,14 @@
-'''
+"""
 
 author: Simon Kaufmann
 
 create a local Device (-> no db connection!) and have it send stuff periodically
-
-'''
+"""
 
 # TODO: Just copy pasted some stuff from TritonObject with new Triton. Not tested in any way. Maybe need to write new...
 
-from datetime import datetime
-import mysql.connector as Sql
-from Tilda.Driver.TritonListener.TritonConfig import sqlCfg as sqlConf
 import Tilda.Driver.TritonListener.Backend.udp_server
 import Tilda.Driver.TritonListener.Backend.tcp_server
-import logging
 import Tilda.Driver.TritonListener.Backend.hybrid_server
 import Tilda.Driver.TritonListener.Backend.server_conf
 
