@@ -5,12 +5,13 @@ Created on '09.07.2015'
 @author:'simkaufm'
 
 """
+
 import ctypes
 from os import path, pardir
 
-import Tilda.Service.FileOperations.FolderAndFileHandling as FileHandl
+import Tilda.Service.FileOperations.FolderAndFileHandling as FileHandle
 
-fpga_cfg_root, fpga_cfg_dict = FileHandl.load_fpga_xml_config_file()
+fpga_cfg_root, fpga_cfg_dict = FileHandle.load_fpga_xml_config_file()
 data_acq_cfg = fpga_cfg_dict['fpgas']['data_acquisition_fpga']
 fpga_type = data_acq_cfg['fpga_type']
 fpga_resource = data_acq_cfg['fpga_resource']
@@ -21,11 +22,10 @@ bitfileSignatures = {'PXI-7852R': '44BFAC9C65B0FD9FF18184F1EC2BB9E0',
                      }
 bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
-bitfilePaths = {'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
+bitfilePaths = {'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir,
                                        'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV251.lvbitx'),
-                'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
-                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV231_7842.lvbitx')
-                }
+                'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir,
+                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV220_7841.lvbitx')}
 bitfilePath = bitfilePaths[fpga_type]
 '''FPGA Resource:'''
 fpgaResource = fpga_resource

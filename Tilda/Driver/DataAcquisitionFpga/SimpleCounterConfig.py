@@ -9,9 +9,9 @@ Module Description: automatically created with the CApiAnalyser
 import ctypes
 from os import path, pardir
 
-import Tilda.Service.FileOperations.FolderAndFileHandling as FileHandl
+import Tilda.Service.FileOperations.FolderAndFileHandling as FileHandle
 
-fpga_cfg_root, fpga_cfg_dict = FileHandl.load_fpga_xml_config_file()
+fpga_cfg_root, fpga_cfg_dict = FileHandle.load_fpga_xml_config_file()
 data_acq_cfg = fpga_cfg_dict['fpgas']['data_acquisition_fpga']
 fpga_type = data_acq_cfg['fpga_type']
 fpga_resource = data_acq_cfg['fpga_resource']
@@ -49,7 +49,6 @@ setDACRegister = {'ref': 0x8130, 'val': ctypes.c_ulong(), 'ctr': True}
 trigDelay10ns = {'ref': 0x8120, 'val': ctypes.c_ulong(), 'ctr': True}
 '''TargetToHostFifos:'''
 transferToHost = {'ref': 0, 'val': ctypes.c_ulong(), 'ctr': False}
-'''HostToTargetFifos:'''
 
 
 ''' Hand filled '''

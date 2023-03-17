@@ -9,8 +9,8 @@ Module to convert the C Api Output to Python input
 Just Run cApiFileHandler on your header File created by the NI C Api generator
  and copy the Console Output to your Python File
 """
-import os
 
+import os
 from PyQt5 import QtWidgets
 
 
@@ -30,7 +30,7 @@ class CApiAnalyser:
         return 0
 
     def analyser(self, liste, val):
-        for i,j in enumerate(liste):
+        for i, j in enumerate(liste):
                 if 'Bool_' in j:
                     print(j[self.findLastUnderScore(j):j.index('=')-1] + ' = {\'ref\': ' + str(j[j.index('=')+2:-2])
                           + ', \'val\': ctypes.c_bool(), \'ctr\': ' + str(val) + '}')
@@ -54,10 +54,10 @@ class CApiAnalyser:
                           + ', \'val\': ctypes.c_long(), \'ctr\': ' + str(val) + '}')
     
     def cApiFileHandler(self, headerpath, bitfilepath, fpgaresource):
-        tilda_ind = bitfilepath.find('/Tilda/')
-        print(tilda_ind, bitfilepath[tilda_ind + 7:])
-        bitfilepath = bitfilepath[tilda_ind + 7:]
-        bitfilepath = 'path.join(path.dirname(__file__), pardir, pardir, pardir, pardir, ' + '\'' + bitfilepath + '\'' + ')'
+        tilda_ind = bitfilepath.find('TildaTarget')
+        print(tilda_ind, bitfilepath[tilda_ind:])
+        bitfilepath = bitfilepath[tilda_ind:]
+        bitfilepath = 'path.join(path.dirname(__file__), pardir, pardir, ' + '\'' + bitfilepath + '\'' + ')'
         with open(headerpath, 'r') as myfile:
             inhalt = myfile.readlines()
             signature = [s for s in inhalt if "Signature" in s]
@@ -81,20 +81,20 @@ class CApiAnalyser:
             print('\'\'\'HostToTargetFifos:\'\'\'')
             self.analyser(htfifos, False)
 
+
 bitfilepath = None
 fpgaresource = None
 ok = False
 app = QtWidgets.QApplication([])
 headerpath, ka = QtWidgets.QFileDialog.getOpenFileName(filter='*.h',
                                                        caption='choose header file',
-                                                       directory='../../../TildaTarget/bin/')
+                                                       directory='../TildaTarget/bin/')
 if headerpath:
     startpath = os.path.split(headerpath)[0]
     bitfilepath, ka = QtWidgets.QFileDialog.getOpenFileName(filter='*.lvbitx',
                                                             caption='choose header file',
                                                             directory=startpath)
-# # headerpath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\SimpleCounter\\NiFpga_SimpleCounterV101.h'
-# bitfilepath = 'D:\\Workspace\\PyCharm\\Tilda\\TildaTarget\\bin\\SimpleCounter\\NiFpga_SimpleCounterV101.lvbitx'
+
 if bitfilepath:
     fpgaresource, ok = QtWidgets.QInputDialog.getText(None, 'fpga resoucre', 'fpga resoucre', text='Rio1')
 if ok:
