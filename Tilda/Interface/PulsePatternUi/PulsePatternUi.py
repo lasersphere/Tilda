@@ -20,7 +20,7 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 import Tilda.Application.Config as CfgMain
 from Tilda.PolliFit import PyQtGraphPlotter as Pgplot
 import Tilda.Service.FileOperations.FolderAndFileHandling as FileHandle
-from Tilda.Interface.PulsePatternUi import PpgPeriodicWidgUi
+from Tilda.Interface.PulsePatternUi.PpgPeriodicWidgUi import PpgPeriodicWidgUi
 from Tilda.Interface.PulsePatternUi.PpgSimpleWidgUi import PpgSimpleWidgUi
 from Tilda.Interface.PulsePatternUi.Ui_PulsePattern import Ui_PulsePatternWin
 

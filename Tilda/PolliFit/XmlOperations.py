@@ -5,10 +5,13 @@ Created on '26.10.2015'
 @author:'simkaufm'
 
 """
-from datetime import datetime as dt
 
+import os
+from datetime import datetime as dt
 import numpy as np
 from lxml import etree as ET
+
+import Tilda.Application.Config as Cfg
 
 
 def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
@@ -17,6 +20,7 @@ def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
     Try not to use colons in the tagstring!
     :return: returns the SubElement
     """
+    temp_file = os.path.join(Cfg.config_dir, 'PolliFit', 'temp.out')
     if ':' in tagString:  # this will otherwise cause problems with namespace in xml!
         tagString = tagString.replace(':', '.')
     subEle = parentEle.find(tagString)
@@ -28,8 +32,8 @@ def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
         # print('numpy conversion started', value.dtype)
         val_str = ''
         if value.dtype == [('sc', '<u2'), ('step', '<u4'), ('time', '<u4'), ('cts', '<u4')]:
-            np.savetxt('temp.out', value, fmt=['%d', '%d', '%d', '%d'])
-            with open('../temp.out', 'r') as f:
+            np.savetxt(temp_file, value, fmt=['%d', '%d', '%d', '%d'])
+            with open(temp_file, 'r') as f:
                 ret = f.readlines()
             for each in ret:
                 each = each.replace(' ', ', ').replace('\n', '')
@@ -37,8 +41,8 @@ def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
                 val_str += each
             val_str = '[' + val_str + ']'
         elif value.dtype == np.int32:
-            np.savetxt('temp.out', value, fmt='%d')
-            with open('../temp.out', 'r') as f:
+            np.savetxt(temp_file, value, fmt='%d')
+            with open(temp_file, 'r') as f:
                 ret = f.readlines()
             for each in ret:
                 val_str += '[' + each + ']'
