@@ -1,1 +1,0 @@
-UPDATE Files Set laserFreq=851200725.9994, colDirTrue=1, voltDivRatio="{'accVolt': 1000, 'offset': 1000}", lineMult=0.05, lineOffset=0
