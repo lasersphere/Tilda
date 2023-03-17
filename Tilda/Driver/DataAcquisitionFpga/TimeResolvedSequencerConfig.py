@@ -9,10 +9,10 @@ Created on '12.05.2015'
 import ctypes
 from os import path, pardir
 
-import Tilda.Service.FileOperations.FolderAndFileHandling as FileHandl
+import Tilda.Service.FileOperations.FolderAndFileHandling as FileHandle
 import Tilda.Service.Scan.draftScanParameters as draftPars
 
-fpga_cfg_root, fpga_cfg_dict = FileHandl.load_fpga_xml_config_file()
+fpga_cfg_root, fpga_cfg_dict = FileHandle.load_fpga_xml_config_file()
 data_acq_cfg = fpga_cfg_dict['fpgas']['data_acquisition_fpga']
 fpga_type = data_acq_cfg['fpga_type']
 fpga_resource = data_acq_cfg['fpga_resource']
@@ -28,9 +28,9 @@ bitfileSignatures = {'PXI-7852R': '570404AF38BC448E410B52CC8C899484',
                      }
 bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
-bitfilePaths = {'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
+bitfilePaths = {'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir,
                                        'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_250.lvbitx'),
-                'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir, pardir, pardir,
+                'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir,
                                        'TildaTarget/bin/TimeResolvedSequencer/NiFpga_TRS_DAF_220_7842.lvbitx')
                 }
 
@@ -113,4 +113,3 @@ transferToHostReqEle = 10000000
 dummyScanParameters = draftPars.draftTrackPars
 
 seq_type = 'trs'
-
