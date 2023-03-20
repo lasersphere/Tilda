@@ -392,7 +392,7 @@ class Fitter(QObject):
         elif rule == 'free':
             size_col = len([0 for meas in self.meas if meas.col])
             size_acol = len([0 for meas in self.meas if not meas.col])
-            if not size_col == size_acol or size_col + size_acol == len(self.meas):
+            if size_col != size_acol or size_col + size_acol != len(self.meas):
                 false_flag = True
         else:
             size_col = len([0 for meas in self.meas if meas.col])
@@ -573,7 +573,7 @@ class Fitter(QObject):
             chi2 = [0., ] * self.size
             popt = [np.array(model.vals) for model in self.models]
             pcov = [np.zeros((popt[-1].size, popt[-1].size)) for _ in self.models]
-            return popt, pcov, dict(warn=warn, errs=errs, chi2=chi2)
+            self.popt, self.pcov, self.info = popt, pcov, dict(warn=warn, errs=errs, chi2=chi2)
 
         iterate = self.config['col_acol_config']['iterate']
         volt = self.config['col_acol_config']['volt']
