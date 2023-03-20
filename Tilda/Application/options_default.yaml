@@ -19,11 +19,5 @@ TRITON:
 FPGA:
   config_file: "...\\Driver\\DataAcquisitionFpga\\fpga_config.xml"
 
-POLLIFIT:
-  guess_offset: False
-
 FUNCTIONS:
   0: '[0]'
-
-SPECIAL:
-  roc_mode: False

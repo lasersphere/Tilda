@@ -5,6 +5,7 @@ Created on '20.05.2015'
 @author:'simkaufm'
 
 """
+
 import logging
 import os
 import sqlite3
@@ -17,7 +18,6 @@ from PyQt5 import QtCore
 
 import Tilda.Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
 import Tilda.Service.FileOperations.FolderAndFileHandling as Filehandle
-from Tilda.Application.Importer import DAC_Calibration as DACCalib
 
 import Tilda.Service.Formating as Form
 from Tilda.PolliFit import TildaTools, MPLPlotter
@@ -30,73 +30,7 @@ from Tilda.PolliFit.Spectra import Straight
 from Tilda.PolliFit.XmlOperations import xmlAddCompleteTrack
 from Tilda.PolliFit.polliPipe.node import Node
 
-import ctypes
-
 """ multipurpose Nodes: """
-
-
-class NROCTrigger(Node):
-    def __init__(self):
-        super(NROCTrigger, self).__init__()
-        self.type = 'NROCTrigger'
-        self.PicoROCdll = ctypes.CDLL('C:\\Users\\collaps\\PycharmProjects\\Tilda\\Tilda\\source\\Service\\AnalysisAndDataHandling\\PicoROC\\PicoROCdll\\PicoROCdll.dll')
-        self.PicoROCdll.attachSharedMemory()
-        self.PicoROCdll.stepScan.restype = None
-        self.PicoROCdll.startScan.restype = None
-        self.PicoROCdll.startScan.argtypes = [ctypes.c_int, ctypes.c_double, ctypes.c_int, ctypes.c_char_p]
-        self.PicoROCdll.stepScan.argtypes = [ctypes.c_int, ctypes.c_double, ctypes.c_int]
-
-    def start(self):
-        self.isthisthefirststep = True
-        track_ind, track_name = self.Pipeline.pipeData['pipeInternals']['activeTrackNumber']
-        compl_steps = self.Pipeline.pipeData[track_name]['nOfCompletedSteps']
-        steps = self.Pipeline.pipeData[track_name]['nOfSteps']
-        self.invertscan = self.Pipeline.pipeData[track_name]['invertScan']
-
-        self.stepindexoffset = 0  # Marks programm doesn't know tracks, so in order to give him a nice index accross tracks, this offset will be added to the scan index.
-        for i in range(track_ind, 0, -1):
-            self.stepindexoffset += self.Pipeline.pipeData["track"+str(i)]['nOfSteps']
-        self.stepcounter = 0
-
-    def processData(self, data, pipeData):
-        for element32 in data:
-            header_index = (element32 >> 23) & 1
-            if header_index:
-                fheader = element32 >> 28
-                if fheader == Progs.dac.value:
-                    voltbit = (element32 & ((2 ** 20) - 1)) >> 2
-                    volt = int(voltbit)*DACCalib.slope+DACCalib.offset
-
-                    track_ind, track_name = pipeData['pipeInternals']['activeTrackNumber']
-                    steps = pipeData[track_name]['nOfSteps']
-                    scans = self.stepcounter // steps
-
-                    if self.invertscan:
-                        stepindex = self.stepcounter % (2*steps)
-                        if stepindex >= steps:
-                            stepindex = steps - (stepindex-steps) - 1
-                    else:
-                        stepindex = self.stepcounter % steps + self.stepindexoffset
-
-                    if self.isthisthefirststep:
-                        tildafilename = pipeData['pipeInternals']['activeXmlFilePath']
-                        tildafilename = os.path.split(tildafilename)[1][:-4]
-                        tildaencodedfilename = tildafilename.encode('utf-8')
-                        self.PicoROCdll.startScan(stepindex, volt, scans, tildaencodedfilename)
-                        self.isthisthefirststep = False
-                    else:
-                        self.PicoROCdll.stepScan(stepindex, volt, scans)
-
-                    print("NROCTrigger: step index " + str(stepindex) + " of scan " + str(scans) + ", voltage:" + str(volt))
-                    self.stepcounter += 1
-
-        return data
-
-    def stop(self):
-        self.PicoROCdll.stopScan()
-
-    def __del__(self):
-        self.PicoROCdll.detachSharedMemory()
 
 
 class NSplit32bData(Node):
@@ -1133,7 +1067,7 @@ class NSingleSpecFromSpecData(Node):
 
     def processData(self, spec_data_instance, pipeData):
         ret = []
-        x, y, err = spec_data_instance.getArithSpec(self.scalers, self.track)    # New not tested yet...
+        x, y, err = spec_data_instance.getArithSpec(self.scalers, self.track)  # New not tested yet...
         ret.append((np.array(x), y))
         return ret
 
@@ -1489,7 +1423,8 @@ class NMPLImagePlotAndSaveSpecData(Node):
         self.new_track_callback = new_track_callback
         min_time_ms = 250.0
         self.min_time_between_emits = timedelta(milliseconds=min_time_ms)  # fixed!
-        self.adapted_min_time_between_emits = timedelta(milliseconds=min_time_ms) # can be changed when gui takes longer to plot
+        self.adapted_min_time_between_emits = timedelta(
+            milliseconds=min_time_ms)  # can be changed when gui takes longer to plot
         # just be sure it emits on first call (important for loading etc.):
         self.last_emit_time = datetime.now() - self.min_time_between_emits - self.min_time_between_emits
         self.mutex = QtCore.QMutex()  # for blocking of other threads
@@ -2134,7 +2069,8 @@ class NTRSSortRawDatatoArrayFast(Node):
                 if self.scan_start_stop_cur_tr[1] == -1:
                     stop_s = np.inf  # -1 means until last scan!
                 else:
-                    stop_s = self.scan_start_stop_cur_tr[1] + 1  # because the following will be exclusive for this bunch
+                    stop_s = self.scan_start_stop_cur_tr[
+                                 1] + 1  # because the following will be exclusive for this bunch
                 # user wants scans until scan 8 (start counting from 0) so scan9 is the first to exclude.
                 scans_before_this = self.total_num_of_started_scans  # scans that have already been started before
                 # pick the scans that are allowed:
@@ -2154,11 +2090,12 @@ class NTRSSortRawDatatoArrayFast(Node):
                                                                  & (this_data_scan_nums <= stop_s))[0]]
 
                 if not allowed_indices.size:
-                    scan_allowed_ind_flat = np.arange(step_complete_ind_list[-1], step_complete_ind_list[-1]+1)  # allow none
+                    scan_allowed_ind_flat = np.arange(step_complete_ind_list[-1],
+                                                      step_complete_ind_list[-1] + 1)  # allow none
                 elif allowed_indices.size == this_data_scan_nums.size:
                     scan_allowed_ind_flat = np.arange(0, step_complete_ind_list[-1])  # allow all
                 else:
-                    scan_allowed_ind_flat = np.arange(allowed_indices[0], allowed_indices[-1]+1)
+                    scan_allowed_ind_flat = np.arange(allowed_indices[0], allowed_indices[-1] + 1)
 
             # account only started scans until the last step complete element was registered
             if scan_started_ind_list.size:
@@ -2658,7 +2595,7 @@ class NTiPaAccRawUntil2ndScan(Node):
         logging.debug('emitting %s from Node %s, value is %s'
                       % ('emit_steps_scan_callback',
                          self.type, str({'nOfCompletedSteps': steps,
-                                        'nOfStartedScans': scans})))
+                                         'nOfStartedScans': scans})))
         self.steps_scans_callback.emit({'nOfCompletedSteps': steps,
                                         'nOfStartedScans': scans})
 
@@ -2712,7 +2649,8 @@ class NFilterDMMDictsAndSave(Node):
         self.incoming_dict_ctr = 0
         if self.store_data is None:
             self.store_data = deepcopy(self.Pipeline.pipeData)
-        for dmm_name, dmm_vals in self.store_data[self.active_track_name]['measureVoltPars']['duringScan']['dmms'].items():
+        for dmm_name, dmm_vals in self.store_data[self.active_track_name]['measureVoltPars']['duringScan'][
+            'dmms'].items():
             if dmm_vals.get('readings', None) is None:
                 dmm_vals['readings'] = []
 

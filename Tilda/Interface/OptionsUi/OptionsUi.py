@@ -5,6 +5,7 @@ Created on '10.09.2019'
 @author:'fsommer'
 
 """
+
 import logging
 import os
 import platform
@@ -13,7 +14,6 @@ import subprocess
 from PyQt5 import QtWidgets
 
 import Tilda.Application.Config as Cfg
-
 from Tilda.Interface.OptionsUi.Ui_Options import Ui_Dialog_Options
 
 
@@ -67,20 +67,10 @@ class OptionsUi(QtWidgets.QDialog, Ui_Dialog_Options):
             lambda: self.toggle_option(self.checkBox_playSound, 'SOUND:is_on'))
 
         self.link_openSoundsFolder.clicked.connect(lambda: self.open_file_or_folder(self.link_openSoundsFolder.text()))
-        self.pushButton_chooseSoundsFolder.setText(self.create_folder_str(self.get_setting_from_options('SOUND:folder')))
+        self.pushButton_chooseSoundsFolder.setText(
+            self.create_folder_str(self.get_setting_from_options('SOUND:folder')))
         self.pushButton_chooseSoundsFolder.clicked.connect(
             lambda: self.choose_folder(self.pushButton_chooseSoundsFolder, 'SOUND:folder'))
-
-        # POLLIFIT TAB
-        self.checkBox_guessOffset.setChecked(self.get_setting_from_options('POLLIFIT:guess_offset'))
-        self.checkBox_guessOffset.clicked.connect(
-            lambda: self.toggle_option(self.checkBox_guessOffset, 'POLLIFIT:guess_offset'))
-
-        # SPECIAL TAB
-        self.checkBox_enableRoc.setChecked(self.get_setting_from_options('SPECIAL:roc_mode'))
-        self.checkBox_enableRoc.clicked.connect(
-            lambda: self.toggle_option(self.checkBox_enableRoc, 'SPECIAL:roc_mode'))
-
 
     ''' general '''
 
@@ -189,10 +179,6 @@ class OptionsUi(QtWidgets.QDialog, Ui_Dialog_Options):
                 subprocess.Popen(["xdg-open", path_to])
         else:
             logging.info('Path {} does not exist. Can not open'.format(path_to))
-
-
-
-
 
     ''' window related '''
 
