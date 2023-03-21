@@ -70,24 +70,25 @@ def main():
     app_log.info('Log level set to ' + args.log_level)
 
     # get details on current version
-    try:
-        # get the current branch
-        branch = subprocess.check_output(['git', 'symbolic-ref', '--short', 'HEAD']).decode('utf-8').replace('\n', '')
-        # get uniquely abbreviated commit object (or commit tag)
-        commit = subprocess.check_output(['git', 'describe', '--always']).decode('utf-8').replace('\n', '')
-        # update info in config
-        Cfg.branch = branch
-        Cfg.commit = commit
-        # display info for user
-        app_log.info('Detected branch: {}, commit: {}'.format(branch, commit))
-    except Exception as e:
-        app_log.warning('Could not detect git branch and commit. Error: {}'.format(e))
+    if __name__ == "__main__":  # Only check for git if Tilda is started directly from TildaStart
+        try:
+            # get the current branch
+            branch = subprocess.check_output(['git', 'symbolic-ref', '--short', 'HEAD']).decode('utf-8').replace('\n', '')
+            # get uniquely abbreviated commit object (or commit tag)
+            commit = subprocess.check_output(['git', 'describe', '--always']).decode('utf-8').replace('\n', '')
+            # update info in config
+            Cfg.branch = branch
+            Cfg.commit = commit
+            # display info for user
+            app_log.info('Detected branch: {}, commit: {}'.format(branch, commit))
+        except Exception as e:
+            app_log.warning('Could not detect git branch and commit. Error: {}'.format(e))
 
     # starting the main loop and storing the instance in Cfg.main_instance
     from Tilda.Application.Main.Main import Main  # Import Main here to have the config directory set up beforehand.
     Cfg._main_instance = Main()
-
     start_gui()
+    Cfg._main_instance.close_main()
 
 
 def start_gui():
@@ -124,4 +125,3 @@ def cyclic():
 
 if __name__ == "__main__":
     main()
-    Cfg._main_instance.close_main()

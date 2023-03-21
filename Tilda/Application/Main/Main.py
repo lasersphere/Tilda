@@ -248,7 +248,7 @@ class Main(QtCore.QObject):
         """
         will deinitialize all active power supplies,
         set 0V on the DAC and turn off all fpga outputs
-        will be called after completion of main() in TildaStart
+        will be called at the end of main() in TildaStart
         """
         logging.debug('closing main now')
         self.scan_main.close_scan_main()
