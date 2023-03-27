@@ -43,7 +43,7 @@ def _get_iso_par_from_dict(par_dict, par):
 class SpectraFit:
     def __init__(self, db, files, runs, configs, index_config,
                  x_axis='ion frequencies', routine='curve_fit', absolute_sigma=False, guess_offset=True,
-                 cov_mc=False, samples_mc=100, arithmetics=None, save_to_disk=False, norm_scans=True,
+                 cov_mc=False, samples_mc=100, arithmetics=None, save_to_disk=False, norm_scans=False,
                  summed=False, linked=False, col_acol_config=None, save_to_db=False, x_as_freq=True,
                  fig_save_format='.png', zoom_data=False, fmt='.k', fontsize=10):
         self.db = db
@@ -270,7 +270,7 @@ class SpectraFit:
             if iso is not None and pars is not None:
                 for i, par in enumerate(pars):
                     _iso = TiTs.select_from_db(self.db, 'type', 'Files', [['file'], [par[0]]], caller_name=__name__)
-                    if iso is None:
+                    if _iso is None:
                         continue
                     if _iso[0][0] == iso:
                         index = i
@@ -334,7 +334,7 @@ class SpectraFit:
             if iso is not None and pars is not None:
                 for i, par in enumerate(pars):
                     _iso = TiTs.select_from_db(self.db, 'type', 'Files', [['file'], [par[0]]], caller_name=__name__)
-                    if iso is None:
+                    if _iso is None:
                         continue
                     if _iso[0][0] == iso[0][0]:
                         index = i
