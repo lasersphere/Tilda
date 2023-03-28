@@ -349,6 +349,15 @@ def plot_model_fit(fitter, index, x_as_freq=True, plot_summands=True, plot_npeak
     labels = [each.get_label() for each in lines]
     fig.legend(lines, labels, loc='upper center', ncol=2, bbox_to_anchor=(0.15, 0.8, 0.8, 0.2), mode='expand',
                fontsize=fontsize + 2, numpoints=1)
+
+    if zoom_data:
+        x_min, x_max = np.min(x), np.max(x)
+        dx = 0.05 * (x_max - x_min)
+        y_min, y_max = np.min(y), np.max(y)
+        dy = 0.05 * (y_max - y_min)
+        ax1.set_xlim(x_min - dx, x_max + dx)
+        ax1.set_ylim(y_min - dy, y_max + dy)
+
     run = '.{}'.format(fitter.run) if fitter.run else ''
     filename = '{}{}'.format(os.path.splitext(fitter.meas[index].file)[0], run)
     if ascii_path:

@@ -106,26 +106,24 @@ class Fitter(QObject):
         :param n: The number of samples to estimate the uncertainties in the 'function' mode.
         :returns: None.
         """
-        cts = np.array(meas.cts, dtype=float)
+        cts = [np.array(t, dtype=float) for t in meas.cts]
 
         if not self.config['arithmetics']:
             self.config['arithmetics'] = '[{}]'.format(', '.join(st[0]))
         if self.config['arithmetics'][0] == '[':
             indexes = np.array(eval(self.config['arithmetics']), dtype=int)
-            cts_sum = np.sum(cts[:, indexes, :], axis=1)
-            cts_d = self._yerr_from_array(cts_sum)
+            cts_sum = [np.sum(t[indexes, :], axis=0) for t in cts]
+            cts_d = [self._yerr_from_array(t) for t in cts_sum]
             if self.config['norm_scans']:
-                cts_norm = np.expand_dims(meas.nrScans, axis=1)
-                cts_sum /= cts_norm
-                cts_d /= cts_norm
+                cts_sum = [t / n for t, n in zip(cts_sum, meas.nrScans)]
+                cts_d = [t / n for t, n in zip(cts_d, meas.nrScans)]
             self.y.append(np.concatenate(cts_sum, axis=0))
             self.yerr.append(np.concatenate(cts_d, axis=0))
         else:
-            cts_d = np.array(self._yerr_from_array(cts))
+            cts_d = [self._yerr_from_array(t) for t in cts]
             if self.config['norm_scans']:
-                cts_norm = np.expand_dims(meas.nrScans, axis=(1, 2))
-                cts /= cts_norm
-                cts_d /= cts_norm
+                cts = [t / n for t, n in zip(cts, meas.nrScans)]
+                cts_d = [t / n for t, n in zip(cts_d, meas.nrScans)]
             cts = np.concatenate(cts, axis=1)
             cts_d = np.concatenate(cts_d, axis=1)
             y_mean = {'s{}'.format(i): cts[i] for i in range(self.n_scaler)
