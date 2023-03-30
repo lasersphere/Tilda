@@ -17,6 +17,11 @@ except (FileNotFoundError, ImportError):
     import Tilda.Driver.SQLStream.SQLDraftConfig as SQLConfig
 
 try:
+    InfluxConfig = import_module(os.path.join(Cfg.config_dir, 'Driver', 'SQLStream', 'InfluxConfig.py'))
+except (FileNotFoundError, ImportError):
+    import Tilda.Driver.InfluxStream.InfluxConfigDraft as InfluxConfig
+
+try:
     TritonConfig = import_module(os.path.join(Cfg.config_dir, 'Driver', 'TritonListener', 'TritonConfig.py'))
 except (FileNotFoundError, ImportError):
     import Tilda.Driver.TritonListener.TritonDraftConfig as TritonConfig
