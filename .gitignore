@@ -1,3 +1,5 @@
 /.idea/
 /Tilda.egg-info/
 /build/
+/venv/
+/venv32/

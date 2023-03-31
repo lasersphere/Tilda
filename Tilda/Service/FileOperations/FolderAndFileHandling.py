@@ -57,6 +57,7 @@ def make_config_dir(path):
     Path(os.path.join(path, 'PolliFit')).mkdir(parents=True, exist_ok=True)
     Path(os.path.join(path, 'Driver', 'DataAcquisitionFpga')).mkdir(parents=True, exist_ok=True)
     Path(os.path.join(path, 'Driver', 'SQLStream')).mkdir(parents=True, exist_ok=True)
+    Path(os.path.join(path, 'Driver', 'InfluxStream')).mkdir(parents=True, exist_ok=True)
     Path(os.path.join(path, 'Driver', 'TritonListener')).mkdir(parents=True, exist_ok=True)
     Path(os.path.join(path, 'Service', 'VoltageConversions')).mkdir(parents=True, exist_ok=True)
     Path(os.path.join(path, 'Interface', 'Sounds')).mkdir(parents=True, exist_ok=True)
@@ -66,6 +67,9 @@ def make_config_dir(path):
     if not os.path.isfile(os.path.join(path, 'Driver', 'SQLStream', 'SQLConfig.py')):
         shutil.copy(os.path.join(tilda_dir, 'Driver', 'SQLStream', 'SQLDraftConfig.py'),
                     os.path.join(path, 'Driver', 'SQLStream', 'SQLConfig.py'))
+    if not os.path.isfile(os.path.join(path, 'Driver', 'InfluxStream', 'InfluxConfig.py')):
+        shutil.copy(os.path.join(tilda_dir, 'Driver', 'InfluxStream', 'InfluxConfigDraft.py'),
+                    os.path.join(path, 'Driver', 'InfluxStream', 'InfluxConfig.py'))
     if not os.path.isfile(os.path.join(path, 'Driver', 'TritonListener', 'TritonConfig.py')):
         shutil.copy(os.path.join(tilda_dir, 'Driver', 'TritonListener', 'TritonDraftConfig.py'),
                     os.path.join(path, 'Driver', 'TritonListener', 'TritonConfig.py'))
