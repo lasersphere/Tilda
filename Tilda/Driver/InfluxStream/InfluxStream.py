@@ -11,8 +11,9 @@ import Tilda.Driver.DataLoggerBase
 from Tilda.Application.Importer import InfluxConfig
 
 from influxdb import InfluxDBClient
-import requests
-requests.packages.urllib3.disable_warnings()#this disables the unverified SSL warning
+import requests.packages
+# noinspection PyUnresolvedReferences
+requests.packages.urllib3.disable_warnings()  # this disables the unverified SSL warning
 
 
 class InfluxStream(Tilda.Driver.DataLoggerBase.DataLoggerBase):
@@ -22,23 +23,23 @@ class InfluxStream(Tilda.Driver.DataLoggerBase.DataLoggerBase):
         self.infl_cfg = infl_cfg
 
     def db_query(self, strrequest):
-        dbClient = InfluxDBClient(host=self.infl_cfg['host'],
-                                  port=self.infl_cfg['port'],
-                                  username=self.infl_cfg['username'],
-                                  password=self.infl_cfg['password'],
-                                  database=self.infl_cfg['database'],
-                                  ssl=True,
-                                  # verify_ssl=False,
-                                  )
+        dbClient = InfluxDBClient(
+            host=self.infl_cfg['host'],
+            port=self.infl_cfg['port'],
+            username=self.infl_cfg['username'],
+            password=self.infl_cfg['password'],
+            database=self.infl_cfg['database'],
+            ssl=True,
+            # verify_ssl=False,
+            )
         print(strrequest)
-        result = dbClient.query(strrequest,epoch="ns")
+        result = dbClient.query(strrequest, epoch="ns")
         dbClient.close()
         return result
 
-
     def get_channels_from_db(self):
         if self.infl_cfg['useinflux']:
-            result = self.db_query('SHOW FIELD KEYS ON "'+self.infl_cfg["database"]+'"')
+            result = self.db_query('SHOW FIELD KEYS ON "' + self.infl_cfg["database"] + '"')
             channelsafields = []
             for series in result.raw["series"]:
                 chname = series["name"]
@@ -67,7 +68,7 @@ class InfluxStream(Tilda.Driver.DataLoggerBase.DataLoggerBase):
 
     def aquireChannel(self, chname, lastaqu):
         data = []
-        lastaquns = int(lastaqu*1E9)#influx runs in integer ns instead of float seconds
+        lastaquns = int(lastaqu * 1E9)  # influx runs in integer ns instead of float seconds
         if self.infl_cfg["useinflux"]:
             measname, field = self.undoXMLcompatible(chname).split(":")
             query = 'SELECT "' + field + '" FROM "' + measname + '" WHERE time > ' + str(lastaquns)
@@ -78,8 +79,8 @@ class InfluxStream(Tilda.Driver.DataLoggerBase.DataLoggerBase):
             data = [[time.time_ns(), 0.12345]]  # dummy mode
         return data
 
-    def makestringXMLcompatible(self,inp):
-        return inp.replace("/","...").replace(":",".")
+    def makestringXMLcompatible(self, inp):
+        return inp.replace("/", "...").replace(":", ".")
 
-    def undoXMLcompatible(self,inp):
-        return inp.replace("...","/").replace(".",":")
+    def undoXMLcompatible(self, inp):
+        return inp.replace("...", "/").replace(".", ":")

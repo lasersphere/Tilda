@@ -34,12 +34,13 @@ from Tilda.Driver.ScanDevice.BaseTildaScanDeviceControl import BaseTildaScanDevi
 from Tilda.Driver.ScanDevice.AD57X1ScanDevice import AD57X1ScanDev
 
 from Tilda.Application.Importer import InfluxConfig
-if(InfluxConfig.useinfluxoversql):
+if InfluxConfig.useinfluxoversql:
     from Tilda.Driver.InfluxStream.InfluxStream import InfluxStream as db_logger
     logging.info("using InfluxDB as database source")
 else:
     from Tilda.Driver.SQLStream.SQLStream import SQLStream as db_logger
     logging.info("using SQL as database source")
+
 
 class ScanMain(QObject):
     # signal to stop the analysis in the analysis thread,
@@ -89,9 +90,6 @@ class ScanMain(QObject):
         # create an SQLStream object for collecting data from a db.
         self.sql_stream = db_logger()  #SQLStream()
         self.sql_pre_scan_done = False  # bool to use when pre/during/post scan measurement of sql stream is completed
-
-
-
 
         # create a Triton device for controling scans:
         self.triton_scan_controller_name = 'TildaScanDevCtl'
@@ -150,7 +148,6 @@ class ScanMain(QObject):
         scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
         self.sql_stream.write_run_to_db(unix_time, xml_file_name)
 
-
         logging.info('preparing isotope: ' + scan_dict['isotopeData']['isotope'] +
                      ' of type: ' + scan_dict['isotopeData']['type'])
         # self.pipeline = Tpipe.find_pipe_by_seq_type(scan_dict, callback_sig)
@@ -201,9 +198,6 @@ class ScanMain(QObject):
             # do this for both!
             self.set_scan_dev_to_pre_scan(scan_dict, act_track_name, pre_post_scan_str)
 
-
-
-
         dmm_conf_dict = scan_dict[act_track_name]['measureVoltPars'].get(pre_post_scan_str, {}).get('dmms', {})
         self.prepare_dmms_for_scan(dmm_conf_dict)
 
@@ -212,8 +206,6 @@ class ScanMain(QObject):
 
         sql_dict = scan_dict[act_track_name].get('sql', {})
         self.prepare_sql_stream_for_scan(sql_dict, pre_post_scan_str, act_track_name)
-
-
 
         time.sleep(0.5)  # allow the device to settle for 500 ms
 
