@@ -34,8 +34,8 @@ from Tilda.Interface.JobStackerUi.JobStackerUi import JobStackerUi
 from Tilda.Interface.SimpleCounter.SimpleCounterDialogUi import SimpleCounterDialogUi
 from Tilda.Interface.SimpleCounter.SimpleCounterRunningUi import SimpleCounterRunningUi
 from Tilda.Interface.VersionUi.VersionUi import VersionUi
-from Tilda.Scratch.Tetris import Tetris
-from Tilda.Scratch.Snake import MyApp as Snake
+from Tilda.Extra.Tetris.Tetris import Tetris
+from Tilda.Extra.Snake.Snake import Snake
 
 
 class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
@@ -77,14 +77,13 @@ class MainUi(QtWidgets.QMainWindow, Ui_TildaMainWindow):
         self.actionPost_acceleration_power_supply_control.triggered.connect(self.open_post_acc_win)
         self.actionSimple_Counter.triggered.connect(self.open_simple_counter_win)
         self.actionoptions.triggered.connect(self.open_options_win)
-        #self.actionSet_Laser_Frequency.triggered.connect(self.set_laser_freq)   # old version of frequency settings
+        # self.actionSet_Laser_Frequency.triggered.connect(self.set_laser_freq)   # old version of frequency settings
         self.actionSet_Laser_Frequency.triggered.connect(self.open_freq_win)
         self.actionSet_acceleration_voltage.triggered.connect(self.set_acc_volt)
         self.actionLoad_spectra.triggered.connect(self.load_spectra)
         self.actionDigital_Multimeters.triggered.connect(self.open_dmm_live_view_win)
         self.actionPolliFit.triggered.connect(self.open_pollifit_win)
         self.actionPulse_pattern_generator.triggered.connect(self.open_pulse_pattern_win)
-
 
         """ connect double clicks on labels:"""
         self.label_workdir_set.mouseDoubleClickEvent = self.workdir_dbl_click

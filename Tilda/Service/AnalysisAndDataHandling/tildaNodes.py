@@ -19,7 +19,7 @@ from PyQt5 import QtCore
 import Tilda.Service.AnalysisAndDataHandling.csDataAnalysis as CsAna
 import Tilda.Service.FileOperations.FolderAndFileHandling as Filehandle
 
-import Tilda.Service.Formating as Form
+import Tilda.Service.Formatting as Form
 from Tilda.PolliFit import TildaTools, MPLPlotter
 from Tilda.PolliFit.Measurement.SpecData import SpecData
 from Tilda.PolliFit.Measurement.XMLImporter import XMLImporter

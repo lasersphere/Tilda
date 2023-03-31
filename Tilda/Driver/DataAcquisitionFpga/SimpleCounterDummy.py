@@ -8,7 +8,7 @@ Module Description: Module for simulating a simple Counter, if no FPGA is at han
 
 import numpy as np
 
-import Tilda.Service.Formating as Form
+import Tilda.Service.Formatting as Form
 
 
 class SimpleCounterDummy:

@@ -62,4 +62,4 @@ repository = 'http://gitlab.ikp.physik.tu-darmstadt.de/Lasersphere/Tilda'
 bug-tracker = 'http://gitlab.ikp.physik.tu-darmstadt.de/Lasersphere/Tilda/issues'
 
 [tool.setuptools.package-data]
-'*' = ['*.dll', '*.lvbitx']
+'*' = ['*.dll', '*.lvbitx', '*.wav', '*.jpg', '*.ico']

@@ -15,7 +15,7 @@ import ctypes
 import numpy as np
 
 import Tilda.Driver.DataAcquisitionFpga.TildaPassiveConfig as TpCfg
-import Tilda.Service.Formating as Form
+import Tilda.Service.Formatting as Form
 from Tilda.Driver.DataAcquisitionFpga.FPGAInterfaceHandling import FPGAInterfaceHandling
 
 

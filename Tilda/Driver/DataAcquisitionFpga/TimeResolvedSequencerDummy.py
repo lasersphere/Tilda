@@ -13,7 +13,7 @@ import logging
 import numpy as np
 
 import Tilda.Driver.DataAcquisitionFpga.TimeResolvedSequencerConfig as TrsCfg
-import Tilda.Service.Formating as Form
+import Tilda.Service.Formatting as Form
 from Tilda.Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
 from Tilda.Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
 

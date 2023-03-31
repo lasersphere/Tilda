@@ -697,7 +697,7 @@ class XMLImporter(SpecData):
 
 
 # import Tilda.Service.Scan.draftScanParameters as dft
-# import Tilda.Service.Formating as Form
+# import Tilda.Service.Formatting as Form
 # test = XMLImporter(None, False, dft.draftScanDict)
 # a = test.t_proj[0]
 # test = Form.time_rebin_all_spec_data(test, 20)

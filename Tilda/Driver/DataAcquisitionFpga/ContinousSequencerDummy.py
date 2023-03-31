@@ -14,7 +14,7 @@ import numpy as np
 from datetime import datetime
 
 import Tilda.Driver.DataAcquisitionFpga.ContinousSequencerConfig as CsCfg
-import Tilda.Service.Formating as Form
+import Tilda.Service.Formatting as Form
 from Tilda.Driver.DataAcquisitionFpga.MeasureVolt import MeasureVolt
 from Tilda.Driver.DataAcquisitionFpga.SequencerCommon import Sequencer
 

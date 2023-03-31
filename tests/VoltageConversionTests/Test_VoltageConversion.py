@@ -12,7 +12,7 @@ import numpy as np
 
 import Tilda.Service.VoltageConversions.VoltageConversions as VCon
 
-import Tilda.Service.Formating as Form
+import Tilda.Service.Formatting as Form
 
 scan_d = {'track0': {
     'workingTime': None, 'nOfSteps': 5, 'dacStepSize18Bit': 10, 'dacStartRegister18Bit': 0, 'nOfScans': 30,

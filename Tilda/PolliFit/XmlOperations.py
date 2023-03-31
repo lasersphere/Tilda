@@ -9,7 +9,8 @@ Created on '26.10.2015'
 import os
 from datetime import datetime as dt
 import numpy as np
-from lxml import etree as ET
+import matplotlib.pyplot as plt
+import lxml.etree as et
 
 import Tilda.Application.Config as Cfg
 
@@ -25,7 +26,7 @@ def xmlFindOrCreateSubElement(parentEle, tagString, value=''):
         tagString = tagString.replace(':', '.')
     subEle = parentEle.find(tagString)
     if subEle == None:
-        ET.SubElement(parentEle, tagString)
+        et.SubElement(parentEle, tagString)
         return xmlFindOrCreateSubElement(parentEle, tagString, value)
     # print(dt.now(), ' string conversion started ', tagString, type(value))
     if isinstance(value, np.ndarray):
@@ -82,7 +83,7 @@ def xmlCreateIsotope(isotopeDict, take_time_now=True):
     :param isotopeDict: dict, containing: see OneNote
     :return: lxml.etree.Element
     """
-    root = ET.Element('TrigaLaserData')
+    root = et.Element('TrigaLaserData')
     xmlWriteIsoDictToHeader(root, isotopeDict, take_time_now=take_time_now)
     xmlFindOrCreateSubElement(root, 'tracks')
     return root
@@ -202,7 +203,7 @@ def get_data_explanation_str(scan_dict, datatype):
 
 
 def xml_create_autostart_root(version):
-    root = ET.Element('Tilda_autostart_file_%s' % version.replace('.', '_'))
+    root = et.Element('Tilda_autostart_file_%s' % version.replace('.', '_'))
     xmlFindOrCreateSubElement(root, 'workingDir', 'somepath')
     devs = xmlFindOrCreateSubElement(root, 'autostartDevices')
     xmlFindOrCreateSubElement(devs, 'dmms', '{\'dmm_name\':\'address\'}')
@@ -211,7 +212,7 @@ def xml_create_autostart_root(version):
 
 
 def xml_create_fpga_cfg_root():
-    root = ET.Element('Tilda_fpga_cfg_file')
+    root = et.Element('Tilda_fpga_cfg_file')
     fpgas = xmlFindOrCreateSubElement(root, 'fpgas')
     data_acq_fpga = xmlFindOrCreateSubElement(fpgas, 'data_acquisition_fpga')
     xmlFindOrCreateSubElement(data_acq_fpga, 'fpga_resource', 'Rio1')
@@ -220,3 +221,23 @@ def xml_create_fpga_cfg_root():
     xmlFindOrCreateSubElement(control_fpga, 'fpga_resource', 'Rio0')
     xmlFindOrCreateSubElement(control_fpga, 'fpga_type', 'PXI-7852R')
     return root
+
+
+def plot_metadata(file, tree):
+    """
+    Plot metadata of an XML file.
+    
+    :param file: The path to the file.
+    :param tree: An iterable of str describing the tree to the data node.
+    :returns: None.
+    """
+    root = et.parse(file)
+    header = root.find('tracks').find('track0').find('header')
+    metadata = None
+    for t in tree:
+        metadata = header.find(t)
+    metadata = eval(metadata.find('data').text)
+    plt.xlabel('number')
+    plt.ylabel(r'$x - \bar{x}$')
+    plt.plot(metadata - np.mean(metadata), '-C0')
+    plt.show()

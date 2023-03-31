@@ -60,6 +60,7 @@ def make_config_dir(path):
     Path(os.path.join(path, 'Driver', 'TritonListener')).mkdir(parents=True, exist_ok=True)
     Path(os.path.join(path, 'Service', 'VoltageConversions')).mkdir(parents=True, exist_ok=True)
     Path(os.path.join(path, 'Interface', 'Sounds')).mkdir(parents=True, exist_ok=True)
+    Path(os.path.join(path, 'Extra', 'Tetris')).mkdir(parents=True, exist_ok=True)
 
     tilda_dir = findTildaFolder()
     if not os.path.isfile(os.path.join(path, 'Driver', 'SQLStream', 'SQLConfig.py')):
