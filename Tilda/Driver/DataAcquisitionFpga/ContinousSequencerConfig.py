@@ -23,9 +23,9 @@ bitfileSignatures = {'PXI-7852R': '44BFAC9C65B0FD9FF18184F1EC2BB9E0',
 bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
 bitfilePaths = {'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir,
-                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV251.lvbitx'),
+                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeq_7852.lvbitx'),
                 'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir,
-                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeqV220_7841.lvbitx')}
+                                       'TildaTarget/bin/ContinousSequencer/NiFpga_ContSeq_7841.lvbitx')}
 bitfilePath = bitfilePaths[fpga_type]
 '''FPGA Resource:'''
 fpgaResource = fpga_resource

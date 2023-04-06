@@ -14,7 +14,7 @@ import ctypes
 bitfileSignature = 'BE610634C7571F6D016C6F4F66749B41'
 '''Bitfile Path:'''
 bitfilePath = path.join(path.dirname(__file__), pardir, pardir,
-                        'TildaTarget/bin/TildaPassive/NiFpga_TildaPassiveMain_V200.lvbitx')
+                        'TildaTarget/bin/TildaPassive/NiFpga_TildaPassiveMain.lvbitx')
 '''FPGA Resource:'''
 fpgaResource = 'Rio1'
 '''Indicators:'''
