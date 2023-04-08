@@ -1,22 +1,6 @@
-/Debug/
 /.idea/
-/TildaHost/source/Service/VoltageConversions/DAC_Calibration.py
-/TildaHost/source/autostart.xml
-/TildaHost/source/Scratch/tetrishighscore.txt
-/TildaHost/source/Driver/DataAcquisitionFpga/fpga_config.xml
-/.idea/dataSources.xml
-/.idea/dataSources.ids
-/.idea/Tilda.iml
-/.idea/dataSources.local.xml
-/.idea/misc.xml
-/.idea/modules.xml
-/.idea/vcs.xml
-/.idea/workspace.xml
-/.idea/encodings.xml
-/.idea/scopes/scope_settings.xml
-/.idea/dictionaries/simkaufm.xml
-/TildaHost/source/logs/
-/TildaHost/source/temp.out
-/TildaHost/source/Driver/TritonListener/TritonConfig.py
-/source/
-/TildaHost/source/Driver/SQLStream/SQLConfig.py
+/build/
+/venv/
+/venv32/
+/Tilda.egg-info/
+/Tilda/TildaTarget/Labview14/FPGA Bitfiles/

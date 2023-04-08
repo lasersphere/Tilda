@@ -1,0 +1,26 @@
+SCAN:
+  pre_scan_timeout: 60
+  show_scan_finished: True
+
+FREQUENCY:
+  arithmetic: 2 * Matisse1
+  freq_dict:
+    Matisse1: 374740570
+
+SOUND:
+  is_on: True
+  folder: "...\\Interface\\Sounds"
+
+TRITON:
+  is_local: False
+  config_file: "...\\Driver\\TritonListener\\TritonConfig.py"
+  read_interval_ms: 100
+
+FPGA:
+  config_file: "...\\Driver\\DataAcquisitionFpga\\fpga_config.xml"
+
+FUNCTIONS:
+  0: '[0]'
+
+SPECIAL:
+  xml_resolution_ns: 10
