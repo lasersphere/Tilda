@@ -20,7 +20,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>2</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="tab_generalSettings">
       <attribute name="title">
@@ -258,32 +258,11 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="tab_polliFit">
-      <attribute name="title">
-       <string>PolliFit</string>
-      </attribute>
-      <layout class="QVBoxLayout" name="verticalLayout_6">
-       <item>
-        <widget class="QCheckBox" name="checkBox_guessOffset">
-         <property name="text">
-          <string>Guess Offset</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
      <widget class="QWidget" name="tab_special">
       <attribute name="title">
        <string>Special</string>
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_5">
-       <item>
-        <widget class="QCheckBox" name="checkBox_enableRoc">
-         <property name="text">
-          <string>Enable ROC Analysis Pipeline</string>
-         </property>
-        </widget>
-       </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout">
          <item>

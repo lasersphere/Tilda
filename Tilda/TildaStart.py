@@ -68,7 +68,7 @@ def main():
     LoggingUtil.add_logging_level('TIMING', 5)  # create a new logging level for timing even below DEBUG(10)
 
     my_time_handler = RotatingFileHandler(timing_file, mode='a', maxBytes=5 * 1024 * 1024,
-                                         backupCount=1, encoding=None, delay=0)
+                                          backupCount=1, encoding=None, delay=False)
     my_time_handler.setFormatter(formatter)
     my_time_handler.setLevel(logging.TIMING)
     my_time_handler.addFilter(LoggingUtil.LevelFilter(5, 5))  # Filter to only show timings
