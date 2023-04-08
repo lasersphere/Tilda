@@ -752,6 +752,9 @@ class PulsePatternUi(QtWidgets.QMainWindow, Ui_PulsePatternWin):
 
     def closeEvent(self, *args, **kwargs):
         """ overwrite the close event """
+        if self.pulse_pattern_status \
+                == CfgMain._main_instance.scan_main.pulse_pattern_gen.state_changed_callback_signal:
+            CfgMain._main_instance.ppg_state_disconnect()
         if self.main_gui is not None:
             # tell main window that this window is closed.
             self.main_gui.close_pulse_pattern_win()

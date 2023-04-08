@@ -14,11 +14,6 @@ import matplotlib.pyplot as plt
 import Tilda.Service.AnalysisAndDataHandling.tildaNodes as TN
 from Tilda.PolliFit.polliPipe.simpleNodes import NPrint
 from Tilda.PolliFit.polliPipe.node import Node
-
-import Tilda.Application.Config as Cfg
-
-# import PyQtGraphPlotter
-
 from Tilda.PolliFit.polliPipe.pipeline import Pipeline
 
 
@@ -50,7 +45,8 @@ def find_pipe_by_seq_type(scan_dict, callback_sig, live_plot_callback_tuples,
 
 
 def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True,
-            live_plot_callbacks=None, scan_start_stop_tr_wise=None, bunch_start_stop_tr_wise=None, next_step_request_sig=None):
+            live_plot_callbacks=None, scan_start_stop_tr_wise=None, bunch_start_stop_tr_wise=None,
+            next_step_request_sig=None):
     """
     Pipeline for the dataflow and analysis of one Isotope using the time resolved sequencer.
     Mutliple Tracks are supported.
@@ -67,7 +63,7 @@ def TrsPipe(initialScanPars=None, callback_sig=None, x_as_voltage=True,
 
     # alternative pipeline:
     fast = start.attach(TN.NFilterDMMDictsAndSave(live_plot_callbacks[4]))  # Replaced former NFilterDMMDicts AndSave
-    #fast = fast.attach(TN.NROCTrigger())
+    # fast = fast.attach(TN.NROCTrigger())
 
     # # use the sleep node in order to simulate long processing times in pipeline
     # fast = fast.attach(TN.NSleep(sleeping_time_s=2.0))
@@ -111,8 +107,6 @@ def CsPipe(initialScanPars=None, callback_sig=None, live_plot_callbacks=None, ne
 
     pipe = Pipeline(start)
     # start = start.attach(SN.NPrint())
-    if Cfg._main_instance.get_option('SPECIAL:roc_mode'):
-        start = start.attach(TN.NROCTrigger())
     start = start.attach(TN.NFilterDMMDictsAndSave(live_plot_callbacks[4]))  # Replaced former NFilterDMMDicts
 
     maintenance = start.attach(TN.NMPLCloseFigOnInit())

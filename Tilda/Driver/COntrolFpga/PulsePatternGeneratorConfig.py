@@ -23,9 +23,9 @@ bitfileSignature = bitfileSignatures[fpga_type]
 '''Bitfile Path:'''
 bitfilePaths = {
     'PXI-7852R': path.join(path.dirname(__file__), pardir, pardir,
-                           'TildaTarget/bin/PulsePatternGenerator/NiFpga_TiTaProj_COF_PPG_100MHz_V135.lvbitx'),
+                           'TildaTarget/bin/PulsePatternGenerator/NiFpga_TiTaProj_COF_PPG_100MHz_7852.lvbitx'),
     'PXI-7841R': path.join(path.dirname(__file__), pardir, pardir,
-                           'TildaTarget/bin/PulsePatternGenerator/NiFpga_TiTaProj_COF_PPG_100MHz_V135_7841R.lvbitx')
+                           'TildaTarget/bin/PulsePatternGenerator/NiFpga_TiTaProj_COF_PPG_100MHz_7841.lvbitx')
                 }
 bitfilePath = bitfilePaths[fpga_type]
 '''FPGA Resource:'''

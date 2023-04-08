@@ -24,26 +24,31 @@
 /**
  * The signature of the FPGA bitfile.
  */
-static const char* const NiFpga_HeinzingerAndKepcoTest_Signature = "65983986BDA85857BB806DE8DBC8A8B6";
+static const char* const NiFpga_HeinzingerAndKepcoTest_Signature = "07925F2E9ECF4BF922BD7AEDD0A076D3";
 
 typedef enum
 {
-   NiFpga_HeinzingerAndKepcoTest_IndicatorU16_DacState = 0x8112,
+   NiFpga_HeinzingerAndKepcoTest_IndicatorU8_postAccOffsetVoltState = 0x8112,
+} NiFpga_HeinzingerAndKepcoTest_IndicatorU8;
+
+typedef enum
+{
+   NiFpga_HeinzingerAndKepcoTest_IndicatorU16_DacState = 0x811A,
 } NiFpga_HeinzingerAndKepcoTest_IndicatorU16;
 
 typedef enum
 {
-   NiFpga_HeinzingerAndKepcoTest_IndicatorU32_actDACRegister = 0x8114,
+   NiFpga_HeinzingerAndKepcoTest_IndicatorU32_actDACRegister = 0x811C,
 } NiFpga_HeinzingerAndKepcoTest_IndicatorU32;
 
 typedef enum
 {
-   NiFpga_HeinzingerAndKepcoTest_ControlU8_heinzingerControl = 0x811E,
+   NiFpga_HeinzingerAndKepcoTest_ControlU8_postAccOffsetVoltControl = 0x8116,
 } NiFpga_HeinzingerAndKepcoTest_ControlU8;
 
 typedef enum
 {
-   NiFpga_HeinzingerAndKepcoTest_ControlU16_DacStateCmdByHost = 0x811A,
+   NiFpga_HeinzingerAndKepcoTest_ControlU16_DacStateCmdByHost = 0x8122,
 } NiFpga_HeinzingerAndKepcoTest_ControlU16;
 
 typedef enum

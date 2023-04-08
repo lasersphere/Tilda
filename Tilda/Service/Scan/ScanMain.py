@@ -21,16 +21,25 @@ import Tilda.Driver.COntrolFpga.PulsePatternGenerator as PPG
 import Tilda.Driver.COntrolFpga.PulsePatternGeneratorDummy as PPGDummy
 import Tilda.Driver.DataAcquisitionFpga.FindSequencerByType as FindSeq
 import Tilda.Driver.DigitalMultiMeter.DigitalMultiMeterControl as DmmCtrl
+
 import Tilda.Driver.PostAcceleration.PostAccelerationMain as PostAcc
 import Tilda.Service.Scan.ScanDictionaryOperations as SdOp
 import Tilda.Service.Scan.draftScanParameters as DftScan
 from Tilda.PolliFit import TildaTools as TiTs
 from Tilda.Driver.TritonListener.TritonListener import TritonListener
-from Tilda.Driver.SQLStream.SQLStream import SQLStream
+
 from Tilda.Driver.ScanDevice.TritonScanDevControl import TritonScanDevControl
 from Tilda.Service.AnalysisAndDataHandling.AnalysisThread import AnalysisThread as AnalThr
 from Tilda.Driver.ScanDevice.BaseTildaScanDeviceControl import BaseTildaScanDeviceControl as BaseScDev
 from Tilda.Driver.ScanDevice.AD57X1ScanDevice import AD57X1ScanDev
+
+from Tilda.Application.Importer import InfluxConfig
+if InfluxConfig.useinfluxoversql:
+    from Tilda.Driver.InfluxStream.InfluxStream import InfluxStream as db_logger
+    logging.info("using InfluxDB as database source")
+else:
+    from Tilda.Driver.SQLStream.SQLStream import SQLStream as db_logger
+    logging.info("using SQL as database source")
 
 
 class ScanMain(QObject):
@@ -79,7 +88,7 @@ class ScanMain(QObject):
         self.triton_pre_scan_done = False  # bool to use when pre/during/post scan measurement of triton is completed
 
         # create an SQLStream object for collecting data from a db.
-        self.sql_stream = SQLStream()
+        self.sql_stream = db_logger()  #SQLStream()
         self.sql_pre_scan_done = False  # bool to use when pre/during/post scan measurement of sql stream is completed
 
         # create a Triton device for controling scans:
@@ -190,11 +199,14 @@ class ScanMain(QObject):
             self.set_scan_dev_to_pre_scan(scan_dict, act_track_name, pre_post_scan_str)
 
         dmm_conf_dict = scan_dict[act_track_name]['measureVoltPars'].get(pre_post_scan_str, {}).get('dmms', {})
-        triton_dict = scan_dict[act_track_name].get('triton', {})
-        sql_dict = scan_dict[act_track_name].get('sql', {})
         self.prepare_dmms_for_scan(dmm_conf_dict)
+
+        triton_dict = scan_dict[act_track_name].get('triton', {})
         self.prepare_triton_listener_for_scan(triton_dict, pre_post_scan_str, act_track_name)
+
+        sql_dict = scan_dict[act_track_name].get('sql', {})
         self.prepare_sql_stream_for_scan(sql_dict, pre_post_scan_str, act_track_name)
+
         time.sleep(0.5)  # allow the device to settle for 500 ms
 
     def start_pre_scan_measurement(self, scan_dict, act_track_name, pre_post_scan_meas_str='preScan'):
@@ -1166,7 +1178,7 @@ class ScanMain(QObject):
         logging.debug('preparing sql stream for %s measurement. Config dict is: %s'
                       % (pre_post_scan_str, sql_scan_dict.get(pre_post_scan_str, {})))
         if self.sql_stream is None:
-            self.sql_stream = SQLStream()
+            self.sql_stream = db_logger() #SQLStream()
         if self.sql_stream.logging_enabled:
             self.sql_stream.stop_log()
         self.sql_stream.setup_log(sql_scan_dict.get(pre_post_scan_str, {}), pre_post_scan_str, track_name)
@@ -1179,7 +1191,7 @@ class ScanMain(QObject):
             self.sql_stream.stop_log()
             self.sql_stream = None
         if restart:
-            self.sql_stream = SQLStream()
+            self.sql_stream = db_logger()  #SQLStream()
 
     def abort_sql_log(self):
         """ this just stops the log and leaves the sql stream alive """

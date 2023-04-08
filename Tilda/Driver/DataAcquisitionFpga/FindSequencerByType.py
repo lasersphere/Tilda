@@ -8,8 +8,11 @@ Created on '13.11.2015'
 Module for returning an instance of the desired Sequencer
 """
 
-from PyQt5 import QtWidgets
+import os
 import logging
+from PyQt5 import QtWidgets
+
+import Tilda.Application.Config as Cfg
 
 
 def ret_seq_instance_of_type(seq_type):
@@ -24,7 +27,7 @@ def ret_seq_instance_of_type(seq_type):
                 'Hardware not found!',
                 'error: could not find hardware for continuous sequencer (cs),'
                 'maybe the fpga config file in \n\n'
-                ' /Tilda/Tilda/source/Driver/DataAcquisitionFpga/fpga_config.xml\n\n'
+                f'{os.path.join(Cfg.config_dir, "Driver", "DataAcquisitionFpga", "fpga_config.xml")} \n\n'
                 'is not configured correctly.\n'
                 'Check if your config file is set for '
                 'the right fpga type: \n\n'
@@ -48,7 +51,7 @@ def ret_seq_instance_of_type(seq_type):
                 'Hardware not found!',
                 'error: could not find hardware for time resolved sequencer (trs),'
                 'maybe the fpga config file in \n\n'
-                ' /Tilda/Tilda/source/Driver/DataAcquisitionFpga/fpga_config.xml\n\n'
+                f'{os.path.join(Cfg.config_dir, "Driver", "DataAcquisitionFpga", "fpga_config.xml")} \n\n'
                 'is not configured correctly.\n'
                 'Check if your config file is set for '
                 'the right fpga type: \n\n'

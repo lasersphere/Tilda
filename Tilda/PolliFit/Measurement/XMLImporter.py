@@ -333,14 +333,14 @@ class XMLImporter(SpecData):
             con = sqlite3.connect(db)
             cur = con.cursor()
             if self.seq_type not in ['kepco']:  # do not change the x axis for a kepco scan!
-                db_ret = TildaTools.select_from_db(
-                    db, 'type, line, offset, accVolt, laserFreq, colDirTrue, voltDivRatio, lineMult, lineOffset',
-                    'Files', [['file'], [self.file]])
+                db_ret = TildaTools.select_from_db(db, 'type, line, offset, accVolt, laserFreq, colDirTrue,'
+                                                       ' voltDivRatio, lineMult, lineOffset, laserFreq_d',
+                                                   'Files', [['file'], [self.file]])
                 if db_ret is None:
                     raise Exception('XMLImporter: No DB-entry found!')
                 if len(db_ret) == 1:
                     (self.type, self.line, self.offset, self.accVolt, self.laserFreq,
-                     self.col, self.voltDivRatio, self.lineMult, self.lineOffset) = db_ret[0]
+                     self.col, self.voltDivRatio, self.lineMult, self.lineOffset, self.laserFreq_d) = db_ret[0]
                     self.col = bool(self.col)
                     # should be a string of a list of offset values for each track:
                     if isinstance(self.offset, float):
@@ -697,7 +697,7 @@ class XMLImporter(SpecData):
 
 
 # import Tilda.Service.Scan.draftScanParameters as dft
-# import Tilda.Service.Formating as Form
+# import Tilda.Service.Formatting as Form
 # test = XMLImporter(None, False, dft.draftScanDict)
 # a = test.t_proj[0]
 # test = Form.time_rebin_all_spec_data(test, 20)

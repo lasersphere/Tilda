@@ -15,8 +15,7 @@ import subprocess
 import matplotlib
 
 import Tilda.Application.Config as Cfg
-from Tilda.Service.FileOperations.FolderAndFileHandling \
-    import get_default_config_dir, make_config_dir, check_config_dir
+from Tilda.Service.FileOperations.FolderAndFileHandling import check_config_dir
 
 matplotlib.use('Qt5Agg')
 _cyclic_interval_ms = 50
@@ -28,11 +27,9 @@ def main():
     """
     # Parser argument
     parser = argparse.ArgumentParser(description='Start Tilda')
-    parser.add_argument('--config_dir', '-d', type=check_config_dir)
+    parser.add_argument('--config_dir', '-d', type=check_config_dir)  # processed beforehand in __init__.py
     parser.add_argument('--log_level', '-l', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO')
     args = parser.parse_args()
-    Cfg.config_dir = args.config_dir if args.config_dir else get_default_config_dir()
-    make_config_dir(Cfg.config_dir)
 
     # setup logging
     # logging.basicConfig(level=getattr(logging, args.log_level), format='%(message)s', stream=sys.stdout)
@@ -67,27 +64,29 @@ def main():
     app_log.addHandler(my_err_handler)
 
     app_log.info('****************************** starting ******************************')
+    app_log.info('Config directory set to ' + Cfg.config_dir)
     app_log.info('Log level set to ' + args.log_level)
 
     # get details on current version
-    try:
-        # get the current branch
-        branch = subprocess.check_output(['git', 'symbolic-ref', '--short', 'HEAD']).decode('utf-8').replace('\n', '')
-        # get uniquely abbreviated commit object (or commit tag)
-        commit = subprocess.check_output(['git', 'describe', '--always']).decode('utf-8').replace('\n', '')
-        # update info in config
-        Cfg.branch = branch
-        Cfg.commit = commit
-        # display info for user
-        app_log.info('Detected branch: {}, commit: {}'.format(branch, commit))
-    except Exception as e:
-        app_log.warning('Could not detect git branch and commit. Error: {}'.format(e))
+    if __name__ == "__main__":  # Only check for git if Tilda is started directly from TildaStart
+        try:
+            # get the current branch
+            branch = subprocess.check_output(['git', 'symbolic-ref', '--short', 'HEAD']).decode('utf-8').replace('\n', '')
+            # get uniquely abbreviated commit object (or commit tag)
+            commit = subprocess.check_output(['git', 'describe', '--always']).decode('utf-8').replace('\n', '')
+            # update info in config
+            Cfg.branch = branch
+            Cfg.commit = commit
+            # display info for user
+            app_log.info('Detected branch: {}, commit: {}'.format(branch, commit))
+        except Exception as e:
+            app_log.warning('Could not detect git branch and commit. Error: {}'.format(e))
 
     # starting the main loop and storing the instance in Cfg.main_instance
-    from Tilda.Application.Main.Main import Main  # Import Main here to have the config directory set up beforehand.
+    from Tilda.Application.Main.Main import Main
     Cfg._main_instance = Main()
-
     start_gui()
+    Cfg._main_instance.close_main()
 
 
 def start_gui():
@@ -124,4 +123,3 @@ def cyclic():
 
 if __name__ == "__main__":
     main()
-    Cfg._main_instance.close_main()

@@ -90,7 +90,7 @@ class FPGAInterfaceHandling:
                             'and check if the resource is ok, e.g. Rio1 or so, MAX helps to identify this')
         else:
             logging.info('Fpga Initialised on ' + str(resource.value) + '. The Session is ' + str(self.session)
-                  + '. Status is: ' + str(self.status) + '.')
+                         + '. Status is: ' + str(self.status) + '.')
         return self.session
 
     def RunFpga(self):
@@ -162,9 +162,9 @@ class FPGAInterfaceHandling:
         
         """
         ref = controlOrIndicatorDictionary['ref']
-        if valInput == None:
+        if valInput is None:
             val = controlOrIndicatorDictionary['val']
-        if valInput != None:
+        if valInput is not None:
             '''use the dictionary to determine the type of the variable'''
             controlOrIndicatorDictionary['val'].value = valInput
             val = controlOrIndicatorDictionary['val']
