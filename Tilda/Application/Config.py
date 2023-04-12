@@ -9,7 +9,7 @@ Created on '23.09.2015'
 File for global Configs of Tilda
 """
 
-version = '1.25'
+version = '1.25.0'
 versiondate = '02.12.2021'
 branch = 'not found'  # will be filled dynamically
 commit = 'not found'  # will be filled dynamically

@@ -475,12 +475,13 @@ def scan_dict_from_xml_file(xml_file_name, scan_dict=None):
     scan_dict['pipeInternals']['curVoltInd'] = 0
     scan_dict['pipeInternals']['activeTrackNumber'] = 'None'
     scan_dict['pipeInternals']['activeXmlFilePath'] = xml_file_name
-    try:
-        version = float(scan_dict['isotopeData']['version'])
-    except ValueError:  # MCP Data which was summed to an combined .xml file has version like 2.0.0.23,
+    version = [int(n) for n in scan_dict['isotopeData']['version'].split('.')]
+    if len(version) < 3:
+        version.append(0)
+    if len(version) > 3:  # MCP Data which was summed to an combined .xml file has version like 2.0.0.23,
         version = 0.1
         scan_dict['isotopeData']['version'] = '0.1'
-    if version <= 1.18:
+    if version[0] <= 1 and version[1] <= 18:
         # after this version, those infos are stored within each track!
         # kept this for backwards compatibility
         scan_dict['measureVoltPars'] = get_meas_volt_dict(xml_etree)
@@ -1081,7 +1082,9 @@ def save_spec_data(spec_data, scan_dict, time_stamp_ns=False):
     """
     try:
         scan_dict = deepcopy(scan_dict)
-        version = float(scan_dict['isotopeData']['version'])
+        version = [int(n) for n in scan_dict['isotopeData']['version'].split('.')]
+        if len(version) < 3:
+            version.append(0)
         # scan_dict = create_scan_dict_from_spec_data(spec_data, scan_dict['pipeInternals']['activeXmlFilePath'])
 
         # be sure that zero free data is created for storing in the file!
@@ -1092,7 +1095,7 @@ def save_spec_data(spec_data, scan_dict, time_stamp_ns=False):
                 spec_data.time_res_zf[tr_ind]['time'] *= spec_data.softBinWidth_ns[tr_ind] // 10
 
         try:
-            if version > 1.1:
+            if not (version[0] <= 1 and version[1] <= 1):
                 time_res = len(spec_data.time_res_zf)
             else:
                 # if there are any values in here, it is a time resolved measurement
@@ -1116,7 +1119,7 @@ def save_spec_data(spec_data, scan_dict, time_stamp_ns=False):
                     scan_dict[track_name]['trigger']['scan_trigger']['type'].name
             if time_res:
                 scan_dict[track_name]['softwGates'] = spec_data.softw_gates[track_ind]
-                if version > 1.1:
+                if not (version[0] <= 1 and version[1] <= 1):
                     xmlAddCompleteTrack(root_ele, scan_dict, spec_data.time_res_zf[track_ind], track_name)
                 else:
                     xmlAddCompleteTrack(root_ele, scan_dict, spec_data.time_res[track_ind], track_name)

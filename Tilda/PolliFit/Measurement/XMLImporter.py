@@ -66,6 +66,9 @@ class XMLImporter(SpecData):
         self.type = scandict['isotopeData']['isotope']
         self.seq_type = scandict['isotopeData']['type']
         self.version = scandict['isotopeData']['version']
+        self.version_list = [int(n) for n in self.version.split('.')]
+        if len(self.version_list) < 3:
+            self.version_list.append(0)
         self.dac_calibration_measurement = False
 
         self.trigger = []  # list of triggers for each track
@@ -297,7 +300,7 @@ class XMLImporter(SpecData):
                 self.dwell.append(track_dict.get('dwellTime10ns'))
 
             elif self.seq_type in ['kepco']:
-                if float(self.version) <= 1.12:
+                if self.version_list[0] <= 1 and self.version_list[1] <= 12:
                     # kept this for older versions
                     meas_volt_dict = scandict['measureVoltPars']['duringScan']
                 else:
@@ -466,7 +469,7 @@ class XMLImporter(SpecData):
         offset_vals_list = []  # track wise all offset values
         offset_mean = []  # track wise mean values of offset for all devices with offset assignment
         set_value_list = []
-        if float(self.version) <= 1.18:
+        if self.version_list[0] <= 1 and self.version_list[1] <= 18:
             # only prescan available and only before first track
             # in order to have a value for each track, copy this existing one:
             dmms_dict_list = [
@@ -502,7 +505,7 @@ class XMLImporter(SpecData):
             # at least in one track the offset/accvolt voltage was measured
 
             # for backwards compability:
-            read_key = 'preScanRead' if float(self.version) <= 1.17 else 'readings'
+            read_key = 'preScanRead' if self.version_list[0] <= 1 and self.version_list[1] <= 17 else 'readings'
 
             for tr_ind, each in enumerate(dmms_dict_list):
                 offset_by_dev.append({})

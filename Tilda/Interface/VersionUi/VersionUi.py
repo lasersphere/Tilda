@@ -52,7 +52,7 @@ class VersionUi(QtWidgets.QDialog, Ui_Version):
             # search until the next space after the link starts
             link_ends = [self.chg_log_qtext.find(link_end, start_i, spaces_after_link_starts[ind])
                          for ind, start_i in enumerate(link_starts)]
-            if -1 in link_ends:
+            while -1 in link_ends:
                 link_ends.remove(-1)  # remove not found indices
             if len(link_starts) == len(link_ends):
                 orig_links = [self.chg_log_qtext[l_start:link_ends[i]] for i, l_start in enumerate(link_starts)]
@@ -62,8 +62,8 @@ class VersionUi(QtWidgets.QDialog, Ui_Version):
                     self.chg_log_qtext = self.chg_log_qtext.replace(orig_link, new_l)
             else:
                 logging.warning('Malformatted external links found in the release log file %s\n'
-                                'link start indicator: \'http\' occured %s times'
-                                'link stopp indicator: \'http\' occured %s times'
+                                'link start indicator: \'http\' or \'www.\' occured %s times, '
+                                'link stopp indicator: \')\' occured %s times'
                                 '-> do not match -> no hyperref enabled'
                                 % (self.chg_log_path, len(link_starts), len(link_ends)))
 
