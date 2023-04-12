@@ -182,7 +182,7 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
     ''' joblist related '''
 
     def run_next_job(self):
-        if self.running is False:  # only do this on first call
+        if not self.running:  # only do this on first call
             self.aborted = False  # maybe previous run was aborted
             self.subscribe_to_main()  # need updates from scan process
 
@@ -275,7 +275,7 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
     def open_scan_ctrl_win(self, item_info=None):
         # disable JobStackerUi window
         self.stored_window_title = self.windowTitle()  # store current window title
-        if self.running is False:  # only lock completely during setup. Need abort button when running.
+        if not self.running:  # only lock completely during setup. Need abort button when running.
             self.setEnabled(False)  # while setting up isotope, no interactions should be made in the JobStackerUi
             self.setWindowTitle('Currently unavailable. ScanControlUi open!')
             self.label_infostring.setText('Close Scan Control UI to Add Selected Job!')
@@ -306,14 +306,13 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
         :param num_of_reps: number of repetitions passed from scanControlUi
         :return:
         '''
-        if self.running is False:  # only make changes while jobstacker is in set-up mode
+        if not self.running:  # only make changes while jobstacker is in set-up mode
             # get isotope and sequencer type from active iso
             if active_iso:
                 iso_seq_naming = active_iso.split('_')
                 seq_str = iso_seq_naming.pop(-1)
                 iso_str = '_'.join(iso_seq_naming)  # isotopes are actually often named with underscores...
                 reps_as_go = num_of_reps
-                print(self.item_passed_to_scan_ctrl.text())
                 num_repeat_job = self.item_passed_to_scan_ctrl.text().split(' | ')[-1]
                 new_item_def = ' | '.join([iso_str, seq_str, str(reps_as_go), num_repeat_job])
                 self.item_passed_to_scan_ctrl.setText(new_item_def)
@@ -325,8 +324,9 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
             # change number of reps_as_go#
             self.setWindowTitle(self.stored_window_title)
             self.label_infostring.setText('Not working on jobs. Click run to start.')
-            self.setEnabled(True)
+            self.scan_ctrl_win = None
             self.item_passed_to_scan_ctrl = None
+            self.setEnabled(True)
 
     def repetition_ctrl_closed(self, reps):
         if reps is not None:
@@ -338,7 +338,6 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
                 each.setText(' | '.join(item_props))
         self.setEnabled(True)
 
-
     ''' window related '''
 
     def closeEvent(self, *args, **kwargs):
@@ -348,10 +347,8 @@ class JobStackerUi(QtWidgets.QMainWindow, Ui_JobStacker):
             self.main_gui.close_job_stacker_win()
 
 
-
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     gui = JobStackerUi(None)
 
     app.exec_()
-

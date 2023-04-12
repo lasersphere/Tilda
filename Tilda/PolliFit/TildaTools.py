@@ -449,7 +449,7 @@ def xml_get_data_from_track(root_ele, n_of_track, data_type, data_shape, np_type
             else:
                 logging.error('error while searching ' + str(data_type) + ' in track'
                               + str(n_of_track) + ' in ' + str(root_ele))
-                logging.error('error is: ', e)
+                logging.error('error is: ' + repr(e))
             return np.full(data_shape, default_val, dtype=np_type) if create_if_no_root_ele else None
 
 
