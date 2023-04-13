@@ -16,6 +16,7 @@ import logging
 
 class TRSWidg(BaseSequencerWidgUi, Ui_TRSWidg):
     def __init__(self, track_dict, main_gui):
+        self.delays_valid = True
         BaseSequencerWidgUi.__init__(self, track_dict)
         self.main_gui = main_gui
 
@@ -60,12 +61,19 @@ class TRSWidg(BaseSequencerWidgUi, Ui_TRSWidg):
         try:
             inp = ast.literal_eval(text)
             if isinstance(inp, list):
-                self.label_softwGates_set.setText(str(inp).replace('],', '],\n'))
+                self.label_softwGates_set.setText(str(inp))
+                self.delays_valid = True
             else:
                 logging.debug('input is not a list')
+                self.delays_valid = False
         except Exception as e:
             logging.debug('you typed something invalid: ' + str(e))
-        self.calc_softw_gates_from_gui()
+            self.delays_valid = False
+        if self.delays_valid:
+            self.lineEdit.setStyleSheet('')
+            self.calc_softw_gates_from_gui()
+            return
+        self.lineEdit.setStyleSheet('border: 1px solid red')
 
     def calc_softw_gates_from_gui(self, start_x=-10, stop_x=10):
         """
@@ -75,16 +83,18 @@ class TRSWidg(BaseSequencerWidgUi, Ui_TRSWidg):
         :param stop_x: float, stop value on x-axis for gate
         :return: None
         """
-        delay_list = self.lineEdit.text()
-        try:
-            delay_list = ast.literal_eval(delay_list)
-            if isinstance(delay_list, list):
-                self.label_softwGates_set.setText(str(delay_list).replace('],', '],\n'))
-            else:
-                logging.debug('input is not a list')
-        except Exception as e:
-            logging.debug('you typed something invalid: ' + str(e))
-
+        if self.delays_valid:
+            delay_list = self.lineEdit.text()
+            try:
+                delay_list = ast.literal_eval(delay_list)
+                if isinstance(delay_list, list):
+                    self.label_softwGates_set.setText(str(delay_list))
+                else:
+                    logging.debug('input is not a list')
+            except Exception as e:
+                logging.debug('you typed something invalid: ' + str(e))
+        else:
+            delay_list = ast.literal_eval(self.label_softwGates_set.text())
         softw_gates = TiTs.calc_soft_gates_from_db_pars(
             self.doubleSpinBox_gate_width.value(),
             delay_list,

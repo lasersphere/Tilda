@@ -788,10 +788,10 @@ class TrackUi(QtWidgets.QMainWindow, Ui_MainWindowTrackPars):
     def col_dir_true_set(self, state):
         """ write to the working dictionary and set the label """
         if state:
-            display = 'colinear'
+            display = 'collinear'
             boolstate = True
         else:
-            display = 'anti colinear'
+            display = 'anti-collinear'
             boolstate = False
         self.label_colDirTrue_set.setText(display)
         self.buffer_pars['colDirTrue'] = boolstate

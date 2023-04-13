@@ -203,7 +203,7 @@ class SQLStream(QObject):
 
     def _acquire(self):
         """ Called in self._run(), acquires and processes the data from the db. """
-        if self.logging_enabled:
+        if self.logging_enabled and Cfg._main_instance.scan_main.sequencer is not None:
             self.new_data_flag = False
             if Cfg._main_instance.scan_main.sequencer.pause_bool:
                 self.paused = True

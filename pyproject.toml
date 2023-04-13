@@ -7,7 +7,7 @@ requires = [
 
 [project]
 name = 'Tilda'
-version = '1.25'
+version = '1.25.0'
 description = 'A python package for the LaserSpHERe experiment control and data analysis.'
 readme = 'README.md'
 requires-python = '>=3.8'
@@ -64,4 +64,4 @@ repository = 'http://gitlab.ikp.physik.tu-darmstadt.de/Lasersphere/Tilda'
 bug-tracker = 'http://gitlab.ikp.physik.tu-darmstadt.de/Lasersphere/Tilda/issues'
 
 [tool.setuptools.package-data]
-'*' = ['*.dll', '*.lvbitx', '*.wav', '*.jpg', '*.ico']
+'*' = ['*.dll', '*.lvbitx', '*.txt', '*.wav', '*.jpg', '*.ico']

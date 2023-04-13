@@ -5,7 +5,7 @@ To identify links use: (htt...)
 
 
 
-***************************************   Changes for version 1.25 ***************************************
+***************************************   Changes for version 1.25.0 ***************************************
 
 Summary (find details below):
 Tilda is now updated to the newer Python version and works with new TRITON. An Options menu is now used to define
@@ -20,7 +20,7 @@ Added:
           version from the new Triton master branch. Changes are completely untested so far, so don't merge into release
           or master just yet. (7059c1bb)
         * Some cleanup to remove all the Pyro references in TildaStart etc.
-        https://app.asana.com/0/10893101573162/1200969717497502/f
+        (https://app.asana.com/0/10893101573162/1200969717497502/f)
 
     -  Option to pass individual errors in trs-files
         must be named 'errorArray' in xml and have the same format as 'scalerArray'.
@@ -165,7 +165,7 @@ Added:
         implemented, however, the script is set up to contain arbitrary fitting routines.
 
     - relative peak intensities
-        can now be set fixed/free in the db. you can now manually add, e.g. {..., 'Int5': False} to leave only the
+        can now be set fixed / free in the db. you can now manually add, e.g. {..., 'Int5': False} to leave only the
         intensity of peak number five free (maybe you only measured a few peaks)
 
 Improved:
@@ -173,7 +173,7 @@ Improved:
     - SpecData.getArithSpec: Changed nrScalers >= np.abs(s) to > since s is zero based.
 
     - Methods in SpecData.py, SPFitter.py, FullSpec.py and Physics.py do fully utilize numpy arrays during fitting.
-      https://app.asana.com/0/10893101573162/1200969717497500/f
+      (https://app.asana.com/0/10893101573162/1200969717497500/f)
 
     - Revisited PolliFit tabs:
         * The following tabs got improvements towards functionality and user-friendliness:
@@ -257,7 +257,7 @@ Added:
         tells the FPGA to not set any voltage steps but send a 'nextStepRequest' software signal back to TILDA and
         wait for the 'scanDevSet' global variable to change back to True before continuing with the scan.
         The 'DAC' and 'Triton' options are then also available as scan device classes in the track pars UI.
-        https://app.asana.com/0/0/1156374973115046/f
+        (https://app.asana.com/0/0/1156374973115046/f)
 
     - Advanced Triggering
         Originally from a Cryring request, we expanded TILDAs trigger capabilities. Previously there was only one trigger,
@@ -266,8 +266,8 @@ Added:
         trigger named 'meas Trigger'. This one is ultimately still responsible for the timing.
         On the hardware level the new triggers are implemented at the same place as the old one. Scan and step triggers
         can be activated in any order and once both are high, the measurement trigger is armed.
-        https://app.asana.com/0/0/1156374973115045/f
-        https://app.asana.com/0/10893101573162/921223064715003/f
+        (https://app.asana.com/0/0/1156374973115045/f)
+        (https://app.asana.com/0/10893101573162/921223064715003/f)
 
     - Job Stacker Ui
         A new 'Job Stacker' Ui is available from the TILDA main menu under 'Tools' or using the shortcut Ctrl+J.
@@ -277,7 +277,7 @@ Added:
         repeated a couple of times. The final job list can be stored to a text file and loaded back into the job stacker
         at a later time. Execution is done through the Scan Control windows again automatically. The Job Stacker is
         really just a helper-UI and only loads predefined scan settings into the control before executing an ergo.
-        https://app.asana.com/0/10893101573162/1109678433755636/f
+        (https://app.asana.com/0/10893101573162/1109678433755636/f)
 
     - 20 Bit DAC
         Up to now, only the AD5781 18-Bit DAC was supported by TILDA. For a test with the TREK (x1000) Amplifier we
@@ -285,27 +285,27 @@ Added:
         20-bit precision. The calculated number of bits is chosen automatically based on the device name in the DAC
         calibration file. That means old measurements can be loaded, if the original calibration file is provided with
         the measurement.
-        https://app.asana.com/0/10893101573162/1136324508377297/f
+        (https://app.asana.com/0/10893101573162/1136324508377297/f)
 
 Improved:
 
     - Rebinning UI interaction
         New data doesn't overwrite the users input to the spinBox anymore, making it possible to just type the desired
         value instead of wildly scrolling to it. See also under Fixed.
-        https://app.asana.com/0/10893101573162/697937483809958/f
+        (https://app.asana.com/0/10893101573162/697937483809958/f)
 
     - TrackParsUi wide display
         Since the TrackPars ui did grow a lot over the last time, it often became to big for the screen and thus buttons
         were out of sight. Now there is a Ui_TrackPar_Wide that splits the track settings into two columns instead of one
         so it should fit much better on the screens. The old Ui_TrackPar is still there and only the import line in
         TrackUi.py has to be changed to get it back in case someone really insists on having it.
-        https://app.asana.com/0/10893101573162/1157437526547601/f
+        (https://app.asana.com/0/10893101573162/1157437526547601/f)
 
     - Dummy cs and trs can now pause
         Pausing a dummy didn't work until now and even threw an error because the function definition from SequencerCommon
         wasn't overwritten in the dummies. Now the dummies correctly stop emitting data and resume after the pause.
         Halt in dummy mode however does not finish after the scan but aborts immediately due to how dummy data works.
-        https://app.asana.com/0/10893101573162/1156557152553731/f
+        (https://app.asana.com/0/10893101573162/1156557152553731/f)
 
     - Continous Sequencer Dummy can now simulate a kepco scan
         The dummy now checks whether it's a kepco scan and behaves accordingly together with the DMMdummy.
@@ -313,7 +313,7 @@ Improved:
         compl. dest. as well as trigger source are set to 'software'. This is preconfigured in the 'kepco' settings.
         During the kepco scan, the dummy-dmm will emit the number of triggers it received and NOT the set voltage, just
         to make it obvious, that it is not a real measurement. So voltage should equal step number.
-        https://app.asana.com/0/10893101573162/1156776314874473/f
+        (https://app.asana.com/0/10893101573162/1156776314874473/f)
 
     - Couple of minor pollifit changes
         * KingFitter.py: Added more prints of results (S.Kaufmann)
@@ -329,20 +329,20 @@ Fixed:
         Changing the rebinning during a scan should no longer be able to crash TILDA. New data doesn't mess with the
         spinBox lock anymore while the user changes the rebinning. Also, a one second time lock now prevents the user
         from rebinning too often. Compare to 'Improved' as well.
-        https://app.asana.com/0/10893101573162/697937483809958/f
+        (https://app.asana.com/0/10893101573162/697937483809958/f)
 
     - Lock of scan settings
         While scanning you can no longer mess with the settings of the active isotope. You can still view track settings,
         but not confirm changes, add or remove a track of the currently scanning isotope.
-        https://app.asana.com/0/10893101573162/697937483809958/f
+        (https://app.asana.com/0/10893101573162/697937483809958/f)
 
     - Fix limit for wait after reset
         Changed the doubleSpinBox_waitAfterReset_muS maximum from prev 4200000.0 to 2**32 and removed decimals, one step
         is 1 because the counter in labview is in us 32bit units...
-        https://app.asana.com/0/10893101573162/984499362106560/f
+        (https://app.asana.com/0/10893101573162/984499362106560/f)
 
     - Fixed: Scan not working after Isotope change
-        https://app.asana.com/0/10893101573162/875813760907611/f
+        (https://app.asana.com/0/10893101573162/875813760907611/f)
 
 
 

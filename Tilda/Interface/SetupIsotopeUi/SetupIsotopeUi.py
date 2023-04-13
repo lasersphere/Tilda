@@ -102,14 +102,17 @@ class SetupIsotopeUi(QtWidgets.QDialog, Ui_SetupIsotope):
     def ok(self):
         """ by a given track in the database, this will read all scan values and
          then merge them with the default dictionary """
+        if self.scan_ctrl_win.active_iso:
+            for track in list(self.scan_ctrl_win.track_wins_dict.keys()):
+                self.scan_ctrl_win.track_wins_dict[track].cancel()
+            Cfg._main_instance.remove_iso_from_scan_pars(self.scan_ctrl_win.active_iso)
+        self.scan_ctrl_win.active_iso = None
         iso_text = self.comboBox_isotope.currentText()
         if iso_text:
-            self.scan_ctrl_win.active_iso = Cfg._main_instance.add_iso_to_scan_pars(iso_text,
-                                                    self.comboBox_sequencer_select.currentText())
-        else:
-            self.scan_ctrl_win.active_iso = None
+            self.scan_ctrl_win.active_iso = Cfg._main_instance.add_iso_to_scan_pars(
+                iso_text, self.comboBox_sequencer_select.currentText())
         self.close()
 
     def cancel(self):
-        """ by clicking cancel, the new_scan_dict will be set to the default scan dict """
+        """ by clicking cancel, the scan dict will not change """
         self.close()
